@@ -1,0 +1,49 @@
+{
+  "id": "emr-ofd-h-202x",
+  "version": "2025-09-draft",
+  "description": "EMR OFD-H technical profile based on GB/T XXXXX—202X draft",
+  "rules": [
+    {
+      "ruleId": "r-doc-type-ofd-h",
+      "clause": "7-a",
+      "severity": "Error",
+      "summary": "DocType must be OFD-H",
+      "recommendation": "Set OFD.xml root @DocType to OFD-H"
+    },
+    {
+      "ruleId": "r-single-doc-doc0",
+      "clause": "6.1.2",
+      "severity": "Error",
+      "summary": "Only single document Doc_0 is allowed",
+      "recommendation": "Use Doc_0/Document.xml as DocRoot"
+    },
+    {
+      "ruleId": "r-namespace-ofd",
+      "clause": "6.1.3",
+      "severity": "Error",
+      "summary": "XML namespace must be http://www.ofdspec.org",
+      "recommendation": "Declare ofd namespace on all XML roots"
+    },
+    {
+      "ruleId": "r-resource-integrity",
+      "clause": "7-资源文件要求",
+      "severity": "Error",
+      "summary": "Referenced resources must exist",
+      "recommendation": "Ensure MediaFile and page references are resolvable"
+    },
+    {
+      "ruleId": "w-signature-recommended",
+      "clause": "5.3.1/8",
+      "severity": "Warning",
+      "summary": "Signature is recommended for effective EMR documents",
+      "recommendation": "Include signature artifacts where required"
+    },
+    {
+      "ruleId": "w-encryption-optional",
+      "clause": "8",
+      "severity": "Warning",
+      "summary": "Encryption metadata is optional by scenario",
+      "recommendation": "Provide Encryptions.xml where policy requires encryption"
+    }
+  ]
+}
