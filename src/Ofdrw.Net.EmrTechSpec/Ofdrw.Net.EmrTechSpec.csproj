@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
+    <ProjectReference Include="../Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
+    <ProjectReference Include="../Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Profiles/emr-ofd-h-202x.json" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Profiles/emr-ofd-h-202x.json" />
+  </ItemGroup>
+</Project>

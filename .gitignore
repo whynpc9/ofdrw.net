@@ -1,0 +1,25 @@
+# Build artifacts
+bin/
+obj/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# OS
+.DS_Store
+
+# Test and coverage
+TestResults/
+coverage/
+*.coverage
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# Local tools/cache
+artifacts/
