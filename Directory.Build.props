@@ -16,9 +16,10 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.1</VersionSuffix>
-    <PackageVersion>$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.1</VersionSuffix>
+    <PackageVersion Condition="'$(PackageVersion)' == ''">$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
+    <Version Condition="'$(Version)' == ''">$(PackageVersion)</Version>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(IsPackable)' != 'false' and '$(MSBuildProjectName)' != 'Ofdrw.Net.Service'">

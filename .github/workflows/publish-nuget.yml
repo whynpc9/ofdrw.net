@@ -21,25 +21,36 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Resolve version from tag
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          PACKAGE_VERSION="${TAG_NAME#v}"
+          if [ -z "$PACKAGE_VERSION" ] || [ "$PACKAGE_VERSION" = "$TAG_NAME" ]; then
+            echo "Failed to derive package version from tag: $TAG_NAME"
+            exit 1
+          fi
+          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
+          echo "Resolved package version: $PACKAGE_VERSION"
+
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln
 
       - name: Build
-        run: dotnet build Ofdrw.Net.sln -c Release --no-restore
+        run: dotnet build Ofdrw.Net.sln -c Release --no-restore -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
 
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal
 
       - name: Pack SDK packages
         run: |
-          dotnet pack src/Ofdrw.Net.Core/Ofdrw.Net.Core.csproj -c Release --no-build -o artifacts/nuget
-          dotnet pack src/Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj -c Release --no-build -o artifacts/nuget
-          dotnet pack src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj -c Release --no-build -o artifacts/nuget
-          dotnet pack src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj -c Release --no-build -o artifacts/nuget
-          dotnet pack src/Ofdrw.Net.Converter.Abstractions/Ofdrw.Net.Converter.Abstractions.csproj -c Release --no-build -o artifacts/nuget
-          dotnet pack src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj -c Release --no-build -o artifacts/nuget
-          dotnet pack src/Ofdrw.Net.Converter/Ofdrw.Net.Converter.csproj -c Release --no-build -o artifacts/nuget
-          dotnet pack src/Ofdrw.Net.EmrTechSpec/Ofdrw.Net.EmrTechSpec.csproj -c Release --no-build -o artifacts/nuget
+          dotnet pack src/Ofdrw.Net.Core/Ofdrw.Net.Core.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
+          dotnet pack src/Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
+          dotnet pack src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
+          dotnet pack src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
+          dotnet pack src/Ofdrw.Net.Converter.Abstractions/Ofdrw.Net.Converter.Abstractions.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
+          dotnet pack src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
+          dotnet pack src/Ofdrw.Net.Converter/Ofdrw.Net.Converter.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
+          dotnet pack src/Ofdrw.Net.EmrTechSpec/Ofdrw.Net.EmrTechSpec.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
 
       - name: List artifacts
         run: ls -lh artifacts/nuget
