@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>Core OFD models, options, interfaces and validation report types for Ofdrw.Net.</Description>
+    <PackageTags>OFD;document;fixed-layout;SDK</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="8.0.5" />

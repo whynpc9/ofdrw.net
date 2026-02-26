@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>OFD reader/parser for pages, resources, attachments and tags in Ofdrw.Net.</Description>
+    <PackageTags>OFD;reader;parser;document</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />

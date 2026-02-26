@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>Conversion interfaces for Ofdrw.Net file format converters.</Description>
+    <PackageTags>OFD;converter;abstractions;SDK</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
