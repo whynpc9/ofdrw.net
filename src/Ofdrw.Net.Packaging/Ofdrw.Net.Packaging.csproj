@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>OFD package ZIP container read/write and structure checks for Ofdrw.Net.</Description>
+    <PackageTags>OFD;ZIP;packaging;container</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />

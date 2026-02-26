@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>PDF &lt;-&gt; OFD conversion implementation for Ofdrw.Net.</Description>
+    <PackageTags>OFD;PDF;converter;format-conversion</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
