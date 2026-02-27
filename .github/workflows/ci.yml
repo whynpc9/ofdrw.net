@@ -27,3 +27,22 @@ jobs:
 
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal
+
+  package-e2e:
+    runs-on: ubuntu-latest
+    needs: build-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install Poppler
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Run package E2E
+        run: ./scripts/run-converter-package-e2e.sh
