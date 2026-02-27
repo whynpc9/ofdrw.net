@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OfdrwPackageVersion Condition="'$(OfdrwPackageVersion)' == ''">0.1.0-preview.1</OfdrwPackageVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Ofdrw.Net.Converter.Pdf" Version="$(OfdrwPackageVersion)" />
+  </ItemGroup>
+</Project>

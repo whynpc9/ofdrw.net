@@ -82,6 +82,18 @@ If you want only PDF conversion implementation:
 dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.1
 ```
 
+## Package E2E Check
+
+Run an isolated package-consumer E2E flow (pack -> install -> convert):
+
+```bash
+/Users/wanghongyi/Projects/ofdrw.net/scripts/run-converter-package-e2e.sh
+```
+
+The E2E subproject is:
+
+- `/Users/wanghongyi/Projects/ofdrw.net/e2e/Ofdrw.Net.Converter.Pdf.E2E`
+
 ## REST Endpoints
 
 - `POST /api/v1/ofd/generate`
