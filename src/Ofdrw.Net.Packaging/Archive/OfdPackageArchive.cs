@@ -38,7 +38,7 @@ public sealed class OfdPackageArchive
 
     public string ReadUtf8Text(string entryName)
     {
-        return Encoding.UTF8.GetString(GetBytes(entryName));
+        return Encoding.UTF8.GetString(GetBytes(entryName)).TrimStart('\uFEFF');
     }
 
     public IEnumerable<string> FindByPrefix(string prefix)

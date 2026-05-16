@@ -58,9 +58,10 @@ public sealed class PdfConversionTests
         Assert.Equal(2, ofd.Pages.Count);
         Assert.All(ofd.Pages, page =>
         {
-            var text = page.Elements.OfType<OfdTextElement>().SingleOrDefault();
-            Assert.NotNull(text);
-            Assert.Contains("page-2", text!.Text);
+            var image = page.Elements.OfType<OfdImageElement>().SingleOrDefault();
+            Assert.NotNull(image);
+            Assert.NotEmpty(image!.Data);
+            Assert.Equal("image/png", image.MediaType);
         });
     }
 
@@ -80,8 +81,8 @@ public sealed class PdfConversionTests
         var ofd = await reader.ReadAsync(ofdStream);
 
         Assert.Single(ofd.Pages);
-        Assert.NotEmpty(ofd.Pages[0].Elements);
-        Assert.Contains(ofd.Pages[0].Elements, e => e is OfdTextElement or OfdImageElement);
+        var image = Assert.Single(ofd.Pages[0].Elements.OfType<OfdImageElement>());
+        Assert.NotEmpty(image.Data);
     }
 
     [Fact]

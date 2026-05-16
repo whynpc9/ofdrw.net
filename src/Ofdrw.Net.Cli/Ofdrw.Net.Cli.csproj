@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>ofdrw</ToolCommandName>
+    <PackageId>Ofdrw.Net.Cli</PackageId>
+    <Description>Command-line OFD conversion tool for Ofdrw.Net.</Description>
+    <PackageTags>OFD;PDF;CLI;converter;format-conversion</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
+  </ItemGroup>
+</Project>
