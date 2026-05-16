@@ -15,6 +15,7 @@ pack_project() {
   dotnet pack "$project" -c Release -o "$OUT_DIR" \
     -p:Version="$VERSION" \
     -p:PackageVersion="$VERSION" \
+    -p:RestoreSources="https://api.nuget.org/v3/index.json" \
     --nologo
 }
 
@@ -24,6 +25,7 @@ pack_project "$ROOT_DIR/src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj"
 pack_project "$ROOT_DIR/src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj"
 pack_project "$ROOT_DIR/src/Ofdrw.Net.Converter.Abstractions/Ofdrw.Net.Converter.Abstractions.csproj"
 pack_project "$ROOT_DIR/src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj"
+pack_project "$ROOT_DIR/src/Ofdrw.Net.Cli/Ofdrw.Net.Cli.csproj"
 
 echo "[E2E] Local packages are ready in $OUT_DIR"
 

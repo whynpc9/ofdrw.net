@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Abstractions.Interfaces;
+using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Converter.Pdf.Internal;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
@@ -45,7 +46,7 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             {
                 DocType = "OFD-H",
                 DocumentId = "Doc_0",
-                Namespace = "http://www.ofdspec.org",
+                Namespace = OfdConstants.StandardNamespace,
                 Metadata = new OfdMetadata
                 {
                     Title = Path.GetFileName(tempPdfPath),
@@ -68,6 +69,24 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                     WidthMillimeters = widthMm,
                     HeightMillimeters = heightMm
                 };
+
+                var image = await _rasterizer.TryRasterizePageAsync(tempPdfPath, index, cancellationToken).ConfigureAwait(false);
+                if (image is not null)
+                {
+                    page.Elements.Add(new OfdImageElement
+                    {
+                        XMillimeters = 0,
+                        YMillimeters = 0,
+                        WidthMillimeters = widthMm,
+                        HeightMillimeters = heightMm,
+                        Data = image,
+                        MediaType = "image/png",
+                        FileName = $"pdf_page_{index + 1}.png"
+                    });
+
+                    builder.AddPage(page);
+                    continue;
+                }
 
                 var words = string.Empty;
                 try
@@ -94,33 +113,16 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                 }
                 else
                 {
-                    var image = await _rasterizer.TryRasterizePageAsync(tempPdfPath, index, cancellationToken).ConfigureAwait(false);
-                    if (image is not null)
+                    page.Elements.Add(new OfdTextElement
                     {
-                        page.Elements.Add(new OfdImageElement
-                        {
-                            XMillimeters = 0,
-                            YMillimeters = 0,
-                            WidthMillimeters = widthMm,
-                            HeightMillimeters = heightMm,
-                            Data = image,
-                            MediaType = "image/png",
-                            FileName = $"pdf_page_{index + 1}.png"
-                        });
-                    }
-                    else
-                    {
-                        page.Elements.Add(new OfdTextElement
-                        {
-                            XMillimeters = 10,
-                            YMillimeters = 12,
-                            WidthMillimeters = Math.Max(widthMm - 20, 10),
-                            HeightMillimeters = 8,
-                            FontName = "SimSun",
-                            FontSizeMillimeters = 4,
-                            Text = $"[fallback] page {index + 1} rendered as placeholder"
-                        });
-                    }
+                        XMillimeters = 10,
+                        YMillimeters = 12,
+                        WidthMillimeters = Math.Max(widthMm - 20, 10),
+                        HeightMillimeters = 8,
+                        FontName = "SimSun",
+                        FontSizeMillimeters = 4,
+                        Text = $"[fallback] page {index + 1} rendered as placeholder"
+                    });
                 }
 
                 builder.AddPage(page);

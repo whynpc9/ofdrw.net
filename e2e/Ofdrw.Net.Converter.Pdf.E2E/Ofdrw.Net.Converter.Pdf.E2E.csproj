@@ -9,5 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="Ofdrw.Net.Converter.Pdf" Version="$(OfdrwPackageVersion)" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
   </ItemGroup>
 </Project>

@@ -22,7 +22,7 @@
     <Version Condition="'$(Version)' == ''">$(PackageVersion)</Version>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(IsPackable)' != 'false' and '$(MSBuildProjectName)' != 'Ofdrw.Net.Service'">
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" Link="README.md" />
   </ItemGroup>
 </Project>

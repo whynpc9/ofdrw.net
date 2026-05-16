@@ -52,6 +52,37 @@ public sealed class OfdReader : IOfdReader
 
         var documentXml = XDocument.Parse(archive.ReadUtf8Text(docRoot));
         var docNs = documentXml.Root?.Name.Namespace ?? ofdNs;
+        var commonData = documentXml.Root?.Element(docNs + "CommonData");
+        var fontMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var documentMediaMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var documentMediaTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        var publicResLoc = commonData?.Element(docNs + "PublicRes")?.Value;
+        if (!string.IsNullOrWhiteSpace(publicResLoc))
+        {
+            var publicResPath = Resolve(docRoot, publicResLoc!);
+            if (archive.Contains(publicResPath))
+            {
+                var publicResXml = XDocument.Parse(archive.ReadUtf8Text(publicResPath));
+                var publicResNs = publicResXml.Root?.Name.Namespace ?? docNs;
+                foreach (var font in publicResXml.Descendants(publicResNs + "Font"))
+                {
+                    var id = font.Attribute("ID")?.Value;
+                    var name = font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value;
+                    if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(name))
+                    {
+                        fontMap[id!] = name!;
+                    }
+                }
+            }
+        }
+
+        var documentResLoc = commonData?.Element(docNs + "DocumentRes")?.Value;
+        if (!string.IsNullOrWhiteSpace(documentResLoc))
+        {
+            var documentResPath = Resolve(docRoot, documentResLoc!);
+            ReadMediaResources(archive, documentResPath, docNs, documentMediaMap, documentMediaTypeMap);
+        }
 
         var pages = documentXml.Root?
             .Element(docNs + "Pages")?
@@ -83,23 +114,12 @@ public sealed class OfdReader : IOfdReader
 
             var pageDir = GetDirectory(contentPath);
             var pageResPath = $"{pageDir}/PageRes.xml";
-            var mediaMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var mediaTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var mediaMap = new Dictionary<string, string>(documentMediaMap, StringComparer.OrdinalIgnoreCase);
+            var mediaTypeMap = new Dictionary<string, string>(documentMediaTypeMap, StringComparer.OrdinalIgnoreCase);
 
             if (archive.Contains(pageResPath))
             {
-                var pageResXml = XDocument.Parse(archive.ReadUtf8Text(pageResPath));
-                var pageResNs = pageResXml.Root?.Name.Namespace ?? docNs;
-                foreach (var media in pageResXml.Root?.Elements(pageResNs + "MultiMedia") ?? Enumerable.Empty<XElement>())
-                {
-                    var id = media.Attribute("ID")?.Value;
-                    var file = media.Attribute("MediaFile")?.Value;
-                    if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(file))
-                    {
-                        mediaMap[id] = file;
-                        mediaTypeMap[id] = media.Attribute("Format")?.Value ?? "image/png";
-                    }
-                }
+                ReadMediaResources(archive, pageResPath, docNs, mediaMap, mediaTypeMap);
             }
 
             var layer = pageXml.Root?
@@ -121,7 +141,7 @@ public sealed class OfdReader : IOfdReader
                             WidthMillimeters = boundary.w,
                             HeightMillimeters = boundary.h,
                             Text = node.Value,
-                            FontName = node.Attribute("Font")?.Value ?? "SimSun",
+                            FontName = ResolveFontName(node.Attribute("Font")?.Value, fontMap),
                             FontSizeMillimeters = ParseDouble(node.Attribute("Size")?.Value, 4d)
                         };
                         page.Elements.Add(text);
@@ -143,7 +163,7 @@ public sealed class OfdReader : IOfdReader
 
                         if (mediaMap.TryGetValue(resourceId, out var mediaFile))
                         {
-                            var mediaPath = Resolve(pageResPath, mediaFile);
+                            var mediaPath = mediaFile.Contains('/') ? mediaFile : Resolve(pageResPath, mediaFile);
                             if (archive.TryGetBytes(mediaPath, out var bytes))
                             {
                                 image.Data = bytes;
@@ -207,6 +227,62 @@ public sealed class OfdReader : IOfdReader
         }
 
         return package;
+    }
+
+    private static void ReadMediaResources(
+        OfdPackageArchive archive,
+        string resPath,
+        XNamespace fallbackNs,
+        IDictionary<string, string> mediaMap,
+        IDictionary<string, string> mediaTypeMap)
+    {
+        if (!archive.Contains(resPath))
+        {
+            return;
+        }
+
+        var resXml = XDocument.Parse(archive.ReadUtf8Text(resPath));
+        var resNs = resXml.Root?.Name.Namespace ?? fallbackNs;
+        var baseLoc = resXml.Root?.Attribute("BaseLoc")?.Value;
+
+        foreach (var media in resXml.Descendants(resNs + "MultiMedia"))
+        {
+            var id = media.Attribute("ID")?.Value;
+            var file = media.Attribute("MediaFile")?.Value ?? media.Element(resNs + "MediaFile")?.Value;
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(file))
+            {
+                continue;
+            }
+
+            var mediaLoc = string.IsNullOrWhiteSpace(baseLoc) || file!.StartsWith("/", StringComparison.Ordinal)
+                ? file!
+                : $"{baseLoc!.TrimEnd('/')}/{file.TrimStart('/')}";
+
+            mediaMap[id!] = Resolve(resPath, mediaLoc);
+            mediaTypeMap[id!] = ToMediaType(media.Attribute("Format")?.Value);
+        }
+    }
+
+    private static string ResolveFontName(string? fontRef, IReadOnlyDictionary<string, string> fontMap)
+    {
+        if (!string.IsNullOrWhiteSpace(fontRef) && fontMap.TryGetValue(fontRef, out var fontName))
+        {
+            return fontName;
+        }
+
+        return string.IsNullOrWhiteSpace(fontRef) ? "SimSun" : fontRef!;
+    }
+
+    private static string ToMediaType(string? format)
+    {
+        return format?.Trim().ToUpperInvariant() switch
+        {
+            "JPG" => "image/jpeg",
+            "JPEG" => "image/jpeg",
+            "BMP" => "image/bmp",
+            "TIFF" => "image/tiff",
+            _ => "image/png"
+        };
     }
 
     private static string Resolve(string basePath, string relativePath)
