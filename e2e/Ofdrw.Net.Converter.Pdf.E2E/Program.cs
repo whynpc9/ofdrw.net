@@ -286,7 +286,7 @@ static async Task<string> RenderFirstPageAsync(string pdfPath, string outputDir,
 
 static async Task AssertImageHasContentAsync(string imagePath)
 {
-    var result = await RunProcessAsync("magick", $"\"{imagePath}\" -colorspace Gray -format \"%[fx:standard_deviation]\" info:");
+    var result = await RunProcessAsync("convert", $"\"{imagePath}\" -colorspace Gray -format \"%[fx:standard_deviation]\" info:");
     if (result.ExitCode != 0)
     {
         Console.WriteLine($"[E2E] Skipping image content check because ImageMagick failed: {result.Error}");
@@ -317,7 +317,7 @@ static async Task AssertSignedSealRegionAsync(string imagePath)
     var width = Math.Max(1, (int)Math.Ceiling(size.Width * 30d / 210d));
     var height = Math.Max(1, (int)Math.Ceiling(size.Height * 20d / 140d));
     var result = await RunProcessAsync(
-        "magick",
+        "convert",
         $"\"{imagePath}\" -crop {width}x{height}+{x}+{y} " +
         "-format \"%[fx:mean.r-mean.g]\" info:");
     if (result.ExitCode != 0 ||
@@ -336,7 +336,7 @@ static async Task AssertSignedSealRegionAsync(string imagePath)
 
 static async Task<(int Width, int Height)> IdentifySizeAsync(string imagePath)
 {
-    var result = await RunProcessAsync("magick", $"identify -format \"%w x %h\" \"{imagePath}\"");
+    var result = await RunProcessAsync("identify", $"-format \"%w x %h\" \"{imagePath}\"");
     if (result.ExitCode != 0)
     {
         throw new InvalidOperationException($"ImageMagick identify failed for {imagePath}: {result.Error}");
