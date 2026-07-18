@@ -1,8 +1,10 @@
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Readers;
+using Ofdrw.Net.Signatures.Verification;
 using System.Diagnostics;
 using System.Globalization;
 
@@ -96,6 +98,12 @@ foreach (var sampleOfd in Directory.EnumerateFiles(testDataDir, "*.ofd").OrderBy
         throw new InvalidOperationException($"Sample OFD has no pages: {sampleOfd}");
     }
 
+    if (string.Equals(Path.GetFileName(sampleOfd), "999.ofd", StringComparison.OrdinalIgnoreCase))
+    {
+        AssertComplexUpstreamSample(parsed, sampleOfd);
+        await ValidateComplexSampleArtifactsAsync(sampleOfd, outputDir);
+    }
+
     Console.WriteLine($"[E2E] Upstream OFD parsed: {Path.GetFileName(sampleOfd)} ({parsed.Pages.Count} page(s))");
 }
 
@@ -105,6 +113,87 @@ foreach (var samplePdf in Directory.EnumerateFiles(testDataDir, "*.pdf").OrderBy
 }
 
 Console.WriteLine("[E2E] Success: package installation and conversion flow is working.");
+
+static void AssertComplexUpstreamSample(OfdDocumentPackage parsed, string samplePath)
+{
+    var pageTextObjects = parsed.Pages.Sum(page => page.Elements.OfType<OfdTextElement>().Count());
+    var templateTextObjects = parsed.Pages.Sum(page => page.Templates.Sum(template =>
+        template.Elements.OfType<OfdTextElement>().Count()));
+    var pathObjects = parsed.Pages.Sum(page => page.Templates.Sum(template => template.Elements
+        .OfType<OfdPathElement>()
+        .Count()));
+    var layers = parsed.Pages.Sum(page =>
+        page.Elements.Concat(page.Templates.SelectMany(template => template.Elements))
+            .Where(element => !string.IsNullOrWhiteSpace(element.LayerId))
+            .Select(element => element.LayerId)
+            .Distinct(StringComparer.Ordinal)
+            .Count());
+    var templates = parsed.Pages.Sum(page => page.PreservedPageElements.Count(xml =>
+        xml.Contains("Template", StringComparison.Ordinal)));
+
+    if (pageTextObjects != 560 || templateTextObjects != 121 || pathObjects != 79 || layers != 10 || templates != 5)
+    {
+        throw new InvalidOperationException(
+            $"Complex upstream sample was only partially parsed: {samplePath}. " +
+            $"pageText={pageTextObjects}, templateText={templateTextObjects}, " +
+            $"paths={pathObjects}, layers={layers}, templates={templates}");
+    }
+
+    if (!parsed.PreservedEntries.Keys.Any(path => path.Contains("/Annots/", StringComparison.OrdinalIgnoreCase)))
+    {
+        throw new InvalidOperationException($"Annotation resources were not preserved: {samplePath}");
+    }
+}
+
+static async Task ValidateComplexSampleArtifactsAsync(
+    string samplePath,
+    string outputDir)
+{
+    await using (var signatureInput = File.OpenRead(samplePath))
+    {
+        var signatureReport = await new OfdSignatureVerifier()
+            .VerifyAsync(signatureInput);
+        if (!signatureReport.ReferenceIntegrityValid)
+        {
+            throw new InvalidOperationException(
+                $"Upstream signature reference integrity failed: {samplePath}");
+        }
+    }
+
+    var pdfPath = Path.Combine(outputDir, "upstream-999.pdf");
+    await using (var pdfInput = File.OpenRead(samplePath))
+    await using (var pdfOutput = File.Create(pdfPath))
+    {
+        await new OfdToPdfConverter().ConvertAsync(pdfInput, pdfOutput);
+    }
+
+    var pdfPngPath = await RenderFirstPageAsync(
+        pdfPath,
+        outputDir,
+        "upstream-999-page1-pdf");
+    await AssertSignedSealRegionAsync(pdfPngPath);
+
+    var svgPath = Path.Combine(outputDir, "upstream-999-page1.svg");
+    await using (var svgInput = File.OpenRead(samplePath))
+    await using (var svgOutput = File.Create(svgPath))
+    {
+        await new OfdToSvgConverter().ConvertAsync(svgInput, svgOutput);
+    }
+
+    var pngPath = Path.Combine(outputDir, "upstream-999-page1-svg.png");
+    var render = await RunProcessAsync(
+        "rsvg-convert",
+        $"--background-color white --output \"{pngPath}\" \"{svgPath}\"");
+    if (render.ExitCode != 0)
+    {
+        throw new InvalidOperationException(
+            $"rsvg-convert failed for {svgPath}: {render.Error}");
+    }
+
+    await AssertImageHasContentAsync(pngPath);
+    Console.WriteLine(
+        "[E2E] Upstream PDF seal, SVG visual, and SM3 reference verification passed.");
+}
 
 static string ResolveRepoRoot()
 {
@@ -217,6 +306,31 @@ static async Task AssertImagesSameSizeAsync(string expectedPath, string actualPa
     if (Math.Abs(expected.Width - actual.Width) > 1 || Math.Abs(expected.Height - actual.Height) > 1)
     {
         throw new InvalidOperationException($"Rendered image size mismatch. expected={expected.Width} x {expected.Height}, actual={actual.Width} x {actual.Height}");
+    }
+}
+
+static async Task AssertSignedSealRegionAsync(string imagePath)
+{
+    var size = await IdentifySizeAsync(imagePath);
+    var x = (int)Math.Floor(size.Width * 90d / 210d);
+    var y = (int)Math.Floor(size.Height * 8d / 140d);
+    var width = Math.Max(1, (int)Math.Ceiling(size.Width * 30d / 210d));
+    var height = Math.Max(1, (int)Math.Ceiling(size.Height * 20d / 140d));
+    var result = await RunProcessAsync(
+        "magick",
+        $"\"{imagePath}\" -crop {width}x{height}+{x}+{y} " +
+        "-format \"%[fx:mean.r-mean.g]\" info:");
+    if (result.ExitCode != 0 ||
+        !double.TryParse(
+            result.Output,
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out var redExcess) ||
+        redExcess <= 0.1d)
+    {
+        throw new InvalidOperationException(
+            $"Signed seal is missing or not visibly red in {imagePath}. " +
+            $"redExcess={result.Output}; error={result.Error}");
     }
 }
 

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>OFD digital signature creation, reference integrity verification, and cryptographic extension points for Ofdrw.Net.</Description>
+    <PackageTags>OFD;signature;SM3;verification;GM</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
+  </ItemGroup>
+</Project>
