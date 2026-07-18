@@ -40,20 +40,20 @@ PDF rasterization uses `pdftoppm` when converting PDF pages into OFD image resou
 Install the high-level conversion package:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.1
+dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.2
 ```
 
 For a narrower dependency surface, install the PDF converter package directly:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.1
+dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.2
 ```
 
 Install SVG or signature support independently:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.1
-dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.1
+dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.2
+dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.2
 ```
 
 Convert PDF to OFD:
@@ -186,7 +186,7 @@ Package overview:
 Install the CLI as a .NET tool:
 
 ```bash
-dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.1
+dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.2
 ```
 
 Convert by file extension:
