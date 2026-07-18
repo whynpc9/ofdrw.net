@@ -19,6 +19,9 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Install PDF conversion dependencies
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln
 
