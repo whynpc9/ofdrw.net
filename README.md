@@ -1,6 +1,6 @@
 # Ofdrw.Net
 
-Ofdrw.Net is an early-stage .NET SDK and CLI for OFD document packaging, reading, and PDF/OFD conversion.
+Ofdrw.Net is a preview-stage .NET SDK and CLI for OFD document packaging, reading, editing, rendering, conversion, and signature-integrity workflows.
 
 ## 免责声明（请在使用前阅读）
 
@@ -18,12 +18,20 @@ Ofdrw.Net is an early-stage .NET SDK and CLI for OFD document packaging, reading
 
 ## Capabilities
 
-- OFD core models and document builder API.
-- OFD ZIP packaging with `OFD.xml`, `Doc_0`, `Pages`, resources, attachments, and custom tags.
-- OFD reader/parser for pages, text elements, image elements, attachments, and custom tags.
+See [docs/feature-parity.md](docs/feature-parity.md) for the maintained
+OFDRW comparison, completed hardening work, and remaining production gaps.
+
+- OFD core models, document builder API, globally unique object IDs, layers, templates, text runs, vector paths, images, fonts, attachments, annotations, and custom tags.
+- Bounded OFD ZIP loading with path traversal, entry count, expanded-size, and compression-ratio checks.
+- Standard package writing with `OFD.xml`, document/page/resource references, attachments, custom tags, templates, and preserved extension entries.
+- Loss-aware reading that keeps unknown XML nodes and package entries available for round-trip workflows.
+- Text extraction, page reorder/removal/crop, and self-contained document merge helpers.
 - PDF to OFD conversion by embedding rendered PDF pages as OFD image objects.
-- OFD to PDF conversion with text/image drawing and raster fallback.
-- Command-line conversion tool packaged as `Ofdrw.Net.Cli`.
+- OFD to PDF conversion with templates, layers, embedded fonts, positioned text runs, vector paths, images, crop origins, and raster fallback.
+- OFD page to self-contained SVG conversion with template vectors, text, colors, transforms, and embedded images.
+- OFD signature description generation through a pluggable signed-value provider.
+- SM3, SHA-1, and SHA-256 protected-entry digest verification plus pluggable `SignedValue.dat` verification.
+- Command-line conversion, extraction, editing, SVG, and signature verification tools packaged as `Ofdrw.Net.Cli`.
 
 PDF rasterization uses `pdftoppm` when converting PDF pages into OFD image resources. Install Poppler and make sure `pdftoppm` is available on `PATH` before using PDF to OFD conversion.
 
@@ -39,6 +47,13 @@ For a narrower dependency surface, install the PDF converter package directly:
 
 ```bash
 dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.1
+```
+
+Install SVG or signature support independently:
+
+```bash
+dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.1
+dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.1
 ```
 
 Convert PDF to OFD:
@@ -63,6 +78,17 @@ await using var output = File.Create("output.pdf");
 
 var converter = new OfdToPdfConverter();
 await converter.ConvertAsync(input, output);
+```
+
+Convert one OFD page to SVG:
+
+```csharp
+using Ofdrw.Net.Converter.Svg.Converters;
+
+await using var input = File.OpenRead("input.ofd");
+await using var output = File.Create("page-1.svg");
+
+await new OfdToSvgConverter().ConvertAsync(input, output, pageIndex: 0);
 ```
 
 Convert selected pages with 1-based page numbers in your application code converted to zero-based indexes:
@@ -115,11 +141,40 @@ var package = await new OfdReader().ReadAsync(input);
 Console.WriteLine(package.Pages.Count);
 ```
 
+Extract text or edit page order:
+
+```csharp
+using Ofdrw.Net.Layout.Editing;
+using Ofdrw.Net.Reader.Extraction;
+
+var text = new OfdTextExtractor().Extract(package, includeTemplates: true);
+OfdDocumentEditor.ReorderPages(package, new[] { 2, 0, 1 });
+OfdDocumentEditor.CropPage(package.Pages[0], x: 10, y: 10, width: 180, height: 260);
+```
+
+Verify signed-entry integrity:
+
+```csharp
+using Ofdrw.Net.Signatures.Verification;
+
+await using var input = File.OpenRead("signed.ofd");
+var report = await new OfdSignatureVerifier().VerifyAsync(input);
+
+Console.WriteLine(report.ReferenceIntegrityValid);
+Console.WriteLine(report.FullyValid);
+```
+
+`ReferenceIntegrityValid` only means every declared protected-entry digest matched. `FullyValid` additionally requires an `IOfdSignedValueVerifier` registered for each signature method and a valid `SignedValue.dat`. This distinction prevents an SM3 digest check from being mistaken for full SES/SM2 electronic-seal verification.
+
+Create a signature by implementing `IOfdSignatureProvider`. The provider receives the exact serialized `Signature.xml` bytes and the OFD property-information path, and returns the vendor/SES signed-value bytes. `OfdSignatureService` writes the standard signature list, protected-entry references, signature description, optional seal, and `SignedValue.dat`.
+
 Package overview:
 
 - `Ofdrw.Net.Converter`: convenience meta-package for conversion use cases.
 - `Ofdrw.Net.Converter.Pdf`: PDF/OFD converter implementation.
-- `Ofdrw.Net.Cli`: command-line PDF/OFD conversion tool.
+- `Ofdrw.Net.Converter.Svg`: OFD page to SVG converter.
+- `Ofdrw.Net.Signatures`: signature generation and verification extension points.
+- `Ofdrw.Net.Cli`: command-line conversion and document utility tool.
 - `Ofdrw.Net.Converter.Abstractions`: converter interfaces.
 - `Ofdrw.Net.Core`: shared models and constants.
 - `Ofdrw.Net.Packaging`: OFD package writer and archive utilities.
@@ -146,6 +201,7 @@ Specify the conversion direction explicitly:
 ```bash
 ofdrw pdf-to-ofd --input input.pdf --output output.ofd
 ofdrw ofd-to-pdf --input input.ofd --output output.pdf
+ofdrw ofd-to-svg --input input.ofd --output page-1.svg --pages 1
 ```
 
 Convert selected pages:
@@ -154,6 +210,22 @@ Convert selected pages:
 ofdrw pdf-to-ofd -i input.pdf -o selected.ofd --pages 1,3-5
 ofdrw ofd-to-pdf -i input.ofd -o selected.pdf --pages 2
 ```
+
+Extract text and edit documents:
+
+```bash
+ofdrw extract-text input.ofd output.txt --include-templates
+ofdrw reorder input.ofd reordered.ofd --pages 3,1,2
+ofdrw merge merged.ofd first.ofd second.ofd
+```
+
+Verify signatures:
+
+```bash
+ofdrw verify-signatures --input signed.ofd
+```
+
+The signature command exits with `0` for full verification, `2` when protected-entry integrity passes but the signed-value algorithm has no registered verifier, and `3` for invalid or incomplete signatures.
 
 Show help:
 
@@ -182,6 +254,8 @@ dotnet publish src/Ofdrw.Net.Cli/Ofdrw.Net.Cli.csproj -c Release -o artifacts/of
 - `src/Ofdrw.Net.Reader`
 - `src/Ofdrw.Net.Converter.Abstractions`
 - `src/Ofdrw.Net.Converter.Pdf`
+- `src/Ofdrw.Net.Converter.Svg`
+- `src/Ofdrw.Net.Signatures`
 - `src/Ofdrw.Net.Converter`
 - `src/Ofdrw.Net.Cli`
 - `tests`
@@ -219,4 +293,8 @@ scripts/run-converter-package-e2e.sh 0.1.0-preview.local
 
 - SDK libraries target `netstandard2.0` and `netstandard2.1`.
 - The CLI targets `net10.0`.
-- Signature, signature verification, encryption, and long-term archival workflows are extension-stage features and are not complete production capabilities.
+- Existing source XML is preserved for high-fidelity round trips. Clear an element's `SourceXml` before expecting all typed property changes to be serialized.
+- Merge produces a self-contained typed document, flattens referenced templates, and rejects unknown raw objects unless `SkipUnsupportedRawElements` is explicitly enabled.
+- SM3 reference digests are built in. SES/SM2 electronic-seal verification must be supplied through `IOfdSignedValueVerifier`.
+- GM/T 0099 encrypted-envelope processing and long-term archival validation are not built in. `OfdCryptographicCapabilities` exposes these support boundaries to applications.
+- A repository license has not yet been selected by the project owner. The NuGet workflow now blocks publication until both a license file and NuGet license metadata exist. Direct dependency declarations are recorded in `THIRD-PARTY-NOTICES.md`.

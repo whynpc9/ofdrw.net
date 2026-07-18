@@ -7,7 +7,4 @@
   <ItemGroup>
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
-  </ItemGroup>
 </Project>

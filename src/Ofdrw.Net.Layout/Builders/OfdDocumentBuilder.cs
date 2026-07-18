@@ -95,6 +95,11 @@ public sealed class OfdDocumentBuilder : IOfdDocumentBuilder
             normalized.CustomTags[pair.Key] = pair.Value;
         }
 
+        foreach (var pair in _package.PreservedEntries)
+        {
+            normalized.PreservedEntries[pair.Key] = pair.Value;
+        }
+
         return normalized;
     }
 

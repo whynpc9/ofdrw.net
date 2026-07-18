@@ -1,9 +1,12 @@
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
+using Ofdrw.Net.Layout.Editing;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Readers;
 using PdfSharpCore.Drawing;
@@ -104,6 +107,112 @@ public sealed class PdfConversionTests
         Assert.Contains("Gamma", pdf.GetPage(3).Text);
     }
 
+    [Fact]
+    public async Task OfdToPdf_ShouldRenderUpstreamTemplatePaths()
+    {
+        var samplePath = Path.Combine(
+            ResolveRepositoryRoot(),
+            "e2e",
+            "Ofdrw.Net.Converter.Pdf.E2E",
+            "testdata",
+            "upstream-ofdrw",
+            "999.ofd");
+
+        await using var ofdInput = File.OpenRead(samplePath);
+        await using var pdfOutput = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(ofdInput, pdfOutput);
+
+        pdfOutput.Position = 0;
+        using var pdf = PdfPigDocument.Open(pdfOutput);
+        Assert.Equal(5, pdf.NumberOfPages);
+        Assert.True(
+            pdf.GetPage(1).Operations.Count(operation =>
+                operation.Operator == "Do") >= 2,
+            "The first page should draw both its QR code and the signed seal form.");
+        Assert.All(Enumerable.Range(1, pdf.NumberOfPages), pageNumber =>
+            Assert.Contains(
+                pdf.GetPage(pageNumber).Operations,
+                operation => operation.Operator is "m" or "l" or "c"));
+        Assert.Contains(
+            "/Subtype /Form",
+            Encoding.ASCII.GetString(pdfOutput.ToArray()));
+    }
+
+    [Fact]
+    public async Task OfdToPdf_ShouldApplyCropBoxAsRenderingOrigin()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage
+        {
+            Index = 0,
+            WidthMillimeters = 210,
+            HeightMillimeters = 297,
+            Elements =
+            {
+                new OfdTextElement
+                {
+                    Text = "Inside crop",
+                    FontName = "Arial",
+                    FontSizeMillimeters = 4,
+                    XMillimeters = 50,
+                    YMillimeters = 60,
+                    WidthMillimeters = 40,
+                    HeightMillimeters = 8
+                }
+            }
+        };
+        package.Pages.Add(page);
+        OfdDocumentEditor.CropPage(page, 40, 50, 100, 120);
+
+        await using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        ofd.Position = 0;
+        await using var pdfOutput = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(ofd, pdfOutput);
+
+        pdfOutput.Position = 0;
+        using var pdf = PdfPigDocument.Open(pdfOutput);
+        var renderedPage = pdf.GetPage(1);
+        Assert.Equal(100d * 72d / 25.4d, renderedPage.Width, 1);
+        Assert.Equal(120d * 72d / 25.4d, renderedPage.Height, 1);
+        Assert.Contains("Inside crop", renderedPage.Text);
+    }
+
+    [Fact]
+    public async Task OfdToSvg_ShouldPreserveTemplateVectorsTextAndImages()
+    {
+        var samplePath = Path.Combine(
+            ResolveRepositoryRoot(),
+            "e2e",
+            "Ofdrw.Net.Converter.Pdf.E2E",
+            "testdata",
+            "upstream-ofdrw",
+            "999.ofd");
+
+        await using var ofdInput = File.OpenRead(samplePath);
+        await using var svgOutput = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(ofdInput, svgOutput);
+
+        await using var modelInput = File.OpenRead(samplePath);
+        var package = await new OfdReader().ReadAsync(modelInput);
+        var firstPage = package.Pages.OrderBy(page => page.Index).First();
+        var expectedPathCount = firstPage.Elements.OfType<OfdPathElement>().Count() +
+            firstPage.Templates.Sum(template =>
+                template.Elements.OfType<OfdPathElement>().Count());
+
+        svgOutput.Position = 0;
+        var svg = System.Xml.Linq.XDocument.Load(svgOutput);
+        Assert.Equal("svg", svg.Root?.Name.LocalName);
+        Assert.Equal(
+            expectedPathCount,
+            svg.Descendants().Count(element => element.Name.LocalName == "path"));
+        Assert.Contains(svg.Descendants(), element => element.Name.LocalName == "text");
+        Assert.Single(svg.Descendants(), element => element.Name.LocalName == "image");
+        Assert.All(
+            svg.Descendants().Where(element => element.Name.LocalName == "path"),
+            path => Assert.DoesNotContain(" B ", $" {path.Attribute("d")?.Value} "));
+    }
+
     private static void CreateSamplePdf(Stream output, int pageCount)
     {
         using var document = new PdfSharpDocument();
@@ -162,5 +271,21 @@ public sealed class PdfConversionTests
         await using var ms = new MemoryStream();
         await writer.WriteAsync(builder.Build(), ms);
         return ms.ToArray();
+    }
+
+    private static string ResolveRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate repository root.");
     }
 }
