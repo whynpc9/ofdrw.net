@@ -73,7 +73,20 @@ jobs:
         run: ls -lh artifacts/nuget
 
       - name: Publish packages (.nupkg)
-        run: dotnet nuget push "artifacts/nuget/*.nupkg" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for package in artifacts/nuget/*.nupkg; do
+            if [[ "$package" == *.snupkg ]]; then
+              continue
+            fi
+            dotnet nuget push "$package" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+          done
 
       - name: Publish symbols (.snupkg)
-        run: dotnet nuget push "artifacts/nuget/*.snupkg" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for package in artifacts/nuget/*.snupkg; do
+            dotnet nuget push "$package" --source "https://api.nuget.org/v3/index.json" --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+          done

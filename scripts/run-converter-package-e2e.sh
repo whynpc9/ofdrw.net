@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="${1:-0.1.0-preview.2}"
+VERSION="${1:-0.1.0-preview.3}"
 OUT_DIR="$ROOT_DIR/artifacts/nuget"
 export DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1
 
