@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <OfdrwPackageVersion Condition="'$(OfdrwPackageVersion)' == ''">0.1.0-preview.2</OfdrwPackageVersion>
+    <OfdrwPackageVersion Condition="'$(OfdrwPackageVersion)' == ''">0.1.0-preview.3</OfdrwPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>

@@ -4,6 +4,7 @@
     <Description>Convenience meta-package for Ofdrw.Net PDF and SVG conversion features.</Description>
     <PackageTags>OFD;converter;meta-package;format-conversion</PackageTags>
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeSymbols>false</IncludeSymbols>
     <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
   <ItemGroup>
