@@ -12,12 +12,13 @@
     <Company>whynpc9</Company>
     <Copyright>Copyright (c) whynpc9</Copyright>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
-    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.1</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.2</VersionSuffix>
     <PackageVersion Condition="'$(PackageVersion)' == ''">$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
     <Version Condition="'$(Version)' == ''">$(PackageVersion)</Version>
   </PropertyGroup>

@@ -1,7 +1,6 @@
 name: Publish NuGet
 
 on:
-  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -34,13 +33,14 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Resolve version from tag
+        shell: bash
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
-          PACKAGE_VERSION="${TAG_NAME#v}"
-          if [ -z "$PACKAGE_VERSION" ] || [ "$PACKAGE_VERSION" = "$TAG_NAME" ]; then
-            echo "Failed to derive package version from tag: $TAG_NAME"
+          if [[ ! "$TAG_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?)$ ]]; then
+            echo "Release tag must use v<SemVer>, for example v0.1.0-preview.2: $TAG_NAME"
             exit 1
           fi
+          PACKAGE_VERSION="${BASH_REMATCH[1]}"
           echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
           echo "Resolved package version: $PACKAGE_VERSION"
 
