@@ -17,7 +17,7 @@ The upstream samples are copied from `ofdrw/ofdrw` `ofdrw-converter/src/test/res
 - `helloworld.ofd`
 - `999.ofd`
 
-Visual validation requires `pdftoppm` and ImageMagick `magick` on `PATH`. On macOS these are typically provided by `poppler` and `imagemagick`.
+Visual validation requires `pdftoppm` plus ImageMagick's `convert` and `identify` commands on `PATH`. On macOS these are typically provided by `poppler` and `imagemagick`; the same commands are available from Ubuntu's ImageMagick 6 package used by CI.
 
 ## Run
 
