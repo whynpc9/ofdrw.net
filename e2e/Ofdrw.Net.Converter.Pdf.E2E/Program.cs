@@ -1,3 +1,5 @@
+using Ofdrw.Net.Converter.Docx;
+using Ofdrw.Net.Converter.Docx.Converters;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
@@ -112,7 +114,57 @@ foreach (var samplePdf in Directory.EnumerateFiles(testDataDir, "*.pdf").OrderBy
     await ValidatePdfSampleAsync(samplePdf, outputDir);
 }
 
+var docxSamplePath = Path.Combine(
+    repoRoot,
+    "e2e",
+    "Ofdrw.Net.Converter.Docx.E2E",
+    "testdata",
+    "generated-layout.docx");
+await ValidateDocxSampleAsync(docxSamplePath, outputDir);
+
 Console.WriteLine("[E2E] Success: package installation and conversion flow is working.");
+
+static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
+{
+    var docxOptions = new DocxConversionOptions
+    {
+        Engine = DocxConversionEngine.LibreOffice
+    };
+    var pdfPath = Path.Combine(outputDir, "generated-docx.pdf");
+    var directOfdPath = Path.Combine(outputDir, "generated-docx.ofd");
+    var pdfOfdPath = Path.Combine(outputDir, "generated-docx-pdf-stage.ofd");
+
+    await using (var docxInput = File.OpenRead(samplePath))
+    await using (var pdfOutput = File.Create(pdfPath))
+    {
+        await new DocxToPdfConverter(docxOptions).ConvertAsync(docxInput, pdfOutput);
+    }
+
+    await using (var docxInput = File.OpenRead(samplePath))
+    await using (var ofdOutput = File.Create(directOfdPath))
+    {
+        await new DocxToOfdConverter(docxOptions).ConvertAsync(docxInput, ofdOutput);
+    }
+
+    await using (var pdfInput = File.OpenRead(pdfPath))
+    await using (var ofdOutput = File.Create(pdfOfdPath))
+    {
+        await new PdfToOfdConverter().ConvertAsync(pdfInput, ofdOutput);
+    }
+
+    foreach (var ofdPath in new[] { directOfdPath, pdfOfdPath })
+    {
+        await using var ofdInput = File.OpenRead(ofdPath);
+        var package = await new OfdReader().ReadAsync(ofdInput);
+        if (package.Pages.Count != 2 ||
+            package.Pages.Any(page => page.Elements.OfType<OfdImageElement>().All(image => image.Data.Length == 0)))
+        {
+            throw new InvalidOperationException($"DOCX conversion output is incomplete: {ofdPath}");
+        }
+    }
+
+    Console.WriteLine("[E2E] DOCX -> PDF -> OFD package flow passed with 2 pages.");
+}
 
 static void AssertComplexUpstreamSample(OfdDocumentPackage parsed, string samplePath)
 {

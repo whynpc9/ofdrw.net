@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Converter.Svg/Ofdrw.Net.Converter.Svg.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Signatures/Ofdrw.Net.Signatures.csproj" />

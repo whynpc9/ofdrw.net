@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>DOCX to PDF and OFD conversion for Ofdrw.Net using Microsoft Word or LibreOffice.</Description>
+    <PackageTags>OFD;PDF;DOCX;Word;LibreOffice;converter;format-conversion</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Ofdrw.Net.Converter.Abstractions/Ofdrw.Net.Converter.Abstractions.csproj" />
+    <ProjectReference Include="../Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
+  </ItemGroup>
+</Project>

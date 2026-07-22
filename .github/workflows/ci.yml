@@ -19,8 +19,8 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Install PDF conversion dependencies
-        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Install document conversion dependencies
+        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils
 
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln
@@ -45,7 +45,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Install visual validation tools
-        run: sudo apt-get update && sudo apt-get install -y poppler-utils imagemagick librsvg2-bin
+        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils imagemagick librsvg2-bin
 
       - name: Run package E2E
         run: ./scripts/run-converter-package-e2e.sh
