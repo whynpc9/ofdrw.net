@@ -1,3 +1,5 @@
+using Ofdrw.Net.Converter.Docx;
+using Ofdrw.Net.Converter.Docx.Converters;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Layout.Editing;
@@ -19,7 +21,8 @@ internal static class Cli
         }
 
         var command = args[0].Trim().ToLowerInvariant();
-        if (command is not ("convert" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or
+        if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
+            "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or
             "extract-text" or "merge" or "reorder" or "verify-signatures"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
@@ -101,7 +104,14 @@ internal static class Cli
 
             var mode = ResolveMode(command, options.InputPath, options.OutputPath);
             var pages = ParsePages(options.Pages);
-            await ConvertAsync(mode, options.InputPath, options.OutputPath, pages).ConfigureAwait(false);
+            await ConvertAsync(
+                mode,
+                options.InputPath,
+                options.OutputPath,
+                pages,
+                options.DocxEngine,
+                options.LibreOfficePath,
+                options.FontDirectories).ConfigureAwait(false);
             Console.WriteLine($"Converted {options.InputPath} -> {options.OutputPath}");
             return 0;
         }
@@ -112,7 +122,14 @@ internal static class Cli
         }
     }
 
-    private static async Task ConvertAsync(ConversionMode mode, string inputPath, string outputPath, IReadOnlyList<int>? pages)
+    private static async Task ConvertAsync(
+        ConversionMode mode,
+        string inputPath,
+        string outputPath,
+        IReadOnlyList<int>? pages,
+        DocxConversionEngine docxEngine,
+        string? libreOfficePath,
+        IReadOnlyList<string> fontDirectories)
     {
         if (!File.Exists(inputPath))
         {
@@ -128,6 +145,31 @@ internal static class Cli
         await using var input = File.OpenRead(inputPath);
         await using var output = File.Create(outputPath);
 
+        if (mode == ConversionMode.DocxToPdf)
+        {
+            if (pages is not null)
+            {
+                throw new ArgumentException("DOCX to PDF conversion does not support --pages.");
+            }
+
+            var converter = new DocxToPdfConverter(CreateDocxOptions(
+                docxEngine,
+                libreOfficePath,
+                fontDirectories));
+            await converter.ConvertAsync(input, output).ConfigureAwait(false);
+            return;
+        }
+
+        if (mode == ConversionMode.DocxToOfd)
+        {
+            var converter = new DocxToOfdConverter(CreateDocxOptions(
+                docxEngine,
+                libreOfficePath,
+                fontDirectories));
+            await converter.ConvertAsync(input, output, pages).ConfigureAwait(false);
+            return;
+        }
+
         if (mode == ConversionMode.PdfToOfd)
         {
             var converter = new PdfToOfdConverter();
@@ -137,6 +179,24 @@ internal static class Cli
 
         var ofdToPdf = new OfdToPdfConverter();
         await ofdToPdf.ConvertAsync(input, output, pages).ConfigureAwait(false);
+    }
+
+    private static DocxConversionOptions CreateDocxOptions(
+        DocxConversionEngine engine,
+        string? libreOfficePath,
+        IEnumerable<string> fontDirectories)
+    {
+        var options = new DocxConversionOptions
+        {
+            Engine = engine,
+            LibreOfficePath = libreOfficePath
+        };
+        foreach (var directory in fontDirectories)
+        {
+            options.FontDirectories.Add(directory);
+        }
+
+        return options;
     }
 
     private static async Task ExtractTextAsync(
@@ -311,6 +371,8 @@ internal static class Cli
     {
         return command switch
         {
+            "docx-to-pdf" => ConversionMode.DocxToPdf,
+            "docx-to-ofd" => ConversionMode.DocxToOfd,
             "pdf-to-ofd" => ConversionMode.PdfToOfd,
             "ofd-to-pdf" => ConversionMode.OfdToPdf,
             _ => InferMode(inputPath, outputPath)
@@ -332,7 +394,18 @@ internal static class Cli
             return ConversionMode.OfdToPdf;
         }
 
-        throw new ArgumentException("Unable to infer conversion direction. Use pdf-to-ofd or ofd-to-pdf.");
+        if (inputExtension == ".docx" && outputExtension == ".pdf")
+        {
+            return ConversionMode.DocxToPdf;
+        }
+
+        if (inputExtension == ".docx" && outputExtension == ".ofd")
+        {
+            return ConversionMode.DocxToOfd;
+        }
+
+        throw new ArgumentException(
+            "Unable to infer conversion direction. Use docx-to-pdf, docx-to-ofd, pdf-to-ofd, or ofd-to-pdf.");
     }
 
     private static CliOptions ParseOptions(string[] args)
@@ -363,6 +436,15 @@ internal static class Cli
                     break;
                 case "--include-templates":
                     options.IncludeTemplates = true;
+                    break;
+                case "--libreoffice":
+                    options.LibreOfficePath = ReadValue(args, ref i, arg);
+                    break;
+                case "--docx-engine":
+                    options.DocxEngine = ParseDocxEngine(ReadValue(args, ref i, arg));
+                    break;
+                case "--font-directory":
+                    options.FontDirectories.Add(ReadValue(args, ref i, arg));
                     break;
                 default:
                     if (arg.StartsWith("-", StringComparison.Ordinal))
@@ -452,6 +534,18 @@ internal static class Cli
         return page - 1;
     }
 
+    private static DocxConversionEngine ParseDocxEngine(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "auto" => DocxConversionEngine.Auto,
+            "word" or "microsoft-word" => DocxConversionEngine.MicrosoftWord,
+            "libreoffice" => DocxConversionEngine.LibreOffice,
+            _ => throw new ArgumentException(
+                "Invalid --docx-engine value. Use auto, word, or libreoffice.")
+        };
+    }
+
     private static bool IsHelp(string arg)
     {
         return arg is "-h" or "--help" or "help";
@@ -469,6 +563,8 @@ internal static class Cli
 
         Usage:
           ofdrw convert <input> <output> [--pages 1,3-5]
+          ofdrw docx-to-pdf --input <input.docx> --output <output.pdf> [--docx-engine auto|word|libreoffice]
+          ofdrw docx-to-ofd --input <input.docx> --output <output.ofd> [--pages 1,3-5] [--docx-engine auto|word|libreoffice]
           ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5]
           ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--pages 1,3-5]
           ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--pages 1]
@@ -478,7 +574,9 @@ internal static class Cli
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
 
         Commands:
-          convert     Infer conversion direction from .pdf/.ofd extensions.
+          convert     Infer conversion direction from .docx/.pdf/.ofd extensions.
+          docx-to-pdf Convert DOCX to PDF using Word on macOS when available, or LibreOffice.
+          docx-to-ofd Convert DOCX to OFD through the PDF rendering pipeline.
           pdf-to-ofd  Convert PDF to OFD.
           ofd-to-pdf  Convert OFD to PDF.
           ofd-to-svg  Convert one OFD page to self-contained SVG.
@@ -493,6 +591,9 @@ internal static class Cli
           -p, --pages   1-based page list or ranges, for example 1,3-5.
           --include-templates Include template text during extraction.
           --skip-unsupported  Drop unsupported raw objects during merge.
+          --docx-engine      DOCX renderer: auto, word (macOS), or libreoffice.
+          --libreoffice       Path to the LibreOffice soffice executable for DOCX conversion.
+          --font-directory    Additional font directory for DOCX rendering; may be repeated.
           -h, --help    Show help.
         """);
     }
@@ -507,11 +608,19 @@ internal static class Cli
 
         public bool IncludeTemplates { get; set; }
 
+        public string? LibreOfficePath { get; set; }
+
+        public DocxConversionEngine DocxEngine { get; set; } = DocxConversionEngine.Auto;
+
+        public List<string> FontDirectories { get; } = new();
+
         public bool Help { get; set; }
     }
 
     private enum ConversionMode
     {
+        DocxToPdf,
+        DocxToOfd,
         PdfToOfd,
         OfdToPdf
     }

@@ -15,3 +15,11 @@ dependencies are updated. Consumers should use the generated dependency graph
 and the corresponding package metadata when performing a release compliance
 review.
 
+DOCX conversion invokes a separately installed LibreOffice executable. Ofdrw.Net
+does not bundle or redistribute LibreOffice; consumers are responsible for its
+installation and for reviewing the applicable LibreOffice license notices.
+
+On macOS, DOCX conversion may instead automate a separately installed Microsoft
+Word application for higher layout fidelity. Ofdrw.Net does not bundle Microsoft
+Word or Microsoft Office fonts. The LibreOffice backend may reference installed
+Office fonts in place, but does not copy them into the package or repository.

@@ -27,13 +27,14 @@ OFDRW comparison, completed hardening work, and remaining production gaps.
 - Loss-aware reading that keeps unknown XML nodes and package entries available for round-trip workflows.
 - Text extraction, page reorder/removal/crop, and self-contained document merge helpers.
 - PDF to OFD conversion by embedding rendered PDF pages as OFD image objects.
+- DOCX to PDF conversion through Microsoft Word on macOS when available, with isolated LibreOffice fallback, plus DOCX to OFD by composing the PDF pipeline.
 - OFD to PDF conversion with templates, layers, embedded fonts, positioned text runs, vector paths, images, crop origins, and raster fallback.
 - OFD page to self-contained SVG conversion with template vectors, text, colors, transforms, and embedded images.
 - OFD signature description generation through a pluggable signed-value provider.
 - SM3, SHA-1, and SHA-256 protected-entry digest verification plus pluggable `SignedValue.dat` verification.
 - Command-line conversion, extraction, editing, SVG, and signature verification tools packaged as `Ofdrw.Net.Cli`.
 
-PDF rasterization uses `pdftoppm` when converting PDF pages into OFD image resources. Install Poppler and make sure `pdftoppm` is available on `PATH` before using PDF to OFD conversion.
+DOCX rendering prefers an installed Microsoft Word on macOS for the closest Word layout fidelity; macOS may ask the host process for Automation permission the first time. Other environments use LibreOffice: install it and make sure `soffice` is available on `PATH`, set `OFDRW_LIBREOFFICE_PATH`, or configure `DocxConversionOptions.LibreOfficePath`. The LibreOffice backend can expose additional font directories and, on macOS, references installed Microsoft Office fonts without bundling them. PDF rasterization uses `pdftoppm` when converting PDF pages into OFD image resources, so PDF to OFD and DOCX to OFD also require Poppler on `PATH`.
 
 ## For Developers
 
@@ -47,6 +48,12 @@ For a narrower dependency surface, install the PDF converter package directly:
 
 ```bash
 dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.3
+```
+
+Install DOCX conversion independently:
+
+```bash
+dotnet add package Ofdrw.Net.Converter.Docx --version 0.1.0-preview.3
 ```
 
 Install SVG or signature support independently:
@@ -67,6 +74,22 @@ await using var output = File.Create("output.ofd");
 var converter = new PdfToOfdConverter();
 await converter.ConvertAsync(input, output);
 ```
+
+Convert DOCX to PDF or OFD:
+
+```csharp
+using Ofdrw.Net.Converter.Docx.Converters;
+
+await using var docx = File.OpenRead("input.docx");
+await using var pdf = File.Create("output.pdf");
+await new DocxToPdfConverter().ConvertAsync(docx, pdf);
+
+await using var secondDocx = File.OpenRead("input.docx");
+await using var ofd = File.Create("output.ofd");
+await new DocxToOfdConverter().ConvertAsync(secondDocx, ofd);
+```
+
+Both converters expose stream-based APIs. `DocxToOfdConverter` removes its private PDF intermediate after conversion. `DocxConversionOptions.Engine` selects `Auto`, `MicrosoftWord`, or `LibreOffice`; configure a non-default LibreOffice executable with the same options or `OFDRW_LIBREOFFICE_PATH`.
 
 Convert OFD to PDF:
 
@@ -171,6 +194,7 @@ Create a signature by implementing `IOfdSignatureProvider`. The provider receive
 Package overview:
 
 - `Ofdrw.Net.Converter`: convenience meta-package for conversion use cases.
+- `Ofdrw.Net.Converter.Docx`: Word-preferred, LibreOffice-fallback DOCX to PDF/OFD conversion.
 - `Ofdrw.Net.Converter.Pdf`: PDF/OFD converter implementation.
 - `Ofdrw.Net.Converter.Svg`: OFD page to SVG converter.
 - `Ofdrw.Net.Signatures`: signature generation and verification extension points.
@@ -194,6 +218,8 @@ Convert by file extension:
 ```bash
 ofdrw convert input.pdf output.ofd
 ofdrw convert input.ofd output.pdf
+ofdrw convert input.docx output.pdf
+ofdrw convert input.docx output.ofd
 ```
 
 Specify the conversion direction explicitly:
@@ -201,7 +227,16 @@ Specify the conversion direction explicitly:
 ```bash
 ofdrw pdf-to-ofd --input input.pdf --output output.ofd
 ofdrw ofd-to-pdf --input input.ofd --output output.pdf
+ofdrw docx-to-pdf --input input.docx --output output.pdf
+ofdrw docx-to-ofd --input input.docx --output output.ofd
 ofdrw ofd-to-svg --input input.ofd --output page-1.svg --pages 1
+```
+
+Select a DOCX renderer or provide fonts for the LibreOffice backend:
+
+```bash
+ofdrw docx-to-pdf input.docx output.pdf --docx-engine word
+ofdrw docx-to-ofd input.docx output.ofd --docx-engine libreoffice --font-directory /path/to/fonts
 ```
 
 Convert selected pages:
@@ -253,6 +288,7 @@ dotnet publish src/Ofdrw.Net.Cli/Ofdrw.Net.Cli.csproj -c Release -o artifacts/of
 - `src/Ofdrw.Net.Layout`
 - `src/Ofdrw.Net.Reader`
 - `src/Ofdrw.Net.Converter.Abstractions`
+- `src/Ofdrw.Net.Converter.Docx`
 - `src/Ofdrw.Net.Converter.Pdf`
 - `src/Ofdrw.Net.Converter.Svg`
 - `src/Ofdrw.Net.Signatures`
