@@ -40,7 +40,7 @@ jobs:
         run: |
           TAG_NAME="${GITHUB_REF_NAME}"
           if [[ ! "$TAG_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?)$ ]]; then
-            echo "Release tag must use v<SemVer>, for example v0.1.0-preview.2: $TAG_NAME"
+            echo "Release tag must use v<SemVer>, for example v0.1.0-preview.4: $TAG_NAME"
             exit 1
           fi
           PACKAGE_VERSION="${BASH_REMATCH[1]}"

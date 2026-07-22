@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
-    <Description>Convenience meta-package for Ofdrw.Net PDF and SVG conversion features.</Description>
-    <PackageTags>OFD;converter;meta-package;format-conversion</PackageTags>
+    <Description>Convenience meta-package for Ofdrw.Net DOCX, PDF, and SVG conversion features.</Description>
+    <PackageTags>OFD;DOCX;PDF;SVG;converter;meta-package;format-conversion</PackageTags>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <IncludeSymbols>false</IncludeSymbols>
     <NoWarn>$(NoWarn);NU5128</NoWarn>

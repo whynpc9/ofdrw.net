@@ -41,26 +41,26 @@ DOCX rendering prefers an installed Microsoft Word on macOS for the closest Word
 Install the high-level conversion package:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.3
+dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.4
 ```
 
 For a narrower dependency surface, install the PDF converter package directly:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.3
+dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.4
 ```
 
 Install DOCX conversion independently:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Docx --version 0.1.0-preview.3
+dotnet add package Ofdrw.Net.Converter.Docx --version 0.1.0-preview.4
 ```
 
 Install SVG or signature support independently:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.3
-dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.3
+dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.4
+dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.4
 ```
 
 Convert PDF to OFD:
@@ -210,7 +210,7 @@ Package overview:
 Install the CLI as a .NET tool:
 
 ```bash
-dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.3
+dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.4
 ```
 
 Convert by file extension:
