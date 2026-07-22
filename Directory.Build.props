@@ -17,8 +17,12 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Keep shipping XML documentation while allowing public API docs to be
+         completed incrementally. Other XML documentation diagnostics, such as
+         malformed cref/param tags, remain enabled. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
-    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.3</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.4</VersionSuffix>
     <PackageVersion Condition="'$(PackageVersion)' == ''">$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
     <Version Condition="'$(Version)' == ''">$(PackageVersion)</Version>
   </PropertyGroup>

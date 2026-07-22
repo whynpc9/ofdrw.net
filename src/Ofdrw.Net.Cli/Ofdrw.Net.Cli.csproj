@@ -5,8 +5,8 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>ofdrw</ToolCommandName>
     <PackageId>Ofdrw.Net.Cli</PackageId>
-    <Description>Command-line OFD conversion tool for Ofdrw.Net.</Description>
-    <PackageTags>OFD;PDF;CLI;converter;format-conversion</PackageTags>
+    <Description>Command-line DOCX, PDF, OFD, and SVG conversion tool for Ofdrw.Net.</Description>
+    <PackageTags>OFD;DOCX;PDF;SVG;CLI;converter;format-conversion</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
