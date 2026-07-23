@@ -38,6 +38,33 @@ DOCX rendering prefers an installed Microsoft Word on macOS for the closest Word
 
 ## For Developers
 
+All packages are published on [NuGet](https://www.nuget.org/profiles/whynpc). The current preview release is `0.1.0-preview.4`.
+
+### Which package should I install?
+
+- For most format-conversion applications, install [`Ofdrw.Net.Converter`](https://www.nuget.org/packages/Ofdrw.Net.Converter). It brings in the DOCX, PDF, and SVG converters.
+- For one conversion direction only, install the matching `Converter.Docx`, `Converter.Pdf`, or `Converter.Svg` package to keep dependencies narrower.
+- For programmatic OFD generation and editing, install `Ofdrw.Net.Layout` together with `Ofdrw.Net.Packaging`; add `Ofdrw.Net.Reader` when loading or extracting content from existing OFD files.
+- For signature creation or verification, add `Ofdrw.Net.Signatures` separately. It is not included by the conversion meta-package.
+- For shell scripts and interactive use, install `Ofdrw.Net.Cli` as a global .NET tool instead of adding it to an application project.
+- `Ofdrw.Net.Core` and `Ofdrw.Net.Converter.Abstractions` are primarily building blocks. Install them directly only when using the models/contracts alone or implementing a custom converter.
+
+Published packages:
+
+| Package | Install when you need |
+| --- | --- |
+| [`Ofdrw.Net.Converter`](https://www.nuget.org/packages/Ofdrw.Net.Converter) | The easiest application entry point for DOCX, PDF, and SVG conversion. |
+| [`Ofdrw.Net.Converter.Docx`](https://www.nuget.org/packages/Ofdrw.Net.Converter.Docx) | DOCX to PDF or OFD conversion through Microsoft Word or LibreOffice. |
+| [`Ofdrw.Net.Converter.Pdf`](https://www.nuget.org/packages/Ofdrw.Net.Converter.Pdf) | PDF to OFD and OFD to PDF conversion. |
+| [`Ofdrw.Net.Converter.Svg`](https://www.nuget.org/packages/Ofdrw.Net.Converter.Svg) | OFD page to self-contained SVG conversion. |
+| [`Ofdrw.Net.Signatures`](https://www.nuget.org/packages/Ofdrw.Net.Signatures) | Signature generation, protected-entry digest checks, and custom signed-value verification. |
+| [`Ofdrw.Net.Layout`](https://www.nuget.org/packages/Ofdrw.Net.Layout) | Building and editing typed OFD documents. |
+| [`Ofdrw.Net.Packaging`](https://www.nuget.org/packages/Ofdrw.Net.Packaging) | Writing OFD packages and working with the ZIP container layer. |
+| [`Ofdrw.Net.Reader`](https://www.nuget.org/packages/Ofdrw.Net.Reader) | Reading OFD packages and extracting document content. |
+| [`Ofdrw.Net.Core`](https://www.nuget.org/packages/Ofdrw.Net.Core) | Shared OFD models, constants, options, and validation types. |
+| [`Ofdrw.Net.Converter.Abstractions`](https://www.nuget.org/packages/Ofdrw.Net.Converter.Abstractions) | Converter interfaces for custom implementations or integrations. |
+| [`Ofdrw.Net.Cli`](https://www.nuget.org/packages/Ofdrw.Net.Cli) | Command-line conversion and document utilities. |
+
 Install the high-level conversion package:
 
 ```bash
@@ -190,20 +217,6 @@ Console.WriteLine(report.FullyValid);
 `ReferenceIntegrityValid` only means every declared protected-entry digest matched. `FullyValid` additionally requires an `IOfdSignedValueVerifier` registered for each signature method and a valid `SignedValue.dat`. This distinction prevents an SM3 digest check from being mistaken for full SES/SM2 electronic-seal verification.
 
 Create a signature by implementing `IOfdSignatureProvider`. The provider receives the exact serialized `Signature.xml` bytes and the OFD property-information path, and returns the vendor/SES signed-value bytes. `OfdSignatureService` writes the standard signature list, protected-entry references, signature description, optional seal, and `SignedValue.dat`.
-
-Package overview:
-
-- `Ofdrw.Net.Converter`: convenience meta-package for conversion use cases.
-- `Ofdrw.Net.Converter.Docx`: Word-preferred, LibreOffice-fallback DOCX to PDF/OFD conversion.
-- `Ofdrw.Net.Converter.Pdf`: PDF/OFD converter implementation.
-- `Ofdrw.Net.Converter.Svg`: OFD page to SVG converter.
-- `Ofdrw.Net.Signatures`: signature generation and verification extension points.
-- `Ofdrw.Net.Cli`: command-line conversion and document utility tool.
-- `Ofdrw.Net.Converter.Abstractions`: converter interfaces.
-- `Ofdrw.Net.Core`: shared models and constants.
-- `Ofdrw.Net.Packaging`: OFD package writer and archive utilities.
-- `Ofdrw.Net.Reader`: OFD package reader.
-- `Ofdrw.Net.Layout`: document builder helpers.
 
 ## For CLI Users
 
