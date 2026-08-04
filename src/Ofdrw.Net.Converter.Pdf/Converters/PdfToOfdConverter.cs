@@ -14,11 +14,38 @@ using UglyToad.PdfPig;
 
 namespace Ofdrw.Net.Converter.Pdf.Converters;
 
+/// <summary>
+/// Converts PDF to OFD. By default each page is rasterized (Docnet/Pdfium, with
+/// optional <c>pdftoppm</c>) so table and grid layouts are preserved.
+/// </summary>
 public sealed class PdfToOfdConverter : IPdfToOfdConverter
 {
-    private readonly PdfToPpmRasterizer _rasterizer = new();
+    private readonly PdfToOfdOptions _options;
+    private readonly PdfToPpmRasterizer _pdfToPpm = new();
+    private readonly DocnetPdfRasterizer _docnet = new();
 
-    public async Task ConvertAsync(Stream pdfInput, Stream ofdOutput, IReadOnlyList<int>? pages = null, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Initializes a converter with default options (page rasterization required).
+    /// </summary>
+    public PdfToOfdConverter()
+        : this(new PdfToOfdOptions())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a converter with the supplied options.
+    /// </summary>
+    public PdfToOfdConverter(PdfToOfdOptions options)
+    {
+        _options = options ?? throw new ArgumentNullException(nameof(options));
+    }
+
+    /// <inheritdoc />
+    public async Task ConvertAsync(
+        Stream pdfInput,
+        Stream ofdOutput,
+        IReadOnlyList<int>? pages = null,
+        CancellationToken cancellationToken = default)
     {
         if (pdfInput is null)
         {
@@ -33,10 +60,13 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
         var tempPdfPath = Path.Combine(Path.GetTempPath(), $"ofdrw-net-{Guid.NewGuid():N}.pdf");
         try
         {
+            byte[] pdfBytes;
             using (var temp = File.Create(tempPdfPath))
             {
                 await pdfInput.CopyToAsync(temp, 81920, cancellationToken).ConfigureAwait(false);
             }
+
+            pdfBytes = File.ReadAllBytes(tempPdfPath);
 
             using var document = PdfDocument.Open(tempPdfPath);
             var selected = PageSelection.Normalize(document.NumberOfPages, pages);
@@ -59,6 +89,8 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             var outputPageIndex = 0;
             foreach (var index in selected)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var pdfPage = document.GetPage(index + 1);
                 var widthMm = PointsToMillimeters(pdfPage.Width);
                 var heightMm = PointsToMillimeters(pdfPage.Height);
@@ -70,11 +102,14 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                     HeightMillimeters = heightMm
                 };
 
-                var image = await _rasterizer.TryRasterizePageAsync(tempPdfPath, index, cancellationToken).ConfigureAwait(false);
+                var image = await TryRasterizePageAsync(tempPdfPath, pdfBytes, index, cancellationToken)
+                    .ConfigureAwait(false);
                 if (image is not null)
                 {
                     page.Elements.Add(new OfdImageElement
                     {
+                        ObjectId = $"Img{index + 1}",
+                        ResourceId = $"ResImg{index + 1}",
                         XMillimeters = 0,
                         YMillimeters = 0,
                         WidthMillimeters = widthMm,
@@ -88,43 +123,14 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                     continue;
                 }
 
-                var words = string.Empty;
-                try
+                if (_options.RequireRasterization)
                 {
-                    words = string.Join(" ", pdfPage.GetWords().Select(x => x.Text).Where(x => !string.IsNullOrWhiteSpace(x)));
-                }
-                catch
-                {
-                    words = string.Empty;
+                    throw new InvalidOperationException(
+                        $"Failed to rasterize PDF page {index + 1}. " +
+                        "Ensure Docnet/Pdfium natives are available, or install poppler's pdftoppm.");
                 }
 
-                if (!string.IsNullOrWhiteSpace(words))
-                {
-                    page.Elements.Add(new OfdTextElement
-                    {
-                        XMillimeters = 10,
-                        YMillimeters = 12,
-                        WidthMillimeters = Math.Max(widthMm - 20, 10),
-                        HeightMillimeters = Math.Max(heightMm - 20, 10),
-                        FontName = "SimSun",
-                        FontSizeMillimeters = 4,
-                        Text = words
-                    });
-                }
-                else
-                {
-                    page.Elements.Add(new OfdTextElement
-                    {
-                        XMillimeters = 10,
-                        YMillimeters = 12,
-                        WidthMillimeters = Math.Max(widthMm - 20, 10),
-                        HeightMillimeters = 8,
-                        FontName = "SimSun",
-                        FontSizeMillimeters = 4,
-                        Text = $"[fallback] page {index + 1} rendered as placeholder"
-                    });
-                }
-
+                AddTextFallbackPage(page, pdfPage, widthMm, heightMm, index);
                 builder.AddPage(page);
             }
 
@@ -144,6 +150,85 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             {
                 // ignored
             }
+        }
+    }
+
+    private async Task<byte[]?> TryRasterizePageAsync(
+        string pdfPath,
+        byte[] pdfBytes,
+        int zeroBasedPageIndex,
+        CancellationToken cancellationToken)
+    {
+        if (_options.PreferExternalPdfToPpm)
+        {
+            var external = await _pdfToPpm
+                .TryRasterizePageAsync(pdfPath, zeroBasedPageIndex, cancellationToken)
+                .ConfigureAwait(false);
+            if (external is not null)
+            {
+                return external;
+            }
+
+            return await _docnet
+                .TryRasterizePageAsync(pdfBytes, zeroBasedPageIndex, _options.Dpi, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var docnet = await _docnet
+            .TryRasterizePageAsync(pdfBytes, zeroBasedPageIndex, _options.Dpi, cancellationToken)
+            .ConfigureAwait(false);
+        if (docnet is not null)
+        {
+            return docnet;
+        }
+
+        return await _pdfToPpm
+            .TryRasterizePageAsync(pdfPath, zeroBasedPageIndex, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private static void AddTextFallbackPage(
+        OfdPage page,
+        UglyToad.PdfPig.Content.Page pdfPage,
+        double widthMm,
+        double heightMm,
+        int index)
+    {
+        var words = string.Empty;
+        try
+        {
+            words = string.Join(" ", pdfPage.GetWords().Select(x => x.Text).Where(x => !string.IsNullOrWhiteSpace(x)));
+        }
+        catch
+        {
+            words = string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(words))
+        {
+            page.Elements.Add(new OfdTextElement
+            {
+                XMillimeters = 10,
+                YMillimeters = 12,
+                WidthMillimeters = Math.Max(widthMm - 20, 10),
+                HeightMillimeters = Math.Max(heightMm - 20, 10),
+                FontName = "SimSun",
+                FontSizeMillimeters = 4,
+                Text = words
+            });
+        }
+        else
+        {
+            page.Elements.Add(new OfdTextElement
+            {
+                XMillimeters = 10,
+                YMillimeters = 12,
+                WidthMillimeters = Math.Max(widthMm - 20, 10),
+                HeightMillimeters = 8,
+                FontName = "SimSun",
+                FontSizeMillimeters = 4,
+                Text = $"[fallback] page {index + 1} rendered as placeholder"
+            });
         }
     }
 

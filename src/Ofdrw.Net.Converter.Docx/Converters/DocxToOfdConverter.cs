@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Abstractions.Interfaces;
+using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Converter.Pdf.Converters;
 
 namespace Ofdrw.Net.Converter.Docx.Converters;
@@ -29,6 +30,14 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
     /// </summary>
     public DocxToOfdConverter(DocxConversionOptions options)
         : this(new DocxToPdfConverter(options), new PdfToOfdConverter())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a converter using the supplied DOCX and PDF-to-OFD options.
+    /// </summary>
+    public DocxToOfdConverter(DocxConversionOptions options, PdfToOfdOptions pdfToOfdOptions)
+        : this(new DocxToPdfConverter(options), new PdfToOfdConverter(pdfToOfdOptions))
     {
     }
 

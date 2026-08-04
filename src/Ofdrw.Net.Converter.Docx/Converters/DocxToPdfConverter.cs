@@ -12,11 +12,12 @@ namespace Ofdrw.Net.Converter.Docx.Converters;
 
 /// <summary>
 /// Converts DOCX to PDF using Microsoft Word on macOS when available, with
-/// isolated headless LibreOffice as the cross-platform fallback.
+/// headless LibreOffice as the cross-platform fallback.
 /// </summary>
 public sealed class DocxToPdfConverter : IDocxToPdfConverter
 {
     private static readonly SemaphoreSlim MicrosoftWordLock = new(1, 1);
+    private static readonly SemaphoreSlim SharedLibreOfficeProfileGate = new(1, 1);
     private readonly DocxConversionOptions _options;
 
     /// <summary>
@@ -90,12 +91,11 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
             }
             else
             {
-                Directory.CreateDirectory(profileDirectory);
-                LibreOfficeFontStager.Stage(profileDirectory, _options);
                 result = await RunLibreOfficeAsync(
                     inputPath,
                     workDirectory,
                     profileDirectory,
+                    outputPath,
                     cancellationToken).ConfigureAwait(false);
             }
 
@@ -213,27 +213,82 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
 
     private async Task<ProcessResult> RunLibreOfficeAsync(
         string inputPath,
-        string workingDirectory,
+        string workDirectory,
         string profileDirectory,
+        string expectedOutputPath,
         CancellationToken cancellationToken)
     {
         var executable = LibreOfficeExecutableResolver.Resolve(_options.LibreOfficePath);
-        var profileUri = new Uri(profileDirectory + Path.DirectorySeparatorChar).AbsoluteUri;
-        var arguments = ProcessArguments.Join(
-            $"-env:UserInstallation={profileUri}",
-            "--headless",
-            "--convert-to",
-            "pdf",
-            "--outdir",
-            workingDirectory,
-            inputPath);
+        var processWorkingDirectory = LibreOfficeExecutableResolver.ResolveWorkingDirectory(executable);
+        var isolateUserProfile = _options.IsolateUserProfile
+            ?? LibreOfficeExecutableResolver.ShouldIsolateUserProfile(executable);
 
-        return await RunProcessAsync(
-            executable,
-            arguments,
-            workingDirectory,
-            "LibreOffice",
-            cancellationToken).ConfigureAwait(false);
+        var gateEntered = false;
+        if (!isolateUserProfile)
+        {
+            await SharedLibreOfficeProfileGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            gateEntered = true;
+            TryKillLeftoverLibreOfficeProcesses();
+        }
+
+        try
+        {
+            string[] argumentParts;
+            if (isolateUserProfile)
+            {
+                Directory.CreateDirectory(profileDirectory);
+                LibreOfficeFontStager.Stage(profileDirectory, _options);
+                var profileUri = new Uri(profileDirectory + Path.DirectorySeparatorChar).AbsoluteUri;
+                argumentParts = new[]
+                {
+                    $"-env:UserInstallation={profileUri}",
+                    "--headless",
+                    "--nologo",
+                    "--nofirststartwizard",
+                    "--norestore",
+                    "--nolockcheck",
+                    "--nodefault",
+                    "--convert-to",
+                    "pdf",
+                    "--outdir",
+                    workDirectory,
+                    inputPath
+                };
+            }
+            else
+            {
+                argumentParts = new[]
+                {
+                    "--headless",
+                    "--nologo",
+                    "--nofirststartwizard",
+                    "--norestore",
+                    "--nolockcheck",
+                    "--nodefault",
+                    "--convert-to",
+                    "pdf",
+                    "--outdir",
+                    workDirectory,
+                    inputPath
+                };
+            }
+
+            var arguments = ProcessArguments.Join(argumentParts);
+            return await RunProcessAsync(
+                executable,
+                arguments,
+                processWorkingDirectory,
+                "LibreOffice",
+                cancellationToken,
+                expectedOutputPath).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (gateEntered)
+            {
+                SharedLibreOfficeProfileGate.Release();
+            }
+        }
     }
 
     private async Task<ProcessResult> RunProcessAsync(
@@ -241,7 +296,8 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         string arguments,
         string workingDirectory,
         string processName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? expectedOutputPath = null)
     {
         using var process = new Process
         {
@@ -277,12 +333,36 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
         var elapsed = Stopwatch.StartNew();
+        long lastPdfLength = -1;
+        var pdfStableSince = Stopwatch.StartNew();
 
         try
         {
             while (!process.HasExited)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                // Some LibreOffice wrappers write the PDF but never exit. Treat a
+                // non-empty, size-stable output file as success and stop the tree.
+                if (!string.IsNullOrWhiteSpace(expectedOutputPath) &&
+                    File.Exists(expectedOutputPath))
+                {
+                    var length = new FileInfo(expectedOutputPath).Length;
+                    if (length > 0)
+                    {
+                        if (length != lastPdfLength)
+                        {
+                            lastPdfLength = length;
+                            pdfStableSince.Restart();
+                        }
+                        else if (pdfStableSince.Elapsed >= TimeSpan.FromSeconds(2))
+                        {
+                            TryKill(process);
+                            break;
+                        }
+                    }
+                }
+
                 if (elapsed.Elapsed >= _options.ProcessTimeout)
                 {
                     throw new TimeoutException(
@@ -298,9 +378,42 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
             throw;
         }
 
-        process.WaitForExit();
+        if (!process.HasExited)
+        {
+            if (!process.WaitForExit(5000))
+            {
+                TryKill(process);
+                process.WaitForExit(5000);
+            }
+        }
+        else
+        {
+            process.WaitForExit();
+        }
+
+        var exitCode = -1;
+        try
+        {
+            if (process.HasExited)
+            {
+                exitCode = process.ExitCode;
+            }
+        }
+        catch
+        {
+            exitCode = -1;
+        }
+
+        if (exitCode != 0 &&
+            !string.IsNullOrWhiteSpace(expectedOutputPath) &&
+            File.Exists(expectedOutputPath) &&
+            new FileInfo(expectedOutputPath).Length > 0)
+        {
+            exitCode = 0;
+        }
+
         return new ProcessResult(
-            process.ExitCode,
+            exitCode,
             await outputTask.ConfigureAwait(false),
             await errorTask.ConfigureAwait(false));
     }
@@ -310,18 +423,104 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         return engine == DocxConversionEngine.MicrosoftWord ? "Microsoft Word" : "LibreOffice";
     }
 
+    private static void TryKillLeftoverLibreOfficeProcesses()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        foreach (var imageName in new[] { "soffice.bin", "soffice.exe", "soffice.com", "oosplash.exe" })
+        {
+            try
+            {
+                using var killer = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "taskkill",
+                    Arguments = $"/IM {imageName} /T /F",
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                });
+                killer?.WaitForExit(5000);
+            }
+            catch
+            {
+                // Best effort cleanup before reusing the shared profile.
+            }
+        }
+    }
+
     private static void TryKill(Process process)
     {
         try
         {
-            if (!process.HasExited)
+            if (process.HasExited)
             {
-                process.Kill();
+                return;
             }
+
+            var pid = process.Id;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                TryKillWindowsProcessTree(pid);
+                return;
+            }
+
+            TryKillUnixProcessTree(pid);
         }
         catch
         {
             // Best effort cleanup after cancellation or timeout.
+        }
+    }
+
+    private static void TryKillWindowsProcessTree(int pid)
+    {
+        using var killer = Process.Start(new ProcessStartInfo
+        {
+            FileName = "taskkill",
+            Arguments = $"/PID {pid} /T /F",
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        });
+        killer?.WaitForExit(10000);
+    }
+
+    private static void TryKillUnixProcessTree(int pid)
+    {
+        try
+        {
+            using var pkill = Process.Start(new ProcessStartInfo
+            {
+                FileName = "pkill",
+                Arguments = $"-KILL -P {pid}",
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            });
+            pkill?.WaitForExit(3000);
+        }
+        catch
+        {
+            // ignored
+        }
+
+        try
+        {
+            using var target = Process.GetProcessById(pid);
+            if (!target.HasExited)
+            {
+                target.Kill();
+            }
+        }
+        catch
+        {
+            // ignored
         }
     }
 
