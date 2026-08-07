@@ -228,7 +228,6 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         {
             await SharedLibreOfficeProfileGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             gateEntered = true;
-            TryKillLeftoverLibreOfficeProcesses();
         }
 
         try
@@ -421,35 +420,6 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
     private static string GetEngineName(DocxConversionEngine engine)
     {
         return engine == DocxConversionEngine.MicrosoftWord ? "Microsoft Word" : "LibreOffice";
-    }
-
-    private static void TryKillLeftoverLibreOfficeProcesses()
-    {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return;
-        }
-
-        foreach (var imageName in new[] { "soffice.bin", "soffice.exe", "soffice.com", "oosplash.exe" })
-        {
-            try
-            {
-                using var killer = Process.Start(new ProcessStartInfo
-                {
-                    FileName = "taskkill",
-                    Arguments = $"/IM {imageName} /T /F",
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                });
-                killer?.WaitForExit(5000);
-            }
-            catch
-            {
-                // Best effort cleanup before reusing the shared profile.
-            }
-        }
     }
 
     private static void TryKill(Process process)

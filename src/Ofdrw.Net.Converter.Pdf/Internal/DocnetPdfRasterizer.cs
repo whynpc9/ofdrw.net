@@ -58,6 +58,10 @@ internal sealed class DocnetPdfRasterizer
             await image.SaveAsync(pngStream, new PngEncoder(), cancellationToken).ConfigureAwait(false);
             return pngStream.ToArray();
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch
         {
             return null;
