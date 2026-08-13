@@ -36,4 +36,13 @@ public sealed class DocxConversionOptions
     /// when Word is installed. The fonts are referenced in place and are never bundled.
     /// </summary>
     public bool UseInstalledMicrosoftOfficeFonts { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether each LibreOffice conversion should use an isolated
+    /// <c>-env:UserInstallation</c> profile. When <c>null</c>, isolation is enabled for
+    /// regular installs and disabled automatically for LibreOffice Portable /
+    /// SecureUserConfig builds (those hang on a fresh empty profile). When isolation is
+    /// disabled, conversions are serialized through an internal gate.
+    /// </summary>
+    public bool? IsolateUserProfile { get; set; }
 }
