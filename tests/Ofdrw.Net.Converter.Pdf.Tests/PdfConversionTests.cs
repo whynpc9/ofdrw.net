@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
@@ -32,6 +33,13 @@ public sealed class PdfConversionTests
         var ofdReader = new OfdReader();
         var ofdDoc = await ofdReader.ReadAsync(ofdStream);
         Assert.Equal(3, ofdDoc.Pages.Count);
+        Assert.All(ofdDoc.Pages, page =>
+        {
+            Assert.Single(page.Elements.OfType<OfdImageElement>());
+            var semanticText = Assert.Single(page.Elements.OfType<OfdTextElement>());
+            Assert.Equal(0, semanticText.FillColor.Alpha);
+            Assert.Equal("Foreground", semanticText.LayerType);
+        });
 
         ofdStream.Position = 0;
         var ofdToPdf = new OfdToPdfConverter();
@@ -86,6 +94,49 @@ public sealed class PdfConversionTests
         Assert.Single(ofd.Pages);
         var image = Assert.Single(ofd.Pages[0].Elements.OfType<OfdImageElement>());
         Assert.NotEmpty(image.Data);
+        Assert.Empty(ofd.Pages[0].Elements.OfType<OfdTextElement>());
+    }
+
+    [Fact]
+    public async Task PdfToOfd_ShouldAllowSemanticTextLayerToBeDisabled()
+    {
+        await using var inputPdf = new MemoryStream();
+        CreateSamplePdf(inputPdf, 1);
+        inputPdf.Position = 0;
+
+        var converter = new PdfToOfdConverter(new PdfToOfdOptions
+        {
+            TextLayerMode = PdfTextLayerMode.None
+        });
+        await using var ofdStream = new MemoryStream();
+        await converter.ConvertAsync(inputPdf, ofdStream);
+
+        ofdStream.Position = 0;
+        var ofd = await new OfdReader().ReadAsync(ofdStream);
+        Assert.Single(ofd.Pages);
+        Assert.Single(ofd.Pages[0].Elements.OfType<OfdImageElement>());
+        Assert.Empty(ofd.Pages[0].Elements.OfType<OfdTextElement>());
+    }
+
+    [Fact]
+    public async Task PdfToOfd_SemanticTextShouldRemainInvisibleInSvg()
+    {
+        await using var inputPdf = new MemoryStream();
+        CreateSamplePdf(inputPdf, 1);
+        inputPdf.Position = 0;
+
+        await using var ofdStream = new MemoryStream();
+        await new PdfToOfdConverter().ConvertAsync(inputPdf, ofdStream);
+        ofdStream.Position = 0;
+
+        await using var svgOutput = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(ofdStream, svgOutput);
+        svgOutput.Position = 0;
+        var svg = System.Xml.Linq.XDocument.Load(svgOutput);
+        var text = Assert.Single(
+            svg.Descendants(),
+            element => element.Name.LocalName == "text");
+        Assert.Equal("0", text.Attribute("fill-opacity")?.Value);
     }
 
     [Fact]

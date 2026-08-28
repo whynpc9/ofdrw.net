@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace Ofdrw.Net.Converter.Abstractions.Interfaces;
 
 /// <summary>
-/// Converts a DOCX document to OFD through a PDF rendering stage.
+/// Converts a DOCX document to OFD, optionally without an intermediate rendering stage.
 /// </summary>
 public interface IDocxToOfdConverter
 {

@@ -1,24 +1,29 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Abstractions.Interfaces;
 using Ofdrw.Net.Converter.Docx.Internal;
+using Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 
 namespace Ofdrw.Net.Converter.Docx.Converters;
 
 /// <summary>
-/// Converts DOCX to PDF using Microsoft Word on macOS when available, with
-/// headless LibreOffice as the cross-platform fallback.
+/// Converts DOCX to PDF using Microsoft Word on macOS when available, then
+/// headless LibreOffice, with a cross-platform in-process fallback.
 /// </summary>
 public sealed class DocxToPdfConverter : IDocxToPdfConverter
 {
     private static readonly SemaphoreSlim MicrosoftWordLock = new(1, 1);
     private static readonly SemaphoreSlim SharedLibreOfficeProfileGate = new(1, 1);
     private readonly DocxConversionOptions _options;
+    private readonly Func<bool> _canUseMicrosoftWord;
+    private readonly Func<bool> _canUseLibreOffice;
 
     /// <summary>
     /// Initializes a converter with default options.
@@ -34,14 +39,46 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
     public DocxToPdfConverter(DocxConversionOptions options)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _canUseMicrosoftWord = CanUseMicrosoftWord;
+        _canUseLibreOffice = CanUseLibreOffice;
         if (_options.ProcessTimeout <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "ProcessTimeout must be greater than zero.");
         }
+
+        if (_options.MaxInputBytes <= 0 || _options.MaxExpandedBytes <= 0 ||
+            _options.MaxPackagePartCount <= 0 || _options.MaxDocumentElements <= 0 ||
+            _options.MaxEmbeddedImageBytes <= 0 || _options.MaxEmbeddedImagePixels <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(options), "BuiltIn resource limits must be positive.");
+        }
+    }
+
+    internal DocxToPdfConverter(
+        DocxConversionOptions options,
+        Func<bool> canUseMicrosoftWord,
+        Func<bool> canUseLibreOffice)
+        : this(options)
+    {
+        _canUseMicrosoftWord = canUseMicrosoftWord ??
+            throw new ArgumentNullException(nameof(canUseMicrosoftWord));
+        _canUseLibreOffice = canUseLibreOffice ??
+            throw new ArgumentNullException(nameof(canUseLibreOffice));
     }
 
     /// <inheritdoc />
     public async Task ConvertAsync(
+        Stream docxInput,
+        Stream pdfOutput,
+        CancellationToken cancellationToken = default)
+    {
+        _ = await ConvertWithResultAsync(docxInput, pdfOutput, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Converts DOCX to PDF and reports the engine attempts and rendering degradations.
+    /// </summary>
+    public async Task<DocxConversionResult> ConvertWithResultAsync(
         Stream docxInput,
         Stream pdfOutput,
         CancellationToken cancellationToken = default)
@@ -66,79 +103,215 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
             throw new ArgumentException("The PDF output stream must be writable.", nameof(pdfOutput));
         }
 
-        var engine = ResolveEngine();
-        var workDirectory = CreateWorkDirectory(engine);
-        var profileDirectory = Path.Combine(workDirectory, "profile");
-        var inputPath = Path.Combine(workDirectory, "input.docx");
-        var outputPath = Path.Combine(workDirectory, "input.pdf");
+        var stagingDirectory = Path.Combine(Path.GetTempPath(), $"ofdrw-docx-stage-{Guid.NewGuid():N}");
+        var stagingInputPath = Path.Combine(stagingDirectory, "input.docx");
+        var diagnostics = new List<DocxConversionDiagnostic>();
+        var attempted = new List<DocxConversionEngine>();
+        Exception? lastFailure = null;
 
-        Directory.CreateDirectory(workDirectory);
+        Directory.CreateDirectory(stagingDirectory);
         try
         {
-            using (var inputFile = File.Create(inputPath))
+            using (var inputFile = File.Create(stagingInputPath))
             {
-                await docxInput.CopyToAsync(inputFile, 81920, cancellationToken).ConfigureAwait(false);
+                await CopyInputWithLimitAsync(docxInput, inputFile, cancellationToken).ConfigureAwait(false);
             }
 
-            ProcessResult result;
-            if (engine == DocxConversionEngine.MicrosoftWord)
+            foreach (var engine in ResolveEngines(diagnostics))
             {
-                result = await RunMicrosoftWordAsync(
-                    inputPath,
-                    outputPath,
-                    workDirectory,
-                    cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                result = await RunLibreOfficeAsync(
-                    inputPath,
-                    workDirectory,
-                    profileDirectory,
-                    outputPath,
-                    cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                attempted.Add(engine);
+                var workDirectory = CreateWorkDirectory(engine);
+                var inputPath = Path.Combine(workDirectory, "input.docx");
+                var outputPath = Path.Combine(workDirectory, "input.pdf");
+                Directory.CreateDirectory(workDirectory);
+                try
+                {
+                    File.Copy(stagingInputPath, inputPath, overwrite: true);
+                    var engineDiagnostics = await RunEngineAsync(
+                        engine,
+                        inputPath,
+                        outputPath,
+                        workDirectory,
+                        cancellationToken).ConfigureAwait(false);
+                    ValidatePdfOutput(engine, outputPath);
+
+                    using var pdfFile = File.OpenRead(outputPath);
+                    await pdfFile.CopyToAsync(pdfOutput, 81920, cancellationToken).ConfigureAwait(false);
+                    diagnostics.AddRange(engineDiagnostics);
+                    return new DocxConversionResult(engine, attempted, diagnostics);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex) when (CanFallback(engine, ex))
+                {
+                    lastFailure = ex;
+                    diagnostics.Add(new DocxConversionDiagnostic(
+                        "DOCX_ENGINE_FAILED",
+                        $"{GetEngineName(engine)} failed; Auto is trying the next available engine.",
+                        DocxConversionDiagnosticSeverity.Warning));
+                }
+                finally
+                {
+                    TryDeleteDirectory(workDirectory);
+                }
             }
 
-            if (result.ExitCode != 0)
-            {
-                throw new InvalidOperationException(
-                    $"{GetEngineName(engine)} DOCX to PDF conversion failed with exit code " +
-                    $"{result.ExitCode}: {result.Error}");
-            }
-
-            if (!File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
-            {
-                throw new InvalidOperationException(
-                    $"{GetEngineName(engine)} did not produce a PDF. " +
-                    $"Output: {result.Output} Error: {result.Error}");
-            }
-
-            using var pdfFile = File.OpenRead(outputPath);
-            await pdfFile.CopyToAsync(pdfOutput, 81920, cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException(
+                "No available DOCX conversion engine produced a valid PDF.",
+                lastFailure);
         }
         finally
         {
-            TryDeleteDirectory(workDirectory);
+            TryDeleteDirectory(stagingDirectory);
         }
     }
 
-    private DocxConversionEngine ResolveEngine()
+    private IEnumerable<DocxConversionEngine> ResolveEngines(
+        IList<DocxConversionDiagnostic> diagnostics)
     {
         if (_options.Engine != DocxConversionEngine.Auto)
         {
-            if (_options.Engine == DocxConversionEngine.MicrosoftWord && !CanUseMicrosoftWord())
+            if (_options.Engine == DocxConversionEngine.MicrosoftWord && !_canUseMicrosoftWord())
             {
                 throw new PlatformNotSupportedException(
                     "Microsoft Word DOCX rendering requires macOS, Microsoft Word in /Applications, " +
                     "and its local application container.");
             }
 
-            return _options.Engine;
+            yield return _options.Engine;
+            yield break;
         }
 
-        return CanUseMicrosoftWord()
-            ? DocxConversionEngine.MicrosoftWord
-            : DocxConversionEngine.LibreOffice;
+        if (_canUseMicrosoftWord())
+        {
+            yield return DocxConversionEngine.MicrosoftWord;
+        }
+
+        if (_canUseLibreOffice())
+        {
+            yield return DocxConversionEngine.LibreOffice;
+        }
+        else
+        {
+            diagnostics.Add(new DocxConversionDiagnostic(
+                "DOCX_LIBREOFFICE_UNAVAILABLE",
+                "LibreOffice is unavailable; Auto will use the in-process renderer."));
+        }
+
+        yield return DocxConversionEngine.BuiltIn;
+    }
+
+    private async Task<IReadOnlyList<DocxConversionDiagnostic>> RunEngineAsync(
+        DocxConversionEngine engine,
+        string inputPath,
+        string outputPath,
+        string workDirectory,
+        CancellationToken cancellationToken)
+    {
+        if (engine == DocxConversionEngine.BuiltIn)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(_options.ProcessTimeout);
+            try
+            {
+                return await Task.Run(
+                    () => new BuiltInDocxRenderer(_options).Convert(inputPath, outputPath, timeout.Token),
+                    timeout.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException(
+                    $"BuiltIn DOCX conversion exceeded {_options.ProcessTimeout}.");
+            }
+        }
+
+        ProcessResult result;
+        if (engine == DocxConversionEngine.MicrosoftWord)
+        {
+            result = await RunMicrosoftWordAsync(
+                inputPath,
+                outputPath,
+                workDirectory,
+                cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            result = await RunLibreOfficeAsync(
+                inputPath,
+                workDirectory,
+                Path.Combine(workDirectory, "profile"),
+                outputPath,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        if (result.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"{GetEngineName(engine)} DOCX conversion failed with exit code " +
+                $"{result.ExitCode}: {result.Error}");
+        }
+
+        return Array.Empty<DocxConversionDiagnostic>();
+    }
+
+    private static void ValidatePdfOutput(DocxConversionEngine engine, string outputPath)
+    {
+        if (!File.Exists(outputPath) || new FileInfo(outputPath).Length < 5)
+        {
+            throw new InvalidOperationException($"{GetEngineName(engine)} did not produce a PDF.");
+        }
+
+        using var stream = File.OpenRead(outputPath);
+        var signature = new byte[5];
+        if (stream.Read(signature, 0, signature.Length) != signature.Length ||
+            signature[0] != '%' || signature[1] != 'P' || signature[2] != 'D' ||
+            signature[3] != 'F' || signature[4] != '-')
+        {
+            throw new InvalidOperationException($"{GetEngineName(engine)} produced an invalid PDF.");
+        }
+    }
+
+    private bool CanFallback(DocxConversionEngine engine, Exception exception)
+    {
+        if (_options.Engine != DocxConversionEngine.Auto || engine == DocxConversionEngine.BuiltIn)
+        {
+            return false;
+        }
+
+        return exception is not InvalidDataException &&
+            exception is not NotSupportedException &&
+            exception is not ArgumentException;
+    }
+
+    private async Task CopyInputWithLimitAsync(
+        Stream input,
+        Stream output,
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[81920];
+        long total = 0;
+        while (true)
+        {
+            var read = await input.ReadAsync(buffer, 0, buffer.Length, cancellationToken)
+                .ConfigureAwait(false);
+            if (read == 0)
+            {
+                break;
+            }
+
+            total = checked(total + read);
+            if (total > _options.MaxInputBytes)
+            {
+                throw new InvalidDataException(
+                    $"The DOCX input exceeds the configured {_options.MaxInputBytes} byte limit.");
+            }
+
+            await output.WriteAsync(buffer, 0, read, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private static bool CanUseMicrosoftWord()
@@ -147,6 +320,42 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
             File.Exists("/usr/bin/osascript") &&
             Directory.Exists("/Applications/Microsoft Word.app") &&
             Directory.Exists(GetMicrosoftWordTempRoot());
+    }
+
+    private bool CanUseLibreOffice()
+    {
+        try
+        {
+            var executable = LibreOfficeExecutableResolver.Resolve(_options.LibreOfficePath);
+            if (Path.IsPathRooted(executable) ||
+                executable.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
+                executable.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
+            {
+                return File.Exists(executable);
+            }
+
+            var pathValue = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            foreach (var directory in pathValue.Split(Path.PathSeparator))
+            {
+                if (string.IsNullOrWhiteSpace(directory))
+                {
+                    continue;
+                }
+
+                if (File.Exists(Path.Combine(directory, executable)) ||
+                    File.Exists(Path.Combine(directory, executable + ".exe")) ||
+                    File.Exists(Path.Combine(directory, executable + ".com")))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private static string CreateWorkDirectory(DocxConversionEngine engine)
@@ -419,7 +628,13 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
 
     private static string GetEngineName(DocxConversionEngine engine)
     {
-        return engine == DocxConversionEngine.MicrosoftWord ? "Microsoft Word" : "LibreOffice";
+        return engine switch
+        {
+            DocxConversionEngine.MicrosoftWord => "Microsoft Word",
+            DocxConversionEngine.LibreOffice => "LibreOffice",
+            DocxConversionEngine.BuiltIn => "BuiltIn",
+            _ => engine.ToString()
+        };
     }
 
     private static void TryKill(Process process)

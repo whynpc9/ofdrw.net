@@ -110,6 +110,7 @@ internal static class Cli
                 options.OutputPath,
                 pages,
                 options.DocxEngine,
+                options.DocxOfdMode,
                 options.LibreOfficePath,
                 options.FontDirectories).ConfigureAwait(false);
             Console.WriteLine($"Converted {options.InputPath} -> {options.OutputPath}");
@@ -128,6 +129,7 @@ internal static class Cli
         string outputPath,
         IReadOnlyList<int>? pages,
         DocxConversionEngine docxEngine,
+        DocxToOfdMode docxOfdMode,
         string? libreOfficePath,
         IReadOnlyList<string> fontDirectories)
     {
@@ -154,6 +156,7 @@ internal static class Cli
 
             var converter = new DocxToPdfConverter(CreateDocxOptions(
                 docxEngine,
+                docxOfdMode,
                 libreOfficePath,
                 fontDirectories));
             await converter.ConvertAsync(input, output).ConfigureAwait(false);
@@ -164,6 +167,7 @@ internal static class Cli
         {
             var converter = new DocxToOfdConverter(CreateDocxOptions(
                 docxEngine,
+                docxOfdMode,
                 libreOfficePath,
                 fontDirectories));
             await converter.ConvertAsync(input, output, pages).ConfigureAwait(false);
@@ -183,12 +187,14 @@ internal static class Cli
 
     private static DocxConversionOptions CreateDocxOptions(
         DocxConversionEngine engine,
+        DocxToOfdMode ofdMode,
         string? libreOfficePath,
         IEnumerable<string> fontDirectories)
     {
         var options = new DocxConversionOptions
         {
             Engine = engine,
+            OfdMode = ofdMode,
             LibreOfficePath = libreOfficePath
         };
         foreach (var directory in fontDirectories)
@@ -443,6 +449,9 @@ internal static class Cli
                 case "--docx-engine":
                     options.DocxEngine = ParseDocxEngine(ReadValue(args, ref i, arg));
                     break;
+                case "--docx-ofd-mode":
+                    options.DocxOfdMode = ParseDocxToOfdMode(ReadValue(args, ref i, arg));
+                    break;
                 case "--font-directory":
                     options.FontDirectories.Add(ReadValue(args, ref i, arg));
                     break;
@@ -541,8 +550,20 @@ internal static class Cli
             "auto" => DocxConversionEngine.Auto,
             "word" or "microsoft-word" => DocxConversionEngine.MicrosoftWord,
             "libreoffice" => DocxConversionEngine.LibreOffice,
+            "builtin" or "built-in" => DocxConversionEngine.BuiltIn,
             _ => throw new ArgumentException(
-                "Invalid --docx-engine value. Use auto, word, or libreoffice.")
+                "Invalid --docx-engine value. Use auto, word, libreoffice, or built-in.")
+        };
+    }
+
+    private static DocxToOfdMode ParseDocxToOfdMode(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "native" => DocxToOfdMode.Native,
+            "dual" or "dual-layer" => DocxToOfdMode.DualLayer,
+            _ => throw new ArgumentException(
+                "Invalid --docx-ofd-mode value. Use native or dual-layer.")
         };
     }
 
@@ -563,8 +584,8 @@ internal static class Cli
 
         Usage:
           ofdrw convert <input> <output> [--pages 1,3-5]
-          ofdrw docx-to-pdf --input <input.docx> --output <output.pdf> [--docx-engine auto|word|libreoffice]
-          ofdrw docx-to-ofd --input <input.docx> --output <output.ofd> [--pages 1,3-5] [--docx-engine auto|word|libreoffice]
+          ofdrw docx-to-pdf --input <input.docx> --output <output.pdf> [--docx-engine auto|word|libreoffice|built-in]
+          ofdrw docx-to-ofd --input <input.docx> --output <output.ofd> [--pages 1,3-5] [--docx-ofd-mode native|dual-layer] [--docx-engine auto|word|libreoffice|built-in]
           ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5]
           ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--pages 1,3-5]
           ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--pages 1]
@@ -576,7 +597,7 @@ internal static class Cli
         Commands:
           convert     Infer conversion direction from .docx/.pdf/.ofd extensions.
           docx-to-pdf Convert DOCX to PDF using Word on macOS when available, or LibreOffice.
-          docx-to-ofd Convert DOCX to OFD through the PDF rendering pipeline.
+          docx-to-ofd Convert DOCX directly to native OFD text, or use a dual visual/text layer.
           pdf-to-ofd  Convert PDF to OFD.
           ofd-to-pdf  Convert OFD to PDF.
           ofd-to-svg  Convert one OFD page to self-contained SVG.
@@ -591,7 +612,8 @@ internal static class Cli
           -p, --pages   1-based page list or ranges, for example 1,3-5.
           --include-templates Include template text during extraction.
           --skip-unsupported  Drop unsupported raw objects during merge.
-          --docx-engine      DOCX renderer: auto, word (macOS), or libreoffice.
+          --docx-engine      DOCX renderer: auto, word (macOS), libreoffice, or built-in.
+          --docx-ofd-mode    DOCX to OFD mode: native (default, no PDF) or dual-layer.
           --libreoffice       Path to the LibreOffice soffice executable for DOCX conversion.
           --font-directory    Additional font directory for DOCX rendering; may be repeated.
           -h, --help    Show help.
@@ -611,6 +633,8 @@ internal static class Cli
         public string? LibreOfficePath { get; set; }
 
         public DocxConversionEngine DocxEngine { get; set; } = DocxConversionEngine.Auto;
+
+        public DocxToOfdMode DocxOfdMode { get; set; } = DocxToOfdMode.Native;
 
         public List<string> FontDirectories { get; } = new();
 
