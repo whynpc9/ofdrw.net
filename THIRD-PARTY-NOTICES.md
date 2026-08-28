@@ -7,6 +7,8 @@ license for Ofdrw.Net itself.
 | Package | Version | License | Source |
 | --- | ---: | --- | --- |
 | Docnet.Core | 2.6.0 | MIT | https://github.com/GowenGit/docnet |
+| DocumentFormat.OpenXml | 3.5.1 | MIT | https://github.com/dotnet/Open-XML-SDK |
+| MigraDocCore.Rendering | 1.3.67 | MIT | https://github.com/ststeiger/PdfSharpCore |
 | PdfSharpCore | 1.3.67 | MIT | https://github.com/ststeiger/PdfSharpCore |
 | PdfPig | 0.1.15 | Apache-2.0 | https://github.com/UglyToad/PdfPig |
 | SixLabors.ImageSharp | 2.1.13 | Apache-2.0 | https://github.com/SixLabors/ImageSharp |

@@ -140,7 +140,7 @@ public sealed class OfdToSvgConverter
             text.Transform);
         if (text.Runs.Count == 0)
         {
-            root.Add(new XElement(
+            var node = new XElement(
                 svgNs + "text",
                 new XAttribute("x", "0"),
                 new XAttribute("y", Invariant(text.FontSizeMillimeters)),
@@ -148,7 +148,15 @@ public sealed class OfdToSvgConverter
                 new XAttribute("font-size", Invariant(text.FontSizeMillimeters)),
                 new XAttribute("fill", ToCssColor(text.FillColor)),
                 new XAttribute("transform", transform),
-                text.Text));
+                text.Text);
+            if (text.FillColor.Alpha != 255)
+            {
+                node.SetAttributeValue(
+                    "fill-opacity",
+                    Invariant(text.FillColor.Alpha / 255d));
+            }
+
+            root.Add(node);
             return;
         }
 

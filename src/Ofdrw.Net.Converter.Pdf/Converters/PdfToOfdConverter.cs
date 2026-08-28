@@ -15,8 +15,9 @@ using UglyToad.PdfPig;
 namespace Ofdrw.Net.Converter.Pdf.Converters;
 
 /// <summary>
-/// Converts PDF to OFD. By default each page is rasterized (Docnet/Pdfium, with
-/// optional <c>pdftoppm</c>) so table and grid layouts are preserved.
+/// Converts PDF to dual-layer OFD. By default each page is rasterized
+/// (Docnet/Pdfium, with optional <c>pdftoppm</c>) for visual fidelity and
+/// extractable PDF words are retained as transparent OFD text objects.
 /// </summary>
 public sealed class PdfToOfdConverter : IPdfToOfdConverter
 {
@@ -38,6 +39,12 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
     public PdfToOfdConverter(PdfToOfdOptions options)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        if (_options.MaxTextObjectsPerPage <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(options),
+                "MaxTextObjectsPerPage must be greater than zero.");
+        }
     }
 
     /// <inheritdoc />
@@ -119,6 +126,8 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                         FileName = $"pdf_page_{index + 1}.png"
                     });
 
+                    AddSemanticTextLayer(page, pdfPage);
+
                     builder.AddPage(page);
                     continue;
                 }
@@ -151,6 +160,75 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                 // ignored
             }
         }
+    }
+
+    private void AddSemanticTextLayer(
+        OfdPage page,
+        UglyToad.PdfPig.Content.Page pdfPage)
+    {
+        if (_options.TextLayerMode == PdfTextLayerMode.None)
+        {
+            return;
+        }
+
+        var words = pdfPage.GetWords()
+            .Where(word => !string.IsNullOrWhiteSpace(word.Text))
+            .ToList();
+        if (words.Count > _options.MaxTextObjectsPerPage)
+        {
+            throw new InvalidDataException(
+                $"PDF page {pdfPage.Number} contains {words.Count} text objects, " +
+                $"which exceeds the configured limit of {_options.MaxTextObjectsPerPage}.");
+        }
+
+        foreach (var word in words)
+        {
+            var bounds = word.BoundingBox;
+            var x = PointsToMillimeters(bounds.Left);
+            var y = PointsToMillimeters(pdfPage.Height - bounds.Top);
+            var width = Math.Max(PointsToMillimeters(bounds.Width), 0.1d);
+            var height = Math.Max(PointsToMillimeters(bounds.Height), 0.1d);
+            var fontSize = word.Letters.Count > 0
+                ? PointsToMillimeters(word.Letters.Max(letter => letter.FontSize))
+                : height;
+            if (double.IsNaN(fontSize) || double.IsInfinity(fontSize) || fontSize <= 0)
+            {
+                fontSize = height;
+            }
+
+            page.Elements.Add(new OfdTextElement
+            {
+                LayerId = "semantic-text",
+                LayerType = "Foreground",
+                XMillimeters = x,
+                YMillimeters = y,
+                WidthMillimeters = width,
+                HeightMillimeters = height,
+                FontName = NormalizeFontName(word.FontName),
+                FontSizeMillimeters = Math.Max(fontSize, 0.1d),
+                FillColor = new OfdColor(0, 0, 0, 0),
+                Text = word.Text + " "
+            });
+        }
+    }
+
+    private static string NormalizeFontName(string? fontName)
+    {
+        if (string.IsNullOrWhiteSpace(fontName))
+        {
+            return "SimSun";
+        }
+
+        var normalized = fontName!.Trim();
+        var subsetSeparator = normalized.IndexOf('+');
+        if (subsetSeparator == 6 && normalized
+            .Substring(0, subsetSeparator)
+            .All(character => character >= 'A' && character <= 'Z'))
+        {
+            normalized = normalized.Substring(subsetSeparator + 1);
+        }
+
+        return string.IsNullOrWhiteSpace(normalized) ? "SimSun" : normalized;
     }
 
     private async Task<byte[]?> TryRasterizePageAsync(

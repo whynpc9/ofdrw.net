@@ -26,15 +26,15 @@ OFDRW comparison, completed hardening work, and remaining production gaps.
 - Standard package writing with `OFD.xml`, document/page/resource references, attachments, custom tags, templates, and preserved extension entries.
 - Loss-aware reading that keeps unknown XML nodes and package entries available for round-trip workflows.
 - Text extraction, page reorder/removal/crop, and self-contained document merge helpers.
-- PDF to OFD conversion by embedding rendered PDF pages as OFD image objects.
-- DOCX to PDF conversion through Microsoft Word on macOS when available, with isolated LibreOffice fallback, plus DOCX to OFD by composing the PDF pipeline.
+- PDF to OFD dual-layer conversion with rendered pages for visual fidelity and transparent, positioned OFD text objects for search and extraction.
+- Direct DOCX/OpenXML to native OFD text conversion without PDF, plus an optional dual-layer mode that combines rendered pages with the original DOCX text.
 - OFD to PDF conversion with templates, layers, embedded fonts, positioned text runs, vector paths, images, crop origins, and raster fallback.
 - OFD page to self-contained SVG conversion with template vectors, text, colors, transforms, and embedded images.
 - OFD signature description generation through a pluggable signed-value provider.
 - SM3, SHA-1, and SHA-256 protected-entry digest verification plus pluggable `SignedValue.dat` verification.
 - Command-line conversion, extraction, editing, SVG, and signature verification tools packaged as `Ofdrw.Net.Cli`.
 
-DOCX rendering prefers an installed Microsoft Word on macOS for the closest Word layout fidelity; macOS may ask the host process for Automation permission the first time. Other environments use LibreOffice: install it and make sure `soffice` is available on `PATH`, set `OFDRW_LIBREOFFICE_PATH`, or configure `DocxConversionOptions.LibreOfficePath`. The LibreOffice backend can expose additional font directories and, on macOS, references installed Microsoft Office fonts without bundling them. PDF rasterization uses `pdftoppm` when converting PDF pages into OFD image resources, so PDF to OFD and DOCX to OFD also require Poppler on `PATH`.
+`DocxConversionOptions.OfdMode` defaults to `Native`: DOCX/OpenXML text is written directly as visible OFD `TextObject` elements and no PDF renderer is invoked. Select `DualLayer` when Word-compatible visual fidelity matters; Word, LibreOffice, or BuiltIn then supplies page images while the machine-readable layer still comes directly from the original DOCX/OpenXML rather than PDF extraction. `DocxConversionEngine.Auto` prefers Microsoft Word on macOS, then LibreOffice, and finally BuiltIn for that rendered path. PDF-to-OFD independently retains extractable PDF words as transparent OFD text unless `PdfToOfdOptions.TextLayerMode` is `None`.
 
 ## For Developers
 
@@ -54,7 +54,7 @@ Published packages:
 | Package | Install when you need |
 | --- | --- |
 | [`Ofdrw.Net.Converter`](https://www.nuget.org/packages/Ofdrw.Net.Converter) | The easiest application entry point for DOCX, PDF, and SVG conversion. |
-| [`Ofdrw.Net.Converter.Docx`](https://www.nuget.org/packages/Ofdrw.Net.Converter.Docx) | DOCX to PDF or OFD conversion through Microsoft Word or LibreOffice. |
+| [`Ofdrw.Net.Converter.Docx`](https://www.nuget.org/packages/Ofdrw.Net.Converter.Docx) | Direct DOCX/OpenXML to native OFD text, plus optional PDF and dual-layer rendering. |
 | [`Ofdrw.Net.Converter.Pdf`](https://www.nuget.org/packages/Ofdrw.Net.Converter.Pdf) | PDF to OFD and OFD to PDF conversion. |
 | [`Ofdrw.Net.Converter.Svg`](https://www.nuget.org/packages/Ofdrw.Net.Converter.Svg) | OFD page to self-contained SVG conversion. |
 | [`Ofdrw.Net.Signatures`](https://www.nuget.org/packages/Ofdrw.Net.Signatures) | Signature generation, protected-entry digest checks, and custom signed-value verification. |
@@ -116,7 +116,7 @@ await using var ofd = File.Create("output.ofd");
 await new DocxToOfdConverter().ConvertAsync(secondDocx, ofd);
 ```
 
-Both converters expose stream-based APIs. `DocxToOfdConverter` removes its private PDF intermediate after conversion. `DocxConversionOptions.Engine` selects `Auto`, `MicrosoftWord`, or `LibreOffice`; configure a non-default LibreOffice executable with the same options or `OFDRW_LIBREOFFICE_PATH`.
+Both converters expose stream-based APIs. `DocxToOfdConverter` uses the direct native route by default, so original DOCX text remains ordinary OFD text data without a PDF intermediate. Set `DocxConversionOptions.OfdMode = DocxToOfdMode.DualLayer` to retain a rendered visual page as well; this private PDF intermediate is deleted after conversion and never becomes the semantic text source. `DocxConversionOptions.Engine` selects `Auto`, `MicrosoftWord`, `LibreOffice`, or `BuiltIn` for PDF and dual-layer rendering.
 
 Convert OFD to PDF:
 
@@ -248,8 +248,10 @@ ofdrw ofd-to-svg --input input.ofd --output page-1.svg --pages 1
 Select a DOCX renderer or provide fonts for the LibreOffice backend:
 
 ```bash
+ofdrw docx-to-pdf input.docx output.pdf --docx-engine built-in
 ofdrw docx-to-pdf input.docx output.pdf --docx-engine word
-ofdrw docx-to-ofd input.docx output.ofd --docx-engine libreoffice --font-directory /path/to/fonts
+ofdrw docx-to-ofd input.docx output.ofd --docx-ofd-mode native
+ofdrw docx-to-ofd input.docx output.ofd --docx-ofd-mode dual-layer --docx-engine libreoffice --font-directory /path/to/fonts
 ```
 
 Convert selected pages:
