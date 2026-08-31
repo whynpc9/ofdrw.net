@@ -128,9 +128,11 @@ static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
 {
     var docxOptions = new DocxConversionOptions
     {
-        Engine = DocxConversionEngine.LibreOffice
+        Engine = DocxConversionEngine.BuiltIn,
+        OfdMode = DocxToOfdMode.DualLayer
     };
     var pdfPath = Path.Combine(outputDir, "generated-docx.pdf");
+    var nativeOfdPath = Path.Combine(outputDir, "generated-docx-native.ofd");
     var directOfdPath = Path.Combine(outputDir, "generated-docx.ofd");
     var pdfOfdPath = Path.Combine(outputDir, "generated-docx-pdf-stage.ofd");
 
@@ -146,6 +148,15 @@ static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
         await new DocxToOfdConverter(docxOptions).ConvertAsync(docxInput, ofdOutput);
     }
 
+    await using (var docxInput = File.OpenRead(samplePath))
+    await using (var ofdOutput = File.Create(nativeOfdPath))
+    {
+        await new DocxToOfdConverter(new DocxConversionOptions
+        {
+            OfdMode = DocxToOfdMode.Native
+        }).ConvertAsync(docxInput, ofdOutput);
+    }
+
     await using (var pdfInput = File.OpenRead(pdfPath))
     await using (var ofdOutput = File.Create(pdfOfdPath))
     {
@@ -157,13 +168,28 @@ static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
         await using var ofdInput = File.OpenRead(ofdPath);
         var package = await new OfdReader().ReadAsync(ofdInput);
         if (package.Pages.Count != 2 ||
-            package.Pages.Any(page => page.Elements.OfType<OfdImageElement>().All(image => image.Data.Length == 0)))
+            package.Pages.Any(page =>
+                page.Elements.OfType<OfdImageElement>().All(image => image.Data.Length == 0) ||
+                !page.Elements.OfType<OfdTextElement>().Any()))
         {
             throw new InvalidOperationException($"DOCX conversion output is incomplete: {ofdPath}");
         }
     }
 
-    Console.WriteLine("[E2E] DOCX -> PDF -> OFD package flow passed with 2 pages.");
+    await using (var nativeInput = File.OpenRead(nativeOfdPath))
+    {
+        var native = await new OfdReader().ReadAsync(nativeInput);
+        if (native.Pages.Count != 2 ||
+            native.Pages.Any(page => page.Elements.OfType<OfdImageElement>().Any()) ||
+            native.Pages.Any(page => !page.Elements.OfType<OfdTextElement>().Any()) ||
+            native.CustomTags.GetValueOrDefault("source-text-origin") != "DOCX/OpenXML")
+        {
+            throw new InvalidOperationException(
+                $"Native DOCX conversion output is incomplete: {nativeOfdPath}");
+        }
+    }
+
+    Console.WriteLine("[E2E] Native and dual-layer DOCX -> OFD flows passed with 2 pages.");
 }
 
 static void AssertComplexUpstreamSample(OfdDocumentPackage parsed, string samplePath)

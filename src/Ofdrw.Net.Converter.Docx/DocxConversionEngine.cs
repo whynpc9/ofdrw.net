@@ -6,7 +6,8 @@ namespace Ofdrw.Net.Converter.Docx;
 public enum DocxConversionEngine
 {
     /// <summary>
-    /// Prefer Microsoft Word on macOS when it is installed, otherwise use LibreOffice.
+    /// Prefer Microsoft Word on macOS when it is installed, then LibreOffice,
+    /// and finally the in-process renderer.
     /// </summary>
     Auto,
 
@@ -18,5 +19,11 @@ public enum DocxConversionEngine
     /// <summary>
     /// Use LibreOffice in headless mode.
     /// </summary>
-    LibreOffice
+    LibreOffice,
+
+    /// <summary>
+    /// Use the cross-platform in-process Open XML renderer. This engine is a
+    /// predictable fallback and does not promise pixel parity with Microsoft Word.
+    /// </summary>
+    BuiltIn
 }

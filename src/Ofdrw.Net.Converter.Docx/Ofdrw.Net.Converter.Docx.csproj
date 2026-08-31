@@ -1,11 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
-    <Description>DOCX to PDF and OFD conversion for Ofdrw.Net using Microsoft Word or LibreOffice.</Description>
-    <PackageTags>OFD;PDF;DOCX;Word;LibreOffice;converter;format-conversion</PackageTags>
+    <Description>Direct DOCX/OpenXML to native OFD text conversion, with optional PDF and dual-layer rendering through Microsoft Word, LibreOffice, or a cross-platform built-in renderer.</Description>
+    <PackageTags>OFD;PDF;DOCX;Word;LibreOffice;OpenXML;built-in;converter;format-conversion</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Ofdrw.Net.Converter.Abstractions/Ofdrw.Net.Converter.Abstractions.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
+    <PackageReference Include="MigraDocCore.Rendering" Version="1.3.67" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx.Tests" />
   </ItemGroup>
 </Project>
