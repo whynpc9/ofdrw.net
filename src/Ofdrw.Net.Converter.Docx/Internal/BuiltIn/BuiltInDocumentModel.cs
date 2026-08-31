@@ -48,6 +48,7 @@ internal sealed class BuiltInTableCellModel
     internal IList<BuiltInParagraphModel> Paragraphs { get; } = new List<BuiltInParagraphModel>();
     internal int ColumnSpan { get; set; } = 1;
     internal string? ShadingHex { get; set; }
+    internal BuiltInVerticalAlignment VerticalAlignment { get; set; } = BuiltInVerticalAlignment.Top;
 }
 
 internal abstract class BuiltInInlineModel
@@ -111,4 +112,11 @@ internal enum BuiltInParagraphAlignment
     Center,
     Right,
     Justify
+}
+
+internal enum BuiltInVerticalAlignment
+{
+    Top,
+    Center,
+    Bottom
 }
