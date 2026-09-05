@@ -286,7 +286,8 @@ internal sealed class DocxModelReader
                 var cellModel = new BuiltInTableCellModel
                 {
                     ColumnSpan = Math.Max(1, cell.TableCellProperties?.GridSpan?.Val?.Value ?? 1),
-                    ShadingHex = cell.TableCellProperties?.Shading?.Fill?.Value
+                    ShadingHex = cell.TableCellProperties?.Shading?.Fill?.Value,
+                    VerticalAlignment = ReadVerticalAlignment(cell.TableCellProperties)
                 };
 
                 foreach (var paragraph in cell.Elements<WpParagraph>())
@@ -685,6 +686,22 @@ internal sealed class DocxModelReader
             Text = $"[Unsupported DOCX feature: {feature}]"
         });
         return paragraph;
+    }
+
+    private static BuiltInVerticalAlignment ReadVerticalAlignment(TableCellProperties? properties)
+    {
+        var value = properties?.TableCellVerticalAlignment?.Val?.Value;
+        if (value == TableVerticalAlignmentValues.Center)
+        {
+            return BuiltInVerticalAlignment.Center;
+        }
+
+        if (value == TableVerticalAlignmentValues.Bottom)
+        {
+            return BuiltInVerticalAlignment.Bottom;
+        }
+
+        return BuiltInVerticalAlignment.Top;
     }
 
     private static bool IsOn(OpenXmlElement? element)

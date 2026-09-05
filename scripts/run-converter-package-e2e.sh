@@ -38,12 +38,20 @@ pack_project "$ROOT_DIR/src/Ofdrw.Net.Cli/Ofdrw.Net.Cli.csproj"
 
 echo "[E2E] Local packages are ready in $OUT_DIR"
 
-OFDRW_REPO_ROOT="$ROOT_DIR" dotnet run \
-  --project "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj" \
-  -c Release \
-  --disable-build-servers \
+dotnet restore "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj" \
   --configfile "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Pdf.E2E/NuGet.config" \
+  --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false \
+  -p:OfdrwPackageVersion="$VERSION"
+
+dotnet build "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj" \
+  -c Release \
+  --no-restore \
+  --disable-build-servers \
   -m:1 \
   /nodeReuse:false \
   /p:UseSharedCompilation=false \
   -p:OfdrwPackageVersion="$VERSION"
+
+OFDRW_REPO_ROOT="$ROOT_DIR" dotnet run \
+  --project "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj" \
+  -c Release --no-build --no-restore
