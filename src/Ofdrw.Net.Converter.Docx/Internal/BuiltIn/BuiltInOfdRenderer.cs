@@ -586,29 +586,7 @@ internal sealed class BuiltInOfdRenderer
 
     private string ResolveFallbackFont()
     {
-        // Prefer locally common CJK faces for OFD viewers; Noto is often absent on Windows
-        // and causes Latin glyphs to fall back to a mismatched monospace face.
-        foreach (var preferred in new[] { "SimSun", "Microsoft YaHei", "宋体", "微软雅黑" })
-        {
-            foreach (var family in _options.FontFallbackFamilies)
-            {
-                if (!string.IsNullOrWhiteSpace(family) &&
-                    family.Equals(preferred, StringComparison.OrdinalIgnoreCase))
-                {
-                    return NormalizeFontFamily(family);
-                }
-            }
-        }
-
-        foreach (var family in _options.FontFallbackFamilies)
-        {
-            if (!string.IsNullOrWhiteSpace(family))
-            {
-                return NormalizeFontFamily(family);
-            }
-        }
-
-        return "SimSun";
+        return NormalizeFontFamily(_configuredFonts.ResolveFallbackFamily(_options.FontFallbackFamilies));
     }
 
     private static OfdColor ParseColor(string? hex)

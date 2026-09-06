@@ -25,6 +25,10 @@ Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域�
 
 ## 字体与宿主程序
 
+BuiltIn 渲染未指定字体的 DOCX 文本时，按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 或系统字体集合中可用的字体；Native OFD 与 BuiltIn PDF 使用相同规则。调用方应提供覆盖源文档字符的字体。若没有候选字体可用，才把首个配置名称交给宿主解析器尝试解析。
+
+CI 使用 `scripts/install-ci-fonts.py` 下载固定版本且校验 SHA-256 的 Noto Sans CJK SC，生成 Regular 静态 TrueType 字体，以避免操作系统镜像的字体差异。脚本依赖 `fonttools==4.59.2`；本地可用 `--directory /path/to/fonts` 生成隔离目录，再通过 `FontDirectories` 或 CLI `--font-directory` 指定。字体及 OFL 许可证仅写入验证环境，不进入 NuGet 包。
+
 PDFsharp 的字体缓存为进程级，首次使用字体后不能替换其全局解析器。应在应用启动时、其他 PDFsharp 字体操作之前初始化：
 
 ```csharp

@@ -22,6 +22,15 @@ jobs:
       - name: Install document conversion dependencies
         run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deterministic CJK font
+        run: |
+          python -m pip install fonttools==4.59.2
+          python scripts/install-ci-fonts.py
+
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln
 
@@ -61,6 +70,15 @@ jobs:
       - name: Restore DOCX tests
         run: dotnet restore tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deterministic CJK font
+        run: |
+          python -m pip install fonttools==4.59.2
+          python scripts/install-ci-fonts.py
+
       - name: Test BuiltIn without office applications
         run: dotnet test tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~BuiltIn|FullyQualifiedName~Auto|FullyQualifiedName~Native|FullyQualifiedName~DualLayer" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
@@ -91,6 +109,15 @@ jobs:
 
       - name: Install visual validation tools
         run: sudo apt-get update && sudo apt-get install -y poppler-utils imagemagick librsvg2-bin
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deterministic CJK font
+        run: |
+          python -m pip install fonttools==4.59.2
+          python scripts/install-ci-fonts.py
 
       - name: Run package E2E
         run: ./scripts/run-converter-package-e2e.sh

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using Ofdrw.Net.Converter.Pdf;
 using SixLabors.Fonts;
+using PdfSharpCore.Fonts;
 
 namespace Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 
@@ -60,6 +61,22 @@ internal sealed class DocxFontCatalog
         resolved = PdfFontRegistry.RegisterFontFace(face.Data, bold, italic);
         _resolved.Add(key, resolved);
         return resolved;
+    }
+
+    internal string ResolveFallbackFamily(IEnumerable<string> families)
+    {
+        string? first = null;
+        foreach (var candidate in families)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) continue;
+            var family = candidate.Trim();
+            first ??= family;
+            if (_fonts.ContainsKey(family) || SystemFonts.TryGet(family, out _)) return family;
+        }
+
+        // A host resolver may know names outside SystemFonts. Preserve its
+        // opportunity to resolve the first configured family as a last resort.
+        return first ?? GlobalFontSettings.FontResolver.DefaultFontName;
     }
 
     private void Add(string family, byte[] data, FontStyle style)
