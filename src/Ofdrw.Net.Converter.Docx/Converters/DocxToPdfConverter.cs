@@ -216,13 +216,21 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         if (engine == DocxConversionEngine.BuiltIn)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var elapsed = Stopwatch.StartNew();
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(_options.ProcessTimeout);
             try
             {
-                return await Task.Run(
+                var diagnostics = await Task.Run(
                     () => new BuiltInDocxRenderer(_options).Convert(inputPath, outputPath, timeout.Token),
                     timeout.Token).ConfigureAwait(false);
+                // Timer callbacks can run after the worker completes, especially
+                // for sub-millisecond limits. Never commit an overdue result.
+                cancellationToken.ThrowIfCancellationRequested();
+                if (elapsed.Elapsed >= _options.ProcessTimeout)
+                    throw new TimeoutException($"BuiltIn DOCX conversion exceeded {_options.ProcessTimeout}.");
+                timeout.Token.ThrowIfCancellationRequested();
+                return diagnostics;
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {

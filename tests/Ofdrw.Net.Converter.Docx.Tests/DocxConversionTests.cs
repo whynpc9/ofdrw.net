@@ -179,6 +179,8 @@ public sealed partial class DocxConversionTests
         Assert.Equal(2, pdf.NumberOfPages);
         Assert.Equal(1, pdf.GetPage(1).Letters.Count(letter => letter.Value == "档"));
         Assert.Equal(1, pdf.GetPage(2).Letters.Count(letter => letter.Value == "红"));
+        Assert.Equal(ReadExpectedSourceText(), new string(string.Concat(pdf.GetPages().Select(page => page.Text))
+            .Where(character => !char.IsWhiteSpace(character)).ToArray()));
         Assert.Contains("Generated", pdf.GetPage(1).Text);
         var italicGlyph = pdf.GetPage(1).Letters.First(letter => letter.Value == "G").BoundingBox;
         Assert.True(italicGlyph.TopLeft.X > italicGlyph.BottomLeft.X + 0.1,
@@ -326,13 +328,15 @@ public sealed partial class DocxConversionTests
     /// <summary>
     /// Verifies ProcessTimeout also bounds the in-process renderer.
     /// </summary>
-    [Fact]
-    public async Task BuiltIn_ShouldHonorProcessTimeout()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(9999)]
+    public async Task BuiltIn_ShouldHonorProcessTimeout(long ticks)
     {
         var converter = new DocxToPdfConverter(new DocxConversionOptions
         {
             Engine = DocxConversionEngine.BuiltIn,
-            ProcessTimeout = TimeSpan.FromTicks(1)
+            ProcessTimeout = TimeSpan.FromTicks(ticks)
         });
 
         await using var input = File.OpenRead(ResolveGeneratedSample());

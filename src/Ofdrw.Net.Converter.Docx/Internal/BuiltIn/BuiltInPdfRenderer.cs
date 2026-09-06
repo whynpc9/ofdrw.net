@@ -274,15 +274,7 @@ internal sealed class BuiltInPdfRenderer
 
     private string ResolveFallbackFamily()
     {
-        foreach (var family in _options.FontFallbackFamilies)
-        {
-            if (!string.IsNullOrWhiteSpace(family))
-            {
-                return family;
-            }
-        }
-
-        return GlobalFontSettings.FontResolver?.DefaultFontName ?? "Arial";
+        return _configuredFonts.ResolveFallbackFamily(_options.FontFallbackFamilies);
     }
 
     private void AddImage(MigraParagraph target, BuiltInImageModel source)

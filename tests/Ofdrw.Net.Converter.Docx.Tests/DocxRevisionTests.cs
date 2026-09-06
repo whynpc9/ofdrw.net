@@ -15,6 +15,36 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 public sealed partial class DocxConversionTests
 {
     [Fact]
+    public async Task Native_ShouldUseFirstAvailableConfiguredFallbackAndEmbedItsBytes()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-fallback-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var fontPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(ResolveGeneratedSample())!,
+                "../../Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/narrow.ttf"));
+            var expectedFont = File.ReadAllBytes(fontPath);
+            File.WriteAllBytes(Path.Combine(directory, "fixture.ttf"), expectedFont);
+            var options = new DocxConversionOptions();
+            options.FontDirectories.Add(directory);
+            options.FontFallbackFamilies.Clear();
+            options.FontFallbackFamilies.Add("Missing-ofdrw-font-" + Guid.NewGuid().ToString("N"));
+            options.FontFallbackFamilies.Add("Ofdrw Test Face");
+            options.FontFallbackFamilies.Add("SimSun");
+            using var input = CreateMinimalDocx("<w:p><w:r><w:t>中文字体测试 Alpha</w:t></w:r></w:p>");
+            using var output = new MemoryStream();
+            await new DocxToOfdConverter(options).ConvertAsync(input, output);
+            output.Position = 0;
+            var package = await new OfdReader().ReadAsync(output);
+            var font = Assert.Single(package.Fonts);
+            Assert.Equal("Ofdrw Test Face|regular", font.FontName);
+            Assert.Equal(expectedFont, font.Data);
+            Assert.Contains("中文字体测试 Alpha", new OfdTextExtractor().Extract(package));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
     public async Task Native_ShouldKeepInlineJpegContentDimensionsAndMediaType()
     {
         const string body = """
