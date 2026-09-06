@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
+using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Layout.Editing;
@@ -25,6 +27,14 @@ public static class OfdDocumentMerger
         IEnumerable<OfdDocumentPackage> sources,
         OfdDocumentMergeOptions? options = null)
     {
+        return MergeWithResult(sources, options).Package;
+    }
+
+    /// <summary>Merges documents and reports objects dropped under the explicit skip option.</summary>
+    public static OfdDocumentMergeResult MergeWithResult(
+        IEnumerable<OfdDocumentPackage> sources,
+        OfdDocumentMergeOptions? options = null)
+    {
         if (sources is null)
         {
             throw new ArgumentNullException(nameof(sources));
@@ -37,6 +47,9 @@ public static class OfdDocumentMerger
             throw new ArgumentException("At least one source document is required.", nameof(sources));
         }
 
+        if (sourceList.Any(source => source is null)) throw new ArgumentException("Source documents cannot contain null.", nameof(sources));
+        var diagnostics = new List<string>();
+        var knownFonts = new Dictionary<string, OfdFontResource>(StringComparer.Ordinal);
         var first = sourceList[0];
         var destination = new OfdDocumentPackage
         {
@@ -46,7 +59,7 @@ public static class OfdDocumentMerger
 
         foreach (var source in sourceList)
         {
-            CopyFonts(source, destination);
+            var fonts = CopyFonts(source, destination, knownFonts);
             if (options.IncludeAttachments)
             {
                 CopyAttachments(source, destination);
@@ -63,12 +76,36 @@ public static class OfdDocumentMerger
                     HeightMillimeters = sourcePage.HeightMillimeters
                 };
 
+                string? lastLayer = null;
+                var layerSequence = 0;
                 foreach (var element in EnumerateElements(sourcePage, options.IncludeTemplates))
                 {
-                    var clone = CloneElement(element, options.SkipUnsupportedRawElements);
-                    if (clone is not null)
+                    try
                     {
+                        ValidateStandaloneElement(element);
+                        var clone = OfdModelCloner.CloneElement(element, destination.Options.Namespace);
+                        clone.ObjectId = null;
+                        var layerKey = element.LayerId + "\u001f" + element.LayerType;
+                        if (layerKey != lastLayer) layerSequence++;
+                        lastLayer = layerKey;
+                        clone.LayerId = $"merged-layer-{layerSequence}";
+                        if (clone is OfdTextElement text)
+                        {
+                            var originalFont = source.Fonts.FirstOrDefault(font => font.Id == text.FontResourceId)
+                                ?? source.Fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase) && !font.Bold && !font.Italic)
+                                ?? source.Fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
+                            if (originalFont is not null)
+                            {
+                                text.FontResourceId = fonts[originalFont].Id;
+                                text.FontName = fonts[originalFont].FontName;
+                            }
+                            else text.FontResourceId = null;
+                        }
                         page.Elements.Add(clone);
+                    }
+                    catch (NotSupportedException exception) when (options.SkipUnsupportedRawElements)
+                    {
+                        diagnostics.Add($"Page {sourcePage.Index + 1}, object {element.ObjectId}: {exception.Message}");
                     }
                 }
 
@@ -76,7 +113,7 @@ public static class OfdDocumentMerger
             }
         }
 
-        return destination;
+        return new OfdDocumentMergeResult(destination, diagnostics.AsReadOnly());
     }
 
     private static IEnumerable<OfdElement> EnumerateElements(OfdPage page, bool includeTemplates)
@@ -115,105 +152,57 @@ public static class OfdDocumentMerger
         }
     }
 
-    private static OfdElement? CloneElement(OfdElement element, bool skipUnsupported)
+    private static void ValidateStandaloneElement(OfdElement element)
     {
-        if (element is OfdTextElement text)
+        if (element is OfdRawElement)
+            throw new NotSupportedException("Unsupported raw page objects cannot be safely remapped during merge.");
+        var xml = element switch
         {
-            var clone = new OfdTextElement
-            {
-                LayerType = text.LayerType,
-                XMillimeters = text.XMillimeters,
-                YMillimeters = text.YMillimeters,
-                WidthMillimeters = text.WidthMillimeters,
-                HeightMillimeters = text.HeightMillimeters,
-                Text = text.Text,
-                FontName = text.FontName,
-                FontSizeMillimeters = text.FontSizeMillimeters,
-                Transform = text.Transform?.ToArray(),
-                FillColor = CloneColor(text.FillColor)
-            };
-            foreach (var run in text.Runs)
-            {
-                clone.Runs.Add(new OfdTextRun
-                {
-                    Text = run.Text,
-                    XMillimeters = run.XMillimeters,
-                    YMillimeters = run.YMillimeters,
-                    DeltaX = run.DeltaX,
-                    DeltaY = run.DeltaY
-                });
-            }
-
-            return clone;
-        }
-
-        if (element is OfdImageElement image)
+            OfdTextElement text => text.SourceXml,
+            OfdImageElement image => image.SourceXml,
+            OfdPathElement path => path.SourceXml,
+            _ => null
+        };
+        if (string.IsNullOrWhiteSpace(xml)) return;
+        var root = XElement.Parse(xml!, LoadOptions.PreserveWhitespace);
+        foreach (var attribute in root.DescendantsAndSelf().Attributes())
         {
-            return new OfdImageElement
-            {
-                LayerType = image.LayerType,
-                XMillimeters = image.XMillimeters,
-                YMillimeters = image.YMillimeters,
-                WidthMillimeters = image.WidthMillimeters,
-                HeightMillimeters = image.HeightMillimeters,
-                FileName = image.FileName,
-                MediaType = image.MediaType,
-                Data = image.Data.ToArray()
-            };
+            var name = attribute.Name.LocalName;
+            if (attribute.Parent == root &&
+                ((name == "Font" && element is OfdTextElement) ||
+                 (name == "ResourceID" && element is OfdImageElement))) continue;
+            if (name is "Font" or "ResourceID" or "DrawParam" or "ColorSpace" or "RefID" or
+                "TemplateID" or "PageID" or "ObjectRef")
+                throw new NotSupportedException($"Unmodeled resource reference '{name}' cannot be safely remapped during merge.");
         }
-
-        if (element is OfdPathElement path)
-        {
-            return new OfdPathElement
-            {
-                LayerType = path.LayerType,
-                XMillimeters = path.XMillimeters,
-                YMillimeters = path.YMillimeters,
-                WidthMillimeters = path.WidthMillimeters,
-                HeightMillimeters = path.HeightMillimeters,
-                AbbreviatedData = path.AbbreviatedData,
-                Transform = path.Transform?.ToArray(),
-                LineWidthMillimeters = path.LineWidthMillimeters,
-                Stroke = path.Stroke,
-                Fill = path.Fill,
-                StrokeColor = CloneColor(path.StrokeColor),
-                FillColor = path.FillColor is null ? null : CloneColor(path.FillColor)
-            };
-        }
-
-        if (skipUnsupported)
-        {
-            return null;
-        }
-
-        throw new NotSupportedException(
-            $"Cannot safely merge unsupported OFD page object '{element.GetType().Name}'. " +
-            "Set SkipUnsupportedRawElements only when dropping it is acceptable.");
+        if (root.Descendants().Any(node => node.Name.LocalName is "Actions" or "Action"))
+            throw new NotSupportedException("Page-object actions cannot be safely remapped during merge.");
     }
 
-    private static void CopyFonts(OfdDocumentPackage source, OfdDocumentPackage destination)
+    private static Dictionary<OfdFontResource, OfdFontResource> CopyFonts(
+        OfdDocumentPackage source,
+        OfdDocumentPackage destination,
+        IDictionary<string, OfdFontResource> knownFonts)
     {
+        var mapping = new Dictionary<OfdFontResource, OfdFontResource>();
         foreach (var font in source.Fonts)
         {
-            if (destination.Fonts.Any(existing =>
-                string.Equals(existing.FontName, font.FontName, StringComparison.OrdinalIgnoreCase) &&
-                existing.Bold == font.Bold &&
-                existing.Italic == font.Italic))
+            var identity = (font.Data.Length == 0 ? "system:" + font.FontName.ToUpperInvariant() : BinaryIdentity.Hash(font.Data))
+                + $":{font.Bold}:{font.Italic}:{font.Charset}";
+            if (!knownFonts.TryGetValue(identity, out var target))
             {
-                continue;
+                target = new OfdFontResource
+                {
+                    Id = $"merged-font-{destination.Fonts.Count + 1}",
+                    FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
+                    Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray()
+                };
+                destination.Fonts.Add(target);
+                knownFonts.Add(identity, target);
             }
-
-            destination.Fonts.Add(new OfdFontResource
-            {
-                FontName = font.FontName,
-                FamilyName = font.FamilyName,
-                Charset = font.Charset,
-                Bold = font.Bold,
-                Italic = font.Italic,
-                FileName = font.FileName,
-                Data = font.Data.ToArray()
-            });
+            mapping.Add(font, target);
         }
+        return mapping;
     }
 
     private static void CopyAttachments(OfdDocumentPackage source, OfdDocumentPackage destination)
@@ -259,8 +248,4 @@ public static class OfdDocumentMerger
         };
     }
 
-    private static OfdColor CloneColor(OfdColor color)
-    {
-        return new OfdColor(color.Red, color.Green, color.Blue, color.Alpha);
-    }
 }

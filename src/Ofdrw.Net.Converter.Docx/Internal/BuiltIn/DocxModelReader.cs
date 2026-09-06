@@ -10,6 +10,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using A = DocumentFormat.OpenXml.Drawing;
 using DW = DocumentFormat.OpenXml.Drawing.Wordprocessing;
 using SixLabors.ImageSharp;
+using Ofdrw.Net.Core.IO;
 using WpParagraph = DocumentFormat.OpenXml.Wordprocessing.Paragraph;
 using WpRun = DocumentFormat.OpenXml.Wordprocessing.Run;
 using WpTable = DocumentFormat.OpenXml.Wordprocessing.Table;
@@ -27,6 +28,8 @@ internal sealed class DocxModelReader
     private readonly Dictionary<string, int> _numberingCounters = new(StringComparer.Ordinal);
     private MainDocumentPart _mainPart = null!;
     private int _elementCount;
+    private BuiltInSectionModel? _previousSection;
+    private readonly HashSet<string> _supplementalKeys = new(StringComparer.Ordinal);
 
     internal DocxModelReader(
         DocxConversionOptions options,
@@ -55,6 +58,7 @@ internal sealed class DocxModelReader
 
         CountElements(body);
         LoadStyles();
+        var supplemental = ReadSupplementalDeclarations();
 
         var model = new BuiltInDocumentModel();
         var section = new BuiltInSectionModel();
@@ -104,7 +108,43 @@ internal sealed class DocxModelReader
             model.Sections.RemoveAt(model.Sections.Count - 1);
         }
 
+        foreach (var source in supplemental)
+        {
+            var note = new BuiltInSupplementalText { Kind = source.Kind, Id = source.Id };
+            foreach (var element in source.Root.ChildElements)
+            {
+                if (element is WpParagraph paragraph) note.Blocks.Add(ReadParagraph(paragraph, source.Part));
+                else if (element is WpTable table) note.Blocks.Add(ReadTable(table, source.Part));
+            }
+            model.SupplementalText.Add(note);
+        }
+        if (model.SupplementalText.Count > 0)
+            _diagnostics.Add(new DocxConversionDiagnostic("DOCX_SUPPLEMENTAL_TEXT_APPENDED",
+                "BuiltIn preserves footnote, endnote and comment bodies as labeled content after the main body.",
+                DocxConversionDiagnosticSeverity.Information));
         return model;
+    }
+
+    private List<(string Kind, string Id, OpenXmlElement Root, OpenXmlPart Part)> ReadSupplementalDeclarations()
+    {
+        var result = new List<(string Kind, string Id, OpenXmlElement Root, OpenXmlPart Part)>();
+        void Add(string kind, OpenXmlPart? part, OpenXmlElement? root)
+        {
+            if (part is null || root is null) return;
+            CountElements(root);
+            foreach (var node in root.ChildElements)
+            {
+                var id = node.GetAttributes().FirstOrDefault(attribute => attribute.LocalName == "id" && attribute.NamespaceUri == WordNamespace).Value;
+                var type = node.GetAttributes().FirstOrDefault(attribute => attribute.LocalName == "type" && attribute.NamespaceUri == WordNamespace).Value;
+                if (string.IsNullOrEmpty(id) || id!.StartsWith("-", StringComparison.Ordinal) || type is "separator" or "continuationSeparator") continue;
+                _supplementalKeys.Add(kind + ":" + id);
+                result.Add((kind, id, node, part));
+            }
+        }
+        Add("footnote", _mainPart.FootnotesPart, _mainPart.FootnotesPart?.Footnotes);
+        Add("endnote", _mainPart.EndnotesPart, _mainPart.EndnotesPart?.Endnotes);
+        Add("comment", _mainPart.WordprocessingCommentsPart, _mainPart.WordprocessingCommentsPart?.Comments);
+        return result;
     }
 
     private void CountElements(OpenXmlElement root)
@@ -161,13 +201,11 @@ internal sealed class DocxModelReader
             _cancellationToken.ThrowIfCancellationRequested();
 
             var simpleField = run.Ancestors<SimpleField>().FirstOrDefault();
-            if (simpleField?.Instruction?.Value?.IndexOf(
-                    "PAGE",
-                    StringComparison.OrdinalIgnoreCase) >= 0)
+            if (GetPageFieldKind(simpleField?.Instruction?.Value) is BuiltInPageFieldKind simpleKind)
             {
-                if (renderedSimpleFields.Add(simpleField))
+                if (renderedSimpleFields.Add(simpleField!))
                 {
-                    model.Inlines.Add(new BuiltInPageNumberModel());
+                    model.Inlines.Add(ReadPageField(run, simpleKind));
                 }
 
                 continue;
@@ -186,7 +224,7 @@ internal sealed class DocxModelReader
 
             ReadRun(run, sourcePart, model);
             if (run.Elements<FieldCode>().Any(fieldCode =>
-                    fieldCode.Text?.IndexOf("PAGE", StringComparison.OrdinalIgnoreCase) >= 0))
+                    GetPageFieldKind(fieldCode.Text) is not null))
             {
                 skippingPageFieldResult = true;
             }
@@ -227,9 +265,8 @@ internal sealed class DocxModelReader
                 case Drawing drawing:
                     ReadDrawing(drawing, sourcePart, paragraph);
                     break;
-                case FieldCode fieldCode when
-                    fieldCode.Text?.IndexOf("PAGE", StringComparison.OrdinalIgnoreCase) >= 0:
-                    paragraph.Inlines.Add(new BuiltInPageNumberModel());
+                case FieldCode fieldCode when GetPageFieldKind(fieldCode.Text) is BuiltInPageFieldKind kind:
+                    paragraph.Inlines.Add(ReadPageField(run, kind));
                     break;
                 case FieldCode:
                     ReportUnsupported("DOCX_FIELD_UNSUPPORTED", "field code");
@@ -239,8 +276,13 @@ internal sealed class DocxModelReader
                 case LastRenderedPageBreak:
                     break;
                 case FootnoteReference:
-                    ReportUnsupported("DOCX_FOOTNOTE_UNSUPPORTED", "footnote");
-                    AddUnsupportedPlaceholder(paragraph, "footnote");
+                    ReadNoteReference(child, "footnote", run, paragraph);
+                    break;
+                case EndnoteReference:
+                    ReadNoteReference(child, "endnote", run, paragraph);
+                    break;
+                case CommentReference:
+                    ReadNoteReference(child, "comment", run, paragraph);
                     break;
                 case EmbeddedObject:
                 case Picture:
@@ -248,7 +290,7 @@ internal sealed class DocxModelReader
                     AddUnsupportedPlaceholder(paragraph, child.LocalName);
                     break;
                 case OpenXmlElement unsupported when
-                    unsupported.LocalName is "commentReference" or "endnoteReference" or "sym":
+                    unsupported.LocalName is "sym":
                     ReportUnsupported("DOCX_INLINE_UNSUPPORTED", unsupported.LocalName);
                     AddUnsupportedPlaceholder(paragraph, unsupported.LocalName);
                     break;
@@ -256,13 +298,63 @@ internal sealed class DocxModelReader
         }
     }
 
-    private BuiltInTableModel ReadTable(WpTable table)
+    private BuiltInPageNumberModel ReadPageField(WpRun run, BuiltInPageFieldKind kind)
+    {
+        var field = new BuiltInPageNumberModel { Kind = kind };
+        ApplyRunFormat(field.Format, run);
+        return field;
+    }
+
+    private static BuiltInPageFieldKind? GetPageFieldKind(string? instruction)
+    {
+        var token = instruction?.Trim().Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        return token?.ToUpperInvariant() switch
+        {
+            "PAGE" => BuiltInPageFieldKind.Page,
+            "NUMPAGES" => BuiltInPageFieldKind.TotalPages,
+            "SECTIONPAGES" => BuiltInPageFieldKind.SectionPages,
+            _ => null
+        };
+    }
+
+    private void ReadNoteReference(OpenXmlElement reference, string kind, WpRun run, BuiltInParagraphModel paragraph)
+    {
+        var id = reference.GetAttributes().FirstOrDefault(attribute => attribute.LocalName == "id" && attribute.NamespaceUri == WordNamespace).Value;
+        if (!_supplementalKeys.Contains(kind + ":" + id))
+        {
+            ReportUnsupported(kind == "footnote" ? "DOCX_FOOTNOTE_UNSUPPORTED" : "DOCX_INLINE_UNSUPPORTED", kind);
+            AddUnsupportedPlaceholder(paragraph, kind);
+            return;
+        }
+        var marker = new BuiltInTextModel { Text = $"[{kind} {id}]" };
+        ApplyRunFormat(marker.Format, run);
+        paragraph.Inlines.Add(marker);
+    }
+
+    private static void ReadBorders(OpenXmlElement? borders, Dictionary<string, BuiltInBorderModel> target)
+    {
+        if (borders is null) return;
+        const string ns = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        foreach (var border in borders.ChildElements)
+        {
+            var value = border.GetAttributes().FirstOrDefault(a => a.LocalName == "val" && a.NamespaceUri == ns).Value;
+            target[border.LocalName] = new BuiltInBorderModel
+            {
+                Visible = value != "nil" && value != "none",
+                ColorHex = border.GetAttributes().FirstOrDefault(a => a.LocalName == "color" && a.NamespaceUri == ns).Value,
+                WidthPoints = double.TryParse(border.GetAttributes().FirstOrDefault(a => a.LocalName == "sz" && a.NamespaceUri == ns).Value, out var size) ? size / 8d : 0.5
+            };
+        }
+    }
+
+    private BuiltInTableModel ReadTable(WpTable table, OpenXmlPart? sourcePart = null)
     {
         var model = new BuiltInTableModel
         {
             HasBorders = table.TableProperties?.TableBorders is not null
         };
 
+        ReadBorders(table.TableProperties?.TableBorders, model.Borders);
         var grid = table.GetFirstChild<TableGrid>();
         if (grid is not null)
         {
@@ -290,9 +382,10 @@ internal sealed class DocxModelReader
                     VerticalAlignment = ReadVerticalAlignment(cell.TableCellProperties)
                 };
 
+                ReadBorders(cell.TableCellProperties?.TableCellBorders, cellModel.Borders);
                 foreach (var paragraph in cell.Elements<WpParagraph>())
                 {
-                    cellModel.Paragraphs.Add(ReadParagraph(paragraph, _mainPart));
+                    cellModel.Paragraphs.Add(ReadParagraph(paragraph, sourcePart ?? _mainPart));
                 }
 
                 if (cell.Elements<WpTable>().Any())
@@ -354,15 +447,10 @@ internal sealed class DocxModelReader
 
             using var stream = imagePart.GetStream(FileMode.Open, FileAccess.Read);
             using var data = new MemoryStream();
-            stream.CopyTo(data);
-            if (data.Length > _options.MaxEmbeddedImageBytes)
-            {
-                throw new InvalidDataException(
-                    $"An embedded DOCX image exceeds {_options.MaxEmbeddedImageBytes} bytes.");
-            }
+            BoundedStreamCopy.Copy(stream, data, _options.MaxEmbeddedImageBytes, "Embedded DOCX image", _cancellationToken);
 
             var imageBytes = data.ToArray();
-            var imageInfo = Image.Identify(imageBytes);
+            var imageInfo = Image.Identify(imageBytes, out var imageFormat);
             if (imageInfo is null)
             {
                 ReportUnsupported("DOCX_IMAGE_FORMAT_UNSUPPORTED", imagePart.ContentType);
@@ -381,7 +469,8 @@ internal sealed class DocxModelReader
             paragraph.Inlines.Add(new BuiltInImageModel
             {
                 Data = imageBytes,
-                Name = "image" + GuessImageExtension(imagePart.ContentType),
+                MediaType = imageFormat.DefaultMimeType,
+                Name = "image" + GuessImageExtension(imageFormat.DefaultMimeType),
                 WidthPoints = EmuToPoints(extent?.Cx?.Value),
                 HeightPoints = EmuToPoints(extent?.Cy?.Value)
             });
@@ -625,34 +714,46 @@ internal sealed class DocxModelReader
             target.MarginRightPoints = TwipsToPoints(margins.Right?.Value.ToString(), 1440);
             target.MarginBottomPoints = TwipsToPoints(margins.Bottom?.Value.ToString(), 1440);
             target.MarginLeftPoints = TwipsToPoints(margins.Left?.Value.ToString(), 1440);
+            target.HeaderDistancePoints = TwipsToPoints(margins.Header?.Value.ToString(), 720);
+            target.FooterDistancePoints = TwipsToPoints(margins.Footer?.Value.ToString(), 720);
         }
+        var titlePage = properties.GetFirstChild<TitlePage>();
+        target.DifferentFirstPage = titlePage is not null && (titlePage.Val?.Value ?? true);
+        var evenOdd = _mainPart.DocumentSettingsPart?.Settings?.GetFirstChild<EvenAndOddHeaders>();
+        target.DifferentOddAndEvenPages = evenOdd is not null && (evenOdd.Val?.Value ?? true);
+        if (int.TryParse(properties.GetFirstChild<PageNumberType>()?.Start?.Value.ToString(), out var start))
+            target.PageNumberStart = start;
     }
 
     private void AddHeadersAndFooters(BuiltInSectionModel target, SectionProperties properties)
     {
-        var headerReference = properties.Elements<HeaderReference>()
-            .FirstOrDefault(x => x.Type?.Value == HeaderFooterValues.Default) ??
-            properties.Elements<HeaderReference>().FirstOrDefault();
-        if (headerReference?.Id?.Value is string headerId &&
-            _mainPart.GetPartById(headerId) is HeaderPart headerPart)
+        void Header(HeaderFooterValues kind, IList<BuiltInParagraphModel> destination, IList<BuiltInParagraphModel>? inherited)
         {
-            foreach (var paragraph in headerPart.Header?.Elements<WpParagraph>() ?? [])
+            var reference = properties.Elements<HeaderReference>().FirstOrDefault(value => (value.Type?.Value ?? HeaderFooterValues.Default) == kind);
+            if (reference?.Id?.Value is string id && _mainPart.GetPartById(id) is HeaderPart part)
             {
-                target.Headers.Add(ReadParagraph(paragraph, headerPart));
+                if (part.Header is not null) CountElements(part.Header);
+                foreach (var paragraph in part.Header?.Elements<WpParagraph>() ?? []) destination.Add(ReadParagraph(paragraph, part));
             }
+            else if (inherited is not null) foreach (var paragraph in inherited) destination.Add(paragraph);
         }
-
-        var footerReference = properties.Elements<FooterReference>()
-            .FirstOrDefault(x => x.Type?.Value == HeaderFooterValues.Default) ??
-            properties.Elements<FooterReference>().FirstOrDefault();
-        if (footerReference?.Id?.Value is string footerId &&
-            _mainPart.GetPartById(footerId) is FooterPart footerPart)
+        void Footer(HeaderFooterValues kind, IList<BuiltInParagraphModel> destination, IList<BuiltInParagraphModel>? inherited)
         {
-            foreach (var paragraph in footerPart.Footer?.Elements<WpParagraph>() ?? [])
+            var reference = properties.Elements<FooterReference>().FirstOrDefault(value => (value.Type?.Value ?? HeaderFooterValues.Default) == kind);
+            if (reference?.Id?.Value is string id && _mainPart.GetPartById(id) is FooterPart part)
             {
-                target.Footers.Add(ReadParagraph(paragraph, footerPart));
+                if (part.Footer is not null) CountElements(part.Footer);
+                foreach (var paragraph in part.Footer?.Elements<WpParagraph>() ?? []) destination.Add(ReadParagraph(paragraph, part));
             }
+            else if (inherited is not null) foreach (var paragraph in inherited) destination.Add(paragraph);
         }
+        Header(HeaderFooterValues.Default, target.Headers, _previousSection?.Headers);
+        Header(HeaderFooterValues.First, target.FirstHeaders, _previousSection?.FirstHeaders);
+        Header(HeaderFooterValues.Even, target.EvenHeaders, _previousSection?.EvenHeaders);
+        Footer(HeaderFooterValues.Default, target.Footers, _previousSection?.Footers);
+        Footer(HeaderFooterValues.First, target.FirstFooters, _previousSection?.FirstFooters);
+        Footer(HeaderFooterValues.Even, target.EvenFooters, _previousSection?.EvenFooters);
+        _previousSection = target;
     }
 
     private void ReportUnsupported(string code, string feature)

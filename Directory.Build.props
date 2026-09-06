@@ -30,6 +30,7 @@
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="/" Link="README.md" />
     <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" Link="THIRD-PARTY-NOTICES.md" />
+    <None Include="$(MSBuildThisFileDirectory)docs/conversion-contracts.md" Pack="true" PackagePath="docs/" Link="docs/conversion-contracts.md" />
     <None Include="$(MSBuildThisFileDirectory)docs/feature-parity.md" Pack="true" PackagePath="docs/" Link="docs/feature-parity.md" />
   </ItemGroup>
 </Project>

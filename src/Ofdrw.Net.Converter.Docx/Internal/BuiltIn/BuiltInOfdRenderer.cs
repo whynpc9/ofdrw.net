@@ -2,9 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
+using System.IO;
+using System.Security.Cryptography;
 using System.Threading;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Converter.Pdf;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Fonts;
 
 namespace Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 
@@ -18,15 +22,14 @@ internal sealed class BuiltInOfdRenderer
     private const double MillimetersPerInch = 25.4d;
     private const double DefaultFontSizePoints = 10.5d;
     private const double MinCellPaddingMillimeters = 0.8d;
-    private const double BorderWidthMillimeters = 0.2d;
-    /// <summary>Half-width (ASCII) advance relative to font size — matches ofdrw/OFD convention.</summary>
-    private const double AsciiWidthFactor = 0.5d;
-    /// <summary>Full-width (CJK) advance relative to font size.</summary>
-    private const double CjkWidthFactor = 1.0d;
-
     private readonly DocxConversionOptions _options;
     private readonly IList<DocxConversionDiagnostic> _diagnostics;
     private readonly CancellationToken _cancellationToken;
+    private readonly Dictionary<string, double> _advances = new();
+    private readonly List<PageDecoration> _decorations = new();
+    private int _lastPageNumber;
+    private readonly Dictionary<string, XFont> _fonts = new();
+    private readonly Dictionary<string, (byte[] Data, string FileName)> _fontFiles = new();
 
     internal BuiltInOfdRenderer(
         DocxConversionOptions options,
@@ -42,6 +45,7 @@ internal sealed class BuiltInOfdRenderer
     {
         _cancellationToken.ThrowIfCancellationRequested();
 
+        RegisterConfiguredFonts();
         var package = new OfdDocumentPackage
         {
             Options = new OfdDocumentOptions
@@ -65,50 +69,55 @@ internal sealed class BuiltInOfdRenderer
             ? new List<BuiltInSectionModel> { new BuiltInSectionModel() }
             : model.Sections;
 
+        LayoutState? lastState = null;
         foreach (var section in sections)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            RenderSection(package, section);
+            lastState = RenderSection(package, section);
         }
+        if (lastState is not null)
+        {
+            foreach (var note in model.SupplementalText)
+            {
+                RenderParagraph(package, lastState, note.CreateHeading(), lastState.ContentLeft, lastState.ContentWidth);
+                foreach (var block in note.Blocks) RenderBlock(package, lastState, block);
+            }
+        }
+        if (model.SupplementalText.Count > 0)
+            package.CustomTags["source-text-supplemental-layout"] = "labeled-after-body";
 
         if (package.Pages.Count == 0)
         {
             package.Pages.Add(CreatePage(package, new BuiltInSectionModel()));
         }
 
-        EnsureFontResources(package);
+        RenderDecorations(package);
         return package;
     }
 
-    private void RenderSection(OfdDocumentPackage package, BuiltInSectionModel section)
+    private LayoutState RenderSection(OfdDocumentPackage package, BuiltInSectionModel section)
     {
-        var state = new LayoutState(section);
+        var state = new LayoutState(section, section.PageNumberStart ?? _lastPageNumber + 1);
         EnsurePage(package, state);
-
-        foreach (var header in section.Headers)
-        {
-            _cancellationToken.ThrowIfCancellationRequested();
-            RenderParagraph(package, state, header, state.ContentLeft, state.ContentWidth);
-        }
-
         foreach (var block in section.Blocks)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            switch (block)
-            {
-                case BuiltInParagraphModel paragraph:
-                    RenderParagraph(package, state, paragraph, state.ContentLeft, state.ContentWidth);
-                    break;
-                case BuiltInTableModel table:
-                    RenderTable(package, state, table);
-                    break;
-            }
+            RenderBlock(package, state, block);
         }
+        return state;
+    }
 
-        foreach (var footer in section.Footers)
+    private void RenderBlock(OfdDocumentPackage package, LayoutState state, BuiltInBlockModel block)
+    {
+        switch (block)
         {
-            _cancellationToken.ThrowIfCancellationRequested();
-            RenderParagraph(package, state, footer, state.ContentLeft, state.ContentWidth);
+            case BuiltInParagraphModel paragraph:
+                RenderParagraph(package, state, paragraph, state.ContentLeft, state.ContentWidth);
+                break;
+            case BuiltInTableModel table:
+                RenderTable(package, state, table);
+                state.HasBodyContent = true;
+                break;
         }
     }
 
@@ -119,7 +128,7 @@ internal sealed class BuiltInOfdRenderer
         double left,
         double availableWidth)
     {
-        if (paragraph.Format.PageBreakBefore)
+        if (paragraph.Format.PageBreakBefore && state.HasBodyContent)
         {
             StartNewPage(package, state);
         }
@@ -129,80 +138,21 @@ internal sealed class BuiltInOfdRenderer
         EnsureVerticalSpace(package, state, spaceBefore);
         state.Y += spaceBefore;
 
-        var marker = paragraph.Format.ListMarker;
-        var text = BuildParagraphText(paragraph);
-        if (!string.IsNullOrEmpty(marker))
-        {
-            text = marker + text;
-        }
-
-        var fontSizePoints = ResolveParagraphFontSize(paragraph);
-        var fontSizeMm = PointsToMillimeters(fontSizePoints);
-        var lineHeight = Math.Max(
-            PointsToMillimeters(paragraph.Format.LineSpacingPoints ?? (fontSizePoints * 1.3d)),
-            fontSizeMm * 1.2d);
-        var fontName = ResolveParagraphFont(paragraph);
-        var color = ParseColor(ResolveParagraphColor(paragraph));
-
         var leftIndent = PointsToMillimeters(paragraph.Format.LeftIndentPoints ?? 0);
         var rightIndent = PointsToMillimeters(paragraph.Format.RightIndentPoints ?? 0);
-        var firstLineIndent = PointsToMillimeters(paragraph.Format.FirstLineIndentPoints ?? 0);
-        var contentLeft = left + leftIndent;
-        var contentWidth = Math.Max(availableWidth - leftIndent - rightIndent, 5d);
-
-        if (ContainsPageBreak(paragraph))
+        var firstIndent = PointsToMillimeters(paragraph.Format.FirstLineIndentPoints ?? 0);
+        var width = Math.Max(availableWidth - leftIndent - rightIndent, 5d);
+        foreach (var line in LayoutParagraph(paragraph, width, firstIndent, state.PageNumber))
         {
-            // Emit text before the break, then start a new page for remainder.
-            var parts = SplitByPageBreak(paragraph);
-            foreach (var (partText, isBreak) in parts)
+            if (line.PageBreak)
             {
-                if (!string.IsNullOrEmpty(partText))
-                {
-                    EmitWrappedText(
-                        package,
-                        state,
-                        partText,
-                        contentLeft,
-                        contentWidth,
-                        firstLineIndent,
-                        fontName,
-                        fontSizeMm,
-                        lineHeight,
-                        color,
-                        paragraph.Format.Alignment);
-                    firstLineIndent = 0;
-                }
-
-                if (isBreak)
-                {
-                    StartNewPage(package, state);
-                }
+                StartNewPage(package, state);
+                continue;
             }
-        }
-        else if (!string.IsNullOrEmpty(text) || paragraph.Inlines.OfType<BuiltInImageModel>().Any())
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                text = "[image]";
-            }
-
-            EmitWrappedText(
-                package,
-                state,
-                text,
-                contentLeft,
-                contentWidth,
-                firstLineIndent,
-                fontName,
-                fontSizeMm,
-                lineHeight,
-                color,
-                paragraph.Format.Alignment);
-        }
-        else
-        {
-            EnsureVerticalSpace(package, state, lineHeight);
-            state.Y += lineHeight;
+            EnsureVerticalSpace(package, state, line.Height);
+            DrawLine(package, state.Page!, line, left + leftIndent, state.Y, width);
+            state.Y += line.Height;
+            state.HasBodyContent = true;
         }
 
         EnsureVerticalSpace(package, state, spaceAfter);
@@ -238,34 +188,17 @@ internal sealed class BuiltInOfdRenderer
                     cellWidth += columnWidths[columnIndex + span];
                 }
 
-                if (table.HasBorders)
-                {
-                    AddRectangle(state.Page!, x, rowTop, cellWidth, rowHeight);
-                }
-
+                var cell = row.Cells[cellLayouts.IndexOf(cellLayout)];
+                DrawCell(state.Page!, table, cell, table.Rows.IndexOf(row), columnIndex, columnWidths.Count,
+                    x, rowTop, cellWidth, rowHeight);
                 var textLeft = x + MinCellPaddingMillimeters;
-                var textWidth = Math.Max(cellWidth - (MinCellPaddingMillimeters * 2), 1d);
-                var contentHeight = cellLayout.Lines.Sum(line => line.LineHeight);
-                var localY = AlignBlockVertically(
-                    rowTop,
-                    rowHeight,
-                    contentHeight,
-                    cellLayout.VerticalAlignment);
-
+                var textWidth = Math.Max(cellWidth - MinCellPaddingMillimeters * 2, 1d);
+                var localY = AlignBlockVertically(rowTop, rowHeight,
+                    cellLayout.Lines.Sum(line => line.Height), cellLayout.VerticalAlignment);
                 foreach (var line in cellLayout.Lines)
                 {
-                    var lineWidth = MeasureLineWidth(line.Text, line.FontSizeMillimeters);
-                    var lineX = AlignHorizontally(textLeft, textWidth, lineWidth, line.Alignment);
-                    state.Page!.Elements.Add(CreateTextElement(
-                        line.Text,
-                        lineX,
-                        localY,
-                        Math.Max(lineWidth, 1d),
-                        line.LineHeight,
-                        line.FontName,
-                        line.FontSizeMillimeters,
-                        line.Color));
-                    localY += line.LineHeight;
+                    DrawLine(package, state.Page!, line, textLeft, localY, textWidth);
+                    localY += line.Height;
                 }
 
                 x += cellWidth;
@@ -295,40 +228,13 @@ internal sealed class BuiltInOfdRenderer
             }
 
             var textWidth = Math.Max(cellWidth - (MinCellPaddingMillimeters * 2), 1d);
-            var lines = new List<TextLine>();
+            var lines = new List<StyledLine>();
             foreach (var paragraph in cell.Paragraphs)
             {
-                var text = BuildParagraphText(paragraph);
-                if (string.IsNullOrEmpty(text))
-                {
-                    continue;
-                }
-
-                var fontSizePoints = ResolveParagraphFontSize(paragraph);
-                var fontSizeMm = PointsToMillimeters(fontSizePoints);
-                var lineHeight = fontSizeMm * 1.25d;
-                var fontName = ResolveParagraphFont(paragraph);
-                var color = ParseColor(ResolveParagraphColor(paragraph));
-                var alignment = paragraph.Format.Alignment;
-                foreach (var wrapped in WrapText(text, textWidth, fontSizeMm))
-                {
-                    lines.Add(new TextLine(wrapped, fontName, fontSizeMm, lineHeight, color, alignment));
-                }
+                lines.AddRange(LayoutParagraph(paragraph, textWidth, 0).Where(line => !line.PageBreak));
             }
 
-            if (lines.Count == 0)
-            {
-                var fallbackSize = PointsToMillimeters(DefaultFontSizePoints);
-                lines.Add(new TextLine(
-                    string.Empty,
-                    ResolveFallbackFont(),
-                    fallbackSize,
-                    fallbackSize * 1.25d,
-                    OfdColor.Black,
-                    BuiltInParagraphAlignment.Left));
-            }
-
-            var height = lines.Sum(line => line.LineHeight) + (MinCellPaddingMillimeters * 2);
+            var height = lines.Sum(line => line.Height) + (MinCellPaddingMillimeters * 2);
             layouts.Add(new CellLayout(span, height, lines, cell.VerticalAlignment));
             columnIndex += span;
         }
@@ -336,39 +242,212 @@ internal sealed class BuiltInOfdRenderer
         return layouts;
     }
 
-    private void EmitWrappedText(
-        OfdDocumentPackage package,
-        LayoutState state,
-        string text,
-        double left,
-        double availableWidth,
-        double firstLineIndent,
-        string fontName,
-        double fontSizeMm,
-        double lineHeight,
-        OfdColor color,
-        BuiltInParagraphAlignment alignment)
+    private DocxFontCatalog _configuredFonts = null!;
+
+    private void RegisterConfiguredFonts()
     {
-        var first = true;
-        foreach (var line in WrapText(text, Math.Max(availableWidth - (first ? firstLineIndent : 0), 5d), fontSizeMm))
+        _configuredFonts = new DocxFontCatalog(_options, _diagnostics, _cancellationToken);
+    }
+
+    private string FontKey(BuiltInTextFormat format) =>
+        NormalizeFontFamily(format.FontFamily) + (format.Bold ? "|bold" : "|regular") + (format.Italic ? "|italic" : "");
+
+    private XFont GetFont(BuiltInTextFormat format)
+    {
+        var key = FontKey(format);
+        if (!_fonts.TryGetValue(key, out var font))
         {
-            EnsureVerticalSpace(package, state, lineHeight);
-            var indent = first ? firstLineIndent : 0;
-            var width = Math.Max(availableWidth - indent, 1d);
-            var lineWidth = MeasureLineWidth(line, fontSizeMm);
-            var x = AlignHorizontally(left + indent, width, lineWidth, alignment);
-            state.Page!.Elements.Add(CreateTextElement(
-                line,
-                x,
-                state.Y,
-                Math.Max(lineWidth, 1d),
-                lineHeight,
-                fontName,
-                fontSizeMm,
-                color));
-            state.Y += lineHeight;
-            first = false;
+            PdfFontRegistry.EnsureInstalled();
+            font = new XFont(_configuredFonts.Resolve(NormalizeFontFamily(format.FontFamily), format.Bold, format.Italic), 1000,
+                (format.Bold ? XFontStyle.Bold : XFontStyle.Regular) |
+                (format.Italic ? XFontStyle.Italic : XFontStyle.Regular));
+            _fonts[key] = font;
         }
+        return font;
+    }
+
+    private double Advance(string text, BuiltInTextFormat format)
+    {
+        var key = FontKey(format) + "\n" + text;
+        if (!_advances.TryGetValue(key, out var advance))
+        {
+            using var measure = XGraphics.CreateMeasureContext(new XSize(1000, 1000), XGraphicsUnit.Point, XPageDirection.Downwards);
+            advance = measure.MeasureString(text == "\t" ? "    " : text, GetFont(format)).Width / 1000d;
+            _advances[key] = advance;
+        }
+        return advance * PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints);
+    }
+
+    private List<StyledLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber = 1, int totalPages = 1, int sectionPages = 1)
+    {
+        var glyphs = new List<StyledGlyph>();
+        var fallback = paragraph.Inlines.OfType<BuiltInTextModel>().FirstOrDefault()?.Format ?? new BuiltInTextFormat();
+        void Add(string value, BuiltInTextFormat format)
+        {
+            foreach (var glyph in EnumerateTextElements(value.Replace("\r\n", "\n").Replace('\r', '\n')))
+                glyphs.Add(new StyledGlyph(glyph, format, glyph == "\n" || glyph == "\f" ? 0 : Advance(glyph, format)));
+        }
+        foreach (var inline in paragraph.Inlines)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            switch (inline)
+            {
+                case BuiltInTextModel text: Add(text.Text, text.Format); break;
+                case BuiltInTabModel: Add("\t", fallback); break;
+                case BuiltInBreakModel br: Add(br.IsPageBreak ? "\f" : "\n", fallback); break;
+                case BuiltInPageNumberModel field:
+                    var value = field.Kind == BuiltInPageFieldKind.TotalPages ? totalPages :
+                        field.Kind == BuiltInPageFieldKind.SectionPages ? sectionPages : pageNumber;
+                    Add(value.ToString(CultureInfo.InvariantCulture), field.Format);
+                    break;
+                case BuiltInImageModel image:
+                    var imageWidth = PointsToMillimeters(image.WidthPoints ?? 72);
+                    var imageHeight = PointsToMillimeters(image.HeightPoints ?? 72);
+                    if (imageWidth > width) { imageHeight *= width / imageWidth; imageWidth = width; }
+                    glyphs.Add(new StyledGlyph(string.Empty, fallback, imageWidth) { Image = image, ImageHeight = imageHeight });
+                    break;
+            }
+        }
+        var result = new List<StyledLine>();
+        var current = new List<StyledGlyph>();
+        var currentWidth = 0d;
+        var indent = firstIndent;
+        void Flush()
+        {
+            var size = current.Count == 0 ? PointsToMillimeters(fallback.FontSizePoints ?? DefaultFontSizePoints)
+                : current.Max(g => PointsToMillimeters(g.Format.FontSizePoints ?? DefaultFontSizePoints));
+            var imageHeight = current.Where(glyph => glyph.Image is not null).Select(glyph => glyph.ImageHeight).DefaultIfEmpty(0).Max();
+            result.Add(new StyledLine(current, Math.Max(imageHeight, Math.Max(size * 1.3, PointsToMillimeters(paragraph.Format.LineSpacingPoints ?? 0))),
+                indent, paragraph.Format.Alignment));
+            current = new List<StyledGlyph>();
+            currentWidth = 0;
+            indent = 0;
+        }
+        for (var i = 0; i < glyphs.Count; i++)
+        {
+            var glyph = glyphs[i];
+            if (glyph.Text == "\f" || glyph.Text == "\n")
+            {
+                if (current.Count > 0 || glyph.Text == "\n") Flush();
+                if (glyph.Text == "\f") result.Add(new StyledLine(new List<StyledGlyph>(), 0, 0, paragraph.Format.Alignment) { PageBreak = true });
+                continue;
+            }
+            // Keep Latin words intact when they fit on a fresh line, even across run boundaries.
+            bool Word(StyledGlyph g) => g.Text.Length == 1 && g.Text[0] < 128 && char.IsLetterOrDigit(g.Text[0]);
+            if (Word(glyph) && (i == 0 || !Word(glyphs[i - 1])))
+            {
+                var wordWidth = 0d;
+                for (var j = i; j < glyphs.Count && Word(glyphs[j]); j++) wordWidth += glyphs[j].Width;
+                if (current.Count > 0 && wordWidth <= width && currentWidth + wordWidth > width - indent) Flush();
+            }
+            if (current.Count > 0 && currentWidth + glyph.Width > width - indent) Flush();
+            current.Add(glyph);
+            currentWidth += glyph.Width;
+        }
+        if (current.Count > 0 || result.Count == 0) Flush();
+        return result;
+    }
+
+    private void DrawLine(OfdDocumentPackage package, OfdPage page, StyledLine line, double left, double top, double width)
+    {
+        var x = AlignHorizontally(left + line.Indent, width - line.Indent, line.Glyphs.Sum(g => g.Width), line.Alignment);
+        var baseline = line.Glyphs.Count == 0 ? 0 : line.Glyphs.Max(g => PointsToMillimeters(g.Format.FontSizePoints ?? DefaultFontSizePoints));
+        for (var i = 0; i < line.Glyphs.Count;)
+        {
+            var start = i;
+            if (line.Glyphs[i].Image is BuiltInImageModel image)
+            {
+                var glyph = line.Glyphs[i++];
+                page.Elements.Add(new OfdImageElement
+                {
+                    XMillimeters = x, YMillimeters = top, WidthMillimeters = glyph.Width, HeightMillimeters = glyph.ImageHeight,
+                    Data = image.Data, FileName = image.Name, MediaType = image.MediaType
+                });
+                x += glyph.Width;
+                continue;
+            }
+            var format = line.Glyphs[i].Format;
+            while (i < line.Glyphs.Count && line.Glyphs[i].Image is null && ReferenceEquals(line.Glyphs[i].Format, format)) i++;
+            var group = line.Glyphs.GetRange(start, i - start);
+            var fontKey = FontKey(format);
+            if (!package.Fonts.Any(f => f.FontName == fontKey))
+            {
+                var resolver = GlobalFontSettings.FontResolver;
+                var face = resolver.ResolveTypeface(_configuredFonts.Resolve(NormalizeFontFamily(format.FontFamily), format.Bold, format.Italic), format.Bold, format.Italic);
+                if (!_fontFiles.TryGetValue(face.FaceName, out var file))
+                {
+                    var data = PdfFontRegistry.GetOriginalFont(face.FaceName);
+                    using var hash = SHA256.Create();
+                    var digest = BitConverter.ToString(hash.ComputeHash(data)).Replace("-", string.Empty).ToLowerInvariant();
+                    file = (data, "native-font-" + digest + ".ttf");
+                    _fontFiles[face.FaceName] = file;
+                }
+                package.Fonts.Add(new OfdFontResource
+                {
+                    FontName = fontKey, FamilyName = GetFont(format).Name, Charset = "unicode",
+                    Bold = format.Bold, Italic = format.Italic,
+                    FileName = file.FileName,
+                    Data = file.Data
+                });
+            }
+            var text = new OfdTextElement
+            {
+                LayerType = "Body", XMillimeters = x, YMillimeters = top,
+                WidthMillimeters = Math.Max(group.Sum(g => g.Width), 0.1), HeightMillimeters = line.Height,
+                FontName = fontKey, FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
+                FillColor = ParseColor(format.ColorHex), Text = string.Concat(group.Select(g => g.Text))
+            };
+            text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = baseline,
+                DeltaX = group.Count > 1 ? string.Join(" ", group.Take(group.Count - 1).Select(g => g.Width.ToString("0.######", CultureInfo.InvariantCulture))) : null });
+            page.Elements.Add(text);
+            x += group.Sum(g => g.Width);
+        }
+    }
+
+    private sealed class StyledGlyph
+    {
+        internal StyledGlyph(string text, BuiltInTextFormat format, double width) { Text = text; Format = format; Width = width; }
+        internal string Text { get; }
+        internal BuiltInTextFormat Format { get; }
+        internal double Width { get; }
+        internal BuiltInImageModel? Image { get; set; }
+        internal double ImageHeight { get; set; }
+    }
+
+    private sealed class StyledLine
+    {
+        internal StyledLine(List<StyledGlyph> glyphs, double height, double indent, BuiltInParagraphAlignment alignment)
+        { Glyphs = glyphs; Height = height; Indent = indent; Alignment = alignment; }
+        internal List<StyledGlyph> Glyphs { get; }
+        internal double Height { get; }
+        internal double Indent { get; }
+        internal BuiltInParagraphAlignment Alignment { get; }
+        internal bool PageBreak { get; set; }
+    }
+
+    private static void DrawCell(OfdPage page, BuiltInTableModel table, BuiltInTableCellModel cell,
+        int row, int column, int columnCount, double x, double y, double width, double height)
+    {
+        if (!string.IsNullOrWhiteSpace(cell.ShadingHex) && cell.ShadingHex != "auto")
+        {
+            page.Elements.Add(new OfdPathElement { LayerType = "Body", XMillimeters = x, YMillimeters = y,
+                WidthMillimeters = width, HeightMillimeters = height, Fill = true, Stroke = false,
+                FillColor = ParseColor(cell.ShadingHex),
+                AbbreviatedData = FormattableString.Invariant($"M 0 0 L {width} 0 L {width} {height} L 0 {height} C") });
+        }
+        void Border(string side, string fallback, double x1, double y1, double x2, double y2)
+        {
+            if (!cell.Borders.TryGetValue(side, out var border)) table.Borders.TryGetValue(fallback, out border);
+            if (border is null || !border.Visible) return;
+            page.Elements.Add(new OfdPathElement { LayerType = "Body", XMillimeters = x, YMillimeters = y,
+                WidthMillimeters = width, HeightMillimeters = height, Fill = false, Stroke = true,
+                StrokeColor = ParseColor(border.ColorHex), LineWidthMillimeters = PointsToMillimeters(border.WidthPoints),
+                AbbreviatedData = FormattableString.Invariant($"M {x1} {y1} L {x2} {y2}") });
+        }
+        Border("top", row == 0 ? "top" : "insideH", 0, 0, width, 0);
+        Border("bottom", row == table.Rows.Count - 1 ? "bottom" : "insideH", 0, height, width, height);
+        Border("left", column == 0 ? "left" : "insideV", 0, 0, 0, height);
+        Border("right", column + cell.ColumnSpan >= columnCount ? "right" : "insideV", width, 0, width, height);
     }
 
     private static double AlignHorizontally(
@@ -411,69 +490,6 @@ internal sealed class BuiltInOfdRenderer
         };
     }
 
-    private static double MeasureLineWidth(string text, double fontSizeMm)
-    {
-        var width = 0d;
-        foreach (var glyph in EnumerateTextElements(text ?? string.Empty))
-        {
-            width += EstimateTextWidth(glyph, fontSizeMm);
-        }
-
-        return width;
-    }
-
-    private static OfdTextElement CreateTextElement(
-        string text,
-        double x,
-        double y,
-        double width,
-        double height,
-        string fontName,
-        double fontSizeMm,
-        OfdColor color)
-    {
-        var element = new OfdTextElement
-        {
-            LayerType = "Body",
-            XMillimeters = x,
-            YMillimeters = y,
-            WidthMillimeters = width,
-            HeightMillimeters = height,
-            FontName = fontName,
-            FontSizeMillimeters = fontSizeMm,
-            FillColor = color,
-            Text = text ?? string.Empty
-        };
-
-        var glyphs = EnumerateTextElements(element.Text);
-        if (glyphs.Count == 0)
-        {
-            return element;
-        }
-
-        string? deltaX = null;
-        if (glyphs.Count > 1)
-        {
-            var deltas = new string[glyphs.Count - 1];
-            for (var i = 0; i < deltas.Length; i++)
-            {
-                deltas[i] = EstimateTextWidth(glyphs[i], fontSizeMm)
-                    .ToString("0.###", CultureInfo.InvariantCulture);
-            }
-
-            deltaX = string.Join(" ", deltas);
-        }
-
-        element.Runs.Add(new OfdTextRun
-        {
-            Text = element.Text,
-            XMillimeters = 0,
-            YMillimeters = Math.Max(fontSizeMm, 1d),
-            DeltaX = deltaX
-        });
-        return element;
-    }
-
     private static List<string> EnumerateTextElements(string text)
     {
         var glyphs = new List<string>();
@@ -489,140 +505,6 @@ internal sealed class BuiltInOfdRenderer
         }
 
         return glyphs;
-    }
-
-    private static IEnumerable<string> WrapText(string text, double availableWidth, double fontSizeMm)
-    {
-        var normalized = (text ?? string.Empty)
-            .Replace("\r\n", "\n")
-            .Replace("\r", "\n");
-
-        foreach (var paragraphLine in normalized.Split('\n'))
-        {
-            if (paragraphLine.Length == 0)
-            {
-                yield return string.Empty;
-                continue;
-            }
-
-            var line = new StringBuilder();
-            var width = 0d;
-            var enumerator = StringInfo.GetTextElementEnumerator(paragraphLine);
-            while (enumerator.MoveNext())
-            {
-                var element = enumerator.GetTextElement();
-                var elementWidth = EstimateTextWidth(element, fontSizeMm);
-                if (line.Length > 0 && width + elementWidth > availableWidth)
-                {
-                    yield return line.ToString();
-                    line.Clear();
-                    width = 0;
-                }
-
-                line.Append(element);
-                width += elementWidth;
-            }
-
-            yield return line.ToString();
-        }
-    }
-
-    private static double EstimateTextWidth(string textElement, double fontSize)
-    {
-        if (string.IsNullOrEmpty(textElement))
-        {
-            return fontSize * AsciiWidthFactor;
-        }
-
-        if (textElement == "\t")
-        {
-            return fontSize * 2d;
-        }
-
-        // OFD/ofdrw convention: printable ASCII is half-em; CJK and other
-        // full-width glyphs are one em. Emitting matching DeltaX keeps viewer
-        // advances aligned with wrap decisions (avoids Latin monospace fallback).
-        if (textElement.Length == 1)
-        {
-            var ch = textElement[0];
-            if (ch <= 0x7f)
-            {
-                return fontSize * AsciiWidthFactor;
-            }
-
-            // Halfwidth / fullwidth forms
-            if (ch is >= '\uFF61' and <= '\uFF9F')
-            {
-                return fontSize * AsciiWidthFactor;
-            }
-        }
-
-        return fontSize * CjkWidthFactor;
-    }
-
-    private static string BuildParagraphText(BuiltInParagraphModel paragraph)
-    {
-        var builder = new StringBuilder();
-        foreach (var inline in paragraph.Inlines)
-        {
-            switch (inline)
-            {
-                case BuiltInTextModel text:
-                    builder.Append(text.Text);
-                    break;
-                case BuiltInTabModel:
-                    builder.Append('\t');
-                    break;
-                case BuiltInBreakModel { IsPageBreak: false }:
-                    builder.Append('\n');
-                    break;
-                case BuiltInImageModel:
-                    builder.Append("[image]");
-                    break;
-                case BuiltInPageNumberModel:
-                    builder.Append('1');
-                    break;
-            }
-        }
-
-        return builder.ToString();
-    }
-
-    private static bool ContainsPageBreak(BuiltInParagraphModel paragraph)
-    {
-        return paragraph.Inlines.OfType<BuiltInBreakModel>().Any(breakModel => breakModel.IsPageBreak);
-    }
-
-    private static IEnumerable<(string Text, bool IsBreak)> SplitByPageBreak(BuiltInParagraphModel paragraph)
-    {
-        var buffer = new StringBuilder();
-        foreach (var inline in paragraph.Inlines)
-        {
-            switch (inline)
-            {
-                case BuiltInTextModel text:
-                    buffer.Append(text.Text);
-                    break;
-                case BuiltInTabModel:
-                    buffer.Append('\t');
-                    break;
-                case BuiltInBreakModel { IsPageBreak: true }:
-                    yield return (buffer.ToString(), true);
-                    buffer.Clear();
-                    break;
-                case BuiltInBreakModel:
-                    buffer.Append('\n');
-                    break;
-                case BuiltInImageModel:
-                    buffer.Append("[image]");
-                    break;
-                case BuiltInPageNumberModel:
-                    buffer.Append('1');
-                    break;
-            }
-        }
-
-        yield return (buffer.ToString(), false);
     }
 
     private static IReadOnlyList<double> ResolveColumnWidths(BuiltInTableModel table, double contentWidth)
@@ -664,23 +546,7 @@ internal sealed class BuiltInOfdRenderer
         return Enumerable.Repeat(width, count).ToList();
     }
 
-    private string ResolveParagraphFont(BuiltInParagraphModel paragraph)
-    {
-        string? family = null;
-        var bold = false;
-        foreach (var text in paragraph.Inlines.OfType<BuiltInTextModel>())
-        {
-            bold |= text.Format.Bold;
-            if (family is null && !string.IsNullOrWhiteSpace(text.Format.FontFamily))
-            {
-                family = text.Format.FontFamily;
-            }
-        }
-
-        return NormalizeFontFamily(family, bold);
-    }
-
-    private string NormalizeFontFamily(string? family, bool bold)
+    private string NormalizeFontFamily(string? family)
     {
         var resolved = string.IsNullOrWhiteSpace(family)
             ? ResolveFallbackFont()
@@ -715,48 +581,7 @@ internal sealed class BuiltInOfdRenderer
             resolved = "FangSong";
         }
 
-        if (bold)
-        {
-            // Prefer a real bold CJK face so title/header weight is visible.
-            if (resolved.Equals("SimSun", StringComparison.OrdinalIgnoreCase) ||
-                resolved.Equals("宋体", StringComparison.OrdinalIgnoreCase))
-            {
-                return "SimHei";
-            }
-
-            if (resolved.Equals("Microsoft YaHei", StringComparison.OrdinalIgnoreCase))
-            {
-                return "Microsoft YaHei";
-            }
-        }
-
         return resolved;
-    }
-
-    private static double ResolveParagraphFontSize(BuiltInParagraphModel paragraph)
-    {
-        foreach (var text in paragraph.Inlines.OfType<BuiltInTextModel>())
-        {
-            if (text.Format.FontSizePoints is double size && size > 0)
-            {
-                return size;
-            }
-        }
-
-        return DefaultFontSizePoints;
-    }
-
-    private static string? ResolveParagraphColor(BuiltInParagraphModel paragraph)
-    {
-        foreach (var text in paragraph.Inlines.OfType<BuiltInTextModel>())
-        {
-            if (!string.IsNullOrWhiteSpace(text.Format.ColorHex))
-            {
-                return text.Format.ColorHex;
-            }
-        }
-
-        return null;
     }
 
     private string ResolveFallbackFont()
@@ -770,7 +595,7 @@ internal sealed class BuiltInOfdRenderer
                 if (!string.IsNullOrWhiteSpace(family) &&
                     family.Equals(preferred, StringComparison.OrdinalIgnoreCase))
                 {
-                    return NormalizeFontFamily(family, bold: false);
+                    return NormalizeFontFamily(family);
                 }
             }
         }
@@ -779,37 +604,11 @@ internal sealed class BuiltInOfdRenderer
         {
             if (!string.IsNullOrWhiteSpace(family))
             {
-                return NormalizeFontFamily(family, bold: false);
+                return NormalizeFontFamily(family);
             }
         }
 
         return "SimSun";
-    }
-
-    private static void EnsureFontResources(OfdDocumentPackage package)
-    {
-        var declared = new HashSet<string>(
-            package.Fonts.Select(font => font.FontName),
-            StringComparer.OrdinalIgnoreCase);
-        foreach (var fontName in package.Pages
-                     .SelectMany(page => page.Elements)
-                     .OfType<OfdTextElement>()
-                     .Select(text => text.FontName)
-                     .Where(name => !string.IsNullOrWhiteSpace(name))
-                     .Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            if (!declared.Add(fontName))
-            {
-                continue;
-            }
-
-            package.Fonts.Add(new OfdFontResource
-            {
-                FontName = fontName,
-                FamilyName = fontName,
-                Charset = "unicode"
-            });
-        }
     }
 
     private static OfdColor ParseColor(string? hex)
@@ -832,29 +631,6 @@ internal sealed class BuiltInOfdRenderer
         return OfdColor.Black;
     }
 
-    private static void AddRectangle(OfdPage page, double x, double y, double width, double height)
-    {
-        page.Elements.Add(new OfdPathElement
-        {
-            LayerType = "Body",
-            XMillimeters = x,
-            YMillimeters = y,
-            WidthMillimeters = width,
-            HeightMillimeters = height,
-            LineWidthMillimeters = BorderWidthMillimeters,
-            Stroke = true,
-            Fill = false,
-            StrokeColor = OfdColor.Black,
-            AbbreviatedData = string.Format(
-                CultureInfo.InvariantCulture,
-                "M {0:0.###} {1:0.###} L {2:0.###} {1:0.###} L {2:0.###} {3:0.###} L {0:0.###} {3:0.###} C",
-                0d,
-                0d,
-                width,
-                height)
-        });
-    }
-
     private void EnsureVerticalSpace(OfdDocumentPackage package, LayoutState state, double needed)
     {
         if (state.Page is null || state.Y + needed > state.ContentBottom)
@@ -865,8 +641,82 @@ internal sealed class BuiltInOfdRenderer
 
     private void StartNewPage(OfdDocumentPackage package, LayoutState state)
     {
+        if (package.Pages.Count >= _options.MaxPageCount)
+            throw new InvalidDataException("DOCX exceeds the configured rendered page limit.");
         state.Page = CreatePage(package, state.Section);
+        state.PageNumber = state.FirstPageNumber + state.SectionPageIndex;
+        _lastPageNumber = state.PageNumber;
+        var headers = state.Section.GetHeaders(state.SectionPageIndex, state.PageNumber);
+        var footers = state.Section.GetFooters(state.SectionPageIndex, state.PageNumber);
+        var header = LayoutDecoration(headers, state.ContentWidth, state.PageNumber, _options.MaxPageCount, _options.MaxPageCount);
+        var footer = LayoutDecoration(footers, state.ContentWidth, state.PageNumber, _options.MaxPageCount, _options.MaxPageCount);
+        var headerBottom = PointsToMillimeters(state.Section.HeaderDistancePoints) + header.Height;
+        var footerTop = state.Page.HeightMillimeters - PointsToMillimeters(state.Section.FooterDistancePoints) - footer.Height;
+        state.ContentTop = Math.Max(PointsToMillimeters(state.Section.MarginTopPoints), headers.Count > 0 ? headerBottom + 1 : 0);
+        state.ContentBottom = Math.Min(state.Page.HeightMillimeters - PointsToMillimeters(state.Section.MarginBottomPoints), footers.Count > 0 ? footerTop - 1 : state.Page.HeightMillimeters);
+        if (state.ContentBottom <= state.ContentTop)
+            throw new InvalidDataException("DOCX headers and footers leave no usable body area.");
+        _decorations.Add(new PageDecoration(state.Page, state.Section, state.SectionPageIndex, state.PageNumber));
+        state.SectionPageIndex++;
         state.Y = state.ContentTop;
+        state.HasBodyContent = false;
+    }
+
+    private DecorationLayout LayoutDecoration(IEnumerable<BuiltInParagraphModel> paragraphs, double width, int pageNumber, int totalPages, int sectionPages)
+    {
+        var result = new DecorationLayout();
+        foreach (var paragraph in paragraphs)
+        {
+            result.Height += PointsToMillimeters(paragraph.Format.SpaceBeforePoints ?? 0);
+            var left = PointsToMillimeters(paragraph.Format.LeftIndentPoints ?? 0);
+            var lineWidth = Math.Max(1, width - left - PointsToMillimeters(paragraph.Format.RightIndentPoints ?? 0));
+            foreach (var line in LayoutParagraph(paragraph, lineWidth, PointsToMillimeters(paragraph.Format.FirstLineIndentPoints ?? 0), pageNumber, totalPages, sectionPages))
+            {
+                if (line.PageBreak) continue;
+                result.Lines.Add((line, left, result.Height, lineWidth));
+                result.Height += line.Height;
+            }
+            result.Height += PointsToMillimeters(paragraph.Format.SpaceAfterPoints ?? 0);
+        }
+        return result;
+    }
+
+    private void RenderDecorations(OfdDocumentPackage package)
+    {
+        var sectionCounts = _decorations.GroupBy(value => value.Section).ToDictionary(group => group.Key, group => group.Count());
+        foreach (var decoration in _decorations)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            var section = decoration.Section;
+            var page = decoration.Page;
+            var width = PointsToMillimeters(section.PageWidthPoints - section.MarginLeftPoints - section.MarginRightPoints);
+            var left = PointsToMillimeters(section.MarginLeftPoints);
+            var header = LayoutDecoration(section.GetHeaders(decoration.SectionPageIndex, decoration.PageNumber), width,
+                decoration.PageNumber, package.Pages.Count, sectionCounts[section]);
+            var footer = LayoutDecoration(section.GetFooters(decoration.SectionPageIndex, decoration.PageNumber), width,
+                decoration.PageNumber, package.Pages.Count, sectionCounts[section]);
+            foreach (var item in header.Lines)
+                DrawLine(package, page, item.Line, left + item.Left, PointsToMillimeters(section.HeaderDistancePoints) + item.Top, item.Width);
+            foreach (var item in footer.Lines)
+                DrawLine(package, page, item.Line, left + item.Left,
+                    page.HeightMillimeters - PointsToMillimeters(section.FooterDistancePoints) - footer.Height + item.Top, item.Width);
+        }
+    }
+
+    private sealed class PageDecoration
+    {
+        internal PageDecoration(OfdPage page, BuiltInSectionModel section, int sectionPageIndex, int pageNumber)
+        { Page = page; Section = section; SectionPageIndex = sectionPageIndex; PageNumber = pageNumber; }
+        internal OfdPage Page { get; }
+        internal BuiltInSectionModel Section { get; }
+        internal int SectionPageIndex { get; }
+        internal int PageNumber { get; }
+    }
+
+    private sealed class DecorationLayout
+    {
+        internal double Height { get; set; }
+        internal List<(StyledLine Line, double Left, double Top, double Width)> Lines { get; } = new();
     }
 
     private void EnsurePage(OfdDocumentPackage package, LayoutState state)
@@ -896,9 +746,10 @@ internal sealed class BuiltInOfdRenderer
 
     private sealed class LayoutState
     {
-        internal LayoutState(BuiltInSectionModel section)
+        internal LayoutState(BuiltInSectionModel section, int firstPageNumber)
         {
             Section = section;
+            FirstPageNumber = firstPageNumber;
             ContentLeft = PointsToMillimeters(section.MarginLeftPoints);
             ContentTop = PointsToMillimeters(section.MarginTopPoints);
             ContentBottom = PointsToMillimeters(section.PageHeightPoints - section.MarginBottomPoints);
@@ -910,12 +761,16 @@ internal sealed class BuiltInOfdRenderer
         internal BuiltInSectionModel Section { get; }
 
         internal OfdPage? Page { get; set; }
+        internal int FirstPageNumber { get; }
+        internal int PageNumber { get; set; }
+        internal int SectionPageIndex { get; set; }
+        internal bool HasBodyContent { get; set; }
 
         internal double ContentLeft { get; }
 
-        internal double ContentTop { get; }
+        internal double ContentTop { get; set; }
 
-        internal double ContentBottom { get; }
+        internal double ContentBottom { get; set; }
 
         internal double ContentWidth { get; }
 
@@ -927,7 +782,7 @@ internal sealed class BuiltInOfdRenderer
         internal CellLayout(
             int columnSpan,
             double height,
-            List<TextLine> lines,
+            List<StyledLine> lines,
             BuiltInVerticalAlignment verticalAlignment)
         {
             ColumnSpan = columnSpan;
@@ -940,39 +795,9 @@ internal sealed class BuiltInOfdRenderer
 
         internal double Height { get; }
 
-        internal List<TextLine> Lines { get; }
+        internal List<StyledLine> Lines { get; }
 
         internal BuiltInVerticalAlignment VerticalAlignment { get; }
     }
 
-    private sealed class TextLine
-    {
-        internal TextLine(
-            string text,
-            string fontName,
-            double fontSizeMillimeters,
-            double lineHeight,
-            OfdColor color,
-            BuiltInParagraphAlignment alignment)
-        {
-            Text = text;
-            FontName = fontName;
-            FontSizeMillimeters = fontSizeMillimeters;
-            LineHeight = lineHeight;
-            Color = color;
-            Alignment = alignment;
-        }
-
-        internal string Text { get; }
-
-        internal string FontName { get; }
-
-        internal double FontSizeMillimeters { get; }
-
-        internal double LineHeight { get; }
-
-        internal OfdColor Color { get; }
-
-        internal BuiltInParagraphAlignment Alignment { get; }
-    }
 }

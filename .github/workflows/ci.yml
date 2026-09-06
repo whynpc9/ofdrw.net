@@ -25,11 +25,21 @@ jobs:
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln
 
+      - name: Test package artifact validation
+        run: python3 -m unittest discover -s scripts/tests -v
+
       - name: Build
         run: dotnet build Ofdrw.Net.sln -c Release --no-restore
 
       - name: Test
-        run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal
+        run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: artifacts/test-results
 
   builtin-docx:
     name: BuiltIn DOCX (${{ matrix.os }})
@@ -52,7 +62,7 @@ jobs:
         run: dotnet restore tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Test BuiltIn without office applications
-        run: dotnet test tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~BuiltIn|FullyQualifiedName~Auto" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+        run: dotnet test tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~BuiltIn|FullyQualifiedName~Auto|FullyQualifiedName~Native|FullyQualifiedName~DualLayer" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Restore CLI for real Auto fallback probe
         if: matrix.os == 'ubuntu-latest'
@@ -84,3 +94,10 @@ jobs:
 
       - name: Run package E2E
         run: ./scripts/run-converter-package-e2e.sh
+
+      - name: Upload package manifests and rendered pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-e2e-pages
+          path: artifacts/package-e2e

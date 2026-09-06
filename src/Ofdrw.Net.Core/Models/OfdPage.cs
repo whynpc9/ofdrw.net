@@ -4,6 +4,9 @@ namespace Ofdrw.Net.Core.Models;
 
 public sealed class OfdPage
 {
+    /// <summary>Original package entry for this page; retained when editing to preserve relative references.</summary>
+    public string? SourceEntryPath { get; set; }
+
     public string? Id { get; set; }
 
     public int Index { get; set; }
