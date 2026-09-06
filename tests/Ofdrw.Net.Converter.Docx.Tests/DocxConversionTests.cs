@@ -17,7 +17,7 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 /// <summary>
 /// Covers the generated, non-sensitive DOCX conversion fixture.
 /// </summary>
-public sealed class DocxConversionTests
+public sealed partial class DocxConversionTests
 {
     /// <summary>
     /// Verifies the in-process renderer without invoking Word or LibreOffice.
@@ -135,6 +135,81 @@ public sealed class DocxConversionTests
         Assert.Equal(ReadExpectedSourceText(), CompactExtractedText(package));
         Assert.Contains(package.Pages, page => page.Elements.OfType<OfdPathElement>().Any() ||
             page.Elements.OfType<OfdTextElement>().Select(text => text.XMillimeters).Distinct().Count() > 1);
+    }
+
+    private static (int, int, int) Rgb(OfdColor color) => (color.Red, color.Green, color.Blue);
+
+    [Fact]
+    public async Task Native_ShouldPreserveVisualStylesAndProportionalAdvances()
+    {
+        await using var input = File.OpenRead(ResolveGeneratedSample());
+        await using var output = new MemoryStream();
+        await new DocxToOfdConverter().ConvertAsync(input, output);
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal(2, package.Pages.Count);
+        var text = package.Pages.SelectMany(p => p.Elements).OfType<OfdTextElement>().ToList();
+        var normal = Assert.Single(text, t => t.Text == "第二页用于确认分页保持稳定。");
+        var emphasized = Assert.Single(text, t => t.Text.Contains("这段文字应为红色粗体。"));
+        Assert.Equal(OfdColor.Black, normal.FillColor);
+        Assert.False(package.Fonts.Single(f => f.FontName == normal.FontName).Bold);
+        Assert.Equal((192, 0, 0), Rgb(emphasized.FillColor));
+        Assert.True(package.Fonts.Single(f => f.FontName == emphasized.FontName).Bold);
+        Assert.Equal(normal.YMillimeters, emphasized.YMillimeters);
+        Assert.True(emphasized.XMillimeters >= normal.XMillimeters + normal.WidthMillimeters - 0.002);
+        var subtitle = Assert.Single(text, t => t.Text.Contains("Generated DOCX"));
+        Assert.True(package.Fonts.Single(f => f.FontName == subtitle.FontName).Italic);
+        Assert.All(package.Fonts, font => Assert.NotEmpty(font.Data));
+        var paths = package.Pages[0].Elements.OfType<OfdPathElement>().ToList();
+        Assert.Equal(3, paths.Count(p => p.Fill && p.FillColor is not null && Rgb(p.FillColor) == (217, 234, 247)));
+        Assert.Contains(paths, p => p.Stroke && Rgb(p.StrokeColor) == (68, 114, 196));
+        Assert.Contains(paths, p => p.Stroke && Rgb(p.StrokeColor) == (165, 165, 165));
+        var alpha = Assert.Single(text, t => t.Text == "Alpha");
+        var advances = alpha.Runs.Single().DeltaX!.Split(' ').Select(v => double.Parse(v, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        Assert.True(advances[0] > advances[1], "Proportional A must be wider than l.");
+        Assert.Contains(text, t => t.Text.Contains("information"));
+        Assert.Equal(ReadExpectedSourceText(), CompactExtractedText(package));
+
+        // Exercise the actual OFD -> PDF path, including embedded fallback face simulation.
+        output.Position = 0;
+        await using var pdfOutput = new MemoryStream();
+        await new Ofdrw.Net.Converter.Pdf.Converters.OfdToPdfConverter().ConvertAsync(output, pdfOutput);
+        pdfOutput.Position = 0;
+        using var pdf = PdfPigDocument.Open(pdfOutput);
+        Assert.Equal(2, pdf.NumberOfPages);
+        Assert.Equal(1, pdf.GetPage(1).Letters.Count(letter => letter.Value == "档"));
+        Assert.Equal(1, pdf.GetPage(2).Letters.Count(letter => letter.Value == "红"));
+        Assert.Contains("Generated", pdf.GetPage(1).Text);
+        var italicGlyph = pdf.GetPage(1).Letters.First(letter => letter.Value == "G").BoundingBox;
+        Assert.True(italicGlyph.TopLeft.X > italicGlyph.BottomLeft.X + 0.1,
+            "The italic subtitle must be visibly slanted after OFD -> PDF export.");
+    }
+
+    [Fact]
+    public async Task Native_ShouldKeepMixedSizesAndCellBorderOverrides()
+    {
+        await using var input = CreateMinimalDocx("""
+            <w:p><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t>Small</w:t></w:r><w:r><w:rPr><w:sz w:val="40"/><w:i/></w:rPr><w:t>Large</w:t></w:r><w:r><w:t>Normal</w:t></w:r></w:p>
+            <w:tbl><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="8" w:color="0000FF"/><w:bottom w:val="single" w:sz="8" w:color="0000FF"/><w:left w:val="single"/><w:right w:val="single"/></w:tblBorders></w:tblPr>
+            <w:tblGrid><w:gridCol w:w="6000"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcBorders><w:top w:val="nil"/><w:bottom w:val="single" w:sz="16" w:color="FF0000"/></w:tcBorders></w:tcPr><w:p><w:r><w:t>Plain</w:t></w:r><w:r><w:rPr><w:b/><w:color w:val="008000"/></w:rPr><w:t>Green</w:t></w:r></w:p></w:tc></w:tr></w:tbl>
+            """);
+        await using var output = new MemoryStream();
+        await new DocxToOfdConverter().ConvertAsync(input, output);
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        var texts = package.Pages[0].Elements.OfType<OfdTextElement>().ToList();
+        var small = texts.Single(t => t.Text == "Small");
+        var large = texts.Single(t => t.Text == "Large");
+        Assert.InRange(large.FontSizeMillimeters / small.FontSizeMillimeters, 1.99, 2.01);
+        Assert.Equal(small.YMillimeters + small.Runs.Single().YMillimeters,
+            large.YMillimeters + large.Runs.Single().YMillimeters);
+        Assert.True(package.Fonts.Single(f => f.FontName == large.FontName).Italic);
+        Assert.Equal(OfdColor.Black, texts.Single(t => t.Text == "Plain").FillColor);
+        Assert.Equal((0, 128, 0), Rgb(texts.Single(t => t.Text == "Green").FillColor));
+        var borders = package.Pages[0].Elements.OfType<OfdPathElement>().Where(p => p.Stroke).ToList();
+        Assert.Equal(3, borders.Count);
+        var red = Assert.Single(borders, p => Rgb(p.StrokeColor) == (255, 0, 0));
+        Assert.InRange(red.LineWidthMillimeters, 0.705, 0.707);
     }
 
     /// <summary>

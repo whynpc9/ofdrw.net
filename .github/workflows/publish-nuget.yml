@@ -33,7 +33,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Install document conversion dependencies
-        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils
+        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils imagemagick librsvg2-bin
 
       - name: Resolve version from tag
         shell: bash
@@ -57,18 +57,19 @@ jobs:
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal
 
       - name: Pack SDK packages
-        run: |
-          dotnet pack src/Ofdrw.Net.Core/Ofdrw.Net.Core.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Converter.Abstractions/Ofdrw.Net.Converter.Abstractions.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Converter.Svg/Ofdrw.Net.Converter.Svg.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Signatures/Ofdrw.Net.Signatures.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Converter/Ofdrw.Net.Converter.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
-          dotnet pack src/Ofdrw.Net.Cli/Ofdrw.Net.Cli.csproj -c Release --no-build -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }}
+        run: dotnet pack Ofdrw.Net.sln -c Release --no-build --no-restore -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }} --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Consume the exact release artifacts
+        run: ./scripts/run-converter-package-e2e.sh "${{ env.PACKAGE_VERSION }}" --consume-only --packages-dir artifacts/nuget --output-dir artifacts/release-validation
+
+      - name: Upload package manifest and validation pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-validation
+          path: |
+            artifacts/release-validation
+            artifacts/nuget/package-manifest.json
 
       - name: List artifacts
         run: ls -lh artifacts/nuget
@@ -76,6 +77,7 @@ jobs:
       - name: Publish packages and symbols
         shell: bash
         run: |
+          python3 scripts/verify-package-artifacts.py artifacts/nuget "${{ env.PACKAGE_VERSION }}" --verify-manifest
           shopt -s nullglob
           for package in artifacts/nuget/*.nupkg; do
             if [[ "$package" == *.snupkg ]]; then

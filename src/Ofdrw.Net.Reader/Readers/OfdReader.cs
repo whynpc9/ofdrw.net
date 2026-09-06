@@ -19,7 +19,16 @@ public sealed class OfdReader : IOfdReader
 
     public async Task<OfdDocumentPackage> ReadAsync(Stream ofdStream, CancellationToken cancellationToken = default)
     {
-        var archive = await _loader.LoadAsync(ofdStream, cancellationToken).ConfigureAwait(false);
+        return await ReadAsync(ofdStream, new OfdPackageLoadOptions(), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Reads an OFD with explicit compressed and expanded resource budgets.</summary>
+    public async Task<OfdDocumentPackage> ReadAsync(
+        Stream ofdStream,
+        OfdPackageLoadOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        var archive = await _loader.LoadAsync(ofdStream, options, cancellationToken).ConfigureAwait(false);
         var package = new OfdDocumentPackage();
         foreach (var entryName in archive.EntryNames)
         {
@@ -37,6 +46,7 @@ public sealed class OfdReader : IOfdReader
             .FirstOrDefault() ?? "Doc_0/Document.xml";
 
         package.Options.DocType = docType;
+        package.DocumentEntryPath = docRoot;
         package.Options.Namespace = ofdNs.NamespaceName;
         package.Options.DocumentId = docRoot.Split('/')[0];
 
@@ -110,44 +120,7 @@ public sealed class OfdReader : IOfdReader
             var publicResPath = Resolve(docRoot, publicResLoc!);
             if (archive.Contains(publicResPath))
             {
-                var publicResXml = XDocument.Parse(archive.ReadUtf8Text(publicResPath));
-                var publicResNs = publicResXml.Root?.Name.Namespace ?? docNs;
-                foreach (var font in publicResXml.Descendants(publicResNs + "Font"))
-                {
-                    var id = font.Attribute("ID")?.Value;
-                    var name = font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value;
-                    if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(name))
-                    {
-                        fontMap[id!] = name!;
-                        var fontFile = font.Elements()
-                            .FirstOrDefault(element => element.Name.LocalName == "FontFile")?.Value;
-                        var fontResource = new OfdFontResource
-                        {
-                            Id = id!,
-                            FontName = name!,
-                            FamilyName = font.Attribute("FamilyName")?.Value,
-                            Charset = font.Attribute("Charset")?.Value,
-                            Bold = ParseBoolean(font.Attribute("Bold")?.Value, false),
-                            Italic = ParseBoolean(font.Attribute("Italic")?.Value, false),
-                            FileName = fontFile
-                        };
-                        if (!string.IsNullOrWhiteSpace(fontFile))
-                        {
-                            var baseLoc = publicResXml.Root?.Attribute("BaseLoc")?.Value;
-                            var fontLoc = string.IsNullOrWhiteSpace(baseLoc) ||
-                                fontFile!.StartsWith("/", StringComparison.Ordinal)
-                                ? fontFile!
-                                : $"{baseLoc!.TrimEnd('/')}/{fontFile.TrimStart('/')}";
-                            var fontPath = Resolve(publicResPath, fontLoc);
-                            if (archive.TryGetBytes(fontPath, out var fontBytes))
-                            {
-                                fontResource.Data = fontBytes;
-                            }
-                        }
-
-                        package.Fonts.Add(fontResource);
-                    }
-                }
+                ReadFonts(archive, publicResPath, package, fontMap);
             }
         }
 
@@ -157,6 +130,7 @@ public sealed class OfdReader : IOfdReader
         {
             var documentResPath = Resolve(docRoot, documentResLoc!);
             ReadMediaResources(archive, documentResPath, docNs, documentMediaMap, documentMediaTypeMap);
+            ReadFonts(archive, documentResPath, package, fontMap);
         }
 
         var templateLocations = commonData?.Elements()
@@ -180,10 +154,15 @@ public sealed class OfdReader : IOfdReader
                 BaseLoc = x.Attribute("BaseLoc")?.Value
             })
             .Where(x => !string.IsNullOrWhiteSpace(x.BaseLoc))
+            .Take(options.MaxPageCount == int.MaxValue ? int.MaxValue : options.MaxPageCount + 1)
             .ToList() ?? [];
+
+        if (pages.Count > options.MaxPageCount)
+            throw new InvalidDataException("OFD document exceeds the configured page count limit.");
 
         foreach (var pageRef in pages)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var contentPath = Resolve(docRoot, pageRef.BaseLoc!);
             var pageXml = XDocument.Parse(archive.ReadUtf8Text(contentPath));
             var pageNs = pageXml.Root?.Name.Namespace ?? docNs;
@@ -194,6 +173,7 @@ public sealed class OfdReader : IOfdReader
 
             var page = new OfdPage
             {
+                SourceEntryPath = contentPath,
                 Id = pageRef.Id,
                 Index = pageRef.Index,
                 XMillimeters = box.w > 0 ? box.x : defaultPageBox.x,
@@ -218,6 +198,7 @@ public sealed class OfdReader : IOfdReader
             if (archive.Contains(pageResPath))
             {
                 ReadMediaResources(archive, pageResPath, docNs, mediaMap, mediaTypeMap);
+                ReadFonts(archive, pageResPath, package, fontMap);
             }
 
             foreach (var element in ParsePageObjects(
@@ -252,6 +233,7 @@ public sealed class OfdReader : IOfdReader
                 var templateMediaMap = new Dictionary<string, string>(documentMediaMap, StringComparer.OrdinalIgnoreCase);
                 var templateMediaTypeMap = new Dictionary<string, string>(documentMediaTypeMap, StringComparer.OrdinalIgnoreCase);
                 ReadMediaResources(archive, templateResPath, docNs, templateMediaMap, templateMediaTypeMap);
+                ReadFonts(archive, templateResPath, package, fontMap);
 
                 var template = new OfdTemplateContent
                 {
@@ -351,6 +333,38 @@ public sealed class OfdReader : IOfdReader
         }
 
         return package;
+    }
+
+    private static void ReadFonts(
+        OfdPackageArchive archive, string resourcePath, OfdDocumentPackage package,
+        IDictionary<string, string> fontMap)
+    {
+        if (!archive.Contains(resourcePath)) return;
+        var xml = XDocument.Parse(archive.ReadUtf8Text(resourcePath));
+        var baseLocation = xml.Root?.Attribute("BaseLoc")?.Value;
+        foreach (var font in xml.Descendants().Where(node => node.Name.LocalName == "Font"))
+        {
+            var id = font.Attribute("ID")?.Value;
+            var name = font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value;
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name)) continue;
+            fontMap[id!] = name!;
+            if (package.Fonts.Any(existing => existing.Id == id)) continue;
+            var file = font.Elements().FirstOrDefault(node => node.Name.LocalName == "FontFile")?.Value;
+            var resource = new OfdFontResource
+            {
+                Id = id!, FontName = name!, FamilyName = font.Attribute("FamilyName")?.Value,
+                Charset = font.Attribute("Charset")?.Value,
+                Bold = ParseBoolean(font.Attribute("Bold")?.Value, false),
+                Italic = ParseBoolean(font.Attribute("Italic")?.Value, false), FileName = file
+            };
+            if (!string.IsNullOrWhiteSpace(file))
+            {
+                var reference = string.IsNullOrWhiteSpace(baseLocation) || file!.StartsWith("/", StringComparison.Ordinal)
+                    ? file! : baseLocation!.TrimEnd('/') + "/" + file;
+                if (archive.TryGetBytes(Resolve(resourcePath, reference), out var bytes)) resource.Data = bytes;
+            }
+            package.Fonts.Add(resource);
+        }
     }
 
     private static void ReadMediaResources(
@@ -463,6 +477,9 @@ public sealed class OfdReader : IOfdReader
                         WidthMillimeters = boundary.w,
                         HeightMillimeters = boundary.h,
                         ResourceId = resourceId,
+                        Transform = ParseMatrix(node.Attribute("CTM")?.Value),
+                        Alpha = (int)Math.Max(0, Math.Min(255, ParseDouble(node.Attribute("Alpha")?.Value, 255))),
+                        ClipsXml = node.Elements().FirstOrDefault(child => child.Name.LocalName == "Clips")?.ToString(SaveOptions.DisableFormatting),
                         MediaType = mediaTypeMap.TryGetValue(resourceId, out var mediaType) ? mediaType : "image/png",
                         SourceXml = node.ToString(SaveOptions.DisableFormatting)
                     };

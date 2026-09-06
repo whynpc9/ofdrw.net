@@ -46,14 +46,20 @@ internal sealed class BuiltInPdfRenderer
         }
 
         var document = new Document();
+        MigraSection? lastSection = null;
 
         foreach (var sourceSection in source.Sections)
         {
             _cancellationToken.ThrowIfCancellationRequested();
             var section = document.AddSection();
+            lastSection = section;
             ApplyPageSetup(section, sourceSection);
             RenderHeaderFooter(section.Headers.Primary, sourceSection.Headers);
             RenderHeaderFooter(section.Footers.Primary, sourceSection.Footers);
+            RenderHeaderFooter(section.Headers.FirstPage, sourceSection.FirstHeaders);
+            RenderHeaderFooter(section.Footers.FirstPage, sourceSection.FirstFooters);
+            RenderHeaderFooter(section.Headers.EvenPage, sourceSection.EvenHeaders);
+            RenderHeaderFooter(section.Footers.EvenPage, sourceSection.EvenFooters);
 
             foreach (var block in sourceSection.Blocks)
             {
@@ -72,7 +78,18 @@ internal sealed class BuiltInPdfRenderer
 
         if (source.Sections.Count == 0)
         {
-            document.AddSection().AddParagraph(string.Empty);
+            lastSection = document.AddSection();
+            lastSection.AddParagraph(string.Empty);
+        }
+
+        foreach (var note in source.SupplementalText)
+        {
+            RenderSectionParagraph(lastSection!, note.CreateHeading());
+            foreach (var block in note.Blocks)
+            {
+                if (block is BuiltInParagraphModel paragraph) RenderSectionParagraph(lastSection!, paragraph);
+                else if (block is BuiltInTableModel table) RenderTable(lastSection!, table);
+            }
         }
 
         var renderer = new PdfDocumentRenderer(true)
@@ -83,46 +100,16 @@ internal sealed class BuiltInPdfRenderer
         _cancellationToken.ThrowIfCancellationRequested();
         renderer.RenderDocument();
         _cancellationToken.ThrowIfCancellationRequested();
+        if (renderer.PdfDocument.PageCount > _options.MaxPageCount)
+            throw new InvalidDataException("DOCX exceeds the configured rendered page limit.");
         renderer.PdfDocument.Save(outputPath);
     }
 
+    private DocxFontCatalog _configuredFonts = null!;
+
     private void RegisterConfiguredFonts()
     {
-        foreach (var directory in _options.FontDirectories)
-        {
-            _cancellationToken.ThrowIfCancellationRequested();
-            if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
-            {
-                _diagnostics.Add(new DocxConversionDiagnostic(
-                    "DOCX_FONT_DIRECTORY_MISSING",
-                    "A configured BuiltIn font directory does not exist."));
-                continue;
-            }
-
-            foreach (var path in Directory.EnumerateFiles(directory))
-            {
-                _cancellationToken.ThrowIfCancellationRequested();
-                var extension = Path.GetExtension(path);
-                if (!extension.Equals(".ttf", StringComparison.OrdinalIgnoreCase) &&
-                    !extension.Equals(".otf", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    PdfFontRegistry.RegisterFont(
-                        Path.GetFileNameWithoutExtension(path),
-                        File.ReadAllBytes(path));
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    _diagnostics.Add(new DocxConversionDiagnostic(
-                        "DOCX_FONT_LOAD_FAILED",
-                        "A configured font file could not be loaded."));
-                }
-            }
-        }
+        _configuredFonts = new DocxFontCatalog(_options, _diagnostics, _cancellationToken);
     }
 
     private static void ApplyPageSetup(MigraSection target, BuiltInSectionModel source)
@@ -136,6 +123,11 @@ internal sealed class BuiltInPdfRenderer
         target.PageSetup.RightMargin = Unit.FromPoint(source.MarginRightPoints);
         target.PageSetup.BottomMargin = Unit.FromPoint(source.MarginBottomPoints);
         target.PageSetup.LeftMargin = Unit.FromPoint(source.MarginLeftPoints);
+        target.PageSetup.HeaderDistance = Unit.FromPoint(source.HeaderDistancePoints);
+        target.PageSetup.FooterDistance = Unit.FromPoint(source.FooterDistancePoints);
+        target.PageSetup.DifferentFirstPageHeaderFooter = source.DifferentFirstPage;
+        target.PageSetup.OddAndEvenPagesHeaderFooter = source.DifferentOddAndEvenPages;
+        if (source.PageNumberStart is int start) target.PageSetup.StartingNumber = start;
     }
 
     private void RenderHeaderFooter(
@@ -191,8 +183,10 @@ internal sealed class BuiltInPdfRenderer
                 case BuiltInImageModel image:
                     AddImage(target, image);
                     break;
-                case BuiltInPageNumberModel:
-                    target.AddPageField();
+                case BuiltInPageNumberModel field:
+                    if (field.Kind == BuiltInPageFieldKind.TotalPages) target.AddNumPagesField();
+                    else if (field.Kind == BuiltInPageFieldKind.SectionPages) target.AddSectionPagesField();
+                    else target.AddPageField();
                     break;
             }
         }
@@ -261,7 +255,7 @@ internal sealed class BuiltInPdfRenderer
 
         if (!string.IsNullOrWhiteSpace(family))
         {
-            formatted.Font.Name = family;
+            formatted.Font.Name = _configuredFonts.Resolve(family!, source.Format.Bold, source.Format.Italic);
         }
 
         if (source.Format.FontSizePoints is double size)

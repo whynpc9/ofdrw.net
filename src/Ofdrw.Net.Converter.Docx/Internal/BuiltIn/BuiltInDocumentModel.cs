@@ -5,6 +5,23 @@ namespace Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 internal sealed class BuiltInDocumentModel
 {
     internal IList<BuiltInSectionModel> Sections { get; } = new List<BuiltInSectionModel>();
+    internal IList<BuiltInSupplementalText> SupplementalText { get; } = new List<BuiltInSupplementalText>();
+}
+
+internal sealed class BuiltInSupplementalText
+{
+    internal string Kind { get; set; } = string.Empty;
+    internal string Id { get; set; } = string.Empty;
+    internal IList<BuiltInBlockModel> Blocks { get; } = new List<BuiltInBlockModel>();
+
+    internal BuiltInParagraphModel CreateHeading()
+    {
+        var heading = new BuiltInParagraphModel();
+        heading.Format.SpaceBeforePoints = 6;
+        heading.Format.SpaceAfterPoints = 3;
+        heading.Inlines.Add(new BuiltInTextModel { Text = $"[{Kind} {Id}]", Format = { Bold = true, FontSizePoints = 9 } });
+        return heading;
+    }
 }
 
 internal sealed class BuiltInSectionModel
@@ -15,9 +32,26 @@ internal sealed class BuiltInSectionModel
     internal double MarginRightPoints { get; set; } = 72;
     internal double MarginBottomPoints { get; set; } = 72;
     internal double MarginLeftPoints { get; set; } = 72;
+    internal double HeaderDistancePoints { get; set; } = 36;
+    internal double FooterDistancePoints { get; set; } = 36;
+    internal bool DifferentFirstPage { get; set; }
+    internal bool DifferentOddAndEvenPages { get; set; }
+    internal int? PageNumberStart { get; set; }
     internal IList<BuiltInBlockModel> Blocks { get; } = new List<BuiltInBlockModel>();
     internal IList<BuiltInParagraphModel> Headers { get; } = new List<BuiltInParagraphModel>();
     internal IList<BuiltInParagraphModel> Footers { get; } = new List<BuiltInParagraphModel>();
+    internal IList<BuiltInParagraphModel> FirstHeaders { get; } = new List<BuiltInParagraphModel>();
+    internal IList<BuiltInParagraphModel> FirstFooters { get; } = new List<BuiltInParagraphModel>();
+    internal IList<BuiltInParagraphModel> EvenHeaders { get; } = new List<BuiltInParagraphModel>();
+    internal IList<BuiltInParagraphModel> EvenFooters { get; } = new List<BuiltInParagraphModel>();
+
+    internal IList<BuiltInParagraphModel> GetHeaders(int sectionPageIndex, int pageNumber) =>
+        DifferentFirstPage && sectionPageIndex == 0 ? FirstHeaders :
+        DifferentOddAndEvenPages && pageNumber % 2 == 0 ? EvenHeaders : Headers;
+
+    internal IList<BuiltInParagraphModel> GetFooters(int sectionPageIndex, int pageNumber) =>
+        DifferentFirstPage && sectionPageIndex == 0 ? FirstFooters :
+        DifferentOddAndEvenPages && pageNumber % 2 == 0 ? EvenFooters : Footers;
 }
 
 internal abstract class BuiltInBlockModel
@@ -34,6 +68,7 @@ internal sealed class BuiltInTableModel : BuiltInBlockModel
 {
     internal IList<double> ColumnWidthsPoints { get; } = new List<double>();
     internal IList<BuiltInTableRowModel> Rows { get; } = new List<BuiltInTableRowModel>();
+    internal Dictionary<string, BuiltInBorderModel> Borders { get; } = new();
     internal bool HasBorders { get; set; }
 }
 
@@ -47,6 +82,7 @@ internal sealed class BuiltInTableCellModel
 {
     internal IList<BuiltInParagraphModel> Paragraphs { get; } = new List<BuiltInParagraphModel>();
     internal int ColumnSpan { get; set; } = 1;
+    internal Dictionary<string, BuiltInBorderModel> Borders { get; } = new();
     internal string? ShadingHex { get; set; }
     internal BuiltInVerticalAlignment VerticalAlignment { get; set; } = BuiltInVerticalAlignment.Top;
 }
@@ -73,6 +109,7 @@ internal sealed class BuiltInTabModel : BuiltInInlineModel
 internal sealed class BuiltInImageModel : BuiltInInlineModel
 {
     internal byte[] Data { get; set; } = [];
+    internal string MediaType { get; set; } = "image/png";
     internal string Name { get; set; } = string.Empty;
     internal double? WidthPoints { get; set; }
     internal double? HeightPoints { get; set; }
@@ -80,7 +117,11 @@ internal sealed class BuiltInImageModel : BuiltInInlineModel
 
 internal sealed class BuiltInPageNumberModel : BuiltInInlineModel
 {
+    internal BuiltInPageFieldKind Kind { get; set; }
+    internal BuiltInTextFormat Format { get; } = new();
 }
+
+internal enum BuiltInPageFieldKind { Page, TotalPages, SectionPages }
 
 internal sealed class BuiltInParagraphFormat
 {
@@ -119,4 +160,11 @@ internal enum BuiltInVerticalAlignment
     Top,
     Center,
     Bottom
+}
+
+internal sealed class BuiltInBorderModel
+{
+    internal bool Visible { get; set; }
+    internal string? ColorHex { get; set; }
+    internal double WidthPoints { get; set; } = 0.5;
 }

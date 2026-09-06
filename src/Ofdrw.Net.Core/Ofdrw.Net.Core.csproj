@@ -4,4 +4,13 @@
     <Description>Core OFD models, options, interfaces and validation report types for Ofdrw.Net.</Description>
     <PackageTags>OFD;document;fixed-layout;SDK</PackageTags>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ofdrw.Net.Core.Tests" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Packaging" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Reader" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Layout" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Svg" />
+  </ItemGroup>
 </Project>

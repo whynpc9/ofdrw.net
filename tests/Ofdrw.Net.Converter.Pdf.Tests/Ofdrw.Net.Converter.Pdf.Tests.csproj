@@ -22,5 +22,7 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../TestSupport/NonSeekableInput.cs" Link="NonSeekableInput.cs" />
+    <None Include="../../e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/*.ttf" Link="fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

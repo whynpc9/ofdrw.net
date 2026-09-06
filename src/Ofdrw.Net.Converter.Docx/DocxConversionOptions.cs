@@ -79,6 +79,9 @@ public sealed class DocxConversionOptions
     /// </summary>
     public int MaxDocumentElements { get; set; } = 1_000_000;
 
+    /// <summary>Gets or sets the maximum number of rendered or selected pages.</summary>
+    public int MaxPageCount { get; set; } = 10_000;
+
     /// <summary>
     /// Gets or sets the maximum compressed size of one embedded image in bytes.
     /// </summary>
@@ -88,6 +91,9 @@ public sealed class DocxConversionOptions
     /// Gets or sets the maximum decoded pixel count of one embedded image.
     /// </summary>
     public long MaxEmbeddedImagePixels { get; set; } = 40_000_000;
+
+    /// <summary>Gets or sets the maximum size of one configured font file.</summary>
+    public long MaxEmbeddedFontBytes { get; set; } = 64L * 1024 * 1024;
 
     /// <summary>
     /// Gets font family names considered when DOCX styles do not resolve an explicit font.
