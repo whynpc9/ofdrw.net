@@ -29,6 +29,11 @@ export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 export DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1
 SOURCE_CACHE="${NUGET_PACKAGES:-$HOME/.nuget/packages}"
+# DOTNET_CLI_HOME also changes NuGet's default cache on clean runners. Keep
+# the build cache and the consumer's third-party feed on the same explicit path.
+mkdir -p "$SOURCE_CACHE"
+SOURCE_CACHE="$(cd "$SOURCE_CACHE" && pwd)"
+export NUGET_PACKAGES="$SOURCE_CACHE"
 BUILD_FLAGS=(--disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false --nologo)
 
 if [[ "$CONSUME_ONLY" == false ]]; then
