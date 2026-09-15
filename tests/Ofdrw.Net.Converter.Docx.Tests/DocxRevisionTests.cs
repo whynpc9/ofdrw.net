@@ -45,6 +45,91 @@ public sealed partial class DocxConversionTests
     }
 
     [Fact]
+    public async Task Native_ShouldDeclareViewerLocalCjkNamesWithoutEmbeddingASubstituteFace()
+    {
+        var simhei = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts", "simhei.ttf");
+        var simsun = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts", "simsun.ttc");
+        if (!File.Exists(simhei))
+        {
+            if (OperatingSystem.IsWindows())
+                Assert.Fail("Expected Windows\\Fonts\\simhei.ttf for CJK substitution coverage.");
+            return;
+        }
+
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-cjk-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            File.Copy(simhei, Path.Combine(directory, "simhei.ttf"));
+            if (File.Exists(simsun))
+                File.Copy(simsun, Path.Combine(directory, "simsun.ttc"));
+            var options = new DocxConversionOptions();
+            options.FontDirectories.Add(directory);
+            using var input = CreateMinimalDocx("""
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>病案出库清单</w:t></w:r></w:p>
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体"/><w:sz w:val="18"/></w:rPr><w:t>扫描条数:50</w:t></w:r></w:p>
+                """);
+            using var output = new MemoryStream();
+            await new DocxToOfdConverter(options).ConvertAsync(input, output);
+            output.Position = 0;
+            var package = await new OfdReader().ReadAsync(output);
+            var fonts = package.Fonts.ToList();
+            var hei = Assert.Single(fonts, font => font.FontName == "SimHei");
+            var song = Assert.Single(fonts, font => font.FontName == "SimSun");
+            Assert.Empty(hei.Data);
+            Assert.Empty(song.Data);
+            Assert.False(hei.Bold);
+            Assert.False(song.Bold);
+            var title = Assert.Single(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(),
+                element => element.Text == "病案出库清单");
+            Assert.Equal("SimHei", title.FontName);
+            var body = Assert.Single(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(),
+                element => element.Text == "扫描条数:50");
+            Assert.Equal("SimSun", body.FontName);
+            var advances = title.Runs.Single().DeltaX!.Split(' ')
+                .Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            Assert.Equal(5, advances.Length);
+            Assert.All(advances, advance =>
+                Assert.InRange(advance, title.FontSizeMillimeters * 0.85, title.FontSizeMillimeters * 1.15));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public async Task Native_ShouldUseEmAdvanceForCjkWhenCatalogHasOnlyALatinFace()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-latin-cjk-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var fontPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(ResolveGeneratedSample())!,
+                "../../Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/narrow.ttf"));
+            File.Copy(fontPath, Path.Combine(directory, "narrow.ttf"));
+            var options = new DocxConversionOptions();
+            options.FontDirectories.Add(directory);
+            using var input = CreateMinimalDocx("""
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体"/><w:sz w:val="28"/></w:rPr><w:t>病案出库清单</w:t></w:r></w:p>
+                """);
+            using var output = new MemoryStream();
+            await new DocxToOfdConverter(options).ConvertAsync(input, output);
+            output.Position = 0;
+            var package = await new OfdReader().ReadAsync(output);
+            var title = Assert.Single(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(),
+                element => element.Text == "病案出库清单");
+            Assert.Equal("SimSun", title.FontName);
+            Assert.Empty(Assert.Single(package.Fonts, font => font.FontName == "SimSun").Data);
+            var advances = title.Runs.Single().DeltaX!.Split(' ')
+                .Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            Assert.Equal(5, advances.Length);
+            Assert.All(advances, advance =>
+                Assert.Equal(title.FontSizeMillimeters, advance, 3));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
     public async Task Native_ShouldKeepInlineJpegContentDimensionsAndMediaType()
     {
         const string body = """

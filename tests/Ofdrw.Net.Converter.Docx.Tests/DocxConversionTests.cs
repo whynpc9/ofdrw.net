@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using Ofdrw.Net.Converter.Docx.Converters;
+using Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Extraction;
@@ -159,7 +160,20 @@ public sealed partial class DocxConversionTests
         Assert.True(emphasized.XMillimeters >= normal.XMillimeters + normal.WidthMillimeters - 0.002);
         var subtitle = Assert.Single(text, t => t.Text.Contains("Generated DOCX"));
         Assert.True(package.Fonts.Single(f => f.FontName == subtitle.FontName).Italic);
-        Assert.All(package.Fonts, font => Assert.NotEmpty(font.Data));
+        Assert.All(package.Fonts, font =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(font.FontName));
+            var baseName = font.FontName.Split('|')[0];
+            if (DocxFontCatalog.IsViewerLocalCjkFamily(font.FontName) ||
+                baseName.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase))
+            {
+                Assert.Empty(font.Data);
+            }
+            else
+            {
+                Assert.NotEmpty(font.Data);
+            }
+        });
         var paths = package.Pages[0].Elements.OfType<OfdPathElement>().ToList();
         Assert.Equal(3, paths.Count(p => p.Fill && p.FillColor is not null && Rgb(p.FillColor) == (217, 234, 247)));
         Assert.Contains(paths, p => p.Stroke && Rgb(p.StrokeColor) == (68, 114, 196));

@@ -15,8 +15,18 @@ internal sealed class DocumentFontContext
     {
         _fonts = fonts;
         PdfFontRegistry.EnsureInstalled();
-        foreach (var font in fonts.Where(font => font.Data.Length > 0))
-            _families[font] = PdfFontRegistry.RegisterFontFace(font.Data, font.Bold, font.Italic);
+        foreach (var font in fonts)
+        {
+            if (font.Data.Length > 0)
+            {
+                _families[font] = PdfFontRegistry.RegisterFontFace(font.Data, font.Bold, font.Italic);
+                continue;
+            }
+
+            var local = CjkViewerFontLoader.TryRead(font.FontName) ?? CjkViewerFontLoader.TryRead(font.FamilyName);
+            if (local is not null)
+                _families[font] = PdfFontRegistry.RegisterFontFace(local, font.Bold, font.Italic);
+        }
     }
 
     internal string Resolve(OfdTextElement text, out OfdFontResource? resource)

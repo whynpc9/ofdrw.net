@@ -383,19 +383,20 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     var codePoint = char.ConvertToUtf32(text, index);
                     if (char.IsHighSurrogate(text[index])) index++;
-                    foreach (var glyph in outlineFont.GetGlyphs(new SixLabors.Fonts.Unicode.CodePoint(codePoint),
-                                 SixLabors.Fonts.ColorFontSupport.None))
+                    if (outlineFont.TryGetGlyphs(new SixLabors.Fonts.Unicode.CodePoint(codePoint),
+                            SixLabors.Fonts.ColorFontSupport.None, out var glyphs))
                     {
-                        topBearing = Math.Min(topBearing, glyph.GlyphMetrics.TopSideBearing);
+                        foreach (var glyph in glyphs)
+                            topBearing = Math.Min(topBearing, glyph.GlyphMetrics.TopSideBearing);
                     }
                 }
                 // TextRenderer shifts the baseline for negative top side bearings.
                 // Undo that layout shift so outlines align with the PDF text baseline.
-                var baselineOffset = -(outlineFont.FontMetrics.Ascender - topBearing) *
+                var baselineOffset = -(outlineFont.FontMetrics.HorizontalMetrics.Ascender - topBearing) *
                     outlineFont.Size / outlineFont.FontMetrics.UnitsPerEm;
                 if (format == XStringFormats.TopLeft)
                 {
-                    baselineOffset += outlineFont.FontMetrics.Ascender * outlineFont.Size / outlineFont.FontMetrics.UnitsPerEm;
+                    baselineOffset += outlineFont.FontMetrics.HorizontalMetrics.Ascender * outlineFont.Size / outlineFont.FontMetrics.UnitsPerEm;
                 }
                 SixLabors.Fonts.TextRenderer.RenderTextTo(
                     new PdfGlyphOutlineRenderer(graphics, solid.Color, font.Size * 0.025), text,

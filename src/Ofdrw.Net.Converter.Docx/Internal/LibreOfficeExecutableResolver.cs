@@ -91,6 +91,36 @@ internal static class LibreOfficeExecutableResolver
         return !HasSecureUserConfig(normalized);
     }
 
+    /// <summary>
+    /// Returns the persistent Portable user profile (<c>Data/settings</c>) so CJK fonts
+    /// can be staged without <c>-env:UserInstallation</c>, which hangs on Portable builds.
+    /// </summary>
+    internal static string? TryGetPortableUserProfile(string executable)
+    {
+        if (string.IsNullOrWhiteSpace(executable))
+        {
+            return null;
+        }
+
+        var normalized = executable.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+        var portableMarker =
+            $"{Path.DirectorySeparatorChar}App{Path.DirectorySeparatorChar}libreoffice{Path.DirectorySeparatorChar}program";
+        if (normalized.IndexOf("LibreOfficePortable", StringComparison.OrdinalIgnoreCase) < 0 &&
+            normalized.IndexOf(portableMarker, StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            return null;
+        }
+
+        var programDirectory = Path.GetDirectoryName(Path.GetFullPath(executable));
+        if (string.IsNullOrWhiteSpace(programDirectory))
+        {
+            return null;
+        }
+
+        var portableRoot = Path.GetFullPath(Path.Combine(programDirectory, "..", "..", ".."));
+        return Path.Combine(portableRoot, "Data", "settings");
+    }
+
     private static string ValidateExplicitPath(string path)
     {
         var trimmed = path.Trim();

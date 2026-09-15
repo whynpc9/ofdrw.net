@@ -15,6 +15,25 @@ internal static class LibreOfficeFontStager
         ".ttf"
     };
 
+    // Windows\Fonts is huge. When a directory contains many faces, only stage
+    // CJK families the Word templates actually name (宋体/黑体/等线/微软雅黑).
+    private static readonly HashSet<string> PreferredCjkFontFiles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "simsun.ttc",
+        "simsunb.ttf",
+        "simhei.ttf",
+        "simkai.ttf",
+        "simfang.ttf",
+        "msyh.ttc",
+        "msyhbd.ttc",
+        "msyhl.ttc",
+        "Deng.ttf",
+        "Dengb.ttf",
+        "Dengl.ttf",
+        "NotoSansCJKsc-Regular.ttf",
+        "Ofdrw-CI-NotoSansCJKsc-Regular.ttf"
+    };
+
     internal static void Stage(string profileDirectory, DocxConversionOptions options)
     {
         var directories = new List<string>();
@@ -58,21 +77,41 @@ internal static class LibreOfficeFontStager
 
         foreach (var sourceDirectory in directories.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            foreach (var sourcePath in Directory.EnumerateFiles(sourceDirectory))
+            var files = Directory.EnumerateFiles(sourceDirectory)
+                .Where(path => SupportedExtensions.Contains(Path.GetExtension(path)))
+                .ToList();
+            var copyAll = files.Count <= 32;
+            foreach (var sourcePath in files)
             {
-                if (!SupportedExtensions.Contains(Path.GetExtension(sourcePath)))
+                var fileName = Path.GetFileName(sourcePath);
+                if (!copyAll && !PreferredCjkFontFiles.Contains(fileName))
                 {
                     continue;
                 }
 
-                var targetName = MakeUniqueName(Path.GetFileName(sourcePath), usedNames);
+                var targetName = MakeUniqueName(fileName, usedNames);
                 var targetPath = Path.Combine(targetDirectory, targetName);
+                if (AlreadyStaged(sourcePath, targetPath))
+                {
+                    continue;
+                }
+
                 if (!TryCreateSymbolicLink(sourcePath, targetPath))
                 {
-                    File.Copy(sourcePath, targetPath, overwrite: false);
+                    File.Copy(sourcePath, targetPath, overwrite: true);
                 }
             }
         }
+    }
+
+    private static bool AlreadyStaged(string sourcePath, string targetPath)
+    {
+        if (!File.Exists(targetPath))
+        {
+            return false;
+        }
+
+        return new FileInfo(sourcePath).Length == new FileInfo(targetPath).Length;
     }
 
     private static void AddIfPresent(ICollection<string> directories, string path)
