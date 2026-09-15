@@ -18,6 +18,8 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 
 public sealed class PdfConversionTests
 {
+    public PdfConversionTests() => PdfFontRegistry.EnsureInstalled();
+
     [Fact]
     public async Task PdfToOfd_AndBack_ShouldPreservePageCountForSelectedPages()
     {

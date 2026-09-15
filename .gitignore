@@ -23,3 +23,7 @@ coverage/
 
 # Local tools/cache
 artifacts/
+
+# Python tooling cache
+__pycache__/
+*.py[cod]

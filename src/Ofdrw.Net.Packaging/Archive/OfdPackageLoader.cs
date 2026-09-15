@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Ofdrw.Net.Core.IO;
 
 namespace Ofdrw.Net.Packaging.Archive;
 
@@ -32,13 +33,24 @@ public sealed class OfdPackageLoader
 
         ValidateOptions(options);
 
-        using var buffer = new MemoryStream();
-        await ofdStream.CopyToAsync(buffer, 81920, cancellationToken).ConfigureAwait(false);
-        buffer.Position = 0;
+        cancellationToken.ThrowIfCancellationRequested();
+        using var buffer = ofdStream.CanSeek && ofdStream.Position == 0 ? null : new MemoryStream();
+        Stream source = ofdStream;
+        if (buffer is not null)
+        {
+            await BoundedStreamCopy.CopyAsync(
+                ofdStream, buffer, options.MaxInputBytes, "OFD input", cancellationToken).ConfigureAwait(false);
+            buffer.Position = 0;
+            source = buffer;
+        }
+        else if (ofdStream.Length > options.MaxInputBytes)
+        {
+            throw new InvalidDataException("OFD input exceeds the configured compressed input size limit.");
+        }
 
         var result = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
 
-        using var zip = new ZipArchive(buffer, ZipArchiveMode.Read, leaveOpen: true);
+        using var zip = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
         if (zip.Entries.Count > options.MaxEntryCount)
         {
             throw new InvalidDataException(
@@ -81,7 +93,13 @@ public sealed class OfdPackageLoader
 
             using var entryStream = entry.Open();
             using var ms = new MemoryStream();
-            await entryStream.CopyToAsync(ms, 81920, cancellationToken).ConfigureAwait(false);
+            var copied = await BoundedStreamCopy.CopyAsync(
+                entryStream, ms, Math.Max(1, entry.Length), $"OFD entry '{normalizedName}'", cancellationToken)
+                .ConfigureAwait(false);
+            if (copied != entry.Length)
+            {
+                throw new InvalidDataException($"OFD entry '{normalizedName}' has an inconsistent expanded length.");
+            }
             result[normalizedName] = ms.ToArray();
         }
 
@@ -102,10 +120,11 @@ public sealed class OfdPackageLoader
 
     private static void ValidateOptions(OfdPackageLoadOptions options)
     {
-        if (options.MaxEntryCount <= 0 ||
+        if (options.MaxInputBytes <= 0 || options.MaxEntryCount <= 0 || options.MaxPageCount <= 0 ||
             options.MaxEntryUncompressedBytes <= 0 ||
             options.MaxTotalUncompressedBytes <= 0 ||
-            options.MaxCompressionRatio <= 0)
+            options.MaxCompressionRatio <= 0 || double.IsNaN(options.MaxCompressionRatio) ||
+            double.IsInfinity(options.MaxCompressionRatio))
         {
             throw new ArgumentOutOfRangeException(nameof(options), "All OFD package load limits must be positive.");
         }

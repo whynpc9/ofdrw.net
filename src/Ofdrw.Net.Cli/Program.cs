@@ -8,11 +8,17 @@ using Ofdrw.Net.Reader.Extraction;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Signatures.Verification;
 
-return await Cli.RunAsync(args);
+using var shutdown = new CancellationTokenSource();
+Console.CancelKeyPress += (_, eventArgs) =>
+{
+    eventArgs.Cancel = true;
+    shutdown.Cancel();
+};
+return await Cli.RunAsync(args, shutdown.Token);
 
 internal static class Cli
 {
-    public static async Task<int> RunAsync(string[] args)
+    public static async Task<int> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
         if (args.Length == 0 || IsHelp(args[0]))
         {
@@ -32,9 +38,10 @@ internal static class Cli
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (command == "merge")
             {
-                return await MergeAsync(args.Skip(1).ToArray()).ConfigureAwait(false);
+                return await MergeAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             }
 
             var options = ParseOptions(args.Skip(1).ToArray());
@@ -54,7 +61,7 @@ internal static class Cli
                 await ExtractTextAsync(
                     options.InputPath,
                     options.OutputPath,
-                    options.IncludeTemplates).ConfigureAwait(false);
+                    options.IncludeTemplates, cancellationToken).ConfigureAwait(false);
                 return 0;
             }
 
@@ -65,7 +72,7 @@ internal static class Cli
                     throw new ArgumentException("An input OFD path is required.");
                 }
 
-                return await VerifySignaturesAsync(options.InputPath)
+                return await VerifySignaturesAsync(options.InputPath, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -81,7 +88,7 @@ internal static class Cli
                 await ReorderAsync(
                     options.InputPath,
                     options.OutputPath,
-                    pageOrder).ConfigureAwait(false);
+                    pageOrder, cancellationToken).ConfigureAwait(false);
                 Console.WriteLine($"Reordered {options.InputPath} -> {options.OutputPath}");
                 return 0;
             }
@@ -97,7 +104,7 @@ internal static class Cli
                 await ConvertToSvgAsync(
                     options.InputPath,
                     options.OutputPath,
-                    svgPages is { Count: 1 } ? svgPages[0] : 0).ConfigureAwait(false);
+                    svgPages is { Count: 1 } ? svgPages[0] : 0, cancellationToken).ConfigureAwait(false);
                 Console.WriteLine($"Converted {options.InputPath} -> {options.OutputPath}");
                 return 0;
             }
@@ -112,9 +119,14 @@ internal static class Cli
                 options.DocxEngine,
                 options.DocxOfdMode,
                 options.LibreOfficePath,
-                options.FontDirectories).ConfigureAwait(false);
+                options.FontDirectories, cancellationToken).ConfigureAwait(false);
             Console.WriteLine($"Converted {options.InputPath} -> {options.OutputPath}");
             return 0;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            Console.Error.WriteLine("Conversion canceled.");
+            return 130;
         }
         catch (Exception ex)
         {
@@ -131,58 +143,56 @@ internal static class Cli
         DocxConversionEngine docxEngine,
         DocxToOfdMode docxOfdMode,
         string? libreOfficePath,
-        IReadOnlyList<string> fontDirectories)
+        IReadOnlyList<string> fontDirectories,
+        CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
         {
             throw new FileNotFoundException("Input file does not exist.", inputPath);
         }
 
-        var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(outputPath));
-        if (!string.IsNullOrWhiteSpace(outputDirectory))
+        if (mode == ConversionMode.DocxToPdf && pages is not null)
         {
-            Directory.CreateDirectory(outputDirectory);
+            throw new ArgumentException("DOCX to PDF conversion does not support --pages.");
         }
 
+        EnsureDifferentPaths(inputPath, outputPath);
         await using var input = File.OpenRead(inputPath);
-        await using var output = File.Create(outputPath);
+        await using var output = new AtomicOutput(outputPath);
 
         if (mode == ConversionMode.DocxToPdf)
         {
-            if (pages is not null)
-            {
-                throw new ArgumentException("DOCX to PDF conversion does not support --pages.");
-            }
-
             var converter = new DocxToPdfConverter(CreateDocxOptions(
                 docxEngine,
                 docxOfdMode,
                 libreOfficePath,
                 fontDirectories));
-            await converter.ConvertAsync(input, output).ConfigureAwait(false);
-            return;
+            var result = await converter.ConvertWithResultAsync(input, output.Stream, cancellationToken).ConfigureAwait(false);
+            PrintDocxDiagnostics(result.Diagnostics);
         }
-
-        if (mode == ConversionMode.DocxToOfd)
+        else if (mode == ConversionMode.DocxToOfd)
         {
             var converter = new DocxToOfdConverter(CreateDocxOptions(
                 docxEngine,
                 docxOfdMode,
                 libreOfficePath,
                 fontDirectories));
-            await converter.ConvertAsync(input, output, pages).ConfigureAwait(false);
-            return;
+            var result = await converter.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
+            PrintDocxDiagnostics(result.Diagnostics);
         }
-
-        if (mode == ConversionMode.PdfToOfd)
+        else if (mode == ConversionMode.PdfToOfd)
         {
             var converter = new PdfToOfdConverter();
-            await converter.ConvertAsync(input, output, pages).ConfigureAwait(false);
-            return;
+            var result = await converter.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
+            foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+        }
+        else
+        {
+            var ofdToPdf = new OfdToPdfConverter();
+            await ofdToPdf.ConvertAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
         }
 
-        var ofdToPdf = new OfdToPdfConverter();
-        await ofdToPdf.ConvertAsync(input, output, pages).ConfigureAwait(false);
+        await output.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static DocxConversionOptions CreateDocxOptions(
@@ -205,10 +215,17 @@ internal static class Cli
         return options;
     }
 
+    private static void PrintDocxDiagnostics(IReadOnlyList<DocxConversionDiagnostic> diagnostics)
+    {
+        foreach (var diagnostic in diagnostics)
+            Console.Error.WriteLine($"{diagnostic.Severity}: {diagnostic.Code}: {diagnostic.Message}");
+    }
+
     private static async Task ExtractTextAsync(
         string inputPath,
         string? outputPath,
-        bool includeTemplates)
+        bool includeTemplates,
+        CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
         {
@@ -216,7 +233,7 @@ internal static class Cli
         }
 
         await using var input = File.OpenRead(inputPath);
-        var package = await new OfdReader().ReadAsync(input).ConfigureAwait(false);
+        var package = await new OfdReader().ReadAsync(input, cancellationToken).ConfigureAwait(false);
         var text = new OfdTextExtractor().Extract(package, includeTemplates);
         if (string.IsNullOrWhiteSpace(outputPath))
         {
@@ -224,30 +241,35 @@ internal static class Cli
             return;
         }
 
-        EnsureOutputDirectory(outputPath);
-        await File.WriteAllTextAsync(outputPath, text).ConfigureAwait(false);
+        EnsureDifferentPaths(inputPath, outputPath);
+        await using var output = new AtomicOutput(outputPath);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(text);
+        await output.Stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+        await output.CommitAsync(cancellationToken).ConfigureAwait(false);
         Console.WriteLine($"Extracted text {inputPath} -> {outputPath}");
     }
 
     private static async Task ConvertToSvgAsync(
         string inputPath,
         string outputPath,
-        int pageIndex)
+        int pageIndex,
+        CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
         {
             throw new FileNotFoundException("Input file does not exist.", inputPath);
         }
 
-        EnsureOutputDirectory(outputPath);
+        EnsureDifferentPaths(inputPath, outputPath);
         await using var input = File.OpenRead(inputPath);
-        await using var output = File.Create(outputPath);
+        await using var output = new AtomicOutput(outputPath);
         await new OfdToSvgConverter()
-            .ConvertAsync(input, output, pageIndex)
+            .ConvertAsync(input, output.Stream, pageIndex, cancellationToken)
             .ConfigureAwait(false);
+        await output.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<int> VerifySignaturesAsync(string inputPath)
+    private static async Task<int> VerifySignaturesAsync(string inputPath, CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
         {
@@ -256,7 +278,7 @@ internal static class Cli
 
         await using var input = File.OpenRead(inputPath);
         var report = await new OfdSignatureVerifier()
-            .VerifyAsync(input)
+            .VerifyAsync(input, cancellationToken)
             .ConfigureAwait(false);
         foreach (var issue in report.Issues)
         {
@@ -304,22 +326,27 @@ internal static class Cli
     private static async Task ReorderAsync(
         string inputPath,
         string outputPath,
-        IReadOnlyList<int> pageOrder)
+        IReadOnlyList<int> pageOrder,
+        CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
         {
             throw new FileNotFoundException("Input file does not exist.", inputPath);
         }
 
-        await using var input = File.OpenRead(inputPath);
-        var package = await new OfdReader().ReadAsync(input).ConfigureAwait(false);
+        Ofdrw.Net.Core.Models.OfdDocumentPackage package;
+        await using (var input = File.OpenRead(inputPath))
+        {
+            package = await new OfdReader().ReadAsync(input, cancellationToken).ConfigureAwait(false);
+        }
         OfdDocumentEditor.ReorderPages(package, pageOrder);
-        EnsureOutputDirectory(outputPath);
-        await using var output = File.Create(outputPath);
-        await new OfdPackageWriter().WriteAsync(package, output).ConfigureAwait(false);
+        await using var output = new AtomicOutput(outputPath);
+        var result = await new OfdPackageWriter().WriteWithResultAsync(package, output.Stream, cancellationToken).ConfigureAwait(false);
+        foreach (var diagnostic in result.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+        await output.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<int> MergeAsync(string[] args)
+    private static async Task<int> MergeAsync(string[] args, CancellationToken cancellationToken)
     {
         if (args.Length == 0 || args.Any(IsHelp))
         {
@@ -348,28 +375,31 @@ internal static class Cli
             }
 
             await using var input = File.OpenRead(inputPath);
-            sources.Add(await new OfdReader().ReadAsync(input).ConfigureAwait(false));
+            sources.Add(await new OfdReader().ReadAsync(input, cancellationToken).ConfigureAwait(false));
         }
 
-        var merged = OfdDocumentMerger.Merge(
+        var merged = OfdDocumentMerger.MergeWithResult(
             sources,
             new OfdDocumentMergeOptions
             {
                 SkipUnsupportedRawElements = skipUnsupported
             });
-        EnsureOutputDirectory(outputPath);
-        await using var output = File.Create(outputPath);
-        await new OfdPackageWriter().WriteAsync(merged, output).ConfigureAwait(false);
+        await using var output = new AtomicOutput(outputPath);
+        foreach (var diagnostic in merged.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+        var writeResult = await new OfdPackageWriter().WriteWithResultAsync(merged.Package, output.Stream, cancellationToken).ConfigureAwait(false);
+        foreach (var diagnostic in writeResult.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
+        await output.CommitAsync(cancellationToken).ConfigureAwait(false);
         Console.WriteLine($"Merged {sources.Count} OFD files -> {outputPath}");
         return 0;
     }
 
-    private static void EnsureOutputDirectory(string outputPath)
+    private static void EnsureDifferentPaths(string inputPath, string outputPath)
     {
-        var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(outputPath));
-        if (!string.IsNullOrWhiteSpace(outputDirectory))
+        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (string.Equals(Path.GetFullPath(inputPath), Path.GetFullPath(outputPath), comparison))
         {
-            Directory.CreateDirectory(outputDirectory);
+            throw new ArgumentException("Conversion input and output must use different paths.");
         }
     }
 

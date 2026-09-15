@@ -16,5 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../TestSupport/NonSeekableInput.cs" Link="NonSeekableInput.cs" />
   </ItemGroup>
 </Project>

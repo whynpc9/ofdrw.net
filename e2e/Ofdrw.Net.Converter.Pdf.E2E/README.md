@@ -45,3 +45,10 @@ Generated files are under:
 - `e2e/Ofdrw.Net.Converter.Pdf.E2E/output/upstream-ofdrw/**`
 
 For manual Preview validation, open one of the generated `.ofd` files from the output directory and compare the generated `source.png` and `roundtrip.png` images beside it.
+
+The preferred entry point is `scripts/run-converter-package-e2e.sh <version>`.
+It uses a fresh consumer directory, a private package cache and source mapping;
+it also installs the CLI from the same artifact feed. Outputs include the exact
+package SHA256 manifest and Native/default/CLI page renders. Required visual
+tools failing is a test failure. Use `--consume-only --packages-dir <directory>`
+to validate already-built release packages without rebuilding them.

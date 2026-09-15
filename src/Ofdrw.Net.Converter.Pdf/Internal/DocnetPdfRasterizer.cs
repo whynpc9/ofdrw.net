@@ -4,72 +4,70 @@ using System.Threading;
 using System.Threading.Tasks;
 using Docnet.Core;
 using Docnet.Core.Models;
-using PdfSharpCore.Pdf.IO;
+using Docnet.Core.Readers;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace Ofdrw.Net.Converter.Pdf.Internal;
 
-/// <summary>
-/// Rasterizes PDF pages with Docnet/Pdfium for high layout fidelity (tables, grids).
-/// </summary>
-internal sealed class DocnetPdfRasterizer
+/// <summary>One lazy PDFium document session per conversion, with page-scoped image buffers.</summary>
+internal sealed class DocnetPdfRasterizer : IDisposable
 {
-    private const double PointsPerInch = 72.0;
+    private readonly string _pdfPath;
+    private readonly int _dpi;
+    private readonly long _maximumPixels;
+    private IDocReader? _reader;
+    private bool _openFailed;
 
-    public async Task<byte[]?> TryRasterizePageAsync(
-        byte[] pdfBytes,
-        int zeroBasedPageIndex,
-        int dpi,
-        CancellationToken cancellationToken)
+    internal DocnetPdfRasterizer(string pdfPath, int dpi, long maximumPixels)
     {
-        if (pdfBytes is null || pdfBytes.Length == 0)
-        {
-            return null;
-        }
+        _pdfPath = pdfPath;
+        _dpi = Math.Max(72, Math.Min(dpi, 300));
+        _maximumPixels = maximumPixels;
+    }
 
-        dpi = Math.Max(72, Math.Min(dpi, 300));
+    internal string? LastFailure { get; private set; }
 
+    internal async Task<byte[]?> TryRasterizePageAsync(int zeroBasedPageIndex, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_openFailed) return null;
         try
         {
-            using var pdf = PdfReader.Open(new MemoryStream(pdfBytes, writable: false), PdfDocumentOpenMode.Import);
-            if (zeroBasedPageIndex < 0 || zeroBasedPageIndex >= pdf.PageCount)
+            if (_reader is null)
             {
-                return null;
+                try
+                {
+                    _reader = DocLib.Instance.GetDocReader(_pdfPath, new PageDimensions(_dpi / 72d));
+                }
+                catch
+                {
+                    _openFailed = true;
+                    throw;
+                }
             }
-
-            var page = pdf.Pages[zeroBasedPageIndex];
-            var widthPx = ToPixels(page.Width.Point, dpi);
-            var heightPx = ToPixels(page.Height.Point, dpi);
-
-            using var reader = DocLib.Instance.GetDocReader(pdfBytes, new PageDimensions(widthPx, heightPx));
-            using var pageReader = reader.GetPageReader(zeroBasedPageIndex);
-            var raw = pageReader.GetImage();
-            var pixelWidth = pageReader.GetPageWidth();
-            var pixelHeight = pageReader.GetPageHeight();
-            if (raw is null || raw.Length == 0 || pixelWidth <= 0 || pixelHeight <= 0)
-            {
-                return null;
-            }
-
-            using var image = Image.LoadPixelData<Bgra32>(raw, pixelWidth, pixelHeight);
-            using var pngStream = new MemoryStream();
-            await image.SaveAsync(pngStream, new PngEncoder(), cancellationToken).ConfigureAwait(false);
-            return pngStream.ToArray();
+            using var page = _reader.GetPageReader(zeroBasedPageIndex);
+            var width = page.GetPageWidth();
+            var height = page.GetPageHeight();
+            if (width <= 0 || height <= 0 || (long)width * height > _maximumPixels)
+                throw new InvalidDataException("PDF page exceeds the configured decoded pixel limit.");
+            cancellationToken.ThrowIfCancellationRequested();
+            var raw = page.GetImage();
+            cancellationToken.ThrowIfCancellationRequested();
+            using var image = Image.LoadPixelData<Bgra32>(raw, width, height);
+            using var png = new MemoryStream();
+            await image.SaveAsync(png, new PngEncoder(), cancellationToken).ConfigureAwait(false);
+            return png.ToArray();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) { throw; }
+        catch (InvalidDataException) { throw; }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
         {
-            throw;
-        }
-        catch
-        {
+            LastFailure = exception.Message;
             return null;
         }
     }
 
-    private static int ToPixels(double points, int dpi)
-    {
-        return Math.Max(1, (int)Math.Ceiling(points * dpi / PointsPerInch));
-    }
+    public void Dispose() => _reader?.Dispose();
 }

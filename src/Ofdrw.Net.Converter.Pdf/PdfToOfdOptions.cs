@@ -1,3 +1,5 @@
+using System;
+
 namespace Ofdrw.Net.Converter.Pdf;
 
 /// <summary>
@@ -5,6 +7,21 @@ namespace Ofdrw.Net.Converter.Pdf;
 /// </summary>
 public sealed class PdfToOfdOptions
 {
+    /// <summary>Maximum input bytes, enforced while staging the PDF.</summary>
+    public long MaxInputBytes { get; set; } = 128L * 1024 * 1024;
+
+    /// <summary>Maximum source or selected output page count.</summary>
+    public int MaxPageCount { get; set; } = 10_000;
+
+    /// <summary>Maximum decoded pixels in any one rendered page.</summary>
+    public long MaxRasterizedPixelsPerPage { get; set; } = 40_000_000;
+
+    /// <summary>Maximum accumulated compressed page-image bytes.</summary>
+    public long MaxTotalImageBytes { get; set; } = 512L * 1024 * 1024;
+
+    /// <summary>Maximum time allowed for an external pdftoppm attempt.</summary>
+    public TimeSpan ExternalRasterizationTimeout { get; set; } = TimeSpan.FromMinutes(2);
+
     /// <summary>
     /// Gets or sets the target DPI used when rasterizing PDF pages.
     /// Values outside 72–300 are clamped.
