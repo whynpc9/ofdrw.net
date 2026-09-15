@@ -59,7 +59,7 @@ Doc_0/Signs/
 
 没有注册 SES/SM2 验证器时，CLI `ofdrw verify-signatures` 在引用完整的情况下退出码为 `2`，不是 `0`。不要把“摘要通过”说成“验章通过”。
 
-源项目 `ofdrw-sign` + `ofdrw-gm` 覆盖更完整的国密签章数据结构；密码应用包 `ofdrw-crypto` 对应 GM/T 0099，本仓库明确未实现。
+源项目 `ofdrw-sign` + `ofdrw-gm` 覆盖更完整的国密签章数据结构；密码应用包 `ofdrw-crypto` 对应 GM/T 0099，本仓库明确未实现。无密码厂商时能做什么、不做什么，见 [能力路线图](../capability-roadmap.md) 第 1 节与 P2。
 
 ## 外观不是签名值
 
