@@ -83,6 +83,15 @@ public sealed class OfdImageElement : OfdElement
 
     public byte[] Data { get; set; } = [];
 
+    /// <summary>Maps the image's unit square into object coordinates. Null uses the boundary width/height.</summary>
+    public double[]? Transform { get; set; }
+
+    /// <summary>Object opacity, from zero (transparent) to 255 (opaque).</summary>
+    public int Alpha { get; set; } = 255;
+
+    /// <summary>Optional OFD Clips XML in object coordinates.</summary>
+    public string? ClipsXml { get; set; }
+
     /// <summary>
     /// Complete source XML retained to preserve transforms, clipping, alpha and
     /// vendor attributes that are not strongly typed yet.

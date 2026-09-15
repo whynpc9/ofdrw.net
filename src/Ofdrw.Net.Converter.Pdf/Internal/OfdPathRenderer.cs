@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Text.RegularExpressions;
 using Ofdrw.Net.Core.Models;
 using PdfSharpCore.Drawing;
@@ -9,6 +10,17 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 
 internal static class OfdPathRenderer
 {
+    internal static XGraphicsPath BuildClip(OfdClipRegion region)
+    {
+        var path = new XGraphicsPath { FillMode = region.EvenOdd ? XFillMode.Alternate : XFillMode.Winding };
+        foreach (var element in region.Paths)
+        {
+            if (!new PathState(path, element, 0, 0).Build(Tokenize(element.AbbreviatedData)))
+                throw new InvalidDataException("OFD clipping path could not be rendered.");
+        }
+        return path;
+    }
+
     private static readonly Regex TokenPattern = new(
         @"[A-Za-z]|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);

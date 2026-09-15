@@ -20,6 +20,8 @@ Ofdrw.Net is a preview-stage .NET SDK and CLI for OFD document packaging, readin
 
 See [docs/feature-parity.md](docs/feature-parity.md) for the maintained
 OFDRW comparison, completed hardening work, and remaining production gaps.
+See [conversion contracts](docs/conversion-contracts.md) for page selection, original-text diagnostics, font initialization, resource budgets, and editing behavior.
+See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk through GB/T 33190 package structure, pages, text, paths, images, templates, and signatures, plus OFD-H medical-record profile notes, mapped to both ofdrw and this repository.
 
 - OFD core models, document builder API, globally unique object IDs, layers, templates, text runs, vector paths, images, fonts, attachments, annotations, and custom tags.
 - Bounded OFD ZIP loading with path traversal, entry count, expanded-size, and compression-ratio checks.
@@ -28,7 +30,7 @@ OFDRW comparison, completed hardening work, and remaining production gaps.
 - Text extraction, page reorder/removal/crop, and self-contained document merge helpers.
 - PDF to OFD dual-layer conversion with rendered pages for visual fidelity and transparent, positioned OFD text objects for search and extraction.
 - Direct DOCX/OpenXML to native OFD text conversion without PDF, plus an optional dual-layer mode that combines rendered pages with the original DOCX text.
-- OFD to PDF conversion with templates, layers, embedded fonts, positioned text runs, vector paths, images, crop origins, and raster fallback.
+- OFD to PDF conversion with templates, layers, embedded fonts, positioned text runs, vector paths, images, crop origins, image transforms, opacity, and path clipping.
 - OFD page to self-contained SVG conversion with template vectors, text, colors, transforms, and embedded images.
 - OFD signature description generation through a pluggable signed-value provider.
 - SM3, SHA-1, and SHA-256 protected-entry digest verification plus pluggable `SignedValue.dat` verification.
@@ -38,7 +40,7 @@ OFDRW comparison, completed hardening work, and remaining production gaps.
 
 ## For Developers
 
-All packages are published on [NuGet](https://www.nuget.org/profiles/whynpc). The current preview release is `0.1.0-preview.5`.
+All packages are published on [NuGet](https://www.nuget.org/profiles/whynpc). The current preview release is `0.1.0-preview.7`. See the [release notes](docs/release-notes-0.1.0-preview.7.md).
 
 ### Which package should I install?
 
@@ -68,26 +70,26 @@ Published packages:
 Install the high-level conversion package:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.5
+dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.7
 ```
 
 For a narrower dependency surface, install the PDF converter package directly:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.5
+dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.7
 ```
 
 Install DOCX conversion independently:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Docx --version 0.1.0-preview.5
+dotnet add package Ofdrw.Net.Converter.Docx --version 0.1.0-preview.7
 ```
 
 Install SVG or signature support independently:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.5
-dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.5
+dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.7
+dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.7
 ```
 
 Convert PDF to OFD:
@@ -223,7 +225,7 @@ Create a signature by implementing `IOfdSignatureProvider`. The provider receive
 Install the CLI as a .NET tool:
 
 ```bash
-dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.5
+dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.7
 ```
 
 Convert by file extension:

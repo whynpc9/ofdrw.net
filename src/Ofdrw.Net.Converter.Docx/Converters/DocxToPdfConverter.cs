@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Abstractions.Interfaces;
 using Ofdrw.Net.Converter.Docx.Internal;
 using Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
+using Ofdrw.Net.Core.IO;
+using Ofdrw.Net.Core.Processes;
 
 namespace Ofdrw.Net.Converter.Docx.Converters;
 
@@ -47,8 +49,8 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         }
 
         if (_options.MaxInputBytes <= 0 || _options.MaxExpandedBytes <= 0 ||
-            _options.MaxPackagePartCount <= 0 || _options.MaxDocumentElements <= 0 ||
-            _options.MaxEmbeddedImageBytes <= 0 || _options.MaxEmbeddedImagePixels <= 0)
+            _options.MaxPackagePartCount <= 0 || _options.MaxDocumentElements <= 0 || _options.MaxPageCount <= 0 ||
+            _options.MaxEmbeddedImageBytes <= 0 || _options.MaxEmbeddedImagePixels <= 0 || _options.MaxEmbeddedFontBytes <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "BuiltIn resource limits must be positive.");
         }
@@ -214,13 +216,21 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         if (engine == DocxConversionEngine.BuiltIn)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var elapsed = Stopwatch.StartNew();
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(_options.ProcessTimeout);
             try
             {
-                return await Task.Run(
+                var diagnostics = await Task.Run(
                     () => new BuiltInDocxRenderer(_options).Convert(inputPath, outputPath, timeout.Token),
                     timeout.Token).ConfigureAwait(false);
+                // Timer callbacks can run after the worker completes, especially
+                // for sub-millisecond limits. Never commit an overdue result.
+                cancellationToken.ThrowIfCancellationRequested();
+                if (elapsed.Elapsed >= _options.ProcessTimeout)
+                    throw new TimeoutException($"BuiltIn DOCX conversion exceeded {_options.ProcessTimeout}.");
+                timeout.Token.ThrowIfCancellationRequested();
+                return diagnostics;
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
@@ -292,26 +302,8 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         Stream output,
         CancellationToken cancellationToken)
     {
-        var buffer = new byte[81920];
-        long total = 0;
-        while (true)
-        {
-            var read = await input.ReadAsync(buffer, 0, buffer.Length, cancellationToken)
-                .ConfigureAwait(false);
-            if (read == 0)
-            {
-                break;
-            }
-
-            total = checked(total + read);
-            if (total > _options.MaxInputBytes)
-            {
-                throw new InvalidDataException(
-                    $"The DOCX input exceeds the configured {_options.MaxInputBytes} byte limit.");
-            }
-
-            await output.WriteAsync(buffer, 0, read, cancellationToken).ConfigureAwait(false);
-        }
+        await BoundedStreamCopy.CopyAsync(input, output, _options.MaxInputBytes, "DOCX input", cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static bool CanUseMicrosoftWord()
@@ -465,6 +457,13 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
             }
             else
             {
+                var portableProfile = LibreOfficeExecutableResolver.TryGetPortableUserProfile(executable);
+                if (portableProfile is string profilePath)
+                {
+                    Directory.CreateDirectory(profilePath);
+                    LibreOfficeFontStager.Stage(profilePath, _options);
+                }
+
                 argumentParts = new[]
                 {
                     "--headless",
@@ -507,26 +506,15 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         CancellationToken cancellationToken,
         string? expectedOutputPath = null)
     {
-        using var process = new Process
+        try
         {
-            StartInfo = new ProcessStartInfo
+            var result = await ExternalProcessRunner.RunAsync(new ProcessStartInfo
             {
                 FileName = executable,
                 Arguments = arguments,
-                WorkingDirectory = workingDirectory,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            }
-        };
-
-        try
-        {
-            if (!process.Start())
-            {
-                throw new InvalidOperationException($"{processName} could not be started.");
-            }
+                WorkingDirectory = workingDirectory
+            }, _options.ProcessTimeout, cancellationToken, expectedOutputPath).ConfigureAwait(false);
+            return new ProcessResult(result.ExitCode, result.Output, result.Error);
         }
         catch (Win32Exception ex)
         {
@@ -537,93 +525,6 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
                     "allow the host process to control Microsoft Word when macOS requests permission.";
             throw new InvalidOperationException(message, ex);
         }
-
-        var outputTask = process.StandardOutput.ReadToEndAsync();
-        var errorTask = process.StandardError.ReadToEndAsync();
-        var elapsed = Stopwatch.StartNew();
-        long lastPdfLength = -1;
-        var pdfStableSince = Stopwatch.StartNew();
-
-        try
-        {
-            while (!process.HasExited)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Some LibreOffice wrappers write the PDF but never exit. Treat a
-                // non-empty, size-stable output file as success and stop the tree.
-                if (!string.IsNullOrWhiteSpace(expectedOutputPath) &&
-                    File.Exists(expectedOutputPath))
-                {
-                    var length = new FileInfo(expectedOutputPath).Length;
-                    if (length > 0)
-                    {
-                        if (length != lastPdfLength)
-                        {
-                            lastPdfLength = length;
-                            pdfStableSince.Restart();
-                        }
-                        else if (pdfStableSince.Elapsed >= TimeSpan.FromSeconds(2))
-                        {
-                            TryKill(process);
-                            break;
-                        }
-                    }
-                }
-
-                if (elapsed.Elapsed >= _options.ProcessTimeout)
-                {
-                    throw new TimeoutException(
-                        $"{processName} DOCX conversion exceeded {_options.ProcessTimeout}.");
-                }
-
-                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        catch
-        {
-            TryKill(process);
-            throw;
-        }
-
-        if (!process.HasExited)
-        {
-            if (!process.WaitForExit(5000))
-            {
-                TryKill(process);
-                process.WaitForExit(5000);
-            }
-        }
-        else
-        {
-            process.WaitForExit();
-        }
-
-        var exitCode = -1;
-        try
-        {
-            if (process.HasExited)
-            {
-                exitCode = process.ExitCode;
-            }
-        }
-        catch
-        {
-            exitCode = -1;
-        }
-
-        if (exitCode != 0 &&
-            !string.IsNullOrWhiteSpace(expectedOutputPath) &&
-            File.Exists(expectedOutputPath) &&
-            new FileInfo(expectedOutputPath).Length > 0)
-        {
-            exitCode = 0;
-        }
-
-        return new ProcessResult(
-            exitCode,
-            await outputTask.ConfigureAwait(false),
-            await errorTask.ConfigureAwait(false));
     }
 
     private static string GetEngineName(DocxConversionEngine engine)
@@ -635,78 +536,6 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
             DocxConversionEngine.BuiltIn => "BuiltIn",
             _ => engine.ToString()
         };
-    }
-
-    private static void TryKill(Process process)
-    {
-        try
-        {
-            if (process.HasExited)
-            {
-                return;
-            }
-
-            var pid = process.Id;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                TryKillWindowsProcessTree(pid);
-                return;
-            }
-
-            TryKillUnixProcessTree(pid);
-        }
-        catch
-        {
-            // Best effort cleanup after cancellation or timeout.
-        }
-    }
-
-    private static void TryKillWindowsProcessTree(int pid)
-    {
-        using var killer = Process.Start(new ProcessStartInfo
-        {
-            FileName = "taskkill",
-            Arguments = $"/PID {pid} /T /F",
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true
-        });
-        killer?.WaitForExit(10000);
-    }
-
-    private static void TryKillUnixProcessTree(int pid)
-    {
-        try
-        {
-            using var pkill = Process.Start(new ProcessStartInfo
-            {
-                FileName = "pkill",
-                Arguments = $"-KILL -P {pid}",
-                CreateNoWindow = true,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            });
-            pkill?.WaitForExit(3000);
-        }
-        catch
-        {
-            // ignored
-        }
-
-        try
-        {
-            using var target = Process.GetProcessById(pid);
-            if (!target.HasExited)
-            {
-                target.Kill();
-            }
-        }
-        catch
-        {
-            // ignored
-        }
     }
 
     private static void TryDeleteDirectory(string path)

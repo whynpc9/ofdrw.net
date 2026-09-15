@@ -11,6 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
+    <ProjectReference Include="../Ofdrw.Net.ProcessFixture/Ofdrw.Net.ProcessFixture.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

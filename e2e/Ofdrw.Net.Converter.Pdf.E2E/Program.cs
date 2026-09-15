@@ -6,12 +6,17 @@ using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Readers;
+using Ofdrw.Net.Reader.Extraction;
+using DocumentFormat.OpenXml.Packaging;
 using Ofdrw.Net.Signatures.Verification;
 using System.Diagnostics;
 using System.Globalization;
 
+// Exercise host resolver composition before PDFsharp initializes its cache.
+PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = Ofdrw.Net.Converter.Pdf.PdfFontRegistry.CreateResolver(new PdfSharpCore.Utils.FontResolver());
+
 var repoRoot = ResolveRepoRoot();
-var outputDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "output");
+var outputDir = Environment.GetEnvironmentVariable("OFDRW_E2E_OUTPUT_DIR") ?? Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "output");
 var testDataDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "testdata", "upstream-ofdrw");
 Directory.CreateDirectory(outputDir);
 
@@ -133,6 +138,7 @@ static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
     };
     var pdfPath = Path.Combine(outputDir, "generated-docx.pdf");
     var nativeOfdPath = Path.Combine(outputDir, "generated-docx-native.ofd");
+    var defaultOfdPath = Path.Combine(outputDir, "generated-docx-default.ofd");
     var directOfdPath = Path.Combine(outputDir, "generated-docx.ofd");
     var pdfOfdPath = Path.Combine(outputDir, "generated-docx-pdf-stage.ofd");
 
@@ -163,6 +169,10 @@ static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
         await new PdfToOfdConverter().ConvertAsync(pdfInput, ofdOutput);
     }
 
+    await using (var docxInput = File.OpenRead(samplePath))
+    await using (var ofdOutput = File.Create(defaultOfdPath))
+        await new DocxToOfdConverter().ConvertAsync(docxInput, ofdOutput);
+
     foreach (var ofdPath in new[] { directOfdPath, pdfOfdPath })
     {
         await using var ofdInput = File.OpenRead(ofdPath);
@@ -173,6 +183,34 @@ static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
                 !page.Elements.OfType<OfdTextElement>().Any()))
         {
             throw new InvalidOperationException($"DOCX conversion output is incomplete: {ofdPath}");
+        }
+    }
+
+    using var sourceDocument = WordprocessingDocument.Open(samplePath, false);
+    var original = string.Concat(sourceDocument.MainDocumentPart!.Document.Body!.Descendants<DocumentFormat.OpenXml.Wordprocessing.Text>().Select(text => text.Text));
+    static string Compact(string value) => string.Concat(value.Where(character => !char.IsWhiteSpace(character)));
+    foreach (var path in new[] { nativeOfdPath, defaultOfdPath, Path.Combine(outputDir, "cli-native.ofd") })
+    {
+        if (!File.Exists(path)) throw new InvalidOperationException($"Required native output is missing: {path}");
+        await using (var input = File.OpenRead(path))
+        {
+            var native = await new OfdReader().ReadAsync(input);
+            if (Compact(new OfdTextExtractor().Extract(native)) != Compact(original))
+                throw new InvalidOperationException($"Native output did not preserve original DOCX text: {path}");
+        }
+        var rendered = Path.ChangeExtension(path, ".pdf");
+        await using (var input = File.OpenRead(path))
+        await using (var output = File.Create(rendered))
+            await new OfdToPdfConverter().ConvertAsync(input, output);
+        var render = await RunProcessAsync("pdftoppm", $"-png -r 144 \"{rendered}\" \"{Path.Combine(outputDir, Path.GetFileNameWithoutExtension(path))}\"");
+        if (render.ExitCode != 0) throw new InvalidOperationException($"Native OFD PDF rendering failed: {render.Error}");
+        var images = Directory.EnumerateFiles(outputDir, Path.GetFileNameWithoutExtension(path) + "-*.png").OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        if (images.Length != 2) throw new InvalidOperationException($"Expected two freshly rendered native pages: {path}");
+        foreach (var image in images) await AssertImageHasContentAsync(image);
+        if (path != nativeOfdPath)
+        {
+            var expectedImages = Directory.EnumerateFiles(outputDir, "generated-docx-native-*.png").OrderBy(value => value, StringComparer.Ordinal).ToArray();
+            for (var index = 0; index < images.Length; index++) await AssertImagesCloseAsync(expectedImages[index], images[index], 0.001);
         }
     }
 
@@ -367,8 +405,7 @@ static async Task AssertImageHasContentAsync(string imagePath)
     var result = await RunProcessAsync("convert", $"\"{imagePath}\" -colorspace Gray -format \"%[fx:standard_deviation]\" info:");
     if (result.ExitCode != 0)
     {
-        Console.WriteLine($"[E2E] Skipping image content check because ImageMagick failed: {result.Error}");
-        return;
+        throw new InvalidOperationException($"Required image content validation failed: {result.Error}");
     }
 
     if (!double.TryParse(result.Output, NumberStyles.Float, CultureInfo.InvariantCulture, out var standardDeviation) || standardDeviation <= 0.0001d)
@@ -385,6 +422,16 @@ static async Task AssertImagesSameSizeAsync(string expectedPath, string actualPa
     {
         throw new InvalidOperationException($"Rendered image size mismatch. expected={expected.Width} x {expected.Height}, actual={actual.Width} x {actual.Height}");
     }
+}
+
+static async Task AssertImagesCloseAsync(string expected, string actual, double tolerance)
+{
+    await AssertImagesSameSizeAsync(expected, actual);
+    var result = await RunProcessAsync("compare", $"-metric RMSE \"{expected}\" \"{actual}\" null:");
+    var match = System.Text.RegularExpressions.Regex.Match(result.Error, @"\(([0-9.eE+-]+)\)");
+    if (result.ExitCode > 1 || !match.Success ||
+        !double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var error) || error > tolerance)
+        throw new InvalidOperationException($"Rendered pages differ beyond {tolerance}: {expected} vs {actual}; {result.Error}");
 }
 
 static async Task AssertSignedSealRegionAsync(string imagePath)
@@ -431,7 +478,7 @@ static async Task<(int Width, int Height)> IdentifySizeAsync(string imagePath)
 
 static async Task<(int ExitCode, string Output, string Error)> RunProcessAsync(string fileName, string arguments)
 {
-    var process = new Process
+    using var process = new Process
     {
         StartInfo = new ProcessStartInfo
         {
@@ -453,8 +500,20 @@ static async Task<(int ExitCode, string Output, string Error)> RunProcessAsync(s
         throw new InvalidOperationException($"{fileName} is required for visual validation.", ex);
     }
 
-    var stdout = await process.StandardOutput.ReadToEndAsync();
-    var stderr = await process.StandardError.ReadToEndAsync();
-    await process.WaitForExitAsync();
-    return (process.ExitCode, stdout.Trim(), stderr.Trim());
+    using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+    var stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
+    var stderr = process.StandardError.ReadToEndAsync(timeout.Token);
+    try
+    {
+        await process.WaitForExitAsync(timeout.Token);
+        await Task.WhenAll(stdout, stderr);
+        return (process.ExitCode, stdout.Result.Trim(), stderr.Result.Trim());
+    }
+    catch (OperationCanceledException exception)
+    {
+        if (!process.HasExited) process.Kill(entireProcessTree: true);
+        await process.WaitForExitAsync();
+        try { await Task.WhenAll(stdout, stderr); } catch (OperationCanceledException) { }
+        throw new TimeoutException($"Visual validation process timed out: {fileName}", exception);
+    }
 }

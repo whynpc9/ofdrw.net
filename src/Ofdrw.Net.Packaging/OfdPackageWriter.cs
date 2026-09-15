@@ -10,12 +10,20 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Core.IO;
 
 namespace Ofdrw.Net.Packaging;
 
 public sealed class OfdPackageWriter
 {
     public async Task WriteAsync(OfdDocumentPackage package, Stream destination, CancellationToken cancellationToken = default)
+    {
+        _ = await WriteWithResultAsync(package, destination, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Writes the package and reports removed page resources and invalidated signatures.</summary>
+    public async Task<OfdPackageWriteResult> WriteWithResultAsync(
+        OfdDocumentPackage package, Stream destination, CancellationToken cancellationToken = default)
     {
         if (package is null)
         {
@@ -27,7 +35,9 @@ public sealed class OfdPackageWriter
             throw new ArgumentNullException(nameof(destination));
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         var entries = BuildEntries(package);
+        var result = OfdPackagePruner.Prune(package, entries);
         using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
 
         foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
@@ -36,13 +46,15 @@ public sealed class OfdPackageWriter
             using var stream = zipEntry.Open();
             await stream.WriteAsync(entry.Value, 0, entry.Value.Length, cancellationToken).ConfigureAwait(false);
         }
+        return result;
     }
 
     private Dictionary<string, byte[]> BuildEntries(OfdDocumentPackage package)
     {
         var entries = new Dictionary<string, byte[]>(package.PreservedEntries, StringComparer.OrdinalIgnoreCase);
         var ns = XNamespace.Get(package.Options.Namespace);
-        var docId = package.Options.DocumentId;
+        var documentPath = package.DocumentEntryPath ?? $"{package.Options.DocumentId}/Document.xml";
+        var docId = OfdPackagePath.GetDirectory(documentPath);
 
         var ofdXml = new XDocument(
             new XDeclaration("1.0", "UTF-8", null),
@@ -54,7 +66,7 @@ public sealed class OfdPackageWriter
                     new XElement(ns + "DocInfo",
                         BuildDocInfo(ns, package.Options.Metadata)
                     ),
-                    new XElement(ns + "DocRoot", $"{docId}/Document.xml"),
+                    new XElement(ns + "DocRoot", documentPath),
                     package.PreservedDocBodyElements.Select(xml =>
                         XElement.Parse(xml, LoadOptions.PreserveWhitespace))
                 )));
@@ -74,49 +86,27 @@ public sealed class OfdPackageWriter
         var idAllocator = new OfdIdAllocator();
         idAllocator.AdvancePast(GetPreservedMaxId(package.PreservedEntries));
         var pageIds = orderedPages.ToDictionary(page => page, page => idAllocator.AllocatePreferred(page.Id));
+        var pagePaths = BuildPagePaths(orderedPages, docId);
         var elementIds = new Dictionary<OfdElement, string>();
         var layerIds = BuildPageObjectIds(orderedPages, elementIds, idAllocator);
         var imageResources = BuildImageResources(orderedPages, idAllocator);
-        var fontIds = BuildFontIds(package, idAllocator);
+        var fonts = BuildFonts(package, idAllocator);
         var publicResourceLocation = package.PublicResourceLocation ?? "PublicRes.xml";
         var documentResourceLocation = package.DocumentResourceLocation ??
             (imageResources.Count > 0 ? "DocumentRes.xml" : null);
-        var newImageResources = imageResources
-            .Where(pair => string.IsNullOrWhiteSpace(pair.Key.SourceXml) ||
-                string.IsNullOrWhiteSpace(package.DocumentResourceLocation))
-            .ToDictionary(pair => pair.Key, pair => pair.Value);
-
-        if (newImageResources.Count > 0 && !string.IsNullOrWhiteSpace(documentResourceLocation))
+        var resources = new OfdResourceCatalog(entries);
+        var publicPath = OfdPackagePath.Resolve(documentPath, publicResourceLocation);
+        resources.EnsureDocument(publicPath, ns);
+        foreach (var font in fonts.Resources) resources.WriteFont(font.Id, font.Resource, publicPath, ns);
+        if (!string.IsNullOrWhiteSpace(documentResourceLocation))
         {
-            BuildDocumentResources(
-                entries,
-                ns,
-                docId,
-                documentResourceLocation!,
-                newImageResources);
+            var resourcePath = OfdPackagePath.Resolve(documentPath, documentResourceLocation!);
+            resources.EnsureDocument(resourcePath, ns);
+            foreach (var image in imageResources.Values.GroupBy(image => image.Id).Select(group => group.First()))
+                resources.WriteImage(image.Id, image.Image, image.Format, resourcePath, ns);
         }
-
-        var fontNamesToAdd = new HashSet<string>(package.Pages
-            .SelectMany(page => page.Elements)
-            .OfType<OfdTextElement>()
-            .GroupBy(text => text.FontName, StringComparer.OrdinalIgnoreCase)
-            .Where(group => string.IsNullOrWhiteSpace(package.PublicResourceLocation) ||
-                group.All(text => string.IsNullOrWhiteSpace(text.SourceXml)))
-            .Select(group => group.Key), StringComparer.OrdinalIgnoreCase);
-        foreach (var font in package.Fonts.Where(font => font.Data.Length > 0))
-        {
-            fontNamesToAdd.Add(font.FontName);
-        }
-
-        BuildPublicResources(
-            entries,
-            ns,
-            docId,
-            publicResourceLocation,
-            fontIds,
-            fontNamesToAdd,
-            package.Fonts);
-        BuildPages(orderedPages, entries, ns, docId, pageIds, layerIds, elementIds, fontIds, imageResources, idAllocator);
+        resources.Flush();
+        BuildPages(orderedPages, entries, ns, pagePaths, pageIds, layerIds, elementIds, fonts.TextIds, imageResources, idAllocator);
         BuildAttachments(package, entries, ns, docId);
         BuildCustomTags(package, entries, ns, docId);
 
@@ -144,7 +134,7 @@ public sealed class OfdPackageWriter
                     orderedPages.Select((page, i) =>
                         new XElement(ns + "Page",
                             new XAttribute("ID", pageIds[page]),
-                            new XAttribute("BaseLoc", $"Pages/Page_{i}/Content.xml"))
+                            new XAttribute("BaseLoc", OfdPackagePath.RelativeTo(documentPath, pagePaths[page])))
                     )
                 ),
                 package.Attachments.Count > 0
@@ -156,26 +146,86 @@ public sealed class OfdPackageWriter
                 package.PreservedDocumentElements.Select(xml =>
                     XElement.Parse(xml, LoadOptions.PreserveWhitespace))));
 
-        entries[$"{docId}/Document.xml"] = ToUtf8Bytes(docXml);
+        entries[documentPath] = ToUtf8Bytes(docXml);
         return entries;
     }
 
-    private static Dictionary<string, string> BuildFontIds(OfdDocumentPackage package, OfdIdAllocator idAllocator)
+    private static Dictionary<OfdPage, string> BuildPagePaths(IReadOnlyList<OfdPage> pages, string documentDirectory)
     {
-        return package.Pages.SelectMany(p => p.Elements)
-            .OfType<OfdTextElement>()
-            .Where(t => !string.IsNullOrWhiteSpace(t.FontName))
-            .GroupBy(t => t.FontName, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                group => group.Key,
-                group => idAllocator.AllocatePreferred(
-                    group.Select(text => text.FontResourceId)
-                        .FirstOrDefault(id => !string.IsNullOrWhiteSpace(id))
-                    ?? package.Fonts.FirstOrDefault(font => string.Equals(
-                        font.FontName,
-                        group.Key,
-                        StringComparison.OrdinalIgnoreCase))?.Id),
-                StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<OfdPage, string>();
+        var used = new HashSet<string>(pages.Where(page => !string.IsNullOrWhiteSpace(page.SourceEntryPath))
+            .Select(page => OfdPackagePath.Resolve("OFD.xml", "/" + page.SourceEntryPath)), StringComparer.OrdinalIgnoreCase);
+        foreach (var page in pages)
+        {
+            var path = page.SourceEntryPath;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                var index = page.Index;
+                do
+                {
+                    path = OfdPackagePath.Resolve("OFD.xml", $"/{documentDirectory}/Pages/Page_{index++}/Content.xml");
+                } while (!used.Add(path));
+            }
+            else
+            {
+                path = OfdPackagePath.Resolve("OFD.xml", "/" + path);
+            }
+
+            if (result.Values.Contains(path, StringComparer.OrdinalIgnoreCase))
+                throw new InvalidDataException("Multiple pages share the same source entry; clone repeated pages with a new source path.");
+            result.Add(page, path!);
+        }
+
+        return result;
+    }
+
+    private sealed class FontBinding
+    {
+        internal OfdFontResource Resource { get; set; } = new();
+        internal string Id { get; set; } = string.Empty;
+    }
+
+    private sealed class FontBindings
+    {
+        internal List<FontBinding> Resources { get; } = new();
+        internal Dictionary<OfdTextElement, string> TextIds { get; } = new();
+    }
+
+    private static FontBindings BuildFonts(OfdDocumentPackage package, OfdIdAllocator idAllocator)
+    {
+        var result = new FontBindings();
+        var byId = new Dictionary<string, FontBinding>(StringComparer.Ordinal);
+        foreach (var font in package.Fonts)
+        {
+            if (!string.IsNullOrEmpty(font.Id) && byId.ContainsKey(font.Id))
+                throw new InvalidDataException($"Duplicate font resource ID '{font.Id}'.");
+            var binding = new FontBinding { Resource = font, Id = idAllocator.AllocatePreferred(font.Id) };
+            result.Resources.Add(binding);
+            if (!string.IsNullOrEmpty(font.Id)) byId.Add(font.Id, binding);
+        }
+
+        foreach (var text in package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>())
+        {
+            FontBinding? binding = null;
+            if (!string.IsNullOrEmpty(text.FontResourceId)) byId.TryGetValue(text.FontResourceId!, out binding);
+            binding ??= result.Resources.FirstOrDefault(font =>
+                string.Equals(font.Resource.FontName, text.FontName, StringComparison.OrdinalIgnoreCase) &&
+                !font.Resource.Bold && !font.Resource.Italic)
+                ?? result.Resources.FirstOrDefault(font =>
+                    string.Equals(font.Resource.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
+            if (binding is null)
+            {
+                binding = new FontBinding
+                {
+                    Resource = new OfdFontResource { FontName = text.FontName },
+                    Id = idAllocator.AllocatePreferred(text.FontResourceId)
+                };
+                result.Resources.Add(binding);
+                if (!string.IsNullOrEmpty(text.FontResourceId)) byId[text.FontResourceId!] = binding;
+            }
+            result.TextIds[text] = binding.Id;
+        }
+        return result;
     }
 
     private sealed class ImageResource
@@ -220,174 +270,44 @@ public sealed class OfdPackageWriter
     {
         var resources = new Dictionary<OfdImageElement, ImageResource>();
 
+        var byContent = new Dictionary<string, ImageResource>(StringComparer.Ordinal);
+        var hashes = new Dictionary<byte[], string>();
         foreach (var image in pages.SelectMany(x => x.Elements).OfType<OfdImageElement>())
         {
-            var id = idAllocator.AllocatePreferred(image.ResourceId);
             var format = ToOfdImageFormat(image.MediaType, image.FileName);
-            var extension = GetImageExtension(format);
-            var fileName = string.IsNullOrWhiteSpace(image.FileName) ? $"Image_{id}{extension}" : image.FileName;
-            resources[image] = new ImageResource
+            if (!hashes.TryGetValue(image.Data, out var hash)) hashes[image.Data] = hash = BinaryIdentity.Hash(image.Data);
+            var key = format + ":" + hash;
+            if (!byContent.TryGetValue(key, out var resource))
             {
-                Image = image,
-                Id = id,
-                FileName = fileName,
-                Format = format
-            };
+                resource = new ImageResource
+                {
+                    Image = image,
+                    Id = idAllocator.AllocatePreferred(image.ResourceId),
+                    Format = format
+                };
+                byContent.Add(key, resource);
+            }
+            resources[image] = resource;
         }
 
         return resources;
-    }
-
-    private static void BuildDocumentResources(
-        IDictionary<string, byte[]> entries,
-        XNamespace ns,
-        string docId,
-        string resourceLocation,
-        IReadOnlyDictionary<OfdImageElement, ImageResource> imageResources)
-    {
-        var resourcePath = ResolveEntryPath($"{docId}/Document.xml", resourceLocation);
-        XDocument documentResXml;
-        if (entries.TryGetValue(resourcePath, out var existingBytes))
-        {
-            using var existingStream = new MemoryStream(existingBytes, writable: false);
-            documentResXml = XDocument.Load(existingStream, LoadOptions.PreserveWhitespace);
-        }
-        else
-        {
-            documentResXml = new XDocument(
-                new XDeclaration("1.0", "UTF-8", null),
-                new XElement(ns + "Res",
-                    new XAttribute(XNamespace.Xmlns + "ofd", ns.NamespaceName),
-                    new XAttribute("BaseLoc", "Res")));
-        }
-
-        var root = documentResXml.Root ?? throw new InvalidDataException("Document resource XML has no root element.");
-        var resourceNs = root.Name.Namespace;
-        var mediaContainer = root.Elements()
-            .FirstOrDefault(element => element.Name.LocalName == "MultiMedias");
-        if (mediaContainer is null)
-        {
-            mediaContainer = new XElement(resourceNs + "MultiMedias");
-            root.Add(mediaContainer);
-        }
-
-        var existingIds = new HashSet<string>(root.Descendants()
-            .Where(element => element.Name.LocalName == "MultiMedia")
-            .Select(element => element.Attribute("ID")?.Value)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Select(id => id!), StringComparer.Ordinal);
-        foreach (var resource in imageResources.Values)
-        {
-            if (!existingIds.Contains(resource.Id))
-            {
-                mediaContainer.Add(new XElement(resourceNs + "MultiMedia",
-                    new XAttribute("ID", resource.Id),
-                    new XAttribute("Type", "Image"),
-                    new XAttribute("Format", resource.Format),
-                    new XElement(resourceNs + "MediaFile", resource.FileName)));
-            }
-        }
-
-        entries[resourcePath] = ToUtf8Bytes(documentResXml);
-        var baseLoc = root.Attribute("BaseLoc")?.Value ?? "Res";
-        foreach (var resource in imageResources.Values)
-        {
-            entries[ResolveEntryPath(resourcePath, $"{baseLoc.TrimEnd('/')}/{resource.FileName}")] =
-                resource.Image.Data;
-        }
-    }
-
-    private static void BuildPublicResources(
-        IDictionary<string, byte[]> entries,
-        XNamespace ns,
-        string docId,
-        string resourceLocation,
-        IReadOnlyDictionary<string, string> fontIds,
-        ISet<string> fontNamesToAdd,
-        IReadOnlyList<OfdFontResource> fontResources)
-    {
-        var resourcePath = ResolveEntryPath($"{docId}/Document.xml", resourceLocation);
-        XDocument publicResXml;
-        if (entries.TryGetValue(resourcePath, out var existingBytes))
-        {
-            using var existingStream = new MemoryStream(existingBytes, writable: false);
-            publicResXml = XDocument.Load(existingStream, LoadOptions.PreserveWhitespace);
-        }
-        else
-        {
-            publicResXml = new XDocument(
-                new XDeclaration("1.0", "UTF-8", null),
-                new XElement(ns + "Res",
-                    new XAttribute(XNamespace.Xmlns + "ofd", ns.NamespaceName),
-                    new XAttribute("BaseLoc", "Res")));
-        }
-
-        var root = publicResXml.Root ?? throw new InvalidDataException("Public resource XML has no root element.");
-        var resourceNs = root.Name.Namespace;
-        var fonts = root.Elements().FirstOrDefault(element => element.Name.LocalName == "Fonts");
-        if (fonts is null)
-        {
-            fonts = new XElement(resourceNs + "Fonts");
-            root.AddFirst(fonts);
-        }
-
-        var existingIds = new HashSet<string>(root.Descendants()
-            .Where(element => element.Name.LocalName == "Font")
-            .Select(element => element.Attribute("ID")?.Value)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Select(id => id!), StringComparer.Ordinal);
-        foreach (var font in fontIds.Where(font => fontNamesToAdd.Contains(font.Key)))
-        {
-            if (!existingIds.Contains(font.Value))
-            {
-                var embedded = fontResources.FirstOrDefault(resource => string.Equals(
-                    resource.FontName,
-                    font.Key,
-                    StringComparison.OrdinalIgnoreCase));
-                var fileName = embedded?.Data.Length > 0
-                    ? embedded.FileName ?? $"Font_{font.Value}.ttf"
-                    : null;
-                fonts.Add(new XElement(resourceNs + "Font",
-                    new XAttribute("ID", font.Value),
-                    new XAttribute("FontName", font.Key),
-                    new XAttribute("FamilyName", embedded?.FamilyName ?? font.Key),
-                    embedded is not null && !string.IsNullOrWhiteSpace(embedded.Charset)
-                        ? new XAttribute("Charset", embedded.Charset)
-                        : null,
-                    embedded?.Bold == true ? new XAttribute("Bold", true) : null,
-                    embedded?.Italic == true ? new XAttribute("Italic", true) : null,
-                    fileName is not null
-                        ? new XElement(resourceNs + "FontFile", fileName)
-                        : null));
-                if (fileName is not null && embedded is not null)
-                {
-                    var baseLoc = root.Attribute("BaseLoc")?.Value ?? "Res";
-                    entries[ResolveEntryPath(
-                        resourcePath,
-                        $"{baseLoc.TrimEnd('/')}/{fileName}")] = embedded.Data;
-                }
-            }
-        }
-
-        entries[resourcePath] = ToUtf8Bytes(publicResXml);
     }
 
     private static void BuildPages(
         List<OfdPage> pages,
         IDictionary<string, byte[]> entries,
         XNamespace ns,
-        string docId,
+        IReadOnlyDictionary<OfdPage, string> pagePaths,
         IReadOnlyDictionary<OfdPage, string> pageIds,
         IReadOnlyDictionary<OfdPage, Dictionary<string, string>> layerIds,
         IReadOnlyDictionary<OfdElement, string> elementIds,
-        IReadOnlyDictionary<string, string> fontIds,
+        IReadOnlyDictionary<OfdTextElement, string> fontIds,
         IReadOnlyDictionary<OfdImageElement, ImageResource> imageResources,
         OfdIdAllocator idAllocator)
     {
         for (var i = 0; i < pages.Count; i++)
         {
             var page = pages[i];
-            var pageFolder = $"{docId}/Pages/Page_{i}";
             var content = new XElement(ns + "Content");
 
             var layerGroups = page.Elements.GroupBy(GetLayerKey);
@@ -407,7 +327,7 @@ public sealed class OfdPackageWriter
                     var objectId = elementIds[element];
                     if (element is OfdTextElement text)
                     {
-                        var fontId = fontIds.TryGetValue(text.FontName, out var resolvedFontId)
+                        var fontId = fontIds.TryGetValue(text, out var resolvedFontId)
                             ? resolvedFontId
                             : idAllocator.Allocate();
                         XElement textObject;
@@ -461,6 +381,7 @@ public sealed class OfdPackageWriter
                                     });
                         }
 
+                        AssignNestedIds(textObject, idAllocator);
                         layer.Add(textObject);
                     }
                     else if (element is OfdImageElement image)
@@ -482,6 +403,16 @@ public sealed class OfdPackageWriter
                                 new XAttribute("ResourceID", resource.Id));
                         }
 
+                        imageObject.SetAttributeValue("Boundary", BuildBox(image.XMillimeters, image.YMillimeters, image.WidthMillimeters, image.HeightMillimeters));
+                        imageObject.SetAttributeValue("CTM", image.Transform is { Length: 6 }
+                            ? string.Join(" ", image.Transform.Select(ToInvariant))
+                            : BuildMatrix(image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0));
+                        imageObject.SetAttributeValue("Alpha", image.Alpha == 255 ? null : (object)Math.Max(0, Math.Min(255, image.Alpha)));
+                        imageObject.Elements().Where(child => child.Name.LocalName == "Clips").Remove();
+                        if (!string.IsNullOrWhiteSpace(image.ClipsXml))
+                            imageObject.Add(XElement.Parse(image.ClipsXml!, LoadOptions.PreserveWhitespace));
+
+                        AssignNestedIds(imageObject, idAllocator);
                         layer.Add(imageObject);
                     }
                     else if (element is OfdPathElement path)
@@ -515,12 +446,14 @@ public sealed class OfdPackageWriter
                             abbreviatedData.Value = path.AbbreviatedData;
                         }
 
+                        AssignNestedIds(pathObject, idAllocator);
                         layer.Add(pathObject);
                     }
                     else if (element is OfdRawElement raw && !string.IsNullOrWhiteSpace(raw.Xml))
                     {
                         var rawElement = XElement.Parse(raw.Xml, LoadOptions.PreserveWhitespace);
                         rawElement.SetAttributeValue("ID", objectId);
+                        AssignNestedIds(rawElement, idAllocator);
                         layer.Add(rawElement);
                     }
                 }
@@ -557,7 +490,7 @@ public sealed class OfdPackageWriter
             var pageDocument = new XDocument(
                 new XDeclaration("1.0", "UTF-8", null),
                 pageRoot);
-            entries[$"{pageFolder}/Content.xml"] = ToUtf8Bytes(pageDocument);
+            entries[pagePaths[page]] = ToUtf8Bytes(pageDocument);
         }
     }
 
@@ -566,6 +499,12 @@ public sealed class OfdPackageWriter
         var id = element.LayerId ?? string.Empty;
         var type = string.IsNullOrWhiteSpace(element.LayerType) ? "Body" : element.LayerType;
         return $"{id}\u001f{type}";
+    }
+
+    private static void AssignNestedIds(XElement root, OfdIdAllocator allocator)
+    {
+        foreach (var attribute in root.Descendants().Attributes("ID"))
+            attribute.Value = allocator.AllocatePreferred(attribute.Value);
     }
 
     private static void SetPathColor(

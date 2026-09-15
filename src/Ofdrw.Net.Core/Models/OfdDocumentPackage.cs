@@ -5,6 +5,9 @@ namespace Ofdrw.Net.Core.Models;
 
 public sealed class OfdDocumentPackage
 {
+    /// <summary>Original document XML entry, or null for a newly created document.</summary>
+    public string? DocumentEntryPath { get; set; }
+
     public OfdDocumentOptions Options { get; set; } = new OfdDocumentOptions();
 
     public List<OfdPage> Pages { get; } = [];
