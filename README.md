@@ -42,7 +42,7 @@ See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk 
 
 ## For Developers
 
-All packages are published on [NuGet](https://www.nuget.org/profiles/whynpc). The current preview release is `0.1.0-preview.7`. See the [release notes](docs/release-notes-0.1.0-preview.7.md).
+All packages are published on [NuGet](https://www.nuget.org/profiles/whynpc). The current preview release is `0.1.0-preview.6`. See the [release notes](docs/release-notes-0.1.0-preview.6.md).
 
 ### Which package should I install?
 
@@ -72,26 +72,26 @@ Published packages:
 Install the high-level conversion package:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.7
+dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.6
 ```
 
 For a narrower dependency surface, install the PDF converter package directly:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.7
+dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.6
 ```
 
 Install DOCX conversion independently:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Docx --version 0.1.0-preview.7
+dotnet add package Ofdrw.Net.Converter.Docx --version 0.1.0-preview.6
 ```
 
 Install SVG or signature support independently:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.7
-dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.7
+dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.6
+dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.6
 ```
 
 Convert PDF to OFD:
@@ -227,7 +227,7 @@ Create a signature by implementing `IOfdSignatureProvider`. The provider receive
 Install the CLI as a .NET tool:
 
 ```bash
-dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.7
+dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.6
 ```
 
 Convert by file extension:
