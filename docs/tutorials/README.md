@@ -84,6 +84,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 ## 相关文档
 
 - [功能对照](../feature-parity.md)：本仓库已支持什么
+- [能力路线图](../capability-roadmap.md)：后续 TODO、批次与无厂商时的加密/签章边界
 - [转换、编辑与资源约定](../conversion-contracts.md)：DOCX/PDF 转换行为，不是格式课
 - 源项目布局说明：[ofdrw-layout/doc/layout](https://github.com/ofdrw/ofdrw/blob/master/ofdrw-layout/doc/layout/README.md)
 - 源项目签章入门：[ofdrw-sign/doc/quickstart](https://github.com/ofdrw/ofdrw/blob/master/ofdrw-sign/doc/quickstart/README.md)
