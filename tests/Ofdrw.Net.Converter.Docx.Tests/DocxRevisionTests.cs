@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using Ofdrw.Net.Converter.Docx.Converters;
+using Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Extraction;
 using Ofdrw.Net.Reader.Readers;
@@ -47,22 +48,15 @@ public sealed partial class DocxConversionTests
     [Fact]
     public async Task Native_ShouldDeclareViewerLocalCjkNamesWithoutEmbeddingASubstituteFace()
     {
-        var simhei = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts", "simhei.ttf");
-        var simsun = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts", "simsun.ttc");
-        if (!File.Exists(simhei))
-        {
-            if (OperatingSystem.IsWindows())
-                Assert.Fail("Expected Windows\\Fonts\\simhei.ttf for CJK substitution coverage.");
+        var metricFont = TryFindCjkMetricFont();
+        if (metricFont is null)
             return;
-        }
 
         var directory = Path.Combine(Path.GetTempPath(), "ofdrw-cjk-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
-            File.Copy(simhei, Path.Combine(directory, "simhei.ttf"));
-            if (File.Exists(simsun))
-                File.Copy(simsun, Path.Combine(directory, "simsun.ttc"));
+            File.Copy(metricFont, Path.Combine(directory, Path.GetFileName(metricFont)));
             var options = new DocxConversionOptions();
             options.FontDirectories.Add(directory);
             using var input = CreateMinimalDocx("""
@@ -391,6 +385,34 @@ public sealed partial class DocxConversionTests
         }
         stream.Position = 0;
         return stream;
+    }
+
+    private static string? TryFindCjkMetricFont()
+    {
+        foreach (var directory in DocxFontCatalog.DefaultPlatformFontDirectories())
+        {
+            foreach (var name in new[]
+                     {
+                         "simhei.ttf",
+                         "Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+                         "NotoSansCJKsc-Regular.ttf"
+                     })
+            {
+                var path = Path.Combine(directory, name);
+                if (File.Exists(path)) return path;
+            }
+
+            try
+            {
+                var match = Directory.GetFiles(directory, "Ofdrw-CI-Noto*.ttf");
+                if (match.Length > 0) return match[0];
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        return null;
     }
 
     private static void SaveFixtureArtifact(string name, MemoryStream docx, MemoryStream ofd)

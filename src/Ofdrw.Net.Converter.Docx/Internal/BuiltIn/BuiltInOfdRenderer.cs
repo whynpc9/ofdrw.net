@@ -278,6 +278,25 @@ internal sealed class BuiltInOfdRenderer
         return font;
     }
 
+    private XFont GetLatinCompatibleFont(BuiltInTextFormat format)
+    {
+        var family = NormalizeFontFamily(format.FontFamily);
+        if (!DocxFontCatalog.IsViewerLocalCjkFamily(family) &&
+            !family.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetFont(format);
+        }
+
+        var key = "latin|" + (format.Bold ? "bold" : "regular") + (format.Italic ? "|italic" : "");
+        if (_fonts.TryGetValue(key, out var font)) return font;
+        PdfFontRegistry.EnsureInstalled();
+        var style = (format.Bold ? XFontStyle.Bold : XFontStyle.Regular) |
+                    (format.Italic ? XFontStyle.Italic : XFontStyle.Regular);
+        font = new XFont("Arial", 1000, style);
+        _fonts[key] = font;
+        return font;
+    }
+
     private double Advance(string text, BuiltInTextFormat format)
     {
         var key = FontKey(format) + "\n" + text;
@@ -291,7 +310,7 @@ internal sealed class BuiltInOfdRenderer
             else
             {
                 using var measure = XGraphics.CreateMeasureContext(new XSize(1000, 1000), XGraphicsUnit.Point, XPageDirection.Downwards);
-                advance = measure.MeasureString(text == "\t" ? "    " : text, GetFont(format)).Width / 1000d;
+                advance = measure.MeasureString(text == "\t" ? "    " : text, GetLatinCompatibleFont(format)).Width / 1000d;
             }
             _advances[key] = advance;
         }

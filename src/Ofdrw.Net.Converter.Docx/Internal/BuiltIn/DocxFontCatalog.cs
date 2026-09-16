@@ -72,39 +72,21 @@ internal sealed class DocxFontCatalog
                 diagnostics.Add(new DocxConversionDiagnostic("DOCX_FONT_DIRECTORY_MISSING", "A configured font directory does not exist."));
                 continue;
             }
-            LoadDirectory(directory, options, diagnostics, cancellationToken);
+            LoadDirectory(directory, options, diagnostics, cancellationToken, cjkOnly: false);
         }
 
         // Empty FontDirectories (Linux ARM without Windows\\Fonts) still needs Noto/WQY.
         if (configured.Count == 0)
         {
             foreach (var directory in DefaultPlatformFontDirectories())
-                LoadDirectory(directory, options, diagnostics, cancellationToken);
+                LoadDirectory(directory, options, diagnostics, cancellationToken, cjkOnly: true);
         }
 
         ApplyCjkAliases();
     }
 
-    internal static IEnumerable<string> DefaultPlatformFontDirectories()
-    {
-        foreach (var directory in new[]
-                 {
-                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts"),
-                     "/usr/share/fonts",
-                     "/usr/local/share/fonts",
-                     "/usr/share/fonts/opentype/noto",
-                     "/usr/share/fonts/truetype/noto",
-                     "/usr/share/fonts/truetype/wqy",
-                     "/usr/share/fonts/noto-cjk",
-                     "/System/Library/Fonts",
-                     "/Library/Fonts",
-                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".fonts")
-                 })
-        {
-            if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
-                yield return directory;
-        }
-    }
+    internal static IEnumerable<string> DefaultPlatformFontDirectories() =>
+        CjkViewerFontLoader.PlatformDirectories();
 
     internal string Resolve(string family, bool bold, bool italic)
     {
@@ -169,7 +151,8 @@ internal sealed class DocxFontCatalog
         string directory,
         DocxConversionOptions options,
         IList<DocxConversionDiagnostic> diagnostics,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool cjkOnly)
     {
         foreach (var path in EnumerateFontFiles(directory).OrderBy(candidate => candidate, StringComparer.Ordinal))
         {
@@ -179,7 +162,7 @@ internal sealed class DocxFontCatalog
             var isFace = extension.Equals(".ttf", StringComparison.OrdinalIgnoreCase) ||
                          extension.Equals(".otf", StringComparison.OrdinalIgnoreCase);
             if (!isFace && !isCollection) continue;
-            if (isCollection && !IsPreferredCjkCollection(Path.GetFileName(path))) continue;
+            if ((isCollection || cjkOnly) && !IsPreferredCjkCollection(Path.GetFileName(path))) continue;
             try
             {
                 if (new FileInfo(path).Length > options.MaxEmbeddedFontBytes)
@@ -207,8 +190,10 @@ internal sealed class DocxFontCatalog
         if (PreferredCjkCollectionFiles.Contains(fileName)) return true;
         var name = fileName.ToLowerInvariant();
         return name.Contains("cjk") || name.Contains("noto") || name.Contains("wqy") ||
-               name.Contains("sourcehan") || name.Contains("simsun") || name.Contains("msyh") ||
-               name.Contains("uming") || name.Contains("ukai") || name.Contains("droid");
+               name.Contains("sourcehan") || name.Contains("simsun") || name.Contains("simhei") ||
+               name.Contains("msyh") || name.Contains("uming") || name.Contains("ukai") ||
+               name.Contains("droid") || name.Contains("deng") || name.Contains("kai") ||
+               name.Contains("fang");
     }
 
     private static IEnumerable<string> EnumerateFontFiles(string directory)
