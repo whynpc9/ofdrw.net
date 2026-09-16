@@ -14,6 +14,25 @@ public sealed class FontIsolationTests
 {
     public FontIsolationTests() => PdfFontRegistry.EnsureInstalled();
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NameOnlyFallback_ShouldDetectMissingStylesEvenWhenHostResolverOmitsSimulationFlags(bool bold, bool italic)
+    {
+        var data = File.ReadAllBytes(FontPath("narrow"));
+        var host = new HostResolver(data);
+        var resource = new OfdFontResource { Id = "12", FontName = "host-CJK-substitute", Bold = bold, Italic = italic };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], host);
+        var family = context.Resolve(new OfdTextElement { FontResourceId = "12" }, out var resolved);
+        Assert.Same(resource, resolved);
+        var face = GlobalFontSettings.FontResolver.ResolveTypeface(family, bold, italic);
+        Assert.Equal(bold, face.MustSimulateBold);
+        Assert.Equal(italic, face.MustSimulateItalic);
+        Assert.Equal(data, PdfFontRegistry.GetOriginalFont(face.FaceName));
+        Assert.Equal(1, host.Requests);
+    }
+
     [Fact]
     public void ComposedResolver_ShouldPreserveHostRequestsAndResolveEmbeddedFaces()
     {

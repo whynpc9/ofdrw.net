@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Ofdrw.Net.Core.Models;
+using PdfSharpCore.Fonts;
 
 namespace Ofdrw.Net.Converter.Pdf.Internal;
 
@@ -11,10 +12,11 @@ internal sealed class DocumentFontContext
     private readonly Dictionary<OfdFontResource, string> _families = new();
     internal Dictionary<string, SixLabors.Fonts.FontFamily> OutlineFonts { get; } = new();
 
-    internal DocumentFontContext(IReadOnlyList<OfdFontResource> fonts)
+    internal DocumentFontContext(IReadOnlyList<OfdFontResource> fonts, IFontResolver? fallbackResolver = null)
     {
         _fonts = fonts;
         PdfFontRegistry.EnsureInstalled();
+        fallbackResolver ??= GlobalFontSettings.FontResolver;
         foreach (var font in fonts)
         {
             if (font.Data.Length > 0)
@@ -24,6 +26,14 @@ internal sealed class DocumentFontContext
             }
 
             var local = CjkViewerFontLoader.TryRead(font.FontName) ?? CjkViewerFontLoader.TryRead(font.FamilyName);
+            if (local is null)
+            {
+                // The host may supply a regular substitute even for bold/italic
+                // requests, without setting PDFsharp's simulation flags. Register
+                // the actual bytes so missing styles are detected consistently.
+                var face = fallbackResolver.ResolveTypeface(font.FontName, font.Bold, font.Italic);
+                if (face is not null) local = fallbackResolver.GetFont(face.FaceName);
+            }
             if (local is not null)
                 _families[font] = PdfFontRegistry.RegisterFontFace(local, font.Bold, font.Italic);
         }

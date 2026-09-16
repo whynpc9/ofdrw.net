@@ -255,24 +255,16 @@ internal sealed class BuiltInOfdRenderer
     private string DeclaredFontName(BuiltInTextFormat format)
     {
         var family = NormalizeFontFamily(format.FontFamily);
-        // 宋体 has no true bold face; the previous Native converter declared 黑体 so
-        // OFD viewers match Word's local substitution instead of synthesizing SimSun Bold.
-        if (MapsSimSunBoldToSimHei(format))
-            return "SimHei";
         if (DocxFontCatalog.IsViewerLocalCjkFamily(family))
             return family;
         return FontKey(format);
     }
 
-    private bool MapsSimSunBoldToSimHei(BuiltInTextFormat format) =>
-        format.Bold && NormalizeFontFamily(format.FontFamily).Equals("SimSun", StringComparison.OrdinalIgnoreCase);
-
-    // Viewer-local CJK keeps the family name (SimSun/SimHei/…) so OFD viewers bind a
-    // local face. Distinct Bold/Italic resources are still required: OFD→PDF and SVG
-    // take style from the resource flags. 宋体 bold is the exception—Word substitutes
-    // 黑体, and setting Bold on that SimHei resource would synthesize extra weight.
+    // Preserve the source family and requested style even when a viewer substitutes
+    // a regular CJK face. The PDF resolver inspects the actual bytes and simulates
+    // only styles that the selected font does not supply.
     private (bool Bold, bool Italic) DeclaredResourceStyle(BuiltInTextFormat format) =>
-        (format.Bold && !MapsSimSunBoldToSimHei(format), format.Italic);
+        (format.Bold, format.Italic);
 
     private OfdFontResource GetOrAddFontResource(OfdDocumentPackage package, BuiltInTextFormat format, string declaredName)
     {
