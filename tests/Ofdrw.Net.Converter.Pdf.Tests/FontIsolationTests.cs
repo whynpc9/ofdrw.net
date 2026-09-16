@@ -33,6 +33,83 @@ public sealed class FontIsolationTests
         Assert.Equal(1, host.Requests);
     }
 
+    [Theory]
+    [InlineData("resolve")]
+    [InlineData("read")]
+    [InlineData("ttc")]
+    [InlineData("woff")]
+    [InlineData("broken-sfnt")]
+    public void NameOnlyFallback_ShouldIgnoreFailedOrUnsupportedHostProbes(string failure)
+    {
+        var host = new ProbeResolver(failure);
+        var resource = new OfdFontResource { Id = "probe", FontName = "optional-host", Bold = true };
+        var retained = PdfFontRegistry.RegisteredFontBytes;
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], host);
+        Assert.Equal("optional-host", context.Resolve(new OfdTextElement { FontResourceId = "probe", FontName = "optional-host" }, out _));
+        Assert.Equal(retained, PdfFontRegistry.RegisteredFontBytes);
+    }
+
+    [Fact]
+    public void NameOnlyFallback_ShouldNotProbeRegularHostFaces()
+    {
+        var host = new HostResolver(File.ReadAllBytes(FontPath("narrow")));
+        var resource = new OfdFontResource { Id = "probe", FontName = "ordinary-host" };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], host);
+        Assert.Equal("ordinary-host", context.Resolve(new OfdTextElement { FontResourceId = "probe", FontName = "ordinary-host" }, out _));
+        Assert.Equal(0, host.Requests);
+    }
+
+    [Fact]
+    public void NameOnlyFallback_ShouldSkipOptionalRegistrationWhenBudgetIsFull()
+    {
+        PdfFontRegistry.RegisterFontFace(File.ReadAllBytes(FontPath("narrow")));
+        var retained = PdfFontRegistry.RegisteredFontBytes;
+        var budget = PdfFontRegistry.MaximumRegisteredFontBytes;
+        try
+        {
+            PdfFontRegistry.MaximumRegisteredFontBytes = retained;
+            var host = new HostResolver(File.ReadAllBytes(FontPath("budget")));
+            var resource = new OfdFontResource { Id = "probe", FontName = "budget-host", Bold = true };
+            var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], host);
+            Assert.Equal("budget-host", context.Resolve(new OfdTextElement { FontResourceId = "probe", FontName = "budget-host" }, out _));
+            Assert.Equal(retained, PdfFontRegistry.RegisteredFontBytes);
+        }
+        finally { PdfFontRegistry.MaximumRegisteredFontBytes = budget; }
+    }
+
+    [Fact]
+    public void NameOnlyFallback_ShouldNotSwallowCancellation()
+    {
+        var resource = new OfdFontResource { Id = "probe", FontName = "cancel-host", Bold = true };
+        Assert.Throws<OperationCanceledException>(() =>
+            new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], new ProbeResolver("cancel")));
+    }
+
+    [Fact]
+    public void EmbeddedFont_ShouldStillRejectInvalidPayload()
+    {
+        var resource = new OfdFontResource { Id = "embedded", Data = new byte[12] };
+        Assert.ThrowsAny<Exception>(() => new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource]));
+    }
+
+    private sealed class ProbeResolver(string failure) : IFontResolver
+    {
+        public string DefaultFontName => "probe";
+        public FontResolverInfo ResolveTypeface(string familyName, bool isBold, bool isItalic) => failure switch
+        {
+            "resolve" => throw new ArgumentException("Host cannot resolve this family."),
+            "cancel" => throw new OperationCanceledException(),
+            _ => new FontResolverInfo("probe")
+        };
+        public byte[] GetFont(string faceName) => failure switch
+        {
+            "read" => throw new IOException("Host font file is unavailable."),
+            "ttc" => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fonts", "style-collection.ttc")),
+            "woff" => [119, 79, 70, 70, 0, 0, 0, 0, 0, 0, 0, 0],
+            _ => [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        };
+    }
+
     [Fact]
     public void ComposedResolver_ShouldPreserveHostRequestsAndResolveEmbeddedFaces()
     {

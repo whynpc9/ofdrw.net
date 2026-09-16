@@ -25,7 +25,11 @@ Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域�
 
 ## 字体与宿主程序
 
-BuiltIn 渲染未指定字体的 DOCX 文本时，按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中已加载的 TTF/OTF，以及从 `simsun.ttc`、Noto CJK 等集合中抽出的独立面；这些字节只用于 Native 排版度量。未配置 `FontDirectories` 时扫描 Windows Fonts、`/usr/share/fonts`（含子目录）等平台目录。OFD 对宋体/黑体等系统中文族只声明 `SimSun` / `SimHei`，不写入 `FontFile`，由阅读器解析本机字体。宋体加粗声明为 `SimHei`。汉字、假名、全角字符的 `DeltaX` 固定为字号（1em），不依赖宿主是否装了宋体，避免 Linux 上用西文字体量出约 0.6em 导致叠字。不要把替代 TTF 标成宋体嵌入。拉丁等非系统中文族在目录中有真实文件时仍会嵌入。LibreOffice Portable 默认关闭独立 UserInstallation；此时仍会把 `FontDirectories` 中的 CJK 字体复制到便携版 `Data/settings/user/fonts`，避免宋体缺失导致 PDF 中文叠字。
+BuiltIn 渲染未指定字体的 DOCX 文本时，按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中已加载的 TTF/OTF，以及从 `simsun.ttc`、Noto CJK 等集合中抽出的独立面；这些字节只用于 Native 排版度量。未配置 `FontDirectories` 时扫描 Windows Fonts、`/usr/share/fonts`（含子目录）等平台目录。OFD 对宋体/黑体等系统中文族只声明 `SimSun` / `SimHei`，不写入 `FontFile`，由阅读器解析本机字体。宋体加粗仍声明为 `SimSun`，并保留 `Bold=true`；斜体同样保留 `Italic` 标志，不再通过改名黑体表达强调。汉字、假名、全角字符的 `DeltaX` 固定为字号（1em），不依赖宿主是否装了宋体，避免 Linux 上用西文字体量出约 0.6em 导致叠字。不要把替代 TTF 标成宋体嵌入。拉丁等非系统中文族在目录中有真实文件时仍会嵌入。LibreOffice Portable 默认关闭独立 UserInstallation；此时仍会把 `FontDirectories` 中的 CJK 字体复制到便携版 `Data/settings/user/fonts`，避免宋体缺失导致 PDF 中文叠字。
+
+OFD → PDF 根据实际选中字形文件的样式判断是否模拟粗体/斜体；对名称字体仅在请求这些样式时额外探测宿主后备面。该探测只注册独立 TTF/OTF，TTC、无效字节、读取/解析异常或可选注册预算不足会跳过注册，保留逐文本字体回退；OFD 内嵌字体失败仍严格报错。成功探测的字体会计入进程级注册预算，常规名称字体不因该探测被额外复制注册。
+
+直接打开 Native OFD 时，字体绑定及 `Bold`/`Italic` 的表现由 OFD 阅读器负责；忽略这些标志的阅读器可能把加粗宋体显示为常规宋体。preview.7 本机视觉验收链路为 Native OFD → PDF → macOS Preview，未验证真实 OFD 阅读器的宋体加粗表现，不能把 PDF 验收结果视作该路径的兼容性保证。
 
 CI 使用 `scripts/install-ci-fonts.py` 下载固定版本且校验 SHA-256 的 Noto Sans CJK SC，生成 Regular 静态 TrueType 字体，以避免操作系统镜像的字体差异。脚本依赖 `fonttools==4.59.2`；本地可用 `--directory /path/to/fonts` 生成隔离目录，再通过 `FontDirectories` 或 CLI `--font-directory` 指定。字体及 OFL 许可证仅写入验证环境，不进入 NuGet 包。
 

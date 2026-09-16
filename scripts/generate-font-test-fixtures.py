@@ -50,3 +50,9 @@ for variant, advance in [('narrow', 500), ('wide', 850), ('budget', 1000), ('sty
     builder.font.recalcTimestamp = False
     builder.save(output / f'{variant}.ttf')
     print(output / f'{variant}.ttf')
+
+# A real collection verifies that optional host probing rejects TTC before parsing.
+from fontTools.ttLib import TTCollection, TTFont
+collection = TTCollection()
+collection.fonts = [TTFont(output / 'narrow.ttf', recalcTimestamp=False)]
+collection.save(output / 'style-collection.ttc')

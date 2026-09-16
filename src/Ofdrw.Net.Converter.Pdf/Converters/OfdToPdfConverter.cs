@@ -232,21 +232,25 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     var style = (resource?.Bold == true ? XFontStyle.Bold : XFontStyle.Regular) |
                         (resource?.Italic == true ? XFontStyle.Italic : XFontStyle.Regular);
                     XFont font;
+                    FontResolverInfo face;
                     try
                     {
                         font = new XFont(familyName, fontSize, style);
+                        face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName,
+                            resource?.Bold == true, resource?.Italic == true);
                     }
                     catch (Exception exception) when (resource?.Data.Length > 0)
                     {
                         throw new InvalidDataException($"Embedded font '{resource.FontName}' could not be initialized.", exception);
                     }
-                    catch
+                    catch (Exception exception) when (exception is not OutOfMemoryException &&
+                                                       exception is not OperationCanceledException)
                     {
                         font = new XFont("Arial", fontSize);
+                        // Use the face actually drawn. Re-querying the rejected
+                        // name here would repeat the host failure after fallback.
+                        face = GlobalFontSettings.FontResolver.ResolveTypeface("Arial", false, false);
                     }
-
-                    var face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName,
-                        resource?.Bold == true, resource?.Italic == true);
                     var simulateBold = face.MustSimulateBold;
                     var simulateItalic = face.MustSimulateItalic;
                     SixLabors.Fonts.Font? outlineFont = null;
