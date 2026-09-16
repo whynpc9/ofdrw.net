@@ -1,6 +1,6 @@
-# 0.1.0-preview.7 (release candidate)
+# 0.1.0-preview.7
 
-候选版本，尚未打 tag 或发布。包含自 preview.6 以来的 CJK 样式修复与字体加载改进。
+本次预览版包含自 preview.6 以来的 CJK 样式修复与字体加载改进。
 
 ## 主要变化
 
@@ -13,6 +13,6 @@
 
 ## 验证与能力边界
 
-候选验证范围包括 Release 全量回归、像素级粗体对齐及字体替代测试、包清单测试、11 包隔离缓存消费，以及 Native/default/显式宋体的 DOCX → OFD → PDF → macOS Preview 逐页检查。验证日志、页面图和范围限制记录在 `artifacts/preview7/report.md`；这些本机产物不随 NuGet 包发布。
+发布前验证通过：113/113 Release 回归、5/5 包清单测试、11 包隔离缓存消费以及 6 页 macOS Preview 检查。验证范围包括 Release 全量回归、像素级粗体对齐及字体替代测试、包清单测试、11 包隔离缓存消费，以及 Native/default/显式宋体的 DOCX → OFD → PDF → macOS Preview 逐页检查。验证日志、页面图和范围限制记录在 `artifacts/release-ready-preview7/report.md`；这些本机产物不随 NuGet 包发布。
 
 SDK 目标为 netstandard2.0/netstandard2.1，CLI 需要 .NET 10。viewer-local CJK 仍依赖目标机器可用字体；PDF 自动加载器目前使用固定目录与 TTF 文件名，不能保证任意 OTF/TTC 或 DOCX FontDirectories 的替代字体可用。字体替代保留样式语义，但不保证字体造型与原 Word 相同。直接打开 Native OFD 的宋体加粗表现尚未在真实 OFD 阅读器验收；忽略 Bold 标志的阅读器可能仍显示常规宋体。复杂文档、图片和页眉页脚需单独业务样例验收，详见 [转换契约](conversion-contracts.md)。
