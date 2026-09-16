@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Ofdrw.Net.Converter.Pdf.Internal;
 
 namespace Ofdrw.Net.Converter.Docx.Internal;
 
@@ -15,8 +16,8 @@ internal static class LibreOfficeFontStager
         ".ttf"
     };
 
-    // Windows\Fonts is huge. When a directory contains many faces, only stage
-    // CJK families the Word templates actually name (宋体/黑体/等线/微软雅黑).
+    // Windows\Fonts and other platform stores are huge. Those directories still
+    // only stage CJK families the Word templates actually name.
     private static readonly HashSet<string> PreferredCjkFontFiles = new(StringComparer.OrdinalIgnoreCase)
     {
         "simsun.ttc",
@@ -80,7 +81,10 @@ internal static class LibreOfficeFontStager
             var files = Directory.EnumerateFiles(sourceDirectory)
                 .Where(path => SupportedExtensions.Contains(Path.GetExtension(path)))
                 .ToList();
-            var copyAll = files.Count <= 32;
+            // Configured FontDirectories are copied in full. The CJK short-list only
+            // applies to huge platform stores such as Windows\Fonts so LibreOffice is
+            // not asked to ingest hundreds of unrelated faces.
+            var copyAll = !ShouldRestrictToPreferredCjk(sourceDirectory, files.Count);
             foreach (var sourcePath in files)
             {
                 var fileName = Path.GetFileName(sourcePath);
@@ -96,6 +100,11 @@ internal static class LibreOfficeFontStager
                     continue;
                 }
 
+                if (File.Exists(targetPath))
+                {
+                    File.Delete(targetPath);
+                }
+
                 if (!TryCreateSymbolicLink(sourcePath, targetPath))
                 {
                     File.Copy(sourcePath, targetPath, overwrite: true);
@@ -104,6 +113,38 @@ internal static class LibreOfficeFontStager
         }
     }
 
+    internal static bool ShouldRestrictToPreferredCjk(string directory, int fontFileCount) =>
+        fontFileCount > 32 && IsPlatformFontDirectory(directory);
+
+    internal static bool IsPlatformFontDirectory(string directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return false;
+        }
+
+        var fullPath = NormalizeDirectory(directory);
+        foreach (var platform in CjkViewerFontLoader.PlatformDirectories())
+        {
+            var platformPath = NormalizeDirectory(platform);
+            if (fullPath.Equals(platformPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (fullPath.StartsWith(platformPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                fullPath.StartsWith(platformPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string NormalizeDirectory(string directory) =>
+        Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
     private static bool AlreadyStaged(string sourcePath, string targetPath)
     {
         if (!File.Exists(targetPath))
@@ -111,7 +152,42 @@ internal static class LibreOfficeFontStager
             return false;
         }
 
-        return new FileInfo(sourcePath).Length == new FileInfo(targetPath).Length;
+        if (new FileInfo(sourcePath).Length != new FileInfo(targetPath).Length)
+        {
+            return false;
+        }
+
+        return FilesHaveSameContent(sourcePath, targetPath);
+    }
+
+    private static bool FilesHaveSameContent(string leftPath, string rightPath)
+    {
+        using var left = File.OpenRead(leftPath);
+        using var right = File.OpenRead(rightPath);
+        var leftBuffer = new byte[81920];
+        var rightBuffer = new byte[81920];
+        while (true)
+        {
+            var leftRead = left.Read(leftBuffer, 0, leftBuffer.Length);
+            var rightRead = right.Read(rightBuffer, 0, rightBuffer.Length);
+            if (leftRead != rightRead)
+            {
+                return false;
+            }
+
+            if (leftRead == 0)
+            {
+                return true;
+            }
+
+            for (var index = 0; index < leftRead; index++)
+            {
+                if (leftBuffer[index] != rightBuffer[index])
+                {
+                    return false;
+                }
+            }
+        }
     }
 
     private static void AddIfPresent(ICollection<string> directories, string path)

@@ -140,6 +140,18 @@ public sealed partial class DocxConversionTests
 
     private static (int, int, int) Rgb(OfdColor color) => (color.Red, color.Green, color.Blue);
 
+    private static OfdFontResource ResolveFont(OfdDocumentPackage package, OfdTextElement text)
+    {
+        if (!string.IsNullOrEmpty(text.FontResourceId))
+        {
+            var byId = package.Fonts.FirstOrDefault(font => font.Id == text.FontResourceId);
+            if (byId is not null)
+                return byId;
+        }
+
+        return Assert.Single(package.Fonts, font => font.FontName == text.FontName);
+    }
+
     [Fact]
     public async Task Native_ShouldPreserveVisualStylesAndProportionalAdvances()
     {
@@ -153,13 +165,13 @@ public sealed partial class DocxConversionTests
         var normal = Assert.Single(text, t => t.Text == "第二页用于确认分页保持稳定。");
         var emphasized = Assert.Single(text, t => t.Text.Contains("这段文字应为红色粗体。"));
         Assert.Equal(OfdColor.Black, normal.FillColor);
-        Assert.False(package.Fonts.Single(f => f.FontName == normal.FontName).Bold);
+        Assert.False(ResolveFont(package, normal).Bold);
         Assert.Equal((192, 0, 0), Rgb(emphasized.FillColor));
-        Assert.True(package.Fonts.Single(f => f.FontName == emphasized.FontName).Bold);
+        Assert.True(ResolveFont(package, emphasized).Bold);
         Assert.Equal(normal.YMillimeters, emphasized.YMillimeters);
         Assert.True(emphasized.XMillimeters >= normal.XMillimeters + normal.WidthMillimeters - 0.002);
         var subtitle = Assert.Single(text, t => t.Text.Contains("Generated DOCX"));
-        Assert.True(package.Fonts.Single(f => f.FontName == subtitle.FontName).Italic);
+        Assert.True(ResolveFont(package, subtitle).Italic);
         Assert.All(package.Fonts, font =>
         {
             Assert.False(string.IsNullOrWhiteSpace(font.FontName));
