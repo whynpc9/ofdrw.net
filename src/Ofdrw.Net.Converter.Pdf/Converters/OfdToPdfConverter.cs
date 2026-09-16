@@ -232,21 +232,25 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     var style = (resource?.Bold == true ? XFontStyle.Bold : XFontStyle.Regular) |
                         (resource?.Italic == true ? XFontStyle.Italic : XFontStyle.Regular);
                     XFont font;
+                    FontResolverInfo face;
                     try
                     {
                         font = new XFont(familyName, fontSize, style);
+                        face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName,
+                            resource?.Bold == true, resource?.Italic == true);
                     }
                     catch (Exception exception) when (resource?.Data.Length > 0)
                     {
                         throw new InvalidDataException($"Embedded font '{resource.FontName}' could not be initialized.", exception);
                     }
-                    catch
+                    catch (Exception exception) when (exception is not OutOfMemoryException &&
+                                                       exception is not OperationCanceledException)
                     {
                         font = new XFont("Arial", fontSize);
+                        // Use the face actually drawn. Re-querying the rejected
+                        // name here would repeat the host failure after fallback.
+                        face = GlobalFontSettings.FontResolver.ResolveTypeface("Arial", false, false);
                     }
-
-                    var face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName,
-                        resource?.Bold == true, resource?.Italic == true);
                     var simulateBold = face.MustSimulateBold;
                     var simulateItalic = face.MustSimulateItalic;
                     SixLabors.Fonts.Font? outlineFont = null;
@@ -390,13 +394,17 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             topBearing = Math.Min(topBearing, glyph.GlyphMetrics.TopSideBearing);
                     }
                 }
-                // TextRenderer shifts the baseline for negative top side bearings.
-                // Undo that layout shift so outlines align with the PDF text baseline.
-                var baselineOffset = -(outlineFont.FontMetrics.HorizontalMetrics.Ascender - topBearing) *
-                    outlineFont.Size / outlineFont.FontMetrics.UnitsPerEm;
+                // Fonts 1.0.1 centers the em box within the horizontal line metrics,
+                // then shifts the ascender for negative top bearings. Undo both
+                // offsets; otherwise the outline and PDF text have different baselines.
+                var metrics = outlineFont.FontMetrics;
+                var layoutAscender = metrics.HorizontalMetrics.Ascender - topBearing -
+                    (metrics.HorizontalMetrics.LineHeight - metrics.UnitsPerEm) * 0.5f;
+                var baselineOffset = -layoutAscender * outlineFont.Size / metrics.UnitsPerEm;
                 if (format == XStringFormats.TopLeft)
                 {
-                    baselineOffset += outlineFont.FontMetrics.HorizontalMetrics.Ascender * outlineFont.Size / outlineFont.FontMetrics.UnitsPerEm;
+                    // Use the same top-to-baseline distance as PDFsharp DrawString.
+                    baselineOffset += (float)(font.GetHeight() * font.CellAscent / font.CellSpace);
                 }
                 SixLabors.Fonts.TextRenderer.RenderTextTo(
                     new PdfGlyphOutlineRenderer(graphics, solid.Color, font.Size * 0.025), text,

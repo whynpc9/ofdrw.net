@@ -30,7 +30,7 @@ scripts/run-converter-package-e2e.sh
 Use a specific package version:
 
 ```bash
-scripts/run-converter-package-e2e.sh 0.1.0-preview.5
+scripts/run-converter-package-e2e.sh 0.1.0-preview.7
 ```
 
 ## Output

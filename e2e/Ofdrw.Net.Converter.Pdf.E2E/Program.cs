@@ -12,13 +12,37 @@ using Ofdrw.Net.Signatures.Verification;
 using System.Diagnostics;
 using System.Globalization;
 
-// Exercise host resolver composition before PDFsharp initializes its cache.
-PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = Ofdrw.Net.Converter.Pdf.PdfFontRegistry.CreateResolver(new PdfSharpCore.Utils.FontResolver());
-
 var repoRoot = ResolveRepoRoot();
+// Exercise host resolver composition before PDFsharp initializes its cache.
+PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = Ofdrw.Net.Converter.Pdf.PdfFontRegistry.CreateResolver(
+    new HostFailureResolver(new PdfSharpCore.Utils.FontResolver(), repoRoot));
 var outputDir = Environment.GetEnvironmentVariable("OFDRW_E2E_OUTPUT_DIR") ?? Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "output");
 var testDataDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "testdata", "upstream-ofdrw");
 Directory.CreateDirectory(outputDir);
+
+// Used and unused name-only resources must survive unavailable/unsupported host
+// fonts. This exercises XFont initialization and the actual Arial draw fallback,
+// not just the optional DocumentFontContext registration.
+foreach (var failure in new[] { "Resolve", "Read", "Ttc", "Broken" })
+{
+    foreach (var used in new[] { false, true })
+    {
+        var family = "Ofdrw-HostFailure-" + failure;
+        var probe = new OfdDocumentPackage();
+        probe.Fonts.Add(new OfdFontResource { Id = "probe", FontName = family, Bold = true });
+        var page = new OfdPage { WidthMillimeters = 80, HeightMillimeters = 50 };
+        page.Elements.Add(new OfdTextElement { Text = "ABCD", FontName = used ? family : "Arial",
+            FontResourceId = used ? "probe" : null, FontSizeMillimeters = 5, XMillimeters = 10, YMillimeters = 10 });
+        probe.Pages.Add(page);
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(probe, ofd); ofd.Position = 0;
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using var readback = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray());
+        if (readback.GetPage(1).Text != "ABCD") throw new InvalidOperationException("Host font fallback lost text.");
+    }
+}
+Console.WriteLine("[E2E] Host resolve/read failures, TTC and malformed fonts preserved used/unused resource fallback.");
 
 var sourceOfdPath = Path.Combine(outputDir, "source.ofd");
 var convertedPdfPath = Path.Combine(outputDir, "converted.pdf");
@@ -516,4 +540,24 @@ static async Task<(int ExitCode, string Output, string Error)> RunProcessAsync(s
         try { await Task.WhenAll(stdout, stderr); } catch (OperationCanceledException) { }
         throw new TimeoutException($"Visual validation process timed out: {fileName}", exception);
     }
+}
+
+sealed class HostFailureResolver(PdfSharpCore.Fonts.IFontResolver host, string repoRoot) : PdfSharpCore.Fonts.IFontResolver
+{
+    private const string Prefix = "Ofdrw-HostFailure-";
+    public string DefaultFontName => host.DefaultFontName;
+    public PdfSharpCore.Fonts.FontResolverInfo ResolveTypeface(string familyName, bool isBold, bool isItalic)
+    {
+        if (familyName == Prefix + "Resolve") throw new ArgumentException("Synthetic unavailable host family.");
+        return familyName.StartsWith(Prefix, StringComparison.Ordinal)
+            ? new PdfSharpCore.Fonts.FontResolverInfo(familyName)
+            : host.ResolveTypeface(familyName, isBold, isItalic);
+    }
+    public byte[] GetFont(string faceName) => faceName switch
+    {
+        Prefix + "Read" => throw new IOException("Synthetic unavailable font file."),
+        Prefix + "Ttc" => File.ReadAllBytes(Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "testdata", "fonts", "style-collection.ttc")),
+        Prefix + "Broken" => [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        _ => host.GetFont(faceName)
+    };
 }

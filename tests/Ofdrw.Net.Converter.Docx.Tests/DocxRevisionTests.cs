@@ -68,21 +68,21 @@ public sealed partial class DocxConversionTests
             output.Position = 0;
             var package = await new OfdReader().ReadAsync(output);
             var fonts = package.Fonts.ToList();
-            var hei = Assert.Single(fonts, font => font.FontName == "SimHei");
-            var song = Assert.Single(fonts, font => font.FontName == "SimSun");
-            Assert.Empty(hei.Data);
+            var boldSong = Assert.Single(fonts, font => font.FontName == "SimSun" && font.Bold);
+            var song = Assert.Single(fonts, font => font.FontName == "SimSun" && !font.Bold);
+            Assert.Empty(boldSong.Data);
             Assert.Empty(song.Data);
-            Assert.False(hei.Bold);
-            Assert.False(hei.Italic);
+            Assert.True(boldSong.Bold);
+            Assert.False(boldSong.Italic);
             Assert.False(song.Bold);
             Assert.False(song.Italic);
             var title = Assert.Single(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(),
                 element => element.Text == "病案出库清单");
-            Assert.Equal("SimHei", title.FontName);
+            Assert.Equal("SimSun", title.FontName);
             var body = Assert.Single(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(),
                 element => element.Text == "扫描条数:50");
             Assert.Equal("SimSun", body.FontName);
-            Assert.Equal(hei.Id, title.FontResourceId);
+            Assert.Equal(boldSong.Id, title.FontResourceId);
             Assert.Equal(song.Id, body.FontResourceId);
             var advances = title.Runs.Single().DeltaX!.Split(' ')
                 .Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture))
@@ -130,8 +130,8 @@ public sealed partial class DocxConversionTests
             Assert.False(italic.Bold);
             Assert.True(italic.Italic);
             Assert.NotEqual(regular.Id, italic.Id);
-            Assert.Equal("SimHei", songBold.FontName);
-            Assert.False(songBold.Bold);
+            Assert.Equal("SimSun", songBold.FontName);
+            Assert.True(songBold.Bold);
             Assert.False(songBold.Italic);
             Assert.Equal("SimHei", heiBold.FontName);
             Assert.True(heiBold.Bold);
@@ -139,6 +139,50 @@ public sealed partial class DocxConversionTests
             Assert.NotEqual(songBold.Id, heiBold.Id);
         }
         finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Theory]
+    [InlineData("SimSun")]
+    [InlineData("宋体")]
+    [InlineData("SimHei")]
+    public async Task Native_CjkBold_ShouldRemainVisibleWithARegularSubstitute(string family)
+    {
+        using var source = CreateMinimalDocx($"""
+            <w:p><w:r><w:rPr><w:rFonts w:ascii="{family}" w:eastAsia="{family}" w:hAnsi="{family}"/><w:b/><w:sz w:val="40"/></w:rPr><w:t>中文字体</w:t></w:r></w:p>
+            """);
+        using var ofd = new MemoryStream();
+        await new DocxToOfdConverter(new DocxConversionOptions()).ConvertAsync(source, ofd);
+        ofd.Position = 0;
+        var package = await new OfdReader().ReadAsync(ofd);
+        var font = Assert.Single(package.Fonts);
+        Assert.True(font.Bold);
+        // Model the loader's regular CJK substitute with an original deterministic
+        // face. This tests actual export ink without depending on host font names.
+        font.Data = File.ReadAllBytes(Path.GetFullPath(Path.Combine(Path.GetDirectoryName(ResolveGeneratedSample())!,
+            "../../Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/style-metrics.ttf")));
+        async Task<byte[]> Export()
+        {
+            using var input = new MemoryStream();
+            await new Ofdrw.Net.Packaging.OfdPackageWriter().WriteAsync(package, input); input.Position = 0;
+            using var pdf = new MemoryStream();
+            await new Ofdrw.Net.Converter.Pdf.Converters.OfdToPdfConverter().ConvertAsync(input, pdf);
+            return pdf.ToArray();
+        }
+        var bold = await Export();
+        font.Bold = false;
+        var regular = await Export();
+        using var semantic = PdfPigDocument.Open(bold);
+        Assert.Equal("中文字体", semantic.GetPage(1).Text);
+        static int Ink(byte[] pdf)
+        {
+            using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf, new Docnet.Core.Models.PageDimensions(3d));
+            using var page = reader.GetPageReader(0);
+            var pixels = page.GetImage(); var count = 0;
+            for (var i = 0; i < pixels.Length; i += 4)
+                if (pixels[i + 3] > 128 && pixels[i] < 128 && pixels[i + 1] < 128 && pixels[i + 2] < 128) count++;
+            return count;
+        }
+        Assert.True(Ink(bold) > Ink(regular) * 1.025, "CJK emphasis must survive a regular substitute font.");
     }
 
     [Fact]
