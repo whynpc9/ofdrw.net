@@ -25,7 +25,7 @@ Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域�
 
 ## 字体与宿主程序
 
-BuiltIn 渲染未指定字体的 DOCX 文本时，按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 或系统字体集合中可用的字体；Native OFD 与 BuiltIn PDF 使用相同规则。调用方应提供覆盖源文档字符的字体。若没有候选字体可用，才把首个配置名称交给宿主解析器尝试解析。
+BuiltIn 渲染未指定字体的 DOCX 文本时，按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中已加载的 TTF/OTF，以及从 `simsun.ttc`、Noto CJK 等集合中抽出的独立面；这些字节只用于 Native 排版度量。未配置 `FontDirectories` 时扫描 Windows Fonts、`/usr/share/fonts`（含子目录）等平台目录。OFD 对宋体/黑体等系统中文族只声明 `SimSun` / `SimHei`，不写入 `FontFile`，由阅读器解析本机字体。宋体加粗声明为 `SimHei`。汉字、假名、全角字符的 `DeltaX` 固定为字号（1em），不依赖宿主是否装了宋体，避免 Linux 上用西文字体量出约 0.6em 导致叠字。不要把替代 TTF 标成宋体嵌入。拉丁等非系统中文族在目录中有真实文件时仍会嵌入。LibreOffice Portable 默认关闭独立 UserInstallation；此时仍会把 `FontDirectories` 中的 CJK 字体复制到便携版 `Data/settings/user/fonts`，避免宋体缺失导致 PDF 中文叠字。
 
 CI 使用 `scripts/install-ci-fonts.py` 下载固定版本且校验 SHA-256 的 Noto Sans CJK SC，生成 Regular 静态 TrueType 字体，以避免操作系统镜像的字体差异。脚本依赖 `fonttools==4.59.2`；本地可用 `--directory /path/to/fonts` 生成隔离目录，再通过 `FontDirectories` 或 CLI `--font-directory` 指定。字体及 OFL 许可证仅写入验证环境，不进入 NuGet 包。
 

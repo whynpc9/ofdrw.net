@@ -20,13 +20,16 @@ internal sealed class PdfGlyphOutlineRenderer : IGlyphRenderer
         _pen = new XPen(color, strokeWidth);
     }
 
-    public void BeginText(FontRectangle bounds) { }
+    public void BeginText(in FontRectangle bounds) { }
     public void EndText() { }
-    public bool BeginGlyph(FontRectangle bounds, GlyphRendererParameters parameters)
+    public bool BeginGlyph(in FontRectangle bounds, in GlyphRendererParameters parameters)
     {
         _path = new XGraphicsPath();
         return true;
     }
+
+    public TextDecorations EnabledDecorations() => TextDecorations.None;
+    public void SetDecoration(TextDecorations textDecorations, Vector2 start, Vector2 end, float thickness) { }
 
     public void EndGlyph() => _graphics.DrawPath(_pen, new XSolidBrush(_pen.Color), _path);
     public void BeginFigure() => _path.StartFigure();

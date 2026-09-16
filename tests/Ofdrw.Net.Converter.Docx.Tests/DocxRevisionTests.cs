@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using Ofdrw.Net.Converter.Docx.Converters;
+using Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Extraction;
 using Ofdrw.Net.Reader.Readers;
@@ -40,6 +41,135 @@ public sealed partial class DocxConversionTests
             Assert.Equal("Ofdrw Test Face|regular", font.FontName);
             Assert.Equal(expectedFont, font.Data);
             Assert.Contains("中文字体测试 Alpha", new OfdTextExtractor().Extract(package));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public async Task Native_ShouldDeclareViewerLocalCjkNamesWithoutEmbeddingASubstituteFace()
+    {
+        var metricFont = TryFindCjkMetricFont();
+        if (metricFont is null)
+            return;
+
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-cjk-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            File.Copy(metricFont, Path.Combine(directory, Path.GetFileName(metricFont)));
+            var options = new DocxConversionOptions();
+            options.FontDirectories.Add(directory);
+            using var input = CreateMinimalDocx("""
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>病案出库清单</w:t></w:r></w:p>
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体"/><w:sz w:val="18"/></w:rPr><w:t>扫描条数:50</w:t></w:r></w:p>
+                """);
+            using var output = new MemoryStream();
+            await new DocxToOfdConverter(options).ConvertAsync(input, output);
+            output.Position = 0;
+            var package = await new OfdReader().ReadAsync(output);
+            var fonts = package.Fonts.ToList();
+            var hei = Assert.Single(fonts, font => font.FontName == "SimHei");
+            var song = Assert.Single(fonts, font => font.FontName == "SimSun");
+            Assert.Empty(hei.Data);
+            Assert.Empty(song.Data);
+            Assert.False(hei.Bold);
+            Assert.False(hei.Italic);
+            Assert.False(song.Bold);
+            Assert.False(song.Italic);
+            var title = Assert.Single(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(),
+                element => element.Text == "病案出库清单");
+            Assert.Equal("SimHei", title.FontName);
+            var body = Assert.Single(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(),
+                element => element.Text == "扫描条数:50");
+            Assert.Equal("SimSun", body.FontName);
+            Assert.Equal(hei.Id, title.FontResourceId);
+            Assert.Equal(song.Id, body.FontResourceId);
+            var advances = title.Runs.Single().DeltaX!.Split(' ')
+                .Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            Assert.Equal(5, advances.Length);
+            Assert.All(advances, advance =>
+                Assert.InRange(advance, title.FontSizeMillimeters * 0.85, title.FontSizeMillimeters * 1.15));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public async Task Native_ShouldKeepDistinctViewerLocalCjkStyleResources()
+    {
+        var metricFont = TryFindCjkMetricFont();
+        if (metricFont is null)
+            return;
+
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-cjk-style-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            File.Copy(metricFont, Path.Combine(directory, Path.GetFileName(metricFont)));
+            var options = new DocxConversionOptions();
+            options.FontDirectories.Add(directory);
+            using var input = CreateMinimalDocx("""
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体"/><w:sz w:val="22"/></w:rPr><w:t>常规宋体</w:t></w:r></w:p>
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体"/><w:i/><w:sz w:val="22"/></w:rPr><w:t>斜体宋体</w:t></w:r></w:p>
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体"/><w:b/><w:sz w:val="22"/></w:rPr><w:t>粗体宋体</w:t></w:r></w:p>
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="黑体" w:eastAsia="黑体" w:hAnsi="黑体"/><w:b/><w:sz w:val="22"/></w:rPr><w:t>粗体黑体</w:t></w:r></w:p>
+                """);
+            using var output = new MemoryStream();
+            await new DocxToOfdConverter(options).ConvertAsync(input, output);
+            output.Position = 0;
+            var package = await new OfdReader().ReadAsync(output);
+            var texts = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().ToList();
+            var regular = ResolveFont(package, Assert.Single(texts, element => element.Text == "常规宋体"));
+            var italic = ResolveFont(package, Assert.Single(texts, element => element.Text == "斜体宋体"));
+            var songBold = ResolveFont(package, Assert.Single(texts, element => element.Text == "粗体宋体"));
+            var heiBold = ResolveFont(package, Assert.Single(texts, element => element.Text == "粗体黑体"));
+            Assert.Equal("SimSun", regular.FontName);
+            Assert.False(regular.Bold);
+            Assert.False(regular.Italic);
+            Assert.Equal("SimSun", italic.FontName);
+            Assert.False(italic.Bold);
+            Assert.True(italic.Italic);
+            Assert.NotEqual(regular.Id, italic.Id);
+            Assert.Equal("SimHei", songBold.FontName);
+            Assert.False(songBold.Bold);
+            Assert.False(songBold.Italic);
+            Assert.Equal("SimHei", heiBold.FontName);
+            Assert.True(heiBold.Bold);
+            Assert.False(heiBold.Italic);
+            Assert.NotEqual(songBold.Id, heiBold.Id);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public async Task Native_ShouldUseEmAdvanceForCjkWhenCatalogHasOnlyALatinFace()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-latin-cjk-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var fontPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(ResolveGeneratedSample())!,
+                "../../Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/narrow.ttf"));
+            File.Copy(fontPath, Path.Combine(directory, "narrow.ttf"));
+            var options = new DocxConversionOptions();
+            options.FontDirectories.Add(directory);
+            using var input = CreateMinimalDocx("""
+                <w:p><w:r><w:rPr><w:rFonts w:ascii="宋体" w:eastAsia="宋体" w:hAnsi="宋体"/><w:sz w:val="28"/></w:rPr><w:t>病案出库清单</w:t></w:r></w:p>
+                """);
+            using var output = new MemoryStream();
+            await new DocxToOfdConverter(options).ConvertAsync(input, output);
+            output.Position = 0;
+            var package = await new OfdReader().ReadAsync(output);
+            var title = Assert.Single(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(),
+                element => element.Text == "病案出库清单");
+            Assert.Equal("SimSun", title.FontName);
+            Assert.Empty(Assert.Single(package.Fonts, font => font.FontName == "SimSun").Data);
+            var advances = title.Runs.Single().DeltaX!.Split(' ')
+                .Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            Assert.Equal(5, advances.Length);
+            Assert.All(advances, advance =>
+                Assert.Equal(title.FontSizeMillimeters, advance, 3));
         }
         finally { Directory.Delete(directory, recursive: true); }
     }
@@ -306,6 +436,34 @@ public sealed partial class DocxConversionTests
         }
         stream.Position = 0;
         return stream;
+    }
+
+    private static string? TryFindCjkMetricFont()
+    {
+        foreach (var directory in DocxFontCatalog.DefaultPlatformFontDirectories())
+        {
+            foreach (var name in new[]
+                     {
+                         "simhei.ttf",
+                         "Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+                         "NotoSansCJKsc-Regular.ttf"
+                     })
+            {
+                var path = Path.Combine(directory, name);
+                if (File.Exists(path)) return path;
+            }
+
+            try
+            {
+                var match = Directory.GetFiles(directory, "Ofdrw-CI-Noto*.ttf");
+                if (match.Length > 0) return match[0];
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        return null;
     }
 
     private static void SaveFixtureArtifact(string name, MemoryStream docx, MemoryStream ofd)

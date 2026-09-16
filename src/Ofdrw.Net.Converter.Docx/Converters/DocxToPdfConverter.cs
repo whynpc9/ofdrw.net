@@ -457,6 +457,13 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
             }
             else
             {
+                var portableProfile = LibreOfficeExecutableResolver.TryGetPortableUserProfile(executable);
+                if (portableProfile is string profilePath)
+                {
+                    Directory.CreateDirectory(profilePath);
+                    LibreOfficeFontStager.Stage(profilePath, _options);
+                }
+
                 argumentParts = new[]
                 {
                     "--headless",

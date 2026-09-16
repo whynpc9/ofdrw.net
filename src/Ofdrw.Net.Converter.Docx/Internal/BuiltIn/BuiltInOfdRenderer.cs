@@ -252,6 +252,69 @@ internal sealed class BuiltInOfdRenderer
     private string FontKey(BuiltInTextFormat format) =>
         NormalizeFontFamily(format.FontFamily) + (format.Bold ? "|bold" : "|regular") + (format.Italic ? "|italic" : "");
 
+    private string DeclaredFontName(BuiltInTextFormat format)
+    {
+        var family = NormalizeFontFamily(format.FontFamily);
+        // 宋体 has no true bold face; the previous Native converter declared 黑体 so
+        // OFD viewers match Word's local substitution instead of synthesizing SimSun Bold.
+        if (MapsSimSunBoldToSimHei(format))
+            return "SimHei";
+        if (DocxFontCatalog.IsViewerLocalCjkFamily(family))
+            return family;
+        return FontKey(format);
+    }
+
+    private bool MapsSimSunBoldToSimHei(BuiltInTextFormat format) =>
+        format.Bold && NormalizeFontFamily(format.FontFamily).Equals("SimSun", StringComparison.OrdinalIgnoreCase);
+
+    // Viewer-local CJK keeps the family name (SimSun/SimHei/…) so OFD viewers bind a
+    // local face. Distinct Bold/Italic resources are still required: OFD→PDF and SVG
+    // take style from the resource flags. 宋体 bold is the exception—Word substitutes
+    // 黑体, and setting Bold on that SimHei resource would synthesize extra weight.
+    private (bool Bold, bool Italic) DeclaredResourceStyle(BuiltInTextFormat format) =>
+        (format.Bold && !MapsSimSunBoldToSimHei(format), format.Italic);
+
+    private OfdFontResource GetOrAddFontResource(OfdDocumentPackage package, BuiltInTextFormat format, string declaredName)
+    {
+        var (bold, italic) = DeclaredResourceStyle(format);
+        var existing = package.Fonts.FirstOrDefault(font =>
+            font.FontName == declaredName && font.Bold == bold && font.Italic == italic);
+        if (existing is not null)
+            return existing;
+
+        var resource = new OfdFontResource
+        {
+            Id = "F" + (package.Fonts.Count + 1),
+            FontName = declaredName,
+            FamilyName = declaredName,
+            Charset = "unicode",
+            Bold = bold,
+            Italic = italic
+        };
+        if (_configuredFonts.ShouldEmbed(declaredName))
+        {
+            var resolveFamily = DocxFontCatalog.IsViewerLocalCjkFamily(declaredName)
+                ? declaredName
+                : NormalizeFontFamily(format.FontFamily);
+            var resolveBold = format.Bold &&
+                declaredName.Equals(NormalizeFontFamily(format.FontFamily), StringComparison.OrdinalIgnoreCase);
+            var resolver = GlobalFontSettings.FontResolver;
+            var face = resolver.ResolveTypeface(_configuredFonts.Resolve(resolveFamily, resolveBold, format.Italic), resolveBold, format.Italic);
+            if (!_fontFiles.TryGetValue(face.FaceName, out var file))
+            {
+                var data = PdfFontRegistry.GetOriginalFont(face.FaceName);
+                using var hash = SHA256.Create();
+                var digest = BitConverter.ToString(hash.ComputeHash(data)).Replace("-", string.Empty).ToLowerInvariant();
+                file = (data, "native-font-" + digest + ".ttf");
+                _fontFiles[face.FaceName] = file;
+            }
+            resource.FileName = file.FileName;
+            resource.Data = file.Data;
+        }
+        package.Fonts.Add(resource);
+        return resource;
+    }
+
     private XFont GetFont(BuiltInTextFormat format)
     {
         var key = FontKey(format);
@@ -266,16 +329,55 @@ internal sealed class BuiltInOfdRenderer
         return font;
     }
 
+    private XFont GetLatinCompatibleFont(BuiltInTextFormat format)
+    {
+        var family = NormalizeFontFamily(format.FontFamily);
+        if (!DocxFontCatalog.IsViewerLocalCjkFamily(family) &&
+            !family.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetFont(format);
+        }
+
+        var key = "latin|" + (format.Bold ? "bold" : "regular") + (format.Italic ? "|italic" : "");
+        if (_fonts.TryGetValue(key, out var font)) return font;
+        PdfFontRegistry.EnsureInstalled();
+        var style = (format.Bold ? XFontStyle.Bold : XFontStyle.Regular) |
+                    (format.Italic ? XFontStyle.Italic : XFontStyle.Regular);
+        font = new XFont("Arial", 1000, style);
+        _fonts[key] = font;
+        return font;
+    }
+
     private double Advance(string text, BuiltInTextFormat format)
     {
         var key = FontKey(format) + "\n" + text;
         if (!_advances.TryGetValue(key, out var advance))
         {
-            using var measure = XGraphics.CreateMeasureContext(new XSize(1000, 1000), XGraphicsUnit.Point, XPageDirection.Downwards);
-            advance = measure.MeasureString(text == "\t" ? "    " : text, GetFont(format)).Width / 1000d;
+            // linux1 / 宋体 CJK is one em. PDFsharp without a CJK face (typical Linux
+            // ARM without FontDirectories) measures ideographs on a Latin substitute
+            // at ~0.6em, which overlaps when the viewer later binds SimSun/SimHei.
+            if (IsCjkTypographicUnit(text))
+                advance = 1d;
+            else
+            {
+                using var measure = XGraphics.CreateMeasureContext(new XSize(1000, 1000), XGraphicsUnit.Point, XPageDirection.Downwards);
+                advance = measure.MeasureString(text == "\t" ? "    " : text, GetLatinCompatibleFont(format)).Width / 1000d;
+            }
             _advances[key] = advance;
         }
         return advance * PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints);
+    }
+
+    private static bool IsCjkTypographicUnit(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        foreach (var c in text)
+        {
+            if (c >= '\u2E80' && c <= '\u9FFF') return true;
+            if (c >= '\uF900' && c <= '\uFAFF') return true;
+            if (c >= '\uFF00' && c <= '\uFFEF') return true;
+        }
+        return false;
     }
 
     private List<StyledLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber = 1, int totalPages = 1, int sectionPages = 1)
@@ -369,32 +471,14 @@ internal sealed class BuiltInOfdRenderer
             var format = line.Glyphs[i].Format;
             while (i < line.Glyphs.Count && line.Glyphs[i].Image is null && ReferenceEquals(line.Glyphs[i].Format, format)) i++;
             var group = line.Glyphs.GetRange(start, i - start);
-            var fontKey = FontKey(format);
-            if (!package.Fonts.Any(f => f.FontName == fontKey))
-            {
-                var resolver = GlobalFontSettings.FontResolver;
-                var face = resolver.ResolveTypeface(_configuredFonts.Resolve(NormalizeFontFamily(format.FontFamily), format.Bold, format.Italic), format.Bold, format.Italic);
-                if (!_fontFiles.TryGetValue(face.FaceName, out var file))
-                {
-                    var data = PdfFontRegistry.GetOriginalFont(face.FaceName);
-                    using var hash = SHA256.Create();
-                    var digest = BitConverter.ToString(hash.ComputeHash(data)).Replace("-", string.Empty).ToLowerInvariant();
-                    file = (data, "native-font-" + digest + ".ttf");
-                    _fontFiles[face.FaceName] = file;
-                }
-                package.Fonts.Add(new OfdFontResource
-                {
-                    FontName = fontKey, FamilyName = GetFont(format).Name, Charset = "unicode",
-                    Bold = format.Bold, Italic = format.Italic,
-                    FileName = file.FileName,
-                    Data = file.Data
-                });
-            }
+            var declaredName = DeclaredFontName(format);
+            var resource = GetOrAddFontResource(package, format, declaredName);
             var text = new OfdTextElement
             {
                 LayerType = "Body", XMillimeters = x, YMillimeters = top,
                 WidthMillimeters = Math.Max(group.Sum(g => g.Width), 0.1), HeightMillimeters = line.Height,
-                FontName = fontKey, FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
+                FontName = declaredName, FontResourceId = resource.Id,
+                FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
                 FillColor = ParseColor(format.ColorHex), Text = string.Concat(group.Select(g => g.Text))
             };
             text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = baseline,
