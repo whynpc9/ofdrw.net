@@ -52,6 +52,7 @@ internal sealed class BuiltInOfdRenderer
             {
                 DocType = "OFD-H",
                 DocumentId = "Doc_0",
+                Namespace = _options.OfdNamespace,
                 Metadata = new OfdMetadata
                 {
                     Title = "DOCX document",

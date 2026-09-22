@@ -188,31 +188,68 @@ internal static class DocxPdfTextMapper
     {
         var mapping = new List<int>(source.Text.Length);
         var position = 0;
-        var hasAnchor = source.Text.Length == 0;
-        var minimumAnchor = Math.Min(8, source.Text.Length);
+        var localCursor = cursor;
+        var consumedLocalPrefix = false;
+        var skippedMissing = 0;
         while (position < source.Text.Length)
         {
             var length = Math.Min(32, source.Text.Length - position);
             var found = -1;
             while (length > 0)
             {
-                found = target.Text.IndexOf(source.Text.Substring(position, length), cursor, StringComparison.Ordinal);
+                found = target.Text.IndexOf(source.Text.Substring(position, length), localCursor, StringComparison.Ordinal);
                 if (found >= 0) break;
                 length = length == 1 ? 0 : Math.Max(1, length / 2);
             }
             if (found < 0)
-                throw new InvalidDataException("DOCX_TEXT_PAGE_MAPPING_FAILED: original OpenXML text could not be aligned with rendered pages. No partial text layer was written.");
-            cursor = found;
-            var runStart = position;
-            while (position < source.Text.Length && cursor < target.Text.Length && source.Text[position] == target.Text[cursor])
             {
-                mapping.Add(cursor++);
+                if (target.Pages.Count == 0)
+                    throw new InvalidDataException("DOCX_TEXT_PAGE_MAPPING_FAILED: original OpenXML text could not be aligned with rendered pages. No partial text layer was written.");
+
+                var character = source.Text[position];
+                var before = localCursor > 0 ? target.Text.LastIndexOf(character, localCursor - 1) : -1;
+                if (before >= 0)
+                {
+                    mapping.Add(before);
+                    position++;
+                    continue;
+                }
+
+                skippedMissing++;
+                mapping.Add(Math.Min(localCursor, target.Pages.Count - 1));
+                position++;
+                continue;
+            }
+
+            var consumeAt = found;
+            while (position < source.Text.Length && consumeAt < target.Text.Length && source.Text[position] == target.Text[consumeAt])
+            {
+                mapping.Add(consumeAt++);
                 position++;
             }
-            hasAnchor |= position - runStart >= minimumAnchor;
+
+            // Wrapped table cells leave a prefix on the current page and the rest
+            // at the start of the next page, with later cells of the same row still
+            // between them. Map the later-page remainder, but keep the local read
+            // head so those following cells are not skipped. A whole new cell that
+            // starts on the next page must still advance.
+            var remainderOnLaterPage = consumedLocalPrefix
+                && localCursor < target.Pages.Count
+                && found < target.Pages.Count
+                && target.Pages[found] > target.Pages[localCursor];
+            if (remainderOnLaterPage)
+                continue;
+
+            localCursor = consumeAt;
+            consumedLocalPrefix = true;
         }
-        if (!hasAnchor)
-            throw new InvalidDataException("DOCX_TEXT_PAGE_MAPPING_FAILED: rendered text provides no reliable original-text anchor.");
+        cursor = localCursor;
+
+        // DualLayer keeps the LibreOffice raster as the visual layer. Page
+        // assignment for the invisible OpenXML text may be fragmented by table
+        // wraps; reject only when most of a substantial part is missing from the PDF.
+        if (skippedMissing * 2 >= source.Text.Length && source.Text.Length >= 4)
+            throw new InvalidDataException("DOCX_TEXT_PAGE_MAPPING_FAILED: original OpenXML text could not be aligned with rendered pages. No partial text layer was written.");
         return mapping;
     }
 

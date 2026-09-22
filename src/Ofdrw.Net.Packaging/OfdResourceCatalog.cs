@@ -46,8 +46,13 @@ internal sealed class OfdResourceCatalog
     internal void EnsureDocument(string path, XNamespace ns)
     {
         if (_documents.ContainsKey(path)) return;
+        // Declare the "ofd" prefix like Document.xml and Content.xml do. Several
+        // readers match "ofd:Res"/"ofd:MultiMedia" textually and never find the
+        // image manifest when the root uses an unprefixed default namespace.
         _documents[path] = new XDocument(new XDeclaration("1.0", "UTF-8", null),
-            new XElement(ns + "Res", new XAttribute("BaseLoc", "Res")));
+            new XElement(ns + "Res",
+                new XAttribute(XNamespace.Xmlns + "ofd", ns.NamespaceName),
+                new XAttribute("BaseLoc", "Res")));
         _changed.Add(path);
     }
 

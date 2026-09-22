@@ -1,10 +1,13 @@
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
+using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
 using Ofdrw.Net.Layout.Editing;
@@ -97,6 +100,49 @@ public sealed class PdfConversionTests
         var image = Assert.Single(ofd.Pages[0].Elements.OfType<OfdImageElement>());
         Assert.NotEmpty(image.Data);
         Assert.Empty(ofd.Pages[0].Elements.OfType<OfdTextElement>());
+    }
+
+    [Fact]
+    public async Task PdfToOfd_ShouldFlattenRasterOntoOpaqueWhitePngForLegacyViewers()
+    {
+        await using var inputPdf = new MemoryStream();
+        CreateSamplePdf(inputPdf, 1);
+        inputPdf.Position = 0;
+
+        var converter = new PdfToOfdConverter(new PdfToOfdOptions { TextLayerMode = PdfTextLayerMode.None });
+        await using var ofdStream = new MemoryStream();
+        await converter.ConvertAsync(inputPdf, ofdStream);
+
+        ofdStream.Position = 0;
+        var raster = Assert.Single((await new OfdReader().ReadAsync(ofdStream)).Pages[0].Elements.OfType<OfdImageElement>());
+        Assert.Equal(0x89, raster.Data[0]);
+        Assert.Equal("IHDR", Encoding.ASCII.GetString(raster.Data, 12, 4));
+        Assert.Equal(2, raster.Data[25]);
+    }
+
+    [Fact]
+    public async Task PdfToOfd_ShouldWriteConfiguredNamespaceIntoEveryPart()
+    {
+        await using var inputPdf = new MemoryStream();
+        CreateSamplePdf(inputPdf, 1);
+        inputPdf.Position = 0;
+
+        var converter = new PdfToOfdConverter(new PdfToOfdOptions
+        {
+            TextLayerMode = PdfTextLayerMode.None, Namespace = OfdConstants.Namespace
+        });
+        await using var ofdStream = new MemoryStream();
+        await converter.ConvertAsync(inputPdf, ofdStream);
+
+        ofdStream.Position = 0;
+        using var zip = new ZipArchive(ofdStream, ZipArchiveMode.Read, leaveOpen: true);
+        foreach (var name in new[] { "OFD.xml", "Doc_0/Document.xml", "Doc_0/DocumentRes.xml", "Doc_0/Pages/Page_0/Content.xml" })
+        {
+            using var entry = zip.GetEntry(name)!.Open();
+            var root = XDocument.Load(entry).Root!;
+            Assert.Equal(OfdConstants.Namespace, root.Name.NamespaceName);
+            Assert.Equal("ofd", root.GetPrefixOfNamespace(root.Name.Namespace));
+        }
     }
 
     [Fact]

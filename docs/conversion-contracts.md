@@ -19,6 +19,7 @@ foreach (var diagnostic in result.Diagnostics)
 - 已知不支持内容按 `UnsupportedFeatureBehavior` 处理；使用 Placeholder 时应检查结果的 `OriginalTextPreserved` 和 `Diagnostics`，不能只根据 Task 正常完成判断原文完整。
 - DualLayer 的视觉层始终要求栅格化。即使传入的 PDF 选项允许文本后备，该 DOCX 视觉阶段也不会以 PDF 抽取文字作为替代。
 - DualLayer 根据实际渲染 PDF 的字符位置定位 OpenXML 原文，再进行选页。PDF 文字只用于定位；发出的文本仍来自 OpenXML，页码字段由原字段定义计算。无法可靠定位正文时明确失败，不提交部分语义层。
+- DualLayer 输出与 Native 使用同一包轮廓：命名空间取 `DocxConversionOptions.OfdNamespace`（默认 `http://www.ofdspec.org`，与 OFD-H 轮廓及只识别该 URI 的旧阅读器一致），`DocType` 为 `OFD-H`，元数据标明 DOCX 来源。视觉阶段的 PDF→OFD 默认 `/2016` 命名空间不会泄漏到结果里；经 `IPdfToOfdConverter` 暂存再读回的包，其资源清单与原始片段也会改写到目标命名空间。独立 PDF→OFD 保持 `/2016` 默认值，可用 `PdfToOfdOptions.Namespace` 改为短 URI。资源清单 `PublicRes.xml`/`DocumentRes.xml` 与其他部件一样声明 `ofd` 前缀，而不是无前缀默认命名空间。
 - 未打印的批注等优先定位到原 XML 引用的页面。完全没有页面或引用锚点的附属文本，整本输出会保留在末页并返回文档级作用域警告；此时显式选页会失败，避免把未知归属的原文错误分配给选中的页面。
 
 Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域、复杂跨页表格或全部 Word 版式的保真。
