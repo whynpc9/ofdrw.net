@@ -8,6 +8,7 @@ using Docnet.Core.Readers;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace Ofdrw.Net.Converter.Pdf.Internal;
 
@@ -55,9 +56,13 @@ internal sealed class DocnetPdfRasterizer : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             var raw = page.GetImage();
             cancellationToken.ThrowIfCancellationRequested();
-            using var image = Image.LoadPixelData<Bgra32>(raw, width, height);
+            using var source = Image.LoadPixelData<Bgra32>(raw, width, height);
+            // PDFium leaves the page background fully transparent. Old OFD
+            // viewers composite that onto black, so black text disappears.
+            using var canvas = new Image<Rgb24>(width, height, Color.White);
+            canvas.Mutate(context => context.DrawImage(source, 1f));
             using var png = new MemoryStream();
-            await image.SaveAsync(png, new PngEncoder(), cancellationToken).ConfigureAwait(false);
+            await canvas.SaveAsync(png, new PngEncoder { ColorType = PngColorType.Rgb }, cancellationToken).ConfigureAwait(false);
             return png.ToArray();
         }
         catch (OperationCanceledException) { throw; }

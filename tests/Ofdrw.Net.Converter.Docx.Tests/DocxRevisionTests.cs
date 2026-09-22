@@ -262,6 +262,119 @@ public sealed partial class DocxConversionTests
     }
 
     [Fact]
+    public async Task DualLayer_ShouldMapTableCellTextSplitAcrossRenderedFragments()
+    {
+        using var input = CreateMinimalDocx("<w:p><w:r><w:t>2026-09-01</w:t></w:r></w:p><w:p><w:r><w:t>InternalMed</w:t></w:r></w:p>");
+        using var output = new MemoryStream();
+        var converter = new DocxToOfdConverter(
+            new FixturePdfRenderer("2026-WRAP09-01InternalMed"),
+            new Ofdrw.Net.Converter.Pdf.Converters.PdfToOfdConverter());
+        await converter.ConvertAsync(input, output);
+        Assert.True(output.Length > 0);
+        output.Position = 0;
+        var text = new string(new OfdTextExtractor().Extract(await new OfdReader().ReadAsync(output))
+            .Where(character => !char.IsWhiteSpace(character)).ToArray());
+        Assert.Contains("2026-09-01", text);
+        Assert.Contains("InternalMed", text);
+    }
+
+    [Fact]
+    public async Task DualLayer_ShouldMapTableRowWhenWrappedCellRemainderStartsTheNextPage()
+    {
+        using var input = CreateMinimalDocx(
+            "<w:p><w:r><w:t>2026-09-01</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>InternalMed</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>2026-09-16</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>Zhang</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>BC0042</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>P42</w:t></w:r></w:p>");
+        using var output = new MemoryStream();
+        var converter = new DocxToOfdConverter(
+            new FixturePdfRenderer("2026-InternalMed2026-09-Zhang", "09-0116BC0042P42"),
+            new Ofdrw.Net.Converter.Pdf.Converters.PdfToOfdConverter());
+        await converter.ConvertAsync(input, output);
+        Assert.True(output.Length > 0);
+        output.Position = 0;
+        var pages = new OfdTextExtractor().ExtractPages(await new OfdReader().ReadAsync(output))
+            .Select(page => new string(page.Where(character => !char.IsWhiteSpace(character)).ToArray()))
+            .ToList();
+        Assert.Equal(2, pages.Count);
+        Assert.Contains("InternalMed", pages[0]);
+        Assert.Contains("Zhang", pages[0]);
+        Assert.Contains("2026-", pages[0]);
+        Assert.Contains("09-01", pages[1]);
+        Assert.Contains("BC0042", pages[1]);
+        Assert.Contains("P42", pages[1]);
+        Assert.DoesNotContain("P42", pages[0]);
+    }
+
+    [Fact]
+    public async Task DualLayer_ShouldMapShortTableCodesWhenWrappedCellRemainderStartsTheNextPage()
+    {
+        using var input = CreateMinimalDocx(
+            "<w:p><w:r><w:t>P41</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>InternalMed</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>Zhang</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>P42</w:t></w:r></w:p>");
+        using var output = new MemoryStream();
+        var converter = new DocxToOfdConverter(
+            new FixturePdfRenderer("P4InternalMedZhang", "1P42"),
+            new Ofdrw.Net.Converter.Pdf.Converters.PdfToOfdConverter());
+        await converter.ConvertAsync(input, output);
+        Assert.True(output.Length > 0);
+        output.Position = 0;
+        var pages = new OfdTextExtractor().ExtractPages(await new OfdReader().ReadAsync(output))
+            .Select(page => new string(page.Where(character => !char.IsWhiteSpace(character)).ToArray()))
+            .ToList();
+        Assert.Equal(2, pages.Count);
+        Assert.Contains("InternalMed", pages[0]);
+        Assert.Contains("Zhang", pages[0]);
+        Assert.Contains("P4", pages[0]);
+        Assert.Contains("P42", pages[1]);
+        Assert.DoesNotContain("P42", pages[0]);
+    }
+
+    [Fact]
+    public async Task DualLayer_ShouldMapShortCodeWhenLongestRenderedRunIsASingleCharacter()
+    {
+        using var input = CreateMinimalDocx(
+            "<w:p><w:r><w:t>P41</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>InternalMed</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>P42</w:t></w:r></w:p>");
+        using var output = new MemoryStream();
+        var converter = new DocxToOfdConverter(
+            new FixturePdfRenderer("PInternalMed", "41P42"),
+            new Ofdrw.Net.Converter.Pdf.Converters.PdfToOfdConverter());
+        await converter.ConvertAsync(input, output);
+        Assert.True(output.Length > 0);
+        output.Position = 0;
+        var pages = new OfdTextExtractor().ExtractPages(await new OfdReader().ReadAsync(output))
+            .Select(page => new string(page.Where(character => !char.IsWhiteSpace(character)).ToArray()))
+            .ToList();
+        Assert.Equal(2, pages.Count);
+        Assert.Contains("P", pages[0]);
+        Assert.Contains("InternalMed", pages[0]);
+        Assert.Contains("41", pages[1]);
+        Assert.Contains("P42", pages[1]);
+    }
+
+    [Fact]
+    public async Task DualLayer_ShouldKeepOriginalTextWhenRenderedPdfOmitsPunctuation()
+    {
+        using var input = CreateMinimalDocx("<w:p><w:r><w:t>Hello,World</w:t></w:r></w:p>");
+        using var output = new MemoryStream();
+        var converter = new DocxToOfdConverter(
+            new FixturePdfRenderer("HelloWorld"),
+            new Ofdrw.Net.Converter.Pdf.Converters.PdfToOfdConverter());
+        await converter.ConvertAsync(input, output);
+        Assert.True(output.Length > 0);
+        output.Position = 0;
+        var text = new string(new OfdTextExtractor().Extract(await new OfdReader().ReadAsync(output))
+            .Where(character => !char.IsWhiteSpace(character)).ToArray());
+        Assert.Contains("Hello,World", text);
+    }
+
+    [Fact]
     public async Task DualLayer_ShouldReportDocumentScopedNotesAndRejectAmbiguousPageSelection()
     {
         using var input = CreateMinimalDocx("<w:p><w:r><w:t>BODY ORIGINAL</w:t></w:r></w:p>");
@@ -519,16 +632,19 @@ public sealed partial class DocxConversionTests
         File.WriteAllBytes(Path.Combine(directory, name + ".ofd"), ofd.ToArray());
     }
 
-    private sealed class FixturePdfRenderer(string text) : Ofdrw.Net.Converter.Abstractions.Interfaces.IDocxToPdfConverter
+    private sealed class FixturePdfRenderer(params string[] pages) : Ofdrw.Net.Converter.Abstractions.Interfaces.IDocxToPdfConverter
     {
         public Task ConvertAsync(Stream input, Stream output, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             Ofdrw.Net.Converter.Pdf.PdfFontRegistry.EnsureInstalled();
             using var document = new PdfSharpCore.Pdf.PdfDocument();
-            var page = document.AddPage(); page.Width = 595; page.Height = 842;
-            using (var graphics = PdfSharpCore.Drawing.XGraphics.FromPdfPage(page))
+            foreach (var text in pages)
+            {
+                var page = document.AddPage(); page.Width = 595; page.Height = 842;
+                using var graphics = PdfSharpCore.Drawing.XGraphics.FromPdfPage(page);
                 graphics.DrawString(text, new PdfSharpCore.Drawing.XFont("Arial", 12), PdfSharpCore.Drawing.XBrushes.Black, new PdfSharpCore.Drawing.XPoint(72, 90));
+            }
             document.Save(output, false);
             return Task.CompletedTask;
         }

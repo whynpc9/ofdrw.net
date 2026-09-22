@@ -10,6 +10,8 @@
 - 保留前序合入的 CJK 样式资源区分、按内容暂存配置字体、viewer-local CJK 的 PDF 替代字体加载，以及 SixLabors.Fonts 1.0.1 接口兼容修复。
 - 名称字体的宿主探测仅用于请求粗体/斜体的面，并保护 TTC、无效字节、宿主异常及可选注册预算不足的回退；内嵌字体仍严格验证。
 - 仓库打包默认版本、安装示例和包消费脚本统一为 preview.7。
+- 修复 DualLayer DOCX → OFD 在旧 OFD-H 阅读器中整页空白：视觉阶段不再把 PDF→OFD 的 `/2016` 命名空间和 "PDF document" 元数据带入结果，改为与 Native 相同的 `DocxConversionOptions.OfdNamespace`（默认 `http://www.ofdspec.org`）与 `OFD-H`；新增 `PdfToOfdOptions.Namespace`。`PublicRes.xml`/`DocumentRes.xml` 改为带 `ofd` 前缀写出。
+- PDF 栅格页图在写入 PNG 前铺白底并按 RGB 编码，避免旧阅读器把透明背景合成为黑色。
 
 ## 验证与能力边界
 

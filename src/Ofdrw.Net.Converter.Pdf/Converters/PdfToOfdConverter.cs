@@ -100,7 +100,8 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
         {
             Options = new OfdDocumentOptions
             {
-                DocType = "OFD-H", DocumentId = "Doc_0", Namespace = OfdConstants.StandardNamespace,
+                DocType = "OFD-H", DocumentId = "Doc_0",
+                Namespace = string.IsNullOrWhiteSpace(_options.Namespace) ? OfdConstants.StandardNamespace : _options.Namespace,
                 Metadata = new OfdMetadata
                 {
                     Title = "PDF document", Creator = "Ofdrw.Net PdfToOfdConverter",
