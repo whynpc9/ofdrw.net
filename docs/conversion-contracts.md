@@ -30,7 +30,7 @@ BuiltIn 渲染未指定字体的 DOCX 文本时，按 `FontFallbackFamilies` 的
 
 OFD → PDF 根据实际选中字形文件的样式判断是否模拟粗体/斜体；对名称字体仅在请求这些样式时额外探测宿主后备面。该探测只注册独立 TTF/OTF，TTC、无效字节、读取/解析异常或可选注册预算不足会跳过注册，保留逐文本字体回退；OFD 内嵌字体失败仍严格报错。成功探测的字体会计入进程级注册预算，常规名称字体不因该探测被额外复制注册。
 
-直接打开 Native OFD 时，字体绑定及 `Bold`/`Italic` 的表现由 OFD 阅读器负责；忽略这些标志的阅读器可能把加粗宋体显示为常规宋体。preview.7 本机视觉验收链路为 Native OFD → PDF → macOS Preview，未验证真实 OFD 阅读器的宋体加粗表现，不能把 PDF 验收结果视作该路径的兼容性保证。
+Native OFD 中的加粗/斜体同时写在两处：字体资源 `ofd:Font` 上的 `Bold`/`Italic` 只描述字体面；文本对象 `ofd:TextObject` 上的 CT_Text `Weight`（加粗为 `700`，常规 `400` 时省略）与 `Italic="true"` 才是规范要求的样式。仅声明 `SimSun`/`SimHei` 名称字体时，不少 OFD-H 阅读器会忽略这两类标志，因此对无 `FontFile` 的名称字体，写出器还会描边字形（`Stroke="true"` `Fill="true"` `LineWidth`≈0.045em）做假粗体，并用 CTM 错切做假斜体。透明 DualLayer 文字和已嵌入字体面不描边。`OfdReader` 读回 `Weight`/`Italic`，OFD → PDF/SVG 仍以 `Weight >= 600` 或 `Italic` 作为模拟粗体/斜体的依据。
 
 CI 使用 `scripts/install-ci-fonts.py` 下载固定版本且校验 SHA-256 的 Noto Sans CJK SC，生成 Regular 静态 TrueType 字体，以避免操作系统镜像的字体差异。脚本依赖 `fonttools==4.59.2`；本地可用 `--directory /path/to/fonts` 生成隔离目录，再通过 `FontDirectories` 或 CLI `--font-directory` 指定。字体及 OFL 许可证仅写入验证环境，不进入 NuGet 包。
 

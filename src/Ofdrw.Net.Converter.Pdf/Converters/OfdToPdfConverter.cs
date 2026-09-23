@@ -229,15 +229,18 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     var fontSize = Math.Max(0.1, MillimetersToPoints(text.FontSizeMillimeters));
                     var familyName = fonts.Resolve(text, out var resource);
-                    var style = (resource?.Bold == true ? XFontStyle.Bold : XFontStyle.Regular) |
-                        (resource?.Italic == true ? XFontStyle.Italic : XFontStyle.Regular);
+                    // CT_Text Weight/Italic is the per-object style viewers apply;
+                    // the resource flags describe the bound font file.
+                    var bold = resource?.Bold == true || text.Weight >= 600;
+                    var italic = resource?.Italic == true || text.Italic;
+                    var style = (bold ? XFontStyle.Bold : XFontStyle.Regular) |
+                        (italic ? XFontStyle.Italic : XFontStyle.Regular);
                     XFont font;
                     FontResolverInfo face;
                     try
                     {
                         font = new XFont(familyName, fontSize, style);
-                        face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName,
-                            resource?.Bold == true, resource?.Italic == true);
+                        face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName, bold, italic);
                     }
                     catch (Exception exception) when (resource?.Data.Length > 0)
                     {

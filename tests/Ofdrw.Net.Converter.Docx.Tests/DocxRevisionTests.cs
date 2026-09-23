@@ -137,6 +137,16 @@ public sealed partial class DocxConversionTests
             Assert.True(heiBold.Bold);
             Assert.False(heiBold.Italic);
             Assert.NotEqual(songBold.Id, heiBold.Id);
+
+            // Viewers read the style from the text object, not the resource flags.
+            var byText = texts.ToDictionary(element => element.Text);
+            Assert.Equal(OfdTextElement.DefaultWeight, byText["常规宋体"].Weight);
+            Assert.False(byText["常规宋体"].Italic);
+            Assert.True(byText["斜体宋体"].Italic);
+            Assert.Equal(OfdTextElement.DefaultWeight, byText["斜体宋体"].Weight);
+            Assert.Equal(OfdTextElement.BoldWeight, byText["粗体宋体"].Weight);
+            Assert.False(byText["粗体宋体"].Italic);
+            Assert.Equal(OfdTextElement.BoldWeight, byText["粗体黑体"].Weight);
         }
         finally { Directory.Delete(directory, recursive: true); }
     }
@@ -170,6 +180,8 @@ public sealed partial class DocxConversionTests
         }
         var bold = await Export();
         font.Bold = false;
+        foreach (var text in package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>())
+            text.Weight = OfdTextElement.DefaultWeight;
         var regular = await Export();
         using var semantic = PdfPigDocument.Open(bold);
         Assert.Equal("中文字体", semantic.GetPage(1).Text);
