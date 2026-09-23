@@ -171,10 +171,13 @@ public sealed partial class DocxConversionTests
         Assert.False(ResolveFont(package, normal).Bold);
         Assert.Equal((192, 0, 0), Rgb(emphasized.FillColor));
         Assert.True(ResolveFont(package, emphasized).Bold);
+        Assert.Equal(OfdTextElement.DefaultWeight, normal.Weight);
+        Assert.Equal(OfdTextElement.BoldWeight, emphasized.Weight);
         Assert.Equal(normal.YMillimeters, emphasized.YMillimeters);
         Assert.True(emphasized.XMillimeters >= normal.XMillimeters + normal.WidthMillimeters - 0.002);
         var subtitle = Assert.Single(text, t => t.Text.Contains("Generated DOCX"));
         Assert.True(ResolveFont(package, subtitle).Italic);
+        Assert.True(subtitle.Italic);
         Assert.All(package.Fonts, font =>
         {
             Assert.False(string.IsNullOrWhiteSpace(font.FontName));

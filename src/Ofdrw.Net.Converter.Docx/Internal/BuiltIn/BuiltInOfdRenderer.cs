@@ -471,6 +471,10 @@ internal sealed class BuiltInOfdRenderer
                 LayerType = "Body", XMillimeters = x, YMillimeters = top,
                 WidthMillimeters = Math.Max(group.Sum(g => g.Width), 0.1), HeightMillimeters = line.Height,
                 FontName = declaredName, FontResourceId = resource.Id,
+                // Viewers apply bold/italic from the text object, not from the font
+                // resource flags, so declare the requested style on both.
+                Weight = format.Bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight,
+                Italic = format.Italic,
                 FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
                 FillColor = ParseColor(format.ColorHex), Text = string.Concat(group.Select(g => g.Text))
             };

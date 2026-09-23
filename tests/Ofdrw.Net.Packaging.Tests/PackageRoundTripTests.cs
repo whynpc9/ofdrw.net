@@ -76,6 +76,71 @@ public sealed class PackageRoundTripTests
         Assert.Equal("SimSun", firstText.FontName);
     }
 
+    /// <summary>
+    /// Viewers apply bold/italic from CT_Text Weight/Italic, not from the font
+    /// resource flags, so both an explicit model style and a style-only resource
+    /// binding must surface on the text object and survive a round trip.
+    /// </summary>
+    [Fact]
+    public async Task Writer_ShouldDeclareWeightAndItalicOnTextObjects()
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "F1", FontName = "SimSun" });
+        package.Fonts.Add(new OfdFontResource { Id = "F2", FontName = "SimSun", Bold = true });
+        package.Pages.Add(new OfdPage
+        {
+            Index = 0, WidthMillimeters = 210, HeightMillimeters = 297,
+            Elements =
+            {
+                new OfdTextElement { Text = "regular", FontResourceId = "F1", XMillimeters = 10, YMillimeters = 10 },
+                new OfdTextElement { Text = "bound bold", FontResourceId = "F2", XMillimeters = 10, YMillimeters = 20 },
+                new OfdTextElement
+                {
+                    Text = "explicit", FontResourceId = "F1", XMillimeters = 10, YMillimeters = 30,
+                    Weight = OfdTextElement.BoldWeight, Italic = true
+                }
+            }
+        });
+
+        await using var ms = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ms);
+        ms.Position = 0;
+        var archive = await new OfdPackageLoader().LoadAsync(ms);
+        var pageXml = XDocument.Parse(archive.ReadUtf8Text("Doc_0/Pages/Page_0/Content.xml"));
+        var ns = pageXml.Root!.Name.Namespace;
+        var objects = pageXml.Descendants(ns + "TextObject").ToDictionary(node => node.Value.Trim());
+        Assert.Null(objects["regular"].Attribute("Weight"));
+        Assert.Null(objects["regular"].Attribute("Italic"));
+        Assert.Null(objects["regular"].Attribute("Stroke"));
+        Assert.Equal("700", objects["bound bold"].Attribute("Weight")?.Value);
+        Assert.Null(objects["bound bold"].Attribute("Italic"));
+        Assert.Equal("true", objects["bound bold"].Attribute("Stroke")?.Value);
+        Assert.Equal("true", objects["bound bold"].Attribute("Fill")?.Value);
+        Assert.NotNull(objects["bound bold"].Attribute("LineWidth"));
+        Assert.Equal("700", objects["explicit"].Attribute("Weight")?.Value);
+        Assert.Equal("true", objects["explicit"].Attribute("Italic")?.Value);
+        Assert.Equal("true", objects["explicit"].Attribute("Stroke")?.Value);
+        Assert.NotNull(objects["explicit"].Attribute("CTM"));
+
+        ms.Position = 0;
+        var parsed = await new OfdReader().ReadAsync(ms);
+        var texts = parsed.Pages[0].Elements.OfType<OfdTextElement>().ToDictionary(text => text.Text);
+        Assert.Equal(OfdTextElement.DefaultWeight, texts["regular"].Weight);
+        Assert.Equal(OfdTextElement.BoldWeight, texts["bound bold"].Weight);
+        Assert.False(texts["bound bold"].Italic);
+        Assert.Equal(OfdTextElement.BoldWeight, texts["explicit"].Weight);
+        Assert.True(texts["explicit"].Italic);
+
+        // Re-saving preserved XML keeps the declared style.
+        await using var resaved = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(parsed, resaved);
+        resaved.Position = 0;
+        var reparsed = await new OfdReader().ReadAsync(resaved);
+        var explicitText = reparsed.Pages[0].Elements.OfType<OfdTextElement>().Single(text => text.Text == "explicit");
+        Assert.Equal(OfdTextElement.BoldWeight, explicitText.Weight);
+        Assert.True(explicitText.Italic);
+    }
+
     [Fact]
     public async Task Writer_ShouldStoreImagesInDocumentResources_AndReaderCanResolveThem()
     {
