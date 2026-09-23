@@ -42,7 +42,7 @@ See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk 
 
 ## For Developers
 
-Published packages are available on [NuGet](https://www.nuget.org/profiles/whynpc). The next release candidate is `0.1.0-preview.7` (not yet published); the latest published version is `0.1.0-preview.6`. The commands below target the candidate and require its local package feed until publication. See the [release notes](docs/release-notes-0.1.0-preview.7.md).
+Published packages are available on [NuGet](https://www.nuget.org/profiles/whynpc). The current release is `0.1.0-preview.7`. See the [release notes](docs/release-notes-0.1.0-preview.7.md).
 
 ### Which package should I install?
 
