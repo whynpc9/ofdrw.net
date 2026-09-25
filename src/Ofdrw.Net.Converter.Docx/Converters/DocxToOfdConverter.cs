@@ -133,8 +133,8 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
             }
             var mapping = DocxPdfTextMapper.Map(source, pdfPath, _semanticOptions.MaxPageCount,
                 renderResult?.ActualEngine == DocxConversionEngine.BuiltIn, cancellationToken);
-            if (mapping.HasUnplacedSupplementalText && pages is { Count: > 0 })
-                throw new InvalidDataException("DOCX_PAGE_TEXT_SCOPE_AMBIGUOUS: page selection requires a reliable anchor for every supplementary text part.");
+            if ((mapping.HasUnplacedSupplementalText || mapping.HasUnplacedBodyText) && pages is { Count: > 0 })
+                throw new InvalidDataException("DOCX_PAGE_TEXT_SCOPE_AMBIGUOUS: page selection requires a reliable anchor for every original text part.");
             var sourcePages = OfdPageSelection.Normalize(mapping.Pages.Count, pages);
             if (sourcePages.Count > _semanticOptions.MaxPageCount)
                 throw new InvalidDataException("DOCX selection exceeds the configured page count limit.");
@@ -164,7 +164,7 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
             await new OfdPackageWriter().WriteAsync(visual, ofdOutput, cancellationToken).ConfigureAwait(false);
             return new DocxToOfdConversionResult(DocxToOfdMode.DualLayer, renderResult?.ActualEngine,
                 renderResult?.AttemptedEngines ?? new DocxConversionEngine[0], allDiagnostics,
-                mapping.Pages.Count, sourcePages, true, !mapping.HasUnplacedSupplementalText);
+                mapping.Pages.Count, sourcePages, true, !mapping.HasUnplacedSupplementalText && !mapping.HasUnplacedBodyText);
         }
         finally
         {
@@ -281,7 +281,9 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
         package.CustomTags["source-text-origin"] = "DOCX/OpenXML";
         package.CustomTags["source-text-kind"] = "machine-readable";
         package.CustomTags["docx-ofd-mode"] = "DualLayer";
-        package.CustomTags["source-text-page-map"] = textMap.HasUnplacedSupplementalText ? "includes-document-scoped-supplementary-text" : "PDF-position-aligned/OpenXML-content";
+        package.CustomTags["source-text-page-map"] = textMap.HasUnplacedBodyText
+            ? "includes-unanchored-body-text"
+            : textMap.HasUnplacedSupplementalText ? "includes-document-scoped-supplementary-text" : "PDF-position-aligned/OpenXML-content";
         for (var index = 0; index < package.Pages.Count; index++)
         {
             var page = package.Pages[index];

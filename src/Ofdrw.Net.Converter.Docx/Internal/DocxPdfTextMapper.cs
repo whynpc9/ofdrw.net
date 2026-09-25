@@ -14,6 +14,7 @@ internal sealed class DocxPageTextMap
     internal List<string> Pages { get; } = new();
     internal List<DocxConversionDiagnostic> Diagnostics { get; } = new();
     internal bool HasUnplacedSupplementalText { get; set; }
+    internal bool HasUnplacedBodyText { get; set; }
 }
 
 /// <summary>
@@ -50,15 +51,19 @@ internal static class DocxPdfTextMapper
         var body = Normalize(bodyText.ToString(), bodyPages);
         var result = new DocxPageTextMap();
         List<PartMapping> mappings;
-        try { mappings = MapBody(source, body, pdf.NumberOfPages, cancellationToken); }
+        try { mappings = MapBody(source, body, pdf.NumberOfPages, cancellationToken, out var unplaced); result.HasUnplacedBodyText = unplaced; }
         catch (InvalidDataException)
         {
             // Floating text can legitimately extend into page margins. Retry
             // against actual page positions rather than inventing semantic pages.
-            mappings = MapBody(source, full, pdf.NumberOfPages, cancellationToken);
+            mappings = MapBody(source, full, pdf.NumberOfPages, cancellationToken, out var unplaced);
+            result.HasUnplacedBodyText = unplaced;
             result.Diagnostics.Add(new DocxConversionDiagnostic("DOCX_TEXT_MAPPING_INCLUDED_MARGINS",
                 "Original body text was aligned using rendered text including page margins.", DocxConversionDiagnosticSeverity.Information));
         }
+        if (result.HasUnplacedBodyText)
+            result.Diagnostics.Add(new DocxConversionDiagnostic("DOCX_BODY_PAGE_SCOPE_AMBIGUOUS",
+                "Some original body text has no rendered anchor; it is retained, but its page assignment is not reliable."));
 
         var sectionForPage = new int[pdf.NumberOfPages];
         var assigned = new bool[pdf.NumberOfPages];
@@ -108,7 +113,7 @@ internal static class DocxPdfTextMapper
             try
             {
                 var cursor = start;
-                var mapped = Align(literal, full, ref cursor);
+                var mapped = Align(literal, full, ref cursor, out _);
                 var pages = ExpandOriginalPages(part.LiteralText, literal.Offsets, mapped, full.Pages,
                     references.TryGetValue(part.Kind + ":" + part.Id, out var referencePage) ? referencePage : texts.Length - 1);
                 Emit(part, pages, texts.Length - 1);
@@ -165,32 +170,39 @@ internal static class DocxPdfTextMapper
         }
     }
 
-    private static List<PartMapping> MapBody(DocxSourceDocument source, NormalizedText target, int pageCount, CancellationToken cancellationToken)
+    private static List<PartMapping> MapBody(DocxSourceDocument source, NormalizedText target, int pageCount, CancellationToken cancellationToken, out bool unplacedBody)
     {
         var result = new List<PartMapping>();
         var cursor = 0;
         var previousPage = 0;
+        var matchedBodyCharacters = 0;
+        unplacedBody = false;
         foreach (var part in source.Sections.SelectMany(section => section.Paragraphs))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var text = part.LiteralText;
             var normalized = Normalize(text);
-            var mapped = Align(normalized, target, ref cursor);
+            var mapped = Align(normalized, target, ref cursor, out var matchedCharacters);
+            matchedBodyCharacters += matchedCharacters;
+            if (normalized.Text.Length > 0 && matchedCharacters == 0) unplacedBody = true;
             var fallback = Math.Min(pageCount - 1, previousPage + (part.PageBreakBefore && normalized.Text.Length == 0 ? 1 : 0));
             var pages = ExpandOriginalPages(text, normalized.Offsets, mapped, target.Pages, fallback);
             result.Add(new PartMapping(part, pages, fallback));
             if (pages.Count > 0) previousPage = pages[pages.Count - 1];
         }
+        if (matchedBodyCharacters == 0 && result.Any(mapping => mapping.Part.LiteralText.Length > 0))
+            throw new InvalidDataException("DOCX_TEXT_PAGE_MAPPING_FAILED: original OpenXML text has no rendered body anchor. No partial text layer was written.");
         return result;
     }
 
-    private static IReadOnlyList<int> Align(NormalizedText source, NormalizedText target, ref int cursor)
+    private static IReadOnlyList<int> Align(NormalizedText source, NormalizedText target, ref int cursor, out int matchedCharacters)
     {
         var mapping = new List<int>(source.Text.Length);
         var position = 0;
         var localCursor = cursor;
         var consumedLocalPrefix = false;
         var skippedMissing = 0;
+        matchedCharacters = 0;
         while (position < source.Text.Length)
         {
             var length = Math.Min(32, source.Text.Length - position);
@@ -211,6 +223,7 @@ internal static class DocxPdfTextMapper
                 if (before >= 0)
                 {
                     mapping.Add(before);
+                    matchedCharacters++;
                     position++;
                     continue;
                 }
@@ -225,6 +238,7 @@ internal static class DocxPdfTextMapper
             while (position < source.Text.Length && consumeAt < target.Text.Length && source.Text[position] == target.Text[consumeAt])
             {
                 mapping.Add(consumeAt++);
+                matchedCharacters++;
                 position++;
             }
 
