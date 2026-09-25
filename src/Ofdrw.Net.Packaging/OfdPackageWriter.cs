@@ -106,7 +106,7 @@ public sealed class OfdPackageWriter
                 resources.WriteImage(image.Id, image.Image, image.Format, resourcePath, ns);
         }
         resources.Flush();
-        BuildPages(orderedPages, entries, ns, pagePaths, pageIds, layerIds, elementIds, fonts.TextIds, imageResources, idAllocator);
+        BuildPages(orderedPages, entries, ns, pagePaths, pageIds, layerIds, elementIds, fonts.TextBindings, imageResources, idAllocator);
         BuildAttachments(package, entries, ns, docId);
         BuildCustomTags(package, entries, ns, docId);
 
@@ -188,7 +188,7 @@ public sealed class OfdPackageWriter
     private sealed class FontBindings
     {
         internal List<FontBinding> Resources { get; } = new();
-        internal Dictionary<OfdTextElement, string> TextIds { get; } = new();
+        internal Dictionary<OfdTextElement, FontBinding> TextBindings { get; } = new();
     }
 
     private static FontBindings BuildFonts(OfdDocumentPackage package, OfdIdAllocator idAllocator)
@@ -223,7 +223,7 @@ public sealed class OfdPackageWriter
                 result.Resources.Add(binding);
                 if (!string.IsNullOrEmpty(text.FontResourceId)) byId[text.FontResourceId!] = binding;
             }
-            result.TextIds[text] = binding.Id;
+            result.TextBindings[text] = binding;
         }
         return result;
     }
@@ -301,7 +301,7 @@ public sealed class OfdPackageWriter
         IReadOnlyDictionary<OfdPage, string> pageIds,
         IReadOnlyDictionary<OfdPage, Dictionary<string, string>> layerIds,
         IReadOnlyDictionary<OfdElement, string> elementIds,
-        IReadOnlyDictionary<OfdTextElement, string> fontIds,
+        IReadOnlyDictionary<OfdTextElement, FontBinding> fontBindings,
         IReadOnlyDictionary<OfdImageElement, ImageResource> imageResources,
         OfdIdAllocator idAllocator)
     {
@@ -327,15 +327,22 @@ public sealed class OfdPackageWriter
                     var objectId = elementIds[element];
                     if (element is OfdTextElement text)
                     {
-                        var fontId = fontIds.TryGetValue(text, out var resolvedFontId)
-                            ? resolvedFontId
-                            : idAllocator.Allocate();
+                        fontBindings.TryGetValue(text, out var binding);
+                        var fontId = binding?.Id ?? idAllocator.Allocate();
+                        var (weight, italic) = ResolveTextStyle(text, binding?.Resource);
                         XElement textObject;
                         if (!string.IsNullOrWhiteSpace(text.SourceXml))
                         {
                             textObject = XElement.Parse(text.SourceXml!, LoadOptions.PreserveWhitespace);
                             textObject.SetAttributeValue("ID", objectId);
                             textObject.SetAttributeValue("Font", fontId);
+                            // The reader parsed Weight/Italic into the model, so the model
+                            // is authoritative for them here (like ID and Font). Resource
+                            // flags are not promoted into preserved XML.
+                            textObject.SetAttributeValue("Weight", text.Weight != OfdTextElement.DefaultWeight
+                                ? text.Weight.ToString(CultureInfo.InvariantCulture) : null);
+                            textObject.SetAttributeValue("Italic", text.Italic ? "true" : null);
+                            ApplyNameOnlyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
                         }
                         else
                         {
@@ -346,6 +353,10 @@ public sealed class OfdPackageWriter
                                 new XAttribute("Boundary", BuildBox(text.XMillimeters, text.YMillimeters, width, height)),
                                 new XAttribute("Font", fontId),
                                 new XAttribute("Size", ToInvariant(text.FontSizeMillimeters)),
+                                weight != OfdTextElement.DefaultWeight
+                                    ? new XAttribute("Weight", weight.ToString(CultureInfo.InvariantCulture))
+                                    : null,
+                                italic ? new XAttribute("Italic", "true") : null,
                                 text.Transform is { Length: 6 }
                                     ? new XAttribute("CTM", string.Join(" ", text.Transform.Select(ToInvariant)))
                                     : null,
@@ -379,6 +390,7 @@ public sealed class OfdPackageWriter
                                             new XAttribute("Y", ToInvariant(Math.Max(text.FontSizeMillimeters, 1d))),
                                             text.Text)
                                     });
+                            ApplyNameOnlyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
                         }
 
                         AssignNestedIds(textObject, idAllocator);
@@ -492,6 +504,65 @@ public sealed class OfdPackageWriter
                 pageRoot);
             entries[pagePaths[page]] = ToUtf8Bytes(pageDocument);
         }
+    }
+
+    /// <summary>
+    /// CT_Text Weight/Italic are what viewers actually apply; the Bold/Italic
+    /// flags on a name-only font resource are ignored by most of them. A text
+    /// object bound to a bold or italic resource therefore also declares the
+    /// style itself, unless the model already requests one explicitly.
+    /// </summary>
+    private static (int Weight, bool Italic) ResolveTextStyle(OfdTextElement text, OfdFontResource? resource)
+    {
+        var weight = text.Weight != OfdTextElement.DefaultWeight
+            ? text.Weight
+            : resource?.Bold == true ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight;
+        weight = Math.Max(100, Math.Min(900, weight));
+        return (weight, text.Italic || resource?.Italic == true);
+    }
+
+    /// <summary>
+    /// Name-only CJK faces (SimSun/SimHei) have no bold/italic file. Spec
+    /// <c>Weight</c>/<c>Italic</c> are ignored by several OFD-H viewers, so also
+    /// stroke the glyphs (faux bold) and shear the CTM (faux italic). Invisible
+    /// DualLayer text and embedded faces are left untouched.
+    /// </summary>
+    private static void ApplyNameOnlyEmphasis(
+        XElement textObject, OfdTextElement text, OfdFontResource? resource, int weight, bool italic, XNamespace ns)
+    {
+        if (text.FillColor.Alpha == 0) return;
+        if (resource is { Data.Length: > 0 }) return;
+
+        var size = text.FontSizeMillimeters > 0 ? text.FontSizeMillimeters : 4d;
+        if (weight >= 600)
+        {
+            textObject.SetAttributeValue("Stroke", "true");
+            textObject.SetAttributeValue("Fill", "true");
+            textObject.SetAttributeValue("LineWidth", ToInvariant(Math.Max(0.08, size * 0.045)));
+            if (!textObject.Elements().Any(node => node.Name.LocalName == "StrokeColor"))
+            {
+                var stroke = new XElement(ns + "StrokeColor",
+                    new XAttribute("Value", $"{text.FillColor.Red} {text.FillColor.Green} {text.FillColor.Blue}"));
+                if (text.FillColor.Alpha != 255)
+                    stroke.SetAttributeValue("Alpha", text.FillColor.Alpha.ToString(CultureInfo.InvariantCulture));
+                var fill = textObject.Elements().FirstOrDefault(node => node.Name.LocalName == "FillColor");
+                if (fill is null) textObject.AddFirst(stroke);
+                else fill.AddAfterSelf(stroke);
+            }
+        }
+
+        if (!italic || textObject.Attribute("CTM") is not null) return;
+        const double shear = 0.2;
+        textObject.SetAttributeValue("CTM", BuildMatrix(1, 0, -shear, 1, shear * size, 0));
+        if (textObject.Attribute("Boundary")?.Value is not string box) return;
+        var parts = box.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 4) return;
+        if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var x) ||
+            !double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var y) ||
+            !double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var w) ||
+            !double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var h))
+            return;
+        textObject.SetAttributeValue("Boundary", BuildBox(x, y, w + shear * h, h));
     }
 
     private static string GetLayerKey(OfdElement element)

@@ -2,11 +2,14 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using Ofdrw.Net.Converter.Docx.Converters;
 using Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 using Ofdrw.Net.Converter.Pdf;
+using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Extraction;
 using Ofdrw.Net.Reader.Readers;
@@ -168,10 +171,13 @@ public sealed partial class DocxConversionTests
         Assert.False(ResolveFont(package, normal).Bold);
         Assert.Equal((192, 0, 0), Rgb(emphasized.FillColor));
         Assert.True(ResolveFont(package, emphasized).Bold);
+        Assert.Equal(OfdTextElement.DefaultWeight, normal.Weight);
+        Assert.Equal(OfdTextElement.BoldWeight, emphasized.Weight);
         Assert.Equal(normal.YMillimeters, emphasized.YMillimeters);
         Assert.True(emphasized.XMillimeters >= normal.XMillimeters + normal.WidthMillimeters - 0.002);
         var subtitle = Assert.Single(text, t => t.Text.Contains("Generated DOCX"));
         Assert.True(ResolveFont(package, subtitle).Italic);
+        Assert.True(subtitle.Italic);
         Assert.All(package.Fonts, font =>
         {
             Assert.False(string.IsNullOrWhiteSpace(font.FontName));
@@ -277,6 +283,98 @@ public sealed partial class DocxConversionTests
         Assert.Equal("machine-readable", package.CustomTags["source-text-kind"]);
         Assert.Equal("DualLayer", package.CustomTags["docx-ofd-mode"]);
         Assert.Equal(ReadExpectedSourceText(), CompactExtractedText(package));
+    }
+
+    /// <summary>
+    /// DualLayer output must open in the same readers as Native output: the visual
+    /// stage may not leak the PDF converter's "/2016" namespace or PDF metadata.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData(OfdConstants.StandardNamespace)]
+    public async Task GeneratedDocx_DualLayerShouldUseSameOfdNamespaceAsNative(string? configuredNamespace)
+    {
+        var options = new DocxConversionOptions
+        {
+            Engine = DocxConversionEngine.BuiltIn, OfdMode = DocxToOfdMode.DualLayer
+        };
+        if (configuredNamespace is not null) options.OfdNamespace = configuredNamespace;
+        var expected = configuredNamespace ?? OfdConstants.Namespace;
+        var converter = new DocxToOfdConverter(options, new PdfToOfdOptions());
+
+        await using var output = new MemoryStream();
+        await using (var input = File.OpenRead(ResolveGeneratedSample()))
+        {
+            await converter.ConvertAsync(input, output);
+        }
+
+        output.Position = 0;
+        AssertPackageNamespace(output, expected);
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal("OFD-H", package.Options.DocType);
+        Assert.Equal("DOCX document", package.Options.Metadata.Title);
+        Assert.Equal("DualLayer", package.CustomTags["docx-ofd-mode"]);
+    }
+
+    /// <summary>
+    /// A custom visual converter is staged as an OFD and read back; its manifests
+    /// and raw fragments must still be rewritten into the DOCX namespace.
+    /// </summary>
+    [Fact]
+    public async Task GeneratedDocx_DualLayerShouldRemapNamespaceOfStagedVisualOfd()
+    {
+        var options = new DocxConversionOptions
+        {
+            Engine = DocxConversionEngine.BuiltIn, OfdMode = DocxToOfdMode.DualLayer
+        };
+        var converter = new DocxToOfdConverter(
+            new DocxToPdfConverter(options),
+            new StagedPdfToOfdConverter(new PdfToOfdConverter(new PdfToOfdOptions
+            {
+                TextLayerMode = PdfTextLayerMode.None, Namespace = OfdConstants.StandardNamespace
+            })));
+
+        await using var output = new MemoryStream();
+        await using (var input = File.OpenRead(ResolveGeneratedSample()))
+        {
+            await converter.ConvertAsync(input, output);
+        }
+
+        output.Position = 0;
+        AssertPackageNamespace(output, OfdConstants.Namespace);
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal(2, package.Pages.Count);
+        Assert.All(package.Pages, page => Assert.Single(page.Elements.OfType<OfdImageElement>()));
+    }
+
+    private static void AssertPackageNamespace(Stream ofd, string expectedNamespace)
+    {
+        using var zip = new ZipArchive(ofd, ZipArchiveMode.Read, leaveOpen: true);
+        var xmlEntries = zip.Entries.Where(entry => entry.FullName.EndsWith(".xml", System.StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.Contains(xmlEntries, entry => entry.FullName == "Doc_0/DocumentRes.xml");
+        foreach (var entry in xmlEntries)
+        {
+            using var stream = entry.Open();
+            var root = XDocument.Load(stream).Root!;
+            Assert.True(root.Name.NamespaceName == expectedNamespace,
+                $"{entry.FullName} uses namespace '{root.Name.NamespaceName}', expected '{expectedNamespace}'.");
+            Assert.True(root.DescendantsAndSelf().All(node => node.Name.NamespaceName == expectedNamespace),
+                $"{entry.FullName} mixes namespaces.");
+            Assert.Equal("ofd", root.GetPrefixOfNamespace(root.Name.Namespace));
+        }
+    }
+
+    private sealed class StagedPdfToOfdConverter : Ofdrw.Net.Converter.Abstractions.Interfaces.IPdfToOfdConverter
+    {
+        private readonly PdfToOfdConverter _inner;
+
+        public StagedPdfToOfdConverter(PdfToOfdConverter inner) => _inner = inner;
+
+        public Task ConvertAsync(Stream pdfInput, Stream ofdOutput, System.Collections.Generic.IReadOnlyList<int>? pages = null,
+            System.Threading.CancellationToken cancellationToken = default)
+            => _inner.ConvertAsync(pdfInput, ofdOutput, pages, cancellationToken);
     }
 
     /// <summary>

@@ -4,11 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
 using Ofdrw.Net.Converter.Abstractions.Interfaces;
 using Ofdrw.Net.Converter.Docx.Internal;
 using Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Packaging;
@@ -156,6 +159,7 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
             }
             if (visual.Pages.Count != sourcePages.Count)
                 throw new InvalidDataException("The visual converter did not preserve the requested page selection.");
+            ApplyDocxPackageProfile(visual);
             AddSourceTextLayer(visual, mapping, sourcePages);
             await new OfdPackageWriter().WriteAsync(visual, ofdOutput, cancellationToken).ConfigureAwait(false);
             return new DocxToOfdConversionResult(DocxToOfdMode.DualLayer, renderResult?.ActualEngine,
@@ -183,8 +187,93 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
             PreferExternalPdfToPpm = options.PreferExternalPdfToPpm, MaxTextObjectsPerPage = options.MaxTextObjectsPerPage,
             MaxInputBytes = options.MaxInputBytes, MaxPageCount = options.MaxPageCount,
             MaxRasterizedPixelsPerPage = options.MaxRasterizedPixelsPerPage, MaxTotalImageBytes = options.MaxTotalImageBytes,
-            ExternalRasterizationTimeout = options.ExternalRasterizationTimeout, TextLayerMode = PdfTextLayerMode.None
+            ExternalRasterizationTimeout = options.ExternalRasterizationTimeout, TextLayerMode = PdfTextLayerMode.None,
+            Namespace = options.Namespace
         };
+    }
+
+    /// <summary>
+    /// Gives the DualLayer package the same profile as Native output. The visual
+    /// stage is a PDF converter whose defaults (GB/T 33190 "/2016" namespace,
+    /// "PDF document" metadata) describe a PDF import, but the document is a
+    /// DOCX conversion and must open in the same readers as Native output. OFD-H
+    /// readers that only resolve the short namespace otherwise drop the page image
+    /// and show a blank page.
+    /// </summary>
+    private void ApplyDocxPackageProfile(OfdDocumentPackage visual)
+    {
+        var targetNamespace = string.IsNullOrWhiteSpace(_semanticOptions.OfdNamespace)
+            ? OfdConstants.Namespace : _semanticOptions.OfdNamespace;
+        var sourceNamespace = XNamespace.Get(visual.Options.Namespace);
+        if (sourceNamespace.NamespaceName != targetNamespace)
+        {
+            // A staged OFD read back through OfdReader keeps its resource manifests
+            // and unknown elements as raw XML. The writer updates manifests in
+            // place, so drop them and remap the raw fragments; payloads are
+            // re-emitted from the model under the same content-hash names.
+            foreach (var entry in visual.PreservedEntries.Where(pair => IsResourceManifest(pair.Value)).Select(pair => pair.Key).ToList())
+                visual.PreservedEntries.Remove(entry);
+            RemapNamespace(visual.PreservedDocBodyElements, sourceNamespace, targetNamespace);
+            RemapNamespace(visual.PreservedCommonDataElements, sourceNamespace, targetNamespace);
+            RemapNamespace(visual.PreservedDocumentElements, sourceNamespace, targetNamespace);
+            foreach (var page in visual.Pages)
+            {
+                RemapNamespace(page.PreservedPageElements, sourceNamespace, targetNamespace);
+                foreach (var element in page.Elements.Concat(page.Templates.SelectMany(template => template.Elements)))
+                {
+                    switch (element)
+                    {
+                        case OfdImageElement image:
+                            image.SourceXml = RemapNamespace(image.SourceXml, sourceNamespace, targetNamespace);
+                            image.ClipsXml = RemapNamespace(image.ClipsXml, sourceNamespace, targetNamespace);
+                            break;
+                        case OfdTextElement text:
+                            text.SourceXml = RemapNamespace(text.SourceXml, sourceNamespace, targetNamespace);
+                            break;
+                        case OfdPathElement path:
+                            path.SourceXml = RemapNamespace(path.SourceXml, sourceNamespace, targetNamespace);
+                            break;
+                        case OfdRawElement raw:
+                            raw.Xml = RemapNamespace(raw.Xml, sourceNamespace, targetNamespace) ?? string.Empty;
+                            break;
+                    }
+                }
+            }
+            visual.Options.Namespace = targetNamespace;
+        }
+        visual.Options.DocType = OfdConstants.DefaultDocType;
+        visual.Options.Metadata.Title = "DOCX document";
+        visual.Options.Metadata.Creator = "Ofdrw.Net DocxToOfdConverter";
+    }
+
+    private static bool IsResourceManifest(byte[] entry)
+    {
+        if (entry.Length == 0 || entry.Length > 16 * 1024 * 1024) return false;
+        try
+        {
+            using var stream = new MemoryStream(entry, writable: false);
+            using var reader = XmlReader.Create(stream, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
+            return reader.MoveToContent() == XmlNodeType.Element && reader.LocalName == "Res";
+        }
+        catch (XmlException) { return false; }
+    }
+
+    private static void RemapNamespace(IList<string> fragments, XNamespace source, string target)
+    {
+        for (var index = 0; index < fragments.Count; index++)
+            fragments[index] = RemapNamespace(fragments[index], source, target) ?? fragments[index];
+    }
+
+    private static string? RemapNamespace(string? fragment, XNamespace source, string target)
+    {
+        if (string.IsNullOrWhiteSpace(fragment)) return fragment;
+        var root = XElement.Parse(fragment!, LoadOptions.PreserveWhitespace);
+        foreach (var node in root.DescendantsAndSelf())
+        {
+            if (node.Name.Namespace == source) node.Name = XName.Get(node.Name.LocalName, target);
+            node.Attributes().Where(attribute => attribute.IsNamespaceDeclaration && attribute.Value == source.NamespaceName).Remove();
+        }
+        return root.ToString(SaveOptions.DisableFormatting);
     }
 
     private static void AddSourceTextLayer(OfdDocumentPackage package, DocxPageTextMap textMap, IReadOnlyList<int> sourcePages)

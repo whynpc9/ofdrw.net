@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Ofdrw.Net.Core.Constants;
 
 namespace Ofdrw.Net.Converter.Docx;
 
@@ -20,6 +21,16 @@ public sealed class DocxConversionOptions
     /// OFD text objects directly from OpenXML and skips the PDF rendering stage.
     /// </summary>
     public DocxToOfdMode OfdMode { get; set; } = DocxToOfdMode.Native;
+
+    /// <summary>
+    /// Gets or sets the XML namespace written into every OFD part for both Native and
+    /// DualLayer output. The default is <see cref="OfdConstants.Namespace"/>
+    /// (<c>http://www.ofdspec.org</c>), the URI used by the OFD-H medical profile and
+    /// by readers built before GB/T 33190-2016 settled on
+    /// <see cref="OfdConstants.StandardNamespace"/>. Set it to the standard URI when
+    /// the output targets tooling that only accepts <c>/2016</c>.
+    /// </summary>
+    public string OfdNamespace { get; set; } = OfdConstants.Namespace;
 
     /// <summary>
     /// Gets or sets the LibreOffice executable path. When omitted, the converter checks

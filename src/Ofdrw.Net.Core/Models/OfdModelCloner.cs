@@ -39,6 +39,7 @@ internal static class OfdModelCloner
                 {
                     Text = text.Text, FontName = text.FontName, FontResourceId = text.FontResourceId,
                     FontSizeMillimeters = text.FontSizeMillimeters, Transform = text.Transform?.ToArray(),
+                    Weight = text.Weight, Italic = text.Italic,
                     FillColor = text.FillColor, SourceXml = CloneXml(text.SourceXml, targetNamespace)
                 };
                 foreach (var run in text.Runs) clone.Runs.Add(new OfdTextRun
