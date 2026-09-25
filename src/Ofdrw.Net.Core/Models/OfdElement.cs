@@ -46,6 +46,20 @@ public sealed class OfdTextElement : OfdElement
 
     public OfdColor FillColor { get; set; } = OfdColor.Black;
 
+    /// <summary>
+    /// CT_Text <c>Weight</c> (100–900, default 400). Readers apply bold from this
+    /// attribute; the <c>Bold</c> flag on the font resource only describes the font
+    /// file and is ignored by most viewers for name-only fonts.
+    /// </summary>
+    public int Weight { get; set; } = DefaultWeight;
+
+    /// <summary>CT_Text <c>Italic</c> (default false), applied by readers per text object.</summary>
+    public bool Italic { get; set; }
+
+    public const int DefaultWeight = 400;
+
+    public const int BoldWeight = 700;
+
     public List<OfdTextRun> Runs { get; } = [];
 
     /// <summary>

@@ -442,6 +442,8 @@ public sealed class OfdReader : IOfdReader
                         FontResourceId = node.Attribute("Font")?.Value,
                         FontName = ResolveFontName(node.Attribute("Font")?.Value, fontMap),
                         FontSizeMillimeters = ParseDouble(node.Attribute("Size")?.Value, 4d),
+                        Weight = (int)ParseDouble(node.Attribute("Weight")?.Value, OfdTextElement.DefaultWeight),
+                        Italic = ParseBoolean(node.Attribute("Italic")?.Value, false),
                         Transform = ParseMatrix(node.Attribute("CTM")?.Value),
                         FillColor = ParseColor(node.Elements()
                             .FirstOrDefault(x => x.Name.LocalName == "FillColor")) ?? OfdColor.Black,

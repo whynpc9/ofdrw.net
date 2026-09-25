@@ -200,6 +200,8 @@ public sealed class OfdToSvgConverter
             ?? fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase) && !font.Bold && !font.Italic)
             ?? fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
         var family = resource is not null && families.TryGetValue(resource, out var embeddedFamily) ? embeddedFamily : text.FontName;
+        var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
+        var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
         var transform = BuildTransform(
             text.XMillimeters - page.XMillimeters,
             text.YMillimeters - page.YMillimeters,
@@ -211,8 +213,8 @@ public sealed class OfdToSvgConverter
                 new XAttribute("x", "0"),
                 new XAttribute("y", Invariant(text.FontSizeMillimeters)),
                 new XAttribute("font-family", family),
-                new XAttribute("font-weight", resource?.Bold == true ? "bold" : "normal"),
-                new XAttribute("font-style", resource?.Italic == true ? "italic" : "normal"),
+                new XAttribute("font-weight", fontWeight),
+                new XAttribute("font-style", fontStyle),
                 new XAttribute(XNamespace.Xml + "space", "preserve"),
                 new XAttribute("style", "white-space:pre"),
                 new XAttribute("font-size", Invariant(text.FontSizeMillimeters)),
@@ -237,8 +239,8 @@ public sealed class OfdToSvgConverter
                 new XAttribute("x", Invariant(run.XMillimeters)),
                 new XAttribute("y", Invariant(run.YMillimeters)),
                 new XAttribute("font-family", family),
-                new XAttribute("font-weight", resource?.Bold == true ? "bold" : "normal"),
-                new XAttribute("font-style", resource?.Italic == true ? "italic" : "normal"),
+                new XAttribute("font-weight", fontWeight),
+                new XAttribute("font-style", fontStyle),
                 new XAttribute(XNamespace.Xml + "space", "preserve"),
                 new XAttribute("style", "white-space:pre"),
                 new XAttribute("font-size", Invariant(text.FontSizeMillimeters)),
