@@ -273,6 +273,43 @@ public sealed partial class DocxConversionTests
         Assert.Equal(0, output.Length);
     }
 
+    [Theory]
+    [InlineData("X")]
+    [InlineData("XYZ")]
+    public async Task DualLayer_ShouldRejectShortBodyWithNoRenderedAnchor(string original)
+    {
+        using var input = CreateMinimalDocx($"<w:p><w:r><w:t>{original}</w:t></w:r></w:p>");
+        using var output = new MemoryStream();
+        var converter = new DocxToOfdConverter(new FixturePdfRenderer("abc"),
+            new Ofdrw.Net.Converter.Pdf.Converters.PdfToOfdConverter());
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => converter.ConvertAsync(input, output));
+        Assert.Contains("DOCX_TEXT_PAGE_MAPPING_FAILED", exception.Message);
+        Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
+    public async Task DualLayer_ShouldReportUnanchoredShortPartAndRejectPageSelection()
+    {
+        using var input = CreateMinimalDocx(
+            "<w:p><w:r><w:t>ANCHOR</w:t></w:r></w:p>" +
+            "<w:p><w:r><w:t>XYZ</w:t></w:r></w:p>");
+        var converter = new DocxToOfdConverter(new FixturePdfRenderer("ANCHOR"),
+            new Ofdrw.Net.Converter.Pdf.Converters.PdfToOfdConverter());
+        using var output = new MemoryStream();
+        var result = await converter.ConvertWithResultAsync(input, output);
+        Assert.True(result.OriginalTextPreserved);
+        Assert.False(result.PageTextMappingAccurate);
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_BODY_PAGE_SCOPE_AMBIGUOUS");
+        output.Position = 0;
+        Assert.Contains("XYZ", new OfdTextExtractor().Extract(await new OfdReader().ReadAsync(output)));
+
+        input.Position = 0;
+        using var selected = new MemoryStream();
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => converter.ConvertAsync(input, selected, [0]));
+        Assert.Contains("DOCX_PAGE_TEXT_SCOPE_AMBIGUOUS", exception.Message);
+        Assert.Equal(0, selected.Length);
+    }
+
     [Fact]
     public async Task DualLayer_ShouldMapTableCellTextSplitAcrossRenderedFragments()
     {
