@@ -9,6 +9,8 @@
 
 已实现能力仍以 [功能对照](feature-parity.md) 为准。对照表描述现状；本文件描述下一步做什么、做到哪、不做什么。
 
+可开工的垂直切片在 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)。按索引里的建议批次领票，不要按文件号把后面的 P1/P2 当成下一批。`Status: blocked` 的票要等阻塞项完成。
+
 状态：
 
 - **待办**：尚未开始。
@@ -146,6 +148,8 @@ issue #3 的完成定义就是 **P1-01 + P1-02**。API 形状以 issue 中的类
 6. **其余 P1 / P2**：按调用方需求抽，不默认全做
 
 同一批次内可以并行。跨批次不要提前把 P2-02 接到默认验签路径上。
+
+对应 ticket 与开工顺序见 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)。文件编号是依赖顺序，不是优先级：P0 表格在 16，不要因为 08–15 编号更小就先做 HTML、可选加密或发布闸门。
 
 ## 9. 文档同步
 

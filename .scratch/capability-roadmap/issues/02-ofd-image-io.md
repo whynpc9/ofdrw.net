@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P0
+
 **Status:** ready-for-agent
 
 - [ ] `ofd-to-image`：指定页、指定 ppm，默认 PNG

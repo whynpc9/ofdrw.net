@@ -4,7 +4,9 @@
 
 **Blocked by:** 04 类 Graphics2D 绘图 API（issue #3）
 
-**Status:** ready-for-agent
+**Priority:** P1
+
+**Status:** blocked
 
 - [ ] 可选包/适配能把基本 Skia 绘制落到 PathObject/TextObject
 - [ ] 不替代 P1-01 的 OFD 原语 API；核心生成路径不强制引用 Skia

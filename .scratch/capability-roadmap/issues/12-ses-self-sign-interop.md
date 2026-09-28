@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P2
+
 **Status:** ready-for-agent
 
 - [ ] 测试可生成带 SignedValue 的包，并用同一测试密钥验过
@@ -26,7 +28,6 @@
 - [ ] 未显式注册该验证器时，CLI `verify-signatures` 对自签包不得给出 `FullyValid`；引用完整性仍可单独为真
 - [ ] 核心 `SupportsBuiltInSesSm2Verification` 保持 false；可选包用自己的能力标志
 - [ ] 文档标注 *dev/interop*，明确无阅读器互认、无法律效力
-- [ ] 不修改、不关闭 issue #3
 
 ## Blocked by
 

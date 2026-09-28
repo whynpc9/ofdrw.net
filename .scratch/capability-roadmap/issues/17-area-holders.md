@@ -4,7 +4,9 @@
 
 **Blocked by:** 01 公开流式布局：Paragraph / Span、折行、分页
 
-**Status:** ready-for-agent
+**Priority:** P0
+
+**Status:** blocked
 
 - [ ] 命名区域可先占位再回填文字/图片
 - [ ] 回填不改变已分页的页数与其他块位置（按样例约定）

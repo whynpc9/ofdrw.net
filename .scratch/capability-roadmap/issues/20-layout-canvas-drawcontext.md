@@ -4,7 +4,9 @@
 
 **Blocked by:** 01 公开流式布局：Paragraph / Span、折行、分页；04 类 Graphics2D 绘图 API（issue #3）
 
-**Status:** ready-for-agent
+**Priority:** P1
+
+**Status:** blocked
 
 - [ ] 布局层画布与流式块可同页混用
 - [ ] 页眉/票面框线样例可 Preview 验收

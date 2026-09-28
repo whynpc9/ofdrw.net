@@ -1,15 +1,18 @@
-# 发布闸门：许可、视觉语料、模糊测试、API 文档
+# 发布闸门：许可、视觉语料、模糊测试、API 文档、Preview 验收记录
 
-**What to build:** 发布前可重复执行的工程闸门：每次发 NuGet 核对许可与第三方声明；视觉回归不只查非空页；坏包稳定拒绝；新增公开 API 有 XML 文档。转换/布局变更仍按仓库视觉验收规则走 Native OFD。
+**What to build:** 发布前可重复执行的五道工程闸门：每次发 NuGet 核对许可与第三方声明；视觉回归不只查非空页；坏包稳定拒绝；新增公开 API 有 XML 文档；转换与布局变更留下 Native OFD 的 Preview 验收记录。
 
 **Blocked by:** None (can start immediately)
+
+**Priority:** Q
 
 **Status:** ready-for-agent
 
 - [ ] 发包核对 license 与第三方声明，并跑同批包消费 E2E
 - [ ] 票据/模板/异常包语料带像素差阈值
 - [ ] 坏包、路径穿越、超限 ZIP 稳定拒绝
-- [ ] 新增 API 消除 CS1591；Preview 验收留下记录模板
+- [ ] 新增 API 消除 CS1591
+- [ ] Preview 验收留下记录模板（Native OFD，不得用 DOCX→PDF 代替）
 
 ## Parent
 
@@ -17,7 +20,7 @@
 
 ## What to build
 
-功能票可以并行，但预览版要进入生产评估前，这四件事要能挡发布：许可清单、视觉回归语料、加载器模糊/结构检查、公开 API 文档。视觉验收规则已经写在仓库代理说明里：Native OFD 产物，禁止用直接 DOCX→PDF 冒充。这张票把闸门做成可重复的检查和语料，而不是口头约定。
+功能票可以并行，但预览版要进入生产评估前，这五件事要能挡发布：许可清单、视觉回归语料、加载器模糊/结构检查、公开 API 文档、Preview 验收记录。视觉验收规则已经写在仓库代理说明里：Native OFD 产物，禁止用直接 DOCX→PDF 冒充。这张票把闸门做成可重复的检查和语料，而不是口头约定。Q-05 的验收记录模板在范围内，不能只做前四道就当作完成。
 
 ## Acceptance criteria
 
