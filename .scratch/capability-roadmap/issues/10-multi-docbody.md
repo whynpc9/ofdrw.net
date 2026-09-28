@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P1
+
 **Status:** ready-for-agent
 
 - [ ] 读包可枚举/选择非首个 DocBody

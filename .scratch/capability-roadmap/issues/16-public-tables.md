@@ -4,7 +4,9 @@
 
 **Blocked by:** 01 公开流式布局：Paragraph / Span、折行、分页
 
-**Status:** ready-for-agent
+**Priority:** P0
+
+**Status:** blocked
 
 - [ ] 可生成带边框/底色/对齐的表
 - [ ] 跨页策略有文档，并有对应样例

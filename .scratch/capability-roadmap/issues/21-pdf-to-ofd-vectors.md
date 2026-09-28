@@ -4,7 +4,9 @@
 
 **Blocked by:** 04 类 Graphics2D 绘图 API（issue #3）；19 SkiaSharp 绘图层（可选适配）
 
-**Status:** ready-for-agent
+**Priority:** P1
+
+**Status:** blocked
 
 - [ ] 可选矢量模式写出路径与文字对象；默认可仍为双层
 - [ ] 有与双层模式的样例对比

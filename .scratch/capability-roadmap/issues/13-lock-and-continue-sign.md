@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P2
+
 **Status:** ready-for-agent
 
 - [ ] 锁定/继续签的引用列表排除 Annots 与 Signs

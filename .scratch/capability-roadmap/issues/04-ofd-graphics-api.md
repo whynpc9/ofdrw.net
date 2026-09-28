@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P1
+
 **Status:** ready-for-agent
 
 - [ ] 能画线、矩形、路径、文字并做变换，写入合法 OFD

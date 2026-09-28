@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P1
+
 **Status:** ready-for-agent
 
 - [ ] 大纲/书签、注释、动作、裁剪、组合对象有读写往返测试

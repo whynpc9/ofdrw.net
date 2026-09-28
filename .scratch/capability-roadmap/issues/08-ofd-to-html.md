@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P1
+
 **Status:** ready-for-agent
 
 - [ ] 多页 SVG 包进单 HTML，浏览器能翻看每一页

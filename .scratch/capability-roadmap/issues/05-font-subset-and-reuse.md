@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P1
+
 **Status:** ready-for-agent
 
 - [ ] 按用字子集化嵌入；相同字节字体只保留一份

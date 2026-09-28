@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P2
+
 **Status:** ready-for-agent
 
 - [ ] 自加密自解密闭环；可只加密部分页

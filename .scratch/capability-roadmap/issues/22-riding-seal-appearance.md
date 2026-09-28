@@ -4,7 +4,9 @@
 
 **Blocked by:** 06 关键字定位与文档内容替换
 
-**Status:** ready-for-agent
+**Priority:** P2
+
+**Status:** blocked
 
 - [ ] 骑缝/对开位置几何正确（跨页对得上）
 - [ ] 只写外观，不暗示签名值已生效

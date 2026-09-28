@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P0
+
 **Status:** ready-for-agent
 
 - [ ] 文字/图片水印写入指定图层；合并与导出保留

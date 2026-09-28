@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P2
+
 **Status:** ready-for-agent
 
 - [ ] 对样例包输出结构化违规/通过项

@@ -4,7 +4,9 @@
 
 **Blocked by:** 01 公开流式布局：Paragraph / Span、折行、分页
 
-**Status:** ready-for-agent
+**Priority:** P1
+
+**Status:** blocked
 
 - [ ] 文本文件可生成多页 OFD；字号与页尺寸可配
 - [ ] API 与 CLI 可用

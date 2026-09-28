@@ -4,6 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
+**Priority:** P0
+
 **Status:** ready-for-agent
 
 - [ ] 公开 Layout API 能排出带局部粗体/斜体/颜色的中英段落，并自动折行、分页
