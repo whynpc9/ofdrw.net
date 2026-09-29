@@ -81,7 +81,8 @@ public sealed class BadPackageCorpusTests
     public async Task ReaderRejectsMalformedRootXml()
     {
         using var input = Archive(("OFD.xml", Encoding.UTF8.GetBytes("<ofd:OFD")));
-        await Assert.ThrowsAsync<XmlException>(() => new OfdReader().ReadAsync(input));
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(input));
+        Assert.IsType<XmlException>(error.InnerException);
     }
 
     [Fact]
@@ -89,7 +90,8 @@ public sealed class BadPackageCorpusTests
     {
         const string root = "<ofd:OFD xmlns:ofd=\"http://www.ofdspec.org\"><ofd:DocBody><ofd:DocRoot>Doc_0/Document.xml</ofd:DocRoot></ofd:DocBody></ofd:OFD>";
         using var input = Archive(("OFD.xml", Encoding.UTF8.GetBytes(root)));
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => new OfdReader().ReadAsync(input));
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(input));
+        Assert.IsType<KeyNotFoundException>(error.InnerException);
     }
 
     private static MemoryStream Archive(params (string Name, byte[] Data)[] entries)

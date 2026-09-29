@@ -2,6 +2,8 @@
 
 `Program.cs` in the package consumer creates four synthetic, privacy-free OFDs:
 ticket, invoice, template, and a valid edge layout with touching/clipped shapes.
+Each includes Chinese and English text using the CI-pinned Noto Sans CJK SC
+face; the invoice includes stroked table borders and proportional body text.
 Each is exported **OFD → PDF → PNG at 144 DPI**. All four page-1 PNGs are
 compared with reviewed files in `golden/<platform>/` using normalized ImageMagick RMSE
 with a maximum of `0.035` for the full page and separately for title/body

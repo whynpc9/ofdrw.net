@@ -162,6 +162,7 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
     var actualDir = Path.Combine(outputDir, "visual-corpus");
     Directory.CreateDirectory(actualDir);
     var missingGoldens = new List<string>();
+    var comparisonFailures = new List<string>();
     var metrics = new List<string> { "sample,page,region,normalized_rmse,threshold" };
     foreach (var kind in new[] { "ticket", "invoice", "template", "edge-layout" })
     {
@@ -174,11 +175,30 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
             AbbreviatedData = FormattableString.Invariant($"M 0 0 L {w} 0 L {w} {h} L 0 {h} C"),
             Stroke = false, Fill = true, FillColor = color
         };
+        static OfdPathElement Rule(double x, double y, double w, double h) => new()
+        {
+            XMillimeters = x, YMillimeters = y, WidthMillimeters = Math.Max(0.4, w),
+            HeightMillimeters = Math.Max(0.4, h),
+            AbbreviatedData = FormattableString.Invariant($"M 0 0 L {w} {h}"),
+            Stroke = true, Fill = false, LineWidthMillimeters = 0.35,
+            StrokeColor = new OfdColor(45, 68, 88)
+        };
         page.Elements.Add(Box(5, 5, 110, 70, new OfdColor(238, 244, 250)));
         page.Elements.Add(Box(8, 8, 104, 12, new OfdColor(28, 75, 126)));
-        page.Elements.Add(new OfdTextElement { Text = kind.ToUpperInvariant(), FontName = "Arial",
+        page.Elements.Add(new OfdTextElement { Text = kind.ToUpperInvariant(), FontName = "Noto Sans CJK SC",
             FontSizeMillimeters = 5, XMillimeters = 12, YMillimeters = 10,
             WidthMillimeters = 85, HeightMillimeters = 8, FillColor = new OfdColor(255, 255, 255) });
+        var caption = kind switch
+        {
+            "ticket" => "票据编号 0001 / Ticket No. 0001",
+            "invoice" => "发票明细 / Invoice items",
+            "template" => "模板字段：姓名、日期 / Template fields",
+            _ => "异常布局：边界与叠放 / Edge layout"
+        };
+        page.Elements.Add(new OfdTextElement { Text = caption, FontName = "Noto Sans CJK SC",
+            FontSizeMillimeters = 3.2, XMillimeters = 12, YMillimeters = 22,
+            WidthMillimeters = 100, HeightMillimeters = 6,
+            FillColor = new OfdColor(35, 55, 75) });
         switch (kind)
         {
             case "ticket":
@@ -188,8 +208,13 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
                 break;
             case "invoice":
                 for (var row = 0; row < 4; row++)
-                    page.Elements.Add(Box(10, 28 + row * 9, 100, 1, new OfdColor(55, 85, 115)));
-                page.Elements.Add(Box(70, 28, 1, 28, new OfdColor(55, 85, 115)));
+                    page.Elements.Add(Rule(10, 31 + row * 9, 100, 0));
+                page.Elements.Add(Rule(10, 31, 0, 27));
+                page.Elements.Add(Rule(70, 31, 0, 27));
+                page.Elements.Add(Rule(110, 31, 0, 27));
+                page.Elements.Add(new OfdTextElement { Text = "Item A  12.50", FontName = "Noto Sans CJK SC",
+                    FontSizeMillimeters = 3.2, XMillimeters = 14, YMillimeters = 33,
+                    WidthMillimeters = 74, HeightMillimeters = 5 });
                 page.Elements.Add(Box(86, 62, 24, 5, new OfdColor(196, 42, 42)));
                 break;
             case "template":
@@ -221,29 +246,37 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
             missingGoldens.Add(golden);
         else
         {
-            var error = await AssertImagesCloseAsync(golden, imagePath, 0.035,
-                Path.Combine(actualDir, kind + "-diff.png"));
-            metrics.Add(FormattableString.Invariant($"{kind},1,full,{error:R},0.035"));
-            foreach (var (region, geometry) in new[] { ("title", "400x90+40+30"), ("body", "560x260+55+145") })
+            try
             {
-                var expectedCrop = Path.Combine(actualDir, kind + "-" + region + "-expected.png");
-                var actualCrop = Path.Combine(actualDir, kind + "-" + region + "-actual.png");
-                foreach (var (source, target) in new[] { (golden, expectedCrop), (imagePath, actualCrop) })
+                var error = await AssertImagesCloseAsync(golden, imagePath, 0.035,
+                    Path.Combine(actualDir, kind + "-diff.png"));
+                metrics.Add(FormattableString.Invariant($"{kind},1,full,{error:R},0.035"));
+                foreach (var (region, geometry) in new[] { ("title", "400x90+40+30"), ("body", "560x260+55+145") })
                 {
-                    var crop = await RunProcessAsync("convert", $"\"{source}\" -crop {geometry} +repage \"{target}\"");
-                    if (crop.ExitCode != 0)
-                        throw new InvalidOperationException($"Visual corpus crop failed: {crop.Error}");
+                    var expectedCrop = Path.Combine(actualDir, kind + "-" + region + "-expected.png");
+                    var actualCrop = Path.Combine(actualDir, kind + "-" + region + "-actual.png");
+                    foreach (var (source, target) in new[] { (golden, expectedCrop), (imagePath, actualCrop) })
+                    {
+                        var crop = await RunProcessAsync("convert", $"\"{source}\" -crop {geometry} +repage \"{target}\"");
+                        if (crop.ExitCode != 0)
+                            throw new InvalidOperationException($"Visual corpus crop failed: {crop.Error}");
+                    }
+                    var regionError = await AssertImagesCloseAsync(expectedCrop, actualCrop, 0.035,
+                        Path.Combine(actualDir, kind + "-" + region + "-diff.png"));
+                    metrics.Add(FormattableString.Invariant($"{kind},1,{region},{regionError:R},0.035"));
                 }
-                var regionError = await AssertImagesCloseAsync(expectedCrop, actualCrop, 0.035,
-                    Path.Combine(actualDir, kind + "-" + region + "-diff.png"));
-                metrics.Add(FormattableString.Invariant($"{kind},1,{region},{regionError:R},0.035"));
+                Console.WriteLine(FormattableString.Invariant($"[E2E] Visual corpus {kind}: page 1 RMSE {error:R} <= 0.035."));
             }
-            Console.WriteLine(FormattableString.Invariant($"[E2E] Visual corpus {kind}: page 1 RMSE {error:R} <= 0.035."));
+            catch (InvalidOperationException failure)
+            {
+                comparisonFailures.Add(failure.Message);
+            }
         }
     }
     File.WriteAllLines(Path.Combine(actualDir, "visual-metrics.csv"), metrics);
-    if (missingGoldens.Count != 0)
-        throw new InvalidOperationException("Missing reviewed visual baselines: " + string.Join(", ", missingGoldens));
+    if (missingGoldens.Count != 0 || comparisonFailures.Count != 0)
+        throw new InvalidOperationException("Visual corpus gate failed: " +
+            string.Join("; ", missingGoldens.Select(path => "Missing golden " + path).Concat(comparisonFailures)));
 }
 
 static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)

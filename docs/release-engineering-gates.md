@@ -20,7 +20,7 @@
 4. `Core` 模型和 `Signatures`；
 5. CLI 中可见的公共成员。
 
-历史成员补完文档后**不要重新生成基线**；检查器会报告减少的旧债。仅在审查确实需要调整基线时运行 `python3 scripts/check-public-api-docs.py --update-baseline` 并审查差异。
+历史成员补完文档后**不要重新生成基线**；检查器会逐项报告减少的旧债。最后一项旧债清理完毕时，须经审查将基线更新为空数组，避免“没有捕获 CS1591”与“全部文档已补齐”无法区分。仅在审查确实需要调整基线时运行 `python3 scripts/check-public-api-docs.py --update-baseline` 并审查差异。
 
 ## Q-01 依赖许可复核
 

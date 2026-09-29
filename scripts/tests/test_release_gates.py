@@ -20,6 +20,9 @@ class ReleaseGatesTests(unittest.TestCase):
             f"{file}({line},1): warning CS1591: Missing XML comment for publicly visible type or member 'NewMember.Value'"
             for line in (5, 99))
         self.assertEqual(['src/Ofdrw.Net.Core/Models/NewMember.cs|NewMember.Value'], gate.parse(lines))
+        self.assertEqual([], gate.unparsed_diagnostics(lines))
+        self.assertEqual(['warning CS1591: unexpected localized output'],
+                         gate.unparsed_diagnostics('warning CS1591: unexpected localized output'))
 
     def test_unreviewed_preview_record_blocks_release(self):
         gate = load('preview_record', 'verify-preview-record.py')

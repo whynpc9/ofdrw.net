@@ -14,6 +14,12 @@ license for Ofdrw.Net itself.
 | SixLabors.Fonts | 1.0.1 | Apache-2.0 | https://github.com/SixLabors/Fonts |
 | SixLabors.ImageSharp | 2.1.13 | Apache-2.0 | https://github.com/SixLabors/ImageSharp |
 
+The ImageSharp row describes **the pinned 2.1.13 package**: its nuspec declares
+`Apache-2.0`, and the [v2.1.13 source LICENSE](https://github.com/SixLabors/ImageSharp/blob/v2.1.13/LICENSE)
+contains Apache License 2.0. Current ImageSharp mainline documentation describes
+a Six Labors Split License; any ImageSharp version update therefore needs a new
+license review rather than carrying this row forward automatically.
+
 Transitive dependencies are resolved by NuGet and may change as direct
 dependencies are updated. The reviewed release inventory in
 `docs/third-party-dependency-baseline.json` records the resolved package
