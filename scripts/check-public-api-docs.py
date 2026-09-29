@@ -29,6 +29,11 @@ def parse(output):
     return sorted(result)
 
 
+def unparsed_diagnostics(output):
+    return [line for line in output.splitlines()
+            if re.search(r'(?:warning|error) CS1591:', line) and not DIAGNOSTIC.search(line)]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--update-baseline', action='store_true', help='explicitly approve current historical debt')
@@ -49,16 +54,23 @@ def main():
     if completed.returncode:
         print(completed.stdout, file=sys.stderr)
         raise ValueError(f'Documentation build failed with exit code {completed.returncode}.')
+    unparsed = unparsed_diagnostics(completed.stdout)
+    if unparsed:
+        raise ValueError('Unrecognized CS1591 output format: ' + '\n'.join(unparsed[:5]))
     if args.update_baseline:
         BASELINE.write_text(json.dumps(actual, ensure_ascii=False, indent=2) + '\n')
         print(f'Wrote {len(actual)} historical CS1591 symbols to {BASELINE}.')
         return
     baseline = set(json.loads(BASELINE.read_text()))
+    if baseline and not actual:
+        raise ValueError('No CS1591 diagnostics were captured despite a non-empty historical baseline.')
     added = sorted(set(actual) - baseline)
     removed = sorted(baseline - set(actual))
     if added:
         print('New undocumented public API:\n' + '\n'.join(added), file=sys.stderr)
         raise ValueError(f'{len(added)} new CS1591 diagnostic(s).')
+    if removed:
+        print('Documented historical members:\n' + '\n'.join(removed))
     print(f'Public API documentation gate passed: {len(actual)} historical symbols, {len(removed)} cleared.')
 
 
