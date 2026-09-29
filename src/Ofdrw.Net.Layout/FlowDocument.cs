@@ -141,7 +141,11 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         if (_page is null) StartPage();
         var hadPendingBreaks = _pendingPageBreaks > 0;
         ApplyPendingPageBreaks();
-        if (paragraph.PageBreakBefore && (_hasBodyContent || hadPendingBreaks)) StartPage();
+        if (paragraph.PageBreakBefore && (_hasBodyContent || hadPendingBreaks))
+        {
+            StartPage();
+            _pendingSpaceAfter = 0;
+        }
         var inlines = new List<FlowInline>();
         foreach (var span in spans)
         {
@@ -262,6 +266,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
 
     private void ApplyPendingPageBreaks()
     {
+        if (_pendingPageBreaks > 0) _pendingSpaceAfter = 0;
         while (_pendingPageBreaks > 0)
         {
             StartPage();

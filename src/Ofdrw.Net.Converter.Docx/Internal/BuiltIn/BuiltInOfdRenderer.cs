@@ -74,10 +74,10 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             : model.Sections;
 
         LayoutState? lastState = null;
-        foreach (var section in sections)
+        for (var sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            lastState = RenderSection(package, section);
+            lastState = RenderSection(package, sections[sectionIndex], sectionIndex + 1 < sections.Count);
         }
         if (lastState is not null)
         {
@@ -99,7 +99,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         return package;
     }
 
-    private LayoutState RenderSection(OfdDocumentPackage package, BuiltInSectionModel section)
+    private LayoutState RenderSection(OfdDocumentPackage package, BuiltInSectionModel section, bool hasFollowingSection)
     {
         _pendingSpaceAfter = 0;
         var state = new LayoutState(section, section.PageNumberStart ?? _lastPageNumber + 1);
@@ -109,6 +109,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             _cancellationToken.ThrowIfCancellationRequested();
             RenderBlock(package, state, block);
         }
+        // A section boundary commits explicit breaks using the section that owns them.
+        if (hasFollowingSection) ApplyPendingPageBreaks(package, state);
         return state;
     }
 
@@ -139,6 +141,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         if (paragraph.Format.PageBreakBefore && (state.HasBodyContent || hadPendingBreaks))
         {
             StartNewPage(package, state);
+            _pendingSpaceAfter = 0;
         }
 
         var spaceBefore = PointsToMillimeters(paragraph.Format.SpaceBeforePoints ?? 0);
@@ -385,6 +388,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
 
     private void ApplyPendingPageBreaks(OfdDocumentPackage package, LayoutState state)
     {
+        if (_pendingPageBreaks > 0) _pendingSpaceAfter = 0;
         while (_pendingPageBreaks > 0)
         {
             StartNewPage(package, state);

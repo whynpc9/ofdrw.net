@@ -177,8 +177,11 @@ internal static class FlowTextMetrics
             char.IsLowSurrogate(grapheme[1])
             ? char.ConvertToUtf32(grapheme, 0)
             : grapheme[0];
-        return scalar >= 0x2E80 && scalar <= 0x9FFF ||
+        return scalar >= 0x1100 && scalar <= 0x11FF ||
+               scalar >= 0x2E80 && scalar <= 0x9FFF ||
+               scalar >= 0xA960 && scalar <= 0xA97F ||
                scalar >= 0xAC00 && scalar <= 0xD7AF ||
+               scalar >= 0xD7B0 && scalar <= 0xD7FF ||
                scalar >= 0xF900 && scalar <= 0xFAFF ||
                scalar >= 0xFF00 && scalar <= 0xFFEF ||
                scalar >= 0x1B000 && scalar <= 0x1B16F ||
