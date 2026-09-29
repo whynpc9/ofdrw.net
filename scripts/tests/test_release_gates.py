@@ -1,6 +1,8 @@
 import importlib.util
+import hashlib
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 SCRIPTS = Path(__file__).parents[1]
 
@@ -28,6 +30,18 @@ class ReleaseGatesTests(unittest.TestCase):
         gate = load('preview_record', 'verify-preview-record.py')
         with self.assertRaisesRegex(ValueError, 'not accepted'):
             gate.verify({'status': 'not-reviewed'}, '0.1.0-preview.8')
+
+    def test_native_only_preview_record_cannot_approve_default_mode(self):
+        gate = load('preview_record_default', 'verify-preview-record.py')
+        sample = gate.ROOT / 'e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx'
+        data = {'status': 'accepted', 'package_version': '0.1.0-preview.8',
+                'source_fingerprint': 'fixture', 'sample_sha256': hashlib.sha256(sample.read_bytes()).hexdigest(),
+                'native_ofd_sha256': '0' * 64, 'preview_pdf_sha256': '1' * 64,
+                'conversion_mode': 'native', 'view_chain': 'DOCX -> native OFD -> PDF -> macOS Preview',
+                'reviewer': 'fixture', 'reviewed_at': '2026-09-29', 'checked_pages': [1, 2], 'open_findings': []}
+        with patch.object(gate, 'source_fingerprint', return_value='fixture'):
+            with self.assertRaisesRegex(ValueError, 'default_ofd_sha256'):
+                gate.verify(data, '0.1.0-preview.8')
 
 
 if __name__ == '__main__':

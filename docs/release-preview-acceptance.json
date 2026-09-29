@@ -5,10 +5,15 @@
   "sample_sha256": "",
   "native_ofd_sha256": "",
   "preview_pdf_sha256": "",
+  "default_ofd_sha256": "",
+  "default_preview_pdf_sha256": "",
   "conversion_mode": "native",
   "view_chain": "DOCX -> native OFD -> PDF -> macOS Preview",
+  "default_conversion_mode": "default",
+  "default_view_chain": "DOCX -> default OFD -> PDF -> macOS Preview",
   "reviewer": "",
   "reviewed_at": "",
   "checked_pages": [],
+  "default_checked_pages": [],
   "open_findings": []
 }

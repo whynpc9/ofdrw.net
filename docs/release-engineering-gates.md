@@ -8,7 +8,7 @@
 | Q-02 视觉语料 | 同批包消费 E2E 中的 `ValidateVisualCorpusAsync` | 票据、发票、模板样式、有效异常布局四个合成无隐私单页 OFD，均经 OFD→PDF→144 DPI PNG，与固定 golden 的全页及标题/正文区域分别比较 RMSE ≤ 0.035；保留实际 OFD/PDF/PNG、差图和 CSV 指标。此门不代替 Preview。 |
 | Q-03 坏包与结构 | `dotnet test tests/Ofdrw.Net.Packaging.Tests/...` | 固定坏包覆盖 `..`/反斜杠/绝对路径、重复条目、条目数、总展开量、压缩比、无效 ZIP；恰好等于预算的有效对照必须接受。低预算模拟炸弹，不创建巨大载荷。 |
 | Q-04 XML 文档 | `python3 scripts/check-public-api-docs.py` | 开启 CS1591，按源码路径和公开成员符号对比历史清单。新增缺文档成员使 CI 与 tag workflow 失败；旧债减少可直接通过。 |
-| Q-05 Preview | `docs/preview-acceptance-template.md`；tag workflow 的 `scripts/verify-preview-record.py` | 候选需有人工逐页记录，包含本次 native OFD→PDF→macOS Preview、哈希、检查人、页码、缺陷。仓库记录默认 `not-reviewed`，因此未验收的 tag 会在推包前失败。脚本仅校验证据字段和源码绑定，不能证明人实际看过页面。 |
+| Q-05 Preview | `docs/preview-acceptance-template.md`；tag workflow 的 `scripts/verify-preview-record.py` | 候选需有人工逐页记录，分别包含本次显式 native 与默认模式 OFD→PDF→macOS Preview、哈希、检查人、页码、缺陷。仓库记录默认 `not-reviewed`，因此未验收的 tag 会在推包前失败。脚本仅校验证据字段和源码绑定，不能证明人实际看过页面。 |
 
 ## Q-04 历史 CS1591 清理顺序
 
@@ -29,8 +29,8 @@
 ## 发布候选顺序
 
 1. 从固定提交运行 Python 检查、.NET 全套测试和同批包消费 E2E。保存包 manifest、OFD、PDF、PNG、日志。
-2. 使用 macOS Preview 打开**本次** `generated-docx-native.pdf`，逐页核对源 DOCX；受默认模式影响时也打开 `generated-docx-default.pdf`。检查后填写 `artifacts/<candidate>/preview-acceptance.md`，记录问题和体积变化。直接 `generated-docx.pdf` 不属于 Native 链路。
-3. 只有无遗留问题且两页均已检查，才把 `docs/release-preview-acceptance.json` 更新为 `accepted`，并填写候选 `package_version`。`source_fingerprint` 用 `python3 scripts/verify-preview-record.py --print-fingerprint` 获取；三个 SHA256 分别来自样例 DOCX、本次 Native OFD 和由它导出的 PDF。记录只改自身，源码指纹不变；改动其他跟踪文件或改用新版本后必须重做候选验收。PDF/OFD 哈希是本机实际查看的证据；因生成文件可含时间元数据，不要求另一台 CI runner 的重建 ZIP/PDF 与本机逐字节相同。
+2. 使用 macOS Preview 分别打开**本次** `generated-docx-native.pdf` 和 `generated-docx-default.pdf`，两种模式各逐页核对源 DOCX。检查后填写 `artifacts/<candidate>/preview-acceptance.md`，记录问题和体积变化。直接 `generated-docx.pdf` 不属于 Native 链路。
+3. 只有两种模式均无遗留问题且各两页均已检查，才把 `docs/release-preview-acceptance.json` 更新为 `accepted`，并填写候选 `package_version`。`source_fingerprint` 用 `python3 scripts/verify-preview-record.py --print-fingerprint` 获取；五个 SHA256 分别来自样例 DOCX、显式 Native 与默认模式的 OFD 和各自导出的 PDF。记录只改自身，源码指纹不变；改动其他跟踪文件或改用新版本后必须重做候选验收。PDF/OFD 哈希是本机实际查看的证据；因生成文件可含时间元数据，不要求另一台 CI runner 的重建 ZIP/PDF 与本机逐字节相同。
 4. 对该记录提交打 tag。发布工作流先复测、打包、消费原包并核对哈希，再校验记录，最后推 NuGet。失败时保持上个已验证包/标签；修复后使用新提交、新版本重新验收，不覆盖同版本包。公开源安装回读与下游生产环境签收仍需另行记录。
 
 `.NET` 命令遵守根 `AGENTS.md` 的 `DOTNET_CLI_HOME`、首次体验/遥测变量与单节点 flags。当前记录是 `not-reviewed`，所以不应把本票的绿测写成 Preview 完成。

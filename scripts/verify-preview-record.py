@@ -34,15 +34,18 @@ def verify(data, package_version):
     sample = ROOT / 'e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx'
     if data.get('sample_sha256') != hashlib.sha256(sample.read_bytes()).hexdigest():
         raise ValueError('Preview record sample hash differs from the checked-in DOCX.')
-    for key in ('native_ofd_sha256', 'preview_pdf_sha256'):
+    for key in ('native_ofd_sha256', 'preview_pdf_sha256',
+                'default_ofd_sha256', 'default_preview_pdf_sha256'):
         if not re.fullmatch(r'[0-9a-f]{64}', data.get(key, '')):
             raise ValueError(f'{key} is missing.')
     if data.get('conversion_mode') != 'native' or data.get('view_chain') != 'DOCX -> native OFD -> PDF -> macOS Preview':
         raise ValueError('Record must describe the Native OFD Preview chain.')
+    if data.get('default_conversion_mode') != 'default' or data.get('default_view_chain') != 'DOCX -> default OFD -> PDF -> macOS Preview':
+        raise ValueError('Record must describe the default OFD Preview chain.')
     if not data.get('reviewer') or not data.get('reviewed_at'):
         raise ValueError('Human reviewer and timestamp are required.')
-    if data.get('checked_pages') != [1, 2] or data.get('open_findings'):
-        raise ValueError('Both deterministic DOCX pages must be checked with no open findings.')
+    if data.get('checked_pages') != [1, 2] or data.get('default_checked_pages') != [1, 2] or data.get('open_findings'):
+        raise ValueError('Both pages in Native and default modes must be checked with no open findings.')
 
 
 if __name__ == '__main__':
