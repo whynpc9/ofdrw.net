@@ -53,13 +53,16 @@ internal sealed class FlowGlyph
 
 internal sealed class FlowLine
 {
-    internal FlowLine(List<FlowGlyph> glyphs, double height, double indent, FlowAlignment alignment, bool pageBreak = false)
-    { Glyphs = glyphs; Height = height; Indent = indent; Alignment = alignment; PageBreak = pageBreak; }
+    internal FlowLine(List<FlowGlyph> glyphs, double height, double indent, FlowAlignment alignment,
+        bool pageBreak = false, bool terminalNewline = false)
+    { Glyphs = glyphs; Height = height; Indent = indent; Alignment = alignment;
+        PageBreak = pageBreak; TerminalNewline = terminalNewline; }
     internal List<FlowGlyph> Glyphs { get; }
     internal double Height { get; }
     internal double Indent { get; }
     internal FlowAlignment Alignment { get; }
     internal bool PageBreak { get; }
+    internal bool TerminalNewline { get; }
     internal double BaselineMillimeters => Glyphs.Count == 0 ? 0 : Glyphs.Max(g => g.Style.FontSizeMillimeters);
 }
 
@@ -136,12 +139,13 @@ internal static class FlowParagraphLayout
         var current = new List<FlowGlyph>();
         var currentWidth = 0d;
         var indent = format.FirstLineIndentMillimeters;
-        void Flush()
+        var terminalNewline = false;
+        void Flush(bool terminalLine = false)
         {
             var size = current.Count == 0 ? fallback.FontSizeMillimeters : current.Max(g => g.Style.FontSizeMillimeters);
             var imageHeight = current.Count == 0 ? 0 : current.Max(g => g.ImageHeight);
             result.Add(new FlowLine(current, Math.Max(imageHeight, Math.Max(size * 1.3, format.MinimumLineHeightMillimeters)),
-                indent, format.Alignment));
+                indent, format.Alignment, terminalNewline: terminalLine));
             current = new List<FlowGlyph>();
             currentWidth = 0;
             indent = 0;
@@ -154,10 +158,13 @@ internal static class FlowParagraphLayout
             var glyph = glyphs[i];
             if (glyph.Text == "\f" || glyph.Text == "\n")
             {
+                if (glyph.Text == "\f" && terminalNewline) Flush();
                 if (current.Count > 0 || glyph.Text == "\n") Flush();
                 if (glyph.Text == "\f") result.Add(new FlowLine(new List<FlowGlyph>(), 0, 0, format.Alignment, true));
+                terminalNewline = glyph.Text == "\n";
                 continue;
             }
+            terminalNewline = false;
             if (Word(glyph) && (i == 0 || !Word(glyphs[i - 1])))
             {
                 var wordWidth = 0d;
@@ -176,7 +183,7 @@ internal static class FlowParagraphLayout
             current.Add(glyph);
             currentWidth += glyph.Width;
         }
-        if (current.Count > 0 || result.Count == 0) Flush();
+        if (current.Count > 0 || result.Count == 0 || terminalNewline) Flush(terminalNewline);
         return result;
     }
 

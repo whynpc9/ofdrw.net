@@ -257,6 +257,40 @@ public sealed partial class DocxConversionTests
         Assert.Equal("B", Assert.Single(package.Pages[2].Elements.OfType<OfdTextElement>()).Text);
     }
 
+    [Fact]
+    public void Native_ShouldKeepTerminalLineBreakBeforeFollowingParagraph()
+    {
+        var model = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel();
+        var first = new BuiltInParagraphModel();
+        first.Inlines.Add(new BuiltInTextModel { Text = "A" });
+        first.Inlines.Add(new BuiltInBreakModel());
+        section.Blocks.Add(first);
+        var second = new BuiltInParagraphModel();
+        second.Inlines.Add(new BuiltInTextModel { Text = "B" });
+        section.Blocks.Add(second);
+        model.Sections.Add(section);
+        var package = new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(model);
+        var text = Assert.Single(package.Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "A", "B" }, text.Select(value => value.Text));
+        Assert.Equal((10.5 * 25.4 / 72) * 1.3 * 2,
+            text[1].YMillimeters - text[0].YMillimeters, 4);
+
+        var terminal = new BuiltInDocumentModel();
+        var shortSection = new BuiltInSectionModel
+        {
+            PageHeightPoints = 45, MarginTopPoints = 10, MarginBottomPoints = 10
+        };
+        var last = new BuiltInParagraphModel();
+        last.Inlines.Add(new BuiltInTextModel { Text = "A" });
+        last.Inlines.Add(new BuiltInBreakModel());
+        shortSection.Blocks.Add(last);
+        terminal.Sections.Add(shortSection);
+        Assert.Single(new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(terminal).Pages);
+    }
+
     private static (int, int, int) Rgb(OfdColor color) => (color.Red, color.Green, color.Blue);
 
     private static OfdFontResource ResolveFont(OfdDocumentPackage package, OfdTextElement text)
