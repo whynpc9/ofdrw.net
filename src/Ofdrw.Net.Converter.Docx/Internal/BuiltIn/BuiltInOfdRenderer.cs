@@ -31,7 +31,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private int _lastPageNumber;
     private readonly Dictionary<string, XFont> _fonts = new();
     private readonly Dictionary<string, (byte[] Data, string FileName)> _fontFiles = new();
-    private bool _pendingPageBreak;
+    private int _pendingPageBreaks;
+    private double _pendingSpaceAfter;
 
     internal BuiltInOfdRenderer(
         DocxConversionOptions options,
@@ -100,6 +101,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
 
     private LayoutState RenderSection(OfdDocumentPackage package, BuiltInSectionModel section)
     {
+        _pendingSpaceAfter = 0;
         var state = new LayoutState(section, section.PageNumberStart ?? _lastPageNumber + 1);
         EnsurePage(package, state);
         foreach (var block in section.Blocks)
@@ -112,13 +114,13 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
 
     private void RenderBlock(OfdDocumentPackage package, LayoutState state, BuiltInBlockModel block)
     {
-        if (_pendingPageBreak) { StartNewPage(package, state); _pendingPageBreak = false; }
         switch (block)
         {
             case BuiltInParagraphModel paragraph:
                 RenderParagraph(package, state, paragraph, state.ContentLeft, state.ContentWidth);
                 break;
             case BuiltInTableModel table:
+                ApplyPendingPageBreaks(package, state);
                 RenderTable(package, state, table);
                 state.HasBodyContent = true;
                 break;
@@ -132,37 +134,42 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         double left,
         double availableWidth)
     {
-        if (_pendingPageBreak) { StartNewPage(package, state); _pendingPageBreak = false; }
-        if (paragraph.Format.PageBreakBefore && state.HasBodyContent)
+        var hadPendingBreaks = _pendingPageBreaks > 0;
+        ApplyPendingPageBreaks(package, state);
+        if (paragraph.Format.PageBreakBefore && (state.HasBodyContent || hadPendingBreaks))
         {
             StartNewPage(package, state);
         }
 
         var spaceBefore = PointsToMillimeters(paragraph.Format.SpaceBeforePoints ?? 0);
         var spaceAfter = PointsToMillimeters(paragraph.Format.SpaceAfterPoints ?? 0);
-        EnsureVerticalSpace(package, state, spaceBefore);
-        state.Y += spaceBefore;
 
         var leftIndent = PointsToMillimeters(paragraph.Format.LeftIndentPoints ?? 0);
         var rightIndent = PointsToMillimeters(paragraph.Format.RightIndentPoints ?? 0);
         var firstIndent = PointsToMillimeters(paragraph.Format.FirstLineIndentPoints ?? 0);
         var width = Math.Max(availableWidth - leftIndent - rightIndent, 5d);
+        var firstLine = true;
         foreach (var line in LayoutParagraph(paragraph, width, firstIndent, state.PageNumber))
         {
             if (line.PageBreak)
             {
-                _pendingPageBreak = true;
+                _pendingPageBreaks++;
                 continue;
             }
-            if (_pendingPageBreak) { StartNewPage(package, state); _pendingPageBreak = false; }
-            EnsureVerticalSpace(package, state, line.Height);
+            ApplyPendingPageBreaks(package, state);
+            if (firstLine)
+            {
+                PlaceFirstLine(package, state, line.Height, _pendingSpaceAfter + spaceBefore);
+                _pendingSpaceAfter = 0;
+                firstLine = false;
+            }
+            else EnsureVerticalSpace(package, state, line.Height);
             DrawLine(package, state.Page!, line, left + leftIndent, state.Y, width);
             state.Y += line.Height;
             state.HasBodyContent = true;
         }
 
-        // Trailing spacing belongs to the paragraph, not to a new empty page.
-        state.Y = Math.Min(state.Y + spaceAfter, state.ContentBottom);
+        _pendingSpaceAfter += spaceAfter;
     }
 
     private void RenderTable(
@@ -171,6 +178,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         BuiltInTableModel table)
     {
         var columnWidths = ResolveColumnWidths(table, state.ContentWidth);
+        var firstRow = true;
 
         foreach (var row in table.Rows)
         {
@@ -180,7 +188,13 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 ? PointsToMillimeters(DefaultFontSizePoints) * 1.5d
                 : cellLayouts.Max(cell => cell.Height);
 
-            EnsureVerticalSpace(package, state, rowHeight);
+            if (firstRow)
+            {
+                PlaceFirstLine(package, state, rowHeight, _pendingSpaceAfter);
+                _pendingSpaceAfter = 0;
+                firstRow = false;
+            }
+            else EnsureVerticalSpace(package, state, rowHeight);
             var rowTop = state.Y;
             var x = state.ContentLeft;
             var columnIndex = 0;
@@ -354,7 +368,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             // linux1 / 宋体 CJK is one em. PDFsharp without a CJK face (typical Linux
             // ARM without FontDirectories) measures ideographs on a Latin substitute
             // at ~0.6em, which overlaps when the viewer later binds SimSun/SimHei.
-            if (IsCjkTypographicUnit(text))
+            if (FlowTextMetrics.IsCjkTypographicUnit(text))
                 advance = 1d;
             else
             {
@@ -369,16 +383,13 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     public double AdvanceMillimeters(string grapheme, FlowTextStyle style) =>
         Advance(grapheme, (BuiltInTextFormat)style.Source!);
 
-    private static bool IsCjkTypographicUnit(string text)
+    private void ApplyPendingPageBreaks(OfdDocumentPackage package, LayoutState state)
     {
-        if (string.IsNullOrEmpty(text)) return false;
-        foreach (var c in text)
+        while (_pendingPageBreaks > 0)
         {
-            if (c >= '\u2E80' && c <= '\u9FFF') return true;
-            if (c >= '\uF900' && c <= '\uFAFF') return true;
-            if (c >= '\uFF00' && c <= '\uFFEF') return true;
+            StartNewPage(package, state);
+            _pendingPageBreaks--;
         }
-        return false;
     }
 
     private IReadOnlyList<FlowLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber = 1, int totalPages = 1, int sectionPages = 1)
@@ -426,7 +437,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             Alignment = alignment,
             FirstLineIndentMillimeters = firstIndent,
             MinimumLineHeightMillimeters = PointsToMillimeters(paragraph.Format.LineSpacingPoints ?? 0)
-        }, width, this, fallback, _cancellationToken);
+        }, width, this, fallback, _cancellationToken, allowOversizeGlyph: true);
     }
 
     private void DrawLine(OfdDocumentPackage package, OfdPage page, FlowLine line, double left, double top, double width)
@@ -622,11 +633,33 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private void EnsureVerticalSpace(OfdDocumentPackage package, LayoutState state, double needed)
     {
         if (state.Page is null) StartNewPage(package, state);
-        if (FlowPagination.NeedsNewPage(state.Y, needed, state.ContentTop, state.ContentBottom))
+        try
+        {
+            if (FlowPagination.NeedsNewPage(state.Y, needed, state.ContentTop, state.ContentBottom))
+                StartNewPage(package, state);
+            // Header and footer variants can change the usable area on the next page.
+            if (FlowPagination.NeedsNewPage(state.Y, needed, state.ContentTop, state.ContentBottom))
+                throw new InvalidDataException("DOCX content cannot fit on a fresh page.");
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new InvalidDataException("DOCX content exceeds the usable page area.", exception);
+        }
+    }
+
+    private void PlaceFirstLine(OfdDocumentPackage package, LayoutState state, double height, double gap)
+    {
+        if (state.Page is null) StartNewPage(package, state);
+        if (height > state.ContentBottom - state.ContentTop)
+            throw new InvalidDataException("DOCX content exceeds the usable page area.");
+        gap = Math.Max(0, gap);
+        if (state.Y + gap + height > state.ContentBottom + 0.000001d &&
+            (state.HasBodyContent || state.Y > state.ContentTop))
             StartNewPage(package, state);
-        // Header and footer variants can change the usable area on the next page.
-        if (FlowPagination.NeedsNewPage(state.Y, needed, state.ContentTop, state.ContentBottom))
-            throw new InvalidDataException("DOCX content cannot fit on a fresh page.");
+        var availableGap = state.ContentBottom - state.ContentTop - height;
+        if (availableGap < 0) throw new InvalidDataException("DOCX content cannot fit on a fresh page.");
+        state.Y += Math.Min(gap, availableGap);
+        EnsureVerticalSpace(package, state, height);
     }
 
     private void StartNewPage(OfdDocumentPackage package, LayoutState state)
