@@ -94,6 +94,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
     private int _textElements;
     private int _pendingPageBreaks;
     private double _pendingSpaceAfter;
+    private double _pendingLineBreakHeight;
 
     internal FlowDocumentRenderer(FlowDocumentOptions options, IList<FlowBlock> blocks, CancellationToken cancellationToken)
     { _options = options; _blocks = blocks; _cancellationToken = cancellationToken; }
@@ -145,6 +146,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         {
             StartPage();
             _pendingSpaceAfter = 0;
+            _pendingLineBreakHeight = 0;
         }
         var inlines = new List<FlowInline>();
         foreach (var span in spans)
@@ -173,11 +175,13 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         foreach (var line in FlowParagraphLayout.Layout(inlines, format, width, this, fallback, _cancellationToken))
         {
             if (line.PageBreak) { _pendingPageBreaks++; continue; }
+            if (line.TerminalNewline) { _pendingLineBreakHeight += line.Height; continue; }
             ApplyPendingPageBreaks();
             if (firstLine)
             {
-                PlaceFirstLine(line.Height, _pendingSpaceAfter + paragraph.SpaceBeforeMillimeters);
+                PlaceFirstLine(line.Height, _pendingSpaceAfter + _pendingLineBreakHeight + paragraph.SpaceBeforeMillimeters);
                 _pendingSpaceAfter = 0;
+                _pendingLineBreakHeight = 0;
                 firstLine = false;
             }
             else Place(line.Height);
@@ -266,7 +270,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
 
     private void ApplyPendingPageBreaks()
     {
-        if (_pendingPageBreaks > 0) _pendingSpaceAfter = 0;
+        if (_pendingPageBreaks > 0) { _pendingSpaceAfter = 0; _pendingLineBreakHeight = 0; }
         while (_pendingPageBreaks > 0)
         {
             StartPage();

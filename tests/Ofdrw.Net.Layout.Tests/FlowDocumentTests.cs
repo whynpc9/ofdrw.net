@@ -236,6 +236,25 @@ public sealed class FlowDocumentTests
     }
 
     [Fact]
+    public void TerminalExplicitNewline_LeavesAnEmptyLineBeforeNextParagraph()
+    {
+        var document = new FlowDocument();
+        document.Blocks.Add(new Paragraph("A\n"));
+        document.Blocks.Add(new Paragraph("B"));
+        var text = Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "A", "B" }, text.Select(value => value.Text));
+        Assert.Equal(document.Options.DefaultFontSizeMillimeters * 1.3 * 2,
+            text[1].YMillimeters - text[0].YMillimeters, 4);
+
+        var terminal = new FlowDocument();
+        terminal.Options.PageHeightMillimeters = 19;
+        terminal.Options.MarginTopMillimeters = 5;
+        terminal.Options.MarginBottomMillimeters = 5;
+        terminal.Blocks.Add(new Paragraph("A\n"));
+        Assert.Single(terminal.Render().Pages);
+    }
+
+    [Fact]
     public void FullWidthImage_WithFirstLineIndent_IsScaledIntoAvailableLine()
     {
         var marker = new object();

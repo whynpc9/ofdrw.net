@@ -19,7 +19,7 @@ await using var output = File.Create("report.ofd");
 await new OfdPackageWriter().WriteAsync(package, output);
 ```
 
-默认 A4、四边 25.4 mm、10.5 pt 等值字号（3.704 mm）、`SimSun` 字体名。每个 Span 的粗斜体是独立的，不会传播到相邻 Span。相邻 Span 合并为逻辑文本后，`CRLF`/`CR` 归一为 `LF`；显式 `\n` 换行、`\f` 换页，过长英文单词按 Unicode 文本元素拆分。一个字素跨 Span 时采用起始字符的样式。首版用固定的 Arial 兼容比例字宽表测量 Basic Latin 与 Latin-1，CJK（含 Hangul 和增补汉字）使用 1 em；其他脚本暂按固定 0.6 em 近似。字宽不依赖运行机器安装的字体，写出的 OFD `DeltaX` 与分页测量一致；`FontFamily` 指定 OFD 声明字体，但若目标字体实际字形宽度差异很大，视觉仍需单独检查。默认字体仅声明名称，不嵌入字节；跨机器展示需确保目标阅读器有合适 CJK 字体，字体子集和嵌入复用留给 05 票。
+默认 A4、四边 25.4 mm、10.5 pt 等值字号（3.704 mm）、`SimSun` 字体名。每个 Span 的粗斜体是独立的，不会传播到相邻 Span。相邻 Span 合并为逻辑文本后，`CRLF`/`CR` 归一为 `LF`；显式 `\n` 换行、`\f` 换页，过长英文单词按 Unicode 文本元素拆分。段末 `\n` 的空行在后续内容出现时计入高度，不单独创建文末空白页。一个字素跨 Span 时采用起始字符的样式。首版用固定的 Arial 兼容比例字宽表测量 Basic Latin 与 Latin-1，CJK（含 Hangul 和增补汉字）使用 1 em；其他脚本暂按固定 0.6 em 近似。字宽不依赖运行机器安装的字体，写出的 OFD `DeltaX` 与分页测量一致；`FontFamily` 指定 OFD 声明字体，但若目标字体实际字形宽度差异很大，视觉仍需单独检查。默认字体仅声明名称，不嵌入字节；跨机器展示需确保目标阅读器有合适 CJK 字体，字体子集和嵌入复用留给 05 票。
 
 `Render()` 每次生成新包，不修改之前返回的包；调用方可复用描述对象，但不要在其他线程同时修改其 `Blocks`、`Spans` 或 `Options`。超高行、无可用宽度、页数、字符数和文本元素数量超限会明确失败，不会静默裁切。预算由 `MaxPageCount`、`MaxCharacters`、`MaxTextElements` 控制，取消通过 `CancellationToken` 传入。`OfdDocumentBuilder` 的按页坐标 API 保持可用。
 

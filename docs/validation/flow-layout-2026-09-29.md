@@ -1,6 +1,6 @@
 # 公开流式布局与 DOCX Native 页面验收（2026-09-29）
 
-**2026-09-30 最新状态：** Review 4 的跨 Span 换行/字素修复已生成 `artifacts/flow-layout/review5/` 产物；七张页面 PNG 与下文已在 Preview 检查的 `review2` 页面逐字节相同。macOS 当前锁屏，`review5` PDF 尚未能在 Preview 重新打开。最新 head 的 Preview 复验仍待完成，不能把下文的 `review2` 视觉结果当作最新 head 已验收。
+**2026-09-30 最新状态：** Review 5 的段末显式换行修复已生成 `artifacts/flow-layout/review6/` 产物；七张页面 PNG 与下文已在 Preview 检查的 `review2` 页面逐字节相同。macOS 当前锁屏，`review6` PDF 尚未能在 Preview 重新打开。最新 head 的 Preview 复验仍待完成，不能把下文的 `review2` 视觉结果当作最新 head 已验收。
 
 ## 基线与复现
 
@@ -11,8 +11,8 @@
 
 ## 功能验证
 
-- 最新解决方案 Release 全套测试：143 通过、0 失败、0 跳过；TRX 在 `artifacts/flow-layout/review5/test-results/`。其中 Layout 新测试 11/11，DOCX 测试 54/54，覆盖公开样式/往返、跨 Span 英文单词、CRLF 与组合字素、连续显式换页、Hangul（预组与分解 Jamo）/增补汉字（含 U+30000）字宽、段间距跨页、取消与预算、图片首行缩进、Native 窄单元格大字与 section 换页归属，以及原有 Native/default/DualLayer 行为。
-- 本地 11 个 NuGet 包构建、安装和隔离包消费 E2E 通过；公开 Layout 包消费生成 4 页，并完成 OFD 重读及文本检查。最新日志与产物在 `artifacts/flow-layout/review5/package-e2e.log` 和 `package-e2e-output/`。
+- 最新解决方案 Release 全套测试：145 通过、0 失败、0 跳过；TRX 在 `artifacts/flow-layout/review6/test-results/`。其中 Layout 新测试 12/12，DOCX 测试 55/55，覆盖公开样式/往返、跨 Span 英文单词、CRLF 与组合字素、段末显式换行、连续显式换页、Hangul（预组与分解 Jamo）/增补汉字（含 U+30000）字宽、段间距跨页、取消与预算、图片首行缩进、Native 窄单元格大字与 section 换页归属，以及原有 Native/default/DualLayer 行为。
+- 本地 11 个 NuGet 包构建、安装和隔离包消费 E2E 通过；公开 Layout 包消费生成 4 页，并完成 OFD 重读及文本检查。最新日志与产物在 `artifacts/flow-layout/review6/package-e2e.log` 和 `package-e2e-output/`。
 - 本次 E2E 对公开 Flow 输入与 OFD 抽取做逐字符（去空白）相等检查：3 页、5865 字符；显式 Native 与默认模式的 OFD 抽取一致：均为 2 页、189 字符。现有 DOCX 测试还逐字比较 OpenXML 原文与 Native OFD，并断言 OFD→PDF 没有重复文字。
 
 ## Preview 逐页结果
@@ -36,7 +36,7 @@
 
 页面图：`review2/pages/flow-public-1.png`～`3.png`、`docx-native-1.png`～`2.png`、`docx-default-1.png`～`2.png`。DOCX OFD 约 15.3 MB，主要由既有字体全量嵌入造成；公开 Flow 只声明字体名，其 5.6 KB OFD 与 DOCX 内容不同，不作同内容压缩率比较。
 
-`review5/` 是当前工作树生成的最新一组样例：`flow-public.ofd` 5,561 字节，SHA-256 `bf1a687f7fe90c13a8be6797351f49a8c4dc88f17c2c4ceb71ad4e85375f367a`；`docx-native.ofd` 15,288,611 字节，SHA-256 `ecc92b2954a250866b29bee0c554ba950d19ae2a3d4fae4cf5ec51e7f4d264a4`；`docx-default.ofd` 15,288,607 字节，SHA-256 `2daabc0630a1fb63fc6eea172c9bcbf719fdefdb11cae95cf4ea4c7e17bf27f7`。其七张 PNG 与 `review2/pages/` 逐字节一致；仍须在 Preview 打开 `review5/flow-public.pdf`（1–3 页）及 `review5/docx-native.pdf`、`review5/docx-default.pdf`（各 1–2 页）。
+`review6/` 是当前工作树生成的最新一组样例：`flow-public.ofd` 5,561 字节，SHA-256 `59a15fb7f0d7a773f06887c5615c5eeacc881c6bed0ea521aee1892964e90c57`；`docx-native.ofd` 15,288,612 字节，SHA-256 `35b80ff9e86276a50a857608d58ee2ad2a393a83cdb01e032373a9e1a5f55bfe`；`docx-default.ofd` 15,288,607 字节，SHA-256 `09d651186f7ae8049fc24644eb54932863f6f78702f78ec29726ada3a18501ae`。其七张 PNG 与 `review2/pages/` 逐字节一致；仍须在 Preview 打开 `review6/flow-public.pdf`（1–3 页）及 `review6/docx-native.pdf`、`review6/docx-default.pdf`（各 1–2 页）。
 
 ## 范围与遗留
 
