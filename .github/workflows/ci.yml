@@ -10,7 +10,7 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     env:
-      DOTNET_CLI_HOME: ${{ runner.temp }}/dotnet-home
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
 
@@ -64,7 +64,7 @@ jobs:
     name: BuiltIn DOCX (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     env:
-      DOTNET_CLI_HOME: ${{ runner.temp }}/dotnet-home
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     strategy:
@@ -111,7 +111,7 @@ jobs:
   package-e2e:
     runs-on: ubuntu-latest
     env:
-      DOTNET_CLI_HOME: ${{ runner.temp }}/dotnet-home
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     needs: [build-test, builtin-docx]
