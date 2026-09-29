@@ -112,6 +112,70 @@ public sealed class FlowDocumentTests
     }
 
     [Fact]
+    public void ConsecutiveExplicitBreaks_AndPageBreakBefore_KeepTheirPageCount()
+    {
+        var consecutive = new FlowDocument();
+        consecutive.Blocks.Add(new Paragraph("A\f\fB"));
+        var pages = consecutive.Render().Pages;
+        Assert.Equal(3, pages.Count);
+        Assert.Equal("A", Assert.Single(pages[0].Elements.OfType<OfdTextElement>()).Text);
+        Assert.Empty(pages[1].Elements);
+        Assert.Equal("B", Assert.Single(pages[2].Elements.OfType<OfdTextElement>()).Text);
+
+        var before = new FlowDocument();
+        before.Blocks.Add(new Paragraph("A\f"));
+        before.Blocks.Add(new Paragraph("B") { PageBreakBefore = true });
+        Assert.Equal(3, before.Render().Pages.Count);
+    }
+
+    [Fact]
+    public void HangulAndSupplementaryHan_UseOneEmAdvances()
+    {
+        Assert.True(FlowTextMetrics.IsCjkTypographicUnit("한"));
+        Assert.True(FlowTextMetrics.IsCjkTypographicUnit("𠀀"));
+        Assert.True(FlowTextMetrics.IsCjkTypographicUnit("𰀀"));
+        var document = new FlowDocument();
+        document.Blocks.Add(new Paragraph("한𠀀𰀀A"));
+        var text = Assert.Single(Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>());
+        var advances = text.Runs[0].DeltaX!.Split(' ')
+            .Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        Assert.Equal(3, advances.Length);
+        Assert.Equal(document.Options.DefaultFontSizeMillimeters, advances[0], 5);
+        Assert.Equal(document.Options.DefaultFontSizeMillimeters, advances[1], 5);
+        Assert.Equal(document.Options.DefaultFontSizeMillimeters, advances[2], 5);
+    }
+
+    [Fact]
+    public void ParagraphSpacing_TravelsWithNextLineAcrossPageBoundary()
+    {
+        var document = new FlowDocument();
+        document.Options.PageHeightMillimeters = 30;
+        document.Options.MarginTopMillimeters = 5;
+        document.Options.MarginBottomMillimeters = 5;
+        document.Blocks.Add(new Paragraph("A") { SpaceAfterMillimeters = 12 });
+        document.Blocks.Add(new Paragraph("B"));
+        var pages = document.Render().Pages;
+        Assert.Equal(2, pages.Count);
+        Assert.Equal("A", Assert.Single(pages[0].Elements.OfType<OfdTextElement>()).Text);
+        var second = Assert.Single(pages[1].Elements.OfType<OfdTextElement>());
+        Assert.Equal("B", second.Text);
+        Assert.Equal(17, second.YMillimeters, 4);
+
+        var before = new FlowDocument();
+        before.Options.PageHeightMillimeters = 30;
+        before.Options.MarginTopMillimeters = 5;
+        before.Options.MarginBottomMillimeters = 5;
+        before.Blocks.Add(new Paragraph("A"));
+        before.Blocks.Add(new Paragraph("B") { SpaceBeforeMillimeters = 18 });
+        var beforePages = before.Render().Pages;
+        Assert.Equal(2, beforePages.Count);
+        Assert.Single(beforePages[0].Elements.OfType<OfdTextElement>());
+        var moved = Assert.Single(beforePages[1].Elements.OfType<OfdTextElement>());
+        Assert.Equal("B", moved.Text);
+        Assert.True(moved.YMillimeters + moved.HeightMillimeters <= 25.000001);
+    }
+
+    [Fact]
     public void FullWidthImage_WithFirstLineIndent_IsScaledIntoAvailableLine()
     {
         var marker = new object();
@@ -125,6 +189,10 @@ public sealed class FlowDocumentTests
         Assert.Same(marker, glyph.Image);
         Assert.Equal(15, glyph.Width, 5);
         Assert.Equal(7.5, glyph.ImageHeight, 5);
+        Assert.Throws<InvalidDataException>(() => FlowParagraphLayout.Layout(
+            new[] { new FlowInline { Style = style, Image = marker,
+                ImageWidthMillimeters = 0, ImageHeightMillimeters = 10 } },
+            new FlowParagraphFormat(), 20, new FixedMetrics(), style, default));
     }
 
     [Fact]

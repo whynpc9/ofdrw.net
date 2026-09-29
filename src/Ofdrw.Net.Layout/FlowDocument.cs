@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Internal.Flow;
-using SixLabors.Fonts;
 
 namespace Ofdrw.Net.Layout;
 
@@ -88,13 +87,13 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
     private readonly IList<FlowBlock> _blocks;
     private readonly CancellationToken _cancellationToken;
     private readonly Dictionary<string, OfdFontResource> _fonts = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, Font> _measurementFonts = new(StringComparer.Ordinal);
     private readonly OfdDocumentPackage _package = new();
     private OfdPage? _page;
     private double _y;
     private bool _hasBodyContent;
     private int _textElements;
-    private bool _pendingPageBreak;
+    private int _pendingPageBreaks;
+    private double _pendingSpaceAfter;
 
     internal FlowDocumentRenderer(FlowDocumentOptions options, IList<FlowBlock> blocks, CancellationToken cancellationToken)
     { _options = options; _blocks = blocks; _cancellationToken = cancellationToken; }
@@ -139,11 +138,10 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
             _options.MarginRightMillimeters - paragraph.LeftIndentMillimeters - paragraph.RightIndentMillimeters;
         if (width <= 0 || paragraph.FirstLineIndentMillimeters >= width)
             throw new ArgumentException("Paragraph indents leave no usable line width.");
-        if (_page is null || _pendingPageBreak) { StartPage(); _pendingPageBreak = false; }
-        if (paragraph.PageBreakBefore && _hasBodyContent) StartPage();
-        Place(paragraph.SpaceBeforeMillimeters);
-        _y += paragraph.SpaceBeforeMillimeters;
-
+        if (_page is null) StartPage();
+        var hadPendingBreaks = _pendingPageBreaks > 0;
+        ApplyPendingPageBreaks();
+        if (paragraph.PageBreakBefore && (_hasBodyContent || hadPendingBreaks)) StartPage();
         var inlines = new List<FlowInline>();
         foreach (var span in spans)
         {
@@ -167,17 +165,24 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
             FirstLineIndentMillimeters = paragraph.FirstLineIndentMillimeters,
             MinimumLineHeightMillimeters = paragraph.MinimumLineHeightMillimeters ?? 0
         };
+        var firstLine = true;
         foreach (var line in FlowParagraphLayout.Layout(inlines, format, width, this, fallback, _cancellationToken))
         {
-            if (line.PageBreak) { _pendingPageBreak = true; continue; }
-            if (_pendingPageBreak) { StartPage(); _pendingPageBreak = false; }
-            Place(line.Height);
+            if (line.PageBreak) { _pendingPageBreaks++; continue; }
+            ApplyPendingPageBreaks();
+            if (firstLine)
+            {
+                PlaceFirstLine(line.Height, _pendingSpaceAfter + paragraph.SpaceBeforeMillimeters);
+                _pendingSpaceAfter = 0;
+                firstLine = false;
+            }
+            else Place(line.Height);
             DrawLine(line, _options.MarginLeftMillimeters + paragraph.LeftIndentMillimeters, width);
             _y += line.Height;
             _hasBodyContent = true;
         }
-        // Paragraph tail spacing never creates an otherwise empty final page.
-        _y = Math.Min(_y + paragraph.SpaceAfterMillimeters, ContentBottom);
+        // Carry the gap to the next block, without materializing a trailing empty page.
+        _pendingSpaceAfter += paragraph.SpaceAfterMillimeters;
     }
 
     private void DrawLine(FlowLine line, double left, double width)
@@ -233,6 +238,17 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
             throw new InvalidOperationException("Flow line cannot fit on a fresh page.");
     }
 
+    private void PlaceFirstLine(double height, double gap)
+    {
+        var usableHeight = ContentBottom - ContentTop;
+        if (height > usableHeight) throw new InvalidOperationException("A flow line is taller than the usable page area.");
+        if (_y + gap + height > ContentBottom + 0.000001d && (_hasBodyContent || _y > ContentTop))
+            StartPage();
+        // Exceptionally large paragraph spacing yields to the first complete line.
+        _y += Math.Min(gap, usableHeight - height);
+        Place(height);
+    }
+
     private void StartPage()
     {
         if (_package.Pages.Count >= _options.MaxPageCount)
@@ -242,6 +258,15 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         _package.Pages.Add(_page);
         _y = ContentTop;
         _hasBodyContent = false;
+    }
+
+    private void ApplyPendingPageBreaks()
+    {
+        while (_pendingPageBreaks > 0)
+        {
+            StartPage();
+            _pendingPageBreaks--;
+        }
     }
 
     private void ValidateOptions()
@@ -271,32 +296,6 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         if (double.IsNaN(value) || double.IsInfinity(value) || value < 0) throw new ArgumentOutOfRangeException(name);
     }
 
-    public double AdvanceMillimeters(string grapheme, FlowTextStyle style)
-    {
-        // CJK follows the Native typographic em policy. Measure Latin against a
-        // proportional face; emitted DeltaX uses these exact advances.
-        var c = grapheme[0];
-        if (c >= '\u2E80' && c <= '\u9FFF' || c >= '\uF900' && c <= '\uFAFF' || c >= '\uFF00' && c <= '\uFFEF')
-            return style.FontSizeMillimeters;
-        var fontFamily = style.FontFamily;
-        var found = SystemFonts.TryGet(fontFamily, out var family);
-        if (!found)
-        {
-            foreach (var fallback in new[] { "Arial", "Liberation Sans", "DejaVu Sans" })
-                if (SystemFonts.TryGet(fallback, out family)) { found = true; break; }
-        }
-        if (!found)
-            throw new InvalidOperationException("No proportional font is available for flow text measurement.");
-        var key = family.Name + "|" + style.Bold + "|" + style.Italic;
-        if (!_measurementFonts.TryGetValue(key, out var font))
-        {
-            var fontStyle = style.Bold && style.Italic ? FontStyle.BoldItalic :
-                style.Bold ? FontStyle.Bold : style.Italic ? FontStyle.Italic : FontStyle.Regular;
-            font = family.CreateFont(72, fontStyle);
-            _measurementFonts.Add(key, font);
-        }
-        var advance = TextMeasurer.MeasureAdvance(grapheme == "\t" ? "    " : grapheme,
-            new TextOptions(font) { Dpi = 72 }).Width;
-        return advance * style.FontSizeMillimeters / 72;
-    }
+    public double AdvanceMillimeters(string grapheme, FlowTextStyle style) =>
+        FlowLatinMetrics.AdvanceMillimeters(grapheme, style);
 }

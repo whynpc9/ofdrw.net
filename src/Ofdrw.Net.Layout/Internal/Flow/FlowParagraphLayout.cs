@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 
@@ -66,7 +67,8 @@ internal static class FlowParagraphLayout
 {
     internal static IReadOnlyList<FlowLine> Layout(
         IReadOnlyList<FlowInline> inlines, FlowParagraphFormat format, double width,
-        IFlowFontMetrics metrics, FlowTextStyle fallback, CancellationToken cancellationToken)
+        IFlowFontMetrics metrics, FlowTextStyle fallback, CancellationToken cancellationToken,
+        bool allowOversizeGlyph = false)
     {
         if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         var glyphs = new List<FlowGlyph>();
@@ -75,6 +77,10 @@ internal static class FlowParagraphLayout
             cancellationToken.ThrowIfCancellationRequested();
             if (inline.Image is not null)
             {
+                if (double.IsNaN(inline.ImageWidthMillimeters) || double.IsInfinity(inline.ImageWidthMillimeters) ||
+                    inline.ImageWidthMillimeters <= 0 || double.IsNaN(inline.ImageHeightMillimeters) ||
+                    double.IsInfinity(inline.ImageHeightMillimeters) || inline.ImageHeightMillimeters <= 0)
+                    throw new InvalidDataException("An inline image has invalid dimensions.");
                 var imageWidth = Math.Min(inline.ImageWidthMillimeters, width);
                 var scale = imageWidth / inline.ImageWidthMillimeters;
                 glyphs.Add(new FlowGlyph(string.Empty, inline.Style, imageWidth, inline.Image,
@@ -125,13 +131,13 @@ internal static class FlowParagraphLayout
                 if (current.Count > 0 && wordWidth <= width && currentWidth + wordWidth > width - indent) Flush();
             }
             if (current.Count > 0 && currentWidth + glyph.Width > width - indent) Flush();
-            if (glyph.Image is not null && glyph.Width > width - indent && current.Count == 0)
+            if (glyph.Image is not null && width > indent && glyph.Width > width - indent && current.Count == 0)
             {
                 var scale = (width - indent) / glyph.Width;
                 glyph = new FlowGlyph(glyph.Text, glyph.Style, width - indent,
                     glyph.Image, glyph.ImageHeight * scale);
             }
-            if (glyph.Width > width - indent && current.Count == 0)
+            if (glyph.Width > width - indent && current.Count == 0 && !allowOversizeGlyph)
                 throw new InvalidOperationException("A flow glyph is wider than the usable line width.");
             current.Add(glyph);
             currentWidth += glyph.Width;
@@ -159,5 +165,23 @@ internal static class FlowPagination
         if (height > contentBottom - contentTop + 0.000001d)
             throw new InvalidOperationException("A flow line is taller than the usable page area.");
         return y + height > contentBottom + 0.000001d;
+    }
+}
+
+internal static class FlowTextMetrics
+{
+    internal static bool IsCjkTypographicUnit(string grapheme)
+    {
+        if (string.IsNullOrEmpty(grapheme)) return false;
+        var scalar = char.IsHighSurrogate(grapheme[0]) && grapheme.Length > 1 &&
+            char.IsLowSurrogate(grapheme[1])
+            ? char.ConvertToUtf32(grapheme, 0)
+            : grapheme[0];
+        return scalar >= 0x2E80 && scalar <= 0x9FFF ||
+               scalar >= 0xAC00 && scalar <= 0xD7AF ||
+               scalar >= 0xF900 && scalar <= 0xFAFF ||
+               scalar >= 0xFF00 && scalar <= 0xFFEF ||
+               scalar >= 0x1B000 && scalar <= 0x1B16F ||
+               scalar >= 0x20000 && scalar <= 0x3FFFF;
     }
 }

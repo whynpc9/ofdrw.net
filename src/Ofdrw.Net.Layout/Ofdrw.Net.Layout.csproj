@@ -11,7 +11,4 @@
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx" />
     <InternalsVisibleTo Include="Ofdrw.Net.Layout.Tests" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="SixLabors.Fonts" Version="1.0.1" />
-  </ItemGroup>
 </Project>

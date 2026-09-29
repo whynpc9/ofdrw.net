@@ -141,6 +141,76 @@ public sealed partial class DocxConversionTests
             page.Elements.OfType<OfdTextElement>().Select(text => text.XMillimeters).Distinct().Count() > 1);
     }
 
+    [Fact]
+    public async Task Native_ShouldPreserveConsecutiveExplicitPageBreaks()
+    {
+        await using var input = CreateMinimalDocx("""
+            <w:p><w:r><w:t>A</w:t></w:r><w:r><w:br w:type="page"/><w:br w:type="page"/></w:r><w:r><w:t>B</w:t></w:r></w:p>
+            """);
+        await using var output = new MemoryStream();
+        await new DocxToOfdConverter().ConvertAsync(input, output);
+        output.Position = 0;
+        var pages = (await new OfdReader().ReadAsync(output)).Pages;
+        Assert.Equal(3, pages.Count);
+        Assert.Equal("A", Assert.Single(pages[0].Elements.OfType<OfdTextElement>()).Text);
+        Assert.Empty(pages[1].Elements.OfType<OfdTextElement>());
+        Assert.Equal("B", Assert.Single(pages[2].Elements.OfType<OfdTextElement>()).Text);
+    }
+
+    [Fact]
+    public async Task Native_ShouldKeepOversizeGlyphInNarrowTableCell()
+    {
+        await using var input = CreateMinimalDocx("""
+            <w:tbl><w:tblGrid><w:gridCol w:w="100"/><w:gridCol w:w="9000"/></w:tblGrid>
+              <w:tr>
+                <w:tc><w:p><w:r><w:rPr><w:sz w:val="80"/></w:rPr><w:t>W</w:t></w:r></w:p></w:tc>
+                <w:tc><w:p><w:r><w:t>OK</w:t></w:r></w:p></w:tc>
+              </w:tr>
+            </w:tbl>
+            """);
+        await using var output = new MemoryStream();
+        await new DocxToOfdConverter().ConvertAsync(input, output);
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Contains(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(), text => text.Text == "W");
+        Assert.Contains(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(), text => text.Text == "OK");
+    }
+
+    [Fact]
+    public void Native_ShouldCarryParagraphSpacingWithoutCreatingBlankPages()
+    {
+        var model = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel
+        {
+            PageWidthPoints = 200, PageHeightPoints = 65,
+            MarginTopPoints = 10, MarginBottomPoints = 10,
+            MarginLeftPoints = 10, MarginRightPoints = 10
+        };
+        var first = new BuiltInParagraphModel();
+        first.Inlines.Add(new BuiltInTextModel { Text = "A" });
+        first.Format.SpaceAfterPoints = 30;
+        section.Blocks.Add(first);
+        var second = new BuiltInParagraphModel();
+        second.Inlines.Add(new BuiltInTextModel { Text = "B" });
+        section.Blocks.Add(second);
+        var third = new BuiltInParagraphModel();
+        third.Inlines.Add(new BuiltInTextModel { Text = "C" });
+        third.Format.SpaceBeforePoints = 50;
+        section.Blocks.Add(third);
+        model.Sections.Add(section);
+
+        var package = new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(model);
+        Assert.Equal(3, package.Pages.Count);
+        Assert.Equal("A", Assert.Single(package.Pages[0].Elements.OfType<OfdTextElement>()).Text);
+        var b = Assert.Single(package.Pages[1].Elements.OfType<OfdTextElement>());
+        Assert.Equal("B", b.Text);
+        Assert.Equal(40 * 25.4 / 72, b.YMillimeters, 4);
+        var c = Assert.Single(package.Pages[2].Elements.OfType<OfdTextElement>());
+        Assert.Equal("C", c.Text);
+        Assert.True(c.YMillimeters + c.HeightMillimeters <= package.Pages[2].HeightMillimeters - 10 * 25.4 / 72 + 0.000001);
+    }
+
     private static (int, int, int) Rgb(OfdColor color) => (color.Red, color.Green, color.Blue);
 
     private static OfdFontResource ResolveFont(OfdDocumentPackage package, OfdTextElement text)
