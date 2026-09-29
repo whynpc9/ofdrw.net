@@ -132,6 +132,7 @@ public sealed class FlowDocumentTests
     public void HangulAndSupplementaryHan_UseOneEmAdvances()
     {
         Assert.True(FlowTextMetrics.IsCjkTypographicUnit("한"));
+        Assert.True(FlowTextMetrics.IsCjkTypographicUnit("한"));
         Assert.True(FlowTextMetrics.IsCjkTypographicUnit("𠀀"));
         Assert.True(FlowTextMetrics.IsCjkTypographicUnit("𰀀"));
         var document = new FlowDocument();
@@ -143,6 +144,15 @@ public sealed class FlowDocumentTests
         Assert.Equal(document.Options.DefaultFontSizeMillimeters, advances[0], 5);
         Assert.Equal(document.Options.DefaultFontSizeMillimeters, advances[1], 5);
         Assert.Equal(document.Options.DefaultFontSizeMillimeters, advances[2], 5);
+
+        var decomposed = new FlowDocument();
+        decomposed.Blocks.Add(new Paragraph("한A"));
+        var run = Assert.Single(Assert.Single(decomposed.Render().Pages)
+            .Elements.OfType<OfdTextElement>()).Runs[0];
+        var decomposedAdvances = run.DeltaX!.Split(' ');
+        Assert.Single(decomposedAdvances);
+        Assert.Equal(decomposed.Options.DefaultFontSizeMillimeters,
+            double.Parse(decomposedAdvances[0], System.Globalization.CultureInfo.InvariantCulture), 5);
     }
 
     [Fact]
@@ -173,6 +183,30 @@ public sealed class FlowDocumentTests
         var moved = Assert.Single(beforePages[1].Elements.OfType<OfdTextElement>());
         Assert.Equal("B", moved.Text);
         Assert.True(moved.YMillimeters + moved.HeightMillimeters <= 25.000001);
+    }
+
+    [Fact]
+    public void ExplicitPageBreak_DiscardsPriorParagraphTailSpacing()
+    {
+        var before = new FlowDocument();
+        before.Options.PageHeightMillimeters = 30;
+        before.Options.MarginTopMillimeters = 5;
+        before.Options.MarginBottomMillimeters = 5;
+        before.Blocks.Add(new Paragraph("A") { SpaceAfterMillimeters = 12 });
+        before.Blocks.Add(new Paragraph("B") { PageBreakBefore = true });
+        var pages = before.Render().Pages;
+        Assert.Equal(2, pages.Count);
+        Assert.Equal(5, Assert.Single(pages[1].Elements.OfType<OfdTextElement>()).YMillimeters, 4);
+
+        var inline = new FlowDocument();
+        inline.Options.PageHeightMillimeters = 30;
+        inline.Options.MarginTopMillimeters = 5;
+        inline.Options.MarginBottomMillimeters = 5;
+        inline.Blocks.Add(new Paragraph("A") { SpaceAfterMillimeters = 12 });
+        inline.Blocks.Add(new Paragraph("\fB"));
+        var inlinePages = inline.Render().Pages;
+        Assert.Equal(2, inlinePages.Count);
+        Assert.Equal(5, Assert.Single(inlinePages[1].Elements.OfType<OfdTextElement>()).YMillimeters, 4);
     }
 
     [Fact]

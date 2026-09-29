@@ -211,6 +211,52 @@ public sealed partial class DocxConversionTests
         Assert.True(c.YMillimeters + c.HeightMillimeters <= package.Pages[2].HeightMillimeters - 10 * 25.4 / 72 + 0.000001);
     }
 
+    [Fact]
+    public void Native_ShouldDiscardTailSpacingAfterExplicitBreak()
+    {
+        var model = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel();
+        var first = new BuiltInParagraphModel();
+        first.Inlines.Add(new BuiltInTextModel { Text = "A" });
+        first.Format.SpaceAfterPoints = 30;
+        section.Blocks.Add(first);
+        var second = new BuiltInParagraphModel();
+        second.Inlines.Add(new BuiltInTextModel { Text = "B" });
+        second.Format.PageBreakBefore = true;
+        section.Blocks.Add(second);
+        model.Sections.Add(section);
+        var package = new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(model);
+        Assert.Equal(2, package.Pages.Count);
+        Assert.Equal(72 * 25.4 / 72,
+            Assert.Single(package.Pages[1].Elements.OfType<OfdTextElement>()).YMillimeters, 4);
+    }
+
+    [Fact]
+    public void Native_ShouldCommitTrailingBreakWithOwningSectionPageSize()
+    {
+        var model = new BuiltInDocumentModel();
+        var firstSection = new BuiltInSectionModel { PageWidthPoints = 300 };
+        var first = new BuiltInParagraphModel();
+        first.Inlines.Add(new BuiltInTextModel { Text = "A" });
+        first.Inlines.Add(new BuiltInBreakModel { IsPageBreak = true });
+        firstSection.Blocks.Add(first);
+        model.Sections.Add(firstSection);
+        var secondSection = new BuiltInSectionModel { PageWidthPoints = 500 };
+        var second = new BuiltInParagraphModel();
+        second.Inlines.Add(new BuiltInTextModel { Text = "B" });
+        secondSection.Blocks.Add(second);
+        model.Sections.Add(secondSection);
+
+        var package = new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(model);
+        Assert.Equal(3, package.Pages.Count);
+        Assert.Equal(300 * 25.4 / 72, package.Pages[1].WidthMillimeters, 4);
+        Assert.Empty(package.Pages[1].Elements.OfType<OfdTextElement>());
+        Assert.Equal(500 * 25.4 / 72, package.Pages[2].WidthMillimeters, 4);
+        Assert.Equal("B", Assert.Single(package.Pages[2].Elements.OfType<OfdTextElement>()).Text);
+    }
+
     private static (int, int, int) Rgb(OfdColor color) => (color.Red, color.Green, color.Blue);
 
     private static OfdFontResource ResolveFont(OfdDocumentPackage package, OfdTextElement text)
