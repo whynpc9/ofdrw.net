@@ -150,8 +150,99 @@ var docxSamplePath = Path.Combine(
     "testdata",
     "generated-layout.docx");
 await ValidateDocxSampleAsync(docxSamplePath, outputDir);
+await ValidateVisualCorpusAsync(repoRoot, outputDir);
 
 Console.WriteLine("[E2E] Success: package installation and conversion flow is working.");
+
+static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
+{
+    var goldenDir = Path.Combine(repoRoot, "e2e", "visual-corpus", "golden");
+    var actualDir = Path.Combine(outputDir, "visual-corpus");
+    Directory.CreateDirectory(actualDir);
+    var missingGoldens = new List<string>();
+    var metrics = new List<string> { "sample,page,region,normalized_rmse,threshold" };
+    foreach (var kind in new[] { "ticket", "invoice", "template", "edge-layout" })
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { Index = 0, WidthMillimeters = 120, HeightMillimeters = 80 };
+        package.Pages.Add(page);
+        static OfdPathElement Box(double x, double y, double w, double h, OfdColor color) => new()
+        {
+            XMillimeters = x, YMillimeters = y, WidthMillimeters = w, HeightMillimeters = h,
+            AbbreviatedData = FormattableString.Invariant($"M 0 0 L {w} 0 L {w} {h} L 0 {h} C"),
+            Stroke = false, Fill = true, FillColor = color
+        };
+        page.Elements.Add(Box(5, 5, 110, 70, new OfdColor(238, 244, 250)));
+        page.Elements.Add(Box(8, 8, 104, 12, new OfdColor(28, 75, 126)));
+        page.Elements.Add(new OfdTextElement { Text = kind.ToUpperInvariant(), FontName = "Arial",
+            FontSizeMillimeters = 5, XMillimeters = 12, YMillimeters = 10,
+            WidthMillimeters = 85, HeightMillimeters = 8, FillColor = new OfdColor(255, 255, 255) });
+        switch (kind)
+        {
+            case "ticket":
+                page.Elements.Add(Box(12, 29, 72, 3, new OfdColor(35, 35, 35)));
+                page.Elements.Add(Box(12, 38, 48, 3, new OfdColor(35, 35, 35)));
+                page.Elements.Add(Box(92, 28, 12, 25, new OfdColor(12, 12, 12)));
+                break;
+            case "invoice":
+                for (var row = 0; row < 4; row++)
+                    page.Elements.Add(Box(10, 28 + row * 9, 100, 1, new OfdColor(55, 85, 115)));
+                page.Elements.Add(Box(70, 28, 1, 28, new OfdColor(55, 85, 115)));
+                page.Elements.Add(Box(86, 62, 24, 5, new OfdColor(196, 42, 42)));
+                break;
+            case "template":
+                page.Elements.Add(Box(12, 28, 96, 40, new OfdColor(214, 231, 221)));
+                page.Elements.Add(Box(18, 34, 70, 3, new OfdColor(52, 96, 68)));
+                page.Elements.Add(Box(18, 46, 50, 3, new OfdColor(52, 96, 68)));
+                break;
+            default:
+                // A valid, intentionally awkward layout: touching and clipped shapes.
+                page.Elements.Add(Box(16, 30, 76, 18, new OfdColor(245, 178, 42)));
+                page.Elements.Add(Box(78, 40, 33, 25, new OfdColor(96, 45, 145)));
+                page.Elements.Add(Box(105, 55, 25, 10, new OfdColor(210, 58, 58)));
+                break;
+        }
+
+        var ofdPath = Path.Combine(actualDir, kind + ".ofd");
+        var pdfPath = Path.Combine(actualDir, kind + ".pdf");
+        await using (var ofd = File.Create(ofdPath))
+            await new OfdPackageWriter().WriteAsync(package, ofd);
+        await using (var ofd = File.OpenRead(ofdPath))
+        await using (var pdf = File.Create(pdfPath))
+            await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        var imagePath = Path.Combine(actualDir, kind + ".png");
+        var render = await RunProcessAsync("pdftoppm", $"-f 1 -l 1 -r 144 -png -singlefile \"{pdfPath}\" \"{Path.Combine(actualDir, kind)}\"");
+        if (render.ExitCode != 0 || !File.Exists(imagePath))
+            throw new InvalidOperationException($"Visual corpus render failed for {kind}: {render.Error}");
+        var golden = Path.Combine(goldenDir, kind + ".png");
+        if (!File.Exists(golden))
+            missingGoldens.Add(golden);
+        else
+        {
+            var error = await AssertImagesCloseAsync(golden, imagePath, 0.035,
+                Path.Combine(actualDir, kind + "-diff.png"));
+            metrics.Add(FormattableString.Invariant($"{kind},1,full,{error:R},0.035"));
+            foreach (var (region, geometry) in new[] { ("title", "400x90+40+30"), ("body", "560x260+55+145") })
+            {
+                var expectedCrop = Path.Combine(actualDir, kind + "-" + region + "-expected.png");
+                var actualCrop = Path.Combine(actualDir, kind + "-" + region + "-actual.png");
+                foreach (var (source, target) in new[] { (golden, expectedCrop), (imagePath, actualCrop) })
+                {
+                    var crop = await RunProcessAsync("convert", $"\"{source}\" -crop {geometry} +repage \"{target}\"");
+                    if (crop.ExitCode != 0)
+                        throw new InvalidOperationException($"Visual corpus crop failed: {crop.Error}");
+                }
+                var regionError = await AssertImagesCloseAsync(expectedCrop, actualCrop, 0.035,
+                    Path.Combine(actualDir, kind + "-" + region + "-diff.png"));
+                metrics.Add(FormattableString.Invariant($"{kind},1,{region},{regionError:R},0.035"));
+            }
+            Console.WriteLine(FormattableString.Invariant($"[E2E] Visual corpus {kind}: page 1 RMSE {error:R} <= 0.035."));
+        }
+    }
+    File.WriteAllLines(Path.Combine(actualDir, "visual-metrics.csv"), metrics);
+    if (missingGoldens.Count != 0)
+        throw new InvalidOperationException("Missing reviewed visual baselines: " + string.Join(", ", missingGoldens));
+}
 
 static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
 {
@@ -448,14 +539,15 @@ static async Task AssertImagesSameSizeAsync(string expectedPath, string actualPa
     }
 }
 
-static async Task AssertImagesCloseAsync(string expected, string actual, double tolerance)
+static async Task<double> AssertImagesCloseAsync(string expected, string actual, double tolerance, string? diffPath = null)
 {
     await AssertImagesSameSizeAsync(expected, actual);
-    var result = await RunProcessAsync("compare", $"-metric RMSE \"{expected}\" \"{actual}\" null:");
+    var result = await RunProcessAsync("compare", $"-metric RMSE \"{expected}\" \"{actual}\" \"{diffPath ?? "null:"}\"");
     var match = System.Text.RegularExpressions.Regex.Match(result.Error, @"\(([0-9.eE+-]+)\)");
     if (result.ExitCode > 1 || !match.Success ||
         !double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var error) || error > tolerance)
         throw new InvalidOperationException($"Rendered pages differ beyond {tolerance}: {expected} vs {actual}; {result.Error}");
+    return error;
 }
 
 static async Task AssertSignedSealRegionAsync(string imagePath)

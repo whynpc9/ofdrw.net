@@ -15,9 +15,11 @@ license for Ofdrw.Net itself.
 | SixLabors.ImageSharp | 2.1.13 | Apache-2.0 | https://github.com/SixLabors/ImageSharp |
 
 Transitive dependencies are resolved by NuGet and may change as direct
-dependencies are updated. Consumers should use the generated dependency graph
-and the corresponding package metadata when performing a release compliance
-review.
+dependencies are updated. The reviewed release inventory in
+`docs/third-party-dependency-baseline.json` records the resolved package
+versions and package-declared license metadata. A changed dependency graph
+requires renewed license review before release; older packages with only a
+license URL are not automatically assigned an SPDX expression.
 
 DOCX conversion invokes a separately installed LibreOffice executable. Ofdrw.Net
 does not bundle or redistribute LibreOffice; consumers are responsible for its
