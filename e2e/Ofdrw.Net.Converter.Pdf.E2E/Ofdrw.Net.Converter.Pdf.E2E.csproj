@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Ofdrw.Net.Converter" Version="$(OfdrwPackageVersion)" />
+    <PackageReference Include="Ofdrw.Net.Layout" Version="$(OfdrwPackageVersion)" />
     <PackageReference Include="Ofdrw.Net.Signatures" Version="$(OfdrwPackageVersion)" />
     <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
   </ItemGroup>

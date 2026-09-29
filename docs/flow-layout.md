@@ -1,0 +1,32 @@
+# 公开流式布局 API
+
+`Ofdrw.Net.Layout` 的 `FlowDocument` 让调用方用段落和 Span 生成多页 OFD。页面尺寸、边距、缩进和字号都以毫米计；调用方不用设置 TextObject 坐标。首版支持文本段落、左/中/右对齐、局部粗体、斜体、颜色、折行、显式换页和自动分页。公开表格、Canvas、图片块与两端对齐仍属于后续票。
+
+```csharp
+using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Layout;
+using Ofdrw.Net.Packaging;
+
+var document = new FlowDocument();
+var paragraph = new Paragraph { Alignment = ParagraphAlignment.Center };
+paragraph.Spans.Add(new Span("中文 English "));
+paragraph.Spans.Add(new Span("重点") { Bold = true, Color = new OfdColor(192, 0, 0) });
+document.Blocks.Add(paragraph);
+for (var i = 0; i < 100; i++) document.Blocks.Add(new Paragraph($"第 {i + 1} 段内容。"));
+
+var package = document.Render();
+await using var output = File.Create("report.ofd");
+await new OfdPackageWriter().WriteAsync(package, output);
+```
+
+默认 A4、四边 25.4 mm、10.5 pt 等值字号（3.704 mm）、`SimSun` 字体名。每个 Span 的粗斜体是独立的，不会传播到相邻 Span。换行符 `CRLF`/`CR` 归一为 `LF`；显式 `\n` 换行、`\f` 换页，过长英文单词按 Unicode 文本元素拆分。横排 Latin 字宽优先用系统中声明的字体测量，缺失时尝试 Arial、Liberation Sans、DejaVu Sans；CJK 使用 1 em 策略。写出的 OFD 记录每个文本元素的 `DeltaX`，保证测量与 OFD 字位移一致。默认字体仅声明名称，不嵌入字节；跨机器展示需确保目标阅读器有合适 CJK 字体，字体子集和嵌入复用留给 05 票。
+
+`Render()` 每次生成新包，不修改之前返回的包；调用方可复用描述对象，但不要在其他线程同时修改其 `Blocks`、`Spans` 或 `Options`。超高行、无可用宽度、无比例度量字体、页数、字符数和文本元素数量超限会明确失败，不会静默裁切。预算由 `MaxPageCount`、`MaxCharacters`、`MaxTextElements` 控制，取消通过 `CancellationToken` 传入。`OfdDocumentBuilder` 的按页坐标 API 保持可用。
+
+运行仓库内的无隐私样例：
+
+```bash
+dotnet run --project e2e/Ofdrw.Net.Layout.E2E -c Release -- artifacts/flow-layout
+```
+
+样例同时生成公开 Flow、显式 Native DOCX 和默认 DOCX 的 OFD/PDF。视觉验收必须打开本次 OFD 导出的 PDF；测试和 `pdftoppm` 页面图不代替 macOS Preview。实际检查记录见[2026-09-29 验收](validation/flow-layout-2026-09-29.md)。
