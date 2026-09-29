@@ -9,6 +9,10 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_HOME: ${{ runner.temp }}/dotnet-home
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
 
     steps:
       - name: Checkout
@@ -32,13 +36,19 @@ jobs:
           python scripts/install-ci-fonts.py
 
       - name: Restore
-        run: dotnet restore Ofdrw.Net.sln
+        run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Check release notices
+        run: python3 scripts/verify-package-artifacts.py --notices-only
 
       - name: Test package artifact validation
         run: python3 -m unittest discover -s scripts/tests -v
 
       - name: Build
-        run: dotnet build Ofdrw.Net.sln -c Release --no-restore
+        run: dotnet build Ofdrw.Net.sln -c Release --no-restore --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Reject new undocumented public API
+        run: python3 scripts/check-public-api-docs.py
 
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
@@ -53,6 +63,10 @@ jobs:
   builtin-docx:
     name: BuiltIn DOCX (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      DOTNET_CLI_HOME: ${{ runner.temp }}/dotnet-home
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -96,6 +110,10 @@ jobs:
 
   package-e2e:
     runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_HOME: ${{ runner.temp }}/dotnet-home
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     needs: [build-test, builtin-docx]
 
     steps:
