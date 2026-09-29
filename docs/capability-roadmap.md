@@ -11,6 +11,8 @@
 
 可开工的垂直切片在 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)。按索引里的建议批次领票，不要按文件号把后面的 P1/P2 当成下一批。`Status: blocked` 的票要等阻塞项完成。
 
+逐票源码对照、实施顺序和验收闸门见 [开发计划](capability-roadmap-development-plan.md)。
+
 状态：
 
 - **待办**：尚未开始。
