@@ -210,6 +210,32 @@ public sealed class FlowDocumentTests
     }
 
     [Fact]
+    public void CrossSpanCrLfAndGrapheme_UseLogicalParagraphStream()
+    {
+        var lineBreak = new FlowDocument();
+        var paragraph = new Paragraph();
+        paragraph.Spans.Add(new Span("A\r"));
+        paragraph.Spans.Add(new Span("\nB"));
+        lineBreak.Blocks.Add(paragraph);
+        var lines = Assert.Single(lineBreak.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "A", "B" }, lines.Select(line => line.Text));
+        Assert.Equal(lineBreak.Options.DefaultFontSizeMillimeters * 1.3,
+            lines[1].YMillimeters - lines[0].YMillimeters, 4);
+
+        var grapheme = new FlowDocument();
+        var combined = new Paragraph();
+        combined.Spans.Add(new Span("e") { Bold = true });
+        combined.Spans.Add(new Span("\u0301") { Color = new OfdColor(192, 0, 0) });
+        combined.Spans.Add(new Span(" A"));
+        grapheme.Blocks.Add(combined);
+        var values = Assert.Single(grapheme.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        var leading = Assert.Single(values, value => value.Text == "e\u0301");
+        Assert.Equal(OfdTextElement.BoldWeight, leading.Weight);
+        Assert.Equal(OfdColor.Black, leading.FillColor);
+        Assert.Single(values, value => value.Text == " A");
+    }
+
+    [Fact]
     public void FullWidthImage_WithFirstLineIndent_IsScaledIntoAvailableLine()
     {
         var marker = new object();
