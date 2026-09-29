@@ -17,14 +17,15 @@ class PackageArtifactsTests(unittest.TestCase):
         for name in packages.PACKAGES:
             path = self.root / f'{name}.{self.version}.nupkg'
             with zipfile.ZipFile(path, 'w') as archive:
-                archive.writestr(name + '.nuspec', f'<package><metadata><id>{name}</id><version>{self.version}</version></metadata></package>')
+                archive.writestr(name + '.nuspec', f'<package><metadata><id>{name}</id><version>{self.version}</version><license type="expression">MIT</license></metadata></package>')
                 for file in ('README.md', 'THIRD-PARTY-NOTICES.md', 'docs/feature-parity.md', 'docs/conversion-contracts.md'):
-                    archive.writestr(file, 'fixture')
+                    archive.writestr(file, (packages.ROOT / file).read_bytes() if file == 'THIRD-PARTY-NOTICES.md' else 'fixture')
                 if name == 'Ofdrw.Net.Cli':
                     archive.writestr('tools/net10.0/any/Ofdrw.Net.Cli.dll', b'fixture')
                 elif name != 'Ofdrw.Net.Converter':
                     for framework in ('netstandard2.0', 'netstandard2.1'):
                         archive.writestr(f'lib/{framework}/{name}.dll', b'fixture')
+                        archive.writestr(f'lib/{framework}/{name}.xml', b'<doc />')
 
     def tearDown(self):
         self.temp.cleanup()
@@ -54,10 +55,30 @@ class PackageArtifactsTests(unittest.TestCase):
         path = self.root / f'Ofdrw.Net.Core.{self.version}.nupkg'
         with zipfile.ZipFile(path) as archive:
             contents = {name: archive.read(name) for name in archive.namelist()}
-        contents['Ofdrw.Net.Core.nuspec'] = f'<package><metadata><id>Ofdrw.Net.Core</id><version>{self.version}</version><dependencies><dependency id="Ofdrw.Net.Reader" version="0.0.0" /></dependencies></metadata></package>'.encode()
+        contents['Ofdrw.Net.Core.nuspec'] = f'<package><metadata><id>Ofdrw.Net.Core</id><version>{self.version}</version><license type="expression">MIT</license><dependencies><dependency id="Ofdrw.Net.Reader" version="0.0.0" /></dependencies></metadata></package>'.encode()
         with zipfile.ZipFile(path, 'w') as archive:
             for name, data in contents.items(): archive.writestr(name, data)
         with self.assertRaises(ValueError): packages.inspect(self.root, self.version)
+
+    def test_missing_license_expression_is_rejected(self):
+        path = self.root / f'Ofdrw.Net.Core.{self.version}.nupkg'
+        with zipfile.ZipFile(path) as archive:
+            contents = {name: archive.read(name) for name in archive.namelist()}
+        contents['Ofdrw.Net.Core.nuspec'] = contents['Ofdrw.Net.Core.nuspec'].replace(b'<license type="expression">MIT</license>', b'')
+        with zipfile.ZipFile(path, 'w') as archive:
+            for name, data in contents.items(): archive.writestr(name, data)
+        with self.assertRaisesRegex(ValueError, 'license expression'):
+            packages.inspect(self.root, self.version)
+
+    def test_changed_third_party_notice_is_rejected(self):
+        path = self.root / f'Ofdrw.Net.Core.{self.version}.nupkg'
+        with zipfile.ZipFile(path) as archive:
+            contents = {name: archive.read(name) for name in archive.namelist()}
+        contents['THIRD-PARTY-NOTICES.md'] = b'outdated'
+        with zipfile.ZipFile(path, 'w') as archive:
+            for name, data in contents.items(): archive.writestr(name, data)
+        with self.assertRaisesRegex(ValueError, 'notices differ'):
+            packages.inspect(self.root, self.version)
 
 
 if __name__ == '__main__': unittest.main()
