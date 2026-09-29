@@ -156,7 +156,9 @@ Console.WriteLine("[E2E] Success: package installation and conversion flow is wo
 
 static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
 {
-    var goldenDir = Path.Combine(repoRoot, "e2e", "visual-corpus", "golden");
+    var platform = OperatingSystem.IsLinux() ? "linux" : OperatingSystem.IsMacOS() ? "macos" :
+        throw new PlatformNotSupportedException("Visual corpus requires a reviewed platform baseline.");
+    var goldenDir = Path.Combine(repoRoot, "e2e", "visual-corpus", "golden", platform);
     var actualDir = Path.Combine(outputDir, "visual-corpus");
     Directory.CreateDirectory(actualDir);
     var missingGoldens = new List<string>();
