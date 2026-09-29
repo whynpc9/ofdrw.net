@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 
 namespace Ofdrw.Net.Layout.Internal.Flow;
@@ -72,11 +73,46 @@ internal static class FlowParagraphLayout
     {
         if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
         var glyphs = new List<FlowGlyph>();
+        var rawText = new StringBuilder();
+        var rawStyles = new List<FlowTextStyle>();
+        void FlushText()
+        {
+            if (rawText.Length == 0) return;
+            var normalized = new StringBuilder(rawText.Length);
+            var styles = new List<FlowTextStyle>(rawText.Length);
+            for (var index = 0; index < rawText.Length; index++)
+            {
+                if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                var value = rawText[index];
+                var style = rawStyles[index];
+                if (value == '\r')
+                {
+                    // CRLF may straddle two spans; the control belongs to its leading span.
+                    if (index + 1 < rawText.Length && rawText[index + 1] == '\n') index++;
+                    value = '\n';
+                }
+                normalized.Append(value);
+                styles.Add(style);
+            }
+            var enumerator = StringInfo.GetTextElementEnumerator(normalized.ToString());
+            while (enumerator.MoveNext())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var element = enumerator.GetTextElement();
+                // A grapheme crossing a span boundary takes the leading scalar's style.
+                var style = styles[enumerator.ElementIndex];
+                glyphs.Add(new FlowGlyph(element, style,
+                    element == "\n" || element == "\f" ? 0 : metrics.AdvanceMillimeters(element, style)));
+            }
+            rawText.Clear();
+            rawStyles.Clear();
+        }
         foreach (var inline in inlines)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (inline.Image is not null)
             {
+                FlushText();
                 if (double.IsNaN(inline.ImageWidthMillimeters) || double.IsInfinity(inline.ImageWidthMillimeters) ||
                     inline.ImageWidthMillimeters <= 0 || double.IsNaN(inline.ImageHeightMillimeters) ||
                     double.IsInfinity(inline.ImageHeightMillimeters) || inline.ImageHeightMillimeters <= 0)
@@ -87,16 +123,14 @@ internal static class FlowParagraphLayout
                     inline.ImageHeightMillimeters * scale));
                 continue;
             }
-            var text = inline.Text.Replace("\r\n", "\n").Replace('\r', '\n');
-            var enumerator = StringInfo.GetTextElementEnumerator(text);
-            while (enumerator.MoveNext())
+            for (var index = 0; index < inline.Text.Length; index++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var element = enumerator.GetTextElement();
-                glyphs.Add(new FlowGlyph(element, inline.Style,
-                    element == "\n" || element == "\f" ? 0 : metrics.AdvanceMillimeters(element, inline.Style)));
+                if ((index & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                rawText.Append(inline.Text[index]);
+                rawStyles.Add(inline.Style);
             }
         }
+        FlushText();
 
         var result = new List<FlowLine>();
         var current = new List<FlowGlyph>();
