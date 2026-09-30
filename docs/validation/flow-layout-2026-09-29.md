@@ -1,6 +1,28 @@
 # 公开流式布局与 DOCX Native 页面验收（2026-09-29）
 
-## 最新 review18 补充验收（2026-09-30）
+## 最新 review19 节边界补充验收（2026-09-30）
+
+- 代码状态：`6b821344ab40221af7aafb22bedd6c3a09e59441`，后续验收文档提交不改动代码。非末节结束时，先处理显式 FF，再用所属节的 `LayoutState` 逐行提交延期 LF；末节 EOF 仍延期，不生成空白尾页。Astra 有界复核闭合。
+- Sol Low 独立最终全套 Release：**252/252 通过，0 失败/跳过**（7 份 TRX，主任务再次核对）。样例构建 0 警告/错误，23 组 OFD/PDF 共 45 页，11 个本地包隔离消费 E2E 通过；日志/产物在 `artifacts/flow-layout/review19/`。
+- 新增 3 项内部参数化回归覆盖 0/1/2 个 LF、空行所属节页宽和 EOF 单页保护，2 项实际 DOCX 回归覆盖 Native/default。恢复旧条件时 4 失败、1 无 LF 保护通过；修复后全套通过，负向证据：`review19/before-fix-section-tests.log`。
+- 实际新验收：DOCX → 显式 Native/default OFD → PDF → **macOS Preview**，重新打开 review19 的两份 PDF，检查全部 8 页及完整页面边界。第一节 A 与两页显式空行使用约 106×19 mm；第四页 B 使用第二节约 120×297 mm，位于正文顶部，无裁切、重叠、重复文本或意外尾页。
+- review19 的原有 37 张 PNG 与 review18 **37/37 逐字节相同**，仅为辅助回归证据。实际 Preview 查看范围分别保留为 review16 的 28 页、review18 的新增 9 页、review19 的新增 8 页，不宣称在 review19 再次打开了全部 45 页。
+
+| 实际 OFD → PDF | 检查页 | 结果 |
+| --- | --- | --- |
+| `review19/section-newline-native.ofd` → `section-newline-native.pdf` | 1–4 / 4 | A、空行、空行归属第一节；B 归属第二节，页面尺寸与顶部位置正确，全部页面边界正常。 |
+| `review19/section-newline-default.ofd` → `section-newline-default.pdf` | 1–4 / 4 | 默认模式与显式 Native 的四页外观一致，未见缺字、裁切、重复文本或异常尾页。 |
+
+| 文件（`artifacts/flow-layout/review19/`） | 字节 | SHA-256 |
+| --- | ---: | --- |
+| `section-newline-native.ofd` | 15,287,454 | `caa506fde14e0d479246f5cea9e105c476269a5632f8975a9a409c50f2e8ecc3` |
+| `section-newline-native.pdf` | 64,986 | `8b0967cb109383d6adfbaf2a15104d7ee2362b938e3147b9a418bf347caab6c8` |
+| `section-newline-default.ofd` | 15,287,458 | `2a4adcc0175ade8cf8faf136e2bc6d76a1edb54c04df7fb160076c0b727ce9c7` |
+| `section-newline-default.pdf` | 64,986 | `2e8ee54bcdf77f41c902979dd5265ab8e62f54bddc288c9694622e65d23480ae` |
+
+新增两份四页 PDF 均为 64,986 字节；DOCX OFD 仍约 15.3 MB。完整本轮 46 产物清单、字节和哈希保存在 `review19/artifact-manifest.tsv`，原有页面像素没有变化。
+
+## review18 补充验收（2026-09-30）
 
 - 代码状态：`93a6978fd0cba99cd80a64e2ff228ddebccfbcee`。后续文档提交不改变生成代码。修复 Codex 的 LF-only 前段导致 `PageBreakBefore` 忽略，以及 Cursor 的同段/前置混合字号换行使用前一个字号；Astra 对两项有界契约复核闭合。
 - Sol Low 独立最终复验：**247/247 通过、0 失败/跳过**（7 份 TRX），E2E 构建 0 警告/错误、21 组 OFD/PDF 共 37 页，11 本地包隔离消费 E2E 通过。主任务核对 TRX 合计。日志、TRX 和包消费产物在 `artifacts/flow-layout/review18/`。
@@ -47,7 +69,7 @@
 
 ## 功能验证
 
-- Sol Low 独立顺序运行最新全套 Release 测试：**223 通过、0 失败、0 跳过**；主任务复核 7 份 TRX：Core 5、Packaging 23、PDF 51、Signatures 4、DOCX 90、Extensions 5、Layout 45。E2E 项目构建 0 警告、0 错误，15 组 OFD/PDF 生成通过。
+- Sol Low 独立顺序运行最新全套 Release 测试：**223 通过、0 失败、0 跳过**；主任务复核 7 份 TRX：Core 5、Packaging 23、PDF 51、Signatures 4、DOCX 90、CLI 5、Layout 45。E2E 项目构建 0 警告、0 错误，15 组 OFD/PDF 生成通过。
 - 11 个本地 NuGet 包构建、隔离 feed 安装和消费 E2E 通过；公开 Layout 消费生成 4 页，完成 OFD 重读/文字检查；CLI Native 与 DualLayer 各 2 页。产物在 `review16/package-e2e-output/`。未发布公共 NuGet。
 - 既有回归覆盖跨 Span 单词/CRLF/组合字素、CJK 与 Hangul 字宽、比例英文、首行缩进、样式/往返、段间距、取消/预算、连续显式分页、Native section 归属、图片缩进和原有 Native/default/DualLayer 行为。
 - 自动折行尾普通空格仅取消推进量，原始文本/样式保留；居中/右对齐及元素右边界回归通过。GL 空格 U+00A0/U+202F/U+2007 连接相邻文字，含跨 Span 组合标记；窄 NBSP = 0.2 em，数字空格 = 当前样式数字字宽。临界宽度与四种粗斜体样式回归通过。定位纯空白 PDF 字素不绘制缺字方框，同时保留语义与推进量。旧绘制条件的四项像素测试 4/4 失败，恢复修复后通过，证据：`review9/before-fix-pixel-regression.log`。
