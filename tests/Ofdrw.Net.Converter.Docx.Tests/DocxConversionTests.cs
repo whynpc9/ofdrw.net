@@ -24,6 +24,84 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 public sealed partial class DocxConversionTests
 {
     [Theory]
+    [InlineData("café")]
+    [InlineData("cafe\u0301")]
+    public void Native_AccentedLatinWord_ShouldMoveIntactToFreshLine(string word)
+    {
+        var model = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel();
+        var paragraph = new BuiltInParagraphModel();
+        paragraph.Inlines.Add(new BuiltInTextModel { Text = "prefix " });
+        paragraph.Inlines.Add(new BuiltInTextModel { Text = word });
+        section.Blocks.Add(paragraph); model.Sections.Add(section);
+        OfdTextElement[] Render() => Assert.Single(new BuiltInOfdRenderer(new DocxConversionOptions(),
+                new List<DocxConversionDiagnostic>(), default).Render(model).Pages)
+            .Elements.OfType<OfdTextElement>().ToArray();
+        var measured = Render();
+        section.MarginLeftPoints = section.MarginRightPoints = 10;
+        section.PageWidthPoints = (measured[0].WidthMillimeters + measured[1].WidthMillimeters / 2) * 72 / 25.4 + 20;
+        var actual = Render();
+        Assert.Equal(new[] { "prefix ", word }, actual.Select(value => value.Text));
+        Assert.True(actual[1].YMillimeters > actual[0].YMillimeters);
+    }
+
+    [Theory]
+    [InlineData("\u00A0")]
+    [InlineData("\u202F")]
+    [InlineData("\u2007")]
+    public void Native_NonbreakingSpaceWithCrossSpanMark_ShouldStayConnected(string separator)
+    {
+        var referenceModel = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel();
+        var paragraph = new BuiltInParagraphModel();
+        paragraph.Inlines.Add(new BuiltInTextModel { Text = "X " });
+        paragraph.Inlines.Add(new BuiltInTextModel { Text = "A" + separator });
+        paragraph.Inlines.Add(new BuiltInTextModel { Text = "\u0301", Format = { Bold = true } });
+        paragraph.Inlines.Add(new BuiltInTextModel { Text = "B" });
+        section.Blocks.Add(paragraph);
+        referenceModel.Sections.Add(section);
+        var measured = Assert.Single(new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(referenceModel).Pages)
+            .Elements.OfType<OfdTextElement>().ToArray();
+        var unitWidth = measured.Skip(1).Sum(value => value.WidthMillimeters);
+        section.MarginLeftPoints = section.MarginRightPoints = 10;
+        section.PageWidthPoints = (measured[0].WidthMillimeters + unitWidth / 2) * 72 / 25.4 + 20;
+        var actual = Assert.Single(new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(referenceModel).Pages)
+            .Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "X ", "A" + separator + "\u0301", "B" }, actual.Select(value => value.Text));
+        Assert.True(actual[1].YMillimeters > actual[0].YMillimeters);
+        Assert.Equal(actual[1].YMillimeters, actual[2].YMillimeters, 5);
+        Assert.False(actual[1].Weight == OfdTextElement.BoldWeight);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Native_ConsecutiveTerminalNewlines_ShouldDeferBlankTailPages(bool explicitNative)
+    {
+        async Task<OfdDocumentPackage> Convert(bool followingContent, bool shortPage)
+        {
+            var following = followingContent ? "<w:p><w:r><w:t>B</w:t></w:r></w:p>" : "";
+            var height = shortPage ? 1077 : 6000;
+            await using var input = CreateMinimalDocx($"""
+                <w:p><w:r><w:t>A</w:t><w:br/><w:br/></w:r></w:p>{following}
+                <w:sectPr><w:pgSz w:w="6000" w:h="{height}"/><w:pgMar w:top="283" w:bottom="283" w:left="200" w:right="200"/></w:sectPr>
+                """);
+            await using var output = new MemoryStream();
+            var converter = explicitNative ? new DocxToOfdConverter(new DocxConversionOptions { OfdMode = DocxToOfdMode.Native })
+                : new DocxToOfdConverter();
+            await converter.ConvertAsync(input, output); output.Position = 0;
+            return await new OfdReader().ReadAsync(output);
+        }
+        var terminal = await Convert(false, true);
+        Assert.Equal("A", Assert.Single(Assert.Single(terminal.Pages).Elements.OfType<OfdTextElement>()).Text);
+        var followed = Assert.Single((await Convert(true, false)).Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "A", "B" }, followed.Select(value => value.Text));
+        Assert.Equal(10.5 * 25.4 / 72 * 1.3 * 3, followed[1].YMillimeters - followed[0].YMillimeters, 2);
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]

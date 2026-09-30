@@ -9,6 +9,77 @@ namespace Ofdrw.Net.Layout.Tests;
 public sealed class FlowDocumentTests
 {
     [Theory]
+    [InlineData("\u00A0")]
+    [InlineData("\u202F")]
+    [InlineData("\u2007")]
+    public void NonbreakingSpaceWithCrossSpanCombiningMark_KeepsItsConnection(string separator)
+    {
+        var style = new FlowTextStyle();
+        var inlines = new[] { new FlowInline { Text = "X A" + separator, Style = style },
+            new FlowInline { Text = "\u0301", Style = new FlowTextStyle { Bold = true } },
+            new FlowInline { Text = "B", Style = style } };
+        var lines = FlowParagraphLayout.Layout(inlines, new FlowParagraphFormat(), 4,
+            new FixedMetrics(), style, default);
+        Assert.Equal(new[] { "X ", "A" + separator + "\u0301B" },
+            lines.Select(line => string.Concat(line.Glyphs.Select(g => g.Text))));
+        var joinedSpace = lines[1].Glyphs[1];
+        Assert.Equal(separator + "\u0301", joinedSpace.Text);
+        Assert.Same(style, joinedSpace.Style);
+        Assert.Equal(1, joinedSpace.Width);
+        Assert.Throws<InvalidOperationException>(() => FlowParagraphLayout.Layout(inlines.Skip(1)
+            .Prepend(new FlowInline { Text = "A" + separator, Style = style }).ToArray(),
+            new FlowParagraphFormat(), 2, new FixedMetrics(), style, default));
+    }
+
+    [Theory]
+    [InlineData("X café", "")]
+    [InlineData("X cafe", "\u0301")]
+    [InlineData("X über", "")]
+    public void LatinWordWithPrecomposedOrCrossSpanCombiningMark_IsMeasuredAsOneWord(string baseText, string mark)
+    {
+        var style = new FlowTextStyle();
+        var lines = FlowParagraphLayout.Layout(new[] { new FlowInline { Text = baseText, Style = style },
+                new FlowInline { Text = mark, Style = new FlowTextStyle { Bold = true } } },
+            new FlowParagraphFormat(), 5, new FixedMetrics(), style, default);
+        var word = baseText.Substring(2) + mark;
+        Assert.Equal(new[] { "X ", word }, lines.Select(line => string.Concat(line.Glyphs.Select(g => g.Text))));
+        Assert.Same(style, lines[1].Glyphs[3].Style);
+        var oversized = FlowParagraphLayout.Layout(new[] { new FlowInline { Text = word + "z", Style = style } },
+            new FlowParagraphFormat(), 3, new FixedMetrics(), style, default);
+        Assert.Equal(2, oversized.Count);
+        Assert.Equal(3, oversized[0].Glyphs.Count);
+        Assert.Equal(word + "z", string.Concat(oversized.SelectMany(line => line.Glyphs).Select(g => g.Text)));
+    }
+
+    [Theory]
+    [InlineData("A\n\n")]
+    [InlineData("A\n\n\n")]
+    [InlineData("A\n\n\f")]
+    public void TrailingControlSequence_DoesNotCreateBlankTailPages(string value)
+    {
+        var document = new FlowDocument();
+        document.Options.PageHeightMillimeters = 19;
+        document.Options.MarginTopMillimeters = document.Options.MarginBottomMillimeters = 5;
+        document.Blocks.Add(new Paragraph(value));
+        Assert.Equal("A", Assert.Single(Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>()).Text);
+    }
+
+    [Fact]
+    public void ConsecutiveTerminalNewlines_ReserveEveryLineBeforeFollowingContent()
+    {
+        var document = new FlowDocument();
+        var first = new Paragraph();
+        first.Spans.Add(new Span("A\r"));
+        first.Spans.Add(new Span("\n\n"));
+        document.Blocks.Add(first);
+        document.Blocks.Add(new Paragraph("B"));
+        var text = Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "A", "B" }, text.Select(value => value.Text));
+        Assert.Equal(document.Options.DefaultFontSizeMillimeters * 1.3 * 3,
+            text[1].YMillimeters - text[0].YMillimeters, 4);
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(false, true)]
