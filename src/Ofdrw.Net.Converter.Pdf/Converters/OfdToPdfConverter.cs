@@ -10,6 +10,7 @@ using Ofdrw.Net.Converter.Abstractions.Interfaces;
 using Ofdrw.Net.Converter.Pdf.Internal;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Readers;
+using Ofdrw.Net.Layout.Internal.Flow;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Fonts;
@@ -367,6 +368,15 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     private static void DrawStyledString(XGraphics graphics, string text, XFont font, XBrush brush,
         XPoint point, SixLabors.Fonts.Font? outlineFont, bool italic, XStringFormat? format = null)
     {
+        // PDFsharp does not compose Latin mark sequences (notably dotted i).
+        // Match the supported composite used for measurement when drawing one
+        // grapheme. OFD source text stays unchanged; PDF text is canonically equivalent.
+        if (text.Length > 1 && text[0] <= 0xFF && char.IsLetter(text[0]))
+        {
+            var elements = StringInfo.GetTextElementEnumerator(text);
+            if (elements.MoveNext() && !elements.MoveNext())
+                text = FlowTextMetrics.NormalizeLatinForMeasurement(text);
+        }
         // PDFsharp Core 1.3.67 drops resolver style simulations when creating
         // XGlyphTypeface. Apply the missing fallback appearance at draw time.
         var state = graphics.Save();
@@ -375,7 +385,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             // PDFsharp Core can omit the zero-alpha graphics state for text
             // after an image. Keep semantic text extractable, but guarantee
             // that a fully transparent fill cannot paint any pixels.
-            if (brush is XSolidBrush transparent && transparent.Color.A == 0)
+            // A positioned whitespace glyph must remain blank even when the bound
+            // font lacks it and returns a visible .notdef outline (e.g. narrow NBSP).
+            // Still emit semantic text and let OFD DeltaX/DeltaY carry its advance.
+            if (text.All(char.IsWhiteSpace) || brush is XSolidBrush transparent && transparent.Color.A == 0)
                 graphics.IntersectClip(new XRect(0, 0, 0, 0));
             graphics.TranslateTransform(point.X, point.Y);
             if (italic)

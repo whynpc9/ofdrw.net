@@ -7,4 +7,9 @@
   <ItemGroup>
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Layout.Tests" />
+  </ItemGroup>
 </Project>

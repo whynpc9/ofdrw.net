@@ -254,13 +254,17 @@ internal sealed class DocxModelReader
                     paragraph.Inlines.Add(new BuiltInTabModel());
                     break;
                 case Break br:
+                    var breakFormat = new BuiltInTextFormat();
+                    ApplyRunFormat(breakFormat, run);
                     paragraph.Inlines.Add(new BuiltInBreakModel
                     {
-                        IsPageBreak = br.Type?.Value == BreakValues.Page
+                        IsPageBreak = br.Type?.Value == BreakValues.Page, Format = breakFormat
                     });
                     break;
                 case CarriageReturn:
-                    paragraph.Inlines.Add(new BuiltInBreakModel());
+                    var returnFormat = new BuiltInTextFormat();
+                    ApplyRunFormat(returnFormat, run);
+                    paragraph.Inlines.Add(new BuiltInBreakModel { Format = returnFormat });
                     break;
                 case Drawing drawing:
                     ReadDrawing(drawing, sourcePart, paragraph);
