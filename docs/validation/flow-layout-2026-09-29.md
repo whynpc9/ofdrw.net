@@ -1,6 +1,40 @@
 # 公开流式布局与 DOCX Native 页面验收（2026-09-29）
 
-## 最新 review19 节边界补充验收（2026-09-30）
+## 最新 review21 正文 PAGE 补充验收（2026-09-30）
+
+- 代码状态：`6ad54807d4d20e387abc925db8fc5b9742046df7`；后续文档提交不改变生成代码。正文 PAGE 段先按原顺序消费前置空行/FF，再使用延期 LF、段间距确定首个正文行的目标页；每次换页都完整重排，确认首行可放下后仅提交一次 gap，再绘制。页号位数改变时字宽和 DeltaX 同步重测。普通无 PAGE 段落仍走既有路径。
+- Sol Low 独立最终 Release **263/263 通过，0 失败/跳过**（7 份 TRX，主任务核对）；样例构建 0 警告/错误，29 组 OFD/PDF 共 61 页，11 包隔离消费 E2E 通过。日志、TRX、页面图和包产物在 `artifacts/flow-layout/review21/`。
+- 11 项新回归覆盖延期空行后的 PAGE、段后距推动逻辑页号 9→10、完整字段字宽/DeltaX、逻辑页码重启、前置 FF 不重复、同段前置 LF、混合 LF/FF 与 gap 只应用一次。恢复旧 PAGE 路径时 **11/11 失败**；修复后全套通过，负向日志 `review21/before-fix-page-field-tests.log`。Astra 有界复核闭合；Sol 发现的前置 LF 边界也已修复并复核。
+- 实际查看链路：DOCX → 显式 Native/default OFD → PDF → **macOS Preview**。六份新增 PDF 均重新打开并核对 review21 路径，检查全部 **16 页**及正文位置/边界。原 45 张页面 PNG 与 review19 **45/45 逐字节相同**，仅作辅助回归；不宣称在 review21 重新打开了全部 61 页。之前实际查看的 review16 28 页、review18 9 页、review19 8 页记录在下方。
+- 支持边界：本轮校准首个正文行页号上下文；同段正文在之后自动分页或中途 FF 后的 PAGE 仍沿用该上下文，未实现完整正文动态字段引擎。文档已明确这一限制；公开的页眉页脚逐页计数契约不变。
+
+| 本轮 OFD → PDF | 实际检查页 | 结果 |
+| --- | --- | --- |
+| `review21/page-field-native.ofd` → `page-field-native.pdf` | 1–4 / 4 | A 在第一页，第二、三页为显式空行，第四页正文正确显示 4，顶部位置与间距正常，没有旧页号或重复文字。 |
+| `review21/page-field-default.ofd` → `page-field-default.pdf` | 1–4 / 4 | A 在第一页，第二、三页为显式空行，第四页正文正确显示 4，顶部位置与间距正常，没有旧页号或重复文字。 |
+| `review21/page-field-gap-native.ofd` → `page-field-gap-native.pdf` | 1–2 / 2 | 第一逻辑页号从 9 开始，段后距将 PAGE 段移动到第二页，正确显示两位数 10；字间距和边界正常，gap 没有重复应用。 |
+| `review21/page-field-gap-default.ofd` → `page-field-gap-default.pdf` | 1–2 / 2 | 第一逻辑页号从 9 开始，段后距将 PAGE 段移动到第二页，正确显示两位数 10；字间距和边界正常，gap 没有重复应用。 |
+| `review21/page-field-leading-native.ofd` → `page-field-leading-native.pdf` | 1–2 / 2 | 同段首个 LF 保留空白第一页，第二页正文正确显示 2，位于页顶；无额外空页、裁切或重复文字。 |
+| `review21/page-field-leading-default.ofd` → `page-field-leading-default.pdf` | 1–2 / 2 | 同段首个 LF 保留空白第一页，第二页正文正确显示 2，位于页顶；无额外空页、裁切或重复文字。 |
+
+| 文件（`artifacts/flow-layout/review21/`） | 字节 | SHA-256 |
+| --- | ---: | --- |
+| `page-field-native.ofd` | 15,287,453 | `d31c6ed0f0fea1a9d14ffc06aef31d6b529bd525f81c8748ee035b58c7f31c56` |
+| `page-field-native.pdf` | 64,897 | `32978d10975e101bf18207025207c9fb5dbedcbc2aab0545778fd2418aaad5f3` |
+| `page-field-default.ofd` | 15,287,455 | `297b732c8d7e39934295159fb3c52823b906a89e934e0610c422dbfed1843b44` |
+| `page-field-default.pdf` | 64,897 | `dc19bec5aaae8516b1c25f4a6bcefd93dbe138ae15670018ae1b5ab9ef457933` |
+| `page-field-gap-native.ofd` | 15,286,834 | `cdef3e860af8fa14c00555b982993afed38233ed15044564137cd53ad115acb9` |
+| `page-field-gap-native.pdf` | 64,599 | `ee1465b72ffd1e3343b0a2f5e596f5f50f94ad0e915f7299a28ac197fe97a18c` |
+| `page-field-gap-default.ofd` | 15,286,832 | `2de6978db6982973fb05d465a9d4745e525e88a10c8eda4b4602e59bb3bb8c01` |
+| `page-field-gap-default.pdf` | 64,599 | `a35b21b26e323915e9d6f416f1306d580cbce3b300fab31bdded1a27bf66f175` |
+| `page-field-leading-native.ofd` | 15,286,733 | `705a58121e5d39841bb8bf6df68f17d852ed465df03c9e613e66af53163c2456` |
+| `page-field-leading-native.pdf` | 63,915 | `8a8140d88c59d847144f27886ac0e7b42c37747973340c7d2ae33c96b540d914` |
+| `page-field-leading-default.ofd` | 15,286,734 | `28e48f369d6341454c1bea25e58b876d131a8c620ebb6ed5ef1a654fff929be6` |
+| `page-field-leading-default.pdf` | 63,915 | `8aebb5a26b2139145228e9612a20762fe206beb62ddf03947b98a92611af8f49` |
+
+新增 PDF 为约 64–65 KB，DOCX OFD 保持约 15.3 MB，没有异常体积增长。完整 58 个本轮 OFD/PDF 的清单、大小与哈希位于 `review21/artifact-manifest.tsv`。
+
+## review19 节边界补充验收（2026-09-30）
 
 - 代码状态：`6b821344ab40221af7aafb22bedd6c3a09e59441`，后续验收文档提交不改动代码。非末节结束时，先处理显式 FF，再用所属节的 `LayoutState` 逐行提交延期 LF；末节 EOF 仍延期，不生成空白尾页。Astra 有界复核闭合。
 - Sol Low 独立最终全套 Release：**252/252 通过，0 失败/跳过**（7 份 TRX，主任务再次核对）。样例构建 0 警告/错误，23 组 OFD/PDF 共 45 页，11 个本地包隔离消费 E2E 通过；日志/产物在 `artifacts/flow-layout/review19/`。
