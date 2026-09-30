@@ -202,6 +202,17 @@ using (var zip = ZipFile.Open(styledDocxPath, ZipArchiveMode.Update))
         """);
 }
 
+var sectionDocxPath = Path.Combine(outputDirectory, "section-newline.docx");
+File.Copy(terminalDocxPath, sectionDocxPath, overwrite: true);
+using (var zip = ZipFile.Open(sectionDocxPath, ZipArchiveMode.Update))
+{
+    zip.GetEntry("word/document.xml")!.Delete();
+    using var writer = new StreamWriter(zip.CreateEntry("word/document.xml").Open(), new UTF8Encoding(false));
+    writer.Write("""
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:sectPr><w:pgSz w:w="6000" w:h="1077"/><w:pgMar w:top="283" w:bottom="283" w:left="283" w:right="283"/></w:sectPr></w:pPr><w:r><w:t>A</w:t><w:br/><w:br/></w:r></w:p><w:p><w:r><w:t>B</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="6803" w:h="16838"/><w:pgMar w:top="283" w:bottom="283" w:left="283" w:right="283"/></w:sectPr></w:body></w:document>
+        """);
+}
+
 var inlineNewlineFlow = new FlowDocument();
 inlineNewlineFlow.Options.PageWidthMillimeters = 106;
 foreach (var context in new[] { "inline", "leading", "only" })
@@ -253,6 +264,9 @@ await ConvertDocx("newline-break-default", null, newlineBreakDocxPath);
 await ConvertDocx("inline-newline-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, inlineDocxPath);
 await ConvertDocx("inline-newline-default", null, inlineDocxPath);
 
+await ConvertDocx("section-newline-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, sectionDocxPath);
+await ConvertDocx("section-newline-default", null, sectionDocxPath);
+
 string? nativeText = null;
 string? alignmentNativeText = null;
 foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alignment-public", "alignment-native", "alignment-default",
@@ -260,7 +274,8 @@ foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alig
     "terminal-followed-public", "terminal-followed-native", "terminal-followed-default",
     "styled-newline-public", "styled-newline-native", "styled-newline-default",
     "newline-break-public", "newline-break-native", "newline-break-default",
-    "inline-newline-public", "inline-newline-native", "inline-newline-default" })
+    "inline-newline-public", "inline-newline-native", "inline-newline-default",
+    "section-newline-native", "section-newline-default" })
 {
     var ofdPath = Path.Combine(outputDirectory, name + ".ofd");
     var pdfPath = Path.Combine(outputDirectory, name + ".pdf");
@@ -281,6 +296,14 @@ foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alig
         throw new InvalidOperationException("Consecutive newlines lost their individual page positions before following text.");
     if (name.StartsWith("terminal-") && !name.StartsWith("terminal-followed-") && (package.Pages.Count != 1 || compactText != "A"))
         throw new InvalidOperationException("Consecutive terminal newlines introduced a blank tail page.");
+    if (name.StartsWith("section-newline-"))
+    {
+        if (package.Pages.Count != 4 || compactText != "AB" || package.Pages[1].Elements.Count != 0 ||
+            package.Pages[2].Elements.Count != 0 || package.Pages.Take(3).Any(page => Math.Abs(page.WidthMillimeters - 6000 * 25.4 / 1440) > 0.005) ||
+            Math.Abs(package.Pages[3].WidthMillimeters - 6803 * 25.4 / 1440) > 0.005 ||
+            Math.Abs(package.Pages[3].Elements.OfType<OfdTextElement>().Single().YMillimeters - 283 * 25.4 / 1440) > 0.005)
+            throw new InvalidOperationException("Section boundary lost explicit blank lines or assigned them to the next section.");
+    }
     if (name.StartsWith("inline-newline-"))
     {
         var text = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().ToArray();
