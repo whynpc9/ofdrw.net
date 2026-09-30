@@ -375,7 +375,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             // PDFsharp Core can omit the zero-alpha graphics state for text
             // after an image. Keep semantic text extractable, but guarantee
             // that a fully transparent fill cannot paint any pixels.
-            if (brush is XSolidBrush transparent && transparent.Color.A == 0)
+            // A positioned whitespace glyph must remain blank even when the bound
+            // font lacks it and returns a visible .notdef outline (e.g. narrow NBSP).
+            // Still emit semantic text and let OFD DeltaX/DeltaY carry its advance.
+            if (text.All(char.IsWhiteSpace) || brush is XSolidBrush transparent && transparent.Color.A == 0)
                 graphics.IntersectClip(new XRect(0, 0, 0, 0));
             graphics.TranslateTransform(point.X, point.Y);
             if (italic)

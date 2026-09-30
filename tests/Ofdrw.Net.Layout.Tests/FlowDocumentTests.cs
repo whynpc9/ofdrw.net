@@ -9,6 +9,58 @@ namespace Ofdrw.Net.Layout.Tests;
 public sealed class FlowDocumentTests
 {
     [Theory]
+    [InlineData("\u00A0")]
+    [InlineData("\u202F")]
+    [InlineData("\u2007")]
+    public void NonbreakingSpacesAcrossSpans_KeepJoinedTextOnOneLine(string separator)
+    {
+        var document = new FlowDocument();
+        document.Options.PageWidthMillimeters = 24;
+        document.Options.MarginLeftMillimeters = document.Options.MarginRightMillimeters = 5;
+        var paragraph = new Paragraph();
+        paragraph.Spans.Add(new Span("prefix "));
+        paragraph.Spans.Add(new Span("A"));
+        paragraph.Spans.Add(new Span(separator) { Color = new OfdColor(192, 0, 0) });
+        paragraph.Spans.Add(new Span("B") { Bold = true });
+        document.Blocks.Add(paragraph);
+        var text = Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "prefix ", "A", separator, "B" }, text.Select(value => value.Text));
+        Assert.True(text[1].YMillimeters > text[0].YMillimeters);
+        Assert.Equal(text[1].YMillimeters, text[2].YMillimeters, 5);
+        Assert.Equal(text[1].YMillimeters, text[3].YMillimeters, 5);
+        Assert.True(text[2].WidthMillimeters > 0.1);
+        Assert.Equal("prefix A" + separator + "B", string.Concat(text.Select(value => value.Text)));
+    }
+
+    [Theory]
+    [InlineData("A\u00A0B")]
+    [InlineData("中\u202F文")]
+    [InlineData("A\u2007B")]
+    public void NonbreakingUnits_RetainAdvancesAndHaveExplicitOversizePolicy(string joined)
+    {
+        var style = new FlowTextStyle();
+        var inlines = new[] { new FlowInline { Text = "前 " + joined, Style = style } };
+        var lines = FlowParagraphLayout.Layout(inlines, new FlowParagraphFormat(), 4, new FixedMetrics(), style, default);
+        Assert.Equal(new[] { "前 ", joined }, lines.Select(line => string.Concat(line.Glyphs.Select(g => g.Text))));
+        Assert.All(lines[1].Glyphs, glyph => Assert.Equal(1, glyph.Width));
+        var oversized = new[] { new FlowInline { Text = joined, Style = style } };
+        Assert.Throws<InvalidOperationException>(() => FlowParagraphLayout.Layout(oversized,
+            new FlowParagraphFormat(), 2, new FixedMetrics(), style, default));
+        var native = FlowParagraphLayout.Layout(oversized, new FlowParagraphFormat(), 2,
+            new FixedMetrics(), style, default, allowOversizeGlyph: true);
+        Assert.Equal(joined, string.Concat(Assert.Single(native).Glyphs.Select(g => g.Text)));
+        // The first line's requested indent is part of its usable width; do not
+        // invent an empty first line or silently remove the indent to fit a unit.
+        var indented = new FlowParagraphFormat { FirstLineIndentMillimeters = 2 };
+        Assert.Throws<InvalidOperationException>(() => FlowParagraphLayout.Layout(oversized,
+            indented, 4, new FixedMetrics(), style, default));
+        var indentedNative = Assert.Single(FlowParagraphLayout.Layout(oversized, indented, 4,
+            new FixedMetrics(), style, default, allowOversizeGlyph: true));
+        Assert.Equal(2, indentedNative.Indent);
+        Assert.Equal(joined, string.Concat(indentedNative.Glyphs.Select(g => g.Text)));
+    }
+
+    [Theory]
     [InlineData(ParagraphAlignment.Center)]
     [InlineData(ParagraphAlignment.Right)]
     public void WrappedSeparatorSpaces_DoNotShiftVisibleAlignment(ParagraphAlignment alignment)

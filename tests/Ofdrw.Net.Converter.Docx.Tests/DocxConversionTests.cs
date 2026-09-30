@@ -24,6 +24,46 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 public sealed partial class DocxConversionTests
 {
     [Theory]
+    [InlineData("\u00A0", true)]
+    [InlineData("\u202F", true)]
+    [InlineData("\u2007", true)]
+    [InlineData("\u00A0", false)]
+    [InlineData("\u202F", false)]
+    [InlineData("\u2007", false)]
+    public async Task Native_NonbreakingSpaces_ShouldKeepJoinedTextOnOneLine(string separator, bool explicitNative)
+    {
+        // Choose a narrow width from the current Native font's measured advances,
+        // so each CI OS exercises the break instead of relying on installed fonts.
+        var referenceModel = new BuiltInDocumentModel();
+        var referenceSection = new BuiltInSectionModel();
+        var referenceParagraph = new BuiltInParagraphModel();
+        referenceParagraph.Inlines.Add(new BuiltInTextModel { Text = "prefix " });
+        referenceParagraph.Inlines.Add(new BuiltInTextModel { Text = "A" + separator + "B" });
+        referenceSection.Blocks.Add(referenceParagraph);
+        referenceModel.Sections.Add(referenceSection);
+        var measured = Assert.Single(new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(referenceModel).Pages)
+            .Elements.OfType<OfdTextElement>().ToArray();
+        var usableWidth = measured[0].WidthMillimeters + measured[1].WidthMillimeters / 2;
+        var pageWidthTwips = (int)Math.Round(usableWidth * 72 / 25.4 * 20 + 400);
+        await using var input = CreateMinimalDocx($"""
+            <w:p><w:r><w:t xml:space="preserve">prefix A{separator}B</w:t></w:r></w:p>
+            <w:sectPr><w:pgSz w:w="{pageWidthTwips}" w:h="6000"/><w:pgMar w:top="200" w:bottom="200" w:left="200" w:right="200"/></w:sectPr>
+            """);
+        await using var output = new MemoryStream();
+        var converter = explicitNative
+            ? new DocxToOfdConverter(new DocxConversionOptions { OfdMode = DocxToOfdMode.Native })
+            : new DocxToOfdConverter();
+        await converter.ConvertAsync(input, output);
+        output.Position = 0;
+        var text = Assert.Single((await new OfdReader().ReadAsync(output)).Pages)
+            .Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "prefix ", "A" + separator + "B" }, text.Select(value => value.Text));
+        Assert.True(text[1].YMillimeters > text[0].YMillimeters);
+        Assert.Equal("prefix A" + separator + "B", string.Concat(text.Select(value => value.Text)));
+    }
+
+    [Theory]
     [InlineData("center", true)]
     [InlineData("right", true)]
     [InlineData("center", false)]
