@@ -371,6 +371,10 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
 
     private double Advance(string text, BuiltInTextFormat format)
     {
+        // Missing whitespace glyphs must not inherit a .notdef advance.
+        if (text == "\u00A0") return Advance(" ", format);
+        if (text == "\u202F") return PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints) * 0.2d;
+        if (text == "\u2007") return Advance("0", format);
         var key = FontKey(format) + "\n" + text;
         if (!_advances.TryGetValue(key, out var advance))
         {

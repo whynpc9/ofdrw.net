@@ -80,6 +80,10 @@ internal static class FlowLatinMetrics
             char.IsLowSurrogate(grapheme[1]) ? char.ConvertToUtf32(grapheme, 0) : grapheme[0];
         var widths = style.Bold ? (style.Italic ? BoldItalic : Bold) :
             (style.Italic ? Italic : Regular);
+        // Portable spacing policy: narrow NBSP is one fifth em; figure space
+        // occupies the selected face's tabular digit advance.
+        if (scalar == 0x202F) return style.FontSizeMillimeters * 0.2d;
+        if (scalar == 0x2007) return style.FontSizeMillimeters * widths['0' - 32] / 1000d;
         if (scalar == 9) return style.FontSizeMillimeters * widths[0] * 4 / 1000d;
         var index = scalar >= 32 && scalar <= 126 ? scalar - 32 :
             scalar >= 160 && scalar <= 255 ? scalar - 160 + 95 : -1;

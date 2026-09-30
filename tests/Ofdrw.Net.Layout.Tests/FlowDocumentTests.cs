@@ -9,6 +9,42 @@ namespace Ofdrw.Net.Layout.Tests;
 public sealed class FlowDocumentTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void NonbreakingSpaceMetrics_UseNarrowAndTabularAdvances(bool bold, bool italic)
+    {
+        var style = new FlowTextStyle { FontSizeMillimeters = 10, Bold = bold, Italic = italic };
+        var normal = FlowLatinMetrics.AdvanceMillimeters(" ", style);
+        Assert.Equal(normal, FlowLatinMetrics.AdvanceMillimeters("\u00A0", style), 5);
+        var narrow = FlowLatinMetrics.AdvanceMillimeters("\u202F", style);
+        Assert.Equal(2, narrow, 5);
+        Assert.True(narrow < normal);
+        var figure = FlowLatinMetrics.AdvanceMillimeters("\u2007", style);
+        Assert.All("0123456789", digit => Assert.Equal(figure,
+            FlowLatinMetrics.AdvanceMillimeters(digit.ToString(), style), 5));
+        foreach (var value in new[] { "A\u202FB", "0\u20070" })
+        {
+            var document = new FlowDocument();
+            document.Options.DefaultFontSizeMillimeters = 10;
+            // A unit that fits the corrected width but would fail with 0.6em spaces.
+            var correctedWidth = value.Sum(c => FlowLatinMetrics.AdvanceMillimeters(c.ToString(), style));
+            document.Options.PageWidthMillimeters = correctedWidth + 10 + 0.001;
+            document.Options.MarginLeftMillimeters = document.Options.MarginRightMillimeters = 5;
+            var paragraph = new Paragraph();
+            paragraph.Spans.Add(new Span(value) { Bold = bold, Italic = italic });
+            document.Blocks.Add(paragraph);
+            var text = Assert.Single(Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>());
+            Assert.Equal(value, text.Text);
+            Assert.Equal(correctedWidth, text.WidthMillimeters, 5);
+            var advances = text.Runs[0].DeltaX!.Split(' ').Select(v => double.Parse(v,
+                System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            Assert.Equal(value[1] == '\u202F' ? narrow : figure, advances[1], 5);
+        }
+    }
+
+    [Theory]
     [InlineData("\u00A0")]
     [InlineData("\u202F")]
     [InlineData("\u2007")]

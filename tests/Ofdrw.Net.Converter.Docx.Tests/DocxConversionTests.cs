@@ -24,6 +24,35 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 public sealed partial class DocxConversionTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void Native_NonbreakingSpaceMetrics_ShouldUseNarrowAndDigitAdvances(bool bold, bool italic)
+    {
+        var model = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel();
+        foreach (var value in new[] { "A B", "A\u00A0B", "A\u202FB", "0\u20070", "000" })
+        {
+            var paragraph = new BuiltInParagraphModel();
+            paragraph.Inlines.Add(new BuiltInTextModel { Text = value,
+                Format = { Bold = bold, Italic = italic, FontSizePoints = 20 } });
+            section.Blocks.Add(paragraph);
+        }
+        model.Sections.Add(section);
+        var text = Assert.Single(new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(model).Pages)
+            .Elements.OfType<OfdTextElement>().ToArray();
+        double SeparatorAdvance(OfdTextElement value) => double.Parse(value.Runs[0].DeltaX!.Split(' ')[1],
+            System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(SeparatorAdvance(text[0]), SeparatorAdvance(text[1]), 5);
+        Assert.Equal(20 * 25.4 / 72 * 0.2, SeparatorAdvance(text[2]), 5);
+        Assert.True(SeparatorAdvance(text[2]) < SeparatorAdvance(text[0]));
+        Assert.Equal(text[4].WidthMillimeters, text[3].WidthMillimeters, 5);
+        Assert.Equal(SeparatorAdvance(text[4]), SeparatorAdvance(text[3]), 5);
+    }
+
+    [Theory]
     [InlineData("\u00A0", true)]
     [InlineData("\u202F", true)]
     [InlineData("\u2007", true)]

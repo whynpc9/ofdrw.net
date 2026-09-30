@@ -23,6 +23,8 @@ await new OfdPackageWriter().WriteAsync(package, output);
 
 普通分隔空格在自动折行末尾保留字符、推进量归零，不影响居中或右对齐；显式换行及末行保留空格推进量。NBSP（U+00A0）、窄 NBSP（U+202F）与数字空格（U+2007）为 [Unicode GL 空格](https://www.unicode.org/reports/tr14/#GL)，连接的文字作为不可拆分单元折行，首版不实现完整 Unicode 行断规则；单元超出可用行宽（首行扣除首行缩进）时公开 API 明确失败，不额外生成空首行或删除缩进，DOCX Native 保留其既有超宽内容溢出策略。
 
+空格字宽规则：普通 NBSP 等于普通空格，窄 NBSP 固定为 0.2 em，数字空格等于对应粗斜体样式的 `0` 字宽。DOCX Native 使用相同规则，但数字字宽继续由其现有字体测量器提供。
+
 `Render()` 每次生成新包，不修改之前返回的包；调用方可复用描述对象，但不要在其他线程同时修改其 `Blocks`、`Spans` 或 `Options`。超高行、无可用宽度、页数、字符数和文本元素数量超限会明确失败，不会静默裁切。预算由 `MaxPageCount`、`MaxCharacters`、`MaxTextElements` 控制，取消通过 `CancellationToken` 传入。`OfdDocumentBuilder` 的按页坐标 API 保持可用。
 
 运行仓库内的无隐私样例：
