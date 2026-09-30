@@ -112,7 +112,11 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             RenderBlock(package, state, block);
         }
         // A section boundary commits explicit breaks using the section that owns them.
-        if (hasFollowingSection) ApplyPendingPageBreaks(package, state);
+        if (hasFollowingSection)
+        {
+            ApplyPendingPageBreaks(package, state);
+            ApplyPendingLineBreaks(package, state);
+        }
         return state;
     }
 

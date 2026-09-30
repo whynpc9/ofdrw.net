@@ -565,6 +565,61 @@ public sealed partial class DocxConversionTests
             Assert.Single(package.Pages[1].Elements.OfType<OfdTextElement>()).YMillimeters, 4);
     }
 
+    [Theory]
+    [InlineData(0, 2)]
+    [InlineData(1, 3)]
+    [InlineData(2, 4)]
+    public void Native_SectionBoundary_ShouldCommitTrailingNewlinesWithOwningDimensions(int newlines, int expectedPages)
+    {
+        var model = new BuiltInDocumentModel();
+        var firstSection = new BuiltInSectionModel
+        {
+            PageWidthPoints = 300, PageHeightPoints = 54,
+            MarginTopPoints = 14, MarginBottomPoints = 14
+        };
+        var first = new BuiltInParagraphModel();
+        first.Inlines.Add(new BuiltInTextModel { Text = "A" });
+        for (var i = 0; i < newlines; i++) first.Inlines.Add(new BuiltInBreakModel());
+        firstSection.Blocks.Add(first); model.Sections.Add(firstSection);
+        OfdDocumentPackage Render() => new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(model);
+        Assert.Single(Render().Pages); // EOF still defers all trailing blank rows.
+        var nextSection = new BuiltInSectionModel { PageWidthPoints = 500 };
+        var next = new BuiltInParagraphModel();next.Inlines.Add(new BuiltInTextModel { Text = "B" });
+        nextSection.Blocks.Add(next);model.Sections.Add(nextSection);
+        var pages = Render().Pages;
+        Assert.Equal(expectedPages, pages.Count);
+        Assert.Equal("A", Assert.Single(pages[0].Elements.OfType<OfdTextElement>()).Text);
+        Assert.All(pages.Take(expectedPages - 1), page => Assert.Equal(300 * 25.4 / 72, page.WidthMillimeters, 4));
+        Assert.All(pages.Skip(1).Take(newlines), page => Assert.Empty(page.Elements));
+        Assert.Equal(500 * 25.4 / 72, pages[^1].WidthMillimeters, 4);
+        var b = Assert.Single(pages[^1].Elements.OfType<OfdTextElement>());
+        Assert.Equal("B", b.Text);Assert.Equal(25.4, b.YMillimeters, 5);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Native_SectionTrailingNewlines_ShouldSurviveActualDocx(bool explicitNative)
+    {
+        await using var input = CreateMinimalDocx("""
+            <w:p><w:pPr><w:sectPr><w:pgSz w:w="6000" w:h="1077"/><w:pgMar w:top="283" w:bottom="283" w:left="283" w:right="283"/></w:sectPr></w:pPr><w:r><w:t>A</w:t><w:br/><w:br/></w:r></w:p>
+            <w:p><w:r><w:t>B</w:t></w:r></w:p>
+            <w:sectPr><w:pgSz w:w="6803" w:h="16838"/><w:pgMar w:top="283" w:bottom="283" w:left="283" w:right="283"/></w:sectPr>
+            """);
+        await using var output = new MemoryStream();
+        var converter = explicitNative ? new DocxToOfdConverter(new DocxConversionOptions { OfdMode = DocxToOfdMode.Native })
+            : new DocxToOfdConverter();
+        await converter.ConvertAsync(input, output);output.Position = 0;
+        var pages = (await new OfdReader().ReadAsync(output)).Pages;
+        Assert.Equal(4, pages.Count);
+        Assert.Equal("AB", string.Concat(pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().Select(value => value.Text)));
+        Assert.All(pages.Take(3), page => Assert.Equal(6000 * 25.4 / 1440, page.WidthMillimeters, 2));
+        Assert.Empty(pages[1].Elements);Assert.Empty(pages[2].Elements);
+        Assert.Equal(6803 * 25.4 / 1440, pages[3].WidthMillimeters, 2);
+        Assert.Equal(283 * 25.4 / 1440, Assert.Single(pages[3].Elements.OfType<OfdTextElement>()).YMillimeters, 2);
+    }
+
     [Fact]
     public void Native_ShouldCommitTrailingBreakWithOwningSectionPageSize()
     {
