@@ -23,6 +23,65 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 /// </summary>
 public sealed partial class DocxConversionTests
 {
+    [Theory]
+    [InlineData("center", true)]
+    [InlineData("right", true)]
+    [InlineData("center", false)]
+    [InlineData("right", false)]
+    public async Task Native_WrappedSeparatorSpaces_ShouldNotShiftVisibleAlignment(string alignment, bool explicitNative)
+    {
+        await using var input = CreateMinimalDocx($"""
+            <w:p><w:pPr><w:jc w:val="{alignment}"/><w:ind w:firstLine="120"/></w:pPr><w:r><w:t>Alpha</w:t></w:r></w:p>
+            <w:p><w:pPr><w:jc w:val="{alignment}"/><w:ind w:firstLine="120"/></w:pPr><w:r><w:t xml:space="preserve">Alpha  information</w:t></w:r></w:p>
+            <w:sectPr><w:pgSz w:w="1800" w:h="6000"/><w:pgMar w:top="200" w:bottom="200" w:left="200" w:right="200"/></w:sectPr>
+            """);
+        await using var output = new MemoryStream();
+        var converter = explicitNative
+            ? new DocxToOfdConverter(new DocxConversionOptions { OfdMode = DocxToOfdMode.Native })
+            : new DocxToOfdConverter();
+        await converter.ConvertAsync(input, output);
+        output.Position = 0;
+        var text = Assert.Single((await new OfdReader().ReadAsync(output)).Pages)
+            .Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "Alpha", "Alpha  ", "information" }, text.Select(value => value.Text));
+        Assert.Equal(text[0].XMillimeters, text[1].XMillimeters, 5);
+        Assert.True(text[2].YMillimeters > text[1].YMillimeters);
+        Assert.Equal("Alpha  information", string.Concat(text.Skip(1).Select(value => value.Text)));
+        // OFD serializes X and width independently to 0.001 mm.
+        Assert.All(text, value => Assert.True(value.XMillimeters + value.WidthMillimeters <= 80 * 25.4 / 72 + 0.001));
+    }
+
+    [Theory]
+    [InlineData((int)BuiltInParagraphAlignment.Center)]
+    [InlineData((int)BuiltInParagraphAlignment.Right)]
+    public void Native_StyledWrappedSeparators_ShouldRemainInsideLine(int alignmentValue)
+    {
+        var alignment = (BuiltInParagraphAlignment)alignmentValue;
+        var model = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel
+        {
+            PageWidthPoints = 90, MarginLeftPoints = 10, MarginRightPoints = 10
+        };
+        var reference = new BuiltInParagraphModel();
+        reference.Format.Alignment = alignment;
+        reference.Inlines.Add(new BuiltInTextModel { Text = "Alpha" });
+        section.Blocks.Add(reference);
+        var wrapped = new BuiltInParagraphModel();
+        wrapped.Format.Alignment = alignment;
+        wrapped.Inlines.Add(new BuiltInTextModel { Text = "Alpha" });
+        wrapped.Inlines.Add(new BuiltInTextModel { Text = "  ", Format = { ColorHex = "C00000" } });
+        wrapped.Inlines.Add(new BuiltInTextModel { Text = "information" });
+        section.Blocks.Add(wrapped);
+        model.Sections.Add(section);
+        var text = Assert.Single(new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(model).Pages)
+            .Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "Alpha", "Alpha", "  ", "information" }, text.Select(value => value.Text));
+        Assert.Equal(text[0].XMillimeters, text[1].XMillimeters, 5);
+        Assert.Equal("Alpha  information", string.Concat(text.Skip(1).Select(value => value.Text)));
+        Assert.All(text, value => Assert.True(value.XMillimeters + value.WidthMillimeters <= 80 * 25.4 / 72 + 0.000001));
+    }
+
     /// <summary>
     /// Verifies the in-process renderer without invoking Word or LibreOffice.
     /// </summary>

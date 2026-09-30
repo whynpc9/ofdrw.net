@@ -452,7 +452,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
 
     private void DrawLine(OfdDocumentPackage package, OfdPage page, FlowLine line, double left, double top, double width)
     {
-        var x = FlowParagraphLayout.Align(left + line.Indent, width - line.Indent, line.Glyphs.Sum(g => g.Width), line.Alignment);
+        var x = FlowParagraphLayout.Align(left + line.Indent, width - line.Indent, line.AlignmentWidth, line.Alignment);
         var baseline = line.BaselineMillimeters;
         for (var i = 0; i < line.Glyphs.Count;)
         {
@@ -471,12 +471,14 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             var format = (BuiltInTextFormat)line.Glyphs[i].Style.Source!;
             while (i < line.Glyphs.Count && line.Glyphs[i].Image is null && ReferenceEquals(line.Glyphs[i].Style.Source, format)) i++;
             var group = line.Glyphs.GetRange(start, i - start);
+            var groupWidth = group.Sum(g => g.Width);
+            var elementWidth = Math.Max(groupWidth, 0.1);
             var declaredName = DeclaredFontName(format);
             var resource = GetOrAddFontResource(package, format, declaredName);
             var text = new OfdTextElement
             {
-                LayerType = "Body", XMillimeters = x, YMillimeters = top,
-                WidthMillimeters = Math.Max(group.Sum(g => g.Width), 0.1), HeightMillimeters = line.Height,
+                LayerType = "Body", XMillimeters = groupWidth == 0 ? Math.Min(x, left + width - elementWidth) : x,
+                YMillimeters = top, WidthMillimeters = elementWidth, HeightMillimeters = line.Height,
                 FontName = declaredName, FontResourceId = resource.Id,
                 // Viewers apply bold/italic from the text object, not from the font
                 // resource flags, so declare the requested style on both.
@@ -488,7 +490,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = baseline,
                 DeltaX = group.Count > 1 ? string.Join(" ", group.Take(group.Count - 1).Select(g => g.Width.ToString("0.######", CultureInfo.InvariantCulture))) : null });
             page.Elements.Add(text);
-            x += group.Sum(g => g.Width);
+            x += groupWidth;
         }
     }
 

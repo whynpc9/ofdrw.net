@@ -8,6 +8,48 @@ namespace Ofdrw.Net.Layout.Tests;
 
 public sealed class FlowDocumentTests
 {
+    [Theory]
+    [InlineData(ParagraphAlignment.Center)]
+    [InlineData(ParagraphAlignment.Right)]
+    public void WrappedSeparatorSpaces_DoNotShiftVisibleAlignment(ParagraphAlignment alignment)
+    {
+        var document = new FlowDocument();
+        document.Options.PageWidthMillimeters = 35;
+        document.Options.MarginLeftMillimeters = 5;
+        document.Options.MarginRightMillimeters = 5;
+        document.Blocks.Add(new Paragraph("Alpha") { Alignment = alignment, FirstLineIndentMillimeters = 2 });
+        var wrapped = new Paragraph { Alignment = alignment, FirstLineIndentMillimeters = 2 };
+        wrapped.Spans.Add(new Span("Alpha"));
+        wrapped.Spans.Add(new Span("  ") { Color = new OfdColor(192, 0, 0) });
+        wrapped.Spans.Add(new Span("information"));
+        document.Blocks.Add(wrapped);
+
+        var text = Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "Alpha", "Alpha", "  ", "information" }, text.Select(value => value.Text));
+        Assert.Equal(text[0].XMillimeters, text[1].XMillimeters, 5);
+        Assert.Equal(text[1].YMillimeters, text[2].YMillimeters, 5);
+        Assert.True(text[3].YMillimeters > text[1].YMillimeters);
+        Assert.Equal("Alpha  information", string.Concat(text.Skip(1).Select(value => value.Text)));
+        Assert.All(text, value => Assert.True(value.XMillimeters + value.WidthMillimeters <= 30.000001));
+    }
+
+    [Fact]
+    public void AlignmentWidth_OnlyExcludesAutomaticWrapTrailingWhitespace()
+    {
+        var style = new FlowTextStyle();
+        IReadOnlyList<FlowLine> Layout(string value, double width) => FlowParagraphLayout.Layout(
+            new[] { new FlowInline { Text = value, Style = style } }, new FlowParagraphFormat(),
+            width, new FixedMetrics(), style, default);
+        var wordWrap = Layout("A  BBB", 4);
+        Assert.Equal("A  ", string.Concat(wordWrap[0].Glyphs.Select(g => g.Text)));
+        Assert.Equal(1, wordWrap[0].AlignmentWidth);
+        Assert.All(wordWrap[0].Glyphs.Skip(1), glyph => Assert.Equal(0, glyph.Width));
+        var glyphWrap = Layout("A  中中", 3);
+        Assert.Equal(1, glyphWrap[0].AlignmentWidth);
+        Assert.Equal(3, Layout("A  \nB", 4)[0].AlignmentWidth);
+        Assert.Equal(3, Layout("A  ", 4)[0].AlignmentWidth);
+    }
+
     [Fact]
     public async Task PublicFlow_MultipageStyledText_RoundTripsWithoutCoordinates()
     {
