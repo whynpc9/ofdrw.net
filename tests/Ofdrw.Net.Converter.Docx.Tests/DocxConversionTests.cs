@@ -23,6 +23,106 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 /// </summary>
 public sealed partial class DocxConversionTests
 {
+    [Fact]
+    public void Native_BodyPageField_WithLeadingLfAndFf_ShouldConsumeControlsOnce()
+    {
+        var model = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel { PageHeightPoints = 54, MarginTopPoints = 14, MarginBottomPoints = 14 };
+        var paragraph = new BuiltInParagraphModel();paragraph.Format.SpaceBeforePoints = 6;
+        paragraph.Inlines.Add(new BuiltInBreakModel());
+        paragraph.Inlines.Add(new BuiltInBreakModel { IsPageBreak = true });
+        paragraph.Inlines.Add(new BuiltInBreakModel());
+        paragraph.Inlines.Add(new BuiltInPageNumberModel());section.Blocks.Add(paragraph);model.Sections.Add(section);
+        var pages = new BuiltInOfdRenderer(new DocxConversionOptions(),new List<DocxConversionDiagnostic>(),default).Render(model).Pages;
+        Assert.Equal(4, pages.Count);
+        Assert.All(pages.Take(3), page => Assert.Empty(page.Elements));
+        var field = Assert.Single(pages[^1].Elements.OfType<OfdTextElement>());
+        Assert.Equal("4", field.Text);
+        Assert.Equal(14 * 25.4 / 72, field.YMillimeters, 5);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Native_BodyPageField_WithLeadingLf_ShouldUseFirstBodyLinePage(bool explicitNative)
+    {
+        await using var input = CreateMinimalDocx("""
+            <w:p><w:r><w:br/></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>0</w:t></w:r></w:fldSimple></w:p>
+            <w:sectPr><w:pgSz w:w="6000" w:h="1077"/><w:pgMar w:top="283" w:bottom="283" w:left="283" w:right="283"/></w:sectPr>
+            """);
+        await using var output = new MemoryStream();
+        var converter = explicitNative ? new DocxToOfdConverter(new DocxConversionOptions { OfdMode = DocxToOfdMode.Native })
+            : new DocxToOfdConverter();
+        await converter.ConvertAsync(input,output);output.Position = 0;
+        var pages = (await new OfdReader().ReadAsync(output)).Pages;
+        Assert.Equal(2,pages.Count);Assert.Empty(pages[0].Elements);
+        var field = Assert.Single(pages[1].Elements.OfType<OfdTextElement>());
+        Assert.Equal("2",field.Text);Assert.Equal(283 * 25.4 / 1440,field.YMillimeters,2);
+    }
+
+    [Theory]
+    [InlineData(true, false, 1, "4", 4)]
+    [InlineData(true, false, 42, "45", 4)]
+    [InlineData(false, false, 9, "10", 2)]
+    [InlineData(false, true, 1, "2", 2)]
+    public void Native_BodyPageField_ShouldUseParagraphDestinationPage(bool newlines, bool leadingPageBreak, int startNumber, string expected, int expectedPages)
+    {
+        var model = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel
+        {
+            PageHeightPoints = 54, MarginTopPoints = 14, MarginBottomPoints = 14,
+            PageNumberStart = startNumber
+        };
+        var first = new BuiltInParagraphModel();first.Inlines.Add(new BuiltInTextModel { Text = "A" });
+        if (newlines)
+        {
+            first.Inlines.Add(new BuiltInBreakModel());first.Inlines.Add(new BuiltInBreakModel());
+        }
+        else if (!leadingPageBreak) first.Format.SpaceAfterPoints = 30;
+        section.Blocks.Add(first);
+        var field = new BuiltInParagraphModel();
+        if (leadingPageBreak) field.Inlines.Add(new BuiltInBreakModel { IsPageBreak = true });
+        field.Inlines.Add(new BuiltInPageNumberModel());section.Blocks.Add(field);model.Sections.Add(section);
+        var package = new BuiltInOfdRenderer(new DocxConversionOptions(), new List<DocxConversionDiagnostic>(), default).Render(model);
+        Assert.Equal(expectedPages, package.Pages.Count);
+        var actual = Assert.Single(package.Pages[^1].Elements.OfType<OfdTextElement>());
+        Assert.Equal(expected, actual.Text);
+        if (newlines) { Assert.Empty(package.Pages[1].Elements);Assert.Empty(package.Pages[2].Elements); }
+        var reference = new BuiltInDocumentModel();var referenceSection = new BuiltInSectionModel();
+        var referenceParagraph = new BuiltInParagraphModel();referenceParagraph.Inlines.Add(new BuiltInTextModel { Text = expected });
+        referenceSection.Blocks.Add(referenceParagraph);reference.Sections.Add(referenceSection);
+        var measured = Assert.Single(new BuiltInOfdRenderer(new DocxConversionOptions(), new List<DocxConversionDiagnostic>(), default)
+            .Render(reference).Pages[0].Elements.OfType<OfdTextElement>());
+        Assert.Equal(measured.WidthMillimeters, actual.WidthMillimeters, 5);
+        Assert.Equal(measured.Runs[0].DeltaX, actual.Runs[0].DeltaX);
+        var top = 14 * 25.4 / 72;
+        var gap = !newlines && !leadingPageBreak ? 26 * 25.4 / 72 - actual.HeightMillimeters : 0;
+        Assert.Equal(top + gap, actual.YMillimeters, 5); // Gap committed once, clamped only on the fresh page.
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public async Task Native_BodyPageField_ShouldFollowActualDocxDeferredSpacing(bool explicitNative, bool newlines)
+    {
+        var tail = newlines ? "<w:br/><w:br/>" : "";
+        var spacing = newlines ? "" : "<w:pPr><w:spacing w:after=\"600\"/></w:pPr>";
+        var start = newlines ? "" : "<w:pgNumType w:start=\"9\"/>";
+        await using var input = CreateMinimalDocx($"""
+            <w:p>{spacing}<w:r><w:t>A</w:t>{tail}</w:r></w:p><w:p><w:fldSimple w:instr="PAGE"><w:r><w:t>0</w:t></w:r></w:fldSimple></w:p>
+            <w:sectPr><w:pgSz w:w="6000" w:h="1077"/><w:pgMar w:top="283" w:bottom="283" w:left="283" w:right="283"/>{start}</w:sectPr>
+            """);
+        await using var output = new MemoryStream();
+        var converter = explicitNative ? new DocxToOfdConverter(new DocxConversionOptions { OfdMode = DocxToOfdMode.Native })
+            : new DocxToOfdConverter();
+        await converter.ConvertAsync(input, output);output.Position = 0;
+        var pages = (await new OfdReader().ReadAsync(output)).Pages;
+        Assert.Equal(newlines ? 4 : 2, pages.Count);
+        Assert.Equal(newlines ? "4" : "10", Assert.Single(pages[^1].Elements.OfType<OfdTextElement>()).Text);
+    }
+
     [Theory]
     [InlineData(true, 8, 80, "inline")]
     [InlineData(false, 8, 80, "inline")]

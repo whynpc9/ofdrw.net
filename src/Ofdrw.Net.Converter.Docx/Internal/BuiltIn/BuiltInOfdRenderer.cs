@@ -159,7 +159,54 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         var firstIndent = PointsToMillimeters(paragraph.Format.FirstLineIndentPoints ?? 0);
         var width = Math.Max(availableWidth - leftIndent - rightIndent, 5d);
         var firstLine = true;
-        foreach (var line in LayoutParagraph(paragraph, width, firstIndent, state.PageNumber))
+        var preparedFirstLine = false;
+        var leadingLines = 0;
+        var lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber);
+        if (paragraph.Inlines.OfType<BuiltInPageNumberModel>().Any(field => field.Kind == BuiltInPageFieldKind.Page))
+        {
+            // Body PAGE uses the paragraph's first body line page context. Resolve that context
+            // after deferred pagination, and remeasure when its number gains a digit.
+            while (leadingLines < lines.Count && lines[leadingLines].Glyphs.Count == 0)
+            {
+                var control = lines[leadingLines++];
+                if (control.PageBreak) { _pendingPageBreaks++; continue; }
+                if (control.TerminalNewline) { _pendingLineBreakHeights.Add(control.Height); continue; }
+                ApplyPendingPageBreaks(package, state);
+                if (firstLine)
+                {
+                    ApplyPendingLineBreaks(package, state);
+                    PlaceFirstLine(package, state, control.Height, _pendingSpaceAfter + spaceBefore);
+                    _pendingSpaceAfter = 0;
+                    firstLine = false;
+                }
+                else EnsureVerticalSpace(package, state, control.Height);
+                state.Y += control.Height;
+                state.HasBodyContent = true;
+            }
+            ApplyPendingPageBreaks(package, state);
+            ApplyPendingLineBreaks(package, state);
+            var gap = firstLine ? Math.Max(0, _pendingSpaceAfter + spaceBefore) : 0;
+            while (true)
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber);
+                var first = lines.Skip(leadingLines).First(line => !line.PageBreak && !line.TerminalNewline);
+                if (first.Height > state.ContentBottom - state.ContentTop)
+                    throw new InvalidDataException("DOCX content exceeds the usable page area.");
+                if (state.Y + gap + first.Height > state.ContentBottom + 0.000001d &&
+                    (state.HasBodyContent || state.Y > state.ContentTop))
+                {
+                    StartNewPage(package, state);
+                    continue;
+                }
+                PlaceFirstLine(package, state, first.Height, gap);
+                _pendingSpaceAfter = 0;
+                preparedFirstLine = true;
+                firstLine = false;
+                break;
+            }
+        }
+        foreach (var line in lines.Skip(leadingLines))
         {
             if (line.PageBreak)
             {
@@ -168,7 +215,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             }
             if (line.TerminalNewline) { _pendingLineBreakHeights.Add(line.Height); continue; }
             ApplyPendingPageBreaks(package, state);
-            if (firstLine)
+            if (preparedFirstLine) preparedFirstLine = false;
+            else if (firstLine)
             {
                 ApplyPendingLineBreaks(package, state);
                 PlaceFirstLine(package, state, line.Height, _pendingSpaceAfter + spaceBefore);

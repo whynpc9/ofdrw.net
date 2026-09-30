@@ -202,6 +202,37 @@ using (var zip = ZipFile.Open(styledDocxPath, ZipArchiveMode.Update))
         """);
 }
 
+var pageFieldDocxPath = Path.Combine(outputDirectory, "page-field.docx");
+File.Copy(followedDocxPath, pageFieldDocxPath, overwrite: true);
+using (var zip = ZipFile.Open(pageFieldDocxPath, ZipArchiveMode.Update))
+{
+    var entry = zip.GetEntry("word/document.xml")!;string xml;
+    using (var reader = new StreamReader(entry.Open())) xml = reader.ReadToEnd();entry.Delete();
+    using var writer = new StreamWriter(zip.CreateEntry("word/document.xml").Open(), new UTF8Encoding(false));
+    writer.Write(xml.Replace("<w:r><w:t>B</w:t></w:r>", "<w:fldSimple w:instr=\"PAGE\"><w:r><w:t>0</w:t></w:r></w:fldSimple>"));
+}
+var pageLeadingDocxPath = Path.Combine(outputDirectory, "page-field-leading.docx");
+File.Copy(pageFieldDocxPath, pageLeadingDocxPath, overwrite: true);
+using (var zip = ZipFile.Open(pageLeadingDocxPath, ZipArchiveMode.Update))
+{
+    var entry = zip.GetEntry("word/document.xml")!;string xml;
+    using (var reader = new StreamReader(entry.Open())) xml = reader.ReadToEnd();entry.Delete();
+    using var writer = new StreamWriter(zip.CreateEntry("word/document.xml").Open(),new UTF8Encoding(false));
+    writer.Write(xml.Replace("<w:p><w:r><w:t>A</w:t><w:br/><w:br/></w:r></w:p>", "")
+        .Replace("<w:p><w:fldSimple", "<w:p><w:r><w:br/></w:r><w:fldSimple"));
+}
+var pageGapDocxPath = Path.Combine(outputDirectory, "page-field-gap.docx");
+File.Copy(pageFieldDocxPath, pageGapDocxPath, overwrite: true);
+using (var zip = ZipFile.Open(pageGapDocxPath, ZipArchiveMode.Update))
+{
+    var entry = zip.GetEntry("word/document.xml")!;string xml;
+    using (var reader = new StreamReader(entry.Open())) xml = reader.ReadToEnd();entry.Delete();
+    using var writer = new StreamWriter(zip.CreateEntry("word/document.xml").Open(), new UTF8Encoding(false));
+    writer.Write(xml.Replace("<w:p><w:r><w:t>A</w:t><w:br/><w:br/></w:r></w:p>",
+        "<w:p><w:pPr><w:spacing w:after=\"600\"/></w:pPr><w:r><w:t>A</w:t></w:r></w:p>")
+        .Replace("</w:sectPr>", "<w:pgNumType w:start=\"9\"/></w:sectPr>"));
+}
+
 var sectionDocxPath = Path.Combine(outputDirectory, "section-newline.docx");
 File.Copy(terminalDocxPath, sectionDocxPath, overwrite: true);
 using (var zip = ZipFile.Open(sectionDocxPath, ZipArchiveMode.Update))
@@ -267,6 +298,14 @@ await ConvertDocx("inline-newline-default", null, inlineDocxPath);
 await ConvertDocx("section-newline-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, sectionDocxPath);
 await ConvertDocx("section-newline-default", null, sectionDocxPath);
 
+await ConvertDocx("page-field-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, pageFieldDocxPath);
+await ConvertDocx("page-field-default", null, pageFieldDocxPath);
+await ConvertDocx("page-field-gap-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, pageGapDocxPath);
+await ConvertDocx("page-field-gap-default", null, pageGapDocxPath);
+
+await ConvertDocx("page-field-leading-native",new DocxConversionOptions { OfdMode = DocxToOfdMode.Native },pageLeadingDocxPath);
+await ConvertDocx("page-field-leading-default",null,pageLeadingDocxPath);
+
 string? nativeText = null;
 string? alignmentNativeText = null;
 foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alignment-public", "alignment-native", "alignment-default",
@@ -275,7 +314,9 @@ foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alig
     "styled-newline-public", "styled-newline-native", "styled-newline-default",
     "newline-break-public", "newline-break-native", "newline-break-default",
     "inline-newline-public", "inline-newline-native", "inline-newline-default",
-    "section-newline-native", "section-newline-default" })
+    "section-newline-native", "section-newline-default",
+    "page-field-native", "page-field-default", "page-field-gap-native", "page-field-gap-default",
+    "page-field-leading-native", "page-field-leading-default" })
 {
     var ofdPath = Path.Combine(outputDirectory, name + ".ofd");
     var pdfPath = Path.Combine(outputDirectory, name + ".pdf");
@@ -296,6 +337,14 @@ foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alig
         throw new InvalidOperationException("Consecutive newlines lost their individual page positions before following text.");
     if (name.StartsWith("terminal-") && !name.StartsWith("terminal-followed-") && (package.Pages.Count != 1 || compactText != "A"))
         throw new InvalidOperationException("Consecutive terminal newlines introduced a blank tail page.");
+    if (name.StartsWith("page-field-"))
+    {
+        var gap = name.StartsWith("page-field-gap-");
+        var leading = name.StartsWith("page-field-leading-");
+        if (package.Pages.Count != (gap || leading ? 2 : 4) || compactText != (leading ? "2" : gap ? "A10" : "A4") ||
+            package.Pages[^1].Elements.OfType<OfdTextElement>().Single().Text != (leading ? "2" : gap ? "10" : "4"))
+            throw new InvalidOperationException("Body PAGE was expanded before its destination page was selected.");
+    }
     if (name.StartsWith("section-newline-"))
     {
         if (package.Pages.Count != 4 || compactText != "AB" || package.Pages[1].Elements.Count != 0 ||
