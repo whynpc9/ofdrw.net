@@ -1,66 +1,86 @@
 # 公开流式布局与 DOCX Native 页面验收（2026-09-29）
 
-**2026-09-30 最新复验：** 已修复自动折行尾空格导致的居中/右对齐左偏，以及下一轮 review 指出的不换行空格断行。NBSP、窄 NBSP 和数字空格保留推进量并连接相邻文字；最新 review 进一步指出通用 0.6 em 不适合空格变体，现已为窄 NBSP 使用 0.2 em、数字空格使用所选样式数字字宽，Native 同步规则；Preview 随后检出窄 NBSP 在缺字字体下的 PDF 方框，本轮补了定位空白字素绘制修复。已重新打开 `artifacts/flow-layout/review12/` 九份最新 PDF，逐页复验原有 7 页、3 页对齐/空格/重音单词样例及 3 页连续尾换行短页样例，共 13 页，未见本次样例的视觉缺陷。
+**2026-09-30 最新复验：** 本轮修复连续显式空行被段间距夹断、空行字号丢失和组合 í 的字宽/字形差异。已重新打开 `artifacts/flow-layout/review16/` 全部 15 份最新 PDF，实际检查 28 页，未见所列样例的视觉缺陷；其中 6 页是源文显式换行产生的预期中间空页。
 
 ## 基线与复现
 
-- 源码基线：`be8b74b3cbd699732ec0638189d14037e052a770`；本次产物对应 `codex/public-flow-layout` 的 `843b520` 代码状态。后续文档提交不改动生成代码。
-- 样例：`e2e/Ofdrw.Net.Layout.E2E/Program.cs` 创建 55 段无坐标的中英混排 Flow；DOCX 使用 `e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`（SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`）。
-- 运行：设置根 `AGENTS.md` 的 .NET 环境变量和单节点参数后，构建 E2E 项目，再执行 `dotnet run --project e2e/Ofdrw.Net.Layout.E2E -c Release --no-build --no-restore -- artifacts/flow-layout/review12`。`artifacts/` 被 Git 忽略，保留在此 worktree 供复查。
-- 实际查看链路：公开 API → native OFD → `OfdToPdfConverter` → **macOS Preview**；DOCX → 显式 `Native` OFD / 默认 OFD → `OfdToPdfConverter` → **macOS Preview**。九份 PDF 均从 `artifacts/flow-layout/review12/` 重新打开，不使用直接 DOCX→PDF 的页面。页面 PNG 用 `pdftoppm -scale-to 1300 -png` 从这些 PDF 生成，仅作辅助复查。
+- 原始源码基线：`be8b74b3cbd699732ec0638189d14037e052a770`；本次生成代码状态：`4a975526de72c2a52491bb796fedf9e1f0ec8416`。后续验收文档提交不改变代码。
+- 样例程序：`e2e/Ofdrw.Net.Layout.E2E/Program.cs`；原有 DOCX：`e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`（SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`）。程序另生成对齐、文末连续 LF、连续 LF 后有正文、不同字号 LF 的确定性 DOCX 和公开 Flow 样例。
+- 依根 `AGENTS.md` 设置 .NET 环境变量，使用 `--disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false` 构建/测试；E2E 构建后以 Release `--no-build --no-restore` 生成到 `artifacts/flow-layout/review16`。日志含 `full-tests.log`、`sample-build.log`、`sample.log`、`package-e2e.log`，产物与 TRX 保存在此 worktree 被忽略的 `artifacts/` 中。
+- 实际查看链路：公开 API → native OFD → `OfdToPdfConverter` → **macOS Preview**；DOCX → 显式 Native / 默认 OFD → `OfdToPdfConverter` → **macOS Preview**。逐个打开本轮路径并核对 Preview 文件 URL，逐页检查正文、边界和空白。没有用直接 DOCX→PDF 代替 native 产物。`pdftoppm -scale-to 1300 -png` 生成的 28 张页面图仅用于辅助复查。
 
 ## 功能验证
 
-- 最新解决方案 Release 全套测试：197 通过、0 失败、0 跳过；TRX 在 `artifacts/flow-layout/review12/test-results/`。其中 Layout 测试 35/35，DOCX 测试 78/78，PDF 测试 47/47，覆盖公开样式/往返、跨 Span 英文单词、CRLF 与组合字素、段末显式换行、连续显式换页、Hangul（预组与分解 Jamo）/增补汉字（含 U+30000）字宽、段间距跨页、取消与预算、图片首行缩进、Native 窄单元格大字与 section 换页归属，以及原有 Native/default/DualLayer 行为。上一轮新增 9 项回归覆盖 Center/Right 的尾分隔空格、跨 Span 空格样式、首行缩进、文本保留、元素右边界，以及自动折行与显式换行/末行的空白推进量差异。Native 往返右边界断言允许 OFD 的 0.001 mm 序列化精度。上一轮另增 18 项回归：三种不换行空格的跨 Span/Native/default 折行与字符保留，中文邻接及首行缩进超宽契约，以及 PDF 普通/模拟粗体空白字素的像素与语义检查。最初四项 PDF 像素回归在临时恢复旧绘制条件时 4/4 失败；恢复修复后通过，最终三种空格的六项像素回归全部通过。旧条件失败日志保存在 `review9/before-fix-pixel-regression.log`。字宽修复新增 8 项回归覆盖四种粗斜体样式：普通 NBSP = 普通空格、窄 NBSP = 0.2 em、数字空格 = 当前样式数字字宽；公开 API 在修正字宽加 0.001 mm 的临界行宽下能完整渲染，并检查 OFD `DeltaX` 与对象宽度；Native 同时验证 `0` + 数字空格 + `0` 与 `000` 等宽。
-- 协调要求的 Astra High 有界契约复核指出连续段末 LF 空行和 GL 空格与跨 Span 组合标记交互两处遗漏，现已修复并复核闭合。另解决最新 bot 指出的预组合重音字母整词折行；本轮新增 17 项回归，覆盖连续 LF/LF+FF 短页无空白尾页、后续正文保留全部三行间距、GL 空格带跨 Span 组合标记的非断行连接/首字符样式、Basic Latin/Latin-1 预组合及分解重音词整词搬行与超长词字素拆分。
-- 最终全套测试、样例构建/生成和 11 包消费 E2E 由 Sol Low 独立顺序运行并检查，主任务复核了 7 份 TRX 合计 197/197 和退出结果，随后完成最新 13 页 Preview 验收。
-- 本地 11 个 NuGet 包构建、安装和隔离包消费 E2E 通过；公开 Layout 包消费生成 4 页，并完成 OFD 重读及文本检查。最新日志与产物在 `artifacts/flow-layout/review12/package-e2e.log` 和 `package-e2e-output/`。
-- 新增样例由同一 E2E 程序生成 `alignment-public.ofd`、`alignment.docx` 及其显式 Native/default OFD。三份对齐产物均为 1 页、167 个非空白字符；E2E 断言两组参考 `Alpha` 与折行 `Alpha  ` 的 X 坐标一致，并保留两个普通分隔空格；还断言 `A` 与 `B` 通过三种不换行空格连接时整组移至下一行，空格推进量大于零；`café` 与 `café` 分别作为完整词移至新行。新增 `terminal-public/native/default` 三份短页样例（公开页高 19 mm、DOCX 页高约 19 mm，正文 `A` 后连续两个换行）均为 1 页、1 个正文字符，OFD 重读后断言没有空白尾页。
-- 本次 E2E 对公开 Flow 输入与 OFD 抽取做逐字符（去空白）相等检查：3 页、5865 字符；显式 Native 与默认模式的 OFD 抽取一致：均为 2 页、189 字符。现有 DOCX 测试还逐字比较 OpenXML 原文与 Native OFD，并断言 OFD→PDF 没有重复文字。
+- Sol Low 独立顺序运行最新全套 Release 测试：**223 通过、0 失败、0 跳过**；主任务复核 7 份 TRX：Core 5、Packaging 23、PDF 51、Signatures 4、DOCX 90、Extensions 5、Layout 45。E2E 项目构建 0 警告、0 错误，15 组 OFD/PDF 生成通过。
+- 11 个本地 NuGet 包构建、隔离 feed 安装和消费 E2E 通过；公开 Layout 消费生成 4 页，完成 OFD 重读/文字检查；CLI Native 与 DualLayer 各 2 页。产物在 `review16/package-e2e-output/`。未发布公共 NuGet。
+- 既有回归覆盖跨 Span 单词/CRLF/组合字素、CJK 与 Hangul 字宽、比例英文、首行缩进、样式/往返、段间距、取消/预算、连续显式分页、Native section 归属、图片缩进和原有 Native/default/DualLayer 行为。
+- 自动折行尾普通空格仅取消推进量，原始文本/样式保留；居中/右对齐及元素右边界回归通过。GL 空格 U+00A0/U+202F/U+2007 连接相邻文字，含跨 Span 组合标记；窄 NBSP = 0.2 em，数字空格 = 当前样式数字字宽。临界宽度与四种粗斜体样式回归通过。定位纯空白 PDF 字素不绘制缺字方框，同时保留语义与推进量。旧绘制条件的四项像素测试 4/4 失败，恢复修复后通过，证据：`review9/before-fix-pixel-regression.log`。
+- Astra High 有界复核的连续 LF 尾序列、GL + 组合标记及混合字号 LF 意见已修复并复核闭合；对后续正文和表格逐行应用空行分页，不把它们当作可夹断的段间距。短页 A + 两个 LF 单独为 1 页；后续 B 为 4 页且中间两页为空，B 位于页顶；显式分页覆盖和页数预算回归通过。
+- 每个空行保留所属 Span/run 字号及段落最小行高，DOCX `w:br`/`w:cr` 保留 run 格式。大字号连续 LF、先大后小 LF、纯 LF 段及后续正文间距回归通过；E2E 坐标断言容差为 0.005 mm。
+- Basic Latin / Latin-1 重音词的整词折行与超长词字素拆分回归通过。受支持单个 Latin-1 字素在测量及 PDF 绘制时使用 NFC 合成，原始 OFD 文本不改变；PDF 复制文字允许规范等价形式。四种样式的 í / i + U+0301 像素一致、OFD 原文保留、PDF 两个语义字母 íB 且无重复层。临时移除合成绘制修复时 4/4 像素测试失败，恢复后 4/4 通过，证据：`review16/before-fix-latin-i-pixel.log`。
+- 公开 Flow 3 页、5865 个非空白字符，输入与 OFD 抽取逐字相等；原 DOCX 显式 Native/default 各 2 页、189 字符；对齐三组各 1 页、205 字符；文末 LF 三组各 1 页、1 字符；有后续正文三组各 4 页、2 字符；字号空行三组各 1 页、28 字符。原始全文保持由功能测试验证，视觉结论由以下实际页面检查给出。
 
 ## Preview 逐页结果
 
-| 产物与模式 | 实际检查的页 | 结果 |
+| 本轮 OFD → PDF | 实际检查页 | 结果 |
 | --- | --- | --- |
-| `review12/flow-public.ofd` → `flow-public.pdf` | 1–3 / 3 | 标题居中；中英、比例英文、局部粗斜体和红色只作用于目标 Span；第 20/21、42/43 段跨页续行完整；未见缺字、乱码、裁切、重影或空白末页。 |
-| `review12/docx-native.ofd` → `docx-native.pdf` | 1–2 / 2 | 第一页中文标题、英文斜体、蓝色表头填充与边框完整；第二页红色粗体及日期位置正常；未见重复文字或异常空白页。 |
-| `review12/docx-default.ofd` → `docx-default.pdf` | 1–2 / 2 | 默认模式与显式 Native 的标题、表格、分页和第二页强调文字外观一致；未见裁切或重复文字。 |
-| `review12/alignment-public.ofd` → `alignment-public.pdf` | 1 / 1 | 放大检查居中/右对齐两组：参考 `Alpha` 与折行第一行 `Alpha` 水平位置一致；`information` 正常换行；三种不换行空格的 `A B` 整体换行且保留间距，窄 NBSP 方框已消失且间距比普通 NBSP 更窄，数字空格间距按数字字宽保留；`café` 与 `café` 均完整移至新行，重音显示正常；无右边界裁切或重影。 |
-| `review12/alignment-native.ofd` → `alignment-native.pdf` | 1 / 1 | DOCX 显式 Native 的居中/右对齐参考与折行位置一致；三种不换行空格连接的文字保持同一行，窄 NBSP 间距小于普通空格，数字空格使用数字字宽；预组合与分解 café 均整体折行且重音正常；无方框或裁切。 |
-| `review12/alignment-default.ofd` → `alignment-default.pdf` | 1 / 1 | 默认 DOCX 的两组对齐及三种不换行空格及两种 café 整词外观与显式 Native 一致，无方框、异常空白页或重复文字。 |
-| `review12/terminal-public.ofd` → `terminal-public.pdf` | 1 / 1 | 重新打开后正文 A 完整，Preview 显示仅 1 页，无连续尾换行引入的空白页。 |
-| `review12/terminal-native.ofd` → `terminal-native.pdf` | 1 / 1 | 显式 Native 短页正文 A 完整，仍仅 1 页，无空白尾页。 |
-| `review12/terminal-default.ofd` → `terminal-default.pdf` | 1 / 1 | 默认短页与显式 Native 一致，正文 A 完整，无额外空白页。 |
+| `review16/flow-public.ofd` → `flow-public.pdf` | 1–3 / 3 | 中英混排、比例英文、局部粗斜体及红色正常；第 20/21 与 42/43 段续行完整，末页没有裁切、重叠或空白尾页。 |
+| `review16/docx-native.ofd` → `docx-native.pdf` | 1–2 / 2 | 中文标题、英文斜体、蓝色表头底色与内外边框正常；第二页红色粗体及右对齐日期正常，无重复文本。 |
+| `review16/docx-default.ofd` → `docx-default.pdf` | 1–2 / 2 | 默认模式的正文、样式、表格和两页分页与显式 Native 外观一致。 |
+| `review16/alignment-public.ofd` → `alignment-public.pdf` | 1 / 1 | 公共 API 的参考 Alpha 与折行 Alpha 水平位置一致；三种不换行空格保持空白与推进量；café 和 mínimo 的预组/组合形式均整体折行、字形一致，í 没有额外圆点或重影。 |
+| `review16/alignment-native.ofd` → `alignment-native.pdf` | 1 / 1 | 显式 Native 的参考 Alpha 与折行 Alpha 水平位置一致；三种不换行空格保持空白与推进量；café 和 mínimo 的预组/组合形式均整体折行、字形一致，í 没有额外圆点或重影。 |
+| `review16/alignment-default.ofd` → `alignment-default.pdf` | 1 / 1 | 默认 DOCX 的参考 Alpha 与折行 Alpha 水平位置一致；三种不换行空格保持空白与推进量；café 和 mínimo 的预组/组合形式均整体折行、字形一致，í 没有额外圆点或重影。 |
+| `review16/terminal-public.ofd` → `terminal-public.pdf` | 1 / 1 | 公共 API 短页正文 A 完整，连续两个尾换行没有生成空白尾页。 |
+| `review16/terminal-native.ofd` → `terminal-native.pdf` | 1 / 1 | 显式 Native 短页正文 A 完整，连续两个尾换行没有生成空白尾页。 |
+| `review16/terminal-default.ofd` → `terminal-default.pdf` | 1 / 1 | 默认 DOCX 短页正文 A 完整，连续两个尾换行没有生成空白尾页。 |
+| `review16/terminal-followed-public.ofd` → `terminal-followed-public.pdf` | 1–4 / 4 | 公共 API 的 A 在第一页，第二、三页为显式换行所需的预期空页，B 从第四页顶部开始；四页均实际查看。 |
+| `review16/terminal-followed-native.ofd` → `terminal-followed-native.pdf` | 1–4 / 4 | 显式 Native 的 A 在第一页，第二、三页为显式换行所需的预期空页，B 从第四页顶部开始；四页均实际查看。 |
+| `review16/terminal-followed-default.ofd` → `terminal-followed-default.pdf` | 1–4 / 4 | 默认 DOCX 的 A 在第一页，第二、三页为显式换行所需的预期空页，B 从第四页顶部开始；四页均实际查看。 |
+| `review16/styled-newline-public.ofd` → `styled-newline-public.pdf` | 1 / 1 | 公共 API 的大字号 A 后空行间距完整，混合大/小字号换行分别保留行高，B/C/D 位置正常，没有重叠或裁切。 |
+| `review16/styled-newline-native.ofd` → `styled-newline-native.pdf` | 1 / 1 | 显式 Native 的大字号 A 后空行间距完整，混合大/小字号换行分别保留行高，B/C/D 位置正常，没有重叠或裁切。 |
+| `review16/styled-newline-default.ofd` → `styled-newline-default.pdf` | 1 / 1 | 默认 DOCX 的大字号 A 后空行间距完整，混合大/小字号换行分别保留行高，B/C/D 位置正常，没有重叠或裁切。 |
 
-首轮公开 Flow 的英文 `DeltaX` 使用粗略字宽，Preview 页面出现明显间距问题；第二轮先改为运行时字体测量，第一波 review 再指出跨机器字宽不稳定。当前版固定 Arial 兼容比例字宽表，重新生成 OFD/PDF 并逐页复验。本记录只对上述样例和页数下结论。样例没有图片、页眉页脚；DOCX 样例的表格不表示公开 Table API 已实现。
+本记录只对以上样例与页数下结论。样例没有图片、页眉页脚或页码；DOCX 现有表格不代表公开 Table API 已实现。Astra 的有界设计复核与 Sol 的功能验证均已完成，主任务完成本轮 Preview 检查。
 
 ## 产物清单与体积
 
-| 文件（均在 `artifacts/flow-layout/review12/`） | 字节 | SHA-256 |
+| 文件（`artifacts/flow-layout/review16/`） | 字节 | SHA-256 |
 | --- | ---: | --- |
-| `flow-public.ofd` | 5,559 | `d3c9f5bbbbe68ce1934298493302642e18add731885719d53bca4943e8cf1f7b` |
-| `flow-public.pdf` | 199,181 | `ffafe255d530a97403f703a12c0f287781cedc0a5deb8463460d7dff186e1c0d` |
-| `docx-native.ofd` | 15,288,611 | `03d42dfbca201d4e55132ddd13d30dc6d8ad5d0d25098b8f9bbe7b1b6d55ef64` |
-| `docx-native.pdf` | 117,510 | `b2fc71109d2a9952e25822b906b51449ea1fede9e8eac67a165068a4d1fa93d4` |
-| `docx-default.ofd` | 15,288,607 | `3a7149b9fcfe0a6417c1dc571478404372813ade5b0572dd9c213dfd8bf52773` |
-| `docx-default.pdf` | 117,510 | `a4f97d11e1439cedd85156ae9ba63b104ac8f59419aab4a0ec5f8094ac4cb72f` |
-| `alignment-public.ofd` | 1,776 | `ffe19d42267bf51e07337f26b924a9f9999135ad897099a01ea5a1db01edcd6e` |
-| `alignment-public.pdf` | 71,413 | `373b490a0aafd600c9aabe0edb49ed73c8c9858335ad831d2c9c0fb71c93950a` |
-| `alignment-native.ofd` | 15,287,034 | `d128add1984af520815c3de8c165ef27bd7b0751fecee3e4dce6bc6fd080a8a7` |
-| `alignment-native.pdf` | 70,935 | `b09ddbb4a0400363b79976fbdd4422dc5de244415e0ef85a7fa4166022dca193` |
-| `alignment-default.ofd` | 15,287,035 | `a4787657031972b04b0768ddde71d879bbc6bda5704377e93b70fcbf211a9d09` |
-| `alignment-default.pdf` | 70,935 | `bb45405f72c67ced835fae336acf8bcf29e297f47fb1917d98bbe86138a34f3f` |
-| `terminal-public.ofd` | 1,265 | `c5f1af6fddb9dbc67902b021eac2b68705187dc494ec59ef31361bfd93270032` |
-| `terminal-public.pdf` | 63,489 | `36faef3e080c32030dde177b18a4f58e6a8ddca33514340adb15c91d29ea7f0e` |
-| `terminal-native.ofd` | 15,286,415 | `3a87e3026f5030b04fc724da54a1981a8c65b8f36d18fb927c656eb140544ce0` |
-| `terminal-native.pdf` | 63,640 | `16ade56e82f2a36ac07e32f266615e1875018bc353f19e53d26ff470be40642b` |
-| `terminal-default.ofd` | 15,286,419 | `67d1cff616de22735ce1eaf15a16bd0834f9b38a067176153fc50f1de8723221` |
-| `terminal-default.pdf` | 63,640 | `ed9122aa2223f942d754a57e31381b49fd7ade711830c845d7efd63448b54f02` |
+| `flow-public.ofd` | 5,559 | `f84939562dce3696e8b8277ff1fcd8aaaa39c28c9b709ff925f98648c9255f2c` |
+| `flow-public.pdf` | 199,181 | `d1def6631eff806697783f28cf4ae5f8608dbb0c34956578840cab289c3887b0` |
+| `docx-native.ofd` | 15,288,613 | `d02c163dd187c7b86a345399f8e52666139914e1798164ecf14eaa444f118f64` |
+| `docx-native.pdf` | 117,510 | `e92f7658e7bace98ee50675b5423d82c7b2c6f8f925831ed9b9938560e15ccbf` |
+| `docx-default.ofd` | 15,288,608 | `f7b090669c2ec4e10727ea027a189c38ecd5e2478a838e2ab036393cf46dec8f` |
+| `docx-default.pdf` | 117,510 | `ceb654d1163c2063f41609c1b1c9b0e8e271459ddbaeb4fefbd87427a3fc1dd4` |
+| `alignment-public.ofd` | 1,935 | `8bfb4378b5c7d7bcbcd1f43fb71f0da524b0042d5b35985dfa60423cfe89887e` |
+| `alignment-public.pdf` | 71,830 | `645e9b073b94427498c62fbe935c061893d2e619e5bb9e253ddd37d3c097079b` |
+| `alignment-native.ofd` | 15,287,189 | `bcd87c4d9785875cfe5bbfb760a608494b075cc828c5b6da093eb53da581f389` |
+| `alignment-native.pdf` | 71,324 | `e0d057ef786a320f4a6be68b4f5e118fa7a4f7eecbe05c7fd04e9f076ef869b4` |
+| `alignment-default.ofd` | 15,287,188 | `8440cc8c90da560627acb372e4f976edfa2e1df94486ebac5147c93174888604` |
+| `alignment-default.pdf` | 71,324 | `79c22542e126917a55e12173ea3275585f07094ec73376bec9bdd5a8ac19cdc6` |
+| `terminal-public.ofd` | 1,265 | `e14ff8801c5b6887bb49f82761ab2de09e5f253c183c539c32c1645798b1076c` |
+| `terminal-public.pdf` | 63,489 | `1e1749fa1b398e9fb379b62144ae17d81e0bdf7892701554ff1bd9fafa294232` |
+| `terminal-native.ofd` | 15,286,416 | `b9262e0b64604ead5691f6f86d6e88c859ed31c34565d37a95ccbdfa31770293` |
+| `terminal-native.pdf` | 63,640 | `f904659398497f5c15c6baf6302104c16fd9c64a84c673a7e9ea39ba99eedaa9` |
+| `terminal-default.ofd` | 15,286,415 | `e2d0579ed90583573049601a379bde5574ea4914a7a7a2e0d4f4431cf8288290` |
+| `terminal-default.pdf` | 63,640 | `28653c657c5debd32556d52e1bd3c65f9278c881b17bf1f07ee70ecefbc040c0` |
+| `terminal-followed-public.ofd` | 2,276 | `783e707a99085fbc338cd10fb992a824df2c8152d2867a3cc1f2e4835d9c88d9` |
+| `terminal-followed-public.pdf` | 64,837 | `f509877555e78f324e8cac6ef4da6e6bd8f4361cc2e0befa390a792d3b4cb505` |
+| `terminal-followed-native.ofd` | 15,287,454 | `f6bd12a58176bf0f276f1120b6d035f6738d7a267a8333d207516596aceb6ed7` |
+| `terminal-followed-native.pdf` | 64,981 | `7b421c2f422a7ef3b30e86b00bb74dd465c51d1b741068bd26453846671724a3` |
+| `terminal-followed-default.ofd` | 15,287,454 | `6459f01fcffd6fbf816589fb46563a288e2317f26f460006ba9ce1feb585b3af` |
+| `terminal-followed-default.pdf` | 64,981 | `2f143b9b0cf069e06aa586c6b8682ad133deb2621fa37cd04bda718df592c438` |
+| `styled-newline-public.ofd` | 1,431 | `1dbf1dd7d389959b65dc4d79fd866eeeea089315e8393864300f03805f812f10` |
+| `styled-newline-public.pdf` | 67,636 | `f16a0ef01206e29940fc06291d3cfaf097fcf2550625dfc3eb2d27b9846c22ad` |
+| `styled-newline-native.ofd` | 15,286,584 | `adffe2c5405f6684f11969fe70d08e38dc32ff2ac29b2480de86e42c51e4a7bd` |
+| `styled-newline-native.pdf` | 67,695 | `c2ab282f1ccbf809327f69aa70522244df138d8d72be4b4007ea7056e6ff1a06` |
+| `styled-newline-default.ofd` | 15,286,587 | `ef8ab2aea11dd93c0f4c9524d49acbb612fe71405455763e61e40ef74dfa0f70` |
+| `styled-newline-default.pdf` | 67,695 | `67d9d09215219302dfc18ede5786d08b367c19480738b612632d01526bbe7b14` |
 
-页面图：`review12/pages/flow-public-1.png`～`3.png`、`docx-native-1.png`～`2.png`、`docx-default-1.png`～`2.png`。原有七张 PNG 与先前 `review7/pages/` 逐字节一致；另保留三张 `alignment-*-1.png` 和三张 `terminal-*-1.png`，但最终结论依据本次重新打开的 Preview 页面。对比加入空白字素剪裁前，公开 Flow PDF 增加 609 字节（约 0.31%），原 DOCX PDF 增加 64 字节（约 0.05%），来自空白字素的局部剪裁指令；原有页面像素不变。DOCX OFD 约 15.3 MB，主要由既有字体全量嵌入造成；公开 Flow 只声明字体名，其 5.6 KB OFD 与 DOCX 内容不同，不作同内容压缩率比较。
+页面图全部保存在 `review16/pages/`（28 张）；原有 `flow-public`、`docx-native`、`docx-default` 的七张 PNG 与 `review7/pages/` 逐字节一致。本轮原有公开 Flow PDF 199,181 字节、DOCX PDF 117,510 字节，与上一轮一致；新增 í 内容的对齐 PDF 约 71–72 KB。四页短页 PDF 约 65 KB，字号页约 68 KB，没有异常体积增长。DOCX OFD 约 15.3 MB 来自既有全量字体嵌入；公开 Flow OFD 仅声明字体，不能跨不同内容比较压缩率。
 
 ## 范围与遗留
 
-公开 Flow 的 CJK 字宽采用 1 em，未做字体子集或嵌入；跨机器视觉取决于目标阅读器的字体。复杂 Word 浮动对象、公开表格、Canvas 和任意字体保真不在本票验收范围。未使用目标 OFD 桌面阅读器验证原始 OFD 互操作；本次视觉结论仅针对所列 OFD→PDF→Preview 链路。
+公开 Flow 的 CJK 字宽采用 1 em，未做字体子集或嵌入；跨机器视觉取决于目标阅读器字体。复杂 Word 浮动对象、公开表格、Canvas、完整 Unicode 行断算法及任意字体保真不在本票范围。通用 OFD 无定位的混合文本 run 仍受绑定字体缺字影响。PDF NFC 修复限于单个受支持 Latin-1 字素，不宣称完整文字塑形。
 
-本次 PDF 空白字素修复与像素回归覆盖 Flow/Native 的 `DeltaX/DeltaY` 定位字素及纯空白文本。通用 OFD 无定位的混合文本 run 仍受所绑定字体的缺字影响；该路径未作为本票完整字体保真验收。首版也未实现完整 Unicode 行断算法。
+未使用目标 OFD 桌面阅读器验证原始 OFD 互操作；本次视觉结论仅针对所列 OFD→PDF→Preview 链路。PR 保持未合并，不发布 NuGet，不启动 ticket 16 或依赖票。
