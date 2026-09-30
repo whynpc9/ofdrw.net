@@ -140,7 +140,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     {
         var hadPendingBreaks = _pendingPageBreaks > 0;
         ApplyPendingPageBreaks(package, state);
-        if (paragraph.Format.PageBreakBefore && (state.HasBodyContent || hadPendingBreaks))
+        if (paragraph.Format.PageBreakBefore && (state.HasBodyContent || hadPendingBreaks || _pendingLineBreakHeights.Count > 0))
         {
             StartNewPage(package, state);
             _pendingSpaceAfter = 0;
