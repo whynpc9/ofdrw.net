@@ -100,6 +100,7 @@ internal sealed class BuiltInTextModel : BuiltInInlineModel
 internal sealed class BuiltInBreakModel : BuiltInInlineModel
 {
     internal bool IsPageBreak { get; set; }
+    internal BuiltInTextFormat? Format { get; set; }
 }
 
 internal sealed class BuiltInTabModel : BuiltInInlineModel

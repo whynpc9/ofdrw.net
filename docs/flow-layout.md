@@ -27,6 +27,8 @@ await new OfdPackageWriter().WriteAsync(package, output);
 
 单词预测折行覆盖 Basic Latin/Latin-1 字母与数字，并按字素的基字符识别，包含 `café`、`café` 等预组合/分解形式；超出完整行宽的单词仍按字素拆分。非断行空格带组合标记时也保留连接属性。连续段末换行保留全部空行高度，在后续内容出现时使用，不单独生成文末空白页。
 
+显式空行使用各换行 Span/run 的字号和段落最小行高，并逐行分页；连续换行的不同字号独立保存。预组合与分解形式能组成受支持的 Latin-1 字母时，用组合字母字宽测量（如 `í` 与 `í`），OFD 保留原始字符序列。PDF 导出绘制单个受支持的 Latin-1 字素时使用对应组合字形，复制出的 PDF 文本为规范等价形式，避免分解 `í` 的原始 `i` 点与重音叠绘。
+
 `Render()` 每次生成新包，不修改之前返回的包；调用方可复用描述对象，但不要在其他线程同时修改其 `Blocks`、`Spans` 或 `Options`。超高行、无可用宽度、页数、字符数和文本元素数量超限会明确失败，不会静默裁切。预算由 `MaxPageCount`、`MaxCharacters`、`MaxTextElements` 控制，取消通过 `CancellationToken` 传入。`OfdDocumentBuilder` 的按页坐标 API 保持可用。
 
 运行仓库内的无隐私样例：

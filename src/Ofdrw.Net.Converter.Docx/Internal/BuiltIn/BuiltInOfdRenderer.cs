@@ -33,7 +33,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private readonly Dictionary<string, (byte[] Data, string FileName)> _fontFiles = new();
     private int _pendingPageBreaks;
     private double _pendingSpaceAfter;
-    private double _pendingLineBreakHeight;
+    private readonly List<double> _pendingLineBreakHeights = new();
 
     internal BuiltInOfdRenderer(
         DocxConversionOptions options,
@@ -103,7 +103,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private LayoutState RenderSection(OfdDocumentPackage package, BuiltInSectionModel section, bool hasFollowingSection)
     {
         _pendingSpaceAfter = 0;
-        _pendingLineBreakHeight = 0;
+        _pendingLineBreakHeights.Clear();
         var state = new LayoutState(section, section.PageNumberStart ?? _lastPageNumber + 1);
         EnsurePage(package, state);
         foreach (var block in section.Blocks)
@@ -144,7 +144,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         {
             StartNewPage(package, state);
             _pendingSpaceAfter = 0;
-            _pendingLineBreakHeight = 0;
+            _pendingLineBreakHeights.Clear();
         }
 
         var spaceBefore = PointsToMillimeters(paragraph.Format.SpaceBeforePoints ?? 0);
@@ -162,13 +162,13 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 _pendingPageBreaks++;
                 continue;
             }
-            if (line.TerminalNewline) { _pendingLineBreakHeight += line.Height; continue; }
+            if (line.TerminalNewline) { _pendingLineBreakHeights.Add(line.Height); continue; }
             ApplyPendingPageBreaks(package, state);
             if (firstLine)
             {
-                PlaceFirstLine(package, state, line.Height, _pendingSpaceAfter + _pendingLineBreakHeight + spaceBefore);
+                ApplyPendingLineBreaks(package, state);
+                PlaceFirstLine(package, state, line.Height, _pendingSpaceAfter + spaceBefore);
                 _pendingSpaceAfter = 0;
-                _pendingLineBreakHeight = 0;
                 firstLine = false;
             }
             else EnsureVerticalSpace(package, state, line.Height);
@@ -198,9 +198,9 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
 
             if (firstRow)
             {
-                PlaceFirstLine(package, state, rowHeight, _pendingSpaceAfter + _pendingLineBreakHeight);
+                ApplyPendingLineBreaks(package, state);
+                PlaceFirstLine(package, state, rowHeight, _pendingSpaceAfter);
                 _pendingSpaceAfter = 0;
-                _pendingLineBreakHeight = 0;
                 firstRow = false;
             }
             else EnsureVerticalSpace(package, state, rowHeight);
@@ -386,7 +386,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             else
             {
                 using var measure = XGraphics.CreateMeasureContext(new XSize(1000, 1000), XGraphicsUnit.Point, XPageDirection.Downwards);
-                advance = measure.MeasureString(text == "\t" ? "    " : text, GetLatinCompatibleFont(format)).Width / 1000d;
+                advance = measure.MeasureString(text == "\t" ? "    " : FlowTextMetrics.NormalizeLatinForMeasurement(text),
+                    GetLatinCompatibleFont(format)).Width / 1000d;
             }
             _advances[key] = advance;
         }
@@ -396,9 +397,21 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     public double AdvanceMillimeters(string grapheme, FlowTextStyle style) =>
         Advance(grapheme, (BuiltInTextFormat)style.Source!);
 
+    private void ApplyPendingLineBreaks(OfdDocumentPackage package, LayoutState state)
+    {
+        foreach (var height in _pendingLineBreakHeights)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            EnsureVerticalSpace(package, state, height);
+            state.Y += height;
+            state.HasBodyContent = true;
+        }
+        _pendingLineBreakHeights.Clear();
+    }
+
     private void ApplyPendingPageBreaks(OfdDocumentPackage package, LayoutState state)
     {
-        if (_pendingPageBreaks > 0) { _pendingSpaceAfter = 0; _pendingLineBreakHeight = 0; }
+        if (_pendingPageBreaks > 0) { _pendingSpaceAfter = 0; _pendingLineBreakHeights.Clear(); }
         while (_pendingPageBreaks > 0)
         {
             StartNewPage(package, state);
@@ -426,7 +439,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             {
                 case BuiltInTextModel text: Add(text.Text, text.Format); break;
                 case BuiltInTabModel: Add("\t", fallbackFormat); break;
-                case BuiltInBreakModel br: Add(br.IsPageBreak ? "\f" : "\n", fallbackFormat); break;
+                case BuiltInBreakModel br: Add(br.IsPageBreak ? "\f" : "\n", br.Format ?? fallbackFormat); break;
                 case BuiltInPageNumberModel field:
                     var value = field.Kind == BuiltInPageFieldKind.TotalPages ? totalPages :
                         field.Kind == BuiltInPageFieldKind.SectionPages ? sectionPages : pageNumber;

@@ -9,6 +9,98 @@ namespace Ofdrw.Net.Layout.Tests;
 public sealed class FlowDocumentTests
 {
     [Theory]
+    [InlineData(20, 2)]
+    [InlineData(2, 20)]
+    public void ConsecutiveNewlinesWithDifferentSpanSizes_KeepEachEmptyLineHeight(double firstSize, double secondSize)
+    {
+        var document = new FlowDocument();
+        var paragraph = new Paragraph();
+        paragraph.Spans.Add(new Span("A"));
+        paragraph.Spans.Add(new Span("\n") { FontSizeMillimeters = firstSize });
+        paragraph.Spans.Add(new Span("\n") { FontSizeMillimeters = secondSize });
+        document.Blocks.Add(paragraph);
+        document.Blocks.Add(new Paragraph("B"));
+        var text = Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal((document.Options.DefaultFontSizeMillimeters + firstSize + secondSize) * 1.3,
+            text[1].YMillimeters - text[0].YMillimeters, 5);
+        var style = new FlowTextStyle { FontSizeMillimeters = firstSize };
+        var lines = FlowParagraphLayout.Layout(new[] { new FlowInline { Text = "\n", Style = style } },
+            new FlowParagraphFormat(), 50, new FixedMetrics(), new FlowTextStyle(), default);
+        Assert.All(lines, line => Assert.Equal(firstSize * 1.3, line.Height, 5));
+    }
+
+    [Theory]
+    [InlineData(20, 0, 78)]
+    [InlineData(2, 0, 7.8)]
+    [InlineData(2, 8, 24)]
+    public void EmptyLines_UseControlSpanSizeAndParagraphMinimum(double size, double minimum, double expectedGap)
+    {
+        var document = new FlowDocument();
+        var first = new Paragraph { MinimumLineHeightMillimeters = minimum };
+        first.Spans.Add(new Span("A\n\n") { FontSizeMillimeters = size });
+        document.Blocks.Add(first);
+        document.Blocks.Add(new Paragraph("B"));
+        var text = Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "A", "B" }, text.Select(value => value.Text));
+        Assert.Equal(expectedGap, text[1].YMillimeters - text[0].YMillimeters, 5);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void DecomposedLatinI_UsesSupportedCompositeAdvanceWithoutChangingText(bool bold, bool italic)
+    {
+        var style = new FlowTextStyle { FontSizeMillimeters = 10, Bold = bold, Italic = italic };
+        foreach (var pair in new[] { ("ì", "i\u0300"), ("í", "i\u0301"), ("î", "i\u0302"), ("ï", "i\u0308") })
+        {
+            var width = FlowLatinMetrics.AdvanceMillimeters(pair.Item1, style);
+            Assert.Equal(width, FlowLatinMetrics.AdvanceMillimeters(pair.Item2, style), 5);
+            var document = new FlowDocument();
+            document.Options.DefaultFontSizeMillimeters = 10;
+            var paragraph = new Paragraph();
+            paragraph.Spans.Add(new Span("i") { Bold = bold, Italic = italic });
+            paragraph.Spans.Add(new Span(pair.Item2.Substring(1)) { Bold = !bold });
+            paragraph.Spans.Add(new Span("B"));
+            document.Blocks.Add(paragraph);
+            var text = Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+            Assert.Equal(new[] { pair.Item2, "B" }, text.Select(value => value.Text));
+            Assert.Equal(width, text[0].WidthMillimeters, 5);
+            Assert.Equal(text[0].XMillimeters + width, text[1].XMillimeters, 5);
+            Assert.Equal(bold, text[0].Weight == OfdTextElement.BoldWeight);
+            Assert.Equal(italic, text[0].Italic);
+        }
+    }
+
+    [Fact]
+    public void DeferredTerminalNewlines_PageEveryEmptyLineBeforeFollowingParagraph()
+    {
+        var document = new FlowDocument();
+        document.Options.PageHeightMillimeters = 19;
+        document.Options.MarginTopMillimeters = document.Options.MarginBottomMillimeters = 5;
+        document.Blocks.Add(new Paragraph("A\n\n"));
+        Assert.Single(document.Render().Pages);
+        var next = new Paragraph("B");
+        document.Blocks.Add(next);
+        var pages = document.Render().Pages;
+        Assert.Equal(4, pages.Count);
+        Assert.Equal("A", Assert.Single(pages[0].Elements.OfType<OfdTextElement>()).Text);
+        Assert.Empty(pages[1].Elements);
+        Assert.Empty(pages[2].Elements);
+        var b = Assert.Single(pages[3].Elements.OfType<OfdTextElement>());
+        Assert.Equal("B", b.Text);
+        Assert.Equal(5, b.YMillimeters, 5);
+        next.PageBreakBefore = true;
+        var explicitBreak = document.Render().Pages;
+        Assert.Equal(2, explicitBreak.Count);
+        Assert.Equal(5, Assert.Single(explicitBreak[1].Elements.OfType<OfdTextElement>()).YMillimeters, 5);
+        next.PageBreakBefore = false;
+        document.Options.MaxPageCount = 3;
+        Assert.Throws<InvalidOperationException>(() => document.Render());
+    }
+
+    [Theory]
     [InlineData("\u00A0")]
     [InlineData("\u202F")]
     [InlineData("\u2007")]

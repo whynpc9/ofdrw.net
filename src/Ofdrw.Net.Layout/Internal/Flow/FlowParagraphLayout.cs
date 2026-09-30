@@ -156,9 +156,10 @@ internal static class FlowParagraphLayout
         var currentWidth = 0d;
         var indent = format.FirstLineIndentMillimeters;
         var terminalNewline = false;
+        var emptyLineStyle = fallback;
         void Flush(bool terminalLine = false, bool automaticWrap = false)
         {
-            var size = current.Count == 0 ? fallback.FontSizeMillimeters : current.Max(g => g.Style.FontSizeMillimeters);
+            var size = current.Count == 0 ? emptyLineStyle.FontSizeMillimeters : current.Max(g => g.Style.FontSizeMillimeters);
             var imageHeight = current.Count == 0 ? 0 : current.Max(g => g.ImageHeight);
             result.Add(new FlowLine(current, Math.Max(imageHeight, Math.Max(size * 1.3, format.MinimumLineHeightMillimeters)),
                 indent, format.Alignment, terminalNewline: terminalLine, automaticWrap: automaticWrap));
@@ -179,10 +180,12 @@ internal static class FlowParagraphLayout
             var glyph = glyphs[i];
             if (glyph.Text == "\f" || glyph.Text == "\n")
             {
+                if (glyph.Text == "\n" && !terminalNewline) emptyLineStyle = glyph.Style;
                 if (glyph.Text == "\f" && terminalNewline) Flush(terminalLine: i > lastContent);
                 if (current.Count > 0 || glyph.Text == "\n")
                     Flush(terminalLine: current.Count == 0 && i > lastContent);
                 if (glyph.Text == "\f") result.Add(new FlowLine(new List<FlowGlyph>(), 0, 0, format.Alignment, true));
+                if (glyph.Text == "\n") emptyLineStyle = glyph.Style;
                 terminalNewline = glyph.Text == "\n";
                 continue;
             }
@@ -248,6 +251,15 @@ internal static class FlowPagination
 
 internal static class FlowTextMetrics
 {
+    internal static string NormalizeLatinForMeasurement(string grapheme)
+    {
+        if (grapheme.Length <= 1 || grapheme[0] > 0xFF || !char.IsLetter(grapheme[0])) return grapheme;
+        var composed = grapheme.Normalize(NormalizationForm.FormC);
+        // Use the already supported Latin-1 composite; preserve the original text
+        // in the caller's glyph and leave other scripts under their existing policy.
+        return composed[0] <= 0xFF ? composed : grapheme;
+    }
+
     internal static bool IsCjkTypographicUnit(string grapheme)
     {
         if (string.IsNullOrEmpty(grapheme)) return false;

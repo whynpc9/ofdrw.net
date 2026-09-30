@@ -76,6 +76,7 @@ internal static class FlowLatinMetrics
     internal static double AdvanceMillimeters(string grapheme, FlowTextStyle style)
     {
         if (FlowTextMetrics.IsCjkTypographicUnit(grapheme)) return style.FontSizeMillimeters;
+        grapheme = FlowTextMetrics.NormalizeLatinForMeasurement(grapheme);
         var scalar = char.IsHighSurrogate(grapheme[0]) && grapheme.Length > 1 &&
             char.IsLowSurrogate(grapheme[1]) ? char.ConvertToUtf32(grapheme, 0) : grapheme[0];
         var widths = style.Bold ? (style.Italic ? BoldItalic : Bold) :

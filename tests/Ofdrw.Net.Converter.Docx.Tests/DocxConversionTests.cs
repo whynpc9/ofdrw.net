@@ -24,6 +24,54 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 public sealed partial class DocxConversionTests
 {
     [Theory]
+    [InlineData(true, 80, 80)]
+    [InlineData(false, 80, 80)]
+    [InlineData(true, 80, 8)]
+    [InlineData(false, 80, 8)]
+    [InlineData(true, 8, 80)]
+    [InlineData(false, 8, 80)]
+    public async Task Native_EmptyLines_ShouldUseTheirRunFontSize(bool explicitNative, int firstSize, int secondSize)
+    {
+        await using var input = CreateMinimalDocx($"""
+            <w:p><w:r><w:t>A</w:t></w:r><w:r><w:rPr><w:sz w:val="{firstSize}"/></w:rPr><w:br/></w:r><w:r><w:rPr><w:sz w:val="{secondSize}"/></w:rPr><w:cr/></w:r></w:p>
+            <w:p><w:r><w:t>B</w:t></w:r></w:p>
+            """);
+        await using var output = new MemoryStream();
+        var converter = explicitNative ? new DocxToOfdConverter(new DocxConversionOptions { OfdMode = DocxToOfdMode.Native })
+            : new DocxToOfdConverter();
+        await converter.ConvertAsync(input, output);output.Position = 0;
+        var text = Assert.Single((await new OfdReader().ReadAsync(output)).Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "A", "B" }, text.Select(value => value.Text));
+        Assert.Equal((10.5 + (firstSize + secondSize) / 2d) * 25.4 / 72 * 1.3,
+            text[1].YMillimeters - text[0].YMillimeters, 2);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void Native_DecomposedLatinI_ShouldMatchCompositeAdvance(bool bold, bool italic)
+    {
+        var model = new BuiltInDocumentModel();var section = new BuiltInSectionModel();
+        foreach (var value in new[] { "ìB", "i\u0300B", "íB", "i\u0301B", "îB", "i\u0302B", "ïB", "i\u0308B" })
+        {
+            var paragraph = new BuiltInParagraphModel();
+            paragraph.Inlines.Add(new BuiltInTextModel { Text = value,
+                Format = { Bold = bold, Italic = italic, FontSizePoints = 20 } });
+            section.Blocks.Add(paragraph);
+        }
+        model.Sections.Add(section);
+        var text = Assert.Single(new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(model).Pages).Elements.OfType<OfdTextElement>().ToArray();
+        for (var i = 0; i < text.Length; i += 2)
+        {
+            Assert.Equal(text[i].WidthMillimeters, text[i + 1].WidthMillimeters, 5);
+            Assert.Equal(text[i].Runs[0].DeltaX, text[i + 1].Runs[0].DeltaX);
+        }
+    }
+
+    [Theory]
     [InlineData("café")]
     [InlineData("cafe\u0301")]
     public void Native_AccentedLatinWord_ShouldMoveIntactToFreshLine(string word)
@@ -76,13 +124,17 @@ public sealed partial class DocxConversionTests
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task Native_ConsecutiveTerminalNewlines_ShouldDeferBlankTailPages(bool explicitNative)
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task Native_ConsecutiveTerminalNewlines_ShouldDeferBlankTailPages(bool explicitNative, bool table)
     {
         async Task<OfdDocumentPackage> Convert(bool followingContent, bool shortPage)
         {
-            var following = followingContent ? "<w:p><w:r><w:t>B</w:t></w:r></w:p>" : "";
+            var following = !followingContent ? "" : table
+                ? "<w:tbl><w:tblGrid><w:gridCol w:w=\"5000\"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>B</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+                : "<w:p><w:r><w:t>B</w:t></w:r></w:p>";
             var height = shortPage ? 1077 : 6000;
             await using var input = CreateMinimalDocx($"""
                 <w:p><w:r><w:t>A</w:t><w:br/><w:br/></w:r></w:p>{following}
@@ -96,9 +148,18 @@ public sealed partial class DocxConversionTests
         }
         var terminal = await Convert(false, true);
         Assert.Equal("A", Assert.Single(Assert.Single(terminal.Pages).Elements.OfType<OfdTextElement>()).Text);
+        var paged = (await Convert(true, true)).Pages;
+        Assert.Equal(4, paged.Count);
+        Assert.Equal("A", Assert.Single(paged[0].Elements.OfType<OfdTextElement>()).Text);
+        Assert.Empty(paged[1].Elements);
+        Assert.Empty(paged[2].Elements);
+        var last = Assert.Single(paged[3].Elements.OfType<OfdTextElement>());
+        Assert.Equal("B", last.Text);
+        Assert.Equal(283 * 25.4 / 1440 + (table ? 0.8 : 0), last.YMillimeters, 2);
         var followed = Assert.Single((await Convert(true, false)).Pages).Elements.OfType<OfdTextElement>().ToArray();
         Assert.Equal(new[] { "A", "B" }, followed.Select(value => value.Text));
-        Assert.Equal(10.5 * 25.4 / 72 * 1.3 * 3, followed[1].YMillimeters - followed[0].YMillimeters, 2);
+        Assert.Equal(10.5 * 25.4 / 72 * 1.3 * 3 + (table ? 0.8 : 0),
+            followed[1].YMillimeters - followed[0].YMillimeters, 2);
     }
 
     [Theory]
@@ -424,6 +485,8 @@ public sealed partial class DocxConversionTests
         var section = new BuiltInSectionModel();
         var first = new BuiltInParagraphModel();
         first.Inlines.Add(new BuiltInTextModel { Text = "A" });
+        first.Inlines.Add(new BuiltInBreakModel());
+        first.Inlines.Add(new BuiltInBreakModel());
         first.Format.SpaceAfterPoints = 30;
         section.Blocks.Add(first);
         var second = new BuiltInParagraphModel();
