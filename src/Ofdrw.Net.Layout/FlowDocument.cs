@@ -142,7 +142,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         if (_page is null) StartPage();
         var hadPendingBreaks = _pendingPageBreaks > 0;
         ApplyPendingPageBreaks();
-        if (paragraph.PageBreakBefore && (_hasBodyContent || hadPendingBreaks))
+        if (paragraph.PageBreakBefore && (_hasBodyContent || hadPendingBreaks || _pendingLineBreakHeights.Count > 0))
         {
             StartPage();
             _pendingSpaceAfter = 0;

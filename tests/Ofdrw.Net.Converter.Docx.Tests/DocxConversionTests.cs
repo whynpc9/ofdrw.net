@@ -24,6 +24,39 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 public sealed partial class DocxConversionTests
 {
     [Theory]
+    [InlineData(true, 8, 80, "inline")]
+    [InlineData(false, 8, 80, "inline")]
+    [InlineData(true, 80, 8, "inline")]
+    [InlineData(false, 80, 8, "inline")]
+    [InlineData(true, 8, 80, "leading")]
+    [InlineData(false, 8, 80, "leading")]
+    [InlineData(true, 80, 8, "leading")]
+    [InlineData(false, 80, 8, "leading")]
+    [InlineData(true, 8, 80, "only")]
+    [InlineData(false, 8, 80, "only")]
+    [InlineData(true, 80, 8, "only")]
+    [InlineData(false, 80, 8, "only")]
+    public async Task Native_MixedSizeNewlines_WithInlineOrLeadingContent_UseEndingBreakStyle(bool explicitNative, int firstSize, int secondSize, string context)
+    {
+        var start = context == "inline" ? "<w:r><w:t>A</w:t></w:r>" : "";
+        var finish = context == "only" ? "</w:p><w:p>" : "";
+        await using var input = CreateMinimalDocx($"""
+            <w:p>{start}<w:r><w:rPr><w:sz w:val="{firstSize}"/></w:rPr><w:br/></w:r><w:r><w:rPr><w:sz w:val="{secondSize}"/></w:rPr><w:cr/></w:r>{finish}<w:r><w:t>B</w:t></w:r></w:p>
+            """);
+        await using var output = new MemoryStream();
+        var converter = explicitNative ? new DocxToOfdConverter(new DocxConversionOptions { OfdMode = DocxToOfdMode.Native })
+            : new DocxToOfdConverter();
+        await converter.ConvertAsync(input, output);output.Position = 0;
+        var text = Assert.Single((await new OfdReader().ReadAsync(output)).Pages).Elements.OfType<OfdTextElement>().ToArray();
+        var b = text.Last();
+        Assert.Equal("B", b.Text);
+        var expectedPoints = context == "inline" ? 10.5 + secondSize / 2d :
+            (firstSize + secondSize + (context == "only" ? secondSize : 0)) / 2d;
+        var origin = context == "inline" ? text[0].YMillimeters : 25.4;
+        Assert.Equal(expectedPoints * 25.4 / 72 * 1.3, b.YMillimeters - origin, 2);
+    }
+
+    [Theory]
     [InlineData(true, 80, 80)]
     [InlineData(false, 80, 80)]
     [InlineData(true, 80, 8)]
@@ -476,6 +509,37 @@ public sealed partial class DocxConversionTests
         var c = Assert.Single(package.Pages[2].Elements.OfType<OfdTextElement>());
         Assert.Equal("C", c.Text);
         Assert.True(c.YMillimeters + c.HeightMillimeters <= package.Pages[2].HeightMillimeters - 10 * 25.4 / 72 + 0.000001);
+    }
+
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(2, 2)]
+    [InlineData(0, 1)]
+    public void Native_PageBreakBeforeAfterOnlyNewlines_OverridesDeferredLines(int newlines, int expectedPages)
+    {
+        var model = new BuiltInDocumentModel();
+        var section = new BuiltInSectionModel
+        {
+            PageHeightPoints = 54, MarginTopPoints = 14, MarginBottomPoints = 14
+        };
+        if (newlines > 0)
+        {
+            var first = new BuiltInParagraphModel();
+            for (var i = 0; i < newlines; i++) first.Inlines.Add(new BuiltInBreakModel());
+            section.Blocks.Add(first);
+        }
+        var second = new BuiltInParagraphModel();
+        second.Inlines.Add(new BuiltInTextModel { Text = "B" });
+        second.Format.PageBreakBefore = true;
+        section.Blocks.Add(second);
+        model.Sections.Add(section);
+        var package = new BuiltInOfdRenderer(new DocxConversionOptions(),
+            new List<DocxConversionDiagnostic>(), default).Render(model);
+        Assert.Equal(expectedPages, package.Pages.Count);
+        if (expectedPages == 2) Assert.Empty(package.Pages[0].Elements);
+        var b = Assert.Single(package.Pages[^1].Elements.OfType<OfdTextElement>());
+        Assert.Equal("B", b.Text);
+        Assert.Equal(14 * 25.4 / 72, b.YMillimeters, 5);
     }
 
     [Fact]

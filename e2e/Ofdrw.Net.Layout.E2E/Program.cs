@@ -158,6 +158,25 @@ using (var zip = ZipFile.Open(followedDocxPath, ZipArchiveMode.Update))
     writer.Write(xml.Replace("<w:sectPr>", "<w:p><w:r><w:t>B</w:t></w:r></w:p><w:sectPr>"));
 }
 
+// A leading paragraph with only LF still gives PageBreakBefore a prior logical page.
+terminalFlow.Blocks.Clear();
+terminalFlow.Blocks.Add(new Paragraph("\n\n"));
+terminalFlow.Blocks.Add(new Paragraph("B") { PageBreakBefore = true });
+await using (var stream = File.Create(Path.Combine(outputDirectory, "newline-break-public.ofd")))
+    await new OfdPackageWriter().WriteAsync(terminalFlow.Render(), stream);
+var newlineBreakDocxPath = Path.Combine(outputDirectory, "newline-break.docx");
+File.Copy(terminalDocxPath, newlineBreakDocxPath, overwrite: true);
+using (var zip = ZipFile.Open(newlineBreakDocxPath, ZipArchiveMode.Update))
+{
+    var entry = zip.GetEntry("word/document.xml")!;
+    string xml;
+    using (var reader = new StreamReader(entry.Open())) xml = reader.ReadToEnd();
+    entry.Delete();
+    using var writer = new StreamWriter(zip.CreateEntry("word/document.xml").Open(), new UTF8Encoding(false));
+    writer.Write(xml.Replace("<w:t>A</w:t>", "")
+        .Replace("<w:sectPr>", "<w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>B</w:t></w:r></w:p><w:sectPr>"));
+}
+
 var styledNewlineFlow = new FlowDocument();
 styledNewlineFlow.Options.PageWidthMillimeters = 120;
 var large = new Paragraph();
@@ -183,6 +202,32 @@ using (var zip = ZipFile.Open(styledDocxPath, ZipArchiveMode.Update))
         """);
 }
 
+var inlineNewlineFlow = new FlowDocument();
+inlineNewlineFlow.Options.PageWidthMillimeters = 106;
+foreach (var context in new[] { "inline", "leading", "only" })
+{
+    var paragraph = new Paragraph();
+    if (context == "inline") paragraph.Spans.Add(new Span("A"));
+    paragraph.Spans.Add(new Span("\n") { FontSizeMillimeters = 2 });
+    paragraph.Spans.Add(new Span("\n") { FontSizeMillimeters = 20 });
+    var value = context == "inline" ? "B" : context == "leading" ? "C" : "D";
+    if (context != "only") paragraph.Spans.Add(new Span(value));
+    inlineNewlineFlow.Blocks.Add(paragraph);
+    if (context == "only") inlineNewlineFlow.Blocks.Add(new Paragraph(value));
+}
+await using (var stream = File.Create(Path.Combine(outputDirectory, "inline-newline-public.ofd")))
+    await new OfdPackageWriter().WriteAsync(inlineNewlineFlow.Render(), stream);
+var inlineDocxPath = Path.Combine(outputDirectory, "inline-newline.docx");
+File.Copy(styledDocxPath, inlineDocxPath, overwrite: true);
+using (var zip = ZipFile.Open(inlineDocxPath, ZipArchiveMode.Update))
+{
+    zip.GetEntry("word/document.xml")!.Delete();
+    using var writer = new StreamWriter(zip.CreateEntry("word/document.xml").Open(), new UTF8Encoding(false));
+    writer.Write("""
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>A</w:t></w:r><w:r><w:rPr><w:sz w:val="8"/></w:rPr><w:br/></w:r><w:r><w:rPr><w:sz w:val="80"/></w:rPr><w:cr/></w:r><w:r><w:t>B</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="8"/></w:rPr><w:br/></w:r><w:r><w:rPr><w:sz w:val="80"/></w:rPr><w:cr/></w:r><w:r><w:t>C</w:t></w:r></w:p><w:p><w:r><w:rPr><w:sz w:val="8"/></w:rPr><w:br/></w:r><w:r><w:rPr><w:sz w:val="80"/></w:rPr><w:cr/></w:r></w:p><w:p><w:r><w:t>D</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="6000" w:h="16838"/><w:pgMar w:top="1440" w:bottom="1440" w:left="1440" w:right="1440"/></w:sectPr></w:body></w:document>
+        """);
+}
+
 async Task ConvertDocx(string name, DocxConversionOptions? options, string? source = null)
 {
     await using var input = File.OpenRead(source ?? docxPath);
@@ -202,12 +247,20 @@ await ConvertDocx("terminal-followed-default", null, followedDocxPath);
 await ConvertDocx("styled-newline-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, styledDocxPath);
 await ConvertDocx("styled-newline-default", null, styledDocxPath);
 
+await ConvertDocx("newline-break-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, newlineBreakDocxPath);
+await ConvertDocx("newline-break-default", null, newlineBreakDocxPath);
+
+await ConvertDocx("inline-newline-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, inlineDocxPath);
+await ConvertDocx("inline-newline-default", null, inlineDocxPath);
+
 string? nativeText = null;
 string? alignmentNativeText = null;
 foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alignment-public", "alignment-native", "alignment-default",
     "terminal-public", "terminal-native", "terminal-default",
     "terminal-followed-public", "terminal-followed-native", "terminal-followed-default",
-    "styled-newline-public", "styled-newline-native", "styled-newline-default" })
+    "styled-newline-public", "styled-newline-native", "styled-newline-default",
+    "newline-break-public", "newline-break-native", "newline-break-default",
+    "inline-newline-public", "inline-newline-native", "inline-newline-default" })
 {
     var ofdPath = Path.Combine(outputDirectory, name + ".ofd");
     var pdfPath = Path.Combine(outputDirectory, name + ".pdf");
@@ -228,6 +281,27 @@ foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alig
         throw new InvalidOperationException("Consecutive newlines lost their individual page positions before following text.");
     if (name.StartsWith("terminal-") && !name.StartsWith("terminal-followed-") && (package.Pages.Count != 1 || compactText != "A"))
         throw new InvalidOperationException("Consecutive terminal newlines introduced a blank tail page.");
+    if (name.StartsWith("inline-newline-"))
+    {
+        var text = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().ToArray();
+        var first = name == "inline-newline-public" ? 2 : 4 * 25.4 / 72;
+        var second = name == "inline-newline-public" ? 20 : 40 * 25.4 / 72;
+        var normal = 10.5 * 25.4 / 72;
+        if (package.Pages.Count != 1 || compactText != "ABCD" || text.Length != 4 ||
+            Math.Abs(text[1].YMillimeters - text[0].YMillimeters - (normal + second) * 1.3) > 0.005 ||
+            Math.Abs(text[2].YMillimeters - text[1].YMillimeters - (normal + first + second) * 1.3) > 0.005 ||
+            Math.Abs(text[3].YMillimeters - text[2].YMillimeters - (normal + first + second * 2) * 1.3) > 0.005)
+            throw new InvalidOperationException("Inline or leading newline style was replaced by the previous break style.");
+    }
+    if (name.StartsWith("newline-break-"))
+    {
+        if (package.Pages.Count != 2 || package.Pages[0].Elements.Count != 0 || compactText != "B")
+            throw new InvalidOperationException("PageBreakBefore ignored the leading newline-only paragraph.");
+        var b = package.Pages[1].Elements.OfType<OfdTextElement>().Single();
+        var top = name == "newline-break-public" ? 5 : 283 * 25.4 / 1440;
+        if (Math.Abs(b.YMillimeters - top) > 0.005)
+            throw new InvalidOperationException("PageBreakBefore did not clear deferred newline heights.");
+    }
     if (name.StartsWith("styled-newline-"))
     {
         var text = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>()

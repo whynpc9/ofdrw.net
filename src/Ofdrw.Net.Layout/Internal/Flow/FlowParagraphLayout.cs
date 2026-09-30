@@ -180,7 +180,10 @@ internal static class FlowParagraphLayout
             var glyph = glyphs[i];
             if (glyph.Text == "\f" || glyph.Text == "\n")
             {
-                if (glyph.Text == "\n" && !terminalNewline) emptyLineStyle = glyph.Style;
+                // An in-paragraph break ends the current blank row using its own style.
+                // A trailing sequence after ink reserves the gap after each break instead.
+                if (glyph.Text == "\n" && (!terminalNewline || i <= lastContent || lastContent < 0))
+                    emptyLineStyle = glyph.Style;
                 if (glyph.Text == "\f" && terminalNewline) Flush(terminalLine: i > lastContent);
                 if (current.Count > 0 || glyph.Text == "\n")
                     Flush(terminalLine: current.Count == 0 && i > lastContent);

@@ -9,6 +9,54 @@ namespace Ofdrw.Net.Layout.Tests;
 public sealed class FlowDocumentTests
 {
     [Theory]
+    [InlineData(2, 20, "inline")]
+    [InlineData(20, 2, "inline")]
+    [InlineData(2, 20, "leading")]
+    [InlineData(20, 2, "leading")]
+    [InlineData(2, 20, "only")]
+    [InlineData(20, 2, "only")]
+    public void MixedSizeNewlines_WithInlineOrLeadingContent_UseEndingBreakStyle(double firstSize, double secondSize, string context)
+    {
+        var document = new FlowDocument();
+        var paragraph = new Paragraph();
+        if (context == "inline") paragraph.Spans.Add(new Span("A"));
+        paragraph.Spans.Add(new Span("\n") { FontSizeMillimeters = firstSize });
+        paragraph.Spans.Add(new Span("\n") { FontSizeMillimeters = secondSize });
+        if (context != "only") paragraph.Spans.Add(new Span("B"));
+        document.Blocks.Add(paragraph);
+        if (context == "only") document.Blocks.Add(new Paragraph("B"));
+        var text = Assert.Single(document.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        var b = text.Last();
+        Assert.Equal("B", b.Text);
+        var expected = context == "inline" ? document.Options.DefaultFontSizeMillimeters + secondSize :
+            firstSize + secondSize + (context == "only" ? secondSize : 0);
+        var origin = context == "inline" ? text[0].YMillimeters : document.Options.MarginTopMillimeters;
+        Assert.Equal(expected * 1.3, b.YMillimeters - origin, 5);
+    }
+
+    [Theory]
+    [InlineData("\n", 2)]
+    [InlineData("\n\n", 2)]
+    [InlineData("", 1)]
+    public void PageBreakBefore_AfterOnlyNewlines_OverridesDeferredLines(string leadingText, int expectedPages)
+    {
+        var document = new FlowDocument();
+        document.Options.PageHeightMillimeters = 19;
+        document.Options.MarginTopMillimeters = document.Options.MarginBottomMillimeters = 5;
+        if (leadingText.Length > 0) document.Blocks.Add(new Paragraph(leadingText));
+        document.Blocks.Add(new Paragraph("B") { PageBreakBefore = true });
+        var pages = document.Render().Pages;
+        Assert.Equal(expectedPages, pages.Count);
+        if (expectedPages == 2) Assert.Empty(pages[0].Elements);
+        var b = Assert.Single(pages[^1].Elements.OfType<OfdTextElement>());
+        Assert.Equal("B", b.Text);
+        Assert.Equal(5, b.YMillimeters, 5);
+        document.Options.MaxPageCount = 1;
+        if (expectedPages == 2) Assert.Throws<InvalidOperationException>(() => document.Render());
+        else Assert.Single(document.Render().Pages);
+    }
+
+    [Theory]
     [InlineData(20, 2)]
     [InlineData(2, 20)]
     public void ConsecutiveNewlinesWithDifferentSpanSizes_KeepEachEmptyLineHeight(double firstSize, double secondSize)
