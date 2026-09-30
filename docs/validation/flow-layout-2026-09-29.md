@@ -1,6 +1,42 @@
 # 公开流式布局与 DOCX Native 页面验收（2026-09-29）
 
-**2026-09-30 最新复验：** 本轮修复连续显式空行被段间距夹断、空行字号丢失和组合 í 的字宽/字形差异。已重新打开 `artifacts/flow-layout/review16/` 全部 15 份最新 PDF，实际检查 28 页，未见所列样例的视觉缺陷；其中 6 页是源文显式换行产生的预期中间空页。
+## 最新 review18 补充验收（2026-09-30）
+
+- 代码状态：`93a6978fd0cba99cd80a64e2ff228ddebccfbcee`。后续文档提交不改变生成代码。修复 Codex 的 LF-only 前段导致 `PageBreakBefore` 忽略，以及 Cursor 的同段/前置混合字号换行使用前一个字号；Astra 对两项有界契约复核闭合。
+- Sol Low 独立最终复验：**247/247 通过、0 失败/跳过**（7 份 TRX），E2E 构建 0 警告/错误、21 组 OFD/PDF 共 37 页，11 本地包隔离消费 E2E 通过。主任务核对 TRX 合计。日志、TRX 和包消费产物在 `artifacts/flow-layout/review18/`。
+- 新增 24 项回归：6 项公开/Native 显式分页与首块保护，6 项公开与 12 项实际 Native/default 混合字号的同段/前置/纯换行段。临时恢复旧两个条件后 22 失败、2 首块保护通过；恢复修复后全套通过，负向日志 `review18/before-fix-newline-tests.log`。
+- 本轮实际重新打开 **6 份新增 PDF、9 页**：公开 API → native OFD → PDF → **macOS Preview**，DOCX → 显式 Native/default OFD → PDF → **macOS Preview**。各文件确认实际 review18 路径，全部页面正文和边界已查看。原有 15 组在 review16 的 28 页实际查看记录保留在下方；review18 重新生成的对应 28 张 PNG 与 review16 **28/28 逐字节相同**，仅是辅助回归证据，不冒充这 28 页在最新目录再次打开的 Preview 检查。
+- 空行契约：同段中间或前置空行由结束该行的换行字号决定；正文后的延期尾部换行保存每个控制后的间距；纯换行段的关闭空行重复最后换行字号。已有延期空行使后段 `PageBreakBefore` 开启新页并清除尾间距；首块直接设置它不增加前置空页。
+
+| 本轮新 OFD → PDF | 实际检查页 | 结果 |
+| --- | --- | --- |
+| `review18/newline-break-public.ofd` → `newline-break-public.pdf` | 1–2 / 2 | 首页为空白（前段显式 LF 的逻辑页面），B 在第二页正文顶部；显式分页清除延期空行，未见裁切、重复文本或额外尾页。 |
+| `review18/newline-break-native.ofd` → `newline-break-native.pdf` | 1–2 / 2 | 首页为空白（前段显式 LF 的逻辑页面），B 在第二页正文顶部；显式分页清除延期空行，未见裁切、重复文本或额外尾页。 |
+| `review18/newline-break-default.ofd` → `newline-break-default.pdf` | 1–2 / 2 | 首页为空白（前段显式 LF 的逻辑页面），B 在第二页正文顶部；显式分页清除延期空行，未见裁切、重复文本或额外尾页。 |
+| `review18/inline-newline-public.ofd` → `inline-newline-public.pdf` | 1 / 1 | ABCD 全部完整；A→B 同段空行、B→C 前置空行、C→D 纯控制段关闭空行的间距依次符合对应毫米/磅字号预期，无重叠或裁切。 |
+| `review18/inline-newline-native.ofd` → `inline-newline-native.pdf` | 1 / 1 | ABCD 全部完整；A→B 同段空行、B→C 前置空行、C→D 纯控制段关闭空行的间距依次符合对应毫米/磅字号预期，无重叠或裁切。 |
+| `review18/inline-newline-default.ofd` → `inline-newline-default.pdf` | 1 / 1 | ABCD 全部完整；A→B 同段空行、B→C 前置空行、C→D 纯控制段关闭空行的间距依次符合对应毫米/磅字号预期，无重叠或裁切。 |
+
+新增产物哈希（均在 `artifacts/flow-layout/review18/`）：
+
+| 文件 | 字节 | SHA-256 |
+| --- | ---: | --- |
+| `newline-break-public.ofd` | 1,577 | `a138d8064e023a2bc08abc15c15670b51f27dade33349ce83cd7a3899b12b40e` |
+| `newline-break-public.pdf` | 63,708 | `b615871293fe95db828a2cb3c0ef0edc6b3a289df9c07398c2ccba8fc1b131fd` |
+| `newline-break-native.ofd` | 15,286,734 | `d5f2f825c87dc5f7d1ee5ef4257dc3b1cc92e7cf2e2485f7699e48904352cf9c` |
+| `newline-break-native.pdf` | 63,853 | `45c5e659057d9b5a2cebebb59371202dc5dab5524779f8fcbc849683d2cbaf3f` |
+| `newline-break-default.ofd` | 15,286,733 | `bff4861d582244913cca0f50b6faf57b81c5f23e9e28ef19d9903fb24cc916a9` |
+| `newline-break-default.pdf` | 63,853 | `d1338c3960d798666d0598b1920bedfc385de7154c0d7891a5a2c8ffa6f14bb7` |
+| `inline-newline-public.ofd` | 1,318 | `8a1e425ec1e117a3203149a622a9b99b8a9d575e89a563182e3fea0eef27f655` |
+| `inline-newline-public.pdf` | 64,373 | `b96fb2639dbe604352554e1fe8495f209b56770a061bef83c404b2bd179b7b03` |
+| `inline-newline-native.ofd` | 15,286,468 | `568d6c54b52631b16bc2ea7760d48d094193c2bda7e65289fcb2951fc7ae389c` |
+| `inline-newline-native.pdf` | 64,525 | `7bc2d596f6b472386090b68d02168e57d132a92187eefb83fc972900f535b6d8` |
+| `inline-newline-default.ofd` | 15,286,468 | `9cfffc0a8076e977fc40dadf9eee599e25819464462adc86c2a8fbb89c1d54bb` |
+| `inline-newline-default.pdf` | 64,525 | `8eeb5ffb14ee195371281dc09e4dddbaba51cb9c343fed7ca306a5bd8e6ea195` |
+
+新增短页 PDF 约 64 KB、ABCD PDF 约 64 KB；原 15 组页面像素与体积保持基准，没有异常增长。原 OFD/PDF 的本轮完整清单与哈希另保存在 `review18/artifact-manifest.tsv`。本轮 9 页与前轮 28 页只对各自实际查看文件下结论。
+
+**2026-09-30 review16 复验：** 本轮修复连续显式空行被段间距夹断、空行字号丢失和组合 í 的字宽/字形差异。已重新打开 `artifacts/flow-layout/review16/` 全部 15 份最新 PDF，实际检查 28 页，未见所列样例的视觉缺陷；其中 6 页是源文显式换行产生的预期中间空页。
 
 ## 基线与复现
 
