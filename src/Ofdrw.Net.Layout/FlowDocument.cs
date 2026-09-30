@@ -196,7 +196,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
     private void DrawLine(FlowLine line, double left, double width)
     {
         var x = FlowParagraphLayout.Align(left + line.Indent, width - line.Indent,
-            line.Glyphs.Sum(g => g.Width), line.Alignment);
+            line.AlignmentWidth, line.Alignment);
         for (var i = 0; i < line.Glyphs.Count;)
         {
             var style = line.Glyphs[i].Style;
@@ -205,12 +205,14 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
             if (++_textElements > _options.MaxTextElements)
                 throw new InvalidOperationException("Flow text exceeds MaxTextElements.");
             var group = line.Glyphs.GetRange(start, i - start);
+            var groupWidth = group.Sum(g => g.Width);
+            var elementWidth = Math.Max(groupWidth, 0.1);
             var font = GetFont(style);
             var text = string.Concat(group.Select(g => g.Text));
             var element = new OfdTextElement
             {
-                LayerType = "Body", XMillimeters = x, YMillimeters = _y,
-                WidthMillimeters = Math.Max(group.Sum(g => g.Width), 0.1), HeightMillimeters = line.Height,
+                LayerType = "Body", XMillimeters = groupWidth == 0 ? Math.Min(x, left + width - elementWidth) : x,
+                YMillimeters = _y, WidthMillimeters = elementWidth, HeightMillimeters = line.Height,
                 FontName = font.FontName, FontResourceId = font.Id,
                 FontSizeMillimeters = style.FontSizeMillimeters,
                 Weight = style.Bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight,
@@ -220,7 +222,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
                 DeltaX = group.Count > 1 ? string.Join(" ", group.Take(group.Count - 1)
                     .Select(g => g.Width.ToString("0.######", CultureInfo.InvariantCulture))) : null });
             _page!.Elements.Add(element);
-            x += group.Sum(g => g.Width);
+            x += groupWidth;
         }
     }
 

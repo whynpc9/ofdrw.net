@@ -54,15 +54,27 @@ internal sealed class FlowGlyph
 internal sealed class FlowLine
 {
     internal FlowLine(List<FlowGlyph> glyphs, double height, double indent, FlowAlignment alignment,
-        bool pageBreak = false, bool terminalNewline = false)
+        bool pageBreak = false, bool terminalNewline = false, bool automaticWrap = false)
     { Glyphs = glyphs; Height = height; Indent = indent; Alignment = alignment;
-        PageBreak = pageBreak; TerminalNewline = terminalNewline; }
+        PageBreak = pageBreak; TerminalNewline = terminalNewline;
+        var visibleCount = glyphs.Count;
+        // Keep separators in logical text without advancing beyond an automatic wrap.
+        // Explicit breaks and final lines retain their whitespace advances.
+        if (automaticWrap)
+            while (visibleCount > 0 && glyphs[visibleCount - 1].Image is null &&
+                glyphs[visibleCount - 1].Text.All(char.IsWhiteSpace))
+            {
+                var separator = glyphs[--visibleCount];
+                glyphs[visibleCount] = new FlowGlyph(separator.Text, separator.Style, 0);
+            }
+        AlignmentWidth = glyphs.Sum(g => g.Width); }
     internal List<FlowGlyph> Glyphs { get; }
     internal double Height { get; }
     internal double Indent { get; }
     internal FlowAlignment Alignment { get; }
     internal bool PageBreak { get; }
     internal bool TerminalNewline { get; }
+    internal double AlignmentWidth { get; }
     internal double BaselineMillimeters => Glyphs.Count == 0 ? 0 : Glyphs.Max(g => g.Style.FontSizeMillimeters);
 }
 
@@ -140,12 +152,12 @@ internal static class FlowParagraphLayout
         var currentWidth = 0d;
         var indent = format.FirstLineIndentMillimeters;
         var terminalNewline = false;
-        void Flush(bool terminalLine = false)
+        void Flush(bool terminalLine = false, bool automaticWrap = false)
         {
             var size = current.Count == 0 ? fallback.FontSizeMillimeters : current.Max(g => g.Style.FontSizeMillimeters);
             var imageHeight = current.Count == 0 ? 0 : current.Max(g => g.ImageHeight);
             result.Add(new FlowLine(current, Math.Max(imageHeight, Math.Max(size * 1.3, format.MinimumLineHeightMillimeters)),
-                indent, format.Alignment, terminalNewline: terminalLine));
+                indent, format.Alignment, terminalNewline: terminalLine, automaticWrap: automaticWrap));
             current = new List<FlowGlyph>();
             currentWidth = 0;
             indent = 0;
@@ -169,9 +181,10 @@ internal static class FlowParagraphLayout
             {
                 var wordWidth = 0d;
                 for (var j = i; j < glyphs.Count && Word(glyphs[j]); j++) wordWidth += glyphs[j].Width;
-                if (current.Count > 0 && wordWidth <= width && currentWidth + wordWidth > width - indent) Flush();
+                if (current.Count > 0 && wordWidth <= width && currentWidth + wordWidth > width - indent)
+                    Flush(automaticWrap: true);
             }
-            if (current.Count > 0 && currentWidth + glyph.Width > width - indent) Flush();
+            if (current.Count > 0 && currentWidth + glyph.Width > width - indent) Flush(automaticWrap: true);
             if (glyph.Image is not null && width > indent && glyph.Width > width - indent && current.Count == 0)
             {
                 var scale = (width - indent) / glyph.Width;
