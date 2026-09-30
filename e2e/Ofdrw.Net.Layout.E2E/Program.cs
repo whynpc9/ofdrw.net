@@ -68,6 +68,10 @@ foreach (var alignment in new[] { ParagraphAlignment.Center, ParagraphAlignment.
             FirstLineIndentMillimeters = 2
         });
 }
+alignmentFlow.Blocks.Add(new Paragraph("NBSP / joined A B") { SpaceBeforeMillimeters = 8 });
+foreach (var separator in new[] { "\u00A0", "\u202F", "\u2007" })
+    alignmentFlow.Blocks.Add(new Paragraph("prefix A" + separator + "B")
+    { LeftIndentMillimeters = 25, RightIndentMillimeters = 30 });
 await using (var stream = File.Create(Path.Combine(outputDirectory, "alignment-public.ofd")))
     await new OfdPackageWriter().WriteAsync(alignmentFlow.Render(), stream);
 
@@ -93,6 +97,9 @@ using (var zip = new ZipArchive(docx, ZipArchiveMode.Create))
         foreach (var value in new[] { "Alpha", "Alpha  information" })
             body.Append($"<w:p><w:pPr><w:jc w:val=\"{alignment}\"/><w:ind w:left=\"1417\" w:right=\"1134\" w:firstLine=\"113\"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii=\"Arial\"/><w:sz w:val=\"34\"/></w:rPr><w:t xml:space=\"preserve\">{value}</w:t></w:r></w:p>");
     }
+    body.Append("<w:p><w:r><w:t>NBSP / joined A B</w:t></w:r></w:p>");
+    foreach (var separator in new[] { "\u00A0", "\u202F", "\u2007" })
+        body.Append($"<w:p><w:pPr><w:ind w:left=\"1417\" w:right=\"1701\"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii=\"Arial\"/><w:sz w:val=\"34\"/></w:rPr><w:t xml:space=\"preserve\">prefix A{separator}B</w:t></w:r></w:p>");
     WritePart("word/document.xml", $"<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>{body}<w:sectPr><w:pgSz w:w=\"6803\" w:h=\"16838\"/><w:pgMar w:top=\"1134\" w:bottom=\"1134\" w:left=\"1134\" w:right=\"1134\"/></w:sectPr></w:body></w:document>");
 }
 
@@ -135,6 +142,14 @@ foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alig
             Math.Abs(alpha[0].XMillimeters - alpha[1].XMillimeters) > 0.00001 ||
             Math.Abs(alpha[2].XMillimeters - alpha[3].XMillimeters) > 0.00001)
             throw new InvalidOperationException("Wrapped separators changed visible alignment.");
+        foreach (var separator in new[] { "\u00A0", "\u202F", "\u2007" })
+        {
+            var joined = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>()
+                .Single(element => element.Text == "A" + separator + "B");
+            var advances = joined.Runs[0].DeltaX!.Split(' ');
+            if (double.Parse(advances[1], System.Globalization.CultureInfo.InvariantCulture) <= 0)
+                throw new InvalidOperationException("A nonbreaking separator lost its advance.");
+        }
         if (name == "alignment-native") alignmentNativeText = compactText;
         if (name == "alignment-default" && compactText != alignmentNativeText)
             throw new InvalidOperationException("Default alignment text differs from explicit Native.");

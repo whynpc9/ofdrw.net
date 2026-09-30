@@ -9,6 +9,47 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 public sealed class BoldAlignmentTests
 {
     [Theory]
+    [InlineData("\u00A0", false)]
+    [InlineData("\u202F", false)]
+    [InlineData("\u2007", false)]
+    [InlineData("\u00A0", true)]
+    [InlineData("\u202F", true)]
+    [InlineData("\u2007", true)]
+    public async Task PositionedNonbreakingWhitespace_ShouldNotPaintMissingGlyphBox(string separator, bool bold)
+    {
+        async Task<byte[]> Convert(bool withSeparator)
+        {
+            var package = new OfdDocumentPackage();
+            package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "fixture", Bold = bold,
+                Data = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fonts", "style-metrics.ttf")) });
+            var page = new OfdPage { WidthMillimeters = 80, HeightMillimeters = 60 };
+            void Add(string value, double x, string? deltaX)
+            {
+                var text = new OfdTextElement { Text = value, FontName = "fixture", FontResourceId = "10",
+                    FontSizeMillimeters = 8, XMillimeters = x, YMillimeters = 20,
+                    WidthMillimeters = 30, HeightMillimeters = 15 };
+                text.Runs.Add(new OfdTextRun { Text = value, YMillimeters = 8, DeltaX = deltaX });
+                page.Elements.Add(text);
+            }
+            if (withSeparator) Add("A" + separator + "B", 20, "8 8");
+            else { Add("A", 20, null); Add("B", 36, null); }
+            package.Pages.Add(page);
+            using var ofd = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, ofd); ofd.Position = 0;
+            using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+            return pdf.ToArray();
+        }
+        var baseline = await Convert(false); var actual = await Convert(true);
+        using var expectedReader = DocLib.Instance.GetDocReader(baseline, new PageDimensions(4d));
+        using var actualReader = DocLib.Instance.GetDocReader(actual, new PageDimensions(4d));
+        using var expectedPage = expectedReader.GetPageReader(0); using var actualPage = actualReader.GetPageReader(0);
+        Assert.Equal(expectedPage.GetImage(), actualPage.GetImage());
+        using var semantic = UglyToad.PdfPig.PdfDocument.Open(actual);
+        Assert.Contains(separator, semantic.GetPage(1).Text);
+        Assert.Equal(1, semantic.GetPage(1).Letters.Count(letter => letter.Value == "A"));
+        Assert.Equal(1, semantic.GetPage(1).Letters.Count(letter => letter.Value == "B"));
+    }
+
+    [Theory]
     [InlineData(0, false)]
     [InlineData(1, false)]
     [InlineData(2, false)]

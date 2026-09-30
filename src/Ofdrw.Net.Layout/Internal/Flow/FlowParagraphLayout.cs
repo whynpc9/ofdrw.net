@@ -62,7 +62,8 @@ internal sealed class FlowLine
         // Explicit breaks and final lines retain their whitespace advances.
         if (automaticWrap)
             while (visibleCount > 0 && glyphs[visibleCount - 1].Image is null &&
-                glyphs[visibleCount - 1].Text.All(char.IsWhiteSpace))
+                glyphs[visibleCount - 1].Text.All(char.IsWhiteSpace) &&
+                !FlowParagraphLayout.IsNonbreakingSpace(glyphs[visibleCount - 1]))
             {
                 var separator = glyphs[--visibleCount];
                 glyphs[visibleCount] = new FlowGlyph(separator.Text, separator.Style, 0);
@@ -81,6 +82,8 @@ internal sealed class FlowLine
 /// <summary>The same grapheme, Latin word, line-height and alignment calculations serve public flow and DOCX Native.</summary>
 internal static class FlowParagraphLayout
 {
+    internal static bool IsNonbreakingSpace(FlowGlyph glyph) => glyph.Text == "\u00A0" || glyph.Text == "\u202F" || glyph.Text == "\u2007";
+
     internal static IReadOnlyList<FlowLine> Layout(
         IReadOnlyList<FlowInline> inlines, FlowParagraphFormat format, double width,
         IFlowFontMetrics metrics, FlowTextStyle fallback, CancellationToken cancellationToken,
@@ -164,6 +167,10 @@ internal static class FlowParagraphLayout
         }
         static bool Word(FlowGlyph glyph) => glyph.Text.Length == 1 && glyph.Text[0] < 128 &&
             char.IsLetterOrDigit(glyph.Text[0]);
+        static bool Connected(FlowGlyph left, FlowGlyph right) => left.Image is null && right.Image is null &&
+            left.Text != "\n" && left.Text != "\f" && right.Text != "\n" && right.Text != "\f" &&
+            (Word(left) && Word(right) || IsNonbreakingSpace(left) || IsNonbreakingSpace(right));
+        var protectedUntil = 0;
         for (var i = 0; i < glyphs.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -177,14 +184,28 @@ internal static class FlowParagraphLayout
                 continue;
             }
             terminalNewline = false;
-            if (Word(glyph) && (i == 0 || !Word(glyphs[i - 1])))
+            if (i == 0 || !Connected(glyphs[i - 1], glyph))
             {
-                var wordWidth = 0d;
-                for (var j = i; j < glyphs.Count && Word(glyphs[j]); j++) wordWidth += glyphs[j].Width;
-                if (current.Count > 0 && wordWidth <= width && currentWidth + wordWidth > width - indent)
+                var unitWidth = glyph.Width;
+                var end = i + 1;
+                var nonbreaking = IsNonbreakingSpace(glyph);
+                while (end < glyphs.Count && Connected(glyphs[end - 1], glyphs[end]))
+                {
+                    if ((end & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
+                    unitWidth += glyphs[end].Width;
+                    nonbreaking |= IsNonbreakingSpace(glyphs[end++]);
+                }
+                if (current.Count > 0 && (unitWidth <= width || nonbreaking) && currentWidth + unitWidth > width - indent)
                     Flush(automaticWrap: true);
+                if (nonbreaking)
+                {
+                    if (unitWidth > width - indent && !allowOversizeGlyph)
+                        throw new InvalidOperationException("A nonbreaking flow text unit is wider than the usable line width.");
+                    protectedUntil = end;
+                }
             }
-            if (current.Count > 0 && currentWidth + glyph.Width > width - indent) Flush(automaticWrap: true);
+            if (i >= protectedUntil && current.Count > 0 && currentWidth + glyph.Width > width - indent)
+                Flush(automaticWrap: true);
             if (glyph.Image is not null && width > indent && glyph.Width > width - indent && current.Count == 0)
             {
                 var scale = (width - indent) / glyph.Width;
