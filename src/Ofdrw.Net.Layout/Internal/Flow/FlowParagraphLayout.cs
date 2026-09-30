@@ -82,7 +82,8 @@ internal sealed class FlowLine
 /// <summary>The same grapheme, Latin word, line-height and alignment calculations serve public flow and DOCX Native.</summary>
 internal static class FlowParagraphLayout
 {
-    internal static bool IsNonbreakingSpace(FlowGlyph glyph) => glyph.Text == "\u00A0" || glyph.Text == "\u202F" || glyph.Text == "\u2007";
+    internal static bool IsNonbreakingSpace(FlowGlyph glyph) => glyph.Text.Length > 0 &&
+        (glyph.Text[0] == '\u00A0' || glyph.Text[0] == '\u202F' || glyph.Text[0] == '\u2007');
 
     internal static IReadOnlyList<FlowLine> Layout(
         IReadOnlyList<FlowInline> inlines, FlowParagraphFormat format, double width,
@@ -165,20 +166,22 @@ internal static class FlowParagraphLayout
             currentWidth = 0;
             indent = 0;
         }
-        static bool Word(FlowGlyph glyph) => glyph.Text.Length == 1 && glyph.Text[0] < 128 &&
+        static bool Word(FlowGlyph glyph) => glyph.Text.Length > 0 && glyph.Text[0] <= 0xFF &&
             char.IsLetterOrDigit(glyph.Text[0]);
         static bool Connected(FlowGlyph left, FlowGlyph right) => left.Image is null && right.Image is null &&
             left.Text != "\n" && left.Text != "\f" && right.Text != "\n" && right.Text != "\f" &&
             (Word(left) && Word(right) || IsNonbreakingSpace(left) || IsNonbreakingSpace(right));
         var protectedUntil = 0;
+        var lastContent = glyphs.FindLastIndex(glyph => glyph.Text != "\n" && glyph.Text != "\f");
         for (var i = 0; i < glyphs.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var glyph = glyphs[i];
             if (glyph.Text == "\f" || glyph.Text == "\n")
             {
-                if (glyph.Text == "\f" && terminalNewline) Flush();
-                if (current.Count > 0 || glyph.Text == "\n") Flush();
+                if (glyph.Text == "\f" && terminalNewline) Flush(terminalLine: i > lastContent);
+                if (current.Count > 0 || glyph.Text == "\n")
+                    Flush(terminalLine: current.Count == 0 && i > lastContent);
                 if (glyph.Text == "\f") result.Add(new FlowLine(new List<FlowGlyph>(), 0, 0, format.Alignment, true));
                 terminalNewline = glyph.Text == "\n";
                 continue;

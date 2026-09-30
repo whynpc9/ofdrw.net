@@ -25,6 +25,8 @@ await new OfdPackageWriter().WriteAsync(package, output);
 
 空格字宽规则：普通 NBSP 等于普通空格，窄 NBSP 固定为 0.2 em，数字空格等于对应粗斜体样式的 `0` 字宽。DOCX Native 使用相同规则，但数字字宽继续由其现有字体测量器提供。
 
+单词预测折行覆盖 Basic Latin/Latin-1 字母与数字，并按字素的基字符识别，包含 `café`、`café` 等预组合/分解形式；超出完整行宽的单词仍按字素拆分。非断行空格带组合标记时也保留连接属性。连续段末换行保留全部空行高度，在后续内容出现时使用，不单独生成文末空白页。
+
 `Render()` 每次生成新包，不修改之前返回的包；调用方可复用描述对象，但不要在其他线程同时修改其 `Blocks`、`Spans` 或 `Options`。超高行、无可用宽度、页数、字符数和文本元素数量超限会明确失败，不会静默裁切。预算由 `MaxPageCount`、`MaxCharacters`、`MaxTextElements` 控制，取消通过 `CancellationToken` 传入。`OfdDocumentBuilder` 的按页坐标 API 保持可用。
 
 运行仓库内的无隐私样例：

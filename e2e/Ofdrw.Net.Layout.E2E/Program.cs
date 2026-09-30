@@ -72,6 +72,10 @@ alignmentFlow.Blocks.Add(new Paragraph("NBSP / joined A B") { SpaceBeforeMillime
 foreach (var separator in new[] { "\u00A0", "\u202F", "\u2007" })
     alignmentFlow.Blocks.Add(new Paragraph("prefix A" + separator + "B")
     { LeftIndentMillimeters = 25, RightIndentMillimeters = 30 });
+alignmentFlow.Blocks.Add(new Paragraph("Latin word / café") { SpaceBeforeMillimeters = 8 });
+foreach (var word in new[] { "café", "cafe\u0301" })
+    alignmentFlow.Blocks.Add(new Paragraph("prefix " + word)
+    { LeftIndentMillimeters = 25, RightIndentMillimeters = 30 });
 await using (var stream = File.Create(Path.Combine(outputDirectory, "alignment-public.ofd")))
     await new OfdPackageWriter().WriteAsync(alignmentFlow.Render(), stream);
 
@@ -100,7 +104,31 @@ using (var zip = new ZipArchive(docx, ZipArchiveMode.Create))
     body.Append("<w:p><w:r><w:t>NBSP / joined A B</w:t></w:r></w:p>");
     foreach (var separator in new[] { "\u00A0", "\u202F", "\u2007" })
         body.Append($"<w:p><w:pPr><w:ind w:left=\"1417\" w:right=\"1701\"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii=\"Arial\"/><w:sz w:val=\"34\"/></w:rPr><w:t xml:space=\"preserve\">prefix A{separator}B</w:t></w:r></w:p>");
+    body.Append("<w:p><w:r><w:t>Latin word / café</w:t></w:r></w:p>");
+    foreach (var word in new[] { "café", "cafe\u0301" })
+        body.Append($"<w:p><w:pPr><w:ind w:left=\"1417\" w:right=\"1701\"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii=\"Arial\"/><w:sz w:val=\"34\"/></w:rPr><w:t xml:space=\"preserve\">prefix {word}</w:t></w:r></w:p>");
     WritePart("word/document.xml", $"<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>{body}<w:sectPr><w:pgSz w:w=\"6803\" w:h=\"16838\"/><w:pgMar w:top=\"1134\" w:bottom=\"1134\" w:left=\"1134\" w:right=\"1134\"/></w:sectPr></w:body></w:document>");
+}
+
+var terminalFlow = new FlowDocument();
+terminalFlow.Options.PageWidthMillimeters = 106;
+terminalFlow.Options.PageHeightMillimeters = 19;
+terminalFlow.Options.MarginTopMillimeters = terminalFlow.Options.MarginBottomMillimeters = 5;
+terminalFlow.Options.MarginLeftMillimeters = terminalFlow.Options.MarginRightMillimeters = 5;
+terminalFlow.Blocks.Add(new Paragraph("A\n\n"));
+await using (var stream = File.Create(Path.Combine(outputDirectory, "terminal-public.ofd")))
+    await new OfdPackageWriter().WriteAsync(terminalFlow.Render(), stream);
+
+// Reuse the minimal OPC shell for a one-line page with two trailing Word breaks.
+var terminalDocxPath = Path.Combine(outputDirectory, "terminal.docx");
+File.Copy(alignmentDocxPath, terminalDocxPath, overwrite: true);
+using (var zip = ZipFile.Open(terminalDocxPath, ZipArchiveMode.Update))
+{
+    zip.GetEntry("word/document.xml")!.Delete();
+    using var writer = new StreamWriter(zip.CreateEntry("word/document.xml").Open(), new UTF8Encoding(false));
+    writer.Write("""
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>A</w:t><w:br/><w:br/></w:r></w:p><w:sectPr><w:pgSz w:w="6000" w:h="1077"/><w:pgMar w:top="283" w:bottom="283" w:left="283" w:right="283"/></w:sectPr></w:body></w:document>
+        """);
 }
 
 async Task ConvertDocx(string name, DocxConversionOptions? options, string? source = null)
@@ -115,10 +143,13 @@ await ConvertDocx("docx-native", new DocxConversionOptions { OfdMode = DocxToOfd
 await ConvertDocx("docx-default", null);
 await ConvertDocx("alignment-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, alignmentDocxPath);
 await ConvertDocx("alignment-default", null, alignmentDocxPath);
+await ConvertDocx("terminal-native", new DocxConversionOptions { OfdMode = DocxToOfdMode.Native }, terminalDocxPath);
+await ConvertDocx("terminal-default", null, terminalDocxPath);
 
 string? nativeText = null;
 string? alignmentNativeText = null;
-foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alignment-public", "alignment-native", "alignment-default" })
+foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alignment-public", "alignment-native", "alignment-default",
+    "terminal-public", "terminal-native", "terminal-default" })
 {
     var ofdPath = Path.Combine(outputDirectory, name + ".ofd");
     var pdfPath = Path.Combine(outputDirectory, name + ".pdf");
@@ -134,6 +165,8 @@ foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alig
     if (name == "docx-native") nativeText = compactText;
     if (name == "docx-default" && compactText != nativeText)
         throw new InvalidOperationException("Default DOCX output differs from explicit Native text.");
+    if (name.StartsWith("terminal-") && (package.Pages.Count != 1 || compactText != "A"))
+        throw new InvalidOperationException("Consecutive terminal newlines introduced a blank tail page.");
     if (name.StartsWith("alignment-"))
     {
         var alpha = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>()
@@ -142,6 +175,10 @@ foreach (var name in new[] { "flow-public", "docx-native", "docx-default", "alig
             Math.Abs(alpha[0].XMillimeters - alpha[1].XMillimeters) > 0.00001 ||
             Math.Abs(alpha[2].XMillimeters - alpha[3].XMillimeters) > 0.00001)
             throw new InvalidOperationException("Wrapped separators changed visible alignment.");
+        foreach (var word in new[] { "café", "cafe\u0301" })
+            if (package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>()
+                .Count(element => element.Text == word) != 1)
+                throw new InvalidOperationException("An accented Latin word was split within its fresh-line width.");
         foreach (var separator in new[] { "\u00A0", "\u202F", "\u2007" })
         {
             var joined = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>()
