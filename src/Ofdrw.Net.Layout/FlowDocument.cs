@@ -94,7 +94,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
     private int _textElements;
     private int _pendingPageBreaks;
     private double _pendingSpaceAfter;
-    private double _pendingLineBreakHeight;
+    private readonly List<double> _pendingLineBreakHeights = new();
 
     internal FlowDocumentRenderer(FlowDocumentOptions options, IList<FlowBlock> blocks, CancellationToken cancellationToken)
     { _options = options; _blocks = blocks; _cancellationToken = cancellationToken; }
@@ -146,7 +146,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         {
             StartPage();
             _pendingSpaceAfter = 0;
-            _pendingLineBreakHeight = 0;
+            _pendingLineBreakHeights.Clear();
         }
         var inlines = new List<FlowInline>();
         foreach (var span in spans)
@@ -175,13 +175,13 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         foreach (var line in FlowParagraphLayout.Layout(inlines, format, width, this, fallback, _cancellationToken))
         {
             if (line.PageBreak) { _pendingPageBreaks++; continue; }
-            if (line.TerminalNewline) { _pendingLineBreakHeight += line.Height; continue; }
+            if (line.TerminalNewline) { _pendingLineBreakHeights.Add(line.Height); continue; }
             ApplyPendingPageBreaks();
             if (firstLine)
             {
-                PlaceFirstLine(line.Height, _pendingSpaceAfter + _pendingLineBreakHeight + paragraph.SpaceBeforeMillimeters);
+                ApplyPendingLineBreaks();
+                PlaceFirstLine(line.Height, _pendingSpaceAfter + paragraph.SpaceBeforeMillimeters);
                 _pendingSpaceAfter = 0;
-                _pendingLineBreakHeight = 0;
                 firstLine = false;
             }
             else Place(line.Height);
@@ -270,9 +270,21 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         _hasBodyContent = false;
     }
 
+    private void ApplyPendingLineBreaks()
+    {
+        foreach (var height in _pendingLineBreakHeights)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            Place(height);
+            _y += height;
+            _hasBodyContent = true;
+        }
+        _pendingLineBreakHeights.Clear();
+    }
+
     private void ApplyPendingPageBreaks()
     {
-        if (_pendingPageBreaks > 0) { _pendingSpaceAfter = 0; _pendingLineBreakHeight = 0; }
+        if (_pendingPageBreaks > 0) { _pendingSpaceAfter = 0; _pendingLineBreakHeights.Clear(); }
         while (_pendingPageBreaks > 0)
         {
             StartPage();

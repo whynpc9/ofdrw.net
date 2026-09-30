@@ -9,6 +9,38 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 public sealed class BoldAlignmentTests
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task DecomposedLatinI_ShouldPaintTheCompositeWithoutExtraDotOrDuplicateText(bool bold, bool italic)
+    {
+        async Task<byte[]> Convert(string value)
+        {
+            var package = new OfdDocumentPackage();
+            var page = new OfdPage { WidthMillimeters = 80, HeightMillimeters = 60 };
+            var text = new OfdTextElement { Text = value, FontName = "Arial", FontSizeMillimeters = 10,
+                Weight = bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight, Italic = italic,
+                XMillimeters = 15, YMillimeters = 20, WidthMillimeters = 20, HeightMillimeters = 15 };
+            text.Runs.Add(new OfdTextRun { Text = value, YMillimeters = 10, DeltaX = "3" });
+            page.Elements.Add(text);package.Pages.Add(page);
+            using var ofd = new MemoryStream();await new OfdPackageWriter().WriteAsync(package, ofd);ofd.Position = 0;
+            var reread = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(ofd);
+            Assert.Equal(value, Assert.Single(Assert.Single(reread.Pages).Elements.OfType<OfdTextElement>()).Text);
+            ofd.Position = 0;using var pdf = new MemoryStream();
+            await new OfdToPdfConverter().ConvertAsync(ofd, pdf);return pdf.ToArray();
+        }
+        var composed = await Convert("íB");var decomposed = await Convert("i\u0301B");
+        using var expectedReader = DocLib.Instance.GetDocReader(composed, new PageDimensions(4d));
+        using var actualReader = DocLib.Instance.GetDocReader(decomposed, new PageDimensions(4d));
+        using var expectedPage = expectedReader.GetPageReader(0);using var actualPage = actualReader.GetPageReader(0);
+        Assert.Equal(expectedPage.GetImage(), actualPage.GetImage());
+        using var semantic = UglyToad.PdfPig.PdfDocument.Open(decomposed);
+        Assert.Equal("íB", semantic.GetPage(1).Text);
+        Assert.Equal(2, semantic.GetPage(1).Letters.Count);
+    }
+
+    [Theory]
     [InlineData("\u00A0", false)]
     [InlineData("\u202F", false)]
     [InlineData("\u2007", false)]
