@@ -20,7 +20,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Install document conversion dependencies
-        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils
+        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils zstd
 
       - uses: actions/setup-python@v5
         with:
@@ -36,6 +36,9 @@ jobs:
 
       - name: Test package artifact validation
         run: python3 -m unittest discover -s scripts/tests -v
+
+      - name: Verify retained public table acceptance evidence
+        run: python3 scripts/verify-public-table-evidence.py
 
       - name: Build
         run: dotnet build Ofdrw.Net.sln -c Release --no-restore

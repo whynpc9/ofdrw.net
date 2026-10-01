@@ -1,5 +1,7 @@
 # Issue16 公开表格验收（2026-10-02）
 
+**审阅入口：** [可直接查看的五份实际PDF、11张页面图及原始OFD产品档案](public-tables-evidence/README.md)。本文全部本地产物快照和哈希在该跟踪目录中按原字节保存；干净checkout可查看或提取，不依赖被忽略的`artifacts/`。
+
 ## 基线与范围
 
 - 独立 worktree：`/Users/wanghongyi/.codex/worktrees/0ee7/ofdrw.net`；分支 `codex/public-tables`。
@@ -87,3 +89,9 @@ PR #10 base=`codex/public-flow-layout`，首轮 head `5a17b853c2e14aba5e894a82fa
 - Sol Low独立全套 **300/300**（Core5、Packaging23、PDF52、Signatures4、DOCX137、CLI5、Layout74），0失败/跳过；主任务核对七份TRX。11包`0.1.0-tables.review2`隔离消费、manifest/bytes、CLI和Native/DualLayer通过。证据`artifacts/public-tables/review2/independent/validation.md`、`full-tests.log`、`seven-trx.log`、`test-results/`、`package-e2e.log`。
 - `31f0b75→26f33e9`生产代码只对非正gridSpan错误增加行/格位置，格式、测量、分页、绘制以及有效文档路径未变，Sol独立静态核对一致。没有受影响的正常页面。本轮没有重新生成/打开新Preview；**实际最新Preview范围仍为31f0b75生成的review1/current五份11页**，不冒称26f33e9再次查看。
 - 本票首轮三个意见和复审非正跨度意见均已修复、分别有回归；最新交付head的CI/线程/复审以[PR #10](https://github.com/whynpc9/ofdrw.net/pull/10)的读回为准，保持开放未合并。完整记录包含功能、自动渲染、PNG辅助与实际Preview各自范围。
+
+## review3 证据可访问性修复
+
+Codex指出忽略目录中的产物无法从干净checkout复核。现将本会话实际文件按原字节保存在跟踪的 `docs/validation/public-tables-evidence/`：五份最新PDF、11张PNG和页码/哈希记录可直接查看；`products.tar.zst`含initial/fixed/review1/current原始DOCX/OFD/PDF/PNG及各次独立日志、最终七份300测试TRX和11包清单。长窗口压缩仅去除重复字节，未重写产物，展开约189MB、档案约16MB。
+
+`bundle-manifest.json`列出108原始文件的大小/SHA-256及档案自身哈希，`scripts/verify-public-table-evidence.py`已验证108原始文件和18直接副本，提取后OFD/PDF的原始哈希保持。初次打包出现macOS自动AppleDouble元数据，被校验器拒绝；以COPYFILE_DISABLE=1重建档案后完整通过，未放宽校验。CI增加zstd及档案完整性门。此轮仅证据、校验脚本和CI，不改生产转换/排版源码；实际Preview范围及300功能回归仍为上述基线。
