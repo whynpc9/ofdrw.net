@@ -60,7 +60,7 @@ for name in ('watermark','watermark-merged','cli-watermark','cli-merged'):
     assert sum(''.join(node.itertext()).count('DRAFT 草稿') for node in svg.iter() if local(node)=='text') == 1
     assert any(local(node)=='image' and any(value.startswith('data:image/png;base64,') for value in node.attrib.values()) for node in svg.iter())
     if args.render:
-        subprocess.run(['rsvg-convert','-w','849','-h','1200','-o',str(directory/'pages'/(name+'-svg.png')),str(directory/(name+'-1.svg'))],check=True)
+        subprocess.run(['rsvg-convert','--background-color','white','-w','849','-h','1200','-o',str(directory/'pages'/(name+'-svg.png')),str(directory/(name+'-1.svg'))],check=True)
 files = {str(path.relative_to(directory)): {'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()} for path in sorted(directory.rglob('*')) if path.is_file() and path.name != 'manifest.json'}
 manifest = {'checks':checks,'files':files,'render_tool':subprocess.check_output(['pdftoppm','-v'],stderr=subprocess.STDOUT,text=True).splitlines()[0]}
 (directory/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')

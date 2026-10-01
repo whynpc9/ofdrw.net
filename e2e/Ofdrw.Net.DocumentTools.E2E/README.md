@@ -1,6 +1,6 @@
 # Document tool API and CLI examples
 
-The program exercises all four public tools separately. It copies the source DOCX and changes only font declarations to the repository-pinned OFL Noto font, allowing the embedded-font evidence to be redistributed. The copied source and font/license are included in the evidence bundle. It starts with the synthetic `generated-layout.docx` in explicit Native and default modes, adds a shared template, visible annotation, public attachment and a deliberately noncryptographic test signature/appearance, then exports each result to PDF/SVG and extracts OFD text.
+The program exercises all four public tools separately. It copies the source DOCX and changes only font declarations to the repository-pinned OFL Noto font, allowing the embedded-font evidence to be redistributed. The copied source and font/license are included in the evidence bundle. Native keeps viewer-local CJK fonts name-only, so the example explicitly embeds the same licensed measurement face through `OfdFontResource.Data` before tool operations; it does not change the converter default. It starts with the synthetic `generated-layout.docx` in explicit Native and default modes, adds a shared template, visible annotation, public attachment and a deliberately noncryptographic test signature/appearance, then exports each result to PDF/SVG and extracts OFD text.
 
 ```bash
 python3 -m pip install fonttools==4.59.2
