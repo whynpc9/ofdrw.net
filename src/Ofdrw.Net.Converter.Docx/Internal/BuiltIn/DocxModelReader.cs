@@ -381,16 +381,21 @@ internal sealed class DocxModelReader
                 _cancellationToken.ThrowIfCancellationRequested();
                 var cellModel = new BuiltInTableCellModel
                 {
-                    ColumnSpan = Math.Max(1, cell.TableCellProperties?.GridSpan?.Val?.Value ?? 1),
+                    ColumnSpan = cell.TableCellProperties?.GridSpan?.Val?.Value ?? 1,
                     ShadingHex = cell.TableCellProperties?.Shading?.Fill?.Value,
                     VerticalAlignment = ReadVerticalAlignment(cell.TableCellProperties)
                 };
 
+                if (cellModel.ColumnSpan < 1)
+                    throw new InvalidDataException($"DOCX table row {model.Rows.Count + 1}, cell {rowModel.Cells.Count + 1}: gridSpan must be positive.");
                 ReadBorders(cell.TableCellProperties?.TableCellBorders, cellModel.Borders);
                 foreach (var paragraph in cell.Elements<WpParagraph>())
                 {
                     cellModel.Paragraphs.Add(ReadParagraph(paragraph, sourcePart ?? _mainPart));
                 }
+                if (cellModel.Paragraphs.Any(paragraph => paragraph.Format.PageBreakBefore ||
+                    paragraph.Inlines.OfType<BuiltInBreakModel>().Any(br => br.IsPageBreak)))
+                    ReportUnsupported("DOCX_CELL_PAGE_BREAK_DEGRADED", $"page break inside indivisible row {model.Rows.Count + 1}, cell {rowModel.Cells.Count + 1}", "The page break is ignored.");
 
                 if (cell.Elements<WpTable>().Any())
                 {
@@ -408,7 +413,7 @@ internal sealed class DocxModelReader
 
                 if (cell.TableCellProperties?.VerticalMerge is not null)
                 {
-                    ReportUnsupported("DOCX_VERTICAL_MERGE_DEGRADED", "vertical cell merge");
+                    ReportUnsupported("DOCX_VERTICAL_MERGE_DEGRADED", $"vertical cell merge at row {model.Rows.Count + 1}, cell {rowModel.Cells.Count + 1}", "The merged cells are rendered as independent cells.");
                 }
 
                 rowModel.Cells.Add(cellModel);
@@ -760,7 +765,7 @@ internal sealed class DocxModelReader
         _previousSection = target;
     }
 
-    private void ReportUnsupported(string code, string feature)
+    private void ReportUnsupported(string code, string feature, string? degradation = null)
     {
         if (_options.UnsupportedFeatureBehavior == UnsupportedDocxFeatureBehavior.Throw)
         {
@@ -769,7 +774,7 @@ internal sealed class DocxModelReader
 
         _diagnostics.Add(new DocxConversionDiagnostic(
             code,
-            $"BuiltIn degraded unsupported DOCX feature '{feature}'."));
+            $"BuiltIn degraded unsupported DOCX feature '{feature}'." + (degradation is null ? "" : " " + degradation)));
     }
 
     private void AddUnsupportedPlaceholder(BuiltInParagraphModel paragraph, string feature)
