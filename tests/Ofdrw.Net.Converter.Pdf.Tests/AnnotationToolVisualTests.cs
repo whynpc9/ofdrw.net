@@ -54,6 +54,19 @@ public sealed class AnnotationToolVisualTests
     }
 
     [Fact]
+    public async Task ExtraAppearanceMetadata_PreservesDrawableArtworkButStillBlocksMix()
+    {
+        var source = await Annotated("<PathObject ID='901' Boundary='0 0 10 10' Fill='true' Stroke='false'><FillColor Value='255 0 0'/><AbbreviatedData>M 0 0 L 10 0 L 10 10 L 0 10 C</AbbreviatedData></PathObject>", "10 10 20 20", extraAttributes: "xmlns:v='urn:vendor' v:Style='keep'");
+        Assert.Contains(source.Pages[0].AnnotationAppearances, element => element is OfdRawElement);
+        Assert.Single(source.Pages[0].AnnotationAppearances.OfType<OfdPathElement>());
+        using var ofd = await Write(source); using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using var doc = DocLib.Instance.GetDocReader(pdf.ToArray(), new PageDimensions(2d)); using var page = doc.GetPageReader(0); var pixels = page.GetImage();
+        Assert.InRange(Pixel(pixels, page.GetPageWidth(), 15, 15, 2), 245, 255); Assert.InRange(Pixel(pixels, page.GetPageWidth(), 15, 15, 1), 0, 10);
+        ofd.Position = 0; using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(ofd, svg); Assert.Contains("255,0,0", Encoding.UTF8.GetString(svg.ToArray()).Replace(" ", ""));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
+    }
+
+    [Fact]
     public async Task NestedUnknownDrawing_CannotExportAPartialSuccessfulAppearance()
     {
         var source = await Annotated("<PathObject ID='901' Boundary='0 0 5 5' Fill='true'><AbbreviatedData>M 0 0 L 5 0 L 5 5 C</AbbreviatedData></PathObject><CompositeObject ID='902' ResourceID='999' Boundary='0 0 10 10'/>", "10 10 20 20");
@@ -100,7 +113,7 @@ public sealed class AnnotationToolVisualTests
     {
         var stream = new MemoryStream(); await new OfdPackageWriter().WriteAsync(source, stream); stream.Position = 0; return stream;
     }
-    private static async Task<OfdDocumentPackage> Annotated(string artwork, string boundary, string? matrix = null)
+    private static async Task<OfdDocumentPackage> Annotated(string artwork, string boundary, string? matrix = null, string? extraAttributes = null)
     {
         var source = new OfdDocumentPackage(); var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
         using var red = new Image<Rgba32>(1, 1, Color.Red); using var png = new MemoryStream(); red.SaveAsPng(png);
@@ -110,7 +123,7 @@ public sealed class AnnotationToolVisualTests
         document.Root!.Add(new XElement(XName.Get("Annotations", ns), "Annots/Annotations.xml")); read.PreservedEntries["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes(document.ToString());
         read.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'><Page PageID='{read.Pages[0].Id}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
         artwork = artwork.Replace("MEDIA", read.Pages[0].Elements.OfType<OfdImageElement>().Single().ResourceId);
-        read.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='900'><Appearance Boundary='{boundary}' {(matrix is null ? "" : $"CTM='{matrix}'")}>{artwork}</Appearance></Annot></PageAnnot>");
+        read.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='900'><Appearance Boundary='{boundary}' {extraAttributes} {(matrix is null ? "" : $"CTM='{matrix}'")}>{artwork}</Appearance></Annot></PageAnnot>");
         using var zipStream = new MemoryStream();
         using (var zip = new ZipArchive(zipStream, ZipArchiveMode.Create, true)) foreach (var pair in read.PreservedEntries) { using var target = zip.CreateEntry(pair.Key).Open(); target.Write(pair.Value); }
         zipStream.Position = 0; return await new OfdReader().ReadAsync(zipStream);

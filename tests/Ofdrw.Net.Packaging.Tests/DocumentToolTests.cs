@@ -287,7 +287,8 @@ public sealed class DocumentToolTests
         source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'><Page PageID='{source.Pages[0].Id}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
         source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='900'><Appearance{attributes} Boundary='1 1 10 10'><TextObject ID='901' Font='{source.Fonts[0].Id}' Size='4' Boundary='0 0 10 10'><TextCode X='0' Y='4'>UNKNOWN</TextCode></TextObject></Appearance></Annot></PageAnnot>");
         var read = await new OfdReader().ReadAsync(Zip(source.PreservedEntries));
-        Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].AnnotationAppearances));
+        Assert.Contains(read.Pages[0].AnnotationAppearances, element => element is OfdRawElement);
+        if (attributes.Contains("VendorStyle")) Assert.Contains(read.Pages[0].AnnotationAppearances.OfType<OfdTextElement>(), text => text.Text == "UNKNOWN");
         OfdWatermark.AddText(read, [0], "DRAFT");
         var saved = await RoundTrip(OfdDocumentSplitter.Split(read, [0]));
         Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
@@ -390,18 +391,79 @@ public sealed class DocumentToolTests
     [InlineData("Annot")]
     [InlineData("Appearance")]
     [InlineData("TextObject")]
+    [InlineData("TextCode")]
+    [InlineData("Clips")]
+    [InlineData("TextWithoutCode")]
+    [InlineData("AbbreviatedData")]
     public async Task Reader_DoesNotInterpretSameNamedVendorAnnotationNodesAsVisibleContent(string vendorNode)
     {
         var source = await RoundTrip(Source()); var ns = source.Options.Namespace;
         var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Add(new XElement(XName.Get("Annotations", ns), "Annots/Annotations.xml")); Put(source, "Doc_0/Document.xml", document);
         string QName(string name) => vendorNode == name ? "v:" + name : name;
         source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}' xmlns:v='urn:vendor'><{QName("Page")} PageID='{source.Pages[0].Id}'><{QName("FileLoc")}>Page.xml</{QName("FileLoc")}></{QName("Page")}></Annotations>");
-        source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}' xmlns:v='urn:vendor'><{QName("Annot")} ID='900'><{QName("Appearance")} Boundary='0 0 20 20'><{QName("TextObject")} ID='901' Boundary='0 0 20 20' Size='4'><TextCode X='0' Y='4'>VENDOR SECRET</TextCode></{QName("TextObject")}></{QName("Appearance")}></{QName("Annot")}></PageAnnot>");
+        source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}' xmlns:v='urn:vendor'><{QName("Annot")} ID='900'><{QName("Appearance")} Boundary='0 0 20 20'><{QName("TextObject")} ID='901' Boundary='0 0 20 20' Size='4'><{QName("TextCode")} X='0' Y='4'>VENDOR SECRET</{QName("TextCode")}></{QName("TextObject")}></{QName("Appearance")}></{QName("Annot")}></PageAnnot>");
+        if (vendorNode == "Clips")
+            source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}' xmlns:v='urn:vendor'><Annot ID='900'><Appearance Boundary='0 0 20 20'><TextObject ID='901' Boundary='0 0 20 20' Size='4'><v:Clips><v:Clip><v:Area><v:Path><v:AbbreviatedData>M 0 0 L 10 0 L 10 10 C</v:AbbreviatedData></v:Path></v:Area></v:Clip></v:Clips><TextCode X='0' Y='4'>VENDOR SECRET</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+        if (vendorNode == "TextWithoutCode")
+            source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}' xmlns:v='urn:vendor'><Annot ID='900'><Appearance Boundary='0 0 20 20'><TextObject ID='901' Boundary='0 0 20 20' Size='4'><v:Data>VENDOR SECRET</v:Data></TextObject></Appearance></Annot></PageAnnot>");
+        if (vendorNode == "AbbreviatedData")
+            source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}' xmlns:v='urn:vendor'><Annot ID='900'><Appearance Boundary='0 0 20 20'><PathObject ID='901' Boundary='0 0 20 20'><v:AbbreviatedData>M 0 0 L 10 0</v:AbbreviatedData></PathObject></Appearance></Annot></PageAnnot>");
         var read = await new OfdReader().ReadAsync(Zip(source.PreservedEntries));
         Assert.DoesNotContain("VENDOR SECRET", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(read));
         Assert.DoesNotContain(read.Pages[0].AnnotationAppearances, element => element is OfdTextElement);
         Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
         var saved = await RoundTrip(read); Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
+    }
+
+    [Fact]
+    public void ImageWatermark_MutablePayloadsAreIsolatedBetweenPagesAndBudgeted()
+    {
+        var source = Source(); var data = Png;
+        OfdWatermark.AddImage(source, [0,1], data, "image/png");
+        var first = source.Pages[0].Elements.OfType<OfdImageElement>().Last(); var second = source.Pages[1].Elements.OfType<OfdImageElement>().Last();
+        Assert.NotSame(first.Data, second.Data); Assert.NotSame(data, first.Data);
+        first.Data[0] = 0; Assert.Equal(data[0], second.Data[0]);
+        Assert.Throws<ArgumentException>(() => OfdWatermark.AddImage(source, [0,1], data, "image/png", new OfdWatermarkOptions { MaxGeneratedImageBytes = data.Length }));
+    }
+
+    [Fact]
+    public async Task Writer_ClipsPrecedeObjectSpecificTextAndPathChildren()
+    {
+        var package = new OfdDocumentPackage(); var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        var clip = "<Clips><Clip><Area><Path ID='clip'><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></Path></Area></Clip></Clips>";
+        page.Elements.Add(new OfdTextElement { Text = "CLIP", ClippingXml = clip, SourceXml = "<TextObject><TextCode X='0' Y='4'>CLIP</TextCode></TextObject>" });
+        page.Elements.Add(new OfdPathElement { AbbreviatedData = "M 0 0 L 20 0", ClippingXml = clip }); package.Pages.Add(page);
+        var result = await RoundTrip(package); var content = Xml(result, result.Pages[0].SourceEntryPath!);
+        foreach (var node in content.Descendants().Where(node => node.Name.LocalName is "TextObject" or "PathObject"))
+        {
+            var children = node.Elements().ToList(); var clips = children.FindIndex(child => child.Name.LocalName == "Clips");
+            var specific = children.FindIndex(child => child.Name.LocalName is "TextCode" or "AbbreviatedData");
+            Assert.True(clips >= 0 && clips < specific);
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task OrdinaryClips_PreserveVendorSiblingAndSelectOnlyStandardNamespace(bool vendorFirst)
+    {
+        var package = await RoundTrip(Source()); var ns = XNamespace.Get(package.Options.Namespace);
+        var path = package.Pages[0].SourceEntryPath!; var content = Xml(package, path);
+        foreach (var node in content.Descendants().Where(node => node.Name == ns + "TextObject" || node.Name == ns + "ImageObject").ToList())
+        {
+            var standard = XElement.Parse($"<Clips xmlns='{ns}'><Clip><Area><Path ID='800'><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></Path></Area></Clip></Clips>");
+            var vendor = new XElement(XNamespace.Get("urn:vendor") + "Clips", new XAttribute("Keep", "yes"));
+            node.AddFirst(vendorFirst ? new[] { vendor, standard } : new[] { standard, vendor });
+        }
+        Put(package, path, content); using (var input = Zip(package.PreservedEntries)) package = await new OfdReader().ReadAsync(input);
+        Assert.All(package.Pages[0].Elements.Where(element => element is OfdTextElement or OfdImageElement),
+            element => Assert.Equal(ns + "Clips", XElement.Parse(element.ClippingXml!).Name));
+        var result = await RoundTrip(package); content = Xml(result, result.Pages[0].SourceEntryPath!);
+        foreach (var node in content.Descendants().Where(node => node.Name == ns + "TextObject" || node.Name == ns + "ImageObject"))
+        {
+            Assert.Single(node.Elements(ns + "Clips"));
+            Assert.Equal("yes", Assert.Single(node.Elements(XNamespace.Get("urn:vendor") + "Clips")).Attribute("Keep")!.Value);
+        }
     }
 
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");

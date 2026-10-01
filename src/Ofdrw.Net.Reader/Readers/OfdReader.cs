@@ -447,12 +447,11 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
                 var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value);
-                if (appearance.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName is not ("Boundary" or "ID" or "CTM")) ||
-                    (appearance.Attribute("CTM") is not null && (appearanceTransform is null || appearanceTransform.Any(value => double.IsNaN(value) || double.IsInfinity(value)))))
+                var hasUnmodeledMetadata = appearance.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
+                    (attribute.Name.Namespace != XNamespace.None || attribute.Name.LocalName is not ("Boundary" or "ID" or "CTM")));
+                if (appearance.Attribute("CTM") is not null && (appearanceTransform is null || appearanceTransform.Any(value => double.IsNaN(value) || double.IsInfinity(value))))
                 {
-                    // Preserve the original package metadata for ordinary reads/saves.
-                    // A raw marker makes flattening fail explicitly in Mix/Merge.
-                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
                     continue;
                 }
                 var ns = appearance.Name.Namespace;
@@ -466,6 +465,7 @@ public sealed class OfdReader : IOfdReader
                 var xml = new XDocument(new XElement(ns + "Page", new XElement(ns + "Content",
                     new XElement(ns + "Layer", new XAttribute("ID", "annotation-" + annotation.Attribute("ID")?.Value), nodes))));
                 var staged = new List<OfdElement>();
+                if (hasUnmodeledMetadata) staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
                 foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, annotationPath))
                 {
                     var transform = appearanceTransform ?? new double[] { 1, 0, 0, 1, 0, 0 };
@@ -548,6 +548,8 @@ public sealed class OfdReader : IOfdReader
                 }
                 else if (node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject")
                 {
+                    if (node.Descendants().Any(child => child.Name.Namespace != ns) ||
+                        (node.Name == ns + "TextObject" && !node.Elements(ns + "TextCode").Any())) return false;
                     if (result.Count >= 100_000) throw new InvalidDataException("Annotation appearance exceeds the object budget.");
                     result.Add(node);
                 }
@@ -565,7 +567,7 @@ public sealed class OfdReader : IOfdReader
         if (!string.IsNullOrWhiteSpace(original))
         {
             var source = XElement.Parse(original!);
-            if (source.DescendantsAndSelf().Any(node => node.Name.Namespace != source.Name.Namespace || node.Name.LocalName is not ("Clips" or "Clip" or "Area" or "Path" or "AbbreviatedData")) ||
+            if (source.DescendantsAndSelf().Any(node => node.Name.Namespace != ns || node.Name.LocalName is not ("Clips" or "Clip" or "Area" or "Path" or "AbbreviatedData")) ||
                 source.DescendantsAndSelf().Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName is not ("ID" or "Boundary" or "CTM" or "Rule")))
                 throw new NotSupportedException("Unsupported annotation clip cannot be flattened safely.");
             foreach (var region in OfdClipGeometry.Read(original))
@@ -713,7 +715,7 @@ public sealed class OfdReader : IOfdReader
                         FillColor = ParseColor(node.Elements()
                             .FirstOrDefault(x => x.Name.LocalName == "FillColor")) ?? OfdColor.Black,
                         SourceXml = node.ToString(SaveOptions.DisableFormatting),
-                        ClippingXml = node.Elements().FirstOrDefault(child => child.Name.LocalName == "Clips")?.ToString(SaveOptions.DisableFormatting)
+                        ClippingXml = node.Element(node.Name.Namespace + "Clips")?.ToString(SaveOptions.DisableFormatting)
                     };
                     foreach (var textCode in textCodes)
                     {
@@ -747,7 +749,7 @@ public sealed class OfdReader : IOfdReader
                         ResourceId = resourceId,
                         Transform = ParseMatrix(node.Attribute("CTM")?.Value),
                         Alpha = (int)Math.Max(0, Math.Min(255, ParseDouble(node.Attribute("Alpha")?.Value, 255))),
-                        ClipsXml = node.Elements().FirstOrDefault(child => child.Name.LocalName == "Clips")?.ToString(SaveOptions.DisableFormatting),
+                        ClipsXml = node.Element(node.Name.Namespace + "Clips")?.ToString(SaveOptions.DisableFormatting),
                         MediaType = mediaTypeMap.TryGetValue(resourceId, out var mediaType) ? mediaType : "image/png",
                         SourceXml = node.ToString(SaveOptions.DisableFormatting)
                     };
@@ -792,7 +794,7 @@ public sealed class OfdReader : IOfdReader
                         StrokeColor = strokeColor ?? OfdColor.Black,
                         FillColor = fillColor,
                         SourceXml = node.ToString(SaveOptions.DisableFormatting),
-                        ClippingXml = node.Elements().FirstOrDefault(child => child.Name.LocalName == "Clips")?.ToString(SaveOptions.DisableFormatting)
+                        ClippingXml = node.Element(node.Name.Namespace + "Clips")?.ToString(SaveOptions.DisableFormatting)
                     };
                     continue;
                 }

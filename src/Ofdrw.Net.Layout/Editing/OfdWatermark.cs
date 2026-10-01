@@ -27,6 +27,8 @@ public sealed class OfdWatermarkOptions
     public long MaxGeneratedTextCharacters { get; set; } = 1_000_000;
     /// <summary>Maximum encoded image bytes.</summary>
     public int MaxImageBytes { get; set; } = 32 * 1024 * 1024;
+    /// <summary>Maximum sum of mutable image payload bytes across generated page objects.</summary>
+    public long MaxGeneratedImageBytes { get; set; } = 512L * 1024 * 1024;
     /// <summary>Maximum decoded width times height, validated before copying image bytes.</summary>
     public long MaxDecodedImagePixels { get; set; } = 40_000_000;
 }
@@ -64,8 +66,11 @@ public static class OfdWatermark
         if (alpha < 0 || alpha > 255) throw new ArgumentOutOfRangeException(nameof(alpha));
         cancellationToken.ThrowIfCancellationRequested();
         WatermarkImageBudget.Validate(data, mediaType, options.MaxDecodedImagePixels);
+        if (pages is null) throw new ArgumentNullException(nameof(pages));
+        if (options.MaxGeneratedImageBytes <= 0 || data.Length > options.MaxGeneratedImageBytes / Math.Max(1, pages.Count))
+            throw new ArgumentException("Generated watermark image byte budget exceeded.", nameof(data));
         var payload = data.ToArray();
-        Add(package, pages, options, () => new OfdImageElement { Data = payload, MediaType = mediaType, Alpha = alpha }, cancellationToken);
+        Add(package, pages, options, () => new OfdImageElement { Data = payload.ToArray(), MediaType = mediaType, Alpha = alpha }, cancellationToken);
     }
 
     private static void Add(OfdDocumentPackage package, IReadOnlyList<int> pages, OfdWatermarkOptions options,

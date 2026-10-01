@@ -86,6 +86,19 @@ Mutate("rich", entries =>
     entries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='999005' Type='Stamp' Visible='true'><Appearance ID='999006' Boundary='135 10 60 12' CTM='1 0 0 1 0 0'><PageBlock ID='999008'><TextObject ID='999007' Font='{font}' Size='3' Boundary='0 0 60 12'><FillColor Value='30 100 180'/><TextCode X='0' Y='3'>NOTE 注释</TextCode></TextObject></PageBlock></Appearance></Annot></PageAnnot>");
 });
 source = await Read("rich");
+File.Copy(PathFor("rich.ofd"), PathFor("annotation-metadata.ofd"), true);
+Mutate("annotation-metadata", entries =>
+{
+    var xml = Xml(entries["Doc_0/Annots/Page.xml"]);
+    xml.Descendants(ns + "Appearance").Single().SetAttributeValue(XNamespace.Get("urn:vendor:metadata") + "Style", "review-fixture");
+    entries["Doc_0/Annots/Page.xml"] = Bytes(xml);
+});
+try
+{
+    OfdDocumentMixer.Mix([new(await Read("annotation-metadata"), 0)]);
+    throw new Exception("Mix must reject unmodeled annotation metadata.");
+}
+catch (NotSupportedException) { }
 var mark = File.ReadAllBytes(Path.Combine(root, "e2e/Ofdrw.Net.DocumentTools.E2E/mark.png"));
 await using (var input = File.OpenRead(PathFor("rich.ofd")))
 await using (var target = File.Create(PathFor("signed.ofd")))
@@ -145,7 +158,7 @@ foreach (var font in markedItalic.Fonts) { font.Data = fontBytes; font.FileName 
 await Save(markedItalic, "italic-marked");
 await Save(ItalicSample(true, new double[] { 1, 0, 0, 1, 0, 0 }), "italic-control");
 await Save(ItalicSample(true, new double[] { 1, 0, -0.2, 1, 1.2, 0 }), "italic-user-matrix");
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "signed", "watermark", "watermark-merged", "split", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix" })
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "split", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);
