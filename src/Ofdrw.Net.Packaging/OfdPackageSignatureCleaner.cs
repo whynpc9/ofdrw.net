@@ -5,7 +5,9 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Ofdrw.Net.Packaging.Archive;
+using Ofdrw.Net.Core.Constants;
 
 namespace Ofdrw.Net.Packaging;
 
@@ -22,6 +24,15 @@ public static class OfdPackageSignatureCleaner
         if (ReferenceEquals(source, destination)) throw new ArgumentException("Input and output streams must differ.");
         var archive = await new OfdPackageLoader().LoadAsync(source, options ?? new OfdPackageLoadOptions(), cancellationToken).ConfigureAwait(false);
         var original = archive.EntryNames.ToDictionary(path => path, archive.GetBytes, StringComparer.OrdinalIgnoreCase);
+        if (!original.TryGetValue("OFD.xml", out var rootBytes)) throw new InvalidDataException("OFD.xml is missing.");
+        using (var rootStream = new MemoryStream(rootBytes, false))
+        {
+            var root = XDocument.Load(rootStream).Root;
+            if (root?.Name.LocalName != "OFD" ||
+                (root.Name.NamespaceName != OfdConstants.Namespace && root.Name.NamespaceName != OfdConstants.StandardNamespace) ||
+                !root.Elements(root.Name.Namespace + "DocBody").Any())
+                throw new InvalidDataException("Input has no recognizable OFD root and DocBody.");
+        }
         var entries = new Dictionary<string, byte[]>(original, StringComparer.OrdinalIgnoreCase);
         var result = new OfdPackageWriteResult();
         OfdPackagePruner.CleanSignatures(original, entries, result, cancellationToken);

@@ -70,5 +70,17 @@ public sealed class DocumentToolsCliTests : IDisposable
         }
         Assert.Equal(3, await global::Cli.RunAsync(["verify-signatures", input]));
     }
+    [Fact]
+    public async Task Clean_RejectsOrdinaryZipWithoutReplacingExistingOutput()
+    {
+        var input = PathFor("ordinary.zip"); var output = PathFor("existing.ofd");
+        using (var zip = ZipFile.Open(input, ZipArchiveMode.Create))
+        { using var file = zip.CreateEntry("ordinary.txt").Open(); file.Write(new byte[] { 1 }); }
+        await File.WriteAllTextAsync(output, "unchanged");
+        Assert.Equal(1, await global::Cli.RunAsync(["clean-signatures", input, output]));
+        Assert.Equal("unchanged", await File.ReadAllTextAsync(output));
+        Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+    }
+
     public void Dispose() => Directory.Delete(_directory, true);
 }

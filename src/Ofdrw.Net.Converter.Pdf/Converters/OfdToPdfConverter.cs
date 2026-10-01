@@ -225,87 +225,100 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             foreach (var element in EnumerateRenderableElements(page))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (element is OfdTextElement text)
+                if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
+                    throw new NotSupportedException($"Annotation appearance on page {page.Index + 1} contains unsupported drawing; export would lose content.");
+                var elementState = graphics.Save();
+                try
                 {
-                    var fontSize = Math.Max(0.1, MillimetersToPoints(text.FontSizeMillimeters));
-                    var familyName = fonts.Resolve(text, out var resource);
-                    // CT_Text Weight/Italic is the per-object style viewers apply;
-                    // the resource flags describe the bound font file.
-                    var bold = resource?.Bold == true || text.Weight >= 600;
-                    var italic = resource?.Italic == true || text.Italic;
-                    var style = (bold ? XFontStyle.Bold : XFontStyle.Regular) |
-                        (italic ? XFontStyle.Italic : XFontStyle.Regular);
-                    XFont font;
-                    FontResolverInfo face;
-                    try
+                    if (element is not OfdImageElement && !string.IsNullOrWhiteSpace(element.ClippingXml))
                     {
-                        font = new XFont(familyName, fontSize, style);
-                        face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName, bold, italic);
+                        var dx = MillimetersToPoints(element.XMillimeters - page.XMillimeters);
+                        var dy = MillimetersToPoints(element.YMillimeters - page.YMillimeters);
+                        graphics.TranslateTransform(dx, dy);
+                        foreach (var region in OfdClipGeometry.Read(element.ClippingXml)) graphics.IntersectClip(OfdPathRenderer.BuildClip(region));
+                        graphics.TranslateTransform(-dx, -dy);
                     }
-                    catch (Exception exception) when (resource?.Data.Length > 0)
+                    if (element is OfdTextElement text)
                     {
-                        throw new InvalidDataException($"Embedded font '{resource.FontName}' could not be initialized.", exception);
-                    }
-                    catch (Exception exception) when (exception is not OutOfMemoryException &&
-                                                       exception is not OperationCanceledException)
-                    {
-                        font = new XFont("Arial", fontSize);
-                        // Use the face actually drawn. Re-querying the rejected
-                        // name here would repeat the host failure after fallback.
-                        face = GlobalFontSettings.FontResolver.ResolveTypeface("Arial", false, false);
-                    }
-                    var simulateBold = face.MustSimulateBold;
-                    var simulateItalic = face.MustSimulateItalic;
-                    SixLabors.Fonts.Font? outlineFont = null;
-                    if (simulateBold)
-                    {
-                        if (!outlineFonts.TryGetValue(face.FaceName, out var family))
+                        var fontSize = Math.Max(0.1, MillimetersToPoints(text.FontSizeMillimeters));
+                        var familyName = fonts.Resolve(text, out var resource);
+                        // CT_Text Weight/Italic is the per-object style viewers apply;
+                        // the resource flags describe the bound font file.
+                        var bold = resource?.Bold == true || text.Weight >= 600;
+                        var italic = resource?.Italic == true || text.Italic;
+                        var style = (bold ? XFontStyle.Bold : XFontStyle.Regular) |
+                            (italic ? XFontStyle.Italic : XFontStyle.Regular);
+                        XFont font;
+                        FontResolverInfo face;
+                        try
                         {
-                            using var fontStream = new MemoryStream(GlobalFontSettings.FontResolver.GetFont(face.FaceName));
-                            family = new SixLabors.Fonts.FontCollection().Add(fontStream);
-                            outlineFonts.Add(face.FaceName, family);
+                            font = new XFont(familyName, fontSize, style);
+                            face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName, bold, italic);
                         }
-                        outlineFont = family.CreateFont((float)fontSize);
+                        catch (Exception exception) when (resource?.Data.Length > 0)
+                        {
+                            throw new InvalidDataException($"Embedded font '{resource.FontName}' could not be initialized.", exception);
+                        }
+                        catch (Exception exception) when (exception is not OutOfMemoryException &&
+                                                           exception is not OperationCanceledException)
+                        {
+                            font = new XFont("Arial", fontSize);
+                            // Use the face actually drawn. Re-querying the rejected
+                            // name here would repeat the host failure after fallback.
+                            face = GlobalFontSettings.FontResolver.ResolveTypeface("Arial", false, false);
+                        }
+                        var simulateBold = face.MustSimulateBold;
+                        var simulateItalic = face.MustSimulateItalic;
+                        SixLabors.Fonts.Font? outlineFont = null;
+                        if (simulateBold)
+                        {
+                            if (!outlineFonts.TryGetValue(face.FaceName, out var family))
+                            {
+                                using var fontStream = new MemoryStream(GlobalFontSettings.FontResolver.GetFont(face.FaceName));
+                                family = new SixLabors.Fonts.FontCollection().Add(fontStream);
+                                outlineFonts.Add(face.FaceName, family);
+                            }
+                            outlineFont = family.CreateFont((float)fontSize);
+                        }
+                        var brush = new XSolidBrush(XColor.FromArgb(
+                            text.FillColor.Alpha,
+                            text.FillColor.Red,
+                            text.FillColor.Green,
+                            text.FillColor.Blue));
+                        if (text.Runs.Count > 0)
+                        {
+                            DrawTextRuns(
+                                graphics,
+                                text,
+                                font,
+                                brush,
+                                page.XMillimeters,
+                                page.YMillimeters,
+                                outlineFont,
+                                simulateItalic);
+                        }
+                        else
+                        {
+                            DrawTextWithMatrix(graphics, text, page.XMillimeters, page.YMillimeters, () =>
+                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(0, 0), outlineFont, simulateItalic, XStringFormats.TopLeft));
+                        }
                     }
-                    var brush = new XSolidBrush(XColor.FromArgb(
-                        text.FillColor.Alpha,
-                        text.FillColor.Red,
-                        text.FillColor.Green,
-                        text.FillColor.Blue));
-                    if (text.Runs.Count > 0)
+
+                    if (element is OfdImageElement image && image.Data.Length > 0)
                     {
-                        DrawTextRuns(
+                        DrawImage(graphics, page, image, maximumPixels);
+                    }
+
+                    if (element is OfdPathElement path)
+                    {
+                        OfdPathRenderer.TryDraw(
                             graphics,
-                            text,
-                            font,
-                            brush,
+                            path,
                             page.XMillimeters,
-                            page.YMillimeters,
-                            outlineFont,
-                            simulateItalic);
-                    }
-                    else
-                    {
-                        DrawStyledString(graphics, text.Text, font, brush,
-                            new XPoint(MillimetersToPoints(text.XMillimeters - page.XMillimeters),
-                                MillimetersToPoints(text.YMillimeters - page.YMillimeters)),
-                            outlineFont, simulateItalic, XStringFormats.TopLeft);
+                            page.YMillimeters);
                     }
                 }
-
-                if (element is OfdImageElement image && image.Data.Length > 0)
-                {
-                    DrawImage(graphics, page, image, maximumPixels);
-                }
-
-                if (element is OfdPathElement path)
-                {
-                    OfdPathRenderer.TryDraw(
-                        graphics,
-                        path,
-                        page.XMillimeters,
-                        page.YMillimeters);
-                }
+                finally { graphics.Restore(elementState); }
             }
 
         }
@@ -435,65 +448,46 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         SixLabors.Fonts.Font? outlineFont,
         bool simulateItalic)
     {
-        foreach (var run in text.Runs)
+        DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, () =>
         {
-            var glyphs = OfdTextGeometry.Glyphs(run.Text);
-            var deltaX = OfdTextGeometry.ExpandDeltas(run.DeltaX, Math.Max(0, glyphs.Count - 1));
-            var deltaY = OfdTextGeometry.ExpandDeltas(run.DeltaY, Math.Max(0, glyphs.Count - 1));
-            if (deltaX.Count == 0 && deltaY.Count == 0)
+            foreach (var run in text.Runs)
             {
-                var point = TransformTextPoint(
-                    text,
-                    run.XMillimeters,
-                    run.YMillimeters,
-                    pageOriginX,
-                    pageOriginY);
-                DrawStyledString(graphics, run.Text, font, brush, point, outlineFont, simulateItalic);
-                continue;
-            }
-
-            var x = run.XMillimeters;
-            var y = run.YMillimeters;
-            for (var i = 0; i < glyphs.Count; i++)
-            {
-                var point = TransformTextPoint(
-                    text,
-                    x,
-                    y,
-                    pageOriginX,
-                    pageOriginY);
-                DrawStyledString(graphics, glyphs[i], font, brush, point, outlineFont, simulateItalic);
-                if (i < deltaX.Count)
+                var glyphs = OfdTextGeometry.Glyphs(run.Text);
+                var deltaX = OfdTextGeometry.ExpandDeltas(run.DeltaX, Math.Max(0, glyphs.Count - 1));
+                var deltaY = OfdTextGeometry.ExpandDeltas(run.DeltaY, Math.Max(0, glyphs.Count - 1));
+                if (deltaX.Count == 0 && deltaY.Count == 0)
                 {
-                    x += deltaX[i];
+                    DrawStyledString(graphics, run.Text, font, brush,
+                        new XPoint(MillimetersToPoints(run.XMillimeters), MillimetersToPoints(run.YMillimeters)), outlineFont, simulateItalic);
+                    continue;
                 }
-
-                if (i < deltaY.Count)
+                var x = run.XMillimeters; var y = run.YMillimeters;
+                for (var i = 0; i < glyphs.Count; i++)
                 {
-                    y += deltaY[i];
+                    DrawStyledString(graphics, glyphs[i], font, brush,
+                        new XPoint(MillimetersToPoints(x), MillimetersToPoints(y)), outlineFont, simulateItalic);
+                    if (i < deltaX.Count) x += deltaX[i];
+                    if (i < deltaY.Count) y += deltaY[i];
                 }
             }
-        }
+        });
     }
 
-    private static XPoint TransformTextPoint(
-        OfdTextElement text,
-        double x,
-        double y,
-        double pageOriginX,
-        double pageOriginY)
+    private static void DrawTextWithMatrix(XGraphics graphics, OfdTextElement text,
+        double pageOriginX, double pageOriginY, Action draw)
     {
-        if (text.Transform is { Length: 6 } matrix)
+        var state = graphics.Save();
+        try
         {
-            var transformedX = (matrix[0] * x) + (matrix[2] * y) + matrix[4];
-            var transformedY = (matrix[1] * x) + (matrix[3] * y) + matrix[5];
-            x = transformedX;
-            y = transformedY;
+            graphics.TranslateTransform(MillimetersToPoints(text.XMillimeters - pageOriginX), MillimetersToPoints(text.YMillimeters - pageOriginY));
+            if (text.Transform is { Length: 6 } matrix)
+            {
+                if (matrix.Any(value => double.IsNaN(value) || double.IsInfinity(value))) throw new InvalidDataException("Invalid OFD text transform.");
+                graphics.MultiplyTransform(new XMatrix(matrix[0], matrix[1], matrix[2], matrix[3], MillimetersToPoints(matrix[4]), MillimetersToPoints(matrix[5])));
+            }
+            draw();
         }
-
-        return new XPoint(
-            MillimetersToPoints(text.XMillimeters + x - pageOriginX),
-            MillimetersToPoints(text.YMillimeters + y - pageOriginY));
+        finally { graphics.Restore(state); }
     }
 
     private static IEnumerable<OfdElement> EnumerateRenderableElements(OfdPage page)

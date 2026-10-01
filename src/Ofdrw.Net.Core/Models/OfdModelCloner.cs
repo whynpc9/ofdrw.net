@@ -73,6 +73,7 @@ internal static class OfdModelCloner
             default:
                 throw new NotSupportedException($"Cannot clone OFD element '{source.GetType().Name}'.");
         }
+        result.ClippingXml = CloneXml(source.ClippingXml, targetNamespace);
         result.ObjectId = source.ObjectId;
         result.LayerId = source.LayerId;
         result.LayerType = source.LayerType;

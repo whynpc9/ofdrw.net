@@ -209,11 +209,8 @@ public sealed class OfdPackageWriter
         {
             FontBinding? binding = null;
             if (!string.IsNullOrEmpty(text.FontResourceId)) byId.TryGetValue(text.FontResourceId!, out binding);
-            binding ??= result.Resources.FirstOrDefault(font =>
-                string.Equals(font.Resource.FontName, text.FontName, StringComparison.OrdinalIgnoreCase) &&
-                !font.Resource.Bold && !font.Resource.Italic)
-                ?? result.Resources.FirstOrDefault(font =>
-                    string.Equals(font.Resource.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
+            var selectedFont = OfdFontSelection.Resolve(package.Fonts, text);
+            binding ??= result.Resources.FirstOrDefault(font => ReferenceEquals(font.Resource, selectedFont));
             if (binding is null)
             {
                 binding = new FontBinding
@@ -394,6 +391,7 @@ public sealed class OfdPackageWriter
                             ApplyNameOnlyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
                         }
 
+                        ApplyClipping(textObject, text);
                         AssignNestedIds(textObject, idAllocator);
                         layer.Add(textObject);
                     }
@@ -459,6 +457,7 @@ public sealed class OfdPackageWriter
                             abbreviatedData.Value = path.AbbreviatedData;
                         }
 
+                        ApplyClipping(pathObject, path);
                         AssignNestedIds(pathObject, idAllocator);
                         layer.Add(pathObject);
                     }
@@ -564,6 +563,13 @@ public sealed class OfdPackageWriter
             !double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var h))
             return;
         textObject.SetAttributeValue("Boundary", BuildBox(x, y, w + shear * h, h));
+    }
+
+    private static void ApplyClipping(XElement xml, OfdElement element)
+    {
+        if (element.ClippingXml is null) return;
+        xml.Elements().Where(node => node.Name.LocalName == "Clips").Remove();
+        if (!string.IsNullOrWhiteSpace(element.ClippingXml)) xml.Add(XElement.Parse(element.ClippingXml!, LoadOptions.PreserveWhitespace));
     }
 
     private static string GetLayerKey(OfdElement element)

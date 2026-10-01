@@ -103,9 +103,7 @@ public static class OfdDocumentMerger
                         clone.LayerId = $"merged-layer-{layerSequence}";
                         if (clone is OfdTextElement text)
                         {
-                            var originalFont = source.Fonts.FirstOrDefault(font => font.Id == text.FontResourceId)
-                                ?? source.Fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase) && !font.Bold && !font.Italic)
-                                ?? source.Fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
+                            var originalFont = OfdFontSelection.Resolve(source.Fonts, text);
                             if (originalFont is not null)
                             {
                                 text.FontResourceId = fonts[originalFont].Id;
@@ -176,9 +174,9 @@ public static class OfdDocumentMerger
             OfdPathElement path => path.SourceXml,
             _ => null
         };
-        if (element is OfdImageElement imageWithClips && !string.IsNullOrWhiteSpace(imageWithClips.ClipsXml))
+        if (!string.IsNullOrWhiteSpace(element.ClippingXml))
         {
-            var clips = XElement.Parse(imageWithClips.ClipsXml!);
+            var clips = XElement.Parse(element.ClippingXml!);
             if (clips.DescendantsAndSelf().Attributes().Any(attribute => attribute.Name.LocalName is "Font" or "ResourceID" or "DrawParam" or "ColorSpace" or "RefID" or "ObjectRef"))
                 throw new NotSupportedException("Unmodeled clip resource references cannot be safely remapped.");
         }
