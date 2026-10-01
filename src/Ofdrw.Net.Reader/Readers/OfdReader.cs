@@ -390,8 +390,8 @@ public sealed class OfdReader : IOfdReader
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var pageId = record.Attribute("PageID")?.Value;
-                var location = record.Elements().FirstOrDefault(node => node.Name.LocalName == "FileLoc")?.Value;
-                if (record.Name.LocalName != "Page" || string.IsNullOrWhiteSpace(pageId) || string.IsNullOrWhiteSpace(location))
+                var location = record.Element(list.Root.Name.Namespace + "FileLoc")?.Value;
+                if (record.Name != list.Root.Name.Namespace + "Page" || string.IsNullOrWhiteSpace(pageId) || string.IsNullOrWhiteSpace(location))
                 {
                     result.UnmodeledLists.Add(record.ToString(SaveOptions.DisableFormatting));
                     continue;
@@ -430,12 +430,22 @@ public sealed class OfdReader : IOfdReader
                     Xml = new XElement("UnmodeledAnnotation", new XAttribute("FileLoc", annotationPath)).ToString() });
                 continue;
             }
-            foreach (var annotation in annotations.Root.Elements().Where(node => node.Name.LocalName == "Annot"))
+            foreach (var annotation in annotations.Root.Elements())
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (annotation.Name != annotations.Root.Name.Namespace + "Annot")
+                {
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
+                    continue;
+                }
                 if (annotation.Attribute("Visible")?.Value is "false" or "0") continue;
-                var appearance = annotation.Elements().FirstOrDefault(node => node.Name.LocalName == "Appearance");
-                if (appearance is null) continue;
+                var appearance = annotation.Element(annotations.Root.Name.Namespace + "Appearance");
+                if (appearance is null)
+                {
+                    if (annotation.Elements().Any(node => node.Name.LocalName == "Appearance"))
+                        page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
+                    continue;
+                }
                 var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value);
                 if (appearance.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName is not ("Boundary" or "ID" or "CTM")) ||
                     (appearance.Attribute("CTM") is not null && (appearanceTransform is null || appearanceTransform.Any(value => double.IsNaN(value) || double.IsInfinity(value)))))
@@ -447,7 +457,7 @@ public sealed class OfdReader : IOfdReader
                 }
                 var ns = appearance.Name.Namespace;
                 var box = ParseBox(appearance.Attribute("Boundary")?.Value);
-                var nodes = FlattenAnnotationNodes(appearance.Elements(), cancellationToken);
+                var nodes = FlattenAnnotationNodes(appearance.Elements(), appearance.Name.Namespace, cancellationToken);
                 if (nodes is null || box.w <= 0 || box.h <= 0 || new[] { box.x, box.y, box.w, box.h }.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
                 {
                     page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
@@ -521,7 +531,7 @@ public sealed class OfdReader : IOfdReader
         }
     }
 
-    private static List<XElement>? FlattenAnnotationNodes(IEnumerable<XElement> nodes, CancellationToken token)
+    private static List<XElement>? FlattenAnnotationNodes(IEnumerable<XElement> nodes, XNamespace ns, CancellationToken token)
     {
         var result = new List<XElement>();
         bool Append(IEnumerable<XElement> children, int depth)
@@ -530,7 +540,8 @@ public sealed class OfdReader : IOfdReader
             foreach (var node in children)
             {
                 token.ThrowIfCancellationRequested();
-                if (node.Name.LocalName == "PageBlock")
+                if (node.Name.Namespace != ns) return false;
+                if (node.Name == ns + "PageBlock")
                 {
                     if (node.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName != "ID") ||
                         !Append(node.Elements(), depth + 1)) return false;
@@ -554,7 +565,7 @@ public sealed class OfdReader : IOfdReader
         if (!string.IsNullOrWhiteSpace(original))
         {
             var source = XElement.Parse(original!);
-            if (source.DescendantsAndSelf().Any(node => node.Name.LocalName is not ("Clips" or "Clip" or "Area" or "Path" or "AbbreviatedData")) ||
+            if (source.DescendantsAndSelf().Any(node => node.Name.Namespace != source.Name.Namespace || node.Name.LocalName is not ("Clips" or "Clip" or "Area" or "Path" or "AbbreviatedData")) ||
                 source.DescendantsAndSelf().Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName is not ("ID" or "Boundary" or "CTM" or "Rule")))
                 throw new NotSupportedException("Unsupported annotation clip cannot be flattened safely.");
             foreach (var region in OfdClipGeometry.Read(original))

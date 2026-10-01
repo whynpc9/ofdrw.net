@@ -373,6 +373,37 @@ public sealed class DocumentToolTests
         Assert.True(result.PreservedEntries.ContainsKey("Doc_0/Pages/Page_0/vendor.bin"));
     }
 
+    [Theory]
+    [InlineData("Annotations", false)]
+    [InlineData("TemplatePage", true)]
+    public void Mix_RejectsSameNamedVendorDocumentDeclarations(string name, bool common)
+    {
+        var source = Source(); var xml = $"<{name} xmlns='urn:vendor' />";
+        if (common) source.PreservedCommonDataElements.Add(xml); else source.PreservedDocumentElements.Add(xml);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
+        Assert.Equal(2, source.Pages.Count);
+    }
+
+    [Theory]
+    [InlineData("Page")]
+    [InlineData("FileLoc")]
+    [InlineData("Annot")]
+    [InlineData("Appearance")]
+    [InlineData("TextObject")]
+    public async Task Reader_DoesNotInterpretSameNamedVendorAnnotationNodesAsVisibleContent(string vendorNode)
+    {
+        var source = await RoundTrip(Source()); var ns = source.Options.Namespace;
+        var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Add(new XElement(XName.Get("Annotations", ns), "Annots/Annotations.xml")); Put(source, "Doc_0/Document.xml", document);
+        string QName(string name) => vendorNode == name ? "v:" + name : name;
+        source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}' xmlns:v='urn:vendor'><{QName("Page")} PageID='{source.Pages[0].Id}'><{QName("FileLoc")}>Page.xml</{QName("FileLoc")}></{QName("Page")}></Annotations>");
+        source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}' xmlns:v='urn:vendor'><{QName("Annot")} ID='900'><{QName("Appearance")} Boundary='0 0 20 20'><{QName("TextObject")} ID='901' Boundary='0 0 20 20' Size='4'><TextCode X='0' Y='4'>VENDOR SECRET</TextCode></{QName("TextObject")}></{QName("Appearance")}></{QName("Annot")}></PageAnnot>");
+        var read = await new OfdReader().ReadAsync(Zip(source.PreservedEntries));
+        Assert.DoesNotContain("VENDOR SECRET", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(read));
+        Assert.DoesNotContain(read.Pages[0].AnnotationAppearances, element => element is OfdTextElement);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+        var saved = await RoundTrip(read); Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
+    }
+
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
     private static OfdDocumentPackage Source()
     {

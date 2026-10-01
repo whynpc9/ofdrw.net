@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.IO;
+using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Layout.Editing;
@@ -36,11 +38,13 @@ public static class OfdDocumentMixer
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
             OfdDocumentSplitter.ValidateSingleDocument(item.Package);
             OfdDocumentSplitter.ValidatePages(item.Package, new[] { item.PageIndex });
-            if (item.Package.PreservedDocumentElements.Any(xml => System.Xml.Linq.XElement.Parse(xml).Name.LocalName != "Annotations") ||
-                item.Package.PreservedCommonDataElements.Any(xml => System.Xml.Linq.XElement.Parse(xml).Name.LocalName != "TemplatePage"))
+            var documentNamespace = EntryNamespace(item.Package, item.Package.DocumentEntryPath);
+            if (item.Package.PreservedDocumentElements.Any(xml => XElement.Parse(xml).Name != documentNamespace + "Annotations") ||
+                item.Package.PreservedCommonDataElements.Any(xml => XElement.Parse(xml).Name != documentNamespace + "TemplatePage"))
                 throw new NotSupportedException("Mix cannot safely remap document extensions or shared drawing resources.");
             var page = item.Package.Pages[item.PageIndex];
-            foreach (var reference in page.PreservedPageElements.Select(System.Xml.Linq.XElement.Parse).Where(node => node.Name.LocalName == "Template"))
+            var pageNamespace = EntryNamespace(item.Package, page.SourceEntryPath);
+            foreach (var reference in page.PreservedPageElements.Select(XElement.Parse).Where(node => node.Name == pageNamespace + "Template"))
                 if (!page.Templates.Any(template => template.TemplateId == reference.Attribute("TemplateID")?.Value))
                     throw new NotSupportedException("Mix cannot flatten an unresolved template reference.");
             objects = checked(objects + page.Elements.Count + page.Templates.Sum(template => template.Elements.Count) + page.AnnotationAppearances.Count);
@@ -48,7 +52,7 @@ public static class OfdDocumentMixer
                 + page.Elements.Concat(page.Templates.SelectMany(template => template.Elements)).Concat(page.AnnotationAppearances)
                     .OfType<OfdImageElement>().Sum(image => (long)image.Data.Length));
             if (bytes > maxExpandedBytes || objects > maxObjectCount) throw new ArgumentException("Mix expanded-byte/object budget exceeded.");
-            if (page.PreservedPageElements.Any(xml => System.Xml.Linq.XElement.Parse(xml).Name.LocalName != "Template"))
+            if (page.PreservedPageElements.Any(xml => XElement.Parse(xml).Name != pageNamespace + "Template"))
                 throw new NotSupportedException("Mix cannot safely remap page extensions/actions.");
             var package = new OfdDocumentPackage { Options = item.Package.Options };
             package.Pages.Add(page); package.Fonts.AddRange(item.Package.Fonts);
@@ -74,4 +78,14 @@ public static class OfdDocumentMixer
         merged.Pages.Clear(); merged.Pages.Add(target);
         return merged;
     }
+    private static XNamespace EntryNamespace(OfdDocumentPackage package, string? path)
+    {
+        if (path is not null && package.PreservedEntries.TryGetValue(path, out var bytes))
+        {
+            using var input = new MemoryStream(bytes, false);
+            return XDocument.Load(input).Root!.Name.Namespace;
+        }
+        return XNamespace.Get(package.Options.Namespace);
+    }
+
 }
