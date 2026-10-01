@@ -46,6 +46,7 @@ using (var zip = ZipFile.Open(inputDocx, ZipArchiveMode.Update))
         entry.Delete(); using var outputEntry = zip.CreateEntry(path).Open(); var bytes = Bytes(xml); outputEntry.Write(bytes);
     }
 }
+var fontBytes = File.ReadAllBytes(fontPath);
 foreach (var mode in new[] { "native", "default" })
 {
     await using var input = File.OpenRead(inputDocx); await using var target = File.Create(PathFor("baseline-" + mode + ".ofd"));
@@ -53,6 +54,15 @@ foreach (var mode in new[] { "native", "default" })
     if (mode == "native") options.OfdMode = DocxToOfdMode.Native;
     var converter = new DocxToOfdConverter(options);
     await converter.ConvertAsync(input, target);
+    await target.DisposeAsync();
+    // Native's viewer-local CJK contract is name-only. Make this review fixture
+    // self-contained by embedding the same licensed face used for measurement.
+    var embedded = await Read("baseline-" + mode);
+    foreach (var font in embedded.Fonts)
+    {
+        font.Data = fontBytes; font.FileName = "Ofdrw-CI-NotoSansCJKsc-Regular.ttf";
+    }
+    await Save(embedded, "baseline-" + mode);
 }
 var source = await Read("baseline-native");
 if (source.Pages.Count < 2) throw new Exception("Sample requires multiple pages.");
@@ -97,7 +107,7 @@ var signed = await Read("signed");
 await Save(OfdDocumentSplitter.Split(signed, [1, 0]), "split");
 var overlay = new OfdDocumentPackage();
 overlay.Fonts.Add(signed.Fonts.First());
-var overlayPage = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+var overlayPage = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 250 };
 overlayPage.Elements.Add(new OfdPathElement { LayerId = "cover", XMillimeters = 18, YMillimeters = 170, WidthMillimeters = 80, HeightMillimeters = 20, Fill = true, Stroke = false, FillColor = new OfdColor(230, 245, 220), AbbreviatedData = "M 0 0 L 80 0 L 80 20 L 0 20 C" });
 overlayPage.Elements.Add(new OfdTextElement { LayerId = "cover", Text = "TOP LAYER 上层", FontName = signed.Fonts.First().FontName, FontResourceId = signed.Fonts.First().Id, XMillimeters = 23, YMillimeters = 175, WidthMillimeters = 75, HeightMillimeters = 10, FontSizeMillimeters = 4, FillColor = new OfdColor(40, 120, 30) });
 overlay.Pages.Add(overlayPage);
