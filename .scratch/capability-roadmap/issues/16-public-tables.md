@@ -6,11 +6,11 @@
 
 **Priority:** P0
 
-**Status:** in-progress (implementation and review/visual validation)
+**Status:** in-progress (implementation, functional and Preview passed; PR review/CI pending)
 
-- [ ] 可生成带边框/底色/对齐的表
-- [ ] 跨页策略有文档，并有对应样例
-- [ ] Preview 视觉验收通过（Native OFD → PDF → Preview）
+- [x] 可生成带边框/底色/对齐的表
+- [x] 跨页策略有文档，并有对应样例
+- [x] Preview 视觉验收通过（Native OFD → PDF → Preview）
 
 ## Execution
 
@@ -28,11 +28,11 @@
 
 ## Acceptance criteria
 
-- [ ] 公开 API 能生成至少含合并单元格或多种对齐之一的表，带边框与底色
-- [ ] 跨页样例的行为与文档一致；无重叠、裁切半格、重影
-- [ ] Preview 验收走本次生成的 Native OFD；局部单元格样式不扩散到整表
-- [ ] DOCX Native 表格路径仍通过既有测试（若已改用同一引擎）
-- [ ] 更新功能对照与教程
+- [x] 公开 API 能生成至少含合并单元格或多种对齐之一的表，带边框与底色
+- [x] 跨页样例的行为与文档一致；无重叠、裁切半格、重影
+- [x] Preview 验收走本次生成的 Native OFD；局部单元格样式不扩散到整表
+- [x] DOCX Native 表格路径仍通过既有测试（若已改用同一引擎）
+- [x] 更新功能对照与教程
 
 ## Blocked by
 
