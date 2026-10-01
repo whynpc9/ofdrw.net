@@ -7,9 +7,9 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
 | 功能回归 | 203/203 通过 | Core 5、Packaging 23、PDF/Image 92、Signatures 4、DOCX 49、CLI 30 |
-| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review2`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
+| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review3`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
-| PNG/JPEG 目视复查 | 本轮待重生成（上一轮10/10） | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
+| PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
 | PR CI / Codex / Cursor | 待到齐 | PR 创建后补充最新 head、检查和线程状态 |
 
@@ -34,7 +34,7 @@ Native/default OFD各约15 MiB，主要是原有字体嵌入；它们的展开�
 
 源码、环境、哈希、字节数、样例、模式与检查范围由 manifest 记录。Native/default基准来自11包本地消费本次生成的OFD；PDF由这些OFD导出，未使用直接DOCX→PDF代替。
 
-复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review2`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
+复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review3`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
 
 ## 实际页面记录
 
@@ -77,3 +77,5 @@ Cursor在`2d5d260`确认22载荷完整性与票据API/CLI契约，并提出以�
 - 位图缓存改为单槽，换载荷时先释放旧对象再创建下一份，只有相邻相同载荷复用；不会因数百个不同载荷而保留所有解码图片。资源所有权回归用500个不同载荷确认live/peak均不超过1。
 - ASN.1标签/长度使用减法检查剩余切片，识别header和分配副本前校验`offset/length`确实在原数组内。`04 84 7F FF FF FF`及追加ZIPheader版本均抛`InvalidDataException`，输出保持；legacy公开PDF路径仍忽略不可读外观并导出正文。
 - 全套203/203及Sol Low独立复核通过。新的产物与11包消费验证随后记录；Preview仍未完成。
+
+第三轮25个实际产物均从`f7dcae8`重新生成，11/11本地包消费通过；当次10张PNG/JPEG逐页重新查看，检查范围与上述相同，未见新缺陷。最新源码、日志、字节数、哈希由当前manifest给出。Preview仍未完成。
