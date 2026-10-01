@@ -95,8 +95,10 @@ public sealed class OfdPackageWriter
         var publicResourceLocation = package.PublicResourceLocation ?? "PublicRes.xml";
         var documentResourceLocation = package.DocumentResourceLocation ??
             (imageResources.Count > 0 ? "DocumentRes.xml" : null);
-        var resources = new OfdResourceCatalog(entries);
         var publicPath = OfdPackagePath.Resolve(documentPath, publicResourceLocation);
+        var knownResourcePaths = new List<string> { publicPath };
+        if (!string.IsNullOrWhiteSpace(documentResourceLocation)) knownResourcePaths.Add(OfdPackagePath.Resolve(documentPath, documentResourceLocation!));
+        var resources = new OfdResourceCatalog(entries, documentPath, ns, knownResourcePaths);
         resources.EnsureDocument(publicPath, ns);
         foreach (var font in fonts.Resources) resources.WriteFont(font.Id, font.Resource, publicPath, ns);
         if (!string.IsNullOrWhiteSpace(documentResourceLocation))
@@ -553,7 +555,9 @@ public sealed class OfdPackageWriter
 
         if (!italic || textObject.Attribute("CTM") is not null) return;
         const double shear = 0.2;
-        textObject.SetAttributeValue("CTM", BuildMatrix(1, 0, -shear, 1, shear * size, 0));
+        var factor = BuildMatrix(1, 0, -shear, 1, shear * size, 0);
+        textObject.SetAttributeValue("CTM", factor);
+        textObject.SetAttributeValue(OfdTextEmphasis.FauxItalicFactor, factor);
         if (textObject.Attribute("Boundary")?.Value is not string box) return;
         var parts = box.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 4) return;

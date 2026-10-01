@@ -5,6 +5,7 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.IO;
+using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Packaging;
@@ -18,9 +19,25 @@ internal sealed class OfdResourceCatalog
     private readonly HashSet<string> _changed = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<byte[], string> _hashes = new();
 
-    internal OfdResourceCatalog(IDictionary<string, byte[]> entries)
+    internal OfdResourceCatalog(IDictionary<string, byte[]> entries, string documentPath, XNamespace documentNamespace,
+        IEnumerable<string> newResourcePaths)
     {
         _entries = entries;
+        var owned = new HashSet<string>(newResourcePaths, StringComparer.OrdinalIgnoreCase);
+        if (entries.TryGetValue(documentPath, out var documentBytes))
+        {
+            XDocument document;
+            using (var input = new MemoryStream(documentBytes, false)) document = XDocument.Load(input, LoadOptions.PreserveWhitespace);
+            var ns = document.Root!.Name.Namespace; var common = document.Root.Element(ns + "CommonData");
+            foreach (var declaration in common?.Elements().Where(node => node.Name == ns + "PublicRes" || node.Name == ns + "DocumentRes") ?? Enumerable.Empty<XElement>())
+                owned.Add(OfdPackagePath.Resolve(documentPath, declaration.Value));
+            foreach (var page in (document.Root.Element(ns + "Pages")?.Elements(ns + "Page") ?? Enumerable.Empty<XElement>())
+                .Concat(common?.Elements(ns + "TemplatePage") ?? Enumerable.Empty<XElement>()))
+            {
+                var location = page.Attribute("BaseLoc")?.Value;
+                if (!string.IsNullOrWhiteSpace(location)) owned.Add(OfdPackagePath.GetDirectory(OfdPackagePath.Resolve(documentPath, location!)) + "/PageRes.xml");
+            }
+        }
         foreach (var pair in entries.Where(pair => pair.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)))
         {
             XDocument xml;
@@ -30,9 +47,11 @@ internal sealed class OfdResourceCatalog
                 xml = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
             }
             catch (XmlException) { continue; }
-            if (xml.Root?.Name.LocalName != "Res") continue;
+            if (!owned.Contains(pair.Key) || xml.Root?.Name.LocalName != "Res" ||
+                (xml.Root.Name.Namespace != documentNamespace && xml.Root.Name.NamespaceName != OfdConstants.Namespace && xml.Root.Name.NamespaceName != OfdConstants.StandardNamespace)) continue;
             _documents[pair.Key] = xml;
-            foreach (var resource in xml.Descendants().Where(node => node.Name.LocalName is "Font" or "MultiMedia"))
+            foreach (var resource in xml.Root.Elements(xml.Root.Name.Namespace + "Fonts").Elements(xml.Root.Name.Namespace + "Font")
+                .Concat(xml.Root.Elements(xml.Root.Name.Namespace + "MultiMedias").Elements(xml.Root.Name.Namespace + "MultiMedia")))
             {
                 var id = resource.Attribute("ID")?.Value;
                 if (string.IsNullOrEmpty(id)) continue;
@@ -46,6 +65,7 @@ internal sealed class OfdResourceCatalog
     internal void EnsureDocument(string path, XNamespace ns)
     {
         if (_documents.ContainsKey(path)) return;
+        if (_entries.ContainsKey(path)) throw new NotSupportedException($"Cannot overwrite an unmodeled resource entry '{path}'.");
         // Declare the "ofd" prefix like Document.xml and Content.xml do. Several
         // readers match "ofd:Res"/"ofd:MultiMedia" textually and never find the
         // image manifest when the root uses an unprefixed default namespace.
@@ -89,7 +109,7 @@ internal sealed class OfdResourceCatalog
             string.Equals(existing.Path, defaultPath, StringComparison.OrdinalIgnoreCase)) return existing;
         EnsureDocument(defaultPath, ns);
         var root = _documents[defaultPath].Root!;
-        var parent = root.Elements().FirstOrDefault(node => node.Name.LocalName == container);
+        var parent = root.Element(root.Name.Namespace + container);
         if (parent is null)
         {
             parent = new XElement(root.Name.Namespace + container);
@@ -102,7 +122,7 @@ internal sealed class OfdResourceCatalog
             // reordered/copied page need not keep its old private PageRes path.
             element = existing.Element;
             var oldRoot = _documents[existing.Path].Root!;
-            foreach (var payload in element.Elements().Where(node => node.Name.LocalName is "FontFile" or "MediaFile"))
+            foreach (var payload in element.Elements().Where(node => node.Name == element.Name.Namespace + "FontFile" || node.Name == element.Name.Namespace + "MediaFile"))
             {
                 var oldBase = oldRoot.Attribute("BaseLoc")?.Value;
                 var reference = string.IsNullOrEmpty(oldBase) || payload.Value.StartsWith("/", StringComparison.Ordinal)
@@ -129,7 +149,7 @@ internal sealed class OfdResourceCatalog
 
     private void WritePayload(string resourcePath, XElement resource, string name, string defaultFileName, byte[] bytes)
     {
-        var element = resource.Elements().FirstOrDefault(node => node.Name.LocalName == name);
+        var element = resource.Element(resource.Name.Namespace + name);
         var file = element?.Value ?? resource.Attribute(name)?.Value ?? defaultFileName;
         if (element is null) resource.Add(new XElement(resource.Name.Namespace + name, file));
         resource.SetAttributeValue(name, null);

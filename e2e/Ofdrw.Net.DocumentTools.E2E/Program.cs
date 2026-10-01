@@ -130,7 +130,22 @@ Mutate("annotation-clipped", entries =>
     entries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='800'><Appearance Boundary='10 10 20 10' CTM='1 0 0.5 1 0 0'><PageBlock ID='801'><ImageObject ID='802' ResourceID='{media}' Boundary='0 0 200 10'/></PageBlock></Appearance></Annot><Annot ID='810'><Appearance Boundary='50 15 35 15' CTM='0 1 -1 0 0 0'><PageBlock ID='811'><TextObject ID='812' Font='{font}' Size='4' Boundary='0 0 30 8'><TextCode X='0' Y='4'>ROTATE</TextCode></TextObject></PageBlock></Appearance></Annot><Annot ID='820'><Appearance Boundary='50 60 20 10' CTM='1.5 0 0 1.5 0 0'><TextObject ID='821' Font='{font}' Size='4' Boundary='0 0 20 8'><TextCode X='0' Y='4'>SCALE</TextCode></TextObject></Appearance></Annot></PageAnnot>");
 });
 await Save(OfdDocumentMixer.Mix([new(await Read("annotation-clipped"), 0)]), "annotation-clipped-mix");
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "signed", "watermark", "watermark-merged", "split", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix" })
+OfdDocumentPackage ItalicSample(bool embed, double[]? matrix)
+{
+    var package = new OfdDocumentPackage();
+    package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "OFD Example Noto", Data = embed ? fontBytes : Array.Empty<byte>() });
+    package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 60, Elements = {
+        new OfdTextElement { Text = "ABCD Test italic", FontName = "OFD Example Noto", FontResourceId = "10", Italic = true,
+            FontSizeMillimeters = 6, XMillimeters = 20, YMillimeters = 20, WidthMillimeters = 70, HeightMillimeters = 12, Transform = matrix } } });
+    return package;
+}
+await Save(ItalicSample(false, null), "italic-marked");
+var markedItalic = await Read("italic-marked");
+foreach (var font in markedItalic.Fonts) { font.Data = fontBytes; font.FileName = "Noto.ttf"; }
+await Save(markedItalic, "italic-marked");
+await Save(ItalicSample(true, new double[] { 1, 0, 0, 1, 0, 0 }), "italic-control");
+await Save(ItalicSample(true, new double[] { 1, 0, -0.2, 1, 1.2, 0 }), "italic-user-matrix");
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "signed", "watermark", "watermark-merged", "split", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);

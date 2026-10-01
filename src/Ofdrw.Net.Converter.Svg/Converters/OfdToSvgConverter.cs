@@ -221,16 +221,18 @@ public sealed class OfdToSvgConverter
         var family = resource is not null && families.TryGetValue(resource, out var embeddedFamily) ? embeddedFamily : text.FontName;
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
+        var drawing = OfdTextEmphasis.DrawingTransform(text);
         var transform = BuildTransform(
             text.XMillimeters - page.XMillimeters,
             text.YMillimeters - page.YMillimeters,
-            text.Transform);
+            drawing.Matrix);
         if (text.Runs.Count == 0)
         {
+            var anchor = OfdTextEmphasis.Anchor(0, text.FontSizeMillimeters, drawing.Factor);
             var node = new XElement(
                 svgNs + "text",
-                new XAttribute("x", "0"),
-                new XAttribute("y", Invariant(text.FontSizeMillimeters)),
+                new XAttribute("x", Invariant(anchor.X)),
+                new XAttribute("y", Invariant(anchor.Y)),
                 new XAttribute("font-family", family),
                 new XAttribute("font-weight", fontWeight),
                 new XAttribute("font-style", fontStyle),
@@ -253,10 +255,11 @@ public sealed class OfdToSvgConverter
 
         foreach (var run in text.Runs)
         {
+            var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, drawing.Factor);
             var node = new XElement(
                 svgNs + "text",
-                new XAttribute("x", Invariant(run.XMillimeters)),
-                new XAttribute("y", Invariant(run.YMillimeters)),
+                new XAttribute("x", Invariant(anchor.X)),
+                new XAttribute("y", Invariant(anchor.Y)),
                 new XAttribute("font-family", family),
                 new XAttribute("font-weight", fontWeight),
                 new XAttribute("font-style", fontStyle),
@@ -278,8 +281,9 @@ public sealed class OfdToSvgConverter
                 var y = run.YMillimeters;
                 for (var index = 0; index < glyphs.Count; index++)
                 {
-                    node.Add(new XElement(svgNs + "tspan", new XAttribute("x", Invariant(x)),
-                        new XAttribute("y", Invariant(y)), glyphs[index]));
+                    var glyphAnchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
+                    node.Add(new XElement(svgNs + "tspan", new XAttribute("x", Invariant(glyphAnchor.X)),
+                        new XAttribute("y", Invariant(glyphAnchor.Y)), glyphs[index]));
                     if (index < deltaX.Count) x += deltaX[index];
                     if (index < deltaY.Count) y += deltaY[index];
                 }
