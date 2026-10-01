@@ -59,3 +59,24 @@
 ## 首轮 PR review
 
 PR #10 base=`codex/public-flow-layout`，首轮 head `5a17b853c2e14aba5e894a82fabae00dab6b93a5`。五项 CI 全绿；Codex 完成无意见。Cursor 提出三个诊断/文档问题：空单元格预算用词、Native 网格失败显示行号与具体原因、严格拒绝消息不应声称完成降级。已修正并新增三项诊断回归。绘制与测量未改变；后续仍重新生成、重新打开本次产物复验，等待新 head review/CI 闭合。
+
+## review1 修复后最终本地复验
+
+- 源码基线：`31f0b75fc6b2846b6651591cf006834b91ae7f4e`；改动限网格行号/具体原因、严格拒绝与降级消息分离、预算文档，未改测量或绘制。
+- Sol Low 独立全套 **298/298**，0失败/跳过（Core5、Packaging23、PDF52、Signatures4、DOCX135、CLI5、Layout74）；主任务核对七份TRX。11包 `0.1.0-tables.review1` 隔离消费 E2E 通过。证据 `artifacts/public-tables/review1/independent/validation.md`、`seven-trx.log`、`test-results/`、`package-e2e.log`。
+- 本轮样例重新构建0警告/错误，完整生成五组到 `review1/current/`；OFD与PDF原文比对全部通过。五份PDF重新打开、核对review1路径并在macOS Preview逐页检查 **11页**：tables-public 1–3，tables-native 1–2，tables-default 1–2，baseline-native 1–2，baseline-default 1–2。表格、样式、整行分页及基准正文保持以上预期，无新增视觉缺陷。对应窗口和残余打开面板已关闭，Cua确认 noWindowsAvailable。
+- 本轮11张PNG与实际目视过的 `fixed/pages/` **11/11逐字节一致**，为自动渲染辅助证据；本轮Preview为实际新文件逐页复验，没有拿像素一致替代Preview。
+- 最新清单/哈希与环境、页码：`review1/current/artifact-manifest.tsv`、`acceptance.json`。PDF体积166952/100615/117510字节保持，Native OFD因ZIP时间戳仅有个位数字节压缩差异，无异常增长。
+
+| review1/current 文件 | 字节 | SHA-256 |
+| --- | ---: | --- |
+| `tables-public.ofd` | 4,565 | `f691f2ae8536e9e4c6de0d6d2cd81d63ac4849c1b24fc9c3e02284c5c682a322` |
+| `tables-public.pdf` | 166,952 | `187176a8d12830d088fba63b72e17dcb0f687bb1a365de20011bdc6bb266861c` |
+| `tables-native.ofd` | 15,290,019 | `ca3e335517ade22049eafdd2d2e95931a17c40afbce11b656c8c87608ecae56a` |
+| `tables-native.pdf` | 100,615 | `160fed4074d198e2490b1823dcb023c25ba81427715fdbd8c04524fcc528dda9` |
+| `tables-default.ofd` | 15,290,015 | `831137df57123cd65d23e8f74945d56716d68cd3d83f9914e8bc4c43e59b725a` |
+| `tables-default.pdf` | 100,615 | `c3c6f14942cfc7dbbf4238c19e56cc8e477da1c9f87b6c44da730e4c0c2ae00e` |
+| `baseline-native.ofd` | 15,288,606 | `26b303c596efe5883ab3f8f94fc90a5ce2abee7ca4fa8ef8f2e2ac12b7c5d4ad` |
+| `baseline-native.pdf` | 117,510 | `16d06f1b9692408bdc3ae473836ec585dc70505c476d9729d6bce4526c2198ee` |
+| `baseline-default.ofd` | 15,288,610 | `03097d7540edff62caccae7ae01ca62ae9ce4ad5c9e572848035619fd1ee38ac` |
+| `baseline-default.pdf` | 117,510 | `cc6d6827fbf0cffb19af5612565c0ab7c2a625be45d9ad2e94e1ff2c6a92b62f` |
