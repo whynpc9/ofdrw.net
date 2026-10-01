@@ -11,7 +11,7 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 internal static class OfdSignatureAppearanceReader
 {
     public static IReadOnlyList<OfdSignatureAppearance> Read(
-        OfdDocumentPackage package)
+        OfdDocumentPackage package, HashSet<string>? selectedPageIds = null)
     {
         if (!package.PreservedEntries.TryGetValue("OFD.xml", out var ofdBytes))
         {
@@ -31,7 +31,7 @@ internal static class OfdSignatureAppearanceReader
             var result = new List<OfdSignatureAppearance>();
             foreach (var listPath in signatureLists)
             {
-                ReadSignatureList(package.PreservedEntries, listPath, result);
+                ReadSignatureList(package.PreservedEntries, listPath, result, selectedPageIds);
             }
 
             return result;
@@ -47,7 +47,7 @@ internal static class OfdSignatureAppearanceReader
     private static void ReadSignatureList(
         IReadOnlyDictionary<string, byte[]> entries,
         string listPath,
-        ICollection<OfdSignatureAppearance> destination)
+        ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds)
     {
         if (!entries.TryGetValue(listPath, out var listBytes))
         {
@@ -66,14 +66,14 @@ internal static class OfdSignatureAppearanceReader
             }
 
             var signaturePath = ResolvePath(listPath, baseLocation!);
-            ReadSignature(entries, signaturePath, destination);
+            ReadSignature(entries, signaturePath, destination, selectedPageIds);
         }
     }
 
     private static void ReadSignature(
         IReadOnlyDictionary<string, byte[]> entries,
         string signaturePath,
-        ICollection<OfdSignatureAppearance> destination)
+        ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds)
     {
         if (!entries.TryGetValue(signaturePath, out var signatureBytes))
         {
@@ -81,6 +81,9 @@ internal static class OfdSignatureAppearanceReader
         }
 
         var signature = ParseXml(signatureBytes);
+        var stamps = signature.Descendants().Where(element => element.Name.LocalName == "StampAnnot" &&
+            (selectedPageIds is null || selectedPageIds.Contains(element.Attribute("PageRef")?.Value ?? string.Empty))).ToList();
+        if (stamps.Count == 0) return;
         var appearanceData = ReadAppearanceData(
             entries,
             signature,
@@ -90,9 +93,7 @@ internal static class OfdSignatureAppearanceReader
             return;
         }
 
-        foreach (var stamp in signature
-            .Descendants()
-            .Where(element => element.Name.LocalName == "StampAnnot"))
+        foreach (var stamp in stamps)
         {
             var pageId = stamp.Attribute("PageRef")?.Value;
             if (string.IsNullOrWhiteSpace(pageId) ||

@@ -22,7 +22,7 @@
 | [01 公开流式布局](01-public-flow-layout.md) | P0 | ready-for-agent | 无 | P0-01 |
 | [16 公开表格](16-public-tables.md) | P0 | blocked | 01 | P0-02 |
 | [17 区域占位](17-area-holders.md) | P0 | blocked | 01 | P0-03 |
-| [02 图片进出](02-ofd-image-io.md) | P0 | ready-for-agent | 无 | P0-04、P0-05 |
+| [02 图片进出](02-ofd-image-io.md) | P0 | in-progress: Preview/review pending | 无 | P0-04、P0-05 |
 | [03 文档工具](03-document-tools.md) | P0 | ready-for-agent | 无 | P0-06–P0-09 |
 | [04 OfdGraphics](04-ofd-graphics-api.md) | P1 | ready-for-agent | 无 | P1-01 |
 | [05 字体子集与复用](05-font-subset-and-reuse.md) | P1 | ready-for-agent | 无 | P1-02 |
