@@ -38,8 +38,9 @@ internal static class OfdPackagePruner
         var retainedIdsWithoutPaths = new HashSet<string>(package.Pages
             .Where(page => string.IsNullOrEmpty(page.SourceEntryPath) && !string.IsNullOrEmpty(page.Id))
             .Select(page => page.Id!), StringComparer.Ordinal);
-        var deleted = Parse(originalDocument).Descendants()
-            .Where(node => node.Name.LocalName == "Page" && node.Parent?.Name.LocalName == "Pages")
+        var originalDocumentXml = Parse(originalDocument);
+        var originalNamespace = originalDocumentXml.Root!.Name.Namespace;
+        var deleted = (originalDocumentXml.Root.Element(originalNamespace + "Pages")?.Elements(originalNamespace + "Page") ?? Enumerable.Empty<XElement>())
             .Select(node => new
             {
                 Id = node.Attribute("ID")?.Value ?? string.Empty,
@@ -50,8 +51,8 @@ internal static class OfdPackagePruner
         if (deleted.Count > 0)
         {
             var currentDocumentPath = package.DocumentEntryPath ?? $"{package.Options.DocumentId}/Document.xml";
-            var writtenPagePaths = new HashSet<string>(Parse(entries[currentDocumentPath]).Descendants()
-                .Where(node => node.Name.LocalName == "Page" && node.Parent?.Name.LocalName == "Pages")
+            var currentDocumentXml = Parse(entries[currentDocumentPath]); var currentNamespace = currentDocumentXml.Root!.Name.Namespace;
+            var writtenPagePaths = new HashSet<string>((currentDocumentXml.Root.Element(currentNamespace + "Pages")?.Elements(currentNamespace + "Page") ?? Enumerable.Empty<XElement>())
                 .Select(node => OfdPackagePath.Resolve(currentDocumentPath, node.Attribute("BaseLoc")?.Value ?? string.Empty)),
                 StringComparer.OrdinalIgnoreCase);
             var candidateIds = new HashSet<string>(StringComparer.Ordinal);
@@ -66,7 +67,7 @@ internal static class OfdPackagePruner
                 }
             }
 
-            RemovePageAnnotations(entries, new HashSet<string>(deleted.Select(page => page.Id)), candidateIds, result);
+            RemovePageAnnotations(entries, currentDocumentPath, new HashSet<string>(deleted.Select(page => page.Id)), candidateIds, result);
             var privateResourcePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             PruneUnusedTemplates(entries, currentDocumentPath, writtenPagePaths, candidateIds, privateResourcePaths, result);
             foreach (var page in deleted)
@@ -81,9 +82,14 @@ internal static class OfdPackagePruner
                     // Keep Res available until its exclusive font/image payloads have been pruned.
                 }
             }
-            PruneResources(entries, candidateIds, result);
+            PruneResources(entries, currentDocumentPath, privateResourcePaths, candidateIds, result);
             foreach (var path in privateResourcePaths)
-                if (!HasPageContentBeside(entries, path) && !ReferencesFile(entries, path)) Remove(entries, path, result);
+                if (!HasPageContentBeside(entries, path) && !ReferencesFile(entries, path))
+                {
+                    if (entries.TryGetValue(path, out var resourceBytes) && TryParse(resourceBytes, out var resourceXml) &&
+                        IsTypedRoot(resourceXml, "Res", Parse(entries[currentDocumentPath]).Root!.Name.Namespace)) Remove(entries, path, result);
+                    else if (entries.ContainsKey(path)) result.Warnings.Add($"Unmodeled page resource was retained: '{path}'.");
+                }
         }
 
         return result;
@@ -97,7 +103,7 @@ internal static class OfdPackagePruner
         ISet<string> pagePaths, ISet<string> candidateIds, ISet<string> privateResourcePaths, OfdPackageWriteResult result)
     {
         var document = Parse(entries[documentPath]);
-        foreach (var template in document.Descendants().Where(node => node.Name.LocalName == "TemplatePage").ToList())
+        foreach (var template in (document.Root!.Element(document.Root.Name.Namespace + "CommonData")?.Elements(document.Root.Name.Namespace + "TemplatePage") ?? Enumerable.Empty<XElement>()).ToList())
         {
             var id = template.Attribute("ID")?.Value;
             if (id is null) continue;
@@ -113,6 +119,11 @@ internal static class OfdPackagePruner
             var location = template.Attribute("BaseLoc")?.Value;
             if (string.IsNullOrWhiteSpace(location)) continue;
             var path = OfdPackagePath.Resolve(documentPath, location!);
+            if (entries.TryGetValue(path, out var templateBytes) && (!TryParse(templateBytes, out var typedTemplate) || !IsTypedRoot(typedTemplate, "Page", document.Root.Name.Namespace)))
+            {
+                result.Warnings.Add($"Unmodeled template payload was retained: '{path}'.");
+                continue;
+            }
             template.Remove();
             entries[documentPath] = Serialize(document);
             if (pagePaths.Contains(path) || ReferencesFile(entries, path)) continue;
@@ -127,40 +138,56 @@ internal static class OfdPackagePruner
         }
     }
 
-    private static void RemovePageAnnotations(
-        IDictionary<string, byte[]> entries,
-        ISet<string> deletedIds,
-        ISet<string> candidateIds,
-        OfdPackageWriteResult result)
+    private static void RemovePageAnnotations(IDictionary<string, byte[]> entries, string documentPath,
+        ISet<string> deletedIds, ISet<string> candidateIds, OfdPackageWriteResult result)
     {
-        foreach (var pair in entries.Where(pair => IsXml(pair.Key)).ToList())
+        var document = Parse(entries[documentPath]); var ns = document.Root!.Name.Namespace;
+        foreach (var declaration in document.Root.Elements(ns + "Annotations"))
         {
-            if (!TryParse(pair.Value, out var xml) || xml.Root?.Name.LocalName != "Annotations") continue;
+            var path = OfdPackagePath.Resolve(documentPath, declaration.Value);
+            if (!entries.TryGetValue(path, out var bytes) || !TryParse(bytes, out var xml) || !IsTypedRoot(xml, "Annotations", ns)) continue;
             var removedFiles = new List<string>();
-            foreach (var page in xml.Root.Elements().Where(node =>
-                node.Name.LocalName == "Page" && deletedIds.Contains(node.Attribute("PageID")?.Value ?? string.Empty)).ToList())
+            foreach (var page in xml.Root!.Elements(xml.Root.Name.Namespace + "Page").Where(node => deletedIds.Contains(node.Attribute("PageID")?.Value ?? string.Empty)).ToList())
             {
-                var file = page.Elements().FirstOrDefault(node => node.Name.LocalName == "FileLoc")?.Value;
-                if (!string.IsNullOrWhiteSpace(file)) removedFiles.Add(OfdPackagePath.Resolve(pair.Key, file!));
+                var file = page.Element(xml.Root.Name.Namespace + "FileLoc")?.Value;
+                if (!string.IsNullOrWhiteSpace(file)) removedFiles.Add(OfdPackagePath.Resolve(path, file!));
                 page.Remove();
             }
-
             if (removedFiles.Count == 0) continue;
-            entries[pair.Key] = Serialize(xml);
+            entries[path] = Serialize(xml);
             foreach (var file in removedFiles)
             {
                 if (ReferencesFile(entries, file)) continue;
-                if (entries.TryGetValue(file, out var bytes) && TryParse(bytes, out var annotation)) AddReferences(annotation, candidateIds);
-                Remove(entries, file, result);
+                if (!entries.TryGetValue(file, out var annotationBytes) || !TryParse(annotationBytes, out var annotation) || !IsTypedRoot(annotation, "PageAnnot", ns))
+                {
+                    result.Warnings.Add($"Unmodeled annotation payload was retained: '{file}'.");
+                    continue;
+                }
+                AddReferences(annotation, candidateIds); Remove(entries, file, result);
             }
         }
     }
 
+    private static bool IsTypedRoot(XDocument xml, string localName, XNamespace documentNamespace) =>
+        xml.Root?.Name.LocalName == localName && (xml.Root.Name.Namespace == documentNamespace ||
+            xml.Root.Name.NamespaceName == OfdConstants.Namespace || xml.Root.Name.NamespaceName == OfdConstants.StandardNamespace);
+
     private static void PruneResources(
-        IDictionary<string, byte[]> entries,
-        ISet<string> candidateIds,
-        OfdPackageWriteResult result)
+        IDictionary<string, byte[]> entries, string documentPath, ISet<string> privateResourcePaths,
+        ISet<string> candidateIds, OfdPackageWriteResult result)
     {
+        var document = Parse(entries[documentPath]); var ns = document.Root!.Name.Namespace;
+        var common = document.Root.Element(ns + "CommonData");
+        var owned = new HashSet<string>(privateResourcePaths, StringComparer.OrdinalIgnoreCase);
+        foreach (var declaration in common?.Elements().Where(node => node.Name == ns + "PublicRes" || node.Name == ns + "DocumentRes") ?? Enumerable.Empty<XElement>())
+            owned.Add(OfdPackagePath.Resolve(documentPath, declaration.Value));
+        var pageLocations = (document.Root.Element(ns + "Pages")?.Elements(ns + "Page") ?? Enumerable.Empty<XElement>())
+            .Concat(common?.Elements(ns + "TemplatePage") ?? Enumerable.Empty<XElement>());
+        foreach (var page in pageLocations)
+        {
+            var location = page.Attribute("BaseLoc")?.Value;
+            if (!string.IsNullOrWhiteSpace(location)) owned.Add(OfdPackagePath.GetDirectory(OfdPackagePath.Resolve(documentPath, location!)) + "/PageRes.xml");
+        }
         var documents = new Dictionary<string, XDocument>(StringComparer.OrdinalIgnoreCase);
         var references = new HashSet<string>(StringComparer.Ordinal);
         foreach (var pair in entries.Where(pair => IsXml(pair.Key)))
@@ -177,14 +204,15 @@ internal static class OfdPackagePruner
         var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var pair in documents)
         {
-            if (pair.Value.Root?.Name.LocalName != "Res") continue;
+            if (!owned.Contains(pair.Key) || !IsTypedRoot(pair.Value, "Res", ns)) continue;
             var changed = false;
-            foreach (var resource in pair.Value.Descendants().Where(node => node.Name.LocalName is "Font" or "MultiMedia").ToList())
+            foreach (var resource in pair.Value.Root!.Elements(pair.Value.Root.Name.Namespace + "Fonts").Elements(pair.Value.Root.Name.Namespace + "Font")
+                .Concat(pair.Value.Root.Elements(pair.Value.Root.Name.Namespace + "MultiMedias").Elements(pair.Value.Root.Name.Namespace + "MultiMedia")).ToList())
             {
                 var id = resource.Attribute("ID")?.Value;
                 if (id is null || !candidateIds.Contains(id) || references.Contains(id)) continue;
-                var file = resource.Elements().FirstOrDefault(node => node.Name.LocalName is "FontFile" or "MediaFile")?.Value
-                    ?? resource.Attribute("MediaFile")?.Value;
+                var file = resource.Element(pair.Value.Root.Name.Namespace + "FontFile")?.Value
+                    ?? resource.Element(pair.Value.Root.Name.Namespace + "MediaFile")?.Value ?? resource.Attribute("MediaFile")?.Value;
                 if (!string.IsNullOrWhiteSpace(file))
                 {
                     files.Add(ResolveResourceFile(pair.Key, pair.Value.Root!, file!));

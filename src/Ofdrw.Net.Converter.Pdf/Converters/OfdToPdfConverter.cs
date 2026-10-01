@@ -299,8 +299,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         }
                         else
                         {
-                            DrawTextWithMatrix(graphics, text, page.XMillimeters, page.YMillimeters, () =>
-                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(0, 0), outlineFont, simulateItalic, XStringFormats.TopLeft));
+                            DrawTextWithMatrix(graphics, text, page.XMillimeters, page.YMillimeters, factor =>
+                            {
+                                var anchor = OfdTextEmphasis.Anchor(0, 0, factor);
+                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, XStringFormats.TopLeft);
+                            });
                         }
                     }
 
@@ -448,7 +451,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         SixLabors.Fonts.Font? outlineFont,
         bool simulateItalic)
     {
-        DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, () =>
+        DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
             foreach (var run in text.Runs)
             {
@@ -457,15 +460,17 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 var deltaY = OfdTextGeometry.ExpandDeltas(run.DeltaY, Math.Max(0, glyphs.Count - 1));
                 if (deltaX.Count == 0 && deltaY.Count == 0)
                 {
+                    var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
                     DrawStyledString(graphics, run.Text, font, brush,
-                        new XPoint(MillimetersToPoints(run.XMillimeters), MillimetersToPoints(run.YMillimeters)), outlineFont, simulateItalic);
+                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic);
                     continue;
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
                 for (var i = 0; i < glyphs.Count; i++)
                 {
+                    var anchor = OfdTextEmphasis.Anchor(x, y, factor);
                     DrawStyledString(graphics, glyphs[i], font, brush,
-                        new XPoint(MillimetersToPoints(x), MillimetersToPoints(y)), outlineFont, simulateItalic);
+                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic);
                     if (i < deltaX.Count) x += deltaX[i];
                     if (i < deltaY.Count) y += deltaY[i];
                 }
@@ -474,18 +479,19 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     }
 
     private static void DrawTextWithMatrix(XGraphics graphics, OfdTextElement text,
-        double pageOriginX, double pageOriginY, Action draw)
+        double pageOriginX, double pageOriginY, Action<double[]?> draw)
     {
         var state = graphics.Save();
         try
         {
             graphics.TranslateTransform(MillimetersToPoints(text.XMillimeters - pageOriginX), MillimetersToPoints(text.YMillimeters - pageOriginY));
-            if (text.Transform is { Length: 6 } matrix)
+            var transform = OfdTextEmphasis.DrawingTransform(text);
+            if (transform.Matrix is { Length: 6 } matrix)
             {
                 if (matrix.Any(value => double.IsNaN(value) || double.IsInfinity(value))) throw new InvalidDataException("Invalid OFD text transform.");
                 graphics.MultiplyTransform(new XMatrix(matrix[0], matrix[1], matrix[2], matrix[3], MillimetersToPoints(matrix[4]), MillimetersToPoints(matrix[5])));
             }
-            draw();
+            draw(transform.Factor);
         }
         finally { graphics.Restore(state); }
     }

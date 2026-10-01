@@ -271,7 +271,7 @@ public sealed class DocumentToolTests
         using var input = Zip(source.PreservedEntries); using var output = new MemoryStream();
         var report = await OfdPackageSignatureCleaner.CleanAsync(input, output); output.Position = 0;
         var result = await new OfdPackageLoader().LoadAsync(output);
-        Assert.False(result.ReadUtf8Text("OFD.xml").Contains("Signatures"));
+        Assert.DoesNotContain("Signatures", result.ReadUtf8Text("OFD.xml"));
         Assert.True(result.Contains("Doc_0/Signs/Sign_0/SignedValue.dat"));
         Assert.Contains(report.Diagnostics, message => message.Contains("Unmodeled"));
     }
@@ -342,6 +342,35 @@ public sealed class DocumentToolTests
         var result = await new OfdPackageLoader().LoadAsync(output);
         Assert.True(result.Contains("Doc_0/Signs/Signatures.dat")); Assert.True(result.Contains("Doc_0/Signs/Sign_0/Signature.dat"));
         Assert.True(result.Contains("Doc_0/Signs/Sign_0/SignedValue.dat")); Assert.True(result.Contains("Doc_0/Signs/Sign_0/Seal.esl"));
+    }
+
+    [Theory]
+    [InlineData("urn:vendor")]
+    [InlineData("http://www.ofdspec.org")]
+    public async Task Split_DoesNotMutateUndeclaredSameNamedAnnotationOrResourceExtensions(string extensionNamespace)
+    {
+        var source = await RoundTrip(Source()); var removedPage = source.Pages[0];
+        var privateFont = source.Pages[0].Elements.OfType<OfdTextElement>().Single().FontResourceId;
+        source.PreservedEntries["Doc_0/Extensions/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{extensionNamespace}'><Page PageID='{removedPage.Id}'><FileLoc>payload.bin</FileLoc></Page></Annotations>");
+        source.PreservedEntries["Doc_0/Extensions/Resources.xml"] = Encoding.UTF8.GetBytes($"<Res xmlns='{extensionNamespace}'><Fonts><Font ID='{privateFont}'><FontFile>font.bin</FontFile></Font></Fonts></Res>");
+        source.PreservedEntries["Doc_0/Extensions/payload.bin"] = [4, 5]; source.PreservedEntries["Doc_0/Extensions/font.bin"] = [6, 7];
+        var read = await new OfdReader().ReadAsync(Zip(source.PreservedEntries)); var split = await RoundTrip(OfdDocumentSplitter.Split(read, [1]));
+        foreach (var path in new[] { "Doc_0/Extensions/Annotations.xml", "Doc_0/Extensions/Resources.xml", "Doc_0/Extensions/payload.bin", "Doc_0/Extensions/font.bin" })
+            Assert.Equal(source.PreservedEntries[path], split.PreservedEntries[path]);
+    }
+
+    [Fact]
+    public async Task Split_KeepsVendorTemplateDeclarationsAndImplicitPageResourceBytes()
+    {
+        var source = await RoundTrip(Source()); var document = Xml(source, "Doc_0/Document.xml"); var ns = document.Root!.Name.Namespace;
+        document.Root.Element(ns + "CommonData")!.Add(new XElement(XName.Get("TemplatePage", "urn:vendor"), new XAttribute("ID", "800"), new XAttribute("BaseLoc", "Extensions/template.bin")));
+        Put(source, "Doc_0/Document.xml", document); source.PreservedEntries["Doc_0/Extensions/template.bin"] = [8];
+        source.PreservedEntries["Doc_0/Pages/Page_0/PageRes.xml"] = Encoding.UTF8.GetBytes("<Res xmlns='urn:vendor'><Fonts><Font ID='999'><FontFile>vendor.bin</FontFile></Font></Fonts></Res>");
+        source.PreservedEntries["Doc_0/Pages/Page_0/vendor.bin"] = [9];
+        var read = await new OfdReader().ReadAsync(Zip(source.PreservedEntries)); var result = await RoundTrip(OfdDocumentSplitter.Split(read, [1]));
+        Assert.Contains(result.PreservedCommonDataElements, value => value.Contains("urn:vendor"));
+        Assert.Equal(source.PreservedEntries["Doc_0/Pages/Page_0/PageRes.xml"], result.PreservedEntries["Doc_0/Pages/Page_0/PageRes.xml"]);
+        Assert.True(result.PreservedEntries.ContainsKey("Doc_0/Pages/Page_0/vendor.bin"));
     }
 
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
