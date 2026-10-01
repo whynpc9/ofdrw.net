@@ -468,6 +468,31 @@ public sealed class DocumentToolTests
     }
 
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
+    [Fact]
+    public void Mix_KeepsSupportedAreaTransformAndMergeRejectsUnmappedSubstitution()
+    {
+        var source = Source(); var image = source.Pages[0].Elements.OfType<OfdImageElement>().Single();
+        image.ClippingXml = "<Clips><Clip><Area CTM='1 0 0 1 2 3'><Path ID='800'><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></Path></Area></Clip></Clips>";
+        var mixed = OfdDocumentMixer.Mix([new(source, 0)]);
+        Assert.Equal("1 0 0 1 2 3", XElement.Parse(mixed.Pages[0].Elements.OfType<OfdImageElement>().Single().ClippingXml!).Descendants("Area").Single().Attribute("CTM")!.Value);
+        image.SourceXml = "<ImageObject Substitution='123'/>";
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMerger.Merge([source]));
+    }
+    [Theory]
+    [InlineData("Payload")]
+    [InlineData("v:Font")]
+    [InlineData("v:ResourceID")]
+    public async Task Mix_RejectsUnknownOrdinaryObjectAttributesWhileRoundtripPreserves(string attribute)
+    {
+        var source = await RoundTrip(Source()); var text = source.Pages[0].Elements.OfType<OfdTextElement>().First();
+        var xml = XElement.Parse(text.SourceXml!); var name = attribute.StartsWith("v:") ? XName.Get(attribute.Substring(2), "urn:vendor") : XName.Get(attribute);
+        xml.SetAttributeValue(name, "/Doc_0/Extensions/private.bin"); text.SourceXml = xml.ToString();
+        source.PreservedEntries["Doc_0/Extensions/private.bin"] = [1, 2, 3];
+        var saved = await RoundTrip(source);
+        Assert.Equal("/Doc_0/Extensions/private.bin", XElement.Parse(saved.Pages[0].Elements.OfType<OfdTextElement>().First().SourceXml!).Attribute(name)!.Value);
+        Assert.Equal(new byte[] {1,2,3}, saved.PreservedEntries["Doc_0/Extensions/private.bin"]);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(saved, 0)]));
+    }
     private static OfdDocumentPackage Source()
     {
         var package = new OfdDocumentPackage();

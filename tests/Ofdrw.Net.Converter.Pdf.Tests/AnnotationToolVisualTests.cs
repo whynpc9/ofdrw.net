@@ -104,6 +104,44 @@ public sealed class AnnotationToolVisualTests
         Assert.InRange(rotated.Width, plain.Height - 3, plain.Height + 3); Assert.InRange(rotated.Height, plain.Width - 3, plain.Width + 3);
     }
 
+    [Theory]
+    [InlineData("<TextObject Size='4'><TextCode X='0' Y='4'>OK<Note>SECRET</Note></TextCode></TextObject>")]
+    [InlineData("<TextObject Size='4'><TextCode X='0' Y='4'>OK</TextCode><Note><TextCode>SECRET</TextCode></Note></TextObject>")]
+    [InlineData("<PathObject><AbbreviatedData>M 0 0 L 1 0<Note> L 9 9</Note></AbbreviatedData></PathObject>")]
+    [InlineData("<TextObject Size='4'><Clips><Clip><Area><Path><AbbreviatedData>M 0 0<Note> L 9 9</Note></AbbreviatedData></Path></Area></Clip></Clips><TextCode X='0' Y='4'>OK</TextCode></TextObject>")]
+    [InlineData("<PathObject DrawParam='12'><AbbreviatedData>M 0 0 L 1 0</AbbreviatedData></PathObject>")]
+    [InlineData("<PathObject><FillColor Value='1 2 3' ColorSpace='12'/><AbbreviatedData>M 0 0 L 1 0</AbbreviatedData></PathObject>")]
+    [InlineData("<PageBlock xmlns:v='urn:vendor' v:ID='private.bin'><TextObject Size='4'><TextCode X='0' Y='4'>OK</TextCode></TextObject></PageBlock>")]
+    public async Task SameNamespaceUnknownAnnotationChildren_BlockPartialExportAndRemainPreserved(string artwork)
+    {
+        var source = await Annotated(artwork, "0 0 20 20");
+        Assert.IsType<OfdRawElement>(Assert.Single(source.Pages[0].AnnotationAppearances));
+        Assert.DoesNotContain("SECRET", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(source));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
+        using var ofd = await Write(source); var saved = await new OfdReader().ReadAsync(ofd);
+        Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
+        ofd.Position = 0; using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd, pdf));
+        ofd.Position = 0; using var svg = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(ofd, svg));
+    }
+
+    [Theory]
+    [InlineData("Payload='private.bin'")]
+    [InlineData("xmlns:v='urn:vendor' v:Font='private.bin'")]
+    public async Task UnknownPrimitiveAttributes_KeepKnownArtworkAndBlockMix(string attribute)
+    {
+        var source = await Annotated($"<PathObject {attribute} Boundary='0 0 10 10' Fill='true' Stroke='false'><FillColor Value='255 0 0'/><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></PathObject>", "10 10 20 20");
+        Assert.Single(source.Pages[0].AnnotationAppearances.OfType<OfdPathElement>());
+        Assert.Contains(source.Pages[0].AnnotationAppearances, element => element is OfdRawElement);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
+        using var ofd = await Write(source); var saved = await new OfdReader().ReadAsync(ofd);
+        Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
+        ofd.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using var doc = DocLib.Instance.GetDocReader(pdf.ToArray(), new PageDimensions(2d)); using var page = doc.GetPageReader(0);
+        Assert.InRange(Pixel(page.GetImage(), page.GetPageWidth(), 15, 15, 2), 245, 255);
+    }
+
     private static int Pixel(byte[] pixels, int width, double x, double y, int channel)
     {
         var offset = ((int)Math.Round(y * 72 / 25.4 * 2) * width + (int)Math.Round(x * 72 / 25.4 * 2)) * 4;

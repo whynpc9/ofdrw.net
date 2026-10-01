@@ -60,7 +60,7 @@ public static class OfdDocumentMixer
             selected.Add(package);
         }
         if (selected.Count == 0) throw new ArgumentException("At least one source page is required.", nameof(sources));
-        var merged = OfdDocumentMerger.Merge(selected, null, cancellationToken);
+        var merged = OfdDocumentMerger.Merge(selected, new OfdDocumentMergeOptions { RequireKnownAttributes = true }, cancellationToken);
         var first = merged.Pages[0];
         var target = new OfdPage { WidthMillimeters = first.WidthMillimeters, HeightMillimeters = first.HeightMillimeters,
             XMillimeters = first.XMillimeters, YMillimeters = first.YMillimeters };
