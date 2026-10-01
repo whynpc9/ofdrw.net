@@ -472,9 +472,11 @@ public sealed class DocumentToolTests
     public void Mix_KeepsSupportedAreaTransformAndMergeRejectsUnmappedSubstitution()
     {
         var source = Source(); var image = source.Pages[0].Elements.OfType<OfdImageElement>().Single();
+        source.Pages[0].Elements.OfType<OfdTextElement>().Single().SourceXml = "<TextObject LineWidth='0.5'><TextCode X='0' Y='4'>FIRST</TextCode></TextObject>";
         image.ClippingXml = "<Clips><Clip><Area CTM='1 0 0 1 2 3'><Path ID='800'><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></Path></Area></Clip></Clips>";
         var mixed = OfdDocumentMixer.Mix([new(source, 0)]);
-        Assert.Equal("1 0 0 1 2 3", XElement.Parse(mixed.Pages[0].Elements.OfType<OfdImageElement>().Single().ClippingXml!).Descendants("Area").Single().Attribute("CTM")!.Value);
+        var clip = XElement.Parse(mixed.Pages[0].Elements.OfType<OfdImageElement>().Single().ClippingXml!);
+        Assert.Equal("1 0 0 1 2 3", clip.Descendants(clip.Name.Namespace + "Area").Single().Attribute("CTM")!.Value);
         image.SourceXml = "<ImageObject Substitution='123'/>";
         Assert.Throws<NotSupportedException>(() => OfdDocumentMerger.Merge([source]));
     }
