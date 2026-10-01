@@ -6,10 +6,10 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 210/210 通过 | Core 5、Packaging 23、PDF/Image 99、Signatures 4、DOCX 49、CLI 30 |
+| 功能回归 | 215/215 通过 | Core 5、Packaging 23、PDF/Image 104、Signatures 4、DOCX 49、CLI 30 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review5`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
-| PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
+| PNG/JPEG 目视复查 | 本轮待重生成（上一轮10/10） | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
 | PR CI / Codex / Cursor | 待到齐 | PR 创建后补充最新 head、检查和线程状态 |
 
@@ -101,3 +101,9 @@ ASN扫描区分strict与legacy：严格图片路径继续分配前拒绝坏长�
 全套210/210；最新包消费/页面产物随后记录。Preview仍未完成。
 
 第五轮25个实际产物均从`1164218`重新生成，11/11本地包消费再次通过；当次10张PNG/JPEG逐页重新查看，检查范围同上，无新缺陷。最新210项日志/载荷哈希在当前bundle/manifest。Preview仍未完成。
+
+## 第六轮复审修复
+
+`47a9765`两类bot结果均已读。Codex/Cursor共同指出无可用载荷的早退，Cursor另指出嵌套首页面NaN/Infinity未被旧`<=0`挡住；同轮修复。
+
+所选StampAnnot缺失/空/不支持载荷在strict路径直接InvalidData；嵌套首页面须有限且正，NaN/Infinity按strict失败、legacy跳过。五例新增回归分别检查严格输出保sentinel、legacy合法JPEG红像素仍在。全套215/215；新产物/包消费稍后记录，Preview仍未完成。

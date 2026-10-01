@@ -115,6 +115,8 @@ internal static class OfdSignatureAppearanceReader
             signaturePath, payloadCache, token);
         if (appearanceData.Length == 0)
         {
+            if (maximumAppearances.HasValue)
+                throw new InvalidDataException("Selected signature stamp has no supported appearance payload.");
             return;
         }
 
