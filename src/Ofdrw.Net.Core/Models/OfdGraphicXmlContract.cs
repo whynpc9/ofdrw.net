@@ -39,7 +39,7 @@ internal static class OfdGraphicXmlContract
         if (parent == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor) return true;
         if (attribute.Name.Namespace != XNamespace.None) return false;
         var name = attribute.Name.LocalName;
-        if (parent is "TextObject" or "ImageObject" or "PathObject" && name is "ID" or "Boundary" or "CTM" or "Alpha") return true;
+        if (parent is "TextObject" or "ImageObject" or "PathObject" && name is "ID" or "Boundary" or "CTM" or "Alpha" or "LineWidth" or "Cap" or "Join" or "MiterLimit" or "DashOffset" or "DashPattern") return true;
         return parent switch
         {
             "TextObject" => name is "Font" or "Size" or "Stroke" or "Fill" or "HScale" or "ReadDirection" or "CharDirection" or "Weight" or "Italic",
