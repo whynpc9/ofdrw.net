@@ -45,6 +45,11 @@ internal static class OfdSignatureAppearanceReader
         }
         catch (OperationCanceledException) { throw; }
         catch (InvalidDataException) when (maximumAppearances.HasValue) { throw; }
+        catch (OutOfMemoryException) { throw; }
+        catch (Exception exception) when (maximumAppearances.HasValue)
+        {
+            throw new InvalidDataException("Cannot parse selected signature appearance metadata.", exception);
+        }
         catch
         {
             // A malformed or unsupported signature must not prevent the document

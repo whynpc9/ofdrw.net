@@ -175,6 +175,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 pageModel.WidthMillimeters <= 0 ||
                 pageModel.HeightMillimeters <= 0)
             {
+                if (appearanceBudget is not null) throw new InvalidDataException("Nested OFD appearance has invalid page geometry.");
                 return null;
             }
 
@@ -182,6 +183,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
         catch (OperationCanceledException) { throw; }
         catch (InvalidDataException) when (appearanceBudget is not null) { throw; }
+        catch (OutOfMemoryException) { throw; }
+        catch (Exception exception) when (appearanceBudget is not null)
+        {
+            throw new InvalidDataException("Cannot parse selected nested OFD signature appearance.", exception);
+        }
         catch
         {
             return null;
@@ -235,7 +241,12 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (InvalidDataException) { throw; }
-                catch { /* Unsupported vendor payloads retain the existing preview fallback. */ }
+                catch (OutOfMemoryException) { throw; }
+                catch (Exception exception) when (reusePayloads)
+                {
+                    throw new InvalidDataException("Cannot render selected signature appearance.", exception);
+                }
+                catch { /* Unsupported vendor payloads retain the existing tolerant PDF fallback. */ }
             }
         }
         finally
