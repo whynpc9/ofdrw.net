@@ -18,6 +18,8 @@ def texts(entries, page):
     path = 'Doc_0/' + page.attrib['BaseLoc']
     return ''.join(node.text or '' for node in ET.fromstring(entries[path]).iter() if local(node) == 'TextCode')
 expected = {'baseline-native':2,'baseline-default':2,'rich':2,'signed':2,'watermark':2,'watermark-merged':3,'split':2,'mix':1,'clean':2,'overlay':1,'cli-watermark':2,'cli-split':2,'cli-mix':1,'cli-clean':2,'cli-merged':3}
+with zipfile.ZipFile(directory/'licensed-layout.docx') as archive:
+    source_text = ''.join(node.text or '' for node in ET.fromstring(archive.read('word/document.xml')).iter() if local(node)=='t')
 source = contents('signed')
 source_pages = pages(source)
 checks = {}
@@ -25,6 +27,8 @@ for name, count in expected.items():
     data = contents(name)
     selected = pages(data)
     assert len(selected) == count, (name, 'page count')
+    if name in ('baseline-native','baseline-default'):
+        assert ''.join(texts(data,page) for page in selected) == source_text, (name,'DOCX text changed')
     root = ET.fromstring(data['OFD.xml'])
     declarations = [child for body in root if local(body) == 'DocBody' for child in body if local(child) == 'Signatures']
     if name not in ('signed',): assert not declarations, (name, 'residual signatures')
