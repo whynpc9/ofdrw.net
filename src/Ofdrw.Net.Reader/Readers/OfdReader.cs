@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Constants;
+using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Interfaces;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging.Archive;
@@ -45,6 +46,7 @@ public sealed class OfdReader : IOfdReader
             .Select(x => x.Value)
             .FirstOrDefault() ?? "Doc_0/Document.xml";
 
+        docRoot = OfdPackagePath.Resolve("OFD.xml", docRoot);
         package.Options.DocType = docType;
         package.DocumentEntryPath = docRoot;
         package.Options.Namespace = ofdNs.NamespaceName;
@@ -67,7 +69,7 @@ public sealed class OfdReader : IOfdReader
         var selectedDocBody = ofdXml.Root?
             .Elements(ofdNs + "DocBody")
             .FirstOrDefault(body => string.Equals(
-                body.Element(ofdNs + "DocRoot")?.Value,
+                OfdPackagePath.Resolve("OFD.xml", body.Element(ofdNs + "DocRoot")?.Value ?? string.Empty),
                 docRoot,
                 StringComparison.Ordinal));
         foreach (var bodyElement in selectedDocBody?.Elements() ?? Enumerable.Empty<XElement>())
@@ -121,6 +123,7 @@ public sealed class OfdReader : IOfdReader
             if (archive.Contains(publicResPath))
             {
                 ReadFonts(archive, publicResPath, package, fontMap);
+                ReadMediaResources(archive, publicResPath, docNs, documentMediaMap, documentMediaTypeMap);
             }
         }
 
@@ -255,6 +258,7 @@ public sealed class OfdReader : IOfdReader
                 page.Templates.Add(template);
             }
 
+            ReadAnnotationAppearances(archive, documentXml, docRoot, page, fontMap, mediaMap, mediaTypeMap, cancellationToken);
             package.Pages.Add(page);
         }
 
@@ -333,6 +337,88 @@ public sealed class OfdReader : IOfdReader
         }
 
         return package;
+    }
+
+    private static void ReadAnnotationAppearances(OfdPackageArchive archive, XDocument document, string documentPath,
+        OfdPage page, IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
+        IReadOnlyDictionary<string, string> mediaTypes, CancellationToken cancellationToken)
+    {
+        foreach (var declaration in document.Root!.Elements().Where(node => node.Name.LocalName == "Annotations"))
+        {
+            var listPath = OfdPackagePath.Resolve(documentPath, declaration.Value);
+            var list = XDocument.Parse(archive.ReadUtf8Text(listPath));
+            foreach (var record in list.Root!.Elements().Where(node => node.Name.LocalName == "Page" && node.Attribute("PageID")?.Value == page.Id))
+            {
+                var location = record.Elements().FirstOrDefault(node => node.Name.LocalName == "FileLoc")?.Value;
+                if (string.IsNullOrWhiteSpace(location)) continue;
+                var annotationPath = OfdPackagePath.Resolve(listPath, location!);
+                var annotations = XDocument.Parse(archive.ReadUtf8Text(annotationPath));
+                foreach (var annotation in annotations.Root!.Elements().Where(node => node.Name.LocalName == "Annot"))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (annotation.Attribute("Visible")?.Value is "false" or "0") continue;
+                    var appearance = annotation.Elements().FirstOrDefault(node => node.Name.LocalName == "Appearance");
+                    if (appearance is null) continue;
+                    if (appearance.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName is not ("Boundary" or "ID" or "CTM")))
+                        throw new NotSupportedException("Unsupported annotation appearance attributes cannot be rendered safely.");
+                    var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value);
+                    if (appearance.Attribute("CTM") is not null && (appearanceTransform is null || appearanceTransform.Any(value => double.IsNaN(value) || double.IsInfinity(value))))
+                        throw new InvalidDataException("Invalid annotation appearance transform.");
+                    var ns = appearance.Name.Namespace;
+                    var xml = new XDocument(new XElement(ns + "Page", new XElement(ns + "Content",
+                        new XElement(ns + "Layer", new XAttribute("ID", "annotation-" + annotation.Attribute("ID")?.Value), appearance.Elements()))));
+                    var box = ParseBox(appearance.Attribute("Boundary")?.Value);
+                    foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, annotationPath))
+                    {
+                        var transform = appearanceTransform ?? new double[] { 1, 0, 0, 1, 0, 0 };
+                        var x = element.XMillimeters; var y = element.YMillimeters;
+                        var originalWidth = element.WidthMillimeters; var originalHeight = element.HeightMillimeters;
+                        var minX = Math.Min(0, transform[0] * originalWidth) + Math.Min(0, transform[2] * originalHeight);
+                        var minY = Math.Min(0, transform[1] * originalWidth) + Math.Min(0, transform[3] * originalHeight);
+                        element.XMillimeters = box.x + transform[0] * x + transform[2] * y + transform[4] + minX;
+                        element.YMillimeters = box.y + transform[1] * x + transform[3] * y + transform[5] + minY;
+                        element.WidthMillimeters = Math.Abs(transform[0]) * originalWidth + Math.Abs(transform[2]) * originalHeight;
+                        element.HeightMillimeters = Math.Abs(transform[1]) * originalWidth + Math.Abs(transform[3]) * originalHeight;
+                        if (appearanceTransform is not null)
+                        {
+                            var inner = element switch
+                            {
+                                OfdTextElement text => text.Transform,
+                                OfdPathElement path => path.Transform,
+                                OfdImageElement image => image.Transform ?? new double[] { originalWidth, 0, 0, originalHeight, 0, 0 },
+                                _ => null
+                            } ?? new double[] { 1, 0, 0, 1, 0, 0 };
+                            var combined = new double[]
+                            {
+                                transform[0] * inner[0] + transform[2] * inner[1], transform[1] * inner[0] + transform[3] * inner[1],
+                                transform[0] * inner[2] + transform[2] * inner[3], transform[1] * inner[2] + transform[3] * inner[3],
+                                transform[0] * inner[4] + transform[2] * inner[5] - minX, transform[1] * inner[4] + transform[3] * inner[5] - minY
+                            };
+                            if (element is OfdTextElement transformedText) transformedText.Transform = combined;
+                            if (element is OfdImageElement transformedImage) transformedImage.Transform = combined;
+                            if (element is OfdPathElement transformedPath) transformedPath.Transform = combined;
+                        }
+                        // Keep the serialized boundary consistent with the translated typed geometry.
+                        var source = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, _ => null };
+                        if (source is not null)
+                        {
+                            var node = XElement.Parse(source);
+                            node.SetAttributeValue("Boundary", string.Join(" ", new[] { element.XMillimeters, element.YMillimeters, element.WidthMillimeters, element.HeightMillimeters }.Select(value => value.ToString("R", CultureInfo.InvariantCulture))));
+                            if (appearanceTransform is not null)
+                            {
+                                var objectTransform = element switch { OfdTextElement matrixText => matrixText.Transform, OfdImageElement matrixImage => matrixImage.Transform, OfdPathElement matrixPath => matrixPath.Transform, _ => null };
+                                if (objectTransform is not null) node.SetAttributeValue("CTM", string.Join(" ", objectTransform.Select(value => value.ToString("R", CultureInfo.InvariantCulture))));
+                            }
+                            source = node.ToString(SaveOptions.DisableFormatting);
+                            if (element is OfdTextElement text) text.SourceXml = source;
+                            if (element is OfdImageElement image) image.SourceXml = source;
+                            if (element is OfdPathElement path) path.SourceXml = source;
+                        }
+                        page.AnnotationAppearances.Add(element);
+                    }
+                }
+            }
+        }
     }
 
     private static void ReadFonts(
@@ -592,38 +678,7 @@ public sealed class OfdReader : IOfdReader
         };
     }
 
-    private static string Resolve(string basePath, string relativePath)
-    {
-        var root = GetDirectory(basePath);
-        if (relativePath.StartsWith("/", StringComparison.Ordinal))
-        {
-            return relativePath.TrimStart('/');
-        }
-
-        var combined = $"{root}/{relativePath}";
-        var segments = new Stack<string>();
-        foreach (var segment in combined.Split('/'))
-        {
-            if (string.IsNullOrWhiteSpace(segment) || segment == ".")
-            {
-                continue;
-            }
-
-            if (segment == "..")
-            {
-                if (segments.Count > 0)
-                {
-                    segments.Pop();
-                }
-
-                continue;
-            }
-
-            segments.Push(segment);
-        }
-
-        return string.Join("/", segments.Reverse());
-    }
+    private static string Resolve(string basePath, string relativePath) => OfdPackagePath.Resolve(basePath, relativePath);
 
     private static string GetDirectory(string path)
     {

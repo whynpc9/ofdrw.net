@@ -58,6 +58,10 @@ unzip -l artifacts/hello.ofd
 
 本仓库默认 `DocType` 为 `OFD-H`、默认命名空间为 `http://www.ofdspec.org`，与这篇轮廓一致；不等于已经满足嵌字、签章范围和阅读器行为。
 
+## 实用工具
+
+- [15. 文档工具：水印、Split、Mix 与清签](15-document-tools.md)
+
 ## 源项目模块对照
 
 ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的强类型模型，读包时把尚未建模的节点保存在 `SourceXml` / `Preserved*` 里。

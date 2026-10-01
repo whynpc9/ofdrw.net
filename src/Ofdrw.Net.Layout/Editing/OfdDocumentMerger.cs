@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
+using System.Threading;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
 
@@ -30,11 +31,19 @@ public static class OfdDocumentMerger
         return MergeWithResult(sources, options).Package;
     }
 
+    /// <summary>Merges documents with cooperative cancellation between resource and object copies.</summary>
+    public static OfdDocumentPackage Merge(IEnumerable<OfdDocumentPackage> sources,
+        OfdDocumentMergeOptions? options, CancellationToken cancellationToken) => MergeCore(sources, options, cancellationToken).Package;
+
     /// <summary>Merges documents and reports objects dropped under the explicit skip option.</summary>
     public static OfdDocumentMergeResult MergeWithResult(
         IEnumerable<OfdDocumentPackage> sources,
-        OfdDocumentMergeOptions? options = null)
+        OfdDocumentMergeOptions? options = null) => MergeCore(sources, options, default);
+
+    private static OfdDocumentMergeResult MergeCore(IEnumerable<OfdDocumentPackage> sources,
+        OfdDocumentMergeOptions? options, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (sources is null)
         {
             throw new ArgumentNullException(nameof(sources));
@@ -59,14 +68,16 @@ public static class OfdDocumentMerger
 
         foreach (var source in sourceList)
         {
-            var fonts = CopyFonts(source, destination, knownFonts);
+            cancellationToken.ThrowIfCancellationRequested();
+            var fonts = CopyFonts(source, destination, knownFonts, cancellationToken);
             if (options.IncludeAttachments)
             {
-                CopyAttachments(source, destination);
+                CopyAttachments(source, destination, cancellationToken);
             }
 
             foreach (var sourcePage in source.Pages.OrderBy(page => page.Index))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var page = new OfdPage
                 {
                     Index = destination.Pages.Count,
@@ -82,6 +93,7 @@ public static class OfdDocumentMerger
                 {
                     try
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         ValidateStandaloneElement(element);
                         var clone = OfdModelCloner.CloneElement(element, destination.Options.Namespace);
                         clone.ObjectId = null;
@@ -150,6 +162,7 @@ public static class OfdDocumentMerger
                 }
             }
         }
+        foreach (var element in page.AnnotationAppearances) yield return element;
     }
 
     private static void ValidateStandaloneElement(OfdElement element)
@@ -163,6 +176,12 @@ public static class OfdDocumentMerger
             OfdPathElement path => path.SourceXml,
             _ => null
         };
+        if (element is OfdImageElement imageWithClips && !string.IsNullOrWhiteSpace(imageWithClips.ClipsXml))
+        {
+            var clips = XElement.Parse(imageWithClips.ClipsXml!);
+            if (clips.DescendantsAndSelf().Attributes().Any(attribute => attribute.Name.LocalName is "Font" or "ResourceID" or "DrawParam" or "ColorSpace" or "RefID" or "ObjectRef"))
+                throw new NotSupportedException("Unmodeled clip resource references cannot be safely remapped.");
+        }
         if (string.IsNullOrWhiteSpace(xml)) return;
         var root = XElement.Parse(xml!, LoadOptions.PreserveWhitespace);
         foreach (var attribute in root.DescendantsAndSelf().Attributes())
@@ -182,11 +201,12 @@ public static class OfdDocumentMerger
     private static Dictionary<OfdFontResource, OfdFontResource> CopyFonts(
         OfdDocumentPackage source,
         OfdDocumentPackage destination,
-        IDictionary<string, OfdFontResource> knownFonts)
+        IDictionary<string, OfdFontResource> knownFonts, CancellationToken cancellationToken)
     {
         var mapping = new Dictionary<OfdFontResource, OfdFontResource>();
         foreach (var font in source.Fonts)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var identity = (font.Data.Length == 0 ? "system:" + font.FontName.ToUpperInvariant() : BinaryIdentity.Hash(font.Data))
                 + $":{font.Bold}:{font.Italic}:{font.Charset}";
             if (!knownFonts.TryGetValue(identity, out var target))
@@ -205,10 +225,11 @@ public static class OfdDocumentMerger
         return mapping;
     }
 
-    private static void CopyAttachments(OfdDocumentPackage source, OfdDocumentPackage destination)
+    internal static void CopyAttachments(OfdDocumentPackage source, OfdDocumentPackage destination, CancellationToken cancellationToken = default)
     {
         foreach (var attachment in source.Attachments)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             destination.Attachments.Add(new OfdAttachment
             {
                 Name = attachment.Name,
@@ -226,7 +247,7 @@ public static class OfdDocumentMerger
         }
     }
 
-    private static OfdDocumentOptions CloneOptions(OfdDocumentOptions source)
+    internal static OfdDocumentOptions CloneOptions(OfdDocumentOptions source)
     {
         return new OfdDocumentOptions
         {

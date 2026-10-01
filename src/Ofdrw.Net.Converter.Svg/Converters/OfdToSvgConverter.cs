@@ -317,7 +317,8 @@ public sealed class OfdToSvgConverter
                     template.ZOrder,
                     "Background",
                     StringComparison.OrdinalIgnoreCase))
-                .SelectMany(template => template.Elements));
+                .SelectMany(template => template.Elements))
+            .Concat(page.AnnotationAppearances);
     }
 
     private static string BuildTransform(
