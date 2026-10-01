@@ -7,7 +7,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
 | 功能回归 | 189/189 通过 | Core 5、Packaging 23、PDF/Image 80、Signatures 4、DOCX 49、CLI 28 |
-| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.local`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
+| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review1`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 9/9 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
@@ -34,7 +34,7 @@ Native/default OFD各约15 MiB，主要是原有字体嵌入；它们的展开�
 
 源码、环境、哈希、字节数、样例、模式与检查范围由 manifest 记录。Native/default基准来自11包本地消费本次生成的OFD；PDF由这些OFD导出，未使用直接DOCX→PDF代替。
 
-复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.local`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
+复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review1`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
 
 ## 实际页面记录
 
@@ -42,7 +42,7 @@ Native/default OFD各约15 MiB，主要是原有字体嵌入；它们的展开�
 - 图片导入再导出PNG第1–2页：已查看本次图片，PNG/JPEG四象限保持顺序与原始像素方向；40×20 mm图在60×50 mm页中央，左右10 mm、上下15 mm；背景和图形分界正常。
 - JPEG第2页：已查看，本页中文/英文、四象限和蓝色路径可辨，未发现裁切/重影；JPEG有损边缘属约定编码行为。
 - Native/default各第1–2页：均查看本次OFD经新API导出的PNG；第1页中英文标题/比例斜体、局部粗体、蓝灰表格底色和边框正常；第2页分页明确，红色粗体限制在对应文本，右对齐日期完整。未发现缺字、样式扩散、裁切/重叠、重影或多余空白页；既有的大段页内空白符合确定性样例显式分页。
-- macOS Preview全部未完成；工具两次确认Mac锁屏，故没有逐页Preview结论或截图。
+- macOS Preview全部未完成；工具多次确认Mac锁屏，故没有逐页Preview结论或截图。
 
 未据此推断任意复杂Word/OFD保真，也不宣称厂商阅读器互认。
 
@@ -55,4 +55,4 @@ Cursor在`2d5d260`确认22载荷完整性与票据API/CLI契约，并提出以�
 - CLI：省略`--output`时末个位置参数必须以`.ofd`结尾，防止误覆盖末张PNG/JPEG；混用`--input`和位置参数仍按出现顺序生成页。
 - 选中页嵌套OFD签章超限或 malformed `InvalidDataException` 都失败；此严格语义在教程明确，原公开OFD→PDF保留跳过无效外观行为。
 
-修复后全套189/189。产物与包消费证据重新生成，Preview仍受锁屏阻塞；尚不宣称完整视觉门或最新重审闭合。
+修复后全套189/189。产物与11包消费证据已在`ce23288`重新生成并通过；9张新PNG/JPEG逐页重新查看，几何与文字/样式/表格检查未见新缺陷。Preview仍受锁屏阻塞；尚不宣称完整视觉门或最新重审闭合。
