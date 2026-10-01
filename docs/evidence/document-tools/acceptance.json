@@ -1,11 +1,11 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "a4425bb0ed4e4ee89d2c975039293db5037da044",
-  "example_commit": "a4425bb0ed4e4ee89d2c975039293db5037da044",
+  "runtime_source_commit": "7ac30571c33d6e0654719afe1f88a6f049a27f4d",
+  "example_commit": "7ac30571c33d6e0654719afe1f88a6f049a27f4d",
   "functional_tests": {
     "status": "passed",
-    "total": 181,
+    "total": 190,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
@@ -14,9 +14,9 @@
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.6",
+    "version": "0.1.0-issue03.8",
     "published": false,
-    "repository_commit": "a4425bb0ed4e4ee89d2c975039293db5037da044"
+    "repository_commit": "7ac30571c33d6e0654719afe1f88a6f049a27f4d"
   },
   "native_default_text": {
     "status": "passed",
@@ -25,17 +25,20 @@
   },
   "automatic_rendering": {
     "status": "passed",
-    "pdf_pages": 34,
-    "svg_pages": 9
+    "pdf_pages": 36,
+    "svg_pages": 10
   },
   "png_visual_review": {
     "status": "passed-for-listed-pages",
-    "method": "R4 generated all 43 renders; each SHA-256 matches the visually inspected R3 page; R3 had all-page contact-sheet and standalone clipping/italic checks",
+    "method": "39 previous renders match inspected R3/R4 bytes; all 4 changed SVG renders directly checked in a four-page contact sheet; new annotation-metadata two PDF pages and one SVG directly checked",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
       "pages/annotation-clipped-mix-svg.png",
       "pages/annotation-clipped-svg.png",
+      "pages/annotation-metadata-1.png",
+      "pages/annotation-metadata-2.png",
+      "pages/annotation-metadata-svg.png",
       "pages/baseline-default-1.png",
       "pages/baseline-default-2.png",
       "pages/baseline-native-1.png",
@@ -87,7 +90,8 @@
       "Unknown drawing prevents a partial successful export; unknown metadata remains roundtrip compatible; styled no-id fonts retain correct bytes",
       "Generated FauxItalic factor and identity single-italic control are pixel-identical; same unmarked user CTM retains deliberate extra shear",
       "Undeclared/vendor same-name annotation/resource/template XML remains byte-preserved",
-      "R4 namespace guards preserve the exact 43 inspected render bytes while rejecting vendor declarations/annotation nodes"
+      "R4 namespace guards preserve the exact 43 inspected render bytes while rejecting vendor declarations/annotation nodes",
+      "R5 outer vendor Appearance metadata retains standard NOTE artwork; unsupported foreign descendants block flattening without changing ordinary roundtrip extension bytes"
     ]
   },
   "macos_preview": {
@@ -97,26 +101,30 @@
     "windows_opened": 0
   },
   "pr_review": {
-    "status": "third-round namespace fixes awaiting current-head re-review; Preview remains open",
-    "third_review_head": "a46da620aabf8bf74802f222e78d28f255f8987a",
-    "codex": "two full-XName findings fixed; Preview unresolved",
-    "cursor": "a46da62 review found no new functional defects; re-review new head pending",
-    "ci": "a46da62 all 6 checks successful; new head pending"
+    "status": "fourth-round functional findings fixed; latest-head re-review pending; Preview remains open",
+    "fourth_review_head": "3b7ccc2ae4664f36030eedfae87c3ff4f1728a75",
+    "codex": "five functional threads fixed with regressions; Preview unresolved",
+    "cursor": "vendor TextCode/Clips findings fixed; current-head review pending",
+    "ci": "previous head six checks successful; final head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 35884386,
-    "sha256": "afaacd8be41457f98f4bb6e62a1262c6d321ee17a6df26dc0830dd85bb296f11",
+    "bytes": 36804899,
+    "sha256": "33f12298efb576ef5f3c0a774108d18b0bc8f7972e7c078c0fd838fd5b0c965d",
     "extraction_readback": "passed all per-file size and SHA-256 checks"
   },
   "ofd_sizes": {
     "annotation-clipped-mix.ofd": {
-      "bytes": 11600969,
+      "bytes": 11600968,
       "ratio_to_native_baseline": 0.9998
     },
     "annotation-clipped.ofd": {
       "bytes": 11601279,
       "ratio_to_native_baseline": 0.9999
+    },
+    "annotation-metadata.ofd": {
+      "bytes": 11604484,
+      "ratio_to_native_baseline": 1.0001
     },
     "baseline-default.ofd": {
       "bytes": 11602908,
@@ -135,11 +143,11 @@
       "ratio_to_native_baseline": 1.0001
     },
     "cli-merged.ofd": {
-      "bytes": 11604530,
+      "bytes": 11604527,
       "ratio_to_native_baseline": 1.0001
     },
     "cli-mix.ofd": {
-      "bytes": 11602308,
+      "bytes": 11602307,
       "ratio_to_native_baseline": 0.9999
     },
     "cli-split.ofd": {
@@ -167,7 +175,7 @@
       "ratio_to_native_baseline": 0.9997
     },
     "mix.ofd": {
-      "bytes": 11602340,
+      "bytes": 11602339,
       "ratio_to_native_baseline": 1.0
     },
     "overlay.ofd": {
