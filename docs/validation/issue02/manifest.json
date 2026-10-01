@@ -1,0 +1,161 @@
+{
+  "source_commit": "906ed52af1f1aaa904f79c213c626fecceb79acc",
+  "baseline": "be8b74b3cbd699732ec0638189d14037e052a770",
+  "date": "2026-10-02",
+  "timezone": "Asia/Shanghai",
+  "environment": {
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "sdk": "10.0.401",
+    "ImageSharp": "2.1.13",
+    "Docnet": "2.6.0"
+  },
+  "modes": {
+    "source": "OFD -> selected PDF -> PDFium -> PNG/JPEG, ppm=4",
+    "imported": "PNG + JPEG -> OFD, ppm=2, page=60x50mm -> PDF/PNG",
+    "baseline-native": "generated-layout.docx -> explicit Native OFD -> PDF -> PNG",
+    "baseline-default": "generated-layout.docx -> default Native OFD -> PDF -> PNG"
+  },
+  "tests": {
+    "total": 184,
+    "failed": 0,
+    "packages": 11
+  },
+  "png_visual_review": [
+    "export-1.png",
+    "export-2.png",
+    "export-2.jpg",
+    "imported-1.png",
+    "imported-2.png",
+    "baseline-native-1.png",
+    "baseline-native-2.png",
+    "baseline-default-1.png",
+    "baseline-default-2.png"
+  ],
+  "preview": {
+    "status": "not-reviewed",
+    "reason": "Mac locked; automatic unlock failed",
+    "required": [
+      "source.pdf:1-2",
+      "imported.pdf:1-2",
+      "baseline-native.pdf:1-2",
+      "baseline-default.pdf:1-2"
+    ]
+  },
+  "files": [
+    {
+      "path": "baseline-default-1.png",
+      "bytes": 54600,
+      "sha256": "450c5a20cc99e04e7c94ad4ffd81439684c4cda414ce798c9043d2b672630ccb"
+    },
+    {
+      "path": "baseline-default-2.png",
+      "bytes": 25642,
+      "sha256": "502f8570943f37bf851a3b492cd07d8a35bf74ca4ba0e02acdcba062f1d058e2"
+    },
+    {
+      "path": "baseline-native-1.png",
+      "bytes": 54600,
+      "sha256": "450c5a20cc99e04e7c94ad4ffd81439684c4cda414ce798c9043d2b672630ccb"
+    },
+    {
+      "path": "baseline-native-2.png",
+      "bytes": 25642,
+      "sha256": "502f8570943f37bf851a3b492cd07d8a35bf74ca4ba0e02acdcba062f1d058e2"
+    },
+    {
+      "path": "export-1.png",
+      "bytes": 7425,
+      "sha256": "94646a23f2da905dc91ff3368e76105e92d8690122927da48fc07c7f9f94e9a9"
+    },
+    {
+      "path": "export-2.jpg",
+      "bytes": 9041,
+      "sha256": "1d6ee36a89eaa9aded7e3f23c19181a49fdd9c8d074bdd801b3d34b5940e8a27"
+    },
+    {
+      "path": "export-2.png",
+      "bytes": 7553,
+      "sha256": "bdd055cd6ef6fe0681212d39646e4c9bb2387a4b8e280e4215624610e4bbc451"
+    },
+    {
+      "path": "imported-1.png",
+      "bytes": 749,
+      "sha256": "eb3a4daf322c8837e5e240620db81ca51ff51da32749e534ca1bd1c4320a9376"
+    },
+    {
+      "path": "imported-2.png",
+      "bytes": 920,
+      "sha256": "64c29aae80e8b546735642f76bd7f92b0c8186241ef7cbf3b7d55aa4ab3eea62"
+    },
+    {
+      "path": "imported.ofd",
+      "bytes": 3405,
+      "sha256": "bfc84c80519d409d1a986c03904765b7ba91f703ae752a22f5d9c77b260d3ff2"
+    },
+    {
+      "path": "imported.pdf",
+      "bytes": 3414,
+      "sha256": "bef95909ddee5719148f035c0daebdcf78b9b5f1c685996afd24cc3d6f34dc1d"
+    },
+    {
+      "path": "input.jpg",
+      "bytes": 1143,
+      "sha256": "6f4b464fb4a66890570056f13020a8b09e712d50dcbbb6bf67195d140845637d"
+    },
+    {
+      "path": "input.png",
+      "bytes": 164,
+      "sha256": "492f4b44c2acb3e55a5de88b8c473f0c9a6c802b08d2eda1b089b933e2fddbf6"
+    },
+    {
+      "path": "source.ofd",
+      "bytes": 2969,
+      "sha256": "d0aa52a53c28998a6edf2de2a5493327767cf6588fdd48fa6aef32c4aadc452d"
+    },
+    {
+      "path": "source.pdf",
+      "bytes": 69655,
+      "sha256": "f69a04ca8b59f44f00a73f87cfc24da110ca7cf4e3f4c2a6da8ca341f0ab414a"
+    },
+    {
+      "path": "baseline-native.ofd",
+      "bytes": 15288607,
+      "sha256": "85edea1aa44dd032e2035f597f71f4330a695c8576048254fdb12d4dfdf68a35"
+    },
+    {
+      "path": "baseline-native.pdf",
+      "bytes": 117446,
+      "sha256": "d1fbcb6a00d7b4b3382f6188b9ea32e79cdba6c7929cf6a4e3c6f4f4987cb3dc"
+    },
+    {
+      "path": "baseline-default.ofd",
+      "bytes": 15288608,
+      "sha256": "4253f2fcccb2822af787e84f91680fb1e2934b2896fb8dab51caa674c2074f63"
+    },
+    {
+      "path": "baseline-default.pdf",
+      "bytes": 117446,
+      "sha256": "40d103bec1811181bf9371f7c41c6411fdfaad1ead94c0e67f6733b0556013c7"
+    },
+    {
+      "path": "tests.txt",
+      "bytes": 6412,
+      "sha256": "a3464cf3237eed15a4fbf77e9cef21cddb617c21cb55f361dd4142e1890e3cb0"
+    },
+    {
+      "path": "package-e2e.txt",
+      "bytes": 12254,
+      "sha256": "3d321d45ef6d4fe9e028934d1c583a06089994c12b4d3494f57df83cd7555078"
+    },
+    {
+      "path": "package-manifest.json",
+      "bytes": 2213,
+      "sha256": "9637e13fa0d1214f1f5570e4a046eb6cae2be2bbea2e2a1c0e34aee426c3bccf"
+    }
+  ],
+  "archive": {
+    "path": "evidence.tar.xz",
+    "bytes": 15546220,
+    "sha256": "d576689baa57102c9b81ecbe85125b7a29978406ee95015d2d2f16d109f1ec94"
+  }
+}
