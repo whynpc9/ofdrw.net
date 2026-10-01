@@ -6,10 +6,10 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 203/203 通过 | Core 5、Packaging 23、PDF/Image 92、Signatures 4、DOCX 49、CLI 30 |
+| 功能回归 | 207/207 通过 | Core 5、Packaging 23、PDF/Image 96、Signatures 4、DOCX 49、CLI 30 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review3`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
-| PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
+| PNG/JPEG 目视复查 | 本轮待重生成（上一轮10/10） | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
 | PR CI / Codex / Cursor | 待到齐 | PR 创建后补充最新 head、检查和线程状态 |
 
@@ -79,3 +79,13 @@ Cursor在`2d5d260`确认22载荷完整性与票据API/CLI契约，并提出以�
 - 全套203/203及Sol Low独立复核通过。新的产物与11包消费验证随后记录；Preview仍未完成。
 
 第三轮25个实际产物均从`f7dcae8`重新生成，11/11本地包消费通过；当次10张PNG/JPEG逐页重新查看，检查范围与上述相同，未见新缺陷。最新源码、日志、字节数、哈希由当前manifest给出。Preview仍未完成。
+
+## 第四轮复审修复
+
+`8383723`两类bot结果均读取：畸形ASN.1会清空PDF已接受外观，以及`XImage.Dispose`不能释放底层像素，均已修复。
+
+依据锁定[PdfSharpCore 1.3.67源码](https://github.com/ststeiger/PdfSharpCore/tree/d6ac8b092129a4f797365bbbf3eea2723d6c3ebd)：`PdfImageTable`持有`XImage`，默认ImageSharp source持有解码图像；仅Dispose包装对象不足。严格图片路径改用只存编码字节/尺寸的`IImageSource`，PDF图像实现期间局部解码/编码并Dispose实际ImageSharp图像，文档表不再持有它的像素缓冲；不改全局image source或legacy PDF路径。真实PdfDocument/ImageTable回归各绘制12个不同PNG/JPEG，确认DrawImage后实际像素已ObjectDisposed、尺寸仍可用、最终PDF可保存。
+
+ASN扫描区分strict与legacy：严格图片路径继续分配前拒绝坏长度；legacy遇到畸形候选返回并保留已经找到的合法候选，不抹掉其他签章。合法JPEG后另一坏签章和同ASNrecord先合法OCTET后坏trailer均有实际PDF红色像素回归。
+
+全套207/207；Sol Low独立核查未见新确定性缺陷。单个多帧厂商签章位图的解码属于既有预览边界；工作缓冲估算不声明进程RSS硬上限。最新11包/产物记录随后更新；Preview仍未完成。

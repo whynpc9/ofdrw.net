@@ -178,7 +178,7 @@ internal static class OfdSignatureAppearanceReader
         else
         {
             ArraySegment<byte> best = default;
-            FindLargestAppearance(data, 0, data.Length, 0, ref best, token);
+            FindLargestAppearance(data, 0, data.Length, 0, ref best, token, strict: cache is not null);
             appearance = best.Count == 0 ? Array.Empty<byte>() : new byte[best.Count];
             if (best.Count > 0) Buffer.BlockCopy(data, best.Offset, appearance, 0, best.Count);
         }
@@ -187,7 +187,7 @@ internal static class OfdSignatureAppearanceReader
     }
 
     private static void FindLargestAppearance(byte[] data, int offset, int length, int depth,
-        ref ArraySegment<byte> best, CancellationToken token)
+        ref ArraySegment<byte> best, CancellationToken token, bool strict)
     {
         if (depth > 32) return;
         ValidateSlice(data, offset, length);
@@ -197,12 +197,15 @@ internal static class OfdSignatureAppearanceReader
             token.ThrowIfCancellationRequested();
             if (!TryReadTagAndLength(data, offset, end, out var tagClass, out var tagNumber,
                 out var constructed, out var contentOffset, out var contentLength, out var nextOffset))
-                throw new InvalidDataException("Malformed ASN.1 signature appearance length or tag.");
+            {
+                if (strict) throw new InvalidDataException("Malformed ASN.1 signature appearance length or tag.");
+                return; // Tolerant PDF: retain candidates already found and appearances from other signatures.
+            }
             // Retain one candidate, rather than allocating/sorting a list proportional to every ASN.1 octet.
             if (tagClass == 0 && tagNumber == 4 && !constructed && contentLength > best.Count &&
                 IsSupportedAppearance(data, contentOffset, contentLength))
                 best = new ArraySegment<byte>(data, contentOffset, contentLength);
-            if (constructed) FindLargestAppearance(data, contentOffset, contentLength, depth + 1, ref best, token);
+            if (constructed) FindLargestAppearance(data, contentOffset, contentLength, depth + 1, ref best, token, strict);
             offset = nextOffset;
         }
     }
