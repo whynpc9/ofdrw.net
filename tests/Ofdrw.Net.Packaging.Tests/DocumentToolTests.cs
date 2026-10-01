@@ -464,6 +464,7 @@ public sealed class DocumentToolTests
             Assert.Single(node.Elements(ns + "Clips"));
             Assert.Equal("yes", Assert.Single(node.Elements(XNamespace.Get("urn:vendor") + "Clips")).Attribute("Keep")!.Value);
         }
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(result, 0)]));
     }
 
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
