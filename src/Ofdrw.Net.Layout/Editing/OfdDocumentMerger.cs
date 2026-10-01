@@ -177,11 +177,15 @@ public static class OfdDocumentMerger
         if (!string.IsNullOrWhiteSpace(element.ClippingXml))
         {
             var clips = XElement.Parse(element.ClippingXml!);
+            if (clips.Descendants().Any(node => node.Name.Namespace != clips.Name.Namespace))
+                throw new NotSupportedException("Unknown clip extension elements cannot be safely remapped.");
             if (clips.DescendantsAndSelf().Attributes().Any(attribute => attribute.Name.LocalName is "Font" or "ResourceID" or "DrawParam" or "ColorSpace" or "RefID" or "ObjectRef"))
                 throw new NotSupportedException("Unmodeled clip resource references cannot be safely remapped.");
         }
         if (string.IsNullOrWhiteSpace(xml)) return;
         var root = XElement.Parse(xml!, LoadOptions.PreserveWhitespace);
+        if (root.Descendants().Any(node => node.Name.Namespace != root.Name.Namespace))
+            throw new NotSupportedException("Unknown object extension elements cannot be safely remapped during merge.");
         foreach (var attribute in root.DescendantsAndSelf().Attributes())
         {
             var name = attribute.Name.LocalName;
