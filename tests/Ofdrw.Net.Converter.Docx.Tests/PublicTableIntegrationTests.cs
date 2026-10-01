@@ -87,7 +87,9 @@ public sealed partial class DocxConversionTests
     {
         await using var input = CreateMinimalDocx($"<w:tbl><w:tblGrid><w:gridCol w:w=\"3000\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:gridSpan w:val=\"{span}\"/></w:tcPr><w:p><w:r><w:t>Must not disappear</w:t></w:r></w:p></w:tc></w:tr></w:tbl>");
         await using var output = new MemoryStream();
-        await Assert.ThrowsAsync<InvalidDataException>(() => new DocxToOfdConverter().ConvertAsync(input, output));
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new DocxToOfdConverter().ConvertAsync(input, output));
+        Assert.Contains("row 1", error.Message);
+        if (span == 0) { Assert.Contains("cell 1", error.Message); Assert.Contains("gridSpan must be positive", error.Message); }
         Assert.Equal(0, output.Length);
     }
 
@@ -97,7 +99,9 @@ public sealed partial class DocxConversionTests
         await using var input = CreateMinimalDocx("<w:tbl><w:tr><w:tc><w:p><w:r><w:t>A</w:t><w:br w:type=\"page\"/><w:t>B</w:t></w:r></w:p></w:tc></w:tr></w:tbl>");
         await using var output = new MemoryStream();
         var result = await new DocxToOfdConverter().ConvertWithResultAsync(input, output);
-        Assert.Contains(result.Diagnostics, d => d.Code == "DOCX_CELL_PAGE_BREAK_DEGRADED");
+        var diagnostic = Assert.Single(result.Diagnostics, d => d.Code == "DOCX_CELL_PAGE_BREAK_DEGRADED");
+        Assert.Contains("row 1, cell 1", diagnostic.Message);
+        Assert.Contains("The page break is ignored.", diagnostic.Message);
         output.Position = 0; Assert.Equal("AB", string.Concat((await new OfdReader().ReadAsync(output)).Pages.SelectMany(p => p.Elements).OfType<OfdTextElement>().Select(e => e.Text)));
     }
 
@@ -121,5 +125,16 @@ public sealed partial class DocxConversionTests
         var error = await Assert.ThrowsAsync<NotSupportedException>(() => new DocxToOfdConverter(new DocxConversionOptions
         { UnsupportedFeatureBehavior = UnsupportedDocxFeatureBehavior.Throw }).ConvertAsync(input, output));
         Assert.Contains("row 1, cell 1", error.Message); Assert.DoesNotContain("ignored", error.Message); Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task Native_NonPositiveSecondRowSpan_ReportsCellAndReason(int span)
+    {
+        await using var input = CreateMinimalDocx($"<w:tbl><w:tblGrid><w:gridCol w:w=\"4000\"/></w:tblGrid><w:tr><w:tc><w:p/></w:tc></w:tr><w:tr><w:tc><w:tcPr><w:gridSpan w:val=\"{span}\"/></w:tcPr><w:p/></w:tc></w:tr></w:tbl>");
+        await using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new DocxToOfdConverter().ConvertAsync(input, output));
+        Assert.Contains("row 2, cell 1", error.Message); Assert.Contains("gridSpan must be positive", error.Message); Assert.Equal(0, output.Length);
     }
 }

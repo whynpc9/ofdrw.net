@@ -386,7 +386,8 @@ internal sealed class DocxModelReader
                     VerticalAlignment = ReadVerticalAlignment(cell.TableCellProperties)
                 };
 
-                if (cellModel.ColumnSpan < 1) throw new InvalidDataException("DOCX table gridSpan must be positive.");
+                if (cellModel.ColumnSpan < 1)
+                    throw new InvalidDataException($"DOCX table row {model.Rows.Count + 1}, cell {rowModel.Cells.Count + 1}: gridSpan must be positive.");
                 ReadBorders(cell.TableCellProperties?.TableCellBorders, cellModel.Borders);
                 foreach (var paragraph in cell.Elements<WpParagraph>())
                 {
