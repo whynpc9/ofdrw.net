@@ -7,9 +7,9 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
 | 功能回归 | 207/207 通过 | Core 5、Packaging 23、PDF/Image 96、Signatures 4、DOCX 49、CLI 30 |
-| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review3`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
+| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review4`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
-| PNG/JPEG 目视复查 | 本轮待重生成（上一轮10/10） | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
+| PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
 | PR CI / Codex / Cursor | 待到齐 | PR 创建后补充最新 head、检查和线程状态 |
 
@@ -34,7 +34,7 @@ Native/default OFD各约15 MiB，主要是原有字体嵌入；它们的展开�
 
 源码、环境、哈希、字节数、样例、模式与检查范围由 manifest 记录。Native/default基准来自11包本地消费本次生成的OFD；PDF由这些OFD导出，未使用直接DOCX→PDF代替。
 
-复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review3`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
+复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review4`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
 
 ## 实际页面记录
 
@@ -89,3 +89,5 @@ Cursor在`2d5d260`确认22载荷完整性与票据API/CLI契约，并提出以�
 ASN扫描区分strict与legacy：严格图片路径继续分配前拒绝坏长度；legacy遇到畸形候选返回并保留已经找到的合法候选，不抹掉其他签章。合法JPEG后另一坏签章和同ASNrecord先合法OCTET后坏trailer均有实际PDF红色像素回归。
 
 全套207/207；Sol Low独立核查未见新确定性缺陷。单个多帧厂商签章位图的解码属于既有预览边界；工作缓冲估算不声明进程RSS硬上限。最新11包/产物记录随后更新；Preview仍未完成。
+
+第四轮25个实际产物均从`4312bfb`重新生成，11/11本地包消费再次通过；当次10张PNG/JPEG逐页重新查看，范围与上述相同，无新缺陷。最新207项回归日志与全部载荷哈希在当前bundle/manifest。Preview仍未完成。
