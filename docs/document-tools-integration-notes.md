@@ -2,7 +2,7 @@
 
 Issue 03 was built independently from main. PR #12 overlaps PR #11 in `src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs`. Issue 03 does not modify `OfdSignatureAppearanceReader` or the Issue 02 worktree.
 
-The PDF changes are confined to ordinary page elements: object-local Clips for text/path, complete glyph CTM, generated faux-italic factor compensation, and explicit failure for a whole unsupported annotation drawing. The signature-appearance preparation/decoding and decoded image budget stay with Issue 02's strict image-export policy. When integrating, retain both the strict opt-in/export budget behavior from 02 and 03's ordinary element drawing behavior; preserve existing default signature payload compatibility and cancellation/error propagation.
+The PDF changes are confined to ordinary page elements: preserved-source Visible=false handling, object-local Clips for text/path, complete glyph CTM, generated faux-italic factor compensation, and explicit failure for a whole unsupported annotation drawing. The signature-appearance preparation/decoding and decoded image budget stay with Issue 02's strict image-export policy. When integrating, retain both the strict opt-in/export budget behavior from 02 and 03's ordinary element drawing behavior; preserve existing default signature payload compatibility and cancellation/error propagation.
 
 Relevant contracts:
 
@@ -14,3 +14,5 @@ Relevant contracts:
 - CLI additions live in `DocumentTools.cs` through the small `Cli` partial class. The 02 command additions can be combined without restructuring shared dispatch or options.
 
 Current verification and Preview state are in `docs/evidence/document-tools/acceptance.json`. Preview stays mandatory and unresolved while the Mac is locked. These notes are an integration checklist, not evidence that the two independent branches have already been merged or validated together.
+
+The latest reader takes only direct literal text from page/template TextCode and AbbreviatedData. Writer keeps nested path extension XML, and Mix rejects unsupported XML closure; default Merge retains existing unqualified metadata compatibility. ImageMask/Substitution references are explicitly rejected during flattening and annotation export. These contracts complement 02 image-export limits without modifying its signature-appearance reader.

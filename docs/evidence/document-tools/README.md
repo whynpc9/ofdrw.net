@@ -4,12 +4,12 @@ Implementation: all four API/CLI paths are present. Complete acceptance remains 
 
 | Layer | Current result |
 | --- | --- |
-| Functional regression | 203/203 passed locally; Astra design/source review and Sol Low independent verification performed; later Astra findings fixed with dedicated regressions |
-| 11-package local consumption | Passed: 11 packages at `0.1.0-issue03.10`, built from runtime commit `18baaaf`; not published |
+| Functional regression | 212/212 passed locally; Astra design/source review and Sol Low independent verification performed; later Astra findings fixed with dedicated regressions |
+| 11-package local consumption | Passed: 11 packages at `0.1.0-issue03.13`, built from runtime commit `e671f1d`; not published |
 | API/CLI automatic matrix | 21 public synthetic samples, 36 PDF pages, ten rendered SVG pages; body-byte preservation, selected text/page order, watermark text counts and file hashes checked |
 | PNG visual review | Passed for the 36 PDF pages and 10 SVG renders listed in `acceptance.json`; contact sheets plus standalone checks of changed overlay pages/SVG |
 | macOS Preview | **Not completed**: Computer Use returned “The Mac is locked and automatic unlock could not unlock it.” User unlock requested; no Preview document window opened |
-| GitHub CI / Codex / Cursor | Fifth-round `4dec153` Codex/Cursor Automation reviews complete; same-namespace leaf/metadata/reference finding fixed and current-head re-review pending. Preview thread remains unresolved |
+| GitHub CI / Codex / Cursor | Sixth-round `a78e0d0` Codex/Cursor Automation reviews complete; four functional findings fixed and current-head re-review pending. Preview thread remains unresolved |
 
 The sample is `generated-layout.docx` with only font declarations replaced by pinned Noto Sans CJK SC. Content includes proportional Latin, Chinese, bold/italic/color, table fills/borders, alignment and explicit page break. The source copy and Noto/OFL license are retained. The rich OFD adds a template, annotation, public attachment, shared font and deliberately noncryptographic signature appearance.
 
@@ -24,7 +24,7 @@ python3 scripts/verify-document-tools-evidence.py docs/evidence/document-tools/f
 OFDRW_DOCUMENT_TOOLS_FONTS=docs/evidence/document-tools/files/fonts ./scripts/run-document-tools-e2e.sh
 ```
 
-Runtime source `18baaaf` passed 203/203 under independent Sol Low verification; example source is `18baaaf`. Source baseline, environment, bundle hash, actual checked page list and sizes are recorded in [acceptance.json](acceptance.json). The 35.1 MiB bundle was extracted into an independent temp directory and all 205 file sizes/hashes matched. Extraction needs `zstd` and approximately 1 GiB of memory; the expanded SVG/font evidence occupies about 1,130 MiB. The example embeds the same licensed face used by Native measurement through the public font model, retaining self-contained outputs without changing viewer-local CJK defaults. Conclusions apply to these synthetic pages and the tested structural matrix. Unsupported raw objects/actions/resource references fail explicitly; this is not a claim of arbitrary complex OFD or Word fidelity, production signing, or target-reader interoperability.
+Runtime source `e671f1d` passed 212/212 under independent Sol Low verification; example source is `e671f1d`. Source baseline, environment, bundle hash, actual checked page list and sizes are recorded in [acceptance.json](acceptance.json). The 36.3 MiB bundle was extracted into an independent temp directory and all 217 file sizes/hashes matched. Extraction needs `zstd` and approximately 1 GiB of memory; the expanded SVG/font evidence occupies about 1,130 MiB. The example embeds the same licensed face used by Native measurement through the public font model, retaining self-contained outputs without changing viewer-local CJK defaults. Conclusions apply to these synthetic pages and the tested structural matrix. Unsupported raw objects/actions/resource references fail explicitly; this is not a claim of arbitrary complex OFD or Word fidelity, production signing, or target-reader interoperability.
 
 Review-fix samples `annotation-clipped` and `annotation-clipped-mix` retain the exact sheared clip, 90-degree ROTATE glyphs, 1.5x SCALE glyphs and nested PageBlock content. Raster regressions additionally check original image-boundary clipping when image CTM exceeds its box. The native Preview gate remains uncompleted for all samples.
 
@@ -36,4 +36,8 @@ The `annotation-metadata` fixture retains the same visible NOTE artwork as `rich
 
 The final XML closure tests distinguish unsupported leaf children and drawing references from harmless metadata. Unknown attributes retain original annotation XML and standard artwork but block Mix; the only foreign drawing attribute allowed in strict Mix is the exact generated faux-italic hint. PageBlock wrappers accept only unqualified ID. Area CTM remains supported; image Substitution references fail explicitly. Mix uses stricter attribute closure without removing the existing Merge compatibility for unqualified metadata.
 
-R6 regenerated all 46 page renders from `18baaaf`; every SHA-256 matches the actual R5 inspected/verified pages. All final package/test/matrix logs refer to the same committed source.
+R6 regenerated all 46 page renders from `e671f1d`; every SHA-256 matches the actual R5 inspected/verified pages. All final package/test/matrix logs refer to the same committed source.
+
+R7 cleanup candidate ownership is independent of filename extension; the retained XML reference scan restores shared and transitive XML payloads without rewriting bytes. Exclusive/shared XML signature tests pass; the final 46 renders remain byte-identical.
+
+R8 directly reviewed every current PDF/SVG page PNG through 12 retained contact sheets, plus clean-body and split-page crops. The fixture includes hidden annotation text/path: original XML survives while PDF/SVG/extract hide it. ImageMask is refused; standard object/clip attributes remain accepted. Page/template/path/clip data uses only direct literal text; path extension XML survives unchanged and edited-literal roundtrips.
