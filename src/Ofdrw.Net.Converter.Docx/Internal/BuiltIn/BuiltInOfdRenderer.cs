@@ -240,10 +240,11 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         var columnWidths = ResolveColumnWidths(table, state.ContentWidth);
         var firstRow = true;
 
-        foreach (var row in table.Rows)
+        for (var rowIndex = 0; rowIndex < table.Rows.Count; rowIndex++)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            var cellLayouts = MeasureRow(row, columnWidths);
+            var row = table.Rows[rowIndex];
+            var cellLayouts = MeasureRow(row, columnWidths, rowIndex + 1);
             var rowHeight = cellLayouts.Count == 0
                 ? PointsToMillimeters(DefaultFontSizePoints) * 1.5d
                 : cellLayouts.Max(cell => cell.Height);
@@ -266,7 +267,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 var cellWidth = cellLayout.Width;
 
                 var cell = row.Cells[cellLayouts.IndexOf(cellLayout)];
-                DrawCell(state.Page!, table, cell, table.Rows.IndexOf(row), columnIndex, columnWidths.Count,
+                DrawCell(state.Page!, table, cell, rowIndex, columnIndex, columnWidths.Count,
                     x, rowTop, cellWidth, rowHeight);
                 var textLeft = x + MinCellPaddingMillimeters;
 
@@ -282,7 +283,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         }
     }
 
-    private List<FlowMeasuredCell> MeasureRow(BuiltInTableRowModel row, IReadOnlyList<double> columnWidths)
+    private List<FlowMeasuredCell> MeasureRow(BuiltInTableRowModel row, IReadOnlyList<double> columnWidths, int rowNumber)
     {
         var specs = row.Cells.Select(cell => new FlowCellSpec
         {
@@ -304,7 +305,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         try { return FlowTableLayout.MeasureRow(columnWidths, specs, _cancellationToken); }
         catch (ArgumentException exception)
         {
-            throw new InvalidDataException("DOCX table row has an invalid grid or unusable cell width.", exception);
+            throw new InvalidDataException($"DOCX table row {rowNumber} has an invalid grid or unusable cell width: {exception.Message}", exception);
         }
     }
 

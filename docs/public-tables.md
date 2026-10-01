@@ -34,7 +34,7 @@ await new OfdPackageWriter().WriteAsync(package, outputStream);
 - 每行必须准确覆盖全部列。空表、空行、非正/越界跨度、缺格、多格及没有可用文字宽度的 padding/缩进会抛参数异常。空 `Cell.Paragraphs` 合法，仍占 padding 与行最小高度。
 - `Cell.Paragraphs` 保留段落缩进、段前/后间距、换行、混合字号和局部 Span 粗体/斜体/颜色。各段 `Paragraph.Alignment` 控制水平对齐；`Cell.VerticalAlignment` 对齐整组段落。没有字号缩小或裁切来满足行高。
 - `BackgroundColor` 只作用于该格。`Table.BorderColor`/`BorderWidthMillimeters` 是整表统一边框，宽度 0 关闭。合并格内不画竖线，公开表的相邻共享边只写一次，跨页片段各自封闭。外边向内偏移半笔宽，极薄行小于笔宽会失败。首版不提供逐边/逐格边框覆盖、虚线或冲突消解。
-- 格内文本使用 `MaxCharacters`/`MaxTextElements`，空格也计入 `MaxTableCells`（默认 100000）；页数使用 `MaxPageCount`，支持取消。字符预算保留 UTF-16 计数语义。
+- 格内文本使用 `MaxCharacters`/`MaxTextElements`，空单元格也计入 `MaxTableCells`（默认 100000）；页数使用 `MaxPageCount`，支持取消。字符预算保留 UTF-16 计数语义，空格字符计入字符预算。
 
 ## 分页与明确失败
 
