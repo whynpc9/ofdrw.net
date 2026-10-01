@@ -494,6 +494,16 @@ public sealed class DocumentToolTests
 
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
     [Fact]
+    public async Task Writer_MissingPathDataUsesSourceObjectNamespaceAndKeepsExtensions()
+    {
+        var source = new OfdDocumentPackage(); var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        page.Elements.Add(new OfdPathElement { SourceXml = "<PathObject><v:Note xmlns:v='urn:vendor'>KEEP</v:Note></PathObject>", AbbreviatedData = "M 0 0 L 10 0", Stroke = false, Fill = false }); source.Pages.Add(page);
+        var saved = await RoundTrip(source); var path = saved.Pages[0].Elements.OfType<OfdPathElement>().Single();
+        Assert.Equal("M 0 0 L 10 0", path.AbbreviatedData); var xml = XElement.Parse(path.SourceXml!);
+        Assert.Equal("M 0 0 L 10 0", xml.Element(xml.Name.Namespace + "AbbreviatedData")!.Value);
+        Assert.Equal("KEEP", xml.Element(XName.Get("Note", "urn:vendor"))!.Value);
+    }
+    [Fact]
     public void Mix_KeepsSupportedAreaTransformAndMergeRejectsUnmappedSubstitution()
     {
         var source = Source(); var image = source.Pages[0].Elements.OfType<OfdImageElement>().Single();

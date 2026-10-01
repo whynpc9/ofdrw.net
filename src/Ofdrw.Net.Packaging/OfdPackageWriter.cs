@@ -450,7 +450,7 @@ public sealed class OfdPackageWriter
                         var abbreviatedData = pathObject.Element(pathObject.Name.Namespace + "AbbreviatedData");
                         if (abbreviatedData is null)
                         {
-                            pathObject.Add(new XElement(ns + "AbbreviatedData", path.AbbreviatedData));
+                            pathObject.Add(new XElement(pathObject.Name.Namespace + "AbbreviatedData", path.AbbreviatedData));
                         }
                         else
                         {
