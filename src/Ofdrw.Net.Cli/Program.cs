@@ -650,6 +650,7 @@ internal static partial class Cli
           --ppm         Image commands: finite positive pixels per millimeter; default 144/25.4.
           --format      ofd-to-image: png (default) or jpeg, independent of filename.
           --jpeg-quality ofd-to-image: quality 1-100 (default 90).
+          image-to-ofd: use --output, or a final positional .ofd destination; inputs retain argument order.
           --page-width, --page-height image-to-ofd: paired dimensions in millimeters; default natural image size.
           --max-pixels, --max-working-bytes, --max-input-bytes, --max-output-bytes Image command budgets.
           --max-pdf-bytes ofd-to-image: intermediate PDF budget.

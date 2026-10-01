@@ -58,6 +58,13 @@ internal sealed class ImageIoStagingStream : Stream
         _file = new FileStream(_path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.Asynchronous);
     }
     internal string PathOnDisk => _path;
+    internal async Task CloseWriterAsync(CancellationToken token)
+    {
+        await _file.FlushAsync(token).ConfigureAwait(false);
+        token.ThrowIfCancellationRequested();
+        // PDFium reopens by filename. Close the write handle first so Windows sharing rules cannot reject that read.
+        _file.Dispose();
+    }
     public override bool CanRead => true;
     public override bool CanSeek => true;
     public override bool CanWrite => true;

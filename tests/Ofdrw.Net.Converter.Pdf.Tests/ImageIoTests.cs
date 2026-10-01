@@ -239,8 +239,9 @@ public sealed class ImageIoTests
         Assert.Contains("Animated PNG", exception.Message); AssertSentinel(output);
     }
 
-    [Fact]
-    public async Task SelectedSignatureNestedOfdInheritsEntryBudgetButOtherPagesAreNotDecoded()
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task SelectedSignatureNestedOfdFailsClosedButOtherPagesAreNotDecoded(bool malformed)
     {
         var nested = new OfdDocumentPackage(); nested.Pages.Add(new OfdPage { WidthMillimeters = 10, HeightMillimeters = 10 });
         for (var i = 0; i < 30; i++) nested.PreservedEntries[$"extensions/{i}.bin"] = [1, 2, 3];
@@ -264,7 +265,7 @@ public sealed class ImageIoTests
             void Add(string name, byte[] data) { using var stream = zip.CreateEntry(name).Open(); stream.Write(data); }
             Add(signaturePath, System.Text.Encoding.UTF8.GetBytes("<Signatures><Signature BaseLoc=\"S/Signature.xml\"/></Signatures>"));
             Add(prefix + "/Signs/S/Signature.xml", System.Text.Encoding.UTF8.GetBytes($"<Signature><SignedInfo><Seal BaseLoc=\"Seal.ofd\"/><StampAnnot PageRef=\"{pageId}\" Boundary=\"0 0 10 10\"/></SignedInfo></Signature>"));
-            Add(prefix + "/Signs/S/Seal.ofd", appearance.ToArray());
+            Add(prefix + "/Signs/S/Seal.ofd", malformed ? new byte[] { 0x50, 0x4b, 3, 4, 1 } : appearance.ToArray());
             count = zip.Entries.Count;
         }
         var options = new OfdToImageOptions { PixelsPerMillimeter = 1, PackageLoadOptions = new() { MaxEntryCount = count } };
@@ -272,6 +273,39 @@ public sealed class ImageIoTests
         await Assert.ThrowsAnyAsync<InvalidDataException>(() => new OfdToImageConverter(options).ConvertAsync(outer, output, 0)); AssertSentinel(output);
         outer.Position = 0; using var other = new MemoryStream();
         await new OfdToImageConverter(options).ConvertAsync(outer, other, 1); Assert.True(other.Length > 0);
+    }
+
+    [Fact]
+    public async Task IntermediatePdfWriteHandleIsClosedBeforeExternalReaderOpens()
+    {
+        string path;
+        using (var staged = new ImageIoStagingStream(100))
+        {
+            path = staged.PathOnDisk;
+            staged.Write([1, 2, 3]);
+            await staged.CloseWriterAsync(CancellationToken.None);
+            // FileShare.None proves the original handle was released; this also runs in Windows CI.
+            using var external = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None);
+            Assert.Equal(3, external.Length);
+        }
+        Assert.False(File.Exists(path));
+    }
+
+    [Theory]
+    [InlineData(0.001)] [InlineData(double.Epsilon)]
+    public async Task FixedPageShrinksOversizeNaturalImageWithoutOverflow(double ppm)
+    {
+        using var input = new MemoryStream(ImageBytes()); using var output = new MemoryStream();
+        await new ImageToOfdConverter(new ImageToOfdOptions { PixelsPerMillimeter = ppm,
+            PageSize = new OfdPageSize { WidthMillimeters = 30, HeightMillimeters = 30 } }).ConvertAsync(input, output);
+        output.Position = 0;
+        var page = Assert.Single((await new OfdReader().ReadAsync(output)).Pages);
+        var image = Assert.IsType<OfdImageElement>(Assert.Single(page.Elements));
+        Assert.Equal(30, image.WidthMillimeters); Assert.Equal(15, image.HeightMillimeters);
+        Assert.Equal(0, image.XMillimeters); Assert.Equal(7.5, image.YMillimeters);
+        input.Position = 0; using var natural = Sentinel();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new ImageToOfdConverter(new ImageToOfdOptions { PixelsPerMillimeter = ppm }).ConvertAsync(input, natural));
+        AssertSentinel(natural);
     }
 
     [Fact]

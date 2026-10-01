@@ -6,7 +6,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 184/184 通过 | Core 5、Packaging 23、PDF/Image 76、Signatures 4、DOCX 49、CLI 27 |
+| 功能回归 | 189/189 通过 | Core 5、Packaging 23、PDF/Image 80、Signatures 4、DOCX 49、CLI 28 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.local`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 9/9 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页 |
@@ -45,3 +45,14 @@ Native/default OFD各约15 MiB，主要是原有字体嵌入；它们的展开�
 - macOS Preview全部未完成；工具两次确认Mac锁屏，故没有逐页Preview结论或截图。
 
 未据此推断任意复杂Word/OFD保真，也不宣称厂商阅读器互认。
+
+## 首轮审阅修复
+
+Cursor在`2d5d260`确认22载荷完整性与票据API/CLI契约，并提出以下增量；Codex在同一head无发现。
+
+- Windows：中间PDF写句柄在PDFium按路径打开前明确关闭，临时文件在DocReader销毁之后才删除；文件句柄回归与图片API/CLI加入Linux/Windows/macOS矩阵。
+- 固定页导入：只限制最终页/图像几何，按像素计算缩放因子，允许大于10000mm的自然尺寸和极低ppm；未指定页尺寸时仍拒绝超限自然页。
+- CLI：省略`--output`时末个位置参数必须以`.ofd`结尾，防止误覆盖末张PNG/JPEG；混用`--input`和位置参数仍按出现顺序生成页。
+- 选中页嵌套OFD签章超限或 malformed `InvalidDataException` 都失败；此严格语义在教程明确，原公开OFD→PDF保留跳过无效外观行为。
+
+修复后全套189/189。产物与包消费证据重新生成，Preview仍受锁屏阻塞；尚不宣称完整视觉门或最新重审闭合。
