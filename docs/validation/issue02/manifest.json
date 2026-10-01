@@ -1,5 +1,5 @@
 {
-  "source_commit": "ce23288f6f2dc917c379cd6faaae1c1b802c540b",
+  "source_commit": "d8ff8538062ba6dec60867f5557c56481cc7fd85",
   "baseline": "be8b74b3cbd699732ec0638189d14037e052a770",
   "date": "2026-10-02",
   "timezone": "Asia/Shanghai",
@@ -13,13 +13,14 @@
     "source": "OFD -> selected PDF -> PDFium -> PNG/JPEG, ppm=4",
     "imported": "PNG + JPEG -> OFD, ppm=2, page=60x50mm -> PDF/PNG",
     "baseline-native": "generated-layout.docx -> explicit Native OFD -> PDF -> PNG",
-    "baseline-default": "generated-layout.docx -> default Native OFD -> PDF -> PNG"
+    "baseline-default": "generated-layout.docx -> default Native OFD -> PDF -> PNG",
+    "shared-seal": "appearance-only OFD with six repeated nested payload placements -> PDF / strict cached image export; no cryptographic validity claim"
   },
   "tests": {
-    "total": 189,
+    "total": 200,
     "failed": 0,
     "packages": 11,
-    "package_version": "0.1.0-issue02.review1"
+    "package_version": "0.1.0-issue02.review2"
   },
   "png_visual_review": [
     "export-1.png",
@@ -30,7 +31,8 @@
     "baseline-native-1.png",
     "baseline-native-2.png",
     "baseline-default-1.png",
-    "baseline-default-2.png"
+    "baseline-default-2.png",
+    "shared-seal.png"
   ],
   "preview": {
     "status": "not-reviewed",
@@ -39,7 +41,8 @@
       "source.pdf:1-2",
       "imported.pdf:1-2",
       "baseline-native.pdf:1-2",
-      "baseline-default.pdf:1-2"
+      "baseline-default.pdf:1-2",
+      "shared-seal.pdf:1"
     ]
   },
   "files": [
@@ -91,12 +94,12 @@
     {
       "path": "imported.ofd",
       "bytes": 3405,
-      "sha256": "e3c03fae0bcd21b046e8409dd4709981203ec35e83af042551540f8c814573eb"
+      "sha256": "84a6b492e361d815d1ee29892c0a3f04c1312368f203c29c59f681dd2c6f45f7"
     },
     {
       "path": "imported.pdf",
       "bytes": 3414,
-      "sha256": "2160cef3bbf909369c407ed5077caea01dd5a276372876bdbbc873a92463ef57"
+      "sha256": "daf98efe9d90f0a070585019802f6d6a46d0b6cd9eebff405c1f43c100d42fe8"
     },
     {
       "path": "input.jpg",
@@ -109,55 +112,70 @@
       "sha256": "492f4b44c2acb3e55a5de88b8c473f0c9a6c802b08d2eda1b089b933e2fddbf6"
     },
     {
+      "path": "shared-seal.ofd",
+      "bytes": 3280,
+      "sha256": "21a2ad61f4b9907a5b5295e9dc5042c1c23d4465d00bc1c3332f5631203d8378"
+    },
+    {
+      "path": "shared-seal.pdf",
+      "bytes": 3255,
+      "sha256": "49d8668410b87f014c5f121a2f0ac56ab741af5382a7a7e72e35a438ceab973f"
+    },
+    {
+      "path": "shared-seal.png",
+      "bytes": 1463,
+      "sha256": "1075916e8b548ddf65e9cd40a151fe3e6e6aa83ed7adb50d541b9d9d2b37ae07"
+    },
+    {
       "path": "source.ofd",
       "bytes": 2969,
-      "sha256": "d8f1a01b7c7c3b176a64891b212d3adc57e12c562b85f8fe9aed652db2966d22"
+      "sha256": "0554174a91dbd84e0b844c76807bf0978a94e366719819f0569577c6c1d2b426"
     },
     {
       "path": "source.pdf",
       "bytes": 69655,
-      "sha256": "ad796bd1621694622da1c938927980e09ddf035d2222663e5f41fdb527a322bb"
+      "sha256": "67249fad42524f5977e98289e6a09e20deec1545d924938244fe87d56e06787c"
     },
     {
       "path": "baseline-native.ofd",
-      "bytes": 15288606,
-      "sha256": "a61e621bafdac1a521ed998a42eaecfda9b84275b0bac718438a69489a77dfa4"
+      "bytes": 15288607,
+      "sha256": "28d867f408c92bb7376eedd88dafc3885984953e2b95589aa8cbd4628c55ddc7"
     },
     {
       "path": "baseline-native.pdf",
       "bytes": 117446,
-      "sha256": "9ae6fadd82b198d636fd59787e9d278c305b477241638d726f1986b51facbb25"
+      "sha256": "94ed838cf149c06db9de34046091a17896b6709573bf76d7bf7eb3c12c03dc73"
     },
     {
       "path": "baseline-default.ofd",
-      "bytes": 15288606,
-      "sha256": "905375da93b4ecdb4a7a0fef8602460ae3dc48d0f5bc5efb825caf32b5d26a20"
+      "bytes": 15288607,
+      "sha256": "8cf781cded758b25484a9a27c0aabbd47e2d8f893fb484bf71e9f7604b3cd63b"
     },
     {
       "path": "baseline-default.pdf",
       "bytes": 117446,
-      "sha256": "36bf9653cab78e45ebecf8f99554a9b265b78a438652128ae97c86904cfc34e6"
+      "sha256": "a90fe8eb7e602df4ff2ac836073914f6be6150438789cc3df47cc028ca763591"
     },
     {
       "path": "tests.txt",
       "bytes": 6309,
-      "sha256": "24448ca6123565709e40911ac11aaf9de601ff5e55dfd83a206802213935526b"
+      "sha256": "1b1306b49a620c7b311bce5d068a26a38dd39c12dd9260b8745d8e1e58b6a393"
     },
     {
       "path": "package-e2e.txt",
-      "bytes": 10750,
-      "sha256": "e1d7498c119ada11f07123371da021e18ff8fcee3070945424ebea17f8be1bf8"
+      "bytes": 10752,
+      "sha256": "2d1143d60afa57189505d42d4c89b35fcfdcee35657e71b222b7fb4fd452e167"
     },
     {
       "path": "package-manifest.json",
       "bytes": 2237,
-      "sha256": "ecd970573a315c76349ecb37c14612f80eb3e98c7d73a0364669b8c90b2b8cf6"
+      "sha256": "e86ecb25019573dc63a47691b756884d86a6c540a3f456bbedcbbf2d420fb72f"
     }
   ],
   "archive": {
     "path": "evidence.tar.xz",
-    "bytes": 15546124,
-    "sha256": "ddd1fbdc7d1d2814a311f7ab72eaa2a94b258d24c0adf6b11f1227bffb7fd6bf"
+    "bytes": 15549452,
+    "sha256": "da73797479854d2b7a3d23385b446f5362c33c3ac43c2b0667849f0818fd23b6"
   },
-  "review_generation": "review1; fresh files re-opened for 9 PNG/JPEG inspections after repair; Preview locked"
+  "review_generation": "review2; 10 fresh PNG/JPEG pages inspected after repairs; Preview locked"
 }

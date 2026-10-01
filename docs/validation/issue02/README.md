@@ -7,7 +7,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
 | 功能回归 | 200/200 通过 | Core 5、Packaging 23、PDF/Image 89、Signatures 4、DOCX 49、CLI 30 |
-| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review1`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
+| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review2`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
@@ -26,15 +26,15 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 ## 可复查产物
 
-完整实际产物在 [evidence.tar.xz](evidence.tar.xz)，索引/哈希/字节数在 [manifest.json](manifest.json)，均随PR提交。压缩包保留两个新OFD、对应PDF/逐页PNG/JPEG、两个本次DOCX显式Native/default OFD/PDF/逐页PNG、功能和包消费日志与11包manifest；读者无需访问被忽略的 `artifacts/`。
+完整实际产物在 [evidence.tar.xz](evidence.tar.xz)，索引/哈希/字节数在 [manifest.json](manifest.json)，均随PR提交。压缩包保留三个新OFD、对应PDF/逐页PNG/JPEG、两个本次DOCX显式Native/default OFD/PDF/逐页PNG、功能和包消费日志与11包manifest；读者无需访问被忽略的 `artifacts/`。
 
-完整性检查：`python3 scripts/verify-image-io-evidence.py`。该命令核对归档本身和每个实际载荷的字节数、SHA-256、成员集合。解压：`mkdir -p artifacts/issue02/review && tar -xJf docs/validation/issue02/evidence.tar.xz -C artifacts/issue02/review`。随后在Preview打开解压目录里的四个PDF。小型[第1页PNG](export-1.png)、[第2页PNG](export-2.png)、[导入几何PNG](imported-1.png)也可直接在PR查看。
+完整性检查：`python3 scripts/verify-image-io-evidence.py`。该命令核对归档本身和每个实际载荷的字节数、SHA-256、成员集合。解压：`mkdir -p artifacts/issue02/review && tar -xJf docs/validation/issue02/evidence.tar.xz -C artifacts/issue02/review`。随后在Preview打开解压目录里的五个PDF。小型[第1页PNG](export-1.png)、[第2页PNG](export-2.png)、[导入几何PNG](imported-1.png)也可直接在PR查看。
 
 Native/default OFD各约15 MiB，主要是原有字体嵌入；它们的展开字体载荷各23,278,008 bytes。这是本次旧Native转换基准的实际体积，不是新增图片API膨胀。新source/imported OFD分别约2.9/3.3 KiB，新source/imported PDF约68/3.3 KiB；全部精确字节数见manifest。
 
 源码、环境、哈希、字节数、样例、模式与检查范围由 manifest 记录。Native/default基准来自11包本地消费本次生成的OFD；PDF由这些OFD导出，未使用直接DOCX→PDF代替。
 
-复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review1`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
+复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review2`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
 
 ## 实际页面记录
 
@@ -67,3 +67,5 @@ Cursor在`2d5d260`确认22载荷完整性与票据API/CLI契约，并提出以�
 - 现有writer为0.001mm精度。最终导入页及图像每轴小于0.001mm明确拒绝；固定页、自然页、高ppm及缩小后的极薄图都覆盖，失败不生成零尺寸图元。
 
 新增重复签章单份展开budget成功/单PDF form、不同载荷累积bytes/entries/pages失败、共享ASN.1载荷对象身份、无效候选限额与几何回归。主套200/200；Sol Low独立复核未发现新确定性缺陷。仅外观fixture不代表密码学签名有效。
+
+第二轮实际产物均从`d8ff853`重新生成，11/11本地包消费已再次通过。10张当前PNG/JPEG逐页重新查看：两页文字/图片/路径、JPEG第2页、两页图片居中往返、显式Native/default各两页和共享嵌套外观一页均未见新缺陷。新外观样例6个红色10×10mm方形位于120×80mm页面同一行，5mm起点、18mm间距，全部可见且无裁切/异常叠加；该fixture只测外观，不含可验证密码学签名。Preview另外需打开本次`shared-seal.ofd → shared-seal.pdf`第1页。新bundle保留25个确切载荷及日志，源码/模式/字节数/SHA-256/待Preview页码见manifest。
