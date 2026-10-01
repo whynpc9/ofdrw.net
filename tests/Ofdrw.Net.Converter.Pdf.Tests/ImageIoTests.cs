@@ -476,6 +476,54 @@ public sealed class ImageIoTests
         public void Dispose() { if (!_disposed) { _disposed = true; dispose(); } }
     }
 
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task LegacyPdfKeepsValidSealBeforeMalformedAsn1(bool sameRecord)
+    {
+        var jpeg = ImageBytes(true); var bad = new byte[] { 4, 0x84, 0x7f, 0xff, 0xff, 0xff };
+        byte[] Wrap(byte tag, byte[] content) => new byte[] { tag, 0x82, (byte)(content.Length >> 8), (byte)content.Length }.Concat(content).ToArray();
+        var encoded = sameRecord ? await WithSeals([Wrap(0x30, Wrap(4, jpeg).Concat(bad).ToArray())]) : await WithSeals([jpeg, bad]);
+        using var input = new MemoryStream(encoded); var package = await new OfdReader().ReadAsync(input);
+        Assert.Equal(jpeg, Assert.Single(OfdSignatureAppearanceReader.Read(package)).Data);
+        input.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
+        using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
+        using var page = reader.GetPageReader(0); var pixels = page.GetImage();
+        var offset = ((int)(12 * 72d / 25.4d * 2) * page.GetPageWidth() + (int)(7 * 72d / 25.4d * 2)) * 4;
+        Assert.True(pixels[offset + 2] > 180); Assert.True(pixels[offset] < 60); // The valid JPEG's red quadrant still paints.
+        input.Position = 0; using var strict = Sentinel();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions { PixelsPerMillimeter = 2 }).ConvertAsync(input, strict));
+        AssertSentinel(strict);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void RealPdfImageTableRetainsNoDecodedPixelsAfterRealization(bool jpeg)
+    {
+        using var document = new PdfSharpCore.Pdf.PdfDocument(); var page = document.AddPage();
+        using (var graphics = PdfSharpCore.Drawing.XGraphics.FromPdfPage(page))
+        {
+            for (var index = 0; index < 12; index++)
+            {
+                using var image = new Image<Rgba32>(32, 32, new Rgba32((byte)(index * 20), 30, 220));
+                using var encoded = new MemoryStream();
+                if (jpeg) image.SaveAsJpeg(encoded); else image.SaveAsPng(encoded);
+                Image<Rgba32>? actualPixels = null;
+                var source = new EncodedBitmapImageSource(encoded.ToArray(), 1024, CancellationToken.None, data =>
+                { actualPixels = Image.Load<Rgba32>(data); return actualPixels; });
+                using var ximage = PdfSharpCore.Drawing.XImage.FromImageSource(source);
+                graphics.DrawImage(ximage, index * 5, 0, 5, 5);
+                Assert.NotNull(actualPixels);
+                Assert.Throws<ObjectDisposedException>(() => { _ = actualPixels![0, 0]; });
+                // PdfImageTable still owns ximage; cached dimensions remain usable without decoded buffers.
+                Assert.Equal(32, ximage.PixelWidth); Assert.Equal(32, ximage.PixelHeight);
+            }
+        }
+        using var output = new MemoryStream(); document.Save(output, false);
+        Assert.True(output.Length > 0);
+        using var pdf = UglyToad.PdfPig.PdfDocument.Open(output.ToArray());
+        Assert.Single(pdf.GetPages());
+    }
+
     [Fact]
     public async Task SaveReviewEvidence_WhenRequested()
     {

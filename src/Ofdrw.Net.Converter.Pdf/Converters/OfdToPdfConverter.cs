@@ -196,7 +196,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         using var bitmap = new SinglePayloadResource<XImage>(data =>
         {
             ValidateImage(data, maximumPixels);
-            return XImage.FromStream(() => new MemoryStream(data, writable: false));
+            return XImage.FromImageSource(new EncodedBitmapImageSource(data, maximumPixels, cancellationToken));
         });
         try
         {
