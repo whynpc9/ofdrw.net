@@ -1,11 +1,11 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "d1e35c9336ab9781de663b9e8d9d53cb24314bab",
-  "example_commit": "d1e35c9336ab9781de663b9e8d9d53cb24314bab",
+  "runtime_source_commit": "881feed905fa36ac922bfeae019f8133ea65c9b7",
+  "example_commit": "881feed905fa36ac922bfeae019f8133ea65c9b7",
   "functional_tests": {
     "status": "passed",
-    "total": 168,
+    "total": 174,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
@@ -14,9 +14,9 @@
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.4",
+    "version": "0.1.0-issue03.5",
     "published": false,
-    "repository_commit": "d1e35c9336ab9781de663b9e8d9d53cb24314bab"
+    "repository_commit": "881feed905fa36ac922bfeae019f8133ea65c9b7"
   },
   "native_default_text": {
     "status": "passed",
@@ -25,12 +25,12 @@
   },
   "automatic_rendering": {
     "status": "passed",
-    "pdf_pages": 31,
-    "svg_pages": 6
+    "pdf_pages": 34,
+    "svg_pages": 9
   },
   "png_visual_review": {
     "status": "passed-for-listed-pages",
-    "method": "all 37 renders in contact sheets; standalone clipping/rotation/source-Mix checks",
+    "method": "all 43 renders in contact sheets; standalone exact clipping/rotation and single-slant control cases",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -54,6 +54,12 @@
       "pages/cli-watermark-1.png",
       "pages/cli-watermark-2.png",
       "pages/cli-watermark-svg.png",
+      "pages/italic-control-1.png",
+      "pages/italic-control-svg.png",
+      "pages/italic-marked-1.png",
+      "pages/italic-marked-svg.png",
+      "pages/italic-user-matrix-1.png",
+      "pages/italic-user-matrix-svg.png",
       "pages/mix-1.png",
       "pages/overlay-1.png",
       "pages/rich-1.png",
@@ -78,7 +84,9 @@
       "Clean output has no red signature square; body/template/annotation/attachment retained",
       "OFD/PDF raw text checks find each added label once; clean preserves every non-signature entry byte",
       "Appearance clip and original image Boundary retain exact sheared polygons; nested PageBlock drawing and glyph scale/rotation survive Mix",
-      "Unknown drawing prevents a partial successful export; unknown metadata remains roundtrip compatible; styled no-id fonts retain correct bytes"
+      "Unknown drawing prevents a partial successful export; unknown metadata remains roundtrip compatible; styled no-id fonts retain correct bytes",
+      "Generated FauxItalic factor and identity single-italic control are pixel-identical; same unmarked user CTM retains deliberate extra shear",
+      "Undeclared/vendor same-name annotation/resource/template XML remains byte-preserved"
     ]
   },
   "macos_preview": {
@@ -88,16 +96,16 @@
     "windows_opened": 0
   },
   "pr_review": {
-    "status": "functional fixes awaiting current-head re-review; Preview remains open",
-    "first_review_head": "28113dd652a620c65fc20ce76d9f3be62f4a1906",
-    "codex": "first review completed; 2 functional findings fixed, Preview unresolved",
-    "cursor": "automation first review completed; 3 findings fixed; Bugbot product disabled",
-    "ci": "first head all 6 checks successful; new head pending"
+    "status": "second-round fixes awaiting current-head re-review; Preview remains open",
+    "second_review_head": "6032b6066f079cd464e95587547b15b3b1fbd0bb",
+    "codex": "annotation pruning ownership finding fixed; Preview unresolved",
+    "cursor": "double faux-italic finding fixed; automation re-review pending",
+    "ci": "6032b60 all 6 checks successful; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 35745100,
-    "sha256": "fb80e499f157f84cacb5d7831c709d525393d6af8527d0a1b91f36b9951b5c02",
+    "bytes": 35883747,
+    "sha256": "d284b5eaddee9389f4d0c893caeb16398a8e11939440ee70e793ec80c34487b3",
     "extraction_readback": "passed all per-file size and SHA-256 checks"
   },
   "ofd_sizes": {
@@ -110,43 +118,55 @@
       "ratio_to_native_baseline": 0.9999
     },
     "baseline-default.ofd": {
-      "bytes": 11602862,
+      "bytes": 11602908,
       "ratio_to_native_baseline": 1.0
     },
     "baseline-native.ofd": {
-      "bytes": 11602862,
+      "bytes": 11602908,
       "ratio_to_native_baseline": 1.0
     },
     "clean.ofd": {
-      "bytes": 11604377,
+      "bytes": 11604422,
       "ratio_to_native_baseline": 1.0001
     },
     "cli-clean.ofd": {
-      "bytes": 11604377,
+      "bytes": 11604422,
       "ratio_to_native_baseline": 1.0001
     },
     "cli-merged.ofd": {
-      "bytes": 11604484,
+      "bytes": 11604530,
       "ratio_to_native_baseline": 1.0001
     },
     "cli-mix.ofd": {
-      "bytes": 11602259,
+      "bytes": 11602308,
       "ratio_to_native_baseline": 0.9999
     },
     "cli-split.ofd": {
-      "bytes": 11604519,
+      "bytes": 11604563,
       "ratio_to_native_baseline": 1.0001
     },
     "cli-text.ofd": {
-      "bytes": 11604598,
+      "bytes": 11604644,
       "ratio_to_native_baseline": 1.0001
     },
     "cli-watermark.ofd": {
-      "bytes": 11605454,
+      "bytes": 11605508,
       "ratio_to_native_baseline": 1.0002
     },
+    "italic-control.ofd": {
+      "bytes": 11599921,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "italic-marked.ofd": {
+      "bytes": 11599974,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "italic-user-matrix.ofd": {
+      "bytes": 11599927,
+      "ratio_to_native_baseline": 0.9997
+    },
     "mix.ofd": {
-      "bytes": 11602292,
+      "bytes": 11602340,
       "ratio_to_native_baseline": 1.0
     },
     "overlay.ofd": {
@@ -154,23 +174,23 @@
       "ratio_to_native_baseline": 0.9998
     },
     "rich.ofd": {
-      "bytes": 11604401,
+      "bytes": 11604446,
       "ratio_to_native_baseline": 1.0001
     },
     "signed.ofd": {
-      "bytes": 11606375,
+      "bytes": 11606422,
       "ratio_to_native_baseline": 1.0003
     },
     "split.ofd": {
-      "bytes": 11604519,
+      "bytes": 11604563,
       "ratio_to_native_baseline": 1.0001
     },
     "watermark-merged.ofd": {
-      "bytes": 11604336,
+      "bytes": 11604384,
       "ratio_to_native_baseline": 1.0001
     },
     "watermark.ofd": {
-      "bytes": 11605432,
+      "bytes": 11605485,
       "ratio_to_native_baseline": 1.0002
     }
   },
