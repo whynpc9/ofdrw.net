@@ -1,0 +1,4 @@
+damaged PDF exit 1 Evidence verification failed: Direct preview copy mismatch: /private/tmp/ofdrw-table-evidence-clean.aK8xET/negative-cases/damaged-pdf/preview/tables-public.pdf
+missing PNG exit 1 Evidence verification failed: Missing or unexpected direct preview copies.
+tampered archive exit 1 Evidence verification failed: Evidence archive size or SHA-256 mismatch.
+unsafe path exit 1 Evidence verification failed: Unsafe evidence path: ../escape.pdf

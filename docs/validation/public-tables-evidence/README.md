@@ -28,3 +28,5 @@ python3 scripts/verify-public-table-evidence.py --extract /tmp/ofdrw-table-evide
 ```
 
 第二条命令同时验证和提取，拒绝覆盖已有文件。随后可直接打开 `/tmp/ofdrw-table-evidence-review/public-tables/review1/current/*.ofd`，核对其哈希及OFD原文；最新PDF/PNG的独立副本也由同一脚本核对。CI会验证该档案及全部直接查看副本的完整性。
+
+[Sol Low独立干净checkout与四类负向验证](integrity-validation/validation.md)：108原始文件、18直接副本、五组OFD/PDF原哈希及七份300测试TRX全部复核；损坏PDF、缺失PNG、篡改档案和不安全路径均明确拒绝。未重新打开Preview，实际范围保持31f0b75的11页。
