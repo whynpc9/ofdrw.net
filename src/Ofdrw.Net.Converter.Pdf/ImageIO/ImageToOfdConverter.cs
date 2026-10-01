@@ -26,7 +26,7 @@ public sealed class ImageToOfdConverter
             options.MaxInputBytesPerImage > int.MaxValue || options.MaxTotalInputBytes <= 0 ||
             options.MaxPixelsPerImage <= 0 || options.MaxRasterWorkingBytes <= 0 || options.MaxOutputBytes <= 0)
             throw new ArgumentException("Positive image import budgets are required; each encoded image must fit a managed byte array.", nameof(options));
-        if (options.PageSize is not null) ImageIoBudget.Page(options.PageSize.WidthMillimeters, options.PageSize.HeightMillimeters);
+        if (options.PageSize is not null) ImageIoBudget.ImportExtent(options.PageSize.WidthMillimeters, options.PageSize.HeightMillimeters);
         _options = new ImageToOfdOptions
         {
             PixelsPerMillimeter = options.PixelsPerMillimeter,
@@ -86,7 +86,7 @@ public sealed class ImageToOfdConverter
             {
                 pageWidth = imageWidth = info.Width / _options.PixelsPerMillimeter;
                 pageHeight = imageHeight = info.Height / _options.PixelsPerMillimeter;
-                ImageIoBudget.Page(pageWidth, pageHeight);
+                ImageIoBudget.ImportExtent(pageWidth, pageHeight);
             }
             else
             {
@@ -95,9 +95,10 @@ public sealed class ImageToOfdConverter
                 // Fit in pixel space: even when 1/ppm overflows, the finite fixed-page factors keep placement bounded.
                 var millimetersPerPixel = Math.Min(1d / _options.PixelsPerMillimeter,
                     Math.Min(pageWidth / info.Width, pageHeight / info.Height));
-                imageWidth = info.Width * millimetersPerPixel;
-                imageHeight = info.Height * millimetersPerPixel;
-                ImageIoBudget.Page(imageWidth, imageHeight);
+                // Multiplication can overshoot the limiting axis by an ULP (e.g. 10000/145*145).
+                imageWidth = Math.Min(pageWidth, info.Width * millimetersPerPixel);
+                imageHeight = Math.Min(pageHeight, info.Height * millimetersPerPixel);
+                ImageIoBudget.ImportExtent(imageWidth, imageHeight);
             }
             var page = new OfdPage { Index = index, WidthMillimeters = pageWidth, HeightMillimeters = pageHeight };
             page.Elements.Add(new OfdImageElement

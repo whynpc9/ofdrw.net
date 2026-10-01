@@ -45,6 +45,7 @@ public sealed class ImageCommandTests : IDisposable
     [InlineData("--format", "gif")] [InlineData("--jpeg-quality", "101")]
     [InlineData("--max-pixels", "1")] [InlineData("--max-input-bytes", "1")]
     [InlineData("--max-output-bytes", "1")] [InlineData("--ppm", "1e100")]
+    [InlineData("--max-signature-appearances", "0")]
     public async Task ExportRejectsInvalidParametersAndBudgetsWithoutPublishing(string option, string value)
     {
         var source = new OfdDocumentPackage(); source.Pages.Add(new OfdPage { WidthMillimeters = 20, HeightMillimeters = 20 });
@@ -59,6 +60,7 @@ public sealed class ImageCommandTests : IDisposable
     [InlineData("--format", "png")] [InlineData("--pages", "1")]
     [InlineData("--max-pixels", "1")] [InlineData("--max-output-bytes", "1")]
     [InlineData("--max-entries", "1")] [InlineData("--max-total-input-bytes", "1")]
+    [InlineData("--ppm", "1e10")]
     public async Task ImportRejectsInvalidParametersAndBudgetsWithoutPublishing(string option, string value)
     {
         var input = PathFor("input.png"); using (var image = new Image<Rgb24>(10, 10)) image.SaveAsPng(input);

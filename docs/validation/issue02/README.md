@@ -6,10 +6,10 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 189/189 通过 | Core 5、Packaging 23、PDF/Image 80、Signatures 4、DOCX 49、CLI 28 |
+| 功能回归 | 200/200 通过 | Core 5、Packaging 23、PDF/Image 89、Signatures 4、DOCX 49、CLI 30 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review1`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
-| PNG/JPEG 目视复查 | 9/9 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页 |
+| PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
 | PR CI / Codex / Cursor | 待到齐 | PR 创建后补充最新 head、检查和线程状态 |
 
@@ -55,4 +55,15 @@ Cursor在`2d5d260`确认22载荷完整性与票据API/CLI契约，并提出以�
 - CLI：省略`--output`时末个位置参数必须以`.ofd`结尾，防止误覆盖末张PNG/JPEG；混用`--input`和位置参数仍按出现顺序生成页。
 - 选中页嵌套OFD签章超限或 malformed `InvalidDataException` 都失败；此严格语义在教程明确，原公开OFD→PDF保留跳过无效外观行为。
 
-修复后全套189/189。产物与11包消费证据已在`ce23288`重新生成并通过；9张新PNG/JPEG逐页重新查看，几何与文字/样式/表格检查未见新缺陷。Preview仍受锁屏阻塞；尚不宣称完整视觉门或最新重审闭合。
+修复后全套200/200。产物与11包消费证据已在`ce23288`重新生成并通过；9张新PNG/JPEG逐页重新查看，几何与文字/样式/表格检查未见新缺陷。Preview仍受锁屏阻塞；尚不宣称完整视觉门或最新重审闭合。
+
+## 第二轮复审修复
+
+`2dd3c3e`的五项CI通过且Windows图片API/CLI实跑通过。两类bot的本轮结果均已读完：Codex提出重复嵌套签章展开与微小几何精度，Cursor提出非二进制整除浮点超出页轴；均纳入同轮。
+
+- 图片严格路径按载荷内容缓存嵌套包与共享字体上下文，绘制也复用同一PDF form/bitmap。外包加唯一嵌套包累计占用展开载荷bytes、已物化非目录文件条目及页面预算；每次读前只给剩余额度。各ZIP原始条目数仍由loader逐包限制，不把物化条目误称累计ZIP目录项。单次转换最多1000个选中候选StampAnnot，无效边界/无载荷也计数，超限在载荷提取前失败。
+- canonical包条目的载荷提取缓存成功与空结果，直接payload复用原始数组；ASN.1扫描保留一个最大候选，避免候选列表放大。提取副本、XML/native/font/PDF开销不属于展开载荷budget，不声明严格RSS上限。
+- 每轴缩放结果clamp到已验证页轴，145×145／0.01ppm／10000mm页与39×39／0.001ppm／210mm页回归确认无ULP越界/负原点。
+- 现有writer为0.001mm精度。最终导入页及图像每轴小于0.001mm明确拒绝；固定页、自然页、高ppm及缩小后的极薄图都覆盖，失败不生成零尺寸图元。
+
+新增重复签章单份展开budget成功/单PDF form、不同载荷累积bytes/entries/pages失败、共享ASN.1载荷对象身份、无效候选限额与几何回归。主套200/200；Sol Low独立复核未发现新确定性缺陷。仅外观fixture不代表密码学签名有效。

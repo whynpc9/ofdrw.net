@@ -13,6 +13,8 @@ public sealed class OfdToImageOptions
     public int JpegQuality { get; set; } = 90;
     /// <summary>Archive entry, compressed input and expansion budgets; copied at construction.</summary>
     public OfdPackageLoadOptions PackageLoadOptions { get; set; } = new();
+    /// <summary>Maximum selected signature placements; repeated payloads share one decoded nested package.</summary>
+    public int MaxSignatureAppearanceCount { get; set; } = 1_000;
     /// <summary>Maximum pixels in the output and each decoded embedded image.</summary>
     public long MaxPixels { get; set; } = 40_000_000;
     /// <summary>Maximum estimated raster buffers (16 bytes per pixel); excludes package/PDF state and native overhead.</summary>

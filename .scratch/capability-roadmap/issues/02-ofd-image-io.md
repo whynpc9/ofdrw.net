@@ -35,6 +35,6 @@
 ## Delivery evidence
 
 - Public API/CLI and bounded PDF/PDFium raster path: [image conversion tutorial](../../../docs/tutorials/15-image-conversion.md).
-- Full regression: 189/189; 11-package local consumer E2E includes packed image APIs and installed CLI.
+- Full regression: 200/200; 11-package local consumer E2E includes packed image APIs and installed CLI.
 - [Persistent artifacts, hashes and acceptance record](../../../docs/validation/issue02/README.md).
 - Completion gate remains open until actual macOS Preview pages and latest PR CI/bot review are closed; PNG inspection is a separate evidence layer.

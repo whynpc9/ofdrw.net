@@ -39,6 +39,7 @@ internal static partial class Cli
                     { "png" => OfdImageFormat.Png, "jpeg" or "jpg" => OfdImageFormat.Jpeg,
                         _ => throw new ArgumentException("--format must be png or jpeg.") }; break;
                 case "--jpeg-quality" when export: exportOptions.JpegQuality = ImageCount(value, option); break;
+                case "--max-signature-appearances" when export: exportOptions.MaxSignatureAppearanceCount = ImageCount(value, option); break;
                 case "--max-pdf-bytes" when export: exportOptions.MaxIntermediatePdfBytes = ImageBytes(value, option); break;
                 case "--page-width" when !export: pageWidth = ImageNumber(value, option); break;
                 case "--page-height" when !export: pageHeight = ImageNumber(value, option); break;

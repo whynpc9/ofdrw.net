@@ -308,6 +308,136 @@ public sealed class ImageIoTests
         AssertSentinel(natural);
     }
 
+    [Theory]
+    [InlineData(145, 10000, 0.01)] [InlineData(39, 210, 0.001)]
+    public async Task NonDyadicFixedPageScalingNeverOvershootsOrProducesNegativeOrigins(int pixels, double millimeters, double ppm)
+    {
+        using var image = new Image<Rgb24>(pixels, pixels, new Rgb24(220, 40, 20));
+        using var input = new MemoryStream(); image.SaveAsPng(input); input.Position = 0; using var output = new MemoryStream();
+        await new ImageToOfdConverter(new ImageToOfdOptions { PixelsPerMillimeter = ppm,
+            PageSize = new OfdPageSize { WidthMillimeters = millimeters, HeightMillimeters = millimeters } }).ConvertAsync(input, output);
+        output.Position = 0; var page = Assert.Single((await new OfdReader().ReadAsync(output)).Pages);
+        var placed = Assert.IsType<OfdImageElement>(Assert.Single(page.Elements));
+        Assert.Equal(millimeters, placed.WidthMillimeters); Assert.Equal(millimeters, placed.HeightMillimeters);
+        Assert.Equal(0, placed.XMillimeters); Assert.Equal(0, placed.YMillimeters);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task SubMicrometerImportedGeometryFailsBeforePublication(bool fixedPage)
+    {
+        using var image = new Image<Rgb24>(1, 1); using var input = new MemoryStream(); image.SaveAsPng(input); input.Position = 0;
+        using var output = Sentinel();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new ImageToOfdConverter(new ImageToOfdOptions
+        { PixelsPerMillimeter = 3000, PageSize = fixedPage ? new OfdPageSize { WidthMillimeters = 30, HeightMillimeters = 30 } : null }).ConvertAsync(input, output));
+        AssertSentinel(output);
+        Assert.Throws<InvalidDataException>(() => new ImageToOfdConverter(new ImageToOfdOptions
+        { PageSize = new OfdPageSize { WidthMillimeters = 0.0001, HeightMillimeters = 10 } }));
+        // Fitting a very thin input must also validate its final, shrunken short axis.
+        using var thin = new Image<Rgb24>(2000, 1); using var thinInput = new MemoryStream(); thin.SaveAsPng(thinInput); thinInput.Position = 0;
+        await Assert.ThrowsAsync<InvalidDataException>(() => new ImageToOfdConverter(new ImageToOfdOptions
+        { PixelsPerMillimeter = 1, PageSize = new OfdPageSize { WidthMillimeters = 1, HeightMillimeters = 1 } }).ConvertAsync(thinInput, output));
+        AssertSentinel(output);
+    }
+
+    internal static async Task<byte[]> NestedSeal(bool blue = false)
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 10, HeightMillimeters = 10 };
+        page.Elements.Add(new OfdPathElement { WidthMillimeters = 10, HeightMillimeters = 10,
+            AbbreviatedData = "M 0 0 L 10 0 L 10 10 L 0 10 C", Fill = true, Stroke = false,
+            FillColor = blue ? new OfdColor(30, 80, 220) : new OfdColor(220, 40, 20) });
+        package.Pages.Add(page);
+        package.PreservedEntries["extensions/budget.bin"] = Enumerable.Range(0, 20000).Select(i => (byte)i).ToArray();
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, output); return output.ToArray();
+    }
+
+    internal static async Task<byte[]> WithSeals(byte[][] payloads, int stampsPerRecord = 1, bool invalidBoundary = false, int pageCount = 2)
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { Index = 0, WidthMillimeters = 120, HeightMillimeters = 80 });
+        if (pageCount == 2) package.Pages.Add(new OfdPage { Index = 1, WidthMillimeters = 120, HeightMillimeters = 80 });
+        using var outer = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, outer);
+        using (var zip = new ZipArchive(outer, ZipArchiveMode.Update, true))
+        {
+            var rootEntry = zip.GetEntry("OFD.xml")!; System.Xml.Linq.XDocument root;
+            using (var stream = rootEntry.Open()) root = System.Xml.Linq.XDocument.Load(stream);
+            var body = root.Descendants().Single(element => element.Name.LocalName == "DocBody");
+            body.Add(new System.Xml.Linq.XElement(body.Name.Namespace + "Signatures", "Doc_0/Signs/Signatures.xml"));
+            rootEntry.Delete(); using (var stream = zip.CreateEntry("OFD.xml").Open()) root.Save(stream);
+            System.Xml.Linq.XDocument document;
+            using (var stream = zip.GetEntry("Doc_0/Document.xml")!.Open()) document = System.Xml.Linq.XDocument.Load(stream);
+            var pageId = document.Descendants().First(element => element.Name.LocalName == "Page").Attribute("ID")!.Value;
+            void Add(string name, string text) { using var stream = zip.CreateEntry(name).Open(); stream.Write(System.Text.Encoding.UTF8.GetBytes(text)); }
+            var records = new List<string>(); var stored = new Dictionary<string, string>();
+            for (var index = 0; index < payloads.Length; index++)
+            {
+                var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(payloads[index]));
+                if (!stored.TryGetValue(hash, out var file))
+                {
+                    file = $"Seal-{stored.Count}.dat"; stored.Add(hash, file);
+                    using var stream = zip.CreateEntry("Doc_0/Signs/" + file).Open(); stream.Write(payloads[index]);
+                }
+                records.Add($"<Signature BaseLoc=\"S{index}/Signature.xml\"/>");
+                var stamps = string.Concat(Enumerable.Range(0, stampsPerRecord).Select(stamp =>
+                    $"<StampAnnot PageRef=\"{pageId}\" Boundary=\"{5 + (stamp % 6) * 18} {10 + (stamp / 6) * 18} {(invalidBoundary ? 0 : 10)} 10\"/>"));
+                Add($"Doc_0/Signs/S{index}/Signature.xml", $"<Signature><SignedInfo><Seal BaseLoc=\"../{file}\"/>{stamps}</SignedInfo></Signature>");
+            }
+            Add("Doc_0/Signs/Signatures.xml", "<Signatures>" + string.Concat(records) + "</Signatures>");
+        }
+        return outer.ToArray();
+    }
+
+    [Fact]
+    public async Task SharedNestedSealUsesOneExpansionBudgetAndOnePdfForm()
+    {
+        var seal = await NestedSeal(); var bytes = await WithSeals([seal, seal], stampsPerRecord: 12);
+        using var outer = new MemoryStream(bytes); var package = await new OfdReader().ReadAsync(outer);
+        using var nested = new MemoryStream(seal); var nestedPackage = await new OfdReader().ReadAsync(nested);
+        var budget = package.PreservedEntries.Values.Sum(data => (long)data.Length) + nestedPackage.PreservedEntries.Values.Sum(data => (long)data.Length);
+        outer.Position = 0; using var output = new MemoryStream();
+        await new OfdToImageConverter(new OfdToImageOptions { PixelsPerMillimeter = 2,
+            PackageLoadOptions = new() { MaxTotalUncompressedBytes = budget } }).ConvertAsync(outer, output);
+        using var image = Image.Load<Rgb24>(output.ToArray());
+        Assert.True(image[20, 30].R > 180); Assert.True(image[56, 66].R > 180);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter(new OfdToPdfOptions { PackageLoadOptions = new() { MaxTotalUncompressedBytes = budget } })
+            .ConvertPackageAsync(package, pdf, [0], CancellationToken.None, strictAppearanceBudgets: true, maximumSignatureAppearances: 1000);
+        var forms = System.Text.Encoding.ASCII.GetString(pdf.ToArray()).Split("/Subtype /Form", StringSplitOptions.None).Length - 1;
+        Assert.Equal(1, forms); // Repeated drawing also reuses the PDF form, rather than multiplying PDF state.
+    }
+
+    [Theory]
+    [InlineData("bytes")] [InlineData("entries")] [InlineData("pages")]
+    public async Task DistinctNestedSealsShareCumulativeExpansionBudgets(string kind)
+    {
+        var seal = await NestedSeal(); var bytes = await WithSeals([seal, await NestedSeal(true)]);
+        using var input = new MemoryStream(bytes); var package = await new OfdReader().ReadAsync(input);
+        using var nested = new MemoryStream(seal); var nestedPackage = await new OfdReader().ReadAsync(nested);
+        var load = new Ofdrw.Net.Packaging.Archive.OfdPackageLoadOptions();
+        if (kind == "bytes") load.MaxTotalUncompressedBytes = package.PreservedEntries.Values.Sum(data => (long)data.Length) + nestedPackage.PreservedEntries.Values.Sum(data => (long)data.Length);
+        if (kind == "entries") load.MaxEntryCount = package.PreservedEntries.Count + nestedPackage.PreservedEntries.Count;
+        if (kind == "pages") load.MaxPageCount = package.Pages.Count + nestedPackage.Pages.Count;
+        input.Position = 0; using var output = Sentinel();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions { PixelsPerMillimeter = 2, PackageLoadOptions = load }).ConvertAsync(input, output));
+        AssertSentinel(output);
+    }
+
+    [Fact]
+    public async Task SharedAsn1PayloadIsExtractedOnceAndInvalidCandidatesStillConsumeGlobalStampBudget()
+    {
+        var seal = await NestedSeal();
+        var wrapped = new byte[] { 4, 0x82, (byte)(seal.Length >> 8), (byte)seal.Length }.Concat(seal).ToArray();
+        var bytes = await WithSeals([wrapped, wrapped]); using var input = new MemoryStream(bytes);
+        var package = await new OfdReader().ReadAsync(input);
+        var appearances = OfdSignatureAppearanceReader.Read(package, new HashSet<string> { package.Pages[0].Id! }, 1000);
+        Assert.Equal(2, appearances.Count); Assert.Same(appearances[0].Data, appearances[1].Data); Assert.Equal(seal, appearances[0].Data);
+        var bad = await WithSeals([new byte[] { 1 }, new byte[] { 1 }], invalidBoundary: true);
+        using var invalid = new MemoryStream(bad); using var output = Sentinel();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
+        { PixelsPerMillimeter = 2, MaxSignatureAppearanceCount = 1 }).ConvertAsync(invalid, output)); AssertSentinel(output);
+    }
+
     [Fact]
     public async Task SaveReviewEvidence_WhenRequested()
     {
@@ -323,6 +453,14 @@ public sealed class ImageIoTests
             using var output = File.Create(Path.Combine(directory, $"export-{page + 1}.png"));
             await new OfdToImageConverter(new OfdToImageOptions { PixelsPerMillimeter = 4 }).ConvertAsync(input, output, page);
         }
+        // Appearance-only fixture: repeated nested OFD, no cryptographic-validity claim.
+        var repeated = await WithSeals([await NestedSeal()], stampsPerRecord: 6, pageCount: 1);
+        await File.WriteAllBytesAsync(Path.Combine(directory, "shared-seal.ofd"), repeated);
+        using (var input = new MemoryStream(repeated))
+        using (var pdf = File.Create(Path.Combine(directory, "shared-seal.pdf"))) await new OfdToPdfConverter().ConvertAsync(input, pdf);
+        using (var input = new MemoryStream(repeated))
+        using (var pngOutput = File.Create(Path.Combine(directory, "shared-seal.png")))
+            await new OfdToImageConverter(new OfdToImageOptions { PixelsPerMillimeter = 4 }).ConvertAsync(input, pngOutput);
         var png = ImageBytes(); var jpeg = ImageBytes(true);
         await File.WriteAllBytesAsync(Path.Combine(directory, "input.png"), png); await File.WriteAllBytesAsync(Path.Combine(directory, "input.jpg"), jpeg);
         using var a = new MemoryStream(png); using var b = new MemoryStream(jpeg); using var imported = new MemoryStream();

@@ -28,7 +28,7 @@ public sealed class OfdToImageConverter
         if (options is null) throw new ArgumentNullException(nameof(options));
         ImageIoBudget.Positive(options.PixelsPerMillimeter, nameof(options.PixelsPerMillimeter));
         if (!Enum.IsDefined(typeof(OfdImageFormat), options.Format) || options.JpegQuality < 1 || options.JpegQuality > 100 ||
-            options.MaxPixels <= 0 || options.MaxRasterWorkingBytes <= 0 || options.MaxIntermediatePdfBytes <= 0 || options.MaxOutputBytes <= 0)
+            options.MaxSignatureAppearanceCount <= 0 || options.MaxPixels <= 0 || options.MaxRasterWorkingBytes <= 0 || options.MaxIntermediatePdfBytes <= 0 || options.MaxOutputBytes <= 0)
             throw new ArgumentException("Encoding, quality and positive image budgets are required.", nameof(options));
         var load = options.PackageLoadOptions ?? throw new ArgumentException("Package load budgets are required.", nameof(options));
         if (load.MaxInputBytes <= 0 || load.MaxEntryCount <= 0 || load.MaxPageCount <= 0 || load.MaxEntryUncompressedBytes <= 0 ||
@@ -37,6 +37,7 @@ public sealed class OfdToImageConverter
         _options = new OfdToImageOptions
         {
             PixelsPerMillimeter = options.PixelsPerMillimeter, Format = options.Format, JpegQuality = options.JpegQuality,
+            MaxSignatureAppearanceCount = options.MaxSignatureAppearanceCount,
             MaxPixels = options.MaxPixels, MaxRasterWorkingBytes = options.MaxRasterWorkingBytes,
             MaxIntermediatePdfBytes = options.MaxIntermediatePdfBytes, MaxOutputBytes = options.MaxOutputBytes,
             PackageLoadOptions = new OfdPackageLoadOptions
@@ -77,7 +78,7 @@ public sealed class OfdToImageConverter
         {
             PackageLoadOptions = _options.PackageLoadOptions,
             MaxDecodedImagePixels = Math.Min(_options.MaxPixels, _options.MaxRasterWorkingBytes / 16)
-        }).ConvertPackageAsync(package, pdf, new[] { pageIndex }, cancellationToken, strictAppearanceBudgets: true).ConfigureAwait(false);
+        }).ConvertPackageAsync(package, pdf, new[] { pageIndex }, cancellationToken, strictAppearanceBudgets: true, maximumSignatureAppearances: _options.MaxSignatureAppearanceCount).ConfigureAwait(false);
         await pdf.CloseWriterAsync(cancellationToken).ConfigureAwait(false);
         // Use pixels-per-point directly: unlike the PDF import rasterizer there is no DPI clamp.
         using var reader = DocLib.Instance.GetDocReader(pdf.PathOnDisk, new PageDimensions(renderPpm * 25.4d / 72d));
