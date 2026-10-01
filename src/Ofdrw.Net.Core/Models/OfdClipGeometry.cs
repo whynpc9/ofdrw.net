@@ -31,6 +31,8 @@ internal static class OfdClipGeometry
                 {
                     if (shape.Name.Namespace != ns) continue;
                     if (shape.Name.LocalName != "Path") throw new NotSupportedException("Only path-based OFD clipping areas are supported.");
+                    var literal = string.Concat(shape.Element(shape.Name.Namespace + "AbbreviatedData")?.Nodes().OfType<XText>().Select(text => text.Value) ?? Enumerable.Empty<string>());
+                    if (string.IsNullOrWhiteSpace(literal)) throw new NotSupportedException("OFD clip path has no supported literal geometry.");
                     var boundary = Numbers(shape.Attribute("Boundary")?.Value);
                     var transform = Matrix(shape.Attribute("CTM")?.Value);
                     if (boundary.Length >= 2)
@@ -40,12 +42,13 @@ internal static class OfdClipGeometry
                     }
                     region.Paths.Add(new OfdPathElement
                     {
-                        AbbreviatedData = string.Concat(shape.Element(shape.Name.Namespace + "AbbreviatedData")?.Nodes().OfType<XText>().Select(text => text.Value) ?? Enumerable.Empty<string>()),
+                        AbbreviatedData = literal,
                         Transform = Multiply(areaTransform, transform), Stroke = false, Fill = true
                     });
                     region.EvenOdd |= string.Equals(shape.Attribute("Rule")?.Value, "Even-Odd", StringComparison.OrdinalIgnoreCase);
                 }
             }
+            if (region.Paths.Count == 0) throw new NotSupportedException("OFD clip has no supported path geometry.");
             regions.Add(region);
         }
         return regions;

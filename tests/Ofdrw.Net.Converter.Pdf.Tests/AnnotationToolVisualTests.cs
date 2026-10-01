@@ -175,6 +175,19 @@ public sealed class AnnotationToolVisualTests
     }
 
     [Theory]
+    [InlineData("<v:Path xmlns:v='urn:vendor'><v:AbbreviatedData>M 0 0 L 10 0 L 10 10 C</v:AbbreviatedData></v:Path>")]
+    [InlineData("<Path><AbbreviatedData><Note>M 0 0 L 10 0 L 10 10 C</Note></AbbreviatedData></Path>")]
+    public async Task OrdinaryClip_WithoutSupportedLiteralPathsFailsBothExports(string shape)
+    {
+        var source = new OfdDocumentPackage(); var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        page.Elements.Add(new OfdPathElement { XMillimeters = 10, YMillimeters = 10, WidthMillimeters = 20, HeightMillimeters = 20, Fill = true, Stroke = false, FillColor = new OfdColor(255,0,0), AbbreviatedData = "M 0 0 L 20 0 L 20 20 C",
+            ClippingXml = $"<Clips xmlns='{source.Options.Namespace}'><Clip><Area>{shape}</Area></Clip></Clips>" }); source.Pages.Add(page);
+        using var ofd = await Write(source); using var pdf = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd,pdf)); Assert.Equal(0,pdf.Length);
+        ofd.Position = 0; using var svg = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(ofd,svg)); Assert.Equal(0,svg.Length);
+        ofd.Position = 0; var saved = await new OfdReader().ReadAsync(ofd); Assert.Contains(shape.Split('>')[0].Substring(1), saved.Pages[0].Elements.OfType<OfdPathElement>().Single().ClippingXml!);
+    }
+
+    [Theory]
     [InlineData("Payload='private.bin'")]
     [InlineData("xmlns:v='urn:vendor' v:Font='private.bin'")]
     public async Task UnknownPrimitiveAttributes_KeepKnownArtworkAndBlockMix(string attribute)
