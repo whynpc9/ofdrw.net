@@ -6,7 +6,7 @@
 
 **Priority:** P0
 
-**Status:** in-progress (implementation, functional and Preview passed; PR review/CI pending)
+**Status:** implemented (local acceptance passed; stacked PR #10 remains open and unmerged)
 
 - [x] 可生成带边框/底色/对齐的表
 - [x] 跨页策略有文档，并有对应样例
@@ -15,8 +15,9 @@
 ## Execution
 
 - 起点：Issue01 PR #9 `5d71dc9e4fb3ccfa4dd028386436e58cd261bc39`；按用户授权以未合并依赖建立 stacked PR，base=`codex/public-flow-layout`，分支 `codex/public-tables`。
+- 交付：[PR #10](https://github.com/whynpc9/ofdrw.net/pull/10)，base=`codex/public-flow-layout`，源码复验基线 `31f0b75fc6b2846b6651591cf006834b91ae7f4e`。最新 head 的 CI 与复审状态以 PR 读回为准；当前首轮三个意见已修复，继续复审。
 - 公开契约与限制：[public-tables.md](../../../docs/public-tables.md)。
-- 验收和 review 状态：[2026-10-02 记录](../../../docs/validation/public-tables-2026-10-02.md)。完整视觉与最新 head review/CI 闭合前保持未完成。
+- 验收和 review 状态：[2026-10-02 记录](../../../docs/validation/public-tables-2026-10-02.md)。298/298独立回归、11包隔离消费与本次11页Preview复验通过；最终review闭合证据保留在PR。
 
 ## Parent
 
