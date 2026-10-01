@@ -1,0 +1,167 @@
+{
+  "client_date": "2026-10-02",
+  "timezone": "Asia/Shanghai",
+  "runtime_source_commit": "d906b25a001481a7d23929e3ceaab57075693e0b",
+  "example_commit": "927adad8f8d7c9e40e8f6f7df359a1cd6a9eba08",
+  "functional_tests": {
+    "status": "passed",
+    "total": 149,
+    "failed": 0,
+    "skipped": 0,
+    "independent_model": "gpt-6-sol low",
+    "design_review_model": "gpt-6-astra high"
+  },
+  "local_package_consumption": {
+    "status": "passed",
+    "package_count": 11,
+    "version": "0.1.0-issue03.3",
+    "published": false,
+    "repository_commit": "d906b25a001481a7d23929e3ceaab57075693e0b"
+  },
+  "native_default_text": {
+    "status": "passed",
+    "source_text_characters": 202,
+    "comparison": "exact concatenated w:t vs ordered TextCode; both modes"
+  },
+  "automatic_rendering": {
+    "status": "passed",
+    "pdf_pages": 29,
+    "svg_pages": 4
+  },
+  "png_visual_review": {
+    "status": "passed-for-listed-pages",
+    "method": "all pages in contact sheets, with standalone checks of changed overlay pages and SVG watermark renders",
+    "checked_files": [
+      "pages/baseline-default-1.png",
+      "pages/baseline-default-2.png",
+      "pages/baseline-native-1.png",
+      "pages/baseline-native-2.png",
+      "pages/clean-1.png",
+      "pages/clean-2.png",
+      "pages/cli-clean-1.png",
+      "pages/cli-clean-2.png",
+      "pages/cli-merged-1.png",
+      "pages/cli-merged-2.png",
+      "pages/cli-merged-3.png",
+      "pages/cli-merged-svg.png",
+      "pages/cli-mix-1.png",
+      "pages/cli-split-1.png",
+      "pages/cli-split-2.png",
+      "pages/cli-watermark-1.png",
+      "pages/cli-watermark-2.png",
+      "pages/cli-watermark-svg.png",
+      "pages/mix-1.png",
+      "pages/overlay-1.png",
+      "pages/rich-1.png",
+      "pages/rich-2.png",
+      "pages/signed-1.png",
+      "pages/signed-2.png",
+      "pages/split-1.png",
+      "pages/split-2.png",
+      "pages/watermark-1.png",
+      "pages/watermark-2.png",
+      "pages/watermark-merged-1.png",
+      "pages/watermark-merged-2.png",
+      "pages/watermark-merged-3.png",
+      "pages/watermark-merged-svg.png",
+      "pages/watermark-svg.png"
+    ],
+    "observations": [
+      "Chinese and proportional English readable; source styles remain local; table fills/borders and page break retained",
+      "Text/image watermarks visible after merge and PDF/SVG export",
+      "Green TOP LAYER covers the blue UNDER LAYER at identical coordinates; Mix retains first source page dimensions",
+      "Split pages show source page 2 then page 1",
+      "Clean output has no red signature square; body/template/annotation/attachment retained",
+      "OFD/PDF raw text checks find each added label once; clean preserves every non-signature entry byte"
+    ]
+  },
+  "macos_preview": {
+    "status": "not-completed",
+    "reason": "Mac locked; automatic unlock failed in Computer Use; user unlock requested",
+    "checked_pages": [],
+    "windows_opened": 0
+  },
+  "pr_review": {
+    "status": "pending",
+    "codex": "pending",
+    "cursor": "pending",
+    "ci": "pending"
+  },
+  "bundle": {
+    "path": "evidence.tar.zst",
+    "bytes": 35579185,
+    "sha256": "8f078ae8b75a9d2584c1c4e4ad58fb8eb901b56cf0079f52524d2f4db4fa65fa",
+    "extraction_readback": "passed all per-file size and SHA-256 checks"
+  },
+  "ofd_sizes": {
+    "baseline-default.ofd": {
+      "bytes": 11602862,
+      "ratio_to_native_baseline": 1.0
+    },
+    "baseline-native.ofd": {
+      "bytes": 11602862,
+      "ratio_to_native_baseline": 1.0
+    },
+    "clean.ofd": {
+      "bytes": 11604364,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "cli-clean.ofd": {
+      "bytes": 11604364,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "cli-merged.ofd": {
+      "bytes": 11604419,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "cli-mix.ofd": {
+      "bytes": 11602198,
+      "ratio_to_native_baseline": 0.9999
+    },
+    "cli-split.ofd": {
+      "bytes": 11604506,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "cli-text.ofd": {
+      "bytes": 11604585,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "cli-watermark.ofd": {
+      "bytes": 11605441,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "mix.ofd": {
+      "bytes": 11602229,
+      "ratio_to_native_baseline": 0.9999
+    },
+    "overlay.ofd": {
+      "bytes": 11600079,
+      "ratio_to_native_baseline": 0.9998
+    },
+    "rich.ofd": {
+      "bytes": 11604388,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "signed.ofd": {
+      "bytes": 11606365,
+      "ratio_to_native_baseline": 1.0003
+    },
+    "split.ofd": {
+      "bytes": 11604506,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "watermark-merged.ofd": {
+      "bytes": 11604274,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "watermark.ofd": {
+      "bytes": 11605419,
+      "ratio_to_native_baseline": 1.0002
+    }
+  },
+  "limitations": [
+    "Preview is mandatory and remains incomplete; PNG review does not replace it",
+    "Only listed synthetic samples/pages checked; unsupported raw objects/actions/reference-bearing extensions fail explicitly",
+    "Signature appearance, protected-entry digest integrity and cryptographic validity are separate; no production signing added"
+  ]
+}

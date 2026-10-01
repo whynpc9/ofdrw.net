@@ -5,9 +5,9 @@ Implementation: all four API/CLI paths are present. Complete acceptance remains 
 | Layer | Current result |
 | --- | --- |
 | Functional regression | 149/149 passed locally; Astra design/source review and Sol Low independent verification performed; later Astra findings fixed with dedicated regressions |
-| 11-package local consumption | Passed on implementation snapshot; final committed candidate readback pending |
+| 11-package local consumption | Passed: 11 packages at `0.1.0-issue03.3`, built from runtime commit `d906b25`; not published |
 | API/CLI automatic matrix | 15 public synthetic samples, 29 PDF pages, four rendered SVG watermark pages; body-byte preservation, selected text/page order, watermark text counts and file hashes checked |
-| PNG visual review | Final Noto render review pending; initial system-font pages were inspected, superseded by redistributable Noto evidence |
+| PNG visual review | Passed for the 29 PDF pages and 4 SVG renders listed in `acceptance.json`; contact sheets plus standalone checks of changed overlay pages/SVG |
 | macOS Preview | **Not completed**: Computer Use returned “The Mac is locked and automatic unlock could not unlock it.” User unlock requested; no Preview document window opened |
 | GitHub CI / Codex / Cursor | Pending PR creation and current-head readback |
 
@@ -24,4 +24,4 @@ python3 scripts/verify-document-tools-evidence.py docs/evidence/document-tools/f
 OFDRW_DOCUMENT_TOOLS_FONTS=docs/evidence/document-tools/files/fonts ./scripts/run-document-tools-e2e.sh
 ```
 
-Source baseline, environment, bundle hash, actual checked page list, sizes and PR head are recorded in `acceptance.json` after the final generation. Conclusions apply to these synthetic pages and the tested structural matrix. Unsupported raw objects/actions/resource references fail explicitly; this is not a claim of arbitrary complex OFD or Word fidelity, production signing, or target-reader interoperability.
+Runtime source `d906b25` passed 149/149 under independent Sol Low verification; example source is `927adad`. Source baseline, environment, bundle hash, actual checked page list and sizes are recorded in [acceptance.json](acceptance.json). The 33.9 MiB bundle was extracted into an independent temp directory and all 152 file sizes/hashes matched. Extraction needs `zstd` and approximately 1 GiB of memory; the expanded SVG/font evidence occupies about 864 MiB. The example embeds the same licensed face used by Native measurement through the public font model, retaining self-contained outputs without changing viewer-local CJK defaults. Conclusions apply to these synthetic pages and the tested structural matrix. Unsupported raw objects/actions/resource references fail explicitly; this is not a claim of arbitrary complex OFD or Word fidelity, production signing, or target-reader interoperability.

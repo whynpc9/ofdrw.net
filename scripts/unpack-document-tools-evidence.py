@@ -6,7 +6,7 @@ parser.add_argument('destination', type=pathlib.Path)
 parser.add_argument('--bundle', type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[1]/'docs/evidence/document-tools/evidence.tar.zst')
 args=parser.parse_args()
 root=args.destination.resolve(); root.mkdir(parents=True,exist_ok=True)
-with subprocess.Popen(['zstd','-d','-c',str(args.bundle)],stdout=subprocess.PIPE) as process:
+with subprocess.Popen(['zstd','-d','--long=30','-c',str(args.bundle)],stdout=subprocess.PIPE) as process:
     with tarfile.open(fileobj=process.stdout,mode='r|') as archive:
         for member in archive:
             path=pathlib.PurePosixPath(member.name)
