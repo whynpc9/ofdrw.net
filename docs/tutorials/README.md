@@ -67,7 +67,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 | 基础类型 `ST_*` | `ofdrw-core` `org.ofdrw.core.basicType` | 写入时直接格式化为字符串 |
 | `OFD.xml` / `Document.xml` / 页 | `ofdrw-core` `basicStructure` + `ofdrw-pkg` | `OfdPackageWriter` / `OfdReader` |
 | 图元 | `pageDescription`、`text`、`graph`、`image` | `OfdTextElement`、`OfdPathElement`、`OfdImageElement`、`OfdRawElement` |
-| 布局（段落、分页） | `ofdrw-layout` | `FlowDocument` / `Paragraph` / `Span` 公开流式段落与分页；DOCX Native 共享折行核心；表格仍只在 DOCX 内部路径 |
+| 布局（段落、分页） | `ofdrw-layout` | `FlowDocument` / `Paragraph` / `Span` 公开流式段落与分页；DOCX Native 共享折行核心；公开 `Table` / `Row` / `Cell` 支持水平合并、对齐、底色、边框、整行跨页，与 Native 共用行几何 |
 | 签章 | `ofdrw-sign`、`ofdrw-gm` | `Ofdrw.Net.Signatures`（摘要已实现，SES/SM2 为扩展点） |
 
 ## 刻意后置的内容
@@ -84,6 +84,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 ## 相关文档
 
 - [功能对照](../feature-parity.md)：本仓库已支持什么
+- [公开流式表格 API](../public-tables.md)：用 Table/Row/Cell 生成有限跨页表格
 - [公开流式布局 API](../flow-layout.md)：用 Paragraph/Span 生成多页 OFD
 - [能力路线图](../capability-roadmap.md)：后续 TODO、批次与无厂商时的加密/签章边界
 - [转换、编辑与资源约定](../conversion-contracts.md)：DOCX/PDF 转换行为，不是格式课

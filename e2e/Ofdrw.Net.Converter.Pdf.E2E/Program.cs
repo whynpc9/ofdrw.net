@@ -41,6 +41,35 @@ await using (var stream = File.OpenRead(flowPath))
 }
 Console.WriteLine($"[E2E] Public Flow package generated {flowPackage.Pages.Count} pages from Paragraph/Span.");
 
+var publicTables = new FlowDocument();
+publicTables.Options.PageHeightMillimeters = 60;
+publicTables.Options.MarginTopMillimeters = publicTables.Options.MarginBottomMillimeters = 8;
+var consumerTable = new Table();
+for (var i = 0; i < 5; i++)
+{
+    var row = new Row { MinimumHeightMillimeters = 18 };
+    row.Cells.Add(new Cell($"合并{i}") { ColumnSpan = 2, BackgroundColor = new OfdColor(220, 230, 250) });
+    var right = new Cell($"Right{i}") { VerticalAlignment = CellVerticalAlignment.Bottom };
+    right.Paragraphs[0].Alignment = ParagraphAlignment.Right;
+    row.Cells.Add(right); consumerTable.Rows.Add(row);
+}
+publicTables.Blocks.Add(consumerTable);
+var tablePackage = publicTables.Render();
+if (tablePackage.Pages.Count != 3) throw new InvalidOperationException("Public table did not paginate whole rows.");
+var tablePath = Path.Combine(outputDir, "public-tables.ofd");
+await using (var stream = File.Create(tablePath)) await new OfdPackageWriter().WriteAsync(tablePackage, stream);
+await using (var stream = File.OpenRead(tablePath))
+{
+    var parsed = await new OfdReader().ReadAsync(stream);
+    var expected = string.Concat(Enumerable.Range(0, 5).Select(i => $"合并{i}Right{i}"));
+    if (string.Concat(parsed.Pages.SelectMany(p => p.Elements).OfType<OfdTextElement>().Select(t => t.Text)) != expected)
+        throw new InvalidOperationException("Public table package lost or repeated text.");
+}
+await using (var input = File.OpenRead(tablePath))
+await using (var output = File.Create(Path.Combine(outputDir, "public-tables.pdf")))
+    await new OfdToPdfConverter().ConvertAsync(input, output);
+Console.WriteLine("[E2E] Public Table/Row/Cell consumed from nupkg: horizontal merge, alignment, shading, 3 whole-row pages.");
+
 // Used and unused name-only resources must survive unavailable/unsupported host
 // fonts. This exercises XFont initialization and the actual Arial draw fallback,
 // not just the optional DocumentFontContext registration.

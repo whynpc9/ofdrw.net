@@ -14,6 +14,11 @@ var outputDirectory = args.Length > 0 ? Path.GetFullPath(args[0]) :
 var docxPath = args.Length > 1 ? Path.GetFullPath(args[1]) :
     Path.GetFullPath("e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx");
 Directory.CreateDirectory(outputDirectory);
+if (args.Contains("--tables-only"))
+{
+    await PublicTableSamples.Run(outputDirectory, docxPath);
+    return;
+}
 
 var flow = new FlowDocument();
 flow.Options.MarginLeftMillimeters = 22;

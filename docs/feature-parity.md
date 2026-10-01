@@ -20,7 +20,7 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | OFD 核心模型 | `ofdrw-core` 提供较完整标准数据结构 | 页面、图层、模板、文本游程、路径、图片、字体、附件、自定义标签、保留未知 XML/包条目 | **部分支持**；常用读写闭环已具备，完整标准对象模型尚未覆盖 |
 | 容器与打包 | `ofdrw-pkg` | 标准入口/文档/页面/资源引用，附件、模板和扩展条目；ZIP 路径、数量、展开大小和压缩比限制 | **已支持** |
 | 文档读取 | `ofdrw-reader`，含反序列化及签章读取 | 多图层/模板/资源解析，未知内容无损保留，结构检查 | **部分支持**；当前以首个 `DocBody` 为主 |
-| 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层页面对象与 builder API；公开 `FlowDocument` / `Paragraph` / `Span` 支持中英段落、局部粗斜体/颜色、折行和自动分页，DOCX Native 共用行布局核心 | **部分支持**；公开表格、Canvas、Graphics2D、字体子集化和复杂 Word 版式仍未覆盖；[本次样例与验收](validation/flow-layout-2026-09-29.md)只证明所列页面 |
+| 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层页面对象与 builder API；公开 `FlowDocument` / `Paragraph` / `Span` 支持中英段落、局部粗斜体/颜色、折行和自动分页，DOCX Native 共用行布局核心 | **部分支持**；公开 Table/Row/Cell 支持固定列宽、水平合并、对齐、底色、边框和整行分页；Canvas、Graphics2D、字体子集化和复杂 Word 版式仍未覆盖；[本次样例与验收](validation/flow-layout-2026-09-29.md)只证明所列页面；[公开表格契约](public-tables.md)与[表格验收](validation/public-tables-2026-10-02.md)另列有限范围 |
 | 字体 | `ofdrw-font`，字体生成与字形处理 | 读取/写入嵌入字体，PDF 渲染字体解析及回退 | **部分支持**；已增加字体内容身份隔离和注册预算；仍缺少字体子集化、完整字形映射和专门字体工具链 |
 | OFD → PDF | `ofdrw-converter` 导出能力 | 模板、图层、字体、文本游程、矢量路径、图片、变换、颜色/透明度和裁剪原点 | **已支持（预览）**；仍需更大票据/印章语料库做保真度回归 |
 | PDF → OFD | `ofdrw-converter` 转换能力 | 逐页栅格化形成视觉层，同时将可提取文字按坐标写为透明 OFD `TextObject` 语义层 | **部分支持**；具备双层搜索/抽取能力，但尚未保留原始矢量、字体语义和阅读顺序标记，扫描件仍需 OCR |

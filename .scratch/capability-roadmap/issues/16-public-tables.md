@@ -6,11 +6,17 @@
 
 **Priority:** P0
 
-**Status:** blocked
+**Status:** in-progress (implementation and review/visual validation)
 
 - [ ] 可生成带边框/底色/对齐的表
 - [ ] 跨页策略有文档，并有对应样例
 - [ ] Preview 视觉验收通过（Native OFD → PDF → Preview）
+
+## Execution
+
+- 起点：Issue01 PR #9 `5d71dc9e4fb3ccfa4dd028386436e58cd261bc39`；按用户授权以未合并依赖建立 stacked PR，base=`codex/public-flow-layout`，分支 `codex/public-tables`。
+- 公开契约与限制：[public-tables.md](../../../docs/public-tables.md)。
+- 验收和 review 状态：[2026-10-02 记录](../../../docs/validation/public-tables-2026-10-02.md)。完整视觉与最新 head review/CI 闭合前保持未完成。
 
 ## Parent
 

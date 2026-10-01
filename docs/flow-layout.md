@@ -1,6 +1,6 @@
 # 公开流式布局 API
 
-`Ofdrw.Net.Layout` 的 `FlowDocument` 让调用方用段落和 Span 生成多页 OFD。页面尺寸、边距、缩进和字号都以毫米计；调用方不用设置 TextObject 坐标。首版支持文本段落、左/中/右对齐、局部粗体、斜体、颜色、折行、显式换页和自动分页。公开表格、Canvas、图片块与两端对齐仍属于后续票。
+`Ofdrw.Net.Layout` 的 `FlowDocument` 让调用方用段落和 Span 生成多页 OFD。页面尺寸、边距、缩进和字号都以毫米计；调用方不用设置 TextObject 坐标。首版支持文本段落、左/中/右对齐、局部粗体、斜体、颜色、折行、显式换页和自动分页。公开表格见 [Table/Row/Cell 教程](public-tables.md)；Canvas、图片块与两端对齐仍属于后续票。
 
 ```csharp
 using Ofdrw.Net.Core.Models;
