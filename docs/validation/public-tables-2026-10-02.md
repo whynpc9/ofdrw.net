@@ -80,3 +80,10 @@ PR #10 base=`codex/public-flow-layout`，首轮 head `5a17b853c2e14aba5e894a82fa
 | `baseline-native.pdf` | 117,510 | `16d06f1b9692408bdc3ae473836ec585dc70505c476d9729d6bce4526c2198ee` |
 | `baseline-default.ofd` | 15,288,610 | `03097d7540edff62caccae7ae01ca62ae9ce4ad5c9e572848035619fd1ee38ac` |
 | `baseline-default.pdf` | 117,510 | `cc6d6827fbf0cffb19af5612565c0ab7c2a625be45d9ad2e94e1ff2c6a92b62f` |
+
+## review2 最终诊断复验
+
+- 最终生产源码基线：`26f33e91d716c863bed09e5feb3c95a0a423b00f`；后续仅文档。Cursor复审指出非正gridSpan在Reader提前失败，仍需行/格位置；已修复，0/-1第二行定位和旧span0定位断言通过，格内分页降级测试也核对实际警告文本。
+- Sol Low独立全套 **300/300**（Core5、Packaging23、PDF52、Signatures4、DOCX137、CLI5、Layout74），0失败/跳过；主任务核对七份TRX。11包`0.1.0-tables.review2`隔离消费、manifest/bytes、CLI和Native/DualLayer通过。证据`artifacts/public-tables/review2/independent/validation.md`、`full-tests.log`、`seven-trx.log`、`test-results/`、`package-e2e.log`。
+- `31f0b75→26f33e9`生产代码只对非正gridSpan错误增加行/格位置，格式、测量、分页、绘制以及有效文档路径未变，Sol独立静态核对一致。没有受影响的正常页面。本轮没有重新生成/打开新Preview；**实际最新Preview范围仍为31f0b75生成的review1/current五份11页**，不冒称26f33e9再次查看。
+- 本票首轮三个意见和复审非正跨度意见均已修复、分别有回归；最新交付head的CI/线程/复审以[PR #10](https://github.com/whynpc9/ofdrw.net/pull/10)的读回为准，保持开放未合并。完整记录包含功能、自动渲染、PNG辅助与实际Preview各自范围。
