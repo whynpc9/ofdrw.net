@@ -189,13 +189,15 @@ internal static class OfdSignatureAppearanceReader
     private static void FindLargestAppearance(byte[] data, int offset, int length, int depth,
         ref ArraySegment<byte> best, CancellationToken token)
     {
-        if (depth > 32 || offset < 0 || length < 0 || offset + length > data.Length) return;
+        if (depth > 32) return;
+        ValidateSlice(data, offset, length);
         var end = offset + length;
         while (offset < end)
         {
             token.ThrowIfCancellationRequested();
             if (!TryReadTagAndLength(data, offset, end, out var tagClass, out var tagNumber,
-                out var constructed, out var contentOffset, out var contentLength, out var nextOffset)) return;
+                out var constructed, out var contentOffset, out var contentLength, out var nextOffset))
+                throw new InvalidDataException("Malformed ASN.1 signature appearance length or tag.");
             // Retain one candidate, rather than allocating/sorting a list proportional to every ASN.1 octet.
             if (tagClass == 0 && tagNumber == 4 && !constructed && contentLength > best.Count &&
                 IsSupportedAppearance(data, contentOffset, contentLength))
@@ -270,7 +272,7 @@ internal static class OfdSignatureAppearanceReader
         else
         {
             var lengthOctets = firstLength & 0x7f;
-            if (lengthOctets == 0 || lengthOctets > 4 || offset + lengthOctets > end)
+            if (lengthOctets == 0 || lengthOctets > 4 || lengthOctets > end - offset)
             {
                 return false;
             }
@@ -288,7 +290,7 @@ internal static class OfdSignatureAppearanceReader
         }
 
         contentOffset = offset;
-        if (contentLength < 0 || contentOffset + contentLength > end)
+        if (contentLength < 0 || contentOffset > end || contentLength > end - contentOffset)
         {
             return false;
         }
@@ -302,11 +304,18 @@ internal static class OfdSignatureAppearanceReader
         return IsSupportedAppearance(data, 0, data.Length);
     }
 
+    private static void ValidateSlice(byte[] data, int offset, int length)
+    {
+        if (offset < 0 || length < 0 || offset > data.Length || length > data.Length - offset)
+            throw new InvalidDataException("Signature appearance slice exceeds its encoded payload.");
+    }
+
     private static bool IsSupportedAppearance(
         byte[] data,
         int offset,
         int length)
     {
+        ValidateSlice(data, offset, length);
         return IsZip(data, offset, length) ||
             IsPng(data, offset, length) ||
             IsJpeg(data, offset, length) ||
