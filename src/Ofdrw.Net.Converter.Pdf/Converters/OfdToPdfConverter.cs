@@ -193,7 +193,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         CancellationToken cancellationToken, bool reusePayloads = false)
     {
         var forms = new Dictionary<OfdPage, XForm>();
-        var images = new Dictionary<byte[], XImage>();
+        using var bitmap = new SinglePayloadResource<XImage>(data =>
+        {
+            ValidateImage(data, maximumPixels);
+            return XImage.FromStream(() => new MemoryStream(data, writable: false));
+        });
         try
         {
             foreach (var appearance in appearances.Where(item => string.Equals(item.PageId, page.Id, StringComparison.OrdinalIgnoreCase)))
@@ -227,16 +231,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         using var image = XImage.FromStream(() => new MemoryStream(appearance.Data, writable: false));
                         graphics.DrawImage(image, target);
                     }
-                    else
-                    {
-                        if (!images.TryGetValue(appearance.Data, out var image))
-                        {
-                            ValidateImage(appearance.Data, maximumPixels);
-                            image = XImage.FromStream(() => new MemoryStream(appearance.Data, writable: false));
-                            images.Add(appearance.Data, image);
-                        }
-                        graphics.DrawImage(image, target);
-                    }
+                    else graphics.DrawImage(bitmap.Get(appearance.Data), target);
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (InvalidDataException) { throw; }
@@ -246,7 +241,6 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         finally
         {
             foreach (var form in forms.Values) form.Dispose();
-            foreach (var image in images.Values) image.Dispose();
         }
     }
 

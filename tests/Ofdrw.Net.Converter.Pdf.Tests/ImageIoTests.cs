@@ -432,10 +432,48 @@ public sealed class ImageIoTests
         var package = await new OfdReader().ReadAsync(input);
         var appearances = OfdSignatureAppearanceReader.Read(package, new HashSet<string> { package.Pages[0].Id! }, 1000);
         Assert.Equal(2, appearances.Count); Assert.Same(appearances[0].Data, appearances[1].Data); Assert.Equal(seal, appearances[0].Data);
-        var bad = await WithSeals([new byte[] { 1 }, new byte[] { 1 }], invalidBoundary: true);
+        var bad = await WithSeals([new byte[] { 4, 1, 0 }, new byte[] { 4, 1, 0 }], invalidBoundary: true);
         using var invalid = new MemoryStream(bad); using var output = Sentinel();
-        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
-        { PixelsPerMillimeter = 2, MaxSignatureAppearanceCount = 1 }).ConvertAsync(invalid, output)); AssertSentinel(output);
+        var rejection = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
+        { PixelsPerMillimeter = 2, MaxSignatureAppearanceCount = 1 }).ConvertAsync(invalid, output));
+        Assert.Contains("Selected signature appearance count", rejection.Message); AssertSentinel(output);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task ForgedAsn1LengthFailsBeforeAllocationAndPublication(bool supportedPrefix)
+    {
+        var bad = new byte[] { 4, 0x84, 0x7f, 0xff, 0xff, 0xff };
+        if (supportedPrefix) bad = bad.Concat(new byte[] { 0x50, 0x4b, 3, 4 }).ToArray();
+        using var input = new MemoryStream(await WithSeals([bad])); using var output = Sentinel();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
+        { PixelsPerMillimeter = 2 }).ConvertAsync(input, output));
+        Assert.Contains("ASN.1", error.Message); AssertSentinel(output);
+        // The existing public PDF path still ignores unreadable vendor appearance data.
+        input.Position = 0; using var legacy = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, legacy);
+        Assert.True(legacy.Length > 0);
+    }
+
+    [Fact]
+    public void BitmapResourceCacheEvictsBeforeAllocatingAndRetainsOnlyOneDecodedResource()
+    {
+        var live = 0; var peak = 0; var made = 0;
+        using var cache = new SinglePayloadResource<TrackedResource>(_ =>
+        {
+            live++; made++; peak = Math.Max(peak, live);
+            return new TrackedResource(() => live--);
+        });
+        var repeated = new byte[] { 1 };
+        var first = cache.Get(repeated); Assert.Same(first, cache.Get(repeated)); Assert.Equal(1, made);
+        for (var index = 0; index < 500; index++) cache.Get(new byte[] { (byte)index });
+        Assert.Equal(1, peak); Assert.Equal(1, live); Assert.Equal(501, made);
+        cache.Dispose(); Assert.Equal(0, live);
+    }
+
+    private sealed class TrackedResource(Action dispose) : IDisposable
+    {
+        private bool _disposed;
+        public void Dispose() { if (!_disposed) { _disposed = true; dispose(); } }
     }
 
     [Fact]
