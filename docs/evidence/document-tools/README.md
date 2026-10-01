@@ -4,12 +4,12 @@ Implementation: all four API/CLI paths are present. Complete acceptance remains 
 
 | Layer | Current result |
 | --- | --- |
-| Functional regression | 149/149 passed locally; Astra design/source review and Sol Low independent verification performed; later Astra findings fixed with dedicated regressions |
-| 11-package local consumption | Passed: 11 packages at `0.1.0-issue03.3`, built from runtime commit `d906b25`; not published |
-| API/CLI automatic matrix | 15 public synthetic samples, 29 PDF pages, four rendered SVG watermark pages; body-byte preservation, selected text/page order, watermark text counts and file hashes checked |
-| PNG visual review | Passed for the 29 PDF pages and 4 SVG renders listed in `acceptance.json`; contact sheets plus standalone checks of changed overlay pages/SVG |
+| Functional regression | 168/168 passed locally; Astra design/source review and Sol Low independent verification performed; later Astra findings fixed with dedicated regressions |
+| 11-package local consumption | Passed: 11 packages at `0.1.0-issue03.4`, built from runtime commit `d1e35c9`; not published |
+| API/CLI automatic matrix | 17 public synthetic samples, 31 PDF pages, six rendered SVG pages; body-byte preservation, selected text/page order, watermark text counts and file hashes checked |
+| PNG visual review | Passed for the 31 PDF pages and 6 SVG renders listed in `acceptance.json`; contact sheets plus standalone checks of changed overlay pages/SVG |
 | macOS Preview | **Not completed**: Computer Use returned “The Mac is locked and automatic unlock could not unlock it.” User unlock requested; no Preview document window opened |
-| GitHub CI / Codex / Cursor | Pending PR creation and current-head readback |
+| GitHub CI / Codex / Cursor | First `28113dd` Codex/Cursor Automation reviews complete; functional findings fixed and re-review pending. Preview thread remains unresolved |
 
 The sample is `generated-layout.docx` with only font declarations replaced by pinned Noto Sans CJK SC. Content includes proportional Latin, Chinese, bold/italic/color, table fills/borders, alignment and explicit page break. The source copy and Noto/OFL license are retained. The rich OFD adds a template, annotation, public attachment, shared font and deliberately noncryptographic signature appearance.
 
@@ -24,4 +24,6 @@ python3 scripts/verify-document-tools-evidence.py docs/evidence/document-tools/f
 OFDRW_DOCUMENT_TOOLS_FONTS=docs/evidence/document-tools/files/fonts ./scripts/run-document-tools-e2e.sh
 ```
 
-Runtime source `d906b25` passed 149/149 under independent Sol Low verification; example source is `927adad`. Source baseline, environment, bundle hash, actual checked page list and sizes are recorded in [acceptance.json](acceptance.json). The 33.9 MiB bundle was extracted into an independent temp directory and all 152 file sizes/hashes matched. Extraction needs `zstd` and approximately 1 GiB of memory; the expanded SVG/font evidence occupies about 864 MiB. The example embeds the same licensed face used by Native measurement through the public font model, retaining self-contained outputs without changing viewer-local CJK defaults. Conclusions apply to these synthetic pages and the tested structural matrix. Unsupported raw objects/actions/resource references fail explicitly; this is not a claim of arbitrary complex OFD or Word fidelity, production signing, or target-reader interoperability.
+Runtime source `d1e35c9` passed 168/168 under independent Sol Low verification; example source is `d1e35c9`. Source baseline, environment, bundle hash, actual checked page list and sizes are recorded in [acceptance.json](acceptance.json). The 34.1 MiB bundle was extracted into an independent temp directory and all 169 file sizes/hashes matched. Extraction needs `zstd` and approximately 1 GiB of memory; the expanded SVG/font evidence occupies about 944 MiB. The example embeds the same licensed face used by Native measurement through the public font model, retaining self-contained outputs without changing viewer-local CJK defaults. Conclusions apply to these synthetic pages and the tested structural matrix. Unsupported raw objects/actions/resource references fail explicitly; this is not a claim of arbitrary complex OFD or Word fidelity, production signing, or target-reader interoperability.
+
+Review-fix samples `annotation-clipped` and `annotation-clipped-mix` retain the exact sheared clip, 90-degree ROTATE glyphs, 1.5x SCALE glyphs and nested PageBlock content. Raster regressions additionally check original image-boundary clipping when image CTM exceeds its box. The native Preview gate remains uncompleted for all samples.
