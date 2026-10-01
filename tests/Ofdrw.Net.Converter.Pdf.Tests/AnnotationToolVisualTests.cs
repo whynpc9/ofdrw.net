@@ -111,6 +111,7 @@ public sealed class AnnotationToolVisualTests
     [InlineData("<TextObject Size='4'><Clips><Clip><Area><Path><AbbreviatedData>M 0 0<Note> L 9 9</Note></AbbreviatedData></Path></Area></Clip></Clips><TextCode X='0' Y='4'>OK</TextCode></TextObject>")]
     [InlineData("<PathObject DrawParam='12'><AbbreviatedData>M 0 0 L 1 0</AbbreviatedData></PathObject>")]
     [InlineData("<PathObject><FillColor Value='1 2 3' ColorSpace='12'/><AbbreviatedData>M 0 0 L 1 0</AbbreviatedData></PathObject>")]
+    [InlineData("<ImageObject ResourceID='MEDIA' ImageMask='123' Boundary='0 0 10 10'/>")]
     [InlineData("<PageBlock xmlns:v='urn:vendor' v:ID='private.bin'><TextObject Size='4'><TextCode X='0' Y='4'>OK</TextCode></TextObject></PageBlock>")]
     public async Task SameNamespaceUnknownAnnotationChildren_BlockPartialExportAndRemainPreserved(string artwork)
     {
@@ -124,6 +125,24 @@ public sealed class AnnotationToolVisualTests
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd, pdf));
         ofd.Position = 0; using var svg = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(ofd, svg));
+    }
+
+    [Fact]
+    public async Task HiddenGraphicUnits_KeepXmlAndMixButDoNotPaintOrExtract()
+    {
+        var source = await Annotated("<PathObject Name='hidden' Visible='false' Boundary='0 0 10 10' Fill='true' Stroke='false'><FillColor Value='255 0 0'/><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></PathObject><TextObject Name='hidden-text' Visible='false' Size='4'><TextCode X='0' Y='4'>HIDDEN</TextCode></TextObject>", "10 10 20 20");
+        Assert.DoesNotContain(source.Pages[0].AnnotationAppearances, element => element is OfdRawElement);
+        Assert.DoesNotContain("HIDDEN", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(source));
+        var mixed = OfdDocumentMixer.Mix([new(source, 0)]); Assert.DoesNotContain("HIDDEN", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(mixed));
+        foreach (var package in new[] { source, mixed })
+        {
+            using var ofd = await Write(package); using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+            using var doc = DocLib.Instance.GetDocReader(pdf.ToArray(), new PageDimensions(2d)); using var page = doc.GetPageReader(0);
+            Assert.InRange(Pixel(page.GetImage(), page.GetPageWidth(), 15, 15, 1), 245, 255);
+            ofd.Position = 0; using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(ofd, svg); Assert.DoesNotContain("HIDDEN", Encoding.UTF8.GetString(svg.ToArray()));
+        }
+        using var savedOfd = await Write(source); var saved = await new OfdReader().ReadAsync(savedOfd);
+        Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
     }
 
     [Theory]

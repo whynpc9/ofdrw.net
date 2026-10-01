@@ -51,6 +51,7 @@ for name, count in expected.items():
     subprocess.run(['pdftotext','-layout',str(pdf),str(directory/(name+'.pdf.txt'))],check=True)
     subprocess.run(['pdftotext','-raw',str(pdf),str(directory/(name+'.pdf-raw.txt'))],check=True)
     pdf_text = (directory/(name+'.pdf-raw.txt')).read_text()
+    assert 'HIDDEN' not in pdf_text, (name, 'hidden graphic unit exported')
     if name in ('watermark','watermark-merged','cli-watermark','cli-merged'): assert pdf_text.count('DRAFT 草稿') == 1
     if name in ('annotation-clipped','annotation-clipped-mix'):
         assert pdf_text.count('ROTATE') == 1 and pdf_text.count('SCALE') == 1
