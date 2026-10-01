@@ -95,3 +95,5 @@ PR #10 base=`codex/public-flow-layout`，首轮 head `5a17b853c2e14aba5e894a82fa
 Codex指出忽略目录中的产物无法从干净checkout复核。现将本会话实际文件按原字节保存在跟踪的 `docs/validation/public-tables-evidence/`：五份最新PDF、11张PNG和页码/哈希记录可直接查看；`products.tar.zst`含initial/fixed/review1/current原始DOCX/OFD/PDF/PNG及各次独立日志、最终七份300测试TRX和11包清单。长窗口压缩仅去除重复字节，未重写产物，展开约189MB、档案约16MB。
 
 `bundle-manifest.json`列出108原始文件的大小/SHA-256及档案自身哈希，`scripts/verify-public-table-evidence.py`已验证108原始文件和18直接副本，提取后OFD/PDF的原始哈希保持。初次打包出现macOS自动AppleDouble元数据，被校验器拒绝；以COPYFILE_DISABLE=1重建档案后完整通过，未放宽校验。CI增加zstd及档案完整性门。此轮仅证据、校验脚本和CI，不改生产转换/排版源码；实际Preview范围及300功能回归仍为上述基线。
+
+Sol Low对`8a2923c`从Git仅导出校验脚本和跟踪证据到干净临时目录，独立验证108+18文件；提取五组OFD/PDF与原产物原始哈希逐字节一致，七份最终TRX合计300/300。损坏PDF、缺失PNG、篡改档案和不安全路径四个负向均exit1拒绝。可复查记录/日志也已跟踪：[独立证据验证](public-tables-evidence/integrity-validation/validation.md)。未改变或重新生成页面，本轮无新的Preview检查。
