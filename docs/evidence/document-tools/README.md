@@ -4,12 +4,12 @@ Implementation: all four API/CLI paths are present. Complete acceptance remains 
 
 | Layer | Current result |
 | --- | --- |
-| Functional regression | 190/190 passed locally; Astra design/source review and Sol Low independent verification performed; later Astra findings fixed with dedicated regressions |
-| 11-package local consumption | Passed: 11 packages at `0.1.0-issue03.8`, built from runtime commit `7ac3057`; not published |
+| Functional regression | 203/203 passed locally; Astra design/source review and Sol Low independent verification performed; later Astra findings fixed with dedicated regressions |
+| 11-package local consumption | Passed: 11 packages at `0.1.0-issue03.10`, built from runtime commit `18baaaf`; not published |
 | API/CLI automatic matrix | 21 public synthetic samples, 36 PDF pages, ten rendered SVG pages; body-byte preservation, selected text/page order, watermark text counts and file hashes checked |
 | PNG visual review | Passed for the 36 PDF pages and 10 SVG renders listed in `acceptance.json`; contact sheets plus standalone checks of changed overlay pages/SVG |
 | macOS Preview | **Not completed**: Computer Use returned “The Mac is locked and automatic unlock could not unlock it.” User unlock requested; no Preview document window opened |
-| GitHub CI / Codex / Cursor | Fourth-round `3b7ccc2` Codex/Cursor Automation reviews complete; all five functional findings fixed and current-head re-review pending. Preview thread remains unresolved |
+| GitHub CI / Codex / Cursor | Fifth-round `4dec153` Codex/Cursor Automation reviews complete; same-namespace leaf/metadata/reference finding fixed and current-head re-review pending. Preview thread remains unresolved |
 
 The sample is `generated-layout.docx` with only font declarations replaced by pinned Noto Sans CJK SC. Content includes proportional Latin, Chinese, bold/italic/color, table fills/borders, alignment and explicit page break. The source copy and Noto/OFL license are retained. The rich OFD adds a template, annotation, public attachment, shared font and deliberately noncryptographic signature appearance.
 
@@ -24,7 +24,7 @@ python3 scripts/verify-document-tools-evidence.py docs/evidence/document-tools/f
 OFDRW_DOCUMENT_TOOLS_FONTS=docs/evidence/document-tools/files/fonts ./scripts/run-document-tools-e2e.sh
 ```
 
-Runtime source `7ac3057` passed 190/190 under independent Sol Low verification; example source is `7ac3057`. Source baseline, environment, bundle hash, actual checked page list and sizes are recorded in [acceptance.json](acceptance.json). The 35.1 MiB bundle was extracted into an independent temp directory and all 205 file sizes/hashes matched. Extraction needs `zstd` and approximately 1 GiB of memory; the expanded SVG/font evidence occupies about 1,130 MiB. The example embeds the same licensed face used by Native measurement through the public font model, retaining self-contained outputs without changing viewer-local CJK defaults. Conclusions apply to these synthetic pages and the tested structural matrix. Unsupported raw objects/actions/resource references fail explicitly; this is not a claim of arbitrary complex OFD or Word fidelity, production signing, or target-reader interoperability.
+Runtime source `18baaaf` passed 203/203 under independent Sol Low verification; example source is `18baaaf`. Source baseline, environment, bundle hash, actual checked page list and sizes are recorded in [acceptance.json](acceptance.json). The 35.1 MiB bundle was extracted into an independent temp directory and all 205 file sizes/hashes matched. Extraction needs `zstd` and approximately 1 GiB of memory; the expanded SVG/font evidence occupies about 1,130 MiB. The example embeds the same licensed face used by Native measurement through the public font model, retaining self-contained outputs without changing viewer-local CJK defaults. Conclusions apply to these synthetic pages and the tested structural matrix. Unsupported raw objects/actions/resource references fail explicitly; this is not a claim of arbitrary complex OFD or Word fidelity, production signing, or target-reader interoperability.
 
 Review-fix samples `annotation-clipped` and `annotation-clipped-mix` retain the exact sheared clip, 90-degree ROTATE glyphs, 1.5x SCALE glyphs and nested PageBlock content. Raster regressions additionally check original image-boundary clipping when image CTM exceeds its box. The native Preview gate remains uncompleted for all samples.
 
@@ -33,3 +33,7 @@ Second-round fixes limit all mutating XML scans to owned declarations, qualified
 Third-round namespace regressions check complete XName document/page allowlists and all annotation index/container/primitive boundaries. Vendor content remains preserved, is not exposed by extract-text, and is rejected by Mix. 39 existing page renders match the inspected prior bytes. Four changed SVG renders were directly reviewed in a contact sheet; the extra metadata fixture adds two directly reviewed PDF pages and one SVG render.
 
 The `annotation-metadata` fixture retains the same visible NOTE artwork as `rich` despite an outer vendor style attribute; ordinary PDF/SVG export remains complete, while Mix rejects unmodeled metadata. Fourth-round regressions cover vendor TextCode/Clips subtrees, standard/vendor Clips sibling ownership, inherited graphic-unit ordering, independently mutable watermark payloads with cumulative byte budgets, and explicit rejection of foreign object descendants during flattening. Ordinary package roundtrips continue preserving those extensions.
+
+The final XML closure tests distinguish unsupported leaf children and drawing references from harmless metadata. Unknown attributes retain original annotation XML and standard artwork but block Mix; the only foreign drawing attribute allowed in strict Mix is the exact generated faux-italic hint. PageBlock wrappers accept only unqualified ID. Area CTM remains supported; image Substitution references fail explicitly. Mix uses stricter attribute closure without removing the existing Merge compatibility for unqualified metadata.
+
+R6 regenerated all 46 page renders from `18baaaf`; every SHA-256 matches the actual R5 inspected/verified pages. All final package/test/matrix logs refer to the same committed source.

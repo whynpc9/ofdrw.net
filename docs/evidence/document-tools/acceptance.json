@@ -1,11 +1,11 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "7ac30571c33d6e0654719afe1f88a6f049a27f4d",
-  "example_commit": "7ac30571c33d6e0654719afe1f88a6f049a27f4d",
+  "runtime_source_commit": "18baaaf3278fccaf8f6dfff40778adbd40ba6f96",
+  "example_commit": "18baaaf3278fccaf8f6dfff40778adbd40ba6f96",
   "functional_tests": {
     "status": "passed",
-    "total": 190,
+    "total": 203,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
@@ -14,9 +14,9 @@
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.8",
+    "version": "0.1.0-issue03.10",
     "published": false,
-    "repository_commit": "7ac30571c33d6e0654719afe1f88a6f049a27f4d"
+    "repository_commit": "18baaaf3278fccaf8f6dfff40778adbd40ba6f96"
   },
   "native_default_text": {
     "status": "passed",
@@ -30,7 +30,7 @@
   },
   "png_visual_review": {
     "status": "passed-for-listed-pages",
-    "method": "39 previous renders match inspected R3/R4 bytes; all 4 changed SVG renders directly checked in a four-page contact sheet; new annotation-metadata two PDF pages and one SVG directly checked",
+    "method": "All 46 current-source renders SHA-256 identical to R5 inspected/verified pages; R5 included direct four changed SVG contact-sheet and three metadata fixture page checks",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -91,7 +91,8 @@
       "Generated FauxItalic factor and identity single-italic control are pixel-identical; same unmarked user CTM retains deliberate extra shear",
       "Undeclared/vendor same-name annotation/resource/template XML remains byte-preserved",
       "R4 namespace guards preserve the exact 43 inspected render bytes while rejecting vendor declarations/annotation nodes",
-      "R5 outer vendor Appearance metadata retains standard NOTE artwork; unsupported foreign descendants block flattening without changing ordinary roundtrip extension bytes"
+      "R5 outer vendor Appearance metadata retains standard NOTE artwork; unsupported foreign descendants block flattening without changing ordinary roundtrip extension bytes",
+      "R6 child/leaf/attribute closure: known drawing survives unknown metadata, unsupported same-namespace child content and drawing references fail explicitly, exact current 46 render bytes unchanged"
     ]
   },
   "macos_preview": {
@@ -101,16 +102,16 @@
     "windows_opened": 0
   },
   "pr_review": {
-    "status": "fourth-round functional findings fixed; latest-head re-review pending; Preview remains open",
-    "fourth_review_head": "3b7ccc2ae4664f36030eedfae87c3ff4f1728a75",
-    "codex": "five functional threads fixed with regressions; Preview unresolved",
-    "cursor": "vendor TextCode/Clips findings fixed; current-head review pending",
-    "ci": "previous head six checks successful; final head pending"
+    "status": "fifth-round same-namespace leaf finding and bounded attribute/reference gaps fixed; current-head re-review pending; Preview open",
+    "fifth_review_head": "4dec1532242106c5062bd0f334a4a8c82f1b059b",
+    "codex": "4dec153 no new issues; latest head pending",
+    "cursor": "4dec153 same-namespace TextCode/AbbreviatedData issue fixed with export/Mix/roundtrip regressions",
+    "ci": "4dec153 all six successful; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 36804899,
-    "sha256": "33f12298efb576ef5f3c0a774108d18b0bc8f7972e7c078c0fd838fd5b0c965d",
+    "bytes": 36804846,
+    "sha256": "0c3dc7fb0ff8bff25464fd932ad408760e0a2782a4f85649289eac27853f5ba1",
     "extraction_readback": "passed all per-file size and SHA-256 checks"
   },
   "ofd_sizes": {
