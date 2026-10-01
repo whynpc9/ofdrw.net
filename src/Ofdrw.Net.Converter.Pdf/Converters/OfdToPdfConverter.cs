@@ -47,14 +47,23 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
         var reader = new OfdReader();
         var package = await reader.ReadAsync(ofdInput, _options.PackageLoadOptions, cancellationToken).ConfigureAwait(false);
-        var fonts = new DocumentFontContext(package.Fonts);
-        var signatureAppearances = await PrepareSignatureAppearancesAsync(
-                package,
-                cancellationToken)
-            .ConfigureAwait(false);
+        await ConvertPackageAsync(package, pdfOutput, pages, cancellationToken).ConfigureAwait(false);
+    }
 
+    // Shared rendering implementation; image export has already loaded and budgeted its package.
+    internal async Task ConvertPackageAsync(OfdDocumentPackage package, Stream pdfOutput,
+        IReadOnlyList<int>? pages, CancellationToken cancellationToken, bool strictAppearanceBudgets = false)
+    {
         var orderedPages = package.Pages.OrderBy(x => x.Index).ToList();
         var selected = OfdPageSelection.Normalize(orderedPages.Count, pages);
+        var selectedIds = strictAppearanceBudgets
+            ? new HashSet<string>(selected.Select(index => orderedPages[index].Id ?? string.Empty), StringComparer.OrdinalIgnoreCase)
+            : null;
+        var fonts = new DocumentFontContext(package.Fonts);
+        var signatureAppearances = await PrepareSignatureAppearancesAsync(
+                package, selectedIds, strictAppearanceBudgets,
+                cancellationToken)
+            .ConfigureAwait(false);
 
         using var document = new PdfDocument();
         foreach (var selectedIndex in selected)
@@ -83,19 +92,19 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         await pdfOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<IReadOnlyList<PreparedSignatureAppearance>>
+    private async Task<IReadOnlyList<PreparedSignatureAppearance>>
         PrepareSignatureAppearancesAsync(
-            OfdDocumentPackage package,
+            OfdDocumentPackage package, HashSet<string>? selectedIds, bool strictAppearanceBudgets,
             CancellationToken cancellationToken)
     {
         var result = new List<PreparedSignatureAppearance>();
-        foreach (var appearance in OfdSignatureAppearanceReader.Read(package))
+        foreach (var appearance in OfdSignatureAppearanceReader.Read(package, selectedIds))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (IsZip(appearance.Data))
             {
                 var appearancePage = await ReadAppearanceOfdPackageAsync(
-                        appearance.Data,
+                        appearance.Data, strictAppearanceBudgets,
                         cancellationToken)
                     .ConfigureAwait(false);
                 if (appearancePage is not null)
@@ -118,8 +127,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         return result;
     }
 
-    private static async Task<OfdDocumentPackage?> ReadAppearanceOfdPackageAsync(
-        byte[] ofdData,
+    private async Task<OfdDocumentPackage?> ReadAppearanceOfdPackageAsync(
+        byte[] ofdData, bool strictAppearanceBudgets,
         CancellationToken cancellationToken)
     {
         try
@@ -127,7 +136,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             var reader = new OfdReader();
             using var input = new MemoryStream(ofdData, writable: false);
             var package = await reader
-                .ReadAsync(input, cancellationToken)
+                .ReadAsync(input, strictAppearanceBudgets ? _options.PackageLoadOptions : new Ofdrw.Net.Packaging.Archive.OfdPackageLoadOptions(), cancellationToken)
                 .ConfigureAwait(false);
             var pageModel = package.Pages
                 .OrderBy(page => page.Index)
@@ -142,6 +151,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             return package;
         }
         catch (OperationCanceledException) { throw; }
+        catch (InvalidDataException) when (strictAppearanceBudgets) { throw; }
         catch
         {
             return null;

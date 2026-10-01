@@ -101,3 +101,7 @@ page.Elements.Add(new OfdImageElement
 - **CTM 单位正方形假设失败**。有的生成器 CTM 已含平移；再叠加 Boundary 原点时不要重复平移。
 - **把 JPEG 标成 PNG**。`Format` 与真实编码不一致时部分阅读器解码失败。
 - **删除页面后留下孤儿图片**。本仓库写包时会修剪仅被删页引用的图像；手工改 ZIP 容易漏。
+
+## 图片进出 API
+
+按页导出 PNG/JPEG，以及一图一页等比居中导入，见 [转换实操](15-image-conversion.md)。

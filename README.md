@@ -34,6 +34,7 @@ See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk 
 - Direct DOCX/OpenXML to native OFD text conversion without PDF, plus an optional dual-layer mode that combines rendered pages with the original DOCX text.
 - OFD to PDF conversion with templates, layers, embedded fonts, positioned text runs, vector paths, images, crop origins, image transforms, opacity, and path clipping.
 - OFD page to self-contained SVG conversion with template vectors, text, colors, transforms, and embedded images.
+- Source capability: OFD page to PNG/JPEG at a chosen ppm, and PNG/JPEG to centered OFD pages; see [image conversion](docs/tutorials/15-image-conversion.md) for APIs, CLI and budgets.
 - OFD signature description generation through a pluggable signed-value provider.
 - SM3, SHA-1, and SHA-256 protected-entry digest verification plus pluggable `SignedValue.dat` verification.
 - Command-line conversion, extraction, editing, SVG, and signature verification tools packaged as `Ofdrw.Net.Cli`.

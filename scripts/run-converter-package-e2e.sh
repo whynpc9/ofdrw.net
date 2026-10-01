@@ -72,6 +72,8 @@ dotnet build "$CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSIO
 dotnet tool install Ofdrw.Net.Cli --tool-path "$TASK_DIR/tools" --version "$VERSION" --configfile "$TASK_DIR/NuGet.Config"
 "$TASK_DIR/tools/ofdrw" docx-to-ofd \
   "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx" "$RESULT_DIR/cli-native.ofd"
+"$TASK_DIR/tools/ofdrw" ofd-to-image "$RESULT_DIR/cli-native.ofd" "$RESULT_DIR/cli-image.png" --pages 1 --ppm 2
+"$TASK_DIR/tools/ofdrw" image-to-ofd "$RESULT_DIR/cli-image.png" "$RESULT_DIR/cli-image.ofd" --ppm 2 --page-width 220 --page-height 307
 OFDRW_REPO_ROOT="$ROOT_DIR" OFDRW_E2E_OUTPUT_DIR="$RESULT_DIR" dotnet run \
   --project "$CONSUMER" -c Release --no-build --no-restore
 python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION" --verify-manifest

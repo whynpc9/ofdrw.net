@@ -26,14 +26,15 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | PDF → OFD | `ofdrw-converter` 转换能力 | 逐页栅格化形成视觉层，同时将可提取文字按坐标写为透明 OFD `TextObject` 语义层 | **部分支持**；具备双层搜索/抽取能力，但尚未保留原始矢量、字体语义和阅读顺序标记，扫描件仍需 OCR |
 | DOCX → PDF / OFD | 上游不提供 Office 文档渲染 | 默认直接将 DOCX/OpenXML 原文写为原生 OFD `TextObject`，完全跳过 PDF；可选 `DualLayer` 使用 Word/LibreOffice/BuiltIn 页面图像，并继续以 OpenXML 原文作为语义层 | **已支持（预览）**；原文可直接抽取，Native 支持常见段落、表格、内嵌图片与按页页眉页脚；附属正文带标签追加，DualLayer 按实际页定位原文，不承诺复杂 Word 版式和浮动对象保真 |
 | OFD → SVG | 上游推荐/生态具备 SVG 预览方案 | 自包含单页 SVG，支持模板、路径、文本、颜色、变换和内嵌图片 | **已支持（预览）** |
-| 图片/HTML 等导出 | 转换模块覆盖图片、文本、PDF 等方向 | SVG 可再栅格化；无直接 PNG/JPEG/HTML API | **未完整支持** |
+| OFD ↔ PNG/JPEG | 图片导出与一图一页导入 | `Converter.Pdf` 的 `OfdToImageConverter` / `ImageToOfdConverter` 及 CLI；指定零基页/ppm导出、PNG默认/JPEG、自然或固定页等比居中导入、有界暂存 | **已实现（本票源码）**；PDF/PDFium 预览保真边界，视觉门状态见 [Issue 02 验证记录](validation/issue02/README.md) |
+| HTML 导出 | 转换模块覆盖 HTML 方向 | 无直接 HTML API | **未支持** |
 | 文本提取 | 上游提供文字抽取 | 页面和模板文本提取，API 与 CLI | **已支持** |
 | 文档工具 | `ofdrw-tool` 提供合并、裁剪、重组、混合等 | 页重排、删除、裁剪、自包含合并，API 与 CLI | **部分支持**；已补删除资源清理、合并资源映射和重写后的失效签名处理；仍缺少完整拆分、混合、水印和附件管理 API |
 | 数字签名 | `ofdrw-sign` | 标准签名目录/引用生成、签名值 provider、签名值 verifier | **扩展点** |
 | 摘要校验 | 上游签章验证链路 | 内置 SM3、SHA-1、SHA-256，逐引用恒定时间比较，篡改检测 | **已支持** |
 | SES/SM2 电子签章 | `ofdrw-sign` + `ofdrw-gm` | 可注册厂商 `IOfdSignedValueVerifier` / `IOfdSignatureProvider` | **扩展点**；无内置 SES/SM2 实现和印章外观验证 |
 | GM/T 0099 密码应用 | `ofdrw-crypto` | 能力标志明确返回不支持 | **未支持** |
-| CLI/工具分发 | `ofdrw-tool` 及各模块工具 | 转换、SVG、文本提取、重排、合并、签名验证的 .NET tool | **已支持** |
+| CLI/工具分发 | `ofdrw-tool` 及各模块工具 | 转换、SVG、PNG/JPEG图片进出、文本提取、重排、合并、签名验证的 .NET tool | **已支持** |
 | Graphics2D 兼容层 | `ofdrw-graphics2d` | 无对应 System.Drawing/SkiaSharp 绘图适配层 | **未支持** |
 | 兼容性与发布 | Maven 多模块、长期演进 | `netstandard2.0/2.1` SDK + `net10.0` CLI，NuGet 包消费 E2E | **部分支持**；仓库采用 MIT 并附第三方声明；发布候选需通过同一批 NuGet 包的消费验证 |
 

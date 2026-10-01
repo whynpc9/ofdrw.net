@@ -1,0 +1,41 @@
+# Issue 02 图片进出验证记录
+
+2026-10-02（Asia/Shanghai）。基线 `origin/main` = `be8b74b3cbd699732ec0638189d14037e052a770`。只交付 Issue 02，不依赖 01/16，不合并 PR 或发布 NuGet。
+
+API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成。GPT-6 Sol Low 子代理独立验证发现并复验了 APNG、极低 ppm 和嵌套签章预算修复。
+
+| 验证层 | 当前结果 | 实际范围 |
+| --- | --- | --- |
+| 功能回归 | 184/184 通过 | Core 5、Packaging 23、PDF/Image 76、Signatures 4、DOCX 49、CLI 27 |
+| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.local`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
+| 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
+| PNG/JPEG 目视复查 | 进行中 | 完成的实际页面和限制见下方记录 |
+| macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
+| PR CI / Codex / Cursor | 待到齐 | PR 创建后补充最新 head、检查和线程状态 |
+
+需要的 Preview 路径：本次 `source.ofd → source.pdf` 第 1–2 页、`input.png/input.jpg → imported.ofd → imported.pdf` 第 1–2 页；本次 `generated-layout.docx → 显式 Native/default OFD → OFD导出PDF` 各第 1–2 页。必须重新打开实际 PDF，检查后关闭相应窗口。无法访问 GUI 前，本票保持未完成。
+
+## 功能边界
+
+- API零基单页、CLI一基单个正整数；默认PNG，JPEG显式选择，格式不依赖后缀。非整数ppm、低于72DPI/高于300DPI、极小页面ceil尺寸有回归。
+- 双页分别有文字、四象限图片和不同颜色路径，断言每项区域内容及白底，不以单页非空推断正确。
+- PNG/JPEG一图一页、顺序、自然尺寸、固定页等比缩小/居中、不放大、原始字节/资源去重和导出后的四象限位置有回归。
+- 坏格式、截断PNG、APNG、非法页号、NaN/Infinity、输入/累计/像素/工作缓冲/中间PDF/条目/输出超限、取消、已有目标保持有回归。APNG在解码前扫描编码容器拒绝。
+- Stream最后发布I/O/取消无法回滚，CLI提供同文件系统原子替换。解码/native阶段仅前后检查取消。预算与保真边界见[教程](../../tutorials/15-image-conversion.md)。
+- 图片导出签章只加载选中页外观，嵌套OFD继承调用方预算；原公开OFD→PDF默认行为保留。
+
+## 可复查产物
+
+将本次产物及 manifest 持久保留在本目录；压缩包、manifest和逐页检查记录随PR提交。读者无需访问被忽略的 `artifacts/`。
+
+源码、环境、哈希、字节数、样例、模式与检查范围由 manifest 记录。Native/default基准来自11包本地消费本次生成的OFD；PDF由这些OFD导出，未使用直接DOCX→PDF代替。
+
+复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.local`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
+
+## 实际页面记录
+
+- 新图片样例导出PNG第1–2页：已查看本次图片，中文“样例”、英文/粗体/局部紫色斜体、四象限图片和红/蓝路径分别可见；无全黑、乱码、重影、越界或异常空白。范围为80.3×60.4 mm两页。
+- 图片导入再导出PNG第1–2页：已查看本次图片，PNG/JPEG四象限保持顺序与原始像素方向；40×20 mm图在60×50 mm页中央，左右10 mm、上下15 mm；背景和图形分界正常。
+- JPEG导出与Native/default基准逐页检查待补；macOS Preview全部未完成。
+
+未据此推断任意复杂Word/OFD保真，也不宣称厂商阅读器互认。
