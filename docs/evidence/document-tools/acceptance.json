@@ -1,11 +1,11 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "881feed905fa36ac922bfeae019f8133ea65c9b7",
-  "example_commit": "881feed905fa36ac922bfeae019f8133ea65c9b7",
+  "runtime_source_commit": "a4425bb0ed4e4ee89d2c975039293db5037da044",
+  "example_commit": "a4425bb0ed4e4ee89d2c975039293db5037da044",
   "functional_tests": {
     "status": "passed",
-    "total": 174,
+    "total": 181,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
@@ -14,9 +14,9 @@
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.5",
+    "version": "0.1.0-issue03.6",
     "published": false,
-    "repository_commit": "881feed905fa36ac922bfeae019f8133ea65c9b7"
+    "repository_commit": "a4425bb0ed4e4ee89d2c975039293db5037da044"
   },
   "native_default_text": {
     "status": "passed",
@@ -30,7 +30,7 @@
   },
   "png_visual_review": {
     "status": "passed-for-listed-pages",
-    "method": "all 43 renders in contact sheets; standalone exact clipping/rotation and single-slant control cases",
+    "method": "R4 generated all 43 renders; each SHA-256 matches the visually inspected R3 page; R3 had all-page contact-sheet and standalone clipping/italic checks",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -86,7 +86,8 @@
       "Appearance clip and original image Boundary retain exact sheared polygons; nested PageBlock drawing and glyph scale/rotation survive Mix",
       "Unknown drawing prevents a partial successful export; unknown metadata remains roundtrip compatible; styled no-id fonts retain correct bytes",
       "Generated FauxItalic factor and identity single-italic control are pixel-identical; same unmarked user CTM retains deliberate extra shear",
-      "Undeclared/vendor same-name annotation/resource/template XML remains byte-preserved"
+      "Undeclared/vendor same-name annotation/resource/template XML remains byte-preserved",
+      "R4 namespace guards preserve the exact 43 inspected render bytes while rejecting vendor declarations/annotation nodes"
     ]
   },
   "macos_preview": {
@@ -96,16 +97,16 @@
     "windows_opened": 0
   },
   "pr_review": {
-    "status": "second-round fixes awaiting current-head re-review; Preview remains open",
-    "second_review_head": "6032b6066f079cd464e95587547b15b3b1fbd0bb",
-    "codex": "annotation pruning ownership finding fixed; Preview unresolved",
-    "cursor": "double faux-italic finding fixed; automation re-review pending",
-    "ci": "6032b60 all 6 checks successful; new head pending"
+    "status": "third-round namespace fixes awaiting current-head re-review; Preview remains open",
+    "third_review_head": "a46da620aabf8bf74802f222e78d28f255f8987a",
+    "codex": "two full-XName findings fixed; Preview unresolved",
+    "cursor": "a46da62 review found no new functional defects; re-review new head pending",
+    "ci": "a46da62 all 6 checks successful; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 35883747,
-    "sha256": "d284b5eaddee9389f4d0c893caeb16398a8e11939440ee70e793ec80c34487b3",
+    "bytes": 35884386,
+    "sha256": "afaacd8be41457f98f4bb6e62a1262c6d321ee17a6df26dc0830dd85bb296f11",
     "extraction_readback": "passed all per-file size and SHA-256 checks"
   },
   "ofd_sizes": {
