@@ -4,6 +4,8 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
+using System.Threading;
+using System.IO;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Converter.Pdf.Internal;
@@ -11,7 +13,8 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 internal static class OfdSignatureAppearanceReader
 {
     public static IReadOnlyList<OfdSignatureAppearance> Read(
-        OfdDocumentPackage package, HashSet<string>? selectedPageIds = null)
+        OfdDocumentPackage package, HashSet<string>? selectedPageIds = null,
+        int? maximumAppearances = null, CancellationToken cancellationToken = default)
     {
         if (!package.PreservedEntries.TryGetValue("OFD.xml", out var ofdBytes))
         {
@@ -20,6 +23,7 @@ internal static class OfdSignatureAppearanceReader
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var ofd = ParseXml(ofdBytes);
             var signatureLists = ofd
                 .Descendants()
@@ -29,13 +33,18 @@ internal static class OfdSignatureAppearanceReader
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             var result = new List<OfdSignatureAppearance>();
+            var payloadCache = maximumAppearances.HasValue ? new Dictionary<byte[], byte[]>() : null;
+            var candidates = 0;
             foreach (var listPath in signatureLists)
             {
-                ReadSignatureList(package.PreservedEntries, listPath, result, selectedPageIds);
+                ReadSignatureList(package.PreservedEntries, listPath, result, selectedPageIds,
+                    maximumAppearances, ref candidates, payloadCache, cancellationToken);
             }
 
             return result;
         }
+        catch (OperationCanceledException) { throw; }
+        catch (InvalidDataException) when (maximumAppearances.HasValue) { throw; }
         catch
         {
             // A malformed or unsupported signature must not prevent the document
@@ -47,7 +56,8 @@ internal static class OfdSignatureAppearanceReader
     private static void ReadSignatureList(
         IReadOnlyDictionary<string, byte[]> entries,
         string listPath,
-        ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds)
+        ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds,
+        int? maximumAppearances, ref int candidates, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token)
     {
         if (!entries.TryGetValue(listPath, out var listBytes))
         {
@@ -66,14 +76,16 @@ internal static class OfdSignatureAppearanceReader
             }
 
             var signaturePath = ResolvePath(listPath, baseLocation!);
-            ReadSignature(entries, signaturePath, destination, selectedPageIds);
+            token.ThrowIfCancellationRequested();
+            ReadSignature(entries, signaturePath, destination, selectedPageIds, maximumAppearances, ref candidates, payloadCache, token);
         }
     }
 
     private static void ReadSignature(
         IReadOnlyDictionary<string, byte[]> entries,
         string signaturePath,
-        ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds)
+        ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds,
+        int? maximumAppearances, ref int candidates, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token)
     {
         if (!entries.TryGetValue(signaturePath, out var signatureBytes))
         {
@@ -81,13 +93,21 @@ internal static class OfdSignatureAppearanceReader
         }
 
         var signature = ParseXml(signatureBytes);
-        var stamps = signature.Descendants().Where(element => element.Name.LocalName == "StampAnnot" &&
-            (selectedPageIds is null || selectedPageIds.Contains(element.Attribute("PageRef")?.Value ?? string.Empty))).ToList();
+        var stamps = new List<XElement>();
+        foreach (var stamp in signature.Descendants().Where(element => element.Name.LocalName == "StampAnnot" &&
+            (selectedPageIds is null || selectedPageIds.Contains(element.Attribute("PageRef")?.Value ?? string.Empty))))
+        {
+            token.ThrowIfCancellationRequested();
+            if (maximumAppearances.HasValue && candidates >= maximumAppearances.Value)
+                throw new InvalidDataException("Selected signature appearance count exceeds the configured limit.");
+            candidates++;
+            stamps.Add(stamp);
+        }
         if (stamps.Count == 0) return;
         var appearanceData = ReadAppearanceData(
             entries,
             signature,
-            signaturePath);
+            signaturePath, payloadCache, token);
         if (appearanceData.Length == 0)
         {
             return;
@@ -117,7 +137,7 @@ internal static class OfdSignatureAppearanceReader
     private static byte[] ReadAppearanceData(
         IReadOnlyDictionary<string, byte[]> entries,
         XDocument signature,
-        string signaturePath)
+        string signaturePath, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token)
     {
         var sealLocation = signature
             .Descendants()
@@ -127,7 +147,7 @@ internal static class OfdSignatureAppearanceReader
         {
             var sealPath = ResolvePath(signaturePath, sealLocation!);
             if (entries.TryGetValue(sealPath, out var sealBytes) &&
-                TryFindAppearancePayload(sealBytes, out var sealAppearance))
+                TryFindCachedPayload(sealBytes, payloadCache, token, out var sealAppearance))
             {
                 return sealAppearance;
             }
@@ -144,95 +164,43 @@ internal static class OfdSignatureAppearanceReader
 
         var signedValuePath = ResolvePath(signaturePath, signedValueLocation!);
         return entries.TryGetValue(signedValuePath, out var signedValue) &&
-            TryFindAppearancePayload(signedValue, out var appearance)
+            TryFindCachedPayload(signedValue, payloadCache, token, out var appearance)
                 ? appearance
                 : Array.Empty<byte>();
     }
 
-    private static bool TryFindAppearancePayload(
-        byte[] data,
-        out byte[] appearance)
+    private static bool TryFindCachedPayload(byte[] data, Dictionary<byte[], byte[]>? cache,
+        CancellationToken token, out byte[] appearance)
     {
-        if (IsSupportedAppearance(data))
+        if (cache is not null && cache.TryGetValue(data, out appearance!)) return appearance.Length > 0;
+        token.ThrowIfCancellationRequested();
+        if (IsSupportedAppearance(data)) appearance = cache is null ? (byte[])data.Clone() : data;
+        else
         {
-            appearance = (byte[])data.Clone();
-            return true;
+            ArraySegment<byte> best = default;
+            FindLargestAppearance(data, 0, data.Length, 0, ref best, token);
+            appearance = best.Count == 0 ? Array.Empty<byte>() : new byte[best.Count];
+            if (best.Count > 0) Buffer.BlockCopy(data, best.Offset, appearance, 0, best.Count);
         }
-
-        var candidates = new List<ArraySegment<byte>>();
-        CollectOctetStrings(data, 0, data.Length, 0, candidates);
-        foreach (var candidate in candidates.OrderByDescending(value => value.Count))
-        {
-            if (!IsSupportedAppearance(
-                    candidate.Array!,
-                    candidate.Offset,
-                    candidate.Count))
-            {
-                continue;
-            }
-
-            appearance = new byte[candidate.Count];
-            Buffer.BlockCopy(
-                candidate.Array!,
-                candidate.Offset,
-                appearance,
-                0,
-                candidate.Count);
-            return true;
-        }
-
-        appearance = Array.Empty<byte>();
-        return false;
+        if (cache is not null) cache.Add(data, appearance); // Cache misses too; the key is the archive's canonical entry byte array.
+        return appearance.Length > 0;
     }
 
-    private static void CollectOctetStrings(
-        byte[] data,
-        int offset,
-        int length,
-        int depth,
-        ICollection<ArraySegment<byte>> destination)
+    private static void FindLargestAppearance(byte[] data, int offset, int length, int depth,
+        ref ArraySegment<byte> best, CancellationToken token)
     {
-        if (depth > 32 || offset < 0 || length < 0 || offset + length > data.Length)
-        {
-            return;
-        }
-
+        if (depth > 32 || offset < 0 || length < 0 || offset + length > data.Length) return;
         var end = offset + length;
         while (offset < end)
         {
-            if (!TryReadTagAndLength(
-                    data,
-                    offset,
-                    end,
-                    out var tagClass,
-                    out var tagNumber,
-                    out var constructed,
-                    out var contentOffset,
-                    out var contentLength,
-                    out var nextOffset))
-            {
-                return;
-            }
-
-            if (tagClass == 0 && tagNumber == 4 && !constructed)
-            {
-                destination.Add(
-                    new ArraySegment<byte>(
-                        data,
-                        contentOffset,
-                        contentLength));
-            }
-
-            if (constructed)
-            {
-                CollectOctetStrings(
-                    data,
-                    contentOffset,
-                    contentLength,
-                    depth + 1,
-                    destination);
-            }
-
+            token.ThrowIfCancellationRequested();
+            if (!TryReadTagAndLength(data, offset, end, out var tagClass, out var tagNumber,
+                out var constructed, out var contentOffset, out var contentLength, out var nextOffset)) return;
+            // Retain one candidate, rather than allocating/sorting a list proportional to every ASN.1 octet.
+            if (tagClass == 0 && tagNumber == 4 && !constructed && contentLength > best.Count &&
+                IsSupportedAppearance(data, contentOffset, contentLength))
+                best = new ArraySegment<byte>(data, contentOffset, contentLength);
+            if (constructed) FindLargestAppearance(data, contentOffset, contentLength, depth + 1, ref best, token);
             offset = nextOffset;
         }
     }

@@ -35,6 +35,15 @@ internal static class ImageIoBudget
             throw new InvalidDataException("Page dimensions must be finite, positive and at most 10000 millimeters.");
     }
 
+    internal static void ImportExtent(double width, double height)
+    {
+        Page(width, height);
+        // The package writer serializes millimeters to three decimal places. Reject sub-micrometer
+        // imported extents instead of silently writing a zero-sized page/image or enlarging the input.
+        if (width < 0.001d || height < 0.001d)
+            throw new InvalidDataException("Imported page/image extents must be at least 0.001 millimeters for OFD serialization.");
+    }
+
     internal static void Streams(Stream input, Stream output)
     {
         if (input is null) throw new ArgumentNullException(nameof(input));

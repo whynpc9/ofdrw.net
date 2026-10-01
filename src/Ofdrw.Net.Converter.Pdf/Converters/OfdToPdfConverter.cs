@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Abstractions.Interfaces;
 using Ofdrw.Net.Converter.Pdf.Internal;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Core.IO;
+using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Reader.Readers;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
@@ -52,7 +54,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
     // Shared rendering implementation; image export has already loaded and budgeted its package.
     internal async Task ConvertPackageAsync(OfdDocumentPackage package, Stream pdfOutput,
-        IReadOnlyList<int>? pages, CancellationToken cancellationToken, bool strictAppearanceBudgets = false)
+        IReadOnlyList<int>? pages, CancellationToken cancellationToken, bool strictAppearanceBudgets = false, int? maximumSignatureAppearances = null)
     {
         var orderedPages = package.Pages.OrderBy(x => x.Index).ToList();
         var selected = OfdPageSelection.Normalize(orderedPages.Count, pages);
@@ -61,7 +63,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             : null;
         var fonts = new DocumentFontContext(package.Fonts);
         var signatureAppearances = await PrepareSignatureAppearancesAsync(
-                package, selectedIds, strictAppearanceBudgets,
+                package, selectedIds, strictAppearanceBudgets, maximumSignatureAppearances,
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -84,7 +86,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 document,
                 graphics,
                 pageModel,
-                signatureAppearances, _options.MaxDecodedImagePixels, cancellationToken);
+                signatureAppearances, _options.MaxDecodedImagePixels, cancellationToken, strictAppearanceBudgets);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -92,43 +94,71 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         await pdfOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<IReadOnlyList<PreparedSignatureAppearance>>
-        PrepareSignatureAppearancesAsync(
-            OfdDocumentPackage package, HashSet<string>? selectedIds, bool strictAppearanceBudgets,
-            CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<PreparedSignatureAppearance>> PrepareSignatureAppearancesAsync(
+        OfdDocumentPackage package, HashSet<string>? selectedIds, bool strictAppearanceBudgets,
+        int? maximumSignatureAppearances, CancellationToken cancellationToken)
     {
         var result = new List<PreparedSignatureAppearance>();
-        foreach (var appearance in OfdSignatureAppearanceReader.Read(package, selectedIds))
+        var nestedCache = new Dictionary<string, (OfdDocumentPackage? Package, DocumentFontContext? Fonts)>();
+        var payloadIdentities = new Dictionary<byte[], string>();
+        var usedBytes = strictAppearanceBudgets ? package.PreservedEntries.Values.Sum(data => (long)data.Length) : 0;
+        var usedEntries = strictAppearanceBudgets ? package.PreservedEntries.Count : 0;
+        var usedPages = strictAppearanceBudgets ? package.Pages.Count : 0;
+        foreach (var appearance in OfdSignatureAppearanceReader.Read(package, selectedIds, maximumSignatureAppearances, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (IsZip(appearance.Data))
             {
-                var appearancePage = await ReadAppearanceOfdPackageAsync(
-                        appearance.Data, strictAppearanceBudgets,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-                if (appearancePage is not null)
+                // Cache only on the image path; preserve legacy PDF appearance tolerance and accounting.
+                var key = string.Empty;
+                if (strictAppearanceBudgets && !payloadIdentities.TryGetValue(appearance.Data, out key))
                 {
-                    result.Add(
-                        new PreparedSignatureAppearance(
-                            appearance,
-                            appearancePage));
+                    key = BinaryIdentity.Hash(appearance.Data);
+                    payloadIdentities.Add(appearance.Data, key);
                 }
-
+                if (!strictAppearanceBudgets || !nestedCache.TryGetValue(key, out var cached))
+                {
+                    var remaining = strictAppearanceBudgets
+                        ? RemainingAppearanceBudget(usedBytes, usedEntries, usedPages)
+                        : null;
+                    var nested = await ReadAppearanceOfdPackageAsync(appearance.Data, remaining, cancellationToken).ConfigureAwait(false);
+                    cached = (nested, nested is null ? null : new DocumentFontContext(nested.Fonts));
+                    if (strictAppearanceBudgets)
+                    {
+                        nestedCache.Add(key, cached);
+                        if (nested is not null)
+                        {
+                            usedBytes += nested.PreservedEntries.Values.Sum(data => (long)data.Length);
+                            usedEntries += nested.PreservedEntries.Count;
+                            usedPages += nested.Pages.Count;
+                        }
+                    }
+                }
+                if (cached.Package is not null) result.Add(new PreparedSignatureAppearance(appearance, cached.Package, cached.Fonts!));
                 continue;
             }
-
-            result.Add(
-                new PreparedSignatureAppearance(
-                    appearance,
-                    appearance.Data));
+            result.Add(new PreparedSignatureAppearance(appearance, appearance.Data));
         }
-
         return result;
     }
 
+    private OfdPackageLoadOptions RemainingAppearanceBudget(long usedBytes, int usedEntries, int usedPages)
+    {
+        var load = _options.PackageLoadOptions;
+        if (usedBytes >= load.MaxTotalUncompressedBytes || usedEntries >= load.MaxEntryCount || usedPages >= load.MaxPageCount)
+            throw new InvalidDataException("Cumulative OFD signature appearance expansion budget exceeded.");
+        return new OfdPackageLoadOptions
+        {
+            MaxInputBytes = load.MaxInputBytes, MaxEntryUncompressedBytes = load.MaxEntryUncompressedBytes,
+            MaxCompressionRatio = load.MaxCompressionRatio,
+            MaxTotalUncompressedBytes = load.MaxTotalUncompressedBytes - usedBytes,
+            MaxEntryCount = load.MaxEntryCount - usedEntries,
+            MaxPageCount = load.MaxPageCount - usedPages
+        };
+    }
+
     private async Task<OfdDocumentPackage?> ReadAppearanceOfdPackageAsync(
-        byte[] ofdData, bool strictAppearanceBudgets,
+        byte[] ofdData, OfdPackageLoadOptions? appearanceBudget,
         CancellationToken cancellationToken)
     {
         try
@@ -136,7 +166,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             var reader = new OfdReader();
             using var input = new MemoryStream(ofdData, writable: false);
             var package = await reader
-                .ReadAsync(input, strictAppearanceBudgets ? _options.PackageLoadOptions : new Ofdrw.Net.Packaging.Archive.OfdPackageLoadOptions(), cancellationToken)
+                .ReadAsync(input, appearanceBudget ?? new OfdPackageLoadOptions(), cancellationToken)
                 .ConfigureAwait(false);
             var pageModel = package.Pages
                 .OrderBy(page => page.Index)
@@ -151,70 +181,87 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             return package;
         }
         catch (OperationCanceledException) { throw; }
-        catch (InvalidDataException) when (strictAppearanceBudgets) { throw; }
+        catch (InvalidDataException) when (appearanceBudget is not null) { throw; }
         catch
         {
             return null;
         }
     }
 
-    private static void DrawSignatureAppearances(
-        PdfDocument document,
-        XGraphics graphics,
-        OfdPage page,
-        IReadOnlyList<PreparedSignatureAppearance> appearances,
-        long maximumPixels,
-        CancellationToken cancellationToken)
+    private static void DrawSignatureAppearances(PdfDocument document, XGraphics graphics, OfdPage page,
+        IReadOnlyList<PreparedSignatureAppearance> appearances, long maximumPixels,
+        CancellationToken cancellationToken, bool reusePayloads = false)
     {
-        foreach (var appearance in appearances.Where(item =>
-            string.Equals(
-                item.PageId,
-                page.Id,
-                StringComparison.OrdinalIgnoreCase)))
+        var forms = new Dictionary<OfdPage, XForm>();
+        var images = new Dictionary<byte[], XImage>();
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var target = new XRect(
-                MillimetersToPoints(
-                    appearance.XMillimeters - page.XMillimeters),
-                MillimetersToPoints(
-                    appearance.YMillimeters - page.YMillimeters),
-                MillimetersToPoints(appearance.WidthMillimeters),
-                MillimetersToPoints(appearance.HeightMillimeters));
-            try
+            foreach (var appearance in appearances.Where(item => string.Equals(item.PageId, page.Id, StringComparison.OrdinalIgnoreCase)))
             {
-                if (appearance.OfdPage is not null)
+                cancellationToken.ThrowIfCancellationRequested();
+                var target = new XRect(MillimetersToPoints(appearance.XMillimeters - page.XMillimeters),
+                    MillimetersToPoints(appearance.YMillimeters - page.YMillimeters),
+                    MillimetersToPoints(appearance.WidthMillimeters), MillimetersToPoints(appearance.HeightMillimeters));
+                try
                 {
-                    using var form = new XForm(
-                        document,
-                        XUnit.FromMillimeter(
-                            appearance.OfdPage.WidthMillimeters),
-                        XUnit.FromMillimeter(
-                            appearance.OfdPage.HeightMillimeters));
-                    using (var formGraphics = XGraphics.FromForm(form))
+                    if (appearance.OfdPage is not null)
                     {
-                        DrawPage(formGraphics, appearance.OfdPage, appearance.Fonts!, maximumPixels, cancellationToken);
+                        if (!reusePayloads)
+                        {
+                            using var form = CreateAppearanceForm(document, appearance, maximumPixels, cancellationToken);
+                            graphics.DrawImage(form, target);
+                        }
+                        else
+                        {
+                            if (!forms.TryGetValue(appearance.OfdPage, out var form))
+                            {
+                                form = CreateAppearanceForm(document, appearance, maximumPixels, cancellationToken);
+                                forms.Add(appearance.OfdPage, form);
+                            }
+                            graphics.DrawImage(form, target);
+                        }
                     }
-
-                    graphics.DrawImage(form, target);
+                    else if (!reusePayloads)
+                    {
+                        ValidateImage(appearance.Data, maximumPixels);
+                        using var image = XImage.FromStream(() => new MemoryStream(appearance.Data, writable: false));
+                        graphics.DrawImage(image, target);
+                    }
+                    else
+                    {
+                        if (!images.TryGetValue(appearance.Data, out var image))
+                        {
+                            ValidateImage(appearance.Data, maximumPixels);
+                            image = XImage.FromStream(() => new MemoryStream(appearance.Data, writable: false));
+                            images.Add(appearance.Data, image);
+                        }
+                        graphics.DrawImage(image, target);
+                    }
                 }
-                else
-                {
-                    ValidateImage(appearance.Data, maximumPixels);
-                    using var image = XImage.FromStream(
-                        () => new MemoryStream(
-                            appearance.Data,
-                            writable: false));
-                    graphics.DrawImage(image, target);
-                }
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (InvalidDataException) { throw; }
-            catch
-            {
-                // Unsupported vendor seal payloads do not prevent conversion of
-                // the signed document body.
+                catch (OperationCanceledException) { throw; }
+                catch (InvalidDataException) { throw; }
+                catch { /* Unsupported vendor payloads retain the existing preview fallback. */ }
             }
         }
+        finally
+        {
+            foreach (var form in forms.Values) form.Dispose();
+            foreach (var image in images.Values) image.Dispose();
+        }
+    }
+
+    private static XForm CreateAppearanceForm(PdfDocument document, PreparedSignatureAppearance appearance,
+        long maximumPixels, CancellationToken token)
+    {
+        var form = new XForm(document, XUnit.FromMillimeter(appearance.OfdPage!.WidthMillimeters),
+            XUnit.FromMillimeter(appearance.OfdPage.HeightMillimeters));
+        try
+        {
+            using var graphics = XGraphics.FromForm(form);
+            DrawPage(graphics, appearance.OfdPage, appearance.Fonts!, maximumPixels, token);
+            return form;
+        }
+        catch { form.Dispose(); throw; }
     }
 
     private static bool IsZip(byte[] data)
@@ -536,7 +583,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     {
         public PreparedSignatureAppearance(
             OfdSignatureAppearance source,
-            OfdDocumentPackage package)
+            OfdDocumentPackage package, DocumentFontContext fonts)
         {
             PageId = source.PageId;
             XMillimeters = source.XMillimeters;
@@ -545,7 +592,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             HeightMillimeters = source.HeightMillimeters;
             Data = Array.Empty<byte>();
             OfdPage = package.Pages.OrderBy(page => page.Index).First();
-            Fonts = new DocumentFontContext(package.Fonts);
+            Fonts = fonts;
         }
 
         public PreparedSignatureAppearance(

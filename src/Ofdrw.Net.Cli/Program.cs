@@ -653,7 +653,7 @@ internal static partial class Cli
           image-to-ofd: use --output, or a final positional .ofd destination; inputs retain argument order.
           --page-width, --page-height image-to-ofd: paired dimensions in millimeters; default natural image size.
           --max-pixels, --max-working-bytes, --max-input-bytes, --max-output-bytes Image command budgets.
-          --max-pdf-bytes ofd-to-image: intermediate PDF budget.
+          --max-pdf-bytes, --max-signature-appearances ofd-to-image: PDF bytes / selected stamp count budgets.
           --max-total-input-bytes, --max-pages, --max-entries image-to-ofd: cumulative input/page/entry budgets.
           --include-templates Include template text during extraction.
           --skip-unsupported  Drop unsupported raw objects during merge.
