@@ -135,6 +135,7 @@ public sealed class DocumentToolTests
         source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='900'><Appearance{attributes} Boundary='30 40 80 20'><TextObject ID='901' Font='{source.Fonts[0].Id}' Size='4' Boundary='2 3 50 10'><TextCode X='0' Y='4'>ANNOTATION</TextCode></TextObject></Appearance></Annot></PageAnnot>");
         var read = await new OfdReader().ReadAsync(Zip(source.PreservedEntries));
         var note = Assert.IsType<OfdTextElement>(Assert.Single(read.Pages[0].AnnotationAppearances));
+        Assert.Equal(1, new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(read).Split("ANNOTATION").Length - 1);
         Assert.Equal(x, note.XMillimeters); Assert.Equal(y, note.YMillimeters);
         Assert.Equal(width, note.WidthMillimeters); Assert.Equal(height, note.HeightMillimeters);
         var mixed = await RoundTrip(OfdDocumentMixer.Mix([new(read, 0)]));
@@ -227,6 +228,120 @@ public sealed class DocumentToolTests
         Assert.True(result.PreservedEntries.ContainsKey("Doc_0/Templates/Content.xml"));
         Assert.True(result.PreservedEntries.ContainsKey("Doc_0/Templates/PageRes.xml"));
         Assert.True(result.PreservedEntries.ContainsKey("Doc_0/Templates/Image.png"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("<NotOFD><DocBody/></NotOFD>")]
+    [InlineData("<OFD/>")]
+    [InlineData("<OFD xmlns='urn:vendor'><DocBody/></OFD>")]
+    public async Task CleanSignatures_RejectsOtherZipContainersBeforeWriting(string? root)
+    {
+        var entries = new Dictionary<string, byte[]> { ["ordinary.txt"] = [1] };
+        if (root is not null) entries["OFD.xml"] = Encoding.UTF8.GetBytes(root);
+        using var input = Zip(entries); using var output = new MemoryStream();
+        await Assert.ThrowsAsync<InvalidDataException>(() => OfdPackageSignatureCleaner.CleanAsync(input, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CleanSignatures_DeduplicatesDescriptionsAndPreservesTransitiveOrOpaqueReferences(bool opaque)
+    {
+        var source = await RoundTrip(Source()); AddSignatures(source, "SignedValue.dat"); var ns = source.Options.Namespace;
+        source.PreservedEntries["Doc_0/Signs/Signatures.xml"] = Encoding.UTF8.GetBytes($"<Signatures xmlns='{ns}'>" +
+            string.Concat(Enumerable.Range(0, 1_000).Select(i => $"<Signature ID='{1000 + i}' BaseLoc='Sign_0/Signature.xml'/>")) + "</Signatures>");
+        source.PreservedEntries["Doc_0/Extensions/retained.xml"] = Encoding.UTF8.GetBytes(opaque ? "<broken" : "<Extension><List>/Doc_0/Signs/Signatures.xml</List></Extension>");
+        using var input = Zip(source.PreservedEntries); using var output = new MemoryStream();
+        await OfdPackageSignatureCleaner.CleanAsync(input, output); output.Position = 0;
+        var result = await new OfdPackageLoader().LoadAsync(output);
+        Assert.DoesNotContain("Signatures", result.ReadUtf8Text("OFD.xml"));
+        Assert.True(result.Contains("Doc_0/Signs/Signatures.xml"));
+        Assert.True(result.Contains("Doc_0/Signs/Sign_0/Signature.xml"));
+        Assert.True(result.Contains("Doc_0/Signs/Sign_0/SignedValue.dat"));
+        Assert.True(result.Contains("Doc_0/Signs/Sign_0/Seal.esl"));
+    }
+
+    [Fact]
+    public async Task CleanSignatures_DoesNotTreatVendorXmlAsTypedSignatureOwnership()
+    {
+        var source = await RoundTrip(Source()); AddSignatures(source, "SignedValue.dat");
+        source.PreservedEntries["Doc_0/Signs/Signatures.xml"] = Encoding.UTF8.GetBytes("<Signatures xmlns='urn:vendor'><Signature BaseLoc='Sign_0/Signature.xml'/></Signatures>");
+        using var input = Zip(source.PreservedEntries); using var output = new MemoryStream();
+        var report = await OfdPackageSignatureCleaner.CleanAsync(input, output); output.Position = 0;
+        var result = await new OfdPackageLoader().LoadAsync(output);
+        Assert.False(result.ReadUtf8Text("OFD.xml").Contains("Signatures"));
+        Assert.True(result.Contains("Doc_0/Signs/Sign_0/SignedValue.dat"));
+        Assert.Contains(report.Diagnostics, message => message.Contains("Unmodeled"));
+    }
+
+    [Theory]
+    [InlineData(" VendorStyle='keep'")]
+    [InlineData(" CTM='NaN 0 0 1 0 0'")]
+    public async Task Reader_PreservesUnmodeledAnnotationMetadataWhileMixRejectsFlattening(string attributes)
+    {
+        var source = await RoundTrip(Source()); var ns = source.Options.Namespace;
+        var document = Xml(source, "Doc_0/Document.xml");
+        document.Root!.Add(new XElement(XName.Get("Annotations", ns), "Annots/Annotations.xml")); Put(source, "Doc_0/Document.xml", document);
+        source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'><Page PageID='{source.Pages[0].Id}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='900'><Appearance{attributes} Boundary='1 1 10 10'><TextObject ID='901' Font='{source.Fonts[0].Id}' Size='4' Boundary='0 0 10 10'><TextCode X='0' Y='4'>UNKNOWN</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+        var read = await new OfdReader().ReadAsync(Zip(source.PreservedEntries));
+        Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].AnnotationAppearances));
+        OfdWatermark.AddText(read, [0], "DRAFT");
+        var saved = await RoundTrip(OfdDocumentSplitter.Split(read, [0]));
+        Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(saved, 0)]));
+    }
+
+    [Fact]
+    public async Task AnnotationIndex_MultiplePagesAndDuplicateRecordsKeepEachPageAppearanceOnce()
+    {
+        var source = new OfdDocumentPackage();
+        for (var i = 0; i < 200; i++) source.Pages.Add(new OfdPage { Index = i, WidthMillimeters = 210, HeightMillimeters = 297 });
+        source = await RoundTrip(source); var ns = source.Options.Namespace;
+        var document = Xml(source, "Doc_0/Document.xml");
+        document.Root!.Add(new XElement(XName.Get("Annotations", ns), "Annots/Annotations.xml")); Put(source, "Doc_0/Document.xml", document);
+        source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'>" +
+            string.Concat(source.Pages.SelectMany((page, i) => new[] { 0, 1 }.Select(_ => $"<Page PageID='{page.Id}'><FileLoc>P{i}.xml</FileLoc></Page>"))) + "</Annotations>");
+        for (var i = 0; i < 200; i++) source.PreservedEntries[$"Doc_0/Annots/P{i}.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='{1000 + i}'><Appearance Boundary='0 0 20 20'><TextObject ID='{2000 + i}' Boundary='0 0 20 20' Size='4'><TextCode X='0' Y='4'>NOTE{i}</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+        var read = await new OfdReader().ReadAsync(Zip(source.PreservedEntries));
+        Assert.Equal(200, read.Pages.Count);
+        for (var i = 0; i < 200; i++) Assert.Equal($"NOTE{i}", Assert.IsType<OfdTextElement>(Assert.Single(read.Pages[i].AnnotationAppearances)).Text);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task TypedSplit_WithoutFontIdKeepsTheRequestedEmbeddedStyle(bool bold, bool italic)
+    {
+        var source = new OfdDocumentPackage();
+        source.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Same", Data = [1] });
+        source.Fonts.Add(new OfdFontResource { Id = "11", FontName = "Same", Bold = bold, Italic = italic, Data = [2] });
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        page.Elements.Add(new OfdTextElement { Text = "styled", FontName = "Same", Weight = bold ? 700 : 400, Italic = italic }); source.Pages.Add(page);
+        var result = await RoundTrip(OfdDocumentSplitter.Split(source, [0]));
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(result.Pages[0].Elements));
+        Assert.Equal(new byte[] { 2 }, result.Fonts.Single(font => font.Id == text.FontResourceId).Data);
+        Assert.DoesNotContain(result.PreservedEntries.Values, data => data.SequenceEqual(new byte[] { 1 }));
+    }
+
+    [Fact]
+    public async Task CleanSignatures_SharedTypedXmlWithoutXmlExtensionKeepsItsReferencedValues()
+    {
+        var source = await RoundTrip(Source()); AddSignatures(source, "SignedValue.dat");
+        source.PreservedEntries["Doc_0/Signs/Signatures.dat"] = source.PreservedEntries["Doc_0/Signs/Signatures.xml"];
+        source.PreservedEntries.Remove("Doc_0/Signs/Signatures.xml");
+        source.PreservedEntries["Doc_0/Signs/Sign_0/Signature.dat"] = source.PreservedEntries["Doc_0/Signs/Sign_0/Signature.xml"];
+        source.PreservedEntries.Remove("Doc_0/Signs/Sign_0/Signature.xml");
+        var root = Xml(source, "OFD.xml"); root.Descendants().Single(node => node.Name.LocalName == "Signatures").Value = "Doc_0/Signs/Signatures.dat"; Put(source, "OFD.xml", root);
+        source.PreservedEntries["Doc_0/Signs/Signatures.dat"] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(source.PreservedEntries["Doc_0/Signs/Signatures.dat"]).Replace("Signature.xml", "Signature.dat"));
+        source.PreservedEntries["Doc_0/Extensions/shared.xml"] = Encoding.UTF8.GetBytes("<Extension File='/Doc_0/Signs/Signatures.dat'/>");
+        using var input = Zip(source.PreservedEntries); using var output = new MemoryStream(); await OfdPackageSignatureCleaner.CleanAsync(input, output); output.Position = 0;
+        var result = await new OfdPackageLoader().LoadAsync(output);
+        Assert.True(result.Contains("Doc_0/Signs/Signatures.dat")); Assert.True(result.Contains("Doc_0/Signs/Sign_0/Signature.dat"));
+        Assert.True(result.Contains("Doc_0/Signs/Sign_0/SignedValue.dat")); Assert.True(result.Contains("Doc_0/Signs/Sign_0/Seal.esl"));
     }
 
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");

@@ -81,12 +81,33 @@ public sealed class OfdToSvgConverter
 
         var families = AddEmbeddedFonts(root, svgNs, package.Fonts);
         var imageIndex = 0;
+        var objectIndex = 0;
         foreach (var element in EnumerateElements(page))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
+                throw new NotSupportedException($"Annotation appearance on page {page.Index + 1} contains unsupported drawing; export would lose content.");
+            var target = root;
+            if (element is not OfdImageElement && !string.IsNullOrWhiteSpace(element.ClippingXml))
+            {
+                var defs = root.Element(svgNs + "defs");
+                if (defs is null) { defs = new XElement(svgNs + "defs"); root.AddFirst(defs); }
+                var regionIndex = 0;
+                foreach (var region in OfdClipGeometry.Read(element.ClippingXml))
+                {
+                    var id = $"object-{objectIndex}-clip-{regionIndex++}";
+                    defs.Add(new XElement(svgNs + "clipPath", new XAttribute("id", id), new XAttribute("clipPathUnits", "userSpaceOnUse"),
+                        region.Paths.Select(path => new XElement(svgNs + "path", new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
+                            new XAttribute("clip-rule", region.EvenOdd ? "evenodd" : "nonzero"),
+                            new XAttribute("transform", BuildTransform(element.XMillimeters - page.XMillimeters, element.YMillimeters - page.YMillimeters, path.Transform))))));
+                    var group = new XElement(svgNs + "g", new XAttribute("clip-path", $"url(#{id})"));
+                    target.Add(group); target = group;
+                }
+            }
+            objectIndex++;
             if (element is OfdTextElement text)
             {
-                AddText(root, svgNs, page, text, package.Fonts, families);
+                AddText(target, svgNs, page, text, package.Fonts, families);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
@@ -127,7 +148,7 @@ public sealed class OfdToSvgConverter
                         Invariant((path.FillColor ?? path.StrokeColor).Alpha / 255d));
                 }
 
-                root.Add(pathNode);
+                target.Add(pathNode);
             }
         }
 
@@ -196,9 +217,7 @@ public sealed class OfdToSvgConverter
         IReadOnlyList<OfdFontResource> fonts,
         IReadOnlyDictionary<OfdFontResource, string> families)
     {
-        var resource = fonts.FirstOrDefault(font => !string.IsNullOrEmpty(text.FontResourceId) && font.Id == text.FontResourceId)
-            ?? fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase) && !font.Bold && !font.Italic)
-            ?? fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
+        var resource = OfdFontSelection.Resolve(fonts, text);
         var family = resource is not null && families.TryGetValue(resource, out var embeddedFamily) ? embeddedFamily : text.FontName;
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";

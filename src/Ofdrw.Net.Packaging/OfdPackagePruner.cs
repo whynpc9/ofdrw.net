@@ -7,6 +7,7 @@ using System.Xml;
 using System.Threading;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.IO;
+using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Packaging;
@@ -229,62 +230,108 @@ internal static class OfdPackagePruner
         SignatureDeclarations(root).Remove();
         entries["OFD.xml"] = Serialize(root);
         var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var knownXml = new Dictionary<string, XDocument>(StringComparer.OrdinalIgnoreCase);
+        var inspectedLists = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var inspectedDescriptions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var declaration in SignatureDeclarations(originalRoot))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var listPath = OfdPackagePath.Resolve("OFD.xml", declaration.Value);
-            if (!original.TryGetValue(listPath, out var listBytes) || !TryParse(listBytes, out var list) ||
-                list.Root?.Name.LocalName != "Signatures") continue;
+            if (!original.TryGetValue(listPath, out var listBytes) || !inspectedLists.Add(listPath)) continue;
+            if (!TryParse(listBytes, out var list) || !IsSignatureRoot(list, "Signatures", originalRoot.Root!.Name.Namespace))
+            {
+                result.Warnings.Add($"Unmodeled signature list was retained: '{listPath}'.");
+                continue;
+            }
+            knownXml[listPath] = list;
             if (!IsOwnedSignaturePath(listPath))
             {
                 result.Warnings.Add($"Signature payloads outside a Signs directory were retained: '{listPath}'.");
                 continue;
             }
             candidates.Add(listPath);
-            foreach (var record in list.Root.Elements().Where(node => node.Name.LocalName == "Signature"))
+            foreach (var record in list.Root.Elements(list.Root.Name.Namespace + "Signature"))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var location = record.Attribute("BaseLoc")?.Value;
                 if (string.IsNullOrWhiteSpace(location)) continue;
                 var signaturePath = OfdPackagePath.Resolve(listPath, location!);
                 if (!IsOwnedSignaturePath(signaturePath) || !original.TryGetValue(signaturePath, out var signatureBytes) ||
-                    !TryParse(signatureBytes, out var signature) || signature.Root?.Name.LocalName != "Signature") continue;
+                    !inspectedDescriptions.Add(signaturePath)) continue;
+                if (!TryParse(signatureBytes, out var signature) || !IsSignatureRoot(signature, "Signature", originalRoot.Root!.Name.Namespace))
+                {
+                    result.Warnings.Add($"Unmodeled signature description was retained: '{signaturePath}'.");
+                    continue;
+                }
+                knownXml[signaturePath] = signature;
                 candidates.Add(signaturePath);
-                var values = signature.Descendants().Where(node => node.Name.LocalName == "SignedValue" ||
-                        (node.Name.LocalName == "BaseLoc" && node.Parent?.Name.LocalName == "Seal"))
-                    .Select(node => node.Value)
-                    .Concat(signature.Descendants().Where(node => node.Name.LocalName == "Seal")
-                        .Attributes("BaseLoc").Select(attribute => attribute.Value));
+                var signatureNamespace = signature.Root.Name.Namespace;
+                var seals = signature.Root.Elements(signatureNamespace + "SignedInfo").Elements(signatureNamespace + "Seal");
+                var values = signature.Root.Elements(signatureNamespace + "SignedValue").Select(node => node.Value)
+                    .Concat(seals.Elements(signatureNamespace + "BaseLoc").Select(node => node.Value))
+                    .Concat(seals.Attributes("BaseLoc").Select(attribute => attribute.Value));
                 foreach (var value in values)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var payload = OfdPackagePath.Resolve(signaturePath, value);
                     // A declaration is never authority to delete arbitrary document content.
                     // Values/appearances must be inside this signature's own directory.
                     var directory = OfdPackagePath.GetDirectory(signaturePath) + "/";
                     if (IsOwnedSignaturePath(payload) && payload.StartsWith(directory, StringComparison.OrdinalIgnoreCase) &&
-                        !payload.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) candidates.Add(payload);
+                        !payload.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (entries.ContainsKey(payload)) candidates.Add(payload);
+                    }
                     else result.Warnings.Add($"Unowned signature payload was retained: '{payload}'.");
                 }
             }
         }
-        var remaining = entries.Where(pair => !candidates.Contains(pair.Key))
-            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
-        // Restore the full transitive closure of candidates referenced by retained XML.
-        // This also protects candidates shared by another document/attachment/extension.
-        bool restored;
-        do
+        candidates.IntersectWith(entries.Keys);
+        // Scan each retained/restored XML once. Each discovered candidate becomes
+        // live and joins the queue, preserving its entire transitive path closure.
+        var pending = new Queue<string>(entries.Keys.Where(path => !candidates.Contains(path) && (IsXml(path) || knownXml.ContainsKey(path))));
+        var scanned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        while (pending.Count > 0)
         {
-            restored = false;
-            foreach (var path in candidates.ToList())
+            cancellationToken.ThrowIfCancellationRequested();
+            var path = pending.Dequeue();
+            if (!scanned.Add(path) || (!IsXml(path) && !knownXml.ContainsKey(path))) continue;
+            if (!knownXml.TryGetValue(path, out var xml) && !TryParse(entries[path], out xml))
+            {
+                result.Warnings.Add($"Signature payloads retained because extension XML '{path}' cannot be inspected safely.");
+                return;
+            }
+            var values = xml.Descendants().Where(node => !node.HasElements).Select(node => node.Value)
+                .Concat(xml.Descendants().Attributes().Where(attribute => attribute.Name.LocalName != "ID").Select(attribute => attribute.Value));
+            foreach (var value in values.Where(value => !string.IsNullOrWhiteSpace(value)))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!ReferencesFile(remaining, path)) continue;
-                if (entries.TryGetValue(path, out var data)) remaining[path] = data;
-                candidates.Remove(path);
-                restored = true;
+                RestoreReference(path, value, xml.Root!, candidates, pending);
             }
-        } while (restored);
-        foreach (var path in candidates) Remove(entries, path, result);
+        }
+        foreach (var path in candidates)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Remove(entries, path, result);
+        }
     }
+
+    private static void RestoreReference(string path, string value, XElement root,
+        ISet<string> candidates, Queue<string> pending)
+    {
+        try
+        {
+            var reference = OfdPackagePath.Resolve(path, value);
+            if (candidates.Remove(reference)) pending.Enqueue(reference);
+            reference = ResolveResourceFile(path, root, value);
+            if (candidates.Remove(reference)) pending.Enqueue(reference);
+        }
+        catch (InvalidDataException) { }
+    }
+
+    private static bool IsSignatureRoot(XDocument xml, string localName, XNamespace documentNamespace) =>
+        xml.Root?.Name.LocalName == localName && (xml.Root.Name.Namespace == documentNamespace ||
+            xml.Root.Name.NamespaceName == OfdConstants.Namespace || xml.Root.Name.NamespaceName == OfdConstants.StandardNamespace);
 
     private static IEnumerable<XElement> SignatureDeclarations(XDocument document) =>
         document.Root?.Elements().Where(node => node.Name == document.Root.Name.Namespace + "DocBody")

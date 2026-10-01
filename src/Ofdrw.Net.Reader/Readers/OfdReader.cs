@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Xml;
 using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Interfaces;
@@ -163,6 +164,8 @@ public sealed class OfdReader : IOfdReader
         if (pages.Count > options.MaxPageCount)
             throw new InvalidDataException("OFD document exceeds the configured page count limit.");
 
+        var annotationIndex = IndexAnnotationFiles(archive, documentXml, docRoot, cancellationToken);
+        var annotationDocuments = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
         foreach (var pageRef in pages)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -258,7 +261,7 @@ public sealed class OfdReader : IOfdReader
                 page.Templates.Add(template);
             }
 
-            ReadAnnotationAppearances(archive, documentXml, docRoot, page, fontMap, mediaMap, mediaTypeMap, cancellationToken);
+            ReadAnnotationAppearances(archive, annotationIndex, annotationDocuments, page, fontMap, mediaMap, mediaTypeMap, cancellationToken);
             package.Pages.Add(page);
         }
 
@@ -339,86 +342,251 @@ public sealed class OfdReader : IOfdReader
         return package;
     }
 
-    private static void ReadAnnotationAppearances(OfdPackageArchive archive, XDocument document, string documentPath,
-        OfdPage page, IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
-        IReadOnlyDictionary<string, string> mediaTypes, CancellationToken cancellationToken)
+    private sealed class AnnotationFiles
     {
+        internal readonly List<string> Paths = new();
+        internal readonly HashSet<string> Known = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private sealed class AnnotationIndex
+    {
+        internal XNamespace Namespace = XNamespace.None;
+        internal readonly Dictionary<string, AnnotationFiles> Files = new(StringComparer.Ordinal);
+        internal readonly List<string> UnmodeledLists = new();
+    }
+
+    private static bool IsAnnotationRoot(XDocument xml, string localName, XNamespace documentNamespace) =>
+        xml.Root?.Name.LocalName == localName && (xml.Root.Name.Namespace == documentNamespace ||
+            xml.Root.Name.NamespaceName == OfdConstants.Namespace || xml.Root.Name.NamespaceName == OfdConstants.StandardNamespace);
+
+    private static AnnotationIndex IndexAnnotationFiles(OfdPackageArchive archive, XDocument document,
+        string documentPath, CancellationToken cancellationToken)
+    {
+        var result = new AnnotationIndex { Namespace = document.Root!.Name.Namespace };
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var declaration in document.Root!.Elements().Where(node => node.Name.LocalName == "Annotations"))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var listPath = OfdPackagePath.Resolve(documentPath, declaration.Value);
-            var list = XDocument.Parse(archive.ReadUtf8Text(listPath));
-            foreach (var record in list.Root!.Elements().Where(node => node.Name.LocalName == "Page" && node.Attribute("PageID")?.Value == page.Id))
+            if (!visited.Add(listPath)) continue;
+            if (declaration.Name.Namespace != document.Root.Name.Namespace || !archive.Contains(listPath))
             {
+                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                continue;
+            }
+            XDocument list;
+            try { list = XDocument.Parse(archive.ReadUtf8Text(listPath)); }
+            catch (XmlException)
+            {
+                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                continue;
+            }
+            if (!IsAnnotationRoot(list, "Annotations", result.Namespace))
+            {
+                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                continue;
+            }
+            foreach (var record in list.Root.Elements())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var pageId = record.Attribute("PageID")?.Value;
                 var location = record.Elements().FirstOrDefault(node => node.Name.LocalName == "FileLoc")?.Value;
-                if (string.IsNullOrWhiteSpace(location)) continue;
-                var annotationPath = OfdPackagePath.Resolve(listPath, location!);
-                var annotations = XDocument.Parse(archive.ReadUtf8Text(annotationPath));
-                foreach (var annotation in annotations.Root!.Elements().Where(node => node.Name.LocalName == "Annot"))
+                if (record.Name.LocalName != "Page" || string.IsNullOrWhiteSpace(pageId) || string.IsNullOrWhiteSpace(location))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (annotation.Attribute("Visible")?.Value is "false" or "0") continue;
-                    var appearance = annotation.Elements().FirstOrDefault(node => node.Name.LocalName == "Appearance");
-                    if (appearance is null) continue;
-                    if (appearance.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName is not ("Boundary" or "ID" or "CTM")))
-                        throw new NotSupportedException("Unsupported annotation appearance attributes cannot be rendered safely.");
-                    var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value);
-                    if (appearance.Attribute("CTM") is not null && (appearanceTransform is null || appearanceTransform.Any(value => double.IsNaN(value) || double.IsInfinity(value))))
-                        throw new InvalidDataException("Invalid annotation appearance transform.");
-                    var ns = appearance.Name.Namespace;
-                    var xml = new XDocument(new XElement(ns + "Page", new XElement(ns + "Content",
-                        new XElement(ns + "Layer", new XAttribute("ID", "annotation-" + annotation.Attribute("ID")?.Value), appearance.Elements()))));
-                    var box = ParseBox(appearance.Attribute("Boundary")?.Value);
-                    foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, annotationPath))
-                    {
-                        var transform = appearanceTransform ?? new double[] { 1, 0, 0, 1, 0, 0 };
-                        var x = element.XMillimeters; var y = element.YMillimeters;
-                        var originalWidth = element.WidthMillimeters; var originalHeight = element.HeightMillimeters;
-                        var minX = Math.Min(0, transform[0] * originalWidth) + Math.Min(0, transform[2] * originalHeight);
-                        var minY = Math.Min(0, transform[1] * originalWidth) + Math.Min(0, transform[3] * originalHeight);
-                        element.XMillimeters = box.x + transform[0] * x + transform[2] * y + transform[4] + minX;
-                        element.YMillimeters = box.y + transform[1] * x + transform[3] * y + transform[5] + minY;
-                        element.WidthMillimeters = Math.Abs(transform[0]) * originalWidth + Math.Abs(transform[2]) * originalHeight;
-                        element.HeightMillimeters = Math.Abs(transform[1]) * originalWidth + Math.Abs(transform[3]) * originalHeight;
-                        if (appearanceTransform is not null)
-                        {
-                            var inner = element switch
-                            {
-                                OfdTextElement text => text.Transform,
-                                OfdPathElement path => path.Transform,
-                                OfdImageElement image => image.Transform ?? new double[] { originalWidth, 0, 0, originalHeight, 0, 0 },
-                                _ => null
-                            } ?? new double[] { 1, 0, 0, 1, 0, 0 };
-                            var combined = new double[]
-                            {
-                                transform[0] * inner[0] + transform[2] * inner[1], transform[1] * inner[0] + transform[3] * inner[1],
-                                transform[0] * inner[2] + transform[2] * inner[3], transform[1] * inner[2] + transform[3] * inner[3],
-                                transform[0] * inner[4] + transform[2] * inner[5] - minX, transform[1] * inner[4] + transform[3] * inner[5] - minY
-                            };
-                            if (element is OfdTextElement transformedText) transformedText.Transform = combined;
-                            if (element is OfdImageElement transformedImage) transformedImage.Transform = combined;
-                            if (element is OfdPathElement transformedPath) transformedPath.Transform = combined;
-                        }
-                        // Keep the serialized boundary consistent with the translated typed geometry.
-                        var source = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, _ => null };
-                        if (source is not null)
-                        {
-                            var node = XElement.Parse(source);
-                            node.SetAttributeValue("Boundary", string.Join(" ", new[] { element.XMillimeters, element.YMillimeters, element.WidthMillimeters, element.HeightMillimeters }.Select(value => value.ToString("R", CultureInfo.InvariantCulture))));
-                            if (appearanceTransform is not null)
-                            {
-                                var objectTransform = element switch { OfdTextElement matrixText => matrixText.Transform, OfdImageElement matrixImage => matrixImage.Transform, OfdPathElement matrixPath => matrixPath.Transform, _ => null };
-                                if (objectTransform is not null) node.SetAttributeValue("CTM", string.Join(" ", objectTransform.Select(value => value.ToString("R", CultureInfo.InvariantCulture))));
-                            }
-                            source = node.ToString(SaveOptions.DisableFormatting);
-                            if (element is OfdTextElement text) text.SourceXml = source;
-                            if (element is OfdImageElement image) image.SourceXml = source;
-                            if (element is OfdPathElement path) path.SourceXml = source;
-                        }
-                        page.AnnotationAppearances.Add(element);
-                    }
+                    result.UnmodeledLists.Add(record.ToString(SaveOptions.DisableFormatting));
+                    continue;
                 }
+                if (!result.Files.TryGetValue(pageId!, out var files))
+                    result.Files[pageId!] = files = new AnnotationFiles();
+                var path = OfdPackagePath.Resolve(listPath, location!);
+                if (files.Known.Add(path)) files.Paths.Add(path);
             }
         }
+        return result;
+    }
+
+    private static void ReadAnnotationAppearances(OfdPackageArchive archive, AnnotationIndex index,
+        IDictionary<string, XDocument?> documents, OfdPage page, IReadOnlyDictionary<string, string> fonts,
+        IReadOnlyDictionary<string, string> media, IReadOnlyDictionary<string, string> mediaTypes,
+        CancellationToken cancellationToken)
+    {
+        foreach (var xml in index.UnmodeledLists)
+            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Annotations", Xml = xml });
+        if (page.Id is null || !index.Files.TryGetValue(page.Id, out var files)) return;
+        foreach (var annotationPath in files.Paths)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!documents.TryGetValue(annotationPath, out var annotations))
+            {
+                annotations = null;
+                if (archive.Contains(annotationPath))
+                    try { annotations = XDocument.Parse(archive.ReadUtf8Text(annotationPath)); }
+                    catch (XmlException) { }
+                documents[annotationPath] = annotations;
+            }
+            if (annotations is null || !IsAnnotationRoot(annotations, "PageAnnot", index.Namespace))
+            {
+                page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "PageAnnot",
+                    Xml = new XElement("UnmodeledAnnotation", new XAttribute("FileLoc", annotationPath)).ToString() });
+                continue;
+            }
+            foreach (var annotation in annotations.Root.Elements().Where(node => node.Name.LocalName == "Annot"))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (annotation.Attribute("Visible")?.Value is "false" or "0") continue;
+                var appearance = annotation.Elements().FirstOrDefault(node => node.Name.LocalName == "Appearance");
+                if (appearance is null) continue;
+                var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value);
+                if (appearance.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName is not ("Boundary" or "ID" or "CTM")) ||
+                    (appearance.Attribute("CTM") is not null && (appearanceTransform is null || appearanceTransform.Any(value => double.IsNaN(value) || double.IsInfinity(value)))))
+                {
+                    // Preserve the original package metadata for ordinary reads/saves.
+                    // A raw marker makes flattening fail explicitly in Mix/Merge.
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                    continue;
+                }
+                var ns = appearance.Name.Namespace;
+                var box = ParseBox(appearance.Attribute("Boundary")?.Value);
+                var nodes = FlattenAnnotationNodes(appearance.Elements(), cancellationToken);
+                if (nodes is null || box.w <= 0 || box.h <= 0 || new[] { box.x, box.y, box.w, box.h }.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
+                {
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                    continue;
+                }
+                var xml = new XDocument(new XElement(ns + "Page", new XElement(ns + "Content",
+                    new XElement(ns + "Layer", new XAttribute("ID", "annotation-" + annotation.Attribute("ID")?.Value), nodes))));
+                var staged = new List<OfdElement>();
+                foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, annotationPath))
+                {
+                    var transform = appearanceTransform ?? new double[] { 1, 0, 0, 1, 0, 0 };
+                    var x = element.XMillimeters; var y = element.YMillimeters;
+                    var originalWidth = element.WidthMillimeters; var originalHeight = element.HeightMillimeters;
+                    var minX = Math.Min(0, transform[0] * originalWidth) + Math.Min(0, transform[2] * originalHeight);
+                    var minY = Math.Min(0, transform[1] * originalWidth) + Math.Min(0, transform[3] * originalHeight);
+                    element.XMillimeters = box.x + transform[0] * x + transform[2] * y + transform[4] + minX;
+                    element.YMillimeters = box.y + transform[1] * x + transform[3] * y + transform[5] + minY;
+                    element.WidthMillimeters = Math.Abs(transform[0]) * originalWidth + Math.Abs(transform[2]) * originalHeight;
+                    element.HeightMillimeters = Math.Abs(transform[1]) * originalWidth + Math.Abs(transform[3]) * originalHeight;
+                    if (appearanceTransform is not null)
+                    {
+                        var inner = element switch
+                        {
+                            OfdTextElement text => text.Transform,
+                            OfdPathElement path => path.Transform,
+                            OfdImageElement image => image.Transform ?? new double[] { originalWidth, 0, 0, originalHeight, 0, 0 },
+                            _ => null
+                        } ?? new double[] { 1, 0, 0, 1, 0, 0 };
+                        var combined = new double[]
+                        {
+                            transform[0] * inner[0] + transform[2] * inner[1], transform[1] * inner[0] + transform[3] * inner[1],
+                            transform[0] * inner[2] + transform[2] * inner[3], transform[1] * inner[2] + transform[3] * inner[3],
+                            transform[0] * inner[4] + transform[2] * inner[5] - minX, transform[1] * inner[4] + transform[3] * inner[5] - minY
+                        };
+                        if (element is OfdTextElement transformedText) transformedText.Transform = combined;
+                        if (element is OfdImageElement transformedImage) transformedImage.Transform = combined;
+                        if (element is OfdPathElement transformedPath) transformedPath.Transform = combined;
+                    }
+                    try
+                    {
+                        element.ClippingXml = TransformAnnotationClips(element.ClippingXml, ns, transform, minX, minY,
+                            box.x + transform[4] - element.XMillimeters, box.y + transform[5] - element.YMillimeters, box.w, box.h,
+                            element is OfdImageElement ? originalWidth : 0, element is OfdImageElement ? originalHeight : 0);
+                    }
+                    catch (Exception exception) when (exception is NotSupportedException or InvalidDataException)
+                    {
+                        staged.Clear();
+                        staged.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                        break;
+                    }
+                    // Keep the serialized boundary consistent with the translated typed geometry.
+                    var source = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, _ => null };
+                    if (source is not null)
+                    {
+                        var node = XElement.Parse(source);
+                        node.SetAttributeValue("Boundary", string.Join(" ", new[] { element.XMillimeters, element.YMillimeters, element.WidthMillimeters, element.HeightMillimeters }.Select(value => value.ToString("R", CultureInfo.InvariantCulture))));
+                        if (appearanceTransform is not null)
+                        {
+                            var objectTransform = element switch { OfdTextElement matrixText => matrixText.Transform, OfdImageElement matrixImage => matrixImage.Transform, OfdPathElement matrixPath => matrixPath.Transform, _ => null };
+                            if (objectTransform is not null) node.SetAttributeValue("CTM", string.Join(" ", objectTransform.Select(value => value.ToString("R", CultureInfo.InvariantCulture))));
+                        }
+                        source = node.ToString(SaveOptions.DisableFormatting);
+                        if (element is OfdTextElement text) text.SourceXml = source;
+                        if (element is OfdImageElement image) image.SourceXml = source;
+                        if (element is OfdPathElement path) path.SourceXml = source;
+                    }
+                    staged.Add(element);
+                }
+                page.AnnotationAppearances.AddRange(staged);
+            }
+        }
+    }
+
+    private static List<XElement>? FlattenAnnotationNodes(IEnumerable<XElement> nodes, CancellationToken token)
+    {
+        var result = new List<XElement>();
+        bool Append(IEnumerable<XElement> children, int depth)
+        {
+            if (depth > 32) return false;
+            foreach (var node in children)
+            {
+                token.ThrowIfCancellationRequested();
+                if (node.Name.LocalName == "PageBlock")
+                {
+                    if (node.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName != "ID") ||
+                        !Append(node.Elements(), depth + 1)) return false;
+                }
+                else if (node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject")
+                {
+                    if (result.Count >= 100_000) throw new InvalidDataException("Annotation appearance exceeds the object budget.");
+                    result.Add(node);
+                }
+                else return false;
+            }
+            return true;
+        }
+        return Append(nodes, 0) ? result : null;
+    }
+
+    private static string TransformAnnotationClips(string? original, XNamespace ns, double[] outer,
+        double minX, double minY, double outerX, double outerY, double width, double height, double imageWidth, double imageHeight)
+    {
+        var clips = new XElement(ns + "Clips");
+        if (!string.IsNullOrWhiteSpace(original))
+        {
+            var source = XElement.Parse(original!);
+            if (source.DescendantsAndSelf().Any(node => node.Name.LocalName is not ("Clips" or "Clip" or "Area" or "Path" or "AbbreviatedData")) ||
+                source.DescendantsAndSelf().Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName is not ("ID" or "Boundary" or "CTM" or "Rule")))
+                throw new NotSupportedException("Unsupported annotation clip cannot be flattened safely.");
+            foreach (var region in OfdClipGeometry.Read(original))
+            {
+                var area = new XElement(ns + "Area");
+                foreach (var path in region.Paths)
+                {
+                    var inner = path.Transform ?? new double[] { 1, 0, 0, 1, 0, 0 };
+                    var matrix = new[] { outer[0] * inner[0] + outer[2] * inner[1], outer[1] * inner[0] + outer[3] * inner[1],
+                        outer[0] * inner[2] + outer[2] * inner[3], outer[1] * inner[2] + outer[3] * inner[3],
+                        outer[0] * inner[4] + outer[2] * inner[5] - minX, outer[1] * inner[4] + outer[3] * inner[5] - minY };
+                    area.Add(ClipPath(path.AbbreviatedData, matrix, region.EvenOdd));
+                }
+                clips.Add(new XElement(ns + "Clip", area));
+            }
+        }
+        if (imageWidth > 0 && imageHeight > 0)
+        {
+            var imageRectangle = $"M 0 0 L {Number(imageWidth)} 0 L {Number(imageWidth)} {Number(imageHeight)} L 0 {Number(imageHeight)} C";
+            clips.Add(new XElement(ns + "Clip", new XElement(ns + "Area", ClipPath(imageRectangle,
+                new[] { outer[0], outer[1], outer[2], outer[3], -minX, -minY }, false))));
+        }
+        // Separate Clip means intersection with existing clipping, not union.
+        var rectangle = $"M 0 0 L {Number(width)} 0 L {Number(width)} {Number(height)} L 0 {Number(height)} C";
+        clips.Add(new XElement(ns + "Clip", new XElement(ns + "Area", ClipPath(rectangle,
+            new[] { outer[0], outer[1], outer[2], outer[3], outerX, outerY }, false))));
+        return clips.ToString(SaveOptions.DisableFormatting);
+
+        string Number(double value) => value.ToString("R", CultureInfo.InvariantCulture);
+        XElement ClipPath(string data, double[] matrix, bool evenOdd) => new(ns + "Path",
+            new XAttribute("ID", "annotation-clip"), new XAttribute("CTM", string.Join(" ", matrix.Select(Number))),
+            evenOdd ? new XAttribute("Rule", "Even-Odd") : null, new XElement(ns + "AbbreviatedData", data));
     }
 
     private static void ReadFonts(
@@ -533,7 +701,8 @@ public sealed class OfdReader : IOfdReader
                         Transform = ParseMatrix(node.Attribute("CTM")?.Value),
                         FillColor = ParseColor(node.Elements()
                             .FirstOrDefault(x => x.Name.LocalName == "FillColor")) ?? OfdColor.Black,
-                        SourceXml = node.ToString(SaveOptions.DisableFormatting)
+                        SourceXml = node.ToString(SaveOptions.DisableFormatting),
+                        ClippingXml = node.Elements().FirstOrDefault(child => child.Name.LocalName == "Clips")?.ToString(SaveOptions.DisableFormatting)
                     };
                     foreach (var textCode in textCodes)
                     {
@@ -611,7 +780,8 @@ public sealed class OfdReader : IOfdReader
                         Fill = ParseBoolean(node.Attribute("Fill")?.Value, false),
                         StrokeColor = strokeColor ?? OfdColor.Black,
                         FillColor = fillColor,
-                        SourceXml = node.ToString(SaveOptions.DisableFormatting)
+                        SourceXml = node.ToString(SaveOptions.DisableFormatting),
+                        ClippingXml = node.Elements().FirstOrDefault(child => child.Name.LocalName == "Clips")?.ToString(SaveOptions.DisableFormatting)
                     };
                     continue;
                 }

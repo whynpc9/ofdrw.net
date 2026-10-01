@@ -83,7 +83,7 @@ Mutate("rich", entries =>
     var font = source.Fonts.First().Id;
     entries["Doc_0/Templates/Content.xml"] = Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Content><Layer ID='999002' Type='Background'><PathObject ID='999003' Boundary='8 8 3 278' Fill='true' Stroke='false'><FillColor Value='220 230 250'/><AbbreviatedData>M 0 0 L 3 0 L 3 278 L 0 278 C</AbbreviatedData></PathObject><PathObject ID='999011' Boundary='18 170 80 20' Fill='true' Stroke='false'><FillColor Value='190 215 250'/><AbbreviatedData>M 0 0 L 80 0 L 80 20 L 0 20 C</AbbreviatedData></PathObject><TextObject ID='999012' Font='{font}' Size='4' Boundary='23 175 75 10'><TextCode X='0' Y='4'>UNDER LAYER 下层</TextCode></TextObject><TextObject ID='999004' Font='{font}' Size='3' Boundary='15 277 120 10'><TextCode X='0' Y='3'>TEMPLATE 模板</TextCode></TextObject></Layer></Content></Page>");
     entries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'><Page PageID='{first.Attribute("ID")!.Value}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
-    entries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='999005' Type='Stamp' Visible='true'><Appearance ID='999006' Boundary='135 10 60 12' CTM='1 0 0 1 0 0'><TextObject ID='999007' Font='{font}' Size='3' Boundary='0 0 60 12'><FillColor Value='30 100 180'/><TextCode X='0' Y='3'>NOTE 注释</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+    entries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='999005' Type='Stamp' Visible='true'><Appearance ID='999006' Boundary='135 10 60 12' CTM='1 0 0 1 0 0'><PageBlock ID='999008'><TextObject ID='999007' Font='{font}' Size='3' Boundary='0 0 60 12'><FillColor Value='30 100 180'/><TextCode X='0' Y='3'>NOTE 注释</TextCode></TextObject></PageBlock></Appearance></Annot></PageAnnot>");
 });
 source = await Read("rich");
 var mark = File.ReadAllBytes(Path.Combine(root, "e2e/Ofdrw.Net.DocumentTools.E2E/mark.png"));
@@ -115,7 +115,22 @@ await Save(overlay, "overlay");
 await Save(OfdDocumentMixer.Mix([new(signed, 0), new(overlay, 0)]), "mix");
 await using (var input = File.OpenRead(PathFor("signed.ofd")))
 await using (var target = File.Create(PathFor("clean.ofd"))) await OfdSignatureCleaner.CleanAsync(input, target);
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "signed", "watermark", "watermark-merged", "split", "mix", "clean", "overlay" })
+var clipped = new OfdDocumentPackage();
+clipped.Fonts.Add(source.Fonts.First(font => !font.Bold && !font.Italic));
+clipped.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100,
+    Elements = { new OfdImageElement { Data = mark, Alpha = 0, WidthMillimeters = 1, HeightMillimeters = 1 } } });
+await Save(clipped, "annotation-clipped");
+var clippedRead = await Read("annotation-clipped");
+Mutate("annotation-clipped", entries =>
+{
+    var document = Xml(entries["Doc_0/Document.xml"]);
+    document.Root!.Add(new XElement(ns + "Annotations", "Annots/Annotations.xml")); entries["Doc_0/Document.xml"] = Bytes(document);
+    var font = clippedRead.Fonts.Single().Id; var media = clippedRead.Pages[0].Elements.OfType<OfdImageElement>().Single().ResourceId;
+    entries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'><Page PageID='{clippedRead.Pages[0].Id}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+    entries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='800'><Appearance Boundary='10 10 20 10' CTM='1 0 0.5 1 0 0'><PageBlock ID='801'><ImageObject ID='802' ResourceID='{media}' Boundary='0 0 200 10'/></PageBlock></Appearance></Annot><Annot ID='810'><Appearance Boundary='50 15 35 15' CTM='0 1 -1 0 0 0'><PageBlock ID='811'><TextObject ID='812' Font='{font}' Size='4' Boundary='0 0 30 8'><TextCode X='0' Y='4'>ROTATE</TextCode></TextObject></PageBlock></Appearance></Annot><Annot ID='820'><Appearance Boundary='50 60 20 10' CTM='1.5 0 0 1.5 0 0'><TextObject ID='821' Font='{font}' Size='4' Boundary='0 0 20 8'><TextCode X='0' Y='4'>SCALE</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+});
+await Save(OfdDocumentMixer.Mix([new(await Read("annotation-clipped"), 0)]), "annotation-clipped-mix");
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "signed", "watermark", "watermark-merged", "split", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);

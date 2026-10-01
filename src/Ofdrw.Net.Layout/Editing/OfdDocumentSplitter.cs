@@ -28,9 +28,7 @@ public static class OfdDocumentSplitter
             var texts = selected.Pages.SelectMany(page => page.Elements.Concat(page.Templates.SelectMany(template => template.Elements)).Concat(page.AnnotationAppearances)).OfType<OfdTextElement>();
             foreach (var text in texts)
             {
-                var font = source.Fonts.FirstOrDefault(candidate => candidate.Id == text.FontResourceId)
-                    ?? source.Fonts.FirstOrDefault(candidate => string.Equals(candidate.FontName, text.FontName, StringComparison.OrdinalIgnoreCase) && !candidate.Bold && !candidate.Italic)
-                    ?? source.Fonts.FirstOrDefault(candidate => string.Equals(candidate.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
+                var font = OfdFontSelection.Resolve(source.Fonts, text);
                 if (font is not null && !selected.Fonts.Contains(font)) selected.Fonts.Add(font);
             }
             selected.Attachments.AddRange(source.Attachments);

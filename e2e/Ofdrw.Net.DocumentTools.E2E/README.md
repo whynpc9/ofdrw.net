@@ -15,3 +15,5 @@ The Mix green TOP LAYER box covers the earlier blue UNDER LAYER box; first-page 
 The script also checks OFD/PDF text counts, selected page order, clean body byte equality and all file hashes. Automated rendering and PNG review do not complete macOS Preview acceptance. See [the persistent evidence record](../../docs/evidence/document-tools/README.md).
 
 After extracting the evidence bundle, reproduction can use `OFDRW_DOCUMENT_TOOLS_FONTS=docs/evidence/document-tools/files/fonts` to reuse the exact licensed font without another download.
+
+The annotation-clipped pair adds an oversized sheared image inside a 20x10 mm Appearance, nested PageBlock content, a 90-degree rotated ROTATE label and a 1.5x SCALE label. The clipped output and its Mix roundtrip must retain the exact parallelogram, glyph orientation/size and extract each label once.
