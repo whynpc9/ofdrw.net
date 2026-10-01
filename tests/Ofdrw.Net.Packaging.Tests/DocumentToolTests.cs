@@ -497,13 +497,39 @@ public sealed class DocumentToolTests
     public void Mix_KeepsSupportedAreaTransformAndMergeRejectsUnmappedSubstitution()
     {
         var source = Source(); var image = source.Pages[0].Elements.OfType<OfdImageElement>().Single();
-        source.Pages[0].Elements.OfType<OfdTextElement>().Single().SourceXml = "<TextObject LineWidth='0.5'><TextCode X='0' Y='4'>FIRST</TextCode></TextObject>";
-        image.ClippingXml = "<Clips><Clip><Area CTM='1 0 0 1 2 3'><Path ID='800'><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></Path></Area></Clip></Clips>";
+        source.Pages[0].Elements.OfType<OfdTextElement>().Single().SourceXml = "<TextObject Name='body' Visible='true' LineWidth='0.5'><TextCode X='0' Y='4'>FIRST</TextCode></TextObject>";
+        image.ClippingXml = "<Clips><Clip><Area Start='0 0' CTM='1 0 0 1 2 3'><Path ID='800' Name='clip' Visible='true' Stroke='false' Fill='true' LineWidth='0.35' Alpha='255' Cap='Butt' Join='Miter' MiterLimit='3' DashOffset='0' DashPattern='1 2'><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></Path></Area></Clip></Clips>";
         var mixed = OfdDocumentMixer.Mix([new(source, 0)]);
         var clip = XElement.Parse(mixed.Pages[0].Elements.OfType<OfdImageElement>().Single().ClippingXml!);
         Assert.Equal("1 0 0 1 2 3", clip.Descendants(clip.Name.Namespace + "Area").Single().Attribute("CTM")!.Value);
         image.SourceXml = "<ImageObject Substitution='123'/>";
         Assert.Throws<NotSupportedException>(() => OfdDocumentMerger.Merge([source]));
+        image.SourceXml = "<ImageObject ImageMask='123'/>";
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMerger.Merge([source]));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reader_PageAndTemplateLeavesUseOnlyDirectLiteralTextAndPreserveExtensions(bool template)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var pagePath = source.Pages[0].SourceEntryPath!;
+        var fixture = XElement.Parse($"<Page xmlns='{ns}'><Content><Layer ID='700'><TextObject ID='701' Font='10' Size='4' Boundary='0 0 40 10'><TextCode X='0' Y='4'>OK<Note>SECRET</Note></TextCode><Note><TextCode>NESTED</TextCode></Note></TextObject><TextObject ID='702' Boundary='0 20 40 10'><Note>FALLBACK</Note></TextObject><PathObject ID='703' Boundary='0 30 40 10'><AbbreviatedData>M 0 0 L 1 0<Note> L 9 9</Note></AbbreviatedData></PathObject></Layer></Content></Page>");
+        var fixturePath = template ? "Doc_0/Templates/Content.xml" : pagePath;
+        source.PreservedEntries[fixturePath] = Encoding.UTF8.GetBytes(fixture.ToString());
+        if (template)
+        {
+            var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Element(ns + "CommonData")!.Add(new XElement(ns + "TemplatePage", new XAttribute("ID", "700"), new XAttribute("BaseLoc", "Templates/Content.xml"))); Put(source, "Doc_0/Document.xml", document);
+            var page = Xml(source, pagePath); page.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "700"))); Put(source, pagePath, page);
+        }
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        var elements = template ? read.Pages[0].Templates.Single().Elements : read.Pages[0].Elements;
+        Assert.Equal(new[] { "OK", "" }, elements.OfType<OfdTextElement>().Select(text => text.Text));
+        Assert.Equal("M 0 0 L 1 0", elements.OfType<OfdPathElement>().Single().AbbreviatedData);
+        Assert.DoesNotContain("SECRET", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(read, includeTemplates: true));
+        Assert.DoesNotContain("FALLBACK", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(read, includeTemplates: true));
+        var saved = await RoundTrip(read); Assert.Contains("SECRET", Encoding.UTF8.GetString(saved.PreservedEntries[fixturePath]));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
     }
     [Theory]
     [InlineData("Payload")]

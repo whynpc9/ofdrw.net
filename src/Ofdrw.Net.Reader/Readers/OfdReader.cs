@@ -710,7 +710,7 @@ public sealed class OfdReader : IOfdReader
                         YMillimeters = boundary.y,
                         WidthMillimeters = boundary.w,
                         HeightMillimeters = boundary.h,
-                        Text = textCodes.Count == 0 ? node.Value : string.Concat(textCodes.Select(code => code.Value)),
+                        Text = string.Concat(textCodes.Select(ReadDirectText)),
                         FontResourceId = node.Attribute("Font")?.Value,
                         FontName = ResolveFontName(node.Attribute("Font")?.Value, fontMap),
                         FontSizeMillimeters = ParseDouble(node.Attribute("Size")?.Value, 4d),
@@ -726,7 +726,7 @@ public sealed class OfdReader : IOfdReader
                     {
                         text.Runs.Add(new OfdTextRun
                         {
-                            Text = textCode.Value,
+                            Text = ReadDirectText(textCode),
                             XMillimeters = ParseDouble(textCode.Attribute("X")?.Value, 0d),
                             YMillimeters = ParseDouble(textCode.Attribute("Y")?.Value, text.FontSizeMillimeters),
                             DeltaX = textCode.Attribute("DeltaX")?.Value,
@@ -789,9 +789,7 @@ public sealed class OfdReader : IOfdReader
                         YMillimeters = boundary.y,
                         WidthMillimeters = boundary.w,
                         HeightMillimeters = boundary.h,
-                        AbbreviatedData = node.Elements()
-                            .FirstOrDefault(x => x.Name.LocalName == "AbbreviatedData")?.Value
-                            ?? string.Empty,
+                        AbbreviatedData = ReadDirectText(node.Element(node.Name.Namespace + "AbbreviatedData")),
                         Transform = ParseMatrix(node.Attribute("CTM")?.Value),
                         LineWidthMillimeters = ParseDouble(node.Attribute("LineWidth")?.Value, 0.353d),
                         Stroke = ParseBoolean(node.Attribute("Stroke")?.Value, true),
@@ -820,6 +818,8 @@ public sealed class OfdReader : IOfdReader
             }
         }
     }
+
+    private static string ReadDirectText(XElement? node) => node is null ? string.Empty : string.Concat(node.Nodes().OfType<XText>().Select(text => text.Value));
 
     private static void ReadKeyValueCustomTags(
         OfdPackageArchive archive,

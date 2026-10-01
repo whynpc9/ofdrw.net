@@ -225,6 +225,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             foreach (var element in EnumerateRenderableElements(page))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (!OfdGraphicXmlContract.IsVisible(element)) continue;
                 if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
                     throw new NotSupportedException($"Annotation appearance on page {page.Index + 1} contains unsupported drawing; export would lose content.");
                 var elementState = graphics.Save();

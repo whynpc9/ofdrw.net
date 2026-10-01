@@ -39,7 +39,7 @@ internal static class OfdGraphicXmlContract
         if (parent == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor) return true;
         if (attribute.Name.Namespace != XNamespace.None) return false;
         var name = attribute.Name.LocalName;
-        if (parent is "TextObject" or "ImageObject" or "PathObject" && name is "ID" or "Boundary" or "CTM" or "Alpha" or "LineWidth" or "Cap" or "Join" or "MiterLimit" or "DashOffset" or "DashPattern") return true;
+        if (parent is "TextObject" or "ImageObject" or "PathObject" or "Path" && name is "ID" or "Name" or "Visible" or "Boundary" or "CTM" or "Alpha" or "LineWidth" or "Cap" or "Join" or "MiterLimit" or "DashOffset" or "DashPattern") return true;
         return parent switch
         {
             "TextObject" => name is "Font" or "Size" or "Stroke" or "Fill" or "HScale" or "ReadDirection" or "CharDirection" or "Weight" or "Italic",
@@ -48,15 +48,22 @@ internal static class OfdGraphicXmlContract
             "FillColor" or "StrokeColor" => name is "Value" or "Alpha",
             "TextCode" => name is "X" or "Y" or "DeltaX" or "DeltaY",
             "CGTransform" => name is "CodePosition" or "CodeCount" or "GlyphCount",
-            "Path" => name is "ID" or "Boundary" or "CTM" or "Rule",
-            "Area" => name == "CTM",
+            "Path" => name is "Stroke" or "Fill" or "Rule",
+            "Area" => name is "CTM" or "Start",
             _ => false
         };
     }
 
     internal static bool HasUnsupportedReferences(XElement root) => root.DescendantsAndSelf().Attributes().Any(attribute =>
         !attribute.IsNamespaceDeclaration && attribute.Name.Namespace == XNamespace.None &&
-        (attribute.Name.LocalName is "DrawParam" or "ColorSpace" or "RefID" or "ObjectRef" or "TemplateID" or "PageID" or "Substitution" ||
+        (attribute.Name.LocalName is "DrawParam" or "ColorSpace" or "RefID" or "ObjectRef" or "TemplateID" or "PageID" or "Substitution" or "ImageMask" ||
          attribute.Name.LocalName == "Font" && attribute.Parent != root ||
          attribute.Name.LocalName == "ResourceID" && attribute.Parent != root));
+
+    internal static bool IsVisible(OfdElement element)
+    {
+        var xml = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, _ => null };
+        if (string.IsNullOrWhiteSpace(xml)) return true;
+        return XElement.Parse(xml!).Attribute("Visible")?.Value.ToLowerInvariant() is not ("false" or "0");
+    }
 }
