@@ -121,6 +121,31 @@ public sealed class DocumentToolTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CleanSignatures_HandlesOwnedXmlValueAndSealWithSharedReferenceClosure(bool shared)
+    {
+        var source = await RoundTrip(Source()); AddSignatures(source, "value.xml");
+        var signature = Xml(source, "Doc_0/Signs/Sign_0/Signature.xml"); var ns = signature.Root!.Name.Namespace;
+        signature.Root.Element(ns + "SignedInfo")!.Element(ns + "Seal")!.SetAttributeValue("BaseLoc", "seal.xml");
+        Put(source, "Doc_0/Signs/Sign_0/Signature.xml", signature);
+        source.PreservedEntries.Remove("Doc_0/Signs/Sign_0/SignedValue.dat"); source.PreservedEntries.Remove("Doc_0/Signs/Sign_0/Seal.esl");
+        source.PreservedEntries["Doc_0/Signs/Sign_0/value.xml"] = Encoding.UTF8.GetBytes("<Value Seal='seal.xml'/>");
+        source.PreservedEntries["Doc_0/Signs/Sign_0/seal.xml"] = Encoding.UTF8.GetBytes("<Seal/>");
+        if (shared) source.PreservedEntries["Doc_0/Extensions/shared.xml"] = Encoding.UTF8.GetBytes("<Extension File='/Doc_0/Signs/Sign_0/value.xml'/>");
+        using var input = Zip(source.PreservedEntries); using var output = new MemoryStream();
+        await OfdPackageSignatureCleaner.CleanAsync(input, output); output.Position = 0;
+        var result = await new OfdPackageLoader().LoadAsync(output);
+        foreach (var path in new[] { "Doc_0/Signs/Sign_0/value.xml", "Doc_0/Signs/Sign_0/seal.xml" })
+        {
+            Assert.Equal(shared, result.Contains(path));
+            if (shared) Assert.Equal(source.PreservedEntries[path], result.GetBytes(path));
+        }
+        Assert.False(result.Contains("Doc_0/Signs/Sign_0/Signature.xml"));
+        Assert.DoesNotContain("Signatures", result.ReadUtf8Text("OFD.xml"));
+    }
+
+    [Theory]
     [InlineData("", 32, 43, 50, 10)]
     [InlineData(" ID='777' CTM='1 0 0 1 0 0'", 32, 43, 50, 10)]
     [InlineData(" ID='777' CTM='2 0 0 2 0 0'", 34, 46, 100, 20)]
