@@ -524,6 +524,33 @@ public sealed class ImageIoTests
         Assert.Single(pdf.GetPages());
     }
 
+    [Theory]
+    [InlineData("xml")] [InlineData("missing")] [InlineData("bitmap")]
+    public async Task StrictSelectedSealParseAndDecodeFailuresNeverPublish(string kind)
+    {
+        byte[] bad;
+        if (kind == "bitmap") bad = ImageBytes()[..40];
+        else
+        {
+            using var buffer = new MemoryStream();
+            using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, true))
+            {
+                using var entry = zip.CreateEntry(kind == "xml" ? "OFD.xml" : "missing-root.txt").Open();
+                entry.Write(System.Text.Encoding.UTF8.GetBytes(kind == "xml" ? "<OFD" : "no OFD root"));
+            }
+            bad = buffer.ToArray();
+        }
+        using var input = new MemoryStream(await WithSeals([ImageBytes(true), bad])); using var output = Sentinel();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions { PixelsPerMillimeter = 2 }).ConvertAsync(input, output));
+        AssertSentinel(output);
+        // The public PDF converter remains tolerant of the bad second vendor appearance.
+        input.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
+        using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
+        using var page = reader.GetPageReader(0); var pixels = page.GetImage();
+        var offset = ((int)(12 * 72d / 25.4d * 2) * page.GetPageWidth() + (int)(7 * 72d / 25.4d * 2)) * 4;
+        Assert.True(pixels[offset + 2] > 180); Assert.True(pixels[offset] < 60);
+    }
+
     [Fact]
     public async Task SaveReviewEvidence_WhenRequested()
     {
