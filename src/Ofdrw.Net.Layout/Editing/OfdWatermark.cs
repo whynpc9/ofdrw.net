@@ -79,7 +79,7 @@ public static class OfdWatermark
         if (package is null) throw new ArgumentNullException(nameof(package));
         OfdDocumentSplitter.ValidateSingleDocument(package);
         OfdDocumentSplitter.ValidatePages(package, pages);
-        if (options.MaxPageCount <= 0 || pages.Count > options.MaxPageCount || options.MaxImageBytes <= 0) throw new ArgumentException("Watermark page/image budget exceeded.");
+        if (options.MaxPageCount <= 0 || pages.Count > options.MaxPageCount) throw new ArgumentException("Watermark page budget exceeded.");
         if (options.LayerType is not ("Background" or "Body" or "Foreground")) throw new ArgumentException("Invalid OFD layer type.");
         if (!Finite(options.XMillimeters) || !Finite(options.YMillimeters) || !Finite(options.WidthMillimeters) || !Finite(options.HeightMillimeters) ||
             options.WidthMillimeters <= 0 || options.HeightMillimeters <= 0) throw new ArgumentException("Watermark geometry must be finite with positive dimensions.");

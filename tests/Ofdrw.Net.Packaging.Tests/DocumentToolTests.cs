@@ -452,6 +452,17 @@ public sealed class DocumentToolTests
     }
 
     [Fact]
+    public void TextWatermark_IgnoresImageOnlyPolicyWhileImagesRemainForbiddenAtomically()
+    {
+        var source = Source(); var options = new OfdWatermarkOptions { MaxImageBytes = 0, MaxGeneratedImageBytes = 0, MaxDecodedImagePixels = 0 };
+        OfdWatermark.AddText(source, [0,1], "TEXT", options);
+        Assert.All(source.Pages, page => Assert.Equal("TEXT", Assert.IsType<OfdTextElement>(page.Elements.Last()).Text));
+        var counts = source.Pages.Select(page => page.Elements.Count).ToArray();
+        Assert.Throws<ArgumentException>(() => OfdWatermark.AddImage(source, [0,1], Png, "image/png", options));
+        Assert.Equal(counts, source.Pages.Select(page => page.Elements.Count));
+    }
+
+    [Fact]
     public async Task Writer_ClipsPrecedeObjectSpecificTextAndPathChildren()
     {
         var package = new OfdDocumentPackage(); var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
