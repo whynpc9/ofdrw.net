@@ -45,7 +45,6 @@
 
 | 文件 | 字节 | SHA-256 |
 | --- | ---: | --- |
-
 | `tables-public.ofd` | 4,565 | `d164be3e7a3743834bd049c7015ffa0ede31d749525438de1bb8d8c53987aa7f` |
 | `tables-public.pdf` | 166,952 | `ceaf00c958fe01b22e756e1b60254b6491d7e95c2785d0d014a4b3dfd9b6de22` |
 | `tables-native.ofd` | 15,290,018 | `3e57250361f3a18cc33245a2e3e93008fb8e9599ec60dfa4a425ebcaa9a58f83` |
@@ -56,3 +55,7 @@
 | `baseline-native.pdf` | 117,510 | `322862edd1c094f81d79ee35d729979f15d24be5f1767720c31325d7c8c134a3` |
 | `baseline-default.ofd` | 15,288,611 | `333ba3fad8a8514161ee7979f8048f9f6c3261b9706f22962058490f7a7a4ae4` |
 | `baseline-default.pdf` | 117,510 | `4bdbe7d287b6a0332753d71c4ac823e1d0a63928e1cc43546b7594eb6e8a123c` |
+
+## 首轮 PR review
+
+PR #10 base=`codex/public-flow-layout`，首轮 head `5a17b853c2e14aba5e894a82fabae00dab6b93a5`。五项 CI 全绿；Codex 完成无意见。Cursor 提出三个诊断/文档问题：空单元格预算用词、Native 网格失败显示行号与具体原因、严格拒绝消息不应声称完成降级。已修正并新增三项诊断回归。绘制与测量未改变；后续仍重新生成、重新打开本次产物复验，等待新 head review/CI 闭合。

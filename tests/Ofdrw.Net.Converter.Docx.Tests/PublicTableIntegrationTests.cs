@@ -48,8 +48,10 @@ public sealed partial class DocxConversionTests
         output.Position = 0; var package = await new OfdReader().ReadAsync(output);
         Assert.Equal("merge text", string.Concat(package.Pages.SelectMany(p => p.Elements).OfType<OfdTextElement>().Select(e => e.Text)));
         await using var strictInput = CreateMinimalDocx(body); await using var strictOutput = new MemoryStream();
-        await Assert.ThrowsAsync<NotSupportedException>(() => new DocxToOfdConverter(new DocxConversionOptions
+        var strictError = await Assert.ThrowsAsync<NotSupportedException>(() => new DocxToOfdConverter(new DocxConversionOptions
         { OfdMode = DocxToOfdMode.Native, UnsupportedFeatureBehavior = UnsupportedDocxFeatureBehavior.Throw }).ConvertAsync(strictInput, strictOutput));
+        Assert.Contains("row 1, cell 1", strictError.Message);
+        Assert.DoesNotContain("rendered", strictError.Message);
         Assert.Equal(0, strictOutput.Length);
     }
 
@@ -97,5 +99,27 @@ public sealed partial class DocxConversionTests
         var result = await new DocxToOfdConverter().ConvertWithResultAsync(input, output);
         Assert.Contains(result.Diagnostics, d => d.Code == "DOCX_CELL_PAGE_BREAK_DEGRADED");
         output.Position = 0; Assert.Equal("AB", string.Concat((await new OfdReader().ReadAsync(output)).Pages.SelectMany(p => p.Elements).OfType<OfdTextElement>().Select(e => e.Text)));
+    }
+
+    [Theory]
+    [InlineData(true, "A cell span exceeds the table grid.")]
+    [InlineData(false, "A table row must cover every column exactly once.")]
+    public async Task Native_InvalidSecondRow_ReportsRowAndSpecificReason(bool overflow, string reason)
+    {
+        var second = overflow ? "<w:tcPr><w:gridSpan w:val=\"3\"/></w:tcPr>" : "";
+        await using var input = CreateMinimalDocx($"<w:tbl><w:tblGrid><w:gridCol w:w=\"2000\"/><w:gridCol w:w=\"2000\"/></w:tblGrid><w:tr><w:tc><w:p/></w:tc><w:tc><w:p/></w:tc></w:tr><w:tr><w:tc>{second}<w:p><w:r><w:t>A</w:t></w:r></w:p></w:tc></w:tr></w:tbl>");
+        await using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new DocxToOfdConverter().ConvertAsync(input, output));
+        Assert.Contains("table row 2", error.Message); Assert.Contains(reason, error.Message); Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
+    public async Task Native_StrictCellPageBreak_MessageDoesNotClaimDegradation()
+    {
+        await using var input = CreateMinimalDocx("<w:tbl><w:tr><w:tc><w:p><w:r><w:br w:type=\"page\"/><w:t>A</w:t></w:r></w:p></w:tc></w:tr></w:tbl>");
+        await using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() => new DocxToOfdConverter(new DocxConversionOptions
+        { UnsupportedFeatureBehavior = UnsupportedDocxFeatureBehavior.Throw }).ConvertAsync(input, output));
+        Assert.Contains("row 1, cell 1", error.Message); Assert.DoesNotContain("ignored", error.Message); Assert.Equal(0, output.Length);
     }
 }
