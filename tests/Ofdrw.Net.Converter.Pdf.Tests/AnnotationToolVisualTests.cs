@@ -145,6 +145,35 @@ public sealed class AnnotationToolVisualTests
         Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
     }
 
+    [Fact]
+    public async Task AnnotationClip_StandardPathAttributesAndAreaStartExportAndMix()
+    {
+        var source = await Annotated("<PathObject Boundary='0 0 20 20' Fill='true' Stroke='false'><Clips><Clip><Area Start='0 0' CTM='1 0 0 1 0 0'><Path Name='clip' Visible='true' Stroke='false' Fill='true' LineWidth='0.35' Alpha='255'><AbbreviatedData>M 0 0 L 10 0 L 10 10 L 0 10 C</AbbreviatedData></Path></Area></Clip></Clips><FillColor Value='255 0 0'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>", "10 10 20 20");
+        Assert.Single(source.Pages[0].AnnotationAppearances.OfType<OfdPathElement>());
+        var mixed = OfdDocumentMixer.Mix([new(source, 0)]);
+        foreach (var package in new[] { source, mixed })
+        {
+            using var ofd = await Write(package); using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+            using var doc = DocLib.Instance.GetDocReader(pdf.ToArray(), new PageDimensions(2d)); using var page = doc.GetPageReader(0);
+            Assert.InRange(Pixel(page.GetImage(), page.GetPageWidth(), 15, 15, 1), 0, 10);
+            Assert.InRange(Pixel(page.GetImage(), page.GetPageWidth(), 25, 25, 1), 245, 255);
+            ofd.Position = 0; using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(ofd, svg);
+            Assert.Contains("clipPath", Encoding.UTF8.GetString(svg.ToArray()));
+        }
+    }
+
+    [Fact]
+    public async Task OrdinaryClip_DoesNotUseNestedExtensionPathText()
+    {
+        var source = new OfdDocumentPackage(); var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        page.Elements.Add(new OfdPathElement { XMillimeters = 10, YMillimeters = 10, WidthMillimeters = 20, HeightMillimeters = 20, Fill = true, Stroke = false, FillColor = new OfdColor(255,0,0), AbbreviatedData = "M 0 0 L 20 0 L 20 20 L 0 20 C",
+            ClippingXml = $"<Clips xmlns='{source.Options.Namespace}'><Clip><Area><Path><AbbreviatedData>M 0 0 L 10 0 L 10 10 L 0 10 C<Note>M 0 0 L 20 0 L 20 20 L 0 20 C</Note></AbbreviatedData></Path></Area></Clip><v:Clip xmlns:v='urn:vendor'><v:Area><v:Path><v:AbbreviatedData>M 0 0 L 1 0 L 1 1 C</v:AbbreviatedData></v:Path></v:Area></v:Clip></Clips>" }); source.Pages.Add(page);
+        using var ofd = await Write(source); using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd,pdf);
+        using var doc = DocLib.Instance.GetDocReader(pdf.ToArray(),new PageDimensions(2d)); using var raster = doc.GetPageReader(0);
+        Assert.InRange(Pixel(raster.GetImage(),raster.GetPageWidth(),15,15,1),0,10);
+        Assert.InRange(Pixel(raster.GetImage(),raster.GetPageWidth(),25,25,1),245,255);
+    }
+
     [Theory]
     [InlineData("Payload='private.bin'")]
     [InlineData("xmlns:v='urn:vendor' v:Font='private.bin'")]

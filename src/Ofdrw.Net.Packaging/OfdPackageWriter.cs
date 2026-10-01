@@ -447,15 +447,19 @@ public sealed class OfdPackageWriter
                         SetPathColor(pathObject, ns, "StrokeColor", path.Stroke ? path.StrokeColor : null);
                         SetPathColor(pathObject, ns, "FillColor", path.Fill ? path.FillColor : null);
 
-                        var abbreviatedData = pathObject.Elements()
-                            .FirstOrDefault(x => x.Name.LocalName == "AbbreviatedData");
+                        var abbreviatedData = pathObject.Element(pathObject.Name.Namespace + "AbbreviatedData");
                         if (abbreviatedData is null)
                         {
                             pathObject.Add(new XElement(ns + "AbbreviatedData", path.AbbreviatedData));
                         }
                         else
                         {
-                            abbreviatedData.Value = path.AbbreviatedData;
+                            var literal = string.Concat(abbreviatedData.Nodes().OfType<XText>().Select(text => text.Value));
+                            if (literal != path.AbbreviatedData)
+                            {
+                                abbreviatedData.Nodes().OfType<XText>().Remove();
+                                abbreviatedData.AddFirst(new XText(path.AbbreviatedData));
+                            }
                         }
 
                         ApplyClipping(pathObject, path);
