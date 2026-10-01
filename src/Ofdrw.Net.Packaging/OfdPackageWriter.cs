@@ -421,9 +421,8 @@ public sealed class OfdPackageWriter
                             ? string.Join(" ", image.Transform.Select(ToInvariant))
                             : BuildMatrix(image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0));
                         imageObject.SetAttributeValue("Alpha", image.Alpha == 255 ? null : (object)Math.Max(0, Math.Min(255, image.Alpha)));
-                        imageObject.Elements().Where(child => child.Name.LocalName == "Clips").Remove();
-                        if (!string.IsNullOrWhiteSpace(image.ClipsXml))
-                            imageObject.Add(XElement.Parse(image.ClipsXml!, LoadOptions.PreserveWhitespace));
+                        imageObject.Elements(imageObject.Name.Namespace + "Clips").Remove();
+                        ApplyClipping(imageObject, image);
 
                         AssignNestedIds(imageObject, idAllocator);
                         layer.Add(imageObject);
@@ -572,8 +571,13 @@ public sealed class OfdPackageWriter
     private static void ApplyClipping(XElement xml, OfdElement element)
     {
         if (element.ClippingXml is null) return;
-        xml.Elements().Where(node => node.Name.LocalName == "Clips").Remove();
-        if (!string.IsNullOrWhiteSpace(element.ClippingXml)) xml.Add(XElement.Parse(element.ClippingXml!, LoadOptions.PreserveWhitespace));
+        xml.Elements(xml.Name.Namespace + "Clips").Remove();
+        if (!string.IsNullOrWhiteSpace(element.ClippingXml))
+        {
+            var clip = XElement.Parse(element.ClippingXml!, LoadOptions.PreserveWhitespace);
+            var actions = xml.Elements(xml.Name.Namespace + "Actions").LastOrDefault();
+            if (actions is null) xml.AddFirst(clip); else actions.AddAfterSelf(clip);
+        }
     }
 
     private static string GetLayerKey(OfdElement element)
