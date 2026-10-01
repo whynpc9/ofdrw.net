@@ -15,6 +15,10 @@ public sealed class OfdDocumentMergeOptions
     public bool IncludeAttachments { get; set; } = true;
 
     public bool SkipUnsupportedRawElements { get; set; }
+
+    // Mix requires complete attribute closure; Merge keeps its legacy benign
+    // unqualified metadata compatibility while rejecting foreign references.
+    internal bool RequireKnownAttributes { get; set; }
 }
 
 /// <summary>
@@ -94,7 +98,7 @@ public static class OfdDocumentMerger
                     try
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        ValidateStandaloneElement(element);
+                        ValidateStandaloneElement(element, options.RequireKnownAttributes);
                         var clone = OfdModelCloner.CloneElement(element, destination.Options.Namespace);
                         clone.ObjectId = null;
                         var layerKey = element.LayerId + "\u001f" + element.LayerType;
@@ -163,7 +167,7 @@ public static class OfdDocumentMerger
         foreach (var element in page.AnnotationAppearances) yield return element;
     }
 
-    private static void ValidateStandaloneElement(OfdElement element)
+    private static void ValidateStandaloneElement(OfdElement element, bool requireKnownAttributes)
     {
         if (element is OfdRawElement)
             throw new NotSupportedException("Unsupported raw page objects cannot be safely remapped during merge.");
@@ -177,6 +181,8 @@ public static class OfdDocumentMerger
         if (!string.IsNullOrWhiteSpace(element.ClippingXml))
         {
             var clips = XElement.Parse(element.ClippingXml!);
+            if (!OfdGraphicXmlContract.HasKnownChildren(clips) || clips.DescendantsAndSelf().Attributes().Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute)))
+                throw new NotSupportedException("Unknown clip structure or attributes cannot be safely remapped.");
             if (clips.Descendants().Any(node => node.Name.Namespace != clips.Name.Namespace))
                 throw new NotSupportedException("Unknown clip extension elements cannot be safely remapped.");
             if (clips.DescendantsAndSelf().Attributes().Any(attribute => attribute.Name.LocalName is "Font" or "ResourceID" or "DrawParam" or "ColorSpace" or "RefID" or "ObjectRef"))
@@ -189,13 +195,18 @@ public static class OfdDocumentMerger
         foreach (var attribute in root.DescendantsAndSelf().Attributes())
         {
             var name = attribute.Name.LocalName;
-            if (attribute.Parent == root &&
+            if (attribute.Parent == root && attribute.Name.Namespace == XNamespace.None &&
                 ((name == "Font" && element is OfdTextElement) ||
                  (name == "ResourceID" && element is OfdImageElement))) continue;
             if (name is "Font" or "ResourceID" or "DrawParam" or "ColorSpace" or "RefID" or
                 "TemplateID" or "PageID" or "ObjectRef")
                 throw new NotSupportedException($"Unmodeled resource reference '{name}' cannot be safely remapped during merge.");
         }
+        if (OfdGraphicXmlContract.HasUnsupportedReferences(root))
+            throw new NotSupportedException("Unmodeled drawing resource references (including Substitution) cannot be safely remapped.");
+        if (!OfdGraphicXmlContract.HasKnownChildren(root) || root.DescendantsAndSelf().Attributes().Any(attribute =>
+            !OfdGraphicXmlContract.IsKnownAttribute(attribute) && (requireKnownAttributes || attribute.Name.Namespace != XNamespace.None)))
+            throw new NotSupportedException("Unknown object structure or attributes cannot be safely remapped during merge.");
         if (root.Descendants().Any(node => node.Name.LocalName is "Actions" or "Action"))
             throw new NotSupportedException("Page-object actions cannot be safely remapped during merge.");
     }

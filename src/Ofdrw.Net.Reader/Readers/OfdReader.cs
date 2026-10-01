@@ -466,6 +466,8 @@ public sealed class OfdReader : IOfdReader
                     new XElement(ns + "Layer", new XAttribute("ID", "annotation-" + annotation.Attribute("ID")?.Value), nodes))));
                 var staged = new List<OfdElement>();
                 if (hasUnmodeledMetadata) staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                if (nodes.SelectMany(node => node.DescendantsAndSelf().Attributes()).Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute)))
+                    staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
                 foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, annotationPath))
                 {
                     var transform = appearanceTransform ?? new double[] { 1, 0, 0, 1, 0, 0 };
@@ -543,13 +545,12 @@ public sealed class OfdReader : IOfdReader
                 if (node.Name.Namespace != ns) return false;
                 if (node.Name == ns + "PageBlock")
                 {
-                    if (node.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName != "ID") ||
+                    if (node.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name != XName.Get("ID")) ||
                         !Append(node.Elements(), depth + 1)) return false;
                 }
                 else if (node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject")
                 {
-                    if (node.Descendants().Any(child => child.Name.Namespace != ns) ||
-                        (node.Name == ns + "TextObject" && !node.Elements(ns + "TextCode").Any())) return false;
+                    if (!IsSupportedAnnotationPrimitive(node, ns)) return false;
                     if (result.Count >= 100_000) throw new InvalidDataException("Annotation appearance exceeds the object budget.");
                     result.Add(node);
                 }
@@ -558,6 +559,12 @@ public sealed class OfdReader : IOfdReader
             return true;
         }
         return Append(nodes, 0) ? result : null;
+    }
+
+    private static bool IsSupportedAnnotationPrimitive(XElement root, XNamespace ns)
+    {
+        if (root.Name == ns + "TextObject" && !root.Elements(ns + "TextCode").Any()) return false;
+        return OfdGraphicXmlContract.HasKnownChildren(root) && !OfdGraphicXmlContract.HasUnsupportedReferences(root);
     }
 
     private static string TransformAnnotationClips(string? original, XNamespace ns, double[] outer,
@@ -693,9 +700,7 @@ public sealed class OfdReader : IOfdReader
                 if (string.Equals(localName, "TextObject", StringComparison.OrdinalIgnoreCase))
                 {
                     var boundary = ParseBox(node.Attribute("Boundary")?.Value);
-                    var textCodes = node.Descendants()
-                        .Where(x => x.Name.LocalName == "TextCode")
-                        .ToList();
+                    var textCodes = node.Elements(node.Name.Namespace + "TextCode").ToList();
                     var text = new OfdTextElement
                     {
                         ObjectId = node.Attribute("ID")?.Value,
