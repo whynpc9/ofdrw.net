@@ -520,6 +520,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 yield return element;
             }
         }
+        foreach (var element in page.AnnotationAppearances) yield return element;
     }
 
     private sealed class PreparedSignatureAppearance

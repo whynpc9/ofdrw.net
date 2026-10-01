@@ -36,8 +36,8 @@ public sealed class OfdPackageWriter
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        var entries = BuildEntries(package);
-        var result = OfdPackagePruner.Prune(package, entries);
+        var entries = BuildEntries(package, cancellationToken);
+        var result = OfdPackagePruner.Prune(package, entries, cancellationToken);
         using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
 
         foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
@@ -49,7 +49,7 @@ public sealed class OfdPackageWriter
         return result;
     }
 
-    private Dictionary<string, byte[]> BuildEntries(OfdDocumentPackage package)
+    private Dictionary<string, byte[]> BuildEntries(OfdDocumentPackage package, CancellationToken cancellationToken)
     {
         var entries = new Dictionary<string, byte[]>(package.PreservedEntries, StringComparer.OrdinalIgnoreCase);
         var ns = XNamespace.Get(package.Options.Namespace);
@@ -72,6 +72,7 @@ public sealed class OfdPackageWriter
                 )));
         entries[OfdConstants.OfdRootFile] = ToUtf8Bytes(ofdXml);
 
+        foreach (var page in package.Pages) cancellationToken.ThrowIfCancellationRequested();
         var orderedPages = package.Pages.OrderBy(x => x.Index).ToList();
         if (orderedPages.Count == 0)
         {

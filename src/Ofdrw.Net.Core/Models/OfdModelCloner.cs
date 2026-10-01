@@ -25,6 +25,7 @@ internal static class OfdModelCloner
             foreach (var element in template.Elements) clone.Elements.Add(CloneElement(element, clonePayloads: clonePayloads));
             page.Templates.Add(clone);
         }
+        foreach (var element in source.AnnotationAppearances) page.AnnotationAppearances.Add(CloneElement(element, clonePayloads: clonePayloads));
         page.PreservedPageElements.AddRange(source.PreservedPageElements);
         return page;
     }

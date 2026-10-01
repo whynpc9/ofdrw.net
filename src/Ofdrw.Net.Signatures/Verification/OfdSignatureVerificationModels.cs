@@ -45,6 +45,8 @@ public sealed class OfdSignatureVerificationReport
 {
     public List<OfdSignatureVerificationResult> Signatures { get; } = new();
     public List<string> Issues { get; } = new();
+    /// <summary>True when OFD.xml declares a signatures list, including a missing, empty or malformed list.</summary>
+    public bool HasSignatureDeclarations { get; internal set; }
     public bool HasSignatures => Signatures.Count > 0;
     public bool ReferenceIntegrityValid =>
         HasSignatures && Signatures.All(signature => signature.ReferenceIntegrityValid);

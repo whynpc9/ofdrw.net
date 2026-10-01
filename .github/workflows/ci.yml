@@ -122,6 +122,19 @@ jobs:
       - name: Run package E2E
         run: ./scripts/run-converter-package-e2e.sh
 
+      - name: Run document tool API and CLI matrix
+        run: |
+          mkdir -p artifacts/document-tools-fonts
+          cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/document-tools-fonts/
+          ./scripts/run-document-tools-e2e.sh artifacts/document-tools-e2e
+
+      - name: Upload document tool matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: document-tools-pages
+          path: artifacts/document-tools-e2e
+
       - name: Upload package manifests and rendered pages
         if: always()
         uses: actions/upload-artifact@v4

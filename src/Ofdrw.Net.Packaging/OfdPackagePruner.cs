@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml;
+using System.Threading;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
@@ -14,18 +15,21 @@ internal static class OfdPackagePruner
 {
     internal static OfdPackageWriteResult Prune(
         OfdDocumentPackage package,
-        IDictionary<string, byte[]> entries)
+        IDictionary<string, byte[]> entries, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var result = new OfdPackageWriteResult();
         var original = package.PreservedEntries;
         if (!original.TryGetValue("OFD.xml", out var originalRootBytes)) return result;
         var originalRoot = Parse(originalRootBytes);
         var documentPath = originalRoot.Descendants().FirstOrDefault(node => node.Name.LocalName == "DocRoot")?.Value;
-        if (string.IsNullOrWhiteSpace(documentPath) || !original.TryGetValue(documentPath!, out var originalDocument)) return result;
+        if (string.IsNullOrWhiteSpace(documentPath)) return result;
+        documentPath = OfdPackagePath.Resolve("OFD.xml", documentPath!);
+        if (!original.TryGetValue(documentPath, out var originalDocument)) return result;
 
         // Invalidated signature references must not keep deleted page payloads
         // alive during the subsequent resource reachability check.
-        RemoveInvalidatedSignatures(originalRoot, original, entries, result);
+        RemoveInvalidatedSignatures(originalRoot, original, entries, result, cancellationToken);
 
         var retainedPaths = new HashSet<string>(package.Pages
             .Where(page => !string.IsNullOrEmpty(page.SourceEntryPath))
@@ -62,10 +66,64 @@ internal static class OfdPackagePruner
             }
 
             RemovePageAnnotations(entries, new HashSet<string>(deleted.Select(page => page.Id)), candidateIds, result);
+            var privateResourcePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            PruneUnusedTemplates(entries, currentDocumentPath, writtenPagePaths, candidateIds, privateResourcePaths, result);
+            foreach (var page in deleted)
+            {
+                var pageResources = OfdPackagePath.GetDirectory(page.Path) + "/PageRes.xml";
+                if (entries.ContainsKey(page.Path) || writtenPagePaths.Any(path => OfdPackagePath.GetDirectory(path) == OfdPackagePath.GetDirectory(page.Path)) ||
+                    ReferencesFile(entries, pageResources)) continue;
+                privateResourcePaths.Add(pageResources);
+                if (entries.TryGetValue(pageResources, out var data) && TryParse(data, out var resources))
+                {
+                    foreach (var id in resources.Descendants().Attributes("ID")) candidateIds.Add(id.Value);
+                    // Keep Res available until its exclusive font/image payloads have been pruned.
+                }
+            }
             PruneResources(entries, candidateIds, result);
+            foreach (var path in privateResourcePaths)
+                if (!HasPageContentBeside(entries, path) && !ReferencesFile(entries, path)) Remove(entries, path, result);
         }
 
         return result;
+    }
+
+    private static bool HasPageContentBeside(IDictionary<string, byte[]> entries, string resourcePath) =>
+        entries.Any(pair => IsXml(pair.Key) && OfdPackagePath.GetDirectory(pair.Key) == OfdPackagePath.GetDirectory(resourcePath) &&
+            TryParse(pair.Value, out var xml) && xml.Root?.Name.LocalName == "Page");
+
+    private static void PruneUnusedTemplates(IDictionary<string, byte[]> entries, string documentPath,
+        ISet<string> pagePaths, ISet<string> candidateIds, ISet<string> privateResourcePaths, OfdPackageWriteResult result)
+    {
+        var document = Parse(entries[documentPath]);
+        foreach (var template in document.Descendants().Where(node => node.Name.LocalName == "TemplatePage").ToList())
+        {
+            var id = template.Attribute("ID")?.Value;
+            if (id is null) continue;
+            // Scan every retained XML, excluding this declaration's own ID. Unknown references keep templates alive.
+            var live = entries.Where(pair => IsXml(pair.Key)).Any(pair =>
+            {
+                if (!TryParse(pair.Value, out var xml)) return true;
+                var references = new HashSet<string>(StringComparer.Ordinal);
+                AddReferences(xml, references);
+                return references.Contains(id);
+            });
+            if (live) continue;
+            var location = template.Attribute("BaseLoc")?.Value;
+            if (string.IsNullOrWhiteSpace(location)) continue;
+            var path = OfdPackagePath.Resolve(documentPath, location!);
+            template.Remove();
+            entries[documentPath] = Serialize(document);
+            if (pagePaths.Contains(path) || ReferencesFile(entries, path)) continue;
+            if (entries.TryGetValue(path, out var bytes) && TryParse(bytes, out var xmlPage)) AddReferences(xmlPage, candidateIds);
+            Remove(entries, path, result);
+            var resourcePath = OfdPackagePath.GetDirectory(path) + "/PageRes.xml";
+            if (pagePaths.Any(pagePath => OfdPackagePath.GetDirectory(pagePath) == OfdPackagePath.GetDirectory(path)) ||
+                ReferencesFile(entries, resourcePath)) continue;
+            if (entries.TryGetValue(resourcePath, out var resourceBytes) && TryParse(resourceBytes, out var resources))
+                foreach (var resourceId in resources.Descendants().Attributes("ID")) candidateIds.Add(resourceId.Value);
+            privateResourcePaths.Add(resourcePath);
+        }
     }
 
     private static void RemovePageAnnotations(
@@ -148,53 +206,92 @@ internal static class OfdPackagePruner
         XDocument originalRoot,
         IReadOnlyDictionary<string, byte[]> original,
         IDictionary<string, byte[]> entries,
-        OfdPackageWriteResult result)
+        OfdPackageWriteResult result, CancellationToken cancellationToken)
     {
-        var declarations = originalRoot.Descendants().Where(node => node.Name.LocalName == "Signatures").ToList();
+        var declarations = SignatureDeclarations(originalRoot).ToList();
         if (declarations.Count == 0 ||
             (original.Count == entries.Count && original.All(pair => entries.TryGetValue(pair.Key, out var bytes) && bytes.SequenceEqual(pair.Value)))) return;
 
+        CleanSignatures(original, entries, result, cancellationToken);
+        result.SignaturesInvalidated = true;
+        result.Warnings.Add("Signature declarations were removed because the package was rewritten; sign the completed output again if required.");
+    }
+
+    internal static void CleanSignatures(
+        IReadOnlyDictionary<string, byte[]> original,
+        IDictionary<string, byte[]> entries,
+        OfdPackageWriteResult result, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!original.TryGetValue("OFD.xml", out var bytes)) return;
+        var originalRoot = Parse(bytes);
         var root = Parse(entries["OFD.xml"]);
-        root.Descendants().Where(node => node.Name.LocalName == "Signatures").Remove();
+        SignatureDeclarations(root).Remove();
         entries["OFD.xml"] = Serialize(root);
-        var descriptions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var payloads = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var declaration in declarations)
+        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var declaration in SignatureDeclarations(originalRoot))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var listPath = OfdPackagePath.Resolve("OFD.xml", declaration.Value);
-            if (original.TryGetValue(listPath, out var listBytes) && TryParse(listBytes, out var list) && list.Root?.Name.LocalName == "Signatures")
+            if (!original.TryGetValue(listPath, out var listBytes) || !TryParse(listBytes, out var list) ||
+                list.Root?.Name.LocalName != "Signatures") continue;
+            if (!IsOwnedSignaturePath(listPath))
             {
-                descriptions.Add(listPath);
-                foreach (var record in list.Descendants().Where(node => node.Name.LocalName == "Signature"))
+                result.Warnings.Add($"Signature payloads outside a Signs directory were retained: '{listPath}'.");
+                continue;
+            }
+            candidates.Add(listPath);
+            foreach (var record in list.Root.Elements().Where(node => node.Name.LocalName == "Signature"))
+            {
+                var location = record.Attribute("BaseLoc")?.Value;
+                if (string.IsNullOrWhiteSpace(location)) continue;
+                var signaturePath = OfdPackagePath.Resolve(listPath, location!);
+                if (!IsOwnedSignaturePath(signaturePath) || !original.TryGetValue(signaturePath, out var signatureBytes) ||
+                    !TryParse(signatureBytes, out var signature) || signature.Root?.Name.LocalName != "Signature") continue;
+                candidates.Add(signaturePath);
+                var values = signature.Descendants().Where(node => node.Name.LocalName == "SignedValue" ||
+                        (node.Name.LocalName == "BaseLoc" && node.Parent?.Name.LocalName == "Seal"))
+                    .Select(node => node.Value)
+                    .Concat(signature.Descendants().Where(node => node.Name.LocalName == "Seal")
+                        .Attributes("BaseLoc").Select(attribute => attribute.Value));
+                foreach (var value in values)
                 {
-                    var location = record.Attribute("BaseLoc")?.Value;
-                    if (string.IsNullOrWhiteSpace(location)) continue;
-                    var signaturePath = OfdPackagePath.Resolve(listPath, location!);
-                    if (original.TryGetValue(signaturePath, out var signatureBytes) && TryParse(signatureBytes, out var signature) && signature.Root?.Name.LocalName == "Signature")
-                    {
-                        descriptions.Add(signaturePath);
-                        foreach (var reference in signature.Descendants().Where(node =>
-                            node.Name.LocalName == "SignedValue" ||
-                            (node.Name.LocalName == "BaseLoc" && node.Parent?.Name.LocalName == "Seal")))
-                        {
-                            payloads.Add(OfdPackagePath.Resolve(signaturePath, reference.Value));
-                        }
-                    }
+                    var payload = OfdPackagePath.Resolve(signaturePath, value);
+                    // A declaration is never authority to delete arbitrary document content.
+                    // Values/appearances must be inside this signature's own directory.
+                    var directory = OfdPackagePath.GetDirectory(signaturePath) + "/";
+                    if (IsOwnedSignaturePath(payload) && payload.StartsWith(directory, StringComparison.OrdinalIgnoreCase) &&
+                        !payload.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) candidates.Add(payload);
+                    else result.Warnings.Add($"Unowned signature payload was retained: '{payload}'.");
                 }
             }
         }
-        // Only remove typed signature descriptions and payloads that no retained
-        // document, resource or extension references. Never trust an arbitrary
-        // SignedValue path as authority to delete a live document entry.
-        var remaining = entries.Where(pair => !descriptions.Contains(pair.Key))
+        var remaining = entries.Where(pair => !candidates.Contains(pair.Key))
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
-        foreach (var path in descriptions)
-            if (!ReferencesFile(remaining, path)) Remove(entries, path, result);
-        foreach (var path in payloads)
-            if (!ReferencesFile(entries, path)) Remove(entries, path, result);
-        result.SignaturesInvalidated = true;
-        result.Warnings.Add("Signature declarations were removed because the package was rewritten; known unreferenced signature payloads were cleaned up. Sign the completed output again if required.");
+        // Restore the full transitive closure of candidates referenced by retained XML.
+        // This also protects candidates shared by another document/attachment/extension.
+        bool restored;
+        do
+        {
+            restored = false;
+            foreach (var path in candidates.ToList())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!ReferencesFile(remaining, path)) continue;
+                if (entries.TryGetValue(path, out var data)) remaining[path] = data;
+                candidates.Remove(path);
+                restored = true;
+            }
+        } while (restored);
+        foreach (var path in candidates) Remove(entries, path, result);
     }
+
+    private static IEnumerable<XElement> SignatureDeclarations(XDocument document) =>
+        document.Root?.Elements().Where(node => node.Name == document.Root.Name.Namespace + "DocBody")
+            .Elements(document.Root.Name.Namespace + "Signatures") ?? Enumerable.Empty<XElement>();
+
+    private static bool IsOwnedSignaturePath(string path) =>
+        path.Split('/').Any(segment => string.Equals(segment, "Signs", StringComparison.OrdinalIgnoreCase));
 
     private static bool ReferencesFile(IDictionary<string, byte[]> entries, string file, bool preserveOnUnknownXml = true)
     {

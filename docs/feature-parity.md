@@ -28,7 +28,7 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | OFD → SVG | 上游推荐/生态具备 SVG 预览方案 | 自包含单页 SVG，支持模板、路径、文本、颜色、变换和内嵌图片 | **已支持（预览）** |
 | 图片/HTML 等导出 | 转换模块覆盖图片、文本、PDF 等方向 | SVG 可再栅格化；无直接 PNG/JPEG/HTML API | **未完整支持** |
 | 文本提取 | 上游提供文字抽取 | 页面和模板文本提取，API 与 CLI | **已支持** |
-| 文档工具 | `ofdrw-tool` 提供合并、裁剪、重组、混合等 | 页重排、删除、裁剪、自包含合并，API 与 CLI | **部分支持**；已补删除资源清理、合并资源映射和重写后的失效签名处理；仍缺少完整拆分、混合、水印和附件管理 API |
+| 文档工具 | `ofdrw-tool` 提供合并、裁剪、重组、混合等 | 页重排、删除、裁剪、自包含合并；指定层文字/图片水印、按列表 Split、带模板/可见注释的 Mix、全部 DocBody 清签，API 与 CLI | **部分支持**；03 实现范围见[工具教程](tutorials/15-document-tools.md)，复杂未知引用明确失败、共享资源保守保留；附件增删另票，视觉/review 状态见[03 证据](evidence/document-tools/README.md) |
 | 数字签名 | `ofdrw-sign` | 标准签名目录/引用生成、签名值 provider、签名值 verifier | **扩展点** |
 | 摘要校验 | 上游签章验证链路 | 内置 SM3、SHA-1、SHA-256，逐引用恒定时间比较，篡改检测 | **已支持** |
 | SES/SM2 电子签章 | `ofdrw-sign` + `ofdrw-gm` | 可注册厂商 `IOfdSignedValueVerifier` / `IOfdSignatureProvider` | **扩展点**；无内置 SES/SM2 实现和印章外观验证 |

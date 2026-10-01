@@ -6,7 +6,7 @@
 
 **Priority:** P0
 
-**Status:** ready-for-agent
+**Status:** implementation-in-progress (functional regressions passed; Preview and PR review pending)
 
 - [ ] 文字/图片水印写入指定图层；合并与导出保留
 - [ ] `split`：按页生成新包；资源与失效签名按现有合并约定处理
@@ -34,3 +34,10 @@
 ## Blocked by
 
 - None (can start immediately)
+
+## Implementation evidence
+
+- API/CLI 契约：[工具教程](../../../docs/tutorials/15-document-tools.md)。
+- 可复现四项 API/CLI 样例：[DocumentTools E2E](../../../e2e/Ofdrw.Net.DocumentTools.E2E/README.md)。
+- 持久产物、完整性清单与分层验收：[证据](../../../docs/evidence/document-tools/README.md)。
+- 完整视觉门及最新 PR review 未闭合前，本票保持未完成。
