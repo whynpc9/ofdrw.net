@@ -305,8 +305,7 @@ internal static class OfdPackagePruner
                     // A declaration is never authority to delete arbitrary document content.
                     // Values/appearances must be inside this signature's own directory.
                     var directory = OfdPackagePath.GetDirectory(signaturePath) + "/";
-                    if (IsOwnedSignaturePath(payload) && payload.StartsWith(directory, StringComparison.OrdinalIgnoreCase) &&
-                        !payload.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                    if (IsOwnedSignaturePath(payload) && payload.StartsWith(directory, StringComparison.OrdinalIgnoreCase))
                     {
                         if (entries.ContainsKey(payload)) candidates.Add(payload);
                     }
