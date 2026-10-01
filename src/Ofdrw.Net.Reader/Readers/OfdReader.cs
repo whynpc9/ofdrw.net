@@ -574,8 +574,8 @@ public sealed class OfdReader : IOfdReader
         if (!string.IsNullOrWhiteSpace(original))
         {
             var source = XElement.Parse(original!);
-            if (source.DescendantsAndSelf().Any(node => node.Name.Namespace != ns || node.Name.LocalName is not ("Clips" or "Clip" or "Area" or "Path" or "AbbreviatedData")) ||
-                source.DescendantsAndSelf().Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName is not ("ID" or "Boundary" or "CTM" or "Rule")))
+            if (source.Name.Namespace != ns || !OfdGraphicXmlContract.HasKnownChildren(source) || OfdGraphicXmlContract.HasUnsupportedReferences(source) ||
+                source.DescendantsAndSelf().Attributes().Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute)))
                 throw new NotSupportedException("Unsupported annotation clip cannot be flattened safely.");
             foreach (var region in OfdClipGeometry.Read(original))
             {

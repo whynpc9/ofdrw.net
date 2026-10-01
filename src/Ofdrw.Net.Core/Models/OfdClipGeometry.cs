@@ -20,14 +20,16 @@ internal static class OfdClipGeometry
         var regions = new List<OfdClipRegion>();
         if (string.IsNullOrWhiteSpace(xml)) return regions;
         var root = XElement.Parse(xml!);
-        foreach (var clip in root.Elements().Where(node => node.Name.LocalName == "Clip"))
+        var ns = root.Name.Namespace;
+        foreach (var clip in root.Elements(ns + "Clip"))
         {
             var region = new OfdClipRegion();
-            foreach (var area in clip.Elements().Where(node => node.Name.LocalName == "Area"))
+            foreach (var area in clip.Elements(ns + "Area"))
             {
                 var areaTransform = Matrix(area.Attribute("CTM")?.Value);
                 foreach (var shape in area.Elements())
                 {
+                    if (shape.Name.Namespace != ns) continue;
                     if (shape.Name.LocalName != "Path") throw new NotSupportedException("Only path-based OFD clipping areas are supported.");
                     var boundary = Numbers(shape.Attribute("Boundary")?.Value);
                     var transform = Matrix(shape.Attribute("CTM")?.Value);
@@ -38,7 +40,7 @@ internal static class OfdClipGeometry
                     }
                     region.Paths.Add(new OfdPathElement
                     {
-                        AbbreviatedData = shape.Elements().FirstOrDefault(node => node.Name.LocalName == "AbbreviatedData")?.Value ?? string.Empty,
+                        AbbreviatedData = string.Concat(shape.Element(shape.Name.Namespace + "AbbreviatedData")?.Nodes().OfType<XText>().Select(text => text.Value) ?? Enumerable.Empty<string>()),
                         Transform = Multiply(areaTransform, transform), Stroke = false, Fill = true
                     });
                     region.EvenOdd |= string.Equals(shape.Attribute("Rule")?.Value, "Even-Odd", StringComparison.OrdinalIgnoreCase);

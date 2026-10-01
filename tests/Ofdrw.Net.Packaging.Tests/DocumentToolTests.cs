@@ -529,6 +529,14 @@ public sealed class DocumentToolTests
         Assert.DoesNotContain("SECRET", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(read, includeTemplates: true));
         Assert.DoesNotContain("FALLBACK", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(read, includeTemplates: true));
         var saved = await RoundTrip(read); Assert.Contains("SECRET", Encoding.UTF8.GetString(saved.PreservedEntries[fixturePath]));
+        var savedXml = Xml(saved, fixturePath);
+        Assert.Equal(" L 9 9", savedXml.Descendants(ns + "AbbreviatedData").Single().Element(ns + "Note")!.Value);
+        if (!template)
+        {
+            read.Pages[0].Elements.OfType<OfdPathElement>().Single().AbbreviatedData = "M 1 1 L 2 2";
+            var changed = await RoundTrip(read); Assert.Equal("M 1 1 L 2 2", changed.Pages[0].Elements.OfType<OfdPathElement>().Single().AbbreviatedData);
+            Assert.Equal(" L 9 9", Xml(changed, fixturePath).Descendants(ns + "AbbreviatedData").Single().Element(ns + "Note")!.Value);
+        }
         Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
     }
     [Theory]
