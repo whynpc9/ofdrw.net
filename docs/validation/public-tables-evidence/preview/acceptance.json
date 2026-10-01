@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-02",
+  "source_commit": "31f0b75fc6b2846b6651591cf006834b91ae7f4e",
+  "path": "/Users/wanghongyi/.codex/worktrees/0ee7/ofdrw.net/artifacts/public-tables/review1/current",
+  "environment": {
+    "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+    "sdk": "10.0.401",
+    "preview": "com.apple.Preview",
+    "png": "pdftoppm -scale-to 1300 -png"
+  },
+  "checks": {
+    "functional": "298/298",
+    "packages": "11 local packages 0.1.0-tables.review1 passed",
+    "raw_ofd_text": "415 for table cases, 189 baseline; exact compact input comparison",
+    "pdf_text": "exact compact OFD comparison, no duplicates"
+  },
+  "visual": {
+    "preview": "passed for listed pages",
+    "png": "11/11 generated PNGs byte-identical to the previously visually inspected fixed/pages; auxiliary only",
+    "files": [
+      {
+        "pdf": "tables-public.pdf",
+        "ofd": "tables-public.ofd",
+        "pages_checked": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "pdf": "tables-native.pdf",
+        "ofd": "tables-native.ofd",
+        "pages_checked": [
+          1,
+          2
+        ]
+      },
+      {
+        "pdf": "tables-default.pdf",
+        "ofd": "tables-default.ofd",
+        "pages_checked": [
+          1,
+          2
+        ]
+      },
+      {
+        "pdf": "baseline-native.pdf",
+        "ofd": "baseline-native.ofd",
+        "pages_checked": [
+          1,
+          2
+        ]
+      },
+      {
+        "pdf": "baseline-default.pdf",
+        "ofd": "baseline-default.ofd",
+        "pages_checked": [
+          1,
+          2
+        ]
+      }
+    ],
+    "windows_closed": true
+  },
+  "limits": [
+    "No images, headers, footers, page counters in these fixtures",
+    "No vertical merging or arbitrary Word fidelity",
+    "No target OFD desktop reader acceptance"
+  ]
+}
