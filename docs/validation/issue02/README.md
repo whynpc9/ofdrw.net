@@ -9,7 +9,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 | 功能回归 | 184/184 通过 | Core 5、Packaging 23、PDF/Image 76、Signatures 4、DOCX 49、CLI 27 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.local`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
-| PNG/JPEG 目视复查 | 进行中 | 完成的实际页面和限制见下方记录 |
+| PNG/JPEG 目视复查 | 9/9 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
 | PR CI / Codex / Cursor | 待到齐 | PR 创建后补充最新 head、检查和线程状态 |
 
@@ -26,7 +26,11 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 ## 可复查产物
 
-将本次产物及 manifest 持久保留在本目录；压缩包、manifest和逐页检查记录随PR提交。读者无需访问被忽略的 `artifacts/`。
+完整实际产物在 [evidence.tar.xz](evidence.tar.xz)，索引/哈希/字节数在 [manifest.json](manifest.json)，均随PR提交。压缩包保留两个新OFD、对应PDF/逐页PNG/JPEG、两个本次DOCX显式Native/default OFD/PDF/逐页PNG、功能和包消费日志与11包manifest；读者无需访问被忽略的 `artifacts/`。
+
+完整性检查：`python3 scripts/verify-image-io-evidence.py`。该命令核对归档本身和每个实际载荷的字节数、SHA-256、成员集合。解压：`mkdir -p artifacts/issue02/review && tar -xJf docs/validation/issue02/evidence.tar.xz -C artifacts/issue02/review`。随后在Preview打开解压目录里的四个PDF。小型[第1页PNG](export-1.png)、[第2页PNG](export-2.png)、[导入几何PNG](imported-1.png)也可直接在PR查看。
+
+Native/default OFD各约15 MiB，主要是原有字体嵌入；它们的展开字体载荷各23,278,008 bytes。这是本次旧Native转换基准的实际体积，不是新增图片API膨胀。新source/imported OFD分别约2.9/3.3 KiB，新source/imported PDF约68/3.3 KiB；全部精确字节数见manifest。
 
 源码、环境、哈希、字节数、样例、模式与检查范围由 manifest 记录。Native/default基准来自11包本地消费本次生成的OFD；PDF由这些OFD导出，未使用直接DOCX→PDF代替。
 
@@ -36,6 +40,8 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 - 新图片样例导出PNG第1–2页：已查看本次图片，中文“样例”、英文/粗体/局部紫色斜体、四象限图片和红/蓝路径分别可见；无全黑、乱码、重影、越界或异常空白。范围为80.3×60.4 mm两页。
 - 图片导入再导出PNG第1–2页：已查看本次图片，PNG/JPEG四象限保持顺序与原始像素方向；40×20 mm图在60×50 mm页中央，左右10 mm、上下15 mm；背景和图形分界正常。
-- JPEG导出与Native/default基准逐页检查待补；macOS Preview全部未完成。
+- JPEG第2页：已查看，本页中文/英文、四象限和蓝色路径可辨，未发现裁切/重影；JPEG有损边缘属约定编码行为。
+- Native/default各第1–2页：均查看本次OFD经新API导出的PNG；第1页中英文标题/比例斜体、局部粗体、蓝灰表格底色和边框正常；第2页分页明确，红色粗体限制在对应文本，右对齐日期完整。未发现缺字、样式扩散、裁切/重叠、重影或多余空白页；既有的大段页内空白符合确定性样例显式分页。
+- macOS Preview全部未完成；工具两次确认Mac锁屏，故没有逐页Preview结论或截图。
 
 未据此推断任意复杂Word/OFD保真，也不宣称厂商阅读器互认。
