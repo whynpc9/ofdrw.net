@@ -81,14 +81,24 @@ public sealed class ImageToOfdConverter
             {
                 if (decoded.Frames.Count != 1) throw new InvalidDataException("Only single-frame PNG/JPEG images are supported.");
             }
-            var naturalWidth = info.Width / _options.PixelsPerMillimeter;
-            var naturalHeight = info.Height / _options.PixelsPerMillimeter;
-            ImageIoBudget.Page(naturalWidth, naturalHeight);
-            var pageWidth = _options.PageSize?.WidthMillimeters ?? naturalWidth;
-            var pageHeight = _options.PageSize?.HeightMillimeters ?? naturalHeight;
-            var scale = Math.Min(1d, Math.Min(pageWidth / naturalWidth, pageHeight / naturalHeight));
-            var imageWidth = naturalWidth * scale;
-            var imageHeight = naturalHeight * scale;
+            double pageWidth, pageHeight, imageWidth, imageHeight;
+            if (_options.PageSize is null)
+            {
+                pageWidth = imageWidth = info.Width / _options.PixelsPerMillimeter;
+                pageHeight = imageHeight = info.Height / _options.PixelsPerMillimeter;
+                ImageIoBudget.Page(pageWidth, pageHeight);
+            }
+            else
+            {
+                pageWidth = _options.PageSize.WidthMillimeters;
+                pageHeight = _options.PageSize.HeightMillimeters;
+                // Fit in pixel space: even when 1/ppm overflows, the finite fixed-page factors keep placement bounded.
+                var millimetersPerPixel = Math.Min(1d / _options.PixelsPerMillimeter,
+                    Math.Min(pageWidth / info.Width, pageHeight / info.Height));
+                imageWidth = info.Width * millimetersPerPixel;
+                imageHeight = info.Height * millimetersPerPixel;
+                ImageIoBudget.Page(imageWidth, imageHeight);
+            }
             var page = new OfdPage { Index = index, WidthMillimeters = pageWidth, HeightMillimeters = pageHeight };
             page.Elements.Add(new OfdImageElement
             {

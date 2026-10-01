@@ -79,5 +79,22 @@ public sealed class ImageCommandTests : IDisposable
         Assert.Equal(1, await global::Cli.RunAsync(["image-to-ofd", png, png])); Assert.Equal(original, File.ReadAllBytes(png));
         Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
     }
+    [Fact]
+    public async Task MissingMultiImageOutputNeverOverwritesLastImageAndMixedInputsKeepOrder()
+    {
+        var first = PathFor("red.png"); var second = PathFor("blue.jpg");
+        using (var image = new Image<Rgb24>(20, 10, new Rgb24(255, 0, 0))) image.SaveAsPng(first);
+        using (var image = new Image<Rgb24>(10, 20, new Rgb24(0, 0, 255))) image.SaveAsJpeg(second);
+        var originalFirst = File.ReadAllBytes(first); var originalSecond = File.ReadAllBytes(second);
+        Assert.Equal(1, await global::Cli.RunAsync(["image-to-ofd", first, second]));
+        Assert.Equal(originalFirst, File.ReadAllBytes(first)); Assert.Equal(originalSecond, File.ReadAllBytes(second));
+        var output = PathFor("mixed.ofd");
+        Assert.Equal(0, await global::Cli.RunAsync(["image-to-ofd", first, "--input", second, "--output", output, "--ppm", "2"]));
+        using var input = File.OpenRead(output); var pages = (await new OfdReader().ReadAsync(input)).Pages;
+        Assert.Equal(10, pages[0].WidthMillimeters); Assert.Equal(5, pages[0].HeightMillimeters);
+        Assert.Equal(5, pages[1].WidthMillimeters); Assert.Equal(10, pages[1].HeightMillimeters);
+        Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+    }
+
     public void Dispose() => Directory.Delete(_directory, true);
 }

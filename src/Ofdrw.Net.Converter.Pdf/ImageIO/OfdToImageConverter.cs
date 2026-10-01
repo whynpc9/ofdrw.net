@@ -78,7 +78,7 @@ public sealed class OfdToImageConverter
             PackageLoadOptions = _options.PackageLoadOptions,
             MaxDecodedImagePixels = Math.Min(_options.MaxPixels, _options.MaxRasterWorkingBytes / 16)
         }).ConvertPackageAsync(package, pdf, new[] { pageIndex }, cancellationToken, strictAppearanceBudgets: true).ConfigureAwait(false);
-        pdf.Position = 0;
+        await pdf.CloseWriterAsync(cancellationToken).ConfigureAwait(false);
         // Use pixels-per-point directly: unlike the PDF import rasterizer there is no DPI clamp.
         using var reader = DocLib.Instance.GetDocReader(pdf.PathOnDisk, new PageDimensions(renderPpm * 25.4d / 72d));
         cancellationToken.ThrowIfCancellationRequested();

@@ -11,7 +11,7 @@ internal static partial class Cli
         if (args.Any(IsHelp)) { PrintHelp(); return 0; }
         var export = command == "ofd-to-image";
         var inputs = new List<string>();
-        var positionals = new List<string>();
+        int? lastPositionalIndex = null;
         string? destination = null;
         var exportOptions = new OfdToImageOptions();
         var importOptions = new ImageToOfdOptions();
@@ -20,7 +20,7 @@ internal static partial class Cli
         for (var index = 0; index < args.Length; index++)
         {
             var option = args[index];
-            if (!option.StartsWith('-')) { positionals.Add(option); continue; }
+            if (!option.StartsWith('-')) { lastPositionalIndex = inputs.Count; inputs.Add(option); continue; }
             var value = ReadValue(args, ref index, option);
             switch (option)
             {
@@ -48,9 +48,14 @@ internal static partial class Cli
                 default: throw new ArgumentException($"Unknown option for {command}: {option}");
             }
         }
-        if (destination is null && positionals.Count >= 2)
-        { destination = positionals[positionals.Count - 1]; positionals.RemoveAt(positionals.Count - 1); }
-        inputs.AddRange(positionals);
+        if (destination is null && lastPositionalIndex.HasValue && inputs.Count >= 2)
+        {
+            var candidate = inputs[lastPositionalIndex.Value];
+            if (!export && !string.Equals(Path.GetExtension(candidate), ".ofd", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("image-to-ofd requires --output; an implicit positional output must end in .ofd.");
+            destination = candidate;
+            inputs.RemoveAt(lastPositionalIndex.Value);
+        }
         if (inputs.Count == 0 || string.IsNullOrWhiteSpace(destination) || inputs.Any(string.IsNullOrWhiteSpace))
             throw new ArgumentException("Input and output paths are required.");
         if (export && inputs.Count != 1) throw new ArgumentException("ofd-to-image accepts one input OFD and one output image.");
