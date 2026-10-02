@@ -58,9 +58,21 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     {
         var orderedPages = package.Pages.OrderBy(x => x.Index).ToList();
         var selected = OfdPageSelection.Normalize(orderedPages.Count, pages);
-        var selectedIds = strictAppearanceBudgets
-            ? new HashSet<string>(selected.Select(index => orderedPages[index].Id ?? string.Empty), StringComparer.OrdinalIgnoreCase)
-            : null;
+        HashSet<string>? selectedIds = null;
+        if (strictAppearanceBudgets)
+        {
+            var occurrences = orderedPages.Where(page => !string.IsNullOrWhiteSpace(page.Id))
+                .GroupBy(page => page.Id!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+            selectedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var index in selected)
+            {
+                var id = orderedPages[index].Id;
+                if (string.IsNullOrWhiteSpace(id) || occurrences[id!] != 1)
+                    throw new InvalidDataException("Selected OFD page ID must be nonblank and unique for signature filtering.");
+                selectedIds.Add(id!);
+            }
+        }
         var fonts = new DocumentFontContext(package.Fonts);
         var signatureAppearances = await PrepareSignatureAppearancesAsync(
                 package, selectedIds, strictAppearanceBudgets, maximumSignatureAppearances,

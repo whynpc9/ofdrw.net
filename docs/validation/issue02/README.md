@@ -6,7 +6,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 269/269 通过 | Core 5、Packaging 23、PDF/Image 158、Signatures 4、DOCX 49、CLI 30 |
+| 功能回归 | 274/274 通过 | Core 5、Packaging 23、PDF/Image 163、Signatures 4、DOCX 49、CLI 30 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review10`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
@@ -149,3 +149,9 @@ Cursor另质疑`-2e306`与`2e306`的相对溢出用例。保留该用例：实�
 strict现在按LocalName校验列表/Signature根（仍允许XML namespace），StampAnnot先校验非空PageRef再筛选明确非选中页，避免未知归属被静默省略。legacy不增加这些strict校验，正文及既有容错保持。新增错误根两种及PageRef缺失/空/空白三种，用实际caller sentinel及legacy正文红path断言。全套269/269通过；本轮新包和产物稍后记录。Preview仍未完成。
 
 第十轮25个实际产物均从`f91ec90`重新生成，11/11本地包消费及Sol Low独立60/60通过；三份原wrong-root/missing-PageRef CLI探针现exit1并保持13-byte哨兵。Astra只读复核这两项源码修复无相邻新问题，候选随后以同样代码提交为f91ec90。当次10张PNG/JPEG逐页重新查看，范围同上，无新缺陷；269项日志/全部哈希在当前bundle/manifest，Preview仍未完成。
+
+## 第十一轮复审修复
+
+`024f725`两类bot到齐，六项CI全部通过。Cursor无新缺陷；Codex指出selected页ID缺失/空白/重复时筛选集合会省略或错误复用外观。strict现在先以签章匹配同一OrdinalIgnoreCase比较器统计整个包内非空ID，selected页ID须非空且只有一个对应页，再建HashSet。默认公开PDF false不启用此项，未选中页的其它坏ID不扩展成全包schema校验。
+
+新增missing/empty/blank/duplicate/duplicate-case五例，检查strict sentinel与legacy正文红path。全套274/274通过；本轮新包和产物稍后记录，Preview仍未完成。
