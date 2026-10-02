@@ -137,8 +137,7 @@ public sealed class OfdReader : IOfdReader
             ReadFonts(archive, documentResPath, package, fontMap);
         }
 
-        var templateLocations = commonData?.Elements()
-            .Where(x => x.Name.LocalName == "TemplatePage")
+        var templateLocations = commonData?.Elements(docNs + "TemplatePage")
             .Select(x => new
             {
                 Id = x.Attribute("ID")?.Value,

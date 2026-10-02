@@ -154,6 +154,8 @@ Mutate("vendor-annotations-input", entries =>
 {
     var document = Xml(entries["Doc_0/Document.xml"]); var declaration = document.Root!.Element(ns + "Annotations")!; var vendor = XNamespace.Get("urn:vendor");
     declaration.AddBeforeSelf(new XElement(vendor + "Annotations", "../../../external"), new XElement(vendor + "Annotations", declaration.Value));
+    var template = document.Root.Element(ns + "CommonData")!.Element(ns + "TemplatePage")!;
+    template.AddBeforeSelf(new XElement(vendor + "TemplatePage", new XAttribute("ID", template.Attribute("ID")!.Value), new XAttribute("BaseLoc", "../../../external")));
     entries["Doc_0/Document.xml"] = Bytes(document);
 });
 var vendorAnnotations = await Read("vendor-annotations-input");
