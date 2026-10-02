@@ -110,7 +110,7 @@ public sealed class FontIsolationTests
         Assert.Throws<InvalidDataException>(()=>insufficient.Resolve(text,out _));
     }
     [Fact]
-    public async Task SvgExportsUnusedAndSelectedWindowsSymbolCmapWithoutUnicodeSubsetting()
+    public async Task SymbolCmapUnusedExportsAndSelectedRefusesUnmodeledSemantics()
     {
         var face=new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
         var cmap=new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face);var rebuilt=Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int>{[0xF041]=cmap.Glyph('A')});
@@ -125,8 +125,23 @@ public sealed class FontIsolationTests
             if(selected)package.Pages[0].Elements.Add(new OfdTextElement{FontResourceId="10",Text="A"});
             using var ofd=new MemoryStream();var report=await new OfdPackageWriter().WriteWithResultAsync(package,ofd);
             Assert.False(report.FontEmbedding[0].IsSubset);ofd.Position=0;using var svg=new MemoryStream();
-            await new Ofdrw.Net.Converter.Svg.Converters.OfdToSvgConverter().ConvertAsync(ofd,svg);
-            Assert.Contains("@font-face",System.Text.Encoding.UTF8.GetString(svg.ToArray()));
+            if (selected)
+            {
+                await Assert.ThrowsAsync<NotSupportedException>(() => new Ofdrw.Net.Converter.Svg.Converters.OfdToSvgConverter().ConvertAsync(ofd, svg));
+                Assert.Equal(0, svg.Length);
+            }
+            else
+            {
+                await new Ofdrw.Net.Converter.Svg.Converters.OfdToSvgConverter().ConvertAsync(ofd, svg);
+                Assert.Contains("@font-face", System.Text.Encoding.UTF8.GetString(svg.ToArray()));
+            }
+            ofd.Position = 0; using var pdf = new MemoryStream();
+            if (selected)
+            {
+                await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd, pdf));
+                Assert.Equal(0, pdf.Length);
+            }
+            else await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
         }
     }
     [Theory]
@@ -274,6 +289,12 @@ public sealed class FontIsolationTests
             Assert.False(result.FontEmbedding[0].IsSubset); Assert.Contains(result.Diagnostics, d => d.Contains("FONT_COVERAGE_UNVERIFIED"));
             ofd.Position = 0; package = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(ofd);
             Assert.Equal(bytes, package.Fonts.Single().Data);
+            ofd.Position = 0; using var pdf = new MemoryStream();
+            var pdfFailure = await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd, pdf));
+            Assert.Contains("unmodeled", pdfFailure.Message); Assert.Equal(0, pdf.Length);
+            ofd.Position = 0; using var svg = new MemoryStream();
+            var svgFailure = await Assert.ThrowsAsync<NotSupportedException>(() => new Ofdrw.Net.Converter.Svg.Converters.OfdToSvgConverter().ConvertAsync(ofd, svg));
+            Assert.Contains("unmodeled", svgFailure.Message); Assert.Equal(0, svg.Length);
         }
     }
 

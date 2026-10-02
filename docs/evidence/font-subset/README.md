@@ -4,8 +4,8 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 478/478；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
-| 包消费 | 11 个 `0.1.0-issue05.20261003.13` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 479/479；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.14` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
@@ -44,3 +44,5 @@ R10：name-only 首选缺普通字符时，配置的宿主默认回退必须覆�
 R11：ZWJ/ZWNJ 的连接/连字语义 PDF 明确拒绝并保持零输出，R7/R8 的成功省略页仅保留为历史轮次，不代表最终契约。最终仍需 Preview 的成功输出是 filler、LRM/弃用零宽控制、名称字体/覆盖回退页面。合法未使用 format0 cmap 不阻断 PDF，实际选中拒绝；symbol 未映射普通字符及 read/edit 保全量并标识 coverage 未验证。名称回退按 default→Arial 探测，null、I/O、unsupported cmap、TTC face0 均有回归；只有实际字节覆盖且注册成功才绘制，预算失败不会返回已知缺字字体。
 
 R11 最终补验：默认名称 getter 失败仍继续 Arial 的已验证覆盖探测；固定 Noto Sans 的 office/ffi 连字上下文，普通样例 PDF 成功，ZWJ/ZWNJ 两种受控变体均明确拒绝 PDF / 0 bytes，OFD 原文逐字符保留。全套 478/478，11 个 .13 包干净消费通过。最新版包重生的原 8 页与此前 Preview 所验产物像素一致；这项自动对比不替代新增成功路径的 Preview。
+
+R12：symbol-only 不再作为已验证 Unicode 字体；在 OFD 保全量，实际选中时 PDF/SVG 统一明确拒绝未建模字符语义/0 字节，未选中可成功导出。R10/R11 选中 A 的 SVG 成功仅属历史行为，不代表最终支持。字体绑定从按组重复解析改为每个文本一次，按源 face 内容组汇总；跨页、相同字节别名、不同字节 face 和名称字体的 repertoire 不混入，并在包括不匹配项的每个元素前检查取消。原 14 个成功路径 Preview 队列不含 symbol，继续待独占时段。
