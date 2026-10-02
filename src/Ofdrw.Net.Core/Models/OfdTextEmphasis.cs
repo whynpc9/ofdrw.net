@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 
@@ -8,6 +9,22 @@ namespace Ofdrw.Net.Core.Models;
 internal static class OfdTextEmphasis
 {
     internal static readonly XName FauxItalicFactor = XName.Get("FauxItalicMatrixV1", "https://ofdrw.net/style-hints");
+
+    internal static (double[] Matrix, double[] Factor) ComposeNameOnlyItalic(double[] matrix, double writtenSize)
+    {
+        if (matrix.Length != 6 || matrix.Any(value => double.IsNaN(value) || double.IsInfinity(value)) ||
+            double.IsNaN(writtenSize) || double.IsInfinity(writtenSize))
+            throw new InvalidDataException("Generated italic CTM requires finite geometry.");
+        const double shear = 0.2;
+        var offset = shear * writtenSize;
+        var combined = new[] { matrix[0], matrix[1], matrix[2] - shear * matrix[0], matrix[3] - shear * matrix[1],
+            matrix[4] + matrix[0] * offset, matrix[5] + matrix[1] * offset };
+        if (combined.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
+            throw new InvalidDataException("Generated italic CTM overflowed.");
+        if (!OfdNumericFormat.Nonsingular(combined[0], combined[1], combined[2], combined[3]))
+            throw new InvalidDataException("Generated italic CTM became singular.");
+        return (combined, new[] { 1d, 0, -shear, 1, offset, 0 });
+    }
 
     internal static (double[]? Matrix, double[]? Factor) DrawingTransform(OfdTextElement text)
     {
