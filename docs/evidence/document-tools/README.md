@@ -9,7 +9,7 @@ The four API/CLI tools are implemented. Acceptance remains **pending** until fre
 | API/CLI matrix | 36 synthetic samples, 55 PDF pages and 25 SVG renders; exact Native/default text, selected-page order, clean body bytes and watermark counts checked |
 | PNG visual review | All 80 current renders retained with prior contact sheets and the new R20 contact sheets; 79 automatic PNGs pass listed expectations; fixed-anchor SVG original-font fidelity passes the separately retained Chromium screenshot |
 | macOS Preview | All listed 55 pages inspected: R20 53 retained unchanged plus two fresh R21 cleanup pages; each task window closed. Historical 10/37 pages at `c10f002` and those PDF bytes remain retained |
-| CI / automated review | Previous `461f831` all six checks passed; one finding repaired and attachment-ID premise disproved; fresh-head Codex/Cursor/CI pending; latest Preview completed |
+| CI / automated review | `9393685` passed all six checks and both functional reviews; editorial spacing repaired; fresh documentation-head review/CI pending |
 
 The actual chain is **DOCX → explicit Native/default OFD → tool OFD → PDF/SVG → PNG**. `generated-layout.docx` changes only font declarations to pinned OFL Noto Sans CJK SC. Chinese, proportional English, local bold/italic/color, table fills/borders, alignment and explicit page break remain. Native/default TextCode is compared exactly against all 202 source characters. The example embeds the measurement face through the public model, preserving the converter's viewer-local CJK defaults.
 

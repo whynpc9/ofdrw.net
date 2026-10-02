@@ -1919,8 +1919,8 @@
       "sha256": "1e8bc9d9cfe815fcb52beed26daca8b2e5ab1b3567976b67618312b6d091dd2f"
     },
     "validation/preview-progress-latest.json": {
-      "bytes": 37982,
-      "sha256": "2574fcb4825d71b06013eb5b11bbec0d6fdcd373c853a87d41aa2ecd12c84b91"
+      "bytes": 37995,
+      "sha256": "e37751840714a039bacd710fde59f99b84f3dab1a1cb13c94fafe15e41eeaa74"
     },
     "validation/preview-progress-r18.json": {
       "bytes": 24332,
@@ -2175,8 +2175,8 @@
       "sha256": "25e37e61c2a3ba5e2c18ade2057d89a39ac9d48372d2e2ce1a602c93cad479c5"
     },
     "validation/source-equivalence.json": {
-      "bytes": 444,
-      "sha256": "b9c0bd5324981bdf5adb85fbf5cde0c7d0cdcf1706b4ccf5f8541ab706cb0c4a"
+      "bytes": 454,
+      "sha256": "ee56e9e121cd1ba46279a9b7f280db901f50595a45cb96c29fa77d7f3c8ec59f"
     },
     "validation/svg-font-native.png": {
       "bytes": 9907,
