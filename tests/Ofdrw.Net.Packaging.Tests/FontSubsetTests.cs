@@ -96,6 +96,34 @@ public sealed class FontSubsetTests
         Assert.Equal(saved.Package.Fonts.Single(font => font.FontName == "Source").FileName, saved.Package.Fonts.Single(font => font.FontName == "Alias").FileName);
     }
 
+    [Theory]
+    [InlineData(false)][InlineData(true)]
+    public async Task ModeledTemplateAndAnnotationTextIsValidatedEvenWhenFullPreservationIsForced(bool annotation)
+    {
+        var source = new OpenTypeFace(Latin.Value); var cmap = new OpenTypeCmap(source);
+        source.Tables["cmap"] = OpenTypeCmap.Build(new Dictionary<int,int> { ['A'] = cmap.Glyph('A') });
+        var bytes = source.Build();
+        foreach (var value in new[] { "A", "B" })
+        {
+            var package = Package(bytes, "A");
+            var text = new OfdTextElement { FontResourceId = "10", FontName = "Source", Text = value };
+            if (annotation) package.Pages[0].AnnotationAppearances.Add(text);
+            else package.Pages[0].Templates.Add(new OfdTemplateContent { TemplateId = "vendor-template", Elements = { text } });
+            using var output = new MemoryStream();
+            if (value == "B")
+            {
+                var failure = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdPackageWriter().WriteAsync(package, output));
+                Assert.Contains("U+0042", failure.Message); Assert.Equal(0, output.Length);
+            }
+            else
+            {
+                var result = await new OfdPackageWriter().WriteWithResultAsync(package, output);
+                Assert.False(result.FontEmbedding[0].IsSubset); Assert.Equal(result.FontEmbedding[0].SourceIdentity, result.FontEmbedding[0].PayloadIdentity);
+            }
+            Assert.Equal(bytes, package.Fonts[0].Data);
+        }
+    }
+
     [Fact]
     public async Task SameNamesDifferentContentDoNotMerge()
     {

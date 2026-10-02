@@ -68,3 +68,5 @@ PDF 明确拒绝语义无法保留的 default-ignorable，包括 ZWJ/ZWNJ、LRM/
 当前唯一 default-ignorable 绘制例外是四个 Hangul filler（115F/1160/3164/FFA0）：已映射时保留字形/真实 advance；字体无字形时按 Unicode default-ignorable 缺字规则省略。该有界例外只验证现有文字/游程/Delta 样例，不能推广为完整 Hangul shaping 或其它 default-ignorable 可删除。原 OFD 文本与定位槽位不重排。实际 Preview 是独立验收门。
 
 PDF 导入的透明 CID/私用区语义文本若没有可验证的原字体，不能保证语义再导出；缺字会明确失败。仅验证栅格视觉往返的 caller 可显式选择 PdfTextLayerMode.None，SDK 默认 Invisible 不变；这不代表无损字体恢复或 ActualText 功能已实现。
+
+字体用字预遍历同时包含正文、所有模板元素和注释外观；每个元素先检查取消，按所绑定 face 内容身份汇总。模板/注释的全量保留原因不绕过其中已建模文字的 Unicode coverage，缺字必须在 ZIP 前报错；未建模 Raw/CGTransform 继续保守保留并诊断。
