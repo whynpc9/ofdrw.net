@@ -41,6 +41,7 @@ internal sealed class DocumentFontContext
 
             // Name-only discovery is optional. Unusable host fonts must not make
             // an otherwise renderable document fail before per-element fallback.
+            NotSupportedException? discoveredUnsupported = null;
             try
             {
                 var local = CjkViewerFontLoader.TryRead(font.FontName) ?? CjkViewerFontLoader.TryRead(font.FamilyName);
@@ -54,8 +55,13 @@ internal sealed class DocumentFontContext
                 if (IsStandaloneFont(local))
                 {
                     var coverage = new OpenTypeCmap(new OpenTypeFace(local!));
-                    _families[font] = PdfFontRegistry.RegisterFontFace(local!, font.Bold, font.Italic);
-                    _coverage[font] = coverage;
+                    if (coverage.IsSymbol)
+                        discoveredUnsupported = new NotSupportedException("Windows symbol cmap character semantics are unmodeled; use an explicit Unicode font.");
+                    else
+                    {
+                        _families[font] = PdfFontRegistry.RegisterFontFace(local!, font.Bold, font.Italic);
+                        _coverage[font] = coverage;
+                    }
                 }
             }
             catch (Exception exception) when (exception is not OutOfMemoryException &&
@@ -64,6 +70,9 @@ internal sealed class DocumentFontContext
                 // Includes malformed font parsing, host I/O, and optional registry
                 // budget exhaustion. Embedded OFD fonts above remain strict.
             }
+            // Known unsupported semantics must survive the optional-probe catch,
+            // rather than allowing the host to draw the same face unverified.
+            if (discoveredUnsupported is not null) _unsupportedCoverage[font] = discoveredUnsupported;
         }
     }
 
@@ -87,7 +96,7 @@ internal sealed class DocumentFontContext
         }
         resource = OfdFontSelection.Resolve(_fonts, text);
         if (resource is not null && _unsupportedCoverage.TryGetValue(resource, out var unsupported))
-            throw new NotSupportedException($"Selected embedded font '{resource.FontName}' has unmodeled cmap coverage.", unsupported);
+            throw new NotSupportedException($"Selected font '{resource.FontName}' has unmodeled cmap coverage.", unsupported);
         if (resource is not null && _coverage.TryGetValue(resource, out var coverage))
         {
             try
@@ -122,6 +131,7 @@ internal sealed class DocumentFontContext
                         if (face is null) continue;
                         var bytes = OpenTypeCollection.SelectFace(_fallbackResolver.GetFont(face.FaceName), 0);
                         var fallbackCmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+                        if (fallbackCmap.IsSymbol) throw new NotSupportedException("A Windows symbol cmap cannot cover a Unicode fallback request.");
                         foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
                             EmbeddedFontCoverage.Validate(value, fallbackCmap, candidate);
                         var fallbackFamily = PdfFontRegistry.RegisterFontFace(bytes, bold, italic);

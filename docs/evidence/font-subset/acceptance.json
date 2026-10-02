@@ -10,10 +10,10 @@
   },
   "functional": {
     "status": "pass",
-    "tests": 479,
+    "tests": 483,
     "independent_focused": 72,
     "packages": 11,
-    "package_version": "0.1.0-issue05.20261003.14",
+    "package_version": "0.1.0-issue05.20261003.15",
     "package_status": "pass",
     "document_tools": {
       "samples": 36,
@@ -22,7 +22,7 @@
       "ci_failure": "First head failed when text was introduced into a previously empty subset; caller now rebinds source face / explicitly preserves full font for future opaque annotation injection."
     },
     "all_11_packages_contain_unicode_license": true,
-    "latest_independent_focused": 39
+    "latest_independent_focused": 42
   },
   "automated_render": {
     "status": "pass",
@@ -77,8 +77,8 @@
     "ui_released": true,
     "record": "preview-acceptance.json",
     "controls_status": "pending unlock/exclusive slot: final filler/LRM/name-only/covering-fallback success pages; ZWJ/ZWNJ now refuse PDF",
-    "followup_queue": "preview-queue-r12.json",
-    "followup_success_pages": 14
+    "followup_queue": "preview-queue-r13.json",
+    "followup_success_pages": 15
   },
   "overall_visual_complete": false,
   "production_release_accepted": false,
@@ -97,6 +97,8 @@
     "r11": "ZWJ/ZWNJ explicitly refused with 0 bytes; unused format0 cmap PDF succeeds / selected refuses; symbol A-space/AB/read-edit full retained unverified; null/resolve/read/cmap failures try verified Arial; TTC default selects face0. Guarded throwing default-name getter still tries verified Arial; pinned Noto office/ffi baseline succeeds and join variants reject with exact OFD text retained.",
     "r11_independent": "38/38 focused; actual null/cmap/TTC/default getter fallbacks cover U4E00; office/ffi baseline succeeds, ZWJ/ZWNJ exact OFD retained and PDF refuses with 0B; final fourteen success PDF pages remain Preview pending.",
     "r12": "Symbol selected PDF/SVG explicitly reject unmodeled character semantics/0B; unused symbol exports; F041 A-space/AB remain byte-identical through two OFD rounds. Typed bindings resolved once into content groups, cancellation before every examined element; distinct face/name-only/cross-page alias repertoire regression passes.",
-    "r12_independent": "38 PDF-focused +1 cross-page group test pass; unused symbol PDF/SVG succeeds, selected A/A-space/AB refuse0B. All14 successful PDFs regenerated R12 and compare R11 with144dpi Poppler AE0. Preview pending."
+    "r12_independent": "38 PDF-focused +1 cross-page group test pass; unused symbol PDF/SVG succeeds, selected A/A-space/AB refuse0B. All14 successful PDFs regenerated R12 and compare R11 with144dpi Poppler AE0. Preview pending.",
+    "r13": "Discovered name-only symbol unsupported marker retained outside optional catch, selectedA/A-space/AB refuse; unused registration bytes unchanged. Default/Arial symbol candidates never satisfy Unicode coverage; mappedA defaults skip to coveringUnicode Arial; no covering candidate fails clearly.",
+    "r13_independent": "42/42 focused; unusedstyleSymbol blankPDF succeeds, selectedA/A-space/AB NotSupport0B; symboldefault mappedA skipped to registeredUnicode Arial/LXGW, allsymbol candidates fail0B. 14 prior success pages regeneratedR13 compareR12 AE0, added1 UnicodeArial fallback page; all15 Preview pending."
   }
 }
