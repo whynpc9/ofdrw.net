@@ -6,7 +6,7 @@
 
 **Priority:** P1
 
-**Status:** implemented-awaiting-review-and-preview
+**Status:** implemented-awaiting-review
 
 - [x] 能画线、矩形、路径、文字并做变换，写入合法 OFD
 - [x] 教程样例不依赖 Skia
@@ -25,7 +25,7 @@ issue #3 点名的绘图层。交付一套语义对齐上游 Graphics2D 的公�
 - [x] 公开类型覆盖画笔、填充、字体、路径、矩阵；能画线、矩形、任意路径、文字，并施加变换
 - [x] 生成的对象是 OFD `PathObject` / `TextObject`（及必要资源），用现有读写往返能读回来
 - [x] 教程样例只依赖 Layout/Core 一类 OFD 包，不引用 SkiaSharp
-- [ ] Preview（OFD → PDF → Preview 或 SVG）能看出线宽、填充、文字基线和变换，无重影或裁切错误
+- [x] Preview（OFD → PDF → Preview 或 SVG）能看出线宽、填充、文字基线和变换，无重影或裁切错误
 - [x] 更新功能对照；不要关闭或改写 issue #3 的正文
 
 ## Blocked by
