@@ -97,3 +97,7 @@ Clips 写回位于继承的图元属性区（Actions 之后、TextCode/Abbreviat
 Mix 的 Template 引用包装器只接受已支持的 TemplateID/ZOrder 属性；额外属性、子元素或正文会保留在原包但阻止展平。split 的模板存活检查按 XML 内容识别未知扩展，不依赖后缀，并跟踪 ID、叶值及常规/Res BaseLoc 文件路径；无法安全解析的 XML 继续保守保留。未匹配已加载页面的注释 PageID 转入共享全局元数据，不能静默丢弃。
 
 Mix 保留已建模的平面 EMR CustomTags，键区分大小写；唯一键复制，相同键值去重，相同键的不同值在预检时报出键及来源序号。Native 的 machine-readable/source 标签可保留；Native 与 DualLayer 的模式值冲突会明确失败。未知标签 XML、其他 schema、矛盾的重复记录仍拒绝；指向源包载荷或附件 ID 的潜在引用尚无重映射规则，也明确拒绝，不猜测替换字符串。标签值作为标量原样复制，不能据此声明任意附件路径/ID 已被重映射。vendor Template 引用保持原 XML，并且不会进入标准模板绘制列表；标准模板旁的 vendor 同名节点不导致重复绘制。
+
+Mix 展平的是可见批注的静态 Appearance；标准 Annot 的 Type/Creator/LastModDate/Subtype、Remark 和 Parameters 等描述信息不复制成目标批注。未知 Annot 属性或子节点、Annotations/PageAnnot 根元数据会保留原包并阻止 Mix；明确 FileLoc 的扩展属性不会使已知批注漏画。隐藏批注中的扩展也参与预检。
+
+Mix 还检查所选页面及其模板的原始 Page/Area/Content/Layer 包装器；仅支持已建模的 PhysicalBox 和图层属性，额外区域框、DrawParam、嵌套模板及扩展结构明确拒绝。模板展平仅支持 Background/Foreground；Body 尚未实现，拒绝展平。普通读取中空白或非法引用层级继承有效声明默认值，否则回退 Background；Mix 对这些原始未支持的层级值明确拒绝，避免丢失原 token。

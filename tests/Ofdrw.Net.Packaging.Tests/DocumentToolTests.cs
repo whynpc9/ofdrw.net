@@ -576,6 +576,7 @@ public sealed class DocumentToolTests
     [InlineData("child")]
     [InlineData("text")]
     [InlineData("file-child")]
+    [InlineData("file-attribute")]
     [InlineData("duplicate")]
     public async Task AnnotationIndexExtendedPageRecordsKeepScopedMarkersAndUnambiguousArtwork(string extra)
     {
@@ -585,6 +586,7 @@ public sealed class DocumentToolTests
         if (extra == "attribute") record.SetAttributeValue(vendor + "Payload", "../Extensions/data.bin");
         if (extra == "child") record.Add(new XElement(vendor + "Extra", "../Extensions/data.bin"));
         if (extra == "text") record.Add("KEEP");
+        if (extra == "file-attribute") file.SetAttributeValue(vendor + "Payload", "../Extensions/data.bin");
         if (extra == "file-child") file.Add(new XElement(vendor + "Extra", "SECRET"));
         if (extra == "duplicate") record.Add(new XElement(file));
         source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes(new XDocument(new XElement(ns + "Annotations", record)).ToString());
@@ -609,6 +611,84 @@ public sealed class DocumentToolTests
         using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input); Assert.Equal(expectedOrder, Assert.Single(read.Pages[0].Templates).ZOrder);
         var mixed = OfdDocumentMixer.Mix([new(read, 0)]); var labels = mixed.Pages[0].Elements.OfType<OfdTextElement>().Select(text => text.Text).ToList();
         Assert.Equal(expectedOrder == "Background" ? new[] { "TEMPLATE", "FIRST" } : new[] { "FIRST", "TEMPLATE" }, labels);
+    }
+
+    [Theory]
+    [InlineData("Annotations", false)]
+    [InlineData("PageAnnot", false)]
+    [InlineData("Annot", false)]
+    [InlineData("Annot", true)]
+    public async Task AnnotationRootAndAnnotExtensionsPreserveKnownArtAndRefuseMix(string wrapper, bool hidden)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var vendor = XNamespace.Get("urn:vendor");
+        var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Add(new XElement(ns + "Annotations", "Annots/Annotations.xml")); Put(source, "Doc_0/Document.xml", document);
+        var index = XDocument.Parse($"<Annotations xmlns='{ns}'><Page PageID='{source.Pages[0].Id}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        var annots = XDocument.Parse($"<PageAnnot xmlns='{ns}'><Annot ID='900'><Appearance Boundary='0 0 20 20'><TextObject Size='3'><TextCode X='0' Y='3'>KNOWN</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+        var node = wrapper == "Annotations" ? index.Root! : wrapper == "PageAnnot" ? annots.Root! : annots.Root!.Element(ns + "Annot")!;
+        node.SetAttributeValue(vendor + "Payload", "../Extensions/data.bin"); node.Add(new XElement(vendor + "Extra", "keep"));
+        if (hidden) node.SetAttributeValue("Visible", "false");
+        Put(source, "Doc_0/Annots/Annotations.xml", index); Put(source, "Doc_0/Annots/Page.xml", annots);
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        Assert.Contains(read.Pages[0].AnnotationAppearances, element => element is OfdRawElement);
+        Assert.Equal(hidden ? 0 : 1, read.Pages[0].AnnotationAppearances.OfType<OfdTextElement>().Count());
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+        if (wrapper != "Annotations") Assert.Single(OfdDocumentMixer.Mix([new(read, 1)]).Pages);
+        var saved = await RoundTrip(read); Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
+        Assert.Equal(source.PreservedEntries["Doc_0/Annots/Annotations.xml"], saved.PreservedEntries["Doc_0/Annots/Annotations.xml"]);
+    }
+
+    [Theory]
+    [InlineData("", "Foreground", "Foreground")]
+    [InlineData(" ", "Foreground", "Foreground")]
+    [InlineData("Watermark", "Foreground", "Foreground")]
+    [InlineData(null, "", "Background")]
+    [InlineData(null, "Watermark", "Background")]
+    [InlineData(null, "Body", "Background")]
+    public async Task UnmodeledTemplateOrderingFallsBackForReadingButRefusesMix(string? referenceOrder, string declarationOrder, string expected)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var document = Xml(source, "Doc_0/Document.xml");
+        document.Root!.Element(ns + "CommonData")!.Add(new XElement(ns + "TemplatePage", new XAttribute("ID", "700"), new XAttribute("BaseLoc", "Templates/Content.xml"), new XAttribute("ZOrder", declarationOrder))); Put(source, "Doc_0/Document.xml", document);
+        var path = source.Pages[0].SourceEntryPath!; var page = Xml(source, path); page.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "700"), referenceOrder is null ? null : new XAttribute("ZOrder", referenceOrder))); Put(source, path, page);
+        source.PreservedEntries["Doc_0/Templates/Content.xml"] = Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Content><Layer ID='702'><TextObject Size='3'><TextCode X='0' Y='3'>TEMPLATE</TextCode></TextObject></Layer></Content></Page>");
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        Assert.Equal(expected, Assert.Single(read.Pages[0].Templates).ZOrder); Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+    }
+
+    [Theory]
+    [InlineData(false, "Page", "attribute")]
+    [InlineData(false, "Area", "attribute")]
+    [InlineData(false, "PhysicalBox", "attribute")]
+    [InlineData(false, "Content", "attribute")]
+    [InlineData(false, "Layer", "attribute")]
+    [InlineData(false, "Content", "child")]
+    [InlineData(false, "Layer", "DrawParam")]
+    [InlineData(true, "Page", "attribute")]
+    [InlineData(true, "Area", "attribute")]
+    [InlineData(true, "Content", "attribute")]
+    [InlineData(true, "Layer", "attribute")]
+    [InlineData(true, "Content", "child")]
+    [InlineData(true, "Page", "nested-template")]
+    public async Task MixPreflightsSelectedPageAndTemplateContainers(bool template, string container, string extra)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var vendor = XNamespace.Get("urn:vendor");
+        var path = source.Pages[0].SourceEntryPath!;
+        if (template)
+        {
+            var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Element(ns + "CommonData")!.Add(new XElement(ns + "TemplatePage", new XAttribute("ID", "700"), new XAttribute("BaseLoc", "Templates/Content.xml"))); Put(source, "Doc_0/Document.xml", document);
+            var page = Xml(source, path); page.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "700"))); Put(source, path, page);
+            path = "Doc_0/Templates/Content.xml";
+            source.PreservedEntries[path] = Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Area><PhysicalBox>0 0 210 297</PhysicalBox></Area><Content><Layer ID='702'><TextObject Size='3'><TextCode X='0' Y='3'>KNOWN</TextCode></TextObject></Layer></Content></Page>");
+        }
+        var xml = Xml(source, path); var node = xml.Descendants(ns + container).First();
+        if (extra == "attribute") node.SetAttributeValue(vendor + "Payload", "Extensions/data.bin");
+        if (extra == "child") node.Add(new XElement(vendor + "Extra", "keep"));
+        if (extra == "DrawParam") node.SetAttributeValue("DrawParam", "999");
+        if (extra == "nested-template") node.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "700")));
+        Put(source, path, xml); using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        var drawings = template ? Assert.Single(read.Pages[0].Templates).Elements : read.Pages[0].Elements;
+        Assert.NotEmpty(drawings.OfType<OfdTextElement>()); Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+        Assert.Single(OfdDocumentMixer.Mix([new(read, 1)]).Pages);
+        Assert.Equal(source.PreservedEntries[path], read.PreservedEntries[path]);
     }
 
     [Theory]

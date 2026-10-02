@@ -244,7 +244,8 @@ public sealed class OfdReader : IOfdReader
                 var template = new OfdTemplateContent
                 {
                     TemplateId = templateId!,
-                    ZOrder = templateRef.Attribute("ZOrder")?.Value ?? templateLoc.ZOrder ?? "Background",
+                    ZOrder = SupportedTemplateOrder(templateRef.Attribute("ZOrder")?.Value)
+                        ?? SupportedTemplateOrder(templateLoc.ZOrder) ?? "Background",
                     BaseLocation = templateLoc.BaseLoc
                 };
                 foreach (var element in ParsePageObjects(
@@ -363,6 +364,35 @@ public sealed class OfdReader : IOfdReader
         xml.Root?.Name.LocalName == localName && (xml.Root.Name.Namespace == documentNamespace ||
             xml.Root.Name.NamespaceName == OfdConstants.Namespace || xml.Root.Name.NamespaceName == OfdConstants.StandardNamespace);
 
+    private static string? SupportedTemplateOrder(string? value) => value is "Background" or "Foreground" ? value : null;
+
+    private static bool PlainContainer(XElement node, params string[] attributes) =>
+        node.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
+            attribute.Name.Namespace == XNamespace.None && attributes.Contains(attribute.Name.LocalName)) &&
+        node.Nodes().All(child => child is XElement or XComment || child is XText text && string.IsNullOrWhiteSpace(text.Value));
+
+    private static bool LiteralAnnotationValue(XElement node, params string[] attributes) =>
+        !node.HasElements && node.Nodes().All(child => child is XText or XComment) &&
+        node.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
+            attribute.Name.Namespace == XNamespace.None && attributes.Contains(attribute.Name.LocalName));
+
+    private static bool SupportedAnnotationWrapper(XElement annotation)
+    {
+        var ns = annotation.Name.Namespace;
+        if (!PlainContainer(annotation, "ID", "Type", "Creator", "LastModDate", "Subtype", "Visible", "Print", "NoZoom", "NoRotate", "ReadOnly") ||
+            annotation.Elements(ns + "Appearance").Count() != 1 || annotation.Elements(ns + "Remark").Count() > 1 ||
+            annotation.Elements(ns + "Parameters").Count() > 1) return false;
+        foreach (var child in annotation.Elements())
+        {
+            if (child.Name == ns + "Appearance") continue;
+            if (child.Name == ns + "Remark" && LiteralAnnotationValue(child)) continue;
+            if (child.Name == ns + "Parameters" && PlainContainer(child) && child.Elements().All(parameter =>
+                parameter.Name == ns + "Parameter" && LiteralAnnotationValue(parameter, "Name"))) continue;
+            return false;
+        }
+        return true;
+    }
+
     private static AnnotationIndex IndexAnnotationFiles(OfdPackageArchive archive, XDocument document,
         string documentPath, ISet<string> loadedPageIds, CancellationToken cancellationToken)
     {
@@ -404,14 +434,15 @@ public sealed class OfdReader : IOfdReader
                 result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
                 continue;
             }
+            if (!PlainContainer(list.Root!) || list.Nodes().Any(node => node is not XElement and not XComment))
+                result.UnmodeledLists.Add(list.ToString(SaveOptions.DisableFormatting));
             foreach (var record in list.Root.Elements())
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var pageId = record.Attribute("PageID")?.Value;
                 var locations = record.Elements(list.Root.Name.Namespace + "FileLoc").ToList();
                 var location = locations.Count == 1 && !locations[0].HasElements &&
-                    locations[0].Nodes().All(node => node is XText or XComment) &&
-                    locations[0].Attributes().All(attribute => attribute.IsNamespaceDeclaration)
+                    locations[0].Nodes().All(node => node is XText or XComment)
                     ? string.Concat(locations[0].Nodes().OfType<XText>().Select(text => text.Value)) : null;
                 AnnotationFiles? files = null;
                 var raw = record.ToString(SaveOptions.DisableFormatting);
@@ -426,6 +457,7 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
                 if (record.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name != XName.Get("PageID")) ||
+                    locations[0].Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
                     record.Elements().Count() != 1 || record.Nodes().Any(node => node is not XElement and not XComment &&
                         (node is not XText text || !string.IsNullOrWhiteSpace(text.Value)))) files!.UnmodeledRecords.Add(raw);
                 var path = OfdPackagePath.Resolve(listPath, location!);
@@ -472,6 +504,8 @@ public sealed class OfdReader : IOfdReader
                     Xml = new XElement("UnmodeledAnnotation", new XAttribute("FileLoc", annotationPath)).ToString() });
                 continue;
             }
+            if (!PlainContainer(annotations.Root!) || annotations.Nodes().Any(node => node is not XElement and not XComment))
+                page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotations.ToString(SaveOptions.DisableFormatting) });
             foreach (var annotation in annotations.Root.Elements())
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -480,8 +514,16 @@ public sealed class OfdReader : IOfdReader
                     page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
                     continue;
                 }
+                if (!SupportedAnnotationWrapper(annotation))
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
                 if (annotation.Attribute("Visible")?.Value is "false" or "0") continue;
-                var appearance = annotation.Element(annotations.Root.Name.Namespace + "Appearance");
+                var appearances = annotation.Elements(annotations.Root.Name.Namespace + "Appearance").ToList();
+                if (appearances.Count > 1)
+                {
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
+                    continue;
+                }
+                var appearance = appearances.Count == 1 ? appearances[0] : null;
                 if (appearance is null)
                 {
                     if (annotation.Elements().Any(node => node.Name.LocalName == "Appearance"))
@@ -489,8 +531,7 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
                 var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value);
-                var hasUnmodeledMetadata = appearance.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
-                    (attribute.Name.Namespace != XNamespace.None || attribute.Name.LocalName is not ("Boundary" or "ID" or "CTM")));
+                var hasUnmodeledMetadata = !PlainContainer(appearance, "Boundary", "ID", "CTM");
                 if (appearance.Attribute("CTM") is not null && (appearanceTransform is null || appearanceTransform.Any(value => double.IsNaN(value) || double.IsInfinity(value))))
                 {
                     page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });

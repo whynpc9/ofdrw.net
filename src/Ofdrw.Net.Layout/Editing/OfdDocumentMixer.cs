@@ -57,9 +57,18 @@ public static class OfdDocumentMixer
                 throw new NotSupportedException("Mix cannot safely remap document extensions or shared drawing resources.");
             var page = item.Package.Pages[item.PageIndex];
             var pageNamespace = EntryNamespace(item.Package, page.SourceEntryPath);
+            ValidatePageContainers(item.Package, page.SourceEntryPath, cancellationToken, true);
+            foreach (var template in page.Templates)
+            {
+                if (template.ZOrder is not ("Background" or "Foreground"))
+                    throw new NotSupportedException("Mix supports only Background/Foreground template ordering.");
+                if (template.BaseLocation is not null)
+                    ValidatePageContainers(item.Package, OfdPackagePath.Resolve(item.Package.DocumentEntryPath ??
+                        item.Package.Options.DocumentId + "/Document.xml", template.BaseLocation), cancellationToken);
+            }
             foreach (var reference in page.PreservedPageElements.Select(XElement.Parse).Where(node => node.Name == pageNamespace + "Template"))
             {
-                if (reference.HasElements || reference.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value)) ||
+                if (!SupportedTemplateOrder(reference) || reference.HasElements || reference.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value)) ||
                     reference.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
                         (attribute.Name.Namespace != XNamespace.None || attribute.Name.LocalName is not ("TemplateID" or "ZOrder"))))
                     throw new NotSupportedException("Mix cannot flatten an unmodeled template reference wrapper.");
@@ -107,8 +116,60 @@ public static class OfdDocumentMixer
         if (!template) return node.Attributes().All(attribute => attribute.IsNamespaceDeclaration) && !string.IsNullOrWhiteSpace(node.Value);
         return !node.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value)) &&
             !string.IsNullOrWhiteSpace(node.Attribute("ID")?.Value) && !string.IsNullOrWhiteSpace(node.Attribute("BaseLoc")?.Value) &&
+            SupportedTemplateOrder(node) &&
             node.Attributes().All(attribute => attribute.IsNamespaceDeclaration || attribute.Name.Namespace == XNamespace.None &&
                 (attribute.Name.LocalName is "ID" or "BaseLoc" or "Name" or "ZOrder"));
+    }
+
+    private static bool SupportedTemplateOrder(XElement node) => node.Attribute("ZOrder") is null ||
+        node.Attribute("ZOrder")!.Value is "Background" or "Foreground";
+
+    private static void ValidatePageContainers(OfdDocumentPackage package, string? path, CancellationToken cancellationToken, bool allowTemplateReferences = false)
+    {
+        if (path is null) return; // Newly constructed model pages have no source XML.
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!package.PreservedEntries.TryGetValue(path, out var bytes))
+            throw new NotSupportedException("Mix cannot inspect missing page/template XML.");
+        using var input = new MemoryStream(bytes, false);
+        var xml = XDocument.Load(input); var root = xml.Root;
+        bool Plain(XElement node, params string[] attributes) => node.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
+            attribute.Name.Namespace == XNamespace.None && attributes.Contains(attribute.Name.LocalName)) &&
+            node.Nodes().All(child => child is XElement or XComment || child is XText text && string.IsNullOrWhiteSpace(text.Value));
+        bool supported = root is not null && root.Name.LocalName == "Page" &&
+            (root.Name.NamespaceName == package.Options.Namespace || root.Name.NamespaceName == OfdConstants.Namespace || root.Name.NamespaceName == OfdConstants.StandardNamespace) &&
+            Plain(root) && xml.Nodes().All(node => node is XElement or XComment);
+        if (supported)
+        {
+            var ns = root!.Name.Namespace;
+            supported = root.Elements(ns + "Area").Count() <= 1 && root.Elements(ns + "Content").Count() <= 1;
+            foreach (var child in root.Elements())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (allowTemplateReferences && child.Name == ns + "Template") continue; // Validated by the reference preflight.
+                if (child.Name == ns + "Area")
+                {
+                    supported &= Plain(child) && child.Elements().Count() == 1;
+                    foreach (var box in child.Elements()) supported &= box.Name == ns + "PhysicalBox" &&
+                        box.Attributes().All(attribute => attribute.IsNamespaceDeclaration) && !box.HasElements &&
+                        box.Nodes().All(node => node is XText or XComment);
+                    continue;
+                }
+                if (child.Name == ns + "Content")
+                {
+                    supported &= Plain(child);
+                    foreach (var layer in child.Elements())
+                    {
+                        supported &= layer.Name == ns + "Layer" && Plain(layer, "ID", "Type") &&
+                            (layer.Attribute("Type") is null || layer.Attribute("Type")!.Value is "Background" or "Body" or "Foreground");
+                        foreach (var drawing in layer.Elements()) supported &= drawing.Name.Namespace == ns &&
+                            drawing.Name.LocalName is "TextObject" or "PathObject" or "ImageObject";
+                    }
+                    continue;
+                }
+                supported = false;
+            }
+        }
+        if (!supported) throw new NotSupportedException("Mix cannot flatten unmodeled page/template containers, area boxes or drawing resources.");
     }
 
     private static void ValidateCustomTags(OfdDocumentPackage package, CancellationToken cancellationToken)

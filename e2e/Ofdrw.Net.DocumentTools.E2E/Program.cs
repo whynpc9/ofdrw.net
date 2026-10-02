@@ -90,6 +90,8 @@ File.Copy(PathFor("rich.ofd"), PathFor("annotation-metadata.ofd"), true);
 Mutate("annotation-metadata", entries =>
 {
     var xml = Xml(entries["Doc_0/Annots/Page.xml"]);
+    xml.Root!.SetAttributeValue(XNamespace.Get("urn:vendor:metadata") + "Payload", "Attachs/public.bin");
+    xml.Descendants(ns + "Annot").Single().SetAttributeValue(XNamespace.Get("urn:vendor:metadata") + "Payload", "Attachs/public.bin");
     xml.Descendants(ns + "Appearance").Single().SetAttributeValue(XNamespace.Get("urn:vendor:metadata") + "Style", "review-fixture");
     entries["Doc_0/Annots/Page.xml"] = Bytes(xml);
     var vendor = XNamespace.Get("urn:vendor:metadata"); var document = Xml(entries["Doc_0/Document.xml"]);
@@ -98,6 +100,8 @@ Mutate("annotation-metadata", entries =>
     template.SetAttributeValue(vendor + "Payload", "Attachs/public.bin"); template.Add(new XElement(vendor + "Extra", "keep"));
     entries["Doc_0/Document.xml"] = Bytes(document);
     var index = Xml(entries["Doc_0/Annots/Annotations.xml"]); var record = index.Root!.Element(ns + "Page")!;
+    index.Root.SetAttributeValue(vendor + "Payload", "../Attachs/public.bin");
+    record.Element(ns + "FileLoc")!.SetAttributeValue(vendor + "Payload", "../Attachs/public.bin");
     record.SetAttributeValue(vendor + "Payload", "../Attachs/public.bin"); record.Add(new XElement(vendor + "Extra", "keep"));
     entries["Doc_0/Annots/Annotations.xml"] = Bytes(index);
 });
