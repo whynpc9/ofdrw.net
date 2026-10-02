@@ -175,6 +175,41 @@ public sealed class AnnotationToolVisualTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnnotationImages_MissingIdOrPayloadRejectPartialExportsAndMix(bool missingPayload)
+    {
+        var id = missingPayload ? "MEDIA" : "UNKNOWN";
+        var source=await Annotated($"<PathObject Boundary='0 0 5 5'><AbbreviatedData>M 0 0 L 5 0 L 5 5 C</AbbreviatedData></PathObject><ImageObject ResourceID='{id}' Boundary='0 0 20 20'/>","10 10 20 20");
+        if (missingPayload)
+        {
+            var holder=source.Pages[0].Elements.OfType<OfdImageElement>().Single();
+            var payload=source.PreservedEntries.Single(entry=>entry.Value.SequenceEqual(holder.Data)).Key; source.PreservedEntries.Remove(payload);
+            var pagePath=source.Pages[0].SourceEntryPath!; var pageXml=XDocument.Parse(Encoding.UTF8.GetString(source.PreservedEntries[pagePath]).TrimStart('\uFEFF'));
+            pageXml.Descendants().Where(node=>node.Name.LocalName=="ImageObject").Remove(); source.PreservedEntries[pagePath]=Encoding.UTF8.GetBytes(pageXml.ToString());
+            using var raw=new MemoryStream(); using(var zip=new ZipArchive(raw,ZipArchiveMode.Create,true))foreach(var entry in source.PreservedEntries){using var output=zip.CreateEntry(entry.Key).Open();output.Write(entry.Value);} raw.Position=0;
+            source=await new OfdReader().ReadAsync(raw);
+        }
+        Assert.IsType<OfdRawElement>(Assert.Single(source.Pages[0].AnnotationAppearances));
+        Assert.Throws<NotSupportedException>(()=>OfdDocumentMixer.Mix([new(source,0)]));
+        using var ofd=await Write(source); var saved=await new OfdReader().ReadAsync(ofd); Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"],saved.PreservedEntries["Doc_0/Annots/Page.xml"]);
+        ofd.Position=0;using var pdf=new MemoryStream();await Assert.ThrowsAsync<NotSupportedException>(()=>new OfdToPdfConverter().ConvertAsync(ofd,pdf));Assert.Equal(0,pdf.Length);
+        ofd.Position=0;using var svg=new MemoryStream();await Assert.ThrowsAsync<NotSupportedException>(()=>new OfdToSvgConverter().ConvertAsync(ofd,svg));Assert.Equal(0,svg.Length);
+    }
+
+    [Fact]
+    public async Task AnnotationFiles_MissingOwnedPageFileRejectsExportsAndKeepsIndex()
+    {
+        var source=await Annotated("<ImageObject ResourceID='MEDIA' Boundary='0 0 20 20'/>","10 10 20 20"); source.PreservedEntries.Remove("Doc_0/Annots/Page.xml");
+        using var raw=new MemoryStream();using(var zip=new ZipArchive(raw,ZipArchiveMode.Create,true))foreach(var entry in source.PreservedEntries){using var output=zip.CreateEntry(entry.Key).Open();output.Write(entry.Value);}raw.Position=0;
+        source=await new OfdReader().ReadAsync(raw);Assert.Equal("UnsupportedAnnotationAppearance",Assert.IsType<OfdRawElement>(Assert.Single(source.Pages[0].AnnotationAppearances)).LocalName);
+        Assert.Throws<NotSupportedException>(()=>OfdDocumentMixer.Mix([new(source,0)]));
+        using var ofd=await Write(source);var saved=await new OfdReader().ReadAsync(ofd);Assert.Equal(source.PreservedEntries["Doc_0/Annots/Annotations.xml"],saved.PreservedEntries["Doc_0/Annots/Annotations.xml"]);
+        ofd.Position=0;using var pdf=new MemoryStream();await Assert.ThrowsAsync<NotSupportedException>(()=>new OfdToPdfConverter().ConvertAsync(ofd,pdf));Assert.Equal(0,pdf.Length);
+        ofd.Position=0;using var svg=new MemoryStream();await Assert.ThrowsAsync<NotSupportedException>(()=>new OfdToSvgConverter().ConvertAsync(ofd,svg));Assert.Equal(0,svg.Length);
+    }
+
+    [Theory]
     [InlineData("<Area><v:Path xmlns:v='urn:vendor'><v:AbbreviatedData>M 0 0 L 10 0 L 10 10 C</v:AbbreviatedData></v:Path></Area>")]
     [InlineData("<Area><Path><AbbreviatedData><Note>M 0 0 L 10 0 L 10 10 C</Note></AbbreviatedData></Path></Area>")]
     [InlineData("<Area><Path><AbbreviatedData>M 0 0 L 5 0 L 5 5 C</AbbreviatedData></Path></Area><Area><v:Path xmlns:v='urn:vendor'><v:AbbreviatedData>M 0 0 L 40 0 L 40 40 C</v:AbbreviatedData></v:Path></Area>")]
