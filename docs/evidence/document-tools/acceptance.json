@@ -1,11 +1,11 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "8e305f3f319e160d049e342474669907817e5ed8",
-  "example_commit": "8e305f3f319e160d049e342474669907817e5ed8",
+  "runtime_source_commit": "81233d98931f42a250ffd32b4d221e842652a4c2",
+  "example_commit": "5e872048bfc9fc9b3b5b576e78730147d26caa8c",
   "functional_tests": {
     "status": "passed",
-    "total": 254,
+    "total": 264,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
@@ -14,9 +14,9 @@
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.20",
+    "version": "0.1.0-issue03.21",
     "published": false,
-    "repository_commit": "8e305f3f319e160d049e342474669907817e5ed8"
+    "repository_commit": "81233d98931f42a250ffd32b4d221e842652a4c2"
   },
   "native_default_text": {
     "status": "passed",
@@ -25,12 +25,12 @@
   },
   "automatic_rendering": {
     "status": "passed",
-    "pdf_pages": 38,
-    "svg_pages": 12
+    "pdf_pages": 40,
+    "svg_pages": 13
   },
   "png_visual_review": {
-    "status": "passed-for-49-listed-pages; fixed-anchor-SVG-font-fidelity-unverified",
-    "method": "All 50 current renders directly inspected in review13-contacts/current-01..13 plus original-size changed SVGs and fixed-anchor pair; 49 pass listed expectations; librsvg substitutes the MIT face in fixed-anchor SVG. Browser font loading confirmed, screenshot timed out while Mac locked.",
+    "status": "passed-for-52-listed-pages; fixed-anchor-SVG-font-fidelity-unverified",
+    "method": "All prior50 PNG hashes exactly match the directly inspected R13 bytes; three new resource-suffix renders inspected at original size. Current14 contact sheets retain all53. The fixed-anchor SVG remains incomplete for original-font fidelity.",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -81,7 +81,10 @@
       "pages/watermark-merged-svg.png",
       "pages/watermark-svg.png",
       "pages/italic-fixed-anchor-1.png",
-      "pages/italic-fixed-anchor-svg.png"
+      "pages/italic-fixed-anchor-svg.png",
+      "pages/watermark-resource-suffix-1.png",
+      "pages/watermark-resource-suffix-2.png",
+      "pages/watermark-resource-suffix-svg.png"
     ],
     "observations": [
       "Chinese and proportional English readable; source styles remain local; table fills/borders and page break retained",
@@ -101,7 +104,8 @@
       "R8 current full-page review: body/table/local style/order intact, known NOTE visible, hidden annotation text/path absent, clipping/glyph transforms correct, signatures removed only in clean/tool outputs, watermarks survive merge",
       "R9 text ignores image-only budgets; foreign-only or nested-only empty clip geometry rejects PDF/SVG before output instead of hiding the object; supported page render bytes unchanged",
       "R13 all-suffix shared XML scans preserve page/font/media/signature closure and nested BaseLoc references; malformed XML stays conservative and BOM plain text does not disable pruning",
-      "R13 new fixed-baseline MIT PDF pairs show whole-glyph shear; regular/italic edge slope regressions and adjacent control pass; SVG native-font raster acceptance remains pending"
+      "R13 new fixed-baseline MIT PDF pairs show whole-glyph shear; regular/italic edge slope regressions and adjacent control pass; SVG native-font raster acceptance remains pending",
+      "R14 declared PublicResources.dat/ImageResources.bin survive save/watermark/split. Actual suffix watermark output retains readable body/styles, table, NOTE, template, DRAFT and red ordinary image; RESOURCE SUFFIX paints once; second page retains red emphasis and date."
     ],
     "passed_files": [
       "pages/annotation-clipped-1.png",
@@ -152,7 +156,10 @@
       "pages/watermark-merged-3.png",
       "pages/watermark-merged-svg.png",
       "pages/watermark-svg.png",
-      "pages/italic-fixed-anchor-1.png"
+      "pages/italic-fixed-anchor-1.png",
+      "pages/watermark-resource-suffix-1.png",
+      "pages/watermark-resource-suffix-2.png",
+      "pages/watermark-resource-suffix-svg.png"
     ],
     "uncompleted": {
       "pages/italic-fixed-anchor-svg.png": "Shear visible but original rectangle font is substituted by librsvg; native browser raster still required for font fidelity."
@@ -160,9 +167,9 @@
   },
   "macos_preview": {
     "status": "not-completed",
-    "reason": "Mac relocked after historical 10/37-page inspection; latest outputs regenerated at8e305f3 require reopen; manual unlock requested",
+    "reason": "Mac relocked after historical10/37-page inspection; latest40 outputs require reopen after manual unlock",
     "checked_pages": [],
-    "latest_required_pdf_pages": 38,
+    "latest_required_pdf_pages": 40,
     "historical_checked_pages": 10,
     "historical_source_commit": "c10f002299726bebd7495122702df3658572faaa",
     "historical_record": "preview-progress.json",
@@ -170,20 +177,20 @@
     "remaining_window": "old watermark.pdf page2; close blocked by lock"
   },
   "pr_review": {
-    "status": "three functional findings fixed and independently tested; fresh-head review pending; Preview remains open",
-    "review_head": "2d1f9aff2ab911a9c52c12f4caf1f332c87822af",
-    "codex": "DocBody extensions rejected before Mix; awaiting new-head re-review",
-    "cursor": "nested BaseLoc and all-suffix dependency closure fixed; awaiting new-head re-review",
-    "ci": "previous2d1f9af all six passed; new head pending"
+    "status": "declared-resource suffix finding fixed and independently verified; new-head review pending; Preview remains open",
+    "review_head": "04213d9fa8d7053aed0b7be8fa8b5ecd17905e82",
+    "codex": "only new functional P2 at04213d9 was declared resource XML suffix; repaired at81233d9",
+    "cursor": "04213d9 functional closure confirmed; mandatory Preview remains open",
+    "ci": "04213d9 all six checks succeeded; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 39772252,
-    "sha256": "d0934f903256300ac0895879a877da667227592c023caec18b43ced675506294",
-    "extraction_readback": "passed all per-file size and SHA-256 checks",
-    "file_count": 265,
-    "expanded_bytes": 1321519266,
-    "integrity_status": "passed: freshly extracted all265 sizes and SHA256"
+    "bytes": 40505950,
+    "sha256": "761f6366d546b89fae48b0f2ba8638a5b744877e919495a03c8e51fac189f445",
+    "extraction_readback": "passed: freshly extracted all291 file sizes and SHA256",
+    "file_count": 291,
+    "expanded_bytes": 1404500937,
+    "integrity_status": "passed: freshly extracted all291 file sizes and SHA256"
   },
   "ofd_sizes": {
     "annotation-clipped-mix.ofd": {
@@ -266,6 +273,10 @@
       "bytes": 11600079,
       "ratio_to_native_baseline": 0.9998
     },
+    "resource-suffix-input.ofd": {
+      "bytes": 11605590,
+      "ratio_to_native_baseline": 1.0002
+    },
     "rich.ofd": {
       "bytes": 11604556,
       "ratio_to_native_baseline": 1.0001
@@ -298,6 +309,10 @@
       "bytes": 11604477,
       "ratio_to_native_baseline": 1.0001
     },
+    "watermark-resource-suffix.ofd": {
+      "bytes": 11605693,
+      "ratio_to_native_baseline": 1.0002
+    },
     "watermark.ofd": {
       "bytes": 11605596,
       "ratio_to_native_baseline": 1.0002
@@ -315,5 +330,6 @@
     "scoped-annotations-input": "page2 Mix rejected; page1 Mix with overlay succeeds; original synthetic signature not cryptographic acceptance",
     "template-wrapper-extension": "Mix rejected; reference XML remains preserved"
   },
-  "template_liveness_sample": "extensionless state.dat nested Extension BaseLoc ../Templates retains template declaration/payload while selecting page2"
+  "template_liveness_sample": "extensionless state.dat nested Extension BaseLoc ../Templates retains template declaration/payload while selecting page2",
+  "resource_suffix_sample": "resource-suffix-input has declared real font .dat and image .bin; watermark-resource-suffix preserves both plus body/annotation/template and adds one label"
 }

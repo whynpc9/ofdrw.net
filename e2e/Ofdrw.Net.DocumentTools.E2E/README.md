@@ -19,3 +19,5 @@ After extracting the evidence bundle, reproduction can use `OFDRW_DOCUMENT_TOOLS
 The annotation-clipped pair adds an oversized sheared image inside a 20x10 mm Appearance, nested PageBlock content, a 90-degree rotated ROTATE label and a 1.5x SCALE label. The clipped output and its Mix roundtrip must retain the exact parallelogram, glyph orientation/size and extract each label once.
 
 `italic-fixed-anchor` uses original MIT rectangle glyphs with identical baseline anchors. The right column applies an unmarked shear to the whole glyph; its upper regular rectangle and lower italic rectangle must gain slope relative to the left identity column. `split-template-liveness` keeps an extensionless XML dependency resolved through a nested extension `BaseLoc` while selecting only page 2.
+
+`resource-suffix-input` renames the real Noto font descriptor to `PublicResources.dat` and the ordinary watermark image descriptor to `ImageResources.bin`. `watermark-resource-suffix` adds RESOURCE SUFFIX while retaining the prior DRAFT label, red watermark image, body, annotation and template. Its two-page PDF and first-page SVG verify that declared resource XML needs no `.xml` suffix.

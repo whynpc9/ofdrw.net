@@ -69,8 +69,8 @@
   "remaining_window": "watermark.pdf page2; close attempt blocked by relock",
   "accidental_open_cleanup": "directory-wide task artifact group opened during a menu transition; File > Close All returned to empty Open panel; these accidental views do not count as acceptance",
   "historical_only": true,
-  "latest_runtime_source_commit": "8e305f3f319e160d049e342474669907817e5ed8",
+  "latest_runtime_source_commit": "81233d98931f42a250ffd32b4d221e842652a4c2",
   "latest_outputs_require_reopen_after_regeneration": true,
   "latest_checked_pages": 0,
-  "latest_required_pdf_pages": 38
+  "latest_required_pdf_pages": 40
 }
