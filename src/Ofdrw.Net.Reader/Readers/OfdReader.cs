@@ -141,11 +141,12 @@ public sealed class OfdReader : IOfdReader
             .Select(x => new
             {
                 Id = x.Attribute("ID")?.Value,
-                BaseLoc = x.Attribute("BaseLoc")?.Value
+                BaseLoc = x.Attribute("BaseLoc")?.Value,
+                ZOrder = x.Attribute("ZOrder")?.Value
             })
             .Where(x => !string.IsNullOrWhiteSpace(x.Id) && !string.IsNullOrWhiteSpace(x.BaseLoc))
-            .ToDictionary(x => x.Id!, x => x.BaseLoc!, StringComparer.OrdinalIgnoreCase)
-            ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(x => x.Id!, x => (BaseLoc: x.BaseLoc!, ZOrder: x.ZOrder), StringComparer.OrdinalIgnoreCase)
+            ?? new Dictionary<string, (string BaseLoc, string? ZOrder)>(StringComparer.OrdinalIgnoreCase);
 
         var pages = documentXml.Root?
             .Element(docNs + "Pages")?
@@ -227,7 +228,7 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
 
-                var templatePath = Resolve(docRoot, templateLoc);
+                var templatePath = Resolve(docRoot, templateLoc.BaseLoc);
                 if (!archive.Contains(templatePath))
                 {
                     continue;
@@ -243,8 +244,8 @@ public sealed class OfdReader : IOfdReader
                 var template = new OfdTemplateContent
                 {
                     TemplateId = templateId!,
-                    ZOrder = templateRef.Attribute("ZOrder")?.Value ?? "Background",
-                    BaseLocation = templateLoc
+                    ZOrder = templateRef.Attribute("ZOrder")?.Value ?? templateLoc.ZOrder ?? "Background",
+                    BaseLocation = templateLoc.BaseLoc
                 };
                 foreach (var element in ParsePageObjects(
                     archive,
@@ -375,7 +376,16 @@ public sealed class OfdReader : IOfdReader
                 result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
                 continue;
             }
-            var listPath = OfdPackagePath.Resolve(documentPath, declaration.Value);
+            var literal = string.Concat(declaration.Nodes().OfType<XText>().Select(text => text.Value));
+            if (declaration.HasElements || declaration.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
+                declaration.Nodes().Any(node => node is not XText and not XComment))
+                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+            if (string.IsNullOrWhiteSpace(literal))
+            {
+                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                continue;
+            }
+            var listPath = OfdPackagePath.Resolve(documentPath, literal);
             if (!visited.Add(listPath)) continue;
             if (!archive.Contains(listPath))
             {
@@ -398,7 +408,11 @@ public sealed class OfdReader : IOfdReader
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var pageId = record.Attribute("PageID")?.Value;
-                var location = record.Element(list.Root.Name.Namespace + "FileLoc")?.Value;
+                var locations = record.Elements(list.Root.Name.Namespace + "FileLoc").ToList();
+                var location = locations.Count == 1 && !locations[0].HasElements &&
+                    locations[0].Nodes().All(node => node is XText or XComment) &&
+                    locations[0].Attributes().All(attribute => attribute.IsNamespaceDeclaration)
+                    ? string.Concat(locations[0].Nodes().OfType<XText>().Select(text => text.Value)) : null;
                 AnnotationFiles? files = null;
                 var raw = record.ToString(SaveOptions.DisableFormatting);
                 if (!string.IsNullOrWhiteSpace(pageId))
@@ -411,6 +425,9 @@ public sealed class OfdReader : IOfdReader
                     if (files is null) result.UnmodeledLists.Add(raw); else files.UnmodeledRecords.Add(raw);
                     continue;
                 }
+                if (record.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name != XName.Get("PageID")) ||
+                    record.Elements().Count() != 1 || record.Nodes().Any(node => node is not XElement and not XComment &&
+                        (node is not XText text || !string.IsNullOrWhiteSpace(text.Value)))) files!.UnmodeledRecords.Add(raw);
                 var path = OfdPackagePath.Resolve(listPath, location!);
                 if (files!.Known.Add(path)) files.Paths.Add(path);
             }

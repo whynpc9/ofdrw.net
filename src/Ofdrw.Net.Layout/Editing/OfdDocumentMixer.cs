@@ -52,8 +52,8 @@ public static class OfdDocumentMixer
             if (item.Package.PreservedDocBodyElements.Any(xml => XElement.Parse(xml).Name != rootNamespace + "Signatures"))
                 throw new NotSupportedException("Mix cannot safely remap DocBody extensions.");
             var documentNamespace = EntryNamespace(item.Package, item.Package.DocumentEntryPath);
-            if (item.Package.PreservedDocumentElements.Any(xml => XElement.Parse(xml).Name != documentNamespace + "Annotations") ||
-                item.Package.PreservedCommonDataElements.Any(xml => XElement.Parse(xml).Name != documentNamespace + "TemplatePage"))
+            if (item.Package.PreservedDocumentElements.Any(xml => !SupportedDeclaration(XElement.Parse(xml), documentNamespace, false)) ||
+                item.Package.PreservedCommonDataElements.Any(xml => !SupportedDeclaration(XElement.Parse(xml), documentNamespace, true)))
                 throw new NotSupportedException("Mix cannot safely remap document extensions or shared drawing resources.");
             var page = item.Package.Pages[item.PageIndex];
             var pageNamespace = EntryNamespace(item.Package, page.SourceEntryPath);
@@ -98,6 +98,17 @@ public static class OfdDocumentMixer
         }
         merged.Pages.Clear(); merged.Pages.Add(target);
         return merged;
+    }
+
+    private static bool SupportedDeclaration(XElement node, XNamespace ns, bool template)
+    {
+        if (node.Name != ns + (template ? "TemplatePage" : "Annotations") || node.HasElements ||
+            node.Nodes().Any(child => child is not XText and not XComment)) return false;
+        if (!template) return node.Attributes().All(attribute => attribute.IsNamespaceDeclaration) && !string.IsNullOrWhiteSpace(node.Value);
+        return !node.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value)) &&
+            !string.IsNullOrWhiteSpace(node.Attribute("ID")?.Value) && !string.IsNullOrWhiteSpace(node.Attribute("BaseLoc")?.Value) &&
+            node.Attributes().All(attribute => attribute.IsNamespaceDeclaration || attribute.Name.Namespace == XNamespace.None &&
+                (attribute.Name.LocalName is "ID" or "BaseLoc" or "Name" or "ZOrder"));
     }
 
     private static void ValidateCustomTags(OfdDocumentPackage package, CancellationToken cancellationToken)
