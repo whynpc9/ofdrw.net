@@ -6,7 +6,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 215/215 通过 | Core 5、Packaging 23、PDF/Image 104、Signatures 4、DOCX 49、CLI 30 |
+| 功能回归 | 235/235 通过 | Core 5、Packaging 23、PDF/Image 124、Signatures 4、DOCX 49、CLI 30 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review6`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
@@ -115,3 +115,9 @@ ASN扫描区分strict与legacy：严格图片路径继续分配前拒绝坏长�
 共享触点：`src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs`（加载后渲染入口、签章准备/绘制）、`Internal/OfdSignatureAppearanceReader.cs`、`src/Ofdrw.Net.Cli/Program.cs`（partial类/命令路由/帮助）、`.github/workflows/ci.yml`、包消费Program/脚本。02不改变文字CTM、假斜体、注释多边形裁剪或PageBlock语义，不修改03分支。
 
 内部接口：`ConvertPackageAsync(OfdDocumentPackage, Stream, IReadOnlyList<int>?, CancellationToken, bool strictAppearanceBudgets = false, int? maximumSignatureAppearances = null)`。公开PDF `ConvertAsync`保留default false；只有图片导出传true及签章候选上限。严格限制/缓存/错误传播应继续局限该入口，保留03的共享绘制实现及普通PDF兼容行为。`OfdSignatureAppearanceReader.Read`新增选中页ID、可空候选上限、CT；默认调用（包括SVG）保持容错候选语义。
+
+## 第七轮复审修复
+
+`542f798`两类bot结果均已读取：Codex指出选中StampAnnot的缺失/不可解析/零或负尺寸Boundary仍被静默跳过；Cursor指出Infinity和浮点溢出`1e309`还能进入PDF坐标。
+
+严格图片导出现在对四个Boundary轴统一拒绝NaN/Infinity，并要求宽高为正；缺失或不可解析同样以`InvalidDataException`失败。legacy PDF跳过这些无效边界，保留其它合法外观。使用兼容netstandard2.0的NaN/Infinity检查。20个边界回归分别验证strict输出保持sentinel、legacy有效JPEG仍有红色像素；同记录两无效stamp的数量限制仍在边界解析前失败。全套235/235，Sol Low独立定向21/21通过；本轮新包消费和产物随后记录。Preview再次确认锁定，仍未完成。

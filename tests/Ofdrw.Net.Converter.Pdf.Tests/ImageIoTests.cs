@@ -432,7 +432,7 @@ public sealed class ImageIoTests
         var package = await new OfdReader().ReadAsync(input);
         var appearances = OfdSignatureAppearanceReader.Read(package, new HashSet<string> { package.Pages[0].Id! }, 1000);
         Assert.Equal(2, appearances.Count); Assert.Same(appearances[0].Data, appearances[1].Data); Assert.Equal(seal, appearances[0].Data);
-        var bad = await WithSeals([ImageBytes(), ImageBytes()], invalidBoundary: true);
+        var bad = await WithSeals([ImageBytes()], stampsPerRecord: 2, invalidBoundary: true);
         using var invalid = new MemoryStream(bad); using var output = Sentinel();
         var rejection = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
         { PixelsPerMillimeter = 2, MaxSignatureAppearanceCount = 1 }).ConvertAsync(invalid, output));
@@ -583,6 +583,37 @@ public sealed class ImageIoTests
         using var input = new MemoryStream(source); using var sentinel = Sentinel();
         await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions { PixelsPerMillimeter = 2 }).ConvertAsync(input, sentinel));
         AssertSentinel(sentinel);
+        input.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
+        using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
+        using var page = reader.GetPageReader(0); var pixels = page.GetImage();
+        var offset = ((int)(12 * 72d / 25.4d * 2) * page.GetPageWidth() + (int)(7 * 72d / 25.4d * 2)) * 4;
+        Assert.True(pixels[offset + 2] > 180); Assert.True(pixels[offset] < 60);
+    }
+
+    [Theory]
+    [InlineData(null)] [InlineData("")] [InlineData("invalid")] [InlineData("0 0 10")]
+    [InlineData("0 0 0 10")] [InlineData("0 0 10 0")]
+    [InlineData("0 0 -10 10")] [InlineData("0 0 10 -10")]
+    [InlineData("NaN 0 10 10")] [InlineData("0 NaN 10 10")]
+    [InlineData("0 0 NaN 10")] [InlineData("0 0 10 NaN")]
+    [InlineData("Infinity 0 10 10")] [InlineData("0 -Infinity 10 10")]
+    [InlineData("0 0 Infinity 10")] [InlineData("0 0 10 -Infinity")]
+    [InlineData("1e309 0 10 10")] [InlineData("0 1e309 10 10")]
+    [InlineData("0 0 1e309 10")] [InlineData("0 0 10 1e309")]
+    public async Task StrictSelectedStampRejectsInvalidBoundaryAndLegacyPdfKeepsValidSeal(string? boundary)
+    {
+        using var rewritten = new MemoryStream(); rewritten.Write(await WithSeals([ImageBytes(true), ImageBytes(true)]));
+        using (var zip = new ZipArchive(rewritten, ZipArchiveMode.Update, true))
+        {
+            var entry = zip.GetEntry("Doc_0/Signs/S1/Signature.xml")!; System.Xml.Linq.XDocument xml;
+            using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
+            xml.Descendants().Single(e => e.Name.LocalName == "StampAnnot").SetAttributeValue("Boundary", boundary);
+            entry.Delete(); using var output = zip.CreateEntry("Doc_0/Signs/S1/Signature.xml").Open(); xml.Save(output);
+        }
+        using var input = new MemoryStream(rewritten.ToArray()); using var sentinel = Sentinel();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
+        { PixelsPerMillimeter = 2 }).ConvertAsync(input, sentinel));
+        Assert.Contains("Boundary", error.Message); AssertSentinel(sentinel);
         input.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
         using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
         using var page = reader.GetPageReader(0); var pixels = page.GetImage();
