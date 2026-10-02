@@ -1,132 +1,169 @@
 {
-  "source_commit": "57cd076016b132057ce39bab51fb39f2cab7f160",
-  "baseline": "be8b74b3cbd699732ec0638189d14037e052a770",
+  "source_commit": "00a4c263ed5a15059bcdc2c09bb0d8f3500bf7e7",
+  "dependency_commit": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+  "preintegration_commit": "b29ed9db8d157569881d9dcd2a6d56f085f32baa",
   "date": "2026-10-02",
   "timezone": "Asia/Shanghai",
   "environment": {
-    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
     "sdk": "10.0.401",
     "ImageSharp": "2.1.13",
     "Docnet": "2.6.0"
   },
-  "modes": {
-    "source": "OFD -> selected PDF -> PDFium -> PNG/JPEG, ppm=4",
-    "imported": "PNG + JPEG -> OFD, ppm=2, page=60x50mm -> PDF/PNG",
-    "baseline-native": "generated-layout.docx -> explicit Native OFD -> PDF -> PNG",
-    "baseline-default": "generated-layout.docx -> default Native OFD -> PDF -> PNG",
-    "shared-seal": "appearance-only OFD with six repeated nested payload placements -> PDF / strict cached image export; no cryptographic validity claim"
-  },
   "tests": {
-    "total": 280,
+    "total": 563,
     "failed": 0,
+    "independent_total": 563,
     "packages": 11,
-    "package_version": "0.1.0-issue02.review12"
+    "package_version": "0.1.0-issue02.integration1",
+    "document_tools_samples": 36,
+    "document_tools_pdf_pages": 55
   },
+  "modes": {
+    "source": "Licensed Noto OFL synthetic OFD -> strict selected PDF -> PDFium PNG/JPEG, ppm=4",
+    "imported": "PNG/JPEG -> centered OFD -> PDF/PNG",
+    "baseline-native": "licensed-layout.docx -> explicit Native OFD -> PDF -> strict PNG",
+    "baseline-default": "licensed-layout.docx -> default Native OFD -> PDF -> strict PNG",
+    "italic-fixed-anchor": "MIT rectangle + Noto labels, identity/unmarked CTM at fixed anchors",
+    "additional": "fresh precise annotation clip, image watermark and signature cleanup -> strict PNG"
+  },
+  "font_audit": "font-audit.json; only Noto OFL and original MIT raw fonts/subsets in current bundle",
   "png_visual_review": [
-    "export-1.png",
-    "export-2.png",
-    "export-2.jpg",
-    "imported-1.png",
-    "imported-2.png",
-    "baseline-native-1.png",
-    "baseline-native-2.png",
+    "annotation-clipped.png",
     "baseline-default-1.png",
     "baseline-default-2.png",
+    "baseline-native-1.png",
+    "baseline-native-2.png",
+    "cli-clean.png",
+    "cli-watermark.png",
+    "export-1.png",
+    "export-2.jpg",
+    "export-2.png",
+    "imported-1.png",
+    "imported-2.png",
+    "input.jpg",
+    "input.png",
+    "italic-fixed-anchor.png",
     "shared-seal.png"
   ],
   "preview": {
-    "status": "reviewed-with-findings",
-    "reason": "Source sample italic not rendered by existing shared PDF path",
+    "status": "not-reviewed",
     "overall_visual_accepted": false,
-    "checked_pages": 9,
-    "record": "preview-acceptance.json",
-    "checks": [
-      {
-        "artifact": "source.pdf",
-        "sha256": "00a1655288354ef1e9501351e145e03d8304b4b0f675c7c0c4d21f47b9f596a3",
-        "pages": [
-          1,
-          2
-        ],
-        "result": "failed: Italic color is upright",
-        "window_closed": true
-      },
-      {
-        "artifact": "imported.pdf",
-        "sha256": "d8c71fc54f33fa9f06dda511c694638ccdd9c4a3d96bf20ac6a30ce09ee3e5d0",
-        "pages": [
-          1,
-          2
-        ],
-        "result": "passed: centered, ordered quadrants and white margins",
-        "window_closed": true
-      },
-      {
-        "artifact": "baseline-native.pdf",
-        "sha256": "eb9cb57d38093256aed13386aefe9528e7972833caff20dd3230885f6261fdc0",
-        "pages": [
-          1,
-          2
-        ],
-        "result": "passed: text, table, styles, alignment and pagination",
-        "window_closed": true
-      },
-      {
-        "artifact": "baseline-default.pdf",
-        "sha256": "af743e680aed4ac8e7ab834dc05aac3e7880d224552cacf90327bb0d4b3cfa48",
-        "pages": [
-          1,
-          2
-        ],
-        "result": "passed: text, table, styles, alignment and pagination",
-        "window_closed": true
-      },
-      {
-        "artifact": "shared-seal.pdf",
-        "sha256": "19da54e042d297709416d8fe9d5f03b705813b9b3c9b7c35eef5d099d37f8616",
-        "pages": [
-          1
-        ],
-        "result": "passed: six red squares, spacing and bounds; not cryptographic validity",
-        "window_closed": true
-      }
+    "reason": "Integrated artifacts are regenerated; GUI is temporarily assigned to other ticket by coordinator. Prior Preview acceptance is not inherited.",
+    "required": [
+      "source.pdf:1-2",
+      "imported.pdf:1-2",
+      "baseline-native.pdf:1-2",
+      "baseline-default.pdf:1-2",
+      "shared-seal.pdf:1",
+      "italic-fixed-anchor.pdf:1",
+      "annotation-clipped.pdf:1",
+      "cli-watermark.pdf:1-2",
+      "cli-clean.pdf:1-2"
+    ],
+    "local_only_required": [
+      "original-source-reexported.pdf:1-2"
     ]
   },
   "files": [
     {
+      "path": "annotation-clipped.ofd",
+      "bytes": 11601279,
+      "sha256": "cc7c66bf6be4bbbc142d8ded0ccfe0615927885a455d54af11adbc9cd314cfc4"
+    },
+    {
+      "path": "annotation-clipped.pdf",
+      "bytes": 62695,
+      "sha256": "638d9419c6927971a280b698b2dd1b8337a75665b4067175fc0c319fb170202d"
+    },
+    {
+      "path": "annotation-clipped.png",
+      "bytes": 4983,
+      "sha256": "fa0dabdf7498bfed9d85e2af9a1ba59773ea466947776ce8bf37c0607a84a664"
+    },
+    {
       "path": "baseline-default-1.png",
-      "bytes": 54600,
-      "sha256": "450c5a20cc99e04e7c94ad4ffd81439684c4cda414ce798c9043d2b672630ccb"
+      "bytes": 56471,
+      "sha256": "7bfccbd40c56b012c31c7fc67156c47182488721bb06c3b9d114fae40432abf6"
     },
     {
       "path": "baseline-default-2.png",
-      "bytes": 25642,
-      "sha256": "502f8570943f37bf851a3b492cd07d8a35bf74ca4ba0e02acdcba062f1d058e2"
+      "bytes": 26891,
+      "sha256": "12d5946af6882056272dfd9d38027d2d6517e584820a7a41be0d4b669965d2e3"
+    },
+    {
+      "path": "baseline-default.ofd",
+      "bytes": 11602908,
+      "sha256": "756051e3ed976a947311be9716b1e29bd9ef5ee71a4eedf4f38aab183f7f9214"
+    },
+    {
+      "path": "baseline-default.pdf",
+      "bytes": 117058,
+      "sha256": "f47ef5e5b2e4df2bc5a30adf77ba65c6bab2b6fe36f52d7ef8185b4c9c270436"
     },
     {
       "path": "baseline-native-1.png",
-      "bytes": 54600,
-      "sha256": "450c5a20cc99e04e7c94ad4ffd81439684c4cda414ce798c9043d2b672630ccb"
+      "bytes": 56471,
+      "sha256": "7bfccbd40c56b012c31c7fc67156c47182488721bb06c3b9d114fae40432abf6"
     },
     {
       "path": "baseline-native-2.png",
-      "bytes": 25642,
-      "sha256": "502f8570943f37bf851a3b492cd07d8a35bf74ca4ba0e02acdcba062f1d058e2"
+      "bytes": 26891,
+      "sha256": "12d5946af6882056272dfd9d38027d2d6517e584820a7a41be0d4b669965d2e3"
+    },
+    {
+      "path": "baseline-native.ofd",
+      "bytes": 11602908,
+      "sha256": "756051e3ed976a947311be9716b1e29bd9ef5ee71a4eedf4f38aab183f7f9214"
+    },
+    {
+      "path": "baseline-native.pdf",
+      "bytes": 117058,
+      "sha256": "95558bf5cab2fcd49c8195483d5247817a037f8ca4c440fe436e7fa66d3ec996"
+    },
+    {
+      "path": "cli-clean.ofd",
+      "bytes": 11604532,
+      "sha256": "09bc5dd86f1c1157e78256faf004c7081c3199e2fe9112b20bc1e94a8fe27d0d"
+    },
+    {
+      "path": "cli-clean.pdf",
+      "bytes": 127956,
+      "sha256": "f8a721fb01f685d4344251d4235b48912d5425ed5a78db8bca97f11c31d76976"
+    },
+    {
+      "path": "cli-clean.png",
+      "bytes": 66075,
+      "sha256": "3f56df81f0e6c94c9bc128372938741d48ec3fa801b82bfd281f1c3a34f76689"
+    },
+    {
+      "path": "cli-watermark.ofd",
+      "bytes": 11605618,
+      "sha256": "846799d58be452e75dd331a9fab4e9fe4bed2019a4a9b1ef49e2d74b67fc90fe"
+    },
+    {
+      "path": "cli-watermark.pdf",
+      "bytes": 131620,
+      "sha256": "d61f03acb5153da687c27f1bcc6d35784835a9c98829736b2d44ee0a76e7a944"
+    },
+    {
+      "path": "cli-watermark.png",
+      "bytes": 72692,
+      "sha256": "d9e525a1285580707ed10153b451fae5c5e5c418c152709ac6d30c6fadd6f778"
     },
     {
       "path": "export-1.png",
-      "bytes": 7425,
-      "sha256": "94646a23f2da905dc91ff3368e76105e92d8690122927da48fc07c7f9f94e9a9"
+      "bytes": 8162,
+      "sha256": "2bbd338d5656cfd27af1837ffbaa33d3c5a2c9503a83dcb7bde1afb44d8777c7"
     },
     {
       "path": "export-2.jpg",
-      "bytes": 9041,
-      "sha256": "1d6ee36a89eaa9aded7e3f23c19181a49fdd9c8d074bdd801b3d34b5940e8a27"
+      "bytes": 9409,
+      "sha256": "f0027d5d564c482fbecbeed3bd5bdba1785801507836aafba999c81ce273d94f"
     },
     {
       "path": "export-2.png",
-      "bytes": 7553,
-      "sha256": "bdd055cd6ef6fe0681212d39646e4c9bb2387a4b8e280e4215624610e4bbc451"
+      "bytes": 8255,
+      "sha256": "501759bdcdfa9b1019a6ea3f76f1583aa04d0c6a8cb7f208b332cf0573354daf"
     },
     {
       "path": "imported-1.png",
@@ -141,12 +178,12 @@
     {
       "path": "imported.ofd",
       "bytes": 3405,
-      "sha256": "6f0b8c5c6a714c07a19b0c92de528cde830d0dfe841d3c9ebce39252011b027d"
+      "sha256": "517739f7573db0cfcbe423396ffab05d8839c2d12eb34344c736be005f738c67"
     },
     {
       "path": "imported.pdf",
-      "bytes": 3414,
-      "sha256": "d8c71fc54f33fa9f06dda511c694638ccdd9c4a3d96bf20ac6a30ce09ee3e5d0"
+      "bytes": 3416,
+      "sha256": "703ef2871f1be0b3cc1526b9794228324edd49b50561a21636c5dceb4c639cf7"
     },
     {
       "path": "input.jpg",
@@ -159,14 +196,29 @@
       "sha256": "492f4b44c2acb3e55a5de88b8c473f0c9a6c802b08d2eda1b089b933e2fddbf6"
     },
     {
+      "path": "italic-fixed-anchor.ofd",
+      "bytes": 11601704,
+      "sha256": "ca8c1956ae066081e680fe977ca7d0011cfcc03224c81af03996d0e2f1ced79e"
+    },
+    {
+      "path": "italic-fixed-anchor.pdf",
+      "bytes": 63329,
+      "sha256": "89c7b5e1357277c53276cbd5fa3bc770ad734a4a4940f7c92ac764d23393d961"
+    },
+    {
+      "path": "italic-fixed-anchor.png",
+      "bytes": 5412,
+      "sha256": "fc3b1b9b60d1f7571349b10f841213048118328d224bf10b917ea94cde5b9395"
+    },
+    {
       "path": "shared-seal.ofd",
       "bytes": 3279,
-      "sha256": "78e8959a9c9518fb190de86b26d318283957e0a280c1a1f8c93b48eb3fcbb160"
+      "sha256": "e318712abf804eac02accbe63053f97bf7afff6fa51c7a1418ee80aaded01b6f"
     },
     {
       "path": "shared-seal.pdf",
       "bytes": 3255,
-      "sha256": "19da54e042d297709416d8fe9d5f03b705813b9b3c9b7c35eef5d099d37f8616"
+      "sha256": "14bf658af68b0c68fd3a4ba4e95b01dc4d34ff72c723f1d5a75edbfdf4a971cc"
     },
     {
       "path": "shared-seal.png",
@@ -175,54 +227,79 @@
     },
     {
       "path": "source.ofd",
-      "bytes": 2969,
-      "sha256": "fb8a5c97442ff586e87c73e2f2c08b64b84a0e2aa34a3861b356932a71b9c664"
+      "bytes": 11601570,
+      "sha256": "1bbbb0eff98dfe061dd3220e163932fc00d851a626b642b3b641abab543013f0"
     },
     {
       "path": "source.pdf",
-      "bytes": 69655,
-      "sha256": "00a1655288354ef1e9501351e145e03d8304b4b0f675c7c0c4d21f47b9f596a3"
+      "bytes": 75821,
+      "sha256": "308e089b9575e814adaf4c71479e54da1ec9eb079cf2edad0fce70a28c9cc9fe"
     },
     {
-      "path": "baseline-native.ofd",
-      "bytes": 15288607,
-      "sha256": "825e71f8ccaf9c58055a5b74ae6f592c608aaf90fd66332446a2cecfa351106e"
+      "path": "fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+      "bytes": 21659544,
+      "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
     },
     {
-      "path": "baseline-native.pdf",
-      "bytes": 117446,
-      "sha256": "eb9cb57d38093256aed13386aefe9528e7972833caff20dd3230885f6261fdc0"
+      "path": "fonts/Ofdrw-CI-Noto-OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
     },
     {
-      "path": "baseline-default.ofd",
-      "bytes": 15288607,
-      "sha256": "c59adefcefbb37877a7db69d6a93b98b4289d1c77bb79a57f6a18062bbc25342"
+      "path": "fonts/narrow.ttf",
+      "bytes": 5408,
+      "sha256": "4129db97b03c0fa2ba4c319b63769a593bb3cf6217a0f3b0889e9db5e8e422bc"
     },
     {
-      "path": "baseline-default.pdf",
-      "bytes": 117446,
-      "sha256": "af743e680aed4ac8e7ab834dc05aac3e7880d224552cacf90327bb0d4b3cfa48"
+      "path": "fonts/MIT-rectangle-LICENSE.txt",
+      "bytes": 1064,
+      "sha256": "2b4dd513f6505b2522a1f6eb3c07dccf04c37b19daf13c3a26aa9bcafe3436fc"
     },
     {
-      "path": "tests.txt",
-      "bytes": 6326,
-      "sha256": "9f5f8753acfaafee10f84c1b563f68f2db26d295150282eaa73a1019078228cc"
+      "path": "fonts/generate-font-test-fixtures.py",
+      "bytes": 2902,
+      "sha256": "018147fb606f0edee60ef975ef3d6a2014d44924fb21968e871d7203fd1a721b"
     },
     {
-      "path": "package-e2e.txt",
-      "bytes": 10807,
-      "sha256": "9f732a5fdd03ddf69197a830aad9c5d949fb3c3538ddb165e12a0204e37ac903"
+      "path": "licensed-layout.docx",
+      "bytes": 3311,
+      "sha256": "2a1e817a2e5b00173b37bf496432c3c1a66eacefba1853ca870de99a15229ff3"
+    },
+    {
+      "path": "font-audit.json",
+      "bytes": 10092,
+      "sha256": "0917481813dbfba308359793dd1a0fe69d06cf22c0584fdff9bd9b4422affd89"
+    },
+    {
+      "path": "document-tools-matrix-manifest.json",
+      "bytes": 56063,
+      "sha256": "3a09d9cc040895b346edff85cc11ab13f3524662e9db7cf311e3ceee52193eff"
     },
     {
       "path": "package-manifest.json",
-      "bytes": 2249,
-      "sha256": "c135e9712c63768afd5ce20c49b63afb2545faf744a3c2b5490687a5d5faa222"
+      "bytes": 2297,
+      "sha256": "89dfe9955a1e7033e25c2ae298c46394bc73b1de38939937c0c3d2188f8269d3"
+    },
+    {
+      "path": "tests.txt",
+      "bytes": 5776,
+      "sha256": "942ffdfe7b7327e9d61bd916d8625dbda9e8bf7acb6d2fa9d5aa99b842ff1510"
+    },
+    {
+      "path": "package-e2e.txt",
+      "bytes": 12333,
+      "sha256": "937c5bb8806a6107d8a95acb15e76422b433a044a89bc523d12ab7acc5a66595"
+    },
+    {
+      "path": "document-tools-e2e.txt",
+      "bytes": 6469,
+      "sha256": "24b94a2fd19f17c5c73369ef19b4a23d66a48265e8d8406523a57c7fd1450e88"
     }
   ],
   "archive": {
     "path": "evidence.tar.xz",
-    "bytes": 15549652,
-    "sha256": "0ca05fd27d37527ca9edafff5a2b5a1719cd932dda2d36d93e62f63e57251dfc"
+    "bytes": 20683632,
+    "sha256": "755b15b948e11d716a940d0bca74e6f890760da756c6d00f413e5b6c35560fea"
   },
-  "review_generation": "review12; 10 fresh PNG/JPEG pages and 9 macOS Preview pages checked; source italic finding remains"
+  "review_generation": "integration1; fresh merge-source artifacts, prior proprietary-font bundle replaced; current Preview pending"
 }

@@ -1,4 +1,23 @@
-# Issue 02 图片进出验证记录
+# Issue 02 当前依赖集成验收
+
+当前源码 `00a4c263ed5a15059bcdc2c09bb0d8f3500bf7e7`，保留历史merge自02 `b29ed9d`及已审查03依赖 `df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9`。原PR #11保留，拟以 `codex/document-tools` 为stacked base；没有GitHub PR merge或NuGet发布。
+
+| 层 | 当前结果 | 范围 |
+|---|---|---|
+| 功能回归 | 563/563，独立563/563 | 两票全部现有回归、新跨功能9 API+1 CLI |
+| 包消费 | 11/11 | 0.1.0-issue02.integration1，含打包图片导入→水印→拆分→PNG |
+| 文档工具矩阵 | 36样例、55PDF页自动验证 | 本次合并源码重生成的API/CLI产物，不继承03历史Preview |
+| PNG辅助目视 | 当前样例已检查 | 许可明确source斜体、居中往返、Native/default、签章、MIT CTM、clip、watermark/clean |
+| macOS Preview | **当前集成版本待验收** | GUI由协调串行分配；原source仅本地诊断，旧页面结论不继承 |
+| 当前PR CI/review | 待新head推送后重审 | 原02head b29ed9d已闭合；不能替代集成head |
+
+[集成取舍](integration-notes.md)保留02 strict opt-in/缓存/累计展开预算及03 Visible/精确clip/完整glyph CTM/假斜体补偿/unsupported annotation whole-failure、Reader/Pruner/资源所有权合同。新注释两额度每Reader内跨页/重复引用累计，nested继承；不声明全导出跨包注释计数。
+
+当前[evidence.tar.xz](evidence.tar.xz)已替换旧商业字体载荷，所有实际文件大小/哈希由[manifest.json](manifest.json)索引，`python3 scripts/verify-image-io-evidence.py`核验成员全集。字体审计在归档font-audit.json：当前OFD/PDF嵌入字体仅匹配固定Noto OFL或原创MIT矩形字体，附字体、OFL/MIT许可、生成器及licensed-layout.docx。原Arial Unicode MS完整字库/子集只保留忽略的本地诊断，未进入当前归档；保留Git历史意味着此替换不删除历史blob。
+
+当前公开source两页使用Noto，原source原字体仅用于本地集成诊断，两者均重新从此次writer导出PDF/PNG。PNG观察已呈现斜体和局部粗体；当前[preview-acceptance.json](preview-acceptance.json)仍待实际Preview。旧未通过项在[preintegration记录](preview-preintegration-findings.json)作为历史，不代表当前接受。
+
+# 历史：独立02分支各轮记录
 
 2026-10-02（Asia/Shanghai）。基线 `origin/main` = `be8b74b3cbd699732ec0638189d14037e052a770`。只交付 Issue 02，不依赖 01/16，不合并 PR 或发布 NuGet。
 
