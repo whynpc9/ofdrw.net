@@ -124,7 +124,7 @@ internal sealed class DocumentFontContext
                 var selectedFace = _fallbackResolver.ResolveTypeface(resource.FontName, resource.Bold, resource.Italic);
                 if (selectedFace is not null)
                 {
-                    var bytes = (byte[])OpenTypeCollection.SelectFace(_fallbackResolver.GetFont(selectedFace.FaceName), 0).Clone();
+                    var bytes = (byte[])OpenTypeCollection.SelectNamedFace(_fallbackResolver.GetFont(selectedFace.FaceName), selectedFace.FaceName).Clone();
                     var selectedCoverage = new OpenTypeCmap(new OpenTypeFace(bytes));
                     if (selectedCoverage.IsSymbol)
                         unsupportedName = new NotSupportedException("Windows symbol cmap character semantics are unmodeled; use an explicit Unicode font.");
@@ -203,7 +203,7 @@ internal sealed class DocumentFontContext
                 var italic = text.Italic || resource.Italic;
                 var face = _fallbackResolver.ResolveTypeface(candidate, bold, italic);
                 if (face is null) continue;
-                var bytes = (byte[])OpenTypeCollection.SelectFace(_fallbackResolver.GetFont(face.FaceName), 0).Clone();
+                var bytes = (byte[])OpenTypeCollection.SelectNamedFace(_fallbackResolver.GetFont(face.FaceName), face.FaceName, allowSingleFace: true).Clone();
                 var fallbackCmap = new OpenTypeCmap(new OpenTypeFace(bytes));
                 if (fallbackCmap.IsSymbol) throw new NotSupportedException("A Windows symbol cmap cannot cover a Unicode fallback request.");
                 foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))

@@ -4,8 +4,8 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 488/488；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
-| 包消费 | 11 个 `0.1.0-issue05.20261003.16` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 490/490；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.17` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
@@ -52,3 +52,7 @@ R13：已探测的 name-only symbol 同样记录 unsupported，marker 在 option
 R14：实际选中的普通名称字体和无 FontResource 绑定文本惰性解析物理字节、验证 cmap/当前全文并注册内容身份；未使用普通名称字体不探测，空文本在 SourceXml/控制语义预检后跳过 XFont。符号语义拒绝 marker 不被 catch 吞掉；其他普通探测失败只可进入已验证 default/Arial 候选，不再未经检查地绘制原 family 或 Arial。物理字节以不可变、按内容复用的快照保留，有效粗体/斜体 alias 指向相同物理 face；缓存覆盖逐次重新验证当前文本。
 
 计数更正：此前全套汇总沿用了多计 2 项的总数；原始日志和独立报告不重写。`test-count-audit.json` 按六个测试项目的日志结果逐项汇总：R10 实为 464，R11 最终实为 476，R12 实为 477，R13 实为 481；本轮 R14 为 **488/488**（Core5、Packaging305、PDF112、Signatures4、DOCX49、CLI13）。旧评论或历史段落中的更高总数已由这份审计更正，独立定向计数另列。
+
+R15：宿主 TTC 的主名称探测不得任意选择 face0；按完整名/PostScript 名（name IDs4/6）唯一匹配，未命中时 family IDs1/16 仍要求唯一，歧义或不明名称进入已验证默认候选。默认单面集合可按明确默认策略采用唯一面，多面同样必须匹配；公开 Data.CollectionFaceIndex 不变。名称目录在展开 face 前有界扫描，输入256MiB、名称解码1MiB、选中 face64MiB，非法编码/边界明确拒绝。真实非零粗体面与不明名称 fallback 已有回归。
+
+R14 包消费首轮失败：导入 Test.pdf 的默认透明语义层含无原字体的 CIDFont+F8/U+F06C；SDK 拒绝再导 PDF/0B。只验证栅格、非空白及页面尺寸的 upstream PDF 视觉 smoke 现显式 TextLayerMode=None；SDK 默认 Invisible 不变，语义正例与真实 PUA 负例、失败日志均保留。不将这个视觉 smoke 通过冒充无损语义再导出。

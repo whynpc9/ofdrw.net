@@ -387,6 +387,66 @@ public sealed class FontIsolationTests
         Assert.StartsWith("ofd:", face.FaceName); Assert.Equal(original, PdfFontRegistry.GetOriginalFont(face.FaceName));
     }
 
+    private static byte[] TestCollection(params byte[][] faces)
+    {
+        var offset = 12 + faces.Length * 4;
+        var output = new byte[offset + faces.Sum(face => face.Length)];
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(output, 0, 0x74746366);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(output, 4, 0x00010000);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(output, 8, (uint)faces.Length);
+        for (var index = 0; index < faces.Length; index++)
+        {
+            Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(output, 12 + index * 4, (uint)offset);
+            Buffer.BlockCopy(faces[index], 0, output, offset, faces[index].Length);
+            for (var table = 0; table < Ofdrw.Net.Core.Fonts.OpenTypeFace.U16(faces[index], 4); table++)
+            {
+                var record = offset + 12 + table * 16 + 8;
+                Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(output, record, Ofdrw.Net.Core.Fonts.OpenTypeFace.U32(output, record) + (uint)offset);
+            }
+            offset += faces[index].Length;
+        }
+        return output;
+    }
+
+    [Fact]
+    public void NamedHostCollectionSelectsNonzeroFaceAndRefusesAmbiguousOrOpaqueNames()
+    {
+        var first = Ofdrw.Net.Core.Fonts.OpenTypeFontIdentity.WithUniqueNames(File.ReadAllBytes(FontPath("narrow")), "first");
+        var bold = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("wide")));
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(bold.Table("OS/2"), 62, 0x20);
+        var second = Ofdrw.Net.Core.Fonts.OpenTypeFontIdentity.WithUniqueNames(bold.Build(), "second");
+        var collection = TestCollection(first, second);
+        Assert.Equal(second, Ofdrw.Net.Core.Fonts.OpenTypeCollection.SelectNamedFace(collection, "Ofdrw-second"));
+        Assert.Equal(second, Ofdrw.Net.Core.Fonts.OpenTypeCollection.SelectNamedFace(collection, "Osecond"));
+        Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Core.Fonts.OpenTypeCollection.SelectNamedFace(collection, "opaque-face"));
+        Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Core.Fonts.OpenTypeCollection.SelectNamedFace(TestCollection(first, first), "Ofdrw-first"));
+        Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Core.Fonts.OpenTypeCollection.SelectNamedFace(TestCollection(first), "opaque-face"));
+        Assert.Equal(first, Ofdrw.Net.Core.Fonts.OpenTypeCollection.SelectNamedFace(TestCollection(first), "opaque-face", allowSingleFace: true));
+        var resource = new OfdFontResource { Id = "10", FontName = "collection-host", Bold = true };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], new NamedCollectionResolver(collection, "Ofdrw-second", first));
+        var family = context.Resolve(new OfdTextElement { FontResourceId = "10", Text = "AB" }, out _);
+        var info = GlobalFontSettings.FontResolver.ResolveTypeface(family, true, false);
+        Assert.Equal(second, PdfFontRegistry.GetOriginalFont(info.FaceName)); Assert.False(info.MustSimulateBold);
+    }
+
+    [Fact]
+    public void UnidentifiedCollectionProbeUsesValidatedStandaloneFallbackForNonemptyText()
+    {
+        var primary = File.ReadAllBytes(FontPath("narrow")); var fallback = File.ReadAllBytes(FontPath("wide"));
+        var resource = new OfdFontResource { Id = "10", FontName = "optional-ttc", Bold = true };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], new NamedCollectionResolver(TestCollection(primary), "opaque-face", fallback));
+        var family = context.Resolve(new OfdTextElement { FontResourceId = "10", Text = "ABCD" }, out _);
+        var info = GlobalFontSettings.FontResolver.ResolveTypeface(family, true, false);
+        Assert.Equal(fallback, PdfFontRegistry.GetOriginalFont(info.FaceName)); Assert.NotEqual(primary, PdfFontRegistry.GetOriginalFont(info.FaceName));
+    }
+
+    private sealed class NamedCollectionResolver(byte[] collection, string selectedName, byte[] fallback) : IFontResolver
+    {
+        public string DefaultFontName => "standalone-default";
+        public FontResolverInfo ResolveTypeface(string family, bool bold, bool italic) => new(family == DefaultFontName || family == "Arial" ? "default-face" : selectedName);
+        public byte[] GetFont(string face) => face == "default-face" ? fallback : collection;
+    }
+
     private sealed class CoveringResolver(byte[] primary,byte[] fallback):IFontResolver
     {
         public string DefaultFontName=>"covering-default";

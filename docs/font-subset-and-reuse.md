@@ -70,3 +70,5 @@ Windows symbol-only cmap 的字符语义未建模：写包/读取编辑保全量
 同一 symbol 边界也适用于已实际探测的名称字体：记录 unsupported 标记须位于可选探测 catch 之外，选用后拒绝，而不能退回未验证宿主绘制。默认/Arial 候选若解析为 symbol，直接跳过并尝试后续 Unicode 候选；全部不覆盖仍明确失败。后续 R14 将同一惰性验证扩展至所有实际选中的普通名称字体，包括无 FontResource 的文本；未使用资源和实际空文本不触发该验证。
 
 所有实际非空 PDF 文本必须返回经过当前文本覆盖验证的内容字体身份。普通宿主探测失败可尝试已验证默认字体/Arial，所有候选失败明确报错；删除未经验证的绘制 fallback。物理 face 快照按内容复用，增加粗体/斜体时登记同一字节的有效样式 alias，不落回宿主；覆盖缓存只缓存 cmap 解析，逐文本验证不能省略。
+
+宿主返回 TTC 时，主选字体需按返回 face 名与 name IDs4/6 或唯一 family IDs1/16 匹配，多面集合不凭 index0 或请求粗斜体猜选；不明/歧义按探测失败处理。配置默认的单面集合可采用唯一面。名称目录及解码工作有界，只有选定后才展开完整 face；参见 [OpenType name 规范](https://learn.microsoft.com/en-us/typography/opentype/spec/name)。
