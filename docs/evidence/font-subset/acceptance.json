@@ -10,10 +10,10 @@
   },
   "functional": {
     "status": "pass",
-    "tests": 449,
-    "independent_focused": 65,
+    "tests": 459,
+    "independent_focused": 72,
     "packages": 11,
-    "package_version": "0.1.0-issue05.20261003.5",
+    "package_version": "0.1.0-issue05.20261003.7",
     "package_status": "pass",
     "document_tools": {
       "samples": 36,
@@ -73,12 +73,19 @@
     "actual_view": "macOS Preview",
     "task_windows_closed": true,
     "ui_released": true,
-    "record": "preview-acceptance.json"
+    "record": "preview-acceptance.json",
+    "controls_status": "pending exclusive slot: new ZWJ/ZWNJ one-page PDFs"
   },
-  "overall_visual_complete": true,
+  "overall_visual_complete": false,
   "production_release_accepted": false,
   "unresolved": [
+    "supplementary control rendering Preview (2 pages)",
     "latest-head CI and review closure"
   ],
-  "viewing_chain": "Fixed DOCX -> Native/default OFD produced this run -> OFD PDF exporter -> macOS Preview 1-2 pages each; full/subset OFD -> PDF -> Preview 1-2 each. No direct DOCX->PDF substituted."
+  "viewing_chain": "Fixed DOCX -> Native/default OFD produced this run -> OFD PDF exporter -> macOS Preview 1-2 pages each; full/subset OFD -> PDF -> Preview 1-2 each. No direct DOCX->PDF substituted.",
+  "controls_render": {
+    "r6": "failed: zero cmap glyph controls rendered visible tofu; failure retained",
+    "r7": "pass PNG: ZWJ/ZWNJ identical to AB baseline; RLO/RLI explicitly refused with 0 PDF bytes; OFD preserves original controls",
+    "coordinates": "actual PDF regression verifies explicit Runs/Delta slots remain unchanged"
+  }
 }

@@ -26,7 +26,7 @@ internal static class EmbeddedFontCoverage
                 if (previous < 0 || !cmap.SupportsVariation(previous, scalar))
                     throw new InvalidDataException($"Font '{name}' lacks variation sequence U+{previous:X}/U+{scalar:X}.");
             }
-            else if (scalar != '\r' && scalar != '\n' && scalar != '\t' && cmap.Glyph(scalar) == 0)
+            else if (scalar != '\r' && scalar != '\n' && scalar != '\t' && !UnicodeFontSubsetProfile.IsNonRenderingControl(scalar) && cmap.Glyph(scalar) == 0)
                 throw new InvalidDataException($"Font '{name}' lacks U+{scalar:X4}; bind a configured fallback font before writing.");
             previous = scalar;
         }

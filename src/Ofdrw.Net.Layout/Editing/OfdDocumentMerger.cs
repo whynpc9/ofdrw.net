@@ -273,6 +273,7 @@ public static class OfdDocumentMerger
             {
                 Mode = source.FontEmbedding.Mode,
                 MaximumFontBytes = source.FontEmbedding.MaximumFontBytes,
+                MaximumCollectionBytes = source.FontEmbedding.MaximumCollectionBytes,
                 MaximumUsedScalars = source.FontEmbedding.MaximumUsedScalars,
                 MaximumGlyphClosureOperations = source.FontEmbedding.MaximumGlyphClosureOperations
             },

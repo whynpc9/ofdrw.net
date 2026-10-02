@@ -54,6 +54,7 @@ internal sealed class BuiltInOfdRenderer
                 {
                     Mode = _options.FontEmbedding.Mode,
                     MaximumFontBytes = Math.Min(_options.MaxEmbeddedFontBytes, _options.FontEmbedding.MaximumFontBytes),
+                    MaximumCollectionBytes = _options.FontEmbedding.MaximumCollectionBytes,
                     MaximumUsedScalars = _options.FontEmbedding.MaximumUsedScalars,
                     MaximumGlyphClosureOperations = _options.FontEmbedding.MaximumGlyphClosureOperations
                 },

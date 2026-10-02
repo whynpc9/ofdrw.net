@@ -62,8 +62,11 @@ internal sealed class DocumentFontContext
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
             throw new NotSupportedException("PDF export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
         foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
+        {
+            PdfTextControlPolicy.Validate(value);
             if (OpenTypeFace.Scalars(value).Any(scalar => scalar > 0xFFFF))
                 throw new NotSupportedException("PDFsharp cannot preserve supplementary Unicode text; use OFD/SVG or a PDF renderer with full scalar support.");
+        }
         resource = OfdFontSelection.Resolve(_fonts, text);
         if (resource is not null && _coverage.TryGetValue(resource, out var coverage))
             foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))

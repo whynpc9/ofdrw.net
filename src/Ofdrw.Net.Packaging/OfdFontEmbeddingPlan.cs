@@ -19,7 +19,7 @@ internal sealed class OfdFontEmbeddingPlan
     internal OfdFontEmbeddingPlan(OfdDocumentPackage package, CancellationToken cancellationToken)
     {
         var options = package.Options.FontEmbedding ?? throw new ArgumentException("FontEmbedding is required.");
-        if (options.MaximumFontBytes <= 0 || options.MaximumUsedScalars <= 0 || options.MaximumGlyphClosureOperations <= 0 || !Enum.IsDefined(typeof(OfdFontEmbeddingMode), options.Mode))
+        if (options.MaximumCollectionBytes <= 0 || options.MaximumFontBytes <= 0 || options.MaximumUsedScalars <= 0 || options.MaximumGlyphClosureOperations <= 0 || !Enum.IsDefined(typeof(OfdFontEmbeddingMode), options.Mode))
             throw new ArgumentOutOfRangeException(nameof(package), "Invalid font embedding options.");
         var unsafeReason = PreservationReason(package);
         CanonicalPayloads = unsafeReason is null;
@@ -31,13 +31,14 @@ internal sealed class OfdFontEmbeddingPlan
         foreach (var font in package.Fonts.Where(font => font.Data.Length > 0))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var collection = font.Data.Length >= 4 && OpenTypeFace.U32(font.Data, 0) == 0x74746366;
+            if (font.Data.LongLength > (collection ? options.MaximumCollectionBytes : options.MaximumFontBytes))
+                throw new InvalidDataException(collection ? "Font collection exceeds MaximumCollectionBytes." : "Font exceeds MaximumFontBytes.");
             var rawIdentity = BinaryIdentity.Hash(font.Data);
             var key = rawIdentity + ":" + font.CollectionFaceIndex;
             if (!selected.TryGetValue(key, out var bytes))
             {
-                if (font.Data.LongLength > options.MaximumFontBytes) throw new InvalidDataException("Font exceeds MaximumFontBytes.");
-                var collection = font.Data.Length >= 4 && OpenTypeFace.U32(font.Data, 0) == 0x74746366;
-                if (collection) bytes = OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
+                if (collection) bytes = OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex, options.MaximumFontBytes);
                 else
                 {
                     if (font.CollectionFaceIndex != 0) throw new InvalidDataException("Standalone font has only face zero.");
