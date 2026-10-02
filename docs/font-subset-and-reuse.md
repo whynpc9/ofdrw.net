@@ -70,3 +70,5 @@ PDF 明确拒绝语义无法保留的 default-ignorable，包括 ZWJ/ZWNJ、LRM/
 PDF 导入的透明 CID/私用区语义文本若没有可验证的原字体，不能保证语义再导出；缺字会明确失败。仅验证栅格视觉往返的 caller 可显式选择 PdfTextLayerMode.None，SDK 默认 Invisible 不变；这不代表无损字体恢复或 ActualText 功能已实现。
 
 字体用字预遍历同时包含正文、所有模板元素和注释外观；每个元素先检查取消，按所绑定 face 内容身份汇总。模板/注释的全量保留原因不绕过其中已建模文字的 Unicode coverage，缺字必须在 ZIP 前报错；未建模 Raw/CGTransform 继续保守保留并诊断。
+
+取消检查贯穿保留策略的每页/元素、coverage 与用字标量遍历。规范化按原文→NFC→NFD 延迟执行并在 BCL Normalize 前后检查；单次 Normalize 内部不可中断，不保证硬实时取消。

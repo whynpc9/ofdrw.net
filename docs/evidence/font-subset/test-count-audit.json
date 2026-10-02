@@ -1308,6 +1308,49 @@
     "failed": 0,
     "total": 428
   },
+  "final-tests-r21.log": {
+    "projects": {
+      "Ofdrw.Net.Core.Tests.dll": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "total": 5
+      },
+      "Ofdrw.Net.Packaging.Tests.dll": {
+        "passed": 309,
+        "failed": 0,
+        "skipped": 0,
+        "total": 309
+      },
+      "Ofdrw.Net.Converter.Pdf.Tests.dll": {
+        "passed": 141,
+        "failed": 0,
+        "skipped": 0,
+        "total": 141
+      },
+      "Ofdrw.Net.Signatures.Tests.dll": {
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "total": 4
+      },
+      "Ofdrw.Net.Converter.Docx.Tests.dll": {
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "total": 49
+      },
+      "Ofdrw.Net.Cli.Tests.dll": {
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "total": 13
+      }
+    },
+    "passed": 521,
+    "failed": 0,
+    "total": 521
+  },
   "final-tests-r5.log": {
     "projects": {
       "Ofdrw.Net.Core.Tests.dll": {
