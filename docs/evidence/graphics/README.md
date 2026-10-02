@@ -1,25 +1,23 @@
 # 04 原生绘图验收证据
 
-源码冻结于 `055f43affa6e288ecd45ac446a11d19d68d59123`，基线为 PR #12 的 `df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9`。最终审核状态见 [acceptance.json](acceptance.json)，文件尺寸/SHA-256/环境及模式见 [manifest.json](manifest.json)。本次 Preview 已完成；本票仍等待最新 head 外部评审/CI，不宣称全部开发门禁闭环。
+R2 源码冻结于 `4e121297d9f505dbb6c8f050f8d08ac452dfab33`，基线为 PR #12 的 `df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9`。[PR #13](https://github.com/whynpc9/ofdrw.net/pull/13) stacked base 为 `codex/document-tools`。状态见 [acceptance.json](acceptance.json)，尺寸/SHA-256/环境/模式见 [manifest.json](manifest.json)。本次 R2 产物已重新生成；**R2 Preview 与最新 head 复审待完成**，不以 R1 通过替代。
 
-| 检查层 | 已完成范围 | 结果 |
+| 检查层 | R2 本次范围 | 结果 |
 | --- | --- | --- |
-| 功能回归 | 全套 410 项，独立新增 10 项；Native 对象往返/原文/矩阵/状态/裁剪/字体身份/异常预算取消 | 通过 |
-| API 文档 | 新 Graphics 公开 API CS1591 检查 | 0 新警告 |
-| 本地包消费 | 11 个临时本地包实际安装/转换；未发布 | 通过 |
-| 自动渲染 | 四组各两页：graphics、graphics-roundtrip、baseline-native、baseline-default；PDF 8 页、SVG 8 页 | 全部生成并验证 |
-| PNG 视觉 | 本次 16 页 PDF/SVG PNG；中英、比例字距、局部粗斜/红色、框线底色、基线、曲线、非等比线宽、填充洞、clip、旋转及分页 | 检查范围内通过 |
-| macOS Preview | 本次原生 OFD → PDF，包含显式 Native/default 基准；四组各两页实际逐页检查 | 通过，8 页；四个 PDF 窗口及任务对话框关闭，GUI 已释放 |
-| 最新 head Codex/Cursor/CI | stacked PR 的实时结果 | 待外部审核 |
+| 功能回归 | 全套 417 项；独立新增合计 17 项原生往返/原文/矩阵/状态/clip/字体绑定/预算取消、数字/强调及栅格回归 | 通过 |
+| API 文档 | Graphics 新公开 API CS1591 | 0 新警告 |
+| 本地包消费 | 11 个 `0.1.0-graphics.20261003.r2final` 包真实重建、安装和转换 | 通过；未发布 |
+| 自动渲染 | graphics/roundtrip/Native/default 各两页，加 name-only 一页；PDF 9 页/SVG 9 页 | 全部生成验证；尖角实际像素及默认 limit 负对照通过 |
+| PNG 视觉 | 18 页 PDF/SVG；10 个改变/新增页复查，8 个 Native/default 基准页与 R1 字节相同 | 检查范围内通过 |
+| macOS Preview | R2 本次 OFD→PDF 9 页；已申请下一独占时段 | **未完成**；PNG 与 R1 不替代 |
+| 最新 head 外部审核 | 首轮 Codex/Cursor 的 5 条意见统一修复，需新 head 复审与 CI | 待闭环 |
 
-图形样例仅使用 Layout（传递 Core/Packaging），实际包内 17 个 PathObject、29 个 TextObject、1 份字体、0 个 ImageObject。两页为中英票面和变换示意图，不是整页位图。Native/default 各两页使用固定 `generated-layout.docx` 的许可字体变体，OFD 原文完整；查看链路是 DOCX → Native/default OFD → PDF，未以直接 DOCX→PDF 代替。
+R2 修复可写矩阵在三位小数下退化，路径/clip/DeltaX 的科学计数法，SVG 已声明 cap/join/miter-limit，以及 name-only 斜体遇已有用户 CTM 时未输出原生 shear。Graphics 游程归一基线；Writer 仅对 fresh、normalized、无 DeltaY 的 name-only 文字组合 M*F，只标注生成 F，保留 03 去因子契约与 05 资源绑定，嵌入/透明/已保留 SourceXml 不重新组合。新建内部普通十进制 formatter 共用，无新公共字体服务。
 
-样例字体是仓库固定 installer 的 Noto Sans CJK SC Regular，随归档附 OFL 许可。不包含专有系统字体。04 未子集化，单 OFD 约 11.6 MB，大小由完整嵌入字体主导；roundtrip 增量仅十余字节，Native/default 同尺寸。05 负责真实子集与资源复用；此票不宣称完成 issue #3 全部要求。
+公开两页样例只引用 Layout（传递 Core/Packaging），包内 18 个 PathObject、30 个 TextObject、1 份字体、0 个 ImageObject。新增 name-only OFD 只有 7 个 TextObject/4 个 PathObject 和不含 FontFile 的字体声明，原生 CTM 带明确 faux 因子。其 PDF 显式用同一固定 OFL Noto 字节注册现有 resolver；SVG PNG 使用隔离 fontconfig 目录。所有公开字体载荷仅为固定 installer 的 Noto Sans CJK SC Regular，并附 OFL；不包含专有系统字体。
 
-`evidence.tar.zst` 包含本次 OFD/PDF/SVG、16 个逐页 PNG、原文、源 DOCX、OFL 字体/许可、日志及清单。可用 `tar --zstd -xf docs/evidence/graphics/evidence.tar.zst -C artifacts/graphics-review` 提取，之后按 manifest 校验文件大小和 SHA-256。若系统 tar 不支持 --zstd，使用 `zstd -d -c ... | tar -xf -`。
+显式 Native/default 基准使用本次许可字体变体 `generated-layout.docx`，OFD 原文完整。链路为 DOCX → Native/default OFD → PDF/SVG，没有使用直接 DOCX→PDF 替代。原生图形完整嵌入字体 OFD 约 11.6 MB，roundtrip 仅十余字节差；name-only 约2 KB并依赖阅读器字体环境。05 负责真实字体子集/复用；04 不宣称整个 issue #3 完成，未新增 flow/table/Canvas/Skia 适配。
 
-复现：安装固定许可字体到 `artifacts/graphics-fonts`，执行 `scripts/run-graphics-e2e.sh artifacts/graphics/current`；.NET 采用用户 AGENTS 要求的可写 CLI_HOME、环境变量和单节点 flags。PDF PNG 由 Poppler 110 DPI 生成，SVG 由 librsvg 渲染在白色背景。上下文、单基线文字和不支持操作边界见 [设计契约](../../graphics-design-contract.md) 与 [教程](../../tutorials/16-native-graphics.md)。只对实际生成/检查样例作结论。
+`evidence.tar.zst` 含本次原始 OFD/PDF/SVG、18 页 PNG、Unicode 原文、许可 DOCX、字体/OFL、环境/哈希与日志。默认 zstd 解码兼容的 128 MiB 窗口。使用 `zstd -d -c docs/evidence/graphics/evidence.tar.zst | tar -xf - -C artifacts/graphics-review` 全新提取，再按 manifest 检查尺寸/SHA-256。R1 原始47文件归档与8页Preview记录保留于 Git commit `4b634d1`。
 
-已使用默认 zstd 解码器从归档全新提取并校验清单全部 47 个文件（尺寸/SHA-256）；压缩窗口为 128 MiB。
-
-Preview 路径均核对到本 worktree 的 `artifacts/graphics/current/`。开始时文件选择层确认路径会重置；通过新建 Finder 窗口恢复打开，仅对实际可见的本次页面作通过结论。票面局部粗/斜/色、比例字距、基线、旋转框字，示意图非等比笔画/曲线/填充洞/冻结裁剪及还原控制对象，Native/default 的边框/底色/对齐/分页均逐页检查。没有检查任意复杂 Word、通用 shaping 或其他任务样例。
+复现：固定 installer 安装字体到 `artifacts/graphics-fonts`，执行 `scripts/run-graphics-e2e.sh artifacts/graphics/review2-final`。Poppler PDF 110 DPI；librsvg SVG 白背景、720px宽，字体仅来自许可目录。严格采用 AGENTS 的 CLI_HOME/skip/telemetry/单节点 flags。只对列出的实际样例作结论；复杂 shaping、任意 Word 完整保真不在本票范围。
