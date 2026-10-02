@@ -41,6 +41,7 @@ public static class OfdDocumentMixer
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
             OfdDocumentSplitter.ValidateSingleDocument(item.Package);
             OfdDocumentSplitter.ValidatePages(item.Package, new[] { item.PageIndex });
+            OfdPageXmlContract.ValidateDocumentArea(item.Package, cancellationToken);
             ValidateCustomTags(item.Package, cancellationToken);
             foreach (var tag in item.Package.CustomTags)
             {
@@ -149,10 +150,7 @@ public static class OfdDocumentMixer
                 if (allowTemplateReferences && child.Name == ns + "Template") continue; // Validated by the reference preflight.
                 if (child.Name == ns + "Area")
                 {
-                    supported &= Plain(child) && child.Elements().Count() == 1;
-                    foreach (var box in child.Elements()) supported &= box.Name == ns + "PhysicalBox" &&
-                        box.Attributes().All(attribute => attribute.IsNamespaceDeclaration) && !box.HasElements &&
-                        box.Nodes().All(node => node is XText or XComment);
+                    supported &= OfdPageXmlContract.IsRepresentedArea(child, ns);
                     continue;
                 }
                 if (child.Name == ns + "Content")

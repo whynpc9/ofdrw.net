@@ -17,7 +17,7 @@ def pages(entries):
 def texts(entries, page):
     path = 'Doc_0/' + page.attrib['BaseLoc']
     return ''.join(node.text or '' for node in ET.fromstring(entries[path]).iter() if local(node) == 'TextCode')
-expected = {'baseline-native':2,'baseline-default':2,'rich':2,'annotation-metadata':2,'signed':2,'watermark':2,'watermark-merged':3,'watermark-resource-suffix':2,'vendor-annotations-roundtrip':2,'mix-custom-tags':1,'cli-mix-custom-tags':1,'split':2,'split-template-liveness':1,'mix':1,'clean':2,'overlay':1,'cli-watermark':2,'cli-split':2,'cli-mix':1,'cli-clean':2,'cli-merged':3,'annotation-clipped':1,'annotation-clipped-mix':1,'italic-marked':1,'italic-control':1,'italic-user-matrix':1,'italic-fixed-anchor':1}
+expected = {'box-whitespace':1,'binary-xml-split':1,'page-wrapper-metadata':2,'baseline-native':2,'baseline-default':2,'rich':2,'annotation-metadata':2,'signed':2,'watermark':2,'watermark-merged':3,'watermark-resource-suffix':2,'vendor-annotations-roundtrip':2,'mix-custom-tags':1,'cli-mix-custom-tags':1,'split':2,'split-template-liveness':1,'mix':1,'clean':2,'overlay':1,'cli-watermark':2,'cli-split':2,'cli-mix':1,'cli-clean':2,'cli-merged':3,'annotation-clipped':1,'annotation-clipped-mix':1,'italic-marked':1,'italic-control':1,'italic-user-matrix':1,'italic-fixed-anchor':1}
 with zipfile.ZipFile(directory/'licensed-layout.docx') as archive:
     source_text = ''.join(node.text or '' for node in ET.fromstring(archive.read('word/document.xml')).iter() if local(node)=='t')
 source = contents('signed')
@@ -39,6 +39,18 @@ for name, count in expected.items():
         assert not any('/Signs/' in path for path in data), (name, 'signature payload retained')
     if name in ('split','cli-split'):
         assert [texts(data, page) for page in selected] == [texts(source, source_pages[i]) for i in (1,0)], (name, 'selection text')
+    if name == 'box-whitespace':
+        assert texts(data, selected[0]) == 'BOX 100 x 80'
+        area = next(node for node in ET.fromstring(data['Doc_0/' + selected[0].attrib['BaseLoc']]).iter() if local(node)=='PhysicalBox')
+        assert [float(value) for value in area.text.split()] == [0,0,100,80]
+    if name == 'binary-xml-split':
+        assert texts(data, selected[0]) == texts(source, source_pages[1])
+        assert b'\x00\xfe\x0c\x06' in data.values(), 'binary xml-named attachment lost'
+        assert not any('/Signs/' in path for path in data), 'owned binary signature payload retained'
+    if name == 'page-wrapper-metadata':
+        assert texts(data, selected[0]) == texts(source, source_pages[0])
+        for operation in ('split','save','watermark'):
+            assert 'unmodeled' in (directory/f'page-wrapper-metadata-{operation}.rejection.txt').read_text()
     if name == 'split-template-liveness':
         assert texts(data, selected[0]) == texts(source,source_pages[1])
         assert data['Doc_0/Extensions/state.dat'] == b"<Wrapper><Extension BaseLoc='../Templates'><File>Content.xml</File></Extension></Wrapper>"
@@ -102,7 +114,7 @@ for name in ('watermark','watermark-merged','cli-watermark','cli-merged'):
     assert any(local(node)=='image' and any(value.startswith('data:image/png;base64,') for value in node.attrib.values()) for node in svg.iter())
     if args.render:
         subprocess.run(['rsvg-convert','--background-color','white','-w','849','-h','1200','-o',str(directory/'pages'/(name+'-svg.png')),str(directory/(name+'-1.svg'))],check=True)
-for name in ('split-template-liveness','annotation-metadata','annotation-clipped','annotation-clipped-mix','italic-marked','italic-control','italic-user-matrix','italic-fixed-anchor','watermark-resource-suffix','vendor-annotations-roundtrip','mix-custom-tags','cli-mix-custom-tags'):
+for name in ('box-whitespace','binary-xml-split','page-wrapper-metadata','split-template-liveness','annotation-metadata','annotation-clipped','annotation-clipped-mix','italic-marked','italic-control','italic-user-matrix','italic-fixed-anchor','watermark-resource-suffix','vendor-annotations-roundtrip','mix-custom-tags','cli-mix-custom-tags'):
     if args.render:
         subprocess.run(['rsvg-convert','--background-color','white','-w','1200','-o',str(directory/'pages'/(name+'-svg.png')),str(directory/(name+'-1.svg'))],check=True)
 if args.render:

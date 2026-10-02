@@ -112,6 +112,11 @@ public sealed class OfdReader : IOfdReader
         var defaultPageBox = ParseBox(commonData?
             .Element(docNs + "PageArea")?
             .Element(docNs + "PhysicalBox")?.Value);
+        if (defaultPageBox.w > 0 && defaultPageBox.h > 0)
+        {
+            package.Options.DefaultPageWidthMillimeters = defaultPageBox.w;
+            package.Options.DefaultPageHeightMillimeters = defaultPageBox.h;
+        }
         var fontMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var documentMediaMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var documentMediaTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -516,7 +521,18 @@ public sealed class OfdReader : IOfdReader
                 }
                 if (!SupportedAnnotationWrapper(annotation))
                     page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
-                if (annotation.Attribute("Visible")?.Value is "false" or "0") continue;
+                if (annotation.Attribute("Visible")?.Value is "false" or "0")
+                {
+                    var hiddenAppearance = annotation.Element(annotations.Root.Name.Namespace + "Appearance");
+                    if (hiddenAppearance is not null)
+                    {
+                        var hiddenNodes = FlattenAnnotationNodes(hiddenAppearance.Elements(), hiddenAppearance.Name.Namespace, cancellationToken);
+                        if (!PlainContainer(hiddenAppearance, "Boundary", "ID", "CTM") || hiddenNodes is null ||
+                            hiddenNodes.SelectMany(node => node.DescendantsAndSelf().Attributes()).Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute)))
+                            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
+                    }
+                    continue;
+                }
                 var appearances = annotation.Elements(annotations.Root.Name.Namespace + "Appearance").ToList();
                 if (appearances.Count > 1)
                 {
@@ -634,7 +650,7 @@ public sealed class OfdReader : IOfdReader
                 if (node.Name.Namespace != ns) return false;
                 if (node.Name == ns + "PageBlock")
                 {
-                    if (node.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && attribute.Name != XName.Get("ID")) ||
+                    if (!PlainContainer(node, "ID") ||
                         !Append(node.Elements(), depth + 1)) return false;
                 }
                 else if (node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject")
@@ -966,22 +982,7 @@ public sealed class OfdReader : IOfdReader
 
     private static (double x, double y, double w, double h) ParseBox(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return (0d, 0d, 0d, 0d);
-        }
-
-        var parts = value!.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 4)
-        {
-            return (0d, 0d, 0d, 0d);
-        }
-
-        return (
-            ParseDouble(parts[0], 0d),
-            ParseDouble(parts[1], 0d),
-            ParseDouble(parts[2], 0d),
-            ParseDouble(parts[3], 0d));
+        return OfdBoxParser.TryParse(value, out var box) ? box : default;
     }
 
     private static double ParseDouble(string? value, double fallback)

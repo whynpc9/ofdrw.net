@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Xml.Linq;
+using System.Xml;
+using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Layout.Editing;
@@ -17,6 +19,7 @@ public static class OfdDocumentSplitter
         if (source is null) throw new ArgumentNullException(nameof(source));
         ValidateSingleDocument(source);
         ValidatePages(source, pages);
+        OfdPageXmlContract.ValidateDocumentArea(source, cancellationToken);
         if (!source.PreservedEntries.ContainsKey("OFD.xml"))
         {
             if (source.PreservedEntries.Count > 0 || source.PreservedCommonDataElements.Count > 0 || source.PreservedDocumentElements.Count > 0 || source.PreservedDocBodyElements.Count > 0)
@@ -46,11 +49,14 @@ public static class OfdDocumentSplitter
         foreach (var entry in source.PreservedEntries.Where(pair => pair.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            // Opaque XML prevents proving resource closure. Do not return a deceptively clean split.
-            using var stream = new MemoryStream(entry.Value, false);
-            var xml = XDocument.Load(stream);
-            if (entry.Key == "OFD.xml" && xml.Root!.Elements().Count(node => node.Name.LocalName == "DocBody") != 1)
-                throw new NotSupportedException("Page editing requires a single DocBody.");
+            if (!OfdXmlContentProbe.LooksLikeXml(entry.Value)) continue;
+            try { using var input = new MemoryStream(entry.Value, false); XDocument.Load(input); }
+            catch (XmlException exception) { throw new NotSupportedException("Split cannot inspect malformed XML-looking control or extension entries.", exception); }
+        }
+        foreach (var index in pages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            OfdPageXmlContract.ValidateForRewrite(source, source.Pages[index], cancellationToken);
         }
         var result = new OfdDocumentPackage
         {
