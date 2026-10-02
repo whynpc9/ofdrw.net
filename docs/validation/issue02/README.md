@@ -7,7 +7,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
 | 功能回归 | 269/269 通过 | Core 5、Packaging 23、PDF/Image 158、Signatures 4、DOCX 49、CLI 30 |
-| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review9`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
+| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review10`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
@@ -34,7 +34,7 @@ Native/default OFD各约15 MiB，主要是原有字体嵌入；它们的展开�
 
 源码、环境、哈希、字节数、样例、模式与检查范围由 manifest 记录。Native/default基准来自11包本地消费本次生成的OFD；PDF由这些OFD导出，未使用直接DOCX→PDF代替。
 
-复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review9`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
+复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review10`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
 
 ## 实际页面记录
 
@@ -147,3 +147,5 @@ Cursor另质疑`-2e306`与`2e306`的相对溢出用例。保留该用例：实�
 `11152fe`两类bot到齐，六项CI全部通过。Cursor确认此前metadata/BBox修复且纠正原点算术质疑，无新缺陷；Codex提出缺失/空白PageRef在strict前被过滤。Astra补充设计复核也指出此项及已引用XML错误根节点导致零匹配；Sol Low的三份已构建CLI探针复现了错误列表根、错误Signature根及缺PageRef都会exit0覆盖哨兵。
 
 strict现在按LocalName校验列表/Signature根（仍允许XML namespace），StampAnnot先校验非空PageRef再筛选明确非选中页，避免未知归属被静默省略。legacy不增加这些strict校验，正文及既有容错保持。新增错误根两种及PageRef缺失/空/空白三种，用实际caller sentinel及legacy正文红path断言。全套269/269通过；本轮新包和产物稍后记录。Preview仍未完成。
+
+第十轮25个实际产物均从`f91ec90`重新生成，11/11本地包消费及Sol Low独立60/60通过；三份原wrong-root/missing-PageRef CLI探针现exit1并保持13-byte哨兵。Astra只读复核这两项源码修复无相邻新问题，候选随后以同样代码提交为f91ec90。当次10张PNG/JPEG逐页重新查看，范围同上，无新缺陷；269项日志/全部哈希在当前bundle/manifest，Preview仍未完成。
