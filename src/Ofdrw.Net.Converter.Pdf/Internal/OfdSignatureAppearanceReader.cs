@@ -18,6 +18,7 @@ internal static class OfdSignatureAppearanceReader
     {
         if (!package.PreservedEntries.TryGetValue("OFD.xml", out var ofdBytes))
         {
+            if (maximumAppearances.HasValue) throw new InvalidDataException("Missing OFD signature metadata root.");
             return Array.Empty<OfdSignatureAppearance>();
         }
 
@@ -29,13 +30,14 @@ internal static class OfdSignatureAppearanceReader
                 .Descendants()
                 .Where(element => element.Name.LocalName == "Signatures")
                 .Select(element => NormalizePath(element.Value))
-                .Where(path => path.Length > 0)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+            if (maximumAppearances.HasValue && signatureLists.Any(path => path.Length == 0))
+                throw new InvalidDataException("Signature metadata list reference is empty.");
             var result = new List<OfdSignatureAppearance>();
             var payloadCache = maximumAppearances.HasValue ? new Dictionary<byte[], byte[]>() : null;
             var candidates = 0;
-            foreach (var listPath in signatureLists)
+            foreach (var listPath in signatureLists.Where(path => path.Length > 0))
             {
                 ReadSignatureList(package.PreservedEntries, listPath, result, selectedPageIds,
                     maximumAppearances, ref candidates, payloadCache, cancellationToken);
@@ -66,6 +68,7 @@ internal static class OfdSignatureAppearanceReader
     {
         if (!entries.TryGetValue(listPath, out var listBytes))
         {
+            if (maximumAppearances.HasValue) throw new InvalidDataException("Referenced signature metadata list is missing.");
             return;
         }
 
@@ -77,6 +80,7 @@ internal static class OfdSignatureAppearanceReader
             var baseLocation = record.Attribute("BaseLoc")?.Value;
             if (string.IsNullOrWhiteSpace(baseLocation))
             {
+                if (maximumAppearances.HasValue) throw new InvalidDataException("Signature metadata entry reference is missing or empty.");
                 continue;
             }
 
@@ -94,6 +98,7 @@ internal static class OfdSignatureAppearanceReader
     {
         if (!entries.TryGetValue(signaturePath, out var signatureBytes))
         {
+            if (maximumAppearances.HasValue) throw new InvalidDataException("Referenced signature metadata entry is missing.");
             return;
         }
 

@@ -352,10 +352,13 @@ public sealed class ImageIoTests
         using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, output); return output.ToArray();
     }
 
-    internal static async Task<byte[]> WithSeals(byte[][] payloads, int stampsPerRecord = 1, bool invalidBoundary = false, int pageCount = 2)
+    internal static async Task<byte[]> WithSeals(byte[][] payloads, int stampsPerRecord = 1, bool invalidBoundary = false, int pageCount = 2, bool includeBody = false)
     {
         var package = new OfdDocumentPackage();
         package.Pages.Add(new OfdPage { Index = 0, WidthMillimeters = 120, HeightMillimeters = 80 });
+        if (includeBody) package.Pages[0].Elements.Add(new OfdPathElement { XMillimeters = 80, YMillimeters = 50,
+            WidthMillimeters = 10, HeightMillimeters = 10, AbbreviatedData = "M 0 0 L 10 0 L 10 10 L 0 10 C",
+            Fill = true, Stroke = false, FillColor = new OfdColor(220, 50, 20) });
         if (pageCount == 2) package.Pages.Add(new OfdPage { Index = 1, WidthMillimeters = 120, HeightMillimeters = 80 });
         using var outer = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, outer);
         using (var zip = new ZipArchive(outer, ZipArchiveMode.Update, true))
@@ -555,11 +558,12 @@ public sealed class ImageIoTests
     [InlineData("missing")] [InlineData("empty")] [InlineData("unsupported")]
     [InlineData("Infinity")] [InlineData("NaN")]
     [InlineData("1e308")] [InlineData("1e-5")]
+    [InlineData("1e-4")] [InlineData("height-1e-4")]
     [InlineData("origin-NaN")] [InlineData("origin-Infinity")] [InlineData("origin-1e308")]
     public async Task StrictSelectedStampRequiresPayloadAndFiniteNestedPage(string kind)
     {
         byte[] bad;
-        if (kind is "Infinity" or "NaN" or "1e308" or "1e-5" || kind.StartsWith("origin-"))
+        if (kind is "Infinity" or "NaN" or "1e308" or "1e-5" or "1e-4" or "height-1e-4" || kind.StartsWith("origin-"))
         {
             using var rewritten = new MemoryStream(); rewritten.Write(await NestedSeal());
             using (var zip = new ZipArchive(rewritten, ZipArchiveMode.Update, true))
@@ -569,7 +573,8 @@ public sealed class ImageIoTests
                     var entry = zip.GetEntry(path)!; System.Xml.Linq.XDocument xml;
                     using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
                     foreach (var box in xml.Descendants().Where(e => e.Name.LocalName == "PhysicalBox"))
-                        box.Value = kind.StartsWith("origin-") ? $"{kind.Substring(7)} 0 10 10" : $"0 0 {kind} 210";
+                        box.Value = kind.StartsWith("origin-") ? $"{kind.Substring(7)} 0 10 10" :
+                            kind == "height-1e-4" ? "0 0 10 1e-4" : $"0 0 {kind} 210";
                     entry.Delete(); using var output = zip.CreateEntry(path).Open(); xml.Save(output);
                 }
             }
@@ -590,6 +595,40 @@ public sealed class ImageIoTests
         using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
         using var page = reader.GetPageReader(0); var pixels = page.GetImage();
         var offset = ((int)(12 * 72d / 25.4d * 2) * page.GetPageWidth() + (int)(7 * 72d / 25.4d * 2)) * 4;
+        Assert.True(pixels[offset + 2] > 180); Assert.True(pixels[offset] < 60);
+        Assert.DoesNotContain("/Subtype /Form", System.Text.Encoding.ASCII.GetString(pdf.ToArray()));
+    }
+
+    [Theory]
+    [InlineData("missing-list")] [InlineData("missing-signature")]
+    [InlineData("blank-list-reference")] [InlineData("blank-entry-reference")] [InlineData("missing-entry-reference")]
+    public async Task StrictReferencedSignatureMetadataMustExistAndLegacyPdfRetainsBody(string kind)
+    {
+        using var rewritten = new MemoryStream(); rewritten.Write(await WithSeals([ImageBytes(true), ImageBytes(true)], includeBody: true));
+        using (var zip = new ZipArchive(rewritten, ZipArchiveMode.Update, true))
+        {
+            if (kind is "missing-list" or "missing-signature")
+                zip.GetEntry(kind == "missing-list" ? "Doc_0/Signs/Signatures.xml" : "Doc_0/Signs/S1/Signature.xml")!.Delete();
+            else
+            {
+                var path = kind == "blank-list-reference" ? "OFD.xml" : "Doc_0/Signs/Signatures.xml";
+                var entry = zip.GetEntry(path)!; System.Xml.Linq.XDocument xml;
+                using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
+                if (kind == "blank-list-reference") xml.Descendants().Single(e => e.Name.LocalName == "Signatures").Value = " ";
+                else xml.Descendants().Last(e => e.Name.LocalName == "Signature").SetAttributeValue("BaseLoc",
+                    kind == "missing-entry-reference" ? null : " ");
+                entry.Delete(); using var output = zip.CreateEntry(path).Open(); xml.Save(output);
+            }
+        }
+        using var input = new MemoryStream(rewritten.ToArray()); using var sentinel = Sentinel();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
+        { PixelsPerMillimeter = 2 }).ConvertAsync(input, sentinel));
+        Assert.Contains("metadata", error.Message); AssertSentinel(sentinel);
+        input.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
+        using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
+        using var page = reader.GetPageReader(0); var pixels = page.GetImage();
+        // This body path is independent of signature metadata and must survive the tolerant fallback.
+        var offset = ((int)(52 * 72d / 25.4d * 2) * page.GetPageWidth() + (int)(82 * 72d / 25.4d * 2)) * 4;
         Assert.True(pixels[offset + 2] > 180); Assert.True(pixels[offset] < 60);
     }
 
