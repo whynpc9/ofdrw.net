@@ -18,6 +18,50 @@ var root = Path.GetFullPath(args.Length > 0 ? args[0] : ".");
 var output = Path.GetFullPath(args.Length > 1 ? args[1] : Path.Combine(root, "docs/evidence/document-tools/files"));
 Directory.CreateDirectory(output);
 string PathFor(string name) => Path.Combine(output, name);
+// Report-only review probe reuses the accepted synthetic matrix. It does not
+// regenerate or replace its rendering artifacts when only result metadata changes.
+if (args.Length > 3 && args[3] == "--report-probe")
+{
+    var samples = Path.Combine(root, "docs/evidence/document-tools/files");
+    var reports = new Dictionary<string, object>();
+    foreach (var kind in new[] { "signed", "missing-list", "unsigned" })
+    {
+        var inputPath = Path.Combine(samples, kind == "unsigned" ? "baseline-native.ofd" : "signed.ofd");
+        if (kind == "missing-list")
+        {
+            inputPath = PathFor("signed-missing-list-input.ofd"); File.Copy(Path.Combine(samples, "signed.ofd"), inputPath, true);
+            Mutate("signed-missing-list-input", entries => entries.Remove("Doc_0/Signs/Signatures.xml"));
+        }
+        using var input = File.OpenRead(inputPath); using var target = new MemoryStream();
+        var report = await OfdSignatureCleaner.CleanAsync(input, target);
+        if (report.SignaturesInvalidated != (kind != "unsigned")) throw new Exception("Wrong signature invalidation report.");
+        if (kind == "missing-list" && report.RemovedEntries.Count != 0) throw new Exception("Missing list must not claim payload removal.");
+        File.WriteAllBytes(PathFor("report-clean-" + kind + ".ofd"), target.ToArray());
+        target.Position = 0; using var again = new MemoryStream(); var second = await OfdSignatureCleaner.CleanAsync(target, again);
+        if (second.SignaturesInvalidated) throw new Exception("Idempotent cleanup cannot report new invalidation.");
+        reports[kind] = new { report.SignaturesInvalidated, report.RemovedEntries, second_clean_invalidated = second.SignaturesInvalidated };
+    }
+    using var firstInput = File.OpenRead(Path.Combine(samples, "signed.ofd")); var first = await new OfdReader().ReadAsync(firstInput);
+    foreach (var distinct in new[] { false, true })
+    {
+        using var secondInput = File.OpenRead(Path.Combine(samples, "signed.ofd")); var second = distinct ? await new OfdReader().ReadAsync(secondInput) : first;
+        var mixed = OfdDocumentMixer.Mix([new(first, 0), new(second, 1)]);
+        if (mixed.Attachments.Any(attachment => attachment.Id is not null)) throw new Exception("Merge must discard source attachment IDs.");
+        var name = "mix-attachments-" + (distinct ? "distinct" : "repeated"); await Save(mixed, name); var saved = await Read(name);
+        if (saved.Attachments.Count != first.Attachments.Count + second.Attachments.Count || saved.Attachments.Select(attachment => attachment.Id).Distinct().Count() != saved.Attachments.Count) throw new Exception("Destination attachment IDs must be unique.");
+        foreach (var attachment in saved.Attachments) if (!first.Attachments.Any(original => original.Name == attachment.Name && original.Data.SequenceEqual(attachment.Data))) throw new Exception("Attachment name/bytes changed.");
+        reports[name] = new { source_ids = first.Attachments.Select(attachment => attachment.Id).ToArray(), destination_ids = saved.Attachments.Select(attachment => attachment.Id).ToArray(), retained_count = saved.Attachments.Count };
+    }
+    File.WriteAllText(PathFor("clean-report.json"), System.Text.Json.JsonSerializer.Serialize(reports["signed"]));
+    using (var input = File.OpenRead(PathFor("report-clean-signed.ofd")))
+    using (var pdf = File.Create(PathFor("report-clean-signed.pdf"))) await new OfdToPdfConverter().ConvertAsync(input, pdf);
+    using (var input = File.OpenRead(PathFor("report-clean-signed.ofd")))
+    using (var svg = File.Create(PathFor("report-clean-signed-1.svg"))) await new OfdToSvgConverter().ConvertAsync(input, svg);
+    File.WriteAllText(PathFor("report-clean-signed.txt"), new OfdTextExtractor().Extract(await Read("report-clean-signed"), includeTemplates: true));
+    File.WriteAllText(PathFor("report-probe.json"), System.Text.Json.JsonSerializer.Serialize(reports, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+    Console.WriteLine("Signature report and unique attachment-ID probes passed; existing rendering artifacts unchanged.");
+    return;
+}
 var fontDirectory = Path.GetFullPath(args.Length > 2 ? args[2] : Path.Combine(root, "artifacts/document-tools-fonts"));
 var fontPath = Path.Combine(fontDirectory, "Ofdrw-CI-NotoSansCJKsc-Regular.ttf");
 if (!File.Exists(fontPath)) throw new FileNotFoundException("Install the pinned CI Noto font with scripts/install-ci-fonts.py --directory artifacts/document-tools-fonts.", fontPath);
@@ -362,7 +406,13 @@ foreach (var objectBudget in new[] { true, false })
     catch (InvalidDataException exception) { File.WriteAllText(PathFor("annotation-shared-" + (objectBudget ? "objects" : "xml") + ".rejection.txt"), exception.Message); }
 }
 await using (var input = File.OpenRead(PathFor("signed.ofd")))
-await using (var target = File.Create(PathFor("clean.ofd"))) await OfdSignatureCleaner.CleanAsync(input, target);
+await using (var target = File.Create(PathFor("clean.ofd")))
+{
+    var report = await OfdSignatureCleaner.CleanAsync(input, target);
+    if (!report.SignaturesInvalidated) throw new Exception("Explicit cleanup must report declaration invalidation.");
+    File.WriteAllText(PathFor("clean-report.json"), System.Text.Json.JsonSerializer.Serialize(new { report.SignaturesInvalidated, report.RemovedEntries }));
+}
+File.Copy(PathFor("clean.ofd"), PathFor("report-clean-signed.ofd"), true);
 var clipped = new OfdDocumentPackage();
 clipped.Fonts.Add(source.Fonts.First(font => !font.Bold && !font.Italic));
 clipped.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100,
@@ -414,7 +464,7 @@ fixedAnchor.Pages.Add(fixedPage); await Save(fixedAnchor, "italic-fixed-anchor")
 File.Copy(Path.Combine(root, "scripts/generate-font-test-fixtures.py"), PathFor("fonts/generate-font-test-fixtures.py"), true);
 File.Copy(Path.Combine(root, "LICENSE"), PathFor("fonts/MIT-rectangle-LICENSE.txt"), true);
 File.WriteAllBytes(PathFor("fonts/narrow.ttf"), rectangleFont);
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "binary-xml-split", "page-wrapper-metadata", "box-whitespace", "box-inexact-page", "box-inexact-inherited", "annotation-inexact-appearance", "annotation-inexact-primitive", "blank-watermark", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "mix-custom-tags", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "binary-xml-split", "page-wrapper-metadata", "box-whitespace", "box-inexact-page", "box-inexact-inherited", "annotation-inexact-appearance", "annotation-inexact-primitive", "blank-watermark", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "mix-custom-tags", "split", "split-template-liveness", "mix", "clean", "report-clean-signed", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);
