@@ -421,7 +421,7 @@
       "generation_source_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448"
     }
   ],
-  "method": "macOS Preview through Computer Use; actual URLs/page numbers verified; R20 checked53pages retained byte-identical, plus fresh R21 cleanup PDF two pages inspected and closed. Runtime delta only sets a result flag; no layout/reader/writer/converter/ZIP membership changes.",
+  "method": "macOS Preview through Computer Use; actual URLs/page numbers verified; R20 checked 53 pages retained byte-identical, plus fresh R21 cleanup PDF two pages inspected and closed. Runtime delta only sets a result flag; no layout/reader/writer/converter/ZIP membership changes.",
   "remaining_window": "none",
   "historical_only": false,
   "historical": {
@@ -934,7 +934,7 @@
     "record": "files/validation/preview-progress-r20.json",
     "source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf",
     "checked_pages": 53,
-    "retention": "same current35PDFfiles retained byte-identical, not regenerated/relabelled as freshR21 output"
+    "retention": "the same 35 current PDF files retained byte-identical; not regenerated or relabelled as fresh R21 output"
   },
   "retained_rendering_baseline": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
 }

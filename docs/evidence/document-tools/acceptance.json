@@ -11,7 +11,7 @@
     "independent_model": "gpt-6-sol low",
     "design_review_model": "gpt-6-astra high",
     "test_checkpoint_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448",
-    "implementation_equivalence": "independent400 on frozen clean31569bd; before/after source fingerprint unchanged"
+    "implementation_equivalence": "400 independent tests on frozen, clean commit 31569bd; before/after source fingerprint unchanged"
   },
   "local_package_consumption": {
     "status": "passed",
@@ -26,13 +26,13 @@
     "comparison": "exact concatenated w:t vs ordered TextCode; both modes"
   },
   "automatic_rendering": {
-    "status": "passed: retained35-case R20matrix plus actualR21cleanup report case; final normal36-case path independently exercised in separate temporary directory",
+    "status": "passed: retained 35-case R20 matrix plus the actual R21 cleanup report case; final normal 36-case path independently exercised in separate temporary directory",
     "pdf_pages": 55,
     "svg_pages": 25
   },
   "png_visual_review": {
     "status": "passed for 79 automatic PNGs plus retained native original-font SVG screenshot",
-    "method": "57 prior PNG hashes unchanged; 12 changed SVG rasters directly rechecked side-by-side in three R20 contact sheets, corresponding SVG source bytes identical; eight new PDF/SVG images inspected in R20 new-pages contact. Current fixed-anchor SVG bytes identical to R19 native-font accepted screenshot. R21 adds three directly inspected cleanup PDF/SVG PNGs; both new PDF PNGs exactly match the corresponding R20clean pages.",
+    "method": "57 prior PNG hashes unchanged; 12 changed SVG rasters directly rechecked side-by-side in three R20 contact sheets, corresponding SVG source bytes identical; eight new PDF/SVG images inspected in R20 new-pages contact. Current fixed-anchor SVG bytes identical to R19 native-font accepted screenshot. R21 adds three directly inspected cleanup PDF/SVG PNGs; both new PDF PNGs exactly match the corresponding R20 clean pages.",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -137,15 +137,15 @@
       "R14 declared PublicResources.dat/ImageResources.bin survive save/watermark/split. Actual suffix watermark output retains readable body/styles, table, NOTE, template, DRAFT and red ordinary image; RESOURCE SUFFIX paints once; second page retains red emphasis and date.",
       "R15 vendor declaration literals remain opaque before path resolution or visited dedup; valid standard NOTE remains visible in ordinary roundtrip, while Mix rejects vendor metadata. Standard traversal still rejected.",
       "R15 font/media IDs only in dat/bin descriptors above a deliberately stale document hint retain bindings and globally unique output unit IDs; all prior rendering bytes unchanged.",
-      "Same-ID vendor TemplatePage stays preserved and outside standard template table; real template and NOTE remain modeled. All56 current render hashes unchanged.",
-      "R16 vendor Template page references no longer paint or duplicate a standard template. Existing56 renders unchanged.",
+      "Same-ID vendor TemplatePage stays preserved and outside standard template table; real template and NOTE remain modeled. All 56 current render hashes unchanged.",
+      "R16 vendor Template page references no longer paint or duplicate a standard template. Existing 56 renders unchanged.",
       "R16 Native scalar CustomTags retained in API/CLI Mix, unique/equal values coalesce and conflicting values reject before output; CLI existing output marker retained. Unknown tag schema/structure and potential package/attachment references remain unsupported.",
       "R17 supported declaration wrappers validate attributes/children/literals before flattening. Annotation Page record extras retain page-scoped raw marker while unique standard FileLoc follows known artwork; duplicate/nested paths remain opaque.",
-      "R17 optional standard TemplatePage Name and default ZOrder supported; page reference overrides declaration default. Enhanced annotation-metadata sample keeps known NOTE/template and XML metadata; Mix refuses. All60 render bytes unchanged.",
-      "R18 Annotations/PageAnnot/Annot/FileLoc extension metadata retains standard NOTE while refusing Mix. Selected page/template Page/Area/Content/Layer closure and unsupported template order fail before flattening; duplicate Appearance fails PDF/SVG with zero output. All60 automatic page hashes unchanged.",
-      "R19 binary .xml signature/attachment split retains selected body and attachment bytes while removing owned signature entries; page wrapper exports known art but refuses rewrite; exact whitespace-separated100x80 box and blank-page text/image watermark render correctly. Recursive drawing PI export fails with zero bytes; hidden unknown drawing refuses Mix without painting; original empty-layer IDs remain preserved.",
+      "R17 optional standard TemplatePage Name and default ZOrder supported; page reference overrides declaration default. Enhanced annotation-metadata sample keeps known NOTE/template and XML metadata; Mix refuses. All 60 render bytes unchanged.",
+      "R18 Annotations/PageAnnot/Annot/FileLoc extension metadata retains standard NOTE while refusing Mix. Selected page/template Page/Area/Content/Layer closure and unsupported template order fail before flattening; duplicate Appearance fails PDF/SVG with zero output. All 60 automatic page hashes unchanged.",
+      "R19 binary .xml signature/attachment split retains selected body and attachment bytes while removing owned signature entries; page wrapper exports known art but refuses rewrite; exact whitespace-separated 100x80 box and blank-page text/image watermark render correctly. Recursive drawing PI export fails with zero bytes; hidden unknown drawing refuses Mix without painting; original empty-layer IDs remain preserved.",
       "R20: first-four-finite display preserves 100x80 page/inherited geometry and red annotation art; inexact source wrappers and annotation Boundary metadata still block Mix. Tiny dimensions and cumulative annotation limits fail before partial output. Twelve changed automatic SVG PNGs are visually equivalent at the inspected layout/artwork scope; no source SVG byte changes. Raster byte determinism is not claimed.",
-      "R21 return-report-only fix changes no rendering/ZIP members. Signed/missing-list cleanup reports invalidated=true, unsigned/idempotent=false; repeated/distinct sources retain payloads with unique Attachment_1/Attachment_2 IDs. Fresh cleanup PDF two pages passed actualPreview and PNG equality with retained clean; PDF bytes differ by creation metadata and are separately hashed."
+      "R21 return-report-only fix changes no rendering/ZIP members. Signed/missing-list cleanup reports invalidated=true, unsigned/idempotent=false; repeated/distinct sources retain payloads with unique Attachment_1/Attachment_2 IDs. Fresh cleanup PDF two pages passed actual Preview and PNG equality with retained clean; PDF bytes differ by creation metadata and are separately hashed."
     ],
     "passed_files": [
       "pages/annotation-clipped-1.png",
@@ -233,7 +233,7 @@
   },
   "macos_preview": {
     "status": "passed for all listed latest pages",
-    "reason": "R20 53 inspectedpages retained unchanged; two fresh R21cleanup-report pages inspected/closed, for55listedpages",
+    "reason": "R20: 53 inspected pages retained unchanged; two fresh R21 cleanup-report pages inspected and closed, for 55 listed pages",
     "checked_pages": [
       {
         "artifact": "box-inexact-page.pdf",
@@ -667,19 +667,19 @@
     "historical_r20_record": "files/validation/preview-progress-r20.json"
   },
   "pr_review": {
-    "status": "one current-head finding repaired; attachment-ID finding reproduced as false premise; fresh head review/CI pending",
-    "review_head": "461f831ee4cff72ba25a4a7157e9b000ce094d3b",
-    "codex": "explicit cleanup resultflag fixed; CopyAttachments already dropsId and Writer assignsunique fallback IDs, two regressions and actualprobe prove it; fresh head pending",
-    "cursor": "461f831 reviewed with no new must-fix; fresh head pending",
-    "ci": "461f831 allsix checks succeeded; fresh head pending"
+    "status": "9393685 functional review and all six checks passed; editorial spacing repaired; fresh documentation-head review/CI pending",
+    "review_head": "93936859f2d4fc929dd5b740d8990d8e5f491d54",
+    "codex": "9393685: no major issues found",
+    "cursor": "9393685: no new functional must-fix; editorial spacing in verification records repaired",
+    "ci": "9393685: all six checks succeeded"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 42674725,
-    "sha256": "c0ee8d300398b1582f8b60d8cc238ac355319b8391a5251ca9ea00b012ecbc5d",
-    "extraction_readback": "Extracted and verified 532 files in fresh /private/tmp/ofdrw-03-evidence-readback-r21",
+    "bytes": 42676338,
+    "sha256": "13e7cee4b830846473aee4f2625c120272b8187973aa2c4711b7092b621af1dc",
+    "extraction_readback": "Extracted and verified 532 files in fresh /private/tmp/ofdrw-03-evidence-readback-r22",
     "file_count": 532,
-    "expanded_bytes": 2123731775,
+    "expanded_bytes": 2123731798,
     "integrity_status": "passed: all manifest sizes and SHA-256 values verified after fresh extraction"
   },
   "ofd_sizes": {
@@ -937,8 +937,8 @@
   },
   "page_rewrite_policy": "Consumed Page/Area/Content/Layer and document PageArea extensions refuse before output or watermark mutation; retained raw page children/template files stay preserved; empty Layer ID/Type/order retained across save/split/watermark.",
   "binary_xml_suffix_policy": "Suffix-only binary payload is not XML or opaque extension XML; XML-looking malformed .xml still refuses Split; actual binary signature/attachment sample cleans owned signature entries and retains attachment bytes.",
-  "physical_box_policy": "Ordinary reading displays the first four finite whitespace-separated numbers for legacy trailing-token compatibility; missing boxes inherit, present nonnumeric/short/nonfinite boxes fail reading. Rewrite/Mix require exact four values; positive dimensions that format to0 at writer0.### precision refuse, including fresh/model-mutated/automatic pages. Inexact annotation boundaries retain unmodeled markers and blockMix without losing ordinary art.",
-  "annotation_budget_policy": "One cumulative per-Read primitive count and PageAnnot XML-byte budget, including repeated cached file references and hidden appearances; defaults100000 and128MiB, configurable positive load limits.",
+  "physical_box_policy": "Ordinary reading displays the first four finite whitespace-separated numbers for legacy trailing-token compatibility; missing boxes inherit, present nonnumeric/short/nonfinite boxes fail reading. Rewrite/Mix require exact four values; positive dimensions that format to 0 at writer 0.### precision refuse, including fresh/model-mutated/automatic pages. Inexact annotation boundaries retain unmodeled markers and block Mix without losing ordinary art.",
+  "annotation_budget_policy": "One cumulative per-Read primitive count and PageAnnot XML-byte budget, including repeated cached file references and hidden appearances; defaults of 100,000 primitives and 128 MiB, configurable positive load limits.",
   "unarchived_split_policy": "Selected page PreservedPageElements refuse no-OFD.xml flattening before cloning; excluded extended pages do not block selection.",
   "signature_report_probe": {
     "file": "files/report-probe.json",
@@ -953,7 +953,7 @@
     "runtime_changed_files": [
       "src/Ofdrw.Net.Packaging/OfdPackagePruner.cs"
     ],
-    "scope": "only result.SignaturesInvalidated when declarationsremoved; declarationremoval/payloadselection/ZIPmembers/serialization/layout/rendering unchanged",
+    "scope": "only result.SignaturesInvalidated changes when declarations are removed; declaration removal, payload selection, ZIP members, serialization, layout and rendering are unchanged",
     "existing35PDFfiles_unchanged": true
   }
 }
