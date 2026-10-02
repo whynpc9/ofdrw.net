@@ -602,6 +602,8 @@ public sealed class ImageIoTests
     [Theory]
     [InlineData("missing-list")] [InlineData("missing-signature")]
     [InlineData("blank-list-reference")] [InlineData("blank-entry-reference")] [InlineData("missing-entry-reference")]
+    [InlineData("wrong-list-root")] [InlineData("wrong-signature-root")]
+    [InlineData("missing-page-reference")] [InlineData("empty-page-reference")] [InlineData("blank-page-reference")]
     public async Task StrictReferencedSignatureMetadataMustExistAndLegacyPdfRetainsBody(string kind)
     {
         using var rewritten = new MemoryStream(); rewritten.Write(await WithSeals([ImageBytes(true), ImageBytes(true)], includeBody: true));
@@ -611,10 +613,14 @@ public sealed class ImageIoTests
                 zip.GetEntry(kind == "missing-list" ? "Doc_0/Signs/Signatures.xml" : "Doc_0/Signs/S1/Signature.xml")!.Delete();
             else
             {
-                var path = kind == "blank-list-reference" ? "OFD.xml" : "Doc_0/Signs/Signatures.xml";
+                var path = kind == "blank-list-reference" ? "OFD.xml" :
+                    kind == "wrong-signature-root" || kind.EndsWith("page-reference") ? "Doc_0/Signs/S1/Signature.xml" : "Doc_0/Signs/Signatures.xml";
                 var entry = zip.GetEntry(path)!; System.Xml.Linq.XDocument xml;
                 using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
-                if (kind == "blank-list-reference") xml.Descendants().Single(e => e.Name.LocalName == "Signatures").Value = " ";
+                if (kind is "wrong-list-root" or "wrong-signature-root") xml = new System.Xml.Linq.XDocument(new System.Xml.Linq.XElement("Unexpected"));
+                else if (kind.EndsWith("page-reference")) xml.Descendants().Single(e => e.Name.LocalName == "StampAnnot").SetAttributeValue("PageRef",
+                    kind == "missing-page-reference" ? null : kind == "empty-page-reference" ? "" : " \t");
+                else if (kind == "blank-list-reference") xml.Descendants().Single(e => e.Name.LocalName == "Signatures").Value = " ";
                 else xml.Descendants().Last(e => e.Name.LocalName == "Signature").SetAttributeValue("BaseLoc",
                     kind == "missing-entry-reference" ? null : " ");
                 entry.Delete(); using var output = zip.CreateEntry(path).Open(); xml.Save(output);

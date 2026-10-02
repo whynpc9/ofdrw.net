@@ -6,7 +6,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 264/264 通过 | Core 5、Packaging 23、PDF/Image 153、Signatures 4、DOCX 49、CLI 30 |
+| 功能回归 | 269/269 通过 | Core 5、Packaging 23、PDF/Image 158、Signatures 4、DOCX 49、CLI 30 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review9`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
@@ -141,3 +141,9 @@ ASN扫描区分strict与legacy：严格图片路径继续分配前拒绝坏长�
 Cursor另质疑`-2e306`与`2e306`的相对溢出用例。保留该用例：实际函数按`mm * 72 / 25.4`逐步计算，`4e306 * 72`为Infinity，即使重排为`4e306 * (72 / 25.4)`会有限，也不能代替当前实现。Sol Low独立已编译CLI探针实测exit 1、placement错误和13-byte哨兵保留；264全套回归同样通过，旧head三OS图片CI均通过。本条以实际运行证据回应，未按误判修改样例。Preview仍未完成。
 
 第九轮25个实际产物均从`c45e797`重新生成，11/11本地包消费和Sol Low独立55/55通过；当次10张PNG/JPEG逐页重新查看，检查范围同上，无新缺陷。264项回归日志/全部哈希在当前bundle/manifest；Preview仍未完成。
+
+## 第十轮复审修复
+
+`11152fe`两类bot到齐，六项CI全部通过。Cursor确认此前metadata/BBox修复且纠正原点算术质疑，无新缺陷；Codex提出缺失/空白PageRef在strict前被过滤。Astra补充设计复核也指出此项及已引用XML错误根节点导致零匹配；Sol Low的三份已构建CLI探针复现了错误列表根、错误Signature根及缺PageRef都会exit0覆盖哨兵。
+
+strict现在按LocalName校验列表/Signature根（仍允许XML namespace），StampAnnot先校验非空PageRef再筛选明确非选中页，避免未知归属被静默省略。legacy不增加这些strict校验，正文及既有容错保持。新增错误根两种及PageRef缺失/空/空白三种，用实际caller sentinel及legacy正文红path断言。全套269/269通过；本轮新包和产物稍后记录。Preview仍未完成。
