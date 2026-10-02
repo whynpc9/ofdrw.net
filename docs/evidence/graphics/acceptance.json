@@ -51,10 +51,58 @@
     "scope": "Full-page PDF and SVG review of graphics, roundtrip, explicit Native and default DOCX; baseline/style/curves/fill/stroke/clip/page breaks checked. Latest-source contact sheets confirm full 16-page scope."
   },
   "preview": {
-    "status": "not-reviewed",
-    "reason": "Awaiting coordinator exclusive GUI slot; Issue 02 retains priority. PNG does not replace Preview.",
-    "checked_pages": [],
-    "windows_closed": null
+    "status": "passed",
+    "reviewer": "Codex primary agent using native macOS Preview UI",
+    "chain": "Graphics API -> native OFD -> PDF -> Preview; licensed DOCX -> explicit Native/default OFD -> PDF -> Preview",
+    "checked_pages": [
+      {
+        "file": "graphics.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "a8b5fb0db75d8d9e979eae279b65beba913a66c5d7e00fecb1a78b510a08737a",
+        "result": "passed"
+      },
+      {
+        "file": "graphics-roundtrip.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "92285c134cc45a4c1cb22ffb29efdb4eecef5bdd196992d297272c64fd5cca3d",
+        "result": "passed"
+      },
+      {
+        "file": "baseline-native.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "bd45dcce68c59d7f448cf334a9847187b0a466ceaf1daa1aec8f24520cc7331f",
+        "result": "passed"
+      },
+      {
+        "file": "baseline-default.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "74220ed36c1aab048c4cbc3523148bed8d32fe4cf6f3a45391657ead97b23607",
+        "result": "passed"
+      }
+    ],
+    "windows_closed": true,
+    "gui_released": true,
+    "initial_file_chooser_failure": "Recovered via Finder; actual paths confirmed in Preview before page inspection. No substitute rendering used for Preview result.",
+    "observations": [
+      "All 8 pages inspected at full-page scale; ticket title/grid and typography additionally viewed enlarged.",
+      "Chinese/Latin text, local bold/italic/color, baseline guides and rotated stamp are legible and remain local.",
+      "Anisotropic stroke, cubic/quadratic curves, EvenOdd hole/NonZero fill and frozen clip match the deterministic sample.",
+      "Native/default table fill/borders, alignment and explicit two-page break match the licensed DOCX fixture.",
+      "No observed missing glyphs, duplicate paint, unexpected crop/overlap or extra blank pages in this scope."
+    ],
+    "checked_at": "2026-10-02 Asia/Shanghai"
   },
   "review": {
     "status": "pending",
@@ -68,6 +116,6 @@
     "No flow/table/Canvas or Skia adapter additions.",
     "Font subset/reuse/fallback is ticket 05; explicit package-local identity contract only.",
     "Name-only font text depends on reader environment. Public artifacts embed pinned OFL Noto only.",
-    "Preview and current-head external reviews/CI are required before ticket closure."
+    "Current-head external reviews/CI remain required before ticket closure."
   ]
 }

@@ -1,6 +1,6 @@
 # 04 原生绘图验收证据
 
-源码冻结于 `055f43affa6e288ecd45ac446a11d19d68d59123`，基线为 PR #12 的 `df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9`。最终审核状态见 [acceptance.json](acceptance.json)，文件尺寸/SHA-256/环境及模式见 [manifest.json](manifest.json)。本票仍等待 Preview 独占时段和最新 head 外部评审/CI，不宣称整体通过。
+源码冻结于 `055f43affa6e288ecd45ac446a11d19d68d59123`，基线为 PR #12 的 `df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9`。最终审核状态见 [acceptance.json](acceptance.json)，文件尺寸/SHA-256/环境及模式见 [manifest.json](manifest.json)。本次 Preview 已完成；本票仍等待最新 head 外部评审/CI，不宣称全部开发门禁闭环。
 
 | 检查层 | 已完成范围 | 结果 |
 | --- | --- | --- |
@@ -9,7 +9,7 @@
 | 本地包消费 | 11 个临时本地包实际安装/转换；未发布 | 通过 |
 | 自动渲染 | 四组各两页：graphics、graphics-roundtrip、baseline-native、baseline-default；PDF 8 页、SVG 8 页 | 全部生成并验证 |
 | PNG 视觉 | 本次 16 页 PDF/SVG PNG；中英、比例字距、局部粗斜/红色、框线底色、基线、曲线、非等比线宽、填充洞、clip、旋转及分页 | 检查范围内通过 |
-| macOS Preview | 必须是本次原生 OFD → PDF，包含显式 Native/default 基准；独占时段尚未确认 | **未完成**，PNG 不替代此门 |
+| macOS Preview | 本次原生 OFD → PDF，包含显式 Native/default 基准；四组各两页实际逐页检查 | 通过，8 页；四个 PDF 窗口及任务对话框关闭，GUI 已释放 |
 | 最新 head Codex/Cursor/CI | stacked PR 的实时结果 | 待外部审核 |
 
 图形样例仅使用 Layout（传递 Core/Packaging），实际包内 17 个 PathObject、29 个 TextObject、1 份字体、0 个 ImageObject。两页为中英票面和变换示意图，不是整页位图。Native/default 各两页使用固定 `generated-layout.docx` 的许可字体变体，OFD 原文完整；查看链路是 DOCX → Native/default OFD → PDF，未以直接 DOCX→PDF 代替。
@@ -20,4 +20,6 @@
 
 复现：安装固定许可字体到 `artifacts/graphics-fonts`，执行 `scripts/run-graphics-e2e.sh artifacts/graphics/current`；.NET 采用用户 AGENTS 要求的可写 CLI_HOME、环境变量和单节点 flags。PDF PNG 由 Poppler 110 DPI 生成，SVG 由 librsvg 渲染在白色背景。上下文、单基线文字和不支持操作边界见 [设计契约](../../graphics-design-contract.md) 与 [教程](../../tutorials/16-native-graphics.md)。只对实际生成/检查样例作结论。
 
-已使用默认 zstd 解码器从归档全新提取并校验清单全部 39 个文件（尺寸/SHA-256）；压缩窗口为 128 MiB。
+已使用默认 zstd 解码器从归档全新提取并校验清单全部 47 个文件（尺寸/SHA-256）；压缩窗口为 128 MiB。
+
+Preview 路径均核对到本 worktree 的 `artifacts/graphics/current/`。开始时文件选择层确认路径会重置；通过新建 Finder 窗口恢复打开，仅对实际可见的本次页面作通过结论。票面局部粗/斜/色、比例字距、基线、旋转框字，示意图非等比笔画/曲线/填充洞/冻结裁剪及还原控制对象，Native/default 的边框/底色/对齐/分页均逐页检查。没有检查任意复杂 Word、通用 shaping 或其他任务样例。
