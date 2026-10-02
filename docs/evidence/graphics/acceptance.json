@@ -1,24 +1,25 @@
 {
-  "source_head": "4e121297d9f505dbb6c8f050f8d08ac452dfab33",
+  "source_head": "b977f2bc54bea6c4a51d5f51e95e6e6cfb3fc50c",
   "baseline": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
   "source_tree_frozen": true,
   "functional": {
     "status": "passed",
     "full_suite": {
-      "passed": 417,
+      "passed": 424,
       "failed": 0,
       "skipped": 0
     },
-    "independent_graphics_regressions": 17,
+    "independent_graphics_regressions": 24,
     "new_graphics_CS1591": 0,
     "package_count": 11,
-    "package_version": "0.1.0-graphics.20261003.r2final",
-    "package_status": "passed"
+    "package_version": "0.1.0-graphics.20261003.r3final",
+    "package_status": "passed",
+    "package_native_graphics_consumption": "passed"
   },
   "automatic_rendering": {
     "status": "passed",
-    "pdf_pages": 9,
-    "svg_pages": 9,
+    "pdf_pages": 10,
+    "svg_pages": 10,
     "original_unicode_preserved": true,
     "native_graphics": {
       "pages": 2,
@@ -34,6 +35,13 @@
       "images": 0,
       "font_payload_bytes": 0,
       "generated_faux_factors": 3
+    },
+    "fractional_clip": {
+      "pages": 1,
+      "logical_rectangle_mm": 100000,
+      "scale_x": 0.9996,
+      "visible_right_edge_mm": 130,
+      "pdf_and_svg_ink": "passed"
     }
   },
   "png_visual": {
@@ -49,6 +57,8 @@
       "pages/baseline-native-svg-2.png",
       "pages/graphics-1.png",
       "pages/graphics-2.png",
+      "pages/graphics-fractional-clip-1.png",
+      "pages/graphics-fractional-clip-svg-1.png",
       "pages/graphics-name-only-1.png",
       "pages/graphics-name-only-svg-1.png",
       "pages/graphics-roundtrip-1.png",
@@ -58,11 +68,11 @@
       "pages/graphics-svg-1.png",
       "pages/graphics-svg-2.png"
     ],
-    "scope": "R2: 18 PDF/SVG PNG pages; all10 changed/new pages reviewed, eight baseline pages SHA256-identical to accepted R1 pages. Acute miter tip actual raster + default-limit negative control passed."
+    "scope": "R3: all20 PDF/SVG pages visually checked, including native/default, name-only faux+user CTM, acute miter and fractional clip border."
   },
   "preview": {
     "status": "not-reviewed",
-    "reason": "R2 regenerated. Awaiting next coordinated exclusive slot; 02 now holds GUI after05. R1 acceptance does not close R2 Preview.",
+    "reason": "R3 final ten PDF pages regenerated after precision repairs; awaiting coordinated exclusive slot (02 ahead). R1 acceptance does not substitute for current candidate.",
     "checked_pages": [],
     "windows_closed": null
   },
@@ -72,8 +82,11 @@
     "round1_head": "4b634d1785b3a57c67f33a43441a08aa46188813",
     "round1_threads": 5,
     "round1_ci": "six checks passed",
-    "fixed_runtime": "4e121297d9f505dbb6c8f050f8d08ac452dfab33",
-    "current_head": null
+    "fixed_runtime": "b977f2bc54bea6c4a51d5f51e95e6e6cfb3fc50c",
+    "current_head": null,
+    "round2_head": "c07a45c8218bc28221dfa7f2f81d2e8be2270465",
+    "round2_ci": "six checks passed",
+    "round2_threads_new": 2
   },
   "production_release_accepted": false,
   "limitations": [
@@ -82,7 +95,8 @@
     "No flow/table/Canvas or Skia adapter additions.",
     "Font subset/reuse/fallback is ticket 05; explicit package-local identity contract only.",
     "Name-only font text depends on reader environment. Public artifacts embed pinned OFL Noto only.",
-    "R2 Preview and current-head external reviews/CI remain required before ticket closure."
+    "R3 Preview and current-head external reviews/CI remain required before ticket closure.",
+    "Faithful finite CTM coefficients do not guarantee numerical stability for arbitrary extreme doubles; derived overflow/generated singular faux CTMs fail."
   ],
   "previous_round1": {
     "source_head": "055f43affa6e288ecd45ac446a11d19d68d59123",
@@ -146,5 +160,22 @@
       "skipped": 0
     },
     "evidence_commit": "4b634d1785b3a57c67f33a43441a08aa46188813"
+  },
+  "previous_round2": {
+    "source_head": "4e121297d9f505dbb6c8f050f8d08ac452dfab33",
+    "evidence_commit": "c07a45c8218bc28221dfa7f2f81d2e8be2270465",
+    "full_suite": {
+      "passed": 424,
+      "failed": 0,
+      "skipped": 0
+    },
+    "preview": {
+      "status": "not-reviewed",
+      "reason": "R2 regenerated. Awaiting next coordinated exclusive slot; 02 now holds GUI after05. R1 acceptance does not close R2 Preview.",
+      "checked_pages": [],
+      "windows_closed": null
+    },
+    "review_head": "c07a45c8218bc28221dfa7f2f81d2e8be2270465",
+    "review_threads_new": 2
   }
 }
