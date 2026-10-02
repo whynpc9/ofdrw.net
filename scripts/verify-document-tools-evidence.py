@@ -45,8 +45,8 @@ for name, count in expected.items():
         assert 'Doc_0/Templates/Content.xml' in data
         assert any(local(node)=='TemplatePage' and node.attrib.get('ID')=='999001' for node in ET.fromstring(data['Doc_0/Document.xml']).iter())
     if name == 'watermark-resource-suffix':
-        resource_declarations = [node.text for node in ET.fromstring(data['Doc_0/Document.xml']).iter() if local(node) in ('PublicRes','DocumentRes')]
-        assert resource_declarations == ['PublicResources.dat','ImageResources.bin']
+        resource_declarations = {local(node):node.text for node in ET.fromstring(data['Doc_0/Document.xml']).iter() if local(node) in ('PublicRes','DocumentRes')}
+        assert resource_declarations == {'PublicRes':'PublicResources.dat','DocumentRes':'ImageResources.bin'}
         assert data['Doc_0/PublicResources.dat'] and data['Doc_0/ImageResources.bin']
         assert texts(source, source_pages[0]) in texts(data,selected[0])
         assert sum(texts(data,page).count('RESOURCE SUFFIX') for page in selected)==1
