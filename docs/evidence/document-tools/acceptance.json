@@ -1,22 +1,24 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "81233d98931f42a250ffd32b4d221e842652a4c2",
-  "example_commit": "5e872048bfc9fc9b3b5b576e78730147d26caa8c",
+  "runtime_source_commit": "8b847948799a9c97261a9d70b48a0114b1037a93",
+  "example_commit": "8b847948799a9c97261a9d70b48a0114b1037a93",
   "functional_tests": {
     "status": "passed",
-    "total": 264,
+    "total": 274,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
-    "design_review_model": "gpt-6-astra high"
+    "design_review_model": "gpt-6-astra high",
+    "test_checkpoint_commit": "1f1e61d2668ea65cda0828da7dace8cb0e5bb1a9",
+    "implementation_equivalence": "verified src/tests/build inputs identical at8b84794; only5 validator assertions added, separately exercised by actual E2E"
   },
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.21",
+    "version": "0.1.0-issue03.23",
     "published": false,
-    "repository_commit": "81233d98931f42a250ffd32b4d221e842652a4c2"
+    "repository_commit": "8b847948799a9c97261a9d70b48a0114b1037a93"
   },
   "native_default_text": {
     "status": "passed",
@@ -25,12 +27,12 @@
   },
   "automatic_rendering": {
     "status": "passed",
-    "pdf_pages": 40,
-    "svg_pages": 13
+    "pdf_pages": 42,
+    "svg_pages": 14
   },
   "png_visual_review": {
-    "status": "passed-for-52-listed-pages; fixed-anchor-SVG-font-fidelity-unverified",
-    "method": "All prior50 PNG hashes exactly match the directly inspected R13 bytes; three new resource-suffix renders inspected at original size. Current14 contact sheets retain all53. The fixed-anchor SVG remains incomplete for original-font fidelity.",
+    "status": "passed-for-55-listed-pages; fixed-anchor-SVG-font-fidelity-unverified",
+    "method": "All prior53 PNG hashes match directly inspected R14 bytes; three new vendor-annotation renders inspected at original size. Fifteen current contact sheets retain all56. The fixed-anchor SVG remains incomplete for original-font fidelity.",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -84,7 +86,10 @@
       "pages/italic-fixed-anchor-svg.png",
       "pages/watermark-resource-suffix-1.png",
       "pages/watermark-resource-suffix-2.png",
-      "pages/watermark-resource-suffix-svg.png"
+      "pages/watermark-resource-suffix-svg.png",
+      "pages/vendor-annotations-roundtrip-1.png",
+      "pages/vendor-annotations-roundtrip-2.png",
+      "pages/vendor-annotations-roundtrip-svg.png"
     ],
     "observations": [
       "Chinese and proportional English readable; source styles remain local; table fills/borders and page break retained",
@@ -105,7 +110,10 @@
       "R9 text ignores image-only budgets; foreign-only or nested-only empty clip geometry rejects PDF/SVG before output instead of hiding the object; supported page render bytes unchanged",
       "R13 all-suffix shared XML scans preserve page/font/media/signature closure and nested BaseLoc references; malformed XML stays conservative and BOM plain text does not disable pruning",
       "R13 new fixed-baseline MIT PDF pairs show whole-glyph shear; regular/italic edge slope regressions and adjacent control pass; SVG native-font raster acceptance remains pending",
-      "R14 declared PublicResources.dat/ImageResources.bin survive save/watermark/split. Actual suffix watermark output retains readable body/styles, table, NOTE, template, DRAFT and red ordinary image; RESOURCE SUFFIX paints once; second page retains red emphasis and date."
+      "R14 declared PublicResources.dat/ImageResources.bin survive save/watermark/split. Actual suffix watermark output retains readable body/styles, table, NOTE, template, DRAFT and red ordinary image; RESOURCE SUFFIX paints once; second page retains red emphasis and date.",
+      "R15 vendor declaration literals remain opaque before path resolution or visited dedup; valid standard NOTE remains visible in ordinary roundtrip, while Mix rejects vendor metadata. Standard traversal still rejected.",
+      "R15 font/media IDs only in dat/bin descriptors above a deliberately stale document hint retain bindings and globally unique output unit IDs; all prior rendering bytes unchanged.",
+      "Same-ID vendor TemplatePage stays preserved and outside standard template table; real template and NOTE remain modeled. All56 current render hashes unchanged."
     ],
     "passed_files": [
       "pages/annotation-clipped-1.png",
@@ -159,7 +167,10 @@
       "pages/italic-fixed-anchor-1.png",
       "pages/watermark-resource-suffix-1.png",
       "pages/watermark-resource-suffix-2.png",
-      "pages/watermark-resource-suffix-svg.png"
+      "pages/watermark-resource-suffix-svg.png",
+      "pages/vendor-annotations-roundtrip-1.png",
+      "pages/vendor-annotations-roundtrip-2.png",
+      "pages/vendor-annotations-roundtrip-svg.png"
     ],
     "uncompleted": {
       "pages/italic-fixed-anchor-svg.png": "Shear visible but original rectangle font is substituted by librsvg; native browser raster still required for font fidelity."
@@ -167,9 +178,9 @@
   },
   "macos_preview": {
     "status": "not-completed",
-    "reason": "Mac relocked after historical10/37-page inspection; latest40 outputs require reopen after manual unlock",
+    "reason": "Mac relocked after historical10/37-page inspection; latest42 outputs require reopening after manual unlock",
     "checked_pages": [],
-    "latest_required_pdf_pages": 40,
+    "latest_required_pdf_pages": 42,
     "historical_checked_pages": 10,
     "historical_source_commit": "c10f002299726bebd7495122702df3658572faaa",
     "historical_record": "preview-progress.json",
@@ -177,20 +188,20 @@
     "remaining_window": "old watermark.pdf page2; close blocked by lock"
   },
   "pr_review": {
-    "status": "declared-resource suffix finding fixed and independently verified; new-head review pending; Preview remains open",
-    "review_head": "04213d9fa8d7053aed0b7be8fa8b5ecd17905e82",
-    "codex": "only new functional P2 at04213d9 was declared resource XML suffix; repaired at81233d9",
-    "cursor": "04213d9 functional closure confirmed; mandatory Preview remains open",
-    "ci": "04213d9 all six checks succeeded; new head pending"
+    "status": "two latest findings plus analogous template namespace defect repaired; independent274 and new-head review pending; Preview open",
+    "review_head": "e08e5ae5cc5d201a904e2f9e9dd884270d0b4bcf",
+    "codex": "vendor annotation namespace before Resolve/dedup repaired",
+    "cursor": "resource-only IDs outside xml suffix now reserved before new object allocation",
+    "ci": "e08e5ae all six checks succeeded; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 40505950,
-    "sha256": "761f6366d546b89fae48b0f2ba8638a5b744877e919495a03c8e51fac189f445",
-    "extraction_readback": "passed: freshly extracted all291 file sizes and SHA256",
-    "file_count": 291,
-    "expanded_bytes": 1404500937,
-    "integrity_status": "passed: freshly extracted all291 file sizes and SHA256"
+    "bytes": 41263168,
+    "sha256": "723c04c7a4905c5de27fe7b9100966120265117b4dfc6ed5b861f8ac6296749e",
+    "extraction_readback": "passed: freshly extracted all319 file sizes and SHA256",
+    "file_count": 319,
+    "expanded_bytes": 1487570542,
+    "integrity_status": "passed: freshly extracted all319 file sizes and SHA256"
   },
   "ofd_sizes": {
     "annotation-clipped-mix.ofd": {
@@ -274,7 +285,7 @@
       "ratio_to_native_baseline": 0.9998
     },
     "resource-suffix-input.ofd": {
-      "bytes": 11605590,
+      "bytes": 11605271,
       "ratio_to_native_baseline": 1.0002
     },
     "rich.ofd": {
@@ -305,12 +316,20 @@
       "bytes": 11604588,
       "ratio_to_native_baseline": 1.0001
     },
+    "vendor-annotations-input.ofd": {
+      "bytes": 11604592,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "vendor-annotations-roundtrip.ofd": {
+      "bytes": 11604732,
+      "ratio_to_native_baseline": 1.0002
+    },
     "watermark-merged.ofd": {
       "bytes": 11604477,
       "ratio_to_native_baseline": 1.0001
     },
     "watermark-resource-suffix.ofd": {
-      "bytes": 11605693,
+      "bytes": 11605709,
       "ratio_to_native_baseline": 1.0002
     },
     "watermark.ofd": {
@@ -331,5 +350,6 @@
     "template-wrapper-extension": "Mix rejected; reference XML remains preserved"
   },
   "template_liveness_sample": "extensionless state.dat nested Extension BaseLoc ../Templates retains template declaration/payload while selecting page2",
-  "resource_suffix_sample": "resource-suffix-input has declared real font .dat and image .bin; watermark-resource-suffix preserves both plus body/annotation/template and adds one label"
+  "resource_suffix_sample": "real dat/bin font/media IDs just above all other IDs and above a stale document hint; watermark output has globally unique IDs and unchanged binding/paint",
+  "vendor_annotation_sample": "two vendor Annotations plus same-ID vendor TemplatePage precede standard declarations; unsafe-looking literals preserved, standard NOTE/template paint, Mix refuses unknown metadata"
 }
