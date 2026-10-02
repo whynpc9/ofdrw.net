@@ -572,6 +572,23 @@ public sealed class DocumentToolTests
         using var input = Zip(source.PreservedEntries); await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(input));
     }
 
+    [Fact]
+    public async Task VendorTemplateDeclaration_DoesNotEnterTheStandardTemplateIdTable()
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var vendor = XName.Get("TemplatePage", "urn:vendor");
+        var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Element(ns + "CommonData")!.Add(
+            new XElement(vendor, new XAttribute("ID", "700"), new XAttribute("BaseLoc", "../../../external")),
+            new XElement(ns + "TemplatePage", new XAttribute("ID", "700"), new XAttribute("BaseLoc", "Templates/Content.xml")));
+        Put(source, "Doc_0/Document.xml", document); var path = source.Pages[0].SourceEntryPath!; var page = Xml(source, path);
+        page.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "700"))); Put(source, path, page);
+        source.PreservedEntries["Doc_0/Templates/Content.xml"] = Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Content><Layer ID='702'><TextObject ID='703' Size='3'><TextCode X='0' Y='3'>TEMPLATE</TextCode></TextObject></Layer></Content></Page>");
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        Assert.Equal("TEMPLATE", Assert.IsType<OfdTextElement>(Assert.Single(Assert.Single(read.Pages[0].Templates).Elements)).Text);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+        var saved = await RoundTrip(read); Assert.Equal("../../../external", Assert.Single(Xml(saved, "Doc_0/Document.xml").Descendants(vendor)).Attribute("BaseLoc")!.Value);
+        Assert.Equal("TEMPLATE", Assert.IsType<OfdTextElement>(Assert.Single(Assert.Single(saved.Pages[0].Templates).Elements)).Text);
+    }
+
     [Theory]
     [InlineData("PublicRes", ".xml")]
     [InlineData("PublicRes", ".dat")]
