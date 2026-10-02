@@ -1,5 +1,5 @@
 {
-  "source_commit": "89e962ee1e41d2de050fc16d409ddc6e6cafedc1",
+  "source_commit": "57cd076016b132057ce39bab51fb39f2cab7f160",
   "baseline": "be8b74b3cbd699732ec0638189d14037e052a770",
   "date": "2026-10-02",
   "timezone": "Asia/Shanghai",
@@ -17,10 +17,10 @@
     "shared-seal": "appearance-only OFD with six repeated nested payload placements -> PDF / strict cached image export; no cryptographic validity claim"
   },
   "tests": {
-    "total": 274,
+    "total": 280,
     "failed": 0,
     "packages": 11,
-    "package_version": "0.1.0-issue02.review11"
+    "package_version": "0.1.0-issue02.review12"
   },
   "png_visual_review": [
     "export-1.png",
@@ -35,14 +35,61 @@
     "shared-seal.png"
   ],
   "preview": {
-    "status": "not-reviewed",
-    "reason": "Mac locked; automatic unlock failed",
-    "required": [
-      "source.pdf:1-2",
-      "imported.pdf:1-2",
-      "baseline-native.pdf:1-2",
-      "baseline-default.pdf:1-2",
-      "shared-seal.pdf:1"
+    "status": "reviewed-with-findings",
+    "reason": "Source sample italic not rendered by existing shared PDF path",
+    "overall_visual_accepted": false,
+    "checked_pages": 9,
+    "record": "preview-acceptance.json",
+    "checks": [
+      {
+        "artifact": "source.pdf",
+        "sha256": "00a1655288354ef1e9501351e145e03d8304b4b0f675c7c0c4d21f47b9f596a3",
+        "pages": [
+          1,
+          2
+        ],
+        "result": "failed: Italic color is upright",
+        "window_closed": true
+      },
+      {
+        "artifact": "imported.pdf",
+        "sha256": "d8c71fc54f33fa9f06dda511c694638ccdd9c4a3d96bf20ac6a30ce09ee3e5d0",
+        "pages": [
+          1,
+          2
+        ],
+        "result": "passed: centered, ordered quadrants and white margins",
+        "window_closed": true
+      },
+      {
+        "artifact": "baseline-native.pdf",
+        "sha256": "eb9cb57d38093256aed13386aefe9528e7972833caff20dd3230885f6261fdc0",
+        "pages": [
+          1,
+          2
+        ],
+        "result": "passed: text, table, styles, alignment and pagination",
+        "window_closed": true
+      },
+      {
+        "artifact": "baseline-default.pdf",
+        "sha256": "af743e680aed4ac8e7ab834dc05aac3e7880d224552cacf90327bb0d4b3cfa48",
+        "pages": [
+          1,
+          2
+        ],
+        "result": "passed: text, table, styles, alignment and pagination",
+        "window_closed": true
+      },
+      {
+        "artifact": "shared-seal.pdf",
+        "sha256": "19da54e042d297709416d8fe9d5f03b705813b9b3c9b7c35eef5d099d37f8616",
+        "pages": [
+          1
+        ],
+        "result": "passed: six red squares, spacing and bounds; not cryptographic validity",
+        "window_closed": true
+      }
     ]
   },
   "files": [
@@ -94,12 +141,12 @@
     {
       "path": "imported.ofd",
       "bytes": 3405,
-      "sha256": "359f1d188b2daaed96ef0fad4017441b8148369886e1bcf02c3f6cc47cb7bef1"
+      "sha256": "6f0b8c5c6a714c07a19b0c92de528cde830d0dfe841d3c9ebce39252011b027d"
     },
     {
       "path": "imported.pdf",
       "bytes": 3414,
-      "sha256": "3b7e400e631ff45cf6e30d65f90a5beae53f5409ae8cb146116e82bc121856dd"
+      "sha256": "d8c71fc54f33fa9f06dda511c694638ccdd9c4a3d96bf20ac6a30ce09ee3e5d0"
     },
     {
       "path": "input.jpg",
@@ -113,13 +160,13 @@
     },
     {
       "path": "shared-seal.ofd",
-      "bytes": 3278,
-      "sha256": "8eb10a34debac77e0d54288b5b34e45b42bb7074e6dfc9296df7a0a12b765400"
+      "bytes": 3279,
+      "sha256": "78e8959a9c9518fb190de86b26d318283957e0a280c1a1f8c93b48eb3fcbb160"
     },
     {
       "path": "shared-seal.pdf",
       "bytes": 3255,
-      "sha256": "5475f101d0555773da2c006c1e4ae056feb8f40de747a48b9c00a278f5635e77"
+      "sha256": "19da54e042d297709416d8fe9d5f03b705813b9b3c9b7c35eef5d099d37f8616"
     },
     {
       "path": "shared-seal.png",
@@ -129,53 +176,53 @@
     {
       "path": "source.ofd",
       "bytes": 2969,
-      "sha256": "84d6c93d701f0153c81ab9d0df2c523899f209bd4d52103d3743addffec943ff"
+      "sha256": "fb8a5c97442ff586e87c73e2f2c08b64b84a0e2aa34a3861b356932a71b9c664"
     },
     {
       "path": "source.pdf",
       "bytes": 69655,
-      "sha256": "5df4210ee45cf5a0fd34830dc23e57115c54152690646208b942c9e733927523"
+      "sha256": "00a1655288354ef1e9501351e145e03d8304b4b0f675c7c0c4d21f47b9f596a3"
     },
     {
       "path": "baseline-native.ofd",
-      "bytes": 15288606,
-      "sha256": "29bf03301b9c419d7aee3e3804db7d176998b49d6d8f8807ed299cb2a7a8a323"
+      "bytes": 15288607,
+      "sha256": "825e71f8ccaf9c58055a5b74ae6f592c608aaf90fd66332446a2cecfa351106e"
     },
     {
       "path": "baseline-native.pdf",
       "bytes": 117446,
-      "sha256": "49d039898145f5a920301e58aacd19b72fd57e7e70f2c0c8b3a715850a04a29c"
+      "sha256": "eb9cb57d38093256aed13386aefe9528e7972833caff20dd3230885f6261fdc0"
     },
     {
       "path": "baseline-default.ofd",
       "bytes": 15288607,
-      "sha256": "85699d226ae7832090d045ad2905db68278035a7bdc76d3a104b702d3aff1dca"
+      "sha256": "c59adefcefbb37877a7db69d6a93b98b4289d1c77bb79a57f6a18062bbc25342"
     },
     {
       "path": "baseline-default.pdf",
       "bytes": 117446,
-      "sha256": "9827f4015a812c3de8c97a0aa0a40b3dd9de7031f3c761fcf9b289383de24c51"
+      "sha256": "af743e680aed4ac8e7ab834dc05aac3e7880d224552cacf90327bb0d4b3cfa48"
     },
     {
       "path": "tests.txt",
       "bytes": 6326,
-      "sha256": "3459fbce79784cef9b192778b91c6d6aa3c79ec9fc1406f1da7135cb7aeec56b"
+      "sha256": "9f5f8753acfaafee10f84c1b563f68f2db26d295150282eaa73a1019078228cc"
     },
     {
       "path": "package-e2e.txt",
-      "bytes": 10806,
-      "sha256": "f32e10a3acf6fd66de72694bc12855d410930023ca12fff2d7d822535c62c193"
+      "bytes": 10807,
+      "sha256": "9f732a5fdd03ddf69197a830aad9c5d949fb3c3538ddb165e12a0204e37ac903"
     },
     {
       "path": "package-manifest.json",
       "bytes": 2249,
-      "sha256": "6a190619493b5d6e3b7ef56099b8f3ddcad1eed8f3076fec87cd09700cf9f170"
+      "sha256": "c135e9712c63768afd5ce20c49b63afb2545faf744a3c2b5490687a5d5faa222"
     }
   ],
   "archive": {
     "path": "evidence.tar.xz",
-    "bytes": 15549460,
-    "sha256": "c5ff848bdd4d68dc659372ed847dcbb1e260510d631f1387978fecaf5169894f"
+    "bytes": 15549652,
+    "sha256": "0ca05fd27d37527ca9edafff5a2b5a1719cd932dda2d36d93e62f63e57251dfc"
   },
-  "review_generation": "review11; all 10 fresh PNG/JPEG pages re-inspected; Preview locked"
+  "review_generation": "review12; 10 fresh PNG/JPEG pages and 9 macOS Preview pages checked; source italic finding remains"
 }
