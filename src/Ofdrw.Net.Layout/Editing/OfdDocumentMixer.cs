@@ -41,6 +41,7 @@ public static class OfdDocumentMixer
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
             OfdDocumentSplitter.ValidateSingleDocument(item.Package);
             OfdDocumentSplitter.ValidatePages(item.Package, new[] { item.PageIndex });
+            OfdPageXmlContract.ValidateWritableDimensions(item.Package.Pages[item.PageIndex].WidthMillimeters, item.Package.Pages[item.PageIndex].HeightMillimeters);
             OfdPageXmlContract.ValidateDocumentArea(item.Package, cancellationToken);
             ValidateCustomTags(item.Package, cancellationToken);
             foreach (var tag in item.Package.CustomTags)

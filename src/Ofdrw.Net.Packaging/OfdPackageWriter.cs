@@ -38,6 +38,8 @@ public sealed class OfdPackageWriter
         cancellationToken.ThrowIfCancellationRequested();
         OfdPageXmlContract.ValidateDocumentArea(package, cancellationToken);
         foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, cancellationToken);
+        if (package.Pages.Count == 0) OfdPageXmlContract.ValidateWritableDimensions(
+            package.Options.DefaultPageWidthMillimeters, package.Options.DefaultPageHeightMillimeters);
         var entries = BuildEntries(package, cancellationToken);
         var result = OfdPackagePruner.Prune(package, entries, cancellationToken);
         using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);

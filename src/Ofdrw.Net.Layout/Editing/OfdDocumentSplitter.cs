@@ -19,10 +19,12 @@ public static class OfdDocumentSplitter
         if (source is null) throw new ArgumentNullException(nameof(source));
         ValidateSingleDocument(source);
         ValidatePages(source, pages);
+        foreach (var index in pages) OfdPageXmlContract.ValidateWritableDimensions(source.Pages[index].WidthMillimeters, source.Pages[index].HeightMillimeters);
         OfdPageXmlContract.ValidateDocumentArea(source, cancellationToken);
         if (!source.PreservedEntries.ContainsKey("OFD.xml"))
         {
-            if (source.PreservedEntries.Count > 0 || source.PreservedCommonDataElements.Count > 0 || source.PreservedDocumentElements.Count > 0 || source.PreservedDocBodyElements.Count > 0)
+            if (source.PreservedEntries.Count > 0 || source.PreservedCommonDataElements.Count > 0 || source.PreservedDocumentElements.Count > 0 || source.PreservedDocBodyElements.Count > 0 ||
+                pages.Any(index => source.Pages[index].PreservedPageElements.Count > 0))
                 throw new NotSupportedException("Persist packages with preserved extensions before splitting.");
             var selected = new OfdDocumentPackage { Options = source.Options };
             selected.Pages.AddRange(pages.Select(index => source.Pages[index]));

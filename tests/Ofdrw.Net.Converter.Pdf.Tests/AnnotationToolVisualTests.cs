@@ -18,6 +18,53 @@ public sealed class AnnotationToolVisualTests
 {
     public AnnotationToolVisualTests() => PdfFontRegistry.EnsureInstalled();
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InexactAnnotationBoxKeepsOrdinaryPaintButRefusesMix(bool primitive)
+    {
+        var boundary = primitive ? "0 0 10 10 SECRET" : "0 0 10 10";
+        var source = await Annotated($"<PathObject Boundary='{boundary}' Fill='true' Stroke='false'><FillColor Value='255 0 0'/><AbbreviatedData>M 0 0 L 10 0 L 10 10 L 0 10 C</AbbreviatedData></PathObject>", primitive ? "10 10 20 20" : "10 10 20 20 SECRET");
+        Assert.Single(source.Pages[0].AnnotationAppearances.OfType<OfdPathElement>());
+        Assert.Contains(source.Pages[0].AnnotationAppearances, element => element is OfdRawElement { LocalName: "UnmodeledAnnotationMetadata" });
+        using var ofd = await Write(source); using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using var doc = DocLib.Instance.GetDocReader(pdf.ToArray(), new PageDimensions(2d)); using var page = doc.GetPageReader(0);
+        Assert.InRange(Pixel(page.GetImage(), page.GetPageWidth(), 15, 15, 1), 0, 10);
+        ofd.Position = 0; using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(ofd, svg);
+        Assert.Contains("255,0,0", Encoding.UTF8.GetString(svg.ToArray()).Replace(" ", ""));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InexactPhysicalBoxKeepsActualPdfAndSvgSize(bool inherited)
+    {
+        var source = new OfdDocumentPackage(); source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        using var written = await Write(source); var read = await new OfdReader().ReadAsync(written); var ns = XNamespace.Get(read.Options.Namespace);
+        var path = inherited ? "Doc_0/Document.xml" : read.Pages[0].SourceEntryPath!;
+        var xml = XDocument.Parse(Encoding.UTF8.GetString(read.PreservedEntries[path]).TrimStart('\uFEFF'));
+        xml.Descendants(ns + (inherited ? "PageArea" : "Area")).Single().Element(ns + "PhysicalBox")!.Value = "0 0 100 80 SECRET";
+        read.PreservedEntries[path] = Encoding.UTF8.GetBytes(xml.ToString());
+        if (inherited)
+        {
+            path = read.Pages[0].SourceEntryPath!; xml = XDocument.Parse(Encoding.UTF8.GetString(read.PreservedEntries[path]).TrimStart('\uFEFF')); xml.Root!.Element(ns + "Area")!.Remove(); read.PreservedEntries[path] = Encoding.UTF8.GetBytes(xml.ToString());
+        }
+        using var input = PreservedZip(read); using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
+        using var doc = DocLib.Instance.GetDocReader(pdf.ToArray(), new PageDimensions(2d)); using var page = doc.GetPageReader(0);
+        Assert.InRange(page.GetPageWidth(), 566, 568); Assert.InRange(page.GetPageHeight(), 453, 455);
+        input.Position = 0; using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(input, svg);
+        var root = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Root!;
+        Assert.Equal("0 0 100 80", root.Attribute("viewBox")!.Value);
+    }
+
+    private static MemoryStream PreservedZip(OfdDocumentPackage source)
+    {
+        var input = new MemoryStream();
+        using (var zip = new ZipArchive(input, ZipArchiveMode.Create, true)) foreach (var pair in source.PreservedEntries) { using var entry = zip.CreateEntry(pair.Key).Open(); entry.Write(pair.Value); }
+        input.Position = 0; return input;
+    }
+
     [Fact]
     public async Task ShearedAppearance_IsClippedToExactPolygonBeforeAndAfterMix()
     {
