@@ -260,9 +260,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             font = new XFont(familyName, fontSize, style);
                             face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName, bold, italic);
                         }
-                        catch (Exception exception) when (resource?.Data.Length > 0)
+                        catch (Exception exception) when ((resource?.Data.Length > 0 || familyName.StartsWith("ofd-font-", StringComparison.Ordinal)) &&
+                                                           exception is not OutOfMemoryException && exception is not OperationCanceledException)
                         {
-                            throw new InvalidDataException($"Embedded font '{resource.FontName}' could not be initialized.", exception);
+                            throw new InvalidDataException($"Embedded font '{resource?.FontName ?? familyName}' could not be initialized.", exception);
                         }
                         catch (Exception exception) when (exception is not OutOfMemoryException &&
                                                            exception is not OperationCanceledException)

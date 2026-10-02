@@ -1,0 +1,100 @@
+[
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r11/filler-space.pdf",
+    "pages": 1,
+    "sha256": "042c39ff1399f48f3de584706a8ab6b6108aa8baa65bd914796fec8c53675a40",
+    "bytes": 12082,
+    "evidence_path": "controls/r11/filler-space.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r11/filler-3164.pdf",
+    "pages": 1,
+    "sha256": "8201fc3773405fa4f6bccfdadc70982a39282b1b2fddf537cebff536aa730c4b",
+    "bytes": 12084,
+    "evidence_path": "controls/r11/filler-3164.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r11/filler-space-delta.pdf",
+    "pages": 1,
+    "sha256": "ea8a3033b543b9482591be90cb35f835075f7d74d3e6a815dd07a5e37de378f3",
+    "bytes": 12102,
+    "evidence_path": "controls/r11/filler-space-delta.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r11/filler-3164-delta.pdf",
+    "pages": 1,
+    "sha256": "37f7925aad6b4e861cb7f0d468389d380eb55605a3acc28e06ff6388d6f6fe03",
+    "bytes": 12104,
+    "evidence_path": "controls/r11/filler-3164-delta.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r11/lrm.pdf",
+    "pages": 1,
+    "sha256": "7732ef1307834d6b5388703d3eecdddc9cd2ca5341251b5cde557910a5f0136c",
+    "bytes": 12065,
+    "evidence_path": "controls/r11/lrm.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r11/deprecated.pdf",
+    "pages": 1,
+    "sha256": "180580149053e5c872e5e6e2b20bea7758a319a65a7881a8711e8687ff26873c",
+    "bytes": 12066,
+    "evidence_path": "controls/r11/deprecated.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r11/missing.pdf",
+    "pages": 1,
+    "sha256": "17ed3fbbff8da7786be6bcd68ebdf246daf1e3f16c483cf7ae9c54422a6803bc",
+    "bytes": 12811,
+    "evidence_path": "nameonly/r11/missing.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r11/mapped.pdf",
+    "pages": 1,
+    "sha256": "b68688b3c1dc41c8ac2aecbe6b416e092fa14f3277cb0bc137adff309f708598",
+    "bytes": 12827,
+    "evidence_path": "nameonly/r11/mapped.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r11/missing-fallback.pdf",
+    "pages": 1,
+    "sha256": "a8dd2c63e5e0176fd6f7eda00018a1c181d953400d093581aeec6dbf62a95ade",
+    "bytes": 48146,
+    "evidence_path": "nameonly/r11/missing-fallback.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r11/missing-arial-null.pdf",
+    "pages": 1,
+    "sha256": "7dd0d37bcbad847d736a7a371dba6baa1c639342d693b8d8b0c50a83fe258ffa",
+    "bytes": 48146,
+    "evidence_path": "nameonly/r11/missing-arial-null.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r11/missing-arial-cmap.pdf",
+    "pages": 1,
+    "sha256": "c0e95b4ae5cb7816d01d5d5ab63efa64a7c1eb0d835dc9a94526a73a8925b79f",
+    "bytes": 48146,
+    "evidence_path": "nameonly/r11/missing-arial-cmap.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r11/missing-default-ttc.pdf",
+    "pages": 1,
+    "sha256": "0a06900729b5dfbb8db4a8c69140823e97d74aa174ae9148c49aa0a1560a74f2",
+    "bytes": 48148,
+    "evidence_path": "nameonly/r11/missing-default-ttc.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r11-final/ligature.pdf",
+    "pages": 1,
+    "sha256": "416756d7fa157cffef8f367f7d0ee3a197bf6429e45c5ffe524fbc3866c6421f",
+    "bytes": 12480,
+    "evidence_path": "controls/r11-final/ligature.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r11-final/missing-arial-getter.pdf",
+    "pages": 1,
+    "sha256": "e540e8e1c489ade2f44965934960adc92ed110328d2c89c50dea1d748965cc08",
+    "bytes": 48146,
+    "evidence_path": "nameonly/r11-final/missing-arial-getter.pdf"
+  }
+]

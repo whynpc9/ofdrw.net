@@ -13,6 +13,7 @@ internal sealed class DocumentFontContext
     private readonly IFontResolver _fallbackResolver;
     private readonly Dictionary<string, OpenTypeCmap> _fallbackCoverage = new();
     private readonly Dictionary<OfdFontResource, OpenTypeCmap> _coverage = new();
+    private readonly Dictionary<OfdFontResource, NotSupportedException> _unsupportedCoverage = new();
     private readonly Dictionary<OfdFontResource, string> _families = new();
     internal Dictionary<string, SixLabors.Fonts.FontFamily> OutlineFonts { get; } = new();
 
@@ -28,7 +29,8 @@ internal sealed class DocumentFontContext
             {
                 var data = OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
                 _families[font] = PdfFontRegistry.RegisterFontFace(data, font.Bold, font.Italic);
-                _coverage[font] = new OpenTypeCmap(new OpenTypeFace(data));
+                try { _coverage[font] = new OpenTypeCmap(new OpenTypeFace(data)); }
+                catch (NotSupportedException exception) { _unsupportedCoverage[font] = exception; }
                 continue;
             }
 
@@ -79,6 +81,8 @@ internal sealed class DocumentFontContext
                 throw new NotSupportedException("PDFsharp cannot preserve supplementary Unicode text; use OFD/SVG or a PDF renderer with full scalar support.");
         }
         resource = OfdFontSelection.Resolve(_fonts, text);
+        if (resource is not null && _unsupportedCoverage.TryGetValue(resource, out var unsupported))
+            throw new NotSupportedException($"Selected embedded font '{resource.FontName}' has unmodeled cmap coverage.", unsupported);
         if (resource is not null && _coverage.TryGetValue(resource, out var coverage))
         {
             try
@@ -88,16 +92,44 @@ internal sealed class DocumentFontContext
             }
             catch (System.IO.InvalidDataException) when (resource.Data.Length == 0)
             {
-                // Optional discovery must give the host's configured default a
-                // chance, but never return a known missing-glyph face as success.
-                var face = _fallbackResolver.ResolveTypeface(_fallbackResolver.DefaultFontName, text.Weight >= 600 || resource.Bold, text.Italic || resource.Italic);
-                var bytes = _fallbackResolver.GetFont(face.FaceName);
-                var fallbackCmap = new OpenTypeCmap(new OpenTypeFace(bytes));
-                foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
-                    EmbeddedFontCoverage.Validate(value, fallbackCmap, _fallbackResolver.DefaultFontName);
-                var fallbackFamily = PdfFontRegistry.RegisterFontFace(bytes, text.Weight >= 600 || resource.Bold, text.Italic || resource.Italic);
-                _fallbackCoverage[fallbackFamily] = fallbackCmap;
-                return fallbackFamily;
+                // Probe the configured default and then the existing Arial fallback.
+                // Each candidate must be parsed and cover the text before drawing.
+                // Host lookup/parse failures are optional; known missing glyphs are
+                // never returned as success or silently painted as boxes.
+                Exception? lastFailure = null;
+                var candidates = new List<string>();
+                try
+                {
+                    var defaultName = _fallbackResolver.DefaultFontName;
+                    if (!string.IsNullOrWhiteSpace(defaultName)) candidates.Add(defaultName);
+                }
+                catch (Exception exception) when (exception is not OutOfMemoryException &&
+                                                   exception is not OperationCanceledException)
+                { lastFailure = exception; }
+                candidates.Add("Arial");
+                foreach (var candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        var bold = text.Weight >= 600 || resource.Bold;
+                        var italic = text.Italic || resource.Italic;
+                        var face = _fallbackResolver.ResolveTypeface(candidate, bold, italic);
+                        if (face is null) continue;
+                        var bytes = OpenTypeCollection.SelectFace(_fallbackResolver.GetFont(face.FaceName), 0);
+                        var fallbackCmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+                        foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
+                            EmbeddedFontCoverage.Validate(value, fallbackCmap, candidate);
+                        var fallbackFamily = PdfFontRegistry.RegisterFontFace(bytes, bold, italic);
+                        _fallbackCoverage[fallbackFamily] = fallbackCmap;
+                        return fallbackFamily;
+                    }
+                    catch (Exception exception) when (exception is not OutOfMemoryException &&
+                                                       exception is not OperationCanceledException)
+                    {
+                        lastFailure = exception;
+                    }
+                }
+                throw new System.IO.InvalidDataException($"No usable covering fallback font was found for '{resource.FontName}'.", lastFailure);
             }
         }
         return resource is not null && _families.TryGetValue(resource, out var family)

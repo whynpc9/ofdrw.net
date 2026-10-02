@@ -74,7 +74,12 @@ internal sealed class OfdFontEmbeddingPlan
             if (options.Mode != OfdFontEmbeddingMode.Full)
             {
                 OpenTypeCmap? cmap = null;
-                try { if (face is not null) { cmap = new OpenTypeCmap(face); if (cmap.IsSymbol) reason ??= "Windows symbol cmap retained in full; Unicode subsetting is not applied."; } }
+                try { if (face is not null) { cmap = new OpenTypeCmap(face); if (cmap.IsSymbol)
+                    {
+                        reason ??= "Windows symbol cmap retained in full; Unicode coverage/subsetting is unverified.";
+                        cmap = null;
+                        Diagnostics.Add("FONT_COVERAGE_UNVERIFIED " + group.Key + ": Windows symbol character semantics are not modeled; original font preserved.");
+                    } } }
                 catch (NotSupportedException exception) { reason = exception.Message + " Full font retained; coverage was not validated."; }
                 var used = new HashSet<int>();
                 foreach (var text in texts.Where(text => aliases.Contains(OfdFontSelection.Resolve(package.Fonts, text)!)))

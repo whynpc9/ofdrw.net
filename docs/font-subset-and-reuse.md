@@ -55,10 +55,12 @@ SDK 内部使用纯 .NET managed sfnt/glyf 后端，无 Python/fonttools、HarfB
 
 `SourceXml` 必须是一个合法 XML 元素。无法解析的 XML 在 Full/subset 两种模式都于 ZIP 写出前明确拒绝，保留调用方原字节；“未知内容保护”不承诺把非法 XML 写成合法 OFD。
 
-PDF 绘制时对 ZWJ/ZWNJ 等非绘制控制符跳过绘制，OFD 的 Unicode 原文不变，显式 Runs/Delta 坐标槽位不重排。PDF 的可见文本抽取忽略这些控制符；方向格式控制及 UVS 语义由当前 PDFsharp 无法保真，因此明确拒绝这些 PDF 导出，OFD/SVG 保留原文和语义。不能把 coverage 豁免或文件生成成功视为控制字符的视觉通过。
+PDF 对 ZWJ/ZWNJ 的连接/连字语义明确拒绝；可安全省略的零宽格式控制才跳过绘制，OFD 的 Unicode 原文不变，显式 Runs/Delta 坐标槽位不重排。PDF 的可见文本抽取忽略可省略的格式控制符；方向格式控制及 UVS 语义由当前 PDFsharp 无法保真，因此明确拒绝这些 PDF 导出，OFD/SVG 保留原文和语义。不能把 coverage 豁免或文件生成成功视为控制字符的视觉通过。
 
 绘制过滤只省略零宽格式控制符或已知 cmap 无字形的 default-ignorable；已映射的 Hangul filler 保留真实字宽，包括无 Delta 的字符串和每个 gap 明确 Delta 的游程。Unicode方向格式控制全部（含 U+202C）以及蒙古文 free variation selectors 的 PDF 语义明确拒绝，避免删除控制符后改变排列或变体。
 
 Name-only 资源若通过本地发现或 host style probe 取得真实字节，注册与 coverage 一起绑定并缓存；无字形 filler 不被误当作 mapped。LRM/已弃用零宽控制按可省略策略绘制，明确拒绝范围仅含需要当前引擎未实现排列语义的九个方向格式控制，避免不必要拒绝。
 
 发现的 name-only face 缺普通字符时，宿主默认回退获得机会；回退仍必须覆盖实际文字，无法覆盖则明确失败，绝不返回已知缺字的 face 画方框。Windows symbol cmap 3/0 格式 4 保持全量并诊断，读取支持直接字符与 F000 重映射；SVG 未使用的其它合法未建模 cmap 不阻断 CSS 资源输出，真正被选择且无法验证的编码则明确拒绝。RLM/ALM 的 PDF 方向语义仍拒绝，LRM/弃用零宽按省略策略处理。
+
+名称字体的候选回退按配置 default、Arial 顺序探测真实字节；空宿主结果、读取/格式/cmap 或注册预算失败可尝试下一候选，TTC 使用 face 0。只有已验证覆盖全部当前文本且注册同一字节的候选才返回成功；全部失败明确拒绝，不用未验证字体绘制缺字框。未使用的合法但未建模 cmap 不阻断 PDF，实际选中后明确拒绝。Symbol 写包保全量且诊断 coverage 未验证，普通 Unicode 字体缺字检查仍严格。

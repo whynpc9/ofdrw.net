@@ -10,10 +10,10 @@
   },
   "functional": {
     "status": "pass",
-    "tests": 466,
+    "tests": 478,
     "independent_focused": 72,
     "packages": 11,
-    "package_version": "0.1.0-issue05.20261003.11",
+    "package_version": "0.1.0-issue05.20261003.13",
     "package_status": "pass",
     "document_tools": {
       "samples": 36,
@@ -22,14 +22,15 @@
       "ci_failure": "First head failed when text was introduced into a previously empty subset; caller now rebinds source face / explicitly preserves full font for future opaque annotation injection."
     },
     "all_11_packages_contain_unicode_license": true,
-    "latest_independent_focused": 26
+    "latest_independent_focused": 38
   },
   "automated_render": {
     "status": "pass",
     "pdf_pages": 8,
     "chromium_svg_pages": 8,
     "poppler_stderr": "none",
-    "full_subset_pixels_equal": true
+    "full_subset_pixels_equal": true,
+    "r11_package_eight_pages_equal_to_previous_preview_artifact_pixels": true
   },
   "png_visual": {
     "status": "pass",
@@ -75,13 +76,15 @@
     "task_windows_closed": true,
     "ui_released": true,
     "record": "preview-acceptance.json",
-    "controls_status": "pending unlock/exclusive slot: final control/filler/name-only follow-up pages"
+    "controls_status": "pending unlock/exclusive slot: final filler/LRM/name-only/covering-fallback success pages; ZWJ/ZWNJ now refuse PDF",
+    "followup_queue": "preview-queue-r11.json",
+    "followup_success_pages": 14
   },
   "overall_visual_complete": false,
   "production_release_accepted": false,
   "unresolved": [
-    "supplementary control rendering Preview (2 pages)",
-    "latest-head CI and review closure"
+    "Final filler/LRM/name-only/covering-fallback Preview pending unlock and exclusive GUI slot",
+    "Latest-head CI and fresh Codex/Cursor review closure"
   ],
   "viewing_chain": "Fixed DOCX -> Native/default OFD produced this run -> OFD PDF exporter -> macOS Preview 1-2 pages each; full/subset OFD -> PDF -> Preview 1-2 each. No direct DOCX->PDF substituted.",
   "controls_render": {
@@ -90,6 +93,8 @@
     "coordinates": "actual PDF regression verifies explicit Runs/Delta slots remain unchanged",
     "r8": "pass PNG: mapped Hangul filler retains advance for implicit and per-gap Delta runs; ZWJ/ZWNJ unchanged; PDF end-direction/Mongolian FVS refused.",
     "r9": "pass actual PDF: LRM/206A and other zero-width cases equal AB; registered name-only physical bytes supply same cached cmap for missing/mapped filler.",
-    "r10": "pass actual PDF: name-only ordinary missing glyph uses a covering default face or fails with 0 bytes; valid symbol cmap selected/unused SVG generation passes, actual browser embedded-symbol identity remains unverified."
+    "r10": "pass actual PDF: name-only ordinary missing glyph uses a covering default face or fails with 0 bytes; valid symbol cmap selected/unused SVG generation passes, actual browser embedded-symbol identity remains unverified.",
+    "r11": "ZWJ/ZWNJ explicitly refused with 0 bytes; unused format0 cmap PDF succeeds / selected refuses; symbol A-space/AB/read-edit full retained unverified; null/resolve/read/cmap failures try verified Arial; TTC default selects face0. Guarded throwing default-name getter still tries verified Arial; pinned Noto office/ffi baseline succeeds and join variants reject with exact OFD text retained.",
+    "r11_independent": "38/38 focused; actual null/cmap/TTC/default getter fallbacks cover U4E00; office/ffi baseline succeeds, ZWJ/ZWNJ exact OFD retained and PDF refuses with 0B; final fourteen success PDF pages remain Preview pending."
   }
 }
