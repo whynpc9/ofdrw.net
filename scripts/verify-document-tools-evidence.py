@@ -17,7 +17,7 @@ def pages(entries):
 def texts(entries, page):
     path = 'Doc_0/' + page.attrib['BaseLoc']
     return ''.join(node.text or '' for node in ET.fromstring(entries[path]).iter() if local(node) == 'TextCode')
-expected = {'baseline-native':2,'baseline-default':2,'rich':2,'annotation-metadata':2,'signed':2,'watermark':2,'watermark-merged':3,'watermark-resource-suffix':2,'split':2,'split-template-liveness':1,'mix':1,'clean':2,'overlay':1,'cli-watermark':2,'cli-split':2,'cli-mix':1,'cli-clean':2,'cli-merged':3,'annotation-clipped':1,'annotation-clipped-mix':1,'italic-marked':1,'italic-control':1,'italic-user-matrix':1,'italic-fixed-anchor':1}
+expected = {'baseline-native':2,'baseline-default':2,'rich':2,'annotation-metadata':2,'signed':2,'watermark':2,'watermark-merged':3,'watermark-resource-suffix':2,'vendor-annotations-roundtrip':2,'split':2,'split-template-liveness':1,'mix':1,'clean':2,'overlay':1,'cli-watermark':2,'cli-split':2,'cli-mix':1,'cli-clean':2,'cli-merged':3,'annotation-clipped':1,'annotation-clipped-mix':1,'italic-marked':1,'italic-control':1,'italic-user-matrix':1,'italic-fixed-anchor':1}
 with zipfile.ZipFile(directory/'licensed-layout.docx') as archive:
     source_text = ''.join(node.text or '' for node in ET.fromstring(archive.read('word/document.xml')).iter() if local(node)=='t')
 source = contents('signed')
@@ -50,6 +50,15 @@ for name, count in expected.items():
         assert data['Doc_0/PublicResources.dat'] and data['Doc_0/ImageResources.bin']
         assert texts(source, source_pages[0]) in texts(data,selected[0])
         assert sum(texts(data,page).count('RESOURCE SUFFIX') for page in selected)==1
+        ids=[]
+        for path,value in data.items():
+            try: xml=ET.fromstring(value)
+            except ET.ParseError: continue
+            ids.extend(node.attrib['ID'] for node in xml.iter() if 'ID' in node.attrib)
+        assert len(ids)==len(set(ids)), 'resource-only IDs collided with generated objects'
+    if name == 'vendor-annotations-roundtrip':
+        document=ET.fromstring(data['Doc_0/Document.xml'])
+        assert [node.text or '' for node in document if node.tag=='{urn:vendor}Annotations']==['../../../external','Annots/Annotations.xml']
     if name in ('watermark','watermark-merged','cli-watermark','cli-merged'):
         assert sum(texts(data, page).count('DRAFT 草稿') for page in selected) == 1, (name, 'duplicate watermark')
         assert texts(source, source_pages[0]) in texts(data, selected[0]), (name, 'body text lost')
@@ -65,6 +74,7 @@ for name, count in expected.items():
     assert 'HIDDEN' not in pdf_text, (name, 'hidden graphic unit exported')
     if name in ('watermark','watermark-merged','cli-watermark','cli-merged'): assert pdf_text.count('DRAFT 草稿') == 1
     if name == 'watermark-resource-suffix': assert pdf_text.count('RESOURCE SUFFIX') == 1
+    if name == 'vendor-annotations-roundtrip': assert pdf_text.count('NOTE 注释') == 1 and pdf_text.count('TEMPLATE 模板') == 1
     if name in ('annotation-clipped','annotation-clipped-mix'):
         assert pdf_text.count('ROTATE') == 1 and pdf_text.count('SCALE') == 1
     if name in ('mix','cli-mix'): assert pdf_text.count('TOP LAYER 上层') == 1 and pdf_text.count('UNDER LAYER 下层') == 1
@@ -80,7 +90,7 @@ for name in ('watermark','watermark-merged','cli-watermark','cli-merged'):
     assert any(local(node)=='image' and any(value.startswith('data:image/png;base64,') for value in node.attrib.values()) for node in svg.iter())
     if args.render:
         subprocess.run(['rsvg-convert','--background-color','white','-w','849','-h','1200','-o',str(directory/'pages'/(name+'-svg.png')),str(directory/(name+'-1.svg'))],check=True)
-for name in ('split-template-liveness','annotation-metadata','annotation-clipped','annotation-clipped-mix','italic-marked','italic-control','italic-user-matrix','italic-fixed-anchor','watermark-resource-suffix'):
+for name in ('split-template-liveness','annotation-metadata','annotation-clipped','annotation-clipped-mix','italic-marked','italic-control','italic-user-matrix','italic-fixed-anchor','watermark-resource-suffix','vendor-annotations-roundtrip'):
     if args.render:
         subprocess.run(['rsvg-convert','--background-color','white','-w','1200','-o',str(directory/'pages'/(name+'-svg.png')),str(directory/(name+'-1.svg'))],check=True)
 if args.render:

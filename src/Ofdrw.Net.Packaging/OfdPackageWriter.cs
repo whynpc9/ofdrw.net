@@ -85,7 +85,7 @@ public sealed class OfdPackageWriter
         }
 
         var idAllocator = new OfdIdAllocator();
-        idAllocator.AdvancePast(GetPreservedMaxId(package.PreservedEntries));
+        idAllocator.AdvancePast(GetPreservedMaxId(package.PreservedEntries, cancellationToken));
         var pageIds = orderedPages.ToDictionary(page => page, page => idAllocator.AllocatePreferred(page.Id));
         var pagePaths = BuildPagePaths(orderedPages, docId);
         var elementIds = new Dictionary<OfdElement, string>();
@@ -844,16 +844,14 @@ public sealed class OfdPackageWriter
         return ms.ToArray();
     }
 
-    private static long GetPreservedMaxId(IReadOnlyDictionary<string, byte[]> entries)
+    private static long GetPreservedMaxId(IReadOnlyDictionary<string, byte[]> entries, CancellationToken cancellationToken)
     {
         var maxId = 0L;
         foreach (var entry in entries)
         {
-            if (!entry.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
+            cancellationToken.ThrowIfCancellationRequested();
+            // Reservation does not confer mutation ownership. Any readable XML
+            // can retain IDs, including resource/extension files with other suffixes.
             try
             {
                 using var stream = new MemoryStream(entry.Value, writable: false);

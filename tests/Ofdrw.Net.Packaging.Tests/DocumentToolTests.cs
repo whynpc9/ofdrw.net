@@ -536,6 +536,81 @@ public sealed class DocumentToolTests
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
 
     [Theory]
+    [InlineData("../../../external")]
+    [InlineData("")]
+    [InlineData("/")]
+    public async Task VendorAnnotations_TextIsPreservedWithoutInterpretingItAsAPackagePath(string value)
+    {
+        var source = await RoundTrip(Source()); var document = Xml(source, "Doc_0/Document.xml");
+        var vendorName = XName.Get("Annotations", "urn:vendor"); document.Root!.Add(new XElement(vendorName, value));
+        Put(source, "Doc_0/Document.xml", document);
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        Assert.All(read.Pages, page => Assert.IsType<OfdRawElement>(Assert.Single(page.AnnotationAppearances)));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+        var saved = await RoundTrip(read); Assert.Equal(value, Assert.Single(Xml(saved, "Doc_0/Document.xml").Root!.Elements(vendorName)).Value);
+    }
+
+    [Fact]
+    public async Task VendorAnnotationDeclaration_DoesNotSuppressLaterStandardDeclarationWithTheSameText()
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var vendor = XName.Get("Annotations", "urn:vendor");
+        var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Add(new XElement(vendor, "Annots/Annotations.xml"), new XElement(ns + "Annotations", "Annots/Annotations.xml")); Put(source, "Doc_0/Document.xml", document);
+        source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'><Page PageID='{source.Pages[0].Id}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot><Appearance Boundary='0 0 20 20'><TextObject Size='3'><TextCode X='0' Y='3'>KNOWN</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        Assert.Equal("KNOWN", Assert.Single(read.Pages[0].AnnotationAppearances.OfType<OfdTextElement>()).Text);
+        Assert.All(read.Pages, page => Assert.Contains(page.AnnotationAppearances, element => element is OfdRawElement));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+        var saved = await RoundTrip(read); Assert.Equal("KNOWN", Assert.Single(saved.Pages[0].AnnotationAppearances.OfType<OfdTextElement>()).Text);
+        Assert.Equal("Annots/Annotations.xml", Assert.Single(Xml(saved, "Doc_0/Document.xml").Root!.Elements(vendor)).Value);
+    }
+
+    [Fact]
+    public async Task StandardAnnotationDeclaration_StillRejectsEscapingPackagePaths()
+    {
+        var source = await RoundTrip(Source()); var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Add(new XElement(document.Root.Name.Namespace + "Annotations", "../../../external")); Put(source, "Doc_0/Document.xml", document);
+        using var input = Zip(source.PreservedEntries); await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(input));
+    }
+
+    [Theory]
+    [InlineData("PublicRes", ".xml")]
+    [InlineData("PublicRes", ".dat")]
+    [InlineData("DocumentRes", ".xml")]
+    [InlineData("DocumentRes", ".bin")]
+    public async Task ResourceIdsAboveTheDocumentHint_AreReservedBeforeAllocatingWatermarkObjects(string declaration, string suffix)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace);
+        var document = Xml(source, "Doc_0/Document.xml"); var reference = document.Root!.Element(ns + "CommonData")!.Element(ns + declaration)!;
+        var oldPath = "Doc_0/" + reference.Value; var resources = Xml(source, oldPath); var kind = declaration == "PublicRes" ? "Font" : "MultiMedia";
+        var resource = resources.Descendants(ns + kind).First(); var oldId = resource.Attribute("ID")!.Value;
+        var max = source.PreservedEntries.Where(pair => pair.Key.EndsWith(".xml") && pair.Key != oldPath)
+            .SelectMany(pair => Xml(source, pair.Key).Descendants().Attributes("ID"))
+            .Concat(resources.Descendants().Attributes("ID").Where(attribute => attribute != resource.Attribute("ID")))
+            .Select(attribute => long.TryParse(attribute.Value, out var id) ? id : 0).Max();
+        var reserved = (max + 1).ToString(System.Globalization.CultureInfo.InvariantCulture); resource.SetAttributeValue("ID", reserved);
+        foreach (var path in source.Pages.Select(page => page.SourceEntryPath!))
+        {
+            var page = Xml(source, path);
+            foreach (var attribute in page.Descendants().Attributes(declaration == "PublicRes" ? "Font" : "ResourceID").Where(attribute => attribute.Value == oldId)) attribute.Value = reserved;
+            Put(source, path, page);
+        }
+        var location = "Resources" + suffix; reference.Value = location; document.Root.Element(ns + "CommonData")!.Element(ns + "MaxUnitID")!.Value = max.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        source.PreservedEntries.Remove(oldPath); Put(source, "Doc_0/" + location, resources); Put(source, "Doc_0/Document.xml", document);
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        OfdWatermark.AddText(read, [0], "RESERVE", fontName: "Arial"); OfdWatermark.AddImage(read, [0], Png, "image/png");
+        var saved = await RoundTrip(read); var ids = new List<string>();
+        foreach (var pair in saved.PreservedEntries)
+        {
+            XDocument xml; try { xml = Xml(saved, pair.Key); } catch (System.Xml.XmlException) { continue; }
+            ids.AddRange(xml.Descendants().Where(node => node.Name.Namespace == ns).Attributes("ID").Select(attribute => attribute.Value));
+        }
+        Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Single(Xml(saved, "Doc_0/" + location).Descendants(ns + kind), node => node.Attribute("ID")?.Value == reserved);
+        if (declaration == "PublicRes") Assert.Equal(reserved, Assert.Single(saved.Fonts, font => font.FontName == "Arial").Id);
+        else Assert.All(saved.Pages.SelectMany(page => page.Elements).OfType<OfdImageElement>(), image => Assert.Equal(reserved, image.ResourceId));
+    }
+
+    [Theory]
     [InlineData("PublicRes", "save")]
     [InlineData("DocumentRes", "save")]
     [InlineData("PublicRes", "watermark")]

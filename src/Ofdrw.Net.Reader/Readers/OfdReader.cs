@@ -372,9 +372,14 @@ public sealed class OfdReader : IOfdReader
         foreach (var declaration in document.Root!.Elements().Where(node => node.Name.LocalName == "Annotations"))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (declaration.Name.Namespace != result.Namespace)
+            {
+                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                continue;
+            }
             var listPath = OfdPackagePath.Resolve(documentPath, declaration.Value);
             if (!visited.Add(listPath)) continue;
-            if (declaration.Name.Namespace != document.Root.Name.Namespace || !archive.Contains(listPath))
+            if (!archive.Contains(listPath))
             {
                 result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
                 continue;
