@@ -91,3 +91,5 @@ Clips 写回位于继承的图元属性区（Actions 之后、TextCode/Abbreviat
 注释绘图仅接受已建模的标准父子结构；TextCode 和 AbbreviatedData 必须是叶节点。未知属性保留原 XML 和已知绘图，但阻止 Mix；未知子元素或未支持的绘图资源引用使整组 Appearance 明确不支持导出。普通对象的 Mix 同样拒绝未知结构或属性，避免复制扩展引用却丢失其载荷。Merge 保留既有的无命名空间元数据兼容性；其未知子元素及外部命名空间属性仍明确拒绝。
 
 标准 `Name`、`Visible`、裁剪 Path 的图形属性和 Area/Start 会保留；Visible=false 对象在 PDF/SVG 和可见文本提取中不绘制，但原 XML 仍可往返。图片 ImageMask 与 Substitution 均因尚未实现引用重映射而明确拒绝。正文/模板 TextCode 和 AbbreviatedData 只读取直接文本/CDATA，不把嵌套扩展文本拼入正文或路径，也不回退到整个对象的 Value。
+
+已声明的注释图片 ID、载荷或页文件无法加载时，整组绘图会保留为不支持标记，PDF/SVG 和 Mix 明确失败。带 PageID 的未知索引记录只影响目标页；无归属记录聚合为共享元数据字符串，避免按页乘以记录数生成标记。

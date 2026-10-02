@@ -346,6 +346,8 @@ public sealed class OfdReader : IOfdReader
     {
         internal readonly List<string> Paths = new();
         internal readonly HashSet<string> Known = new(StringComparer.OrdinalIgnoreCase);
+        internal readonly List<string> UnmodeledRecords = new();
+        internal string? UnmodeledXml;
     }
 
     private sealed class AnnotationIndex
@@ -353,6 +355,7 @@ public sealed class OfdReader : IOfdReader
         internal XNamespace Namespace = XNamespace.None;
         internal readonly Dictionary<string, AnnotationFiles> Files = new(StringComparer.Ordinal);
         internal readonly List<string> UnmodeledLists = new();
+        internal string? UnmodeledXml;
     }
 
     private static bool IsAnnotationRoot(XDocument xml, string localName, XNamespace documentNamespace) =>
@@ -393,7 +396,13 @@ public sealed class OfdReader : IOfdReader
                 var location = record.Element(list.Root.Name.Namespace + "FileLoc")?.Value;
                 if (record.Name != list.Root.Name.Namespace + "Page" || string.IsNullOrWhiteSpace(pageId) || string.IsNullOrWhiteSpace(location))
                 {
-                    result.UnmodeledLists.Add(record.ToString(SaveOptions.DisableFormatting));
+                    var raw = record.ToString(SaveOptions.DisableFormatting);
+                    if (string.IsNullOrWhiteSpace(pageId)) result.UnmodeledLists.Add(raw);
+                    else
+                    {
+                        if (!result.Files.TryGetValue(pageId!, out var scoped)) result.Files[pageId!] = scoped = new AnnotationFiles();
+                        scoped.UnmodeledRecords.Add(raw);
+                    }
                     continue;
                 }
                 if (!result.Files.TryGetValue(pageId!, out var files))
@@ -402,17 +411,24 @@ public sealed class OfdReader : IOfdReader
                 if (files.Known.Add(path)) files.Paths.Add(path);
             }
         }
+        result.UnmodeledXml = WrapUnmodeled(result.UnmodeledLists);
+        foreach (var files in result.Files.Values) files.UnmodeledXml = WrapUnmodeled(files.UnmodeledRecords);
         return result;
     }
+
+    private static string? WrapUnmodeled(List<string> records) => records.Count == 0 ? null :
+        "<UnmodeledAnnotations>" + string.Concat(records) + "</UnmodeledAnnotations>";
 
     private static void ReadAnnotationAppearances(OfdPackageArchive archive, AnnotationIndex index,
         IDictionary<string, XDocument?> documents, OfdPage page, IReadOnlyDictionary<string, string> fonts,
         IReadOnlyDictionary<string, string> media, IReadOnlyDictionary<string, string> mediaTypes,
         CancellationToken cancellationToken)
     {
-        foreach (var xml in index.UnmodeledLists)
-            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Annotations", Xml = xml });
+        if (index.UnmodeledXml is not null)
+            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Annotations", Xml = index.UnmodeledXml });
         if (page.Id is null || !index.Files.TryGetValue(page.Id, out var files)) return;
+        if (files.UnmodeledXml is not null)
+            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Annotations", Xml = files.UnmodeledXml });
         foreach (var annotationPath in files.Paths)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -426,7 +442,7 @@ public sealed class OfdReader : IOfdReader
             }
             if (annotations is null || !IsAnnotationRoot(annotations, "PageAnnot", index.Namespace))
             {
-                page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "PageAnnot",
+                page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance",
                     Xml = new XElement("UnmodeledAnnotation", new XAttribute("FileLoc", annotationPath)).ToString() });
                 continue;
             }
@@ -470,6 +486,12 @@ public sealed class OfdReader : IOfdReader
                     staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
                 foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, annotationPath))
                 {
+                    if (element is OfdImageElement { Data.Length: 0 })
+                    {
+                        staged.Clear();
+                        staged.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                        break;
+                    }
                     var transform = appearanceTransform ?? new double[] { 1, 0, 0, 1, 0, 0 };
                     var x = element.XMillimeters; var y = element.YMillimeters;
                     var originalWidth = element.WidthMillimeters; var originalHeight = element.HeightMillimeters;

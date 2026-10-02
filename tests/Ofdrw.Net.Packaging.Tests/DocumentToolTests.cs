@@ -504,6 +504,31 @@ public sealed class DocumentToolTests
     }
 
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reader_UnmodeledAnnotationRecordsAreScopedAndAggregated(bool global)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace);
+        var document = Xml(source,"Doc_0/Document.xml"); document.Root!.Add(new XElement(ns+"Annotations","Annots/Annotations.xml")); Put(source,"Doc_0/Document.xml",document);
+        var id = global ? "" : $" PageID='{source.Pages[1].Id}'";
+        source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}' xmlns:v='urn:vendor'>"+string.Concat(Enumerable.Repeat($"<Page{id}><v:FileLoc>unmodeled.bin</v:FileLoc></Page>",1000))+"</Annotations>");
+        using var input=Zip(source.PreservedEntries); var read=await new OfdReader().ReadAsync(input);
+        Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[1].AnnotationAppearances));
+        if (global)
+        {
+            Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].AnnotationAppearances));
+            Assert.Same(((OfdRawElement)read.Pages[0].AnnotationAppearances[0]).Xml,((OfdRawElement)read.Pages[1].AnnotationAppearances[0]).Xml);
+            Assert.Throws<NotSupportedException>(()=>OfdDocumentMixer.Mix([new(read,0)]));
+        }
+        else
+        {
+            Assert.Empty(read.Pages[0].AnnotationAppearances);
+            Assert.Single(OfdDocumentMixer.Mix([new(read,0)]).Pages);
+        }
+        Assert.Throws<NotSupportedException>(()=>OfdDocumentMixer.Mix([new(read,1)]));
+        var saved=await RoundTrip(read); Assert.Equal(source.PreservedEntries["Doc_0/Annots/Annotations.xml"],saved.PreservedEntries["Doc_0/Annots/Annotations.xml"]);
+    }
     [Fact]
     public async Task Writer_MissingPathDataUsesSourceObjectNamespaceAndKeepsExtensions()
     {

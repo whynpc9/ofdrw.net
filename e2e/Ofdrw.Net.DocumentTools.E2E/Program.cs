@@ -125,7 +125,38 @@ overlayPage.Elements.Add(new OfdPathElement { LayerId = "cover", XMillimeters = 
 overlayPage.Elements.Add(new OfdTextElement { LayerId = "cover", Text = "TOP LAYER 上层", FontName = signed.Fonts.First().FontName, FontResourceId = signed.Fonts.First().Id, XMillimeters = 23, YMillimeters = 175, WidthMillimeters = 75, HeightMillimeters = 10, FontSizeMillimeters = 4, FillColor = new OfdColor(40, 120, 30) });
 overlay.Pages.Add(overlayPage);
 await Save(overlay, "overlay");
-await Save(OfdDocumentMixer.Mix([new(signed, 0), new(overlay, 0)]), "mix");
+File.Copy(PathFor("signed.ofd"), PathFor("scoped-annotations-input.ofd"), true);
+Mutate("scoped-annotations-input", entries =>
+{
+    var list = Xml(entries["Doc_0/Annots/Annotations.xml"]);
+    list.Root!.Add(new XElement(ns + "Page", new XAttribute("PageID", signed.Pages[1].Id!), new XElement(XNamespace.Get("urn:vendor") + "FileLoc", "unmodeled.bin")));
+    entries["Doc_0/Annots/Annotations.xml"] = Bytes(list);
+});
+var scopedInput = await Read("scoped-annotations-input");
+try { OfdDocumentMixer.Mix([new(scopedInput, 1)]); throw new Exception("Affected page must reject unmodeled annotation records."); }
+catch (NotSupportedException) { }
+await Save(OfdDocumentMixer.Mix([new(scopedInput, 0), new(overlay, 0)]), "mix");
+foreach (var negative in new[] { "annotation-unknown-media", "annotation-missing-payload" })
+{
+    File.Copy(PathFor("rich.ofd"), PathFor(negative + ".ofd"), true);
+    Mutate(negative, entries =>
+    {
+        var annotation = Xml(entries["Doc_0/Annots/Page.xml"]);
+        var appearance = annotation.Descendants(ns + "Appearance").Single(); appearance.RemoveNodes();
+        appearance.Add(new XElement(ns + "ImageObject", new XAttribute("ID", "999015"), new XAttribute("ResourceID", "999016"), new XAttribute("Boundary", "0 0 60 12")));
+        entries["Doc_0/Annots/Page.xml"] = Bytes(annotation);
+        if (negative == "annotation-missing-payload")
+        {
+            var resources = Xml(entries["Doc_0/PublicRes.xml"]);
+            var media = resources.Root!.Element(ns + "MultiMedias"); if (media is null) { media = new XElement(ns + "MultiMedias"); resources.Root.Add(media); }
+            media.Add(new XElement(ns + "MultiMedia", new XAttribute("ID", "999016"), new XAttribute("Type", "Image"), new XAttribute("Format", "PNG"), new XElement(ns + "MediaFile", "missing-annotation.png")));
+            entries["Doc_0/PublicRes.xml"] = Bytes(resources);
+        }
+    });
+    using var input = File.OpenRead(PathFor(negative + ".ofd")); using var target = new MemoryStream();
+    try { await new OfdToPdfConverter().ConvertAsync(input, target); throw new Exception("Missing annotation image must not export a partial PDF."); }
+    catch (NotSupportedException exception) { if (target.Length != 0) throw new Exception("Rejected export wrote partial PDF bytes."); File.WriteAllText(PathFor(negative + ".rejection.txt"), exception.Message); }
+}
 await using (var input = File.OpenRead(PathFor("signed.ofd")))
 await using (var target = File.Create(PathFor("clean.ofd"))) await OfdSignatureCleaner.CleanAsync(input, target);
 var clipped = new OfdDocumentPackage();
