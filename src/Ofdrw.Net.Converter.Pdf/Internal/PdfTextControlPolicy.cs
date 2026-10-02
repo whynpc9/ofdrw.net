@@ -9,6 +9,8 @@ internal static class PdfTextControlPolicy
     {
         foreach (var scalar in OpenTypeFace.Scalars(text))
         {
+            if (scalar is 0x200C or 0x200D)
+                throw new NotSupportedException("PDFsharp cannot preserve Unicode join-control shaping semantics; use OFD/SVG or a shaping-capable PDF renderer.");
             if (OpenTypeCmap.IsVariationSelector(scalar) || scalar is >= 0x180B and <= 0x180D or 0x180F)
                 throw new NotSupportedException("PDFsharp cannot preserve Unicode variation sequences; use OFD/SVG or a glyph-aware PDF renderer.");
             if (scalar is >= 0x202A and <= 0x202E or >= 0x2066 and <= 0x2069 or 0x200F or 0x061C)
@@ -23,6 +25,7 @@ internal static class PdfTextControlPolicy
 
     internal static string VisibleText(string text, OpenTypeCmap? coverage = null)
     {
+        Validate(text);
         var output = new StringBuilder(text.Length);
         foreach (var scalar in OpenTypeFace.Scalars(text))
             if (!IsZeroWidthFormat(scalar) &&

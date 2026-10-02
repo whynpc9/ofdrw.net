@@ -4,8 +4,8 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 466/466；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
-| 包消费 | 11 个 `0.1.0-issue05.20261003.11` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 478/478；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.13` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
@@ -33,10 +33,14 @@ DocumentTools 首轮 CI 失败与两轮定位日志保留：空白包会生成�
 
 已保留最初样例标题过长及修正后的记录；当前两页页标已拆行，重生成后再次检查。非 BMP P2 的失败轮次和独立 R2 复验亦保留。范围限制详见[字体子集契约](../../font-subset-and-reuse.md)：CFF/变量/未知表/RTL 全量保护；非 BMP PDF 与未建模 CGTransform PDF/SVG 明确失败；已有未知 OFD 资源不裁剪。Preview 仅覆盖列出的 8 页；发布/merge 未授权，不关闭 issue #3。当前 head 的 CI/review 闭环单独记录，不以这些样例推断任意复杂文档保真。
 
-第二轮修复：default-ignorable 控制不要求 cmap 轮廓，PDF 绘制跳过可省略控制符而不改变 OFD 原文或显式 Delta 槽位；方向控制/UVS PDF 明确拒绝。保留 R6 的可见 tofu 失败和 R7 的修复页面。新增 ZWJ/ZWNJ 两页 Preview 待下个独占时段，原 8 页实际验收不受这些无控制符的 guard/绘制分支影响。TTC 容器/face 双预算、OS/2-first 统一样式已有回归；非法 SourceXml 在两模式均拒绝（a6ae520 Full 真实探针为 XmlException/0 字节，并未成功写出）。
+第二轮修复：default-ignorable 控制不要求 cmap 轮廓，PDF 绘制跳过可省略控制符而不改变 OFD 原文或显式 Delta 槽位；方向控制/UVS PDF 明确拒绝。保留 R6 的可见 tofu 失败和 R7 的修复页面。当时新增 ZWJ/ZWNJ 两页未获 Preview 时段；R11 已改为明确拒绝该 PDF 语义，原 8 页实际验收不受这些无控制符的 guard/绘制分支影响。TTC 容器/face 双预算、OS/2-first 统一样式已有回归；非法 SourceXml 在两模式均拒绝（a6ae520 Full 真实探针为 XmlException/0 字节，并未成功写出）。
 
-R8：绘制时保留已映射 Hangul filler 的真实字宽，普通文本与每 gap Delta 的实测像素/位置一致；全部方向格式控制、蒙古 FVS 语义 PDF 明确拒绝。新增 filler 的无/有 Delta 页面 PNG 复查通过，实际 Preview 与 ZWJ/ZWNJ 一起排解锁后的短时独占；整体视觉门仍保持未完成。
+R8：绘制时保留已映射 Hangul filler 的真实字宽，普通文本与每 gap Delta 的实测像素/位置一致；全部方向格式控制、蒙古 FVS 语义 PDF 明确拒绝。新增 filler 的无/有 Delta 页面 PNG 复查通过，实际成功输出的 Preview 排解锁后独占时段；整体视觉门仍保持未完成。
 
 R9：LRM/弃用零宽控制的普通与定位 PDF 成功且无 tofu，九方向格式控制维持明确拒绝。name-only local/host style probe 的物理字节同时注册与缓存 cmap；缺失 filler 省略，映射 filler 保留宽度。独立实际 name-only 24 项定向验证与像素对比通过；探针使用公开 `PdfFontRegistry.CreateResolver(host)` 组合约定。记录区分不符合约定的旧探针，不将它冒充成功证据。
 
 R10：name-only 首选缺普通字符时，配置的宿主默认回退必须覆盖，独立实际 PDF 使用 LXGW 字形并可抽取；仍缺字则明确失败/零字节。RLM/ALM 语义维持 PDF 拒绝。Symbol3/0 format4 读取与 F000 映射、全量保护、选中/未选中 SVG 回归通过；浏览器截图显示文本，但 symbol 内嵌字体身份尚未独立证明，不宣称该扩展格式完整渲染验收。
+
+R11：ZWJ/ZWNJ 的连接/连字语义 PDF 明确拒绝并保持零输出，R7/R8 的成功省略页仅保留为历史轮次，不代表最终契约。最终仍需 Preview 的成功输出是 filler、LRM/弃用零宽控制、名称字体/覆盖回退页面。合法未使用 format0 cmap 不阻断 PDF，实际选中拒绝；symbol 未映射普通字符及 read/edit 保全量并标识 coverage 未验证。名称回退按 default→Arial 探测，null、I/O、unsupported cmap、TTC face0 均有回归；只有实际字节覆盖且注册成功才绘制，预算失败不会返回已知缺字字体。
+
+R11 最终补验：默认名称 getter 失败仍继续 Arial 的已验证覆盖探测；固定 Noto Sans 的 office/ffi 连字上下文，普通样例 PDF 成功，ZWJ/ZWNJ 两种受控变体均明确拒绝 PDF / 0 bytes，OFD 原文逐字符保留。全套 478/478，11 个 .13 包干净消费通过。最新版包重生的原 8 页与此前 Preview 所验产物像素一致；这项自动对比不替代新增成功路径的 Preview。
