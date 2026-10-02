@@ -120,7 +120,23 @@ var signed = await Read("signed");
 File.Copy(PathFor("watermark.ofd"), PathFor("resource-suffix-input.ofd"), true);
 Mutate("resource-suffix-input", entries =>
 {
-    var document = Xml(entries["Doc_0/Document.xml"]);
+    var documents = entries.Where(pair => pair.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)).ToDictionary(pair => pair.Key, pair => Xml(pair.Value));
+    var document = documents["Doc_0/Document.xml"];
+    var declarations = document.Root!.Element(ns + "CommonData")!.Elements().Where(node => node.Name == ns + "PublicRes" || node.Name == ns + "DocumentRes").ToList();
+    var reservedResources = declarations.Select(declaration => documents["Doc_0/" + declaration.Value].Descendants(ns + (declaration.Name.LocalName == "PublicRes" ? "Font" : "MultiMedia")).First()).ToHashSet();
+    var maximum = documents.Values.SelectMany(xml => xml.Descendants().Attributes("ID")).Where(attribute => !reservedResources.Contains(attribute.Parent!))
+        .Select(attribute => long.TryParse(attribute.Value, out var id) ? id : 0).Max();
+    // Real readers can accept a stale document hint. IDs present only in these
+    // descriptors still reserve the next otherwise available object numbers.
+    foreach (var declaration in declarations)
+    {
+        var resource = documents["Doc_0/" + declaration.Value].Descendants(ns + (declaration.Name.LocalName == "PublicRes" ? "Font" : "MultiMedia")).First();
+        var oldId = resource.Attribute("ID")!.Value; var id = (++maximum).ToString(System.Globalization.CultureInfo.InvariantCulture); resource.SetAttributeValue("ID", id);
+        var referenceName = declaration.Name.LocalName == "PublicRes" ? "Font" : "ResourceID";
+        foreach (var reference in documents.Values.SelectMany(xml => xml.Descendants().Attributes(referenceName)).Where(attribute => attribute.Value == oldId)) reference.Value = id;
+    }
+    document.Root.Element(ns + "CommonData")!.Element(ns + "MaxUnitID")!.Value = (maximum - 2).ToString(System.Globalization.CultureInfo.InvariantCulture);
+    foreach (var pair in documents) entries[pair.Key] = Bytes(pair.Value);
     foreach (var declaration in document.Root!.Element(ns + "CommonData")!.Elements().Where(node => node.Name == ns + "PublicRes" || node.Name == ns + "DocumentRes"))
     {
         var oldPath = "Doc_0/" + declaration.Value;
@@ -133,6 +149,18 @@ var resourceSuffix = await Read("resource-suffix-input");
 OfdWatermark.AddText(resourceSuffix, [0], "RESOURCE SUFFIX", new OfdWatermarkOptions { XMillimeters = 60, YMillimeters = 230 },
     fontName: resourceSuffix.Fonts.First().FontName, fontSizeMillimeters: 7);
 await Save(resourceSuffix, "watermark-resource-suffix");
+File.Copy(PathFor("rich.ofd"), PathFor("vendor-annotations-input.ofd"), true);
+Mutate("vendor-annotations-input", entries =>
+{
+    var document = Xml(entries["Doc_0/Document.xml"]); var declaration = document.Root!.Element(ns + "Annotations")!; var vendor = XNamespace.Get("urn:vendor");
+    declaration.AddBeforeSelf(new XElement(vendor + "Annotations", "../../../external"), new XElement(vendor + "Annotations", declaration.Value));
+    entries["Doc_0/Document.xml"] = Bytes(document);
+});
+var vendorAnnotations = await Read("vendor-annotations-input");
+if (!vendorAnnotations.Pages[0].AnnotationAppearances.OfType<OfdTextElement>().Any(text => text.Text == "NOTE 注释")) throw new Exception("Vendor metadata must not suppress standard annotation artwork.");
+try { OfdDocumentMixer.Mix([new(vendorAnnotations, 0)]); throw new Exception("Vendor annotation metadata must prevent unsafe Mix."); }
+catch (NotSupportedException exception) { File.WriteAllText(PathFor("vendor-annotations-input.rejection.txt"), exception.Message); }
+await Save(vendorAnnotations, "vendor-annotations-roundtrip");
 await Save(OfdDocumentSplitter.Split(signed, [1, 0]), "split");
 File.Copy(PathFor("signed.ofd"), PathFor("template-liveness-input.ofd"), true);
 Mutate("template-liveness-input", entries => entries["Doc_0/Extensions/state.dat"] = Encoding.UTF8.GetBytes("<Wrapper><Extension BaseLoc='../Templates'><File>Content.xml</File></Extension></Wrapper>"));
@@ -238,7 +266,7 @@ fixedAnchor.Pages.Add(fixedPage); await Save(fixedAnchor, "italic-fixed-anchor")
 File.Copy(Path.Combine(root, "scripts/generate-font-test-fixtures.py"), PathFor("fonts/generate-font-test-fixtures.py"), true);
 File.Copy(Path.Combine(root, "LICENSE"), PathFor("fonts/MIT-rectangle-LICENSE.txt"), true);
 File.WriteAllBytes(PathFor("fonts/narrow.ttf"), rectangleFont);
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);
