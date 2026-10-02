@@ -213,8 +213,8 @@
       "sha256": "563b101eabe7c00d3f6c565338c933f01a1df6b2ad95e3a460ea19abfc72e32f"
     },
     "logs/api-docs.log": {
-      "bytes": 58807,
-      "sha256": "d5d50602a6ed9103e03a8437796f784e12333fc443606f88ad71e5494f667ca8"
+      "bytes": 158675,
+      "sha256": "89cabe257e6d29aaa1f05b2ddba6b8f417e226d7217d10b8826d45fdf6533b50"
     },
     "logs/full-suite.log": {
       "bytes": 10797,

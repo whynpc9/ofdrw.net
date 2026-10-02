@@ -207,7 +207,7 @@
     },
     "preview": {
       "status": "not-reviewed",
-      "reason": "R4 final ten PDF pages regenerated, allPNG identical toR3; awaiting coordinated exclusive slot after02/Macunlock. Prior Preview does not substitute forcurrentcandidate.",
+      "reason": "R4 final ten PDF pages regenerated; all PNG hashes match R3. Awaiting a coordinated exclusive slot after issue 02 and Mac unlock. Earlier Preview does not substitute for the current candidate.",
       "checked_pages": [],
       "windows_closed": null
     },
