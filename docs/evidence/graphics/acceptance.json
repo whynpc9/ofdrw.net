@@ -1,18 +1,18 @@
 {
-  "source_head": "b977f2bc54bea6c4a51d5f51e95e6e6cfb3fc50c",
+  "source_head": "7b156032eb7ab2dd78f0f0ba33b0359dd4eea3a1",
   "baseline": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
   "source_tree_frozen": true,
   "functional": {
     "status": "passed",
     "full_suite": {
-      "passed": 424,
+      "passed": 425,
       "failed": 0,
       "skipped": 0
     },
-    "independent_graphics_regressions": 24,
+    "independent_graphics_regressions": 25,
     "new_graphics_CS1591": 0,
     "package_count": 11,
-    "package_version": "0.1.0-graphics.20261003.r3final",
+    "package_version": "0.1.0-graphics.20261003.r4final",
     "package_status": "passed",
     "package_native_graphics_consumption": "passed"
   },
@@ -68,11 +68,11 @@
       "pages/graphics-svg-1.png",
       "pages/graphics-svg-2.png"
     ],
-    "scope": "R3: all20 PDF/SVG pages visually checked, including native/default, name-only faux+user CTM, acute miter and fractional clip border."
+    "scope": "R4: all20 PDF/SVG PNG pages regenerated and SHA256-identical to visually checked R3 pages; actual pixel probes rerun."
   },
   "preview": {
     "status": "not-reviewed",
-    "reason": "R3 final ten PDF pages regenerated after precision repairs; awaiting coordinated exclusive slot (02 ahead). R1 acceptance does not substitute for current candidate.",
+    "reason": "R4 final ten PDF pages regenerated, allPNG identical toR3; awaiting coordinated exclusive slot after02/Macunlock. Prior Preview does not substitute forcurrentcandidate.",
     "checked_pages": [],
     "windows_closed": null
   },
@@ -82,12 +82,13 @@
     "round1_head": "4b634d1785b3a57c67f33a43441a08aa46188813",
     "round1_threads": 5,
     "round1_ci": "six checks passed",
-    "fixed_runtime": "b977f2bc54bea6c4a51d5f51e95e6e6cfb3fc50c",
-    "current_head": "86f0c0b3aedfa0824d9cafcb42637d87f9ed9273",
+    "fixed_runtime": "7b156032eb7ab2dd78f0f0ba33b0359dd4eea3a1",
+    "current_head": null,
     "round2_head": "c07a45c8218bc28221dfa7f2f81d2e8be2270465",
     "round2_ci": "six checks passed",
     "round2_threads_new": 2,
-    "source_reviews": "Codex and Cursor latest-head review close runtime findings; R2 historical ledger correction requires fresh docs-head checks."
+    "source_reviews": "R4 native italic overflow preflight requires fresh-head review/CI; all earlier fixes unchanged.",
+    "round3_head": "e7dd4ddd642bee6b64c18f3ab806e3648ade580f"
   },
   "production_release_accepted": false,
   "limitations": [
@@ -96,7 +97,7 @@
     "No flow/table/Canvas or Skia adapter additions.",
     "Font subset/reuse/fallback is ticket 05; explicit package-local identity contract only.",
     "Name-only font text depends on reader environment. Public artifacts embed pinned OFL Noto only.",
-    "R3 Preview and current-head external reviews/CI remain required before ticket closure.",
+    "R4 Preview and current-head external reviews/CI remain required before ticket closure.",
     "Faithful finite CTM coefficients do not guarantee numerical stability for arbitrary extreme doubles; derived overflow/generated singular faux CTMs fail."
   ],
   "previous_round1": {
@@ -178,5 +179,21 @@
     },
     "review_head": "c07a45c8218bc28221dfa7f2f81d2e8be2270465",
     "review_threads_new": 2
+  },
+  "previous_round3": {
+    "source_head": "b977f2bc54bea6c4a51d5f51e95e6e6cfb3fc50c",
+    "evidence_commit": "e7dd4ddd642bee6b64c18f3ab806e3648ade580f",
+    "full_suite": {
+      "passed": 424,
+      "failed": 0,
+      "skipped": 0
+    },
+    "preview": {
+      "status": "not-reviewed",
+      "reason": "R3 final ten PDF pages regenerated after precision repairs; awaiting coordinated exclusive slot (02 ahead). R1 acceptance does not substitute for current candidate.",
+      "checked_pages": [],
+      "windows_closed": null
+    },
+    "new_review_threads": 2
   }
 }
