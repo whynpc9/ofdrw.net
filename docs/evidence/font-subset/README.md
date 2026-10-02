@@ -64,3 +64,5 @@ R17：PDF 对 default-ignorable 语义统一明确拒绝，只有四个 Hangul f
 R18：修正 R17 的证据范围表述，原本只有 U+3164 的 advance/Delta 检查。现四个 filler（115F/1160/3164/FFA0）各补普通/定位两路：映射至真实 space glyph 时 B 坐标与 A-space-B 对照一致；未映射时抽取 AB，定位 A-filler-B 的每 gap Delta5/5 对照 AB Delta10，确认跳过字形仍保留原槽位。删除 AB 自比的无效断言，产品运行逻辑未改。
 
 R19：已建模模板文字和注释外观文字也进入同一次用字绑定/coverage 预遍历，与正文及 PDF/SVG 实际渲染集合一致；模板/注释仍触发全量保留，不能因此跳过已知 Unicode 缺字检查。typed A 保全量/原字节，typed B 缺字在 ZIP 写出前明确失败/0B；Raw/CGTransform/保留条目的未知 GID 保护和显式 Full opt-out 均不变。本轮519/519。
+
+R19 nested read/rebind 的 baseline-resaved.ofd 使用既有 document-tools 的固定 Noto Sans CJK SC wght400 静态产物（SHA3012a9...），嵌入字节与 scripts/install-ci-fonts.py 产物一致。归档 nested-r19/font-provenance.json 记录官方 commit/source hash，NotoCJK-OFL.txt 随该新增载荷附上；无专有字体。

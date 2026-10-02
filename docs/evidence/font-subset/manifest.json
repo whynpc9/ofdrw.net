@@ -3755,6 +3755,11 @@
     "sha256": "e1d401f9883b1ae33f1cc562e76381b059f241b089773741a16951f3a4d6023e"
   },
   {
+    "path": "nested-r19/NotoCJK-OFL.txt",
+    "bytes": 4301,
+    "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+  },
+  {
     "path": "nested-r19/Program.cs",
     "bytes": 1853,
     "sha256": "79a076de4e4d543e788b7b51253e2fb9ec53e22adb3096371980b5f4e1a81dc0"
@@ -3763,6 +3768,11 @@
     "path": "nested-r19/baseline-resaved.ofd",
     "bytes": 11604768,
     "sha256": "a173505bc5c3f8a6e087af9fee8fe834a8dccc6693c8ac3e8a0ad29b6adbf0ec"
+  },
+  {
+    "path": "nested-r19/font-provenance.json",
+    "bytes": 514,
+    "sha256": "fef6f6b6ff33f5d87373252adc9ee111b5d1422c64b626798c129a656586036a"
   },
   {
     "path": "package-e2e-r10.log",
