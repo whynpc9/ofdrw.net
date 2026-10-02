@@ -20,7 +20,7 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | OFD 核心模型 | `ofdrw-core` 提供较完整标准数据结构 | 页面、图层、模板、文本游程、路径、图片、字体、附件、自定义标签、保留未知 XML/包条目 | **部分支持**；常用读写闭环已具备，完整标准对象模型尚未覆盖 |
 | 容器与打包 | `ofdrw-pkg` | 标准入口/文档/页面/资源引用，附件、模板和扩展条目；ZIP 路径、数量、展开大小和压缩比限制 | **已支持** |
 | 文档读取 | `ofdrw-reader`，含反序列化及签章读取 | 多图层/模板/资源解析，未知内容无损保留，结构检查 | **部分支持**；当前以首个 `DocBody` 为主 |
-| 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层页面对象与 builder API | **部分支持**；缺少成熟的段落、表格、分页、表单式区块和 Graphics2D 布局引擎 |
+| 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层页面对象、builder 和原生 OfdGraphics API | **部分支持**；新增毫米绘图、路径/文字、状态/裁剪；段落、表格、分页与布局 Canvas 尚按独立票据交付 |
 | 字体 | `ofdrw-font`，字体生成与字形处理 | 读取/写入嵌入字体，PDF 渲染字体解析及回退 | **部分支持**；已增加字体内容身份隔离和注册预算；仍缺少字体子集化、完整字形映射和专门字体工具链 |
 | OFD → PDF | `ofdrw-converter` 导出能力 | 模板、图层、字体、文本游程、矢量路径、图片、变换、颜色/透明度和裁剪原点 | **已支持（预览）**；仍需更大票据/印章语料库做保真度回归 |
 | PDF → OFD | `ofdrw-converter` 转换能力 | 逐页栅格化形成视觉层，同时将可提取文字按坐标写为透明 OFD `TextObject` 语义层 | **部分支持**；具备双层搜索/抽取能力，但尚未保留原始矢量、字体语义和阅读顺序标记，扫描件仍需 OCR |
@@ -34,7 +34,7 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | SES/SM2 电子签章 | `ofdrw-sign` + `ofdrw-gm` | 可注册厂商 `IOfdSignedValueVerifier` / `IOfdSignatureProvider` | **扩展点**；无内置 SES/SM2 实现和印章外观验证 |
 | GM/T 0099 密码应用 | `ofdrw-crypto` | 能力标志明确返回不支持 | **未支持** |
 | CLI/工具分发 | `ofdrw-tool` 及各模块工具 | 转换、SVG、文本提取、重排、合并、签名验证的 .NET tool | **已支持** |
-| Graphics2D 兼容层 | `ofdrw-graphics2d` | 无对应 System.Drawing/SkiaSharp 绘图适配层 | **未支持** |
+| Graphics2D 兼容层 | `ofdrw-graphics2d` | Layout 公开 OfdGraphics/OfdPen/OfdBrush/OfdFont/OfdGraphicsPath/OfdMatrix，输出原生 PathObject/TextObject | **部分支持**；04 原语绘图已实现，无 Skia 必需依赖；19 的可选 Skia 适配、05 字体子集仍独立交付 |
 | 兼容性与发布 | Maven 多模块、长期演进 | `netstandard2.0/2.1` SDK + `net10.0` CLI，NuGet 包消费 E2E | **部分支持**；仓库采用 MIT 并附第三方声明；发布候选需通过同一批 NuGet 包的消费验证 |
 
 ## 本轮补强结果
@@ -72,3 +72,5 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 - 依赖审计：当前 CLI 依赖图无已知 vulnerable/deprecated 包。
 
 详细行为与兼容边界见 [转换、编辑与资源约定](conversion-contracts.md)。
+
+issue #3 的逐项状态见 [实现对照](issue-3-implementation.md)，不因 04 单票而宣称整个 issue 完成。

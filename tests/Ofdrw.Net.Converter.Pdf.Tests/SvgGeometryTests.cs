@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Xml.Linq;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Layout.Graphics;
 using Ofdrw.Net.Packaging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -61,6 +62,21 @@ public sealed class SvgGeometryTests
         Assert.Contains("matrix(0 20 -20 0 20 0)", image.Attribute("transform")?.Value);
         Assert.Contains(svg.Descendants(), element => element.Name.LocalName == "clipPath");
         Assert.Contains(image.Ancestors(), element => element.Attribute("opacity")?.Value == "0.502");
+    }
+
+    [Fact]
+    public async Task GraphicsEvenOddPath_ShouldExportSvgFillRule()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        package.Pages.Add(page);
+        var graphics = new OfdGraphics(package, page);
+        var path = new OfdGraphicsPath(OfdFillRule.EvenOdd)
+            .AddRectangle(5, 5, 50, 50).AddRectangle(15, 15, 20, 20);
+        graphics.FillPath(new OfdBrush(OfdColor.Black), path);
+        var svg = await ConvertAsync(package);
+        var node = Assert.Single(svg.Descendants(), element => element.Name.LocalName == "path");
+        Assert.Equal("evenodd", node.Attribute("fill-rule")?.Value);
     }
 
     private static async Task<XDocument> ConvertAsync(OfdDocumentPackage package)

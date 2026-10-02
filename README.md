@@ -25,6 +25,7 @@ implementation batches, and the encryption/signature boundary without a crypto v
 See [conversion contracts](docs/conversion-contracts.md) for page selection, original-text diagnostics, font initialization, resource budgets, and editing behavior.
 See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk through GB/T 33190 package structure, pages, text, paths, images, templates, and signatures, plus OFD-H medical-record profile notes, mapped to both ofdrw and this repository.
 
+- Native graphics API in `Ofdrw.Net.Layout.Graphics`: millimeter paths/text, affine transforms, clipping and Save/Restore; no SkiaSharp or System.Drawing dependency. See [tutorial](docs/tutorials/16-native-graphics.md).
 - OFD core models, document builder API, globally unique object IDs, layers, templates, text runs, vector paths, images, fonts, attachments, annotations, and custom tags.
 - Bounded OFD ZIP loading with path traversal, entry count, expanded-size, and compression-ratio checks.
 - Standard package writing with `OFD.xml`, document/page/resource references, attachments, custom tags, templates, and preserved extension entries.
