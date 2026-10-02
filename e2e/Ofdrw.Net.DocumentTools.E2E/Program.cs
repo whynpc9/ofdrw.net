@@ -157,12 +157,20 @@ Mutate("vendor-annotations-input", entries =>
     var template = document.Root.Element(ns + "CommonData")!.Element(ns + "TemplatePage")!;
     template.AddBeforeSelf(new XElement(vendor + "TemplatePage", new XAttribute("ID", template.Attribute("ID")!.Value), new XAttribute("BaseLoc", "../../../external")));
     entries["Doc_0/Document.xml"] = Bytes(document);
+    var pagePath = source.Pages[0].SourceEntryPath!; var page = Xml(entries[pagePath]); var reference = page.Root!.Element(ns + "Template")!;
+    reference.AddBeforeSelf(new XElement(vendor + "Template", new XAttribute("TemplateID", reference.Attribute("TemplateID")!.Value), new XAttribute("ZOrder", "Foreground")));
+    entries[pagePath] = Bytes(page);
 });
 var vendorAnnotations = await Read("vendor-annotations-input");
 if (!vendorAnnotations.Pages[0].AnnotationAppearances.OfType<OfdTextElement>().Any(text => text.Text == "NOTE 注释")) throw new Exception("Vendor metadata must not suppress standard annotation artwork.");
 try { OfdDocumentMixer.Mix([new(vendorAnnotations, 0)]); throw new Exception("Vendor annotation metadata must prevent unsafe Mix."); }
 catch (NotSupportedException exception) { File.WriteAllText(PathFor("vendor-annotations-input.rejection.txt"), exception.Message); }
 await Save(vendorAnnotations, "vendor-annotations-roundtrip");
+var tagged = await Read("rich"); tagged.CustomTags["fixture"] = "public"; await Save(tagged, "custom-tags-input");
+await Save(OfdDocumentMixer.Mix([new(await Read("custom-tags-input"), 0)]), "mix-custom-tags");
+var conflictingTags = await Read("rich"); conflictingTags.CustomTags["fixture"] = "other"; await Save(conflictingTags, "custom-tags-conflict");
+try { OfdDocumentMixer.Mix([new(await Read("custom-tags-input"), 0), new(await Read("custom-tags-conflict"), 0)]); throw new Exception("Mix must reject conflicting CustomTags."); }
+catch (NotSupportedException exception) { File.WriteAllText(PathFor("custom-tags-input.rejection.txt"), exception.Message); }
 await Save(OfdDocumentSplitter.Split(signed, [1, 0]), "split");
 File.Copy(PathFor("signed.ofd"), PathFor("template-liveness-input.ofd"), true);
 Mutate("template-liveness-input", entries => entries["Doc_0/Extensions/state.dat"] = Encoding.UTF8.GetBytes("<Wrapper><Extension BaseLoc='../Templates'><File>Content.xml</File></Extension></Wrapper>"));
@@ -268,7 +276,7 @@ fixedAnchor.Pages.Add(fixedPage); await Save(fixedAnchor, "italic-fixed-anchor")
 File.Copy(Path.Combine(root, "scripts/generate-font-test-fixtures.py"), PathFor("fonts/generate-font-test-fixtures.py"), true);
 File.Copy(Path.Combine(root, "LICENSE"), PathFor("fonts/MIT-rectangle-LICENSE.txt"), true);
 File.WriteAllBytes(PathFor("fonts/narrow.ttf"), rectangleFont);
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "mix-custom-tags", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);
