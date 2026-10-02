@@ -1,11 +1,11 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "13e0d6c87f54beeaff5025960ae6f3e387a120c6",
-  "example_commit": "13e0d6c87f54beeaff5025960ae6f3e387a120c6",
+  "runtime_source_commit": "c10f002299726bebd7495122702df3658572faaa",
+  "example_commit": "c10f002299726bebd7495122702df3658572faaa",
   "functional_tests": {
     "status": "passed",
-    "total": 222,
+    "total": 237,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
@@ -14,9 +14,9 @@
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.18",
+    "version": "0.1.0-issue03.19",
     "published": false,
-    "repository_commit": "13e0d6c87f54beeaff5025960ae6f3e387a120c6"
+    "repository_commit": "c10f002299726bebd7495122702df3658572faaa"
   },
   "native_default_text": {
     "status": "passed",
@@ -25,12 +25,12 @@
   },
   "automatic_rendering": {
     "status": "passed",
-    "pdf_pages": 36,
-    "svg_pages": 10
+    "pdf_pages": 37,
+    "svg_pages": 11
   },
   "png_visual_review": {
     "status": "passed-for-listed-pages",
-    "method": "All final R11 page PNG bytes match the R8 directly reviewed contact-sheet/crop pages; actual API Mix now reads an input with an unmodeled record owned by page2 and still renders page1 unchanged",
+    "method": "Prior 46 current page bytes match directly inspected R8 pages; new split-template-liveness PDF and SVG pages directly inspected; retained contact sheet13 includes both new renders",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -71,6 +71,8 @@
       "pages/signed-2.png",
       "pages/split-1.png",
       "pages/split-2.png",
+      "pages/split-template-liveness-1.png",
+      "pages/split-template-liveness-svg.png",
       "pages/watermark-1.png",
       "pages/watermark-2.png",
       "pages/watermark-merged-1.png",
@@ -105,16 +107,16 @@
     "windows_opened": 0
   },
   "pr_review": {
-    "status": "per-Area and two annotation asset/index findings fixed; new-head re-review pending; Preview open",
-    "review_head": "e137c99",
-    "codex": "missing image resources and page ownership findings fixed",
-    "cursor": "per-Area missing/foreign geometry fixed",
-    "ci": "e137c99 all six successful; new head pending"
+    "status": "three current-head template/orphan ownership findings fixed; new-head re-review pending; Preview open",
+    "review_head": "afc1028",
+    "codex": "template wrapper and extensionless XML liveness fixed",
+    "cursor": "unmatched/null PageID records retained globally",
+    "ci": "afc1028 all six successful; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 37414316,
-    "sha256": "b0863f88c43e8f7fd86f39dd07b99153665ff66322e1fd9dc41126515e9a22b0",
+    "bytes": 37976336,
+    "sha256": "62ea2f7935261cea4a74bb553b8159d165da4e4d2dca281457bcc49d0ec77786",
     "extraction_readback": "passed all per-file size and SHA-256 checks"
   },
   "ofd_sizes": {
@@ -206,9 +208,21 @@
       "bytes": 11606532,
       "ratio_to_native_baseline": 1.0003
     },
+    "split-template-liveness.ofd": {
+      "bytes": 11602426,
+      "ratio_to_native_baseline": 1.0
+    },
     "split.ofd": {
       "bytes": 11604672,
       "ratio_to_native_baseline": 1.0002
+    },
+    "template-liveness-input.ofd": {
+      "bytes": 11606724,
+      "ratio_to_native_baseline": 1.0003
+    },
+    "template-wrapper-extension.ofd": {
+      "bytes": 11604588,
+      "ratio_to_native_baseline": 1.0001
     },
     "watermark-merged.ofd": {
       "bytes": 11604477,
@@ -227,6 +241,8 @@
   "negative_annotation_samples": {
     "annotation-unknown-media": "PDF rejected before any output",
     "annotation-missing-payload": "PDF rejected before any output",
-    "scoped-annotations-input": "page2 Mix rejected; page1 Mix with overlay succeeds; original synthetic signature not cryptographic acceptance"
-  }
+    "scoped-annotations-input": "page2 Mix rejected; page1 Mix with overlay succeeds; original synthetic signature not cryptographic acceptance",
+    "template-wrapper-extension": "Mix rejected; reference XML remains preserved"
+  },
+  "template_liveness_sample": "state.dat holds template ID/path after selecting only original page2; declaration/payload/resources preserved while unused template stays unpainted"
 }
