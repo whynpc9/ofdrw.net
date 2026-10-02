@@ -1,11 +1,11 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "e389f532a3e6ed2b1fb536a80a6d15d31075f01c",
-  "example_commit": "e389f532a3e6ed2b1fb536a80a6d15d31075f01c",
+  "runtime_source_commit": "13e0d6c87f54beeaff5025960ae6f3e387a120c6",
+  "example_commit": "13e0d6c87f54beeaff5025960ae6f3e387a120c6",
   "functional_tests": {
     "status": "passed",
-    "total": 215,
+    "total": 222,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
@@ -14,9 +14,9 @@
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.16",
+    "version": "0.1.0-issue03.18",
     "published": false,
-    "repository_commit": "e389f532a3e6ed2b1fb536a80a6d15d31075f01c"
+    "repository_commit": "13e0d6c87f54beeaff5025960ae6f3e387a120c6"
   },
   "native_default_text": {
     "status": "passed",
@@ -30,7 +30,7 @@
   },
   "png_visual_review": {
     "status": "passed-for-listed-pages",
-    "method": "All 46 final R9 page PNG bytes match the current R8 pages directly reviewed in 12 retained contact sheets and targeted crops; guards affect rejected inputs only",
+    "method": "All final R11 page PNG bytes match the R8 directly reviewed contact-sheet/crop pages; actual API Mix now reads an input with an unmodeled record owned by page2 and still renders page1 unchanged",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -105,16 +105,16 @@
     "windows_opened": 0
   },
   "pr_review": {
-    "status": "seventh-round two functional findings fixed; new-head re-review pending; Preview open",
-    "seventh_review_head": "c8ebdeb4832a823fb94f526042efc219a72faa95",
-    "codex": "text/image budget separation fixed with atomic-rejection regression",
-    "cursor": "empty clip intersection fixed with no-output and XML-preservation regression",
-    "ci": "c8ebdeb all six successful; new head pending"
+    "status": "per-Area and two annotation asset/index findings fixed; new-head re-review pending; Preview open",
+    "review_head": "e137c99",
+    "codex": "missing image resources and page ownership findings fixed",
+    "cursor": "per-Area missing/foreign geometry fixed",
+    "ci": "e137c99 all six successful; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 38077968,
-    "sha256": "a43b2917f45e5580413bfaa4f6f16cabd9662b9d152931eb74aa78f4e222d021",
+    "bytes": 37414316,
+    "sha256": "b0863f88c43e8f7fd86f39dd07b99153665ff66322e1fd9dc41126515e9a22b0",
     "extraction_readback": "passed all per-file size and SHA-256 checks"
   },
   "ofd_sizes": {
@@ -128,6 +128,14 @@
     },
     "annotation-metadata.ofd": {
       "bytes": 11604596,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "annotation-missing-payload.ofd": {
+      "bytes": 11604402,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "annotation-unknown-media.ofd": {
+      "bytes": 11604366,
       "ratio_to_native_baseline": 1.0001
     },
     "baseline-default.ofd": {
@@ -190,6 +198,10 @@
       "bytes": 11604556,
       "ratio_to_native_baseline": 1.0001
     },
+    "scoped-annotations-input.ofd": {
+      "bytes": 11606565,
+      "ratio_to_native_baseline": 1.0003
+    },
     "signed.ofd": {
       "bytes": 11606532,
       "ratio_to_native_baseline": 1.0003
@@ -211,5 +223,10 @@
     "Preview is mandatory and remains incomplete; PNG review does not replace it",
     "Only listed synthetic samples/pages checked; unsupported raw objects/actions/reference-bearing extensions fail explicitly",
     "Signature appearance, protected-entry digest integrity and cryptographic validity are separate; no production signing added"
-  ]
+  ],
+  "negative_annotation_samples": {
+    "annotation-unknown-media": "PDF rejected before any output",
+    "annotation-missing-payload": "PDF rejected before any output",
+    "scoped-annotations-input": "page2 Mix rejected; page1 Mix with overlay succeeds; original synthetic signature not cryptographic acceptance"
+  }
 }
