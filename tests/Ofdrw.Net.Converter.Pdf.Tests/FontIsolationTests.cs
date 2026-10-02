@@ -69,7 +69,7 @@ public sealed class FontIsolationTests
             return (page.Text, page.Letters.Single(letter => letter.Value=="B").BoundingBox.Left);
         }
         var baseline=await Export("AB");
-        foreach (var value in new[] { "A\u200EB", "A\u206AB" })
+        foreach (var value in new[] { "A\u206AB" })
         {
             var result=await Export(value); Assert.Equal("AB",result.Text); Assert.Equal(baseline.Left,result.Left,5);
         }
@@ -447,6 +447,22 @@ public sealed class FontIsolationTests
         public byte[] GetFont(string face) => face == "default-face" ? fallback : collection;
     }
 
+    [Theory]
+    [InlineData("A\u200EB")][InlineData("abc\u200Eאב")]
+    public async Task LrmSemanticsRefusePdfWhileOriginalOfdTextRemainsComplete(string value)
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "name-only-bidi" });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { new OfdTextElement { FontResourceId = "10", FontName = "name-only-bidi", Text = value } } });
+        using var ofd = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, ofd); ofd.Position = 0;
+        var read = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(ofd);
+        Assert.Equal(value, Assert.IsType<OfdTextElement>(read.Pages[0].Elements[0]).Text); ofd.Position = 0;
+        using var pdf = new MemoryStream();
+        var exception = await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd, pdf));
+        Assert.Contains("bidi", exception.Message); Assert.Equal(0, pdf.Length);
+    }
+
     private sealed class CoveringResolver(byte[] primary,byte[] fallback):IFontResolver
     {
         public string DefaultFontName=>"covering-default";
@@ -475,12 +491,12 @@ public sealed class FontIsolationTests
         Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200CB"));
         Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200DB"));
         Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("\u200D"));
-        foreach (var value in new[] { "A\u200EB", "A\u206AB", "A\u206FB" })
+        foreach (var value in new[] { "A\u206AB", "A\u206FB" })
         {
             Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value);
             Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText(value));
         }
-        foreach (var value in new[] { "A\u200CB", "A\u200DB", "A\u202EB", "A\u202CB", "A\u200FB", "A\u061CB", "A\u2067B", "A\uFE00", "A\u180BB", "A\u180FB" })
+        foreach (var value in new[] { "A\u200EB", "A\u200CB", "A\u200DB", "A\u202EB", "A\u202CB", "A\u200FB", "A\u061CB", "A\u2067B", "A\uFE00", "A\u180BB", "A\u180FB" })
             Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value));
     }
 
