@@ -79,6 +79,21 @@ public sealed class AnnotationToolVisualTests
     }
 
     [Fact]
+    public async Task DuplicateAnnotationAppearancesFailExportWithoutDroppingKnownArtwork()
+    {
+        var source = await Annotated("<PathObject Boundary='0 0 5 5' Fill='true'><AbbreviatedData>M 0 0 L 5 0 L 5 5 C</AbbreviatedData></PathObject>", "10 10 20 20");
+        var xml = XDocument.Parse(Encoding.UTF8.GetString(source.PreservedEntries["Doc_0/Annots/Page.xml"])); var ns = xml.Root!.Name.Namespace;
+        var annotation = xml.Root.Element(ns + "Annot")!; annotation.Add(new XElement(annotation.Element(ns + "Appearance")!));
+        var bytes = Encoding.UTF8.GetBytes(xml.ToString()); source.PreservedEntries["Doc_0/Annots/Page.xml"] = bytes;
+        using var ofd = await Write(source); source = await new OfdReader().ReadAsync(ofd);
+        Assert.Contains(source.Pages[0].AnnotationAppearances, element => element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" });
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
+        using var saved = await Write(source); var reread = await new OfdReader().ReadAsync(saved); Assert.Equal(bytes, reread.PreservedEntries["Doc_0/Annots/Page.xml"]);
+        saved.Position = 0; using var pdf = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(saved, pdf)); Assert.Equal(0, pdf.Length);
+        saved.Position = 0; using var svg = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(saved, svg)); Assert.Equal(0, svg.Length);
+    }
+
+    [Fact]
     public async Task TextMatrix_ScalesGlyphsAndRotatesThemInsteadOfOnlyMovingAnchors()
     {
         async Task<(int Width, int Height)> Bounds(double[] matrix)
