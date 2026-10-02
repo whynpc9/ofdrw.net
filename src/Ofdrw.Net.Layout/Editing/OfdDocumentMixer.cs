@@ -38,6 +38,9 @@ public static class OfdDocumentMixer
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
             OfdDocumentSplitter.ValidateSingleDocument(item.Package);
             OfdDocumentSplitter.ValidatePages(item.Package, new[] { item.PageIndex });
+            var rootNamespace = EntryNamespace(item.Package, "OFD.xml");
+            if (item.Package.PreservedDocBodyElements.Any(xml => XElement.Parse(xml).Name != rootNamespace + "Signatures"))
+                throw new NotSupportedException("Mix cannot safely remap DocBody extensions.");
             var documentNamespace = EntryNamespace(item.Package, item.Package.DocumentEntryPath);
             if (item.Package.PreservedDocumentElements.Any(xml => XElement.Parse(xml).Name != documentNamespace + "Annotations") ||
                 item.Package.PreservedCommonDataElements.Any(xml => XElement.Parse(xml).Name != documentNamespace + "TemplatePage"))

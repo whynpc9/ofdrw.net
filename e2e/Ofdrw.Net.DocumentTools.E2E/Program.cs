@@ -119,7 +119,7 @@ await Save(OfdDocumentMerger.Merge([source, new OfdDocumentPackage { Fonts = { s
 var signed = await Read("signed");
 await Save(OfdDocumentSplitter.Split(signed, [1, 0]), "split");
 File.Copy(PathFor("signed.ofd"), PathFor("template-liveness-input.ofd"), true);
-Mutate("template-liveness-input", entries => entries["Doc_0/Extensions/state.dat"] = Encoding.UTF8.GetBytes("<Extension TemplateID='999001' File='/Doc_0/Templates/Content.xml'/>"));
+Mutate("template-liveness-input", entries => entries["Doc_0/Extensions/state.dat"] = Encoding.UTF8.GetBytes("<Wrapper><Extension BaseLoc='../Templates'><File>Content.xml</File></Extension></Wrapper>"));
 await Save(OfdDocumentSplitter.Split(await Read("template-liveness-input"), [1]), "split-template-liveness");
 File.Copy(PathFor("rich.ofd"), PathFor("template-wrapper-extension.ofd"), true);
 Mutate("template-wrapper-extension", entries =>
@@ -201,7 +201,28 @@ foreach (var font in markedItalic.Fonts) { font.Data = fontBytes; font.FileName 
 await Save(markedItalic, "italic-marked");
 await Save(ItalicSample(true, new double[] { 1, 0, 0, 1, 0, 0 }), "italic-control");
 await Save(ItalicSample(true, new double[] { 1, 0, -0.2, 1, 1.2, 0 }), "italic-user-matrix");
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix" })
+// A portable reproduction of Issue 02's fixed-baseline unmarked CTM.
+// These rectangle glyphs are original MIT fixtures, not third-party reading fonts.
+var fixedAnchor = new OfdDocumentPackage();
+var rectangleFont = File.ReadAllBytes(Path.Combine(root, "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/narrow.ttf"));
+fixedAnchor.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Ofdrw Test Face", Data = rectangleFont });
+fixedAnchor.Fonts.Add(new OfdFontResource { Id = "11", FontName = "OFD Example Noto", Data = fontBytes });
+var fixedPage = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 70 };
+foreach (var (label, x) in new[] { ("IDENTITY", 20d), ("UNMARKED CTM", 60d) })
+    fixedPage.Elements.Add(new OfdTextElement { Text = label, FontName = "OFD Example Noto", FontResourceId = "11", XMillimeters = x, YMillimeters = 5, FontSizeMillimeters = 3 });
+foreach (var italic in new[] { false, true })
+foreach (var shear in new[] { false, true })
+{
+    var glyph = new OfdTextElement { Text = "I", FontName = "Ofdrw Test Face", FontResourceId = "10", Italic = italic,
+        FontSizeMillimeters = 8, XMillimeters = shear ? 60 : 20, YMillimeters = italic ? 40 : 20,
+        FillColor = new OfdColor(128, 0, 128), Transform = shear ? [1, 0, -0.2, 1, 1.6, 0] : [1, 0, 0, 1, 0, 0] };
+    glyph.Runs.Add(new OfdTextRun { Text = "I", YMillimeters = 8 }); fixedPage.Elements.Add(glyph);
+}
+fixedAnchor.Pages.Add(fixedPage); await Save(fixedAnchor, "italic-fixed-anchor");
+File.Copy(Path.Combine(root, "scripts/generate-font-test-fixtures.py"), PathFor("fonts/generate-font-test-fixtures.py"), true);
+File.Copy(Path.Combine(root, "LICENSE"), PathFor("fonts/MIT-rectangle-LICENSE.txt"), true);
+File.WriteAllBytes(PathFor("fonts/narrow.ttf"), rectangleFont);
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);

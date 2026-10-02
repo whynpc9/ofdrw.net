@@ -94,7 +94,7 @@ public sealed class EditingIntegrityTests
         Assert.Contains(result.Diagnostics, warning => warning.Contains("opaque.xml"));
         output.Position = 0;
         var archive = await new OfdPackageLoader().LoadAsync(output);
-        Assert.DoesNotContain(archive.EntryNames, path => path == "Doc_0/Pages/Page_1/Content.xml");
+        Assert.Contains("Doc_0/Pages/Page_1/Content.xml", archive.EntryNames);
         Assert.Contains(archive.EntryNames, path => archive.GetBytes(path).SequenceEqual(new byte[] { 8, 8, 8 }));
     }
 
