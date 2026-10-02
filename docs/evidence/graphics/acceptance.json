@@ -1,31 +1,39 @@
 {
-  "source_head": "055f43affa6e288ecd45ac446a11d19d68d59123",
+  "source_head": "4e121297d9f505dbb6c8f050f8d08ac452dfab33",
   "baseline": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
   "source_tree_frozen": true,
   "functional": {
     "status": "passed",
     "full_suite": {
-      "passed": 410,
+      "passed": 417,
       "failed": 0,
       "skipped": 0
     },
-    "independent_graphics_regressions": 10,
+    "independent_graphics_regressions": 17,
     "new_graphics_CS1591": 0,
     "package_count": 11,
-    "package_version": "0.1.0-graphics.20261002.final",
+    "package_version": "0.1.0-graphics.20261003.r2final",
     "package_status": "passed"
   },
   "automatic_rendering": {
     "status": "passed",
-    "pdf_pages": 8,
-    "svg_pages": 8,
+    "pdf_pages": 9,
+    "svg_pages": 9,
     "original_unicode_preserved": true,
     "native_graphics": {
       "pages": 2,
-      "paths": 17,
-      "texts": 29,
+      "paths": 18,
+      "texts": 30,
       "images": 0,
       "fonts": 1
+    },
+    "name_only_native": {
+      "pages": 1,
+      "texts": 7,
+      "paths": 4,
+      "images": 0,
+      "font_payload_bytes": 0,
+      "generated_faux_factors": 3
     }
   },
   "png_visual": {
@@ -41,6 +49,8 @@
       "pages/baseline-native-svg-2.png",
       "pages/graphics-1.png",
       "pages/graphics-2.png",
+      "pages/graphics-name-only-1.png",
+      "pages/graphics-name-only-svg-1.png",
       "pages/graphics-roundtrip-1.png",
       "pages/graphics-roundtrip-2.png",
       "pages/graphics-roundtrip-svg-1.png",
@@ -48,65 +58,21 @@
       "pages/graphics-svg-1.png",
       "pages/graphics-svg-2.png"
     ],
-    "scope": "Full-page PDF and SVG review of graphics, roundtrip, explicit Native and default DOCX; baseline/style/curves/fill/stroke/clip/page breaks checked. Latest-source contact sheets confirm full 16-page scope."
+    "scope": "R2: 18 PDF/SVG PNG pages; all10 changed/new pages reviewed, eight baseline pages SHA256-identical to accepted R1 pages. Acute miter tip actual raster + default-limit negative control passed."
   },
   "preview": {
-    "status": "passed",
-    "reviewer": "Codex primary agent using native macOS Preview UI",
-    "chain": "Graphics API -> native OFD -> PDF -> Preview; licensed DOCX -> explicit Native/default OFD -> PDF -> Preview",
-    "checked_pages": [
-      {
-        "file": "graphics.pdf",
-        "pages": [
-          1,
-          2
-        ],
-        "sha256": "a8b5fb0db75d8d9e979eae279b65beba913a66c5d7e00fecb1a78b510a08737a",
-        "result": "passed"
-      },
-      {
-        "file": "graphics-roundtrip.pdf",
-        "pages": [
-          1,
-          2
-        ],
-        "sha256": "92285c134cc45a4c1cb22ffb29efdb4eecef5bdd196992d297272c64fd5cca3d",
-        "result": "passed"
-      },
-      {
-        "file": "baseline-native.pdf",
-        "pages": [
-          1,
-          2
-        ],
-        "sha256": "bd45dcce68c59d7f448cf334a9847187b0a466ceaf1daa1aec8f24520cc7331f",
-        "result": "passed"
-      },
-      {
-        "file": "baseline-default.pdf",
-        "pages": [
-          1,
-          2
-        ],
-        "sha256": "74220ed36c1aab048c4cbc3523148bed8d32fe4cf6f3a45391657ead97b23607",
-        "result": "passed"
-      }
-    ],
-    "windows_closed": true,
-    "gui_released": true,
-    "initial_file_chooser_failure": "Recovered via Finder; actual paths confirmed in Preview before page inspection. No substitute rendering used for Preview result.",
-    "observations": [
-      "All 8 pages inspected at full-page scale; ticket title/grid and typography additionally viewed enlarged.",
-      "Chinese/Latin text, local bold/italic/color, baseline guides and rotated stamp are legible and remain local.",
-      "Anisotropic stroke, cubic/quadratic curves, EvenOdd hole/NonZero fill and frozen clip match the deterministic sample.",
-      "Native/default table fill/borders, alignment and explicit two-page break match the licensed DOCX fixture.",
-      "No observed missing glyphs, duplicate paint, unexpected crop/overlap or extra blank pages in this scope."
-    ],
-    "checked_at": "2026-10-02 Asia/Shanghai"
+    "status": "not-reviewed",
+    "reason": "R2 regenerated. Awaiting next coordinated exclusive slot; 02 now holds GUI after05. R1 acceptance does not close R2 Preview.",
+    "checked_pages": [],
+    "windows_closed": null
   },
   "review": {
-    "status": "pending",
-    "pr": null,
+    "status": "pending-fresh-head",
+    "pr": "https://github.com/whynpc9/ofdrw.net/pull/13",
+    "round1_head": "4b634d1785b3a57c67f33a43441a08aa46188813",
+    "round1_threads": 5,
+    "round1_ci": "six checks passed",
+    "fixed_runtime": "4e121297d9f505dbb6c8f050f8d08ac452dfab33",
     "current_head": null
   },
   "production_release_accepted": false,
@@ -116,6 +82,69 @@
     "No flow/table/Canvas or Skia adapter additions.",
     "Font subset/reuse/fallback is ticket 05; explicit package-local identity contract only.",
     "Name-only font text depends on reader environment. Public artifacts embed pinned OFL Noto only.",
-    "Current-head external reviews/CI remain required before ticket closure."
-  ]
+    "R2 Preview and current-head external reviews/CI remain required before ticket closure."
+  ],
+  "previous_round1": {
+    "source_head": "055f43affa6e288ecd45ac446a11d19d68d59123",
+    "preview": {
+      "status": "passed",
+      "reviewer": "Codex primary agent using native macOS Preview UI",
+      "chain": "Graphics API -> native OFD -> PDF -> Preview; licensed DOCX -> explicit Native/default OFD -> PDF -> Preview",
+      "checked_pages": [
+        {
+          "file": "graphics.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "sha256": "a8b5fb0db75d8d9e979eae279b65beba913a66c5d7e00fecb1a78b510a08737a",
+          "result": "passed"
+        },
+        {
+          "file": "graphics-roundtrip.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "sha256": "92285c134cc45a4c1cb22ffb29efdb4eecef5bdd196992d297272c64fd5cca3d",
+          "result": "passed"
+        },
+        {
+          "file": "baseline-native.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "sha256": "bd45dcce68c59d7f448cf334a9847187b0a466ceaf1daa1aec8f24520cc7331f",
+          "result": "passed"
+        },
+        {
+          "file": "baseline-default.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "sha256": "74220ed36c1aab048c4cbc3523148bed8d32fe4cf6f3a45391657ead97b23607",
+          "result": "passed"
+        }
+      ],
+      "windows_closed": true,
+      "gui_released": true,
+      "initial_file_chooser_failure": "Recovered via Finder; actual paths confirmed in Preview before page inspection. No substitute rendering used for Preview result.",
+      "observations": [
+        "All 8 pages inspected at full-page scale; ticket title/grid and typography additionally viewed enlarged.",
+        "Chinese/Latin text, local bold/italic/color, baseline guides and rotated stamp are legible and remain local.",
+        "Anisotropic stroke, cubic/quadratic curves, EvenOdd hole/NonZero fill and frozen clip match the deterministic sample.",
+        "Native/default table fill/borders, alignment and explicit two-page break match the licensed DOCX fixture.",
+        "No observed missing glyphs, duplicate paint, unexpected crop/overlap or extra blank pages in this scope."
+      ],
+      "checked_at": "2026-10-02 Asia/Shanghai"
+    },
+    "full_suite": {
+      "passed": 410,
+      "failed": 0,
+      "skipped": 0
+    },
+    "evidence_commit": "4b634d1785b3a57c67f33a43441a08aa46188813"
+  }
 }
