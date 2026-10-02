@@ -77,6 +77,26 @@ public sealed class FontSubsetTests
         var cmap = new OpenTypeCmap(new OpenTypeFace(saved.Package.Fonts[0].Data)); Assert.NotEqual(0, cmap.Glyph('Z'));
     }
     [Fact]
+    public async Task UsageGroupingSeparatesDifferentFacesAndUnboundTextAcrossPages()
+    {
+        var package = Package(Latin.Value, "A");
+        var second = new OpenTypeFace(Latin.Value); Put16(second.Table("head"), 44, 1);
+        package.Fonts.Add(new OfdFontResource { Id = "11", FontName = "Second", Bold = true, Data = second.Build() });
+        package.Fonts.Add(new OfdFontResource { Id = "12", FontName = "Alias", Data = Latin.Value.ToArray() });
+        package.Fonts.Add(new OfdFontResource { Id = "13", FontName = "NameOnly" });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 210, HeightMillimeters = 297,
+            Elements = { new OfdTextElement { FontResourceId = "12", Text = "Z" },
+                new OfdTextElement { FontResourceId = "11", Text = "B" },
+                new OfdTextElement { FontResourceId = "13", FontName = "NameOnly", Text = "\U0001F600" } } });
+        var saved = await Save(package); Assert.Equal(2, saved.Report.FontEmbedding.Count);
+        var first = new OpenTypeCmap(new OpenTypeFace(saved.Package.Fonts.Single(font => font.FontName == "Source").Data));
+        var other = new OpenTypeCmap(new OpenTypeFace(saved.Package.Fonts.Single(font => font.FontName == "Second").Data));
+        Assert.NotEqual(0, first.Glyph('A')); Assert.NotEqual(0, first.Glyph('Z')); Assert.Equal(0, first.Glyph('B'));
+        Assert.NotEqual(0, other.Glyph('B')); Assert.Equal(0, other.Glyph('Z'));
+        Assert.Equal(saved.Package.Fonts.Single(font => font.FontName == "Source").FileName, saved.Package.Fonts.Single(font => font.FontName == "Alias").FileName);
+    }
+
+    [Fact]
     public async Task SameNamesDifferentContentDoNotMerge()
     {
         var package = Package(Latin.Value, "Alpha"); var second = new OpenTypeFace(Latin.Value);

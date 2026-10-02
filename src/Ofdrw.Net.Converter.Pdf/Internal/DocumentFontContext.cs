@@ -29,7 +29,12 @@ internal sealed class DocumentFontContext
             {
                 var data = OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
                 _families[font] = PdfFontRegistry.RegisterFontFace(data, font.Bold, font.Italic);
-                try { _coverage[font] = new OpenTypeCmap(new OpenTypeFace(data)); }
+                try
+                {
+                    var coverage = new OpenTypeCmap(new OpenTypeFace(data));
+                    if (coverage.IsSymbol) throw new NotSupportedException("Windows symbol cmap character semantics are unmodeled; the original OFD font remains preserved.");
+                    _coverage[font] = coverage;
+                }
                 catch (NotSupportedException exception) { _unsupportedCoverage[font] = exception; }
                 continue;
             }

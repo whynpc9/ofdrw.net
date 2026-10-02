@@ -23,11 +23,11 @@ internal sealed class OfdFontEmbeddingPlan
             throw new ArgumentOutOfRangeException(nameof(package), "Invalid font embedding options.");
         var unsafeReason = PreservationReason(package);
         CanonicalPayloads = unsafeReason is null;
-        var texts = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().ToArray();
         // Snapshot selected faces once per content/index, then aggregate aliases
         // by the actual face bytes. Same names with different bytes stay distinct.
         var selected = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         var groups = new Dictionary<string, List<OfdFontResource>>(StringComparer.Ordinal);
+        var resourceGroups = new Dictionary<OfdFontResource, string>();
         foreach (var font in package.Fonts.Where(font => font.Data.Length > 0))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -49,8 +49,23 @@ internal sealed class OfdFontEmbeddingPlan
             var identity = BinaryIdentity.Hash(bytes);
             if (!groups.TryGetValue(identity, out var aliases)) groups.Add(identity, aliases = new());
             aliases.Add(font);
+            resourceGroups[font] = identity;
             Resources[font] = Copy(font, bytes);
         }
+        // Resolve every typed binding once, even when it selects no embedded
+        // group. Cancellation is checked before every examined element.
+        var usage = new Dictionary<string, List<OfdTextElement>>(StringComparer.Ordinal);
+        if (options.Mode != OfdFontEmbeddingMode.Full)
+            foreach (var page in package.Pages)
+                foreach (var element in page.Elements)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (element is not OfdTextElement text) continue;
+                    var font = OfdFontSelection.Resolve(package.Fonts, text);
+                    if (font is null || !resourceGroups.TryGetValue(font, out var identity)) continue;
+                    if (!usage.TryGetValue(identity, out var boundTexts)) usage.Add(identity, boundTexts = new());
+                    boundTexts.Add(text);
+                }
         foreach (var group in groups)
         {
             cancellationToken.ThrowIfCancellationRequested(); var aliases = group.Value; var source = Resources[aliases[0]].Data;
@@ -82,7 +97,7 @@ internal sealed class OfdFontEmbeddingPlan
                     } } }
                 catch (NotSupportedException exception) { reason = exception.Message + " Full font retained; coverage was not validated."; }
                 var used = new HashSet<int>();
-                foreach (var text in texts.Where(text => aliases.Contains(OfdFontSelection.Resolve(package.Fonts, text)!)))
+                foreach (var text in usage.TryGetValue(group.Key, out var boundTexts) ? boundTexts : Enumerable.Empty<OfdTextElement>())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))

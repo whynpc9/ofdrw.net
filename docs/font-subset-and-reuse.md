@@ -64,3 +64,5 @@ Name-only 资源若通过本地发现或 host style probe 取得真实字节，�
 发现的 name-only face 缺普通字符时，宿主默认回退获得机会；回退仍必须覆盖实际文字，无法覆盖则明确失败，绝不返回已知缺字的 face 画方框。Windows symbol cmap 3/0 格式 4 保持全量并诊断，读取支持直接字符与 F000 重映射；SVG 未使用的其它合法未建模 cmap 不阻断 CSS 资源输出，真正被选择且无法验证的编码则明确拒绝。RLM/ALM 的 PDF 方向语义仍拒绝，LRM/弃用零宽按省略策略处理。
 
 名称字体的候选回退按配置 default、Arial 顺序探测真实字节；空宿主结果、读取/格式/cmap 或注册预算失败可尝试下一候选，TTC 使用 face 0。只有已验证覆盖全部当前文本且注册同一字节的候选才返回成功；全部失败明确拒绝，不用未验证字体绘制缺字框。未使用的合法但未建模 cmap 不阻断 PDF，实际选中后明确拒绝。Symbol 写包保全量且诊断 coverage 未验证，普通 Unicode 字体缺字检查仍严格。
+
+Windows symbol-only cmap 的字符语义未建模：写包/读取编辑保全量并标识 coverage 未验证；PDF/SVG 在实际选中时统一 NotSupportedException，包含偶然映射成功的 A，避免半验证或缺字回退建议。未使用的 symbol 资源不阻断 PDF/SVG。字体用字绑定在子集阶段为每个文本只解析一次，并按实际 face 内容组汇总；不匹配的元素也先检查取消。

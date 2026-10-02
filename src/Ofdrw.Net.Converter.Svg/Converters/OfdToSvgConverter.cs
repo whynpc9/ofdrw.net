@@ -232,7 +232,7 @@ public sealed class OfdToSvgConverter
         if (resource is not null && families.TryGetValue(resource, out var embedded))
         {
             family = embedded.Family;
-            if (embedded.Coverage is null) throw new NotSupportedException("Selected embedded font has an unmodeled cmap encoding; Unicode coverage cannot be verified.");
+            if (embedded.Coverage is null || embedded.Coverage.IsSymbol) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
             foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
                 EmbeddedFontCoverage.Validate(value, embedded.Coverage, resource.FontName);
         }
