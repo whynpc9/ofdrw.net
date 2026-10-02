@@ -224,7 +224,13 @@ public sealed class DocumentToolTests
         {
             var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var path = documentArea ? "Doc_0/Document.xml" : source.Pages[0].SourceEntryPath!; var xml = Xml(source, path);
             xml.Descendants(ns + (documentArea ? "PageArea" : "Area")).Single().Element(ns + "PhysicalBox")!.Value = value; Put(source, path, xml);
-            using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input); Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)])); Assert.Throws<NotSupportedException>(() => OfdDocumentSplitter.Split(read, [0])); using var output = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, output)); Assert.Equal(0, output.Length);
+            using var input = Zip(source.PreservedEntries);
+            if (value is "0 0 100" or "0 0 NaN 100" or "0 0 Infinity 100")
+            {
+                await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(input));
+                continue;
+            }
+            var read = await new OfdReader().ReadAsync(input); Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)])); Assert.Throws<NotSupportedException>(() => OfdDocumentSplitter.Split(read, [0])); using var output = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, output)); Assert.Equal(0, output.Length);
         }
     }
 
@@ -1267,6 +1273,108 @@ public sealed class DocumentToolTests
         Assert.Equal(new byte[] {1,2,3}, saved.PreservedEntries["Doc_0/Extensions/private.bin"]);
         Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(saved, 0)]));
     }
+    [Theory]
+    [InlineData("<Actions xmlns='http://www.ofdspec.org/2016'><Action Event='CLICK'/></Actions>")]
+    [InlineData("<Metadata xmlns='urn:vendor'>public</Metadata>")]
+    public void Split_WithoutArchiveRefusesSelectedPageXmlButAllowsExcludedExtensions(string xml)
+    {
+        var source = Source(); source.Pages[0].PreservedPageElements.Add(xml);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentSplitter.Split(source, [0]));
+        Assert.Equal(xml, Assert.Single(source.Pages[0].PreservedPageElements));
+        var selected = OfdDocumentSplitter.Split(source, [1]);
+        Assert.Equal("SECOND", Assert.Single(selected.Pages).Elements.OfType<OfdTextElement>().Single().Text);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnnotationBudgetCountsRepeatedPagesAndEveryAppearanceIncludingHidden(bool hidden)
+    {
+        var source = await AnnotationBudgetSource(hidden);
+        using var rejected = Zip(source.PreservedEntries);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(rejected,
+            new OfdPackageLoadOptions { MaxAnnotationObjectCount = 3 }));
+        Assert.Contains("cumulative object budget", error.Message);
+        using var accepted = Zip(source.PreservedEntries);
+        var read = await new OfdReader().ReadAsync(accepted, new OfdPackageLoadOptions { MaxAnnotationObjectCount = 4 });
+        Assert.All(read.Pages, page => Assert.Equal(hidden ? 1 : 2, page.AnnotationAppearances.OfType<OfdTextElement>().Count()));
+    }
+
+    [Fact]
+    public async Task AnnotationXmlBudgetChargesCachedFileBeforeRepeatedMaterialization()
+    {
+        var source = await AnnotationBudgetSource(false);
+        var bytes = source.PreservedEntries["Doc_0/Annots/Page.xml"].LongLength;
+        using var rejected = Zip(source.PreservedEntries);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(rejected,
+            new OfdPackageLoadOptions { MaxAnnotationXmlBytes = 2 * bytes - 1 }));
+        Assert.Contains("cumulative XML byte budget", error.Message);
+        using var accepted = Zip(source.PreservedEntries);
+        var read = await new OfdReader().ReadAsync(accepted, new OfdPackageLoadOptions { MaxAnnotationXmlBytes = 2 * bytes });
+        Assert.Equal(4, read.Pages.Sum(page => page.AnnotationAppearances.OfType<OfdTextElement>().Count()));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InexactPhysicalBoxDisplayKeepsFirstFourFiniteValuesWithoutAllowingRewrite(bool inherited)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace);
+        var path = inherited ? "Doc_0/Document.xml" : source.Pages[0].SourceEntryPath!; var xml = Xml(source, path);
+        xml.Descendants(ns + (inherited ? "PageArea" : "Area")).Single().Element(ns + "PhysicalBox")!.Value = "5\t2\n100 80 SECRET"; Put(source, path, xml);
+        if (inherited) { var page = Xml(source, source.Pages[0].SourceEntryPath!); page.Root!.Element(ns + "Area")!.Remove(); Put(source, source.Pages[0].SourceEntryPath!, page); }
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        Assert.Equal(5, read.Pages[0].XMillimeters); Assert.Equal(2, read.Pages[0].YMillimeters);
+        Assert.Equal(100, read.Pages[0].WidthMillimeters); Assert.Equal(80, read.Pages[0].HeightMillimeters);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentSplitter.Split(read, [0]));
+    }
+
+    [Theory]
+    [InlineData("fresh", false)]
+    [InlineData("fresh", true)]
+    [InlineData("model", false)]
+    [InlineData("model", true)]
+    [InlineData("xml", false)]
+    [InlineData("xml", true)]
+    public async Task TinyPositivePageSideRefusesBeforeToolMutationOrOutput(string mode, bool height)
+    {
+        var source = mode == "fresh" ? Source() : await RoundTrip(Source());
+        if (mode == "xml")
+        {
+            var path = source.Pages[0].SourceEntryPath!; var xml = Xml(source, path);
+            xml.Descendants().Single(node => node.Name.LocalName == "PhysicalBox").Value = height ? "0 0 100 0.0004" : "0 0 0.0004 80"; Put(source, path, xml);
+            using var input = Zip(source.PreservedEntries); source = await new OfdReader().ReadAsync(input);
+        }
+        else if (height) source.Pages[0].HeightMillimeters = 0.0004;
+        else source.Pages[0].WidthMillimeters = 0.0004;
+        var count = source.Pages[0].Elements.Count;
+        Assert.Throws<NotSupportedException>(() => OfdDocumentSplitter.Split(source, [0]));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
+        Assert.Throws<NotSupportedException>(() => OfdWatermark.AddText(source, [0], "DRAFT"));
+        Assert.Equal(count, source.Pages[0].Elements.Count);
+        using var output = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(source, output)); Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
+    public async Task WriterAutoPageRejectsTinyDefaultButKeepsRepresentableSmallSide()
+    {
+        var source = new OfdDocumentPackage(); source.Options.DefaultPageWidthMillimeters = 0.0004;
+        using var output = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(source, output)); Assert.Equal(0, output.Length);
+        source.Options.DefaultPageWidthMillimeters = 0.001;
+        var read = await RoundTrip(source); Assert.Equal(0.001, Assert.Single(read.Pages).WidthMillimeters);
+    }
+
+    private static async Task<OfdDocumentPackage> AnnotationBudgetSource(bool hidden)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace);
+        var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Add(new XElement(ns + "Annotations", "Annots/Annotations.xml")); Put(source, "Doc_0/Document.xml", document);
+        source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes(new XElement(ns + "Annotations", source.Pages.Select(page => new XElement(ns + "Page", new XAttribute("PageID", page.Id!), new XElement(ns + "FileLoc", "Page.xml")))).ToString());
+        var visibility = hidden ? "Visible='false'" : "";
+        source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='900'><Appearance Boundary='10 10 20 20'><TextObject Boundary='0 0 10 10' Size='3'><TextCode X='0' Y='3'>ONE</TextCode></TextObject></Appearance></Annot><Annot ID='901' {visibility}><Appearance Boundary='10 30 20 20'><TextObject Boundary='0 0 10 10' Size='3'><TextCode X='0' Y='3'>TWO</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+        return source;
+    }
+
     private static OfdDocumentPackage Source()
     {
         var package = new OfdDocumentPackage();

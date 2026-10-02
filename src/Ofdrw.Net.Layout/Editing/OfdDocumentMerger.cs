@@ -204,6 +204,8 @@ public static class OfdDocumentMerger
         }
         if (OfdGraphicXmlContract.HasUnsupportedReferences(root))
             throw new NotSupportedException("Unmodeled drawing resource references (including Substitution) cannot be safely remapped.");
+        if (requireKnownAttributes && root.DescendantsAndSelf().Attributes("Boundary").Any(attribute => !OfdBoxParser.TryParse(attribute.Value, out _)))
+            throw new NotSupportedException("Mix cannot flatten inexact drawing Boundary values.");
         if (!OfdGraphicXmlContract.HasKnownChildren(root) || root.DescendantsAndSelf().Attributes().Any(attribute =>
             !OfdGraphicXmlContract.IsKnownAttribute(attribute) && (requireKnownAttributes || attribute.Name.Namespace != XNamespace.None)))
             throw new NotSupportedException("Unknown object structure or attributes cannot be safely remapped during merge.");

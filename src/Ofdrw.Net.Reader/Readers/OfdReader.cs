@@ -172,6 +172,7 @@ public sealed class OfdReader : IOfdReader
         var annotationIndex = IndexAnnotationFiles(archive, documentXml, docRoot,
             new HashSet<string>(pages.Select(page => page.Id).OfType<string>().Where(id => !string.IsNullOrWhiteSpace(id)), StringComparer.Ordinal), cancellationToken);
         var annotationDocuments = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
+        var annotationBudget = new AnnotationReadBudget(options);
         foreach (var pageRef in pages)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -267,7 +268,7 @@ public sealed class OfdReader : IOfdReader
                 page.Templates.Add(template);
             }
 
-            ReadAnnotationAppearances(archive, annotationIndex, annotationDocuments, page, fontMap, mediaMap, mediaTypeMap, cancellationToken);
+            ReadAnnotationAppearances(archive, annotationIndex, annotationDocuments, annotationBudget, page, fontMap, mediaMap, mediaTypeMap, cancellationToken);
             package.Pages.Add(page);
         }
 
@@ -482,8 +483,28 @@ public sealed class OfdReader : IOfdReader
     private static string? WrapUnmodeled(List<string> records) => records.Count == 0 ? null :
         "<UnmodeledAnnotations>" + string.Concat(records) + "</UnmodeledAnnotations>";
 
+    private sealed class AnnotationReadBudget(OfdPackageLoadOptions options)
+    {
+        private int remainingObjects = options.MaxAnnotationObjectCount;
+        private long remainingXmlBytes = options.MaxAnnotationXmlBytes;
+
+        internal void ChargeXml(long bytes)
+        {
+            if (bytes > remainingXmlBytes)
+                throw new InvalidDataException("Annotation materialization exceeds the cumulative XML byte budget.");
+            remainingXmlBytes -= bytes;
+        }
+
+        internal void ChargeObject()
+        {
+            if (remainingObjects == 0)
+                throw new InvalidDataException("Annotation materialization exceeds the cumulative object budget.");
+            remainingObjects--;
+        }
+    }
+
     private static void ReadAnnotationAppearances(OfdPackageArchive archive, AnnotationIndex index,
-        IDictionary<string, XDocument?> documents, OfdPage page, IReadOnlyDictionary<string, string> fonts,
+        IDictionary<string, XDocument?> documents, AnnotationReadBudget budget, OfdPage page, IReadOnlyDictionary<string, string> fonts,
         IReadOnlyDictionary<string, string> media, IReadOnlyDictionary<string, string> mediaTypes,
         CancellationToken cancellationToken)
     {
@@ -495,6 +516,9 @@ public sealed class OfdReader : IOfdReader
         foreach (var annotationPath in files.Paths)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            // Cached XML still produces new typed/raw strings on every page.
+            // Charge each occurrence before parsing or materializing its content.
+            if (archive.TryGetBytes(annotationPath, out var annotationBytes)) budget.ChargeXml(annotationBytes.LongLength);
             if (!documents.TryGetValue(annotationPath, out var annotations))
             {
                 annotations = null;
@@ -526,9 +550,11 @@ public sealed class OfdReader : IOfdReader
                     var hiddenAppearance = annotation.Element(annotations.Root.Name.Namespace + "Appearance");
                     if (hiddenAppearance is not null)
                     {
-                        var hiddenNodes = FlattenAnnotationNodes(hiddenAppearance.Elements(), hiddenAppearance.Name.Namespace, cancellationToken);
+                        var hiddenNodes = FlattenAnnotationNodes(hiddenAppearance.Elements(), hiddenAppearance.Name.Namespace, budget, cancellationToken);
                         if (!PlainContainer(hiddenAppearance, "Boundary", "ID", "CTM") || hiddenNodes is null ||
-                            hiddenNodes.SelectMany(node => node.DescendantsAndSelf().Attributes()).Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute)))
+                            !OfdBoxParser.TryParse(hiddenAppearance.Attribute("Boundary")?.Value, out _) ||
+                            hiddenNodes.SelectMany(node => node.DescendantsAndSelf().Attributes()).Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute) ||
+                                attribute.Name == "Boundary" && !OfdBoxParser.TryParse(attribute.Value, out _)))
                             page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
                     }
                     continue;
@@ -547,7 +573,8 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
                 var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value);
-                var hasUnmodeledMetadata = !PlainContainer(appearance, "Boundary", "ID", "CTM");
+                var hasUnmodeledMetadata = !PlainContainer(appearance, "Boundary", "ID", "CTM") ||
+                    !OfdBoxParser.TryParse(appearance.Attribute("Boundary")?.Value, out _);
                 if (appearance.Attribute("CTM") is not null && (appearanceTransform is null || appearanceTransform.Any(value => double.IsNaN(value) || double.IsInfinity(value))))
                 {
                     page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
@@ -555,7 +582,9 @@ public sealed class OfdReader : IOfdReader
                 }
                 var ns = appearance.Name.Namespace;
                 var box = ParseBox(appearance.Attribute("Boundary")?.Value);
-                var nodes = FlattenAnnotationNodes(appearance.Elements(), appearance.Name.Namespace, cancellationToken);
+                var nodes = FlattenAnnotationNodes(appearance.Elements(), appearance.Name.Namespace, budget, cancellationToken);
+                if (nodes is not null && nodes.SelectMany(node => node.DescendantsAndSelf().Attributes("Boundary")).Any(attribute => !OfdBoxParser.TryParse(attribute.Value, out _)))
+                    hasUnmodeledMetadata = true;
                 if (nodes is null || box.w <= 0 || box.h <= 0 || new[] { box.x, box.y, box.w, box.h }.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
                 {
                     page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
@@ -638,7 +667,7 @@ public sealed class OfdReader : IOfdReader
         }
     }
 
-    private static List<XElement>? FlattenAnnotationNodes(IEnumerable<XElement> nodes, XNamespace ns, CancellationToken token)
+    private static List<XElement>? FlattenAnnotationNodes(IEnumerable<XElement> nodes, XNamespace ns, AnnotationReadBudget budget, CancellationToken token)
     {
         var result = new List<XElement>();
         bool Append(IEnumerable<XElement> children, int depth)
@@ -655,8 +684,8 @@ public sealed class OfdReader : IOfdReader
                 }
                 else if (node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject")
                 {
+                    budget.ChargeObject();
                     if (!IsSupportedAnnotationPrimitive(node, ns)) return false;
-                    if (result.Count >= 100_000) throw new InvalidDataException("Annotation appearance exceeds the object budget.");
                     result.Add(node);
                 }
                 else return false;
@@ -982,7 +1011,11 @@ public sealed class OfdReader : IOfdReader
 
     private static (double x, double y, double w, double h) ParseBox(string? value)
     {
-        return OfdBoxParser.TryParse(value, out var box) ? box : default;
+        if (value is null) return default;
+        // Ordinary display keeps the legacy first four finite values, while
+        // rewrite preflight requires exactly four and preserves the raw XML.
+        if (OfdBoxParser.TryParse(value, out var box, allowTrailingTokens: true)) return box;
+        throw new InvalidDataException("OFD box must start with four finite numbers.");
     }
 
     private static double ParseDouble(string? value, double fallback)

@@ -8,6 +8,7 @@ using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Layout.Editing;
 using Ofdrw.Net.Packaging;
+using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Reader.Extraction;
 using Ofdrw.Net.Signatures.Signing;
@@ -120,6 +121,60 @@ Mutate("box-whitespace-input", entries =>
     var pagePath = entries.Keys.Single(path => path.EndsWith("/Content.xml")); var page = Xml(entries[pagePath]); page.Root!.Element(ns + "Area")!.Element(ns + "PhysicalBox")!.Value = "0\t0\n100\r80"; entries[pagePath] = Bytes(page);
 });
 await Save(OfdDocumentMixer.Mix([new(await Read("box-whitespace-input"), 0)]), "box-whitespace");
+foreach (var inherited in new[] { false, true })
+{
+    var name = inherited ? "box-inexact-inherited" : "box-inexact-page";
+    File.Copy(PathFor("box-whitespace.ofd"), PathFor(name + ".ofd"), true);
+    Mutate(name, entries =>
+    {
+        var path = entries.Keys.Single(path => path.EndsWith("/Content.xml")); var page = Xml(entries[path]);
+        if (inherited)
+        {
+            page.Root!.Element(ns + "Area")!.Remove(); var document = Xml(entries["Doc_0/Document.xml"]);
+            document.Descendants(ns + "PageArea").Single().Element(ns + "PhysicalBox")!.Value = "0 0 100 80 SECRET"; entries["Doc_0/Document.xml"] = Bytes(document);
+        }
+        else page.Root!.Element(ns + "Area")!.Element(ns + "PhysicalBox")!.Value = "0 0 100 80 SECRET";
+        entries[path] = Bytes(page);
+    });
+    var read = await Read(name); if (read.Pages[0].WidthMillimeters != 100 || read.Pages[0].HeightMillimeters != 80) throw new Exception("Inexact display changed page geometry.");
+    try { OfdDocumentMixer.Mix([new(read, 0)]); throw new Exception("Inexact box must refuse Mix."); }
+    catch (NotSupportedException exception) { File.WriteAllText(PathFor(name + ".rejection.txt"), exception.Message); }
+}
+foreach (var primitive in new[] { false, true })
+{
+    var name = primitive ? "annotation-inexact-primitive" : "annotation-inexact-appearance";
+    File.Copy(PathFor("box-whitespace.ofd"), PathFor(name + ".ofd"), true); var read = await Read(name);
+    Mutate(name, entries =>
+    {
+        var document = Xml(entries["Doc_0/Document.xml"]); document.Root!.Add(new XElement(ns + "Annotations", "Annots/Annotations.xml")); entries["Doc_0/Document.xml"] = Bytes(document);
+        entries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'><Page PageID='{read.Pages[0].Id}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        var appearanceBox = primitive ? "10 30 20 20" : "10 30 20 20 SECRET"; var primitiveBox = primitive ? "0 0 10 10 SECRET" : "0 0 10 10";
+        entries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='900'><Appearance Boundary='{appearanceBox}'><PathObject ID='901' Boundary='{primitiveBox}' Fill='true' Stroke='false'><FillColor Value='255 0 0'/><AbbreviatedData>M 0 0 L 10 0 L 10 10 L 0 10 C</AbbreviatedData></PathObject></Appearance></Annot></PageAnnot>");
+    });
+    read = await Read(name);
+    try { OfdDocumentMixer.Mix([new(read, 0)]); throw new Exception("Inexact annotation must refuse Mix."); }
+    catch (NotSupportedException exception) { File.WriteAllText(PathFor(name + ".rejection.txt"), exception.Message); }
+}
+File.Copy(PathFor("box-whitespace.ofd"), PathFor("tiny-page-input.ofd"), true);
+Mutate("tiny-page-input", entries => { var path = entries.Keys.Single(path => path.EndsWith("/Content.xml")); var page = Xml(entries[path]); page.Descendants(ns + "PhysicalBox").Single().Value = "0 0 0.0004 80"; entries[path] = Bytes(page); });
+var tiny = await Read("tiny-page-input");
+foreach (var operation in new[] { "split", "mix", "watermark", "save" })
+{
+    using var target = new MemoryStream(); var count = tiny.Pages[0].Elements.Count;
+    try
+    {
+        if (operation == "split") OfdDocumentSplitter.Split(tiny, [0]);
+        if (operation == "mix") OfdDocumentMixer.Mix([new(tiny, 0)]);
+        if (operation == "watermark") OfdWatermark.AddText(tiny, [0], "DRAFT");
+        if (operation == "save") await new OfdPackageWriter().WriteAsync(tiny, target);
+        throw new Exception("Tiny side must refuse rewrite.");
+    }
+    catch (NotSupportedException exception) { if (target.Length != 0 || count != tiny.Pages[0].Elements.Count) throw new Exception("Tiny rejection mutated content/output."); File.WriteAllText(PathFor("tiny-page-" + operation + ".rejection.txt"), exception.Message); }
+}
+var withoutArchive = new OfdDocumentPackage(); withoutArchive.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+withoutArchive.Pages[0].PreservedPageElements.Add($"<Actions xmlns='{ns}'><Action Event='CLICK'/></Actions>");
+try { OfdDocumentSplitter.Split(withoutArchive, [0]); throw new Exception("Unarchived page XML must refuse Split."); }
+catch (NotSupportedException exception) { File.WriteAllText(PathFor("unarchived-page-xml.rejection.txt"), exception.Message); }
 var mark = File.ReadAllBytes(Path.Combine(root, "e2e/Ofdrw.Net.DocumentTools.E2E/mark.png"));
 var blank = new OfdDocumentPackage(); blank.Fonts.Add(source.Fonts.First()); blank.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
 await Save(blank, "blank-watermark-input"); blank = await Read("blank-watermark-input");
@@ -292,6 +347,20 @@ foreach (var negative in new[] { "annotation-unknown-media", "annotation-missing
     try { await new OfdToPdfConverter().ConvertAsync(input, target); throw new Exception("Missing annotation image must not export a partial PDF."); }
     catch (NotSupportedException exception) { if (target.Length != 0) throw new Exception("Rejected export wrote partial PDF bytes."); File.WriteAllText(PathFor(negative + ".rejection.txt"), exception.Message); }
 }
+File.Copy(PathFor("rich.ofd"), PathFor("annotation-shared-budget-input.ofd"), true);
+Mutate("annotation-shared-budget-input", entries =>
+{
+    var index = Xml(entries["Doc_0/Annots/Annotations.xml"]); var record = index.Root!.Elements().Single();
+    var duplicate = new XElement(record); duplicate.SetAttributeValue("PageID", source.Pages[1].Id); index.Root.Add(duplicate); entries["Doc_0/Annots/Annotations.xml"] = Bytes(index);
+});
+foreach (var objectBudget in new[] { true, false })
+{
+    using var zip = ZipFile.OpenRead(PathFor("annotation-shared-budget-input.ofd")); var bytes = zip.GetEntry("Doc_0/Annots/Page.xml")!.Length;
+    var options = objectBudget ? new OfdPackageLoadOptions { MaxAnnotationObjectCount = source.Pages[0].AnnotationAppearances.Count } : new OfdPackageLoadOptions { MaxAnnotationXmlBytes = bytes * 2 - 1 };
+    using var input = File.OpenRead(PathFor("annotation-shared-budget-input.ofd"));
+    try { await new OfdReader().ReadAsync(input, options); throw new Exception("Shared annotation cumulative budget must refuse."); }
+    catch (InvalidDataException exception) { File.WriteAllText(PathFor("annotation-shared-" + (objectBudget ? "objects" : "xml") + ".rejection.txt"), exception.Message); }
+}
 await using (var input = File.OpenRead(PathFor("signed.ofd")))
 await using (var target = File.Create(PathFor("clean.ofd"))) await OfdSignatureCleaner.CleanAsync(input, target);
 var clipped = new OfdDocumentPackage();
@@ -345,7 +414,7 @@ fixedAnchor.Pages.Add(fixedPage); await Save(fixedAnchor, "italic-fixed-anchor")
 File.Copy(Path.Combine(root, "scripts/generate-font-test-fixtures.py"), PathFor("fonts/generate-font-test-fixtures.py"), true);
 File.Copy(Path.Combine(root, "LICENSE"), PathFor("fonts/MIT-rectangle-LICENSE.txt"), true);
 File.WriteAllBytes(PathFor("fonts/narrow.ttf"), rectangleFont);
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "binary-xml-split", "page-wrapper-metadata", "box-whitespace", "blank-watermark", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "mix-custom-tags", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "binary-xml-split", "page-wrapper-metadata", "box-whitespace", "box-inexact-page", "box-inexact-inherited", "annotation-inexact-appearance", "annotation-inexact-primitive", "blank-watermark", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "mix-custom-tags", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);

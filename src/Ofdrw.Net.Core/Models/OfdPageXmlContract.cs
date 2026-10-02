@@ -16,7 +16,8 @@ internal static class OfdPageXmlContract
         area.Nodes().All(node => node is XElement or XComment || node is XText text && string.IsNullOrWhiteSpace(text.Value)) &&
         area.Elements().Count() == 1 && area.Elements().All(box => box.Name == ns + "PhysicalBox" &&
             box.Attributes().All(attribute => attribute.IsNamespaceDeclaration) && !box.HasElements &&
-            box.Nodes().All(node => node is XText or XComment) && OfdBoxParser.TryParse(box.Value, out var bounds) && bounds.w > 0 && bounds.h > 0);
+            box.Nodes().All(node => node is XText or XComment) && OfdBoxParser.TryParse(box.Value, out var bounds) &&
+            OfdBoxParser.IsWritablePositiveSide(bounds.w) && OfdBoxParser.IsWritablePositiveSide(bounds.h));
 
     internal static void ValidateDocumentArea(OfdDocumentPackage package, CancellationToken token)
     {
@@ -33,6 +34,7 @@ internal static class OfdPageXmlContract
     internal static void ValidateForRewrite(OfdDocumentPackage package, OfdPage page, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
+        ValidateWritableDimensions(page.WidthMillimeters, page.HeightMillimeters);
         if (page.SourceEntryPath is null || !package.PreservedEntries.TryGetValue(page.SourceEntryPath, out var data)) return;
         using var input = new MemoryStream(data, false);
         var xml = XDocument.Load(input, LoadOptions.PreserveWhitespace);
@@ -64,5 +66,14 @@ internal static class OfdPageXmlContract
             }
         }
         if (!valid) throw new NotSupportedException("Page rewrite cannot preserve unmodeled Page/Area/Content/Layer containers.");
+    }
+
+    internal static void ValidateWritableDimensions(double width, double height)
+    {
+        // Preserve the existing unspecified/nonpositive model-side behavior,
+        // but never let a positive size collapse to zero at Writer precision.
+        if (double.IsNaN(width) || double.IsNaN(height) || double.IsInfinity(width) || double.IsInfinity(height) ||
+            width > 0 && !OfdBoxParser.IsWritablePositiveSide(width) || height > 0 && !OfdBoxParser.IsWritablePositiveSide(height))
+            throw new NotSupportedException("Page dimensions cannot be represented at OFD writer precision.");
     }
 }
