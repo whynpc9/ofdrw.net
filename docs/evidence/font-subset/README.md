@@ -4,8 +4,8 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 492/492；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
-| 包消费 | 11 个 `0.1.0-issue05.20261003.18` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 505/505；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.19` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
@@ -58,3 +58,5 @@ R15：宿主 TTC 的主名称探测不得任意选择 face0；按完整名/PostS
 R14 包消费首轮失败：导入 Test.pdf 的默认透明语义层含无原字体的 CIDFont+F8/U+F06C；SDK 拒绝再导 PDF/0B。只验证栅格、非空白及页面尺寸的 upstream PDF 视觉 smoke 现显式 TextLayerMode=None；SDK 默认 Invisible 不变，语义正例与真实 PUA 负例、失败日志均保留。不将这个视觉 smoke 通过冒充无损语义再导出。
 
 R16：LRM U+200E 对混合方向文字有语义，PDF 与 RLM/ALM 一样统一明确拒绝，包含纯 Latin 用例；OFD 原文逐字符保留，实际 Latin/混合方向负例均因 bidi policy 失败且 0B。此前 LRM 省略成功页只作历史证据，不再列入最终成功 Preview 清单。字体契约已整合为现行规则，删除旧的 TTC face0 和 LRM 省略说法；本轮全套492/492。
+
+R17：PDF 对 default-ignorable 语义统一明确拒绝，只有四个已具 advance/Delta 回归的 Hangul filler 是有界绘制例外；WORD JOINER、不可见数学运算符、SHY、ZWSP、CGJ、MVS、FEFF、旧方向控制均不再删除后成功输出。弃用不等于无语义，OFD 字符首位 FEFF 不自动认作编码 BOM。13 个语义用例各覆盖普通/定位文字，原 OFD Unicode 完整、PDF NotSupported/0B。本轮505/505；旧 LRM/弃用控制成功页只属历史，当前最终成功清单不再包含它们。

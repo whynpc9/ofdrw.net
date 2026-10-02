@@ -69,7 +69,7 @@ public sealed class FontIsolationTests
             return (page.Text, page.Letters.Single(letter => letter.Value=="B").BoundingBox.Left);
         }
         var baseline=await Export("AB");
-        foreach (var value in new[] { "A\u206AB" })
+        foreach (var value in new[] { "AB" })
         {
             var result=await Export(value); Assert.Equal("AB",result.Text); Assert.Equal(baseline.Left,result.Left,5);
         }
@@ -263,7 +263,7 @@ public sealed class FontIsolationTests
             else
             {
                 var exception = await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd, pdf));
-                Assert.Contains("join-control shaping", exception.Message); Assert.Equal(0, pdf.Length);
+                Assert.Contains("default-ignorable", exception.Message); Assert.Equal(0, pdf.Length);
             }
         }
     }
@@ -463,6 +463,27 @@ public sealed class FontIsolationTests
         Assert.Contains("bidi", exception.Message); Assert.Equal(0, pdf.Length);
     }
 
+    [Theory]
+    [InlineData("x\u2060y")][InlineData("f\u2061(x)")][InlineData("2\u2062x")][InlineData("1\u20632")][InlineData("2\u2064x")]
+    [InlineData("of\u00ADfice")][InlineData("A\u200BB")][InlineData("A\u034FB")][InlineData("A\u180EB")]
+    [InlineData("\uFEFFAB")][InlineData("A\uFEFFB")][InlineData("A\u206AB")][InlineData("A\u206FB")]
+    public async Task SemanticDefaultIgnorablesNeverSilentlyDisappearFromPdf(string value)
+    {
+        foreach (var positioned in new[] { false, true })
+        {
+            var package = new OfdDocumentPackage();
+            package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "semantic-controls" });
+            var text = new OfdTextElement { FontResourceId = "10", FontName = "semantic-controls", Text = value };
+            if (positioned) text.Runs.Add(new OfdTextRun { Text = value, DeltaX = "5 5 5 5 5" });
+            package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50, Elements = { text } });
+            using var ofd = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, ofd); ofd.Position = 0;
+            var read = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(ofd); var saved = Assert.IsType<OfdTextElement>(read.Pages[0].Elements[0]);
+            Assert.Equal(value, saved.Runs.Count == 0 ? saved.Text : string.Concat(saved.Runs.Select(run => run.Text))); ofd.Position = 0;
+            using var pdf = new MemoryStream(); var exception = await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd, pdf));
+            Assert.Contains("default-ignorable", exception.Message); Assert.Equal(0, pdf.Length);
+        }
+    }
+
     private sealed class CoveringResolver(byte[] primary,byte[] fallback):IFontResolver
     {
         public string DefaultFontName=>"covering-default";
@@ -491,12 +512,7 @@ public sealed class FontIsolationTests
         Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200CB"));
         Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200DB"));
         Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("\u200D"));
-        foreach (var value in new[] { "A\u206AB", "A\u206FB" })
-        {
-            Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value);
-            Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText(value));
-        }
-        foreach (var value in new[] { "A\u200EB", "A\u200CB", "A\u200DB", "A\u202EB", "A\u202CB", "A\u200FB", "A\u061CB", "A\u2067B", "A\uFE00", "A\u180BB", "A\u180FB" })
+        foreach (var value in new[] { "A\u206AB", "A\u206FB", "A\u200EB", "A\u200CB", "A\u200DB", "A\u202EB", "A\u202CB", "A\u200FB", "A\u061CB", "A\u2067B", "A\uFE00", "A\u180BB", "A\u180FB" })
             Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value));
     }
 
