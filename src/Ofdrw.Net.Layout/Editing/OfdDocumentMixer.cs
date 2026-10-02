@@ -45,8 +45,14 @@ public static class OfdDocumentMixer
             var page = item.Package.Pages[item.PageIndex];
             var pageNamespace = EntryNamespace(item.Package, page.SourceEntryPath);
             foreach (var reference in page.PreservedPageElements.Select(XElement.Parse).Where(node => node.Name == pageNamespace + "Template"))
+            {
+                if (reference.HasElements || reference.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value)) ||
+                    reference.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
+                        (attribute.Name.Namespace != XNamespace.None || attribute.Name.LocalName is not ("TemplateID" or "ZOrder"))))
+                    throw new NotSupportedException("Mix cannot flatten an unmodeled template reference wrapper.");
                 if (!page.Templates.Any(template => template.TemplateId == reference.Attribute("TemplateID")?.Value))
                     throw new NotSupportedException("Mix cannot flatten an unresolved template reference.");
+            }
             objects = checked(objects + page.Elements.Count + page.Templates.Sum(template => template.Elements.Count) + page.AnnotationAppearances.Count);
             bytes = checked(bytes + item.Package.PreservedEntries.Values.Sum(data => (long)data.Length) + item.Package.Fonts.Sum(font => (long)font.Data.Length) + item.Package.Attachments.Sum(attachment => (long)attachment.Data.Length)
                 + page.Elements.Concat(page.Templates.SelectMany(template => template.Elements)).Concat(page.AnnotationAppearances)

@@ -236,8 +236,16 @@ public sealed class DocumentToolTests
         Assert.Equal(2, source.Pages.Count);
     }
 
-    [Fact]
-    public async Task Split_UnknownLeafTemplateReferenceKeepsItsFullClosure()
+    [Theory]
+    [InlineData("unknown.xml", "<Extension><TemplateRef>700</TemplateRef></Extension>", false)]
+    [InlineData("state.dat", "<Extension TemplateID='700'/>", false)]
+    [InlineData("state.bin", "<Extension><TemplateRef>700</TemplateRef></Extension>", false)]
+    [InlineData("state.dat", "<Extension TemplateID='700'/>", true)]
+    [InlineData("state.dat", "<Extension TemplateID='700'", false)]
+    [InlineData("state.dat", "<Extension File='/Doc_0/Templates/Content.xml'/>", false)]
+    [InlineData("state.dat", "<Extension File='../Templates/Content.xml'/>", false)]
+    [InlineData("state.dat", "<Res BaseLoc='../Templates'><File>Content.xml</File></Res>", false)]
+    public async Task Split_UnknownLeafTemplateReferenceKeepsItsFullClosure(string fileName, string reference, bool utf16)
     {
         var source = await RoundTrip(Source()); var ns = source.Options.Namespace;
         var document = Xml(source, "Doc_0/Document.xml");
@@ -246,13 +254,31 @@ public sealed class DocumentToolTests
         source.PreservedEntries["Doc_0/Templates/Content.xml"] = Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Content><Layer ID='701'><ImageObject ID='702' ResourceID='703' Boundary='0 0 5 5'/></Layer></Content></Page>");
         source.PreservedEntries["Doc_0/Templates/PageRes.xml"] = Encoding.UTF8.GetBytes($"<Res xmlns='{ns}'><MultiMedias><MultiMedia ID='703' Format='PNG'><MediaFile>Image.png</MediaFile></MultiMedia></MultiMedias></Res>");
         source.PreservedEntries["Doc_0/Templates/Image.png"] = Png;
-        source.PreservedEntries["Doc_0/Extensions/unknown.xml"] = Encoding.UTF8.GetBytes("<Extension><TemplateRef>700</TemplateRef></Extension>");
+        var extensionPath="Doc_0/Extensions/"+fileName;
+        source.PreservedEntries[extensionPath] = utf16 ? Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes(reference)).ToArray() : Encoding.UTF8.GetBytes(reference);
         var loaded = await new OfdReader().ReadAsync(Zip(source.PreservedEntries));
         var result = await RoundTrip(OfdDocumentSplitter.Split(loaded, [1]));
         Assert.Contains(result.PreservedCommonDataElements, xml => xml.Contains("TemplatePage"));
         Assert.True(result.PreservedEntries.ContainsKey("Doc_0/Templates/Content.xml"));
         Assert.True(result.PreservedEntries.ContainsKey("Doc_0/Templates/PageRes.xml"));
         Assert.True(result.PreservedEntries.ContainsKey("Doc_0/Templates/Image.png"));
+        Assert.Equal(source.PreservedEntries[extensionPath],result.PreservedEntries[extensionPath]);
+    }
+
+    [Theory]
+    [InlineData(" Placement='unknown'", "")]
+    [InlineData(" xmlns:v='urn:vendor' v:Transform='1 0 0 1 10 10'", "")]
+    [InlineData(" xmlns:v='urn:vendor' v:TemplateID='payload.bin'", "")]
+    [InlineData(" xmlns:v='urn:vendor'", "<v:FileRef>payload.bin</v:FileRef>")]
+    public async Task Mix_RejectsUnmodeledTemplateReferenceWrappersWhileRoundtripPreserves(string attributes,string children)
+    {
+        var source=await RoundTrip(Source());var ns=XNamespace.Get(source.Options.Namespace);
+        var document=Xml(source,"Doc_0/Document.xml");document.Root!.Element(ns+"CommonData")!.Add(new XElement(ns+"TemplatePage",new XAttribute("ID","700"),new XAttribute("BaseLoc","Templates/Content.xml")));Put(source,"Doc_0/Document.xml",document);
+        source.PreservedEntries["Doc_0/Templates/Content.xml"]=Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Content><Layer ID='701'><TextObject ID='702' Font='10' Size='4' Boundary='0 0 20 10'><TextCode X='0' Y='4'>TEMPLATE</TextCode></TextObject></Layer></Content></Page>");
+        var path=source.Pages[0].SourceEntryPath!;var page=Xml(source,path);var reference=XElement.Parse($"<Template xmlns='{ns}' TemplateID='700' ZOrder='Background'{attributes}>{children}</Template>");page.Root!.Add(reference);Put(source,path,page);
+        using var input=Zip(source.PreservedEntries);var read=await new OfdReader().ReadAsync(input);Assert.Single(read.Pages[0].Templates);
+        Assert.Throws<NotSupportedException>(()=>OfdDocumentMixer.Mix([new(read,0)]));
+        var saved=await RoundTrip(read);Assert.True(XNode.DeepEquals(reference,Xml(saved,path).Root!.Element(ns+"Template")));
     }
 
     [Theory]
@@ -528,6 +554,26 @@ public sealed class DocumentToolTests
         }
         Assert.Throws<NotSupportedException>(()=>OfdDocumentMixer.Mix([new(read,1)]));
         var saved=await RoundTrip(read); Assert.Equal(source.PreservedEntries["Doc_0/Annots/Annotations.xml"],saved.PreservedEntries["Doc_0/Annots/Annotations.xml"]);
+    }
+
+    [Theory]
+    [InlineData(false,false)]
+    [InlineData(false,true)]
+    [InlineData(true,false)]
+    [InlineData(true,true)]
+    public async Task Reader_OrphanAnnotationKeysStayGlobalForNullOrUnmatchedPageIds(bool nullPageIds,bool validRecord)
+    {
+        var source=await RoundTrip(Source());var ns=XNamespace.Get(source.Options.Namespace);var orphan=nullPageIds?source.Pages[0].Id!:"UNMATCHED";
+        var document=Xml(source,"Doc_0/Document.xml");if(nullPageIds)document.Root!.Element(ns+"Pages")!.Elements(ns+"Page").Attributes("ID").Remove();
+        document.Root!.Add(new XElement(ns+"Annotations","Annots/Annotations.xml"));Put(source,"Doc_0/Document.xml",document);
+        var location=validRecord?"<FileLoc>Page.xml</FileLoc>":"<v:FileLoc xmlns:v='urn:vendor'>unmodeled.bin</v:FileLoc>";
+        source.PreservedEntries["Doc_0/Annots/Annotations.xml"]=Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'><Page PageID='{orphan}'>{location}</Page></Annotations>");
+        source.PreservedEntries["Doc_0/Annots/Page.xml"]=Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot><Appearance Boundary='0 0 20 20'><TextObject Size='4'><TextCode X='0' Y='4'>ORPHAN</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+        using var input=Zip(source.PreservedEntries);var read=await new OfdReader().ReadAsync(input);
+        Assert.All(read.Pages,page=>Assert.IsType<OfdRawElement>(Assert.Single(page.AnnotationAppearances)));
+        Assert.Same(((OfdRawElement)read.Pages[0].AnnotationAppearances[0]).Xml,((OfdRawElement)read.Pages[1].AnnotationAppearances[0]).Xml);
+        Assert.Throws<NotSupportedException>(()=>OfdDocumentMixer.Mix([new(read,0)]));Assert.Throws<NotSupportedException>(()=>OfdDocumentMixer.Mix([new(read,1)]));
+        var saved=await RoundTrip(read);Assert.Equal(source.PreservedEntries["Doc_0/Annots/Annotations.xml"],saved.PreservedEntries["Doc_0/Annots/Annotations.xml"]);
     }
     [Fact]
     public async Task Writer_MissingPathDataUsesSourceObjectNamespaceAndKeepsExtensions()
