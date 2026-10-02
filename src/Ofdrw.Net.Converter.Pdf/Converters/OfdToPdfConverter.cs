@@ -246,6 +246,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     {
                         var fontSize = Math.Max(0.1, MillimetersToPoints(text.FontSizeMillimeters));
                         var familyName = fonts.Resolve(text, out var resource);
+                        if ((text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text)).All(string.IsNullOrEmpty)) continue;
                         var coverage = fonts.Coverage(resource, familyName);
                         // CT_Text Weight/Italic is the per-object style viewers apply;
                         // the resource flags describe the bound font file.
@@ -260,18 +261,9 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             font = new XFont(familyName, fontSize, style);
                             face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName, bold, italic);
                         }
-                        catch (Exception exception) when ((resource?.Data.Length > 0 || familyName.StartsWith("ofd-font-", StringComparison.Ordinal)) &&
-                                                           exception is not OutOfMemoryException && exception is not OperationCanceledException)
+                        catch (Exception exception) when (exception is not OutOfMemoryException && exception is not OperationCanceledException)
                         {
-                            throw new InvalidDataException($"Embedded font '{resource?.FontName ?? familyName}' could not be initialized.", exception);
-                        }
-                        catch (Exception exception) when (exception is not OutOfMemoryException &&
-                                                           exception is not OperationCanceledException)
-                        {
-                            font = new XFont("Arial", fontSize);
-                            // Use the face actually drawn. Re-querying the rejected
-                            // name here would repeat the host failure after fallback.
-                            face = GlobalFontSettings.FontResolver.ResolveTypeface("Arial", false, false);
+                            throw new InvalidDataException($"Font '{resource?.FontName ?? familyName}' could not be initialized without content loss.", exception);
                         }
                         var simulateBold = face.MustSimulateBold;
                         var simulateItalic = face.MustSimulateItalic;

@@ -10,11 +10,11 @@
   },
   "functional": {
     "status": "pass",
-    "tests": 483,
+    "tests": 488,
     "independent_focused": 72,
     "packages": 11,
-    "package_version": "0.1.0-issue05.20261003.15",
-    "package_status": "pass",
+    "package_version": "0.1.0-issue05.20261003.16",
+    "package_status": "pass after visual-only caller explicitly disables unmodeled semantic layer; first .16 failure retained",
     "document_tools": {
       "samples": 36,
       "pdf_pages": 55,
@@ -22,7 +22,17 @@
       "ci_failure": "First head failed when text was introduced into a previously empty subset; caller now rebinds source face / explicitly preserves full font for future opaque annotation injection."
     },
     "all_11_packages_contain_unicode_license": true,
-    "latest_independent_focused": 42
+    "latest_independent_focused": 49,
+    "count_audit": "test-count-audit.json",
+    "project_counts": {
+      "Core": 5,
+      "Packaging": 305,
+      "PDF": 112,
+      "Signatures": 4,
+      "DOCX": 49,
+      "CLI": 13
+    },
+    "historical_count_correction": "Prior aggregate prose was +2; exact per-project source logs preserved and machine-summed in audit."
   },
   "automated_render": {
     "status": "pass",
@@ -77,8 +87,8 @@
     "ui_released": true,
     "record": "preview-acceptance.json",
     "controls_status": "pending unlock/exclusive slot: final filler/LRM/name-only/covering-fallback success pages; ZWJ/ZWNJ now refuse PDF",
-    "followup_queue": "preview-queue-r13.json",
-    "followup_success_pages": 15
+    "followup_queue": "preview-queue-r14.json",
+    "followup_success_pages": 17
   },
   "overall_visual_complete": false,
   "production_release_accepted": false,
@@ -99,6 +109,8 @@
     "r12": "Symbol selected PDF/SVG explicitly reject unmodeled character semantics/0B; unused symbol exports; F041 A-space/AB remain byte-identical through two OFD rounds. Typed bindings resolved once into content groups, cancellation before every examined element; distinct face/name-only/cross-page alias repertoire regression passes.",
     "r12_independent": "38 PDF-focused +1 cross-page group test pass; unused symbol PDF/SVG succeeds, selected A/A-space/AB refuse0B. All14 successful PDFs regenerated R12 and compare R11 with144dpi Poppler AE0. Preview pending.",
     "r13": "Discovered name-only symbol unsupported marker retained outside optional catch, selectedA/A-space/AB refuse; unused registration bytes unchanged. Default/Arial symbol candidates never satisfy Unicode coverage; mappedA defaults skip to coveringUnicode Arial; no covering candidate fails clearly.",
-    "r13_independent": "42/42 focused; unusedstyleSymbol blankPDF succeeds, selectedA/A-space/AB NotSupport0B; symboldefault mappedA skipped to registeredUnicode Arial/LXGW, allsymbol candidates fail0B. 14 prior success pages regeneratedR13 compareR12 AE0, added1 UnicodeArial fallback page; all15 Preview pending."
+    "r13_independent": "42/42 focused; unusedstyleSymbol blankPDF succeeds, selectedA/A-space/AB NotSupport0B; symboldefault mappedA skipped to registeredUnicode Arial/LXGW, allsymbol candidates fail0B. 14 prior success pages regeneratedR13 compareR12 AE0, added1 UnicodeArial fallback page; all15 Preview pending.",
+    "r14": "All selected regular/unbound named fonts lazily get physicalUnicode coverage/registeredidentity; symbol refuses, badordinarysource may tryverifieddefaults; emptytext skipsXfont after preflight. Samephysical immutable snapshots/effective-style aliases, cachedcoverage revalidated.",
+    "r14_independent": "49/49focused; regular/unboundSymbol selectedA/A-space/AB refuse0B, unusedblankPDF passes; regular/unbound Athen一 use correct coveringidentity; bold+italic samephysicalNoto; realTest.pdf defaultCID/PUAsemanticOFD preserved/reexportfail0B. 15 priorPDF regeneratedAE0+2success A一pages,17 Preview pending."
   }
 }
