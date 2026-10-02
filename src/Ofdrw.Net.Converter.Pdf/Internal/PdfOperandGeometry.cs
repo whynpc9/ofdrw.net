@@ -18,9 +18,15 @@ internal static class PdfOperandGeometry
     }
 
     internal static bool PositiveExtent(double value)
+        => PositiveSerializedExtent(value, "0.####");
+
+    internal static bool PositiveFormExtent(double value)
+        => PositiveSerializedExtent(value, "0.###");
+
+    private static bool PositiveSerializedExtent(double value, string format)
     {
-        // PdfSharpCore 1.3.67 writes bitmap dimensions with SignificantFigures4 (0.####).
+        // PdfSharpCore 1.3.67 writes cm operands with 0.#### and XForm BBox with 0.###.
         // A positive double that serializes as zero would silently erase an appearance.
-        return Finite(value) && value > 0 && value.ToString("0.####", CultureInfo.InvariantCulture) != "0";
+        return Finite(value) && value > 0 && value.ToString(format, CultureInfo.InvariantCulture) != "0";
     }
 }

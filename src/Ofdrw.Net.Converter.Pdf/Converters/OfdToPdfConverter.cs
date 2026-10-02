@@ -175,7 +175,9 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 .FirstOrDefault();
             if (pageModel is null ||
                 !PdfOperandGeometry.Box(pageModel.XMillimeters, pageModel.YMillimeters,
-                    pageModel.WidthMillimeters, pageModel.HeightMillimeters))
+                    pageModel.WidthMillimeters, pageModel.HeightMillimeters) ||
+                !PdfOperandGeometry.PositiveFormExtent(XUnit.FromMillimeter(pageModel.WidthMillimeters).Point) ||
+                !PdfOperandGeometry.PositiveFormExtent(XUnit.FromMillimeter(pageModel.HeightMillimeters).Point))
             {
                 if (appearanceBudget is not null) throw new InvalidDataException("Nested OFD appearance has invalid page geometry.");
                 return null;

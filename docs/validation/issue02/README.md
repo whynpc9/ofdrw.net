@@ -6,7 +6,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 257/257 通过 | Core 5、Packaging 23、PDF/Image 146、Signatures 4、DOCX 49、CLI 30 |
+| 功能回归 | 264/264 通过 | Core 5、Packaging 23、PDF/Image 153、Signatures 4、DOCX 49、CLI 30 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review8`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
@@ -133,3 +133,9 @@ ASN扫描区分strict与legacy：严格图片路径继续分配前拒绝坏长�
 新增22项，覆盖有限`1e308`/超大边缘、极小正尺寸、NaN/Inf/溢出页原点、正常(2,3)mm页原点的实际红像素、相对位移减法溢出、嵌套form比例溢出/写零；legacy回归除有效JPEG红像素外，还解压PDF内容流确认无NaN/Infinity。全套257/257通过；本轮新包和产物随后记录。Preview仍未完成。
 
 第八轮25个实际产物均从`eed7d6d`重新生成，11/11本地包消费及Sol Low独立48/48通过；当次10张PNG/JPEG逐页重新查看，检查范围同上，未见新缺陷。257项回归日志与全部哈希在当前bundle/manifest；Preview仍未完成。
+
+## 第九轮复审修复
+
+`46a0029`两类bot结果均读取。Codex指出已引用但缺失的签章列表/每签章XML仍早退；Cursor指出XForm BBox采用`0.###`，区别于cm操作数的`0.####`。两项修复：strict缺失元数据/空列表引用/缺失或空BaseLoc均InvalidData；nested第一页XUnit.Point宽高须按`0.###`写出正值，legacy继续跳过不合法外观。新增5种metadata和2种BBox宽高用例，strict保sentinel，legacy正文红path保持且无零BBox的Form字典。全套264/264通过；本轮包和产物稍后记录。
+
+Cursor另质疑`-2e306`与`2e306`的相对溢出用例。保留该用例：实际函数按`mm * 72 / 25.4`逐步计算，`4e306 * 72`为Infinity，即使重排为`4e306 * (72 / 25.4)`会有限，也不能代替当前实现。Sol Low独立已编译CLI探针实测exit 1、placement错误和13-byte哨兵保留；264全套回归同样通过，旧head三OS图片CI均通过。本条以实际运行证据回应，未按误判修改样例。Preview仍未完成。
