@@ -534,6 +534,59 @@ public sealed class DocumentToolTests
     }
 
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
+
+    [Theory]
+    [InlineData("PublicRes", "save")]
+    [InlineData("DocumentRes", "save")]
+    [InlineData("PublicRes", "watermark")]
+    [InlineData("DocumentRes", "watermark")]
+    [InlineData("PublicRes", "split")]
+    [InlineData("DocumentRes", "split")]
+    public async Task DeclaredResourceXml_NonXmlSuffixSurvivesSaveAndTools(string declaration, string operation)
+    {
+        var fixture = Source(); fixture.Fonts.Single(font => font.Id == "10").Data = [9, 9, 9];
+        var source = await RoundTrip(fixture); var ns = XNamespace.Get(source.Options.Namespace);
+        var document = Xml(source, "Doc_0/Document.xml"); var reference = document.Root!.Element(ns + "CommonData")!.Element(ns + declaration)!;
+        var oldPath = "Doc_0/" + reference.Value; var path = declaration == "PublicRes" ? "PublicResources.dat" : "ImageResources.bin";
+        var resource = Xml(source, oldPath); resource.Root!.SetAttributeValue(XNamespace.Get("urn:vendor") + "Keep", "yes");
+        var unowned = source.PreservedEntries[oldPath];
+        source.PreservedEntries.Remove(oldPath); Put(source, "Doc_0/" + path, resource);
+        reference.Value = path; Put(source, "Doc_0/Document.xml", document);
+        // An undeclared table with duplicate IDs must neither be indexed nor modified.
+        source.PreservedEntries["Doc_0/Extensions/Unowned.dat"] = unowned;
+        using var input = Zip(source.PreservedEntries); source = await new OfdReader().ReadAsync(input);
+        if (operation == "watermark")
+        {
+            OfdWatermark.AddText(source, [1], "DRAFT"); OfdWatermark.AddImage(source, [1], Png, "image/png");
+        }
+        if (operation == "split") source = OfdDocumentSplitter.Split(source, [1]);
+        var saved = await RoundTrip(source);
+        Assert.Equal(path, Xml(saved, "Doc_0/Document.xml").Root!.Element(ns + "CommonData")!.Element(ns + declaration)!.Value);
+        Assert.Equal("yes", Xml(saved, "Doc_0/" + path).Root!.Attribute(XNamespace.Get("urn:vendor") + "Keep")!.Value);
+        Assert.Equal(unowned, saved.PreservedEntries["Doc_0/Extensions/Unowned.dat"]);
+        Assert.Contains(saved.Fonts, font => font.Data.SequenceEqual(new byte[] { 9, 9, 9 }));
+        Assert.Contains(saved.Pages.SelectMany(page => page.Elements).OfType<OfdImageElement>(), image => image.Data.SequenceEqual(Png));
+        Assert.Contains(saved.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(), text => text.Text == "SECOND");
+        if (operation == "watermark") Assert.Contains(saved.Pages[1].Elements.OfType<OfdTextElement>(), text => text.Text == "DRAFT");
+    }
+
+    [Theory]
+    [InlineData("PublicRes", false)]
+    [InlineData("DocumentRes", false)]
+    [InlineData("PublicRes", true)]
+    [InlineData("DocumentRes", true)]
+    public async Task DeclaredNonXmlResource_UnsupportedExistingPayloadStillRefusesOverwrite(string declaration, bool malformed)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace);
+        var document = Xml(source, "Doc_0/Document.xml"); var reference = document.Root!.Element(ns + "CommonData")!.Element(ns + declaration)!;
+        source.PreservedEntries["Doc_0/Unsupported.dat"] = source.PreservedEntries["Doc_0/" + reference.Value]; reference.Value = "Unsupported.dat";
+        Put(source, "Doc_0/Document.xml", document);
+        var payload = Encoding.UTF8.GetBytes(malformed ? "<Res" : "<Res xmlns='urn:vendor'><Fonts/></Res>");
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        read.PreservedEntries["Doc_0/Unsupported.dat"] = payload;
+        using var output = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, output));
+        Assert.Equal(0, output.Length); Assert.Equal(payload, read.PreservedEntries["Doc_0/Unsupported.dat"]);
+    }
     [Theory]
     [InlineData("Extension","urn:vendor")]
     [InlineData("Extension","http://www.ofdspec.org")]
