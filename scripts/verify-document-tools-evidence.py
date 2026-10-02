@@ -59,6 +59,11 @@ for name, count in expected.items():
     if name == 'vendor-annotations-roundtrip':
         document=ET.fromstring(data['Doc_0/Document.xml'])
         assert [node.text or '' for node in document if node.tag=='{urn:vendor}Annotations']==['../../../external','Annots/Annotations.xml']
+        vendor_templates=[node for node in document.iter() if node.tag=='{urn:vendor}TemplatePage']
+        standard_templates=[node for node in document.iter() if local(node)=='TemplatePage' and node.tag!='{urn:vendor}TemplatePage']
+        assert len(vendor_templates)==len(standard_templates)==1
+        assert vendor_templates[0].attrib['ID']==standard_templates[0].attrib['ID']
+        assert vendor_templates[0].attrib['BaseLoc']=='../../../external'
     if name in ('watermark','watermark-merged','cli-watermark','cli-merged'):
         assert sum(texts(data, page).count('DRAFT 草稿') for page in selected) == 1, (name, 'duplicate watermark')
         assert texts(source, source_pages[0]) in texts(data, selected[0]), (name, 'body text lost')
