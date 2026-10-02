@@ -218,8 +218,7 @@ public sealed class OfdReader : IOfdReader
                 page.Elements.Add(element);
             }
 
-            foreach (var templateRef in pageXml.Root?.Elements()
-                .Where(x => x.Name.LocalName == "Template") ?? Enumerable.Empty<XElement>())
+            foreach (var templateRef in pageXml.Root?.Elements(pageNs + "Template") ?? Enumerable.Empty<XElement>())
             {
                 var templateId = templateRef.Attribute("TemplateID")?.Value;
                 if (string.IsNullOrWhiteSpace(templateId) ||

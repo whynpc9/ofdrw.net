@@ -572,21 +572,93 @@ public sealed class DocumentToolTests
         using var input = Zip(source.PreservedEntries); await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(input));
     }
 
-    [Fact]
-    public async Task VendorTemplateDeclaration_DoesNotEnterTheStandardTemplateIdTable()
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public async Task VendorTemplates_DoNotEnterTheStandardDeclarationOrReferenceTables(bool standardReference, bool vendorFirst)
     {
         var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var vendor = XName.Get("TemplatePage", "urn:vendor");
         var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Element(ns + "CommonData")!.Add(
             new XElement(vendor, new XAttribute("ID", "700"), new XAttribute("BaseLoc", "../../../external")),
             new XElement(ns + "TemplatePage", new XAttribute("ID", "700"), new XAttribute("BaseLoc", "Templates/Content.xml")));
         Put(source, "Doc_0/Document.xml", document); var path = source.Pages[0].SourceEntryPath!; var page = Xml(source, path);
-        page.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "700"))); Put(source, path, page);
+        var vendorReference = new XElement(XName.Get("Template", "urn:vendor"), new XAttribute("TemplateID", "700"), new XAttribute("ZOrder", "Foreground"), new XAttribute("Keep", "yes"));
+        var standard = new XElement(ns + "Template", new XAttribute("TemplateID", "700"));
+        if (standardReference) page.Root!.Add(vendorFirst ? new[] { vendorReference, standard } : new[] { standard, vendorReference });
+        else page.Root!.Add(vendorReference);
+        Put(source, path, page);
         source.PreservedEntries["Doc_0/Templates/Content.xml"] = Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Content><Layer ID='702'><TextObject ID='703' Size='3'><TextCode X='0' Y='3'>TEMPLATE</TextCode></TextObject></Layer></Content></Page>");
         using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
-        Assert.Equal("TEMPLATE", Assert.IsType<OfdTextElement>(Assert.Single(Assert.Single(read.Pages[0].Templates).Elements)).Text);
+        Assert.Equal(standardReference ? 1 : 0, read.Pages[0].Templates.Count);
+        if (standardReference) Assert.Equal("TEMPLATE", Assert.IsType<OfdTextElement>(Assert.Single(Assert.Single(read.Pages[0].Templates).Elements)).Text);
         Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
         var saved = await RoundTrip(read); Assert.Equal("../../../external", Assert.Single(Xml(saved, "Doc_0/Document.xml").Descendants(vendor)).Attribute("BaseLoc")!.Value);
-        Assert.Equal("TEMPLATE", Assert.IsType<OfdTextElement>(Assert.Single(Assert.Single(saved.Pages[0].Templates).Elements)).Text);
+        Assert.Equal(standardReference ? 1 : 0, saved.Pages[0].Templates.Count);
+        if (standardReference) Assert.Equal("TEMPLATE", Assert.IsType<OfdTextElement>(Assert.Single(Assert.Single(saved.Pages[0].Templates).Elements)).Text);
+        var preserved = Assert.Single(Xml(saved, path).Root!.Elements(vendorReference.Name));
+        Assert.Equal("700", preserved.Attribute("TemplateID")!.Value); Assert.Equal("Foreground", preserved.Attribute("ZOrder")!.Value); Assert.Equal("yes", preserved.Attribute("Keep")!.Value);
+    }
+
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 0)]
+    [InlineData(true, 1)]
+    public async Task Mix_CustomTagsKeepUniqueKeysAndCoalesceIdenticalValues(bool savedInput, int taggedSource)
+    {
+        var sources = new[] { Source(), Source() }; sources[taggedSource].CustomTags["owner"] = "测试 keep";
+        foreach (var source in sources) { source.CustomTags["source-text-origin"] = "DOCX/OpenXML"; source.CustomTags["source-text-kind"] = "machine-readable"; source.CustomTags["docx-ofd-mode"] = "Native"; }
+        if (savedInput) sources[taggedSource] = await RoundTrip(sources[taggedSource]);
+        var page = sources[taggedSource].Pages[0]; var count = page.Elements.Count;
+        var mixed = await RoundTrip(OfdDocumentMixer.Mix(sources.Select(source => new OfdMixSource(source, 0))));
+        Assert.Equal(4, mixed.CustomTags.Count); Assert.Equal("测试 keep", mixed.CustomTags["owner"]); Assert.Equal("Native", mixed.CustomTags["docx-ofd-mode"]);
+        Assert.Equal("machine-readable", mixed.CustomTags["source-text-kind"]); Assert.Equal("DOCX/OpenXML", mixed.CustomTags["source-text-origin"]);
+        Assert.Equal("测试 keep", sources[taggedSource].CustomTags["owner"]);
+        Assert.Same(page, sources[taggedSource].Pages[0]); Assert.Equal(count, page.Elements.Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Mix_CustomTagsConflictsFailWithoutChangingEitherSource(bool savedInput)
+    {
+        var first = Source(); var second = Source(); first.CustomTags["docx-ofd-mode"] = "Native"; second.CustomTags["docx-ofd-mode"] = "DualLayer";
+        if (savedInput) { first = await RoundTrip(first); second = await RoundTrip(second); }
+        var error = Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(first, 0), new(second, 0)]));
+        Assert.Contains("docx-ofd-mode", error.Message); Assert.Contains("source 2", error.Message);
+        Assert.Equal("Native", first.CustomTags["docx-ofd-mode"]); Assert.Equal("DualLayer", second.CustomTags["docx-ofd-mode"]);
+    }
+
+    [Theory]
+    [InlineData("attribute")]
+    [InlineData("child")]
+    [InlineData("vendor")]
+    [InlineData("conflict")]
+    [InlineData("schema")]
+    public async Task Mix_CustomTagsUnmodeledXmlAndConflictingSourceRecordsRemainRejected(string kind)
+    {
+        var source = Source(); source.CustomTags["fixture"] = "public"; source = await RoundTrip(source);
+        var path = "Doc_0/Tags/CustomTag_EMR.xml"; var detail = Xml(source, path); var tag = detail.Root!.Elements().Single();
+        if (kind == "attribute") tag.SetAttributeValue("Unknown", "keep");
+        if (kind == "child") tag.Add(new XElement(detail.Root.Name.Namespace + "Note", "keep"));
+        if (kind == "vendor") tag.Name = XName.Get("Tag", "urn:vendor");
+        if (kind == "conflict") detail.Root.Add(new XElement(tag.Name, new XAttribute("Key", "fixture"), new XAttribute("Value", "other")));
+        if (kind == "schema") detail.Root.Name = detail.Root.Name.Namespace + "OtherSchema";
+        Put(source, path, detail); using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+        Assert.Equal(source.PreservedEntries[path], read.PreservedEntries[path]);
+    }
+
+    [Theory]
+    [InlineData("path")]
+    [InlineData("id")]
+    public async Task Mix_CustomTagsPotentialPackageReferencesRefuseUntilRemappingIsDefined(string kind)
+    {
+        var source = await RoundTrip(Source());
+        source.CustomTags["source"] = kind == "path" ? "/" + source.PreservedEntries.Keys.Single(path => path.Contains("Attach_1_")) : source.Attachments[0].Id!;
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
+        Assert.Single(source.Attachments); Assert.Single(source.CustomTags);
     }
 
     [Theory]

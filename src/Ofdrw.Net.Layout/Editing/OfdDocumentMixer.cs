@@ -5,6 +5,8 @@ using System.Threading;
 using System.IO;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Core.IO;
+using Ofdrw.Net.Core.Constants;
 
 namespace Ofdrw.Net.Layout.Editing;
 
@@ -30,6 +32,7 @@ public static class OfdDocumentMixer
         if (sources is null) throw new ArgumentNullException(nameof(sources));
         if (maxSourceCount <= 0 || maxExpandedBytes <= 0 || maxObjectCount <= 0) throw new ArgumentOutOfRangeException(nameof(maxSourceCount));
         var selected = new List<OfdDocumentPackage>();
+        var customTags = new Dictionary<string, string>(StringComparer.Ordinal);
         long bytes = 0;
         int objects = 0;
         foreach (var item in sources)
@@ -38,6 +41,13 @@ public static class OfdDocumentMixer
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
             OfdDocumentSplitter.ValidateSingleDocument(item.Package);
             OfdDocumentSplitter.ValidatePages(item.Package, new[] { item.PageIndex });
+            ValidateCustomTags(item.Package, cancellationToken);
+            foreach (var tag in item.Package.CustomTags)
+            {
+                if (customTags.TryGetValue(tag.Key, out var value) && !string.Equals(value, tag.Value, StringComparison.Ordinal))
+                    throw new NotSupportedException($"Mix CustomTags conflict for key '{tag.Key}' in source {selected.Count + 1}.");
+                customTags[tag.Key] = tag.Value;
+            }
             var rootNamespace = EntryNamespace(item.Package, "OFD.xml");
             if (item.Package.PreservedDocBodyElements.Any(xml => XElement.Parse(xml).Name != rootNamespace + "Signatures"))
                 throw new NotSupportedException("Mix cannot safely remap DocBody extensions.");
@@ -58,6 +68,7 @@ public static class OfdDocumentMixer
             }
             objects = checked(objects + page.Elements.Count + page.Templates.Sum(template => template.Elements.Count) + page.AnnotationAppearances.Count);
             bytes = checked(bytes + item.Package.PreservedEntries.Values.Sum(data => (long)data.Length) + item.Package.Fonts.Sum(font => (long)font.Data.Length) + item.Package.Attachments.Sum(attachment => (long)attachment.Data.Length)
+                + item.Package.CustomTags.Sum(tag => 2L * (tag.Key.Length + tag.Value.Length))
                 + page.Elements.Concat(page.Templates.SelectMany(template => template.Elements)).Concat(page.AnnotationAppearances)
                     .OfType<OfdImageElement>().Sum(image => (long)image.Data.Length));
             if (bytes > maxExpandedBytes || objects > maxObjectCount) throw new ArgumentException("Mix expanded-byte/object budget exceeded.");
@@ -70,6 +81,7 @@ public static class OfdDocumentMixer
         }
         if (selected.Count == 0) throw new ArgumentException("At least one source page is required.", nameof(sources));
         var merged = OfdDocumentMerger.Merge(selected, new OfdDocumentMergeOptions { RequireKnownAttributes = true }, cancellationToken);
+        foreach (var tag in customTags) merged.CustomTags.Add(tag.Key, tag.Value);
         var first = merged.Pages[0];
         var target = new OfdPage { WidthMillimeters = first.WidthMillimeters, HeightMillimeters = first.HeightMillimeters,
             XMillimeters = first.XMillimeters, YMillimeters = first.YMillimeters };
@@ -86,6 +98,83 @@ public static class OfdDocumentMixer
         }
         merged.Pages.Clear(); merged.Pages.Add(target);
         return merged;
+    }
+
+    private static void ValidateCustomTags(OfdDocumentPackage package, CancellationToken cancellationToken)
+    {
+        var documentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
+        var detailPaths = new List<string>();
+        var inspected = new Dictionary<string, string>(StringComparer.Ordinal);
+        XDocument Read(string path)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!package.PreservedEntries.TryGetValue(path, out var data)) throw new NotSupportedException("Mix cannot preserve missing CustomTags XML.");
+            using var input = new MemoryStream(data, false); var xml = XDocument.Load(input);
+            if (xml.Nodes().Any(node => node is not XElement and not XComment && (node is not XText text || !string.IsNullOrWhiteSpace(text.Value))))
+                throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags XML nodes.");
+            return xml;
+        }
+        bool Plain(XElement node, params string[] attributes) => !node.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
+            (attribute.Name.Namespace != XNamespace.None || !attributes.Contains(attribute.Name.LocalName))) &&
+            !node.Nodes().Any(child => child is not XElement and not XComment && (child is not XText text || !string.IsNullOrWhiteSpace(text.Value)));
+        bool Literal(XElement node) => !node.HasElements && node.Nodes().All(child => child is XText or XComment) &&
+            node.Attributes().All(attribute => attribute.IsNamespaceDeclaration);
+        bool Supported(XElement node, string name, XNamespace ns) => node.Name.LocalName == name &&
+            (node.Name.Namespace == ns || node.Name.NamespaceName == OfdConstants.Namespace || node.Name.NamespaceName == OfdConstants.StandardNamespace);
+        if (package.PreservedEntries.ContainsKey(documentPath))
+        {
+            var document = Read(documentPath); var ns = document.Root!.Name.Namespace;
+            var declarations = document.Root.Elements().Where(node => node.Name.LocalName == "CustomTags").ToList();
+            if (declarations.Count > 1) throw new NotSupportedException("Mix cannot preserve multiple CustomTags declarations.");
+            foreach (var declaration in declarations)
+            {
+                if (declaration.Name != ns + "CustomTags" || !Literal(declaration))
+                    throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags declarations.");
+                var listPath = OfdPackagePath.Resolve(documentPath, declaration.Value); var list = Read(listPath);
+                if (list.Root is null || !Supported(list.Root, "CustomTags", ns) || !Plain(list.Root)) throw new NotSupportedException("Mix supports only flat EMR CustomTags.");
+                foreach (var record in list.Root.Elements())
+                {
+                    if (record.Name != list.Root.Name.Namespace + "CustomTag" || !Plain(record, "TypeID", "NameSpace") ||
+                        record.Attribute("TypeID")?.Value != "EMR" || record.Attribute("NameSpace")?.Value != "urn:ofdrw-net:custom-tags:emr" || record.Elements().Count() != 1)
+                        throw new NotSupportedException("Mix supports only flat EMR CustomTags.");
+                    var location = record.Elements().Single();
+                    if (location.Name != record.Name.Namespace + "FileLoc" || !Literal(location))
+                        throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags file references.");
+                    detailPaths.Add(OfdPackagePath.Resolve(listPath, location.Value));
+                }
+            }
+            if (declarations.Count == 0)
+            {
+                var legacy = package.Options.DocumentId + "/Tags/CustomTag_EMR.xml";
+                if (package.PreservedEntries.ContainsKey(legacy)) detailPaths.Add(legacy);
+            }
+            foreach (var path in detailPaths)
+            {
+                var detail = Read(path);
+                if (detail.Root is null || !Supported(detail.Root, "EMRTags", ns) || !Plain(detail.Root)) throw new NotSupportedException("Mix supports only flat EMR CustomTags.");
+                foreach (var tag in detail.Root.Elements())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var key = tag.Attribute("Key")?.Value; var value = tag.Attribute("Value")?.Value;
+                    if (tag.Name != detail.Root.Name.Namespace + "Tag" || tag.HasElements || !Plain(tag, "Key", "Value") || string.IsNullOrWhiteSpace(key) || value is null)
+                        throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags records.");
+                    if (inspected.TryGetValue(key!, out var prior) && prior != value) throw new NotSupportedException($"Mix CustomTags conflict for key '{key}' in source XML.");
+                    inspected[key!] = value;
+                }
+            }
+        }
+        foreach (var tag in package.CustomTags)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (string.IsNullOrWhiteSpace(tag.Key) || tag.Value is null) throw new NotSupportedException("Mix requires scalar CustomTags keys and values.");
+            if (package.Attachments.Any(attachment => !string.IsNullOrEmpty(attachment.Id) && attachment.Id == tag.Value))
+                throw new NotSupportedException($"Mix cannot remap the attachment reference in CustomTags key '{tag.Key}'.");
+            foreach (var basis in detailPaths.Concat(new[] { documentPath, "OFD.xml" }))
+            {
+                string path; try { path = OfdPackagePath.Resolve(basis, tag.Value); } catch (InvalidDataException) { continue; }
+                if (package.PreservedEntries.ContainsKey(path)) throw new NotSupportedException($"Mix cannot remap the package reference in CustomTags key '{tag.Key}'.");
+            }
+        }
     }
     private static XNamespace EntryNamespace(OfdDocumentPackage package, string? path)
     {
