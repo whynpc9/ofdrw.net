@@ -6,7 +6,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 274/274 通过 | Core 5、Packaging 23、PDF/Image 163、Signatures 4、DOCX 49、CLI 30 |
+| 功能回归 | 280/280 通过 | Core 5、Packaging 23、PDF/Image 166、Signatures 4、DOCX 49、CLI 33 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review11`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
@@ -157,3 +157,9 @@ strict现在按LocalName校验列表/Signature根（仍允许XML namespace），
 新增missing/empty/blank/duplicate/duplicate-case五例，检查strict sentinel与legacy正文红path。全套274/274通过；本轮新包和产物稍后记录，Preview仍未完成。
 
 第十一轮25个实际产物均从`89e962e`重新生成，11/11本地包消费及Sol Low独立65/65通过；Astra只读复核所选页ID关联修复无近邻新问题。当次10张PNG/JPEG逐页重新查看，检查范围同上，无新缺陷；274项日志/全部哈希在当前bundle/manifest，Preview仍未完成。
+
+## 第十二轮复审修复
+
+`b5910f2`两类bot到齐，五项功能CI通过。Cursor确认页面ID修复无新缺陷；Codex指出图片导入以5固定条目预检，单PNG的实际6条目包不能在MaxEntryCount=6下导入。修复同时考虑去重：4固定XML+每输入一页+格式/内容去重后的图片资源。API/CLI前置检查不可少的`4+页数+1`，API处理输入时计入distinct资源，最终写后再读取实际ZIP条目数并在发布前核对。未修改共享writer。
+
+新增API/CLI各三例，单PNG6、两不同图8、两相同图7恰好通过并核对实际ZIP条目；各少一条均失败，保持原输出/清理临时文件。全套280/280通过；本轮新包和产物稍后记录，Preview仍未完成。

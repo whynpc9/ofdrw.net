@@ -131,6 +131,27 @@ public sealed class ImageIoTests
     }
 
     [Theory]
+    [InlineData(1, false, 6)] [InlineData(2, true, 8)] [InlineData(2, false, 7)]
+    public async Task ImportEntryBudgetCountsWrittenPagesAndDistinctResources(int count, bool distinct, int entries)
+    {
+        var inputs = Enumerable.Range(0, count).Select(index => new MemoryStream(ImageBytes(distinct && index > 0))).ToArray();
+        try
+        {
+            using var output = new MemoryStream();
+            await new ImageToOfdConverter(new ImageToOfdOptions { MaxEntryCount = entries }).ConvertAsync(inputs, output);
+            output.Position = 0;
+            using (var archive = new ZipArchive(output, ZipArchiveMode.Read, true)) Assert.Equal(entries, archive.Entries.Count);
+            output.Position = 0; Assert.Equal(count, (await new OfdReader().ReadAsync(output)).Pages.Count);
+            foreach (var input in inputs) input.Position = 0;
+            using var sentinel = Sentinel();
+            var error = await Record.ExceptionAsync(() => new ImageToOfdConverter(new ImageToOfdOptions
+            { MaxEntryCount = entries - 1 }).ConvertAsync(inputs, sentinel));
+            Assert.True(error is ArgumentException or InvalidDataException); Assert.Contains("entry", error!.Message); AssertSentinel(sentinel);
+        }
+        finally { foreach (var input in inputs) input.Dispose(); }
+    }
+
+    [Theory]
     [InlineData(-1)] [InlineData(2)] [InlineData(int.MaxValue)]
     public async Task InvalidPage_LeavesExistingOutputUntouched(int page)
     {

@@ -65,7 +65,7 @@ internal static partial class Cli
         // Validate options before creating even the staging output.
         var exporter = export ? new OfdToImageConverter(exportOptions) : null;
         var importer = export ? null : new ImageToOfdConverter(importOptions);
-        if (!export && (inputs.Count > importOptions.MaxPageCount || 5L + inputs.Count * 2L > importOptions.MaxEntryCount))
+        if (!export && (inputs.Count > importOptions.MaxPageCount || 4L + inputs.Count + 1L > importOptions.MaxEntryCount))
             throw new ArgumentException("Input image count exceeds the page/entry budget.");
         foreach (var input in inputs) EnsureDifferentPaths(input, destination);
         var streams = new List<Stream>();

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Threading;
 using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Pdf.Internal;
@@ -54,11 +55,12 @@ public sealed class ImageToOfdConverter
         if (ofdOutput is null) throw new ArgumentNullException(nameof(ofdOutput));
         cancellationToken.ThrowIfCancellationRequested();
         if (imageInputs.Count == 0 || imageInputs.Count > _options.MaxPageCount ||
-            5L + imageInputs.Count * 2L > _options.MaxEntryCount)
+            4L + imageInputs.Count + 1L > _options.MaxEntryCount)
             throw new ArgumentException("Input image count exceeds the page/entry budget or is empty.", nameof(imageInputs));
         // Validate every stream before consuming any input.
         foreach (var input in imageInputs) ImageIoBudget.Streams(input, ofdOutput);
         var package = new OfdDocumentPackage();
+        var imageResources = new HashSet<string>(StringComparer.Ordinal);
         long total = 0;
         for (var index = 0; index < imageInputs.Count; index++)
         {
@@ -101,10 +103,16 @@ public sealed class ImageToOfdConverter
                 ImageIoBudget.ImportExtent(imageWidth, imageHeight);
             }
             var page = new OfdPage { Index = index, WidthMillimeters = pageWidth, HeightMillimeters = pageHeight };
+            var data = staged.ToArray();
+            // Match the writer's format/content deduplication: four fixed XML files, one page
+            // per input, and one resource per distinct encoded image (not per placement).
+            imageResources.Add(format + ":" + BinaryIdentity.Hash(data));
+            if (4L + imageInputs.Count + imageResources.Count > _options.MaxEntryCount)
+                throw new InvalidDataException("OFD image resources exceed the configured entry budget.");
             page.Elements.Add(new OfdImageElement
             {
                 FileName = $"image-{index + 1}.{(format == "PNG" ? "png" : "jpg")}",
-                MediaType = format == "PNG" ? "image/png" : "image/jpeg", Data = staged.ToArray(),
+                MediaType = format == "PNG" ? "image/png" : "image/jpeg", Data = data,
                 XMillimeters = (pageWidth - imageWidth) / 2d, YMillimeters = (pageHeight - imageHeight) / 2d,
                 WidthMillimeters = imageWidth, HeightMillimeters = imageHeight
             });
@@ -112,6 +120,9 @@ public sealed class ImageToOfdConverter
         }
         using var encoded = new ImageIoStagingStream(_options.MaxOutputBytes);
         await new OfdPackageWriter().WriteAsync(package, encoded, cancellationToken).ConfigureAwait(false);
+        using (var archive = new ZipArchive(encoded, ZipArchiveMode.Read, leaveOpen: true))
+            if (archive.Entries.Count > _options.MaxEntryCount)
+                throw new InvalidDataException("Written OFD package exceeds the configured entry budget.");
         await encoded.PublishAsync(ofdOutput, cancellationToken).ConfigureAwait(false);
     }
 

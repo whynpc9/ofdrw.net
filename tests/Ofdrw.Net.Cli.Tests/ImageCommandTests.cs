@@ -99,4 +99,26 @@ public sealed class ImageCommandTests : IDisposable
     }
 
     public void Dispose() => Directory.Delete(_directory, true);
+
+    [Theory]
+    [InlineData(1, false, 6)] [InlineData(2, true, 8)] [InlineData(2, false, 7)]
+    public async Task ImportAcceptsExactEntryBudgetAndPreservesDestinationBelowIt(int count, bool distinct, int entries)
+    {
+        var first = PathFor("first.png"); var second = PathFor("second.jpg");
+        using (var image = new Image<Rgb24>(10, 5, new Rgb24(220, 50, 20)))
+        {
+            image.SaveAsPng(first); if (distinct) image.SaveAsJpeg(second);
+        }
+        var inputs = count == 1 ? new[] { first } : new[] { first, distinct ? second : first };
+        var destination = PathFor("exact.ofd");
+        string[] Args(int limit) => new[] { "image-to-ofd" }.Concat(inputs).Concat(new[]
+            { "--output", destination, "--max-entries", limit.ToString(System.Globalization.CultureInfo.InvariantCulture) }).ToArray();
+        Assert.Equal(0, await global::Cli.RunAsync(Args(entries)));
+        using (var input = File.OpenRead(destination))
+        using (var archive = new System.IO.Compression.ZipArchive(input)) Assert.Equal(entries, archive.Entries.Count);
+        await File.WriteAllTextAsync(destination, "preserved");
+        Assert.Equal(1, await global::Cli.RunAsync(Args(entries - 1)));
+        Assert.Equal("preserved", await File.ReadAllTextAsync(destination));
+        Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+    }
 }
