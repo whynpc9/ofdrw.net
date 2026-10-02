@@ -69,6 +69,7 @@ public static class OfdDocumentMixer
             foreach (var reference in page.PreservedPageElements.Select(XElement.Parse).Where(node => node.Name == pageNamespace + "Template"))
             {
                 if (!SupportedTemplateOrder(reference) || reference.HasElements || reference.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value)) ||
+                    reference.Nodes().Any(node => node is not XText and not XComment) ||
                     reference.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
                         (attribute.Name.Namespace != XNamespace.None || attribute.Name.LocalName is not ("TemplateID" or "ZOrder"))))
                     throw new NotSupportedException("Mix cannot flatten an unmodeled template reference wrapper.");

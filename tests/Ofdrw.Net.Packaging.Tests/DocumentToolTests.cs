@@ -274,6 +274,7 @@ public sealed class DocumentToolTests
     [InlineData(" xmlns:v='urn:vendor' v:Transform='1 0 0 1 10 10'", "")]
     [InlineData(" xmlns:v='urn:vendor' v:TemplateID='payload.bin'", "")]
     [InlineData(" xmlns:v='urn:vendor'", "<v:FileRef>payload.bin</v:FileRef>")]
+    [InlineData("", "<?vendor payload.bin?>")]
     public async Task Mix_RejectsUnmodeledTemplateReferenceWrappersWhileRoundtripPreserves(string attributes,string children)
     {
         var source=await RoundTrip(Source());var ns=XNamespace.Get(source.Options.Namespace);
