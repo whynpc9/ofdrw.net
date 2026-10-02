@@ -117,6 +117,22 @@ OfdWatermark.AddImage(source, [0], mark, "image/png", new OfdWatermarkOptions { 
 await Save(source, "watermark");
 await Save(OfdDocumentMerger.Merge([source, new OfdDocumentPackage { Fonts = { source.Fonts.First() }, Pages = { new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80, Elements = { new OfdTextElement { Text = "MERGE END", FontName = source.Fonts.First().FontName, FontResourceId = source.Fonts.First().Id, XMillimeters = 15, YMillimeters = 20 } } } } }]), "watermark-merged");
 var signed = await Read("signed");
+File.Copy(PathFor("signed.ofd"), PathFor("resource-suffix-input.ofd"), true);
+Mutate("resource-suffix-input", entries =>
+{
+    var document = Xml(entries["Doc_0/Document.xml"]);
+    foreach (var declaration in document.Root!.Element(ns + "CommonData")!.Elements().Where(node => node.Name == ns + "PublicRes" || node.Name == ns + "DocumentRes"))
+    {
+        var oldPath = "Doc_0/" + declaration.Value;
+        declaration.Value = declaration.Name.LocalName == "PublicRes" ? "PublicResources.dat" : "ImageResources.bin";
+        entries["Doc_0/" + declaration.Value] = entries[oldPath]; entries.Remove(oldPath);
+    }
+    entries["Doc_0/Document.xml"] = Bytes(document);
+});
+var resourceSuffix = await Read("resource-suffix-input");
+OfdWatermark.AddText(resourceSuffix, [0], "RESOURCE SUFFIX", new OfdWatermarkOptions { XMillimeters = 60, YMillimeters = 230 },
+    fontName: resourceSuffix.Fonts.First().FontName, fontSizeMillimeters: 7);
+await Save(resourceSuffix, "watermark-resource-suffix");
 await Save(OfdDocumentSplitter.Split(signed, [1, 0]), "split");
 File.Copy(PathFor("signed.ofd"), PathFor("template-liveness-input.ofd"), true);
 Mutate("template-liveness-input", entries => entries["Doc_0/Extensions/state.dat"] = Encoding.UTF8.GetBytes("<Wrapper><Extension BaseLoc='../Templates'><File>Content.xml</File></Extension></Wrapper>"));
@@ -222,7 +238,7 @@ fixedAnchor.Pages.Add(fixedPage); await Save(fixedAnchor, "italic-fixed-anchor")
 File.Copy(Path.Combine(root, "scripts/generate-font-test-fixtures.py"), PathFor("fonts/generate-font-test-fixtures.py"), true);
 File.Copy(Path.Combine(root, "LICENSE"), PathFor("fonts/MIT-rectangle-LICENSE.txt"), true);
 File.WriteAllBytes(PathFor("fonts/narrow.ttf"), rectangleFont);
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);

@@ -38,7 +38,7 @@ internal sealed class OfdResourceCatalog
                 if (!string.IsNullOrWhiteSpace(location)) owned.Add(OfdPackagePath.GetDirectory(OfdPackagePath.Resolve(documentPath, location!)) + "/PageRes.xml");
             }
         }
-        foreach (var pair in entries.Where(pair => pair.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)))
+        foreach (var pair in entries.Where(pair => owned.Contains(pair.Key)))
         {
             XDocument xml;
             try
