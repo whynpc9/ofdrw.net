@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main", "master"]
   pull_request:
-    branches: ["main", "master"]
+    branches: ["main", "master", "codex/document-tools"]
 
 jobs:
   build-test:
@@ -127,6 +127,19 @@ jobs:
           mkdir -p artifacts/document-tools-fonts
           cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/document-tools-fonts/
           ./scripts/run-document-tools-e2e.sh artifacts/document-tools-e2e
+
+      - name: Run native graphics matrix
+        run: |
+          mkdir -p artifacts/graphics-fonts
+          cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/graphics-fonts/
+          ./scripts/run-graphics-e2e.sh artifacts/graphics/current
+
+      - name: Upload native graphics pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-graphics-pages
+          path: artifacts/graphics/current
 
       - name: Upload document tool matrix
         if: always()

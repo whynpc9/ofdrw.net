@@ -119,6 +119,7 @@ public sealed class OfdToSvgConverter
             {
                 var pathNode = new XElement(
                     svgNs + "path",
+                    new XAttribute("fill-rule", OfdPathStyle.EvenOdd(path) ? "evenodd" : "nonzero"),
                     new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
                     new XAttribute(
                         "stroke",
