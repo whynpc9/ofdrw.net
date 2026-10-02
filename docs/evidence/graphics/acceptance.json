@@ -83,10 +83,11 @@
     "round1_threads": 5,
     "round1_ci": "six checks passed",
     "fixed_runtime": "b977f2bc54bea6c4a51d5f51e95e6e6cfb3fc50c",
-    "current_head": null,
+    "current_head": "86f0c0b3aedfa0824d9cafcb42637d87f9ed9273",
     "round2_head": "c07a45c8218bc28221dfa7f2f81d2e8be2270465",
     "round2_ci": "six checks passed",
-    "round2_threads_new": 2
+    "round2_threads_new": 2,
+    "source_reviews": "Codex and Cursor latest-head review close runtime findings; R2 historical ledger correction requires fresh docs-head checks."
   },
   "production_release_accepted": false,
   "limitations": [
@@ -165,7 +166,7 @@
     "source_head": "4e121297d9f505dbb6c8f050f8d08ac452dfab33",
     "evidence_commit": "c07a45c8218bc28221dfa7f2f81d2e8be2270465",
     "full_suite": {
-      "passed": 424,
+      "passed": 417,
       "failed": 0,
       "skipped": 0
     },
