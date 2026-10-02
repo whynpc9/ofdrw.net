@@ -21,6 +21,9 @@ public sealed class OfdPage
 
     public List<OfdElement> Elements { get; } = [];
 
+    /// <summary>Visible annotation appearance objects in page coordinates. Original annotation XML remains preserved for ordinary saves.</summary>
+    public List<OfdElement> AnnotationAppearances { get; } = [];
+
     public List<OfdTemplateContent> Templates { get; } = [];
 
     /// <summary>

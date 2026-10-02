@@ -81,12 +81,34 @@ public sealed class OfdToSvgConverter
 
         var families = AddEmbeddedFonts(root, svgNs, package.Fonts);
         var imageIndex = 0;
+        var objectIndex = 0;
         foreach (var element in EnumerateElements(page))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!OfdGraphicXmlContract.IsVisible(element)) continue;
+            if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
+                throw new NotSupportedException($"Annotation appearance on page {page.Index + 1} contains unsupported drawing; export would lose content.");
+            var target = root;
+            if (element is not OfdImageElement && !string.IsNullOrWhiteSpace(element.ClippingXml))
+            {
+                var defs = root.Element(svgNs + "defs");
+                if (defs is null) { defs = new XElement(svgNs + "defs"); root.AddFirst(defs); }
+                var regionIndex = 0;
+                foreach (var region in OfdClipGeometry.Read(element.ClippingXml))
+                {
+                    var id = $"object-{objectIndex}-clip-{regionIndex++}";
+                    defs.Add(new XElement(svgNs + "clipPath", new XAttribute("id", id), new XAttribute("clipPathUnits", "userSpaceOnUse"),
+                        region.Paths.Select(path => new XElement(svgNs + "path", new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
+                            new XAttribute("clip-rule", region.EvenOdd ? "evenodd" : "nonzero"),
+                            new XAttribute("transform", BuildTransform(element.XMillimeters - page.XMillimeters, element.YMillimeters - page.YMillimeters, path.Transform))))));
+                    var group = new XElement(svgNs + "g", new XAttribute("clip-path", $"url(#{id})"));
+                    target.Add(group); target = group;
+                }
+            }
+            objectIndex++;
             if (element is OfdTextElement text)
             {
-                AddText(root, svgNs, page, text, package.Fonts, families);
+                AddText(target, svgNs, page, text, package.Fonts, families);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
@@ -127,7 +149,7 @@ public sealed class OfdToSvgConverter
                         Invariant((path.FillColor ?? path.StrokeColor).Alpha / 255d));
                 }
 
-                root.Add(pathNode);
+                target.Add(pathNode);
             }
         }
 
@@ -196,22 +218,22 @@ public sealed class OfdToSvgConverter
         IReadOnlyList<OfdFontResource> fonts,
         IReadOnlyDictionary<OfdFontResource, string> families)
     {
-        var resource = fonts.FirstOrDefault(font => !string.IsNullOrEmpty(text.FontResourceId) && font.Id == text.FontResourceId)
-            ?? fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase) && !font.Bold && !font.Italic)
-            ?? fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
+        var resource = OfdFontSelection.Resolve(fonts, text);
         var family = resource is not null && families.TryGetValue(resource, out var embeddedFamily) ? embeddedFamily : text.FontName;
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
+        var drawing = OfdTextEmphasis.DrawingTransform(text);
         var transform = BuildTransform(
             text.XMillimeters - page.XMillimeters,
             text.YMillimeters - page.YMillimeters,
-            text.Transform);
+            drawing.Matrix);
         if (text.Runs.Count == 0)
         {
+            var anchor = OfdTextEmphasis.Anchor(0, text.FontSizeMillimeters, drawing.Factor);
             var node = new XElement(
                 svgNs + "text",
-                new XAttribute("x", "0"),
-                new XAttribute("y", Invariant(text.FontSizeMillimeters)),
+                new XAttribute("x", Invariant(anchor.X)),
+                new XAttribute("y", Invariant(anchor.Y)),
                 new XAttribute("font-family", family),
                 new XAttribute("font-weight", fontWeight),
                 new XAttribute("font-style", fontStyle),
@@ -234,10 +256,11 @@ public sealed class OfdToSvgConverter
 
         foreach (var run in text.Runs)
         {
+            var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, drawing.Factor);
             var node = new XElement(
                 svgNs + "text",
-                new XAttribute("x", Invariant(run.XMillimeters)),
-                new XAttribute("y", Invariant(run.YMillimeters)),
+                new XAttribute("x", Invariant(anchor.X)),
+                new XAttribute("y", Invariant(anchor.Y)),
                 new XAttribute("font-family", family),
                 new XAttribute("font-weight", fontWeight),
                 new XAttribute("font-style", fontStyle),
@@ -259,8 +282,9 @@ public sealed class OfdToSvgConverter
                 var y = run.YMillimeters;
                 for (var index = 0; index < glyphs.Count; index++)
                 {
-                    node.Add(new XElement(svgNs + "tspan", new XAttribute("x", Invariant(x)),
-                        new XAttribute("y", Invariant(y)), glyphs[index]));
+                    var glyphAnchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
+                    node.Add(new XElement(svgNs + "tspan", new XAttribute("x", Invariant(glyphAnchor.X)),
+                        new XAttribute("y", Invariant(glyphAnchor.Y)), glyphs[index]));
                     if (index < deltaX.Count) x += deltaX[index];
                     if (index < deltaY.Count) y += deltaY[index];
                 }
@@ -317,7 +341,8 @@ public sealed class OfdToSvgConverter
                     template.ZOrder,
                     "Background",
                     StringComparison.OrdinalIgnoreCase))
-                .SelectMany(template => template.Elements));
+                .SelectMany(template => template.Elements))
+            .Concat(page.AnnotationAppearances);
     }
 
     private static string BuildTransform(
