@@ -84,7 +84,7 @@ public sealed class OfdGraphics
         if (_clips.Count >= _limits.MaxClipRegions) throw new InvalidOperationException("Graphics clip budget exceeded.");
         var snapshot = path.Snapshot(_limits.MaxPathCommands, cancellationToken);
         foreach (var point in snapshot.Points) { cancellationToken.ThrowIfCancellationRequested(); PageTransform.TransformPoint(point.X, point.Y); }
-        var length = snapshot.Data.Length;
+        var length = snapshot.Serialize(RemainingGeometry, cancellationToken).Length;
         CheckGeometry(length);
         cancellationToken.ThrowIfCancellationRequested();
         _clips.Add((snapshot, PageTransform)); _geometryCharacters += length;
@@ -109,17 +109,18 @@ public sealed class OfdGraphics
         var snapshot = path.Snapshot(_limits.MaxPathCommands, cancellationToken);
         var points = snapshot.Points.Select(point => PageTransform.TransformPoint(point.X, point.Y)).ToArray();
         // Control polygon bounds cover Bezier curves. Miter limit 10 bounds stroke overhang under the full affine transform.
-        var halfWidth = (pen?.WidthMillimeters ?? 0) * 5;
+        var writtenWidth = pen is null ? 0 : GraphicsValidation.WriterValue(pen.WidthMillimeters);
+        var halfWidth = writtenWidth * 5;
         var dx = halfWidth * (Math.Abs(Transform.A) + Math.Abs(Transform.C));
         var dy = halfWidth * (Math.Abs(Transform.B) + Math.Abs(Transform.D));
         var x = points.Min(point => point.X) - dx; var y = points.Min(point => point.Y) - dy;
         var width = Math.Max(0.001, points.Max(point => point.X) + dx - x);
         var height = Math.Max(0.001, points.Max(point => point.Y) + dy - y);
         GraphicsValidation.Finite(x, y, width, height);
-        var data = snapshot.Data;
+        var data = snapshot.Serialize(RemainingGeometry, cancellationToken);
         var element = new OfdPathElement { XMillimeters = x, YMillimeters = y, WidthMillimeters = width, HeightMillimeters = height,
             Transform = Rebase(PageTransform, x, y).ToArray(), AbbreviatedData = data,
-            Stroke = pen is not null, Fill = brush is not null, LineWidthMillimeters = pen?.WidthMillimeters ?? 0.353,
+            Stroke = pen is not null, Fill = brush is not null, LineWidthMillimeters = pen is null ? 0.353 : writtenWidth,
             StrokeColor = pen?.Color ?? OfdColor.Black, FillColor = brush?.Color,
             SourceXml = new XElement(Ns + "PathObject", new XAttribute("Rule", Rule(snapshot.Rule)),
                 new XAttribute("Cap", "Butt"), new XAttribute("Join", "Miter"), new XAttribute("MiterLimit", "10")).ToString(SaveOptions.DisableFormatting) };
@@ -153,13 +154,16 @@ public sealed class OfdGraphics
         {
             var glyphs = OfdTextGeometry.Glyphs(text);
             if (advances.Count != glyphs.Count - 1) throw new ArgumentException("Advances must match grapheme count minus one.", nameof(advances));
-            var values = new List<string>(advances.Count); var cursor = x;
+            using var values = new BoundedGeometryWriter(RemainingGeometry, cancellationToken);
+            var cursor = x;
             foreach (var advance in advances)
             {
                 cancellationToken.ThrowIfCancellationRequested(); GraphicsValidation.Finite(advance);
-                cursor += advance; PageTransform.TransformPoint(cursor, baselineY); values.Add(GraphicsValidation.Number(advance));
+                cursor += advance; PageTransform.TransformPoint(cursor, baselineY);
+                if (values.Length > 0) values.Write(' ');
+                values.Write(GraphicsValidation.Number(advance));
             }
-            deltas = string.Join(" ", values);
+            deltas = values.ToString();
         }
         var localBaseline = GraphicsValidation.WriterValue(font.SizeMillimeters);
         var element = new OfdTextElement { Text = text, FontName = name, FontResourceId = font.ResourceId,
@@ -191,6 +195,7 @@ public sealed class OfdGraphics
     }
     private void CheckGeometry(long length)
     { if (length > _limits.MaxGeometryCharacters - _geometryCharacters) throw new InvalidOperationException("Graphics geometry budget exceeded."); }
+    private long RemainingGeometry => _limits.MaxGeometryCharacters - _geometryCharacters;
     private void Commit(OfdElement element, long geometryLength, long textLength, CancellationToken token)
     {
         if (_clips.Count > 0)
@@ -203,7 +208,10 @@ public sealed class OfdGraphics
                     new XAttribute("CTM", string.Join(" ", Rebase(clip.Matrix, element.XMillimeters, element.YMillimeters).ToArray().Select(GraphicsValidation.Number))),
                     new XAttribute("Rule", Rule(clip.Path.Rule)), new XElement(Ns + "AbbreviatedData", clip.Path.Data)))));
             }
-            element.ClippingXml = xml.ToString(SaveOptions.DisableFormatting); geometryLength += element.ClippingXml.Length;
+            using var output = new BoundedGeometryWriter(RemainingGeometry - geometryLength, token);
+            using (var writer = XmlWriter.Create(output, new XmlWriterSettings { OmitXmlDeclaration = true, ConformanceLevel = ConformanceLevel.Fragment }))
+                xml.WriteTo(writer);
+            element.ClippingXml = output.ToString(); geometryLength += element.ClippingXml.Length;
         }
         CheckGeometry(geometryLength); CheckPage(token);
         _page.Elements.Add(element); _geometryCharacters += geometryLength; _textCharacters += textLength;

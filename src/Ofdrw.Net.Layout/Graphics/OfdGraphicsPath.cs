@@ -71,9 +71,26 @@ public sealed class OfdGraphicsPath
 
 internal sealed class PathSnapshot
 {
+    private string? _data;
     internal PathSnapshot(List<(string Command, double[] Values)> commands, OfdFillRule rule) { Commands = commands; Rule = rule; }
     internal List<(string Command, double[] Values)> Commands { get; }
     internal OfdFillRule Rule { get; }
-    internal string Data => string.Join(" ", Commands.Select(command => command.Command + (command.Values.Length == 0 ? "" : " " + string.Join(" ", command.Values.Select(GraphicsValidation.Number)))));
+    internal string Data => _data ?? throw new InvalidOperationException("Path snapshot has not been serialized within its budget.");
+    internal string Serialize(long maximum, CancellationToken token)
+    {
+        if (_data is not null)
+        {
+            if (_data.Length > maximum) throw new InvalidOperationException("Graphics geometry budget exceeded.");
+            return _data;
+        }
+        using var writer = new BoundedGeometryWriter(maximum, token);
+        foreach (var command in Commands)
+        {
+            if (writer.Length > 0) writer.Write(' ');
+            writer.Write(command.Command);
+            foreach (var value in command.Values) { writer.Write(' '); writer.Write(GraphicsValidation.Number(value)); }
+        }
+        return _data = writer.ToString();
+    }
     internal IEnumerable<(double X, double Y)> Points => Commands.SelectMany(command => Enumerable.Range(0, command.Values.Length / 2).Select(i => (command.Values[i * 2], command.Values[i * 2 + 1])));
 }
