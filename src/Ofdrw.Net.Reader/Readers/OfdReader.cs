@@ -164,7 +164,8 @@ public sealed class OfdReader : IOfdReader
         if (pages.Count > options.MaxPageCount)
             throw new InvalidDataException("OFD document exceeds the configured page count limit.");
 
-        var annotationIndex = IndexAnnotationFiles(archive, documentXml, docRoot, cancellationToken);
+        var annotationIndex = IndexAnnotationFiles(archive, documentXml, docRoot,
+            new HashSet<string>(pages.Select(page => page.Id).OfType<string>().Where(id => !string.IsNullOrWhiteSpace(id)), StringComparer.Ordinal), cancellationToken);
         var annotationDocuments = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
         foreach (var pageRef in pages)
         {
@@ -347,6 +348,7 @@ public sealed class OfdReader : IOfdReader
         internal readonly List<string> Paths = new();
         internal readonly HashSet<string> Known = new(StringComparer.OrdinalIgnoreCase);
         internal readonly List<string> UnmodeledRecords = new();
+        internal readonly List<string> Records = new();
         internal string? UnmodeledXml;
     }
 
@@ -363,7 +365,7 @@ public sealed class OfdReader : IOfdReader
             xml.Root.Name.NamespaceName == OfdConstants.Namespace || xml.Root.Name.NamespaceName == OfdConstants.StandardNamespace);
 
     private static AnnotationIndex IndexAnnotationFiles(OfdPackageArchive archive, XDocument document,
-        string documentPath, CancellationToken cancellationToken)
+        string documentPath, ISet<string> loadedPageIds, CancellationToken cancellationToken)
     {
         var result = new AnnotationIndex { Namespace = document.Root!.Name.Namespace };
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -394,22 +396,26 @@ public sealed class OfdReader : IOfdReader
                 cancellationToken.ThrowIfCancellationRequested();
                 var pageId = record.Attribute("PageID")?.Value;
                 var location = record.Element(list.Root.Name.Namespace + "FileLoc")?.Value;
+                AnnotationFiles? files = null;
+                var raw = record.ToString(SaveOptions.DisableFormatting);
+                if (!string.IsNullOrWhiteSpace(pageId))
+                {
+                    if (!result.Files.TryGetValue(pageId!, out files)) result.Files[pageId!] = files = new AnnotationFiles();
+                    files.Records.Add(raw);
+                }
                 if (record.Name != list.Root.Name.Namespace + "Page" || string.IsNullOrWhiteSpace(pageId) || string.IsNullOrWhiteSpace(location))
                 {
-                    var raw = record.ToString(SaveOptions.DisableFormatting);
-                    if (string.IsNullOrWhiteSpace(pageId)) result.UnmodeledLists.Add(raw);
-                    else
-                    {
-                        if (!result.Files.TryGetValue(pageId!, out var scoped)) result.Files[pageId!] = scoped = new AnnotationFiles();
-                        scoped.UnmodeledRecords.Add(raw);
-                    }
+                    if (files is null) result.UnmodeledLists.Add(raw); else files.UnmodeledRecords.Add(raw);
                     continue;
                 }
-                if (!result.Files.TryGetValue(pageId!, out var files))
-                    result.Files[pageId!] = files = new AnnotationFiles();
                 var path = OfdPackagePath.Resolve(listPath, location!);
-                if (files.Known.Add(path)) files.Paths.Add(path);
+                if (files!.Known.Add(path)) files.Paths.Add(path);
             }
+        }
+        foreach (var orphan in result.Files.Where(pair => !loadedPageIds.Contains(pair.Key)).ToList())
+        {
+            result.UnmodeledLists.AddRange(orphan.Value.Records);
+            result.Files.Remove(orphan.Key);
         }
         result.UnmodeledXml = WrapUnmodeled(result.UnmodeledLists);
         foreach (var files in result.Files.Values) files.UnmodeledXml = WrapUnmodeled(files.UnmodeledRecords);

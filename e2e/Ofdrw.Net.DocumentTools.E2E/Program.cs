@@ -118,6 +118,18 @@ await Save(source, "watermark");
 await Save(OfdDocumentMerger.Merge([source, new OfdDocumentPackage { Fonts = { source.Fonts.First() }, Pages = { new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80, Elements = { new OfdTextElement { Text = "MERGE END", FontName = source.Fonts.First().FontName, FontResourceId = source.Fonts.First().Id, XMillimeters = 15, YMillimeters = 20 } } } } }]), "watermark-merged");
 var signed = await Read("signed");
 await Save(OfdDocumentSplitter.Split(signed, [1, 0]), "split");
+File.Copy(PathFor("signed.ofd"), PathFor("template-liveness-input.ofd"), true);
+Mutate("template-liveness-input", entries => entries["Doc_0/Extensions/state.dat"] = Encoding.UTF8.GetBytes("<Extension TemplateID='999001' File='/Doc_0/Templates/Content.xml'/>"));
+await Save(OfdDocumentSplitter.Split(await Read("template-liveness-input"), [1]), "split-template-liveness");
+File.Copy(PathFor("rich.ofd"), PathFor("template-wrapper-extension.ofd"), true);
+Mutate("template-wrapper-extension", entries =>
+{
+    var page = Xml(entries[source.Pages[0].SourceEntryPath!]);
+    page.Root!.Element(ns + "Template")!.SetAttributeValue(XNamespace.Get("urn:vendor") + "Placement", "unsupported");
+    entries[source.Pages[0].SourceEntryPath!] = Bytes(page);
+});
+try { OfdDocumentMixer.Mix([new(await Read("template-wrapper-extension"), 0)]); throw new Exception("Mix must reject unmodeled template wrapper metadata."); }
+catch (NotSupportedException exception) { File.WriteAllText(PathFor("template-wrapper-extension.rejection.txt"), exception.Message); }
 var overlay = new OfdDocumentPackage();
 overlay.Fonts.Add(signed.Fonts.First());
 var overlayPage = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 250 };
@@ -189,7 +201,7 @@ foreach (var font in markedItalic.Fonts) { font.Data = fontBytes; font.FileName 
 await Save(markedItalic, "italic-marked");
 await Save(ItalicSample(true, new double[] { 1, 0, 0, 1, 0, 0 }), "italic-control");
 await Save(ItalicSample(true, new double[] { 1, 0, -0.2, 1, 1.2, 0 }), "italic-user-matrix");
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "split", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix" })
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);

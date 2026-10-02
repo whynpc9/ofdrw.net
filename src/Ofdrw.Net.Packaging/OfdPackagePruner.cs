@@ -103,22 +103,52 @@ internal static class OfdPackagePruner
         ISet<string> pagePaths, ISet<string> candidateIds, ISet<string> privateResourcePaths, OfdPackageWriteResult result)
     {
         var document = Parse(entries[documentPath]);
-        foreach (var template in (document.Root!.Element(document.Root.Name.Namespace + "CommonData")?.Elements(document.Root.Name.Namespace + "TemplatePage") ?? Enumerable.Empty<XElement>()).ToList())
+        var templates = (document.Root!.Element(document.Root.Name.Namespace + "CommonData")?.Elements(document.Root.Name.Namespace + "TemplatePage") ?? Enumerable.Empty<XElement>()).ToList();
+        var ids = new HashSet<string>(templates.Select(template => template.Attribute("ID")?.Value).OfType<string>(), StringComparer.Ordinal);
+        var templatePaths = new HashSet<string>(templates.Select(template => template.Attribute("BaseLoc")?.Value)
+            .Where(path => !string.IsNullOrWhiteSpace(path)).Select(path => OfdPackagePath.Resolve(documentPath, path!)), StringComparer.OrdinalIgnoreCase);
+        var referencesByEntry = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var pathsByEntry = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var opaqueXml = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in entries)
+        {
+            // Typed XML and opaque extension XML can have any filename suffix.
+            // Parse once, retaining only references relevant to these templates.
+            if (TryParse(pair.Value, out var xml))
+            {
+                var references = new HashSet<string>(StringComparer.Ordinal); AddReferences(xml, references);
+                var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var pathValues = xml.Descendants().Where(node => !node.HasElements && node.Name.LocalName is not "MaxUnitID" and not "TextCode" and not "AbbreviatedData").Select(node => node.Value)
+                    .Concat(xml.Descendants().Attributes().Where(attribute => attribute.Name.LocalName != "ID" &&
+                        !(pair.Key.Equals(documentPath, StringComparison.OrdinalIgnoreCase) && attribute.Name == XName.Get("BaseLoc") &&
+                          attribute.Parent?.Name == xml.Root!.Name.Namespace + "TemplatePage" &&
+                          attribute.Parent?.Parent?.Name == xml.Root.Name.Namespace + "CommonData" && attribute.Parent?.Parent?.Parent == xml.Root)).Select(attribute => attribute.Value));
+                foreach (var reference in pathValues)
+                {
+                    try
+                    {
+                        var path = OfdPackagePath.Resolve(pair.Key, reference); if (templatePaths.Contains(path)) paths.Add(path);
+                        path = ResolveResourceFile(pair.Key, xml.Root!, reference); if (templatePaths.Contains(path)) paths.Add(path);
+                    }
+                    catch (InvalidDataException) { }
+                }
+                pathsByEntry[pair.Key] = paths;
+                references.IntersectWith(ids);
+                referencesByEntry[pair.Key] = references;
+            }
+            else if (IsXml(pair.Key) || LooksLikeXml(pair.Value)) opaqueXml.Add(pair.Key);
+        }
+        foreach (var template in templates)
         {
             var id = template.Attribute("ID")?.Value;
             if (id is null) continue;
             // Scan every retained XML, excluding this declaration's own ID. Unknown references keep templates alive.
-            var live = entries.Where(pair => IsXml(pair.Key)).Any(pair =>
-            {
-                if (!TryParse(pair.Value, out var xml)) return true;
-                var references = new HashSet<string>(StringComparer.Ordinal);
-                AddReferences(xml, references);
-                return references.Contains(id);
-            });
-            if (live) continue;
             var location = template.Attribute("BaseLoc")?.Value;
-            if (string.IsNullOrWhiteSpace(location)) continue;
-            var path = OfdPackagePath.Resolve(documentPath, location!);
+            var path = string.IsNullOrWhiteSpace(location) ? null : OfdPackagePath.Resolve(documentPath, location!);
+            var live = opaqueXml.Any(entries.ContainsKey) || referencesByEntry.Any(pair => entries.ContainsKey(pair.Key) && pair.Value.Contains(id)) ||
+                path is not null && pathsByEntry.Any(pair => entries.ContainsKey(pair.Key) && pair.Value.Contains(path));
+            if (live) continue;
+            if (path is null) continue;
             if (entries.TryGetValue(path, out var templateBytes) && (!TryParse(templateBytes, out var typedTemplate) || !IsTypedRoot(typedTemplate, "Page", document.Root.Name.Namespace)))
             {
                 result.Warnings.Add($"Unmodeled template payload was retained: '{path}'.");
@@ -412,6 +442,14 @@ internal static class OfdPackagePruner
     }
 
     private static bool IsXml(string path) => path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase);
+    private static bool LooksLikeXml(byte[] bytes)
+    {
+        var index = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? 3 : 0;
+        if (bytes.Length >= 2 && (bytes[0] == 0xFF && bytes[1] == 0xFE || bytes[0] == 0xFE && bytes[1] == 0xFF)) return true;
+        if (bytes.Length >= 4 && bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0xFE && bytes[3] == 0xFF) return true;
+        while (index < bytes.Length && bytes[index] is 0x20 or 0x09 or 0x0A or 0x0D) index++;
+        return index < bytes.Length && bytes[index] == '<';
+    }
     private static XDocument Parse(byte[] bytes)
     {
         using var stream = new MemoryStream(bytes, writable: false);

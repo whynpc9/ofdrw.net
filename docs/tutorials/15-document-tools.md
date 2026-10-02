@@ -93,3 +93,5 @@ Clips 写回位于继承的图元属性区（Actions 之后、TextCode/Abbreviat
 标准 `Name`、`Visible`、裁剪 Path 的图形属性和 Area/Start 会保留；Visible=false 对象在 PDF/SVG 和可见文本提取中不绘制，但原 XML 仍可往返。图片 ImageMask 与 Substitution 均因尚未实现引用重映射而明确拒绝。正文/模板 TextCode 和 AbbreviatedData 只读取直接文本/CDATA，不把嵌套扩展文本拼入正文或路径，也不回退到整个对象的 Value。
 
 已声明的注释图片 ID、载荷或页文件无法加载时，整组绘图会保留为不支持标记，PDF/SVG 和 Mix 明确失败。带 PageID 的未知索引记录只影响目标页；无归属记录聚合为共享元数据字符串，避免按页乘以记录数生成标记。
+
+Mix 的 Template 引用包装器只接受已支持的 TemplateID/ZOrder 属性；额外属性、子元素或正文会保留在原包但阻止展平。split 的模板存活检查按 XML 内容识别未知扩展，不依赖后缀，并跟踪 ID、叶值及常规/Res BaseLoc 文件路径；无法安全解析的 XML 继续保守保留。未匹配已加载页面的注释 PageID 转入共享全局元数据，不能静默丢弃。
