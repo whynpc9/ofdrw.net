@@ -291,6 +291,7 @@ public sealed class DocumentToolTests
         using var input = Zip(source.PreservedEntries);
         using var output = new MemoryStream();
         var result = await OfdPackageSignatureCleaner.CleanAsync(input, output);
+        Assert.True(result.SignaturesInvalidated);
         output.Position = 0;
         var archive = await new OfdPackageLoader().LoadAsync(output);
         Assert.DoesNotContain("Signatures", archive.ReadUtf8Text("OFD.xml"));
@@ -520,7 +521,7 @@ public sealed class DocumentToolTests
         var source = await RoundTrip(Source()); AddSignatures(source, "SignedValue.dat");
         source.PreservedEntries["Doc_0/Signs/Signatures.xml"] = Encoding.UTF8.GetBytes("<Signatures xmlns='urn:vendor'><Signature BaseLoc='Sign_0/Signature.xml'/></Signatures>");
         using var input = Zip(source.PreservedEntries); using var output = new MemoryStream();
-        var report = await OfdPackageSignatureCleaner.CleanAsync(input, output); output.Position = 0;
+        var report = await OfdPackageSignatureCleaner.CleanAsync(input, output); Assert.True(report.SignaturesInvalidated); output.Position = 0;
         var result = await new OfdPackageLoader().LoadAsync(output);
         Assert.DoesNotContain("Signatures", result.ReadUtf8Text("OFD.xml"));
         Assert.True(result.Contains("Doc_0/Signs/Sign_0/SignedValue.dat"));
@@ -1373,6 +1374,44 @@ public sealed class DocumentToolTests
         var visibility = hidden ? "Visible='false'" : "";
         source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot ID='900'><Appearance Boundary='10 10 20 20'><TextObject Boundary='0 0 10 10' Size='3'><TextCode X='0' Y='3'>ONE</TextCode></TextObject></Appearance></Annot><Annot ID='901' {visibility}><Appearance Boundary='10 30 20 20'><TextObject Boundary='0 0 10 10' Size='3'><TextCode X='0' Y='3'>TWO</TextCode></TextObject></Appearance></Annot></PageAnnot>");
         return source;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Mix_RepeatedOrDistinctPackagesWithSameAttachmentIdWriteUniqueDestinationIds(bool distinct)
+    {
+        var first = await RoundTrip(Source()); var second = distinct ? await RoundTrip(Source()) : first;
+        Assert.Equal(first.Attachments[0].Id, second.Attachments[0].Id);
+        var mixed = OfdDocumentMixer.Mix([new(first, 0), new(second, 1)]);
+        Assert.All(mixed.Attachments, attachment => Assert.Null(attachment.Id));
+        var saved = await RoundTrip(mixed); Assert.Equal(2, saved.Attachments.Count);
+        Assert.Equal(2, saved.Attachments.Select(attachment => attachment.Id).Distinct(StringComparer.Ordinal).Count());
+        Assert.All(saved.Attachments, attachment => { Assert.NotNull(attachment.Id); Assert.Equal(new byte[] { 1, 2, 3 }, attachment.Data); Assert.Equal("public-test.txt", attachment.Name); });
+        Assert.Equal(first.Attachments[0].Id, second.Attachments[0].Id);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CleanSignaturesReportsDeclarationRemovalEvenWhenTheListIsMissing(bool missingList)
+    {
+        var source = await RoundTrip(Source()); AddSignatures(source, "SignedValue.dat");
+        if (missingList) foreach (var path in source.PreservedEntries.Keys.Where(path => path.Contains("/Signs/")).ToArray()) source.PreservedEntries.Remove(path);
+        using var input = Zip(source.PreservedEntries); using var output = new MemoryStream();
+        var result = await OfdPackageSignatureCleaner.CleanAsync(input, output); Assert.True(result.SignaturesInvalidated);
+        if (missingList) Assert.Empty(result.RemovedEntries);
+        output.Position = 0; var saved = await new OfdPackageLoader().LoadAsync(output); Assert.DoesNotContain("Signatures", saved.ReadUtf8Text("OFD.xml"));
+        Assert.Equal(source.PreservedEntries["Doc_0/Document.xml"], saved.GetBytes("Doc_0/Document.xml"));
+        output.Position = 0; using var again = new MemoryStream(); var second = await OfdPackageSignatureCleaner.CleanAsync(output, again);
+        Assert.False(second.SignaturesInvalidated); Assert.Empty(second.RemovedEntries);
+    }
+
+    [Fact]
+    public async Task CleanSignaturesUnsignedInputDoesNotReportInvalidation()
+    {
+        var source = await RoundTrip(Source()); using var input = Zip(source.PreservedEntries); using var output = new MemoryStream();
+        var result = await OfdPackageSignatureCleaner.CleanAsync(input, output); Assert.False(result.SignaturesInvalidated); Assert.Empty(result.RemovedEntries);
     }
 
     private static OfdDocumentPackage Source()

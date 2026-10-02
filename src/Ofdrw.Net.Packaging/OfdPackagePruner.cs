@@ -302,7 +302,9 @@ internal static class OfdPackagePruner
         if (!original.TryGetValue("OFD.xml", out var bytes)) return;
         var originalRoot = Parse(bytes);
         var root = Parse(entries["OFD.xml"]);
-        SignatureDeclarations(root).Remove();
+        var removedDeclarations = SignatureDeclarations(root).ToList();
+        if (removedDeclarations.Count > 0) result.SignaturesInvalidated = true;
+        removedDeclarations.Remove();
         entries["OFD.xml"] = Serialize(root);
         var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var knownXml = new Dictionary<string, XDocument>(StringComparer.OrdinalIgnoreCase);
