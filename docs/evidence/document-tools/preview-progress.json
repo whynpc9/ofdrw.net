@@ -1,0 +1,76 @@
+{
+  "status": "historical partial; latest regenerated outputs require Preview after manual unlock",
+  "source_commit": "c10f002299726bebd7495122702df3658572faaa",
+  "checked_pages": 10,
+  "required_pdf_pages": 37,
+  "checks": [
+    {
+      "artifact": "baseline-native.pdf",
+      "sha256": "5c4de1d344c5c5dceb3286014b5216a33d8a7c8d17cac5dda48c3988d294534f",
+      "pages": [
+        1,
+        2
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/baseline-native.pdf",
+      "result": "passed for viewed pages",
+      "window_closed": true,
+      "retained_snapshot": "files/validation/preview-c10/baseline-native.pdf"
+    },
+    {
+      "artifact": "baseline-default.pdf",
+      "sha256": "f1ac1957c03e322405bd27fa171f2afb0fc80c3fc4c2d0a6cce32d47fbc2b0e1",
+      "pages": [
+        1,
+        2
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/baseline-default.pdf",
+      "result": "passed for viewed pages",
+      "window_closed": true,
+      "retained_snapshot": "files/validation/preview-c10/baseline-default.pdf"
+    },
+    {
+      "artifact": "rich.pdf",
+      "sha256": "e5b1ea8dc09065ab3cbcb4a6b6cccd60ef96291f0dd57e117468e3c7a99b76b7",
+      "pages": [
+        1,
+        2
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/rich.pdf",
+      "result": "passed for viewed pages",
+      "window_closed": true,
+      "retained_snapshot": "files/validation/preview-c10/rich.pdf"
+    },
+    {
+      "artifact": "signed.pdf",
+      "sha256": "14047592e3a730494d4930e7539655f8e8c621ffd7372b7223aac9cece1fe4c0",
+      "pages": [
+        1,
+        2
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/signed.pdf",
+      "result": "passed for viewed pages",
+      "window_closed": true,
+      "retained_snapshot": "files/validation/preview-c10/signed.pdf"
+    },
+    {
+      "artifact": "watermark.pdf",
+      "sha256": "8a348b80564fa6e2fdcac8d8aff3dba8f4a1bbbde11bc5a1dfd4ae018f21763a",
+      "pages": [
+        1,
+        2
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/watermark.pdf",
+      "result": "passed for viewed pages",
+      "window_closed": false,
+      "retained_snapshot": "files/validation/preview-c10/watermark.pdf"
+    }
+  ],
+  "method": "macOS Preview through Computer Use; actual URL and page titles observed; native/default body pages and rich/signed/watermark full-page fit reviewed",
+  "remaining_window": "watermark.pdf page2; close attempt blocked by relock",
+  "accidental_open_cleanup": "directory-wide task artifact group opened during a menu transition; File > Close All returned to empty Open panel; these accidental views do not count as acceptance",
+  "historical_only": true,
+  "latest_runtime_source_commit": "8e305f3f319e160d049e342474669907817e5ed8",
+  "latest_outputs_require_reopen_after_regeneration": true,
+  "latest_checked_pages": 0,
+  "latest_required_pdf_pages": 38
+}

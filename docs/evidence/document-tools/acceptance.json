@@ -1,11 +1,11 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "c10f002299726bebd7495122702df3658572faaa",
-  "example_commit": "c10f002299726bebd7495122702df3658572faaa",
+  "runtime_source_commit": "8e305f3f319e160d049e342474669907817e5ed8",
+  "example_commit": "8e305f3f319e160d049e342474669907817e5ed8",
   "functional_tests": {
     "status": "passed",
-    "total": 237,
+    "total": 254,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
@@ -14,9 +14,9 @@
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.19",
+    "version": "0.1.0-issue03.20",
     "published": false,
-    "repository_commit": "c10f002299726bebd7495122702df3658572faaa"
+    "repository_commit": "8e305f3f319e160d049e342474669907817e5ed8"
   },
   "native_default_text": {
     "status": "passed",
@@ -25,12 +25,12 @@
   },
   "automatic_rendering": {
     "status": "passed",
-    "pdf_pages": 37,
-    "svg_pages": 11
+    "pdf_pages": 38,
+    "svg_pages": 12
   },
   "png_visual_review": {
-    "status": "passed-for-listed-pages",
-    "method": "Prior 46 current page bytes match directly inspected R8 pages; new split-template-liveness PDF and SVG pages directly inspected; retained contact sheet13 includes both new renders",
+    "status": "passed-for-49-listed-pages; fixed-anchor-SVG-font-fidelity-unverified",
+    "method": "All 50 current renders directly inspected in review13-contacts/current-01..13 plus original-size changed SVGs and fixed-anchor pair; 49 pass listed expectations; librsvg substitutes the MIT face in fixed-anchor SVG. Browser font loading confirmed, screenshot timed out while Mac locked.",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -79,7 +79,9 @@
       "pages/watermark-merged-2.png",
       "pages/watermark-merged-3.png",
       "pages/watermark-merged-svg.png",
-      "pages/watermark-svg.png"
+      "pages/watermark-svg.png",
+      "pages/italic-fixed-anchor-1.png",
+      "pages/italic-fixed-anchor-svg.png"
     ],
     "observations": [
       "Chinese and proportional English readable; source styles remain local; table fills/borders and page break retained",
@@ -97,27 +99,91 @@
       "R6 child/leaf/attribute closure: known drawing survives unknown metadata, unsupported same-namespace child content and drawing references fail explicitly, exact current 46 render bytes unchanged",
       "R7 owned XML-named signature values/seals removed when exclusive; external/shared transitive references keep exact bytes; all actual 46 output render bytes unchanged",
       "R8 current full-page review: body/table/local style/order intact, known NOTE visible, hidden annotation text/path absent, clipping/glyph transforms correct, signatures removed only in clean/tool outputs, watermarks survive merge",
-      "R9 text ignores image-only budgets; foreign-only or nested-only empty clip geometry rejects PDF/SVG before output instead of hiding the object; supported page render bytes unchanged"
-    ]
+      "R9 text ignores image-only budgets; foreign-only or nested-only empty clip geometry rejects PDF/SVG before output instead of hiding the object; supported page render bytes unchanged",
+      "R13 all-suffix shared XML scans preserve page/font/media/signature closure and nested BaseLoc references; malformed XML stays conservative and BOM plain text does not disable pruning",
+      "R13 new fixed-baseline MIT PDF pairs show whole-glyph shear; regular/italic edge slope regressions and adjacent control pass; SVG native-font raster acceptance remains pending"
+    ],
+    "passed_files": [
+      "pages/annotation-clipped-1.png",
+      "pages/annotation-clipped-mix-1.png",
+      "pages/annotation-clipped-mix-svg.png",
+      "pages/annotation-clipped-svg.png",
+      "pages/annotation-metadata-1.png",
+      "pages/annotation-metadata-2.png",
+      "pages/annotation-metadata-svg.png",
+      "pages/baseline-default-1.png",
+      "pages/baseline-default-2.png",
+      "pages/baseline-native-1.png",
+      "pages/baseline-native-2.png",
+      "pages/clean-1.png",
+      "pages/clean-2.png",
+      "pages/cli-clean-1.png",
+      "pages/cli-clean-2.png",
+      "pages/cli-merged-1.png",
+      "pages/cli-merged-2.png",
+      "pages/cli-merged-3.png",
+      "pages/cli-merged-svg.png",
+      "pages/cli-mix-1.png",
+      "pages/cli-split-1.png",
+      "pages/cli-split-2.png",
+      "pages/cli-watermark-1.png",
+      "pages/cli-watermark-2.png",
+      "pages/cli-watermark-svg.png",
+      "pages/italic-control-1.png",
+      "pages/italic-control-svg.png",
+      "pages/italic-marked-1.png",
+      "pages/italic-marked-svg.png",
+      "pages/italic-user-matrix-1.png",
+      "pages/italic-user-matrix-svg.png",
+      "pages/mix-1.png",
+      "pages/overlay-1.png",
+      "pages/rich-1.png",
+      "pages/rich-2.png",
+      "pages/signed-1.png",
+      "pages/signed-2.png",
+      "pages/split-1.png",
+      "pages/split-2.png",
+      "pages/split-template-liveness-1.png",
+      "pages/split-template-liveness-svg.png",
+      "pages/watermark-1.png",
+      "pages/watermark-2.png",
+      "pages/watermark-merged-1.png",
+      "pages/watermark-merged-2.png",
+      "pages/watermark-merged-3.png",
+      "pages/watermark-merged-svg.png",
+      "pages/watermark-svg.png",
+      "pages/italic-fixed-anchor-1.png"
+    ],
+    "uncompleted": {
+      "pages/italic-fixed-anchor-svg.png": "Shear visible but original rectangle font is substituted by librsvg; native browser raster still required for font fidelity."
+    }
   },
   "macos_preview": {
     "status": "not-completed",
-    "reason": "Mac locked; automatic unlock failed in Computer Use; user unlock requested",
+    "reason": "Mac relocked after historical 10/37-page inspection; latest outputs regenerated at8e305f3 require reopen; manual unlock requested",
     "checked_pages": [],
-    "windows_opened": 0
+    "latest_required_pdf_pages": 38,
+    "historical_checked_pages": 10,
+    "historical_source_commit": "c10f002299726bebd7495122702df3658572faaa",
+    "historical_record": "preview-progress.json",
+    "historical_snapshots": "files/validation/preview-c10",
+    "remaining_window": "old watermark.pdf page2; close blocked by lock"
   },
   "pr_review": {
-    "status": "three current-head template/orphan ownership findings fixed; new-head re-review pending; Preview open",
-    "review_head": "afc1028",
-    "codex": "template wrapper and extensionless XML liveness fixed",
-    "cursor": "unmatched/null PageID records retained globally",
-    "ci": "afc1028 all six successful; new head pending"
+    "status": "three functional findings fixed and independently tested; fresh-head review pending; Preview remains open",
+    "review_head": "2d1f9aff2ab911a9c52c12f4caf1f332c87822af",
+    "codex": "DocBody extensions rejected before Mix; awaiting new-head re-review",
+    "cursor": "nested BaseLoc and all-suffix dependency closure fixed; awaiting new-head re-review",
+    "ci": "previous2d1f9af all six passed; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 37976336,
-    "sha256": "62ea2f7935261cea4a74bb553b8159d165da4e4d2dca281457bcc49d0ec77786",
-    "extraction_readback": "passed all per-file size and SHA-256 checks"
+    "bytes": 39772252,
+    "sha256": "d0934f903256300ac0895879a877da667227592c023caec18b43ced675506294",
+    "extraction_readback": "passed all per-file size and SHA-256 checks",
+    "file_count": 265,
+    "expanded_bytes": 1321519266,
+    "integrity_status": "passed: freshly extracted all265 sizes and SHA256"
   },
   "ofd_sizes": {
     "annotation-clipped-mix.ofd": {
@@ -180,6 +246,10 @@
       "bytes": 11599921,
       "ratio_to_native_baseline": 0.9997
     },
+    "italic-fixed-anchor.ofd": {
+      "bytes": 11601704,
+      "ratio_to_native_baseline": 0.9999
+    },
     "italic-marked.ofd": {
       "bytes": 11599974,
       "ratio_to_native_baseline": 0.9997
@@ -209,7 +279,7 @@
       "ratio_to_native_baseline": 1.0003
     },
     "split-template-liveness.ofd": {
-      "bytes": 11602426,
+      "bytes": 11602437,
       "ratio_to_native_baseline": 1.0
     },
     "split.ofd": {
@@ -217,7 +287,7 @@
       "ratio_to_native_baseline": 1.0002
     },
     "template-liveness-input.ofd": {
-      "bytes": 11606724,
+      "bytes": 11606735,
       "ratio_to_native_baseline": 1.0003
     },
     "template-wrapper-extension.ofd": {
@@ -236,7 +306,8 @@
   "limitations": [
     "Preview is mandatory and remains incomplete; PNG review does not replace it",
     "Only listed synthetic samples/pages checked; unsupported raw objects/actions/reference-bearing extensions fail explicitly",
-    "Signature appearance, protected-entry digest integrity and cryptographic validity are separate; no production signing added"
+    "Signature appearance, protected-entry digest integrity and cryptographic validity are separate; no production signing added",
+    "librsvg cannot demonstrate the new original MIT rectangle glyph font; browser loads font but raster unavailable during locked desktop"
   ],
   "negative_annotation_samples": {
     "annotation-unknown-media": "PDF rejected before any output",
@@ -244,5 +315,5 @@
     "scoped-annotations-input": "page2 Mix rejected; page1 Mix with overlay succeeds; original synthetic signature not cryptographic acceptance",
     "template-wrapper-extension": "Mix rejected; reference XML remains preserved"
   },
-  "template_liveness_sample": "state.dat holds template ID/path after selecting only original page2; declaration/payload/resources preserved while unused template stays unpainted"
+  "template_liveness_sample": "extensionless state.dat nested Extension BaseLoc ../Templates retains template declaration/payload while selecting page2"
 }
