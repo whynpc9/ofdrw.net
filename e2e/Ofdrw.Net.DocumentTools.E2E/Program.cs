@@ -117,7 +117,7 @@ OfdWatermark.AddImage(source, [0], mark, "image/png", new OfdWatermarkOptions { 
 await Save(source, "watermark");
 await Save(OfdDocumentMerger.Merge([source, new OfdDocumentPackage { Fonts = { source.Fonts.First() }, Pages = { new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80, Elements = { new OfdTextElement { Text = "MERGE END", FontName = source.Fonts.First().FontName, FontResourceId = source.Fonts.First().Id, XMillimeters = 15, YMillimeters = 20 } } } } }]), "watermark-merged");
 var signed = await Read("signed");
-File.Copy(PathFor("signed.ofd"), PathFor("resource-suffix-input.ofd"), true);
+File.Copy(PathFor("watermark.ofd"), PathFor("resource-suffix-input.ofd"), true);
 Mutate("resource-suffix-input", entries =>
 {
     var document = Xml(entries["Doc_0/Document.xml"]);
