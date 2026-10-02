@@ -57,6 +57,9 @@ internal sealed class DocumentFontContext
         ((data[0] == 0 && data[1] == 1 && data[2] == 0 && data[3] == 0) ||
          (data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O'));
 
+    internal OpenTypeCmap? Coverage(OfdFontResource? resource) =>
+        resource is not null && _coverage.TryGetValue(resource, out var value) ? value : null;
+
     internal string Resolve(OfdTextElement text, out OfdFontResource? resource)
     {
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))

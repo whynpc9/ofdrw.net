@@ -246,6 +246,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     {
                         var fontSize = Math.Max(0.1, MillimetersToPoints(text.FontSizeMillimeters));
                         var familyName = fonts.Resolve(text, out var resource);
+                        var coverage = fonts.Coverage(resource);
                         // CT_Text Weight/Italic is the per-object style viewers apply;
                         // the resource flags describe the bound font file.
                         var bold = resource?.Bold == true || text.Weight >= 600;
@@ -299,14 +300,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 page.XMillimeters,
                                 page.YMillimeters,
                                 outlineFont,
-                                simulateItalic);
+                                simulateItalic, coverage);
                         }
                         else
                         {
                             DrawTextWithMatrix(graphics, text, page.XMillimeters, page.YMillimeters, factor =>
                             {
                                 var anchor = OfdTextEmphasis.Anchor(0, 0, factor);
-                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, XStringFormats.TopLeft);
+                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, XStringFormats.TopLeft, coverage);
                             });
                         }
                     }
@@ -385,9 +386,9 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     }
 
     private static void DrawStyledString(XGraphics graphics, string text, XFont font, XBrush brush,
-        XPoint point, SixLabors.Fonts.Font? outlineFont, bool italic, XStringFormat? format = null)
+        XPoint point, SixLabors.Fonts.Font? outlineFont, bool italic, XStringFormat? format = null, OpenTypeCmap? coverage = null)
     {
-        text = PdfTextControlPolicy.VisibleText(text);
+        text = PdfTextControlPolicy.VisibleText(text, coverage);
         if (text.Length == 0) return;
         // PDFsharp Core 1.3.67 drops resolver style simulations when creating
         // XGlyphTypeface. Apply the missing fallback appearance at draw time.
@@ -455,7 +456,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         double pageOriginX,
         double pageOriginY,
         SixLabors.Fonts.Font? outlineFont,
-        bool simulateItalic)
+        bool simulateItalic, OpenTypeCmap? coverage)
     {
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
@@ -468,7 +469,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
                     DrawStyledString(graphics, run.Text, font, brush,
-                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic);
+                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, coverage: coverage);
                     continue;
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
@@ -476,7 +477,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     var anchor = OfdTextEmphasis.Anchor(x, y, factor);
                     DrawStyledString(graphics, glyphs[i], font, brush,
-                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic);
+                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, coverage: coverage);
                     if (i < deltaX.Count) x += deltaX[i];
                     if (i < deltaY.Count) y += deltaY[i];
                 }

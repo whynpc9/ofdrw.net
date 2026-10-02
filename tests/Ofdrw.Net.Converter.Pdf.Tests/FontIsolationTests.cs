@@ -75,13 +75,34 @@ public sealed class FontIsolationTests
         }
     }
 
+    [Theory]
+    [InlineData(false)][InlineData(true)]
+    public async Task ActualPdfKeepsMappedHangulFillerAdvanceInImplicitAndPositionedRuns(bool positioned)
+    {
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        var cmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face); var space=cmap.Glyph(' '); Assert.NotEqual(0,space);
+        face.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int> { ['A']=cmap.Glyph('A'), ['B']=cmap.Glyph('B'), [' ']=space, [0x3164]=space });
+        var data=face.Build();
+        async Task<double> Export(string value)
+        {
+            var package=new OfdDocumentPackage(); package.Fonts.Add(new OfdFontResource { Id="10", FontName="mapped-filler", Data=data });
+            var text=new OfdTextElement { FontResourceId="10", Text=value, XMillimeters=10, YMillimeters=10, FontSizeMillimeters=6, WidthMillimeters=80, HeightMillimeters=20 };
+            if (positioned) text.Runs.Add(new OfdTextRun { Text=value, YMillimeters=6, DeltaX="5 5" });
+            package.Pages.Add(new OfdPage { WidthMillimeters=100,HeightMillimeters=50,Elements={text} });
+            using var ofd=new MemoryStream();await new OfdPackageWriter().WriteAsync(package,ofd);ofd.Position=0;
+            using var pdf=new MemoryStream();await new OfdToPdfConverter().ConvertAsync(ofd,pdf);
+            using var doc=PdfPigDocument.Open(pdf.ToArray());return doc.GetPage(1).Letters.Single(letter=>letter.Value=="B").BoundingBox.Left;
+        }
+        Assert.Equal(await Export("A B"),await Export("A\u3164B"),5);
+    }
+
     [Fact]
     public void NonRenderingControlsAreNotPaintedAndSemanticBidiOrUvsAreRefused()
     {
         Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200CB"));
         Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200DB"));
         Assert.Equal("", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("\u200D"));
-        foreach (var value in new[] { "A\u202EB", "A\u2067B", "A\uFE00" })
+        foreach (var value in new[] { "A\u202EB", "A\u202CB", "A\u200EB", "A\u206AB", "A\u2067B", "A\uFE00", "A\u180BB", "A\u180FB" })
             Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value));
     }
 
