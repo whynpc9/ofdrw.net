@@ -40,18 +40,23 @@ public sealed class OfdGraphics
     /// <summary>Replaces the user-to-page matrix. Matrices singular in memory or at OFD writer precision, and derived overflow, fail before state changes.</summary>
     public void SetTransform(OfdMatrix matrix)
     {
-        if (matrix is null) throw new ArgumentNullException(nameof(matrix));
-        var determinant = matrix.A * matrix.D - matrix.B * matrix.C;
-        GraphicsValidation.Finite(determinant);
-        if (determinant == 0) throw new ArgumentException("Graphics transform must be nonsingular.", nameof(matrix));
-        var writtenDeterminant = GraphicsValidation.WriterValue(matrix.A) * GraphicsValidation.WriterValue(matrix.D)
-            - GraphicsValidation.WriterValue(matrix.B) * GraphicsValidation.WriterValue(matrix.C);
-        GraphicsValidation.Finite(writtenDeterminant);
-        if (writtenDeterminant == 0) throw new ArgumentException("Graphics transform must remain nonsingular at OFD writer precision.", nameof(matrix));
+        ValidateTransform(matrix);
         Transform = matrix;
     }
+    private static void ValidateTransform(OfdMatrix matrix)
+    {
+        if (matrix is null) throw new ArgumentNullException(nameof(matrix));
+        if (!OfdNumericFormat.Nonsingular(matrix.A, matrix.B, matrix.C, matrix.D))
+            throw new ArgumentException("Graphics transform must have nonsingular serialized coefficients.", nameof(matrix));
+    }
     /// <summary>Appends in user space: current = current * matrix; the appended matrix acts first.</summary>
-    public void MultiplyTransform(OfdMatrix matrix) => SetTransform(Transform.Multiply(matrix));
+    public void MultiplyTransform(OfdMatrix matrix)
+    {
+        // Reject a singular operand before floating multiplication can perturb
+        // its coefficients into an accidentally nonsingular serialized result.
+        ValidateTransform(matrix);
+        SetTransform(Transform.Multiply(matrix));
+    }
     /// <summary>Appends a user-space translation.</summary>
     public void Translate(double x, double y) => MultiplyTransform(OfdMatrix.Translation(x, y));
     /// <summary>Appends a user-space scale.</summary>
@@ -155,15 +160,16 @@ public sealed class OfdGraphics
             }
             deltas = string.Join(" ", values);
         }
+        var localBaseline = GraphicsValidation.WriterValue(font.SizeMillimeters);
         var element = new OfdTextElement { Text = text, FontName = name, FontResourceId = font.ResourceId,
             FontSizeMillimeters = font.SizeMillimeters, Weight = font.Weight, Italic = font.Italic, FillColor = brush.Color,
             XMillimeters = _page.XMillimeters, YMillimeters = _page.YMillimeters,
             WidthMillimeters = _page.WidthMillimeters, HeightMillimeters = _page.HeightMillimeters,
-            Transform = Rebase(PageTransform.Multiply(OfdMatrix.Translation(x, baselineY - font.SizeMillimeters)),
+            Transform = Rebase(PageTransform.Multiply(OfdMatrix.Translation(x, baselineY - localBaseline)),
                 _page.XMillimeters, _page.YMillimeters).ToArray() };
         // Normalize the run's baseline so the existing writer can compose its
         // generated name-only italic factor about this anchor, under any user CTM.
-        element.Runs.Add(new OfdTextRun { Text = text, XMillimeters = 0, YMillimeters = font.SizeMillimeters, DeltaX = deltas });
+        element.Runs.Add(new OfdTextRun { Text = text, XMillimeters = 0, YMillimeters = localBaseline, DeltaX = deltas });
         Commit(element, deltas?.Length ?? 0, text.Length, cancellationToken);
     }
     private OfdMatrix PageTransform => OfdMatrix.Translation(_page.XMillimeters, _page.YMillimeters).Multiply(Transform);

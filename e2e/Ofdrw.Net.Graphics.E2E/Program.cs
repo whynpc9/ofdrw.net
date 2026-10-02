@@ -73,6 +73,23 @@ foreach (var text in nameRoundtrip.Pages[0].Elements.OfType<OfdTextElement>().Wh
     if (!XElement.Parse(text.SourceXml!).Attributes().Any(attribute => attribute.Name.LocalName == "FauxItalicMatrixV1")) throw new Exception("Native name-only italic has no generated factor.");
 await Export("graphics-name-only");
 
+// Bring the end of a very wide logical rectangle into an ordinary page. A
+// .9996 clip versus a CTM rounded to 1 loses the right border by 40 mm.
+var fractional = new OfdDocumentPackage();
+fractional.Fonts.Add(new OfdFontResource { Id = "precision-face", FontName = "Noto Sans CJK SC", FileName = "Noto-Regular.ttf", Data = fontBytes });
+var fractionalPage = new OfdPage { WidthMillimeters = 148, HeightMillimeters = 90 }; fractional.Pages.Add(fractionalPage);
+var fractionalGraphics = new OfdGraphics(fractional, fractionalPage);
+OfdFont PrecisionFont(double size) => new("Noto Sans CJK SC", size, resourceId: "precision-face");
+fractionalGraphics.DrawString("分数 CTM / FRACTIONAL CLIP", PrecisionFont(4.7), nameBrush, 12, 14);
+fractionalGraphics.DrawString("100000 mm logical rectangle; visible right edge = 130 mm", PrecisionFont(2.8), nameBrush, 12, 23);
+fractionalGraphics.Save(); fractionalGraphics.Translate(-99830, 32); fractionalGraphics.Scale(0.9996, 1);
+fractionalGraphics.IntersectClip(new OfdGraphicsPath().AddRectangle(0, 0, 100000, 27));
+fractionalGraphics.DrawRectangle(new OfdPen(new OfdColor(30, 93, 166), 2), 0, 0, 100000, 27);
+fractionalGraphics.Restore();
+fractionalGraphics.DrawLine(namePen, 130, 28, 130, 63);
+fractionalGraphics.DrawString("右边框应在辅助线左侧可见 / right border must remain visible", PrecisionFont(2.8), nameBrush, 12, 74);
+await Save(fractional, "graphics-fractional-clip"); await Export("graphics-fractional-clip");
+
 // Reuse the deterministic DOCX fixture with explicitly licensed font names.
 var docx = Target("licensed-layout.docx"); File.Copy(Path.Combine(root, "e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx"), docx, true);
 using (var archive = ZipFile.Open(docx, ZipArchiveMode.Update))

@@ -362,7 +362,7 @@ public sealed class OfdPackageWriter
                                     : null,
                                 italic ? new XAttribute("Italic", "true") : null,
                                 text.Transform is { Length: 6 }
-                                    ? new XAttribute("CTM", string.Join(" ", text.Transform.Select(ToInvariant)))
+                                    ? new XAttribute("CTM", string.Join(" ", text.Transform.Select(OfdNumericFormat.Plain)))
                                     : null,
                                 text.FillColor.Red != 0 ||
                                 text.FillColor.Green != 0 ||
@@ -416,14 +416,14 @@ public sealed class OfdPackageWriter
                             imageObject = new XElement(ns + "ImageObject",
                                 new XAttribute("ID", objectId),
                                 new XAttribute("Boundary", BuildBox(image.XMillimeters, image.YMillimeters, image.WidthMillimeters, image.HeightMillimeters)),
-                                new XAttribute("CTM", BuildMatrix(image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0)),
+                                new XAttribute("CTM", string.Join(" ", new[] { image.WidthMillimeters, 0d, 0d, image.HeightMillimeters, 0d, 0d }.Select(OfdNumericFormat.Plain))),
                                 new XAttribute("ResourceID", resource.Id));
                         }
 
                         imageObject.SetAttributeValue("Boundary", BuildBox(image.XMillimeters, image.YMillimeters, image.WidthMillimeters, image.HeightMillimeters));
                         imageObject.SetAttributeValue("CTM", image.Transform is { Length: 6 }
-                            ? string.Join(" ", image.Transform.Select(ToInvariant))
-                            : BuildMatrix(image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0));
+                            ? string.Join(" ", image.Transform.Select(OfdNumericFormat.Plain))
+                            : string.Join(" ", new[] { image.WidthMillimeters, 0d, 0d, image.HeightMillimeters, 0d, 0d }.Select(OfdNumericFormat.Plain)));
                         imageObject.SetAttributeValue("Alpha", image.Alpha == 255 ? null : (object)Math.Max(0, Math.Min(255, image.Alpha)));
                         imageObject.Elements(imageObject.Name.Namespace + "Clips").Remove();
                         ApplyClipping(imageObject, image);
@@ -446,7 +446,7 @@ public sealed class OfdPackageWriter
                         pathObject.SetAttributeValue(
                             "CTM",
                             path.Transform is { Length: 6 }
-                                ? string.Join(" ", path.Transform.Select(ToInvariant))
+                                ? string.Join(" ", path.Transform.Select(OfdNumericFormat.Plain))
                                 : null);
                         SetPathColor(pathObject, ns, "StrokeColor", path.Stroke ? path.StrokeColor : null);
                         SetPathColor(pathObject, ns, "FillColor", path.Fill ? path.FillColor : null);
@@ -598,6 +598,8 @@ public sealed class OfdPackageWriter
             var combined = new[] { matrix[0], matrix[1], matrix[2] - shear * matrix[0], matrix[3] - shear * matrix[1],
                 matrix[4] + matrix[0] * offset, matrix[5] + matrix[1] * offset };
             if (combined.Any(value => double.IsNaN(value) || double.IsInfinity(value))) throw new InvalidDataException("Generated italic CTM overflowed.");
+            if (!OfdNumericFormat.Nonsingular(combined[0], combined[1], combined[2], combined[3]))
+                throw new InvalidDataException("Generated italic CTM became singular.");
             textObject.SetAttributeValue("CTM", string.Join(" ", combined.Select(OfdNumericFormat.Plain)));
             textObject.SetAttributeValue(OfdTextEmphasis.FauxItalicFactor,
                 string.Join(" ", new[] { 1d, 0, -shear, 1, offset, 0 }.Select(OfdNumericFormat.Plain)));
