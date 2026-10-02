@@ -57,7 +57,9 @@ internal sealed class OfdFontEmbeddingPlan
         var usage = new Dictionary<string, List<OfdTextElement>>(StringComparer.Ordinal);
         if (options.Mode != OfdFontEmbeddingMode.Full)
             foreach (var page in package.Pages)
-                foreach (var element in page.Elements)
+                foreach (var element in page.Elements
+                    .Concat(page.Templates.SelectMany(template => template.Elements))
+                    .Concat(page.AnnotationAppearances))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     if (element is not OfdTextElement text) continue;

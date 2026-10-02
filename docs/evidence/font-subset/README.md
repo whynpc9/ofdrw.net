@@ -4,8 +4,8 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 517/517；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
-| 包消费 | 11 个 `0.1.0-issue05.20261003.19` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 519/519；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.20` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
@@ -62,3 +62,5 @@ R16：LRM U+200E 对混合方向文字有语义，PDF 与 RLM/ALM 一样统一�
 R17：PDF 对 default-ignorable 语义统一明确拒绝，只有四个 Hangul filler 是有界绘制例外（R17 当时实际 advance/Delta 样例仅 U+3164）；WORD JOINER、不可见数学运算符、SHY、ZWSP、CGJ、MVS、FEFF、旧方向控制均不再删除后成功输出。弃用不等于无语义，OFD 字符首位 FEFF 不自动认作编码 BOM。13 个语义用例各覆盖普通/定位文字，原 OFD Unicode 完整、PDF NotSupported/0B。本轮505/505；旧 LRM/弃用控制成功页只属历史，当前最终成功清单不再包含它们。
 
 R18：修正 R17 的证据范围表述，原本只有 U+3164 的 advance/Delta 检查。现四个 filler（115F/1160/3164/FFA0）各补普通/定位两路：映射至真实 space glyph 时 B 坐标与 A-space-B 对照一致；未映射时抽取 AB，定位 A-filler-B 的每 gap Delta5/5 对照 AB Delta10，确认跳过字形仍保留原槽位。删除 AB 自比的无效断言，产品运行逻辑未改。
+
+R19：已建模模板文字和注释外观文字也进入同一次用字绑定/coverage 预遍历，与正文及 PDF/SVG 实际渲染集合一致；模板/注释仍触发全量保留，不能因此跳过已知 Unicode 缺字检查。typed A 保全量/原字节，typed B 缺字在 ZIP 写出前明确失败/0B；Raw/CGTransform/保留条目的未知 GID 保护和显式 Full opt-out 均不变。本轮519/519。
