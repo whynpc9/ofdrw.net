@@ -4,6 +4,8 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
+using System.Threading;
+using System.IO;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Converter.Pdf.Internal;
@@ -11,30 +13,44 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 internal static class OfdSignatureAppearanceReader
 {
     public static IReadOnlyList<OfdSignatureAppearance> Read(
-        OfdDocumentPackage package)
+        OfdDocumentPackage package, HashSet<string>? selectedPageIds = null,
+        int? maximumAppearances = null, CancellationToken cancellationToken = default)
     {
         if (!package.PreservedEntries.TryGetValue("OFD.xml", out var ofdBytes))
         {
+            if (maximumAppearances.HasValue) throw new InvalidDataException("Missing OFD signature metadata root.");
             return Array.Empty<OfdSignatureAppearance>();
         }
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var ofd = ParseXml(ofdBytes);
             var signatureLists = ofd
                 .Descendants()
                 .Where(element => element.Name.LocalName == "Signatures")
                 .Select(element => NormalizePath(element.Value))
-                .Where(path => path.Length > 0)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+            if (maximumAppearances.HasValue && signatureLists.Any(path => path.Length == 0))
+                throw new InvalidDataException("Signature metadata list reference is empty.");
             var result = new List<OfdSignatureAppearance>();
-            foreach (var listPath in signatureLists)
+            var payloadCache = maximumAppearances.HasValue ? new Dictionary<byte[], byte[]>() : null;
+            var candidates = 0;
+            foreach (var listPath in signatureLists.Where(path => path.Length > 0))
             {
-                ReadSignatureList(package.PreservedEntries, listPath, result);
+                ReadSignatureList(package.PreservedEntries, listPath, result, selectedPageIds,
+                    maximumAppearances, ref candidates, payloadCache, cancellationToken);
             }
 
             return result;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (InvalidDataException) when (maximumAppearances.HasValue) { throw; }
+        catch (OutOfMemoryException) { throw; }
+        catch (Exception exception) when (maximumAppearances.HasValue)
+        {
+            throw new InvalidDataException("Cannot parse selected signature appearance metadata.", exception);
         }
         catch
         {
@@ -47,14 +63,18 @@ internal static class OfdSignatureAppearanceReader
     private static void ReadSignatureList(
         IReadOnlyDictionary<string, byte[]> entries,
         string listPath,
-        ICollection<OfdSignatureAppearance> destination)
+        ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds,
+        int? maximumAppearances, ref int candidates, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token)
     {
         if (!entries.TryGetValue(listPath, out var listBytes))
         {
+            if (maximumAppearances.HasValue) throw new InvalidDataException("Referenced signature metadata list is missing.");
             return;
         }
 
         var list = ParseXml(listBytes);
+        if (maximumAppearances.HasValue && list.Root?.Name.LocalName != "Signatures")
+            throw new InvalidDataException("Referenced signature metadata list has an unsupported root.");
         foreach (var record in list
             .Descendants()
             .Where(element => element.Name.LocalName == "Signature"))
@@ -62,44 +82,65 @@ internal static class OfdSignatureAppearanceReader
             var baseLocation = record.Attribute("BaseLoc")?.Value;
             if (string.IsNullOrWhiteSpace(baseLocation))
             {
+                if (maximumAppearances.HasValue) throw new InvalidDataException("Signature metadata entry reference is missing or empty.");
                 continue;
             }
 
             var signaturePath = ResolvePath(listPath, baseLocation!);
-            ReadSignature(entries, signaturePath, destination);
+            token.ThrowIfCancellationRequested();
+            ReadSignature(entries, signaturePath, destination, selectedPageIds, maximumAppearances, ref candidates, payloadCache, token);
         }
     }
 
     private static void ReadSignature(
         IReadOnlyDictionary<string, byte[]> entries,
         string signaturePath,
-        ICollection<OfdSignatureAppearance> destination)
+        ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds,
+        int? maximumAppearances, ref int candidates, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token)
     {
         if (!entries.TryGetValue(signaturePath, out var signatureBytes))
         {
+            if (maximumAppearances.HasValue) throw new InvalidDataException("Referenced signature metadata entry is missing.");
             return;
         }
 
         var signature = ParseXml(signatureBytes);
+        if (maximumAppearances.HasValue && signature.Root?.Name.LocalName != "Signature")
+            throw new InvalidDataException("Referenced signature metadata entry has an unsupported root.");
+        var stamps = new List<XElement>();
+        foreach (var stamp in signature.Descendants().Where(element => element.Name.LocalName == "StampAnnot"))
+        {
+            token.ThrowIfCancellationRequested();
+            var pageRef = stamp.Attribute("PageRef")?.Value;
+            if (maximumAppearances.HasValue && string.IsNullOrWhiteSpace(pageRef))
+                throw new InvalidDataException("Signature stamp metadata has a missing or blank PageRef.");
+            if (selectedPageIds is not null && !selectedPageIds.Contains(pageRef ?? string.Empty)) continue;
+            if (maximumAppearances.HasValue && candidates >= maximumAppearances.Value)
+                throw new InvalidDataException("Selected signature appearance count exceeds the configured limit.");
+            candidates++;
+            stamps.Add(stamp);
+        }
+        if (stamps.Count == 0) return;
         var appearanceData = ReadAppearanceData(
             entries,
             signature,
-            signaturePath);
+            signaturePath, payloadCache, token);
         if (appearanceData.Length == 0)
         {
+            if (maximumAppearances.HasValue)
+                throw new InvalidDataException("Selected signature stamp has no supported appearance payload.");
             return;
         }
 
-        foreach (var stamp in signature
-            .Descendants()
-            .Where(element => element.Name.LocalName == "StampAnnot"))
+        foreach (var stamp in stamps)
         {
             var pageId = stamp.Attribute("PageRef")?.Value;
             if (string.IsNullOrWhiteSpace(pageId) ||
                 !TryParseBox(stamp.Attribute("Boundary")?.Value, out var box) ||
-                box.Width <= 0 ||
-                box.Height <= 0)
+                !PdfOperandGeometry.Box(box.X, box.Y, box.Width, box.Height))
             {
+                if (maximumAppearances.HasValue)
+                    throw new InvalidDataException("Selected signature stamp Boundary must have finite PDF coordinates and positive dimensions representable by the PDF writer.");
                 continue;
             }
 
@@ -116,7 +157,7 @@ internal static class OfdSignatureAppearanceReader
     private static byte[] ReadAppearanceData(
         IReadOnlyDictionary<string, byte[]> entries,
         XDocument signature,
-        string signaturePath)
+        string signaturePath, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token)
     {
         var sealLocation = signature
             .Descendants()
@@ -126,7 +167,7 @@ internal static class OfdSignatureAppearanceReader
         {
             var sealPath = ResolvePath(signaturePath, sealLocation!);
             if (entries.TryGetValue(sealPath, out var sealBytes) &&
-                TryFindAppearancePayload(sealBytes, out var sealAppearance))
+                TryFindCachedPayload(sealBytes, payloadCache, token, out var sealAppearance))
             {
                 return sealAppearance;
             }
@@ -143,95 +184,48 @@ internal static class OfdSignatureAppearanceReader
 
         var signedValuePath = ResolvePath(signaturePath, signedValueLocation!);
         return entries.TryGetValue(signedValuePath, out var signedValue) &&
-            TryFindAppearancePayload(signedValue, out var appearance)
+            TryFindCachedPayload(signedValue, payloadCache, token, out var appearance)
                 ? appearance
                 : Array.Empty<byte>();
     }
 
-    private static bool TryFindAppearancePayload(
-        byte[] data,
-        out byte[] appearance)
+    private static bool TryFindCachedPayload(byte[] data, Dictionary<byte[], byte[]>? cache,
+        CancellationToken token, out byte[] appearance)
     {
-        if (IsSupportedAppearance(data))
+        if (cache is not null && cache.TryGetValue(data, out appearance!)) return appearance.Length > 0;
+        token.ThrowIfCancellationRequested();
+        if (IsSupportedAppearance(data)) appearance = cache is null ? (byte[])data.Clone() : data;
+        else
         {
-            appearance = (byte[])data.Clone();
-            return true;
+            ArraySegment<byte> best = default;
+            FindLargestAppearance(data, 0, data.Length, 0, ref best, token, strict: cache is not null);
+            appearance = best.Count == 0 ? Array.Empty<byte>() : new byte[best.Count];
+            if (best.Count > 0) Buffer.BlockCopy(data, best.Offset, appearance, 0, best.Count);
         }
-
-        var candidates = new List<ArraySegment<byte>>();
-        CollectOctetStrings(data, 0, data.Length, 0, candidates);
-        foreach (var candidate in candidates.OrderByDescending(value => value.Count))
-        {
-            if (!IsSupportedAppearance(
-                    candidate.Array!,
-                    candidate.Offset,
-                    candidate.Count))
-            {
-                continue;
-            }
-
-            appearance = new byte[candidate.Count];
-            Buffer.BlockCopy(
-                candidate.Array!,
-                candidate.Offset,
-                appearance,
-                0,
-                candidate.Count);
-            return true;
-        }
-
-        appearance = Array.Empty<byte>();
-        return false;
+        if (cache is not null) cache.Add(data, appearance); // Cache misses too; the key is the archive's canonical entry byte array.
+        return appearance.Length > 0;
     }
 
-    private static void CollectOctetStrings(
-        byte[] data,
-        int offset,
-        int length,
-        int depth,
-        ICollection<ArraySegment<byte>> destination)
+    private static void FindLargestAppearance(byte[] data, int offset, int length, int depth,
+        ref ArraySegment<byte> best, CancellationToken token, bool strict)
     {
-        if (depth > 32 || offset < 0 || length < 0 || offset + length > data.Length)
-        {
-            return;
-        }
-
+        if (depth > 32) return;
+        ValidateSlice(data, offset, length);
         var end = offset + length;
         while (offset < end)
         {
-            if (!TryReadTagAndLength(
-                    data,
-                    offset,
-                    end,
-                    out var tagClass,
-                    out var tagNumber,
-                    out var constructed,
-                    out var contentOffset,
-                    out var contentLength,
-                    out var nextOffset))
+            token.ThrowIfCancellationRequested();
+            if (!TryReadTagAndLength(data, offset, end, out var tagClass, out var tagNumber,
+                out var constructed, out var contentOffset, out var contentLength, out var nextOffset))
             {
-                return;
+                if (strict) throw new InvalidDataException("Malformed ASN.1 signature appearance length or tag.");
+                return; // Tolerant PDF: retain candidates already found and appearances from other signatures.
             }
-
-            if (tagClass == 0 && tagNumber == 4 && !constructed)
-            {
-                destination.Add(
-                    new ArraySegment<byte>(
-                        data,
-                        contentOffset,
-                        contentLength));
-            }
-
-            if (constructed)
-            {
-                CollectOctetStrings(
-                    data,
-                    contentOffset,
-                    contentLength,
-                    depth + 1,
-                    destination);
-            }
-
+            // Retain one candidate, rather than allocating/sorting a list proportional to every ASN.1 octet.
+            if (tagClass == 0 && tagNumber == 4 && !constructed && contentLength > best.Count &&
+                IsSupportedAppearance(data, contentOffset, contentLength))
+                best = new ArraySegment<byte>(data, contentOffset, contentLength);
+            if (constructed) FindLargestAppearance(data, contentOffset, contentLength, depth + 1, ref best, token, strict);
             offset = nextOffset;
         }
     }
@@ -301,7 +295,7 @@ internal static class OfdSignatureAppearanceReader
         else
         {
             var lengthOctets = firstLength & 0x7f;
-            if (lengthOctets == 0 || lengthOctets > 4 || offset + lengthOctets > end)
+            if (lengthOctets == 0 || lengthOctets > 4 || lengthOctets > end - offset)
             {
                 return false;
             }
@@ -319,7 +313,7 @@ internal static class OfdSignatureAppearanceReader
         }
 
         contentOffset = offset;
-        if (contentLength < 0 || contentOffset + contentLength > end)
+        if (contentLength < 0 || contentOffset > end || contentLength > end - contentOffset)
         {
             return false;
         }
@@ -333,11 +327,18 @@ internal static class OfdSignatureAppearanceReader
         return IsSupportedAppearance(data, 0, data.Length);
     }
 
+    private static void ValidateSlice(byte[] data, int offset, int length)
+    {
+        if (offset < 0 || length < 0 || offset > data.Length || length > data.Length - offset)
+            throw new InvalidDataException("Signature appearance slice exceeds its encoded payload.");
+    }
+
     private static bool IsSupportedAppearance(
         byte[] data,
         int offset,
         int length)
     {
+        ValidateSlice(data, offset, length);
         return IsZip(data, offset, length) ||
             IsPng(data, offset, length) ||
             IsJpeg(data, offset, length) ||
@@ -478,7 +479,7 @@ internal static class OfdSignatureAppearanceReader
                     ? parsed
                     : double.NaN)
             .ToArray();
-        if (values.Length != 4 || values.Any(double.IsNaN))
+        if (values.Length != 4 || values.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
         {
             return false;
         }

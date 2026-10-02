@@ -6,11 +6,11 @@
 
 **Priority:** P0
 
-**Status:** ready-for-agent
+**Status:** in-progress — implementation/test complete; Preview and PR review pending
 
-- [ ] `ofd-to-image`：指定页、指定 ppm，默认 PNG
-- [ ] `image-to-ofd`：PNG/JPEG，可设页尺寸与 ppm，一图一页居中
-- [ ] 有样例；导出图可用于目视核对页面内容
+- [x] `ofd-to-image`：指定页、指定 ppm，默认 PNG
+- [x] `image-to-ofd`：PNG/JPEG，可设页尺寸与 ppm，一图一页居中
+- [x] 有样例；导出图可用于目视核对页面内容
 
 ## Parent
 
@@ -22,12 +22,19 @@
 
 ## Acceptance criteria
 
-- [ ] API 与 CLI 都能把指定 OFD 页写成 PNG 或 JPEG；未指定格式时为 PNG；可设 ppm
-- [ ] API 与 CLI 都能把 PNG/JPEG 写成 OFD：每图一页、图像居中；可设页尺寸与 ppm
-- [ ] 非法页号、不支持的输入格式有明确失败，不写出半包
-- [ ] 有无隐私样例；导出的 PNG 能看出对应页的文字或图形，而不是空白或全黑
-- [ ] 更新功能对照；CLI 帮助包含这两条命令
+- [x] API 与 CLI 都能把指定 OFD 页写成 PNG 或 JPEG；未指定格式时为 PNG；可设 ppm
+- [x] API 与 CLI 都能把 PNG/JPEG 写成 OFD：每图一页、图像居中；可设页尺寸与 ppm
+- [x] 非法页号、不支持的输入格式有明确失败，不写出半包
+- [x] 有无隐私样例；导出的 PNG 能看出对应页的文字或图形，而不是空白或全黑
+- [x] 更新功能对照；CLI 帮助包含这两条命令
 
 ## Blocked by
 
 - None (can start immediately)
+
+## Delivery evidence
+
+- Public API/CLI and bounded PDF/PDFium raster path: [image conversion tutorial](../../../docs/tutorials/15-image-conversion.md).
+- Full regression: 280/280; 11-package local consumer E2E includes packed image APIs and installed CLI.
+- [Persistent artifacts, hashes and acceptance record](../../../docs/validation/issue02/README.md).
+- Completion gate remains open until actual macOS Preview pages and latest PR CI/bot review are closed; PNG inspection is a separate evidence layer.

@@ -1,0 +1,228 @@
+{
+  "source_commit": "57cd076016b132057ce39bab51fb39f2cab7f160",
+  "baseline": "be8b74b3cbd699732ec0638189d14037e052a770",
+  "date": "2026-10-02",
+  "timezone": "Asia/Shanghai",
+  "environment": {
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "sdk": "10.0.401",
+    "ImageSharp": "2.1.13",
+    "Docnet": "2.6.0"
+  },
+  "modes": {
+    "source": "OFD -> selected PDF -> PDFium -> PNG/JPEG, ppm=4",
+    "imported": "PNG + JPEG -> OFD, ppm=2, page=60x50mm -> PDF/PNG",
+    "baseline-native": "generated-layout.docx -> explicit Native OFD -> PDF -> PNG",
+    "baseline-default": "generated-layout.docx -> default Native OFD -> PDF -> PNG",
+    "shared-seal": "appearance-only OFD with six repeated nested payload placements -> PDF / strict cached image export; no cryptographic validity claim"
+  },
+  "tests": {
+    "total": 280,
+    "failed": 0,
+    "packages": 11,
+    "package_version": "0.1.0-issue02.review12"
+  },
+  "png_visual_review": [
+    "export-1.png",
+    "export-2.png",
+    "export-2.jpg",
+    "imported-1.png",
+    "imported-2.png",
+    "baseline-native-1.png",
+    "baseline-native-2.png",
+    "baseline-default-1.png",
+    "baseline-default-2.png",
+    "shared-seal.png"
+  ],
+  "preview": {
+    "status": "reviewed-with-findings",
+    "reason": "Source sample italic not rendered by existing shared PDF path",
+    "overall_visual_accepted": false,
+    "checked_pages": 9,
+    "record": "preview-acceptance.json",
+    "checks": [
+      {
+        "artifact": "source.pdf",
+        "sha256": "00a1655288354ef1e9501351e145e03d8304b4b0f675c7c0c4d21f47b9f596a3",
+        "pages": [
+          1,
+          2
+        ],
+        "result": "failed: Italic color is upright",
+        "window_closed": true
+      },
+      {
+        "artifact": "imported.pdf",
+        "sha256": "d8c71fc54f33fa9f06dda511c694638ccdd9c4a3d96bf20ac6a30ce09ee3e5d0",
+        "pages": [
+          1,
+          2
+        ],
+        "result": "passed: centered, ordered quadrants and white margins",
+        "window_closed": true
+      },
+      {
+        "artifact": "baseline-native.pdf",
+        "sha256": "eb9cb57d38093256aed13386aefe9528e7972833caff20dd3230885f6261fdc0",
+        "pages": [
+          1,
+          2
+        ],
+        "result": "passed: text, table, styles, alignment and pagination",
+        "window_closed": true
+      },
+      {
+        "artifact": "baseline-default.pdf",
+        "sha256": "af743e680aed4ac8e7ab834dc05aac3e7880d224552cacf90327bb0d4b3cfa48",
+        "pages": [
+          1,
+          2
+        ],
+        "result": "passed: text, table, styles, alignment and pagination",
+        "window_closed": true
+      },
+      {
+        "artifact": "shared-seal.pdf",
+        "sha256": "19da54e042d297709416d8fe9d5f03b705813b9b3c9b7c35eef5d099d37f8616",
+        "pages": [
+          1
+        ],
+        "result": "passed: six red squares, spacing and bounds; not cryptographic validity",
+        "window_closed": true
+      }
+    ]
+  },
+  "files": [
+    {
+      "path": "baseline-default-1.png",
+      "bytes": 54600,
+      "sha256": "450c5a20cc99e04e7c94ad4ffd81439684c4cda414ce798c9043d2b672630ccb"
+    },
+    {
+      "path": "baseline-default-2.png",
+      "bytes": 25642,
+      "sha256": "502f8570943f37bf851a3b492cd07d8a35bf74ca4ba0e02acdcba062f1d058e2"
+    },
+    {
+      "path": "baseline-native-1.png",
+      "bytes": 54600,
+      "sha256": "450c5a20cc99e04e7c94ad4ffd81439684c4cda414ce798c9043d2b672630ccb"
+    },
+    {
+      "path": "baseline-native-2.png",
+      "bytes": 25642,
+      "sha256": "502f8570943f37bf851a3b492cd07d8a35bf74ca4ba0e02acdcba062f1d058e2"
+    },
+    {
+      "path": "export-1.png",
+      "bytes": 7425,
+      "sha256": "94646a23f2da905dc91ff3368e76105e92d8690122927da48fc07c7f9f94e9a9"
+    },
+    {
+      "path": "export-2.jpg",
+      "bytes": 9041,
+      "sha256": "1d6ee36a89eaa9aded7e3f23c19181a49fdd9c8d074bdd801b3d34b5940e8a27"
+    },
+    {
+      "path": "export-2.png",
+      "bytes": 7553,
+      "sha256": "bdd055cd6ef6fe0681212d39646e4c9bb2387a4b8e280e4215624610e4bbc451"
+    },
+    {
+      "path": "imported-1.png",
+      "bytes": 749,
+      "sha256": "eb3a4daf322c8837e5e240620db81ca51ff51da32749e534ca1bd1c4320a9376"
+    },
+    {
+      "path": "imported-2.png",
+      "bytes": 920,
+      "sha256": "64c29aae80e8b546735642f76bd7f92b0c8186241ef7cbf3b7d55aa4ab3eea62"
+    },
+    {
+      "path": "imported.ofd",
+      "bytes": 3405,
+      "sha256": "6f0b8c5c6a714c07a19b0c92de528cde830d0dfe841d3c9ebce39252011b027d"
+    },
+    {
+      "path": "imported.pdf",
+      "bytes": 3414,
+      "sha256": "d8c71fc54f33fa9f06dda511c694638ccdd9c4a3d96bf20ac6a30ce09ee3e5d0"
+    },
+    {
+      "path": "input.jpg",
+      "bytes": 1143,
+      "sha256": "6f4b464fb4a66890570056f13020a8b09e712d50dcbbb6bf67195d140845637d"
+    },
+    {
+      "path": "input.png",
+      "bytes": 164,
+      "sha256": "492f4b44c2acb3e55a5de88b8c473f0c9a6c802b08d2eda1b089b933e2fddbf6"
+    },
+    {
+      "path": "shared-seal.ofd",
+      "bytes": 3279,
+      "sha256": "78e8959a9c9518fb190de86b26d318283957e0a280c1a1f8c93b48eb3fcbb160"
+    },
+    {
+      "path": "shared-seal.pdf",
+      "bytes": 3255,
+      "sha256": "19da54e042d297709416d8fe9d5f03b705813b9b3c9b7c35eef5d099d37f8616"
+    },
+    {
+      "path": "shared-seal.png",
+      "bytes": 1463,
+      "sha256": "1075916e8b548ddf65e9cd40a151fe3e6e6aa83ed7adb50d541b9d9d2b37ae07"
+    },
+    {
+      "path": "source.ofd",
+      "bytes": 2969,
+      "sha256": "fb8a5c97442ff586e87c73e2f2c08b64b84a0e2aa34a3861b356932a71b9c664"
+    },
+    {
+      "path": "source.pdf",
+      "bytes": 69655,
+      "sha256": "00a1655288354ef1e9501351e145e03d8304b4b0f675c7c0c4d21f47b9f596a3"
+    },
+    {
+      "path": "baseline-native.ofd",
+      "bytes": 15288607,
+      "sha256": "825e71f8ccaf9c58055a5b74ae6f592c608aaf90fd66332446a2cecfa351106e"
+    },
+    {
+      "path": "baseline-native.pdf",
+      "bytes": 117446,
+      "sha256": "eb9cb57d38093256aed13386aefe9528e7972833caff20dd3230885f6261fdc0"
+    },
+    {
+      "path": "baseline-default.ofd",
+      "bytes": 15288607,
+      "sha256": "c59adefcefbb37877a7db69d6a93b98b4289d1c77bb79a57f6a18062bbc25342"
+    },
+    {
+      "path": "baseline-default.pdf",
+      "bytes": 117446,
+      "sha256": "af743e680aed4ac8e7ab834dc05aac3e7880d224552cacf90327bb0d4b3cfa48"
+    },
+    {
+      "path": "tests.txt",
+      "bytes": 6326,
+      "sha256": "9f5f8753acfaafee10f84c1b563f68f2db26d295150282eaa73a1019078228cc"
+    },
+    {
+      "path": "package-e2e.txt",
+      "bytes": 10807,
+      "sha256": "9f732a5fdd03ddf69197a830aad9c5d949fb3c3538ddb165e12a0204e37ac903"
+    },
+    {
+      "path": "package-manifest.json",
+      "bytes": 2249,
+      "sha256": "c135e9712c63768afd5ce20c49b63afb2545faf744a3c2b5490687a5d5faa222"
+    }
+  ],
+  "archive": {
+    "path": "evidence.tar.xz",
+    "bytes": 15549652,
+    "sha256": "0ca05fd27d37527ca9edafff5a2b5a1719cd932dda2d36d93e62f63e57251dfc"
+  },
+  "review_generation": "review12; 10 fresh PNG/JPEG pages and 9 macOS Preview pages checked; source italic finding remains"
+}

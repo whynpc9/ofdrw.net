@@ -1,0 +1,82 @@
+{
+  "source_commit": "57cd076016b132057ce39bab51fb39f2cab7f160",
+  "reviewed_at_utc": "2026-10-02T01:54:22.244579+00:00",
+  "method": "macOS Preview through Computer Use; current file URL and page titles verified; screenshots inspected in tool history",
+  "status": "reviewed-with-findings",
+  "overall_visual_accepted": false,
+  "checked_pages": 9,
+  "checks": [
+    {
+      "artifact": "source.pdf",
+      "sha256": "00a1655288354ef1e9501351e145e03d8304b4b0f675c7c0c4d21f47b9f596a3",
+      "pages": [
+        1,
+        2
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/review12/pages/source.pdf",
+      "chain": "source.ofd -> OFD-to-PDF -> macOS Preview",
+      "result": "failed: Italic color is upright",
+      "window_closed": true
+    },
+    {
+      "artifact": "imported.pdf",
+      "sha256": "d8c71fc54f33fa9f06dda511c694638ccdd9c4a3d96bf20ac6a30ce09ee3e5d0",
+      "pages": [
+        1,
+        2
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/review12/pages/imported.pdf",
+      "chain": "input PNG/JPEG -> imported.ofd -> PDF -> macOS Preview",
+      "result": "passed: centered, ordered quadrants and white margins",
+      "window_closed": true
+    },
+    {
+      "artifact": "baseline-native.pdf",
+      "sha256": "eb9cb57d38093256aed13386aefe9528e7972833caff20dd3230885f6261fdc0",
+      "pages": [
+        1,
+        2
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/package-e2e/0.1.0-issue02.review12/output/generated-docx-native.pdf",
+      "chain": "generated-layout.docx -> explicit Native OFD -> PDF -> macOS Preview",
+      "result": "passed: text, table, styles, alignment and pagination",
+      "window_closed": true
+    },
+    {
+      "artifact": "baseline-default.pdf",
+      "sha256": "af743e680aed4ac8e7ab834dc05aac3e7880d224552cacf90327bb0d4b3cfa48",
+      "pages": [
+        1,
+        2
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/package-e2e/0.1.0-issue02.review12/output/generated-docx-default.pdf",
+      "chain": "generated-layout.docx -> default Native OFD -> PDF -> macOS Preview",
+      "result": "passed: text, table, styles, alignment and pagination",
+      "window_closed": true
+    },
+    {
+      "artifact": "shared-seal.pdf",
+      "sha256": "19da54e042d297709416d8fe9d5f03b705813b9b3c9b7c35eef5d099d37f8616",
+      "pages": [
+        1
+      ],
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/review12/pages/shared-seal.pdf",
+      "chain": "appearance-only OFD -> PDF -> macOS Preview",
+      "result": "passed: six red squares, spacing and bounds; not cryptographic validity",
+      "window_closed": true
+    }
+  ],
+  "finding": {
+    "id": "PDF-ITALIC-BASELINE",
+    "artifact": "source.pdf",
+    "pages": [
+      1,
+      2
+    ],
+    "observed": "Italic color remains upright; local purple color retained.",
+    "ofd_evidence": "Italic=true and CTM=1 0 -0.2 1 0.6 0 retained in both source.ofd pages; Weight=700 retained for Bold proportional.",
+    "pdf_evidence": "Only Arial Unicode MS embedded, ItalicAngle=0; purple text has no shear in the PDF content stream.",
+    "scope": "Existing origin/main shared PDF font/CTM rendering path; the image exporter reuses it. No ImageIO property loss. Shared text/CTM/fake-italic repair belongs to coordinated Issue03 scope.",
+    "next_acceptance": "After shared PDF style repair is integrated, regenerate source OFD/PDF/PNG and repeat Preview; do not mark overall visual gate passed."
+  }
+}

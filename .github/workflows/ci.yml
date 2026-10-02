@@ -79,6 +79,12 @@ jobs:
           python -m pip install fonttools==4.59.2
           python scripts/install-ci-fonts.py
 
+      - name: Test image API on each platform
+        run: dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj -c Release --filter "FullyQualifiedName~ImageIoTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Test image CLI on each platform
+        run: dotnet test tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj -c Release --filter "FullyQualifiedName~ImageCommandTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
       - name: Test BuiltIn without office applications
         run: dotnet test tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~BuiltIn|FullyQualifiedName~Auto|FullyQualifiedName~Native|FullyQualifiedName~DualLayer" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
