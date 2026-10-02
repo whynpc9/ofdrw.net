@@ -55,20 +55,16 @@ SDK 内部使用纯 .NET managed sfnt/glyf 后端，无 Python/fonttools、HarfB
 
 `SourceXml` 必须是一个合法 XML 元素。无法解析的 XML 在 Full/subset 两种模式都于 ZIP 写出前明确拒绝，保留调用方原字节；“未知内容保护”不承诺把非法 XML 写成合法 OFD。
 
-PDF 对 ZWJ/ZWNJ 的连接/连字语义明确拒绝；可安全省略的零宽格式控制才跳过绘制，OFD 的 Unicode 原文不变，显式 Runs/Delta 坐标槽位不重排。PDF 的可见文本抽取忽略可省略的格式控制符；方向格式控制及 UVS 语义由当前 PDFsharp 无法保真，因此明确拒绝这些 PDF 导出，OFD/SVG 保留原文和语义。不能把 coverage 豁免或文件生成成功视为控制字符的视觉通过。
+## PDF 字体与控制语义
 
-绘制过滤只省略零宽格式控制符或已知 cmap 无字形的 default-ignorable；已映射的 Hangul filler 保留真实字宽，包括无 Delta 的字符串和每个 gap 明确 Delta 的游程。Unicode方向格式控制全部（含 U+202C）以及蒙古文 free variation selectors 的 PDF 语义明确拒绝，避免删除控制符后改变排列或变体。
+所有实际非空 PDF 文本，包括 name-only 常规字体和无 FontResource 绑定的文本，都会惰性取得物理字节、验证当前全部文本覆盖并注册内容身份。未使用普通名称资源不探测，实际空文本在 XML/语义预检后跳过 XFont。普通宿主探测失败可按配置 default、Arial 顺序尝试覆盖候选；空结果、I/O、格式或注册预算失败允许尝试下一候选，全部失败明确报错。库不未经检查地绘制原 family 或 Arial。解析结果可以缓存，当前文本覆盖必须逐次验证。物理快照按内容复用，增加粗体/斜体时登记同一字节的有效样式 alias。
 
-Name-only 资源若通过本地发现或 host style probe 取得真实字节，注册与 coverage 一起绑定并缓存；无字形 filler 不被误当作 mapped。LRM/已弃用零宽控制按可省略策略绘制，明确拒绝范围仅含需要当前引擎未实现排列语义的九个方向格式控制，避免不必要拒绝。
+宿主 TTC 的主名称探测按返回 face 名唯一匹配 name IDs4/6（完整名/PostScript 名），未命中时 IDs1/16（family）也必须唯一；不凭 index0、模糊名称或请求粗斜体猜选。多面默认/Arial 集合同样必须唯一匹配，只有配置默认的单面集合可采用唯一 face。不明或歧义按探测失败处理。名称目录在完整 face 展开前有界扫描：输入256MiB、累计名称解码1MiB、所选 face64MiB；严格拒绝畸形编码/边界。公开 Data.CollectionFaceIndex 的显式选面路径不变。字段定义见 [OpenType name 规范](https://learn.microsoft.com/en-us/typography/opentype/spec/name)。
 
-发现的 name-only face 缺普通字符时，宿主默认回退获得机会；回退仍必须覆盖实际文字，无法覆盖则明确失败，绝不返回已知缺字的 face 画方框。Windows symbol cmap 3/0 格式 4 保持全量并诊断，读取支持直接字符与 F000 重映射；SVG 未使用的其它合法未建模 cmap 不阻断 CSS 资源输出，真正被选择且无法验证的编码则明确拒绝。RLM/ALM 的 PDF 方向语义仍拒绝，LRM/弃用零宽按省略策略处理。
+Windows symbol-only cmap 的字符语义未建模。OFD 写包/读取编辑保全量并标识 coverage 未验证；PDF/SVG 实际选中时统一明确拒绝，包含偶然映射成功的 A。名称探测的拒绝标记在可选 catch 之外保留，symbol 回退候选跳过，不能冒充 Unicode 覆盖。未使用 symbol 或其它合法未建模 cmap 不阻断资源处理；实际选中的未建模编码仍明确拒绝。
 
-名称字体的候选回退按配置 default、Arial 顺序探测真实字节；空宿主结果、读取/格式/cmap 或注册预算失败可尝试下一候选，TTC 使用 face 0。只有已验证覆盖全部当前文本且注册同一字节的候选才返回成功；全部失败明确拒绝，不用未验证字体绘制缺字框。未使用的合法但未建模 cmap 不阻断 PDF，实际选中后明确拒绝。Symbol 写包保全量且诊断 coverage 未验证，普通 Unicode 字体缺字检查仍严格。
+PDF 统一拒绝 ZWJ/ZWNJ 的连接/连字语义、LRM/RLM/ALM、九个方向格式控制（包括 U+202C）、Unicode variation selectors 和蒙古文 free variation selectors。当前 PDFsharp 不支持所需 shaping/bidi/变体语义；纯 Latin 控制符用例也采用相同拒绝规则，不把删除后的像素一致当成一般语义支持。OFD/SVG 原文保留。
 
-Windows symbol-only cmap 的字符语义未建模：写包/读取编辑保全量并标识 coverage 未验证；PDF/SVG 在实际选中时统一 NotSupportedException，包含偶然映射成功的 A，避免半验证或缺字回退建议。未使用的 symbol 资源不阻断 PDF/SVG。字体用字绑定在子集阶段为每个文本只解析一次，并按实际 face 内容组汇总；不匹配的元素也先检查取消。
+绘制过滤只省略其余安全零宽格式控制（例如 BOM、已弃用的 U+206A..U+206F）或已知 cmap 无字形的 default-ignorable。已映射 Hangul filler 保留真实字宽，包括无 Delta 字符串与每 gap 明确 Delta 的游程；原始 OFD 文本和定位槽位不重排。coverage 豁免、文件生成或 PNG 比较不能代替实际 Preview 验收。
 
-同一 symbol 边界也适用于已实际探测的名称字体：记录 unsupported 标记须位于可选探测 catch 之外，选用后拒绝，而不能退回未验证宿主绘制。默认/Arial 候选若解析为 symbol，直接跳过并尝试后续 Unicode 候选；全部不覆盖仍明确失败。后续 R14 将同一惰性验证扩展至所有实际选中的普通名称字体，包括无 FontResource 的文本；未使用资源和实际空文本不触发该验证。
-
-所有实际非空 PDF 文本必须返回经过当前文本覆盖验证的内容字体身份。普通宿主探测失败可尝试已验证默认字体/Arial，所有候选失败明确报错；删除未经验证的绘制 fallback。物理 face 快照按内容复用，增加粗体/斜体时登记同一字节的有效样式 alias，不落回宿主；覆盖缓存只缓存 cmap 解析，逐文本验证不能省略。
-
-宿主返回 TTC 时，主选字体需按返回 face 名与 name IDs4/6 或唯一 family IDs1/16 匹配，多面集合不凭 index0 或请求粗斜体猜选；不明/歧义按探测失败处理。配置默认的单面集合可采用唯一面。名称目录及解码工作有界，只有选定后才展开完整 face；参见 [OpenType name 规范](https://learn.microsoft.com/en-us/typography/opentype/spec/name)。
+PDF 导入的透明 CID/私用区语义文本若没有可验证的原字体，不能保证语义再导出；缺字会明确失败。仅验证栅格视觉往返的 caller 可显式选择 PdfTextLayerMode.None，SDK 默认 Invisible 不变；这不代表无损字体恢复或 ActualText 功能已实现。

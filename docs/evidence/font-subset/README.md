@@ -4,8 +4,8 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 490/490；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
-| 包消费 | 11 个 `0.1.0-issue05.20261003.17` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 492/492；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.18` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
@@ -56,3 +56,5 @@ R14：实际选中的普通名称字体和无 FontResource 绑定文本惰性解
 R15：宿主 TTC 的主名称探测不得任意选择 face0；按完整名/PostScript 名（name IDs4/6）唯一匹配，未命中时 family IDs1/16 仍要求唯一，歧义或不明名称进入已验证默认候选。默认单面集合可按明确默认策略采用唯一面，多面同样必须匹配；公开 Data.CollectionFaceIndex 不变。名称目录在展开 face 前有界扫描，输入256MiB、名称解码1MiB、选中 face64MiB，非法编码/边界明确拒绝。真实非零粗体面与不明名称 fallback 已有回归。
 
 R14 包消费首轮失败：导入 Test.pdf 的默认透明语义层含无原字体的 CIDFont+F8/U+F06C；SDK 拒绝再导 PDF/0B。只验证栅格、非空白及页面尺寸的 upstream PDF 视觉 smoke 现显式 TextLayerMode=None；SDK 默认 Invisible 不变，语义正例与真实 PUA 负例、失败日志均保留。不将这个视觉 smoke 通过冒充无损语义再导出。
+
+R16：LRM U+200E 对混合方向文字有语义，PDF 与 RLM/ALM 一样统一明确拒绝，包含纯 Latin 用例；OFD 原文逐字符保留，实际 Latin/混合方向负例均因 bidi policy 失败且 0B。此前 LRM 省略成功页只作历史证据，不再列入最终成功 Preview 清单。字体契约已整合为现行规则，删除旧的 TTC face0 和 LRM 省略说法；本轮全套492/492。
