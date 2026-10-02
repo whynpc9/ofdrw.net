@@ -73,6 +73,8 @@ internal static class OfdSignatureAppearanceReader
         }
 
         var list = ParseXml(listBytes);
+        if (maximumAppearances.HasValue && list.Root?.Name.LocalName != "Signatures")
+            throw new InvalidDataException("Referenced signature metadata list has an unsupported root.");
         foreach (var record in list
             .Descendants()
             .Where(element => element.Name.LocalName == "Signature"))
@@ -103,11 +105,16 @@ internal static class OfdSignatureAppearanceReader
         }
 
         var signature = ParseXml(signatureBytes);
+        if (maximumAppearances.HasValue && signature.Root?.Name.LocalName != "Signature")
+            throw new InvalidDataException("Referenced signature metadata entry has an unsupported root.");
         var stamps = new List<XElement>();
-        foreach (var stamp in signature.Descendants().Where(element => element.Name.LocalName == "StampAnnot" &&
-            (selectedPageIds is null || selectedPageIds.Contains(element.Attribute("PageRef")?.Value ?? string.Empty))))
+        foreach (var stamp in signature.Descendants().Where(element => element.Name.LocalName == "StampAnnot"))
         {
             token.ThrowIfCancellationRequested();
+            var pageRef = stamp.Attribute("PageRef")?.Value;
+            if (maximumAppearances.HasValue && string.IsNullOrWhiteSpace(pageRef))
+                throw new InvalidDataException("Signature stamp metadata has a missing or blank PageRef.");
+            if (selectedPageIds is not null && !selectedPageIds.Contains(pageRef ?? string.Empty)) continue;
             if (maximumAppearances.HasValue && candidates >= maximumAppearances.Value)
                 throw new InvalidDataException("Selected signature appearance count exceeds the configured limit.");
             candidates++;
