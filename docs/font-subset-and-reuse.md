@@ -63,8 +63,8 @@ SDK 内部使用纯 .NET managed sfnt/glyf 后端，无 Python/fonttools、HarfB
 
 Windows symbol-only cmap 的字符语义未建模。OFD 写包/读取编辑保全量并标识 coverage 未验证；PDF/SVG 实际选中时统一明确拒绝，包含偶然映射成功的 A。名称探测的拒绝标记在可选 catch 之外保留，symbol 回退候选跳过，不能冒充 Unicode 覆盖。未使用 symbol 或其它合法未建模 cmap 不阻断资源处理；实际选中的未建模编码仍明确拒绝。
 
-PDF 统一拒绝 ZWJ/ZWNJ 的连接/连字语义、LRM/RLM/ALM、九个方向格式控制（包括 U+202C）、Unicode variation selectors 和蒙古文 free variation selectors。当前 PDFsharp 不支持所需 shaping/bidi/变体语义；纯 Latin 控制符用例也采用相同拒绝规则，不把删除后的像素一致当成一般语义支持。OFD/SVG 原文保留。
+PDF 明确拒绝语义无法保留的 default-ignorable，包括 ZWJ/ZWNJ、LRM/RLM/ALM、方向格式控制、variation selectors、WORD JOINER、不可见数学运算符、软连字符、零宽断词、CGJ、蒙古文分隔、旧方向控制和 FEFF。弃用不等于没有语义，OFD 内容里的 FEFF 首字符也不能自动认作编码流 BOM。原始 Unicode 仍保留在 OFD/SVG；不把删除后的像素一致当作语义保真。字符用途依据 [Unicode 17 第23章](https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-23/) 与 [BOM FAQ](https://www.unicode.org/faq/utf_bom.html)。
 
-绘制过滤只省略其余安全零宽格式控制（例如 BOM、已弃用的 U+206A..U+206F）或已知 cmap 无字形的 default-ignorable。已映射 Hangul filler 保留真实字宽，包括无 Delta 字符串与每 gap 明确 Delta 的游程；原始 OFD 文本和定位槽位不重排。coverage 豁免、文件生成或 PNG 比较不能代替实际 Preview 验收。
+当前唯一 default-ignorable 绘制例外是四个 Hangul filler（115F/1160/3164/FFA0）：已映射时保留字形/真实 advance；字体无字形时按 Unicode default-ignorable 缺字规则省略。该有界例外只验证现有文字/游程/Delta 样例，不能推广为完整 Hangul shaping 或其它 default-ignorable 可删除。原 OFD 文本与定位槽位不重排。实际 Preview 是独立验收门。
 
 PDF 导入的透明 CID/私用区语义文本若没有可验证的原字体，不能保证语义再导出；缺字会明确失败。仅验证栅格视觉往返的 caller 可显式选择 PdfTextLayerMode.None，SDK 默认 Invisible 不变；这不代表无损字体恢复或 ActualText 功能已实现。

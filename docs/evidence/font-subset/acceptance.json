@@ -10,10 +10,10 @@
   },
   "functional": {
     "status": "pass",
-    "tests": 492,
+    "tests": 505,
     "independent_focused": 72,
     "packages": 11,
-    "package_version": "0.1.0-issue05.20261003.18",
+    "package_version": "0.1.0-issue05.20261003.19",
     "package_status": "pass",
     "document_tools": {
       "samples": 36,
@@ -22,12 +22,12 @@
       "ci_failure": "First head failed when text was introduced into a previously empty subset; caller now rebinds source face / explicitly preserves full font for future opaque annotation injection."
     },
     "all_11_packages_contain_unicode_license": true,
-    "latest_independent_focused": 53,
+    "latest_independent_focused": 66,
     "count_audit": "test-count-audit.json",
     "project_counts": {
       "Core": 5,
       "Packaging": 305,
-      "PDF": 116,
+      "PDF": 129,
       "Signatures": 4,
       "DOCX": 49,
       "CLI": 13
@@ -86,14 +86,14 @@
     "task_windows_closed": true,
     "ui_released": true,
     "record": "preview-acceptance.json",
-    "controls_status": "pending unlock/exclusive slot: final filler/LRM/name-only/covering-fallback success pages; ZWJ/ZWNJ now refuse PDF",
-    "followup_queue": "preview-queue-r16.json",
-    "followup_success_pages": 17
+    "controls_status": "pending unlock/exclusive slot: only current preview-queue-r17.json success pages (mapped/missing Hangul filler, name-only, covering fallback, ligature, named TTC); semantic control success pages removed",
+    "followup_queue": "preview-queue-r17.json",
+    "followup_success_pages": 16
   },
   "overall_visual_complete": false,
   "production_release_accepted": false,
   "unresolved": [
-    "Final filler/LRM/name-only/covering-fallback Preview pending unlock and exclusive GUI slot",
+    "Actual macOS Preview for frozen preview-queue-r17.json only; historical LRM/deprecated-control successes excluded",
     "Latest-head CI and fresh Codex/Cursor review closure"
   ],
   "viewing_chain": "Fixed DOCX -> Native/default OFD produced this run -> OFD PDF exporter -> macOS Preview 1-2 pages each; full/subset OFD -> PDF -> Preview 1-2 each. No direct DOCX->PDF substituted.",
@@ -115,6 +115,8 @@
     "r15": "Host namedTTC faces require unique full/PostScript/family identification, no guessedface0; defaultsinglefaceunambiguouspolicy retained; input/namework/facebudgetbounded andselectedfaceexpandedonlyafteridentification. NonzeroBoldface andopaque primary fallback regressions pass.",
     "r15_independent": "51/51focused; realNoto0/LXGW1 collection selects namedface1/PDFextracts一 with selectedfaceidentity; opaque/duplicateface names use coveringstandalonefallback, no guessed0. Previous17successfulpages regeneratedR15 AE0+1namedTTCpage;18 Previewpending.",
     "r16": "LRM uniformly refuses semanticloss inLatin andmixedbidi PDF; actualOFD exacttext preserved, bidiNotSupport0B. PriorLRM omitted-success artifacts historicalonly. Currentcontract unified namedTTC rules.",
-    "r16_independent": "53/53focused; actualLatin/mixedLRM ODF exacttext, bidiNotSupport/0B; priorLRMsuccesshistoricalonly. Allremaining17successfulPDF regeneratedR16 vsR15 AE0, Previewpending."
+    "r16_independent": "53/53focused; actualLatin/mixedLRM ODF exacttext, bidiNotSupport/0B; priorLRMsuccesshistoricalonly. Allremaining17successfulPDF regeneratedR16 vsR15 AE0, Previewpending.",
+    "r17": "All default-ignorables refuse semanticloss except4boundedHangulfiller render cases; WORDJOINER/math/SHY/ZWSP/CGJ/MVS/FEFF/deprecatedbidi allNotSupport/0B inimplicit andpositioned text, OFDexactUnicode preserved.",
+    "r17_independent": "66/66focused; actual13semanticcontrols/FEFFpositions OFDexactscalar, NotSupport0B; mapped3164 stillsuccess. Allremaining16successPDF regeneratedR17 vsR16 AE0, excludedhistoricalLRM/deprecatedsuccess. Previewpending."
   }
 }
