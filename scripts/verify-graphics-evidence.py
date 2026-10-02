@@ -24,13 +24,13 @@ ET.SubElement(config, 'dir').text = str(directory / 'fonts')
 ET.SubElement(config, 'cachedir').text = str(directory.parent / 'font-cache')
 fontconfig.write_text(ET.tostring(config, encoding='unicode'))
 svg_environment = dict(os.environ, FONTCONFIG_FILE=str(fontconfig))
-for name in ('graphics', 'graphics-roundtrip', 'graphics-name-only', 'baseline-native', 'baseline-default'):
+for name in ('graphics', 'graphics-roundtrip', 'graphics-name-only', 'graphics-fractional-clip', 'baseline-native', 'baseline-default'):
     with zipfile.ZipFile(directory / (name + '.ofd')) as archive:
         assert archive.testzip() is None
         objects, text = [], []
         document = ET.fromstring(archive.read('Doc_0/Document.xml'))
         tree = next(node for node in document if local(node) == 'Pages')
-        count = 1 if name == 'graphics-name-only' else 2
+        count = 1 if name in ('graphics-name-only', 'graphics-fractional-clip') else 2
         assert len(tree) == count
         for page in tree:
             xml = ET.fromstring(archive.read('Doc_0/' + page.attrib['BaseLoc']))
@@ -68,6 +68,10 @@ with tempfile.TemporaryDirectory(prefix='ofd-miter-control-') as temporary:
     old_tip = subprocess.check_output(['identify', '-format', '%[pixel:p{540,375}]', str(control_png)], text=True)
     old_channels = list(map(float, re.findall(r'\d+(?:\.\d+)?', old_tip)))
     assert len(old_channels) >= 3 and all(value >= 240 for value in old_channels[:3]), ('miter negative control did not bevel', old_tip)
+for filename, x, y in [('graphics-fractional-clip-1.png', 561, 195), ('graphics-fractional-clip-svg-1.png', 630, 219)]:
+    border = subprocess.check_output(['identify', '-format', f'%[pixel:p{{{x},{y}}}]', str(pages / filename)], text=True)
+    color = list(map(float, re.findall(r'\d+(?:\.\d+)?', border)))
+    assert len(color) >= 3 and color[0] < 80 and color[1] < 130 and color[2] > 140, ('fractional clip lost right border', filename, border)
 def git(*args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 manifest = {'baseline': 'df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9', 'source_head': git('rev-parse', 'HEAD'),

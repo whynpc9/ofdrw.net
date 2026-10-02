@@ -61,6 +61,21 @@ public sealed class GraphicsVisualTests
         Assert.InRange(Gray(raster, 60, 20), 240, 255);
     }
 
+    [Fact]
+    public async Task FractionalScale_RightStrokeStaysInsideFrozenClipOnNarrowPage()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 1001, HeightMillimeters = 20 };
+        package.Pages.Add(page);
+        var graphics = new OfdGraphics(package, page);
+        graphics.Scale(0.9996, 1);
+        graphics.IntersectClip(new OfdGraphicsPath().AddRectangle(0, 0, 1000, 10));
+        graphics.DrawRectangle(new OfdPen(OfdColor.Black, 0.5), 0, 0, 1000, 10);
+        var raster = await Render(package);
+        Assert.InRange(Gray(raster, 999.45, 5), 0, 100);
+        Assert.InRange(Gray(raster, 1000.3, 5), 240, 255);
+    }
+
     private static (OfdDocumentPackage Package, OfdPage Page, OfdGraphics Graphics) Create()
     {
         var package = new OfdDocumentPackage();

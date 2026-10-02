@@ -94,6 +94,41 @@ public sealed class SvgGeometryTests
         Assert.Equal("10", node.Attribute("stroke-miterlimit")?.Value);
     }
 
+    [Fact]
+    public async Task FractionalGraphicsScale_ShouldSurviveBothClipAndObjectSvgTransforms()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 1001, HeightMillimeters = 20 };
+        package.Pages.Add(page);
+        var graphics = new OfdGraphics(package, page);
+        graphics.Scale(0.9996, 1);
+        graphics.IntersectClip(new OfdGraphicsPath().AddRectangle(0, 0, 1000, 10));
+        graphics.DrawRectangle(new OfdPen(OfdColor.Black, 0.5), 0, 0, 1000, 10);
+        var svg = await ConvertAsync(package);
+        var paths = svg.Descendants().Where(node => node.Name.LocalName == "path").ToArray();
+        Assert.Equal(2, paths.Length);
+        Assert.All(paths, path => Assert.Contains("matrix(0.9996 0 0 1 ", path.Attribute("transform")?.Value));
+        Assert.Equal(paths[0].Attribute("transform")?.Value, paths[1].Attribute("transform")?.Value);
+    }
+
+    [Fact]
+    public async Task TinyAdvance_UnderLargeScale_ShouldRetainSecondGlyphSvgOrigin()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        package.Pages.Add(page);
+        var graphics = new OfdGraphics(package, page);
+        graphics.Scale(1000, 1);
+        graphics.DrawString("AB", new OfdFont("SimSun", 3.333), new OfdBrush(OfdColor.Black), 0.01, 10, new[] { 0.0004 });
+        var svg = await ConvertAsync(package);
+        var text = Assert.Single(svg.Descendants(), node => node.Name.LocalName == "text");
+        var glyphs = text.Elements().Where(node => node.Name.LocalName == "tspan").ToArray();
+        Assert.Equal(2, glyphs.Length);
+        Assert.Equal("0", glyphs[0].Attribute("x")?.Value);
+        Assert.Equal("0.0004", glyphs[1].Attribute("x")?.Value);
+        Assert.Contains("matrix(1000 0 0 1", text.Attribute("transform")?.Value);
+    }
+
     private static async Task<XDocument> ConvertAsync(OfdDocumentPackage package)
     {
         using var ofd = new MemoryStream();

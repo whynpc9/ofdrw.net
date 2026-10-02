@@ -84,6 +84,24 @@ public sealed class GraphicsEmphasisAndNumberTests
     }
 
     [Fact]
+    public async Task FractionalFontSize_UnderLargeScale_KeepsWrittenBaselineFixed()
+    {
+        var (package, graphics) = Create();
+        graphics.Scale(1000, 1000);
+        graphics.DrawString("I", new OfdFont("SimSun", 3.3334, italic: true),
+            new OfdBrush(OfdColor.Black), 0.01, 0.02);
+        var saved = await RoundTrip(package);
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(saved.Pages[0].Elements));
+        var xml = XElement.Parse(text.SourceXml!);
+        var matrix = Numbers(xml.Attribute("CTM")!.Value);
+        var run = Assert.Single(text.Runs);
+        var anchorX = matrix[0] * run.XMillimeters + matrix[2] * run.YMillimeters + matrix[4];
+        var anchorY = matrix[1] * run.XMillimeters + matrix[3] * run.YMillimeters + matrix[5];
+        Assert.InRange(Math.Abs(anchorX - 10), 0, 0.002);
+        Assert.InRange(Math.Abs(anchorY - 20), 0, 0.002);
+    }
+
+    [Fact]
     public async Task ResourceItalicAndEmbeddedOrTransparentText_KeepTheirBindingAndSkipFauxAsAppropriate()
     {
         var (package, graphics) = Create();

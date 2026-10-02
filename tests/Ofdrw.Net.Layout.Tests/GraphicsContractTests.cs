@@ -100,20 +100,23 @@ public sealed class GraphicsContractTests
     [Theory]
     [InlineData(0.0004, 0, 0, 1)]
     [InlineData(1, 1, 1, 1.0004)]
-    public void Transform_RejectsMatricesSingularAtWriterPrecision_WithoutChangingState(double a, double b, double c, double d)
+    public async Task Transform_SmallNonsingularCoefficients_RoundTripAtFullPrecision(double a, double b, double c, double d)
     {
-        var (_, page, graphics) = Context();
-        graphics.Translate(4, 5);
+        var (package, page, graphics) = Context();
+        graphics.Rotate(90);
         graphics.Save();
-        var before = graphics.Transform;
-        var nearlySingular = new OfdMatrix(a, b, c, d, 0, 0);
-        Assert.Throws<ArgumentException>(() => graphics.SetTransform(nearlySingular));
-        Assert.Same(before, graphics.Transform);
-        Assert.Throws<ArgumentException>(() => graphics.MultiplyTransform(nearlySingular));
-        Assert.Same(before, graphics.Transform);
+        var matrix = new OfdMatrix(a, b, c, d, 0, 0);
+        graphics.SetTransform(matrix);
+        Assert.Same(matrix, graphics.Transform);
         graphics.Restore();
-        Assert.Same(before, graphics.Transform);
-        Assert.Empty(page.Elements);
+        graphics.SetTransform(matrix);
+        graphics.DrawLine(new OfdPen(OfdColor.Black), 1, 2, 3, 4);
+        using var stream = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, stream);
+        stream.Position = 0;
+        var saved = await new OfdReader().ReadAsync(stream);
+        var path = Assert.IsType<OfdPathElement>(Assert.Single(saved.Pages[0].Elements));
+        Assert.Equal(new[] { a, b, c, d }, path.Transform!.Take(4));
     }
 
     [Fact]

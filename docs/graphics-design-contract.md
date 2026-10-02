@@ -20,8 +20,12 @@ Graphics 将局部文字游程归一到 (0, size)，矩阵包含调用方 x/base
 
 ## 共享修改所有权
 
-Core 新增内部 `OfdPathStyle` 与 `OfdNumericFormat`，分别读取已有 SourceXml 绘制参数及共享保真普通十进制；不增加公开模型。PDF 普通路径从平均线宽缩放改为完整 graphics CTM，clip 构建路径仍按 03 原有几何规则处理。SVG 普通路径输出 fill-rule 及已声明 cap/join/miter-limit。Writer 对 fresh、normalized、name-only 的 CTM 文本组合明确生成的 faux 因子；已保留 XML 与资源绑定沿用原有所有权，Reader 无源码修改。此共享导出修改需全套回归、11 包消费 E2E 和本次实际页面验收。
+Core 新增内部 `OfdPathStyle` 与 `OfdNumericFormat`，分别读取已有 SourceXml 绘制参数及共享保真普通十进制；不增加公开模型。PDF 普通路径从平均线宽缩放改为完整 graphics CTM，clip 构建路径仍按 03 原有几何规则处理。SVG 普通路径输出 fill-rule 及已声明 cap/join/miter-limit。Writer 模型负责的新建 Text CTM、Path/Image CTM（含默认 image CTM）与 clip CTM 统一保真普通十进制；已有 Text SourceXml CTM 继续源 XML 所有权。Writer 对 fresh、normalized、name-only 的 CTM 文本组合明确生成的 faux 因子；已保留 XML 与资源绑定沿用原有所有权，Reader 无源码修改。此共享导出修改需全套回归、11 包消费 E2E 和本次实际页面验收。
 
-可写矩阵验证按照 Writer 的实际 `0.###` 字符串格式重算 determinant，退化时在改状态前拒绝。路径/clipCTM/DeltaX 使用共享普通十进制展开，保留 round-trip 数字且不输出 E exponent；不是把极小非零 advance 静默量化为零。Writer 生成的 F 和 M*F 使用相同保真普通十进制，避免再舍入造成基线漂移或退化。
+可写矩阵验证按实际普通十进制系数，以有界 BigInteger significand/scale 精确比较 A*D 与 B*C，拒绝数学上退化的写出矩阵；不用 binary 浮点残差或 decimal 的28位范围。路径/clipCTM/DeltaX 使用共享普通十进制展开，保留 round-trip 数字且不输出 E exponent；不是把极小非零 advance 静默量化为零。Writer 生成的 F 和 M*F 使用相同保真普通十进制，避免再舍入造成基线漂移或退化。
 
 Miter 映射核对固定 [上游 Graphics2D stroke 参数](https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-graphics2d/src/main/java/org/ofdrw/graphics2d/OFDGraphics2DDrawParam.java)，并新增尖角实际 PNG ink 断言。
+
+R3：0.0004 缩放和 1.0004 近相关但非奇异矩阵不再受旧三位矩阵格式限制；实际写出读回保留系数。Boundary/Size/LineWidth 仍为原三位小数策略，文字 localBaseline 和归一化 translation 使用实际写出 Size，避免大倍数下漂移。新生成 M*F 再做精确奇异检查；不为历史 SourceXml/任意模型增加全局退化拒绝。窄页1000mm框线的0.9996同状态clip/PDF真实边界回归覆盖精度一致性。
+
+SVG 导出矩阵、translation 与 text/tspan 原点也复用保真普通十进制。新增普通148mm页上的100000mm逻辑框线，通过负平移展示末端：object/clip同时0.9996，右边框在130mm；旧舍入会把边框移出40mm，实际PDF/SVG像素均做断言。MultiplyTransform 在运算前拒绝奇异operand，防止旋转的浮点残差把无效输入扰动成可写的非零det；之后再验证组合结果。包消费E2E直接从11包本地feed调用公开Graphics并检查原生CTM/文字/强调。

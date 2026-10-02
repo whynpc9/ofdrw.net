@@ -42,3 +42,5 @@ issue #3 点名的绘图层。交付一套语义对齐上游 Graphics2D 的公�
 04 单票不新增 flow/table/Canvas，也不实现 05 字体子集或 19 Skia 适配。最新 head 评审与 Preview 尚未闭环时保持此状态。
 
 R2：首轮 5 条意见已统一修复，补普通十进制、矩阵写出精度、SVG 尖角及新建 name-only 文字 M*F 原生强调；417 项回归通过。本次 9 页 PDF/SVG 已重生成，R2 Preview 与最新 head 复审待补闭环，R1 8 页记录保留在 Git 历史。
+
+R3：精确十进制奇异判定、object/clip/导出矩阵统一保真、规范Size下文字基线与奇异operand原子拒绝；新增分数裁剪可视样例，本次10页PDF/SVG，源/包/视觉以新候选为准。

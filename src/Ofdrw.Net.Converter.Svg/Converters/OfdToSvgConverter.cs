@@ -243,8 +243,8 @@ public sealed class OfdToSvgConverter
             var anchor = OfdTextEmphasis.Anchor(0, text.FontSizeMillimeters, drawing.Factor);
             var node = new XElement(
                 svgNs + "text",
-                new XAttribute("x", Invariant(anchor.X)),
-                new XAttribute("y", Invariant(anchor.Y)),
+                new XAttribute("x", OfdNumericFormat.Plain(anchor.X)),
+                new XAttribute("y", OfdNumericFormat.Plain(anchor.Y)),
                 new XAttribute("font-family", family),
                 new XAttribute("font-weight", fontWeight),
                 new XAttribute("font-style", fontStyle),
@@ -270,8 +270,8 @@ public sealed class OfdToSvgConverter
             var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, drawing.Factor);
             var node = new XElement(
                 svgNs + "text",
-                new XAttribute("x", Invariant(anchor.X)),
-                new XAttribute("y", Invariant(anchor.Y)),
+                new XAttribute("x", OfdNumericFormat.Plain(anchor.X)),
+                new XAttribute("y", OfdNumericFormat.Plain(anchor.Y)),
                 new XAttribute("font-family", family),
                 new XAttribute("font-weight", fontWeight),
                 new XAttribute("font-style", fontStyle),
@@ -294,8 +294,8 @@ public sealed class OfdToSvgConverter
                 for (var index = 0; index < glyphs.Count; index++)
                 {
                     var glyphAnchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
-                    node.Add(new XElement(svgNs + "tspan", new XAttribute("x", Invariant(glyphAnchor.X)),
-                        new XAttribute("y", Invariant(glyphAnchor.Y)), glyphs[index]));
+                    node.Add(new XElement(svgNs + "tspan", new XAttribute("x", OfdNumericFormat.Plain(glyphAnchor.X)),
+                        new XAttribute("y", OfdNumericFormat.Plain(glyphAnchor.Y)), glyphs[index]));
                     if (index < deltaX.Count) x += deltaX[index];
                     if (index < deltaY.Count) y += deltaY[index];
                 }
@@ -361,9 +361,9 @@ public sealed class OfdToSvgConverter
         double y,
         double[]? matrix)
     {
-        var translation = $"translate({Invariant(x)} {Invariant(y)})";
+        var translation = $"translate({OfdNumericFormat.Plain(x)} {OfdNumericFormat.Plain(y)})";
         return matrix is { Length: 6 }
-            ? $"{translation} matrix({string.Join(" ", matrix.Select(Invariant))})"
+            ? $"{translation} matrix({string.Join(" ", matrix.Select(OfdNumericFormat.Plain))})"
             : translation;
     }
 
