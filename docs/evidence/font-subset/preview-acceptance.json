@@ -1,0 +1,74 @@
+{
+  "baseline": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+  "candidate_source": "aae5056 plus uncommitted TTC extraction budget and shared PDF head style read; rebuilt and regenerated before opening",
+  "scope": [
+    {
+      "file": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/candidate/full.pdf",
+      "sha256": "9022bc8330dbe3710125479c1dfafd94900d5fa0f6ac0207a1649890559d5700",
+      "pages_checked": [
+        1,
+        2
+      ],
+      "status": "pass",
+      "view": "macOS Preview Single Page / Zoom to Fit, plus enlarged style text",
+      "findings": [],
+      "chain": "this run full/subset OFD -> PDF -> Preview"
+    },
+    {
+      "file": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/candidate/subset.pdf",
+      "sha256": "4dc6918fd767c2de0873f45d3de31564a6fb02fc887b96f5cad0c0d5355095b4",
+      "pages_checked": [
+        1,
+        2
+      ],
+      "status": "pass",
+      "view": "macOS Preview Single Page / Zoom to Fit, plus enlarged style text",
+      "findings": [],
+      "chain": "this run full/subset OFD -> PDF -> Preview"
+    },
+    {
+      "file": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/candidate/docx-native.pdf",
+      "sha256": "1b9073ee5af1a685e4271f6b1e3da2dec4cd73e83c32f2880bf157821bd1671e",
+      "pages_checked": [
+        1,
+        2
+      ],
+      "status": "pass",
+      "view": "macOS Preview Single Page / Zoom to Fit, plus enlarged style text",
+      "findings": [],
+      "chain": "fixed DOCX -> this run Native/default OFD -> PDF -> Preview"
+    },
+    {
+      "file": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/candidate/docx-default.pdf",
+      "sha256": "b667173dd1d8ec1f7d834fed8f351c7ac59457853d452c2efc5c23fcd1b94ab3",
+      "pages_checked": [
+        1,
+        2
+      ],
+      "status": "pass",
+      "view": "macOS Preview Single Page / Zoom to Fit, plus enlarged style text",
+      "findings": [],
+      "chain": "fixed DOCX -> this run Native/default OFD -> PDF -> Preview"
+    }
+  ],
+  "criteria": [
+    "CJK glyphs and spacing",
+    "Latin proportional spacing and combining accents",
+    "local bold/italic/color",
+    "table fill and borders",
+    "alignment",
+    "pagination and absence of blank pages",
+    "page numbers in comparison fixture",
+    "no clipping/overlap/shadow duplicate text"
+  ],
+  "task_windows_closed": true,
+  "ui_exclusive_slot_released": true,
+  "overall_pr_ready": false,
+  "reason": "CI document-tools caller rebind repair and review follow-ups pending.",
+  "checked_dates_local": [
+    "2026-10-02",
+    "2026-10-03"
+  ],
+  "record_updated_at_local": "2026-10-03T00:29:55+08:00",
+  "subsequent_review_delta": "R5 permission/bidi/CG refusal changes affect guard paths; inspected Latin/CJK BMP sample rendering remains unchanged. Actual Preview artifact SHA preserved."
+}

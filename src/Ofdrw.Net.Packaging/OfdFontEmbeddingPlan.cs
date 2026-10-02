@@ -56,20 +56,22 @@ internal sealed class OfdFontEmbeddingPlan
             var result = new OfdFontEmbeddingResult { SourceIdentity = group.Key, SourceBytes = source.LongLength, ResourceCount = aliases.Count };
             var reason = options.Mode == OfdFontEmbeddingMode.Full ? "Explicit full embedding policy." : unsafeReason;
             var payload = source;
+            OpenTypeFace? face = null;
+            try { face = new OpenTypeFace(source); }
+            catch (InvalidDataException) when (unsafeReason is not null || options.Mode == OfdFontEmbeddingMode.Full)
+            { reason += " Unparsed preserved font: typed coverage was not validated."; }
+            // License flags apply to the supplied parsed face independently of
+            // opaque content, full preservation and the requested subset mode.
+            if (face is not null && face.Tables.TryGetValue("OS/2", out var os2))
+            {
+                var permissions = OpenTypeFace.U16(os2, 8);
+                if ((permissions & 0x0002) != 0 || (permissions & 0x0200) != 0)
+                    throw new InvalidDataException("Font embedding is restricted by OS/2.fsType; supply a licensed outline font.");
+                if ((permissions & 0x0100) != 0)
+                    reason = (reason is null ? "" : reason + " ") + "OS/2.fsType prohibits subsetting; full font retained.";
+            }
             if (options.Mode != OfdFontEmbeddingMode.Full)
             {
-                if (source.LongLength > options.MaximumFontBytes) throw new InvalidDataException("Font exceeds MaximumFontBytes.");
-                OpenTypeFace? face = null;
-                try { face = new OpenTypeFace(source); }
-                catch (InvalidDataException) when (unsafeReason is not null)
-                { reason = unsafeReason + " Unparsed preserved font: typed coverage was not validated."; }
-                if (face is not null && unsafeReason is null && face.Tables.TryGetValue("OS/2", out var os2))
-                {
-                    var permissions = OpenTypeFace.U16(os2, 8);
-                    if ((permissions & 0x0002) != 0 || (permissions & 0x0200) != 0)
-                        throw new InvalidDataException("Font embedding is restricted by OS/2.fsType; supply a licensed outline font.");
-                    if ((permissions & 0x0100) != 0) reason = "OS/2.fsType prohibits subsetting; full font retained.";
-                }
                 OpenTypeCmap? cmap = null;
                 try { if (face is not null) cmap = new OpenTypeCmap(face); }
                 catch (NotSupportedException exception) { reason = exception.Message + " Full font retained; coverage was not validated."; }
@@ -89,8 +91,8 @@ internal sealed class OfdFontEmbeddingPlan
                         foreach (var normalized in new[] { value, value.Normalize(NormalizationForm.FormC), value.Normalize(NormalizationForm.FormD) })
                             foreach (var scalar in OpenTypeFace.Scalars(normalized))
                             {
-                                if (scalar is >= 0x0590 and <= 0x08FF or >= 0xFB1D and <= 0xFDFF or >= 0xFE70 and <= 0xFEFF or >= 0x202A and <= 0x202E or >= 0x2066 and <= 0x2069 or >= 0x10800 and <= 0x10FFF)
-                                    reason = "RTL/bidi shaping requires a Unicode mirror closure; full font retained.";
+                                if (UnicodeFontSubsetProfile.RequiresBidiMirroring(scalar))
+                                    reason ??= "RTL/bidi shaping requires a Unicode mirror closure; full font retained.";
                                 if (OpenTypeCmap.IsVariationSelector(scalar)) continue;
                                 used.Add(scalar);
                                 if (used.Count > options.MaximumUsedScalars) throw new InvalidDataException("Font usage exceeds MaximumUsedScalars.");

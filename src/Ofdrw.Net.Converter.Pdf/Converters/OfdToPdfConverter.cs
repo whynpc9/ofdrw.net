@@ -1,3 +1,4 @@
+using Ofdrw.Net.Core.Fonts;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -226,6 +227,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!OfdGraphicXmlContract.IsVisible(element)) continue;
+                if (element is OfdRawElement glyphXml && EmbeddedFontCoverage.HasExplicitGlyphReferences(glyphXml.Xml))
+                    throw new NotSupportedException("PDF export does not model raw CGTransform glyph substitutions.");
                 if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
                     throw new NotSupportedException($"Annotation appearance on page {page.Index + 1} contains unsupported drawing; export would lose content.");
                 var elementState = graphics.Save();

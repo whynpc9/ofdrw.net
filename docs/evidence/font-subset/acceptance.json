@@ -10,10 +10,18 @@
   },
   "functional": {
     "status": "pass",
-    "tests": 428,
-    "independent_focused": 44,
+    "tests": 449,
+    "independent_focused": 65,
     "packages": 11,
-    "package_version": "0.1.0-issue05.20261002.2"
+    "package_version": "0.1.0-issue05.20261003.5",
+    "package_status": "pass",
+    "document_tools": {
+      "samples": 36,
+      "pdf_pages": 55,
+      "status": "pass",
+      "ci_failure": "First head failed when text was introduced into a previously empty subset; caller now rebinds source face / explicitly preserves full font for future opaque annotation injection."
+    },
+    "all_11_packages_contain_unicode_license": true
   },
   "automated_render": {
     "status": "pass",
@@ -51,13 +59,26 @@
     "finding": "Initial comparison fixture page-2 title overflow was fixed by splitting page label; current output re-generated and inspected."
   },
   "preview": {
-    "status": "pending",
-    "reason": "Exclusive desktop slot requested; concurrent Issue04 graphics.pdf observed, no window switching performed."
+    "status": "pass",
+    "samples": [
+      "full",
+      "subset",
+      "docx-native",
+      "docx-default"
+    ],
+    "pages_each": [
+      1,
+      2
+    ],
+    "actual_view": "macOS Preview",
+    "task_windows_closed": true,
+    "ui_released": true,
+    "record": "preview-acceptance.json"
   },
-  "overall_visual_complete": false,
+  "overall_visual_complete": true,
   "production_release_accepted": false,
   "unresolved": [
-    "macOS Preview per-page inspection and closing task windows"
+    "latest-head CI and review closure"
   ],
-  "viewing_chain": "Fixed DOCX -> native/default OFD produced this run -> OFD PDF exporter -> PNG; Preview pending. Never direct DOCX->PDF."
+  "viewing_chain": "Fixed DOCX -> Native/default OFD produced this run -> OFD PDF exporter -> macOS Preview 1-2 pages each; full/subset OFD -> PDF -> Preview 1-2 each. No direct DOCX->PDF substituted."
 }

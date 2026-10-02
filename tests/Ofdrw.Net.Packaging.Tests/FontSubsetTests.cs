@@ -43,6 +43,9 @@ public sealed class FontSubsetTests
         Assert.Equal(original.Table("maxp"), subset.Table("maxp")); Assert.Equal(original.Style, subset.Style);
         Assert.Equal(0xB1B0AFBAu, Checksum(saved.Package.Fonts[0].Data));
         Assert.Equal(0, b.Glyph('Z'));
+        // Noto Sans gid 1654 is the f+f+i ligature, introduced only by GSUB.
+        // Width equality alone cannot prove the actual outline survived.
+        Assert.True(GlyphLength(subset, 1654) > 0);
         Assert.Equal(original.Table("GSUB"), subset.Table("GSUB")); Assert.Equal(original.Table("GPOS"), subset.Table("GPOS"));
         Assert.Equal(original.Table("name").Length > 0, subset.Table("name").Length > 0);
         Assert.NotEqual(original.Table("name"), subset.Table("name"));
@@ -182,7 +185,9 @@ public sealed class FontSubsetTests
         var path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Font("NotoSans-Regular.ttf"))!, "../../../Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/style-collection.ttc"));
         var originalFace = OpenTypeCollection.SelectFace(File.ReadAllBytes(path), 0);
         var styled = new OpenTypeFace(originalFace); Put16(styled.Table("head"), 44, 1);
-        var source = Collection(originalFace, styled.Build()); var expected = OpenTypeCollection.SelectFace(source, 1);
+        var source = Collection(originalFace, styled.Build());
+        Assert.Throws<InvalidDataException>(() => OpenTypeCollection.ExtractFaces(source, originalFace.Length));
+        var expected = OpenTypeCollection.SelectFace(source, 1);
         foreach (var opaque in new[] { false, true })
         {
             var package = Package(source, "ABC"); package.Fonts[0].CollectionFaceIndex = 1;
@@ -226,6 +231,58 @@ public sealed class FontSubsetTests
         var saved = await Save(Package(Chinese.Value, "A\U000107A5B"));
         var cmap = new OpenTypeCmap(new OpenTypeFace(saved.Package.Fonts[0].Data)); Assert.Equal(original.Glyph(0x107A5), cmap.Glyph(0x107A5));
         Assert.Equal("A\U000107A5B", saved.Package.Pages[0].Elements.OfType<OfdTextElement>().Single().Text);
+    }
+    [Theory]
+    [InlineData(0x0002, "raw")][InlineData(0x0200, "raw")]
+    [InlineData(0x0002, "preserved")][InlineData(0x0200, "preserved")]
+    [InlineData(0x0002, "clip")][InlineData(0x0200, "clip")]
+    [InlineData(0x0002, "source")][InlineData(0x0200, "source")]
+    [InlineData(0x0002, "full")][InlineData(0x0200, "full")]
+    public async Task PreservationCannotBypassEmbeddingPermissions(int flags, string kind)
+    {
+        var face = new OpenTypeFace(Latin.Value); Put16(face.Table("OS/2"), 8, flags); var package = Package(face.Build(), "Alpha");
+        if (kind == "raw") package.Pages[0].Elements.Add(new OfdRawElement { Xml = "<VendorObject/>" });
+        if (kind == "preserved") package.PreservedEntries["Extensions/opaque.bin"] = [1];
+        if (kind == "clip") package.Pages[0].Elements[0].ClippingXml = "<Clips/>";
+        if (kind == "source") package.Pages[0].Elements.OfType<OfdTextElement>().Single().SourceXml = "<TextObject><TextCode>Alpha</TextCode></TextObject>";
+        if (kind == "full") package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
+        await Assert.ThrowsAsync<InvalidDataException>(() => Save(package));
+    }
+    [Fact]
+    public async Task BomDoesNotDisableLatinSubsettingOrOverrideNoSubsetReason()
+    {
+        var saved = await Save(Package(Latin.Value, "Alpha\uFEFF")); Assert.True(Assert.Single(saved.Report.FontEmbedding).IsSubset);
+        Assert.DoesNotContain(saved.Report.Diagnostics, message => message.Contains("RTL"));
+        var face = new OpenTypeFace(Latin.Value); Put16(face.Table("OS/2"), 8, 0x0100);
+        var noSubset = await Save(Package(face.Build(), "Alpha\uFEFF"));
+        Assert.Contains("fsType", Assert.Single(noSubset.Report.Diagnostics));
+    }
+    [Theory]
+    [InlineData(0xFEFF, false)][InlineData(0x10800, true)][InlineData(0x107A5, false)]
+    [InlineData(0x10840, true)][InlineData(0x10920, true)][InlineData(0x10C80, true)]
+    [InlineData(0x202E, true)][InlineData(0x05D0, true)]
+    public void BidiGuardUsesNormativeClassesInsteadOfWholeBlocks(int scalar, bool expected)
+        => Assert.Equal(expected, UnicodeFontSubsetProfile.RequiresBidiMirroring(scalar));
+    [Fact]
+    public async Task RootGlyphXmlPreservesFontAndMalformedXmlFailsBeforeOutput()
+    {
+        var package = Package(Latin.Value, "中文"); var text = package.Pages[0].Elements.OfType<OfdTextElement>().Single();
+        text.SourceXml = "<CGTransform CodePosition='0' CodeCount='2' GlyphCount='2'><Glyphs>1 2</Glyphs></CGTransform>";
+        var saved = await Save(package); Assert.Equal(Latin.Value, saved.Package.Fonts[0].Data);
+        Assert.Contains(saved.Report.Diagnostics, message => message.Contains("FONT_COVERAGE_UNVERIFIED"));
+        text.SourceXml = "<CGTransform"; using var output = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(package, output));
+        Assert.Equal(0, output.Length); Assert.Equal(Latin.Value, package.Fonts[0].Data);
+    }
+    [Fact]
+    public async Task RebindingOriginalFaceAllowsNewGlyphsAfterSavingAnEmptySubset()
+    {
+        var empty = await Save(Package(Latin.Value, ""));
+        var text = empty.Package.Pages[0].Elements.OfType<OfdTextElement>().Single(); text.Runs.Clear(); text.SourceXml = null; text.Text = "BLANK PAGE WATERMARK";
+        await Assert.ThrowsAsync<InvalidDataException>(() => Save(empty.Package));
+        empty.Package.Fonts[0].Data = Latin.Value;
+        var saved = await Save(empty.Package); Assert.Equal(text.Text, saved.Package.Pages[0].Elements.OfType<OfdTextElement>().Single().Text);
+        Assert.NotEqual(0, new OpenTypeCmap(new OpenTypeFace(saved.Package.Fonts[0].Data)).Glyph('B'));
     }
     private static byte[] Collection(params byte[][] faces)
     {

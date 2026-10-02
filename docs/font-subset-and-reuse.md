@@ -25,7 +25,7 @@ SDK 内部使用纯 .NET managed sfnt/glyf 后端，无 Python/fonttools、HarfB
 | 规范化 | 加入 NFC/NFD 码点闭包，避免浏览器规范化时丢失字形 |
 | TTC | `CollectionFaceIndex` 零基显式选面，默认 0；按实际 face 内容复用；写出独立 sfnt，PDF/SVG 使用相同选面 |
 | CFF/CFF2 OTF、变量字体、AAT/颜色/未知依赖表、JSTF | 全量保留，返回 `FONT_FULL_PRESERVED` 与原因；不宣称这些格式已子集化 |
-| RTL/bidi 字符 | 目前缺少通用 Unicode mirror closure，保留全量并诊断；不宣称复杂文字子集支持完整 |
+| RTL/bidi 字符 | 按 Unicode 17.0.0 Bidi_Class（含规范默认值）识别 RTL/控制字符；BOM/ZWNBSP 和 LTR 脚本不误判。缺少通用 Unicode mirror closure 的 RTL 保留全量并诊断；不宣称复杂文字子集支持完整 |
 | 大 BMP 字符集 | 压缩格式 4 连续 delta 段并保留格式 12；格式 4 无法容纳时全量保留，避免现有 PDFsharp 拒绝 format12-only 字体 |
 | SourceXml/CGTransform/Raw、模板/注释、保留包条目 | 整包保守保留全量字体，避免裁掉未知 GID/扩展引用；已有子集保持原字节；诊断会说明 coverage 未验证的未解析字体 |
 
@@ -43,7 +43,7 @@ SDK 内部使用纯 .NET managed sfnt/glyf 后端，无 Python/fonttools、HarfB
 
 ## 许可与固定样例
 
-子集化不授予字体嵌入权，不改变原字体许可证。自动子集模式尊重 `OS/2.fsType`：restricted/bitmap-only 禁止新嵌入，no-subsetting 保留全量；fsType 为 0 也不能代替调用方取得授权。显式 Full 以及旧包保留行为由调用方确保有权分发原载荷。
+子集化不授予字体嵌入权，不改变原字体许可证。自动子集模式尊重 `OS/2.fsType`：restricted/bitmap-only 禁止新嵌入，no-subsetting 保留全量；fsType 为 0 也不能代替调用方取得授权。Full 和未知内容保留也检查可解析字体的这些标记；无法解析的旧不透明载荷仅可保留并诊断。调用方仍须确保有权分发原载荷。
 
 样例使用固定、可再分发的 LXGW WenKai（OFL 1.1，RFN 子集内部改名）和 Noto Sans（OFL 1.1）。来源、版本、SHA-256 和原许可见 `e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts`，不包含专有系统字体。后端未引入第三方 subset 代码；HarfBuzz/fonttools 仅用于独立开发探针，不是 SDK 运行时。
 

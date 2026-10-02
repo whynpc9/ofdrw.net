@@ -1,0 +1,89 @@
+namespace Ofdrw.Net.Core.Fonts;
+
+// Unicode 17.0.0 DerivedBidiClass data; Unicode-3.0 license in
+// THIRD-PARTY-NOTICES.md and docs/licenses/UNICODE-LICENSE.txt.
+// Source: https://www.unicode.org/Public/17.0.0/ucd/extracted/DerivedBidiClass.txt
+// SHA-256: 4867b4b7f0731ed1bfcd34cc6251211ff1542541fce0734b6fbda139ee80b3a4
+// R/AL and explicit bidi controls, with normative @missing defaults overlaid
+// by assigned classes. FEFF is BN; Cypriot/Lydian/Old Hungarian are R.
+internal static class UnicodeFontSubsetProfile
+{
+    private static readonly int[] Ranges =
+    {
+        0x590, 0x590,
+        0x5BE, 0x5BE,
+        0x5C0, 0x5C0,
+        0x5C3, 0x5C3,
+        0x5C6, 0x5C6,
+        0x5C8, 0x5FF,
+        0x608, 0x608,
+        0x60B, 0x60B,
+        0x60D, 0x60D,
+        0x61B, 0x64A,
+        0x66D, 0x66F,
+        0x671, 0x6D5,
+        0x6E5, 0x6E6,
+        0x6EE, 0x6EF,
+        0x6FA, 0x710,
+        0x712, 0x72F,
+        0x74B, 0x7A5,
+        0x7B1, 0x7EA,
+        0x7F4, 0x7F5,
+        0x7FA, 0x7FC,
+        0x7FE, 0x815,
+        0x81A, 0x81A,
+        0x824, 0x824,
+        0x828, 0x828,
+        0x82E, 0x858,
+        0x85C, 0x88F,
+        0x892, 0x896,
+        0x8A0, 0x8C9,
+        0x200F, 0x200F,
+        0x202A, 0x202B,
+        0x202D, 0x202E,
+        0x2066, 0x2069,
+        0xFB1D, 0xFB1D,
+        0xFB1F, 0xFB28,
+        0xFB2A, 0xFBC2,
+        0xFBD3, 0xFD3D,
+        0xFD50, 0xFD8F,
+        0xFD92, 0xFDC7,
+        0xFDF0, 0xFDFC,
+        0xFE70, 0xFEFE,
+        0x10800, 0x1091E,
+        0x10920, 0x10A00,
+        0x10A04, 0x10A04,
+        0x10A07, 0x10A0B,
+        0x10A10, 0x10A37,
+        0x10A3B, 0x10A3E,
+        0x10A40, 0x10AE4,
+        0x10AE7, 0x10B38,
+        0x10B40, 0x10D23,
+        0x10D28, 0x10D2F,
+        0x10D3A, 0x10D3F,
+        0x10D4A, 0x10D68,
+        0x10D6F, 0x10E5F,
+        0x10E7F, 0x10EAA,
+        0x10EAD, 0x10ECF,
+        0x10ED9, 0x10EF9,
+        0x10F00, 0x10F45,
+        0x10F51, 0x10F81,
+        0x10F86, 0x10FFF,
+        0x1E800, 0x1E8CF,
+        0x1E8D7, 0x1E943,
+        0x1E94B, 0x1EEEF,
+        0x1EEF2, 0x1EFFF,
+    };
+    internal static bool RequiresBidiMirroring(int scalar)
+    {
+        var low = 0; var high = Ranges.Length / 2 - 1;
+        while (low <= high)
+        {
+            var mid = low + (high - low) / 2;
+            if (scalar < Ranges[mid * 2]) high = mid - 1;
+            else if (scalar > Ranges[mid * 2 + 1]) low = mid + 1;
+            else return true;
+        }
+        return false;
+    }
+}
