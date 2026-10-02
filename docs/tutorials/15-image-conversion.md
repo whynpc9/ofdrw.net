@@ -66,7 +66,7 @@ ppm 必须有限且大于零；最终页宽/高必须有限、大于零且不超
 | 导入单图编码输入 | 64 MiB | `MaxInputBytesPerImage` / `--max-input-bytes` |
 | 导入累计编码输入 | 128 MiB | `MaxTotalInputBytes` / `--max-total-input-bytes` |
 | 导入张数 | 1000 | `MaxPageCount` / `--max-pages` |
-| 导入 ZIP 条目 | 10000；预检保守上界 `5 + 2 × 张数` | `MaxEntryCount` / `--max-entries` |
+| 导入 ZIP 条目 | 10000；实际 `4 + 页数 + 不同编码图片资源数`，图片按格式和内容去重 | `MaxEntryCount` / `--max-entries` |
 | 导入输出 OFD | 256 MiB | `MaxOutputBytes` / `--max-output-bytes` |
 
 所有预算为正整数，导入单图编码输入不得超过 `Int32.MaxValue`。工作缓冲预算与像素预算同时执行；默认 256 MiB / 16 使实际像素上限约 16.7M。它是缓冲估算，并非进程总内存硬限额：编码输入、ASN.1提取副本、ZIP暂存、OFD XML/展开资源、PDF/font/native 状态另有内存开销。累计展开字节是资源载荷预算，也不是总RSS硬限额。导入逐图释放解码缓冲，原始编码输入累计保留供打包；写包时还会产生资源条目副本。

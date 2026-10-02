@@ -19,7 +19,7 @@ public sealed class ImageToOfdOptions
     public long MaxPixelsPerImage { get; set; } = 40_000_000;
     /// <summary>Maximum estimated decode buffers (16 bytes per pixel), excluding retained input, package entries and native overhead.</summary>
     public long MaxRasterWorkingBytes { get; set; } = 256L * 1024 * 1024;
-    /// <summary>Maximum OFD ZIP entry count (normally five fixed entries plus a page and resource per image).</summary>
+    /// <summary>Maximum OFD ZIP entries: four fixed XML files, one per page, and one per distinct encoded image resource.</summary>
     public int MaxEntryCount { get; set; } = 10_000;
     /// <summary>Maximum encoded OFD package bytes, enforced while writing.</summary>
     public long MaxOutputBytes { get; set; } = 256L * 1024 * 1024;
