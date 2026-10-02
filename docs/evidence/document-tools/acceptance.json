@@ -1,24 +1,24 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "30f620c1745800eb6b1b83886371d5133ef091ef",
-  "example_commit": "30f620c1745800eb6b1b83886371d5133ef091ef",
+  "runtime_source_commit": "1400298cccfcb98bcc414ada128b27be60e5ca79",
+  "example_commit": "1400298cccfcb98bcc414ada128b27be60e5ca79",
   "functional_tests": {
     "status": "passed",
-    "total": 302,
+    "total": 328,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
     "design_review_model": "gpt-6-astra high",
-    "test_checkpoint_commit": "30f620c1745800eb6b1b83886371d5133ef091ef",
-    "implementation_equivalence": "independent tests ran on this clean committed source"
+    "test_checkpoint_commit": "1400298cccfcb98bcc414ada128b27be60e5ca79",
+    "implementation_equivalence": "independent full solution tests ran on this frozen source; the two final regression log entries refer to one independent run; preceding parent327 run retained separately"
   },
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.25",
+    "version": "0.1.0-issue03.27",
     "published": false,
-    "repository_commit": "30f620c1745800eb6b1b83886371d5133ef091ef"
+    "repository_commit": "1400298cccfcb98bcc414ada128b27be60e5ca79"
   },
   "native_default_text": {
     "status": "passed",
@@ -31,8 +31,8 @@
     "svg_pages": 16
   },
   "png_visual_review": {
-    "status": "passed-for-59-listed-pages; fixed-anchor-SVG-font-fidelity-unverified",
-    "method": "All60 current PNG hashes match directly inspected R16 bytes; enhanced annotation-metadata pair/SVG directly reopened as PNG and checked. Fixed-anchor SVG original-font fidelity remains incomplete.",
+    "status": "passed for 59 automatic PNGs and separately captured original-font SVG",
+    "method": "All60 current automatic PNG hashes match previously inspected bytes; 59 meet their original-font expectations. Fixed-anchor SVG original-font appearance now visually verified through native Chromium screenshot; automatic librsvg fallback is explicitly retained as a renderer limitation.",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -113,7 +113,7 @@
       "R8 current full-page review: body/table/local style/order intact, known NOTE visible, hidden annotation text/path absent, clipping/glyph transforms correct, signatures removed only in clean/tool outputs, watermarks survive merge",
       "R9 text ignores image-only budgets; foreign-only or nested-only empty clip geometry rejects PDF/SVG before output instead of hiding the object; supported page render bytes unchanged",
       "R13 all-suffix shared XML scans preserve page/font/media/signature closure and nested BaseLoc references; malformed XML stays conservative and BOM plain text does not disable pruning",
-      "R13 new fixed-baseline MIT PDF pairs show whole-glyph shear; regular/italic edge slope regressions and adjacent control pass; SVG native-font raster acceptance remains pending",
+      "R13 new fixed-baseline MIT PDF pairs show whole-glyph shear; regular/italic edge slope regressions and adjacent control pass; SVG native-font raster acceptance was pending at R13 and passed at R18 with the retained Chromium screenshot",
       "R14 declared PublicResources.dat/ImageResources.bin survive save/watermark/split. Actual suffix watermark output retains readable body/styles, table, NOTE, template, DRAFT and red ordinary image; RESOURCE SUFFIX paints once; second page retains red emphasis and date.",
       "R15 vendor declaration literals remain opaque before path resolution or visited dedup; valid standard NOTE remains visible in ordinary roundtrip, while Mix rejects vendor metadata. Standard traversal still rejected.",
       "R15 font/media IDs only in dat/bin descriptors above a deliberately stale document hint retain bindings and globally unique output unit IDs; all prior rendering bytes unchanged.",
@@ -121,7 +121,8 @@
       "R16 vendor Template page references no longer paint or duplicate a standard template. Existing56 renders unchanged.",
       "R16 Native scalar CustomTags retained in API/CLI Mix, unique/equal values coalesce and conflicting values reject before output; CLI existing output marker retained. Unknown tag schema/structure and potential package/attachment references remain unsupported.",
       "R17 supported declaration wrappers validate attributes/children/literals before flattening. Annotation Page record extras retain page-scoped raw marker while unique standard FileLoc follows known artwork; duplicate/nested paths remain opaque.",
-      "R17 optional standard TemplatePage Name and default ZOrder supported; page reference overrides declaration default. Enhanced annotation-metadata sample keeps known NOTE/template and XML metadata; Mix refuses. All60 render bytes unchanged."
+      "R17 optional standard TemplatePage Name and default ZOrder supported; page reference overrides declaration default. Enhanced annotation-metadata sample keeps known NOTE/template and XML metadata; Mix refuses. All60 render bytes unchanged.",
+      "R18 Annotations/PageAnnot/Annot/FileLoc extension metadata retains standard NOTE while refusing Mix. Selected page/template Page/Area/Content/Layer closure and unsupported template order fail before flattening; duplicate Appearance fails PDF/SVG with zero output. All60 automatic page hashes unchanged."
     ],
     "passed_files": [
       "pages/annotation-clipped-1.png",
@@ -182,38 +183,326 @@
       "pages/mix-custom-tags-1.png",
       "pages/mix-custom-tags-svg.png",
       "pages/cli-mix-custom-tags-1.png",
-      "pages/cli-mix-custom-tags-svg.png"
+      "pages/cli-mix-custom-tags-svg.png",
+      "validation/svg-font-native.png"
     ],
-    "uncompleted": {
-      "pages/italic-fixed-anchor-svg.png": "Shear visible but original rectangle font is substituted by librsvg; native browser raster still required for font fidelity."
-    }
+    "uncompleted": {}
   },
   "macos_preview": {
-    "status": "not-completed",
-    "reason": "Mac remains locked; historical10/37 pages atc10f002 only, latest44 PDFs require reopening after manual unlock",
-    "checked_pages": [],
+    "status": "passed for all listed latest pages",
+    "reason": "Mac unlocked; all 27 latest PDFs freshly opened and all44 pages inspected, then each document window closed",
+    "checked_pages": [
+      {
+        "artifact": "baseline-native.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "735d9e2d908dbaad9f923ac29d057ff2055a4c5cafcfcc38a3b4ab294d2dbc91",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/baseline-native.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "baseline-default.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "2a3cec91ea3c79766a1facb89053431bab276dca0e38d84bb847885c369b59bc",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/baseline-default.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "rich.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "d37126d4d36f9c61ff648a5c1e7faa7ffcaa7bcb2656d293b176cdafddc38590",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/rich.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "annotation-metadata.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "a48e3aca6b67045febc04ec439eb243732d29f4729762762fba04e10c773265a",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/annotation-metadata.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "signed.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "a3db3f93dcbb8e518314414d2f43f5fb6db59b018ff4f4cbff093f7244e07067",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/signed.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "watermark.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "ec26414b5a59930c5406bb514ca9d2d2fcae7fed3d7afe50f9838ee575f12abe",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/watermark.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "watermark-merged.pdf",
+        "pages": [
+          1,
+          2,
+          3
+        ],
+        "sha256": "0dbaa3e148380a7b1df2420c4577bc27b84128cd487eba2d6a9ab69628af8cfa",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/watermark-merged.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "watermark-resource-suffix.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "49a062931be0ae1a024f42b6868fd572dc70ed48bb18c2f0419fcb6762b945b2",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/watermark-resource-suffix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "vendor-annotations-roundtrip.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "d77e49dc9d19ceb278f655d39c8dd4c7b78d3e9624409ad9c3951f18c284e23d",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/vendor-annotations-roundtrip.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "mix-custom-tags.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "3cb9224b21c6deaeac253c48459664cd1aee1a177b98b1054199c95271d6cd08",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/mix-custom-tags.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "cli-mix-custom-tags.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "d02ae30ad35d7949d791d21d6f5637e3b20744e086becceb6ff7681ea321d135",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-mix-custom-tags.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "split.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "0338b4917591a652658ff277684d48bb2f9ab29539cb64174074fed5bd1187f5",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/split.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "split-template-liveness.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "a236131c11e2764e2d36871056d5823e38c2a5624247b042c0878dfc4c70ab12",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/split-template-liveness.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "mix.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "351d6a409e7aaf24d038b455f5acad613355bf9df449adb4c6ebd2c6e7d97e77",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/mix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "clean.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "e63a016c051ec298f4b83effa0e06d9e5f700dbf9ea66187c819d9bd5e5a2d14",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/clean.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "overlay.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "fbcea92e3e7510823bf2339311de8cb552b8670dcfe20446b3108b0d2578ebd5",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/overlay.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "cli-watermark.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "d3fcb333018d1a91f888d5236c05e48a105f803cd64928ef7f9d1fdfac43d225",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-watermark.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "cli-split.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "8bc6e0da4cb5231d6c856c5b1cf442fa654b67eef5d8c266754b3e34062b5085",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-split.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "cli-mix.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "bb941ce3fcc1924575bd529deea8359e002d2d22892e7f88ae8715297ca52649",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-mix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "cli-clean.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "23df48776120984f7c8bca7bc50142e912c114f1f77a98d56042b20a981a207d",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-clean.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "cli-merged.pdf",
+        "pages": [
+          1,
+          2,
+          3
+        ],
+        "sha256": "05e12ac1b003912806fa51f57139e29c0509c183b09e7cfaddcf8d95c017b314",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-merged.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "annotation-clipped.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "74c2fb80a6fca7c7b72a04a6f517fb215cfa371d20ee02ffacaf7107e0cb4741",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/annotation-clipped.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "annotation-clipped-mix.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "6b8309f7c78b49e95231b77d81d17694043cb3cbe4f53b02739fa9491dd2f579",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/annotation-clipped-mix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "italic-marked.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "55eefbebb1b9a5ddf6c034e9badf2604f134d380fcc54719d45b644da0ad39e3",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/italic-marked.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "italic-control.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "7c8c1e0d3c81a43bcc6342519beab31a9e0fcd30892c30e8b63b5b5d6fb6fb56",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/italic-control.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "italic-user-matrix.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "712154cbd953840edeafecd414ba2132742958967d3da0a812e9c4a0821b3c45",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/italic-user-matrix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      },
+      {
+        "artifact": "italic-fixed-anchor.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "b523fd98398746b940ef66838d7ae7d48d55f44d96604a58b8a91e3f78dcb26c",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/italic-fixed-anchor.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true
+      }
+    ],
     "latest_required_pdf_pages": 44,
     "historical_checked_pages": 10,
     "historical_source_commit": "c10f002299726bebd7495122702df3658572faaa",
     "historical_record": "preview-progress.json",
     "historical_snapshots": "files/validation/preview-c10",
-    "remaining_window": "old watermark.pdf page2; close blocked by lock"
+    "remaining_window": "none",
+    "source_commit": "1400298cccfcb98bcc414ada128b27be60e5ca79"
   },
   "pr_review": {
-    "status": "declarationwrapper and annotationPage record findings repaired; independent302/new-head review pending; Preview open",
-    "review_head": "c80f83c84ff0b4426383bde5a42cad2c8cb82a78",
-    "codex": "complete preserved declaration wrappers and extended Page records guarded",
-    "cursor": "c80f83c template/scalarTag delta confirmed with no new source defect",
-    "ci": "c80f83c all six checks succeeded; new head pending"
+    "status": "all six current-head functional findings repaired; fresh head review/CI pending",
+    "review_head": "488c9603fb9bfffeae70659a58161c8d23f9a5a3",
+    "codex": "Annot/root/container metadata findings fixed; duplicate Appearance safety regression included; new-head review pending",
+    "cursor": "FileLoc metadata and invalid/blank ZOrder fixes validated; new-head review pending",
+    "ci": "488c960 all six checks succeeded; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 42571733,
-    "sha256": "d7fef6f0293a03974765fc790e3ff3cce78dbedca6e5796aca29037adb40a26e",
-    "extraction_readback": "passed: freshly extracted all356 file sizes and SHA256",
-    "file_count": 356,
-    "expanded_bytes": 1594259007,
-    "integrity_status": "passed: freshly extracted all356 file sizes and SHA256"
+    "bytes": 42654285,
+    "sha256": "ed9f8d882379bc7f0b45cf372d9b4f08edf2fb52b0fbb48acc8ccbfff4322ea1",
+    "extraction_readback": "passed: freshly extracted all360 final file sizes and SHA256",
+    "file_count": 360,
+    "expanded_bytes": 1594297578,
+    "integrity_status": "passed: freshly extracted all360 final file sizes and SHA256"
   },
   "ofd_sizes": {
     "annotation-clipped-mix.ofd": {
@@ -225,8 +514,8 @@
       "ratio_to_native_baseline": 0.9999
     },
     "annotation-metadata.ofd": {
-      "bytes": 11604596,
-      "ratio_to_native_baseline": 1.0001
+      "bytes": 11604758,
+      "ratio_to_native_baseline": 1.0002
     },
     "annotation-missing-payload.ofd": {
       "bytes": 11604402,
@@ -321,11 +610,11 @@
       "ratio_to_native_baseline": 1.0001
     },
     "scoped-annotations-input.ofd": {
-      "bytes": 11606566,
+      "bytes": 11606565,
       "ratio_to_native_baseline": 1.0003
     },
     "signed.ofd": {
-      "bytes": 11606533,
+      "bytes": 11606532,
       "ratio_to_native_baseline": 1.0003
     },
     "split-template-liveness.ofd": {
@@ -337,7 +626,7 @@
       "ratio_to_native_baseline": 1.0002
     },
     "template-liveness-input.ofd": {
-      "bytes": 11606736,
+      "bytes": 11606735,
       "ratio_to_native_baseline": 1.0003
     },
     "template-wrapper-extension.ofd": {
@@ -366,10 +655,9 @@
     }
   },
   "limitations": [
-    "Preview is mandatory and remains incomplete; PNG review does not replace it",
     "Only listed synthetic samples/pages checked; unsupported raw objects/actions/reference-bearing extensions fail explicitly",
     "Signature appearance, protected-entry digest integrity and cryptographic validity are separate; no production signing added",
-    "librsvg cannot demonstrate the new original MIT rectangle glyph font; browser loads font but raster unavailable during locked desktop"
+    "librsvg substitutes the MIT rectangle face in the automatic fixed-anchor SVG PNG; native browser screenshot provides original-font visual acceptance"
   ],
   "negative_annotation_samples": {
     "annotation-unknown-media": "PDF rejected before any output",
@@ -380,5 +668,12 @@
   "template_liveness_sample": "extensionless state.dat nested Extension BaseLoc ../Templates retains template declaration/payload while selecting page2",
   "resource_suffix_sample": "real dat/bin font/media IDs just above all other IDs and above a stale document hint; watermark output has globally unique IDs and unchanged binding/paint",
   "vendor_annotation_sample": "two vendor Annotations plus same-ID vendor TemplatePage precede standard declarations; unsafe-looking literals preserved, standard NOTE/template paint, Mix refuses unknown metadata",
-  "custom_tags_policy": "flat EMR scalar union with ordinal keys; unique/equal kept, unequal conflict fails; unknown XML and potential payload/attachment refs refuse; Native provenance labels supported"
+  "custom_tags_policy": "flat EMR scalar union with ordinal keys; unique/equal kept, unequal conflict fails; unknown XML and potential payload/attachment refs refuse; Native provenance labels supported",
+  "svg_font_visual_review": {
+    "status": "passed",
+    "source_svg": "files/italic-fixed-anchor-1.svg",
+    "screenshot": "files/validation/svg-font-native.png",
+    "record": "files/validation/svg-font-readback.json",
+    "method": "native Chromium screenshot after Page.bringToFront; original MIT rectangle glyphs and composed shear visually checked"
+  }
 }
