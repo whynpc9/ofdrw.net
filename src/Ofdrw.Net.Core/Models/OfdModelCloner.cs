@@ -25,6 +25,7 @@ internal static class OfdModelCloner
             foreach (var element in template.Elements) clone.Elements.Add(CloneElement(element, clonePayloads: clonePayloads));
             page.Templates.Add(clone);
         }
+        foreach (var element in source.AnnotationAppearances) page.AnnotationAppearances.Add(CloneElement(element, clonePayloads: clonePayloads));
         page.PreservedPageElements.AddRange(source.PreservedPageElements);
         return page;
     }
@@ -72,6 +73,7 @@ internal static class OfdModelCloner
             default:
                 throw new NotSupportedException($"Cannot clone OFD element '{source.GetType().Name}'.");
         }
+        result.ClippingXml = CloneXml(source.ClippingXml, targetNamespace);
         result.ObjectId = source.ObjectId;
         result.LayerId = source.LayerId;
         result.LayerType = source.LayerType;
