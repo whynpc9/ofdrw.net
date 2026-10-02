@@ -298,6 +298,56 @@ public sealed class FontIsolationTests
         }
     }
 
+    private static byte[] SymbolFace(byte[] source)
+    {
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(source);
+        var cmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face);
+        var rebuilt = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int> { [0xF041] = cmap.Glyph('A') });
+        var offset = (int)Ofdrw.Net.Core.Fonts.OpenTypeFace.U32(rebuilt, 8);
+        var length = Ofdrw.Net.Core.Fonts.OpenTypeFace.U16(rebuilt, offset + 2);
+        var symbol = new byte[12 + length]; Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbol, 2, 1);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbol, 4, 3); Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(symbol, 8, 12);
+        Buffer.BlockCopy(rebuilt, offset, symbol, 12, length); face.Tables["cmap"] = symbol;
+        return face.Build();
+    }
+
+    [Theory]
+    [InlineData("A")][InlineData("A ")][InlineData("AB")]
+    public void SelectedNameOnlySymbolProbeRefusesBeforeCoverageAndFallback(string value)
+    {
+        var resource = new OfdFontResource { Id = "10", FontName = "symbol-host-probe", Bold = true };
+        var host = new HostResolver(SymbolFace(File.ReadAllBytes(FontPath("narrow"))));
+        var before = PdfFontRegistry.RegisteredFontBytes;
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], host);
+        Assert.Equal(before, PdfFontRegistry.RegisteredFontBytes);
+        var exception = Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { FontResourceId = "10", Text = value }, out _));
+        Assert.Contains("unmodeled", exception.Message); Assert.Equal(1, host.Requests);
+    }
+
+    [Fact]
+    public void SymbolDefaultCannotHalfVerifyMappedAAsUnicodeFallback()
+    {
+        var source = File.ReadAllBytes(FontPath("narrow"));
+        var primary = new Ofdrw.Net.Core.Fonts.OpenTypeFace(source);
+        var cmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(primary);
+        primary.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int> { ['B'] = cmap.Glyph('B') });
+        var symbol = SymbolFace(source);
+        var resource = new OfdFontResource { Id = "10", FontName = "primary-unicode", Bold = true };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], new SymbolDefaultResolver(primary.Build(), symbol, source));
+        var family = context.Resolve(new OfdTextElement { FontResourceId = "10", Text = "A" }, out _);
+        var coverage = context.Coverage(resource, family)!;
+        Assert.False(coverage.IsSymbol); Assert.Equal(cmap.Glyph('A'), coverage.Glyph('A'));
+        var insufficient = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], new SymbolDefaultResolver(primary.Build(), symbol, symbol));
+        Assert.Throws<InvalidDataException>(() => insufficient.Resolve(new OfdTextElement { FontResourceId = "10", Text = "A" }, out _));
+    }
+
+    private sealed class SymbolDefaultResolver(byte[] primary, byte[] symbol, byte[] arial) : IFontResolver
+    {
+        public string DefaultFontName => "symbol-default";
+        public FontResolverInfo ResolveTypeface(string family, bool bold, bool italic) => new(family == DefaultFontName ? "symbol-face" : family == "Arial" ? "unicode-arial" : "primary-face");
+        public byte[] GetFont(string face) => face == "symbol-face" ? symbol : face == "unicode-arial" ? arial : primary;
+    }
+
     private sealed class CoveringResolver(byte[] primary,byte[] fallback):IFontResolver
     {
         public string DefaultFontName=>"covering-default";
