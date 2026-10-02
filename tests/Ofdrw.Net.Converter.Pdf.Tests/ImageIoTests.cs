@@ -780,6 +780,36 @@ public sealed class ImageIoTests
         Assert.DoesNotContain("Infinity", content); Assert.DoesNotContain("NaN", content);
     }
 
+    [Theory]
+    [InlineData("missing")] [InlineData("empty")] [InlineData("blank")]
+    [InlineData("duplicate")] [InlineData("duplicate-case")]
+    public async Task StrictSelectedPageRequiresUnambiguousId(string kind)
+    {
+        using var rewritten = new MemoryStream(); rewritten.Write(await WithSeals([ImageBytes(true)], includeBody: true));
+        using (var zip = new ZipArchive(rewritten, ZipArchiveMode.Update, true))
+        {
+            var entry = zip.GetEntry("Doc_0/Document.xml")!; System.Xml.Linq.XDocument xml;
+            using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
+            var pages = xml.Descendants().Where(e => e.Name.LocalName == "Page").ToArray();
+            if (kind == "duplicate") pages[1].SetAttributeValue("ID", pages[0].Attribute("ID")!.Value);
+            else if (kind == "duplicate-case")
+            {
+                pages[0].SetAttributeValue("ID", "page-id"); pages[1].SetAttributeValue("ID", "PAGE-ID");
+            }
+            else pages[0].SetAttributeValue("ID", kind == "missing" ? null : kind == "empty" ? "" : " \t");
+            entry.Delete(); using var output = zip.CreateEntry("Doc_0/Document.xml").Open(); xml.Save(output);
+        }
+        using var input = new MemoryStream(rewritten.ToArray()); using var sentinel = Sentinel();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
+        { PixelsPerMillimeter = 2 }).ConvertAsync(input, sentinel));
+        Assert.Contains("page ID", error.Message); AssertSentinel(sentinel);
+        input.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
+        using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
+        using var page = reader.GetPageReader(0); var pixels = page.GetImage();
+        var offset = ((int)(52 * 72d / 25.4d * 2) * page.GetPageWidth() + (int)(82 * 72d / 25.4d * 2)) * 4;
+        Assert.True(pixels[offset + 2] > 180); Assert.True(pixels[offset] < 60);
+    }
+
     [Fact]
     public async Task SaveReviewEvidence_WhenRequested()
     {
