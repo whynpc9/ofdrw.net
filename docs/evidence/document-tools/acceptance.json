@@ -1,11 +1,11 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "e671f1d32ae1937cc7853bc098a431c7ac38c52a",
-  "example_commit": "e671f1d32ae1937cc7853bc098a431c7ac38c52a",
+  "runtime_source_commit": "e389f532a3e6ed2b1fb536a80a6d15d31075f01c",
+  "example_commit": "e389f532a3e6ed2b1fb536a80a6d15d31075f01c",
   "functional_tests": {
     "status": "passed",
-    "total": 212,
+    "total": 215,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
@@ -14,9 +14,9 @@
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.13",
+    "version": "0.1.0-issue03.16",
     "published": false,
-    "repository_commit": "e671f1d32ae1937cc7853bc098a431c7ac38c52a"
+    "repository_commit": "e389f532a3e6ed2b1fb536a80a6d15d31075f01c"
   },
   "native_default_text": {
     "status": "passed",
@@ -30,7 +30,7 @@
   },
   "png_visual_review": {
     "status": "passed-for-listed-pages",
-    "method": "Direct current-source review of all 46 pages in 12 retained 2x2 contact sheets; standalone clean body and split page2 crops checked; all 46 current render SHA-256 also match earlier inspected pages",
+    "method": "All 46 final R9 page PNG bytes match the current R8 pages directly reviewed in 12 retained contact sheets and targeted crops; guards affect rejected inputs only",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -94,7 +94,8 @@
       "R5 outer vendor Appearance metadata retains standard NOTE artwork; unsupported foreign descendants block flattening without changing ordinary roundtrip extension bytes",
       "R6 child/leaf/attribute closure: known drawing survives unknown metadata, unsupported same-namespace child content and drawing references fail explicitly, exact current 46 render bytes unchanged",
       "R7 owned XML-named signature values/seals removed when exclusive; external/shared transitive references keep exact bytes; all actual 46 output render bytes unchanged",
-      "R8 current full-page review: body/table/local style/order intact, known NOTE visible, hidden annotation text/path absent, clipping/glyph transforms correct, signatures removed only in clean/tool outputs, watermarks survive merge"
+      "R8 current full-page review: body/table/local style/order intact, known NOTE visible, hidden annotation text/path absent, clipping/glyph transforms correct, signatures removed only in clean/tool outputs, watermarks survive merge",
+      "R9 text ignores image-only budgets; foreign-only or nested-only empty clip geometry rejects PDF/SVG before output instead of hiding the object; supported page render bytes unchanged"
     ]
   },
   "macos_preview": {
@@ -104,16 +105,16 @@
     "windows_opened": 0
   },
   "pr_review": {
-    "status": "sixth-round four functional findings and bounded consistency regressions fixed; new-head re-review pending; Preview open",
-    "sixth_review_head": "a78e0d08eb4c1dc86f50b6c8a6a2e8b613308dd5",
-    "codex": "owned XML signature payload finding fixed with shared/exclusive closure regression",
-    "cursor": "ImageMask, standard graphic/clip attributes and page/template literal-only parsing findings fixed",
-    "ci": "a78e0d0 all six successful; new head pending"
+    "status": "seventh-round two functional findings fixed; new-head re-review pending; Preview open",
+    "seventh_review_head": "c8ebdeb4832a823fb94f526042efc219a72faa95",
+    "codex": "text/image budget separation fixed with atomic-rejection regression",
+    "cursor": "empty clip intersection fixed with no-output and XML-preservation regression",
+    "ci": "c8ebdeb all six successful; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 38113133,
-    "sha256": "1e3d4c4c0da18822656f9a56a0375f34433884e9632e73614f61392253321948",
+    "bytes": 38077968,
+    "sha256": "a43b2917f45e5580413bfaa4f6f16cabd9662b9d152931eb74aa78f4e222d021",
     "extraction_readback": "passed all per-file size and SHA-256 checks"
   },
   "ofd_sizes": {
