@@ -5,9 +5,16 @@ using Ofdrw.Net.Core.Models;
 namespace Ofdrw.Net.Core.Fonts;
 internal static class EmbeddedFontCoverage
 {
-    internal static bool HasExplicitGlyphReferences(OfdTextElement text) =>
-        !string.IsNullOrWhiteSpace(text.SourceXml) && XElement.Parse(text.SourceXml!).Descendants()
-            .Any(node => node.Name.LocalName == "CGTransform");
+    internal static bool HasExplicitGlyphReferences(OfdTextElement text) => HasExplicitGlyphReferences(text.SourceXml);
+    internal static bool HasExplicitGlyphReferences(string? sourceXml)
+    {
+        if (string.IsNullOrWhiteSpace(sourceXml)) return false;
+        try { return XElement.Parse(sourceXml!).DescendantsAndSelf().Any(node => node.Name.LocalName == "CGTransform"); }
+        catch (System.Xml.XmlException exception)
+        {
+            throw new System.NotSupportedException("Malformed SourceXml cannot safely preserve glyph references.", exception);
+        }
+    }
 
     internal static void Validate(string text, OpenTypeCmap cmap, string name)
     {

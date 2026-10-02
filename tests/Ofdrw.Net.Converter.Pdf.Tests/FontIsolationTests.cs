@@ -55,6 +55,8 @@ public sealed class FontIsolationTests
         var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([]);
         var exception = Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { Text = "A\U000107A5B" }, out _));
         Assert.Contains("supplementary Unicode", exception.Message);
+        foreach (var xml in new[] { "<CGTransform><Glyphs>1</Glyphs></CGTransform>", "<CGTransform" })
+            Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { Text = "中文", SourceXml = xml }, out _));
         Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { Text = "A", SourceXml = "<TextObject><CGTransform><Glyphs>1</Glyphs></CGTransform></TextObject>" }, out _));
     }
 

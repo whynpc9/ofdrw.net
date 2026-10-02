@@ -4,12 +4,12 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 428/428；独立 R2 定向 44/44 |
-| 包消费 | 11 个 `0.1.0-issue05.20261002.2` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 449/449；独立 R5 定向 65/65 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.5` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
-| macOS Preview | **未完成**：已观察 04 的 graphics.pdf 窗口使用中，05 正等协调独占时段；PNG/浏览器检查不替代此门禁 |
+| macOS Preview | **通过**：2026-10-03 独占时段逐页实际查看 full/subset、native/default 四份 8 页；关闭全部 05 窗口后释放 UI；检查范围及每份 SHA 见 `preview-acceptance.json` |
 
 统一样例（相同 source fonts、两个页面、样式、Unicode 文本和矢量矩形）：
 
@@ -29,4 +29,6 @@ zstd -d evidence.tar.zst -c | tar -xf -
 
 包含本次 full/subset OFD 与 PDF、native/default DOCX 衍生 OFD/PDF、subset/native/default SVG、源 DOCX、页面 PNG、环境/哈希/检查记录和测试日志。较大的 full SVG 可由 full OFD 使用公开 SDK 重现，不重复打包。`manifest.json` 记录公开证据内每个文件的 SHA-256 与体积。
 
-已保留最初样例标题过长及修正后的记录；当前两页页标已拆行，重生成后再次检查。非 BMP P2 的失败轮次和独立 R2 复验亦保留。范围限制详见[字体子集契约](../../font-subset-and-reuse.md)：CFF/变量/未知表/RTL 全量保护；非 BMP PDF 与未建模 CGTransform PDF/SVG 明确失败；已有未知 OFD 资源不裁剪。未完成 Preview 前不宣称本票整体视觉闭环或发布验收通过，也不关闭 issue #3。
+DocumentTools 首轮 CI 失败与两轮定位日志保留：空白包会生成没有文字 repertoire 的子集，随后新增水印/注释必须重新绑定原 face，或对明确待注入未知绘制的编辑样例选择 Full。本次修复按此契约执行，不放宽 coverage。再跑 36 样例 / 55 PDF 页通过。
+
+已保留最初样例标题过长及修正后的记录；当前两页页标已拆行，重生成后再次检查。非 BMP P2 的失败轮次和独立 R2 复验亦保留。范围限制详见[字体子集契约](../../font-subset-and-reuse.md)：CFF/变量/未知表/RTL 全量保护；非 BMP PDF 与未建模 CGTransform PDF/SVG 明确失败；已有未知 OFD 资源不裁剪。Preview 仅覆盖列出的 8 页；发布/merge 未授权，不关闭 issue #3。当前 head 的 CI/review 闭环单独记录，不以这些样例推断任意复杂文档保真。

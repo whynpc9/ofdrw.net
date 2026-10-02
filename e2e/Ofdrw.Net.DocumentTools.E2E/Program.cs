@@ -222,6 +222,9 @@ catch (NotSupportedException exception) { File.WriteAllText(PathFor("unarchived-
 var mark = File.ReadAllBytes(Path.Combine(root, "e2e/Ofdrw.Net.DocumentTools.E2E/mark.png"));
 var blank = new OfdDocumentPackage(); blank.Fonts.Add(source.Fonts.First()); blank.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
 await Save(blank, "blank-watermark-input"); blank = await Read("blank-watermark-input");
+// The blank document's automatic subset has no text repertoire yet. Bind the
+// licensed source face again before introducing new watermark characters.
+foreach (var font in blank.Fonts) { font.Data = fontBytes; font.FileName = "Ofdrw-CI-NotoSansCJKsc-Regular.ttf"; }
 OfdWatermark.AddText(blank, [0], "BLANK PAGE WATERMARK", new OfdWatermarkOptions { XMillimeters = 10, YMillimeters = 10, WidthMillimeters = 80, HeightMillimeters = 10, LayerId = "watermark" }, fontName: blank.Fonts.First().FontName, fontSizeMillimeters: 4);
 OfdWatermark.AddImage(blank, [0], mark, "image/png", new OfdWatermarkOptions { XMillimeters = 40, YMillimeters = 35, WidthMillimeters = 20, HeightMillimeters = 20, LayerId = "watermark" });
 await Save(blank, "blank-watermark");
@@ -414,6 +417,9 @@ await using (var target = File.Create(PathFor("clean.ofd")))
 }
 File.Copy(PathFor("clean.ofd"), PathFor("report-clean-signed.ofd"), true);
 var clipped = new OfdDocumentPackage();
+// This fixture injects unmodeled annotation text after the blank package is
+// saved. Keep its licensed face complete for that explicit editing scenario.
+clipped.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
 clipped.Fonts.Add(source.Fonts.First(font => !font.Bold && !font.Italic));
 clipped.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100,
     Elements = { new OfdImageElement { Data = mark, Alpha = 0, WidthMillimeters = 1, HeightMillimeters = 1 } } });

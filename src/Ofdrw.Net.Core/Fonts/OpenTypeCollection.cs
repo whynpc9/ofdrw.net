@@ -20,7 +20,7 @@ internal static class OpenTypeCollection
         OpenTypeFace.Require(source, 12, count * 4);
         return new OpenTypeFace(source, OpenTypeFace.Size(OpenTypeFace.U32(source, 12 + index * 4))).Build();
     }
-    internal static IReadOnlyList<byte[]> ExtractFaces(byte[] source)
+    internal static IReadOnlyList<byte[]> ExtractFaces(byte[] source, long maximumExtractedBytes = 256L * 1024 * 1024)
     {
         if (source is null) throw new ArgumentNullException(nameof(source));
         OpenTypeFace.Require(source, 0, 12);
@@ -30,9 +30,17 @@ internal static class OpenTypeCollection
         var count = OpenTypeFace.Size(OpenTypeFace.U32(source, 8));
         if (count <= 0 || count > 64) throw new InvalidDataException("Invalid collection face count.");
         OpenTypeFace.Require(source, 12, count * 4);
+        if (maximumExtractedBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maximumExtractedBytes));
+        long total = 0;
         var faces = new List<byte[]>(count);
         for (var index = 0; index < count; index++)
-            faces.Add(new OpenTypeFace(source, OpenTypeFace.Size(OpenTypeFace.U32(source, 12 + index * 4))).Build());
+        {
+            var face = new OpenTypeFace(source, OpenTypeFace.Size(OpenTypeFace.U32(source, 12 + index * 4)));
+            long size = 12 + face.Tables.Count * 16;
+            foreach (var table in face.Tables.Values) size += OpenTypeFace.Align(table.Length);
+            if (size > maximumExtractedBytes - total) throw new InvalidDataException("Collection faces exceed the extracted font byte budget.");
+            var bytes = face.Build(); total += bytes.LongLength; faces.Add(bytes);
+        }
         return faces;
     }
 }

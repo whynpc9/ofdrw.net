@@ -38,3 +38,8 @@ Names while retaining copyright and license records. Subsetting does not grant
 embedding rights. The managed subset implementation introduces no third-party
 runtime backend; HarfBuzz/fonttools used for independent development probes are
 not production dependencies.
+
+The compiled font subset bidi profile derives factual scalar ranges from the
+Unicode 17.0.0 Character Database (DerivedBidiClass.txt), licensed under
+Unicode-3.0. The source URL/SHA-256 are recorded in UnicodeFontSubsetProfile.cs;
+`docs/licenses/UNICODE-LICENSE.txt` accompanies every NuGet artifact.
