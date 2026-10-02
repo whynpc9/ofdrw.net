@@ -24,8 +24,11 @@ internal static class OfdClipGeometry
         foreach (var clip in root.Elements(ns + "Clip"))
         {
             var region = new OfdClipRegion();
+            if (clip.Elements().Any(area => area.Name.LocalName == "Area" && area.Name.Namespace != ns))
+                throw new NotSupportedException("Foreign OFD clip areas cannot be exported safely.");
             foreach (var area in clip.Elements(ns + "Area"))
             {
+                var pathsBeforeArea = region.Paths.Count;
                 var areaTransform = Matrix(area.Attribute("CTM")?.Value);
                 foreach (var shape in area.Elements())
                 {
@@ -47,6 +50,7 @@ internal static class OfdClipGeometry
                     });
                     region.EvenOdd |= string.Equals(shape.Attribute("Rule")?.Value, "Even-Odd", StringComparison.OrdinalIgnoreCase);
                 }
+                if (region.Paths.Count == pathsBeforeArea) throw new NotSupportedException("OFD clip area has no supported path geometry.");
             }
             if (region.Paths.Count == 0) throw new NotSupportedException("OFD clip has no supported path geometry.");
             regions.Add(region);
