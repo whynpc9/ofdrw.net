@@ -4,8 +4,8 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 483/483；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
-| 包消费 | 11 个 `0.1.0-issue05.20261003.15` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 488/488；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.16` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
@@ -48,3 +48,7 @@ R11 最终补验：默认名称 getter 失败仍继续 Arial 的已验证覆盖�
 R12：symbol-only 不再作为已验证 Unicode 字体；在 OFD 保全量，实际选中时 PDF/SVG 统一明确拒绝未建模字符语义/0 字节，未选中可成功导出。R10/R11 选中 A 的 SVG 成功仅属历史行为，不代表最终支持。字体绑定从按组重复解析改为每个文本一次，按源 face 内容组汇总；跨页、相同字节别名、不同字节 face 和名称字体的 repertoire 不混入，并在包括不匹配项的每个元素前检查取消。原 14 个成功路径 Preview 队列不含 symbol，继续待独占时段。
 
 R13：已探测的 name-only symbol 同样记录 unsupported，marker 在 optional catch 外保留；选中 A/A-space/AB 都明确拒绝，未使用不增加注册字节。默认候选 symbol 不可通过 F000 remap 半验证 A，必须跳至后续 Unicode Arial 候选；全为 symbol 则明确缺覆盖失败。三处 DocumentFontContext cmap 构造均检查此边界；未将普通未探测名称字体扩大为全量覆盖审计。
+
+R14：实际选中的普通名称字体和无 FontResource 绑定文本惰性解析物理字节、验证 cmap/当前全文并注册内容身份；未使用普通名称字体不探测，空文本在 SourceXml/控制语义预检后跳过 XFont。符号语义拒绝 marker 不被 catch 吞掉；其他普通探测失败只可进入已验证 default/Arial 候选，不再未经检查地绘制原 family 或 Arial。物理字节以不可变、按内容复用的快照保留，有效粗体/斜体 alias 指向相同物理 face；缓存覆盖逐次重新验证当前文本。
+
+计数更正：此前全套汇总沿用了多计 2 项的总数；原始日志和独立报告不重写。`test-count-audit.json` 按六个测试项目的日志结果逐项汇总：R10 实为 464，R11 最终实为 476，R12 实为 477，R13 实为 481；本轮 R14 为 **488/488**（Core5、Packaging305、PDF112、Signatures4、DOCX49、CLI13）。旧评论或历史段落中的更高总数已由这份审计更正，独立定向计数另列。

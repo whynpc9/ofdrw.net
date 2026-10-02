@@ -348,6 +348,45 @@ public sealed class FontIsolationTests
         public byte[] GetFont(string face) => face == "symbol-face" ? symbol : face == "unicode-arial" ? arial : primary;
     }
 
+    [Theory]
+    [InlineData(false, "A")][InlineData(false, "A ")][InlineData(false, "AB")][InlineData(true, "A")]
+    public void RegularAndUnboundSelectedSymbolFontsRefuseLazily(bool unbound, string value)
+    {
+        var host = new HostResolver(SymbolFace(File.ReadAllBytes(FontPath("narrow"))));
+        var resource = new OfdFontResource { Id = "10", FontName = "regular-symbol" };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext(unbound ? [] : [resource], host);
+        Assert.Equal(0, host.Requests);
+        Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { FontResourceId = unbound ? null : "10", FontName = "regular-symbol", Text = value }, out _));
+        Assert.Equal(1, host.Requests);
+    }
+
+    [Theory]
+    [InlineData(false)][InlineData(true)]
+    public void CachedNameOnlyCoverageIsRecheckedAndEmphasisUsesSamePhysicalFace(bool resourceBold)
+    {
+        var bytes = File.ReadAllBytes(FontPath("narrow"));
+        var host = new HostResolver(bytes);
+        var resource = new OfdFontResource { Id = "10", FontName = "regular-unicode", Bold = resourceBold };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], host);
+        var family = context.Resolve(new OfdTextElement { FontResourceId = "10", Text = "A", Weight = 700, Italic = true }, out _);
+        var face = GlobalFontSettings.FontResolver.ResolveTypeface(family, true, true);
+        Assert.StartsWith("ofd:", face.FaceName); Assert.Equal(bytes, PdfFontRegistry.GetOriginalFont(face.FaceName));
+        Assert.True(face.MustSimulateBold); Assert.True(face.MustSimulateItalic);
+        Assert.Throws<InvalidDataException>(() => context.Resolve(new OfdTextElement { FontResourceId = "10", Text = "一" }, out _));
+    }
+
+    [Fact]
+    public void AddedEmphasisUsesImmutableSnapshotOfPreviouslySelectedPhysicalFont()
+    {
+        var bytes = File.ReadAllBytes(FontPath("narrow")); var original = bytes.ToArray();
+        var resource = new OfdFontResource { Id = "10", FontName = "snapshot-host", Bold = true };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], new HostResolver(bytes));
+        Array.Clear(bytes);
+        var family = context.Resolve(new OfdTextElement { FontResourceId = "10", Text = "A", Italic = true }, out _);
+        var face = GlobalFontSettings.FontResolver.ResolveTypeface(family, true, true);
+        Assert.StartsWith("ofd:", face.FaceName); Assert.Equal(original, PdfFontRegistry.GetOriginalFont(face.FaceName));
+    }
+
     private sealed class CoveringResolver(byte[] primary,byte[] fallback):IFontResolver
     {
         public string DefaultFontName=>"covering-default";

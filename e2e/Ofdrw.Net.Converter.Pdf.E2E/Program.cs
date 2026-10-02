@@ -21,8 +21,8 @@ var testDataDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "
 Directory.CreateDirectory(outputDir);
 
 // Used and unused name-only resources must survive unavailable/unsupported host
-// fonts. This exercises XFont initialization and the actual Arial draw fallback,
-// not just the optional DocumentFontContext registration.
+// fonts. Each used text must obtain a registered physical face with verified
+// coverage, including default/Arial candidates after optional host failures.
 foreach (var failure in new[] { "Resolve", "Read", "Ttc", "Broken" })
 {
     foreach (var used in new[] { false, true })
@@ -366,7 +366,13 @@ static async Task ValidatePdfSampleAsync(string samplePdf, string outputDir)
     var ofdPath = Path.Combine(sampleOutputDir, $"{sampleName}.ofd");
     var pdfPath = Path.Combine(sampleOutputDir, $"{sampleName}.roundtrip.pdf");
 
-    var pdfToOfd = new PdfToOfdConverter();
+    // This smoke checks raster appearance and page size. Imported private-use
+    // CID text has no source font bytes; semantic re-export is tested separately
+    // and must refuse unverified glyphs rather than drawing fallback boxes.
+    var pdfToOfd = new PdfToOfdConverter(new Ofdrw.Net.Converter.Pdf.PdfToOfdOptions
+    {
+        TextLayerMode = Ofdrw.Net.Converter.Pdf.PdfTextLayerMode.None
+    });
     await using (var pdfInput = File.OpenRead(samplePdf))
     await using (var ofdOutput = File.Create(ofdPath))
     {
