@@ -592,17 +592,11 @@ public sealed class OfdPackageWriter
                 text.Runs.Any(run => !string.IsNullOrWhiteSpace(run.DeltaY) || ToInvariant(run.YMillimeters) != ToInvariant(size))) return;
             var matrix = existingMatrix.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
                 .Select(value => double.Parse(value, CultureInfo.InvariantCulture)).ToArray();
-            if (matrix.Length != 6) throw new InvalidDataException("OFD text CTM must have six values.");
             var writtenSize = double.Parse(ToInvariant(size), CultureInfo.InvariantCulture);
-            var offset = shear * writtenSize;
-            var combined = new[] { matrix[0], matrix[1], matrix[2] - shear * matrix[0], matrix[3] - shear * matrix[1],
-                matrix[4] + matrix[0] * offset, matrix[5] + matrix[1] * offset };
-            if (combined.Any(value => double.IsNaN(value) || double.IsInfinity(value))) throw new InvalidDataException("Generated italic CTM overflowed.");
-            if (!OfdNumericFormat.Nonsingular(combined[0], combined[1], combined[2], combined[3]))
-                throw new InvalidDataException("Generated italic CTM became singular.");
-            textObject.SetAttributeValue("CTM", string.Join(" ", combined.Select(OfdNumericFormat.Plain)));
+            var composition = OfdTextEmphasis.ComposeNameOnlyItalic(matrix, writtenSize);
+            textObject.SetAttributeValue("CTM", string.Join(" ", composition.Matrix.Select(OfdNumericFormat.Plain)));
             textObject.SetAttributeValue(OfdTextEmphasis.FauxItalicFactor,
-                string.Join(" ", new[] { 1d, 0, -shear, 1, offset, 0 }.Select(OfdNumericFormat.Plain)));
+                string.Join(" ", composition.Factor.Select(OfdNumericFormat.Plain)));
             // Graphics uses the physical page as its viewport. No width expansion.
             return;
         }

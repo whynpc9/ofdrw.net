@@ -121,6 +121,43 @@ public sealed class GraphicsEmphasisAndNumberTests
         Assert.Null(XElement.Parse(texts[2].SourceXml!).Attribute(Marker));
     }
 
+    [Fact]
+    public void FauxItalicOverflow_FailsBeforeAppendAndLeavesBudgetsAvailable()
+    {
+        static (OfdDocumentPackage Package, OfdPage Page, OfdGraphics Graphics) Limited()
+        {
+            var package = new OfdDocumentPackage();
+            var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+            package.Pages.Add(page);
+            var graphics = new OfdGraphics(package, page,
+                new OfdGraphicsOptions { MaxPageElements = 1, MaxTextCharacters = 1 });
+            graphics.SetTransform(new OfdMatrix(double.MaxValue, 0, -double.MaxValue, 1, 0, 0));
+            return (package, page, graphics);
+        }
+        var black = new OfdBrush(OfdColor.Black);
+        var transparent = new OfdBrush(new OfdColor(0, 0, 0, 0));
+        var (package, page, graphics) = Limited();
+        Assert.Throws<ArgumentException>(() => graphics.DrawString("I", new OfdFont("SimSun", 0.001, italic: true), black, 0, 0));
+        Assert.Empty(page.Elements);
+        graphics.DrawString("I", new OfdFont("SimSun", 0.001, italic: true), transparent, 0, 0);
+        Assert.Single(page.Elements); // a failed draw did not consume either one-element or one-character budget
+
+        var (resourcePackage, resourcePage, resourceGraphics) = Limited();
+        resourcePackage.Fonts.Add(new OfdFontResource { Id = "11", FontName = "Named Italic", Italic = true });
+        Assert.Throws<ArgumentException>(() => resourceGraphics.DrawString("I", new OfdFont("Alias", 0.001, resourceId: "11"), black, 0, 0));
+        Assert.Empty(resourcePage.Elements);
+        resourcePackage.Fonts.Add(new OfdFontResource { Id = "12", FontName = "Embedded Italic", Italic = true, Data = new byte[] { 1 } });
+        resourceGraphics.DrawString("I", new OfdFont("Alias", 0.001, resourceId: "12"), black, 0, 0);
+        Assert.Single(resourcePage.Elements);
+
+        var (implicitPackage, implicitPage, implicitGraphics) = Limited();
+        implicitPackage.Fonts.Add(new OfdFontResource { Id = "13", FontName = "Implicit Italic", Italic = true });
+        Assert.Throws<ArgumentException>(() => implicitGraphics.DrawString("I", new OfdFont("Implicit Italic", 0.001), black, 0, 0));
+        Assert.Empty(implicitPage.Elements);
+        implicitGraphics.DrawString("I", new OfdFont("Plain", 0.001), black, 0, 0);
+        Assert.Single(implicitPage.Elements); // normal face can consume the budget after rejected implicit italic
+    }
+
     private static double[] Numbers(string value) => value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
         .Select(token => double.Parse(token, CultureInfo.InvariantCulture)).ToArray();
     private static void AssertClose(double expected, double actual) => Assert.InRange(Math.Abs(expected - actual), 0, 0.002);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Xml;
@@ -170,6 +171,13 @@ public sealed class OfdGraphics
         // Normalize the run's baseline so the existing writer can compose its
         // generated name-only italic factor about this anchor, under any user CTM.
         element.Runs.Add(new OfdTextRun { Text = text, XMillimeters = 0, YMillimeters = localBaseline, DeltaX = deltas });
+        var resource = OfdFontSelection.Resolve(_package.Fonts, element);
+        if ((element.Italic || resource?.Italic == true) && resource is not { Data.Length: > 0 } && element.FillColor.Alpha != 0)
+        {
+            try { OfdTextEmphasis.ComposeNameOnlyItalic(element.Transform!, localBaseline); }
+            catch (InvalidDataException exception)
+            { throw new ArgumentException("The current transform cannot express the requested name-only italic geometry.", exception); }
+        }
         Commit(element, deltas?.Length ?? 0, text.Length, cancellationToken);
     }
     private OfdMatrix PageTransform => OfdMatrix.Translation(_page.XMillimeters, _page.YMillimeters).Multiply(Transform);
