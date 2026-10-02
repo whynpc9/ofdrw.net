@@ -125,11 +125,10 @@ internal static class OfdSignatureAppearanceReader
             var pageId = stamp.Attribute("PageRef")?.Value;
             if (string.IsNullOrWhiteSpace(pageId) ||
                 !TryParseBox(stamp.Attribute("Boundary")?.Value, out var box) ||
-                box.Width <= 0 ||
-                box.Height <= 0)
+                !PdfOperandGeometry.Box(box.X, box.Y, box.Width, box.Height))
             {
                 if (maximumAppearances.HasValue)
-                    throw new InvalidDataException("Selected signature stamp Boundary must contain finite coordinates and positive finite dimensions.");
+                    throw new InvalidDataException("Selected signature stamp Boundary must have finite PDF coordinates and positive dimensions representable by the PDF writer.");
                 continue;
             }
 

@@ -75,6 +75,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             if (!(pageModel.WidthMillimeters > 0) || !(pageModel.HeightMillimeters > 0) ||
                 double.IsInfinity(pageModel.WidthMillimeters) || double.IsInfinity(pageModel.HeightMillimeters))
                 throw new InvalidDataException("OFD page has invalid physical dimensions.");
+            if (strictAppearanceBudgets && !PdfOperandGeometry.Origin(pageModel.XMillimeters, pageModel.YMillimeters))
+                throw new InvalidDataException("Selected OFD page origin must remain finite in PDF coordinates.");
             var pdfPage = document.AddPage();
             pdfPage.Width = MillimetersToPoints(pageModel.WidthMillimeters);
             pdfPage.Height = MillimetersToPoints(pageModel.HeightMillimeters);
@@ -172,8 +174,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 .OrderBy(page => page.Index)
                 .FirstOrDefault();
             if (pageModel is null ||
-                !(pageModel.WidthMillimeters > 0) || !(pageModel.HeightMillimeters > 0) ||
-                double.IsInfinity(pageModel.WidthMillimeters) || double.IsInfinity(pageModel.HeightMillimeters))
+                !PdfOperandGeometry.Box(pageModel.XMillimeters, pageModel.YMillimeters,
+                    pageModel.WidthMillimeters, pageModel.HeightMillimeters))
             {
                 if (appearanceBudget is not null) throw new InvalidDataException("Nested OFD appearance has invalid page geometry.");
                 return null;
@@ -209,6 +211,12 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             foreach (var appearance in appearances.Where(item => string.Equals(item.PageId, page.Id, StringComparison.OrdinalIgnoreCase)))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (!PdfOperandGeometry.Box(appearance.XMillimeters - page.XMillimeters,
+                    appearance.YMillimeters - page.YMillimeters, appearance.WidthMillimeters, appearance.HeightMillimeters))
+                {
+                    if (reusePayloads) throw new InvalidDataException("Selected signature stamp placement is not representable in PDF coordinates.");
+                    continue;
+                }
                 var target = new XRect(MillimetersToPoints(appearance.XMillimeters - page.XMillimeters),
                     MillimetersToPoints(appearance.YMillimeters - page.YMillimeters),
                     MillimetersToPoints(appearance.WidthMillimeters), MillimetersToPoints(appearance.HeightMillimeters));
@@ -216,6 +224,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     if (appearance.OfdPage is not null)
                     {
+                        var formWidth = XUnit.FromMillimeter(appearance.OfdPage.WidthMillimeters).Point;
+                        var formHeight = XUnit.FromMillimeter(appearance.OfdPage.HeightMillimeters).Point;
+                        if (!PdfOperandGeometry.PositiveExtent(target.Width / formWidth) ||
+                            !PdfOperandGeometry.PositiveExtent(target.Height / formHeight))
+                        {
+                            if (reusePayloads) throw new InvalidDataException("Selected signature form scale is not representable by the PDF writer.");
+                            continue;
+                        }
                         if (!reusePayloads)
                         {
                             using var form = CreateAppearanceForm(document, appearance, maximumPixels, cancellationToken);

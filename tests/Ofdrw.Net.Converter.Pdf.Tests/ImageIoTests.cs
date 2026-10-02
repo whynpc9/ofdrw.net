@@ -554,10 +554,12 @@ public sealed class ImageIoTests
     [Theory]
     [InlineData("missing")] [InlineData("empty")] [InlineData("unsupported")]
     [InlineData("Infinity")] [InlineData("NaN")]
+    [InlineData("1e308")] [InlineData("1e-5")]
+    [InlineData("origin-NaN")] [InlineData("origin-Infinity")] [InlineData("origin-1e308")]
     public async Task StrictSelectedStampRequiresPayloadAndFiniteNestedPage(string kind)
     {
         byte[] bad;
-        if (kind is "Infinity" or "NaN")
+        if (kind is "Infinity" or "NaN" or "1e308" or "1e-5" || kind.StartsWith("origin-"))
         {
             using var rewritten = new MemoryStream(); rewritten.Write(await NestedSeal());
             using (var zip = new ZipArchive(rewritten, ZipArchiveMode.Update, true))
@@ -566,7 +568,8 @@ public sealed class ImageIoTests
                 {
                     var entry = zip.GetEntry(path)!; System.Xml.Linq.XDocument xml;
                     using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
-                    foreach (var box in xml.Descendants().Where(e => e.Name.LocalName == "PhysicalBox")) box.Value = $"0 0 {kind} 210";
+                    foreach (var box in xml.Descendants().Where(e => e.Name.LocalName == "PhysicalBox"))
+                        box.Value = kind.StartsWith("origin-") ? $"{kind.Substring(7)} 0 10 10" : $"0 0 {kind} 210";
                     entry.Delete(); using var output = zip.CreateEntry(path).Open(); xml.Save(output);
                 }
             }
@@ -600,6 +603,10 @@ public sealed class ImageIoTests
     [InlineData("0 0 Infinity 10")] [InlineData("0 0 10 -Infinity")]
     [InlineData("1e309 0 10 10")] [InlineData("0 1e309 10 10")]
     [InlineData("0 0 1e309 10")] [InlineData("0 0 10 1e309")]
+    [InlineData("1e308 0 10 10")] [InlineData("0 -1e308 10 10")]
+    [InlineData("0 0 1e308 10")] [InlineData("0 0 10 1e308")]
+    [InlineData("0 6.3e307 10 6.3e307")]
+    [InlineData("0 0 1e-5 10")] [InlineData("0 0 10 1e-5")]
     public async Task StrictSelectedStampRejectsInvalidBoundaryAndLegacyPdfKeepsValidSeal(string? boundary)
     {
         using var rewritten = new MemoryStream(); rewritten.Write(await WithSeals([ImageBytes(true), ImageBytes(true)]));
@@ -619,6 +626,113 @@ public sealed class ImageIoTests
         using var page = reader.GetPageReader(0); var pixels = page.GetImage();
         var offset = ((int)(12 * 72d / 25.4d * 2) * page.GetPageWidth() + (int)(7 * 72d / 25.4d * 2)) * 4;
         Assert.True(pixels[offset + 2] > 180); Assert.True(pixels[offset] < 60);
+        pdf.Position = 0;
+        using var parsed = PdfSharpCore.Pdf.IO.PdfReader.Open(pdf, PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var content = System.Text.Encoding.ASCII.GetString(parsed.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+        Assert.DoesNotContain("Infinity", content); Assert.DoesNotContain("NaN", content);
+    }
+
+    [Theory]
+    [InlineData("NaN", false)] [InlineData("NaN", true)]
+    [InlineData("Infinity", false)] [InlineData("-Infinity", true)]
+    [InlineData("1e308", false)] [InlineData("-1e308", true)]
+    public async Task StrictSelectedPageRejectsNonRepresentableOrigin(string origin, bool yAxis)
+    {
+        using var rewritten = new MemoryStream(); rewritten.Write(await WithSeals([ImageBytes(true)]));
+        using (var zip = new ZipArchive(rewritten, ZipArchiveMode.Update, true))
+        {
+            foreach (var path in new[] { "Doc_0/Document.xml", "Doc_0/Pages/Page_0/Content.xml" })
+            {
+                var entry = zip.GetEntry(path)!; System.Xml.Linq.XDocument xml;
+                using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
+                foreach (var box in xml.Descendants().Where(e => e.Name.LocalName == "PhysicalBox"))
+                    box.Value = yAxis ? $"0 {origin} 120 80" : $"{origin} 0 120 80";
+                entry.Delete(); using var output = zip.CreateEntry(path).Open(); xml.Save(output);
+            }
+        }
+        using var input = new MemoryStream(rewritten.ToArray()); using var sentinel = Sentinel();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
+        { PixelsPerMillimeter = 2 }).ConvertAsync(input, sentinel));
+        Assert.Contains("origin", error.Message); AssertSentinel(sentinel);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task SelectedStampUsesPageOriginAndRejectsRelativeCoordinateOverflow(bool overflow)
+    {
+        using var rewritten = new MemoryStream(); rewritten.Write(await WithSeals([ImageBytes(true)]));
+        using (var zip = new ZipArchive(rewritten, ZipArchiveMode.Update, true))
+        {
+            foreach (var path in new[] { "Doc_0/Document.xml", "Doc_0/Pages/Page_0/Content.xml", "Doc_0/Signs/S0/Signature.xml" })
+            {
+                var entry = zip.GetEntry(path)!; System.Xml.Linq.XDocument xml;
+                using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
+                foreach (var box in xml.Descendants().Where(e => e.Name.LocalName == "PhysicalBox"))
+                    box.Value = overflow ? "-2e306 0 120 80" : "2 3 120 80";
+                if (overflow)
+                    foreach (var stamp in xml.Descendants().Where(e => e.Name.LocalName == "StampAnnot"))
+                        stamp.SetAttributeValue("Boundary", "2e306 0 10 10");
+                entry.Delete(); using var output = zip.CreateEntry(path).Open(); xml.Save(output);
+            }
+        }
+        using var input = new MemoryStream(rewritten.ToArray()); using var outputImage = overflow ? Sentinel() : new MemoryStream();
+        var converter = new OfdToImageConverter(new OfdToImageOptions { PixelsPerMillimeter = 2 });
+        if (overflow)
+        {
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => converter.ConvertAsync(input, outputImage));
+            Assert.Contains("placement", error.Message); AssertSentinel(outputImage);
+            input.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
+            pdf.Position = 0;
+            using var parsed = PdfSharpCore.Pdf.IO.PdfReader.Open(pdf, PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+            var content = System.Text.Encoding.ASCII.GetString(parsed.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+            Assert.DoesNotContain("Infinity", content); Assert.DoesNotContain("NaN", content);
+        }
+        else
+        {
+            await converter.ConvertAsync(input, outputImage);
+            using var raster = Image.Load<Rgb24>(outputImage.ToArray());
+            Assert.True(raster[10, 18].R > 180); Assert.True(raster[10, 18].B < 60);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task StrictNestedStampRejectsOverflowOrZeroSerializedFormScale(bool overflow)
+    {
+        using var seal = new MemoryStream(); seal.Write(await NestedSeal());
+        if (overflow)
+        {
+            using var zip = new ZipArchive(seal, ZipArchiveMode.Update, true);
+            foreach (var path in new[] { "Doc_0/Document.xml", "Doc_0/Pages/Page_0/Content.xml" })
+            {
+                var entry = zip.GetEntry(path)!; System.Xml.Linq.XDocument xml;
+                using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
+                foreach (var box in xml.Descendants().Where(e => e.Name.LocalName == "PhysicalBox")) box.Value = "0 0 0.001 10";
+                entry.Delete(); using var output = zip.CreateEntry(path).Open(); xml.Save(output);
+            }
+        }
+        using var rewritten = new MemoryStream(); rewritten.Write(await WithSeals([ImageBytes(true), seal.ToArray()]));
+        using (var zip = new ZipArchive(rewritten, ZipArchiveMode.Update, true))
+        {
+            var entry = zip.GetEntry("Doc_0/Signs/S1/Signature.xml")!; System.Xml.Linq.XDocument xml;
+            using (var stream = entry.Open()) xml = System.Xml.Linq.XDocument.Load(stream);
+            xml.Descendants().Single(e => e.Name.LocalName == "StampAnnot").SetAttributeValue("Boundary",
+                overflow ? "23 10 1e306 10" : "23 10 0.0001 10");
+            entry.Delete(); using var output = zip.CreateEntry("Doc_0/Signs/S1/Signature.xml").Open(); xml.Save(output);
+        }
+        using var input = new MemoryStream(rewritten.ToArray()); using var sentinel = Sentinel();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
+        { PixelsPerMillimeter = 2 }).ConvertAsync(input, sentinel));
+        Assert.Contains("form scale", error.Message); AssertSentinel(sentinel);
+        input.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
+        using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
+        using var page = reader.GetPageReader(0); var pixels = page.GetImage();
+        var offset = ((int)(12 * 72d / 25.4d * 2) * page.GetPageWidth() + (int)(7 * 72d / 25.4d * 2)) * 4;
+        Assert.True(pixels[offset + 2] > 180); Assert.True(pixels[offset] < 60);
+        pdf.Position = 0;
+        using var parsed = PdfSharpCore.Pdf.IO.PdfReader.Open(pdf, PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var content = System.Text.Encoding.ASCII.GetString(parsed.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+        Assert.DoesNotContain("Infinity", content); Assert.DoesNotContain("NaN", content);
     }
 
     [Fact]
