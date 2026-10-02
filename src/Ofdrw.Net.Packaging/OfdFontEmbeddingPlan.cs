@@ -110,10 +110,11 @@ internal sealed class OfdFontEmbeddingPlan
                     var strings = text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text);
                     foreach (var value in strings)
                     {
-                        if (cmap is not null) EmbeddedFontCoverage.Validate(value, cmap, aliases[0].FontName);
-                        foreach (var normalized in new[] { value, value.Normalize(NormalizationForm.FormC), value.Normalize(NormalizationForm.FormD) })
+                        if (cmap is not null) EmbeddedFontCoverage.Validate(value, cmap, aliases[0].FontName, cancellationToken);
+                        foreach (var normalized in NormalizeForUsage(value, cancellationToken))
                             foreach (var scalar in OpenTypeFace.Scalars(normalized))
                             {
+                                cancellationToken.ThrowIfCancellationRequested();
                                 if (UnicodeFontSubsetProfile.RequiresBidiMirroring(scalar))
                                     reason ??= "RTL/bidi shaping requires a Unicode mirror closure; full font retained.";
                                 if (OpenTypeCmap.IsVariationSelector(scalar)) continue;
@@ -139,6 +140,21 @@ internal sealed class OfdFontEmbeddingPlan
             if (reason is not null) Diagnostics.Add("FONT_FULL_PRESERVED " + group.Key + ": " + reason);
         }
     }
+    private static IEnumerable<string> NormalizeForUsage(string value, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        yield return value;
+        // Normalization is a synchronous BCL call: observe cancellation on both
+        // sides, and do not eagerly allocate both normalized forms first.
+        foreach (var form in new[] { NormalizationForm.FormC, NormalizationForm.FormD })
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var normalized = value.Normalize(form);
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return normalized;
+        }
+    }
+
     private static string? PreservationReason(OfdDocumentPackage package, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

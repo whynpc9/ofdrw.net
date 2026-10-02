@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
 namespace Ofdrw.Net.Core.Fonts;
@@ -16,11 +17,13 @@ internal static class EmbeddedFontCoverage
         }
     }
 
-    internal static void Validate(string text, OpenTypeCmap cmap, string name)
+    internal static void Validate(string text, OpenTypeCmap cmap, string name, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var previous = -1;
         foreach (var scalar in OpenTypeFace.Scalars(text))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (OpenTypeCmap.IsVariationSelector(scalar))
             {
                 if (previous < 0 || !cmap.SupportsVariation(previous, scalar))

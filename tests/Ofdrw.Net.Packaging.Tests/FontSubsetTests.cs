@@ -139,6 +139,21 @@ public sealed class FontSubsetTests
     }
 
     [Fact]
+    public void RepeatedScalarCoverageObservesCancellationWithoutUniqueScalarGrowth()
+    {
+        var cmap = new OpenTypeCmap(new OpenTypeFace(Latin.Value));
+        using var cancellation = new CancellationTokenSource();
+        using var ready = new ManualResetEventSlim();
+        var canceler = new Thread(() => { ready.Wait(); cancellation.Cancel(); });
+        canceler.Start(); ready.Set();
+        try
+        {
+            Assert.Throws<OperationCanceledException>(() => EmbeddedFontCoverage.Validate(new string('A', 4_000_000), cmap, "repeated", cancellation.Token));
+        }
+        finally { canceler.Join(); }
+    }
+
+    [Fact]
     public async Task SameNamesDifferentContentDoNotMerge()
     {
         var package = Package(Latin.Value, "Alpha"); var second = new OpenTypeFace(Latin.Value);

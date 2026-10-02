@@ -1,8 +1,8 @@
 [
   {
     "path": "acceptance.json",
-    "bytes": 9525,
-    "sha256": "1fda6edb06107c5a301ca2cbb036c09c513887d2b7e46426985414dd564b9f46"
+    "bytes": 10040,
+    "sha256": "ff6fa5b957e46bfba2c4b891b565a0d6e2c50212e596b304e48db1125a431b88"
   },
   {
     "path": "baseline-tests.log",
@@ -18,6 +18,16 @@
     "path": "cancel-r20/Program.cs",
     "bytes": 1668,
     "sha256": "2ad52cf9f0040b21452dfd765e87ca7cbf0def34bd5914f2c8e4dea6f3dd8e05"
+  },
+  {
+    "path": "cancel-r21/Cancel.csproj",
+    "bytes": 342,
+    "sha256": "dfd8c57004176836aac4442b965c90bac66f312c0e29d4a04328006387942b19"
+  },
+  {
+    "path": "cancel-r21/Program.cs",
+    "bytes": 2029,
+    "sha256": "1d644b6ffa4e4e7aa146c686fc7ceea9631ef44166c548cd6061054f256e1cf0"
   },
   {
     "path": "ci-build-test-r11.log",
@@ -2535,6 +2545,11 @@
     "sha256": "738686b53cd27a447bb453d8786bb74fca6c2f808b3f5a4d9c0ed7f25ce8534a"
   },
   {
+    "path": "final-tests-r21.log",
+    "bytes": 8022,
+    "sha256": "793ad625009f2c0ab6f86d63f9b0b7897de6d77a5a633b3997c85f8079bbc3a8"
+  },
+  {
     "path": "final-tests-r5.log",
     "bytes": 8168,
     "sha256": "3198e23f948cf73b4e4be10923549169733691810975f75a27608b065717e447"
@@ -2653,6 +2668,11 @@
     "path": "independent-review-r20.md",
     "bytes": 1957,
     "sha256": "9024f27fbb4cb67244f227a16e3e6b3475cd105d64c737f4fef3d653a7b4eaea"
+  },
+  {
+    "path": "independent-review-r21.md",
+    "bytes": 2199,
+    "sha256": "f9ba25f525f4f472db8971fbc13cc02add0552a63700b0dd2a507ff92fb94aef"
   },
   {
     "path": "independent-review-r5.md",
@@ -3870,6 +3890,11 @@
     "sha256": "26461a2a21e41de76c87038ffc1dd69879514b2de3161f26ee0c50bcb7b1a9f7"
   },
   {
+    "path": "package-e2e-r21.log",
+    "bytes": 19946,
+    "sha256": "49e86edde8451de8536ac9f8fea4e49a7a6610962e82ff235475a47e34095b69"
+  },
+  {
     "path": "package-e2e-r5.log",
     "bytes": 21616,
     "sha256": "5e26102b960df2b1c14bb60b643a460cffd4a1a4d9007230604cef432545b69d"
@@ -3941,6 +3966,11 @@
   },
   {
     "path": "preview-queue-r20.json",
+    "bytes": 8271,
+    "sha256": "a22a514a8300acb9da3e6764c13b2c6148482c448b53b0e89439e2b6c8c186d8"
+  },
+  {
+    "path": "preview-queue-r21.json",
     "bytes": 8271,
     "sha256": "a22a514a8300acb9da3e6764c13b2c6148482c448b53b0e89439e2b6c8c186d8"
   },
@@ -5497,7 +5527,7 @@
   {
     "path": "source-freeze.json",
     "bytes": 6108,
-    "sha256": "0a32ba64a7d9644530c7e9ae44dab284c4ca52283044ed2397b5bbe0e599d7a9"
+    "sha256": "0de43649ee466d00a483a0f78d2cc3419154f8583740adaece076233ac3d61a7"
   },
   {
     "path": "static-review-first-round.md",
@@ -5636,7 +5666,7 @@
   },
   {
     "path": "test-count-audit.json",
-    "bytes": 28866,
-    "sha256": "f14c7435689763f241c43038cf0747534545892076883598566efe4ab6c18d0f"
+    "bytes": 29784,
+    "sha256": "a7323293a5444bcff334de5ee3cc1440a7a66ea1e38d56bb9a1da96dc50de3db"
   }
 ]
