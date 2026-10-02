@@ -128,6 +128,8 @@ internal static class OfdSignatureAppearanceReader
                 box.Width <= 0 ||
                 box.Height <= 0)
             {
+                if (maximumAppearances.HasValue)
+                    throw new InvalidDataException("Selected signature stamp Boundary must contain finite coordinates and positive finite dimensions.");
                 continue;
             }
 
@@ -466,7 +468,7 @@ internal static class OfdSignatureAppearanceReader
                     ? parsed
                     : double.NaN)
             .ToArray();
-        if (values.Length != 4 || values.Any(double.IsNaN))
+        if (values.Length != 4 || values.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
         {
             return false;
         }
