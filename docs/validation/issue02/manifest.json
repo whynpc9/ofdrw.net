@@ -1,5 +1,5 @@
 {
-  "source_commit": "f91ec905958cddf5eb50615825b5f5822e825388",
+  "source_commit": "89e962ee1e41d2de050fc16d409ddc6e6cafedc1",
   "baseline": "be8b74b3cbd699732ec0638189d14037e052a770",
   "date": "2026-10-02",
   "timezone": "Asia/Shanghai",
@@ -17,10 +17,10 @@
     "shared-seal": "appearance-only OFD with six repeated nested payload placements -> PDF / strict cached image export; no cryptographic validity claim"
   },
   "tests": {
-    "total": 269,
+    "total": 274,
     "failed": 0,
     "packages": 11,
-    "package_version": "0.1.0-issue02.review10"
+    "package_version": "0.1.0-issue02.review11"
   },
   "png_visual_review": [
     "export-1.png",
@@ -94,12 +94,12 @@
     {
       "path": "imported.ofd",
       "bytes": 3405,
-      "sha256": "3098d2928ec1bfeeaf8d60e6853514f58d9571c2ef942dbe16110213986846dc"
+      "sha256": "359f1d188b2daaed96ef0fad4017441b8148369886e1bcf02c3f6cc47cb7bef1"
     },
     {
       "path": "imported.pdf",
       "bytes": 3414,
-      "sha256": "ff722a9266ff12f24844b951bd76451efb814276e1ba2d9870a3c277c109ff29"
+      "sha256": "3b7e400e631ff45cf6e30d65f90a5beae53f5409ae8cb146116e82bc121856dd"
     },
     {
       "path": "input.jpg",
@@ -113,13 +113,13 @@
     },
     {
       "path": "shared-seal.ofd",
-      "bytes": 3280,
-      "sha256": "662c850e071359d234e3770e3135deb31281167f1d3f31fe0961f93d5aefda33"
+      "bytes": 3278,
+      "sha256": "8eb10a34debac77e0d54288b5b34e45b42bb7074e6dfc9296df7a0a12b765400"
     },
     {
       "path": "shared-seal.pdf",
       "bytes": 3255,
-      "sha256": "7f44807c91253b9001ad2a9b649e4de852d2b1f54e7f7b99376231223e752ddb"
+      "sha256": "5475f101d0555773da2c006c1e4ae056feb8f40de747a48b9c00a278f5635e77"
     },
     {
       "path": "shared-seal.png",
@@ -129,53 +129,53 @@
     {
       "path": "source.ofd",
       "bytes": 2969,
-      "sha256": "f05dbf4ca6d8d875a84bc3a9bc77aafac723350ef2d1b5f26c142fcc72c27f10"
+      "sha256": "84d6c93d701f0153c81ab9d0df2c523899f209bd4d52103d3743addffec943ff"
     },
     {
       "path": "source.pdf",
       "bytes": 69655,
-      "sha256": "9b8a1c7c5128be3daf17d76c07e5a84e1babb7cd1af24a6e3762d636ab78906e"
+      "sha256": "5df4210ee45cf5a0fd34830dc23e57115c54152690646208b942c9e733927523"
     },
     {
       "path": "baseline-native.ofd",
-      "bytes": 15288609,
-      "sha256": "174f1a4c52eea39f2f9ffd771329c8359af7d3dea961a74328b879dd2c3c2d43"
+      "bytes": 15288606,
+      "sha256": "29bf03301b9c419d7aee3e3804db7d176998b49d6d8f8807ed299cb2a7a8a323"
     },
     {
       "path": "baseline-native.pdf",
       "bytes": 117446,
-      "sha256": "6d3664fd4f8bef03fc2ff73b4558f4d8555eacdeac88dd8dae3e42f5bf325320"
+      "sha256": "49d039898145f5a920301e58aacd19b72fd57e7e70f2c0c8b3a715850a04a29c"
     },
     {
       "path": "baseline-default.ofd",
-      "bytes": 15288606,
-      "sha256": "901488668a3e1a579cb237e2918ad72c7f0e607602c9dfae2b2d76f6b9e7d932"
+      "bytes": 15288607,
+      "sha256": "85699d226ae7832090d045ad2905db68278035a7bdc76d3a104b702d3aff1dca"
     },
     {
       "path": "baseline-default.pdf",
       "bytes": 117446,
-      "sha256": "3ab0f248cb83edfb628e6e202c064a11bc7b7db4d3e77701be4cc7bfc7b9d726"
+      "sha256": "9827f4015a812c3de8c97a0aa0a40b3dd9de7031f3c761fcf9b289383de24c51"
     },
     {
       "path": "tests.txt",
       "bytes": 6326,
-      "sha256": "524f505d54b468dccc23fe0d6901b37a39c15011710841d8f8fc2f3d75b8c301"
+      "sha256": "3459fbce79784cef9b192778b91c6d6aa3c79ec9fc1406f1da7135cb7aeec56b"
     },
     {
       "path": "package-e2e.txt",
       "bytes": 10806,
-      "sha256": "f79ad0aef9cdfe055f9784d9587b60eb21560ffb60c5ade76cb6474ac5fd2c2e"
+      "sha256": "f32e10a3acf6fd66de72694bc12855d410930023ca12fff2d7d822535c62c193"
     },
     {
       "path": "package-manifest.json",
       "bytes": 2249,
-      "sha256": "91448172d2e93e7c83af365b4139b0f2869021c684c4ed097af0b7b5bd4afd7e"
+      "sha256": "6a190619493b5d6e3b7ef56099b8f3ddcad1eed8f3076fec87cd09700cf9f170"
     }
   ],
   "archive": {
     "path": "evidence.tar.xz",
-    "bytes": 15549440,
-    "sha256": "7ff4ed49e8845287afd3c64a94eff52d75465eceb6822b65eb6ad90c2c560121"
+    "bytes": 15549460,
+    "sha256": "c5ff848bdd4d68dc659372ed847dcbb1e260510d631f1387978fecaf5169894f"
   },
-  "review_generation": "review10; all 10 fresh PNG/JPEG pages re-inspected; Preview locked"
+  "review_generation": "review11; all 10 fresh PNG/JPEG pages re-inspected; Preview locked"
 }
