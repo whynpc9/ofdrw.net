@@ -31,3 +31,5 @@ R3：0.0004 缩放和 1.0004 近相关但非奇异矩阵不再受旧三位矩阵
 SVG 导出矩阵、translation 与 text/tspan 原点也复用保真普通十进制。新增普通148mm页上的100000mm逻辑框线，通过负平移展示末端：object/clip同时0.9996，右边框在130mm；旧舍入会把边框移出40mm，实际PDF/SVG像素均做断言。MultiplyTransform 在运算前拒绝奇异operand，防止旋转的浮点残差把无效输入扰动成可写的非零det；之后再验证组合结果。包消费E2E直接从11包本地feed调用公开Graphics并检查原生CTM/文字/强调。
 
 R4：现有Core.OfdTextEmphasis集中纯faux组合与finite/exact-singular检查；Graphics在Commit前通过同一OfdFontSelection获取effectiveItalic，并针对非嵌入/非透明的name-only预检。Writer复用该计算但保留既有兼容门槛。不复制/冻结字体，不新增字体服务，正常矩阵/提示/渲染数值不变。极大有限矩阵若faux组合溢出，当场拒绝且不消费图元/文字预算。
+
+R5：Layout内部BoundedGeometryWriter逐段检查剩余字符量和取消，advances与path不再先生成无界join；path快照缓存一次，clip的XML标签/转义/namespace开销在XmlWriter流式输出时计入预算。全部成功才消费累计量。笔画miter外扩按实际WriterValue线宽计算，模型/写出一致；Boundary本身仍沿用既有三位策略，不承诺任意极端数值都严格向外量化。
