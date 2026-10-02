@@ -58,7 +58,13 @@ internal sealed class OpenTypeFace
 
     internal (bool Bold, bool Italic) Style
     {
-        get { var flags = U16(Table("head", 54), 44); return ((flags & 1) != 0, (flags & 2) != 0); }
+        get
+        {
+            if (Tables.TryGetValue("OS/2", out var os2))
+            { var flags = U16(os2, 62); return ((flags & 0x20) != 0, (flags & 1) != 0); }
+            var macFlags = U16(Table("head", 54), 44);
+            return ((macFlags & 1) != 0, (macFlags & 2) != 0);
+        }
     }
 
     internal byte[] Build()

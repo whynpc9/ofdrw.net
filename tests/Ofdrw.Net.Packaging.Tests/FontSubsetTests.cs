@@ -184,7 +184,7 @@ public sealed class FontSubsetTests
     {
         var path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Font("NotoSans-Regular.ttf"))!, "../../../Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/style-collection.ttc"));
         var originalFace = OpenTypeCollection.SelectFace(File.ReadAllBytes(path), 0);
-        var styled = new OpenTypeFace(originalFace); Put16(styled.Table("head"), 44, 1);
+        var styled = new OpenTypeFace(originalFace); Put16(styled.Table("head"), 44, 1); Put16(styled.Table("OS/2"), 62, 0x20);
         var source = Collection(originalFace, styled.Build());
         Assert.Throws<InvalidDataException>(() => OpenTypeCollection.ExtractFaces(source, originalFace.Length));
         var expected = OpenTypeCollection.SelectFace(source, 1);
@@ -270,9 +270,13 @@ public sealed class FontSubsetTests
         text.SourceXml = "<CGTransform CodePosition='0' CodeCount='2' GlyphCount='2'><Glyphs>1 2</Glyphs></CGTransform>";
         var saved = await Save(package); Assert.Equal(Latin.Value, saved.Package.Fonts[0].Data);
         Assert.Contains(saved.Report.Diagnostics, message => message.Contains("FONT_COVERAGE_UNVERIFIED"));
-        text.SourceXml = "<CGTransform"; using var output = new MemoryStream();
-        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(package, output));
-        Assert.Equal(0, output.Length); Assert.Equal(Latin.Value, package.Fonts[0].Data);
+        text.SourceXml = "<CGTransform";
+        foreach (var mode in new[] { OfdFontEmbeddingMode.Full, OfdFontEmbeddingMode.SubsetWhenSafe })
+        {
+            package.Options.FontEmbedding.Mode = mode; using var output = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(package, output));
+            Assert.Equal(0, output.Length); Assert.Equal(Latin.Value, package.Fonts[0].Data);
+        }
     }
     [Fact]
     public async Task RebindingOriginalFaceAllowsNewGlyphsAfterSavingAnEmptySubset()
@@ -283,6 +287,43 @@ public sealed class FontSubsetTests
         empty.Package.Fonts[0].Data = Latin.Value;
         var saved = await Save(empty.Package); Assert.Equal(text.Text, saved.Package.Pages[0].Elements.OfType<OfdTextElement>().Single().Text);
         Assert.NotEqual(0, new OpenTypeCmap(new OpenTypeFace(saved.Package.Fonts[0].Data)).Glyph('B'));
+    }
+    [Theory]
+    [InlineData(0x202E, true)][InlineData(0x2067, true)]
+    [InlineData(0x200D, false)][InlineData(0x200C, false)]
+    public async Task NonRenderingControlsDoNotRequireCmapGlyphs(int scalar, bool preservesFull)
+    {
+        var face = new OpenTypeFace(Latin.Value); var original = new OpenTypeCmap(face);
+        face.Tables["cmap"] = OpenTypeCmap.Build("Alpha()".Distinct().ToDictionary(ch => (int)ch, ch => original.Glyph(ch)));
+        var bytes = face.Build(); Assert.Equal(0, new OpenTypeCmap(face).Glyph(scalar));
+        var value = "Alpha(" + char.ConvertFromUtf32(scalar) + ")";
+        var saved = await Save(Package(bytes, value)); Assert.Equal(value, saved.Package.Pages[0].Elements.OfType<OfdTextElement>().Single().Text);
+        Assert.Equal(preservesFull, !Assert.Single(saved.Report.FontEmbedding).IsSubset);
+        if (preservesFull) { Assert.Equal(bytes, saved.Package.Fonts[0].Data); Assert.Contains("RTL", Assert.Single(saved.Report.Diagnostics)); }
+        Assert.False(UnicodeFontSubsetProfile.IsNonRenderingControl(0x4E2D));
+    }
+    [Fact]
+    public async Task TtcContainerAndSelectedFaceHaveSeparateByteBudgets()
+    {
+        var face = Latin.Value; var collection = Collection(face, face);
+        var package = Package(collection, "Alpha"); package.Fonts[0].CollectionFaceIndex = 1;
+        package.Options.FontEmbedding.MaximumFontBytes = face.Length + 4096;
+        Assert.True(collection.Length > package.Options.FontEmbedding.MaximumFontBytes);
+        var saved = await Save(package); Assert.True(Assert.Single(saved.Report.FontEmbedding).IsSubset);
+        package.Options.FontEmbedding.MaximumCollectionBytes = collection.Length - 1;
+        await Assert.ThrowsAsync<InvalidDataException>(() => Save(package));
+        package.Options.FontEmbedding.MaximumCollectionBytes = collection.Length;
+        package.Options.FontEmbedding.MaximumFontBytes = face.Length / 2;
+        await Assert.ThrowsAsync<InvalidDataException>(() => Save(package));
+    }
+    [Fact]
+    public void SharedStyleUsesOs2SelectionBeforeHeadFallback()
+    {
+        var face = new OpenTypeFace(Latin.Value); Put16(face.Table("head"), 44, 0); Put16(face.Table("OS/2"), 62, 0x21);
+        Assert.Equal((true, true), face.Style);
+        Put16(face.Table("head"), 44, 3); Put16(face.Table("OS/2"), 62, 0x40);
+        Assert.Equal((false, false), face.Style);
+        face.Tables.Remove("OS/2"); Assert.Equal((true, true), face.Style);
     }
     private static byte[] Collection(params byte[][] faces)
     {

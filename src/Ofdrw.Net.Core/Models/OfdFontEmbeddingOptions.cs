@@ -9,6 +9,9 @@ public sealed class OfdFontEmbeddingOptions
     /// <summary>Maximum source bytes for each face processed by the subset backend.</summary>
     public long MaximumFontBytes { get; set; } = 64L * 1024 * 1024;
 
+    /// <summary>Maximum input TTC container bytes, separate from the selected-face byte budget.</summary>
+    public long MaximumCollectionBytes { get; set; } = 256L * 1024 * 1024;
+
     /// <summary>Maximum distinct Unicode scalars in a face's package-wide usage closure.</summary>
     public int MaximumUsedScalars { get; set; } = 65535;
 

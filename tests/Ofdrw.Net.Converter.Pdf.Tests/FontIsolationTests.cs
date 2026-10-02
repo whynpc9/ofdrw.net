@@ -49,6 +49,53 @@ public sealed class FontIsolationTests
         Assert.Equal(retained, PdfFontRegistry.RegisteredFontBytes);
     }
 
+    [Theory]
+    [InlineData(false)][InlineData(true)]
+    public async Task ActualPdfSkipsInvisibleControlsWithoutChangingExplicitDeltaSlots(bool positioned)
+    {
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        var cmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face);
+        face.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int> { ['A'] = cmap.Glyph('A'), ['B'] = cmap.Glyph('B') });
+        var data = face.Build();
+        async Task<(string Text, double Left)> Export(string value)
+        {
+            var package = new OfdDocumentPackage(); package.Fonts.Add(new OfdFontResource { Id="10", FontName="control-probe", Data=data });
+            var text = new OfdTextElement { FontResourceId="10", Text=value, XMillimeters=10, YMillimeters=10, FontSizeMillimeters=6, WidthMillimeters=80, HeightMillimeters=20 };
+            if (positioned) text.Runs.Add(new OfdTextRun { Text=value, YMillimeters=6, DeltaX="5" });
+            package.Pages.Add(new OfdPage { WidthMillimeters=100, HeightMillimeters=50, Elements={text} });
+            using var ofd=new MemoryStream(); await new OfdPackageWriter().WriteAsync(package,ofd); ofd.Position=0;
+            using var pdf=new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd,pdf);
+            using var parsed=PdfPigDocument.Open(pdf.ToArray()); var page=parsed.GetPage(1);
+            return (page.Text, page.Letters.Single(letter => letter.Value=="B").BoundingBox.Left);
+        }
+        var baseline=await Export("AB");
+        foreach (var value in new[] { "A\u200CB", "A\u200DB" })
+        {
+            var result=await Export(value); Assert.Equal("AB",result.Text); Assert.Equal(baseline.Left,result.Left,5);
+        }
+    }
+
+    [Fact]
+    public void NonRenderingControlsAreNotPaintedAndSemanticBidiOrUvsAreRefused()
+    {
+        Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200CB"));
+        Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200DB"));
+        Assert.Equal("", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("\u200D"));
+        foreach (var value in new[] { "A\u202EB", "A\u2067B", "A\uFE00" })
+            Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value));
+    }
+
+    [Fact]
+    public void Os2StyleFlagsDoNotCauseDoubleBoldOrItalicSimulation()
+    {
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(face.Table("head"), 44, 0);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(face.Table("OS/2"), 62, 0x21);
+        var family = PdfFontRegistry.RegisterFontFace(face.Build(), bold: true, italic: true);
+        var info = PdfSharpCore.Fonts.GlobalFontSettings.FontResolver.ResolveTypeface(family, true, true);
+        Assert.False(info.MustSimulateBold); Assert.False(info.MustSimulateItalic);
+    }
+
     [Fact]
     public void SupplementaryUnicodeAndExplicitGlyphSourceFailRatherThanCorruptPdfText()
     {

@@ -387,6 +387,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     private static void DrawStyledString(XGraphics graphics, string text, XFont font, XBrush brush,
         XPoint point, SixLabors.Fonts.Font? outlineFont, bool italic, XStringFormat? format = null)
     {
+        text = PdfTextControlPolicy.VisibleText(text);
+        if (text.Length == 0) return;
         // PDFsharp Core 1.3.67 drops resolver style simulations when creating
         // XGlyphTypeface. Apply the missing fallback appearance at draw time.
         var state = graphics.Save();

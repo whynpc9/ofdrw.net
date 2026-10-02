@@ -40,6 +40,8 @@ public sealed class OfdPackageWriter
         foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, cancellationToken);
         if (package.Pages.Count == 0) OfdPageXmlContract.ValidateWritableDimensions(
             package.Options.DefaultPageWidthMillimeters, package.Options.DefaultPageHeightMillimeters);
+        foreach (var text in package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>())
+            _ = Ofdrw.Net.Core.Fonts.EmbeddedFontCoverage.HasExplicitGlyphReferences(text);
         var fontPlan = new OfdFontEmbeddingPlan(package, cancellationToken);
         var entries = BuildEntries(package, fontPlan, cancellationToken);
         var result = OfdPackagePruner.Prune(package, entries, cancellationToken);
