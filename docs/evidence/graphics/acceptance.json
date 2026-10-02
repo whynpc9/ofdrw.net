@@ -1,0 +1,73 @@
+{
+  "source_head": "055f43affa6e288ecd45ac446a11d19d68d59123",
+  "baseline": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+  "source_tree_frozen": true,
+  "functional": {
+    "status": "passed",
+    "full_suite": {
+      "passed": 410,
+      "failed": 0,
+      "skipped": 0
+    },
+    "independent_graphics_regressions": 10,
+    "new_graphics_CS1591": 0,
+    "package_count": 11,
+    "package_version": "0.1.0-graphics.20261002.final",
+    "package_status": "passed"
+  },
+  "automatic_rendering": {
+    "status": "passed",
+    "pdf_pages": 8,
+    "svg_pages": 8,
+    "original_unicode_preserved": true,
+    "native_graphics": {
+      "pages": 2,
+      "paths": 17,
+      "texts": 29,
+      "images": 0,
+      "fonts": 1
+    }
+  },
+  "png_visual": {
+    "status": "passed",
+    "files": [
+      "pages/baseline-default-1.png",
+      "pages/baseline-default-2.png",
+      "pages/baseline-default-svg-1.png",
+      "pages/baseline-default-svg-2.png",
+      "pages/baseline-native-1.png",
+      "pages/baseline-native-2.png",
+      "pages/baseline-native-svg-1.png",
+      "pages/baseline-native-svg-2.png",
+      "pages/graphics-1.png",
+      "pages/graphics-2.png",
+      "pages/graphics-roundtrip-1.png",
+      "pages/graphics-roundtrip-2.png",
+      "pages/graphics-roundtrip-svg-1.png",
+      "pages/graphics-roundtrip-svg-2.png",
+      "pages/graphics-svg-1.png",
+      "pages/graphics-svg-2.png"
+    ],
+    "scope": "Full-page PDF and SVG review of graphics, roundtrip, explicit Native and default DOCX; baseline/style/curves/fill/stroke/clip/page breaks checked. Latest-source contact sheets confirm full 16-page scope."
+  },
+  "preview": {
+    "status": "not-reviewed",
+    "reason": "Awaiting coordinator exclusive GUI slot; Issue 02 retains priority. PNG does not replace Preview.",
+    "checked_pages": [],
+    "windows_closed": null
+  },
+  "review": {
+    "status": "pending",
+    "pr": null,
+    "current_head": null
+  },
+  "production_release_accepted": false,
+  "limitations": [
+    "Single-baseline text; no wrapping or new font metrics/shaping service.",
+    "Solid pen/brush only; no gradients/shaders/advanced blend/hairline.",
+    "No flow/table/Canvas or Skia adapter additions.",
+    "Font subset/reuse/fallback is ticket 05; explicit package-local identity contract only.",
+    "Name-only font text depends on reader environment. Public artifacts embed pinned OFL Noto only.",
+    "Preview and current-head external reviews/CI are required before ticket closure."
+  ]
+}
