@@ -10,6 +10,8 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 internal sealed class DocumentFontContext
 {
     private readonly IReadOnlyList<OfdFontResource> _fonts;
+    private readonly IFontResolver _fallbackResolver;
+    private readonly Dictionary<string, OpenTypeCmap> _fallbackCoverage = new();
     private readonly Dictionary<OfdFontResource, OpenTypeCmap> _coverage = new();
     private readonly Dictionary<OfdFontResource, string> _families = new();
     internal Dictionary<string, SixLabors.Fonts.FontFamily> OutlineFonts { get; } = new();
@@ -19,6 +21,7 @@ internal sealed class DocumentFontContext
         _fonts = fonts;
         PdfFontRegistry.EnsureInstalled();
         fallbackResolver ??= GlobalFontSettings.FontResolver;
+        _fallbackResolver = fallbackResolver;
         foreach (var font in fonts)
         {
             if (font.Data.Length > 0)
@@ -61,7 +64,8 @@ internal sealed class DocumentFontContext
         ((data[0] == 0 && data[1] == 1 && data[2] == 0 && data[3] == 0) ||
          (data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O'));
 
-    internal OpenTypeCmap? Coverage(OfdFontResource? resource) =>
+    internal OpenTypeCmap? Coverage(OfdFontResource? resource, string? family = null) =>
+        family is not null && _fallbackCoverage.TryGetValue(family, out var fallback) ? fallback :
         resource is not null && _coverage.TryGetValue(resource, out var value) ? value : null;
 
     internal string Resolve(OfdTextElement text, out OfdFontResource? resource)
@@ -76,8 +80,26 @@ internal sealed class DocumentFontContext
         }
         resource = OfdFontSelection.Resolve(_fonts, text);
         if (resource is not null && _coverage.TryGetValue(resource, out var coverage))
-            foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
-                EmbeddedFontCoverage.Validate(value, coverage, resource.FontName);
+        {
+            try
+            {
+                foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
+                    EmbeddedFontCoverage.Validate(value, coverage, resource.FontName);
+            }
+            catch (System.IO.InvalidDataException) when (resource.Data.Length == 0)
+            {
+                // Optional discovery must give the host's configured default a
+                // chance, but never return a known missing-glyph face as success.
+                var face = _fallbackResolver.ResolveTypeface(_fallbackResolver.DefaultFontName, text.Weight >= 600 || resource.Bold, text.Italic || resource.Italic);
+                var bytes = _fallbackResolver.GetFont(face.FaceName);
+                var fallbackCmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+                foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
+                    EmbeddedFontCoverage.Validate(value, fallbackCmap, _fallbackResolver.DefaultFontName);
+                var fallbackFamily = PdfFontRegistry.RegisterFontFace(bytes, text.Weight >= 600 || resource.Bold, text.Italic || resource.Italic);
+                _fallbackCoverage[fallbackFamily] = fallbackCmap;
+                return fallbackFamily;
+            }
+        }
         return resource is not null && _families.TryGetValue(resource, out var family)
             ? family : string.IsNullOrWhiteSpace(text.FontName) ? "Arial" : text.FontName;
     }

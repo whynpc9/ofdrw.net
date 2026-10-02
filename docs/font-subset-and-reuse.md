@@ -60,3 +60,5 @@ PDF 绘制时对 ZWJ/ZWNJ 等非绘制控制符跳过绘制，OFD 的 Unicode �
 绘制过滤只省略零宽格式控制符或已知 cmap 无字形的 default-ignorable；已映射的 Hangul filler 保留真实字宽，包括无 Delta 的字符串和每个 gap 明确 Delta 的游程。Unicode方向格式控制全部（含 U+202C）以及蒙古文 free variation selectors 的 PDF 语义明确拒绝，避免删除控制符后改变排列或变体。
 
 Name-only 资源若通过本地发现或 host style probe 取得真实字节，注册与 coverage 一起绑定并缓存；无字形 filler 不被误当作 mapped。LRM/已弃用零宽控制按可省略策略绘制，明确拒绝范围仅含需要当前引擎未实现排列语义的九个方向格式控制，避免不必要拒绝。
+
+发现的 name-only face 缺普通字符时，宿主默认回退获得机会；回退仍必须覆盖实际文字，无法覆盖则明确失败，绝不返回已知缺字的 face 画方框。Windows symbol cmap 3/0 格式 4 保持全量并诊断，读取支持直接字符与 F000 重映射；SVG 未使用的其它合法未建模 cmap 不阻断 CSS 资源输出，真正被选择且无法验证的编码则明确拒绝。RLM/ALM 的 PDF 方向语义仍拒绝，LRM/弃用零宽按省略策略处理。
