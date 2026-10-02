@@ -97,6 +97,46 @@ public sealed class FontIsolationTests
     }
 
     [Fact]
+    public void NameOnlyMissingOrdinaryGlyphUsesConfiguredCoveringFallbackOrFailsClearly()
+    {
+        var primary=File.ReadAllBytes(FontPath("narrow"));
+        var fallback=new Ofdrw.Net.Core.Fonts.OpenTypeFace(primary);var cmap=new Ofdrw.Net.Core.Fonts.OpenTypeCmap(fallback);
+        fallback.Tables["cmap"]=Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int>{[0x4E00]=cmap.Glyph('A')});
+        var resource=new OfdFontResource { Id="10",FontName="primary-probe",Bold=true };
+        var context=new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource],new CoveringResolver(primary,fallback.Build()));
+        var text=new OfdTextElement { FontResourceId="10",Text="一" };var family=context.Resolve(text,out var selected);
+        Assert.Same(resource,selected);Assert.StartsWith("ofd-font-",family);Assert.NotEqual(0,context.Coverage(resource,family)!.Glyph(0x4E00));
+        var insufficient=new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource],new CoveringResolver(primary,primary));
+        Assert.Throws<InvalidDataException>(()=>insufficient.Resolve(text,out _));
+    }
+    [Fact]
+    public async Task SvgExportsUnusedAndSelectedWindowsSymbolCmapWithoutUnicodeSubsetting()
+    {
+        var face=new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        var cmap=new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face);var rebuilt=Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int>{[0xF041]=cmap.Glyph('A')});
+        var offset=(int)Ofdrw.Net.Core.Fonts.OpenTypeFace.U32(rebuilt,8);var length=Ofdrw.Net.Core.Fonts.OpenTypeFace.U16(rebuilt,offset+2);
+        var symbol=new byte[12+length];Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbol,2,1);Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbol,4,3);Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(symbol,8,12);
+        Buffer.BlockCopy(rebuilt,offset,symbol,12,length);face.Tables["cmap"]=symbol;
+        Assert.True(new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face).IsSymbol);Assert.Equal(cmap.Glyph('A'),new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face).Glyph('A'));
+        foreach(var selected in new[]{false,true})
+        {
+            var package=new OfdDocumentPackage();package.Fonts.Add(new OfdFontResource{Id="10",FontName="symbol-probe",Data=face.Build()});
+            package.Pages.Add(new OfdPage{WidthMillimeters=100,HeightMillimeters=50});
+            if(selected)package.Pages[0].Elements.Add(new OfdTextElement{FontResourceId="10",Text="A"});
+            using var ofd=new MemoryStream();var report=await new OfdPackageWriter().WriteWithResultAsync(package,ofd);
+            Assert.False(report.FontEmbedding[0].IsSubset);ofd.Position=0;using var svg=new MemoryStream();
+            await new Ofdrw.Net.Converter.Svg.Converters.OfdToSvgConverter().ConvertAsync(ofd,svg);
+            Assert.Contains("@font-face",System.Text.Encoding.UTF8.GetString(svg.ToArray()));
+        }
+    }
+    private sealed class CoveringResolver(byte[] primary,byte[] fallback):IFontResolver
+    {
+        public string DefaultFontName=>"covering-default";
+        public FontResolverInfo ResolveTypeface(string family,bool bold,bool italic)=>new(family==DefaultFontName?"covering-face":"primary-face");
+        public byte[] GetFont(string face)=>face=="covering-face"?fallback:primary;
+    }
+
+    [Fact]
     public void RegisteredNameOnlySourceBytesAlsoProvideCoverageForMissingFillers()
     {
         var data=File.ReadAllBytes(FontPath("narrow")); var host=new HostResolver(data);
@@ -122,7 +162,7 @@ public sealed class FontIsolationTests
             Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value);
             Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText(value));
         }
-        foreach (var value in new[] { "A\u202EB", "A\u202CB", "A\u2067B", "A\uFE00", "A\u180BB", "A\u180FB" })
+        foreach (var value in new[] { "A\u202EB", "A\u202CB", "A\u200FB", "A\u061CB", "A\u2067B", "A\uFE00", "A\u180BB", "A\u180FB" })
             Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value));
     }
 

@@ -159,18 +159,20 @@ public sealed class OfdToSvgConverter
         return root;
     }
 
-    private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap Coverage)> AddEmbeddedFonts(
+    private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> AddEmbeddedFonts(
         XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts)
     {
-        var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap Coverage)>();
-        var emitted = new Dictionary<string, OpenTypeCmap>(StringComparer.Ordinal);
+        var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
+        var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
         var css = new StringBuilder();
         foreach (var font in fonts.Where(font => font.Data.Length > 0))
         {
             var data = OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
             var family = "ofd-font-" + BinaryIdentity.Hash(data);
             if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known); continue; }
-            var face = new OpenTypeFace(data); var coverage = new OpenTypeCmap(face);
+            var face = new OpenTypeFace(data); OpenTypeCmap? coverage = null;
+            try { coverage = new OpenTypeCmap(face); }
+            catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
             families[font] = (family, coverage); emitted.Add(family, coverage);
             var style = face.Style;
             var openType = data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O';
@@ -221,7 +223,7 @@ public sealed class OfdToSvgConverter
         OfdPage page,
         OfdTextElement text,
         IReadOnlyList<OfdFontResource> fonts,
-        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap Coverage)> families)
+        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families)
     {
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
             throw new NotSupportedException("SVG export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
@@ -230,6 +232,7 @@ public sealed class OfdToSvgConverter
         if (resource is not null && families.TryGetValue(resource, out var embedded))
         {
             family = embedded.Family;
+            if (embedded.Coverage is null) throw new NotSupportedException("Selected embedded font has an unmodeled cmap encoding; Unicode coverage cannot be verified.");
             foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
                 EmbeddedFontCoverage.Validate(value, embedded.Coverage, resource.FontName);
         }

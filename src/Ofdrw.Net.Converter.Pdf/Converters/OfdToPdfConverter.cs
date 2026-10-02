@@ -246,7 +246,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     {
                         var fontSize = Math.Max(0.1, MillimetersToPoints(text.FontSizeMillimeters));
                         var familyName = fonts.Resolve(text, out var resource);
-                        var coverage = fonts.Coverage(resource);
+                        var coverage = fonts.Coverage(resource, familyName);
                         // CT_Text Weight/Italic is the per-object style viewers apply;
                         // the resource flags describe the bound font file.
                         var bold = resource?.Bold == true || text.Weight >= 600;

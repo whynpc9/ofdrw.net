@@ -1,8 +1,8 @@
 [
   {
     "path": "acceptance.json",
-    "bytes": 3034,
-    "sha256": "2496e749280408e8fbb96e69d52a179fd1746850bb0d8a8559c7b6669f24d09a"
+    "bytes": 3267,
+    "sha256": "f278a22424d691072276af65bbee721bd4a1f01abe0aba245a00fd7add1c8702"
   },
   {
     "path": "baseline-tests.log",
@@ -23,6 +23,31 @@
     "path": "controls/NotoSans-LICENSE",
     "bytes": 4377,
     "sha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb"
+  },
+  {
+    "path": "controls/nameonly-r10/missing-bothmissing.ofd",
+    "bytes": 1316,
+    "sha256": "cfc7cefe1dbca1dc6a9353d26e8f3b727e576054087fedfa6d10dd9d07cfdbe9"
+  },
+  {
+    "path": "controls/nameonly-r10/missing-bothmissing.pdf",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "controls/nameonly-r10/missing-fallback.ofd",
+    "bytes": 1316,
+    "sha256": "c14a16b9006e1214745f120b8707122cc9fdffffc03407b25202cfec9b081d70"
+  },
+  {
+    "path": "controls/nameonly-r10/missing-fallback.pdf",
+    "bytes": 48146,
+    "sha256": "e572049e2dcdd10c36f6c343f30b16d561d7f1cd43cac9ed6722a7fd35e82af7"
+  },
+  {
+    "path": "controls/nameonly-r10/missing-fallback.png",
+    "bytes": 1202,
+    "sha256": "a252605456163aa9bfbe39737a8ac87f9025ca5dd52c69c201bda3b5444c7e1b"
   },
   {
     "path": "controls/nameonly-r9-valid/mapped-space.ofd",
@@ -530,6 +555,36 @@
     "sha256": "c7fab2da7d165c8d33f09864a9f70652e358b8eb66fd99a56a112a74bae76976"
   },
   {
+    "path": "controls/symbol-r10/probe.html",
+    "bytes": 483,
+    "sha256": "e10984f089955c536a694f9ed8cd48d3056144282320bde890a63097985a305e"
+  },
+  {
+    "path": "controls/symbol-r10/selected-chrome.png",
+    "bytes": 3060,
+    "sha256": "0ef2e370243d928af1a9c159aa7297461a69da70b7bac41f576a49ff533685f9"
+  },
+  {
+    "path": "controls/symbol-r10/selected.ofd",
+    "bytes": 288671,
+    "sha256": "e1aed410cca13138260d37fa872ba51696dfa2b238e5dcef08a3ed131d6456e6"
+  },
+  {
+    "path": "controls/symbol-r10/selected.svg",
+    "bytes": 755354,
+    "sha256": "3a0ed25a410215028b852fcdfdf752f91d4b52d690163821da06a4374e17c6a0"
+  },
+  {
+    "path": "controls/symbol-r10/unused.ofd",
+    "bytes": 288596,
+    "sha256": "abeaa96293fe73dbe083a778068264e3e08827799d2a9c4bac13e8f3466b61df"
+  },
+  {
+    "path": "controls/symbol-r10/unused.svg",
+    "bytes": 755092,
+    "sha256": "ba883e63e4b0964b6ea8c3009857bbd767969db4c4ffc6b4c56ec2916e51c699"
+  },
+  {
     "path": "design-report.md",
     "bytes": 12452,
     "sha256": "05b9edd675d865acd50b925bfc387ac8cf6831792a54d4f0b03f88bc5639ba32"
@@ -800,6 +855,11 @@
     "sha256": "4dc6918fd767c2de0873f45d3de31564a6fb02fc887b96f5cad0c0d5355095b4"
   },
   {
+    "path": "final-tests-r10.log",
+    "bytes": 9484,
+    "sha256": "7f937b5e9ff108b00b54f8fabc48fc99884cdb39ffa38b9d6c4b97690a28ecf9"
+  },
+  {
     "path": "final-tests-r2.log",
     "bytes": 10432,
     "sha256": "e96b6a3d6965229da3b273c315a0baeb081053db9f9d3d26f844f0fb7934e399"
@@ -845,6 +905,11 @@
     "sha256": "196edcdd6c3c80b69c71004f84691f4085cab29cb1033265111df2ce0379a901"
   },
   {
+    "path": "independent-review-r10.md",
+    "bytes": 2576,
+    "sha256": "678a498f790baf5a1b96791795de0192fcece0223b69955d68421efaa95366bd"
+  },
+  {
     "path": "independent-review-r5.md",
     "bytes": 2748,
     "sha256": "7c77e64f59f13a563ad568771315459705d0bbb4ee89f096a82d124b41aa1932"
@@ -873,6 +938,11 @@
     "path": "independent-verification.md",
     "bytes": 3455,
     "sha256": "d6e3e57ca96d5e0b8fbb9f5a95b5369c60e7a32405a3bcbb51d28245aa67bc5f"
+  },
+  {
+    "path": "package-e2e-r10.log",
+    "bytes": 21632,
+    "sha256": "4118a16f923dd9cb60296770c0007e853be70249f8954c86c6ba10352c2eb847"
   },
   {
     "path": "package-e2e-r2.log",
@@ -910,6 +980,11 @@
     "sha256": "01f10b9526afd07629b0bfe6f85675873892d50295b0fa056d324eff3fff190d"
   },
   {
+    "path": "review-comments-r10.json",
+    "bytes": 3146,
+    "sha256": "df3ebc38eba551639a6e54c2d0c5a47a3589364da215ae924983ccbe83758d42"
+  },
+  {
     "path": "review-comments-r6.json",
     "bytes": 5011,
     "sha256": "645420f3e84e596a36c1401e2a0c0a40473299d0007fc9850b117cf14658289b"
@@ -932,7 +1007,7 @@
   {
     "path": "source-freeze.json",
     "bytes": 5991,
-    "sha256": "513e1c96ec6b9f0e7bb88c99b1b0791a02bb8aaa1a28d462593a8ddc5319b4fb"
+    "sha256": "5395e75e118828b7ba4b0c977d0057ec9bf65cd5ec928369e392ddac73d7ce97"
   },
   {
     "path": "static-review-first-round.md",

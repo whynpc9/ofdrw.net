@@ -10,11 +10,13 @@ internal sealed class OpenTypeCmap
     private readonly byte[] table;
     private readonly int format4 = -1;
     private readonly int format12 = -1;
+    internal bool IsSymbol { get; }
     internal byte[]? VariationSequences { get; }
     internal HashSet<int> VariationGlyphs { get; } = new();
     internal OpenTypeCmap(OpenTypeFace face)
     {
         table = face.Table("cmap", 4);
+        var symbol4 = -1;
         var count = U16(table, 2); Require(table, 4, count * 8);
         for (var i = 0; i < count; i++)
         {
@@ -26,10 +28,12 @@ internal sealed class OpenTypeCmap
                 VariationSequences = new byte[length]; Buffer.BlockCopy(table, offset, VariationSequences, 0, length);
                 ReadVariations(VariationSequences);
             }
+            if (platform == 3 && encoding == 0 && format == 4) { Validate4(offset); symbol4 = offset; }
             if (platform != 0 && !(platform == 3 && (encoding == 1 || encoding == 10))) continue;
             if (format == 4) { Validate4(offset); format4 = offset; }
             if (format == 12) { Validate12(offset); format12 = offset; }
         }
+        if (format4 < 0 && format12 < 0 && symbol4 >= 0) { format4 = symbol4; IsSymbol = true; }
         if (format4 < 0 && format12 < 0) throw new NotSupportedException("Font needs a Unicode cmap format 4 or 12.");
     }
     private void ReadVariations(byte[] variation)
@@ -103,6 +107,11 @@ internal sealed class OpenTypeCmap
         }
     }
     internal int Glyph(int scalar)
+    {
+        var glyph = GlyphCore(scalar);
+        return IsSymbol && glyph == 0 && scalar <= 0xFF ? GlyphCore(scalar + 0xF000) : glyph;
+    }
+    private int GlyphCore(int scalar)
     {
         if (format12 >= 0)
         {

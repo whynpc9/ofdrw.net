@@ -10,10 +10,10 @@
   },
   "functional": {
     "status": "pass",
-    "tests": 464,
+    "tests": 466,
     "independent_focused": 72,
     "packages": 11,
-    "package_version": "0.1.0-issue05.20261003.10",
+    "package_version": "0.1.0-issue05.20261003.11",
     "package_status": "pass",
     "document_tools": {
       "samples": 36,
@@ -22,7 +22,7 @@
       "ci_failure": "First head failed when text was introduced into a previously empty subset; caller now rebinds source face / explicitly preserves full font for future opaque annotation injection."
     },
     "all_11_packages_contain_unicode_license": true,
-    "latest_independent_focused": 24
+    "latest_independent_focused": 26
   },
   "automated_render": {
     "status": "pass",
@@ -89,6 +89,7 @@
     "r7": "pass PNG: ZWJ/ZWNJ identical to AB baseline; RLO/RLI explicitly refused with 0 PDF bytes; OFD preserves original controls",
     "coordinates": "actual PDF regression verifies explicit Runs/Delta slots remain unchanged",
     "r8": "pass PNG: mapped Hangul filler retains advance for implicit and per-gap Delta runs; ZWJ/ZWNJ unchanged; PDF end-direction/Mongolian FVS refused.",
-    "r9": "pass actual PDF: LRM/206A and other zero-width cases equal AB; registered name-only physical bytes supply same cached cmap for missing/mapped filler."
+    "r9": "pass actual PDF: LRM/206A and other zero-width cases equal AB; registered name-only physical bytes supply same cached cmap for missing/mapped filler.",
+    "r10": "pass actual PDF: name-only ordinary missing glyph uses a covering default face or fails with 0 bytes; valid symbol cmap selected/unused SVG generation passes, actual browser embedded-symbol identity remains unverified."
   }
 }
