@@ -21,7 +21,7 @@ internal sealed class OfdFontEmbeddingPlan
         var options = package.Options.FontEmbedding ?? throw new ArgumentException("FontEmbedding is required.");
         if (options.MaximumCollectionBytes <= 0 || options.MaximumFontBytes <= 0 || options.MaximumUsedScalars <= 0 || options.MaximumGlyphClosureOperations <= 0 || !Enum.IsDefined(typeof(OfdFontEmbeddingMode), options.Mode))
             throw new ArgumentOutOfRangeException(nameof(package), "Invalid font embedding options.");
-        var unsafeReason = PreservationReason(package);
+        var unsafeReason = PreservationReason(package, cancellationToken);
         CanonicalPayloads = unsafeReason is null;
         // Snapshot selected faces once per content/index, then aggregate aliases
         // by the actual face bytes. Same names with different bytes stay distinct.
@@ -139,17 +139,20 @@ internal sealed class OfdFontEmbeddingPlan
             if (reason is not null) Diagnostics.Add("FONT_FULL_PRESERVED " + group.Key + ": " + reason);
         }
     }
-    private static string? PreservationReason(OfdDocumentPackage package)
+    private static string? PreservationReason(OfdDocumentPackage package, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (package.PreservedEntries.Count > 0 || package.PreservedCommonDataElements.Count > 0 ||
             package.PreservedDocumentElements.Count > 0 || package.PreservedDocBodyElements.Count > 0)
             return "Read/edited package has preserved content; glyph references may be unmodeled.";
         foreach (var page in package.Pages)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (page.PreservedPageElements.Count > 0 || page.Templates.Count > 0 || page.AnnotationAppearances.Count > 0)
                 return "Preserved page/template/annotation content may contain unmodeled glyph references.";
             foreach (var element in page.Elements)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (element is OfdRawElement || element is OfdTextElement { SourceXml: not null } ||
                     element is OfdImageElement { SourceXml: not null } || element is OfdPathElement { SourceXml: not null } ||
                     !string.IsNullOrEmpty(element.ClippingXml))

@@ -125,6 +125,20 @@ public sealed class FontSubsetTests
     }
 
     [Fact]
+    public void PreCanceledFontPlanDoesNotInspectPackageContents()
+    {
+        var package = new OfdDocumentPackage();
+        // A poison page makes content inspection observable without relying on
+        // wall-clock thresholds or allocating millions of elements.
+        package.Pages.Add(null!);
+        var type = typeof(OfdPackageWriter).Assembly.GetType("Ofdrw.Net.Packaging.OfdFontEmbeddingPlan")!;
+        var constructor = type.GetConstructor(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+            null, new[] { typeof(OfdDocumentPackage), typeof(CancellationToken) }, null)!;
+        var failure = Assert.Throws<System.Reflection.TargetInvocationException>(() => constructor.Invoke(new object[] { package, new CancellationToken(canceled: true) }));
+        Assert.IsType<OperationCanceledException>(failure.InnerException);
+    }
+
+    [Fact]
     public async Task SameNamesDifferentContentDoNotMerge()
     {
         var package = Package(Latin.Value, "Alpha"); var second = new OpenTypeFace(Latin.Value);

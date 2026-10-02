@@ -4,8 +4,8 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 519/519；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
-| 包消费 | 11 个 `0.1.0-issue05.20261003.20` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 520/520；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.21` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
@@ -66,3 +66,5 @@ R18：修正 R17 的证据范围表述，原本只有 U+3164 的 advance/Delta �
 R19：已建模模板文字和注释外观文字也进入同一次用字绑定/coverage 预遍历，与正文及 PDF/SVG 实际渲染集合一致；模板/注释仍触发全量保留，不能因此跳过已知 Unicode 缺字检查。typed A 保全量/原字节，typed B 缺字在 ZIP 写出前明确失败/0B；Raw/CGTransform/保留条目的未知 GID 保护和显式 Full opt-out 均不变。本轮519/519。
 
 R19 nested read/rebind 的 baseline-resaved.ofd 使用既有 document-tools 的固定 Noto Sans CJK SC wght400 静态产物（SHA3012a9...），嵌入字节与 scripts/install-ci-fonts.py 产物一致。归档 nested-r19/font-provenance.json 记录官方 commit/source hash，NotoCJK-OFL.txt 随该新增载荷附上；无专有字体。
+
+R20：保留策略扫描本身在开始、每页、每元素检查取消。公共 Writer 原已有入口取消，不将此前预取消行为错误归功于这次修复；改进的是内部扫描中途/入口响应。确定性 poison-page 回归验证取消先于读取包内容，无墙钟阈值。未取消时保留判断和字形路径不变，本轮520/520。
