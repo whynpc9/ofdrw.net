@@ -50,8 +50,11 @@ public sealed class FontIsolationTests
     }
 
     [Theory]
-    [InlineData(false)][InlineData(true)]
-    public async Task ActualPdfSkipsInvisibleControlsWithoutChangingExplicitDeltaSlots(bool positioned)
+    [InlineData(0x115F, false)][InlineData(0x115F, true)]
+    [InlineData(0x1160, false)][InlineData(0x1160, true)]
+    [InlineData(0x3164, false)][InlineData(0x3164, true)]
+    [InlineData(0xFFA0, false)][InlineData(0xFFA0, true)]
+    public async Task ActualPdfSkipsUnmappedHangulFillersWithoutChangingExplicitDeltaSlots(int scalar, bool positioned)
     {
         var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
         var cmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face);
@@ -61,7 +64,7 @@ public sealed class FontIsolationTests
         {
             var package = new OfdDocumentPackage(); package.Fonts.Add(new OfdFontResource { Id="10", FontName="control-probe", Data=data });
             var text = new OfdTextElement { FontResourceId="10", Text=value, XMillimeters=10, YMillimeters=10, FontSizeMillimeters=6, WidthMillimeters=80, HeightMillimeters=20 };
-            if (positioned) text.Runs.Add(new OfdTextRun { Text=value, YMillimeters=6, DeltaX="5" });
+            if (positioned) text.Runs.Add(new OfdTextRun { Text=value, YMillimeters=6, DeltaX=value=="AB"?"10":"5 5" });
             package.Pages.Add(new OfdPage { WidthMillimeters=100, HeightMillimeters=50, Elements={text} });
             using var ofd=new MemoryStream(); await new OfdPackageWriter().WriteAsync(package,ofd); ofd.Position=0;
             using var pdf=new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd,pdf);
@@ -69,19 +72,20 @@ public sealed class FontIsolationTests
             return (page.Text, page.Letters.Single(letter => letter.Value=="B").BoundingBox.Left);
         }
         var baseline=await Export("AB");
-        foreach (var value in new[] { "AB" })
-        {
-            var result=await Export(value); Assert.Equal("AB",result.Text); Assert.Equal(baseline.Left,result.Left,5);
-        }
+        var result = await Export("A" + char.ConvertFromUtf32(scalar) + "B");
+        Assert.Equal("AB", result.Text); Assert.Equal(baseline.Left, result.Left, 5);
     }
 
     [Theory]
-    [InlineData(false)][InlineData(true)]
-    public async Task ActualPdfKeepsMappedHangulFillerAdvanceInImplicitAndPositionedRuns(bool positioned)
+    [InlineData(0x115F, false)][InlineData(0x115F, true)]
+    [InlineData(0x1160, false)][InlineData(0x1160, true)]
+    [InlineData(0x3164, false)][InlineData(0x3164, true)]
+    [InlineData(0xFFA0, false)][InlineData(0xFFA0, true)]
+    public async Task ActualPdfKeepsMappedHangulFillerAdvanceInImplicitAndPositionedRuns(int scalar, bool positioned)
     {
         var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
         var cmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face); var space=cmap.Glyph(' '); Assert.NotEqual(0,space);
-        face.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int> { ['A']=cmap.Glyph('A'), ['B']=cmap.Glyph('B'), [' ']=space, [0x3164]=space });
+        face.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int> { ['A']=cmap.Glyph('A'), ['B']=cmap.Glyph('B'), [' ']=space, [scalar]=space });
         var data=face.Build();
         async Task<double> Export(string value)
         {
@@ -93,7 +97,7 @@ public sealed class FontIsolationTests
             using var pdf=new MemoryStream();await new OfdToPdfConverter().ConvertAsync(ofd,pdf);
             using var doc=PdfPigDocument.Open(pdf.ToArray());return doc.GetPage(1).Letters.Single(letter=>letter.Value=="B").BoundingBox.Left;
         }
-        Assert.Equal(await Export("A B"),await Export("A\u3164B"),5);
+        Assert.Equal(await Export("A B"),await Export("A"+char.ConvertFromUtf32(scalar)+"B"),5);
     }
 
     [Fact]
