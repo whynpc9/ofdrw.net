@@ -6,7 +6,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
-| 功能回归 | 235/235 通过 | Core 5、Packaging 23、PDF/Image 124、Signatures 4、DOCX 49、CLI 30 |
+| 功能回归 | 257/257 通过 | Core 5、Packaging 23、PDF/Image 146、Signatures 4、DOCX 49、CLI 30 |
 | 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review7`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
@@ -123,3 +123,11 @@ ASN扫描区分strict与legacy：严格图片路径继续分配前拒绝坏长�
 严格图片导出现在对四个Boundary轴统一拒绝NaN/Infinity，并要求宽高为正；缺失或不可解析同样以`InvalidDataException`失败。legacy PDF跳过这些无效边界，保留其它合法外观。使用兼容netstandard2.0的NaN/Infinity检查。20个边界回归分别验证strict输出保持sentinel、legacy有效JPEG仍有红色像素；同记录两无效stamp的数量限制仍在边界解析前失败。全套235/235，Sol Low独立定向21/21通过；本轮新包消费和产物随后记录。Preview再次确认锁定，仍未完成。
 
 第七轮25个实际产物均从`80c33c8`重新生成，11/11本地包消费通过；当次10张PNG/JPEG逐页重新查看，文字/样式/几何/表格/分页及重复外观检查范围同上，未见新缺陷。235项回归日志与全部载荷哈希在当前bundle/manifest。Preview仍未完成。
+
+## 第八轮复审修复
+
+`4840666`两类bot结果均已读取。Codex未发现主要问题；Cursor确认上一轮Boundary修复，并指出有限毫米值/页原点仍可在PDF转换中变成非有限操作数，以及正尺寸可被`0.####`写成零。
+
+新增局部`PdfOperandGeometry`与锁定PdfSharpCore 1.3.67的实际操作数/格式保持一致：Boundary、相对页面原点的stamp位置、边缘加法须在`mm * 72 / 25.4`后有限；位图尺寸及嵌套form缩放因子须为可按`0.####`写出的正值。strict外页原点在DrawPage前检查；嵌套首页面在创建form前检查。strict失败保持caller sentinel；legacy跳过不合法stamp或nested外观。普通公开PDF的页正文逻辑不扩展。锁定源码依据为[DrawImage实现](https://github.com/ststeiger/PdfSharpCore/blob/d6ac8b092129a4f797365bbbf3eea2723d6c3ebd/PdfSharpCore/Drawing.Pdf/XGraphicsPdfRenderer.cs#L604)。
+
+新增22项，覆盖有限`1e308`/超大边缘、极小正尺寸、NaN/Inf/溢出页原点、正常(2,3)mm页原点的实际红像素、相对位移减法溢出、嵌套form比例溢出/写零；legacy回归除有效JPEG红像素外，还解压PDF内容流确认无NaN/Infinity。全套257/257通过；本轮新包和产物随后记录。Preview仍未完成。
