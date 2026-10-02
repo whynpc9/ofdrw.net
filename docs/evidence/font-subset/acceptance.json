@@ -1,0 +1,63 @@
+{
+  "baseline": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+  "branch": "codex/font-subset-reuse",
+  "pr_base": "codex/document-tools",
+  "environment": {
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "architecture": "arm64",
+    "dotnet": "10.0.401",
+    "timezone": "Asia/Shanghai"
+  },
+  "functional": {
+    "status": "pass",
+    "tests": 428,
+    "independent_focused": 44,
+    "packages": 11,
+    "package_version": "0.1.0-issue05.20261002.2"
+  },
+  "automated_render": {
+    "status": "pass",
+    "pdf_pages": 8,
+    "chromium_svg_pages": 8,
+    "poppler_stderr": "none",
+    "full_subset_pixels_equal": true
+  },
+  "png_visual": {
+    "status": "pass",
+    "pdf_checked": {
+      "full": [
+        1,
+        2
+      ],
+      "subset": [
+        1,
+        2
+      ],
+      "docx-native": [
+        1,
+        2
+      ],
+      "docx-default": [
+        1,
+        2
+      ]
+    },
+    "svg_chromium_checked": {
+      "subset": [
+        1,
+        2
+      ]
+    },
+    "finding": "Initial comparison fixture page-2 title overflow was fixed by splitting page label; current output re-generated and inspected."
+  },
+  "preview": {
+    "status": "pending",
+    "reason": "Exclusive desktop slot requested; concurrent Issue04 graphics.pdf observed, no window switching performed."
+  },
+  "overall_visual_complete": false,
+  "production_release_accepted": false,
+  "unresolved": [
+    "macOS Preview per-page inspection and closing task windows"
+  ],
+  "viewing_chain": "Fixed DOCX -> native/default OFD produced this run -> OFD PDF exporter -> PNG; Preview pending. Never direct DOCX->PDF."
+}

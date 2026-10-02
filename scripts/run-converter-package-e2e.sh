@@ -74,6 +74,14 @@ dotnet tool install Ofdrw.Net.Cli --tool-path "$TASK_DIR/tools" --version "$VERS
   "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx" "$RESULT_DIR/cli-native.ofd"
 OFDRW_REPO_ROOT="$ROOT_DIR" OFDRW_E2E_OUTPUT_DIR="$RESULT_DIR" dotnet run \
   --project "$CONSUMER" -c Release --no-build --no-restore
+# Exercise the production subset backend from the newly packed SDK as well.
+mkdir -p "$TASK_DIR/font-consumer"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.FontSubset.E2E/Program.cs" "$TASK_DIR/font-consumer/Program.cs"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj" "$TASK_DIR/font-consumer/Consumer.csproj"
+FONT_CONSUMER="$TASK_DIR/font-consumer/Consumer.csproj"
+dotnet restore "$FONT_CONSUMER" --configfile "$TASK_DIR/NuGet.Config" -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+dotnet build "$FONT_CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+dotnet run --project "$FONT_CONSUMER" -c Release --no-build --no-restore -- "$ROOT_DIR" "$RESULT_DIR/font-subset"
 python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION" --verify-manifest
 cp "$OUT_DIR/package-manifest.json" "$RESULT_DIR/package-manifest.json"
 echo "[E2E] Verified package bytes and output: $RESULT_DIR"

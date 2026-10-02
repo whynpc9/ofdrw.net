@@ -50,6 +50,15 @@ public sealed class FontIsolationTests
     }
 
     [Fact]
+    public void SupplementaryUnicodeAndExplicitGlyphSourceFailRatherThanCorruptPdfText()
+    {
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([]);
+        var exception = Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { Text = "A\U000107A5B" }, out _));
+        Assert.Contains("supplementary Unicode", exception.Message);
+        Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { Text = "A", SourceXml = "<TextObject><CGTransform><Glyphs>1</Glyphs></CGTransform></TextObject>" }, out _));
+    }
+
+    [Fact]
     public void NameOnlyFallback_ShouldNotProbeRegularHostFaces()
     {
         var host = new HostResolver(File.ReadAllBytes(FontPath("narrow")));
