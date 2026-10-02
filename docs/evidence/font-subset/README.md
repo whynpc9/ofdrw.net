@@ -4,8 +4,8 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 459/459；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
-| 包消费 | 11 个 `0.1.0-issue05.20261003.7` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
+| 功能回归 | 当前全套 463/463；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 包消费 | 11 个 `0.1.0-issue05.20261003.9` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
@@ -34,3 +34,5 @@ DocumentTools 首轮 CI 失败与两轮定位日志保留：空白包会生成�
 已保留最初样例标题过长及修正后的记录；当前两页页标已拆行，重生成后再次检查。非 BMP P2 的失败轮次和独立 R2 复验亦保留。范围限制详见[字体子集契约](../../font-subset-and-reuse.md)：CFF/变量/未知表/RTL 全量保护；非 BMP PDF 与未建模 CGTransform PDF/SVG 明确失败；已有未知 OFD 资源不裁剪。Preview 仅覆盖列出的 8 页；发布/merge 未授权，不关闭 issue #3。当前 head 的 CI/review 闭环单独记录，不以这些样例推断任意复杂文档保真。
 
 第二轮修复：default-ignorable 控制不要求 cmap 轮廓，PDF 绘制跳过可省略控制符而不改变 OFD 原文或显式 Delta 槽位；方向控制/UVS PDF 明确拒绝。保留 R6 的可见 tofu 失败和 R7 的修复页面。新增 ZWJ/ZWNJ 两页 Preview 待下个独占时段，原 8 页实际验收不受这些无控制符的 guard/绘制分支影响。TTC 容器/face 双预算、OS/2-first 统一样式已有回归；非法 SourceXml 在两模式均拒绝（a6ae520 Full 真实探针为 XmlException/0 字节，并未成功写出）。
+
+R8：绘制时保留已映射 Hangul filler 的真实字宽，普通文本与每 gap Delta 的实测像素/位置一致；全部方向格式控制、蒙古 FVS 语义 PDF 明确拒绝。新增 filler 的无/有 Delta 页面 PNG 复查通过，实际 Preview 与 ZWJ/ZWNJ 一起排解锁后的短时独占；整体视觉门仍保持未完成。
