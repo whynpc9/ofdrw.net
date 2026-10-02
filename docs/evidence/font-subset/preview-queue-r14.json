@@ -1,0 +1,153 @@
+[
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r14/filler-space.pdf",
+    "pages": 1,
+    "sha256": "9575f2bfc0909576e1d0026f40a9a4732fadd810ea4d0666079d762145d980f8",
+    "bytes": 12082,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r13/filler-space.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "controls/r14/filler-space.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r14/filler-3164.pdf",
+    "pages": 1,
+    "sha256": "f2c5071a42cab8f19b96b7a6edb1aebb926631d53c34587750fc82845261c5fe",
+    "bytes": 12084,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r13/filler-3164.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "controls/r14/filler-3164.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r14/filler-space-delta.pdf",
+    "pages": 1,
+    "sha256": "7db3edbcfaef34c94df1dd4f81e990f43fe3b79877e741b68897f3dc7dad2b46",
+    "bytes": 12102,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r13/filler-space-delta.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "controls/r14/filler-space-delta.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r14/filler-3164-delta.pdf",
+    "pages": 1,
+    "sha256": "64021fb682e3e99c03856baf6ccde3eef314f6b75b7cc222889fab28d6ed3d33",
+    "bytes": 12104,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r13/filler-3164-delta.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "controls/r14/filler-3164-delta.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r14/lrm.pdf",
+    "pages": 1,
+    "sha256": "57e4e5c301a4357111340ad05bd6b9918c0fbcf62f187e27ffe853163f5d7bd3",
+    "bytes": 12065,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r13/lrm.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "controls/r14/lrm.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r14/deprecated.pdf",
+    "pages": 1,
+    "sha256": "98abd7ac30a36004ccc307efcd42ffe29f0018b420451c18a613103661853606",
+    "bytes": 12066,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r13/deprecated.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "controls/r14/deprecated.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/missing.pdf",
+    "pages": 1,
+    "sha256": "0f297e6cc934f007d9ac53df04ad42711683de7cd8f781156872bd23f4df1cbc",
+    "bytes": 12811,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r13/missing.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "nameonly/r14/missing.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/mapped.pdf",
+    "pages": 1,
+    "sha256": "23112c5e1dccdbe944d72d4cf0ca597767b4ae7f223e8348b2096b82184e1962",
+    "bytes": 12827,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r13/mapped.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "nameonly/r14/mapped.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/missing-fallback.pdf",
+    "pages": 1,
+    "sha256": "cb1e0886f570fdef3fef221a34ac80923f5e456bd6b50a51de2dd1b39a236f35",
+    "bytes": 48146,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r13/missing-fallback.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "nameonly/r14/missing-fallback.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/missing-arial-null.pdf",
+    "pages": 1,
+    "sha256": "d781f9c6541b209d51250f4a8bc60f3f698a7190dfad691a247e048d8ef76336",
+    "bytes": 48146,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r13/missing-arial-null.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "nameonly/r14/missing-arial-null.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/missing-arial-cmap.pdf",
+    "pages": 1,
+    "sha256": "265bee0d880889a80dcd412e3d6f9933d49c9febde0970070f187807c6d19d42",
+    "bytes": 48146,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r13/missing-arial-cmap.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "nameonly/r14/missing-arial-cmap.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/missing-default-ttc.pdf",
+    "pages": 1,
+    "sha256": "bb25c2af63ed2af6e48f1e6414dd8af5785811c9ec049138d2f1d5cb6728a00b",
+    "bytes": 48148,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r13/missing-default-ttc.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "nameonly/r14/missing-default-ttc.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r14/ligature.pdf",
+    "pages": 1,
+    "sha256": "2035f9589a600e0c74d2969be59c1104773b9f53bb6afd36a51fede413c0e0e6",
+    "bytes": 12480,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r13/ligature.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "controls/r14/ligature.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/missing-arial-getter.pdf",
+    "pages": 1,
+    "sha256": "208fe818f95b0f034eaaa62c4278859c56c82649d846810ee8442747ba409995",
+    "bytes": 48146,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r13/missing-arial-getter.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "nameonly/r14/missing-arial-getter.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/unicode-missingA-symboldefault.pdf",
+    "pages": 1,
+    "sha256": "1f2271f088cafecdeaa14b21b786f1f329e38cb96e835f32b4e662194cda804d",
+    "bytes": 48632,
+    "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r13/unicode-missingA-symboldefault.pdf",
+    "oldPixelAE": "0 (0)",
+    "evidence_path": "nameonly/r14/unicode-missingA-symboldefault.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/missing-plain-two.pdf",
+    "pages": 1,
+    "sha256": "a7721fb40c6185d81404f8478e1d2015910ba805768fb83e1d59a2c6b01a0bec",
+    "bytes": 58343,
+    "purpose": "Regular or unbound name-only A then fallback \u4e00",
+    "evidence_path": "nameonly/r14/missing-plain-two.pdf"
+  },
+  {
+    "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r14/missing-unbound-two.pdf",
+    "pages": 1,
+    "sha256": "c9e653e1bf4f096a4b1d5304488434ef2287b6318b75d80edbcbf0707bf0db58",
+    "bytes": 58343,
+    "purpose": "Regular or unbound name-only A then fallback \u4e00",
+    "evidence_path": "nameonly/r14/missing-unbound-two.pdf"
+  }
+]

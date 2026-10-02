@@ -40,8 +40,13 @@ public sealed class OfdPackageWriter
         foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, cancellationToken);
         if (package.Pages.Count == 0) OfdPageXmlContract.ValidateWritableDimensions(
             package.Options.DefaultPageWidthMillimeters, package.Options.DefaultPageHeightMillimeters);
-        var entries = BuildEntries(package, cancellationToken);
+        foreach (var text in package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>())
+            _ = Ofdrw.Net.Core.Fonts.EmbeddedFontCoverage.HasExplicitGlyphReferences(text);
+        var fontPlan = new OfdFontEmbeddingPlan(package, cancellationToken);
+        var entries = BuildEntries(package, fontPlan, cancellationToken);
         var result = OfdPackagePruner.Prune(package, entries, cancellationToken);
+        result.Fonts.AddRange(fontPlan.Results);
+        result.Warnings.AddRange(fontPlan.Diagnostics);
         using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
 
         foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
@@ -53,7 +58,7 @@ public sealed class OfdPackageWriter
         return result;
     }
 
-    private Dictionary<string, byte[]> BuildEntries(OfdDocumentPackage package, CancellationToken cancellationToken)
+    private Dictionary<string, byte[]> BuildEntries(OfdDocumentPackage package, OfdFontEmbeddingPlan fontPlan, CancellationToken cancellationToken)
     {
         var entries = new Dictionary<string, byte[]>(package.PreservedEntries, StringComparer.OrdinalIgnoreCase);
         var ns = XNamespace.Get(package.Options.Namespace);
@@ -104,7 +109,7 @@ public sealed class OfdPackageWriter
         if (!string.IsNullOrWhiteSpace(documentResourceLocation)) knownResourcePaths.Add(OfdPackagePath.Resolve(documentPath, documentResourceLocation!));
         var resources = new OfdResourceCatalog(entries, documentPath, ns, knownResourcePaths);
         resources.EnsureDocument(publicPath, ns);
-        foreach (var font in fonts.Resources) resources.WriteFont(font.Id, font.Resource, publicPath, ns);
+        foreach (var font in fonts.Resources) resources.WriteFont(font.Id, fontPlan.Resources.TryGetValue(font.Resource, out var embedded) ? embedded : font.Resource, publicPath, ns, fontPlan.CanonicalPayloads);
         if (!string.IsNullOrWhiteSpace(documentResourceLocation))
         {
             var resourcePath = OfdPackagePath.Resolve(documentPath, documentResourceLocation!);

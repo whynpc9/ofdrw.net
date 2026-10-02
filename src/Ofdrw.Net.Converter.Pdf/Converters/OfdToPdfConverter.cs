@@ -1,3 +1,4 @@
+using Ofdrw.Net.Core.Fonts;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -226,6 +227,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!OfdGraphicXmlContract.IsVisible(element)) continue;
+                if (element is OfdRawElement glyphXml && EmbeddedFontCoverage.HasExplicitGlyphReferences(glyphXml.Xml))
+                    throw new NotSupportedException("PDF export does not model raw CGTransform glyph substitutions.");
                 if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
                     throw new NotSupportedException($"Annotation appearance on page {page.Index + 1} contains unsupported drawing; export would lose content.");
                 var elementState = graphics.Save();
@@ -243,6 +246,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     {
                         var fontSize = Math.Max(0.1, MillimetersToPoints(text.FontSizeMillimeters));
                         var familyName = fonts.Resolve(text, out var resource);
+                        if ((text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text)).All(string.IsNullOrEmpty)) continue;
+                        var coverage = fonts.Coverage(resource, familyName);
                         // CT_Text Weight/Italic is the per-object style viewers apply;
                         // the resource flags describe the bound font file.
                         var bold = resource?.Bold == true || text.Weight >= 600;
@@ -256,17 +261,9 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             font = new XFont(familyName, fontSize, style);
                             face = GlobalFontSettings.FontResolver.ResolveTypeface(familyName, bold, italic);
                         }
-                        catch (Exception exception) when (resource?.Data.Length > 0)
+                        catch (Exception exception) when (exception is not OutOfMemoryException && exception is not OperationCanceledException)
                         {
-                            throw new InvalidDataException($"Embedded font '{resource.FontName}' could not be initialized.", exception);
-                        }
-                        catch (Exception exception) when (exception is not OutOfMemoryException &&
-                                                           exception is not OperationCanceledException)
-                        {
-                            font = new XFont("Arial", fontSize);
-                            // Use the face actually drawn. Re-querying the rejected
-                            // name here would repeat the host failure after fallback.
-                            face = GlobalFontSettings.FontResolver.ResolveTypeface("Arial", false, false);
+                            throw new InvalidDataException($"Font '{resource?.FontName ?? familyName}' could not be initialized without content loss.", exception);
                         }
                         var simulateBold = face.MustSimulateBold;
                         var simulateItalic = face.MustSimulateItalic;
@@ -296,14 +293,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 page.XMillimeters,
                                 page.YMillimeters,
                                 outlineFont,
-                                simulateItalic);
+                                simulateItalic, coverage);
                         }
                         else
                         {
                             DrawTextWithMatrix(graphics, text, page.XMillimeters, page.YMillimeters, factor =>
                             {
                                 var anchor = OfdTextEmphasis.Anchor(0, 0, factor);
-                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, XStringFormats.TopLeft);
+                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, XStringFormats.TopLeft, coverage);
                             });
                         }
                     }
@@ -382,8 +379,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     }
 
     private static void DrawStyledString(XGraphics graphics, string text, XFont font, XBrush brush,
-        XPoint point, SixLabors.Fonts.Font? outlineFont, bool italic, XStringFormat? format = null)
+        XPoint point, SixLabors.Fonts.Font? outlineFont, bool italic, XStringFormat? format = null, OpenTypeCmap? coverage = null)
     {
+        text = PdfTextControlPolicy.VisibleText(text, coverage);
+        if (text.Length == 0) return;
         // PDFsharp Core 1.3.67 drops resolver style simulations when creating
         // XGlyphTypeface. Apply the missing fallback appearance at draw time.
         var state = graphics.Save();
@@ -450,7 +449,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         double pageOriginX,
         double pageOriginY,
         SixLabors.Fonts.Font? outlineFont,
-        bool simulateItalic)
+        bool simulateItalic, OpenTypeCmap? coverage)
     {
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
@@ -463,7 +462,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
                     DrawStyledString(graphics, run.Text, font, brush,
-                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic);
+                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, coverage: coverage);
                     continue;
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
@@ -471,7 +470,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     var anchor = OfdTextEmphasis.Anchor(x, y, factor);
                     DrawStyledString(graphics, glyphs[i], font, brush,
-                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic);
+                        new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, coverage: coverage);
                     if (i < deltaX.Count) x += deltaX[i];
                     if (i < deltaY.Count) y += deltaY[i];
                 }

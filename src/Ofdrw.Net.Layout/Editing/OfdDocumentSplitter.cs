@@ -73,7 +73,7 @@ public static class OfdDocumentSplitter
         foreach (var font in source.Fonts) result.Fonts.Add(new OfdFontResource
         {
             Id = font.Id, FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
-            Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray()
+            Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray(), CollectionFaceIndex = font.CollectionFaceIndex
         });
         OfdDocumentMerger.CopyAttachments(source, result);
         foreach (var tag in source.CustomTags) result.CustomTags.Add(tag.Key, tag.Value);

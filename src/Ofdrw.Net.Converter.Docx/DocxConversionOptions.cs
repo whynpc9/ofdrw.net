@@ -106,6 +106,9 @@ public sealed class DocxConversionOptions
     /// <summary>Gets or sets the maximum size of one configured font file.</summary>
     public long MaxEmbeddedFontBytes { get; set; } = 64L * 1024 * 1024;
 
+    /// <summary>Native OFD font payload policy and subset budgets.</summary>
+    public Ofdrw.Net.Core.Models.OfdFontEmbeddingOptions FontEmbedding { get; set; } = new();
+
     /// <summary>
     /// Gets font family names considered when DOCX styles do not resolve an explicit font.
     /// </summary>

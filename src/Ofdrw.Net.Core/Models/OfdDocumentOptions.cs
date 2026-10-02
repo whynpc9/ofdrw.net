@@ -12,6 +12,9 @@ public sealed class OfdDocumentOptions
 
     public bool EnableDeflateCompression { get; set; } = true;
 
+    /// <summary>Package-wide embedded font subsetting and resource budgets.</summary>
+    public OfdFontEmbeddingOptions FontEmbedding { get; set; } = new();
+
     public double DefaultPageWidthMillimeters { get; set; } = 210d;
 
     public double DefaultPageHeightMillimeters { get; set; } = 297d;

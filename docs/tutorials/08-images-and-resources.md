@@ -62,7 +62,7 @@ Res/               实际的 .ttf / .png / .jpg
 
 字体在 `PublicRes` 的 `Fonts/Font` 下，用 `FontFile` 指向文件，页面 `TextObject/@Font` 引用该 ID。本仓库 `OfdDocumentPackage.Fonts` 列表在写包时输出到 `PublicRes.xml`。
 
-没有嵌入文件时，阅读器只能按 `FontName` 找本机字体。跨环境分发应嵌入，并注意字体许可。本仓库保留完整字体字节，不做子集化，所以中文字体文件会明显增大包体积。
+没有嵌入文件时，阅读器只能按 `FontName` 找本机字体。跨环境分发应嵌入，并注意字体许可。新建且完全建模的包默认按全包用字生成静态 TrueType 子集，同内容样式资源共用一份字体载荷。读回编辑或含未知 SourceXml/CGTransform/Raw 时保留字体并提供诊断。CFF、变量和暂未建模的字体表保留全量；详见[字体子集与复用](../font-subset-and-reuse.md)。
 
 ## 颜色空间
 
