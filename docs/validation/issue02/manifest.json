@@ -1,5 +1,5 @@
 {
-  "source_commit": "65c40edced36cf67a80d163e1282246175835932",
+  "source_commit": "80c33c823eaf9189db3f13917c440dbf8c0a240a",
   "baseline": "be8b74b3cbd699732ec0638189d14037e052a770",
   "date": "2026-10-02",
   "timezone": "Asia/Shanghai",
@@ -17,10 +17,10 @@
     "shared-seal": "appearance-only OFD with six repeated nested payload placements -> PDF / strict cached image export; no cryptographic validity claim"
   },
   "tests": {
-    "total": 215,
+    "total": 235,
     "failed": 0,
     "packages": 11,
-    "package_version": "0.1.0-issue02.review6"
+    "package_version": "0.1.0-issue02.review7"
   },
   "png_visual_review": [
     "export-1.png",
@@ -94,12 +94,12 @@
     {
       "path": "imported.ofd",
       "bytes": 3405,
-      "sha256": "b379869e8c70919e3c49ff56a210da0e5b7004ad496602877ffb4681a9d6b5b8"
+      "sha256": "01011262218958c1427289721f207a07b4e738f70339506fed585cb626271428"
     },
     {
       "path": "imported.pdf",
       "bytes": 3414,
-      "sha256": "f83277fea1ea7cd986ec93eaafe0a87727c12a0f822c015a2cc277f36b3f85b5"
+      "sha256": "9eadba4005e2a4860b6cce7b3814b72a3a1f09fba2c78b3e5368167dcce7c635"
     },
     {
       "path": "input.jpg",
@@ -113,13 +113,13 @@
     },
     {
       "path": "shared-seal.ofd",
-      "bytes": 3280,
-      "sha256": "d8414f9c6444290f29a2ff9e9cc4112a73dad314e5804c9da16dde138c46bfb2"
+      "bytes": 3278,
+      "sha256": "050323108b271d5b4cabb73f67fdc58424004ff773397868b5cb7c51364dc47c"
     },
     {
       "path": "shared-seal.pdf",
       "bytes": 3255,
-      "sha256": "762e4c38db94843adb1c3941b3994fc7bdfba43a8c4cd83d70cd8051eade7648"
+      "sha256": "896b8dc99f8e3d20c8b22dbe282352dd4d9d3648eea5c44d6501807a640e153e"
     },
     {
       "path": "shared-seal.png",
@@ -129,53 +129,53 @@
     {
       "path": "source.ofd",
       "bytes": 2969,
-      "sha256": "29e70b32c10e7c8e959085726060f52dbe441a4838db72cf72c6bd827c198654"
+      "sha256": "a21d291988104e5c3b37332eca445b05a19e106af2b02f00b1c573170e17be4b"
     },
     {
       "path": "source.pdf",
       "bytes": 69655,
-      "sha256": "2a3d124fa72a57ebeff1e1d34ad85c8072c6c1cb6bb36ffddcc6d05a81ca67ab"
+      "sha256": "7f9560b29b5c5bd3c8f1346aec6894e410efddd9d6c9bb7200046bb212943c87"
     },
     {
       "path": "baseline-native.ofd",
       "bytes": 15288607,
-      "sha256": "f2224951388c14aad3bb2c41a4a7c368dcb498eb896397af83a3a5c58b895769"
+      "sha256": "06e4f4dcb994fad3e1481483fd7d3830f0a513b0afcdc6fa4066be46d3e8d8f2"
     },
     {
       "path": "baseline-native.pdf",
       "bytes": 117446,
-      "sha256": "81929789644dc78ec4921714ba1161643562e94c8e1ead1dedebbf318054f36a"
+      "sha256": "c29faada2c07351f6348d00f291c9a5881a7d14ad524597aa67e1b047d6d5117"
     },
     {
       "path": "baseline-default.ofd",
       "bytes": 15288607,
-      "sha256": "1d42426bfc0a30e48a3e5b882af5c51d64294db23d66c02bffab5c051afe2920"
+      "sha256": "56516fe57a0a40f3546435a4a3da85c9c419a5dc0a97ac332862026dd8335439"
     },
     {
       "path": "baseline-default.pdf",
       "bytes": 117446,
-      "sha256": "0fa1080a1743a132bd053b13dad83b99adcda1e05c9962f20e3df6eb8bff238f"
+      "sha256": "74ba32ec090dd373e476be49aeb8ab45e82dd52ea338db9f8ac133bc5dab48fe"
     },
     {
       "path": "tests.txt",
-      "bytes": 6308,
-      "sha256": "699f1b3452149a0d9358341d4f934f3155df890f64e2e7f600128df487b8110d"
+      "bytes": 6320,
+      "sha256": "251be506b2d205a055e7beae8087165febeccc1808d25e86ad4e02d344af58e3"
     },
     {
       "path": "package-e2e.txt",
       "bytes": 10752,
-      "sha256": "73679a976e6c27fac00914bdb681c8decf47095b9c13a418d61abbe7864a27cd"
+      "sha256": "ca5460dc12eca942475fe8bd07306ad59dcc4e4b8689e295231e26a3aab0f574"
     },
     {
       "path": "package-manifest.json",
       "bytes": 2237,
-      "sha256": "506bc8425f3d6cad8e4c6d119eafb4e3cfa2d9d1d413b7f3a9f8f0a23b9813d4"
+      "sha256": "3f88164d9b465ac3f5bce74c7cd207cb8dbe0a667bdec5c40eea42ce1f623213"
     }
   ],
   "archive": {
     "path": "evidence.tar.xz",
-    "bytes": 15549216,
-    "sha256": "3e98560b7a70abc7475cfda0561455b9020ac9967b2fdfaf82d611b5876e1b76"
+    "bytes": 15549420,
+    "sha256": "0a561518a8327b73a4fe9e8fdde17ac919f1a957d55ed8c98d543a3932913916"
   },
-  "review_generation": "review6; all 10 fresh PNG/JPEG pages re-inspected; Preview locked"
+  "review_generation": "review7; all 10 fresh PNG/JPEG pages re-inspected; Preview locked"
 }
