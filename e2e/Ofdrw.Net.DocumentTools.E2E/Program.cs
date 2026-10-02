@@ -111,6 +111,15 @@ try
     throw new Exception("Mix must reject unmodeled annotation metadata.");
 }
 catch (NotSupportedException) { }
+var boxModel = new OfdDocumentPackage(); boxModel.Fonts.Add(source.Fonts.First());
+boxModel.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80, Elements = { new OfdTextElement { Text = "BOX 100 x 80", FontName = source.Fonts.First().FontName, FontResourceId = source.Fonts.First().Id, XMillimeters = 10, YMillimeters = 10, WidthMillimeters = 80, HeightMillimeters = 10, FontSizeMillimeters = 4 } } });
+await Save(boxModel, "box-whitespace-input");
+Mutate("box-whitespace-input", entries =>
+{
+    var document = Xml(entries["Doc_0/Document.xml"]); document.Descendants(ns + "PageArea").Single().Element(ns + "PhysicalBox")!.Value = "0 0 210 297"; entries["Doc_0/Document.xml"] = Bytes(document);
+    var pagePath = entries.Keys.Single(path => path.EndsWith("/Content.xml")); var page = Xml(entries[pagePath]); page.Root!.Element(ns + "Area")!.Element(ns + "PhysicalBox")!.Value = "0\t0\n100\r80"; entries[pagePath] = Bytes(page);
+});
+await Save(OfdDocumentMixer.Mix([new(await Read("box-whitespace-input"), 0)]), "box-whitespace");
 var mark = File.ReadAllBytes(Path.Combine(root, "e2e/Ofdrw.Net.DocumentTools.E2E/mark.png"));
 await using (var input = File.OpenRead(PathFor("rich.ofd")))
 await using (var target = File.Create(PathFor("signed.ofd")))
@@ -123,6 +132,48 @@ Mutate("signed", entries =>
     signature.Root.Element(signNs + "SignedInfo")!.Add(new XElement(signNs + "StampAnnot", new XAttribute("ID", "999010"), new XAttribute("PageRef", source.Pages[0].Id!), new XAttribute("Boundary", "175 240 15 15")));
     entries[description] = Bytes(signature);
 });
+File.Copy(PathFor("signed.ofd"), PathFor("binary-xml-input.ofd"), true);
+Mutate("binary-xml-input", entries =>
+{
+    var description = entries.Keys.Single(path => path.EndsWith("/Signature.xml")); var signature = Xml(entries[description]); var location = signature.Root!.Element(signature.Root.Name.Namespace + "SignedValue")!;
+    var oldPath = location.Value.TrimStart('/'); if (!entries.Remove(oldPath)) throw new Exception("Generated synthetic SignedValue entry missing.");
+    var newPath = description[..description.LastIndexOf('/')] + "/SignedValue.xml"; location.Value = "/" + newPath;
+    entries[newPath] = [0, 255, 13, 7]; entries[description] = Bytes(signature);
+    var attachments = Xml(entries["Doc_0/Attachs/Attachments.xml"]); attachments.Root!.Add(new XElement(ns + "Attachment", new XAttribute("ID", "binary-public"), new XAttribute("Name", "attachment.xml"), new XAttribute("Format", "application/octet-stream"), new XElement(ns + "FileLoc", "attachment.xml")));
+    entries["Doc_0/Attachs/Attachments.xml"] = Bytes(attachments); entries["Doc_0/Attachs/attachment.xml"] = [0, 254, 12, 6];
+});
+await Save(OfdDocumentSplitter.Split(await Read("binary-xml-input"), [1]), "binary-xml-split");
+File.Copy(PathFor("rich.ofd"), PathFor("page-wrapper-metadata.ofd"), true);
+Mutate("page-wrapper-metadata", entries =>
+{
+    var document = Xml(entries["Doc_0/Document.xml"]); var first = document.Root!.Element(ns + "Pages")!.Elements().First(); var path = "Doc_0/" + first.Attribute("BaseLoc")!.Value; var page = Xml(entries[path]);
+    foreach (var node in page.Root!.DescendantsAndSelf().Where(node => node.Name.LocalName is "Page" or "Area" or "Content" or "Layer")) node.SetAttributeValue(XNamespace.Get("urn:vendor:wrapper") + "Payload", "public.bin");
+    entries[path] = Bytes(page); entries["Doc_0/public.bin"] = Encoding.UTF8.GetBytes("public synthetic wrapper payload");
+});
+var wrapper = await Read("page-wrapper-metadata");
+foreach (var operation in new[] { "split", "save", "watermark" })
+{
+    using var target = new MemoryStream();
+    try
+    {
+        if (operation == "split") OfdDocumentSplitter.Split(wrapper, [0]);
+        if (operation == "save") await new OfdPackageWriter().WriteAsync(wrapper, target);
+        if (operation == "watermark") OfdWatermark.AddText(wrapper, [1], "DRAFT");
+        throw new Exception("Extended page wrapper must not be discarded.");
+    }
+    catch (NotSupportedException exception) { if (target.Length != 0) throw new Exception("Rejected rewrite emitted bytes."); File.WriteAllText(PathFor("page-wrapper-metadata-" + operation + ".rejection.txt"), exception.Message); }
+}
+File.Copy(PathFor("rich.ofd"), PathFor("annotation-processing-instruction.ofd"), true);
+Mutate("annotation-processing-instruction", entries =>
+{
+    var xml = Xml(entries["Doc_0/Annots/Page.xml"]); xml.Descendants(ns + "TextCode").First().Add(new XProcessingInstruction("vendor", "public.bin")); entries["Doc_0/Annots/Page.xml"] = Bytes(xml); entries["Doc_0/public.bin"] = [42];
+});
+foreach (var format in new[] { "pdf", "svg" })
+{
+    using var input = File.OpenRead(PathFor("annotation-processing-instruction.ofd")); using var target = new MemoryStream();
+    try { if (format == "pdf") await new OfdToPdfConverter().ConvertAsync(input, target); else await new OfdToSvgConverter().ConvertAsync(input, target); throw new Exception("Opaque drawing PI must reject export."); }
+    catch (NotSupportedException exception) { if (target.Length != 0) throw new Exception("Rejected PI export wrote bytes."); File.WriteAllText(PathFor("annotation-processing-instruction-" + format + ".rejection.txt"), exception.Message); }
+}
 source = await Read("signed");
 OfdWatermark.AddText(source, [0], "DRAFT 草稿", new OfdWatermarkOptions { XMillimeters = 60, YMillimeters = 250, WidthMillimeters = 100, HeightMillimeters = 16, LayerId = "watermark", LayerType = "Foreground" }, fontName: source.Fonts.First().FontName, fontSizeMillimeters: 7);
 OfdWatermark.AddImage(source, [0], mark, "image/png", new OfdWatermarkOptions { XMillimeters = 175, YMillimeters = 215, WidthMillimeters = 15, HeightMillimeters = 15, LayerId = "watermark", LayerType = "Foreground" });
@@ -288,7 +339,7 @@ fixedAnchor.Pages.Add(fixedPage); await Save(fixedAnchor, "italic-fixed-anchor")
 File.Copy(Path.Combine(root, "scripts/generate-font-test-fixtures.py"), PathFor("fonts/generate-font-test-fixtures.py"), true);
 File.Copy(Path.Combine(root, "LICENSE"), PathFor("fonts/MIT-rectangle-LICENSE.txt"), true);
 File.WriteAllBytes(PathFor("fonts/narrow.ttf"), rectangleFont);
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "mix-custom-tags", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "binary-xml-split", "page-wrapper-metadata", "box-whitespace", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "mix-custom-tags", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);

@@ -93,6 +93,20 @@ public sealed class AnnotationToolVisualTests
         saved.Position = 0; using var svg = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(saved, svg)); Assert.Equal(0, svg.Length);
     }
 
+    [Theory]
+    [InlineData("<TextObject Size='3'><TextCode X='0' Y='3'>KNOWN<?vendor payload.bin?></TextCode></TextObject>")]
+    [InlineData("<PathObject><AbbreviatedData>M 0 0 L 5 0 L 5 5 C<?vendor payload.bin?></AbbreviatedData></PathObject>")]
+    [InlineData("<PageBlock ID='902'><?vendor payload.bin?><TextObject Size='3'><TextCode X='0' Y='3'>KNOWN</TextCode></TextObject></PageBlock>")]
+    public async Task AnnotationDrawingProcessingInstructionsRefuseBothExports(string drawing)
+    {
+        var source = await Annotated(drawing, "10 10 20 20");
+        Assert.Contains(source.Pages[0].AnnotationAppearances, element => element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" });
+        using var ofd = await Write(source); var read = await new OfdReader().ReadAsync(ofd); Assert.Equal(source.PreservedEntries["Doc_0/Annots/Page.xml"], read.PreservedEntries["Doc_0/Annots/Page.xml"]);
+        ofd.Position = 0; using var pdf = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd, pdf)); Assert.Equal(0, pdf.Length);
+        ofd.Position = 0; using var svg = new MemoryStream(); await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(ofd, svg)); Assert.Equal(0, svg.Length);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
+    }
+
     [Fact]
     public async Task TextMatrix_ScalesGlyphsAndRotatesThemInsteadOfOnlyMovingAnchors()
     {

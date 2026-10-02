@@ -36,6 +36,8 @@ public sealed class OfdPackageWriter
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        OfdPageXmlContract.ValidateDocumentArea(package, cancellationToken);
+        foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, cancellationToken);
         var entries = BuildEntries(package, cancellationToken);
         var result = OfdPackagePruner.Prune(package, entries, cancellationToken);
         using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
@@ -478,13 +480,35 @@ public sealed class OfdPackageWriter
                 content.Add(layer);
             }
 
-            if (!content.HasElements)
+            if (page.SourceEntryPath is not null && entries.TryGetValue(page.SourceEntryPath, out var sourceBytes))
             {
-                content.Add(new XElement(
-                    ns + "Layer",
-                    new XAttribute("ID", idAllocator.Allocate()),
-                    new XAttribute("Type", "Body")));
+                using var input = new MemoryStream(sourceBytes, false);
+                var source = XDocument.Load(input, LoadOptions.PreserveWhitespace);
+                var originals = source.Root?.Element(source.Root.Name.Namespace + "Content")?.Elements(source.Root.Name.Namespace + "Layer").ToList() ?? [];
+                var rebuilt = content.Elements().ToDictionary(layer => layer.Attribute("ID")!.Value, StringComparer.Ordinal);
+                XElement? next = null;
+                for (var position = originals.Count - 1; position >= 0; position--)
+                {
+                    var original = originals[position];
+                    var originalId = original.Attribute("ID")?.Value;
+                    XElement? existing = null;
+                    if (originalId is not null) rebuilt.TryGetValue(originalId, out existing);
+                    if (original.HasElements) { if (existing is not null) next = existing; continue; }
+                    if (existing is not null)
+                    {
+                        // A caller explicitly filled this original layer through its ID.
+                        existing.AddFirst(original.Nodes().OfType<XComment>().Select(comment => new XComment(comment.Value)));
+                        next = existing;
+                        continue;
+                    }
+                    var emptyLayer = new XElement(original); emptyLayer.Name = ns + "Layer";
+                    emptyLayer.SetAttributeValue("ID", idAllocator.AllocatePreferred(originalId));
+                    if (next is not null) next.AddBeforeSelf(emptyLayer);
+                    else content.Add(emptyLayer);
+                    next = emptyLayer;
+                }
             }
+            if (!content.HasElements) content.Add(new XElement(ns + "Layer", new XAttribute("ID", idAllocator.Allocate()), new XAttribute("Type", "Body")));
 
             var pageRoot = new XElement(
                 ns + "Page",

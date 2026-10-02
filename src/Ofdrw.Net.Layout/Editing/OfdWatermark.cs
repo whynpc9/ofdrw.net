@@ -84,6 +84,8 @@ public static class OfdWatermark
         if (!Finite(options.XMillimeters) || !Finite(options.YMillimeters) || !Finite(options.WidthMillimeters) || !Finite(options.HeightMillimeters) ||
             options.WidthMillimeters <= 0 || options.HeightMillimeters <= 0) throw new ArgumentException("Watermark geometry must be finite with positive dimensions.");
         var staged = new List<(OfdPage Page, OfdElement Element, int Position)>();
+        OfdPageXmlContract.ValidateDocumentArea(package, token);
+        foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, token);
         var layer = options.LayerId ?? "watermark-" + Guid.NewGuid().ToString("N");
         foreach (var index in pages)
         {

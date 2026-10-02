@@ -56,6 +56,22 @@ public sealed class DocumentToolsCliTests : IDisposable
         Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
     }
 
+    [Theory]
+    [InlineData("split")]
+    [InlineData("watermark")]
+    public async Task ExtendedPageContainer_PreservesExistingCliOutput(string command)
+    {
+        var input = PathFor("source.ofd"); var output = PathFor("existing.ofd"); var source = new OfdDocumentPackage(); source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 });
+        await using (var stream = File.Create(input)) await new OfdPackageWriter().WriteAsync(source, stream);
+        using (var zip = ZipFile.Open(input, ZipArchiveMode.Update))
+        {
+            var entry = zip.Entries.Single(item => item.FullName.EndsWith("/Content.xml", StringComparison.Ordinal)); XDocument xml; using (var stream = entry.Open()) xml = XDocument.Load(stream);
+            xml.Root!.SetAttributeValue(XNamespace.Get("urn:vendor") + "Payload", "keep.bin"); var path = entry.FullName; entry.Delete(); using var target = zip.CreateEntry(path).Open(); target.Write(Encoding.UTF8.GetBytes(xml.ToString()));
+        }
+        await File.WriteAllTextAsync(output, "unchanged"); var args = command == "split" ? new[] { command, input, output, "--pages", "1" } : new[] { command, input, output, "--pages", "1", "--text", "DRAFT" };
+        Assert.Equal(1, await global::Cli.RunAsync(args)); Assert.Equal("unchanged", await File.ReadAllTextAsync(output)); Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+    }
+
     [Fact]
     public async Task Verify_MissingDeclaredListMustNotReportNoSignatures()
     {

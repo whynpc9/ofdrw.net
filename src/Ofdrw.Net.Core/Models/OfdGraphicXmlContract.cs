@@ -11,6 +11,9 @@ internal static class OfdGraphicXmlContract
     {
         var ns = root.Name.Namespace;
         if (ns != XNamespace.None && ns != OfdConstants.Namespace && ns != OfdConstants.StandardNamespace) return false;
+        if (root.DescendantNodes().Any(node => node is not XElement and not XText and not XComment ||
+            node is XText text && !string.IsNullOrWhiteSpace(text.Value) &&
+            text.Parent!.Name.LocalName is not ("TextCode" or "AbbreviatedData" or "Glyphs"))) return false;
         foreach (var node in root.Descendants())
         {
             if (node.Name.Namespace != ns) return false;
