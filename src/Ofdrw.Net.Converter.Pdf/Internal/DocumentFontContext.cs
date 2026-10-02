@@ -42,7 +42,11 @@ internal sealed class DocumentFontContext
                     if (face is not null) local = fallbackResolver.GetFont(face.FaceName);
                 }
                 if (IsStandaloneFont(local))
+                {
+                    var coverage = new OpenTypeCmap(new OpenTypeFace(local!));
                     _families[font] = PdfFontRegistry.RegisterFontFace(local!, font.Bold, font.Italic);
+                    _coverage[font] = coverage;
+                }
             }
             catch (Exception exception) when (exception is not OutOfMemoryException &&
                                                exception is not OperationCanceledException)

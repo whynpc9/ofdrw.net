@@ -69,7 +69,7 @@ public sealed class FontIsolationTests
             return (page.Text, page.Letters.Single(letter => letter.Value=="B").BoundingBox.Left);
         }
         var baseline=await Export("AB");
-        foreach (var value in new[] { "A\u200CB", "A\u200DB" })
+        foreach (var value in new[] { "A\u200CB", "A\u200DB", "A\u200EB", "A\u206AB" })
         {
             var result=await Export(value); Assert.Equal("AB",result.Text); Assert.Equal(baseline.Left,result.Left,5);
         }
@@ -97,12 +97,32 @@ public sealed class FontIsolationTests
     }
 
     [Fact]
+    public void RegisteredNameOnlySourceBytesAlsoProvideCoverageForMissingFillers()
+    {
+        var data=File.ReadAllBytes(FontPath("narrow")); var host=new HostResolver(data);
+        var resource=new OfdFontResource { Id="10",FontName="host-CJK-substitute",Bold=true };
+        var context=new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource],host);
+        var coverage=context.Coverage(resource); Assert.NotNull(coverage);
+        Assert.Equal(0,coverage!.Glyph(0x3164));
+        Assert.Equal("AB",Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u3164B",coverage));
+        var mapped=new Ofdrw.Net.Core.Fonts.OpenTypeFace(data);var original=new Ofdrw.Net.Core.Fonts.OpenTypeCmap(mapped);
+        mapped.Tables["cmap"]=Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int>{['A']=original.Glyph('A'),['B']=original.Glyph('B'),[0x3164]=original.Glyph(' ')});
+        var mappedContext=new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource],new HostResolver(mapped.Build()));
+        Assert.Equal("A\u3164B",Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u3164B",mappedContext.Coverage(resource)));
+    }
+
+    [Fact]
     public void NonRenderingControlsAreNotPaintedAndSemanticBidiOrUvsAreRefused()
     {
         Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200CB"));
         Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("A\u200DB"));
         Assert.Equal("", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText("\u200D"));
-        foreach (var value in new[] { "A\u202EB", "A\u202CB", "A\u200EB", "A\u206AB", "A\u2067B", "A\uFE00", "A\u180BB", "A\u180FB" })
+        foreach (var value in new[] { "A\u200EB", "A\u206AB", "A\u206FB" })
+        {
+            Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value);
+            Assert.Equal("AB", Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.VisibleText(value));
+        }
+        foreach (var value in new[] { "A\u202EB", "A\u202CB", "A\u2067B", "A\uFE00", "A\u180BB", "A\u180FB" })
             Assert.Throws<NotSupportedException>(() => Ofdrw.Net.Converter.Pdf.Internal.PdfTextControlPolicy.Validate(value));
     }
 

@@ -58,3 +58,5 @@ SDK 内部使用纯 .NET managed sfnt/glyf 后端，无 Python/fonttools、HarfB
 PDF 绘制时对 ZWJ/ZWNJ 等非绘制控制符跳过绘制，OFD 的 Unicode 原文不变，显式 Runs/Delta 坐标槽位不重排。PDF 的可见文本抽取忽略这些控制符；方向格式控制及 UVS 语义由当前 PDFsharp 无法保真，因此明确拒绝这些 PDF 导出，OFD/SVG 保留原文和语义。不能把 coverage 豁免或文件生成成功视为控制字符的视觉通过。
 
 绘制过滤只省略零宽格式控制符或已知 cmap 无字形的 default-ignorable；已映射的 Hangul filler 保留真实字宽，包括无 Delta 的字符串和每个 gap 明确 Delta 的游程。Unicode方向格式控制全部（含 U+202C）以及蒙古文 free variation selectors 的 PDF 语义明确拒绝，避免删除控制符后改变排列或变体。
+
+Name-only 资源若通过本地发现或 host style probe 取得真实字节，注册与 coverage 一起绑定并缓存；无字形 filler 不被误当作 mapped。LRM/已弃用零宽控制按可省略策略绘制，明确拒绝范围仅含需要当前引擎未实现排列语义的九个方向格式控制，避免不必要拒绝。

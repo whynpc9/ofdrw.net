@@ -10,10 +10,10 @@
   },
   "functional": {
     "status": "pass",
-    "tests": 463,
+    "tests": 464,
     "independent_focused": 72,
     "packages": 11,
-    "package_version": "0.1.0-issue05.20261003.9",
+    "package_version": "0.1.0-issue05.20261003.10",
     "package_status": "pass",
     "document_tools": {
       "samples": 36,
@@ -22,7 +22,7 @@
       "ci_failure": "First head failed when text was introduced into a previously empty subset; caller now rebinds source face / explicitly preserves full font for future opaque annotation injection."
     },
     "all_11_packages_contain_unicode_license": true,
-    "latest_independent_focused": 23
+    "latest_independent_focused": 24
   },
   "automated_render": {
     "status": "pass",
@@ -75,7 +75,7 @@
     "task_windows_closed": true,
     "ui_released": true,
     "record": "preview-acceptance.json",
-    "controls_status": "pending unlock/exclusive slot: ZWJ, ZWNJ and mapped-filler follow-up pages"
+    "controls_status": "pending unlock/exclusive slot: final control/filler/name-only follow-up pages"
   },
   "overall_visual_complete": false,
   "production_release_accepted": false,
@@ -88,6 +88,7 @@
     "r6": "failed: zero cmap glyph controls rendered visible tofu; failure retained",
     "r7": "pass PNG: ZWJ/ZWNJ identical to AB baseline; RLO/RLI explicitly refused with 0 PDF bytes; OFD preserves original controls",
     "coordinates": "actual PDF regression verifies explicit Runs/Delta slots remain unchanged",
-    "r8": "pass PNG: mapped Hangul filler retains advance for implicit and per-gap Delta runs; ZWJ/ZWNJ unchanged; PDF end-direction/Mongolian FVS refused."
+    "r8": "pass PNG: mapped Hangul filler retains advance for implicit and per-gap Delta runs; ZWJ/ZWNJ unchanged; PDF end-direction/Mongolian FVS refused.",
+    "r9": "pass actual PDF: LRM/206A and other zero-width cases equal AB; registered name-only physical bytes supply same cached cmap for missing/mapped filler."
   }
 }

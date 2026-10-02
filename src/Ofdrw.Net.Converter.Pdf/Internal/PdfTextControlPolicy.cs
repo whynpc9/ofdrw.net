@@ -11,7 +11,7 @@ internal static class PdfTextControlPolicy
         {
             if (OpenTypeCmap.IsVariationSelector(scalar) || scalar is >= 0x180B and <= 0x180D or 0x180F)
                 throw new NotSupportedException("PDFsharp cannot preserve Unicode variation sequences; use OFD/SVG or a glyph-aware PDF renderer.");
-            if ((scalar is >= 0x202A and <= 0x202E or >= 0x2066 and <= 0x206F or 0x200E or 0x200F or 0x061C) || UnicodeFontSubsetProfile.IsNonRenderingControl(scalar) && UnicodeFontSubsetProfile.RequiresBidiMirroring(scalar))
+            if (scalar is >= 0x202A and <= 0x202E or >= 0x2066 and <= 0x2069)
                 throw new NotSupportedException("PDFsharp cannot preserve bidi formatting control semantics; the original text remains supported in OFD/SVG.");
         }
     }
