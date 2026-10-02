@@ -19,3 +19,5 @@
 `evidence.tar.zst` 包含本次 OFD/PDF/SVG、16 个逐页 PNG、原文、源 DOCX、OFL 字体/许可、日志及清单。可用 `tar --zstd -xf docs/evidence/graphics/evidence.tar.zst -C artifacts/graphics-review` 提取，之后按 manifest 校验文件大小和 SHA-256。若系统 tar 不支持 --zstd，使用 `zstd -d -c ... | tar -xf -`。
 
 复现：安装固定许可字体到 `artifacts/graphics-fonts`，执行 `scripts/run-graphics-e2e.sh artifacts/graphics/current`；.NET 采用用户 AGENTS 要求的可写 CLI_HOME、环境变量和单节点 flags。PDF PNG 由 Poppler 110 DPI 生成，SVG 由 librsvg 渲染在白色背景。上下文、单基线文字和不支持操作边界见 [设计契约](../../graphics-design-contract.md) 与 [教程](../../tutorials/16-native-graphics.md)。只对实际生成/检查样例作结论。
+
+已使用默认 zstd 解码器从归档全新提取并校验清单全部 39 个文件（尺寸/SHA-256）；压缩窗口为 128 MiB。
