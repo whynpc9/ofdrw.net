@@ -190,6 +190,7 @@ public sealed class DocumentToolTests
         // An unselected page has its own implicit PageRes with a private image.
         source.PreservedEntries["Doc_0/Pages/Page_0/PageRes.xml"] = Encoding.UTF8.GetBytes($"<Res xmlns='{ns}'><MultiMedias><MultiMedia ID='710' Format='PNG'><MediaFile>Private.png</MediaFile></MultiMedia></MultiMedias></Res>");
         source.PreservedEntries["Doc_0/Pages/Page_0/Private.png"] = [55, 55];
+        source.PreservedEntries["Doc_0/Extensions/plain.dat"] = Encoding.Unicode.GetPreamble().Concat(Encoding.Unicode.GetBytes("plain non-XML text")).ToArray();
         var loaded = await new OfdReader().ReadAsync(Zip(source.PreservedEntries));
         var result = await RoundTrip(OfdDocumentSplitter.Split(loaded, [1]));
         Assert.Equal(keepTemplate, result.PreservedEntries.ContainsKey("Doc_0/Templates/Content.xml"));
@@ -245,6 +246,9 @@ public sealed class DocumentToolTests
     [InlineData("state.dat", "<Extension File='/Doc_0/Templates/Content.xml'/>", false)]
     [InlineData("state.dat", "<Extension File='../Templates/Content.xml'/>", false)]
     [InlineData("state.dat", "<Res BaseLoc='../Templates'><File>Content.xml</File></Res>", false)]
+    [InlineData("state.dat", "<Extension BaseLoc='../Templates'><File>Content.xml</File></Extension>", false)]
+    [InlineData("state.dat", "<Wrapper><Res BaseLoc='../Templates'><File>Content.xml</File></Res></Wrapper>", false)]
+    [InlineData("state.dat", "<Wrapper BaseLoc='..'><Extension BaseLoc='Templates'><File>Content.xml</File></Extension></Wrapper>", false)]
     public async Task Split_UnknownLeafTemplateReferenceKeepsItsFullClosure(string fileName, string reference, bool utf16)
     {
         var source = await RoundTrip(Source()); var ns = source.Options.Namespace;
@@ -530,6 +534,60 @@ public sealed class DocumentToolTests
     }
 
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
+    [Theory]
+    [InlineData("Extension","urn:vendor")]
+    [InlineData("Extension","http://www.ofdspec.org")]
+    [InlineData("Signatures","urn:vendor")]
+    public async Task Mix_RejectsDocBodyExtensionsWhileOrdinarySavePreserves(string name,string extensionNamespace)
+    {
+        var source=await RoundTrip(Source());var root=Xml(source,"OFD.xml");var extension=new XElement(XName.Get(name,extensionNamespace),new XAttribute("File","Doc_0/Extensions/payload.bin"));root.Root!.Elements().Single().Add(extension);Put(source,"OFD.xml",root);source.PreservedEntries["Doc_0/Extensions/payload.bin"]=[4,5,6];
+        using var input=Zip(source.PreservedEntries);var read=await new OfdReader().ReadAsync(input);Assert.Contains(read.PreservedDocBodyElements,xml=>XElement.Parse(xml).Name==extension.Name);
+        Assert.Throws<NotSupportedException>(()=>OfdDocumentMixer.Mix([new(read,0)]));
+        var saved=await RoundTrip(read);var preserved=Assert.Single(Xml(saved,"OFD.xml").Descendants().Where(node=>node.Name==extension.Name));Assert.Equal(extension.Attribute("File")!.Value,preserved.Attribute("File")!.Value);Assert.Equal(new byte[]{4,5,6},saved.PreservedEntries["Doc_0/Extensions/payload.bin"]);
+    }
+
+    [Theory]
+    [InlineData("page")]
+    [InlineData("font")]
+    [InlineData("media")]
+    [InlineData("font-path")]
+    [InlineData("media-path")]
+    [InlineData("opaque")]
+    public async Task Split_ExtensionlessXmlProtectsPageAndResourceClosure(string kind)
+    {
+        var source=Source();source.Pages[0].Elements.OfType<OfdImageElement>().Single().Data=[7,7,7];source=await RoundTrip(source);
+        var pagePath=source.Pages[0].SourceEntryPath!;var font=source.Pages[0].Elements.OfType<OfdTextElement>().Single().FontResourceId!;var media=source.Pages[0].Elements.OfType<OfdImageElement>().Single().ResourceId;
+        var fontPath=source.PreservedEntries.Single(entry=>entry.Value.SequenceEqual(new byte[]{8,8,8})).Key;var mediaPath=source.PreservedEntries.Single(entry=>entry.Value.SequenceEqual(new byte[]{7,7,7})).Key;
+        var xml=kind switch {"page"=>$"<Extension File='/{pagePath}'/>","font"=>$"<Extension Font='{font}'/>","media"=>$"<Extension ResourceID='{media}'/>","font-path"=>$"<Extension File='/{fontPath}'/>","media-path"=>$"<Extension File='/{mediaPath}'/>",_=>"<Extension"};
+        source.PreservedEntries["Doc_0/Extensions/state.dat"]=Encoding.UTF8.GetBytes(xml);using var input=Zip(source.PreservedEntries);source=await new OfdReader().ReadAsync(input);
+        var result=await RoundTrip(OfdDocumentSplitter.Split(source,[1]));Assert.Equal(source.PreservedEntries["Doc_0/Extensions/state.dat"],result.PreservedEntries["Doc_0/Extensions/state.dat"]);
+        if(kind is "page" or "opaque")Assert.Equal(source.PreservedEntries[pagePath],result.PreservedEntries[pagePath]);
+        if(kind is "page" or "font" or "font-path" or "opaque")Assert.True(result.PreservedEntries.ContainsKey(fontPath));
+        if(kind is "page" or "media" or "media-path" or "opaque")Assert.True(result.PreservedEntries.ContainsKey(mediaPath));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SignatureCleanup_ExtensionlessNestedBaseLocRestoresSharedPayloadClosure(bool opaque)
+    {
+        var source=await RoundTrip(Source());AddSignatures(source,"value.xml");source.PreservedEntries["Doc_0/Signs/Sign_0/value.xml"]=Encoding.UTF8.GetBytes("<Value Seal='Seal.esl'/>");
+        source.PreservedEntries["Doc_0/Extensions/state.dat"]=Encoding.UTF8.GetBytes(opaque?"<Wrapper":"<Wrapper><Extension BaseLoc='../Signs/Sign_0'><File>value.xml</File></Extension></Wrapper>");
+        using var output=new MemoryStream();await OfdPackageSignatureCleaner.CleanAsync(Zip(source.PreservedEntries),output);output.Position=0;var result=await new OfdPackageLoader().LoadAsync(output);
+        Assert.Equal(source.PreservedEntries["Doc_0/Signs/Sign_0/value.xml"],result.GetBytes("Doc_0/Signs/Sign_0/value.xml"));Assert.Equal(Png,result.GetBytes("Doc_0/Signs/Sign_0/Seal.esl"));Assert.DoesNotContain("Signatures",result.ReadUtf8Text("OFD.xml"));
+    }
+
+    [Fact]
+    public async Task Split_ExtensionlessPageBesideImplicitResourcesKeepsTheirClosure()
+    {
+        var source=await RoundTrip(Source());var ns=source.Options.Namespace;
+        source.PreservedEntries["Doc_0/Pages/Page_0/PageRes.xml"]=Encoding.UTF8.GetBytes($"<Res xmlns='{ns}'><MultiMedias><MultiMedia ID='710' Format='PNG'><MediaFile>Private.png</MediaFile></MultiMedia></MultiMedias></Res>");
+        source.PreservedEntries["Doc_0/Pages/Page_0/Private.png"]=[5,6,7];
+        source.PreservedEntries["Doc_0/Pages/Page_0/shared.dat"]=Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Content><Layer ID='711'><ImageObject ID='712' ResourceID='710' Boundary='0 0 10 10'/></Layer></Content></Page>");
+        using var input=Zip(source.PreservedEntries);source=await new OfdReader().ReadAsync(input);var result=await RoundTrip(OfdDocumentSplitter.Split(source,[1]));
+        Assert.Equal(source.PreservedEntries["Doc_0/Pages/Page_0/shared.dat"],result.PreservedEntries["Doc_0/Pages/Page_0/shared.dat"]);
+        Assert.True(result.PreservedEntries.ContainsKey("Doc_0/Pages/Page_0/PageRes.xml"));Assert.Equal(new byte[]{5,6,7},result.PreservedEntries["Doc_0/Pages/Page_0/Private.png"]);
+    }
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

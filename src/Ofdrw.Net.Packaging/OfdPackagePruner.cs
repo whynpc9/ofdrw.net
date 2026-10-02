@@ -14,12 +14,27 @@ namespace Ofdrw.Net.Packaging;
 
 internal static class OfdPackagePruner
 {
+    internal sealed class XmlScanCache
+    {
+        private readonly Dictionary<string, (byte[] Bytes, XDocument? Xml, bool Opaque)> snapshots = new(StringComparer.OrdinalIgnoreCase);
+        internal bool Read(string path, byte[] bytes, out XDocument xml, out bool opaque)
+        {
+            if (!snapshots.TryGetValue(path, out var snapshot) || !ReferenceEquals(snapshot.Bytes, bytes))
+            {
+                var parsed = TryParse(bytes, out var document);
+                snapshot = (bytes, parsed ? document : null, !parsed && (IsXml(path) || LooksLikeXml(bytes)));
+                snapshots[path] = snapshot;
+            }
+            xml = snapshot.Xml!; opaque = snapshot.Opaque; return snapshot.Xml is not null;
+        }
+    }
     internal static OfdPackageWriteResult Prune(
         OfdDocumentPackage package,
         IDictionary<string, byte[]> entries, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var result = new OfdPackageWriteResult();
+        var scan = new XmlScanCache();
         var original = package.PreservedEntries;
         if (!original.TryGetValue("OFD.xml", out var originalRootBytes)) return result;
         var originalRoot = Parse(originalRootBytes);
@@ -30,7 +45,7 @@ internal static class OfdPackagePruner
 
         // Invalidated signature references must not keep deleted page payloads
         // alive during the subsequent resource reachability check.
-        RemoveInvalidatedSignatures(originalRoot, original, entries, result, cancellationToken);
+        RemoveInvalidatedSignatures(originalRoot, original, entries, result, cancellationToken, scan);
 
         var retainedPaths = new HashSet<string>(package.Pages
             .Where(page => !string.IsNullOrEmpty(page.SourceEntryPath))
@@ -61,20 +76,20 @@ internal static class OfdPackagePruner
                 if (original.TryGetValue(page.Path, out var bytes)) AddReferences(Parse(bytes), candidateIds);
                 if (!writtenPagePaths.Contains(page.Path))
                 {
-                    if (ReferencesFile(entries, page.Path, preserveOnUnknownXml: false))
+                    if (ReferencesFile(entries, page.Path, scan))
                         result.Warnings.Add($"Page entry '{page.Path}' remains referenced by a template or extension and was retained as shared content.");
                     else Remove(entries, page.Path, result);
                 }
             }
 
-            RemovePageAnnotations(entries, currentDocumentPath, new HashSet<string>(deleted.Select(page => page.Id)), candidateIds, result);
+            RemovePageAnnotations(entries, currentDocumentPath, new HashSet<string>(deleted.Select(page => page.Id)), candidateIds, result, scan);
             var privateResourcePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            PruneUnusedTemplates(entries, currentDocumentPath, writtenPagePaths, candidateIds, privateResourcePaths, result);
+            PruneUnusedTemplates(entries, currentDocumentPath, writtenPagePaths, candidateIds, privateResourcePaths, result, scan);
             foreach (var page in deleted)
             {
                 var pageResources = OfdPackagePath.GetDirectory(page.Path) + "/PageRes.xml";
                 if (entries.ContainsKey(page.Path) || writtenPagePaths.Any(path => OfdPackagePath.GetDirectory(path) == OfdPackagePath.GetDirectory(page.Path)) ||
-                    ReferencesFile(entries, pageResources)) continue;
+                    ReferencesFile(entries, pageResources, scan)) continue;
                 privateResourcePaths.Add(pageResources);
                 if (entries.TryGetValue(pageResources, out var data) && TryParse(data, out var resources))
                 {
@@ -82,9 +97,9 @@ internal static class OfdPackagePruner
                     // Keep Res available until its exclusive font/image payloads have been pruned.
                 }
             }
-            PruneResources(entries, currentDocumentPath, privateResourcePaths, candidateIds, result);
+            PruneResources(entries, currentDocumentPath, privateResourcePaths, candidateIds, result, scan);
             foreach (var path in privateResourcePaths)
-                if (!HasPageContentBeside(entries, path) && !ReferencesFile(entries, path))
+                if (!HasPageContentBeside(entries, path, scan) && !ReferencesFile(entries, path, scan))
                 {
                     if (entries.TryGetValue(path, out var resourceBytes) && TryParse(resourceBytes, out var resourceXml) &&
                         IsTypedRoot(resourceXml, "Res", Parse(entries[currentDocumentPath]).Root!.Name.Namespace)) Remove(entries, path, result);
@@ -95,12 +110,15 @@ internal static class OfdPackagePruner
         return result;
     }
 
-    private static bool HasPageContentBeside(IDictionary<string, byte[]> entries, string resourcePath) =>
-        entries.Any(pair => IsXml(pair.Key) && OfdPackagePath.GetDirectory(pair.Key) == OfdPackagePath.GetDirectory(resourcePath) &&
-            TryParse(pair.Value, out var xml) && xml.Root?.Name.LocalName == "Page");
+    private static bool HasPageContentBeside(IDictionary<string, byte[]> entries, string resourcePath, XmlScanCache scan) =>
+        entries.Where(pair => OfdPackagePath.GetDirectory(pair.Key) == OfdPackagePath.GetDirectory(resourcePath)).Any(pair =>
+        {
+            var parsed = scan.Read(pair.Key, pair.Value, out var xml, out var opaque);
+            return opaque || parsed && xml.Root?.Name.LocalName == "Page";
+        });
 
     private static void PruneUnusedTemplates(IDictionary<string, byte[]> entries, string documentPath,
-        ISet<string> pagePaths, ISet<string> candidateIds, ISet<string> privateResourcePaths, OfdPackageWriteResult result)
+        ISet<string> pagePaths, ISet<string> candidateIds, ISet<string> privateResourcePaths, OfdPackageWriteResult result, XmlScanCache scan)
     {
         var document = Parse(entries[documentPath]);
         var templates = (document.Root!.Element(document.Root.Name.Namespace + "CommonData")?.Elements(document.Root.Name.Namespace + "TemplatePage") ?? Enumerable.Empty<XElement>()).ToList();
@@ -114,21 +132,18 @@ internal static class OfdPackagePruner
         {
             // Typed XML and opaque extension XML can have any filename suffix.
             // Parse once, retaining only references relevant to these templates.
-            if (TryParse(pair.Value, out var xml))
+            if (scan.Read(pair.Key, pair.Value, out var xml, out var opaque))
             {
                 var references = new HashSet<string>(StringComparer.Ordinal); AddReferences(xml, references);
                 var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                var pathValues = xml.Descendants().Where(node => !node.HasElements && node.Name.LocalName is not "MaxUnitID" and not "TextCode" and not "AbbreviatedData").Select(node => node.Value)
-                    .Concat(xml.Descendants().Attributes().Where(attribute => attribute.Name.LocalName != "ID" &&
-                        !(pair.Key.Equals(documentPath, StringComparison.OrdinalIgnoreCase) && attribute.Name == XName.Get("BaseLoc") &&
-                          attribute.Parent?.Name == xml.Root!.Name.Namespace + "TemplatePage" &&
-                          attribute.Parent?.Parent?.Name == xml.Root.Name.Namespace + "CommonData" && attribute.Parent?.Parent?.Parent == xml.Root)).Select(attribute => attribute.Value));
-                foreach (var reference in pathValues)
+                var pathValues = ReferenceValues(xml).Where(reference => reference.Attribute is not null || reference.Element.Name.LocalName is not "MaxUnitID" and not "TextCode" and not "AbbreviatedData")
+                    .Where(reference => !(pair.Key.Equals(documentPath, StringComparison.OrdinalIgnoreCase) && reference.Attribute?.Name == XName.Get("BaseLoc") &&
+                        reference.Element.Name == xml.Root!.Name.Namespace + "TemplatePage" && reference.Element.Parent?.Name == xml.Root.Name.Namespace + "CommonData" && reference.Element.Parent?.Parent == xml.Root));
+                foreach (var reference in pathValues.Where(reference => !string.IsNullOrWhiteSpace(reference.Value)))
                 {
                     try
                     {
-                        var path = OfdPackagePath.Resolve(pair.Key, reference); if (templatePaths.Contains(path)) paths.Add(path);
-                        path = ResolveResourceFile(pair.Key, xml.Root!, reference); if (templatePaths.Contains(path)) paths.Add(path);
+                        foreach (var path in ResolveReferencedFiles(pair.Key, reference.Element, reference.Value)) if (templatePaths.Contains(path)) paths.Add(path);
                     }
                     catch (InvalidDataException) { }
                 }
@@ -136,7 +151,7 @@ internal static class OfdPackagePruner
                 references.IntersectWith(ids);
                 referencesByEntry[pair.Key] = references;
             }
-            else if (IsXml(pair.Key) || LooksLikeXml(pair.Value)) opaqueXml.Add(pair.Key);
+            else if (opaque) opaqueXml.Add(pair.Key);
         }
         foreach (var template in templates)
         {
@@ -156,12 +171,12 @@ internal static class OfdPackagePruner
             }
             template.Remove();
             entries[documentPath] = Serialize(document);
-            if (pagePaths.Contains(path) || ReferencesFile(entries, path)) continue;
+            if (pagePaths.Contains(path) || ReferencesFile(entries, path, scan)) continue;
             if (entries.TryGetValue(path, out var bytes) && TryParse(bytes, out var xmlPage)) AddReferences(xmlPage, candidateIds);
             Remove(entries, path, result);
             var resourcePath = OfdPackagePath.GetDirectory(path) + "/PageRes.xml";
             if (pagePaths.Any(pagePath => OfdPackagePath.GetDirectory(pagePath) == OfdPackagePath.GetDirectory(path)) ||
-                ReferencesFile(entries, resourcePath)) continue;
+                ReferencesFile(entries, resourcePath, scan)) continue;
             if (entries.TryGetValue(resourcePath, out var resourceBytes) && TryParse(resourceBytes, out var resources))
                 foreach (var resourceId in resources.Descendants().Attributes("ID")) candidateIds.Add(resourceId.Value);
             privateResourcePaths.Add(resourcePath);
@@ -169,7 +184,7 @@ internal static class OfdPackagePruner
     }
 
     private static void RemovePageAnnotations(IDictionary<string, byte[]> entries, string documentPath,
-        ISet<string> deletedIds, ISet<string> candidateIds, OfdPackageWriteResult result)
+        ISet<string> deletedIds, ISet<string> candidateIds, OfdPackageWriteResult result, XmlScanCache scan)
     {
         var document = Parse(entries[documentPath]); var ns = document.Root!.Name.Namespace;
         foreach (var declaration in document.Root.Elements(ns + "Annotations"))
@@ -187,7 +202,7 @@ internal static class OfdPackagePruner
             entries[path] = Serialize(xml);
             foreach (var file in removedFiles)
             {
-                if (ReferencesFile(entries, file)) continue;
+                if (ReferencesFile(entries, file, scan)) continue;
                 if (!entries.TryGetValue(file, out var annotationBytes) || !TryParse(annotationBytes, out var annotation) || !IsTypedRoot(annotation, "PageAnnot", ns))
                 {
                     result.Warnings.Add($"Unmodeled annotation payload was retained: '{file}'.");
@@ -204,7 +219,7 @@ internal static class OfdPackagePruner
 
     private static void PruneResources(
         IDictionary<string, byte[]> entries, string documentPath, ISet<string> privateResourcePaths,
-        ISet<string> candidateIds, OfdPackageWriteResult result)
+        ISet<string> candidateIds, OfdPackageWriteResult result, XmlScanCache scan)
     {
         var document = Parse(entries[documentPath]); var ns = document.Root!.Name.Namespace;
         var common = document.Root.Element(ns + "CommonData");
@@ -220,10 +235,11 @@ internal static class OfdPackagePruner
         }
         var documents = new Dictionary<string, XDocument>(StringComparer.OrdinalIgnoreCase);
         var references = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var pair in entries.Where(pair => IsXml(pair.Key)))
+        foreach (var pair in entries)
         {
-            if (!TryParse(pair.Value, out var xml))
+            if (!scan.Read(pair.Key, pair.Value, out var xml, out var opaque))
             {
+                if (!opaque) continue;
                 result.Warnings.Add($"Unused resources retained because extension XML '{pair.Key}' cannot be inspected safely.");
                 return;
             }
@@ -257,7 +273,7 @@ internal static class OfdPackagePruner
         // still reference the same payload. Preserve it whenever in doubt.
         foreach (var file in files)
         {
-            if (!ReferencesFile(entries, file)) Remove(entries, file, result);
+            if (!ReferencesFile(entries, file, scan)) Remove(entries, file, result);
         }
     }
 
@@ -265,13 +281,13 @@ internal static class OfdPackagePruner
         XDocument originalRoot,
         IReadOnlyDictionary<string, byte[]> original,
         IDictionary<string, byte[]> entries,
-        OfdPackageWriteResult result, CancellationToken cancellationToken)
+        OfdPackageWriteResult result, CancellationToken cancellationToken, XmlScanCache scan)
     {
         var declarations = SignatureDeclarations(originalRoot).ToList();
         if (declarations.Count == 0 ||
             (original.Count == entries.Count && original.All(pair => entries.TryGetValue(pair.Key, out var bytes) && bytes.SequenceEqual(pair.Value)))) return;
 
-        CleanSignatures(original, entries, result, cancellationToken);
+        CleanSignatures(original, entries, result, cancellationToken, scan);
         result.SignaturesInvalidated = true;
         result.Warnings.Add("Signature declarations were removed because the package was rewritten; sign the completed output again if required.");
     }
@@ -279,8 +295,9 @@ internal static class OfdPackagePruner
     internal static void CleanSignatures(
         IReadOnlyDictionary<string, byte[]> original,
         IDictionary<string, byte[]> entries,
-        OfdPackageWriteResult result, CancellationToken cancellationToken = default)
+        OfdPackageWriteResult result, CancellationToken cancellationToken = default, XmlScanCache? scan = null)
     {
+        scan ??= new XmlScanCache();
         cancellationToken.ThrowIfCancellationRequested();
         if (!original.TryGetValue("OFD.xml", out var bytes)) return;
         var originalRoot = Parse(bytes);
@@ -346,24 +363,24 @@ internal static class OfdPackagePruner
         candidates.IntersectWith(entries.Keys);
         // Scan each retained/restored XML once. Each discovered candidate becomes
         // live and joins the queue, preserving its entire transitive path closure.
-        var pending = new Queue<string>(entries.Keys.Where(path => !candidates.Contains(path) && (IsXml(path) || knownXml.ContainsKey(path))));
+        var pending = new Queue<string>(entries.Keys.Where(path => !candidates.Contains(path)));
         var scanned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         while (pending.Count > 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var path = pending.Dequeue();
-            if (!scanned.Add(path) || (!IsXml(path) && !knownXml.ContainsKey(path))) continue;
-            if (!knownXml.TryGetValue(path, out var xml) && !TryParse(entries[path], out xml))
+            if (!scanned.Add(path)) continue;
+            if (!knownXml.TryGetValue(path, out var xml) && !scan.Read(path, entries[path], out xml, out var opaque))
             {
+                if (!opaque) continue;
                 result.Warnings.Add($"Signature payloads retained because extension XML '{path}' cannot be inspected safely.");
                 return;
             }
-            var values = xml.Descendants().Where(node => !node.HasElements).Select(node => node.Value)
-                .Concat(xml.Descendants().Attributes().Where(attribute => attribute.Name.LocalName != "ID").Select(attribute => attribute.Value));
-            foreach (var value in values.Where(value => !string.IsNullOrWhiteSpace(value)))
+            foreach (var reference in ReferenceValues(xml).Where(reference => !string.IsNullOrWhiteSpace(reference.Value)))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                RestoreReference(path, value, xml.Root!, candidates, pending);
+                foreach (var target in ResolveReferencedFiles(path, reference.Element, reference.Value))
+                    if (candidates.Remove(target)) pending.Enqueue(target);
             }
         }
         foreach (var path in candidates)
@@ -371,19 +388,6 @@ internal static class OfdPackagePruner
             cancellationToken.ThrowIfCancellationRequested();
             Remove(entries, path, result);
         }
-    }
-
-    private static void RestoreReference(string path, string value, XElement root,
-        ISet<string> candidates, Queue<string> pending)
-    {
-        try
-        {
-            var reference = OfdPackagePath.Resolve(path, value);
-            if (candidates.Remove(reference)) pending.Enqueue(reference);
-            reference = ResolveResourceFile(path, root, value);
-            if (candidates.Remove(reference)) pending.Enqueue(reference);
-        }
-        catch (InvalidDataException) { }
     }
 
     private static bool IsSignatureRoot(XDocument xml, string localName, XNamespace documentNamespace) =>
@@ -397,28 +401,45 @@ internal static class OfdPackagePruner
     private static bool IsOwnedSignaturePath(string path) =>
         path.Split('/').Any(segment => string.Equals(segment, "Signs", StringComparison.OrdinalIgnoreCase));
 
-    private static bool ReferencesFile(IDictionary<string, byte[]> entries, string file, bool preserveOnUnknownXml = true)
+    private static bool ReferencesFile(IDictionary<string, byte[]> entries, string file, XmlScanCache scan)
     {
-        foreach (var pair in entries.Where(pair => IsXml(pair.Key)))
+        foreach (var pair in entries)
         {
-            if (!TryParse(pair.Value, out var xml))
+            if (!scan.Read(pair.Key, pair.Value, out var xml, out var opaque))
             {
-                if (preserveOnUnknownXml) return true;
+                if (opaque) return true;
                 continue;
             }
-            var values = xml.Descendants().Where(node => !node.HasElements).Select(node => node.Value)
-                .Concat(xml.Descendants().Attributes().Where(attribute => attribute.Name.LocalName != "ID").Select(attribute => attribute.Value));
-            foreach (var value in values.Where(value => !string.IsNullOrWhiteSpace(value)))
-            {
-                try
-                {
-                    if (string.Equals(OfdPackagePath.Resolve(pair.Key, value), file, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(ResolveResourceFile(pair.Key, xml.Root!, value), file, StringComparison.OrdinalIgnoreCase)) return true;
-                }
-                catch (InvalidDataException) { }
-            }
+            foreach (var reference in ReferenceValues(xml).Where(reference => !string.IsNullOrWhiteSpace(reference.Value)))
+                if (ResolveReferencedFiles(pair.Key, reference.Element, reference.Value).Contains(file, StringComparer.OrdinalIgnoreCase)) return true;
         }
         return false;
+    }
+
+    private static IEnumerable<(XElement Element, string Value, XAttribute? Attribute)> ReferenceValues(XDocument xml)
+    {
+        foreach (var element in xml.Descendants().Where(element => !element.HasElements)) yield return (element, element.Value, null);
+        foreach (var attribute in xml.Descendants().Attributes().Where(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName != "ID"))
+            yield return (attribute.Parent!, attribute.Value, attribute);
+    }
+
+    private static IEnumerable<string> ResolveReferencedFiles(string path, XElement element, string value)
+    {
+        var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try { files.Add(OfdPackagePath.Resolve(path, value)); } catch (InvalidDataException) { }
+        var basis = path;
+        foreach (var owner in element.AncestorsAndSelf().Reverse())
+        {
+            var location = owner.Attribute("BaseLoc")?.Value;
+            if (string.IsNullOrWhiteSpace(location)) continue;
+            try
+            {
+                basis = OfdPackagePath.Resolve(basis, location!.TrimEnd('/') + "/_reference");
+                files.Add(OfdPackagePath.Resolve(basis, value));
+            }
+            catch (InvalidDataException) { }
+        }
+        return files;
     }
 
     private static string ResolveResourceFile(string path, XElement root, string file)
@@ -444,11 +465,19 @@ internal static class OfdPackagePruner
     private static bool IsXml(string path) => path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase);
     private static bool LooksLikeXml(byte[] bytes)
     {
-        var index = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? 3 : 0;
-        if (bytes.Length >= 2 && (bytes[0] == 0xFF && bytes[1] == 0xFE || bytes[0] == 0xFE && bytes[1] == 0xFF)) return true;
-        if (bytes.Length >= 4 && bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0xFE && bytes[3] == 0xFF) return true;
-        while (index < bytes.Length && bytes[index] is 0x20 or 0x09 or 0x0A or 0x0D) index++;
-        return index < bytes.Length && bytes[index] == '<';
+        var index = 0; var width = 1; var little = true;
+        if (bytes.Length >= 4 && bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0 && bytes[3] == 0) { index = 4; width = 4; }
+        else if (bytes.Length >= 4 && bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0xFE && bytes[3] == 0xFF) { index = 4; width = 4; little = false; }
+        else if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) { index = 2; width = 2; }
+        else if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) { index = 2; width = 2; little = false; }
+        else if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) index = 3;
+        while (index + width <= bytes.Length)
+        {
+            uint value = 0; for (var part = 0; part < width; part++) value |= (uint)bytes[index + part] << (8 * (little ? part : width - part - 1));
+            if (value is not (0x20 or 0x09 or 0x0A or 0x0D)) return value == '<';
+            index += width;
+        }
+        return false;
     }
     private static XDocument Parse(byte[] bytes)
     {
