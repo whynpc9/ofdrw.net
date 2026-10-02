@@ -16,8 +16,12 @@
 
 04 不加载系统字体，不拥有字体字节、resolver、cache、subset 或 fallback 服务；样例调用方自行向 `package.Fonts` 注册许可明确的 OFL 字体。05 可按原始载荷内容复用并重映射序列化数字 ID，必须保持文本 face 绑定；不可按显示名称合并不同内容。04 不写 CGTransform/glyph ID，05 从实际 Runs 收集 Unicode，用字跨页合并；镜像 Text 不应重复累计。当前 Core 没有 TTC face index，不把 TTC 多 face 默认为已支持。
 
-用户矩阵不标注 03 `FauxItalicMatrixV1`。Graphics 始终有 CTM，italic 由现有字体选择/模拟处理，避免用户 shear 被误当强调移除。
+Graphics 将局部文字游程归一到 (0, size)，矩阵包含调用方 x/baseline 的平移。Writer 仅对新建 XML、已有 CTM、基线归一且无 DeltaY 的 name-only italic 组合 M*F；F=[1,0,-0.2,1,0.2*serializedSize,0]，只给 F 写 03 `FauxItalicMatrixV1`。PDF/SVG 使用既有去因子/anchor 逻辑，用户 shear 保留并且强调只应用一次。嵌入载荷/透明文字跳过；保留 SourceXml 和任意旧基线 CTM 不重新组合，序列化不修改模型。不扩大 Graphics 的整页 Boundary。
 
 ## 共享修改所有权
 
-Core 仅新增内部 `OfdPathStyle`，读取已有 SourceXml Rule；不增加公开模型。PDF 普通路径从平均线宽缩放改为完整 graphics CTM，clip 构建路径仍按 03 原有几何规则处理。SVG 普通路径输出 fill-rule；Writer/Reader 无源码修改。此共享导出修改需全套回归、11 包消费 E2E 和本次实际页面验收。
+Core 新增内部 `OfdPathStyle` 与 `OfdNumericFormat`，分别读取已有 SourceXml 绘制参数及共享保真普通十进制；不增加公开模型。PDF 普通路径从平均线宽缩放改为完整 graphics CTM，clip 构建路径仍按 03 原有几何规则处理。SVG 普通路径输出 fill-rule 及已声明 cap/join/miter-limit。Writer 对 fresh、normalized、name-only 的 CTM 文本组合明确生成的 faux 因子；已保留 XML 与资源绑定沿用原有所有权，Reader 无源码修改。此共享导出修改需全套回归、11 包消费 E2E 和本次实际页面验收。
+
+可写矩阵验证按照 Writer 的实际 `0.###` 字符串格式重算 determinant，退化时在改状态前拒绝。路径/clipCTM/DeltaX 使用共享普通十进制展开，保留 round-trip 数字且不输出 E exponent；不是把极小非零 advance 静默量化为零。Writer 生成的 F 和 M*F 使用相同保真普通十进制，避免再舍入造成基线漂移或退化。
+
+Miter 映射核对固定 [上游 Graphics2D stroke 参数](https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-graphics2d/src/main/java/org/ofdrw/graphics2d/OFDGraphics2DDrawParam.java)，并新增尖角实际 PNG ink 断言。

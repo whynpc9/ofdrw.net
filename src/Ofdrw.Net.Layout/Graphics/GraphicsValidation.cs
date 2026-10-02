@@ -13,7 +13,10 @@ internal static class GraphicsValidation
     internal static void Positive(double value)
     {
         Finite(value);
-        if (value <= 0 || Math.Round(value, 3) <= 0) throw new ArgumentOutOfRangeException(nameof(value), "Size must remain positive at OFD writer precision.");
+        var written = WriterValue(value);
+        Finite(written);
+        if (value <= 0 || written <= 0) throw new ArgumentOutOfRangeException(nameof(value), "Size must remain positive at OFD writer precision.");
     }
-    internal static string Number(double value) => value.ToString("R", CultureInfo.InvariantCulture);
+    internal static double WriterValue(double value) => double.Parse(value.ToString("0.###", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+    internal static string Number(double value) => Ofdrw.Net.Core.Models.OfdNumericFormat.Plain(value);
 }

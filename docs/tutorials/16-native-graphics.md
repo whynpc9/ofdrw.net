@@ -41,11 +41,11 @@ var font = new OfdFont("Noto Sans CJK SC", 4, weight: 700,
 
 路径支持直线、quadratic、cubic 与闭合，OFD 的 cubic 命令是 B，close 是 C。填充默认 NonZero，`new OfdGraphicsPath(OfdFillRule.EvenOdd)` 可画镂空。纯色含 alpha；没有 gradient、shader、复杂混合或设备 hairline API。
 
-`DrawString` 是单基线 Unicode 游程，无折行或测量。可选 `advances` 是相邻 grapheme 原点的毫米距离，严格为 graphemeCount-1 个有限值；省略时沿用实际字体字距。文本 Boundary 使用物理整页视口，避免估计字宽造成页内裁切；文字可提取，强调补绘不复制文本。复杂 shaping 与任意 Word 完整保真不在本票范围。
+`DrawString` 是单基线 Unicode 游程，无折行或测量。可选 `advances` 是相邻 grapheme 原点的毫米距离，严格为 graphemeCount-1 个有限值；省略时沿用实际字体字距。文本 Boundary 使用物理整页视口，避免估计字宽造成页内裁切；文字可提取，强调补绘不复制文本。Graphics 内部把游程基线归一到 (0,size)，通过矩阵恢复调用方基线；name-only 斜体的新文本由 Writer 组合明确的生成因子 F 并记录 03 提示，PDF/SVG 只应用一次字体强调，用户矩阵不被误剥离。复杂 shaping 与任意 Word 完整保真不在本票范围。
 
 `IntersectClip(path)` 快照当时路径及变换，裁剪固定在页面坐标；后续 Translate 不移动它。多个 Clip 取交集。`Save`/`Restore` 严格按栈恢复变换与裁剪，空栈 Restore 失败；已输出对象不变。`ResetClip` 只清理当前状态。空路径裁剪明确拒绝。每次绘制/裁剪后修改传入 path 不影响已生成对象。
 
-`OfdGraphicsOptions` 限制页面图元、单路径命令、累计文字/几何、保存状态深度及 clip 数量。有限数值、派生溢出、三位小数写出后仍为正的尺寸、字体绑定和预算均在追加前检查。绘制支持 CancellationToken；失败或取消不会追加半个对象。上下文非线程安全。
+`OfdGraphicsOptions` 限制页面图元、单路径命令、累计文字/几何、保存状态深度及 clip 数量。有限数值、派生溢出、三位小数写出后仍为正的尺寸和不退化的矩阵、字体绑定和预算均在追加前检查。绘制支持 CancellationToken；失败或取消不会追加半个对象。上下文非线程安全。
 
 运行公开样例与完整验收链路：
 
@@ -53,5 +53,7 @@ var font = new OfdFont("Noto Sans CJK SC", 4, weight: 700,
 python3 scripts/install-ci-fonts.py --directory artifacts/graphics-fonts
 ./scripts/run-graphics-e2e.sh artifacts/graphics/current
 ```
+
+路径/字距/clip 矩阵输出保真普通十进制，无科学计数法；极小非零 advances 保留。新 name-only 样例的原生包不嵌入字体，验收 PDF 明确注册同一 OFL 字体，SVG PNG 使用隔离的许可字体目录，避免意外使用专有系统字体。
 
 生成链路为 `公开 API → 原生 OFD → PDF/SVG`，并验证本次 DOCX 显式 Native/default → OFD → PDF。脚本输出逐页 PNG、完整原文/原生对象往返检查和哈希清单。macOS Preview 逐页验收及最新 PR 评审状态见 [证据记录](../evidence/graphics/README.md)。这是一套 OFD 原语 API；流式布局、表格、布局 Canvas 和可选 Skia 适配按各自票据交付。
