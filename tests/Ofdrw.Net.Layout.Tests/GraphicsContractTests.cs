@@ -97,6 +97,25 @@ public sealed class GraphicsContractTests
         Assert.Single(page.Elements);
     }
 
+    [Theory]
+    [InlineData(0.0004, 0, 0, 1)]
+    [InlineData(1, 1, 1, 1.0004)]
+    public void Transform_RejectsMatricesSingularAtWriterPrecision_WithoutChangingState(double a, double b, double c, double d)
+    {
+        var (_, page, graphics) = Context();
+        graphics.Translate(4, 5);
+        graphics.Save();
+        var before = graphics.Transform;
+        var nearlySingular = new OfdMatrix(a, b, c, d, 0, 0);
+        Assert.Throws<ArgumentException>(() => graphics.SetTransform(nearlySingular));
+        Assert.Same(before, graphics.Transform);
+        Assert.Throws<ArgumentException>(() => graphics.MultiplyTransform(nearlySingular));
+        Assert.Same(before, graphics.Transform);
+        graphics.Restore();
+        Assert.Same(before, graphics.Transform);
+        Assert.Empty(page.Elements);
+    }
+
     [Fact]
     public void Budgets_Precision_Overflow_AndCancellation_DoNotAppend()
     {

@@ -136,6 +136,16 @@ public sealed class OfdToSvgConverter
                         path.XMillimeters - page.XMillimeters,
                         path.YMillimeters - page.YMillimeters,
                         path.Transform)));
+                if (path.Stroke)
+                {
+                    // Preserve declared stroke settings; absent attributes retain
+                    // the existing exporter defaults for legacy objects.
+                    foreach (var pair in new[] { ("Cap", "stroke-linecap"), ("Join", "stroke-linejoin"), ("MiterLimit", "stroke-miterlimit") })
+                    {
+                        var value = OfdPathStyle.Attribute(path, pair.Item1);
+                        if (value is not null) pathNode.SetAttributeValue(pair.Item2, pair.Item1 == "MiterLimit" ? value : value.ToLowerInvariant());
+                    }
+                }
                 if (path.Stroke && path.StrokeColor.Alpha != 255)
                 {
                     pathNode.SetAttributeValue(

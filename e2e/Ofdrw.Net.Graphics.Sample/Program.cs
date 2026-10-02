@@ -61,6 +61,9 @@ diagram.Save(); diagram.Translate(22, 86); diagram.Rotate(-15);
 diagram.DrawPath(new OfdGraphicsPath().MoveTo(0, 0).BezierTo(8, -15, 28, 15, 38, 0).QuadraticTo(46, -10, 55, 0), strong);
 diagram.DrawString("曲线 Bezier", Font(3.4, italic: true), green, 0, 9);
 diagram.Restore();
+// Acute miter ratio ~5.75: SVG's default 4 would bevel this tip.
+diagram.DrawPath(new OfdGraphicsPath().MoveTo(108, 97).LineTo(111, 80).LineTo(114, 97), new OfdPen(new OfdColor(30, 93, 166), 1.4));
+diagram.DrawString("Miter=10", Font(2.5), black, 101, 105);
 diagram.DrawString("EvenOdd", Font(3), black, 17, 114);
 diagram.DrawString("NonZero", Font(3), black, 78, 114);
 diagram.FillPath(green, new OfdGraphicsPath(OfdFillRule.EvenOdd).AddRectangle(16, 120, 40, 26).AddRectangle(26, 127, 20, 12));

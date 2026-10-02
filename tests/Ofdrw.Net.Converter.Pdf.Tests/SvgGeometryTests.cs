@@ -79,6 +79,21 @@ public sealed class SvgGeometryTests
         Assert.Equal("evenodd", node.Attribute("fill-rule")?.Value);
     }
 
+    [Fact]
+    public async Task GraphicsAcuteMiter_ShouldExportMiterLimitTen()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        package.Pages.Add(page);
+        var graphics = new OfdGraphics(package, page);
+        var path = new OfdGraphicsPath().MoveTo(30, 70).LineTo(40, 10).LineTo(50, 70);
+        graphics.DrawPath(path, new OfdPen(OfdColor.Black, 1));
+        var svg = await ConvertAsync(package);
+        var node = Assert.Single(svg.Descendants(), element => element.Name.LocalName == "path");
+        Assert.Equal("miter", node.Attribute("stroke-linejoin")?.Value);
+        Assert.Equal("10", node.Attribute("stroke-miterlimit")?.Value);
+    }
+
     private static async Task<XDocument> ConvertAsync(OfdDocumentPackage package)
     {
         using var ofd = new MemoryStream();

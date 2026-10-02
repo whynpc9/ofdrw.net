@@ -582,8 +582,28 @@ public sealed class OfdPackageWriter
             }
         }
 
-        if (!italic || textObject.Attribute("CTM") is not null) return;
+        if (!italic) return;
         const double shear = 0.2;
+        if (textObject.Attribute("CTM")?.Value is string existingMatrix)
+        {
+            // Only fresh baseline-normalized runs opt into composition. Preserved
+            // XML and arbitrary legacy run baselines retain their current CTM.
+            if (!string.IsNullOrWhiteSpace(text.SourceXml) || text.Runs.Count == 0 ||
+                text.Runs.Any(run => !string.IsNullOrWhiteSpace(run.DeltaY) || ToInvariant(run.YMillimeters) != ToInvariant(size))) return;
+            var matrix = existingMatrix.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                .Select(value => double.Parse(value, CultureInfo.InvariantCulture)).ToArray();
+            if (matrix.Length != 6) throw new InvalidDataException("OFD text CTM must have six values.");
+            var writtenSize = double.Parse(ToInvariant(size), CultureInfo.InvariantCulture);
+            var offset = shear * writtenSize;
+            var combined = new[] { matrix[0], matrix[1], matrix[2] - shear * matrix[0], matrix[3] - shear * matrix[1],
+                matrix[4] + matrix[0] * offset, matrix[5] + matrix[1] * offset };
+            if (combined.Any(value => double.IsNaN(value) || double.IsInfinity(value))) throw new InvalidDataException("Generated italic CTM overflowed.");
+            textObject.SetAttributeValue("CTM", string.Join(" ", combined.Select(OfdNumericFormat.Plain)));
+            textObject.SetAttributeValue(OfdTextEmphasis.FauxItalicFactor,
+                string.Join(" ", new[] { 1d, 0, -shear, 1, offset, 0 }.Select(OfdNumericFormat.Plain)));
+            // Graphics uses the physical page as its viewport. No width expansion.
+            return;
+        }
         var factor = BuildMatrix(1, 0, -shear, 1, shear * size, 0);
         textObject.SetAttributeValue("CTM", factor);
         textObject.SetAttributeValue(OfdTextEmphasis.FauxItalicFactor, factor);
