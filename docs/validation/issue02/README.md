@@ -7,7 +7,7 @@ API 设计经 GPT-6 Astra High 子代理只读核查；实现由主代理完成�
 | 验证层 | 当前结果 | 实际范围 |
 | --- | --- | --- |
 | 功能回归 | 274/274 通过 | Core 5、Packaging 23、PDF/Image 163、Signatures 4、DOCX 49、CLI 30 |
-| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review10`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
+| 本地包消费 | 11/11 通过 | 独立缓存消费 `0.1.0-issue02.review11`；新图片 API 和安装后的 CLI 两方向，加既有 DOCX/PDF/SVG/签章 E2E |
 | 自动渲染 | 通过 | 新样例两页 text/image/path、PNG/JPEG选页；PNG/JPEG导入两页居中往返；Native/default基准文本完整、两页逐页渲染 |
 | PNG/JPEG 目视复查 | 10/10 完成 | 新样例PNG第1–2页、JPEG第2页、导入往返第1–2页、Native/default各第1–2页，加重复嵌套外观一页 |
 | macOS Preview | **未完成** | Computer Use 报告 Mac 锁定且自动解锁失败；已请求手动解锁。PNG 不代替 Preview |
@@ -34,7 +34,7 @@ Native/default OFD各约15 MiB，主要是原有字体嵌入；它们的展开�
 
 源码、环境、哈希、字节数、样例、模式与检查范围由 manifest 记录。Native/default基准来自11包本地消费本次生成的OFD；PDF由这些OFD导出，未使用直接DOCX→PDF代替。
 
-复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review10`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
+复现：先按根 AGENTS 设置 writable `DOTNET_CLI_HOME`、跳过首启/遥测、显式 `NUGET_PACKAGES`，运行全套单节点测试和 `scripts/run-converter-package-e2e.sh 0.1.0-issue02.review11`。图片样例生成测试入口：`OFDRW_IMAGE_EVIDENCE=<directory> dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests -c Release --filter FullyQualifiedName~SaveReviewEvidence`（附 AGENTS 构建参数）。CLI导出基准：`ofd-to-image generated-docx-{native|default}.ofd <page.png> --pages {1|2} --ppm 4`。
 
 ## 实际页面记录
 
@@ -155,3 +155,5 @@ strict现在按LocalName校验列表/Signature根（仍允许XML namespace），
 `024f725`两类bot到齐，六项CI全部通过。Cursor无新缺陷；Codex指出selected页ID缺失/空白/重复时筛选集合会省略或错误复用外观。strict现在先以签章匹配同一OrdinalIgnoreCase比较器统计整个包内非空ID，selected页ID须非空且只有一个对应页，再建HashSet。默认公开PDF false不启用此项，未选中页的其它坏ID不扩展成全包schema校验。
 
 新增missing/empty/blank/duplicate/duplicate-case五例，检查strict sentinel与legacy正文红path。全套274/274通过；本轮新包和产物稍后记录，Preview仍未完成。
+
+第十一轮25个实际产物均从`89e962e`重新生成，11/11本地包消费及Sol Low独立65/65通过；Astra只读复核所选页ID关联修复无近邻新问题。当次10张PNG/JPEG逐页重新查看，检查范围同上，无新缺陷；274项日志/全部哈希在当前bundle/manifest，Preview仍未完成。
