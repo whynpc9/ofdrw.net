@@ -17,3 +17,5 @@ The script also checks OFD/PDF text counts, selected page order, clean body byte
 After extracting the evidence bundle, reproduction can use `OFDRW_DOCUMENT_TOOLS_FONTS=docs/evidence/document-tools/files/fonts` to reuse the exact licensed font without another download.
 
 The annotation-clipped pair adds an oversized sheared image inside a 20x10 mm Appearance, nested PageBlock content, a 90-degree rotated ROTATE label and a 1.5x SCALE label. The clipped output and its Mix roundtrip must retain the exact parallelogram, glyph orientation/size and extract each label once.
+
+`italic-fixed-anchor` uses original MIT rectangle glyphs with identical baseline anchors. The right column applies an unmarked shear to the whole glyph; its upper regular rectangle and lower italic rectangle must gain slope relative to the left identity column. `split-template-liveness` keeps an extensionless XML dependency resolved through a nested extension `BaseLoc` while selecting only page 2.
