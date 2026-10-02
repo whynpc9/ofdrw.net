@@ -1,24 +1,24 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "8b847948799a9c97261a9d70b48a0114b1037a93",
-  "example_commit": "8b847948799a9c97261a9d70b48a0114b1037a93",
+  "runtime_source_commit": "1c0c3e60122871965ae4d70497fd7b50d2667b7c",
+  "example_commit": "1c0c3e60122871965ae4d70497fd7b50d2667b7c",
   "functional_tests": {
     "status": "passed",
-    "total": 274,
+    "total": 289,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
     "design_review_model": "gpt-6-astra high",
-    "test_checkpoint_commit": "1f1e61d2668ea65cda0828da7dace8cb0e5bb1a9",
-    "implementation_equivalence": "verified src/tests/build inputs identical at8b84794; only5 validator assertions added, separately exercised by actual E2E"
+    "test_checkpoint_commit": "1c0c3e60122871965ae4d70497fd7b50d2667b7c",
+    "implementation_equivalence": "independent tests ran on this clean committed source"
   },
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.23",
+    "version": "0.1.0-issue03.24",
     "published": false,
-    "repository_commit": "8b847948799a9c97261a9d70b48a0114b1037a93"
+    "repository_commit": "1c0c3e60122871965ae4d70497fd7b50d2667b7c"
   },
   "native_default_text": {
     "status": "passed",
@@ -27,12 +27,12 @@
   },
   "automatic_rendering": {
     "status": "passed",
-    "pdf_pages": 42,
-    "svg_pages": 14
+    "pdf_pages": 44,
+    "svg_pages": 16
   },
   "png_visual_review": {
-    "status": "passed-for-55-listed-pages; fixed-anchor-SVG-font-fidelity-unverified",
-    "method": "All prior53 PNG hashes match directly inspected R14 bytes; three new vendor-annotation renders inspected at original size. Fifteen current contact sheets retain all56. The fixed-anchor SVG remains incomplete for original-font fidelity.",
+    "status": "passed-for-59-listed-pages; fixed-anchor-SVG-font-fidelity-unverified",
+    "method": "All prior56 PNG hashes match directly inspected R15 bytes; four new API/CLI tag-Mix renders inspected at original size. Sixteen current sheets retain all60. Fixed-anchor SVG font fidelity remains incomplete.",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -89,7 +89,11 @@
       "pages/watermark-resource-suffix-svg.png",
       "pages/vendor-annotations-roundtrip-1.png",
       "pages/vendor-annotations-roundtrip-2.png",
-      "pages/vendor-annotations-roundtrip-svg.png"
+      "pages/vendor-annotations-roundtrip-svg.png",
+      "pages/mix-custom-tags-1.png",
+      "pages/mix-custom-tags-svg.png",
+      "pages/cli-mix-custom-tags-1.png",
+      "pages/cli-mix-custom-tags-svg.png"
     ],
     "observations": [
       "Chinese and proportional English readable; source styles remain local; table fills/borders and page break retained",
@@ -113,7 +117,9 @@
       "R14 declared PublicResources.dat/ImageResources.bin survive save/watermark/split. Actual suffix watermark output retains readable body/styles, table, NOTE, template, DRAFT and red ordinary image; RESOURCE SUFFIX paints once; second page retains red emphasis and date.",
       "R15 vendor declaration literals remain opaque before path resolution or visited dedup; valid standard NOTE remains visible in ordinary roundtrip, while Mix rejects vendor metadata. Standard traversal still rejected.",
       "R15 font/media IDs only in dat/bin descriptors above a deliberately stale document hint retain bindings and globally unique output unit IDs; all prior rendering bytes unchanged.",
-      "Same-ID vendor TemplatePage stays preserved and outside standard template table; real template and NOTE remain modeled. All56 current render hashes unchanged."
+      "Same-ID vendor TemplatePage stays preserved and outside standard template table; real template and NOTE remain modeled. All56 current render hashes unchanged.",
+      "R16 vendor Template page references no longer paint or duplicate a standard template. Existing56 renders unchanged.",
+      "R16 Native scalar CustomTags retained in API/CLI Mix, unique/equal values coalesce and conflicting values reject before output; CLI existing output marker retained. Unknown tag schema/structure and potential package/attachment references remain unsupported."
     ],
     "passed_files": [
       "pages/annotation-clipped-1.png",
@@ -170,7 +176,11 @@
       "pages/watermark-resource-suffix-svg.png",
       "pages/vendor-annotations-roundtrip-1.png",
       "pages/vendor-annotations-roundtrip-2.png",
-      "pages/vendor-annotations-roundtrip-svg.png"
+      "pages/vendor-annotations-roundtrip-svg.png",
+      "pages/mix-custom-tags-1.png",
+      "pages/mix-custom-tags-svg.png",
+      "pages/cli-mix-custom-tags-1.png",
+      "pages/cli-mix-custom-tags-svg.png"
     ],
     "uncompleted": {
       "pages/italic-fixed-anchor-svg.png": "Shear visible but original rectangle font is substituted by librsvg; native browser raster still required for font fidelity."
@@ -178,9 +188,9 @@
   },
   "macos_preview": {
     "status": "not-completed",
-    "reason": "Mac relocked after historical10/37-page inspection; latest42 outputs require reopening after manual unlock",
+    "reason": "Mac remains locked; historical10/37 pages atc10f002 only, latest44 PDFs require reopening after manual unlock",
     "checked_pages": [],
-    "latest_required_pdf_pages": 42,
+    "latest_required_pdf_pages": 44,
     "historical_checked_pages": 10,
     "historical_source_commit": "c10f002299726bebd7495122702df3658572faaa",
     "historical_record": "preview-progress.json",
@@ -188,20 +198,20 @@
     "remaining_window": "old watermark.pdf page2; close blocked by lock"
   },
   "pr_review": {
-    "status": "two latest findings plus analogous template namespace defect repaired; independent274 and new-head review pending; Preview open",
-    "review_head": "e08e5ae5cc5d201a904e2f9e9dd884270d0b4bcf",
-    "codex": "vendor annotation namespace before Resolve/dedup repaired",
-    "cursor": "resource-only IDs outside xml suffix now reserved before new object allocation",
-    "ci": "e08e5ae all six checks succeeded; new head pending"
+    "status": "template page namespace and scalar tag preservation findings repaired; new-head review pending; Preview open",
+    "review_head": "6ae57940398c40b3a5a683ec2a12c67794270858",
+    "codex": "standard CustomTags retained with explicit union/conflict policy and XML/path boundary",
+    "cursor": "page template references scoped to page namespace; vendor siblings preserved without paint",
+    "ci": "6ae5794 all six checks succeeded; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 41263168,
-    "sha256": "723c04c7a4905c5de27fe7b9100966120265117b4dfc6ed5b861f8ac6296749e",
-    "extraction_readback": "passed: freshly extracted all319 file sizes and SHA256",
-    "file_count": 319,
-    "expanded_bytes": 1487570542,
-    "integrity_status": "passed: freshly extracted all319 file sizes and SHA256"
+    "bytes": 42643768,
+    "sha256": "221d799f4437adff70a54f78661fe801d564c37a083d04e70ac22acf7bbe4b7d",
+    "extraction_readback": "passed: freshly extracted all356 file sizes and SHA256",
+    "file_count": 356,
+    "expanded_bytes": 1594259310,
+    "integrity_status": "passed: freshly extracted all356 file sizes and SHA256"
   },
   "ofd_sizes": {
     "annotation-clipped-mix.ofd": {
@@ -244,8 +254,12 @@
       "bytes": 11604617,
       "ratio_to_native_baseline": 1.0001
     },
+    "cli-mix-custom-tags.ofd": {
+      "bytes": 11603033,
+      "ratio_to_native_baseline": 1.0
+    },
     "cli-mix.ofd": {
-      "bytes": 11602397,
+      "bytes": 11603021,
       "ratio_to_native_baseline": 1.0
     },
     "cli-split.ofd": {
@@ -258,6 +272,14 @@
     },
     "cli-watermark.ofd": {
       "bytes": 11605618,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "custom-tags-conflict.ofd": {
+      "bytes": 11604706,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "custom-tags-input.ofd": {
+      "bytes": 11604707,
       "ratio_to_native_baseline": 1.0002
     },
     "italic-control.ofd": {
@@ -276,8 +298,12 @@
       "bytes": 11599927,
       "ratio_to_native_baseline": 0.9997
     },
+    "mix-custom-tags.ofd": {
+      "bytes": 11602972,
+      "ratio_to_native_baseline": 1.0
+    },
     "mix.ofd": {
-      "bytes": 11602428,
+      "bytes": 11603052,
       "ratio_to_native_baseline": 1.0
     },
     "overlay.ofd": {
@@ -293,11 +319,11 @@
       "ratio_to_native_baseline": 1.0001
     },
     "scoped-annotations-input.ofd": {
-      "bytes": 11606565,
+      "bytes": 11606566,
       "ratio_to_native_baseline": 1.0003
     },
     "signed.ofd": {
-      "bytes": 11606532,
+      "bytes": 11606533,
       "ratio_to_native_baseline": 1.0003
     },
     "split-template-liveness.ofd": {
@@ -309,7 +335,7 @@
       "ratio_to_native_baseline": 1.0002
     },
     "template-liveness-input.ofd": {
-      "bytes": 11606735,
+      "bytes": 11606736,
       "ratio_to_native_baseline": 1.0003
     },
     "template-wrapper-extension.ofd": {
@@ -317,11 +343,11 @@
       "ratio_to_native_baseline": 1.0001
     },
     "vendor-annotations-input.ofd": {
-      "bytes": 11604592,
+      "bytes": 11604622,
       "ratio_to_native_baseline": 1.0001
     },
     "vendor-annotations-roundtrip.ofd": {
-      "bytes": 11604732,
+      "bytes": 11604768,
       "ratio_to_native_baseline": 1.0002
     },
     "watermark-merged.ofd": {
@@ -351,5 +377,6 @@
   },
   "template_liveness_sample": "extensionless state.dat nested Extension BaseLoc ../Templates retains template declaration/payload while selecting page2",
   "resource_suffix_sample": "real dat/bin font/media IDs just above all other IDs and above a stale document hint; watermark output has globally unique IDs and unchanged binding/paint",
-  "vendor_annotation_sample": "two vendor Annotations plus same-ID vendor TemplatePage precede standard declarations; unsafe-looking literals preserved, standard NOTE/template paint, Mix refuses unknown metadata"
+  "vendor_annotation_sample": "two vendor Annotations plus same-ID vendor TemplatePage precede standard declarations; unsafe-looking literals preserved, standard NOTE/template paint, Mix refuses unknown metadata",
+  "custom_tags_policy": "flat EMR scalar union with ordinal keys; unique/equal kept, unequal conflict fails; unknown XML and potential payload/attachment refs refuse; Native provenance labels supported"
 }
