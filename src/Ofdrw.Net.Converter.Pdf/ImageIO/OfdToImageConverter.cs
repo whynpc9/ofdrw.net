@@ -32,6 +32,7 @@ public sealed class OfdToImageConverter
             throw new ArgumentException("Encoding, quality and positive image budgets are required.", nameof(options));
         var load = options.PackageLoadOptions ?? throw new ArgumentException("Package load budgets are required.", nameof(options));
         if (load.MaxInputBytes <= 0 || load.MaxEntryCount <= 0 || load.MaxPageCount <= 0 || load.MaxEntryUncompressedBytes <= 0 ||
+            load.MaxAnnotationObjectCount <= 0 || load.MaxAnnotationXmlBytes <= 0 ||
             load.MaxTotalUncompressedBytes <= 0 || !(load.MaxCompressionRatio > 0) || double.IsInfinity(load.MaxCompressionRatio))
             throw new ArgumentException("Positive finite package load budgets are required.", nameof(options));
         _options = new OfdToImageOptions
@@ -43,6 +44,7 @@ public sealed class OfdToImageConverter
             PackageLoadOptions = new OfdPackageLoadOptions
             {
                 MaxInputBytes = load.MaxInputBytes, MaxEntryCount = load.MaxEntryCount, MaxPageCount = load.MaxPageCount,
+                MaxAnnotationObjectCount = load.MaxAnnotationObjectCount, MaxAnnotationXmlBytes = load.MaxAnnotationXmlBytes,
                 MaxEntryUncompressedBytes = load.MaxEntryUncompressedBytes, MaxTotalUncompressedBytes = load.MaxTotalUncompressedBytes,
                 MaxCompressionRatio = load.MaxCompressionRatio
             }

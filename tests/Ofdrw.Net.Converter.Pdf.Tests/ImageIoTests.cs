@@ -24,18 +24,21 @@ public sealed class ImageIoTests
         return output.ToArray();
     }
 
-    internal static async Task<byte[]> Source()
+    internal static async Task<byte[]> Source(byte[]? licensedFont = null)
     {
         var package = new OfdDocumentPackage();
+        var fontName = licensedFont is null ? "Arial" : "OFD Image IO Noto OFL";
+        if (licensedFont is not null) package.Fonts.Add(new OfdFontResource { Id = "10", FontName = fontName,
+            FileName = "Ofdrw-CI-NotoSansCJKsc-Regular.ttf", Data = licensedFont });
         package.Options.Metadata.Title = "Deterministic image IO fixture";
         for (var index = 0; index < 2; index++)
         {
             var page = new OfdPage { Index = index, WidthMillimeters = 80.3, HeightMillimeters = 60.4 };
-            page.Elements.Add(new OfdTextElement { Text = $"Image I/O 样例 {index + 1}", FontName = "Arial", FontSizeMillimeters = 4,
+            page.Elements.Add(new OfdTextElement { Text = $"Image I/O 样例 {index + 1}", FontName = fontName, FontSizeMillimeters = 4,
                 XMillimeters = 5, YMillimeters = 3, WidthMillimeters = 70, HeightMillimeters = 6 });
-            page.Elements.Add(new OfdTextElement { Text = "Bold proportional", FontName = "Arial", Weight = 700, FontSizeMillimeters = 3,
+            page.Elements.Add(new OfdTextElement { Text = "Bold proportional", FontName = fontName, Weight = 700, FontSizeMillimeters = 3,
                 XMillimeters = 5, YMillimeters = 12, WidthMillimeters = 40, HeightMillimeters = 5 });
-            page.Elements.Add(new OfdTextElement { Text = "Italic color", FontName = "Arial", Italic = true, FillColor = new OfdColor(160, 0, 180), FontSizeMillimeters = 3,
+            page.Elements.Add(new OfdTextElement { Text = "Italic color", FontName = fontName, Italic = true, FillColor = new OfdColor(160, 0, 180), FontSizeMillimeters = 3,
                 XMillimeters = 40, YMillimeters = 12, WidthMillimeters = 35, HeightMillimeters = 5 });
             page.Elements.Add(new OfdImageElement { Data = ImageBytes(), FileName = "quadrants.png", XMillimeters = 5, YMillimeters = 22,
                 WidthMillimeters = 40, HeightMillimeters = 20 });
@@ -719,7 +722,7 @@ public sealed class ImageIoTests
         using var input = new MemoryStream(rewritten.ToArray()); using var sentinel = Sentinel();
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
         { PixelsPerMillimeter = 2 }).ConvertAsync(input, sentinel));
-        Assert.Contains("origin", error.Message); AssertSentinel(sentinel);
+        Assert.Contains(origin is "NaN" or "Infinity" or "-Infinity" ? "finite" : "origin", error.Message); AssertSentinel(sentinel);
     }
 
     [Theory]
@@ -837,7 +840,9 @@ public sealed class ImageIoTests
         var directory = Environment.GetEnvironmentVariable("OFDRW_IMAGE_EVIDENCE");
         if (string.IsNullOrWhiteSpace(directory)) return;
         Directory.CreateDirectory(directory);
-        var source = await Source(); await File.WriteAllBytesAsync(Path.Combine(directory, "source.ofd"), source);
+        var fontPath = Environment.GetEnvironmentVariable("OFDRW_IMAGE_EVIDENCE_FONT");
+        var source = await Source(string.IsNullOrEmpty(fontPath) ? null : await File.ReadAllBytesAsync(fontPath));
+        await File.WriteAllBytesAsync(Path.Combine(directory, "source.ofd"), source);
         using (var input = new MemoryStream(source))
         using (var pdf = File.Create(Path.Combine(directory, "source.pdf"))) await new OfdToPdfConverter().ConvertAsync(input, pdf);
         for (var page = 0; page < 2; page++)

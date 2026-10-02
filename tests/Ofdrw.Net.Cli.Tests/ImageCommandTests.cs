@@ -100,6 +100,29 @@ public sealed class ImageCommandTests : IDisposable
 
     public void Dispose() => Directory.Delete(_directory, true);
 
+    [Fact]
+    public async Task IntegratedUnsupportedAnnotationLeavesImageTargetUntouched()
+    {
+        var package = new OfdDocumentPackage(); package.Pages.Add(new OfdPage { WidthMillimeters = 40, HeightMillimeters = 30 });
+        var source = PathFor("annotation.ofd");
+        using (var output = File.Create(source)) await new OfdPackageWriter().WriteAsync(package, output);
+        using (var zip = new System.IO.Compression.ZipArchive(File.Open(source, FileMode.Open, FileAccess.ReadWrite), System.IO.Compression.ZipArchiveMode.Update))
+        {
+            var entry = zip.GetEntry("Doc_0/Document.xml")!; System.Xml.Linq.XDocument xml;
+            using (var input = entry.Open()) xml = System.Xml.Linq.XDocument.Load(input);
+            var ns = xml.Root!.Name.Namespace; var id = xml.Descendants(ns + "Page").First().Attribute("ID")!.Value;
+            xml.Root.Add(new System.Xml.Linq.XElement(ns + "Annotations", "Annots/Annotations.xml"));
+            entry.Delete(); using (var output = zip.CreateEntry("Doc_0/Document.xml").Open()) xml.Save(output);
+            void Add(string path, string text) { using var output = zip.CreateEntry(path).Open(); output.Write(System.Text.Encoding.UTF8.GetBytes(text)); }
+            Add("Doc_0/Annots/Annotations.xml", $"<Annotations xmlns='{ns}'><Page PageID='{id}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+            Add("Doc_0/Annots/Page.xml", $"<PageAnnot xmlns='{ns}'><Annot ID='500'><Appearance Boundary='0 0 10 10'><UnsupportedDrawing/></Appearance></Annot></PageAnnot>");
+        }
+        var target = PathFor("existing.png"); await File.WriteAllTextAsync(target, "preserved");
+        Assert.Equal(1, await global::Cli.RunAsync(["ofd-to-image", source, target]));
+        Assert.Equal("preserved", await File.ReadAllTextAsync(target));
+        Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+    }
+
     [Theory]
     [InlineData(1, false, 6)] [InlineData(2, true, 8)] [InlineData(2, false, 7)]
     public async Task ImportAcceptsExactEntryBudgetAndPreservesDestinationBelowIt(int count, bool distinct, int entries)

@@ -56,7 +56,9 @@ public sealed class OfdTextExtractor
                     .OfType<OfdTextElement>());
         }
 
+        textElements = textElements.Concat(page.AnnotationAppearances.OfType<OfdTextElement>());
         var lines = textElements
+            .Where(OfdGraphicXmlContract.IsVisible)
             .OrderBy(element => element.YMillimeters)
             .ThenBy(element => element.XMillimeters)
             .GroupBy(element => Math.Round(element.YMillimeters, 1))

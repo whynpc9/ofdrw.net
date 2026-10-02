@@ -5,6 +5,7 @@
     <PackageTags>OFD;layout;builder;document-generation</PackageTags>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,959 @@
+{
+  "client_date": "2026-10-02",
+  "timezone": "Asia/Shanghai",
+  "runtime_source_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448",
+  "example_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448",
+  "functional_tests": {
+    "status": "passed",
+    "total": 400,
+    "failed": 0,
+    "skipped": 0,
+    "independent_model": "gpt-6-sol low",
+    "design_review_model": "gpt-6-astra high",
+    "test_checkpoint_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448",
+    "implementation_equivalence": "400 independent tests on frozen, clean commit 31569bd; before/after source fingerprint unchanged"
+  },
+  "local_package_consumption": {
+    "status": "passed",
+    "package_count": 11,
+    "version": "0.1.0-issue03.30",
+    "published": false,
+    "repository_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448"
+  },
+  "native_default_text": {
+    "status": "passed",
+    "source_text_characters": 202,
+    "comparison": "exact concatenated w:t vs ordered TextCode; both modes"
+  },
+  "automatic_rendering": {
+    "status": "passed: retained 35-case R20 matrix plus the actual R21 cleanup report case; final normal 36-case path independently exercised in separate temporary directory",
+    "pdf_pages": 55,
+    "svg_pages": 25
+  },
+  "png_visual_review": {
+    "status": "passed for 79 automatic PNGs plus retained native original-font SVG screenshot",
+    "method": "57 prior PNG hashes unchanged; 12 changed SVG rasters directly rechecked side-by-side in three R20 contact sheets, corresponding SVG source bytes identical; eight new PDF/SVG images inspected in R20 new-pages contact. Current fixed-anchor SVG bytes identical to R19 native-font accepted screenshot. R21 adds three directly inspected cleanup PDF/SVG PNGs; both new PDF PNGs exactly match the corresponding R20 clean pages.",
+    "checked_files": [
+      "pages/annotation-clipped-1.png",
+      "pages/annotation-clipped-mix-1.png",
+      "pages/annotation-clipped-mix-svg.png",
+      "pages/annotation-clipped-svg.png",
+      "pages/annotation-metadata-1.png",
+      "pages/annotation-metadata-2.png",
+      "pages/annotation-metadata-svg.png",
+      "pages/baseline-default-1.png",
+      "pages/baseline-default-2.png",
+      "pages/baseline-native-1.png",
+      "pages/baseline-native-2.png",
+      "pages/clean-1.png",
+      "pages/clean-2.png",
+      "pages/cli-clean-1.png",
+      "pages/cli-clean-2.png",
+      "pages/cli-merged-1.png",
+      "pages/cli-merged-2.png",
+      "pages/cli-merged-3.png",
+      "pages/cli-merged-svg.png",
+      "pages/cli-mix-1.png",
+      "pages/cli-split-1.png",
+      "pages/cli-split-2.png",
+      "pages/cli-watermark-1.png",
+      "pages/cli-watermark-2.png",
+      "pages/cli-watermark-svg.png",
+      "pages/italic-control-1.png",
+      "pages/italic-control-svg.png",
+      "pages/italic-marked-1.png",
+      "pages/italic-marked-svg.png",
+      "pages/italic-user-matrix-1.png",
+      "pages/italic-user-matrix-svg.png",
+      "pages/mix-1.png",
+      "pages/overlay-1.png",
+      "pages/rich-1.png",
+      "pages/rich-2.png",
+      "pages/signed-1.png",
+      "pages/signed-2.png",
+      "pages/split-1.png",
+      "pages/split-2.png",
+      "pages/split-template-liveness-1.png",
+      "pages/split-template-liveness-svg.png",
+      "pages/watermark-1.png",
+      "pages/watermark-2.png",
+      "pages/watermark-merged-1.png",
+      "pages/watermark-merged-2.png",
+      "pages/watermark-merged-3.png",
+      "pages/watermark-merged-svg.png",
+      "pages/watermark-svg.png",
+      "pages/italic-fixed-anchor-1.png",
+      "pages/italic-fixed-anchor-svg.png",
+      "pages/watermark-resource-suffix-1.png",
+      "pages/watermark-resource-suffix-2.png",
+      "pages/watermark-resource-suffix-svg.png",
+      "pages/vendor-annotations-roundtrip-1.png",
+      "pages/vendor-annotations-roundtrip-2.png",
+      "pages/vendor-annotations-roundtrip-svg.png",
+      "pages/mix-custom-tags-1.png",
+      "pages/mix-custom-tags-svg.png",
+      "pages/cli-mix-custom-tags-1.png",
+      "pages/cli-mix-custom-tags-svg.png",
+      "pages/binary-xml-split-1.png",
+      "pages/binary-xml-split-svg.png",
+      "pages/blank-watermark-1.png",
+      "pages/blank-watermark-svg.png",
+      "pages/box-whitespace-1.png",
+      "pages/box-whitespace-svg.png",
+      "pages/page-wrapper-metadata-1.png",
+      "pages/page-wrapper-metadata-2.png",
+      "pages/page-wrapper-metadata-svg.png",
+      "pages/box-inexact-page-1.png",
+      "pages/box-inexact-page-svg.png",
+      "pages/box-inexact-inherited-1.png",
+      "pages/box-inexact-inherited-svg.png",
+      "pages/annotation-inexact-appearance-1.png",
+      "pages/annotation-inexact-appearance-svg.png",
+      "pages/annotation-inexact-primitive-1.png",
+      "pages/annotation-inexact-primitive-svg.png",
+      "pages/report-clean-signed-1.png",
+      "pages/report-clean-signed-2.png",
+      "pages/report-clean-signed-svg.png"
+    ],
+    "observations": [
+      "Chinese and proportional English readable; source styles remain local; table fills/borders and page break retained",
+      "Text/image watermarks visible after merge and PDF/SVG export",
+      "Green TOP LAYER covers the blue UNDER LAYER at identical coordinates; Mix retains first source page dimensions",
+      "Split pages show source page 2 then page 1",
+      "Clean output has no red signature square; body/template/annotation/attachment retained",
+      "OFD/PDF raw text checks find each added label once; clean preserves every non-signature entry byte",
+      "Appearance clip and original image Boundary retain exact sheared polygons; nested PageBlock drawing and glyph scale/rotation survive Mix",
+      "Unknown drawing prevents a partial successful export; unknown metadata remains roundtrip compatible; styled no-id fonts retain correct bytes",
+      "Generated FauxItalic factor and identity single-italic control are pixel-identical; same unmarked user CTM retains deliberate extra shear",
+      "Undeclared/vendor same-name annotation/resource/template XML remains byte-preserved",
+      "R4 namespace guards preserve the exact 43 inspected render bytes while rejecting vendor declarations/annotation nodes",
+      "R5 outer vendor Appearance metadata retains standard NOTE artwork; unsupported foreign descendants block flattening without changing ordinary roundtrip extension bytes",
+      "R6 child/leaf/attribute closure: known drawing survives unknown metadata, unsupported same-namespace child content and drawing references fail explicitly, exact current 46 render bytes unchanged",
+      "R7 owned XML-named signature values/seals removed when exclusive; external/shared transitive references keep exact bytes; all actual 46 output render bytes unchanged",
+      "R8 current full-page review: body/table/local style/order intact, known NOTE visible, hidden annotation text/path absent, clipping/glyph transforms correct, signatures removed only in clean/tool outputs, watermarks survive merge",
+      "R9 text ignores image-only budgets; foreign-only or nested-only empty clip geometry rejects PDF/SVG before output instead of hiding the object; supported page render bytes unchanged",
+      "R13 all-suffix shared XML scans preserve page/font/media/signature closure and nested BaseLoc references; malformed XML stays conservative and BOM plain text does not disable pruning",
+      "R13 new fixed-baseline MIT PDF pairs show whole-glyph shear; regular/italic edge slope regressions and adjacent control pass; SVG native-font raster acceptance was pending at R13 and passed at R18 with the retained Chromium screenshot",
+      "R14 declared PublicResources.dat/ImageResources.bin survive save/watermark/split. Actual suffix watermark output retains readable body/styles, table, NOTE, template, DRAFT and red ordinary image; RESOURCE SUFFIX paints once; second page retains red emphasis and date.",
+      "R15 vendor declaration literals remain opaque before path resolution or visited dedup; valid standard NOTE remains visible in ordinary roundtrip, while Mix rejects vendor metadata. Standard traversal still rejected.",
+      "R15 font/media IDs only in dat/bin descriptors above a deliberately stale document hint retain bindings and globally unique output unit IDs; all prior rendering bytes unchanged.",
+      "Same-ID vendor TemplatePage stays preserved and outside standard template table; real template and NOTE remain modeled. All 56 current render hashes unchanged.",
+      "R16 vendor Template page references no longer paint or duplicate a standard template. Existing 56 renders unchanged.",
+      "R16 Native scalar CustomTags retained in API/CLI Mix, unique/equal values coalesce and conflicting values reject before output; CLI existing output marker retained. Unknown tag schema/structure and potential package/attachment references remain unsupported.",
+      "R17 supported declaration wrappers validate attributes/children/literals before flattening. Annotation Page record extras retain page-scoped raw marker while unique standard FileLoc follows known artwork; duplicate/nested paths remain opaque.",
+      "R17 optional standard TemplatePage Name and default ZOrder supported; page reference overrides declaration default. Enhanced annotation-metadata sample keeps known NOTE/template and XML metadata; Mix refuses. All 60 render bytes unchanged.",
+      "R18 Annotations/PageAnnot/Annot/FileLoc extension metadata retains standard NOTE while refusing Mix. Selected page/template Page/Area/Content/Layer closure and unsupported template order fail before flattening; duplicate Appearance fails PDF/SVG with zero output. All 60 automatic page hashes unchanged.",
+      "R19 binary .xml signature/attachment split retains selected body and attachment bytes while removing owned signature entries; page wrapper exports known art but refuses rewrite; exact whitespace-separated 100x80 box and blank-page text/image watermark render correctly. Recursive drawing PI export fails with zero bytes; hidden unknown drawing refuses Mix without painting; original empty-layer IDs remain preserved.",
+      "R20: first-four-finite display preserves 100x80 page/inherited geometry and red annotation art; inexact source wrappers and annotation Boundary metadata still block Mix. Tiny dimensions and cumulative annotation limits fail before partial output. Twelve changed automatic SVG PNGs are visually equivalent at the inspected layout/artwork scope; no source SVG byte changes. Raster byte determinism is not claimed.",
+      "R21 return-report-only fix changes no rendering/ZIP members. Signed/missing-list cleanup reports invalidated=true, unsigned/idempotent=false; repeated/distinct sources retain payloads with unique Attachment_1/Attachment_2 IDs. Fresh cleanup PDF two pages passed actual Preview and PNG equality with retained clean; PDF bytes differ by creation metadata and are separately hashed."
+    ],
+    "passed_files": [
+      "pages/annotation-clipped-1.png",
+      "pages/annotation-clipped-mix-1.png",
+      "pages/annotation-clipped-mix-svg.png",
+      "pages/annotation-clipped-svg.png",
+      "pages/annotation-metadata-1.png",
+      "pages/annotation-metadata-2.png",
+      "pages/annotation-metadata-svg.png",
+      "pages/baseline-default-1.png",
+      "pages/baseline-default-2.png",
+      "pages/baseline-native-1.png",
+      "pages/baseline-native-2.png",
+      "pages/clean-1.png",
+      "pages/clean-2.png",
+      "pages/cli-clean-1.png",
+      "pages/cli-clean-2.png",
+      "pages/cli-merged-1.png",
+      "pages/cli-merged-2.png",
+      "pages/cli-merged-3.png",
+      "pages/cli-merged-svg.png",
+      "pages/cli-mix-1.png",
+      "pages/cli-split-1.png",
+      "pages/cli-split-2.png",
+      "pages/cli-watermark-1.png",
+      "pages/cli-watermark-2.png",
+      "pages/cli-watermark-svg.png",
+      "pages/italic-control-1.png",
+      "pages/italic-control-svg.png",
+      "pages/italic-marked-1.png",
+      "pages/italic-marked-svg.png",
+      "pages/italic-user-matrix-1.png",
+      "pages/italic-user-matrix-svg.png",
+      "pages/mix-1.png",
+      "pages/overlay-1.png",
+      "pages/rich-1.png",
+      "pages/rich-2.png",
+      "pages/signed-1.png",
+      "pages/signed-2.png",
+      "pages/split-1.png",
+      "pages/split-2.png",
+      "pages/split-template-liveness-1.png",
+      "pages/split-template-liveness-svg.png",
+      "pages/watermark-1.png",
+      "pages/watermark-2.png",
+      "pages/watermark-merged-1.png",
+      "pages/watermark-merged-2.png",
+      "pages/watermark-merged-3.png",
+      "pages/watermark-merged-svg.png",
+      "pages/watermark-svg.png",
+      "pages/italic-fixed-anchor-1.png",
+      "pages/watermark-resource-suffix-1.png",
+      "pages/watermark-resource-suffix-2.png",
+      "pages/watermark-resource-suffix-svg.png",
+      "pages/vendor-annotations-roundtrip-1.png",
+      "pages/vendor-annotations-roundtrip-2.png",
+      "pages/vendor-annotations-roundtrip-svg.png",
+      "pages/mix-custom-tags-1.png",
+      "pages/mix-custom-tags-svg.png",
+      "pages/cli-mix-custom-tags-1.png",
+      "pages/cli-mix-custom-tags-svg.png",
+      "validation/svg-font-native.png",
+      "pages/binary-xml-split-1.png",
+      "pages/binary-xml-split-svg.png",
+      "pages/blank-watermark-1.png",
+      "pages/blank-watermark-svg.png",
+      "pages/box-whitespace-1.png",
+      "pages/box-whitespace-svg.png",
+      "pages/page-wrapper-metadata-1.png",
+      "pages/page-wrapper-metadata-2.png",
+      "pages/page-wrapper-metadata-svg.png",
+      "pages/box-inexact-page-1.png",
+      "pages/box-inexact-page-svg.png",
+      "pages/box-inexact-inherited-1.png",
+      "pages/box-inexact-inherited-svg.png",
+      "pages/annotation-inexact-appearance-1.png",
+      "pages/annotation-inexact-appearance-svg.png",
+      "pages/annotation-inexact-primitive-1.png",
+      "pages/annotation-inexact-primitive-svg.png",
+      "pages/report-clean-signed-1.png",
+      "pages/report-clean-signed-2.png",
+      "pages/report-clean-signed-svg.png"
+    ],
+    "uncompleted": {}
+  },
+  "macos_preview": {
+    "status": "passed for all listed latest pages",
+    "reason": "R20: 53 inspected pages retained unchanged; two fresh R21 cleanup-report pages inspected and closed, for 55 listed pages",
+    "checked_pages": [
+      {
+        "artifact": "box-inexact-page.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "1722a0db712f4f44335e5fa70a03f6993337985ca1bcc4dba9557f2deee445a9",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/box-inexact-page.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "box-inexact-inherited.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "d6698d4b58aebcb42b072162aa3043c004390ffa97d7cf0c5e32c3c0cfe64a65",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/box-inexact-inherited.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "annotation-inexact-appearance.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "169871cf083d49d502b11ab41c812e4c44f4529f332763bf352bd9d9419fc56b",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/annotation-inexact-appearance.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "annotation-inexact-primitive.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "0e1e7f7e5a4e6a0cd8cbd181f354bb606f42aee3a0a6a735e1eb95ca4ab5d89f",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/annotation-inexact-primitive.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "blank-watermark.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "702df46e4d627f7a9fbfbe8fba98a54a827d290f45a316eac9b189054620c0e7",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/blank-watermark.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "box-whitespace.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "5651dc478e0c045221e2fe05bcf1caeaab2d183fb9e9a72131558a6a6f6d2d45",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/box-whitespace.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "binary-xml-split.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "d97f25df22d0ae42200a8a14fff39c0498bd5ab5cc91db1c196c1ba3056db73b",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/binary-xml-split.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "page-wrapper-metadata.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "3790a9a6eb86f5f1956be1cdd67445580ee2b18b8f84ce773bc0beffa653b22d",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/page-wrapper-metadata.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "baseline-native.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "67a09cc35f64723d59d248e148ffc8b252600c60b322e22eee102b620bb5da57",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/baseline-native.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "baseline-default.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "f7f4b9481dac4919435d0fb5035686c9eda6dc546ee8d3dd55f01e61f275ca27",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/baseline-default.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "rich.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "7a81a6d6ead2ab12f9644d5af9ae556aad6b94efb8ed46f92e7329bf969240be",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/rich.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "annotation-metadata.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "fcfc4093c988222f8fa3851bc58a5db94aa598ddf716fad713d760a4c5727d25",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/annotation-metadata.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "signed.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "8580cbf3ac44f3e4315cbc6d8bc0d6ef91fed88ea2894c189a70f70509c84bfd",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/signed.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "watermark.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "759e4d6acf47407a6f4683914ef2298ff8f27b8d044bdb53476f5053845266c8",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/watermark.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "watermark-merged.pdf",
+        "pages": [
+          1,
+          2,
+          3
+        ],
+        "sha256": "0d918c88661cf4250179e3f98a2b6bae75d66e6aadfc767005d0b091d0cbb0dd",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/watermark-merged.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "watermark-resource-suffix.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "4b700ae7d64de69fd3f1f7e37275223dcf136031a563d8d27a98cbd17866a7c6",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/watermark-resource-suffix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "vendor-annotations-roundtrip.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "31bb963832a7329b0e2346e0261e801f63cf0410f755916831bc11dbd198cb13",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/vendor-annotations-roundtrip.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "mix-custom-tags.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "033a3df2f7100a846fb05c163b6c930f3cb5a1fc5b705e4f3f511ac14cdf59ac",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/mix-custom-tags.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "cli-mix-custom-tags.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "f4138c34cd699ffe0ec4274d86db7c6d94c9390b5a46dce08ced0df900de8cd1",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-mix-custom-tags.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "split.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "9b5c53f2b77b7415be954ed60e4e3326fe540d975b0d84b94053cf24951a7fe4",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/split.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "split-template-liveness.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "7b389a1938e8d2359023c13b36cf0807914a2c9dca61c049cf01c0b408eb8e27",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/split-template-liveness.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "mix.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "ff45fc584aca6da5fe076a7e786a9d1ba8113976bc126912163427db49b0b384",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/mix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "clean.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "c90b5bbae7f43650e399b01778fb1d0787a1370ce05b57abbd704694deefaa3a",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/clean.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "overlay.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "e798bd916f998c44b2d7ddbc85fe489018e36875b632834b7dbe31370079f378",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/overlay.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "cli-watermark.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "c17016fe6ec4a2916f04944d64827970503b31371b2178e304649563fec55936",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-watermark.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "cli-split.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "da1fd25e6035612b27064a485b17da9b22fb6e582f308b2787e83675d1daf96e",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-split.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "cli-mix.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "4d4c72953c9714a5c889d5062e70fbfcfba70068e6d59b3633d79093f2e35fa8",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-mix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "cli-clean.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "3d06480316730df2d23d03ac21764c37f01bd3a68b86c418be63a607c9da38ba",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-clean.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "cli-merged.pdf",
+        "pages": [
+          1,
+          2,
+          3
+        ],
+        "sha256": "bb838c3ea57610d8c62b623c2a84cd3ebf47beaaf1c87567b132b5a0fb54939c",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/cli-merged.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "annotation-clipped.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "04eb5daf9d0df7d9d480a3018af2b6cd534efa582dfdad04be4166e0e423f087",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/annotation-clipped.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "annotation-clipped-mix.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "97fd2f4975d910c78c5416bd0779b6bc3e69217d360d3f739ca31c3b333b8c15",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/annotation-clipped-mix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "italic-marked.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "33a5ec4be524a18ad67d9f0395bba3c0eaac79c929135f00a8c2b96addd35412",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/italic-marked.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "italic-control.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "140d705f9973566a8d3c5c7dd1baa0c512f09fc2262f9717ac1e58815c741e89",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/italic-control.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "italic-user-matrix.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "386c578667076086d7f53f17cb8b4f10dc0841bfb6b86aee6c5015f32882a8d0",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/italic-user-matrix.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "italic-fixed-anchor.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "5b1919b93b44cc56ee86c5cb58ce91ff52313f629589b4ac2f00248d7b917e08",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/italic-fixed-anchor.pdf",
+        "result": "passed for viewed pages",
+        "window_closed": true,
+        "generation_source_commit": "76400cd2dc3263b5cd995fa87c4106c25abeeacf"
+      },
+      {
+        "artifact": "report-clean-signed.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "b9c70850b5a5c3eb4c558e225f55738a216c8485ee5953c90c4ff649c273290a",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/9457/ofdrw.net/docs/evidence/document-tools/files/report-clean-signed.pdf",
+        "result": "passed for viewed pages; signature seal absent, body/styles/template/annotation preserved",
+        "window_closed": true,
+        "generation_source_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448"
+      }
+    ],
+    "latest_required_pdf_pages": 55,
+    "historical_checked_pages": 10,
+    "historical_source_commit": "c10f002299726bebd7495122702df3658572faaa",
+    "historical_record": "preview-progress.json",
+    "historical_snapshots": "files/validation/preview-c10",
+    "remaining_window": "none",
+    "source_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448",
+    "example_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448",
+    "historical_r18_record": "files/validation/preview-progress-r18.json",
+    "historical_r18_snapshots": "files/validation/preview-r18",
+    "historical_r19_record": "files/validation/preview-progress-r19.json",
+    "historical_r19_snapshots": "files/validation/preview-r19",
+    "retained_rendering_baseline": "76400cd2dc3263b5cd995fa87c4106c25abeeacf",
+    "historical_r20_record": "files/validation/preview-progress-r20.json"
+  },
+  "pr_review": {
+    "status": "9393685 functional review and all six checks passed; editorial spacing repaired; fresh documentation-head review/CI pending",
+    "review_head": "93936859f2d4fc929dd5b740d8990d8e5f491d54",
+    "codex": "9393685: no major issues found",
+    "cursor": "9393685: no new functional must-fix; editorial spacing in verification records repaired",
+    "ci": "9393685: all six checks succeeded"
+  },
+  "bundle": {
+    "path": "evidence.tar.zst",
+    "bytes": 42676338,
+    "sha256": "13e7cee4b830846473aee4f2625c120272b8187973aa2c4711b7092b621af1dc",
+    "extraction_readback": "Extracted and verified 532 files in fresh /private/tmp/ofdrw-03-evidence-readback-r22",
+    "file_count": 532,
+    "expanded_bytes": 2123731798,
+    "integrity_status": "passed: all manifest sizes and SHA-256 values verified after fresh extraction"
+  },
+  "ofd_sizes": {
+    "annotation-clipped-mix.ofd": {
+      "bytes": 11600968,
+      "ratio_to_native_baseline": 0.9998
+    },
+    "annotation-clipped.ofd": {
+      "bytes": 11601279,
+      "ratio_to_native_baseline": 0.9999
+    },
+    "annotation-inexact-appearance.ofd": {
+      "bytes": 11600452,
+      "ratio_to_native_baseline": 0.9998
+    },
+    "annotation-inexact-primitive.ofd": {
+      "bytes": 11600452,
+      "ratio_to_native_baseline": 0.9998
+    },
+    "annotation-metadata.ofd": {
+      "bytes": 11604758,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "annotation-missing-payload.ofd": {
+      "bytes": 11604402,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "annotation-processing-instruction.ofd": {
+      "bytes": 11604683,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "annotation-shared-budget-input.ofd": {
+      "bytes": 11604560,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "annotation-unknown-media.ofd": {
+      "bytes": 11604366,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "baseline-default.ofd": {
+      "bytes": 11602908,
+      "ratio_to_native_baseline": 1.0
+    },
+    "baseline-native.ofd": {
+      "bytes": 11602908,
+      "ratio_to_native_baseline": 1.0
+    },
+    "binary-xml-input.ofd": {
+      "bytes": 11606642,
+      "ratio_to_native_baseline": 1.0003
+    },
+    "binary-xml-split.ofd": {
+      "bytes": 11602032,
+      "ratio_to_native_baseline": 0.9999
+    },
+    "blank-watermark-input.ofd": {
+      "bytes": 11599844,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "blank-watermark.ofd": {
+      "bytes": 11600821,
+      "ratio_to_native_baseline": 0.9998
+    },
+    "box-inexact-inherited.ofd": {
+      "bytes": 11599829,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "box-inexact-page.ofd": {
+      "bytes": 11599904,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "box-whitespace-input.ofd": {
+      "bytes": 11599853,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "box-whitespace.ofd": {
+      "bytes": 11599937,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "clean.ofd": {
+      "bytes": 11604532,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "cli-clean.ofd": {
+      "bytes": 11604532,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "cli-merged.ofd": {
+      "bytes": 11604617,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "cli-mix-custom-tags.ofd": {
+      "bytes": 11603033,
+      "ratio_to_native_baseline": 1.0
+    },
+    "cli-mix.ofd": {
+      "bytes": 11603021,
+      "ratio_to_native_baseline": 1.0
+    },
+    "cli-split.ofd": {
+      "bytes": 11604672,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "cli-text.ofd": {
+      "bytes": 11604755,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "cli-watermark.ofd": {
+      "bytes": 11605618,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "custom-tags-conflict.ofd": {
+      "bytes": 11604706,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "custom-tags-input.ofd": {
+      "bytes": 11604707,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "italic-control.ofd": {
+      "bytes": 11599921,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "italic-fixed-anchor.ofd": {
+      "bytes": 11601704,
+      "ratio_to_native_baseline": 0.9999
+    },
+    "italic-marked.ofd": {
+      "bytes": 11599974,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "italic-user-matrix.ofd": {
+      "bytes": 11599927,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "mix-attachments-distinct.ofd": {
+      "bytes": 11603402,
+      "ratio_to_native_baseline": 1.0
+    },
+    "mix-attachments-repeated.ofd": {
+      "bytes": 11603402,
+      "ratio_to_native_baseline": 1.0
+    },
+    "mix-custom-tags.ofd": {
+      "bytes": 11602972,
+      "ratio_to_native_baseline": 1.0
+    },
+    "mix.ofd": {
+      "bytes": 11603052,
+      "ratio_to_native_baseline": 1.0
+    },
+    "overlay.ofd": {
+      "bytes": 11600079,
+      "ratio_to_native_baseline": 0.9998
+    },
+    "page-wrapper-metadata.ofd": {
+      "bytes": 11604748,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "report-clean-missing-list.ofd": {
+      "bytes": 11606220,
+      "ratio_to_native_baseline": 1.0003
+    },
+    "report-clean-signed.ofd": {
+      "bytes": 11604532,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "report-clean-unsigned.ofd": {
+      "bytes": 11602884,
+      "ratio_to_native_baseline": 1.0
+    },
+    "resource-suffix-input.ofd": {
+      "bytes": 11605271,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "rich.ofd": {
+      "bytes": 11604556,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "scoped-annotations-input.ofd": {
+      "bytes": 11606565,
+      "ratio_to_native_baseline": 1.0003
+    },
+    "signed-missing-list-input.ofd": {
+      "bytes": 11606267,
+      "ratio_to_native_baseline": 1.0003
+    },
+    "signed.ofd": {
+      "bytes": 11606532,
+      "ratio_to_native_baseline": 1.0003
+    },
+    "split-template-liveness.ofd": {
+      "bytes": 11602437,
+      "ratio_to_native_baseline": 1.0
+    },
+    "split.ofd": {
+      "bytes": 11604672,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "template-liveness-input.ofd": {
+      "bytes": 11606735,
+      "ratio_to_native_baseline": 1.0003
+    },
+    "template-wrapper-extension.ofd": {
+      "bytes": 11604588,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "tiny-page-input.ofd": {
+      "bytes": 11599898,
+      "ratio_to_native_baseline": 0.9997
+    },
+    "vendor-annotations-input.ofd": {
+      "bytes": 11604622,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "vendor-annotations-roundtrip.ofd": {
+      "bytes": 11604768,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "watermark-merged.ofd": {
+      "bytes": 11604477,
+      "ratio_to_native_baseline": 1.0001
+    },
+    "watermark-resource-suffix.ofd": {
+      "bytes": 11605709,
+      "ratio_to_native_baseline": 1.0002
+    },
+    "watermark.ofd": {
+      "bytes": 11605596,
+      "ratio_to_native_baseline": 1.0002
+    }
+  },
+  "limitations": [
+    "Only listed synthetic samples/pages checked; unsupported raw objects/actions/reference-bearing extensions fail explicitly",
+    "Signature appearance, protected-entry digest integrity and cryptographic validity are separate; no production signing added",
+    "librsvg substitutes the MIT rectangle face in the automatic fixed-anchor SVG PNG; native browser screenshot provides original-font visual acceptance"
+  ],
+  "negative_annotation_samples": {
+    "annotation-unknown-media": "PDF rejected before any output",
+    "annotation-missing-payload": "PDF rejected before any output",
+    "scoped-annotations-input": "page2 Mix rejected; page1 Mix with overlay succeeds; original synthetic signature not cryptographic acceptance",
+    "template-wrapper-extension": "Mix rejected; reference XML remains preserved",
+    "annotation-processing-instruction": "PDF/SVG rejected with zero output"
+  },
+  "template_liveness_sample": "extensionless state.dat nested Extension BaseLoc ../Templates retains template declaration/payload while selecting page2",
+  "resource_suffix_sample": "real dat/bin font/media IDs just above all other IDs and above a stale document hint; watermark output has globally unique IDs and unchanged binding/paint",
+  "vendor_annotation_sample": "two vendor Annotations plus same-ID vendor TemplatePage precede standard declarations; unsafe-looking literals preserved, standard NOTE/template paint, Mix refuses unknown metadata",
+  "custom_tags_policy": "flat EMR scalar union with ordinal keys; unique/equal kept, unequal conflict fails; unknown XML and potential payload/attachment refs refuse; Native provenance labels supported",
+  "svg_font_visual_review": {
+    "status": "passed",
+    "source_svg": "files/italic-fixed-anchor-1.svg",
+    "screenshot": "files/validation/svg-font-native.png",
+    "record": "files/validation/svg-font-readback.json",
+    "method": "Retained R19 native Chromium screenshot verifies original MIT font; current R20 source SVG SHA256 is byte-identical. No fresh R20 browser screenshot claimed."
+  },
+  "page_rewrite_policy": "Consumed Page/Area/Content/Layer and document PageArea extensions refuse before output or watermark mutation; retained raw page children/template files stay preserved; empty Layer ID/Type/order retained across save/split/watermark.",
+  "binary_xml_suffix_policy": "Suffix-only binary payload is not XML or opaque extension XML; XML-looking malformed .xml still refuses Split; actual binary signature/attachment sample cleans owned signature entries and retains attachment bytes.",
+  "physical_box_policy": "Ordinary reading displays the first four finite whitespace-separated numbers for legacy trailing-token compatibility; missing boxes inherit, present nonnumeric/short/nonfinite boxes fail reading. Rewrite/Mix require exact four values; positive dimensions that format to 0 at writer 0.### precision refuse, including fresh/model-mutated/automatic pages. Inexact annotation boundaries retain unmodeled markers and block Mix without losing ordinary art.",
+  "annotation_budget_policy": "One cumulative per-Read primitive count and PageAnnot XML-byte budget, including repeated cached file references and hidden appearances; defaults of 100,000 primitives and 128 MiB, configurable positive load limits.",
+  "unarchived_split_policy": "Selected page PreservedPageElements refuse no-OFD.xml flattening before cloning; excluded extended pages do not block selection.",
+  "signature_report_probe": {
+    "file": "files/report-probe.json",
+    "source_commit": "31569bd879e6399f84ef6adf41d3f7fde32ca448",
+    "signed_and_missing_list": true,
+    "unsigned_and_idempotent": false,
+    "attachment_ids_unique_for_repeated_and_distinct_packages": true
+  },
+  "retained_rendering_equivalence": {
+    "baseline": "76400cd2dc3263b5cd995fa87c4106c25abeeacf",
+    "current": "31569bd879e6399f84ef6adf41d3f7fde32ca448",
+    "runtime_changed_files": [
+      "src/Ofdrw.Net.Packaging/OfdPackagePruner.cs"
+    ],
+    "scope": "only result.SignaturesInvalidated changes when declarations are removed; declaration removal, payload selection, ZIP members, serialization, layout and rendering are unchanged",
+    "existing35PDFfiles_unchanged": true
+  }
+}

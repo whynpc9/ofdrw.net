@@ -78,3 +78,5 @@ ppm 必须有限且大于零；最终页宽/高必须有限、大于零且不超
 ## 可复查样例
 
 [Issue 02 验证记录](../validation/issue02/README.md) 包含实际 OFD、PDF、逐页 PNG/JPEG、无隐私几何样例、manifest 和完整性校验方法。功能测试、自动渲染、PNG 目视与 macOS Preview 分别记录。
+
+集成document-tools后，图片入口保留`PackageLoadOptions.MaxAnnotationObjectCount`及`MaxAnnotationXmlBytes`的快照；两限额在每次Reader读取内跨页/重复引用累计，嵌套OFD每次读取继承同一配置。它们不是全导出跨所有不同包的注释计数账本；全导出跨包累计的仍是展开字节、物化条目和页数。

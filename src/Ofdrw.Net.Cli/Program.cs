@@ -29,7 +29,7 @@ internal static partial class Cli
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
             "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-image" or "image-to-ofd" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures"))
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -42,6 +42,8 @@ internal static partial class Cli
             if (command is "ofd-to-image" or "image-to-ofd")
                 return await ConvertImagesAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
 
+            if (command is "watermark" or "split" or "mix" or "clean-signatures")
+                return await DocumentToolsAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "merge")
             {
                 return await MergeAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
@@ -303,6 +305,12 @@ internal static partial class Cli
             {
                 Console.WriteLine($"  {signature.CryptographicMessage}");
             }
+        }
+
+        if (!report.HasSignatureDeclarations && report.Issues.All(issue => issue == "The document does not declare a signatures list."))
+        {
+            Console.WriteLine("Signature verification: no signature declarations.");
+            return 0;
         }
 
         if (report.FullyValid)
@@ -626,6 +634,11 @@ internal static partial class Cli
           ofdrw image-to-ofd <input.png> [input2.jpg ...] --output <output.ofd> [--ppm 5.669291] [--page-width 210 --page-height 297]
           ofdrw verify-signatures --input <input.ofd>
           ofdrw extract-text <input.ofd> [output.txt] [--include-templates]
+          ofdrw watermark <input.ofd> <output.ofd> --pages 1,2 --text DRAFT
+          ofdrw watermark <input.ofd> <output.ofd> --image mark.png --layer-type Foreground
+          ofdrw split <input.ofd> <output.ofd> --pages 3,1
+          ofdrw mix <output.ofd> <input1.ofd> 1 <input2.ofd> 2
+          ofdrw clean-signatures <input.ofd> <output.ofd>
           ofdrw reorder <input.ofd> <output.ofd> --pages 3,1,2
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
 
@@ -641,6 +654,10 @@ internal static partial class Cli
           verify-signatures Verify protected-entry digests and registered signed-value algorithms.
           extract-text Extract page text, optionally including template text.
           reorder      Reorder every page using a complete 1-based page list.
+          watermark    Add ordinary text/image objects to selected layers (millimeters).
+          split        Select distinct pages in 1-based list order into a new OFD.
+          mix          Overlay source/page pairs in input order, first page dimensions.
+          clean-signatures Remove all declarations and unreferenced owned signature payloads.
           merge        Merge OFD pages into a self-contained output document.
 
         Options:

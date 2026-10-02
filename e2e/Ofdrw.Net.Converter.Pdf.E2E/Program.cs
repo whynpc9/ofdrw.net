@@ -4,6 +4,7 @@ using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
+using Ofdrw.Net.Layout.Editing;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Reader.Extraction;
@@ -137,6 +138,24 @@ await using (var input = File.OpenRead(imageImportPath))
         throw new InvalidOperationException("Packed image API lost natural-size centering geometry.");
 }
 Console.WriteLine("[E2E] Packed PNG export and image import retained 210×297 mm content centered on 220×307 mm page.");
+// The installed Layout/Reader/Packaging assemblies must compose with the new image APIs.
+var imageToolsPath = Path.Combine(outputDir, "image-tools.ofd");
+await using (var input = File.OpenRead(imageImportPath))
+{
+    var imported = await reader.ReadAsync(input);
+    OfdWatermark.AddImage(imported, [0], File.ReadAllBytes(Path.Combine(repoRoot, "e2e/Ofdrw.Net.DocumentTools.E2E/mark.png")),
+        "image/png", new OfdWatermarkOptions { XMillimeters = 1, YMillimeters = 1, WidthMillimeters = 8, HeightMillimeters = 4 }, alpha: 255);
+    var split = OfdDocumentSplitter.Split(imported, [0]);
+    if (split.Pages.Single().Elements.OfType<OfdImageElement>().Count() != 2)
+        throw new InvalidOperationException("Packed watermark/split lost image resource ownership.");
+    await using var target = File.Create(imageToolsPath); await writer.WriteAsync(split, target);
+}
+var imageToolsPng = Path.Combine(outputDir, "image-tools.png");
+await using (var input = File.OpenRead(imageToolsPath))
+await using (var output = File.Create(imageToolsPng))
+    await new OfdToImageConverter(new Ofdrw.Net.Converter.Pdf.OfdToImageOptions { PixelsPerMillimeter = 2 }).ConvertAsync(input, output);
+await AssertImageHasContentAsync(imageToolsPng);
+Console.WriteLine("[E2E] Packed image import -> image watermark -> split -> PNG retained both image objects.");
 Console.WriteLine("[E2E] Running upstream sample validation...");
 
 foreach (var sampleOfd in Directory.EnumerateFiles(testDataDir, "*.ofd").OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
