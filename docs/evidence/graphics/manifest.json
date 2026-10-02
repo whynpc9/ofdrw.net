@@ -1,6 +1,6 @@
 {
   "baseline": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
-  "source_head": "7b156032eb7ab2dd78f0f0ba33b0359dd4eea3a1",
+  "source_head": "dc5efcfc506b3eb91d2a3b80fa54fdeed8186231",
   "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "environment": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
   "checks": {
@@ -70,11 +70,11 @@
     },
     "baseline-default.ofd": {
       "bytes": 11602908,
-      "sha256": "e8f89cba6eb5245185b961afdb45b6f73d47cd25425153de9b3bfd50bcfd81bb"
+      "sha256": "859f7b4a99e66bcb8f61da69c712683c778af07dcaf601f6e484bc969be2a786"
     },
     "baseline-default.pdf": {
       "bytes": 117021,
-      "sha256": "dcef5fb29d19bad877bd2d10ea3871726b03bd4256d5a023da257e03ce246257"
+      "sha256": "b8ae363ddef0e52b77bcf78317877875fd8b89bd3ab5ef2086aabd3f67c4b89f"
     },
     "baseline-default.pdf.txt": {
       "bytes": 418,
@@ -94,11 +94,11 @@
     },
     "baseline-native.ofd": {
       "bytes": 11602908,
-      "sha256": "1c6edd027e8de18d77e06e8c29ed4dd55c0ef344e702bcabba525efa076a0617"
+      "sha256": "cbbe46c897fc20449df8e8f835e535f6151b13328c33f64b28852f62604a9b4b"
     },
     "baseline-native.pdf": {
       "bytes": 117021,
-      "sha256": "fce364490548c82cb502e4e946ac9dfad93ba9ae102630b9af0583f2e4bf18b0"
+      "sha256": "a2386d919a2426b54b75f663e9deac8e208b87aeb3e69465ded1cf7e0959bb0a"
     },
     "baseline-native.pdf.txt": {
       "bytes": 418,
@@ -110,7 +110,7 @@
     },
     "fontconfig.xml": {
       "bytes": 224,
-      "sha256": "fb54ce8326ae25ea1ebe15ad88fa76fccb4e34d942559dc44f3ed59efc54bc37"
+      "sha256": "d2832c5decbf32b86f1b61620b6333ea3cd2a0a87f3e99db10632c267212de9c"
     },
     "fonts/Ofdrw-CI-Noto-OFL.txt": {
       "bytes": 4301,
@@ -134,11 +134,11 @@
     },
     "graphics-fractional-clip.ofd": {
       "bytes": 11600386,
-      "sha256": "64f018ad5674dcb472c8ab09ba46ec7f8736885ebb8b8eff446a87a4aa35151d"
+      "sha256": "9b0e9d43419d75c81fc846f06dca29535cbb4d255e03cbf5ce9a0ef48e1f75a6"
     },
     "graphics-fractional-clip.pdf": {
       "bytes": 67325,
-      "sha256": "ec772bec79bf4b9ec0e09dcfbf05dd7383159bd25788fd5ef7e2be3e07686281"
+      "sha256": "9d32e3118f31711b445655e24fbb8970a2abece11a8e6998db7cf0f548ab5f6b"
     },
     "graphics-fractional-clip.pdf.txt": {
       "bytes": 158,
@@ -154,11 +154,11 @@
     },
     "graphics-name-only.ofd": {
       "bytes": 2141,
-      "sha256": "f7b490ed0fde399eb8d13a0f031fcde3cbc4d69304f27e7fa126bca21ce5a3a9"
+      "sha256": "ff137e557322756c73e9701364d7ad3b7a2d0b78748e39be4b12e86f76cf509e"
     },
     "graphics-name-only.pdf": {
       "bytes": 68550,
-      "sha256": "c94364950b9daf8abfad07c80eefe89cd8e4704e8a6e1e28e0bb1b7fef140b8f"
+      "sha256": "aa715bc609bf3fd32c8766cec78fca8ee99f6ffcd9d06f859af7d24b6ec640f9"
     },
     "graphics-name-only.pdf.txt": {
       "bytes": 248,
@@ -178,11 +178,11 @@
     },
     "graphics-roundtrip.ofd": {
       "bytes": 11602600,
-      "sha256": "def145caae146b9fc8007a4b8ff4ad6509f3552bfbf60a02407d9e9b6234491f"
+      "sha256": "aedaa8c43fa2d1a5e03b351f2f53a5653bb2cba86b30a76fe4f9f91b532f8141"
     },
     "graphics-roundtrip.pdf": {
       "bytes": 124031,
-      "sha256": "7e8793ce6b0a38616e6a7d56d5e4511c422690bba42d2fbe6ab027f1541b70c4"
+      "sha256": "932924c8da07c7e50d6f79a509044a50ae1b12ccdf153ce69dc625a390e7cdb7"
     },
     "graphics-roundtrip.pdf.txt": {
       "bytes": 649,
@@ -194,11 +194,11 @@
     },
     "graphics.ofd": {
       "bytes": 11602589,
-      "sha256": "1916a3f9d70a9dfa4157d29dafd9e1bbffcd9f7af0993f2cdf872b194cf32262"
+      "sha256": "d46c9bcaadce4dbc7ad88defac1a0eaf9dd04a96b7d6fc348f2f93c678449a80"
     },
     "graphics.pdf": {
       "bytes": 124031,
-      "sha256": "f867abc938576ff46943b91990a1d6643cfa48948ec64b0919e974fad12011fa"
+      "sha256": "5d303868a95843ca0aabb1797333232ea394b43ae4ec85f42e2b59e0f295c9bd"
     },
     "graphics.pdf.txt": {
       "bytes": 649,
@@ -210,23 +210,23 @@
     },
     "licensed-layout.docx": {
       "bytes": 3434,
-      "sha256": "7cba1b5a0fc4ca2faf4912339ff323bbc76dca2fedc11774f4ffc0d6bb45f3f3"
+      "sha256": "563b101eabe7c00d3f6c565338c933f01a1df6b2ad95e3a460ea19abfc72e32f"
     },
     "logs/api-docs.log": {
-      "bytes": 256231,
-      "sha256": "d94fca562fef51ce88dd0ce985c7645cb0543f80d5094565c62d240725a2e0c1"
+      "bytes": 58807,
+      "sha256": "d5d50602a6ed9103e03a8437796f784e12333fc443606f88ad71e5494f667ca8"
     },
     "logs/full-suite.log": {
       "bytes": 10797,
-      "sha256": "99e3f344946da61f77aa177ff2f5ae97470ab6afa875b7d885d4cbd1995b030c"
+      "sha256": "6c553143afda9567c658dd9393139075b12b7cf25b579f44331a9f14156602c2"
     },
     "logs/graphics-e2e.log": {
       "bytes": 4632,
-      "sha256": "68f5e5e9a5710ac5fbadd294ab13236898b19cc0eace77dbfed527f86122928b"
+      "sha256": "579419358612b11274e1c04ec173879aeafa167b62ba43fef315a114aa480584"
     },
     "logs/package-e2e.log": {
-      "bytes": 17779,
-      "sha256": "f0c8823dd731938294ce36d964b47ade7f3af2d4c8901dad24bcdbfc606fa85f"
+      "bytes": 17778,
+      "sha256": "e103326f32dd2deb4d9cd34524890f37260ca139098d635379693b566ea2eaa4"
     },
     "logs/r3-before-svg-precision.log": {
       "bytes": 2966,
