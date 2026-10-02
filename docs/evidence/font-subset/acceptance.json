@@ -10,7 +10,7 @@
   },
   "functional": {
     "status": "pass",
-    "tests": 505,
+    "tests": 517,
     "independent_focused": 72,
     "packages": 11,
     "package_version": "0.1.0-issue05.20261003.19",
@@ -22,17 +22,18 @@
       "ci_failure": "First head failed when text was introduced into a previously empty subset; caller now rebinds source face / explicitly preserves full font for future opaque annotation injection."
     },
     "all_11_packages_contain_unicode_license": true,
-    "latest_independent_focused": 66,
+    "latest_independent_focused": 78,
     "count_audit": "test-count-audit.json",
     "project_counts": {
       "Core": 5,
       "Packaging": 305,
-      "PDF": 129,
+      "PDF": 141,
       "Signatures": 4,
       "DOCX": 49,
       "CLI": 13
     },
-    "historical_count_correction": "Prior aggregate prose was +2; exact per-project source logs preserved and machine-summed in audit."
+    "historical_count_correction": "Prior aggregate prose was +2; exact per-project source logs preserved and machine-summed in audit.",
+    "r18_package_evidence": "Product runtime unchanged from R17; same .19 immutable SDK packages already consumed. R18 modifies tests/evidence only."
   },
   "automated_render": {
     "status": "pass",
@@ -86,14 +87,15 @@
     "task_windows_closed": true,
     "ui_released": true,
     "record": "preview-acceptance.json",
-    "controls_status": "pending unlock/exclusive slot: only current preview-queue-r17.json success pages (mapped/missing Hangul filler, name-only, covering fallback, ligature, named TTC); semantic control success pages removed",
-    "followup_queue": "preview-queue-r17.json",
-    "followup_success_pages": 16
+    "controls_status": "pending unlock/exclusive slot: exactly preview-queue-r18.json success scope (existing16 + two-page four-filler comparison), no semantic-control success pages",
+    "followup_queue": "preview-queue-r18.json",
+    "followup_success_pages": 18,
+    "followup_files": 17
   },
   "overall_visual_complete": false,
   "production_release_accepted": false,
   "unresolved": [
-    "Actual macOS Preview for frozen preview-queue-r17.json only; historical LRM/deprecated-control successes excluded",
+    "Actual macOS Preview for frozen preview-queue-r18.json, 17files/18pages; historical semantic-control successes excluded",
     "Latest-head CI and fresh Codex/Cursor review closure"
   ],
   "viewing_chain": "Fixed DOCX -> Native/default OFD produced this run -> OFD PDF exporter -> macOS Preview 1-2 pages each; full/subset OFD -> PDF -> Preview 1-2 each. No direct DOCX->PDF substituted.",
@@ -117,6 +119,8 @@
     "r16": "LRM uniformly refuses semanticloss inLatin andmixedbidi PDF; actualOFD exacttext preserved, bidiNotSupport0B. PriorLRM omitted-success artifacts historicalonly. Currentcontract unified namedTTC rules.",
     "r16_independent": "53/53focused; actualLatin/mixedLRM ODF exacttext, bidiNotSupport/0B; priorLRMsuccesshistoricalonly. Allremaining17successfulPDF regeneratedR16 vsR15 AE0, Previewpending.",
     "r17": "All default-ignorables refuse semanticloss except4boundedHangulfiller render cases; WORDJOINER/math/SHY/ZWSP/CGJ/MVS/FEFF/deprecatedbidi allNotSupport/0B inimplicit andpositioned text, OFDexactUnicode preserved.",
-    "r17_independent": "66/66focused; actual13semanticcontrols/FEFFpositions OFDexactscalar, NotSupport0B; mapped3164 stillsuccess. Allremaining16successPDF regeneratedR17 vsR16 AE0, excludedhistoricalLRM/deprecatedsuccess. Previewpending."
+    "r17_independent": "66/66focused; actual13semanticcontrols/FEFFpositions OFDexactscalar, NotSupport0B; mapped3164 stillsuccess. Allremaining16successPDF regeneratedR17 vsR16 AE0, excludedhistoricalLRM/deprecatedsuccess. Previewpending.",
+    "r18": "All4Hangulfiller scalars eachmapped/unmapped implicit+positioned tests; missingA-filler-BDelta5/5 comparesABDelta10, mapped comparesA-space-B; removesABselfcomparison andcorrects historicaltestscope.",
+    "r18_independent": "78/78focused; four mapped/unmapped filler×implicit/positioned actualcases all16B-coordinate pairs difference0pt; two-page proofPNG no boxes/clipping/overlap. Productruntime unchangedR17; previous16successPDF unchangedSHA plusnew2pageproof, actualPreviewpending."
   }
 }
