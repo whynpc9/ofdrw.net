@@ -121,6 +121,12 @@ Mutate("box-whitespace-input", entries =>
 });
 await Save(OfdDocumentMixer.Mix([new(await Read("box-whitespace-input"), 0)]), "box-whitespace");
 var mark = File.ReadAllBytes(Path.Combine(root, "e2e/Ofdrw.Net.DocumentTools.E2E/mark.png"));
+var blank = new OfdDocumentPackage(); blank.Fonts.Add(source.Fonts.First()); blank.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+await Save(blank, "blank-watermark-input"); blank = await Read("blank-watermark-input");
+OfdWatermark.AddText(blank, [0], "BLANK PAGE WATERMARK", new OfdWatermarkOptions { XMillimeters = 10, YMillimeters = 10, WidthMillimeters = 80, HeightMillimeters = 10, LayerId = "watermark" }, fontName: blank.Fonts.First().FontName, fontSizeMillimeters: 4);
+OfdWatermark.AddImage(blank, [0], mark, "image/png", new OfdWatermarkOptions { XMillimeters = 40, YMillimeters = 35, WidthMillimeters = 20, HeightMillimeters = 20, LayerId = "watermark" });
+await Save(blank, "blank-watermark");
+
 await using (var input = File.OpenRead(PathFor("rich.ofd")))
 await using (var target = File.Create(PathFor("signed.ofd")))
     await new OfdSignatureService().SignAsync(input, target, new SyntheticProvider(mark));
@@ -339,7 +345,7 @@ fixedAnchor.Pages.Add(fixedPage); await Save(fixedAnchor, "italic-fixed-anchor")
 File.Copy(Path.Combine(root, "scripts/generate-font-test-fixtures.py"), PathFor("fonts/generate-font-test-fixtures.py"), true);
 File.Copy(Path.Combine(root, "LICENSE"), PathFor("fonts/MIT-rectangle-LICENSE.txt"), true);
 File.WriteAllBytes(PathFor("fonts/narrow.ttf"), rectangleFont);
-foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "binary-xml-split", "page-wrapper-metadata", "box-whitespace", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "mix-custom-tags", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
+foreach (var name in new[] { "baseline-native", "baseline-default", "rich", "annotation-metadata", "binary-xml-split", "page-wrapper-metadata", "box-whitespace", "blank-watermark", "signed", "watermark", "watermark-merged", "watermark-resource-suffix", "vendor-annotations-roundtrip", "mix-custom-tags", "split", "split-template-liveness", "mix", "clean", "overlay", "annotation-clipped", "annotation-clipped-mix", "italic-marked", "italic-control", "italic-user-matrix", "italic-fixed-anchor" })
 {
     await using (var input = File.OpenRead(PathFor(name + ".ofd")))
     await using (var target = File.Create(PathFor(name + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, target);
