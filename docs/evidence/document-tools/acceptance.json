@@ -1,24 +1,24 @@
 {
   "client_date": "2026-10-02",
   "timezone": "Asia/Shanghai",
-  "runtime_source_commit": "1c0c3e60122871965ae4d70497fd7b50d2667b7c",
-  "example_commit": "1c0c3e60122871965ae4d70497fd7b50d2667b7c",
+  "runtime_source_commit": "30f620c1745800eb6b1b83886371d5133ef091ef",
+  "example_commit": "30f620c1745800eb6b1b83886371d5133ef091ef",
   "functional_tests": {
     "status": "passed",
-    "total": 289,
+    "total": 302,
     "failed": 0,
     "skipped": 0,
     "independent_model": "gpt-6-sol low",
     "design_review_model": "gpt-6-astra high",
-    "test_checkpoint_commit": "1c0c3e60122871965ae4d70497fd7b50d2667b7c",
+    "test_checkpoint_commit": "30f620c1745800eb6b1b83886371d5133ef091ef",
     "implementation_equivalence": "independent tests ran on this clean committed source"
   },
   "local_package_consumption": {
     "status": "passed",
     "package_count": 11,
-    "version": "0.1.0-issue03.24",
+    "version": "0.1.0-issue03.25",
     "published": false,
-    "repository_commit": "1c0c3e60122871965ae4d70497fd7b50d2667b7c"
+    "repository_commit": "30f620c1745800eb6b1b83886371d5133ef091ef"
   },
   "native_default_text": {
     "status": "passed",
@@ -32,7 +32,7 @@
   },
   "png_visual_review": {
     "status": "passed-for-59-listed-pages; fixed-anchor-SVG-font-fidelity-unverified",
-    "method": "All prior56 PNG hashes match directly inspected R15 bytes; four new API/CLI tag-Mix renders inspected at original size. Sixteen current sheets retain all60. Fixed-anchor SVG font fidelity remains incomplete.",
+    "method": "All60 current PNG hashes match directly inspected R16 bytes; enhanced annotation-metadata pair/SVG directly reopened as PNG and checked. Fixed-anchor SVG original-font fidelity remains incomplete.",
     "checked_files": [
       "pages/annotation-clipped-1.png",
       "pages/annotation-clipped-mix-1.png",
@@ -119,7 +119,9 @@
       "R15 font/media IDs only in dat/bin descriptors above a deliberately stale document hint retain bindings and globally unique output unit IDs; all prior rendering bytes unchanged.",
       "Same-ID vendor TemplatePage stays preserved and outside standard template table; real template and NOTE remain modeled. All56 current render hashes unchanged.",
       "R16 vendor Template page references no longer paint or duplicate a standard template. Existing56 renders unchanged.",
-      "R16 Native scalar CustomTags retained in API/CLI Mix, unique/equal values coalesce and conflicting values reject before output; CLI existing output marker retained. Unknown tag schema/structure and potential package/attachment references remain unsupported."
+      "R16 Native scalar CustomTags retained in API/CLI Mix, unique/equal values coalesce and conflicting values reject before output; CLI existing output marker retained. Unknown tag schema/structure and potential package/attachment references remain unsupported.",
+      "R17 supported declaration wrappers validate attributes/children/literals before flattening. Annotation Page record extras retain page-scoped raw marker while unique standard FileLoc follows known artwork; duplicate/nested paths remain opaque.",
+      "R17 optional standard TemplatePage Name and default ZOrder supported; page reference overrides declaration default. Enhanced annotation-metadata sample keeps known NOTE/template and XML metadata; Mix refuses. All60 render bytes unchanged."
     ],
     "passed_files": [
       "pages/annotation-clipped-1.png",
@@ -198,19 +200,19 @@
     "remaining_window": "old watermark.pdf page2; close blocked by lock"
   },
   "pr_review": {
-    "status": "template page namespace and scalar tag preservation findings repaired; new-head review pending; Preview open",
-    "review_head": "6ae57940398c40b3a5a683ec2a12c67794270858",
-    "codex": "standard CustomTags retained with explicit union/conflict policy and XML/path boundary",
-    "cursor": "page template references scoped to page namespace; vendor siblings preserved without paint",
-    "ci": "6ae5794 all six checks succeeded; new head pending"
+    "status": "declarationwrapper and annotationPage record findings repaired; independent302/new-head review pending; Preview open",
+    "review_head": "c80f83c84ff0b4426383bde5a42cad2c8cb82a78",
+    "codex": "complete preserved declaration wrappers and extended Page records guarded",
+    "cursor": "c80f83c template/scalarTag delta confirmed with no new source defect",
+    "ci": "c80f83c all six checks succeeded; new head pending"
   },
   "bundle": {
     "path": "evidence.tar.zst",
-    "bytes": 42643768,
-    "sha256": "221d799f4437adff70a54f78661fe801d564c37a083d04e70ac22acf7bbe4b7d",
+    "bytes": 42571733,
+    "sha256": "d7fef6f0293a03974765fc790e3ff3cce78dbedca6e5796aca29037adb40a26e",
     "extraction_readback": "passed: freshly extracted all356 file sizes and SHA256",
     "file_count": 356,
-    "expanded_bytes": 1594259310,
+    "expanded_bytes": 1594259007,
     "integrity_status": "passed: freshly extracted all356 file sizes and SHA256"
   },
   "ofd_sizes": {
