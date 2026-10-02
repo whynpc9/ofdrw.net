@@ -536,6 +536,82 @@ public sealed class DocumentToolTests
     internal static byte[] Png => Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
 
     [Theory]
+    [InlineData(false, "attribute")]
+    [InlineData(false, "child")]
+    [InlineData(true, "attribute")]
+    [InlineData(true, "child")]
+    [InlineData(true, "text")]
+    public async Task Mix_ExtendedDeclarationWrappersRefuseWhileKnownDrawingAndXmlSurvive(bool template, string extra)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var vendor = XNamespace.Get("urn:vendor");
+        var document = Xml(source, "Doc_0/Document.xml"); XElement declaration;
+        if (template)
+        {
+            declaration = new XElement(ns + "TemplatePage", new XAttribute("ID", "700"), new XAttribute("BaseLoc", "Templates/Content.xml"));
+            document.Root!.Element(ns + "CommonData")!.Add(declaration);
+            var path = source.Pages[0].SourceEntryPath!; var page = Xml(source, path); page.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "700"))); Put(source, path, page);
+            source.PreservedEntries["Doc_0/Templates/Content.xml"] = Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Content><Layer ID='702'><TextObject ID='703' Size='3'><TextCode X='0' Y='3'>KNOWN</TextCode></TextObject></Layer></Content></Page>");
+        }
+        else
+        {
+            declaration = new XElement(ns + "Annotations", "Annots/Annotations.xml"); document.Root!.Add(declaration);
+            source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes($"<Annotations xmlns='{ns}'><Page PageID='{source.Pages[0].Id}'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+            source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot><Appearance Boundary='0 0 20 20'><TextObject Size='3'><TextCode X='0' Y='3'>KNOWN</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+        }
+        if (extra == "attribute") declaration.SetAttributeValue(vendor + "Payload", "Extensions/data.bin");
+        if (extra == "child") declaration.Add(new XElement(vendor + "Extra", new XAttribute("File", "Extensions/data.bin")));
+        if (extra == "text") declaration.Add("KEEP");
+        Put(source, "Doc_0/Document.xml", document); using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)]));
+        var drawings = template ? Assert.Single(read.Pages[0].Templates).Elements : read.Pages[0].AnnotationAppearances;
+        Assert.Equal("KNOWN", Assert.Single(drawings.OfType<OfdTextElement>()).Text);
+        var saved = await RoundTrip(read); var wrapper = Assert.Single(Xml(saved, "Doc_0/Document.xml").Descendants(declaration.Name));
+        if (extra == "attribute") Assert.Equal("Extensions/data.bin", wrapper.Attribute(vendor + "Payload")!.Value);
+        if (extra == "child") Assert.Equal("Extensions/data.bin", wrapper.Element(vendor + "Extra")!.Attribute("File")!.Value);
+        if (extra == "text") Assert.Equal("KEEP", wrapper.Value);
+    }
+
+    [Theory]
+    [InlineData("attribute")]
+    [InlineData("child")]
+    [InlineData("text")]
+    [InlineData("file-child")]
+    [InlineData("duplicate")]
+    public async Task AnnotationIndexExtendedPageRecordsKeepScopedMarkersAndUnambiguousArtwork(string extra)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var vendor = XNamespace.Get("urn:vendor");
+        var document = Xml(source, "Doc_0/Document.xml"); document.Root!.Add(new XElement(ns + "Annotations", "Annots/Annotations.xml")); Put(source, "Doc_0/Document.xml", document);
+        var file = new XElement(ns + "FileLoc", "Page.xml"); var record = new XElement(ns + "Page", new XAttribute("PageID", source.Pages[0].Id!), file);
+        if (extra == "attribute") record.SetAttributeValue(vendor + "Payload", "../Extensions/data.bin");
+        if (extra == "child") record.Add(new XElement(vendor + "Extra", "../Extensions/data.bin"));
+        if (extra == "text") record.Add("KEEP");
+        if (extra == "file-child") file.Add(new XElement(vendor + "Extra", "SECRET"));
+        if (extra == "duplicate") record.Add(new XElement(file));
+        source.PreservedEntries["Doc_0/Annots/Annotations.xml"] = Encoding.UTF8.GetBytes(new XDocument(new XElement(ns + "Annotations", record)).ToString());
+        source.PreservedEntries["Doc_0/Annots/Page.xml"] = Encoding.UTF8.GetBytes($"<PageAnnot xmlns='{ns}'><Annot><Appearance Boundary='0 0 20 20'><TextObject Size='3'><TextCode X='0' Y='3'>KNOWN</TextCode></TextObject></Appearance></Annot></PageAnnot>");
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input);
+        Assert.Contains(read.Pages[0].AnnotationAppearances, element => element is OfdRawElement); Assert.Empty(read.Pages[1].AnnotationAppearances);
+        Assert.Equal(extra is "file-child" or "duplicate" ? 0 : 1, read.Pages[0].AnnotationAppearances.OfType<OfdTextElement>().Count());
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(read, 0)])); Assert.Single(OfdDocumentMixer.Mix([new(read, 1)]).Pages);
+        var saved = await RoundTrip(read); Assert.Equal(source.PreservedEntries["Doc_0/Annots/Annotations.xml"], saved.PreservedEntries["Doc_0/Annots/Annotations.xml"]);
+    }
+
+    [Theory]
+    [InlineData(null, "Foreground")]
+    [InlineData("Background", "Background")]
+    [InlineData("Foreground", "Foreground")]
+    public async Task TemplateDeclarationStandardNameAndDefaultZOrderSupportFlattening(string? pageOrder, string expectedOrder)
+    {
+        var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var document = Xml(source, "Doc_0/Document.xml");
+        document.Root!.Element(ns + "CommonData")!.Add(new XElement(ns + "TemplatePage", new XAttribute("ID", "700"), new XAttribute("BaseLoc", "Templates/Content.xml"), new XAttribute("Name", "Label"), new XAttribute("ZOrder", "Foreground"))); Put(source, "Doc_0/Document.xml", document);
+        var path = source.Pages[0].SourceEntryPath!; var page = Xml(source, path); page.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "700"), pageOrder is null ? null : new XAttribute("ZOrder", pageOrder))); Put(source, path, page);
+        source.PreservedEntries["Doc_0/Templates/Content.xml"] = Encoding.UTF8.GetBytes($"<Page xmlns='{ns}'><Content><Layer ID='702'><TextObject ID='703' Size='3'><TextCode X='0' Y='3'>TEMPLATE</TextCode></TextObject></Layer></Content></Page>");
+        using var input = Zip(source.PreservedEntries); var read = await new OfdReader().ReadAsync(input); Assert.Equal(expectedOrder, Assert.Single(read.Pages[0].Templates).ZOrder);
+        var mixed = OfdDocumentMixer.Mix([new(read, 0)]); var labels = mixed.Pages[0].Elements.OfType<OfdTextElement>().Select(text => text.Text).ToList();
+        Assert.Equal(expectedOrder == "Background" ? new[] { "TEMPLATE", "FIRST" } : new[] { "FIRST", "TEMPLATE" }, labels);
+    }
+
+    [Theory]
     [InlineData("../../../external")]
     [InlineData("")]
     [InlineData("/")]
