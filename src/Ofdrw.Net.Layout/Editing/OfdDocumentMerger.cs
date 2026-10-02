@@ -223,14 +223,14 @@ public static class OfdDocumentMerger
         {
             cancellationToken.ThrowIfCancellationRequested();
             var identity = (font.Data.Length == 0 ? "system:" + font.FontName.ToUpperInvariant() : BinaryIdentity.Hash(font.Data))
-                + $":{font.Bold}:{font.Italic}:{font.Charset}";
+                + $":{font.CollectionFaceIndex}:{font.Bold}:{font.Italic}:{font.Charset}";
             if (!knownFonts.TryGetValue(identity, out var target))
             {
                 target = new OfdFontResource
                 {
                     Id = $"merged-font-{destination.Fonts.Count + 1}",
                     FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
-                    Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray()
+                    Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray(), CollectionFaceIndex = font.CollectionFaceIndex
                 };
                 destination.Fonts.Add(target);
                 knownFonts.Add(identity, target);
@@ -269,6 +269,13 @@ public static class OfdDocumentMerger
             DocType = source.DocType,
             Namespace = source.Namespace,
             EnableDeflateCompression = source.EnableDeflateCompression,
+            FontEmbedding = new OfdFontEmbeddingOptions
+            {
+                Mode = source.FontEmbedding.Mode,
+                MaximumFontBytes = source.FontEmbedding.MaximumFontBytes,
+                MaximumUsedScalars = source.FontEmbedding.MaximumUsedScalars,
+                MaximumGlyphClosureOperations = source.FontEmbedding.MaximumGlyphClosureOperations
+            },
             DefaultPageWidthMillimeters = source.DefaultPageWidthMillimeters,
             DefaultPageHeightMillimeters = source.DefaultPageHeightMillimeters,
             Metadata = new OfdMetadata

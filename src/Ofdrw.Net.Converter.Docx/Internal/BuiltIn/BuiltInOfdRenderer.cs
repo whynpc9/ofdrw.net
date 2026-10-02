@@ -50,6 +50,13 @@ internal sealed class BuiltInOfdRenderer
         {
             Options = new OfdDocumentOptions
             {
+                FontEmbedding = new OfdFontEmbeddingOptions
+                {
+                    Mode = _options.FontEmbedding.Mode,
+                    MaximumFontBytes = Math.Min(_options.MaxEmbeddedFontBytes, _options.FontEmbedding.MaximumFontBytes),
+                    MaximumUsedScalars = _options.FontEmbedding.MaximumUsedScalars,
+                    MaximumGlyphClosureOperations = _options.FontEmbedding.MaximumGlyphClosureOperations
+                },
                 DocType = "OFD-H",
                 DocumentId = "Doc_0",
                 Namespace = _options.OfdNamespace,

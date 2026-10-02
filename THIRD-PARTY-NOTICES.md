@@ -27,3 +27,14 @@ On macOS, DOCX conversion may instead automate a separately installed Microsoft
 Word application for higher layout fidelity. Ofdrw.Net does not bundle Microsoft
 Word or Microsoft Office fonts. The LibreOffice backend may reference installed
 Office fonts in place, but does not copy them into the package or repository.
+
+
+The Issue 05 development/E2E fixtures include unmodified LXGW WenKai and Noto
+Sans fonts under SIL OFL 1.1, with pinned upstream commit URLs and SHA-256 in
+`e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/upstream-manifest.json`. Their
+original license files accompany the fonts. These fixtures are not included
+in the production NuGet packages. Modified LXGW subsets replace Reserved Font
+Names while retaining copyright and license records. Subsetting does not grant
+embedding rights. The managed subset implementation introduces no third-party
+runtime backend; HarfBuzz/fonttools used for independent development probes are
+not production dependencies.

@@ -39,7 +39,11 @@ public sealed partial class DocxConversionTests
             var package = await new OfdReader().ReadAsync(output);
             var font = Assert.Single(package.Fonts);
             Assert.Equal("Ofdrw Test Face|regular", font.FontName);
-            Assert.Equal(expectedFont, font.Data);
+            Assert.True(font.Data.Length < expectedFont.Length);
+            var sourceCmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(expectedFont));
+            var subsetCmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(font.Data));
+            foreach (var scalar in Ofdrw.Net.Core.Fonts.OpenTypeFace.Scalars("中文字体测试 Alpha"))
+                Assert.Equal(sourceCmap.Glyph(scalar), subsetCmap.Glyph(scalar));
             Assert.Contains("中文字体测试 Alpha", new OfdTextExtractor().Extract(package));
         }
         finally { Directory.Delete(directory, recursive: true); }
