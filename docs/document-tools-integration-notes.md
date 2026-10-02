@@ -16,3 +16,5 @@ Relevant contracts:
 Current verification and Preview state are in `docs/evidence/document-tools/acceptance.json`. Preview stays mandatory and unresolved while the Mac is locked. These notes are an integration checklist, not evidence that the two independent branches have already been merged or validated together.
 
 The latest reader takes only direct literal text from page/template TextCode and AbbreviatedData. Writer keeps nested path extension XML, and Mix rejects unsupported XML closure; default Merge retains existing unqualified metadata compatibility. ImageMask/Substitution references are explicitly rejected during flattening and annotation export. These contracts complement 02 image-export limits without modifying its signature-appearance reader.
+
+Annotation images with unresolved or empty media data and missing declared page files become a whole unsupported appearance before rendering or flattening. Opaque records with PageID are page-local; ambiguous records use a shared aggregate. The valid-page Mix fixture and missing-asset rejection inputs are retained in the current evidence bundle.
