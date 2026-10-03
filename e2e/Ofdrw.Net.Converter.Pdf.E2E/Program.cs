@@ -4,6 +4,7 @@ using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
+using Ofdrw.Net.Layout.Graphics;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Reader.Extraction;
@@ -19,6 +20,29 @@ PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = Ofdrw.Net.Converter.Pdf.Pdf
 var outputDir = Environment.GetEnvironmentVariable("OFDRW_E2E_OUTPUT_DIR") ?? Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "output");
 var testDataDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "testdata", "upstream-ofdrw");
 Directory.CreateDirectory(outputDir);
+
+// The package-consumer copy of this program must resolve the new Layout surface
+// from the local NuGet feed, including its internal Core numeric dependency.
+var graphicsPackage = new OfdDocumentPackage();
+var graphicsPage = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 };
+graphicsPackage.Pages.Add(graphicsPage);
+var graphics = new OfdGraphics(graphicsPackage, graphicsPage);
+graphics.Scale(0.9996, 1);
+graphics.IntersectClip(new OfdGraphicsPath().AddRectangle(0, 0, 100, 80));
+graphics.DrawRectangle(new OfdPen(OfdColor.Black, 0.5), 5, 5, 90, 60);
+graphics.DrawString("Graphics 包消费", new OfdFont("Graphics fixture", 3.3334, italic: true), new OfdBrush(OfdColor.Black), 10, 20);
+using (var encoded = new MemoryStream())
+{
+    await new OfdPackageWriter().WriteAsync(graphicsPackage, encoded);
+    File.WriteAllBytes(Path.Combine(outputDir, "native-graphics-package.ofd"), encoded.ToArray());
+    encoded.Position = 0;
+    var decoded = await new OfdReader().ReadAsync(encoded);
+    if (decoded.Pages[0].Elements.Count != 2 || decoded.Pages[0].Elements.OfType<OfdImageElement>().Any()) throw new InvalidOperationException("Package graphics lost native objects.");
+    if (decoded.Pages[0].Elements.OfType<OfdPathElement>().Single().Transform![0] != 0.9996) throw new InvalidOperationException("Package graphics lost CTM precision.");
+    var text = decoded.Pages[0].Elements.OfType<OfdTextElement>().Single();
+    if (text.Text != "Graphics 包消费" || !text.SourceXml!.Contains("FauxItalicMatrixV1", StringComparison.Ordinal)) throw new InvalidOperationException("Package graphics lost text/native italic.");
+}
+Console.WriteLine("[E2E] Installed Layout native graphics, exact CTM and name-only italic package consumption passed.");
 
 // Used and unused name-only resources must survive unavailable/unsupported host
 // fonts. This exercises XFont initialization and the actual Arial draw fallback,

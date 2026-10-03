@@ -40,8 +40,11 @@ internal static class OfdPathRenderer
         try
         {
             var tokens = Tokenize(element.AbbreviatedData);
-            var path = new XGraphicsPath();
-            var state = new PathState(path, element, pageOriginX, pageOriginY);
+            var path = new XGraphicsPath { FillMode = OfdPathStyle.EvenOdd(element) ? XFillMode.Alternate : XFillMode.Winding };
+            // Keep path geometry local, so affine transforms affect both geometry
+            // and stroke outlines. BuildClip continues to flatten its own CTM.
+            var local = new OfdPathElement { AbbreviatedData = element.AbbreviatedData };
+            var state = new PathState(path, local, 0, 0);
             if (!state.Build(tokens))
             {
                 return false;
@@ -51,10 +54,9 @@ internal static class OfdPathRenderer
             XSolidBrush? brush = null;
             if (element.Stroke)
             {
-                var scale = GetLineScale(element.Transform);
                 pen = new XPen(
                     ToXColor(element.StrokeColor),
-                    MillimetersToPoints(Math.Max(element.LineWidthMillimeters * scale, 0.01d)));
+                    MillimetersToPoints(element.LineWidthMillimeters > 0 ? element.LineWidthMillimeters : 0.01d));
             }
 
             if (element.Fill)
@@ -62,18 +64,17 @@ internal static class OfdPathRenderer
                 brush = new XSolidBrush(ToXColor(element.FillColor ?? element.StrokeColor));
             }
 
-            if (pen is not null && brush is not null)
+            var drawingState = graphics.Save();
+            try
             {
-                graphics.DrawPath(pen, brush, path);
+                graphics.TranslateTransform(MillimetersToPoints(element.XMillimeters - pageOriginX), MillimetersToPoints(element.YMillimeters - pageOriginY));
+                if (element.Transform is { Length: 6 } matrix)
+                    graphics.MultiplyTransform(new XMatrix(matrix[0], matrix[1], matrix[2], matrix[3], MillimetersToPoints(matrix[4]), MillimetersToPoints(matrix[5])));
+                if (pen is not null && brush is not null) graphics.DrawPath(pen, brush, path);
+                else if (pen is not null) graphics.DrawPath(pen, path);
+                else if (brush is not null) graphics.DrawPath(brush, path);
             }
-            else if (pen is not null)
-            {
-                graphics.DrawPath(pen, path);
-            }
-            else if (brush is not null)
-            {
-                graphics.DrawPath(brush, path);
-            }
+            finally { graphics.Restore(drawingState); }
 
             return true;
         }
@@ -98,19 +99,6 @@ internal static class OfdPathRenderer
     private static XColor ToXColor(OfdColor color)
     {
         return XColor.FromArgb(color.Alpha, color.Red, color.Green, color.Blue);
-    }
-
-    private static double GetLineScale(double[]? transform)
-    {
-        if (transform is not { Length: 6 })
-        {
-            return 1d;
-        }
-
-        var xScale = Math.Sqrt((transform[0] * transform[0]) + (transform[1] * transform[1]));
-        var yScale = Math.Sqrt((transform[2] * transform[2]) + (transform[3] * transform[3]));
-        var average = (xScale + yScale) / 2d;
-        return average > 0 ? average : 1d;
     }
 
     private static double MillimetersToPoints(double millimeters)

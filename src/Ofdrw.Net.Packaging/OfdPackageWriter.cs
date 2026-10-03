@@ -362,7 +362,7 @@ public sealed class OfdPackageWriter
                                     : null,
                                 italic ? new XAttribute("Italic", "true") : null,
                                 text.Transform is { Length: 6 }
-                                    ? new XAttribute("CTM", string.Join(" ", text.Transform.Select(ToInvariant)))
+                                    ? new XAttribute("CTM", string.Join(" ", text.Transform.Select(OfdNumericFormat.Plain)))
                                     : null,
                                 text.FillColor.Red != 0 ||
                                 text.FillColor.Green != 0 ||
@@ -416,14 +416,14 @@ public sealed class OfdPackageWriter
                             imageObject = new XElement(ns + "ImageObject",
                                 new XAttribute("ID", objectId),
                                 new XAttribute("Boundary", BuildBox(image.XMillimeters, image.YMillimeters, image.WidthMillimeters, image.HeightMillimeters)),
-                                new XAttribute("CTM", BuildMatrix(image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0)),
+                                new XAttribute("CTM", string.Join(" ", new[] { image.WidthMillimeters, 0d, 0d, image.HeightMillimeters, 0d, 0d }.Select(OfdNumericFormat.Plain))),
                                 new XAttribute("ResourceID", resource.Id));
                         }
 
                         imageObject.SetAttributeValue("Boundary", BuildBox(image.XMillimeters, image.YMillimeters, image.WidthMillimeters, image.HeightMillimeters));
                         imageObject.SetAttributeValue("CTM", image.Transform is { Length: 6 }
-                            ? string.Join(" ", image.Transform.Select(ToInvariant))
-                            : BuildMatrix(image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0));
+                            ? string.Join(" ", image.Transform.Select(OfdNumericFormat.Plain))
+                            : string.Join(" ", new[] { image.WidthMillimeters, 0d, 0d, image.HeightMillimeters, 0d, 0d }.Select(OfdNumericFormat.Plain)));
                         imageObject.SetAttributeValue("Alpha", image.Alpha == 255 ? null : (object)Math.Max(0, Math.Min(255, image.Alpha)));
                         imageObject.Elements(imageObject.Name.Namespace + "Clips").Remove();
                         ApplyClipping(imageObject, image);
@@ -446,7 +446,7 @@ public sealed class OfdPackageWriter
                         pathObject.SetAttributeValue(
                             "CTM",
                             path.Transform is { Length: 6 }
-                                ? string.Join(" ", path.Transform.Select(ToInvariant))
+                                ? string.Join(" ", path.Transform.Select(OfdNumericFormat.Plain))
                                 : null);
                         SetPathColor(pathObject, ns, "StrokeColor", path.Stroke ? path.StrokeColor : null);
                         SetPathColor(pathObject, ns, "FillColor", path.Fill ? path.FillColor : null);
@@ -582,8 +582,24 @@ public sealed class OfdPackageWriter
             }
         }
 
-        if (!italic || textObject.Attribute("CTM") is not null) return;
+        if (!italic) return;
         const double shear = 0.2;
+        if (textObject.Attribute("CTM")?.Value is string existingMatrix)
+        {
+            // Only fresh baseline-normalized runs opt into composition. Preserved
+            // XML and arbitrary legacy run baselines retain their current CTM.
+            if (!string.IsNullOrWhiteSpace(text.SourceXml) || text.Runs.Count == 0 ||
+                text.Runs.Any(run => !string.IsNullOrWhiteSpace(run.DeltaY) || ToInvariant(run.YMillimeters) != ToInvariant(size))) return;
+            var matrix = existingMatrix.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                .Select(value => double.Parse(value, CultureInfo.InvariantCulture)).ToArray();
+            var writtenSize = double.Parse(ToInvariant(size), CultureInfo.InvariantCulture);
+            var composition = OfdTextEmphasis.ComposeNameOnlyItalic(matrix, writtenSize);
+            textObject.SetAttributeValue("CTM", string.Join(" ", composition.Matrix.Select(OfdNumericFormat.Plain)));
+            textObject.SetAttributeValue(OfdTextEmphasis.FauxItalicFactor,
+                string.Join(" ", composition.Factor.Select(OfdNumericFormat.Plain)));
+            // Graphics uses the physical page as its viewport. No width expansion.
+            return;
+        }
         var factor = BuildMatrix(1, 0, -shear, 1, shear * size, 0);
         textObject.SetAttributeValue("CTM", factor);
         textObject.SetAttributeValue(OfdTextEmphasis.FauxItalicFactor, factor);

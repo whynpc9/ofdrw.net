@@ -6,11 +6,11 @@
 
 **Priority:** P1
 
-**Status:** ready-for-agent
+**Status:** implemented-validated-unmerged
 
-- [ ] 能画线、矩形、路径、文字并做变换，写入合法 OFD
-- [ ] 教程样例不依赖 Skia
-- [ ] 更新功能对照与 issue #3 实现对照
+- [x] 能画线、矩形、路径、文字并做变换，写入合法 OFD
+- [x] 教程样例不依赖 Skia
+- [x] 更新功能对照与 issue #3 实现对照
 
 ## Parent
 
@@ -22,12 +22,31 @@ issue #3 点名的绘图层。交付一套语义对齐上游 Graphics2D 的公�
 
 ## Acceptance criteria
 
-- [ ] 公开类型覆盖画笔、填充、字体、路径、矩阵；能画线、矩形、任意路径、文字，并施加变换
-- [ ] 生成的对象是 OFD `PathObject` / `TextObject`（及必要资源），用现有读写往返能读回来
-- [ ] 教程样例只依赖 Layout/Core 一类 OFD 包，不引用 SkiaSharp
-- [ ] Preview（OFD → PDF → Preview 或 SVG）能看出线宽、填充、文字基线和变换，无重影或裁切错误
-- [ ] 更新功能对照；不要关闭或改写 issue #3 的正文
+- [x] 公开类型覆盖画笔、填充、字体、路径、矩阵；能画线、矩形、任意路径、文字，并施加变换
+- [x] 生成的对象是 OFD `PathObject` / `TextObject`（及必要资源），用现有读写往返能读回来
+- [x] 教程样例只依赖 Layout/Core 一类 OFD 包，不引用 SkiaSharp
+- [x] Preview（OFD → PDF → Preview 或 SVG）能看出线宽、填充、文字基线和变换，无重影或裁切错误
+- [x] 更新功能对照；不要关闭或改写 issue #3 的正文
 
 ## Blocked by
 
 - None (can start immediately)
+
+## 本次实现
+
+- [设计/05 字体绑定契约](../../../docs/graphics-design-contract.md)
+- [公开 API 教程](../../../docs/tutorials/16-native-graphics.md)
+- [issue #3 实现对照](../../../docs/issue-3-implementation.md)
+- [验收证据](../../../docs/evidence/graphics/README.md)
+
+04 单票不新增 flow/table/Canvas，也不实现 05 字体子集或 19 Skia 适配。运行源码冻结于 `dc5efcf`；本状态基于已核验提交 `5f1a1e8`，PR 仍未合并。
+
+R2：首轮 5 条意见已统一修复，补普通十进制、矩阵写出精度、SVG 尖角及新建 name-only 文字 M*F 原生强调；417 项回归通过。本次 9 页 PDF/SVG 已重生成，R2 Preview 待补闭环，R1 8 页记录保留在 Git 历史。
+
+R3：精确十进制奇异判定、object/clip/导出矩阵统一保真、规范Size下文字基线与奇异operand原子拒绝；新增分数裁剪可视样例，本次10页PDF/SVG，源/包/视觉以新候选为准。
+
+R4：最新复审的name-only faux组合溢出改为绘制前原子预检；共享03强调服务，显式/隐式资源、透明/嵌入及失败后预算恢复独立回归通过。
+
+R5：格式化advances/path/clip XML前置容量检查，细线边界用实际写出线宽；四项预算/边界原子回归通过。
+
+最终 R5 候选于 2026-10-03 实际 Preview 检查全部 10 页通过，六个任务 PDF 窗口关闭并释放 GUI；429 测试/11 包/20 PNG/63 文件验收齐备，`5f1a1e8` 双 bot 无新增必修项、16 个线程全部关闭、六检查（含 package-e2e）通过。验收 JSON 保留该已核验提交快照；包含本记录的后续文档提交，最新头复核结果见 PR 最终闭环评论。
