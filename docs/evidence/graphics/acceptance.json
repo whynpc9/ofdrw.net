@@ -71,13 +71,90 @@
     "scope": "R5: all 20 PDF/SVG PNG pages regenerated and SHA256-identical to the visually checked R4/R3 render set; actual pixel probes rerun."
   },
   "preview": {
-    "status": "not-reviewed",
-    "reason": "R5 final ten PDF pages regenerated; all PNG hashes match the reviewed R4 render set. Preview is awaiting a coordinated exclusive slot after issue 02 and Mac unlock. Earlier Preview does not substitute for the current candidate.",
-    "checked_pages": [],
-    "windows_closed": null
+    "status": "passed",
+    "source_head": "dc5efcfc506b3eb91d2a3b80fa54fdeed8186231",
+    "candidate_head": "5dd3dd728521d3c58394c5a0dbc32caeaec2e4aa",
+    "checked_at": "2026-10-03T09:02:07+08:00",
+    "reviewer": "Codex primary agent using native macOS Preview through cua_repl",
+    "chain": "Public Graphics API→native OFD→PDF→Preview; licensed DOCX→explicit Native/default OFD→PDF→Preview",
+    "artifact_directory": "/Users/wanghongyi/.codex/worktrees/e8cc/ofdrw.net/artifacts/graphics/review5-final",
+    "checked_pages": [
+      {
+        "file": "graphics.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "5d303868a95843ca0aabb1797333232ea394b43ae4ec85f42e2b59e0f295c9bd",
+        "result": "passed",
+        "observations": "Ticket frame, Chinese/Latin proportional text, local bold/italic/color, baseline guide, rotated stamp and footer."
+      },
+      {
+        "file": "graphics-roundtrip.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "932924c8da07c7e50d6f79a509044a50ae1b12ccdf153ce69dc625a390e7cdb7",
+        "result": "passed",
+        "observations": "Roundtrip retains the ticket and transform diagram; nonuniform strokes, curves, miter tip, fill rules, frozen clip and restored control."
+      },
+      {
+        "file": "graphics-name-only.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "aa715bc609bf3fd32c8766cec78fca8ee99f6ffcd9d06f859af7d24b6ec640f9",
+        "result": "passed",
+        "observations": "Upright control, native faux-italic baseline, user rotation/scale/shear and clipped italic; no doubled inclination or paint."
+      },
+      {
+        "file": "graphics-fractional-clip.pdf",
+        "pages": [
+          1
+        ],
+        "sha256": "9d32e3118f31711b445655e24fbb8970a2abece11a8e6998db7cf0f548ab5f6b",
+        "result": "passed",
+        "observations": "Logical 100000 mm rectangle under 0.9996 CTM: blue right border remains visible immediately left of the 130 mm guide."
+      },
+      {
+        "file": "baseline-native.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "a2386d919a2426b54b75f663e9deac8e208b87aeb3e69465ded1cf7e0959bb0a",
+        "result": "passed",
+        "observations": "Licensed generated-layout DOCX explicit Native→OFD→PDF: table fill/borders, local styles, alignment and intended two-page break."
+      },
+      {
+        "file": "baseline-default.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "sha256": "b8ae363ddef0e52b77bcf78317877875fd8b89bd3ab5ef2086aabd3f67c4b89f",
+        "result": "passed",
+        "observations": "Same licensed DOCX default→OFD→PDF: original text, table/style/alignment and intended two-page break match explicit Native."
+      }
+    ],
+    "pdf_page_count": 10,
+    "exact_paths_checked": true,
+    "reopened_current_artifacts": true,
+    "windows_closed": true,
+    "closed_pdf_windows": 6,
+    "gui_released": true,
+    "other_tasks_documents_opened": false,
+    "observations": [
+      "All ten pages inspected at full-page display against deterministic fixture expectations.",
+      "No observed missing glyphs, garbled text, repeated paint, style spread, unexpected overlap/crop or extra blank pages in this scope.",
+      "The fractional sample deliberately displays only the final portion of an off-page logical rectangle; that expected left crop is not a defect.",
+      "No new lock-screen failure in this exclusive slot.",
+      "Only the six verified R5 task PDF document windows were closed; Preview may display its ordinary file-open panel when no documents remain."
+    ]
   },
   "review": {
-    "status": "pending-fresh-head",
+    "status": "pending-final-doc-head",
     "pr": "https://github.com/whynpc9/ofdrw.net/pull/13",
     "round1_head": "4b634d1785b3a57c67f33a43441a08aa46188813",
     "round1_threads": 5,
@@ -87,9 +164,10 @@
     "round2_head": "c07a45c8218bc28221dfa7f2f81d2e8be2270465",
     "round2_ci": "six checks passed",
     "round2_threads_new": 2,
-    "source_reviews": "R5 addresses incremental geometry budget allocation and canonical stroke bounds; fresh head review and CI remain required.",
+    "source_reviews": "All runtime feedback addressed; the final Preview-record commit requires fresh-head Codex/Cursor and CI readback.",
     "round3_head": "e7dd4ddd642bee6b64c18f3ab806e3648ade580f",
-    "round4_head": "62fa52eda471a4807b2a63e0c7e4531053f80ec2"
+    "round4_head": "62fa52eda471a4807b2a63e0c7e4531053f80ec2",
+    "reviewed_candidate_head": "5dd3dd728521d3c58394c5a0dbc32caeaec2e4aa"
   },
   "production_release_accepted": false,
   "limitations": [
@@ -98,7 +176,7 @@
     "No flow/table/Canvas or Skia adapter additions.",
     "Font subset/reuse/fallback is ticket 05; explicit package-local identity contract only.",
     "Name-only font text depends on reader environment. Public artifacts embed pinned OFL Noto only.",
-    "R5 Preview and current-head external reviews/CI remain required before ticket closure.",
+    "Current-head external reviews/CI remain required before final ticket closure.",
     "Faithful finite CTM coefficients do not guarantee numerical stability for arbitrary extreme doubles; derived overflow/generated singular faux CTMs fail."
   ],
   "previous_round1": {
