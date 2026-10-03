@@ -6,7 +6,7 @@
 
 **Priority:** P1
 
-**Status:** implemented-validated-awaiting-final-review
+**Status:** implemented-validated-unmerged
 
 - [x] 能画线、矩形、路径、文字并做变换，写入合法 OFD
 - [x] 教程样例不依赖 Skia
@@ -39,7 +39,7 @@ issue #3 点名的绘图层。交付一套语义对齐上游 Graphics2D 的公�
 - [issue #3 实现对照](../../../docs/issue-3-implementation.md)
 - [验收证据](../../../docs/evidence/graphics/README.md)
 
-04 单票不新增 flow/table/Canvas，也不实现 05 字体子集或 19 Skia 适配。最新 head 评审与 Preview 尚未闭环时保持此状态。
+04 单票不新增 flow/table/Canvas，也不实现 05 字体子集或 19 Skia 适配。运行源码冻结于 `dc5efcf`；本状态基于已核验提交 `5f1a1e8`，PR 仍未合并。
 
 R2：首轮 5 条意见已统一修复，补普通十进制、矩阵写出精度、SVG 尖角及新建 name-only 文字 M*F 原生强调；417 项回归通过。本次 9 页 PDF/SVG 已重生成，R2 Preview 与最新 head 复审待补闭环，R1 8 页记录保留在 Git 历史。
 
@@ -49,4 +49,4 @@ R4：最新复审的name-only faux组合溢出改为绘制前原子预检；共�
 
 R5：格式化advances/path/clip XML前置容量检查，细线边界用实际写出线宽；四项预算/边界原子回归通过。
 
-最终 R5 候选于 2026-10-03 实际 Preview 检查全部 10 页通过，六个任务 PDF 窗口关闭并释放 GUI；429 测试/11 包/20 PNG/63 文件验收齐备，最终文档 head 双 bot/CI 复核待读回。
+最终 R5 候选于 2026-10-03 实际 Preview 检查全部 10 页通过，六个任务 PDF 窗口关闭并释放 GUI；429 测试/11 包/20 PNG/63 文件验收齐备，`5f1a1e8` 双 bot 无新增必修项、16 个线程全部关闭、六检查（含 package-e2e）通过。验收 JSON 保留该已核验提交快照；包含本记录的后续文档提交，最新头复核结果见 PR 最终闭环评论。
