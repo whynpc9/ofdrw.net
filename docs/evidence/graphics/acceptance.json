@@ -154,20 +154,49 @@
     ]
   },
   "review": {
-    "status": "pending-final-doc-head",
+    "status": "complete-at-recorded-head",
     "pr": "https://github.com/whynpc9/ofdrw.net/pull/13",
     "round1_head": "4b634d1785b3a57c67f33a43441a08aa46188813",
     "round1_threads": 5,
     "round1_ci": "six checks passed",
     "fixed_runtime": "dc5efcfc506b3eb91d2a3b80fa54fdeed8186231",
-    "current_head": null,
+    "current_head": "5f1a1e89e7ab61a7f7ac5d5d8ab2c141061c3599",
     "round2_head": "c07a45c8218bc28221dfa7f2f81d2e8be2270465",
     "round2_ci": "six checks passed",
     "round2_threads_new": 2,
-    "source_reviews": "All runtime feedback addressed; the final Preview-record commit requires fresh-head Codex/Cursor and CI readback.",
+    "source_reviews": "Codex and Cursor read back this recorded head with no new must-fix; all 16 review threads resolved and all six checks completed successfully.",
     "round3_head": "e7dd4ddd642bee6b64c18f3ab806e3648ade580f",
     "round4_head": "62fa52eda471a4807b2a63e0c7e4531053f80ec2",
-    "reviewed_candidate_head": "5dd3dd728521d3c58394c5a0dbc32caeaec2e4aa"
+    "reviewed_candidate_head": "5dd3dd728521d3c58394c5a0dbc32caeaec2e4aa",
+    "recorded_at": "2026-10-03T09:23:22+08:00",
+    "snapshot_scope": "current_head is the fully checked commit read back before this documentation snapshot was committed. Subsequent documentation-only head checks are recorded by a final PR comment, without claiming that this file contains its own commit hash.",
+    "codex": {
+      "status": "no-major-issues",
+      "head": "5f1a1e89e7ab61a7f7ac5d5d8ab2c141061c3599",
+      "url": "https://github.com/whynpc9/ofdrw.net/pull/13#issuecomment-5964037862"
+    },
+    "cursor": {
+      "status": "no-new-must-fix",
+      "head": "5f1a1e89e7ab61a7f7ac5d5d8ab2c141061c3599",
+      "url": "https://github.com/whynpc9/ofdrw.net/pull/13#pullrequestreview-5398289815"
+    },
+    "threads": {
+      "total": 16,
+      "unresolved": 0
+    },
+    "ci": {
+      "head": "5f1a1e89e7ab61a7f7ac5d5d8ab2c141061c3599",
+      "run": "https://github.com/whynpc9/ofdrw.net/actions/runs/37085272121",
+      "conclusion": "success",
+      "checks": [
+        "build-test",
+        "BuiltIn DOCX (ubuntu-latest)",
+        "BuiltIn DOCX (windows-latest)",
+        "BuiltIn DOCX (macos-latest)",
+        "package-e2e",
+        "Cursor Automation: Review PRs"
+      ]
+    }
   },
   "production_release_accepted": false,
   "limitations": [
@@ -176,7 +205,6 @@
     "No flow/table/Canvas or Skia adapter additions.",
     "Font subset/reuse/fallback is ticket 05; explicit package-local identity contract only.",
     "Name-only font text depends on reader environment. Public artifacts embed pinned OFL Noto only.",
-    "Current-head external reviews/CI remain required before final ticket closure.",
     "Faithful finite CTM coefficients do not guarantee numerical stability for arbitrary extreme doubles; derived overflow/generated singular faux CTMs fail."
   ],
   "previous_round1": {

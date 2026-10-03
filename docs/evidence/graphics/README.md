@@ -1,8 +1,8 @@
 # 04 原生绘图验收证据
 
-R5 运行源码冻结于 `dc5efcfc506b3eb91d2a3b80fa54fdeed8186231`，基线为 PR #12 的 `df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9`。[PR #13](https://github.com/whynpc9/ofdrw.net/pull/13) 的 stacked base 为 `codex/document-tools`。本次候选 `5dd3dd7` 对应的六组 PDF 共 **10 页已于 2026-10-03 在 macOS Preview 实际逐页验收通过**，六个任务 PDF 窗口已核对路径并关闭，GUI 已释放。源码、样例、字体和页面字节没有修改；最终文档 head 外部复核仍需读回。
+R5 运行源码冻结于 `dc5efcfc506b3eb91d2a3b80fa54fdeed8186231`，基线为 PR #12 的 `df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9`。[PR #13](https://github.com/whynpc9/ofdrw.net/pull/13) 的 stacked base 为 `codex/document-tools`。本次候选 `5dd3dd7` 对应的六组 PDF 共 **10 页已于 2026-10-03 在 macOS Preview 实际逐页验收通过**，六个任务 PDF 窗口已核对路径并关闭，GUI 已释放。源码、样例、字体和页面字节没有修改。记录提交前已读回 `5f1a1e8`：Codex/Cursor 无新增必修项、16 个线程全部关闭、六检查（含 package-e2e）通过。
 
-状态与逐文件结果见 [acceptance.json](acceptance.json)，文件尺寸/SHA-256/环境/模式见 [manifest.json](manifest.json)。功能、自动渲染、PNG 与 Preview 分别记录，旧 R1 验收没有用于替代本轮。
+状态与逐文件结果见 [acceptance.json](acceptance.json)，文件尺寸/SHA-256/环境/模式见 [manifest.json](manifest.json)。功能、自动渲染、PNG 与 Preview 分别记录，旧 R1 验收没有用于替代本轮。`review.current_head` 明确指记录写入前已核验的 `5f1a1e8`，不冒充包含本记录的提交；后续仅文档提交的最新头双 bot/CI 读回见 PR 最终闭环评论。
 
 | 检查层 | R5 本次范围 | 结果 |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ R5 运行源码冻结于 `dc5efcfc506b3eb91d2a3b80fa54fdeed8186231`，基线为 
 | 自动渲染 | 图形/往返/Native/default 各两页，name-only/分数 clip 各一页；PDF 10 页、SVG 10 页 | 通过；含尖角及分数边框实际像素探针 |
 | PNG 视觉 | 20 页 PDF/SVG PNG；本轮重新生成并核对与 R3/R4 页图哈希 | 检查范围内通过 |
 | macOS Preview | 本次六组 OFD→PDF 共 10 页，准确路径与 PDF 哈希核对，单页显示逐页检查 | 通过；六个 PDF 窗口关闭，GUI 已释放 |
-| 最新 head 外部审核 | 候选 `5dd3dd7` 六检查全绿；Preview P1 已完成实际要求，最终记录 commit 待双 bot/CI | 待最终文档 head 读回 |
+| 已读回提交外部审核 | `5f1a1e8` Codex/Cursor 无新增必修项，16 个线程全部关闭，六检查（含 package-e2e）全绿 | 此提交快照通过；PR 未合并 |
 
 ## 实际 Preview 范围
 
