@@ -24,7 +24,7 @@
 | [17 区域占位](17-area-holders.md) | P0 | blocked | 01 | P0-03 |
 | [02 图片进出](02-ofd-image-io.md) | P0 | ready-for-agent | 无 | P0-04、P0-05 |
 | [03 文档工具](03-document-tools.md) | P0 | ready-for-agent | 无 | P0-06–P0-09 |
-| [04 OfdGraphics](04-ofd-graphics-api.md) | P1 | implemented-validated-unmerged | 无 | P1-01 |
+| [04 OfdGraphics](04-ofd-graphics-api.md) | P1 | implemented-validated-awaiting-final-review | 无 | P1-01 |
 | [05 字体子集与复用](05-font-subset-and-reuse.md) | P1 | ready-for-agent | 无 | P1-02 |
 | [20 布局 Canvas](20-layout-canvas-drawcontext.md) | P1 | blocked | 01、04 | P1-03 |
 | [21 PDF 矢量](21-pdf-to-ofd-vectors.md) | P1 | blocked | 04、19 | P1-04 |

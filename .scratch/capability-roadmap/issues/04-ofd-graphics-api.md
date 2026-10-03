@@ -6,7 +6,7 @@
 
 **Priority:** P1
 
-**Status:** implemented-validated-unmerged
+**Status:** implemented-validated-awaiting-final-review
 
 - [x] 能画线、矩形、路径、文字并做变换，写入合法 OFD
 - [x] 教程样例不依赖 Skia
