@@ -8,14 +8,16 @@
 | 包消费 | 11/11 | 0.1.0-issue02.integration1，含打包图片导入→水印→拆分→PNG |
 | 文档工具矩阵 | 36样例、55PDF页自动验证 | 本次合并源码重生成的API/CLI产物，不继承03历史Preview |
 | PNG辅助目视 | 当前样例已检查 | 许可明确source斜体、居中往返、Native/default、签章、MIT CTM、clip、watermark/clean |
-| macOS Preview | **当前集成版本待验收** | GUI由协调串行分配；原source仅本地诊断，旧页面结论不继承 |
+| macOS Preview | **15公开页 + 2本地诊断页通过** | 2026-10-03重新打开当前PDF逐页检查，全部任务窗口/面板关闭，GUI释放 |
 | 当前PR CI/review | 待新head推送后重审 | 原02head b29ed9d已闭合；不能替代集成head |
 
 [集成取舍](integration-notes.md)保留02 strict opt-in/缓存/累计展开预算及03 Visible/精确clip/完整glyph CTM/假斜体补偿/unsupported annotation whole-failure、Reader/Pruner/资源所有权合同。新注释两额度每Reader内跨页/重复引用累计，nested继承；不声明全导出跨包注释计数。
 
 当前[evidence.tar.xz](evidence.tar.xz)已替换旧商业字体载荷，所有实际文件大小/哈希由[manifest.json](manifest.json)索引，`python3 scripts/verify-image-io-evidence.py`核验成员全集。字体审计在归档font-audit.json：当前OFD/PDF嵌入字体仅匹配固定Noto OFL或原创MIT矩形字体，附字体、OFL/MIT许可、生成器及licensed-layout.docx。原Arial Unicode MS完整字库/子集只保留忽略的本地诊断，未进入当前归档；保留Git历史意味着此替换不删除历史blob。
 
-当前公开source两页使用Noto，原source原字体仅用于本地集成诊断，两者均重新从此次writer导出PDF/PNG。PNG观察已呈现斜体和局部粗体；当前[preview-acceptance.json](preview-acceptance.json)仍待实际Preview。旧未通过项在[preintegration记录](preview-preintegration-findings.json)作为历史，不代表当前接受。
+当前公开source两页使用Noto，原source原字体仅用于本地集成诊断，两者均重新从此次writer导出PDF/PNG。PNG及本次Preview均确认斜体和局部粗体；当前[preview-acceptance.json](preview-acceptance.json)记录全部17页实际Preview路径、SHA-256、逐页结论及窗口关闭。旧未通过项在[preintegration记录](preview-preintegration-findings.json)作为历史，不代表当前接受。
+
+原source本地两页通过集成writer重导出后，Preview确认紫色斜体修复；未将商业字体PDF/OFD加入公开归档。Native/default通过实际DOCX→OFD→PDF链路验收。结论仅覆盖上表15公开页及2诊断页，不把36样例55页自动验证写成全页Preview验收。当前产物/归档未重新生成，46个载荷哈希保持不变；本次只更新验收记录。
 
 # 历史：独立02分支各轮记录
 
