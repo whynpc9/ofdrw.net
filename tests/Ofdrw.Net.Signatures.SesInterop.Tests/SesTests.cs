@@ -333,6 +333,23 @@ public sealed class SesTests
         Assert.False(await new SesTestSignedValueVerifier(identity.CertificateDer).VerifyAsync(Xml(), value, Property));
     }
 
+    [Theory]
+    [InlineData(128, true)]
+    [InlineData(129, false)]
+    public async Task BoundsSingleOidBeforeBackendDecimalExpansion(int size, bool accepted)
+    {
+        var identity = SesTestIdentity.Generate();
+        var bytes = await new SesTestSignatureProvider(identity, SesVersion.V4).SignAsync(Xml(), Property);
+        var outer = Asn1Sequence.GetInstance(Asn1Object.FromByteArray(bytes));
+        // One unusually large but syntactically valid OID arc. Generate raw TLV without decimal conversion.
+        var content = Enumerable.Repeat((byte)0x81, size).ToArray(); content[0] = 0x2a; content[^1] = 1;
+        var oid = Asn1Object.FromByteArray(new byte[] { 6, 0x81, (byte)size }.Concat(content).ToArray());
+        var value = Replace(outer, 2, oid).GetEncoded("DER");
+        if (accepted) Assert.StartsWith("1.2.", SesSignedValueReader.Parse(value).SignatureAlgorithm);
+        else Assert.Throws<InvalidDataException>(() => SesSignedValueReader.Parse(value));
+        Assert.False(await new SesTestSignedValueVerifier(identity.CertificateDer).VerifyAsync(Xml(), value, Property));
+    }
+
     private static byte[] AlternateCertificate(SesTestIdentity identity)
     {
         var certificate = new X509V3CertificateGenerator(); var name = new X509Name("CN=OFD SES DEV INTEROP TEST");

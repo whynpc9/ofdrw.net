@@ -1,0 +1,7 @@
+{
+  "sourceTicket": "11-gmt0099-password-crypto",
+  "sourcePatch": "587a/ofdrw.net/artifacts/password-crypto/publish-default-products.patch",
+  "sourcePatchSha256": "3e9974aa4c0ac38b763e94d40c576c6efe170a606abf01352998ee2d03ffdbf6",
+  "scope": "Only Pack SDK packages block; existing PACKAGES list, temporary list, fail-fast, original version/validator/publish conditions unchanged",
+  "localReview": "Read full diff and confirmed no Issue11 feature or default dependency changes; no publishing action executed"
+}
