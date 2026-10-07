@@ -40,8 +40,18 @@ if [[ "$CONSUME_ONLY" == false ]]; then
   dotnet restore "$ROOT_DIR/Ofdrw.Net.sln" "${BUILD_FLAGS[@]}"
   dotnet build "$ROOT_DIR/Ofdrw.Net.sln" -c Release --no-restore \
     -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
-  dotnet pack "$ROOT_DIR/Ofdrw.Net.sln" -c Release --no-build --no-restore -o "$OUT_DIR" \
-    -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+  # The default converter/tool feed is deliberately the validator's original
+  # product set. Optional extensions have independent consumption gates.
+  while IFS= read -r product; do
+    dotnet pack "$ROOT_DIR/src/$product/$product.csproj" -c Release --no-build --no-restore -o "$OUT_DIR" \
+      -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+  done < <(python3 - "$ROOT_DIR/scripts" <<'PY_PACKAGES'
+import sys
+sys.path.insert(0, sys.argv[1])
+from importlib import import_module
+print('\n'.join(import_module('verify-package-artifacts').PACKAGES))
+PY_PACKAGES
+  )
 fi
 python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION"
 

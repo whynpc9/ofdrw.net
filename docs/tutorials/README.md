@@ -82,7 +82,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 - 视频/音频与动作（第 12、14 章）
 - 注释（第 15 章）
 - 版本链（第 19 章）
-- GM/T 0099 加密包（ofdrw-crypto；本仓库未实现）
+- GM/T 0099 加密包（ofdrw-crypto；通用 GM/T 0099 加密包处理尚未实现；可选口令包仅支持私有 profile 自闭环）
 - OFD-A 档案子集的加工细则（GB/T 42133；ofdrw-archive）。电子病历在档案方向上仍引用它，轮廓差异见第 11–14 课
 
 ## 相关文档
@@ -92,3 +92,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 - [转换、编辑与资源约定](../conversion-contracts.md)：DOCX/PDF 转换行为，不是格式课
 - 源项目布局说明：[ofdrw-layout/doc/layout](https://github.com/ofdrw/ofdrw/blob/master/ofdrw-layout/doc/layout/README.md)
 - 源项目签章入门：[ofdrw-sign/doc/quickstart](https://github.com/ofdrw/ofdrw/blob/master/ofdrw-sign/doc/quickstart/README.md)
+
+## 可选密码扩展
+
+- [11 票：口令加解密 API、私有恢复 profile 与适用边界](../password-crypto.md)

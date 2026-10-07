@@ -1,0 +1,36 @@
+using System.IO.Compression;
+using System.Text.Json;
+using Ofdrw.Net.Crypto.Password;
+
+var inputDirectory = Path.GetFullPath(args[0]); var output = Path.GetFullPath(args[1]); Directory.CreateDirectory(output);
+var reports = new Dictionary<string, object>();
+foreach (var mode in new[] { "native", "default" })
+{
+    var baseline = Path.Combine(inputDirectory, "baseline-" + mode + ".ofd"); var original = Entries(baseline);
+    foreach (var scope in new[] { "partial", "all" })
+    {
+        var options = new OfdPasswordOptions { LoadOptions = new() { MaxInputBytes = 128L * 1024 * 1024, MaxEntryUncompressedBytes = 32L * 1024 * 1024, MaxTotalUncompressedBytes = 128L * 1024 * 1024 }, MaxOutputBytes = 160L * 1024 * 1024 };
+        if (scope == "partial") options.PageIndices.Add(1); else foreach (var path in original.Keys) options.EntryNames.Add(path);
+        var encrypted = Path.Combine(output, mode + "-" + scope + "-encrypted.ofd"); var restored = Path.Combine(output, mode + "-" + scope + "-restored.ofd");
+        await OfdPasswordEnvelope.EncryptFileAsync(baseline, encrypted, "actual-package-test-口令", options);
+        await OfdPasswordEnvelope.DecryptFileAsync(encrypted, restored, "actual-package-test-口令", options);
+        var roundTrip = Entries(restored);
+        if (!original.Keys.Order().SequenceEqual(roundTrip.Keys.Order()) || original.Any(pair => !pair.Value.SequenceEqual(roundTrip[pair.Key]))) throw new Exception("Actual package failed exact recovery.");
+        var before = File.ReadAllBytes(restored);
+        try { await OfdPasswordEnvelope.DecryptFileAsync(encrypted, restored, "wrong-password", options); throw new Exception("Wrong password succeeded."); }
+        catch (InvalidDataException) { }
+        if (!before.SequenceEqual(File.ReadAllBytes(restored)) || Directory.GetFiles(output, ".ofd-password-*.tmp").Length > 0) throw new Exception("Failure was not atomic or left plaintext staging.");
+        using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+        try { await OfdPasswordEnvelope.DecryptFileAsync(encrypted, restored, "actual-package-test-口令", options, cancelled.Token); throw new Exception("Cancellation succeeded."); }
+        catch (OperationCanceledException) { }
+        if (!before.SequenceEqual(File.ReadAllBytes(restored))) throw new Exception("Cancellation damaged existing output.");
+        reports[mode + "-" + scope] = new { original_entries = original.Count, recovered_entry_bytes_equal = true, wrong_password_atomic = true, pre_cancel_atomic = true };
+    }
+}
+File.WriteAllText(Path.Combine(output, "package-functional.json"), JsonSerializer.Serialize(reports, new JsonSerializerOptions { WriteIndented = true }));
+Console.WriteLine("Isolated PackageReference consumer: four native/default partial/all round trips and atomic wrong-password/cancellation passed.");
+Dictionary<string, byte[]> Entries(string path)
+{
+    using var zip = ZipFile.OpenRead(path);
+    return zip.Entries.Where(entry => entry.Name.Length > 0).ToDictionary(entry => entry.FullName, entry => { using var input = entry.Open(); using var output = new MemoryStream(); input.CopyTo(output); return output.ToArray(); });
+}

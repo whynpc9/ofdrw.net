@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "master", "codex/document-tools"]
   pull_request:
-    branches: ["main", "master"]
+    branches: ["main", "master", "codex/document-tools"]
 
 jobs:
   build-test:
@@ -141,3 +141,36 @@ jobs:
         with:
           name: package-e2e-pages
           path: artifacts/package-e2e
+
+  password-crypto:
+    name: Optional password crypto (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Password vectors, atomic failure and selected-entry recovery
+        run: dotnet test tests/Ofdrw.Net.Crypto.Password.Tests/Ofdrw.Net.Crypto.Password.Tests.csproj -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+      - uses: actions/setup-python@v5
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          python-version: "3.12"
+      - name: Generate native/default password fixtures and consume actual optional package
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m pip install fonttools==4.59.2
+          python scripts/install-ci-fonts.py --directory artifacts/password-crypto/fonts
+          export DOTNET_CLI_HOME="$RUNNER_TEMP/password-crypto-dotnet-home" DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_CLI_TELEMETRY_OPTOUT=1
+          dotnet build e2e/Ofdrw.Net.Crypto.Password.E2E/Ofdrw.Net.Crypto.Password.E2E.csproj -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+          dotnet e2e/Ofdrw.Net.Crypto.Password.E2E/bin/Release/net10.0/Ofdrw.Net.Crypto.Password.E2E.dll "$PWD" "$PWD/artifacts/password-crypto/current" "$PWD/artifacts/password-crypto/fonts"
+          ./scripts/run-password-crypto-e2e.sh
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.os == 'ubuntu-latest'
+        with:
+          name: password-crypto-evidence
+          path: artifacts/password-crypto
