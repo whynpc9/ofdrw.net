@@ -354,3 +354,11 @@ scripts/run-converter-package-e2e.sh 0.1.0-preview.local
 - SM3 reference digests are built in. SES/SM2 electronic-seal verification must be supplied through `IOfdSignedValueVerifier`.
 - GM/T 0099 encrypted-envelope processing and long-term archival validation are not built in. `OfdCryptographicCapabilities` exposes these support boundaries to applications.
 - A repository license has not yet been selected by the project owner. The NuGet workflow now blocks publication until both a license file and NuGet license metadata exist. Direct dependency declarations are recorded in `THIRD-PARTY-NOTICES.md`.
+
+### Optional Skia producer-event adapter
+
+`Ofdrw.Net.Graphics.SkiaSharp` adapts explicitly recorded Skia-typed producer
+events to native OFD paths/text through OfdGraphics. It requires producer
+integration and does not intercept arbitrary SKCanvas/SKPicture/PDF calls.
+Default Layout/Converter packages have no Skia dependency. See the
+[bounded profile and migration sample](docs/tutorials/17-skia-event-adapter.md).
