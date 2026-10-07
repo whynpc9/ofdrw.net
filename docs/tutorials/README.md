@@ -94,3 +94,5 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 - 源项目签章入门：[ofdrw-sign/doc/quickstart](https://github.com/ofdrw/ofdrw/blob/master/ofdrw-sign/doc/quickstart/README.md)
 
 - [16 原生绘图 API：毫米、基线与状态](16-native-graphics.md)（仅 Layout 生成样例；PDF/SVG 用于验收）。
+
+- [可选 Skia 合作式事件适配](17-skia-event-adapter.md)：需要 producer 显式接入；不捕获任意 SKCanvas。

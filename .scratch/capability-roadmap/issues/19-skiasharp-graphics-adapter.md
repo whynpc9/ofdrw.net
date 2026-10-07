@@ -6,7 +6,7 @@
 
 **Priority:** P1
 
-**Status:** blocked
+**Status:** implemented-validation-pending
 
 - [ ] 可选包/适配能把基本 Skia 绘制落到 PathObject/TextObject
 - [ ] 不替代 P1-01 的 OFD 原语 API；核心生成路径不强制引用 Skia
@@ -30,3 +30,10 @@
 ## Blocked by
 
 - 04 类 Graphics2D 绘图 API（issue #3）
+
+## 本次明确受限实现
+
+基线 `ab87bca`；Astra High 设计通过，协调方接受合作 producer 显式事件范围。
+[设计契约](../../../docs/skia-adapter-design-contract.md)、[迁移教程](../../../docs/tutorials/17-skia-event-adapter.md)、[证据](../../../docs/evidence/skia/README.md)。
+
+`SkiaDrawEvent` + `OfdSkiaAdapter.Append` 只接收 producer 明确提交的 Skia 类型事件，不拦截任意既有 SKCanvas/SKPicture/PDF 调用。原文由 producer 提供，字体唯一 ID 与实际载荷/face 元数据验证；不引入 05 服务。透明捕捉的真实失败探针保留。本状态尚未宣称视觉、独立包消费或最新 head review 闭环；21 的任意 PDF 绘制来源仍需独立验证。

@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main", "master"]
   pull_request:
-    branches: ["main", "master", "codex/document-tools"]
+    branches: ["main", "master", "codex/document-tools", "codex/ofd-graphics"]
 
 jobs:
   build-test:
@@ -133,6 +133,16 @@ jobs:
           mkdir -p artifacts/graphics-fonts
           cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/graphics-fonts/
           ./scripts/run-graphics-e2e.sh artifacts/graphics/current
+
+      - name: Consume optional Skia event adapter from exact local packages
+        run: ./scripts/run-skia-package-e2e.sh 0.1.0-preview.8 artifacts/package-e2e/0.1.0-preview.8/packages artifacts/skia/package-e2e
+
+      - name: Upload Skia adapter comparison pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skia-adapter-pages
+          path: artifacts/skia/package-e2e
 
       - name: Upload native graphics pages
         if: always()
