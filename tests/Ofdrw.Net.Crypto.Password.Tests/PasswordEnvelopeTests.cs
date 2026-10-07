@@ -353,6 +353,119 @@ public sealed class PasswordEnvelopeTests
         Assert.Equal(0, input.Position);
     }
 
+    [Theory]
+    [InlineData(@"custom\asset.bin", false)]
+    [InlineData("custom/ ", false)]
+    [InlineData("custom//", true)]
+    [InlineData("../custom/", true)]
+    [InlineData("payload-directory/", false)]
+    public async Task RawZipNamesAndPayloadDirectoriesAreRejectedBeforeNormalization(string name, bool empty)
+    {
+        var entries = Fixture().ToList(); entries.Add(new(name, empty ? [] : new byte[] { 21, 22, 23 }));
+        using var source = new MemoryStream(RawZip(entries));
+        await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptAsync(source, Password, Selection()));
+        Assert.True(source.CanRead);
+    }
+
+    [Fact]
+    public async Task RawCaseDuplicatesFailAndEmptyCanonicalDirectoriesAreAccepted()
+    {
+        var duplicate = Fixture().ToList(); duplicate.Add(new("doc_0/pages/p0/content.xml", [21]));
+        using (var source = new MemoryStream(RawZip(duplicate)))
+            await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptAsync(source, Password, Selection()));
+        var withDirectory = Fixture().ToList(); withDirectory.Add(new("empty-directory/", []));
+        using var input = new MemoryStream(RawZip(withDirectory));
+        using var encrypted = new MemoryStream(await OfdPasswordEnvelope.EncryptAsync(input, Password, Selection()));
+        AssertEntries(Fixture(), Unzip(await OfdPasswordEnvelope.DecryptAsync(encrypted, Password)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SnapshotHonorsCurrentPositionAndKeepsCallerDataAndStream(bool nonseekable)
+    {
+        var zip = Zip(Fixture()); var prefix = new byte[] { 91, 92, 93 }; var caller = prefix.Concat(zip).ToArray();
+        var original = caller.ToArray();
+        using MemoryStream source = nonseekable ? new NonSeekingStream(caller) : new MemoryStream(caller);
+        source.Position = prefix.Length;
+        var options = Selection(); options.LoadOptions.MaxInputBytes = zip.Length + 5000;
+        using var encrypted = new MemoryStream(await OfdPasswordEnvelope.EncryptAsync(source, Password, options));
+        AssertEntries(Fixture(), Unzip(await OfdPasswordEnvelope.DecryptAsync(encrypted, Password, options)));
+        Assert.True(source.CanRead); Assert.Equal(caller.Length, source.Position); Assert.Equal(original, caller);
+    }
+
+    [Fact]
+    public async Task NonseekSnapshotInputBudgetFailsAtOneByteBeyondLimit()
+    {
+        var zip = Zip(Fixture()); var sourceBytes = zip.Concat(new byte[] { 94 }).ToArray();
+        using var input = new NonSeekingStream(sourceBytes);
+        var options = Selection(); options.LoadOptions.MaxInputBytes = zip.Length;
+        await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptAsync(input, Password, options));
+        Assert.Equal(zip.Length + 1, input.Position); Assert.True(input.CanRead); Assert.Equal(94, sourceBytes[^1]);
+    }
+
+    [Fact]
+    public void SnapshotGrowthClearsOldBuffersAndDisposeKeepsReturnedCopy()
+    {
+        var caller = Enumerable.Repeat((byte)31, 32).ToArray();
+        using var snapshot = new OfdPasswordEnvelope.BoundedMemoryStream(1024);
+        snapshot.Write(caller);
+        var oldBuffer = snapshot.GetBuffer();
+        snapshot.Write(Enumerable.Repeat((byte)32, oldBuffer.Length + 1).ToArray());
+        Assert.All(oldBuffer, value => Assert.Equal(0, value));
+        var expected = snapshot.ToArray(); var current = snapshot.GetBuffer();
+        snapshot.Capacity = snapshot.Capacity;
+        Assert.Equal(expected, snapshot.ToArray());
+        Assert.ThrowsAny<ArgumentException>(() => snapshot.Capacity = 1);
+        Assert.Equal(expected, snapshot.ToArray());
+        snapshot.Dispose(); snapshot.Dispose();
+        Assert.All(current, value => Assert.Equal(0, value));
+        Assert.Equal(31, expected[0]); Assert.Equal(32, expected[^1]); Assert.All(caller, value => Assert.Equal(31, value));
+    }
+
+    [Fact]
+    public void OversizedGeneratedXmlIsOwnedAndClearedOnFailure()
+    {
+        var xml = new XElement("Recovery", new XElement("SecretPath", new string('x', 1000)));
+        var owner = new OwnedBuffers();
+        Assert.Throws<InvalidDataException>(() => OfdPasswordEnvelope.XmlBytes(xml, 64, owner));
+        var bytes = Assert.Single(owner.RegisteredBuffers);
+        Assert.True(bytes.Length > 64); Assert.Contains((byte)'x', bytes);
+        owner.Dispose(); Assert.All(bytes, value => Assert.Equal(0, value));
+        using var success = new OwnedBuffers();
+        var normal = OfdPasswordEnvelope.XmlBytes(new XElement("OK", "text"), 64, success);
+        Assert.Contains("text", Encoding.UTF8.GetString(normal));
+    }
+
+    [Fact]
+    public async Task GeneratedMetadataBudgetFailurePreservesExistingAndAbsentFileTargets()
+    {
+        var directory = TempDirectory();
+        try
+        {
+            var input = Path.Combine(directory, "source.ofd"); var output = Path.Combine(directory, "target.ofd");
+            await File.WriteAllBytesAsync(input, Zip(Fixture())); var sentinel = new byte[] { 51, 52, 53 };
+            await File.WriteAllBytesAsync(output, sentinel);
+            var options = Selection(); options.MaxMetadataBytes = 600;
+            var failure = await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptFileAsync(input, output, Password, options));
+            Assert.Contains("Generated metadata", failure.Message);
+            Assert.Equal(sentinel, await File.ReadAllBytesAsync(output));
+            File.Delete(output);
+            await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptFileAsync(input, output, Password, options));
+            Assert.False(File.Exists(output)); Assert.Empty(Directory.GetFiles(directory, ".ofd-password-*.tmp"));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    private static byte[] RawZip(IEnumerable<KeyValuePair<string, byte[]>> entries)
+    {
+        using var output = new MemoryStream();
+        using (var zip = new ZipArchive(output, ZipArchiveMode.Create, true))
+            foreach (var entry in entries) { using var stream = zip.CreateEntry(entry.Key, CompressionLevel.NoCompression).Open(); stream.Write(entry.Value); }
+        return output.ToArray();
+    }
+    private sealed class NonSeekingStream(byte[] bytes) : MemoryStream(bytes) { public override bool CanSeek => false; }
+
     private static OfdPasswordOptions Selection() => new() { PageIndices = { 1 } };
     private static async Task<byte[]> EncryptFixture()
     {
