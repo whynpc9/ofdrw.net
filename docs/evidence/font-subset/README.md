@@ -4,12 +4,12 @@
 
 | 本次结果 | 范围 |
 | --- | --- |
-| 功能回归 | 当前全套 521/521；独立 R6 定向 72/72，R7 实际控制字符渲染探针通过 |
+| 功能回归 | 当前全套 521/521；最新独立 R21 定向 59/59（历史 R6 72/72 单独保留） |
 | 包消费 | 11 个 `0.1.0-issue05.20261003.22` 本地包，干净目录/缓存验证；包含本票真实字体样例 |
 | 自动渲染 | full/subset、native/default 各两页 PDF；全部 Poppler exit 0 且无 stderr；full/subset 与 native/default 逐像素相等 |
 | SVG | 8 个页面由真实 Chromium 渲染，FontFaceSet loaded 且 CSS 平台字体 `isCustomFont=true`；保留页面截图和字体记录 |
 | PNG 目视 | 检查 full/subset PDF 1–2 页、native/default DOCX→本次 OFD→PDF 1–2 页；subset SVG Chromium 1–2 页，无缺字、裁切、重叠或样式扩散；其他 SVG 截图供复查 |
-| macOS Preview | **通过**：2026-10-03 独占时段逐页实际查看 full/subset、native/default 四份 8 页；关闭全部 05 窗口后释放 UI；检查范围及每份 SHA 见 `preview-acceptance.json` |
+| macOS Preview | **通过**：2026-10-03 独占时段逐页实际查看 full/subset、native/default 四份 8 页；关闭全部 05 窗口后释放 UI；2026-10-07 另逐文件实看最终队列 17 文件 18 页全部通过；窗口关闭并释放 GUI，逐页结论、SHA 与截图见 `preview-final-20261007.json` / 归档同名目录；原 8 页记录见 `preview-acceptance.json` |
 
 统一样例（相同 source fonts、两个页面、样式、Unicode 文本和矢量矩形）：
 
@@ -31,7 +31,7 @@ zstd -d evidence.tar.zst -c | tar -xf -
 
 DocumentTools 首轮 CI 失败与两轮定位日志保留：空白包会生成没有文字 repertoire 的子集，随后新增水印/注释必须重新绑定原 face，或对明确待注入未知绘制的编辑样例选择 Full。本次修复按此契约执行，不放宽 coverage。再跑 36 样例 / 55 PDF 页通过。
 
-已保留最初样例标题过长及修正后的记录；当前两页页标已拆行，重生成后再次检查。非 BMP P2 的失败轮次和独立 R2 复验亦保留。范围限制详见[字体子集契约](../../font-subset-and-reuse.md)：CFF/变量/未知表/RTL 全量保护；非 BMP PDF 与未建模 CGTransform PDF/SVG 明确失败；已有未知 OFD 资源不裁剪。Preview 仅覆盖列出的 8 页；发布/merge 未授权，不关闭 issue #3。当前 head 的 CI/review 闭环单独记录，不以这些样例推断任意复杂文档保真。
+已保留最初样例标题过长及修正后的记录；当前两页页标已拆行，重生成后再次检查。非 BMP P2 的失败轮次和独立 R2 复验亦保留。范围限制详见[字体子集契约](../../font-subset-and-reuse.md)：CFF/变量/未知表/RTL 全量保护；非 BMP PDF 与未建模 CGTransform PDF/SVG 明确失败；已有未知 OFD 资源不裁剪。Preview 覆盖原 8 页及最终队列新增 18 页；发布/merge 未授权，不关闭 issue #3。当前 head 的 CI/review 闭环单独记录，不以这些样例推断任意复杂文档保真。
 
 第二轮修复：default-ignorable 控制不要求 cmap 轮廓，PDF 绘制跳过可省略控制符而不改变 OFD 原文或显式 Delta 槽位；方向控制/UVS PDF 明确拒绝。保留 R6 的可见 tofu 失败和 R7 的修复页面。当时新增 ZWJ/ZWNJ 两页未获 Preview 时段；R11 已改为明确拒绝该 PDF 语义，原 8 页实际验收不受这些无控制符的 guard/绘制分支影响。TTC 容器/face 双预算、OS/2-first 统一样式已有回归；非法 SourceXml 在两模式均拒绝（a6ae520 Full 真实探针为 XmlException/0 字节，并未成功写出）。
 
@@ -70,3 +70,7 @@ R19 nested read/rebind 的 baseline-resaved.ofd 使用既有 document-tools 的�
 R20：保留策略扫描本身在开始、每页、每元素检查取消。公共 Writer 原已有入口取消，不将此前预取消行为错误归功于这次修复；改进的是内部扫描中途/入口响应。确定性 poison-page 回归验证取消先于读取包内容，无墙钟阈值。未取消时保留判断和字形路径不变，本轮520/520。
 
 R21：coverage 与用字循环逐 Unicode scalar 检查写包 token；原文/NFC/NFD 规范化按序延迟执行，调用前后检查取消，避免先创建所有形式。重复字符不增长用字上限也可观察取消。单次 BCL Normalize 不可中断，无硬实时或墙钟承诺；有效输入字形集合和原文不变。本轮521/521。
+
+最终视觉补验（2026-10-07）：源码 `cf4454f`，17 份成功 PDF 的 SHA 与 R21 冻结队列及公开归档逐一一致；没有重生成或以 PNG 替代。本次链路为对应 OFD→OfdToPdfConverter→冻结 PDF→macOS Preview，逐文件逐页实看 18 页：四种 filler 的普通/定位对照、name-only/regular/unbound 覆盖回退、TTC 非零面、office/ffi 均符合明确样例预期，无缺字、裁切、重影或异常空白页。18 张实际 Preview 截图及逐页记录入归档。所有 05 PDF 窗口已关闭并释放桌面；不宣称 Preview 进程已退出。历史段落“Preview pending”只表示当轮状态，最终视觉门已通过。ZWJ/ZWNJ、LRM、旧方向控制等拒绝路径仍由保留的 0 字节负例证明，不列入成功视觉清单。源码未变，无需重复已过本地测试；本次文档 head 的 CI/双 bot 另复核。
+
+归档补入最终 Preview 记录/截图后使用 zstd level19 重新压缩，`evidence.tar.zst` 体积 35,745,374→30,447,498 bytes；这是归档压缩参数变化，不是 OFD/PDF 重新生成或字体样例体积改变。1154 个载荷解包后逐项 manifest SHA/体积核验通过，全部 50 个 source-freeze 文件与 cf4454f 匹配。

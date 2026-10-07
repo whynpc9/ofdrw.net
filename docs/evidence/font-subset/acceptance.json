@@ -87,16 +87,16 @@
     "task_windows_closed": true,
     "ui_released": true,
     "record": "preview-acceptance.json",
-    "controls_status": "pending unlock/exclusive slot: exactly preview-queue-r21.json (R19 sameSHA reused for cancel-only delta), 17files/18pages",
+    "controls_status": "pass: actual macOS Preview 2026-10-07, exact preview-queue-r21.json, all17files/18pages checked and task windows closed",
     "followup_queue": "preview-queue-r21.json",
     "followup_success_pages": 18,
-    "followup_files": 17
+    "followup_files": 17,
+    "followup_record": "preview-final-20261007.json"
   },
-  "overall_visual_complete": false,
+  "overall_visual_complete": true,
   "production_release_accepted": false,
   "unresolved": [
-    "Actual macOS Preview for frozen preview-queue-r21.json, 17files/18pages; R19render artifacts reused unchangedSHA for cancellation-only delta",
-    "Latest-head CI and fresh Codex/Cursor review closure"
+    "Fresh Codex/Cursor review and CI for documentation-only acceptance update"
   ],
   "viewing_chain": "Fixed DOCX -> Native/default OFD produced this run -> OFD PDF exporter -> macOS Preview 1-2 pages each; full/subset OFD -> PDF -> Preview 1-2 each. No direct DOCX->PDF substituted.",
   "controls_render": {
@@ -127,6 +127,7 @@
     "r20": "PreservationReason honors cancellationentry/pages/elements; publicwriterprecancel alreadyexisted; deterministicinternalpoisonpage provesnoinspection beforecancel. Uncanceledglyph/outputsemantics unchanged.",
     "r20_independent": "58/58FontSubsetfocused; publicvalid200pages/10000elements precancelOpCanceled0B/fontSHAunchanged(existingbehavior); internalplanreflectionpoisonpage OpCanceledbeforecontentinspection(newscannercheck). R19PDF unchangedSHA revalidated, no newvisualclaim.",
     "r21": "Writer token enters coverageentry/scalar loops andeveryusage scalar; normalizedforms lazyoriginal/NFC/NFD withcancellationbefore/afterBCLcall. SingleNormalize cannotinterrupted/nohardwalltimeguarantee; glyphunion/text unchanged.",
-    "r21_independent": "59/59FontSubsetfocused; validpublic4mrepeatedA(uniquescalar1) startthenotherthreadcancel OCE/output0B/fontSHAunchanged; no-cancelCoreCoverageAlphaffi normal. No precisehitstack/walltimeguarantee. AllR19successPDFSHA revalidated; no newvisualclaim."
+    "r21_independent": "59/59FontSubsetfocused; validpublic4mrepeatedA(uniquescalar1) startthenotherthreadcancel OCE/output0B/fontSHAunchanged; no-cancelCoreCoverageAlphaffi normal. No precisehitstack/walltimeguarantee. AllR19successPDFSHA revalidated; no newvisualclaim.",
+    "final_preview": "2026-10-07 actual macOS Preview all17files/18pages from preview-queue-r21.json passed against listed expectations; earlier per-round pending statements describe historical state only. All own PDF windows closed and GUI released."
   }
 }

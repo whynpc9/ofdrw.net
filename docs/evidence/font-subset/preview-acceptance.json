@@ -69,6 +69,21 @@
     "2026-10-02",
     "2026-10-03"
   ],
-  "record_updated_at_local": "2026-10-03T00:29:55+08:00",
-  "subsequent_review_delta": "R5 permission/bidi/CG refusal changes affect guard paths; inspected Latin/CJK BMP sample rendering remains unchanged. Actual Preview artifact SHA preserved."
+  "record_updated_at_local": "2026-10-07T22:38:55.184794+08:00",
+  "subsequent_review_delta": "R5 permission/bidi/CG refusal changes affect guard paths; inspected Latin/CJK BMP sample rendering remains unchanged. Actual Preview artifact SHA preserved.",
+  "historical_record_note": "Original 8-page acceptance scope and then-pending PR status retained; current frozen follow-up scope recorded separately.",
+  "followup_acceptance": {
+    "source_head": "cf4454f05d425a0443af0d3b55c4978274544569",
+    "date_local": "2026-10-07",
+    "queue": "preview-queue-r21.json",
+    "record": "preview-final-20261007.json",
+    "files_checked": 17,
+    "pages_checked": 18,
+    "status": "pass",
+    "task_windows_closed": true,
+    "ui_released": true,
+    "viewing_chain": "this-run OFD -> OfdToPdfConverter -> exact frozen PDF -> macOS Preview",
+    "findings": []
+  },
+  "current_overall_visual_complete": true
 }
