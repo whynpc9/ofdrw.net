@@ -11,8 +11,8 @@
       "sha256": "27103dc39e0c5625fc165aaaae892afda7a8adf14d697f45d8a37890e4982f3b"
     },
     "acceptance.json": {
-      "bytes": 8730,
-      "sha256": "10da945686e2f1d50cfb4302b4994fd7426dda4686d16fe3a6d4f847db3b6fd7"
+      "bytes": 13792,
+      "sha256": "70cea8e905434021e136b6c3663f15f8ef9b024d44bb1011d357cc1a66fac8a8"
     },
     "candidate-freeze.json": {
       "bytes": 2697,
@@ -209,6 +209,10 @@
     "files/test-certificate.der": {
       "bytes": 360,
       "sha256": "6c43788ddd40e89c0c71cc7d31fa8ad1a844023c054eb543fbc909a343989f92"
+    },
+    "history/round5-preview-pending.json": {
+      "bytes": 8730,
+      "sha256": "10da945686e2f1d50cfb4302b4994fd7426dda4686d16fe3a6d4f847db3b6fd7"
     },
     "independent/files/Noto-OFL.txt": {
       "bytes": 4301,
@@ -581,6 +585,10 @@
     "packages/sdk/package-manifest.json": {
       "bytes": 2285,
       "sha256": "20589cfa5d1521a8cbdb6e2b0737381c56c21cdef7c1c0d2e8c641ec574068b7"
+    },
+    "preview-round5-20261008.json": {
+      "bytes": 7895,
+      "sha256": "7f14dbbfe58051f99b98c3817cb2b2955c89c9201146d077f5c995c463a5cc28"
     },
     "previous-round4/acceptance.json": {
       "bytes": 11616,
