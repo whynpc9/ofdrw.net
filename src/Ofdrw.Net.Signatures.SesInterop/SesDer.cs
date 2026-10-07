@@ -46,6 +46,9 @@ internal static class SesDer
             if (length < 128) throw new InvalidDataException("Non-minimal DER length.");
         }
         if (length > end - offset) throw new InvalidDataException("Truncated DER.");
+        // OID decimal expansion uses big-integer arithmetic in the ASN.1 backend.
+        // Bound each primitive before building a tree, including nested extensions/certificates.
+        if (tag == 6 && length > 128) throw new InvalidDataException("DER object identifier size limit.");
         int next = offset + length;
         if ((tag & 32) != 0)
         {
