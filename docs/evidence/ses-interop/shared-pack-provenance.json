@@ -1,0 +1,9 @@
+{
+  "sourceWorktree": "587a/ofdrw.net",
+  "sourceTicket": "11-gmt0099-password-crypto",
+  "sourcePatch": "artifacts/password-crypto/default-pack-isolation.patch",
+  "sourcePatchSha256": "60113e019f4eba54623c5464a829b64da6e47d9c223659e0941f5b8bdb485618",
+  "scope": "Only scripts/run-converter-package-e2e.sh explicit packing of existing validator PACKAGES; no Issue11 feature code",
+  "localAdjustment": "Generate default-products.txt as a separate set-e command before iteration so import failure cannot silently reuse existing package outputs",
+  "sourceReview": "Local source inspection and successful default 11-package consumption; remote bot reviews pending"
+}

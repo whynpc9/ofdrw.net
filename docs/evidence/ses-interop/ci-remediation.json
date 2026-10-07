@@ -1,0 +1,11 @@
+{
+  "sourceCandidate": "92073352b33b2b26804e6d033cefa4a48fe31563",
+  "failedHead": "793a0f81d1798e33f5e2f0020422bd87a743891b",
+  "run": "https://github.com/whynpc9/ofdrw.net/actions/runs/37656279071",
+  "job": 112911992652,
+  "failure": "Default SDK package E2E requires identify; new SES runner installed only Poppler",
+  "fix": "Install imagemagick and librsvg2-bin alongside poppler-utils, matching existing package-e2e job",
+  "scope": "CI runner dependencies only; no crypto/runtime/fixture or gate relaxation",
+  "functionalEvidenceRetained": "Round5 source candidate 9207335, 437 solution tests and independent exact 12-package consumption 37 tests",
+  "currentRoundPreview": "pending coordinator-confirmed lock and GUI allocation"
+}

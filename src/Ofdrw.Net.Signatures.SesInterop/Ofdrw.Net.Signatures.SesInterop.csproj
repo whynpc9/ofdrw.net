@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>Optional dev/interop SES V1/V4 inspection and SM2 test self-signing. No reader recognition, legal validity or qualified timestamp service.</Description>
+    <PackageTags>OFD;SES;SM2;dev;interop;test</PackageTags>
+    <NoWarn>$(NoWarn.Replace('CS1591', ''))</NoWarn>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Ofdrw.Net.Signatures/Ofdrw.Net.Signatures.csproj" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="[2.6.2]" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../docs/tutorials/16-ses-dev-interop.md" Pack="true" PackagePath="docs/" />
+    <None Include="../../docs/evidence/ses-interop/BouncyCastle-LICENSE.md" Pack="true" PackagePath="licenses/" />
+  </ItemGroup>
+</Project>

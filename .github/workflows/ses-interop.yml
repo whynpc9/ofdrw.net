@@ -1,0 +1,37 @@
+name: SES dev interop
+on:
+  pull_request:
+    branches: ["main", "master", "codex/document-tools"]
+  push:
+    branches: ["main", "master"]
+jobs:
+  ses-interop:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/.ses-interop-dotnet-home
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install rendering tools and pinned licensed font
+        run: |
+          sudo apt-get update && sudo apt-get install -y poppler-utils imagemagick librsvg2-bin
+          python -m pip install fonttools==4.59.2
+          python scripts/install-ci-fonts.py
+          mkdir -p artifacts/ses-interop/fonts
+          cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/ses-interop/fonts/
+      - name: Test SES inspection and self-signing boundaries
+        run: dotnet test tests/Ofdrw.Net.Signatures.SesInterop.Tests -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false --logger trx --results-directory artifacts/ses-interop/tests
+      - name: Consume local optional package, verify default CLI and render exact OFD samples
+        run: bash scripts/run-ses-interop-e2e.sh artifacts/ses-interop/e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ses-interop-evidence
+          path: artifacts/ses-interop

@@ -1,0 +1,10 @@
+{
+  "package": "BouncyCastle.Cryptography",
+  "version": "2.6.2",
+  "license": "MIT",
+  "repository": "https://github.com/bcgit/bc-csharp",
+  "repositoryCommit": "b4f2f6ad76bcd1f11f365ee50cc7447fbce79077",
+  "bytes": 8276422,
+  "sha256": "623936fb1fd171579c706390390711282898cf2c759a5167852e5ab82208f8cb",
+  "scope": "Optional SES dev/interop extension only; no Core/Writer/Converter/CLI default dependency"
+}
