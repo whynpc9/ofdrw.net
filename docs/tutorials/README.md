@@ -87,6 +87,8 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 
 ## 相关文档
 
+- [SES V1/V4 dev/interop 测试容器](16-ses-dev-interop.md)：独立可选包，显式测试自签自验及其边界
+
 - [功能对照](../feature-parity.md)：本仓库已支持什么
 - [能力路线图](../capability-roadmap.md)：后续 TODO、批次与无厂商时的加密/签章边界
 - [转换、编辑与资源约定](../conversion-contracts.md)：DOCX/PDF 转换行为，不是格式课
