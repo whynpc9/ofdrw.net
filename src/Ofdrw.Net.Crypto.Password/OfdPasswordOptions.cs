@@ -5,7 +5,7 @@ namespace Ofdrw.Net.Crypto.Password;
 /// <summary>Explicit selection and bounded processing for the optional self-round-trip password profile.</summary>
 public sealed class OfdPasswordOptions
 {
-    /// <summary>ZIP budgets; no files are extracted to a directory.</summary>
+    /// <summary>ZIP budgets; no files are extracted to a directory. MaxCompressionRatio must be finite and at least 1 for this uncompressed profile.</summary>
     public OfdPackageLoadOptions LoadOptions { get; set; } = new()
     {
         MaxInputBytes = 64L * 1024 * 1024,
@@ -13,7 +13,7 @@ public sealed class OfdPasswordOptions
         MaxTotalUncompressedBytes = 64L * 1024 * 1024
     };
 
-    /// <summary>Maximum resulting ZIP bytes. Default 80 MiB.</summary>
+    /// <summary>Maximum resulting ZIP bytes. Default 80 MiB; the effective limit is the smaller of this value and LoadOptions.MaxInputBytes (64 MiB by default), so successful output fits the same input budget.</summary>
     public long MaxOutputBytes { get; set; } = 80L * 1024 * 1024;
 
     /// <summary>Maximum envelope/map XML bytes. Default 4 MiB.</summary>

@@ -27,6 +27,15 @@ foreach (var mode in new[] { "native", "default" })
         reports[mode + "-" + scope] = new { original_entries = original.Count, recovered_entry_bytes_equal = true, wrong_password_atomic = true, pre_cancel_atomic = true };
     }
 }
+// Regression for the old successful-output / same-options-input mismatch.
+var budgetSource = Path.Combine(inputDirectory, "baseline-native.ofd");
+var restrictive = new OfdPasswordOptions { LoadOptions = new() { MaxInputBytes = new FileInfo(budgetSource).Length, MaxEntryUncompressedBytes = 32L*1024*1024, MaxTotalUncompressedBytes = 128L*1024*1024 }, MaxOutputBytes = 160L*1024*1024, PageIndices = { 1 } };
+var budgetDestination = Path.Combine(output, "budget-sentinel.ofd"); var sentinel = new byte[] { 11, 12, 13 };
+File.WriteAllBytes(budgetDestination, sentinel);
+try { await OfdPasswordEnvelope.EncryptFileAsync(budgetSource, budgetDestination, "budget-check", restrictive); throw new Exception("Unreloadable output was accepted."); }
+catch (InvalidDataException) { }
+if (!File.ReadAllBytes(budgetDestination).SequenceEqual(sentinel) || Directory.GetFiles(output, ".ofd-password-*.tmp").Length > 0) throw new Exception("Budget failure was not atomic.");
+reports["same-options-input-budget"] = new { rejected_before_publication = true, preserved_output = true, input_budget = restrictive.LoadOptions.MaxInputBytes };
 File.WriteAllText(Path.Combine(output, "package-functional.json"), JsonSerializer.Serialize(reports, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine("Isolated PackageReference consumer: four native/default partial/all round trips and atomic wrong-password/cancellation passed.");
 Dictionary<string, byte[]> Entries(string path)
