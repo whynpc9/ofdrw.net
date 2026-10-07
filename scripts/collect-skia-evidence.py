@@ -53,8 +53,12 @@ with tempfile.TemporaryDirectory(prefix='ofd-skia-evidence-') as temporary:
         copy(notices / filename, 'licenses/skia-native-' + filename)
     fonts = root / 'artifacts/graphics-fonts'
     copy(fonts / 'Ofdrw-CI-Noto-OFL.txt', 'licenses/Noto-OFL.txt')
+    copy('artifacts/skia/independent/independent-verification-low2.json', 'independent/previous-low2.json')
+    copy('artifacts/skia/independent/observer-low3/Program.cs', 'independent/observer/Program.cs')
+    copy('artifacts/skia/independent/observer-low3/Observer.csproj', 'independent/observer/Observer.csproj')
     for filename in ['observed.txt', 'Program.cs', 'Probe.csproj']:
         copy('artifacts/skia/cancellation-probe/' + filename, 'review1-cancellation-before/' + filename)
+        copy('artifacts/skia/cancellation-probe-fixed/' + filename, 'review1-cancellation-after/' + filename)
     # Original source probe remains reviewable; SVG/PNG alone are not its code.
     copy('artifacts/skia/probe/Program.cs', 'probe/Program.cs')
     copy('artifacts/skia/probe/Probe.csproj', 'probe/Probe.csproj')
