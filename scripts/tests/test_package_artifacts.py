@@ -1,4 +1,7 @@
 import importlib.util
+import os
+import shutil
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -58,6 +61,38 @@ class PackageArtifactsTests(unittest.TestCase):
         with zipfile.ZipFile(path, 'w') as archive:
             for name, data in contents.items(): archive.writestr(name, data)
         with self.assertRaises(ValueError): packages.inspect(self.root, self.version)
+
+    def test_product_list_failure_does_not_accept_existing_feed(self):
+        # This feed is valid before the injected generator failure. It must not
+        # be accepted as proof that the present pack operation succeeded.
+        self.assertEqual(11, len(packages.inspect(self.root, self.version)['packages']))
+        repo = self.root / 'repo'
+        scripts = repo / 'scripts'
+        scripts.mkdir(parents=True)
+        source = Path(__file__).parents[1]
+        shutil.copyfile(source / 'run-converter-package-e2e.sh', scripts / 'run-converter-package-e2e.sh')
+        marker = self.root / 'validator-ran'
+        validator = (source / 'verify-package-artifacts.py').read_text()
+        validator += "\nif __name__ != '__main__':\n    raise RuntimeError('injected product list failure')\n"
+        validator = validator.replace("if __name__ == '__main__':", "if __name__ == '__main__':\n    Path(" + repr(str(marker)) + ").write_text('called')")
+        (scripts / 'verify-package-artifacts.py').write_text(validator)
+        tools = self.root / 'tools'
+        tools.mkdir()
+        dotnet = tools / 'dotnet'
+        calls = self.root / 'dotnet-calls'
+        dotnet.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"$TASK_CALLS\"\nexit 0\n")
+        dotnet.chmod(0o755)
+        env = dict(os.environ, PATH=str(tools) + os.pathsep + os.environ['PATH'],
+                   TASK_CALLS=str(calls), NUGET_PACKAGES=str(self.root / 'cache'),
+                   DOTNET_CLI_HOME=str(self.root / 'dotnet-home'),
+                   DOTNET_SKIP_FIRST_TIME_EXPERIENCE='1', DOTNET_CLI_TELEMETRY_OPTOUT='1')
+        result = subprocess.run(['bash', str(scripts / 'run-converter-package-e2e.sh'), self.version,
+                                 '--packages-dir', str(self.root), '--output-dir', str(self.root / 'output')],
+                                env=env, capture_output=True, text=True)
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn('injected product list failure', result.stderr)
+        self.assertFalse(marker.exists(), 'Generator failure must stop before accepting stale packages')
+        self.assertEqual(['restore', 'build'], [line.split()[0] for line in calls.read_text().splitlines()])
 
 
 if __name__ == '__main__': unittest.main()

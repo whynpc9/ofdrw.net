@@ -271,7 +271,10 @@ public sealed class PasswordEnvelopeTests
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => OfdPasswordEnvelope.DecryptFileAsync(encrypted, restored, Password, cancellationToken: cancelled.Token));
             Assert.Equal(old, await File.ReadAllBytesAsync(restored));
             var blockedDestination = Path.Combine(directory, "destination-directory"); Directory.CreateDirectory(blockedDestination);
-            await Assert.ThrowsAnyAsync<IOException>(() => OfdPasswordEnvelope.DecryptFileAsync(encrypted, blockedDestination, Password));
+            var commitFailure = await Record.ExceptionAsync(() => OfdPasswordEnvelope.DecryptFileAsync(encrypted, blockedDestination, Password));
+            // Windows denies replacing a directory with UnauthorizedAccessException;
+            // Unix reports IOException. Both must leave no plaintext staging file.
+            Assert.True(commitFailure is IOException or UnauthorizedAccessException, $"Unexpected failed-commit result: {commitFailure}");
             Assert.Empty(Directory.GetFiles(directory, ".ofd-password-*.tmp"));
             await Assert.ThrowsAsync<ArgumentException>(() => OfdPasswordEnvelope.EncryptFileAsync(input, input, Password, Selection()));
         }

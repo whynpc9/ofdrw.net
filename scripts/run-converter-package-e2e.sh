@@ -42,16 +42,16 @@ if [[ "$CONSUME_ONLY" == false ]]; then
     -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
   # The default converter/tool feed is deliberately the validator's original
   # product set. Optional extensions have independent consumption gates.
-  while IFS= read -r product; do
-    dotnet pack "$ROOT_DIR/src/$product/$product.csproj" -c Release --no-build --no-restore -o "$OUT_DIR" \
-      -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
-  done < <(python3 - "$ROOT_DIR/scripts" <<'PY_PACKAGES'
+  python3 - "$ROOT_DIR/scripts" > "$TASK_DIR/default-products.txt" <<'PY_PACKAGES'
 import sys
 sys.path.insert(0, sys.argv[1])
 from importlib import import_module
 print('\n'.join(import_module('verify-package-artifacts').PACKAGES))
 PY_PACKAGES
-  )
+  while IFS= read -r product; do
+    dotnet pack "$ROOT_DIR/src/$product/$product.csproj" -c Release --no-build --no-restore -o "$OUT_DIR" \
+      -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+  done < "$TASK_DIR/default-products.txt"
 fi
 python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION"
 
