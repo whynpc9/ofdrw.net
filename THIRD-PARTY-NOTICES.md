@@ -27,3 +27,10 @@ On macOS, DOCX conversion may instead automate a separately installed Microsoft
 Word application for higher layout fidelity. Ofdrw.Net does not bundle Microsoft
 Word or Microsoft Office fonts. The LibreOffice backend may reference installed
 Office fonts in place, but does not copy them into the package or repository.
+
+## Optional password envelope extension
+
+`Ofdrw.Net.Crypto.Password` alone directly references `BouncyCastle.Cryptography`
+2.6.2, MIT, source https://github.com/bcgit/bc-csharp/tree/release-2.6.2.
+Its nuspec pins upstream commit `b4f2f6ad76bcd1f11f365ee50cc7447fbce79077`.
+This dependency is not added to Core, Writer or the default Converter metapackage.

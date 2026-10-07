@@ -1,0 +1,26 @@
+{
+  "formula": "SM3(ASCII(12345678) || uint32-big-endian(counter)), first 16 bytes",
+  "openssl_version": "OpenSSL 3.6.4 25 Aug 2026 (Library: OpenSSL 3.6.4 25 Aug 2026)",
+  "results": [
+    {
+      "input_hex": "313233343536373800000001",
+      "counter": 1,
+      "sm3_full": "34d6effbd5bdc7c8020f619bfd8303b50d2ce000a2143f83abfe1853b3bdde22",
+      "first_16_bytes": "34d6effbd5bdc7c8020f619bfd8303b5",
+      "first_16_hex_characters": 32,
+      "python_hashlib_matches": true
+    },
+    {
+      "input_hex": "313233343536373800000002",
+      "counter": 2,
+      "sm3_full": "0e4073094460ecd0cbb91abaadc0886cb49756b5b53ad9d193328de5ed477c70",
+      "first_16_bytes": "0e4073094460ecd0cbb91abaadc0886c",
+      "first_16_hex_characters": 32,
+      "python_hashlib_matches": true
+    }
+  ],
+  "incorrect_manual_test_literal": "0e4073094460ecd0cbb91abaadc0886cb",
+  "incorrect_literal_hex_chars": 33,
+  "correct_counter_2_16_bytes": "0e4073094460ecd0cbb91abaadc0886c",
+  "runtime_changed": false
+}

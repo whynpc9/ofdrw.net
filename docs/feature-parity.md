@@ -72,3 +72,12 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 - 依赖审计：当前 CLI 依赖图无已知 vulnerable/deprecated 包。
 
 详细行为与兼容边界见 [转换、编辑与资源约定](conversion-contracts.md)。
+
+## 11 票：独立口令扩展
+
+`Ofdrw.Net.Crypto.Password`（net8.0）提供本包 profile v1 的 SM3 KDF、
+SM4-CBC/PKCS#7 文件密钥包装、显式部分页/条目加密与恢复字节校验。
+核心 `SupportsGmT0099EncryptionEnvelope=false` 保持不变，不进入默认 Converter。
+仅自闭环：无厂商互认、非商用密码认证、非长期保存格式；不支持证书、
+GM/T 完整性协议、多重加密。契约与限制见[口令扩展](password-crypto.md)，
+功能/页面/review 状态见[本票证据](evidence/password-crypto/README.md)。
