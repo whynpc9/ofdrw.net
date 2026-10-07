@@ -1,0 +1,14 @@
+{
+  "base_head": "0d880089fa069e42956b4e5a2b3c206cd0b5cdd0",
+  "shared_script_byte_identical_to_issue12_patch": true,
+  "shared_script_sha256": "448240ed505ec8f637c020e66fcc2efa64b060863c6fd635cb80e71937511b43",
+  "python_suite": "6/6; stale valid11 feed plus generator exception stops before pack/validate/consume",
+  "default_actual_feed": "0.1.0-issue11.default2, 11 products verified and isolated consumer/CLI/upstream/native+dual-layer passed",
+  "windows_first_head": "File.Move(directory) UnauthorizedAccessException differs from Unix IOException; test assertion adjusted to these two specific platform errors; staging assertions preserved",
+  "runtime_changed": false,
+  "page_hashes_match_preview": true,
+  "remote_latest_head_CI": "pending push/re-run",
+  "Codex_Cursor_first_round": "running",
+  "local_password_suite_after_platform_assertion": "48/48 at 2026-10-08 00:13:37 Asia/Shanghai",
+  "test_source_sha256": "8355bf03be1cfda775a5af77876619777784b9a1a7c542a45bcb10284099d8e5"
+}

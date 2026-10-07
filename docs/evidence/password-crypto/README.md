@@ -74,3 +74,17 @@ acceptance.json / manifest.json。所有本任务文档窗口已关闭，GUI时�
 
 本地功能与所列页面通过不等于PR闭环。Codex/Cursor首轮、最新head复审/CI和全部有效
 线程处理状态会在review记录中补齐；不合并、不发布NuGet。
+
+## 首head后修补（PR #15）
+
+0d88008首head保留上述功能/页面证据。协调发现共享脚本process substitution内清单
+生成异常可能被循环吞掉并接受旧feed；最终先生成TASK_DIR/default-products.txt再循环，
+与12票提供的共享窄patch逐字节一致。注入完整旧11包+导入生成失败：旧脚本确实red、
+新脚本在pack/validator/消费前停止；Python6/6。再次实际原11门版本
+0.1.0-issue11.default2通过（非只模拟pack）。
+
+Windows首轮专项因目录覆盖报UnauthorizedAccessException而测试只接受IOException失败；
+按照明确平台异常调整断言，保留暂存清理，未修改密码runtime。首次远程失败日志、旧脚本
+red、修补后green与default2实际消费存于review1-validation.tar.zst及review1-validation.json。
+初始大证据包不重写，所有已Preview产物逐项尺寸/hash再次核对一致，不复用重新生成页面。
+首轮Codex/Cursor、最新head CI/re-review仍待关闭，不据本地通过宣称PR闭环。
