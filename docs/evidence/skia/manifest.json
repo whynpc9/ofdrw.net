@@ -1,0 +1,591 @@
+{
+  "source_head": "8084147a07650b5bae115bc5c6f0a5b45b7c7576",
+  "runtime_head": "8bf97cfbf9ae16ccea5338d7a3a61fc6b1889644",
+  "baseline": "ab87bcade2ec5df6fa1f7ea0b86c590d13225653",
+  "version": "0.1.0-skia.20261008.r2",
+  "archive": "evidence.tar.zst",
+  "archive_bytes": 35819823,
+  "archive_sha256": "0e66f855321611266c172942da786a78fd0fa41d8afbb94d937c87e5ae1c06cc",
+  "files": [
+    {
+      "file": "candidate/adapted-1.png",
+      "bytes": 63116,
+      "sha256": "801e6d011aa27530f80e459a9a21b4a4359be954dede899577e25be730865538"
+    },
+    {
+      "file": "candidate/adapted-2.png",
+      "bytes": 43741,
+      "sha256": "8e2d45c262715403f35f612ddbaa55087170682b9faf877430c84df76675b2f4"
+    },
+    {
+      "file": "candidate/adapted.ofd",
+      "bytes": 11604362,
+      "sha256": "2aee9b1b1f318fa5cbd0bc6f03f713aa45a5259afc104ba6996f4dd56cbf83db"
+    },
+    {
+      "file": "candidate/adapted.pdf",
+      "bytes": 79566,
+      "sha256": "40228eba0322596f31b31a2aaf7576f6aadf92ef61aefa5a3e53554d5cdc866d"
+    },
+    {
+      "file": "candidate/adapted.txt",
+      "bytes": 525,
+      "sha256": "b0275d938c8cfc2be4955acb9a914a0a40d351b1b95d7fe34b0e6d0dae570f9c"
+    },
+    {
+      "file": "candidate/capture-filter-actual.png",
+      "bytes": 120,
+      "sha256": "b6d846fe881e3d710ba215aff6e4d37e3f1a88ad59c0d7588cfc1ab333f77919"
+    },
+    {
+      "file": "candidate/capture-probe.json",
+      "bytes": 358,
+      "sha256": "4889e32878e0b49183c8f42ea3d95135d03b65adf27acf21e6d6df62f4264013"
+    },
+    {
+      "file": "candidate/capture-probe.svg",
+      "bytes": 451,
+      "sha256": "26ab0e9d9198835ecf98f76a20a712a59e2d2ee45440840f3b0bcc47abc4be89"
+    },
+    {
+      "file": "candidate/direct04-1.png",
+      "bytes": 63116,
+      "sha256": "801e6d011aa27530f80e459a9a21b4a4359be954dede899577e25be730865538"
+    },
+    {
+      "file": "candidate/direct04-2.png",
+      "bytes": 43741,
+      "sha256": "8e2d45c262715403f35f612ddbaa55087170682b9faf877430c84df76675b2f4"
+    },
+    {
+      "file": "candidate/direct04.ofd",
+      "bytes": 11604362,
+      "sha256": "2aee9b1b1f318fa5cbd0bc6f03f713aa45a5259afc104ba6996f4dd56cbf83db"
+    },
+    {
+      "file": "candidate/direct04.pdf",
+      "bytes": 79566,
+      "sha256": "8c23264eb88c421a1c06c64338f334b5a2b8e6f1ad8f4d1e5c2feb35313e2f31"
+    },
+    {
+      "file": "candidate/direct04.txt",
+      "bytes": 525,
+      "sha256": "b0275d938c8cfc2be4955acb9a914a0a40d351b1b95d7fe34b0e6d0dae570f9c"
+    },
+    {
+      "file": "candidate/pixel-comparison.json",
+      "bytes": 985,
+      "sha256": "64319403ad1d90fdfd71e1f1304110144152bd84966a5bd1d5661ebaf9d68c38"
+    },
+    {
+      "file": "candidate/sample-report.json",
+      "bytes": 2636,
+      "sha256": "f593edcde49df7ac210db4d2f24fd148798c39f0a51005f1276664b0e4071fe8"
+    },
+    {
+      "file": "candidate/skia-1.png",
+      "bytes": 69489,
+      "sha256": "10ca4b35b08521bf44b5e6b4d958c40f2d53b8b7a0be5d2584b562d4dfea0f6c"
+    },
+    {
+      "file": "candidate/skia-2.png",
+      "bytes": 47096,
+      "sha256": "bb56b6f60225dee30e80117de0a40b1848dd5c0bec1f36784d524ba4aefa1edd"
+    },
+    {
+      "file": "independent/default-packages.json",
+      "bytes": 2273,
+      "sha256": "205d755c11dfea7b19b9afd56ecce153c7a0791cd317c36f72a3a940ae2169d2"
+    },
+    {
+      "file": "independent/logs/default-package-low2.log",
+      "bytes": 23332,
+      "sha256": "161bed6ba711a4036b076670f2e3f39714d12275fc90a6d4fe6cc532bfd2edc9"
+    },
+    {
+      "file": "independent/logs/default-package.log",
+      "bytes": 22028,
+      "sha256": "6e2d1702f9421fd2d87886eb5df703863c3f940ad6481019966ee371242200b6"
+    },
+    {
+      "file": "independent/logs/full-suite.log",
+      "bytes": 16601,
+      "sha256": "e0bbbe108d15c206914db56d1875eb7e6626b86129d5850cd2fe636d9fc52657"
+    },
+    {
+      "file": "independent/logs/independent_net10.0_20261008053952.trx",
+      "bytes": 8883,
+      "sha256": "d176c641cc03e856ea3e0a9659e2305e27b71ba52482a4217ca590e79050e3db"
+    },
+    {
+      "file": "independent/logs/independent_net10.0_20261008053954.trx",
+      "bytes": 408163,
+      "sha256": "7ae9c472cd81f31af284824bb848440aebf741e1dee0da447815cd54509300fe"
+    },
+    {
+      "file": "independent/logs/independent_net10.0_20261008053958.trx",
+      "bytes": 144732,
+      "sha256": "e568eccc725c5e41a81bd16df2545bc717033f10c09043a5efd4ced40a5844c8"
+    },
+    {
+      "file": "independent/logs/independent_net10.0_20261008053959.trx",
+      "bytes": 7537,
+      "sha256": "2082ea737bf953abf0f3efc0470420cad04b0a8795d3ae5110ed92e84414d434"
+    },
+    {
+      "file": "independent/logs/independent_net10.0_20261008054013.trx",
+      "bytes": 79051,
+      "sha256": "8f3456359809b59802a45f6c0d6430a0de36d3282f07c50a2eaf5d6d0ca30662"
+    },
+    {
+      "file": "independent/logs/independent_net10.0_20261008054015.trx",
+      "bytes": 22031,
+      "sha256": "0669ca0f8cdfb309e212c3952236f6d2086c92415473a8c0067c1c18701b1fad"
+    },
+    {
+      "file": "independent/logs/independent_net10.0_20261008054016.trx",
+      "bytes": 32998,
+      "sha256": "93c22c9c922a598b792b31b0c5fe0cc6d8b9ea9659580d8e8d09eb696231aa41"
+    },
+    {
+      "file": "independent/logs/independent_net10.0_20261008054019.trx",
+      "bytes": 23380,
+      "sha256": "0c8e06f6a7314546cd6af29127091cb1bb04acd1d8778888141ef76da8892296"
+    },
+    {
+      "file": "independent/logs/skia-package-low2.log",
+      "bytes": 5224,
+      "sha256": "c0e868da665b70a8280b641c83ef625f56f0e6165379c18a9ee724b35813fd86"
+    },
+    {
+      "file": "independent/logs/skia-package.log",
+      "bytes": 4812,
+      "sha256": "4d6e31fbc18ee558ff535c602bfc1495895022ca8c263f9932fe0a8ecca25e5b"
+    },
+    {
+      "file": "independent/optional-packages.json",
+      "bytes": 4936,
+      "sha256": "72aad066add704d0a328d4da0f93f573b10299e79ef474345d4b26568706fb24"
+    },
+    {
+      "file": "independent/sample-report.json",
+      "bytes": 2636,
+      "sha256": "998397f7c6ba5cf4a82bb6410eb8874cfc06e3c39306f6b6fc9421a5b4708431"
+    },
+    {
+      "file": "independent/verification.json",
+      "bytes": 3458,
+      "sha256": "7f1203ab1631683ca8f308a0cb3618183422bb0688408d7b06a424d36598d76f"
+    },
+    {
+      "file": "licenses/Noto-OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "file": "licenses/skia-native-LICENSE.txt",
+      "bytes": 1129,
+      "sha256": "89101e35a8c66fd4d6dffc1763259161d35cb564c169714ec227a768c89f2938"
+    },
+    {
+      "file": "licenses/skia-native-THIRD-PARTY-NOTICES.txt",
+      "bytes": 139775,
+      "sha256": "21504c46c4c58aa64c1055bd2dcbc5f9a136b4b8c412ed3cc6740e22c5b127f5"
+    },
+    {
+      "file": "logs/default-package-r1.log",
+      "bytes": 15293,
+      "sha256": "36daf470db7c5a65c18239b9b3a19f8c08704bc8cd1f3bc15e57b09c1d443aae"
+    },
+    {
+      "file": "logs/default-package-r2.log",
+      "bytes": 15798,
+      "sha256": "31ae2160573ec98a282b6a333bf1ae80c59517f0380326472c89b1759051de7d"
+    },
+    {
+      "file": "logs/full-suite-frozen.log",
+      "bytes": 9242,
+      "sha256": "e2ca13d167c577fd00356d4ed12cf05a0ce71778c15a6b114fbb0bbcbf893b69"
+    },
+    {
+      "file": "logs/graphics-regression-r2.log",
+      "bytes": 3876,
+      "sha256": "07fc51a725e51c476490b966e1da63a4c2f4de8b042d8a46f5473e0124efe4b1"
+    },
+    {
+      "file": "logs/optional-package-r1.log",
+      "bytes": 4312,
+      "sha256": "e65059e80caaaca8c854e1f5c222d07dd9f6c284d5ca1487dbda7f3cedbc0cd7"
+    },
+    {
+      "file": "logs/optional-package-r2.log",
+      "bytes": 4654,
+      "sha256": "bab1331ecf200f51eb7eeff213cadf6d6af0a840589831bf1c1060010d922da4"
+    },
+    {
+      "file": "logs/python-tests.log",
+      "bytes": 750,
+      "sha256": "2c3861f7fe2eadef902413406e997c743bab724bc2fcedb375b04e4e283883e3"
+    },
+    {
+      "file": "logs/trx/_wanghongyideMacBook-Pro_2026-10-08_05_38_20_net10.0.trx",
+      "bytes": 8543,
+      "sha256": "1791a6780f6488c2aa39d59d1286941ef22f53993c151d4edd7e186d86590616"
+    },
+    {
+      "file": "logs/trx/_wanghongyideMacBook-Pro_2026-10-08_05_38_21_net10.0.trx",
+      "bytes": 391163,
+      "sha256": "11cdd4794ec5c7d113079a0dc316404767ec06b3341d69cfb81aca651ec39a0f"
+    },
+    {
+      "file": "logs/trx/_wanghongyideMacBook-Pro_2026-10-08_05_38_22_net10.0.trx",
+      "bytes": 138748,
+      "sha256": "9693cf5062abe4d4f60fdf3f9390b7c31add278dd7a99f2484290f10f7fc5b07"
+    },
+    {
+      "file": "logs/trx/_wanghongyideMacBook-Pro_2026-10-08_05_38_24_net10.0.trx",
+      "bytes": 7265,
+      "sha256": "346806084f0e0a804f2d8118ea3b3033e81a017b520e8231c89f201748f6043a"
+    },
+    {
+      "file": "logs/trx/_wanghongyideMacBook-Pro_2026-10-08_05_38_25_net10.0.trx",
+      "bytes": 75719,
+      "sha256": "acdbf1d708e430ffbe3db6637497f7408f8a741c0041f3ef5cfa80cee5ebf13f"
+    },
+    {
+      "file": "logs/trx/_wanghongyideMacBook-Pro_2026-10-08_05_38_35_net10.0.trx",
+      "bytes": 21147,
+      "sha256": "506372e9961d5bc7d3f4f22b3f971cbf9b78a59ccc3ebbf6ca43e6595de5224b"
+    },
+    {
+      "file": "logs/trx/_wanghongyideMacBook-Pro_2026-10-08_05_38_35_net10.0[1].trx",
+      "bytes": 31638,
+      "sha256": "36701fd04935fb28f641b47d48e0e1de85050afe365bdca90edd6938720a01eb"
+    },
+    {
+      "file": "logs/trx/_wanghongyideMacBook-Pro_2026-10-08_05_38_37_net10.0.trx",
+      "bytes": 22428,
+      "sha256": "47ab4ac3b842a0196f5fcd30895c7243e0b19de07ea7d6febdfd28f78b03f2da"
+    },
+    {
+      "file": "packages/primary-consumer.assets.json",
+      "bytes": 56066,
+      "sha256": "b4a40858d639118e2adfc501a68afd340f78a44b237d31ffd73c779d080a022c"
+    },
+    {
+      "file": "packages/primary-default.json",
+      "bytes": 2249,
+      "sha256": "f4d93e3551a9e17cccdd0ebe7c607612580773ca3af4525dc3477b920642b5cc"
+    },
+    {
+      "file": "packages/primary-optional.json",
+      "bytes": 4910,
+      "sha256": "5298034bdc3f06cdcedf5685c8e8f1555151e471587df4f8fc0541452caea26c"
+    },
+    {
+      "file": "probe/Probe.csproj",
+      "bytes": 264,
+      "sha256": "22ac8df248be085047ac2e8fef3d8388e65b97697270e677dd3131fba9298b64"
+    },
+    {
+      "file": "probe/Program.cs",
+      "bytes": 1826,
+      "sha256": "b45016eb46df9fa20674ca753628d975b41cee6d4a1f833a2376d224bf2b9c83"
+    },
+    {
+      "file": "regression/baseline-default-1.svg",
+      "bytes": 28897180,
+      "sha256": "92f7327a710672e91467a427c4ca0b1f3359615a507a555a5933cd9c9521db05"
+    },
+    {
+      "file": "regression/baseline-default-2.svg",
+      "bytes": 28883183,
+      "sha256": "ad6e256cbb7114d5c92dcf92783ba4697cf0dffc668cce5a7e8a3d7eaaa32765"
+    },
+    {
+      "file": "regression/baseline-default.ofd",
+      "bytes": 11602908,
+      "sha256": "cf64a5a9ee1a75682040f16f4a20bdc0bad2bad9cd5035822e3228177f3bb984"
+    },
+    {
+      "file": "regression/baseline-default.pdf",
+      "bytes": 117021,
+      "sha256": "53715a6ad7b41fe937fb7ff1abe0db5eb2fdac81cc3ca3609b390c145f7e4ed8"
+    },
+    {
+      "file": "regression/baseline-default.pdf.txt",
+      "bytes": 418,
+      "sha256": "dd43ce81861149b6260100d911c6d2e61be9d27b49716dd6e99ab2320abdd3ce"
+    },
+    {
+      "file": "regression/baseline-default.txt",
+      "bytes": 414,
+      "sha256": "f7d0b5f4ca0117c9787883686e5a045f172997a41a3f40a8aed37bc3f1add031"
+    },
+    {
+      "file": "regression/baseline-native-1.svg",
+      "bytes": 28897180,
+      "sha256": "92f7327a710672e91467a427c4ca0b1f3359615a507a555a5933cd9c9521db05"
+    },
+    {
+      "file": "regression/baseline-native-2.svg",
+      "bytes": 28883183,
+      "sha256": "ad6e256cbb7114d5c92dcf92783ba4697cf0dffc668cce5a7e8a3d7eaaa32765"
+    },
+    {
+      "file": "regression/baseline-native.ofd",
+      "bytes": 11602908,
+      "sha256": "7bab21f406cac1f1a9670c563d617e7df6d0163aba6d398f931b6dee95546aa2"
+    },
+    {
+      "file": "regression/baseline-native.pdf",
+      "bytes": 117021,
+      "sha256": "fbcd8a84aed7fd07f022f423f1e1da46935528ced866a5acd73b6d1f6fcc384f"
+    },
+    {
+      "file": "regression/baseline-native.pdf.txt",
+      "bytes": 418,
+      "sha256": "dd43ce81861149b6260100d911c6d2e61be9d27b49716dd6e99ab2320abdd3ce"
+    },
+    {
+      "file": "regression/baseline-native.txt",
+      "bytes": 414,
+      "sha256": "f7d0b5f4ca0117c9787883686e5a045f172997a41a3f40a8aed37bc3f1add031"
+    },
+    {
+      "file": "regression/fontconfig.xml",
+      "bytes": 225,
+      "sha256": "ee3ddfc22f8435eef4010dbc9ce7de007cd050dcd4271a5bc9ab0b6d37ecd01f"
+    },
+    {
+      "file": "regression/fonts/Ofdrw-CI-Noto-OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "file": "regression/fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+      "bytes": 21659544,
+      "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    {
+      "file": "regression/graphics-1.svg",
+      "bytes": 28888364,
+      "sha256": "c061aef081f1a38336f295a1e66376420fb0e4cef74b0cc41748a70ecff546da"
+    },
+    {
+      "file": "regression/graphics-2.svg",
+      "bytes": 28885391,
+      "sha256": "ae101aa7ee117f45e6cb5d540bd9fd0d34fbfe3e7065b82a5ac382e9c32c05c6"
+    },
+    {
+      "file": "regression/graphics-fractional-clip-1.svg",
+      "bytes": 28881535,
+      "sha256": "83df76b9135637e99b8a9e15212b280a78bd5e9a8c58c74e945773c2f14a9d4d"
+    },
+    {
+      "file": "regression/graphics-fractional-clip.ofd",
+      "bytes": 11600386,
+      "sha256": "07d794df5cf747b740ef241367406c5e8ed082ed4a5a88e1f6ab596bfe9cd3ec"
+    },
+    {
+      "file": "regression/graphics-fractional-clip.pdf",
+      "bytes": 67325,
+      "sha256": "d81b4c6899c0fa85adc0d33423ff0c3e7cb58aeaf4eea0acf275b3a2bbba4ab7"
+    },
+    {
+      "file": "regression/graphics-fractional-clip.pdf.txt",
+      "bytes": 158,
+      "sha256": "0cece345103a20fb2e4c0ebd9888c2f74f1d633d73315f979c7221b40eeb5581"
+    },
+    {
+      "file": "regression/graphics-fractional-clip.txt",
+      "bytes": 155,
+      "sha256": "ac142a18924241578d60add25762ad8de37f89914d6304a2312bfad25bf10322"
+    },
+    {
+      "file": "regression/graphics-name-only-1.svg",
+      "bytes": 3660,
+      "sha256": "6d9dab3706ff19ef54f2cb9804246c6abcd748cc8c227874926014cb3e985696"
+    },
+    {
+      "file": "regression/graphics-name-only.ofd",
+      "bytes": 2141,
+      "sha256": "8441e870b9f658e678dce2ed989dedb370065f07fe1b0215c48b8efe70ef3c06"
+    },
+    {
+      "file": "regression/graphics-name-only.pdf",
+      "bytes": 68550,
+      "sha256": "5c83c3818802dff272bc2a77eda33436de592cf2f0006c81669c6151e67301e0"
+    },
+    {
+      "file": "regression/graphics-name-only.pdf.txt",
+      "bytes": 248,
+      "sha256": "6396e8f0097a703300ff39ce6ecec902e8d36e2631de88100862d8a4490f915a"
+    },
+    {
+      "file": "regression/graphics-name-only.txt",
+      "bytes": 241,
+      "sha256": "d4b5f357128363d50f907eef688dc51bc99a6ea8b4aa0b7e9176c5c8deef3a42"
+    },
+    {
+      "file": "regression/graphics-roundtrip-1.svg",
+      "bytes": 28888364,
+      "sha256": "c061aef081f1a38336f295a1e66376420fb0e4cef74b0cc41748a70ecff546da"
+    },
+    {
+      "file": "regression/graphics-roundtrip-2.svg",
+      "bytes": 28885391,
+      "sha256": "ae101aa7ee117f45e6cb5d540bd9fd0d34fbfe3e7065b82a5ac382e9c32c05c6"
+    },
+    {
+      "file": "regression/graphics-roundtrip.ofd",
+      "bytes": 11602600,
+      "sha256": "42453ff4092b5ecac8ff62afff36c1e33efe8e36aa9bfd8d0ebfced96c677bd9"
+    },
+    {
+      "file": "regression/graphics-roundtrip.pdf",
+      "bytes": 124031,
+      "sha256": "ea6e6b2f4eea678439a1d590a8aff08abc5d158b11bd04b43116b4de89d26c8b"
+    },
+    {
+      "file": "regression/graphics-roundtrip.pdf.txt",
+      "bytes": 649,
+      "sha256": "0b9f2b87ed447d16b28121d971b69a7d99290ed4c5c8f5e608ad159c62c0632c"
+    },
+    {
+      "file": "regression/graphics-roundtrip.txt",
+      "bytes": 620,
+      "sha256": "2b3201118f05814b5f57f5ca0d07aaf4d078a35d606c223472e9e13aea8e7844"
+    },
+    {
+      "file": "regression/graphics.ofd",
+      "bytes": 11602589,
+      "sha256": "d02139e10a7efb9510898cd84e0c6d59e2e11084ae9948670b28f9fae955668a"
+    },
+    {
+      "file": "regression/graphics.pdf",
+      "bytes": 124031,
+      "sha256": "307c0e331d32a411eb3e3652cc83c772398735baa8597de721f2d6c29546e633"
+    },
+    {
+      "file": "regression/graphics.pdf.txt",
+      "bytes": 649,
+      "sha256": "0b9f2b87ed447d16b28121d971b69a7d99290ed4c5c8f5e608ad159c62c0632c"
+    },
+    {
+      "file": "regression/graphics.txt",
+      "bytes": 620,
+      "sha256": "2b3201118f05814b5f57f5ca0d07aaf4d078a35d606c223472e9e13aea8e7844"
+    },
+    {
+      "file": "regression/licensed-layout.docx",
+      "bytes": 3434,
+      "sha256": "9d5fd3303499762e551598722250b76c5fa48e1f0db890c856d34559eae01d53"
+    },
+    {
+      "file": "regression/manifest.json",
+      "bytes": 9966,
+      "sha256": "999b24d7cb05d9935addcd953dc6b05f5aa8280fa378f719dcea33cea62330f4"
+    },
+    {
+      "file": "regression/pages/baseline-default-1.png",
+      "bytes": 48096,
+      "sha256": "fa0a3d8b72044e9e3ce36ca9dc8aae0809e4ed124354f92ab0764f30e5b985ae"
+    },
+    {
+      "file": "regression/pages/baseline-default-2.png",
+      "bytes": 23058,
+      "sha256": "6a1006f10f723c72c0434f9bad859b3d8e138b5e5daa8d026044aeb08816cfd8"
+    },
+    {
+      "file": "regression/pages/baseline-default-svg-1.png",
+      "bytes": 38526,
+      "sha256": "e2d77ebc090b1d16fde55187f98d9d3740b22c6920f91a3373d77e7273326c34"
+    },
+    {
+      "file": "regression/pages/baseline-default-svg-2.png",
+      "bytes": 18601,
+      "sha256": "60e68ed552aa304edd984af85b06b984d271a890a7329616265c3567de215a44"
+    },
+    {
+      "file": "regression/pages/baseline-native-1.png",
+      "bytes": 48096,
+      "sha256": "fa0a3d8b72044e9e3ce36ca9dc8aae0809e4ed124354f92ab0764f30e5b985ae"
+    },
+    {
+      "file": "regression/pages/baseline-native-2.png",
+      "bytes": 23058,
+      "sha256": "6a1006f10f723c72c0434f9bad859b3d8e138b5e5daa8d026044aeb08816cfd8"
+    },
+    {
+      "file": "regression/pages/baseline-native-svg-1.png",
+      "bytes": 38526,
+      "sha256": "e2d77ebc090b1d16fde55187f98d9d3740b22c6920f91a3373d77e7273326c34"
+    },
+    {
+      "file": "regression/pages/baseline-native-svg-2.png",
+      "bytes": 18601,
+      "sha256": "60e68ed552aa304edd984af85b06b984d271a890a7329616265c3567de215a44"
+    },
+    {
+      "file": "regression/pages/graphics-1.png",
+      "bytes": 53200,
+      "sha256": "501c1f992f0b950971e063559ebcfd2236d6c0d2e3b0703bbb78f4021d80ba53"
+    },
+    {
+      "file": "regression/pages/graphics-2.png",
+      "bytes": 44032,
+      "sha256": "1c030ae9451b53fa74f6f3d890c0361de15e4fc791b62001298acc9a8eb1edee"
+    },
+    {
+      "file": "regression/pages/graphics-fractional-clip-1.png",
+      "bytes": 16818,
+      "sha256": "a44e35fa015559493dd7377b4d0ee47f411b860a11eb77e6cec04136ec7ccb3a"
+    },
+    {
+      "file": "regression/pages/graphics-fractional-clip-svg-1.png",
+      "bytes": 23426,
+      "sha256": "bb85c52920d319c2f8f681d383a8bfa5d15197d98cdfd92535e32f23986e8098"
+    },
+    {
+      "file": "regression/pages/graphics-name-only-1.png",
+      "bytes": 39941,
+      "sha256": "aae9c08abbce341338ab7d6b7808cfeb4e2e3ae414066cb6933e6a0adc34fa46"
+    },
+    {
+      "file": "regression/pages/graphics-name-only-svg-1.png",
+      "bytes": 52255,
+      "sha256": "7de1b233dba02c8e3803e621370cfe2d03566be377b6ef4864d8d9e7885a8d25"
+    },
+    {
+      "file": "regression/pages/graphics-roundtrip-1.png",
+      "bytes": 53200,
+      "sha256": "501c1f992f0b950971e063559ebcfd2236d6c0d2e3b0703bbb78f4021d80ba53"
+    },
+    {
+      "file": "regression/pages/graphics-roundtrip-2.png",
+      "bytes": 44032,
+      "sha256": "1c030ae9451b53fa74f6f3d890c0361de15e4fc791b62001298acc9a8eb1edee"
+    },
+    {
+      "file": "regression/pages/graphics-roundtrip-svg-1.png",
+      "bytes": 69784,
+      "sha256": "5d85cd26f2356ee94627d5293eda44e48b93daf4b32205286615b714488dd195"
+    },
+    {
+      "file": "regression/pages/graphics-roundtrip-svg-2.png",
+      "bytes": 56793,
+      "sha256": "1a7f1a827007eea5940b1390cb679263e63e785446ef4594f2d07a7d7acaa58a"
+    },
+    {
+      "file": "regression/pages/graphics-svg-1.png",
+      "bytes": 69784,
+      "sha256": "5d85cd26f2356ee94627d5293eda44e48b93daf4b32205286615b714488dd195"
+    },
+    {
+      "file": "regression/pages/graphics-svg-2.png",
+      "bytes": 56793,
+      "sha256": "1a7f1a827007eea5940b1390cb679263e63e785446ef4594f2d07a7d7acaa58a"
+    }
+  ]
+}

@@ -22,7 +22,7 @@
 
 ## 失败、容量与原子性
 
-8-bit sRGB 固色 SrcOver only；shader/color-filter/image-filter/mask-filter/path-effect、其它 blend、hairline、非 butt cap/miter join/miter=10、text stroke、透视/奇异矩阵以及范围外操作明确失败。Skia 默认 miter=4，任意 path stroke producer 必须显式设置 10。直线没有 join，任意正 miter 无差异；矩形只在 miter≥sqrt(2) 时放行（包含默认 4），保证直角不会 bevel。没有扩大 04 API。既不静默忽略，也不隐式整页栅格化。
+8-bit sRGB 固色 SrcOver only；shader/color-filter/image-filter/mask-filter/path-effect、其它 blend、hairline、非 butt cap/miter join、任意 path 的非 10 miter、text stroke、透视/奇异矩阵以及范围外操作明确失败。Skia 默认 miter=4，任意 path stroke producer 必须显式设置 10。直线没有 join，任意正 miter 无差异；矩形只在 miter≥sqrt(2) 时放行（包含默认 4），保证直角不会 bevel。没有扩大 04 API。既不静默忽略，也不隐式整页栅格化。
 
 事件入口在复制路径/文字前检查限额、finite 和不支持项；Append 受事件、原生图元、路径、文字、几何限额及取消约束。先在临时 page 通过现有 OfdGraphics 全量预演；全部成功后按序追加。晚期坏资源/超限/取消均不得更改目标页、字体或既有对象。不拥有 package/page；单线程，调用方不得并发修改资源。
 
