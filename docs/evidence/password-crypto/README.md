@@ -1,5 +1,7 @@
 # 11 票：私有口令 profile 验收证据
 
+**最新状态：[review2](review2/README.md)**。首轮Codex/Cursor有效问题已修补，54专项/454全套/8 Python、真实默认11 feed与可选三包及Low独立消费通过；本轮重生PDF Preview仅4/12，Mac锁定后8恢复页/窗口清理待手动解锁，尚不闭环。下面为保留的初始与review1历史证据。
+
 基线 `df71c7f`，独立分支 `codex/gmt0099-password-crypto`，PR base 为 `codex/document-tools`。
 本票仅交付 `Ofdrw.Net.Crypto.Password` net8.0 可选包，使用 BouncyCastle.Cryptography
 2.6.2 MIT；固定上游 `5fe9c4276c64e40b455e6ea649b695adf8a9a734`。

@@ -66,7 +66,19 @@ jobs:
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal
 
       - name: Pack SDK packages
-        run: dotnet pack Ofdrw.Net.sln -c Release --no-build --no-restore -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }} --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+        shell: bash
+        run: |
+          DEFAULT_PRODUCT_LIST="$(mktemp)"
+          trap 'rm -f "$DEFAULT_PRODUCT_LIST"' EXIT
+          python3 - scripts > "$DEFAULT_PRODUCT_LIST" <<'PY_PACKAGES'
+          import sys
+          sys.path.insert(0, sys.argv[1])
+          from importlib import import_module
+          print('\n'.join(import_module('verify-package-artifacts').PACKAGES))
+          PY_PACKAGES
+          while IFS= read -r product; do
+            dotnet pack "src/$product/$product.csproj" -c Release --no-build --no-restore -o artifacts/nuget -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }} --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+          done < "$DEFAULT_PRODUCT_LIST"
 
       - name: Consume the exact release artifacts
         run: ./scripts/run-converter-package-e2e.sh "${{ env.PACKAGE_VERSION }}" --consume-only --packages-dir artifacts/nuget --output-dir artifacts/release-validation

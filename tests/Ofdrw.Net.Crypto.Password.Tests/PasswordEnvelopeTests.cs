@@ -281,6 +281,78 @@ public sealed class PasswordEnvelopeTests
         finally { Directory.Delete(directory, true); }
     }
 
+    [Fact]
+    public void InvalidPathDisposesAllLoadedPlaintextIncludingLaterEntries()
+    {
+        var before = new byte[] { 1, 2, 3 }; var invalid = new byte[] { 4, 5 }; var after = new byte[] { 6, 7, 8 };
+        var entries = new Dictionary<string, byte[]> { ["before.bin"] = before, ["bad/./path.bin"] = invalid, ["after.bin"] = after };
+        Assert.Throws<InvalidDataException>(() =>
+        {
+            using var owner = new OwnedBuffers();
+            OfdPasswordEnvelope.AdoptAndValidateEntries(entries, owner);
+        });
+        foreach (var bytes in new[] { before, invalid, after }) Assert.All(bytes, value => Assert.Equal(0, value));
+        var normal = new byte[] { 9, 10 };
+        using (var owner = new OwnedBuffers())
+        {
+            OfdPasswordEnvelope.AdoptAndValidateEntries(new() { ["normal.bin"] = normal }, owner);
+            Assert.Equal(new byte[] { 9, 10 }, normal);
+        }
+        Assert.Equal(new byte[] { 0, 0 }, normal);
+    }
+
+    [Fact]
+    public async Task EncryptionRejectsOutputBeyondItsOwnInputBudgetAndPreservesFiles()
+    {
+        var source = Zip(Fixture(), CompressionLevel.Optimal);
+        var options = Selection(); options.LoadOptions.MaxInputBytes = source.Length; options.MaxOutputBytes = 100_000;
+        using (var input = new MemoryStream(source))
+            await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptAsync(input, Password, options));
+        var directory = TempDirectory();
+        try
+        {
+            var input = Path.Combine(directory, "source.ofd"); var output = Path.Combine(directory, "result.ofd");
+            await File.WriteAllBytesAsync(input, source); var sentinel = new byte[] { 11, 12, 13 };
+            await File.WriteAllBytesAsync(output, sentinel);
+            await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptFileAsync(input, output, Password, options));
+            Assert.Equal(sentinel, await File.ReadAllBytesAsync(output));
+            File.Delete(output);
+            await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptFileAsync(input, output, Password, options));
+            Assert.False(File.Exists(output)); Assert.Empty(Directory.GetFiles(directory, ".ofd-password-*.tmp"));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task CompleteZipBoundaryIncludesCentralDirectoryAndReloadsWithSameOptions()
+    {
+        var first = await EncryptFixture();
+        var exact = Selection(); exact.LoadOptions.MaxInputBytes = first.Length; exact.MaxOutputBytes = first.Length;
+        using var source = new MemoryStream(Zip(Fixture()));
+        var encrypted = await OfdPasswordEnvelope.EncryptAsync(source, Password, exact);
+        Assert.Equal(first.Length, encrypted.Length);
+        using var input = new MemoryStream(encrypted);
+        AssertEntries(Fixture(), Unzip(await OfdPasswordEnvelope.DecryptAsync(input, Password, exact)));
+        exact.LoadOptions.MaxInputBytes--;
+        using var tooSmall = new MemoryStream(Zip(Fixture()));
+        await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptAsync(tooSmall, Password, exact));
+        exact.LoadOptions.MaxInputBytes++; exact.MaxOutputBytes--;
+        using var tooSmallOutput = new MemoryStream(Zip(Fixture()));
+        await Assert.ThrowsAsync<InvalidDataException>(() => OfdPasswordEnvelope.EncryptAsync(tooSmallOutput, Password, exact));
+    }
+
+    [Theory]
+    [InlineData(0.9)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public async Task UnreloadableCompressionRatioConfigurationFailsBeforeReading(double ratio)
+    {
+        var options = Selection(); options.LoadOptions.MaxCompressionRatio = ratio;
+        using var input = new MemoryStream(Zip(Fixture()));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => OfdPasswordEnvelope.EncryptAsync(input, Password, options));
+        Assert.Equal(0, input.Position);
+    }
+
     private static OfdPasswordOptions Selection() => new() { PageIndices = { 1 } };
     private static async Task<byte[]> EncryptFixture()
     {
@@ -300,12 +372,12 @@ public sealed class PasswordEnvelopeTests
         [Page1] = Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("第二页 proportional text ABC 0123456789; ", 10))),
         ["custom/unknown.bin"] = [0, 1, 2, 255], ["empty.bin"] = []
     };
-    private static byte[] Zip(Dictionary<string, byte[]> entries)
+    private static byte[] Zip(Dictionary<string, byte[]> entries, CompressionLevel compression = CompressionLevel.NoCompression)
     {
         using var output = new MemoryStream();
         using (var zip = new ZipArchive(output, ZipArchiveMode.Create, true)) foreach (var entry in entries)
         {
-            using var stream = zip.CreateEntry(entry.Key, CompressionLevel.NoCompression).Open(); stream.Write(entry.Value);
+            using var stream = zip.CreateEntry(entry.Key, compression).Open(); stream.Write(entry.Value);
         }
         return output.ToArray();
     }

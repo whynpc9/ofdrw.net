@@ -46,14 +46,13 @@ public static class OfdPasswordEnvelope
         var settings = new Settings(options);
         token.ThrowIfCancellationRequested();
         var kek = PasswordPrimitives.PasswordKey(password);
-        var owned = new List<byte[]>();
+        var owned = new OwnedBuffers();
         Dictionary<string, byte[]>? entries = null;
         try
         {
             var archive = await new OfdPackageLoader().LoadAsync(source, settings.Load, token).ConfigureAwait(false);
             entries = archive.EntryNames.ToDictionary(path => path, archive.GetBytes, StringComparer.OrdinalIgnoreCase);
-            foreach (var path in entries.Keys) Canonical(path);
-            owned.AddRange(entries.Values);
+            AdoptAndValidateEntries(entries, owned);
             if (encrypt) Encrypt(entries, kek, settings, owned, token);
             else Decrypt(entries, kek, settings, owned, token);
             token.ThrowIfCancellationRequested();
@@ -62,11 +61,19 @@ public static class OfdPasswordEnvelope
         finally
         {
             CryptographicOperations.ZeroMemory(kek);
-            foreach (var bytes in owned) CryptographicOperations.ZeroMemory(bytes);
+            owned.Dispose();
         }
     }
 
-    private static void Encrypt(Dictionary<string, byte[]> entries, byte[] kek, Settings settings, List<byte[]> owned, CancellationToken token)
+    internal static void AdoptAndValidateEntries(Dictionary<string, byte[]> entries, OwnedBuffers owned)
+    {
+        // Register the entire collection before any path can reject it. A later
+        // invalid name must not strand earlier or subsequent plaintext arrays.
+        owned.AddRange(entries.Values);
+        foreach (var path in entries.Keys) Canonical(path);
+    }
+
+    private static void Encrypt(Dictionary<string, byte[]> entries, byte[] kek, Settings settings, OwnedBuffers owned, CancellationToken token)
     {
         if (entries.Keys.Any(Reserved)) throw new InvalidDataException("Input already contains encryption metadata or a reserved PasswordCrypto path.");
         var root = ValidateDocument(entries, settings);
@@ -112,7 +119,7 @@ public static class OfdPasswordEnvelope
         CheckExpanded(entries, settings);
     }
 
-    private static void Decrypt(Dictionary<string, byte[]> entries, byte[] kek, Settings settings, List<byte[]> owned, CancellationToken token)
+    private static void Decrypt(Dictionary<string, byte[]> entries, byte[] kek, Settings settings, OwnedBuffers owned, CancellationToken token)
     {
         var envelope = Parse(Get(entries, EnvelopePath), settings);
         Require(envelope.Name == Ns + "Encryptions" && (string?)envelope.Attribute(Profile + "Version") == "1", "Unsupported password profile.");
@@ -336,7 +343,7 @@ public static class OfdPasswordEnvelope
 
     private static async Task<byte[]> Pack(Dictionary<string, byte[]> entries, Settings settings, CancellationToken token)
     {
-        using var output = new BoundedMemoryStream(settings.Output);
+        using var output = new BoundedMemoryStream(Math.Min(settings.Output, settings.Load.MaxInputBytes));
         try
         {
             using (var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
@@ -409,6 +416,8 @@ public static class OfdPasswordEnvelope
                 options.MaxMetadataBytes > 16 * 1024 * 1024 || string.IsNullOrWhiteSpace(options.UserName) || options.UserName.Length > 256)
                 throw new ArgumentOutOfRangeException(nameof(options), "Invalid password profile budgets or user name.");
             var input = options.LoadOptions;
+            if (input.MaxCompressionRatio < 1 || double.IsNaN(input.MaxCompressionRatio) || double.IsInfinity(input.MaxCompressionRatio))
+                throw new ArgumentOutOfRangeException(nameof(options), "This uncompressed password profile requires a finite compression ratio budget of at least 1.");
             Load = new OfdPackageLoadOptions
             {
                 MaxInputBytes = input.MaxInputBytes, MaxEntryCount = input.MaxEntryCount, MaxPageCount = input.MaxPageCount,
