@@ -1,0 +1,539 @@
+{
+  "source_head": "cf4454f05d425a0443af0d3b55c4978274544569",
+  "queue": "docs/evidence/font-subset/preview-queue-r21.json",
+  "lease": "released after all 17 task PDF windows closed",
+  "viewing_chain": "this-run OFD -> OfdToPdfConverter -> exact frozen PDF -> macOS Preview",
+  "records": [
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r19/filler-space.pdf",
+      "pages": 1,
+      "sha256": "9d0ed99868f3084157277c2e34c5beaa85e311817fd6d3c572a53dbb88aa7cd3",
+      "bytes": 12082,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r17/filler-space.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "controls/r19/filler-space.pdf",
+      "expected": "A B, mapped filler retains space width",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "A and B complete, mapped space width intact, no boxes or overlap"
+        }
+      ],
+      "checked_at": "2026-10-07T14:33:09.310Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/01-page1.png",
+          "sha256": "c837594bd9f4cd1251f37e6e3ba09818848133ef173c88438a452e9f988454d5"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r19/filler-3164.pdf",
+      "pages": 1,
+      "sha256": "e4e76835c42e9680ee4eaf3209b79a7aa58da6a73d8d51d354000a01d55e54af",
+      "bytes": 12084,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r17/filler-3164.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "controls/r19/filler-3164.pdf",
+      "expected": "A B, mapped filler retains space width",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "A B matches space baseline; mapped U+3164 blank advance intact"
+        }
+      ],
+      "checked_at": "2026-10-07T14:33:33.659Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/02-page1.png",
+          "sha256": "7945623e7eb962cc32aaad419e77a185a0560729812f3951619fc6636f094721"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r19/filler-space-delta.pdf",
+      "pages": 1,
+      "sha256": "8d8615a199ce6689118f8d89a7f8b2c0e05c774f2a2547da6d2bdf82b1d196c5",
+      "bytes": 12102,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r17/filler-space-delta.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "controls/r19/filler-space-delta.pdf",
+      "expected": "A B, mapped filler retains space width",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "A B complete at explicit DeltaX positions; no clipping or overlap"
+        }
+      ],
+      "checked_at": "2026-10-07T14:33:44.295Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/03-page1.png",
+          "sha256": "d1bbd535fc3d1a54848c8a161b19550383d7b29f6baeac2e78ba072c7308badb"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r19/filler-3164-delta.pdf",
+      "pages": 1,
+      "sha256": "5887c15e296c8fe86c8a407b3848e810fc0cb2e2ce4a9618429e311e07d322bd",
+      "bytes": 12104,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r17/filler-3164-delta.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "controls/r19/filler-3164-delta.pdf",
+      "expected": "A B, mapped filler retains space width",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Matches explicit DeltaX space baseline: complete A B and identical gap"
+        }
+      ],
+      "checked_at": "2026-10-07T14:34:09.343Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/04-page1.png",
+          "sha256": "24b8b5cffdf074914e9b47f8680ad8ed2e3600e63355e24b719aca525a8b7a27"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/missing.pdf",
+      "pages": 1,
+      "sha256": "11ceebdaee5b027c8abe475ffdd60a4fa8502200456de9691da5b1856a8f6c2e",
+      "bytes": 12811,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/missing.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/missing.pdf",
+      "expected": "AB, no missing filler box",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Bold AB intact, no missing filler box or extra advance"
+        }
+      ],
+      "checked_at": "2026-10-07T14:34:20.306Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/05-page1.png",
+          "sha256": "52fbdd970c79569d4912152da13ff35809d830f5579a5f0ecf897671df65f06e"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/mapped.pdf",
+      "pages": 1,
+      "sha256": "315ed242e4a9414a105532c8591dffcb9546af155ea69fe5f0b42f8ae036f473",
+      "bytes": 12827,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/mapped.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/mapped.pdf",
+      "expected": "A B, mapped filler retains space width",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Bold A B retains mapped blank advance; both glyphs complete"
+        }
+      ],
+      "checked_at": "2026-10-07T14:34:29.866Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/06-page1.png",
+          "sha256": "b3f217783046418b92f6567b98327a0672995886c62a8576db7f4309efcf3c0b"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/missing-fallback.pdf",
+      "pages": 1,
+      "sha256": "5dd6bb4736478efc904b79352109fedb0d78542a265d09f69eed69f59f430715",
+      "bytes": 48146,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/missing-fallback.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/missing-fallback.pdf",
+      "expected": "Chinese 一, complete covering glyph",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Chinese 一 complete, correct handwritten stroke, no tofu or clipping"
+        }
+      ],
+      "checked_at": "2026-10-07T14:34:39.641Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/07-page1.png",
+          "sha256": "771697875c7451823fdfd2a7194014b8aa3b0083467753217d3c37bfbef1fce2"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/missing-arial-null.pdf",
+      "pages": 1,
+      "sha256": "b062cfc413f3c94577ee1449bd5ff963f4c056094c361acf7b19a0ce36346288",
+      "bytes": 48146,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/missing-arial-null.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/missing-arial-null.pdf",
+      "expected": "Chinese 一, complete covering glyph",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Chinese 一 complete; matches configured covering fallback"
+        }
+      ],
+      "checked_at": "2026-10-07T14:34:48.926Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/08-page1.png",
+          "sha256": "99c320a0e99ddeb19dc07f0efa51aa5f989c0aa56412f2c679957415317c83a3"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/missing-arial-cmap.pdf",
+      "pages": 1,
+      "sha256": "bbb9031af587da37d9942f7d827b978b476402c0038e4308e63fb72bfb5230c8",
+      "bytes": 48146,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/missing-arial-cmap.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/missing-arial-cmap.pdf",
+      "expected": "Chinese 一, complete covering glyph",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Chinese 一 complete; no unsupported-cmap tofu"
+        }
+      ],
+      "checked_at": "2026-10-07T14:35:04.189Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/09-page1.png",
+          "sha256": "33bfb88f4f987600934b7f2163efbe84c0002b4ae7c1faa6f6cf08e26077783f"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/missing-default-ttc.pdf",
+      "pages": 1,
+      "sha256": "4c5352a516724737b386657626e91709e7f873b0f9b1586378e291c7e09b4711",
+      "bytes": 48148,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/missing-default-ttc.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/missing-default-ttc.pdf",
+      "expected": "Chinese 一, complete covering glyph",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "TTC fallback Chinese 一 complete and aligned"
+        }
+      ],
+      "checked_at": "2026-10-07T14:35:21.908Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/10-page1.png",
+          "sha256": "cebb97447a7850ba29ec3be26c90d8a1abae039f0a77db7af9a05e488f6c1ead"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r19/ligature.pdf",
+      "pages": 1,
+      "sha256": "7087149998d23e4d07124f9c0fe2a04f6dd4e8887a6aee2717da06aef720896b",
+      "bytes": 12480,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/controls/r17/ligature.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "controls/r19/ligature.pdf",
+      "expected": "office ffi, complete Latin glyphs and spacing",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "office ffi complete with proper spacing and nonempty f/f/i outlines"
+        }
+      ],
+      "checked_at": "2026-10-07T14:35:34.238Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/11-page1.png",
+          "sha256": "e7846ad0951320c298091ee6d3aa4c3a903cd63a9b589b9a277460086069cede"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/missing-arial-getter.pdf",
+      "pages": 1,
+      "sha256": "7478f34768123b16d2b6dfcad819892abe5ab7e6eb6f49a6f6f1e62a7a7cf4ac",
+      "bytes": 48146,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/missing-arial-getter.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/missing-arial-getter.pdf",
+      "expected": "Chinese 一, complete covering glyph",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Chinese 一 intact with getter failure covered by valid fallback"
+        }
+      ],
+      "checked_at": "2026-10-07T14:35:44.759Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/12-page1.png",
+          "sha256": "b12a81c408837e1b97794f0894294c501f937883deeb347f66334b0570c84e86"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/unicode-missingA-symboldefault.pdf",
+      "pages": 1,
+      "sha256": "a3ec111413f0a0c8e48d6af091f87ab5b84422123f3f0a8514f6b0678b00ba70",
+      "bytes": 48632,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/unicode-missingA-symboldefault.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/unicode-missingA-symboldefault.pdf",
+      "expected": "A, correct covering Unicode glyph",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Handwritten Unicode A has complete outline and crossbar, no symbol substitution"
+        }
+      ],
+      "checked_at": "2026-10-07T14:35:55.788Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/13-page1.png",
+          "sha256": "4a393c9f7c1c0c635d9c65c3ece8ea707e64bcb2caed539093e581a223928205"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/missing-plain-two.pdf",
+      "pages": 1,
+      "sha256": "424d2aeda13538eb6fa79c33c0c21fa614f7a39e21bc9c9180823c54040d3d0f",
+      "bytes": 58343,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/missing-plain-two.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/missing-plain-two.pdf",
+      "expected": "A then Chinese 一, both complete at separate vertical positions",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "A above 一 at intended separate vertical positions, both complete"
+        }
+      ],
+      "checked_at": "2026-10-07T14:36:05.342Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/14-page1.png",
+          "sha256": "1d9e1d19faaf0bcbfb86f05c07db092df3345fd4d68361535ff777b3710c8d12"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/missing-unbound-two.pdf",
+      "pages": 1,
+      "sha256": "8ae801fcf132512676ef0e1ccab29c798a19bb2a0b5945db6f6ed5398812b4e6",
+      "bytes": 58343,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/missing-unbound-two.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/missing-unbound-two.pdf",
+      "expected": "A then Chinese 一, both complete at separate vertical positions",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Unbound-font A and 一 intact in separate rows, matching regular-font counterpart"
+        }
+      ],
+      "checked_at": "2026-10-07T14:36:17.294Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/15-page1.png",
+          "sha256": "19bf51a621c487d154f4d2ba72a493074b6d50e66f13be53cbfb34f3ebc6e5fa"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r19/missing-named-face1.pdf",
+      "pages": 1,
+      "sha256": "bbe64ad0d77c68eae728cb8a20d2e2ed3dabcdab10b1876deb8068105dd245e0",
+      "bytes": 48146,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/nameonly/r17/missing-named-face1.pdf",
+      "oldPixelAE": [
+        "0 (0)"
+      ],
+      "evidence_path": "nameonly/r19/missing-named-face1.pdf",
+      "expected": "Chinese 一, complete covering glyph",
+      "pages_checked": [
+        1
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "Named TTC face1 Chinese 一 correct and complete"
+        }
+      ],
+      "checked_at": "2026-10-07T14:36:30.760Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/16-page1.png",
+          "sha256": "cce1e79008915f5043790395e4c8f9d895bf01a22ce7318d9b371ad882277653"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/filler-r19/out/four-fillers.pdf",
+      "pages": 2,
+      "sha256": "31805e6deb45e2db3e8bd95aae902d5468ff236f59ea5afed161781130705a66",
+      "bytes": 71195,
+      "oldPath": "/Users/wanghongyi/.codex/worktrees/302a/ofdrw.net/artifacts/issue05/independent/filler-r18/out/four-fillers.pdf",
+      "oldPixelAE": [
+        "0 (0)",
+        "0 (0)"
+      ],
+      "evidence_path": "filler-r19/out/four-fillers.pdf",
+      "expected": "all four fillers: AB/unmapped and A-space-B/mapped, equal corresponding advances; no missing glyphs, clipping or overlap",
+      "pages_checked": [
+        1,
+        2
+      ],
+      "status": "pass",
+      "findings": [
+        {
+          "page": 1,
+          "result": "pass",
+          "note": "All U+115F/U+1160/U+3164/U+FFA0 rows: baseline and unmapped AB equal, space and mapped A B equal; complete outlines, no overlap/clipping"
+        },
+        {
+          "page": 2,
+          "result": "pass",
+          "note": "All four positioned groups preserve corresponding baseline/unmapped and space/mapped advances; every A and B complete, no clipping, overlap, ghosting or extra page"
+        }
+      ],
+      "checked_at": "2026-10-07T14:37:11.788Z",
+      "screenshots": [
+        {
+          "path": "preview-final-20261007/17-page1.png",
+          "sha256": "83eec60ec9fa747efaefaedf66303895736ef9f22f0226723945227cb21ce666"
+        },
+        {
+          "path": "preview-final-20261007/17-page2.png",
+          "sha256": "8e8c8df721b95bd70087a20ba6857f91826d7a2b514e8b040bcb5550db559f95"
+        }
+      ]
+    }
+  ],
+  "overall_status": "pass",
+  "task_windows_closed": true,
+  "gui_predecessor_release": "04 latest commentary confirmed release; thread 01a0fd23-b1e5-7740-8763-3bfcb73dae0e, turn 01a0ff3f-0700-7f93-ac44-b675c0d294fd",
+  "actual_date": "2026-10-07",
+  "completed_at": "2026-10-07T14:37:13.408Z",
+  "scope_limit": "Only these exact frozen success artifacts and listed pages were visually accepted. Refused semantic controls remain negative tests with 0 output; historical ZWJ/ZWNJ/LRM/deprecated-control success PDFs are not final support claims.",
+  "preview_process_exit_verified": false,
+  "closure_note": "Each PDF window closed before opening its successor; final AX showed only Open panel, no PVDocumentWindow. Preview process exit was not verified and is not claimed.",
+  "queue_prepared_at_local": "2026-10-03T08:55:40.983500+08:00",
+  "session_record_date_local": "2026-10-07"
+}

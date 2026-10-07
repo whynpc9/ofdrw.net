@@ -1,0 +1,133 @@
+{
+  "baseline": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+  "branch": "codex/font-subset-reuse",
+  "pr_base": "codex/document-tools",
+  "environment": {
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "architecture": "arm64",
+    "dotnet": "10.0.401",
+    "timezone": "Asia/Shanghai"
+  },
+  "functional": {
+    "status": "pass",
+    "tests": 521,
+    "independent_focused": 72,
+    "packages": 11,
+    "package_version": "0.1.0-issue05.20261003.22",
+    "package_status": "pass",
+    "document_tools": {
+      "samples": 36,
+      "pdf_pages": 55,
+      "status": "pass",
+      "ci_failure": "First head failed when text was introduced into a previously empty subset; caller now rebinds source face / explicitly preserves full font for future opaque annotation injection."
+    },
+    "all_11_packages_contain_unicode_license": true,
+    "latest_independent_focused": 59,
+    "count_audit": "test-count-audit.json",
+    "project_counts": {
+      "Core": 5,
+      "Packaging": 309,
+      "PDF": 141,
+      "Signatures": 4,
+      "DOCX": 49,
+      "CLI": 13
+    },
+    "historical_count_correction": "Prior aggregate prose was +2; exact per-project source logs preserved and machine-summed in audit.",
+    "r18_package_evidence": "Product runtime unchanged from R17; same .19 immutable SDK packages already consumed. R18 modifies tests/evidence only."
+  },
+  "automated_render": {
+    "status": "pass",
+    "pdf_pages": 8,
+    "chromium_svg_pages": 8,
+    "poppler_stderr": "none",
+    "full_subset_pixels_equal": true,
+    "r11_package_eight_pages_equal_to_previous_preview_artifact_pixels": true
+  },
+  "png_visual": {
+    "status": "pass",
+    "pdf_checked": {
+      "full": [
+        1,
+        2
+      ],
+      "subset": [
+        1,
+        2
+      ],
+      "docx-native": [
+        1,
+        2
+      ],
+      "docx-default": [
+        1,
+        2
+      ]
+    },
+    "svg_chromium_checked": {
+      "subset": [
+        1,
+        2
+      ]
+    },
+    "finding": "Initial comparison fixture page-2 title overflow was fixed by splitting page label; current output re-generated and inspected."
+  },
+  "preview": {
+    "status": "pass",
+    "samples": [
+      "full",
+      "subset",
+      "docx-native",
+      "docx-default"
+    ],
+    "pages_each": [
+      1,
+      2
+    ],
+    "actual_view": "macOS Preview",
+    "task_windows_closed": true,
+    "ui_released": true,
+    "record": "preview-acceptance.json",
+    "controls_status": "pass: actual macOS Preview 2026-10-07, exact preview-queue-r21.json, all17files/18pages checked and task windows closed",
+    "followup_queue": "preview-queue-r21.json",
+    "followup_success_pages": 18,
+    "followup_files": 17,
+    "followup_record": "preview-final-20261007.json"
+  },
+  "overall_visual_complete": true,
+  "production_release_accepted": false,
+  "unresolved": [
+    "Fresh Codex/Cursor review and CI for documentation-only acceptance update"
+  ],
+  "viewing_chain": "Fixed DOCX -> Native/default OFD produced this run -> OFD PDF exporter -> macOS Preview 1-2 pages each; full/subset OFD -> PDF -> Preview 1-2 each. No direct DOCX->PDF substituted.",
+  "controls_render": {
+    "r6": "failed: zero cmap glyph controls rendered visible tofu; failure retained",
+    "r7": "pass PNG: ZWJ/ZWNJ identical to AB baseline; RLO/RLI explicitly refused with 0 PDF bytes; OFD preserves original controls",
+    "coordinates": "actual PDF regression verifies explicit Runs/Delta slots remain unchanged",
+    "r8": "pass PNG: mapped Hangul filler retains advance for implicit and per-gap Delta runs; ZWJ/ZWNJ unchanged; PDF end-direction/Mongolian FVS refused.",
+    "r9": "pass actual PDF: LRM/206A and other zero-width cases equal AB; registered name-only physical bytes supply same cached cmap for missing/mapped filler.",
+    "r10": "pass actual PDF: name-only ordinary missing glyph uses a covering default face or fails with 0 bytes; valid symbol cmap selected/unused SVG generation passes, actual browser embedded-symbol identity remains unverified.",
+    "r11": "ZWJ/ZWNJ explicitly refused with 0 bytes; unused format0 cmap PDF succeeds / selected refuses; symbol A-space/AB/read-edit full retained unverified; null/resolve/read/cmap failures try verified Arial; TTC default selects face0. Guarded throwing default-name getter still tries verified Arial; pinned Noto office/ffi baseline succeeds and join variants reject with exact OFD text retained.",
+    "r11_independent": "38/38 focused; actual null/cmap/TTC/default getter fallbacks cover U4E00; office/ffi baseline succeeds, ZWJ/ZWNJ exact OFD retained and PDF refuses with 0B; final fourteen success PDF pages remain Preview pending.",
+    "r12": "Symbol selected PDF/SVG explicitly reject unmodeled character semantics/0B; unused symbol exports; F041 A-space/AB remain byte-identical through two OFD rounds. Typed bindings resolved once into content groups, cancellation before every examined element; distinct face/name-only/cross-page alias repertoire regression passes.",
+    "r12_independent": "38 PDF-focused +1 cross-page group test pass; unused symbol PDF/SVG succeeds, selected A/A-space/AB refuse0B. All14 successful PDFs regenerated R12 and compare R11 with144dpi Poppler AE0. Preview pending.",
+    "r13": "Discovered name-only symbol unsupported marker retained outside optional catch, selectedA/A-space/AB refuse; unused registration bytes unchanged. Default/Arial symbol candidates never satisfy Unicode coverage; mappedA defaults skip to coveringUnicode Arial; no covering candidate fails clearly.",
+    "r13_independent": "42/42 focused; unusedstyleSymbol blankPDF succeeds, selectedA/A-space/AB NotSupport0B; symboldefault mappedA skipped to registeredUnicode Arial/LXGW, allsymbol candidates fail0B. 14 prior success pages regeneratedR13 compareR12 AE0, added1 UnicodeArial fallback page; all15 Preview pending.",
+    "r14": "All selected regular/unbound named fonts lazily get physicalUnicode coverage/registeredidentity; symbol refuses, badordinarysource may tryverifieddefaults; emptytext skipsXfont after preflight. Samephysical immutable snapshots/effective-style aliases, cachedcoverage revalidated.",
+    "r14_independent": "49/49focused; regular/unboundSymbol selectedA/A-space/AB refuse0B, unusedblankPDF passes; regular/unbound Athen一 use correct coveringidentity; bold+italic samephysicalNoto; realTest.pdf defaultCID/PUAsemanticOFD preserved/reexportfail0B. 15 priorPDF regeneratedAE0+2success A一pages,17 Preview pending.",
+    "r15": "Host namedTTC faces require unique full/PostScript/family identification, no guessedface0; defaultsinglefaceunambiguouspolicy retained; input/namework/facebudgetbounded andselectedfaceexpandedonlyafteridentification. NonzeroBoldface andopaque primary fallback regressions pass.",
+    "r15_independent": "51/51focused; realNoto0/LXGW1 collection selects namedface1/PDFextracts一 with selectedfaceidentity; opaque/duplicateface names use coveringstandalonefallback, no guessed0. Previous17successfulpages regeneratedR15 AE0+1namedTTCpage;18 Previewpending.",
+    "r16": "LRM uniformly refuses semanticloss inLatin andmixedbidi PDF; actualOFD exacttext preserved, bidiNotSupport0B. PriorLRM omitted-success artifacts historicalonly. Currentcontract unified namedTTC rules.",
+    "r16_independent": "53/53focused; actualLatin/mixedLRM ODF exacttext, bidiNotSupport/0B; priorLRMsuccesshistoricalonly. Allremaining17successfulPDF regeneratedR16 vsR15 AE0, Previewpending.",
+    "r17": "All default-ignorables refuse semanticloss except4boundedHangulfiller render cases; WORDJOINER/math/SHY/ZWSP/CGJ/MVS/FEFF/deprecatedbidi allNotSupport/0B inimplicit andpositioned text, OFDexactUnicode preserved.",
+    "r17_independent": "66/66focused; actual13semanticcontrols/FEFFpositions OFDexactscalar, NotSupport0B; mapped3164 stillsuccess. Allremaining16successPDF regeneratedR17 vsR16 AE0, excludedhistoricalLRM/deprecatedsuccess. Previewpending.",
+    "r18": "All4Hangulfiller scalars eachmapped/unmapped implicit+positioned tests; missingA-filler-BDelta5/5 comparesABDelta10, mapped comparesA-space-B; removesABselfcomparison andcorrects historicaltestscope.",
+    "r18_independent": "78/78focused; four mapped/unmapped filler×implicit/positioned actualcases all16B-coordinate pairs difference0pt; two-page proofPNG no boxes/clipping/overlap. Productruntime unchangedR17; previous16successPDF unchangedSHA plusnew2pageproof, actualPreviewpending.",
+    "r19": "Template andannotationappearances modeledtext joinsingleusageprepass withbody, cancellationeveryelement; fullprotectionnever bypasses modeledcoverage, missingU0042 failsZIP0/sourcebytesunchanged. Fulloptout/opaqueCG policy unchanged.",
+    "r19_independent": "57/57FontSubsetfocused; realreadnested2template+2annotationtext, missingU10FFFF eachrejectbeforeZIP0/all3fontSHAunchanged; writerdoesnotclaimrewritepreservednestedXML. Previous17successPDF/18pages regeneratedR19 vsR18AE0, actualPreviewpending.",
+    "r20": "PreservationReason honors cancellationentry/pages/elements; publicwriterprecancel alreadyexisted; deterministicinternalpoisonpage provesnoinspection beforecancel. Uncanceledglyph/outputsemantics unchanged.",
+    "r20_independent": "58/58FontSubsetfocused; publicvalid200pages/10000elements precancelOpCanceled0B/fontSHAunchanged(existingbehavior); internalplanreflectionpoisonpage OpCanceledbeforecontentinspection(newscannercheck). R19PDF unchangedSHA revalidated, no newvisualclaim.",
+    "r21": "Writer token enters coverageentry/scalar loops andeveryusage scalar; normalizedforms lazyoriginal/NFC/NFD withcancellationbefore/afterBCLcall. SingleNormalize cannotinterrupted/nohardwalltimeguarantee; glyphunion/text unchanged.",
+    "r21_independent": "59/59FontSubsetfocused; validpublic4mrepeatedA(uniquescalar1) startthenotherthreadcancel OCE/output0B/fontSHAunchanged; no-cancelCoreCoverageAlphaffi normal. No precisehitstack/walltimeguarantee. AllR19successPDFSHA revalidated; no newvisualclaim.",
+    "final_preview": "2026-10-07 actual macOS Preview all17files/18pages from preview-queue-r21.json passed against listed expectations; earlier per-round pending statements describe historical state only. All own PDF windows closed and GUI released."
+  }
+}

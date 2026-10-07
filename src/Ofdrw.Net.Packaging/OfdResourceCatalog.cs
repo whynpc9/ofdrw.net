@@ -76,7 +76,7 @@ internal sealed class OfdResourceCatalog
         _changed.Add(path);
     }
 
-    internal void WriteFont(string id, OfdFontResource font, string defaultPath, XNamespace ns)
+    internal void WriteFont(string id, OfdFontResource font, string defaultPath, XNamespace ns, bool canonicalPayload = false)
     {
         var (path, element) = GetOrCreate("Font", "Fonts", id, defaultPath, ns);
         element.SetAttributeValue("FontName", font.FontName);
@@ -88,7 +88,13 @@ internal sealed class OfdResourceCatalog
         {
             var extension = string.Equals(Path.GetExtension(font.FileName), ".otf", StringComparison.OrdinalIgnoreCase)
                 ? ".otf" : ".ttf";
-            WritePayload(path, element, "FontFile", $"Font_{Hash(font.Data)}{extension}", font.Data);
+            var payloadName = $"Font_{Hash(font.Data)}{extension}";
+            if (canonicalPayload)
+            {
+                element.SetElementValue(element.Name.Namespace + "FontFile", payloadName);
+                element.SetAttributeValue("FontFile", null);
+            }
+            WritePayload(path, element, "FontFile", payloadName, font.Data);
         }
         _changed.Add(path);
     }

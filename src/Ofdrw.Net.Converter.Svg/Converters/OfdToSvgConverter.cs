@@ -1,3 +1,4 @@
+using Ofdrw.Net.Core.Fonts;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -86,6 +87,8 @@ public sealed class OfdToSvgConverter
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
+            if (element is OfdRawElement glyphXml && EmbeddedFontCoverage.HasExplicitGlyphReferences(glyphXml.Xml))
+                throw new NotSupportedException("SVG export does not model raw CGTransform glyph substitutions.");
             if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
                 throw new NotSupportedException($"Annotation appearance on page {page.Index + 1} contains unsupported drawing; export would lose content.");
             var target = root;
@@ -156,21 +159,25 @@ public sealed class OfdToSvgConverter
         return root;
     }
 
-    private static IReadOnlyDictionary<OfdFontResource, string> AddEmbeddedFonts(
+    private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> AddEmbeddedFonts(
         XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts)
     {
-        var families = new Dictionary<OfdFontResource, string>();
-        var emitted = new HashSet<string>(StringComparer.Ordinal);
+        var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
+        var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
         var css = new StringBuilder();
         foreach (var font in fonts.Where(font => font.Data.Length > 0))
         {
-            var family = "ofd-font-" + BinaryIdentity.Hash(font.Data);
-            families[font] = family;
-            if (!emitted.Add(family)) continue;
-            var style = OfdFontStyle.Read(font.Data);
-            var openType = font.Data.Length >= 4 && font.Data[0] == 'O' && font.Data[1] == 'T' && font.Data[2] == 'T' && font.Data[3] == 'O';
+            var data = OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
+            var family = "ofd-font-" + BinaryIdentity.Hash(data);
+            if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known); continue; }
+            var face = new OpenTypeFace(data); OpenTypeCmap? coverage = null;
+            try { coverage = new OpenTypeCmap(face); }
+            catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
+            families[font] = (family, coverage); emitted.Add(family, coverage);
+            var style = face.Style;
+            var openType = data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O';
             css.Append("@font-face{font-family:'").Append(family).Append("';src:url(data:font/")
-                .Append(openType ? "otf" : "ttf").Append(";base64,").Append(Convert.ToBase64String(font.Data))
+                .Append(openType ? "otf" : "ttf").Append(";base64,").Append(Convert.ToBase64String(data))
                 .Append(") format('").Append(openType ? "opentype" : "truetype").Append("');font-weight:")
                 .Append(style.Bold ? "bold" : "normal").Append(";font-style:")
                 .Append(style.Italic ? "italic" : "normal").Append(";}\n");
@@ -216,10 +223,19 @@ public sealed class OfdToSvgConverter
         OfdPage page,
         OfdTextElement text,
         IReadOnlyList<OfdFontResource> fonts,
-        IReadOnlyDictionary<OfdFontResource, string> families)
+        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families)
     {
+        if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
+            throw new NotSupportedException("SVG export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
         var resource = OfdFontSelection.Resolve(fonts, text);
-        var family = resource is not null && families.TryGetValue(resource, out var embeddedFamily) ? embeddedFamily : text.FontName;
+        var family = text.FontName;
+        if (resource is not null && families.TryGetValue(resource, out var embedded))
+        {
+            family = embedded.Family;
+            if (embedded.Coverage is null || embedded.Coverage.IsSymbol) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
+            foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
+                EmbeddedFontCoverage.Validate(value, embedded.Coverage, resource.FontName);
+        }
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
         var drawing = OfdTextEmphasis.DrawingTransform(text);

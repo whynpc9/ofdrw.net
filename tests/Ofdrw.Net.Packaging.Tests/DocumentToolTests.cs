@@ -1448,6 +1448,9 @@ public sealed class DocumentToolTests
     }
     private static async Task<OfdDocumentPackage> RoundTrip(OfdDocumentPackage source)
     {
+        // These editing fixtures deliberately use opaque marker bytes as fonts.
+        if (source.Fonts.Any(font => font.Data.Length is > 0 and < 12))
+            source.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
         using var stream = new MemoryStream(); await new OfdPackageWriter().WriteAsync(source, stream); stream.Position = 0; return await new OfdReader().ReadAsync(stream);
     }
 }

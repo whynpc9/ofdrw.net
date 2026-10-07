@@ -1,0 +1,37 @@
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Xml.Linq;
+using Ofdrw.Net.Core.Models;
+namespace Ofdrw.Net.Core.Fonts;
+internal static class EmbeddedFontCoverage
+{
+    internal static bool HasExplicitGlyphReferences(OfdTextElement text) => HasExplicitGlyphReferences(text.SourceXml);
+    internal static bool HasExplicitGlyphReferences(string? sourceXml)
+    {
+        if (string.IsNullOrWhiteSpace(sourceXml)) return false;
+        try { return XElement.Parse(sourceXml!).DescendantsAndSelf().Any(node => node.Name.LocalName == "CGTransform"); }
+        catch (System.Xml.XmlException exception)
+        {
+            throw new System.NotSupportedException("Malformed SourceXml cannot safely preserve glyph references.", exception);
+        }
+    }
+
+    internal static void Validate(string text, OpenTypeCmap cmap, string name, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var previous = -1;
+        foreach (var scalar in OpenTypeFace.Scalars(text))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (OpenTypeCmap.IsVariationSelector(scalar))
+            {
+                if (previous < 0 || !cmap.SupportsVariation(previous, scalar))
+                    throw new InvalidDataException($"Font '{name}' lacks variation sequence U+{previous:X}/U+{scalar:X}.");
+            }
+            else if (scalar != '\r' && scalar != '\n' && scalar != '\t' && !UnicodeFontSubsetProfile.IsNonRenderingControl(scalar) && cmap.Glyph(scalar) == 0)
+                throw new InvalidDataException($"Font '{name}' lacks U+{scalar:X4}; bind a configured fallback font before writing.");
+            previous = scalar;
+        }
+    }
+}
