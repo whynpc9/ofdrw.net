@@ -14,6 +14,14 @@ license for Ofdrw.Net itself.
 | SixLabors.Fonts | 1.0.1 | Apache-2.0 | https://github.com/SixLabors/Fonts |
 | SixLabors.ImageSharp | 2.1.13 | Apache-2.0 | https://github.com/SixLabors/ImageSharp |
 
+## Optional SES dev/interop extension
+
+`Ofdrw.Net.Signatures.SesInterop` alone adds `BouncyCastle.Cryptography` at the
+exact version `2.6.2` (MIT), source https://github.com/bcgit/bc-csharp.
+Core, Writer, Converter and the default CLI do not depend on this extension.
+The actual NuGet metadata and MIT license are retained under
+`docs/evidence/ses-interop/`; the extension package also carries the license.
+
 Transitive dependencies are resolved by NuGet and may change as direct
 dependencies are updated. Consumers should use the generated dependency graph
 and the corresponding package metadata when performing a release compliance

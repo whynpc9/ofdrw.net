@@ -32,6 +32,7 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | 数字签名 | `ofdrw-sign` | 标准签名目录/引用生成、签名值 provider、签名值 verifier | **扩展点** |
 | 摘要校验 | 上游签章验证链路 | 内置 SM3、SHA-1、SHA-256，逐引用恒定时间比较，篡改检测 | **已支持** |
 | SES/SM2 电子签章 | `ofdrw-sign` + `ofdrw-gm` | 可注册厂商 `IOfdSignedValueVerifier` / `IOfdSignatureProvider` | **扩展点**；无内置 SES/SM2 实现和印章外观验证 |
+| SES dev/interop 测试容器 | 固定上游 SES V1/V4 测试容器 | 可选 `Ofdrw.Net.Signatures.SesInterop`：常见字段解析、SM2 测试自签/双层验签、完整测试证书固定 | **测试扩展**；仅显式注册，默认 verifier/CLI 不给自签 FullyValid；核心能力标志仍 false。无阅读器互认、法律效力或合格 TSA，范围见[教程](tutorials/16-ses-dev-interop.md)与[证据](evidence/ses-interop/README.md) |
 | GM/T 0099 密码应用 | `ofdrw-crypto` | 能力标志明确返回不支持 | **未支持** |
 | CLI/工具分发 | `ofdrw-tool` 及各模块工具 | 转换、SVG、文本提取、重排、合并、签名验证的 .NET tool | **已支持** |
 | Graphics2D 兼容层 | `ofdrw-graphics2d` | 无对应 System.Drawing/SkiaSharp 绘图适配层 | **未支持** |
