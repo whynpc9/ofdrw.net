@@ -50,7 +50,7 @@ public static class OfdPasswordEnvelope
         Dictionary<string, byte[]>? entries = null;
         try
         {
-            var archive = await new OfdPackageLoader().LoadAsync(source, settings.Load, token).ConfigureAwait(false);
+            var archive = await LoadRawValidatedAsync(source, settings, token).ConfigureAwait(false);
             entries = archive.EntryNames.ToDictionary(path => path, archive.GetBytes, StringComparer.OrdinalIgnoreCase);
             AdoptAndValidateEntries(entries, owned);
             if (encrypt) Encrypt(entries, kek, settings, owned, token);
@@ -63,6 +63,57 @@ public static class OfdPasswordEnvelope
             CryptographicOperations.ZeroMemory(kek);
             owned.Dispose();
         }
+    }
+
+    private static async Task<OfdPackageArchive> LoadRawValidatedAsync(Stream source, Settings settings, CancellationToken token)
+    {
+        // Freeze precisely the bytes read from the caller's current position so
+        // raw-name validation and the loader see one identical archive.
+        using var snapshot = new BoundedMemoryStream(settings.Load.MaxInputBytes);
+        if (source.CanSeek && source.Length - source.Position > settings.Load.MaxInputBytes)
+            throw new InvalidDataException("OFD input exceeds the configured compressed input size limit.");
+        var buffer = new byte[81920];
+        try
+        {
+            long total = 0;
+            while (true)
+            {
+                token.ThrowIfCancellationRequested();
+                var remaining = settings.Load.MaxInputBytes - total;
+                var count = remaining >= buffer.Length ? buffer.Length : (int)remaining + 1;
+                var read = await source.ReadAsync(buffer, 0, count, token).ConfigureAwait(false);
+                if (read == 0) break;
+                Require(read <= remaining, "OFD input exceeds the configured compressed input size limit.");
+                await snapshot.WriteAsync(buffer.AsMemory(0, read), token).ConfigureAwait(false);
+                total += read;
+            }
+        }
+        finally { CryptographicOperations.ZeroMemory(buffer); }
+        snapshot.Position = 0;
+        using (var zip = new ZipArchive(snapshot, ZipArchiveMode.Read, leaveOpen: true))
+        {
+            Require(zip.Entries.Count <= settings.Load.MaxEntryCount, "Raw ZIP entry count exceeds budget.");
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in zip.Entries)
+            {
+                token.ThrowIfCancellationRequested();
+                var raw = entry.FullName;
+                Require(names.Add(raw), "Raw ZIP contains duplicate entry names.");
+                if (raw.EndsWith("/", StringComparison.Ordinal))
+                {
+                    Require(entry.Length == 0, "Directory entries must not contain payloads.");
+                    Canonical(raw.Substring(0, raw.Length - 1));
+                }
+                else
+                {
+                    Canonical(raw);
+                    var basename = raw.Substring(raw.LastIndexOf('/') + 1);
+                    Require(!string.IsNullOrWhiteSpace(basename), "File entries require a nonblank basename.");
+                }
+            }
+        }
+        snapshot.Position = 0;
+        return await new OfdPackageLoader().LoadAsync(snapshot, settings.Load, token).ConfigureAwait(false);
     }
 
     internal static void AdoptAndValidateEntries(Dictionary<string, byte[]> entries, OwnedBuffers owned)
@@ -101,7 +152,7 @@ public static class OfdPasswordEnvelope
             map.Add(new XElement(Ns + "EncryptEntry", new XAttribute("Path", "/" + path), new XAttribute("EPath", "/" + cipherPath)));
         }
         map.Add(inventory);
-        var mapBytes = XmlBytes(map, settings); owned.Add(mapBytes);
+        var mapBytes = XmlBytes(map, settings.Metadata, owned);
         var encryptedMap = PasswordPrimitives.Cbc(true, mapBytes, fek, iv, token); owned.Add(encryptedMap);
         entries.Add(MapPath, encryptedMap);
         var wrapped = PasswordPrimitives.Cbc(true, fek, kek, iv, token); owned.Add(wrapped);
@@ -109,13 +160,13 @@ public static class OfdPasswordEnvelope
             new XElement(Ns + "UserInfo", new XAttribute("UserName", settings.UserName), new XAttribute("UserType", "User"),
                 new XElement(Ns + "EncryptedWK", Convert.ToBase64String(wrapped)),
                 new XElement(Ns + "IVValue", Convert.ToBase64String(iv))), new XElement(Ns + "ExtendParams"));
-        var seedBytes = XmlBytes(seed, settings); owned.Add(seedBytes); entries.Add(SeedPath, seedBytes);
+        var seedBytes = XmlBytes(seed, settings.Metadata, owned); entries.Add(SeedPath, seedBytes);
         var envelope = new XElement(Ns + "Encryptions", new XAttribute(Profile + "Version", "1"),
             new XElement(Ns + "EncryptInfo", new XAttribute("ID", "1"),
                 new XElement(Ns + "Provider", new XAttribute("Name", ProviderName), new XAttribute("Company", "Ofdrw.Net"), new XAttribute("Version", "1")),
                 new XElement(Ns + "EncryptScope", "Partial"),
                 new XElement(Ns + "DecryptSeedLoc", "/" + SeedPath), new XElement(Ns + "EntriesMapLoc", "/" + MapPath)));
-        var envelopeBytes = XmlBytes(envelope, settings); owned.Add(envelopeBytes); entries.Add(EnvelopePath, envelopeBytes);
+        var envelopeBytes = XmlBytes(envelope, settings.Metadata, owned); entries.Add(EnvelopePath, envelopeBytes);
         CheckExpanded(entries, settings);
     }
 
@@ -302,10 +353,11 @@ public static class OfdPasswordEnvelope
         catch (XmlException ex) { throw new InvalidDataException("Invalid XML or encrypted data.", ex); }
     }
 
-    private static byte[] XmlBytes(XElement root, Settings settings)
+    internal static byte[] XmlBytes(XElement root, int maximumBytes, OwnedBuffers owned)
     {
         var bytes = new UTF8Encoding(false).GetBytes(root.ToString(SaveOptions.DisableFormatting));
-        Require(bytes.Length <= settings.Metadata, "Generated metadata exceeds budget.");
+        owned.Add(bytes);
+        Require(bytes.Length <= maximumBytes, "Generated metadata exceeds budget.");
         return bytes;
     }
 
@@ -390,8 +442,23 @@ public static class OfdPasswordEnvelope
         }
     }
 
-    private sealed class BoundedMemoryStream(long maximum) : MemoryStream
+    internal sealed class BoundedMemoryStream(long maximum) : MemoryStream
     {
+        public override int Capacity
+        {
+            get => base.Capacity;
+            set
+            {
+                var previous = GetBuffer();
+                base.Capacity = value;
+                if (!ReferenceEquals(previous, GetBuffer())) CryptographicOperations.ZeroMemory(previous);
+            }
+        }
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) CryptographicOperations.ZeroMemory(GetBuffer());
+            base.Dispose(disposing);
+        }
         private void Check(int count) => Require(Position <= maximum - count, "Result exceeds output ZIP budget.");
         public override void Write(byte[] buffer, int offset, int count) { Check(count); base.Write(buffer, offset, count); }
         public override void Write(ReadOnlySpan<byte> buffer) { Check(buffer.Length); base.Write(buffer); }
@@ -416,6 +483,8 @@ public static class OfdPasswordEnvelope
                 options.MaxMetadataBytes > 16 * 1024 * 1024 || string.IsNullOrWhiteSpace(options.UserName) || options.UserName.Length > 256)
                 throw new ArgumentOutOfRangeException(nameof(options), "Invalid password profile budgets or user name.");
             var input = options.LoadOptions;
+            if (input.MaxInputBytes <= 0 || input.MaxInputBytes > int.MaxValue || input.MaxEntryCount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(options), "Snapshot input must fit an in-memory array and entry count must be positive.");
             if (input.MaxCompressionRatio < 1 || double.IsNaN(input.MaxCompressionRatio) || double.IsInfinity(input.MaxCompressionRatio))
                 throw new ArgumentOutOfRangeException(nameof(options), "This uncompressed password profile requires a finite compression ratio budget of at least 1.");
             Load = new OfdPackageLoadOptions

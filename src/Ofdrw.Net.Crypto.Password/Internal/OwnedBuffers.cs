@@ -7,6 +7,7 @@ namespace Ofdrw.Net.Crypto.Password.Internal;
 internal sealed class OwnedBuffers : IDisposable
 {
     private readonly List<byte[]> buffers = new();
+    internal IReadOnlyList<byte[]> RegisteredBuffers => buffers;
     internal void Add(byte[] bytes) => buffers.Add(bytes);
     internal void AddRange(IEnumerable<byte[]> values) => buffers.AddRange(values);
     public void Dispose()

@@ -36,6 +36,19 @@ try { await OfdPasswordEnvelope.EncryptFileAsync(budgetSource, budgetDestination
 catch (InvalidDataException) { }
 if (!File.ReadAllBytes(budgetDestination).SequenceEqual(sentinel) || Directory.GetFiles(output, ".ofd-password-*.tmp").Length > 0) throw new Exception("Budget failure was not atomic.");
 reports["same-options-input-budget"] = new { rejected_before_publication = true, preserved_output = true, input_budget = restrictive.LoadOptions.MaxInputBytes };
+var rawCases = new[] { @"odd\asset.bin", "odd/ ", "payload-directory/" };
+for (int i = 0; i < rawCases.Length; i++)
+{
+    var malformed = Path.Combine(output, "raw-case-" + i + ".ofd"); File.Copy(budgetSource, malformed, true);
+    using (var archive = ZipFile.Open(malformed, ZipArchiveMode.Update))
+    using (var stream = archive.CreateEntry(rawCases[i], CompressionLevel.NoCompression).Open()) stream.Write(new byte[] { 61, 62, 63 });
+    var outputPath = Path.Combine(output, "raw-case-sentinel-" + i + ".ofd"); File.WriteAllBytes(outputPath, sentinel);
+    var generous = new OfdPasswordOptions { LoadOptions = new() { MaxInputBytes = 128L*1024*1024, MaxEntryUncompressedBytes = 32L*1024*1024, MaxTotalUncompressedBytes = 128L*1024*1024 }, MaxOutputBytes = 160L*1024*1024, PageIndices = { 1 } };
+    try { await OfdPasswordEnvelope.EncryptFileAsync(malformed, outputPath, "raw-name-check", generous); throw new Exception("Noncanonical raw ZIP accepted."); }
+    catch (InvalidDataException) { }
+    if (!File.ReadAllBytes(outputPath).SequenceEqual(sentinel) || Directory.GetFiles(output, ".ofd-password-*.tmp").Length > 0) throw new Exception("Raw ZIP failure was not atomic.");
+}
+reports["raw-zip-names"] = new { cases = rawCases.Length, rejected_before_publication = true, preserved_output = true };
 File.WriteAllText(Path.Combine(output, "package-functional.json"), JsonSerializer.Serialize(reports, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine("Isolated PackageReference consumer: four native/default partial/all round trips and atomic wrong-password/cancellation passed.");
 Dictionary<string, byte[]> Entries(string path)
