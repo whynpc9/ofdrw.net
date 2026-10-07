@@ -29,7 +29,18 @@ R3最终实际包产物 `artifacts/password-crypto/review3-current`：四份新�
 每页新PNG与baseline/先前像素一致。批量导出时误包含加密OFD，核心按既有false能力
 拒绝缺OFD.xml/缺所选Content.xml；这些失败不计视觉结果，最终只6份明文PDF入证据。
 
-**R3 Preview 0/12，未完成**：Mac锁定且自动解锁不可用，等待人类manual unlock；
-不沿用review2已查4页冒充R3，不用PNG/字节相同冒充Preview。锁定时任务窗口清理也
-pending。源/产物hash、环境/基线/许可、功能与pending范围见acceptance.json。
-历史initial/review1/review2全部独立保留；不merge/tag/dispatch/NuGet发布。
+**R3 Preview 12/12 完成**：2026-10-08，Mac 解锁且协调分配 GUI 独占后，
+关闭旧文档窗口，逐个重新打开 `review3-current` 的六份最终 PDF，并查看每份第1、2页。
+链路为 DOCX → native/default OFD → 实际 review3 nupkg 加密/解密 → 恢复 OFD
+→ 未修改 CLI 导出 PDF → macOS Preview；两份明文基线也逐页检查。
+中英文完整、比例字体间距/断行、灰色居中斜体、蓝色标题、表格底色/内外边框及对齐、
+第二页局部红色粗体、右对齐日期与两页分页均符合确定性样例预期，未见缺字、裁切、
+重叠、重影或额外空白页。样例无图片、页眉页脚、页码，未对这些特性作出结论。
+所有本票文档窗口已关闭并向协调报告 GUI 释放。
+
+查看前再次核验源码及全部产物 SHA256，均与原 manifest 一致；未重新生成产物。
+功能验证与视觉结果分别见 acceptance.json、[preview-followup.json](preview-followup.json)。
+原 evidence.tar.zst 中锁定时的 pending 记录作为历史保留，外置 follow-up 仅更新这些
+同哈希产物的实际 Preview 结论；不改写初始/review1/review2 的历史未完成状态。
+仅对已检查的样例和页面通过，不扩大为任意 Word 保真、厂商互认、认证或长期保存。
+不 merge/tag/dispatch/NuGet 发布。
