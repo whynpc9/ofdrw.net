@@ -25,7 +25,7 @@ public sealed class OfdSkiaAdapterOptions
 public static class OfdSkiaAdapter
 {
     /// <summary>Atomically appends a bounded batch. Any ordinary validation, enumeration, budget or cancellation failure leaves the target and resources unchanged.</summary>
-    /// <remarks>No native input objects are retained. Package, page and resources must not be changed concurrently. Fonts must have exactly the original face bytes recorded by Text events.</remarks>
+    /// <remarks>No native input objects are retained. Producer code inside GetEnumerator/MoveNext must cooperate to interrupt its own blocking work. Package, page and resources must not be changed concurrently. Fonts must have exactly the original face bytes recorded by Text events.</remarks>
     public static void Append(OfdDocumentPackage package, OfdPage page, IEnumerable<SkiaDrawEvent> events,
         OfdSkiaAdapterOptions? options = null, CancellationToken cancellationToken = default)
     {
@@ -37,6 +37,7 @@ public static class OfdSkiaAdapter
         var units = options.MillimetersPerUnit; var maxEvents = options.MaxEvents; var maxCommands = options.MaxInputPathCommands; var maxFontBytes = options.MaxFontBytes;
         if (double.IsNaN(units) || double.IsInfinity(units) || units <= 0 || maxEvents <= 0 || maxCommands <= 0 || maxFontBytes <= 0 || options.Graphics is null)
             throw new ArgumentException("Adapter limits and unit scale must be positive and finite.", nameof(options));
+        cancellationToken.ThrowIfCancellationRequested();
         var staged = new OfdDocumentPackage { Options = package.Options };
         var target = new OfdPage { Index = page.Index, XMillimeters = page.XMillimeters, YMillimeters = page.YMillimeters,
             WidthMillimeters = page.WidthMillimeters, HeightMillimeters = page.HeightMillimeters };
@@ -53,15 +54,24 @@ public static class OfdSkiaAdapter
         var graphics = new OfdGraphics(staged, target, limits);
         var count = 0; long commands = 0, characters = 0;
         var hashes = new Dictionary<string, byte[]>(StringComparer.Ordinal);
-        foreach (var draw in events)
+        // Never advance a producer after cancellation. Dispose the enumerator
+        // before committing, so producer cleanup exceptions are atomic too.
+        cancellationToken.ThrowIfCancellationRequested();
+        using (var iterator = events.GetEnumerator())
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (draw is null) throw new ArgumentException("Events cannot contain null entries.", nameof(events));
-            if (++count > maxEvents || count > maxPageElements - originalCount) throw new InvalidOperationException("Event/page budget exceeded.");
-            if (draw.PathCommands > maxCommands - commands || draw.TextCharacters > limits.MaxTextCharacters - characters)
-                throw new InvalidOperationException("Cumulative input snapshot budget exceeded.");
-            commands += draw.PathCommands; characters += draw.TextCharacters;
-            draw.Emit(graphics, staged, units, hashes, maxFontBytes, cancellationToken);
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!iterator.MoveNext()) break;
+                cancellationToken.ThrowIfCancellationRequested();
+                var draw = iterator.Current;
+                if (draw is null) throw new ArgumentException("Events cannot contain null entries.", nameof(events));
+                if (++count > maxEvents || count > maxPageElements - originalCount) throw new InvalidOperationException("Event/page budget exceeded.");
+                if (draw.PathCommands > maxCommands - commands || draw.TextCharacters > limits.MaxTextCharacters - characters)
+                    throw new InvalidOperationException("Cumulative input snapshot budget exceeded.");
+                commands += draw.PathCommands; characters += draw.TextCharacters;
+                draw.Emit(graphics, staged, units, hashes, maxFontBytes, cancellationToken);
+            }
         }
         cancellationToken.ThrowIfCancellationRequested();
         page.Elements.AddRange(target.Elements);

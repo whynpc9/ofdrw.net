@@ -23,7 +23,7 @@ OfdSkiaAdapter.Append(package, page, events,
 
 文字事件需要原始 Unicode、明确的目标 `fontResourceId` 与 producer 提供的字距，字距数量是 graphemeCount−1、单位是 producer 用户空间。简单非 shaping 的样例在 producer 里从同一 `SKFont` 测量各文字元素；适配器不测量、不推断原文。调用方先向 `package.Fonts` 注册许可明确的完整字体字节，并从这些相同字节创建 `SKTypeface`。Text 工厂读取有界原始 face 流计算 SHA256；Append 核对唯一 ID、目标 Data 的实际 SHA256 和 Bold/Italic 声明。同名字体的其它载荷绑定会失败；不支持 name-only、TTC、variable face、多 face 或无法取得原始流的 typeface。
 
-每个事件有可选完整 `SKMatrix`（默认 identity）；`U * M` 把用户空间变换到毫米，包含线宽/字号。六值对应 `[ScaleX, SkewY, SkewX, ScaleY, TransX, TransY]`。文字是单基线 `TextObject`，路径是 `PathObject`。批次先通过 04 在临时页生成，全部成功才追加目标；晚期资源错误、超限、枚举错误或取消追加零个元素。
+每个事件有可选完整 `SKMatrix`（默认 identity）；`U * M` 把用户空间变换到毫米，包含线宽/字号。六值对应 `[ScaleX, SkewY, SkewX, ScaleY, TransX, TransY]`。文字是单基线 `TextObject`，路径是 `PathObject`。批次先通过 04 在临时页生成，全部成功才追加目标；晚期资源错误、超限、枚举/Dispose 错误或取消追加零个元素；已取消时不会启动 GetEnumerator/MoveNext。
 
 首版只支持 8-bit sRGB 纯色 SrcOver、正线宽、butt/miter，路径 M/L/Q/cubic/close 与 winding/even-odd。任意路径要求 miter=10；直线无 join，矩形 miter≥sqrt(2)，允许常见默认 4。shader/filter/pathEffect、其它 blend、hairline、conic/inverse fill、透视/奇异矩阵、synthetic font scale/skew/embolden 都明确失败。clip/layer/image/shaped blob/text-path 不在本 profile；合作 producer 遇到这些操作必须调用 `SkiaDrawEvent.Unsupported("ClipPath")` 等明确失败，不能省略状态后只提交可见图元。
 

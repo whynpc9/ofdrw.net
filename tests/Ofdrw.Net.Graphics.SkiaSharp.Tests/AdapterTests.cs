@@ -147,4 +147,44 @@ public class AdapterTests
         var (package, page) = Target(); OfdSkiaAdapter.Append(package, page, new[] { SkiaDrawEvent.Path(path, pen) });
         Assert.Contains("5 6", Assert.IsType<OfdPathElement>(page.Elements[0]).AbbreviatedData);
     }
+    [Theory]
+    [InlineData(true)] [InlineData(false)]
+    public void CancellationDoesNotAdvanceSideEffectingProducer(bool canceledBeforeGetEnumerator)
+    {
+        var (package, page) = Target(); using var cancellation = new CancellationTokenSource();
+        var source = new ObservedSource(onGet: canceledBeforeGetEnumerator ? null : cancellation.Cancel);
+        if (canceledBeforeGetEnumerator) cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() => OfdSkiaAdapter.Append(package, page, source, cancellationToken: cancellation.Token));
+        Assert.Equal(canceledBeforeGetEnumerator ? 0 : 1, source.GetCalls); Assert.Equal(0, source.MoveCalls); Assert.Empty(page.Elements);
+    }
+    [Fact]
+    public void ProducerDisposeFailureDoesNotCommitStagedElements()
+    {
+        var (package, page) = Target(); using var pen = Pen();
+        var source = new ObservedSource(SkiaDrawEvent.Line(new(1, 2), new(3, 4), pen), throwOnDispose: true);
+        Assert.Throws<IOException>(() => OfdSkiaAdapter.Append(package, page, source));
+        Assert.Equal(2, source.MoveCalls); Assert.Empty(page.Elements);
+    }
+    private sealed class ObservedSource(SkiaDrawEvent? draw = null, Action? onGet = null, bool throwOnDispose = false) : IEnumerable<SkiaDrawEvent>
+    {
+        public int GetCalls, MoveCalls;
+        public IEnumerator<SkiaDrawEvent> GetEnumerator() { GetCalls++; onGet?.Invoke(); return new Enumerator(this); }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+        private sealed class Enumerator(ObservedSource source) : IEnumerator<SkiaDrawEvent>
+        {
+            public SkiaDrawEvent Current => source.Value!;
+            object System.Collections.IEnumerator.Current => Current;
+            public bool MoveNext()
+            {
+                source.MoveCalls++;
+                if (source.Value is null) throw new IOException("Canceled producer must not be advanced.");
+                return source.MoveCalls == 1;
+            }
+            public void Reset() => throw new NotSupportedException();
+            public void Dispose() { if (source.ThrowOnDispose) throw new IOException("Producer cleanup failed."); }
+        }
+        private SkiaDrawEvent? Value => draw;
+        private bool ThrowOnDispose => throwOnDispose;
+    }
+
 }
