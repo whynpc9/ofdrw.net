@@ -1,24 +1,34 @@
 {
   "baseline": "ab87bcade2ec5df6fa1f7ea0b86c590d13225653",
-  "runtime_head": "8bf97cfbf9ae16ccea5338d7a3a61fc6b1889644",
-  "source_snapshot": "8084147a07650b5bae115bc5c6f0a5b45b7c7576",
+  "runtime_head": "e6e11ee71f48f71cef8de69d8cc23b8c0e058cb8",
+  "source_snapshot": "e6e11ee71f48f71cef8de69d8cc23b8c0e058cb8",
   "mode": "cooperating-producer-events, no arbitrary SKCanvas interception",
-  "recorded_at": "2026-10-08T05:49:22.341051+08:00",
+  "recorded_at": "2026-10-08T06:19:45.820077+08:00",
   "functional": {
     "status": "passed",
     "full_suite": {
-      "passed": 443,
+      "passed": 446,
       "failed": 0,
       "skipped": 0
     },
-    "adapter_tests": 14,
+    "adapter_tests": 17,
     "python_tests": 5,
     "default_package_count": 11,
     "optional_feed_package_count": 12,
-    "primary_version": "0.1.0-skia.20261008.r2",
-    "independent_version": "0.1.0-skia.20261008.low2",
+    "primary_version": "0.1.0-skia.20261008.r3",
+    "independent_version": "0.1.0-skia.20261008.low3",
     "independent_status": "passed",
-    "historical_failure": "8bf97cf copied consumer lacked ImplicitUsings; source csproj fixed at 8084147. Both raw primary/Low failures retained."
+    "historical_failure": "8bf97cf copied consumer lacked ImplicitUsings; source csproj fixed at 8084147. Both raw primary/Low failures retained.",
+    "review1_repair": {
+      "cancel_before_GetEnumerator_and_MoveNext": true,
+      "dispose_before_commit": true,
+      "primary_precancel_observer": "OperationCanceledException, GetEnumerator=0, elements=0",
+      "independent_actual_package_observers": [
+        "precancel Get=0 Move=0 Elements=0",
+        "cancel-in-Get Get=1 Move=0 Elements=0",
+        "dispose-failure Get=1 Move=2 Elements=0"
+      ]
+    }
   },
   "native_sample": {
     "pages": 2,
@@ -28,7 +38,7 @@
     "original_unicode_preserved": true,
     "unique_font_face_hash_checked": true,
     "direct04_entry_payloads_equal": true,
-    "outer_zip_hash_caveat": "Primary ZIP hashes happened equal; independent hashes differ with ZIP entry timestamps. Decompressed entry bytes are the equality claim.",
+    "outer_zip_hash_caveat": "Current primary and Low outer ZIP hashes can differ due timestamps; all decompressed entry payloads are equal.",
     "direct04_pdf_png_equal": true,
     "real_skcanvas_png_pages": [
       1,
@@ -37,97 +47,98 @@
     "png_visual_checked_candidate_pages": [
       1,
       2
-    ]
+    ],
+    "previous_candidate_png_pixels_identical": true
   },
   "preview": {
     "status": "not-reviewed",
-    "reason": "Mac locked; Computer Use automatic unlock failed. Manual unlock requested; no document opened or page inspected.",
+    "reason": "Mac locked on initial Preview connection; automatic unlock failed and manual unlock is pending. Current r3 artifacts regenerated, still 0/14 checked.",
     "chain": "cooperating Skia producer → native OFD → PDF → macOS Preview; licensed DOCX Native/default → OFD → PDF → macOS Preview",
     "planned_documents": [
       {
-        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r2/output/adapted.pdf",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/adapted.pdf",
         "file": "adapted.pdf",
         "pages": [
           1,
           2
         ],
         "bytes": 79566,
-        "sha256": "40228eba0322596f31b31a2aaf7576f6aadf92ef61aefa5a3e53554d5cdc866d",
+        "sha256": "421772e80403a616d6e3fb96c8c9c9b6de04e122cca84e78e20ff0b7f41d7fc2",
         "checked_pages": []
       },
       {
-        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r2/output/direct04.pdf",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/direct04.pdf",
         "file": "direct04.pdf",
         "pages": [
           1,
           2
         ],
         "bytes": 79566,
-        "sha256": "8c23264eb88c421a1c06c64338f334b5a2b8e6f1ad8f4d1e5c2feb35313e2f31",
+        "sha256": "7363f0481529cfedc4ac4000263dd37f791e709f2c81073c56a0483a0e2b60ff",
         "checked_pages": []
       },
       {
-        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r2/graphics.pdf",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics.pdf",
         "file": "graphics.pdf",
         "pages": [
           1,
           2
         ],
         "bytes": 124031,
-        "sha256": "307c0e331d32a411eb3e3652cc83c772398735baa8597de721f2d6c29546e633",
+        "sha256": "941752e9e688a242df945df87be6e1f35510d2f34c4702ca6769cb20e3b5db2d",
         "checked_pages": []
       },
       {
-        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r2/graphics-roundtrip.pdf",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-roundtrip.pdf",
         "file": "graphics-roundtrip.pdf",
         "pages": [
           1,
           2
         ],
         "bytes": 124031,
-        "sha256": "ea6e6b2f4eea678439a1d590a8aff08abc5d158b11bd04b43116b4de89d26c8b",
+        "sha256": "5c29fae44ae569b41507f0aa2fcc82ebe5730faff8816f6eab3a8466e89348f6",
         "checked_pages": []
       },
       {
-        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r2/graphics-name-only.pdf",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-name-only.pdf",
         "file": "graphics-name-only.pdf",
         "pages": [
           1
         ],
         "bytes": 68550,
-        "sha256": "5c83c3818802dff272bc2a77eda33436de592cf2f0006c81669c6151e67301e0",
+        "sha256": "8b1d0fbf11a0eb1c8e92502eb9e1596025d4adb06de0f9c258a43fe72c312151",
         "checked_pages": []
       },
       {
-        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r2/graphics-fractional-clip.pdf",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-fractional-clip.pdf",
         "file": "graphics-fractional-clip.pdf",
         "pages": [
           1
         ],
         "bytes": 67325,
-        "sha256": "d81b4c6899c0fa85adc0d33423ff0c3e7cb58aeaf4eea0acf275b3a2bbba4ab7",
+        "sha256": "db4be780cd4774774c2d5026f2f6ed8ab4498d60ce7f7dc9926b92e9eb651f9e",
         "checked_pages": []
       },
       {
-        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r2/baseline-native.pdf",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-native.pdf",
         "file": "baseline-native.pdf",
         "pages": [
           1,
           2
         ],
         "bytes": 117021,
-        "sha256": "fbcd8a84aed7fd07f022f423f1e1da46935528ced866a5acd73b6d1f6fcc384f",
+        "sha256": "54a3ac364e2b160d7df51c89d8b55180ff121260e3d5b6043ecbfa13bfec9da0",
         "checked_pages": []
       },
       {
-        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r2/baseline-default.pdf",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-default.pdf",
         "file": "baseline-default.pdf",
         "pages": [
           1,
           2
         ],
         "bytes": 117021,
-        "sha256": "53715a6ad7b41fe937fb7ff1abe0db5eb2fdac81cc3ca3609b390c145f7e4ed8",
+        "sha256": "b5495454919b61de0c702574342dfee1929ca9db615a4012c31a6cd6540024c5",
         "checked_pages": []
       }
     ],
@@ -139,7 +150,14 @@
     "gui_released": true
   },
   "review": {
-    "status": "not-started"
+    "status": "repair-verified-awaiting-latest-review",
+    "pr": "https://github.com/whynpc9/ofdrw.net/pull/17",
+    "round1_head": "158a63c420429aa9634313cf2074f4d1ecc9ee21",
+    "round1_codex_findings": 1,
+    "round1_cursor_findings": 0,
+    "round1_ci": "six checks passed",
+    "fixed_runtime_head": "e6e11ee71f48f71cef8de69d8cc23b8c0e058cb8",
+    "thread": "PRRT_kwDORQ4ZKs6qHM3w"
   },
   "production_release_accepted": false,
   "merge_accepted": false,
@@ -155,5 +173,138 @@
     "status": "conditionally-approved cooperative producer scope; coordinator explicitly authorized",
     "native_bridge": "not introduced",
     "font_service_05_dependency": false
+  },
+  "previous_snapshot": {
+    "runtime_head": "8bf97cfbf9ae16ccea5338d7a3a61fc6b1889644",
+    "source_snapshot": "8084147a07650b5bae115bc5c6f0a5b45b7c7576",
+    "functional": {
+      "status": "passed",
+      "full_suite": {
+        "passed": 446,
+        "failed": 0,
+        "skipped": 0
+      },
+      "adapter_tests": 17,
+      "python_tests": 5,
+      "default_package_count": 11,
+      "optional_feed_package_count": 12,
+      "primary_version": "0.1.0-skia.20261008.r3",
+      "independent_version": "0.1.0-skia.20261008.low3",
+      "independent_status": "passed",
+      "historical_failure": "8bf97cf copied consumer lacked ImplicitUsings; source csproj fixed at 8084147. Both raw primary/Low failures retained.",
+      "review1_repair": {
+        "cancel_before_GetEnumerator_and_MoveNext": true,
+        "dispose_before_commit": true,
+        "primary_precancel_observer": "OperationCanceledException, GetEnumerator=0, elements=0",
+        "independent_actual_package_observers": [
+          "precancel Get=0 Move=0 Elements=0",
+          "cancel-in-Get Get=1 Move=0 Elements=0",
+          "dispose-failure Get=1 Move=2 Elements=0"
+        ]
+      }
+    },
+    "preview": {
+      "status": "not-reviewed",
+      "reason": "Mac locked on initial Preview connection; automatic unlock failed and manual unlock is pending. Current r3 artifacts regenerated, still 0/14 checked.",
+      "chain": "cooperating Skia producer → native OFD → PDF → macOS Preview; licensed DOCX Native/default → OFD → PDF → macOS Preview",
+      "planned_documents": [
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/adapted.pdf",
+          "file": "adapted.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 79566,
+          "sha256": "421772e80403a616d6e3fb96c8c9c9b6de04e122cca84e78e20ff0b7f41d7fc2",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/direct04.pdf",
+          "file": "direct04.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 79566,
+          "sha256": "7363f0481529cfedc4ac4000263dd37f791e709f2c81073c56a0483a0e2b60ff",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics.pdf",
+          "file": "graphics.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 124031,
+          "sha256": "941752e9e688a242df945df87be6e1f35510d2f34c4702ca6769cb20e3b5db2d",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-roundtrip.pdf",
+          "file": "graphics-roundtrip.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 124031,
+          "sha256": "5c29fae44ae569b41507f0aa2fcc82ebe5730faff8816f6eab3a8466e89348f6",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-name-only.pdf",
+          "file": "graphics-name-only.pdf",
+          "pages": [
+            1
+          ],
+          "bytes": 68550,
+          "sha256": "8b1d0fbf11a0eb1c8e92502eb9e1596025d4adb06de0f9c258a43fe72c312151",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-fractional-clip.pdf",
+          "file": "graphics-fractional-clip.pdf",
+          "pages": [
+            1
+          ],
+          "bytes": 67325,
+          "sha256": "db4be780cd4774774c2d5026f2f6ed8ab4498d60ce7f7dc9926b92e9eb651f9e",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-native.pdf",
+          "file": "baseline-native.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 117021,
+          "sha256": "54a3ac364e2b160d7df51c89d8b55180ff121260e3d5b6043ecbfa13bfec9da0",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-default.pdf",
+          "file": "baseline-default.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 117021,
+          "sha256": "b5495454919b61de0c702574342dfee1929ca9db615a4012c31a6cd6540024c5",
+          "checked_pages": []
+        }
+      ],
+      "planned_pdf_pages": 14,
+      "checked_pages": [],
+      "task_document_windows_opened": 0,
+      "task_document_windows_closed": 0,
+      "other_windows_touched": false,
+      "gui_released": true
+    },
+    "review1_head": "158a63c420429aa9634313cf2074f4d1ecc9ee21",
+    "review1_checks": "six passed",
+    "review1_cursor": "no findings",
+    "review1_codex": "one P2, cancellation before source advancement"
   }
 }
