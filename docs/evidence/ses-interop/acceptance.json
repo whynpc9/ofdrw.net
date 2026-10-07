@@ -1,0 +1,323 @@
+{
+  "schemaVersion": 1,
+  "ticket": "12-ses-self-sign-interop",
+  "baseCommit": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+  "sourceCommit": "b871b19bdbca9f7cc7ba7b9422118e4c0eaf9000",
+  "branch": "codex/ses-self-sign-interop",
+  "candidateVersion": "0.1.0-ses-interop-b871b19",
+  "sourceFreeze": {
+    "file": "source-freeze.json",
+    "bytes": 35179,
+    "sha256": "58cc412ee014f1c773072bf7783131111cba3b71ab2edbdc31e533b49858c3bf"
+  },
+  "recordedAtUtc": "2026-10-07T16:20:01.532294+00:00",
+  "environment": {
+    "runtime": ".NET 10.0.12",
+    "os": "macOS 26.6.2",
+    "architecture": "Arm64"
+  },
+  "dependencyLicense": "BouncyCastle.Cryptography 2.6.2 MIT; exact metadata/license/hash retained alongside this record",
+  "sample": {
+    "original": "e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx",
+    "bytes": 3347,
+    "sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+    "licensedDocx": {
+      "bytes": 3529,
+      "sha256": "f9e0edddb0d72f33d82e3053baa4217f178f42ed10e08980b9d8a372561c4bf3"
+    },
+    "fontSha256": "3012A9B63F5ECA3E3B38F23A1BE5ED504675E394ABF8E7A4FA981506582C04AA",
+    "fontLicense": "Noto OFL, files/Noto-OFL.txt"
+  },
+  "functional": {
+    "solutionTests": {
+      "total": 435,
+      "passed": 435,
+      "failed": 0,
+      "notExecuted": 0
+    },
+    "focusedTestsPassed": 35,
+    "independentReleaseTestsPassed": 35,
+    "mainCandidateE2ePassed": true,
+    "independentExactCandidatePackageOnlyConsumptionPassed": true,
+    "candidatePackageCount": 12,
+    "defaultProductPackageCount": 11,
+    "cliExitCodes": [
+      2,
+      2,
+      2,
+      2
+    ],
+    "coreBuiltInSesSm2": false,
+    "defaultFullyValid": false,
+    "referenceIntegrityCheckedIndependently": true,
+    "explicitPinnedTestSelfVerificationPassed": true,
+    "packageRepositoryCommitMatchesSource": true,
+    "samples": [
+      {
+        "name": "native-v1",
+        "mode": "native",
+        "version": 1,
+        "pages": 2,
+        "referenceIntegrityValid": true,
+        "defaultFullyValid": false,
+        "defaultCryptographicStatus": "Unsupported",
+        "explicitTestFullyValid": true,
+        "wrongPinFullyValid": false,
+        "textEqual": true,
+        "originalEntriesPreserved": true,
+        "PropertyInformation": "/Doc_0/Signs/Sign_0/Signature.xml",
+        "signedValueBytes": 1585,
+        "ofdBytes": 11605673,
+        "baselineBytes": 11602908
+      },
+      {
+        "name": "native-v4",
+        "mode": "native",
+        "version": 4,
+        "pages": 2,
+        "referenceIntegrityValid": true,
+        "defaultFullyValid": false,
+        "defaultCryptographicStatus": "Unsupported",
+        "explicitTestFullyValid": true,
+        "wrongPinFullyValid": false,
+        "textEqual": true,
+        "originalEntriesPreserved": true,
+        "PropertyInformation": "/Doc_0/Signs/Sign_0/Signature.xml",
+        "signedValueBytes": 1584,
+        "ofdBytes": 11605693,
+        "baselineBytes": 11602908
+      },
+      {
+        "name": "default-v1",
+        "mode": "default",
+        "version": 1,
+        "pages": 2,
+        "referenceIntegrityValid": true,
+        "defaultFullyValid": false,
+        "defaultCryptographicStatus": "Unsupported",
+        "explicitTestFullyValid": true,
+        "wrongPinFullyValid": false,
+        "textEqual": true,
+        "originalEntriesPreserved": true,
+        "PropertyInformation": "/Doc_0/Signs/Sign_0/Signature.xml",
+        "signedValueBytes": 1585,
+        "ofdBytes": 11605672,
+        "baselineBytes": 11602908
+      },
+      {
+        "name": "default-v4",
+        "mode": "default",
+        "version": 4,
+        "pages": 2,
+        "referenceIntegrityValid": true,
+        "defaultFullyValid": false,
+        "defaultCryptographicStatus": "Unsupported",
+        "explicitTestFullyValid": true,
+        "wrongPinFullyValid": false,
+        "textEqual": true,
+        "originalEntriesPreserved": true,
+        "PropertyInformation": "/Doc_0/Signs/Sign_0/Signature.xml",
+        "signedValueBytes": 1585,
+        "ofdBytes": 11605695,
+        "baselineBytes": 11602908
+      }
+    ],
+    "packListFailureProbe": "pack-failure-probe/result.json"
+  },
+  "preview": {
+    "status": "passed-for-listed-pages",
+    "viewer": "macOS Preview via CUA screenshots and accessibility path/page readback",
+    "checkedAtLocalDate": "2026-10-08",
+    "chain": "licensed-layout.docx -> explicit Native/default original-text OFD -> SES V1/V4 signed OFD -> OFD-to-PDF -> Preview",
+    "checkedPageCount": 12,
+    "artifacts": [
+      {
+        "pdf": {
+          "file": "files/native-v1.pdf",
+          "bytes": 117058,
+          "sha256": "194c8b7c497de365cf97428769310aa347c0bd6cafa2c6887dcc61a54f4d07cf"
+        },
+        "ofd": {
+          "file": "files/native-v1.ofd",
+          "bytes": 11605673,
+          "sha256": "e1f3016a63220d6fa56a1206f39ca824cf45f46d87a98262b2df3d25f9deda4b"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round4/files/native-v1.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/native-v1/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/native-v1/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ]
+      },
+      {
+        "pdf": {
+          "file": "files/native-v4.pdf",
+          "bytes": 117058,
+          "sha256": "8951d1a59847f93de8eee7e31d8b77ee5a21eb072dd95ebc242bf952f800ad50"
+        },
+        "ofd": {
+          "file": "files/native-v4.ofd",
+          "bytes": 11605693,
+          "sha256": "06d74c1aac06c6058b35685125fc8ffd16a649b20f6965844b5e6126168685b3"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round4/files/native-v4.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/native-v4/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/native-v4/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ]
+      },
+      {
+        "pdf": {
+          "file": "files/default-v1.pdf",
+          "bytes": 117058,
+          "sha256": "8133f148b21ed5161c91fd2cdccaa55fc8fc96e672a6a5f5559d1fa47e5f2659"
+        },
+        "ofd": {
+          "file": "files/default-v1.ofd",
+          "bytes": 11605672,
+          "sha256": "6b467785c1560a0ca8cdf02a15da6dcead2d0187b430724edb48f0c3cb35642d"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round4/files/default-v1.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/default-v1/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/default-v1/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ]
+      },
+      {
+        "pdf": {
+          "file": "files/default-v4.pdf",
+          "bytes": 117058,
+          "sha256": "9e57991abdc3d3f7ea44533c8c9b180693cd12fadb9c1a545cb6ae1b3c28cc74"
+        },
+        "ofd": {
+          "file": "files/default-v4.ofd",
+          "bytes": 11605695,
+          "sha256": "982ec2fdcacacd2f9b0da93581029c66f8f452fce456ad9e56b88dfc8059999e"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round4/files/default-v4.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/default-v4/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/default-v4/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ]
+      },
+      {
+        "pdf": {
+          "file": "files/baseline-native.pdf",
+          "bytes": 117058,
+          "sha256": "a0cd33d8931837704fcb893ed36d1d3960eb6294f486398f5d5550c1010e20d1"
+        },
+        "ofd": {
+          "file": "files/baseline-native.ofd",
+          "bytes": 11602908,
+          "sha256": "562d97dfe076debaea3962d7f192de0e42b02c2dab20e55022afee9e46be730b"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round4/files/baseline-native.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/baseline-native/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/baseline-native/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ]
+      },
+      {
+        "pdf": {
+          "file": "files/baseline-default.pdf",
+          "bytes": 117058,
+          "sha256": "dc019e09839b49c4ffab940d2a6c36e33bf836f3c116d5dc01062e8889177943"
+        },
+        "ofd": {
+          "file": "files/baseline-default.ofd",
+          "bytes": 11602908,
+          "sha256": "7d59a8011d8c9c14785eabaa94366642dcdbe95ef17663a75df1e9a51a4b7634"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round4/files/baseline-default.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/baseline-default/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/baseline-default/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ]
+      }
+    ],
+    "findings": [
+      "Chinese and proportional English legible; italic subtitle retained",
+      "Blue headings and table header fill/borders retained",
+      "Local red bold text remains local; date right-aligned",
+      "Two-page break retained; no cropping, overlap, ghost text or unexpected blank page",
+      "Same baseline source text and original non-OFD.xml entries preserved"
+    ],
+    "closedDocuments": true,
+    "closedOpenPanel": true,
+    "previewProcessExited": true,
+    "exitEvidence": "Read-only escalated pgrep -x Preview returned 1 with no output; observation tool was not reactivated afterward"
+  },
+  "png": {
+    "dpi": 96,
+    "signedPagesByteEqualBaseline": true,
+    "round4PagesByteEqualRound3": true,
+    "notAPreviewSubstitute": true
+  },
+  "limitations": [
+    "Only listed deterministic two-page sample and limited SES profile inspected",
+    "No reader recognition, legal effect, qualified TSA, chain/revocation or visual seal verification",
+    "Sample has no headers/footers/page numbers/body images; no additional claim for these",
+    "Fresh random identities/nonces and signature/PDF metadata vary between generations",
+    "Independent agent did actual automated consumption/testing; main agent separately did Preview",
+    "Remote Codex/Cursor review, current-head CI and thread closure pending; no merge or NuGet publication"
+  ]
+}
