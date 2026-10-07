@@ -14,14 +14,22 @@
 对应 SDK 包逐字节匹配。四样例引用完整性为真、默认密码状态 Unsupported/CLI
 退出 2、显式固定证书测试验证通过、错误证书失败。
 
-本轮视觉验证 **待完成**：`artifacts/ses-interop/round5/files/` 六份 PDF 各两页，
-已通过实际 OFD 导出及 PNG 对照，但协调会话确认 Mac 锁屏，GUI 仍由 11 票持有。
-本会话与子代理不操作 GUI、不重复请求解锁。待协调分配后须实际重开本轮文件检查。
-上轮 `b871b19` 的六份 Round4 PDF 共 12 页曾在 Preview 实看通过并关闭/确认退出，
-保留记录在包内 `previous-round4/acceptance.json`；本轮 PNG 与其逐页相同，PDF
-元数据哈希不同。**旧轮和 PNG 相等均不接受本轮，当前整票没有视觉闭环。**
-样例仅涉及正文中英文、比例/斜体、局部红粗体、表格蓝底/边框、对齐和两页分页；
-无正文图片、页眉页脚或页码，本票不生成可见盖章外观，也不提升密码效力。
+本轮视觉验证 **12/12 页通过**：2026-10-08 在 macOS Preview 实际重新打开
+`artifacts/ses-interop/round5/files/` 的 native-v1/native-v4/default-v1/default-v4
+和 baseline-native/baseline-default 六份 PDF，各查看第 1–2 页，并逐份核对
+绝对 Window URL、页号与已冻结 SHA-256。链路为许可字体确定性 DOCX → 显式
+Native/默认原生 OFD → SES V1/V4 自签 OFD → OFD-to-PDF → Preview。
+中文和比例英文、斜体标题、蓝色标题、表格蓝底/边框、第二页局部红色粗体、右对齐
+日期和分页与同轮未签基线一致，未见缺字、乱码、裁切、重叠、重影或异常空白页。
+PNG 相等仅作辅助；本次结论来自本轮 PDF 实看，未移用旧轮验收。
+
+每份 Round5 PDF 在查看第二页后立即关闭，最后核对 Window 菜单无本票自签文件；
+同名残留 baseline-default.pdf 的 URL 属于 587a/password-crypto/review3-current，
+并非本票。无本票 Open/GoTo 面板残留，GUI 已释放。开场出现的已释放旧 PNG 集合
+及旧 baseline-native.pdf 曾清理，来源未确认的 PostScript 临时文档及其他非任务
+窗口未操作，Preview 留在运行状态；不宣称关闭了无关用户文档。
+样例无正文图片、页眉页脚或页码，本票不生成可见盖章外观，也不提升密码效力。
+此前锁屏 pending 记录保留在包内 `history/round5-preview-pending.json`。
 
 `acceptance.json` 记录基线、源文件冻结清单、环境、许可、模式、实际查看路径、页码、
 体积和限制；`manifest.json` 固定所有留存文件。`evidence.tar.zst` 包含同轮 OFD/PDF/
