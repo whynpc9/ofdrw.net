@@ -326,11 +326,13 @@ dotnet build Ofdrw.Net.sln
 dotnet test Ofdrw.Net.sln
 ```
 
-Pack locally:
+Pack all solution products, including optional extensions:
 
 ```bash
 dotnet pack Ofdrw.Net.sln -c Release -o artifacts/nuget
 ```
+
+The default 11-product artifact feed is packed and validated by the following script; optional extensions have independent package consumption gates.
 
 Run the package-consumer E2E check:
 
@@ -344,9 +346,13 @@ Use a specific local package version for E2E:
 scripts/run-converter-package-e2e.sh 0.1.0-preview.local
 ```
 
+## Optional password envelopes
+
+This ticket has validated source and local-feed artifacts and has not published a NuGet package. Explicitly reference `Ofdrw.Net.Crypto.Password` (net8.0) for this package's private profile v1 self-round-trips. It is separate from the default Converter dependencies; general GM/T 0099/vendor interoperability, certification, and archival acceptance are not supported. See [the API and limits](docs/password-crypto.md).
+
 ## Notes
 
-- SDK libraries target `netstandard2.0` and `netstandard2.1`.
+- Default SDK libraries target `netstandard2.0` and `netstandard2.1`.
 - The CLI targets `net10.0`.
 - Existing source XML is preserved for high-fidelity round trips. Clear an element's `SourceXml` before expecting all typed property changes to be serialized.
 - Merge produces a self-contained typed document, flattens referenced templates, and rejects unknown raw objects unless `SkipUnsupportedRawElements` is explicitly enabled.
