@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
       - name: Install rendering tools and pinned licensed font
         run: |
-          sudo apt-get update && sudo apt-get install -y poppler-utils
+          sudo apt-get update && sudo apt-get install -y poppler-utils imagemagick librsvg2-bin
           python -m pip install fonttools==4.59.2
           python scripts/install-ci-fonts.py
           mkdir -p artifacts/ses-interop/fonts
