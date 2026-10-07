@@ -33,6 +33,6 @@ Office fonts in place, but does not copy them into the package or repository.
 The optional producer-event adapter has its own SkiaSharp dependency. Default
 Layout/Converter products do not depend on it. Skia native binaries include
 additional third-party notices shipped by their NativeAssets packages; see
-`LICENSE-THIRD-PARTY-NOTICES.txt` in the resolved native package. NativeAssets
+`THIRD-PARTY-NOTICES.txt` in the resolved native package. NativeAssets
 macOS/Win32 are SkiaSharp transitive runtime dependencies. No custom Skia build
 or native bridge is redistributed by this adapter.
