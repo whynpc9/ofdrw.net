@@ -14,6 +14,7 @@ root = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('source_head'); parser.add_argument('version')
 parser.add_argument('--round', default='r2'); parser.add_argument('--independent-round', default='low2')
+parser.add_argument('--regression-round', default=None)
 args = parser.parse_args()
 source_head = args.source_head; version = args.version
 sha = lambda data: hashlib.sha256(data).hexdigest()
@@ -41,14 +42,22 @@ with tempfile.TemporaryDirectory(prefix='ofd-skia-evidence-') as temporary:
         ('artifacts/skia/independent-package/package-manifest.json', 'independent/optional-packages.json'),
         ('artifacts/skia/independent-package/output/sample-report.json', 'independent/sample-report.json')]:
         copy((independent / source).relative_to(root), target)
-    regression = root / f'artifacts/skia/graphics-regression-{args.round}'
+    regression = root / f'artifacts/skia/graphics-regression-{args.regression_round or args.round}'
     for path in regression.rglob('*'):
         if path.is_file(): copy(path.relative_to(root), 'regression/' + str(path.relative_to(regression)))
-    copy('artifacts/skia/preview-acceptance-r3.json', 'preview/acceptance.json')
+    copy(f'artifacts/skia/preview-acceptance-{args.round}.json', 'preview/acceptance.json')
+    copy('artifacts/skia/preview-acceptance-r3.json', 'preview/previous-r3.json')
+    copy('artifacts/skia/independent/independent-verification-low3.json', 'independent/previous-low3.json')
+    for filename in ['Program.cs', 'Probe.csproj', 'observed.txt']:
+        copy('artifacts/skia/blender-probe/' + filename, 'blender-before/' + filename)
+        copy('artifacts/skia/blender-probe-fixed/' + filename, 'blender-after/' + filename)
+    copy('artifacts/skia/blender-probe/obj/project.assets.json', 'blender-before/consumer.assets.json')
+    copy('artifacts/skia/blender-probe/build.log', 'blender-before/build.log')
+    copy('artifacts/skia/pr17-review3-complete.json', 'reviews/pr17-review3-complete.json')
     copy('artifacts/skia/pr17-review2.json', 'reviews/pr17-review2.json')
-    for filename in ['full-suite-review1-fixed.log', 'pr17-review1-complete.json', 'full-suite-frozen.log', 'python-tests.log', 'default-package-r1.log', 'optional-package-r1.log', 'default-package-r2.log', 'optional-package-r2.log', 'graphics-regression-r2.log', f'default-package-{args.round}.log', f'optional-package-{args.round}.log', f'graphics-regression-{args.round}.log']:
+    for filename in ['full-suite-blender-fixed.log', 'full-suite-review1-fixed.log', 'pr17-review1-complete.json', 'full-suite-frozen.log', 'python-tests.log', 'default-package-r1.log', 'optional-package-r1.log', 'default-package-r2.log', 'optional-package-r2.log', 'graphics-regression-r2.log', f'default-package-{args.round}.log', f'optional-package-{args.round}.log', f'graphics-regression-{args.regression_round or args.round}.log']:
         copy('artifacts/skia/' + filename, 'logs/' + filename)
-    for path in (root / 'artifacts/skia/full-suite-review1-fixed').glob('*.trx'):
+    for path in (root / 'artifacts/skia/full-suite-blender-fixed').glob('*.trx'):
         copy(path.relative_to(root), 'logs/trx/' + path.name)
     notices = Path.home() / '.nuget/packages/skiasharp.nativeassets.macos/3.119.1'
     for filename in ['LICENSE.txt', 'THIRD-PARTY-NOTICES.txt']:
@@ -56,8 +65,8 @@ with tempfile.TemporaryDirectory(prefix='ofd-skia-evidence-') as temporary:
     fonts = root / 'artifacts/graphics-fonts'
     copy(fonts / 'Ofdrw-CI-Noto-OFL.txt', 'licenses/Noto-OFL.txt')
     copy('artifacts/skia/independent/independent-verification-low2.json', 'independent/previous-low2.json')
-    copy('artifacts/skia/independent/observer-low3/Program.cs', 'independent/observer/Program.cs')
-    copy('artifacts/skia/independent/observer-low3/Observer.csproj', 'independent/observer/Observer.csproj')
+    copy(f'artifacts/skia/independent/observer-{args.independent_round}/Program.cs', 'independent/observer/Program.cs')
+    copy(f'artifacts/skia/independent/observer-{args.independent_round}/Observer.csproj', 'independent/observer/Observer.csproj')
     for filename in ['observed.txt', 'Program.cs', 'Probe.csproj']:
         copy('artifacts/skia/cancellation-probe/' + filename, 'review1-cancellation-before/' + filename)
         copy('artifacts/skia/cancellation-probe-fixed/' + filename, 'review1-cancellation-after/' + filename)
