@@ -67,9 +67,29 @@ with tempfile.TemporaryDirectory(prefix='ofd-skia-evidence-') as temporary:
     copy('artifacts/skia/independent/independent-verification-low2.json', 'independent/previous-low2.json')
     copy(f'artifacts/skia/independent/observer-{args.independent_round}/Program.cs', 'independent/observer/Program.cs')
     copy(f'artifacts/skia/independent/observer-{args.independent_round}/Observer.csproj', 'independent/observer/Observer.csproj')
+    copy(f'artifacts/skia/independent/observer-{args.independent_round}/obj/project.assets.json', 'independent/observer/consumer.assets.json')
+    copy((independent / 'artifacts/skia/independent-package/consumer.assets.json').relative_to(root), 'independent/consumer.assets.json')
     for filename in ['observed.txt', 'Program.cs', 'Probe.csproj']:
         copy('artifacts/skia/cancellation-probe/' + filename, 'review1-cancellation-before/' + filename)
         copy('artifacts/skia/cancellation-probe-fixed/' + filename, 'review1-cancellation-after/' + filename)
+    if args.round == 'r5':
+        copy('artifacts/skia/preview-acceptance-r4.json', 'preview/previous-r4.json')
+        copy('artifacts/skia/independent/independent-verification-low4.json', 'independent/previous-low4.json')
+        copy('artifacts/skia/pr17-review4-complete.json', 'reviews/pr17-review4-complete.json')
+        for filename in ['full-suite-font-fixed.log', 'style-tests.log', 'style-tests-unique-fixtures.log', 'style-source-probe.log', 'style-source-probe2.log', 'optional-package-r5-roundtrip-id-failure.log']:
+            copy('artifacts/skia/' + filename, 'font-style/logs/' + filename)
+        for path in (root / 'artifacts/skia/full-suite-font-fixed').glob('*.trx'):
+            copy(path.relative_to(root), 'font-style/trx/' + path.name)
+        for path in (root / 'e2e/Ofdrw.Net.SkiaSharp.E2E/testdata/fonts').iterdir():
+            if path.is_file(): copy(path.relative_to(root), 'font-style/fixtures/' + path.name)
+        copy('scripts/generate-skia-style-fixtures.py', 'font-style/generate-skia-style-fixtures.py')
+        copy('e2e/Ofdrw.Net.SkiaSharp.E2E/FontStyleProbe.cs', 'font-style/FontStyleProbe.cs')
+        for filename in ['Program.cs', 'Probe.csproj', 'observed.txt', 'obj/project.assets.json']:
+            copy('artifacts/skia/font-emphasis-before/' + filename, 'font-style/before/' + filename)
+        for path in (root / 'artifacts/skia/font-emphasis-before/output').iterdir():
+            if path.is_file(): copy(path.relative_to(root), 'font-style/before/output/' + path.name)
+        for path in (independent / 'artifacts/skia/independent-package/output').glob('font-style*'):
+            if path.is_file(): copy(path.relative_to(root), 'independent/' + path.name)
     # Original source probe remains reviewable; SVG/PNG alone are not its code.
     copy('artifacts/skia/probe/Program.cs', 'probe/Program.cs')
     copy('artifacts/skia/probe/Probe.csproj', 'probe/Probe.csproj')
