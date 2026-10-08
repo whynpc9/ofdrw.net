@@ -30,3 +30,5 @@ OfdSkiaAdapter.Append(package, page, events,
 [设计与真实事件入口探针](../skia-adapter-design-contract.md) 解释为何没有通过 SVG 反解析或原生 ABI 桥透明捕获。该受限入口没有解除 21 任意 PDF 绘制事件来源的前置门；issue #3 仍要求 04+05。
 
 Blender：默认 null 或 SDK 的 canonical `SKBlender.CreateBlendMode(SrcOver)` 可接受；runtime-effect/arithmetic 等自定义 Blender 即使 BlendMode getter 返回 SrcOver 也明确拒绝。枚举值不是自定义混合器语义的证明。
+
+字体样式位必须可验证：OS/2 fsSelection bit5/0与head macStyle bit0/1一致；缺表/短表/矛盾拒绝。目的资源flags绑定这些实际文件位，文本没有附加加粗/倾斜请求（400,false）；文件中的SemiBold/Oblique或Bold/Italic轮廓仍保留，不依据Skia分类再合成一遍。

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
+using System.Runtime.InteropServices;
 using System.Xml;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Graphics;
@@ -59,7 +60,15 @@ public sealed class SkiaDrawEvent
         _advances = new double[advances.Count];
         for (var i = 0; i < advances.Count; i++) { Finite(advances[i]); _advances[i] = advances[i]; }
         _matrix = Matrix(matrix); _text = text; _fontId = fontId; _fontSize = font.Size;
-        _x = baseline.X; _y = baseline.Y; _bold = face.IsBold; _italic = face.IsItalic;
+        _x = baseline.X; _y = baseline.Y;
+        // Skia classifies weight >=600 and all non-upright faces as bold/italic.
+        // Existing PDF uses OS/2 selection bits, while SVG uses head.macStyle.
+        // Validate just these native table words; do not resolve or parse fonts.
+        var selection = FontWord(face, 0x4f532f32u, 62); // OS/2.fsSelection
+        var macStyle = FontWord(face, 0x68656164u, 44); // head.macStyle
+        _bold = (selection & 0x20) != 0; _italic = (selection & 0x01) != 0;
+        if (((macStyle & 1) != 0) != _bold || ((macStyle & 2) != 0) != _italic)
+            throw new NotSupportedException("OS/2 and head font style flags must agree; ambiguous faces require a different font profile.");
         using var stream = face.OpenStream(out var faceIndex);
         if (stream is null || !stream.HasLength || stream.Length <= 0 || stream.Length > maxFontBytes)
             throw new NotSupportedException("Typeface must expose a bounded original font stream.");
@@ -150,7 +159,7 @@ public sealed class SkiaDrawEvent
         if (!fontHashes.TryGetValue(_fontId!, out var actual))
         { using var hash = SHA256.Create(); actual = hash.ComputeHash(resource.Data); fontHashes.Add(_fontId!, actual); }
         for (var i = 0; i < actual.Length; i++) if (actual[i] != _fontHash![i]) throw new ArgumentException("SKFont face payload does not match the destination resource.");
-        graphics.DrawString(_text!, new OfdFont(resource.FontName, _fontSize, _bold ? 700 : 400, _italic, _fontId),
+        graphics.DrawString(_text!, new OfdFont(resource.FontName, _fontSize, weight: 400, italic: false, resourceId: _fontId),
             _brush!, _x, _y, _advances, token);
     }
     private static (OfdPen?, OfdBrush?) Paint(SKPaint paint, bool joinsMatter)
@@ -192,6 +201,24 @@ public sealed class SkiaDrawEvent
         // Reuse 04's exact singular validation rather than duplicating its numeric contract.
         var package = new OfdDocumentPackage(); var page = new OfdPage { WidthMillimeters = 1, HeightMillimeters = 1 }; package.Pages.Add(page);
         new OfdGraphics(package, page).SetTransform(result); return result;
+    }
+    private static ushort FontWord(SKTypeface face, uint tag, int offset)
+    {
+        if (face.GetTableSize(tag) < offset + 2)
+            throw new NotSupportedException("Font style table is missing or truncated.");
+        var buffer = new byte[1]; var pinned = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+        try
+        {
+            // SDK TryGetTableData only promises a nonzero read. A one-byte
+            // request makes success unambiguous and never allocates a whole table.
+            if (!face.TryGetTableData(tag, offset, 1, pinned.AddrOfPinnedObject()))
+                throw new NotSupportedException("Font style flags could not be read.");
+            var high = buffer[0];
+            if (!face.TryGetTableData(tag, offset + 1, 1, pinned.AddrOfPinnedObject()))
+                throw new NotSupportedException("Font style flags could not be read.");
+            return (ushort)((high << 8) | buffer[0]);
+        }
+        finally { pinned.Free(); }
     }
     private static void Point(SKPoint value) { Finite(value.X); Finite(value.Y); }
     private static void Finite(double value) { if (double.IsNaN(value) || double.IsInfinity(value)) throw new ArgumentException("Values must be finite."); }

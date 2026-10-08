@@ -17,7 +17,9 @@ python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$DEFAULT_FEED" "$VERSIO
 cp "$DEFAULT_FEED"/*.nupkg "$OUTPUT_DIR/feed/"
 NUGET_PACKAGES="$SOURCE_CACHE" dotnet pack "$ROOT_DIR/src/Ofdrw.Net.Graphics.SkiaSharp/Ofdrw.Net.Graphics.SkiaSharp.csproj" -c Release -o "$OUTPUT_DIR/feed" \
   -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${FLAGS[@]}"
-cp "$ROOT_DIR/e2e/Ofdrw.Net.SkiaSharp.E2E/Program.cs" "$TASK_DIR/Program.cs"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.SkiaSharp.E2E/"*.cs "$TASK_DIR/"
+mkdir -p "$TASK_DIR/testdata/fonts"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.SkiaSharp.E2E/testdata/fonts/"*.ttf "$TASK_DIR/testdata/fonts/"
 cp "$ROOT_DIR/e2e/Ofdrw.Net.SkiaSharp.E2E/Ofdrw.Net.SkiaSharp.E2E.csproj" "$TASK_DIR/Consumer.csproj"
 python3 - "$TASK_DIR/NuGet.Config" "$OUTPUT_DIR/feed" "$SOURCE_CACHE" <<'PY'
 import sys
@@ -53,6 +55,6 @@ assets=json.loads((root/'consumer.assets.json').read_text())
 if any(v['type']=='project' for v in assets['libraries'].values()): raise ValueError('Consumer used project references')
 (root/'package-manifest.json').write_text(json.dumps({'version':version,'status':'passed','consumer':'fresh cache, PackageReference only','packages':packages},indent=2))
 PY
-for name in adapted direct04; do
+for name in adapted direct04 font-styles; do
   pdftoppm -r 144 -png "$OUTPUT_DIR/output/$name.pdf" "$OUTPUT_DIR/output/$name" >/dev/null 2>&1
 done

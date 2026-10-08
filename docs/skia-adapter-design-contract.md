@@ -35,3 +35,7 @@
 源码依据：[SkiaSharp 3.119.1 SKCanvas](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKCanvas.cs)、[Skia SVG device](https://github.com/google/skia/blob/main/src/svg/SkSVGDevice.cpp)。原始实测证据、环境/哈希及独立验收将在 [19 证据](evidence/skia/README.md) 留存。
 
 Blender：默认 null 或 SDK 的 canonical `SKBlender.CreateBlendMode(SrcOver)` 可接受；runtime-effect/arithmetic 等自定义 Blender 即使 BlendMode getter 返回 SrcOver 也明确拒绝。枚举值不是自定义混合器语义的证明。
+
+R5 face风格：通过现有SKTypeface native table API，仅以两次单byte读取OS/2 offset62与head offset44，前置table长度检查；Resource.Bold/Italic须匹配OS/2 bit5/0，且head bit0/1须一致。缺表/短表/矛盾或读取失败明确拒绝，不修改目标资源。Skia weight>=600/Oblique分类不用于强制字体强调；embedded Text请求始终400,false，载荷本身保留SemiBold/Oblique/真BoldItalic字形，既有导出器依据真实resourceflag选择原face而不faux。此为有界Interop元数据验证，不引入05 parser/resolver/cache/subset服务；不支持字体规范化/fallback。
+
+既有Writer会把真实resource Bold/Italic位提升为有效CT_Text强调，Reader读取写出的有效字段；R5的400,false指输入模型未提出附加强调。写出真Bold/Italic的700/true沿用04既有fileflag继承，PDF resolver此时请求与实际位相同，MustSimulate两项false；SemiBold/Oblique不被Skia分类误提升。
