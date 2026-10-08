@@ -1,0 +1,1106 @@
+{
+  "baseline": "ab87bcade2ec5df6fa1f7ea0b86c590d13225653",
+  "runtime_head": "e7e46f322a64a758c1f84be2712905925f07b735",
+  "source_snapshot": "6bbc5e213e28ec2ff550446e8b3320c01a53b76a",
+  "mode": "cooperating-producer-events, no arbitrary SKCanvas interception",
+  "recorded_at": "2026-10-08T10:58:07.910015+08:00",
+  "functional": {
+    "status": "passed",
+    "full_suite": {
+      "passed": 457,
+      "failed": 0,
+      "skipped": 0
+    },
+    "adapter_tests": 28,
+    "python_tests": 5,
+    "default_package_count": 11,
+    "optional_feed_package_count": 12,
+    "primary_version": "0.1.0-skia.20261008.r5",
+    "independent_version": "0.1.0-skia.20261008.low5",
+    "independent_status": "passed",
+    "historical_failure": "8bf97cf copied consumer lacked ImplicitUsings; source csproj fixed at 8084147. Both raw primary/Low failures retained.",
+    "review1_repair": {
+      "cancel_before_GetEnumerator_and_MoveNext": true,
+      "dispose_before_commit": true,
+      "primary_precancel_observer": "OperationCanceledException, GetEnumerator=0, elements=0",
+      "independent_actual_package_observers": [
+        "precancel Get=0 Move=0 Elements=0",
+        "cancel-in-Get Get=1 Move=0 Elements=0",
+        "dispose-failure Get=1 Move=2 Elements=0"
+      ]
+    },
+    "blender_repair": {
+      "default_null_supported": true,
+      "canonical_SDK_SrcOver_supported": true,
+      "runtime_effect_and_arithmetic_rejected": true,
+      "all_primitive_factories_tested": true,
+      "old_actual_package_probe": "enum=SrcOver, customblender accepted, native green pixel; retained",
+      "main_and_independent_actual_nupkg_observers": "passed"
+    },
+    "font_style_repair": {
+      "status": "passed",
+      "actual_old_r4_package": "SemiBold MustSimulateBold=true; Oblique MustSimulateItalic=true",
+      "fixed_input_model": "weight400 italicfalse; exact physical file flags bound to resource",
+      "flags": "SKTypeface native OS/2 fsSelection and head.macStyle bounded two-byte reads; missing/truncated/conflict reject",
+      "five_faces": [
+        "regular",
+        "semibold600",
+        "obliquebit9",
+        "boldbit5",
+        "italicbit0"
+      ],
+      "actual_roundtrip_ofd_payload_hashes_and_effective_flags_checked": true,
+      "pdf_must_simulate_bold_or_italic": false,
+      "main_and_independent_actual_nupkg_observers": "passed",
+      "historical_probe_failures": "Old shortOS2 fixture sharedPSName caused CoreText alias; unique name fixed. Readback fixture initially checked prewriter IDs; now binds unique family then checks exactbytes. Both failures retained."
+    }
+  },
+  "native_sample": {
+    "pages": 2,
+    "paths": 17,
+    "texts": 27,
+    "images": 0,
+    "original_unicode_preserved": true,
+    "unique_font_face_hash_checked": true,
+    "direct04_entry_payloads_equal": true,
+    "outer_zip_hash_caveat": "Current primary and Low outer ZIP hashes can differ due timestamps; all decompressed entry payloads are equal.",
+    "direct04_pdf_png_equal": true,
+    "real_skcanvas_png_pages": [
+      1,
+      2
+    ],
+    "png_visual_checked_candidate_pages": [
+      1,
+      2
+    ],
+    "previous_candidate_png_pixels_identical": true,
+    "font_style_pages": 1,
+    "font_style_symbol_runs": 10,
+    "font_style_native_raster_caveat": "NativeSkia vs PDF144dpi edges differ horizontally0-1px and vertically1-2px; no claim of identical native/PDF raster. Adapter/direct04 original sample PNG exact."
+  },
+  "preview": {
+    "status": "passed",
+    "chain": "cooperating Skia producer → native OFD → PDF → macOS Preview",
+    "source_snapshot": "6bbc5e213e28ec2ff550446e8b3320c01a53b76a",
+    "runtime_head": "e7e46f322a64a758c1f84be2712905925f07b735",
+    "checked_at": "2026-10-08T10:55:14.469611+08:00",
+    "reviewer": "Codex primary via native macOS Preview using cua_repl",
+    "current_round": "r5",
+    "current_round_checked_documents": [
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r5/output/adapted.pdf",
+        "file": "adapted.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 79566,
+        "sha256": "3f31d42d3831d097d8b4695d6ecd4afd81b5a5bbcf824c9aa6a703254b1b025a",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed",
+        "observations": [
+          "R5 cooperative invoice: complete Chinese/Latin proportional text, local color, table fill/borders/alignment, baseline guide, affine stamp and footer; matches supported nativeSkia reference.",
+          "R5 affine paths: nonuniform strokes, curves, miter10, fill rules, intentional mirror and page2footer; no unexpected overlap/crop/blank page."
+        ],
+        "checked_at": "2026-10-08T10:55:14.469611+08:00",
+        "source_snapshot": "6bbc5e213e28ec2ff550446e8b3320c01a53b76a",
+        "runtime_head": "e7e46f322a64a758c1f84be2712905925f07b735"
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r5/output/direct04.pdf",
+        "file": "direct04.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 79566,
+        "sha256": "96fc10e79e50ba05ac9c85c6aadec4c8a7b7446e8288c9d375bb9f2a23d1d3cb",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed",
+        "observations": [
+          "R5 direct04 invoice matches adapter and nativeSkia reference.",
+          "R5 direct04 path diagram matches adapter and nativeSkia reference."
+        ],
+        "checked_at": "2026-10-08T10:55:14.469611+08:00",
+        "source_snapshot": "6bbc5e213e28ec2ff550446e8b3320c01a53b76a",
+        "runtime_head": "e7e46f322a64a758c1f84be2712905925f07b735"
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r5/output/font-styles.pdf",
+        "file": "font-styles.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 74084,
+        "sha256": "04c6ef4b76ac6f0be1abb018e2684c522e82543a870604bd994bacd3e3287dde",
+        "checked_pages": [
+          1
+        ],
+        "result": "passed",
+        "observations": [
+          "Five original MIT symbol font rows: regular, SemiBold600, Obliquebit9, trueBoldbit5, trueItalicbit0. Adapter/direct04 glyph outlines, spacing and baseline match. SemiBold/Oblique show original outlines without repeated emphasis; trueBold/Italic retain original widened/sheared shapes. Chinese/Latin captions and footer complete. ActualOFDreadback hash/flags/effectiveXML + PDFresolver MustSimulateBold/Italic bothfalse; nativeSkia rows checked as auxiliary PNG."
+        ],
+        "checked_at": "2026-10-08T10:55:14.469611+08:00",
+        "source_snapshot": "6bbc5e213e28ec2ff550446e8b3320c01a53b76a",
+        "runtime_head": "e7e46f322a64a758c1f84be2712905925f07b735"
+      }
+    ],
+    "current_round_pdf_pages": 5,
+    "unchanged_regression_documents": [
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics.pdf",
+        "file": "graphics.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 124031,
+        "sha256": "941752e9e688a242df945df87be6e1f35510d2f34c4702ca6769cb20e3b5db2d",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed",
+        "observations": [
+          "Native04 invoice bold title/local italic/color, grids/alignment, baseline and rotated stamp.",
+          "Anisotropic strokes, curves/miter/fill rules, frozen clipping and restored context footer."
+        ],
+        "scope": "Unchanged04/DOCX source and exactR3 PDF; originalR3 Preview acceptance retained, not reopened inR5."
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-roundtrip.pdf",
+        "file": "graphics-roundtrip.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 124031,
+        "sha256": "5c29fae44ae569b41507f0aa2fcc82ebe5730faff8816f6eab3a8466e89348f6",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed",
+        "observations": [
+          "Roundtrip invoice retains native04 expected styles and placement.",
+          "Roundtrip diagram retains transforms, clip and local emphasis without repeated paint."
+        ],
+        "scope": "Unchanged04/DOCX source and exactR3 PDF; originalR3 Preview acceptance retained, not reopened inR5."
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-name-only.pdf",
+        "file": "graphics-name-only.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 68550,
+        "sha256": "8b1d0fbf11a0eb1c8e92502eb9e1596025d4adb06de0f9c258a43fe72c312151",
+        "checked_pages": [
+          1
+        ],
+        "result": "passed",
+        "observations": [
+          "Upright control and faux-italic baselines; user rotation/scale/shear plus italic and clipped italic appear once."
+        ],
+        "scope": "Unchanged04/DOCX source and exactR3 PDF; originalR3 Preview acceptance retained, not reopened inR5."
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-fractional-clip.pdf",
+        "file": "graphics-fractional-clip.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 67325,
+        "sha256": "db4be780cd4774774c2d5026f2f6ed8ab4498d60ce7f7dc9926b92e9eb651f9e",
+        "checked_pages": [
+          1
+        ],
+        "result": "passed",
+        "observations": [
+          "Right blue edge remains left of130mm guide. Left logical rectangle crop is intentional, matching fixture."
+        ],
+        "scope": "Unchanged04/DOCX source and exactR3 PDF; originalR3 Preview acceptance retained, not reopened inR5."
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-native.pdf",
+        "file": "baseline-native.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 117021,
+        "sha256": "54a3ac364e2b160d7df51c89d8b55180ff121260e3d5b6043ecbfa13bfec9da0",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed",
+        "observations": [
+          "Licensed DOCX explicit Native→OFD→PDF: centered title, local italic subtitle, blue headings, proportional English, table fill/borders and body alignment.",
+          "Intentional second-page section break, isolated red bold run, right-aligned date; no extra blank page."
+        ],
+        "scope": "Unchanged04/DOCX source and exactR3 PDF; originalR3 Preview acceptance retained, not reopened inR5."
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-default.pdf",
+        "file": "baseline-default.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 117021,
+        "sha256": "b5495454919b61de0c702574342dfee1929ca9db615a4012c31a6cd6540024c5",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed",
+        "observations": [
+          "Same licensed DOCX default→Native OFD→PDF: title/subtitle/table/body match explicitNative.",
+          "Same two-page break, local redbold, date alignment and empty remainder expected from source."
+        ],
+        "scope": "Unchanged04/DOCX source and exactR3 PDF; originalR3 Preview acceptance retained, not reopened inR5."
+      }
+    ],
+    "unchanged_regression_pages": 10,
+    "total_covered_pages": 15,
+    "exact_paths_confirmed_by_AX_URL": true,
+    "current_artifacts_newly_opened": true,
+    "task_document_windows_opened": 3,
+    "task_document_windows_closed": 3,
+    "additional_known_owned_r4_image_group_closed": 1,
+    "unidentified_existing_tmp_document_preserved": true,
+    "other_task_documents_inspected_or_closed": false,
+    "gui_released": true,
+    "ui_recoveries": [
+      "Initial Open panel/path transition helper failed; freshAX manual selection recovered before currentR5 view."
+    ],
+    "scope": "5 newly regeneratedR5 pages actually viewed. OriginalR3 10 unchanged04/DOCXpages retain their dated evidence. No general complex-document fidelity inference."
+  },
+  "review": {
+    "status": "font-style-repair-independent-and-preview-passed-awaiting-latest-head-review",
+    "pr": "https://github.com/whynpc9/ofdrw.net/pull/17",
+    "round1_head": "158a63c420429aa9634313cf2074f4d1ecc9ee21",
+    "round1_codex_findings": 1,
+    "round1_cursor_findings": 0,
+    "round1_ci": "six checks passed",
+    "fixed_runtime_head": "e6e11ee71f48f71cef8de69d8cc23b8c0e058cb8",
+    "thread": "PRRT_kwDORQ4ZKs6qHM3w",
+    "round2_head": "44635c93ae3d1e2c10095dd44626b3676d3f8aa4",
+    "round2_ci": "six checks passed",
+    "round2_cursor": "no findings",
+    "round2_codex": "one PreviewP1, now actual14page acceptance complete",
+    "preview_thread": "PRRT_kwDORQ4ZKs6qHufk",
+    "round3_head": "4efc19bc2aa7e16c2e4eb45ede0cf9f61aa74b46",
+    "round3_ci": "six checks passed",
+    "round3_codex_and_cursor": "same customBlenderP2",
+    "blender_threads": [
+      "PRRT_kwDORQ4ZKs6qKE5m",
+      "PRRT_kwDORQ4ZKs6qKIBE"
+    ],
+    "fixed_blender_runtime_head": "bdff0d06bf9de0ce5aeca1d6da5a82b0b8042dfd",
+    "round4_head": "2227eaa9c45eaa23c5d1240977b9401103555f41",
+    "round4_ci": "six passed",
+    "round4_codex": "explicit no major issues",
+    "round4_cursor": "one font-style P2",
+    "font_style_thread": "PRRT_kwDORQ4ZKs6qKmbK",
+    "fixed_font_runtime_head": "e7e46f322a64a758c1f84be2712905925f07b735",
+    "fixed_font_source_snapshot": "6bbc5e213e28ec2ff550446e8b3320c01a53b76a"
+  },
+  "production_release_accepted": false,
+  "merge_accepted": false,
+  "limitations": [
+    "Producer must explicitly emit supported events; existing Render(SKCanvas), SKPicture and arbitrary PDF callbacks are not transparently captured.",
+    "No clips/layers/images/shaped blobs/text-on-path/conics/inverse fill; producer must fail explicitly.",
+    "Only affine finite nonsingular matrices, 8-bit solid SrcOver, positive butt/miter strokes; arbitrary paths require miter10.",
+    "Text uses original producer Unicode and advances, static bounded font payload and unique destination resource identity; no shaping/resolver/subset/05 integration.",
+    "No arbitrary Skia/Word/PDF fidelity, target-reader interoperability or production release claim."
+  ],
+  "design": {
+    "reviewer": "gpt-6-astra high",
+    "status": "conditionally-approved cooperative producer scope; coordinator explicitly authorized",
+    "native_bridge": "not introduced",
+    "font_service_05_dependency": false
+  },
+  "previous_snapshot": {
+    "runtime_head": "8bf97cfbf9ae16ccea5338d7a3a61fc6b1889644",
+    "source_snapshot": "8084147a07650b5bae115bc5c6f0a5b45b7c7576",
+    "functional": {
+      "status": "passed",
+      "full_suite": {
+        "passed": 446,
+        "failed": 0,
+        "skipped": 0
+      },
+      "adapter_tests": 17,
+      "python_tests": 5,
+      "default_package_count": 11,
+      "optional_feed_package_count": 12,
+      "primary_version": "0.1.0-skia.20261008.r3",
+      "independent_version": "0.1.0-skia.20261008.low3",
+      "independent_status": "passed",
+      "historical_failure": "8bf97cf copied consumer lacked ImplicitUsings; source csproj fixed at 8084147. Both raw primary/Low failures retained.",
+      "review1_repair": {
+        "cancel_before_GetEnumerator_and_MoveNext": true,
+        "dispose_before_commit": true,
+        "primary_precancel_observer": "OperationCanceledException, GetEnumerator=0, elements=0",
+        "independent_actual_package_observers": [
+          "precancel Get=0 Move=0 Elements=0",
+          "cancel-in-Get Get=1 Move=0 Elements=0",
+          "dispose-failure Get=1 Move=2 Elements=0"
+        ]
+      }
+    },
+    "preview": {
+      "status": "not-reviewed",
+      "reason": "Mac locked on initial Preview connection; automatic unlock failed and manual unlock is pending. Current r3 artifacts regenerated, still 0/14 checked.",
+      "chain": "cooperating Skia producer → native OFD → PDF → macOS Preview; licensed DOCX Native/default → OFD → PDF → macOS Preview",
+      "planned_documents": [
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/adapted.pdf",
+          "file": "adapted.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 79566,
+          "sha256": "421772e80403a616d6e3fb96c8c9c9b6de04e122cca84e78e20ff0b7f41d7fc2",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/direct04.pdf",
+          "file": "direct04.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 79566,
+          "sha256": "7363f0481529cfedc4ac4000263dd37f791e709f2c81073c56a0483a0e2b60ff",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics.pdf",
+          "file": "graphics.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 124031,
+          "sha256": "941752e9e688a242df945df87be6e1f35510d2f34c4702ca6769cb20e3b5db2d",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-roundtrip.pdf",
+          "file": "graphics-roundtrip.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 124031,
+          "sha256": "5c29fae44ae569b41507f0aa2fcc82ebe5730faff8816f6eab3a8466e89348f6",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-name-only.pdf",
+          "file": "graphics-name-only.pdf",
+          "pages": [
+            1
+          ],
+          "bytes": 68550,
+          "sha256": "8b1d0fbf11a0eb1c8e92502eb9e1596025d4adb06de0f9c258a43fe72c312151",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-fractional-clip.pdf",
+          "file": "graphics-fractional-clip.pdf",
+          "pages": [
+            1
+          ],
+          "bytes": 67325,
+          "sha256": "db4be780cd4774774c2d5026f2f6ed8ab4498d60ce7f7dc9926b92e9eb651f9e",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-native.pdf",
+          "file": "baseline-native.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 117021,
+          "sha256": "54a3ac364e2b160d7df51c89d8b55180ff121260e3d5b6043ecbfa13bfec9da0",
+          "checked_pages": []
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-default.pdf",
+          "file": "baseline-default.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 117021,
+          "sha256": "b5495454919b61de0c702574342dfee1929ca9db615a4012c31a6cd6540024c5",
+          "checked_pages": []
+        }
+      ],
+      "planned_pdf_pages": 14,
+      "checked_pages": [],
+      "task_document_windows_opened": 0,
+      "task_document_windows_closed": 0,
+      "other_windows_touched": false,
+      "gui_released": true
+    },
+    "review1_head": "158a63c420429aa9634313cf2074f4d1ecc9ee21",
+    "review1_checks": "six passed",
+    "review1_cursor": "no findings",
+    "review1_codex": "one P2, cancellation before source advancement"
+  },
+  "previous_preview_blocked": {
+    "status": "not-reviewed",
+    "reason": "Mac locked on initial Preview connection; automatic unlock failed and manual unlock is pending. Current r3 artifacts regenerated, still 0/14 checked.",
+    "chain": "cooperating Skia producer → native OFD → PDF → macOS Preview; licensed DOCX Native/default → OFD → PDF → macOS Preview",
+    "planned_documents": [
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/adapted.pdf",
+        "file": "adapted.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 79566,
+        "sha256": "421772e80403a616d6e3fb96c8c9c9b6de04e122cca84e78e20ff0b7f41d7fc2",
+        "checked_pages": []
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/direct04.pdf",
+        "file": "direct04.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 79566,
+        "sha256": "7363f0481529cfedc4ac4000263dd37f791e709f2c81073c56a0483a0e2b60ff",
+        "checked_pages": []
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics.pdf",
+        "file": "graphics.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 124031,
+        "sha256": "941752e9e688a242df945df87be6e1f35510d2f34c4702ca6769cb20e3b5db2d",
+        "checked_pages": []
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-roundtrip.pdf",
+        "file": "graphics-roundtrip.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 124031,
+        "sha256": "5c29fae44ae569b41507f0aa2fcc82ebe5730faff8816f6eab3a8466e89348f6",
+        "checked_pages": []
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-name-only.pdf",
+        "file": "graphics-name-only.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 68550,
+        "sha256": "8b1d0fbf11a0eb1c8e92502eb9e1596025d4adb06de0f9c258a43fe72c312151",
+        "checked_pages": []
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-fractional-clip.pdf",
+        "file": "graphics-fractional-clip.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 67325,
+        "sha256": "db4be780cd4774774c2d5026f2f6ed8ab4498d60ce7f7dc9926b92e9eb651f9e",
+        "checked_pages": []
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-native.pdf",
+        "file": "baseline-native.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 117021,
+        "sha256": "54a3ac364e2b160d7df51c89d8b55180ff121260e3d5b6043ecbfa13bfec9da0",
+        "checked_pages": []
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-default.pdf",
+        "file": "baseline-default.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 117021,
+        "sha256": "b5495454919b61de0c702574342dfee1929ca9db615a4012c31a6cd6540024c5",
+        "checked_pages": []
+      }
+    ],
+    "planned_pdf_pages": 14,
+    "checked_pages": [],
+    "task_document_windows_opened": 0,
+    "task_document_windows_closed": 0,
+    "other_windows_touched": false,
+    "gui_released": true
+  },
+  "previous_r3_snapshot": {
+    "runtime_head": "e6e11ee71f48f71cef8de69d8cc23b8c0e058cb8",
+    "source_snapshot": "e6e11ee71f48f71cef8de69d8cc23b8c0e058cb8",
+    "functional": {
+      "status": "passed",
+      "full_suite": {
+        "passed": 446,
+        "failed": 0,
+        "skipped": 0
+      },
+      "adapter_tests": 17,
+      "python_tests": 5,
+      "default_package_count": 11,
+      "optional_feed_package_count": 12,
+      "primary_version": "0.1.0-skia.20261008.r3",
+      "independent_version": "0.1.0-skia.20261008.low3",
+      "independent_status": "passed",
+      "historical_failure": "8bf97cf copied consumer lacked ImplicitUsings; source csproj fixed at 8084147. Both raw primary/Low failures retained.",
+      "review1_repair": {
+        "cancel_before_GetEnumerator_and_MoveNext": true,
+        "dispose_before_commit": true,
+        "primary_precancel_observer": "OperationCanceledException, GetEnumerator=0, elements=0",
+        "independent_actual_package_observers": [
+          "precancel Get=0 Move=0 Elements=0",
+          "cancel-in-Get Get=1 Move=0 Elements=0",
+          "dispose-failure Get=1 Move=2 Elements=0"
+        ]
+      }
+    },
+    "preview": {
+      "status": "passed",
+      "checked_at": "2026-10-08T09:04:02.173252+08:00",
+      "reviewer": "Codex primary via native macOS Preview using cua_repl",
+      "source_snapshot": "44635c93ae3d1e2c10095dd44626b3676d3f8aa4",
+      "runtime_head": "e6e11ee71f48f71cef8de69d8cc23b8c0e058cb8",
+      "chain": "cooperating Skia producer → native OFD → PDF → macOS Preview; licensed DOCX Native/default → OFD → PDF → macOS Preview",
+      "checked_documents": [
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/adapted.pdf",
+          "file": "adapted.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 79566,
+          "sha256": "421772e80403a616d6e3fb96c8c9c9b6de04e122cca84e78e20ff0b7f41d7fc2",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Cooperative invoice: Chinese/Latin proportional text, local colors, table fills/borders/alignment, baseline guide, affine rotated stamp, footer.",
+            "Affine paths: nonuniform strokes, cubic/quadratic curve, miter tip, even-odd hole/winding fill, intentional mirror, page2 footer."
+          ]
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r3/output/direct04.pdf",
+          "file": "direct04.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 79566,
+          "sha256": "7363f0481529cfedc4ac4000263dd37f791e709f2c81073c56a0483a0e2b60ff",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Same invoice matches adapted and true SKCanvas PNG reference.",
+            "Same transform/path diagram matches adapted and true SKCanvas PNG reference."
+          ]
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics.pdf",
+          "file": "graphics.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 124031,
+          "sha256": "941752e9e688a242df945df87be6e1f35510d2f34c4702ca6769cb20e3b5db2d",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Native04 invoice bold title/local italic/color, grids/alignment, baseline and rotated stamp.",
+            "Anisotropic strokes, curves/miter/fill rules, frozen clipping and restored context footer."
+          ]
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-roundtrip.pdf",
+          "file": "graphics-roundtrip.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 124031,
+          "sha256": "5c29fae44ae569b41507f0aa2fcc82ebe5730faff8816f6eab3a8466e89348f6",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Roundtrip invoice retains native04 expected styles and placement.",
+            "Roundtrip diagram retains transforms, clip and local emphasis without repeated paint."
+          ]
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-name-only.pdf",
+          "file": "graphics-name-only.pdf",
+          "pages": [
+            1
+          ],
+          "bytes": 68550,
+          "sha256": "8b1d0fbf11a0eb1c8e92502eb9e1596025d4adb06de0f9c258a43fe72c312151",
+          "checked_pages": [
+            1
+          ],
+          "result": "passed",
+          "observations": [
+            "Upright control and faux-italic baselines; user rotation/scale/shear plus italic and clipped italic appear once."
+          ]
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-fractional-clip.pdf",
+          "file": "graphics-fractional-clip.pdf",
+          "pages": [
+            1
+          ],
+          "bytes": 67325,
+          "sha256": "db4be780cd4774774c2d5026f2f6ed8ab4498d60ce7f7dc9926b92e9eb651f9e",
+          "checked_pages": [
+            1
+          ],
+          "result": "passed",
+          "observations": [
+            "Right blue edge remains left of130mm guide. Left logical rectangle crop is intentional, matching fixture."
+          ]
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-native.pdf",
+          "file": "baseline-native.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 117021,
+          "sha256": "54a3ac364e2b160d7df51c89d8b55180ff121260e3d5b6043ecbfa13bfec9da0",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Licensed DOCX explicit Native→OFD→PDF: centered title, local italic subtitle, blue headings, proportional English, table fill/borders and body alignment.",
+            "Intentional second-page section break, isolated red bold run, right-aligned date; no extra blank page."
+          ]
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-default.pdf",
+          "file": "baseline-default.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 117021,
+          "sha256": "b5495454919b61de0c702574342dfee1929ca9db615a4012c31a6cd6540024c5",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Same licensed DOCX default→Native OFD→PDF: title/subtitle/table/body match explicitNative.",
+            "Same two-page break, local redbold, date alignment and empty remainder expected from source."
+          ]
+        }
+      ],
+      "pdf_page_count": 14,
+      "exact_paths_confirmed_by_AX_URL": true,
+      "current_artifacts_newly_opened": true,
+      "checked_pages": [
+        {
+          "file": "adapted.pdf",
+          "pages": [
+            1,
+            2
+          ]
+        },
+        {
+          "file": "direct04.pdf",
+          "pages": [
+            1,
+            2
+          ]
+        },
+        {
+          "file": "graphics.pdf",
+          "pages": [
+            1,
+            2
+          ]
+        },
+        {
+          "file": "graphics-roundtrip.pdf",
+          "pages": [
+            1,
+            2
+          ]
+        },
+        {
+          "file": "graphics-name-only.pdf",
+          "pages": [
+            1
+          ]
+        },
+        {
+          "file": "graphics-fractional-clip.pdf",
+          "pages": [
+            1
+          ]
+        },
+        {
+          "file": "baseline-native.pdf",
+          "pages": [
+            1,
+            2
+          ]
+        },
+        {
+          "file": "baseline-default.pdf",
+          "pages": [
+            1,
+            2
+          ]
+        }
+      ],
+      "task_document_windows_opened": 8,
+      "task_document_windows_closed": 8,
+      "windows_closed": true,
+      "gui_released": true,
+      "other_task_documents_inspected_or_closed": false,
+      "previous_failed_unlock": "First attempt locked; automatic unlock failure recorded, no pages inspected then. Coordinator later confirmed possible unlock and granted a new exclusive slot.",
+      "ui_recoveries": [
+        "GoTo path action initially arrived before Open panel; retried only through observed PathTextField/Open indices.",
+        "One default-document Open transition needed a fresh AX read; selected exactd3c6 URL confirmed before click."
+      ],
+      "scope": "All14 listed pages at fullpage display, with enlarged invoice/font/fractional-detail views. No observed missing glyphs, garbling, local style spread, repeated paint, unexpected overlap/crop or extra blank pages. PNG is auxiliary; actualPreview was performed."
+    },
+    "review": {
+      "status": "blender-repair-verified-awaiting-latest-head-review",
+      "pr": "https://github.com/whynpc9/ofdrw.net/pull/17",
+      "round1_head": "158a63c420429aa9634313cf2074f4d1ecc9ee21",
+      "round1_codex_findings": 1,
+      "round1_cursor_findings": 0,
+      "round1_ci": "six checks passed",
+      "fixed_runtime_head": "e6e11ee71f48f71cef8de69d8cc23b8c0e058cb8",
+      "thread": "PRRT_kwDORQ4ZKs6qHM3w",
+      "round2_head": "44635c93ae3d1e2c10095dd44626b3676d3f8aa4",
+      "round2_ci": "six checks passed",
+      "round2_cursor": "no findings",
+      "round2_codex": "one PreviewP1, now actual14page acceptance complete",
+      "preview_thread": "PRRT_kwDORQ4ZKs6qHufk",
+      "round3_head": "4efc19bc2aa7e16c2e4eb45ede0cf9f61aa74b46",
+      "round3_ci": "six checks passed",
+      "round3_codex_and_cursor": "same customBlenderP2",
+      "blender_threads": [
+        "PRRT_kwDORQ4ZKs6qKE5m",
+        "PRRT_kwDORQ4ZKs6qKIBE"
+      ],
+      "fixed_blender_runtime_head": "bdff0d06bf9de0ce5aeca1d6da5a82b0b8042dfd"
+    }
+  },
+  "previous_r4_snapshot": {
+    "runtime_head": "bdff0d06bf9de0ce5aeca1d6da5a82b0b8042dfd",
+    "source_snapshot": "bdff0d06bf9de0ce5aeca1d6da5a82b0b8042dfd",
+    "functional": {
+      "status": "passed",
+      "full_suite": {
+        "passed": 457,
+        "failed": 0,
+        "skipped": 0
+      },
+      "adapter_tests": 28,
+      "python_tests": 5,
+      "default_package_count": 11,
+      "optional_feed_package_count": 12,
+      "primary_version": "0.1.0-skia.20261008.r5",
+      "independent_version": "0.1.0-skia.20261008.low5",
+      "independent_status": "passed",
+      "historical_failure": "8bf97cf copied consumer lacked ImplicitUsings; source csproj fixed at 8084147. Both raw primary/Low failures retained.",
+      "review1_repair": {
+        "cancel_before_GetEnumerator_and_MoveNext": true,
+        "dispose_before_commit": true,
+        "primary_precancel_observer": "OperationCanceledException, GetEnumerator=0, elements=0",
+        "independent_actual_package_observers": [
+          "precancel Get=0 Move=0 Elements=0",
+          "cancel-in-Get Get=1 Move=0 Elements=0",
+          "dispose-failure Get=1 Move=2 Elements=0"
+        ]
+      },
+      "blender_repair": {
+        "default_null_supported": true,
+        "canonical_SDK_SrcOver_supported": true,
+        "runtime_effect_and_arithmetic_rejected": true,
+        "all_primitive_factories_tested": true,
+        "old_actual_package_probe": "enum=SrcOver, customblender accepted, native green pixel; retained",
+        "main_and_independent_actual_nupkg_observers": "passed"
+      },
+      "font_style_repair": {
+        "status": "passed",
+        "actual_old_r4_package": "SemiBold MustSimulateBold=true; Oblique MustSimulateItalic=true",
+        "fixed_input_model": "weight400 italicfalse; exact physical file flags bound to resource",
+        "flags": "SKTypeface native OS/2 fsSelection and head.macStyle bounded two-byte reads; missing/truncated/conflict reject",
+        "five_faces": [
+          "regular",
+          "semibold600",
+          "obliquebit9",
+          "boldbit5",
+          "italicbit0"
+        ],
+        "actual_roundtrip_ofd_payload_hashes_and_effective_flags_checked": true,
+        "pdf_must_simulate_bold_or_italic": false,
+        "main_and_independent_actual_nupkg_observers": "passed",
+        "historical_probe_failures": "Old shortOS2 fixture sharedPSName caused CoreText alias; unique name fixed. Readback fixture initially checked prewriter IDs; now binds unique family then checks exactbytes. Both failures retained."
+      }
+    },
+    "preview": {
+      "status": "passed",
+      "chain": "cooperating Skia producer → native OFD → PDF → macOS Preview; licensed DOCX Native/default → OFD → PDF → macOS Preview",
+      "runtime_head": "bdff0d06bf9de0ce5aeca1d6da5a82b0b8042dfd",
+      "checked_at": "2026-10-08T09:34:15.644138+08:00",
+      "reviewer": "Codex primary via native macOS Preview using cua_repl",
+      "current_round": "r4",
+      "current_round_checked_documents": [
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r4/output/adapted.pdf",
+          "file": "adapted.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 79566,
+          "sha256": "c54253cbd00937775b6977243065b213d3a20ce9a25fc54c396bf343197c060e",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Cooperative invoice: Chinese/Latin proportional text, local colors, table fills/borders/alignment, baseline guide, affine rotated stamp, footer. R4 current PDF re-opened; supported colors and geometry match actualSkia reference.",
+            "Affine paths: nonuniform strokes, cubic/quadratic curve, miter tip, even-odd hole/winding fill, intentional mirror, page2 footer. R4 current PDF re-opened; supported colors and geometry match actualSkia reference."
+          ],
+          "checked_at": "2026-10-08T09:34:15.644138+08:00",
+          "runtime_head": "bdff0d06bf9de0ce5aeca1d6da5a82b0b8042dfd"
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/package-r4/output/direct04.pdf",
+          "file": "direct04.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 79566,
+          "sha256": "cc31956cea43fdbc5c1e9b86504444fcb779aeaf515cfedbe1f5d3eabd82fbac",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Same invoice matches adapted and true SKCanvas PNG reference. R4 current PDF re-opened; supported colors and geometry match actualSkia reference.",
+            "Same transform/path diagram matches adapted and true SKCanvas PNG reference. R4 current PDF re-opened; supported colors and geometry match actualSkia reference."
+          ],
+          "checked_at": "2026-10-08T09:34:15.644138+08:00",
+          "runtime_head": "bdff0d06bf9de0ce5aeca1d6da5a82b0b8042dfd"
+        }
+      ],
+      "current_round_pdf_pages": 4,
+      "unchanged_regression_documents": [
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics.pdf",
+          "file": "graphics.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 124031,
+          "sha256": "941752e9e688a242df945df87be6e1f35510d2f34c4702ca6769cb20e3b5db2d",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Native04 invoice bold title/local italic/color, grids/alignment, baseline and rotated stamp.",
+            "Anisotropic strokes, curves/miter/fill rules, frozen clipping and restored context footer."
+          ],
+          "scope": "Unchanged04/DOCX source and exactR3 PDF; original14page Preview record retained, not counted as re-openedR4 page."
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-roundtrip.pdf",
+          "file": "graphics-roundtrip.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 124031,
+          "sha256": "5c29fae44ae569b41507f0aa2fcc82ebe5730faff8816f6eab3a8466e89348f6",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Roundtrip invoice retains native04 expected styles and placement.",
+            "Roundtrip diagram retains transforms, clip and local emphasis without repeated paint."
+          ],
+          "scope": "Unchanged04/DOCX source and exactR3 PDF; original14page Preview record retained, not counted as re-openedR4 page."
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-name-only.pdf",
+          "file": "graphics-name-only.pdf",
+          "pages": [
+            1
+          ],
+          "bytes": 68550,
+          "sha256": "8b1d0fbf11a0eb1c8e92502eb9e1596025d4adb06de0f9c258a43fe72c312151",
+          "checked_pages": [
+            1
+          ],
+          "result": "passed",
+          "observations": [
+            "Upright control and faux-italic baselines; user rotation/scale/shear plus italic and clipped italic appear once."
+          ],
+          "scope": "Unchanged04/DOCX source and exactR3 PDF; original14page Preview record retained, not counted as re-openedR4 page."
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/graphics-fractional-clip.pdf",
+          "file": "graphics-fractional-clip.pdf",
+          "pages": [
+            1
+          ],
+          "bytes": 67325,
+          "sha256": "db4be780cd4774774c2d5026f2f6ed8ab4498d60ce7f7dc9926b92e9eb651f9e",
+          "checked_pages": [
+            1
+          ],
+          "result": "passed",
+          "observations": [
+            "Right blue edge remains left of130mm guide. Left logical rectangle crop is intentional, matching fixture."
+          ],
+          "scope": "Unchanged04/DOCX source and exactR3 PDF; original14page Preview record retained, not counted as re-openedR4 page."
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-native.pdf",
+          "file": "baseline-native.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 117021,
+          "sha256": "54a3ac364e2b160d7df51c89d8b55180ff121260e3d5b6043ecbfa13bfec9da0",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Licensed DOCX explicit Native→OFD→PDF: centered title, local italic subtitle, blue headings, proportional English, table fill/borders and body alignment.",
+            "Intentional second-page section break, isolated red bold run, right-aligned date; no extra blank page."
+          ],
+          "scope": "Unchanged04/DOCX source and exactR3 PDF; original14page Preview record retained, not counted as re-openedR4 page."
+        },
+        {
+          "absolute_path": "/Users/wanghongyi/.codex/worktrees/d3c6/ofdrw.net/artifacts/skia/graphics-regression-r3/baseline-default.pdf",
+          "file": "baseline-default.pdf",
+          "pages": [
+            1,
+            2
+          ],
+          "bytes": 117021,
+          "sha256": "b5495454919b61de0c702574342dfee1929ca9db615a4012c31a6cd6540024c5",
+          "checked_pages": [
+            1,
+            2
+          ],
+          "result": "passed",
+          "observations": [
+            "Same licensed DOCX default→Native OFD→PDF: title/subtitle/table/body match explicitNative.",
+            "Same two-page break, local redbold, date alignment and empty remainder expected from source."
+          ],
+          "scope": "Unchanged04/DOCX source and exactR3 PDF; original14page Preview record retained, not counted as re-openedR4 page."
+        }
+      ],
+      "unchanged_regression_pages": 10,
+      "total_covered_pdf_pages": 14,
+      "exact_paths_confirmed_by_AX_URL": true,
+      "current_artifacts_newly_opened": true,
+      "task_document_windows_opened": 2,
+      "task_document_windows_closed": 2,
+      "windows_closed": true,
+      "gui_released": true,
+      "other_task_documents_inspected_or_closed": false,
+      "scope": "New R4 supported sample4pages actually re-opened after blender guard fix; unchangedR3 regression10pages retain their actual original acceptance and PDFhashes. No PNG-only substitution."
+    },
+    "review": {
+      "status": "font-style-repair-independent-and-preview-passed-awaiting-latest-head-review",
+      "pr": "https://github.com/whynpc9/ofdrw.net/pull/17",
+      "round1_head": "158a63c420429aa9634313cf2074f4d1ecc9ee21",
+      "round1_codex_findings": 1,
+      "round1_cursor_findings": 0,
+      "round1_ci": "six checks passed",
+      "fixed_runtime_head": "e6e11ee71f48f71cef8de69d8cc23b8c0e058cb8",
+      "thread": "PRRT_kwDORQ4ZKs6qHM3w",
+      "round2_head": "44635c93ae3d1e2c10095dd44626b3676d3f8aa4",
+      "round2_ci": "six checks passed",
+      "round2_cursor": "no findings",
+      "round2_codex": "one PreviewP1, now actual14page acceptance complete",
+      "preview_thread": "PRRT_kwDORQ4ZKs6qHufk",
+      "round3_head": "4efc19bc2aa7e16c2e4eb45ede0cf9f61aa74b46",
+      "round3_ci": "six checks passed",
+      "round3_codex_and_cursor": "same customBlenderP2",
+      "blender_threads": [
+        "PRRT_kwDORQ4ZKs6qKE5m",
+        "PRRT_kwDORQ4ZKs6qKIBE"
+      ],
+      "fixed_blender_runtime_head": "bdff0d06bf9de0ce5aeca1d6da5a82b0b8042dfd",
+      "round4_head": "2227eaa9c45eaa23c5d1240977b9401103555f41",
+      "round4_ci": "six passed",
+      "round4_codex": "explicit no major issues",
+      "round4_cursor": "one font-style P2",
+      "font_style_thread": "PRRT_kwDORQ4ZKs6qKmbK",
+      "fixed_font_runtime_head": "e7e46f322a64a758c1f84be2712905925f07b735",
+      "fixed_font_source_snapshot": "6bbc5e213e28ec2ff550446e8b3320c01a53b76a"
+    }
+  }
+}
