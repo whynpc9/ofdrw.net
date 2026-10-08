@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using Ofdrw.Net.Graphics.SkiaSharp;
+using Ofdrw.Net.Core.Models;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Geometry;
@@ -25,6 +26,7 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private readonly CancellationToken _token; private readonly SKPath _path = new(); private readonly List<SkiaDrawEvent> _events = new();
     private readonly StringBuilder _text = new(); private readonly List<double> _positions = new();
     private TransformationMatrix _textMatrix; private VectorFont? _textFont; private double _textSize;
+    private bool _hasSegments, _subpathHasSegments, _hasClosedSingleton;
     private SKColor _textColor; private bool _inText; private int _commands, _characters; private PdfPoint? _subpathStart;
 
     internal VectorStreamProcessor(VectorPageContext context, IPageContentParser parser, double width, double height,
@@ -68,8 +70,17 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         if (float.IsNaN(result) || float.IsInfinity(result)) throw new NotSupportedException("PDFV_NONFINITE_OR_FLOAT_RANGE");
         return result;
     }
-    private SKMatrix Matrix(TransformationMatrix value, bool text = false) => new(Float(value.A), Float(text ? -value.C : value.C), Float(value.E),
-        Float(-value.B), Float(text ? value.D : -value.D), Float(_height - value.F), 0, 0, 1);
+    private SKMatrix Matrix(TransformationMatrix value, bool text = false)
+    {
+        var matrix = new SKMatrix(Float(value.A), Float(text ? -value.C : value.C), Float(value.E),
+            Float(-value.B), Float(text ? value.D : -value.D), Float(_height - value.F), 0, 0, 1);
+        // Use 04's exact serialized-coefficient contract at both adapter stages.
+        const double units = 25.4 / 72;
+        if (!OfdNumericFormat.Nonsingular(matrix.ScaleX, matrix.SkewY, matrix.SkewX, matrix.ScaleY) ||
+            !OfdNumericFormat.Nonsingular(units * matrix.ScaleX, units * matrix.SkewY, units * matrix.SkewX, units * matrix.ScaleY))
+            throw Unsupported("SINGULAR_SERIALIZED_MATRIX");
+        return matrix;
+    }
     private SKColor Color(bool stroke)
     {
         var state = GetCurrentState();
@@ -92,7 +103,16 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private void PaintPath(bool fill, bool stroke, FillingRule rule, bool close)
     {
         if (close) ClosePath();
-        if (_path.VerbCount == 0) return;
+        if (_path.VerbCount == 0) { EndPath(); return; }
+        // A closed singleton fill can paint a device pixel; do not silently elide it.
+        if (fill && _hasClosedSingleton) throw Unsupported("DEGENERATE_POINT_FILL");
+        if (!_hasSegments)
+        {
+            // Validate the supported paint profile before treating a source no-op as such.
+            if (fill) { using var paint = Paint(false); }
+            if (stroke) { using var paint = Paint(true); }
+            EndPath(); return;
+        }
         _path.FillType = rule == FillingRule.EvenOdd ? SKPathFillType.EvenOdd : SKPathFillType.Winding;
         if (fill) { using var paint = Paint(false); Add(SkiaDrawEvent.Path(_path, paint, Matrix(CurrentTransformationMatrix), _limits.MaxPathCommandsPerPage)); }
         if (stroke) { using var paint = Paint(true); Add(SkiaDrawEvent.Path(_path, paint, Matrix(CurrentTransformationMatrix), _limits.MaxPathCommandsPerPage)); }
@@ -149,18 +169,18 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     public override void StrokePath(bool close) => PaintPath(false, true, FillingRule.NonZeroWinding, close);
     public override void FillPath(FillingRule rule, bool close) => PaintPath(true, false, rule, close);
     public override void FillStrokePath(FillingRule rule, bool close) => PaintPath(true, true, rule, close);
-    public override void MoveTo(double x, double y) { Command(); _path.MoveTo(Float(x), Float(y)); _subpathStart = CurrentPosition = new PdfPoint(x, y); }
-    public override void LineTo(double x, double y) { if (_subpathStart is null) throw Unsupported("PATH_WITHOUT_MOVE"); Command(); _path.LineTo(Float(x), Float(y)); CurrentPosition = new PdfPoint(x, y); }
+    public override void MoveTo(double x, double y) { Command(); _path.MoveTo(Float(x), Float(y)); _subpathStart = CurrentPosition = new PdfPoint(x, y); _subpathHasSegments = false; }
+    public override void LineTo(double x, double y) { if (_subpathStart is null) throw Unsupported("PATH_WITHOUT_MOVE"); Command(); _path.LineTo(Float(x), Float(y)); _hasSegments = _subpathHasSegments = true; CurrentPosition = new PdfPoint(x, y); }
     public override void BezierCurveTo(double x2, double y2, double x3, double y3) => BezierCurveTo(CurrentPosition.X, CurrentPosition.Y, x2, y2, x3, y3);
     public override void BezierCurveTo(double x1, double y1, double x2, double y2, double x3, double y3)
-    { if (_subpathStart is null) throw Unsupported("PATH_WITHOUT_MOVE"); Command(); _path.CubicTo(Float(x1), Float(y1), Float(x2), Float(y2), Float(x3), Float(y3)); CurrentPosition = new PdfPoint(x3, y3); }
+    { if (_subpathStart is null) throw Unsupported("PATH_WITHOUT_MOVE"); Command(); _path.CubicTo(Float(x1), Float(y1), Float(x2), Float(y2), Float(x3), Float(y3)); _hasSegments = _subpathHasSegments = true; CurrentPosition = new PdfPoint(x3, y3); }
     public override void Rectangle(double x, double y, double width, double height)
     {
         // Preserve signed re direction, including holes; SKRect normalization would change winding.
         MoveTo(x, y); LineTo(x + width, y); LineTo(x + width, y + height); LineTo(x, y + height); ClosePath();
     }
-    public override void EndPath() { _path.Reset(); _subpathStart = null; }
-    public override void ClosePath() { if (_path.VerbCount == 0) return; Command(); _path.Close(); if (_subpathStart.HasValue) CurrentPosition = _subpathStart.Value; }
+    public override void EndPath() { _path.Reset(); _subpathStart = null; _hasSegments = _subpathHasSegments = _hasClosedSingleton = false; }
+    public override void ClosePath() { if (_path.VerbCount == 0) return; Command(); _path.Close(); if (!_subpathHasSegments) _hasClosedSingleton = true; if (_subpathStart.HasValue) CurrentPosition = _subpathStart.Value; }
     public override void ModifyClippingIntersect(FillingRule rule) => throw Unsupported("CLIP");
     protected override void ClipToRectangle(PdfRectangle bounds, FillingRule rule) => throw Unsupported("CLIP");
     protected override void RenderXObjectImage(XObjectContentRecord image) => throw Unsupported("IMAGE");
