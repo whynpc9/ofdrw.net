@@ -187,4 +187,33 @@ public class AdapterTests
         private bool ThrowOnDispose => throwOnDispose;
     }
 
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void NonEnumBlendersFailAtAllPrimitiveEntrypoints(bool arithmetic)
+    {
+        using var effect = SKRuntimeEffect.CreateBlender("half4 main(half4 src, half4 dst) { return half4(0, 1, 0, 1); }", out var errors);
+        Assert.NotNull(effect); Assert.Null(errors);
+        using var blender = arithmetic ? SKBlender.CreateArithmetic(0, 0, 0, 1, false) : effect.ToBlender();
+        using var paint = Pen(); paint.Color = SKColors.Black; paint.Blender = blender;
+        Assert.Equal(SKBlendMode.SrcOver, paint.BlendMode); // enum hides the custom effect
+        Assert.Throws<NotSupportedException>(() => SkiaDrawEvent.Line(new(1, 1), new(10, 1), paint));
+        paint.Style = SKPaintStyle.Fill;
+        Assert.Throws<NotSupportedException>(() => SkiaDrawEvent.Rectangle(new(1, 1, 10, 10), paint));
+        using var path = new SKPath(); path.MoveTo(1, 1); path.LineTo(10, 1); path.LineTo(10, 10); path.Close();
+        Assert.Throws<NotSupportedException>(() => SkiaDrawEvent.Path(path, paint));
+        using var data = SKData.CreateCopy(FontBytes()); using var face = SKTypeface.FromData(data); using var font = new SKFont(face, 4);
+        Assert.Throws<NotSupportedException>(() => SkiaDrawEvent.Text("AA", new(1, 2), font, paint, "face", [1]));
+        using var bitmap = new SKBitmap(16, 16); using var canvas = new SKCanvas(bitmap); canvas.Clear(SKColors.White); canvas.DrawRect(0, 0, 16, 16, paint);
+        Assert.NotEqual(SKColors.Black, bitmap.GetPixel(8, 8)); // genuine native effect, not only API metadata
+    }
+    [Fact]
+    public void CanonicalExplicitSrcOverBlenderRemainsSupported()
+    {
+        using var pen = Pen(); pen.Blender = SKBlender.CreateBlendMode(SKBlendMode.SrcOver);
+        var (package, page) = Target(); OfdSkiaAdapter.Append(package, page, new[] { SkiaDrawEvent.Line(new(1, 1), new(10, 1), pen) });
+        Assert.Single(page.Elements);
+        pen.BlendMode = SKBlendMode.SrcOver;
+        OfdSkiaAdapter.Append(package, page, new[] { SkiaDrawEvent.Line(new(2, 2), new(10, 2), pen) }); Assert.Equal(2, page.Elements.Count);
+    }
+
 }

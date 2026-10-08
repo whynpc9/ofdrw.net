@@ -28,3 +28,5 @@ OfdSkiaAdapter.Append(package, page, events,
 首版只支持 8-bit sRGB 纯色 SrcOver、正线宽、butt/miter，路径 M/L/Q/cubic/close 与 winding/even-odd。任意路径要求 miter=10；直线无 join，矩形 miter≥sqrt(2)，允许常见默认 4。shader/filter/pathEffect、其它 blend、hairline、conic/inverse fill、透视/奇异矩阵、synthetic font scale/skew/embolden 都明确失败。clip/layer/image/shaped blob/text-path 不在本 profile；合作 producer 遇到这些操作必须调用 `SkiaDrawEvent.Unsupported("ClipPath")` 等明确失败，不能省略状态后只提交可见图元。
 
 [设计与真实事件入口探针](../skia-adapter-design-contract.md) 解释为何没有通过 SVG 反解析或原生 ABI 桥透明捕获。该受限入口没有解除 21 任意 PDF 绘制事件来源的前置门；issue #3 仍要求 04+05。
+
+Blender：默认 null 或 SDK 的 canonical `SKBlender.CreateBlendMode(SrcOver)` 可接受；runtime-effect/arithmetic 等自定义 Blender 即使 BlendMode getter 返回 SrcOver 也明确拒绝。枚举值不是自定义混合器语义的证明。
