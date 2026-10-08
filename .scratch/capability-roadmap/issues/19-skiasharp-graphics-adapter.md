@@ -41,3 +41,5 @@
 R3：首轮 Codex/Cursor 到齐后，取消问题以真实 nupkg 复现再修；枚举器获取/推进前取消检查、Dispose 前提交禁止，17回归与 Low 实际包消费证明原子性。当前运行时冻结 `e6e11ee`；14页 r3 新产物已实际Preview通过；44635c9仅PreviewP1待记录，后续文档头双bot/CI仍需复核。
 
 Preview：2026-10-08 本轮八PDF14页经准确d3c6/r3路径在 macOS Preview逐页检查通过，8窗口全部关闭并释放GUI；保留首次锁屏失败史，验收记录不扩展到任意复杂Skia/PDF/Word。
+
+R4：双bot customBlenderP2修复冻结bdff0d0；449/449、20单票、主/Low真实11+12及public observers通过。当前R4两PDF四页重新Preview验收通过；未变04/DOCX十页保持原R3哈希与实看范围。所有本票窗口关闭、GUI释放。后续文档头复审/CI待最终PR评论读回。
