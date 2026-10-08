@@ -36,3 +36,5 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 设计与证据：[实证探针](../pdf-vector-probe-design.md)、[实现契约](../pdf-vector-design-contract.md)。同一 PDF 比较样例位于 `e2e/Ofdrw.Net.Pdf.Vector.E2E`；运行 `scripts/run-pdf-vector-package-e2e.sh` 消费本次默认 11 包加两个可选包。实际视觉结论以已检查的 OFD → PDF → Preview 页面为准，不推断任意 PDF 保真。
 
 本次已检查的包、源码、失败历史和 Preview 页面记录见 [验收证据](../evidence/pdf-vectors/README.md)。
+
+仅 open move 或支持的 butt move/close 描边按 PDF no-op 消耗路径、不创建事件；若页中仍有支持内容则保持 native，整页没有事件时沿用 `NO_NATIVE_CONTENT` 策略。闭合 singleton 填充可能产生设备像素，因此明确 `DEGENERATE_POINT_FILL` 整页回退/失败，包括与其它段共存的情况。显式 line/cubic 即便退化仍保留；奇异或 float/mm 转换后不可逆矩阵明确 `SINGULAR_SERIALIZED_MATRIX`，不由通用异常捕获掩盖。
