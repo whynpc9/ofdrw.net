@@ -4,8 +4,8 @@
   "baseline": "ab87bcade2ec5df6fa1f7ea0b86c590d13225653",
   "version": "0.1.0-skia.20261008.r3",
   "archive": "evidence.tar.zst",
-  "archive_bytes": 36049571,
-  "archive_sha256": "5fc8501599b6ee16ce5548859cc0cfc9614905bfb794f6ba4f09b1d7c571ef73",
+  "archive_bytes": 35825817,
+  "archive_sha256": "02689132522f9c39f4770767af028519598a807452115d44896dde75cd76bc7f",
   "files": [
     {
       "file": "candidate/adapted-1.png",
@@ -388,6 +388,11 @@
       "sha256": "8b6ea9c5b3292802e70e3bf24aec4619ecfd77c7a44bbb4375bc0826df762731"
     },
     {
+      "file": "preview/acceptance.json",
+      "bytes": 7325,
+      "sha256": "7f54e90e60d9a4afbe82c91f7740676c9cb7068a3c25f508875cdfe2bcddaa8c"
+    },
+    {
       "file": "probe/Probe.csproj",
       "bytes": 264,
       "sha256": "22ac8df248be085047ac2e8fef3d8388e65b97697270e677dd3131fba9298b64"
@@ -721,6 +726,11 @@
       "file": "review1-cancellation-before/observed.txt",
       "bytes": 64,
       "sha256": "637697e8663ad142ebac00a89acbf0dce8cf7eea1adcfee5364665d304e7d54b"
+    },
+    {
+      "file": "reviews/pr17-review2.json",
+      "bytes": 10194,
+      "sha256": "52c5cad65820efe710c63c940d3bda61bf6f618bc459ed2a68a9805408d81d61"
     }
   ]
 }

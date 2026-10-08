@@ -6,7 +6,7 @@
 
 **Priority:** P1
 
-**Status:** implemented-functional-validated-preview-pending
+**Status:** implemented-validated-unmerged
 
 - [x] 可选包/适配能把基本 Skia 绘制落到 PathObject/TextObject
 - [x] 不替代 P1-01 的 OFD 原语 API；核心生成路径不强制引用 Skia
@@ -36,6 +36,8 @@
 基线 `ab87bca`；Astra High 设计通过，协调方接受合作 producer 显式事件范围。
 [设计契约](../../../docs/skia-adapter-design-contract.md)、[迁移教程](../../../docs/tutorials/17-skia-event-adapter.md)、[证据](../../../docs/evidence/skia/README.md)。
 
-`SkiaDrawEvent` + `OfdSkiaAdapter.Append` 只接收 producer 明确提交的 Skia 类型事件，不拦截任意既有 SKCanvas/SKPicture/PDF 调用。原文由 producer 提供，字体唯一 ID 与实际载荷/face 元数据验证；不引入 05 服务。透明捕捉的真实失败探针保留。446/446 与主/Low 独立真实包消费通过，Preview 锁屏导致 0/14 未完成，最新 head review 尚待闭环；21 的任意 PDF 绘制来源仍需独立验证。
+`SkiaDrawEvent` + `OfdSkiaAdapter.Append` 只接收 producer 明确提交的 Skia 类型事件，不拦截任意既有 SKCanvas/SKPicture/PDF 调用。原文由 producer 提供，字体唯一 ID 与实际载荷/face 元数据验证；不引入 05 服务。透明捕捉的真实失败探针保留。446/446 与主/Low 独立真实包消费通过，Preview 首轮锁屏历史保留，本轮 r3 已14/14实际通过，最新 head review 尚待闭环；21 的任意 PDF 绘制来源仍需独立验证。
 
-R3：首轮 Codex/Cursor 到齐后，取消问题以真实 nupkg 复现再修；枚举器获取/推进前取消检查、Dispose 前提交禁止，17回归与 Low 实际包消费证明原子性。当前运行时冻结 `e6e11ee`；14页 r3 新产物仍待 Preview，最新复审未闭环。
+R3：首轮 Codex/Cursor 到齐后，取消问题以真实 nupkg 复现再修；枚举器获取/推进前取消检查、Dispose 前提交禁止，17回归与 Low 实际包消费证明原子性。当前运行时冻结 `e6e11ee`；14页 r3 新产物已实际Preview通过；44635c9仅PreviewP1待记录，后续文档头双bot/CI仍需复核。
+
+Preview：2026-10-08 本轮八PDF14页经准确d3c6/r3路径在 macOS Preview逐页检查通过，8窗口全部关闭并释放GUI；保留首次锁屏失败史，验收记录不扩展到任意复杂Skia/PDF/Word。
