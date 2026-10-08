@@ -216,4 +216,34 @@ public class AdapterTests
         OfdSkiaAdapter.Append(package, page, new[] { SkiaDrawEvent.Line(new(2, 2), new(10, 2), pen) }); Assert.Equal(2, page.Elements.Count);
     }
 
+    [Theory]
+    [InlineData("regular", false, false, false, false)]
+    [InlineData("semibold", false, false, true, false)]
+    [InlineData("oblique", false, false, false, true)]
+    [InlineData("bold", true, false, true, false)]
+    [InlineData("italic", false, true, false, true)]
+    public void ActualPayloadFlagsBindWithoutAdditionalTextEmphasis(string name, bool bold, bool italic, bool skiaBold, bool skiaItalic)
+    {
+        var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "style-fonts", name + ".ttf"));
+        using var data = SKData.CreateCopy(bytes); using var face = SKTypeface.FromData(data); Assert.NotNull(face);
+        Assert.Equal(skiaBold, face.IsBold); Assert.Equal(skiaItalic, face.IsItalic);
+        using var font = new SKFont(face, 4); using var fill = new SKPaint { Color = SKColors.Black };
+        var draw = SkiaDrawEvent.Text("AAA", new(10, 20), font, fill, "face", [2, 2]);
+        var (package, page) = Target(); package.Fonts.Add(new() { Id = "face", FontName = face.FamilyName, Data = bytes, Bold = bold, Italic = italic });
+        OfdSkiaAdapter.Append(package, page, new[] { draw });
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(page.Elements)); Assert.Equal(400, text.Weight); Assert.False(text.Italic); Assert.Equal("face", text.FontResourceId);
+        Assert.Equal(bold, package.Fonts[0].Bold); Assert.Equal(italic, package.Fonts[0].Italic); Assert.Equal(bytes, package.Fonts[0].Data);
+        package.Fonts[0].Bold = !bold;
+        Assert.Throws<ArgumentException>(() => OfdSkiaAdapter.Append(package, page, new[] { draw })); Assert.Single(page.Elements);
+    }
+    [Theory]
+    [InlineData("mismatch")] [InlineData("missing-os2")] [InlineData("short-os2")]
+    public void UnverifiableStyleTablesFailBeforeEventSnapshot(string name)
+    {
+        var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "style-fonts", name + ".ttf"));
+        using var data = SKData.CreateCopy(bytes); using var face = SKTypeface.FromData(data); Assert.NotNull(face);
+        using var font = new SKFont(face, 4); using var fill = new SKPaint { Color = SKColors.Black };
+        Assert.Throws<NotSupportedException>(() => SkiaDrawEvent.Text("AA", new(10, 20), font, fill, "face", [2]));
+    }
+
 }

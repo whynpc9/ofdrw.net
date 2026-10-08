@@ -17,6 +17,7 @@
     <ProjectReference Include="../../src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj" />
   </ItemGroup>
   <ItemGroup><None Include="../../e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/*.ttf" Link="fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><None Include="../../e2e/Ofdrw.Net.SkiaSharp.E2E/testdata/fonts/*.ttf" Link="style-fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>

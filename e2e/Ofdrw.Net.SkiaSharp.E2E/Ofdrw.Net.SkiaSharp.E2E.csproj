@@ -11,4 +11,5 @@
     <PackageReference Include="Ofdrw.Net.Reader" Version="$(OfdrwPackageVersion)" />
   </ItemGroup>
   <ItemGroup><PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1" /></ItemGroup>
+<ItemGroup><None Include="testdata/fonts/*.ttf" Link="style-fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>

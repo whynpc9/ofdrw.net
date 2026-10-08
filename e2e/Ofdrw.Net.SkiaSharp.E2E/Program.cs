@@ -57,6 +57,7 @@ using (var b = ZipFile.OpenRead(Path.Combine(output, "direct04.ofd")))
         left.CopyTo(l); right.CopyTo(r); if (!l.ToArray().SequenceEqual(r.ToArray())) throw new Exception("04 control package entry differs: " + entry.FullName);
     }
 }
+await FontStyleProbe.Run(output, bytes, face);
 // Retain the actual failed transparent-capture alternatives, not just an assertion about APIs.
 var probe = new Dictionary<string, object>();
 probe["skcanvas_virtual_draw_methods"] = typeof(SKCanvas).GetMethods().Count(m => m.Name.StartsWith("Draw") && m.IsVirtual);
