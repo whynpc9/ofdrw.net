@@ -23,6 +23,8 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 
 原生页具有 PathObject 与可见 TextObject，原文和连续空格保留在带字距的游程内；没有整页图或轮廓字替代原文。回退页丢弃全部已暂存矢量，只有既有页面图与可选透明文字，不会把可见文字再次叠在整页图上。有效纯文字页可以原生输出；扫描、没有可表达 native 内容和真正空白页会明确回退或失败。回退页文字沿用既有 PDF 双层的单词语义，未承诺精确原文/连续空格或 OCR。
 
+显式回退遇到可证明的单幅 full-page raw RGB/8 图像时，会直接保留原始像素、分辨率和源 PDF 插值提示，不先做 DPI 放大；报告 `PDFV_ORIGINAL_IMAGE_PAGE`，仍为 raster 内容，`IsNative=false`。其它图像/effects 页报告 `PDFV_RASTER_PAGE` 并沿用双层。图像仅在严格页框/矩阵/操作序列及无裁剪、透明、mask、颜色重解释、滤镜时命中；复杂图像不能根据“看上去像扫描页”推断安全。插值 hint 是本库 PDF/SVG 导出提示，第三方 OFD 阅读器可能忽略；各 renderer 的插值算法、DeviceRGB 显示色彩不作跨设备完全一致保证。
+
 首版受限于零原点未旋转页框、CropBox=MediaBox、UserUnit=1、无过滤器的页内容/字体/ToUnicode 流、8-bit RGB/Gray 固色路径、butt/miter=10 描边和横排 fill text。支持内容 affine CTM、文字 affine 矩阵、显式字距、cubic 和 fill rules。clip、图像/Form、ExtGState、透明/混合、dash、shading、标记内容、注释、复杂页框和未知操作均有诊断。压缩流也明确回退/失败；不能用小压缩载荷宣称解码内存有界。
 
 字体只接纳嵌入固定 TrueType 的 Type0 Identity-H/CIDFontType2/identity CIDToGID，并逐字符验证原 Unicode 与相同字节的源 CID/目标 glyph。不兼容的 PDF 子集、竖排、连字、多字符映射、组合 shaping、非 BMP 或仅空白游程回退/失败。字体保持原载荷和真实 face flags；没有共享 resolver/subset/cache 替代，05 的广泛字体服务仍未完成。完整 CJK 字体可让矢量 OFD 明显大于双层 OFD；实际大小见本票证据。

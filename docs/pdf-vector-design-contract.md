@@ -24,4 +24,8 @@
 
 支持页仅含 native 路径/可见原文文字。任何范围外操作使整页暂存事件和字体丢弃，再调用现有双层转换器：仅一幅整页图与透明文字，不能同时保留可见矢量文字制造重影。扫描、真正空白或无可表达 native 内容页同样有明确 disposition；有效的纯文本页可以原生保留，不以无路径等同扫描。
 
+实际 Preview 发现低分辨率原图先按 DPI 放大再输出会改变同一 viewer 的插值外观。本票因此对严格纯单幅整页 raw DeviceRGB/8 图像另设回退：完整 token/EOF 必须为 `q W 0 0 H 0 0 cm /name Do Q`，正向 CTM 精确覆盖页框，无 clip/gs/第二次绘制；无过滤/Decode/mask/alpha/color override/未知图片键，保留原始 RGB 采样与分辨率为一个 ImageObject，`IsNative=false`，没有文字。保留源 Interpolate 的有效布尔值（省略=false）于精确 `{https://ofdrw.net/image-hints}PdfInterpolateV1` SourceXml 属性。PDF/SVG 只读取根 ImageObject 的合法 true/false；非法精确值失败，未知 namespace/版本没有新语义。Core 只放行该 exact XName、正确 owner 与规范值；既有未知节点不放宽，Writer/Reader/Merge/Mix/Split/pruning 的保留须实测。源为完整 unfiltered raw RGB 之外仍按既有整页双层回退或 Fail。
+
+新路径同时保留源像素与页框按 DPI 计算的像素预算；原 RGB 分配不超过剩余图片预算，PNG 经有界输出流编码并按实际载荷累计。最终 ZIP 总字节/硬进程内存或时间限额不由这些配置承诺。完整原文仅对 native 文本页成立，扫描回退没有 OCR；第三方 OFD reader 可忽略私有插值 hint，不承诺各 renderer 使用相同插值算法。细节与真实失败/实包设计证据见 [图像回退修复设计](pdf-image-fallback-repair-design.md)。
+
 验收使用同一许可明确 PDF 的 dual/vector 对照，核对原生对象、写出/读回原文、页尺寸、映射、字体字节和产物大小；实际检查 PDF/SVG/PNG，并以本次 OFD → PDF → macOS Preview 逐页验收。另运行生成样例 DOCX 显式 Native/default → OFD → PDF、全套回归、默认 11 包和可选真实 nupkg 干净缓存消费。证据必须区分功能、PNG 辅助、Preview 与 latest-head review/CI；本票不合并、不发布，不宣称任意 PDF 保真或 05 已完成。

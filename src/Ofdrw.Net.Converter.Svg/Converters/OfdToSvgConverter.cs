@@ -214,10 +214,13 @@ public sealed class OfdToSvgConverter
             content.Add(clipped);
             content = clipped;
         }
-        content.Add(new XElement(ns + "image", new XAttribute("width", "1"), new XAttribute("height", "1"),
+        var imageNode = new XElement(ns + "image", new XAttribute("width", "1"), new XAttribute("height", "1"),
             new XAttribute("preserveAspectRatio", "none"),
             new XAttribute("transform", BuildTransform(0, 0, image.Transform ?? new double[] { image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0 })),
-            new XAttribute("href", $"data:{image.MediaType};base64,{Convert.ToBase64String(image.Data)}")));
+            new XAttribute("href", $"data:{image.MediaType};base64,{Convert.ToBase64String(image.Data)}"));
+        var interpolate = OfdImageRenderingHints.ReadPdfInterpolate(image);
+        if (interpolate.HasValue) imageNode.SetAttributeValue("image-rendering", interpolate.Value ? "smooth" : "crisp-edges");
+        content.Add(imageNode);
         root.Add(group);
     }
 

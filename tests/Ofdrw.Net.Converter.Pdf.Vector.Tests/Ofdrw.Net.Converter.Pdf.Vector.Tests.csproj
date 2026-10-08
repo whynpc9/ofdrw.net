@@ -6,6 +6,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1" />
     <ProjectReference Include="../../src/Ofdrw.Net.Converter.Pdf.Vector/Ofdrw.Net.Converter.Pdf.Vector.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Converter.Svg/Ofdrw.Net.Converter.Svg.csproj" />
     <Compile Include="../../e2e/Ofdrw.Net.Pdf.Vector.E2E/PdfFixture.cs" Link="PdfFixture.cs" />
     <None Include="../../e2e/Ofdrw.Net.SkiaSharp.E2E/testdata/fonts/*.ttf" Link="fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Using Include="Xunit" />

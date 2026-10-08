@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Xml.Linq;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Graphics.SkiaSharp;
 using Ofdrw.Net.Layout.Graphics;
@@ -42,10 +45,29 @@ internal sealed class VectorPageContext
     { _number = number; _page = page; Scanner = scanner; Resources = resources; Filters = filters; Parsing = parsing; }
     internal OfdDocumentPackage Convert(PdfVectorToOfdOptions options, CancellationToken token)
     {
+        var frame = ReadFrame(options, token);
+        var numbers = frame.Box; var resource = frame.Resources;
+        var lexical = new CoreTokenScanner(new MemoryInputBytes(frame.Content), false, new StackDepthGuard(options.MaxStackDepth), useLenientParsing: false);
+        var pendingOperands = 0;
+        while (lexical.MoveNext())
+        {
+            token.ThrowIfCancellationRequested();
+            if (lexical.CurrentToken is CommentToken) continue;
+            pendingOperands = lexical.CurrentToken is OperatorToken ? 0 : pendingOperands + 1;
+        }
+        if (pendingOperands != 0) throw Unsupported("TRAILING_OPERANDS");
+        var factory = new VectorOperations(options, token, _number);
+        var parser = new PageContentParser(factory, new StackDepthGuard(options.MaxStackDepth), false);
+        var operations = parser.Parse(_number, new MemoryInputBytes(frame.Content), Parsing.Logger);
+        return ConvertEvents(options, token, numbers, resource, parser, operations);
+    }
+    private (double[] Box, DictionaryToken Resources, byte[] Content, bool SingleStream) ReadFrame(PdfVectorToOfdOptions options, CancellationToken token)
+    {
         token.ThrowIfCancellationRequested();
         var ancestry = new List<DictionaryToken>(); var node = _page;
         while (true)
         {
+            token.ThrowIfCancellationRequested();
             if (ancestry.Count >= options.MaxStackDepth) throw new InvalidDataException("PDF resource ancestry depth exceeded.");
             ancestry.Add(node);
             if (!node.TryGet(NameToken.Parent, out var parent)) break;
@@ -66,9 +88,11 @@ internal sealed class VectorPageContext
         var resourceToken = Inherited("Resources");
         var resource = resourceToken is null ? DictionaryToken.Empty : Resolve<DictionaryToken>(resourceToken);
         if (resource.ContainsKey(NameToken.ColorSpace)) throw Unsupported("RESOURCE_COLOR_SPACE: device substitutions not supported.");
-        using var content = new MemoryStream();
+        using var content = new MemoryStream(); var singleStream = false;
         if (_page.TryGet(NameToken.Contents, out var contents))
         {
+            var isArray = contents is ArrayToken || DirectObjectFinder.TryGet<ArrayToken>(contents, Scanner, out _);
+            singleStream = !isArray;
             var streams = contents is ArrayToken array ? array.Data : DirectObjectFinder.TryGet<ArrayToken>(contents, Scanner, out var resolvedArray) ? resolvedArray.Data : new[] { contents };
             foreach (var streamToken in streams)
             {
@@ -78,9 +102,11 @@ internal sealed class VectorPageContext
                 content.Write(bytes, 0, bytes.Length); content.WriteByte(10);
             }
         }
-        var factory = new VectorOperations(options, token, _number);
-        var parser = new PageContentParser(factory, new StackDepthGuard(options.MaxStackDepth), false);
-        var operations = parser.Parse(_number, new MemoryInputBytes(content.ToArray()), Parsing.Logger);
+        return (numbers, resource, content.ToArray(), singleStream);
+    }
+    private OfdDocumentPackage ConvertEvents(PdfVectorToOfdOptions options, CancellationToken token, double[] numbers,
+        DictionaryToken resource, IPageContentParser parser, IReadOnlyList<IGraphicsStateOperation> operations)
+    {
         var usedNames = operations.OfType<UglyToad.PdfPig.Graphics.Operations.TextState.SetFontAndSize>().Select(value => value.Font.Data).Distinct(StringComparer.Ordinal).ToArray();
         var fontTokens = resource.TryGet(NameToken.Font, out var fontsToken) ? Resolve<DictionaryToken>(fontsToken) : DictionaryToken.Empty;
         if (fontTokens.Data.Count > options.MaxFontsPerPage) throw new InvalidDataException("PDF page font count limit exceeded.");
@@ -129,22 +155,128 @@ internal sealed class VectorPageContext
         finally { foreach (var binding in bindings.Values) binding.Dispose(); }
     }
     internal T Resolve<T>(IToken? value) where T : class, IToken => DirectObjectFinder.Get<T>(value!, Scanner) ?? throw Unsupported("INVALID_RESOURCE: " + typeof(T).Name);
+    internal OfdPage? TryOriginalImagePage(PdfVectorToOfdOptions options, long remainingImageBytes, CancellationToken token)
+    {
+        var encoding = false;
+        try
+        {
+            var allowedPage = new HashSet<string>(new[] { "Type", "Parent", "MediaBox", "CropBox", "Rotate", "UserUnit", "Resources", "Contents" });
+            if (_page.Data.Keys.Any(key => !allowedPage.Contains(key))) return null;
+            var frame = ReadFrame(options, token);
+            if (!frame.SingleStream) return null;
+            // Stock PageContentParser silently drops trailing operands. Consume the entire token stream.
+            var tokens = new List<IToken>();
+            var scanner = new CoreTokenScanner(new MemoryInputBytes(frame.Content), false, new StackDepthGuard(options.MaxStackDepth), useLenientParsing: false);
+            while (scanner.MoveNext())
+            {
+                token.ThrowIfCancellationRequested();
+                if (scanner.CurrentToken is CommentToken) continue;
+                if (tokens.Count == 11) return null;
+                tokens.Add(scanner.CurrentToken);
+            }
+            bool Op(int index, string value) => tokens[index] is OperatorToken operation && operation.Data == value;
+            if (tokens.Count != 11 || !Op(0, "q") || !Op(7, "cm") || tokens[8] is not NameToken name || !Op(9, "Do") || !Op(10, "Q")) return null;
+            var matrix = new double[6];
+            for (var index = 0; index < matrix.Length; index++)
+            { if (tokens[index + 1] is not NumericToken number) return null; matrix[index] = number.Double; }
+            if (!matrix.SequenceEqual(new[] { frame.Box[2], 0d, 0d, frame.Box[3], 0d, 0d })) return null;
+            if (options.MaxOperationsPerPage < 4) throw new InvalidDataException("PDF operation limit exceeded.");
+            var xobjects = Resolve<DictionaryToken>(Entry(frame.Resources, "XObject"));
+            var stream = Resolve<StreamToken>(Entry(xobjects, name.Data)); var dictionary = stream.StreamDictionary;
+            var allowedImage = new HashSet<string>(new[] { "Type", "Subtype", "Width", "Height", "ColorSpace", "BitsPerComponent", "Length", "Interpolate" });
+            if (dictionary.Data.Keys.Any(key => !allowedImage.Contains(key)) || Name(dictionary, "Subtype") != "Image" ||
+                (dictionary.Data.ContainsKey("Type") && Name(dictionary, "Type") != "XObject") || Name(dictionary, "ColorSpace") != "DeviceRGB" ||
+                Resolve<NumericToken>(Entry(dictionary, "BitsPerComponent")).Double != 8) return null;
+            int Dimension(string key)
+            {
+                var number = Resolve<NumericToken>(Entry(dictionary, key)).Double;
+                if (!FinitePositive(number) || number > int.MaxValue || Math.Truncate(number) != number) throw Unsupported("IMAGE_DIMENSION");
+                return (int)number;
+            }
+            var width = Dimension("Width"); var height = Dimension("Height");
+            var pixels = checked((long)width * height); var rawBytes = checked(pixels * 3);
+            var dpi = Math.Max(72, Math.Min(options.Compatibility.Dpi, 300));
+            var renderedPixels = Math.Ceiling(frame.Box[2] * dpi / 72) * Math.Ceiling(frame.Box[3] * dpi / 72);
+            if (pixels > options.Compatibility.MaxRasterizedPixelsPerPage || renderedPixels > options.Compatibility.MaxRasterizedPixelsPerPage || rawBytes > int.MaxValue)
+                throw new InvalidDataException("PDF image/page pixel limit exceeded.");
+            if (stream.Data.Length != rawBytes || Resolve<NumericToken>(Entry(dictionary, "Length")).Double != rawBytes) return null;
+            // Conservative allocation guard, in addition to bounded encoded PNG writes.
+            if (rawBytes > remainingImageBytes) throw new InvalidDataException("Original RGB allocation exceeds remaining image byte budget.");
+            var interpolate = dictionary.Data.TryGetValue("Interpolate", out var hint) ? Resolve<BooleanToken>(hint).Data : false;
+            token.ThrowIfCancellationRequested();
+            encoding = true;
+            using var bitmap = new Image<Rgb24>(width, height);
+            bitmap.ProcessPixelRows(accessor =>
+            {
+                for (var row = 0; row < height; row++)
+                {
+                    token.ThrowIfCancellationRequested(); var destination = accessor.GetRowSpan(row);
+                    var original = stream.Data.Span.Slice(checked(row * width * 3), checked(width * 3));
+                    for (var column = 0; column < width; column++) destination[column] = new Rgb24(original[column * 3], original[column * 3 + 1], original[column * 3 + 2]);
+                }
+            });
+            using var encoded = new BoundedImageOutput(remainingImageBytes, token);
+            bitmap.SaveAsPng(encoded); token.ThrowIfCancellationRequested();
+            var page = new OfdPage { WidthMillimeters = frame.Box[2] * 25.4 / 72, HeightMillimeters = frame.Box[3] * 25.4 / 72 };
+            page.Elements.Add(new OfdImageElement { WidthMillimeters = page.WidthMillimeters, HeightMillimeters = page.HeightMillimeters,
+                Data = encoded.ToArray(), FileName = "original-page-image.png", MediaType = "image/png",
+                SourceXml = new XElement(XName.Get("ImageObject", options.Compatibility.Namespace), new XAttribute(OfdImageRenderingHints.PdfInterpolateV1, interpolate)).ToString(SaveOptions.DisableFormatting) });
+            return page;
+        }
+        catch (NotSupportedException) when (!encoding) { return null; } // Not this profile. Encoding/budget/cancel/I/O failures escape.
+    }
     private IToken Entry(DictionaryToken value, string key) => value.Data.TryGetValue(key, out var entry) ? entry : throw Unsupported("MISSING_RESOURCE: " + key);
     private string Name(DictionaryToken value, string key) => Resolve<NameToken>(Entry(value, key)).Data;
-    private byte[] Unfiltered(StreamToken value, int remaining, string kind)
+    internal byte[] Unfiltered(StreamToken value, int remaining, string kind)
     {
-        if (value.StreamDictionary.Data.ContainsKey("Filter") || value.StreamDictionary.Data.ContainsKey("DecodeParms") || value.StreamDictionary.Data.ContainsKey("F"))
+        if (value.StreamDictionary.Data.ContainsKey("Filter") || value.StreamDictionary.Data.ContainsKey("DecodeParms") || value.StreamDictionary.Data.ContainsKey("F") ||
+            value.StreamDictionary.Data.ContainsKey("FFilter") || value.StreamDictionary.Data.ContainsKey("FDecodeParms"))
             throw Unsupported("STREAM_FILTER: " + kind + " requires an inline unfiltered stream.");
         if (value.Data.Length > remaining) throw new InvalidDataException("PDF " + kind + " byte limit exceeded.");
+        if (!value.StreamDictionary.TryGet(NameToken.Length, out var length) || Resolve<NumericToken>(length).Double != value.Data.Length)
+            throw Unsupported("STREAM_LENGTH: " + kind);
         return value.Data.ToArray();
     }
     private static bool FinitePositive(double value) => value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
     internal NotSupportedException Unsupported(string reason) => new("PDFV_UNSUPPORTED page=" + _number + " " + reason);
 }
 
+internal sealed class BoundedImageOutput : Stream
+{
+    private readonly MemoryStream _buffer = new(); private readonly long _maximum; private readonly CancellationToken _token;
+    internal BoundedImageOutput(long maximum, CancellationToken token) { _maximum = maximum; _token = token; }
+    internal byte[] ToArray() => _buffer.ToArray();
+    public override bool CanRead => false;
+    public override bool CanSeek => false;
+    public override bool CanWrite => true;
+    public override long Length => _buffer.Length;
+    public override long Position { get => _buffer.Position; set => throw new NotSupportedException(); }
+    public override void Flush() => _buffer.Flush();
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        _token.ThrowIfCancellationRequested();
+        if (count > _maximum - _buffer.Length) throw new InvalidDataException("PNG encoding exceeds remaining image byte budget.");
+        _buffer.Write(buffer, offset, count);
+    }
+    public override void WriteByte(byte value) { var one = new[] { value }; Write(one, 0, 1); }
+    protected override void Dispose(bool disposing) { if (disposing) _buffer.Dispose(); base.Dispose(disposing); }
+}
+
 internal sealed class VectorOperations : IGraphicsStateOperationFactory
 {
     private static readonly HashSet<string> Allowed = new("q Q cm rg RG g G w J j M m l c v y re h f F f* S s B B* b b* n BT ET Tf Tm Td TD T* Tj TJ Tc Tw TL".Split(' '));
+    private static int Arity(string operation) => operation switch
+    {
+        "cm" or "c" or "Tm" => 6,
+        "v" or "y" or "re" => 4,
+        "rg" or "RG" => 3,
+        "m" or "l" or "Tf" or "Td" or "TD" => 2,
+        "g" or "G" or "w" or "J" or "j" or "M" or "Tj" or "TJ" or "Tc" or "Tw" or "TL" => 1,
+        _ => 0
+    };
     private readonly PdfVectorToOfdOptions _limits; private readonly CancellationToken _token; private readonly int _page; private int _count;
     internal VectorOperations(PdfVectorToOfdOptions limits, CancellationToken token, int page) { _limits = limits; _token = token; _page = page; }
     public IGraphicsStateOperation Create(OperatorToken operation, IReadOnlyList<IToken> operands)
@@ -152,6 +284,7 @@ internal sealed class VectorOperations : IGraphicsStateOperationFactory
         _token.ThrowIfCancellationRequested();
         if (++_count > _limits.MaxOperationsPerPage) throw new InvalidDataException("PDF operation limit exceeded.");
         if (!Allowed.Contains(operation.Data)) throw new NotSupportedException("PDFV_UNSUPPORTED page=" + _page + " operation=" + _count + " operator=" + operation.Data);
+        if (operands.Count != Arity(operation.Data)) throw new NotSupportedException("PDFV_OPERATOR_ARITY page=" + _page + " operator=" + operation.Data);
         return ReflectionGraphicsStateOperationFactory.Instance.Create(operation, operands) ?? throw new NotSupportedException("PDFV_UNKNOWN_OPERATOR " + operation.Data);
     }
 }

@@ -58,6 +58,7 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                 {
                     // Discard each parser/resource store after the page, including every rejection path.
                     using var document = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth });
+                    if (!PlainCatalog(document)) throw new NotSupportedException("PDFV_UNSUPPORTED: catalog color/optional-content/rendering extensions.");
                     document.AddPageFactory<VectorPageContext, VectorContextFactory>();
                     var context = document.GetPage<VectorPageContext>(index + 1);
                     var staged = context.Convert(limits, cancellationToken);
@@ -76,22 +77,42 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                 }
                 catch (NotSupportedException exception) when (limits.UnsupportedPagePolicy == PdfVectorUnsupportedPagePolicy.RasterizePage)
                 {
-                    // A rejected page contributes no staged vector content or fonts.
-                    var fallbackOptions = VectorLimits.CopyCompatibility(limits.Compatibility);
-                    fallbackOptions.RequireRasterization = true;
-                    fallbackOptions.MaxTotalImageBytes = limits.Compatibility.MaxTotalImageBytes - imageBytes;
-                    if (fallbackOptions.MaxTotalImageBytes <= 0) throw new InvalidDataException("PDF accumulated image byte limit exceeded.");
-                    using var input = File.OpenRead(path); using var output = new MemoryStream();
-                    var fallback = await new PdfToOfdConverter(fallbackOptions).ConvertWithResultAsync(input, output, new[] { index }, cancellationToken).ConfigureAwait(false);
-                    output.Position = 0;
-                    var rasterPackage = await new OfdReader().ReadAsync(output, cancellationToken).ConfigureAwait(false);
-                    page = OfdModelCloner.ClonePage(rasterPackage.Pages.Single(), keepSourcePath: false, clonePayloads: false);
-                    foreach (var element in page.Elements) element.ObjectId = null;
-                    imageBytes += page.Elements.OfType<OfdImageElement>().Sum(image => (long)image.Data!.Length);
-                    if (imageBytes > limits.Compatibility.MaxTotalImageBytes) throw new InvalidDataException("PDF accumulated image byte limit exceeded.");
-                    // Default dual-layer text has no embedded font. Re-register by name at final write.
-                    foreach (var text in page.Elements.OfType<OfdTextElement>()) { text.SourceXml = null; text.FontResourceId = null; }
-                    native = false; diagnostic = "PDFV_RASTER_PAGE: " + exception.Message + "; " + string.Join("; ", fallback.Diagnostics);
+                    OfdPage? originalImage = null;
+                    using (var source = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth }))
+                    {
+                        if (PlainCatalog(source))
+                        {
+                            source.AddPageFactory<VectorPageContext, VectorContextFactory>();
+                            originalImage = source.GetPage<VectorPageContext>(index + 1).TryOriginalImagePage(limits,
+                                limits.Compatibility.MaxTotalImageBytes - imageBytes, cancellationToken);
+                        }
+                    }
+                    if (originalImage is not null)
+                    {
+                        page = originalImage;
+                        imageBytes += page.Elements.OfType<OfdImageElement>().Sum(image => (long)image.Data.Length);
+                        native = false;
+                        diagnostic = "PDFV_ORIGINAL_IMAGE_PAGE: exact full-page raw RGB samples/resolution and source Interpolate preserved; raster content, no OCR.";
+                    }
+                    else
+                    {
+                        // A rejected page contributes no staged vector content or fonts.
+                        var fallbackOptions = VectorLimits.CopyCompatibility(limits.Compatibility);
+                        fallbackOptions.RequireRasterization = true;
+                        fallbackOptions.MaxTotalImageBytes = limits.Compatibility.MaxTotalImageBytes - imageBytes;
+                        if (fallbackOptions.MaxTotalImageBytes <= 0) throw new InvalidDataException("PDF accumulated image byte limit exceeded.");
+                        using var input = File.OpenRead(path); using var output = new MemoryStream();
+                        var fallback = await new PdfToOfdConverter(fallbackOptions).ConvertWithResultAsync(input, output, new[] { index }, cancellationToken).ConfigureAwait(false);
+                        output.Position = 0;
+                        var rasterPackage = await new OfdReader().ReadAsync(output, cancellationToken).ConfigureAwait(false);
+                        page = OfdModelCloner.ClonePage(rasterPackage.Pages.Single(), keepSourcePath: false, clonePayloads: false);
+                        foreach (var element in page.Elements) element.ObjectId = null;
+                        imageBytes += page.Elements.OfType<OfdImageElement>().Sum(image => (long)image.Data!.Length);
+                        if (imageBytes > limits.Compatibility.MaxTotalImageBytes) throw new InvalidDataException("PDF accumulated image byte limit exceeded.");
+                        // Default dual-layer text has no embedded font. Re-register by name at final write.
+                        foreach (var text in page.Elements.OfType<OfdTextElement>()) { text.SourceXml = null; text.FontResourceId = null; }
+                        native = false; diagnostic = "PDFV_RASTER_PAGE: " + exception.Message + "; " + string.Join("; ", fallback.Diagnostics);
+                    }
                 }
                 page.Index = package.Pages.Count; package.Pages.Add(page);
                 results.Add(new PdfVectorPageResult(index, native, page.Elements.OfType<OfdPathElement>().Count(),
@@ -102,6 +123,12 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
             return new PdfVectorConversionResult(count, results.ToArray());
         }
         finally { try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
+    }
+    private static bool PlainCatalog(PdfDocument document)
+    {
+        var dictionary = document.Structure.Catalog.CatalogDictionary;
+        return !dictionary.Data.ContainsKey("OutputIntents") && !dictionary.Data.ContainsKey("OCProperties") &&
+            !dictionary.Data.ContainsKey("Extensions") && !dictionary.Data.ContainsKey("Alternates");
     }
 }
 
