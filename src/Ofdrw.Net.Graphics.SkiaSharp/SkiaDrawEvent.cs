@@ -157,6 +157,12 @@ public sealed class SkiaDrawEvent
     {
         if (paint is null) throw new ArgumentNullException(nameof(paint));
         if (paint.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(paint));
+        // BlendMode falls back to SrcOver for runtime/arithmetic blenders.
+        // Only the SDK's canonical SrcOver mode blender (or default null) is
+        // proven representable; never infer custom blender semantics from the enum.
+        var blender = paint.Blender;
+        if (blender is not null && !ReferenceEquals(blender, SKBlender.CreateBlendMode(SKBlendMode.SrcOver)))
+            throw new NotSupportedException("Custom Skia blenders are not supported.");
         if (paint.Shader is not null || paint.ColorFilter is not null || paint.ImageFilter is not null || paint.MaskFilter is not null || paint.PathEffect is not null || paint.BlendMode != SKBlendMode.SrcOver)
             throw new NotSupportedException("Only solid SrcOver paint without shaders, filters or path effects is supported.");
         if (paint.Style is not (SKPaintStyle.Fill or SKPaintStyle.Stroke or SKPaintStyle.StrokeAndFill)) throw new NotSupportedException("Unsupported paint style.");

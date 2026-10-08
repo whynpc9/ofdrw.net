@@ -33,3 +33,5 @@
 本次样例：合作 producer → Skia 事件 → native OFD → PDF/PNG → macOS Preview；另生成实际 SKCanvas PNG 与直接 04 相同图元控制。检查原文、原生对象类型、基线、线宽、填色、曲线、矩阵、分页和局部样式；复用 licensed generated-layout DOCX Native/default 回归页。仅对实际检查页作结论；不对任意 Skia/Word/PDF 或生产发布作推断。
 
 源码依据：[SkiaSharp 3.119.1 SKCanvas](https://github.com/mono/SkiaSharp/blob/v3.119.1/binding/SkiaSharp/SKCanvas.cs)、[Skia SVG device](https://github.com/google/skia/blob/main/src/svg/SkSVGDevice.cpp)。原始实测证据、环境/哈希及独立验收将在 [19 证据](evidence/skia/README.md) 留存。
+
+Blender：默认 null 或 SDK 的 canonical `SKBlender.CreateBlendMode(SrcOver)` 可接受；runtime-effect/arithmetic 等自定义 Blender 即使 BlendMode getter 返回 SrcOver 也明确拒绝。枚举值不是自定义混合器语义的证明。
