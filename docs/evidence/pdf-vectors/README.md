@@ -1,0 +1,40 @@
+# 21 可选 PDF 矢量转换验收证据
+
+冻结运行时 `58a710731b93026e2efbd7ca0bf0420e5be0bf65`，起点 `d878aeda57c1da79917e11d0a35bcc028bc4c1fd`。Astra High 先做真实 PDF 探针和设计，主代理 GPT-6.1 Sol High 实施，GPT-6 Sol Low 在 `git archive` 独立副本运行并保留失败，未自行修补。功能和有限样例的 Preview 验收完成；最新 PR 的 Codex、Cursor、CI 与 review threads 仍需读回，不合并或发布。
+
+- 全套 .NET 507/507、Python 5/5。Low 独立默认 11 包、可选 13 包及额外 PackageReference-only observer 均通过，assets 无 ProjectReference；默认 metapackage/CLI 不新增 Skia 或 vector 依赖。
+- 同一真实 PDF 的 native 两页共 14 PathObject、27 可见 TextObject、0 ImageObject；原始 Unicode 与连续空格保留，仿射矩阵和绘制顺序实际检查。默认双层仍为两幅页面图和 110 个透明 TextObject。
+- fallback 五页覆盖 clip、alpha/Multiply、原始 RGB 扫描页、真正空白页和可原生纯文字页。超出范围默认 Fail，显式整页回退丢弃已暂存矢量，不叠加可见文字冒充 native。
+- 原始 R1 PDF SHA256 `40567d531b000b269f5c6a8e3af7d49b54cc0e6b8be66a2096d1fd0e6beae7a2` 未改。R1 Preview 图片硬块失败保留；生产修复仅命中严格证明的 raw RGB/8 单幅全页图片，保留原样本、分辨率和插值标志。absent/false/true 的 decoded RGB、PDF 字典和 mixed false/true/false 资源行为由实际包独立验证。
+
+2026-10-08 主代理在独占 GUI 时段实看下表 13 个 PDF / 27 页，核对实际 Preview 文档 URL 和哈希；逐个关闭本票 13 个文档并释放 GUI。查看链路是实际 PDF → OFD → PDF → macOS Preview，DOCX 回归是 DOCX → Native/default OFD → PDF → Preview。PNG 只是辅助证据，不能代替此记录。Preview 对三个插值标志均显示平滑，不能靠外观证明标志；同一查看器中的源与产物位置、方向、颜色和形状一致。
+
+| 归档目录 | PDF | 已检查页 |
+| --- | --- | --- |
+| previous-r1 | fallback-source.pdf | 1–5 |
+| golden-original-source-repair/output | golden-r1-repaired.pdf | 1–5 |
+| candidate | image-absent-source.pdf、image-absent.pdf | 各 1 |
+| candidate | image-false-source.pdf、image-false.pdf | 各 1 |
+| candidate | image-true-source.pdf、image-true.pdf | 各 1 |
+| candidate | image-flags-mixed.pdf | 1–3 |
+| candidate | vector.pdf、dual.pdf | 各 1–2 |
+| docx-regression | baseline-native.pdf、baseline-default.pdf | 各 1–2 |
+
+检查 CJK、比例英文、局部样式、表格底色/边框、对齐、分页、仿射文字、裁切/遮盖、cubic/v、填充孔洞、页脚和异常空白。扫描页没有叠加 native 文字；源中有意空白和裁切保留。DOCX 两种模式四页均为本次共享导出器生成。只对这些页作结论，不推断任意 PDF/Word 保真。
+
+[acceptance.json](acceptance.json) 分开列出功能、辅助 PNG、实际 Preview、遗留限制和待办 reviews；[manifest.json](manifest.json) 绑定 [evidence.tar.zst](evidence.tar.zst) 的逐文件大小/SHA256。归档包括真实源 PDF、OFD/PDF/SVG/PNG、原始 R1 失败、Low1/2/3 报告和日志、两个可选 nupkg、13 包清单与实际 consumer assets、设计探针和已撤销 fixture 实验。设计样例的自制探针为仓库 MIT；真实样例使用随附 OFL 静态 Noto CJK 字体（SHA256 `3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa`），PdfPig/Skia 许可亦保留。无真实客户文档。
+
+完整字体使 native OFD 约 11.60 MB，大于默认双层约 0.12 MB；源 PDF 约 21.67 MB，native 导出 PDF 约 79.85 KB。不是体积优化，issue05 子集/共享字体服务未实现。原样本回退将原来的大 DPI 图片改为 2×2/3×2 原网格；导出 PDF 约 1.5 KB。源/导出页框在 144 DPI 的画布最多相差一像素，辅助比较取共同视口且不缩放；原始数据/插值标志精确核验。各 renderer 插值算法、设备色彩及第三方 OFD hint 支持没有跨环境保证。
+
+解压和复现（先按 AGENTS.md 配置 dotnet 环境及单节点参数，准备许可字体）：
+
+```sh
+mkdir -p artifacts/pdf-vectors/public-review
+zstd -dc docs/evidence/pdf-vectors/evidence.tar.zst | tar -xf - -C artifacts/pdf-vectors/public-review
+scripts/run-converter-package-e2e.sh 0.1.0-pdfvector.20261008.r2
+scripts/run-pdf-vector-package-e2e.sh 0.1.0-pdfvector.20261008.r2 \
+  artifacts/package-e2e/0.1.0-pdfvector.20261008.r2/packages artifacts/pdf-vectors/package-r2
+scripts/run-graphics-e2e.sh artifacts/pdf-vectors/graphics-regression-r3
+```
+
+设计和 API 范围见 [探针](../../pdf-vector-probe-design.md)、[契约](../../pdf-vector-design-contract.md)、[图片修复设计](../../pdf-image-fallback-repair-design.md)、[教程](../../tutorials/18-pdf-vector-mode.md)。输入/工作预算不等于硬进程内存、时间或最终 ZIP 大小上限。所有失败证据保留；`production_release_accepted=false`。

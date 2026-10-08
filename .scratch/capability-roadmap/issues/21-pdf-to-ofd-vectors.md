@@ -6,11 +6,11 @@
 
 **Priority:** P1
 
-**Status:** implementation complete; independent/package/visual/review acceptance pending
+**Status:** implementation and scoped independent/package/Preview acceptance complete; PR reviews and CI pending
 
-- [ ] 可选矢量模式写出路径与文字对象；默认可仍为双层
-- [ ] 有与双层模式的样例对比
-- [ ] 扫描件/无路径页有文档化回退，不把空白当成功
+- [x] 可选矢量模式写出路径与文字对象；默认可仍为双层
+- [x] 有与双层模式的样例对比
+- [x] 扫描件/无路径页有文档化回退，不把空白当成功
 
 ## Parent
 
@@ -24,13 +24,17 @@
 
 ## Acceptance criteria
 
-- [ ] 显式矢量模式把样例 PDF 的可见路径和文字写入 OFD；用 SVG/PDF 导出能看出线框而不是整页位图（允许混合）
-- [ ] 未开矢量模式时，行为与现网双层一致
-- [ ] 有同一 PDF 的双层 vs 矢量对比样例；记录局限（字体、填充、图像）
-- [ ] 无矢量内容的扫描页有回退（继续页面图或明确失败），不输出空白页冒充成功
-- [ ] 更新功能对照；视觉验收基于本次 OFD 产物
+- [x] 显式矢量模式把样例 PDF 的可见路径和文字写入 OFD；用 SVG/PDF 导出能看出线框而不是整页位图（允许混合）
+- [x] 未开矢量模式时，行为与现网双层一致
+- [x] 有同一 PDF 的双层 vs 矢量对比样例；记录局限（字体、填充、图像）
+- [x] 无矢量内容的扫描页有回退（继续页面图或明确失败），不输出空白页冒充成功
+- [x] 更新功能对照；视觉验收基于本次 OFD 产物
 
 ## Blocked by
 
 - 04 类 Graphics2D 绘图 API（issue #3）
 - 19 SkiaSharp 绘图层（可选适配）
+
+## Scoped acceptance
+
+Source freeze `58a7107`: full solution 507 tests and Python 5 tests; default 11 and optional 13 actual-package consumers passed independently. macOS Preview checked 13 PDFs / 27 pages, including unchanged R1 source, repaired original-sample fallback, vector/dual and fresh Native/default DOCX chains. Public evidence: [docs/evidence/pdf-vectors](../../../docs/evidence/pdf-vectors/README.md). Original failures remain archived. Arbitrary PDF fidelity, cross-renderer interpolation equivalence, issue 05 font services, merge and release remain outside this acceptance.
