@@ -22,7 +22,8 @@ internal sealed class PdfFixture : IDisposable
     }
     internal string Text(string text, double x, double y, double size = 12, double shear = 0)
         => $"BT /F1 {Number(size)} Tf 1 0 {Number(shear)} 1 {Number(x)} {Number(y)} Tm <{Hex(text)}> Tj ET\n";
-    internal byte[] Create(string[] contents, string pageEntries = "", bool wrongUnicode = false, string fontEntries = "", bool inheritedResources = false)
+    internal byte[] Create(string[] contents, string pageEntries = "", bool wrongUnicode = false, string fontEntries = "", bool inheritedResources = false,
+        string imageEntries = "", bool? interpolate = null, byte[]? imageBytes = null, int imageWidth = 2, int imageHeight = 2)
     {
         var cmap = "/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def /CMapName /Fixture def /CMapType 2 def 1 begincodespacerange <0000> <FFFF> endcodespacerange " + _characters.Count + " beginbfchar " +
             string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => $"<{pair.Key:X4}> <{(int)(wrongUnicode && pair.Value == 'A' ? 'B' : pair.Value):X4}>")) + " endbfchar endcmap CMapName currentdict /CMap defineresource pop end end";
@@ -35,7 +36,8 @@ internal sealed class PdfFixture : IDisposable
             Ascii("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /FixtureFace /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 5 0 R /CIDToGIDMap /Identity /DW 1000 /W [" + widths + "] >>"),
             Ascii("<< /Type /FontDescriptor /FontName /FixtureFace /Flags 32 /FontBBox [-1000 -1000 3000 3000] /ItalicAngle 0 /Ascent 1000 /Descent -300 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>"),
             Stream(Ascii(cmap)), Stream(_bytes, "/Length1 " + _bytes.Length),
-            Stream(new byte[] { 210, 40, 60, 30, 130, 190, 30, 130, 190, 210, 40, 60 }, "/Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceRGB /BitsPerComponent 8")
+            Stream(imageBytes ?? new byte[] { 210, 40, 60, 30, 130, 190, 30, 130, 190, 210, 40, 60 }, "/Type /XObject /Subtype /Image /Width " + imageWidth + " /Height " + imageHeight +
+                " /ColorSpace /DeviceRGB /BitsPerComponent 8 " + (interpolate.HasValue ? "/Interpolate " + (interpolate.Value ? "true" : "false") : "") + " " + imageEntries)
         };
         for (var index = 0; index < contents.Length; index++)
         {

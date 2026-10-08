@@ -34,6 +34,8 @@ public sealed class VectorTests
     [InlineData("23 42 XYZUnsupported", "XYZUnsupported")]
     [InlineData("BT 7 Tr ET", "Tr")]
     [InlineData("q 10 10 m 1 0 0 1 20 0 cm 20 20 l S Q", "PATH_STATE_CHANGE")]
+    [InlineData("q Q 99", "TRAILING_OPERANDS")]
+    [InlineData("99 q Q", "OPERATOR_ARITY")]
     public async Task UnsupportedAtFirstOperationFailsWithoutWriting(string content, string diagnostic)
     {
         using var fixture = new PdfFixture(Font()); using var input = new MemoryStream(fixture.Create(new[] { content }));

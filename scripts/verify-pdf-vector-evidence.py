@@ -29,9 +29,22 @@ for page in (1,2):
  match=re.search(r'\(([0-9.eE+-]+)\)',result.stderr); assert match,result.stderr
  error=float(match[1]); assert error<0.015,('source/native rendered mismatch',page,error)
  metrics[str(page)]={'normalized_rmse':error,'maximum':0.015,'role':'automated regression only, Preview separate'}
+image_metrics={}
+for name in ('absent','false','true'):
+ paths=[root/f'image-{name}-source-1.png',root/f'image-{name}-1.png']
+ sizes=[tuple(map(int,subprocess.check_output(['magick','identify','-format','%w %h',str(p)],text=True).split())) for p in paths]
+ # OFD's existing0.001mm physical-page serialization can add one ceil raster pixel.
+ # Keep the original canvases; compare only the common viewport without resampling.
+ assert all(abs(sizes[0][i]-sizes[1][i])<=1 for i in (0,1)),('unexpected page extent change',name,sizes)
+ extent=f'{min(s[0] for s in sizes)}x{min(s[1] for s in sizes)}+0+0'
+ result=subprocess.run(['magick','compare','-metric','RMSE','(',str(paths[0]),'-crop',extent,'+repage',')','(',str(paths[1]),'-crop',extent,'+repage',')','null:'],capture_output=True,text=True)
+ assert result.returncode in (0,1),result.stderr
+ match=re.search(r'\(([0-9.eE+-]+)\)',result.stderr); assert match,result.stderr
+ error=float(match[1]); assert error<0.001,('original image source/export mismatch',name,error)
+ image_metrics[name]={'normalized_rmse':error,'maximum':0.001,'source_and_output_canvas':sizes,'common_viewport':extent,'same_renderer':'Poppler144DPI; no resampling; existing physical-page mm rounding recorded; across-renderer algorithms not compared'}
 text=subprocess.check_output(['pdftotext','-raw',str(root/'vector.pdf'),'-'],text=True)
 for phrase in ('No. 2026-021','192.00','Restored context - page 2 / 2'):
  assert text.count(phrase)==1,(phrase,text.count(phrase))
 files=[{'file':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.iterdir()) if p.is_file()]
-(root/'verified-evidence.json').write_text(json.dumps({'status':'passed','structures':structures,'source_vs_native_png':metrics,'files':files,'preview':'not inferred'},ensure_ascii=False,indent=2)+'\n')
+(root/'verified-evidence.json').write_text(json.dumps({'status':'passed','structures':structures,'source_vs_native_png':metrics,'source_vs_preserved_image_png':image_metrics,'files':files,'preview':'not inferred'},ensure_ascii=False,indent=2)+'\n')
 print('PDF vector structure, original text, no duplicate export text and same-source PNG gates passed.')
