@@ -6,7 +6,7 @@
 
 **Priority:** P1
 
-**Status:** blocked
+**Status:** implementation complete; independent/package/visual/review acceptance pending
 
 - [ ] 可选矢量模式写出路径与文字对象；默认可仍为双层
 - [ ] 有与双层模式的样例对比

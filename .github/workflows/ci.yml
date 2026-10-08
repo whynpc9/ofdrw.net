@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main", "master"]
   pull_request:
-    branches: ["main", "master", "codex/document-tools", "codex/ofd-graphics"]
+    branches: ["main", "master", "codex/document-tools", "codex/ofd-graphics", "codex/skiasharp-graphics-adapter"]
 
 jobs:
   build-test:
@@ -136,6 +136,16 @@ jobs:
 
       - name: Consume optional Skia event adapter from exact local packages
         run: ./scripts/run-skia-package-e2e.sh 0.1.0-preview.8 artifacts/package-e2e/0.1.0-preview.8/packages artifacts/skia/package-e2e
+
+      - name: Consume optional PDF vector converter from exact local packages
+        run: ./scripts/run-pdf-vector-package-e2e.sh 0.1.0-preview.8 artifacts/package-e2e/0.1.0-preview.8/packages artifacts/pdf-vectors/package-e2e
+
+      - name: Upload PDF vector same-source and fallback comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-vector-pages
+          path: artifacts/pdf-vectors/package-e2e
 
       - name: Upload Skia adapter comparison pages
         if: always()
