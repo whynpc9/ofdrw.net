@@ -44,6 +44,8 @@ with tempfile.TemporaryDirectory(prefix='ofd-skia-evidence-') as temporary:
     regression = root / f'artifacts/skia/graphics-regression-{args.round}'
     for path in regression.rglob('*'):
         if path.is_file(): copy(path.relative_to(root), 'regression/' + str(path.relative_to(regression)))
+    copy('artifacts/skia/preview-acceptance-r3.json', 'preview/acceptance.json')
+    copy('artifacts/skia/pr17-review2.json', 'reviews/pr17-review2.json')
     for filename in ['full-suite-review1-fixed.log', 'pr17-review1-complete.json', 'full-suite-frozen.log', 'python-tests.log', 'default-package-r1.log', 'optional-package-r1.log', 'default-package-r2.log', 'optional-package-r2.log', 'graphics-regression-r2.log', f'default-package-{args.round}.log', f'optional-package-{args.round}.log', f'graphics-regression-{args.round}.log']:
         copy('artifacts/skia/' + filename, 'logs/' + filename)
     for path in (root / 'artifacts/skia/full-suite-review1-fixed').glob('*.trx'):
