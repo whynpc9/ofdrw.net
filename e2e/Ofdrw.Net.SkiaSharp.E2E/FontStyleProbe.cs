@@ -56,7 +56,7 @@ static class FontStyleProbe
         // effective fields. Check inheritance rather than an extra style request.
         foreach (var (name, bold, italic) in styles)
         {
-            var resource = read.Fonts.Single(f => f.Id == name);
+            var resource = read.Fonts.Single(f => f.FontName == package.Fonts.Single(original => original.Id == name).FontName);
             var original = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "style-fonts", name + ".ttf"));
             if (resource.Data is null || Hash(resource.Data) != Hash(original) || resource.Bold != bold || resource.Italic != italic)
                 throw new Exception("Roundtrip font payload or file flags changed: " + name);
