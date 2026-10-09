@@ -361,6 +361,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 data = png.ToArray();
             }
             using var xImage = XImage.FromStream(() => new MemoryStream(data, writable: false));
+            var interpolate = OfdImageRenderingHints.ReadPdfInterpolate(image);
+            if (interpolate.HasValue) xImage.Interpolate = interpolate.Value;
             graphics.DrawImage(xImage, 0, 0, 1, 1);
         }
         finally

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup Condition="'$(OfdrwPackageVersion)' == ''">
+    <ProjectReference Include="../../src/Ofdrw.Net.Converter.Pdf.Vector/Ofdrw.Net.Converter.Pdf.Vector.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Converter.Svg/Ofdrw.Net.Converter.Svg.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(OfdrwPackageVersion)' != ''">
+    <PackageReference Include="Ofdrw.Net.Converter.Pdf.Vector" Version="$(OfdrwPackageVersion)" />
+    <PackageReference Include="Ofdrw.Net.Converter.Svg" Version="$(OfdrwPackageVersion)" />
+  </ItemGroup>
+  <ItemGroup><PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1" /></ItemGroup>
+  <ItemGroup><None Update="testdata/*" CopyToOutputDirectory="PreserveNewest" TargetPath="testdata/%(Filename)%(Extension)" /></ItemGroup>
+</Project>

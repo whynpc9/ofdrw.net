@@ -11,6 +11,7 @@
     <InternalsVisibleTo Include="Ofdrw.Net.Layout" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Vector" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Svg" />
   </ItemGroup>
 </Project>
