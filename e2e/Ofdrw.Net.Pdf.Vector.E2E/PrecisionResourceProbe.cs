@@ -6,6 +6,7 @@ using Ofdrw.Net.Converter.Pdf.Vector;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Core.Models;
+using UglyToad.PdfPig;
 
 internal static class PrecisionResourceProbe
 {
@@ -28,7 +29,7 @@ internal static class PrecisionResourceProbe
         }
         var pixels = Enumerable.Range(0,840*1190).Select(index => (byte)((index%840/80 + index/840/80)%2)).ToArray();
         var indexed = fixture.Create(new[] { "q 420 0 0 595 0 0 cm /Im1 Do Q" }, imageWidth:840,imageHeight:1190,imageBytes:pixels,imageColorSpace:"[/Indexed /DeviceRGB 1 <1f5da6e9f1f9>]");
-        await Check("indexed-image", indexed, new[] { false }, "PDFV_RASTER_PAGE");
+        await Check("indexed-image", indexed, new[] { false }, "PDFV_ORIGINAL_IMAGE_PAGE");
         File.WriteAllText(Path.Combine(output,"precision-resource-report.json"),JsonSerializer.Serialize(reports,new JsonSerializerOptions{WriteIndented=true}));
 
         async Task Check(string name, byte[] source, bool[] native, string code)
@@ -48,9 +49,29 @@ internal static class PrecisionResourceProbe
             {
                 if(result.Pages[i].ImageObjects!=1||result.Pages[i].PathObjects!=0||!result.Pages[i].Diagnostic.Contains(code)||package.Pages[i].Elements.OfType<OfdTextElement>().Any(t=>t.FillColor.Alpha!=0))throw new Exception("Visible partial native fallback leak.");
             }
-            if(name=="indexed-image"&&result.Pages[0].Diagnostic.Contains("ORIGINAL_IMAGE"))throw new Exception("Indexed samples interpreted as RGB.");
+            if(name=="indexed-image")
+            {
+                using var image=SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(package.Pages[0].Elements.OfType<OfdImageElement>().Single().Data);
+                if(image.Width!=840||image.Height!=1190)throw new Exception("Indexed source grid changed.");
+                for(var row=0;row<1190;row++)for(var col=0;col<840;col++)
+                {
+                    var expected=((col/80+row/80)%2)==0 ? new SixLabors.ImageSharp.PixelFormats.Rgb24(31,93,166) : new SixLabors.ImageSharp.PixelFormats.Rgb24(233,241,249);
+                    if(!image[col,row].Equals(expected))throw new Exception("Indexed literal palette sample contaminated.");
+                }
+            }
             File.WriteAllBytes(Path.Combine(output,name+".ofd"),ofd.ToArray());ofd.Position=0;
             using(var pdf=File.Create(Path.Combine(output,name+".pdf")))await new OfdToPdfConverter().ConvertAsync(ofd,pdf);
+            if(name=="indexed-image")
+            {
+                using var pdf=PdfDocument.Open(Path.Combine(output,name+".pdf"));var image=pdf.GetPage(1).GetImages().Single();
+                if(image.Interpolate||!image.TryGetBytesAsMemory(out var bytes)||bytes.Length!=840*1190*3)throw new Exception("Indexed export sampling changed.");
+                var raw=bytes.ToArray();
+                for(var i=0;i<840*1190;i++)
+                {
+                    var dark=((i%840/80+i/840/80)%2)==0;
+                    if(raw[i*3]!=(dark?31:233)||raw[i*3+1]!=(dark?93:241)||raw[i*3+2]!=(dark?166:249))throw new Exception("PDF export contaminated original palette.");
+                }
+            }
             reports.Add(new{name,result,sourceSha256=Convert.ToHexStringLower(SHA256.HashData(source)),ofdBytes=ofd.Length});
         }
     }

@@ -33,7 +33,7 @@ public sealed class ResourceAlternativeTests
     }
     [Theory]
     [InlineData(false)][InlineData(true)]
-    public async Task IndexedColorSpaceArrayDeclinesRawRgbOptimization(bool indirect)
+    public async Task LiteralIndexedArrayPreservesPaletteSamples(bool indirect)
     {
         using var fixture = Fixture();
         var pdf = fixture.Create(new[] { "q 420 0 0 595 0 0 cm /Im1 Do Q" }, imageBytes: new byte[] { 0, 1, 1, 0 },
@@ -42,10 +42,10 @@ public sealed class ResourceAlternativeTests
         using var input = new MemoryStream(pdf); using var output = new MemoryStream();
         var result = await new PdfVectorToOfdConverter(Raster()).ConvertWithResultAsync(input, output);
         Assert.False(result.Pages[0].IsNative); Assert.Equal(1, result.Pages[0].ImageObjects);
-        Assert.StartsWith("PDFV_RASTER_PAGE", result.Pages[0].Diagnostic); Assert.DoesNotContain("ORIGINAL_IMAGE", result.Pages[0].Diagnostic);
+        Assert.StartsWith("PDFV_ORIGINAL_IMAGE_PAGE", result.Pages[0].Diagnostic);
         output.Position = 0; var package = await new OfdReader().ReadAsync(output);
         var image = package.Pages[0].Elements.OfType<OfdImageElement>().Single();
-        Assert.DoesNotContain("PdfInterpolateV1", image.SourceXml ?? "");
+        Assert.Contains("PdfInterpolateV1", image.SourceXml ?? "");
         using var decoded = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(image.Data);
         Assert.NotEqual(decoded[0, 0], decoded[decoded.Width - 1, 0]); // Actual colored raster, not blank success.
     }
