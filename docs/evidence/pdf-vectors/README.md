@@ -90,3 +90,11 @@ Low7核验338源码blob前后未变，602/5全套、11/13实际包和独立原PD
 Low8三个独立观察输入分别保留原49994fe3、合法高值525f7c78、原文本d78e；图像均检查999600采样，文本Fail sentinel/五回退四native/重复选择[5,0,5]/四个完整原字体资源通过。实际malformed palette五项，copied console旧标签写六项已在报告纠正；旧Low7高值误判历史未抹去。Low8固定TRX文件名覆盖了前程序集TRX，仅最后168项；全625计数有完整控制台日志及Main九份TRX，不冒称独立九TRX齐备。
 
 当前LinuxCI的Frozen Astra text source changed说明harness重新生成输入未等于本应被冻结的原PDF；该失败先于源文件持久化，失败的九页内存字节未知，不能猜成已证实字体或renderer原因。后续直接消费压缩原PDF，继续要求解压后原size/SHA与原字体payload，保留此失败，并复核新冻结harness/实际包/Low/LinuxCI。生产src保持deda不变；新生成PDF如需验收须按其实际hash重开，不把model相同当新文件已看。此处只关闭最终运行时已实看记录缺失，不声称PR当前CI/全部线程已闭合或可发布。
+
+## 冻结输入harness失败 R7
+
+[review-r7-failed-acceptance.json](review-r7-failed-acceptance.json) 与 [review-r7-failed-manifest.json](review-r7-failed-manifest.json) 绑定 [review-r7-failed.tar.zst](review-r7-failed.tar.zst)（9,356,302字节/41文件），旧五归档不变。R7生产src与deda相同，把原d78e PDF以lossless gzip存入E2E，保留原size/SHA及原font3012断言；主625/5/default11通过，但主optional13及Low9干净消费者在缺少bin/testdata文件时失败。Low9遵守首个实际失败即停止：353源码blob、gzip两层hash、default11通过，full625/Python/observers/新Preview未跑，不把旧Low8结果当作新通过。
+
+只读结构诊断证明None items和CopyToOutputDirectory存在，但实际消费者把资源扁平复制到bin根目录，代码期待testdata子目录。后续显式TargetPath修复需新freeze/真实包/Low/CI与实际新PDF验收；旧失败保持不变。主早前源码预检成功不能替代干净包消费。
+
+从failedLinux artifact11597357047实际取到同一fixture生成器的same-source.pdf，ZIP entry大小/CRC验证通过。嵌入完整FontFile2与本机完全同3012a9...，但实际/W数值不同，如空格223.999741对224、A607.999084对608；证明该生成器输出有跨平台度量差异。失败九页内存输入在assert前未落盘，仍未知，不能冒称已恢复或精确比较其字节。suffix range请求不支持的失败保留；显式范围成功取到合法所需entry后，停止冗余392MB全量下载，47MBpartial明确不算verifiedartifact，未纳入公共归档。

@@ -1,0 +1,239 @@
+{
+  "runtime_head": "abd85f3b613e96fdd1aa2bc27c71b51c029bd243",
+  "production_src_same_as": "deda6d2928c2db0e05640d2df96e50b79131ccfa",
+  "status": "failed fixture-copy gate; no new Preview accepted",
+  "archive": "review-r7-failed.tar.zst",
+  "archive_bytes": 9356302,
+  "archive_sha256": "ceb0a8c104eb189f731ffbcbab827094abe316795196eae0ba1c680c4e4a0c13",
+  "files": [
+    {
+      "file": "ci-forensics/ci-same-source.pdf",
+      "bytes": 21668401,
+      "sha256": "1fd02c9014cf5c1d40ab278d193bbecec81e2a40104b8c2dd2c44c1cf9ccdb77"
+    },
+    {
+      "file": "ci-forensics/download.json",
+      "bytes": 17270,
+      "sha256": "3635237edc7e9efcdbc8b2411584965b8f3cefb8b7a91fe5f9fb56bf8ccfbd4a"
+    },
+    {
+      "file": "ci-forensics/extract-explicit-range.log",
+      "bytes": 122,
+      "sha256": "ef0cd673de9d1e008877307b0287d5539ffc7b94174dadd118124c9a3e17d2f0"
+    },
+    {
+      "file": "ci-forensics/extract-explicit-range.py",
+      "bytes": 2655,
+      "sha256": "27a4f112bba631edaf433e7c93413344d358479f30ce46e991990592993097b7"
+    },
+    {
+      "file": "ci-forensics/extract.log",
+      "bytes": 658,
+      "sha256": "a2a20959124ba994874f650335f708e0e5e105ec3124aba6bdc5ab7a82643097"
+    },
+    {
+      "file": "ci-forensics/extract.py",
+      "bytes": 2642,
+      "sha256": "39e03810ed99ec3dc7f8ec34b9a2a2e44d78b9b7e9e119ed91e59c6b60165fbb"
+    },
+    {
+      "file": "ci-forensics/font-width-differences.json",
+      "bytes": 9149,
+      "sha256": "ed2e570df400b3f0cf7af77c9a2ed5853ffc465326f8cd9fea08c74ed0943d1e"
+    },
+    {
+      "file": "ci-forensics/full-download-attempt.json",
+      "bytes": 371,
+      "sha256": "34a7da819eb01b7c7c847a338863fd93bf055bc86bccfa29854b1bfc6f8425df"
+    },
+    {
+      "file": "copy-diagnosis/diagnose.sh",
+      "bytes": 5788,
+      "sha256": "6c04d205ae7c812b40b2713dbf8db8dc513bfede14cec2c005e0752223583311"
+    },
+    {
+      "file": "copy-diagnosis/evaluation.json",
+      "bytes": 4008,
+      "sha256": "e42dac01166aeb815a81c67bf6452e29d7c081c4af9d87e4299c0602cc2f7f3e"
+    },
+    {
+      "file": "copy-diagnosis/external-evaluation.json",
+      "bytes": 3028,
+      "sha256": "b87ba9466db1f15883ac02e6989788e131e937a5691ab7230a4ee8523d9d6574"
+    },
+    {
+      "file": "copy-diagnosis/file-inventory.txt",
+      "bytes": 4185,
+      "sha256": "e9b0ccbde7978703dc1538fb954001b9f3e8faf078fcada5badba7a5ffe2cd7f"
+    },
+    {
+      "file": "copy-diagnosis/post-restore-none.json",
+      "bytes": 528918,
+      "sha256": "afc58fff0164fd402b643deaefadc416992f071767e293b7f0e56c66015f9441"
+    },
+    {
+      "file": "copy-diagnosis/structural.log",
+      "bytes": 13675,
+      "sha256": "8e2e5bab5ec75de7f875d03e1ce1ab9012edcc780b8909ed8a5eb39bb19ca83b"
+    },
+    {
+      "file": "copy-diagnosis/task-directory.txt",
+      "bytes": 81,
+      "sha256": "49f5c5fdcc417a1aba3f69405d825f1377cac05d618d873958ff6b59864fc27c"
+    },
+    {
+      "file": "independent/logs/default11.log",
+      "bytes": 96667,
+      "sha256": "288f0f2cc7e249988f1c902c3d8291cf216f0e5932022ee8aef9d3248750b4aa"
+    },
+    {
+      "file": "independent/logs/optional13.log",
+      "bytes": 18527,
+      "sha256": "a43a91d4771d1eeb9f63a0604c6570b69bd6d95946efd2ea90bc59398fddaaf3"
+    },
+    {
+      "file": "independent/source-hashes-low9.json",
+      "bytes": 71440,
+      "sha256": "aa57aede92ba94cbae4cfcc49aa555faa507b58e76e9bb439a38189bd3ee76cc"
+    },
+    {
+      "file": "independent/verification-low9.json",
+      "bytes": 5406,
+      "sha256": "97f59137426df4981428c593bfb343c954336bf62dfb79d61ab7ab3e7d0d039d"
+    },
+    {
+      "file": "input/README.md",
+      "bytes": 1465,
+      "sha256": "0a061aec5e3aec1686b5548a962778e1fa6db4412eb654d0386f708c75fb032c"
+    },
+    {
+      "file": "licenses/MIT.txt",
+      "bytes": 1064,
+      "sha256": "2b4dd513f6505b2522a1f6eb3c07dccf04c37b19daf13c3a26aa9bcafe3436fc"
+    },
+    {
+      "file": "licenses/Noto-OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "file": "main/default-package-r7.log",
+      "bytes": 80712,
+      "sha256": "d5474a031f1b8c41da0abd502a73b302393b3768a7621afb31146cdbf44da9d1"
+    },
+    {
+      "file": "main/full-r7.log",
+      "bytes": 42403,
+      "sha256": "e1bcaf49971ae69d727b863c0004e323186b41011d618a2f798baf943e75eefe"
+    },
+    {
+      "file": "main/optional-package-r7.log",
+      "bytes": 16011,
+      "sha256": "a7ad210f5345dfcc330e62a8c327c597d43685218ade1974674ab9e9d8a1a0a6"
+    },
+    {
+      "file": "main/pr18-package-ci-r6-failed.log",
+      "bytes": 258084,
+      "sha256": "b64ad08a47bf6b9b5fe4641e3ef5aafc9b4dcb4368f2d457c6036db2fbccdd7b"
+    },
+    {
+      "file": "main/python-r7.log",
+      "bytes": 750,
+      "sha256": "282317f595c441d1654415bf78fe19630a504f9621ebc1d60ba49c9a90e54551"
+    },
+    {
+      "file": "main/source-r7-build.log",
+      "bytes": 15635,
+      "sha256": "5ba67f47470ea8e009403e7104f791b6e1573b76accd9026915f7a7ec5809b29"
+    },
+    {
+      "file": "main/source-r7-direct.log",
+      "bytes": 93,
+      "sha256": "5ec1fc5e6a303f4148f97f773ab113c387ad7553ec254bf96d83cc4ada033b09"
+    },
+    {
+      "file": "main/trx/r7_net10.0_20261009134845.trx",
+      "bytes": 8543,
+      "sha256": "d6c73eb2a9fa0a418e6d6d4cada3b57d769afcbb992e7858e52ced242037d047"
+    },
+    {
+      "file": "main/trx/r7_net10.0_20261009134847.trx",
+      "bytes": 391163,
+      "sha256": "cd39ac71257330e4516e94f9908170e6190e3acda845eb47acb824b27ee2f12c"
+    },
+    {
+      "file": "main/trx/r7_net10.0_20261009134850.trx",
+      "bytes": 138748,
+      "sha256": "77e846ec19dc0c32fd9fe137af3f249931d6866011b864650eb579e740813814"
+    },
+    {
+      "file": "main/trx/r7_net10.0_20261009134851.trx",
+      "bytes": 7265,
+      "sha256": "fb438d48514922c32a3eb19bb0435fbca732d3eb223680fb859df7e20a788c38"
+    },
+    {
+      "file": "main/trx/r7_net10.0_20261009134905.trx",
+      "bytes": 75719,
+      "sha256": "e44fcd1ff6c11f2a42a50949d40ec45e5805b50f751d6be19f9cd68e8b60599d"
+    },
+    {
+      "file": "main/trx/r7_net10.0_20261009134907.trx",
+      "bytes": 21147,
+      "sha256": "95caabaedd4273f075f372668e5443013c06ab8d324176b7dc42f76b23fe73d2"
+    },
+    {
+      "file": "main/trx/r7_net10.0_20261009134908.trx",
+      "bytes": 31638,
+      "sha256": "557ec56bb77b82c9ea46975952a22f3b4eeb7e6c2958477e8ea682ee17961c49"
+    },
+    {
+      "file": "main/trx/r7_net10.0_20261009134910.trx",
+      "bytes": 44485,
+      "sha256": "584f5c9a17440a0ac241698fff0e9835f97a7c833712aeca81a5d7ed9b0036da"
+    },
+    {
+      "file": "main/trx/r7_net10.0_20261009134916.trx",
+      "bytes": 272989,
+      "sha256": "8e743ac6b40b5597c56140ebfe2e48b2f5a86e67cc19a354134ab6bcb927fe00"
+    },
+    {
+      "file": "packages/Ofdrw.Net.Converter.Pdf.Vector.0.1.0-pdfvector.20261009.r7.nupkg",
+      "bytes": 91678,
+      "sha256": "e64d4fbc678ff16043ab3fee9526d3c6a965dfb029589a2a926dbc0e7df234af"
+    },
+    {
+      "file": "packages/Ofdrw.Net.Graphics.SkiaSharp.0.1.0-pdfvector.20261009.r7.nupkg",
+      "bytes": 45250,
+      "sha256": "7234be3d9e65743d7deb79f21bc2f90bc21ad183f3a05068fc1350e26f2fdbec"
+    },
+    {
+      "file": "packages/main-default11.json",
+      "bytes": 2309,
+      "sha256": "c853c8691073daa410604959ee6e18f435feddfdd8a4d07d9d941ee0dc8fcbdf"
+    }
+  ],
+  "golden_gzip_checked_in": "e2e/Ofdrw.Net.Pdf.Vector.E2E/testdata/text-precision-source.pdf.gz",
+  "golden_gzip_sha256": "024e4dbd0f735b90c9cf50f91d1e245cfab1caca9e2e73af243afa8fb4def3fa",
+  "prior_archives": [
+    {
+      "file": "evidence.tar.zst",
+      "sha256": "2ae4ae60765fd32a6ce37c2256d34cd44d5a3486796ef22e72a5219ca6f5808e"
+    },
+    {
+      "file": "review-r3.tar.zst",
+      "sha256": "91db74049cdfedcb2f9ea0db4fab14da48860941d65659eb6faa8e78437a2a41"
+    },
+    {
+      "file": "review-r4.tar.zst",
+      "sha256": "f876981e7a9c4978c531035f4384ee37b0841c404c0914593575efeb3b70541d"
+    },
+    {
+      "file": "review-r5.tar.zst",
+      "sha256": "a24947e43771889c46d6975a30610afba25158b5abc8cb14d7d4845b3a8caeb2"
+    },
+    {
+      "file": "review-r6.tar.zst",
+      "sha256": "d95763b0de05668efd7a25a9b1dee4d0c33fbea4f6102be366771f0b9b9e4604"
+    }
+  ]
+}
