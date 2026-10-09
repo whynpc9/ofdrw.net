@@ -44,6 +44,13 @@ for row in nonpainting:
  page=row['result']['Pages'][0]; native,images=expected[row['name']]
  assert page['IsNative']==native and page['ImageObjects']==images,(row['name'],page)
  if not native: assert page['PathObjects']==0,(row['name'],page)
+precision_resources=json.loads((root/'precision-resource-report.json').read_text())
+expected_precision={'precision':[False,False,True],'encoding-stream':[True,False],'cid-map-stream':[True,False],'indexed-image':[False]}
+assert {row['name'] for row in precision_resources}==set(expected_precision)
+for row in precision_resources:
+ pages=row['result']['Pages']; assert [page['IsNative'] for page in pages]==expected_precision[row['name']]
+ for page in pages:
+  if not page['IsNative']: assert page['ImageObjects']==1 and page['PathObjects']==0,(row['name'],page)
 image_metrics={}
 for name in ('absent','false','true'):
  paths=[root/f'image-{name}-source-1.png',root/f'image-{name}-1.png']

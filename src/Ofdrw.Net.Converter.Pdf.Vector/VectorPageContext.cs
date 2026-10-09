@@ -91,9 +91,9 @@ internal sealed class VectorPageContext
         using var content = new MemoryStream(); var singleStream = false;
         if (_page.TryGet(NameToken.Contents, out var contents))
         {
-            var isArray = contents is ArrayToken || DirectObjectFinder.TryGet<ArrayToken>(contents, Scanner, out _);
-            singleStream = !isArray;
-            var streams = contents is ArrayToken array ? array.Data : DirectObjectFinder.TryGet<ArrayToken>(contents, Scanner, out var resolvedArray) ? resolvedArray.Data : new[] { contents };
+            var directContents = ProfileToken(contents, options.MaxStackDepth, token);
+            singleStream = directContents is not ArrayToken;
+            var streams = directContents is ArrayToken array ? array.Data : new[] { directContents };
             foreach (var streamToken in streams)
             {
                 token.ThrowIfCancellationRequested();
@@ -119,12 +119,22 @@ internal sealed class VectorPageContext
                 token.ThrowIfCancellationRequested();
                 if (!fontTokens.Data.TryGetValue(name, out var fontToken)) throw Unsupported("MISSING_FONT: " + name);
                 var font = Resolve<DictionaryToken>(fontToken);
-                if (Name(font, "Subtype") != "Type0" || Name(font, "Encoding") != "Identity-H") throw Unsupported("FONT_PROFILE: " + name);
+                if (Name(font, "Subtype") != "Type0") throw Unsupported("FONT_PROFILE: " + name);
+                var encoding = ProfileToken(Entry(font, "Encoding"), options.MaxStackDepth, token);
+                if (encoding is StreamToken) throw Unsupported("FONT_PROFILE: Encoding CMap stream outside Identity-H profile.");
+                if (encoding is not NameToken encodingName) throw new InvalidDataException("PDF font Encoding must be a name or CMap stream.");
+                if (encodingName.Data != "Identity-H") throw Unsupported("FONT_PROFILE: " + name);
                 var descendants = Resolve<ArrayToken>(Entry(font, "DescendantFonts"));
                 if (descendants.Length != 1) throw Unsupported("FONT_DESCENDANTS: " + name);
                 var cid = Resolve<DictionaryToken>(descendants.Data[0]);
-                if (Name(cid, "Subtype") != "CIDFontType2" || (cid.Data.ContainsKey("CIDToGIDMap") && Name(cid, "CIDToGIDMap") != "Identity"))
-                    throw Unsupported("CID_MAPPING: " + name);
+                if (Name(cid, "Subtype") != "CIDFontType2") throw Unsupported("CID_MAPPING: " + name);
+                if (cid.Data.TryGetValue("CIDToGIDMap", out var mappingToken))
+                {
+                    var mapping = ProfileToken(mappingToken, options.MaxStackDepth, token);
+                    if (mapping is StreamToken) throw Unsupported("CID_MAPPING: CIDToGIDMap stream outside identity profile.");
+                    if (mapping is not NameToken mappingName) throw new InvalidDataException("PDF CIDToGIDMap must be a name or stream.");
+                    if (mappingName.Data != "Identity") throw Unsupported("CID_MAPPING: " + name);
+                }
                 // Check before the stock font loader can allocate any decoded stream.
                 _ = Unfiltered(Resolve<StreamToken>(Entry(font, "ToUnicode")), options.MaxContentBytesPerPage, "ToUnicode");
                 var descriptor = Resolve<DictionaryToken>(Entry(cid, "FontDescriptor"));
@@ -185,8 +195,12 @@ internal sealed class VectorPageContext
             var stream = Resolve<StreamToken>(Entry(xobjects, name.Data)); var dictionary = stream.StreamDictionary;
             var allowedImage = new HashSet<string>(new[] { "Type", "Subtype", "Width", "Height", "ColorSpace", "BitsPerComponent", "Length", "Interpolate" });
             if (dictionary.Data.Keys.Any(key => !allowedImage.Contains(key)) || Name(dictionary, "Subtype") != "Image" ||
-                (dictionary.Data.ContainsKey("Type") && Name(dictionary, "Type") != "XObject") || Name(dictionary, "ColorSpace") != "DeviceRGB" ||
+                (dictionary.Data.ContainsKey("Type") && Name(dictionary, "Type") != "XObject") ||
                 Resolve<NumericToken>(Entry(dictionary, "BitsPerComponent")).Double != 8) return null;
+            var colorSpace = ProfileToken(Entry(dictionary, "ColorSpace"), options.MaxStackDepth, token);
+            if (colorSpace is ArrayToken) return null; // Indexed/ICCBased/etc are not raw DeviceRGB samples.
+            if (colorSpace is not NameToken colorName) throw new InvalidDataException("PDF image ColorSpace must be a name or array.");
+            if (colorName.Data != "DeviceRGB") return null;
             int Dimension(string key)
             {
                 var number = Resolve<NumericToken>(Entry(dictionary, key)).Double;
@@ -202,7 +216,12 @@ internal sealed class VectorPageContext
             if (stream.Data.Length != rawBytes || Resolve<NumericToken>(Entry(dictionary, "Length")).Double != rawBytes) return null;
             // Conservative allocation guard, in addition to bounded encoded PNG writes.
             if (rawBytes > remainingImageBytes) throw new InvalidDataException("Original RGB allocation exceeds remaining image byte budget.");
-            var interpolate = dictionary.Data.TryGetValue("Interpolate", out var hint) ? Resolve<BooleanToken>(hint).Data : false;
+            var interpolate = false;
+            if (dictionary.Data.TryGetValue("Interpolate", out var hint))
+            {
+                if (ProfileToken(hint, options.MaxStackDepth, token) is not BooleanToken boolean) return null;
+                interpolate = boolean.Data;
+            }
             token.ThrowIfCancellationRequested();
             encoding = true;
             using var bitmap = new Image<Rgb24>(width, height);
@@ -226,6 +245,21 @@ internal sealed class VectorPageContext
         catch (NotSupportedException) when (!encoding) { return null; } // Not this profile. Encoding/budget/cancel/I/O failures escape.
     }
     private IToken Entry(DictionaryToken value, string key) => value.Data.TryGetValue(key, out var entry) ? entry : throw Unsupported("MISSING_RESOURCE: " + key);
+    private IToken ProfileToken(IToken value, int maxHops, CancellationToken token)
+    {
+        var visited = new HashSet<IndirectReference>(); var hops = 0;
+        token.ThrowIfCancellationRequested();
+        while (value is IndirectReferenceToken reference)
+        {
+            token.ThrowIfCancellationRequested();
+            if (hops++ >= maxHops || !visited.Add(reference.Data)) throw new InvalidDataException("PDF profile reference depth/cycle limit exceeded.");
+            // TryGet in PdfPig swallows scanner errors. These must escape page fallback.
+            var resolved = Scanner.Get(reference.Data);
+            if (resolved is null || resolved.Data is NullToken) throw new InvalidDataException("PDF profile reference is missing or null.");
+            value = resolved.Data;
+        }
+        return value;
+    }
     private string Name(DictionaryToken value, string key) => Resolve<NameToken>(Entry(value, key)).Data;
     internal byte[] Unfiltered(StreamToken value, int remaining, string kind)
     {

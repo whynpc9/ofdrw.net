@@ -23,8 +23,13 @@ internal sealed class PdfFixture : IDisposable
     internal string Text(string text, double x, double y, double size = 12, double shear = 0)
         => $"BT /F1 {Number(size)} Tf 1 0 {Number(shear)} 1 {Number(x)} {Number(y)} Tm <{Hex(text)}> Tj ET\n";
     internal byte[] Create(string[] contents, string pageEntries = "", bool wrongUnicode = false, string fontEntries = "", bool inheritedResources = false,
-        string imageEntries = "", bool? interpolate = null, byte[]? imageBytes = null, int imageWidth = 2, int imageHeight = 2)
+        string imageEntries = "", bool? interpolate = null, byte[]? imageBytes = null, int imageWidth = 2, int imageHeight = 2,
+        byte[]? encodingStream = null, byte[]? cidMapStream = null, string? encodingOverride = null, string? cidMapOverride = null,
+        string? imageColorSpace = null, string? interpolateOverride = null, string[]? trailingObjects = null)
     {
+        var next = 9 + 2 * contents.Length;
+        var encoding = encodingOverride ?? (encodingStream is null ? "/Identity-H" : next++ + " 0 R");
+        var cidMapping = cidMapOverride ?? (cidMapStream is null ? "/Identity" : next++ + " 0 R");
         var cmap = "/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def /CMapName /Fixture def /CMapType 2 def 1 begincodespacerange <0000> <FFFF> endcodespacerange " + _characters.Count + " beginbfchar " +
             string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => $"<{pair.Key:X4}> <{(int)(wrongUnicode && pair.Value == 'A' ? 'B' : pair.Value):X4}>")) + " endbfchar endcmap CMapName currentdict /CMap defineresource pop end end";
         var widths = string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => pair.Key + " [" + Number(_font.MeasureText(pair.Value.ToString())) + "]"));
@@ -32,18 +37,21 @@ internal sealed class PdfFixture : IDisposable
         var objects = new List<byte[]> {
             Ascii("<< /Type /Catalog /Pages 2 0 R >>"),
             Ascii("<< /Type /Pages /Count " + contents.Length + " /Kids [" + string.Join(" ", Enumerable.Range(0, contents.Length).Select(i => (9 + 2 * i) + " 0 R")) + "] " + (inheritedResources ? resources : "") + " >>"),
-            Ascii("<< /Type /Font /Subtype /Type0 /BaseFont /FixtureFace /Encoding /Identity-H /DescendantFonts [4 0 R] /ToUnicode 6 0 R " + fontEntries + " >>"),
-            Ascii("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /FixtureFace /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 5 0 R /CIDToGIDMap /Identity /DW 1000 /W [" + widths + "] >>"),
+            Ascii("<< /Type /Font /Subtype /Type0 /BaseFont /FixtureFace /Encoding " + encoding + " /DescendantFonts [4 0 R] /ToUnicode 6 0 R " + fontEntries + " >>"),
+            Ascii("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /FixtureFace /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 5 0 R /CIDToGIDMap " + cidMapping + " /DW 1000 /W [" + widths + "] >>"),
             Ascii("<< /Type /FontDescriptor /FontName /FixtureFace /Flags 32 /FontBBox [-1000 -1000 3000 3000] /ItalicAngle 0 /Ascent 1000 /Descent -300 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>"),
             Stream(Ascii(cmap)), Stream(_bytes, "/Length1 " + _bytes.Length),
             Stream(imageBytes ?? new byte[] { 210, 40, 60, 30, 130, 190, 30, 130, 190, 210, 40, 60 }, "/Type /XObject /Subtype /Image /Width " + imageWidth + " /Height " + imageHeight +
-                " /ColorSpace /DeviceRGB /BitsPerComponent 8 " + (interpolate.HasValue ? "/Interpolate " + (interpolate.Value ? "true" : "false") : "") + " " + imageEntries)
+                " /ColorSpace " + (imageColorSpace ?? "/DeviceRGB") + " /BitsPerComponent 8 " + (interpolateOverride is not null ? "/Interpolate " + interpolateOverride : interpolate.HasValue ? "/Interpolate " + (interpolate.Value ? "true" : "false") : "") + " " + imageEntries)
         };
         for (var index = 0; index < contents.Length; index++)
         {
             objects.Add(Ascii("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 420 595] " + (inheritedResources ? "" : resources) + " /Contents " + (10 + 2 * index) + " 0 R " + pageEntries + " >>"));
             objects.Add(Stream(Ascii(contents[index])));
         }
+        if (encodingStream is not null) objects.Add(Stream(encodingStream));
+        if (cidMapStream is not null) objects.Add(Stream(cidMapStream));
+        if (trailingObjects is not null) objects.AddRange(trailingObjects.Select(Ascii));
         using var output = new MemoryStream();
         void Write(string value) { var bytes = Ascii(value); output.Write(bytes); }
         Write("%PDF-1.7\n"); var offsets = new List<long>();

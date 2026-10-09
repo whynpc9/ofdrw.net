@@ -38,3 +38,7 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 本次已检查的包、源码、失败历史和 Preview 页面记录见 [验收证据](../evidence/pdf-vectors/README.md)。
 
 仅 open move 或支持的 butt move/close 描边按 PDF no-op 消耗路径、不创建事件；若页中仍有支持内容则保持 native，整页没有事件时沿用 `NO_NATIVE_CONTENT` 策略。闭合 singleton 填充可能产生设备像素，因此明确 `DEGENERATE_POINT_FILL` 整页回退/失败，包括与其它段共存的情况。显式 line/cubic 即便退化仍保留；奇异或 float/mm 转换后不可逆矩阵明确 `SINGULAR_SERIALIZED_MATRIX`，不由通用异常捕获掩盖。
+
+原生路径额外限制 producer 将已解析 double 转为 float 时的新增误差：每个页坐标分量 ≤0.0001 PDF pt，非零控制多边形向量的相对误差及线性 CTM 扭曲 ≤0.00001，固定 miter10 的笔宽偏移误差 ≤0.0001 pt。包括 cubic/v/y 控制点、闭合边、signed re 及 double 角点加法；真实重合保留，n 丢弃和不绘制的 trailing move 不产生新的精度回退。超范围明确 `PATH_FLOAT_PRECISION` 按整页policy处理，不能报告已丢失图形的 native。使用有限大小的精确二进制算术比较，复杂度随命令数线性；不修改19/04，也不承诺恢复 PdfPig 解析或累计 double CTM 运算中已丢失的十进制数字。上述是 incoming producer 误差界限，不保证最终边界量化、拓扑、miter分支或像素完全一致。
+
+合法 Encoding CMap / CIDToGIDMap 流是字体范围外的 `FONT_PROFILE`/`CID_MAPPING`，进入明确回退/失败；数组颜色空间会跳过原样RGB优化，交给既有整页渲染。用于这些判别的间接引用有深度/环/取消检查，严格读取错误不被吞掉；错误 primitive 类型、缺失引用和损坏仍是输入失败，不以回退掩盖。
