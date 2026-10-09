@@ -1,5 +1,7 @@
 # 21 可选 PDF 矢量转换验收证据
 
+最新已完成的运行时验证为 **`8478b84`**：主代理及独立 Low6 全套578/578、Python5/5、默认11/可选13实际包通过；2026-10-09 实看新增八个PDF/16页。**整体视觉门 FAIL / OPEN**：Indexed源与actualr4导出在Preview中蓝色外观有差异，未把它当作通过。原先35页保留原日期/哈希。后续修复、受影响页新包实看及新增文本精度评审仍待闭合。下列R2/R3为历史结果。
+
 当前运行时冻结 **`b9c136b`**：主代理和独立 Low5 的 .NET **542/542**、Python **5/5**、默认11/可选13实际包消费及独立 observer 通过。首轮双 bot 的无绘制路径/奇异矩阵反馈和 Ubuntu `magick` 缺失已修复；所有失败历史保留。2026-10-08 新增八个 PDF / 八页实际 Preview，原 R2 十三个 PDF /27页保留原日期和哈希；共21个文件/35个已查看页面的明确范围。闭合单点填充的装置像素保真未建立，只验收布局与 page policy，不声称任意或逐像素保真。最新推送 head 的复审/CI/threads 待读回。
 
 冻结运行时 `58a710731b93026e2efbd7ca0bf0420e5be0bf65`，起点 `d878aeda57c1da79917e11d0a35bcc028bc4c1fd`。Astra High 先做真实 PDF 探针和设计，主代理 GPT-6.1 Sol High 实施，GPT-6 Sol Low 在 `git archive` 独立副本运行并保留失败，未自行修补。功能和有限样例的 Preview 验收完成；最新 PR 的 Codex、Cursor、CI 与 review threads 仍需读回，不合并或发布。
@@ -58,3 +60,9 @@ mkdir -p artifacts/pdf-vectors/public-review-r3
 zstd -dc docs/evidence/pdf-vectors/review-r3.tar.zst | tar -xf - -C artifacts/pdf-vectors/public-review-r3
 python3 scripts/collect-pdf-vector-review-evidence.py b9c136bc6f701388fb6a58483a45e2055c22408f 0.1.0-pdfvector.20261008.r3
 ```
+
+## 第二轮修复 R4 与保留的视觉失败
+
+[review-r4-acceptance.json](review-r4-acceptance.json) 和 [review-r4-manifest.json](review-r4-manifest.json) 绑定 [review-r4.tar.zst](review-r4.tar.zst)（27,452,177字节、217个文件）；前两个归档原样保留。此轮为源码8478b84，路径精度损失在创建事件前按明确producer误差界进入page policy；合法Encoding/CID映射流也进入policy，严格间接引用的损坏/环/缺失仍为输入失败，不吞异常。Low6独立332个源码blob核验、578全套/5Python、11/13实际包和23条路径/3类资源observer通过。
+
+八个本轮PDF：precision-source.pdf/precision.pdf各3页，encoding-stream-source.pdf/encoding-stream.pdf与cid-map-stream-source.pdf/cid-map-stream.pdf各2页，indexed-image-source.pdf/indexed-image.pdf各1页。几何、字体原文、空格、page policy范围检查通过；Indexed棋盘格布局完整，但源/目标蓝色外观差异为真实未通过项。全部八窗口已关闭并释放GUI。未宣称整体视觉通过、逐像素保真或发行通过。失败源PDF SHA256为49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441；目标PDF SHA256为00c6c9cbfc1aa250055b066e667c935fbfaab85fc0b18c0b087d421d4d7b77b4。详细查因及修复实包证据将追加，不能以扩大限制文案关闭此门。
