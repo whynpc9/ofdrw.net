@@ -1,5 +1,7 @@
 # 21 可选 PDF 矢量转换验收证据
 
+最新生产运行时 **`deda6d2`** 已完成主/独立Low8 .NET625/625、Python5/5、11/13实际包与本轮四PDF/20页实际Preview。原文本九页SHA d78e未改，五个损失页按整页policy、四个正常对照native；高Index合法夹取成功。**整票仍未闭环**：Ubuntu optional-package CI因重新生成冻结输入SHA不匹配而失败，日志和工件保留；需改为消费同一原始冻结输入并复核新harness/包/Low/LinuxCI与latest双bot/threads。以下R5/R4/R3为历史范围。
+
 最新已验证运行时 **`8de5958`**：主/独立Low7 .NET602/602、Python5/5、默认11/可选13实际包消费通过；原Indexed源SHA未变，新OFD PNG与导出PDF的999600调色板采样全部一致。2026-10-09 新八个PDF/八页实际Preview检查通过，原蓝色色相差异在本候选的匹配全页/实际尺寸重绘后不再可见；旧R4失败证据原样保留。**整票尚未闭环**：文本float精度P2、Indexed合法hival夹取边界和最终复审/CI/threads仍待完成。下述R4/R3/R2是历史范围。
 
 最新已完成的运行时验证为 **`8478b84`**：主代理及独立 Low6 全套578/578、Python5/5、默认11/可选13实际包通过；2026-10-09 实看新增八个PDF/16页。**整体视觉门 FAIL / OPEN**：Indexed源与actualr4导出在Preview中蓝色外观有差异，未把它当作通过。原先35页保留原日期/哈希。后续修复、受影响页新包实看及新增文本精度评审仍待闭合。下列R2/R3为历史结果。
@@ -78,3 +80,13 @@ python3 scripts/collect-pdf-vector-review-evidence.py b9c136bc6f701388fb6a58483a
 Low7核验338源码blob前后未变，602/5全套、11/13实际包和独立原PDF observer均通过；首个observer命令把MSBuildflags交给exe，在打开源前失败，原日志与直接DLL运行分别保留。Pillow不可用，Low用实际ImageMagick共同视口无缩放比较；Main真实CoreGraphics另验。Main首次Python发现目录写错，在进入测试前失败，原日志与scripts/tests五项结果分别保留。14类无变化OFD解压payload与R4相同（dual仅OFD.xml元数据），旧观察保留原日期。
 
 本轮范围是原样本0..hival，后续标准核查确认超过hival的合法Indexed值应夹取，当前fatal边界需要修正；不得把本次有限样例通过变成任意Indexed/PDF接受。新的文本matrix/advance/font-size P2也未解决。大诊断PDF副本可由保留脚本、R4原工件重现；公共增量归档保留脚本/哈希/原RGB/页面图，未复制其重复完整字体。所有产品工件与历史归档未替换。
+
+## 文本精度与合法Indexed夹取 R6
+
+[review-r6-acceptance.json](review-r6-acceptance.json) 和 [review-r6-manifest.json](review-r6-manifest.json) 绑定 [review-r6.tar.zst](review-r6.tar.zst)（21,277,567字节/205文件）。Astra真实旧r4 nupkg九页复现、原始source/model/PDF/PNG及设计、主625测试/九个独立TRX、Low8全套/346源码blob核验/真实包与三个observer、四PDF20页Preview和failed Linuxjob113681779442日志一并保存。Astra可选PIL contact-sheet不可用原日志保留；本轮不把源/consumer后续decimal舍入叫成producer1e-4pt界限。
+
+2026-10-09在准确Preview URL/固定哈希下实看text-precision-source.pdf/text-precision.pdf各页1..9，indexed-image-clipped-source.pdf/indexed-image-clipped.pdf各页1。first3保留预期可见中glyph，page4源有意把2049glyph叠入两个字形簇，回退保留而无额外可见native overlay；page5源和导出切页后曾保留前页缓存，单次ZoomOut留在新比例后均完整重绘为空白（巨字在页外真实预期），没有将微小shape差称作肉眼已证。source1..3又重绘复查。6..9比例英文、shear中英、中文原文、A-double-space-B及字距可读且与源一致。高Index0/255/hival1两页棋盘格四边/方向/颜色一致。四本票文档URL逐个核对后CmdW关闭，最后Cancel自动Open面板并停止激活Preview，GUI释放；只读应用清单无windows字段，未据此推断全局0窗口。
+
+Low8三个独立观察输入分别保留原49994fe3、合法高值525f7c78、原文本d78e；图像均检查999600采样，文本Fail sentinel/五回退四native/重复选择[5,0,5]/四个完整原字体资源通过。实际malformed palette五项，copied console旧标签写六项已在报告纠正；旧Low7高值误判历史未抹去。Low8固定TRX文件名覆盖了前程序集TRX，仅最后168项；全625计数有完整控制台日志及Main九份TRX，不冒称独立九TRX齐备。
+
+当前LinuxCI的Frozen Astra text source changed说明harness重新生成输入未等于本应被冻结的原PDF；该失败先于源文件持久化，失败的九页内存字节未知，不能猜成已证实字体或renderer原因。后续直接消费压缩原PDF，继续要求解压后原size/SHA与原字体payload，保留此失败，并复核新冻结harness/实际包/Low/LinuxCI。生产src保持deda不变；新生成PDF如需验收须按其实际hash重开，不把model相同当新文件已看。此处只关闭最终运行时已实看记录缺失，不声称PR当前CI/全部线程已闭合或可发布。
