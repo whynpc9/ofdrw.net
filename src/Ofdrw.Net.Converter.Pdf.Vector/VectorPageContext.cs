@@ -198,9 +198,35 @@ internal sealed class VectorPageContext
                 (dictionary.Data.ContainsKey("Type") && Name(dictionary, "Type") != "XObject") ||
                 Resolve<NumericToken>(Entry(dictionary, "BitsPerComponent")).Double != 8) return null;
             var colorSpace = ProfileToken(Entry(dictionary, "ColorSpace"), options.MaxStackDepth, token);
-            if (colorSpace is ArrayToken) return null; // Indexed/ICCBased/etc are not raw DeviceRGB samples.
-            if (colorSpace is not NameToken colorName) throw new InvalidDataException("PDF image ColorSpace must be a name or array.");
-            if (colorName.Data != "DeviceRGB") return null;
+            byte[]? palette = null; var highestIndex = 0;
+            if (colorSpace is ArrayToken indexed)
+            {
+                if (indexed.Data.Count != 4 || ProfileToken(indexed.Data[0], options.MaxStackDepth, token) is not NameToken kind || kind.Data != "Indexed" ||
+                    ProfileToken(indexed.Data[1], options.MaxStackDepth, token) is not NameToken basis || basis.Data != "DeviceRGB") return null;
+                if (ProfileToken(indexed.Data[2], options.MaxStackDepth, token) is not NumericToken hival || hival.Double < 0 || hival.Double > 255 || Math.Truncate(hival.Double) != hival.Double)
+                    throw new InvalidDataException("PDF Indexed hival must be an integer 0..255.");
+                highestIndex = (int)hival.Double;
+                var lookup = ProfileToken(indexed.Data[3], options.MaxStackDepth, token);
+                var paletteBytes = checked(3 * (highestIndex + 1));
+                // Bound literal copying before allocating another palette buffer.
+                if (lookup is HexToken hex)
+                {
+                    if (hex.Bytes.Length != paletteBytes) throw new InvalidDataException("PDF Indexed literal palette length mismatch.");
+                    palette = hex.Bytes.ToArray();
+                }
+                else if (lookup is StringToken literal)
+                {
+                    if (literal.Data.Length > paletteBytes) throw new InvalidDataException("PDF Indexed literal palette length mismatch.");
+                    palette = literal.GetBytes();
+                }
+                if (palette is null) return null; // Stream lookup and other bases remain ordinary fallback.
+                if (palette.Length != paletteBytes) throw new InvalidDataException("PDF Indexed literal palette length mismatch.");
+            }
+            else
+            {
+                if (colorSpace is not NameToken colorName) throw new InvalidDataException("PDF image ColorSpace must be a name or array.");
+                if (colorName.Data != "DeviceRGB") return null;
+            }
             int Dimension(string key)
             {
                 var number = Resolve<NumericToken>(Entry(dictionary, key)).Double;
@@ -213,7 +239,8 @@ internal sealed class VectorPageContext
             var renderedPixels = Math.Ceiling(frame.Box[2] * dpi / 72) * Math.Ceiling(frame.Box[3] * dpi / 72);
             if (pixels > options.Compatibility.MaxRasterizedPixelsPerPage || renderedPixels > options.Compatibility.MaxRasterizedPixelsPerPage || rawBytes > int.MaxValue)
                 throw new InvalidDataException("PDF image/page pixel limit exceeded.");
-            if (stream.Data.Length != rawBytes || Resolve<NumericToken>(Entry(dictionary, "Length")).Double != rawBytes) return null;
+            var sourceBytes = palette is null ? rawBytes : pixels;
+            if (stream.Data.Length != sourceBytes || Resolve<NumericToken>(Entry(dictionary, "Length")).Double != sourceBytes) return null;
             // Conservative allocation guard, in addition to bounded encoded PNG writes.
             if (rawBytes > remainingImageBytes) throw new InvalidDataException("Original RGB allocation exceeds remaining image byte budget.");
             var interpolate = false;
@@ -230,8 +257,21 @@ internal sealed class VectorPageContext
                 for (var row = 0; row < height; row++)
                 {
                     token.ThrowIfCancellationRequested(); var destination = accessor.GetRowSpan(row);
-                    var original = stream.Data.Span.Slice(checked(row * width * 3), checked(width * 3));
-                    for (var column = 0; column < width; column++) destination[column] = new Rgb24(original[column * 3], original[column * 3 + 1], original[column * 3 + 2]);
+                    if (palette is null)
+                    {
+                        var original = stream.Data.Span.Slice(checked(row * width * 3), checked(width * 3));
+                        for (var column = 0; column < width; column++) destination[column] = new Rgb24(original[column * 3], original[column * 3 + 1], original[column * 3 + 2]);
+                    }
+                    else
+                    {
+                        var original = stream.Data.Span.Slice(checked(row * width), width);
+                        for (var column = 0; column < width; column++)
+                        {
+                            var index = original[column];
+                            if (index > highestIndex) throw new InvalidDataException("PDF Indexed sample exceeds literal palette.");
+                            var offset = index * 3; destination[column] = new Rgb24(palette[offset], palette[offset + 1], palette[offset + 2]);
+                        }
+                    }
                 }
             });
             using var encoded = new BoundedImageOutput(remainingImageBytes, token);

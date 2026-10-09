@@ -92,7 +92,7 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                         page = originalImage;
                         imageBytes += page.Elements.OfType<OfdImageElement>().Sum(image => (long)image.Data.Length);
                         native = false;
-                        diagnostic = "PDFV_ORIGINAL_IMAGE_PAGE: exact full-page raw RGB samples/resolution and source Interpolate preserved; raster content, no OCR.";
+                        diagnostic = "PDFV_ORIGINAL_IMAGE_PAGE: exact full-page raw RGB or literal Indexed/DeviceRGB palette samples/resolution and source Interpolate preserved; raster content, no OCR.";
                     }
                     else
                     {
