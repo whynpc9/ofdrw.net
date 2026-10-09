@@ -6,7 +6,7 @@
 
 **Priority:** P1
 
-**Status:** implementation and scoped independent/package/Preview acceptance complete; PR reviews and CI pending
+**Status:** implementation and scoped independent/package/Preview acceptance complete; first review repairs validated; latest-head PR reviews and CI pending
 
 - [x] 可选矢量模式写出路径与文字对象；默认可仍为双层
 - [x] 有与双层模式的样例对比
@@ -38,3 +38,5 @@
 ## Scoped acceptance
 
 Source freeze `58a7107`: full solution 507 tests and Python 5 tests; default 11 and optional 13 actual-package consumers passed independently. macOS Preview checked 13 PDFs / 27 pages, including unchanged R1 source, repaired original-sample fallback, vector/dual and fresh Native/default DOCX chains. Public evidence: [docs/evidence/pdf-vectors](../../../docs/evidence/pdf-vectors/README.md). Original failures remain archived. Arbitrary PDF fidelity, cross-renderer interpolation equivalence, issue 05 font services, merge and release remain outside this acceptance.
+
+R3修复冻结 `b9c136b`，542/542、Python5、主/Low5真实11+13与observer通过。新增8页Preview；原R2未变27页保留原日期/哈希。闭合单点装置像素保真未建立，仅有限布局/policy验收。首轮失败及Low4错误断言保留；新证据见 review-r3-acceptance.json，最新head review/CI/thread闭环以PR最终评论为准。
