@@ -1,5 +1,7 @@
 # 21 可选 PDF 矢量转换验收证据
 
+当前运行时冻结 **`b9c136b`**：主代理和独立 Low5 的 .NET **542/542**、Python **5/5**、默认11/可选13实际包消费及独立 observer 通过。首轮双 bot 的无绘制路径/奇异矩阵反馈和 Ubuntu `magick` 缺失已修复；所有失败历史保留。2026-10-08 新增八个 PDF / 八页实际 Preview，原 R2 十三个 PDF /27页保留原日期和哈希；共21个文件/35个已查看页面的明确范围。闭合单点填充的装置像素保真未建立，只验收布局与 page policy，不声称任意或逐像素保真。最新推送 head 的复审/CI/threads 待读回。
+
 冻结运行时 `58a710731b93026e2efbd7ca0bf0420e5be0bf65`，起点 `d878aeda57c1da79917e11d0a35bcc028bc4c1fd`。Astra High 先做真实 PDF 探针和设计，主代理 GPT-6.1 Sol High 实施，GPT-6 Sol Low 在 `git archive` 独立副本运行并保留失败，未自行修补。功能和有限样例的 Preview 验收完成；最新 PR 的 Codex、Cursor、CI 与 review threads 仍需读回，不合并或发布。
 
 - 全套 .NET 507/507、Python 5/5。Low 独立默认 11 包、可选 13 包及额外 PackageReference-only observer 均通过，assets 无 ProjectReference；默认 metapackage/CLI 不新增 Skia 或 vector 依赖。
@@ -38,3 +40,21 @@ scripts/run-graphics-e2e.sh artifacts/pdf-vectors/graphics-regression-r3
 ```
 
 设计和 API 范围见 [探针](../../pdf-vector-probe-design.md)、[契约](../../pdf-vector-design-contract.md)、[图片修复设计](../../pdf-image-fallback-repair-design.md)、[教程](../../tutorials/18-pdf-vector-mode.md)。输入/工作预算不等于硬进程内存、时间或最终 ZIP 大小上限。所有失败证据保留；`production_release_accepted=false`。
+
+## 首轮审查修复 R3
+
+[review-r3-acceptance.json](review-r3-acceptance.json) 与 [review-r3-manifest.json](review-r3-manifest.json) 绑定新 [review-r3.tar.zst](review-r3.tar.zst)，旧 `evidence.tar.zst` 原样保留。新归档包括 actualr3全部样例、八页Preview记录、首轮两个bot/CI失败、真实旧nupkg复现、Astra18-case语义探针、542全套日志/TRX、Low4失败及Low5成功/source324blob核验/实际包和DLL哈希、验证器真实工具入口记录、许可。运行时及样例不在证据整理时修改。
+
+安全 open singleton / butt 描边 no-op 消耗累计命令但不产生事件；混合正常内容保持native，无事件页默认Fail或显式一幅页面图。闭合 singleton fill 可能涉及设备像素，故明确 `DEGENERATE_POINT_FILL` 整页policy，不能默默删除；与其它段共存也保守拒绝。显式line/cubic含退化仍沿用19契约。奇异或转换后rank-collapse在producer创建事件前复用04数值判定，给出 `SINGULAR_SERIALIZED_MATRIX`；没有泛catch ArgumentException，也未修改19/04/共享renderer。
+
+八个新看文件均在新归档 `candidate/`，每个页1：`no-op-source.pdf/no-op.pdf`、`no-content-source.pdf/no-content.pdf`、`closed-point-source.pdf/closed-point.pdf`、`singular-source.pdf/singular.pdf`。核验源与actualr3 OFD→PDF准确URL/哈希，全页实看，closed-point另在两次放大后的下方点区域复查；源/回退无明显点痕，字体/布局可读，预期144DPI栅格柔化保留。装置像素保真未建立，不以此宣称像素一致。八文档全部关闭、GUI已释放。原R2 normal vector/fallback/images各ZIP条目解压字节相同，dual仅`OFD.xml`元数据改变，原27页的实际观察范围不改日期或冒充新生成PDF已重看。
+
+Low4的near-float观察断言把非零可逆的1e-11对角缩放当作rank-collapse，首次失败原样保留；主实际low4包证明原A native，两策略均正确。新的Low5将该合法案例保留为独立native检查，另用`1 1 1 1.000000001`证明float后rank-collapse，重新运行全部门。Low5首次observer命令字体路径错，在进入converter前停止；错误日志与正确绝对路径重新启动后的完整结果分别保留，没有修补产品或断言绕过失败。六个具名PNG另作Low辅助检查，不能代替Preview。
+
+ImageMagick6 `compare/identify` 与7 `magick`工具选择兼容，阈值/裁切共同视口/不缩放保持不变；本机仅实际验证7及其standalone入口，不冒充Linux6，Ubuntu CI另验。最终PR评论记录最新head的双bot/checks/线程状态，不在文档中自称已包含自身commit。
+
+```sh
+mkdir -p artifacts/pdf-vectors/public-review-r3
+zstd -dc docs/evidence/pdf-vectors/review-r3.tar.zst | tar -xf - -C artifacts/pdf-vectors/public-review-r3
+python3 scripts/collect-pdf-vector-review-evidence.py b9c136bc6f701388fb6a58483a45e2055c22408f 0.1.0-pdfvector.20261008.r3
+```
