@@ -1,5 +1,5 @@
 using System.Security.Cryptography;
-using System.Text;
+using System.IO.Compression;
 using System.Text.Json;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Pdf.Vector;
@@ -8,28 +8,16 @@ using Ofdrw.Net.Reader.Readers;
 
 internal static class TextPrecisionProbe
 {
-    internal static async Task Run(string output, byte[] font)
+    internal static async Task Run(string output)
     {
-        using var fixture = new PdfFixture(font); var z = fixture.Hex("中");
-        string Pair(string matrix, string size, string adjustment) => $"BT /F1 {size} Tf {matrix} Tm [<{z}> {adjustment} <{z}>] TJ ET\n";
-        var repeated = new StringBuilder($"BT /F1 16 Tf 1 0 0 1 60 350 Tm [<{z}>");
-        for (var i = 0; i < 1024; i++) repeated.Append($" -5250.0001875 <{z}> 7250 <{z}>");
-        repeated.Append("] TJ ET\n");
-        // Byte-identical source to Astra's real r4 reproduction; it is never corrected to hide the loss.
-        var cases = new (string Name, string Content)[] {
-            ("matrix-translation", Pair("1 0 0 1 16777217 350", "16", "1048573312.5")),
-            ("advance-noncollapsed", Pair("1 0 0 1 100000000 350", "16", "6249997250")),
-            ("affine-amplification", Pair("128 0 0 128 16777216 350", ".125", "1048573234.375")),
-            ("advance-accumulation", repeated.ToString()),
-            ("font-size", fixture.Text("中", 60, 350, 8192.0003)),
-            ("ordinary", fixture.Text("Ordinary A B 123", 34.1, 535.2, 15.3)),
-            ("sheared", fixture.Text("Sheared A B 中文", 34, 480, 15, .2)),
-            ("cjk", fixture.Text("中文字体 原始文本", 34, 430, 16)),
-            ("spacing", "BT /F1 16 Tf 1 0 0 1 34 380 Tm 2 Tc 4 Tw [<" + fixture.Hex("A  B中文") + "> 125 <" + fixture.Hex(" C") + ">] TJ ET")
-        };
-        var source = fixture.Create(cases.Select(c => c.Content).ToArray());
+        // A frozen input must not be regenerated through platform-dependent font measurement.
+        using var compressed = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "testdata", "text-precision-source.pdf.gz"));
+        using var gzip = new GZipStream(compressed, CompressionMode.Decompress);
+        using var decodedSource = new MemoryStream(); await gzip.CopyToAsync(decodedSource);
+        var source = decodedSource.ToArray();
         var sourceHash = Convert.ToHexStringLower(SHA256.HashData(source));
-        if (sourceHash != "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb") throw new Exception("Frozen Astra text source changed.");
+        if (source.Length != 21_698_835 || sourceHash != "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb") throw new Exception("Frozen Astra text source changed.");
+        var names = new[] { "matrix-translation", "advance-noncollapsed", "affine-amplification", "advance-accumulation", "font-size", "ordinary", "sheared", "cjk", "spacing" };
         File.WriteAllBytes(Path.Combine(output, "text-precision-source.pdf"), source);
         using (var input = new MemoryStream(source)) using (var sentinel = new MemoryStream())
         {
@@ -49,9 +37,9 @@ internal static class TextPrecisionProbe
         for (var i = 5; i < 9; i++) if (result.Pages[i].ImageObjects != 0 || package.Pages[i].Elements.OfType<OfdTextElement>().Count() != 1) throw new Exception("Ordinary text lost native content.");
         if (package.Pages[8].Elements.OfType<OfdTextElement>().Single().Text != "A  B中文 C") throw new Exception("Original Unicode/spacing changed.");
         var embedded = package.Fonts.Where(f => f.Data.Length > 0).ToArray();
-        if (embedded.Length != 4 || embedded.Any(f => !f.Data.SequenceEqual(font))) throw new Exception("Original fixed-font payload identity changed.");
+        if (embedded.Length != 4 || embedded.Any(f => Convert.ToHexStringLower(SHA256.HashData(f.Data)) != "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa")) throw new Exception("Original fixed-font payload identity changed.");
         File.WriteAllBytes(Path.Combine(output, "text-precision.ofd"), ofd.ToArray()); ofd.Position = 0;
         using (var pdf = File.Create(Path.Combine(output, "text-precision.pdf"))) await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
-        File.WriteAllText(Path.Combine(output, "text-precision-report.json"), JsonSerializer.Serialize(new { sourceSha256 = sourceHash, result, cases = cases.Select((c, i) => new { page = i + 1, c.Name }), originalEmbeddedFontResources = embedded.Length, preview = "separate actual page inspection required" }, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(Path.Combine(output, "text-precision-report.json"), JsonSerializer.Serialize(new { sourceSha256 = sourceHash, sourceBytes = source.Length, result, cases = names.Select((name, i) => new { page = i + 1, Name = name }), originalEmbeddedFontResources = embedded.Length, preview = "separate actual page inspection required" }, new JsonSerializerOptions { WriteIndented = true }));
     }
 }

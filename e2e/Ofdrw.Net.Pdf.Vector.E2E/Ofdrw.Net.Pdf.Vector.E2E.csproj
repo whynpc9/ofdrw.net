@@ -9,4 +9,5 @@
     <PackageReference Include="Ofdrw.Net.Converter.Svg" Version="$(OfdrwPackageVersion)" />
   </ItemGroup>
   <ItemGroup><PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1" /></ItemGroup>
+  <ItemGroup><None Update="testdata/*" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>
