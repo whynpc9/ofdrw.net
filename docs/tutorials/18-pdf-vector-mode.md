@@ -43,4 +43,6 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 
 合法 Encoding CMap / CIDToGIDMap 流是字体范围外的 `FONT_PROFILE`/`CID_MAPPING`，进入明确回退/失败；严格literal Indexed/DeviceRGB数组可保留原采样；其它数组颜色空间跳过原样优化，交给既有整页渲染。用于这些判别的间接引用有深度/环/取消检查，严格读取错误不被吞掉；错误 primitive 类型、缺失引用和损坏仍是输入失败，不以回退掩盖。
 
-当前Indexed颜色视觉验收仍未闭合：原R4 Preview蓝色差异保留；原palette采样修复必须经新nupkg/独立验证及Preview实看后才能给出结果。严格应用选择Fail；显式RasterizePage结果不等于颜色保真验收。
+R5原Indexed样例已由主/Low真实包及八页Preview复验，原R4失败保留；此有限样例的颜色检查通过，最终票的其它review与验收仍未闭合。严格应用选择Fail；显式RasterizePage结果不等于颜色保真验收。
+
+文本新增 `TEXT_FLOAT_PRECISION`：可见矩阵/字号/累计字距转float产生过大新增误差时整页按policy处理。保留普通小数、CJK、shear、连续空格及可精确表达的大数对照；原文与字体资源不改。此为回调double到producer输出的界限，后续OFD decimal/PDF renderer舍入不属于该界限，不宣称逐像素或任意PDF保真。Indexed省略Decode的8bit值按规范夹取到0..hival，2/255对hival1均读取最后调色板项；错误palette长度仍失败。

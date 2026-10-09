@@ -62,6 +62,7 @@ await ImageHintProbe.Run(output, font);
 await NonPaintingProbe.Run(output, font);
 await PrecisionResourceProbe.Run(output, font);
 await IndexedPaletteProbe.Run(output, font);
+await TextPrecisionProbe.Run(output, font);
 Console.WriteLine("Actual native/dual same-PDF and explicit fallback fixtures passed; Preview remains separate.");
 async Task Export(string name, MemoryStream ofd)
 {
