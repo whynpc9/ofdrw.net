@@ -18,6 +18,7 @@ for product in Ofdrw.Net.Graphics.SkiaSharp Ofdrw.Net.Converter.Pdf.Vector; do
   NUGET_PACKAGES="$SOURCE_CACHE" dotnet pack "$ROOT_DIR/src/$product/$product.csproj" -c Release -o "$OUTPUT_DIR/feed" -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${FLAGS[@]}"
 done
 cp "$ROOT_DIR/e2e/Ofdrw.Net.Pdf.Vector.E2E/"*.cs "$TASK_DIR/"
+cp -R "$ROOT_DIR/e2e/Ofdrw.Net.Pdf.Vector.E2E/testdata" "$TASK_DIR/testdata"
 cp "$ROOT_DIR/e2e/Ofdrw.Net.Pdf.Vector.E2E/Ofdrw.Net.Pdf.Vector.E2E.csproj" "$TASK_DIR/Consumer.csproj"
 python3 - "$TASK_DIR/NuGet.Config" "$OUTPUT_DIR/feed" "$SOURCE_CACHE" <<'PY'
 import sys,xml.etree.ElementTree as ET
