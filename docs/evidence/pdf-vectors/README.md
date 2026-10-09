@@ -1,5 +1,7 @@
 # 21 可选 PDF 矢量转换验收证据
 
+最新已验证运行时 **`8de5958`**：主/独立Low7 .NET602/602、Python5/5、默认11/可选13实际包消费通过；原Indexed源SHA未变，新OFD PNG与导出PDF的999600调色板采样全部一致。2026-10-09 新八个PDF/八页实际Preview检查通过，原蓝色色相差异在本候选的匹配全页/实际尺寸重绘后不再可见；旧R4失败证据原样保留。**整票尚未闭环**：文本float精度P2、Indexed合法hival夹取边界和最终复审/CI/threads仍待完成。下述R4/R3/R2是历史范围。
+
 最新已完成的运行时验证为 **`8478b84`**：主代理及独立 Low6 全套578/578、Python5/5、默认11/可选13实际包通过；2026-10-09 实看新增八个PDF/16页。**整体视觉门 FAIL / OPEN**：Indexed源与actualr4导出在Preview中蓝色外观有差异，未把它当作通过。原先35页保留原日期/哈希。后续修复、受影响页新包实看及新增文本精度评审仍待闭合。下列R2/R3为历史结果。
 
 当前运行时冻结 **`b9c136b`**：主代理和独立 Low5 的 .NET **542/542**、Python **5/5**、默认11/可选13实际包消费及独立 observer 通过。首轮双 bot 的无绘制路径/奇异矩阵反馈和 Ubuntu `magick` 缺失已修复；所有失败历史保留。2026-10-08 新增八个 PDF / 八页实际 Preview，原 R2 十三个 PDF /27页保留原日期和哈希；共21个文件/35个已查看页面的明确范围。闭合单点填充的装置像素保真未建立，只验收布局与 page policy，不声称任意或逐像素保真。最新推送 head 的复审/CI/threads 待读回。
@@ -66,3 +68,13 @@ python3 scripts/collect-pdf-vector-review-evidence.py b9c136bc6f701388fb6a58483a
 [review-r4-acceptance.json](review-r4-acceptance.json) 和 [review-r4-manifest.json](review-r4-manifest.json) 绑定 [review-r4.tar.zst](review-r4.tar.zst)（27,452,177字节、217个文件）；前两个归档原样保留。此轮为源码8478b84，路径精度损失在创建事件前按明确producer误差界进入page policy；合法Encoding/CID映射流也进入policy，严格间接引用的损坏/环/缺失仍为输入失败，不吞异常。Low6独立332个源码blob核验、578全套/5Python、11/13实际包和23条路径/3类资源observer通过。
 
 八个本轮PDF：precision-source.pdf/precision.pdf各3页，encoding-stream-source.pdf/encoding-stream.pdf与cid-map-stream-source.pdf/cid-map-stream.pdf各2页，indexed-image-source.pdf/indexed-image.pdf各1页。几何、字体原文、空格、page policy范围检查通过；Indexed棋盘格布局完整，但源/目标蓝色外观差异为真实未通过项。全部八窗口已关闭并释放GUI。未宣称整体视觉通过、逐像素保真或发行通过。失败源PDF SHA256为49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441；目标PDF SHA256为00c6c9cbfc1aa250055b066e667c935fbfaab85fc0b18c0b087d421d4d7b77b4。详细查因及修复实包证据将追加，不能以扩大限制文案关闭此门。
+
+## 原调色板采样修复 R5
+
+[review-r5-acceptance.json](review-r5-acceptance.json)、[review-r5-manifest.json](review-r5-manifest.json) 绑定 [review-r5.tar.zst](review-r5.tar.zst)（9,494,526字节/159文件）。Astra只读颜色诊断以原palette/index确定旧Poppler页面回退有23520/999600个边缘混色；旧OFD PNG、导出PDF保持这些混色，内部颜色未变，不能由此证明Preview内部蓝色差异的原因。诊断及失败都保留。R5仅在既有严格纯整页条件内把literal Indexed/DeviceRGB8调色板展开为RGB8，并保留原网格及源Interpolate，仍是非native图像页；未改默认renderer/字体/19链路。
+
+真实R5与独立Low7包对原SHA49994fe3源全部999600像素检查，PNG/PDF字节均等于原palette展开；有效Interpolate=false。GS与CoreGraphics共同840x1190视口各0调色板差异；Poppler源与目标pixelsha相同，但两者都有其23520个采样边缘混色，不能称所有renderer逐像素保真。旧R4源/新R5产物的八页实看分别为indexed-image-source.pdf/indexed-image.pdf（原棋盘格）、indexed-absent/false/true-source.pdf及各对应实际OFD导出.pdf，各页1。准确Preview URL和哈希、全页重绘、棋盘格另Actual Size匹配重绘，蓝色/浅格/四边/方向一致，原finding不再可见；3x2三组都呈平滑渐变，不用外观证明flag。八窗口逐个核对本票URL关闭，自动打开面板Escape后noWindowsAvailable，GUI已释放。
+
+Low7核验338源码blob前后未变，602/5全套、11/13实际包和独立原PDF observer均通过；首个observer命令把MSBuildflags交给exe，在打开源前失败，原日志与直接DLL运行分别保留。Pillow不可用，Low用实际ImageMagick共同视口无缩放比较；Main真实CoreGraphics另验。Main首次Python发现目录写错，在进入测试前失败，原日志与scripts/tests五项结果分别保留。14类无变化OFD解压payload与R4相同（dual仅OFD.xml元数据），旧观察保留原日期。
+
+本轮范围是原样本0..hival，后续标准核查确认超过hival的合法Indexed值应夹取，当前fatal边界需要修正；不得把本次有限样例通过变成任意Indexed/PDF接受。新的文本matrix/advance/font-size P2也未解决。大诊断PDF副本可由保留脚本、R4原工件重现；公共增量归档保留脚本/哈希/原RGB/页面图，未复制其重复完整字体。所有产品工件与历史归档未替换。
