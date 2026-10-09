@@ -24,7 +24,9 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private readonly VectorPageContext _context; private readonly double _height;
     private readonly Dictionary<string, VectorFont> _fonts; private readonly PdfVectorToOfdOptions _limits;
     private readonly CancellationToken _token; private readonly SKPath _path = new(); private readonly List<SkiaDrawEvent> _events = new();
-    private readonly StringBuilder _text = new(); private readonly List<double> _positions = new();
+    private readonly StringBuilder _text = new(); private readonly List<float> _advances = new();
+    private TextFloatPrecision? _textPrecision; private SKMatrix _candidateTextMatrix; private float _candidateTextSize;
+    private double _lastTextPosition;
     private TransformationMatrix _textMatrix; private VectorFont? _textFont; private double _textSize;
     private bool _hasSegments, _subpathHasSegments, _hasClosedSingleton;
     private PathFloatPrecision? _precision;
@@ -143,9 +145,12 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         if (_characters >= _limits.MaxTextCharactersPerPage) throw new InvalidDataException("PDF original text character limit exceeded.");
         _characters++;
         var matrix = text.Multiply(ctm); var color = Color(false);
-        if (_text.Length == 0)
+        var first = _text.Length == 0; var advance = 0f;
+        if (first)
         {
-            _textMatrix = matrix; _textFont = binding; _textSize = fontSize; _textColor = color; _positions.Add(0);
+            _textMatrix = matrix; _textFont = binding; _textSize = fontSize; _textColor = color; _lastTextPosition = 0;
+            _candidateTextMatrix = Matrix(matrix, true); _candidateTextSize = (float)fontSize;
+            _textPrecision = new TextFloatPrecision(_candidateTextMatrix, _candidateTextSize, _height);
         }
         else
         {
@@ -156,21 +161,24 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
             var x = (matrix.D * dx - matrix.C * dy) / determinant;
             var y = (-matrix.B * dx + matrix.A * dy) / determinant;
             if (double.IsNaN(x) || double.IsInfinity(x) || Math.Abs(y) > 0.000001) throw Unsupported("TEXT_BASELINE");
-            _positions.Add(x);
+            advance = Float(x - _lastTextPosition); _lastTextPosition = x;
         }
+        if (!_textPrecision!.Glyph(text, ctm, fontSize, bounds.GlyphBounds, advance))
+            throw Unsupported("TEXT_FLOAT_PRECISION: added matrix/size/glyph/accumulated advance conversion error exceeds bounded profile.");
+        if (!first) _advances.Add(advance);
         _text.Append(original);
     }
     private void FlushText()
     {
         if (_text.Length == 0) return;
         var original = _text.ToString();
-        if (string.IsNullOrWhiteSpace(original) || StringInfo.ParseCombiningCharacters(original).Length != _positions.Count) throw Unsupported("WHITESPACE_ONLY_OR_SHAPED_RUN");
-        var advances = new float[_positions.Count - 1];
-        for (var index = 0; index < advances.Length; index++) advances[index] = Float(_positions[index + 1] - _positions[index]);
-        using var font = new SKFont(_textFont!.Face, Float(_textSize)); using var paint = new SKPaint { Color = _textColor, Style = SKPaintStyle.Fill };
-        Add(SkiaDrawEvent.Text(original, new SKPoint(0, 0), font, paint, _textFont.Resource.Id!, advances,
-            Matrix(_textMatrix, true), _limits.MaxTextCharactersPerPage, _limits.MaxFontBytes));
-        _text.Clear(); _positions.Clear(); _textFont = null;
+        _token.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(original) || StringInfo.ParseCombiningCharacters(original).Length != _advances.Count + 1) throw Unsupported("WHITESPACE_ONLY_OR_SHAPED_RUN");
+        using var font = new SKFont(_textFont!.Face, _candidateTextSize); using var paint = new SKPaint { Color = _textColor, Style = SKPaintStyle.Fill };
+        if (font.Size != _candidateTextSize) throw Unsupported("TEXT_FLOAT_PRECISION: font changed validated size.");
+        Add(SkiaDrawEvent.Text(original, new SKPoint(0, 0), font, paint, _textFont.Resource.Id!, _advances,
+            _candidateTextMatrix, _limits.MaxTextCharactersPerPage, _limits.MaxFontBytes));
+        _text.Clear(); _advances.Clear(); _textFont = null; _textPrecision = null;
     }
     public override void BeginSubpath() { }
     public override PdfPoint? CloseSubpath() { ClosePath(); return _subpathStart; }

@@ -68,13 +68,26 @@ public sealed class IndexedImageTests
     [InlineData("[/Indexed /DeviceRGB 1.5 <1f5da6e9f1f9>]", 0)]
     [InlineData("[/Indexed /DeviceRGB 1 <1f5da6>]", 0)]
     [InlineData("[/Indexed /DeviceRGB 0 <1f5da6e9f1f9>]", 0)]
-    [InlineData(Space, 2)]
-    public async Task MalformedPaletteOrIndexFailsAtomicallyRatherThanRasterizing(string space, byte sample)
+    public async Task MalformedPaletteFailsAtomicallyRatherThanRasterizing(string space, byte sample)
     {
         using var fixture = Fixture(); using var input = new MemoryStream(fixture.Create(new[] { Body }, imageBytes: new[] { sample, (byte)0, (byte)1, (byte)0 }, imageColorSpace: space));
         using var output = new MemoryStream(); output.Write(new byte[] { 7, 8 });
         await Assert.ThrowsAsync<InvalidDataException>(() => new PdfVectorToOfdConverter(Options()).ConvertAsync(input, output));
         Assert.Equal(new byte[] { 7, 8 }, output.ToArray());
+    }
+
+    [Theory]
+    [InlineData(2)][InlineData(255)]
+    public async Task LegalIndexedValuesAboveHivalClampToLastPaletteEntry(byte index)
+    {
+        using var fixture = Fixture(); using var input = new MemoryStream(fixture.Create(new[] { Body }, imageColorSpace: Space,
+            imageBytes: new byte[] { 0, index, index, 0 })); using var output = new MemoryStream();
+        var result = await new PdfVectorToOfdConverter(Options()).ConvertWithResultAsync(input, output);
+        Assert.StartsWith("PDFV_ORIGINAL_IMAGE_PAGE", result.Pages[0].Diagnostic);
+        output.Position = 0; var package = await new OfdReader().ReadAsync(output);
+        using var pixels = Image.Load<Rgb24>(package.Pages[0].Elements.OfType<OfdImageElement>().Single().Data);
+        Assert.Equal(new Rgb24(31, 93, 166), pixels[0, 0]); Assert.Equal(new Rgb24(233, 241, 249), pixels[1, 0]);
+        Assert.Equal(new Rgb24(233, 241, 249), pixels[0, 1]); Assert.Equal(new Rgb24(31, 93, 166), pixels[1, 1]);
     }
 
     [Theory]

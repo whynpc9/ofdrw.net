@@ -30,6 +30,9 @@ internal static class PrecisionResourceProbe
         var pixels = Enumerable.Range(0,840*1190).Select(index => (byte)((index%840/80 + index/840/80)%2)).ToArray();
         var indexed = fixture.Create(new[] { "q 420 0 0 595 0 0 cm /Im1 Do Q" }, imageWidth:840,imageHeight:1190,imageBytes:pixels,imageColorSpace:"[/Indexed /DeviceRGB 1 <1f5da6e9f1f9>]");
         await Check("indexed-image", indexed, new[] { false }, "PDFV_ORIGINAL_IMAGE_PAGE");
+        var clipped = fixture.Create(new[] { "q 420 0 0 595 0 0 cm /Im1 Do Q" }, imageWidth:840,imageHeight:1190,
+            imageBytes:pixels.Select(p => p == 0 ? (byte)0 : (byte)255).ToArray(),imageColorSpace:"[/Indexed /DeviceRGB 1 <1f5da6e9f1f9>]");
+        await Check("indexed-image-clipped", clipped, new[] { false }, "PDFV_ORIGINAL_IMAGE_PAGE");
         File.WriteAllText(Path.Combine(output,"precision-resource-report.json"),JsonSerializer.Serialize(reports,new JsonSerializerOptions{WriteIndented=true}));
 
         async Task Check(string name, byte[] source, bool[] native, string code)
@@ -49,7 +52,7 @@ internal static class PrecisionResourceProbe
             {
                 if(result.Pages[i].ImageObjects!=1||result.Pages[i].PathObjects!=0||!result.Pages[i].Diagnostic.Contains(code)||package.Pages[i].Elements.OfType<OfdTextElement>().Any(t=>t.FillColor.Alpha!=0))throw new Exception("Visible partial native fallback leak.");
             }
-            if(name=="indexed-image")
+            if(name.StartsWith("indexed-image",StringComparison.Ordinal))
             {
                 using var image=SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(package.Pages[0].Elements.OfType<OfdImageElement>().Single().Data);
                 if(image.Width!=840||image.Height!=1190)throw new Exception("Indexed source grid changed.");
@@ -61,7 +64,7 @@ internal static class PrecisionResourceProbe
             }
             File.WriteAllBytes(Path.Combine(output,name+".ofd"),ofd.ToArray());ofd.Position=0;
             using(var pdf=File.Create(Path.Combine(output,name+".pdf")))await new OfdToPdfConverter().ConvertAsync(ofd,pdf);
-            if(name=="indexed-image")
+            if(name.StartsWith("indexed-image",StringComparison.Ordinal))
             {
                 using var pdf=PdfDocument.Open(Path.Combine(output,name+".pdf"));var image=pdf.GetPage(1).GetImages().Single();
                 if(image.Interpolate||!image.TryGetBytesAsMemory(out var bytes)||bytes.Length!=840*1190*3)throw new Exception("Indexed export sampling changed.");

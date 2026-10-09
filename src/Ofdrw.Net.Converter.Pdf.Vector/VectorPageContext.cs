@@ -267,8 +267,8 @@ internal sealed class VectorPageContext
                         var original = stream.Data.Span.Slice(checked(row * width), width);
                         for (var column = 0; column < width; column++)
                         {
-                            var index = original[column];
-                            if (index > highestIndex) throw new InvalidDataException("PDF Indexed sample exceeds literal palette.");
+                            // Default 8-bit Indexed decode is [0,255]; values clamp to hival.
+                            var index = Math.Min(original[column], highestIndex);
                             var offset = index * 3; destination[column] = new Rgb24(palette[offset], palette[offset + 1], palette[offset + 2]);
                         }
                     }
