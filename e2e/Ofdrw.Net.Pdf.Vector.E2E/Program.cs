@@ -60,6 +60,7 @@ using (var ofd = new MemoryStream())
 File.WriteAllText(Path.Combine(output, "sample-report.json"), JsonSerializer.Serialize(new { fontSha256 = Convert.ToHexStringLower(SHA256.HashData(font)), reports }, new JsonSerializerOptions { WriteIndented = true }));
 await ImageHintProbe.Run(output, font);
 await NonPaintingProbe.Run(output, font);
+await PrecisionResourceProbe.Run(output, font);
 Console.WriteLine("Actual native/dual same-PDF and explicit fallback fixtures passed; Preview remains separate.");
 async Task Export(string name, MemoryStream ofd)
 {

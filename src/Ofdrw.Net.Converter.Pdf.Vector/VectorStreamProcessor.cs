@@ -27,6 +27,8 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private readonly StringBuilder _text = new(); private readonly List<double> _positions = new();
     private TransformationMatrix _textMatrix; private VectorFont? _textFont; private double _textSize;
     private bool _hasSegments, _subpathHasSegments, _hasClosedSingleton;
+    private PathFloatPrecision? _precision;
+    private SKPoint _currentCandidate, _startCandidate;
     private SKColor _textColor; private bool _inText; private int _commands, _characters; private PdfPoint? _subpathStart;
 
     internal VectorStreamProcessor(VectorPageContext context, IPageContentParser parser, double width, double height,
@@ -113,9 +115,15 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
             if (stroke) { using var paint = Paint(true); }
             EndPath(); return;
         }
+        if (fill) RememberImplicitClosure();
+        var matrix = Matrix(CurrentTransformationMatrix); // Keep existing singular diagnostics.
+        using var fillPaint = fill ? Paint(false) : null;
+        using var strokePaint = stroke ? Paint(true) : null;
+        if (!_precision!.Accept(fill, stroke, GetCurrentState().LineWidth, strokePaint?.StrokeWidth ?? 0))
+            throw Unsupported("PATH_FLOAT_PRECISION: added path/control/CTM/stroke conversion error exceeds bounded profile.");
         _path.FillType = rule == FillingRule.EvenOdd ? SKPathFillType.EvenOdd : SKPathFillType.Winding;
-        if (fill) { using var paint = Paint(false); Add(SkiaDrawEvent.Path(_path, paint, Matrix(CurrentTransformationMatrix), _limits.MaxPathCommandsPerPage)); }
-        if (stroke) { using var paint = Paint(true); Add(SkiaDrawEvent.Path(_path, paint, Matrix(CurrentTransformationMatrix), _limits.MaxPathCommandsPerPage)); }
+        if (fill) Add(SkiaDrawEvent.Path(_path, fillPaint!, matrix, _limits.MaxPathCommandsPerPage));
+        if (stroke) Add(SkiaDrawEvent.Path(_path, strokePaint!, matrix, _limits.MaxPathCommandsPerPage));
         EndPath();
     }
     public override void RenderGlyph(IFont font, CurrentGraphicsState state, double fontSize, double pointSize, int code, string unicode,
@@ -169,18 +177,56 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     public override void StrokePath(bool close) => PaintPath(false, true, FillingRule.NonZeroWinding, close);
     public override void FillPath(FillingRule rule, bool close) => PaintPath(true, false, rule, close);
     public override void FillStrokePath(FillingRule rule, bool close) => PaintPath(true, true, rule, close);
-    public override void MoveTo(double x, double y) { Command(); _path.MoveTo(Float(x), Float(y)); _subpathStart = CurrentPosition = new PdfPoint(x, y); _subpathHasSegments = false; }
-    public override void LineTo(double x, double y) { if (_subpathStart is null) throw Unsupported("PATH_WITHOUT_MOVE"); Command(); _path.LineTo(Float(x), Float(y)); _hasSegments = _subpathHasSegments = true; CurrentPosition = new PdfPoint(x, y); }
+    private PathFloatPrecision.Point SourcePoint(PdfPoint point, SKPoint candidate) => new(point.X, point.Y, candidate);
+    private void RememberImplicitClosure()
+    {
+        if (_subpathHasSegments && _subpathStart.HasValue)
+            _precision!.ImplicitClosure(SourcePoint(CurrentPosition, _currentCandidate), SourcePoint(_subpathStart.Value, _startCandidate));
+    }
+    public override void MoveTo(double x, double y)
+    {
+        Command(); RememberImplicitClosure();
+        _precision ??= new PathFloatPrecision(CurrentTransformationMatrix, _height);
+        _currentCandidate = _startCandidate = new SKPoint(Float(x), Float(y));
+        _path.MoveTo(_currentCandidate); _subpathStart = CurrentPosition = new PdfPoint(x, y); _subpathHasSegments = false;
+    }
+    public override void LineTo(double x, double y)
+    {
+        if (_subpathStart is null) throw Unsupported("PATH_WITHOUT_MOVE"); Command();
+        var candidate = new SKPoint(Float(x), Float(y));
+        _precision!.Primitive(SourcePoint(CurrentPosition, _currentCandidate), new PathFloatPrecision.Point(x, y, candidate));
+        _path.LineTo(candidate); _currentCandidate = candidate; _hasSegments = _subpathHasSegments = true; CurrentPosition = new PdfPoint(x, y);
+    }
     public override void BezierCurveTo(double x2, double y2, double x3, double y3) => BezierCurveTo(CurrentPosition.X, CurrentPosition.Y, x2, y2, x3, y3);
     public override void BezierCurveTo(double x1, double y1, double x2, double y2, double x3, double y3)
-    { if (_subpathStart is null) throw Unsupported("PATH_WITHOUT_MOVE"); Command(); _path.CubicTo(Float(x1), Float(y1), Float(x2), Float(y2), Float(x3), Float(y3)); _hasSegments = _subpathHasSegments = true; CurrentPosition = new PdfPoint(x3, y3); }
+    {
+        if (_subpathStart is null) throw Unsupported("PATH_WITHOUT_MOVE"); Command();
+        var first = new SKPoint(Float(x1), Float(y1)); var second = new SKPoint(Float(x2), Float(y2)); var end = new SKPoint(Float(x3), Float(y3));
+        _precision!.Primitive(SourcePoint(CurrentPosition, _currentCandidate), new PathFloatPrecision.Point(x1, y1, first),
+            new PathFloatPrecision.Point(x2, y2, second), new PathFloatPrecision.Point(x3, y3, end));
+        _path.CubicTo(first, second, end); _currentCandidate = end; _hasSegments = _subpathHasSegments = true; CurrentPosition = new PdfPoint(x3, y3);
+    }
     public override void Rectangle(double x, double y, double width, double height)
     {
         // Preserve signed re direction, including holes; SKRect normalization would change winding.
         MoveTo(x, y); LineTo(x + width, y); LineTo(x + width, y + height); LineTo(x, y + height); ClosePath();
+        // Include addition error before float casting, e.g. x=2^53, width=1.
+        var bx = PathFloatPrecision.Binary.From(x); var by = PathFloatPrecision.Binary.From(y);
+        var right = bx + PathFloatPrecision.Binary.From(width); var top = by + PathFloatPrecision.Binary.From(height);
+        _precision!.Primitive(new PathFloatPrecision.Point(bx, by, new SKPoint(Float(x), Float(y))),
+            new PathFloatPrecision.Point(right, by, new SKPoint(Float(x + width), Float(y))),
+            new PathFloatPrecision.Point(right, top, new SKPoint(Float(x + width), Float(y + height))),
+            new PathFloatPrecision.Point(bx, top, new SKPoint(Float(x), Float(y + height))));
     }
-    public override void EndPath() { _path.Reset(); _subpathStart = null; _hasSegments = _subpathHasSegments = _hasClosedSingleton = false; }
-    public override void ClosePath() { if (_path.VerbCount == 0) return; Command(); _path.Close(); if (!_subpathHasSegments) _hasClosedSingleton = true; if (_subpathStart.HasValue) CurrentPosition = _subpathStart.Value; }
+    public override void EndPath() { _path.Reset(); _subpathStart = null; _precision = null; _hasSegments = _subpathHasSegments = _hasClosedSingleton = false; }
+    public override void ClosePath()
+    {
+        if (_path.VerbCount == 0) return; Command();
+        if (_subpathHasSegments && _subpathStart.HasValue)
+            _precision!.Primitive(SourcePoint(CurrentPosition, _currentCandidate), SourcePoint(_subpathStart.Value, _startCandidate));
+        _path.Close(); if (!_subpathHasSegments) _hasClosedSingleton = true;
+        if (_subpathStart.HasValue) { CurrentPosition = _subpathStart.Value; _currentCandidate = _startCandidate; }
+    }
     public override void ModifyClippingIntersect(FillingRule rule) => throw Unsupported("CLIP");
     protected override void ClipToRectangle(PdfRectangle bounds, FillingRule rule) => throw Unsupported("CLIP");
     protected override void RenderXObjectImage(XObjectContentRecord image) => throw Unsupported("IMAGE");
