@@ -123,6 +123,16 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         using var strokePaint = stroke ? Paint(true) : null;
         if (!_precision!.Accept(fill, stroke, GetCurrentState().LineWidth, strokePaint?.StrokeWidth ?? 0))
             throw Unsupported("PATH_FLOAT_PRECISION: added path/control/CTM/stroke conversion error exceeds bounded profile.");
+        // 19 passes this local float directly to OfdPen; pt-to-mm and PDF CTM
+        // scale belong in the transform, not in the serialized scalar check.
+        if (stroke && !OfdNumericFormat.WriterPositive(strokePaint!.StrokeWidth))
+        {
+            // A combined fill/stroke would first add its fill event. Preserve
+            // an already-exhausted hard budget before choosing page fallback.
+            _token.ThrowIfCancellationRequested();
+            if (_events.Count >= _limits.MaxEventsPerPage) throw new InvalidDataException("PDF draw event limit exceeded.");
+            throw Unsupported("STROKE_WRITER_PRECISION: local width must remain positive at OFD writer precision.");
+        }
         _path.FillType = rule == FillingRule.EvenOdd ? SKPathFillType.EvenOdd : SKPathFillType.Winding;
         if (fill) Add(SkiaDrawEvent.Path(_path, fillPaint!, matrix, _limits.MaxPathCommandsPerPage));
         if (stroke) Add(SkiaDrawEvent.Path(_path, strokePaint!, matrix, _limits.MaxPathCommandsPerPage));
@@ -177,6 +187,8 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         // Check cheap event/cancellation limits before authenticating any font.
         if (_events.Count >= _limits.MaxEventsPerPage) throw new InvalidDataException("PDF draw event limit exceeded.");
         _token.ThrowIfCancellationRequested();
+        if (!OfdNumericFormat.WriterPositive(_candidateTextSize))
+            throw Unsupported("TEXT_WRITER_PRECISION: local font size must remain positive at OFD writer precision.");
         using var paint = new SKPaint { Color = _textColor, Style = SKPaintStyle.Fill };
         Add(_textFont!.Binding.SnapshotText(original, new SKPoint(0, 0), _candidateTextSize, paint, _advances,
             _candidateTextMatrix, _limits.MaxTextCharactersPerPage, _token));

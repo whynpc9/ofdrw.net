@@ -46,3 +46,5 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 R5原Indexed样例已由主/Low真实包及八页Preview复验，原R4失败保留；此有限样例的颜色检查通过，最终票的其它review与验收仍未闭合。严格应用选择Fail；显式RasterizePage结果不等于颜色保真验收。
 
 文本新增 `TEXT_FLOAT_PRECISION`：可见矩阵/字号/累计字距转float产生过大新增误差时整页按policy处理。保留普通小数、CJK、shear、连续空格及可精确表达的大数对照；原文与字体资源不改。此为回调double到producer输出的界限，后续OFD decimal/PDF renderer舍入不属于该界限，不宣称逐像素或任意PDF保真。Indexed省略Decode的8bit值按规范夹取到0..hival，2/255对hival1均读取最后调色板项；错误palette长度仍失败。
+
+正值的描边宽度和字号还须在既有 OFD 三位写出格式下保持正值。检查实际传给 Skia 事件的 float local scalar；pt→mm 和 PDF CTM 仍放在变换中，不重复缩放标量。不可表示值按 `STROKE_WRITER_PRECISION` / `TEXT_WRITER_PRECISION` 整页 Fail/显式回退，保留原 float 精度诊断、事件/字符预算及取消硬失败；不是夹成最小宽度或提高 writer 精度。
