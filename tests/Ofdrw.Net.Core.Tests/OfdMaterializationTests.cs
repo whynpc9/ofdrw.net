@@ -35,10 +35,10 @@ public sealed class OfdMaterializationTests
     public void XmlAliasesShareStreamingInspectionButPayEveryDomMaterialization()
     {
         var data = Encoding.UTF8.GetBytes("<Root Value='one two'/>");
-        var material = new OfdModelMaterialization(new OfdModelLimits { MaxMaterializedBytes = data.Length * 6L });
+        var material = new OfdModelMaterialization(new OfdModelLimits { MaxMaterializedBytes = data.Length * 6L + 128 });
         material.GuardEntry("first.xml", data, default); material.GuardEntry("alias.dat", data, default);
         _ = material.ReadXml("first.xml", data, default); _ = material.ReadXml("alias.dat", data, default);
-        Assert.Equal(data.Length * 6L, material.CloneCopyBytes);
+        Assert.Equal(data.Length * 6L + 128, material.CloneCopyBytes);
         Assert.Throws<InvalidDataException>(() => material.ReadXml("third.xml", data, default));
     }
 
@@ -60,6 +60,18 @@ public sealed class OfdMaterializationTests
         var material = new OfdModelMaterialization(new OfdModelLimits { MaxReferenceCount = 3 });
         for (var i = 0; i < 3; i++) material.StoreArray(Array.Empty<byte>());
         Assert.Throws<InvalidDataException>(() => material.StoreArray(Array.Empty<byte>()));
+    }
+
+    [Fact]
+    public void XmlCacheCannotAuthenticateChangedBytesOrAnOpaqueToXmlChange()
+    {
+        var data = Encoding.UTF8.GetBytes("<Root ID='10'/>"); var material = new OfdModelMaterialization(new OfdModelLimits());
+        material.GuardEntry("x.xml", data, default); data[10] = (byte)'9';
+        Assert.Throws<InvalidDataException>(() => material.ReadXml("x.xml", data, default));
+        Assert.Throws<InvalidDataException>(() => material.Reservations(data, out _));
+        var opaque = Encoding.UTF8.GetBytes("!Root ID='10'/>"); material.GuardEntry("opaque", opaque, default);
+        opaque[0] = (byte)'<'; material.GuardEntry("opaque", opaque, default);
+        Assert.DoesNotContain("opaque", material.OpaqueEntries); Assert.Contains(10, material.Reservations(opaque, out _));
     }
 
     [Theory]

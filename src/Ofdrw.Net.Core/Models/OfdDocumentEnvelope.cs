@@ -17,6 +17,20 @@ internal sealed class OfdDocumentEnvelope
     internal readonly OfdNavigationSource Pages = new();
     internal readonly Dictionary<string, string?> Metadata = new(StringComparer.Ordinal);
 
+    internal void VisitInventory(OfdSerializedInventory.ISink sink)
+    {
+        sink.Item("envelopePath", DocumentPath); Source(Body); Source(Common); Source(Document); Source(Pages);
+        sink.Item("metadataBaseline", Metadata, true); sink.Item("count", Metadata.Count);
+        foreach (var item in Metadata) { sink.Item("key", item.Key); sink.Item("value", item.Value); }
+        void Source(OfdNavigationSource source)
+        {
+            sink.Item("envelopeSource", source, true); sink.Item("xml", source.Xml); sink.Item("owner", source.DocumentOwner, true);
+            sink.Item("opaque", source.HasOpaqueLocalContent); sink.Item("name", source.OriginalName);
+            sink.Item("slots", source.Slots, true); sink.Item("count", source.Slots.Count);
+            foreach (var slot in source.Slots) { sink.Item("ordinal", slot.Key); sink.Item("slot", slot.Value, slot.Value is not string); }
+        }
+    }
+
     internal static OfdDocumentEnvelope Capture(OfdDocumentPackage package, XElement? body, XElement document,
         OfdModelMaterialization material, CancellationToken token)
     {
@@ -100,7 +114,7 @@ internal sealed class OfdDocumentEnvelope
         OfdXmlEnvelope.ValidateChildrenOrder(pageRoot, Pages, pages, token);
     }
 
-    internal OfdDocumentEnvelope Clone(IReadOnlyDictionary<object, object> mapping, OfdModelMaterialization material, CancellationToken token)
+    internal OfdDocumentEnvelope Clone(IReadOnlyDictionary<object, object> mapping, OfdModelMaterialization material, CancellationToken token, bool requireClosedMap = false)
     {
         var copy = new OfdDocumentEnvelope { DocumentPath = DocumentPath };
         Copy(Body, copy.Body); Copy(Common, copy.Common); Copy(Document, copy.Document); Copy(Pages, copy.Pages);
@@ -108,10 +122,19 @@ internal sealed class OfdDocumentEnvelope
         return copy;
         void Copy(OfdNavigationSource source, OfdNavigationSource destination)
         {
+            destination.Xml = source.Xml; destination.OriginalName = source.OriginalName; destination.HasOpaqueLocalContent = source.HasOpaqueLocalContent;
+            if (source.DocumentOwner is not null && !mapping.TryGetValue(source.DocumentOwner, out _))
+            { if (requireClosedMap) throw new InvalidOperationException("Envelope document owner mapping is incomplete."); destination.DocumentOwner = source.DocumentOwner; }
+            else if (source.DocumentOwner is not null) destination.DocumentOwner = mapping[source.DocumentOwner];
             foreach (var slot in source.Slots)
             {
                 token.ThrowIfCancellationRequested(); material.Structure.Reference();
-                destination.Slots.Add(slot.Key, mapping.TryGetValue(slot.Value, out var mapped) ? mapped : slot.Value);
+                if (!mapping.TryGetValue(slot.Value, out var mapped))
+                {
+                    if (requireClosedMap && slot.Value is not string) throw new InvalidOperationException("Envelope owner mapping is incomplete.");
+                    mapped = slot.Value;
+                }
+                material.ChargeCopy(64, token); destination.Slots.Add(slot.Key, mapped);
             }
         }
     }

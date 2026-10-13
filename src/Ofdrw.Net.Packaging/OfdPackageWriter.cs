@@ -37,33 +37,91 @@ public sealed class OfdPackageWriter
 
         cancellationToken.ThrowIfCancellationRequested();
         var material = new OfdModelMaterialization(new OfdModelLimits());
-        material.InspectStorage(package, cancellationToken);
-        material.GuardPreservedXml(package, cancellationToken);
-        material.EstimateWriter(package, cancellationToken);
-        OfdDocumentEnvelope.ValidateOwnedFragments(package, material, cancellationToken);
-        package.SourceEnvelope?.ValidatePageOrder(package, package.Pages.OrderBy(page => page.Index).ToArray(), material, cancellationToken);
-        OfdNavigationXml.Validate(package, package.Pages, cancellationToken, material);
-        OfdPageXmlContract.ValidateDocumentArea(package, cancellationToken, material);
-        foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, cancellationToken, material);
-        if (package.Pages.Count == 0) OfdPageXmlContract.ValidateWritableDimensions(
-            package.Options.DefaultPageWidthMillimeters, package.Options.DefaultPageHeightMillimeters);
-        var entries = BuildEntries(package, material, cancellationToken);
+        var plan = PreparePlan(package, material, cancellationToken);
+        var entries = BuildEntries(package, material, cancellationToken, plan);
         var result = OfdPackagePruner.Prune(package, entries, cancellationToken, material);
-        material.ValidateActualEntries(entries, cancellationToken);
+        material.ValidateActualEntries(entries, cancellationToken, plan.OutputReservation);
         FreezeEntryBuffers(entries, material, cancellationToken);
         using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
 
         foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var zipEntry = zip.CreateEntry(entry.Key, package.Options.EnableDeflateCompression ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
+            var zipEntry = zip.CreateEntry(entry.Key, plan.Compression ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
             using var stream = zipEntry.Open();
             await stream.WriteAsync(entry.Value, 0, entry.Value.Length, cancellationToken).ConfigureAwait(false);
         }
         return result;
     }
 
+    // A real factory-issued candidate is mandatory. No public ID/map, optional
+    // materialization or fresh-context fallback can authenticate this path.
+    internal static PreparedWrite PrepareOwnedWrite(OfdOwnedEditCandidate candidate, CancellationToken token = default)
+        => PreparedWrite.Create(candidate, token);
+
+    internal sealed class PreparedWrite : IDisposable
+    {
+        private readonly OfdOwnedEditCandidate candidate;
+        private readonly OfdSerializedGuard guard;
+        private readonly WritePlan plan;
+        private int consumed;
+        private PreparedWrite(OfdOwnedEditCandidate candidate, OfdSerializedGuard guard, WritePlan plan)
+        { this.candidate = candidate; this.guard = guard; this.plan = plan; }
+
+        internal static PreparedWrite Create(OfdOwnedEditCandidate candidate, CancellationToken token)
+        {
+            if (candidate is null) throw new ArgumentNullException(nameof(candidate));
+            var context = candidate.Context;
+            try
+            {
+                var guard = candidate.ClaimWrite(token);
+                var plan = PreparePlan(candidate.Package, context.Material, token);
+                guard.AssertUnchanged(candidate.Package, context, token);
+                return new PreparedWrite(candidate, guard, plan);
+            }
+            catch { context.Fail(); throw; }
+        }
+
+        // This is a non-atomic Stream write. 06 owns the private spool, readback
+        // and AtomicOutput publication; callbacks may fail after bytes arrive.
+        internal async Task<OfdPackageWriteResult> WriteAsync(Stream destination, CancellationToken token = default)
+        {
+            if (Interlocked.CompareExchange(ref consumed, 1, 0) != 0) throw new InvalidOperationException("Prepared write has already been consumed.");
+            if (destination is null) throw new ArgumentNullException(nameof(destination));
+            var context = candidate.Context; var material = context.Material;
+            try
+            {
+            candidate.AssertClaimedActive();
+            candidate.AssertSourceUnchanged(token);
+            guard.AssertUnchanged(candidate.Package, context, token);
+            var entries = new OfdPackageWriter().BuildEntries(candidate.Package, material, token, plan);
+            var result = OfdPackagePruner.Prune(candidate.Package, entries, token, material);
+            material.ValidateActualEntries(entries, token, plan.OutputReservation);
+            FreezeEntryBuffers(entries, material, token);
+            guard.AssertUnchanged(candidate.Package, context, token);
+            using (var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+                {
+                    token.ThrowIfCancellationRequested();
+                    var zipEntry = zip.CreateEntry(entry.Key, plan.Compression ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
+                    using var stream = zipEntry.Open();
+                    await stream.WriteAsync(entry.Value, 0, entry.Value.Length, token).ConfigureAwait(false);
+                }
+            }
+            // Including destination/Dispose callbacks. Failure here cannot
+            // roll back an arbitrary caller stream; no verified save is returned.
+            candidate.AssertClaimedActive(); guard.AssertUnchanged(candidate.Package, context, token); candidate.AssertSourceUnchanged(token);
+            return result;
+            }
+            catch { context.Fail(); throw; }
+        }
+
+        public void Dispose() => Interlocked.Exchange(ref consumed, 1);
+    }
+
     private static void FreezeEntryBuffers(IDictionary<string, byte[]> entries, OfdModelMaterialization material, CancellationToken token)
     {
+        material.ChargeCopy(128L + (long)entries.Count * 160, token);
         var keys = new List<string>();
         foreach (var key in entries.Keys) { token.ThrowIfCancellationRequested(); material.Structure.Reference(); keys.Add(key); }
         var copies = new Dictionary<byte[], byte[]>();
@@ -80,13 +138,102 @@ public sealed class OfdPackageWriter
         // validation. Concurrent mutation during preflight remains unsupported.
     }
 
-    private Dictionary<string, byte[]> BuildEntries(OfdDocumentPackage package, OfdModelMaterialization material, CancellationToken cancellationToken)
+    private sealed class WritePlan
     {
-        var entries = new Dictionary<string, byte[]>(package.PreservedEntries, StringComparer.OrdinalIgnoreCase);
-        var ns = XNamespace.Get(package.Options.Namespace);
-        var documentPath = package.DocumentEntryPath ?? $"{package.Options.DocumentId}/Document.xml";
-        var docId = OfdPackagePath.GetDirectory(documentPath);
+        internal Dictionary<string, byte[]> Entries = null!;
+        internal List<OfdPage> Pages = null!;
+        internal Dictionary<OfdPage, string> PageIds = null!, PagePaths = null!;
+        internal Dictionary<OfdElement, string> ElementIds = null!;
+        internal Dictionary<OfdPage, Dictionary<string, string>> LayerIds = null!;
+        internal Dictionary<OfdImageElement, ImageResource> Images = null!;
+        internal FontBindings Fonts = null!;
+        internal OfdIdPlan Ids = null!;
+        internal OfdResourceCatalog Resources = null!;
+        internal string DocumentPath = string.Empty, Directory = string.Empty, PublicLocation = string.Empty;
+        internal string? DocumentLocation;
+        internal XNamespace Namespace = XNamespace.None;
+        internal bool Compression;
+        internal long OutputReservation;
+    }
 
+    private static WritePlan PreparePlan(OfdDocumentPackage package, OfdModelMaterialization material, CancellationToken token)
+    {
+        material.InspectStorage(package, token); material.GuardPreservedXml(package, token);
+        var before = material.OutputUpperBoundBytes; material.EstimateWriter(package, token);
+        material.ChargeCopy(1024L + (long)package.Pages.Count * IntPtr.Size * 8, token);
+        OfdDocumentEnvelope.ValidateOwnedFragments(package, material, token);
+        package.SourceEnvelope?.ValidatePageOrder(package, package.Pages.OrderBy(page => page.Index).ToArray(), material, token);
+        OfdNavigationXml.Validate(package, package.Pages, token, material);
+        OfdPageXmlContract.ValidateDocumentArea(package, token, material);
+        foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, token, material);
+        if (package.Pages.Count == 0) OfdPageXmlContract.ValidateWritableDimensions(package.Options.DefaultPageWidthMillimeters, package.Options.DefaultPageHeightMillimeters);
+        material.ChargeCopy(512L + (long)package.PreservedEntries.Count * 128 + (long)package.Pages.Count * 256, token);
+        var plan = new WritePlan
+        {
+            Entries = new Dictionary<string, byte[]>(package.PreservedEntries, StringComparer.OrdinalIgnoreCase),
+            Namespace = XNamespace.Get(package.Options.Namespace),
+            DocumentPath = package.DocumentEntryPath ?? $"{package.Options.DocumentId}/Document.xml",
+            Pages = package.Pages.OrderBy(page => page.Index).ToList(), Compression = package.Options.EnableDeflateCompression,
+            OutputReservation = material.OutputUpperBoundBytes - before
+        };
+        plan.Directory = OfdPackagePath.GetDirectory(plan.DocumentPath);
+        if (plan.Pages.Count == 0) plan.Pages.Add(new OfdPage { Index = 0,
+            WidthMillimeters = package.Options.DefaultPageWidthMillimeters, HeightMillimeters = package.Options.DefaultPageHeightMillimeters });
+        plan.Ids = new OfdIdPlan(package, material, token);
+        plan.PageIds = plan.Pages.ToDictionary(page => page, page => plan.Ids.Claim(page, page.Id));
+        plan.PagePaths = BuildPagePaths(plan.Pages, plan.Directory, material, token);
+        plan.ElementIds = new Dictionary<OfdElement, string>();
+        plan.LayerIds = BuildPageObjectIds(package, plan.Pages, plan.ElementIds, plan.Ids, material, token);
+        plan.Images = BuildImageResources(plan.Pages, plan.Ids, material, token); plan.Fonts = BuildFonts(package, plan.Ids);
+        plan.PublicLocation = package.PublicResourceLocation ?? "PublicRes.xml";
+        plan.DocumentLocation = package.DocumentResourceLocation ?? (plan.Images.Count > 0 ? "DocumentRes.xml" : null);
+        var publicPath = material.ResolvePath(plan.DocumentPath, plan.PublicLocation, token);
+        var knownPaths = new List<string> { publicPath };
+        foreach (var path in plan.PagePaths.Values) knownPaths.Add(OfdPackagePath.GetDirectory(path) + "/PageRes.xml");
+        if (!string.IsNullOrWhiteSpace(plan.DocumentLocation)) knownPaths.Add(material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token));
+        material.ChargeCopy(32L * plan.Directory.Length + 1024, token);
+        var outputRoles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        Role(OfdConstants.OfdRootFile, "OFD"); Role(plan.DocumentPath, "Document");
+        foreach (var path in plan.PagePaths.Values) Role(path, "Page");
+        Role(publicPath, "Res");
+        if (!string.IsNullOrWhiteSpace(plan.DocumentLocation)) Role(material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token), "Res");
+        if (package.Attachments.Count > 0)
+        {
+            Role($"{plan.Directory}/Attachs/Attachments.xml", "Attachments");
+            for (var index = 0; index < package.Attachments.Count; index++)
+            {
+                var attachment = package.Attachments[index]; if (attachment.IsExternal) continue;
+                material.ChargeCopy(8L * attachment.Name.Length + 4L * plan.Directory.Length + 256, token);
+                Role($"{plan.Directory}/Attachs/Attach_{index + 1}_{SanitizeFileName(attachment.Name)}", "AttachmentPayload");
+            }
+        }
+        if (package.CustomTags.Count > 0) { Role($"{plan.Directory}/Tags/CustomTags.xml", "Tags"); Role($"{plan.Directory}/Tags/CustomTag_EMR.xml", "TagsDetail"); }
+        plan.Resources = new OfdResourceCatalog(plan.Entries, plan.DocumentPath, plan.Namespace, knownPaths, material, token, package.SourceIdentity, package, outputRoles.Keys);
+        plan.Resources.PlanDocument(publicPath, plan.Namespace);
+        foreach (var font in plan.Fonts.Resources) plan.Resources.PlanFont(font.Id, font.Resource, publicPath, plan.Namespace);
+        if (!string.IsNullOrWhiteSpace(plan.DocumentLocation))
+        {
+            var resourcePath = material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token);
+            plan.Resources.PlanDocument(resourcePath, plan.Namespace);
+            foreach (var image in plan.Images.Values.GroupBy(image => image.Id).Select(group => group.First()))
+                plan.Resources.PlanImage(image.Id, image.Image, image.Format, resourcePath, plan.Namespace);
+        }
+        token.ThrowIfCancellationRequested(); return plan;
+        void Role(string path, string role)
+        {
+            material.ChargeCopy(128, token);
+            if (outputRoles.TryGetValue(path, out var previous) && (previous != "Res" || role != "Res"))
+                throw new InvalidDataException("Output control/page/resource roles collide.");
+            outputRoles[path] = role;
+        }
+    }
+
+    private Dictionary<string, byte[]> BuildEntries(OfdDocumentPackage package, OfdModelMaterialization material, CancellationToken cancellationToken, WritePlan plan)
+    {
+        var entries = plan.Entries; var ns = plan.Namespace; var documentPath = plan.DocumentPath; var docId = plan.Directory;
+        var orderedPages = plan.Pages; var idAllocator = plan.Ids; var pageIds = plan.PageIds; var pagePaths = plan.PagePaths;
+        var elementIds = plan.ElementIds; var layerIds = plan.LayerIds; var imageResources = plan.Images; var fonts = plan.Fonts;
+        var publicResourceLocation = plan.PublicLocation; var documentResourceLocation = plan.DocumentLocation;
         var ofdXml = new XDocument(
             new XDeclaration("1.0", "UTF-8", null),
             new XElement(ns + "OFD",
@@ -102,43 +249,7 @@ public sealed class OfdPackageWriter
                         XElement.Parse(xml, LoadOptions.PreserveWhitespace))
                 )));
 
-        foreach (var page in package.Pages) cancellationToken.ThrowIfCancellationRequested();
-        var orderedPages = package.Pages.OrderBy(x => x.Index).ToList();
-        if (orderedPages.Count == 0)
-        {
-            orderedPages.Add(new OfdPage
-            {
-                Index = 0,
-                WidthMillimeters = package.Options.DefaultPageWidthMillimeters,
-                HeightMillimeters = package.Options.DefaultPageHeightMillimeters
-            });
-        }
-
-        var idAllocator = new OfdIdPlan(package, material, cancellationToken);
-        var pageIds = orderedPages.ToDictionary(page => page, page => idAllocator.Claim(page, page.Id));
-        var pagePaths = BuildPagePaths(orderedPages, docId, material, cancellationToken);
-        var elementIds = new Dictionary<OfdElement, string>();
-        var layerIds = BuildPageObjectIds(package, orderedPages, elementIds, idAllocator, material, cancellationToken);
-        var imageResources = BuildImageResources(orderedPages, idAllocator);
-        var fonts = BuildFonts(package, idAllocator);
-        var publicResourceLocation = package.PublicResourceLocation ?? "PublicRes.xml";
-        var documentResourceLocation = package.DocumentResourceLocation ??
-            (imageResources.Count > 0 ? "DocumentRes.xml" : null);
-        var publicPath = material.ResolvePath(documentPath, publicResourceLocation, cancellationToken);
-        var knownResourcePaths = new List<string> { publicPath };
-        foreach (var path in pagePaths.Values) knownResourcePaths.Add(OfdPackagePath.GetDirectory(path) + "/PageRes.xml");
-        if (!string.IsNullOrWhiteSpace(documentResourceLocation)) knownResourcePaths.Add(material.ResolvePath(documentPath, documentResourceLocation!, cancellationToken));
-        var resources = new OfdResourceCatalog(entries, documentPath, ns, knownResourcePaths, material, cancellationToken, package.SourceIdentity, package);
-        resources.EnsureDocument(publicPath, ns);
-        foreach (var font in fonts.Resources) resources.WriteFont(font.Id, font.Resource, publicPath, ns);
-        if (!string.IsNullOrWhiteSpace(documentResourceLocation))
-        {
-            var resourcePath = material.ResolvePath(documentPath, documentResourceLocation!, cancellationToken);
-            resources.EnsureDocument(resourcePath, ns);
-            foreach (var image in imageResources.Values.GroupBy(image => image.Id).Select(group => group.First()))
-                resources.WriteImage(image.Id, image.Image, image.Format, resourcePath, ns);
-        }
-        resources.Flush();
+        plan.Resources.Apply(); plan.Resources.Flush();
         BuildPages(orderedPages, entries, ns, pagePaths, pageIds, layerIds, elementIds, fonts.TextBindings, imageResources, idAllocator, material, cancellationToken);
         BuildAttachments(package, entries, ns, docId);
         BuildCustomTags(package, entries, ns, docId);
@@ -315,7 +426,7 @@ public sealed class OfdPackageWriter
 
     private static Dictionary<OfdImageElement, ImageResource> BuildImageResources(
         IReadOnlyList<OfdPage> pages,
-        OfdIdPlan idAllocator)
+        OfdIdPlan idAllocator, OfdModelMaterialization material, CancellationToken token)
     {
         var resources = new Dictionary<OfdImageElement, ImageResource>();
 
@@ -327,7 +438,7 @@ public sealed class OfdPackageWriter
             .OrderByDescending(image => idAllocator.TryImageOwner(image, out _)))
         {
             var format = ToOfdImageFormat(image.MediaType, image.FileName);
-            if (!hashes.TryGetValue(image.Data, out var hash)) hashes[image.Data] = hash = BinaryIdentity.Hash(image.Data);
+            if (!hashes.TryGetValue(image.Data, out var hash)) hashes[image.Data] = hash = BitConverter.ToString(material.HashBytes(image.Data, token)).Replace("-", string.Empty).ToLowerInvariant();
             var key = format + ":" + hash;
             ImageResource? resource;
             if (idAllocator.TryImageOwner(image, out var owner))

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
@@ -15,18 +16,19 @@ internal sealed class OfdModelMaterialization
 {
     private readonly OfdModelLimits limits;
     private readonly HashSet<object> stored = new(Identity.Instance);
-    private readonly HashSet<(object Owner, string? MediaType, string? FileName)> outputImages = new();
     internal OfdTraversalBudget Structure { get; }
     internal long StorageBytes { get; private set; }
     internal long CloneCopyBytes { get; private set; }
     internal long OutputUpperBoundBytes { get; private set; }
+    // Cumulative hashing/comparison work; not allocation, CPU time or RSS.
+    internal long ValidationWorkBytes { get; private set; }
     private readonly Dictionary<byte[], XmlWork> xmlEntries = new();
     private sealed class XmlWork
     {
+        internal byte[] Digest = Array.Empty<byte>();
         internal long Nodes; internal long References; internal int Depth; internal bool HasMaxHint;
         internal readonly HashSet<long> ReservedIds = new();
     }
-    private readonly HashSet<byte[]> opaqueBytes = new();
     internal readonly HashSet<string> OpaqueEntries = new(StringComparer.OrdinalIgnoreCase);
 
     internal OfdModelMaterialization(OfdModelLimits limits)
@@ -37,81 +39,35 @@ internal sealed class OfdModelMaterialization
     internal void InspectStorage(OfdDocumentPackage package, CancellationToken token)
     {
         if (package is null) throw new ArgumentNullException(nameof(package));
-        token.ThrowIfCancellationRequested(); Structure.Node(1);
-        if (package.Options is null || package.Options.Metadata is null) throw new InvalidDataException("Document options and metadata are required.");
-        Strings(package.DocumentEntryPath, package.PublicResourceLocation, package.DocumentResourceLocation,
-            package.Options.DocumentId, package.Options.Namespace, package.Options.DocType);
-        Paths(package.DocumentEntryPath, package.PublicResourceLocation, package.DocumentResourceLocation, package.Options.DocumentId);
-        var metadata = package.Options.Metadata;
-        Strings(metadata.Title, metadata.Author, metadata.Subject, metadata.Keywords, metadata.Creator);
-        foreach (var entry in package.PreservedEntries) { Visit(); StoreString(entry.Key); StoreArray(entry.Value); }
-        foreach (var font in package.Fonts)
-        {
-            Visit(); if (font is null) throw new InvalidDataException("Null font resource.");
-            Strings(font.Id, font.FontName, font.FamilyName, font.Charset, font.FileName); Paths(font.FileName); StoreArray(font.Data);
-        }
-        foreach (var attachment in package.Attachments)
-        {
-            Visit(); if (attachment is null) throw new InvalidDataException("Null attachment.");
-            Strings(attachment.Id, attachment.Name, attachment.MediaType, attachment.Format, attachment.Usage, attachment.ExternalPath);
-            Paths(attachment.ExternalPath); StoreArray(attachment.Data);
-        }
-        foreach (var tag in package.CustomTags) { Visit(); Strings(tag.Key, tag.Value); }
-        Preserved(package.PreservedCommonDataElements); Preserved(package.PreservedDocumentElements); Preserved(package.PreservedDocBodyElements);
-        foreach (var page in package.Pages)
-        {
-            Visit(); if (page is null) throw new InvalidDataException("Null page."); Strings(page.Id, page.SourceEntryPath); Paths(page.SourceEntryPath);
-            Graphics(page.Elements); Graphics(page.AnnotationAppearances); Preserved(page.PreservedPageElements);
-            foreach (var template in page.Templates)
-            {
-                Visit(); if (template is null) throw new InvalidDataException("Null template.");
-                Strings(template.TemplateId, template.ZOrder, template.BaseLocation); Paths(template.BaseLocation); Graphics(template.Elements);
-            }
-        }
-        Navigation(package.OutlineOwnership); Navigation(package.BookmarkOwnership); Navigation(package.ActionOwnership);
-        token.ThrowIfCancellationRequested();
+        OfdSerializedInventory.Walk(package, new StorageSink(this, token), this, token);
+    }
 
-        void Navigation<T>(OfdNavigationOwnership<T> owner) where T : class
+    private sealed class StorageSink(OfdModelMaterialization material, CancellationToken token) : OfdSerializedInventory.ISink
+    {
+        public void Item(string role, object? value, bool identity = false)
         {
-            if (owner.Value is not null) OfdNavigationSnapshot.Capture(owner.Value, this, token).InspectMaterial(this, false, token, guardXml: true);
-            StoreString(owner.OriginalXml); owner.BaselineSnapshot?.InspectMaterial(this, false, token);
+            token.ThrowIfCancellationRequested();
+            if (value is string text) material.StoreString(text);
+            else if (value is XName name) { material.StoreString(name.NamespaceName); material.StoreString(name.LocalName); }
         }
-        void Visit() { token.ThrowIfCancellationRequested(); Structure.Node(1); Structure.Reference(); }
-        void Paths(params string?[] values) { foreach (var value in values) if (value is not null) CheckPathWork("OFD.xml", value, token); }
-        void Strings(params string?[] values) { foreach (var value in values) { token.ThrowIfCancellationRequested(); StoreString(value); } }
-        void Preserved(List<string> values) { foreach (var value in values) { Visit(); StoreString(value); Xml(value); } }
-        void Xml(string? value) { if (!string.IsNullOrWhiteSpace(value)) GuardFragmentXml(value!, token); }
-        void Graphics(List<OfdElement> elements)
-        {
-            foreach (var element in elements)
-            {
-                Visit(); if (element is null) throw new InvalidDataException("Null graphic.");
-                Strings(element.ObjectId, element.LayerId, element.LayerType, element.ClippingXml); Xml(element.ClippingXml);
-                switch (element)
-                {
-                    case OfdTextElement text:
-                        Strings(text.Text, text.FontName, text.FontResourceId, text.SourceXml); Xml(text.SourceXml); StoreMatrix(text.Transform);
-                        foreach (var run in text.Runs) { Visit(); if (run is null) throw new InvalidDataException("Null text run."); Strings(run.Text, run.DeltaX, run.DeltaY); }
-                        break;
-                    case OfdImageElement image:
-                        Strings(image.ResourceId, image.FileName, image.MediaType, image.SourceXml); Xml(image.SourceXml); StoreArray(image.Data); StoreMatrix(image.Transform); break;
-                    case OfdPathElement path:
-                        Strings(path.SourceXml, path.AbbreviatedData); Xml(path.SourceXml); StoreMatrix(path.Transform); break;
-                    case OfdRawElement raw: Strings(raw.Xml, raw.LocalName); Xml(raw.Xml); break;
-                    default: throw new NotSupportedException("Unknown graphic materialization contract.");
-                }
-            }
-        }
+        public void Bytes(string role, byte[] value, object? owner = null) { token.ThrowIfCancellationRequested(); material.StoreArray(value); }
+        public void Matrix(double[]? value) { token.ThrowIfCancellationRequested(); material.StoreMatrix(value); }
+        public void Xml(string? value) { if (!string.IsNullOrWhiteSpace(value)) material.GuardFragmentXml(value!, token); }
+        public void Path(string? value) { if (value is not null) material.CheckPathWork("OFD.xml", value, token); }
     }
 
     internal string ResolvePath(string basis, string reference, CancellationToken token)
     {
-        CheckPathWork(basis, reference, token); return OfdPackagePath.Resolve(basis, reference);
+        CheckPathWork(basis, reference, token); ChargeCopy(8L * (basis.Length + (long)reference.Length + 2), token);
+        return OfdPackagePath.Resolve(basis, reference);
     }
     internal string RelativePath(string basis, string target, CancellationToken token)
     {
-        CheckPathWork(basis, target, token); return OfdPackagePath.RelativeTo(basis, target);
+        CheckPathWork(basis, target, token); ChargeCopy(12L * (basis.Length + (long)target.Length + 2), token);
+        return OfdPackagePath.RelativeTo(basis, target);
     }
+    internal void ReservePathComposition(string basis, string reference, CancellationToken token)
+    { CheckPathWork(basis, reference, token); ChargeCopy(2L * (basis.Length + (long)reference.Length + 2), token); }
     private void CheckPathWork(string basis, string reference, CancellationToken token)
     {
         token.ThrowIfCancellationRequested(); Structure.SourcePathCharacters((long)basis.Length + reference.Length + 2);
@@ -162,6 +118,26 @@ internal sealed class OfdModelMaterialization
     internal void ChargeOutput(long bytes)
         => OutputUpperBoundBytes = Add(OutputUpperBoundBytes, bytes, "logical output");
 
+    internal void ChargeWork(long bytes, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested(); Structure.Reference();
+        ValidationWorkBytes = Add(ValidationWorkBytes, bytes, "validation work");
+    }
+
+    internal byte[] HashBytes(byte[] bytes, CancellationToken token)
+    {
+        if (bytes is null) throw new InvalidDataException("Null payload array.");
+        ChargeCopy(32, token);
+        using var hash = SHA256.Create();
+        for (var offset = 0; offset < bytes.Length;)
+        {
+            var count = Math.Min(64 * 1024, bytes.Length - offset); ChargeWork(count, token);
+            hash.TransformBlock(bytes, offset, count, null, 0); offset += count;
+        }
+        token.ThrowIfCancellationRequested(); hash.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        return hash.Hash!;
+    }
+
     internal void GuardPreservedXml(OfdDocumentPackage package, CancellationToken token)
     {
         foreach (var entry in package.PreservedEntries) GuardEntry(entry.Key, entry.Value, token);
@@ -170,14 +146,14 @@ internal sealed class OfdModelMaterialization
     internal void GuardEntry(string path, byte[] bytes, CancellationToken token)
     {
             token.ThrowIfCancellationRequested(); Structure.Reference();
-            if (xmlEntries.ContainsKey(bytes)) { OpaqueEntries.Remove(path); return; }
-            if (opaqueBytes.Contains(bytes) || !OfdXmlContentProbe.LooksLikeXml(bytes)) { opaqueBytes.Add(bytes); OpaqueEntries.Add(path); return; }
+            if (xmlEntries.TryGetValue(bytes, out var cached)) { AssertXmlBytes(bytes, cached, token); OpaqueEntries.Remove(path); return; }
+            if (!OfdXmlContentProbe.LooksLikeXml(bytes, token, count => ChargeWork(count, token))) { OpaqueEntries.Add(path); return; }
             Structure.XmlBytes(bytes.LongLength);
             // UTF-16 decoding is at most two bytes per source byte for the
             // supported XML encodings. Reserve each decoder materialization
             // before XmlReader can form large attribute/text strings.
             ChargeCopy(2L * bytes.LongLength, token);
-            var work = new XmlWork();
+            var work = new XmlWork { Digest = HashBytes(bytes, token) };
             try
             {
                 using var input = new MemoryStream(bytes, false);
@@ -205,13 +181,13 @@ internal sealed class OfdModelMaterialization
                     reader.MoveToElement();
                     if (reader.NodeType == XmlNodeType.Text) Tokens(reader.Value);
                 }
-                xmlEntries[bytes] = work;
+                xmlEntries[bytes] = work; OpaqueEntries.Remove(path);
             }
             catch (XmlException)
             {
                 // Only malformed XML is an opaque extension. Cancellation,
                 // DTD and quota failures are intentionally not caught.
-                opaqueBytes.Add(bytes); OpaqueEntries.Add(path);
+                OpaqueEntries.Add(path);
             }
 
             void Tokens(string value)
@@ -228,16 +204,24 @@ internal sealed class OfdModelMaterialization
         token.ThrowIfCancellationRequested();
     }
 
-    internal IEnumerable<long> Reservations(byte[] bytes, out bool hasMaxHint)
+    private void AssertXmlBytes(byte[] bytes, XmlWork work, CancellationToken token)
+    {
+        var digest = HashBytes(bytes, token); ChargeWork(32, token);
+        for (var index = 0; index < digest.Length; index++)
+            if (digest[index] != work.Digest[index]) throw new InvalidDataException("Cached XML bytes changed during the materialization operation.");
+    }
+
+    internal IEnumerable<long> Reservations(byte[] bytes, out bool hasMaxHint, CancellationToken token = default)
     {
         if (!xmlEntries.TryGetValue(bytes, out var work)) { hasMaxHint = false; return Array.Empty<long>(); }
+        AssertXmlBytes(bytes, work, token);
         hasMaxHint = work.HasMaxHint; return work.ReservedIds;
     }
 
     internal XDocument ReadXml(string path, byte[] bytes, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        if (!xmlEntries.ContainsKey(bytes)) GuardEntry(path, bytes, token);
+        GuardEntry(path, bytes, token);
         if (!xmlEntries.TryGetValue(bytes, out var work)) throw new XmlException("Active entry is not bounded parseable XML: " + path);
         // Every DOM materialization is work, including aliases of the same entry.
         ChargeCopy(2L * bytes.LongLength, token);
@@ -259,108 +243,81 @@ internal sealed class OfdModelMaterialization
 
     internal void EstimateWriter(OfdDocumentPackage package, CancellationToken token)
     {
-        var ns = package.Options.Namespace;
-        foreach (var entry in package.PreservedEntries)
+        var sink = new WriterEstimateSink(this, package, token);
+        OfdSerializedInventory.Walk(package, sink, this, token);
+    }
+
+    // The inventory owns the field table. Only output structure/placement
+    // constants and resource-owner deduplication live in this emitter policy.
+    private sealed class WriterEstimateSink(OfdModelMaterialization material, OfdDocumentPackage package, CancellationToken token) : OfdSerializedInventory.ISink
+    {
+        private readonly HashSet<(object Owner, string? MediaType, string? FileName)> images = new();
+        private string Namespace => package.Options.Namespace;
+        public void Item(string role, object? value, bool identity = false)
         {
-            Check(); EmitString(entry.Key);
-            if (xmlEntries.TryGetValue(entry.Value, out var work))
-                ChargeOutput(6L * entry.Value.LongLength + work.Nodes * (4L * (limits.MaxDepth + 16L) + 4 + 6L * ns.Length));
-            else ChargeOutput(entry.Value.LongLength);
-        }
-        Markup(12, 16, 16); EmitString(ns, 12);
-        var metadata = package.Options.Metadata;
-        EmitString(metadata.Title); EmitString(metadata.Author); EmitString(metadata.Subject); EmitString(metadata.Keywords); EmitString(metadata.Creator);
-        EmitString(package.Options.DocType); EmitString(package.Options.DocumentId); EmitString(package.DocumentEntryPath);
-        EmitString(package.PublicResourceLocation); EmitString(package.DocumentResourceLocation);
-        foreach (var value in package.PreservedCommonDataElements) EmitXml(value);
-        foreach (var value in package.PreservedDocumentElements) EmitXml(value);
-        foreach (var value in package.PreservedDocBodyElements) EmitXml(value);
-        foreach (var page in package.Pages)
-        {
-            Check(); Markup(8, 32, 32); EmitString(ns, 8);
-            EmitString(package.DocumentEntryPath ?? package.Options.DocumentId, 4);
-            EmitString(page.SourceEntryPath, 4); EmitString(page.Id);
-            foreach (var xml in page.PreservedPageElements) EmitXml(xml);
-            foreach (var element in page.Elements)
+            token.ThrowIfCancellationRequested(); if (value is string text) EmitString(text);
+            switch (role)
             {
-                Check(); Markup(8, 32, 32); EmitString(ns, 8);
-                EmitString(element.LayerId); EmitString(element.LayerType); EmitString(element.ObjectId); EmitXml(element.ClippingXml);
-                switch (element)
-                {
-                    case OfdTextElement text:
-                        EmitXml(text.SourceXml); EmitString(text.Text); EmitString(text.FontName, 2); EmitString(text.FontResourceId);
-                        Markup(3, 4, 8); EmitString(ns, 3); // possible fallback Font/FontFile declaration
-                        if (text.Runs.Count == 0) { Markup(1, 2, 4); EmitString(ns); }
-                        foreach (var run in text.Runs) { Check(); Markup(1, 2, 4); EmitString(ns); EmitString(run.Text); EmitString(run.DeltaX); EmitString(run.DeltaY); }
-                        break;
-                    case OfdImageElement image:
-                        EmitXml(image.SourceXml); EmitString(image.FileName); EmitString(image.MediaType); EmitString(image.ResourceId);
-                        // Different imported resource owners remain distinct output
-                        // entries even when their current byte arrays are aliased.
-                        var imageKey = package.SourceIdentity?.TryImage(image, out var imageOwner) == true
-                            ? ((object)imageOwner, (string?)null, (string?)null)
-                            : ((object)image.Data, image.MediaType, image.FileName);
-                        if (outputImages.Add(imageKey)) ChargeOutput(image.Data.LongLength);
-                        break;
-                    case OfdPathElement path: EmitXml(path.SourceXml); EmitString(path.AbbreviatedData); break;
-                    case OfdRawElement raw: EmitXml(raw.Xml); break;
-                }
+                case "package": Markup(12, 16, 16); EmitString(Namespace, 12); break;
+                case "page":
+                    Markup(8, 32, 32); EmitString(Namespace, 8);
+                    EmitString(package.DocumentEntryPath ?? package.Options.DocumentId, 4);
+                    EmitString(((OfdPage)value!).SourceEntryPath, 4); break;
+                case "graphic":
+                    Markup(8, 32, 32); EmitString(Namespace, 8);
+                    if (value is OfdTextElement textElement)
+                    {
+                        Markup(3, 4, 8); EmitString(Namespace, 3); // possible fallback font declaration
+                        if (textElement.Runs.Count == 0) { Markup(1, 2, 4); EmitString(Namespace); }
+                    }
+                    break;
+                case "run": Markup(1, 2, 4); EmitString(Namespace); break;
+                case "font": Markup(3, 4, 8); EmitString(Namespace, 3); break;
+                case "attachment": Markup(2, 8, 16); EmitString(Namespace, 2); break;
+                case "navigation": Markup(2, 8, 8); EmitString(Namespace, 2); break;
+                case "tagKey": Markup(1, 0, 2); EmitString(Namespace); break;
             }
         }
-        foreach (var font in package.Fonts)
+        public void Bytes(string role, byte[] value, object? owner = null)
         {
-            Check(); Markup(3, 4, 8); EmitString(ns, 3); ChargeOutput(font.Data.LongLength);
-            EmitString(font.Id); EmitString(font.FontName); EmitString(font.FamilyName); EmitString(font.Charset); EmitString(font.FileName);
+            token.ThrowIfCancellationRequested();
+            if (role == "entryBytes" && material.xmlEntries.TryGetValue(value, out var work))
+                material.ChargeOutput(6L * value.LongLength + work.Nodes * (4L * (material.limits.MaxDepth + 16L) + 4 + 6L * Namespace.Length));
+            else if (owner is OfdImageElement image)
+            {
+                var key = package.SourceIdentity?.TryImage(image, out var imported) == true
+                    ? ((object)imported, (string?)null, (string?)null) : ((object)value, image.MediaType, image.FileName);
+                if (images.Add(key)) material.ChargeOutput(value.LongLength);
+            }
+            else if (owner is not OfdAttachment attachment || !attachment.IsExternal) material.ChargeOutput(value.LongLength);
         }
-        foreach (var attachment in package.Attachments)
-        {
-            Check(); Markup(2, 8, 16); EmitString(ns, 2);
-            EmitString(attachment.Name, 3); EmitString(attachment.Id); EmitString(attachment.MediaType);
-            EmitString(attachment.Format); EmitString(attachment.Usage); EmitString(attachment.ExternalPath);
-            if (!attachment.IsExternal) ChargeOutput(attachment.Data.LongLength);
-        }
-        foreach (var tag in package.CustomTags) { Check(); Markup(1, 0, 2); EmitString(ns); EmitString(tag.Key); EmitString(tag.Value); }
-        Navigation(package.OutlineOwnership); Navigation(package.BookmarkOwnership); Navigation(package.ActionOwnership);
-        Check();
-
-        void Navigation<T>(OfdNavigationOwnership<T> owner) where T : class
-        {
-            if (owner.Value is not null) OfdNavigationSnapshot.Capture(owner.Value, this, token).InspectMaterial(this, true, token);
-            // Replacement still retains the original container's opaque slots.
-            EmitXml(owner.OriginalXml);
-            if (owner.OriginalXml is not null) ChargeCopy(2L * owner.OriginalXml.Length, token);
-        }
-        void Check() => token.ThrowIfCancellationRequested();
-        void EmitString(string? value, int positions = 1)
-        {
-            Check(); if (value is not null) ChargeOutput(6L * value.Length * positions);
-        }
-        void EmitXml(string? value)
+        public void Matrix(double[]? value) { }
+        public void Path(string? value) { }
+        public void Xml(string? value)
         {
             if (string.IsNullOrWhiteSpace(value)) return;
-            EmitString(value);
-            // Each lexical XML token accounts for extra indentation and a
-            // potential namespace binding at its output placement.
-            using var reader = XmlReader.Create(new StringReader(value), new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = limits.MaxSourceXmlBytes });
-            while (reader.Read()) { Check(); Structure.Depth(reader.Depth + 1); Markup(1, 0, 0); EmitString(ns); }
+            material.ChargeCopy(2L * value!.Length, token);
+            using var reader = XmlReader.Create(new StringReader(value), new XmlReaderSettings
+            { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null, MaxCharactersInDocument = material.limits.MaxSourceXmlBytes });
+            while (reader.Read()) { token.ThrowIfCancellationRequested(); material.Structure.Depth(reader.Depth + 1); Markup(1, 0, 0); EmitString(Namespace); }
         }
-        void Markup(int elements, int numbers, int attributes)
+        private void EmitString(string? value, int positions = 1)
+        { token.ThrowIfCancellationRequested(); if (value is not null) material.ChargeOutput(6L * value.Length * positions); }
+        private void Markup(int elements, int numbers, int attributes)
         {
-            Structure.NodeWork(elements, 1);
-            // Owned emitters have names <=64 UTF8 bytes and <=32 numeric
-            // scalars per graphic (including faux-italic's duplicated CTM).
-            // Fixed 0.### double formatting is <=326 ASCII chars. Source XML
-            // names/values are separately covered by six times lexical length.
-            var literal = elements * (2L * (64 + 3) + 4L * (limits.MaxDepth + 16L) + 4);
-            ChargeOutput(literal + attributes * (64L + 4) + numbers * 326L);
+            material.Structure.NodeWork(elements, 1);
+            // Fixed 0.### formatting is <=326 ASCII chars per double;
+            // lexical source names/values are covered by six times input length.
+            var literal = elements * (2L * (64 + 3) + 4L * (material.limits.MaxDepth + 16L) + 4);
+            material.ChargeOutput(literal + attributes * (64L + 4) + numbers * 326L);
         }
     }
 
-    internal long ValidateActualEntries(IDictionary<string, byte[]> entries, CancellationToken token)
+    internal long ValidateActualEntries(IDictionary<string, byte[]> entries, CancellationToken token, long? reservation = null)
     {
         long actual = 0;
         foreach (var entry in entries) { token.ThrowIfCancellationRequested(); actual = Add(actual, entry.Value.LongLength, "actual logical output"); }
-        if (actual > OutputUpperBoundBytes) throw new InvalidDataException("Writer output exceeded its preflight upper bound.");
+        if (actual > (reservation ?? OutputUpperBoundBytes)) throw new InvalidDataException("Writer output exceeded its preflight upper bound.");
         return actual;
     }
 

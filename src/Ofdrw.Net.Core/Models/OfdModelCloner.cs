@@ -17,6 +17,7 @@ internal static class OfdModelCloner
             var input = new OfdDocumentPackage(); input.Pages.Add(source); material.InspectStorage(input, cancellationToken);
         }
         cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1);
+        if (mapping is not null) material.ChargeCopy(1024L + (long)(source.Elements.Count + source.AnnotationAppearances.Count + source.Templates.Count + source.PreservedPageElements.Count) * IntPtr.Size * 2, cancellationToken);
         var page = new OfdPage
         {
             Id = keepSourcePath ? source.Id : null,
@@ -28,16 +29,23 @@ internal static class OfdModelCloner
         foreach (var template in source.Templates)
         {
             cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(2);
+            if (mapping is not null) material.ChargeCopy(256L + (long)template.Elements.Count * IntPtr.Size * 2, cancellationToken);
             var clone = new OfdTemplateContent
             {
                 TemplateId = template.TemplateId, ZOrder = template.ZOrder, BaseLocation = template.BaseLocation
             };
             foreach (var element in template.Elements) clone.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping));
-            page.Templates.Add(clone); mapping?.Add(template, clone);
+            page.Templates.Add(clone);
+            if (mapping is not null) { mapping.Add(template, clone); mapping.Add(template.Elements, clone.Elements); }
         }
         foreach (var element in source.AnnotationAppearances) page.AnnotationAppearances.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping));
         page.PreservedPageElements.AddRange(source.PreservedPageElements);
-        mapping?.Add(source, page); return page;
+        if (mapping is not null)
+        {
+            mapping.Add(source, page); mapping.Add(source.Elements, page.Elements); mapping.Add(source.AnnotationAppearances, page.AnnotationAppearances);
+            mapping.Add(source.Templates, page.Templates); mapping.Add(source.PreservedPageElements, page.PreservedPageElements);
+        }
+        return page;
     }
 
     internal static OfdElement CloneElement(OfdElement source, string? targetNamespace = null, bool clonePayloads = true,
@@ -50,10 +58,12 @@ internal static class OfdModelCloner
             material.InspectStorage(input, cancellationToken);
         }
         cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1);
+        if (mapping is not null) material.ChargeCopy(256, cancellationToken);
         OfdElement result;
         switch (source)
         {
             case OfdTextElement text:
+                if (mapping is not null) material.ChargeCopy(128L + (long)text.Runs.Count * (128 + IntPtr.Size * 2), cancellationToken);
                 var clone = new OfdTextElement
                 {
                     Text = text.Text, FontName = text.FontName, FontResourceId = text.FontResourceId,
@@ -71,6 +81,7 @@ internal static class OfdModelCloner
                     };
                     clone.Runs.Add(clonedRun); mapping?.Add(run, clonedRun);
                 }
+                mapping?.Add(text.Runs, clone.Runs);
                 result = clone;
                 break;
             case OfdImageElement image:
@@ -104,7 +115,8 @@ internal static class OfdModelCloner
         result.YMillimeters = source.YMillimeters;
         result.WidthMillimeters = source.WidthMillimeters;
         result.HeightMillimeters = source.HeightMillimeters;
-        mapping?.Add(source, result); return result;
+        mapping?.Add(source, result);
+        return result;
         double[]? Matrix(double[]? value)
         {
             if (value is null) return null;
