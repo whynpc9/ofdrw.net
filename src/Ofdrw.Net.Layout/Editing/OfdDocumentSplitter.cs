@@ -17,10 +17,15 @@ public static class OfdDocumentSplitter
     public static OfdDocumentPackage Split(OfdDocumentPackage source, IReadOnlyList<int> pages, CancellationToken cancellationToken = default)
     {
         if (source is null) throw new ArgumentNullException(nameof(source));
-        ValidateSingleDocument(source);
-        ValidatePages(source, pages);
+        var material = new OfdModelMaterialization(new OfdModelLimits());
+        material.InspectStorage(source, cancellationToken); material.GuardPreservedXml(source, cancellationToken);
+        ValidateSingleDocument(source, material, cancellationToken);
+        pages = ValidatePages(source, pages, material, cancellationToken);
+        var selectedPages = pages.Select(index => source.Pages[index]).ToArray();
+        OfdNavigationXml.Validate(source, selectedPages, cancellationToken, material);
+        source.SourceEnvelope?.ValidatePageOrder(source, selectedPages, material, cancellationToken);
         foreach (var index in pages) OfdPageXmlContract.ValidateWritableDimensions(source.Pages[index].WidthMillimeters, source.Pages[index].HeightMillimeters);
-        OfdPageXmlContract.ValidateDocumentArea(source, cancellationToken);
+        OfdPageXmlContract.ValidateDocumentArea(source, cancellationToken, material);
         if (!source.PreservedEntries.ContainsKey("OFD.xml"))
         {
             if (source.PreservedEntries.Count > 0 || source.PreservedCommonDataElements.Count > 0 || source.PreservedDocumentElements.Count > 0 || source.PreservedDocBodyElements.Count > 0 ||
@@ -42,9 +47,12 @@ public static class OfdDocumentSplitter
             foreach (var index in pages)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var page = OfdModelCloner.ClonePage(source.Pages[index]); page.Index = selected.Pages.Count; selected.Pages.Add(page);
+                var page = OfdModelCloner.ClonePage(source.Pages[index], material: material, cancellationToken: cancellationToken); page.Index = selected.Pages.Count; selected.Pages.Add(page);
             }
-            var standalone = OfdDocumentMerger.Merge(new[] { selected }, null, cancellationToken);
+            var standalone = OfdDocumentMerger.MergeForSplit(selected, material, cancellationToken);
+            var pageMap = new Dictionary<object, object>();
+            for (var position = 0; position < pages.Count; position++) pageMap.Add(source.Pages[pages[position]], standalone.Pages[position]);
+            OfdNavigationCloner.Clone(source, standalone, pageMap, material, cancellationToken);
             foreach (var tag in source.CustomTags) standalone.CustomTags.Add(tag.Key, tag.Value);
             return standalone;
         }
@@ -52,13 +60,13 @@ public static class OfdDocumentSplitter
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!OfdXmlContentProbe.LooksLikeXml(entry.Value)) continue;
-            try { using var input = new MemoryStream(entry.Value, false); XDocument.Load(input); }
+            try { material.ReadXml(entry.Key, entry.Value, cancellationToken); }
             catch (XmlException exception) { throw new NotSupportedException("Split cannot inspect malformed XML-looking control or extension entries.", exception); }
         }
         foreach (var index in pages)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            OfdPageXmlContract.ValidateForRewrite(source, source.Pages[index], cancellationToken);
+            OfdPageXmlContract.ValidateForRewrite(source, source.Pages[index], cancellationToken, material);
         }
         var result = new OfdDocumentPackage
         {
@@ -69,37 +77,60 @@ public static class OfdDocumentSplitter
         result.PreservedCommonDataElements.AddRange(source.PreservedCommonDataElements);
         result.PreservedDocumentElements.AddRange(source.PreservedDocumentElements);
         result.PreservedDocBodyElements.AddRange(source.PreservedDocBodyElements);
-        foreach (var entry in source.PreservedEntries) result.PreservedEntries.Add(entry.Key, entry.Value.ToArray());
-        foreach (var font in source.Fonts) result.Fonts.Add(new OfdFontResource
+        var mapping = new Dictionary<object, object>();
+        foreach (var entry in source.PreservedEntries)
+        { material.ChargeCopy(entry.Value.LongLength, cancellationToken); result.PreservedEntries.Add(entry.Key, entry.Value.ToArray()); }
+        foreach (var font in source.Fonts)
         {
-            Id = font.Id, FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
-            Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray()
-        });
-        OfdDocumentMerger.CopyAttachments(source, result);
+            material.ChargeCopy(font.Data.LongLength, cancellationToken);
+            var clone = new OfdFontResource
+            {
+                Id = font.Id, FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
+                Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray()
+            };
+            result.Fonts.Add(clone); mapping.Add(font, clone);
+        }
+        OfdDocumentMerger.CopyAttachments(source, result, cancellationToken, material);
         foreach (var tag in source.CustomTags) result.CustomTags.Add(tag.Key, tag.Value);
         foreach (var index in pages)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var page = OfdModelCloner.ClonePage(source.Pages[index], keepSourcePath: true);
+            var page = OfdModelCloner.ClonePage(source.Pages[index], keepSourcePath: true, material: material, cancellationToken: cancellationToken, mapping: mapping);
             page.Index = result.Pages.Count;
             result.Pages.Add(page);
         }
+        OfdNavigationCloner.Clone(source, result, mapping, material, cancellationToken);
+        result.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, cancellationToken);
+        result.SourceIdentity = source.SourceIdentity?.CloneFor(result, mapping, material, cancellationToken);
         return result;
     }
 
-    internal static void ValidateSingleDocument(OfdDocumentPackage package)
+    internal static void ValidateSingleDocument(OfdDocumentPackage package, OfdModelMaterialization? material = null, CancellationToken cancellationToken = default)
     {
         if (!package.PreservedEntries.TryGetValue("OFD.xml", out var bytes)) return;
-        using var input = new MemoryStream(bytes, false);
-        var root = XDocument.Load(input).Root!;
+        if (material is null) { material = new OfdModelMaterialization(new OfdModelLimits()); material.InspectStorage(package, cancellationToken); material.GuardPreservedXml(package, cancellationToken); }
+        var root = material.ReadXml("OFD.xml", bytes, cancellationToken).Root!;
         if (root.Elements().Count(node => node.Name == root.Name.Namespace + "DocBody") != 1)
             throw new NotSupportedException("Page editing requires a single DocBody.");
     }
 
-    internal static void ValidatePages(OfdDocumentPackage package, IReadOnlyList<int> pages)
+    internal static IReadOnlyList<int> ValidatePages(OfdDocumentPackage package, IReadOnlyList<int> pages,
+        OfdModelMaterialization? material = null, CancellationToken token = default)
     {
         if (pages is null) throw new ArgumentNullException(nameof(pages));
-        if (pages.Count == 0 || pages.Distinct().Count() != pages.Count || pages.Any(index => index < 0 || index >= package.Pages.Count))
-            throw new ArgumentException("Select one or more distinct zero-based page positions within the document.", nameof(pages));
+        material ??= new OfdModelMaterialization(new OfdModelLimits());
+        var count = pages.Count;
+        if (count == 0 || count > package.Pages.Count) throw new ArgumentException("Select one or more distinct zero-based page positions within the document.", nameof(pages));
+        material.ChargeCopy(sizeof(int) * (long)count, token);
+        var snapshot = new List<int>(count); var seen = new HashSet<int>();
+        foreach (var index in pages)
+        {
+            token.ThrowIfCancellationRequested(); material.Structure.Reference();
+            if (snapshot.Count >= count || index < 0 || index >= package.Pages.Count || !seen.Add(index))
+                throw new ArgumentException("Select one or more distinct zero-based page positions within the document.", nameof(pages));
+            snapshot.Add(index);
+        }
+        if (seen.Count != count) throw new ArgumentException("Page selection count is inconsistent.", nameof(pages));
+        return snapshot;
     }
 }

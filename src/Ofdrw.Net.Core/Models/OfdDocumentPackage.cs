@@ -5,6 +5,25 @@ namespace Ofdrw.Net.Core.Models;
 
 public sealed class OfdDocumentPackage
 {
+    internal OfdDocumentEnvelope? SourceEnvelope { get; set; }
+    internal OfdSourceIdentity? SourceIdentity { get; set; }
+    private readonly OfdNavigationOwnership<OfdOutlineCollection> outlines = new();
+    private readonly OfdNavigationOwnership<OfdBookmarkCollection> bookmarks = new();
+    private readonly OfdNavigationOwnership<OfdActionCollection> actions = new();
+
+    /// <summary>Outline tree. Null preserves source; an empty collection removes modeled entries while retaining extensions.</summary>
+    public OfdOutlineCollection? Outlines { get => outlines.Value; set => outlines.Set(value); }
+
+    /// <summary>Named positions. Null preserves source; withdrawing a changed typed collection fails.</summary>
+    public OfdBookmarkCollection? Bookmarks { get => bookmarks.Value; set => bookmarks.Set(value); }
+
+    /// <summary>Document actions, serialized but never executed.</summary>
+    public OfdActionCollection? Actions { get => actions.Value; set => actions.Set(value); }
+
+    internal OfdNavigationOwnership<OfdOutlineCollection> OutlineOwnership => outlines;
+    internal OfdNavigationOwnership<OfdBookmarkCollection> BookmarkOwnership => bookmarks;
+    internal OfdNavigationOwnership<OfdActionCollection> ActionOwnership => actions;
+
     /// <summary>Original document XML entry, or null for a newly created document.</summary>
     public string? DocumentEntryPath { get; set; }
 

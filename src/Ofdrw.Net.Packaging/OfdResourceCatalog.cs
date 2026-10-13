@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml;
+using System.Threading;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Constants;
@@ -13,6 +14,8 @@ namespace Ofdrw.Net.Packaging;
 /// <summary>Updates resources at their existing locations and gives new payloads content-based names.</summary>
 internal sealed class OfdResourceCatalog
 {
+    private readonly OfdModelMaterialization material;
+    private readonly CancellationToken operationToken;
     private readonly IDictionary<string, byte[]> _entries;
     private readonly Dictionary<string, XDocument> _documents = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, (string Path, XElement Element)> _resources = new(StringComparer.Ordinal);
@@ -20,22 +23,22 @@ internal sealed class OfdResourceCatalog
     private readonly Dictionary<byte[], string> _hashes = new();
 
     internal OfdResourceCatalog(IDictionary<string, byte[]> entries, string documentPath, XNamespace documentNamespace,
-        IEnumerable<string> newResourcePaths)
+        IEnumerable<string> newResourcePaths, OfdModelMaterialization material, CancellationToken token, OfdSourceIdentity? identity = null, OfdDocumentPackage? package = null)
     {
-        _entries = entries;
+        _entries = entries; this.material = material; operationToken = token;
         var owned = new HashSet<string>(newResourcePaths, StringComparer.OrdinalIgnoreCase);
         if (entries.TryGetValue(documentPath, out var documentBytes))
         {
             XDocument document;
-            using (var input = new MemoryStream(documentBytes, false)) document = XDocument.Load(input, LoadOptions.PreserveWhitespace);
+            document = material.ReadXml(documentPath, documentBytes, token);
             var ns = document.Root!.Name.Namespace; var common = document.Root.Element(ns + "CommonData");
             foreach (var declaration in common?.Elements().Where(node => node.Name == ns + "PublicRes" || node.Name == ns + "DocumentRes") ?? Enumerable.Empty<XElement>())
-                owned.Add(OfdPackagePath.Resolve(documentPath, declaration.Value));
+                owned.Add(material.ResolvePath(documentPath, declaration.Value, operationToken));
             foreach (var page in (document.Root.Element(ns + "Pages")?.Elements(ns + "Page") ?? Enumerable.Empty<XElement>())
                 .Concat(common?.Elements(ns + "TemplatePage") ?? Enumerable.Empty<XElement>()))
             {
                 var location = page.Attribute("BaseLoc")?.Value;
-                if (!string.IsNullOrWhiteSpace(location)) owned.Add(OfdPackagePath.GetDirectory(OfdPackagePath.Resolve(documentPath, location!)) + "/PageRes.xml");
+                if (!string.IsNullOrWhiteSpace(location)) owned.Add(OfdPackagePath.GetDirectory(material.ResolvePath(documentPath, location!, operationToken)) + "/PageRes.xml");
             }
         }
         foreach (var pair in entries.Where(pair => owned.Contains(pair.Key)))
@@ -43,12 +46,13 @@ internal sealed class OfdResourceCatalog
             XDocument xml;
             try
             {
-                using var stream = new MemoryStream(pair.Value, writable: false);
-                xml = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
+                xml = material.ReadXml(pair.Key, pair.Value, token);
             }
             catch (XmlException) { continue; }
             if (!owned.Contains(pair.Key) || xml.Root?.Name.LocalName != "Res" ||
                 (xml.Root.Name.Namespace != documentNamespace && xml.Root.Name.NamespaceName != OfdConstants.Namespace && xml.Root.Name.NamespaceName != OfdConstants.StandardNamespace)) continue;
+            if (identity is null) throw new NotSupportedException("Preserved active resource tables must be read before editing.");
+            if (package is not null) identity.ValidateResourceSource(pair.Key, package);
             _documents[pair.Key] = xml;
             foreach (var resource in xml.Root.Elements(xml.Root.Name.Namespace + "Fonts").Elements(xml.Root.Name.Namespace + "Font")
                 .Concat(xml.Root.Elements(xml.Root.Name.Namespace + "MultiMedias").Elements(xml.Root.Name.Namespace + "MultiMedia")))
@@ -118,6 +122,7 @@ internal sealed class OfdResourceCatalog
         XElement element;
         if (existing.Element is not null)
         {
+            if (HasOpaqueResource(existing.Element)) throw new NotSupportedException("Cannot relocate an opaque resource with unproven relative references.");
             // Promote page-local resources to the shared resource file so a
             // reordered/copied page need not keep its old private PageRes path.
             element = existing.Element;
@@ -127,7 +132,7 @@ internal sealed class OfdResourceCatalog
                 var oldBase = oldRoot.Attribute("BaseLoc")?.Value;
                 var reference = string.IsNullOrEmpty(oldBase) || payload.Value.StartsWith("/", StringComparison.Ordinal)
                     ? payload.Value : oldBase!.TrimEnd('/') + "/" + payload.Value;
-                payload.Value = "/" + OfdPackagePath.Resolve(existing.Path, reference);
+                payload.Value = "/" + material.ResolvePath(existing.Path, reference, operationToken);
             }
             var legacyFile = element.Attribute("MediaFile");
             if (legacyFile is not null)
@@ -135,7 +140,7 @@ internal sealed class OfdResourceCatalog
                 var oldBase = oldRoot.Attribute("BaseLoc")?.Value;
                 var reference = string.IsNullOrEmpty(oldBase) || legacyFile.Value.StartsWith("/", StringComparison.Ordinal)
                     ? legacyFile.Value : oldBase!.TrimEnd('/') + "/" + legacyFile.Value;
-                legacyFile.Value = "/" + OfdPackagePath.Resolve(existing.Path, reference);
+                legacyFile.Value = "/" + material.ResolvePath(existing.Path, reference, operationToken);
             }
             element.Remove();
             _changed.Add(existing.Path);
@@ -150,13 +155,28 @@ internal sealed class OfdResourceCatalog
     private void WritePayload(string resourcePath, XElement resource, string name, string defaultFileName, byte[] bytes)
     {
         var element = resource.Element(resource.Name.Namespace + name);
+        if (element is not null && resource.Attribute(name) is not null) throw new NotSupportedException("Conflicting payload attribute and child authorities.");
         var file = element?.Value ?? resource.Attribute(name)?.Value ?? defaultFileName;
         if (element is null) resource.Add(new XElement(resource.Name.Namespace + name, file));
         resource.SetAttributeValue(name, null);
         var baseLocation = _documents[resourcePath].Root!.Attribute("BaseLoc")?.Value;
         var reference = string.IsNullOrEmpty(baseLocation) || file.StartsWith("/", StringComparison.Ordinal)
             ? file : baseLocation!.TrimEnd('/') + "/" + file;
-        _entries[OfdPackagePath.Resolve(resourcePath, reference)] = bytes;
+        _entries[material.ResolvePath(resourcePath, reference, operationToken)] = bytes;
+    }
+
+    private static bool HasOpaqueResource(XElement element)
+    {
+        var ns = element.Name.Namespace;
+        var attributes = element.Name.LocalName == "Font" ? new[] { "ID", "FontName", "FamilyName", "Charset", "Bold", "Italic" } : new[] { "ID", "Type", "Format", "MediaFile" };
+        if (element.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration && (attribute.Name.Namespace != XNamespace.None || !attributes.Contains(attribute.Name.LocalName)))) return true;
+        foreach (var node in element.Nodes())
+        {
+            if (node is XComment || node is XText text && string.IsNullOrWhiteSpace(text.Value)) continue;
+            if (node is not XElement child || child.Name.Namespace != ns || child.Name.LocalName is not ("FontFile" or "MediaFile") ||
+                child.HasElements || child.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) || child.Nodes().Any(n => n is not XText and not XComment)) return true;
+        }
+        return false;
     }
 
     internal void Flush()

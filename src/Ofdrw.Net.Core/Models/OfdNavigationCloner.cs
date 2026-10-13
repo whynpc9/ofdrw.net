@@ -1,0 +1,79 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+
+namespace Ofdrw.Net.Core.Models;
+
+internal static class OfdNavigationCloner
+{
+    internal static void Clone(OfdDocumentPackage source, OfdDocumentPackage destination,
+        IDictionary<object, object> mapping, OfdModelMaterialization material, CancellationToken token)
+    {
+        var sources = new Dictionary<OfdNavigationSource, OfdNavigationSource>();
+        Ownership(source.OutlineOwnership, destination.OutlineOwnership, 1);
+        Ownership(source.BookmarkOwnership, destination.BookmarkOwnership, 1);
+        Ownership(source.ActionOwnership, destination.ActionOwnership, 1);
+
+        object Map(object original, int depth)
+        {
+            token.ThrowIfCancellationRequested(); material.Structure.Reference(); material.Structure.Depth(depth);
+            if (mapping.TryGetValue(original, out var mapped)) return mapped;
+            if (original is not IOfdNavigationNode node) return original; // baseline-only excluded page identity
+            material.Structure.Node(depth);
+            IOfdNavigationNode clone = original switch
+            {
+                OfdOutlineCollection => new OfdOutlineCollection(), OfdBookmarkCollection => new OfdBookmarkCollection(), OfdActionCollection => new OfdActionCollection(),
+                OfdOutline outline => new OfdOutline { Title = outline.Title, Expanded = outline.Expanded, Count = outline.Count },
+                OfdBookmark bookmark => new OfdBookmark { Name = bookmark.Name },
+                OfdDestination destination => new OfdDestination { Type = destination.Type, Left = destination.Left, Top = destination.Top, Right = destination.Right, Bottom = destination.Bottom, Zoom = destination.Zoom },
+                OfdGoToAction go => new OfdGoToAction { Event = go.Event }, OfdRawAction raw => new OfdRawAction { Xml = raw.Xml, Event = raw.Event },
+                _ => throw new NotSupportedException("Unknown navigation clone contract.")
+            };
+            mapping.Add(original, clone);
+            // Establish the source memo before traversing source slots.
+            CopySource(node.Source, clone.Source, depth);
+            switch (original)
+            {
+                case OfdOutlineCollection outlines: foreach (var item in outlines.Items) ((OfdOutlineCollection)clone).Items.Add((OfdOutline)Map(item, depth + 1)); break;
+                case OfdBookmarkCollection bookmarks: foreach (var item in bookmarks.Items) ((OfdBookmarkCollection)clone).Items.Add((OfdBookmark)Map(item, depth + 1)); break;
+                case OfdActionCollection actions: foreach (var item in actions.Items) ((OfdActionCollection)clone).Items.Add((OfdAction)Map(item, depth + 1)); break;
+                case OfdOutline outline:
+                    foreach (var child in outline.Children) ((OfdOutline)clone).Children.Add((OfdOutline)Map(child, depth + 1));
+                    Ownership(outline.ActionOwnership, ((OfdOutline)clone).ActionOwnership, depth + 1); break;
+                case OfdBookmark bookmark: ((OfdBookmark)clone).Destination = (OfdDestination)Map(bookmark.Destination, depth + 1); break;
+                case OfdDestination destination: ((OfdDestination)clone).Page = (OfdPage)Map(destination.Page, depth + 1); break;
+                case OfdGoToAction go:
+                    ((OfdGoToAction)clone).Destination = go.Destination is null ? null : (OfdDestination)Map(go.Destination, depth + 1);
+                    ((OfdGoToAction)clone).Bookmark = go.Bookmark is null ? null : (OfdBookmark)Map(go.Bookmark, depth + 1); break;
+            }
+            return clone;
+        }
+        OfdNavigationSource? Source(OfdNavigationSource? original, int depth)
+        {
+            if (original is null) return null;
+            if (sources.TryGetValue(original, out var clone)) return clone;
+            clone = new OfdNavigationSource(); CopySource(original, clone, depth); return clone;
+        }
+        void CopySource(OfdNavigationSource original, OfdNavigationSource clone, int depth)
+        {
+            if (sources.TryGetValue(original, out var existing))
+            {
+                clone.Xml = existing.Xml; clone.OriginalName = existing.OriginalName; clone.HasOpaqueLocalContent = existing.HasOpaqueLocalContent; clone.DocumentOwner = existing.DocumentOwner;
+                foreach (var slot in existing.Slots) { material.Structure.Reference(); clone.Slots.Add(slot.Key, slot.Value); }
+                return;
+            }
+            sources.Add(original, clone);
+            clone.Xml = original.Xml; clone.OriginalName = original.OriginalName; clone.HasOpaqueLocalContent = original.HasOpaqueLocalContent;
+            clone.DocumentOwner = ReferenceEquals(original.DocumentOwner, source) ? destination : original.DocumentOwner;
+            foreach (var slot in original.Slots)
+            { token.ThrowIfCancellationRequested(); material.Structure.Reference(); clone.Slots.Add(slot.Key, Map(slot.Value, depth + 1)); }
+        }
+        void Ownership<T>(OfdNavigationOwnership<T> original, OfdNavigationOwnership<T> clone, int depth) where T : class
+        {
+            var value = original.Value is null ? null : (T)Map(original.Value, depth);
+            var envelope = Source(original.OriginalSource, depth);
+            var snapshot = original.BaselineSnapshot?.Remap(value => Map(value, depth), material, token);
+            clone.RestoreClonedState(value, original.OriginalXml, envelope, snapshot);
+        }
+    }
+}
