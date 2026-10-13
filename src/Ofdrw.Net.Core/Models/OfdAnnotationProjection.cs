@@ -78,6 +78,7 @@ internal static class OfdAnnotationProjection
     internal static OfdElement Project(OfdElement definition, OfdAnnotationAppearance appearance,
         XNamespace ns, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
+        material.ReserveReadModel(16384, cancellationToken);
         material.ChargeCopy(512L + (definition is OfdTextElement textDefinition ? textDefinition.Runs.Count * 128L : 0), cancellationToken);
         var element = OfdModelCloner.CloneElement(definition, clonePayloads: false, material: material, cancellationToken: cancellationToken);
         var appearanceTransform = appearance.Transform;
@@ -118,6 +119,8 @@ internal static class OfdAnnotationProjection
         if (source is not null)
         {
             material.GuardFragmentXml(source, cancellationToken); material.ChargeCopy(2L * source.Length, cancellationToken); material.ChargeWork(2L * source.Length, cancellationToken);
+            material.PrepareReadXmlParser(checked(2L * source.Length), cancellationToken);
+            material.ReserveReadModel(16384L + 8L * source.Length, cancellationToken);
             var node = OfdXmlEnvelope.Parse(source);
             node.SetAttributeValue("Boundary", string.Join(" ", new[] { element.XMillimeters, element.YMillimeters, element.WidthMillimeters, element.HeightMillimeters }.Select(value => value.ToString("R", CultureInfo.InvariantCulture))));
             if (appearanceTransform is not null)
@@ -141,6 +144,8 @@ internal static class OfdAnnotationProjection
         if (!string.IsNullOrWhiteSpace(original))
         {
             material.GuardFragmentXml(original!, token); material.ChargeCopy(24L * original!.Length, token); material.ChargeWork(2L * original.Length, token);
+            material.PrepareReadXmlParser(checked(2L * original!.Length), token);
+            material.ReserveReadModel(32768L + 32L * original.Length, token);
             var source = OfdXmlEnvelope.Parse(original!);
             if (source.Name.Namespace != ns || !OfdGraphicXmlContract.HasKnownChildren(source) || OfdGraphicXmlContract.HasUnsupportedReferences(source) ||
                 source.DescendantsAndSelf().Attributes().Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute)))

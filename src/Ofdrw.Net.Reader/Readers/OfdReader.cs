@@ -31,13 +31,37 @@ public sealed class OfdReader : IOfdReader
         CancellationToken cancellationToken = default)
     {
         var archive = await _loader.LoadAsync(ofdStream, options, cancellationToken).ConfigureAwait(false);
+        return ReadArchive(archive, options, new OfdModelMaterialization(new OfdModelLimits()), cancellationToken);
+    }
+
+    internal async Task<OfdDocumentPackage> ReadControlledAsync(Stream ownedSpool, OfdPackageLoadOptions options,
+        OfdControlledEditContext context, CancellationToken cancellationToken = default)
+    {
+        if (context is null) throw new ArgumentNullException(nameof(context));
+        try
+        {
+            context.AssertActive(); cancellationToken.ThrowIfCancellationRequested();
+            context.Material.ChargeCopy(128, cancellationToken);
+            var snapshot = OfdPackageLoader.SnapshotOptions(options);
+            using var scope = context.Material.BeginControlledRead(context, cancellationToken);
+            var archive = await _loader.LoadAccountedAsync(ownedSpool, snapshot, context.Material, cancellationToken).ConfigureAwait(false);
+            context.AssertActive();
+            var package = ReadArchive(archive, snapshot, context.Material, cancellationToken);
+            context.AssertActive(); cancellationToken.ThrowIfCancellationRequested(); return package;
+        }
+        catch { context.Fail(); throw; }
+    }
+
+    private static OfdDocumentPackage ReadArchive(OfdPackageArchive archive, OfdPackageLoadOptions options,
+        OfdModelMaterialization material, CancellationToken cancellationToken)
+    {
+        material.ReserveReadModel(1024L + archive.EntryNames.Count * 160L, cancellationToken);
         var package = new OfdDocumentPackage();
         foreach (var entryName in archive.EntryNames)
         {
+            material.ReserveReadModel(160, cancellationToken);
             package.PreservedEntries[entryName] = archive.GetBytes(entryName);
         }
-
-        var material = new OfdModelMaterialization(new OfdModelLimits());
         material.InspectStorage(package, cancellationToken);
         material.GuardPreservedXml(package, cancellationToken);
         var ofdXml = material.ReadXml(OfdConstants.OfdRootFile, archive.GetBytes(OfdConstants.OfdRootFile), cancellationToken);
@@ -47,29 +71,32 @@ public sealed class OfdReader : IOfdReader
         var docRoot = ofdXml.Root?
             .Elements(ofdNs + "DocBody")
             .Elements(ofdNs + "DocRoot")
-            .Select(x => x.Value)
+            .Select(x => ReadValue(x, material, cancellationToken)!)
             .FirstOrDefault() ?? "Doc_0/Document.xml";
 
         docRoot = material.ResolvePath("OFD.xml", docRoot, cancellationToken);
         package.Options.DocType = docType;
         package.DocumentEntryPath = docRoot;
         package.Options.Namespace = ofdNs.NamespaceName;
+        material.ReserveReadModel(256L + docRoot.Length * 16L, cancellationToken);
+        var docIdStorage = material.IsControlledRead ? material.ReserveReadStorage(2L * docRoot.Length, cancellationToken) : null;
         package.Options.DocumentId = docRoot.Split('/')[0];
+        if (docIdStorage is not null) material.AdoptReadString(package.Options.DocumentId, docIdStorage, cancellationToken);
 
         var selectedDocBody = ofdXml.Root?
             .Elements(ofdNs + "DocBody")
             .FirstOrDefault(body => string.Equals(
-                material.ResolvePath("OFD.xml", body.Element(ofdNs + "DocRoot")?.Value ?? string.Empty, cancellationToken),
+                material.ResolvePath("OFD.xml", ReadValue(body.Element(ofdNs + "DocRoot"), material, cancellationToken) ?? string.Empty, cancellationToken),
                 docRoot,
                 StringComparison.Ordinal));
         var info = selectedDocBody?.Element(ofdNs + "DocInfo");
         if (info is not null)
         {
-            package.Options.Metadata.Title = info.Element(ofdNs + "Title")?.Value;
-            package.Options.Metadata.Author = info.Element(ofdNs + "Author")?.Value;
-            package.Options.Metadata.Subject = info.Element(ofdNs + "Subject")?.Value;
-            package.Options.Metadata.Keywords = info.Element(ofdNs + "Keywords")?.Value;
-            package.Options.Metadata.Creator = info.Element(ofdNs + "Creator")?.Value;
+            package.Options.Metadata.Title = ReadValue(info.Element(ofdNs + "Title"), material, cancellationToken);
+            package.Options.Metadata.Author = ReadValue(info.Element(ofdNs + "Author"), material, cancellationToken);
+            package.Options.Metadata.Subject = ReadValue(info.Element(ofdNs + "Subject"), material, cancellationToken);
+            package.Options.Metadata.Keywords = ReadValue(info.Element(ofdNs + "Keywords"), material, cancellationToken);
+            package.Options.Metadata.Creator = ReadValue(info.Element(ofdNs + "Creator"), material, cancellationToken);
         }
 
         foreach (var bodyElement in selectedDocBody?.Elements() ?? Enumerable.Empty<XElement>())
@@ -106,17 +133,18 @@ public sealed class OfdReader : IOfdReader
 
         var defaultPageBox = ParseBox(commonData?
             .Element(docNs + "PageArea")?
-            .Element(docNs + "PhysicalBox")?.Value);
+            .Element(docNs + "PhysicalBox") is XElement physical ? ReadValue(physical, material, cancellationToken) : null, material, cancellationToken);
         if (defaultPageBox.w > 0 && defaultPageBox.h > 0)
         {
             package.Options.DefaultPageWidthMillimeters = defaultPageBox.w;
             package.Options.DefaultPageHeightMillimeters = defaultPageBox.h;
         }
+        material.ReserveReadModel(1024, cancellationToken);
         var fontMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var documentMediaMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var documentMediaTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        var publicResLoc = commonData?.Element(docNs + "PublicRes")?.Value;
+        var publicResLoc = ReadValue(commonData?.Element(docNs + "PublicRes"), material, cancellationToken);
         package.PublicResourceLocation = publicResLoc;
         if (!string.IsNullOrWhiteSpace(publicResLoc))
         {
@@ -128,7 +156,7 @@ public sealed class OfdReader : IOfdReader
             }
         }
 
-        var documentResLoc = commonData?.Element(docNs + "DocumentRes")?.Value;
+        var documentResLoc = ReadValue(commonData?.Element(docNs + "DocumentRes"), material, cancellationToken);
         package.DocumentResourceLocation = documentResLoc;
         if (!string.IsNullOrWhiteSpace(documentResLoc))
         {
@@ -137,7 +165,9 @@ public sealed class OfdReader : IOfdReader
             ReadFonts(archive, documentResPath, package, fontMap, material, cancellationToken);
         }
 
+        material.ReserveReadModel(256L + fontMap.Count * 160L, cancellationToken);
         var documentFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
+        material.ReserveReadModel(256L + (commonData?.Elements().Count() ?? 0) * 160L, cancellationToken);
         var templateLocations = commonData?.Elements(docNs + "TemplatePage")
             .Select(x => new
             {
@@ -149,6 +179,9 @@ public sealed class OfdReader : IOfdReader
             .ToDictionary(x => x.Id!, x => (BaseLoc: x.BaseLoc!, ZOrder: x.ZOrder), StringComparer.OrdinalIgnoreCase)
             ?? new Dictionary<string, (string BaseLoc, string? ZOrder)>(StringComparer.OrdinalIgnoreCase);
 
+        if (material.IsControlledRead && (documentXml.Root?.Element(docNs + "Pages")?.Elements(docNs + "Page").Count(node => !string.IsNullOrWhiteSpace(node.Attribute("BaseLoc")?.Value)) ?? 0) > options.MaxPageCount)
+            throw new InvalidDataException("OFD document exceeds the configured page count limit.");
+        material.ReserveReadModel(256L + (documentXml.Root?.Element(docNs + "Pages")?.Elements().Count() ?? 0) * 128L, cancellationToken);
         var pages = documentXml.Root?
             .Element(docNs + "Pages")?
             .Elements(docNs + "Page")
@@ -165,8 +198,10 @@ public sealed class OfdReader : IOfdReader
         if (pages.Count > options.MaxPageCount)
             throw new InvalidDataException("OFD document exceeds the configured page count limit.");
 
+        material.ReserveReadModel(512L + pages.Count * 128L, cancellationToken);
         var annotationIndex = IndexAnnotationFiles(archive, documentXml, docRoot,
             new HashSet<string>(pages.Select(page => page.Id).OfType<string>().Where(id => !string.IsNullOrWhiteSpace(id)), StringComparer.Ordinal), material, cancellationToken);
+        material.ReserveReadModel(256, cancellationToken);
         var annotationIdCounts = new Dictionary<long, int>();
         foreach (var entry in package.PreservedEntries)
         {
@@ -176,7 +211,11 @@ public sealed class OfdReader : IOfdReader
             foreach (var attribute in material.ReadXml(entry.Key, entry.Value, cancellationToken).Descendants().Attributes("ID"))
             {
                 material.Structure.Reference(); var id = OfdSourceIdentity.ParseId(attribute.Value);
-                if (id != 0) annotationIdCounts[id] = annotationIdCounts.TryGetValue(id, out var count) ? count + 1 : 1;
+                if (id != 0)
+                {
+                    if (!annotationIdCounts.ContainsKey(id)) material.ReserveReadModel(128, cancellationToken);
+                    annotationIdCounts[id] = annotationIdCounts.TryGetValue(id, out var count) ? count + 1 : 1;
+                }
             }
         }
         package.AnnotationIndexSource = annotationIndex.Source; annotationIndex.Source.DocumentOwner = package;
@@ -185,6 +224,7 @@ public sealed class OfdReader : IOfdReader
         foreach (var pageRef in pages)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            material.ReserveReadModel(256L + documentFonts.Count * 160L, cancellationToken);
             fontMap = new Dictionary<string, string>(documentFonts, StringComparer.OrdinalIgnoreCase);
             var contentPath = material.ResolvePath(docRoot, pageRef.BaseLoc!, cancellationToken);
             var pageXml = material.ReadXml(contentPath, archive.GetBytes(contentPath), cancellationToken);
@@ -192,8 +232,9 @@ public sealed class OfdReader : IOfdReader
 
             var box = ParseBox(pageXml.Root?
                 .Element(pageNs + "Area")?
-                .Element(pageNs + "PhysicalBox")?.Value);
+                .Element(pageNs + "PhysicalBox") is XElement physicalBox ? ReadValue(physicalBox, material, cancellationToken) : null, material, cancellationToken);
 
+            material.ReserveReadModel(1024, cancellationToken);
             var page = new OfdPage
             {
                 SourceEntryPath = contentPath,
@@ -213,6 +254,7 @@ public sealed class OfdReader : IOfdReader
                 }
             }
 
+            material.ReserveReadModel(1024L + contentPath.Length * 16L + documentMediaMap.Count * 160L + documentMediaTypeMap.Count * 160L, cancellationToken);
             var pageDir = GetDirectory(contentPath);
             var pageResPath = $"{pageDir}/PageRes.xml";
             var mediaMap = new Dictionary<string, string>(documentMediaMap, StringComparer.OrdinalIgnoreCase);
@@ -235,6 +277,7 @@ public sealed class OfdReader : IOfdReader
                 page.Elements.Add(element);
             }
 
+            material.ReserveReadModel(256L + fontMap.Count * 160L, cancellationToken);
             var annotationFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
             foreach (var templateRef in pageXml.Root?.Elements(pageNs + "Template") ?? Enumerable.Empty<XElement>())
             {
@@ -252,13 +295,16 @@ public sealed class OfdReader : IOfdReader
                 }
 
                 var templateXml = material.ReadXml(templatePath, archive.GetBytes(templatePath), cancellationToken);
+                material.ReserveReadModel(1024L + templatePath.Length * 16L + documentMediaMap.Count * 160L + documentMediaTypeMap.Count * 160L, cancellationToken);
                 var templateResPath = $"{GetDirectory(templatePath)}/PageRes.xml";
                 var templateMediaMap = new Dictionary<string, string>(documentMediaMap, StringComparer.OrdinalIgnoreCase);
                 var templateMediaTypeMap = new Dictionary<string, string>(documentMediaTypeMap, StringComparer.OrdinalIgnoreCase);
                 ReadMediaResources(archive, templateResPath, docNs, templateMediaMap, templateMediaTypeMap, material, cancellationToken);
+                material.ReserveReadModel(256L + fontMap.Count * 160L, cancellationToken);
                 var templateFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
                 ReadFonts(archive, templateResPath, package, templateFonts, material, cancellationToken);
 
+                material.ReserveReadModel(512, cancellationToken);
                 var template = new OfdTemplateContent
                 {
                     TemplateId = templateId!,
@@ -284,8 +330,7 @@ public sealed class OfdReader : IOfdReader
             package.Pages.Add(page);
         }
 
-        var attachmentsLoc = documentXml.Root?.Elements()
-            .FirstOrDefault(x => x.Name.LocalName == "Attachments")?.Value;
+        var attachmentsLoc = ReadValue(documentXml.Root?.Elements().FirstOrDefault(x => x.Name.LocalName == "Attachments"), material, cancellationToken);
         if (!string.IsNullOrWhiteSpace(attachmentsLoc))
         {
             var attachmentsPath = material.ResolvePath(docRoot, attachmentsLoc!, cancellationToken);
@@ -295,13 +340,14 @@ public sealed class OfdReader : IOfdReader
                 foreach (var node in attachmentsXml.Root?.Elements()
                     .Where(x => x.Name.LocalName == "Attachment") ?? Enumerable.Empty<XElement>())
                 {
-                    var fileLoc = node.Elements().FirstOrDefault(x => x.Name.LocalName == "FileLoc")?.Value
+                    var fileLoc = ReadValue(node.Elements().FirstOrDefault(x => x.Name.LocalName == "FileLoc"), material, cancellationToken)
                         ?? node.Attribute("FileLoc")?.Value
                         ?? string.Empty;
                     var contentPath = material.ResolvePath(attachmentsPath, fileLoc, cancellationToken);
                     var external = bool.TryParse(node.Attribute("External")?.Value, out var legacyExternal) && legacyExternal;
                     external = external || !archive.Contains(contentPath);
 
+                    material.ReserveReadModel(512, cancellationToken);
                     var attachment = new OfdAttachment
                     {
                         Id = node.Attribute("ID")?.Value,
@@ -329,8 +375,7 @@ public sealed class OfdReader : IOfdReader
             }
         }
 
-        var customTagsLoc = documentXml.Root?.Elements()
-            .FirstOrDefault(x => x.Name.LocalName == "CustomTags")?.Value;
+        var customTagsLoc = ReadValue(documentXml.Root?.Elements().FirstOrDefault(x => x.Name.LocalName == "CustomTags"), material, cancellationToken);
         if (!string.IsNullOrWhiteSpace(customTagsLoc))
         {
             var customTagsPath = material.ResolvePath(docRoot, customTagsLoc!, cancellationToken);
@@ -340,7 +385,7 @@ public sealed class OfdReader : IOfdReader
                 foreach (var customTag in customTagsXml.Root?.Elements()
                     .Where(x => x.Name.LocalName == "CustomTag") ?? Enumerable.Empty<XElement>())
                 {
-                    var detailLoc = customTag.Elements().FirstOrDefault(x => x.Name.LocalName == "FileLoc")?.Value
+                    var detailLoc = ReadValue(customTag.Elements().FirstOrDefault(x => x.Name.LocalName == "FileLoc"), material, cancellationToken)
                         ?? customTag.Attribute("FileLoc")?.Value;
                     if (string.IsNullOrWhiteSpace(detailLoc))
                     {
@@ -354,10 +399,11 @@ public sealed class OfdReader : IOfdReader
         }
         else
         {
-            var legacyCustomTagPath = $"{package.Options.DocumentId}/Tags/CustomTag_EMR.xml";
+            var legacyCustomTagPath = material.ReadConcat(package.Options.DocumentId, "/Tags/CustomTag_EMR.xml", cancellationToken);
             ReadKeyValueCustomTags(archive, legacyCustomTagPath, package.CustomTags, material, cancellationToken);
         }
 
+        material.ReserveReadModel(1024L + (documentXml.Root?.DescendantNodesAndSelf().Count() ?? 0) * 4096L, cancellationToken);
         OfdNavigationXml.Read(package, documentXml.Root ?? throw new InvalidDataException("Missing document root."), material, cancellationToken);
         package.SourceEnvelope = OfdDocumentEnvelope.Capture(package, selectedDocBody, documentXml.Root!, material, cancellationToken);
         package.SourceIdentity = OfdSourceIdentity.Capture(package, material, cancellationToken);
@@ -419,6 +465,7 @@ public sealed class OfdReader : IOfdReader
     private static AnnotationIndex IndexAnnotationFiles(OfdPackageArchive archive, XDocument document,
         string documentPath, ISet<string> loadedPageIds, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
+        material.ReserveReadModel(1024, cancellationToken);
         var result = new AnnotationIndex { Namespace = document.Root!.Name.Namespace };
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var declaration in document.Root!.Elements().Where(node => node.Name.LocalName == "Annotations"))
@@ -427,16 +474,16 @@ public sealed class OfdReader : IOfdReader
             result.Source.Declarations.Add(OfdXmlEnvelope.Capture(declaration, material, cancellationToken));
             if (declaration.Name.Namespace != result.Namespace)
             {
-                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                result.UnmodeledLists.Add(OfdXmlEnvelope.SerializeForRead(declaration, material, cancellationToken));
                 continue;
             }
-            var literal = string.Concat(declaration.Nodes().OfType<XText>().Select(text => text.Value));
+            var literal = ReadJoinText(declaration.Nodes().OfType<XText>().Select(text => text.Value), material, cancellationToken);
             if (declaration.HasElements || declaration.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
                 declaration.Nodes().Any(node => node is not XText and not XComment))
-                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                result.UnmodeledLists.Add(OfdXmlEnvelope.SerializeForRead(declaration, material, cancellationToken));
             if (string.IsNullOrWhiteSpace(literal))
             {
-                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                result.UnmodeledLists.Add(OfdXmlEnvelope.SerializeForRead(declaration, material, cancellationToken));
                 continue;
             }
             var listPath = material.ResolvePath(documentPath, literal, cancellationToken);
@@ -444,35 +491,37 @@ public sealed class OfdReader : IOfdReader
             result.Source.Capture(listPath, archive.TryGetBytes(listPath, out var indexBytes) ? indexBytes : null, material, cancellationToken);
             if (!archive.Contains(listPath))
             {
-                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                result.UnmodeledLists.Add(OfdXmlEnvelope.SerializeForRead(declaration, material, cancellationToken));
                 continue;
             }
             XDocument list;
             try { list = material.ReadXml(listPath, archive.GetBytes(listPath), cancellationToken); }
             catch (XmlException)
             {
-                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                result.UnmodeledLists.Add(OfdXmlEnvelope.SerializeForRead(declaration, material, cancellationToken));
                 continue;
             }
             if (!IsAnnotationRoot(list, "Annotations", result.Namespace))
             {
-                result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
+                result.UnmodeledLists.Add(OfdXmlEnvelope.SerializeForRead(declaration, material, cancellationToken));
                 continue;
             }
             if (!PlainContainer(list.Root!) || list.Nodes().Any(node => node is not XElement and not XComment && (node is not XText text || !string.IsNullOrWhiteSpace(text.Value))))
-                result.UnmodeledLists.Add(list.ToString(SaveOptions.DisableFormatting));
+                result.UnmodeledLists.Add(OfdXmlEnvelope.SerializeForRead(list, material, cancellationToken));
             foreach (var record in list.Root.Elements())
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var pageId = record.Attribute("PageID")?.Value;
+                material.ReserveReadModel(256L + record.Elements().Count() * 32L, cancellationToken);
                 var locations = record.Elements(list.Root.Name.Namespace + "FileLoc").ToList();
                 var location = locations.Count == 1 && !locations[0].HasElements &&
                     locations[0].Nodes().All(node => node is XText or XComment)
-                    ? string.Concat(locations[0].Nodes().OfType<XText>().Select(text => text.Value)) : null;
+                    ? ReadJoinText(locations[0].Nodes().OfType<XText>().Select(text => text.Value), material, cancellationToken) : null;
                 AnnotationFiles? files = null;
-                var raw = record.ToString(SaveOptions.DisableFormatting);
+                var raw = OfdXmlEnvelope.SerializeForRead(record, material, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(pageId))
                 {
+                    material.ReserveReadModel(512, cancellationToken);
                     if (!result.Files.TryGetValue(pageId!, out files)) result.Files[pageId!] = files = new AnnotationFiles();
                     files.Records.Add(raw);
                 }
@@ -489,18 +538,24 @@ public sealed class OfdReader : IOfdReader
                 if (files!.Known.Add(path)) files.Paths.Add(path);
             }
         }
+        material.ReserveReadModel(256L + result.Files.Count * 64L, cancellationToken);
         foreach (var orphan in result.Files.Where(pair => !loadedPageIds.Contains(pair.Key)).ToList())
         {
             result.UnmodeledLists.AddRange(orphan.Value.Records);
             result.Files.Remove(orphan.Key);
         }
-        result.UnmodeledXml = WrapUnmodeled(result.UnmodeledLists);
-        foreach (var files in result.Files.Values) files.UnmodeledXml = WrapUnmodeled(files.UnmodeledRecords);
+        result.UnmodeledXml = WrapUnmodeled(result.UnmodeledLists, material, cancellationToken);
+        foreach (var files in result.Files.Values) files.UnmodeledXml = WrapUnmodeled(files.UnmodeledRecords, material, cancellationToken);
         return result;
     }
 
-    private static string? WrapUnmodeled(List<string> records) => records.Count == 0 ? null :
-        "<UnmodeledAnnotations>" + string.Concat(records) + "</UnmodeledAnnotations>";
+    private static string? WrapUnmodeled(List<string> records, OfdModelMaterialization material, CancellationToken token)
+    {
+        if (records.Count == 0) return null;
+        if (!material.IsControlledRead) return "<UnmodeledAnnotations>" + string.Concat(records) + "</UnmodeledAnnotations>";
+        material.ReserveReadModel(128L + records.Count * 32L, token);
+        return ReadJoinText(new[] { "<UnmodeledAnnotations>", ReadJoinText(records, material, token), "</UnmodeledAnnotations>" }, material, token);
+    }
 
     private sealed class AnnotationReadBudget(OfdPackageLoadOptions options)
     {
@@ -527,6 +582,7 @@ public sealed class OfdReader : IOfdReader
         IReadOnlyDictionary<string, string> media, IReadOnlyDictionary<string, string> mediaTypes,
         OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<long, int> idCounts)
     {
+        material.ReserveReadModel(512, cancellationToken);
         var typed = new OfdAnnotationCollection();
         if (index.UnmodeledXml is not null)
             page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Annotations", Xml = index.UnmodeledXml });
@@ -537,6 +593,7 @@ public sealed class OfdReader : IOfdReader
         foreach (var annotationPath in files.Paths)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            material.ReserveReadModel(1024L + 16L * annotationPath.Length, cancellationToken);
             // Cached XML still produces new typed/raw strings on every page.
             // Charge each occurrence before parsing or materializing its content.
             if (archive.TryGetBytes(annotationPath, out var annotationBytes)) budget.ChargeXml(annotationBytes.LongLength);
@@ -552,7 +609,7 @@ public sealed class OfdReader : IOfdReader
             if (annotations is null || !IsAnnotationRoot(annotations, "PageAnnot", index.Namespace))
             {
                 page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance",
-                    Xml = new XElement("UnmodeledAnnotation", new XAttribute("FileLoc", annotationPath)).ToString() });
+                    Xml = ReadXmlString(new XElement("UnmodeledAnnotation", new XAttribute("FileLoc", annotationPath)), material, cancellationToken)! });
                 continue;
             }
             page.AnnotationOwnership.Entries.Add(annotationPath, OfdXmlEnvelope.Capture(annotations.Root!, material, cancellationToken));
@@ -561,10 +618,11 @@ public sealed class OfdReader : IOfdReader
             var shared = index.Files.Values.Count(candidate => candidate.Known.Contains(annotationPath)) > 1;
             var annotationSlot = -1;
             if (!PlainContainer(annotations.Root!) || annotations.Nodes().Any(node => node is not XElement and not XComment && (node is not XText text || !string.IsNullOrWhiteSpace(text.Value))))
-                page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotations.ToString(SaveOptions.DisableFormatting) });
+                page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotations, material, cancellationToken) });
             foreach (var annotation in annotations.Root.Elements())
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                material.ReserveReadModel(1024, cancellationToken);
                 annotationSlot++;
                 // Strict caller quota is charged before the first local typed materialization.
                 foreach (var appearanceNode in annotation.Elements(annotation.Name.Namespace + "Appearance"))
@@ -580,68 +638,71 @@ public sealed class OfdReader : IOfdReader
                 {
                 if (annotation.Name != annotations.Root.Name.Namespace + "Annot")
                 {
-                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken) });
                     continue;
                 }
                 if (!SupportedAnnotationWrapper(annotation))
-                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken) });
                 if (annotation.Attribute("Visible")?.Value is "false" or "0")
                 {
                     var hiddenAppearance = annotation.Element(annotations.Root.Name.Namespace + "Appearance");
                     if (hiddenAppearance is not null)
                     {
-                        var hiddenNodes = FlattenAnnotationNodes(hiddenAppearance.Elements(), hiddenAppearance.Name.Namespace, budget, cancellationToken);
+                        var hiddenNodes = FlattenAnnotationNodes(hiddenAppearance.Elements(), hiddenAppearance.Name.Namespace, budget, material, cancellationToken);
                         if (!PlainContainer(hiddenAppearance, "Boundary", "ID", "CTM") || hiddenNodes is null ||
-                            !OfdBoxParser.TryParse(hiddenAppearance.Attribute("Boundary")?.Value, out _) ||
+                            !TryParseBox(hiddenAppearance.Attribute("Boundary")?.Value, material, cancellationToken, out _) ||
                             hiddenNodes.SelectMany(node => node.DescendantsAndSelf().Attributes()).Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute) ||
-                                attribute.Name == "Boundary" && !OfdBoxParser.TryParse(attribute.Value, out _)))
-                            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
+                                attribute.Name == "Boundary" && !TryParseBox(attribute.Value, material, cancellationToken, out _)))
+                            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken) });
                     }
                     continue;
                 }
+                material.ReserveReadModel(256L + annotation.Elements().Count() * 32L, cancellationToken);
                 var appearances = annotation.Elements(annotations.Root.Name.Namespace + "Appearance").ToList();
                 if (appearances.Count > 1)
                 {
-                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken) });
                     continue;
                 }
                 var appearance = appearances.Count == 1 ? appearances[0] : null;
                 if (appearance is null)
                 {
                     if (annotation.Elements().Any(node => node.Name.LocalName == "Appearance"))
-                        page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
+                        page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken) });
                     continue;
                 }
-                var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value);
+                var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value, material, cancellationToken);
                 var hasUnmodeledMetadata = !PlainContainer(appearance, "Boundary", "ID", "CTM") ||
-                    !OfdBoxParser.TryParse(appearance.Attribute("Boundary")?.Value, out _);
+                    !TryParseBox(appearance.Attribute("Boundary")?.Value, material, cancellationToken, out _);
                 if (appearance.Attribute("CTM") is not null && (appearanceTransform is null || appearanceTransform.Any(value => double.IsNaN(value) || double.IsInfinity(value))))
                 {
-                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken) });
                     continue;
                 }
                 var ns = appearance.Name.Namespace;
-                var box = ParseBox(appearance.Attribute("Boundary")?.Value);
-                var nodes = FlattenAnnotationNodes(appearance.Elements(), appearance.Name.Namespace, budget, cancellationToken);
-                if (nodes is not null && nodes.SelectMany(node => node.DescendantsAndSelf().Attributes("Boundary")).Any(attribute => !OfdBoxParser.TryParse(attribute.Value, out _)))
+                var box = ParseBox(appearance.Attribute("Boundary")?.Value, material, cancellationToken);
+                var nodes = FlattenAnnotationNodes(appearance.Elements(), appearance.Name.Namespace, budget, material, cancellationToken);
+                if (nodes is not null && nodes.SelectMany(node => node.DescendantsAndSelf().Attributes("Boundary")).Any(attribute => !TryParseBox(attribute.Value, material, cancellationToken, out _)))
                     hasUnmodeledMetadata = true;
                 if (nodes is null || box.w <= 0 || box.h <= 0 || new[] { box.x, box.y, box.w, box.h }.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
                 {
-                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken) });
                     continue;
                 }
+                var layerId = material.ReadConcat("annotation-", annotation.Attribute("ID")?.Value ?? string.Empty, cancellationToken);
+                material.PrepareReadAnnotationClone(nodes, cancellationToken);
                 var xml = new XDocument(new XElement(ns + "Page", new XElement(ns + "Content",
-                    new XElement(ns + "Layer", new XAttribute("ID", "annotation-" + annotation.Attribute("ID")?.Value), nodes))));
+                    new XElement(ns + "Layer", new XAttribute("ID", layerId), nodes))));
                 var staged = new List<OfdElement>();
-                if (hasUnmodeledMetadata) staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                if (hasUnmodeledMetadata) staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken) });
                 if (nodes.SelectMany(node => node.DescendantsAndSelf().Attributes()).Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute)))
-                    staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                    staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken) });
                 foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, annotationPath, material, cancellationToken))
                 {
                     if (element is OfdImageElement { Data.Length: 0 })
                     {
                         staged.Clear();
-                        staged.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                        staged.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken) });
                         break;
                     }
                     try
@@ -655,7 +716,7 @@ public sealed class OfdReader : IOfdReader
                     catch (Exception exception) when (exception is NotSupportedException or InvalidDataException && !OfdTraversalBudget.IsLimit(exception))
                     {
                         staged.Clear();
-                        staged.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
+                        staged.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken) });
                         break;
                     }
                 }
@@ -690,6 +751,7 @@ public sealed class OfdReader : IOfdReader
             !DateTime.TryParseExact(annotation.Attribute("LastModDate")?.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ||
             annotation.Elements(ns + "Appearance").Count() != 1 || annotation.Elements(ns + "Remark").Count() > 1 ||
             annotation.Nodes().Any(n => n is XText t && !string.IsNullOrWhiteSpace(t.Value))) return null;
+        material.ReserveReadModel(1024, token);
         var flags = new Dictionary<string, bool?>();
         foreach (var name in new[] { "Visible", "Print", "NoZoom", "NoRotate", "ReadOnly" })
         {
@@ -698,36 +760,47 @@ public sealed class OfdReader : IOfdReader
             flags[name] = literal is null ? null : literal is "true" or "1";
         }
         var appearance = annotation.Element(ns + "Appearance")!;
-        if (!OfdBoxParser.TryParse(appearance.Attribute("Boundary")?.Value, out _) ||
+        if (!TryParseBox(appearance.Attribute("Boundary")?.Value, material, token, out _) ||
             appearance.Nodes().Any(n => n is XText t && !string.IsNullOrWhiteSpace(t.Value)) ||
             appearance.Elements().Any(n => n.Name.Namespace != ns || n.Name.LocalName is not ("TextObject" or "ImageObject" or "PathObject") ||
                 !Unique(n.Attribute("ID")?.Value) || !IsSupportedAnnotationPrimitive(n, ns))) return null;
         foreach (var primitive in appearance.Elements())
         {
             token.ThrowIfCancellationRequested();
-            if (!OfdBoxParser.TryParse(primitive.Attribute("Boundary")?.Value, out var primitiveBox) ||
+            if (!TryParseBox(primitive.Attribute("Boundary")?.Value, material, token, out var primitiveBox) ||
                 !OfdBoxParser.IsWritablePositiveSide(primitiveBox.w) || !OfdBoxParser.IsWritablePositiveSide(primitiveBox.h)) return null;
-            var primitiveMatrix = ParseMatrix(primitive.Attribute("CTM")?.Value);
+            var primitiveMatrix = ParseMatrix(primitive.Attribute("CTM")?.Value, material, token);
             if (primitive.Attribute("CTM") is not null && (primitiveMatrix is null || primitiveMatrix.Any(v => double.IsNaN(v) || double.IsInfinity(v)))) return null;
             if (primitive.Name.LocalName == "TextObject" && (!double.TryParse(primitive.Attribute("Size")?.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var size) || !(size > 0) || double.IsInfinity(size))) return null;
         }
-        var matrix = ParseMatrix(appearance.Attribute("CTM")?.Value);
+        var matrix = ParseMatrix(appearance.Attribute("CTM")?.Value, material, token);
         if (appearance.Attribute("CTM") is not null && (matrix is null || matrix.Any(v => double.IsNaN(v) || double.IsInfinity(v)))) return null;
-        var box = ParseBox(appearance.Attribute("Boundary")?.Value);
+        var box = ParseBox(appearance.Attribute("Boundary")?.Value, material, token);
         if (box.w <= 0 || box.h <= 0) return null;
         var remark = annotation.Element(ns + "Remark");
         if (remark is not null && (remark.HasElements || remark.Nodes().Any(n => n is not XText and not XComment))) return null;
+        material.ReserveReadModel(2048, token);
         var result = new OfdAnnotation
         {
             Id = annotation.Attribute("ID")!.Value, Type = type, Creator = annotation.Attribute("Creator")!.Value,
             LastModifiedDate = DateTime.SpecifyKind(date, DateTimeKind.Unspecified), Subtype = annotation.Attribute("Subtype")?.Value,
             Visible = flags["Visible"], Print = flags["Print"], NoZoom = flags["NoZoom"], NoRotate = flags["NoRotate"], ReadOnly = flags["ReadOnly"],
-            Remark = remark?.Value, SourceXml = OfdXmlEnvelope.Capture(annotation, material, token),
+            Remark = ReadValue(remark, material, token), SourceXml = OfdXmlEnvelope.Capture(annotation, material, token),
             Appearance = new OfdAnnotationAppearance { XMillimeters = box.x, YMillimeters = box.y, WidthMillimeters = box.w,
                 HeightMillimeters = box.h, Transform = matrix, SourceXml = OfdXmlEnvelope.Capture(appearance, material, token) }
         };
         // Capture inherits namespace bindings before attaching nodes to the parser's narrow synthetic container.
-        var nodes = appearance.Elements().Select(n => OfdXmlEnvelope.Parse(OfdXmlEnvelope.Capture(n, material, token))).ToArray();
+        var primitiveCount = appearance.Elements().Count();
+        material.ReserveReadModel(512L + primitiveCount * 32L, token);
+        var nodes = new List<XElement>(primitiveCount);
+        foreach (var primitive in appearance.Elements())
+        {
+            var source = OfdXmlEnvelope.Capture(primitive, material, token);
+            material.PrepareReadXmlParser(checked(2L * source.Length), token);
+            material.ReserveReadModel(32768L + 128L * source.Length, token);
+            nodes.Add(OfdXmlEnvelope.Parse(source));
+        }
+        material.ReserveReadModel(2048, token);
         var xml = new XDocument(new XElement(ns + "Page", new XElement(ns + "Content", new XElement(ns + "Layer", nodes))));
         foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, path, material, token))
         {
@@ -738,8 +811,9 @@ public sealed class OfdReader : IOfdReader
         bool Unique(string? value) => OfdSourceIdentity.ParseId(value) is var id && id != 0 && idCounts.TryGetValue(id, out var count) && count == 1;
     }
 
-    private static List<XElement>? FlattenAnnotationNodes(IEnumerable<XElement> nodes, XNamespace ns, AnnotationReadBudget budget, CancellationToken token)
+    private static List<XElement>? FlattenAnnotationNodes(IEnumerable<XElement> nodes, XNamespace ns, AnnotationReadBudget budget, OfdModelMaterialization material, CancellationToken token)
     {
+        material.ReserveReadModel(128, token);
         var result = new List<XElement>();
         bool Append(IEnumerable<XElement> children, int depth)
         {
@@ -756,6 +830,7 @@ public sealed class OfdReader : IOfdReader
                 else if (node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject")
                 {
                     if (!IsSupportedAnnotationPrimitive(node, ns)) return false;
+                    material.ReserveReadModel(64, token);
                     result.Add(node);
                 }
                 else return false;
@@ -785,7 +860,8 @@ public sealed class OfdReader : IOfdReader
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name)) continue;
             fontMap[id!] = name!;
             if (package.Fonts.Any(existing => existing.Id == id)) continue;
-            var file = font.Elements().FirstOrDefault(node => node.Name.LocalName == "FontFile")?.Value;
+            var file = ReadValue(font.Elements().FirstOrDefault(node => node.Name.LocalName == "FontFile"), material, cancellationToken);
+            material.ReserveReadModel(512, cancellationToken);
             var resource = new OfdFontResource
             {
                 Id = id!, FontName = name!, FamilyName = font.Attribute("FamilyName")?.Value,
@@ -795,6 +871,7 @@ public sealed class OfdReader : IOfdReader
             };
             if (!string.IsNullOrWhiteSpace(file))
             {
+                material.ReserveReadModel(256L + 16L * ((baseLocation?.Length ?? 0) + file!.Length), cancellationToken);
                 var reference = string.IsNullOrWhiteSpace(baseLocation) || file!.StartsWith("/", StringComparison.Ordinal)
                     ? file! : baseLocation!.TrimEnd('/') + "/" + file;
                 if (archive.TryGetBytes(material.ResolvePath(resourcePath, reference, cancellationToken), out var bytes)) resource.Data = bytes;
@@ -822,12 +899,13 @@ public sealed class OfdReader : IOfdReader
         foreach (var media in resXml.Descendants(resNs + "MultiMedia"))
         {
             var id = media.Attribute("ID")?.Value;
-            var file = media.Attribute("MediaFile")?.Value ?? media.Element(resNs + "MediaFile")?.Value;
+            var file = media.Attribute("MediaFile")?.Value ?? ReadValue(media.Element(resNs + "MediaFile"), material, cancellationToken);
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(file))
             {
                 continue;
             }
 
+            material.ReserveReadModel(512L + 16L * ((baseLoc?.Length ?? 0) + file!.Length + (media.Attribute("Format")?.Value.Length ?? 0)), cancellationToken);
             var mediaLoc = string.IsNullOrWhiteSpace(baseLoc) || file!.StartsWith("/", StringComparison.Ordinal)
                 ? file!
                 : $"{baseLoc!.TrimEnd('/')}/{file.TrimStart('/')}";
@@ -845,6 +923,7 @@ public sealed class OfdReader : IOfdReader
         IReadOnlyDictionary<string, string> mediaTypeMap,
         string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
+        material.ReserveReadModel(256L + (pageXml.Root?.Descendants().Count() ?? 0) * 32L, cancellationToken);
         var layers = pageXml.Root?
             .Elements()
             .FirstOrDefault(x => x.Name.LocalName == "Content")?
@@ -858,11 +937,14 @@ public sealed class OfdReader : IOfdReader
             var layerType = layer.Attribute("Type")?.Value ?? "Body";
             foreach (var node in layer.Elements())
             {
+                material.ReserveReadModel(512, cancellationToken);
                 var localName = node.Name.LocalName;
                 if (string.Equals(localName, "TextObject", StringComparison.OrdinalIgnoreCase))
                 {
-                    var boundary = ParseBox(node.Attribute("Boundary")?.Value);
+                    var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
+                    material.ReserveReadModel(256L + node.Elements().Count() * 160L, cancellationToken);
                     var textCodes = node.Elements(node.Name.Namespace + "TextCode").ToList();
+                    var textParts = textCodes.Select(code => ReadDirectText(code, material, cancellationToken)).ToArray();
                     var text = new OfdTextElement
                     {
                         ObjectId = node.Attribute("ID")?.Value,
@@ -872,23 +954,24 @@ public sealed class OfdReader : IOfdReader
                         YMillimeters = boundary.y,
                         WidthMillimeters = boundary.w,
                         HeightMillimeters = boundary.h,
-                        Text = string.Concat(textCodes.Select(ReadDirectText)),
+                        Text = ReadJoinText(textParts, material, cancellationToken),
                         FontResourceId = node.Attribute("Font")?.Value,
                         FontName = ResolveFontName(node.Attribute("Font")?.Value, fontMap),
                         FontSizeMillimeters = ParseDouble(node.Attribute("Size")?.Value, 4d),
                         Weight = (int)ParseDouble(node.Attribute("Weight")?.Value, OfdTextElement.DefaultWeight),
                         Italic = ParseBoolean(node.Attribute("Italic")?.Value, false),
-                        Transform = ParseMatrix(node.Attribute("CTM")?.Value),
+                        Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
                         FillColor = ParseColor(node.Elements()
-                            .FirstOrDefault(x => x.Name.LocalName == "FillColor")) ?? OfdColor.Black,
+                            .FirstOrDefault(x => x.Name.LocalName == "FillColor"), material, cancellationToken) ?? OfdColor.Black,
                         SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken),
-                        ClippingXml = node.Element(node.Name.Namespace + "Clips")?.ToString(SaveOptions.DisableFormatting)
+                        ClippingXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken)
                     };
                     foreach (var textCode in textCodes)
                     {
+                        material.ReserveReadModel(256, cancellationToken);
                         text.Runs.Add(new OfdTextRun
                         {
-                            Text = ReadDirectText(textCode),
+                            Text = ReadDirectText(textCode, material, cancellationToken),
                             XMillimeters = ParseDouble(textCode.Attribute("X")?.Value, 0d),
                             YMillimeters = ParseDouble(textCode.Attribute("Y")?.Value, text.FontSizeMillimeters),
                             DeltaX = textCode.Attribute("DeltaX")?.Value,
@@ -902,7 +985,7 @@ public sealed class OfdReader : IOfdReader
 
                 if (string.Equals(localName, "ImageObject", StringComparison.OrdinalIgnoreCase))
                 {
-                    var boundary = ParseBox(node.Attribute("Boundary")?.Value);
+                    var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                     var resourceId = node.Attribute("ResourceID")?.Value ?? string.Empty;
                     var image = new OfdImageElement
                     {
@@ -914,9 +997,9 @@ public sealed class OfdReader : IOfdReader
                         WidthMillimeters = boundary.w,
                         HeightMillimeters = boundary.h,
                         ResourceId = resourceId,
-                        Transform = ParseMatrix(node.Attribute("CTM")?.Value),
+                        Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
                         Alpha = (int)Math.Max(0, Math.Min(255, ParseDouble(node.Attribute("Alpha")?.Value, 255))),
-                        ClipsXml = node.Element(node.Name.Namespace + "Clips")?.ToString(SaveOptions.DisableFormatting),
+                        ClipsXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken),
                         MediaType = mediaTypeMap.TryGetValue(resourceId, out var mediaType) ? mediaType : "image/png",
                         SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken)
                     };
@@ -937,11 +1020,11 @@ public sealed class OfdReader : IOfdReader
 
                 if (string.Equals(localName, "PathObject", StringComparison.OrdinalIgnoreCase))
                 {
-                    var boundary = ParseBox(node.Attribute("Boundary")?.Value);
+                    var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                     var strokeColor = ParseColor(node.Elements()
-                        .FirstOrDefault(x => x.Name.LocalName == "StrokeColor"));
+                        .FirstOrDefault(x => x.Name.LocalName == "StrokeColor"), material, cancellationToken);
                     var fillColor = ParseColor(node.Elements()
-                        .FirstOrDefault(x => x.Name.LocalName == "FillColor"));
+                        .FirstOrDefault(x => x.Name.LocalName == "FillColor"), material, cancellationToken);
                     yield return new OfdPathElement
                     {
                         ObjectId = node.Attribute("ID")?.Value,
@@ -951,20 +1034,20 @@ public sealed class OfdReader : IOfdReader
                         YMillimeters = boundary.y,
                         WidthMillimeters = boundary.w,
                         HeightMillimeters = boundary.h,
-                        AbbreviatedData = ReadDirectText(node.Element(node.Name.Namespace + "AbbreviatedData")),
-                        Transform = ParseMatrix(node.Attribute("CTM")?.Value),
+                        AbbreviatedData = ReadDirectText(node.Element(node.Name.Namespace + "AbbreviatedData"), material, cancellationToken),
+                        Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
                         LineWidthMillimeters = ParseDouble(node.Attribute("LineWidth")?.Value, 0.353d),
                         Stroke = ParseBoolean(node.Attribute("Stroke")?.Value, true),
                         Fill = ParseBoolean(node.Attribute("Fill")?.Value, false),
                         StrokeColor = strokeColor ?? OfdColor.Black,
                         FillColor = fillColor,
                         SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken),
-                        ClippingXml = node.Element(node.Name.Namespace + "Clips")?.ToString(SaveOptions.DisableFormatting)
+                        ClippingXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken)
                     };
                     continue;
                 }
 
-                var rawBoundary = ParseBox(node.Attribute("Boundary")?.Value);
+                var rawBoundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                 yield return new OfdRawElement
                 {
                     ObjectId = node.Attribute("ID")?.Value,
@@ -981,7 +1064,28 @@ public sealed class OfdReader : IOfdReader
         }
     }
 
-    private static string ReadDirectText(XElement? node) => node is null ? string.Empty : string.Concat(node.Nodes().OfType<XText>().Where(text => text is XCData || !string.IsNullOrWhiteSpace(text.Value) || node.AncestorsAndSelf().Select(element => element.Attribute(XNamespace.Xml + "space")?.Value).FirstOrDefault(value => value is not null) == "preserve").Select(text => text.Value));
+    private static string ReadDirectText(XElement? node, OfdModelMaterialization material, CancellationToken token)
+    {
+        if (node is null) return string.Empty;
+        material.ReserveReadModel(512, token);
+        var values = node.Nodes().OfType<XText>().Where(text => text is XCData || !string.IsNullOrWhiteSpace(text.Value) ||
+            node.AncestorsAndSelf().Select(element => element.Attribute(XNamespace.Xml + "space")?.Value).FirstOrDefault(value => value is not null) == "preserve").Select(text => text.Value);
+        return ReadJoinText(values, material, token);
+    }
+    private static string ReadJoinText(IEnumerable<string> values, OfdModelMaterialization material, CancellationToken token)
+    {
+        if (!material.IsControlledRead) return string.Concat(values);
+        long length = 0;
+        foreach (var value in values) { token.ThrowIfCancellationRequested(); length = checked(length + value.Length); }
+        material.ChargeCopy(checked(256L + 6L * length), token); material.ChargeWork(checked(4L * length), token);
+        var storage = material.ReserveReadStorage(checked(2L * length), token);
+        var result = string.Concat(values); material.AdoptReadString(result, storage, token); return result;
+    }
+    private static string? ReadValue(XElement? node, OfdModelMaterialization material, CancellationToken token)
+        => node is null ? null : material.ReadXmlValue(node, token);
+    private static string? ReadXmlString(XNode? node, OfdModelMaterialization material, CancellationToken token)
+        => node is null ? null : OfdXmlEnvelope.SerializeForRead(node, material, token);
+
 
     private static void ReadKeyValueCustomTags(
         OfdPackageArchive archive,
@@ -1001,6 +1105,7 @@ public sealed class OfdReader : IOfdReader
             var value = tag.Attribute("Value")?.Value;
             if (!string.IsNullOrWhiteSpace(key) && value is not null)
             {
+                material.ReserveReadModel(160, cancellationToken);
                 destination[key!] = value;
             }
         }
@@ -1036,9 +1141,17 @@ public sealed class OfdReader : IOfdReader
         return index < 0 ? string.Empty : normalized.Substring(0, index);
     }
 
-    private static (double x, double y, double w, double h) ParseBox(string? value)
+    private static bool TryParseBox(string? value, OfdModelMaterialization material, CancellationToken token,
+        out (double x, double y, double w, double h) box)
+    {
+        material.PrepareReadNumericParse(value, token);
+        return OfdBoxParser.TryParse(value, out box);
+    }
+
+    private static (double x, double y, double w, double h) ParseBox(string? value, OfdModelMaterialization material, CancellationToken token)
     {
         if (value is null) return default;
+        material.PrepareReadNumericParse(value, token);
         // Ordinary display keeps the legacy first four finite values, while
         // rewrite preflight requires exactly four and preserves the raw XML.
         if (OfdBoxParser.TryParse(value, out var box, allowTrailingTokens: true)) return box;
@@ -1075,19 +1188,21 @@ public sealed class OfdReader : IOfdReader
             (value != "0" && bool.TryParse(value, out var parsed) ? parsed : fallback);
     }
 
-    private static double[]? ParseMatrix(string? value)
+    private static double[]? ParseMatrix(string? value, OfdModelMaterialization material, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
+        material.ReserveReadModel(512L + value!.Length * 32L, token);
         var parts = value!.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 6)
         {
             return null;
         }
 
+        var matrixStorage = material.IsControlledRead ? material.ReserveReadStorage(48, token) : null;
         var matrix = new double[6];
         for (var i = 0; i < matrix.Length; i++)
         {
@@ -1097,10 +1212,11 @@ public sealed class OfdReader : IOfdReader
             }
         }
 
+        if (matrixStorage is not null) material.AdoptReadStorage(matrix, 48, matrixStorage, token);
         return matrix;
     }
 
-    private static OfdColor? ParseColor(XElement? colorElement)
+    private static OfdColor? ParseColor(XElement? colorElement, OfdModelMaterialization material, CancellationToken token)
     {
         var value = colorElement?.Attribute("Value")?.Value;
         if (string.IsNullOrWhiteSpace(value))
@@ -1108,6 +1224,7 @@ public sealed class OfdReader : IOfdReader
             return null;
         }
 
+        material.ReserveReadModel(512L + value!.Length * 32L, token);
         var parts = value!.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         var values = parts
             .Select(x => int.TryParse(x, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)

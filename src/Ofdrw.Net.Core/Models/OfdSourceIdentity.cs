@@ -107,6 +107,7 @@ internal sealed class OfdSourceIdentity
     {
         foreach (var page in package.Pages) { token.ThrowIfCancellationRequested(); budget.Structure.Reference(); }
         budget.ChargeCopy((long)package.Pages.Count * IntPtr.Size, token);
+        budget.ReserveReadModel(4096L + (package.Pages.Count + package.Fonts.Count) * 512L, token);
         var result = new OfdSourceIdentity { OriginalPages = package.Pages.ToArray() };
         var pagesByIndex = package.Pages.ToDictionary(page => page.Index);
         var fontsById = new Dictionary<long, List<OfdFontResource>>();
@@ -131,7 +132,7 @@ internal sealed class OfdSourceIdentity
         var resourcePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in new[] { "PublicRes", "DocumentRes" })
             foreach (var declaration in document.Root.Element(ns + "CommonData")?.Elements(ns + name) ?? Enumerable.Empty<XElement>())
-                resourcePaths.Add(budget.ResolvePath(documentPath, declaration.Value, token));
+                resourcePaths.Add(budget.ResolvePath(documentPath, budget.ReadXmlValue(declaration, token), token));
         var contentPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var page in package.Pages)
         {
@@ -146,7 +147,7 @@ internal sealed class OfdSourceIdentity
                 contentPaths.Add(path); var id = ParseId(declaration.Attribute("ID")?.Value);
                 if (id != 0) result.templatePaths.Add(id, path);
             }
-        foreach (var path in contentPaths) resourcePaths.Add(OfdPackagePath.GetDirectory(path) + "/PageRes.xml");
+        foreach (var path in contentPaths) resourcePaths.Add(budget.ReadDirectorySuffix(path, "/PageRes.xml", token));
         foreach (var path in resourcePaths)
         {
             token.ThrowIfCancellationRequested(); if (!package.PreservedEntries.ContainsKey(path)) continue;
@@ -155,7 +156,13 @@ internal sealed class OfdSourceIdentity
             {
                 if (node.Name.Namespace != resourceNs || !owners.TryGetValue(node, out var owner)) continue;
                 if (node.Name.LocalName is "Font" or "MultiMedia")
-                    result.resources.Add(node.Name.LocalName + ":" + owner.Number.ToString(CultureInfo.InvariantCulture), owner);
+                {
+                    budget.ReserveReadModel(512, token);
+                    var storage = budget.IsControlledRead ? budget.ReserveReadStorage(64, token) : null;
+                    var key = node.Name.LocalName + ":" + owner.Number.ToString(CultureInfo.InvariantCulture);
+                    if (storage is not null) budget.AdoptReadString(key, storage, token);
+                    result.resources.Add(key, owner);
+                }
                 if (node.Name.LocalName == "Font" && fontsById.TryGetValue(owner.Number, out var matchedFonts))
                     foreach (var font in matchedFonts) result.models.Add(font, owner);
             }
@@ -174,7 +181,7 @@ internal sealed class OfdSourceIdentity
         {
             var collection = page.Annotations;
             if (collection is null) continue;
-            var admitted = new OfdAnnotationCollection(); budget.ChargeCopy(128L + collection.Items.Count * 16L, token);
+            budget.ChargeCopy(256L + collection.Items.Count * 16L, token); var admitted = new OfdAnnotationCollection();
             foreach (var annotation in collection.Items)
             {
                 token.ThrowIfCancellationRequested();
@@ -191,6 +198,7 @@ internal sealed class OfdSourceIdentity
             if (admitted.Items.Count != collection.Items.Count)
                 page.AnnotationOwnership.Bind(page, admitted.Items.Count == 0 ? null : admitted, budget, token);
         }
+        budget.ReserveReadModel(512, token);
         var annotationEntries = new Dictionary<string, (XDocument Xml, Dictionary<XElement, int> Ordinals, XElement[] Slots)>(StringComparer.OrdinalIgnoreCase);
         foreach (var page in package.Pages)
         foreach (var annotation in page.AnnotationOwnership.Original?.Items ?? Enumerable.Empty<OfdAnnotation>())
@@ -198,7 +206,8 @@ internal sealed class OfdSourceIdentity
             var source = annotation.Source!;
             if (!annotationEntries.TryGetValue(source.Entry, out var entry))
             {
-                var annotationDocument = Read(source.Entry); var ordinals = new Dictionary<XElement, int>(); var ordinal = 0;
+                var annotationDocument = Read(source.Entry); budget.ReserveReadModel(512, token);
+                var ordinals = new Dictionary<XElement, int>(); var ordinal = 0;
                 foreach (var descendant in annotationDocument.Root!.DescendantsAndSelf())
                 { token.ThrowIfCancellationRequested(); budget.ChargeCopy(128, token); ordinals.Add(descendant, ordinal++); }
                 budget.ChargeCopy(16L * annotationDocument.Root.Elements().Count(), token);
@@ -207,12 +216,15 @@ internal sealed class OfdSourceIdentity
             var root = entry.Xml.Root!;
             if (!result.entries.TryGetValue(source.Entry, out var entrySlots))
             {
+                budget.ReserveReadModel(512, token);
                 entrySlots = new Dictionary<int, Owner>(); result.entries.Add(source.Entry, entrySlots);
                 result.rootNames.Add(source.Entry, root.Name); result.trustedEntries.Add(source.Entry);
             }
             var node = entry.Slots[source.Slot];
             AnnotationBind(annotation, node);
-            var children = node.Element(node.Name.Namespace + "Appearance")!.Elements().ToArray();
+            var appearance = node.Element(node.Name.Namespace + "Appearance")!;
+            budget.ReserveReadModel(256L + 32L * appearance.Elements().Count(), token);
+            var children = appearance.Elements().ToArray();
             for (var index = 0; index < children.Length; index++)
             {
                 var graphic = annotation.Appearance.Elements[index]; var child = children[index];
@@ -233,6 +245,7 @@ internal sealed class OfdSourceIdentity
         XDocument Read(string path) => budget.ReadXml(path, package.PreservedEntries[path], token);
         Dictionary<XElement, Owner> Register(string path, XDocument xml, string expectedRoot)
         {
+            budget.ReserveReadModel(1024, token);
             var nodes = new Dictionary<XElement, Owner>(); var ordinal = 0;
             var sourceNs = xml.Root!.Name.Namespace;
             var known = result.entries.TryGetValue(path, out var slots);
@@ -252,6 +265,7 @@ internal sealed class OfdSourceIdentity
                 var opaqueRoot = node.Parent?.Name.LocalName == "Layer" && node.Parent.Parent?.Name.LocalName == "Content" && node.Parent.Parent.Parent == xml.Root;
                 if (!activeDefinition && !opaqueRoot) continue;
                 id ??= string.Empty;
+                budget.ReserveReadModel(2048, token);
                 Owner owner;
                 if (known)
                 {
@@ -281,11 +295,12 @@ internal sealed class OfdSourceIdentity
         void BindGraphics<T>(string path, List<T> elements) where T : OfdElement
         {
             var xml = Read(path); var nodes = Register(path, xml, "Page"); var sourceNs = xml.Root!.Name.Namespace;
+            budget.ReserveReadModel(512L + elements.Count * 128L, token);
             var originals = xml.Root.Elements().FirstOrDefault(node => node.Name.LocalName == "Content")?.Elements().Where(node => node.Name.LocalName == "Layer").SelectMany(layer => layer.Elements()).ToList() ?? [];
             if (originals.Count != elements.Count) throw new InvalidDataException("Source graphic slots cannot be authenticated.");
             for (var i = 0; i < originals.Count; i++)
             {
-                token.ThrowIfCancellationRequested(); var element = elements[i]; var node = originals[i];
+                token.ThrowIfCancellationRequested(); budget.ReserveReadModel(2048, token); var element = elements[i]; var node = originals[i];
                 Bind(element, node, nodes);
                 result.graphicIds.Add(element, new GraphicIds(CaptureIds(node, budget, token),
                     CaptureIds(node.Element(node.Name.Namespace + "Clips"), budget, token)));
@@ -367,6 +382,7 @@ internal sealed class OfdSourceIdentity
 
     private static List<IdSlot> CaptureIds(XElement? root, OfdModelMaterialization budget, CancellationToken token)
     {
+        budget.ReserveReadModel(128, token);
         var result = new List<IdSlot>(); if (root is null) return result; var ordinal = 0;
         foreach (var node in root.DescendantsAndSelf())
         {
@@ -374,6 +390,7 @@ internal sealed class OfdSourceIdentity
             foreach (var attribute in node.Attributes().Where(attribute => attribute.Name.LocalName == "ID"))
             {
                 budget.Structure.Reference(); budget.StoreString(attribute.Value);
+                budget.ReserveReadModel(256, token);
                 result.Add(new IdSlot(ordinal, node.Name, attribute.Name, attribute.Value, FragmentDefinition(node, root)));
             }
             ordinal++;
