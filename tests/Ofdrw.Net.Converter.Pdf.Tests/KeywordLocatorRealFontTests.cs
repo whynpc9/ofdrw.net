@@ -140,8 +140,7 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
 
     private static byte[] Font(string face)
     {
-        var path = Environment.GetEnvironmentVariable(face == "cjk" ? "OFDRW_TEST_TRUSTED_CJK_FONT" : "OFDRW_TEST_TRUSTED_LATIN_FONT")!;
-        var bytes = File.ReadAllBytes(path);
+        var bytes = TrustedFontFixtures.Read(face);
         Assert.Equal(face == "cjk" ? "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa" :
             "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5", Digest(bytes));
         return bytes;
