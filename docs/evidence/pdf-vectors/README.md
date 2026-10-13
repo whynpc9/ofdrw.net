@@ -1,6 +1,8 @@
 # 21 可选 PDF 矢量转换验收证据
 
-当前运行时为 **`28fc29d`**，交付冻结源码为 **`6fa0a30`**（其差异仅为文档）。可选 Vector producer 的每个 VectorFont/page 私有复制原字体 bytes 并创建私有 face；首次有效文本逐块比对实际流与快照并 SHA，后续文本复用私有身份。公共 Text 仍每次完整验证，内部/公共路径共用每 run 校验，Append 资源认证保持；取消/事件门前置，不新增默认 quota，不改变 fallback/font 输出预算。
+R11 writer-precision 修复候选正在验证：R10 exact-head Codex 新增两个 P2，极小正 width/font size 在三位写出精度归零时绕过整页 fallback。已将 04 原样 WriterValue 抽取到 Core 并保留 04 Positive 语义；21 对实际 float scalar 在原精度及硬预算/取消门之后、事件前分类为 STROKE_WRITER_PRECISION/TEXT_WRITER_PRECISION。R10 已完成的 28 页 Preview 和下列证据保持历史身份，不代表 R11 验收；新候选全套/真实包/独立验证/新增页面 Preview/最终 head 复审尚待闭合。
+
+R10 运行时为 **`28fc29d`**，交付冻结源码为 **`6fa0a30`**（其差异仅为文档）。可选 Vector producer 的每个 VectorFont/page 私有复制原字体 bytes 并创建私有 face；首次有效文本逐块比对实际流与快照并 SHA，后续文本复用私有身份。公共 Text 仍每次完整验证，内部/公共路径共用每 run 校验，Append 资源认证保持；取消/事件门前置，不新增默认 quota，不改变 fallback/font 输出预算。
 
 R10 主验证与独立 Low12 均完成 **641/641**（各九份 TRX）、Python **5/5**、默认 **11** 包及可选 **13** 包消费。独立结果包括原始/高 Index 图像、冻结九页文字观察器、八个 Tj/TJ 1/10/50/100-run 样例、真实主 R10 包测量，以及 21 个旧 OFD payload 和八个新压力 OFD 对照。主协调在 Low12 结束后复核了 70 项产物、365 个冻结源码文件和 13 个主 nupkg 的哈希。
 
