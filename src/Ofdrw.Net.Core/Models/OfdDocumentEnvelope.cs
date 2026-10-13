@@ -34,6 +34,7 @@ internal sealed class OfdDocumentEnvelope
     internal static OfdDocumentEnvelope Capture(OfdDocumentPackage package, XElement? body, XElement document,
         OfdModelMaterialization material, CancellationToken token)
     {
+        material.ReserveReadModel(4096L + package.Pages.Count * 256L, token);
         var result = new OfdDocumentEnvelope { DocumentPath = package.DocumentEntryPath! };
         var ns = document.Name.Namespace;
         CaptureSlots(body, result.Body, package.PreservedDocBodyElements, new[] { "DocInfo", "DocRoot" });
@@ -69,6 +70,7 @@ internal sealed class OfdDocumentEnvelope
                 token.ThrowIfCancellationRequested(); material.Structure.Reference();
                 if (child.Name.Namespace != root.Name.Namespace || !owned.Contains(child.Name.LocalName))
                 {
+                    material.ReserveReadModel(160, token);
                     if (next >= values.Count) throw new InvalidOperationException("Preserved envelope slots do not match reader projections.");
                     slots.Slots.Add(position, values[next++]);
                 }
