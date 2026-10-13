@@ -57,7 +57,10 @@ public sealed partial class SkiaDrawEvent
             token.ThrowIfCancellationRequested();
             var read = stream.Read(buffer, Math.Min(remaining, buffer.Length));
             if (read <= 0) throw new InvalidDataException("Incomplete typeface stream.");
-            for (var i = 0; i < read; i++)
+            // Public Text has no original snapshot to compare: inspect only
+            // the four-byte collection signature, retaining its streaming SHA.
+            var inspect = original is null ? Math.Min(read, Math.Max(0, 4 - offset)) : read;
+            for (var i = 0; i < inspect; i++)
             {
                 if (offset + i < 4) signature[offset + i] = buffer[i];
                 if (original is not null && buffer[i] != original[offset + i])
