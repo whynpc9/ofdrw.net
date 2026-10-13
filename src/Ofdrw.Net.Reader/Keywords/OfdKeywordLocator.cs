@@ -12,6 +12,7 @@ namespace Ofdrw.Net.Reader.Keywords;
 /// <summary>Finds ordinal keywords in supported selected-document body text using exact original-font geometry.</summary>
 /// <remarks>Templates/annotations are excluded named scopes. Matching never infers reading order or whitespace.
 /// Source-XML deltas follow GB/T33190-2016 table46: absent axes do not move; later X/Y inherit prior TextCode starts.
+/// A source-backed canonical empty TextCode retains its owner as a zero-ink continuity barrier; font bytes are verified without glyph parsing.
 /// All inputs must remain stable. Observable callback changes to captured source/geometry/ownership inputs are rejected; concurrent transient changes
 /// restored before observation are not detectable. This service does not implement replacement or write pages.</remarks>
 public sealed class OfdKeywordLocator
@@ -95,6 +96,7 @@ public sealed class OfdKeywordLocator
             catch (NotSupportedException exception) { Notice(exception.Message, index, page.SourceEntryPath, true); }
         }
         var candidates = new Dictionary<OfdGraphicOccurrence, OfdKeywordTextSource>();
+        var needsProvider = false;
         foreach (var occurrence in traversal.Occurrences)
         {
             budget.Check();
@@ -103,7 +105,7 @@ public sealed class OfdKeywordLocator
             try
             {
                 if (!certificate.TryGetValue(occurrence.OccurrencePath[3], out var locator)) throw new NotSupportedException("UnprovedSourceLocator");
-                var captured = OfdStrictTextGeometry.Capture(occurrence, locator.Layer, locator.Path, budget, reserved[occurrence]);
+                var captured = OfdStrictTextGeometry.Capture(occurrence, locator.Layer, locator.Path, budget, reserved[occurrence], admission.HasOriginalEnvelope);
                 captured.Editable &= !snapshot.HasSharedRun((OfdTextElement)occurrence.Element, budget);
                 if (!captured.Visible) continue; // Visibility exclusion is also a continuity barrier.
                 foreach (var run in captured.Runs)
@@ -116,6 +118,7 @@ public sealed class OfdKeywordLocator
                 captured.Font = operation.CaptureFont(binding.Resource, captured.FontId);
                 snapshot.Bind(binding.Resource, captured.Font, binding.Entry, budget);
                 candidates.Add(occurrence, captured);
+                needsProvider |= !captured.CanonicalEmpty;
             }
             catch (NotSupportedException exception) { Notice(exception.Message, occurrence.OccurrencePath[0], Key(occurrence.OccurrencePath), true); }
         }
@@ -123,7 +126,7 @@ public sealed class OfdKeywordLocator
         snapshot.ValidateUnchanged(source, budget); snapshot.ValidateFontEntries(budget);
         var providerStatistics = new OfdGlyphGeometryStatistics();
         OwnedProvider? owned = null; IOfdGlyphGeometrySession? session = null;
-        if (candidates.Count > 0)
+        if (needsProvider)
         {
             owned = new OwnedProvider(provider);
             session = operation.OpenSession(owned);
@@ -135,6 +138,7 @@ public sealed class OfdKeywordLocator
         {
             budget.Check();
             if (!candidates.TryGetValue(occurrence, out var captured)) { Flush(); continue; }
+            if (captured.CanonicalEmpty) { Flush(); continue; } // Retained empty owner is a continuity barrier.
             foreach (var run in captured.Runs)
             {
                 budget.Check();
