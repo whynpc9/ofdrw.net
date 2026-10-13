@@ -171,7 +171,7 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
                     OfdImageElement image => image.SourceXml, OfdRawElement raw => raw.Xml, _ => null };
                 // Standalone serialization is exactly what Reader retained. We do
                 // not enumerate this object's descendants or create another model.
-                if (expected is null || !string.Equals(child.ToString(SaveOptions.DisableFormatting), expected, StringComparison.Ordinal) ||
+                if (expected is null || !MatchesOriginalElement(child, expected) ||
                     model.LayerId != layer.Attribute("ID")?.Value || model.LayerType != layerType || child.Name.Namespace != ns)
                     throw new NotSupportedException("SourceElementOrderMismatch");
                 var path = "/" + root.Name + "[0]/" + content.Name + "[0]/" + layer.Name + "[" + layerOrdinal + "]/" + child.Name + "[" + objectOrdinal + "]";
@@ -193,6 +193,110 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
             throw new NotSupportedException("SourceFontBindingConflict");
         return (source, definition.File);
     }
+    // Reader drops element-only indentation; Writer emits it by default. Only
+    // the admitted TextObject container can ignore ordinary XML
+    // whitespace. TextCode values, CDATA, comments and child order stay exact.
+    private bool MatchesOriginalElement(XElement original, string expected)
+    {
+        if (original.Name != ns + "TextObject")
+            return string.Equals(original.ToString(SaveOptions.DisableFormatting), expected, StringComparison.Ordinal);
+        var projected = budget.Parse(expected);
+        CheckTextShape(original); CheckTextShape(projected);
+        return SameElement(original, projected);
+    }
+
+    private void CheckTextShape(XElement root)
+    {
+        budget.Field();
+        if (root.Name != ns + "TextObject") throw new NotSupportedException("UnsupportedTextNamespace");
+        OfdStrictTextGeometry.Attributes(root, "ID", "Name", "Visible", "Boundary", "CTM", "Font", "Size", "Weight", "Italic",
+            "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "Alpha");
+        OfdStrictTextGeometry.PlainTextNodes(root, false);
+        foreach (var child in root.Elements())
+        {
+            budget.Field();
+            if (child.Name == ns + "TextCode")
+            {
+                OfdStrictTextGeometry.Attributes(child, "X", "Y", "DeltaX", "DeltaY");
+                OfdStrictTextGeometry.PlainTextNodes(child, true);
+            }
+            else if (child.Name == ns + "FillColor")
+                OfdStrictTextGeometry.Attributes(child, "Value", "Alpha");
+            else throw new NotSupportedException("UnsupportedTextChild");
+            if (child.HasElements) throw new NotSupportedException("UnsupportedTextChild");
+        }
+    }
+
+    private bool SameElement(XElement left, XElement right)
+    {
+        budget.Field();
+        if (left.Name != right.Name) return false;
+        // This admitted profile has expanded element names and unqualified
+        // attributes only, with no QName-valued fields. Redundant declarations
+        // inserted by standalone serialization carry no additional semantics.
+        using var la = ComparableAttributes(left).GetEnumerator();
+        using var ra = ComparableAttributes(right).GetEnumerator();
+        while (true)
+        {
+            budget.Field(); var l = la.MoveNext(); var r = ra.MoveNext();
+            if (l != r) return false;
+            if (!l) break;
+            if (la.Current.Name != ra.Current.Name || !SameValue(la.Current.Value, ra.Current.Value)) return false;
+        }
+        using var ln = ComparableNodes(left).GetEnumerator();
+        using var rn = ComparableNodes(right).GetEnumerator();
+        while (true)
+        {
+            budget.Field(); var l = ln.MoveNext(); var r = rn.MoveNext();
+            if (l != r) return false;
+            if (!l) return true;
+            var a = ln.Current; var b = rn.Current;
+            if (a.NodeType != b.NodeType) return false;
+            if (a is XElement ae && b is XElement be) { if (!SameElement(ae, be)) return false; }
+            else if (a is XText at && b is XText bt) { if (!SameValue(at.Value, bt.Value)) return false; }
+            else if (a is XComment ac && b is XComment bc) { if (!SameValue(ac.Value, bc.Value)) return false; }
+            else return false;
+        }
+    }
+
+    private IEnumerable<XAttribute> ComparableAttributes(XElement element)
+    {
+        foreach (var attribute in element.Attributes())
+        {
+            budget.Field();
+            if (!attribute.IsNamespaceDeclaration) yield return attribute;
+        }
+    }
+
+    private IEnumerable<XNode> ComparableNodes(XElement parent)
+    {
+        var container = parent.Name == ns + "TextObject";
+        foreach (var node in parent.Nodes())
+        {
+            budget.Field();
+            // XCData derives from XText: explicitly retain it, even when blank.
+            if (container && node is XText text && node is not XCData && IsIndentation(text.Value)) continue;
+            yield return node;
+        }
+    }
+
+    private bool IsIndentation(string value)
+    {
+        budget.Characters(value.Length);
+        for (var i = 0; i < value.Length; i++)
+        {
+            if ((i & 255) == 0) budget.Check();
+            if (value[i] is not (' ' or '\t' or '\r' or '\n')) return false;
+        }
+        return true;
+    }
+
+    private bool SameValue(string left, string right)
+    {
+        budget.Characters(left.Length); budget.Characters(right.Length);
+        return string.Equals(left, right, StringComparison.Ordinal);
+    }
+
     private void ReadOptionalFixedResource(string pagePath)
     {
         var split = pagePath.LastIndexOf('/'); var path = (split < 0 ? "" : pagePath.Substring(0, split + 1)) + "PageRes.xml";

@@ -91,6 +91,30 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
         Assert.Equal("UnsupportedFontGeometry", Assert.Single(result.Diagnostics).Code);
     }
 
+    [RealTrustedFontsTheory]
+    [InlineData("latin", "identity", 1)]
+    [InlineData("latin", "rotation", 10)]
+    [InlineData("latin", "shear", 10)]
+    [InlineData("cjk", "identity", 10)]
+    [InlineData("cjk", "rotation", 1)]
+    [InlineData("cjk", "shear", 10)]
+    public async Task PublicWriterDefaultIndentedOutputReadsAndLocatesWithOriginalOflFont(string face, string matrix, int objects)
+    {
+        var bytes = Font(face); var source = await Read(bytes, face, matrix, objects);
+        var keyword = face == "cjk" ? "AiW 中文𠀋" : "AiW ";
+        var before = new OfdKeywordLocator(new ObservedProvider(bytes)).Find(source, keyword);
+        using var destination = new MemoryStream();
+        var write = await new Ofdrw.Net.Packaging.OfdPackageWriter().WriteWithResultAsync(source, destination);
+        destination.Position = 0; var roundtrip = await new OfdReader().ReadAsync(destination);
+        var after = new OfdKeywordLocator(new ObservedProvider(bytes)).Find(roundtrip, keyword);
+        Assert.True(before.IsComplete); Assert.True(after.IsComplete); Assert.Equal(objects, after.Hits.Count);
+        Assert.Equal(before.Hits.SelectMany(h => h.Fragments).Select(f => (f.BaselineMillimeters.X, f.BaselineMillimeters.Y, f.GlyphId)),
+            after.Hits.SelectMany(h => h.Fragments).Select(f => (f.BaselineMillimeters.X, f.BaselineMillimeters.Y, f.GlyphId)));
+        Assert.Equal(Digest(bytes), Digest(roundtrip.Fonts[0].Data)); Assert.False(write.SignaturesInvalidated);
+        Assert.Contains("\n  <ofd:Area>", Encoding.UTF8.GetString(roundtrip.PreservedEntries["Doc_0/Pages/Page_0/Content.xml"]));
+        output.WriteLine(JsonSerializer.Serialize(new { face, matrix, objects, stage = "public-default-writer-fresh-reader-public-locator", after.Statistics }));
+    }
+
     private static byte[] Font(string face)
     {
         var path = Environment.GetEnvironmentVariable(face == "cjk" ? "OFDRW_TEST_TRUSTED_CJK_FONT" : "OFDRW_TEST_TRUSTED_LATIN_FONT")!;
