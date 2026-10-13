@@ -1,6 +1,14 @@
 # 21 可选 PDF 矢量转换验收证据
 
-R11 writer-precision 修复候选正在验证：R10 exact-head Codex 新增两个 P2，极小正 width/font size 在三位写出精度归零时绕过整页 fallback。已将 04 原样 WriterValue 抽取到 Core 并保留 04 Positive 语义；21 对实际 float scalar 在原精度及硬预算/取消门之后、事件前分类为 STROKE_WRITER_PRECISION/TEXT_WRITER_PRECISION。R10 已完成的 28 页 Preview 和下列证据保持历史身份，不代表 R11 验收；新候选全套/真实包/独立验证/新增页面 Preview/最终 head 复审尚待闭合。
+R11 运行时 **`6120498`** 已修复极小正 width/font size 在三位写出精度归零时绕过整页 fallback 的两个 P2：04 原样 WriterValue 抽取到 Core，04 Positive 语义不变；21 对实际 float scalar 在原精度及硬预算/取消门之后、事件前分类为 STROKE_WRITER_PRECISION/TEXT_WRITER_PRECISION。实际 612 包与旧 R10 包使用相同 18 个输入/两种策略复核，六组 writer-zero 案例由异常绕过修复为 Fail 的明确不支持或正确整页回退；正边界及 w0/Tf0 控制保持。
+
+主验证与独立 Low13 各 **661/661**（九份 TRX）、Python **5/5**、默认 **11** 包和可选 **13** 包通过。Low13 核验 348 个源码文件、13 个主 nupkg，并记录八个实际加载 DLL 与包条目匹配；主协调复核最新 205 项独立产物 SHA/大小及补跑九份 TRX。Low13 首次 shell 包装器在测试后写入 zsh readonly status 导致包装器失败；原日志保留，修正包装器后用既有二进制重新执行测试，九份新 TRX 和 dotnet exit0 单列。旧 29 个 OFD 的主 R10→R11 payload 保持（28 个全部 ZIP 条目同字节，dual 仅 OFD.xml 日期元数据）；主 R11 与 Low13 的 30 个 OFD 亦仅 dual 日期不同。
+
+2026-10-13 实际 macOS Preview 逐页查看新增 **两份 PDF/8 页**：四页源与本轮实际 OFD 导出各页1..4，同 Single Page/Zoom All to Fit。第2页保留 local .0004×CTM5000 的红线，第3页保留 local .0004×CTM40000 的绿色 A；两页整页栅格化边缘比源向量柔和，未见明显位置、颜色、正文或边框丢失。第1/4页正常 native 文本、浅蓝填色及蓝色边框对应，无明显缺字、裁切、重影或多余空白。源21,664,865B SHA47faf94e…、导出170,450B SHAc21c1f1a…，检查前后哈希未变。仅关闭 AX URL 精确匹配的两个文档，最后取消任务 Open 面板并停止激活 Preview，GUI 已释放。历史 R10 28 页保留原运行时范围，未将 R11 重生成的旧 PDF 冒充已重看。截图经 cua_repl 内联实际观察，独立 PNG 仅为辅助。
+
+[review-r11-acceptance.json](review-r11-acceptance.json)、[review-r11-manifest.json](review-r11-manifest.json) 绑定 [review-r11.tar.zst](review-r11.tar.zst)，保存旧实际包复现、Astra设计与预算顺序修订、主/Low13 日志及失败、实际消费者/包/加载DLL哈希、冻结源码、新旧OFD对照、8页实际Preview记录及UI调用证据。八个旧归档不替换。非零 scalar 量化误差仍按既有04契约，不作任意PDF保真或硬内存/时间承诺。
+
+R11 exact-head Codex 新增“仅 Tf 选择、没有字形绘制仍加载并嵌入字体”的 P2，尚待后续修复及复验；因此此归档只证明上述 R11 修复与限定视觉范围，不代表整票闭环。最终 head 的 CI、Codex/Cursor 及线程另行读回；PR #18 开放、未合并、未发布。
 
 R10 运行时为 **`28fc29d`**，交付冻结源码为 **`6fa0a30`**（其差异仅为文档）。可选 Vector producer 的每个 VectorFont/page 私有复制原字体 bytes 并创建私有 face；首次有效文本逐块比对实际流与快照并 SHA，后续文本复用私有身份。公共 Text 仍每次完整验证，内部/公共路径共用每 run 校验，Append 资源认证保持；取消/事件门前置，不新增默认 quota，不改变 fallback/font 输出预算。
 
@@ -20,6 +28,7 @@ R8 归档时整票未闭环。2026-10-13 读回 R8 head 的六项远端检查均
 
 | 轮次 | 基线 | 保留的主要结果 |
 | --- | --- | --- |
+| R11 | 6120498 | 主/Low13 各 661/5、11/13 包；8 页 Preview；新字体计量 P2 待修 |
 | R10 | 28fc29d | 主/Low12 各 641/5、11/13 包；真实包/独立观察；28 页 Preview，最终评审另记 |
 | R8 / R9 设计 | d8d197e | 625/5、11/13 包；Low10 失败、Low11 补验；字体性能 P1；无 R8 Preview |
 | R7 | abd85f3 | 主 optional13 /Low9 资源输出路径失败，修复后由 R8 重跑 |
