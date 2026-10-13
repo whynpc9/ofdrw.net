@@ -5,7 +5,7 @@ using UglyToad.PdfPig.Core;
 
 namespace Ofdrw.Net.Converter.Pdf.Vector;
 
-// Bounds only added producer conversion error relative to parsed doubles, not renderer ink/topology.
+// Certifies parsed doubles against float geometry and the written stroke map; not renderer ink/topology.
 internal sealed class PathFloatPrecision
 {
     private readonly Binary _a, _b, _c, _d, _e, _f, _height;
@@ -82,6 +82,19 @@ internal sealed class PathFloatPrecision
             if ((Binary.Max(error1, error2) * 50000).CompareTo(Binary.One) > 0) return false;
         }
         return true;
+    }
+    internal bool AcceptWrittenStroke(double width, double writtenWidth, SKMatrix candidate)
+    {
+        var emitted = WriterPrecision.Transform(candidate);
+        var unit = Binary.From(WriterPrecision.Units);
+        var a = Binary.From(emitted.A); var b = Binary.From(-emitted.B);
+        var c = Binary.From(emitted.C); var d = Binary.From(-emitted.D);
+        if (!TextFloatPrecision.Map(_a * unit, _b * unit, _c * unit, _d * unit, a, b, c, d)) return false;
+        var w = Binary.From(width); var q = Binary.From(writtenWidth);
+        var row1 = (q * a - w * _a * unit).Abs + (q * c - w * _c * unit).Abs;
+        var row2 = (q * b - w * _b * unit).Abs + (q * d - w * _d * unit).Abs;
+        // Source-to-written total error, not two separately admitted deltas.
+        return (Binary.Max(row1, row2) * 50000).CompareTo(unit) <= 0;
     }
     private static bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 

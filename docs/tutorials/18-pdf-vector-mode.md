@@ -51,10 +51,15 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 
 R5原Indexed样例已由主/Low真实包及八页Preview复验，原R4失败保留；此有限样例的颜色检查通过，最终票的其它review与验收仍未闭合。严格应用选择Fail；显式RasterizePage结果不等于颜色保真验收。
 
-文本新增 `TEXT_FLOAT_PRECISION`：可见矩阵/字号/累计字距转float产生过大新增误差时整页按policy处理。保留普通小数、CJK、shear、连续空格及可精确表达的大数对照；原文与字体资源不改。此为回调double到producer输出的界限，后续OFD decimal/PDF renderer舍入不属于该界限，不宣称逐像素或任意PDF保真。Indexed省略Decode的8bit值按规范夹取到0..hival，2/255对hival1均读取最后调色板项；错误palette长度仍失败。
+文本新增 `TEXT_FLOAT_PRECISION`：可见矩阵/字号/累计字距转float产生过大新增误差时整页按policy处理。保留普通小数、CJK、shear、连续空格及可精确表达的大数对照；原文与字体资源不改。此为回调double到producer输出的界限，该float界限之后另检局部笔宽/字号及实际写出CTM的总误差；其它OFD字段及PDF renderer舍入不属于这些界限，不宣称逐像素或任意PDF保真。Indexed省略Decode的8bit值按规范夹取到0..hival，2/255对hival1均读取最后调色板项；错误palette长度仍失败。
 
 正值的描边宽度和字号还须在既有 OFD 三位写出格式下保持正值。检查实际传给 Skia 事件的 float local scalar；pt→mm 和 PDF CTM 仍放在变换中，不重复缩放标量。不可表示值按 `STROKE_WRITER_PRECISION` / `TEXT_WRITER_PRECISION` 整页 Fail/显式回退，保留原 float 精度诊断、事件/字符预算及取消硬失败；不是夹成最小宽度或提高 writer 精度。
 
 原字形 Unicode 还必须能由 OFD 的 XML 1.0 表示。U+FFFE/U+FFFF 即使同时被 ToUnicode 与嵌入 cmap 正确映射，也会在现有字符、事件、取消及精度检查后以 `TEXT_XML_CHARACTER` 判为 native 范围外。合法 BMP 边界 D7FF/E000/FFFD 及 FDD0 保持原文；已有控制字符和代理对限制不变。
 
 对于这类 XML 无法表示的原文，默认双层回退的 Invisible 隐藏文本层也无法序列化，因此该组合仍不支持，实际回退写入会失败；不能把 native profile 诊断当成默认回退成功。调用者可以明确选择 `UnsupportedPagePolicy = RasterizePage` 并设置 `Compatibility.TextLayerMode = PdfTextLayerMode.None`，获得完整整页图像，正常相邻页仍为 native。该选择放弃回退页的原文搜索层；转换器不会自动关闭隐藏层、替换原文或删除字形。
+
+
+局部笔宽和字号写成正值仍须满足已有页空间精度界。转换器在旧 float 检查后，用实际 `WriterValue(SKfloat)` 的 double 值与实际 Emit 的 mm CTM，比较从原解析值到写出值的总误差。描边沿用 miter10 的保守偏移绝对界；文字同时检查字形/单位 em 四角、相对线性映射、连续基线及两种累计字距路径，不把字号正值当作准确性证明。超过界限仍按 `STROKE_WRITER_PRECISION` / `TEXT_WRITER_PRECISION` 整页 Fail/显式回退，不缩放补偿、不改原文或字距。文字新证书只记录失败，到游程已有硬门和 XML 门后才拒绝，保留后续字形字符额度检查。
+
+成功处理原生内容后，若相同计算所得的物理页宽/高在 OFD 三位毫米格式下不能保持正值，转换器以 `PAGE_WRITER_PRECISION` 的窄 NotSupportedException 分类原子拒绝。两种 page policy 都失败：栅格化仍需要同一可写物理页框，不能解决该格式限制。不会夹到最小纸张或自动缩放。这个分类仅用于成功到达 native Append 前的分支；空页、未知操作、原图回退或先前字体/profile拒绝仍保留原诊断与实际回退限制，不承诺所有极小页面都有相同诊断。

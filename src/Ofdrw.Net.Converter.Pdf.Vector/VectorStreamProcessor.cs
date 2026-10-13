@@ -29,7 +29,8 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private readonly Action<string> _ensureFont, _ensureHorizontalFont;
     internal readonly HashSet<VectorFont> OutputFonts = new();
     private readonly StringBuilder _text = new(); private readonly List<float> _advances = new();
-    private TextFloatPrecision? _textPrecision; private SKMatrix _candidateTextMatrix; private float _candidateTextSize;
+    private TextFloatPrecision? _textPrecision, _writerTextPrecision; private bool _writerTextFailed;
+    private SKMatrix _candidateTextMatrix; private float _candidateTextSize;
     private double _lastTextPosition;
     private TransformationMatrix _textMatrix; private VectorFont? _textFont; private double _textSize;
     private bool _hasSegments, _subpathHasSegments, _hasClosedSingleton;
@@ -182,6 +183,8 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         // scale belong in the transform, not in the serialized scalar check.
         if (stroke && !OfdNumericFormat.WriterPositive(strokePaint!.StrokeWidth))
             throw Unsupported("STROKE_WRITER_PRECISION: local width must remain positive at OFD writer precision.");
+        if (stroke && !_precision!.AcceptWrittenStroke(GetCurrentState().LineWidth, OfdNumericFormat.WriterValue(strokePaint!.StrokeWidth), matrix))
+            throw Unsupported("STROKE_WRITER_PRECISION: total written stroke-map error exceeds bounded profile.");
         _path.FillType = rule == FillingRule.EvenOdd ? SKPathFillType.EvenOdd : SKPathFillType.Winding;
         if (fill) Add(SkiaDrawEvent.Path(_path, fillPaint!, matrix, _limits.MaxPathCommandsPerPage));
         if (stroke) Add(SkiaDrawEvent.Path(_path, strokePaint!, matrix, _limits.MaxPathCommandsPerPage));
@@ -211,6 +214,9 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
             _textMatrix = matrix; _textFont = binding; _textSize = fontSize; _textColor = color; _lastTextPosition = 0;
             _candidateTextMatrix = Matrix(matrix, true); _candidateTextSize = (float)fontSize;
             _textPrecision = new TextFloatPrecision(_candidateTextMatrix, _candidateTextSize, _height);
+            _writerTextPrecision = OfdNumericFormat.WriterPositive(_candidateTextSize)
+                ? TextFloatPrecision.ForWriter(_candidateTextMatrix, _candidateTextSize, _height) : null;
+            _writerTextFailed = false;
         }
         else
         {
@@ -225,6 +231,10 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         }
         if (!_textPrecision!.Glyph(text, ctm, fontSize, bounds.GlyphBounds, advance))
             throw Unsupported("TEXT_FLOAT_PRECISION: added matrix/size/glyph/accumulated advance conversion error exceeds bounded profile.");
+        // Latch only this new certificate: a later glyph must still encounter
+        // its existing character/event hard gates before a run can fall back.
+        _writerTextFailed = _writerTextFailed || (_writerTextPrecision is not null &&
+            !_writerTextPrecision.Glyph(text, ctm, fontSize, bounds.GlyphBounds, advance));
         if (!first) _advances.Add(advance);
         _text.Append(original);
     }
@@ -241,11 +251,13 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         foreach (var character in original)
             if (!XmlConvert.IsXmlChar(character))
                 throw Unsupported("TEXT_XML_CHARACTER: original text cannot be represented in OFD XML 1.0.");
+        if (_writerTextFailed)
+            throw Unsupported("TEXT_WRITER_PRECISION: total written glyph/map/baseline/advance error exceeds bounded profile.");
         using var paint = new SKPaint { Color = _textColor, Style = SKPaintStyle.Fill };
         Add(_textFont!.Binding.SnapshotText(original, new SKPoint(0, 0), _candidateTextSize, paint, _advances,
             _candidateTextMatrix, _limits.MaxTextCharactersPerPage, _token));
         OutputFonts.Add(_textFont);
-        _text.Clear(); _advances.Clear(); _textFont = null; _textPrecision = null;
+        _text.Clear(); _advances.Clear(); _textFont = null; _textPrecision = _writerTextPrecision = null; _writerTextFailed = false;
     }
     public override void BeginSubpath() { }
     public override PdfPoint? CloseSubpath() { ClosePath(); return _subpathStart; }

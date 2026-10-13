@@ -48,11 +48,29 @@ internal static class WriterPrecisionProbe
         {
             var scale = size == ".001" ? ".1" : "1";
             var body = isText ? $"BT /F1 {size} Tf 1 0 0 1 30 100 Tm <{fixture.Hex("A")}> Tj ET" : $"{size} w 30 100 m 60 100 l S";
-            using var input = new MemoryStream(fixture.Create(new[] { $"q {scale} 0 0 {scale} 0 0 cm {body} Q" }));
-            using var native = new MemoryStream();
-            var control = await new PdfVectorToOfdConverter().ConvertWithResultAsync(input, native);
-            if (!control.Pages.Single().IsNative || control.Pages[0].ImageObjects != 0) throw new Exception("Representable float control stopped being native.");
-            controls.Add(new { isText, size, scale, native = true });
+            var bytes = fixture.Create(new[] { $"q {scale} 0 0 {scale} 0 0 cm {body} Q" });
+            foreach (var policy in new[] { PdfVectorUnsupportedPagePolicy.Fail, PdfVectorUnsupportedPagePolicy.RasterizePage })
+            {
+                using var input = new MemoryStream(bytes); using var actual = new MemoryStream();
+                if (size != ".001" && policy == PdfVectorUnsupportedPagePolicy.Fail)
+                {
+                    actual.Write(new byte[] { 4, 5, 6 }); actual.Position = 0;
+                    try { await new PdfVectorToOfdConverter().ConvertAsync(input, actual); throw new Exception("Inaccurate positive scalar accepted."); }
+                    catch (NotSupportedException error) when (error.Message.Contains(isText ? "TEXT_WRITER_PRECISION" : "STROKE_WRITER_PRECISION"))
+                    {
+                        if (!actual.ToArray().SequenceEqual(new byte[] { 4, 5, 6 }) || actual.Position != 0) throw;
+                        controls.Add(new { isText, size, scale, policy = policy.ToString(), sourceSha256 = Convert.ToHexStringLower(SHA256.HashData(bytes)), exception = error.GetType().FullName, error.Message, sentinel = "040506", position = 0 });
+                    }
+                }
+                else
+                {
+                    var control = await new PdfVectorToOfdConverter(new() { UnsupportedPagePolicy = policy, Compatibility = new() { PreferExternalPdfToPpm = true } }).ConvertWithResultAsync(input, actual);
+                    var native = size == ".001";
+                    if (control.Pages.Single().IsNative != native || control.Pages[0].ImageObjects != (native ? 0 : 1) || (!native && control.Pages[0].PathObjects != 0))
+                        throw new Exception("Written scalar accuracy control changed policy.");
+                    controls.Add(new { isText, size, scale, policy = policy.ToString(), sourceSha256 = Convert.ToHexStringLower(SHA256.HashData(bytes)), native, result = control });
+                }
+            }
         }
         File.WriteAllBytes(Path.Combine(output, "writer-precision.ofd"), destination.ToArray());
         destination.Position = 0;

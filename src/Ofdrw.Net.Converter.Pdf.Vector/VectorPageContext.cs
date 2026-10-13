@@ -169,6 +169,11 @@ internal sealed class VectorPageContext
                 if (processor.OutputFonts.Contains(binding)) package.Fonts.Add(binding.Resource);
                 else binding.Dispose();
             }
+            // Keep parsing, consumed budgets and earlier page profiles ahead of
+            // this output-format limit. The existing writer also rejects raster pages of this size.
+            token.ThrowIfCancellationRequested();
+            if (!OfdNumericFormat.WriterPositive(page.WidthMillimeters) || !OfdNumericFormat.WriterPositive(page.HeightMillimeters))
+                throw new UnrepresentablePageException(_number);
             OfdSkiaAdapter.Append(package, page, events, new OfdSkiaAdapterOptions { MillimetersPerUnit = 25.4 / 72,
                 MaxEvents = options.MaxEventsPerPage, MaxInputPathCommands = options.MaxPathCommandsPerPage, MaxFontBytes = options.MaxFontBytes,
                 Graphics = new OfdGraphicsOptions { MaxPageElements = options.MaxEventsPerPage, MaxPathCommands = options.MaxPathCommandsPerPage,

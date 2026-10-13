@@ -1,15 +1,17 @@
 using System;
 using SkiaSharp;
+using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Layout.Graphics;
 using UglyToad.PdfPig.Core;
 using Binary = Ofdrw.Net.Converter.Pdf.Vector.PathFloatPrecision.Binary;
 
 namespace Ofdrw.Net.Converter.Pdf.Vector;
 
-// Bounds added producer error from callback doubles to the actual emitted float operands.
-// Parsed metrics/state and downstream decimal serialization/renderer ink remain separate.
+// Certifies callback doubles against either emitted float operands or the actual
+// writer scalar/double transform. Parsed metrics and renderer ink remain separate.
 internal sealed class TextFloatPrecision
 {
-    private readonly Binary _height, _a, _b, _c, _d, _e, _f, _size;
+    private readonly Binary _height, _a, _b, _c, _d, _e, _f, _size, _unit;
     private readonly bool _finite;
     private Binary _prefix, _lastX, _lastY, _lastCandidateX, _lastCandidateY, _lastDoubleX, _lastDoubleY;
     private double _doublePrefix;
@@ -17,12 +19,31 @@ internal sealed class TextFloatPrecision
 
     internal TextFloatPrecision(SKMatrix candidate, float size, double height)
     {
+        _unit = Binary.One;
         _finite = size > 0 && Finite(size) && Finite(height) && Finite(candidate.ScaleX) && Finite(candidate.SkewY) &&
             Finite(candidate.SkewX) && Finite(candidate.ScaleY) && Finite(candidate.TransX) && Finite(candidate.TransY);
         if (!_finite) return;
         _height = Binary.From(height); _a = Binary.From(candidate.ScaleX); _b = Binary.From(-candidate.SkewY);
         _c = Binary.From(-candidate.SkewX); _d = Binary.From(candidate.ScaleY); _e = Binary.From(candidate.TransX);
         _f = _height - Binary.From(candidate.TransY); _size = Binary.From(size);
+    }
+
+    internal static TextFloatPrecision ForWriter(SKMatrix candidate, float size, double height) =>
+        new(WriterPrecision.Transform(candidate), OfdNumericFormat.WriterValue(size), height);
+
+    private TextFloatPrecision(OfdMatrix emitted, double writtenSize, double height)
+    {
+        _unit = Binary.From(WriterPrecision.Units);
+        _finite = writtenSize > 0 && Finite(writtenSize) && Finite(height);
+        if (!_finite) return;
+        _height = Binary.From(height) * _unit; _size = Binary.From(writtenSize);
+        // Reproduce 04's actual double anchor. Its run.Y=q cancels this
+        // translation geometrically; retain the real rounded double result.
+        var anchor = emitted.Multiply(OfdMatrix.Translation(0, -writtenSize));
+        _a = Binary.From(anchor.A); _b = Binary.From(-anchor.B);
+        _c = Binary.From(-anchor.C); _d = Binary.From(anchor.D);
+        _e = Binary.From(anchor.E) + Binary.From(anchor.C) * _size;
+        _f = _height - (Binary.From(anchor.F) + Binary.From(anchor.D) * _size);
     }
 
     internal bool Glyph(TransformationMatrix text, TransformationMatrix ctm, double size, PdfRectangle bounds, float advance)
@@ -36,6 +57,7 @@ internal sealed class TextFloatPrecision
         var a = ta * ca + tb * cc; var b = ta * cb + tb * cd;
         var c = tc * ca + td * cc; var d = tc * cb + td * cd;
         var x = te * ca + tf * cc + Binary.From(ctm.E); var y = te * cb + tf * cd + Binary.From(ctm.F);
+        a *= _unit; b *= _unit; c *= _unit; d *= _unit; x *= _unit; y *= _unit;
         if (!Map(a, b, c, d, _a, _b, _c, _d)) return false;
         if (!_first) { _prefix += Binary.From(advance); _doublePrefix += advance; }
         if (!Finite(_doublePrefix)) return false;
@@ -63,11 +85,11 @@ internal sealed class TextFloatPrecision
         _first = false; return true;
     }
 
-    private static bool Position(Binary x, Binary y, Binary cx, Binary cy) =>
-        (Binary.Max((cx - x).Abs, (cy - y).Abs) * 10000).CompareTo(Binary.One) <= 0;
+    private bool Position(Binary x, Binary y, Binary cx, Binary cy) =>
+        (Binary.Max((cx - x).Abs, (cy - y).Abs) * 10000).CompareTo(_unit) <= 0;
     private static bool Vector(Binary x, Binary y, Binary cx, Binary cy) =>
         (Binary.Max((cx - x).Abs, (cy - y).Abs) * 100000).CompareTo(Binary.Max(x.Abs, y.Abs)) <= 0;
-    private static bool Map(Binary a, Binary b, Binary c, Binary d, Binary fa, Binary fb, Binary fc, Binary fd)
+    internal static bool Map(Binary a, Binary b, Binary c, Binary d, Binary fa, Binary fb, Binary fc, Binary fd)
     {
         var determinant = a * d - b * c; var candidate = fa * fd - fb * fc;
         if (determinant.Sign == 0 || candidate.Sign != determinant.Sign) return false;
