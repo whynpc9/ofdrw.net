@@ -238,9 +238,10 @@ internal static class OfdModelTraversal
     {
         // Count UTF-8 bytes without allocating a second full encoding buffer.
         long bytes = 0;
+        var nextCancellationCheck = 0;
         for (var i = 0; i < xml.Length; i++)
         {
-            if ((i & 1023) == 0) token.ThrowIfCancellationRequested();
+            CheckCancellationCheckpoint(i, ref nextCancellationCheck, token);
             var c = xml[i];
             if (c <= 0x7f) bytes++;
             else if (c <= 0x7ff) bytes += 2;
@@ -249,6 +250,7 @@ internal static class OfdModelTraversal
             if (bytes > limits.MaxSourceXmlBytes - budget.SourceXmlBytes)
                 throw new InvalidDataException("OFD traversal exceeds its source XML byte budget.");
         }
+        token.ThrowIfCancellationRequested();
         budget.XmlBytes(bytes);
         if (string.IsNullOrWhiteSpace(xml)) return;
         try
@@ -259,8 +261,18 @@ internal static class OfdModelTraversal
                 token.ThrowIfCancellationRequested(); budget.Node(reader.Depth + 1);
                 for (var a = 0; a < reader.AttributeCount; a++) { token.ThrowIfCancellationRequested(); budget.Reference(); }
             }
+            token.ThrowIfCancellationRequested();
         }
         catch (XmlException exception) { throw new InvalidDataException("OFD model contains malformed or prohibited source XML.", exception); }
+    }
+
+    // Advancing by Unicode scalars may cross a checkpoint without visiting its
+    // exact index. A threshold also works for a final partial scan segment.
+    internal static void CheckCancellationCheckpoint(int position, ref int nextCheck, CancellationToken token)
+    {
+        if (position < nextCheck) return;
+        token.ThrowIfCancellationRequested();
+        nextCheck = position > int.MaxValue - 1024 ? int.MaxValue : position + 1024;
     }
 
     private static XmlReaderSettings Settings(OfdModelLimits limits) => new()
