@@ -106,6 +106,11 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     public override void EndText()
     { if (!_inText) throw Unsupported("TEXT_UNDERFLOW"); _inText = false; base.EndText(); }
     private NotSupportedException Unsupported(string reason) => _context.Unsupported(reason);
+    private void RequireEvents(int required)
+    {
+        _token.ThrowIfCancellationRequested();
+        if (required > _limits.MaxEventsPerPage - _events.Count) throw new InvalidDataException("PDF draw event limit exceeded.");
+    }
     private void Add(SkiaDrawEvent value)
     { if (_events.Count >= _limits.MaxEventsPerPage) throw new InvalidDataException("PDF draw event limit exceeded."); _events.Add(value); }
     private void Command(int count = 1)
@@ -154,6 +159,10 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     {
         if (close) ClosePath();
         if (_path.VerbCount == 0) { EndPath(); return; }
+        // Only a real/potential paint needs capacity; move-only no-ops stay free.
+        // Admit both fill/stroke events before a profile failure can choose fallback.
+        if (_hasSegments || (fill && _hasClosedSingleton))
+            RequireEvents((fill ? 1 : 0) + (stroke ? 1 : 0));
         // A closed singleton fill can paint a device pixel; do not silently elide it.
         if (fill && _hasClosedSingleton) throw Unsupported("DEGENERATE_POINT_FILL");
         if (!_hasSegments)
@@ -172,13 +181,7 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         // 19 passes this local float directly to OfdPen; pt-to-mm and PDF CTM
         // scale belong in the transform, not in the serialized scalar check.
         if (stroke && !OfdNumericFormat.WriterPositive(strokePaint!.StrokeWidth))
-        {
-            // A combined fill/stroke would first add its fill event. Preserve
-            // an already-exhausted hard budget before choosing page fallback.
-            _token.ThrowIfCancellationRequested();
-            if (_events.Count >= _limits.MaxEventsPerPage) throw new InvalidDataException("PDF draw event limit exceeded.");
             throw Unsupported("STROKE_WRITER_PRECISION: local width must remain positive at OFD writer precision.");
-        }
         _path.FillType = rule == FillingRule.EvenOdd ? SKPathFillType.EvenOdd : SKPathFillType.Winding;
         if (fill) Add(SkiaDrawEvent.Path(_path, fillPaint!, matrix, _limits.MaxPathCommandsPerPage));
         if (stroke) Add(SkiaDrawEvent.Path(_path, strokePaint!, matrix, _limits.MaxPathCommandsPerPage));
@@ -188,6 +191,8 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         long offset, in TransformationMatrix rendering, in TransformationMatrix text, in TransformationMatrix ctm, CharacterBoundingBox bounds)
     {
         _token.ThrowIfCancellationRequested();
+        if (_characters >= _limits.MaxTextCharactersPerPage) throw new InvalidDataException("PDF original text character limit exceeded.");
+        RequireEvents(1);
         if (!_inText || !font.TryGetUnicode(code, out var original) || original != unicode || string.IsNullOrEmpty(original) || original.Length != 1 ||
             char.IsSurrogate(original[0]) || char.IsControl(original[0]) || font.IsVertical)
             throw Unsupported("UNICODE_MAPPING: one original BMP character per glyph required.");
@@ -198,7 +203,6 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         if (!_fonts.TryGetValue(state.FontState.FontName.Data, out var binding)) throw Unsupported("FONT_RESOURCE");
         var glyph = binding.Binding.GetGlyph(original[0]);
         if (glyph == 0 || glyph != code) throw Unsupported("SOURCE_GLYPH_CMAP_MISMATCH: font=" + state.FontState.FontName.Data + " code=" + code);
-        if (_characters >= _limits.MaxTextCharactersPerPage) throw new InvalidDataException("PDF original text character limit exceeded.");
         _characters++;
         var matrix = text.Multiply(ctm); var color = Color(false);
         var first = _text.Length == 0; var advance = 0f;
@@ -228,10 +232,9 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     {
         if (_text.Length == 0) return;
         var original = _text.ToString();
-        _token.ThrowIfCancellationRequested();
+        // Empty runs return above; nonempty runs must fit before any run profile.
+        RequireEvents(1);
         if (string.IsNullOrWhiteSpace(original) || StringInfo.ParseCombiningCharacters(original).Length != _advances.Count + 1) throw Unsupported("WHITESPACE_ONLY_OR_SHAPED_RUN");
-        // Check cheap event/cancellation limits before authenticating any font.
-        if (_events.Count >= _limits.MaxEventsPerPage) throw new InvalidDataException("PDF draw event limit exceeded.");
         _token.ThrowIfCancellationRequested();
         if (!OfdNumericFormat.WriterPositive(_candidateTextSize))
             throw Unsupported("TEXT_WRITER_PRECISION: local font size must remain positive at OFD writer precision.");
