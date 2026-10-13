@@ -22,6 +22,7 @@ public static class OfdDocumentSplitter
         ValidateSingleDocument(source, material, cancellationToken);
         pages = ValidatePages(source, pages, material, cancellationToken);
         var selectedPages = pages.Select(index => source.Pages[index]).ToArray();
+        OfdAnnotationContract.ValidatePageSelection(source, selectedPages, material, cancellationToken);
         OfdNavigationXml.Validate(source, selectedPages, cancellationToken, material);
         source.SourceEnvelope?.ValidatePageOrder(source, selectedPages, material, cancellationToken);
         foreach (var index in pages) OfdPageXmlContract.ValidateWritableDimensions(source.Pages[index].WidthMillimeters, source.Pages[index].HeightMillimeters);
@@ -48,6 +49,24 @@ public static class OfdDocumentSplitter
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var page = OfdModelCloner.ClonePage(source.Pages[index], material: material, cancellationToken: cancellationToken); page.Index = selected.Pages.Count; selected.Pages.Add(page);
+            }
+            if (OfdAnnotationContract.HasTyped(source))
+            {
+                if (selected.Pages.Any(page => page.Templates.Count != 0)) throw new NotSupportedException("Fresh typed annotation split with templates requires persisted source ownership.");
+                selected.Options = OfdDocumentMerger.CloneOptions(source.Options);
+                selected.Fonts.Clear();
+                foreach (var font in source.Fonts)
+                {
+                    material.ChargeCopy(256L + font.Data.LongLength, cancellationToken);
+                    selected.Fonts.Add(new OfdFontResource { Id = font.Id, FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
+                        Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray() });
+                }
+                selected.Attachments.Clear(); OfdDocumentMerger.CopyAttachments(source, selected, cancellationToken, material);
+                var typedPageMap = new Dictionary<object, object>();
+                for (var position = 0; position < pages.Count; position++) typedPageMap.Add(source.Pages[pages[position]], selected.Pages[position]);
+                OfdNavigationCloner.Clone(source, selected, typedPageMap, material, cancellationToken);
+                foreach (var tag in source.CustomTags) selected.CustomTags.Add(tag.Key, tag.Value);
+                return selected;
             }
             var standalone = OfdDocumentMerger.MergeForSplit(selected, material, cancellationToken);
             var pageMap = new Dictionary<object, object>();
@@ -99,7 +118,16 @@ public static class OfdDocumentSplitter
             page.Index = result.Pages.Count;
             result.Pages.Add(page);
         }
+        if (OfdAnnotationContract.HasTyped(source))
+        {
+            foreach (var historical in source.SourceIdentity?.OriginalPages ?? Array.Empty<OfdPage>())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!mapping.ContainsKey(historical)) OfdModelCloner.ClonePage(historical, keepSourcePath: true, material: material, cancellationToken: cancellationToken, mapping: mapping);
+            }
+        }
         OfdNavigationCloner.Clone(source, result, mapping, material, cancellationToken);
+        result.AnnotationIndexSource = source.AnnotationIndexSource?.Clone(source, result, material, cancellationToken);
         result.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, cancellationToken);
         result.SourceIdentity = source.SourceIdentity?.CloneFor(result, mapping, material, cancellationToken);
         return result;

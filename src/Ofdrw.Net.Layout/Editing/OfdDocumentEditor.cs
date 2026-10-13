@@ -41,6 +41,7 @@ public static class OfdDocumentEditor
             reordered.Add(package.Pages[index]);
         }
         if (seen.Count != package.Pages.Count) throw new ArgumentException("Page order count is inconsistent.", nameof(pageOrder));
+        OfdAnnotationContract.ValidatePageSelection(package, reordered, material, default);
         OfdNavigationXml.Validate(package, reordered, default, material);
         package.SourceEnvelope?.ValidatePageOrder(package, reordered, material, default);
         package.Pages.Clear();
@@ -82,6 +83,7 @@ public static class OfdDocumentEditor
         var remaining = package.Pages
             .Where((_, index) => !indexes.Contains(index))
             .ToList();
+        OfdAnnotationContract.ValidatePageSelection(package, remaining, material, default);
         OfdNavigationXml.Validate(package, remaining, default, material);
         package.SourceEnvelope?.ValidatePageOrder(package, remaining, material, default);
         package.Pages.Clear();

@@ -58,7 +58,9 @@ public sealed class OfdToSvgConverter
             throw new ArgumentOutOfRangeException(nameof(pageIndex));
         }
 
-        var svg = BuildSvg(package, pages[pageIndex], cancellationToken);
+        var material = new OfdModelMaterialization(new OfdModelLimits());
+        OfdAnnotationContract.Validate(package, material, cancellationToken);
+        var svg = BuildSvg(package, pages[pageIndex], material, cancellationToken);
         var bytes = Encoding.UTF8.GetBytes(
             new XDocument(new XDeclaration("1.0", "utf-8", null), svg)
                 .ToString(SaveOptions.DisableFormatting));
@@ -67,7 +69,7 @@ public sealed class OfdToSvgConverter
         await svgOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, CancellationToken cancellationToken)
+    private static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
         var svgNs = XNamespace.Get("http://www.w3.org/2000/svg");
         var root = new XElement(
@@ -82,7 +84,7 @@ public sealed class OfdToSvgConverter
         var families = AddEmbeddedFonts(root, svgNs, package.Fonts);
         var imageIndex = 0;
         var objectIndex = 0;
-        foreach (var element in EnumerateElements(page))
+        foreach (var element in EnumerateElements(page, material, cancellationToken, package.Options.Namespace))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
@@ -327,7 +329,7 @@ public sealed class OfdToSvgConverter
         return string.Join(" ", tokens);
     }
 
-    private static IEnumerable<OfdElement> EnumerateElements(OfdPage page)
+    private static IEnumerable<OfdElement> EnumerateElements(OfdPage page, OfdModelMaterialization material, CancellationToken token, string documentNamespace)
     {
         return page.Templates
             .Where(template => string.Equals(
@@ -342,7 +344,7 @@ public sealed class OfdToSvgConverter
                     "Background",
                     StringComparison.OrdinalIgnoreCase))
                 .SelectMany(template => template.Elements))
-            .Concat(page.AnnotationAppearances);
+            .Concat(OfdAnnotationProjection.Resolve(page, material, token, documentNamespace: documentNamespace).Select(occurrence => occurrence.RenderElement));
     }
 
     private static string BuildTransform(

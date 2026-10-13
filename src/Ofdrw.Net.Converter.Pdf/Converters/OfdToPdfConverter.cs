@@ -47,6 +47,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
         var reader = new OfdReader();
         var package = await reader.ReadAsync(ofdInput, _options.PackageLoadOptions, cancellationToken).ConfigureAwait(false);
+        var annotationMaterial = new OfdModelMaterialization(new OfdModelLimits());
+        OfdAnnotationContract.Validate(package, annotationMaterial, cancellationToken);
         var fonts = new DocumentFontContext(package.Fonts);
         var signatureAppearances = await PrepareSignatureAppearancesAsync(
                 package,
@@ -69,13 +71,13 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             pdfPage.Height = MillimetersToPoints(pageModel.HeightMillimeters);
 
             using var graphics = XGraphics.FromPdfPage(pdfPage);
-            DrawPage(graphics, pageModel, fonts, _options.MaxDecodedImagePixels, cancellationToken);
+            DrawPage(graphics, pageModel, fonts, _options.MaxDecodedImagePixels, annotationMaterial, cancellationToken);
 
             DrawSignatureAppearances(
                 document,
                 graphics,
                 pageModel,
-                signatureAppearances, _options.MaxDecodedImagePixels, cancellationToken);
+                signatureAppearances, _options.MaxDecodedImagePixels, annotationMaterial, cancellationToken);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -154,7 +156,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         OfdPage page,
         IReadOnlyList<PreparedSignatureAppearance> appearances,
         long maximumPixels,
-        CancellationToken cancellationToken)
+        OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken)
     {
         foreach (var appearance in appearances.Where(item =>
             string.Equals(
@@ -182,7 +184,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             appearance.OfdPage.HeightMillimeters));
                     using (var formGraphics = XGraphics.FromForm(form))
                     {
-                        DrawPage(formGraphics, appearance.OfdPage, appearance.Fonts!, maximumPixels, cancellationToken);
+                        DrawPage(formGraphics, appearance.OfdPage, appearance.Fonts!, maximumPixels, annotationMaterial, cancellationToken);
                     }
 
                     graphics.DrawImage(form, target);
@@ -217,12 +219,12 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     }
 
     private static void DrawPage(XGraphics graphics, OfdPage page, DocumentFontContext fonts,
-        long maximumPixels, CancellationToken cancellationToken)
+        long maximumPixels, OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken)
     {
         try
         {
             var outlineFonts = fonts.OutlineFonts;
-            foreach (var element in EnumerateRenderableElements(page))
+            foreach (var element in EnumerateRenderableElements(page, annotationMaterial, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!OfdGraphicXmlContract.IsVisible(element)) continue;
@@ -497,7 +499,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         finally { graphics.Restore(state); }
     }
 
-    private static IEnumerable<OfdElement> EnumerateRenderableElements(OfdPage page)
+    private static IEnumerable<OfdElement> EnumerateRenderableElements(OfdPage page, OfdModelMaterialization annotationMaterial, CancellationToken token)
     {
         foreach (var template in page.Templates.Where(x =>
             string.Equals(x.ZOrder, "Background", StringComparison.OrdinalIgnoreCase)))
@@ -521,7 +523,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 yield return element;
             }
         }
-        foreach (var element in page.AnnotationAppearances) yield return element;
+        foreach (var occurrence in OfdAnnotationProjection.Resolve(page, annotationMaterial, token)) yield return occurrence.RenderElement;
     }
 
     private sealed class PreparedSignatureAppearance

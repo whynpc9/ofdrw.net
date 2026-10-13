@@ -41,6 +41,8 @@ public static class OfdDocumentMixer
             cancellationToken.ThrowIfCancellationRequested();
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
             material.InspectStorage(item.Package, cancellationToken); material.GuardPreservedXml(item.Package, cancellationToken);
+            OfdAnnotationContract.Validate(item.Package, material, cancellationToken);
+            if (OfdAnnotationContract.HasTyped(item.Package)) throw new NotSupportedException("Mixer cannot remap typed annotation ownership.");
             if (OfdNavigationXml.HasTypedNavigation(item.Package, material, cancellationToken)) throw new NotSupportedException("Mix cannot remap typed navigation source ownership.");
             OfdDocumentSplitter.ValidateSingleDocument(item.Package, material, cancellationToken);
             OfdDocumentSplitter.ValidatePages(item.Package, new[] { item.PageIndex }, material, cancellationToken);
@@ -90,7 +92,8 @@ public static class OfdDocumentMixer
             if (page.PreservedPageElements.Any(xml => XElement.Parse(xml).Name != pageNamespace + "Template"))
                 throw new NotSupportedException("Mix cannot safely remap page extensions/actions.");
             var package = new OfdDocumentPackage { Options = item.Package.Options };
-            package.Pages.Add(page); package.Fonts.AddRange(item.Package.Fonts);
+            var legacyPage = OfdModelCloner.ClonePage(page, material: material, cancellationToken: cancellationToken);
+            package.Pages.Add(legacyPage); package.Fonts.AddRange(item.Package.Fonts);
             package.Attachments.AddRange(item.Package.Attachments);
             selected.Add(package);
         }

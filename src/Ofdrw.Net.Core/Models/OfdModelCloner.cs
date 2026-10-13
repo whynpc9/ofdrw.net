@@ -16,6 +16,7 @@ internal static class OfdModelCloner
             material = new OfdModelMaterialization(new OfdModelLimits());
             var input = new OfdDocumentPackage(); input.Pages.Add(source); material.InspectStorage(input, cancellationToken);
         }
+        mapping ??= new Dictionary<object, object>();
         cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1);
         if (mapping is not null) material.ChargeCopy(1024L + (long)(source.Elements.Count + source.AnnotationAppearances.Count + source.Templates.Count + source.PreservedPageElements.Count) * IntPtr.Size * 2, cancellationToken);
         var page = new OfdPage
@@ -45,6 +46,9 @@ internal static class OfdModelCloner
             mapping.Add(source, page); mapping.Add(source.Elements, page.Elements); mapping.Add(source.AnnotationAppearances, page.AnnotationAppearances);
             mapping.Add(source.Templates, page.Templates); mapping.Add(source.PreservedPageElements, page.PreservedPageElements);
         }
+        if (keepSourcePath || source.Annotations is not null || source.AnnotationOwnership.Original is not null)
+            OfdAnnotationCloner.Clone(source, page, mapping, clonePayloads, material, cancellationToken);
+        else source.AnnotationOwnership.Validate(source, material, cancellationToken);
         return page;
     }
 

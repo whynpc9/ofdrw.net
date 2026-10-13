@@ -168,6 +168,66 @@ internal sealed class OfdSourceIdentity
             foreach (var template in page.Templates)
                 if (template.BaseLocation is string location) BindGraphics<OfdElement>(budget.ResolvePath(documentPath, location, token), template.Elements);
         }
+        // Strict editing admission must close the same authenticated resource scope.
+        // Permissively rendered legacy annotations remain unclaimed when it cannot.
+        foreach (var page in package.Pages)
+        {
+            var collection = page.Annotations;
+            if (collection is null) continue;
+            var admitted = new OfdAnnotationCollection(); budget.ChargeCopy(128L + collection.Items.Count * 16L, token);
+            foreach (var annotation in collection.Items)
+            {
+                token.ThrowIfCancellationRequested();
+                var closed = true;
+                foreach (var graphic in annotation.Appearance.Elements)
+                {
+                    budget.Structure.Reference();
+                    if (graphic is OfdTextElement text && (!result.TryResource("Font", text.FontResourceId, out _) ||
+                        !fontsById.ContainsKey(ParseId(text.FontResourceId)))) closed = false;
+                    if (graphic is OfdImageElement image && !result.TryResource("MultiMedia", image.ResourceId, out _)) closed = false;
+                }
+                if (closed) admitted.Items.Add(annotation); else page.AnnotationOwnership.HasUnclaimedSource = true;
+            }
+            if (admitted.Items.Count != collection.Items.Count)
+                page.AnnotationOwnership.Bind(page, admitted.Items.Count == 0 ? null : admitted, budget, token);
+        }
+        var annotationEntries = new Dictionary<string, (XDocument Xml, Dictionary<XElement, int> Ordinals, XElement[] Slots)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var page in package.Pages)
+        foreach (var annotation in page.AnnotationOwnership.Original?.Items ?? Enumerable.Empty<OfdAnnotation>())
+        {
+            var source = annotation.Source!;
+            if (!annotationEntries.TryGetValue(source.Entry, out var entry))
+            {
+                var annotationDocument = Read(source.Entry); var ordinals = new Dictionary<XElement, int>(); var ordinal = 0;
+                foreach (var descendant in annotationDocument.Root!.DescendantsAndSelf())
+                { token.ThrowIfCancellationRequested(); budget.ChargeCopy(128, token); ordinals.Add(descendant, ordinal++); }
+                budget.ChargeCopy(16L * annotationDocument.Root.Elements().Count(), token);
+                entry = (annotationDocument, ordinals, annotationDocument.Root.Elements().ToArray()); annotationEntries.Add(source.Entry, entry);
+            }
+            var root = entry.Xml.Root!;
+            if (!result.entries.TryGetValue(source.Entry, out var entrySlots))
+            {
+                entrySlots = new Dictionary<int, Owner>(); result.entries.Add(source.Entry, entrySlots);
+                result.rootNames.Add(source.Entry, root.Name); result.trustedEntries.Add(source.Entry);
+            }
+            var node = entry.Slots[source.Slot];
+            AnnotationBind(annotation, node);
+            var children = node.Element(node.Name.Namespace + "Appearance")!.Elements().ToArray();
+            for (var index = 0; index < children.Length; index++)
+            {
+                var graphic = annotation.Appearance.Elements[index]; var child = children[index];
+                AnnotationBind(graphic, child);
+                result.graphicIds.Add(graphic, new GraphicIds(CaptureIds(child, budget, token), CaptureIds(child.Element(child.Name.Namespace + "Clips"), budget, token)));
+                if (graphic is OfdImageElement image && result.TryResource("MultiMedia", child.Attribute("ResourceID")?.Value, out var media)) result.images.Add(image, media);
+            }
+            void AnnotationBind(object model, XElement sourceNode)
+            {
+                token.ThrowIfCancellationRequested(); budget.ChargeCopy(256, token);
+                var owner = new Owner(source.Entry, sourceNode.Name, entry.Ordinals[sourceNode], sourceNode.Attribute("ID")!.Value, true);
+                if (result.active.ContainsKey(owner.Number)) throw new InvalidDataException("Annotation active ID admission is ambiguous.");
+                result.active.Add(owner.Number, owner); entrySlots.Add(owner.Slot, owner); result.models.Add(model, owner);
+            }
+        }
         return result;
 
         XDocument Read(string path) => budget.ReadXml(path, package.PreservedEntries[path], token);
@@ -388,7 +448,11 @@ internal sealed class OfdSourceIdentity
                         throw new InvalidDataException("Preserved source gained an unauthenticated active definition.");
                     continue;
                 }
-                var currentActive = Accepted(node.Name.Namespace, xml.Root.Name.Namespace) && IsDefinition(node, xml.Root) && ParseId(node.Attribute("ID")?.Value) != 0;
+                var currentActive = Accepted(node.Name.Namespace, xml.Root.Name.Namespace) &&
+                    (IsDefinition(node, xml.Root) || xml.Root.Name.LocalName == "PageAnnot" &&
+                     (node.Parent == xml.Root && node.Name == xml.Root.Name.Namespace + "Annot" ||
+                      node.Parent?.Name == xml.Root.Name.Namespace + "Appearance" && node.Parent.Parent?.Name == xml.Root.Name.Namespace + "Annot" && node.Parent.Parent.Parent == xml.Root &&
+                      node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject")) && ParseId(node.Attribute("ID")?.Value) != 0;
                 if (currentActive != owner.ActiveDefinition) throw new InvalidDataException("Preserved definition role changed.");
                 if (node.Name != owner.Kind || (node.Attribute("ID")?.Value ?? string.Empty) != owner.Id)
                     throw new InvalidDataException("Preserved source identity is stale.");

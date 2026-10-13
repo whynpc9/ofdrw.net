@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace Ofdrw.Net.Core.Models;
 
 internal enum OfdContentScope { Body, Template, Annotation }
-internal enum OfdSourceAuthority { ModelDefinition, SharedTemplateSource, DerivedAnnotationProjection }
+internal enum OfdSourceAuthority { ModelDefinition, SharedTemplateSource, DerivedAnnotationProjection, LocalAnnotationDefinition }
 
 internal sealed class OfdTraversalOptions
 {
@@ -27,13 +27,14 @@ internal sealed class OfdGraphicOccurrence
 {
     internal OfdGraphicOccurrence(OfdElement element, OfdPage page, OfdContentScope scope,
         IReadOnlyList<int> definitionPath, IReadOnlyList<int> occurrencePath, bool shared,
-        bool supported, string? entryPath, string? sourceXml)
+        bool supported, string? entryPath, string? sourceXml, IReadOnlyList<double>? parentToPage = null, bool annotationLocal = false)
     {
         Element = element; Page = page; RootScope = scope;
+        if (parentToPage is not null) ParentToPage = parentToPage;
         DefinitionPath = definitionPath; OccurrencePath = occurrencePath;
         IsSharedDefinition = shared;
         SourceAuthority = scope == OfdContentScope.Template ? OfdSourceAuthority.SharedTemplateSource :
-            scope == OfdContentScope.Annotation ? OfdSourceAuthority.DerivedAnnotationProjection : OfdSourceAuthority.ModelDefinition;
+            annotationLocal ? OfdSourceAuthority.LocalAnnotationDefinition : scope == OfdContentScope.Annotation ? OfdSourceAuthority.DerivedAnnotationProjection : OfdSourceAuthority.ModelDefinition;
         IsEditableSource = SourceAuthority == OfdSourceAuthority.ModelDefinition && !shared && supported;
         SourceEntryPath = entryPath; SourceXml = sourceXml;
     }

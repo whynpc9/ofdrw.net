@@ -7,6 +7,18 @@ namespace Ofdrw.Net.Core.Tests;
 public sealed class OfdModelTraversalTests
 {
     [Fact]
+    public void AnnotationLooseModeRetainsRawAndUnsupportedDiagnostics()
+    {
+        var (package, page) = Package();
+        page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Extension", Xml = "<Extension/>" });
+        var text = Text("x"); text.SourceXml = "<TextObject xmlns='urn:vendor'><TextCode>x</TextCode></TextObject>"; page.AnnotationAppearances.Add(text);
+        var result = Read(package, [page], new() { IncludeAnnotations = true });
+        Assert.Single(result.Occurrences); Assert.False(result.Occurrences[0].IsEditableSource);
+        Assert.Equal(new[] { OfdTraversalDiagnosticKind.RawObject, OfdTraversalDiagnosticKind.UnsupportedSource }, result.Diagnostics.Select(d => d.Kind));
+        Assert.Throws<NotSupportedException>(() => Read(package, [page], new() { IncludeAnnotations = true, RequireSupportedSource = true }));
+    }
+
+    [Fact]
     public void SelectedOrderAndPaintOrderArePreservedWithoutChangingModel()
     {
         var (package, first) = Package(Text("body"));
