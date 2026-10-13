@@ -67,6 +67,7 @@ await FontIdentityProbe.Run(output, font);
 await WriterPrecisionProbe.Run(output, font);
 await FontUsageProbe.Run(output, font);
 await XmlCharacterProbe.Run(output);
+await BudgetOrderingProbe.Run(output, font);
 Console.WriteLine("Actual native/dual same-PDF and explicit fallback fixtures passed; Preview remains separate.");
 async Task Export(string name, MemoryStream ofd)
 {

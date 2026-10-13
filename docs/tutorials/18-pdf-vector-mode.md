@@ -35,6 +35,8 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 
 通过 `PdfVectorToOfdOptions` 配置输入/页数、内容字节、操作、事件、路径命令、文字和字体限额；回退像素/图片预算沿用 `Compatibility`。预算与取消始终失败，不以回退绕过。每个选定页面使用新的 PdfPig 文档/资源上下文，避免失败状态污染后一页；多页和重复选择会增加解析成本。PdfPig 打开文档、解析字典和 native font loader 内部并不提供硬堆内存/时间沙箱，本票不作该承诺；只限制所声明的输入、流及输出工作量。
 
+真实或可能绘制的路径在判断范围外 profile/精度前检查剩余事件容量；组合填充/描边 `B/B*/b/b*` 一次须容纳两个事件。非空字形回调先检查已消耗的字符额度及一个文字事件容量，非空游程写出前再次检查容量。额度不足为 `InvalidDataException`，两种 page policy 均失败；容量足够时保留原范围外诊断。空路径、支持的 move-only 描边、空 Tj/TJ 或仅 Tf 不新增事件；路径构造/close、实际字体加载尝试和取消仍走各自硬限制。不预扫描未来字符或把所有 PDF 操作符当作事件收费。
+
 转换写出前的验证失败不改目的流；最终 ZIP 写出阶段的 I/O/取消仍可留下部分流，文件调用方应自行使用临时文件与原子替换。默认 CLI 原子输出契约保持原样。
 
 设计与证据：[实证探针](../pdf-vector-probe-design.md)、[实现契约](../pdf-vector-design-contract.md)。同一 PDF 比较样例位于 `e2e/Ofdrw.Net.Pdf.Vector.E2E`；运行 `scripts/run-pdf-vector-package-e2e.sh` 消费本次默认 11 包加两个可选包。实际视觉结论以已检查的 OFD → PDF → Preview 页面为准，不推断任意 PDF 保真。

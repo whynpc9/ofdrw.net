@@ -8,6 +8,8 @@
 
 `UnsupportedPagePolicy` 为 `Fail`（默认）或显式 `RasterizePage`。每页报告源页号、实际 native/raster disposition、路径/文字/图像数量和诊断；零基页选择继续采用既有顺序、重复和无有效选择时全页的契约。转换首先构造完整包，再写输出；输入、页数、解析流、事件、路径命令、文字、字体和累计图片均有限额。取消与预算超限是失败，不能静默通过栅格回退绕过限额。
 
+事件容量在真实/潜在路径绘制的 profile 与精度判定前准入，fill+stroke 原子检查两个槽位，采用剩余额度减法避免溢出；实际计数仍由成功 Add 完成。非空 glyph 回调按取消、已消耗字符额度、事件容量、原映射/状态/cmap 顺序检查，字符只在原成功准入位置递增；非空 FlushText 在游程 profile 前再次检查事件容量。空操作不收费；ClosePath 的命令门、字体输入尝试门及路径构造阶段检查保持原顺序，不预扫描未来绘制或扩大异常捕获。范围外的非段 round-cap/hairline move 仍保留原 STROKE_PROFILE 策略。
+
 ## PDF 事件来源
 
 通过 PdfPig 0.1.15 的公开自定义 page factory 获得页字典、资源、scanner 和 parser 上下文；在受限流/字体预检后使用公开 `BaseStreamProcessor` 的绘制回调。操作符在创建阶段经过明确白名单，不由已丢失未知操作的 Page.Paths/Page.Letters 拼接顺序。路径和文字回调按实际绘制顺序生产不可变 `SkiaDrawEvent`，交给 `OfdSkiaAdapter.Append`，最终通过 04 写原生 PathObject/TextObject。19 的入口仍是合作 producer，不捕捉任意 SKCanvas/PDF renderer。
