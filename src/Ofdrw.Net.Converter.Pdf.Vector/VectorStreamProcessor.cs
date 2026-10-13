@@ -140,7 +140,7 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
             throw Unsupported("COMBINING_SHAPING");
         if (!(fontSize > 0) || state.FontState.HorizontalScaling != 100 || state.FontState.Rise != 0) throw Unsupported("TEXT_STATE");
         if (!_fonts.TryGetValue(state.FontState.FontName.Data, out var binding)) throw Unsupported("FONT_RESOURCE");
-        var glyph = binding.Face.GetGlyph(original[0]);
+        var glyph = binding.Binding.GetGlyph(original[0]);
         if (glyph == 0 || glyph != code) throw Unsupported("SOURCE_GLYPH_CMAP_MISMATCH: font=" + state.FontState.FontName.Data + " code=" + code);
         if (_characters >= _limits.MaxTextCharactersPerPage) throw new InvalidDataException("PDF original text character limit exceeded.");
         _characters++;
@@ -174,10 +174,12 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         var original = _text.ToString();
         _token.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(original) || StringInfo.ParseCombiningCharacters(original).Length != _advances.Count + 1) throw Unsupported("WHITESPACE_ONLY_OR_SHAPED_RUN");
-        using var font = new SKFont(_textFont!.Face, _candidateTextSize); using var paint = new SKPaint { Color = _textColor, Style = SKPaintStyle.Fill };
-        if (font.Size != _candidateTextSize) throw Unsupported("TEXT_FLOAT_PRECISION: font changed validated size.");
-        Add(SkiaDrawEvent.Text(original, new SKPoint(0, 0), font, paint, _textFont.Resource.Id!, _advances,
-            _candidateTextMatrix, _limits.MaxTextCharactersPerPage, _limits.MaxFontBytes));
+        // Check cheap event/cancellation limits before authenticating any font.
+        if (_events.Count >= _limits.MaxEventsPerPage) throw new InvalidDataException("PDF draw event limit exceeded.");
+        _token.ThrowIfCancellationRequested();
+        using var paint = new SKPaint { Color = _textColor, Style = SKPaintStyle.Fill };
+        Add(_textFont!.Binding.SnapshotText(original, new SKPoint(0, 0), _candidateTextSize, paint, _advances,
+            _candidateTextMatrix, _limits.MaxTextCharactersPerPage, _token));
         _text.Clear(); _advances.Clear(); _textFont = null; _textPrecision = null;
     }
     public override void BeginSubpath() { }

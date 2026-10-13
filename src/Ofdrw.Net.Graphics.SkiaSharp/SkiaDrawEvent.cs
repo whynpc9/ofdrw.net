@@ -5,6 +5,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Runtime.InteropServices;
 using System.Xml;
+using System.Threading;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Graphics;
 using SkiaSharp;
@@ -12,7 +13,7 @@ using SkiaSharp;
 namespace Ofdrw.Net.Graphics.SkiaSharp;
 
 /// <summary>An immutable snapshot supplied explicitly by a cooperating Skia producer. This is not an intercepted SKCanvas call.</summary>
-public sealed class SkiaDrawEvent
+public sealed partial class SkiaDrawEvent
 {
     private readonly OfdGraphicsPath? _path;
     private readonly OfdPen? _pen;
@@ -32,7 +33,8 @@ public sealed class SkiaDrawEvent
         _matrix = Matrix(matrix); _path = path; PathCommands = path.CommandCount;
     }
     private SkiaDrawEvent(string text, SKPoint baseline, SKFont font, SKPaint paint, string fontId,
-        IReadOnlyList<float> advances, SKMatrix? matrix, int maxTextCharacters, int maxFontBytes)
+        IReadOnlyList<float> advances, SKMatrix? matrix, int maxTextCharacters, int maxFontBytes,
+        Func<FontIdentity>? identityFactory = null, CancellationToken token = default)
     {
         if (text is null) throw new ArgumentNullException(nameof(text));
         if (text.Length > maxTextCharacters) throw new InvalidOperationException("Text snapshot budget exceeded.");
@@ -46,9 +48,7 @@ public sealed class SkiaDrawEvent
         (_, _brush) = Paint(paint, false);
         var face = font.Typeface;
         if (face is null || face.Handle == IntPtr.Zero) throw new ArgumentException("An explicit live typeface is required.", nameof(font));
-        if (face.GetTableSize(0x66766172u) != 0) throw new NotSupportedException("Variable font faces are not supported by this fixed-face profile.");
-        using (var style = face.FontStyle)
-            if (style.Width != (int)SKFontStyleWidth.Normal) throw new NotSupportedException("Condensed/expanded font faces are not supported.");
+        if (identityFactory is null) ValidateFixedFace(face);
         if (font.ScaleX != 1 || font.SkewX != 0 || font.Embolden)
             throw new NotSupportedException("Synthetic SKFont scale, skew or emboldening is not supported.");
         Positive(font.Size); Point(baseline);
@@ -61,29 +61,11 @@ public sealed class SkiaDrawEvent
         for (var i = 0; i < advances.Count; i++) { Finite(advances[i]); _advances[i] = advances[i]; }
         _matrix = Matrix(matrix); _text = text; _fontId = fontId; _fontSize = font.Size;
         _x = baseline.X; _y = baseline.Y;
-        // Skia classifies weight >=600 and all non-upright faces as bold/italic.
-        // Existing PDF uses OS/2 selection bits, while SVG uses head.macStyle.
-        // Validate just these native table words; do not resolve or parse fonts.
-        var selection = FontWord(face, 0x4f532f32u, 62); // OS/2.fsSelection
-        var macStyle = FontWord(face, 0x68656164u, 44); // head.macStyle
-        _bold = (selection & 0x20) != 0; _italic = (selection & 0x01) != 0;
-        if (((macStyle & 1) != 0) != _bold || ((macStyle & 2) != 0) != _italic)
-            throw new NotSupportedException("OS/2 and head font style flags must agree; ambiguous faces require a different font profile.");
-        using var stream = face.OpenStream(out var faceIndex);
-        if (stream is null || !stream.HasLength || stream.Length <= 0 || stream.Length > maxFontBytes)
-            throw new NotSupportedException("Typeface must expose a bounded original font stream.");
-        if (faceIndex != 0) throw new NotSupportedException("Collection font faces are not supported.");
-        using var hash = SHA256.Create();
-        var buffer = new byte[8192]; var remaining = stream.Length;
-        while (remaining > 0)
-        {
-            var read = stream.Read(buffer, Math.Min(remaining, buffer.Length));
-            if (read <= 0) throw new InvalidDataException("Incomplete typeface stream.");
-            if (remaining == stream.Length && read >= 4 && buffer[0] == 't' && buffer[1] == 't' && buffer[2] == 'c' && buffer[3] == 'f')
-                throw new NotSupportedException("Collection fonts are not supported.");
-            hash.TransformBlock(buffer, 0, read, buffer, 0); remaining -= read;
-        }
-        hash.TransformFinalBlock(Array.Empty<byte>(), 0, 0); _fontHash = hash.Hash!;
+        // Public Text authenticates every caller-supplied face. Only the owned
+        // producer binding can reuse a privately authenticated identity.
+        var identity = identityFactory is null ? ReadIdentity(face, maxFontBytes, null, token) : identityFactory();
+        _bold = identity.Bold; _italic = identity.Italic;
+        _fontHash = (byte[])identity.Hash.Clone();
     }
 
     /// <summary>Records a nonzero line. A line has no joins, so any positive miter limit has identical geometry.</summary>
