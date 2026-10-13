@@ -148,6 +148,10 @@ public sealed class TypedAnnotationTests
         source.Pages[0].Annotations!.Items[0].Appearance.Elements.Add(new OfdPathElement { WidthMillimeters = 10, HeightMillimeters = 10, AbbreviatedData = "M 0 0 L 10 10" });
         using var bytes = new MemoryStream(); await new OfdPackageWriter().WriteAsync(source, bytes); bytes.Position = 0;
         await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(bytes, new OfdPackageLoadOptions { MaxAnnotationObjectCount = 1 }));
+        bytes.Position = 0; using var context = new OfdControlledEditContext(new());
+        var quota = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadControlledAsync(bytes, new() { MaxAnnotationObjectCount = 1 }, context));
+        Assert.Contains("object budget", quota.Message); Assert.Equal(0, context.Material.ReadAnnotationFileAdmissions);
+        Assert.Throws<InvalidOperationException>(context.AssertActive);
     }
 
     [Theory]
@@ -273,6 +277,42 @@ public sealed class TypedAnnotationTests
         using var owned = OfdOwnedEditCandidate.CloneForControlledEdit(source, context.CaptureSource(source), context);
         var local = owned.GetMapped((OfdTextElement)source.Pages[0].Annotations!.Items[0].Appearance.Elements[0]);
         Assert.Throws<NotSupportedException>(() => owned.ApplyTextSlots(local, [new(0, "CHANGED", 0, 4)])); Assert.Equal("LOCAL", local.Text);
+    }
+
+    [Theory]
+    [InlineData("http://www.ofdspec.org", "http://www.ofdspec.org/2016")]
+    [InlineData("http://www.ofdspec.org/2016", "http://www.ofdspec.org")]
+    public async Task CrossNamespaceAnnotRemainsOpaqueAndOrdinarySavePreservesIt(string rootNamespace, string foreignNamespace)
+    {
+        var source = Fresh(); source.Options.Namespace = rootNamespace; source = await RoundTrip(source);
+        var path = source.Pages[0].Annotations!.Items[0].Source!.Entry;
+        var xml = XDocument.Parse(Encoding.UTF8.GetString(source.PreservedEntries[path]));
+        var annotation = xml.Root!.Elements().Single();
+        foreach (var node in annotation.DescendantsAndSelf()) node.Name = XNamespace.Get(foreignNamespace) + node.Name.LocalName;
+        source.PreservedEntries[path] = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+        source = await ReadEntries(source);
+        Assert.Null(source.Pages[0].Annotations); Assert.Empty(source.Pages[0].AnnotationAppearances.OfType<OfdTextElement>());
+        var opaque = source.PreservedEntries[path]; var saved = await RoundTrip(source);
+        Assert.Null(saved.Pages[0].Annotations); Assert.Equal(opaque, saved.PreservedEntries[path]);
+    }
+
+    [Theory]
+    [InlineData("http://www.ofdspec.org")] [InlineData("http://www.ofdspec.org/2016")]
+    public async Task ControlledTypedReadCloneAppearanceEditWriteAndReadbackShareOneContext(string documentNamespace)
+    {
+        var source = Fresh(); source.Options.Namespace = documentNamespace;
+        using var input = new MemoryStream(); await new OfdPackageWriter().WriteAsync(source, input); input.Position = 0;
+        using var context = new OfdControlledEditContext(new()); var reader = new OfdReader();
+        var loaded = await reader.ReadControlledAsync(input, new(), context);
+        var original = Assert.Single(loaded.Pages[0].Annotations!.Items); var copy = context.Material.CloneCopyBytes;
+        using var owned = OfdOwnedEditCandidate.CloneForControlledEdit(loaded, context.CaptureSource(loaded), context);
+        var target = owned.GetMapped(original); target.Appearance.XMillimeters += 10; target.Remark = "controlled metadata";
+        using var prepared = OfdPackageWriter.PrepareOwnedWrite(owned); using var output = new MemoryStream(); await prepared.WriteAsync(output);
+        output.Position = 0; var readback = await reader.ReadControlledAsync(output, new(), context);
+        var annotation = Assert.Single(readback.Pages[0].Annotations!.Items);
+        Assert.Equal(40, annotation.Appearance.XMillimeters); Assert.Equal("controlled metadata", annotation.Remark);
+        Assert.Equal("LOCAL", new OfdTextExtractor().Extract(readback)); Assert.Equal(2, annotation.Appearance.Elements[0].XMillimeters);
+        Assert.True(context.Material.CloneCopyBytes > copy); Assert.Equal(2, context.Material.ReadMetadataReservations);
     }
 
     private static OfdDocumentPackage Fresh()
