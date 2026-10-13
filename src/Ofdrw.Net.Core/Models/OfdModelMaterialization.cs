@@ -10,7 +10,7 @@ using Ofdrw.Net.Core.IO;
 
 namespace Ofdrw.Net.Core.Models;
 
-// Three independent operation-wide limits, not a combined managed-heap cap.
+// Four independent operation-wide limits, not a combined managed-heap cap.
 // Callers must pass one instance through nested copy/edit operations.
 internal sealed class OfdModelMaterialization
 {
@@ -274,6 +274,8 @@ internal sealed class OfdModelMaterialization
                 case "run": Markup(1, 2, 4); EmitString(Namespace); break;
                 case "font": Markup(3, 4, 8); EmitString(Namespace, 3); break;
                 case "attachment": Markup(2, 8, 16); EmitString(Namespace, 2); break;
+                case "annotation": Markup(8, 24, 24); EmitString(Namespace, 8); EmitString(package.DocumentEntryPath ?? package.Options.DocumentId, 8); break;
+                case "appearance": Markup(2, 16, 4); EmitString(Namespace, 2); break;
                 case "navigation": Markup(2, 8, 8); EmitString(Namespace, 2); break;
                 case "tagKey": Markup(1, 0, 2); EmitString(Namespace); break;
             }

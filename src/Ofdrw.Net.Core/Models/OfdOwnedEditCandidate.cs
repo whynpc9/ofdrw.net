@@ -34,6 +34,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         var material = context.Material;
         material.GuardPreservedXml(source, token); source.SourceIdentity?.Reconcile(source, material, token);
         OfdNavigationXml.Validate(source, source.Pages, token, material);
+        OfdAnnotationContract.Validate(source, material, token);
         material.ChargeCopy(4096L + (long)(source.Fonts.Count + source.Attachments.Count) * 256, token);
         var mapping = new Dictionary<object, object>(OfdReferenceIdentity.Instance);
         var copy = new OfdDocumentPackage
@@ -90,6 +91,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         Strings(source.PreservedCommonDataElements, copy.PreservedCommonDataElements);
         Strings(source.PreservedDocumentElements, copy.PreservedDocumentElements); Strings(source.PreservedDocBodyElements, copy.PreservedDocBodyElements);
         OfdNavigationCloner.Clone(source, copy, mapping, material, token, requireClosedMap: true);
+        copy.AnnotationIndexSource = source.AnnotationIndexSource?.Clone(source, copy, material, token);
         copy.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, token, requireClosedMap: true);
         copy.SourceIdentity = source.SourceIdentity?.CloneFor(copy, mapping, material, token, requireClosedMap: true);
         guard.AssertUnchanged(source, context, token);

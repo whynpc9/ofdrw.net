@@ -50,7 +50,23 @@ internal static class OfdModelTraversal
                 for (var i = 0; i < page.Templates.Count; i++)
                     if (!IsBackground(page.Templates[i]) && page.Templates[i].Elements.Count > 0) Emit(page.Templates[i].Elements, page, ordinal, OfdContentScope.Template, i, TemplatePath(page.Templates[i]));
             if (snapshot.IncludeAnnotations)
-                Emit(page.AnnotationAppearances, page, ordinal, OfdContentScope.Annotation, 0, null);
+                foreach (var occurrence in state.Annotations[page])
+                {
+                    var element = occurrence.Definition ?? occurrence.RenderElement;
+                    var info = state.Elements[element];
+                    if (snapshot.VisibleOnly && (!occurrence.Visible || !info.Visible)) continue;
+                    var kind = !info.Primitive ? OfdTraversalDiagnosticKind.RawObject : !info.Supported ? OfdTraversalDiagnosticKind.UnsupportedSource : OfdTraversalDiagnosticKind.DerivedProjection;
+                    if ((kind == OfdTraversalDiagnosticKind.RawObject || kind == OfdTraversalDiagnosticKind.UnsupportedSource) && snapshot.RequireSupportedSource)
+                        throw new NotSupportedException("Unsupported annotation source; no traversal result was returned.");
+                    var path = Path(state.Budget, ordinal, OfdContentScope.Annotation, occurrence.Annotation, occurrence.Element);
+                    state.Budget.Result(diagnostic: true);
+                    diagnostics.Add(new OfdTraversalDiagnostic(kind, page, OfdContentScope.Annotation, path,
+                        occurrence.Entry, occurrence.Definition is null || kind != OfdTraversalDiagnosticKind.DerivedProjection ? Message(kind) : "Local annotation definition is read-only to occurrence editing."));
+                    if (!info.Primitive) continue;
+                    state.Budget.Result(diagnostic: false);
+                    occurrences.Add(new OfdGraphicOccurrence(element, page, OfdContentScope.Annotation, info.DefinitionPath, path,
+                        false, info.Supported, occurrence.Entry, info.SourceXml, occurrence.ParentToPage is null ? null : Array.AsReadOnly(occurrence.ParentToPage), occurrence.Definition is not null));
+                }
         }
         cancellationToken.ThrowIfCancellationRequested();
         return new OfdGraphicTraversalResult(occurrences, diagnostics, state.Budget);
@@ -124,6 +140,8 @@ internal static class OfdModelTraversal
     private static State Preflight(OfdDocumentPackage package, OfdModelLimits limits, CancellationToken token)
     {
         var state = new State(limits);
+        OfdAnnotationContract.Validate(package, state.Material, token);
+        if (OfdAnnotationContract.HasTyped(package)) state.Material.InspectStorage(package, token);
         state.Budget.Node(1);
         if (package.Options is null) throw new InvalidDataException("OFD model has no document options.");
         if (package.DocumentEntryPath is not null) GuardPath(package.DocumentEntryPath);
@@ -148,6 +166,10 @@ internal static class OfdModelTraversal
                 Scan(template.Elements, p, OfdContentScope.Template, t);
             }
             Scan(page.AnnotationAppearances, p, OfdContentScope.Annotation, 0);
+            var annotations = page.Annotations ?? page.AnnotationOwnership.Original;
+            if (annotations is not null)
+                for (var a = 0; a < annotations.Items.Count; a++) Scan(annotations.Items[a].Appearance.Elements, p, OfdContentScope.Annotation, a);
+            state.Annotations.Add(page, OfdAnnotationProjection.Resolve(page, state.Material, token, includeHidden: true, documentNamespace: package.Options.Namespace));
             ScanPreserved(page.PreservedPageElements);
         }
         ScanPreserved(package.PreservedCommonDataElements);
@@ -304,7 +326,9 @@ internal static class OfdModelTraversal
 
     private sealed class State(OfdModelLimits limits)
     {
-        internal readonly OfdTraversalBudget Budget = new(limits);
+        internal readonly OfdModelMaterialization Material = new(limits);
+        internal OfdTraversalBudget Budget => Material.Structure;
+        internal readonly Dictionary<OfdPage, List<OfdAnnotationProjection.Occurrence>> Annotations = new();
         internal readonly Dictionary<OfdPage, int> Pages = new(Identity<OfdPage>.Instance);
         internal readonly Dictionary<OfdElement, ElementInfo> Elements = new(Identity<OfdElement>.Instance);
         internal readonly Dictionary<string, string> TemplatePaths = new(StringComparer.Ordinal);

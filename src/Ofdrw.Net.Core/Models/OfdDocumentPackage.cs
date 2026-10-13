@@ -6,6 +6,7 @@ namespace Ofdrw.Net.Core.Models;
 public sealed class OfdDocumentPackage
 {
     internal OfdDocumentEnvelope? SourceEnvelope { get; set; }
+    internal OfdAnnotationIndexSource? AnnotationIndexSource { get; set; }
     internal OfdSourceIdentity? SourceIdentity { get; set; }
     private readonly OfdNavigationOwnership<OfdOutlineCollection> outlines = new();
     private readonly OfdNavigationOwnership<OfdBookmarkCollection> bookmarks = new();

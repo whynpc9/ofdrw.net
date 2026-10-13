@@ -56,7 +56,9 @@ internal sealed partial class OfdOwnedEditCandidate
         var root = OfdXmlEnvelope.Parse(mappedText.SourceXml!); var ns = root.Name.Namespace;
         Package.SourceIdentity.AssertFragment(mappedText, root, true, material, token);
         if (!Package.PreservedEntries.TryGetValue(owner.Entry, out var bytes)) throw new InvalidDataException("Text source entry is missing.");
-        var document = material.ReadXml(owner.Entry, bytes, token); XElement? sourceRoot = null; var ordinal = 0;
+        var document = material.ReadXml(owner.Entry, bytes, token);
+        if (document.Root!.Name.LocalName != "Page") throw new NotSupportedException("Retained text-slot editing does not grant annotation editing authority.");
+        XElement? sourceRoot = null; var ordinal = 0;
         foreach (var node in document.Root!.DescendantsAndSelf())
         { token.ThrowIfCancellationRequested(); material.Structure.Reference(); if (ordinal++ == owner.Slot) { sourceRoot = node; break; } }
         var capturedSource = sourceRoot is null ? null : OfdXmlEnvelope.Capture(sourceRoot, material, token);

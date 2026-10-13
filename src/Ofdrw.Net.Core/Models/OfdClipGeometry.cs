@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
+using System.Threading;
 
 namespace Ofdrw.Net.Core.Models;
 
@@ -20,19 +21,29 @@ internal static class OfdClipGeometry
         var regions = new List<OfdClipRegion>();
         if (string.IsNullOrWhiteSpace(xml)) return regions;
         var root = XElement.Parse(xml!);
+        return Read(root, null, default);
+    }
+
+    internal static IReadOnlyList<OfdClipRegion> Read(XElement root, OfdModelMaterialization? material, CancellationToken token)
+    {
+        var regions = new List<OfdClipRegion>();
         var ns = root.Name.Namespace;
         foreach (var clip in root.Elements(ns + "Clip"))
         {
+            token.ThrowIfCancellationRequested(); material?.ChargeCopy(256, token);
             var region = new OfdClipRegion();
             if (clip.Elements().Any(area => area.Name.LocalName == "Area" && area.Name.Namespace != ns))
                 throw new NotSupportedException("Foreign OFD clip areas cannot be exported safely.");
             foreach (var area in clip.Elements(ns + "Area"))
             {
+                token.ThrowIfCancellationRequested(); material?.ChargeCopy(512L + 16L * (area.Attribute("CTM")?.Value.Length ?? 0), token);
                 var pathsBeforeArea = region.Paths.Count;
                 var areaTransform = Matrix(area.Attribute("CTM")?.Value);
                 foreach (var shape in area.Elements())
                 {
+                    token.ThrowIfCancellationRequested();
                     if (shape.Name.Namespace != ns) continue;
+                    material?.ChargeCopy(1024L + 16L * (shape.Attribute("CTM")?.Value.Length ?? 0) + 16L * (shape.Attribute("Boundary")?.Value.Length ?? 0), token);
                     if (shape.Name.LocalName != "Path") throw new NotSupportedException("Only path-based OFD clipping areas are supported.");
                     var literal = string.Concat(shape.Element(shape.Name.Namespace + "AbbreviatedData")?.Nodes().OfType<XText>().Select(text => text.Value) ?? Enumerable.Empty<string>());
                     if (string.IsNullOrWhiteSpace(literal)) throw new NotSupportedException("OFD clip path has no supported literal geometry.");

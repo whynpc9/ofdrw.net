@@ -20,11 +20,14 @@ internal static class OfdSerializedInventory
     }
 
     internal static void Walk(OfdDocumentPackage package, ISink sink, OfdModelMaterialization material,
-        CancellationToken token, bool rejectRepeatedOwners = false)
+        CancellationToken token, bool rejectRepeatedOwners = false, object? scope = null)
     {
         material.ChargeCopy(256, token);
         var owners = rejectRepeatedOwners ? new HashSet<object>(OfdReferenceIdentity.Instance) : null;
         var navigation = new HashSet<object>(OfdReferenceIdentity.Instance);
+        var annotations = new HashSet<object>(OfdReferenceIdentity.Instance);
+        if (scope is List<OfdElement> graphics) { Graphics("graphics", graphics); return; }
+        if (scope is OfdAnnotationCollection collection) { Annotations(collection); return; }
         Object("package", package); Object("options", package.Options); Object("metadata", package.Options.Metadata);
         S("documentPath", package.DocumentEntryPath); P(package.DocumentEntryPath);
         S("publicResource", package.PublicResourceLocation); P(package.PublicResourceLocation);
@@ -68,6 +71,7 @@ internal static class OfdSerializedInventory
         NavigationOwner("outlines", package.OutlineOwnership); NavigationOwner("bookmarks", package.BookmarkOwnership);
         NavigationOwner("actions", package.ActionOwnership);
         V("sourceEnvelope", package.SourceEnvelope, true); package.SourceEnvelope?.VisitInventory(sink);
+        V("annotationIndexSource", package.AnnotationIndexSource, true); package.AnnotationIndexSource?.VisitInventory(sink);
         V("sourceIdentity", package.SourceIdentity, true); package.SourceIdentity?.VisitInventory(sink);
         token.ThrowIfCancellationRequested();
 
@@ -87,12 +91,48 @@ internal static class OfdSerializedInventory
             V("index", page.Index); V("x", page.XMillimeters); V("y", page.YMillimeters);
             V("width", page.WidthMillimeters); V("height", page.HeightMillimeters);
             Graphics("graphics", page.Elements); Graphics("annotations", page.AnnotationAppearances);
+            V("annotationOwnership", page.AnnotationOwnership, true);
+            page.AnnotationOwnership.VisitInventory(sink);
+            Annotations(page.Annotations);
+            Annotations(page.AnnotationOwnership.Original, baselineOnly: true);
+            Annotations(page.AnnotationOwnership.BaselineCollection, baselineOnly: true);
             Fragments("pageFragments", page.PreservedPageElements);
             Container("templates", page.Templates, page.Templates.Count);
             foreach (var template in page.Templates)
             {
                 Own("template", template); S("templateId", template.TemplateId); S("zOrder", template.ZOrder);
                 S("baseLocation", template.BaseLocation); P(template.BaseLocation); Graphics("templateGraphics", template.Elements);
+            }
+        }
+        void Annotations(OfdAnnotationCollection? collection, bool baselineOnly = false)
+        {
+            V("annotationCollection", collection, true);
+            if (collection is null) return;
+            if (!annotations.Add(collection))
+            {
+                if (!baselineOnly && owners is not null) throw new InvalidDataException("Repeated serialized annotation collection ownership.");
+                return;
+            }
+            Container("annotationItems", collection.Items, collection.Items.Count);
+            foreach (var annotation in collection.Items)
+            {
+                V("annotationEdge", annotation, true);
+                if (!annotations.Add(annotation))
+                {
+                    if (!baselineOnly && owners is not null) throw new InvalidDataException("Repeated serialized annotation ownership.");
+                    continue;
+                }
+                Own("annotation", annotation); S("annotationId", annotation.Id); V("annotationType", annotation.Type);
+                S("creator", annotation.Creator); V("lastModifiedDate", annotation.LastModifiedDate);
+                S("subtype", annotation.Subtype); V("visible", annotation.Visible); V("print", annotation.Print);
+                V("noZoom", annotation.NoZoom); V("noRotate", annotation.NoRotate); V("readOnly", annotation.ReadOnly);
+                S("remark", annotation.Remark); Source(annotation.SourceXml);
+                var appearance = annotation.Appearance;
+                Own("appearance", appearance); V("x", appearance.XMillimeters); V("y", appearance.YMillimeters);
+                V("width", appearance.WidthMillimeters); V("height", appearance.HeightMillimeters);
+                sink.Matrix(appearance.Transform); Source(appearance.SourceXml);
+                Graphics("localGraphics", appearance.Elements);
+                if (scope is null) { V("annotationSource", annotation.Source, true); annotation.Source?.VisitInventory(sink); }
             }
         }
         void Graphics(string role, List<OfdElement> elements)

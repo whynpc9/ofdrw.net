@@ -19,9 +19,11 @@ public sealed class OfdTextExtractor
             throw new ArgumentNullException(nameof(package));
         }
 
+        var material = new OfdModelMaterialization(new OfdModelLimits());
+        OfdAnnotationContract.Validate(package, material, default);
         return package.Pages
             .OrderBy(page => page.Index)
-            .Select(page => ExtractPage(page, includeTemplates))
+            .Select(page => ExtractPage(page, includeTemplates, material, package.Options.Namespace))
             .ToList();
     }
 
@@ -33,7 +35,7 @@ public sealed class OfdTextExtractor
         return string.Join(pageSeparator, ExtractPages(package, includeTemplates));
     }
 
-    private static string ExtractPage(OfdPage page, bool includeTemplates)
+    private static string ExtractPage(OfdPage page, bool includeTemplates, OfdModelMaterialization material, string documentNamespace)
     {
         IEnumerable<OfdTextElement> textElements =
             page.Elements.OfType<OfdTextElement>();
@@ -56,7 +58,7 @@ public sealed class OfdTextExtractor
                     .OfType<OfdTextElement>());
         }
 
-        textElements = textElements.Concat(page.AnnotationAppearances.OfType<OfdTextElement>());
+        textElements = textElements.Concat(OfdAnnotationProjection.Resolve(page, material, documentNamespace: documentNamespace).Select(occurrence => occurrence.RenderElement).OfType<OfdTextElement>());
         var lines = textElements
             .Where(OfdGraphicXmlContract.IsVisible)
             .OrderBy(element => element.YMillimeters)

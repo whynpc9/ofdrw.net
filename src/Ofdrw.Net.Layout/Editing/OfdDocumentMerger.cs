@@ -67,6 +67,8 @@ public static class OfdDocumentMerger
             cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1); material.Structure.Reference();
             if (source is null) throw new ArgumentException("Source documents cannot contain null.", nameof(sources));
             material.InspectStorage(source, cancellationToken); material.GuardPreservedXml(source, cancellationToken);
+            OfdAnnotationContract.Validate(source, material, cancellationToken);
+            if (OfdAnnotationContract.HasTyped(source)) throw new NotSupportedException("Merger cannot remap typed annotation ownership.");
             if (OfdNavigationXml.HasTypedNavigation(source, material, cancellationToken)) throw new NotSupportedException("Merge cannot remap navigation source ownership.");
             sourceList.Add(source);
         }

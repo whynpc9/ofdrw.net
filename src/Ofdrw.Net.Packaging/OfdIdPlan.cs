@@ -66,7 +66,7 @@ internal sealed class OfdIdPlan
         foreach (var xml in package.PreservedDocBodyElements) Fixed(xml);
         foreach (var page in package.Pages) foreach (var xml in page.PreservedPageElements) Fixed(xml);
         foreach (var page in package.Pages)
-            foreach (var element in page.Elements)
+            foreach (var element in OfdAnnotationContract.Definitions(page))
             {
                 token.ThrowIfCancellationRequested();
                 var xml = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdRawElement raw => raw.Xml, _ => null };
@@ -78,7 +78,8 @@ internal sealed class OfdIdPlan
         foreach (var page in package.Pages)
         {
             Hint(page.Id);
-            foreach (var element in page.Elements)
+            foreach (var annotation in (page.Annotations ?? page.AnnotationOwnership.Original)?.Items ?? Enumerable.Empty<OfdAnnotation>()) Hint(annotation.Id);
+            foreach (var element in OfdAnnotationContract.Definitions(page))
             {
                 Hint(element.ObjectId); Hint(element.LayerId);
                 if (element is OfdImageElement image) Hint(image.ResourceId);

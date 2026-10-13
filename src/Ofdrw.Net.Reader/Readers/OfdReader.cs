@@ -137,6 +137,7 @@ public sealed class OfdReader : IOfdReader
             ReadFonts(archive, documentResPath, package, fontMap, material, cancellationToken);
         }
 
+        var documentFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
         var templateLocations = commonData?.Elements(docNs + "TemplatePage")
             .Select(x => new
             {
@@ -166,11 +167,25 @@ public sealed class OfdReader : IOfdReader
 
         var annotationIndex = IndexAnnotationFiles(archive, documentXml, docRoot,
             new HashSet<string>(pages.Select(page => page.Id).OfType<string>().Where(id => !string.IsNullOrWhiteSpace(id)), StringComparer.Ordinal), material, cancellationToken);
+        var annotationIdCounts = new Dictionary<long, int>();
+        foreach (var entry in package.PreservedEntries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var reservedIds = material.Reservations(entry.Value, out _, cancellationToken);
+            if (!reservedIds.Any() || material.OpaqueEntries.Contains(entry.Key)) continue;
+            foreach (var attribute in material.ReadXml(entry.Key, entry.Value, cancellationToken).Descendants().Attributes("ID"))
+            {
+                material.Structure.Reference(); var id = OfdSourceIdentity.ParseId(attribute.Value);
+                if (id != 0) annotationIdCounts[id] = annotationIdCounts.TryGetValue(id, out var count) ? count + 1 : 1;
+            }
+        }
+        package.AnnotationIndexSource = annotationIndex.Source; annotationIndex.Source.DocumentOwner = package;
         var annotationDocuments = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
         var annotationBudget = new AnnotationReadBudget(options);
         foreach (var pageRef in pages)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            fontMap = new Dictionary<string, string>(documentFonts, StringComparer.OrdinalIgnoreCase);
             var contentPath = material.ResolvePath(docRoot, pageRef.BaseLoc!, cancellationToken);
             var pageXml = material.ReadXml(contentPath, archive.GetBytes(contentPath), cancellationToken);
             var pageNs = pageXml.Root?.Name.Namespace ?? docNs;
@@ -220,6 +235,7 @@ public sealed class OfdReader : IOfdReader
                 page.Elements.Add(element);
             }
 
+            var annotationFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
             foreach (var templateRef in pageXml.Root?.Elements(pageNs + "Template") ?? Enumerable.Empty<XElement>())
             {
                 var templateId = templateRef.Attribute("TemplateID")?.Value;
@@ -240,7 +256,8 @@ public sealed class OfdReader : IOfdReader
                 var templateMediaMap = new Dictionary<string, string>(documentMediaMap, StringComparer.OrdinalIgnoreCase);
                 var templateMediaTypeMap = new Dictionary<string, string>(documentMediaTypeMap, StringComparer.OrdinalIgnoreCase);
                 ReadMediaResources(archive, templateResPath, docNs, templateMediaMap, templateMediaTypeMap, material, cancellationToken);
-                ReadFonts(archive, templateResPath, package, fontMap, material, cancellationToken);
+                var templateFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
+                ReadFonts(archive, templateResPath, package, templateFonts, material, cancellationToken);
 
                 var template = new OfdTemplateContent
                 {
@@ -252,7 +269,7 @@ public sealed class OfdReader : IOfdReader
                 foreach (var element in ParsePageObjects(
                     archive,
                     templateXml,
-                    fontMap,
+                    templateFonts,
                     templateMediaMap,
                     templateMediaTypeMap,
                     templateResPath, material, cancellationToken))
@@ -263,7 +280,7 @@ public sealed class OfdReader : IOfdReader
                 page.Templates.Add(template);
             }
 
-            ReadAnnotationAppearances(archive, annotationIndex, annotationDocuments, annotationBudget, page, fontMap, mediaMap, mediaTypeMap, material, cancellationToken);
+            ReadAnnotationAppearances(archive, annotationIndex, annotationDocuments, annotationBudget, page, annotationFonts, mediaMap, mediaTypeMap, material, cancellationToken, annotationIdCounts);
             package.Pages.Add(page);
         }
 
@@ -359,6 +376,7 @@ public sealed class OfdReader : IOfdReader
 
     private sealed class AnnotationIndex
     {
+        internal readonly OfdAnnotationIndexSource Source = new();
         internal XNamespace Namespace = XNamespace.None;
         internal readonly Dictionary<string, AnnotationFiles> Files = new(StringComparer.Ordinal);
         internal readonly List<string> UnmodeledLists = new();
@@ -406,6 +424,7 @@ public sealed class OfdReader : IOfdReader
         foreach (var declaration in document.Root!.Elements().Where(node => node.Name.LocalName == "Annotations"))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            result.Source.Declarations.Add(OfdXmlEnvelope.Capture(declaration, material, cancellationToken));
             if (declaration.Name.Namespace != result.Namespace)
             {
                 result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
@@ -422,6 +441,7 @@ public sealed class OfdReader : IOfdReader
             }
             var listPath = material.ResolvePath(documentPath, literal, cancellationToken);
             if (!visited.Add(listPath)) continue;
+            result.Source.Capture(listPath, archive.TryGetBytes(listPath, out var indexBytes) ? indexBytes : null, material, cancellationToken);
             if (!archive.Contains(listPath))
             {
                 result.UnmodeledLists.Add(declaration.ToString(SaveOptions.DisableFormatting));
@@ -505,11 +525,13 @@ public sealed class OfdReader : IOfdReader
     private static void ReadAnnotationAppearances(OfdPackageArchive archive, AnnotationIndex index,
         IDictionary<string, XDocument?> documents, AnnotationReadBudget budget, OfdPage page, IReadOnlyDictionary<string, string> fonts,
         IReadOnlyDictionary<string, string> media, IReadOnlyDictionary<string, string> mediaTypes,
-        OfdModelMaterialization material, CancellationToken cancellationToken)
+        OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<long, int> idCounts)
     {
+        var typed = new OfdAnnotationCollection();
         if (index.UnmodeledXml is not null)
             page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Annotations", Xml = index.UnmodeledXml });
-        if (page.Id is null || !index.Files.TryGetValue(page.Id, out var files)) return;
+        if (page.Id is null || !index.Files.TryGetValue(page.Id, out var files))
+        { page.AnnotationOwnership.Bind(page, null, material, cancellationToken); return; }
         if (files.UnmodeledXml is not null)
             page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Annotations", Xml = files.UnmodeledXml });
         foreach (var annotationPath in files.Paths)
@@ -518,6 +540,7 @@ public sealed class OfdReader : IOfdReader
             // Cached XML still produces new typed/raw strings on every page.
             // Charge each occurrence before parsing or materializing its content.
             if (archive.TryGetBytes(annotationPath, out var annotationBytes)) budget.ChargeXml(annotationBytes.LongLength);
+            if (!index.Source.IndexDigests.ContainsKey(annotationPath)) index.Source.Capture(annotationPath, annotationBytes, material, cancellationToken);
             if (!documents.TryGetValue(annotationPath, out var annotations))
             {
                 annotations = null;
@@ -532,11 +555,29 @@ public sealed class OfdReader : IOfdReader
                     Xml = new XElement("UnmodeledAnnotation", new XAttribute("FileLoc", annotationPath)).ToString() });
                 continue;
             }
+            page.AnnotationOwnership.Entries.Add(annotationPath, OfdXmlEnvelope.Capture(annotations.Root!, material, cancellationToken));
+            if (annotations.Root!.Attributes().Any(a => !a.IsNamespaceDeclaration) || annotations.Root.Nodes().Any(n => n is XProcessingInstruction or XComment || n is XText t && !string.IsNullOrWhiteSpace(t.Value)) || annotations.Nodes().Any(n => n is XProcessingInstruction or XComment))
+                page.AnnotationOwnership.UnsafeDeletionEntries.Add(annotationPath);
+            var shared = index.Files.Values.Count(candidate => candidate.Known.Contains(annotationPath)) > 1;
+            var annotationSlot = -1;
             if (!PlainContainer(annotations.Root!) || annotations.Nodes().Any(node => node is not XElement and not XComment && (node is not XText text || !string.IsNullOrWhiteSpace(text.Value))))
                 page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotations.ToString(SaveOptions.DisableFormatting) });
             foreach (var annotation in annotations.Root.Elements())
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                annotationSlot++;
+                // Strict caller quota is charged before the first local typed materialization.
+                foreach (var appearanceNode in annotation.Elements(annotation.Name.Namespace + "Appearance"))
+                foreach (var graphic in appearanceNode.Descendants())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (graphic.Name.Namespace == appearanceNode.Name.Namespace && graphic.Name.LocalName is "TextObject" or "ImageObject" or "PathObject") budget.ChargeObject();
+                }
+                var projectionStart = page.AnnotationAppearances.Count;
+                var admitted = shared ? null : ReadTypedAnnotation(archive, annotation, fonts, media, mediaTypes,
+                    annotationPath, idCounts, material, cancellationToken);
+                try
+                {
                 if (annotation.Name != annotations.Root.Name.Namespace + "Annot")
                 {
                     page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = annotation.ToString(SaveOptions.DisableFormatting) });
@@ -603,39 +644,13 @@ public sealed class OfdReader : IOfdReader
                         staged.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
                         break;
                     }
-                    var transform = appearanceTransform ?? new double[] { 1, 0, 0, 1, 0, 0 };
-                    var x = element.XMillimeters; var y = element.YMillimeters;
-                    var originalWidth = element.WidthMillimeters; var originalHeight = element.HeightMillimeters;
-                    var minX = Math.Min(0, transform[0] * originalWidth) + Math.Min(0, transform[2] * originalHeight);
-                    var minY = Math.Min(0, transform[1] * originalWidth) + Math.Min(0, transform[3] * originalHeight);
-                    element.XMillimeters = box.x + transform[0] * x + transform[2] * y + transform[4] + minX;
-                    element.YMillimeters = box.y + transform[1] * x + transform[3] * y + transform[5] + minY;
-                    element.WidthMillimeters = Math.Abs(transform[0]) * originalWidth + Math.Abs(transform[2]) * originalHeight;
-                    element.HeightMillimeters = Math.Abs(transform[1]) * originalWidth + Math.Abs(transform[3]) * originalHeight;
-                    if (appearanceTransform is not null)
-                    {
-                        var inner = element switch
-                        {
-                            OfdTextElement text => text.Transform,
-                            OfdPathElement path => path.Transform,
-                            OfdImageElement image => image.Transform ?? new double[] { originalWidth, 0, 0, originalHeight, 0, 0 },
-                            _ => null
-                        } ?? new double[] { 1, 0, 0, 1, 0, 0 };
-                        var combined = new double[]
-                        {
-                            transform[0] * inner[0] + transform[2] * inner[1], transform[1] * inner[0] + transform[3] * inner[1],
-                            transform[0] * inner[2] + transform[2] * inner[3], transform[1] * inner[2] + transform[3] * inner[3],
-                            transform[0] * inner[4] + transform[2] * inner[5] - minX, transform[1] * inner[4] + transform[3] * inner[5] - minY
-                        };
-                        if (element is OfdTextElement transformedText) transformedText.Transform = combined;
-                        if (element is OfdImageElement transformedImage) transformedImage.Transform = combined;
-                        if (element is OfdPathElement transformedPath) transformedPath.Transform = combined;
-                    }
                     try
                     {
-                        element.ClippingXml = TransformAnnotationClips(element.ClippingXml, ns, transform, minX, minY,
-                            box.x + transform[4] - element.XMillimeters, box.y + transform[5] - element.YMillimeters, box.w, box.h,
-                            element is OfdImageElement ? originalWidth : 0, element is OfdImageElement ? originalHeight : 0);
+                        staged.Add(OfdAnnotationProjection.Project(element, new OfdAnnotationAppearance
+                        {
+                            XMillimeters = box.x, YMillimeters = box.y, WidthMillimeters = box.w, HeightMillimeters = box.h,
+                            Transform = appearanceTransform
+                        }, ns, material, cancellationToken));
                     }
                     catch (Exception exception) when (exception is NotSupportedException or InvalidDataException && !OfdTraversalBudget.IsLimit(exception))
                     {
@@ -643,27 +658,84 @@ public sealed class OfdReader : IOfdReader
                         staged.Add(new OfdRawElement { LocalName = "UnsupportedAnnotationAppearance", Xml = appearance.ToString(SaveOptions.DisableFormatting) });
                         break;
                     }
-                    // Keep the serialized boundary consistent with the translated typed geometry.
-                    var source = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, _ => null };
-                    if (source is not null)
-                    {
-                        var node = XElement.Parse(source);
-                        node.SetAttributeValue("Boundary", string.Join(" ", new[] { element.XMillimeters, element.YMillimeters, element.WidthMillimeters, element.HeightMillimeters }.Select(value => value.ToString("R", CultureInfo.InvariantCulture))));
-                        if (appearanceTransform is not null)
-                        {
-                            var objectTransform = element switch { OfdTextElement matrixText => matrixText.Transform, OfdImageElement matrixImage => matrixImage.Transform, OfdPathElement matrixPath => matrixPath.Transform, _ => null };
-                            if (objectTransform is not null) node.SetAttributeValue("CTM", string.Join(" ", objectTransform.Select(value => value.ToString("R", CultureInfo.InvariantCulture))));
-                        }
-                        source = OfdXmlEnvelope.Capture(node, material, cancellationToken);
-                        if (element is OfdTextElement text) text.SourceXml = source;
-                        if (element is OfdImageElement image) image.SourceXml = source;
-                        if (element is OfdPathElement path) path.SourceXml = source;
-                    }
-                    staged.Add(element);
                 }
                 page.AnnotationAppearances.AddRange(staged);
+                }
+                finally
+                {
+                    if (admitted is not null)
+                    {
+                        admitted.Source = new OfdAnnotationSource(annotationPath, annotationSlot, projectionStart,
+                            page.AnnotationAppearances.Count - projectionStart,
+                            OfdModelSnapshot.Capture(admitted.Appearance.Elements, material, cancellationToken), annotations.Root.Name.NamespaceName);
+                        typed.Items.Add(admitted);
+                    }
+                    else page.AnnotationOwnership.HasUnclaimedSource = true;
+                }
             }
         }
+        page.AnnotationOwnership.Bind(page, typed.Items.Count == 0 ? null : typed, material, cancellationToken);
+    }
+
+    private static OfdAnnotation? ReadTypedAnnotation(OfdPackageArchive archive, XElement annotation,
+        IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
+        IReadOnlyDictionary<string, string> mediaTypes, string path, IReadOnlyDictionary<long, int> idCounts,
+        OfdModelMaterialization material, CancellationToken token)
+    {
+        var ns = annotation.Name.Namespace;
+        if (annotation.Name != ns + "Annot" || (ns.NamespaceName != OfdConstants.Namespace && ns.NamespaceName != OfdConstants.StandardNamespace) ||
+            !Unique(annotation.Attribute("ID")?.Value) ||
+            !Enum.TryParse<OfdAnnotationType>(annotation.Attribute("Type")?.Value, false, out var type) || !Enum.IsDefined(typeof(OfdAnnotationType), type) ||
+            string.IsNullOrWhiteSpace(annotation.Attribute("Creator")?.Value) ||
+            !DateTime.TryParseExact(annotation.Attribute("LastModDate")?.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ||
+            annotation.Elements(ns + "Appearance").Count() != 1 || annotation.Elements(ns + "Remark").Count() > 1 ||
+            annotation.Nodes().Any(n => n is XText t && !string.IsNullOrWhiteSpace(t.Value))) return null;
+        var flags = new Dictionary<string, bool?>();
+        foreach (var name in new[] { "Visible", "Print", "NoZoom", "NoRotate", "ReadOnly" })
+        {
+            var literal = annotation.Attribute(name)?.Value;
+            if (literal is not null && literal is not ("true" or "false" or "1" or "0")) return null;
+            flags[name] = literal is null ? null : literal is "true" or "1";
+        }
+        var appearance = annotation.Element(ns + "Appearance")!;
+        if (!OfdBoxParser.TryParse(appearance.Attribute("Boundary")?.Value, out _) ||
+            appearance.Nodes().Any(n => n is XText t && !string.IsNullOrWhiteSpace(t.Value)) ||
+            appearance.Elements().Any(n => n.Name.Namespace != ns || n.Name.LocalName is not ("TextObject" or "ImageObject" or "PathObject") ||
+                !Unique(n.Attribute("ID")?.Value) || !IsSupportedAnnotationPrimitive(n, ns))) return null;
+        foreach (var primitive in appearance.Elements())
+        {
+            token.ThrowIfCancellationRequested();
+            if (!OfdBoxParser.TryParse(primitive.Attribute("Boundary")?.Value, out var primitiveBox) ||
+                !OfdBoxParser.IsWritablePositiveSide(primitiveBox.w) || !OfdBoxParser.IsWritablePositiveSide(primitiveBox.h)) return null;
+            var primitiveMatrix = ParseMatrix(primitive.Attribute("CTM")?.Value);
+            if (primitive.Attribute("CTM") is not null && (primitiveMatrix is null || primitiveMatrix.Any(v => double.IsNaN(v) || double.IsInfinity(v)))) return null;
+            if (primitive.Name.LocalName == "TextObject" && (!double.TryParse(primitive.Attribute("Size")?.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var size) || !(size > 0) || double.IsInfinity(size))) return null;
+        }
+        var matrix = ParseMatrix(appearance.Attribute("CTM")?.Value);
+        if (appearance.Attribute("CTM") is not null && (matrix is null || matrix.Any(v => double.IsNaN(v) || double.IsInfinity(v)))) return null;
+        var box = ParseBox(appearance.Attribute("Boundary")?.Value);
+        if (box.w <= 0 || box.h <= 0) return null;
+        var remark = annotation.Element(ns + "Remark");
+        if (remark is not null && (remark.HasElements || remark.Nodes().Any(n => n is not XText and not XComment))) return null;
+        var result = new OfdAnnotation
+        {
+            Id = annotation.Attribute("ID")!.Value, Type = type, Creator = annotation.Attribute("Creator")!.Value,
+            LastModifiedDate = DateTime.SpecifyKind(date, DateTimeKind.Unspecified), Subtype = annotation.Attribute("Subtype")?.Value,
+            Visible = flags["Visible"], Print = flags["Print"], NoZoom = flags["NoZoom"], NoRotate = flags["NoRotate"], ReadOnly = flags["ReadOnly"],
+            Remark = remark?.Value, SourceXml = OfdXmlEnvelope.Capture(annotation, material, token),
+            Appearance = new OfdAnnotationAppearance { XMillimeters = box.x, YMillimeters = box.y, WidthMillimeters = box.w,
+                HeightMillimeters = box.h, Transform = matrix, SourceXml = OfdXmlEnvelope.Capture(appearance, material, token) }
+        };
+        // Capture inherits namespace bindings before attaching nodes to the parser's narrow synthetic container.
+        var nodes = appearance.Elements().Select(n => OfdXmlEnvelope.Parse(OfdXmlEnvelope.Capture(n, material, token))).ToArray();
+        var xml = new XDocument(new XElement(ns + "Page", new XElement(ns + "Content", new XElement(ns + "Layer", nodes))));
+        foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, path, material, token))
+        {
+            if (element is OfdRawElement || element is OfdImageElement { Data.Length: 0 }) return null;
+            result.Appearance.Elements.Add(element);
+        }
+        return result;
+        bool Unique(string? value) => OfdSourceIdentity.ParseId(value) is var id && id != 0 && idCounts.TryGetValue(id, out var count) && count == 1;
     }
 
     private static List<XElement>? FlattenAnnotationNodes(IEnumerable<XElement> nodes, XNamespace ns, AnnotationReadBudget budget, CancellationToken token)
@@ -683,7 +755,6 @@ public sealed class OfdReader : IOfdReader
                 }
                 else if (node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject")
                 {
-                    budget.ChargeObject();
                     if (!IsSupportedAnnotationPrimitive(node, ns)) return false;
                     result.Add(node);
                 }
@@ -698,48 +769,6 @@ public sealed class OfdReader : IOfdReader
     {
         if (root.Name == ns + "TextObject" && !root.Elements(ns + "TextCode").Any()) return false;
         return OfdGraphicXmlContract.HasKnownChildren(root) && !OfdGraphicXmlContract.HasUnsupportedReferences(root);
-    }
-
-    private static string TransformAnnotationClips(string? original, XNamespace ns, double[] outer,
-        double minX, double minY, double outerX, double outerY, double width, double height, double imageWidth, double imageHeight)
-    {
-        var clips = new XElement(ns + "Clips");
-        if (!string.IsNullOrWhiteSpace(original))
-        {
-            var source = XElement.Parse(original!);
-            if (source.Name.Namespace != ns || !OfdGraphicXmlContract.HasKnownChildren(source) || OfdGraphicXmlContract.HasUnsupportedReferences(source) ||
-                source.DescendantsAndSelf().Attributes().Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute)))
-                throw new NotSupportedException("Unsupported annotation clip cannot be flattened safely.");
-            foreach (var region in OfdClipGeometry.Read(original))
-            {
-                var area = new XElement(ns + "Area");
-                foreach (var path in region.Paths)
-                {
-                    var inner = path.Transform ?? new double[] { 1, 0, 0, 1, 0, 0 };
-                    var matrix = new[] { outer[0] * inner[0] + outer[2] * inner[1], outer[1] * inner[0] + outer[3] * inner[1],
-                        outer[0] * inner[2] + outer[2] * inner[3], outer[1] * inner[2] + outer[3] * inner[3],
-                        outer[0] * inner[4] + outer[2] * inner[5] - minX, outer[1] * inner[4] + outer[3] * inner[5] - minY };
-                    area.Add(ClipPath(path.AbbreviatedData, matrix, region.EvenOdd));
-                }
-                clips.Add(new XElement(ns + "Clip", area));
-            }
-        }
-        if (imageWidth > 0 && imageHeight > 0)
-        {
-            var imageRectangle = $"M 0 0 L {Number(imageWidth)} 0 L {Number(imageWidth)} {Number(imageHeight)} L 0 {Number(imageHeight)} C";
-            clips.Add(new XElement(ns + "Clip", new XElement(ns + "Area", ClipPath(imageRectangle,
-                new[] { outer[0], outer[1], outer[2], outer[3], -minX, -minY }, false))));
-        }
-        // Separate Clip means intersection with existing clipping, not union.
-        var rectangle = $"M 0 0 L {Number(width)} 0 L {Number(width)} {Number(height)} L 0 {Number(height)} C";
-        clips.Add(new XElement(ns + "Clip", new XElement(ns + "Area", ClipPath(rectangle,
-            new[] { outer[0], outer[1], outer[2], outer[3], outerX, outerY }, false))));
-        return clips.ToString(SaveOptions.DisableFormatting);
-
-        string Number(double value) => value.ToString("R", CultureInfo.InvariantCulture);
-        XElement ClipPath(string data, double[] matrix, bool evenOdd) => new(ns + "Path",
-            new XAttribute("ID", "annotation-clip"), new XAttribute("CTM", string.Join(" ", matrix.Select(Number))),
-            evenOdd ? new XAttribute("Rule", "Even-Odd") : null, new XElement(ns + "AbbreviatedData", data));
     }
 
     private static void ReadFonts(
