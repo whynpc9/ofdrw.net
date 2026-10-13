@@ -141,7 +141,7 @@ internal sealed class VectorPageContext
                 var bytes = Unfiltered(Resolve<StreamToken>(Entry(descriptor, "FontFile2")), options.MaxFontBytes, "font");
                 if (bytes.Length > options.MaxTotalFontBytes - fontBytes) throw new InvalidDataException("PDF page font byte limit exceeded.");
                 fontBytes += bytes.Length;
-                bindings.Add(name, new VectorFont("font-" + bindings.Count, bytes)); filtered.Add(NameToken.Create(name), fontToken);
+                bindings.Add(name, new VectorFont("font-" + bindings.Count, bytes, options.MaxFontBytes)); filtered.Add(NameToken.Create(name), fontToken);
             }
             var package = new OfdDocumentPackage();
             var page = new OfdPage { WidthMillimeters = numbers[2] * 25.4 / 72, HeightMillimeters = numbers[3] * 25.4 / 72 };
@@ -365,26 +365,13 @@ internal sealed class VectorOperations : IGraphicsStateOperationFactory
 
 internal sealed class VectorFont : IDisposable
 {
-    internal readonly SKTypeface Face; internal readonly OfdFontResource Resource;
-    internal VectorFont(string id, byte[] bytes)
+    internal readonly SkiaDrawEvent.FixedFontBinding Binding;
+    internal readonly OfdFontResource Resource;
+    internal VectorFont(string id, byte[] bytes, int maxFontBytes)
     {
-        using var data = SKData.CreateCopy(bytes); Face = SKTypeface.FromData(data) ?? throw new NotSupportedException("PDFV_FONT_FACE");
-        try
-        {
-            var selection = Word(Face, 0x4f532f32u, 62); var mac = Word(Face, 0x68656164u, 44);
-            var bold = (selection & 0x20) != 0; var italic = (selection & 1) != 0;
-            if (((mac & 1) != 0) != bold || ((mac & 2) != 0) != italic) throw new NotSupportedException("PDFV_FONT_STYLE_FLAGS");
-            Resource = new OfdFontResource { Id = id, FontName = Face.FamilyName, FileName = id + ".ttf", Data = bytes, Bold = bold, Italic = italic };
-        }
-        catch { Face.Dispose(); throw; }
+        Binding = SkiaDrawEvent.FixedFontBinding.FromOriginalBytes(bytes, id, maxFontBytes);
+        Resource = new OfdFontResource { Id = id, FontName = Binding.FamilyName, FileName = id + ".ttf",
+            Data = bytes, Bold = Binding.Bold, Italic = Binding.Italic };
     }
-    private static ushort Word(SKTypeface face, uint tag, int offset)
-    {
-        var size = face.GetTableSize(tag);
-        if (size < offset + 2 || size > 1024) throw new NotSupportedException("PDFV_FONT_STYLE_TABLE");
-        var bytes = face.GetTableData(tag);
-        if (bytes is null || bytes.Length < offset + 2) throw new NotSupportedException("PDFV_FONT_STYLE_TABLE");
-        return (ushort)((bytes[offset] << 8) | bytes[offset + 1]);
-    }
-    public void Dispose() => Face.Dispose();
+    public void Dispose() => Binding.Dispose();
 }
