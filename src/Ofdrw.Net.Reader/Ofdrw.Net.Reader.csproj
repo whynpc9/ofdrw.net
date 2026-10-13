@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Ofdrw.Net.Packaging.Tests" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Tests" />
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
   </ItemGroup>
