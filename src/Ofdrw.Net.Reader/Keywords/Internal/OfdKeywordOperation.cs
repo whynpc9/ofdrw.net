@@ -16,10 +16,12 @@ internal sealed class OfdKeywordOperation : IDisposable
     private IOfdGlyphGeometryProvider? provider;
     private IOfdGlyphGeometrySession? session;
     private bool disposed;
+    internal OfdModelMaterialization? Material { get; }
 
-    internal OfdKeywordOperation(OfdKeywordSearchOptions? options = null, CancellationToken cancellationToken = default)
+    internal OfdKeywordOperation(OfdKeywordSearchOptions? options = null, CancellationToken cancellationToken = default,
+        OfdModelMaterialization? material = null)
     {
-        Options = options ?? new OfdKeywordSearchOptions(); Token = cancellationToken;
+        Options = options ?? new OfdKeywordSearchOptions(); Token = cancellationToken; Material = material;
         Check();
     }
     internal OfdKeywordSearchOptions Options { get; }
@@ -28,6 +30,13 @@ internal sealed class OfdKeywordOperation : IDisposable
     internal long HashedFontBytes { get; private set; }
     internal int HashOperations { get; private set; }
     internal long FontComparisonBytes { get; private set; }
+    internal long FontReadBytes { get; private set; }
+    internal long FontSeekOperations { get; private set; }
+    internal long ReservedFontReadBytes { get; private set; }
+    private long fontReadCredit;
+    private long workCredit;
+    internal long LogicalValidationWorkUnits { get; private set; }
+    internal long ReservedLogicalValidationWorkUnits { get; private set; }
     internal int FontStreamOpens { get; private set; }
     internal int TextUtf16Units { get; private set; }
     internal int ClusterVisits { get; private set; }
@@ -54,6 +63,8 @@ internal sealed class OfdKeywordOperation : IDisposable
             bytes.Length > limits.MaxTotalFontBytes - CopiedFontBytes)
             throw new InvalidDataException("Keyword font snapshot capacity exceeded.");
         var bold = source.Bold; var italic = source.Italic;
+        Material?.ChargeCopy(bytes.LongLength + 512, Token);
+        Material?.ChargeWork(bytes.LongLength, Token);
         var copy = new byte[bytes.Length];
         using var hash = SHA256.Create();
         HashOperations++;
@@ -68,7 +79,8 @@ internal sealed class OfdKeywordOperation : IDisposable
         }
         Check(); hash.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
         var digest = BitConverter.ToString(hash.Hash!).Replace("-", string.Empty).ToLowerInvariant();
-        var snapshot = new OfdGlyphFontSnapshot(expectedResourceId, bold, italic, copy, digest, ChargeFontStream);
+        Material?.StoreArray(copy);
+        var snapshot = new OfdGlyphFontSnapshot(expectedResourceId, bold, italic, copy, digest, ChargeFontStream, ChargeFontRead, ChargeFontSeek);
         fonts.Add(source, snapshot); identities.Add(expectedResourceId, source);
         return snapshot;
     }
@@ -106,6 +118,7 @@ internal sealed class OfdKeywordOperation : IDisposable
             if (source.Id != snapshot.ResourceId || source.Bold != snapshot.Bold || source.Italic != snapshot.Italic ||
                 bytes is null || bytes.Length != original.Length)
                 throw new InvalidDataException("Font source changed after snapshot creation.");
+            Material?.ChargeWork(bytes.LongLength, Token);
             for (var index = 0; index < bytes.Length; index++)
             {
                 if ((index & 255) == 0) Check();
@@ -123,12 +136,27 @@ internal sealed class OfdKeywordOperation : IDisposable
             clusters < 0 || clusters > Options.Limits.MaxClusterVisits - ClusterVisits)
             throw new InvalidDataException("Keyword source scan capacity exceeded.");
         TextUtf16Units += units; ClusterVisits += clusters;
+        Work(checked(4L * units + 32L * clusters));
     }
     internal void ChargeComparison()
     {
         if ((MatchComparisons & 255) == 0) Check();
         if (MatchComparisons >= Options.Limits.MaxMatchComparisons) throw new InvalidDataException("Keyword matching work capacity exceeded.");
+        Work(2);
         MatchComparisons++;
+    }
+    internal void Work(long bytes)
+    {
+        Check();
+        if (bytes < 0) throw new ArgumentOutOfRangeException(nameof(bytes));
+        if (Material is not null && bytes > workCredit)
+        {
+            var reservation = checked(((bytes - workCredit + 65535) / 65536) * 65536);
+            Material.ChargeWork(reservation, Token);
+            ReservedLogicalValidationWorkUnits = checked(ReservedLogicalValidationWorkUnits + reservation); workCredit += reservation;
+        }
+        if (Material is not null) workCredit -= bytes;
+        LogicalValidationWorkUnits = checked(LogicalValidationWorkUnits + bytes);
     }
     internal void ChargeHit()
     {
@@ -141,7 +169,24 @@ internal sealed class OfdKeywordOperation : IDisposable
         Check();
         if (FontStreamOpens >= Options.Limits.MaxFontReadStreams) throw new InvalidDataException("Keyword font stream capacity exceeded.");
         FontStreamOpens++;
+        Material?.ChargeCopy(128, Token);
     }
+    private void ChargeFontRead(int count)
+    {
+        Check();
+        if (Material is not null && count > fontReadCredit)
+        {
+            // Font parsers often read individual bytes. Prepaid byte blocks
+            // avoid treating every byte as a model reference. No read crosses
+            // its prepaid credit, and unused credit is never refunded/reset.
+            var reservation = checked(((count - fontReadCredit + 65535) / 65536) * 65536);
+            Material.ChargeCopy(reservation, Token); Material.ChargeWork(reservation, Token);
+            ReservedFontReadBytes = checked(ReservedFontReadBytes + reservation); fontReadCredit += reservation;
+        }
+        if (Material is not null) fontReadCredit -= count;
+        FontReadBytes = checked(FontReadBytes + count);
+    }
+    private void ChargeFontSeek() { Work(16); FontSeekOperations = checked(FontSeekOperations + 1); }
     internal void Check()
     {
         if (disposed) throw new ObjectDisposedException(nameof(OfdKeywordOperation));

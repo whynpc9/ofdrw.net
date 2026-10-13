@@ -27,6 +27,8 @@ internal sealed class OfdOrdinalMatcher
         this.operation = operation ?? throw new ArgumentNullException(nameof(operation)); operation.Check();
         if (string.IsNullOrEmpty(keyword)) throw new ArgumentException("Keyword must be nonempty.", nameof(keyword));
         if (keyword.Length > operation.Options.Limits.MaxKeywordUtf16Units) throw new InvalidDataException("Keyword length capacity exceeded.");
+        operation.Material?.ChargeCopy(128L + 4L * keyword.Length, operation.Token);
+        operation.Work(2L * keyword.Length);
         ValidateUnicode(keyword, operation); this.keyword = keyword; prefix = new int[keyword.Length];
         var matched = 0;
         for (var i = 1; i < keyword.Length; i++)
@@ -46,6 +48,7 @@ internal sealed class OfdOrdinalMatcher
         operation.ChargeText(text.Length, clusters.Count);
         ValidateUnicode(text, operation);
         // Bounded by charged UTF-16 units; each valid source boundary stores its cluster ordinal.
+        operation.Material?.ChargeCopy(256L + 4L * (text.Length + 1), operation.Token);
         var boundaries = new int[text.Length + 1];
         for (var i = 0; i < boundaries.Length; i++) { if ((i & 255) == 0) operation.Check(); boundaries[i] = -1; }
         var cursor = 0; boundaries[0] = 0;
@@ -71,6 +74,7 @@ internal sealed class OfdOrdinalMatcher
             if (boundaries[start] >= 0 && boundaries[i + 1] >= 0)
             {
                 operation.ChargeHit();
+                operation.Material?.ChargeCopy(128, operation.Token);
                 result.Add(new OfdKeywordMatch(start, matched, boundaries[start], boundaries[i + 1] - boundaries[start]));
             }
             matched = prefix[matched - 1]; // retain overlapping occurrences in source order.

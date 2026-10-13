@@ -5,6 +5,7 @@
     <PackageTags>OFD;reader;parser;document</PackageTags>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Ofdrw.Net.Layout" />
     <InternalsVisibleTo Include="Ofdrw.Net.Packaging.Tests" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Tests" />
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />

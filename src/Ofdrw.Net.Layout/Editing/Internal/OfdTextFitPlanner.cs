@@ -7,11 +7,12 @@ namespace Ofdrw.Net.Layout.Editing.Internal;
 // metrics are assertions of a future adapter; a successful result authenticates none of them.
 internal static class OfdTextFitPlanner
 {
-    internal static OfdTextFitPlanResult Plan(OfdTextFitInput input, OfdTextFitLimits limits, CancellationToken cancellationToken = default)
+    internal static OfdTextFitPlanResult Plan(OfdTextFitInput input, OfdTextFitLimits limits, CancellationToken cancellationToken = default,
+        Action<long>? chargeWork = null)
     {
         if (input == null) throw new ArgumentNullException(nameof(input));
         if (limits == null) throw new ArgumentNullException(nameof(limits));
-        var budget = new OfdTextFitBudget(limits, cancellationToken);
+        var budget = new OfdTextFitBudget(limits, cancellationToken, chargeWork);
         try { return Run(input, limits, budget); }
         catch (Rejection failure)
         {

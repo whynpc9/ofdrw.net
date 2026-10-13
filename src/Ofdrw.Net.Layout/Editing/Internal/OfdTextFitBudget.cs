@@ -39,14 +39,19 @@ internal sealed class OfdTextFitBudget
     private readonly CancellationToken token;
     private readonly OfdTextFitLimits limits;
     private long visits, comparisons, outputPositions, outputUtf16;
-    internal OfdTextFitBudget(OfdTextFitLimits limits, CancellationToken token) { this.limits = limits; this.token = token; Check(); }
+    private readonly Action<long>? chargeWork;
+    internal OfdTextFitBudget(OfdTextFitLimits limits, CancellationToken token, Action<long>? chargeWork = null)
+    { this.limits = limits; this.token = token; this.chargeWork = chargeWork; Check(); }
     internal long CapturedPositions { get; set; }
     internal void Check() => token.ThrowIfCancellationRequested();
-    internal void Visit() { Check(); visits = checked(visits + 1); }
-    internal void Compare() { Check(); if (comparisons >= limits.Comparisons) throw new OfdTextFitLimitException(); comparisons++; }
+    // Logical byte-equivalent work policy, not measured hash/input bytes:
+    // visits=16, pair comparisons=32, output position=16 and UTF16 unit=2.
+    // The enclosing hook prepays before these actions; null preserves pure use.
+    internal void Visit() { Check(); chargeWork?.Invoke(16); visits = checked(visits + 1); }
+    internal void Compare() { Check(); if (comparisons >= limits.Comparisons) throw new OfdTextFitLimitException(); chargeWork?.Invoke(32); comparisons++; }
     internal void Output(int count, int utf16)
     {
-        Check(); outputPositions = Add(outputPositions, count, limits.OutputClusters);
+        Check(); chargeWork?.Invoke(checked(16L * count + 2L * utf16)); outputPositions = Add(outputPositions, count, limits.OutputClusters);
         outputUtf16 = Add(outputUtf16, utf16, limits.OutputUtf16);
     }
     internal OfdTextFitStatistics Snapshot() => new OfdTextFitStatistics(CapturedPositions, visits, outputPositions, outputUtf16, comparisons);

@@ -167,6 +167,12 @@ public sealed class OfdKeywordLocatorStatistics
         ReservedScalarGlyphs = budget.ReservedGlyphs; ReturnedProviderClusters = budget.ReturnedGlyphs;
         MatchingTextUtf16Units = operation.TextUtf16Units; ClusterVisits = operation.ClusterVisits;
         MatchComparisons = operation.MatchComparisons; FontHashOperations = operation.HashOperations;
+        HashedFontBytes = operation.HashedFontBytes;
+        ActualFontReadBytes = operation.FontReadBytes; ReservedFontReadBytes = operation.ReservedFontReadBytes;
+        ActualFontSeekOperations = operation.FontSeekOperations;
+        CorrelationVisits = budget.CorrelationVisits; LogicalValidationWorkUnits = operation.LogicalValidationWorkUnits;
+        ReusedGeometryClusters = budget.ReusedGeometryClusters;
+        ReservedLogicalValidationWorkUnits = operation.ReservedLogicalValidationWorkUnits;
         CopiedFontBytes = operation.CopiedFontBytes; ComparedFontBytes = operation.FontComparisonBytes; Provider = provider;
     }
     /// <summary>Observed A0 node visits, across its whole-model preflight.</summary>
@@ -203,10 +209,27 @@ public sealed class OfdKeywordLocatorStatistics
     public long MatchComparisons { get; }
     /// <summary>Actual font hash operations.</summary>
     public long FontHashOperations { get; }
+    /// <summary>Actual original-font bytes hashed while capturing this analysis's immutable font snapshots.</summary>
+    public long HashedFontBytes { get; }
     /// <summary>Actual source font bytes copied.</summary>
     public long CopiedFontBytes { get; }
     /// <summary>Actual source font bytes compared.</summary>
     public long ComparedFontBytes { get; }
+    /// <summary>Actual bytes read from operation font snapshots, including rereads.</summary>
+    public long ActualFontReadBytes { get; }
+    /// <summary>Actual Seek/Position-set operations on private snapshot streams; each prepays sixteen logical work units.</summary>
+    public long ActualFontSeekOperations { get; }
+    /// <summary>Prepaid font-read capacity in an enclosing operation; may exceed actual reads by less than one block.</summary>
+    public long ReservedFontReadBytes { get; }
+    /// <summary>Observed visits correlating immutable edit evidence, excluding the planner's own visits.</summary>
+    public long CorrelationVisits { get; }
+    /// <summary>Validated scalar metrics reused within one editing analysis; these are not new provider returns.</summary>
+    public long ReusedGeometryClusters { get; }
+    /// <summary>Observed logical validation units: one per compared entry byte, two per character,
+    /// sixteen per field/planner visit, thirty-two per correlation or planner comparison. Not measured CPU or font-read bytes.</summary>
+    public long LogicalValidationWorkUnits { get; }
+    /// <summary>Prepaid logical units debited to the enclosing validation-work ledger, separately from observed actions.</summary>
+    public long ReservedLogicalValidationWorkUnits { get; }
     /// <summary>Observed provider counters; not a CPU/RSS guarantee.</summary>
     public OfdGlyphGeometryStatistics Provider { get; }
 }

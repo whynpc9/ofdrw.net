@@ -12,26 +12,32 @@ namespace Ofdrw.Net.Reader.Keywords.Internal;
 internal sealed class OfdKeywordSourceSnapshot : IDisposable
 {
     private readonly OfdDocumentPackage owner;
-    private readonly List<Action<OfdKeywordLocatorBudget>> checks = new();
-    private readonly Dictionary<string, byte[]> controls = new(StringComparer.Ordinal);
-    private readonly List<(OfdFontResource Source, OfdGlyphFontSnapshot Font, string? Entry)> bindings = new();
-    private readonly List<(OfdFontResource Source, string Id, bool Bold, bool Italic, string Digest, string? Entry)> retainedBindings = new();
+    private readonly List<Action<OfdKeywordLocatorBudget>> checks;
+    private readonly Dictionary<string, byte[]> controls;
+    private readonly List<(OfdFontResource Source, OfdGlyphFontSnapshot Font, string? Entry)> bindings;
+    private readonly List<(OfdFontResource Source, string Id, bool Bold, bool Italic, string Digest, string? Entry)> retainedBindings;
     private readonly OfdKeywordLocatorLimits limits;
     private readonly HashSet<string> entryKeys;
-    private readonly Dictionary<OfdTextRun, int> runOwners = new();
-    private readonly SHA256 fingerprint = SHA256.Create();
-    private readonly byte[] hashBuffer = new byte[8192];
+    private readonly Dictionary<OfdTextRun, int> runOwners;
+    private readonly SHA256 fingerprint;
+    private readonly byte[] hashBuffer;
     private int hashUsed;
     private bool sealedSnapshot;
     private long controlCopyBytes;
 
     internal OfdKeywordSourceSnapshot(OfdDocumentPackage source, OfdKeywordLocatorBudget budget)
     {
+        // Fixed snapshot state: the 8192-byte hash buffer, SHA state and empty
+        // containers/closure slots. Variable growth is charged separately.
+        budget.ReserveCopy("SnapshotFixedState", 16_384);
+        checks = new(); controls = new(StringComparer.Ordinal); bindings = new(); retainedBindings = new(); runOwners = new();
+        fingerprint = SHA256.Create(); hashBuffer = new byte[8192];
         owner = source; limits = budget.Limits;
         entryKeys = new HashSet<string>(StringComparer.Ordinal);
         try
         {
-        foreach (var key in source.PreservedEntries.Keys) { budget.Reference(); entryKeys.Add(key); }
+        foreach (var key in source.PreservedEntries.Keys)
+        { budget.Reference(); budget.ReserveCopy("SnapshotEntryKey", 128); budget.Work(2L * key.Length); entryKeys.Add(key); }
         checks.Add(b =>
         {
             b.Field(); Require(source.PreservedEntries.Count == entryKeys.Count);
@@ -106,6 +112,7 @@ internal sealed class OfdKeywordSourceSnapshot : IDisposable
     {
         if (list.Count > limits.MaxReferences) throw new InvalidDataException("Source list capacity exceeded.");
         budget.ReserveReferences(list.Count);
+        budget.Copy(checked(256L + 32L * list.Count));
         var copy = new T[list.Count];
         Add(list.Count.ToString(CultureInfo.InvariantCulture), budget);
         for (var i = 0; i < copy.Length; i++) { budget.Check(); copy[i] = list[i]; }
@@ -123,6 +130,7 @@ internal sealed class OfdKeywordSourceSnapshot : IDisposable
     }
     private void String(Func<string?> read, OfdKeywordLocatorBudget budget)
     {
+        budget.Copy(256);
         var copy = read(); Add(copy, budget);
         checks.Add(b =>
         {
@@ -134,11 +142,13 @@ internal sealed class OfdKeywordSourceSnapshot : IDisposable
     }
     private void Number(Func<double> read, OfdKeywordLocatorBudget budget)
     {
+        budget.Copy(384);
         var copy = read(); Add(copy.ToString("R", CultureInfo.InvariantCulture), budget);
         checks.Add(b => { b.Field(); Require(read().Equals(copy)); });
     }
     private void Matrix(Func<double[]?> read, OfdKeywordLocatorBudget budget)
     {
+        budget.Copy(512);
         var value = read();
         if (value is { Length: > 6 }) throw new InvalidDataException("Invalid source transform length.");
         var copy = value is null ? null : (double[])value.Clone();
@@ -159,6 +169,7 @@ internal sealed class OfdKeywordSourceSnapshot : IDisposable
         if (original.Length > limits.MaxSingleXmlBytes || original.Length > limits.MaxXmlBytes - controlCopyBytes)
             throw new InvalidDataException("Source control entry copy capacity exceeded.");
         controlCopyBytes += original.Length;
+        budget.Copy(original.LongLength + 256); budget.Work(original.LongLength);
         var copy = new byte[original.Length];
         for (var start = 0; start < copy.Length; start += 8192)
         {
@@ -186,7 +197,8 @@ internal sealed class OfdKeywordSourceSnapshot : IDisposable
     }
     internal void Bind(OfdFontResource source, OfdGlyphFontSnapshot font, string? entry, OfdKeywordLocatorBudget budget)
     {
-        if (bindings.Any(binding => ReferenceEquals(binding.Source, source))) return;
+        foreach (var binding in bindings) { budget.Work(32); if (ReferenceEquals(binding.Source, source)) return; }
+        budget.Copy(512);
         bindings.Add((source, font, entry));
         retainedBindings.Add((source, font.ResourceId, font.Bold, font.Italic, font.ContentSha256, entry));
         Add(font.ResourceId, budget); Add(font.ContentSha256, budget); Add(entry, budget);
@@ -214,6 +226,10 @@ internal sealed class OfdKeywordSourceSnapshot : IDisposable
     internal void ValidateUnchanged(OfdDocumentPackage package)
     {
         using var operation = new OfdKeywordOperation(); var budget = new OfdKeywordLocatorBudget(limits, operation);
+        ValidateForEdit(package, budget);
+    }
+    internal void ValidateForEdit(OfdDocumentPackage package, OfdKeywordLocatorBudget budget)
+    {
         ValidateUnchanged(package, budget);
         foreach (var binding in retainedBindings)
         {
@@ -224,9 +240,10 @@ internal sealed class OfdKeywordSourceSnapshot : IDisposable
     }
     private static string Digest(byte[] data, OfdKeywordLocatorBudget budget)
     {
-        budget.Bytes(data.Length); using var sha = SHA256.Create();
+        budget.Bytes(data.Length); budget.Copy(512); using var sha = SHA256.Create();
+        budget.RetainedFontDigestOperations++;
         for (var start = 0; start < data.Length; start += 8192)
-        { budget.Check(); var count = Math.Min(8192, data.Length - start); sha.TransformBlock(data, start, count, null, 0); }
+        { budget.Check(); var count = Math.Min(8192, data.Length - start); sha.TransformBlock(data, start, count, null, 0); budget.RetainedFontDigestBytes += count; }
         sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
         return BitConverter.ToString(sha.Hash!).Replace("-", "").ToLowerInvariant();
     }
@@ -238,6 +255,7 @@ internal sealed class OfdKeywordSourceSnapshot : IDisposable
     private void Add(string? value, OfdKeywordLocatorBudget budget)
     {
         if (sealedSnapshot) throw new InvalidOperationException("Snapshot is sealed.");
+        budget.Work(2L * (value?.Length ?? 0) + 16);
         if (value is { Length: > 0 } && value.Length > Math.Max(limits.MaxSingleXmlBytes, 16_000_000))
             throw new InvalidDataException("Source fingerprint text capacity exceeded.");
         budget.Field(); budget.Characters(value?.Length ?? 0);

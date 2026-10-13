@@ -32,13 +32,15 @@ internal sealed class OfdKeywordSourceRun(string text, int[] offsets, string pat
 }
 
 internal sealed class OfdPositionedCluster(OfdKeywordTextSource source, OfdKeywordSourceRun run,
-    OfdGlyphClusterGeometry geometry, OfdKeywordPoint baseline, OfdKeywordPoint advance, OfdKeywordQuadrilateral? quad)
+    OfdGlyphClusterGeometry geometry, OfdKeywordPoint baseline, OfdKeywordPoint advance, OfdKeywordQuadrilateral? quad,
+    double rawX, double rawY)
 {
     internal readonly OfdKeywordTextSource Source = source;
     internal readonly OfdKeywordSourceRun Run = run;
     internal readonly OfdGlyphClusterGeometry Geometry = geometry;
     internal readonly OfdKeywordPoint Baseline = baseline, Advance = advance;
     internal readonly OfdKeywordQuadrilateral? Quad = quad;
+    internal readonly double RawX = rawX, RawY = rawY;
 }
 
 internal static class OfdStrictTextGeometry
@@ -47,6 +49,7 @@ internal static class OfdStrictTextGeometry
         OfdKeywordLocatorBudget budget, int reservedUnits, bool hasOriginalEnvelope)
     {
         var text = (OfdTextElement)occurrence.Element; var page = occurrence.Page;
+        budget.Copy(2048L + 32L * reservedUnits);
         var result = new OfdKeywordTextSource
         {
             PageIndex = occurrence.OccurrencePath[0], LayerOrdinal = layer, ElementOrdinal = occurrence.OccurrencePath[3],
@@ -60,6 +63,10 @@ internal static class OfdStrictTextGeometry
         if (!string.IsNullOrEmpty(text.ClippingXml)) throw new NotSupportedException("ExplicitClipping");
         if (text.SourceXml is { } source)
         {
+            // Numeric/attribute token arrays and strings are additional to the
+            // DOM. Even malformed one-character tokens are bounded by the
+            // complete source length before Split/parse allocations occur.
+            budget.Copy(64L * source.Length + 8192); budget.Work(4L * source.Length);
             var root = budget.Parse(source);
             if (root.Name.LocalName != "TextObject" || !OfdKeywordSourceAdmission.KnownNamespace(root.Name.Namespace))
                 throw new NotSupportedException("UnsupportedTextNamespace");
@@ -78,12 +85,16 @@ internal static class OfdStrictTextGeometry
                 Integer(root.Attribute("CharDirection")?.Value ?? "0") != 0 || Integer(root.Attribute("Alpha")?.Value ?? "255") != 255)
                 throw new NotSupportedException("UnsupportedTextDrawingState");
             var ns = root.Name.Namespace;
+            var codeCount = 0;
+            foreach (var code in root.Elements(ns + "TextCode")) { budget.Check(); budget.Work(16); codeCount++; }
+            budget.Copy(256L + 16L * codeCount);
             var codes = root.Elements(ns + "TextCode").ToArray();
             long rawUnits = 0;
             foreach (var code in codes)
                 foreach (var node in code.Nodes().OfType<XText>()) { budget.Check(); rawUnits += node.Value.Length; }
             if (rawUnits > int.MaxValue) throw new InvalidDataException("Source text capacity exceeded.");
             if (rawUnits > reservedUnits) budget.Text((int)rawUnits - reservedUnits);
+            budget.Copy(checked(4L * rawUnits + codes.Length * (1024L + 4L * (path.Length + ns.NamespaceName.Length + 64))));
             foreach (var child in root.Elements())
             {
                 budget.Check();
@@ -272,21 +283,8 @@ internal static class OfdStrictTextGeometry
         OfdGlyphGeometry geometry, OfdKeywordLocatorBudget budget, int remainingClusters)
     {
         if (geometry.Clusters.Count > remainingClusters) throw new InvalidDataException("Provider cluster capacity exceeded.");
-        var cursor = 0;
-        foreach (var cluster in geometry.Clusters)
-        {
-            budget.Check();
-            if (cluster is null || cluster.Utf16Start != cursor || cursor >= run.Text.Length ||
-                cluster.Utf16Length != (char.IsHighSurrogate(run.Text[cursor]) ? 2 : 1) || cluster.Utf16Length > run.Text.Length - cursor ||
-                cluster.GlyphId == 0 || !OfdGlyphBox.Finite(cluster.AdvanceXMillimeters) || !OfdGlyphBox.Finite(cluster.AdvanceYMillimeters))
-                throw new InvalidDataException("Provider must cover each source scalar exactly once in source order.");
-            if (cluster.FontBoundsMillimeters is { } bounds &&
-                (!OfdGlyphBox.Finite(bounds.Left) || !OfdGlyphBox.Finite(bounds.Top) || !OfdGlyphBox.Finite(bounds.Right) ||
-                 !OfdGlyphBox.Finite(bounds.Bottom) || bounds.Right <= bounds.Left || bounds.Bottom <= bounds.Top))
-                throw new InvalidDataException("Invalid provider font box.");
-            cursor += cluster.Utf16Length;
-        }
-        if (cursor != run.Text.Length) throw new InvalidDataException("Provider mapping does not cover source text.");
+        budget.Copy(checked(512L + 512L * geometry.Clusters.Count));
+        ValidateCoverage(run.Text, geometry, budget);
         var count = geometry.Clusters.Count;
         if (count == 0) throw new InvalidDataException("Empty geometry must not enter glyph positioning.");
         var dx = Deltas(run.DeltaX, count - 1, budget); var dy = Deltas(run.DeltaY, count - 1, budget);
@@ -308,9 +306,28 @@ internal static class OfdStrictTextGeometry
                 quad = new OfdKeywordQuadrilateral(Transform(source, x + box.Left, y + box.Top, true),
                     Transform(source, x + box.Right, y + box.Top, true), Transform(source, x + box.Right, y + box.Bottom, true),
                     Transform(source, x + box.Left, y + box.Bottom, true));
-            positions.Add(new OfdPositionedCluster(source, run, cluster, baseline, advance, quad));
+            positions.Add(new OfdPositionedCluster(source, run, cluster, baseline, advance, quad, x, y));
         }
         return positions;
+    }
+    internal static void ValidateCoverage(string text, OfdGlyphGeometry geometry, OfdKeywordLocatorBudget budget)
+    {
+        budget.Work(checked(128L * geometry.Clusters.Count + 2L * text.Length));
+        var cursor = 0;
+        foreach (var cluster in geometry.Clusters)
+        {
+            budget.Check();
+            if (cluster is null || cluster.Utf16Start != cursor || cursor >= text.Length ||
+                cluster.Utf16Length != (char.IsHighSurrogate(text[cursor]) ? 2 : 1) || cluster.Utf16Length > text.Length - cursor ||
+                cluster.GlyphId == 0 || !OfdGlyphBox.Finite(cluster.AdvanceXMillimeters) || !OfdGlyphBox.Finite(cluster.AdvanceYMillimeters))
+                throw new InvalidDataException("Provider must cover each source scalar exactly once in source order.");
+            if (cluster.FontBoundsMillimeters is { } bounds &&
+                (!OfdGlyphBox.Finite(bounds.Left) || !OfdGlyphBox.Finite(bounds.Top) || !OfdGlyphBox.Finite(bounds.Right) ||
+                 !OfdGlyphBox.Finite(bounds.Bottom) || bounds.Right <= bounds.Left || bounds.Bottom <= bounds.Top))
+                throw new InvalidDataException("Invalid provider font box.");
+            cursor += cluster.Utf16Length;
+        }
+        if (cursor != text.Length) throw new InvalidDataException("Provider mapping does not cover source text.");
     }
     private static OfdKeywordPoint Transform(OfdKeywordTextSource source, double x, double y, bool checkClip)
     {
@@ -346,7 +363,7 @@ internal static class OfdStrictTextGeometry
     internal static double[] Deltas(string? value, int expected, OfdKeywordLocatorBudget budget)
     {
         if (expected < 0) throw new InvalidDataException("Empty mapped run.");
-        budget.Delta(expected); var result = new double[expected];
+        budget.Delta(expected); budget.Copy(8L * expected); budget.Work(16L * expected + 2L * (value?.Length ?? 0)); var result = new double[expected];
         if (value is null) return result; // Table46: zero movement, never font advance.
         var tokens = new Tokens(value, budget); var count = 0; var any = false;
         while (tokens.Next() is { } token)
@@ -376,11 +393,13 @@ internal static class OfdStrictTextGeometry
             var start = index;
             while (index < value.Length && !char.IsWhiteSpace(value[index]))
             { if ((index & 255) == 0) budget.Check(); if (index - start >= 128) throw new InvalidDataException("Numeric token capacity exceeded."); index++; }
-            budget.DeltaToken(); return value.Substring(start, index - start);
+            budget.DeltaToken(); budget.Copy(128L + 2L * (index - start)); budget.Work(32); return value.Substring(start, index - start);
         }
     }
     internal static (string Text, int[] Offsets) Decode(string raw, OfdKeywordLocatorBudget budget)
     {
+        budget.Copy(24L * raw.Length + 128);
+        budget.Work(4L * raw.Length);
         var text = new StringBuilder(raw.Length); var offsets = new List<int>(raw.Length + 1);
         for (var i = 0; i < raw.Length;)
         {
