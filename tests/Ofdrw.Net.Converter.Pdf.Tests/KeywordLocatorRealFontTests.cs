@@ -138,6 +138,77 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
         output.WriteLine(JsonSerializer.Serialize(new { face, stage = "canonical-empty-default-writer-readback-resource-identity-only", after.Statistics }));
     }
 
+    [RealTrustedFontsTheory]
+    [InlineData("latin", "identity", 19.556, 20.596)]
+    [InlineData("cjk", "identity", 19.432, 20.328)]
+    public async Task MixedEmptySlotsDefaultWriterFreshReaderKeepOriginalOflGlyphsAndSourceSpans(string face, string matrix,
+        double spaceX, double lastX)
+    {
+        var bytes = Font(face); var cjk = face == "cjk";
+        var next = cjk ? "4.432" : "4.556"; var spaceAdvance = cjk ? "0.896" : "1.04";
+        var last = cjk ? "𠀋" : "i"; var keyword = "A " + last;
+        string EmptyAt(string x) => $"<o:TextCode X=\"{x}\" Y=\"8\"/>";
+        var codes = EmptyAt("2") + "<o:TextCode X=\"2\" Y=\"8\">A</o:TextCode>" + EmptyAt("3") + EmptyAt(next) +
+            $"<o:TextCode X=\"{next}\" DeltaX=\"{spaceAdvance}\">\\0020{last}</o:TextCode>" + EmptyAt("9");
+        var source = await Read(bytes, face, matrix, 1, overrideCodes: codes);
+        Assert.Equal(4, ((OfdTextElement)source.Pages[0].Elements[0]).Runs[4].YMillimeters); // Reader raw projection, source Y inherits8.
+        var firstProvider = new ObservedProvider(bytes); var before = new OfdKeywordLocator(firstProvider).Find(source, keyword);
+        using var destination = new MemoryStream(); await new Ofdrw.Net.Packaging.OfdPackageWriter().WriteAsync(source, destination);
+        destination.Position = 0; var reread = await new OfdReader().ReadAsync(destination);
+        var secondProvider = new ObservedProvider(bytes); var after = new OfdKeywordLocator(secondProvider).Find(reread, keyword);
+        Assert.True(before.IsComplete); Assert.True(after.IsComplete); Assert.Empty(after.Diagnostics);
+        var a = Assert.Single(before.Hits); var b = Assert.Single(after.Hits); Assert.True(a.CanReplace); Assert.True(b.CanReplace);
+        Assert.Equal(3, b.Fragments.Count);
+        Assert.Equal(17, b.Fragments[0].BaselineMillimeters.X);
+        Assert.Equal(spaceX, b.Fragments[1].BaselineMillimeters.X, 9); Assert.Equal(lastX, b.Fragments[2].BaselineMillimeters.X, 9);
+        Assert.All(b.Fragments, f => Assert.Equal(31, f.BaselineMillimeters.Y));
+        Assert.EndsWith("TextCode[1]", b.Fragments[0].TextCodePath); Assert.EndsWith("TextCode[4]", b.Fragments[1].TextCodePath); Assert.EndsWith("TextCode[4]", b.Fragments[2].TextCodePath);
+        Assert.Equal(0, b.Fragments[1].LogicalUtf16Start); Assert.Equal(1, b.Fragments[1].LogicalUtf16Length);
+        Assert.Equal(0, b.Fragments[1].SourceUtf16Start); Assert.Equal(5, b.Fragments[1].SourceUtf16Length); Assert.Null(b.Fragments[1].InkQuadrilateralMillimeters);
+        Assert.Equal(1, b.Fragments[2].LogicalUtf16Start); Assert.Equal(cjk ? 2 : 1, b.Fragments[2].LogicalUtf16Length);
+        Assert.Equal(5, b.Fragments[2].SourceUtf16Start); Assert.Equal(cjk ? 2 : 1, b.Fragments[2].SourceUtf16Length);
+        Assert.Equal(cjk ? 59477u : 76u, b.Fragments[2].GlyphId);
+        Assert.Equal(a.Fragments.Select(f => (f.BaselineMillimeters.X, f.BaselineMillimeters.Y, f.GlyphId, f.SourceUtf16Start, f.SourceUtf16Length)),
+            b.Fragments.Select(f => (f.BaselineMillimeters.X, f.BaselineMillimeters.Y, f.GlyphId, f.SourceUtf16Start, f.SourceUtf16Length)));
+        Assert.Equal(a.Fragments.Select(f => (f.Weight, f.Italic, f.FontResourceId, f.SourceEntryPath, f.TextCodePath)),
+            b.Fragments.Select(f => (f.Weight, f.Italic, f.FontResourceId, f.SourceEntryPath, f.TextCodePath)));
+        for (var i = 0; i < a.Fragments.Count; i++)
+        {
+            var originalQuad = a.Fragments[i].InkQuadrilateralMillimeters; var rereadQuad = b.Fragments[i].InkQuadrilateralMillimeters;
+            Assert.Equal(originalQuad is null, rereadQuad is null);
+            if (originalQuad is not null) Assert.Equal(originalQuad.Corners.Select(p => (p.X, p.Y)), rereadQuad!.Corners.Select(p => (p.X, p.Y)));
+        }
+        Assert.Equal(new[] { "A", " " + last }, secondProvider.Requests); Assert.Equal(1, secondProvider.Opens);
+        Assert.Equal(3, after.Statistics.ReservedScalarGlyphs); Assert.Equal(3, after.Statistics.ReturnedProviderClusters); Assert.Equal(3, after.Statistics.Provider.GlyphRequests);
+        Assert.Equal(1, after.Statistics.Provider.FaceParses); Assert.Equal(1, after.Statistics.FontHashOperations);
+        Assert.Equal(bytes.Length, after.Statistics.CopiedFontBytes); Assert.Equal(bytes.Length, after.Statistics.ComparedFontBytes);
+        var text = (OfdTextElement)reread.Pages[0].Elements[0]; Assert.Equal(6, text.Runs.Count); Assert.Equal("100", text.ObjectId); Assert.Equal("10", text.FontResourceId);
+        Assert.Equal("A\\0020" + last, text.Text); Assert.Equal(4, text.Runs[4].YMillimeters); Assert.Equal(Digest(bytes), Digest(reread.Fonts[0].Data));
+        Assert.Contains("\n  <ofd:Area>", Encoding.UTF8.GetString(reread.PreservedEntries["Doc_0/Pages/Page_0/Content.xml"]));
+        output.WriteLine(JsonSerializer.Serialize(new { face, stage = "mixed-multi-empty-original-ofl-default-writer-fresh-reader-locator", after.Statistics, secondProvider.Requests }));
+    }
+
+    [RealTrustedFontsTheory]
+    [InlineData("latin", "rotation")]
+    [InlineData("cjk", "shear")]
+    public async Task MultipleEmptySlotsKeepOriginalOflIdentityWithoutAnyProviderCalls(string face, string matrix)
+    {
+        var bytes = Font(face); var codes = "<o:TextCode X=\"2\" Y=\"8\"/><o:TextCode X=\"4\" Y=\"8\"></o:TextCode><o:TextCode X=\"1000000\" Y=\"-1000000\"/>";
+        var source = await Read(bytes, face, matrix, 1, overrideCodes: codes); var provider = new ObservedProvider(bytes);
+        var before = new OfdKeywordLocator(provider).Find(source, "A");
+        using var destination = new MemoryStream(); await new Ofdrw.Net.Packaging.OfdPackageWriter().WriteAsync(source, destination);
+        destination.Position = 0; var reread = await new OfdReader().ReadAsync(destination);
+        var after = new OfdKeywordLocator(provider).Find(reread, "A");
+        Assert.True(before.IsComplete); Assert.True(after.IsComplete); Assert.Empty(after.Hits); Assert.Empty(after.Diagnostics);
+        Assert.Equal(0, provider.Opens); Assert.Null(provider.Session); Assert.Empty(provider.Requests);
+        Assert.Equal(0, after.Statistics.ReservedScalarGlyphs); Assert.Equal(0, after.Statistics.ReturnedProviderClusters); Assert.Equal(0, after.Statistics.ReturnedFragments);
+        Assert.Equal(0, after.Statistics.Provider.FaceParses); Assert.Equal(0, after.Statistics.Provider.GlyphRequests);
+        Assert.Equal(1, after.Statistics.FontHashOperations); Assert.Equal(bytes.Length, after.Statistics.CopiedFontBytes); Assert.Equal(bytes.Length, after.Statistics.ComparedFontBytes);
+        var text = (OfdTextElement)reread.Pages[0].Elements[0]; Assert.Equal(3, text.Runs.Count); Assert.All(text.Runs, r => Assert.Equal("", r.Text));
+        Assert.Equal("100", text.ObjectId); Assert.Equal("10", text.FontResourceId); Assert.Equal(Digest(bytes), Digest(reread.Fonts[0].Data));
+        output.WriteLine(JsonSerializer.Serialize(new { face, matrix, stage = "all-empty-multiple-original-ofl-default-writer-resource-only", after.Statistics }));
+    }
+
     private static byte[] Font(string face)
     {
         var bytes = TrustedFontFixtures.Read(face);
@@ -149,13 +220,21 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
     private sealed class ObservedProvider(byte[] bytes) : IOfdGlyphGeometryProvider
     {
         internal int Opens; internal OfdTrustedEmbeddedFontGeometryProvider.Session? Session;
+        internal readonly List<string> Requests = new();
         public IOfdGlyphGeometrySession OpenSession(OfdGlyphGeometryLimits limits, CancellationToken token = default)
         {
             Opens++; var provider = new OfdTrustedEmbeddedFontGeometryProvider([new(Digest(bytes), bytes.Length)]);
-            Session = (OfdTrustedEmbeddedFontGeometryProvider.Session)provider.OpenSession(limits, token); return Session;
+            Session = (OfdTrustedEmbeddedFontGeometryProvider.Session)provider.OpenSession(limits, token); return new ObservedSession(this, Session);
         }
     }
-    private static async Task<OfdDocumentPackage> Read(byte[] font, string face, string matrix, int objects, string? overrideText = null)
+    private sealed class ObservedSession(ObservedProvider owner, IOfdGlyphGeometrySession inner) : IOfdGlyphGeometrySession
+    {
+        public OfdGlyphGeometryStatistics Statistics => inner.Statistics;
+        public OfdGlyphGeometry Measure(OfdGlyphGeometryRequest request, CancellationToken token = default)
+        { owner.Requests.Add(request.Text); return inner.Measure(request, token); }
+        public void Dispose() => inner.Dispose();
+    }
+    private static async Task<OfdDocumentPackage> Read(byte[] font, string face, string matrix, int objects, string? overrideText = null, string? overrideCodes = null)
     {
         const string ns = "http://www.ofdspec.org/2016";
         var ctm = matrix == "rotation" ? "0 1 -1 0 20 0" : matrix == "shear" ? "1 0 0.5 1 0 0" : "1 0 0 1 0 0";
@@ -166,8 +245,8 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
         var text = overrideText ?? (face == "cjk" ? "AiW\\0020中文𠀋" : "AiW\\0020");
         var body = new StringBuilder();
         for (var i = 0; i < objects; i++)
-            body.Append($"<o:TextObject ID=\"{100 + i}\" Boundary=\"20 30 100 50\" CTM=\"{ctm}\" Font=\"10\" Size=\"4\"><o:FillColor Value=\"0 80 160\"/><o:TextCode X=\"2\" Y=\"8\"" +
-                (overrideText is null ? $" DeltaX=\"{deltas}\"" : "") + $">{text}</o:TextCode></o:TextObject>");
+            body.Append($"<o:TextObject ID=\"{100 + i}\" Boundary=\"20 30 100 50\" CTM=\"{ctm}\" Font=\"10\" Size=\"4\"><o:FillColor Value=\"0 80 160\"/>" +
+                (overrideCodes ?? ($"<o:TextCode X=\"2\" Y=\"8\"" + (overrideText is null ? $" DeltaX=\"{deltas}\"" : "") + $">{text}</o:TextCode>")) + "</o:TextObject>");
         var entries = new Dictionary<string, byte[]>
         {
             ["OFD.xml"] = Encoding.UTF8.GetBytes($"<o:OFD xmlns:o=\"{ns}\" Version=\"1.0\" DocType=\"OFD-H\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>"),

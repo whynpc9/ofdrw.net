@@ -15,7 +15,7 @@ internal sealed class OfdKeywordTextSource
     internal int[] OccurrencePath = Array.Empty<int>(), DefinitionPath = Array.Empty<int>();
     internal string? EntryPath;
     internal string Path = string.Empty, FontId = string.Empty;
-    internal bool HasXml, Editable, Visible = true, Italic, CanonicalEmpty;
+    internal bool HasXml, Editable, Visible = true, Italic, AllRunsEmpty;
     internal int Weight = 400;
     internal double X, Y, Width, Height, Size, PageX, PageY, PageWidth, PageHeight;
     internal double[] Matrix = new double[] { 1, 0, 0, 1, 0, 0 };
@@ -23,9 +23,9 @@ internal sealed class OfdKeywordTextSource
     internal readonly List<OfdKeywordSourceRun> Runs = new();
 }
 
-internal sealed class OfdKeywordSourceRun(string text, int[] offsets, string path, double x, double y, string? dx, string? dy)
+internal sealed class OfdKeywordSourceRun(string text, int[] offsets, string path, double x, double y, string? dx, string? dy, string? rawText = null)
 {
-    internal readonly string Text = text, Path = path;
+    internal readonly string Text = text, RawText = rawText ?? text, Path = path;
     internal readonly int[] SourceOffsets = offsets;
     internal readonly double X = x, Y = y;
     internal readonly string? DeltaX = dx, DeltaY = dy;
@@ -97,6 +97,7 @@ internal static class OfdStrictTextGeometry
             if (root.Elements(ns + "FillColor").Count() > 1) throw new NotSupportedException("AmbiguousFillColor");
             PlainTextNodes(root, allowText: false);
             double? previousX = null, previousY = null;
+            var hasEmpty = false; var hasNonempty = false;
             for (var i = 0; i < codes.Length; i++)
             {
                 budget.Check(); var code = codes[i]; Attributes(code, "X", "Y", "DeltaX", "DeltaY");
@@ -109,13 +110,16 @@ internal static class OfdStrictTextGeometry
                 var decoded = Decode(raw, budget);
                 if (decoded.Text.Length == 0)
                 {
-                    ValidateCanonicalEmpty(root, code, codes.Length, text, x, y, result.Size, hasOriginalEnvelope, budget);
-                    result.CanonicalEmpty = true;
+                    ValidateCanonicalEmptySlot(code, budget);
+                    hasEmpty = true;
                 }
+                else hasNonempty = true;
                 result.Runs.Add(new OfdKeywordSourceRun(decoded.Text, decoded.Offsets,
                     path + "/" + code.Name + "[" + i.ToString(CultureInfo.InvariantCulture) + "]", x, y,
-                    code.Attribute("DeltaX")?.Value, code.Attribute("DeltaY")?.Value));
+                    code.Attribute("DeltaX")?.Value, code.Attribute("DeltaY")?.Value, raw));
             }
+            if (hasEmpty) ValidateRetainedEmptySlots(root, codes, text, result, hasOriginalEnvelope, budget);
+            result.AllRunsEmpty = hasEmpty && !hasNonempty;
         }
         else
         {
@@ -139,35 +143,50 @@ internal static class OfdStrictTextGeometry
             result.Weight < 100 || result.Weight > 900 || result.Weight % 100 != 0)
             throw new InvalidDataException("Invalid exact text font or style.");
         ValidateMatrix(result.Matrix);
-        foreach (var run in result.Runs) ValidateUnicode(run.Text, budget);
-        if (result.CanonicalEmpty)
+        foreach (var run in result.Runs)
         {
-            // Validate retained coordinate metadata without inventing a glyph or ink.
-            _ = Transform(result, result.Runs[0].X, result.Runs[0].Y, checkClip: false);
+            budget.Field(); ValidateUnicode(run.Text, budget);
+            if (run.Text.Length == 0)
+            {
+                // Each retained zero-ink slot still has finite coordinate metadata.
+                _ = Transform(result, run.X, run.Y, checkClip: false);
+            }
         }
         return result;
     }
 
-    // Appendix A extends TextCode from unrestricted xs:string. This deliberately
-    // narrow source-backed profile retains one required element and its owner.
-    private static void ValidateCanonicalEmpty(XElement root, XElement code, int codeCount, OfdTextElement text,
-        double x, double y, double size, bool hasOriginalEnvelope, OfdKeywordLocatorBudget budget)
+    // Appendix A permits repeated TextCode xs:string values. Keep original slots
+    // and authority; do not generalize to generated models or arbitrary mixed XML.
+    private static void ValidateCanonicalEmptySlot(XElement code, OfdKeywordLocatorBudget budget)
     {
-        if (!hasOriginalEnvelope || codeCount != 1 || code.Nodes().Any() || code.Attribute("X") is null || code.Attribute("Y") is null ||
-            code.Attribute("DeltaX") is not null || code.Attribute("DeltaY") is not null ||
-            string.IsNullOrWhiteSpace(root.Attribute("ID")?.Value))
+        budget.Field();
+        if (code.Nodes().Any() || code.Attribute("X") is null || code.Attribute("Y") is null ||
+            code.Attribute("DeltaX") is not null || code.Attribute("DeltaY") is not null)
             throw new NotSupportedException("NoncanonicalEmptyTextCode");
-        // The source is authoritative, but an empty model must not expose text or
-        // inconsistent anchors/deltas through the redundant Reader projection.
-        if (text.Text != string.Empty || text.FontSizeMillimeters != size || text.Runs.Count != 1 || text.Runs[0].Text != string.Empty ||
-            text.Runs[0].XMillimeters != x || text.Runs[0].YMillimeters != y ||
-            text.Runs[0].DeltaX is not null || text.Runs[0].DeltaY is not null)
-            throw new NotSupportedException("CanonicalEmptyModelConflict");
+    }
+
+    private static void ValidateRetainedEmptySlots(XElement root, XElement[] codes, OfdTextElement text,
+        OfdKeywordTextSource source, bool hasOriginalEnvelope, OfdKeywordLocatorBudget budget)
+    {
+        budget.Field();
+        if (!hasOriginalEnvelope || string.IsNullOrWhiteSpace(root.Attribute("ID")?.Value))
+            throw new NotSupportedException("NoncanonicalEmptyTextCode");
+        // Validate this closed root once, not once per empty (potentially quadratic).
         var foundCode = false;
         foreach (var node in root.Nodes())
         {
             budget.Field();
-            if (ReferenceEquals(node, code)) { foundCode = true; continue; }
+            if (node is XElement code && code.Name == root.Name.Namespace + "TextCode")
+            {
+                foundCode = true;
+                foreach (var content in code.Nodes())
+                {
+                    budget.Field();
+                    if (content is not XText || content is XCData)
+                        throw new NotSupportedException("NoncanonicalEmptyTextObject");
+                }
+                continue;
+            }
             if (node is XElement fill && fill.Name == root.Name.Namespace + "FillColor" && !foundCode && !fill.Nodes().Any()) continue;
             if (node is XText spacing && node is not XCData)
             {
@@ -182,7 +201,60 @@ internal static class OfdStrictTextGeometry
             }
             throw new NotSupportedException("NoncanonicalEmptyTextObject");
         }
+        budget.Field(7);
+        Projection(text.Text is not null && text.Runs.Count == codes.Length && text.FontSizeMillimeters == source.Size &&
+            text.XMillimeters == source.X && text.YMillimeters == source.Y && text.WidthMillimeters == source.Width && text.HeightMillimeters == source.Height);
+        budget.Field();
+        if (root.Attribute("CTM") is null) Projection(text.Transform is null);
+        else
+        {
+            Projection(text.Transform is { Length: 6 });
+            for (var i = 0; i < 6; i++) { budget.Field(); Projection(text.Transform![i] == source.Matrix[i]); }
+        }
+        var colorNode = root.Element(root.Name.Namespace + "FillColor");
+        var color = colorNode is null ? new double[] { 0, 0, 0 } : Numbers(Required(colorNode, "Value"), 3);
+        budget.Field(4);
+        Projection(text.FillColor is not null && text.FillColor.Red == color[0] && text.FillColor.Green == color[1] &&
+            text.FillColor.Blue == color[2] && text.FillColor.Alpha == 255);
+        int offset = 0;
+        for (var i = 0; i < codes.Length; i++)
+        {
+            // A zero-length slot is a real source reference and field work, not a glyph.
+            budget.Reference(); budget.Field(7);
+            var code = codes[i]; var captured = source.Runs[i]; var run = text.Runs[i];
+            var raw = captured.RawText;
+            budget.Characters(raw.Length);
+            Projection(raw.Length <= text.Text!.Length - offset &&
+                SameSlice(text.Text, offset, raw, budget));
+            offset += raw.Length;
+            budget.Characters(Math.Max(raw.Length, run.Text?.Length ?? 0));
+            Projection(run.Text is not null && run.Text.Length == raw.Length && SameSlice(run.Text, 0, raw, budget));
+            // Reader projects missing axes independently as 0/Size. Geometry above
+            // resolves previous START instead. Never substitute the typed defaults.
+            Projection(run.XMillimeters == (code.Attribute("X") is null ? 0 : captured.X) &&
+                run.YMillimeters == (code.Attribute("Y") is null ? source.Size : captured.Y));
+            CompareDelta(run.DeltaX, captured.DeltaX, budget);
+            CompareDelta(run.DeltaY, captured.DeltaY, budget);
+        }
+        budget.Field(); Projection(offset == text.Text!.Length);
     }
+
+    private static void CompareDelta(string? actual, string? expected, OfdKeywordLocatorBudget budget)
+    {
+        budget.Characters(Math.Max(actual?.Length ?? 0, expected?.Length ?? 0));
+        Projection(actual is null ? expected is null : expected is not null && actual.Length == expected.Length && SameSlice(actual, 0, expected, budget));
+    }
+    private static bool SameSlice(string value, int start, string expected, OfdKeywordLocatorBudget budget)
+    {
+        for (var i = 0; i < expected.Length; i += 256)
+        {
+            budget.Check();
+            if (string.CompareOrdinal(value, start + i, expected, i, Math.Min(256, expected.Length - i)) != 0) return false;
+        }
+        return true;
+    }
+    private static void Projection(bool matches)
+    { if (!matches) throw new NotSupportedException("CanonicalEmptyModelConflict"); }
 
     private static void SetBoundary(OfdKeywordTextSource source, double[] values)
     {
