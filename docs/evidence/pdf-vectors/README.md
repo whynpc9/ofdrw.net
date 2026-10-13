@@ -1,6 +1,22 @@
 # 21 可选 PDF 矢量转换验收证据
 
-R14 当前运行时 **`35fe18e01ef3cbf2f287b5d70018681f9f46deaa`** 修复已耗尽事件预算仍被路径/文字 profile 错误降格为整页回退的问题。真实/潜在路径绘制先检查容量，fill+stroke 一次要求两个槽位；非空 glyph 先检查已消费字符额度和事件容量，非空游程在 profile 前复核。只由成功 Add 计数，支持的空路径/move/空 show/Tf 不收费；路径构造、close、字体输入尝试及取消门保持原顺序，不预扫描未来字形。
+R15 当前运行时 **`f5914e6d41d63da541da5d8e031e7d97090296cc`** 在原 float 精度门之外，按实际双精度毫米 CTM 核验 Writer 写出的正笔宽/字号总误差；原 `.0006 × 100000` 的 60pt→100pt 膨胀分别进入 `STROKE_WRITER_PRECISION` / `TEXT_WRITER_PRECISION` 整页策略。路径 miter 绝对界、文字映射/位置/前缀/基线界均保留；原硬预算/取消优先级不变。成功处理后、Append 前按同一毫米尺寸分类 `PAGE_WRITER_PRECISION`；无法写成正数的物理页尺寸对两策略均原子失败，私有异常仅排除这一不可栅格化类型。Core/04/19/Writer 语义未改，早期空页/unknown/raw-image及默认Invisible的既有分支保留。
+
+主与独立 Low17 各 **789/789（九份 TRX）、Python5/5、默认11/可选13实际包消费**通过。349冻结源码/13主包身份不变，独立1061产物逐项size/SHA已核验。主四个、独立八个真实PackageReference消费者各加载八个与自身nupkg对应的DLL，RepositoryCommit均为f5914e6。Astra保存112个唯一PDF、312次转换按原SHA/options重放，仅10页尺寸及44标量精度策略结果获准改变，其余258不变；原R14 158、R13 80、R12 62+2 BOM原语义保持。34旧OFD payload保持，35当前主/Low OFD对应，仅dual的两项日期元数据归一化。基线13失败/13通过、初次full783通过/6旧预期失败、探针编译错误、Low首轮TRX文件名覆盖及后续同二进制九TRX补验均保留，不冒称首次全绿。
+
+2026-10-13实际在macOS Preview逐页检查本次 **writer-accuracy-source.pdf / writer-accuracy.pdf 各4页，共8页**，精确AX URL、分别设置Single Page/Zoom All to Fit，检查前后SHA/size不变。查看链路为源PDF对照本次 **PDF→native/raster/raster/native OFD→PDF**。页2红色60pt线条厚度/位置、页3绿色60pt“中文 A”字号/间距/基线对应，未见旧100pt膨胀；页1/4正常native恢复，未见缺字/重叠/裁切/重影/额外空白。栅格页边缘/文字略软，红绿有轻微色调观感差异，明确保留为限制，不以总RMSE覆盖。大块下方白区是原布局。源21,664,058B SHA `a6a8029426f4971779aab9fe1b41f3db5adc93a966d6b8e8addbc1e4594ea617`；导出160,760B SHA `63a7fb051025655f2fc464af787e51821047ea5106d10fb94d04e81d5b552183`。两个极小页样例两策略均只有失败输入/日志/sentinel，无成功输出PDF，未计视觉通过。
+
+封存前复用现有源/导出PNG及实际OFD载荷做有界只读色差核对：两嵌入PNG逐字节等于对应源Poppler PNG。共同viewport不重采样，页2区域XYWH(200,450,400,40)内5×5纯色邻域14256点的源/载荷/导出均RGB(186,59,64)；页3区域(120,370,360,130)绿色内部3539点均RGB(51,140,89)，内部差异及最大通道delta均0。未见这些内部区域颜色污染；源840×1190/导出841×1191与边缘采样可造成柔化，但未证明Preview色彩管理原因。没有同源dual直接控制，不宣称跨renderer像素/色彩保真或任意PDF保真。
+
+两份准确URL文档均已关闭；末态实际Open面板点击Cancel后仍显示Open，取消/零窗口未确认，不再激活、不操作未知窗口，GUI已释放。首个GoTo helper因AX diff前缀安全拒绝，改用full AX后准确打开源，未误开文档。14条实际UI调用/8幅实际内联页截图的事件记录保留；session图片数据可截断，不冒称可用导出Preview截图，PNG仅为辅助。历史R14四页/R13二十页/R11八页/R10二十八页保留原身份，未冒称本轮重看。
+
+[review-r15-acceptance.json](review-r15-acceptance.json)、[review-r15-manifest.json](review-r15-manifest.json)、[review-r15-readback.json](review-r15-readback.json)绑定本轮结果。运行 `python3 docs/evidence/pdf-vectors/verify-r15.py` 实际重建分卷并核对whole及所有成员size/SHA。原R12/R13/R14分卷未改。最终evidence-only head的Codex/Cursor、六CI及有效线程单独读回，不继承历史结果；PR18保持OPEN，未合并、未tag、未发布。
+
+R15最终归档 **2624成员 / 49,629,544字节**，whole及单分卷SHA256 `88d1dd408e68adfebb42e390335e84ea29fbc8f6b73ccc3916ab360ca734d74f`；[review-r15.tar.zst.part01](review-r15.tar.zst.part01)已实际重建并逐成员核验。初始本地880d53…草稿在补充只读颜色归因前已核验，随后重收集为本最终版本，未公开该草稿。
+
+以下R14及更早说明保留原验收身份。
+
+R14 历史运行时 **`35fe18e01ef3cbf2f287b5d70018681f9f46deaa`** 修复已耗尽事件预算仍被路径/文字 profile 错误降格为整页回退的问题。真实/潜在路径绘制先检查容量，fill+stroke 一次要求两个槽位；非空 glyph 先检查已消费字符额度和事件容量，非空游程在 profile 前复核。只由成功 Add 计数，支持的空路径/move/空 show/Tf 不收费；路径构造、close、字体输入尝试及取消门保持原顺序，不预扫描未来字形。
 
 主与独立 Low16 各 **763/763（九份 TRX）、Python5/5、默认11/可选13真实包消费**通过。345 冻结源码及13主包身份未变，Low16全部665产物逐项size/SHA复核；六个独立主包/本地包消费者各加载八个与自身nupkg匹配的Ofdrw DLL，两套13包的RepositoryCommit均为35fe18e。Astra原158次转换使用49个唯一PDF输入，原SHA/options在实际主包和Low包重放，**仅36次批准的事件/已消费字符预算情况变为 InvalidDataException，sentinel040506和position0保持，其余122次结果/诊断不变**。R13保存80次及R12保存62+2 BOM保持原语义。33个旧OFD payload与R13相等，34个当前主/Low OFD payload相等，仅dual的CreationDate/ModDate归一化。
 
