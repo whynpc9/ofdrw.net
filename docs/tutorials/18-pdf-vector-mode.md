@@ -29,6 +29,10 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 
 字体只接纳嵌入固定 TrueType 的 Type0 Identity-H/CIDFontType2/identity CIDToGID，并逐字符验证原 Unicode 与相同字节的源 CID/目标 glyph。不兼容的 PDF 子集、竖排、连字、多字符映射、组合 shaping、非 BMP 或仅空白游程回退/失败。字体保持原载荷和真实 face flags；没有共享 resolver/subset/cache 替代，05 的广泛字体服务仍未完成。完整 CJK 字体可让矢量 OFD 明显大于双层 OFD；实际大小见本票证据。
 
+字体在真正含非空字节的 Tj/TJ 前按当前 PdfPig 文字状态准入。空 Tj、空 TJ 或仅 Tf 选择而未绘制字形不读取/嵌入字体 program，也不验证未消费字体的内部 body/profile；与未选资源相同。有效 Font 字典的类型、声明数量以及页面内容/操作/深度仍检查。真正消费时，字体缺失引用、环、错误类型等输入结构失败不以回退掩盖；已知范围外字体仍按 page policy。含数值但只有空字符串的 TJ 保留每项位移，先认证水平 Identity-H 方向元数据，不能直接当 no-op，也不因此加载 FontFile2。
+
+`MaxFontBytes` 限制每个原字体流；新增 `MaxFontReadBytesPerPage`（默认128,000,000）限制每个选定页面尝试加载的原字体 program 字节，在复制/加载前与剩余额度比较。成功绑定的同名字体重复使用不重复收费；不同 resource ID 的加载各自收费，失败/拒绝不退款。ToUnicode 内容和结构限额独立保持。该限额不代表全部解析内存、SHA 次数、CPU 或时间上限。`MaxTotalFontBytes` 只限制成功文本事件实际引用并输出的字体资源总字节，跨页与重复 selection 继续累计；相同 bytes 的不同资源/页不新增去重。未用或失败绑定及资源帧在页面结束清理，PdfPig 自身解析缓存仅随该页文档释放，不声称 Unload 会清除缓存。
+
 通过 `PdfVectorToOfdOptions` 配置输入/页数、内容字节、操作、事件、路径命令、文字和字体限额；回退像素/图片预算沿用 `Compatibility`。预算与取消始终失败，不以回退绕过。每个选定页面使用新的 PdfPig 文档/资源上下文，避免失败状态污染后一页；多页和重复选择会增加解析成本。PdfPig 打开文档、解析字典和 native font loader 内部并不提供硬堆内存/时间沙箱，本票不作该承诺；只限制所声明的输入、流及输出工作量。
 
 转换写出前的验证失败不改目的流；最终 ZIP 写出阶段的 I/O/取消仍可留下部分流，文件调用方应自行使用临时文件与原子替换。默认 CLI 原子输出契约保持原样。
