@@ -9,6 +9,7 @@
     <ProjectReference Include="../../src/Ofdrw.Net.Converter.Svg/Ofdrw.Net.Converter.Svg.csproj" />
     <Compile Include="../../e2e/Ofdrw.Net.Pdf.Vector.E2E/PdfFixture.cs" Link="PdfFixture.cs" />
     <None Include="../../e2e/Ofdrw.Net.SkiaSharp.E2E/testdata/fonts/*.ttf" Link="fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../e2e/Ofdrw.Net.Pdf.Vector.E2E/testdata/xml-boundary.ttf" Link="fonts/xml-boundary.ttf" CopyToOutputDirectory="PreserveNewest" />
     <Using Include="Xunit" />
   </ItemGroup>
 </Project>
