@@ -234,7 +234,7 @@ internal static class OfdModelTraversal
         }
     }
 
-    private static void GuardXml(string xml, OfdTraversalBudget budget, OfdModelLimits limits, CancellationToken token)
+    internal static void GuardXml(string xml, OfdTraversalBudget budget, OfdModelLimits limits, CancellationToken token)
     {
         // Count UTF-8 bytes without allocating a second full encoding buffer.
         long bytes = 0;
@@ -248,7 +248,7 @@ internal static class OfdModelTraversal
             else if (char.IsHighSurrogate(c) && i + 1 < xml.Length && char.IsLowSurrogate(xml[i + 1])) { bytes += 4; i++; }
             else bytes += 3;
             if (bytes > limits.MaxSourceXmlBytes - budget.SourceXmlBytes)
-                throw new InvalidDataException("OFD traversal exceeds its source XML byte budget.");
+                throw OfdTraversalBudget.Limit("OFD traversal exceeds its source XML byte budget.");
         }
         token.ThrowIfCancellationRequested();
         budget.XmlBytes(bytes);

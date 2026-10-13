@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Core.Constants;
+using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Packaging;
 
@@ -25,9 +26,12 @@ public static class OfdPackageSignatureCleaner
         var archive = await new OfdPackageLoader().LoadAsync(source, options ?? new OfdPackageLoadOptions(), cancellationToken).ConfigureAwait(false);
         var original = archive.EntryNames.ToDictionary(path => path, archive.GetBytes, StringComparer.OrdinalIgnoreCase);
         if (!original.TryGetValue("OFD.xml", out var rootBytes)) throw new InvalidDataException("OFD.xml is missing.");
+        var material = new OfdModelMaterialization(new OfdModelLimits());
+        var input = new OfdDocumentPackage(); foreach (var pair in original) input.PreservedEntries.Add(pair.Key, pair.Value);
+        material.InspectStorage(input, cancellationToken); material.GuardPreservedXml(input, cancellationToken); material.EstimateWriter(input, cancellationToken);
         using (var rootStream = new MemoryStream(rootBytes, false))
         {
-            var root = XDocument.Load(rootStream).Root;
+            var root = material.ReadXml("OFD.xml", rootBytes, cancellationToken).Root;
             if (root?.Name.LocalName != "OFD" ||
                 (root.Name.NamespaceName != OfdConstants.Namespace && root.Name.NamespaceName != OfdConstants.StandardNamespace) ||
                 !root.Elements(root.Name.Namespace + "DocBody").Any())
@@ -35,7 +39,8 @@ public static class OfdPackageSignatureCleaner
         }
         var entries = new Dictionary<string, byte[]>(original, StringComparer.OrdinalIgnoreCase);
         var result = new OfdPackageWriteResult();
-        OfdPackagePruner.CleanSignatures(original, entries, result, cancellationToken);
+        OfdPackagePruner.CleanSignatures(original, entries, result, cancellationToken, material: material);
+        material.ValidateActualEntries(entries, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
         foreach (var entry in entries.OrderBy(pair => pair.Key, StringComparer.Ordinal))
