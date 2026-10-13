@@ -33,10 +33,11 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     {
         foreach (var font in snapshot.Fonts)
         {
-            budget.Reference();
-            if (string.IsNullOrWhiteSpace(font.Id)) throw new InvalidDataException("Invalid source font identity.");
-            if (modelFonts.ContainsKey(font.Id)) modelFonts[font.Id] = null;
-            else modelFonts.Add(font.Id, font);
+            budget.Reference(); budget.Copy(128); var id = font.Id;
+            if (id is null || string.IsNullOrWhiteSpace(id)) throw new InvalidDataException("Invalid source font identity.");
+            budget.Work(2L * id.Length);
+            if (modelFonts.ContainsKey(id)) modelFonts[id] = null;
+            else modelFonts.Add(id, font);
         }
         generated = package.DocumentEntryPath is null;
         if (generated)
@@ -51,10 +52,10 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
         ns = ofd.Name.Namespace;
         if (ofd.Name != ns + "OFD" || !KnownNamespace(ns)) throw new NotSupportedException("UnknownDocumentEnvelope");
         OfdStrictTextGeometry.Attributes(ofd, "Version", "DocType");
-        var bodies = ofd.Elements(ns + "DocBody").ToArray();
+        var bodies = Elements(ofd, ns + "DocBody");
         if (bodies.Length != 1 || ofd.Elements().Any(e => e.Name != ns + "DocBody"))
             throw new NotSupportedException("MultipleOrUnknownDocumentScope");
-        var roots = bodies[0].Elements(ns + "DocRoot").ToArray();
+        var roots = Elements(bodies[0], ns + "DocRoot");
         if (roots.Length != 1 || Resolve("OFD.xml", roots[0].Value) != package.DocumentEntryPath)
             throw new NotSupportedException("UnprovedDocumentSourceBinding");
         var document = Control(package.DocumentEntryPath!);
@@ -79,7 +80,8 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
             }
         }
         var pages = One(document, "Pages", true)!; OfdStrictTextGeometry.Attributes(pages);
-        var refs = pages.Elements().ToArray();
+        var refs = Elements(pages);
+        budget.Copy(256L + 256L * refs.Length);
         if (refs.Length != package.Pages.Count) throw new NotSupportedException("PageSourceOwnershipMismatch");
         var unique = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < refs.Length; i++)
@@ -107,6 +109,7 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
         budget.Check();
         if (new[] { page.XMillimeters, page.YMillimeters, page.WidthMillimeters, page.HeightMillimeters }.Any(v => !OfdGlyphBox.Finite(v)) ||
             page.WidthMillimeters <= 0 || page.HeightMillimeters <= 0) throw new InvalidDataException("Invalid finite page PhysicalBox.");
+        budget.Copy(256L + 256L * page.Elements.Count);
         var paths = new Dictionary<int, (int, string)>();
         if (generated)
         {
@@ -118,6 +121,7 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
                 budget.Check(); var element = page.Elements[i];
                 if (i == 0 || element.LayerId != lastId || element.LayerType != lastType) layer++;
                 lastId = element.LayerId; lastType = element.LayerType;
+                budget.Copy(256);
                 paths.Add(i, (layer, "model:Pages[" + position + "]/model:Elements[" + i + "]"));
             }
             return paths;
@@ -177,6 +181,7 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
                 if (expected is null || !MatchesOriginalElement(child, expected) ||
                     model.LayerId != layer.Attribute("ID")?.Value || model.LayerType != layerType || child.Name.Namespace != ns)
                     throw new NotSupportedException("SourceElementOrderMismatch");
+                budget.Copy(256L + 4L * (ExpandedLength(root.Name) + ExpandedLength(content.Name) + ExpandedLength(layer.Name) + ExpandedLength(child.Name)));
                 var path = "/" + root.Name + "[0]/" + content.Name + "[0]/" + layer.Name + "[" + layerOrdinal + "]/" + child.Name + "[" + objectOrdinal + "]";
                 paths.Add(index++, (layerOrdinal, path)); objectOrdinal++;
             }
@@ -202,7 +207,12 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     private bool MatchesOriginalElement(XElement original, string expected)
     {
         if (original.Name != ns + "TextObject")
+        {
+            // Its subtree and namespace names came from already bounded control
+            // XML. Prepay XML escaping/StringWriter copies before ToString.
+            budget.Copy(12L * budget.XmlBytes + 8192); budget.Work(2L * budget.XmlBytes);
             return string.Equals(original.ToString(SaveOptions.DisableFormatting), expected, StringComparison.Ordinal);
+        }
         var projected = budget.Parse(expected);
         CheckTextShape(original); CheckTextShape(projected);
         return SameElement(original, projected);
@@ -302,11 +312,13 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
 
     private void ReadOptionalFixedResource(string pagePath)
     {
+        budget.Copy(4L * pagePath.Length + 128); budget.Work(2L * pagePath.Length);
         var split = pagePath.LastIndexOf('/'); var path = (split < 0 ? "" : pagePath.Substring(0, split + 1)) + "PageRes.xml";
         if (snapshot.HasExactEntry(path)) ReadResource(path);
     }
     private void ReadResource(string path)
     {
+        budget.Copy(128); budget.Work(2L * path.Length);
         if (!resourceEntries.Add(path)) return;
         var root = Control(path);
         if (root.Name != ns + "Res") throw new NotSupportedException("UnknownFontResourceEnvelope");
@@ -340,11 +352,13 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
             if (!string.IsNullOrWhiteSpace(fileName))
             {
                 var baseLocation = root.Attribute("BaseLoc")?.Value;
+                budget.Copy(4L * ((baseLocation?.Length ?? 0) + fileName!.Length) + 128);
                 var reference = string.IsNullOrWhiteSpace(baseLocation) || fileName!.StartsWith("/", StringComparison.Ordinal)
                     ? fileName! : baseLocation!.TrimEnd('/') + "/" + fileName;
                 file = Resolve(path, reference);
             }
             if (fonts.ContainsKey(id)) throw new NotSupportedException("DuplicateOriginalFontId");
+            budget.Copy(256);
             fonts.Add(id, new FontDefinition(fileName, file, OfdStrictTextGeometry.Boolean(font.Attribute("Bold")?.Value, false),
                 OfdStrictTextGeometry.Boolean(font.Attribute("Italic")?.Value, false)));
         }
@@ -353,6 +367,9 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     {
         if (xml.TryGetValue(path, out var cached)) return cached;
         var bytes = snapshot.ControlEntry(path, budget);
+        // UTF8 decoding retains at most one UTF16 unit per input byte. The
+        // optional BOM trim can copy that string once more, before Parse.
+        budget.ReserveCopy("ControlUtf8Decode", 4L * bytes.LongLength + 256); budget.Work(bytes.LongLength);
         string value;
         try { value = new UTF8Encoding(false, true).GetString(bytes); }
         catch (DecoderFallbackException exception) { throw new InvalidDataException("Control entry must be valid UTF8.", exception); }
@@ -361,18 +378,21 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     }
     private XElement? One(XElement parent, string name, bool required)
     {
-        var children = parent.Elements(ns + name).ToArray();
+        var children = Elements(parent, ns + name);
         if (children.Length > 1 || required && children.Length != 1) throw new NotSupportedException("AmbiguousSourceContainer");
         return children.Length == 0 ? null : children[0];
     }
     private double[] Box(XElement area)
     {
         OfdStrictTextGeometry.Attributes(area); OfdStrictTextGeometry.PlainTextNodes(area, false);
-        var boxes = area.Elements().ToArray();
+        var boxes = Elements(area);
         if (boxes.Length != 1 || boxes[0].Name != ns + "PhysicalBox") throw new NotSupportedException("UnsupportedPageArea");
         OfdStrictTextGeometry.Attributes(boxes[0]);
         if (boxes[0].HasElements) throw new NotSupportedException("UnknownPhysicalBox");
-        var box = OfdStrictTextGeometry.Numbers(boxes[0].Value, 4);
+        budget.Copy(4L * budget.XmlBytes + 1024);
+        var value = boxes[0].Value;
+        budget.Copy(64L * value.Length + 8192); budget.Work(4L * value.Length);
+        var box = OfdStrictTextGeometry.Numbers(value, 4);
         if (box[2] <= 0 || box[3] <= 0) throw new InvalidDataException("Page PhysicalBox must be positive.");
         return box;
     }
@@ -380,9 +400,20 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     {
         budget.Reference();
         if (reference.Length > budget.Limits.MaxSingleXmlBytes) throw new InvalidDataException("Source reference capacity exceeded.");
+        budget.Copy(128L + 16L * (relativeTo.Length + (long)reference.Length + 2));
+        budget.Work(2L * (relativeTo.Length + (long)reference.Length));
         for (var i = 0; i < reference.Length; i++) { if ((i & 255) == 0) budget.Check(); if (reference[i] is '/' or '\\') budget.Reference(); }
         return OfdPackagePath.Resolve(relativeTo, reference);
     }
+    private XElement[] Elements(XElement parent, XName? name = null)
+    {
+        var count = 0;
+        foreach (var child in name is null ? parent.Elements() : parent.Elements(name))
+        { budget.Check(); budget.Work(16); count++; }
+        budget.Copy(128L + 16L * count);
+        return (name is null ? parent.Elements() : parent.Elements(name)).ToArray();
+    }
+    private static long ExpandedLength(XName name) => 2L + name.NamespaceName.Length + name.LocalName.Length;
     private sealed class FontDefinition(string? name, string? file, bool bold, bool italic)
     {
         internal readonly string? FileName = name, File = file;

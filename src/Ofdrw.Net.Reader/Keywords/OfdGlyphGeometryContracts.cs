@@ -16,7 +16,8 @@ public interface IOfdGlyphGeometryProvider
 /// <summary>Owns operation-local font faces. Implementations must honor limits and report unsupported mappings.</summary>
 public interface IOfdGlyphGeometrySession : IDisposable
 {
-    /// <summary>Measures the exact snapshot font. Reuse its parsed face across requests; never substitute host fonts or synthetic styles.</summary>
+    /// <summary>Measures the exact snapshot font. Equal immutable requests within one session must produce consistent geometry;
+    /// editing may reuse their validated immutable result. Never substitute host fonts or synthetic styles.</summary>
     OfdGlyphGeometry Measure(OfdGlyphGeometryRequest request, CancellationToken cancellationToken = default);
     /// <summary>Gets observed provider work, rather than inferred source counts.</summary>
     OfdGlyphGeometryStatistics Statistics { get; }
@@ -152,10 +153,13 @@ public sealed class OfdGlyphFontSnapshot
     private byte[]? data;
     private readonly List<Stream> streams = new();
     private readonly Action chargeStream;
-    internal OfdGlyphFontSnapshot(string resourceId, bool bold, bool italic, byte[] ownedData, string sha256, Action chargeStream)
+    private readonly Action<int>? chargeRead;
+    private readonly Action? chargeSeek;
+    internal OfdGlyphFontSnapshot(string resourceId, bool bold, bool italic, byte[] ownedData, string sha256, Action chargeStream,
+        Action<int>? chargeRead = null, Action? chargeSeek = null)
     {
         ResourceId = resourceId; Bold = bold; Italic = italic; data = ownedData;
-        ByteCount = ownedData.Length; ContentSha256 = sha256; this.chargeStream = chargeStream;
+        ByteCount = ownedData.Length; ContentSha256 = sha256; this.chargeStream = chargeStream; this.chargeRead = chargeRead; this.chargeSeek = chargeSeek;
     }
     /// <summary>Exact, case-sensitive resource ID.</summary>
     public string ResourceId { get; }
@@ -172,7 +176,7 @@ public sealed class OfdGlyphFontSnapshot
     {
         if (data is null) throw new ObjectDisposedException(nameof(OfdGlyphFontSnapshot));
         chargeStream();
-        var stream = new SnapshotReadStream(data);
+        var stream = new SnapshotReadStream(data, chargeRead, chargeSeek);
         streams.Add(stream); return stream;
     }
     internal byte[] Data => data ?? throw new ObjectDisposedException(nameof(OfdGlyphFontSnapshot));
@@ -188,7 +192,10 @@ public sealed class OfdGlyphFontSnapshot
     {
         private byte[]? bytes;
         private long position;
-        internal SnapshotReadStream(byte[] bytes) => this.bytes = bytes;
+        private readonly Action<int>? chargeRead;
+        private readonly Action? chargeSeek;
+        internal SnapshotReadStream(byte[] bytes, Action<int>? chargeRead, Action? chargeSeek)
+        { this.bytes = bytes; this.chargeRead = chargeRead; this.chargeSeek = chargeSeek; }
         public override bool CanRead => bytes is not null;
         public override bool CanSeek => bytes is not null;
         public override bool CanWrite => false;
@@ -196,7 +203,7 @@ public sealed class OfdGlyphFontSnapshot
         public override long Position
         {
             get { _ = Buffer; return position; }
-            set { _ = Buffer; if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); position = value; }
+            set { _ = Buffer; if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); chargeSeek?.Invoke(); position = value; }
         }
         private byte[] Buffer => bytes ?? throw new ObjectDisposedException(nameof(SnapshotReadStream));
         public override int Read(byte[] buffer, int offset, int count)
@@ -205,17 +212,18 @@ public sealed class OfdGlyphFontSnapshot
             if (offset < 0 || count < 0 || offset > buffer.Length - count) throw new ArgumentOutOfRangeException(nameof(offset));
             var source = Buffer;
             var length = (int)Math.Min(count, Math.Max(0, source.Length - position));
-            if (length > 0) System.Buffer.BlockCopy(source, (int)position, buffer, offset, length);
+            if (length > 0) { chargeRead?.Invoke(length); System.Buffer.BlockCopy(source, (int)position, buffer, offset, length); }
             position += length; return length;
         }
         public override int ReadByte()
         {
             var source = Buffer;
-            return position < source.Length ? source[(int)position++] : -1;
+            if (position >= source.Length) return -1;
+            chargeRead?.Invoke(1); return source[(int)position++];
         }
         public override long Seek(long offset, SeekOrigin origin)
         {
-            _ = Buffer;
+            _ = Buffer; chargeSeek?.Invoke();
             var basis = origin switch { SeekOrigin.Begin => 0, SeekOrigin.Current => position, SeekOrigin.End => Length,
                 _ => throw new ArgumentOutOfRangeException(nameof(origin)) };
             long next;
