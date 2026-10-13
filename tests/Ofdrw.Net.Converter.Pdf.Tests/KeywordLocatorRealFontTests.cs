@@ -115,6 +115,29 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
         output.WriteLine(JsonSerializer.Serialize(new { face, matrix, objects, stage = "public-default-writer-fresh-reader-public-locator", after.Statistics }));
     }
 
+    [RealTrustedFontsTheory]
+    [InlineData("latin")]
+    [InlineData("cjk")]
+    public async Task CanonicalEmptyKeepsOriginalOflResourceIdentityWithoutFaceOrGlyphCalls(string face)
+    {
+        var bytes = Font(face); var source = await Read(bytes, face, "identity", 1, overrideText: "");
+        var provider = new ObservedProvider(bytes);
+        var before = new OfdKeywordLocator(provider).Find(source, "A");
+        using var destination = new MemoryStream();
+        await new Ofdrw.Net.Packaging.OfdPackageWriter().WriteAsync(source, destination);
+        destination.Position = 0; var reread = await new OfdReader().ReadAsync(destination);
+        var after = new OfdKeywordLocator(provider).Find(reread, "A");
+        Assert.True(before.IsComplete); Assert.True(after.IsComplete); Assert.Empty(after.Hits); Assert.Empty(after.Diagnostics);
+        Assert.Equal("100", ((OfdTextElement)reread.Pages[0].Elements[0]).ObjectId);
+        Assert.Equal(0, provider.Opens); Assert.Null(provider.Session);
+        Assert.Equal(0, after.Statistics.ReturnedFragments); Assert.Equal(0, after.Statistics.ReturnedProviderClusters);
+        Assert.Equal(0, after.Statistics.ReservedScalarGlyphs); Assert.Equal(0, after.Statistics.Provider.FaceParses);
+        Assert.Equal(0, after.Statistics.Provider.GlyphRequests); Assert.Equal(1, after.Statistics.FontHashOperations);
+        Assert.Equal(bytes.Length, after.Statistics.CopiedFontBytes); Assert.Equal(bytes.Length, after.Statistics.ComparedFontBytes);
+        Assert.Equal(Digest(bytes), Digest(reread.Fonts[0].Data));
+        output.WriteLine(JsonSerializer.Serialize(new { face, stage = "canonical-empty-default-writer-readback-resource-identity-only", after.Statistics }));
+    }
+
     private static byte[] Font(string face)
     {
         var path = Environment.GetEnvironmentVariable(face == "cjk" ? "OFDRW_TEST_TRUSTED_CJK_FONT" : "OFDRW_TEST_TRUSTED_LATIN_FONT")!;

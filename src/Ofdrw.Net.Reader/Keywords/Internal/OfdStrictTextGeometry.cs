@@ -15,7 +15,7 @@ internal sealed class OfdKeywordTextSource
     internal int[] OccurrencePath = Array.Empty<int>(), DefinitionPath = Array.Empty<int>();
     internal string? EntryPath;
     internal string Path = string.Empty, FontId = string.Empty;
-    internal bool HasXml, Editable, Visible = true, Italic;
+    internal bool HasXml, Editable, Visible = true, Italic, CanonicalEmpty;
     internal int Weight = 400;
     internal double X, Y, Width, Height, Size, PageX, PageY, PageWidth, PageHeight;
     internal double[] Matrix = new double[] { 1, 0, 0, 1, 0, 0 };
@@ -44,7 +44,7 @@ internal sealed class OfdPositionedCluster(OfdKeywordTextSource source, OfdKeywo
 internal static class OfdStrictTextGeometry
 {
     internal static OfdKeywordTextSource Capture(OfdGraphicOccurrence occurrence, int layer, string path,
-        OfdKeywordLocatorBudget budget, int reservedUnits)
+        OfdKeywordLocatorBudget budget, int reservedUnits, bool hasOriginalEnvelope)
     {
         var text = (OfdTextElement)occurrence.Element; var page = occurrence.Page;
         var result = new OfdKeywordTextSource
@@ -107,7 +107,11 @@ internal static class OfdStrictTextGeometry
                 previousX = x; previousY = y; // Table46 inherits the previous START, never its last glyph.
                 var raw = string.Concat(code.Nodes().OfType<XText>().Select(node => node.Value));
                 var decoded = Decode(raw, budget);
-                if (decoded.Text.Length == 0) throw new NotSupportedException("EmptyTextCode");
+                if (decoded.Text.Length == 0)
+                {
+                    ValidateCanonicalEmpty(root, code, codes.Length, text, x, y, result.Size, hasOriginalEnvelope, budget);
+                    result.CanonicalEmpty = true;
+                }
                 result.Runs.Add(new OfdKeywordSourceRun(decoded.Text, decoded.Offsets,
                     path + "/" + code.Name + "[" + i.ToString(CultureInfo.InvariantCulture) + "]", x, y,
                     code.Attribute("DeltaX")?.Value, code.Attribute("DeltaY")?.Value));
@@ -136,7 +140,48 @@ internal static class OfdStrictTextGeometry
             throw new InvalidDataException("Invalid exact text font or style.");
         ValidateMatrix(result.Matrix);
         foreach (var run in result.Runs) ValidateUnicode(run.Text, budget);
+        if (result.CanonicalEmpty)
+        {
+            // Validate retained coordinate metadata without inventing a glyph or ink.
+            _ = Transform(result, result.Runs[0].X, result.Runs[0].Y, checkClip: false);
+        }
         return result;
+    }
+
+    // Appendix A extends TextCode from unrestricted xs:string. This deliberately
+    // narrow source-backed profile retains one required element and its owner.
+    private static void ValidateCanonicalEmpty(XElement root, XElement code, int codeCount, OfdTextElement text,
+        double x, double y, double size, bool hasOriginalEnvelope, OfdKeywordLocatorBudget budget)
+    {
+        if (!hasOriginalEnvelope || codeCount != 1 || code.Nodes().Any() || code.Attribute("X") is null || code.Attribute("Y") is null ||
+            code.Attribute("DeltaX") is not null || code.Attribute("DeltaY") is not null ||
+            string.IsNullOrWhiteSpace(root.Attribute("ID")?.Value))
+            throw new NotSupportedException("NoncanonicalEmptyTextCode");
+        // The source is authoritative, but an empty model must not expose text or
+        // inconsistent anchors/deltas through the redundant Reader projection.
+        if (text.Text != string.Empty || text.FontSizeMillimeters != size || text.Runs.Count != 1 || text.Runs[0].Text != string.Empty ||
+            text.Runs[0].XMillimeters != x || text.Runs[0].YMillimeters != y ||
+            text.Runs[0].DeltaX is not null || text.Runs[0].DeltaY is not null)
+            throw new NotSupportedException("CanonicalEmptyModelConflict");
+        var foundCode = false;
+        foreach (var node in root.Nodes())
+        {
+            budget.Field();
+            if (ReferenceEquals(node, code)) { foundCode = true; continue; }
+            if (node is XElement fill && fill.Name == root.Name.Namespace + "FillColor" && !foundCode && !fill.Nodes().Any()) continue;
+            if (node is XText spacing && node is not XCData)
+            {
+                budget.Characters(spacing.Value.Length);
+                var indentation = true;
+                for (var i = 0; i < spacing.Value.Length; i++)
+                {
+                    if ((i & 255) == 0) budget.Check();
+                    if (spacing.Value[i] is not (' ' or '\t' or '\r' or '\n')) { indentation = false; break; }
+                }
+                if (indentation) continue;
+            }
+            throw new NotSupportedException("NoncanonicalEmptyTextObject");
+        }
     }
 
     private static void SetBoundary(OfdKeywordTextSource source, double[] values)
@@ -171,6 +216,7 @@ internal static class OfdStrictTextGeometry
         }
         if (cursor != run.Text.Length) throw new InvalidDataException("Provider mapping does not cover source text.");
         var count = geometry.Clusters.Count;
+        if (count == 0) throw new InvalidDataException("Empty geometry must not enter glyph positioning.");
         var dx = Deltas(run.DeltaX, count - 1, budget); var dy = Deltas(run.DeltaY, count - 1, budget);
         // Validate every cumulative origin before clipping can classify an early
         // glyph as unsupported and otherwise hide a malformed later overflow.

@@ -25,6 +25,9 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     private XNamespace ns = XNamespace.None;
     private bool generated;
 
+    // Used only after PrepareDocument and the selected page certificate succeed.
+    internal bool HasOriginalEnvelope => !generated;
+
     internal static bool KnownNamespace(XNamespace value) => value.NamespaceName is OfdConstants.Namespace or OfdConstants.StandardNamespace;
     internal void PrepareDocument()
     {
