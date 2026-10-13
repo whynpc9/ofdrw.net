@@ -103,7 +103,6 @@ public sealed class KeywordLocatorSourceTests
     [InlineData("foreign-content")]
     [InlineData("page-rotation")]
     [InlineData("missing-entry")]
-    [InlineData("duplicate-font")]
     [InlineData("page-resource")]
     public async Task A0OmittedEnvelopeAndResourceSourcesCannotYieldCompleteNoHit(string kind)
     {
@@ -112,7 +111,7 @@ public sealed class KeywordLocatorSourceTests
                 kind == "page-resource" ? "<o:PageRes>PageRes.xml</o:PageRes>" : "",
             contentExtra: kind == "content-extension" ? "<o:Vendor><o:TextObject>hidden</o:TextObject></o:Vendor>" : "",
             pageAttributes: kind == "page-rotation" ? "Rotate=\"90\"" : "",
-            duplicateFont: kind == "duplicate-font");
+            duplicateFont: false);
         if (kind == "missing-entry") source.PreservedEntries.Remove("Doc_0/Pages/Page_0/Content.xml");
         if (kind == "foreign-content")
         {
@@ -122,6 +121,13 @@ public sealed class KeywordLocatorSourceTests
         var locator = new OfdKeywordLocator(new KeywordLocatorTests.Provider());
         Assert.Throws<NotSupportedException>(() => locator.Find(source, "absent"));
         Assert.False(locator.Find(source, "absent", Incomplete()).IsComplete);
+    }
+
+    [Fact]
+    public async Task DuplicateKnownFontDefinitionsAreRejectedBeforeKeywordQuery()
+    {
+        var duplicate = await Assert.ThrowsAsync<InvalidDataException>(() => Read(Object(Code("A")), duplicateFont: true));
+        Assert.Contains("Duplicate active document-unit ID", duplicate.Message);
     }
 
     [Theory]
@@ -149,17 +155,29 @@ public sealed class KeywordLocatorSourceTests
     }
 
     [Fact]
-    public async Task EqualLayerIdsAndA0OmittedRawNeverCreateFalseAdjacentMatches()
+    public async Task RawContentAndDistinctLayerScopesNeverCreateFalseAdjacentMatches()
     {
         var a = Object(Code("A")); var b = Object("<o:TextCode X=\"4\" Y=\"8\">B</o:TextCode>", id: "11");
-        var raw = "<o:PageBlock ID=\"9\"><o:TextObject ID=\"30\" Boundary=\"0 0 1 1\" Font=\"10\" Size=\"4\">" + Code("hidden") + "</o:TextObject></o:PageBlock>";
+        var raw = "<o:PageBlock ID=\"9\"><o:TextObject ID=\"32\" Boundary=\"0 0 1 1\" Font=\"10\" Size=\"4\">" + Code("hidden") + "</o:TextObject></o:PageBlock>";
         var source = await Read(a + raw + b);
         var result = new OfdKeywordLocator(new KeywordLocatorTests.Provider()).Find(source, "AB", Incomplete());
         Assert.False(result.IsComplete); Assert.Empty(result.Hits);
-        var separate = await Read(a, contentExtra: "<o:Layer ID=\"1\">" + b + "</o:Layer>");
-        Assert.Equal(Text(separate).LayerId, ((OfdTextElement)separate.Pages[0].Elements[1]).LayerId);
+        var separate = await Read(a, contentExtra: "<o:Layer ID=\"21\">" + b + "</o:Layer>");
+        Assert.NotEqual(Text(separate).LayerId, ((OfdTextElement)separate.Pages[0].Elements[1]).LayerId);
         var complete = new OfdKeywordLocator(new KeywordLocatorTests.Provider()).Find(separate, "AB");
         Assert.True(complete.IsComplete); Assert.Empty(complete.Hits);
+    }
+
+    [Fact]
+    public async Task DuplicateLayerAndCrossKindUnitIdsAreRejectedBeforeKeywordQuery()
+    {
+        var a = Object(Code("A")); var b = Object("<o:TextCode X=\"4\" Y=\"8\">B</o:TextCode>", id: "11");
+        var duplicateLayer = await Assert.ThrowsAsync<InvalidDataException>(() => Read(a, contentExtra: "<o:Layer ID=\"20\">" + b + "</o:Layer>"));
+        Assert.Contains("Duplicate active document-unit ID", duplicateLayer.Message);
+        var fontCollision = await Assert.ThrowsAsync<InvalidDataException>(() => Read(Object(Code("A"), id: "10")));
+        Assert.Contains("Duplicate active document-unit ID", fontCollision.Message);
+        var pageCollision = await Assert.ThrowsAsync<InvalidDataException>(() => Read(a, contentExtra: "<o:Layer ID=\"1\">" + b + "</o:Layer>"));
+        Assert.Contains("Duplicate active document-unit ID", pageCollision.Message);
     }
 
     [Fact]
@@ -219,7 +237,7 @@ public sealed class KeywordLocatorSourceTests
     private static OfdKeywordSearchOptions Incomplete() => new(unsupportedContent: OfdUnsupportedContentBehavior.ReportIncomplete);
     private static OfdTextElement Text(OfdDocumentPackage package) => (OfdTextElement)package.Pages[0].Elements[0];
     private static string Code(string value) => "<o:TextCode X=\"2\" Y=\"8\">" + value + "</o:TextCode>";
-    private static string Object(string codes, string attributes = "", string id = "10") =>
+    private static string Object(string codes, string attributes = "", string id = "30") =>
         "<o:TextObject ID=\"" + id + "\" Boundary=\"20 30 100 50\" Font=\"10\" Size=\"4\" " + attributes + ">" + codes + "</o:TextObject>";
     private static async Task<OfdDocumentPackage> Read(string objects, string layerAttributes = "", string pageExtra = "",
         string contentExtra = "", string pageAttributes = "", bool duplicateFont = false, string resourceExtra = "")
@@ -230,7 +248,7 @@ public sealed class KeywordLocatorSourceTests
             ["OFD.xml"] = Encoding.UTF8.GetBytes($"<o:OFD xmlns:o=\"{ns}\" Version=\"1.0\" DocType=\"OFD-H\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>"),
             ["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes($"<o:Document xmlns:o=\"{ns}\"><o:CommonData><o:MaxUnitID>100</o:MaxUnitID><o:PageArea><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:PageArea><o:DocumentRes>DocumentRes.xml</o:DocumentRes></o:CommonData><o:Pages><o:Page ID=\"1\" BaseLoc=\"Pages/Page_0/Content.xml\"/></o:Pages></o:Document>"),
             ["Doc_0/DocumentRes.xml"] = Encoding.UTF8.GetBytes($"<o:Res xmlns:o=\"{ns}\"><o:Fonts><o:Font ID=\"10\" FontName=\"Fake\"><o:FontFile>Res/font.ttf</o:FontFile></o:Font>" + (duplicateFont ? "<o:Font ID=\"10\" FontName=\"Another\"><o:FontFile>Res/font.ttf</o:FontFile></o:Font>" : "") + "</o:Fonts>" + resourceExtra + "</o:Res>"),
-            ["Doc_0/Pages/Page_0/Content.xml"] = Encoding.UTF8.GetBytes($"<o:Page xmlns:o=\"{ns}\" {pageAttributes}><o:Area><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:Area>{pageExtra}<o:Content><o:Layer ID=\"1\" {layerAttributes}>{objects}</o:Layer>{contentExtra}</o:Content></o:Page>"),
+            ["Doc_0/Pages/Page_0/Content.xml"] = Encoding.UTF8.GetBytes($"<o:Page xmlns:o=\"{ns}\" {pageAttributes}><o:Area><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:Area>{pageExtra}<o:Content><o:Layer ID=\"20\" {layerAttributes}>{objects}</o:Layer>{contentExtra}</o:Content></o:Page>"),
             ["Doc_0/Res/font.ttf"] = [1, 2, 3]
         };
         using var stream = new MemoryStream();
