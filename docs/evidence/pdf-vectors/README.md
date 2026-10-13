@@ -1,14 +1,22 @@
 # 21 可选 PDF 矢量转换验收证据
 
-最新生产运行时 **`deda6d2`** 已完成主/独立Low8 .NET625/625、Python5/5、11/13实际包与本轮四PDF/20页实际Preview。原文本九页SHA d78e未改，五个损失页按整页policy、四个正常对照native；高Index合法夹取成功。**整票仍未闭环**：Ubuntu optional-package CI因重新生成冻结输入SHA不匹配而失败，日志和工件保留；需改为消费同一原始冻结输入并复核新harness/包/Low/LinuxCI与latest双bot/threads。以下R5/R4/R3为历史范围。
+当前代码基线为 **`d8d197e`（R8）**，生产 `src` 与 **`deda6d2`** 相同。主验证 .NET **625/625**、Python **5/5**、默认 **11** 包和可选 **13** 包通过；独立 Low10 通过相同功能门后，因把 gzip 路径传给要求 raw PDF 的 observer 而停止。失败原样保留，Low11 使用相同源码、包和既有二进制补齐未执行观察门，未重新声称全套测试由 Low11 执行。原九页输入 SHA `d78e…`、完整字体 SHA `3012…` 均保持不变。
 
-最新已验证运行时 **`8de5958`**：主/独立Low7 .NET602/602、Python5/5、默认11/可选13实际包消费通过；原Indexed源SHA未变，新OFD PNG与导出PDF的999600调色板采样全部一致。2026-10-09 新八个PDF/八页实际Preview检查通过，原蓝色色相差异在本候选的匹配全页/实际尺寸重绘后不再可见；旧R4失败证据原样保留。**整票尚未闭环**：文本float精度P2、Indexed合法hival夹取边界和最终复审/CI/threads仍待完成。下述R4/R3/R2是历史范围。
+**整票未闭环。** 2026-10-13 读回 R8 head 的六项远端检查均成功，Cursor 为 No findings；Codex 的字体重复哈希 P1 仍开放。Astra 在真实 R8 包上测量固定 21,659,544 字节字体的 1/10/50/100 次 Text 调用，并用明确分开的诊断源码副本计数：100 次完整读取/哈希共 2,165,954,400 字节。修复设计为每个 VectorFont/page 生命周期内复用经实际字体流验证的身份，19 内部桥接尚待协调审查，**未实施或验收性能修复**。
 
-最新已完成的运行时验证为 **`8478b84`**：主代理及独立 Low6 全套578/578、Python5/5、默认11/可选13实际包通过；2026-10-09 实看新增八个PDF/16页。**整体视觉门 FAIL / OPEN**：Indexed源与actualr4导出在Preview中蓝色外观有差异，未把它当作通过。原先35页保留原日期/哈希。后续修复、受影响页新包实看及新增文本精度评审仍待闭合。下列R2/R3为历史结果。
+视觉记录按实际产物区分：R6 `deda6d2` 的四个 PDF /20 页于 2026-10-09 完成 Preview，旧轮次观察保留原日期和哈希。R8 的新导出 PDF 字节不同，**未做 R8 Preview**；相同 OFD payload、功能测试及辅助 PNG 均不替代新文件实看。新性能候选还需重新冻结、回归、真实包独立验证与受影响产物 Preview。PR #18 保持开放，未合并、未发布。
 
-当前运行时冻结 **`b9c136b`**：主代理和独立 Low5 的 .NET **542/542**、Python **5/5**、默认11/可选13实际包消费及独立 observer 通过。首轮双 bot 的无绘制路径/奇异矩阵反馈和 Ubuntu `magick` 缺失已修复；所有失败历史保留。2026-10-08 新增八个 PDF / 八页实际 Preview，原 R2 十三个 PDF /27页保留原日期和哈希；共21个文件/35个已查看页面的明确范围。闭合单点填充的装置像素保真未建立，只验收布局与 page policy，不声称任意或逐像素保真。最新推送 head 的复审/CI/threads 待读回。
+| 轮次 | 基线 | 保留的主要结果 |
+| --- | --- | --- |
+| R8 / R9 设计 | d8d197e | 625/5、11/13 包；Low10 失败、Low11 补验；字体性能 P1；无 R8 Preview |
+| R7 | abd85f3 | 主 optional13 /Low9 资源输出路径失败，修复后由 R8 重跑 |
+| R6 | deda6d2 | 625/5、11/13 包、20 页 Preview；Linux 重生成冻结输入失败保留 |
+| R5 | 8de5958 | 602/5、11/13 包、8 页 Preview；原调色板恢复；后续文字精度及高 Index 边界待修 |
+| R4 | 8478b84 | 578/5、11/13 包、16 页实看；Indexed 蓝色外观失败保留 |
+| R3 | b9c136b | 542/5、11/13 包、8 页 Preview；Low4 观察断言失败保留，Low5 独立通过 |
+| R2 | 58a7107 | 507/5、11/13 包、27 页 Preview，原 R1 图片失败保留 |
 
-冻结运行时 `58a710731b93026e2efbd7ca0bf0420e5be0bf65`，起点 `d878aeda57c1da79917e11d0a35bcc028bc4c1fd`。Astra High 先做真实 PDF 探针和设计，主代理 GPT-6.1 Sol High 实施，GPT-6 Sol Low 在 `git archive` 独立副本运行并保留失败，未自行修补。功能和有限样例的 Preview 验收完成；最新 PR 的 Codex、Cursor、CI 与 review threads 仍需读回，不合并或发布。
+下述样例和体积说明属于 R2 的历史验收范围。冻结运行时 `58a710731b93026e2efbd7ca0bf0420e5be0bf65`，起点 `d878aeda57c1da79917e11d0a35bcc028bc4c1fd`。Astra High 做探针和设计，主代理实施，Sol Low 在独立冻结副本验证；各轮后续状态见表及归档。
 
 - 全套 .NET 507/507、Python 5/5。Low 独立默认 11 包、可选 13 包及额外 PackageReference-only observer 均通过，assets 无 ProjectReference；默认 metapackage/CLI 不新增 Skia 或 vector 依赖。
 - 同一真实 PDF 的 native 两页共 14 PathObject、27 可见 TextObject、0 ImageObject；原始 Unicode 与连续空格保留，仿射矩阵和绘制顺序实际检查。默认双层仍为两幅页面图和 110 个透明 TextObject。
@@ -98,3 +106,15 @@ Low8三个独立观察输入分别保留原49994fe3、合法高值525f7c78、原
 只读结构诊断证明None items和CopyToOutputDirectory存在，但实际消费者把资源扁平复制到bin根目录，代码期待testdata子目录。后续显式TargetPath修复需新freeze/真实包/Low/CI与实际新PDF验收；旧失败保持不变。主早前源码预检成功不能替代干净包消费。
 
 从failedLinux artifact11597357047实际取到同一fixture生成器的same-source.pdf，ZIP entry大小/CRC验证通过。嵌入完整FontFile2与本机完全同3012a9...，但实际/W数值不同，如空格223.999741对224、A607.999084对608；证明该生成器输出有跨平台度量差异。失败九页内存输入在assert前未落盘，仍未知，不能冒称已恢复或精确比较其字节。suffix range请求不支持的失败保留；显式范围成功取到合法所需entry后，停止冗余392MB全量下载，47MBpartial明确不算verifiedartifact，未纳入公共归档。
+
+## 资源输出修复 R8 与字体身份 R9 设计
+
+[review-r8-acceptance.json](review-r8-acceptance.json)、[review-r8-manifest.json](review-r8-manifest.json) 绑定 [review-r8.tar.zst](review-r8.tar.zst)（27,192,342 字节/148 文件）。包含主九个 TRX/625 测试及 5 Python、11/13 包清单/assets、实际 R8 受影响 OFD/PDF/PNG、Low10 全套门及失败、Low11 使用相同候选的限定补验、冻结源码/输入/二进制哈希、原始及高值 Indexed 999600 采样观察、source9 原文/字体/重复页选择、辅助页图、当前 head 审查和检查快照。新文件未 Preview，不以 R6 实看记录冒充。
+
+R8 显式 TargetPath 让干净 consumer 自动得到 bin/testdata 原 gzip，不再扁平复制。2026-10-13 远端读回确认 d8d197e 的 build-test、三平台 BuiltIn DOCX、package-e2e 和 Cursor 检查全部成功。历史 Linux 冻结输入失败和 R7 复制失败仍在前一归档；未来 head 必须重新读回，不能继承本次成功状态。
+
+Low10 在真实包/full625/5 通过后误把 gzip 当 raw PDF 传给 TextObserver，source identity 在进入文字 converter 前拒绝，停止记录不改。Low11 修正调用参数，使用同一已编译 high/text observer；原始 Indexed 的独立 observer 此前未编译，获准只首次构建不变源码，再补齐三个观察门。输入、候选源、既有 DLL 和 nupkg 前后哈希不变；18 个未影响 OFD payload 相同，dual 只有 OFD.xml 元数据不同。Low11 报告引用 Low10 已通过门，不宣称重复执行全套，也不涵盖后续字体性能修复。
+
+归档 font-identity-r9-design/report.md 是 Astra 的只读设计与有界真实 R8 包测量。真实包构造 1/10/50/100 次 Text 的时间分别为 8.18/73.09/339.47/670.76 ms；一次顺序测量，非统计基准。读取/hash 次数来自单独命名、附完整 diff 的诊断源码副本；未对真实 nupkg 插桩，真实包计数由加载 IL/调用链推导，不能冒称 profiler 数据。真实包转换 1/10/50/100 Tj、正常 27 run 和原 source9 四个 native 页保留全文及完整字体；取消/各预算失败保持 sentinel。没有执行 640 GB 工作负载，TJ 与中途 hash 取消延迟未实测。
+
+设计建议仅给 Vector 程序集可见的私有拥有固定 face 的不可变身份绑定，首个有效 snapshot 分块校验 actual face stream 与原 bytes 后只哈希一次；每次事件仍验证文本、matrix、paint、advance、size，public Text 继续完整验证任意传入 font，Emit 每个 Append 仍独立验证实际 destination payload/style/ID。没有全局缓存、字体解析/子集服务或 04/05 改动。19 桥接必须先完成协调审查，修复、计数回归、独立新包、当前 head 评审及新 Preview 均属待办。
