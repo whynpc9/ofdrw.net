@@ -6,7 +6,7 @@ using Ofdrw.Net.Reader.Readers;
 
 namespace Ofdrw.Net.Packaging.Tests;
 
-public sealed class KeywordLocatorEmptyTextTests
+public sealed partial class KeywordLocatorEmptyTextTests
 {
     private const string Ns = "http://www.ofdspec.org/2016";
     private const string Empty = "<o:TextCode X=\"2\" Y=\"8\"/>";
@@ -60,8 +60,6 @@ public sealed class KeywordLocatorEmptyTextTests
 
     [Theory]
     [InlineData("")]
-    [InlineData("<o:TextCode X=\"2\" Y=\"8\"/><o:TextCode X=\"4\" Y=\"8\"/>")]
-    [InlineData("<o:TextCode X=\"2\" Y=\"8\">A</o:TextCode><o:TextCode X=\"4\" Y=\"8\"/>")]
     [InlineData("<o:TextCode X=\"2\" Y=\"8\" DeltaX=\"0\"/>")]
     [InlineData("<o:TextCode X=\"2\" Y=\"8\" DeltaY=\"\"/>")]
     [InlineData("<o:TextCode X=\"2\" Y=\"8\"><![CDATA[]]></o:TextCode>")]
