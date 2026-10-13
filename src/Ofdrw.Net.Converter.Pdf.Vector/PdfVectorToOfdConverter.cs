@@ -141,10 +141,12 @@ internal static class VectorLimits
             MaxContentBytesPerPage = value.MaxContentBytesPerPage, MaxOperationsPerPage = value.MaxOperationsPerPage,
             MaxEventsPerPage = value.MaxEventsPerPage, MaxPathCommandsPerPage = value.MaxPathCommandsPerPage,
             MaxTextCharactersPerPage = value.MaxTextCharactersPerPage, MaxFontBytes = value.MaxFontBytes,
-            MaxTotalFontBytes = value.MaxTotalFontBytes, MaxFontsPerPage = value.MaxFontsPerPage, MaxStackDepth = value.MaxStackDepth };
+            MaxFontReadBytesPerPage = value.MaxFontReadBytesPerPage, MaxTotalFontBytes = value.MaxTotalFontBytes,
+            MaxFontsPerPage = value.MaxFontsPerPage, MaxStackDepth = value.MaxStackDepth };
         if (copy.UnsupportedPagePolicy is not (PdfVectorUnsupportedPagePolicy.Fail or PdfVectorUnsupportedPagePolicy.RasterizePage) ||
             copy.MaxContentBytesPerPage <= 0 || copy.MaxOperationsPerPage <= 0 || copy.MaxEventsPerPage <= 0 || copy.MaxPathCommandsPerPage <= 0 ||
-            copy.MaxTextCharactersPerPage <= 0 || copy.MaxFontBytes <= 0 || copy.MaxTotalFontBytes <= 0 || copy.MaxFontsPerPage <= 0 || copy.MaxStackDepth <= 0)
+            copy.MaxTextCharactersPerPage <= 0 || copy.MaxFontBytes <= 0 || copy.MaxFontReadBytesPerPage <= 0 ||
+            copy.MaxTotalFontBytes <= 0 || copy.MaxFontsPerPage <= 0 || copy.MaxStackDepth <= 0)
             throw new ArgumentOutOfRangeException(nameof(value), "Vector limits must be positive and policy defined.");
         _ = new PdfToOfdConverter(copy.Compatibility); // Validate the existing compatibility limits.
         if (string.IsNullOrWhiteSpace(copy.Compatibility.Namespace)) throw new ArgumentException("Namespace must be specified.");

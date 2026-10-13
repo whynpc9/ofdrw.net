@@ -30,6 +30,8 @@ public sealed class PdfVectorToOfdOptions
     public int MaxTextCharactersPerPage { get; set; } = 100_000;
     /// <summary>Maximum bytes in each original font stream.</summary>
     public int MaxFontBytes { get; set; } = 64_000_000;
+    /// <summary>Maximum original font-program bytes attempted per page, independent of output font bytes.</summary>
+    public long MaxFontReadBytesPerPage { get; set; } = 128_000_000;
     /// <summary>Maximum cumulative embedded font bytes in the resulting package.</summary>
     public long MaxTotalFontBytes { get; set; } = 128_000_000;
     /// <summary>Maximum fonts declared in the effective page resource dictionaries.</summary>

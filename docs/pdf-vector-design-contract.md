@@ -35,3 +35,5 @@
 该文本界限从PdfPig回调已解析的double和glyph metrics开始，不能恢复上游十进制解析、SDK文本状态/CTM累计误差，不能证明不诚实字体metric以外的ink/hinting或其它renderer。既有OFD字号decimal格式及PDF导出舍入另有误差，不将producer界限写成最终OFD/PDF像素保真保证；未修改04/19字体链、font resolver/cache/subset。Astra真实旧r4包在原九页PDF上复现1pt/4pt/.25pt及累积字距/字号损失，修复必须在同SHA原文档及正常英文/CJK/shear/spacing对照实际验证。
 
 Indexed夹取依据ISO32000-1的8.6.6.3与8.9.5，参见[PDF Association Common Objects](https://pdfa.org/download-area/cheat-sheets/CommonObjects.pdf)。未显式声明Decode的8bit Indexed样本超过hival仍是合法输入，读取最后palette项；显式Decode、其它base和stream lookup仍按原支持范围执行明确fallback/Fail。原子Fail、展开/encoded/pixel/累计图片预算和取消不放宽。
+
+字体生命周期修订：不以 Tf 当作字体输出使用证明。含非空字节的 show 前用 PdfPig 当前真实状态按需准入；空 show 不读取 program，numeric-only TJ 认证方向元数据并逐项保留位移。未消费 body 延迟检验是明确合同变化，Font 字典类型/数量和页面结构门仍为硬失败；真正消费字体的严格引用/类型失败不降为 page policy。MaxFontReadBytesPerPage 默认128,000,000，每页独立限制尝试读取原 FontFile2 字节，按 min(MaxFontBytes,剩余额度)在复制前检查，无退款；它不是完整解析/内存/CPU沙箱。ToUnicode仍受原内容门约束。MaxTotalFontBytes只按成功SnapshotText+Add引用资源累计输出，多页/重复selection/不同ID不去重。首次使用导致的资源ID顺序变化应按字体载荷、文本引用、样式/矩阵与对象绘制顺序验收。

@@ -107,63 +107,84 @@ internal sealed class VectorPageContext
     private OfdDocumentPackage ConvertEvents(PdfVectorToOfdOptions options, CancellationToken token, double[] numbers,
         DictionaryToken resource, IPageContentParser parser, IReadOnlyList<IGraphicsStateOperation> operations)
     {
-        var usedNames = operations.OfType<UglyToad.PdfPig.Graphics.Operations.TextState.SetFontAndSize>().Select(value => value.Font.Data).Distinct(StringComparer.Ordinal).ToArray();
-        var fontTokens = resource.TryGet(NameToken.Font, out var fontsToken) ? Resolve<DictionaryToken>(fontsToken) : DictionaryToken.Empty;
+        // Declared-resource structure/count is a hard input gate, even when no glyph is shown.
+        var fontTokens = resource.TryGet(NameToken.Font, out var fontsToken)
+            ? FontObject<DictionaryToken>(fontsToken, options, token) : DictionaryToken.Empty;
         if (fontTokens.Data.Count > options.MaxFontsPerPage) throw new InvalidDataException("PDF page font count limit exceeded.");
         var bindings = new Dictionary<string, VectorFont>(StringComparer.Ordinal);
-        var filtered = new Dictionary<NameToken, IToken>(); long fontBytes = 0;
+        long attemptedFontBytes = 0; var loadedFrames = 0;
+        (IToken Token, DictionaryToken Font) HorizontalFont(string name)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!fontTokens.Data.TryGetValue(name, out var fontToken)) throw new InvalidDataException("PDF referenced font is missing: " + name);
+            var font = FontObject<DictionaryToken>(fontToken, options, token);
+            if (FontObject<NameToken>(FontEntry(font, "Subtype"), options, token).Data != "Type0") throw Unsupported("FONT_PROFILE: " + name);
+            var encoding = ProfileToken(FontEntry(font, "Encoding"), options.MaxStackDepth, token);
+            if (encoding is StreamToken) throw Unsupported("FONT_PROFILE: Encoding CMap stream outside Identity-H profile.");
+            if (encoding is not NameToken encodingName) throw new InvalidDataException("PDF font Encoding must be a name or CMap stream.");
+            if (encodingName.Data != "Identity-H") throw Unsupported("FONT_PROFILE: " + name);
+            return (fontToken, font);
+        }
+        void EnsureFont(string name)
+        {
+            token.ThrowIfCancellationRequested();
+            if (bindings.ContainsKey(name)) return;
+            var selected = HorizontalFont(name); var font = selected.Font;
+            var descendants = FontObject<ArrayToken>(FontEntry(font, "DescendantFonts"), options, token);
+            if (descendants.Length != 1) throw Unsupported("FONT_DESCENDANTS: " + name);
+            var cid = FontObject<DictionaryToken>(descendants.Data[0], options, token);
+            if (FontObject<NameToken>(FontEntry(cid, "Subtype"), options, token).Data != "CIDFontType2") throw Unsupported("CID_MAPPING: " + name);
+            if (cid.Data.TryGetValue("CIDToGIDMap", out var mappingToken))
+            {
+                var mapping = ProfileToken(mappingToken, options.MaxStackDepth, token);
+                if (mapping is StreamToken) throw Unsupported("CID_MAPPING: CIDToGIDMap stream outside identity profile.");
+                if (mapping is not NameToken mappingName) throw new InvalidDataException("PDF CIDToGIDMap must be a name or stream.");
+                if (mappingName.Data != "Identity") throw Unsupported("CID_MAPPING: " + name);
+            }
+            _ = Unfiltered(FontObject<StreamToken>(FontEntry(font, "ToUnicode"), options, token), options.MaxContentBytesPerPage, "ToUnicode");
+            var descriptor = FontObject<DictionaryToken>(FontEntry(cid, "FontDescriptor"), options, token);
+            var allowance = (int)Math.Min(options.MaxFontBytes, options.MaxFontReadBytesPerPage - attemptedFontBytes);
+            // Check the original stream before copying or invoking either font loader.
+            var bytes = Unfiltered(FontObject<StreamToken>(FontEntry(descriptor, "FontFile2"), options, token), allowance, "font read");
+            attemptedFontBytes += bytes.Length; // Attempts are never refunded on rejection or failure.
+            token.ThrowIfCancellationRequested();
+            bindings.Add(name, new VectorFont("font-" + bindings.Count, bytes, options.MaxFontBytes));
+            // PdfPig pushes all four stacks before decoding this single font. Count
+            // this frame before Load so the finally also balances a loader failure.
+            loadedFrames++;
+            Resources.LoadResourceDictionary(new DictionaryToken(new Dictionary<NameToken, IToken> {
+                [NameToken.Font] = new DictionaryToken(new Dictionary<NameToken, IToken> { [NameToken.Create(name)] = selected.Token }) }));
+        }
         try
         {
-            foreach (var name in usedNames)
-            {
-                token.ThrowIfCancellationRequested();
-                if (!fontTokens.Data.TryGetValue(name, out var fontToken)) throw Unsupported("MISSING_FONT: " + name);
-                var font = Resolve<DictionaryToken>(fontToken);
-                if (Name(font, "Subtype") != "Type0") throw Unsupported("FONT_PROFILE: " + name);
-                var encoding = ProfileToken(Entry(font, "Encoding"), options.MaxStackDepth, token);
-                if (encoding is StreamToken) throw Unsupported("FONT_PROFILE: Encoding CMap stream outside Identity-H profile.");
-                if (encoding is not NameToken encodingName) throw new InvalidDataException("PDF font Encoding must be a name or CMap stream.");
-                if (encodingName.Data != "Identity-H") throw Unsupported("FONT_PROFILE: " + name);
-                var descendants = Resolve<ArrayToken>(Entry(font, "DescendantFonts"));
-                if (descendants.Length != 1) throw Unsupported("FONT_DESCENDANTS: " + name);
-                var cid = Resolve<DictionaryToken>(descendants.Data[0]);
-                if (Name(cid, "Subtype") != "CIDFontType2") throw Unsupported("CID_MAPPING: " + name);
-                if (cid.Data.TryGetValue("CIDToGIDMap", out var mappingToken))
-                {
-                    var mapping = ProfileToken(mappingToken, options.MaxStackDepth, token);
-                    if (mapping is StreamToken) throw Unsupported("CID_MAPPING: CIDToGIDMap stream outside identity profile.");
-                    if (mapping is not NameToken mappingName) throw new InvalidDataException("PDF CIDToGIDMap must be a name or stream.");
-                    if (mappingName.Data != "Identity") throw Unsupported("CID_MAPPING: " + name);
-                }
-                // Check before the stock font loader can allocate any decoded stream.
-                _ = Unfiltered(Resolve<StreamToken>(Entry(font, "ToUnicode")), options.MaxContentBytesPerPage, "ToUnicode");
-                var descriptor = Resolve<DictionaryToken>(Entry(cid, "FontDescriptor"));
-                var bytes = Unfiltered(Resolve<StreamToken>(Entry(descriptor, "FontFile2")), options.MaxFontBytes, "font");
-                if (bytes.Length > options.MaxTotalFontBytes - fontBytes) throw new InvalidDataException("PDF page font byte limit exceeded.");
-                fontBytes += bytes.Length;
-                bindings.Add(name, new VectorFont("font-" + bindings.Count, bytes, options.MaxFontBytes)); filtered.Add(NameToken.Create(name), fontToken);
-            }
             var package = new OfdDocumentPackage();
             var page = new OfdPage { WidthMillimeters = numbers[2] * 25.4 / 72, HeightMillimeters = numbers[3] * 25.4 / 72 };
             package.Pages.Add(page);
-            foreach (var binding in bindings.Values) package.Fonts.Add(binding.Resource);
-            // Only the proven effective font resources are loaded. No unused font/XObject decoding.
-            Resources.LoadResourceDictionary(new DictionaryToken(new Dictionary<NameToken, IToken> { [NameToken.Font] = new DictionaryToken(filtered) }));
-            try
+            using var processor = new VectorStreamProcessor(this, parser, numbers[2], numbers[3], bindings, options, token, _number,
+                EnsureFont, name => { _ = HorizontalFont(name); });
+            var events = processor.Process(_number, operations);
+            if (events.Count == 0) throw Unsupported("NO_NATIVE_CONTENT: blank, scan or nonpainted page.");
+            foreach (var binding in bindings.Values)
             {
-                using var processor = new VectorStreamProcessor(this, parser, numbers[2], numbers[3], bindings, options, token, _number);
-                var events = processor.Process(_number, operations);
-                if (events.Count == 0) throw Unsupported("NO_NATIVE_CONTENT: blank, scan or nonpainted page.");
-                OfdSkiaAdapter.Append(package, page, events, new OfdSkiaAdapterOptions { MillimetersPerUnit = 25.4 / 72,
-                    MaxEvents = options.MaxEventsPerPage, MaxInputPathCommands = options.MaxPathCommandsPerPage, MaxFontBytes = options.MaxFontBytes,
-                    Graphics = new OfdGraphicsOptions { MaxPageElements = options.MaxEventsPerPage, MaxPathCommands = options.MaxPathCommandsPerPage,
-                        MaxTextCharacters = options.MaxTextCharactersPerPage } }, token);
-                return package;
+                if (processor.OutputFonts.Contains(binding)) package.Fonts.Add(binding.Resource);
+                else binding.Dispose();
             }
-            finally { Resources.UnloadResourceDictionary(); }
+            OfdSkiaAdapter.Append(package, page, events, new OfdSkiaAdapterOptions { MillimetersPerUnit = 25.4 / 72,
+                MaxEvents = options.MaxEventsPerPage, MaxInputPathCommands = options.MaxPathCommandsPerPage, MaxFontBytes = options.MaxFontBytes,
+                Graphics = new OfdGraphicsOptions { MaxPageElements = options.MaxEventsPerPage, MaxPathCommands = options.MaxPathCommandsPerPage,
+                    MaxTextCharacters = options.MaxTextCharactersPerPage } }, token);
+            return package;
         }
-        finally { foreach (var binding in bindings.Values) binding.Dispose(); }
+        finally
+        {
+            try { while (loadedFrames-- > 0) Resources.UnloadResourceDictionary(); }
+            finally { foreach (var binding in bindings.Values) binding.Dispose(); }
+        }
     }
+    private IToken FontEntry(DictionaryToken value, string key) => value.Data.TryGetValue(key, out var entry)
+        ? entry : throw new InvalidDataException("PDF font resource entry is missing: " + key);
+    private T FontObject<T>(IToken value, PdfVectorToOfdOptions options, CancellationToken token) where T : class, IToken
+        => ProfileToken(value, options.MaxStackDepth, token) as T ?? throw new InvalidDataException("PDF font resource requires " + typeof(T).Name + ".");
     internal T Resolve<T>(IToken? value) where T : class, IToken => DirectObjectFinder.Get<T>(value!, Scanner) ?? throw Unsupported("INVALID_RESOURCE: " + typeof(T).Name);
     internal OfdPage? TryOriginalImagePage(PdfVectorToOfdOptions options, long remainingImageBytes, CancellationToken token)
     {

@@ -12,6 +12,7 @@ using UglyToad.PdfPig.Geometry;
 using UglyToad.PdfPig.Graphics;
 using UglyToad.PdfPig.Graphics.Core;
 using UglyToad.PdfPig.Graphics.Operations;
+using UglyToad.PdfPig.Graphics.Operations.TextShowing;
 using UglyToad.PdfPig.Parser;
 using UglyToad.PdfPig.PdfFonts;
 using UglyToad.PdfPig.Tokens;
@@ -24,6 +25,8 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private readonly VectorPageContext _context; private readonly double _height;
     private readonly Dictionary<string, VectorFont> _fonts; private readonly PdfVectorToOfdOptions _limits;
     private readonly CancellationToken _token; private readonly SKPath _path = new(); private readonly List<SkiaDrawEvent> _events = new();
+    private readonly Action<string> _ensureFont, _ensureHorizontalFont;
+    internal readonly HashSet<VectorFont> OutputFonts = new();
     private readonly StringBuilder _text = new(); private readonly List<float> _advances = new();
     private TextFloatPrecision? _textPrecision; private SKMatrix _candidateTextMatrix; private float _candidateTextSize;
     private double _lastTextPosition;
@@ -34,10 +37,12 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private SKColor _textColor; private bool _inText; private int _commands, _characters; private PdfPoint? _subpathStart;
 
     internal VectorStreamProcessor(VectorPageContext context, IPageContentParser parser, double width, double height,
-        Dictionary<string, VectorFont> fonts, PdfVectorToOfdOptions limits, CancellationToken token, int number)
+        Dictionary<string, VectorFont> fonts, PdfVectorToOfdOptions limits, CancellationToken token, int number,
+        Action<string> ensureFont, Action<string> ensureHorizontalFont)
         : base(number, context.Resources, context.Scanner, parser, context.Filters, new CropBox(new PdfRectangle(0, 0, width, height)),
             UserSpaceUnit.Default, new PageRotationDegrees(0), TransformationMatrix.Identity, context.Parsing)
-    { _context = context; _height = height; _fonts = fonts; _limits = limits; _token = token; }
+    { _context = context; _height = height; _fonts = fonts; _limits = limits; _token = token;
+        _ensureFont = ensureFont; _ensureHorizontalFont = ensureHorizontalFont; }
 
     public override List<SkiaDrawEvent> Process(int number, IReadOnlyList<IGraphicsStateOperation> operations)
     {
@@ -45,12 +50,52 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         {
             _token.ThrowIfCancellationRequested();
             if (_path.VerbCount != 0 && operation.Operator is "cm" or "q" or "Q") throw Unsupported("PATH_STATE_CHANGE");
-            operation.Run(this);
+            if (operation is ShowText show)
+            {
+                // Stock ShowText is nonvirtual and gets a font before checking
+                // its bytes. An empty show only advances its sequence counter.
+                if (show.Text is null ? show.Bytes.IsEmpty : show.Text.Length == 0) TextSequence++;
+                else { _ensureFont(SelectedFontName()); operation.Run(this); }
+            }
+            else operation.Run(this);
             if (operation.Operator is "Tj" or "TJ") FlushText();
         }
         if (_inText || StackSize != 1 || _path.VerbCount != 0) throw new InvalidDataException("PDF has an unterminated text, graphics state or path.");
         return _events;
     }
+    public override void ShowPositionedText(IReadOnlyList<IToken> tokens)
+    {
+        var hasText = false; var hasNumbers = false;
+        foreach (var item in tokens)
+        {
+            _token.ThrowIfCancellationRequested();
+            if (item is NumericToken) hasNumbers = true;
+            else if (item is HexToken hex) hasText |= hex.Bytes.Length != 0;
+            else if (item is StringToken text) hasText |= text.GetBytes().Length != 0;
+            else throw new InvalidDataException("PDF TJ requires strings or numbers.");
+        }
+        var state = GetCurrentState().FontState;
+        if (hasText)
+        {
+            _ensureFont(SelectedFontName());
+            base.ShowPositionedText(tokens);
+            return;
+        }
+        TextSequence++;
+        if (!hasNumbers) return;
+        // Only direction metadata is needed for numeric-only horizontal TJ.
+        // Preserve each stock adjustment and leave TextLineMatrix unchanged.
+        _ensureHorizontalFont(SelectedFontName());
+        foreach (var item in tokens)
+        {
+            _token.ThrowIfCancellationRequested();
+            if (item is not NumericToken number) continue;
+            var tx = -number.Data / 1000 * state.FontSize * (state.HorizontalScaling / 100.0);
+            TextMatrices.TextMatrix = TransformationMatrix.GetTranslationMatrix(tx, 0).Multiply(TextMatrices.TextMatrix);
+        }
+    }
+    private string SelectedFontName() => GetCurrentState().FontState.FontName?.Data
+        ?? throw new InvalidDataException("PDF text show requires a selected font.");
     public override void PushState()
     { if (StackSize >= _limits.MaxStackDepth) throw new InvalidDataException("PDF graphics stack limit exceeded."); base.PushState(); }
     public override void PopState()
@@ -192,6 +237,7 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         using var paint = new SKPaint { Color = _textColor, Style = SKPaintStyle.Fill };
         Add(_textFont!.Binding.SnapshotText(original, new SKPoint(0, 0), _candidateTextSize, paint, _advances,
             _candidateTextMatrix, _limits.MaxTextCharactersPerPage, _token));
+        OutputFonts.Add(_textFont);
         _text.Clear(); _advances.Clear(); _textFont = null; _textPrecision = null;
     }
     public override void BeginSubpath() { }
