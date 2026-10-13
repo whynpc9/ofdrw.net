@@ -34,10 +34,15 @@
 
 原生文本也在创建19事件前限制新增producer精度误差，超范围为 `TEXT_FLOAT_PRECISION` 整页policy：回调text/ctm的double叶值精确二进制组合，逐glyph基线及规范化GlyphBounds加unit-em-square四角的绝对误差≤0.0001 PDF pt；相邻非零基线位移和matrix/字号组合线性映射扭曲≤0.00001，真实零间距保持零。比较实际发送的float矩阵/字号/advances，维护一个exact prefix及既有consumer顺序double prefix，均逐基线核对；每glyph常数工作，游程整体线性，保留取消/字数/事件/内容/字体预算。原字距缓冲改存同一已检查的float，不能检查一组却发送另一组。
 
-该文本界限从PdfPig回调已解析的double和glyph metrics开始，不能恢复上游十进制解析、SDK文本状态/CTM累计误差，不能证明不诚实字体metric以外的ink/hinting或其它renderer。既有OFD字号decimal格式及PDF导出舍入另有误差，不将producer界限写成最终OFD/PDF像素保真保证；未修改04/19字体链、font resolver/cache/subset。Astra真实旧r4包在原九页PDF上复现1pt/4pt/.25pt及累积字距/字号损失，修复必须在同SHA原文档及正常英文/CJK/shear/spacing对照实际验证。
+该文本界限从PdfPig回调已解析的double和glyph metrics开始，不能恢复上游十进制解析、SDK文本状态/CTM累计误差，不能证明不诚实字体metric以外的ink/hinting或其它renderer。另有局部笔宽/字号实际写出值的总误差证书；其它OFD字段及PDF导出舍入仍另有误差，不将producer界限写成最终OFD/PDF像素保真保证；未修改04/19字体链、font resolver/cache/subset。Astra真实旧r4包在原九页PDF上复现1pt/4pt/.25pt及累积字距/字号损失，修复必须在同SHA原文档及正常英文/CJK/shear/spacing对照实际验证。
 
 Indexed夹取依据ISO32000-1的8.6.6.3与8.9.5，参见[PDF Association Common Objects](https://pdfa.org/download-area/cheat-sheets/CommonObjects.pdf)。未显式声明Decode的8bit Indexed样本超过hival仍是合法输入，读取最后palette项；显式Decode、其它base和stream lookup仍按原支持范围执行明确fallback/Fail。原子Fail、展开/encoded/pixel/累计图片预算和取消不放宽。
 
 字体生命周期修订：不以 Tf 当作字体输出使用证明。含非空字节的 show 前用 PdfPig 当前真实状态按需准入；空 show 不读取 program，numeric-only TJ 认证方向元数据并逐项保留位移。未消费 body 延迟检验是明确合同变化，Font 字典类型/数量和页面结构门仍为硬失败；真正消费字体的严格引用/类型失败不降为 page policy。MaxFontReadBytesPerPage 默认128,000,000，每页独立限制尝试读取原 FontFile2 字节，按 min(MaxFontBytes,剩余额度)在复制前检查，无退款；它不是完整解析/内存/CPU沙箱。ToUnicode仍受原内容门约束。MaxTotalFontBytes只按成功SnapshotText+Add引用资源累计输出，多页/重复selection/不同ID不去重。首次使用导致的资源ID顺序变化应按字体载荷、文本引用、样式/矩阵与对象绘制顺序验收。
 
 R13 XML admission is checked on the completed original BMP run after existing character/precision/whitespace/event/cancellation/writer-positive gates and before SnapshotText. XmlConvert.IsXmlChar rejects XML 1.0 nonrepresentable text with TEXT_XML_CHARACTER. No generic XML exception catch, replacement text, glyph dropping, default converter change or automatic text-layer suppression is introduced. RasterizePage with explicit Compatibility.TextLayerMode.None supports complete image-only fallback with native neighbors; the default Invisible dual layer remains unable to represent U+FFFE/U+FFFF and its actual fallback failure is retained as an unsupported combination.
+
+
+R15 写出证书保留旧 float 门及其诊断优先级，并按原解析值到实际 WriterValue(double)×Emit mm double CTM 的总误差检查局部笔宽/字号，不将两个分步误差分别放行。Path 使用原 miter5×最大行绝对误差≤U/10000，矩阵相对界不放宽。Text 第二游程 tracker 使用真实 P×Translation(0,-q) 与 run.Y=q，保留 glyph/em 四角、相对 sized-map、连续基线和 exact/sequential 双 prefix；新失败 latch 到 FlushText 既有预算/取消/空白/WriterPositive/XML门后。U 为 Emit 使用的实际 binary64 25.4/72；不把写出 scalar 返 cast float，不改变 Core WriterPositive 或04/19合同。
+
+物理页尺寸检查选择窄不可回退分类：成功 processor.Process、NO_NATIVE_CONTENT及已消耗硬门之后，Append前对同 computed mm 调用 WriterPositive，失败抛私有 NotSupportedException 子类 PAGE_WRITER_PRECISION。Raster catch 仅排除此类型。两策略均原子拒绝无法由既有Writer表示的页面；不改尺寸、缩放或Writer，也不将更早blank/unknown/font-profile/rawimage分支改贴相同诊断。

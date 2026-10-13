@@ -75,7 +75,8 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                     }
                     native = true; diagnostic = "PDFV_NATIVE: bounded opaque paths and exact-font Unicode text.";
                 }
-                catch (NotSupportedException exception) when (limits.UnsupportedPagePolicy == PdfVectorUnsupportedPagePolicy.RasterizePage)
+                catch (NotSupportedException exception) when (limits.UnsupportedPagePolicy == PdfVectorUnsupportedPagePolicy.RasterizePage &&
+                    exception is not UnrepresentablePageException)
                 {
                     OfdPage? originalImage = null;
                     using (var source = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth }))

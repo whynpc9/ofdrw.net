@@ -62,8 +62,14 @@ public sealed class WriterPrecisionTests
     [InlineData(true, ".0004", "1", "TEXT_WRITER_PRECISION")]
     [InlineData(true, ".00049999", "1", "TEXT_WRITER_PRECISION")]
     [InlineData(true, ".0004", "128", "TEXT_WRITER_PRECISION")]
+    [InlineData(false, ".000499999999", "1", "STROKE_WRITER_PRECISION")]
+    [InlineData(false, ".0005", "1", "STROKE_WRITER_PRECISION")]
+    [InlineData(false, ".00050001", "1", "STROKE_WRITER_PRECISION")]
+    [InlineData(true, ".000499999999", "1", "TEXT_WRITER_PRECISION")]
+    [InlineData(true, ".0005", "1", "TEXT_WRITER_PRECISION")]
+    [InlineData(true, ".00050001", "1", "TEXT_WRITER_PRECISION")]
     [InlineData(false, "0", "1", "STROKE_PROFILE")]
-    public async Task UnrepresentableScalarUsesWholePagePolicyBeforeOutput(bool text, string size, string scale, string reason)
+    public async Task RejectedWrittenScalarUsesWholePagePolicyBeforeOutput(bool text, string size, string scale, string reason)
     {
         using var fixture = Fixture();
         var normal = fixture.Text("A  B中文", 20, 85);
@@ -86,19 +92,12 @@ public sealed class WriterPrecisionTests
     }
 
     [Theory]
-    [InlineData(false, ".000499999999", "1")]
-    [InlineData(false, ".0005", "1")]
-    [InlineData(false, ".00050001", "1")]
     [InlineData(false, ".001", ".001")]
-    [InlineData(true, ".000499999999", "1")]
-    [InlineData(true, ".0005", "1")]
-    [InlineData(true, ".00050001", "1")]
     [InlineData(true, ".001", ".001")]
-    public async Task ActualFloatWriterBoundaryAndSmallPhysicalSizeStayNative(bool text, string size, string scale)
+    public async Task SmallPhysicalSizeWithAccurateWrittenScalarStaysNative(bool text, string size, string scale)
     {
-        // The source value immediately below the half boundary casts to a float
-        // above it. Authenticate the scalar actually passed to 19, not the PDF
-        // double or a second pt-to-mm multiplication; units belong in the CTM.
+        // A positive written scalar must also meet the page-space accuracy
+        // certificate. These exact local values retain their small CTM control.
         using var fixture = Fixture(); using var input = new MemoryStream(fixture.Create(new[] { Paint(fixture, text, size, scale) }));
         using var output = new MemoryStream();
         var result = await new PdfVectorToOfdConverter().ConvertWithResultAsync(input, output);

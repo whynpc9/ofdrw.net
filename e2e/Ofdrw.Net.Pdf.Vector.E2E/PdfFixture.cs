@@ -26,7 +26,7 @@ internal sealed class PdfFixture : IDisposable
         string imageEntries = "", bool? interpolate = null, byte[]? imageBytes = null, int imageWidth = 2, int imageHeight = 2,
         byte[]? encodingStream = null, byte[]? cidMapStream = null, string? encodingOverride = null, string? cidMapOverride = null,
         string? imageColorSpace = null, string? interpolateOverride = null, string[]? trailingObjects = null, string resourceEntries = "",
-        string fontResources = "/F1 3 0 R", string? aUnicodeHex = null)
+        string fontResources = "/F1 3 0 R", string? aUnicodeHex = null, string mediaBox = "0 0 420 595")
     {
         var next = 9 + 2 * contents.Length;
         var encoding = encodingOverride ?? (encodingStream is null ? "/Identity-H" : next++ + " 0 R");
@@ -47,7 +47,7 @@ internal sealed class PdfFixture : IDisposable
         };
         for (var index = 0; index < contents.Length; index++)
         {
-            objects.Add(Ascii("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 420 595] " + (inheritedResources ? "" : resources) + " /Contents " + (10 + 2 * index) + " 0 R " + pageEntries + " >>"));
+            objects.Add(Ascii("<< /Type /Page /Parent 2 0 R /MediaBox [" + mediaBox + "] " + (inheritedResources ? "" : resources) + " /Contents " + (10 + 2 * index) + " 0 R " + pageEntries + " >>"));
             objects.Add(Stream(Ascii(contents[index])));
         }
         if (encodingStream is not null) objects.Add(Stream(encodingStream));
