@@ -11,6 +11,7 @@ internal sealed class OfdModelLimits
     internal int MaxReferenceCount { get; set; } = 200_000;
     internal int MaxExpandedOccurrenceCount { get; set; } = 100_000;
     internal long MaxSourceXmlBytes { get; set; } = 128L * 1024 * 1024;
+    internal long MaxMaterializedBytes { get; set; } = 512L * 1024 * 1024;
 
     internal OfdModelLimits Snapshot()
     {
@@ -19,10 +20,10 @@ internal sealed class OfdModelLimits
             MaxDepth = MaxDepth, MaxNodeCount = MaxNodeCount,
             MaxReferenceCount = MaxReferenceCount,
             MaxExpandedOccurrenceCount = MaxExpandedOccurrenceCount,
-            MaxSourceXmlBytes = MaxSourceXmlBytes
+            MaxSourceXmlBytes = MaxSourceXmlBytes, MaxMaterializedBytes = MaxMaterializedBytes
         };
         if (copy.MaxDepth <= 0 || copy.MaxNodeCount <= 0 || copy.MaxReferenceCount <= 0 ||
-            copy.MaxExpandedOccurrenceCount <= 0 || copy.MaxSourceXmlBytes <= 0)
+            copy.MaxExpandedOccurrenceCount <= 0 || copy.MaxSourceXmlBytes <= 0 || copy.MaxMaterializedBytes <= 0)
             throw new ArgumentException("Traversal limits must be positive.");
         return copy;
     }
@@ -56,9 +57,16 @@ internal sealed class OfdTraversalBudget(OfdModelLimits limits)
         References++;
     }
 
+    internal void NodeWork(long count, int depth)
+    {
+        Depth(depth);
+        if (count < 0 || count > limits.MaxNodeCount - Nodes) Fail("node");
+        Nodes += count;
+    }
+
     internal void XmlBytes(long bytes)
     {
-        if (bytes > limits.MaxSourceXmlBytes - SourceXmlBytes) Fail("source XML byte");
+        if (bytes < 0 || bytes > limits.MaxSourceXmlBytes - SourceXmlBytes) Fail("source XML byte");
         SourceXmlBytes += bytes;
     }
 
@@ -86,9 +94,15 @@ internal sealed class OfdTraversalBudget(OfdModelLimits limits)
     {
         // Bound both the text and the segment array the existing path resolver
         // may allocate. This is metadata work, separate from XML byte storage.
-        if (count > limits.MaxSourceXmlBytes - sourcePathCharacters) Fail("source path character");
+        if (count < 0 || count > limits.MaxSourceXmlBytes - sourcePathCharacters) Fail("source path character");
         sourcePathCharacters += count;
     }
 
-    private static void Fail(string kind) => throw new InvalidDataException($"OFD traversal exceeds its {kind} budget.");
+    private static readonly object LimitMarker = new();
+    internal static InvalidDataException Limit(string message)
+    {
+        var exception = new InvalidDataException(message); exception.Data[LimitMarker] = true; return exception;
+    }
+    internal static bool IsLimit(Exception exception) => exception is InvalidDataException && exception.Data.Contains(LimitMarker);
+    private static void Fail(string kind) => throw Limit($"OFD traversal exceeds its {kind} budget.");
 }
