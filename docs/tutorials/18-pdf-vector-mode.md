@@ -52,3 +52,7 @@ R5原Indexed样例已由主/Low真实包及八页Preview复验，原R4失败保�
 文本新增 `TEXT_FLOAT_PRECISION`：可见矩阵/字号/累计字距转float产生过大新增误差时整页按policy处理。保留普通小数、CJK、shear、连续空格及可精确表达的大数对照；原文与字体资源不改。此为回调double到producer输出的界限，后续OFD decimal/PDF renderer舍入不属于该界限，不宣称逐像素或任意PDF保真。Indexed省略Decode的8bit值按规范夹取到0..hival，2/255对hival1均读取最后调色板项；错误palette长度仍失败。
 
 正值的描边宽度和字号还须在既有 OFD 三位写出格式下保持正值。检查实际传给 Skia 事件的 float local scalar；pt→mm 和 PDF CTM 仍放在变换中，不重复缩放标量。不可表示值按 `STROKE_WRITER_PRECISION` / `TEXT_WRITER_PRECISION` 整页 Fail/显式回退，保留原 float 精度诊断、事件/字符预算及取消硬失败；不是夹成最小宽度或提高 writer 精度。
+
+原字形 Unicode 还必须能由 OFD 的 XML 1.0 表示。U+FFFE/U+FFFF 即使同时被 ToUnicode 与嵌入 cmap 正确映射，也会在现有字符、事件、取消及精度检查后以 `TEXT_XML_CHARACTER` 判为 native 范围外。合法 BMP 边界 D7FF/E000/FFFD 及 FDD0 保持原文；已有控制字符和代理对限制不变。
+
+对于这类 XML 无法表示的原文，默认双层回退的 Invisible 隐藏文本层也无法序列化，因此该组合仍不支持，实际回退写入会失败；不能把 native profile 诊断当成默认回退成功。调用者可以明确选择 `UnsupportedPagePolicy = RasterizePage` 并设置 `Compatibility.TextLayerMode = PdfTextLayerMode.None`，获得完整整页图像，正常相邻页仍为 native。该选择放弃回退页的原文搜索层；转换器不会自动关闭隐藏层、替换原文或删除字形。

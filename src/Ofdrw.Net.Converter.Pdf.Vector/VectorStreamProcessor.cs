@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.Xml;
 using Ofdrw.Net.Graphics.SkiaSharp;
 using Ofdrw.Net.Core.Models;
 using UglyToad.PdfPig.Content;
@@ -234,6 +235,9 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         _token.ThrowIfCancellationRequested();
         if (!OfdNumericFormat.WriterPositive(_candidateTextSize))
             throw Unsupported("TEXT_WRITER_PRECISION: local font size must remain positive at OFD writer precision.");
+        foreach (var character in original)
+            if (!XmlConvert.IsXmlChar(character))
+                throw Unsupported("TEXT_XML_CHARACTER: original text cannot be represented in OFD XML 1.0.");
         using var paint = new SKPaint { Color = _textColor, Style = SKPaintStyle.Fill };
         Add(_textFont!.Binding.SnapshotText(original, new SKPoint(0, 0), _candidateTextSize, paint, _advances,
             _candidateTextMatrix, _limits.MaxTextCharactersPerPage, _token));

@@ -26,13 +26,13 @@ internal sealed class PdfFixture : IDisposable
         string imageEntries = "", bool? interpolate = null, byte[]? imageBytes = null, int imageWidth = 2, int imageHeight = 2,
         byte[]? encodingStream = null, byte[]? cidMapStream = null, string? encodingOverride = null, string? cidMapOverride = null,
         string? imageColorSpace = null, string? interpolateOverride = null, string[]? trailingObjects = null, string resourceEntries = "",
-        string fontResources = "/F1 3 0 R")
+        string fontResources = "/F1 3 0 R", string? aUnicodeHex = null)
     {
         var next = 9 + 2 * contents.Length;
         var encoding = encodingOverride ?? (encodingStream is null ? "/Identity-H" : next++ + " 0 R");
         var cidMapping = cidMapOverride ?? (cidMapStream is null ? "/Identity" : next++ + " 0 R");
         var cmap = "/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def /CMapName /Fixture def /CMapType 2 def 1 begincodespacerange <0000> <FFFF> endcodespacerange " + _characters.Count + " beginbfchar " +
-            string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => $"<{pair.Key:X4}> <{(int)(wrongUnicode && pair.Value == 'A' ? 'B' : pair.Value):X4}>")) + " endbfchar endcmap CMapName currentdict /CMap defineresource pop end end";
+            string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => $"<{pair.Key:X4}> <{(pair.Value == 'A' && aUnicodeHex is not null ? aUnicodeHex : ((int)(wrongUnicode && pair.Value == 'A' ? 'B' : pair.Value)).ToString("X4"))}>")) + " endbfchar endcmap CMapName currentdict /CMap defineresource pop end end";
         var widths = string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => pair.Key + " [" + Number(_font.MeasureText(pair.Value.ToString())) + "]"));
         var resources = "/Resources << /Font << " + fontResources + " >> /XObject << /Im1 8 0 R >> /ExtGState << /GS1 << /ca .4 /BM /Multiply >> >> " + resourceEntries + ">>";
         var objects = new List<byte[]> {
