@@ -271,6 +271,32 @@ public sealed class OfdModelTraversalTests
         Assert.Equal("unchanged", ((OfdTextElement)Assert.Single(page.Elements)).Text);
     }
 
+    [Fact]
+    public void SupplementaryScalarsCrossingAnUnvisitedCheckpointStillObserveCancellation()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var nextCheck = 0;
+        OfdModelTraversal.CheckCancellationCheckpoint(0, ref nextCheck, cancellation.Token);
+        // One ASCII code unit, then two-code-unit scalars: 1, 3, ... 1023,
+        // 1025. The previous bit-mask condition never visited index 1024.
+        for (var position = 1; position < 1024; position += 2)
+            OfdModelTraversal.CheckCancellationCheckpoint(position, ref nextCheck, cancellation.Token);
+        cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() =>
+            OfdModelTraversal.CheckCancellationCheckpoint(1025, ref nextCheck, cancellation.Token));
+    }
+
+    [Fact]
+    public void OddAsciiPrefixAndLongSupplementaryTextKeepExactUtf8ByteBudget()
+    {
+        var text = Text("x");
+        text.SourceXml = "<TextObject><TextCode>a" + string.Concat(Enumerable.Repeat("🙂", 1200)) + "</TextCode></TextObject>";
+        var (package, page) = Package(text);
+        var bytes = Encoding.UTF8.GetByteCount(text.SourceXml);
+        Assert.Equal(bytes, Read(package, [page], new() { Limits = new() { MaxSourceXmlBytes = bytes } }).SourceXmlBytes);
+        Assert.Throws<InvalidDataException>(() => Read(package, [page], new() { Limits = new() { MaxSourceXmlBytes = bytes - 1 } }));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
