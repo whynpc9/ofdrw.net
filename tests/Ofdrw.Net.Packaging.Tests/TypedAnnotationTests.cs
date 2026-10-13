@@ -315,6 +315,27 @@ public sealed class TypedAnnotationTests
         Assert.True(context.Material.CloneCopyBytes > copy); Assert.Equal(2, context.Material.ReadMetadataReservations);
     }
 
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task SameTickCivilDateKindMutationIsDetectedBeforePreparedOutput(bool mutateSource)
+    {
+        var source = await RoundTrip(Fresh()); using var context = new OfdControlledEditContext(new());
+        using var owned = OfdOwnedEditCandidate.CloneForControlledEdit(source, context.CaptureSource(source), context);
+        using var prepared = OfdPackageWriter.PrepareOwnedWrite(owned);
+        var annotation = (mutateSource ? source : owned.Package).Pages[0].Annotations!.Items[0];
+        annotation.LastModifiedDate = DateTime.SpecifyKind(annotation.LastModifiedDate!.Value, DateTimeKind.Utc);
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<InvalidDataException>(() => prepared.WriteAsync(output)); Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
+    public async Task ResetNullCannotWithdrawSameTickDateKindMutation()
+    {
+        var source = await RoundTrip(Fresh()); var page = source.Pages[0]; var annotation = page.Annotations!.Items[0];
+        annotation.LastModifiedDate = DateTime.SpecifyKind(annotation.LastModifiedDate!.Value, DateTimeKind.Utc);
+        Assert.Throws<InvalidOperationException>(() => page.Annotations = null);
+    }
+
     private static OfdDocumentPackage Fresh()
     {
         var source = new OfdDocumentPackage(); var page = new OfdPage { WidthMillimeters = 210, HeightMillimeters = 297, Annotations = new() };
