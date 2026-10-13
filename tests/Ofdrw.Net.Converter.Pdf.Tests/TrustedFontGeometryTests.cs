@@ -241,8 +241,8 @@ public sealed class TrustedFontGeometryTests
     [InlineData("latin", 100)]
     public void RealOriginalOflNotoBytesPassReaderSnapshotAndIndependentMetricExpectations(string face, int runs)
     {
-        var path = Environment.GetEnvironmentVariable(face == "cjk" ? "OFDRW_TEST_TRUSTED_CJK_FONT" : "OFDRW_TEST_TRUSTED_LATIN_FONT")!;
-        var bytes = File.ReadAllBytes(path);
+        var path = TrustedFontFixtures.PathFor(face);
+        var bytes = TrustedFontFixtures.Read(face);
         var expected = face == "cjk" ? "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa" : "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5";
         Assert.Equal(expected, Hash(bytes));
         // Fixed OFL sources and independent raw cmap/glyf/hmtx oracle are recorded in Issue06 evidence.
@@ -305,8 +305,7 @@ public sealed class RealTrustedFontsTheoryAttribute : TheoryAttribute
 {
     public RealTrustedFontsTheoryAttribute()
     {
-        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OFDRW_TEST_TRUSTED_CJK_FONT")) ||
-            string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OFDRW_TEST_TRUSTED_LATIN_FONT")))
-            Skip = "Set explicit OFDRW_TEST_TRUSTED_CJK_FONT and OFDRW_TEST_TRUSTED_LATIN_FONT to the pinned licensed original fixtures for the real-font gate.";
+        if (!TrustedFontFixtures.CanRun)
+            Skip = "Prepare repo-local trusted fonts or set explicit fixture paths; OFDRW_REQUIRE_TRUSTED_FONTS=1 makes missing assets fail.";
     }
 }
