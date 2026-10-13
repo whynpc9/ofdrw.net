@@ -283,6 +283,92 @@ public sealed class ControlledReaderAccountingTests
         Assert.Equal(1, context.Material.ReadWriterAdmissions); Assert.Equal(0, context.Material.ReadSourceStrings);
     }
 
+    [Fact]
+    public async Task ControlledXmlPolicySurvivesReaderScopeAndCaptureRejectsNewDtd()
+    {
+        using var context = new OfdControlledEditContext(new()); using var input = new MemoryStream(await Source());
+        var source = await new OfdReader().ReadControlledAsync(input, new(), context);
+        Assert.False(context.Material.IsControlledRead); var parsers = context.Material.ReadParserAdmissions;
+        source.PreservedEntries.Add("after-read.xml", DtdPayload());
+        Assert.Throws<InvalidDataException>(() => context.CaptureSource(source));
+        Assert.Equal(parsers + 1, context.Material.ReadParserAdmissions); Assert.Throws<InvalidOperationException>(context.AssertActive);
+    }
+
+    [Fact]
+    public void DirectControlledCaptureOfExistingPackageRejectsDtdWithoutAReaderScope()
+    {
+        var source = new OfdDocumentPackage(); source.PreservedEntries.Add("existing.xml", DtdPayload());
+        using var context = new OfdControlledEditContext(new()); Assert.False(context.Material.IsControlledRead);
+        Assert.Throws<InvalidDataException>(() => context.CaptureSource(source));
+        Assert.Equal(1, context.Material.ReadParserAdmissions); Assert.Throws<InvalidOperationException>(context.AssertActive);
+    }
+
+    [Fact]
+    public async Task PrepareAfterOwnedCloneRejectsDtdWithTheSamePersistentPolicy()
+    {
+        using var context = new OfdControlledEditContext(new()); using var input = new MemoryStream(await Source());
+        var source = await new OfdReader().ReadControlledAsync(input, new(), context);
+        using var owned = OfdOwnedEditCandidate.CloneForControlledEdit(source, context.CaptureSource(source), context);
+        Assert.False(context.Material.IsControlledRead); var parsers = context.Material.ReadParserAdmissions;
+        owned.Package.PreservedEntries.Add("after-clone.xml", DtdPayload());
+        var failure = Assert.Throws<InvalidDataException>(() => OfdPackageWriter.PrepareOwnedWrite(owned));
+        Assert.Contains("malformed or prohibited XML", failure.Message);
+        Assert.True(context.Material.ReadParserAdmissions > parsers); Assert.Throws<InvalidOperationException>(context.AssertActive);
+    }
+
+    [Fact]
+    public void ParserAdmissionAlsoPersistsForRepeatedDomReadsOutsideReaderScope()
+    {
+        using var context = new OfdControlledEditContext(new()); var bytes = Encoding.UTF8.GetBytes("<r a='x'/>");
+        context.Material.GuardEntry("safe.xml", bytes, default); var count = context.Material.ReadParserAdmissions;
+        context.Material.ReadXml("safe.xml", bytes, default); context.Material.ReadXml("safe.xml", bytes, default);
+        Assert.Equal(count + 2, context.Material.ReadParserAdmissions); Assert.False(context.Material.IsControlledRead);
+    }
+
+    [Fact]
+    public void PublicMaterialStillRejectsDtdRatherThanMisclassifyingItAsOpaque()
+    {
+        var material = new OfdModelMaterialization(new());
+        Assert.Throws<InvalidDataException>(() => material.GuardEntry("dtd.xml", Encoding.UTF8.GetBytes("<!DOCTYPE r><r/>"), default));
+        Assert.DoesNotContain("dtd.xml", material.OpaqueEntries); Assert.Equal(0, material.ReadParserAdmissions);
+    }
+
+    [Fact]
+    public void OutsideReaderDomQuotaFailsBeforeAnotherParserAdmission()
+    {
+        using var context = new OfdControlledEditContext(new() { MaxMaterializedBytes = 90000 });
+        var bytes = Encoding.UTF8.GetBytes("<r a='x'/>");
+        context.Material.GuardEntry("safe.xml", bytes, default);
+        Assert.Equal(1, context.Material.ReadParserAdmissions);
+        Assert.Throws<InvalidDataException>(() => context.Material.ReadXml("safe.xml", bytes, default));
+        Assert.Equal(1, context.Material.ReadParserAdmissions); Assert.Equal(0, context.Material.ReadDomAllocations);
+    }
+
+    [Fact]
+    public void ExistingMalformedXmlAlsoFailsControlledCaptureBeforeAnyReaderScope()
+    {
+        var source = new OfdDocumentPackage(); source.PreservedEntries.Add("existing.xml", Encoding.UTF8.GetBytes("<root>"));
+        using var context = new OfdControlledEditContext(new());
+        Assert.Throws<InvalidDataException>(() => context.CaptureSource(source));
+        Assert.Throws<InvalidOperationException>(context.AssertActive);
+    }
+
+    [Fact]
+    public void PermanentControlledBindingCannotBeReplacedOrDowngradedByReadScopeExit()
+    {
+        using var context = new OfdControlledEditContext(new()); var material = context.Material;
+        using (material.BeginControlledRead(context, default)) Assert.True(material.IsControlledRead);
+        Assert.False(material.IsControlledRead);
+        Assert.Throws<InvalidOperationException>(() => material.BindControlledOperation(context));
+        using var other = new OfdControlledEditContext(new());
+        Assert.Throws<InvalidOperationException>(() => material.BindControlledOperation(other));
+        var package = new OfdDocumentPackage(); package.PreservedEntries.Add("dtd.xml", DtdPayload());
+        Assert.Throws<InvalidDataException>(() => context.CaptureSource(package));
+    }
+
+    private static byte[] DtdPayload() => Encoding.UTF8.GetBytes("<!DOCTYPE r [<!ELEMENT r (" +
+        string.Join(",", Enumerable.Repeat("a", 10000)) + ")>]><r/>");
+
     private static async Task<byte[]> Source()
     {
         var source = new OfdDocumentPackage(); source.Fonts.Add(new OfdFontResource { Id = "100", FontName = "test", FileName = "test.ttf", Data = new byte[128] });

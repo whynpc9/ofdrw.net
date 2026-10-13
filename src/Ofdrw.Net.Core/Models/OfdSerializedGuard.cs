@@ -12,7 +12,10 @@ internal sealed class OfdControlledEditContext : IDisposable
     private int state; // active, disposed, failed
     private int cloneIssued;
     internal OfdModelMaterialization Material { get; }
-    internal OfdControlledEditContext(OfdModelLimits limits) => Material = new OfdModelMaterialization(limits);
+    internal OfdControlledEditContext(OfdModelLimits limits)
+    {
+        Material = new OfdModelMaterialization(limits); Material.BindControlledOperation(this);
+    }
     internal void AssertActive()
     {
         if (Volatile.Read(ref state) == 1) throw new ObjectDisposedException(nameof(OfdControlledEditContext));
@@ -27,7 +30,11 @@ internal sealed class OfdControlledEditContext : IDisposable
     internal OfdSerializedGuard CaptureSource(OfdDocumentPackage source, CancellationToken token = default)
     {
         AssertActive();
-        try { return OfdSerializedGuard.Capture(source, this, token); }
+        try
+        {
+            if (source is null) throw new ArgumentNullException(nameof(source));
+            Material.GuardPreservedXml(source, token); return OfdSerializedGuard.Capture(source, this, token);
+        }
         catch { Fail(); throw; }
     }
     public void Dispose() => Interlocked.Exchange(ref state, 1);
