@@ -87,10 +87,11 @@ public sealed class OfdGlyphGeometry
     public OfdGlyphGeometry(IReadOnlyList<OfdGlyphClusterGeometry> clusters, string? unsupportedReason = null)
     {
         if (clusters is null) throw new ArgumentNullException(nameof(clusters));
-        if (clusters.Count > 16_000_000) throw new ArgumentOutOfRangeException(nameof(clusters));
-        if (unsupportedReason is not null && (string.IsNullOrWhiteSpace(unsupportedReason) || clusters.Count != 0))
+        var count = clusters.Count;
+        if (count < 0 || count > 16_000_000) throw new ArgumentOutOfRangeException(nameof(clusters));
+        if (unsupportedReason is not null && (string.IsNullOrWhiteSpace(unsupportedReason) || count != 0))
             throw new ArgumentException("Unsupported geometry requires a reason and no verified mappings.");
-        var copy = new OfdGlyphClusterGeometry[clusters.Count];
+        var copy = new OfdGlyphClusterGeometry[count];
         for (var i = 0; i < copy.Length; i++) copy[i] = clusters[i] ?? throw new ArgumentException("Null cluster.", nameof(clusters));
         Clusters = new ReadOnlyCollection<OfdGlyphClusterGeometry>(copy); UnsupportedReason = unsupportedReason;
     }
