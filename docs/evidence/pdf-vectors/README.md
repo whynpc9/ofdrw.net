@@ -1,5 +1,41 @@
 # 21 可选 PDF 矢量转换验收证据
 
+R13 当前运行时 **`7afd12042e9099093d9974472d1431686304a162`** 已完成 R12 按实际字形使用字体及 R13 XML 原始文字分类的功能和限定视觉验收。最终 evidence-only head 的双 bot、CI 和线程状态仍以 PR #18 当前 head 单独读回，不继承运行时或历史 head 的结果；PR 开放、未合并、未发布。
+
+R12 只在非空字形 bytes 实际绘制时加载字体，并只输出成功文字事件引用的字体；仅 Tf、空 Tj/TJ 和纯数值 TJ 不嵌入字体，数值 TJ 的文字位置/缩放及 q/Q 恢复照常执行。读取尝试使用独立页预算，实际输出字体仍计入既有全局预算。实际 R12 包和 R13 包复放保存的 62 个转换及两个 BOM 控制，输入 SHA 不变、全部结果与资源身份一致。R12 `967d2f0` 的 **691/691、Python5、默认11/可选13包** 主/Low14 原始功能证据完整保留在独立分卷中；R12 当时视觉 pending、后被 R13 取代，不能回写为 R12 已验收。
+
+R13 在原有硬预算/取消门后、SnapshotText 前将 U+FFFE/U+FFFF 原始文字分类为 `TEXT_XML_CHARACTER` 的 NotSupportedException。**Fail** 保持输出 sentinel；显式 **RasterizePage + Compatibility.TextLayerMode=None** 成功输出 native/raster/native 三页，中页单幅整页图、没有文字和路径，前后正常页继续 native。**默认 Invisible 文本层不能表示这些 XML 1.0 禁止字符，仍真实抛出 ArgumentException 并保持输出 sentinel，不支持这个组合**；没有自动关闭文本层、替换字符或泛化捕获 XML 异常。None 栅格页失去搜索文字。有效 BMP 邻界、原控制字符、真实 ToUnicode 代理对、硬预算与取消的既有行为另有回归。
+
+主与独立 Low15 各 **715/715（九份TRX）、Python5/5、默认11及可选13包消费**通过。343 个冻结源码路径、13 个主 nupkg 及 Low15 646 项产物逐项 size/SHA 复核；主/独立实际 PackageReference 消费者加载的八个 Ofdrw DLL 各自匹配对应真实包。Astra 设计保存原始 80 次转换/20 个 PDF，主/Low15 用相同 PDF bytes/options 在真实主包和独立包重放，只有获准的八个 FFFE/FFFF策略组合变化；其他72个结果保持。31个旧 OFD payload 与 R12 保持，33个主/独立 R13 OFD 对照保持（仅 dual 的 CreationDate/ModDate 两项元数据归一化）。初次缺样例字形的22项失败、修正后24项通过、设计探针初次失败和真实网络 push 失败均保留，不冒称首次全绿。
+
+2026-10-13 在 macOS Preview 实看最终 **六份PDF/20页**，每份精确核对 AX document URL，使用 Single Page / Zoom All to Fit，对照源和本轮实际 OFD→PDF 导出；六份检查前后大小/SHA均未变化。font-usage 源及 native 导出各页1..4：前两页路径-only无意外字形，后两页中英文/比例字体、浅蓝填色蓝框、绿色行及第4页 numeric TJ/qQ 红A位置对应。FFFE/FFFF 源及显式None回退导出各页1..3：中页原Z轮廓及蓝矩形保留，前后中英文正文恢复，无明显缺字、重影、裁切、重叠或额外空白页；栅格中页边缘较源向量略软。XML 样例的大块留白及靠下正文来自原始 PDF。只对这些页作结论，不声称像素一致或任意PDF/Word保真。默认Invisible失败组合没有成功产物，不计视觉通过。
+
+六个文档均按精确 URL 保护关闭；最后 Cmd-W 后观察返回 `noWindowsAvailable`，因此没有执行 Cancel，也没有为补 Cancel 再激活 Preview；随后只有非激活 app inventory，已通知 GUI 释放，未知窗口不操作，不声称 inventory 证明全局零窗口。实际截图通过 cua_repl 内联观察；session 图片 payload 截断，归档保存真实 UI 调用、AX、错误、时间及图片块计数，**不冒称导出了可用 Preview 截图文件**。页面 PNG 是辅助渲染。历史 R10 28页/R11 8页保留原 runtime 范围，没有冒充本轮重看。
+
+[review-r13-acceptance.json](review-r13-acceptance.json) 和 [review-r13-manifest.json](review-r13-manifest.json) 绑定最终分卷；[review-r12-functional-manifest.json](review-r12-functional-manifest.json) 绑定未改写的 R12 完整功能归档。R13 包含实际 OFD、六份已验 PDF、PNG、原始80次输入/输出、主/独立日志与失败、真实包/消费者加载身份及20页实际Preview记录；R12完整原始62+2输入/失败/产物另存其原归档。只省略派生SVG的字体base64副本和构建/cache目录。各分卷均小于90MiB，完整 archive SHA 与逐文件清单可复查。
+
+按原始顺序重建并逐文件核验（需要 Python3 和 zstd，不解包执行未知文件）：
+
+```sh
+python3 docs/evidence/pdf-vectors/verify-r12-functional.py
+python3 docs/evidence/pdf-vectors/verify-r13.py
+cat docs/evidence/pdf-vectors/review-r12-functional.tar.zst.part01 docs/evidence/pdf-vectors/review-r12-functional.tar.zst.part02 > /tmp/r12-functional.tar.zst
+cat docs/evidence/pdf-vectors/review-r13.tar.zst.part01 docs/evidence/pdf-vectors/review-r13.tar.zst.part02 > /tmp/r13-final.tar.zst
+shasum -a 256 /tmp/r12-functional.tar.zst /tmp/r13-final.tar.zst
+zstd -dc /tmp/r13-final.tar.zst | tar -tf -
+```
+
+| 归档/顺序 | 字节 | SHA256 |
+| --- | ---: | --- |
+| R12 whole | 178544984 | `a7cb01d96fcc7026e77473ce61b99a0e555bfc91301a8a7146dc96717425199b` |
+| [review-r12-functional.tar.zst.part01](review-r12-functional.tar.zst.part01) / 1 | 90000000 | `2d425660a9b3395190c888264a6525e7a3f06c81d02a02fc43ae924f8255fb79` |
+| [review-r12-functional.tar.zst.part02](review-r12-functional.tar.zst.part02) / 2 | 88544984 | `5fc09fbc6e46cd4686a19c03e17e3e9816631ded9b77faba2795b32d6c40be1c` |
+| R13 whole | 109299339 | `091e7ac59e04e353fb36a8d6e18dc1bf5df66ff32edf2d0a1d1b63288a411805` |
+| [review-r13.tar.zst.part01](review-r13.tar.zst.part01) / 1 | 90000000 | `a574eb7377873eb05b676af3ed9233d3eddf5cf52fa694e27fa77856bb14ce6b` |
+| [review-r13.tar.zst.part02](review-r13.tar.zst.part02) / 2 | 19299339 | `1216ccbdeae1be55d9b53fa7e672c8a513c96b4783f8d10c292abc8fc0d3ca07` |
+
+以下为保留原身份的历史验收记录；其中的当时待办以本轮说明及最新 PR 状态为准。
+
 R11 运行时 **`6120498`** 已修复极小正 width/font size 在三位写出精度归零时绕过整页 fallback 的两个 P2：04 原样 WriterValue 抽取到 Core，04 Positive 语义不变；21 对实际 float scalar 在原精度及硬预算/取消门之后、事件前分类为 STROKE_WRITER_PRECISION/TEXT_WRITER_PRECISION。实际 612 包与旧 R10 包使用相同 18 个输入/两种策略复核，六组 writer-zero 案例由异常绕过修复为 Fail 的明确不支持或正确整页回退；正边界及 w0/Tf0 控制保持。
 
 主验证与独立 Low13 各 **661/661**（九份 TRX）、Python **5/5**、默认 **11** 包和可选 **13** 包通过。Low13 核验 348 个源码文件、13 个主 nupkg，并记录八个实际加载 DLL 与包条目匹配；主协调复核最新 205 项独立产物 SHA/大小及补跑九份 TRX。Low13 首次 shell 包装器在测试后写入 zsh readonly status 导致包装器失败；原日志保留，修正包装器后用既有二进制重新执行测试，九份新 TRX 和 dotnet exit0 单列。旧 29 个 OFD 的主 R10→R11 payload 保持（28 个全部 ZIP 条目同字节，dual 仅 OFD.xml 日期元数据）；主 R11 与 Low13 的 30 个 OFD 亦仅 dual 日期不同。
@@ -28,6 +64,8 @@ R8 归档时整票未闭环。2026-10-13 读回 R8 head 的六项远端检查均
 
 | 轮次 | 基线 | 保留的主要结果 |
 | --- | --- | --- |
+| R13 | 7afd120 | 主/Low15 各715/5、11/13包；六PDF20页Preview；默认Invisible XML禁止字符组合不支持 |
+| R12 | 967d2f0 | 主/Low14 各691/5、11/13包；完整功能分卷；视觉pending后被R13取代 |
 | R11 | 6120498 | 主/Low13 各 661/5、11/13 包；8 页 Preview；新字体计量 P2 待修 |
 | R10 | 28fc29d | 主/Low12 各 641/5、11/13 包；真实包/独立观察；28 页 Preview，最终评审另记 |
 | R8 / R9 设计 | d8d197e | 625/5、11/13 包；Low10 失败、Low11 补验；字体性能 P1；无 R8 Preview |
