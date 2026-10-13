@@ -120,7 +120,7 @@ internal sealed partial class OfdModelMaterialization
 
     internal void ChargeCopy(long bytes, CancellationToken token)
     {
-        token.ThrowIfCancellationRequested(); readContext?.AssertActive(); Structure.Reference();
+        token.ThrowIfCancellationRequested(); controlledContext?.AssertActive(); Structure.Reference();
         CloneCopyBytes = Add(CloneCopyBytes, bytes, "clone-copy");
     }
     internal void ChargeOutput(long bytes)
@@ -128,7 +128,7 @@ internal sealed partial class OfdModelMaterialization
 
     internal void ChargeWork(long bytes, CancellationToken token)
     {
-        token.ThrowIfCancellationRequested(); readContext?.AssertActive(); Structure.Reference();
+        token.ThrowIfCancellationRequested(); controlledContext?.AssertActive(); Structure.Reference();
         ValidationWorkBytes = Add(ValidationWorkBytes, bytes, "validation work");
     }
 
@@ -198,7 +198,7 @@ internal sealed partial class OfdModelMaterialization
                 // compiler can allocate. Reject all XmlException here rather than
                 // identifying DTD via a localized runtime exception message.
                 // Public loading retains its original malformed-opaque policy.
-                if (IsControlledRead) throw new InvalidDataException("Controlled read contains malformed or prohibited XML.");
+                if (HasControlledXmlPolicy) throw new InvalidDataException("Controlled operation contains malformed or prohibited XML.");
                 OpaqueEntries.Add(path);
             }
 
@@ -239,6 +239,7 @@ internal sealed partial class OfdModelMaterialization
         ChargeCopy(2L * bytes.LongLength, token);
         Structure.NodeWork(work.Nodes, work.Depth);
         for (long index = 0; index < work.References; index++) { token.ThrowIfCancellationRequested(); Structure.Reference(); }
+        PrepareReadXmlParser(bytes.LongLength, token);
         var readStorage = PrepareReadDom(bytes.LongLength, work.Nodes, work.References, token);
         if (IsControlledRead) ChargeWork(bytes.LongLength, token);
         using var input = new MemoryStream(bytes, false);
@@ -252,7 +253,7 @@ internal sealed partial class OfdModelMaterialization
     {
         // Public path retains its original DocumentType admission. Controlled
         // parsing rejects the declaration before compiling internal DTD models.
-        DtdProcessing = IsControlledRead ? DtdProcessing.Prohibit : DtdProcessing.Parse, XmlResolver = null,
+        DtdProcessing = HasControlledXmlPolicy ? DtdProcessing.Prohibit : DtdProcessing.Parse, XmlResolver = null,
         MaxCharactersInDocument = limits.MaxSourceXmlBytes, MaxCharactersFromEntities = 1024
     };
 
