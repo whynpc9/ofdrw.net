@@ -7,7 +7,7 @@ namespace Ofdrw.Net.Core.Models;
 internal static class OfdNavigationCloner
 {
     internal static void Clone(OfdDocumentPackage source, OfdDocumentPackage destination,
-        IDictionary<object, object> mapping, OfdModelMaterialization material, CancellationToken token)
+        IDictionary<object, object> mapping, OfdModelMaterialization material, CancellationToken token, bool requireClosedMap = false)
     {
         var sources = new Dictionary<OfdNavigationSource, OfdNavigationSource>();
         Ownership(source.OutlineOwnership, destination.OutlineOwnership, 1);
@@ -18,8 +18,13 @@ internal static class OfdNavigationCloner
         {
             token.ThrowIfCancellationRequested(); material.Structure.Reference(); material.Structure.Depth(depth);
             if (mapping.TryGetValue(original, out var mapped)) return mapped;
-            if (original is not IOfdNavigationNode node) return original; // baseline-only excluded page identity
+            if (original is not IOfdNavigationNode node)
+            {
+                if (requireClosedMap) throw new InvalidOperationException("Navigation owner mapping is incomplete.");
+                return original; // selected-page clones may retain excluded baseline identities
+            }
             material.Structure.Node(depth);
+            material.ChargeCopy(256, token);
             IOfdNavigationNode clone = original switch
             {
                 OfdOutlineCollection => new OfdOutlineCollection(), OfdBookmarkCollection => new OfdBookmarkCollection(), OfdActionCollection => new OfdActionCollection(),
@@ -30,6 +35,10 @@ internal static class OfdNavigationCloner
                 _ => throw new NotSupportedException("Unknown navigation clone contract.")
             };
             mapping.Add(original, clone);
+            if (original is OfdOutlineCollection oc) MapList(oc.Items, ((OfdOutlineCollection)clone).Items);
+            if (original is OfdBookmarkCollection bc) MapList(bc.Items, ((OfdBookmarkCollection)clone).Items);
+            if (original is OfdActionCollection ac) MapList(ac.Items, ((OfdActionCollection)clone).Items);
+            if (original is OfdOutline oo) MapList(oo.Children, ((OfdOutline)clone).Children);
             // Establish the source memo before traversing source slots.
             CopySource(node.Source, clone.Source, depth);
             switch (original)
@@ -48,22 +57,28 @@ internal static class OfdNavigationCloner
             }
             return clone;
         }
+        void MapList<T>(List<T> original, List<T> clone)
+        { material.ChargeCopy(128L + (long)original.Count * IntPtr.Size * 2, token); mapping.Add(original, clone); }
         OfdNavigationSource? Source(OfdNavigationSource? original, int depth)
         {
             if (original is null) return null;
             if (sources.TryGetValue(original, out var clone)) return clone;
+            material.ChargeCopy(128, token);
             clone = new OfdNavigationSource(); CopySource(original, clone, depth); return clone;
         }
         void CopySource(OfdNavigationSource original, OfdNavigationSource clone, int depth)
         {
             if (sources.TryGetValue(original, out var existing))
             {
+                material.ChargeCopy((long)existing.Slots.Count * 128, token);
                 clone.Xml = existing.Xml; clone.OriginalName = existing.OriginalName; clone.HasOpaqueLocalContent = existing.HasOpaqueLocalContent; clone.DocumentOwner = existing.DocumentOwner;
                 foreach (var slot in existing.Slots) { material.Structure.Reference(); clone.Slots.Add(slot.Key, slot.Value); }
                 return;
             }
-            sources.Add(original, clone);
+            material.ChargeCopy(128L + (long)original.Slots.Count * 128, token); sources.Add(original, clone);
             clone.Xml = original.Xml; clone.OriginalName = original.OriginalName; clone.HasOpaqueLocalContent = original.HasOpaqueLocalContent;
+            if (requireClosedMap && original.DocumentOwner is not null && !ReferenceEquals(original.DocumentOwner, source))
+                throw new System.IO.InvalidDataException("Foreign navigation document owner.");
             clone.DocumentOwner = ReferenceEquals(original.DocumentOwner, source) ? destination : original.DocumentOwner;
             foreach (var slot in original.Slots)
             { token.ThrowIfCancellationRequested(); material.Structure.Reference(); clone.Slots.Add(slot.Key, Map(slot.Value, depth + 1)); }

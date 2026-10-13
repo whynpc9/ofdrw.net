@@ -35,7 +35,7 @@ internal sealed class OfdIdPlan
         {
             token.ThrowIfCancellationRequested();
             if (budget.OpaqueEntries.Contains(entry.Key)) continue;
-            var reservations = budget.Reservations(entry.Value, out var hasHint);
+            var reservations = budget.Reservations(entry.Value, out var hasHint, token);
             foreach (var id in reservations) Reserve(id, true);
             if (!hasHint) continue;
             var xml = budget.ReadXml(entry.Key, entry.Value, token);

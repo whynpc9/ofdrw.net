@@ -52,8 +52,44 @@ internal sealed class OfdSourceIdentity
     private readonly HashSet<string> trustedEntries = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Dictionary<int, Owner>> entries = new(StringComparer.OrdinalIgnoreCase);
     internal IReadOnlyCollection<Owner> Active => active.Values;
+    internal IEnumerable<string> ControlEntries => trustedEntries;
     internal bool TryActive(long id, out Owner owner) => active.TryGetValue(id, out owner!);
     internal OfdPage[] OriginalPages { get; private set; } = [];
+
+    internal void VisitInventory(OfdSerializedInventory.ISink sink)
+    {
+        sink.Item("identityNamespace", Namespace); sink.Item("originalPages", OriginalPages, true); sink.Item("count", OriginalPages.Length);
+        foreach (var page in OriginalPages) sink.Item("originalPage", page, true);
+        Map(models); Map(layers); Map(images); Map(resources); Map(active);
+        sink.Item("emptyLayers", emptyLayers, true); sink.Item("count", emptyLayers.Count); foreach (var owner in emptyLayers) OwnerValue(owner);
+        sink.Item("entrySlots", entries, true); sink.Item("count", entries.Count);
+        foreach (var entry in entries) { sink.Item("entry", entry.Key); Map(entry.Value); }
+        sink.Item("graphicIds", graphicIds, true); sink.Item("count", graphicIds.Count);
+        foreach (var item in graphicIds)
+        {
+            sink.Item("graphic", item.Key, true); Slots(item.Value.Source); Slots(item.Value.Clips);
+        }
+        Strings(pagePaths); Strings(templatePaths); Strings(rootNames);
+        sink.Item("trusted", trustedEntries, true); sink.Item("count", trustedEntries.Count);
+        foreach (var path in trustedEntries) sink.Item("trustedPath", path);
+        void Map<T>(Dictionary<T, Owner> values) where T : notnull
+        {
+            sink.Item("ownerMap", values, true); sink.Item("count", values.Count);
+            foreach (var pair in values) { sink.Item("key", pair.Key, pair.Key is not string && pair.Key is not ValueType); OwnerValue(pair.Value); }
+        }
+        void OwnerValue(Owner owner)
+        { sink.Item("ownerEntry", owner.Entry); sink.Item("kind", owner.Kind); sink.Item("slot", owner.Slot); sink.Item("id", owner.Id); sink.Item("active", owner.ActiveDefinition); }
+        void Slots(List<IdSlot> slots)
+        {
+            sink.Item("idSlots", slots, true); sink.Item("count", slots.Count);
+            foreach (var slot in slots) { sink.Item("ordinal", slot.Ordinal); sink.Item("node", slot.Node); sink.Item("attribute", slot.Attribute); sink.Item("value", slot.Value); sink.Item("role", slot.ActiveFragmentDefinition); }
+        }
+        void Strings<T, U>(Dictionary<T, U> values) where T : notnull
+        {
+            sink.Item("valueMap", values, true); sink.Item("count", values.Count);
+            foreach (var pair in values) { sink.Item("key", pair.Key, pair.Key is OfdPage); sink.Item("value", pair.Value); }
+        }
+    }
     internal bool TryOwner(object model, out Owner owner) => models.TryGetValue(model, out owner!);
     internal bool TryEmptyLayer(OfdPage page, string? id, out Owner owner)
     {
@@ -240,23 +276,32 @@ internal sealed class OfdSourceIdentity
     }
 
     internal OfdSourceIdentity CloneFor(OfdDocumentPackage destination, IReadOnlyDictionary<object, object> mapping,
-        OfdModelMaterialization budget, CancellationToken token)
+        OfdModelMaterialization budget, CancellationToken token, bool requireClosedMap = false)
     {
         var clone = new OfdSourceIdentity { Namespace = Namespace };
-        foreach (var pair in active) { token.ThrowIfCancellationRequested(); budget.Structure.Reference(); clone.active.Add(pair.Key, pair.Value); }
-        foreach (var pair in entries) { budget.Structure.Reference(); clone.entries.Add(pair.Key, pair.Value); }
-        foreach (var pair in resources) { budget.Structure.Reference(); clone.resources.Add(pair.Key, pair.Value); }
-        foreach (var pair in templatePaths) { budget.Structure.Reference(); clone.templatePaths.Add(pair.Key, pair.Value); }
-        foreach (var pair in rootNames) { budget.Structure.Reference(); clone.rootNames.Add(pair.Key, pair.Value); }
-        foreach (var path in trustedEntries) { budget.Structure.Reference(); clone.trustedEntries.Add(path); }
-        foreach (var owner in emptyLayers) { budget.Structure.Reference(); clone.emptyLayers.Add(owner); }
-        foreach (var pair in models) if (mapping.TryGetValue(pair.Key, out var model)) { budget.Structure.Reference(); clone.models.Add(model, pair.Value); }
-        foreach (var pair in layers) if (mapping.TryGetValue(pair.Key, out var model)) { budget.Structure.Reference(); clone.layers.Add((OfdElement)model, pair.Value); }
-        foreach (var pair in graphicIds) if (mapping.TryGetValue(pair.Key, out var model)) { budget.Structure.Reference(); clone.graphicIds.Add((OfdElement)model, pair.Value); }
-        foreach (var pair in images) if (mapping.TryGetValue(pair.Key, out var model)) { budget.Structure.Reference(); clone.images.Add((OfdImageElement)model, pair.Value); }
-        foreach (var pair in pagePaths) if (mapping.TryGetValue(pair.Key, out var model)) { budget.Structure.Reference(); clone.pagePaths.Add((OfdPage)model, pair.Value); }
+        foreach (var pair in active) { token.ThrowIfCancellationRequested(); budget.ChargeCopy(128, token); clone.active.Add(pair.Key, pair.Value); }
+        foreach (var pair in entries)
+        {
+            token.ThrowIfCancellationRequested(); budget.ChargeCopy(64L * pair.Value.Count, token);
+            clone.entries.Add(pair.Key, new Dictionary<int, Owner>(pair.Value));
+        }
+        foreach (var pair in resources) { budget.ChargeCopy(128, token); clone.resources.Add(pair.Key, pair.Value); }
+        foreach (var pair in templatePaths) { budget.ChargeCopy(128, token); clone.templatePaths.Add(pair.Key, pair.Value); }
+        foreach (var pair in rootNames) { budget.ChargeCopy(128, token); clone.rootNames.Add(pair.Key, pair.Value); }
+        foreach (var path in trustedEntries) { budget.ChargeCopy(128, token); clone.trustedEntries.Add(path); }
+        foreach (var owner in emptyLayers) { budget.ChargeCopy(128, token); clone.emptyLayers.Add(owner); }
+        foreach (var pair in models) if (mapping.TryGetValue(pair.Key, out var model)) { budget.ChargeCopy(128, token); clone.models.Add(model, pair.Value); }
+        foreach (var pair in layers) if (mapping.TryGetValue(pair.Key, out var model)) { budget.ChargeCopy(128, token); clone.layers.Add((OfdElement)model, pair.Value); }
+        foreach (var pair in graphicIds) if (mapping.TryGetValue(pair.Key, out var model))
+        {
+            budget.ChargeCopy((long)(pair.Value.Source.Count + pair.Value.Clips.Count) * IntPtr.Size + 64, token);
+            clone.graphicIds.Add((OfdElement)model, new GraphicIds(new List<IdSlot>(pair.Value.Source), new List<IdSlot>(pair.Value.Clips)));
+        }
+        foreach (var pair in images) if (mapping.TryGetValue(pair.Key, out var model)) { budget.ChargeCopy(128, token); clone.images.Add((OfdImageElement)model, pair.Value); }
+        foreach (var pair in pagePaths) if (mapping.TryGetValue(pair.Key, out var model)) { budget.ChargeCopy(128, token); clone.pagePaths.Add((OfdPage)model, pair.Value); }
         budget.ChargeCopy((long)OriginalPages.Length * IntPtr.Size, token);
-        clone.OriginalPages = OriginalPages.Select(page => mapping.TryGetValue(page, out var model) ? (OfdPage)model : page).ToArray();
+        clone.OriginalPages = OriginalPages.Select(page => mapping.TryGetValue(page, out var model) ? (OfdPage)model :
+            requireClosedMap ? throw new InvalidOperationException("Historical page mapping is incomplete.") : page).ToArray();
         return clone;
     }
 

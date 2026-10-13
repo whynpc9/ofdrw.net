@@ -30,6 +30,17 @@ internal sealed class OfdNavigationSnapshot
         get { foreach (var token in tokens) if (token.Reference && token.Value is OfdBookmark bookmark) yield return bookmark; }
     }
     internal bool HasOpaqueSource => opaque;
+    internal IEnumerable<object> ReferencedNodes
+    { get { foreach (var item in tokens) if (item.Reference && item.Value is IOfdNavigationNode) yield return item.Value; } }
+
+    internal void VisitInventory(OfdSerializedInventory.ISink sink)
+    {
+        sink.Item("snapshotTokens", tokens, true); sink.Item("count", tokens.Count);
+        foreach (var item in tokens) sink.Item("snapshotValue", item.Value, item.Reference);
+        sink.Item("bookmarkTargets", bookmarkTargets, true); sink.Item("count", bookmarkTargets.Count);
+        foreach (var target in bookmarkTargets) { sink.Item("bookmark", target.Bookmark, true); sink.Item("name", target.Name); }
+        sink.Item("opaque", opaque);
+    }
 
     internal void InspectMaterial(OfdModelMaterialization material, bool output, CancellationToken token, bool guardXml = false)
     {
@@ -52,7 +63,8 @@ internal sealed class OfdNavigationSnapshot
 
     internal OfdNavigationSnapshot Remap(Func<object, object> map, OfdModelMaterialization material, CancellationToken token)
     {
-        var copied = new List<Token>(); var targets = new List<BookmarkTarget>();
+        material.ChargeCopy(128L + (long)(tokens.Count + bookmarkTargets.Count) * 32, token);
+        var copied = new List<Token>(tokens.Count); var targets = new List<BookmarkTarget>(bookmarkTargets.Count);
         foreach (var item in tokens)
         {
             token.ThrowIfCancellationRequested(); material.Structure.Reference();
