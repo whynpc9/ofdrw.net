@@ -1,6 +1,22 @@
 # 21 可选 PDF 矢量转换验收证据
 
-R13 当前运行时 **`7afd12042e9099093d9974472d1431686304a162`** 已完成 R12 按实际字形使用字体及 R13 XML 原始文字分类的功能和限定视觉验收。最终 evidence-only head 的双 bot、CI 和线程状态仍以 PR #18 当前 head 单独读回，不继承运行时或历史 head 的结果；PR 开放、未合并、未发布。
+R14 当前运行时 **`35fe18e01ef3cbf2f287b5d70018681f9f46deaa`** 修复已耗尽事件预算仍被路径/文字 profile 错误降格为整页回退的问题。真实/潜在路径绘制先检查容量，fill+stroke 一次要求两个槽位；非空 glyph 先检查已消费字符额度和事件容量，非空游程在 profile 前复核。只由成功 Add 计数，支持的空路径/move/空 show/Tf 不收费；路径构造、close、字体输入尝试及取消门保持原顺序，不预扫描未来字形。
+
+主与独立 Low16 各 **763/763（九份 TRX）、Python5/5、默认11/可选13真实包消费**通过。345 冻结源码及13主包身份未变，Low16全部665产物逐项size/SHA复核；六个独立主包/本地包消费者各加载八个与自身nupkg匹配的Ofdrw DLL，两套13包的RepositoryCommit均为35fe18e。Astra原158次转换使用49个唯一PDF输入，原SHA/options在实际主包和Low包重放，**仅36次批准的事件/已消费字符预算情况变为 InvalidDataException，sentinel040506和position0保持，其余122次结果/诊断不变**。R13保存80次及R12保存62+2 BOM保持原语义。33个旧OFD payload与R13相等，34个当前主/Low OFD payload相等，仅dual的CreationDate/ModDate归一化。
+
+2026-10-13在macOS Preview实看新源PDF及本次实际OFD→PDF导出，**两PDF共4页**，各自明确设置Single Page/Zoom All to Fit，精确AX URL匹配，检查前后SHA/size保持。第1页容量充足时按PATH_FLOAT_PRECISION整页栅格回退，中英蓝标题/浅蓝填块/红色短窄竖标记保留，文字/边缘略软；第2页正常native中英标题、填色及蓝边框对应，尾随支持空操作无额外可见内容。未见明显缺字、裁切、重影或额外空白页；大块留白是源布局。容量2的Fail/RasterizePage均为硬失败、目标未动，没有失败PDF可作视觉验收；容量3的Fail保留原精度诊断，显式RasterizePage才产生上述实际raster/native产物。源21,662,719B，导出138,583B；实际OFD11,610,178B，大小差异包含字体/图像压缩，不代表任意PDF更小或保真。
+
+两份准确URL文档均已关闭。末态AX出现任务Open面板，Cancel及Escape尝试均返回no change，因此**未确认面板取消或零窗口**，随后停止激活并释放GUI；未知窗口未操作。源关闭后下一快捷键曾因Computer Use not active拒绝，独占时段内重新绑定一次继续准确导出，未误开文档。五次Preview截图观察实际内联显示（含导出首次连续模式及最终单页复查），归档保存24条真实UI调用/AX/错误与图片块摘要；截断payload不冒充可用导出截图，四张PNG只作辅助。
+
+[review-r14-acceptance.json](review-r14-acceptance.json)、[review-r14-manifest.json](review-r14-manifest.json)、[review-r14-readback.json](review-r14-readback.json)绑定本轮限定结论及不可变归档。运行 `python3 docs/evidence/pdf-vectors/verify-r14.py` 重建并核对whole SHA和每个成员size/SHA；各分卷低于90MiB。实际main/Low OFD、新源/导出PDF及PNG、49个保存输入/158次转换记录、原失败探针、测试日志、包/源码身份、4页Preview记录保留；派生SVG字体base64和cache省略，旧输入/PDF/PNG继续由原R12/R13归档提供。首次未push证据草稿遗留主Preview的pending字段，被独立审查发现后修正并重收集；原草稿和纠正记录保留，不影响产品/视觉文件身份。
+
+默认Invisible对XML非法FFFE/FFFF仍不支持，原ArgumentException及sentinel保持；显式None是调用者放弃回退页搜索层的选择，没有自动禁用隐藏文本层。R13的20页保持7afd身份，R11八页/R10二十八页保持各自历史身份，未冒称本轮重看。最终head的Codex/Cursor、六项CI和有效线程另行读回，PR18保持OPEN，不合并、不tag、不发布。
+
+R14最终归档共 **1156文件 / 48,775,678字节**，whole SHA256 `af8dacc7cebd9358d2feae91cada0af128ad494424dc042a6aceb573c8245bb4`；本轮单分卷 [review-r14.tar.zst.part01](review-r14.tar.zst.part01) 与whole同SHA/大小。已实际重建并逐项核验全部成员，先前草稿cd786…仅本地保留，不是最终公开分卷。
+
+以下R13及更早说明保留原验收身份。
+
+R13 历史运行时 **`7afd12042e9099093d9974472d1431686304a162`** 已完成 R12 按实际字形使用字体及 R13 XML 原始文字分类的功能和限定视觉验收。最终 evidence-only head 的双 bot、CI 和线程状态仍以 PR #18 当前 head 单独读回，不继承运行时或历史 head 的结果；PR 开放、未合并、未发布。
 
 R12 只在非空字形 bytes 实际绘制时加载字体，并只输出成功文字事件引用的字体；仅 Tf、空 Tj/TJ 和纯数值 TJ 不嵌入字体，数值 TJ 的文字位置/缩放及 q/Q 恢复照常执行。读取尝试使用独立页预算，实际输出字体仍计入既有全局预算。实际 R12 包和 R13 包复放保存的 62 个转换及两个 BOM 控制，输入 SHA 不变、全部结果与资源身份一致。R12 `967d2f0` 的 **691/691、Python5、默认11/可选13包** 主/Low14 原始功能证据完整保留在独立分卷中；R12 当时视觉 pending、后被 R13 取代，不能回写为 R12 已验收。
 
