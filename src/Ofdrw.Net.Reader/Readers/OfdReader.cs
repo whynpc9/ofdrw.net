@@ -612,6 +612,16 @@ public sealed class OfdReader : IOfdReader
                     Xml = ReadXmlString(new XElement("UnmodeledAnnotation", new XAttribute("FileLoc", annotationPath)), material, cancellationToken)! });
                 continue;
             }
+            // Charge each actual page/file occurrence before its first persistent
+            // root/source XML copy. Cached DOMs do not cache caller quota usage.
+            foreach (var sourceAnnotation in annotations.Root!.Elements())
+            foreach (var appearanceNode in sourceAnnotation.Elements(sourceAnnotation.Name.Namespace + "Appearance"))
+            foreach (var graphic in appearanceNode.Descendants())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (graphic.Name.Namespace == appearanceNode.Name.Namespace && graphic.Name.LocalName is "TextObject" or "ImageObject" or "PathObject") budget.ChargeObject();
+            }
+            material.ReadAnnotationFileAdmissionCheckpoint();
             page.AnnotationOwnership.Entries.Add(annotationPath, OfdXmlEnvelope.Capture(annotations.Root!, material, cancellationToken));
             if (annotations.Root!.Attributes().Any(a => !a.IsNamespaceDeclaration) || annotations.Root.Nodes().Any(n => n is XProcessingInstruction or XComment || n is XText t && !string.IsNullOrWhiteSpace(t.Value)) || annotations.Nodes().Any(n => n is XProcessingInstruction or XComment))
                 page.AnnotationOwnership.UnsafeDeletionEntries.Add(annotationPath);
@@ -624,15 +634,8 @@ public sealed class OfdReader : IOfdReader
                 cancellationToken.ThrowIfCancellationRequested();
                 material.ReserveReadModel(1024, cancellationToken);
                 annotationSlot++;
-                // Strict caller quota is charged before the first local typed materialization.
-                foreach (var appearanceNode in annotation.Elements(annotation.Name.Namespace + "Appearance"))
-                foreach (var graphic in appearanceNode.Descendants())
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (graphic.Name.Namespace == appearanceNode.Name.Namespace && graphic.Name.LocalName is "TextObject" or "ImageObject" or "PathObject") budget.ChargeObject();
-                }
                 var projectionStart = page.AnnotationAppearances.Count;
-                var admitted = shared ? null : ReadTypedAnnotation(archive, annotation, fonts, media, mediaTypes,
+                var admitted = shared || annotation.Name != annotations.Root.Name.Namespace + "Annot" ? null : ReadTypedAnnotation(archive, annotation, fonts, media, mediaTypes,
                     annotationPath, idCounts, material, cancellationToken);
                 try
                 {

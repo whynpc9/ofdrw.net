@@ -16,9 +16,11 @@ internal static class OfdModelCloner
             material = new OfdModelMaterialization(new OfdModelLimits());
             var input = new OfdDocumentPackage(); input.Pages.Add(source); material.InspectStorage(input, cancellationToken);
         }
-        mapping ??= new Dictionary<object, object>();
-        cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1);
-        if (mapping is not null) material.ChargeCopy(1024L + (long)(source.Elements.Count + source.AnnotationAppearances.Count + source.Templates.Count + source.PreservedPageElements.Count) * IntPtr.Size * 2, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (mapping is null) material.ChargeCopy(256, cancellationToken);
+        var cloneMap = mapping ?? new Dictionary<object, object>();
+        material.Structure.Node(1);
+        material.ChargeCopy(1024L + (long)(source.Elements.Count + source.AnnotationAppearances.Count + source.Templates.Count + source.PreservedPageElements.Count) * IntPtr.Size * 2, cancellationToken);
         var page = new OfdPage
         {
             Id = keepSourcePath ? source.Id : null,
@@ -26,28 +28,27 @@ internal static class OfdModelCloner
             Index = source.Index, XMillimeters = source.XMillimeters, YMillimeters = source.YMillimeters,
             WidthMillimeters = source.WidthMillimeters, HeightMillimeters = source.HeightMillimeters
         };
-        foreach (var element in source.Elements) page.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping));
+        foreach (var element in source.Elements) page.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: cloneMap));
         foreach (var template in source.Templates)
         {
             cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(2);
-            if (mapping is not null) material.ChargeCopy(256L + (long)template.Elements.Count * IntPtr.Size * 2, cancellationToken);
+            material.ChargeCopy(256L + (long)template.Elements.Count * IntPtr.Size * 2, cancellationToken);
             var clone = new OfdTemplateContent
             {
                 TemplateId = template.TemplateId, ZOrder = template.ZOrder, BaseLocation = template.BaseLocation
             };
-            foreach (var element in template.Elements) clone.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping));
+            foreach (var element in template.Elements) clone.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: cloneMap));
             page.Templates.Add(clone);
-            if (mapping is not null) { mapping.Add(template, clone); mapping.Add(template.Elements, clone.Elements); }
+            { cloneMap.Add(template, clone); cloneMap.Add(template.Elements, clone.Elements); }
         }
-        foreach (var element in source.AnnotationAppearances) page.AnnotationAppearances.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping));
+        foreach (var element in source.AnnotationAppearances) page.AnnotationAppearances.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: cloneMap));
         page.PreservedPageElements.AddRange(source.PreservedPageElements);
-        if (mapping is not null)
         {
-            mapping.Add(source, page); mapping.Add(source.Elements, page.Elements); mapping.Add(source.AnnotationAppearances, page.AnnotationAppearances);
-            mapping.Add(source.Templates, page.Templates); mapping.Add(source.PreservedPageElements, page.PreservedPageElements);
+            cloneMap.Add(source, page); cloneMap.Add(source.Elements, page.Elements); cloneMap.Add(source.AnnotationAppearances, page.AnnotationAppearances);
+            cloneMap.Add(source.Templates, page.Templates); cloneMap.Add(source.PreservedPageElements, page.PreservedPageElements);
         }
         if (keepSourcePath || source.Annotations is not null || source.AnnotationOwnership.Original is not null)
-            OfdAnnotationCloner.Clone(source, page, mapping, clonePayloads, material, cancellationToken);
+            OfdAnnotationCloner.Clone(source, page, cloneMap, clonePayloads, material, cancellationToken);
         else source.AnnotationOwnership.Validate(source, material, cancellationToken);
         return page;
     }
