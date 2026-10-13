@@ -154,11 +154,16 @@ public sealed class ControlledEditWriterTests
         using var prepared = OfdPackageWriter.PrepareOwnedWrite(owned); using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
         using var output = new MemoryStream(); await Assert.ThrowsAsync<OperationCanceledException>(() => prepared.WriteAsync(output, cancelled.Token)); Assert.Equal(0, output.Length);
         await Assert.ThrowsAsync<InvalidOperationException>(() => prepared.WriteAsync(output));
-        using var small = new OfdControlledEditContext(new OfdModelLimits { MaxMaterializedBytes = 2_000_000 });
+        // Fund the independently metered parser/copy stages observed above,
+        // then exhaust only the logical-output ledger before preparation.
+        var ceiling = Math.Max(Math.Max(context.Material.CloneCopyBytes, context.Material.ValidationWorkBytes),
+            Math.Max(context.Material.StorageBytes, context.Material.OutputUpperBoundBytes)) + 1_000_000;
+        using var small = new OfdControlledEditContext(new OfdModelLimits { MaxMaterializedBytes = ceiling });
         var smallGuard = small.CaptureSource(source); using var limited = OfdOwnedEditCandidate.CloneForControlledEdit(source, smallGuard, small);
-        small.Material.ChargeOutput(1_999_999);
-        Assert.Throws<InvalidDataException>(() => OfdPackageWriter.PrepareOwnedWrite(limited));
-        Assert.True(small.Material.OutputUpperBoundBytes >= 1_999_999); // no reset
+        small.Material.ChargeOutput(ceiling - 1);
+        var quota = Assert.Throws<InvalidDataException>(() => OfdPackageWriter.PrepareOwnedWrite(limited));
+        Assert.Contains("logical output", quota.Message);
+        Assert.True(small.Material.OutputUpperBoundBytes >= ceiling - 1); // no reset
     }
 
     [Theory]

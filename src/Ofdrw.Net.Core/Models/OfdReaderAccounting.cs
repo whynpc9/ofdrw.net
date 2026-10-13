@@ -10,7 +10,17 @@ namespace Ofdrw.Net.Core.Models;
 // Construction-site accounting only. SerializedInventory remains the field table.
 internal sealed partial class OfdModelMaterialization
 {
+    private OfdControlledEditContext? controlledContext;
     private OfdControlledEditContext? readContext;
+    // XML admission persists across read, capture, clone, prepare and write.
+    // Exiting a Reader construction scope never downgrades this policy.
+    internal void BindControlledOperation(OfdControlledEditContext context)
+    {
+        if (controlledContext is not null || !ReferenceEquals(context.Material, this))
+            throw new InvalidOperationException("Materialization already bound or belongs to another controlled operation.");
+        context.AssertActive(); controlledContext = context;
+    }
+    private bool HasControlledXmlPolicy => controlledContext is not null;
     internal bool IsControlledRead => readContext is not null;
     internal long ReadReservedStorageBytes { get; private set; }
     internal long ReadAdoptedStorageBytes { get; private set; }
@@ -38,8 +48,9 @@ internal sealed partial class OfdModelMaterialization
     // this is reserved construction work, not a measurement of managed memory.
     internal void PrepareReadXmlParser(long inputBytes, CancellationToken token)
     {
-        if (!IsControlledRead) return;
-        ReserveReadModel(checked(65536L + 512L * inputBytes), token);
+        if (!HasControlledXmlPolicy) return;
+        controlledContext!.AssertActive();
+        ChargeCopy(checked(65536L + 512L * inputBytes), token); ReadModelReservations++;
         ChargeWork(inputBytes, token); ReadParserAdmissions++;
     }
     internal void PrepareReadAnnotationClone(IEnumerable<XElement> roots, CancellationToken token)
@@ -144,7 +155,6 @@ internal sealed partial class OfdModelMaterialization
     {
         if (!IsControlledRead) return null;
         AssertReadActive(token);
-        PrepareReadXmlParser(byteLength, token);
         // Node/attribute shells and table growth are separate from decoded text
         // and StringBuilder/copy positions. These are reserved workload bytes.
         ChargeCopy(checked(32768L + 256L * nodes + 192L * attributes + 6L * byteLength), token);
