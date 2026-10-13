@@ -93,6 +93,7 @@ internal sealed class OfdNavigationSnapshot
     internal static OfdNavigationSnapshot Capture(object value, OfdModelMaterialization? material = null, CancellationToken cancellationToken = default)
     {
         var limits = new OfdModelLimits(); var budget = material?.Structure ?? new OfdTraversalBudget(limits);
+        material?.ReserveReadModel(1024, cancellationToken);
         var result = new List<Token>(); var targets = new List<BookmarkTarget>(); var opaque = false;
         var active = new HashSet<object>(Identity.Instance);
         var stack = new Stack<Frame>(); stack.Push(new Frame(value, 1, false));
@@ -144,12 +145,14 @@ internal sealed class OfdNavigationSnapshot
         {
             budget.Reference();
             if (item is string text) { if (material is null) budget.XmlBytes(2L * text.Length); else material.StoreString(text); }
+            material?.ReserveReadModel(128, cancellationToken);
             result.Add(new Token(item, reference));
         }
         void PushOne(object? item, int depth)
         {
             if (item is null) throw new InvalidDataException("Navigation contains a null owned child.");
             budget.Reference(); budget.Depth(depth + 1);
+            material?.ReserveReadModel(128, cancellationToken);
             stack.Push(new Frame(item, depth + 1, false));
         }
         void Push<T>(List<T> items, int depth) where T : class

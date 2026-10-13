@@ -38,6 +38,8 @@ internal sealed class OfdAnnotationIndexSource
         {
             token.ThrowIfCancellationRequested(); material.GuardFragmentXml(fragment, token);
             material.ChargeCopy(2L * fragment.Length + 128, token); material.ChargeWork(2L * fragment.Length, token);
+            material.PrepareReadXmlParser(checked(2L * fragment.Length), token);
+            material.ReserveReadModel(32768L + 128L * fragment.Length, token);
             var node = OfdXmlEnvelope.Parse(fragment);
             if (node.Name.LocalName == "Annotations") fragments.Add(OfdXmlEnvelope.Capture(node, material, token));
         }
@@ -59,5 +61,12 @@ internal sealed class OfdAnnotationIndexSource
         foreach (var entry in IndexDigests) { sink.Item("indexPath", entry.Key); sink.Path(entry.Key); sink.Item("indexDigest", entry.Value); }
     }
     private static string Digest(byte[] value, OfdModelMaterialization material, CancellationToken token)
-    { material.ChargeCopy(256, token); return BitConverter.ToString(material.HashBytes(value, token)); }
+    {
+        material.ChargeCopy(512, token);
+        var hash = material.HashBytes(value, token);
+        var storage = material.IsControlledRead ? material.ReserveReadStorage(190, token) : null;
+        var result = BitConverter.ToString(hash);
+        if (storage is not null) material.AdoptReadString(result, storage, token);
+        return result;
+    }
 }
