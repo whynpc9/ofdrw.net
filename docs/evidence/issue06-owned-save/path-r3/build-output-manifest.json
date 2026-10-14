@@ -1,0 +1,58 @@
+[
+  {
+    "project": "Core",
+    "tfm": "netstandard2.0",
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/source/src/Ofdrw.Net.Core/bin/Release/netstandard2.0/Ofdrw.Net.Core.dll",
+    "bytes": 256000,
+    "sha256": "8982441db7326f5e5bdd19cf3cc65d343560f809d33dad4159606679e771fc85"
+  },
+  {
+    "project": "Core",
+    "tfm": "netstandard2.1",
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/source/src/Ofdrw.Net.Core/bin/Release/netstandard2.1/Ofdrw.Net.Core.dll",
+    "bytes": 256000,
+    "sha256": "1121c849110b8779a35fc21a4ae8b5c64bfd531644a2c84869b338385f0d161d"
+  },
+  {
+    "project": "Reader",
+    "tfm": "netstandard2.0",
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/source/src/Ofdrw.Net.Reader/bin/Release/netstandard2.0/Ofdrw.Net.Reader.dll",
+    "bytes": 183808,
+    "sha256": "0326054a99366661fc6693508ca308fc3cb3f7fc41cbb0e6c8cfdc4fb42c0d5b"
+  },
+  {
+    "project": "Reader",
+    "tfm": "netstandard2.1",
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/source/src/Ofdrw.Net.Reader/bin/Release/netstandard2.1/Ofdrw.Net.Reader.dll",
+    "bytes": 183808,
+    "sha256": "6d99510760a5e1a9698eaf17a0fdefa3ece305187a1ee5784a7faa62ac6f0c44"
+  },
+  {
+    "project": "Layout",
+    "tfm": "netstandard2.0",
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/source/src/Ofdrw.Net.Layout/bin/Release/netstandard2.0/Ofdrw.Net.Layout.dll",
+    "bytes": 230400,
+    "sha256": "419c34dfdf5840d00292434708384b9376bad945cd5c54d71fd656edc7f20ecb"
+  },
+  {
+    "project": "Layout",
+    "tfm": "netstandard2.1",
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/source/src/Ofdrw.Net.Layout/bin/Release/netstandard2.1/Ofdrw.Net.Layout.dll",
+    "bytes": 230400,
+    "sha256": "5bbb7f8363ab6ab2057c13c5f030b6e6e2c148a8509bf79458f1e4263f4f6cae"
+  },
+  {
+    "project": "Converter.Pdf",
+    "tfm": "netstandard2.0",
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/source/src/Ofdrw.Net.Converter.Pdf/bin/Release/netstandard2.0/Ofdrw.Net.Converter.Pdf.dll",
+    "bytes": 105472,
+    "sha256": "06fa09fc83b99590ecb7e492540fd270a8ebe62550b1bc6756e1d42006222be5"
+  },
+  {
+    "project": "Converter.Pdf",
+    "tfm": "netstandard2.1",
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/source/src/Ofdrw.Net.Converter.Pdf/bin/Release/netstandard2.1/Ofdrw.Net.Converter.Pdf.dll",
+    "bytes": 104960,
+    "sha256": "38dc0740d5c6de75826dcd7d4e167e10a3a359c6999b5e0b3c648899a6c09728"
+  }
+]

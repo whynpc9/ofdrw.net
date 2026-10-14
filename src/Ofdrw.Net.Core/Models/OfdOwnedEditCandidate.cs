@@ -31,12 +31,54 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         OfdSerializedGuard guard, OfdControlledEditContext context, CancellationToken token)
     {
         context.AssertActive(); guard.AssertUnchanged(source, context, token);
+        var candidate = CloneGraph(source, guard, context, token);
+        try
+        {
+            guard.AssertUnchanged(source, context, token);
+            context.Material.InspectStorage(candidate.Package, token);
+            return candidate;
+        }
+        catch { context.Fail(); candidate.Dispose(); throw; }
+    }
+
+    // Sole production consumer: Packaging.PrepareContinuousTextEdit, on the
+    // same synchronous stack. Never return this intermediate candidate/guard
+    // through a caller result, callback or await; there is no reusable stamp.
+    internal static OfdOwnedEditCandidate ClonePatchAndClaim(OfdDocumentPackage source,
+        OfdSerializedGuard guard, OfdControlledEditContext context, OfdRetainedTextEditBatch edits,
+        CancellationToken token, out OfdSerializedGuard candidateGuard)
+    {
+        OfdOwnedEditCandidate? candidate = null;
+        try
+        {
+            context.AssertActive(); edits.Claim(source, guard, context, token);
+            context.ClaimClone(); guard.AssertUnchanged(source, context, token);
+            candidate = CloneGraph(source, guard, context, token);
+            edits.Apply(candidate, token);
+            guard.AssertUnchanged(source, context, token);
+            context.Material.InspectStorage(candidate.Package, token);
+            candidateGuard = context.CaptureSource(candidate.Package, token);
+            // The candidate and its newly captured baseline have never escaped.
+            // Immediate claim uses that baseline; generic ClaimWrite is intact.
+            token.ThrowIfCancellationRequested(); context.AssertActive();
+            if (Interlocked.CompareExchange(ref candidate.state, 1, 0) != 0)
+                throw new InvalidOperationException("Continuous candidate has already been claimed.");
+            edits.Complete();
+            return candidate;
+        }
+        catch { context.Fail(); candidate?.Dispose(); edits?.Dispose(); throw; }
+    }
+
+    private static OfdOwnedEditCandidate CloneGraph(OfdDocumentPackage source,
+        OfdSerializedGuard guard, OfdControlledEditContext context, CancellationToken token)
+    {
         var material = context.Material;
         material.GuardPreservedXml(source, token); source.SourceIdentity?.Reconcile(source, material, token);
         OfdNavigationXml.Validate(source, source.Pages, token, material);
         OfdAnnotationContract.Validate(source, material, token);
         material.ChargeCopy(4096L + (long)(source.Fonts.Count + source.Attachments.Count) * 256, token);
         var mapping = new Dictionary<object, object>(OfdReferenceIdentity.Instance);
+        using var payloads = OfdPayloadCloneSession.Create(context, token);
         var copy = new OfdDocumentPackage
         {
             DocumentEntryPath = source.DocumentEntryPath, PublicResourceLocation = source.PublicResourceLocation,
@@ -94,24 +136,21 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         copy.AnnotationIndexSource = source.AnnotationIndexSource?.Clone(source, copy, material, token);
         copy.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, token, requireClosedMap: true);
         copy.SourceIdentity = source.SourceIdentity?.CloneFor(copy, mapping, material, token, requireClosedMap: true);
-        guard.AssertUnchanged(source, context, token);
-        // A complete second inventory admits the resulting graph before the
-        // private certificate is issued. No model or mutable array is published
-        // on a partial factory failure.
-        material.InspectStorage(copy, token);
+        // Both callers retain this graph on their synchronous private stack
+        // until their fresh source exit check and complete inventory succeed.
         return new OfdOwnedEditCandidate(source, copy, mapping, guard, context);
 
         void Map(object original, object clone)
         { material.ChargeCopy(128, token); if (mapping.ContainsKey(original)) throw new InvalidDataException("Ambiguous clone ownership."); mapping.Add(original, clone); }
         byte[] Bytes(byte[] original)
-        { material.ChargeCopy(original.LongLength, token); var clone = new byte[original.Length]; Array.Copy(original, clone, original.Length); return clone; }
+            => payloads.Copy(original, material, token);
         void Strings(List<string> original, List<string> clone)
         { material.ChargeCopy((long)original.Count * IntPtr.Size * 2, token); foreach (var value in original) { token.ThrowIfCancellationRequested(); clone.Add(value); } }
         OfdPage Page(OfdPage page)
         {
             // Cover owner/list/map growth before the existing cloner allocates.
             material.ChargeCopy(512, token);
-            return OfdModelCloner.ClonePage(page, keepSourcePath: true, clonePayloads: true, material: material, cancellationToken: token, mapping: mapping);
+            return OfdModelCloner.ClonePage(page, keepSourcePath: true, clonePayloads: true, material: material, cancellationToken: token, mapping: mapping, payloads: payloads);
         }
     }
 
@@ -121,6 +160,15 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         if (!mapping.TryGetValue(original, out var mapped) || mapped is not T typed)
             throw new InvalidOperationException("Object does not belong to this owned clone map.");
         return typed;
+    }
+    // Read-only map handoff for the exact private Writer after its claim. The
+    // generic editable GetMapped contract and its state check remain intact.
+    internal OfdTextElement ResolveOwnedClaimedRoot(OfdOwnedModelsLease owner, OfdTextElement original)
+    {
+        owner.RequireWriterCandidate(this); AssertClaimedActive();
+        if (!mapping.TryGetValue(original, out var mapped) || mapped is not OfdTextElement text)
+            throw new InvalidOperationException("Text root is outside this claimed clone map.");
+        return text;
     }
 
     private void AssertEditable()
