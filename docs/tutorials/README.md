@@ -61,6 +61,7 @@ unzip -l artifacts/hello.ofd
 ## 实用工具
 
 - [15. 文档工具：水印、Split、Mix 与清签](15-document-tools.md)
+- [16. 关键词定位与受限文字替换](16-keyword-replacement.md)
 
 ## 源项目模块对照
 

@@ -67,6 +67,8 @@ Doc_0/Signs/
 
 本仓库重写已签名包且字节变化时，会去掉失效的签名声明并报告 `SignaturesInvalidated`。需要签章时应对 **最终字节** 重新签。
 
+`replace-text` 的 Changed 保存遵循此清理约定；字节精确 Noop 则保留原 ZIP 和原签名。保留的旧签名载荷不代表新正文仍有有效签章，详见[关键词替换教程](16-keyword-replacement.md#签名重写与验证范围)。
+
 ## 动手
 
 对一份你有权使用的已签名 OFD：
