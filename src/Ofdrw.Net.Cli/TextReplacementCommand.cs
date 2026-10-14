@@ -43,7 +43,7 @@ internal static partial class Cli
         }
         internal static async Task<OwnedTextReplacementJob> CreateAsync(TextReplacementArguments options, CancellationToken token)
         {
-            var session = await OfdTextReplacementFileSession.OpenAsync(options.InputPath, token: token).ConfigureAwait(false);
+            var session = await OfdTextReplacementFileSession.OpenForPrivateCliJobAsync(options.InputPath, token).ConfigureAwait(false);
             try
             {
                 session.ReserveOwnedConfiguration(options.TrustedFonts.Count, options.Pages?.Count ?? 0, token);
@@ -59,10 +59,12 @@ internal static partial class Cli
                 if (report.Changed)
                 {
                     await session.ReadOwnedOutputAsync(token).ConfigureAwait(false);
-                    // Actual same-context Reader is necessary but insufficient.
-                    // Until full geometry/SCR checks are wired, fail before any
+                    session.VerifyOwnedGeometryInputs(token);
+                    // Actual same-context Reader and prepared-input equivalence
+                    // remain insufficient without the separately owned receipt.
+                    // Until receipt/preservation/final-copy gates are wired, fail before any
                     // AtomicOutput stage is created for a changed document.
-                    throw new NotSupportedException("Changed text output requires complete geometry and package readback verification.");
+                    throw new NotSupportedException("Changed text output requires an approved Writer receipt, preservation and final copy verification.");
                 }
                 session.ReserveOwnedAtomicMetadata(options.OutputPath, token);
                 var input = ResolveOwnedPath(options.InputPath, token);

@@ -20,6 +20,7 @@ internal sealed class OfdKeywordLocatorBudget(OfdKeywordLocatorLimits limits, Of
     internal void Copy(long bytes) => operation.Material?.ChargeCopy(bytes, operation.Token);
     internal void ReserveCopy(string phase, long bytes) { Copy(bytes); beforeAllocation?.Invoke(phase); }
     internal void Work(long bytes) => operation.Work(bytes);
+    internal void Retain(string? value) => operation.Material?.StoreString(value);
     internal void Correlate(int keyCharacters = 0)
     { Charge(ref CorrelationVisits, 1, limits.MaxValidationFields, "correlation visits"); Work(32L + 2L * keyCharacters); }
     private void Charge(ref long counter, long count, long maximum, string kind)
