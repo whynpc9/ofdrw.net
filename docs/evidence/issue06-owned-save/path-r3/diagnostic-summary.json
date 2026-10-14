@@ -1,0 +1,134 @@
+{
+  "head": "439cf4404c63362ceeceb56e77078fcabb966763",
+  "one_case": "original CJK AAA -> --- changed into previously missing nested parent",
+  "exit_code": 0,
+  "output": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/missing-parent/nested/output.ofd",
+    "bytes": 11599915,
+    "sha256": "a7a95ed2916e40daca8549b9e185d4f9017bb32f709dc57a6bc9c57a1805bfbd"
+  },
+  "typed": {
+    "completed": true,
+    "error": null,
+    "changed": true,
+    "requests": 1,
+    "copied_original_font_bytes": 21659544,
+    "statistics_count": 10,
+    "budget_bytes": 536870912,
+    "stage": "ActualCommitted",
+    "phase_code": 12,
+    "storage_bytes": 86682543,
+    "clone_copy_bytes": 276591506,
+    "validation_work_bytes": 517318480,
+    "output_upper_bound_bytes": 78256486,
+    "peak_actual_input_output_stage_file_lengths": 34799738,
+    "peak_reserved_file_positions": 34799738,
+    "output_spool_write_actual_bytes": 11599975,
+    "stage_write_actual_bytes": 11599915,
+    "phase_snapshots": [
+      {
+        "stage": "Configured",
+        "phase_code": 0,
+        "storage_bytes": 522,
+        "clone_copy_bytes": 167840,
+        "validation_work_bytes": 8126,
+        "output_upper_bound_bytes": 0,
+        "peak_actual_file_lengths": 0
+      },
+      {
+        "stage": "HostBound",
+        "phase_code": 0,
+        "storage_bytes": 650,
+        "clone_copy_bytes": 3369704,
+        "validation_work_bytes": 14842,
+        "output_upper_bound_bytes": 0,
+        "peak_actual_file_lengths": 0
+      },
+      {
+        "stage": "InitialRead",
+        "phase_code": 2,
+        "storage_bytes": 21680184,
+        "clone_copy_bytes": 30840500,
+        "validation_work_bytes": 104502313,
+        "output_upper_bound_bytes": 11599908,
+        "peak_actual_file_lengths": 11599908
+      },
+      {
+        "stage": "ActualOwnedWritten",
+        "phase_code": 5,
+        "storage_bytes": 65002420,
+        "clone_copy_bytes": 190271848,
+        "validation_work_bytes": 367796126,
+        "output_upper_bound_bytes": 66656571,
+        "peak_actual_file_lengths": 23199823
+      },
+      {
+        "stage": "ActualOwnedReadback",
+        "phase_code": 6,
+        "storage_bytes": 86681903,
+        "clone_copy_bytes": 217329199,
+        "validation_work_bytes": 415809017,
+        "output_upper_bound_bytes": 66656571,
+        "peak_actual_file_lengths": 23199823
+      },
+      {
+        "stage": "ActualCompoundVerified",
+        "phase_code": 6,
+        "storage_bytes": 86681903,
+        "clone_copy_bytes": 218194981,
+        "validation_work_bytes": 437481396,
+        "output_upper_bound_bytes": 66656571,
+        "peak_actual_file_lengths": 23199823
+      },
+      {
+        "stage": "ActualGeometryCompared",
+        "phase_code": 8,
+        "storage_bytes": 86682543,
+        "clone_copy_bytes": 276251598,
+        "validation_work_bytes": 437546964,
+        "output_upper_bound_bytes": 66656571,
+        "peak_actual_file_lengths": 23199823
+      },
+      {
+        "stage": "ActualStageCopied",
+        "phase_code": 9,
+        "storage_bytes": 86682543,
+        "clone_copy_bytes": 276478826,
+        "validation_work_bytes": 472440693,
+        "output_upper_bound_bytes": 78256486,
+        "peak_actual_file_lengths": 34799738
+      },
+      {
+        "stage": "ActualCommitClaimed",
+        "phase_code": 10,
+        "storage_bytes": 86682543,
+        "clone_copy_bytes": 276584110,
+        "validation_work_bytes": 517314194,
+        "output_upper_bound_bytes": 78256486,
+        "peak_actual_file_lengths": 34799738
+      },
+      {
+        "stage": "ActualCommitted",
+        "phase_code": 12,
+        "storage_bytes": 86682543,
+        "clone_copy_bytes": 276591506,
+        "validation_work_bytes": 517318480,
+        "output_upper_bound_bytes": 78256486,
+        "peak_actual_file_lengths": 34799738
+      }
+    ]
+  },
+  "input_font_unchanged": true,
+  "target_parent_absent_before": true,
+  "target_parent_exists_after": true,
+  "remaining_temp_files": [],
+  "all_five_uncompressed_entries_identical_to_both_prior_outputs": true,
+  "raw_zip_hashes": {
+    "new": "a7a95ed2916e40daca8549b9e185d4f9017bb32f709dc57a6bc9c57a1805bfbd",
+    "old_uninstrumented": "22a1270356935c95dfa32433474cd6d533406fd4b24254672f5dd1937b673054",
+    "old_typed": "bad6221c05c42f277d3aa080e39350d806cf17b22364624d4df9ca9e004f806e"
+  },
+  "source_before_after_equal": true,
+  "diagnostic_original_source_before_after_equal": true,
+  "errors": []
+}
