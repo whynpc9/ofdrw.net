@@ -15,6 +15,7 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
     private readonly OfdControlledEditContext context;
     private readonly string destination, path;
     private readonly FileStream file;
+    private readonly OfdOwnedIoObservation observation;
     private readonly object sync = new();
     private int busy, copied, closed, committed, disposed;
     private OfdOwnedAtomicStage(OfdOwnedNoopScope scope, OfdOwnedSnapshotCapture capture,
@@ -26,8 +27,10 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
         var directory = Path.GetDirectoryName(destination);
         if (string.IsNullOrEmpty(directory)) throw new InvalidDataException("Atomic destination requires a canonical parent.");
         path = Path.Combine(directory, ".ofdrw-save-" + Guid.NewGuid().ToString("N") + ".tmp");
+        observation = owner.BindActualStageObservation(this, token);
         context.Material.ChargeWork(16, token);
         file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous);
+        observation.RecordOpened();
     }
     private OfdOwnedAtomicStage(OfdOwnedStageScope scope, string destination, CancellationToken token)
     {
@@ -37,8 +40,10 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
         var directory = Path.GetDirectoryName(destination);
         if (string.IsNullOrEmpty(directory)) throw new InvalidDataException("Atomic destination requires a canonical parent.");
         path = Path.Combine(directory, ".ofdrw-save-" + Guid.NewGuid().ToString("N") + ".tmp");
+        observation = owner.BindActualStageObservation(this, token);
         context.Material.ChargeWork(16, token);
         file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous);
+        observation.RecordOpened();
     }
     internal static OfdOwnedAtomicStage CreateChanged(OfdOwnedStageScope scope, string destination, CancellationToken token)
     {
@@ -52,7 +57,7 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
         {
             if (Interlocked.CompareExchange(ref copied, 1, 0) != 0) throw new InvalidOperationException("Atomic stage has already been copied.");
             owner.BeginStageCopy(scope, written, this, token);
-            await output.CopyToStageAsync(file, length, digest, token).ConfigureAwait(false);
+            await output.CopyToStageAsync(file, length, digest, token, observation).ConfigureAwait(false);
             context.Material.ChargeWork(16, token); file.Dispose(); Volatile.Write(ref closed, 1);
             context.AssertActive(); token.ThrowIfCancellationRequested(); Volatile.Write(ref copied, 2);
         }
@@ -84,7 +89,7 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
             owner.BeginNoopCopy(scope, capture, this, token);
             context.Material.ChargeCopy(512, token);
             capture.RequireBytes(BitConverter.ToString(digest).Replace("-", string.Empty).ToLowerInvariant(), length, owner);
-            await original.CopyToStageAsync(file, length, digest, token).ConfigureAwait(false);
+            await original.CopyToStageAsync(file, length, digest, token, observation).ConfigureAwait(false);
             context.Material.ChargeWork(16, token); file.Dispose(); Volatile.Write(ref closed, 1);
             context.AssertActive(); token.ThrowIfCancellationRequested(); Volatile.Write(ref copied, 2);
         }
@@ -105,6 +110,8 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
     }
     internal Task CommitActualAsync(OfdOwnedCommitClaim claim, CancellationToken token)
     {
+      lock (sync)
+      {
         Enter(token);
         try
         {
@@ -112,17 +119,18 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
                 throw new InvalidOperationException("Atomic stage is not commit-ready.");
             context.Material.ChargeWork(32, token);
             owner.RequireCurrentDestination(token);
-            owner.ConsumeCommit(claim, this, token);
+            using var critical = owner.EnterCommitCriticalSection(claim, this, token);
             context.AssertActive(); token.ThrowIfCancellationRequested();
             if (File.Exists(destination)) File.Replace(path, destination, null);
             else File.Move(path, destination);
-            Volatile.Write(ref committed, 1);
+            Volatile.Write(ref committed, 1); observation.RecordRemoved();
             // No cleanup or cancellation check can reinterpret successful rename.
-            owner.RecordSuccessfulRename();
+            critical.RecordActualSuccessfulRename();
             return Task.CompletedTask;
         }
         catch { owner.Fail(); throw; }
         finally { Volatile.Write(ref busy, 0); }
+      }
     }
     public void Dispose()
     {
@@ -134,7 +142,7 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
         if (Volatile.Read(ref committed) != 0) return;
         Exception? error = null;
         try { file.Dispose(); } catch (Exception failure) { owner.Fail(); error = failure; }
-        try { File.Delete(path); } catch (Exception failure) { owner.Fail(); if (error is null) error = failure; }
+        try { File.Delete(path); if (error is null) observation.RecordRemoved(); } catch (Exception failure) { owner.Fail(); if (error is null) error = failure; }
         if (error is not null) ExceptionDispatchInfo.Capture(error).Throw();
     }
 }

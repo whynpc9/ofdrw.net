@@ -189,6 +189,22 @@ internal sealed class OfdOwnedCommitClaim : OfdOwnedClaim
     private OfdOwnedCommitClaim(OfdOwnedModelsLease owner) : base(owner) { }
     internal static OfdOwnedCommitClaim Issue(OfdOwnedModelsLease owner) => new(owner);
 }
+// Held only across the synchronous actual rename, never across an await.
+// Concurrent abandon/revoke waits for its linearization and cannot mark a
+// completed rename as a failed save after the final pre-rename checks.
+internal sealed class OfdOwnedCommitGate : IDisposable
+{
+    private readonly OfdOwnedModelsLease owner;
+    private int disposed;
+    private OfdOwnedCommitGate(OfdOwnedModelsLease owner) { this.owner = owner; }
+    internal static OfdOwnedCommitGate BeginActual(OfdOwnedModelsLease owner) => new(owner);
+    internal void RecordActualSuccessfulRename() => owner.RecordSuccessfulRename();
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposed, 1) == 0) owner.ExitCommitCriticalSection();
+    }
+}
+
 internal sealed class OfdOwnedTextRootKey
 {
     private readonly OfdOwnedModelsLease owner;
@@ -200,7 +216,7 @@ internal sealed class OfdOwnedTextRootKey
     {
         if (!ReferenceEquals(owner, exactOwner)) throw new InvalidOperationException("Foreign root key.");
         owner.RequireWriterCandidate(exactCandidate);
-        return exactCandidate.GetMapped(original);
+        return exactCandidate.ResolveOwnedClaimedRoot(owner, original);
     }
 }
 
@@ -294,6 +310,10 @@ internal sealed class OfdOwnedReadAcquisition
 
 internal sealed class OfdOwnedModelsLease
 {
+    private readonly object commitSync = new();
+    private readonly OfdOwnedIoTelemetry telemetry;
+    private readonly long budgetBytes;
+    private int inputIoBound, outputIoBound, stageIoBound, logicalURecorded;
     private readonly OfdControlledEditContext context;
     private readonly object jobIdentity = new();
     private int noopBound, snapshotIssued, actualAnalysisStarted;
@@ -328,7 +348,9 @@ internal sealed class OfdOwnedModelsLease
         if (snapshot.MaxMaterializedBytes > 512L * 1024 * 1024)
             throw new ArgumentOutOfRangeException(nameof(limits), "Owned saves retain the 512 MiB ceiling.");
         context = new OfdControlledEditContext(snapshot);
-        context.Material.ChargeCopy(4096, token);
+        context.Material.ChargeCopy(4096 + 65_536, token); // ticket + fixed numeric observations and 32 once-fill snapshots
+        budgetBytes = snapshot.MaxMaterializedBytes;
+        telemetry = OfdOwnedIoTelemetry.CreateAfterPrepayment();
     }
     internal static OfdOwnedJobTicket Begin(OfdModelLimits limits, CancellationToken token)
     {
@@ -351,12 +373,25 @@ internal sealed class OfdOwnedModelsLease
     }
     internal void Fail()
     {
-        context.Fail(); Interlocked.Exchange(ref phase, (int)OfdOwnedSavePhase.Failed);
+      lock (commitSync)
+      {
+        while (true)
+        {
+            var before = Volatile.Read(ref phase);
+            if (before == (int)OfdOwnedSavePhase.Completed) return;
+            if (Interlocked.CompareExchange(ref phase, (int)OfdOwnedSavePhase.Failed, before) != before) continue;
+            context.Fail(); return;
+        }
+      }
     }
     internal void Revoke()
     {
+      lock (commitSync)
+      {
+        if (Volatile.Read(ref phase) == (int)OfdOwnedSavePhase.Completed) return;
         Interlocked.Exchange(ref everBorrowed, 1); context.Fail();
         Interlocked.Exchange(ref phase, (int)OfdOwnedSavePhase.Revoked);
+      }
     }
     internal void BindFileIntent(OfdOwnedJobTicket exact, string input, string output, CancellationToken token)
     {
@@ -532,6 +567,7 @@ internal sealed class OfdOwnedModelsLease
         context.Material.ChargeCopy(256, token);
         exact.Consume(this); closed.Consume(this);
         Move(OfdOwnedSavePhase.Analyzing, OfdOwnedSavePhase.NoopVerified, token);
+        telemetry.RecordActualNoop();
         noopScope = OfdOwnedNoopScope.Issue(this); return noopScope;
     }
     internal OfdControlledEditContext BeginNoopStage(OfdOwnedNoopScope exact,
@@ -678,6 +714,19 @@ internal sealed class OfdOwnedModelsLease
         // cancellation and I/O admission happened before rename.
         Interlocked.Exchange(ref phase, (int)OfdOwnedSavePhase.Completed);
     }
+    internal OfdOwnedCommitGate EnterCommitCriticalSection(OfdOwnedCommitClaim exact,
+        object actualStageIdentity, CancellationToken token)
+    {
+        Monitor.Enter(commitSync);
+        try
+        {
+            ConsumeCommit(exact, actualStageIdentity, token);
+            context.Material.ChargeCopy(256, token);
+            return OfdOwnedCommitGate.BeginActual(this);
+        }
+        catch { Fail(); Monitor.Exit(commitSync); throw; }
+    }
+    internal void ExitCommitCriticalSection() => Monitor.Exit(commitSync);
     internal void RequireInputIntent(string actualPath, CancellationToken token)
     {
         context.AssertActive(); token.ThrowIfCancellationRequested();
@@ -688,6 +737,49 @@ internal sealed class OfdOwnedModelsLease
     {
         context.AssertActive(); token.ThrowIfCancellationRequested();
         RequireCanonicalPath(outputPath ?? throw new InvalidOperationException("Unbound destination."), token);
+    }
+    internal OfdOwnedIoObservation BindActualInputObservation(OfdOwnedReadClaim exact,
+        OfdOwnedSnapshotCapture capture, CancellationToken token)
+    {
+        Require(OfdOwnedSavePhase.ReadingInput, token);
+        if (!ReferenceEquals(readClaim, exact) || !ReferenceEquals(snapshotCapture, capture) ||
+            Interlocked.CompareExchange(ref inputIoBound, 1, 0) != 0)
+            throw new InvalidOperationException("Foreign or duplicate actual input observation owner.");
+        return telemetry.Input;
+    }
+    internal OfdOwnedIoObservation BindActualOutputObservation(OfdOwnedWriteScope exact,
+        OfdOwnedEditCandidate actualCandidate, CancellationToken token)
+    {
+        Require(OfdOwnedSavePhase.Writing, token);
+        if (!ReferenceEquals(writeScope, exact) || !ReferenceEquals(candidate, actualCandidate) ||
+            Interlocked.CompareExchange(ref outputIoBound, 1, 0) != 0)
+            throw new InvalidOperationException("Foreign or duplicate actual output observation owner.");
+        return telemetry.Output;
+    }
+    internal OfdOwnedIoObservation BindActualStageObservation(object actualStage, CancellationToken token)
+    {
+        context.AssertActive(); token.ThrowIfCancellationRequested();
+        var actualPhase = Volatile.Read(ref phase);
+        if ((actualPhase != (int)OfdOwnedSavePhase.Verified && actualPhase != (int)OfdOwnedSavePhase.NoopVerified) ||
+            !ReferenceEquals(stageIdentity, actualStage) || Interlocked.CompareExchange(ref stageIoBound, 1, 0) != 0)
+            throw new InvalidOperationException("Foreign or duplicate actual stage observation owner.");
+        return telemetry.Stage;
+    }
+    internal void RecordActualLogicalWriterReservation(OfdOwnedWriteScope exact,
+        OfdOwnedEditCandidate actualCandidate, long actualReservation, CancellationToken token)
+    {
+        Require(OfdOwnedSavePhase.Writing, token);
+        if (!ReferenceEquals(writeScope, exact) || !ReferenceEquals(candidate, actualCandidate) || actualReservation < 0 ||
+            Interlocked.CompareExchange(ref logicalURecorded, 1, 0) != 0)
+            throw new InvalidOperationException("Foreign or repeated actual Writer reservation observation.");
+        telemetry.RecordLogicalWriterReservation(actualReservation);
+    }
+    internal OfdOwnedSaveStatistics CaptureStatistics(OfdOwnedJobTicket exact)
+    {
+        if (!ReferenceEquals(ticket, exact)) throw new InvalidOperationException("Foreign numeric observation ticket.");
+        // No allocation, quota request, virtual I/O/property, model walk or active
+        // context requirement. This remains safe after the first failure.
+        return telemetry.CaptureActual(Volatile.Read(ref phase), budgetBytes, context.Material);
     }
     internal void RequireWriterCandidate(OfdOwnedEditCandidate actual)
     {
@@ -759,6 +851,7 @@ internal static class OfdOwnedSaveAuthority
     {
         try { return scope.Owner.Clone(scope, exactBatch, out candidateGuard, token); } catch { scope.Owner.Fail(); throw; }
     }
+    internal static OfdOwnedSaveStatistics CaptureStatistics(OfdOwnedJobTicket ticket) => ticket.Owner.CaptureStatistics(ticket);
     internal static void RevokeForExternalBorrow(OfdOwnedModelsLease lease) => lease.Revoke();
     internal static void Fail(OfdOwnedJobTicket ticket) => ticket.Owner.Fail();
 }

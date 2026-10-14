@@ -48,10 +48,11 @@ internal static partial class OfdOwnedReader
             original.EnterActualInitialReader(claim, out var stream, out var capture, token);
             var actual = await new OfdReader().ReadOwnedInitialAsync(stream, limits, context, acquisition, token).ConfigureAwait(false);
             var lease = OfdOwnedSaveAuthority.CompleteInputRead(claim, actual, acquisition, capture, token);
+            original.CompleteActualInitialReader(claim);
             context.Material.ChargeCopy(256, token);
             return OfdOwnedInputRead.Issue(lease, original);
         }
-        catch { ticket.Owner.Fail(); original?.Dispose(); throw; }
+        catch { ticket.Owner.Fail(); original?.AbortActualInitialReader(); original?.Dispose(); throw; }
     }
     internal static async Task<OfdActualReadback> ReadOutputAsync(OfdOwnedWrittenSpool written, CancellationToken token)
     {
@@ -61,7 +62,7 @@ internal static partial class OfdOwnedReader
             var actualR = await new OfdReader().ReadOwnedOutputAsync(stream, context, census, token).ConfigureAwait(false);
             return written.CompleteActualOutputReader(actualR, census, token);
         }
-        catch { context.Fail(); throw; }
+        catch { context.Fail(); written.AbortActualOutputReader(); throw; }
     }
     internal static void ConsumeInitial(OfdOwnedInputRead actualRead,
         out OfdOwnedModelsLease lease, out OfdOwnedInputSnapshot snapshot) => actualRead.Consume(out lease, out snapshot);

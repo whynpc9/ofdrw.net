@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -46,6 +47,7 @@ public sealed partial class OfdPackageWriter
                 var context = candidate.Context; var material = context.Material;
                 material.ChargeCopy(4096, token);
                 var plan = PreparePlan(candidate.Package, material, token);
+                scope.Owner.RecordActualLogicalWriterReservation(scope, candidate, plan.OutputReservation, token);
                 material.ChargeCopy(checked(1024L + 512L * plan.Fonts.Resources.Count), token);
                 var sourceFonts = new Dictionary<string, OfdOwnedFontDeclaration.Facts>(StringComparer.Ordinal);
                 foreach (var font in plan.Fonts.Resources)
@@ -63,7 +65,7 @@ public sealed partial class OfdPackageWriter
                 var current = guard.AssertUnchangedAndObservePayloads(candidate.Package, context, token);
                 var receipt = OwnedWriteReceipt.Create(scope, candidate, plan, entries, copies, pruning, sourceFonts, current, token);
                 current.CompletePrivateIssuance();
-                file = new OfdAccountedTemporaryFile(context, 512L * 1024 * 1024, token);
+                file = new OfdAccountedTemporaryFile(context, 512L * 1024 * 1024, token, scope.Owner.BindActualOutputObservation(scope, candidate, token));
                 await WriteZipTerminalAsync(entries, plan, file, context, token).ConfigureAwait(false);
                 await file.FlushAsync(token).ConfigureAwait(false); // exact owned route only; old Stream path is unchanged
                 candidate.AssertClaimedActive(); token.ThrowIfCancellationRequested(); context.AssertActive();
@@ -118,7 +120,8 @@ public sealed partial class OfdPackageWriter
                 { pruning.RequireActualRemoval(original.Key, original.Value, token); continue; }
                 var origin = reverseCopies[frozen];
                 if (ReferenceEquals(origin, original.Value)) continue;
-                OfdOwnedXmlPreservation.RequirePreserved(original.Key, original.Value, origin, pruning, material, token);
+                var expectedXml = BuildExpectedClosedRewrite(original.Key, original.Value, candidate.Package, plan, sourceFonts, pruning, material, token);
+                OfdOwnedXmlPreservation.RequireExactClosedRewrite(original.Key, expectedXml, origin, material, token);
             }
             var actualPageEntries = plan.Pages.Select(page => plan.PagePaths[page]).ToArray();
             var fontRecords = new Dictionary<string, FontRecord>(StringComparer.Ordinal);
@@ -140,47 +143,189 @@ public sealed partial class OfdPackageWriter
             var addresses = new OfdReadbackRootAddress[rootKeys.Length];
             var sourceDoc = material.ReadXml(candidate.Package.DocumentEntryPath!, candidate.Package.PreservedEntries[candidate.Package.DocumentEntryPath!], token);
             var outputDoc = material.ReadXml(plan.DocumentPath, frozenEntries[plan.DocumentPath], token);
+            var sourceReferences = IndexPageReferences(sourceDoc, material, token);
+            var outputReferences = IndexPageReferences(outputDoc, material, token);
+            var actualLocations = IndexActualPlanRoots(plan, frozenEntries, material, token);
             for (var i = 0; i < rootKeys.Length; i++)
             {
+                material.ChargeWork(64, token);
                 var root = rootKeys[i].ResolveCandidate(scope.Owner, candidate);
-                var page = plan.Pages.Single(item => item.Elements.Any(element => ReferenceEquals(element, root)));
-                var path = plan.PagePaths[page]; var pageId = plan.PageIds[page]; var objectId = plan.ElementIds[root];
-                var fontId = plan.Fonts.TextBindings[root].Id;
-                if (page.Id != pageId || root.ObjectId != objectId || root.FontResourceId != fontId || page.SourceEntryPath != path)
-                    throw new InvalidDataException("Private text plan requires unsupported owner/ID/path relocation.");
-                var pageXml = material.ReadXml(path, frozenEntries[path], token); var ns = pageXml.Root!.Name.Namespace;
-                var layers = pageXml.Root.Element(ns + "Content")?.Elements(ns + "Layer").ToArray() ?? Array.Empty<XElement>();
-                var layerOrdinal = -1; var rootOrdinal = -1; XElement? actualLayer = null;
-                for (var layer = 0; layer < layers.Length; layer++)
-                {
-                    var children = layers[layer].Elements().ToArray();
-                    for (var ordinal = 0; ordinal < children.Length; ordinal++)
-                    {
-                        material.ChargeWork(16, token);
-                        if (children[ordinal].Name != ns + "TextObject" || children[ordinal].Attribute("ID")?.Value != objectId) continue;
-                        if (rootOrdinal != -1 || children[ordinal].Attribute("Font")?.Value != fontId)
-                            throw new InvalidDataException("Actual planned root mapping is ambiguous or has another font.");
-                        layerOrdinal = layer; rootOrdinal = ordinal; actualLayer = layers[layer];
-                    }
-                }
-                if (actualLayer is null || actualLayer.Attribute("ID")?.Value != root.LayerId)
-                    throw new InvalidDataException("Actual plan lacks its identity layer/root owner.");
-                var srcPage = FindPageReference(sourceDoc, page.Id!); var outPage = FindPageReference(outputDoc, pageId);
+                if (!actualLocations.TryGetValue(root, out var location))
+                    throw new InvalidDataException("Expected root has no exact actual planned output locator.");
+                var page = location.Page; var path = plan.PagePaths[page];
+                var pageId = plan.PageIds[page]; var objectId = plan.ElementIds[root]; var fontId = plan.Fonts.TextBindings[root].Id;
+                if (!sourceReferences.TryGetValue(page.Id!, out var srcPage) || !outputReferences.TryGetValue(pageId, out var outPage))
+                    throw new InvalidDataException("Actual Document lacks the planned page reference.");
                 if (srcPage.Name != outPage.Name || srcPage.Attribute("BaseLoc")?.Value != outPage.Attribute("BaseLoc")?.Value || candidate.Package.DocumentEntryPath != plan.DocumentPath)
                     throw new InvalidDataException("Actual page reference requires unsupported raw-literal/QName/origin relocation.");
-                addresses[i] = OfdReadbackRootAddress.FromActualPlan(rootKeys[i], page.Index, path, layerOrdinal, rootOrdinal,
-                    objectId, pageId, actualLayer.Attribute("ID")?.Value, fontId, fontRecords[fontId].Declaration,
+                addresses[i] = OfdReadbackRootAddress.FromActualPlan(rootKeys[i], page.Index, path, location.LayerOrdinal, location.RootOrdinal,
+                    objectId, pageId, location.LayerId, fontId, fontRecords[fontId].Declaration,
                     srcPage.Attribute("BaseLoc")?.Value, outPage.Attribute("BaseLoc")?.Value,
                     srcPage.Name.ToString(), outPage.Name.ToString(), candidate.Package.DocumentEntryPath!, plan.DocumentPath);
             }
             return new(context, targets, fontRecords, addresses, plan.DocumentPath, actualPageEntries);
         }
-        private static XElement FindPageReference(XDocument document, string id)
+        private static XDocument BuildExpectedClosedRewrite(string entry, byte[] original,
+            OfdDocumentPackage candidate, WritePlan plan, Dictionary<string, OfdOwnedFontDeclaration.Facts> sourceFonts,
+            OfdOwnedPruneDispositions pruning, OfdModelMaterialization material, CancellationToken token)
+        {
+            var expected = material.ReadXml(entry, original, token);
+            var document = expected.Root ?? throw new InvalidDataException("Source control XML lacks a root.");
+            var ns = document.Name.Namespace;
+            material.ChargeCopy(checked(1024L + 64L * document.DescendantsAndSelf().Count()), token);
+            var sourceNodes = document.DescendantsAndSelf().ToArray();
+            if (entry == plan.DocumentPath)
+            {
+                var max = document.Element(ns + "CommonData")?.Element(ns + "MaxUnitID");
+                if (max is null) throw new InvalidDataException("Private document profile requires its actual MaxUnitID.");
+                max.Value = plan.Ids.MaxId.ToString(CultureInfo.InvariantCulture);
+            }
+            foreach (var page in plan.Pages)
+            {
+                material.ChargeWork(16, token);
+                if (plan.PagePaths[page] != entry) continue;
+                if (document.Name != ns + "Page") throw new InvalidDataException("Planned page lacks its actual source Page role.");
+                foreach (var element in page.Elements)
+                {
+                    material.ChargeWork(32, token);
+                    if (candidate.SourceIdentity is null || !candidate.SourceIdentity.TryOwner(element, out var owner) ||
+                        owner.Entry != entry || owner.Slot < 0 || owner.Slot >= sourceNodes.Length ||
+                        sourceNodes[owner.Slot].Name != owner.Kind || sourceNodes[owner.Slot].Attribute("ID")?.Value != owner.Id ||
+                        plan.ElementIds[element] != owner.Id)
+                        throw new InvalidDataException("Planned root lacks its exact imported source position and identity ID.");
+                    // Core applied the authenticated fixed-slot edits to this
+                    // literal. It is independent of BuildEntries' emitted bytes.
+                    var literal = element switch
+                    {
+                        OfdTextElement textRoot => textRoot.SourceXml,
+                        OfdImageElement imageRoot => imageRoot.SourceXml,
+                        OfdPathElement pathRoot => pathRoot.SourceXml,
+                        OfdRawElement rawRoot => rawRoot.Xml,
+                        _ => null
+                    };
+                    if (string.IsNullOrWhiteSpace(literal))
+                        throw new InvalidDataException("Private root requires its imported candidate SourceXml.");
+                    material.PrepareReadXmlParser(checked(2L * literal!.Length), token);
+                    var approved = XElement.Parse(literal!, LoadOptions.PreserveWhitespace);
+                    if (approved.Name != owner.Kind || approved.Attribute("ID")?.Value != owner.Id)
+                        throw new InvalidDataException("Candidate SourceXml changed its source root authority.");
+                    if (element is OfdTextElement text)
+                    {
+                        var binding = plan.Fonts.TextBindings[text];
+                        if (binding.Id != text.FontResourceId || binding.Resource.Data.Length == 0)
+                            throw new InvalidDataException("Private text rewrite requires the actual identity embedded-font plan.");
+                        approved.SetAttributeValue("Font", binding.Id);
+                        approved.SetAttributeValue("Weight", text.Weight != OfdTextElement.DefaultWeight
+                            ? text.Weight.ToString(CultureInfo.InvariantCulture) : null);
+                        approved.SetAttributeValue("Italic", text.Italic ? "true" : null);
+                    }
+                    // Other imported roots are preserved literally in this minimum
+                    // profile; an unsupported serializer normalization fails closed.
+                    sourceNodes[owner.Slot].ReplaceWith(approved);
+                    if (!candidate.SourceIdentity.TryLayer(element, out var layerOwner) ||
+                        layerOwner.Entry != entry || layerOwner.Slot < 0 || layerOwner.Slot >= sourceNodes.Length ||
+                        sourceNodes[layerOwner.Slot].Name != layerOwner.Kind || sourceNodes[layerOwner.Slot].Attribute("ID")?.Value != layerOwner.Id ||
+                        plan.LayerIds[page][GetLayerKey(element)] != layerOwner.Id)
+                        throw new InvalidDataException("Planned layer lacks its exact imported source owner.");
+                    var layer = sourceNodes[layerOwner.Slot];
+                    layer.SetAttributeValue("Type", string.IsNullOrWhiteSpace(element.LayerType) ? "Body" : element.LayerType);
+                }
+            }
+            foreach (var binding in plan.Fonts.Resources)
+            {
+                material.ChargeWork(16, token);
+                var facts = sourceFonts[binding.Id];
+                if (facts.ResourceEntry != entry) continue;
+                var ordinal = facts.FontElementPreorderOrdinal;
+                if (ordinal < 0 || ordinal >= sourceNodes.Length || sourceNodes[ordinal].Name.ToString() != facts.FontExpandedName ||
+                    sourceNodes[ordinal].Attribute("ID")?.Value != binding.Id)
+                    throw new InvalidDataException("Planned font lacks its actual source resource position.");
+                var font = sourceNodes[ordinal]; var model = binding.Resource;
+                // The actual catalog plan's explicit modeled attributes. All
+                // other attributes, text, child nodes and positions stay exact.
+                font.SetAttributeValue("FontName", model.FontName);
+                font.SetAttributeValue("FamilyName", model.FamilyName ?? model.FontName);
+                font.SetAttributeValue("Charset", model.Charset);
+                font.SetAttributeValue("Bold", model.Bold ? true : (object?)null);
+                font.SetAttributeValue("Italic", model.Italic ? true : (object?)null);
+            }
+            pruning.ApplyActualSignatureRemovals(entry, expected, token);
+            return expected;
+        }
+        private sealed class RootLocation(OfdPage page, int layerOrdinal, int rootOrdinal, string? layerId)
+        {
+            internal readonly OfdPage Page = page;
+            internal readonly int LayerOrdinal = layerOrdinal, RootOrdinal = rootOrdinal;
+            internal readonly string? LayerId = layerId;
+        }
+        private static Dictionary<string, XElement> IndexPageReferences(XDocument document,
+            OfdModelMaterialization material, CancellationToken token)
         {
             var ns = document.Root!.Name.Namespace;
-            var matches = document.Root.Element(ns + "Pages")?.Elements(ns + "Page").Where(node => node.Attribute("ID")?.Value == id).ToArray();
-            if (matches is null || matches.Length != 1) throw new InvalidDataException("Actual Document lacks a unique page reference.");
-            return matches[0];
+            var parent = document.Root.Element(ns + "Pages") ?? throw new InvalidDataException("Actual Document lacks Pages.");
+            var count = 0;
+            foreach (var node in parent.Elements(ns + "Page")) { material.ChargeWork(16, token); count++; }
+            material.ChargeCopy(checked(512L + 512L * count), token);
+            var result = new Dictionary<string, XElement>(StringComparer.Ordinal);
+            foreach (var node in parent.Elements(ns + "Page"))
+            {
+                var id = node.Attribute("ID")?.Value;
+                material.ChargeWork(checked(32L + 2L * (id?.Length ?? 0)), token);
+                if (string.IsNullOrEmpty(id) || result.ContainsKey(id!)) throw new InvalidDataException("Actual page references have missing or duplicate owner IDs.");
+                result.Add(id!, node);
+            }
+            return result;
+        }
+        private static Dictionary<OfdTextElement, RootLocation> IndexActualPlanRoots(WritePlan plan,
+            Dictionary<string, byte[]> entries, OfdModelMaterialization material, CancellationToken token)
+        {
+            long maximumRoots = 0;
+            foreach (var page in plan.Pages) { material.ChargeWork(16, token); maximumRoots = checked(maximumRoots + page.Elements.Count); }
+            material.ChargeCopy(checked(1024L + 1024L * maximumRoots), token);
+            var result = new Dictionary<OfdTextElement, RootLocation>();
+            var expectedCount = 0;
+            foreach (var page in plan.Pages)
+            {
+                var path = plan.PagePaths[page]; var pageId = plan.PageIds[page];
+                material.ChargeWork(checked(32L + 2L * (path.Length + pageId.Length)), token);
+                if (page.Id != pageId || page.SourceEntryPath != path)
+                    throw new InvalidDataException("Private text plan requires identity page IDs and paths.");
+                var owners = new Dictionary<string, OfdTextElement>(StringComparer.Ordinal);
+                foreach (var element in page.Elements)
+                {
+                    material.ChargeWork(32, token);
+                    if (element is not OfdTextElement text) continue;
+                    var id = plan.ElementIds[text]; var fontId = plan.Fonts.TextBindings[text].Id;
+                    material.ChargeWork(checked(32L + 2L * (id.Length + fontId.Length)), token);
+                    if (text.ObjectId != id || text.FontResourceId != fontId || owners.ContainsKey(id))
+                        throw new InvalidDataException("Private text plan requires identity object/font bindings.");
+                    owners.Add(id, text); expectedCount++;
+                }
+                var pageXml = material.ReadXml(path, entries[path], token); var ns = pageXml.Root!.Name.Namespace;
+                var content = pageXml.Root.Element(ns + "Content") ?? throw new InvalidDataException("Actual page lacks Content.");
+                var layerOrdinal = 0;
+                foreach (var layer in content.Elements(ns + "Layer"))
+                {
+                    var layerId = layer.Attribute("ID")?.Value; var rootOrdinal = 0;
+                    foreach (var node in layer.Elements())
+                    {
+                        material.ChargeWork(32, token);
+                        if (node.Name == ns + "TextObject")
+                        {
+                            var id = node.Attribute("ID")?.Value;
+                            material.ChargeWork(checked(32L + 2L * (id?.Length ?? 0)), token);
+                            if (id is null || !owners.TryGetValue(id, out var owner) || result.ContainsKey(owner) ||
+                                owner.LayerId != layerId || node.Attribute("Font")?.Value != plan.Fonts.TextBindings[owner].Id)
+                                throw new InvalidDataException("Actual planned root has foreign, ambiguous or relocated layer/font ownership.");
+                            result.Add(owner, new RootLocation(page, layerOrdinal, rootOrdinal, layerId));
+                        }
+                        rootOrdinal++;
+                    }
+                    layerOrdinal++;
+                }
+            }
+            if (result.Count != expectedCount) throw new InvalidDataException("Actual planned text-root coverage is incomplete.");
+            return result;
         }
         internal Dictionary<OfdFontResource, OfdOwnedVerifiedFontSummary> VerifyActual(OfdDocumentPackage actualR,
             OfdOwnedZipCensus census, OfdCurrentPayloadEvidence current, CancellationToken token)
