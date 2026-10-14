@@ -47,6 +47,24 @@ public sealed class OfdTextReplacer
         var policies = options ?? new OfdTextReplacementOptions();
         if (replacementText.Length > policies.Limits.MaxReplacementUtf16Units) throw new InvalidDataException("ReplacementTextLimit");
         var operation = new OfdTextReplacementOperation(source, policies, cancellationToken);
+        return PrepareKeywordOperation(operation, pageIndexes, keyword, replacementText, cancellationToken);
+    }
+
+    internal OfdTextReplacementResult ReplaceControlled(OfdTextReplacementFileSession session, IReadOnlyList<int>? pageIndexes,
+        string keyword, string replacementText, CancellationToken cancellationToken)
+    {
+        if (keyword is null) throw new ArgumentNullException(nameof(keyword));
+        if (keyword.Length == 0) throw new ArgumentException("Keyword cannot be empty.", nameof(keyword));
+        if (replacementText is null) throw new ArgumentNullException(nameof(replacementText));
+        if (replacementText.Length > session.Options.Limits.MaxReplacementUtf16Units) throw new InvalidDataException("ReplacementTextLimit");
+        var operation = OfdTextReplacementOperation.ForFileSession(session, session.BoundSource, session.BoundContext, cancellationToken);
+        return PrepareKeywordOperation(operation, pageIndexes, keyword, replacementText, cancellationToken);
+    }
+
+    private OfdTextReplacementResult PrepareKeywordOperation(OfdTextReplacementOperation operation, IReadOnlyList<int>? pageIndexes,
+        string keyword, string replacementText, CancellationToken cancellationToken)
+    {
+        var source = operation.Source!; var policies = operation.Options;
         try
         {
             operation.Begin("ValidateReplacement");

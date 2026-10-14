@@ -131,9 +131,16 @@ public sealed class TextReplacementTests
     public async Task LowBudgetFailsBeforeProviderAndIncludesPhaseCounters()
     {
         var source = await Read(); var provider = new Metrics();
+        using var integrityContext = new OfdControlledEditContext(new());
+        var original = integrityContext.CaptureSource(source);
         var options = new OfdTextReplacementOptions(new(maxMaterializedBytes: 1_000_000));
-        var error = Assert.Throws<InvalidDataException>(() => new OfdTextReplacer(provider).Replace(source, "B", "-", options));
-        Assert.Equal(0, provider.Opens); Assert.Equal("KeywordQuery", error.Data["Ofdrw.TextReplacement.Phase"]);
+        OfdTextReplacementResult? prepared = null;
+        var error = Assert.Throws<InvalidDataException>(() => prepared = new OfdTextReplacer(provider).Replace(source, "B", "-", options));
+        // A1.2's controlled XML policy persists for the complete context,
+        // so initial source admission now rejects this quota before querying.
+        Assert.Equal(0, provider.Opens); Assert.Equal("CaptureSource", error.Data["Ofdrw.TextReplacement.Phase"]);
+        Assert.True(OfdTraversalBudget.IsLimit(error)); Assert.Null(prepared);
+        original.AssertUnchanged(source, integrityContext);
         Assert.IsType<OfdTextReplacementPhase>(error.Data["Ofdrw.TextReplacement.Counters"]);
     }
 
