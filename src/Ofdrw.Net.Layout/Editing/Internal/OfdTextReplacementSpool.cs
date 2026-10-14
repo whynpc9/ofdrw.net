@@ -51,7 +51,7 @@ internal sealed class OfdTextReplacementSpool : Stream
     internal Task<(long Length, byte[] Sha256)> CaptureOriginalAsync(string originalPath, long maximumInputBytes, CancellationToken token)
         => actual.CaptureOriginalAsync(originalPath, maximumInputBytes, token);
     internal Task<(long Length, byte[] Sha256)> ObserveRawZipAsync(CancellationToken token) => actual.ObserveRawZipAsync(token);
-    internal Task CopyToStageAsync(FileStream destination, long expectedLength, byte[] expectedSha256, CancellationToken token)
+    internal Task CopyToStageAsync(FileStream destination, long expectedLength, byte[] expectedSha256, CancellationToken token = default)
         => actual.CopyToStageAsync(destination, expectedLength, expectedSha256, token);
     protected override void Dispose(bool disposing) { if (disposing) actual.Dispose(); base.Dispose(disposing); }
 }
