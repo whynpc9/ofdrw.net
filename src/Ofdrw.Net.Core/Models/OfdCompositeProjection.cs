@@ -69,7 +69,7 @@ internal static class OfdCompositeProjection
         {
             var xml = OfdClipXml.Write(owner, Ofdrw.Net.Core.Constants.OfdConstants.Namespace, material, token);
             if (xml is null) return;
-            foreach (var region in OfdClipGeometry.Read(xml, material, token))
+            foreach (var region in OfdClipGeometry.Read(xml, material, token, requireClosedProfile: true))
                 foreach (var path in region.Paths)
                 { path.Transform = Multiply(origin, path.Transform ?? Identity()); path.FillRule = region.EvenOdd ? OfdFillRule.EvenOdd : OfdFillRule.NonZero; clips.Add(path); }
         }

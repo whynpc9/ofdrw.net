@@ -10,8 +10,15 @@ internal static class OfdClipCloner
     internal static void Clone(OfdElement source, OfdElement target, IDictionary<object, object>? mapping,
         OfdModelMaterialization material, CancellationToken token, bool clonePayloads, OfdPayloadCloneSession? payloads)
     {
-        var map = mapping ?? new Dictionary<object, object>(OfdReferenceIdentity.Instance);
         var owner = source.ClipOwnership; var copy = target.ClipOwnership;
+        // Existing primitive-only clones do not allocate a clip map/session.
+        if (owner.Value is null && owner.Original is null && owner.Baseline is null)
+        {
+            copy.Raw = owner.Raw;
+            if (mapping is not null) { material.ChargeCopy(128, token); mapping.Add(owner, copy); }
+            return;
+        }
+        var map = mapping ?? new Dictionary<object, object>(OfdReferenceIdentity.Instance);
         owner.Validate(source.ClippingXml, material, token);
         material.ChargeCopy(256, token); map.Add(owner, copy);
         copy.Value = Collection(owner.Value); copy.Original = Collection(owner.Original); copy.Raw = owner.Raw;

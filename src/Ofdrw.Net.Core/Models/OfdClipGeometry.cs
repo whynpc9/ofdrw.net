@@ -21,7 +21,7 @@ internal static class OfdClipGeometry
         element.ClipOwnership.Validate(element.ClippingXml, material, token);
         material.ChargeCopy(8192L + 64L * (element.ClippingXml?.Length ?? 0), token);
         var xml = OfdClipXml.Write(element, Ofdrw.Net.Core.Constants.OfdConstants.Namespace, material, token);
-        return xml is null ? Array.Empty<OfdClipRegion>() : Read(xml, material, token);
+        return xml is null ? Array.Empty<OfdClipRegion>() : Read(xml, material, token, requireClosedProfile: element.Clips is not null);
     }
     internal static IReadOnlyList<OfdClipRegion> Read(string? xml)
     {
@@ -31,12 +31,12 @@ internal static class OfdClipGeometry
         return Read(root, null, default);
     }
 
-    internal static IReadOnlyList<OfdClipRegion> Read(XElement root, OfdModelMaterialization? material, CancellationToken token)
+    internal static IReadOnlyList<OfdClipRegion> Read(XElement root, OfdModelMaterialization? material, CancellationToken token, bool requireClosedProfile = false)
     {
         var regions = new List<OfdClipRegion>();
         var ns = root.Name.Namespace;
         if (root.Name.LocalName != "Clips" || (ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.Namespace && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) ||
-            !OfdGraphicXmlContract.HasKnownChildren(root) || OfdGraphicXmlContract.HasUnsupportedReferences(root) || root.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a)))
+            requireClosedProfile && (!OfdGraphicXmlContract.HasKnownChildren(root) || OfdGraphicXmlContract.HasUnsupportedReferences(root) || root.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a))))
             throw new NotSupportedException("Clip extensions or references are outside the render profile.");
         foreach (var clip in root.Elements(ns + "Clip"))
         {
