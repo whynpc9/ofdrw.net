@@ -36,6 +36,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         OfdNavigationXml.Validate(source, source.Pages, token, material);
         material.ChargeCopy(4096L + (long)(source.Fonts.Count + source.Attachments.Count) * 256, token);
         var mapping = new Dictionary<object, object>(OfdReferenceIdentity.Instance);
+        using var payloads = OfdPayloadCloneSession.Create(context, token);
         var copy = new OfdDocumentPackage
         {
             DocumentEntryPath = source.DocumentEntryPath, PublicResourceLocation = source.PublicResourceLocation,
@@ -102,14 +103,14 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         void Map(object original, object clone)
         { material.ChargeCopy(128, token); if (mapping.ContainsKey(original)) throw new InvalidDataException("Ambiguous clone ownership."); mapping.Add(original, clone); }
         byte[] Bytes(byte[] original)
-        { material.ChargeCopy(original.LongLength, token); var clone = new byte[original.Length]; Array.Copy(original, clone, original.Length); return clone; }
+            => payloads.Copy(original, material, token);
         void Strings(List<string> original, List<string> clone)
         { material.ChargeCopy((long)original.Count * IntPtr.Size * 2, token); foreach (var value in original) { token.ThrowIfCancellationRequested(); clone.Add(value); } }
         OfdPage Page(OfdPage page)
         {
             // Cover owner/list/map growth before the existing cloner allocates.
             material.ChargeCopy(512, token);
-            return OfdModelCloner.ClonePage(page, keepSourcePath: true, clonePayloads: true, material: material, cancellationToken: token, mapping: mapping);
+            return OfdModelCloner.ClonePage(page, keepSourcePath: true, clonePayloads: true, material: material, cancellationToken: token, mapping: mapping, payloads: payloads);
         }
     }
 
