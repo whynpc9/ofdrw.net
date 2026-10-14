@@ -19,13 +19,85 @@ internal static partial class Cli
 
     private static async Task<int> SaveReplacementAsync(TextReplacementArguments options, CancellationToken token)
     {
-        using var job = await OwnedTextReplacementJob.CreateAsync(options, token).ConfigureAwait(false);
-        await job.SaveAsync(token).ConfigureAwait(false);
+        _ = await DispatchPrivateOwnedSaveAsync(options, token).ConfigureAwait(false);
         Console.WriteLine($"Replaced {options.InputPath} -> {options.OutputPath}");
         return 0;
     }
 
-    // The sole eligible production composition. No provider, Stream, model,
+    // Sole ticket-owned command route. Source-only integration candidate;
+    // release acceptance requires the independent full runtime and visual gates.
+    private static Task<OfdPrivateSaveResult> DispatchPrivateOwnedSaveAsync(TextReplacementArguments options, CancellationToken token)
+    {
+        var bootstrap = OfdPrivateSaveBootstrap.Create(512L * 1024 * 1024, options.TrustedFonts.Count, options.Pages?.Count ?? 0, token);
+        try
+        {
+            bootstrap.Configure(options.InputPath, options.OutputPath, options.Keyword, options.Replacement, token);
+            var input = ResolvePrivateOwnedPath(options.InputPath, bootstrap, token);
+            var output = ResolvePrivateOwnedPath(options.OutputPath, bootstrap, token);
+            bootstrap.RequireDistinctCanonicalPaths(input, output, token);
+            for (var i = 0; i < options.TrustedFonts.Count; i++) bootstrap.AdmitConfiguredString(options.TrustedFonts[i].Sha256, token);
+            var state = new PrivateSaveDispatch(bootstrap, options.InputPath, options.OutputPath, options.Keyword, options.Replacement,
+                options.TrustedFonts.ToArray(), options.Pages?.ToArray(), token);
+            Task<Task<OfdPrivateSaveResult>> queued;
+            if (ExecutionContext.IsFlowSuppressed()) queued = QueuePrivateSave(state);
+            else
+            {
+                // Synchronous queue only; restore the caller's flow before any
+                // await or asynchronous completion/disposal continuation.
+                using (ExecutionContext.SuppressFlow()) queued = QueuePrivateSave(state);
+            }
+            return FinishPrivateDispatchAsync(queued.Unwrap(), bootstrap);
+        }
+        catch { try { bootstrap.Dispose(); } catch { } throw; }
+    }
+    private static Task<Task<OfdPrivateSaveResult>> QueuePrivateSave(PrivateSaveDispatch state)
+        => Task.Factory.StartNew(static value => ((PrivateSaveDispatch)value!).RunAsync(), state,
+            CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+    private static async Task<OfdPrivateSaveResult> FinishPrivateDispatchAsync(Task<OfdPrivateSaveResult> work, OfdPrivateSaveBootstrap bootstrap)
+    {
+        Exception? primary = null;
+        try { return await work.ConfigureAwait(false); }
+        catch (Exception error) { primary = error; throw; }
+        finally { if (primary is null) bootstrap.Dispose(); else { try { bootstrap.Dispose(); } catch { } } }
+    }
+    private sealed class PrivateSaveDispatch(OfdPrivateSaveBootstrap bootstrap, string input, string output,
+        string keyword, string replacement, OfdTrustedEmbeddedFontIdentity[] identities, int[]? pages, CancellationToken token)
+    {
+        internal Task<OfdPrivateSaveResult> RunAsync()
+        {
+            token.ThrowIfCancellationRequested();
+            // First provider construction occurs on the fixed default worker;
+            // initial models remain wholly inside the actual Layout/Reader job.
+            var host = OfdPrivateGeometryFactory.Create(bootstrap, identities);
+            return OfdPrivateSaveWorker.ExecuteAsync(bootstrap, host, input, output, keyword, replacement, pages, token);
+        }
+    }
+    private static string ResolvePrivateOwnedPath(string path, OfdPrivateSaveBootstrap bootstrap, CancellationToken token)
+        => ResolvePrivateOwnedPath(path, new HashSet<string>(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal), bootstrap, token);
+    private static string ResolvePrivateOwnedPath(string path, HashSet<string> links, OfdPrivateSaveBootstrap bootstrap, CancellationToken token)
+    {
+        bootstrap.ReservePathDecomposition(path.Length, token);
+        var absolute = Path.GetFullPath(path); var root = Path.GetPathRoot(absolute)!;
+        var components = absolute[root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+        var current = root;
+        for (var i = 0; i < components.Length; i++)
+        {
+            token.ThrowIfCancellationRequested(); bootstrap.ReservePathLookup(current.Length + components[i].Length, links.Count, token);
+            current = Path.Combine(current, components[i]);
+            FileSystemInfo entry = i == components.Length - 1 ? new FileInfo(current) : new DirectoryInfo(current);
+            if (entry.LinkTarget is not null)
+            {
+                bootstrap.AdmitConfiguredString(current, token);
+                if (!links.Add(current)) throw new IOException("Output path contains a link cycle.");
+                var target = entry.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? throw new IOException("Output path link could not be resolved.");
+                current = ResolvePrivateOwnedPath(target, links, bootstrap, token);
+            }
+        }
+        return current;
+    }
+
+    // Existing full-guard component composition. No provider, Stream, model,
     // result, context, callback or credential is accepted from a caller.
     private sealed class OwnedTextReplacementJob : IDisposable
     {

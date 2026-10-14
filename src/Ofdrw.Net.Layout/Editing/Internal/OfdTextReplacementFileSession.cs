@@ -574,6 +574,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
                 try
                 {
                     owner.context.Material.ChargeCopy(128, owner.preparationToken);
+                    owner.aliasesLoaned = true;
                     var use = new OperationUse(this, owner.consuming!); owner.usingOperation = true; return use;
                 }
                 catch { owner.Fail(); throw; }
@@ -585,7 +586,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             private OfdTextReplacementOperation? operation;
             internal OperationUse(FileSaveLease lease, OfdTextReplacementOperation operation) { this.lease = lease; this.operation = operation; }
             internal OfdTextReplacementOperation Operation
-            { get { lock (lease.owner.sync) { lease.AssertOwned(); return operation ?? throw new ObjectDisposedException(nameof(OperationUse)); } } }
+            { get { lock (lease.owner.sync) { lease.AssertOwned(); var value = operation ?? throw new ObjectDisposedException(nameof(OperationUse)); lease.owner.aliasesLoaned = true; return value; } } }
             public void Dispose()
             {
                 lock (lease.owner.sync)

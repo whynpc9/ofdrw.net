@@ -69,7 +69,7 @@ internal sealed class OfdKeywordPageInput(int position, string id, string entry,
 internal sealed class OfdKeywordFontInput(string ns, string resourceEntry, string entry,
     IReadOnlyList<OfdKeywordInputAttribute> resourceAttributes, IReadOnlyList<OfdKeywordInputAttribute> attributes,
     string fontFile, string? fontName, string? familyName, string? charset, bool bold, bool italic,
-    int ordinal, string originEntry, string declarationKind, string declarationValue)
+    int ordinal, int elementPreorder, string originEntry, string declarationKind, string declarationValue)
 {
     internal string Namespace { get; } = ns;
     internal string ResourceEntry { get; } = resourceEntry;
@@ -83,6 +83,7 @@ internal sealed class OfdKeywordFontInput(string ns, string resourceEntry, strin
     internal bool Bold { get; } = bold;
     internal bool Italic { get; } = italic;
     internal int Ordinal { get; } = ordinal;
+    internal int ElementPreorder { get; } = elementPreorder;
     internal string OriginEntry { get; } = originEntry;
     internal string DeclarationKind { get; } = declarationKind;
     internal string DeclarationValue { get; } = declarationValue;

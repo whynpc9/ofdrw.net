@@ -1,6 +1,7 @@
 using System.IO;
 using System.Threading;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Keywords;
 using Ofdrw.Net.Reader.Keywords.Internal;
 
@@ -26,46 +27,71 @@ internal static class OfdTextGeometryInputVerifier
 {
     internal static OfdTextGeometryInputStatistics CompareIdentityBoundComponent(OfdTextGeometryExpectation expectation,
         OfdTextReplacementOperation operation, OfdDocumentPackage actual, CancellationToken token)
+        => Compare(expectation, operation, actual, token, null);
+
+    internal static OfdTextGeometryInputStatistics CompareReceiptBoundOwned(OfdTextGeometryExpectation expectation,
+        OfdTextReplacementOperation operation, OfdOwnedGeometryExpectation issuer, OfdOwnedCompareScope scope,
+        OfdDocumentPackage actual, OfdOwnedTextRootKey[] keys, OfdReadbackRootAddress[] addresses, CancellationToken token)
+    {
+        operation.Context.Material.ChargeCopy(checked(4096L + 256L * keys.Length), token);
+        var owned = new OwnedMapping(expectation, issuer, scope, actual, keys, addresses, operation.Context, token);
+        return Compare(expectation, operation, actual, token, owned);
+    }
+    private static OfdTextGeometryInputStatistics Compare(OfdTextGeometryExpectation expectation,
+        OfdTextReplacementOperation operation, OfdDocumentPackage actual, CancellationToken token, OwnedMapping? owned)
     {
         var context = operation.Context;
         try
         {
             expectation.AssertBinding(operation, token);
+            owned?.BindOriginal(operation.Source ?? throw new InvalidOperationException("RevokedGeometrySource"));
             context.Material.ChargeCopy(checked(2048L + 128L * expectation.Roots.Count + 8L * expectation.Pages.Count), token);
-            var selected = expectation.Pages.Select(p => p.Position).ToArray();
+            var selected = owned is null ? expectation.Pages.Select(p => p.Position).ToArray() : owned.SelectedPages();
             using var capture = OfdKeywordInputCapture.CaptureActual(actual, selected, context, token);
             var budget = capture.Budget;
             Need(capture.Sources.Count == expectation.Roots.Count, "GeometryRootCount");
-            foreach (var page in expectation.Pages) ComparePage(page, capture.Admission.CapturePageInput(page.Position), budget);
+            foreach (var page in expectation.Pages)
+            {
+                if (owned is null) ComparePage(page, capture.Admission.CapturePageInput(page.Position), budget);
+                else owned.Page(page, capture.Admission, budget);
+            }
             var hashes = new Dictionary<byte[], byte[]>(); long hashBytes = 0; var slots = 0; var scalars = 0;
             for (var r = 0; r < expectation.Roots.Count; r++)
             {
-                budget.Check(); var expected = expectation.Roots[r]; var source = capture.Sources[r];
+                budget.Check(); var expected = expectation.Roots[r];
+                var sourceIndex = owned is null ? r : owned.SourceIndex(r, capture, budget);
+                var source = capture.Sources[sourceIndex];
                 expected.AssertOriginalOwnership(operation.Source ?? throw new InvalidOperationException("RevokedGeometrySource"), budget);
                 budget.Field(24);
-                Need(expected.Page == source.PageIndex && expected.Layer == source.LayerOrdinal && expected.Element == source.ElementOrdinal &&
-                    expected.Path == source.Path && expected.Entry == source.EntryPath && expected.FontId == source.FontId &&
-                    expected.Size == source.Size && expected.Weight == source.Weight && expected.Italic == source.Italic &&
+                if (owned is null)
+                    Need(expected.Page == source.PageIndex && expected.Layer == source.LayerOrdinal && expected.Element == source.ElementOrdinal &&
+                        expected.Path == source.Path && expected.Entry == source.EntryPath && expected.FontId == source.FontId, "GeometryRootOrUnboundRelocation");
+                else owned.Root(r, source, budget);
+                Need(expected.Size == source.Size && expected.Weight == source.Weight && expected.Italic == source.Italic &&
                     expected.X == source.X && expected.Y == source.Y && expected.Width == source.Width && expected.Height == source.Height &&
                     expected.PageX == source.PageX && expected.PageY == source.PageY && expected.PageWidth == source.PageWidth && expected.PageHeight == source.PageHeight &&
                     expected.A == source.Matrix[0] && expected.B == source.Matrix[1] && expected.C == source.Matrix[2] && expected.D == source.Matrix[3] &&
                     expected.Tx == source.Matrix[4] && expected.Ty == source.Matrix[5], "GeometryRootOrUnboundRelocation");
-                SameInts(expected.Occurrence, source.OccurrencePath, budget); SameInts(expected.Definition, source.DefinitionPath, budget);
+                if (owned is null) { SameInts(expected.Occurrence, source.OccurrencePath, budget); SameInts(expected.Definition, source.DefinitionPath, budget); }
+                else Need(source.OccurrencePath.Length == 4 && source.DefinitionPath.Length == 2, "OwnedRootTopology");
                 var input = source.PrivateInput ?? throw new InvalidDataException("IncompletePrivateRootInput");
                 Same(expected.Metadata.Namespace, input.Namespace, budget);
-                Attributes(expected.Metadata.Attributes, input.Attributes, budget);
+                if (owned is null) Attributes(expected.Metadata.Attributes, input.Attributes, budget);
+                else owned.RootAttributes(r, expected.Metadata.Attributes, input.Attributes, budget);
                 SameStrings(expected.Metadata.Children, input.Children, budget);
                 Need((expected.Metadata.Fill is null) == (input.Fill is null), "GeometryFillPresence");
                 if (expected.Metadata.Fill is not null) Attributes(expected.Metadata.Fill, input.Fill!, budget);
                 Need(expected.Slots.Count == source.Runs.Count && input.Slots.Count == source.Runs.Count, "GeometrySlotCount");
-                var occurrence = capture.Traversal.Occurrences[r];
+                var occurrence = capture.Traversal.Occurrences[sourceIndex];
                 var owner = (OfdTextElement)occurrence.Element;
                 var font = capture.Admission.CaptureFontInput(source.FontId, owner);
-                CompareFont(expected.Font, font, budget);
+                if (owned is null) CompareFont(expected.Font, font, budget);
+                else owned.Font(r, expected, font, budget);
                 var resource = capture.Admission.ResolveFont(source.FontId).Resource;
                 if (resource.Data is null || !actual.PreservedEntries.TryGetValue(font.Entry, out var entry) || entry is null)
                     throw new InvalidDataException("MissingActualGeometryFontBytes");
-                Hash(resource.Data, expected.FontBytes, expected.FontSha256); Hash(entry, expected.FontBytes, expected.FontSha256);
+                if (owned is null) { Hash(resource.Data, expected.FontBytes, expected.FontSha256); Hash(entry, expected.FontBytes, expected.FontSha256); }
+                else owned.CurrentFont(r, expected, resource, budget);
                 budget.Copy(1024);
                 var prepared = new OfdKeywordTextSource
                 {
@@ -137,6 +163,165 @@ internal static class OfdTextGeometryInputVerifier
             }
         }
         catch { context.Fail(); throw; }
+    }
+    // Concrete private mapping over actual authenticated scalar receipt records.
+    // No delegate, provider, cached hash flag or candidate-derived expectation.
+    private sealed class OwnedMapping
+    {
+        private readonly OfdTextGeometryExpectation expected;
+        private readonly OfdOwnedGeometryExpectation issuer;
+        private readonly OfdOwnedCompareScope scope;
+        private readonly OfdDocumentPackage actual;
+        private readonly OfdReadbackRootAddress[] rows;
+        private readonly HashSet<int> usedSources = new();
+        private readonly Dictionary<int, OfdKeywordPageInput> currentPages = new();
+        internal OwnedMapping(OfdTextGeometryExpectation expected, OfdOwnedGeometryExpectation issuer, OfdOwnedCompareScope scope,
+            OfdDocumentPackage actual, OfdOwnedTextRootKey[] keys, OfdReadbackRootAddress[] addresses, OfdControlledEditContext context, CancellationToken token)
+        {
+            this.expected = expected; this.issuer = issuer; this.scope = scope; this.actual = actual;
+            context.Material.ChargeWork(checked(16L * expected.Roots.Count * expected.Pages.Count), token);
+            Need(keys.Length == addresses.Length && keys.Length == expected.Roots.Count, "OwnedAddressCoverage");
+            rows = new OfdReadbackRootAddress[keys.Length]; var used = new HashSet<int>();
+            for (var i = 0; i < keys.Length; i++)
+            {
+                for (var j = 0; j < addresses.Length; j++)
+                {
+                    context.Material.ChargeWork(16, token);
+                    if (addresses[j] is not null && ReferenceEquals(keys[i], addresses[j].Key))
+                    { Need(rows[i] is null && used.Add(j), "OwnedAddressAlias"); rows[i] = addresses[j]; }
+                }
+                Need(rows[i] is not null, "MissingOwnedAddress");
+            }
+        }
+        private OfdReadbackRootAddress PageRow(int originalPage)
+        {
+            for (var i = 0; i < expected.Roots.Count; i++) if (expected.Roots[i].Page == originalPage) return rows[i];
+            throw new InvalidDataException("MissingOwnedPage");
+        }
+        internal int[] SelectedPages() => expected.Pages.Select(p => PageRow(p.Position).PageIndex).ToArray();
+        internal void Page(OfdKeywordPageInput original, OfdKeywordSourceAdmission admission, OfdKeywordLocatorBudget budget)
+        {
+            var row = PageRow(original.Position); var current = admission.CapturePageInput(row.PageIndex);
+            Need(!currentPages.ContainsKey(row.PageIndex), "OwnedPageAlias"); currentPages.Add(row.PageIndex, current);
+            budget.Field(4); Need(original.OwnArea == current.OwnArea && original.Layers.Count == current.Layers.Count, "GeometryPageAuthority");
+            Same(row.OutputPageId, current.Id, budget); Same(row.EntryPath, current.Entry, budget);
+            Same(original.Namespace, current.Namespace, budget); Same(original.PhysicalBox, current.PhysicalBox, budget);
+            ExpandedName(row.SourcePageReferenceExpandedName, original.Namespace, "Page", budget);
+            ExpandedName(row.OutputPageReferenceExpandedName, current.Namespace, "Page", budget);
+            Same(row.SourcePageReferenceOwnerEntry, expectedDocumentEntry(), budget);
+            Same(row.OutputPageReferenceOwnerEntry, actual.DocumentEntryPath, budget);
+            Same(row.SourcePageBaseLocRaw, Attribute(original.Reference, "BaseLoc"), budget);
+            Same(row.OutputPageBaseLocRaw, Attribute(current.Reference, "BaseLoc"), budget);
+            MappedAttributes(original.Reference, current.Reference, budget, "ID", row.OutputPageId, "BaseLoc", row.OutputPageBaseLocRaw);
+            for (var l = 0; l < original.Layers.Count; l++)
+            {
+                budget.Field(); Need(original.Layers[l].Objects == current.Layers[l].Objects, "GeometryLayerOrder");
+                Same(original.Layers[l].Namespace, current.Layers[l].Namespace, budget);
+                string? layerId = null; var hasRow = false;
+                for (var r = 0; r < expected.Roots.Count; r++)
+                    if (expected.Roots[r].Page == original.Position && expected.Roots[r].Layer == l)
+                    {
+                        var other = rows[r];
+                        Need(other.PageIndex == row.PageIndex && other.LayerOrdinal == l, "OwnedLayerRelocationUnsupported");
+                        Same(other.OutputPageId, row.OutputPageId, budget); Same(other.EntryPath, row.EntryPath, budget);
+                        if (hasRow) Same(layerId, other.OutputLayerId, budget); else { hasRow = true; layerId = other.OutputLayerId; }
+                    }
+                if (hasRow) MappedAttributes(original.Layers[l].Attributes, current.Layers[l].Attributes, budget, "ID", layerId);
+                else Attributes(original.Layers[l].Attributes, current.Layers[l].Attributes, budget);
+            }
+            string? expectedDocumentEntry() => expectedOperationSource?.DocumentEntryPath;
+        }
+        // Original owner document path is supplied by the existing private operation,
+        // not guessed by stripping an output entry prefix.
+        private OfdDocumentPackage? expectedOperationSource;
+        internal void BindOriginal(OfdDocumentPackage original) => expectedOperationSource = original;
+        internal int SourceIndex(int r, OfdKeywordInputCapture capture, OfdKeywordLocatorBudget budget)
+        {
+            var row = rows[r]; var found = -1;
+            for (var i = 0; i < capture.Sources.Count; i++)
+            {
+                budget.Field(3); var source = capture.Sources[i];
+                if (source.PageIndex != row.PageIndex || source.LayerOrdinal != row.LayerOrdinal) continue;
+                Need(currentPages.TryGetValue(source.PageIndex, out var page), "MissingOwnedPageCapture"); var local = source.ElementOrdinal;
+                for (var l = 0; l < source.LayerOrdinal; l++) { budget.Field(); local -= page!.Layers[l].Objects; }
+                if (local == row.RootOrdinal) { Need(found == -1, "OwnedRootAddressAlias"); found = i; }
+            }
+            Need(found != -1 && usedSources.Add(found), "OwnedRootCoverage"); return found;
+        }
+        internal void Root(int r, OfdKeywordTextSource source, OfdKeywordLocatorBudget budget)
+        {
+            var row = rows[r]; Same(row.EntryPath, source.EntryPath, budget); Same(row.OutputFontResourceId, source.FontId, budget);
+        }
+        internal void RootAttributes(int r, IReadOnlyList<OfdKeywordInputAttribute> original,
+            IReadOnlyList<OfdKeywordInputAttribute> current, OfdKeywordLocatorBudget budget)
+            => MappedAttributes(original, current, budget, "ID", rows[r].OutputObjectId, "Font", rows[r].OutputFontResourceId);
+        internal void Font(int r, OfdTextGeometryExpectation.Root original, OfdKeywordFontInput current, OfdKeywordLocatorBudget budget)
+        {
+            var a = original.Font; var d = rows[r].FontDeclaration;
+            Same(d.SourceFontResourceId, original.FontId, budget); Same(d.OutputFontResourceId, rows[r].OutputFontResourceId, budget);
+            Same(d.SourceDeclarationOriginEntry, a.OriginEntry, budget); Same(d.SourceDeclarationKind, a.DeclarationKind, budget);
+            Same(d.SourceDeclarationValue, a.DeclarationValue, budget); Origin(a, d.SourceDeclarationLinkPresent, d.SourceRawLinkValue, d.SourceDeclarationExpandedName, budget);
+            Same(d.SourceResourceEntry, a.ResourceEntry, budget); Same(d.SourceFontEntry, a.Entry, budget);
+            Same(d.SourceFontFileRaw, a.FontFile, budget); Same(d.SourceResBaseLocRaw, Attribute(a.ResourceAttributes, "BaseLoc"), budget);
+            ExpandedName(d.SourceFontExpandedName!, a.Namespace, "Font", budget);
+            Need(d.SourceFontOrdinalWithinFonts == a.Ordinal && d.SourceFontElementPreorderOrdinal == a.ElementPreorder, "OwnedOriginalFontLocation");
+            Same(d.OutputDeclarationOriginEntry, current.OriginEntry, budget); Same(d.OutputDeclarationKind, current.DeclarationKind, budget);
+            Same(d.OutputDeclarationValue, current.DeclarationValue, budget); Origin(current, d.OutputDeclarationLinkPresent, d.OutputRawLinkValue, d.OutputDeclarationExpandedName, budget);
+            Same(d.OutputResourceEntry, current.ResourceEntry, budget); Same(d.OutputFontEntry, current.Entry, budget);
+            Same(d.OutputFontFileRaw, current.FontFile, budget); Same(d.OutputResBaseLocRaw, Attribute(current.ResourceAttributes, "BaseLoc"), budget);
+            ExpandedName(d.OutputFontExpandedName, current.Namespace, "Font", budget);
+            Need(d.OutputFontOrdinalWithinFonts == current.Ordinal && d.OutputFontElementPreorderOrdinal == current.ElementPreorder, "OwnedActualFontLocation");
+            Same(a.Namespace, current.Namespace, budget); Same(a.FontName, current.FontName, budget);
+            Same(a.FamilyName, current.FamilyName, budget); Same(a.Charset, current.Charset, budget);
+            budget.Field(2); Need(a.Bold == current.Bold && a.Italic == current.Italic, "GeometryFontStyle");
+            MappedAttributes(a.Attributes, current.Attributes, budget, "ID", d.OutputFontResourceId);
+            MappedAttributes(a.ResourceAttributes, current.ResourceAttributes, budget, "BaseLoc", d.OutputResBaseLocRaw);
+        }
+        internal void CurrentFont(int r, OfdTextGeometryExpectation.Root original, OfdFontResource current, OfdKeywordLocatorBudget budget)
+        {
+            var summary = issuer.CurrentFont(scope, actual, current);
+            Same(summary.ContentProfile, "raw-embedded-font-bytes/sha256/v1", budget);
+            Same(summary.Sha256Hex, original.FontSha256, budget); Same(summary.ResolvedPayloadSha256Hex, original.FontSha256, budget);
+            budget.Field(4); Need(summary.ByteLength == original.FontBytes && summary.ResolvedPayloadByteLength == original.FontBytes &&
+                summary.Bold == original.Font.Bold && summary.Italic == original.Font.Italic, "OwnedFreshFontIdentity");
+            Same(summary.FontName, original.Font.FontName ?? original.Font.FamilyName, budget);
+            Same(summary.FamilyName, original.Font.FamilyName, budget); Same(summary.Charset, original.Font.Charset, budget);
+            var d = rows[r].FontDeclaration; var currentDeclaration = summary.Declaration;
+            Same(summary.ModelFileName, d.OutputFontFileRaw, budget);
+            Same(currentDeclaration.SourceFontResourceId, original.FontId, budget);
+            Same(currentDeclaration.OutputFontResourceId, d.OutputFontResourceId, budget);
+            Same(currentDeclaration.SourceResourceEntry, d.SourceResourceEntry, budget); Same(currentDeclaration.SourceFontEntry, d.SourceFontEntry, budget);
+            Same(currentDeclaration.OutputResourceEntry, d.OutputResourceEntry, budget); Same(currentDeclaration.OutputFontEntry, d.OutputFontEntry, budget);
+            Same(currentDeclaration.SourceDeclarationOriginEntry, d.SourceDeclarationOriginEntry, budget);
+            Same(currentDeclaration.OutputDeclarationOriginEntry, d.OutputDeclarationOriginEntry, budget);
+            // RequireVerifiedFontSummary binds both current arrays and the actual
+            // resource/receipt/scope. This path performs no second F hash.
+        }
+        private static void Origin(OfdKeywordFontInput font, bool present, string? raw, string? qname, OfdKeywordLocatorBudget budget)
+        {
+            if (font.DeclarationKind == "FixedPageRes") { Need(!present && raw is null && qname is null, "FixedPageResHasNoLink"); Same(font.DeclarationValue, "PageRes.xml", budget); }
+            else { Need(present, "MissingFontOriginLink"); Same(raw, font.DeclarationValue, budget); ExpandedName(qname!, font.Namespace, font.DeclarationKind, budget); }
+        }
+        private static string? Attribute(IReadOnlyList<OfdKeywordInputAttribute> values, string name)
+        { foreach (var value in values) if (value.Namespace.Length == 0 && value.Name == name) return value.Value; return null; }
+        private static void ExpandedName(string value, string ns, string local, OfdKeywordLocatorBudget budget)
+        {
+            budget.Characters(checked(value.Length + ns.Length + local.Length));
+            Need(value.Length == ns.Length + local.Length + 2 && value[0] == '{' && value[ns.Length + 1] == '}' &&
+                string.CompareOrdinal(value, 1, ns, 0, ns.Length) == 0 && string.CompareOrdinal(value, ns.Length + 2, local, 0, local.Length) == 0, "OwnedExpandedName");
+        }
+        private static void MappedAttributes(IReadOnlyList<OfdKeywordInputAttribute> a, IReadOnlyList<OfdKeywordInputAttribute> b,
+            OfdKeywordLocatorBudget budget, string field, string? output, string? field2 = null, string? output2 = null)
+        {
+            budget.Field(); Need(a.Count == b.Count, "GeometryAttributePresence");
+            for (var i = 0; i < a.Count; i++)
+            {
+                Same(a[i].Namespace, b[i].Namespace, budget); Same(a[i].Name, b[i].Name, budget);
+                if (a[i].Namespace.Length == 0 && a[i].Name == field) Same(output, b[i].Value, budget);
+                else if (field2 is not null && a[i].Namespace.Length == 0 && a[i].Name == field2) Same(output2, b[i].Value, budget);
+                else Same(a[i].Value, b[i].Value, budget);
+            }
+        }
     }
     private static int Hex(char c) => c is >= '0' and <= '9' ? c - '0' : c is >= 'a' and <= 'f' ? c - 'a' + 10 : -1;
     private static void ComparePage(OfdKeywordPageInput a, OfdKeywordPageInput b, OfdKeywordLocatorBudget budget)

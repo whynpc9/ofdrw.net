@@ -24,6 +24,7 @@ internal sealed class OfdKeywordAnalysis
     private readonly Action? validateWholeSource;
     private readonly Action<OfdKeywordAnalysisCapture>? capture;
     private readonly Action<string>? beforeCallback;
+    private readonly PrivateOwnedAnalysis? privateOwned;
 
     /// <summary>Creates a locator with an explicit provider and finite cumulative source-admission limits.</summary>
     internal OfdKeywordAnalysis(IOfdGlyphGeometryProvider geometryProvider, OfdKeywordLocatorLimits? locatorLimits = null,
@@ -31,6 +32,37 @@ internal sealed class OfdKeywordAnalysis
         Action<OfdKeywordAnalysisCapture>? capture = null, Action<string>? beforeCallback = null)
     { provider = geometryProvider ?? throw new ArgumentNullException(nameof(geometryProvider)); limits = locatorLimits ?? new();
         this.material = material; this.validateWholeSource = validateWholeSource; this.capture = capture; this.beforeCallback = beforeCallback; }
+
+    private OfdKeywordAnalysis(PrivateOwnedAnalysis binding, OfdKeywordLocatorLimits limits,
+        Action<OfdKeywordAnalysisCapture> capture, Action<string> beforeCallback)
+    {
+        privateOwned = binding; provider = binding.Adapter; this.limits = limits;
+        material = binding.Context.Material; this.capture = capture; this.beforeCallback = beforeCallback;
+    }
+
+    // Sole production caller is Layout's fresh ticket kernel. A generic provider,
+    // old model session, runtime provider type or bool cannot enter this route.
+    internal static OfdKeywordSearchResult FindPrivateOwned(OfdOwnedAnalysisClaim claim,
+        OfdOwnedGlyphGeometryHost exactHost, OfdDocumentPackage source, OfdControlledEditContext context,
+        int[] pages, string keyword, OfdKeywordLocatorLimits limits, OfdKeywordSearchOptions options,
+        Action<OfdKeywordAnalysisCapture> capture, Action<string> beforeCallback,
+        out OfdOwnedHostClosure actualClosure, CancellationToken token)
+    {
+        // Failure belongs to the claim's real owner. No foreign context/host
+        // is touched or cleaned up before this identity/phase/CAS admission.
+        OfdOwnedSaveAuthority.RequireActualAnalysis(claim, exactHost, source, context, token);
+        try
+        {
+            context.AssertActive(); token.ThrowIfCancellationRequested();
+            context.Material.ChargeCopy(4096, token); // binding, adapter and analysis shells
+            var binding = new PrivateOwnedAnalysis(claim, exactHost, context);
+            var analysis = new OfdKeywordAnalysis(binding, limits, capture, beforeCallback);
+            var result = analysis.FindCore(source, pages, keyword, options, token, Finalization.ImmediateOwnedFileFactory);
+            actualClosure = binding.Closure ?? throw new InvalidOperationException("MissingActualHostClosure");
+            return result;
+        }
+        catch { context.Fail(); throw; }
+    }
 
     /// <summary>Searches all current page positions, restricted to the result's declared body/visibility/matching scope.</summary>
     internal OfdKeywordSearchResult Find(OfdDocumentPackage source, string keyword, OfdKeywordSearchOptions? options = null,
@@ -77,6 +109,8 @@ internal sealed class OfdKeywordAnalysis
             if (selection[i] >= source.Pages.Count || !ReferenceEquals(pages[i], source.Pages[selection[i]]))
                 throw new InvalidDataException("Source page ownership changed while copying the selection.");
         using var operation = new OfdKeywordOperation(options, cancellationToken, material);
+        try
+        {
         var budget = new OfdKeywordLocatorBudget(limits, operation);
         if (keyword is null) throw new ArgumentNullException(nameof(keyword));
         budget.Copy(512L + 32L * keyword.Length);
@@ -167,9 +201,9 @@ internal sealed class OfdKeywordAnalysis
         var providerStatistics = new OfdGlyphGeometryStatistics();
         var geometryCache = capture is null ? null : new OfdKeywordGeometryCache(budget);
         OwnedProvider? owned = null; IOfdGlyphGeometrySession? session = null;
-        if (needsProvider)
+        if (needsProvider || privateOwned is not null)
         {
-            owned = new OwnedProvider(provider);
+            owned = new OwnedProvider(provider, privateOwned?.Context);
             beforeCallback?.Invoke("OpenProvider");
             session = operation.OpenSession(owned);
             snapshot.ValidateUnchanged(source, budget); validateWholeSource?.Invoke();
@@ -253,6 +287,7 @@ internal sealed class OfdKeywordAnalysis
         // both final font/entry comparisons above remain unchanged.
         if (finalization == Finalization.Independent) validateWholeSource?.Invoke();
         operation.Check();
+        privateOwned?.Complete(token: cancellationToken);
         var statistics = new OfdKeywordLocatorStatistics(budget, operation, traversal.NodeCount, traversal.ReferenceCount, providerStatistics);
         return new OfdKeywordSearchResult(hits, diagnostics, selection, statistics);
 
@@ -286,6 +321,8 @@ internal sealed class OfdKeywordAnalysis
             }
             segment.Clear(); segmentText.Clear();
         }
+        }
+        catch { privateOwned?.Context.Fail(); throw; }
     }
 
     private static string Key(IReadOnlyList<int> path) => string.Join("/", path);
@@ -296,7 +333,45 @@ internal sealed class OfdKeywordAnalysis
         return Math.Abs((next.Baseline.X - first.Baseline.X) * -m[1] / length +
             (next.Baseline.Y - first.Baseline.Y) * m[0] / length) <= 0.01;
     }
-    private sealed class OwnedProvider(IOfdGlyphGeometryProvider inner) : IOfdGlyphGeometryProvider, IOfdGlyphGeometrySession
+    private sealed class PrivateOwnedAnalysis
+    {
+        private readonly OfdOwnedAnalysisClaim claim;
+        private readonly OfdOwnedGlyphGeometryHost host;
+        internal readonly OfdControlledEditContext Context;
+        internal readonly PrivateHostAdapter Adapter;
+        internal OfdOwnedHostClosure? Closure { get; private set; }
+        internal PrivateOwnedAnalysis(OfdOwnedAnalysisClaim claim, OfdOwnedGlyphGeometryHost host, OfdControlledEditContext context)
+        {
+            this.claim = claim ?? throw new ArgumentNullException(nameof(claim));
+            this.host = host ?? throw new ArgumentNullException(nameof(host)); Context = context;
+            Adapter = new PrivateHostAdapter(host);
+        }
+        internal void Complete(CancellationToken token)
+        {
+            if (!Adapter.Closed) throw new InvalidOperationException("HostNotActuallyClosed");
+            Closure = OfdOwnedSaveAuthority.CompleteClosedHost(claim, host, token);
+        }
+    }
+    // This adapter is constructed only by the typed private binding above.
+    // It never escapes into a public IProvider entry and cannot install hooks.
+    private sealed class PrivateHostAdapter(OfdOwnedGlyphGeometryHost host) : IOfdGlyphGeometryProvider, IOfdGlyphGeometrySession
+    {
+        private bool opened;
+        internal bool Closed { get; private set; }
+        public IOfdGlyphGeometrySession OpenSession(OfdGlyphGeometryLimits limits, CancellationToken token = default)
+        {
+            if (opened || Closed) throw new InvalidOperationException("HostSessionAlreadyConsumed");
+            opened = true; host.Open(limits, token); return this;
+        }
+        public OfdGlyphGeometry Measure(OfdGlyphGeometryRequest request, CancellationToken token = default) => host.Measure(request, token);
+        public OfdGlyphGeometryStatistics Statistics => host.ReadStatistics();
+        public void Dispose()
+        {
+            if (Closed || !opened) return;
+            Closed = true; host.Close();
+        }
+    }
+    private sealed class OwnedProvider(IOfdGlyphGeometryProvider inner, OfdControlledEditContext? privateContext = null) : IOfdGlyphGeometryProvider, IOfdGlyphGeometrySession
     {
         private IOfdGlyphGeometrySession? actual;
         public IOfdGlyphGeometrySession OpenSession(OfdGlyphGeometryLimits value, CancellationToken token = default)
@@ -306,6 +381,10 @@ internal sealed class OfdKeywordAnalysis
         public OfdGlyphGeometry Measure(OfdGlyphGeometryRequest request, CancellationToken token = default) => actual!.Measure(request, token);
         public OfdGlyphGeometryStatistics Statistics => actual!.Statistics;
         internal void Close() { var current = actual; actual = null; current?.Dispose(); }
-        public void Dispose() => Close();
+        public void Dispose()
+        {
+            if (privateContext is null) Close();
+            else { try { Close(); } catch { } } // the private actual Close is called explicitly above
+        }
     }
 }

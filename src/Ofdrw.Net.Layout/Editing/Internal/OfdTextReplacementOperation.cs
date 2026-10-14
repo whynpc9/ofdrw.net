@@ -51,8 +51,12 @@ internal sealed class OfdTextReplacementOperation : IDisposable
         return new OfdTextReplacementOperation(source, session.Options, token, context);
     }
 
+    internal static OfdTextReplacementOperation ForPrivateSave(OfdDocumentPackage source, OfdControlledEditContext context,
+        OfdSerializedGuard actualTransferredGuard, OfdTextReplacementOptions options, CancellationToken token)
+        => new(source, options, token, context, actualTransferredGuard ?? throw new ArgumentNullException(nameof(actualTransferredGuard)));
+
     private OfdTextReplacementOperation(OfdDocumentPackage source, OfdTextReplacementOptions options, CancellationToken token,
-        OfdControlledEditContext context)
+        OfdControlledEditContext context, OfdSerializedGuard? actualTransferredGuard = null)
     {
         Options = options; Source = source; preparationToken = token;
         Context = context; Context.AssertActive();
@@ -66,8 +70,11 @@ internal sealed class OfdTextReplacementOperation : IDisposable
             // Reporting budget exhaustion must never mask its original error.
             Context.Material.ChargeCopy(65_536, token);
             phases = new List<OfdTextReplacementPhase>(16); analyses = new List<OfdKeywordLocatorStatistics>(2);
-            trace = new OfdTextReplacementTraceCell[32]; Begin("CaptureSource"); trace[currentTrace].SourceCaptures++;
-            SourceGuard = Context.CaptureSource(source, token); Mark("CapturedSource");
+            trace = new OfdTextReplacementTraceCell[32]; Begin("CaptureSource");
+            if (actualTransferredGuard is null)
+            { trace[currentTrace].SourceCaptures++; SourceGuard = Context.CaptureSource(source, token); }
+            else SourceGuard = actualTransferredGuard; // genuine phase-consuming Core handoff, privately retained
+            Mark("CapturedSource");
         }
         catch (Exception error) { Fail(error); Dispose(); throw; }
     }

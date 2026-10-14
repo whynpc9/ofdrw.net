@@ -21,6 +21,86 @@ public sealed class OfdTextReplacer
     public OfdTextReplacer(IOfdGlyphGeometryProvider geometryProvider, OfdKeywordLocatorLimits? locatorLimits = null)
     { provider = geometryProvider ?? throw new ArgumentNullException(nameof(geometryProvider)); this.locatorLimits = locatorLimits ?? new(); }
 
+    private OfdTextReplacer() { provider = null!; locatorLimits = new(); }
+
+    internal static OfdOwnedNoopKernelIssuer CreatePrivateKernel(OfdOwnedJobTicket ticket)
+    {
+        OfdOwnedSaveAuthority.ReserveBootstrap(ticket, 512, default);
+        var kernel = new NoChangedKernel(); OfdOwnedSaveAuthority.BindNoopKernel(ticket, kernel); return kernel;
+    }
+    internal static Task<PrivateOwnedWriteResult> WritePrivateOwnedAsync(OfdTextReplacementOperation operation,
+        OfdOwnedAnalysisClaim claim, OfdOwnedGlyphGeometryHost host, OfdOwnedNoopKernelIssuer kernel,
+        int[]? pages, string keyword, string replacement, CancellationToken token)
+    {
+        if (kernel is not NoChangedKernel actual) throw new InvalidOperationException("ForeignPrivateAnalysisKernel");
+        operation.Context.Material.ChargeCopy(4096, token); // Run async state/Task, private replacer and result union
+        return actual.RunAsync(operation, claim, host, pages, keyword, replacement, token);
+    }
+    internal sealed class PrivateOwnedWriteResult
+    {
+        internal PrivateOwnedWriteResult(OfdOwnedNoopScope noop, int requests)
+        { Noop = noop; Requests = requests; }
+        internal PrivateOwnedWriteResult(OfdOwnedWrittenSpool written, OfdOwnedGeometryExpectation expectation, int requests)
+        { Written = written; Expectation = expectation; Requests = requests; }
+        internal readonly OfdOwnedNoopScope? Noop;
+        internal readonly OfdOwnedWrittenSpool? Written;
+        internal readonly OfdOwnedGeometryExpectation? Expectation;
+        internal readonly int Requests;
+    }
+    private sealed class NoChangedKernel : OfdOwnedNoopKernelIssuer
+    {
+        private int consumed;
+        internal async Task<PrivateOwnedWriteResult> RunAsync(OfdTextReplacementOperation operation,
+            OfdOwnedAnalysisClaim claim, OfdOwnedGlyphGeometryHost host, int[]? pages,
+            string keyword, string replacement, CancellationToken token)
+        {
+            if (System.Threading.Interlocked.Exchange(ref consumed, 1) != 0) throw new InvalidOperationException("PrivateKernelAlreadyConsumed");
+            if (keyword is null || keyword.Length == 0) throw new ArgumentException("Keyword cannot be empty.", nameof(keyword));
+            if (replacement is null) throw new ArgumentNullException(nameof(replacement));
+            if (replacement.Length > operation.Options.Limits.MaxReplacementUtf16Units) throw new InvalidDataException("ReplacementTextLimit");
+            var binding = new PrivateAnalysis(claim, host);
+            var replacer = new OfdTextReplacer();
+            var analysis = replacer.AnalyzeKeywordOperation(operation, pages, keyword, replacement, token, privateAnalysis: binding);
+            var closure = analysis.Closure ?? throw new InvalidOperationException("MissingActualHostClosure");
+            if (analysis.Roots is null)
+            {
+                // These values came directly from this completed common kernel;
+                // no caller can submit a no-change assertion or empty capsule.
+                if (!analysis.Found.IsComplete || operation.Options.SearchOptions.UnsupportedContent != OfdUnsupportedContentBehavior.Fail)
+                    throw new InvalidDataException("IncompletePrivateNoChangeAnalysis");
+                foreach (var request in analysis.Requests)
+                {
+                    operation.Context.Material.ChargeWork(2L * Math.Max(request.ReplacementText.Length, request.Hit.MatchedText.Length), token);
+                    if (!string.Equals(request.ReplacementText, request.Hit.MatchedText, StringComparison.Ordinal))
+                        throw new InvalidDataException("ChangedRequestCannotClaimNoop");
+                }
+                var noop = CompleteNoChangedFromActualTail(claim, closure, token);
+                return new PrivateOwnedWriteResult(noop, analysis.Requests.Length);
+            }
+            var capsule = operation.GeometryExpectation ?? throw new InvalidDataException("MissingCompiledGeometryExpectation");
+            var expectation = OfdOwnedGeometryExpectation.FromActualCompiler(operation, capsule, token);
+            var changedCount = 0;
+            foreach (var root in analysis.Roots)
+                if (!root.Plan.Requests.All(value => value.Disposition == OfdTextFitDisposition.Unchanged)) changedCount++;
+            operation.Context.Material.ChargeCopy(checked(128L + 32L * changedCount), token);
+            var edits = new OfdRetainedTextEdit[changedCount]; var next = 0;
+            foreach (var root in analysis.Roots)
+                if (!root.Plan.Requests.All(value => value.Disposition == OfdTextFitDisposition.Unchanged))
+                    edits[next++] = new OfdRetainedTextEdit(root.Owner, root.Slots);
+            using var batch = OfdRetainedTextEditBatch.Capture(operation.Source!, operation.SourceGuard!, operation.Context, edits, token);
+            var scope = expectation.SealActualBatch(claim, closure, batch, token);
+            // Actual same-stack factory prefix. No callback/report/await escapes
+            // the completed compiler until the real owned factory is entered.
+            var written = await OfdOwnedPackageSave.WritePrivateTextEditAsync(scope, batch, token).ConfigureAwait(false);
+            return new PrivateOwnedWriteResult(written, expectation, analysis.Requests.Length);
+        }
+    }
+    private sealed class PrivateAnalysis(OfdOwnedAnalysisClaim claim, OfdOwnedGlyphGeometryHost host)
+    {
+        internal readonly OfdOwnedAnalysisClaim Claim = claim;
+        internal readonly OfdOwnedGlyphGeometryHost Host = host;
+    }
+
     public OfdTextReplacementResult Replace(OfdDocumentPackage source, IReadOnlyList<OfdTextReplacement> replacements,
         OfdTextReplacementOptions? options = null, CancellationToken cancellationToken = default)
     {
@@ -99,9 +179,9 @@ public sealed class OfdTextReplacer
 
     // The sole keyword analysis/compiler kernel serves both public replacement
     // and the private write-through route. It never returns a Writer or candidate.
-    private (OfdTextReplacement[] Requests, List<OfdTextReplacementRoot>? Roots) AnalyzeKeywordOperation(
+    private (OfdTextReplacement[] Requests, List<OfdTextReplacementRoot>? Roots, OfdKeywordSearchResult Found, OfdOwnedHostClosure? Closure) AnalyzeKeywordOperation(
         OfdTextReplacementOperation operation, IReadOnlyList<int>? pageIndexes, string keyword, string replacementText,
-        CancellationToken cancellationToken, OfdTextReplacementFileSession? ownedFile = null)
+        CancellationToken cancellationToken, OfdTextReplacementFileSession? ownedFile = null, PrivateAnalysis? privateAnalysis = null)
     {
         var source = operation.Source!; var policies = operation.Options;
         operation.Begin("ValidateReplacement");
@@ -131,29 +211,38 @@ public sealed class OfdTextReplacer
                 }
                 RejectOverlaps(requests, operation.Context.Material, cancellationToken);
                 operation.Validate(cancellationToken); operation.Mark("KeywordMatchesCaptured");
+                if (privateAnalysis is not null)
+                    foreach (var request in requests)
+                        operation.Context.Material.ChargeWork(2L * Math.Max(request.ReplacementText.Length, request.Hit.MatchedText.Length), cancellationToken);
                 if (requests.Any(value => value.ReplacementText != value.Hit.MatchedText))
                 {
                     var pages = AffectedPages(requests, operation, cancellationToken);
                     var expectation = ownedFile?.CreateGeometryExpectation(operation, capture, pages.Count);
+                    if (privateAnalysis is not null) expectation = operation.BeginGeometryExpectation(capture, pages.Count);
                     roots = OfdTextReplacementFitAdapter.Plan(capture, requests, operation, cancellationToken, pages, expectation);
                     // File creation stays inside the private capture phase,
                     // before final provider Dispose and its source/font checks.
                     ownedFile?.CreateOwnedOutputSpool(operation, cancellationToken);
                 }
             };
-        var found = ownedFile is null
-            ? OfdKeywordEditSource.Analyze(source, pageIndexes, keyword, provider, locatorLimits, policies.SearchOptions,
-                operation.Context.Material, () => operation.Validate(cancellationToken), captureMatches, cancellationToken, operation.BeforeCallback)
-            : OfdKeywordEditSource.AnalyzeForOwnedFile(source, (int[])pageIndexes, keyword, provider, locatorLimits, policies.SearchOptions,
-                operation.Context.Material, () => operation.Validate(cancellationToken), captureMatches, cancellationToken, operation.BeforeCallback);
+        OfdOwnedHostClosure? closure = null;
+        var found = privateAnalysis is not null
+            ? OfdKeywordAnalysis.FindPrivateOwned(privateAnalysis.Claim, privateAnalysis.Host, source, operation.Context,
+                (int[])pageIndexes, keyword, locatorLimits, policies.SearchOptions, captureMatches, operation.BeforeCallback,
+                out closure, cancellationToken)
+            : ownedFile is null
+                ? OfdKeywordEditSource.Analyze(source, pageIndexes, keyword, provider, locatorLimits, policies.SearchOptions,
+                    operation.Context.Material, () => operation.Validate(cancellationToken), captureMatches, cancellationToken, operation.BeforeCallback)
+                : OfdKeywordEditSource.AnalyzeForOwnedFile(source, (int[])pageIndexes, keyword, provider, locatorLimits, policies.SearchOptions,
+                    operation.Context.Material, () => operation.Validate(cancellationToken), captureMatches, cancellationToken, operation.BeforeCallback);
         operation.RecordAnalysis(found);
         // No callback or await is inserted after the final actual provider
         // Dispose. The caller proceeds directly to its private batch/factory.
-        if (ownedFile is not null)
+        if (ownedFile is not null || privateAnalysis is not null)
         {
             operation.CloseGeometryPreparation(); operation.Mark("MeasuredAndClosedProvider");
         }
-        return (requests!, roots);
+        return (requests!, roots, found, closure);
     }
 
     private OfdTextReplacementResult Prepare(OfdTextReplacementOperation operation, OfdTextReplacement[] requests, CancellationToken token)
