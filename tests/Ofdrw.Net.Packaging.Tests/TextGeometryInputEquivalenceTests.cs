@@ -316,16 +316,19 @@ public sealed class TextGeometryInputEquivalenceTests
         Assert.Equal(15, page.Layers.Count); Assert.Equal(3, capsule.Roots.Count);
         using var keyword = new OfdKeywordOperation(material: operation.Context.Material);
         var budget = new OfdKeywordLocatorBudget(new(), keyword);
-        var before = operation.Context.Material.ValidationWorkBytes;
+        var before = keyword.LogicalValidationWorkUnits;
         Assert.Equal(3, ScanLayers());
-        var allLayersWork = operation.Context.Material.ValidationWorkBytes - before;
-        before = operation.Context.Material.ValidationWorkBytes;
+        var allLayersWork = keyword.LogicalValidationWorkUnits - before;
+        before = keyword.LogicalValidationWorkUnits;
         var cursor = 0;
         while (OfdTextGeometryInputVerifier.NextRootInLayer(capsule, page.Position, 0, ref cursor, budget) >= 0) { }
-        var oneEmptyLayerWork = operation.Context.Material.ValidationWorkBytes - before;
+        var oneEmptyLayerWork = keyword.LogicalValidationWorkUnits - before;
         Assert.True(oneEmptyLayerWork > 0); Assert.True(allLayersWork > oneEmptyLayerWork);
-        // Derive the remaining allowance from actual calibrated scan work, not a
-        // mirrored field-price constant. The first nonmatching layer cannot fit.
+        // Logical scan work consumes existing prepaid chunk credit. A new pure
+        // scanner on the SAME cumulative material has no prior credit; its next
+        // reservation cannot fit the calibrated allowance. No cap/refund/reset.
+        using var lowKeyword = new OfdKeywordOperation(material: operation.Context.Material);
+        budget = new OfdKeywordLocatorBudget(new(), lowKeyword);
         operation.Context.Material.ChargeWork(536_870_912L - operation.Context.Material.ValidationWorkBytes - oneEmptyLayerWork / 2, default);
         var error = Assert.Throws<InvalidDataException>(() => ScanLayers()); operation.Fail(error);
         Assert.True(OfdTraversalBudget.IsLimit(error)); Assert.Contains("NextRootInLayer", error.StackTrace);
@@ -359,10 +362,10 @@ public sealed class TextGeometryInputEquivalenceTests
         if (mutation == "scope") source.OccurrencePath[1] = (int)OfdContentScope.Template;
         if (mutation == "definition") source.DefinitionPath[3]++;
         if (mutation == "moved") source.OccurrencePath[3]++;
-        var before = operation.Context.Material.ValidationWorkBytes;
+        var before = actual.Budget.ValidationFields;
         Action compare = () => OfdTextGeometryInputVerifier.RequireBodyTopology(root, source, occurrence, package.Pages[0], 0, 1, actual.Budget);
         if (mutation == "original") compare(); else Assert.Throws<InvalidDataException>(compare);
-        Assert.True(operation.Context.Material.ValidationWorkBytes > before);
+        Assert.True(actual.Budget.ValidationFields > before);
         // Pure comparison evidence only; this test issues no receipt/lease/scope.
     }
 
