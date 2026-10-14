@@ -75,6 +75,7 @@ internal sealed class OfdTextGeometryExpectation : IDisposable
         internal IReadOnlyList<Slot> Slots { get; }
         // Retain real original handles for the later approved09 mapping seam,
         // without exposing a model/array getter or caller-issued ID authority.
+        internal void CopyOriginalOwner(OfdTextElement[] destination, int index) => destination[index] = originalOwner;
         internal void AssertOriginalOwnership(OfdDocumentPackage source, OfdKeywordLocatorBudget budget)
         {
             budget.Field(3);

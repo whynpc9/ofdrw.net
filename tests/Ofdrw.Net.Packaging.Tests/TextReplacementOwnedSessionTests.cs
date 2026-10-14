@@ -115,7 +115,7 @@ public sealed class TextReplacementOwnedSessionTests
         var source = session.BoundSource;
         await session.PrepareAndWriteOwnedAsync(new TextReplacementTests.Metrics(), "B", "--");
         var spool = Assert.IsType<OfdTextReplacementSpool>(PrivateField(session, "ownedSpool"));
-        var spoolPath = Assert.IsType<string>(PrivateField(spool, "path"));
+        var spoolPath = Assert.IsType<string>(PrivateField(PrivateField(spool, "actual")!, "path"));
         source.Options.Metadata.Title = "mutated after guarded ZIP disposal";
         await Assert.ThrowsAsync<InvalidDataException>(() => session.ReadOwnedOutputAsync());
         Assert.False(File.Exists(spoolPath));
@@ -141,7 +141,7 @@ public sealed class TextReplacementOwnedSessionTests
         {
             if (phase != "dispose") return;
             var spool = Assert.IsType<OfdTextReplacementSpool>(PrivateField(session, "ownedSpool"));
-            spoolPath = Assert.IsType<string>(PrivateField(spool, "path"));
+            spoolPath = Assert.IsType<string>(PrivateField(PrivateField(spool, "actual")!, "path"));
             throw primary;
         } };
         Assert.Same(primary, await Record.ExceptionAsync(() => session.PrepareAndWriteOwnedAsync(metrics, "B", "--")));

@@ -271,10 +271,13 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
         var ordinal = 0;
         foreach (var other in resource.Element(ns + "Fonts")!.Elements())
         { budget.Field(); if (ReferenceEquals(other, declaration)) break; ordinal++; }
+        var preorder = 0; budget.Copy(512);
+        foreach (var node in resource.DescendantsAndSelf())
+        { budget.Field(); if (ReferenceEquals(node, declaration)) break; preorder++; }
         budget.Retain(definition.OriginEntry); budget.Retain(definition.DeclarationKind); budget.Retain(definition.DeclarationValue);
         return new OfdKeywordFontInput(ns.NamespaceName, definition.ResourceEntry, definition.File,
             OfdKeywordInputValues.Attributes(resource, budget), OfdKeywordInputValues.Attributes(declaration, budget),
-            definition.FileName, name, family, charset, definition.Bold, definition.Italic, ordinal,
+            definition.FileName, name, family, charset, definition.Bold, definition.Italic, ordinal, preorder,
             definition.OriginEntry, definition.DeclarationKind, definition.DeclarationValue);
     }
 
