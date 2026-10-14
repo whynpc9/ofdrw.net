@@ -1,0 +1,344 @@
+{
+  "head": "6053a8afb4341de5ec12f58c5d42232fbdf77c18",
+  "archive_files": 377,
+  "source_before_after_equal": true,
+  "counters": {
+    "total": "65",
+    "executed": "65",
+    "passed": "65",
+    "failed": "0",
+    "error": "0",
+    "timeout": "0",
+    "aborted": "0",
+    "inconclusive": "0",
+    "passedButRunAborted": "0",
+    "notRunnable": "0",
+    "notExecuted": "0",
+    "disconnected": "0",
+    "warning": "0",
+    "completed": "0",
+    "inProgress": "0",
+    "pending": "0"
+  },
+  "groups": {
+    "TrustedFontGeometryTests": [
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.CancellationAndFaultsReleaseActualSnapshotStreams(failure: \"after-add\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnknownIdentityOrStyleNeverCallsBackendAdd(refusal: \"weight500\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.ChangingConfigurationCountCannotExpandTheAcceptedCopy",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.ActualReaderSnapshotsRetainIdentityAcrossOneTenAndHundredRuns",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.CancellationAndFaultsReleaseActualSnapshotStreams(failure: \"before-add\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.ForeignReaderScopeIsRejectedBeforeAnyBackendBinding",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnknownIdentityOrStyleNeverCallsBackendAdd(refusal: \"profile-bold\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.RealOriginalOflNotoBytesPassReaderSnapshotAndIndependentMetricExpectations(face: \"cjk\", runs: 100)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnknownIdentityOrStyleNeverCallsBackendAdd(refusal: \"resource-italic\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.ConstructorFreezesConfigurationAndRejectsConflictingOrMalformedIdentities",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnsupportedTrustedFormatsOrActualStylesAreRejectedBeforeAdd(kind: \"variable\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnsupportedTrustedFormatsOrActualStylesAreRejectedBeforeAdd(kind: \"actual-oblique\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.FailureAfterSecondAddReleasesBothExistingFaceAndUnboundNewStream",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnknownIdentityOrStyleNeverCallsBackendAdd(refusal: \"weight100\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnknownIdentityOrStyleNeverCallsBackendAdd(refusal: \"resource-bold\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnknownIdentityOrStyleNeverCallsBackendAdd(refusal: \"weight700\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnsupportedTrustedFormatsOrActualStylesAreRejectedBeforeAdd(kind: \"actual-weight\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.CancellationAndFaultsReleaseActualSnapshotStreams(failure: \"failure-after-add\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.SameFamilyNamesCannotMixDistinctActualResourceFaces",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.MissingGlyphAndComplexTextAreExplicitlyUnsupported",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnknownIdentityOrStyleNeverCallsBackendAdd(refusal: \"unknown\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnknownIdentityOrStyleNeverCallsBackendAdd(refusal: \"length\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnsupportedTrustedFormatsOrActualStylesAreRejectedBeforeAdd(kind: \"ttc\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.RealOriginalOflNotoBytesPassReaderSnapshotAndIndependentMetricExpectations(face: \"latin\", runs: 100)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnknownIdentityOrStyleNeverCallsBackendAdd(refusal: \"italic\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.SourceByteAndGlyphWorkLimitsFailBeforePublicationAndReleaseResources",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.CancellationAndFaultsReleaseActualSnapshotStreams(failure: \"during-next-measure\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.RealOriginalOflNotoBytesPassReaderSnapshotAndIndependentMetricExpectations(face: \"cjk\", runs: 1)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.RealOriginalOflNotoBytesPassReaderSnapshotAndIndependentMetricExpectations(face: \"latin\", runs: 10)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.RealOriginalOflNotoBytesPassReaderSnapshotAndIndependentMetricExpectations(face: \"cjk\", runs: 10)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.UnsupportedTrustedFormatsOrActualStylesAreRejectedBeforeAdd(kind: \"cff\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.CallerFaceLimitAndHardFourFaceCeilingAreBothEnforcedAndReleaseFaces",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.RealOriginalOflNotoBytesPassReaderSnapshotAndIndependentMetricExpectations(face: \"latin\", runs: 1)",
+        "outcome": "Passed"
+      }
+    ],
+    "KeywordLocatorRealFontTests": [
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualArchiveReaderAndQ1ProviderHaveIndependentAffineExpectations(face: \"cjk\", matrix: \"rotation\", left: 27, top: 25.015999999999998, right: 29.931999999999999, bottom: 27.416)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualArchiveReaderAndQ1ProviderHaveIndependentAffineExpectations(face: \"cjk\", matrix: \"identity\", left: 17.015999999999998, top: 28.068000000000001, right: 19.416, bottom: 31)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.MixedEmptySlotsDefaultWriterFreshReaderKeepOriginalOflGlyphsAndSourceSpans(face: \"cjk\", matrix: \"identity\", spaceX: 19.431999999999999, lastX: 20.327999999999999)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualArchiveReaderAndQ1ProviderHaveIndependentAffineExpectations(face: \"latin\", matrix: \"rotation\", left: 27, top: 25, right: 29.867999999999999, bottom: 27.552)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.PublicWriterDefaultIndentedOutputReadsAndLocatesWithOriginalOflFont(face: \"cjk\", matrix: \"identity\", objects: 10)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualLocatorReusesOneOriginalFontAcrossManyReadObjects(face: \"cjk\", objects: 100)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualReaderAndQ1FontFailuresDoNotBecomeCompleteNoHit(kind: \"missing\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualLocatorReusesOneOriginalFontAcrossManyReadObjects(face: \"latin\", objects: 100)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualLocatorReusesOneOriginalFontAcrossManyReadObjects(face: \"cjk\", objects: 1)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualArchiveReaderAndQ1ProviderHaveIndependentAffineExpectations(face: \"cjk\", matrix: \"shear\", left: 19.550000000000001, top: 28.068000000000001, right: 23.416, bottom: 31)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualLocatorReusesOneOriginalFontAcrossManyReadObjects(face: \"cjk\", objects: 10)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.PublicWriterDefaultIndentedOutputReadsAndLocatesWithOriginalOflFont(face: \"latin\", matrix: \"identity\", objects: 1)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.MultipleEmptySlotsKeepOriginalOflIdentityWithoutAnyProviderCalls(face: \"cjk\", matrix: \"shear\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.CanonicalEmptyKeepsOriginalOflResourceIdentityWithoutFaceOrGlyphCalls(face: \"cjk\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.PublicWriterDefaultIndentedOutputReadsAndLocatesWithOriginalOflFont(face: \"latin\", matrix: \"shear\", objects: 10)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualLocatorReusesOneOriginalFontAcrossManyReadObjects(face: \"latin\", objects: 1)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualArchiveReaderAndQ1ProviderHaveIndependentAffineExpectations(face: \"latin\", matrix: \"shear\", left: 19.565999999999999, top: 28.132000000000001, right: 23.552, bottom: 31)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.CanonicalEmptyKeepsOriginalOflResourceIdentityWithoutFaceOrGlyphCalls(face: \"latin\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.MixedEmptySlotsDefaultWriterFreshReaderKeepOriginalOflGlyphsAndSourceSpans(face: \"latin\", matrix: \"identity\", spaceX: 19.556000000000001, lastX: 20.596)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualArchiveReaderAndQ1ProviderHaveIndependentAffineExpectations(face: \"latin\", matrix: \"identity\", left: 17, top: 28.132000000000001, right: 19.552, bottom: 31)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.PublicWriterDefaultIndentedOutputReadsAndLocatesWithOriginalOflFont(face: \"latin\", matrix: \"rotation\", objects: 10)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualLocatorReusesOneOriginalFontAcrossManyReadObjects(face: \"latin\", objects: 10)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.MultipleEmptySlotsKeepOriginalOflIdentityWithoutAnyProviderCalls(face: \"latin\", matrix: \"rotation\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualReaderAndQ1FontFailuresDoNotBecomeCompleteNoHit(kind: \"composite\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.PublicWriterDefaultIndentedOutputReadsAndLocatesWithOriginalOflFont(face: \"cjk\", matrix: \"shear\", objects: 10)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.PublicWriterDefaultIndentedOutputReadsAndLocatesWithOriginalOflFont(face: \"cjk\", matrix: \"rotation\", objects: 1)",
+        "outcome": "Passed"
+      }
+    ],
+    "TextReplacementRealFontTests": [
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalOflKeywordReplacementTransfersUnderDefaultBudgetAndSeparateWriterReadback(face: \"latin\", advance: 2.556)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalOflFontLibraryTransferAndSeparatelyBudgetedWriterPassActualReadback(face: \"cjk\", advance: 2.4319999999999999)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalCjkKeywordLowerCapacityIsAnExplicitOutputlessRefusal(face: \"cjk\")",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalOflFontLibraryTransferAndSeparatelyBudgetedWriterPassActualReadback(face: \"latin\", advance: 2.556)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalOflKeywordReplacementTransfersUnderDefaultBudgetAndSeparateWriterReadback(face: \"cjk\", advance: 2.4319999999999999)",
+        "outcome": "Passed"
+      },
+      {
+        "name": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.ActualOriginalOflFontVariableReplacementRetainsIndependentAnchorsAndGlyphs(face: \"latin\")",
+        "outcome": "Passed"
+      }
+    ]
+  },
+  "extra": [],
+  "errors": [],
+  "runner_exit_code": 0,
+  "runner_summary": {
+    "counters": {
+      "total": "65",
+      "executed": "65",
+      "passed": "65",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "bundleSha256": "40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59",
+    "mandatory": true
+  },
+  "runner_command": {
+    "command": [
+      "dotnet",
+      "test",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/source/tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj",
+      "-c",
+      "Release",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false",
+      "--filter",
+      "FullyQualifiedName~TrustedFontGeometryTests|FullyQualifiedName~KeywordLocatorRealFontTests|FullyQualifiedName~TextReplacementRealFontTests",
+      "--results-directory",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/results",
+      "--logger",
+      "trx;LogFileName=trusted-fonts.trx"
+    ],
+    "prepared": {
+      "bundleSha256": "40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59",
+      "directory": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59",
+      "environment": {
+        "OFDRW_REQUIRE_TRUSTED_FONTS": "1",
+        "OFDRW_TEST_TRUSTED_LATIN_FONT": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59/fonts/NotoSans-Regular.ttf",
+        "OFDRW_TEST_TRUSTED_CJK_FONT": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59/fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf"
+      }
+    }
+  }
+}

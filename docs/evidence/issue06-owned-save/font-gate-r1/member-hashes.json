@@ -1,0 +1,45 @@
+{
+  "source_head": "6053a8afb4341de5ec12f58c5d42232fbdf77c18",
+  "members": [
+    {
+      "path": "runner.log",
+      "bytes": 11803,
+      "sha256": "17f04ac90a6865c304578a56f12f909c0b64098a052a34a29b2a34fbf317be52"
+    },
+    {
+      "path": "results/trusted-fonts.trx",
+      "bytes": 152772,
+      "sha256": "e27a714135a115a3453dc445a4f2fd089274d2acb390c1c751beaf50e5e073b1"
+    },
+    {
+      "path": "results/command.json",
+      "bytes": 1570,
+      "sha256": "315190d9cf38ccf8207df1ab54c0ae85c6c0d23736b6c1bdcb1122d06383af92"
+    },
+    {
+      "path": "results/summary.json",
+      "bytes": 482,
+      "sha256": "f27490589dbc317efb187f6f2125f646e9dc4b47047f017f22274b6db0d67a66"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 16952,
+      "sha256": "8fa1f8c31d28b5f45c8ed33a314618b2cb4f03c0c37b35dd4aaff2622a0a3983"
+    },
+    {
+      "path": "invocation.json",
+      "bytes": 1035,
+      "sha256": "8f44e88e0c947e57d68a14aa0643467a11ac06e1ad27bc32ef48cc6387dcb274"
+    },
+    {
+      "path": "archive-before.json",
+      "bytes": 88774,
+      "sha256": "8fb6bf680c47473ae4c9ddcd176d3bc45115da4fe5ab0fe9c3c7094b3dc70a04"
+    },
+    {
+      "path": "archive-after.json",
+      "bytes": 88774,
+      "sha256": "8fb6bf680c47473ae4c9ddcd176d3bc45115da4fe5ab0fe9c3c7094b3dc70a04"
+    }
+  ]
+}

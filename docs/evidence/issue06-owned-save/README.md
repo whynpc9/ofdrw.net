@@ -37,3 +37,9 @@ The two native/default layout OFDs and their PDFs embed system PingFang SC bytes
 Acceptance covers the listed fixtures/pages and the original Regular-font, simple-scalar, horizontal-positive, translation-only replacement profile. Unsupported geometry, overlap, missing glyphs, insufficient original space and quota exhaustion reject the batch. The late failure observation proves the recorded Noop raw-input rejection, not a late Changed/cancellation claim. Existing Issue09 multi-M behavior outside the selected profile remains outside this ticket and is not declared fixed. No GitHub merge, NuGet publication, tag or production signing acceptance is included.
 
 Usage and signature rewriting semantics are in the [tutorial](../../tutorials/16-keyword-replacement.md).
+
+## PR19 mandatory font gate correction
+
+The first Codex review correctly found that the dedicated `run-trusted-font-tests.py` filter omitted `TextReplacementRealFontTests`. The full 1245-test regression above had executed those six cases, but the dedicated gate selected only geometry/locator. Commit `6053a8afb4341de5ec12f58c5d42232fbdf77c18` adds the missing class and clarifies the scope; product code, font payloads, budgets and page artifacts remain unchanged.
+
+Independent verification used an exact Git archive of that commit and the actual mandatory runner, with fresh results and forced trusted-font environment. It passed **65/65 with zero skips/failures**: geometry 33, locator 26, replacement 6. All 377 archived files matched the commit before/after. See [per-case summary](font-gate-r1/summary.json), [actual invocation](font-gate-r1/invocation.json), [raw log](font-gate-r1/runner.log), [TRX](font-gate-r1/results/trusted-fonts.trx) and [member hashes](font-gate-r1/member-hashes.json). This targeted tool correction supplements the unchanged archive rather than relabeling its original source identity. It required no new rendering or Preview inspection.
