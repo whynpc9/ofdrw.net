@@ -105,7 +105,14 @@ internal sealed class OfdResourceCatalog
         if (font.Data.Length > 0)
         {
             var extension = string.Equals(Path.GetExtension(font.FileName), ".otf", StringComparison.OrdinalIgnoreCase) ? ".otf" : ".ttf";
-            PlanPayload(plan, "FontFile", $"Font_{Hash(font.Data)}{extension}", font.Data);
+            // PlanResource and catalog source-identity admission already bound
+            // Existing to the real imported owner. A present literal, including
+            // an empty or conflicting one, must still follow PlanPayload's
+            // existing validation order; its unused fallback needs no hash.
+            var hasLiteral = plan.Existing?.Element(plan.Existing.Name.Namespace + "FontFile") is not null ||
+                plan.Existing?.Attribute("FontFile") is not null;
+            var fallback = hasLiteral ? null : $"Font_{Hash(font.Data)}{extension}";
+            PlanPayload(plan, "FontFile", fallback, font.Data);
         }
     }
 
@@ -157,12 +164,13 @@ internal sealed class OfdResourceCatalog
         return "/" + resolved;
     }
 
-    private void PlanPayload(ResourcePlan plan, string name, string defaultFileName, byte[] bytes)
+    private void PlanPayload(ResourcePlan plan, string name, string? defaultFileName, byte[] bytes)
     {
         var child = plan.Existing?.Element(plan.Existing.Name.Namespace + name);
         var attribute = plan.Existing?.Attribute(name);
         if (child is not null && attribute is not null) throw new NotSupportedException("Conflicting payload attribute and child authorities.");
-        var file = child?.Value ?? attribute?.Value ?? defaultFileName;
+        var file = child?.Value ?? attribute?.Value ?? defaultFileName
+            ?? throw new InvalidOperationException("A new resource payload requires a fallback name.");
         if (plan.OldPath is not null && (child is not null || attribute is not null)) file = AbsolutePayload(plan.OldPath, file);
         var path = ResolvePayload(plan.Path, file);
         if (protectedPaths.Contains(path)) throw new InvalidDataException("A resource payload collides with a control/page/attachment output role.");
