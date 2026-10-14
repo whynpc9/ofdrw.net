@@ -44,7 +44,7 @@ internal static class OfdClipXml
                     FillRule = rule == "Even-Odd" ? OfdFillRule.EvenOdd : OfdFillRule.NonZero,
                     SourceXml = OfdXmlEnvelope.Capture(shape, material, token)
                 };
-                clip.Areas.Add(new OfdClipArea { Path = path, Transform = Matrix(area.Attribute("CTM")?.Value, material, token),
+                clip.Areas.Add(new OfdClipArea { Path = path, OriginalPath = path, OriginalPathXml = path.SourceXml, Transform = Matrix(area.Attribute("CTM")?.Value, material, token),
                     SourceXml = OfdXmlEnvelope.Capture(area, material, token), SourceSlot = areaSlot++ });
             }
             if (clip.Areas.Count == 0) return;
@@ -82,7 +82,14 @@ internal static class OfdClipXml
             material.ChargeCopy(8192L + 16L * path.AbbreviatedData.Length, token); material.ChargeWork(2L * path.AbbreviatedData.Length, token);
             var node = area.SourceXml is null ? new XElement(ns + "Area") : Parse(area.SourceXml);
             node.SetAttributeValue("CTM", Format(area.Transform, material, token));
-            var shape = path.SourceXml is null ? new XElement(ns + "Path") : Parse(path.SourceXml);
+            var sourcePath = node.Element(node.Name.Namespace + "Path");
+            if (area.OriginalPath is not null && ReferenceEquals(path, area.OriginalPath) && path.SourceXml != area.OriginalPathXml)
+                throw new NotSupportedException("Imported clip Path.SourceXml is reader-owned; edit the typed fields.");
+            if (!ReferenceEquals(path, area.OriginalPath) && path.SourceXml is not null)
+                throw new NotSupportedException("Fresh clip paths use typed fields without caller XML.");
+            if (sourcePath is not null && !ReferenceEquals(path, area.OriginalPath) && !CanDelete(sourcePath, material, token))
+                throw new NotSupportedException("Cannot replace a clip Path containing unclaimed XML.");
+            var shape = sourcePath is null ? new XElement(node.Name.Namespace + "Path") : new XElement(sourcePath);
             shape.SetAttributeValue("Boundary", string.Join(" ", new[] { path.XMillimeters, path.YMillimeters, path.WidthMillimeters, path.HeightMillimeters }.Select(Number)));
             shape.SetAttributeValue("CTM", Format(path.Transform, material, token)); shape.SetAttributeValue("Stroke", path.Stroke ? "true" : "false"); shape.SetAttributeValue("Fill", path.Fill ? "true" : "false");
             if (path.FillRule is { } rule) shape.SetAttributeValue("Rule", rule == OfdFillRule.EvenOdd ? "Even-Odd" : "NonZero");

@@ -23,6 +23,8 @@ public sealed class OfdClip
 
 public sealed class OfdClipArea
 {
+    internal OfdPathElement? OriginalPath;
+    internal string? OriginalPathXml;
     public double[]? Transform { get; set; }
     public OfdPathElement Path { get; set; } = new() { Stroke = false, Fill = true };
     public string? SourceXml { get; internal set; }

@@ -197,6 +197,22 @@ public sealed class TypedClipCompositeTests
         using var output = new MemoryStream(); await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdPackageWriter().WriteAsync(package, output)); Assert.Equal(0, output.Length);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OpaquePathOwnerCannotBeReplacedOrRawReset(bool resetXml)
+    {
+        var package = await ReadModified(Create(), xml =>
+        {
+            foreach (var path in xml.Descendants().Where(n => n.Name.LocalName == "Path" && n.Parent?.Name.LocalName == "Area"))
+                path.SetAttributeValue(System.Xml.Linq.XName.Get("flag", "urn:vendor"), "keep");
+        });
+        var area = package.Pages[0].Elements.OfType<OfdPathElement>().Single().Clips!.Items[0].Areas[0];
+        if (resetXml) area.Path.SourceXml = null;
+        else area.Path = new OfdPathElement { Stroke = false, Fill = true, AbbreviatedData = "M 0 0 L 10 10" };
+        using var output = new MemoryStream(); await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdPackageWriter().WriteAsync(package, output)); Assert.Equal(0, output.Length);
+    }
+
     [Fact]
     public async Task KnownClipClearPreservesOpaqueWrapper()
     {
