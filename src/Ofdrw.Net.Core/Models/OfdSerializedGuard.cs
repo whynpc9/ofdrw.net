@@ -61,15 +61,21 @@ internal sealed class OfdSerializedGuard
 
     internal void AssertUnchanged(OfdDocumentPackage exactPackage, OfdControlledEditContext exactContext, CancellationToken token = default)
     {
-        context.AssertActive();
-        if (!ReferenceEquals(package, exactPackage) || !ReferenceEquals(context, exactContext))
-            throw new InvalidOperationException("Serialized guard belongs to another package or operation.");
+        RequireBinding(exactPackage, exactContext);
         try
         {
             var sink = new GuardSink(context.Material, token, entries, true);
             OfdSerializedInventory.Walk(package, sink, context.Material, token, rejectRepeatedOwners: true); sink.Complete();
         }
         catch { context.Fail(); throw; }
+    }
+
+    // Identity only. This never establishes freshness or replaces a byte pass.
+    internal void RequireBinding(OfdDocumentPackage exactPackage, OfdControlledEditContext exactContext)
+    {
+        context.AssertActive();
+        if (!ReferenceEquals(package, exactPackage) || !ReferenceEquals(context, exactContext))
+            throw new InvalidOperationException("Serialized guard belongs to another package or operation.");
     }
 
     private sealed class GuardSink(OfdModelMaterialization material, CancellationToken token, List<Entry> entries, bool comparing) : OfdSerializedInventory.ISink

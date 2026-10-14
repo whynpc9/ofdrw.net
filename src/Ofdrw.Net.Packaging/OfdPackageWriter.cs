@@ -58,12 +58,23 @@ public sealed class OfdPackageWriter
     internal static PreparedWrite PrepareOwnedWrite(OfdOwnedEditCandidate candidate, CancellationToken token = default)
         => PreparedWrite.Create(candidate, token);
 
+    // Closed synchronous source→clone→fixed slots→claim→plan continuation.
+    // No stream or caller callback is touched here. The returned PreparedWrite
+    // retains all existing caller-gap and actual I/O checks.
+    internal static PreparedWrite PrepareContinuousTextEdit(OfdDocumentPackage source,
+        OfdSerializedGuard sourceGuard, OfdControlledEditContext context,
+        OfdRetainedTextEditBatch edits, CancellationToken token = default)
+        => PreparedWrite.CreateContinuous(source, sourceGuard, context, edits, token);
+
     internal sealed class PreparedWrite : IDisposable
     {
         private readonly OfdOwnedEditCandidate candidate;
         private readonly OfdSerializedGuard guard;
         private readonly WritePlan plan;
-        private int consumed;
+        private OfdOwnedEditCandidate? ownedLifetime;
+        // Created, writing, written, validating-created, validating-written,
+        // disposed, failed. No successful validation is a reusable stamp.
+        private int state;
         private PreparedWrite(OfdOwnedEditCandidate candidate, OfdSerializedGuard guard, WritePlan plan)
         { this.candidate = candidate; this.guard = guard; this.plan = plan; }
 
@@ -81,15 +92,33 @@ public sealed class OfdPackageWriter
             catch { context.Fail(); throw; }
         }
 
+        internal static PreparedWrite CreateContinuous(OfdDocumentPackage source,
+            OfdSerializedGuard sourceGuard, OfdControlledEditContext context,
+            OfdRetainedTextEditBatch edits, CancellationToken token)
+        {
+            if (context is null) throw new ArgumentNullException(nameof(context));
+            OfdOwnedEditCandidate? candidate = null;
+            try
+            {
+                if (source is null || sourceGuard is null || edits is null)
+                    throw new ArgumentNullException(source is null ? nameof(source) : sourceGuard is null ? nameof(sourceGuard) : nameof(edits));
+                candidate = OfdOwnedEditCandidate.ClonePatchAndClaim(source, sourceGuard, context, edits, token, out var guard);
+                var plan = PreparePlan(candidate.Package, context.Material, token);
+                guard.AssertUnchanged(candidate.Package, context, token);
+                return new PreparedWrite(candidate, guard, plan) { ownedLifetime = candidate };
+            }
+            catch { context.Fail(); candidate?.Dispose(); edits?.Dispose(); throw; }
+        }
+
         // This is a non-atomic Stream write. 06 owns the private spool, readback
         // and AtomicOutput publication; callbacks may fail after bytes arrive.
         internal async Task<OfdPackageWriteResult> WriteAsync(Stream destination, CancellationToken token = default)
         {
-            if (Interlocked.CompareExchange(ref consumed, 1, 0) != 0) throw new InvalidOperationException("Prepared write has already been consumed.");
-            if (destination is null) throw new ArgumentNullException(nameof(destination));
+            if (Interlocked.CompareExchange(ref state, 1, 0) != 0) throw new InvalidOperationException("Prepared write has already been consumed or is in use.");
             var context = candidate.Context; var material = context.Material;
             try
             {
+            if (destination is null) throw new ArgumentNullException(nameof(destination));
             candidate.AssertClaimedActive();
             candidate.AssertSourceUnchanged(token);
             guard.AssertUnchanged(candidate.Package, context, token);
@@ -111,12 +140,43 @@ public sealed class OfdPackageWriter
             // Including destination/Dispose callbacks. Failure here cannot
             // roll back an arbitrary caller stream; no verified save is returned.
             candidate.AssertClaimedActive(); guard.AssertUnchanged(candidate.Package, context, token); candidate.AssertSourceUnchanged(token);
+            Volatile.Write(ref state, 2);
             return result;
             }
-            catch { context.Fail(); throw; }
+            catch { context.Fail(); Volatile.Write(ref state, 6); throw; }
         }
 
-        public void Dispose() => Interlocked.Exchange(ref consumed, 1);
+        // Fresh checks through this exact retained owner, both before writing
+        // and after one successful write. Nothing mutable or stamp-like escapes.
+        internal void AssertSourceAndCandidateUnchanged(CancellationToken token = default)
+        {
+            var before = Volatile.Read(ref state);
+            var busy = before == 0 ? 3 : 4;
+            if (before is not (0 or 2) || Interlocked.CompareExchange(ref state, busy, before) != before)
+                throw new InvalidOperationException("Prepared write cannot validate while consumed, failed, disposed or in use.");
+            var context = candidate.Context;
+            try
+            {
+                candidate.AssertClaimedActive();
+                candidate.AssertSourceUnchanged(token);
+                guard.AssertUnchanged(candidate.Package, context, token);
+                candidate.AssertClaimedActive();
+            }
+            catch { context.Fail(); Volatile.Write(ref state, 6); throw; }
+            finally { Interlocked.CompareExchange(ref state, before, busy); }
+        }
+
+        public void Dispose()
+        {
+            while (true)
+            {
+                var before = Volatile.Read(ref state);
+                if (before == 5) return;
+                if (before is 1 or 3 or 4) throw new InvalidOperationException("Cannot dispose a prepared write during I/O or validation.");
+                if (Interlocked.CompareExchange(ref state, 5, before) == before) break;
+            }
+            Interlocked.Exchange(ref ownedLifetime, null)?.Dispose();
+        }
     }
 
     private static void FreezeEntryBuffers(IDictionary<string, byte[]> entries, OfdModelMaterialization material, CancellationToken token)
