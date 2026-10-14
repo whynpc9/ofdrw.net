@@ -29,6 +29,7 @@ internal sealed class OfdModelSnapshot
     internal OfdModelSnapshot Remap(IDictionary<object, object> map, OfdModelMaterialization material, CancellationToken token)
     {
         material.ChargeCopy(128L + 32L * entries.Count, token); var result = new List<Entry>(entries.Count);
+        if (!map.ContainsKey(entries)) map.Add(entries, result);
         foreach (var entry in entries)
         {
             token.ThrowIfCancellationRequested();

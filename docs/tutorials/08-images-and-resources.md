@@ -101,3 +101,24 @@ page.Elements.Add(new OfdImageElement
 - **CTM 单位正方形假设失败**。有的生成器 CTM 已含平移；再叠加 Boundary 原点时不要重复平移。
 - **把 JPEG 标成 PNG**。`Format` 与真实编码不一致时部分阅读器解码失败。
 - **删除页面后留下孤儿图片**。本仓库写包时会修剪仅被删页引用的图像；手工改 ZIP 容易漏。
+
+## 共享组合资源
+
+`OfdCompositeResource` 是资源定义，`OfdCompositeElement` 是放置实例。定义加入 `package.CompositeResources.Items` 一次，多个实例引用同一个资源对象；Writer 为定义、子图元和各实例分别规划 ID，不修改调用方 ID。
+
+```csharp
+package.CompositeResources = new OfdCompositeResourceCollection();
+var vector = new OfdCompositeResource { WidthMillimeters = 60, HeightMillimeters = 30 };
+vector.Elements.Add(new OfdTextElement { Text = "共享文字", WidthMillimeters = 55,
+    HeightMillimeters = 10 });
+package.CompositeResources.Items.Add(vector);
+page.Elements.Add(new OfdCompositeElement { Resource = vector,
+    XMillimeters = 20, YMillimeters = 40, WidthMillimeters = 60, HeightMillimeters = 30 });
+page.Elements.Add(new OfdCompositeElement { Resource = vector,
+    XMillimeters = 100, YMillimeters = 40, WidthMillimeters = 60, HeightMillimeters = 30,
+    Transform = new double[] { 1, .1, 0, 1, 0, 0 } });
+```
+
+组合可嵌套组成共享 DAG，循环、重复图元所有权或引用包外资源会拒绝。缩放通过 CTM 显式表达；Width/Height 是资源自然 viewport，超出部分裁剪，placement Boundary 另作交集，不隐式按 Boundary 拉伸。字体与图片复用现有资源服务和载荷。
+
+原资源位置、未知节点与属性保留，导入定义不会随每个实例复制。PDF/SVG 展开真实实例，文本抽取按实例计数；严格关键词定位/替换拒绝 composite 及 typed clips，包含空组合或 SourceXml=null 的新模型，不能将遗漏内容报告为完整。Group opacity、DrawParam、Thumbnail/Substitution、opaque 子绘图等保留但明确拒绝超出支持范围的导出。Merge/Mix 尚不重映射这些图形结构，预检即拒绝。

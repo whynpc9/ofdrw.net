@@ -21,6 +21,7 @@ public sealed class OfdTextExtractor
 
         var material = new OfdModelMaterialization(new OfdModelLimits());
         OfdAnnotationContract.Validate(package, material, default);
+        OfdCompositeGraph.Validate(package, material, default);
         return package.Pages
             .OrderBy(page => page.Index)
             .Select(page => ExtractPage(page, includeTemplates, material, package.Options.Namespace))
@@ -38,7 +39,7 @@ public sealed class OfdTextExtractor
     private static string ExtractPage(OfdPage page, bool includeTemplates, OfdModelMaterialization material, string documentNamespace)
     {
         IEnumerable<OfdTextElement> textElements =
-            page.Elements.OfType<OfdTextElement>();
+            OfdCompositeProjection.Expand(page.Elements, material, default).OfType<OfdTextElement>();
         if (includeTemplates)
         {
             textElements = page.Templates
@@ -46,7 +47,7 @@ public sealed class OfdTextExtractor
                     template.ZOrder,
                     "Background",
                     StringComparison.OrdinalIgnoreCase))
-                .SelectMany(template => template.Elements)
+                .SelectMany(template => OfdCompositeProjection.Expand(template.Elements, material, default))
                 .OfType<OfdTextElement>()
                 .Concat(textElements)
                 .Concat(page.Templates
@@ -54,7 +55,7 @@ public sealed class OfdTextExtractor
                         template.ZOrder,
                         "Background",
                         StringComparison.OrdinalIgnoreCase))
-                    .SelectMany(template => template.Elements)
+                    .SelectMany(template => OfdCompositeProjection.Expand(template.Elements, material, default))
                     .OfType<OfdTextElement>());
         }
 

@@ -42,6 +42,8 @@ public static class OfdDocumentMixer
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
             material.InspectStorage(item.Package, cancellationToken); material.GuardPreservedXml(item.Package, cancellationToken);
             OfdAnnotationContract.Validate(item.Package, material, cancellationToken);
+            if (item.Package.CompositeResources is not null || OfdCompositeGraph.Definitions(item.Package).Any(e => e.Clips is not null))
+                throw new NotSupportedException("Mix cannot remap typed composites or clips.");
             if (OfdAnnotationContract.HasTyped(item.Package)) throw new NotSupportedException("Mixer cannot remap typed annotation ownership.");
             if (OfdNavigationXml.HasTypedNavigation(item.Package, material, cancellationToken)) throw new NotSupportedException("Mix cannot remap typed navigation source ownership.");
             OfdDocumentSplitter.ValidateSingleDocument(item.Package, material, cancellationToken);

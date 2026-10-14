@@ -111,7 +111,7 @@ internal sealed class OfdPackagePruner
                     // Keep Res available until its exclusive font/image payloads have been pruned.
                 }
             }
-            PruneResources(entries, currentDocumentPath, privateResourcePaths, candidateIds, result, scan);
+            PruneResources(entries, currentDocumentPath, privateResourcePaths, candidateIds, result, scan, package);
             foreach (var path in privateResourcePaths)
                 if (!HasPageContentBeside(entries, path, scan) && !ReferencesFile(entries, path, scan))
                 {
@@ -233,7 +233,7 @@ internal sealed class OfdPackagePruner
 
     private void PruneResources(
         IDictionary<string, byte[]> entries, string documentPath, ISet<string> privateResourcePaths,
-        ISet<string> candidateIds, OfdPackageWriteResult result, XmlScanCache scan)
+        ISet<string> candidateIds, OfdPackageWriteResult result, XmlScanCache scan, OfdDocumentPackage package)
     {
         var document = Parse(entries[documentPath]); var ns = document.Root!.Name.Namespace;
         var common = document.Root.Element(ns + "CommonData");
@@ -261,6 +261,42 @@ internal sealed class OfdPackagePruner
             AddReferences(xml, references);
         }
 
+        // A deleted placement may release a whole DAG. Only reader-owned,
+        // fully modeled definitions participate; ambiguous extension closure stays.
+        var modeled = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var resource in package.CompositeResources?.Items ?? Enumerable.Empty<OfdCompositeResource>())
+        {
+            operationToken.ThrowIfCancellationRequested(); material.ChargeCopy(128, operationToken);
+            if (resource.Id is null || resource.Elements.Any(e => e is OfdRawElement)) continue;
+            var source = resource.SourceXml is null ? null : OfdXmlEnvelope.Parse(resource.SourceXml);
+            if (source is not null && source.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name.LocalName is not ("ID" or "Width" or "Height"))) continue;
+            modeled.Add(resource.Id);
+        }
+        // Unknown reference syntax can encode an ID list or external dependency.
+        // Do not infer absence of incoming edges from a scalar lookup in that case.
+        if (documents.Values.Any(xml => xml.Descendants().Any(n => n.Name.NamespaceName != OfdConstants.Namespace && n.Name.NamespaceName != OfdConstants.StandardNamespace))) modeled.Clear();
+        var changedComposites = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        bool removed;
+        do
+        {
+            removed = false; references.Clear();
+            foreach (var documentXml in documents.Values) { operationToken.ThrowIfCancellationRequested(); AddReferences(documentXml, references); }
+            foreach (var pair in documents)
+            {
+                if (!owned.Contains(pair.Key) || !IsTypedRoot(pair.Value, "Res", ns)) continue;
+                material.ChargeCopy(128L + pair.Value.Root!.Descendants().Count() * 16L, operationToken);
+                foreach (var resource in pair.Value.Root.Elements(pair.Value.Root.Name.Namespace + "CompositeGraphicUnits").Elements(pair.Value.Root.Name.Namespace + "CompositeGraphicUnit").ToArray())
+                {
+                    operationToken.ThrowIfCancellationRequested(); material.ChargeWork(128, operationToken); material.Structure.Reference();
+                    var id = resource.Attribute("ID")?.Value;
+                    if (id is null || !modeled.Contains(id) || !candidateIds.Contains(id) || references.Contains(id)) continue;
+                    material.ChargeCopy(256, operationToken);
+                    foreach (var reference in resource.Descendants().Attributes().Where(a => a.Name.LocalName is "Font" or "ResourceID")) candidateIds.Add(reference.Value);
+                    resource.Remove(); changedComposites.Add(pair.Key); removed = true;
+                }
+            }
+        } while (removed);
+        foreach (var path in changedComposites) entries[path] = Serialize(documents[path]);
         var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var pair in documents)
         {

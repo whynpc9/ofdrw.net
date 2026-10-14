@@ -55,7 +55,7 @@ internal static class OfdModelTraversal
                     var element = occurrence.Definition ?? occurrence.RenderElement;
                     var info = state.Elements[element];
                     if (snapshot.VisibleOnly && (!occurrence.Visible || !info.Visible)) continue;
-                    var kind = !info.Primitive ? OfdTraversalDiagnosticKind.RawObject : !info.Supported ? OfdTraversalDiagnosticKind.UnsupportedSource : OfdTraversalDiagnosticKind.DerivedProjection;
+                    var kind = element is OfdCompositeElement ? OfdTraversalDiagnosticKind.UnsupportedSource : !info.Primitive ? OfdTraversalDiagnosticKind.RawObject : !info.Supported ? OfdTraversalDiagnosticKind.UnsupportedSource : OfdTraversalDiagnosticKind.DerivedProjection;
                     if ((kind == OfdTraversalDiagnosticKind.RawObject || kind == OfdTraversalDiagnosticKind.UnsupportedSource) && snapshot.RequireSupportedSource)
                         throw new NotSupportedException("Unsupported annotation source; no traversal result was returned.");
                     var path = Path(state.Budget, ordinal, OfdContentScope.Annotation, occurrence.Annotation, occurrence.Element);
@@ -105,9 +105,9 @@ internal static class OfdModelTraversal
                 cancellationToken.ThrowIfCancellationRequested();
                 var element = elements[index];
                 var info = state.Elements[element];
-                if (snapshot.VisibleOnly && !info.Visible) continue;
+                if (snapshot.VisibleOnly && !info.Visible && element is not OfdCompositeElement) continue;
                 var shared = info.Uses > 1 || scope == OfdContentScope.Template;
-                var kind = !info.Primitive ? OfdTraversalDiagnosticKind.RawObject :
+                var kind = element is OfdCompositeElement ? OfdTraversalDiagnosticKind.UnsupportedSource : !info.Primitive ? OfdTraversalDiagnosticKind.RawObject :
                     !info.Supported ? OfdTraversalDiagnosticKind.UnsupportedSource :
                     scope == OfdContentScope.Annotation ? OfdTraversalDiagnosticKind.DerivedProjection :
                     shared ? OfdTraversalDiagnosticKind.SharedDefinition : (OfdTraversalDiagnosticKind?)null;
@@ -140,6 +140,7 @@ internal static class OfdModelTraversal
     private static State Preflight(OfdDocumentPackage package, OfdModelLimits limits, CancellationToken token)
     {
         var state = new State(limits);
+        OfdCompositeGraph.Validate(package, state.Material, token);
         OfdAnnotationContract.Validate(package, state.Material, token);
         if (OfdAnnotationContract.HasTyped(package)) state.Material.InspectStorage(package, token);
         state.Budget.Node(1);
@@ -204,7 +205,7 @@ internal static class OfdModelTraversal
                 if (state.Elements.TryGetValue(element, out var existing)) { existing.Uses++; continue; }
                 var source = Source(element);
                 var primitive = element is OfdTextElement or OfdImageElement or OfdPathElement;
-                var supported = primitive;
+                var supported = primitive && element.Clips is null;
                 var visible = true;
                 if (source is not null)
                 {
@@ -312,7 +313,7 @@ internal static class OfdModelTraversal
     private static string? Source(OfdElement element) => element switch
     {
         OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml,
-        OfdPathElement path => path.SourceXml, OfdRawElement raw => raw.Xml, _ => null
+        OfdPathElement path => path.SourceXml, OfdRawElement raw => raw.Xml, OfdCompositeElement composite => composite.SourceXml, _ => null
     };
 
     private static bool IsBackground(OfdTemplateContent template) => string.Equals(template.ZOrder, "Background", StringComparison.OrdinalIgnoreCase);

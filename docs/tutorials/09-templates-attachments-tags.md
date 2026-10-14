@@ -147,7 +147,40 @@ Document.xml
 | 标题 | `Title` | `Name` |
 | 跳转 | 节点上的 `Actions` | 条目上的 `Dest` |
 
-用本仓库保留已有大纲（读入后再写出）：不要清空 `PreservedDocumentElements`。新建大纲目前需要自行拼 XML 放进该列表，或等后续强类型 API。源项目可直接 `document.setOutlines(...)`。
+本仓库使用 `OfdOutlineCollection`、`OfdBookmarkCollection` 和 `OfdActionCollection` 读写这些结构，无需拼 XML。目标绑定实际 `OfdPage`，保存时分配页 ID；页重排后目标仍指向同一页。
+
+```csharp
+package.Outlines = new OfdOutlineCollection();
+var chapter = new OfdOutline { Title = "第一章", Expanded = true,
+    Actions = new OfdActionCollection() };
+chapter.Actions.Items.Add(new OfdGoToAction {
+    Destination = new OfdDestination { Page = package.Pages[0], Type = OfdDestinationType.Fit }
+});
+package.Outlines.Items.Add(chapter);
+package.Bookmarks = new OfdBookmarkCollection();
+var bookmark = new OfdBookmark { Name = "首页",
+    Destination = new OfdDestination { Page = package.Pages[0] } };
+package.Bookmarks.Items.Add(bookmark);
+package.Actions = new OfdActionCollection();
+package.Actions.Items.Add(new OfdGoToAction { Event = "DO", Bookmark = bookmark });
+```
+
+动作只序列化，库不会执行动作。GoTo 使用直接目标或书签引用，两者互斥；其他动作以 `OfdRawAction` 保留。未知 XML 留在原有顺序槽中。未认领的 `null` 保留源 XML，空集合删除已建模项；修改后撤回为 `null` 或通过已撤回引用修改，会明确失败。原始 XML 与 typed 编辑不能混用来覆盖对方。删除仍被导航引用的页、合并/混合未具备闭包的导航结构，会拒绝。
+
+注释使用 `OfdPage.Annotations`，`OfdAnnotation.Appearance.Elements` 是局部 Text/Image/Path 定义。Appearance 的 Boundary/CTM 负责放置，正文坐标不能再加一次偏移：
+
+```csharp
+page.Annotations = new OfdAnnotationCollection();
+var note = new OfdAnnotation { Type = OfdAnnotationType.Stamp, Creator = "sample",
+    LastModifiedDate = new DateTime(2026, 10, 15),
+    Appearance = new OfdAnnotationAppearance { XMillimeters = 20, YMillimeters = 40,
+        WidthMillimeters = 80, HeightMillimeters = 20 } };
+note.Appearance.Elements.Add(new OfdTextElement { Text = "批注", XMillimeters = 2,
+    YMillimeters = 2, WidthMillimeters = 70, HeightMillimeters = 10 });
+page.Annotations.Items.Add(note);
+```
+
+日期为不带时区的民用日期。已读入 Appearance 的图元保持源所有权；可以调整注释元数据、外观放置，任意改写导入图元会拒绝。未知注释元数据保留；未支持的绘图子树明确拒绝导出。详见公开[两页样例](../../e2e/Ofdrw.Net.TypedObjects.E2E/Program.cs)。
 
 ## 附件
 

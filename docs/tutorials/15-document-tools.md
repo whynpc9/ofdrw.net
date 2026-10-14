@@ -109,3 +109,5 @@ Split、普通保存和水印先检查 Writer 实际重建的 Page/Area/Content/
 读取注释时，`OfdPackageLoadOptions.MaxAnnotationObjectCount`（默认100000）和 `MaxAnnotationXmlBytes`（默认128 MiB）限制整次读取的累计展开量。同一缓存注释文件被多页引用会重复计费，隐藏绘图也计入图元预算；两项配置必须为正。普通显示保留边界前四个有限数值的兼容性，但编辑/展平仍要求精确四值；不能解析有效四值时读取明确失败。正页面边长若在写出三位小数精度下归零，会在新建/修改/自动补页的写出或工具预检中拒绝。没有归档基线时，Split拒绝所选页中的保留XML，未选页扩展不会阻止选取。
 
 显式清理删除签名声明时，返回的 `SignaturesInvalidated` 为 `true`，即使对应清单缺失或载荷因引用仍保留；无声明或再次清理为 `false`。合并会清除复制附件的源ID，并由Writer按目标集合顺序生成唯一ID；重复选择同一包的页面仍按来源复制附件，不做内容去重。
+
+typed Composite/Clip 的 Split 保留独立资源闭包和同一目标包内的共享关系。删除最后一个已知 placement 后，Writer 对可证明无引用的组合定义进行有界固定点修剪，再处理字体/图片；未知引用语义保守保留。Merge/Mix 对 typed composite 或 clip 明确预检拒绝，暂不宣称完整引用重映射。普通 Reader→编辑→Writer 使用现有累计预算、取消和源变更 guard；严格文字保存权限没有扩为任意图形改写权限。

@@ -163,10 +163,28 @@ internal sealed class OfdSourceIdentity
                     if (storage is not null) budget.AdoptReadString(key, storage, token);
                     result.resources.Add(key, owner);
                 }
+                if (node.Name.LocalName == "CompositeGraphicUnit" && package.CompositeResources is { } compositeResources)
+                {
+                    var definition = compositeResources.Items.SingleOrDefault(r => r.SourceEntryPath == path && r.Id == owner.Id);
+                    if (definition is not null)
+                    {
+                        Bind(definition, node, owners);
+                        var children = node.Elements().ToArray();
+                        if (children.Length != definition.Elements.Count) throw new InvalidDataException("Composite definition slots changed.");
+                        for (var i = 0; i < children.Length; i++)
+                        {
+                            var graphic = definition.Elements[i]; var child = children[i]; Bind(graphic, child, owners);
+                            result.graphicIds.Add(graphic, new GraphicIds(CaptureIds(child, budget, token), CaptureIds(child.Element(resourceNs + "Clips"), budget, token)));
+                            if (graphic is OfdImageElement image && result.TryResource("MultiMedia", child.Attribute("ResourceID")?.Value, out var media)) result.images.Add(image, media);
+                        }
+                    }
+                }
                 if (node.Name.LocalName == "Font" && fontsById.TryGetValue(owner.Number, out var matchedFonts))
                     foreach (var font in matchedFonts) result.models.Add(font, owner);
             }
         }
+        foreach (var graphic in package.CompositeResources?.Items.SelectMany(r => r.Elements).OfType<OfdImageElement>() ?? Enumerable.Empty<OfdImageElement>())
+            if (!result.images.ContainsKey(graphic) && result.TryResource("MultiMedia", graphic.ResourceId, out var media)) result.images.Add(graphic, media);
         foreach (var path in contentPaths)
             if (package.PreservedEntries.ContainsKey(path)) Register(path, Read(path), "Page");
         foreach (var page in package.Pages)
@@ -262,7 +280,8 @@ internal sealed class OfdSourceIdentity
                 var definitionRole = Accepted(node.Name.Namespace, sourceNs) && IsDefinition(node, xml.Root);
                 if (definitionRole && id is not null && ParseId(id) == 0) throw new InvalidDataException("Unsupported non-positive or non-numeric source document-unit ID.");
                 var activeDefinition = definitionRole && ParseId(id) != 0;
-                var opaqueRoot = node.Parent?.Name.LocalName == "Layer" && node.Parent.Parent?.Name.LocalName == "Content" && node.Parent.Parent.Parent == xml.Root;
+                var opaqueRoot = node.Parent?.Name.LocalName == "Layer" && node.Parent.Parent?.Name.LocalName == "Content" && node.Parent.Parent.Parent == xml.Root ||
+                    xml.Root.Name.LocalName == "Res" && node.Parent?.Name == sourceNs + "CompositeGraphicUnit" && node.Parent.Parent?.Name == sourceNs + "CompositeGraphicUnits" && node.Parent.Parent.Parent == xml.Root;
                 if (!activeDefinition && !opaqueRoot) continue;
                 id ??= string.Empty;
                 budget.ReserveReadModel(2048, token);
@@ -324,7 +343,9 @@ internal sealed class OfdSourceIdentity
         {
             var container = node.Name.LocalName switch
             { "Font" => "Fonts", "MultiMedia" => "MultiMedias", "DrawParam" => "DrawParams", "ColorSpace" => "ColorSpaces", "CompositeGraphicUnit" => "CompositeGraphicUnits", _ => null };
-            return container is not null && node.Parent?.Name == ns + container && node.Parent.Parent == root;
+            if (container is not null) return node.Parent?.Name == ns + container && node.Parent.Parent == root;
+            if (node.Name.Namespace != ns || node.Name.LocalName is not ("TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;
+            return node.Parent?.Name == ns + "CompositeGraphicUnit" && node.Parent.Parent?.Name == ns + "CompositeGraphicUnits" && node.Parent.Parent.Parent == root;
         }
         if (node.Name.LocalName == "Layer" && node.Parent?.Name != ns + "Content") return false;
         if (root.Name.LocalName != "Page" || node.Name.LocalName is not ("Layer" or "PageBlock" or "TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;
