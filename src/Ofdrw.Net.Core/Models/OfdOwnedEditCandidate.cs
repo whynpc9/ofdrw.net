@@ -31,6 +31,47 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         OfdSerializedGuard guard, OfdControlledEditContext context, CancellationToken token)
     {
         context.AssertActive(); guard.AssertUnchanged(source, context, token);
+        var candidate = CloneGraph(source, guard, context, token);
+        try
+        {
+            guard.AssertUnchanged(source, context, token);
+            context.Material.InspectStorage(candidate.Package, token);
+            return candidate;
+        }
+        catch { context.Fail(); candidate.Dispose(); throw; }
+    }
+
+    // Sole production consumer: Packaging.PrepareContinuousTextEdit, on the
+    // same synchronous stack. Never return this intermediate candidate/guard
+    // through a caller result, callback or await; there is no reusable stamp.
+    internal static OfdOwnedEditCandidate ClonePatchAndClaim(OfdDocumentPackage source,
+        OfdSerializedGuard guard, OfdControlledEditContext context, OfdRetainedTextEditBatch edits,
+        CancellationToken token, out OfdSerializedGuard candidateGuard)
+    {
+        OfdOwnedEditCandidate? candidate = null;
+        try
+        {
+            context.AssertActive(); edits.Claim(source, guard, context, token);
+            context.ClaimClone(); guard.AssertUnchanged(source, context, token);
+            candidate = CloneGraph(source, guard, context, token);
+            edits.Apply(candidate, token);
+            guard.AssertUnchanged(source, context, token);
+            context.Material.InspectStorage(candidate.Package, token);
+            candidateGuard = context.CaptureSource(candidate.Package, token);
+            // The candidate and its newly captured baseline have never escaped.
+            // Immediate claim uses that baseline; generic ClaimWrite is intact.
+            token.ThrowIfCancellationRequested(); context.AssertActive();
+            if (Interlocked.CompareExchange(ref candidate.state, 1, 0) != 0)
+                throw new InvalidOperationException("Continuous candidate has already been claimed.");
+            edits.Complete();
+            return candidate;
+        }
+        catch { context.Fail(); candidate?.Dispose(); edits?.Dispose(); throw; }
+    }
+
+    private static OfdOwnedEditCandidate CloneGraph(OfdDocumentPackage source,
+        OfdSerializedGuard guard, OfdControlledEditContext context, CancellationToken token)
+    {
         var material = context.Material;
         material.GuardPreservedXml(source, token); source.SourceIdentity?.Reconcile(source, material, token);
         OfdNavigationXml.Validate(source, source.Pages, token, material);
@@ -93,11 +134,8 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         OfdNavigationCloner.Clone(source, copy, mapping, material, token, requireClosedMap: true);
         copy.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, token, requireClosedMap: true);
         copy.SourceIdentity = source.SourceIdentity?.CloneFor(copy, mapping, material, token, requireClosedMap: true);
-        guard.AssertUnchanged(source, context, token);
-        // A complete second inventory admits the resulting graph before the
-        // private certificate is issued. No model or mutable array is published
-        // on a partial factory failure.
-        material.InspectStorage(copy, token);
+        // Both callers retain this graph on their synchronous private stack
+        // until their fresh source exit check and complete inventory succeed.
         return new OfdOwnedEditCandidate(source, copy, mapping, guard, context);
 
         void Map(object original, object clone)
