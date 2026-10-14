@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main", "master"]
   pull_request:
-    branches: ["main", "master", "codex/typed-object-owned-save-foundation"]
+    branches: ["main", "master", "codex/typed-object-owned-save-foundation", "codex/keyword-locate-replace"]
 
 jobs:
   build-test:
