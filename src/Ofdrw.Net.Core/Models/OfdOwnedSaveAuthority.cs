@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Ofdrw.Net.Core.Models;
@@ -400,7 +401,9 @@ internal sealed class OfdOwnedModelsLease
             throw new InvalidOperationException("File intent is missing, foreign or already bound.");
         context.Material.ChargeCopy(checked(1024L + 8L * (input.Length + (long)output.Length)), token);
         RequireCanonicalPath(input, token); RequireCanonicalPath(output, token);
-        if (string.Equals(input, output, StringComparison.OrdinalIgnoreCase))
+        var comparison = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (string.Equals(input, output, comparison))
             throw new InvalidDataException("Owned save cannot replace its original input or an alias.");
         context.Material.StoreString(input); context.Material.StoreString(output);
         inputPath = input; outputPath = output;

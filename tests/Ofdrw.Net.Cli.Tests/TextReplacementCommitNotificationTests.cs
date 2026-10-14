@@ -1,5 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
+using Ofdrw.Net.Reader.Readers;
+using Ofdrw.Net.Reader.Keywords;
+using Ofdrw.Net.Converter.Pdf.Geometry;
+using Xunit.Abstractions;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging;
 
@@ -11,6 +15,8 @@ public sealed class OwnedCliConsoleCollection { }
 [Collection("Owned CLI console")]
 public sealed class TextReplacementCommitNotificationTests
 {
+    private readonly ITestOutputHelper testOutput;
+    public TextReplacementCommitNotificationTests(ITestOutputHelper output) => testOutput = output;
     [Fact]
     public async Task ThrowingSuccessWriterCannotFailActualNoopRawZipCommit()
     {
@@ -67,6 +73,120 @@ public sealed class TextReplacementCommitNotificationTests
         }
         finally { Directory.Delete(directory, true); }
     }
+    [Theory]
+    [InlineData("AAA")]
+    [InlineData("A")]
+    public async Task CaseVariantOwnedPathsFollowActualPlatformPolicyWithoutChangingInput(string replacement)
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "ofdrw-case-path-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var font = await File.ReadAllBytesAsync(FontFixture());
+            var input = Path.Combine(directory, "Input.ofd"); var target = Path.Combine(directory, "input.ofd");
+            await WriteCaseFixtureAsync(input, font);
+            var original = await File.ReadAllBytesAsync(input);
+            var namesAliasOnVolume = File.Exists(target);
+            var insensitivePolicy = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS();
+            testOutput.WriteLine($"Actual OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}; case names already alias on this volume: {namesAliasOnVolume}; insensitive policy: {insensitivePolicy}");
+            // On a case-insensitive volume target already names the input. Never
+            // write a supposed independent target sentinel through that alias.
+            var targetBefore = original;
+            if (!namesAliasOnVolume)
+            {
+                targetBefore = Encoding.UTF8.GetBytes("existing case-distinct target sentinel");
+                using var separate = new FileStream(target, FileMode.CreateNew, FileAccess.Write);
+                await separate.WriteAsync(targetBefore);
+            }
+            if (!insensitivePolicy) Assert.False(namesAliasOnVolume); // successful branch requires real independent files, no OS simulation/skip
+            var code = await global::Cli.RunAsync(["replace-text", input, target, "--find", "AAA", "--replace", replacement,
+                "--trusted-font", Convert.ToHexString(SHA256.HashData(font)) + ":" + font.Length]);
+            Assert.Equal(original, await File.ReadAllBytesAsync(input));
+            if (insensitivePolicy)
+            {
+                Assert.Equal(1, code); Assert.Equal(targetBefore, await File.ReadAllBytesAsync(target));
+                testOutput.WriteLine("Executed conservative Windows/macOS rejection; Linux independent-file publication is not exercised on this host.");
+            }
+            else
+            {
+                Assert.Equal(0, code);
+                if (replacement == "AAA") Assert.Equal(original, await File.ReadAllBytesAsync(target));
+                using var actual = File.OpenRead(target); var readback = await new OfdReader().ReadAsync(actual);
+                var texts = readback.Pages[0].Elements.OfType<OfdTextElement>().ToArray();
+                Assert.Equal(replacement, Assert.Single(texts.Where(t => t.ObjectId == "30")).Text);
+                Assert.Equal("A", Assert.Single(texts.Where(t => t.ObjectId == "31")).Text);
+                var profile = new OfdTrustedEmbeddedFontIdentity(Convert.ToHexString(SHA256.HashData(font)), font.Length);
+                var locations = new OfdKeywordLocator(new OfdTrustedEmbeddedFontGeometryProvider([profile])).Find(readback, "A");
+                Assert.True(locations.IsComplete);
+                var neighbor = Assert.Single(locations.Hits.Where(hit => hit.Fragments[0].BaselineMillimeters.Y == 93));
+                Assert.Equal(22, Assert.Single(neighbor.Fragments).BaselineMillimeters.X);
+                testOutput.WriteLine("Executed real case-distinct file publication and fresh public Reader/locator replacement and unchanged-neighbor readback.");
+            }
+            Assert.Empty(Directory.GetFiles(directory, ".ofdrw-*.tmp"));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ValidInputCanonicalAndActualSymlinkAliasesRejectWithoutChangingFiles(bool symbolicLink)
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "ofdrw-actual-alias-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var font = await File.ReadAllBytesAsync(FontFixture()); var input = Path.Combine(directory, "input.ofd");
+            await WriteCaseFixtureAsync(input, font);
+            var original = await File.ReadAllBytesAsync(input);
+            using (var actual = File.OpenRead(input))
+            {
+                var valid = await new OfdReader().ReadAsync(actual);
+                Assert.Equal("AAA", Assert.Single(valid.Pages[0].Elements.OfType<OfdTextElement>().Where(t => t.ObjectId == "30")).Text);
+            }
+            var target = input;
+            if (symbolicLink)
+            {
+                target = Path.Combine(directory, "output-link.ofd");
+                try { File.CreateSymbolicLink(target, input); }
+                catch (Exception error) when (OperatingSystem.IsWindows() &&
+                    (error is UnauthorizedAccessException or PlatformNotSupportedException ||
+                     error is IOException io && (io.HResult & 0xffff) is 1314 or 50))
+                {
+                    testOutput.WriteLine($"SYMLINK BRANCH NOT EXECUTED: actual Windows link API unavailable: {error.Message}. Linux/macOS real link evidence is required separately.");
+                    Assert.Equal(original, await File.ReadAllBytesAsync(input));
+                    Assert.Empty(Directory.GetFiles(directory, ".ofdrw-*.tmp"));
+                    return; // no fabricated link, OS simulation, permission escalation or claimed rejection
+                }
+                Assert.Equal(input, new FileInfo(target).LinkTarget);
+            }
+            var targetBefore = await File.ReadAllBytesAsync(target);
+            var code = await global::Cli.RunAsync(["replace-text", input, target, "--find", "AAA", "--replace", "AAA",
+                "--trusted-font", Convert.ToHexString(SHA256.HashData(font)) + ":" + font.Length]);
+            Assert.Equal(1, code); Assert.Equal(original, await File.ReadAllBytesAsync(input));
+            Assert.Equal(targetBefore, await File.ReadAllBytesAsync(target));
+            if (symbolicLink) Assert.Equal(input, new FileInfo(target).LinkTarget);
+            Assert.Empty(Directory.GetFiles(directory, ".ofdrw-*.tmp"));
+            testOutput.WriteLine(symbolicLink ? "Executed actual valid-OFD output symlink-to-input rejection." : "Executed actual valid-OFD same-canonical-path rejection.");
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    private static async Task WriteCaseFixtureAsync(string input, byte[] font)
+    {
+        var package = new OfdDocumentPackage(); package.Fonts.Add(new() { Id = "10", FontName = "Ofdrw Test Face", Data = font });
+        var page = new OfdPage { Id = "1", WidthMillimeters = 200, HeightMillimeters = 200 };
+        foreach (var (id, value, y) in new[] { ("30", "AAA", 30d), ("31", "A", 85d) })
+        {
+            var text = new OfdTextElement { ObjectId = id, LayerId = "20", FontResourceId = "10", FontName = "Ofdrw Test Face",
+                XMillimeters = 20, YMillimeters = y, WidthMillimeters = 100, HeightMillimeters = 50, FontSizeMillimeters = 4, Text = value };
+            text.Runs.Add(new() { Text = value, XMillimeters = 2, YMillimeters = 8, DeltaX = value.Length == 3 ? "2 2" : null });
+            page.Elements.Add(text);
+    }
+        package.Pages.Add(page);
+        using (var file = File.Create(input)) await new OfdPackageWriter().WriteAsync(package, file);
+    }
+
     private static string FontFixture()
     {
         for (var current = new DirectoryInfo(AppContext.BaseDirectory); current is not null; current = current.Parent)
