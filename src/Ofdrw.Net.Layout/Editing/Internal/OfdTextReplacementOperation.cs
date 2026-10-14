@@ -31,6 +31,13 @@ internal sealed class OfdTextReplacementOperation : IDisposable
         return new OfdTextReplacementOperation(source, session.Options, token, context);
     }
 
+    internal static OfdTextReplacementOperation ForOwnedFileSession(OfdTextReplacementFileSession session,
+        OfdDocumentPackage source, OfdControlledEditContext context, CancellationToken token)
+    {
+        session.ClaimOwnedPreparation(source, context, token);
+        return new OfdTextReplacementOperation(source, session.Options, token, context);
+    }
+
     private OfdTextReplacementOperation(OfdDocumentPackage source, OfdTextReplacementOptions options, CancellationToken token,
         OfdControlledEditContext context)
     {

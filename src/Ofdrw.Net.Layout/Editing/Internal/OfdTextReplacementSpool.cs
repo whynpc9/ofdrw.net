@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.ExceptionServices;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Ofdrw.Net.Core.Models;
@@ -18,12 +19,15 @@ internal sealed class OfdTextReplacementSpool : Stream
     private readonly CancellationToken operationToken;
     private int busy, disposed;
     private bool failed;
+    private bool copiedToStage;
     internal long ReservedPosition { get; private set; }
     internal long ActualReadBytes { get; private set; }
     internal long ActualWrittenBytes { get; private set; }
     internal long ReservedReadBytes { get; private set; }
     internal long ReservedWriteBytes { get; private set; }
     internal long SeekCount { get; private set; }
+    internal long StageWrittenBytes { get; private set; }
+    internal long StageReservedPosition { get; private set; }
 
     internal OfdTextReplacementSpool(OfdControlledEditContext context, long capacity, CancellationToken token = default)
     {
@@ -182,6 +186,52 @@ internal sealed class OfdTextReplacementSpool : Stream
         try { context.Material.ChargeWork(16, token); await file.FlushAsync(token).ConfigureAwait(false); CheckAfterIo(); }
         catch { Fail(); throw; } finally { Exit(); }
     }
+
+    // Byte-copy primitive only. Its caller must first verify the actual Reader
+    // result and later run final source/candidate/readback guards before commit.
+    // This expected digest grants no geometry or Writer receipt authority.
+    internal async Task CopyToStageAsync(FileStream destination, long expectedLength, byte[] expectedSha256,
+        CancellationToken token = default)
+    {
+        Enter();
+        try
+        {
+            if (copiedToStage) throw new InvalidOperationException("Private spool stage copy has already been consumed.");
+            copiedToStage = true;
+            token.ThrowIfCancellationRequested();
+            context.Material.ChargeWork(16, token);
+            if (destination is null || destination.GetType() != typeof(FileStream) || !destination.CanWrite || !destination.CanSeek ||
+                destination.Position != 0 || destination.Length != 0 || expectedLength < 0 || expectedLength > capacity ||
+                file.Length != expectedLength || expectedSha256 is null || expectedSha256.Length != 32)
+                throw new InvalidDataException("ReplacementStageBindingMismatch");
+            context.Material.ChargeCopy(81_920 + 8192 + 32, token);
+            var baseline = expectedSha256.ToArray(); var buffer = new byte[81_920];
+            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            context.Material.ChargeOutput(expectedLength); StageReservedPosition = expectedLength;
+            context.Material.ChargeWork(16, token); file.Position = 0; SeekCount++;
+            long copied = 0;
+            while (copied < expectedLength)
+            {
+                CheckAfterIo(); token.ThrowIfCancellationRequested();
+                var count = (int)Math.Min(buffer.Length, expectedLength - copied);
+                // Read, SHA and destination write all admitted before the read.
+                context.Material.ChargeWork(3L * count, token); ReservedReadBytes += count;
+                var read = await file.ReadAsync(buffer, 0, count, token).ConfigureAwait(false); ActualReadBytes += read;
+                CheckAfterIo(); token.ThrowIfCancellationRequested();
+                if (read == 0) throw new EndOfStreamException("Private spool was truncated during stage copy.");
+                hash.AppendData(buffer, 0, read);
+                await destination.WriteAsync(buffer, 0, read, token).ConfigureAwait(false); StageWrittenBytes += read;
+                CheckAfterIo(); token.ThrowIfCancellationRequested(); copied += read;
+            }
+            context.Material.ChargeWork(32 + 16, token);
+            if (file.Length != expectedLength || destination.Length != expectedLength || !baseline.SequenceEqual(hash.GetHashAndReset()))
+                throw new InvalidDataException("ReplacementStageBindingMismatch");
+            context.Material.ChargeWork(16, token); await destination.FlushAsync(token).ConfigureAwait(false);
+            CheckAfterIo(); token.ThrowIfCancellationRequested();
+        }
+        catch { Fail(); throw; } finally { Exit(); }
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (!disposing) return;

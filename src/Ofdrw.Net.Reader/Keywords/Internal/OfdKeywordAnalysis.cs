@@ -17,6 +17,7 @@ namespace Ofdrw.Net.Reader.Keywords.Internal;
 /// restored before observation are not detectable. This service does not implement replacement or write pages.</remarks>
 internal sealed class OfdKeywordAnalysis
 {
+    private enum Finalization { Independent, ImmediateOwnedFileFactory }
     private readonly IOfdGlyphGeometryProvider provider;
     private readonly OfdKeywordLocatorLimits limits;
     private readonly OfdModelMaterialization? material;
@@ -43,6 +44,21 @@ internal sealed class OfdKeywordAnalysis
     /// <summary>Searches a copied distinct page selection in requested order. Invalid/duplicate positions reject.</summary>
     internal OfdKeywordSearchResult Find(OfdDocumentPackage source, IReadOnlyList<int> pageIndexes, string keyword,
         OfdKeywordSearchOptions? options = null, CancellationToken cancellationToken = default)
+        => FindCore(source, pageIndexes, keyword, options, cancellationToken, Finalization.Independent);
+
+    // Only the private file job uses this entry and immediately enters the
+    // shared synchronous clone/patch/Writer factory. It is not a freshness
+    // credential and cannot be carried across a callback, await or return.
+    internal OfdKeywordSearchResult FindForOwnedFile(OfdDocumentPackage source, int[] pageIndexes, string keyword,
+        OfdKeywordSearchOptions options, CancellationToken cancellationToken)
+    {
+        if (material is null || validateWholeSource is null || capture is null)
+            throw new InvalidOperationException("Owned file analysis requires the enclosing private operation.");
+        return FindCore(source, pageIndexes, keyword, options, cancellationToken, Finalization.ImmediateOwnedFileFactory);
+    }
+
+    private OfdKeywordSearchResult FindCore(OfdDocumentPackage source, IReadOnlyList<int> pageIndexes, string keyword,
+        OfdKeywordSearchOptions? options, CancellationToken cancellationToken, Finalization finalization)
     {
         if (source is null) throw new ArgumentNullException(nameof(source));
         if (pageIndexes is null) throw new ArgumentNullException(nameof(pageIndexes));
@@ -231,7 +247,12 @@ internal sealed class OfdKeywordAnalysis
         }
         beforeCallback?.Invoke("FinalFontValidation");
         snapshot.ValidateUnchanged(source, budget); snapshot.ValidateFontEntries(budget);
-        operation.ValidateSourceFontsUnchanged(); validateWholeSource?.Invoke(); operation.Check();
+        operation.ValidateSourceFontsUnchanged();
+        // The private factory's real fresh entry check discharges this final
+        // whole-source obligation. Every actual provider callback guard and
+        // both final font/entry comparisons above remain unchanged.
+        if (finalization == Finalization.Independent) validateWholeSource?.Invoke();
+        operation.Check();
         var statistics = new OfdKeywordLocatorStatistics(budget, operation, traversal.NodeCount, traversal.ReferenceCount, providerStatistics);
         return new OfdKeywordSearchResult(hits, diagnostics, selection, statistics);
 
