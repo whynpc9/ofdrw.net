@@ -16,7 +16,8 @@ internal sealed class OfdPackagePruner
 {
     private readonly OfdModelMaterialization material;
     private readonly CancellationToken operationToken;
-    private OfdPackagePruner(OfdModelMaterialization material, CancellationToken token) { this.material = material; operationToken = token; }
+    private readonly OfdOwnedPruneDispositions? ownedDispositions;
+    private OfdPackagePruner(OfdModelMaterialization material, CancellationToken token, OfdOwnedPruneDispositions? ownedDispositions = null) { this.material = material; operationToken = token; this.ownedDispositions = ownedDispositions; }
     internal sealed class XmlScanCache(Func<byte[], XDocument> parse)
     {
         private readonly Dictionary<string, (byte[] Bytes, XDocument? Xml, bool Opaque)> snapshots = new(StringComparer.OrdinalIgnoreCase);
@@ -34,14 +35,14 @@ internal sealed class OfdPackagePruner
     }
     internal static OfdPackageWriteResult Prune(
         OfdDocumentPackage package,
-        IDictionary<string, byte[]> entries, CancellationToken cancellationToken = default, OfdModelMaterialization? material = null)
+        IDictionary<string, byte[]> entries, CancellationToken cancellationToken = default, OfdModelMaterialization? material = null, OfdOwnedPruneDispositions? ownedDispositions = null)
     {
         if (material is null)
         {
             material = new OfdModelMaterialization(new OfdModelLimits());
             material.InspectStorage(package, cancellationToken); material.GuardPreservedXml(package, cancellationToken);
         }
-        return new OfdPackagePruner(material, cancellationToken).PruneCore(package, entries, cancellationToken);
+        return new OfdPackagePruner(material, cancellationToken, ownedDispositions).PruneCore(package, entries, cancellationToken);
     }
     private OfdPackageWriteResult PruneCore(OfdDocumentPackage package, IDictionary<string, byte[]> entries, CancellationToken cancellationToken)
     {
@@ -91,7 +92,7 @@ internal sealed class OfdPackagePruner
                 {
                     if (ReferencesFile(entries, page.Path, scan))
                         result.Warnings.Add($"Page entry '{page.Path}' remains referenced by a template or extension and was retained as shared content.");
-                    else Remove(entries, page.Path, result);
+                    else Remove(entries, page.Path, result, OfdOwnedPruneReason.DeletedPage);
                 }
             }
 
@@ -115,7 +116,7 @@ internal sealed class OfdPackagePruner
                 if (!HasPageContentBeside(entries, path, scan) && !ReferencesFile(entries, path, scan))
                 {
                     if (entries.TryGetValue(path, out var resourceBytes) && TryParse(resourceBytes, out var resourceXml) &&
-                        IsTypedRoot(resourceXml, "Res", Parse(entries[currentDocumentPath]).Root!.Name.Namespace)) Remove(entries, path, result);
+                        IsTypedRoot(resourceXml, "Res", Parse(entries[currentDocumentPath]).Root!.Name.Namespace)) Remove(entries, path, result, OfdOwnedPruneReason.DeletedPageResource);
                     else if (entries.ContainsKey(path)) result.Warnings.Add($"Unmodeled page resource was retained: '{path}'.");
                 }
         }
@@ -186,7 +187,7 @@ internal sealed class OfdPackagePruner
             entries[documentPath] = Serialize(document);
             if (pagePaths.Contains(path) || ReferencesFile(entries, path, scan)) continue;
             if (entries.TryGetValue(path, out var bytes) && TryParse(bytes, out var xmlPage)) AddReferences(xmlPage, candidateIds);
-            Remove(entries, path, result);
+            Remove(entries, path, result, OfdOwnedPruneReason.UnusedTemplate);
             var resourcePath = OfdPackagePath.GetDirectory(path) + "/PageRes.xml";
             if (pagePaths.Any(pagePath => OfdPackagePath.GetDirectory(pagePath) == OfdPackagePath.GetDirectory(path)) ||
                 ReferencesFile(entries, resourcePath, scan)) continue;
@@ -221,7 +222,7 @@ internal sealed class OfdPackagePruner
                     result.Warnings.Add($"Unmodeled annotation payload was retained: '{file}'.");
                     continue;
                 }
-                AddReferences(annotation, candidateIds); Remove(entries, file, result);
+                AddReferences(annotation, candidateIds); Remove(entries, file, result, OfdOwnedPruneReason.DeletedAnnotation);
             }
         }
     }
@@ -286,7 +287,7 @@ internal sealed class OfdPackagePruner
         // still reference the same payload. Preserve it whenever in doubt.
         foreach (var file in files)
         {
-            if (!ReferencesFile(entries, file, scan)) Remove(entries, file, result);
+            if (!ReferencesFile(entries, file, scan)) Remove(entries, file, result, OfdOwnedPruneReason.UnreachableResourcePayload);
         }
     }
 
@@ -327,6 +328,7 @@ internal sealed class OfdPackagePruner
         var root = Parse(entries["OFD.xml"]);
         var removedDeclarations = SignatureDeclarations(root).ToList();
         if (removedDeclarations.Count > 0) result.SignaturesInvalidated = true;
+        ownedDispositions?.RecordActualSignatureDeclarations(removedDeclarations, cancellationToken);
         removedDeclarations.Remove();
         entries["OFD.xml"] = Serialize(root);
         var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -411,7 +413,7 @@ internal sealed class OfdPackagePruner
         foreach (var path in candidates)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Remove(entries, path, result);
+            Remove(entries, path, result, OfdOwnedPruneReason.InvalidatedSignature);
         }
     }
 
@@ -482,8 +484,10 @@ internal sealed class OfdPackagePruner
             node.Name.LocalName is not "MaxUnitID" and not "TextCode" and not "AbbreviatedData")) references.Add(node.Value);
     }
 
-    private void Remove(IDictionary<string, byte[]> entries, string path, OfdPackageWriteResult result)
+    private void Remove(IDictionary<string, byte[]> entries, string path, OfdPackageWriteResult result, OfdOwnedPruneReason reason)
     {
+        if (!entries.TryGetValue(path, out var actual)) return;
+        ownedDispositions?.RecordRemoval(path, actual, reason, operationToken);
         if (entries.Remove(path)) result.Removed.Add(path);
     }
 
