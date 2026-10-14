@@ -18,7 +18,7 @@ public sealed class TextReplacementCommitNotificationTests
         Directory.CreateDirectory(directory);
         try
         {
-            var font = await File.ReadAllBytes(FontFixture());
+            var font = await File.ReadAllBytesAsync(FontFixture());
             var input = Path.Combine(directory, "input.ofd"); var output = Path.Combine(directory, "output.ofd");
             var package = new OfdDocumentPackage();
             package.Fonts.Add(new() { Id = "10", FontName = "Ofdrw Test Face", Data = font });
