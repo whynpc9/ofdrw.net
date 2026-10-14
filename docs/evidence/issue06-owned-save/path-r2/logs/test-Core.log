@@ -1,0 +1,30 @@
+
+Welcome to .NET 10.0!
+---------------------
+SDK Version: 10.0.401
+
+----------------
+Installed an ASP.NET Core HTTPS development certificate.
+To trust the certificate, run 'dotnet dev-certs https --trust'
+Learn about HTTPS: https://aka.ms/dotnet-https
+
+----------------
+Write your first app: https://aka.ms/dotnet-hello-world
+Find out what's new: https://aka.ms/dotnet-whats-new
+Explore documentation: https://aka.ms/dotnet-docs
+Report issues and find source on GitHub: https://github.com/dotnet/core
+Use 'dotnet --help' to see available commands or visit: https://aka.ms/dotnet-cli
+--------------------------------------------------------------------------------------
+An issue was encountered verifying workloads. For more information, run "dotnet workload update".
+  Determining projects to restore...
+  Restored /Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/tests/Ofdrw.Net.ProcessFixture/Ofdrw.Net.ProcessFixture.csproj (in 29 ms).
+  Restored /Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/src/Ofdrw.Net.Core/Ofdrw.Net.Core.csproj (in 3.82 sec).
+  Restored /Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj (in 5.39 sec).
+  Ofdrw.Net.Core -> /Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/src/Ofdrw.Net.Core/bin/Release/netstandard2.1/Ofdrw.Net.Core.dll
+  Ofdrw.Net.ProcessFixture -> /Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/tests/Ofdrw.Net.ProcessFixture/bin/Release/net10.0/Ofdrw.Net.ProcessFixture.dll
+  Ofdrw.Net.Core.Tests -> /Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/tests/Ofdrw.Net.Core.Tests/bin/Release/net10.0/Ofdrw.Net.Core.Tests.dll
+Test run for /Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/tests/Ofdrw.Net.Core.Tests/bin/Release/net10.0/Ofdrw.Net.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/results/Core.trx
+
+Passed!  - Failed:     0, Passed:    69, Skipped:     0, Total:    69, Duration: 2 s - Ofdrw.Net.Core.Tests.dll (net10.0)
