@@ -1,0 +1,1 @@
+Unclaimed annotation source prevents destructive page removal.

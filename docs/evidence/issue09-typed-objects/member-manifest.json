@@ -3,8 +3,63 @@
   "members": [
     {
       "path": "README.md",
-      "bytes": 6304,
-      "sha256": "92b8f130a3f718615670726216558732726d5790fb50a52229a6cd9d84cab835"
+      "bytes": 6823,
+      "sha256": "c6ece8a72c4d70431f571dae24d02ef6e5fc2b473758e76da160de5cef6894e0"
+    },
+    {
+      "path": "ci-fixture-repair/README.md",
+      "bytes": 2752,
+      "sha256": "458f7de5e0b0c9c8d4c8a493f68876a4b492d100797edc48ae1b2eab93f4dd7a"
+    },
+    {
+      "path": "ci-fixture-repair/binary-xml-split-1.png",
+      "bytes": 21401,
+      "sha256": "23766f403b59578503beec3d1f46ade68a76c8f94686ac0d91e918bd9d37f2f0"
+    },
+    {
+      "path": "ci-fixture-repair/binary-xml-split.pdf",
+      "bytes": 85053,
+      "sha256": "927e53a0f9c0fd4c30ccd8c1abe40117382c4c99372e0e5320944b6d80843c65"
+    },
+    {
+      "path": "ci-fixture-repair/ci-trx-summary.json",
+      "bytes": 3179,
+      "sha256": "503e219eeedc184b25ebbd50becacf2f615611d70872f0733c02b74914ebecd0"
+    },
+    {
+      "path": "ci-fixture-repair/document-tools-repair.log",
+      "bytes": 46867,
+      "sha256": "91933ca82ccd47efcf8c381528248e481a6d9a36da74fddb827e570c6a6d66d9"
+    },
+    {
+      "path": "ci-fixture-repair/first-package-e2e-failure.log",
+      "bytes": 55317,
+      "sha256": "78130ed39110b0a5b461280a11a3f946d79a5f73867c2f72ec1854de371d6365"
+    },
+    {
+      "path": "ci-fixture-repair/fixture-equivalence.json",
+      "bytes": 597,
+      "sha256": "b0bf1eb86e79910ab71607e680ee7d8d0081bec35ea1845d477ce8c84da7ef50"
+    },
+    {
+      "path": "ci-fixture-repair/manifest.json",
+      "bytes": 56379,
+      "sha256": "fec624befeaa173a7c6f80faa2dca23a66173c1f9706378ae090155808794582"
+    },
+    {
+      "path": "ci-fixture-repair/split-template-liveness-1.png",
+      "bytes": 21401,
+      "sha256": "23766f403b59578503beec3d1f46ade68a76c8f94686ac0d91e918bd9d37f2f0"
+    },
+    {
+      "path": "ci-fixture-repair/split-template-liveness.pdf",
+      "bytes": 85053,
+      "sha256": "2c41eba98053a1eeef3c39227e99ca88418290fe457a06a02dc99f3acec7dc4c"
+    },
+    {
+      "path": "ci-fixture-repair/unclaimed-annotation-split.rejection.txt",
+      "bytes": 62,
+      "sha256": "caaa00ca67f3609c58ca0a9594c85628aa2bb0ea3d0e20c5424f5be4b7f56b24"
     },
     {
       "path": "font-payloads.json",
@@ -15,6 +70,106 @@
       "path": "functional/Consumer.csproj",
       "bytes": 1177,
       "sha256": "e4d4477e83e238df4759f90b08b4a37ebba2ee7edd97e0cb04c29eeba3cfa221"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter-netstandard2.0.log",
+      "bytes": 7305,
+      "sha256": "32ecaf164f25e90635979d1b80708a46c4c6938e0bfddb707d15968ae81f433b"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter-netstandard2.1.log",
+      "bytes": 7305,
+      "sha256": "506d14078a91682adfcf08ecb5747b0abcb5b2ce1990c09efe5f4f8536cf889c"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter.Abstractions-netstandard2.0.log",
+      "bytes": 400,
+      "sha256": "d792390c2f33bdc129a577e65b8840851f10908b8a1b28a93a73fd8e06bed309"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter.Abstractions-netstandard2.1.log",
+      "bytes": 400,
+      "sha256": "48f4b246fc8617e64a7380ee51e1facea3c63f61b81588d9de5143addf924841"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter.Docx-netstandard2.0.log",
+      "bytes": 6993,
+      "sha256": "abb68266c5dc66135c8bf51b773973f3b53b20214da845cb76d04ef01ecb261c"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter.Docx-netstandard2.1.log",
+      "bytes": 6993,
+      "sha256": "13807cc81945437272b4bb5eeceee0dff6967c2c21085d75437ea73f3f07a206"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter.Pdf-netstandard2.0.log",
+      "bytes": 3901,
+      "sha256": "c5961be7cd2445a4162d083d94752af53a2ac6d2f6ac92e438f2c9a08bf653dc"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter.Pdf-netstandard2.1.log",
+      "bytes": 3901,
+      "sha256": "59a04e80ad332c111f3d0531e321bd7efc67952bbd19d2aa12fb3219f1d155de"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter.Svg-netstandard2.0.log",
+      "bytes": 664,
+      "sha256": "e747817de910e2a1b9d2b4f76d1f46f6aa86148cd709d3f97ff83b2e620ebfde"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Converter.Svg-netstandard2.1.log",
+      "bytes": 664,
+      "sha256": "9014177048d256bbfafd3e62e95379a210d04591b2169ecc99bd1d36aea0ea5b"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Core-netstandard2.0.log",
+      "bytes": 211,
+      "sha256": "f9addd18bdc14466b007a675a509d2a7bd466876a47b814bcc31add67dbbad8d"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Core-netstandard2.1.log",
+      "bytes": 211,
+      "sha256": "bc25790cee5ef810c38ad45f0554c81ca5b07e02940881369b38b63dd4660c1b"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Layout-netstandard2.0.log",
+      "bytes": 643,
+      "sha256": "0d1f3da6b1bb28145c82464e87664c4cd73c2a239d7b3fef5e1b297de03c20f5"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Layout-netstandard2.1.log",
+      "bytes": 643,
+      "sha256": "fd8f5946ef9b54a138e7f935e4a236ffc373db2d17d168bdb331102a831b69b4"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Packaging-netstandard2.0.log",
+      "bytes": 361,
+      "sha256": "de3e9e63018220e4c11a43b15f7dbd1c6a965050ccd5554b5e4739a4641448ad"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Packaging-netstandard2.1.log",
+      "bytes": 361,
+      "sha256": "0fd707825d1923c4461cba899d769aa25989fdbec88906c18601fc6f088527db"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Reader-netstandard2.0.log",
+      "bytes": 502,
+      "sha256": "105b32a989ceada00bc5c7ccecc2722ba4571edcb3930c4a48e52f9500adbe26"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Reader-netstandard2.1.log",
+      "bytes": 502,
+      "sha256": "feb37239defa4783e66f0cfeed069b50c60ff8a6a51e603498efa9051540ee0f"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Signatures-netstandard2.0.log",
+      "bytes": 514,
+      "sha256": "0b82c9d00cbb4fe288d76a1db176425c9f3c8a7416611d10030ba17089d4378f"
+    },
+    {
+      "path": "functional/build-logs/Ofdrw.Net.Signatures-netstandard2.1.log",
+      "bytes": 514,
+      "sha256": "aab3990ef5f86aeb786b76f691badf05dc8e05a39a878784fb2fbdfaf29c3fbb"
     },
     {
       "path": "functional/cli-help.log",
@@ -47,9 +202,19 @@
       "sha256": "7dcacad3266084a4794d2babca8eec084abbf794bbdf738d6c5aa1a1a6d01287"
     },
     {
+      "path": "functional/package-build.log",
+      "bytes": 37542,
+      "sha256": "8824f9928e9637c8b04cfae1f2a80b707f69568df29f5d394bb414836e83096f"
+    },
+    {
       "path": "functional/package-manifest.json",
       "bytes": 2261,
       "sha256": "3a8a75913fc37c1cd077f8d257d953080b0303eedb8fc9e3f2a9a0d288163678"
+    },
+    {
+      "path": "functional/package-pack.log",
+      "bytes": 12512,
+      "sha256": "3adece93da73436e7de60e49776826eae17e51e89afa448ebd843d45a01e1339"
     },
     {
       "path": "functional/test-command.json",
@@ -208,8 +373,8 @@
     },
     {
       "path": "visual-inspection.json",
-      "bytes": 1063,
-      "sha256": "30bcee0ccedaaa9386c797ca41a404d6c537291bd4312defd14d6fab39ff55b3"
+      "bytes": 1252,
+      "sha256": "995d57692e5589050b4e71c08df77f85f36e70d1c92783bfeee68fa5312eb628"
     }
   ]
 }

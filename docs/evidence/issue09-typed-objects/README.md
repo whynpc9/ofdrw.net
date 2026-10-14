@@ -1,6 +1,6 @@
 # Issue09 typed object acceptance
 
-The functional and package gates passed on product candidate `60163cca80a4da62bf748ba19a300a8d714b80c4`. **Overall acceptance remains open: macOS Preview could not start because the Mac was locked, and current-head PR review/CI is pending.** PNG inspection is auxiliary and does not replace Preview. Later documentation/evidence-only commits do not change or relabel this measured product source.
+The functional and package gates passed on product candidate `60163cca80a4da62bf748ba19a300a8d714b80c4`. **Overall acceptance remains open: macOS Preview could not start because the Mac was locked, and current-head PR review/CI is pending.** PNG inspection is auxiliary and does not replace Preview. Later documentation/evidence and E2E-only commits do not change or relabel this measured product source.
 
 The branch preserves original B `c68a6c7` and accepted shared foundation `f7e3a62` through the normal merge `45aeec5`, whose second parent is exact Issue06 `7caa8b54f2b28e0479d051e6ddf9b6d3227b5c3d`. The stacked PR targets `codex/keyword-locate-replace`; its delta is Issue09. No merge, tag or package publication is implied.
 
@@ -33,3 +33,7 @@ Supported: constructible outlines/bookmarks/GoTo; local annotation appearances; 
 ## Licenses and identity
 
 Both public OFDs contain only full Noto OFL originals, recorded in [font payloads](font-payloads.json). PDFs contain derived subsets. [Latin license](licenses/NotoSans-LICENSE), [CJK OFL](licenses/Ofdrw-CI-Noto-OFL.txt) and [repository MIT](licenses/MIT-LICENSE) accompany the artifacts. No system PingFang/Arial binary, package feed, cache or DLL is redistributed. [Member manifest](member-manifest.json) binds the allowlisted raw records and products by exact length/hash; hashes establish identity, not visual acceptance.
+
+## PR20 initial CI fixture correction
+
+The first CI failure came from a legacy unclaimed annotation being destructively removed by the DocumentTools positive Split fixture. The original fixture and safety refusal are retained; a separate owned direct-appearance input restores the intended positive cases. [Repair record](ci-fixture-repair/README.md) includes the actual 36-case/55-page matrix result and two affected PNGs. Product source remains 60163cc. Preview and latest-head PR closure are still pending.
