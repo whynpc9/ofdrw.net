@@ -264,6 +264,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             // first await, with no PreparedWrite escape/caller-return boundary.
             written = await OfdPackageWriter.WriteContinuousTextEditAsync(operation.Source!, operation.SourceGuard!, context, batch, ownedSpool, token).ConfigureAwait(false);
             preparationToken.ThrowIfCancellationRequested(); token.ThrowIfCancellationRequested(); context.AssertActive();
+            operation.Mark("WrittenOwnedZip");
             await ownedSpool.FlushAsync(token).ConfigureAwait(false);
             preparationToken.ThrowIfCancellationRequested(); token.ThrowIfCancellationRequested(); context.AssertActive();
             operation.Mark("WroteOwnedOutput");
