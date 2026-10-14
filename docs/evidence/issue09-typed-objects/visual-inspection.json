@@ -1,0 +1,33 @@
+{
+  "productSource": "60163cca80a4da62bf748ba19a300a8d714b80c4",
+  "chain": "public PackageReference API -> native OFD -> PDF -> PNG (auxiliary); Preview pending",
+  "pngPagesInspected": {
+    "before.pdf": [
+      1,
+      2
+    ],
+    "after.pdf": [
+      1,
+      2
+    ],
+    "original-v1.pdf": [
+      1,
+      2
+    ]
+  },
+  "previewCompleted": false,
+  "previewReason": "Native UI startup returned locked Mac and failed automatic unlock; manual unlock requested",
+  "observations": [
+    "Chinese and proportional English readable with local bold/italic/color",
+    "Original compound table no diagonal bridges or triangular fill gaps",
+    "Two shared nested placements, only left edit moves",
+    "Image transform/clip intersection, labelled intentional text crop",
+    "NonZero solid; EvenOdd hole",
+    "Local annotation once, footer labels present, no unexpected blank page"
+  ],
+  "scopeLimits": [
+    "No SVG browser visual verdict",
+    "No general multi-Area union export",
+    "No automatic header/footer or page-number feature acceptance"
+  ]
+}
