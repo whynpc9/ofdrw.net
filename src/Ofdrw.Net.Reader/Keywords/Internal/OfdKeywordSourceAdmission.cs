@@ -22,6 +22,7 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     private readonly HashSet<string> resourceEntries = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OfdFontResource?> modelFonts = new(StringComparer.Ordinal);
     private double[]? documentBox;
+    private XElement? documentArea;
     private XNamespace ns = XNamespace.None;
     private bool generated;
 
@@ -69,14 +70,14 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
             if (child.Name.Namespace != ns || child.Name.LocalName is not ("MaxUnitID" or "PageArea" or "PublicRes" or "DocumentRes" or "TemplatePage"))
                 throw new NotSupportedException("UnknownInheritedDocumentState");
         }
-        if (One(common, "PageArea", false) is { } area) documentBox = Box(area);
+        if (One(common, "PageArea", false) is { } area) { documentBox = Box(area); documentArea = area; }
         foreach (var name in new[] { "PublicRes", "DocumentRes" })
         {
             if (One(common, name, false) is { } declaration)
             {
                 OfdStrictTextGeometry.Attributes(declaration);
                 if (declaration.HasElements) throw new NotSupportedException("UnknownResourceDeclaration");
-                ReadResource(Resolve(package.DocumentEntryPath!, declaration.Value));
+                ReadResource(Resolve(package.DocumentEntryPath!, declaration.Value), package.DocumentEntryPath!, name, declaration.Value);
             }
         }
         var pages = One(document, "Pages", true)!; OfdStrictTextGeometry.Attributes(pages);
@@ -201,6 +202,82 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
             throw new NotSupportedException("SourceFontBindingConflict");
         return (source, definition.File);
     }
+    internal OfdKeywordPageInput CapturePageInput(int position)
+    {
+        budget.Check();
+        if (generated || !pageEntries.TryGetValue(position, out var entry)) throw new NotSupportedException("PrivateInputsRequireOriginalEnvelope");
+        var page = package.Pages[position]; var root = Control(entry); var own = One(root, "Area", false);
+        var area = own ?? documentArea ?? throw new NotSupportedException("MissingPagePhysicalBox");
+        var physical = One(area, "PhysicalBox", true)!;
+        // Box/Page already admitted these ancestors. Retain exact authority,
+        // presence and ordered layers from that same bounded DOM.
+        long physicalUnits = 0; var physicalTexts = 0;
+        foreach (var node in physical.Nodes())
+        {
+            budget.Field();
+            if (node is not XText text || node is XCData) throw new NotSupportedException("UnsupportedPrivatePageAreaContent");
+            physicalUnits = checked(physicalUnits + text.Value.Length); physicalTexts++;
+        }
+        // XElement.Value can concatenate multiple existing text nodes. Its
+        // string construction is prepaid before obtaining the actual value.
+        budget.Copy(checked(256L + 4L * physicalUnits)); budget.Work(checked(2L * physicalUnits));
+        var value = physicalTexts == 1 ? ((XText)physical.FirstNode!).Value : physical.Value; budget.Retain(value); budget.Retain(entry); budget.Retain(page.Id); budget.Retain(ns.NamespaceName);
+        var document = Control(package.DocumentEntryPath!); var pages = One(document, "Pages", true)!;
+        var references = Elements(pages, ns + "Page");
+        if (position >= references.Length) throw new NotSupportedException("PageSourceOwnershipMismatch");
+        var content = One(root, "Content", false); var count = 0;
+        if (content is not null) foreach (var layer in content.Elements()) { budget.Field(); count++; }
+        budget.Copy(checked(1024L + 512L * count));
+        var layers = new OfdKeywordLayerInput[count]; var index = 0;
+        if (content is not null)
+            foreach (var layer in content.Elements())
+            {
+                budget.Field();
+                var objects = 0; foreach (var child in layer.Elements()) { budget.Field(); objects++; }
+                layers[index++] = new OfdKeywordLayerInput(layer.Name.NamespaceName,
+                    OfdKeywordInputValues.Attributes(layer, budget), objects);
+            }
+        return new OfdKeywordPageInput(position, page.Id!, entry, ns.NamespaceName, own is not null, value,
+            OfdKeywordInputValues.Attributes(references[position], budget), Array.AsReadOnly(layers));
+    }
+
+    internal OfdKeywordFontInput CaptureFontInput(string id, OfdTextElement text)
+    {
+        var binding = ResolveFont(id);
+        if (generated || !fonts.TryGetValue(id, out var definition) || definition.File is null || definition.FileName is null)
+            throw new NotSupportedException("PrivateInputsRequireOriginalFontDeclaration");
+        var declaration = definition.Declaration; var resource = definition.Resource;
+        var name = declaration.Attribute("FontName")?.Value;
+        var family = declaration.Attribute("FamilyName")?.Value;
+        var charset = declaration.Attribute("Charset")?.Value;
+        var effective = name ?? family;
+        // Pay every new scan before any projection comparison. The Reader
+        // model and admission DOM normally hold equal but distinct strings;
+        // retaining them in Storage does not fund this repeated character work.
+        budget.Characters(effective?.Length ?? 0);
+        budget.Characters(binding.Resource.FontName?.Length ?? 0); budget.Characters(effective?.Length ?? 0);
+        budget.Characters(binding.Resource.FamilyName?.Length ?? 0); budget.Characters(family?.Length ?? 0);
+        budget.Characters(binding.Resource.Charset?.Length ?? 0); budget.Characters(charset?.Length ?? 0);
+        budget.Characters(text.FontName?.Length ?? 0); budget.Characters(effective?.Length ?? 0);
+        if (string.IsNullOrWhiteSpace(effective) || binding.Resource.FontName != effective || binding.Resource.FamilyName != family ||
+            binding.Resource.Charset != charset || text.FontName != effective)
+            throw new NotSupportedException("SourceFontProjectionConflict");
+        var file = declaration.Element(ns + "FontFile")!;
+        OfdStrictTextGeometry.Attributes(file);
+        if (file.HasElements || file.Nodes().Any(n => n is not XText || n is XCData))
+            throw new NotSupportedException("UnsupportedFontFileContent");
+        budget.Copy(512); budget.Retain(name); budget.Retain(family); budget.Retain(charset);
+        budget.Retain(definition.ResourceEntry); budget.Retain(definition.File); budget.Retain(definition.FileName);
+        var ordinal = 0;
+        foreach (var other in resource.Element(ns + "Fonts")!.Elements())
+        { budget.Field(); if (ReferenceEquals(other, declaration)) break; ordinal++; }
+        budget.Retain(definition.OriginEntry); budget.Retain(definition.DeclarationKind); budget.Retain(definition.DeclarationValue);
+        return new OfdKeywordFontInput(ns.NamespaceName, definition.ResourceEntry, definition.File,
+            OfdKeywordInputValues.Attributes(resource, budget), OfdKeywordInputValues.Attributes(declaration, budget),
+            definition.FileName, name, family, charset, definition.Bold, definition.Italic, ordinal,
+            definition.OriginEntry, definition.DeclarationKind, definition.DeclarationValue);
+    }
+
     // Reader drops element-only indentation; Writer emits it by default. Only
     // the admitted TextObject container can ignore ordinary XML
     // whitespace. TextCode values, CDATA, comments and child order stay exact.
@@ -314,9 +391,9 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     {
         budget.Copy(4L * pagePath.Length + 128); budget.Work(2L * pagePath.Length);
         var split = pagePath.LastIndexOf('/'); var path = (split < 0 ? "" : pagePath.Substring(0, split + 1)) + "PageRes.xml";
-        if (snapshot.HasExactEntry(path)) ReadResource(path);
+        if (snapshot.HasExactEntry(path)) ReadResource(path, pagePath, "FixedPageRes", "PageRes.xml");
     }
-    private void ReadResource(string path)
+    private void ReadResource(string path, string originEntry, string declarationKind, string declarationValue)
     {
         budget.Copy(128); budget.Work(2L * path.Length);
         if (!resourceEntries.Add(path)) return;
@@ -360,7 +437,7 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
             if (fonts.ContainsKey(id)) throw new NotSupportedException("DuplicateOriginalFontId");
             budget.Copy(256);
             fonts.Add(id, new FontDefinition(fileName, file, OfdStrictTextGeometry.Boolean(font.Attribute("Bold")?.Value, false),
-                OfdStrictTextGeometry.Boolean(font.Attribute("Italic")?.Value, false)));
+                OfdStrictTextGeometry.Boolean(font.Attribute("Italic")?.Value, false), path, root, font, originEntry, declarationKind, declarationValue));
         }
     }
     private XElement Control(string path)
@@ -414,9 +491,12 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
         return (name is null ? parent.Elements() : parent.Elements(name)).ToArray();
     }
     private static long ExpandedLength(XName name) => 2L + name.NamespaceName.Length + name.LocalName.Length;
-    private sealed class FontDefinition(string? name, string? file, bool bold, bool italic)
+    private sealed class FontDefinition(string? name, string? file, bool bold, bool italic, string resourceEntry, XElement resource, XElement declaration, string originEntry, string declarationKind, string declarationValue)
     {
         internal readonly string? FileName = name, File = file;
         internal readonly bool Bold = bold, Italic = italic;
+        internal readonly string ResourceEntry = resourceEntry;
+        internal readonly XElement Resource = resource, Declaration = declaration;
+        internal readonly string OriginEntry = originEntry, DeclarationKind = declarationKind, DeclarationValue = declarationValue;
     }
 }

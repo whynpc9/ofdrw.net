@@ -18,7 +18,7 @@ internal sealed class OfdTextReplacementRoot
 internal static class OfdTextReplacementFitAdapter
 {
     internal static List<OfdTextReplacementRoot> Plan(OfdKeywordAnalysisCapture capture,
-        OfdTextReplacement[] requests, OfdTextReplacementOperation operation, CancellationToken token, HashSet<int> affectedPages)
+        OfdTextReplacement[] requests, OfdTextReplacementOperation operation, CancellationToken token, HashSet<int> affectedPages, OfdTextGeometryExpectation.Builder? expectation = null)
     {
         var budget = capture.Budget; var objectCount = 0;
         foreach (var occurrence in capture.Traversal.Occurrences)
@@ -78,6 +78,7 @@ internal static class OfdTextReplacementFitAdapter
                 cancellationToken: token);
             var root = new OfdTextReplacementRoot { Owner = owner, Source = source, Fit = fit };
             roots.Add(source, root); rootsByOccurrence.Add(key, root); fitObjects.Add(fit);
+            expectation?.CaptureRoot(capture, occurrence, root);
         }
         for (var i = 0; i < requests.Length; i++)
         {
@@ -88,6 +89,7 @@ internal static class OfdTextReplacementFitAdapter
             var geometry = capture.Measure(source, request.ReplacementText);
             budget.Copy(512L + 256L * geometry.Clusters.Count + 4L * request.ReplacementText.Length);
             var metrics = geometry.Clusters.Select(value => Metric(char.ConvertToUtf32(request.ReplacementText, value.Utf16Start), value.Utf16Start, value)).ToArray();
+            expectation?.RecordReplacementMetrics(root, geometry, metrics);
             fitRequests.Add(new OfdTextFitRequest(root.Fit.Occurrence, mapped.Start, mapped.Count,
                 request.Hit.MatchedText, request.ReplacementText, root.Fit.FontStyle, metrics, token));
         }
@@ -106,8 +108,9 @@ internal static class OfdTextReplacementFitAdapter
         foreach (var plan in result.Plans)
         {
             budget.Correlate(); var root = rootsByOccurrence[plan.Occurrence];
-            root.Plan = plan; root.Slots = OfdTextSlotCompiler.Compile(root, requests, budget, token); planned.Add(root);
+            root.Plan = plan; root.Slots = OfdTextSlotCompiler.Compile(root, requests, budget, token, expectation); planned.Add(root);
         }
+        expectation?.FreezeBeforeProviderClosure();
         operation.Mark("CompiledSlots"); return planned;
     }
     private static OfdTextFitMetric Metric(int scalar, int offset, OfdGlyphClusterGeometry geometry)

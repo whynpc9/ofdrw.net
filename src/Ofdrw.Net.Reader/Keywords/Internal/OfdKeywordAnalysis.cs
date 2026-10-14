@@ -144,7 +144,7 @@ internal sealed class OfdKeywordAnalysis
             try
             {
                 if (!certificate.TryGetValue(occurrence.OccurrencePath[3], out var locator)) throw new NotSupportedException("UnprovedSourceLocator");
-                var captured = OfdStrictTextGeometry.Capture(occurrence, locator.Layer, locator.Path, budget, reserved[occurrence], admission.HasOriginalEnvelope);
+                var captured = OfdKeywordInputCapture.CaptureSource(occurrence, locator.Layer, locator.Path, budget, reserved[occurrence], admission);
                 captured.Editable &= !snapshot.HasSharedRun((OfdTextElement)occurrence.Element, budget);
                 if (!captured.Visible) continue; // Visibility exclusion is also a continuity barrier.
                 foreach (var run in captured.Runs)
@@ -234,7 +234,7 @@ internal sealed class OfdKeywordAnalysis
             budget.Copy(2176L + 8L * hits.Count);
             var currentHits = hits.ToArray();
             capture(new OfdKeywordAnalysisCapture(source, traversal, candidates, positionedSources,
-                operation, budget, snapshot, session, validateWholeSource, beforeCallback, geometryCache, currentHits));
+                operation, budget, snapshot, admission, session, validateWholeSource, beforeCallback, geometryCache, currentHits));
         }
         if (session is not null)
         {

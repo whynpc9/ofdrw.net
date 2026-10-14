@@ -1,6 +1,7 @@
 using System.Threading;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Keywords;
+using Ofdrw.Net.Reader.Keywords.Internal;
 
 namespace Ofdrw.Net.Layout.Editing.Internal;
 
@@ -12,6 +13,18 @@ internal sealed class OfdTextReplacementOperation : IDisposable
     internal OfdOwnedEditCandidate? Candidate { get; set; }
     internal OfdSerializedGuard? CandidateGuard { get; set; }
     internal OfdTextReplacementOptions Options { get; }
+    private OfdTextGeometryExpectation.Builder? geometryBuilder;
+    internal OfdTextGeometryExpectation? GeometryExpectation { get; private set; }
+    internal OfdTextGeometryExpectation.Builder BeginGeometryExpectation(OfdKeywordAnalysisCapture capture, int pageCount)
+    {
+        if (geometryBuilder is not null || GeometryExpectation is not null) throw new InvalidOperationException("GeometryExpectationAlreadyIssued");
+        return geometryBuilder = OfdTextGeometryExpectation.Builder.Create(this, capture, pageCount);
+    }
+    internal void CloseGeometryPreparation()
+    {
+        if (geometryBuilder is null) return;
+        GeometryExpectation = geometryBuilder.SealAfterProviderClosure(); geometryBuilder.Dispose(); geometryBuilder = null;
+    }
     private List<OfdTextReplacementPhase> phases = null!;
     private List<OfdKeywordLocatorStatistics> analyses = null!;
     private OfdTextReplacementTraceCell[] trace = Array.Empty<OfdTextReplacementTraceCell>();
@@ -148,6 +161,7 @@ internal sealed class OfdTextReplacementOperation : IDisposable
     }
     public void Dispose()
     {
+        geometryBuilder?.Dispose(); geometryBuilder = null; GeometryExpectation?.Dispose(); GeometryExpectation = null;
         Candidate?.Dispose(); Candidate = null; CandidateGuard = null;
         SourceGuard = null; Source = null; phases?.Clear(); analyses?.Clear(); fitStatistics = null; Context.Dispose();
     }

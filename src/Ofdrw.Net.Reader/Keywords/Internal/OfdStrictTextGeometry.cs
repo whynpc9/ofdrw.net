@@ -21,6 +21,7 @@ internal sealed class OfdKeywordTextSource
     internal double[] Matrix = new double[] { 1, 0, 0, 1, 0, 0 };
     internal OfdGlyphFontSnapshot? Font;
     internal readonly List<OfdKeywordSourceRun> Runs = new();
+    internal OfdKeywordRootInput? PrivateInput;
 }
 
 internal sealed class OfdKeywordSourceRun(string text, int[] offsets, string path, double x, double y, string? dx, string? dy, string? rawText = null)
@@ -47,6 +48,14 @@ internal static class OfdStrictTextGeometry
 {
     internal static OfdKeywordTextSource Capture(OfdGraphicOccurrence occurrence, int layer, string path,
         OfdKeywordLocatorBudget budget, int reservedUnits, bool hasOriginalEnvelope)
+        => CaptureCore(occurrence, layer, path, budget, reservedUnits, hasOriginalEnvelope, false);
+
+    internal static OfdKeywordTextSource CapturePrivate(OfdGraphicOccurrence occurrence, int layer, string path,
+        OfdKeywordLocatorBudget budget, int reservedUnits, bool hasOriginalEnvelope)
+        => CaptureCore(occurrence, layer, path, budget, reservedUnits, hasOriginalEnvelope, true);
+
+    private static OfdKeywordTextSource CaptureCore(OfdGraphicOccurrence occurrence, int layer, string path,
+        OfdKeywordLocatorBudget budget, int reservedUnits, bool hasOriginalEnvelope, bool privateInputs)
     {
         var text = (OfdTextElement)occurrence.Element; var page = occurrence.Page;
         budget.Copy(2048L + 32L * reservedUnits);
@@ -130,6 +139,23 @@ internal static class OfdStrictTextGeometry
                     code.Attribute("DeltaX")?.Value, code.Attribute("DeltaY")?.Value, raw));
             }
             if (hasEmpty) ValidateRetainedEmptySlots(root, codes, text, result, hasOriginalEnvelope, budget);
+            if (privateInputs)
+            {
+                if (!hasOriginalEnvelope) throw new NotSupportedException("PrivateInputsRequireOriginalEnvelope");
+                ValidatePrivateShape(root, budget);
+                if (!hasEmpty) ValidateModelProjection(root, codes, text, result, budget);
+                var childCount = 0; foreach (var child in root.Elements()) { budget.Field(); childCount++; }
+                budget.Copy(checked(1024L + 256L * codes.Length + 128L * childCount));
+                var slots = new OfdKeywordSlotInput[codes.Length];
+                for (var i = 0; i < slots.Length; i++) { budget.Field(); slots[i] = new OfdKeywordSlotInput(OfdKeywordInputValues.Attributes(codes[i], budget)); }
+                var children = new string[childCount]; var childIndex = 0;
+                foreach (var child in root.Elements()) { budget.Field(); children[childIndex++] = child.Name.LocalName; }
+                budget.Retain(ns.NamespaceName);
+                foreach (var childName in children) budget.Retain(childName);
+                result.PrivateInput = new OfdKeywordRootInput(ns.NamespaceName, OfdKeywordInputValues.Attributes(root, budget),
+                    Array.AsReadOnly(children), root.Element(ns + "FillColor") is { } fill ? OfdKeywordInputValues.Attributes(fill, budget) : null,
+                    Array.AsReadOnly(slots));
+            }
             result.AllRunsEmpty = hasEmpty && !hasNonempty;
         }
         else
@@ -212,6 +238,39 @@ internal static class OfdStrictTextGeometry
             }
             throw new NotSupportedException("NoncanonicalEmptyTextObject");
         }
+        ValidateModelProjection(root, codes, text, source, budget);
+    }
+
+    private static void ValidatePrivateShape(XElement root, OfdKeywordLocatorBudget budget)
+    {
+        foreach (var node in root.Nodes())
+        {
+            budget.Field();
+            if (node is XElement child)
+            {
+                foreach (var content in child.Nodes())
+                {
+                    budget.Field();
+                    if (content is not XText || content is XCData || child.Name.LocalName == "FillColor")
+                        throw new NotSupportedException("UnsupportedPrivateTextContent");
+                }
+            }
+            else if (node is XText spacing && node is not XCData)
+            {
+                budget.Characters(spacing.Value.Length);
+                for (var i = 0; i < spacing.Value.Length; i++)
+                {
+                    if ((i & 255) == 0) budget.Check();
+                    if (spacing.Value[i] is not (' ' or '\t' or '\r' or '\n')) throw new NotSupportedException("UnsupportedPrivateTextContent");
+                }
+            }
+            else throw new NotSupportedException("UnsupportedPrivateTextContent");
+        }
+    }
+
+    private static void ValidateModelProjection(XElement root, XElement[] codes, OfdTextElement text,
+        OfdKeywordTextSource source, OfdKeywordLocatorBudget budget)
+    {
         budget.Field(7);
         Projection(text.Text is not null && text.Runs.Count == codes.Length && text.FontSizeMillimeters == source.Size &&
             text.XMillimeters == source.X && text.YMillimeters == source.Y && text.WidthMillimeters == source.Width && text.HeightMillimeters == source.Height);
@@ -329,7 +388,7 @@ internal static class OfdStrictTextGeometry
         }
         if (cursor != text.Length) throw new InvalidDataException("Provider mapping does not cover source text.");
     }
-    private static OfdKeywordPoint Transform(OfdKeywordTextSource source, double x, double y, bool checkClip)
+    internal static OfdKeywordPoint Transform(OfdKeywordTextSource source, double x, double y, bool checkClip)
     {
         var m = source.Matrix;
         var localX = Finite(m[0] * Finite(x) + m[2] * Finite(y) + m[4]);

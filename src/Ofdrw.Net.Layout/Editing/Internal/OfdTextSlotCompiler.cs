@@ -10,7 +10,7 @@ namespace Ofdrw.Net.Layout.Editing.Internal;
 internal static class OfdTextSlotCompiler
 {
     internal static OfdTextSlotEdit[] Compile(OfdTextReplacementRoot root, OfdTextReplacement[] requests,
-        OfdKeywordLocatorBudget budget, CancellationToken token)
+        OfdKeywordLocatorBudget budget, CancellationToken token, OfdTextGeometryExpectation.Builder? expectation = null)
     {
         var source = root.Source; var plan = root.Plan;
         budget.Copy(checked(4096L + 256L * source.Runs.Count + 512L * plan.Placements.Count + 16L * plan.Text.Length));
@@ -87,6 +87,7 @@ internal static class OfdTextSlotCompiler
             whole.Append(raw); edits[i] = new OfdTextSlotEdit(i, raw, xs[0], ys[0], deltaX, deltaY);
         }
         if (whole.ToString() != plan.Text) throw new InvalidDataException("ReplacementSlotOrderMismatch");
+        expectation?.RecordCompiled(root, edits, slots);
         return edits;
     }
     private static int Slot(string token) => int.Parse(token.Substring(1), NumberStyles.None, CultureInfo.InvariantCulture);

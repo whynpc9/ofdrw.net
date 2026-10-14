@@ -7,6 +7,7 @@ using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Keywords;
+using Ofdrw.Net.Reader.Keywords.Internal;
 using Ofdrw.Net.Reader.Readers;
 
 namespace Ofdrw.Net.Layout.Editing.Internal;
@@ -16,6 +17,10 @@ namespace Ofdrw.Net.Layout.Editing.Internal;
 internal sealed class OfdTextReplacementFileSession : IDisposable
 {
     private const int BufferSize = 81_920;
+    private enum Origin { General, OwnedCliJob }
+    private readonly Origin origin;
+    private bool aliasesLoaned;
+    private bool geometryCompared;
     private readonly object sync = new();
     private readonly CancellationToken preparationToken;
     private readonly string inputPath;
@@ -49,8 +54,8 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
     // Retain bounded scalar observations after failed owned cleanup so deleted
     // partial bytes remain observable without retaining file/Writer authority.
     private long failedSpoolPosition, failedSpoolRead, failedSpoolWritten, failedSpoolReservedRead, failedSpoolReservedWrite;
-    internal OfdControlledEditContext BoundContext { get { lock (sync) { AssertLegacyMode(); return context; } } }
-    internal OfdDocumentPackage BoundSource { get { lock (sync) { AssertLegacyMode(); return source ?? throw new ObjectDisposedException(nameof(OfdTextReplacementFileSession)); } } }
+    internal OfdControlledEditContext BoundContext { get { lock (sync) { AssertLegacyMode(); aliasesLoaned = true; return context; } } }
+    internal OfdDocumentPackage BoundSource { get { lock (sync) { AssertLegacyMode(); var value = source ?? throw new ObjectDisposedException(nameof(OfdTextReplacementFileSession)); aliasesLoaned = true; return value; } } }
     internal OfdTextReplacementOptions Options { get; }
     internal long RawReadBytes { get; private set; }
     internal long RawHashBytes { get; private set; }
@@ -62,16 +67,25 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
 
     private OfdTextReplacementFileSession(string path, string snapshotPath, FileStream stream, byte[] buffer, byte[] digest, long length,
         OfdDocumentPackage source, OfdControlledEditContext context, OfdTextReplacementOptions options,
-        CancellationToken token, long readBytes, long reservedBytes)
+        CancellationToken token, long readBytes, long reservedBytes, Origin origin)
     {
-        inputPath = path; this.snapshotPath = snapshotPath; input = stream; this.buffer = buffer; inputDigest = digest; inputLength = length;
+        this.origin = origin; inputPath = path; this.snapshotPath = snapshotPath; input = stream; this.buffer = buffer; inputDigest = digest; inputLength = length;
         this.source = source; this.context = context; Options = options; preparationToken = token;
         RawReadBytes = RawHashBytes = readBytes; RawReservedReadBytes = RawReservedHashBytes = reservedBytes;
         InitialReadStatistics = Snapshot("InitialRawBindingAndControlledRead", context);
     }
 
-    internal static async Task<OfdTextReplacementFileSession> OpenAsync(string inputPath,
+    internal static Task<OfdTextReplacementFileSession> OpenAsync(string inputPath,
         OfdTextReplacementOptions? options = null, CancellationToken token = default)
+        => OpenCoreAsync(inputPath, options, token, Origin.General);
+
+    // Sole production caller is CLI's private typed factory. It creates its own
+    // sealed provider; this provenance is not a caller deterministic credential.
+    internal static Task<OfdTextReplacementFileSession> OpenForPrivateCliJobAsync(string inputPath, CancellationToken token = default)
+        => OpenCoreAsync(inputPath, null, token, Origin.OwnedCliJob);
+
+    private static async Task<OfdTextReplacementFileSession> OpenCoreAsync(string inputPath,
+        OfdTextReplacementOptions? options, CancellationToken token, Origin origin)
     {
         if (inputPath is null) throw new ArgumentNullException(nameof(inputPath));
         var policies = options ?? new OfdTextReplacementOptions();
@@ -111,7 +125,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             if (!first.Digest.SequenceEqual(second.Digest)) throw new InvalidDataException("Replacement input changed while reading.");
             token.ThrowIfCancellationRequested(); context.AssertActive();
             return new OfdTextReplacementFileSession(path, snapshot, stream, buffer, first.Digest, length, source, context, policies,
-                token, first.Read + second.Read, first.Reserved + second.Reserved);
+                token, first.Read + second.Read, first.Reserved + second.Reserved, origin);
         }
         catch (Exception error)
         {
@@ -222,6 +236,18 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
         if (!ownedMode || !busy || state != 1 || !ReferenceEquals(operation.Source, source) || !ReferenceEquals(operation.Context, context) ||
             (ownedOperation is not null && !ReferenceEquals(ownedOperation, operation)))
             throw new InvalidOperationException("Private preparation cannot publish a foreign owner.");
+    }
+
+    internal OfdTextGeometryExpectation.Builder? CreateGeometryExpectation(OfdTextReplacementOperation operation,
+        OfdKeywordAnalysisCapture capture, int pageCount)
+    {
+        lock (sync)
+        {
+            AssertOwnedOperation(operation);
+            if (origin != Origin.OwnedCliJob) return null;
+            if (aliasesLoaned) throw new NotSupportedException("PrivateGeometrySourceAliasWasLoaned");
+            return operation.BeginGeometryExpectation(capture, pageCount);
+        }
     }
 
     internal void CreateOwnedOutputSpool(OfdTextReplacementOperation operation, CancellationToken token)
@@ -345,6 +371,31 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             // stage. Reading bytes alone never qualifies AtomicOutput commit.
         }
         catch (Exception error) { Fail(); ownedOperation!.Fail(error); CleanupOwnedWriteFailure(); throw; }
+        finally { lock (sync) busy = false; }
+    }
+
+    internal OfdTextGeometryInputStatistics VerifyOwnedGeometryInputs(CancellationToken token = default)
+    {
+        lock (sync)
+        {
+            AssertReady(3, token); AssertIdle();
+            if (origin != Origin.OwnedCliJob || aliasesLoaned || ownedOperation?.GeometryExpectation is null || ownedReadback is null || ownedReadbackGuard is null)
+                throw new NotSupportedException("PrivateGeometryOwnershipOrExpectationUnavailable");
+            if (geometryCompared) throw new InvalidOperationException("Private geometry inputs were already compared.");
+            geometryCompared = true; busy = true;
+        }
+        try
+        {
+            ownedOperation.Begin("PrivateGeometryInputEquivalence");
+            ownedWriter!.AssertSourceAndCandidateUnchanged(token);
+            ownedReadbackGuard.AssertUnchanged(ownedReadback, context, token);
+            // Identity bindings prove only this component. Relocated output and
+            // package preservation require the actual separately owned09 receipt.
+            var statistics = OfdTextGeometryInputVerifier.CompareIdentityBoundComponent(ownedOperation.GeometryExpectation!, ownedOperation, ownedReadback, token);
+            ownedWriter.AssertSourceAndCandidateUnchanged(token); ownedReadbackGuard.AssertUnchanged(ownedReadback, context, token);
+            ownedOperation.Mark("ComparedPrivateGeometryInputs"); return statistics;
+        }
+        catch (Exception error) { Fail(); ownedOperation.Fail(error); CleanupOwnedWriteFailure(); throw; }
         finally { lock (sync) busy = false; }
     }
 

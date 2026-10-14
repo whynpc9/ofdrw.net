@@ -134,7 +134,8 @@ public sealed class OfdTextReplacer
                 if (requests.Any(value => value.ReplacementText != value.Hit.MatchedText))
                 {
                     var pages = AffectedPages(requests, operation, cancellationToken);
-                    roots = OfdTextReplacementFitAdapter.Plan(capture, requests, operation, cancellationToken, pages);
+                    var expectation = ownedFile?.CreateGeometryExpectation(operation, capture, pages.Count);
+                    roots = OfdTextReplacementFitAdapter.Plan(capture, requests, operation, cancellationToken, pages, expectation);
                     // File creation stays inside the private capture phase,
                     // before final provider Dispose and its source/font checks.
                     ownedFile?.CreateOwnedOutputSpool(operation, cancellationToken);
@@ -148,7 +149,10 @@ public sealed class OfdTextReplacer
         operation.RecordAnalysis(found);
         // No callback or await is inserted after the final actual provider
         // Dispose. The caller proceeds directly to its private batch/factory.
-        if (ownedFile is not null) operation.Mark("MeasuredAndClosedProvider");
+        if (ownedFile is not null)
+        {
+            operation.CloseGeometryPreparation(); operation.Mark("MeasuredAndClosedProvider");
+        }
         return (requests!, roots);
     }
 

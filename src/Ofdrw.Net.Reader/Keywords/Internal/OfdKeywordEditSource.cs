@@ -19,6 +19,8 @@ internal sealed class OfdKeywordAnalysisCapture
     internal IReadOnlyList<OfdKeywordHit> CurrentHits { get; }
     private readonly OfdKeywordOperation operation;
     private readonly OfdKeywordSourceSnapshot snapshot;
+    internal OfdKeywordSourceAdmission Admission { get; }
+    internal string SourceVersion => snapshot.Version;
     private readonly IOfdGlyphGeometrySession? session;
     private readonly Action? validateWholeSource;
     private readonly Action<string>? beforeCallback;
@@ -28,12 +30,12 @@ internal sealed class OfdKeywordAnalysisCapture
     internal OfdKeywordAnalysisCapture(OfdDocumentPackage package, OfdGraphicTraversalResult traversal,
         Dictionary<OfdGraphicOccurrence, OfdKeywordTextSource> sources,
         Dictionary<OfdKeywordTextSource, List<OfdPositionedCluster>> positions, OfdKeywordOperation operation,
-        OfdKeywordLocatorBudget budget, OfdKeywordSourceSnapshot snapshot, IOfdGlyphGeometrySession? session,
+        OfdKeywordLocatorBudget budget, OfdKeywordSourceSnapshot snapshot, OfdKeywordSourceAdmission admission, IOfdGlyphGeometrySession? session,
         Action? validateWholeSource, Action<string>? beforeCallback, OfdKeywordGeometryCache? geometryCache,
         OfdKeywordHit[] currentHits)
     {
         Package = package; Traversal = traversal; Sources = sources; Positions = positions;
-        this.operation = operation; Budget = budget; this.snapshot = snapshot;
+        this.operation = operation; Budget = budget; this.snapshot = snapshot; Admission = admission;
         this.session = session; this.validateWholeSource = validateWholeSource;
         this.beforeCallback = beforeCallback;
         this.geometryCache = geometryCache;
