@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -65,6 +66,121 @@ public sealed class OfdPackageWriter
         OfdSerializedGuard sourceGuard, OfdControlledEditContext context,
         OfdRetainedTextEditBatch edits, CancellationToken token = default)
         => PreparedWrite.CreateContinuous(source, sourceGuard, context, edits, token);
+
+    // No prepared owner/status escapes between clone/patch and the first I/O.
+    // Destination is borrowed, including arbitrary Stream implementations.
+    internal static Task<WrittenTextEdit> WriteContinuousTextEditAsync(OfdDocumentPackage source,
+        OfdSerializedGuard sourceGuard, OfdControlledEditContext context,
+        OfdRetainedTextEditBatch edits, Stream destination, CancellationToken token = default)
+        => WrittenTextEdit.CreateAsync(source, sourceGuard, context, edits, destination, token);
+
+    internal sealed class WrittenTextEdit : IDisposable
+    {
+        private readonly OfdOwnedEditCandidate candidate;
+        private readonly OfdSerializedGuard guard;
+        private int state; // written, validating, disposed, failed
+        private WrittenTextEdit(OfdOwnedEditCandidate candidate, OfdSerializedGuard guard)
+        { this.candidate = candidate; this.guard = guard; }
+
+        internal static async Task<WrittenTextEdit> CreateAsync(OfdDocumentPackage source,
+            OfdSerializedGuard sourceGuard, OfdControlledEditContext context,
+            OfdRetainedTextEditBatch edits, Stream destination, CancellationToken token)
+        {
+            if (context is null) throw new ArgumentNullException(nameof(context));
+            OfdOwnedEditCandidate? candidate = null;
+            try
+            {
+                context.AssertActive(); token.ThrowIfCancellationRequested();
+                // Async state, written owner, and one primary EDI reservation.
+                // Charge before the eligible operation can allocate/suspend.
+                context.Material.ChargeCopy(1024, token);
+                if (source is null || sourceGuard is null || edits is null || destination is null)
+                    throw new ArgumentNullException(source is null ? nameof(source) : sourceGuard is null ? nameof(sourceGuard) : edits is null ? nameof(edits) : nameof(destination));
+                candidate = OfdOwnedEditCandidate.ClonePatchAndClaim(source, sourceGuard, context, edits, token, out var guard);
+                var material = context.Material;
+                var plan = PreparePlan(candidate.Package, material, token);
+                var entries = new OfdPackageWriter().BuildEntries(candidate.Package, material, token, plan);
+                _ = OfdPackagePruner.Prune(candidate.Package, entries, token, material);
+                material.ValidateActualEntries(entries, token, plan.OutputReservation);
+                FreezeEntryBuffers(entries, material, token);
+                // This fresh check covers the entire closed prefix. Not even
+                // CanWrite/CanSeek/Position is queried before it succeeds.
+                guard.AssertUnchanged(candidate.Package, context, token);
+                await WriteZipTerminalAsync(entries, plan, destination, context, token).ConfigureAwait(false);
+                candidate.AssertClaimedActive();
+                guard.AssertUnchanged(candidate.Package, context, token);
+                candidate.AssertSourceUnchanged(token);
+                token.ThrowIfCancellationRequested(); context.AssertActive();
+                // Only successfully disposed ZIP + fresh post-I/O C/S can
+                // issue this owner. It says nothing about actual readback.
+                return new WrittenTextEdit(candidate, guard);
+            }
+            catch { context.Fail(); candidate?.Dispose(); edits?.Dispose(); throw; }
+        }
+
+        internal void AssertSourceAndCandidateUnchanged(CancellationToken token = default)
+        {
+            if (Interlocked.CompareExchange(ref state, 1, 0) != 0)
+                throw new InvalidOperationException("Written text edit is disposed, failed or in use.");
+            var context = candidate.Context;
+            try
+            {
+                candidate.AssertClaimedActive(); candidate.AssertSourceUnchanged(token);
+                guard.AssertUnchanged(candidate.Package, context, token); candidate.AssertClaimedActive();
+            }
+            catch { context.Fail(); Volatile.Write(ref state, 3); throw; }
+            finally { Interlocked.CompareExchange(ref state, 0, 1); }
+        }
+
+        public void Dispose()
+        {
+            while (true)
+            {
+                var before = Volatile.Read(ref state);
+                if (before == 2) return;
+                if (before == 1) throw new InvalidOperationException("Cannot dispose a written text edit during validation.");
+                if (Interlocked.CompareExchange(ref state, 2, before) == before) break;
+            }
+            candidate.Dispose();
+        }
+    }
+
+    private static async Task WriteZipTerminalAsync(Dictionary<string, byte[]> entries, WritePlan plan,
+        Stream destination, OfdControlledEditContext context, CancellationToken token)
+    {
+        ZipArchive? zip = null; Stream? entryStream = null; ExceptionDispatchInfo? primary = null;
+        try
+        {
+            zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
+            foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                token.ThrowIfCancellationRequested(); context.AssertActive();
+                var zipEntry = zip.CreateEntry(entry.Key, plan.Compression ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
+                entryStream = zipEntry.Open();
+                await entryStream.WriteAsync(entry.Value, 0, entry.Value.Length, token).ConfigureAwait(false);
+                // Clear the handle before trying Dispose: a failed Dispose is
+                // already an attempt and must not be retried in cleanup.
+                var completed = entryStream; entryStream = null; completed.Dispose();
+            }
+        }
+        catch (Exception error) { context.Fail(); primary = ExceptionDispatchInfo.Capture(error); }
+
+        // Fail was observed before any accessible external error cleanup.
+        // Each remaining handle is disposed once, and the first error wins.
+        if (entryStream is not null)
+        {
+            var pending = entryStream; entryStream = null;
+            try { pending.Dispose(); }
+            catch (Exception error) { context.Fail(); if (primary is null) primary = ExceptionDispatchInfo.Capture(error); }
+        }
+        if (zip is not null)
+        {
+            var pending = zip; zip = null;
+            try { pending.Dispose(); }
+            catch (Exception error) { context.Fail(); if (primary is null) primary = ExceptionDispatchInfo.Capture(error); }
+        }
+        primary?.Throw();
+    }
 
     internal sealed class PreparedWrite : IDisposable
     {
