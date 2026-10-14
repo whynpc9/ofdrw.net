@@ -25,6 +25,8 @@ foreach (var hit in query.Hits)
 
 匹配为 ordinal 字面匹配，返回重叠命中，不是正则表达式。不会推断阅读顺序或空白，也不会跨页、图层或连续基线边界匹配。模板和批注外观不属于正文查询范围。默认遇到不支持的正文立即失败；定位可显式选择 `ReportIncomplete`，此时必须检查 `IsComplete` 和 `Diagnostics`，不能把部分结果当成全文结果。结构路径和 occurrence 身份只在本次源版本内有效，不是 XPath、ZIP 字节偏移或永久 ID。
 
+连续基线上的查找可以跨多个 TextObject；跨对象命中的 `CanReplace` 为 `false`。同一个 TextObject occurrence 内的多个 TextCode 可参与替换，后续预检仍会检查字体、几何和容纳空间。
+
 ## 替换 API
 
 另引用 `Ofdrw.Net.Layout` 和 `Ofdrw.Net.Packaging`：
