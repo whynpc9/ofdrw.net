@@ -55,10 +55,9 @@ internal static partial class Cli
         {
             try
             {
-                var report = session.PrepareOwnedWriter(provider, options.Keyword, options.Replacement, pages, token);
+                var report = await session.PrepareAndWriteOwnedAsync(provider, options.Keyword, options.Replacement, pages, token).ConfigureAwait(false);
                 if (report.Changed)
                 {
-                    await session.WriteOwnedAsync(token).ConfigureAwait(false);
                     await session.ReadOwnedOutputAsync(token).ConfigureAwait(false);
                     // Actual same-context Reader is necessary but insufficient.
                     // Until full geometry/SCR checks are wired, fail before any

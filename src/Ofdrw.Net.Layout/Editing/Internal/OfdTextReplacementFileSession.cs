@@ -37,7 +37,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
     private OfdDocumentPackage? source;
     private bool ownedMode;
     private OfdTextReplacementOperation? ownedOperation;
-    private OfdPackageWriter.PreparedWrite? ownedWriter;
+    private OfdPackageWriter.WrittenTextEdit? ownedWriter;
     private OfdTextReplacementSpool? ownedSpool;
     private OfdDocumentPackage? ownedReadback;
     private OfdSerializedGuard? ownedReadbackGuard;
@@ -46,6 +46,9 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
     private bool atomicMetadataReserved, ownedStageVerified, ownedCommitClaimed;
     private bool inputSnapshotReleased;
     private long ownedAtomicPosition;
+    // Retain bounded scalar observations after failed owned cleanup so deleted
+    // partial bytes remain observable without retaining file/Writer authority.
+    private long failedSpoolPosition, failedSpoolRead, failedSpoolWritten, failedSpoolReservedRead, failedSpoolReservedWrite;
     internal OfdControlledEditContext BoundContext { get { lock (sync) { AssertLegacyMode(); return context; } } }
     internal OfdDocumentPackage BoundSource { get { lock (sync) { AssertLegacyMode(); return source ?? throw new ObjectDisposedException(nameof(OfdTextReplacementFileSession)); } } }
     internal OfdTextReplacementOptions Options { get; }
@@ -112,13 +115,13 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
         }
         catch (Exception error)
         {
+            context.Fail();
             try
             {
                 if (diagnosticsReserved)
                 { error.Data["Ofdrw.FileReplacement.Phase"] = phase; error.Data["Ofdrw.FileReplacement.Counters"] = Snapshot(phase, context); }
             }
             catch { /* Preserve the original exception, including untrusted Data. */ }
-            context.Fail();
             // A cleanup failure must not replace the actual quota/cancellation/
             // parse error. These are exclusively owned exact temporary paths.
             try { stream?.Dispose(); } catch { }
@@ -145,7 +148,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
     // Sole production caller: CLI's private job, which constructs the concrete
     // trusted provider and freezes ordinary values itself. No public result or
     // model/Writer authority is returned by this private composition path.
-    internal OfdTextReplacementOwnedReport PrepareOwnedWriter(IOfdGlyphGeometryProvider provider, string keyword,
+    internal Task<OfdTextReplacementOwnedReport> PrepareAndWriteOwnedAsync(IOfdGlyphGeometryProvider provider, string keyword,
         string replacementText, int[]? pageIndexes = null, CancellationToken token = default)
     {
         lock (sync)
@@ -157,12 +160,33 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
         try
         {
             if (pageIndexes is not null && pageIndexes.Length > 1000) throw new InvalidDataException("ReplacementPageLimit");
-            context.Material.ChargeCopy(256L + 8L * (pageIndexes?.Length ?? 0), token);
+            // Prepay the four private async continuations, Tasks and owner
+            // reference shells before invoking any async method. Diagnostic
+            // reports retain their separate original operation reservation.
+            context.Material.ChargeCopy(4096L + 256L + 8L * (pageIndexes?.Length ?? 0), token);
             var pages = pageIndexes?.ToArray();
-            new OfdTextReplacer(provider).PrepareKeywordForOwnedWriter(this, source!, context, pages, keyword, replacementText, token);
-            lock (sync) { context.AssertActive(); state = 2; return ownedReport!; }
+            return PrepareAndWriteOwnedCoreAsync(provider, keyword, replacementText, pages, token);
         }
-        catch { Fail(); throw; }
+        catch { Fail(); lock (sync) busy = false; throw; }
+    }
+
+    private async Task<OfdTextReplacementOwnedReport> PrepareAndWriteOwnedCoreAsync(IOfdGlyphGeometryProvider provider, string keyword,
+        string replacementText, int[]? pages, CancellationToken token)
+    {
+        try
+        {
+            await new OfdTextReplacer(provider).PrepareAndWriteKeywordForOwnedAsync(this, source!, context, pages, keyword, replacementText, token).ConfigureAwait(false);
+            lock (sync)
+            {
+                context.AssertActive(); preparationToken.ThrowIfCancellationRequested(); token.ThrowIfCancellationRequested();
+                state = ownedWriter is null ? 2 : 3;
+                return ownedReport!;
+            }
+        }
+        catch
+        {
+            Fail(); CleanupOwnedWriteFailure(); throw;
+        }
         finally { lock (sync) busy = false; }
     }
 
@@ -192,16 +216,87 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
         }
     }
     internal void FailOwnedPreparation() => Fail();
-    internal void AcceptOwnedPreparation(OfdTextReplacementOperation operation, OfdPackageWriter.PreparedWrite? writer,
-        OfdTextReplacementObservation[] observations)
+    private void AssertOwnedOperation(OfdTextReplacementOperation operation)
+    {
+        context.AssertActive(); preparationToken.ThrowIfCancellationRequested();
+        if (!ownedMode || !busy || state != 1 || !ReferenceEquals(operation.Source, source) || !ReferenceEquals(operation.Context, context) ||
+            (ownedOperation is not null && !ReferenceEquals(ownedOperation, operation)))
+            throw new InvalidOperationException("Private preparation cannot publish a foreign owner.");
+    }
+
+    internal void CreateOwnedOutputSpool(OfdTextReplacementOperation operation, CancellationToken token)
     {
         lock (sync)
         {
-            context.AssertActive(); preparationToken.ThrowIfCancellationRequested();
-            if (!ownedMode || !busy || state != 1 || !ReferenceEquals(operation.Source, source) || !ReferenceEquals(operation.Context, context) || ownedOperation is not null)
-                throw new InvalidOperationException("Private preparation cannot publish a foreign owner.");
+            AssertOwnedOperation(operation); token.ThrowIfCancellationRequested();
+            if (ownedSpool is not null) throw new InvalidOperationException("Private output spool was already created.");
+            ownedOperation = operation;
+            operation.Begin("CreateOwnedOutputSpool");
+            ownedSpool = new OfdTextReplacementSpool(context, Options.Limits.MaxMaterializedBytes, preparationToken);
+        }
+    }
+
+    internal void AcceptOwnedNoOp(OfdTextReplacementOperation operation, OfdTextReplacementObservation[] observations)
+    {
+        lock (sync)
+        {
+            AssertOwnedOperation(operation);
+            if (ownedSpool is not null || ownedWriter is not null || ownedReport is not null)
+                throw new InvalidOperationException("No-op cannot accept changed output ownership.");
             var report = new OfdTextReplacementOwnedReport(observations, operation.Snapshot());
-            ownedOperation = operation; ownedWriter = writer; ownedReport = report;
+            ownedOperation = operation; ownedReport = report;
+        }
+    }
+
+    internal async Task WriteContinuousOwnedAsync(OfdTextReplacementOperation operation, OfdRetainedTextEditBatch batch,
+        OfdTextReplacement[] requests, CancellationToken token)
+    {
+        lock (sync)
+        {
+            AssertOwnedOperation(operation);
+            if (ownedSpool is null || ownedWriter is not null || ownedReport is not null)
+                throw new InvalidOperationException("Private changed output has no unconsumed spool.");
+        }
+        OfdPackageWriter.WrittenTextEdit? written = null;
+        try
+        {
+            // Sole real shared entry: its synchronous prefix runs before this
+            // first await, with no PreparedWrite escape/caller-return boundary.
+            written = await OfdPackageWriter.WriteContinuousTextEditAsync(operation.Source!, operation.SourceGuard!, context, batch, ownedSpool, token).ConfigureAwait(false);
+            preparationToken.ThrowIfCancellationRequested(); token.ThrowIfCancellationRequested(); context.AssertActive();
+            await ownedSpool.FlushAsync(token).ConfigureAwait(false);
+            preparationToken.ThrowIfCancellationRequested(); token.ThrowIfCancellationRequested(); context.AssertActive();
+            operation.Mark("WroteOwnedOutput");
+            context.Material.ChargeCopy(512L * requests.Length + 256, token);
+            var observations = requests.Select(value => new OfdTextReplacementObservation(value)).ToArray();
+            var report = new OfdTextReplacementOwnedReport(observations, operation.Snapshot());
+            lock (sync)
+            {
+                AssertOwnedOperation(operation); token.ThrowIfCancellationRequested();
+                ownedWriter = written; written = null; ownedReport = report;
+            }
+        }
+        catch (Exception error)
+        {
+            Fail(); operation.Fail(error);
+            try { written?.Dispose(); } catch { }
+            CleanupOwnedWriteFailure(); throw;
+        }
+    }
+
+    private void CleanupOwnedWriteFailure()
+    {
+        // Called only after terminal transition; secondary owned disposal errors
+        // never mask the actual write/quota/cancellation failure.
+        try { ownedWriter?.Dispose(); } catch { }
+        ownedWriter = null;
+        if (ownedSpool is not null)
+        {
+            failedSpoolPosition = ownedSpool.ReservedPosition;
+            failedSpoolRead = ownedSpool.ActualReadBytes; failedSpoolWritten = ownedSpool.ActualWrittenBytes;
+            failedSpoolReservedRead = ownedSpool.ReservedReadBytes; failedSpoolReservedWrite = ownedSpool.ReservedWriteBytes;
+            try { ownedSpool.Dispose(); } catch { }
+            ownedSpool = null;
         }
     }
 
@@ -220,34 +315,10 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
         lock (sync)
         {
             if (!ownedMode || ++ownedSnapshots > 16) throw new InvalidOperationException("Private snapshot capacity exceeded.");
-            return new OfdTextReplacementOwnedFiles(inputLength, ownedSpool?.ReservedPosition ?? 0, ownedAtomicPosition,
-                ownedSpool?.ActualReadBytes ?? 0, ownedSpool?.ActualWrittenBytes ?? 0,
-                ownedSpool?.ReservedReadBytes ?? 0, ownedSpool?.ReservedWriteBytes ?? 0);
+            return new OfdTextReplacementOwnedFiles(inputLength, ownedSpool?.ReservedPosition ?? failedSpoolPosition, ownedAtomicPosition,
+                ownedSpool?.ActualReadBytes ?? failedSpoolRead, ownedSpool?.ActualWrittenBytes ?? failedSpoolWritten,
+                ownedSpool?.ReservedReadBytes ?? failedSpoolReservedRead, ownedSpool?.ReservedWriteBytes ?? failedSpoolReservedWrite);
         }
-    }
-
-    internal async Task WriteOwnedAsync(CancellationToken token = default)
-    {
-        lock (sync)
-        {
-            AssertReady(2, token); AssertIdle();
-            if (!ownedMode || ownedWriter is null || ownedOperation is null)
-                throw new InvalidOperationException("This job has no prepared changed output.");
-            state = 3; busy = true;
-        }
-        try
-        {
-            ownedOperation.Begin("CreateOwnedOutputSpool");
-            ownedSpool = new OfdTextReplacementSpool(context, Options.Limits.MaxMaterializedBytes, preparationToken);
-            ownedOperation.Begin("WriteOwnedOutput");
-            await ownedWriter.WriteAsync(ownedSpool, token).ConfigureAwait(false);
-            preparationToken.ThrowIfCancellationRequested(); context.AssertActive();
-            await ownedSpool.FlushAsync(token).ConfigureAwait(false);
-            preparationToken.ThrowIfCancellationRequested(); context.AssertActive();
-            ownedOperation.Mark("WroteOwnedOutput");
-        }
-        catch (Exception error) { Fail(); ownedOperation.Fail(error); throw; }
-        finally { lock (sync) busy = false; }
     }
 
     internal async Task ReadOwnedOutputAsync(CancellationToken token = default)
@@ -272,7 +343,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             // Runtime full geometry/SCR verification is a distinct mandatory
             // stage. Reading bytes alone never qualifies AtomicOutput commit.
         }
-        catch (Exception error) { Fail(); ownedOperation!.Fail(error); throw; }
+        catch (Exception error) { Fail(); ownedOperation!.Fail(error); CleanupOwnedWriteFailure(); throw; }
         finally { lock (sync) busy = false; }
     }
 
