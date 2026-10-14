@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Ofdrw.Net.Core.Models;
@@ -16,7 +17,8 @@ internal sealed class OfdOwnedWrittenSpool : IDisposable
     private readonly long length;
     private readonly byte[] digest;
     private OfdOwnedZipCensus? actualCensus;
-    private int disposed, actualReadCompleted;
+    private readonly object sync = new();
+    private int disposed, actualReadCompleted, busy;
     private OfdOwnedWrittenSpool(OfdOwnedWriteScope scope, OfdOwnedEditCandidate candidate, OfdAccountedTemporaryFile file,
         OfdPackageWriter.OwnedWriteReceipt receipt, long length, byte[] digest)
     { this.scope = scope; this.candidate = candidate; this.file = file; this.receipt = receipt; this.length = length; this.digest = digest; }
@@ -29,20 +31,22 @@ internal sealed class OfdOwnedWrittenSpool : IDisposable
     internal void EnterActualOutputReader(out Stream actualInput, out OfdControlledEditContext context,
         out OfdOwnedZipCensus census, CancellationToken token)
     {
+        var entered = false;
         try
         {
-            if (Volatile.Read(ref disposed) != 0) throw new ObjectDisposedException(nameof(OfdOwnedWrittenSpool));
+            EnterOwnedOperation(1, token); entered = true;
             context = scope.Owner.BeginOutputRead(this, token);
             census = OfdOwnedZipCensus.Begin(context, token); actualCensus = census;
             file.Position = 0; actualInput = file;
         }
-        catch { scope.Owner.Fail(); throw; }
+        catch { scope.Owner.Fail(); if (entered) lock (sync) busy = 0; throw; }
     }
     internal OfdActualReadback CompleteActualOutputReader(OfdDocumentPackage actualR,
         OfdOwnedZipCensus census, CancellationToken token)
     {
         try
         {
+            lock (sync) if (busy != 1) throw new InvalidOperationException("Actual Reader operation was not active.");
             if (!ReferenceEquals(census, actualCensus) || Interlocked.CompareExchange(ref actualReadCompleted, 1, 0) != 0)
                 throw new InvalidOperationException("Foreign or repeated actual output Reader completion.");
             scope.Owner.CompleteOutputRead(this, actualR, token);
@@ -50,11 +54,27 @@ internal sealed class OfdOwnedWrittenSpool : IDisposable
             return OfdActualReadback.FromActualReader(this, actualR, census, candidate.Context);
         }
         catch { scope.Owner.Fail(); throw; }
+        finally { lock (sync) busy = 0; }
+    }
+    internal void AbortActualOutputReader()
+    {
+        scope.Owner.Fail(); lock (sync) busy = 0; Dispose();
+    }
+    private void EnterOwnedOperation(int kind, CancellationToken token)
+    {
+        lock (sync)
+        {
+            candidate.Context.AssertActive(); token.ThrowIfCancellationRequested();
+            if (disposed != 0 || busy != 0) throw new InvalidOperationException("Written output is disposed or already active.");
+            busy = kind;
+        }
     }
     internal OfdVerifiedReadback VerifyActual(OfdActualReadback actual, CancellationToken token)
     {
+        var entered = false;
         try
         {
+            EnterOwnedOperation(2, token); entered = true;
             actual.ConsumeForActualReceipt(this, out var package, out var census, out var context, token);
             if (!ReferenceEquals(context, candidate.Context) || !ReferenceEquals(census, actualCensus))
                 throw new InvalidOperationException("Actual R provenance differs from this written spool.");
@@ -67,29 +87,50 @@ internal sealed class OfdOwnedWrittenSpool : IDisposable
             return verified;
         }
         catch { scope.Owner.Fail(); throw; }
+        finally { if (entered) lock (sync) busy = 0; }
     }
     internal OfdOwnedCompareScope EnterComparison(OfdVerifiedReadback verified, OfdDocumentPackage actualR,
         CancellationToken token) => scope.Owner.BeginComparison(verified, actualR, token);
     internal async Task<OfdVerifiedStage> CopyToActualStageAsync(OfdOwnedStageScope stageScope,
         OfdOwnedAtomicStage stage, CancellationToken token)
     {
+        var entered = false;
         try
         {
             if (!ReferenceEquals(stageScope.Owner, scope.Owner) || Volatile.Read(ref disposed) != 0)
                 throw new InvalidOperationException("Private stage copy has a foreign scope or disposed output.");
+            EnterOwnedOperation(3, token); entered = true;
             await stage.CopyActualOutputAsync(stageScope, this, file, length, digest, token).ConfigureAwait(false);
-            Dispose(); // all required fallible output close/delete happens before claim/rename
+            lock (sync) { if (busy != 3 || disposed != 0) throw new InvalidOperationException("Invalid output cleanup phase."); disposed = 1; busy = 0; }
+            CloseOwnedResources(); // all required fallible output close/delete happens before claim/rename
             candidate.Context.Material.ChargeCopy(512, token);
             return OfdVerifiedStage.FromActualCopy(stageScope, stage);
         }
-        catch { scope.Owner.Fail(); Dispose(); throw; }
+        catch
+        {
+            scope.Owner.Fail();
+            if (entered) { lock (sync) busy = 0; try { Dispose(); } catch { } }
+            throw;
+        }
+    }
+    private void CloseOwnedResources()
+    {
+        ExceptionDispatchInfo? first = null;
+        try { file.Dispose(); } catch (Exception error) { scope.Owner.Fail(); first = ExceptionDispatchInfo.Capture(error); }
+        try { candidate.Dispose(); } catch (Exception error) { scope.Owner.Fail(); if (first is null) first = ExceptionDispatchInfo.Capture(error); }
+        first?.Throw();
     }
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-        try { file.Dispose(); candidate.Dispose(); }
-        catch { scope.Owner.Fail(); throw; }
+        lock (sync)
+        {
+            if (busy != 0) { scope.Owner.Fail(); throw new InvalidOperationException("Cannot dispose written output during its Reader/verification/copy operation."); }
+            if (disposed != 0) return;
+            disposed = 1;
+        }
+        scope.Owner.Fail(); CloseOwnedResources();
     }
+
 }
 
 internal sealed class OfdActualReadback : IDisposable

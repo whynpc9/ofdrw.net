@@ -15,6 +15,7 @@ namespace Ofdrw.Net.Packaging;
 internal sealed class OfdAccountedTemporaryFile : Stream
 {
     private readonly OfdControlledEditContext context;
+    private readonly OfdOwnedIoObservation? observation;
     private readonly FileStream file;
     private readonly string path;
     private readonly long capacity;
@@ -34,17 +35,19 @@ internal sealed class OfdAccountedTemporaryFile : Stream
     internal long StageWrittenBytes { get; private set; }
     internal long StageReservedPosition { get; private set; }
 
-    internal OfdAccountedTemporaryFile(OfdControlledEditContext context, long capacity, CancellationToken token = default)
+    internal OfdAccountedTemporaryFile(OfdControlledEditContext context, long capacity, CancellationToken token = default, OfdOwnedIoObservation? observation = null)
     {
         if (capacity <= 0 || capacity > 512L * 1024 * 1024) throw new ArgumentOutOfRangeException(nameof(capacity));
-        this.context = context; this.capacity = capacity; operationToken = token;
+        this.context = context; this.capacity = capacity; operationToken = token; this.observation = observation;
         try
         {
             context.AssertActive(); context.Material.ChargeCopy(16_384, token);
             var directory = Path.GetTempPath();
             context.Material.ChargeCopy(8L * directory.Length, token);
             path = Path.Combine(directory, "ofdrw-replacement-" + Guid.NewGuid().ToString("N") + ".tmp");
+            if (observation is not null) context.Material.ChargeWork(16, token);
             file = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.Asynchronous);
+            observation?.RecordOpened();
         }
         catch { Fail(); throw; }
     }
@@ -70,20 +73,23 @@ internal sealed class OfdAccountedTemporaryFile : Stream
         }
     }
     private void Exit() { lock (sync) busy = 0; }
-    private void Fail() { failed = true; context.Fail(); }
+    private void Fail() { failed = true; observation?.RecordIoFailure(); context.Fail(); }
     private void CheckAfterIo() { context.AssertActive(); operationToken.ThrowIfCancellationRequested(); }
     private void ReservePosition(long position, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         if (position < 0 || position > capacity) throw new InvalidDataException("ReplacementSpoolPositionLimit");
         if (position > ReservedPosition) { context.Material.ChargeOutput(position - ReservedPosition); ReservedPosition = position; }
+        observation?.ReservePosition(position);
     }
     private void ReserveRead(int count, CancellationToken token)
-    { context.Material.ChargeWork(count, token); ReservedReadBytes += count; }
+    { context.Material.ChargeWork(count, token); if (observation is not null) context.Material.ChargeWork(16, token); ReservedReadBytes += count; observation?.ReserveRead(count); }
     private void ReserveWrite(int count, CancellationToken token)
     {
         context.Material.ChargeWork(count, token);
         ReservePosition(checked(file.Position + count), token); ReservedWriteBytes += count;
+        if (observation is not null) context.Material.ChargeWork(16, token);
+        observation?.ReserveWrite(count);
     }
     private static void CheckBuffer(byte[] buffer, int offset, int count)
     {
@@ -93,62 +99,62 @@ internal sealed class OfdAccountedTemporaryFile : Stream
     public override int Read(byte[] buffer, int offset, int count)
     {
         CheckBuffer(buffer, offset, count); Enter();
-        try { ReserveRead(count, default); var read = file.Read(buffer, offset, count); ActualReadBytes += read; return read; }
+        try { ReserveRead(count, default); var read = file.Read(buffer, offset, count); ActualReadBytes += read; observation?.CompleteRead(read); return read; }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken token)
     {
         CheckBuffer(buffer, offset, count); Enter();
-        try { ReserveRead(count, token); var read = await file.ReadAsync(buffer, offset, count, token).ConfigureAwait(false); ActualReadBytes += read; CheckAfterIo(); return read; }
+        try { ReserveRead(count, token); var read = await file.ReadAsync(buffer, offset, count, token).ConfigureAwait(false); ActualReadBytes += read; observation?.CompleteRead(read); CheckAfterIo(); return read; }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override void Write(byte[] buffer, int offset, int count)
     {
         CheckBuffer(buffer, offset, count); Enter();
-        try { ReserveWrite(count, default); file.Write(buffer, offset, count); ActualWrittenBytes += count; }
+        try { ReserveWrite(count, default); observation?.BeginActualWrite(); file.Write(buffer, offset, count); ActualWrittenBytes += count; observation?.CompleteWrite(count); }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override int ReadByte()
     {
         Enter();
-        try { ReserveRead(1, default); var value = file.ReadByte(); if (value >= 0) ActualReadBytes++; return value; }
+        try { ReserveRead(1, default); var value = file.ReadByte(); if (value >= 0) ActualReadBytes++; observation?.CompleteRead(value >= 0 ? 1 : 0); return value; }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override void WriteByte(byte value)
     {
         Enter();
-        try { ReserveWrite(1, default); file.WriteByte(value); ActualWrittenBytes++; }
+        try { ReserveWrite(1, default); observation?.BeginActualWrite(); file.WriteByte(value); ActualWrittenBytes++; observation?.CompleteWrite(1); }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken token)
     {
         CheckBuffer(buffer, offset, count); Enter();
-        try { ReserveWrite(count, token); await file.WriteAsync(buffer, offset, count, token).ConfigureAwait(false); ActualWrittenBytes += count; CheckAfterIo(); }
+        try { ReserveWrite(count, token); observation?.BeginActualWrite(); await file.WriteAsync(buffer, offset, count, token).ConfigureAwait(false); ActualWrittenBytes += count; observation?.CompleteWrite(count); CheckAfterIo(); }
         catch { Fail(); throw; } finally { Exit(); }
     }
 #if NETSTANDARD2_1
     public override int Read(Span<byte> buffer)
     {
         Enter();
-        try { ReserveRead(buffer.Length, default); var read = file.Read(buffer); ActualReadBytes += read; return read; }
+        try { ReserveRead(buffer.Length, default); var read = file.Read(buffer); ActualReadBytes += read; observation?.CompleteRead(read); return read; }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken token = default)
     {
         Enter();
-        try { ReserveRead(buffer.Length, token); var read = await file.ReadAsync(buffer, token).ConfigureAwait(false); ActualReadBytes += read; CheckAfterIo(); return read; }
+        try { ReserveRead(buffer.Length, token); var read = await file.ReadAsync(buffer, token).ConfigureAwait(false); ActualReadBytes += read; observation?.CompleteRead(read); CheckAfterIo(); return read; }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         Enter();
-        try { ReserveWrite(buffer.Length, default); file.Write(buffer); ActualWrittenBytes += buffer.Length; }
+        try { ReserveWrite(buffer.Length, default); observation?.BeginActualWrite(); file.Write(buffer); ActualWrittenBytes += buffer.Length; observation?.CompleteWrite(buffer.Length); }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken token = default)
     {
         Enter();
-        try { ReserveWrite(buffer.Length, token); await file.WriteAsync(buffer, token).ConfigureAwait(false); ActualWrittenBytes += buffer.Length; CheckAfterIo(); }
+        try { ReserveWrite(buffer.Length, token); observation?.BeginActualWrite(); await file.WriteAsync(buffer, token).ConfigureAwait(false); ActualWrittenBytes += buffer.Length; observation?.CompleteWrite(buffer.Length); CheckAfterIo(); }
         catch { Fail(); throw; } finally { Exit(); }
     }
 #endif
@@ -165,7 +171,7 @@ internal sealed class OfdAccountedTemporaryFile : Stream
                 _ => throw new ArgumentOutOfRangeException(nameof(origin))
             };
             context.Material.ChargeWork(16, default); ReservePosition(target, default);
-            var position = file.Seek(target, SeekOrigin.Begin); SeekCount++; return position;
+            observation?.ReserveSeek(); var position = file.Seek(target, SeekOrigin.Begin); SeekCount++; observation?.CompleteSeek(position); return position;
         }
         catch { Fail(); throw; } finally { Exit(); }
     }
@@ -175,20 +181,20 @@ internal sealed class OfdAccountedTemporaryFile : Stream
         try
         {
             context.Material.ChargeWork(Math.Max(16, value - file.Length), default);
-            ReservePosition(value, default); file.SetLength(value);
+            ReservePosition(value, default); file.SetLength(value); observation?.CompleteLength(value);
         }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override void Flush()
     {
         Enter();
-        try { context.Material.ChargeWork(16, default); file.Flush(); }
+        try { context.Material.ChargeWork(16, default); observation?.ReserveFlush(); file.Flush(); observation?.CompleteFlush(); }
         catch { Fail(); throw; } finally { Exit(); }
     }
     public override async Task FlushAsync(CancellationToken token)
     {
         Enter();
-        try { context.Material.ChargeWork(16, token); await file.FlushAsync(token).ConfigureAwait(false); CheckAfterIo(); }
+        try { context.Material.ChargeWork(16, token); observation?.ReserveFlush(); await file.FlushAsync(token).ConfigureAwait(false); observation?.CompleteFlush(); CheckAfterIo(); }
         catch { Fail(); throw; } finally { Exit(); }
     }
 
@@ -198,41 +204,52 @@ internal sealed class OfdAccountedTemporaryFile : Stream
         long maximumInputBytes, CancellationToken token)
     {
         Enter();
+        FileStream? source = null; IncrementalHash? hash = null; ExceptionDispatchInfo? primary = null;
+        (long Length, byte[] Sha256) result = default;
         try
         {
+          try
+          {
             if (file.Length != 0 || file.Position != 0) throw new InvalidOperationException("Snapshot is not fresh.");
             context.Material.ChargeCopy(81_920 + 16_384 + 64, token);
-            using var source = new FileStream(originalPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
+            source = new FileStream(originalPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
             var length = source.Length;
             if (length < 22 || length > maximumInputBytes) throw new InvalidDataException("Original input length is outside its limit.");
             ReservePosition(length, token);
             var buffer = new byte[81_920];
-            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             long copied = 0;
             while (copied < length)
             {
                 CheckAfterIo(); token.ThrowIfCancellationRequested();
                 var count = (int)Math.Min(buffer.Length, length - copied);
-                context.Material.ChargeWork(3L * count, token); ReservedWriteBytes += count; OriginalReservedReadBytes += count;
+                context.Material.ChargeWork(3L * count + (observation is null ? 0 : 16), token); ReservedWriteBytes += count; OriginalReservedReadBytes += count;
+                observation?.ReserveOriginalRead(count); observation?.ReserveWrite(count);
                 var read = await source.ReadAsync(buffer, 0, count, token).ConfigureAwait(false);
-                OriginalActualReadBytes += read;
+                OriginalActualReadBytes += read; observation?.CompleteOriginalRead(read);
                 CheckAfterIo(); token.ThrowIfCancellationRequested();
                 if (read == 0) throw new EndOfStreamException("Original input was truncated.");
                 hash.AppendData(buffer, 0, read);
-                await file.WriteAsync(buffer, 0, read, token).ConfigureAwait(false);
-                ActualWrittenBytes += read; copied += read;
+                observation?.BeginActualWrite(); await file.WriteAsync(buffer, 0, read, token).ConfigureAwait(false);
+                ActualWrittenBytes += read; observation?.CompleteWrite(read); copied += read;
             }
             context.Material.ChargeWork(17, token);
+            observation?.ReserveOriginalRead(1);
             if (source.Length != length || source.ReadByte() != -1 || file.Length != length)
                 throw new InvalidDataException("Original input changed during snapshot capture.");
             context.Material.ChargeWork(32 + 16, token);
-            var digest = hash.GetHashAndReset();
-            await file.FlushAsync(token).ConfigureAwait(false);
+            var digest = hash.GetHashAndReset(); observation?.ReserveFlush();
+            await file.FlushAsync(token).ConfigureAwait(false); observation?.CompleteFlush();
             CheckAfterIo(); token.ThrowIfCancellationRequested();
-            context.Material.ChargeWork(16, token); file.Position = 0; SeekCount++;
-            return (length, digest);
+            context.Material.ChargeWork(16, token); observation?.ReserveSeek(); file.Position = 0; SeekCount++; observation?.CompleteSeek(0);
+            result = (length, digest);
+          }
+          catch (Exception error) { Fail(); primary = ExceptionDispatchInfo.Capture(error); }
+          DisposeHashOnce(ref hash, context, ref primary);
+          DisposeFileOnce(ref source, context, ref primary);
+          primary?.Throw(); return result;
         }
-        catch { Fail(); throw; } finally { Exit(); }
+        finally { Exit(); }
     }
 
     // A complete ordered current-byte pass. Hashing seeked Writer writes cannot
@@ -240,19 +257,23 @@ internal sealed class OfdAccountedTemporaryFile : Stream
     internal async Task<(long Length, byte[] Sha256)> ObserveRawZipAsync(CancellationToken token)
     {
         Enter();
+        IncrementalHash? hash = null; ExceptionDispatchInfo? primary = null;
+        (long Length, byte[] Sha256) result = default;
         try
         {
+          try
+          {
             context.Material.ChargeCopy(81_920 + 8192 + 32, token);
             var length = file.Length; var buffer = new byte[81_920];
-            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            context.Material.ChargeWork(16, token); file.Position = 0; SeekCount++;
+            hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            context.Material.ChargeWork(16, token); observation?.ReserveSeek(); file.Position = 0; SeekCount++; observation?.CompleteSeek(0);
             long total = 0;
             while (total < length)
             {
                 CheckAfterIo(); token.ThrowIfCancellationRequested();
                 var count = (int)Math.Min(buffer.Length, length - total);
-                context.Material.ChargeWork(2L * count, token); ReservedReadBytes += count;
-                var read = await file.ReadAsync(buffer, 0, count, token).ConfigureAwait(false); ActualReadBytes += read;
+                context.Material.ChargeWork(2L * count + (observation is null ? 0 : 16), token); ReservedReadBytes += count; observation?.ReserveRead(count);
+                var read = await file.ReadAsync(buffer, 0, count, token).ConfigureAwait(false); ActualReadBytes += read; observation?.CompleteRead(read);
                 CheckAfterIo(); token.ThrowIfCancellationRequested();
                 if (read == 0) throw new EndOfStreamException("Private ZIP was truncated during observation.");
                 hash.AppendData(buffer, 0, read); total += read;
@@ -260,22 +281,27 @@ internal sealed class OfdAccountedTemporaryFile : Stream
             context.Material.ChargeWork(32 + 16, token);
             if (file.Length != length) throw new InvalidDataException("Private ZIP length changed.");
             var digest = hash.GetHashAndReset();
-            file.Position = 0; SeekCount++; return (length, digest);
+            observation?.ReserveSeek(); file.Position = 0; SeekCount++; observation?.CompleteSeek(0); result = (length, digest);
+          }
+          catch (Exception error) { Fail(); primary = ExceptionDispatchInfo.Capture(error); }
+          DisposeHashOnce(ref hash, context, ref primary);
+          primary?.Throw(); return result;
         }
-        catch { Fail(); throw; } finally { Exit(); }
+        finally { Exit(); }
     }
 
     internal static async Task ValidateOriginalPathAsync(OfdControlledEditContext context,
         string path, long expectedLength, byte[] expectedSha256, CancellationToken token)
     {
+        FileStream? source = null; IncrementalHash? hash = null; ExceptionDispatchInfo? primary = null;
         try
         {
             context.AssertActive(); token.ThrowIfCancellationRequested();
             context.Material.ChargeCopy(81_920 + 16_384 + 32, token);
-            using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
+            source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
             if (source.Length != expectedLength) throw new InvalidDataException("Original input length changed before commit.");
             var buffer = new byte[81_920];
-            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             long total = 0;
             while (total < expectedLength)
             {
@@ -292,14 +318,34 @@ internal sealed class OfdAccountedTemporaryFile : Stream
                 throw new InvalidDataException("Original input bytes changed before commit.");
             context.AssertActive(); token.ThrowIfCancellationRequested();
         }
-        catch { context.Fail(); throw; }
+        catch (Exception error) { context.Fail(); primary = ExceptionDispatchInfo.Capture(error); }
+        DisposeHashOnce(ref hash, context, ref primary);
+        DisposeFileOnce(ref source, context, ref primary);
+        primary?.Throw();
+    }
+
+    private static void DisposeHashOnce(ref IncrementalHash? handle, OfdControlledEditContext context,
+        ref ExceptionDispatchInfo? primary)
+    {
+        var actual = handle; handle = null;
+        if (actual is null) return;
+        try { actual.Dispose(); }
+        catch (Exception error) { context.Fail(); if (primary is null) primary = ExceptionDispatchInfo.Capture(error); }
+    }
+    private static void DisposeFileOnce(ref FileStream? handle, OfdControlledEditContext context,
+        ref ExceptionDispatchInfo? primary)
+    {
+        var actual = handle; handle = null;
+        if (actual is null) return;
+        try { actual.Dispose(); }
+        catch (Exception error) { context.Fail(); if (primary is null) primary = ExceptionDispatchInfo.Capture(error); }
     }
 
     // Byte-copy primitive only. Its caller must first verify the actual Reader
     // result and later run final source/candidate/readback guards before commit.
     // This expected digest grants no geometry or Writer receipt authority.
     internal async Task CopyToStageAsync(FileStream destination, long expectedLength, byte[] expectedSha256,
-        CancellationToken token = default)
+        CancellationToken token = default, OfdOwnedIoObservation? stageObservation = null)
     {
         Enter();
         try
@@ -315,29 +361,31 @@ internal sealed class OfdAccountedTemporaryFile : Stream
             context.Material.ChargeCopy(81_920 + 8192 + 32, token);
             var baseline = expectedSha256.ToArray(); var buffer = new byte[81_920];
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            context.Material.ChargeOutput(expectedLength); StageReservedPosition = expectedLength;
-            context.Material.ChargeWork(16, token); file.Position = 0; SeekCount++;
+            context.Material.ChargeOutput(expectedLength); StageReservedPosition = expectedLength; stageObservation?.ReservePosition(expectedLength);
+            context.Material.ChargeWork(16, token); observation?.ReserveSeek(); file.Position = 0; SeekCount++; observation?.CompleteSeek(0);
             long copied = 0;
             while (copied < expectedLength)
             {
                 CheckAfterIo(); token.ThrowIfCancellationRequested();
                 var count = (int)Math.Min(buffer.Length, expectedLength - copied);
                 // Read, SHA and destination write all admitted before the read.
-                context.Material.ChargeWork(3L * count, token); ReservedReadBytes += count;
-                var read = await file.ReadAsync(buffer, 0, count, token).ConfigureAwait(false); ActualReadBytes += read;
+                context.Material.ChargeWork(3L * count + (observation is null ? 0 : 16), token); ReservedReadBytes += count;
+                observation?.ReserveRead(count); stageObservation?.ReserveWrite(count);
+                var read = await file.ReadAsync(buffer, 0, count, token).ConfigureAwait(false); ActualReadBytes += read; observation?.CompleteRead(read);
                 CheckAfterIo(); token.ThrowIfCancellationRequested();
                 if (read == 0) throw new EndOfStreamException("Private spool was truncated during stage copy.");
                 hash.AppendData(buffer, 0, read);
-                await destination.WriteAsync(buffer, 0, read, token).ConfigureAwait(false); StageWrittenBytes += read;
+                stageObservation?.BeginActualWrite();
+                await destination.WriteAsync(buffer, 0, read, token).ConfigureAwait(false); StageWrittenBytes += read; stageObservation?.CompleteWrite(read);
                 CheckAfterIo(); token.ThrowIfCancellationRequested(); copied += read;
             }
             context.Material.ChargeWork(32 + 16, token);
             if (file.Length != expectedLength || destination.Length != expectedLength || !baseline.SequenceEqual(hash.GetHashAndReset()))
                 throw new InvalidDataException("ReplacementStageBindingMismatch");
-            context.Material.ChargeWork(16, token); await destination.FlushAsync(token).ConfigureAwait(false);
+            context.Material.ChargeWork(16, token); stageObservation?.ReserveFlush(); await destination.FlushAsync(token).ConfigureAwait(false); stageObservation?.CompleteFlush();
             CheckAfterIo(); token.ThrowIfCancellationRequested();
         }
-        catch { Fail(); throw; } finally { Exit(); }
+        catch { stageObservation?.RecordIoFailure(); Fail(); throw; } finally { Exit(); }
     }
 
     protected override void Dispose(bool disposing)
@@ -355,7 +403,7 @@ internal sealed class OfdAccountedTemporaryFile : Stream
         catch (InvalidOperationException) { primaryFailure = true; }
         Exception? cleanup = null;
         try { file.Dispose(); } catch (Exception error) { cleanup = error; }
-        try { File.Delete(path); } catch (Exception error) { if (cleanup is null) cleanup = error; }
+        try { File.Delete(path); if (cleanup is null) observation?.RecordRemoved(); } catch (Exception error) { if (cleanup is null) cleanup = error; }
         base.Dispose(disposing);
         if (cleanup is not null && !primaryFailure) ExceptionDispatchInfo.Capture(cleanup).Throw();
     }
