@@ -131,3 +131,5 @@ element.Clips.Items.Add(clip);
 Area 的 Path 是 CT_Path 局部几何，不能设置对象/图层 ID 或嵌套 Clips。Area CTM 与 Path Boundary/CTM 只应用一次；裁剪位于所属对象 Boundary 的局部空间，先裁剪再应用对象绘图 CTM。多个 Clip 相交；同一 Clip 的多个 Area 按规范是 union，本版可以保存/读回，但 PDF/SVG 明确拒绝该一般 union。导出支持每 Clip 一个填充 Path Area，包含复合子路径与单一规则。Text clip、DrawParam、TransFlag、未知规则与扩展绘图不做近似输出。
 
 读入的 typed Clips 与 `ClippingXml`/图片 `ClipsXml` 共享源所有权。typed 活跃时修改 raw 别名会拒绝；先撤回未改动的 typed 视图才能使用旧 raw API。空 typed 集合清除已建模 Clip，未知 wrapper 内容保留。修改后的集合不能撤回为 null。完整示例及实际包消费入口见[两页样例](../../e2e/Ofdrw.Net.TypedObjects.E2E/Program.cs)。
+
+删除含未知子树、属性、注释/PI 或 CT_Path ID 扩展的 Clip/Area 会拒绝。换成新空集合也不能绕过原 envelope 的保护；导入非空集合只允许使用已认证槽位，新增槽位追加，不以列表重排隐式跨过未知锚点。

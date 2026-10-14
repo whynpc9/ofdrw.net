@@ -337,7 +337,7 @@ public sealed partial class OfdPackageWriter
 
     private static WritePlan PreparePlan(OfdDocumentPackage package, OfdModelMaterialization material, CancellationToken token)
     {
-        OfdCompositeGraph.Validate(package, material, token);
+        OfdCompositeGraph.Validate(package, material, token, rejectRepeatedOwners: true);
         material.InspectStorage(package, token); material.GuardPreservedXml(package, token);
         var before = material.OutputUpperBoundBytes; material.EstimateWriter(package, token);
         material.ChargeCopy(1024L + (long)package.Pages.Count * IntPtr.Size * 8, token);
@@ -949,7 +949,7 @@ public sealed partial class OfdPackageWriter
                 ApplyNameOnlyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
             }
 
-            ApplyClipping(textObject, text);
+            ApplyClipping(textObject, text, idAllocator);
             AssertNestedIds(text, textObject, idAllocator);
             return textObject;
         }
@@ -978,7 +978,7 @@ public sealed partial class OfdPackageWriter
                 : BuildMatrix(image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0));
             imageObject.SetAttributeValue("Alpha", image.Alpha == 255 ? null : (object)Math.Max(0, Math.Min(255, image.Alpha)));
             imageObject.Elements(imageObject.Name.Namespace + "Clips").Remove();
-            ApplyClipping(imageObject, image);
+            ApplyClipping(imageObject, image, idAllocator);
 
             AssertNestedIds(image, imageObject, idAllocator);
             return imageObject;
@@ -988,7 +988,7 @@ public sealed partial class OfdPackageWriter
             var node = composite.SourceXml is null ? new XElement(ns + "CompositeObject") : OfdXmlEnvelope.Parse(composite.SourceXml);
             node.SetAttributeValue("ID", objectId); node.SetAttributeValue("ResourceID", idAllocator.Assigned(composite.Resource));
             node.SetAttributeValue("Boundary", BuildBox(composite.XMillimeters, composite.YMillimeters, composite.WidthMillimeters, composite.HeightMillimeters));
-            node.SetAttributeValue("CTM", OfdClipXml.Format(composite.Transform)); ApplyClipping(node, composite); AssertNestedIds(composite, node, idAllocator); return node;
+            node.SetAttributeValue("CTM", OfdClipXml.Format(composite.Transform)); ApplyClipping(node, composite, idAllocator); AssertNestedIds(composite, node, idAllocator); return node;
         }
         else if (element is OfdPathElement path)
         {
@@ -1026,7 +1026,7 @@ public sealed partial class OfdPackageWriter
                 }
             }
 
-            ApplyClipping(pathObject, path);
+            ApplyClipping(pathObject, path, idAllocator);
             AssertNestedIds(path, pathObject, idAllocator);
             return pathObject;
         }
@@ -1100,11 +1100,11 @@ public sealed partial class OfdPackageWriter
         textObject.SetAttributeValue("Boundary", BuildBox(x, y, w + shear * h, h));
     }
 
-    private static void ApplyClipping(XElement xml, OfdElement element)
+    private static void ApplyClipping(XElement xml, OfdElement element, OfdIdPlan idAllocator)
     {
         if (element.Clips is null && element.ClippingXml is null) return;
         xml.Elements(xml.Name.Namespace + "Clips").Remove();
-        var clip = OfdClipXml.Write(element, xml.Name.Namespace);
+        var clip = OfdClipXml.Write(element, xml.Name.Namespace, idAllocator.Material, idAllocator.Token);
         if (clip is not null)
         {
             var actions = xml.Elements(xml.Name.Namespace + "Actions").LastOrDefault();

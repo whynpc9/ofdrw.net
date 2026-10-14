@@ -58,15 +58,16 @@ internal static class OfdCompositeProjection
             projected.XMillimeters = x0; projected.YMillimeters = y0;
             projected.WidthMillimeters = Math.Abs(origin[0]) * element.WidthMillimeters + Math.Abs(origin[2]) * element.HeightMillimeters;
             projected.HeightMillimeters = Math.Abs(origin[1]) * element.WidthMillimeters + Math.Abs(origin[3]) * element.HeightMillimeters;
+            material.StoreMatrix(transformed);
             if (projected is OfdTextElement text) { text.Transform = transformed; text.SourceXml = null; }
             if (projected is OfdPathElement path) { path.Transform = transformed; path.SourceXml = null; }
             if (projected is OfdImageElement image) { image.Transform = transformed; image.SourceXml = null; }
             projected.ClipOwnership.Value = projected.ClipOwnership.Original = null; projected.ClipOwnership.Baseline = null;
-            projected.ClippingXml = Encode(clipsForLeaf); result.Add(projected);
+            projected.ClippingXml = Encode(clipsForLeaf, material, token); result.Add(projected);
         }
         void AddClips(OfdElement owner, double[] origin, List<OfdPathElement> clips)
         {
-            var xml = OfdClipXml.Write(owner, Ofdrw.Net.Core.Constants.OfdConstants.Namespace);
+            var xml = OfdClipXml.Write(owner, Ofdrw.Net.Core.Constants.OfdConstants.Namespace, material, token);
             if (xml is null) return;
             foreach (var region in OfdClipGeometry.Read(xml, material, token))
                 foreach (var path in region.Paths)
@@ -78,24 +79,37 @@ internal static class OfdCompositeProjection
         if (composite.SourceXml is { } source)
         {
             material.GuardFragmentXml(source, token); var node = OfdXmlEnvelope.Parse(source);
-            if (node.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name.LocalName is not ("ID" or "Boundary" or "CTM" or "ResourceID" or "Visible")) || node.Elements().Any(n => n.Name != node.Name.Namespace + "Clips"))
+            if (node.Attributes().Any(a => !a.IsNamespaceDeclaration && (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("ID" or "Boundary" or "CTM" or "ResourceID" or "Visible"))) || node.Elements().Any(n => n.Name != node.Name.Namespace + "Clips") || node.Nodes().Any(n => n is XProcessingInstruction || n is XText text && !string.IsNullOrWhiteSpace(text.Value)))
                 throw new NotSupportedException("Composite opacity, drawing parameters and extensions are outside the render profile.");
         }
         if (composite.Resource.SourceXml is { } resourceSource)
         {
             material.GuardFragmentXml(resourceSource, token); var node = OfdXmlEnvelope.Parse(resourceSource);
-            if (node.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name.LocalName is not ("ID" or "Width" or "Height")))
+            if (node.Attributes().Any(a => !a.IsNamespaceDeclaration && (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("ID" or "Width" or "Height"))) || node.Nodes().Any(n => n is XProcessingInstruction || n is XText text && !string.IsNullOrWhiteSpace(text.Value)))
                 throw new NotSupportedException("Composite resource parameters are outside the render profile.");
         }
     }
     private static OfdPathElement Rectangle(double w, double h, double[] matrix) => new() { Stroke = false, Fill = true,
         AbbreviatedData = $"M 0 0 L {Number(w)} 0 L {Number(w)} {Number(h)} L 0 {Number(h)} C", Transform = matrix };
-    private static string Encode(IEnumerable<OfdPathElement> paths)
+    private static string Encode(IReadOnlyList<OfdPathElement> paths, OfdModelMaterialization material, CancellationToken token)
     {
         XNamespace ns = Ofdrw.Net.Core.Constants.OfdConstants.Namespace;
-        return new XElement(ns + "Clips", paths.Select(path => new XElement(ns + "Clip", new XElement(ns + "Area", new XElement(ns + "Path",
-            new XAttribute("CTM", OfdClipXml.Format(path.Transform)!), new XAttribute("Rule", path.FillRule == OfdFillRule.EvenOdd ? "Even-Odd" : "NonZero"),
-            new XElement(ns + "AbbreviatedData", path.AbbreviatedData)))))).ToString(SaveOptions.DisableFormatting);
+        long length = 0;
+        foreach (var path in paths)
+        { token.ThrowIfCancellationRequested(); length = checked(length + path.AbbreviatedData.Length); }
+        // Repeated ancestor strings are a new materialization for each leaf.
+        material.ChargeCopy(checked(8192L + 64L * length + 8192L * paths.Count), token);
+        material.ChargeWork(checked(4L * length + 256L * paths.Count), token);
+        var root = new XElement(ns + "Clips");
+        foreach (var path in paths)
+        {
+            token.ThrowIfCancellationRequested();
+            root.Add(new XElement(ns + "Clip", new XElement(ns + "Area", new XElement(ns + "Path",
+                new XAttribute("CTM", OfdClipXml.Format(path.Transform, material, token)!),
+                new XAttribute("Rule", path.FillRule == OfdFillRule.EvenOdd ? "Even-Odd" : "NonZero"),
+                new XElement(ns + "AbbreviatedData", path.AbbreviatedData)))));
+        }
+        var encoded = OfdXmlEnvelope.Capture(root, material, token); material.StoreString(encoded); return encoded;
     }
     private static string Number(double value) => value.ToString("R", CultureInfo.InvariantCulture);
     internal static double[] Identity() => new[] { 1d, 0, 0, 1, 0, 0 };

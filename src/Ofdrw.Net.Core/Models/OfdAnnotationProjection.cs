@@ -83,7 +83,7 @@ internal static class OfdAnnotationProjection
         var element = OfdModelCloner.CloneElement(definition, clonePayloads: false, material: material, cancellationToken: cancellationToken);
         if (element.Clips is not null)
         {
-            element.ClippingXml = OfdClipXml.Write(element, ns)?.ToString(SaveOptions.DisableFormatting);
+            element.ClippingXml = OfdClipXml.Write(element, ns, material, cancellationToken) is { } typedClip ? OfdXmlEnvelope.Capture(typedClip, material, cancellationToken) : null;
             element.ClipOwnership.Value = element.ClipOwnership.Original = null; element.ClipOwnership.Baseline = null;
         }
         var appearanceTransform = appearance.Transform;

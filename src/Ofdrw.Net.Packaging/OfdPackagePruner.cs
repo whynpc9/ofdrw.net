@@ -269,12 +269,16 @@ internal sealed class OfdPackagePruner
             operationToken.ThrowIfCancellationRequested(); material.ChargeCopy(128, operationToken);
             if (resource.Id is null || resource.Elements.Any(e => e is OfdRawElement)) continue;
             var source = resource.SourceXml is null ? null : OfdXmlEnvelope.Parse(resource.SourceXml);
-            if (source is not null && source.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name.LocalName is not ("ID" or "Width" or "Height"))) continue;
+            if (source is not null && source.Attributes().Any(a => !a.IsNamespaceDeclaration && (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("ID" or "Width" or "Height")))) continue;
             modeled.Add(resource.Id);
         }
         // Unknown reference syntax can encode an ID list or external dependency.
         // Do not infer absence of incoming edges from a scalar lookup in that case.
-        if (documents.Values.Any(xml => xml.Descendants().Any(n => n.Name.NamespaceName != OfdConstants.Namespace && n.Name.NamespaceName != OfdConstants.StandardNamespace))) modeled.Clear();
+        if (documents.Values.Any(xml => !CanInspectCompositeClosure(xml)))
+        {
+            if (modeled.Count > 0) result.Warnings.Add("Composite definitions retained because opaque reference syntax prevents proving closure.");
+            modeled.Clear();
+        }
         var changedComposites = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         bool removed;
         do
@@ -325,6 +329,83 @@ internal sealed class OfdPackagePruner
         {
             if (!ReferencesFile(entries, file, scan)) Remove(entries, file, result, OfdOwnedPruneReason.UnreachableResourcePayload);
         }
+    }
+
+    // Deliberately partial destructive-admission grammar for C pruning.
+    // An unrecognized control table stays protected; no vendor ID-list parser
+    // or name-only recursive allowlist grants deletion permission.
+    private bool CanInspectCompositeClosure(XDocument xml)
+    {
+        var root = xml.Root; if (root is null) return false;
+        var ns = root.Name.Namespace;
+        if (ns.NamespaceName != OfdConstants.Namespace && ns.NamespaceName != OfdConstants.StandardNamespace) return false;
+        foreach (var node in xml.DescendantNodes())
+        {
+            operationToken.ThrowIfCancellationRequested(); material.ChargeWork(64, operationToken);
+            if (node is XProcessingInstruction or XComment || node is XElement element && element.Name.Namespace != ns) return false;
+        }
+        bool Plain(XElement node, params string[] names) => node.Attributes().All(a => a.IsNamespaceDeclaration || a.Name.Namespace == XNamespace.None && names.Contains(a.Name.LocalName));
+        bool Children(XElement node, params string[] names) => node.Elements().All(n => n.Name.Namespace == ns && names.Contains(n.Name.LocalName)) &&
+            node.Nodes().All(n => n is XElement || n is XText t && string.IsNullOrWhiteSpace(t.Value));
+        bool Leaf(XElement node) => !node.HasElements && Plain(node) && node.Nodes().All(n => n is XText);
+        bool Graphic(XElement node)
+        {
+            if (node.Name == ns + "CompositeObject") return Plain(node, "ID", "Boundary", "CTM", "ResourceID", "Visible") && Children(node, "Clips") &&
+                node.Elements().All(n => OfdGraphicXmlContract.HasKnownChildren(n) && n.DescendantsAndSelf().Attributes().All(OfdGraphicXmlContract.IsKnownAttribute));
+            return node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject" && OfdGraphicXmlContract.HasKnownChildren(node) &&
+                node.DescendantsAndSelf().Attributes().All(OfdGraphicXmlContract.IsKnownAttribute) && !OfdGraphicXmlContract.HasUnsupportedReferences(node);
+        }
+        if (root.Name == ns + "Res")
+        {
+            if (!Plain(root, "BaseLoc") || !Children(root, "Fonts", "MultiMedias", "CompositeGraphicUnits")) return false;
+            foreach (var container in root.Elements())
+            {
+                if (!Plain(container)) return false;
+                var kind = container.Name.LocalName == "Fonts" ? "Font" : container.Name.LocalName == "MultiMedias" ? "MultiMedia" : "CompositeGraphicUnit";
+                if (!Children(container, kind)) return false;
+                foreach (var resource in container.Elements())
+                {
+                    operationToken.ThrowIfCancellationRequested(); material.ChargeWork(128, operationToken);
+                    if (kind == "CompositeGraphicUnit")
+                    { if (!Plain(resource, "ID", "Width", "Height") || resource.Elements().Any(n => !Graphic(n)) || resource.Nodes().Any(n => n is XText t && !string.IsNullOrWhiteSpace(t.Value))) return false; }
+                    else if (kind == "Font")
+                    { if (!Plain(resource, "ID", "FontName", "FamilyName", "Charset", "Bold", "Italic") || !Children(resource, "FontFile") || resource.Elements().Any(n => !Leaf(n))) return false; }
+                    else if (!Plain(resource, "ID", "Type", "Format") || !Children(resource, "MediaFile") || resource.Elements().Any(n => !Leaf(n))) return false;
+                }
+            }
+            return true;
+        }
+        if (root.Name == ns + "OFD")
+        {
+            if (!Plain(root, "Version", "DocType") || !Children(root, "DocBody")) return false;
+            foreach (var body in root.Elements())
+            {
+                if (!Plain(body) || !Children(body, "DocInfo", "DocRoot")) return false;
+                foreach (var child in body.Elements())
+                    if (child.Name.LocalName == "DocRoot" ? !Leaf(child) : !Plain(child) || !Children(child, "DocID", "Title", "Author", "Subject", "Keywords", "Creator", "CreationDate", "ModDate") || child.Elements().Any(n => !Leaf(n))) return false;
+            }
+            return true;
+        }
+        if (root.Name == ns + "Document")
+        {
+            if (!Plain(root) || !Children(root, "CommonData", "Pages")) return false;
+            var common = root.Element(ns + "CommonData"); var pages = root.Element(ns + "Pages");
+            if (common is null || pages is null || !Plain(common) || !Children(common, "MaxUnitID", "PageArea", "PublicRes", "DocumentRes") || !Plain(pages) || !Children(pages, "Page")) return false;
+            foreach (var child in common.Elements())
+                if (child.Name.LocalName == "PageArea" ? !Plain(child) || !Children(child, "PhysicalBox") || child.Elements().Any(n => !Leaf(n)) : !Leaf(child)) return false;
+            return pages.Elements().All(n => Plain(n, "ID", "BaseLoc") && !n.Nodes().Any());
+        }
+        if (root.Name == ns + "Page")
+        {
+            if (!Plain(root) || !Children(root, "Area", "Content")) return false;
+            foreach (var child in root.Elements())
+            {
+                if (child.Name.LocalName == "Area") { if (!Plain(child) || !Children(child, "PhysicalBox") || child.Elements().Any(n => !Leaf(n))) return false; }
+                else if (!Plain(child) || !Children(child, "Layer") || child.Elements().Any(layer => !Plain(layer, "ID", "Type") || layer.Elements().Any(n => !Graphic(n)))) return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     private void RemoveInvalidatedSignatures(

@@ -25,6 +25,8 @@ internal sealed class OfdIdPlan
     private readonly Dictionary<long, OfdElement> fragmentOwners = new();
     private long cursor = 1;
     private bool exhausted;
+    internal OfdModelMaterialization Material => budget;
+    internal CancellationToken Token => token;
     internal string Assigned(object model) => assignments.TryGetValue(model, out var id) ? id : throw new InvalidDataException("Unplanned composite definition.");
     internal long MaxId { get; private set; }
 

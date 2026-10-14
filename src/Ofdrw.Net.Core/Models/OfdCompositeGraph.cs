@@ -16,22 +16,28 @@ internal static class OfdCompositeGraph
             foreach (var element in resource.Elements) yield return element;
     }
 
-    internal static void Validate(OfdDocumentPackage package, OfdModelMaterialization material, CancellationToken token)
+    internal static void Validate(OfdDocumentPackage package, OfdModelMaterialization material, CancellationToken token, bool rejectRepeatedOwners = false)
     {
         material.ChargeCopy(512, token);
         var resources = new HashSet<OfdCompositeResource>();
         var owners = new HashSet<OfdElement>();
+        var resourceOwners = new HashSet<OfdElement>();
         foreach (var resource in package.CompositeResources?.Items ?? Enumerable.Empty<OfdCompositeResource>())
         {
             token.ThrowIfCancellationRequested(); material.ChargeCopy(256, token); material.Structure.Node(1);
             if (!resources.Add(resource)) throw new InvalidDataException("Repeated composite resource owner.");
             if (!OfdBoxParser.IsWritablePositiveSide(resource.WidthMillimeters) || !OfdBoxParser.IsWritablePositiveSide(resource.HeightMillimeters) || double.IsInfinity(resource.WidthMillimeters) || double.IsInfinity(resource.HeightMillimeters))
                 throw new InvalidDataException("Composite dimensions must be finite and positive.");
+            foreach (var element in resource.Elements)
+            {
+                token.ThrowIfCancellationRequested(); material.ChargeCopy(64, token); material.ChargeWork(64, token);
+                if (!resourceOwners.Add(element)) throw new InvalidDataException("Repeated composite child owner.");
+            }
         }
         foreach (var element in Definitions(package))
         {
             token.ThrowIfCancellationRequested(); material.ChargeCopy(64, token); material.ChargeWork(64, token);
-            if (!owners.Add(element)) throw new InvalidDataException("Repeated graphic owner in composite graph.");
+            if (!owners.Add(element) && (rejectRepeatedOwners || resourceOwners.Contains(element))) throw new InvalidDataException("Repeated graphic owner in composite graph.");
             if (element is OfdCompositeElement placement)
             {
                 material.Structure.Reference(); material.StoreMatrix(placement.Transform);

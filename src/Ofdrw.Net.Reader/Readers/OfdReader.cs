@@ -988,7 +988,7 @@ public sealed class OfdReader : IOfdReader
         foreach (var definition in definitions)
         {
             material.ReserveReadModel(2048L + definition.Node.Elements().Count() * 128L, token);
-            foreach (var element in ParseGraphicNodes(archive, definition.Node.Elements(), null, "Body", fonts, media, mediaTypes, definition.Path, material, token, map))
+            foreach (var element in ParseGraphicNodes(archive, definition.Node.Elements(), null, "Body", fonts, media, mediaTypes, definition.Path, material, token, map, definition.Node.Name.Namespace))
             {
                 if (element is OfdTextElement text && (text.FontResourceId is null || !fonts.ContainsKey(text.FontResourceId)) ||
                     element is OfdImageElement { Data.Length: 0 })
@@ -1028,12 +1028,12 @@ public sealed class OfdReader : IOfdReader
 
         foreach (var layer in layers)
             foreach (var element in ParseGraphicNodes(archive, layer.Elements(), layer.Attribute("ID")?.Value, layer.Attribute("Type")?.Value ?? "Body",
-                fontMap, mediaMap, mediaTypeMap, pageResPath, material, cancellationToken, compositeMap)) yield return element;
+                fontMap, mediaMap, mediaTypeMap, pageResPath, material, cancellationToken, compositeMap, layer.Name.Namespace)) yield return element;
     }
 
     private static IEnumerable<OfdElement> ParseGraphicNodes(OfdPackageArchive archive, IEnumerable<XElement> nodes, string? layerId, string layerType,
         IReadOnlyDictionary<string, string> fontMap, IReadOnlyDictionary<string, string> mediaMap, IReadOnlyDictionary<string, string> mediaTypeMap,
-        string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap)
+        string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap, XNamespace structuralNamespace)
     {
             foreach (var node in nodes)
             {
@@ -1152,7 +1152,7 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
 
-                if (node.Name == XNamespace.Get(OfdConstants.Namespace) + "CompositeObject" || node.Name == XNamespace.Get(OfdConstants.StandardNamespace) + "CompositeObject")
+                if (node.Name == structuralNamespace + "CompositeObject" && (structuralNamespace.NamespaceName == OfdConstants.Namespace || structuralNamespace.NamespaceName == OfdConstants.StandardNamespace))
                 {
                     var resourceId = node.Attribute("ResourceID")?.Value;
                     if (resourceId is not null && compositeMap?.TryGetValue(resourceId, out var resource) == true)
