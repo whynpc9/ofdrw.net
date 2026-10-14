@@ -44,8 +44,14 @@ internal sealed class TextReplacementArguments
         if (keyword.Length > 1_000_000 || replacement.Length > 1_000_000)
             throw new ArgumentException("Replacement text capacity exceeded.");
         if (trusted.Count == 0) throw new ArgumentException("At least one explicitly vetted --trusted-font identity is required.");
-        // Validate conflicting duplicate digests before opening input/staging output.
-        _ = new OfdTrustedEmbeddedFontGeometryProvider(trusted);
+        // Pure immutable argument values only. The actual provider is first
+        // constructed by the factory on the fixed owned worker, after admission.
+        // Count and normalized SHA length are both constructor-bounded (64).
+        for (var i = 0; i < trusted.Count; i++)
+            for (var j = 0; j < i; j++)
+                if (string.Equals(trusted[i].Sha256, trusted[j].Sha256, StringComparison.Ordinal) &&
+                    (trusted[i].ByteCount != trusted[j].ByteCount || trusted[i].Bold != trusted[j].Bold || trusted[i].Italic != trusted[j].Italic))
+                    throw new ArgumentException("Conflicting trusted identities for the same digest.");
         var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         var input = Path.GetFullPath(args[0]); var output = Path.GetFullPath(args[1]);
         if (string.Equals(input, output, comparison)) throw new ArgumentException("Replacement input and output must use different paths.");
