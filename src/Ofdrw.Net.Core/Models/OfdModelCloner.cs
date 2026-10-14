@@ -103,10 +103,15 @@ internal static class OfdModelCloner
                 result = new OfdPathElement
                 {
                     AbbreviatedData = path.AbbreviatedData, Transform = Matrix(path.Transform),
-                    LineWidthMillimeters = path.LineWidthMillimeters, Stroke = path.Stroke, Fill = path.Fill,
+                    FillRule = path.FillRule, LineWidthMillimeters = path.LineWidthMillimeters, Stroke = path.Stroke, Fill = path.Fill,
                     StrokeColor = path.StrokeColor, FillColor = path.FillColor,
                     SourceXml = CloneXml(path.SourceXml, targetNamespace, material, cancellationToken)
                 };
+                break;
+            case OfdCompositeElement composite:
+                if (mapping is null || !mapping.TryGetValue(composite.Resource, out var resource))
+                    throw new NotSupportedException("Composite cloning requires the package resource closure.");
+                result = new OfdCompositeElement { Resource = (OfdCompositeResource)resource, Transform = Matrix(composite.Transform), SourceXml = composite.SourceXml };
                 break;
             case OfdRawElement raw:
                 result = new OfdRawElement { LocalName = raw.LocalName, Xml = CloneXml(raw.Xml, targetNamespace, material, cancellationToken) ?? string.Empty };
@@ -123,6 +128,7 @@ internal static class OfdModelCloner
         result.WidthMillimeters = source.WidthMillimeters;
         result.HeightMillimeters = source.HeightMillimeters;
         mapping?.Add(source, result);
+        OfdClipCloner.Clone(source, result, mapping, material, cancellationToken, clonePayloads, payloads);
         return result;
         double[]? Matrix(double[]? value)
         {

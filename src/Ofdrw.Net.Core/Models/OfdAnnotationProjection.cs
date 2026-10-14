@@ -81,6 +81,11 @@ internal static class OfdAnnotationProjection
         material.ReserveReadModel(16384, cancellationToken);
         material.ChargeCopy(512L + (definition is OfdTextElement textDefinition ? textDefinition.Runs.Count * 128L : 0), cancellationToken);
         var element = OfdModelCloner.CloneElement(definition, clonePayloads: false, material: material, cancellationToken: cancellationToken);
+        if (element.Clips is not null)
+        {
+            element.ClippingXml = OfdClipXml.Write(element, ns)?.ToString(SaveOptions.DisableFormatting);
+            element.ClipOwnership.Value = element.ClipOwnership.Original = null; element.ClipOwnership.Baseline = null;
+        }
         var appearanceTransform = appearance.Transform;
         var box = (x: appearance.XMillimeters, y: appearance.YMillimeters, w: appearance.WidthMillimeters, h: appearance.HeightMillimeters);
         var transform = appearanceTransform ?? new double[] { 1, 0, 0, 1, 0, 0 };

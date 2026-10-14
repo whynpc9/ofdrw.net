@@ -203,6 +203,7 @@ public sealed class OfdReader : IOfdReader
             ReadFonts(archive, documentResPath, package, fontMap, material, cancellationToken);
         }
 
+        var compositeMap = ReadCompositeResources(archive, package, docRoot, docNs, fontMap, documentMediaMap, documentMediaTypeMap, material, cancellationToken);
         material.ReserveReadModel(256L + fontMap.Count * 160L, cancellationToken);
         var documentFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
         material.ReserveReadModel(256L + (commonData?.Elements().Count() ?? 0) * 160L, cancellationToken);
@@ -310,7 +311,7 @@ public sealed class OfdReader : IOfdReader
                 fontMap,
                 mediaMap,
                 mediaTypeMap,
-                pageResPath, material, cancellationToken))
+                pageResPath, material, cancellationToken, compositeMap))
             {
                 page.Elements.Add(element);
             }
@@ -356,7 +357,7 @@ public sealed class OfdReader : IOfdReader
                     templateFonts,
                     templateMediaMap,
                     templateMediaTypeMap,
-                    templateResPath, material, cancellationToken))
+                    templateResPath, material, cancellationToken, compositeMap))
                 {
                     template.Elements.Add(element);
                 }
@@ -956,13 +957,66 @@ public sealed class OfdReader : IOfdReader
         }
     }
 
+    private static Dictionary<string, OfdCompositeResource> ReadCompositeResources(OfdPackageArchive archive, OfdDocumentPackage package,
+        string documentPath, XNamespace ns, IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
+        IReadOnlyDictionary<string, string> mediaTypes, OfdModelMaterialization material, CancellationToken token)
+    {
+        material.ReserveReadModel(512, token);
+        var map = new Dictionary<string, OfdCompositeResource>(StringComparer.Ordinal);
+        var definitions = new List<(OfdCompositeResource Resource, XElement Node, string Path)>();
+        foreach (var location in new[] { package.PublicResourceLocation, package.DocumentResourceLocation }.Where(l => !string.IsNullOrWhiteSpace(l)).Distinct())
+        {
+            var path = material.ResolvePath(documentPath, location!, token);
+            if (!archive.Contains(path)) continue;
+            var xml = material.ReadXml(path, archive.GetBytes(path), token); var root = xml.Root!;
+            if (root.Name != ns + "Res") continue;
+            foreach (var container in root.Elements(ns + "CompositeGraphicUnits"))
+            foreach (var pair in container.Elements().Select((node, slot) => (node, slot)))
+            {
+                token.ThrowIfCancellationRequested(); material.ReserveReadModel(2048, token);
+                var node = pair.node; if (node.Name != ns + "CompositeGraphicUnit") continue;
+                var id = node.Attribute("ID")?.Value;
+                if (OfdSourceIdentity.ParseId(id) == 0 || map.ContainsKey(id!)) throw new InvalidDataException("Composite resource ID is missing or duplicated.");
+                var resource = new OfdCompositeResource { Id = id, WidthMillimeters = ParseDouble(node.Attribute("Width")?.Value, 0),
+                    HeightMillimeters = ParseDouble(node.Attribute("Height")?.Value, 0), SourceEntryPath = path, SourceSlot = pair.slot,
+                    SourceXml = OfdXmlEnvelope.Capture(node, material, token) };
+                map.Add(id!, resource); definitions.Add((resource, node, path));
+            }
+        }
+        if (map.Count == 0) return map;
+        package.CompositeResources = new();
+        foreach (var definition in definitions)
+        {
+            material.ReserveReadModel(2048L + definition.Node.Elements().Count() * 128L, token);
+            foreach (var element in ParseGraphicNodes(archive, definition.Node.Elements(), null, "Body", fonts, media, mediaTypes, definition.Path, material, token, map))
+            {
+                if (element is OfdTextElement text && (text.FontResourceId is null || !fonts.ContainsKey(text.FontResourceId)) ||
+                    element is OfdImageElement { Data.Length: 0 })
+                {
+                    var source = element is OfdTextElement t ? t.SourceXml! : ((OfdImageElement)element).SourceXml!;
+                    definition.Resource.Elements.Add(new OfdRawElement { LocalName = OfdXmlEnvelope.Parse(source).Name.LocalName, Xml = source,
+                        ObjectId = element.ObjectId, XMillimeters = element.XMillimeters, YMillimeters = element.YMillimeters,
+                        WidthMillimeters = element.WidthMillimeters, HeightMillimeters = element.HeightMillimeters });
+                }
+                else definition.Resource.Elements.Add(element);
+            }
+            package.CompositeResources.Items.Add(definition.Resource);
+        }
+        material.ReserveReadModel(32L * package.CompositeResources!.Items.Count, token);
+        package.OriginalCompositeOrder = package.CompositeResources.Items.ToArray();
+        package.OriginalCompositeResources = package.CompositeResources;
+        package.CompositeBaseline = OfdModelSnapshot.Capture(package.CompositeResources, material, token);
+        OfdCompositeGraph.Validate(package, material, token); return map;
+    }
+
     private static IEnumerable<OfdElement> ParsePageObjects(
         OfdPackageArchive archive,
         XDocument pageXml,
         IReadOnlyDictionary<string, string> fontMap,
         IReadOnlyDictionary<string, string> mediaMap,
         IReadOnlyDictionary<string, string> mediaTypeMap,
-        string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken)
+        string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap = null)
     {
         material.ReserveReadModel(256L + (pageXml.Root?.Descendants().Count() ?? 0) * 32L, cancellationToken);
         var layers = pageXml.Root?
@@ -973,10 +1027,15 @@ public sealed class OfdReader : IOfdReader
             .ToList() ?? [];
 
         foreach (var layer in layers)
-        {
-            var layerId = layer.Attribute("ID")?.Value;
-            var layerType = layer.Attribute("Type")?.Value ?? "Body";
-            foreach (var node in layer.Elements())
+            foreach (var element in ParseGraphicNodes(archive, layer.Elements(), layer.Attribute("ID")?.Value, layer.Attribute("Type")?.Value ?? "Body",
+                fontMap, mediaMap, mediaTypeMap, pageResPath, material, cancellationToken, compositeMap)) yield return element;
+    }
+
+    private static IEnumerable<OfdElement> ParseGraphicNodes(OfdPackageArchive archive, IEnumerable<XElement> nodes, string? layerId, string layerType,
+        IReadOnlyDictionary<string, string> fontMap, IReadOnlyDictionary<string, string> mediaMap, IReadOnlyDictionary<string, string> mediaTypeMap,
+        string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap)
+    {
+            foreach (var node in nodes)
             {
                 material.ReserveReadModel(512, cancellationToken);
                 var localName = node.Name.LocalName;
@@ -1020,6 +1079,7 @@ public sealed class OfdReader : IOfdReader
                         });
                     }
 
+                    OfdClipXml.Load(text, material, cancellationToken);
                     yield return text;
                     continue;
                 }
@@ -1055,6 +1115,7 @@ public sealed class OfdReader : IOfdReader
                         }
                     }
 
+                    OfdClipXml.Load(image, material, cancellationToken);
                     yield return image;
                     continue;
                 }
@@ -1066,7 +1127,7 @@ public sealed class OfdReader : IOfdReader
                         .FirstOrDefault(x => x.Name.LocalName == "StrokeColor"), material, cancellationToken);
                     var fillColor = ParseColor(node.Elements()
                         .FirstOrDefault(x => x.Name.LocalName == "FillColor"), material, cancellationToken);
-                    yield return new OfdPathElement
+                    var path = new OfdPathElement
                     {
                         ObjectId = node.Attribute("ID")?.Value,
                         LayerId = layerId,
@@ -1077,6 +1138,7 @@ public sealed class OfdReader : IOfdReader
                         HeightMillimeters = boundary.h,
                         AbbreviatedData = ReadDirectText(node.Element(node.Name.Namespace + "AbbreviatedData"), material, cancellationToken),
                         Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
+                        FillRule = node.Attribute("Rule")?.Value switch { "NonZero" => OfdFillRule.NonZero, "Even-Odd" => OfdFillRule.EvenOdd, _ => null },
                         LineWidthMillimeters = ParseDouble(node.Attribute("LineWidth")?.Value, 0.353d),
                         Stroke = ParseBoolean(node.Attribute("Stroke")?.Value, true),
                         Fill = ParseBoolean(node.Attribute("Fill")?.Value, false),
@@ -1085,9 +1147,25 @@ public sealed class OfdReader : IOfdReader
                         SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken),
                         ClippingXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken)
                     };
+                    OfdClipXml.Load(path, material, cancellationToken);
+                    yield return path;
                     continue;
                 }
 
+                if (node.Name == XNamespace.Get(OfdConstants.Namespace) + "CompositeObject" || node.Name == XNamespace.Get(OfdConstants.StandardNamespace) + "CompositeObject")
+                {
+                    var resourceId = node.Attribute("ResourceID")?.Value;
+                    if (resourceId is not null && compositeMap?.TryGetValue(resourceId, out var resource) == true)
+                    {
+                        var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
+                        var placement = new OfdCompositeElement { ObjectId = node.Attribute("ID")?.Value, LayerId = layerId, LayerType = layerType,
+                            XMillimeters = boundary.x, YMillimeters = boundary.y, WidthMillimeters = boundary.w, HeightMillimeters = boundary.h,
+                            Resource = resource, Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
+                            SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken),
+                            ClippingXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken) };
+                        OfdClipXml.Load(placement, material, cancellationToken); yield return placement; continue;
+                    }
+                }
                 var rawBoundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                 yield return new OfdRawElement
                 {
@@ -1102,7 +1180,6 @@ public sealed class OfdReader : IOfdReader
                     HeightMillimeters = rawBoundary.h
                 };
             }
-        }
     }
 
     private static string ReadDirectText(XElement? node, OfdModelMaterialization material, CancellationToken token)

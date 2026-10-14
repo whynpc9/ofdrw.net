@@ -337,6 +337,7 @@ public sealed partial class OfdPackageWriter
 
     private static WritePlan PreparePlan(OfdDocumentPackage package, OfdModelMaterialization material, CancellationToken token)
     {
+        OfdCompositeGraph.Validate(package, material, token);
         material.InspectStorage(package, token); material.GuardPreservedXml(package, token);
         var before = material.OutputUpperBoundBytes; material.EstimateWriter(package, token);
         material.ChargeCopy(1024L + (long)package.Pages.Count * IntPtr.Size * 8, token);
@@ -373,9 +374,14 @@ public sealed partial class OfdPackageWriter
                 plan.NewAnnotationPaths.Add(page, FreshAnnotationPath("Page_" + plan.PageIds[page]));
         }
         if (plan.NewAnnotationPaths.Count > 0) plan.NewAnnotationIndex = FreshAnnotationPath("Annotations");
-        plan.Images = BuildImageResources(plan.Pages, plan.Ids, material, token); plan.Fonts = BuildFonts(package, plan.Ids);
+        foreach (var resource in package.CompositeResources?.Items ?? Enumerable.Empty<OfdCompositeResource>())
+        {
+            plan.Ids.Claim(resource, resource.Id);
+            foreach (var element in resource.Elements) plan.ElementIds.Add(element, plan.Ids.Claim(element, element.ObjectId));
+        }
+        plan.Images = BuildImageResources(package, plan.Ids, material, token); plan.Fonts = BuildFonts(package, plan.Ids);
         plan.PublicLocation = package.PublicResourceLocation ?? "PublicRes.xml";
-        plan.DocumentLocation = package.DocumentResourceLocation ?? (plan.Images.Count > 0 ? "DocumentRes.xml" : null);
+        plan.DocumentLocation = package.DocumentResourceLocation ?? (plan.Images.Count > 0 || package.CompositeResources is not null ? "DocumentRes.xml" : null);
         var publicPath = material.ResolvePath(plan.DocumentPath, plan.PublicLocation, token);
         var knownPaths = new List<string> { publicPath };
         foreach (var path in plan.PagePaths.Values) knownPaths.Add(OfdPackagePath.GetDirectory(path) + "/PageRes.xml");
@@ -452,6 +458,7 @@ public sealed partial class OfdPackageWriter
                 )));
 
         plan.Resources.Apply(); plan.Resources.Flush();
+        BuildComposites(package, plan, material, cancellationToken);
         BuildPages(orderedPages, entries, ns, pagePaths, pageIds, layerIds, elementIds, fonts.TextBindings, imageResources, idAllocator, material, cancellationToken);
         BuildAttachments(package, entries, ns, docId);
         BuildCustomTags(package, entries, ns, docId);
@@ -500,6 +507,39 @@ public sealed partial class OfdPackageWriter
         entries[OfdConstants.OfdRootFile] = ToUtf8Bytes(ofdXml);
         entries[documentPath] = ToUtf8Bytes(docXml);
         return entries;
+    }
+
+    private static void BuildComposites(OfdDocumentPackage package, WritePlan plan, OfdModelMaterialization material, CancellationToken token)
+    {
+        if (package.CompositeResources is not { } collection) return;
+        foreach (var group in collection.Items.GroupBy(resource => resource.SourceEntryPath ?? material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token)))
+        {
+            token.ThrowIfCancellationRequested();
+            var xml = material.ReadXml(group.Key, plan.Entries[group.Key], token); var ns = xml.Root!.Name.Namespace;
+            var container = xml.Root.Element(ns + "CompositeGraphicUnits");
+            if (container is null) { container = new XElement(ns + "CompositeGraphicUnits"); xml.Root.Add(container); }
+            foreach (var resource in group)
+            {
+                var node = resource.SourceXml is null ? new XElement(ns + "CompositeGraphicUnit") : OfdXmlEnvelope.Parse(resource.SourceXml);
+                node.SetAttributeValue("ID", plan.Ids.Assigned(resource)); node.SetAttributeValue("Width", ToInvariant(resource.WidthMillimeters)); node.SetAttributeValue("Height", ToInvariant(resource.HeightMillimeters));
+                var children = node.Elements().ToArray();
+                if (resource.SourceXml is not null && children.Length != resource.Elements.Count) throw new InvalidDataException("Composite source slots changed.");
+                for (var i = 0; i < resource.Elements.Count; i++)
+                {
+                    var emitted = BuildPrimitive(resource.Elements[i], ns, plan.ElementIds, plan.Fonts.TextBindings, plan.Images, plan.Ids)
+                        ?? throw new NotSupportedException("Unsupported composite child.");
+                    if (resource.SourceXml is null) node.Add(emitted); else children[i].ReplaceWith(emitted);
+                }
+                if (resource.SourceXml is null) container.Add(node);
+                else
+                {
+                    var source = xml.Root.Elements(ns + "CompositeGraphicUnits").Elements().SingleOrDefault(n => n.Name == ns + "CompositeGraphicUnit" && n.Attribute("ID")?.Value == resource.Id)
+                        ?? throw new InvalidDataException("Authenticated composite resource is missing.");
+                    source.ReplaceWith(node);
+                }
+            }
+            plan.Entries[group.Key] = ToUtf8Bytes(xml);
+        }
     }
 
     private static void BuildAnnotations(OfdDocumentPackage package, WritePlan plan, XDocument document,
@@ -630,7 +670,7 @@ public sealed partial class OfdPackageWriter
             if (!string.IsNullOrEmpty(font.Id)) byId.Add(font.Id, binding);
         }
 
-        foreach (var text in package.Pages.SelectMany(OfdAnnotationContract.Definitions).OfType<OfdTextElement>())
+        foreach (var text in OfdCompositeGraph.Definitions(package).OfType<OfdTextElement>())
         {
             FontBinding? binding = null;
             if (!string.IsNullOrEmpty(text.FontResourceId)) byId.TryGetValue(text.FontResourceId!, out binding);
@@ -702,7 +742,7 @@ public sealed partial class OfdPackageWriter
     }
 
     private static Dictionary<OfdImageElement, ImageResource> BuildImageResources(
-        IReadOnlyList<OfdPage> pages,
+        OfdDocumentPackage package,
         OfdIdPlan idAllocator, OfdModelMaterialization material, CancellationToken token)
     {
         var resources = new Dictionary<OfdImageElement, ImageResource>();
@@ -711,7 +751,7 @@ public sealed partial class OfdPackageWriter
         var imported = new Dictionary<OfdSourceIdentity.Owner, (string Key, ImageResource Resource)>();
         var hashes = new Dictionary<byte[], string>();
         // Establish imported owners before fresh dedup references can reuse them.
-        foreach (var image in pages.SelectMany(OfdAnnotationContract.Definitions).OfType<OfdImageElement>()
+        foreach (var image in OfdCompositeGraph.Definitions(package).OfType<OfdImageElement>()
             .OrderByDescending(image => idAllocator.TryImageOwner(image, out _)))
         {
             var format = ToOfdImageFormat(image.MediaType, image.FileName);
@@ -943,6 +983,13 @@ public sealed partial class OfdPackageWriter
             AssertNestedIds(image, imageObject, idAllocator);
             return imageObject;
         }
+        else if (element is OfdCompositeElement composite)
+        {
+            var node = composite.SourceXml is null ? new XElement(ns + "CompositeObject") : OfdXmlEnvelope.Parse(composite.SourceXml);
+            node.SetAttributeValue("ID", objectId); node.SetAttributeValue("ResourceID", idAllocator.Assigned(composite.Resource));
+            node.SetAttributeValue("Boundary", BuildBox(composite.XMillimeters, composite.YMillimeters, composite.WidthMillimeters, composite.HeightMillimeters));
+            node.SetAttributeValue("CTM", OfdClipXml.Format(composite.Transform)); ApplyClipping(node, composite); AssertNestedIds(composite, node, idAllocator); return node;
+        }
         else if (element is OfdPathElement path)
         {
             var pathObject = string.IsNullOrWhiteSpace(path.SourceXml)
@@ -955,6 +1002,7 @@ public sealed partial class OfdPackageWriter
             pathObject.SetAttributeValue("LineWidth", ToInvariant(path.LineWidthMillimeters));
             pathObject.SetAttributeValue("Stroke", path.Stroke);
             pathObject.SetAttributeValue("Fill", path.Fill);
+            if (path.FillRule is { } rule) pathObject.SetAttributeValue("Rule", rule == OfdFillRule.EvenOdd ? "Even-Odd" : "NonZero");
             pathObject.SetAttributeValue(
                 "CTM",
                 path.Transform is { Length: 6 }
@@ -1054,11 +1102,11 @@ public sealed partial class OfdPackageWriter
 
     private static void ApplyClipping(XElement xml, OfdElement element)
     {
-        if (element.ClippingXml is null) return;
+        if (element.Clips is null && element.ClippingXml is null) return;
         xml.Elements(xml.Name.Namespace + "Clips").Remove();
-        if (!string.IsNullOrWhiteSpace(element.ClippingXml))
+        var clip = OfdClipXml.Write(element, xml.Name.Namespace);
+        if (clip is not null)
         {
-            var clip = XElement.Parse(element.ClippingXml!, LoadOptions.PreserveWhitespace);
             var actions = xml.Elements(xml.Name.Namespace + "Actions").LastOrDefault();
             if (actions is null) xml.AddFirst(clip); else actions.AddAfterSelf(clip);
         }

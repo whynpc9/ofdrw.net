@@ -25,6 +25,7 @@ internal sealed class OfdIdPlan
     private readonly Dictionary<long, OfdElement> fragmentOwners = new();
     private long cursor = 1;
     private bool exhausted;
+    internal string Assigned(object model) => assignments.TryGetValue(model, out var id) ? id : throw new InvalidDataException("Unplanned composite definition.");
     internal long MaxId { get; private set; }
 
     internal OfdIdPlan(OfdDocumentPackage package, OfdModelMaterialization budget, CancellationToken token)
@@ -74,6 +75,16 @@ internal sealed class OfdIdPlan
             }
         // Preferred fresh definitions must be known before any anonymous ID
         // allocation, otherwise an early page/layer can steal a later font ID.
+        foreach (var resource in package.CompositeResources?.Items ?? Enumerable.Empty<OfdCompositeResource>())
+        {
+            Hint(resource.Id);
+            foreach (var element in resource.Elements)
+            {
+                Hint(element.ObjectId);
+                var source = element switch { OfdCompositeElement composite => composite.SourceXml, OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdRawElement raw => raw.Xml, _ => null };
+                Fragment(element, source, true); Fragment(element, element.ClippingXml, false);
+            }
+        }
         foreach (var font in package.Fonts) Hint(font.Id);
         foreach (var page in package.Pages)
         {
@@ -236,7 +247,7 @@ internal sealed class OfdIdPlan
         {
             if (model is OfdElement element)
             {
-                var source = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdRawElement raw => raw.Xml, _ => null };
+                var source = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdRawElement raw => raw.Xml, OfdCompositeElement composite => composite.SourceXml, _ => null };
                 if (!string.IsNullOrWhiteSpace(source)) id = OfdSourceIdentity.ParseId(OfdXmlEnvelope.Parse(source!).Attribute("ID")?.Value);
             }
             if (id == 0) return Allocate(model);

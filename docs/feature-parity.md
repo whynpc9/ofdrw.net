@@ -1,6 +1,6 @@
 # Ofdrw.Net 与 OFDRW 功能对照
 
-更新时间：2026-09-06
+更新时间：2026-10-15
 
 本表以 OFDRW `master` 分支公开模块和文档为能力基线，以当前
 Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标示工程能力
@@ -19,6 +19,8 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | --- | --- | --- | --- |
 | OFD 核心模型 | `ofdrw-core` 提供较完整标准数据结构 | 页面、图层、模板、文本游程、路径、图片、字体、附件、自定义标签、保留未知 XML/包条目 | **部分支持**；常用读写闭环已具备，完整标准对象模型尚未覆盖 |
 | 容器与打包 | `ofdrw-pkg` | 标准入口/文档/页面/资源引用，附件、模板和扩展条目；ZIP 路径、数量、展开大小和压缩比限制 | **已支持** |
+| 大纲、书签、动作与注释 | `ofdrw-core` | typed 层次/页目标、GoTo、局部 Text/Image/Path Appearance；未知动作/XML 保留 | **部分支持**；动作仅序列化；导入图元编辑、未证明闭包的合并/混合拒绝。见[教程](tutorials/09-templates-attachments-tags.md) |
+| 裁剪与组合对象 | `ofdrw-core` | typed Path Clip/Area、共享 CompositeGraphicUnit 与 nested DAG placement；读写、独立克隆和 PDF/SVG | **部分支持**；每 Clip 一个填充 Path Area，可包含多子路径，多个 Clip 相交；多 Area 可往返，导出拒绝一般 union；Text clip、group opacity/DrawParam 等保留并拒绝不安全导出。见[路径教程](tutorials/07-paths.md) |
 | 文档读取 | `ofdrw-reader`，含反序列化及签章读取 | 多图层/模板/资源解析，未知内容无损保留，结构检查 | **部分支持**；当前以首个 `DocBody` 为主 |
 | 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层页面对象与 builder API | **部分支持**；缺少成熟的段落、表格、分页、表单式区块和 Graphics2D 布局引擎 |
 | 字体 | `ofdrw-font`，字体生成与字形处理 | 读取/写入嵌入字体，PDF 渲染字体解析及回退 | **部分支持**；已增加字体内容身份隔离和注册预算；仍缺少字体子集化、完整字形映射和专门字体工具链 |

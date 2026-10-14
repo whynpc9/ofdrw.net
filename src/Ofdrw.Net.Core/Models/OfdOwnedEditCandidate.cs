@@ -76,6 +76,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         material.GuardPreservedXml(source, token); source.SourceIdentity?.Reconcile(source, material, token);
         OfdNavigationXml.Validate(source, source.Pages, token, material);
         OfdAnnotationContract.Validate(source, material, token);
+        OfdCompositeGraph.Validate(source, material, token);
         material.ChargeCopy(4096L + (long)(source.Fonts.Count + source.Attachments.Count) * 256, token);
         var mapping = new Dictionary<object, object>(OfdReferenceIdentity.Instance);
         using var payloads = OfdPayloadCloneSession.Create(context, token);
@@ -103,6 +104,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         Map(source.CustomTags, copy.CustomTags); Map(source.PreservedEntries, copy.PreservedEntries);
         Map(source.PreservedCommonDataElements, copy.PreservedCommonDataElements);
         Map(source.PreservedDocumentElements, copy.PreservedDocumentElements); Map(source.PreservedDocBodyElements, copy.PreservedDocBodyElements);
+        OfdCompositeGraph.CloneResources(source, copy, mapping, material, token, payloads);
         foreach (var page in source.Pages) { token.ThrowIfCancellationRequested(); copy.Pages.Add(Page(page)); }
         // Original-page identities are evidence even after removal. Their
         // detached clones never become new active pages or borrow source data.

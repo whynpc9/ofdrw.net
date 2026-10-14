@@ -19,6 +19,7 @@ public static class OfdDocumentSplitter
         if (source is null) throw new ArgumentNullException(nameof(source));
         var material = new OfdModelMaterialization(new OfdModelLimits());
         material.InspectStorage(source, cancellationToken); material.GuardPreservedXml(source, cancellationToken);
+        OfdCompositeGraph.Validate(source, material, cancellationToken);
         ValidateSingleDocument(source, material, cancellationToken);
         pages = ValidatePages(source, pages, material, cancellationToken);
         var selectedPages = pages.Select(index => source.Pages[index]).ToArray();
@@ -27,7 +28,7 @@ public static class OfdDocumentSplitter
         source.SourceEnvelope?.ValidatePageOrder(source, selectedPages, material, cancellationToken);
         foreach (var index in pages) OfdPageXmlContract.ValidateWritableDimensions(source.Pages[index].WidthMillimeters, source.Pages[index].HeightMillimeters);
         OfdPageXmlContract.ValidateDocumentArea(source, cancellationToken, material);
-        if (!source.PreservedEntries.ContainsKey("OFD.xml"))
+        if (!source.PreservedEntries.ContainsKey("OFD.xml") && source.CompositeResources is null)
         {
             if (source.PreservedEntries.Count > 0 || source.PreservedCommonDataElements.Count > 0 || source.PreservedDocumentElements.Count > 0 || source.PreservedDocBodyElements.Count > 0 ||
                 pages.Any(index => source.Pages[index].PreservedPageElements.Count > 0))
@@ -97,6 +98,7 @@ public static class OfdDocumentSplitter
         result.PreservedDocumentElements.AddRange(source.PreservedDocumentElements);
         result.PreservedDocBodyElements.AddRange(source.PreservedDocBodyElements);
         var mapping = new Dictionary<object, object>();
+        OfdCompositeGraph.CloneResources(source, result, mapping, material, cancellationToken, null);
         foreach (var entry in source.PreservedEntries)
         { material.ChargeCopy(entry.Value.LongLength, cancellationToken); result.PreservedEntries.Add(entry.Key, entry.Value.ToArray()); }
         foreach (var font in source.Fonts)

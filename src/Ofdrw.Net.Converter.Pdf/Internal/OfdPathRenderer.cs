@@ -40,7 +40,7 @@ internal static class OfdPathRenderer
         try
         {
             var tokens = Tokenize(element.AbbreviatedData);
-            var path = new XGraphicsPath();
+            var path = new XGraphicsPath { FillMode = element.FillRule == OfdFillRule.EvenOdd ? XFillMode.Alternate : XFillMode.Winding };
             var state = new PathState(path, element, pageOriginX, pageOriginY);
             if (!state.Build(tokens))
             {
