@@ -10,9 +10,9 @@ using Ofdrw.Net.Core.IO;
 
 namespace Ofdrw.Net.Core.Models;
 
-// Three independent operation-wide limits, not a combined managed-heap cap.
+// Four independent operation-wide limits, not a combined managed-heap cap.
 // Callers must pass one instance through nested copy/edit operations.
-internal sealed class OfdModelMaterialization
+internal sealed partial class OfdModelMaterialization
 {
     private readonly OfdModelLimits limits;
     private readonly HashSet<object> stored = new(Identity.Instance);
@@ -59,12 +59,16 @@ internal sealed class OfdModelMaterialization
     internal string ResolvePath(string basis, string reference, CancellationToken token)
     {
         CheckPathWork(basis, reference, token); ChargeCopy(8L * (basis.Length + (long)reference.Length + 2), token);
-        return OfdPackagePath.Resolve(basis, reference);
+        if (!IsControlledRead) return OfdPackagePath.Resolve(basis, reference);
+        var storage = ReserveReadStorage(checked(2L * (basis.Length + (long)reference.Length + 2)), token);
+        var result = OfdPackagePath.Resolve(basis, reference); AdoptReadString(result, storage, token); return result;
     }
     internal string RelativePath(string basis, string target, CancellationToken token)
     {
         CheckPathWork(basis, target, token); ChargeCopy(12L * (basis.Length + (long)target.Length + 2), token);
-        return OfdPackagePath.RelativeTo(basis, target);
+        if (!IsControlledRead) return OfdPackagePath.RelativeTo(basis, target);
+        var storage = ReserveReadStorage(checked(4L * (basis.Length + (long)target.Length + 2)), token);
+        var result = OfdPackagePath.RelativeTo(basis, target); AdoptReadString(result, storage, token); return result;
     }
     internal void ReservePathComposition(string basis, string reference, CancellationToken token)
     { CheckPathWork(basis, reference, token); ChargeCopy(2L * (basis.Length + (long)reference.Length + 2), token); }
@@ -83,7 +87,11 @@ internal sealed class OfdModelMaterialization
         }
     }
 
-    internal void GuardFragmentXml(string value, CancellationToken token) => OfdModelTraversal.GuardXml(value, Structure, limits, token);
+    internal void GuardFragmentXml(string value, CancellationToken token)
+    {
+        PrepareReadXmlParser(checked(2L * value.Length), token);
+        OfdModelTraversal.GuardXml(value, Structure, limits, token);
+    }
 
     internal void StoreString(string? value)
     {
@@ -112,7 +120,7 @@ internal sealed class OfdModelMaterialization
 
     internal void ChargeCopy(long bytes, CancellationToken token)
     {
-        token.ThrowIfCancellationRequested(); Structure.Reference();
+        token.ThrowIfCancellationRequested(); controlledContext?.AssertActive(); Structure.Reference();
         CloneCopyBytes = Add(CloneCopyBytes, bytes, "clone-copy");
     }
     internal void ChargeOutput(long bytes)
@@ -120,7 +128,7 @@ internal sealed class OfdModelMaterialization
 
     internal void ChargeWork(long bytes, CancellationToken token)
     {
-        token.ThrowIfCancellationRequested(); Structure.Reference();
+        token.ThrowIfCancellationRequested(); controlledContext?.AssertActive(); Structure.Reference();
         ValidationWorkBytes = Add(ValidationWorkBytes, bytes, "validation work");
     }
 
@@ -153,6 +161,7 @@ internal sealed class OfdModelMaterialization
             // supported XML encodings. Reserve each decoder materialization
             // before XmlReader can form large attribute/text strings.
             ChargeCopy(2L * bytes.LongLength, token);
+            PrepareReadXmlParser(bytes.LongLength, token);
             var work = new XmlWork { Digest = HashBytes(bytes, token) };
             try
             {
@@ -171,7 +180,7 @@ internal sealed class OfdModelMaterialization
                         if (reader.LocalName is "ID" or "MaxUnitID")
                         {
                             var id = OfdSourceIdentity.ParseId(reader.Value);
-                            if (id != 0 && !work.ReservedIds.Contains(id)) { Structure.Reference(); work.ReservedIds.Add(id); }
+                            if (id != 0 && !work.ReservedIds.Contains(id)) { ReserveReadModel(128, token); Structure.Reference(); work.ReservedIds.Add(id); }
                             if (reader.LocalName == "MaxUnitID") work.HasMaxHint = true;
                         }
                         // Existing numeric projection uses Split. Bound token work
@@ -185,8 +194,11 @@ internal sealed class OfdModelMaterialization
             }
             catch (XmlException)
             {
-                // Only malformed XML is an opaque extension. Cancellation,
-                // DTD and quota failures are intentionally not caught.
+                // Controlled parsing prohibits DTD before its internal grammar
+                // compiler can allocate. Reject all XmlException here rather than
+                // identifying DTD via a localized runtime exception message.
+                // Public loading retains its original malformed-opaque policy.
+                if (HasControlledXmlPolicy) throw new InvalidDataException("Controlled operation contains malformed or prohibited XML.");
                 OpaqueEntries.Add(path);
             }
 
@@ -227,17 +239,21 @@ internal sealed class OfdModelMaterialization
         ChargeCopy(2L * bytes.LongLength, token);
         Structure.NodeWork(work.Nodes, work.Depth);
         for (long index = 0; index < work.References; index++) { token.ThrowIfCancellationRequested(); Structure.Reference(); }
+        PrepareReadXmlParser(bytes.LongLength, token);
+        var readStorage = PrepareReadDom(bytes.LongLength, work.Nodes, work.References, token);
+        if (IsControlledRead) ChargeWork(bytes.LongLength, token);
         using var input = new MemoryStream(bytes, false);
         using var reader = XmlReader.Create(input, Settings());
         var result = XDocument.Load(reader, LoadOptions.PreserveWhitespace);
+        AdoptReadDom(result, readStorage, token);
         token.ThrowIfCancellationRequested(); return result;
     }
 
     private XmlReaderSettings Settings() => new()
     {
-        // Report DocumentType without expanding an entity: no DOM is admitted
-        // until the streaming pass has rejected the declaration.
-        DtdProcessing = DtdProcessing.Parse, XmlResolver = null,
+        // Public path retains its original DocumentType admission. Controlled
+        // parsing rejects the declaration before compiling internal DTD models.
+        DtdProcessing = HasControlledXmlPolicy ? DtdProcessing.Prohibit : DtdProcessing.Parse, XmlResolver = null,
         MaxCharactersInDocument = limits.MaxSourceXmlBytes, MaxCharactersFromEntities = 1024
     };
 
