@@ -31,6 +31,10 @@ internal static class OfdClipCloner
                     material.ChargeCopy(256L + 48, token);
                     var a = new OfdClipArea { SourceXml = area.SourceXml, SourceSlot = area.SourceSlot, Transform = area.Transform?.ToArray(),
                         Path = (OfdPathElement)OfdModelCloner.CloneElement(area.Path, clonePayloads: clonePayloads, material: material, cancellationToken: token, mapping: map, payloads: payloads) };
+                    a.OriginalPathXml = area.OriginalPathXml;
+                    if (area.OriginalPath is not null)
+                        a.OriginalPath = map.TryGetValue(area.OriginalPath, out var originalPath) ? (OfdPathElement)originalPath :
+                            (OfdPathElement)OfdModelCloner.CloneElement(area.OriginalPath, clonePayloads: clonePayloads, material: material, cancellationToken: token, mapping: map, payloads: payloads);
                     map.Add(area, a); c.Areas.Add(a);
                 }
                 result.Items.Add(c);

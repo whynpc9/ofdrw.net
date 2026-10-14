@@ -204,7 +204,9 @@ internal static class OfdSerializedInventory
                 {
                     Own("area", area); Source(area.SourceXml); V("areaSlot", area.SourceSlot); sink.Matrix(area.Transform);
                     if (area.Path.Clips is not null) throw new InvalidDataException("Clip paths cannot own nested typed clips.");
+                    V("originalClipPath", area.OriginalPath, true); Source(area.OriginalPathXml);
                     Graphic(area.Path);
+                    if (area.OriginalPath is not null && !ReferenceEquals(area.Path, area.OriginalPath)) Graphic(area.OriginalPath);
                 }
             }
         }
