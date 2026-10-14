@@ -7,7 +7,7 @@
 引用 `Ofdrw.Net.Reader` 和 `Ofdrw.Net.Converter.Pdf`，由应用事先审核原嵌入字体的许可、真实风格和精确内容身份。输入文档自己给出的摘要不能成为信任依据。
 
 ```csharp
-using Ofdrw.Net.Reader;
+using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Reader.Keywords;
 using Ofdrw.Net.Converter.Pdf.Geometry;
 
