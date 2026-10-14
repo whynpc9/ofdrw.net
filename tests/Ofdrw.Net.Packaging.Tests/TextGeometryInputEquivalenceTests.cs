@@ -311,7 +311,7 @@ public sealed class TextGeometryInputEquivalenceTests
         using var fixture = await Fixture.Create(neighbors: true, emptyLayers: 12, separateNeighborLayers: true);
         using var file = File.OpenRead(fixture.Input); var package = await new OfdReader().ReadAsync(file);
         using var operation = new OfdTextReplacementOperation(package, new(), default);
-        CaptureLiveComponent(operation, new TextReplacementTests.Metrics());
+        CaptureLiveComponent(operation, new TextReplacementTests.Metrics(), new(maxNodes: 2048, maxReferences: 4096, maxOccurrences: 128));
         var capsule = operation.GeometryExpectation!; var page = Assert.Single(capsule.Pages);
         Assert.Equal(15, page.Layers.Count); Assert.Equal(3, capsule.Roots.Count);
         using var keyword = new OfdKeywordOperation(material: operation.Context.Material);
@@ -352,7 +352,7 @@ public sealed class TextGeometryInputEquivalenceTests
         using var fixture = await Fixture.Create(neighbors: true, emptyLayers: 2, separateNeighborLayers: true);
         using var file = File.OpenRead(fixture.Input); var package = await new OfdReader().ReadAsync(file);
         using var operation = new OfdTextReplacementOperation(package, new(), default);
-        CaptureLiveComponent(operation, new TextReplacementTests.Metrics());
+        CaptureLiveComponent(operation, new TextReplacementTests.Metrics(), new(maxNodes: 2048, maxReferences: 4096, maxOccurrences: 128));
         using var actual = OfdKeywordInputCapture.CaptureActual(package, new[] { 0 }, operation.Context, default);
         var root = operation.GeometryExpectation!.Roots[1]; var source = actual.Sources[1]; var occurrence = actual.Traversal.Occurrences[1];
         Assert.Equal(3, source.LayerOrdinal); Assert.Equal(1, source.ElementOrdinal);
@@ -432,12 +432,12 @@ public sealed class TextGeometryInputEquivalenceTests
         Assert.Throws<InvalidOperationException>(() => context.AssertActive());
     }
 
-    private static void CaptureLiveComponent(OfdTextReplacementOperation operation, TextReplacementTests.Metrics metrics)
+    private static void CaptureLiveComponent(OfdTextReplacementOperation operation, TextReplacementTests.Metrics metrics, OfdKeywordLocatorLimits? componentLimits = null)
     {
         // Friendly component invocation reuses the real analysis/fit/compiler
         // and its callback guards. It does not issue a qualified CLI lease.
         _ = OfdKeywordEditSource.Analyze(operation.Source!, new[] { 0 }, "B", metrics,
-            new(maxNodes: 128, maxReferences: 256, maxOccurrences: 128), operation.Options.SearchOptions,
+            componentLimits ?? new(maxNodes: 128, maxReferences: 256, maxOccurrences: 128), operation.Options.SearchOptions,
             operation.Context.Material, () => operation.Validate(default), capture =>
             {
                 var requests = capture.CurrentHits.Select(hit => new OfdTextReplacement(hit, "--")).ToArray();
