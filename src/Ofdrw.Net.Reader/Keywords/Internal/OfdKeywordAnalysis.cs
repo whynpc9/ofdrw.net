@@ -314,9 +314,15 @@ internal sealed class OfdKeywordAnalysis
             {
                 budget.Fragment(match.ClusterCount);
                 budget.Copy(1024L * match.ClusterCount + 256);
+                budget.Field(match.ClusterCount);
+                var firstMatchedSource = segment[match.ClusterStart].Source;
                 var fragments = new List<OfdKeywordFragment>(match.ClusterCount); var editable = true;
                 for (var i = match.ClusterStart; i < match.ClusterStart + match.ClusterCount; i++)
-                { budget.Check(); var cluster = segment[i]; fragments.Add(new OfdKeywordFragment(cluster)); editable &= cluster.Source.Editable; }
+                {
+                    budget.Check(); var cluster = segment[i]; fragments.Add(new OfdKeywordFragment(cluster));
+                    editable &= cluster.Source.Editable;
+                    editable &= ReferenceEquals(cluster.Source, firstMatchedSource);
+                }
                 hits.Add(new OfdKeywordHit(segment[match.ClusterStart].Source.PageIndex, keyword, fragments, editable, snapshot));
             }
             segment.Clear(); segmentText.Clear();

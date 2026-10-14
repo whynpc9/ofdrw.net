@@ -39,9 +39,13 @@ public sealed class KeywordLocatorTests
         var source = Model("A"); var first = Text(source); first.Runs.Add(new() { Text = "B", XMillimeters = 4, YMillimeters = 8 });
         first.Text = "AB";
         var second = Text(Model("C")); second.Runs[0].XMillimeters = 6; source.Pages[0].Elements.Add(second);
-        var hit = Assert.Single(new OfdKeywordLocator(new Provider()).Find(source, "ABC").Hits);
-        Assert.Equal(3, hit.Fragments.Count);
+        var locator = new OfdKeywordLocator(new Provider()); var found = locator.Find(source, "ABC");
+        Assert.True(found.IsComplete); var hit = Assert.Single(found.Hits);
+        Assert.Equal("ABC", hit.MatchedText); Assert.Equal(3, hit.Fragments.Count); Assert.False(hit.CanReplace);
+        Assert.Equal(new[] { 17d, 19d, 21d }, hit.Fragments.Select(fragment => fragment.BaselineMillimeters.X));
         Assert.NotEqual(hit.Fragments[1].OccurrencePath[3], hit.Fragments[2].OccurrencePath[3]);
+        Assert.True(Assert.Single(locator.Find(source, "AB").Hits).CanReplace); // multiple TextCodes, one occurrence
+        Assert.True(Assert.Single(locator.Find(source, "C").Hits).CanReplace); // match starts in the later owner of this segment
         second.Runs[0].XMillimeters = 10;
         Assert.Empty(new OfdKeywordLocator(new Provider()).Find(source, "ABC").Hits);
         second.Runs[0].XMillimeters = 6; second.Runs[0].YMillimeters = 9;
