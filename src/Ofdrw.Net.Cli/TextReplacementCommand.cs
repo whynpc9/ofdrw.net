@@ -48,7 +48,7 @@ internal static partial class Cli
             }
             return FinishPrivateDispatchAsync(queued.Unwrap(), bootstrap);
         }
-        catch { try { bootstrap.Dispose(); } catch { } throw; }
+        catch (Exception error) { bootstrap.RecordFailure(error); try { bootstrap.Dispose(); } catch { } throw; }
     }
     private static Task<Task<OfdPrivateSaveResult>> QueuePrivateSave(PrivateSaveDispatch state)
         => Task.Factory.StartNew(static value => ((PrivateSaveDispatch)value!).RunAsync(), state,
@@ -57,7 +57,7 @@ internal static partial class Cli
     {
         Exception? primary = null;
         try { return await work.ConfigureAwait(false); }
-        catch (Exception error) { primary = error; throw; }
+        catch (Exception error) { bootstrap.RecordFailure(error); primary = error; throw; }
         finally { if (primary is null) bootstrap.Dispose(); else { try { bootstrap.Dispose(); } catch { } } }
     }
     private sealed class PrivateSaveDispatch(OfdPrivateSaveBootstrap bootstrap, string input, string output,

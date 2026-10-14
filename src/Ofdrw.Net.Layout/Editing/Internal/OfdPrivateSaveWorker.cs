@@ -19,32 +19,52 @@ internal sealed class OfdPrivateGeometryHost
 
 internal sealed class OfdPrivateSaveResult
 {
-    internal OfdPrivateSaveResult(bool changed, int requests, OfdTextReplacementStatistics preparation)
-    { Changed = changed; Requests = requests; Preparation = preparation; CopiedOriginalFontBytes = preparation.Analyses.Count == 0 ? null : preparation.Analyses[0].CopiedFontBytes; }
-    internal void CaptureFinalCounters(OfdControlledEditContext context)
+    // All shells are constructed under bootstrap admission before model/provider
+    // creation or dispatch. Success/failure only fill existing numeric records.
+    private readonly OfdPrivateSaveStatistics[] phases = new OfdPrivateSaveStatistics[32];
+    private readonly OfdPrivateSaveStatistics unavailable = new();
+    private OfdPrivateSaveStatistics latest;
+    private int count;
+    internal OfdPrivateSaveResult()
     {
-        var material = context.Material;
-        StorageBytes = material.StorageBytes; CloneCopyBytes = material.CloneCopyBytes;
-        ValidationWorkBytes = material.ValidationWorkBytes; OutputBytes = material.OutputUpperBoundBytes;
+        for (var i = 0; i < phases.Length; i++) phases[i] = new OfdPrivateSaveStatistics();
+        latest = unavailable;
     }
-    internal bool Changed { get; }
-    internal int Requests { get; }
-    internal OfdTextReplacementStatistics Preparation { get; }
-    internal long? CopiedOriginalFontBytes { get; }
-    internal long StorageBytes { get; private set; }
-    internal long CloneCopyBytes { get; private set; }
-    internal long ValidationWorkBytes { get; private set; }
-    internal long OutputBytes { get; private set; }
+    internal void Prepare(bool changed, int requests, OfdTextReplacementStatistics preparation)
+    {
+        Changed = changed; Requests = requests; Preparation = preparation;
+        CopiedOriginalFontBytes = preparation.Analyses.Count == 0 ? null : preparation.Analyses[0].CopiedFontBytes;
+    }
+    internal void Record(string stage, OfdOwnedSaveStatistics actual)
+    {
+        if (count == phases.Length) { latest = unavailable; return; }
+        var copied = phases[count++]; copied.Fill(stage, actual); latest = copied;
+    }
+    internal void Complete() => Completed = true;
+    internal bool Completed { get; private set; }
+    internal bool? Changed { get; private set; }
+    internal int? Requests { get; private set; }
+    internal OfdTextReplacementStatistics? Preparation { get; private set; }
+    internal long? CopiedOriginalFontBytes { get; private set; }
+    internal int StatisticsCount => count;
+    internal OfdPrivateSaveStatistics StatisticsAt(int index) => phases[index];
+    internal OfdPrivateSaveStatistics Statistics => latest;
+    internal long? StorageBytes => latest.Available ? latest.StorageBytes : null;
+    internal long? CloneCopyBytes => latest.Available ? latest.CloneCopyBytes : null;
+    internal long? ValidationWorkBytes => latest.Available ? latest.ValidationWorkBytes : null;
+    internal long? OutputBytes => latest.Available ? latest.OutputUpperBoundBytes : null;
 }
 
 // Owns the fresh ticket before any model, provider or async worker exists.
 internal sealed class OfdPrivateSaveBootstrap : IDisposable
 {
     private const long FixedConfigurationAndDispatch = 16_384;
+    private const long CopiedReportAndStatisticsShells = 65_536;
     private readonly object sync = new();
     private readonly OfdOwnedJobTicket ticket;
     private readonly CancellationToken preparationToken;
     private readonly int identities, selectedPages;
+    private readonly OfdPrivateSaveResult report;
     private enum State { Fresh, Configured, PathsChecked, HostReserved, HostBound, Running, Completed, Failed, Disposed }
     private State state;
     private OfdPrivateGeometryHost? facade;
@@ -53,6 +73,7 @@ internal sealed class OfdPrivateSaveBootstrap : IDisposable
     private string? configuredInput, configuredOutput, configuredKeyword, configuredReplacement;
     private OfdPrivateSaveBootstrap(OfdOwnedJobTicket ticket, int identities, int pages, CancellationToken token)
     { this.ticket = ticket; this.identities = identities; selectedPages = pages; preparationToken = token;
+      report = new OfdPrivateSaveResult();
       kernel = OfdTextReplacer.CreatePrivateKernel(ticket); }
 
     internal static OfdPrivateSaveBootstrap Create(long maxMaterializedBytes, int fontIdentityCount, int pageCount, CancellationToken token)
@@ -64,9 +85,12 @@ internal sealed class OfdPrivateSaveBootstrap : IDisposable
         {
             // Fixed bootstrap/facade/dispatch state, delegates, StartNew/Unwrap,
             // worker/read/write/comparison/bridge Tasks and bounded final report.
+            // Separate 64KiB covers result + 32 numeric once-fill snapshots and
+            // the unavailable shell before any report allocation. Core prepays
+            // its own statistics records independently in the fresh ticket.
             // Copies contain existing immutable references, not new SHA strings.
             OfdOwnedSaveAuthority.ReserveBootstrap(ticket,
-                checked(FixedConfigurationAndDispatch + 32L * fontIdentityCount + 16L * pageCount), token);
+                checked(FixedConfigurationAndDispatch + CopiedReportAndStatisticsShells + 32L * fontIdentityCount + 16L * pageCount), token);
             return new OfdPrivateSaveBootstrap(ticket, fontIdentityCount, pageCount, token);
         }
         catch { OfdOwnedSaveAuthority.Fail(ticket); throw; }
@@ -86,6 +110,7 @@ internal sealed class OfdPrivateSaveBootstrap : IDisposable
                 OfdOwnedSaveAuthority.BindFileIntent(ticket, inputPath, outputPath, token);
                 configuredInput = inputPath; configuredOutput = outputPath;
                 configuredKeyword = keyword; configuredReplacement = replacement; state = State.Configured;
+                CaptureStatistics("Configured");
             }
             catch { Fail(); throw; }
         }
@@ -153,6 +178,7 @@ internal sealed class OfdPrivateSaveBootstrap : IDisposable
                     throw new InvalidOperationException("ForeignOrRepeatedHostRegistration");
                 OfdOwnedSaveAuthority.BindHost(ticket, actualHost);
                 facade = actualFacade; host = actualHost; state = State.HostBound;
+                CaptureStatistics("HostBound");
             }
             catch { Fail(); throw; }
         }
@@ -189,6 +215,7 @@ internal sealed class OfdPrivateSaveBootstrap : IDisposable
         {
             Check(token);
             initial = await OfdOwnedReader.ReadInitialAsync(ticket, inputPath, new OfdPackageLoadOptions(), token).ConfigureAwait(false);
+            CaptureStatistics("InitialRead");
             OfdOwnedReader.ConsumeInitial(initial, out var lease, out var input); original = input;
             var analysis = OfdOwnedSaveAuthority.EnterAnalysis(lease, host!, out var source, out var context, out var guard);
             Check(token);
@@ -196,6 +223,7 @@ internal sealed class OfdPrivateSaveBootstrap : IDisposable
             var compiled = await OfdTextReplacer.WritePrivateOwnedAsync(operation, analysis, host!, kernel, pages, keyword, replacement, token).ConfigureAwait(false);
             var changed = compiled.Written is not null;
             operation.Mark(changed ? "ActualOwnedWritten" : "ActualOwnedNoop");
+            CaptureStatistics(changed ? "ActualOwnedWritten" : "ActualOwnedNoop");
             if (!changed)
             {
                 var noop = compiled.Noop ?? throw new InvalidDataException("MissingActualNoopScope");
@@ -206,17 +234,21 @@ internal sealed class OfdPrivateSaveBootstrap : IDisposable
                 written = compiled.Written!; expectation = compiled.Expectation ?? throw new InvalidDataException("MissingActualCompilerExpectation");
                 actualRead = await OfdOwnedReader.ReadOutputAsync(written, token).ConfigureAwait(false);
                 operation.Mark("ActualOwnedReadback");
+                CaptureStatistics("ActualOwnedReadback");
                 verified = OfdOwnedPackageSave.VerifyActualReadback(written, actualRead, token);
                 operation.Mark("ActualCompoundVerified");
+                CaptureStatistics("ActualCompoundVerified");
                 var comparison = OfdOwnedPackageSave.EnterGeometryComparison(verified, out var actual, out var addresses, token);
                 var stageScope = expectation.CompareActual(comparison, actual, addresses, token);
                 operation.Mark("ActualGeometryCompared");
+                CaptureStatistics("ActualGeometryCompared");
                 atomic = OfdPrivateAtomicBridge.Create(stageScope, written, original, outputPath, token);
             }
             // Report shells/arrays and any fallible local owner cleanup precede
             // the last input/source/token checks and the single real rename.
-            var result = new OfdPrivateSaveResult(changed, compiled.Requests, operation.Snapshot());
+            report.Prepare(changed, compiled.Requests, operation.Snapshot());
             await atomic.CopyAsync(token).ConfigureAwait(false); // shared copy closes/deletes actual temporary files before proof issuance
+            CaptureStatistics("ActualStageCopied");
             Exception? cleanup = null;
             DisposePrecommit(verified, ref cleanup); verified = null;
             DisposePrecommit(actualRead, ref cleanup); actualRead = null;
@@ -227,16 +259,19 @@ internal sealed class OfdPrivateSaveBootstrap : IDisposable
             if (cleanup is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(cleanup).Throw();
             await atomic.ClaimAsync(token).ConfigureAwait(false); // owns original cleanup and final current path/S/token validation
             original = null; // consumed and closed by the actual shared claim frontier
+            CaptureStatistics("ActualCommitClaimed");
             await atomic.CommitAsync(token).ConfigureAwait(false);
-            result.CaptureFinalCounters(context); // sealed material scalar getters; no allocation/callback/token/active check
+            CaptureStatistics("ActualCommitted"); // prepaid sealed numeric fields only; no allocation/token/I/O/model walk
+            report.Complete();
             atomic = null; // stage was already physically closed; rename leaves no fallible file cleanup
             lock (sync) state = State.Completed;
-            return result;
+            return report;
         }
         catch (Exception error)
         {
             // Revoke before Exception.Data, provider disposal and file cleanup.
-            Fail(); primary = error; operation?.Fail(error); throw;
+            RecordFailure(error); primary = error;
+            operation?.Fail(error); throw;
         }
         finally
         {
@@ -255,7 +290,22 @@ internal sealed class OfdPrivateSaveBootstrap : IDisposable
         preparationToken.ThrowIfCancellationRequested(); token.ThrowIfCancellationRequested();
         if (state is State.Failed or State.Disposed) throw new InvalidOperationException("PrivateSaveJobTerminal");
     }
-    private void Fail() { OfdOwnedSaveAuthority.Fail(ticket); lock (sync) state = State.Failed; }
+    internal void RecordFailure(Exception primary)
+    {
+        Fail(); // actual terminal snapshot is copied before any callback or owner cleanup
+        try { primary.Data["Ofdrw.TextReplacement.OwnedStatistics"] = report; } catch { }
+    }
+    private void CaptureStatistics(string stage)
+        => report.Record(stage, OfdOwnedSaveAuthority.CaptureStatistics(ticket));
+    private void Fail()
+    {
+        OfdOwnedSaveAuthority.Fail(ticket);
+        lock (sync)
+        {
+            if (state is State.Failed or State.Disposed) return;
+            state = State.Failed; CaptureStatistics("FailedBeforeCleanup");
+        }
+    }
     private void DisposePrecommit(IDisposable? value, ref Exception? first)
     {
         try { value?.Dispose(); }
