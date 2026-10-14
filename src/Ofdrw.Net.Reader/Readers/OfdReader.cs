@@ -52,6 +52,44 @@ public sealed class OfdReader : IOfdReader
         catch { context.Fail(); throw; }
     }
 
+    // Dedicated actual Reader bridge. Generic controlled/public routes retain
+    // their guards and loading behavior; only this route records private census.
+    internal async Task<OfdDocumentPackage> ReadOwnedInitialAsync(Stream actualSnapshot,
+        OfdPackageLoadOptions options, OfdControlledEditContext context,
+        OfdOwnedReadAcquisition acquisition, CancellationToken token)
+    {
+        try
+        {
+            context.AssertActive(); token.ThrowIfCancellationRequested();
+            context.Material.ChargeCopy(128, token);
+            var snapshot = OfdPackageLoader.SnapshotOptions(options);
+            using var scope = context.Material.BeginControlledRead(context, token);
+            var archive = await _loader.LoadAccountedAsync(actualSnapshot, snapshot, context.Material,
+                token, ownedAcquisition: acquisition).ConfigureAwait(false);
+            context.AssertActive();
+            var package = ReadArchive(archive, snapshot, context.Material, token);
+            context.AssertActive(); token.ThrowIfCancellationRequested(); return package;
+        }
+        catch { context.Fail(); throw; }
+    }
+
+    internal async Task<OfdDocumentPackage> ReadOwnedOutputAsync(Stream actualOutput,
+        OfdControlledEditContext context, OfdOwnedZipCensus census, CancellationToken token)
+    {
+        try
+        {
+            context.AssertActive(); context.Material.ChargeCopy(512, token);
+            var options = OfdPackageLoader.SnapshotOptions(new OfdPackageLoadOptions());
+            using var scope = context.Material.BeginControlledRead(context, token);
+            var archive = await _loader.LoadAccountedAsync(actualOutput, options, context.Material,
+                token, ownedCensus: census).ConfigureAwait(false);
+            context.AssertActive();
+            var actualR = ReadArchive(archive, options, context.Material, token);
+            context.AssertActive(); token.ThrowIfCancellationRequested(); return actualR;
+        }
+        catch { context.Fail(); throw; }
+    }
+
     private static OfdDocumentPackage ReadArchive(OfdPackageArchive archive, OfdPackageLoadOptions options,
         OfdModelMaterialization material, CancellationToken cancellationToken)
     {

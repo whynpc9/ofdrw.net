@@ -15,7 +15,7 @@ using Ofdrw.Net.Core.IO;
 
 namespace Ofdrw.Net.Packaging;
 
-public sealed class OfdPackageWriter
+public sealed partial class OfdPackageWriter
 {
     public async Task WriteAsync(OfdDocumentPackage package, Stream destination, CancellationToken cancellationToken = default)
     {
