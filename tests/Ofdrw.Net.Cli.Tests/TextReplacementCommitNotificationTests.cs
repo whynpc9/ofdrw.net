@@ -14,7 +14,7 @@ public sealed class TextReplacementCommitNotificationTests
     [Fact]
     public async Task ThrowingSuccessWriterCannotFailActualNoopRawZipCommit()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-committed-console-" + Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(AppContext.BaseDirectory, "ofdrw-committed-console-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -47,7 +47,7 @@ public sealed class TextReplacementCommitNotificationTests
     [Fact]
     public async Task FailedInputStillReportsFailureAndPreservesTargetWithThrowingStdout()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-failed-console-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
+        var directory = Path.Combine(AppContext.BaseDirectory, "ofdrw-failed-console-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
         try
         {
             var input = Path.Combine(directory, "input.ofd"); var output = Path.Combine(directory, "output.ofd");
