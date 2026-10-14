@@ -22,6 +22,7 @@ with zipfile.ZipFile(directory/'licensed-layout.docx') as archive:
     source_text = ''.join(node.text or '' for node in ET.fromstring(archive.read('word/document.xml')).iter() if local(node)=='t')
 source = contents('signed')
 source_pages = pages(source)
+assert 'Unclaimed annotation source' in (directory/'unclaimed-annotation-split.rejection.txt').read_text()
 checks = {}
 for name, count in expected.items():
     data = contents(name)

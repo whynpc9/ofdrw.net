@@ -29,5 +29,14 @@
     "No SVG browser visual verdict",
     "No general multi-Area union export",
     "No automatic header/footer or page-number feature acceptance"
-  ]
+  ],
+  "affectedCiFixturePngPagesInspected": {
+    "binary-xml-split.pdf": [
+      1
+    ],
+    "split-template-liveness.pdf": [
+      1
+    ]
+  },
+  "affectedCiFixturePreviewCompleted": false
 }
