@@ -45,6 +45,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
     private int ownedSnapshots;
     private bool atomicMetadataReserved, ownedStageVerified, ownedCommitClaimed;
     private bool inputSnapshotReleased;
+    private long ownedAtomicPosition;
     internal OfdControlledEditContext BoundContext { get { lock (sync) { AssertLegacyMode(); return context; } } }
     internal OfdDocumentPackage BoundSource { get { lock (sync) { AssertLegacyMode(); return source ?? throw new ObjectDisposedException(nameof(OfdTextReplacementFileSession)); } } }
     internal OfdTextReplacementOptions Options { get; }
@@ -214,6 +215,16 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             return Snapshot(ownedOperation?.Phase ?? "OwnedPreparation", context);
         }
     }
+    internal OfdTextReplacementOwnedFiles SnapshotOwnedFiles()
+    {
+        lock (sync)
+        {
+            if (!ownedMode || ++ownedSnapshots > 16) throw new InvalidOperationException("Private snapshot capacity exceeded.");
+            return new OfdTextReplacementOwnedFiles(inputLength, ownedSpool?.ReservedPosition ?? 0, ownedAtomicPosition,
+                ownedSpool?.ActualReadBytes ?? 0, ownedSpool?.ActualWrittenBytes ?? 0,
+                ownedSpool?.ReservedReadBytes ?? 0, ownedSpool?.ReservedWriteBytes ?? 0);
+        }
+    }
 
     internal async Task WriteOwnedAsync(CancellationToken token = default)
     {
@@ -250,10 +261,14 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
         }
         try
         {
+            ownedOperation!.Begin("ReadbackSourceCandidateGuard");
+            ownedWriter!.AssertSourceAndCandidateUnchanged(token);
             ownedOperation!.Begin("ActualOwnedReadback"); ownedSpool.Position = 0;
             ownedReadback = await new OfdReader().ReadControlledAsync(ownedSpool, new OfdPackageLoadOptions(), context, token).ConfigureAwait(false);
             preparationToken.ThrowIfCancellationRequested(); context.AssertActive();
             ownedOperation.Mark("ReadOwnedOutput");
+            ownedOperation.Begin("CaptureOwnedReadbackGuard"); ownedReadbackGuard = context.CaptureSource(ownedReadback, token);
+            ownedWriter.AssertSourceAndCandidateUnchanged(token); ownedOperation.Mark("CapturedOwnedReadbackGuard");
             // Runtime full geometry/SCR verification is a distinct mandatory
             // stage. Reading bytes alone never qualifies AtomicOutput commit.
         }
@@ -328,7 +343,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             ownedOperation.Begin("CopyOwnedNoOpStage");
             if (destination.GetType() != typeof(FileStream) || !destination.CanWrite || !destination.CanSeek || destination.Position != 0 || destination.Length != 0)
                 throw new InvalidOperationException("No-op copy requires the new concrete AtomicOutput file.");
-            ownedOperation.Validate(token); context.Material.ChargeOutput(inputLength); SeekStart(input, context, token);
+            ownedOperation.Validate(token); context.Material.ChargeOutput(inputLength); ownedAtomicPosition = inputLength; SeekStart(input, context, token);
             var copy = await HashAsync(input, buffer, inputLength, context, token, destination, preparationToken).ConfigureAwait(false);
             if (!inputDigest.SequenceEqual(copy.Digest) || destination.Length != inputLength) throw new InvalidDataException("Private input snapshot changed.");
             NoOpSnapshotCopyBytes += copy.Read;

@@ -14,3 +14,22 @@ internal sealed class OfdTextReplacementOwnedReport
     internal IReadOnlyList<OfdTextReplacementObservation> Replacements { get; }
     internal OfdTextReplacementStatistics Statistics { get; }
 }
+
+internal sealed class OfdTextReplacementOwnedFiles
+{
+    internal OfdTextReplacementOwnedFiles(long input, long output, long atomic, long actualRead, long actualWritten,
+        long reservedRead, long reservedWrite)
+    {
+        InputSnapshotPosition = input; OutputSpoolPosition = output; AtomicStagePosition = atomic;
+        ActualSpoolReadBytes = actualRead; ActualSpoolWrittenBytes = actualWritten;
+        ReservedSpoolReadBytes = reservedRead; ReservedSpoolWriteBytes = reservedWrite;
+    }
+    public long InputSnapshotPosition { get; }
+    public long OutputSpoolPosition { get; }
+    public long AtomicStagePosition { get; }
+    public long PeakPrivateDiskPositions => InputSnapshotPosition + OutputSpoolPosition + AtomicStagePosition;
+    public long ActualSpoolReadBytes { get; }
+    public long ActualSpoolWrittenBytes { get; }
+    public long ReservedSpoolReadBytes { get; }
+    public long ReservedSpoolWriteBytes { get; }
+}
