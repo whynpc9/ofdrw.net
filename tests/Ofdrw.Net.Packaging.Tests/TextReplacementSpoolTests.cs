@@ -70,4 +70,61 @@ public sealed class TextReplacementSpoolTests
         Assert.True(OfdTraversalBudget.IsLimit(failure)); Assert.Equal(0, context.Material.OutputUpperBoundBytes);
         Assert.Throws<InvalidOperationException>(() => context.AssertActive());
     }
+
+    [Fact]
+    public async Task StageCopyChargesBothFilePositionsAndBindsExactBytesOnce()
+    {
+        var stage = Path.Combine(Path.GetTempPath(), "ofdrw-stage-copy-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var context = new OfdControlledEditContext(new()); using var spool = new OfdTextReplacementSpool(context, 1_000_000);
+            var bytes = Enumerable.Range(0, 100_000).Select(i => (byte)i).ToArray();
+            await spool.WriteAsync(bytes); var digest = System.Security.Cryptography.SHA256.HashData(bytes);
+            using (var file = new FileStream(stage, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                await spool.CopyToStageAsync(file, bytes.Length, digest);
+            Assert.Equal(bytes, await File.ReadAllBytesAsync(stage));
+            Assert.Equal(bytes.Length, spool.StageWrittenBytes); Assert.Equal(bytes.Length, spool.StageReservedPosition);
+            Assert.Equal(2L * bytes.Length, context.Material.OutputUpperBoundBytes);
+            Assert.Equal(bytes.Length, spool.ActualReadBytes);
+            using var another = new FileStream(stage + ".second", FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            await Assert.ThrowsAsync<InvalidOperationException>(() => spool.CopyToStageAsync(another, bytes.Length, digest));
+        }
+        finally { File.Delete(stage); File.Delete(stage + ".second"); }
+    }
+
+    [Fact]
+    public async Task HashMismatchMakesTheCopyTerminalAndNeverTouchesTheExistingTarget()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-stage-fail-test-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
+        var target = Path.Combine(directory, "target.ofd"); var stage = Path.Combine(directory, "stage.tmp");
+        try
+        {
+            await File.WriteAllTextAsync(target, "existing target sentinel");
+            using var context = new OfdControlledEditContext(new()); using var spool = new OfdTextReplacementSpool(context, 128);
+            await spool.WriteAsync(new byte[] { 1, 2, 3 });
+            using var file = new FileStream(stage, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            var failure = await Assert.ThrowsAsync<InvalidDataException>(() => spool.CopyToStageAsync(file, 3, new byte[32]));
+            Assert.Equal("ReplacementStageBindingMismatch", failure.Message); Assert.Equal(3, spool.StageWrittenBytes);
+            Assert.Throws<InvalidOperationException>(() => context.AssertActive());
+            Assert.Equal("existing target sentinel", await File.ReadAllTextAsync(target));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task StageCopyWorkQuotaFailsBeforeReadingOrWritingAnyByte()
+    {
+        var stage = Path.Combine(Path.GetTempPath(), "ofdrw-stage-quota-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            const long limit = 1_000_000; using var context = new OfdControlledEditContext(new OfdModelLimits { MaxMaterializedBytes = limit });
+            using var spool = new OfdTextReplacementSpool(context, limit); var bytes = new byte[100]; await spool.WriteAsync(bytes);
+            context.Material.ChargeWork(limit - context.Material.ValidationWorkBytes - 32, default);
+            using var file = new FileStream(stage, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            var failure = await Assert.ThrowsAsync<InvalidDataException>(() => spool.CopyToStageAsync(file, bytes.Length, System.Security.Cryptography.SHA256.HashData(bytes)));
+            Assert.True(OfdTraversalBudget.IsLimit(failure)); Assert.Equal(0, spool.ActualReadBytes); Assert.Equal(0, spool.StageWrittenBytes);
+            Assert.Equal(0, file.Length);
+        }
+        finally { File.Delete(stage); }
+    }
 }

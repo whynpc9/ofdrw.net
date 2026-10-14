@@ -120,6 +120,13 @@ internal static class OfdKeywordEditSource
         => new OfdKeywordAnalysis(provider, limits, material, validateWholeSource, capture, beforeCallback)
             .Find(package, pages, keyword, options, token);
 
+    internal static OfdKeywordSearchResult AnalyzeForOwnedFile(OfdDocumentPackage package, int[] pages, string keyword,
+        IOfdGlyphGeometryProvider provider, OfdKeywordLocatorLimits limits, OfdKeywordSearchOptions options,
+        OfdModelMaterialization material, Action validateWholeSource, Action<OfdKeywordAnalysisCapture> capture,
+        CancellationToken token, Action<string> beforeCallback)
+        => new OfdKeywordAnalysis(provider, limits, material, validateWholeSource, capture, beforeCallback)
+            .FindForOwnedFile(package, pages, keyword, options, token);
+
     internal static (OfdKeywordTextSource Source, int Start, int Count) Authenticate(OfdKeywordAnalysisCapture capture, OfdKeywordHit hit)
     {
         var fragments = hit.Fragments; var first = fragments[0]; var budget = capture.Budget;
