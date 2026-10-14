@@ -8,7 +8,7 @@ namespace Ofdrw.Net.Core.Models;
 internal static class OfdAnnotationCloner
 {
     internal static void Clone(OfdPage source, OfdPage destination, IDictionary<object, object> mapping,
-        bool payloads, OfdModelMaterialization material, CancellationToken token)
+        bool payloads, OfdModelMaterialization material, CancellationToken token, OfdPayloadCloneSession? payloadSession = null)
     {
         source.AnnotationOwnership.Validate(source, material, token);
         var original = Collection(source.AnnotationOwnership.Original);
@@ -43,7 +43,7 @@ internal static class OfdAnnotationCloner
                 };
                 if (appearance.Transform is { } transform) { material.ChargeCopy(transform.LongLength * sizeof(double), token); copy.Appearance.Transform = transform.ToArray(); }
                 mapping.Add(annotation, copy); mapping.Add(appearance, copy.Appearance); mapping.Add(appearance.Elements, copy.Appearance.Elements);
-                foreach (var element in appearance.Elements) copy.Appearance.Elements.Add(OfdModelCloner.CloneElement(element, clonePayloads: payloads, material: material, cancellationToken: token, mapping: mapping));
+                foreach (var element in appearance.Elements) copy.Appearance.Elements.Add(OfdModelCloner.CloneElement(element, clonePayloads: payloads, material: material, cancellationToken: token, mapping: mapping, payloads: payloadSession));
                 if (annotation.Source is { } sourceSlot)
                 {
                     material.ChargeCopy(128, token);

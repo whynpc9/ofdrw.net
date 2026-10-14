@@ -1,0 +1,90 @@
+{
+  "archives": {
+    "new": {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/missing-parent/nested/output.ofd",
+      "raw_zip_bytes": 11599915,
+      "raw_zip_sha256": "a7a95ed2916e40daca8549b9e185d4f9017bb32f709dc57a6bc9c57a1805bfbd",
+      "entries": {
+        "Doc_0/Document.xml": {
+          "bytes": 410,
+          "sha256": "f5d6b7586afbd080566e6598fc7fe4db76eaa757d1367cb515c14ae3b65cc226"
+        },
+        "Doc_0/Pages/Page_0/Content.xml": {
+          "bytes": 445,
+          "sha256": "7594ace2aa2a43c0381085b3a3c26849ff77594c01f79f4397c00660d4796f73"
+        },
+        "Doc_0/PublicRes.xml": {
+          "bytes": 311,
+          "sha256": "d946215b365fe490c88c861e0f38379d100e8f0c37e929479e45fe7c6798f6e3"
+        },
+        "Doc_0/Res/Font_3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa.ttf": {
+          "bytes": 21659544,
+          "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+        },
+        "OFD.xml": {
+          "bytes": 227,
+          "sha256": "03467a5e5f6270cf73a5df2f3be0ae65cd349382b124d62ffbe298652110480c"
+        }
+      }
+    },
+    "old_uninstrumented": {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-changed/output.ofd",
+      "raw_zip_bytes": 11599915,
+      "raw_zip_sha256": "22a1270356935c95dfa32433474cd6d533406fd4b24254672f5dd1937b673054",
+      "entries": {
+        "Doc_0/Document.xml": {
+          "bytes": 410,
+          "sha256": "f5d6b7586afbd080566e6598fc7fe4db76eaa757d1367cb515c14ae3b65cc226"
+        },
+        "Doc_0/Pages/Page_0/Content.xml": {
+          "bytes": 445,
+          "sha256": "7594ace2aa2a43c0381085b3a3c26849ff77594c01f79f4397c00660d4796f73"
+        },
+        "Doc_0/PublicRes.xml": {
+          "bytes": 311,
+          "sha256": "d946215b365fe490c88c861e0f38379d100e8f0c37e929479e45fe7c6798f6e3"
+        },
+        "Doc_0/Res/Font_3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa.ttf": {
+          "bytes": 21659544,
+          "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+        },
+        "OFD.xml": {
+          "bytes": 227,
+          "sha256": "03467a5e5f6270cf73a5df2f3be0ae65cd349382b124d62ffbe298652110480c"
+        }
+      }
+    },
+    "old_typed": {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-changed/output.ofd",
+      "raw_zip_bytes": 11599915,
+      "raw_zip_sha256": "bad6221c05c42f277d3aa080e39350d806cf17b22364624d4df9ca9e004f806e",
+      "entries": {
+        "Doc_0/Document.xml": {
+          "bytes": 410,
+          "sha256": "f5d6b7586afbd080566e6598fc7fe4db76eaa757d1367cb515c14ae3b65cc226"
+        },
+        "Doc_0/Pages/Page_0/Content.xml": {
+          "bytes": 445,
+          "sha256": "7594ace2aa2a43c0381085b3a3c26849ff77594c01f79f4397c00660d4796f73"
+        },
+        "Doc_0/PublicRes.xml": {
+          "bytes": 311,
+          "sha256": "d946215b365fe490c88c861e0f38379d100e8f0c37e929479e45fe7c6798f6e3"
+        },
+        "Doc_0/Res/Font_3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa.ttf": {
+          "bytes": 21659544,
+          "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+        },
+        "OFD.xml": {
+          "bytes": 227,
+          "sha256": "03467a5e5f6270cf73a5df2f3be0ae65cd349382b124d62ffbe298652110480c"
+        }
+      }
+    }
+  },
+  "all_uncompressed_entries_equal_to_both_prior_outputs": true,
+  "font_entry": [
+    "Doc_0/Res/Font_3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa.ttf"
+  ],
+  "errors": []
+}

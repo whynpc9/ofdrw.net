@@ -103,6 +103,16 @@ internal sealed partial class OfdModelMaterialization
         if (value is null) throw new InvalidDataException("Null payload array.");
         Store(value, value.LongLength);
     }
+    internal long OwnedPayloadAllocations { get; private set; }
+    internal byte[] AllocateOwnedPayload(int length, CancellationToken token)
+    {
+        // Pay array/header/copy and retained-storage admission before allocation.
+        // Adoption prevents the final whole-model inventory charging it twice.
+        ChargeCopy(checked(128L + length), token);
+        StorageBytes = Add(StorageBytes, length, "owned payload retained-storage reservation");
+        OwnedPayloadAllocations++;
+        var value = new byte[length]; stored.Add(value); return value;
+    }
     internal void StoreMatrix(double[]? value)
     {
         if (value is null) return;
