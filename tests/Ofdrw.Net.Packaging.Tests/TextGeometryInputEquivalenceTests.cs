@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.IO.Compression;
 using System.Text;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
@@ -304,6 +305,133 @@ public sealed class TextGeometryInputEquivalenceTests
         Assert.Throws<InvalidOperationException>(() => context.AssertActive()); Assert.Null(operation.GeometryExpectation);
     }
 
+    [Fact]
+    public async Task LegalEmptyLayersChargeEveryNonmatchingCompiledRootAndRefuseLowWork()
+    {
+        using var fixture = await Fixture.Create(neighbors: true, emptyLayers: 12, separateNeighborLayers: true);
+        using var file = File.OpenRead(fixture.Input); var package = await new OfdReader().ReadAsync(file);
+        using var operation = new OfdTextReplacementOperation(package, new(), default);
+        CaptureLiveComponent(operation, new TextReplacementTests.Metrics());
+        var capsule = operation.GeometryExpectation!; var page = Assert.Single(capsule.Pages);
+        Assert.Equal(15, page.Layers.Count); Assert.Equal(3, capsule.Roots.Count);
+        using var keyword = new OfdKeywordOperation(material: operation.Context.Material);
+        var budget = new OfdKeywordLocatorBudget(new(), keyword);
+        var before = operation.Context.Material.ValidationWorkBytes;
+        Assert.Equal(3, ScanLayers());
+        var allLayersWork = operation.Context.Material.ValidationWorkBytes - before;
+        before = operation.Context.Material.ValidationWorkBytes;
+        var cursor = 0;
+        while (OfdTextGeometryInputVerifier.NextRootInLayer(capsule, page.Position, 0, ref cursor, budget) >= 0) { }
+        var oneEmptyLayerWork = operation.Context.Material.ValidationWorkBytes - before;
+        Assert.True(oneEmptyLayerWork > 0); Assert.True(allLayersWork > oneEmptyLayerWork);
+        // Derive the remaining allowance from actual calibrated scan work, not a
+        // mirrored field-price constant. The first nonmatching layer cannot fit.
+        operation.Context.Material.ChargeWork(536_870_912L - operation.Context.Material.ValidationWorkBytes - oneEmptyLayerWork / 2, default);
+        var error = Assert.Throws<InvalidDataException>(() => ScanLayers()); operation.Fail(error);
+        Assert.True(OfdTraversalBudget.IsLimit(error)); Assert.Contains("NextRootInLayer", error.StackTrace);
+        Assert.Throws<InvalidOperationException>(() => operation.Context.AssertActive());
+        int ScanLayers()
+        {
+            var matches = 0;
+            for (var layer = 0; layer < page.Layers.Count; layer++)
+            {
+                var position = 0;
+                while (OfdTextGeometryInputVerifier.NextRootInLayer(capsule, page.Position, layer, ref position, budget) >= 0) matches++;
+            }
+            return matches;
+        }
+    }
+
+    [Theory]
+    [InlineData("original")]
+    [InlineData("scope")]
+    [InlineData("definition")]
+    [InlineData("moved")]
+    public async Task ActualCoreBodyVectorsBindFrozenOwnersAcrossMultipleLayers(string mutation)
+    {
+        using var fixture = await Fixture.Create(neighbors: true, emptyLayers: 2, separateNeighborLayers: true);
+        using var file = File.OpenRead(fixture.Input); var package = await new OfdReader().ReadAsync(file);
+        using var operation = new OfdTextReplacementOperation(package, new(), default);
+        CaptureLiveComponent(operation, new TextReplacementTests.Metrics());
+        using var actual = OfdKeywordInputCapture.CaptureActual(package, new[] { 0 }, operation.Context, default);
+        var root = operation.GeometryExpectation!.Roots[1]; var source = actual.Sources[1]; var occurrence = actual.Traversal.Occurrences[1];
+        Assert.Equal(3, source.LayerOrdinal); Assert.Equal(1, source.ElementOrdinal);
+        if (mutation == "scope") source.OccurrencePath[1] = (int)OfdContentScope.Template;
+        if (mutation == "definition") source.DefinitionPath[3]++;
+        if (mutation == "moved") source.OccurrencePath[3]++;
+        var before = operation.Context.Material.ValidationWorkBytes;
+        Action compare = () => OfdTextGeometryInputVerifier.RequireBodyTopology(root, source, occurrence, package.Pages[0], 0, 1, actual.Budget);
+        if (mutation == "original") compare(); else Assert.Throws<InvalidDataException>(compare);
+        Assert.True(operation.Context.Material.ValidationWorkBytes > before);
+        // Pure comparison evidence only; this test issues no receipt/lease/scope.
+    }
+
+    [Theory]
+    [InlineData(false, 0)] [InlineData(false, 1)] [InlineData(false, 2)] [InlineData(false, 3)]
+    [InlineData(true, 0)] [InlineData(true, 1)] [InlineData(true, 2)] [InlineData(true, 3)]
+    public async Task EveryActualOccurrenceAndDefinitionVectorSlotMustMatchCore(bool definition, int slot)
+    {
+        using var fixture = await Fixture.Create(); using var file = File.OpenRead(fixture.Input);
+        var package = await new OfdReader().ReadAsync(file);
+        using var operation = new OfdTextReplacementOperation(package, new(), default); CaptureLiveComponent(operation, new TextReplacementTests.Metrics());
+        using var capture = OfdKeywordInputCapture.CaptureActual(package, new[] { 0 }, operation.Context, default);
+        var source = capture.Sources[0]; (definition ? source.DefinitionPath : source.OccurrencePath)[slot]++;
+        Assert.Throws<InvalidDataException>(() => OfdTextGeometryInputVerifier.RequireBodyTopology(operation.GeometryExpectation!.Roots[0], source,
+            capture.Traversal.Occurrences[0], package.Pages[0], 0, 0, capture.Budget));
+    }
+
+    [Theory]
+    [InlineData("same-value-page")] [InlineData("same-value-element")]
+    [InlineData("shared")] [InlineData("unsupported")] [InlineData("template")] [InlineData("annotation")]
+    public async Task BodyComparisonRejectsForeignOwnersAndOtherCoreRoles(string mutation)
+    {
+        using var fixture = await Fixture.Create(); using var file = File.OpenRead(fixture.Input);
+        var package = await new OfdReader().ReadAsync(file);
+        using var operation = new OfdTextReplacementOperation(package, new(), default); CaptureLiveComponent(operation, new TextReplacementTests.Metrics());
+        using var capture = OfdKeywordInputCapture.CaptureActual(package, new[] { 0 }, operation.Context, default); var actual = capture.Traversal.Occurrences[0];
+        var page = mutation == "same-value-page" ? new OfdPage { Id = package.Pages[0].Id } : actual.Page;
+        var element = mutation == "same-value-element" ? new OfdTextElement { ObjectId = ((OfdTextElement)actual.Element).ObjectId } : actual.Element;
+        var role = mutation == "template" ? OfdContentScope.Template : mutation == "annotation" ? OfdContentScope.Annotation : OfdContentScope.Body;
+        var other = new OfdGraphicOccurrence(element, page, role, actual.DefinitionPath, actual.OccurrencePath,
+            mutation == "shared", mutation != "unsupported", actual.SourceEntryPath, actual.SourceXml);
+        Assert.Throws<InvalidDataException>(() => OfdTextGeometryInputVerifier.RequireBodyTopology(operation.GeometryExpectation!.Roots[0], capture.Sources[0],
+            other, package.Pages[0], 0, 0, capture.Budget));
+        // Constructed negative role records test only the pure assertion. They
+        // are never registered hosts/leases/keys/receipts or save credentials.
+    }
+
+    [Theory]
+    [InlineData(-1, 0)] [InlineData(3, 0)] [InlineData(0, -1)] [InlineData(0, 0)] [InlineData(2, 1)]
+    public async Task AdmittedLayerAndDirectChildAddressBoundsRejectBeforeIndexing(int layer, int local)
+    {
+        using var fixture = await Fixture.Create(emptyLayers: 2); using var file = File.OpenRead(fixture.Input);
+        var package = await new OfdReader().ReadAsync(file); using var context = new OfdControlledEditContext(new OfdModelLimits());
+        using var capture = OfdKeywordInputCapture.CaptureActual(package, new[] { 0 }, context, default);
+        var page = capture.Admission.CapturePageInput(0);
+        Assert.Equal(0, OfdTextGeometryInputVerifier.ResolveAdmittedBodyIndex(page, 2, 0, capture.Budget));
+        Assert.Throws<InvalidDataException>(() => OfdTextGeometryInputVerifier.ResolveAdmittedBodyIndex(page, layer, local, capture.Budget));
+    }
+
+    [Theory]
+    [InlineData("alias")]
+    [InlineData("foreign")]
+    public async Task ActualPrivateBodyCaptureRefusesAliasedOrForeignQNameNeighbors(string mutation)
+    {
+        using var fixture = await Fixture.Create(neighbors: true, separateNeighborLayers: true);
+        using var file = File.OpenRead(fixture.Input); var package = await new OfdReader().ReadAsync(file);
+        if (mutation == "alias") package.Pages[0].Elements[1] = package.Pages[0].Elements[0];
+        else
+        {
+            var entry = package.Pages[0].SourceEntryPath!; var page = XElement.Parse(Encoding.UTF8.GetString(package.PreservedEntries[entry]).TrimStart('\ufeff'));
+            var layer = page.Descendants().First(x => x.Name.LocalName == "Layer");
+            layer.AddFirst(new XElement(XName.Get("TextObject", "urn:foreign"), new XAttribute("ID", "foreign")));
+            package.PreservedEntries[entry] = Encoding.UTF8.GetBytes(page.ToString(SaveOptions.DisableFormatting));
+        }
+        using var context = new OfdControlledEditContext(new OfdModelLimits());
+        Assert.Throws<NotSupportedException>(() => OfdKeywordInputCapture.CaptureActual(package, new[] { 0 }, context, default));
+        Assert.Throws<InvalidOperationException>(() => context.AssertActive());
+    }
+
     private static void CaptureLiveComponent(OfdTextReplacementOperation operation, TextReplacementTests.Metrics metrics)
     {
         // Friendly component invocation reuses the real analysis/fit/compiler
@@ -364,7 +492,7 @@ public sealed class TextGeometryInputEquivalenceTests
     private sealed class Fixture(string directory) : IDisposable
     {
         internal string Input => Path.Combine(directory, "input.ofd");
-        internal static async Task<Fixture> Create(bool neighbors = false, bool translated = false, bool inherited = false, bool longMetadata = false)
+        internal static async Task<Fixture> Create(bool neighbors = false, bool translated = false, bool inherited = false, bool longMetadata = false, int emptyLayers = 0, bool separateNeighborLayers = false)
         {
             var directory = Path.Combine(Path.GetTempPath(), "ofdrw-input-equivalence-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
             var fixture = new Fixture(directory); var package = await TextReplacementTests.Read();
@@ -391,10 +519,23 @@ public sealed class TextGeometryInputEquivalenceTests
                     var xml = XElement.Parse(neighbor.SourceXml!); xml.Elements(xml.Name.Namespace + "TextCode").ElementAt(1).Attribute("X")!.Remove();
                     neighbor.SourceXml = xml.ToString(SaveOptions.DisableFormatting);
                 }
+                if (separateNeighborLayers) neighbor.LayerId = "21";
                 package.Pages[0].Elements.Add(neighbor);
-                package.Pages[0].Elements.Add(Neighbor(original, "42", "20 85 20 20", new[] { "" }));
+                var empty = Neighbor(original, "42", "20 85 20 20", new[] { "" });
+                if (separateNeighborLayers) empty.LayerId = "22";
+                package.Pages[0].Elements.Add(empty);
             }
-            using var file = File.Create(fixture.Input); await new OfdPackageWriter().WriteAsync(package, file); return fixture;
+            using (var file = File.Create(fixture.Input)) await new OfdPackageWriter().WriteAsync(package, file);
+            if (emptyLayers != 0)
+            {
+                using var zip = ZipFile.Open(fixture.Input, ZipArchiveMode.Update);
+                var entry = zip.Entries.Single(e => e.FullName.EndsWith("Content.xml")); XElement page;
+                using (var content = entry.Open()) page = XElement.Load(content, LoadOptions.PreserveWhitespace);
+                var first = page.Descendants().First(x => x.Name.LocalName == "Layer");
+                for (var i = 0; i < emptyLayers; i++) first.AddBeforeSelf(new XElement(first.Name, new XAttribute("ID", 500 + i), new XAttribute("Type", "Body")));
+                var name = entry.FullName; entry.Delete(); using var output = zip.CreateEntry(name).Open(); page.Save(output);
+            }
+            return fixture;
         }
         private static OfdTextElement Neighbor(OfdTextElement original, string id, string boundary, string[] texts)
         {

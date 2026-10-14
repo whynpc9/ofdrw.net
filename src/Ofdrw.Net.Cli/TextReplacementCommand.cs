@@ -20,7 +20,9 @@ internal static partial class Cli
     private static async Task<int> SaveReplacementAsync(TextReplacementArguments options, CancellationToken token)
     {
         _ = await DispatchPrivateOwnedSaveAsync(options, token).ConfigureAwait(false);
-        Console.WriteLine($"Replaced {options.InputPath} -> {options.OutputPath}");
+        // The save has already committed. A failed success notification cannot
+        // retroactively report a failed save or attempt a second publication.
+        try { Console.WriteLine($"Replaced {options.InputPath} -> {options.OutputPath}"); } catch { }
         return 0;
     }
 
