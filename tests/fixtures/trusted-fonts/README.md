@@ -10,7 +10,7 @@ python3 scripts/prepare-trusted-fonts.py --output-dir artifacts/trusted-fonts
 
 The emitted JSON supplies explicit fixture paths and `OFDRW_REQUIRE_TRUSTED_FONTS=1`. Preparation validates the pinned spec, archive and central-directory count before ZIP member allocation, then exact paths, duplicates, regular-file kind, sizes, expanded total, compression ratio and streamed SHA. It stages beside the target, verifies, and atomically renames. Existing verified content is reused; corrupt content fails without overwriting. It never downloads, installs OS fonts, subsets or regenerates a TTF. An independent directory needs only the copied script, `bundle.json` and the ZIP passed via `--manifest`/`--bundle`; no sibling checkout path is used.
 
-The mandatory local Q1/Q2 gate prepares and verifies the fonts, sets task-local .NET state, runs the real-font-focused tests, and requires actual results with zero skips:
+The mandatory original-font gate prepares and verifies the fonts, sets task-local .NET state, and runs all 65 current geometry, locator and replacement cases: `TrustedFontGeometryTests` (33), `KeywordLocatorRealFontTests` (26) and `TextReplacementRealFontTests` (6). It requires actual results with zero skips:
 
 ```text
 python3 scripts/run-trusted-font-tests.py --results-directory artifacts/font-gate/run-1
@@ -18,4 +18,4 @@ python3 scripts/run-trusted-font-tests.py --results-directory artifacts/font-gat
 
 Use a fresh results directory. Tests also resolve the prepared repository-local directory when explicit paths are absent. Explicit paths remain supported and are size/hash checked. `OFDRW_REQUIRE_TRUSTED_FONTS=1` keeps real tests enabled so missing or corrupt assets fail; an optional ungated run without prepared assets may skip them and is not font acceptance.
 
-This is a repository-local portable asset/tool gate. No CI workflow, publication list, upload, PR or default eleven-package-consumer gate was changed. Production geometry still consumes original font bytes from the input document under its explicit trusted profile; these test assets never replace document resources.
+This repository-local portable font asset/tool gate does not itself configure CI workflows, publication lists, uploads or the default eleven-package-consumer gate. Production geometry still consumes original font bytes from the input document under its explicit trusted profile; these test assets never replace document resources.
