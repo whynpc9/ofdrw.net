@@ -22,9 +22,23 @@ internal sealed class OfdTextReplacementOperation : IDisposable
     internal string Phase { get; private set; } = "CaptureSource";
 
     internal OfdTextReplacementOperation(OfdDocumentPackage source, OfdTextReplacementOptions options, CancellationToken token)
+        : this(source, options, token, new OfdControlledEditContext(new OfdModelLimits { MaxMaterializedBytes = options.Limits.MaxMaterializedBytes })) { }
+
+    internal static OfdTextReplacementOperation ForFileSession(OfdTextReplacementFileSession session,
+        OfdDocumentPackage source, OfdControlledEditContext context, CancellationToken token)
+    {
+        session.ClaimPreparation(source, context, token);
+        return new OfdTextReplacementOperation(source, session.Options, token, context);
+    }
+
+    private OfdTextReplacementOperation(OfdDocumentPackage source, OfdTextReplacementOptions options, CancellationToken token,
+        OfdControlledEditContext context)
     {
         Options = options; Source = source; preparationToken = token;
-        Context = new OfdControlledEditContext(new OfdModelLimits { MaxMaterializedBytes = options.Limits.MaxMaterializedBytes });
+        Context = context; Context.AssertActive();
+        var baseline = Context.Material;
+        previous = (baseline.StorageBytes, baseline.CloneCopyBytes, baseline.OutputUpperBoundBytes,
+            baseline.ValidationWorkBytes, baseline.Structure.References, baseline.Structure.Nodes);
         try
         {
             // Reserve bounded phase groups, immutable success/failure reports,

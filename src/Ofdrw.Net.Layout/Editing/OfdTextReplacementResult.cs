@@ -30,7 +30,7 @@ public sealed class OfdTextReplacementResult : IDisposable
         var owned = Claim();
         try { return owned.TakePackage(cancellationToken); }
         catch (Exception error) { owned.Fail(error); throw; }
-        finally { owned.Dispose(); lock (sync) state = 2; }
+        finally { owned.Dispose(); CompleteConsumption(); }
     }
     internal OfdTextReplacementOperation Claim()
     {
@@ -38,6 +38,14 @@ public sealed class OfdTextReplacementResult : IDisposable
         {
             if (state != 0) throw new InvalidOperationException("Replacement result has already been consumed or disposed.");
             state = 1; var owned = operation!; operation = null; return owned;
+        }
+    }
+    internal void CompleteConsumption()
+    {
+        lock (sync)
+        {
+            if (state != 1) throw new InvalidOperationException("Replacement result is not being consumed.");
+            state = 2;
         }
     }
     public void Dispose()
