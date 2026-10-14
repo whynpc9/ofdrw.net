@@ -694,6 +694,12 @@ internal sealed class OfdOwnedModelsLease
         Require(OfdOwnedSavePhase.CopyingStage, token);
         if (!ReferenceEquals(stageIdentity, actualStageIdentity) || commitClaim is not null)
             throw new InvalidOperationException("Commit has a foreign or repeated stage.");
+        // The actual final-input path/hash check has completed before this
+        // Packaging claim. Changed saves retain a fresh whole source-model S
+        // here; original-file bytes cannot substitute for this model frontier.
+        // Noop already performs its exact scope/snapshot-bound final S.
+        if (stageScope is not null) sourceGuard!.AssertUnchanged(source!, context, token);
+        else if (noopScope is null) throw new InvalidOperationException("Commit lacks an actual changed or no-change scope.");
         context.Material.ChargeCopy(256, token); Move(OfdOwnedSavePhase.CopyingStage, OfdOwnedSavePhase.CommitClaimed, token);
         commitClaim = OfdOwnedCommitClaim.Issue(this); return commitClaim;
     }
