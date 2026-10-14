@@ -9,7 +9,8 @@ namespace Ofdrw.Net.Core.Models;
 internal static class OfdModelCloner
 {
     internal static OfdPage ClonePage(OfdPage source, bool keepSourcePath = false, bool clonePayloads = true,
-        OfdModelMaterialization? material = null, CancellationToken cancellationToken = default, IDictionary<object, object>? mapping = null)
+        OfdModelMaterialization? material = null, CancellationToken cancellationToken = default, IDictionary<object, object>? mapping = null,
+        OfdPayloadCloneSession? payloads = null)
     {
         if (material is null)
         {
@@ -25,7 +26,7 @@ internal static class OfdModelCloner
             Index = source.Index, XMillimeters = source.XMillimeters, YMillimeters = source.YMillimeters,
             WidthMillimeters = source.WidthMillimeters, HeightMillimeters = source.HeightMillimeters
         };
-        foreach (var element in source.Elements) page.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping));
+        foreach (var element in source.Elements) page.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping, payloads: payloads));
         foreach (var template in source.Templates)
         {
             cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(2);
@@ -34,11 +35,11 @@ internal static class OfdModelCloner
             {
                 TemplateId = template.TemplateId, ZOrder = template.ZOrder, BaseLocation = template.BaseLocation
             };
-            foreach (var element in template.Elements) clone.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping));
+            foreach (var element in template.Elements) clone.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping, payloads: payloads));
             page.Templates.Add(clone);
             if (mapping is not null) { mapping.Add(template, clone); mapping.Add(template.Elements, clone.Elements); }
         }
-        foreach (var element in source.AnnotationAppearances) page.AnnotationAppearances.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping));
+        foreach (var element in source.AnnotationAppearances) page.AnnotationAppearances.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping, payloads: payloads));
         page.PreservedPageElements.AddRange(source.PreservedPageElements);
         if (mapping is not null)
         {
@@ -49,7 +50,8 @@ internal static class OfdModelCloner
     }
 
     internal static OfdElement CloneElement(OfdElement source, string? targetNamespace = null, bool clonePayloads = true,
-        OfdModelMaterialization? material = null, CancellationToken cancellationToken = default, IDictionary<object, object>? mapping = null)
+        OfdModelMaterialization? material = null, CancellationToken cancellationToken = default, IDictionary<object, object>? mapping = null,
+        OfdPayloadCloneSession? payloads = null)
     {
         if (material is null)
         {
@@ -122,7 +124,11 @@ internal static class OfdModelCloner
             if (value is null) return null;
             material.ChargeCopy(value.LongLength * sizeof(double), cancellationToken); return value.ToArray();
         }
-        byte[] Payload(byte[] value) { material.ChargeCopy(value.LongLength, cancellationToken); return value.ToArray(); }
+        byte[] Payload(byte[] value)
+        {
+            if (payloads is not null) return payloads.Copy(value, material, cancellationToken);
+            material.ChargeCopy(value.LongLength, cancellationToken); return value.ToArray();
+        }
     }
 
     private static string? CloneXml(string? xml, string? targetNamespace, OfdModelMaterialization material, CancellationToken cancellationToken)
