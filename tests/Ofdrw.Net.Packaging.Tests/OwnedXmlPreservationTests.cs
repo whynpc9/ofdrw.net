@@ -45,4 +45,30 @@ public sealed class OwnedXmlPreservationTests
                 XDocument.Parse(source, LoadOptions.PreserveWhitespace), Encoding.UTF8.GetBytes(changed), context.Material, default));
         }
     }
+    [Theory]
+    [InlineData("<Content><![CDATA[ ]]><Layer ID='2'/></Content>", "<Content><Layer ID='2'/></Content>")]
+    [InlineData("<v:Opaque><Content> <Layer ID='2'/></Content></v:Opaque>", "<v:Opaque><Content><Layer ID='2'/></Content></v:Opaque>")]
+    [InlineData("<Extension><Content> <Layer ID='2'/></Content></Extension>", "<Extension><Content><Layer ID='2'/></Content></Extension>")]
+    [InlineData("<Content xml:space='preserve'> <Layer ID='2'/></Content>", "<Content xml:space='preserve'><Layer ID='2'/></Content>")]
+    public void WhitespaceCdataAndOpaqueOrPreservedWhitespaceStayExact(string original, string changed)
+    {
+        const string prefix = "<Page xmlns='urn:ofd' xmlns:v='urn:vendor'>";
+        using var context = new OfdControlledEditContext(new());
+        Assert.Throws<InvalidDataException>(() => OfdOwnedXmlPreservation.RequireExactClosedRewrite("Page.xml",
+            XDocument.Parse(prefix + original + "</Page>", LoadOptions.PreserveWhitespace),
+            Encoding.UTF8.GetBytes(prefix + changed + "</Page>"), context.Material, default));
+    }
+    [Fact]
+    public void ActualPageAreaIndentationIsStructuralAndItsWhitespaceScanIsCharged()
+    {
+        const string original = "<Page xmlns='urn:ofd'><Area> <PhysicalBox>5 7 200 200</PhysicalBox> </Area><Content><Layer ID='2'/></Content></Page>";
+        using var shortContext = new OfdControlledEditContext(new());
+        using var longContext = new OfdControlledEditContext(new());
+        var output = Encoding.UTF8.GetBytes(original.Replace("> <", "><"));
+        OfdOwnedXmlPreservation.RequireExactClosedRewrite("Page.xml", XDocument.Parse(original, LoadOptions.PreserveWhitespace), output, shortContext.Material, default);
+        const int extraCharacters = 10000;
+        var longer = original.Replace("<Area> ", "<Area> " + new string(' ', extraCharacters));
+        OfdOwnedXmlPreservation.RequireExactClosedRewrite("Page.xml", XDocument.Parse(longer, LoadOptions.PreserveWhitespace), output, longContext.Material, default);
+        Assert.True(longContext.Material.ValidationWorkBytes - shortContext.Material.ValidationWorkBytes >= 2L * extraCharacters);
+    }
 }
