@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Layout.Editing.Internal;
@@ -62,7 +63,7 @@ public sealed class OfdTextReplacer
         return PrepareKeywordOperation(operation, pageIndexes, keyword, replacementText, cancellationToken)!;
     }
 
-    internal void PrepareKeywordForOwnedWriter(OfdTextReplacementFileSession session, OfdDocumentPackage source,
+    internal async Task PrepareAndWriteKeywordForOwnedAsync(OfdTextReplacementFileSession session, OfdDocumentPackage source,
         OfdControlledEditContext context, int[]? pageIndexes, string keyword, string replacementText, CancellationToken token)
     {
         if (keyword is null) throw new ArgumentNullException(nameof(keyword));
@@ -70,72 +71,85 @@ public sealed class OfdTextReplacer
         if (replacementText is null) throw new ArgumentNullException(nameof(replacementText));
         if (replacementText.Length > session.Options.Limits.MaxReplacementUtf16Units) throw new InvalidDataException("ReplacementTextLimit");
         var operation = OfdTextReplacementOperation.ForOwnedFileSession(session, source, context, token);
-        PrepareKeywordOperation(operation, pageIndexes, keyword, replacementText, token, session);
-    }
-
-    private OfdTextReplacementResult? PrepareKeywordOperation(OfdTextReplacementOperation operation, IReadOnlyList<int>? pageIndexes,
-        string keyword, string replacementText, CancellationToken cancellationToken, OfdTextReplacementFileSession? ownedFile = null)
-    {
-        var source = operation.Source!; var policies = operation.Options;
         try
         {
-            operation.Begin("ValidateReplacement");
-            operation.Context.Material.ChargeWork(2L * replacementText.Length, cancellationToken);
-            ValidateLiteral(replacementText, cancellationToken);
-            operation.Begin("KeywordQuery");
-            if (pageIndexes is null)
-            {
-                if (source.Pages.Count > locatorLimits.MaxPages) throw new InvalidDataException("ReplacementPageLimit");
-                operation.Context.Material.ChargeCopy(128L + 8L * source.Pages.Count, cancellationToken);
-                pageIndexes = Enumerable.Range(0, source.Pages.Count).ToArray();
-            }
-            OfdTextReplacement[]? requests = null; List<OfdTextReplacementRoot>? roots = null;
-            Action<OfdKeywordAnalysisCapture> captureMatches = capture =>
-                {
-                    operation.Begin("AuthenticateKeywordMatches");
-                    var count = capture.CurrentHits.Count;
-                    if (count > policies.Limits.MaxRequests) throw new InvalidDataException("ReplacementRequestLimit");
-                    if (checked((long)count * replacementText.Length) > policies.Limits.MaxReplacementUtf16Units)
-                        throw new InvalidDataException("ReplacementTextLimit");
-                    operation.Context.Material.ChargeCopy(256L + 256L * count, cancellationToken);
-                    requests = new OfdTextReplacement[count];
-                    for (var i = 0; i < count; i++)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested(); var hit = capture.CurrentHits[i];
-                        capture.AuthenticateCurrentHit(hit); requests[i] = new OfdTextReplacement(hit, replacementText);
-                    }
-                    RejectOverlaps(requests, operation.Context.Material, cancellationToken);
-                    operation.Validate(cancellationToken); operation.Mark("KeywordMatchesCaptured");
-                    if (requests.Any(value => value.ReplacementText != value.Hit.MatchedText))
-                    {
-                        var pages = AffectedPages(requests, operation, cancellationToken);
-                        roots = OfdTextReplacementFitAdapter.Plan(capture, requests, operation, cancellationToken, pages);
-                    }
-                };
-            var found = ownedFile is null
-                ? OfdKeywordEditSource.Analyze(source, pageIndexes, keyword, provider, locatorLimits, policies.SearchOptions,
-                    operation.Context.Material, () => operation.Validate(cancellationToken), captureMatches, cancellationToken, operation.BeforeCallback)
-                : OfdKeywordEditSource.AnalyzeForOwnedFile(source, (int[])pageIndexes, keyword, provider, locatorLimits, policies.SearchOptions,
-                    operation.Context.Material, () => operation.Validate(cancellationToken), captureMatches, cancellationToken, operation.BeforeCallback);
-            operation.RecordAnalysis(found);
-            if (ownedFile is null)
-            {
-                operation.Validate(cancellationToken); operation.Mark("MeasuredAndClosedProvider");
-                return Finish(operation, requests!, roots, cancellationToken);
-            }
-            // Only ordinary sealed state is touched between the final actual
-            // provider Dispose and the synchronous owner-issued factory below.
-            operation.Mark("MeasuredAndClosedProvider");
-            FinishOwnedWriter(ownedFile, operation, requests!, roots, cancellationToken);
-            return null;
+            var analysis = AnalyzeKeywordOperation(operation, pageIndexes, keyword, replacementText, token, session);
+            await FinishOwnedWriteAsync(session, operation, analysis.Requests, analysis.Roots, token).ConfigureAwait(false);
         }
         catch (Exception error)
         {
-            // A hostile Exception.Data getter must observe a terminal private
-            // job, never a still-usable continuation or model inspection API.
-            if (ownedFile is not null) ownedFile.FailOwnedPreparation();
-            operation.Fail(error); operation.Dispose(); throw;
+            // Terminal state precedes diagnostics and all owned cleanup.
+            session.FailOwnedPreparation(); operation.Fail(error);
+            try { operation.Dispose(); } catch { }
+            throw;
         }
+    }
+
+    private OfdTextReplacementResult PrepareKeywordOperation(OfdTextReplacementOperation operation, IReadOnlyList<int>? pageIndexes,
+        string keyword, string replacementText, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var analysis = AnalyzeKeywordOperation(operation, pageIndexes, keyword, replacementText, cancellationToken);
+            operation.Validate(cancellationToken); operation.Mark("MeasuredAndClosedProvider");
+            return Finish(operation, analysis.Requests, analysis.Roots, cancellationToken);
+        }
+        catch (Exception error) { operation.Fail(error); operation.Dispose(); throw; }
+    }
+
+    // The sole keyword analysis/compiler kernel serves both public replacement
+    // and the private write-through route. It never returns a Writer or candidate.
+    private (OfdTextReplacement[] Requests, List<OfdTextReplacementRoot>? Roots) AnalyzeKeywordOperation(
+        OfdTextReplacementOperation operation, IReadOnlyList<int>? pageIndexes, string keyword, string replacementText,
+        CancellationToken cancellationToken, OfdTextReplacementFileSession? ownedFile = null)
+    {
+        var source = operation.Source!; var policies = operation.Options;
+        operation.Begin("ValidateReplacement");
+        operation.Context.Material.ChargeWork(2L * replacementText.Length, cancellationToken);
+        ValidateLiteral(replacementText, cancellationToken);
+        operation.Begin("KeywordQuery");
+        if (pageIndexes is null)
+        {
+            if (source.Pages.Count > locatorLimits.MaxPages) throw new InvalidDataException("ReplacementPageLimit");
+            operation.Context.Material.ChargeCopy(128L + 8L * source.Pages.Count, cancellationToken);
+            pageIndexes = Enumerable.Range(0, source.Pages.Count).ToArray();
+        }
+        OfdTextReplacement[]? requests = null; List<OfdTextReplacementRoot>? roots = null;
+        Action<OfdKeywordAnalysisCapture> captureMatches = capture =>
+            {
+                operation.Begin("AuthenticateKeywordMatches");
+                var count = capture.CurrentHits.Count;
+                if (count > policies.Limits.MaxRequests) throw new InvalidDataException("ReplacementRequestLimit");
+                if (checked((long)count * replacementText.Length) > policies.Limits.MaxReplacementUtf16Units)
+                    throw new InvalidDataException("ReplacementTextLimit");
+                operation.Context.Material.ChargeCopy(256L + 256L * count, cancellationToken);
+                requests = new OfdTextReplacement[count];
+                for (var i = 0; i < count; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested(); var hit = capture.CurrentHits[i];
+                    capture.AuthenticateCurrentHit(hit); requests[i] = new OfdTextReplacement(hit, replacementText);
+                }
+                RejectOverlaps(requests, operation.Context.Material, cancellationToken);
+                operation.Validate(cancellationToken); operation.Mark("KeywordMatchesCaptured");
+                if (requests.Any(value => value.ReplacementText != value.Hit.MatchedText))
+                {
+                    var pages = AffectedPages(requests, operation, cancellationToken);
+                    roots = OfdTextReplacementFitAdapter.Plan(capture, requests, operation, cancellationToken, pages);
+                    // File creation stays inside the private capture phase,
+                    // before final provider Dispose and its source/font checks.
+                    ownedFile?.CreateOwnedOutputSpool(operation, cancellationToken);
+                }
+            };
+        var found = ownedFile is null
+            ? OfdKeywordEditSource.Analyze(source, pageIndexes, keyword, provider, locatorLimits, policies.SearchOptions,
+                operation.Context.Material, () => operation.Validate(cancellationToken), captureMatches, cancellationToken, operation.BeforeCallback)
+            : OfdKeywordEditSource.AnalyzeForOwnedFile(source, (int[])pageIndexes, keyword, provider, locatorLimits, policies.SearchOptions,
+                operation.Context.Material, () => operation.Validate(cancellationToken), captureMatches, cancellationToken, operation.BeforeCallback);
+        operation.RecordAnalysis(found);
+        // No callback or await is inserted after the final actual provider
+        // Dispose. The caller proceeds directly to its private batch/factory.
+        if (ownedFile is not null) operation.Mark("MeasuredAndClosedProvider");
+        return (requests!, roots);
     }
 
     private OfdTextReplacementResult Prepare(OfdTextReplacementOperation operation, OfdTextReplacement[] requests, CancellationToken token)
@@ -182,46 +196,36 @@ public sealed class OfdTextReplacer
         }
         return pages;
     }
-    private static void FinishOwnedWriter(OfdTextReplacementFileSession session, OfdTextReplacementOperation operation,
+    private static async Task FinishOwnedWriteAsync(OfdTextReplacementFileSession session, OfdTextReplacementOperation operation,
         OfdTextReplacement[] requests, List<OfdTextReplacementRoot>? roots, CancellationToken token)
     {
-        OfdPackageWriter.PreparedWrite? prepared = null;
-        try
+        if (roots is null)
         {
-            if (roots is null)
-            {
-                // No-op has no clone/Writer entry to discharge final freshness.
-                operation.Validate(token); operation.Mark("PreparedOwnedNoOp");
-            }
-            else
-            {
-                operation.Begin("ContinuousOwnedFactory");
-                var changedCount = 0;
-                foreach (var root in roots)
-                {
-                    token.ThrowIfCancellationRequested();
-                    if (!root.Plan.Requests.All(value => value.Disposition == OfdTextFitDisposition.Unchanged)) changedCount++;
-                }
-                operation.Context.Material.ChargeCopy(128L + 32L * changedCount, token);
-                var edits = new OfdRetainedTextEdit[changedCount]; var index = 0;
-                foreach (var root in roots)
-                {
-                    token.ThrowIfCancellationRequested();
-                    if (!root.Plan.Requests.All(value => value.Disposition == OfdTextFitDisposition.Unchanged))
-                        edits[index++] = new OfdRetainedTextEdit(root.Owner, root.Slots);
-                }
-                using var batch = OfdRetainedTextEditBatch.Capture(operation.Source!, operation.SourceGuard!, operation.Context, edits, token);
-                // Actual approved shared factory; no copied Core clone, forged
-                // freshness stamp, stub or user mutation callback participates.
-                prepared = OfdPackageWriter.PrepareContinuousTextEdit(operation.Source!, operation.SourceGuard!, operation.Context, batch, token);
-                operation.Mark("PreparedOwnedWriter");
-            }
+            // No-op has no clone/Writer entry to discharge final freshness.
+            operation.Validate(token); operation.Mark("PreparedOwnedNoOp");
             operation.Context.Material.ChargeCopy(512L * requests.Length + 256, token);
-            var observations = requests.Select(value => new OfdTextReplacementObservation(value)).ToArray();
-            session.AcceptOwnedPreparation(operation, prepared, observations);
-            prepared = null;
+            session.AcceptOwnedNoOp(operation, requests.Select(value => new OfdTextReplacementObservation(value)).ToArray());
+            return;
         }
-        finally { prepared?.Dispose(); }
+        operation.Begin("ContinuousOwnedWriteFactory");
+        var changedCount = 0;
+        foreach (var root in roots)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!root.Plan.Requests.All(value => value.Disposition == OfdTextFitDisposition.Unchanged)) changedCount++;
+        }
+        operation.Context.Material.ChargeCopy(128L + 32L * changedCount, token);
+        var edits = new OfdRetainedTextEdit[changedCount]; var index = 0;
+        foreach (var root in roots)
+        {
+            token.ThrowIfCancellationRequested();
+            if (!root.Plan.Requests.All(value => value.Disposition == OfdTextFitDisposition.Unchanged))
+                edits[index++] = new OfdRetainedTextEdit(root.Owner, root.Slots);
+        }
+        using var batch = OfdRetainedTextEditBatch.Capture(operation.Source!, operation.SourceGuard!, operation.Context, edits, token);
+        // The real shared factory starts on this stack. No prepared capability,
+        // callback, reporting return or await occurs before its closed prefix.
+        await session.WriteContinuousOwnedAsync(operation, batch, requests, token).ConfigureAwait(false);
     }
 
     private static OfdTextReplacementResult Finish(OfdTextReplacementOperation operation, OfdTextReplacement[] requests,

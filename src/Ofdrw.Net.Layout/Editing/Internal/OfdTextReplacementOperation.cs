@@ -102,6 +102,7 @@ internal sealed class OfdTextReplacementOperation : IDisposable
     }
     internal void Fail(Exception error)
     {
+        Context.Fail();
         try
         {
             var m = Context.Material;
@@ -116,7 +117,6 @@ internal sealed class OfdTextReplacementOperation : IDisposable
             }
         }
         catch { /* Exception.Data can itself be supplied by an untrusted exception subclass. */ }
-        finally { Context.Fail(); }
     }
     internal OfdDocumentPackage TakePackage(CancellationToken token)
     {
