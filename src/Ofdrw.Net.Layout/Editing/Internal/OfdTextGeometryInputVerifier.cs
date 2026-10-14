@@ -37,6 +37,55 @@ internal static class OfdTextGeometryInputVerifier
         var owned = new OwnedMapping(expectation, issuer, scope, actual, keys, addresses, operation.Context, token);
         return Compare(expectation, operation, actual, token, owned);
     }
+    // Pure shared comparison kernels; these issue no receipt or completion.
+    internal static int NextRootInLayer(OfdTextGeometryExpectation expected, int page, int layer,
+        ref int cursor, OfdKeywordLocatorBudget budget)
+    {
+        while (cursor < expected.Roots.Count)
+        {
+            budget.Field(2); // each page/layer operand pair, including every nonmatch
+            var index = cursor++; var root = expected.Roots[index];
+            if (root.Page == page && root.Layer == layer) return index;
+        }
+        return -1;
+    }
+    internal static int ResolveAdmittedBodyIndex(OfdKeywordPageInput page, int layer, int rootOrdinal,
+        OfdKeywordLocatorBudget budget)
+    {
+        budget.Field(4);
+        Need(layer >= 0 && layer < page.Layers.Count && rootOrdinal >= 0, "OwnedRootAddressBounds");
+        budget.Field(); Need(rootOrdinal < page.Layers[layer].Objects, "OwnedRootAddressBounds");
+        var global = rootOrdinal;
+        for (var i = 0; i < layer; i++)
+        {
+            budget.Field(); Need(page.Layers[i].Objects >= 0, "OwnedRootAddressBounds");
+            global = checked(global + page.Layers[i].Objects);
+        }
+        return global;
+    }
+    internal static void RequireBodyTopology(OfdTextGeometryExpectation.Root expected, OfdKeywordTextSource source,
+        OfdGraphicOccurrence occurrence, OfdPage actualPage, int actualPageOrdinal, int actualGlobalElement,
+        OfdKeywordLocatorBudget budget)
+    {
+        budget.Field(24);
+        Need(expected.Occurrence.Count == 4 && expected.Definition.Count == 4 &&
+            source.OccurrencePath.Length == 4 && source.DefinitionPath.Length == 4 &&
+            occurrence.OccurrencePath.Count == 4 && occurrence.DefinitionPath.Count == 4, "OwnedRootTopology");
+        SameInts(expected.Occurrence, expected.Definition, budget);
+        Need(expected.Occurrence[0] == expected.Page && expected.Occurrence[1] == (int)OfdContentScope.Body &&
+            expected.Occurrence[2] == 0 && expected.Occurrence[3] == expected.Element, "OwnedOriginalBodyTopology");
+        Need(occurrence.RootScope == OfdContentScope.Body && occurrence.SourceAuthority == OfdSourceAuthority.ModelDefinition &&
+            occurrence.IsEditableSource && !occurrence.IsSharedDefinition && !occurrence.IsInComposite &&
+            occurrence.Element is OfdTextElement && ReferenceEquals(occurrence.Page, actualPage) &&
+            actualGlobalElement >= 0 && actualGlobalElement < actualPage.Elements.Count &&
+            ReferenceEquals(occurrence.Element, actualPage.Elements[actualGlobalElement]), "OwnedBodyOwnerTopology");
+        SameInts(source.OccurrencePath, occurrence.OccurrencePath, budget);
+        SameInts(source.DefinitionPath, occurrence.DefinitionPath, budget);
+        SameInts(source.OccurrencePath, source.DefinitionPath, budget);
+        Need(source.PageIndex == actualPageOrdinal && source.ElementOrdinal == actualGlobalElement &&
+            source.OccurrencePath[0] == actualPageOrdinal && source.OccurrencePath[1] == expected.Occurrence[1] &&
+            source.OccurrencePath[2] == expected.Occurrence[2] && source.OccurrencePath[3] == actualGlobalElement, "OwnedMappedBodyTopology");
+    }
     private static OfdTextGeometryInputStatistics Compare(OfdTextGeometryExpectation expectation,
         OfdTextReplacementOperation operation, OfdDocumentPackage actual, CancellationToken token, OwnedMapping? owned)
     {
@@ -66,14 +115,14 @@ internal static class OfdTextGeometryInputVerifier
                 if (owned is null)
                     Need(expected.Page == source.PageIndex && expected.Layer == source.LayerOrdinal && expected.Element == source.ElementOrdinal &&
                         expected.Path == source.Path && expected.Entry == source.EntryPath && expected.FontId == source.FontId, "GeometryRootOrUnboundRelocation");
-                else owned.Root(r, source, budget);
+                else owned.Root(r, source, capture.Traversal.Occurrences[sourceIndex], budget);
                 Need(expected.Size == source.Size && expected.Weight == source.Weight && expected.Italic == source.Italic &&
                     expected.X == source.X && expected.Y == source.Y && expected.Width == source.Width && expected.Height == source.Height &&
                     expected.PageX == source.PageX && expected.PageY == source.PageY && expected.PageWidth == source.PageWidth && expected.PageHeight == source.PageHeight &&
                     expected.A == source.Matrix[0] && expected.B == source.Matrix[1] && expected.C == source.Matrix[2] && expected.D == source.Matrix[3] &&
                     expected.Tx == source.Matrix[4] && expected.Ty == source.Matrix[5], "GeometryRootOrUnboundRelocation");
                 if (owned is null) { SameInts(expected.Occurrence, source.OccurrencePath, budget); SameInts(expected.Definition, source.DefinitionPath, budget); }
-                else Need(source.OccurrencePath.Length == 4 && source.DefinitionPath.Length == 2, "OwnedRootTopology");
+
                 var input = source.PrivateInput ?? throw new InvalidDataException("IncompletePrivateRootInput");
                 Same(expected.Metadata.Namespace, input.Namespace, budget);
                 if (owned is null) Attributes(expected.Metadata.Attributes, input.Attributes, budget);
@@ -173,6 +222,7 @@ internal static class OfdTextGeometryInputVerifier
         private readonly OfdOwnedCompareScope scope;
         private readonly OfdDocumentPackage actual;
         private readonly OfdReadbackRootAddress[] rows;
+        private readonly int[] mappedElements;
         private readonly HashSet<int> usedSources = new();
         private readonly Dictionary<int, OfdKeywordPageInput> currentPages = new();
         internal OwnedMapping(OfdTextGeometryExpectation expected, OfdOwnedGeometryExpectation issuer, OfdOwnedCompareScope scope,
@@ -181,7 +231,8 @@ internal static class OfdTextGeometryInputVerifier
             this.expected = expected; this.issuer = issuer; this.scope = scope; this.actual = actual;
             context.Material.ChargeWork(checked(16L * expected.Roots.Count * expected.Pages.Count), token);
             Need(keys.Length == addresses.Length && keys.Length == expected.Roots.Count, "OwnedAddressCoverage");
-            rows = new OfdReadbackRootAddress[keys.Length]; var used = new HashSet<int>();
+            context.Material.ChargeCopy(checked(128L + sizeof(int) * (long)keys.Length), token);
+            rows = new OfdReadbackRootAddress[keys.Length]; mappedElements = new int[keys.Length]; var used = new HashSet<int>();
             for (var i = 0; i < keys.Length; i++)
             {
                 for (var j = 0; j < addresses.Length; j++)
@@ -218,8 +269,8 @@ internal static class OfdTextGeometryInputVerifier
                 budget.Field(); Need(original.Layers[l].Objects == current.Layers[l].Objects, "GeometryLayerOrder");
                 Same(original.Layers[l].Namespace, current.Layers[l].Namespace, budget);
                 string? layerId = null; var hasRow = false;
-                for (var r = 0; r < expected.Roots.Count; r++)
-                    if (expected.Roots[r].Page == original.Position && expected.Roots[r].Layer == l)
+                var cursor = 0; int r;
+                while ((r = NextRootInLayer(expected, original.Position, l, ref cursor, budget)) >= 0)
                     {
                         var other = rows[r];
                         Need(other.PageIndex == row.PageIndex && other.LayerOrdinal == l, "OwnedLayerRelocationUnsupported");
@@ -238,19 +289,23 @@ internal static class OfdTextGeometryInputVerifier
         internal int SourceIndex(int r, OfdKeywordInputCapture capture, OfdKeywordLocatorBudget budget)
         {
             var row = rows[r]; var found = -1;
+            budget.Field(2); Need(row.PageIndex >= 0 && row.PageIndex < actual.Pages.Count, "OwnedRootAddressBounds");
+            Need(currentPages.TryGetValue(row.PageIndex, out var page), "MissingOwnedPageCapture");
+            var global = ResolveAdmittedBodyIndex(page!, row.LayerOrdinal, row.RootOrdinal, budget);
+            budget.Field(2); Need(global >= 0 && global < actual.Pages[row.PageIndex].Elements.Count, "OwnedRootAddressBounds");
             for (var i = 0; i < capture.Sources.Count; i++)
             {
                 budget.Field(3); var source = capture.Sources[i];
-                if (source.PageIndex != row.PageIndex || source.LayerOrdinal != row.LayerOrdinal) continue;
-                Need(currentPages.TryGetValue(source.PageIndex, out var page), "MissingOwnedPageCapture"); var local = source.ElementOrdinal;
-                for (var l = 0; l < source.LayerOrdinal; l++) { budget.Field(); local -= page!.Layers[l].Objects; }
-                if (local == row.RootOrdinal) { Need(found == -1, "OwnedRootAddressAlias"); found = i; }
+                if (source.PageIndex == row.PageIndex && source.LayerOrdinal == row.LayerOrdinal && source.ElementOrdinal == global)
+                { Need(found == -1, "OwnedRootAddressAlias"); found = i; }
             }
-            Need(found != -1 && usedSources.Add(found), "OwnedRootCoverage"); return found;
+            Need(found != -1 && usedSources.Add(found), "OwnedRootCoverage"); mappedElements[r] = global; return found;
         }
-        internal void Root(int r, OfdKeywordTextSource source, OfdKeywordLocatorBudget budget)
+        internal void Root(int r, OfdKeywordTextSource source, OfdGraphicOccurrence occurrence, OfdKeywordLocatorBudget budget)
         {
             var row = rows[r]; Same(row.EntryPath, source.EntryPath, budget); Same(row.OutputFontResourceId, source.FontId, budget);
+            RequireBodyTopology(expected.Roots[r], source, occurrence, actual.Pages[row.PageIndex], row.PageIndex, mappedElements[r], budget);
+            Same(row.OutputObjectId, ((OfdTextElement)occurrence.Element).ObjectId, budget);
         }
         internal void RootAttributes(int r, IReadOnlyList<OfdKeywordInputAttribute> original,
             IReadOnlyList<OfdKeywordInputAttribute> current, OfdKeywordLocatorBudget budget)
