@@ -1,7 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
@@ -10,9 +8,6 @@ namespace Ofdrw.Net.Packaging;
 
 internal static class OfdOwnedXmlPreservation
 {
-    private static readonly HashSet<string> structuralParents = new(StringComparer.Ordinal)
-    { "OFD", "DocBody", "DocInfo", "Document", "CommonData", "PageArea", "Pages", "Page", "Content", "Layer", "Res", "Fonts", "Font", "MultiMedias", "MultiMedia" };
-
     // Expected is the actual source DOM with only explicit candidate/plan/pruner
     // permissions applied by the private Writer. No global name/attribute allowlist
     // grants permission to the actual output. All opaque nodes and order remain.
@@ -24,45 +19,80 @@ internal static class OfdOwnedXmlPreservation
             throw new InvalidDataException("Owned rewrite changed the source root authority.");
         NormalizeStructuralFormatting(independentlyExpected.Root, independentlyExpected.Root.Name.Namespace, material, token);
         NormalizeStructuralFormatting(actual.Root, independentlyExpected.Root.Name.Namespace, material, token);
-        if (!OrderedEqual(independentlyExpected, actual, material, token))
-            throw new InvalidDataException("Owned rewrite differs from its exact source/candidate/plan/pruner permissions.");
+        long position = 0;
+        if (!OrderedEqual(independentlyExpected, actual, material, token, ref position, out var reason))
+        {
+            material.ChargeCopy(checked(2048L + 2L * entry.Length), token);
+            throw new InvalidDataException($"Owned rewrite differs from its exact source/candidate/plan/pruner permissions: {entry}, node {position}, {reason}.");
+        }
     }
     private static void NormalizeStructuralFormatting(XElement root, XNamespace ns,
         OfdModelMaterialization material, CancellationToken token)
     {
-        foreach (var element in root.DescendantsAndSelf())
+        if (root.Name.LocalName is "OFD" or "Document" or "Page" or "Res") Visit(root, false);
+        void Visit(XElement element, bool preserve)
         {
             material.ChargeWork(64, token);
-            if (element.Name.Namespace != ns || !structuralParents.Contains(element.Name.LocalName) ||
-                element.AncestorsAndSelf().Any(node => node.Attribute(XNamespace.Xml + "space")?.Value == "preserve")) continue;
-            material.ChargeCopy(checked(256L + 32L * element.Nodes().Count()), token);
-            foreach (var text in element.Nodes().OfType<XText>().Where(text => string.IsNullOrWhiteSpace(text.Value)).ToArray())
-                text.Remove();
+            preserve |= element.Attribute(XNamespace.Xml + "space")?.Value == "preserve";
+            for (var node = element.FirstNode; node is not null;)
+            {
+                var next = node.NextNode;
+                material.ChargeWork(32, token);
+                // XCData derives from XText. Its whitespace remains exact, as
+                // does ordinary whitespace anywhere behind an opaque boundary.
+                if (!preserve && node is XText text && node is not XCData)
+                {
+                    material.ChargeWork(checked(16L + 2L * text.Value.Length), token);
+                    if (string.IsNullOrWhiteSpace(text.Value)) text.Remove();
+                }
+                else if (node is XElement child && child.Name.Namespace == ns &&
+                    IsStructuralChild(element.Name.LocalName, child.Name.LocalName)) Visit(child, preserve);
+                node = next;
+            }
         }
     }
-    private static bool OrderedEqual(XNode expected, XNode actual,
-        OfdModelMaterialization material, CancellationToken token)
+    private static bool IsStructuralChild(string parent, string child) => parent switch
     {
+        "OFD" => child == "DocBody",
+        "DocBody" => child == "DocInfo",
+        "Document" => child is "CommonData" or "Pages",
+        "CommonData" => child == "PageArea",
+        "Pages" => child == "Page",
+        "Page" => child is "Area" or "Content",
+        "Content" => child == "Layer",
+        "Res" => child is "Fonts" or "MultiMedias",
+        "Fonts" => child == "Font",
+        "MultiMedias" => child == "MultiMedia",
+        _ => false
+    };
+    private static bool OrderedEqual(XNode expected, XNode actual,
+        OfdModelMaterialization material, CancellationToken token, ref long position, out string reason)
+    {
+        position++; reason = "node kind";
         material.ChargeWork(64, token); material.ChargeCopy(128, token);
         if (expected.NodeType != actual.NodeType) return false;
         if (expected is XElement source && actual is XElement output)
         {
+            reason = "element name";
             if (source.Name != output.Name) return false;
             using var left = source.Attributes().GetEnumerator(); using var right = output.Attributes().GetEnumerator();
             while (true)
             {
                 var a = left.MoveNext(); var b = right.MoveNext();
+                reason = "attribute count";
                 if (a != b) return false; if (!a) break;
                 material.ChargeWork(checked(32L + 2L * (left.Current.Value.Length + (long)right.Current.Value.Length)), token);
+                reason = "ordered attribute";
                 if (left.Current.Name != right.Current.Name || left.Current.Value != right.Current.Value) return false;
             }
         }
         if (expected is XText sourceText && actual is XText actualText)
-        { material.ChargeWork(checked(16L + 2L * (sourceText.Value.Length + (long)actualText.Value.Length)), token); return sourceText.Value == actualText.Value; }
+        { reason = "text"; material.ChargeWork(checked(16L + 2L * (sourceText.Value.Length + (long)actualText.Value.Length)), token); return sourceText.Value == actualText.Value; }
         if (expected is XComment sourceComment && actual is XComment actualComment)
-        { material.ChargeWork(checked(16L + 2L * (sourceComment.Value.Length + (long)actualComment.Value.Length)), token); return sourceComment.Value == actualComment.Value; }
+        { reason = "comment"; material.ChargeWork(checked(16L + 2L * (sourceComment.Value.Length + (long)actualComment.Value.Length)), token); return sourceComment.Value == actualComment.Value; }
         if (expected is XProcessingInstruction sourcePi && actual is XProcessingInstruction actualPi)
         {
+            reason = "processing instruction";
             material.ChargeWork(checked(32L + 2L * (sourcePi.Target.Length + (long)actualPi.Target.Length + sourcePi.Data.Length + actualPi.Data.Length)), token);
             return sourcePi.Target == actualPi.Target && sourcePi.Data == actualPi.Data;
         }
@@ -72,8 +102,9 @@ internal static class OfdOwnedXmlPreservation
             while (true)
             {
                 var a = left.MoveNext(); var b = right.MoveNext();
+                reason = "child count";
                 if (a != b) return false; if (!a) return true;
-                if (!OrderedEqual(left.Current, right.Current, material, token)) return false;
+                if (!OrderedEqual(left.Current, right.Current, material, token, ref position, out reason)) return false;
             }
         }
         // Controlled parsers reject DTDs; unsupported node kinds are never an
