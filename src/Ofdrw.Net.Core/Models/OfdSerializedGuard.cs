@@ -40,7 +40,7 @@ internal sealed class OfdControlledEditContext : IDisposable
     public void Dispose() => Interlocked.Exchange(ref state, 1);
 }
 
-internal sealed class OfdSerializedGuard
+internal sealed partial class OfdSerializedGuard
 {
     private readonly OfdDocumentPackage package;
     private readonly OfdControlledEditContext context;
@@ -113,6 +113,9 @@ internal sealed class OfdSerializedGuard
         public void Xml(string? value) { }
         public void Path(string? value) { }
         internal void Complete() { if (position != entries.Count) Changed(); }
+        internal OfdCurrentPayloadEvidence IssueCurrentPayloadEvidence(OfdDocumentPackage package,
+            OfdControlledEditContext context, CancellationToken token)
+            => OfdCurrentPayloadEvidence.Issue(package, context, digests, token);
         private static void Changed() => throw new InvalidDataException("Serialized package input changed during the controlled operation.");
     }
 }

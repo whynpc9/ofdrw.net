@@ -7,8 +7,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Ofdrw.Net.Layout" />
     <InternalsVisibleTo Include="Ofdrw.Net.Packaging.Tests" />
-    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Tests" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf" />
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
   </ItemGroup>
-</Project>
+<ItemGroup><InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Tests" /></ItemGroup></Project>

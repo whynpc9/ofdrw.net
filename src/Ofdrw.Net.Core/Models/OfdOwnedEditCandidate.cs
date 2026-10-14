@@ -159,6 +159,15 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
             throw new InvalidOperationException("Object does not belong to this owned clone map.");
         return typed;
     }
+    // Read-only map handoff for the exact private Writer after its claim. The
+    // generic editable GetMapped contract and its state check remain intact.
+    internal OfdTextElement ResolveOwnedClaimedRoot(OfdOwnedModelsLease owner, OfdTextElement original)
+    {
+        owner.RequireWriterCandidate(this); AssertClaimedActive();
+        if (!mapping.TryGetValue(original, out var mapped) || mapped is not OfdTextElement text)
+            throw new InvalidOperationException("Text root is outside this claimed clone map.");
+        return text;
+    }
 
     private void AssertEditable()
     { Context.AssertActive(); if (Volatile.Read(ref state) != 0) throw new InvalidOperationException("Candidate is no longer editable."); }

@@ -26,7 +26,8 @@ public sealed partial class OfdPackageLoader
     // This controlled profile is reviewed for .NET 10 Read-mode ZipArchive.
     // It screens a fixed footer only; ZipArchive remains the ZIP parser.
     internal async Task<OfdPackageArchive> LoadAccountedAsync(Stream spool, OfdPackageLoadOptions options,
-        OfdModelMaterialization material, CancellationToken token)
+        OfdModelMaterialization material, CancellationToken token,
+        OfdOwnedReadAcquisition? ownedAcquisition = null, OfdOwnedZipCensus? ownedCensus = null)
     {
         material.AssertReadActive(token);
         if (spool is null) throw new ArgumentNullException(nameof(spool));
@@ -73,6 +74,7 @@ public sealed partial class OfdPackageLoader
         using var zip = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
         var entries = zip.Entries;
         if (entries.Count != count || entries.Count > options.MaxEntryCount) throw new InvalidDataException("Controlled ZIP actual central entry count is inconsistent.");
+        ownedCensus?.SetExpectedPhysicalCount(entries.Count, token);
         material.ReserveReadModel(checked(512L + entries.Count * 160L), token);
         var result = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
         var probe = new byte[1]; long total = 0;
@@ -81,7 +83,14 @@ public sealed partial class OfdPackageLoader
             material.AssertReadActive(token);
             // entry.Name can allocate; reserve its position before accessing it.
             material.ChargeCopy(checked(128L + 4L * entry.FullName.Length), token);
-            if (string.IsNullOrWhiteSpace(entry.Name)) continue;
+            if (string.IsNullOrWhiteSpace(entry.Name))
+            {
+                if (ownedAcquisition is not null)
+                    OfdOwnedSaveAuthority.RecordActualLoadedEntry(ownedAcquisition, entry.FullName,
+                        OfdOwnedPhysicalEntryKind.Directory, entry.CompressedLength, entry.Length, null, token);
+                ownedCensus?.Record(entry.FullName, null, entry.CompressedLength, entry.Length, true, null, token);
+                continue;
+            }
             material.ChargeCopy(checked(256L + 16L * entry.FullName.Length), token);
             var nameStorage = material.ReserveReadStorage(checked(2L * entry.FullName.Length), token);
             var name = NormalizeAndValidate(entry.FullName); material.AdoptReadString(name, nameStorage, token);
@@ -108,7 +117,13 @@ public sealed partial class OfdPackageLoader
             if (await input.ReadAsync(probe, 0, 1, token).ConfigureAwait(false) != 0)
                 throw new InvalidDataException("OFD entry exceeds its declared expanded length.");
             material.AssertReadActive(token); material.ReserveReadModel(160, token); result.Add(name, bytes);
+            if (ownedAcquisition is not null)
+                OfdOwnedSaveAuthority.RecordActualLoadedEntry(ownedAcquisition, entry.FullName,
+                    OfdOwnedPhysicalEntryKind.AcceptedFile, entry.CompressedLength, bytes.LongLength, bytes, token);
+            ownedCensus?.Record(entry.FullName, name, entry.CompressedLength, bytes.LongLength, false, bytes, token);
         }
+        if (ownedAcquisition is not null) OfdOwnedSaveAuthority.SealActualLoaderAcquisition(ownedAcquisition, token);
+        ownedCensus?.Seal(token);
         material.AssertReadActive(token); return new OfdPackageArchive(result);
     }
 
