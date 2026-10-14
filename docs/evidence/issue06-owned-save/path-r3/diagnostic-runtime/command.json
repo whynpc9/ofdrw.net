@@ -1,0 +1,234 @@
+{
+  "head": "439cf4404c63362ceeceb56e77078fcabb966763",
+  "source_manifest_sha256": "26412a23b742eb7094f48386d0d51598023a5f92c55214f6452ac19edbd6a3e5",
+  "addon": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/source/src/Ofdrw.Net.Cli/Cli.OwnedDiagnostics.cs",
+    "bytes": 16320,
+    "sha256": "68ecf20d3c54341539670929dc5be372baff651326df3ca5b4c33d5e747deea8"
+  },
+  "harness": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/Program.cs",
+    "bytes": 644,
+    "sha256": "76460519790189dd7d062cd7338a4f9ff9c206a181568e194a831d139f172bef"
+  },
+  "compiled_dlls": [
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Docnet.Core.dll",
+      "bytes": 81920,
+      "sha256": "a596d9f7a0d71f52593aefe794139c1327e2c7901731e9c2f9d564992d81c8aa"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/DocumentFormat.OpenXml.Framework.dll",
+      "bytes": 478688,
+      "sha256": "ff3ed8318388d84fa5bbc5736df6144ecfa3165c0b95f6b45b5330f463edf7ae"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/DocumentFormat.OpenXml.dll",
+      "bytes": 7985120,
+      "sha256": "ee2a31ff79db570e2eb98ec7513b222f2b8c6bfcb638d66c2cec8255b0bbe499"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/ICSharpCode.SharpZipLib.dll",
+      "bytes": 258048,
+      "sha256": "32ea2d0ce3512e74f1c7ad82591fe67e6b8939d76a8a4ff9c93ead030131e71c"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/MigraDocCore.DocumentObjectModel.dll",
+      "bytes": 240128,
+      "sha256": "18421c81acde74cdb701317d93335c4f637c79be3837004d9a23451722a26620"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/MigraDocCore.Rendering.dll",
+      "bytes": 119296,
+      "sha256": "9e76dbad45c8a2134fcba95c948f4a92ec76818500f1b711f255001e8c82f71b"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Cli.Tests.dll",
+      "bytes": 8704,
+      "sha256": "b1c71dddbe8ddbad64cafd40c058d68cc30e79d3915341596f6493461379d303"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Cli.dll",
+      "bytes": 83456,
+      "sha256": "08ce4f0b0a97f0ee6f9f53796e6cf083a4714c921f9d8e16f55bc714ad4ad810"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Converter.Abstractions.dll",
+      "bytes": 6144,
+      "sha256": "2c26609c9db0e2555e8b39a0d63839278f9ce46e4e76b0ef2b890ef0e436b763"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Converter.Docx.dll",
+      "bytes": 174592,
+      "sha256": "35b8a7754c04002f1c272078755c0b1aa67b5f4adc7c8f04598682124adfac32"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Converter.Pdf.dll",
+      "bytes": 104960,
+      "sha256": "e936a47fe0f13102444ea0d6f965ce0094a992c78739f0eb1591999e30adc391"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Converter.Svg.dll",
+      "bytes": 22016,
+      "sha256": "a2dc3af7f8d71b8b4f361f103febe0f4b5dec157ce0c230c8465ffda4976c94c"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Core.dll",
+      "bytes": 256000,
+      "sha256": "749f20a3306cc379d36fed1b4aaac9cf0dc7f396a006c46a40158d3569e7aeea"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Layout.dll",
+      "bytes": 230400,
+      "sha256": "dd384de9ff62648ff1eb30ca2fcdf241e672e3f6421c9e32c460b8d4b67690b5"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Packaging.dll",
+      "bytes": 197632,
+      "sha256": "8685c04b31f5be6141d78f86386a575dd1cfd734186768e17bd190ac1077cc9a"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Reader.dll",
+      "bytes": 183808,
+      "sha256": "98c63831cf5f5bd70cdfa1c7ced1ffa55e53c2644f307705b5a17790ed6f1ecd"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Signatures.dll",
+      "bytes": 36864,
+      "sha256": "c070e17449f1d4ff75c84b9beddd98d49e668487a17ed9f9ea9cb2284e53a364"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/PdfSharpCore.Charting.dll",
+      "bytes": 80896,
+      "sha256": "daf0205f351c01be7414df002256faf9ad37c9fb41a117153c75e364af44bd3d"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/PdfSharpCore.dll",
+      "bytes": 529408,
+      "sha256": "0b5bbc9ada9860b51c776ff96ca3c465d716ca249608603d088212689ef08ef7"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/SixLabors.Fonts.dll",
+      "bytes": 1135616,
+      "sha256": "36e2e4c0af507538b1e98babeb475699e2e8908defae586cc519b4b5aedb2e36"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/SixLabors.ImageSharp.dll",
+      "bytes": 1806848,
+      "sha256": "6ee59130bd4bc86a3557aae8304b2e35c4f325934faa398ebbacedb7136d6935"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/System.IO.Packaging.dll",
+      "bytes": 159504,
+      "sha256": "1f27c2b1f02a185b370ef9d801597074b0ee09e338c6cf89193e403f7808821c"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/UglyToad.PdfPig.Core.dll",
+      "bytes": 50176,
+      "sha256": "b416a728a382f4e63e164caa9405664d3b4c9ab3cb3d2efa92b183981e1ec8f4"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/UglyToad.PdfPig.DocumentLayoutAnalysis.dll",
+      "bytes": 248320,
+      "sha256": "95b6694cccd3f65774cc9ba9e03a68d0e3e651c68c45d26a6ef6cd01e9fc19fe"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/UglyToad.PdfPig.Fonts.dll",
+      "bytes": 1089536,
+      "sha256": "c6b5e61da965a6bb4eb4dcc38baea581fa88dc6ad58f9e73651bd98d1bf89231"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/UglyToad.PdfPig.Package.dll",
+      "bytes": 4608,
+      "sha256": "00fc2f4870b345625c1a092d5a8d1aaad0c98eec23b519c47c6e0876ee4c4ac5"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/UglyToad.PdfPig.Tokenization.dll",
+      "bytes": 23040,
+      "sha256": "af80fe541bd79237a790ff8e904daee47ac0460de12ad102a06247519d777902"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/UglyToad.PdfPig.Tokens.dll",
+      "bytes": 45568,
+      "sha256": "f0c6e3ecc190d32569b86bbe9d707d67cc2355e5e32e5ffa38908dbb2c341bdb"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/UglyToad.PdfPig.dll",
+      "bytes": 4242944,
+      "sha256": "d6aa1d42b9b324e59b1e0800e51bdf471b82fb5b2e8ec8efe6d43ba9bf199251"
+    }
+  ],
+  "argv": [
+    "dotnet",
+    "exec",
+    "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/bin/Release/net10.0/Ofdrw.Net.Cli.Tests.dll",
+    "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/numeric-report.json",
+    "--",
+    "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/input.ofd",
+    "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/missing-parent/nested/output.ofd",
+    "--find",
+    "AAA",
+    "--replace",
+    "---",
+    "--trusted-font",
+    "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa:21659544"
+  ],
+  "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic",
+  "environment": {
+    "DOTNET_CLI_HOME": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/dotnet-home",
+    "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "TMPDIR": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/tmp/"
+  },
+  "original_source": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-changed/input.ofd",
+    "bytes": 11599908,
+    "sha256": "bc0282f62b24d97cfb02542ddf6e1e1c25925eff8ee5e813c668eaf760523783"
+  },
+  "input_before": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/input.ofd",
+    "bytes": 11599908,
+    "sha256": "bc0282f62b24d97cfb02542ddf6e1e1c25925eff8ee5e813c668eaf760523783"
+  },
+  "font_before": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-q3-implementation/prepared-fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59/fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+    "bytes": 21659544,
+    "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+  },
+  "target_parent_absent_before": true,
+  "started": 1791994709.386108,
+  "ended": 1791994710.482042,
+  "exit_code": 0,
+  "input_after": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/input.ofd",
+    "bytes": 11599908,
+    "sha256": "bc0282f62b24d97cfb02542ddf6e1e1c25925eff8ee5e813c668eaf760523783"
+  },
+  "font_after": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-q3-implementation/prepared-fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59/fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+    "bytes": 21659544,
+    "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+  },
+  "target_parent_exists_after": true,
+  "output": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/missing-parent/nested/output.ofd",
+    "bytes": 11599915,
+    "sha256": "a7a95ed2916e40daca8549b9e185d4f9017bb32f709dc57a6bc9c57a1805bfbd"
+  },
+  "numeric_report": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/numeric-report.json",
+    "bytes": 35953,
+    "sha256": "7b7099963d02c233965fb6a72bb328e22599d76fe14ae1202e046f0c17e4b836"
+  },
+  "stdout": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/stdout.log",
+    "bytes": 127,
+    "sha256": "1e636bde9c3d3cd94cbdc601ee238e946b81c11c5c58e3d7abdb3e87a03d4820"
+  },
+  "stderr": {
+    "path": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-runtime/stderr.log",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "remaining_temp_files": []
+}
