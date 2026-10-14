@@ -60,6 +60,10 @@ public sealed class TextReplacementTests
     public async Task CrossSlotEditKeepsConsumedSlotsEmptyAndFreezesSuffix()
     {
         var source = await Read([("A", 2d, ""), ("B", 5d, ""), ("C", 8d, ""), ("D", 11d, "")]);
+        var hit = Assert.Single(new OfdKeywordLocator(new Metrics()).Find(source, "BC").Hits);
+        Assert.True(hit.CanReplace); Assert.Equal(2, hit.Fragments.Count);
+        Assert.Equal(hit.Fragments[0].OccurrencePath, hit.Fragments[1].OccurrencePath);
+        Assert.NotEqual(hit.Fragments[0].TextCodePath, hit.Fragments[1].TextCodePath);
         using var result = new OfdTextReplacer(new Metrics()).Replace(source, "BC", "--");
         var output = result.CreatePackageCopy(); var text = Text(output);
         Assert.Equal(new[] { "A", "--", "", "D" }, text.Runs.Select(value => value.Text));
@@ -67,6 +71,42 @@ public sealed class TextReplacementTests
         var saved = await Roundtrip(output);
         var suffix = Assert.Single(new OfdKeywordLocator(new Metrics()).Find(saved, "D").Hits).Fragments[0];
         Assert.Equal(26, suffix.BaselineMillimeters.X); Assert.Equal(31, suffix.BaselineMillimeters.Y);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ActualReaderCrossOccurrenceHitRejectsBothReplacementRoutesWithoutMutation(bool explicitHit)
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new() { Id = "10", FontName = "Fixture", FileName = "font.ttf", Data = [1, 2, 3] });
+        var page = new OfdPage { Id = "1", XMillimeters = 5, YMillimeters = 7, WidthMillimeters = 200, HeightMillimeters = 200 };
+        foreach (var (id, value, x, delta) in new[] { ("30", "A", 2d, (string?)null), ("31", "BC", 5d, "3") })
+        {
+            var text = new OfdTextElement { ObjectId = id, LayerId = "20", FontResourceId = "10", FontName = "Fixture",
+                XMillimeters = 20, YMillimeters = 30, WidthMillimeters = 100, HeightMillimeters = 50, FontSizeMillimeters = 4, Text = value };
+            text.Runs.Add(new() { Text = value, XMillimeters = x, YMillimeters = 8, DeltaX = delta }); page.Elements.Add(text);
+        }
+        package.Pages.Add(page); var source = await Roundtrip(package);
+        var texts = source.Pages[0].Elements.OfType<OfdTextElement>().ToArray();
+        var originalText = texts.Select(text => text.Text).ToArray(); var originalXml = texts.Select(text => text.SourceXml).ToArray();
+        var originalFont = source.Fonts[0].Data.ToArray();
+        var originalEntries = source.PreservedEntries.ToDictionary(entry => entry.Key, entry => entry.Value.ToArray());
+        var locator = new OfdKeywordLocator(new Metrics()); var found = locator.Find(source, "AB");
+        Assert.True(found.IsComplete); var hit = Assert.Single(found.Hits); Assert.Equal("AB", hit.MatchedText);
+        Assert.False(hit.CanReplace); Assert.Equal(2, hit.Fragments.Count);
+        Assert.All(hit.Fragments, fragment => Assert.True(fragment.IsAuthoritativeXml));
+        Assert.NotEqual(hit.Fragments[0].OccurrencePath[3], hit.Fragments[1].OccurrencePath[3]);
+        Assert.Equal(new[] { 17d, 20d }, hit.Fragments.Select(fragment => fragment.BaselineMillimeters.X));
+        Assert.True(Assert.Single(locator.Find(source, "BC").Hits).CanReplace);
+        OfdTextReplacementResult? prepared = null; var replacer = new OfdTextReplacer(new Metrics());
+        var error = Assert.Throws<NotSupportedException>(() => prepared = explicitHit
+            ? replacer.Replace(source, new[] { new OfdTextReplacement(hit, "-") })
+            : replacer.Replace(source, "AB", "-"));
+        Assert.Equal("UneditableKeywordSource", error.Message); Assert.Null(prepared);
+        Assert.Equal(originalText, texts.Select(text => text.Text)); Assert.Equal(originalXml, texts.Select(text => text.SourceXml));
+        Assert.Equal(originalFont, source.Fonts[0].Data); Assert.Equal(originalEntries.Count, source.PreservedEntries.Count);
+        foreach (var entry in originalEntries) Assert.Equal(entry.Value, source.PreservedEntries[entry.Key]);
     }
 
     [Fact]
