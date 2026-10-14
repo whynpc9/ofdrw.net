@@ -172,6 +172,108 @@ public sealed class TextReplacementCommitNotificationTests
         finally { Directory.Delete(directory, true); }
     }
 
+    [Theory]
+    [InlineData("AAA")]
+    [InlineData("A")]
+    public async Task MissingNestedOutputParentIsCreatedAfterActualVerifiedSave(string replacement)
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "ofdrw-missing-parent-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var font = await File.ReadAllBytesAsync(FontFixture()); var input = Path.Combine(directory, "input.ofd");
+            await WriteCaseFixtureAsync(input, font); var original = await File.ReadAllBytesAsync(input);
+            var parent = Path.Combine(directory, "new", "sub"); var target = Path.Combine(parent, "output.ofd");
+            Assert.False(Directory.Exists(Path.Combine(directory, "new")));
+            var code = await global::Cli.RunAsync(["replace-text", input, target, "--find", "AAA", "--replace", replacement,
+                "--trusted-font", Convert.ToHexString(SHA256.HashData(font)) + ":" + font.Length]);
+            Assert.Equal(0, code); Assert.Equal(original, await File.ReadAllBytesAsync(input));
+            Assert.True(Directory.Exists(parent));
+            if (replacement == "AAA") Assert.Equal(original, await File.ReadAllBytesAsync(target));
+            using var actual = File.OpenRead(target); var readback = await new OfdReader().ReadAsync(actual);
+            var texts = readback.Pages[0].Elements.OfType<OfdTextElement>().ToArray();
+            Assert.Equal(replacement, Assert.Single(texts.Where(t => t.ObjectId == "30")).Text);
+            Assert.Equal("A", Assert.Single(texts.Where(t => t.ObjectId == "31")).Text);
+            var profile = new OfdTrustedEmbeddedFontIdentity(Convert.ToHexString(SHA256.HashData(font)), font.Length);
+            var locations = new OfdKeywordLocator(new OfdTrustedEmbeddedFontGeometryProvider([profile])).Find(readback, "A");
+            Assert.True(locations.IsComplete);
+            var neighbor = Assert.Single(locations.Hits.Where(hit => hit.Fragments[0].BaselineMillimeters.Y == 93));
+            Assert.Equal(22, Assert.Single(neighbor.Fragments).BaselineMillimeters.X);
+            Assert.Empty(Directory.GetFiles(directory, ".ofdrw-*.tmp", SearchOption.AllDirectories));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FileAndActualSymlinkOutputAncestorsRejectWithoutChangingSentinels(bool symbolicLink)
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "ofdrw-parent-blocker-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var font = await File.ReadAllBytesAsync(FontFixture()); var input = Path.Combine(directory, "input.ofd");
+            await WriteCaseFixtureAsync(input, font); var original = await File.ReadAllBytesAsync(input);
+            var ancestor = Path.Combine(directory, "blocked");
+            var target = Path.Combine(ancestor, "output.ofd");
+            var sentinel = Encoding.UTF8.GetBytes("existing ancestor/target sentinel");
+            string? realDirectory = null;
+            if (symbolicLink)
+            {
+                realDirectory = Path.Combine(directory, "real-target"); Directory.CreateDirectory(realDirectory);
+                await File.WriteAllBytesAsync(Path.Combine(realDirectory, "output.ofd"), sentinel);
+                try { Directory.CreateSymbolicLink(ancestor, realDirectory); }
+                catch (Exception error) when (OperatingSystem.IsWindows() &&
+                    (error is UnauthorizedAccessException or PlatformNotSupportedException ||
+                     error is IOException io && (io.HResult & 0xffff) is 1314 or 50))
+                {
+                    testOutput.WriteLine($"SYMLINK ANCESTOR BRANCH NOT EXECUTED: actual Windows link API unavailable: {error.Message}. Linux/macOS real link evidence is required separately.");
+                    Assert.Equal(original, await File.ReadAllBytesAsync(input));
+                    Assert.Equal(sentinel, await File.ReadAllBytesAsync(Path.Combine(realDirectory, "output.ofd")));
+                    Assert.Empty(Directory.GetFiles(directory, ".ofdrw-*.tmp", SearchOption.AllDirectories));
+                    return;
+                }
+                Assert.Equal(realDirectory, new DirectoryInfo(ancestor).LinkTarget);
+            }
+            else await File.WriteAllBytesAsync(ancestor, sentinel);
+            var code = await global::Cli.RunAsync(["replace-text", input, target, "--find", "AAA", "--replace", "AAA",
+                "--trusted-font", Convert.ToHexString(SHA256.HashData(font)) + ":" + font.Length]);
+            Assert.Equal(1, code); Assert.Equal(original, await File.ReadAllBytesAsync(input));
+            if (symbolicLink)
+            {
+                Assert.Equal(realDirectory, new DirectoryInfo(ancestor).LinkTarget);
+                Assert.Equal(sentinel, await File.ReadAllBytesAsync(Path.Combine(realDirectory!, "output.ofd")));
+            }
+            else
+            {
+                Assert.Equal(sentinel, await File.ReadAllBytesAsync(ancestor)); Assert.False(File.Exists(target));
+            }
+            Assert.Empty(Directory.GetFiles(directory, ".ofdrw-*.tmp", SearchOption.AllDirectories));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task InvalidInputDoesNotCreateMissingOutputParent()
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "ofdrw-invalid-missing-parent-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var input = Path.Combine(directory, "input.ofd"); var parent = Path.Combine(directory, "new", "sub");
+            var target = Path.Combine(parent, "output.ofd"); var original = Encoding.UTF8.GetBytes("invalid OFD original sentinel");
+            await File.WriteAllBytesAsync(input, original);
+            var font = await File.ReadAllBytesAsync(FontFixture());
+            var code = await global::Cli.RunAsync(["replace-text", input, target, "--find", "AAA", "--replace", "AAA",
+                "--trusted-font", Convert.ToHexString(SHA256.HashData(font)) + ":" + font.Length]);
+            Assert.Equal(1, code); Assert.Equal(original, await File.ReadAllBytesAsync(input));
+            Assert.False(Directory.Exists(Path.Combine(directory, "new"))); Assert.False(File.Exists(target));
+            Assert.Empty(Directory.GetFiles(directory, ".ofdrw-*.tmp", SearchOption.AllDirectories));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     private static async Task WriteCaseFixtureAsync(string input, byte[] font)
     {
         var package = new OfdDocumentPackage(); package.Fonts.Add(new() { Id = "10", FontName = "Ofdrw Test Face", Data = font });

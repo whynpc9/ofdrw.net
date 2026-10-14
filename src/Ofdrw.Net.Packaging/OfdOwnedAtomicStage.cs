@@ -26,6 +26,7 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
         context.Material.ChargeCopy(16_384L + 16L * destination.Length, token);
         var directory = Path.GetDirectoryName(destination);
         if (string.IsNullOrEmpty(directory)) throw new InvalidDataException("Atomic destination requires a canonical parent.");
+        PrepareDestinationDirectory(directory, token);
         path = Path.Combine(directory, ".ofdrw-save-" + Guid.NewGuid().ToString("N") + ".tmp");
         observation = owner.BindActualStageObservation(this, token);
         context.Material.ChargeWork(16, token);
@@ -39,11 +40,26 @@ internal sealed class OfdOwnedAtomicStage : IDisposable
         context.Material.ChargeCopy(16_384L + 16L * destination.Length, token);
         var directory = Path.GetDirectoryName(destination);
         if (string.IsNullOrEmpty(directory)) throw new InvalidDataException("Atomic destination requires a canonical parent.");
+        PrepareDestinationDirectory(directory, token);
         path = Path.Combine(directory, ".ofdrw-save-" + Guid.NewGuid().ToString("N") + ".tmp");
         observation = owner.BindActualStageObservation(this, token);
         context.Material.ChargeWork(16, token);
         file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous);
         observation.RecordOpened();
+    }
+    private void PrepareDestinationDirectory(string directory, CancellationToken token)
+    {
+        // At most n+1 prefixes of at most n characters, with bounded metadata
+        // shells per prefix. This prepays logical path work and transient copies;
+        // the existing stage reservation and fresh canonical walks remain separate.
+        var prefixes = checked(directory.Length + 1L);
+        var prefixCharacters = checked(prefixes * prefixes);
+        context.Material.ChargeCopy(checked(4096L + 4L * prefixCharacters + 256L * prefixes), token);
+        context.Material.ChargeWork(checked(128L * prefixes + 4L * prefixCharacters), token);
+        owner.RequireCurrentDestination(token);
+        Directory.CreateDirectory(directory);
+        context.AssertActive(); token.ThrowIfCancellationRequested();
+        owner.RequireCurrentDestination(token);
     }
     internal static OfdOwnedAtomicStage CreateChanged(OfdOwnedStageScope scope, string destination, CancellationToken token)
     {
