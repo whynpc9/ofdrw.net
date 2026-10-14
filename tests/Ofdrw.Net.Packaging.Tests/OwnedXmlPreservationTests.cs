@@ -71,4 +71,41 @@ public sealed class OwnedXmlPreservationTests
         OfdOwnedXmlPreservation.RequireExactClosedRewrite("Page.xml", XDocument.Parse(longer, LoadOptions.PreserveWhitespace), output, longContext.Material, default);
         Assert.True(longContext.Material.ValidationWorkBytes - shortContext.Material.ValidationWorkBytes >= 2L * extraCharacters);
     }
+    [Fact]
+    public void PageReferenceDoesNotAcquirePageRootContentPermission()
+    {
+        const string source = "<Document xmlns='urn:ofd'><Pages><Page ID='1'><Content> <Layer ID='2'/></Content></Page></Pages></Document>";
+        using var context = new OfdControlledEditContext(new());
+        Assert.Throws<InvalidDataException>(() => OfdOwnedXmlPreservation.RequireExactClosedRewrite("Document.xml",
+            XDocument.Parse(source, LoadOptions.PreserveWhitespace), Encoding.UTF8.GetBytes(source.Replace("<Content> ", "<Content>")), context.Material, default));
+    }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ImportedFragmentDropsOnlyReifiedSourceAncestorBindings(bool defaultNamespace)
+    {
+        var source = XElement.Parse(defaultNamespace
+            ? "<Page xmlns='urn:ofd'><Content><TextObject ID='3'/></Content></Page>"
+            : "<ofd:Page xmlns:ofd='urn:ofd'><ofd:Content><ofd:TextObject ID='3'/></ofd:Content></ofd:Page>");
+        var root = source.Descendants().Last();
+        var fragment = XElement.Parse(root.ToString(SaveOptions.DisableFormatting));
+        Assert.Contains(fragment.Attributes(), attribute => attribute.IsNamespaceDeclaration);
+        using var context = new OfdControlledEditContext(new());
+        OfdOwnedXmlPreservation.RemoveReifiedInheritedNamespaces(fragment, root, context.Material, default);
+        Assert.DoesNotContain(fragment.Attributes(), attribute => attribute.IsNamespaceDeclaration);
+        Assert.Equal(root.Name, fragment.Name);
+        Assert.Equal("3", fragment.Attribute("ID")?.Value);
+    }
+    [Fact]
+    public void OriginalOrNonInheritedNamespaceDeclarationsStayProtected()
+    {
+        var source = XElement.Parse("<ofd:Page xmlns:ofd='urn:ofd'><ofd:Content><ofd:TextObject ID='3' xmlns:v='urn:vendor'/></ofd:Content></ofd:Page>");
+        var root = source.Descendants().Last();
+        var fragment = XElement.Parse("<ofd:TextObject xmlns:ofd='urn:ofd' ID='3' xmlns:v='urn:vendor' xmlns:new='urn:new'/>");
+        using var context = new OfdControlledEditContext(new());
+        OfdOwnedXmlPreservation.RemoveReifiedInheritedNamespaces(fragment, root, context.Material, default);
+        Assert.Equal("urn:vendor", fragment.Attribute(XNamespace.Xmlns + "v")?.Value);
+        Assert.Equal("urn:new", fragment.Attribute(XNamespace.Xmlns + "new")?.Value);
+        Assert.Null(fragment.Attribute(XNamespace.Xmlns + "ofd"));
+    }
 }

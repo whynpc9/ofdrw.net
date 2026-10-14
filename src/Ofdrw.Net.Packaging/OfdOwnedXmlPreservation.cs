@@ -46,25 +46,57 @@ internal static class OfdOwnedXmlPreservation
                     if (string.IsNullOrWhiteSpace(text.Value)) text.Remove();
                 }
                 else if (node is XElement child && child.Name.Namespace == ns &&
-                    IsStructuralChild(element.Name.LocalName, child.Name.LocalName)) Visit(child, preserve);
+                    IsStructuralChild(element, child.Name.LocalName)) Visit(child, preserve);
                 node = next;
             }
         }
     }
-    private static bool IsStructuralChild(string parent, string child) => parent switch
+    private static bool IsStructuralChild(XElement parent, string child) => parent.Name.LocalName switch
     {
         "OFD" => child == "DocBody",
         "DocBody" => child == "DocInfo",
         "Document" => child is "CommonData" or "Pages",
         "CommonData" => child == "PageArea",
         "Pages" => child == "Page",
-        "Page" => child is "Area" or "Content",
+        "Page" => parent.Parent is null && (child is "Area" or "Content"),
         "Content" => child == "Layer",
         "Res" => child is "Fonts" or "MultiMedias",
         "Fonts" => child == "Font",
         "MultiMedias" => child == "MultiMedia",
         _ => false
     };
+    internal static void RemoveReifiedInheritedNamespaces(XElement importedLiteral, XElement originalRoot,
+        OfdModelMaterialization material, CancellationToken token)
+    {
+        // An independently parsed SourceXml fragment reifies inherited xmlns
+        // declarations. Remove only declarations absent on the actual source
+        // root and exactly bound by that root's ancestors. Original declarations
+        // and newly introduced namespace bindings remain subject to exact proof.
+        for (var attribute = importedLiteral.FirstAttribute; attribute is not null;)
+        {
+            var next = attribute.NextAttribute;
+            material.ChargeWork(checked(32L + 2L * (attribute.Value.Length + (long)attribute.Name.LocalName.Length)), token);
+            if (attribute.IsNamespaceDeclaration)
+            {
+                string? inherited = null; var originallyDeclared = false;
+                for (var ancestor = originalRoot; ancestor is not null; ancestor = ancestor.Parent)
+                {
+                    material.ChargeWork(64, token);
+                    foreach (var declaration in ancestor.Attributes())
+                    {
+                        material.ChargeWork(checked(32L + 2L * (declaration.Value.Length + (long)declaration.Name.LocalName.Length)), token);
+                        if (declaration.Name != attribute.Name) continue;
+                        originallyDeclared = ReferenceEquals(ancestor, originalRoot);
+                        inherited = declaration.Value;
+                        break;
+                    }
+                    if (inherited is not null) break;
+                }
+                if (!originallyDeclared && inherited == attribute.Value) attribute.Remove();
+            }
+            attribute = next;
+        }
+    }
     private static bool OrderedEqual(XNode expected, XNode actual,
         OfdModelMaterialization material, CancellationToken token, ref long position, out string reason)
     {

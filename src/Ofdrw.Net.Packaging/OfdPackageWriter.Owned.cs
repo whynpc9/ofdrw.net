@@ -209,6 +209,7 @@ public sealed partial class OfdPackageWriter
                     var approved = XElement.Parse(literal!, LoadOptions.PreserveWhitespace);
                     if (approved.Name != owner.Kind || approved.Attribute("ID")?.Value != owner.Id)
                         throw new InvalidDataException("Candidate SourceXml changed its source root authority.");
+                    OfdOwnedXmlPreservation.RemoveReifiedInheritedNamespaces(approved, sourceNodes[owner.Slot], material, token);
                     if (element is OfdTextElement text)
                     {
                         var binding = plan.Fonts.TextBindings[text];
