@@ -44,4 +44,42 @@ public sealed class TypedGraphicRenderingTests
         using var output = new MemoryStream(); await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(input, output));
         input.Position = 0; await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(input, output));
     }
+
+    [Theory]
+    [InlineData("qualifiedPlacement")]
+    [InlineData("qualifiedDefinition")]
+    [InlineData("crossNamespace")]
+    [InlineData("pi")]
+    public async Task OpaqueCompositeSemanticsRoundtripButCannotBeExported(string kind)
+    {
+        var package = new OfdDocumentPackage { CompositeResources = new() };
+        var resource = new OfdCompositeResource { WidthMillimeters = 20, HeightMillimeters = 20 };
+        resource.Elements.Add(new OfdPathElement { WidthMillimeters = 20, HeightMillimeters = 20, AbbreviatedData = "M 0 0 L 20 20" });
+        package.CompositeResources.Items.Add(resource);
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        page.Elements.Add(new OfdCompositeElement { Resource = resource, WidthMillimeters = 20, HeightMillimeters = 20 }); package.Pages.Add(page);
+        using var fresh = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, fresh); fresh.Position = 0;
+        using var changed = new MemoryStream();
+        using (var source = new System.IO.Compression.ZipArchive(fresh, System.IO.Compression.ZipArchiveMode.Read, true))
+        using (var target = new System.IO.Compression.ZipArchive(changed, System.IO.Compression.ZipArchiveMode.Create, true))
+            foreach (var entry in source.Entries)
+            {
+                using var data = entry.Open(); using var destination = target.CreateEntry(entry.FullName).Open();
+                if (!entry.FullName.EndsWith(".xml")) { data.CopyTo(destination); continue; }
+                var xml = System.Xml.Linq.XDocument.Load(data);
+                foreach (var node in xml.Descendants().Where(n => n.Name.LocalName == "CompositeObject").ToArray())
+                {
+                    if (kind == "qualifiedPlacement") node.SetAttributeValue(System.Xml.Linq.XName.Get("CTM", "urn:vendor"), "1 0 0 1 5 5");
+                    if (kind == "crossNamespace") node.Name = System.Xml.Linq.XName.Get("CompositeObject", node.Name.NamespaceName == "http://www.ofdspec.org" ? "http://www.ofdspec.org/2016" : "http://www.ofdspec.org");
+                    if (kind == "pi") node.AddFirst(new System.Xml.Linq.XProcessingInstruction("vendor", "drawing"));
+                }
+                if (kind == "qualifiedDefinition") foreach (var node in xml.Descendants().Where(n => n.Name.LocalName == "CompositeGraphicUnit")) node.SetAttributeValue(System.Xml.Linq.XName.Get("Width", "urn:vendor"), "99");
+                xml.Save(destination);
+            }
+        changed.Position = 0; var loaded = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(changed);
+        if (kind == "crossNamespace") Assert.IsType<OfdRawElement>(loaded.Pages[0].Elements[0]);
+        using var saved = new MemoryStream(); await new OfdPackageWriter().WriteAsync(loaded, saved); saved.Position = 0;
+        using var output = new MemoryStream(); await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(saved, output));
+        saved.Position = 0; await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(saved, output));
+    }
 }

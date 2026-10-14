@@ -76,7 +76,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         material.GuardPreservedXml(source, token); source.SourceIdentity?.Reconcile(source, material, token);
         OfdNavigationXml.Validate(source, source.Pages, token, material);
         OfdAnnotationContract.Validate(source, material, token);
-        OfdCompositeGraph.Validate(source, material, token);
+        OfdCompositeGraph.Validate(source, material, token, rejectRepeatedOwners: true);
         material.ChargeCopy(4096L + (long)(source.Fonts.Count + source.Attachments.Count) * 256, token);
         var mapping = new Dictionary<object, object>(OfdReferenceIdentity.Instance);
         using var payloads = OfdPayloadCloneSession.Create(context, token);

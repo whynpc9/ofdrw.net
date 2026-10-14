@@ -20,7 +20,7 @@ internal static class OfdClipGeometry
     {
         element.ClipOwnership.Validate(element.ClippingXml, material, token);
         material.ChargeCopy(8192L + 64L * (element.ClippingXml?.Length ?? 0), token);
-        var xml = OfdClipXml.Write(element, Ofdrw.Net.Core.Constants.OfdConstants.Namespace);
+        var xml = OfdClipXml.Write(element, Ofdrw.Net.Core.Constants.OfdConstants.Namespace, material, token);
         return xml is null ? Array.Empty<OfdClipRegion>() : Read(xml, material, token);
     }
     internal static IReadOnlyList<OfdClipRegion> Read(string? xml)
