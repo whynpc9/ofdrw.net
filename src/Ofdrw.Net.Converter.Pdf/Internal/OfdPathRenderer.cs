@@ -167,7 +167,8 @@ internal static class OfdPathRenderer
                                 return false;
                             }
 
-                            _path.StartFigure();
+                            var moved = Transform(point);
+                            _path.AddMove(moved.X, moved.Y);
                             _current = point;
                             _figureStart = point;
                             _command = relative ? 'l' : 'L';
