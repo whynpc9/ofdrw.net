@@ -67,7 +67,7 @@ public sealed class OfdTextExtractor
             .GroupBy(element => Math.Round(element.YMillimeters, 1))
             .Select(line => string.Concat(line
                 .OrderBy(element => element.XMillimeters)
-                .Select(element => OfdTextRenderProjection.Create(element, material, default).Text)));
+                .Select(element => OfdTextRenderProjection.LogicalText(element, material, default))));
         return string.Join(Environment.NewLine, lines);
     }
 }

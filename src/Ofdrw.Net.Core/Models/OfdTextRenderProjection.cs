@@ -13,8 +13,39 @@ internal static class OfdTextRenderProjection
 {
     internal static OfdTextElement Create(OfdTextElement text, OfdModelMaterialization material, CancellationToken token)
     {
+        var source = ReadSource(text, material, token);
+        if (source is null) return text;
+        var codes = source.Value.Codes; var raw = source.Value.Raw;
+        var view = (OfdTextElement)OfdModelCloner.CloneElement(text, clonePayloads: false, material: material, cancellationToken: token);
+        view.Runs.Clear(); var joined = new StringBuilder(); double? previousX = null, previousY = null;
+        for (var i = 0; i < codes.Length; i++)
+        {
+            token.ThrowIfCancellationRequested(); var code = codes[i];
+            if (code.Elements().Any()) throw new NotSupportedException("Nested source TextCode content cannot be rendered safely.");
+            var x = Axis(code, "X", previousX); var y = Axis(code, "Y", previousY);
+            previousX = x; previousY = y; // Inherit the previous START, never its final glyph.
+            var decoded = Decode(raw[i], token); joined.Append(decoded);
+            view.Runs.Add(new OfdTextRun { Text = decoded, XMillimeters = x, YMillimeters = y,
+                DeltaX = code.Attribute("DeltaX")?.Value, DeltaY = code.Attribute("DeltaY")?.Value });
+        }
+        view.Text = joined.ToString(); return view;
+    }
+
+    // Logical extraction shares decoding and source/model consistency, without adopting
+    // rendering restrictions on unknown children or requiring usable glyph coordinates.
+    internal static string LogicalText(OfdTextElement text, OfdModelMaterialization material, CancellationToken token)
+    {
+        var source = ReadSource(text, material, token);
+        if (source is null) return text.Text;
+        var joined = new StringBuilder();
+        foreach (var raw in source.Value.Raw) { token.ThrowIfCancellationRequested(); joined.Append(Decode(raw, token)); }
+        return joined.ToString();
+    }
+
+    private static (XElement[] Codes, string[] Raw)? ReadSource(OfdTextElement text, OfdModelMaterialization material, CancellationToken token)
+    {
         token.ThrowIfCancellationRequested();
-        if (text.SourceXml is not { Length: > 0 } source) return text;
+        if (text.SourceXml is not { Length: > 0 } source) return null;
         material.GuardFragmentXml(source, token);
         material.ChargeCopy(checked(16384L + 16L * source.Length + 256L * text.Runs.Count), token);
         material.ChargeWork(checked(8L * source.Length), token);
@@ -33,22 +64,31 @@ internal static class OfdTextRenderProjection
                 run.YMillimeters == RawNumber(code.Attribute("Y")?.Value, originalSize) &&
                 run.DeltaX == code.Attribute("DeltaX")?.Value && run.DeltaY == code.Attribute("DeltaY")?.Value;
         }
-        if (!sameRuns) return text; // Explicit typed run edits take precedence over the old envelope.
+        if (!sameRuns) return null; // Explicit typed run edits take precedence over the old envelope.
         if (text.Text != string.Concat(raw))
             throw new InvalidDataException("Text and source runs diverged; update the typed runs or clear the source envelope before rendering.");
-        var view = (OfdTextElement)OfdModelCloner.CloneElement(text, clonePayloads: false, material: material, cancellationToken: token);
-        view.Runs.Clear(); var joined = new StringBuilder(); double? previousX = null, previousY = null;
-        for (var i = 0; i < codes.Length; i++)
+        return (codes, raw);
+    }
+
+    internal static string EncodeLiteral(string text, OfdModelMaterialization material, CancellationToken token)
+    {
+        material.ChargeWork(checked(2L * text.Length), token);
+        var slashes = 0;
+        for (var index = 0; index < text.Length; index++)
+        { if ((index & 255) == 0) token.ThrowIfCancellationRequested(); if (text[index] == '\\') slashes++; }
+        if (slashes == 0) return text;
+        var length = checked(text.Length + 4L * slashes);
+        if (length > int.MaxValue) throw new InvalidDataException("Encoded TextCode exceeds string capacity.");
+        // Reserve both the builder buffer and final UTF-16 string before either allocation.
+        material.ChargeCopy(checked(128L + 4L * length), token);
+        material.ChargeWork(checked(2L * length), token);
+        var encoded = new StringBuilder((int)length);
+        for (var index = 0; index < text.Length; index++)
         {
-            token.ThrowIfCancellationRequested(); var code = codes[i];
-            if (code.Elements().Any()) throw new NotSupportedException("Nested source TextCode content cannot be rendered safely.");
-            var x = Axis(code, "X", previousX); var y = Axis(code, "Y", previousY);
-            previousX = x; previousY = y; // Inherit the previous START, never its final glyph.
-            var decoded = Decode(raw[i], token); joined.Append(decoded);
-            view.Runs.Add(new OfdTextRun { Text = decoded, XMillimeters = x, YMillimeters = y,
-                DeltaX = code.Attribute("DeltaX")?.Value, DeltaY = code.Attribute("DeltaY")?.Value });
+            if ((index & 255) == 0) token.ThrowIfCancellationRequested();
+            if (text[index] == '\\') encoded.Append("\\005C"); else encoded.Append(text[index]);
         }
-        view.Text = joined.ToString(); return view;
+        token.ThrowIfCancellationRequested(); return encoded.ToString();
     }
 
     private static double RawNumber(string? value, double fallback) =>
