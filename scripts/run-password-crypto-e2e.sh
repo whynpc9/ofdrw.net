@@ -37,7 +37,7 @@ for file in sorted(feed.glob('*.nupkg')):
   assert nodes['version']==version and nodes['license']=='MIT'
   deps={n.get('id'):n.get('version') for n in root.iter() if n.tag.rsplit('}',1)[-1]=='dependency'}
   if nodes['id']=='Ofdrw.Net.Crypto.Password':
-   assert deps['BouncyCastle.Cryptography']=='2.6.2' and 'docs/password-crypto.md' in z.namelist()
+   assert deps['BouncyCastle.Cryptography']=='[2.6.2]' and 'docs/password-crypto.md' in z.namelist()
    assert 'lib/net8.0/Ofdrw.Net.Crypto.Password.dll' in z.namelist()
   for name,value in deps.items():
    if name.startswith('Ofdrw.Net.'): assert value in [version,f'[{version}]']
