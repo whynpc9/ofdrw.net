@@ -61,7 +61,7 @@ internal static class OfdCompositeProjection
             projected.HeightMillimeters = Math.Abs(origin[1]) * element.WidthMillimeters + Math.Abs(origin[3]) * element.HeightMillimeters;
             material.StoreMatrix(transformed);
             if (projected is OfdTextElement text) { text.Transform = transformed; text.SourceXml = null; }
-            if (projected is OfdPathElement path) { path.Transform = transformed; path.SourceXml = null; }
+            if (projected is OfdPathElement path) { OfdPathStyle.CaptureProjection((OfdPathElement)element, path); path.Transform = transformed; path.SourceXml = null; }
             if (projected is OfdImageElement image) { image.Transform = transformed; image.SourceXml = null; }
             projected.ClipOwnership.Value = projected.ClipOwnership.Original = null; projected.ClipOwnership.Baseline = null;
             projected.ClippingXml = Encode(clipsForLeaf, material, token); result.Add(projected);
