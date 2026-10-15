@@ -28,12 +28,16 @@ internal sealed class OpenTypeCmap
                 VariationSequences = new byte[length]; Buffer.BlockCopy(table, offset, VariationSequences, 0, length);
                 ReadVariations(VariationSequences);
             }
-            if (platform == 3 && encoding == 0 && format == 4) { Validate4(offset); symbol4 = offset; }
+            if (platform == 3 && encoding == 0 && format == 4) symbol4 = offset;
             if (platform != 0 && !(platform == 3 && (encoding == 1 || encoding == 10))) continue;
-            if (format == 4) { Validate4(offset); format4 = offset; }
+            if (format == 4) format4 = offset;
             if (format == 12) { Validate12(offset); format12 = offset; }
         }
         if (format4 < 0 && format12 < 0 && symbol4 >= 0) { format4 = symbol4; IsSymbol = true; }
+        // Format 12 is authoritative in GlyphCore. An unused legacy/symbol
+        // format 4 cannot invalidate that selected repertoire; validate it only
+        // when lookup will actually consume it.
+        if (format12 < 0 && format4 >= 0) Validate4(format4);
         if (format4 < 0 && format12 < 0) throw new NotSupportedException("Font needs a Unicode cmap format 4 or 12.");
     }
     private void ReadVariations(byte[] variation)

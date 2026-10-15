@@ -45,4 +45,22 @@ public sealed class RoadmapIntegrationTests
         else package.Options.FontEmbedding.MaximumUsedScalars--;
         Assert.Throws<InvalidDataException>(() => guard.AssertUnchanged(package, context));
     }
+    [Theory]
+    [InlineData(true)] [InlineData(false)]
+    public void OnlyAuthoritativeCmapIsValidatedForLookup(bool hasUnicode12)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var face = new OpenTypeFace(File.ReadAllBytes(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf")));
+        var original = new OpenTypeCmap(face); var glyph = original.Glyph('A');
+        var table = OpenTypeCmap.Build(new Dictionary<int, int> { ['A'] = glyph });
+        var offset = (int)OpenTypeFace.U32(table, 8); var count = OpenTypeFace.U16(table, offset + 6) / 2;
+        OpenTypeFace.Put16(table, offset + 16 + count * 2, 'B'); // start exceeds end in legacy table
+        if (!hasUnicode12) OpenTypeFace.Put16(table, 2, 1);
+        face.Tables["cmap"] = table;
+        if (hasUnicode12) Assert.Equal(glyph, new OpenTypeCmap(face).Glyph('A'));
+        else Assert.Throws<InvalidDataException>(() => new OpenTypeCmap(face));
+    }
+
 }
