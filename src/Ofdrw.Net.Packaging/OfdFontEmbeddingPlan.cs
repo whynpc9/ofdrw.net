@@ -16,8 +16,9 @@ internal sealed class OfdFontEmbeddingPlan
     internal List<string> Diagnostics { get; } = new();
     internal bool CanonicalPayloads { get; }
 
-    internal OfdFontEmbeddingPlan(OfdDocumentPackage package, CancellationToken cancellationToken)
+    internal OfdFontEmbeddingPlan(OfdDocumentPackage package, CancellationToken cancellationToken, OfdModelMaterialization? material = null)
     {
+        material ??= new OfdModelMaterialization(new OfdModelLimits());
         var options = package.Options.FontEmbedding ?? throw new ArgumentException("FontEmbedding is required.");
         if (options.MaximumCmapParseWork <= 0 || options.MaximumCollectionBytes <= 0 || options.MaximumFontBytes <= 0 || options.MaximumUsedScalars <= 0 || options.MaximumGlyphClosureOperations <= 0 || !Enum.IsDefined(typeof(OfdFontEmbeddingMode), options.Mode))
             throw new ArgumentOutOfRangeException(nameof(package), "Invalid font embedding options.");
@@ -107,8 +108,9 @@ internal sealed class OfdFontEmbeddingPlan
                         Diagnostics.Add("FONT_COVERAGE_UNVERIFIED " + group.Key + ": CGTransform has explicit glyph references; original font preserved.");
                         continue;
                     }
-                    if (cmap is not null) EmbeddedFontCoverage.Validate(text, cmap, aliases[0].FontName, cancellationToken);
-                    var strings = text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text);
+                    var effective = OfdTextRenderProjection.CreateLogical(text, material, cancellationToken);
+                    if (cmap is not null) EmbeddedFontCoverage.Validate(effective, cmap, aliases[0].FontName, cancellationToken);
+                    var strings = effective.Runs.Count == 0 ? new[] { effective.Text } : effective.Runs.Select(run => run.Text);
                     foreach (var value in strings)
                     {
                         foreach (var normalized in NormalizeForUsage(value, cancellationToken))

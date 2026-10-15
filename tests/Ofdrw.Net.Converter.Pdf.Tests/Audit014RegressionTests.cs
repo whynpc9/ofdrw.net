@@ -192,11 +192,13 @@ public sealed class Audit014RegressionTests
     }
 
     [Theory]
-    [InlineData(@"C:\work\file", false)] [InlineData(@"C:\work\file", true)]
-    [InlineData(@"A\0020B", false)] [InlineData(@"A\0020B", true)]
-    public async Task Audit014_FreshWriterRoundtrip_PreservesLiteralText(string literal, bool run)
+    [InlineData(@"C:\work\file", false, true)] [InlineData(@"C:\work\file", true, true)]
+    [InlineData(@"C:\work\file", false, false)] [InlineData(@"C:\work\file", true, false)]
+    [InlineData(@"A\0020B", false, true)] [InlineData(@"A\0020B", true, true)]
+    [InlineData(@"A\0020B", false, false)] [InlineData(@"A\0020B", true, false)]
+    public async Task Audit014_FreshWriterRoundtrip_PreservesLiteralText(string literal, bool run, bool full)
     {
-        var package = new OfdDocumentPackage(); package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
+        var package = new OfdDocumentPackage(); package.Options.FontEmbedding.Mode = full ? OfdFontEmbeddingMode.Full : OfdFontEmbeddingMode.SubsetWhenSafe;
         package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "audit014", Data = Font });
         var text = new OfdTextElement { Text = literal, FontResourceId = "10", FontSizeMillimeters = 4 };
         if (run) text.Runs.Add(new OfdTextRun { Text = literal, XMillimeters = 0, YMillimeters = 4 });
@@ -254,6 +256,34 @@ public sealed class Audit014RegressionTests
         using var pdf = UglyToad.PdfPig.PdfDocument.Open(await Pdf(bytes)); Assert.Equal(literal + literal, pdf.GetPage(1).Text);
         var raw = Assert.IsType<OfdTextElement>(Assert.Single(read.CompositeResources!.Items).Elements[0]);
         Assert.Equal(literal.Replace("\\", "\\005C"), raw.Text);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task Audit014_ImportedSourceResave_ValidatesDecodedCoverageWithoutReencoding(bool missing)
+    {
+        var face = new OpenTypeFace(Font); var cmap = new OpenTypeCmap(face);
+        var characters = missing ? @"\0041" : "A";
+        face.Tables["cmap"] = OpenTypeCmap.Build(characters.Distinct().ToDictionary(c => (int)c, c => cmap.Glyph(c)));
+        var bytes = await Input("<TextCode X=\"2\" Y=\"8\">\\0041</TextCode>", face.Build());
+        for (var generation = 0; generation < 2; generation++)
+        {
+            using var input = new MemoryStream(bytes); var model = await new OfdReader().ReadAsync(input);
+            var text = Assert.IsType<OfdTextElement>(model.Pages[0].Elements[0]); var source = text.SourceXml;
+            using var saved = new MemoryStream();
+            if (missing)
+            {
+                var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdPackageWriter().WriteAsync(model, saved));
+                Assert.Contains("lacks U+0041", error.Message); Assert.Equal(0, saved.Length); return;
+            }
+            await new OfdPackageWriter().WriteAsync(model, saved); bytes = saved.ToArray();
+            Assert.Equal(source, text.SourceXml); Assert.Equal(@"\0041", Assert.Single(text.Runs).Text);
+            Assert.Equal("A", new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(model));
+            Assert.Equal("A", Assert.Single(Nodes(await Svg(bytes))).Value);
+            using var pdf = UglyToad.PdfPig.PdfDocument.Open(await Pdf(bytes)); Assert.Equal("A", pdf.GetPage(1).Text);
+            using var archive = new ZipArchive(new MemoryStream(bytes)); using var xml = archive.GetEntry("Doc_0/Pages/Page_0/Content.xml")!.Open();
+            Assert.Equal(@"\0041", XDocument.Load(xml).Descendants().Single(n => n.Name.LocalName == "TextCode").Value);
+        }
     }
 
     [Fact]

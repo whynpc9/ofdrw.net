@@ -12,6 +12,12 @@ namespace Ofdrw.Net.Core.Models;
 internal static class OfdTextRenderProjection
 {
     internal static OfdTextElement Create(OfdTextElement text, OfdModelMaterialization material, CancellationToken token)
+        => CreateCore(text, material, token, renderGeometry: true);
+
+    internal static OfdTextElement CreateLogical(OfdTextElement text, OfdModelMaterialization material, CancellationToken token)
+        => CreateCore(text, material, token, renderGeometry: false);
+
+    private static OfdTextElement CreateCore(OfdTextElement text, OfdModelMaterialization material, CancellationToken token, bool renderGeometry)
     {
         var source = ReadSource(text, material, token);
         if (source is null) return text;
@@ -21,8 +27,9 @@ internal static class OfdTextRenderProjection
         for (var i = 0; i < codes.Length; i++)
         {
             token.ThrowIfCancellationRequested(); var code = codes[i];
-            if (code.Elements().Any()) throw new NotSupportedException("Nested source TextCode content cannot be rendered safely.");
-            var x = Axis(code, "X", previousX); var y = Axis(code, "Y", previousY);
+            if (renderGeometry && code.Elements().Any()) throw new NotSupportedException("Nested source TextCode content cannot be rendered safely.");
+            var x = renderGeometry ? Axis(code, "X", previousX) : text.Runs[i].XMillimeters;
+            var y = renderGeometry ? Axis(code, "Y", previousY) : text.Runs[i].YMillimeters;
             previousX = x; previousY = y; // Inherit the previous START, never its final glyph.
             var decoded = Decode(raw[i], token); joined.Append(decoded);
             view.Runs.Add(new OfdTextRun { Text = decoded, XMillimeters = x, YMillimeters = y,
