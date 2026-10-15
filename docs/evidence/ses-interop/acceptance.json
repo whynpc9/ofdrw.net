@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 1,
+  "ticket": "12-ses-self-sign-interop",
+  "baseCommit": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+  "sourceCommit": "92073352b33b2b26804e6d033cefa4a48fe31563",
+  "branch": "codex/ses-self-sign-interop",
+  "candidateVersion": "0.1.0-ses-interop-9207335",
+  "sourceFreeze": {
+    "file": "source-freeze.json",
+    "bytes": 35179,
+    "sha256": "c3379ace512abe390d58b46e08b632fa22bca92d34656d1a4192f9ef826cda41"
+  },
+  "recordedAtUtc": "2026-10-07T20:40:34.619059+00:00",
+  "environment": {
+    "runtime": ".NET 10.0.12",
+    "os": "macOS 26.6.2",
+    "architecture": "Arm64"
+  },
+  "dependencyLicense": "BouncyCastle.Cryptography 2.6.2 MIT; exact metadata/license/hash retained alongside this record",
+  "sample": {
+    "original": "e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx",
+    "bytes": 3347,
+    "sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+    "licensedDocx": {
+      "bytes": 3529,
+      "sha256": "5f676e1ae85b98807199553953df8333c2bbd43880933646bc6e8a3ab26348d0"
+    },
+    "fontSha256": "3012A9B63F5ECA3E3B38F23A1BE5ED504675E394ABF8E7A4FA981506582C04AA",
+    "fontLicense": "Noto OFL, files/Noto-OFL.txt"
+  },
+  "functional": {
+    "solutionTests": {
+      "total": 437,
+      "passed": 437,
+      "failed": 0,
+      "notExecuted": 0
+    },
+    "focusedTestsPassed": 37,
+    "independentReleaseTestsPassed": 37,
+    "mainCandidateE2ePassed": true,
+    "independentExactCandidatePackageOnlyConsumptionPassed": true,
+    "candidatePackageCount": 12,
+    "defaultProductPackageCount": 11,
+    "cliExitCodes": [
+      2,
+      2,
+      2,
+      2
+    ],
+    "coreBuiltInSesSm2": false,
+    "defaultFullyValid": false,
+    "referenceIntegrityCheckedIndependently": true,
+    "explicitPinnedTestSelfVerificationPassed": true,
+    "packageRepositoryCommitMatchesSource": true,
+    "samples": [
+      {
+        "name": "native-v1",
+        "mode": "native",
+        "version": 1,
+        "pages": 2,
+        "referenceIntegrityValid": true,
+        "defaultFullyValid": false,
+        "defaultCryptographicStatus": "Unsupported",
+        "explicitTestFullyValid": true,
+        "wrongPinFullyValid": false,
+        "textEqual": true,
+        "originalEntriesPreserved": true,
+        "PropertyInformation": "/Doc_0/Signs/Sign_0/Signature.xml",
+        "signedValueBytes": 1581,
+        "ofdBytes": 11605685,
+        "baselineBytes": 11602908
+      },
+      {
+        "name": "native-v4",
+        "mode": "native",
+        "version": 4,
+        "pages": 2,
+        "referenceIntegrityValid": true,
+        "defaultFullyValid": false,
+        "defaultCryptographicStatus": "Unsupported",
+        "explicitTestFullyValid": true,
+        "wrongPinFullyValid": false,
+        "textEqual": true,
+        "originalEntriesPreserved": true,
+        "PropertyInformation": "/Doc_0/Signs/Sign_0/Signature.xml",
+        "signedValueBytes": 1582,
+        "ofdBytes": 11605697,
+        "baselineBytes": 11602908
+      },
+      {
+        "name": "default-v1",
+        "mode": "default",
+        "version": 1,
+        "pages": 2,
+        "referenceIntegrityValid": true,
+        "defaultFullyValid": false,
+        "defaultCryptographicStatus": "Unsupported",
+        "explicitTestFullyValid": true,
+        "wrongPinFullyValid": false,
+        "textEqual": true,
+        "originalEntriesPreserved": true,
+        "PropertyInformation": "/Doc_0/Signs/Sign_0/Signature.xml",
+        "signedValueBytes": 1582,
+        "ofdBytes": 11605689,
+        "baselineBytes": 11602908
+      },
+      {
+        "name": "default-v4",
+        "mode": "default",
+        "version": 4,
+        "pages": 2,
+        "referenceIntegrityValid": true,
+        "defaultFullyValid": false,
+        "defaultCryptographicStatus": "Unsupported",
+        "explicitTestFullyValid": true,
+        "wrongPinFullyValid": false,
+        "textEqual": true,
+        "originalEntriesPreserved": true,
+        "PropertyInformation": "/Doc_0/Signs/Sign_0/Signature.xml",
+        "signedValueBytes": 1583,
+        "ofdBytes": 11605691,
+        "baselineBytes": 11602908
+      }
+    ],
+    "packListFailureProbe": "pack-failure-probe/result.json",
+    "publishPackProbe": "publish-pack-probe/failure.json"
+  },
+  "preview": {
+    "status": "passed-for-listed-pages",
+    "viewer": "macOS Preview via CUA screenshots with absolute Window URL and page-number readback",
+    "checkedAtUtc": "2026-10-07T20:40:34.618925+00:00",
+    "checkedAtLocalDate": "2026-10-08",
+    "chain": "licensed-layout.docx -> explicit Native/default original-text OFD -> SES V1/V4 signed OFD -> OFD-to-PDF -> macOS Preview",
+    "checkedPageCount": 12,
+    "artifacts": [
+      {
+        "pdf": {
+          "file": "files/native-v1.pdf",
+          "bytes": 117058,
+          "sha256": "13b6ee17f53298ebc1a490ce9bff8916f2a5f231fd0463cb0e11d306af9f2d68"
+        },
+        "ofd": {
+          "file": "files/native-v1.ofd",
+          "bytes": 11605685,
+          "sha256": "9be60bf524082bd7d612dfab49bbe08f07d044a7eeed66232e916e3de3e49249"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round5/files/native-v1.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/native-v1/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/native-v1/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ],
+        "findings": "Chinese/proportional English and italic subtitle legible; table fill/borders, local red bold, right alignment and two-page pagination retained; no clipping/overlap/ghosting/extra blank page"
+      },
+      {
+        "pdf": {
+          "file": "files/native-v4.pdf",
+          "bytes": 117058,
+          "sha256": "463cd1d9e17d7ba4b44a87337b728aa4d4d52715117abe730442871154a6af14"
+        },
+        "ofd": {
+          "file": "files/native-v4.ofd",
+          "bytes": 11605697,
+          "sha256": "9f710ce9c6d4fe27a446a0c72b2a0b0ca28757c29a327345284fa457075e92c2"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round5/files/native-v4.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/native-v4/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/native-v4/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ],
+        "findings": "Chinese/proportional English and italic subtitle legible; table fill/borders, local red bold, right alignment and two-page pagination retained; no clipping/overlap/ghosting/extra blank page"
+      },
+      {
+        "pdf": {
+          "file": "files/default-v1.pdf",
+          "bytes": 117058,
+          "sha256": "0546c9fb892a83ece2207ef81e12e49b5aa19bf4128a601f5e55a53fdbf1dc90"
+        },
+        "ofd": {
+          "file": "files/default-v1.ofd",
+          "bytes": 11605689,
+          "sha256": "58032b1d6a8d2c40a7517369a9beed3f17486668855d4413a7e4ceda712e6b54"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round5/files/default-v1.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/default-v1/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/default-v1/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ],
+        "findings": "Chinese/proportional English and italic subtitle legible; table fill/borders, local red bold, right alignment and two-page pagination retained; no clipping/overlap/ghosting/extra blank page"
+      },
+      {
+        "pdf": {
+          "file": "files/default-v4.pdf",
+          "bytes": 117058,
+          "sha256": "529225b7d24bb63b97f08fad3b573beaf5bf1f5ba14c16f402a6737446753f79"
+        },
+        "ofd": {
+          "file": "files/default-v4.ofd",
+          "bytes": 11605691,
+          "sha256": "0f3ca506c6854a0939f2c8737d4c0ff9175865ceb2747f0de3283062cea9fb12"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round5/files/default-v4.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/default-v4/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/default-v4/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ],
+        "findings": "Chinese/proportional English and italic subtitle legible; table fill/borders, local red bold, right alignment and two-page pagination retained; no clipping/overlap/ghosting/extra blank page"
+      },
+      {
+        "pdf": {
+          "file": "files/baseline-native.pdf",
+          "bytes": 117058,
+          "sha256": "91fcfd13ba6d1b71ab6d9acd34054c0878f23233708c855b7638ffaacefd2d50"
+        },
+        "ofd": {
+          "file": "files/baseline-native.ofd",
+          "bytes": 11602908,
+          "sha256": "8607a6397ad4876b55ee08176b5757204b8769b7cc24cc823a5db5358d81ffda"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round5/files/baseline-native.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/baseline-native/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/baseline-native/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ],
+        "findings": "Chinese/proportional English and italic subtitle legible; table fill/borders, local red bold, right alignment and two-page pagination retained; no clipping/overlap/ghosting/extra blank page"
+      },
+      {
+        "pdf": {
+          "file": "files/baseline-default.pdf",
+          "bytes": 117058,
+          "sha256": "ba208215f92317fe74a0ede2ccbd6fa59e03e2c04c03e7b1265b6ff7ad4a1136"
+        },
+        "ofd": {
+          "file": "files/baseline-default.ofd",
+          "bytes": 11602908,
+          "sha256": "ed741155c84b0ed05090b312d18db85ab3b3836827f526745d353f346f5683db"
+        },
+        "actualPreviewPath": "/Users/wanghongyi/.codex/worktrees/2792/ofdrw.net/artifacts/ses-interop/round5/files/baseline-default.pdf",
+        "checkedPages": [
+          1,
+          2
+        ],
+        "pagePngs": [
+          {
+            "file": "pages/baseline-default/page-1.png",
+            "sha256": "6c398bf8a20c4fe84f5bc696a9c40a1f7625f20541f7d4754ca5b01e24d35c97"
+          },
+          {
+            "file": "pages/baseline-default/page-2.png",
+            "sha256": "27160a5fe02c87b170ce6646c708c959b2f0c90b67d4f83add0a3c0fa600f487"
+          }
+        ],
+        "findings": "Chinese/proportional English and italic subtitle legible; table fill/borders, local red bold, right alignment and two-page pagination retained; no clipping/overlap/ghosting/extra blank page"
+      }
+    ],
+    "closedDocuments": true,
+    "closedTaskDialogs": true,
+    "cleanupEvidence": "Each Round5 document closed immediately after page 2; after the last close, Window menu has no four signed files. Same-name remaining baseline-default.pdf readback is 587a/password-crypto/review3-current, not Round5. No task Open/GoTo panel remains. Preview was left running with other/restored documents untouched.",
+    "initialRestoredWindows": "Previously released Issue11 PNG collection and original baseline-native.pdf appeared during opening and were closed after exact source URL confirmation. Uncertain PostScript temporary baseline-native.ofd and other non-task documents were not changed. Restored/old content was never counted toward current acceptance.",
+    "guiReleasedToCoordinator": true,
+    "previousRound4Record": "previous-round4/acceptance.json"
+  },
+  "png": {
+    "dpi": 96,
+    "signedPagesByteEqualBaseline": true,
+    "round5PagesByteEqualRound4": true,
+    "notAPreviewSubstitute": true
+  },
+  "limitations": [
+    "Only listed deterministic two-page sample and limited SES profile inspected",
+    "No reader recognition, legal effect, qualified TSA, chain/revocation or visual seal verification",
+    "Sample has no headers/footers/page numbers/body images; no additional claim for these",
+    "Fresh random identities/nonces and signature/PDF metadata vary between generations",
+    "Independent agent performed automated exact candidate consumption/tests; current Preview was separately inspected by the primary agent",
+    "Only these six two-page samples inspected; no production reader recognition/legal effect/qualified TSA",
+    "Evidence-only update requires latest-head re-review/CI before ticket closure; no merge or NuGet publication"
+  ],
+  "reviewBaseline": "10b4fb2a6878df5f030af3f866b742586497980e",
+  "runtimeEquivalence": {
+    "candidateSource": "92073352b33b2b26804e6d033cefa4a48fe31563",
+    "reviewBaseline": "10b4fb2a6878df5f030af3f866b742586497980e",
+    "frozenRuntimeTestsFixturesConsumersScriptsUnchanged": true,
+    "onlyChangedFrozenInput": ".github/workflows/ses-interop.yml CI runner setup"
+  }
+}

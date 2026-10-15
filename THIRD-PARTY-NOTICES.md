@@ -20,6 +20,14 @@ contains Apache License 2.0. Current ImageSharp mainline documentation describes
 a Six Labors Split License; any ImageSharp version update therefore needs a new
 license review rather than carrying this row forward automatically.
 
+## Optional SES dev/interop extension
+
+`Ofdrw.Net.Signatures.SesInterop` alone adds `BouncyCastle.Cryptography` at the
+exact version `2.6.2` (MIT), source https://github.com/bcgit/bc-csharp.
+Core, Writer, Converter and the default CLI do not depend on this extension.
+The actual NuGet metadata and MIT license are retained under
+`docs/evidence/ses-interop/`; the extension package also carries the license.
+
 Transitive dependencies are resolved by NuGet and may change as direct
 dependencies are updated. The reviewed release inventory in
 `docs/third-party-dependency-baseline.json` records the resolved package
