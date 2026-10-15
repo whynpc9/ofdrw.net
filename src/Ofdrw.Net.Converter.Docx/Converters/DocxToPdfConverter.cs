@@ -52,6 +52,7 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
 
         if (_options.MaxInputBytes <= 0 || _options.MaxExpandedBytes <= 0 ||
             _options.MaxPackagePartCount <= 0 || _options.MaxDocumentElements <= 0 || _options.MaxPageCount <= 0 ||
+            _options.MaxTableColumnCount <= 0 ||
             _options.MaxEmbeddedImageBytes <= 0 || _options.MaxEmbeddedImagePixels <= 0 || _options.MaxEmbeddedFontBytes <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(options), "BuiltIn resource limits must be positive.");
