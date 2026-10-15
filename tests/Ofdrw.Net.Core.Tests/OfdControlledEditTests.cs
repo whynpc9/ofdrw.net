@@ -81,6 +81,31 @@ public sealed class OfdControlledEditTests
         Assert.Equal(0, material.ValidationWorkBytes);
     }
 
+    [Fact]
+    public void Audit011_OwnedClonePreservesNondefaultCmapLimitWithoutAliasing()
+    {
+        var source = Document(); source.Options.FontEmbedding.MaximumCmapParseWork = 73;
+        using var context = new OfdControlledEditContext(new OfdModelLimits());
+        var guard = context.CaptureSource(source);
+        using var owned = OfdOwnedEditCandidate.CloneForControlledEdit(source, guard, context);
+        Assert.NotSame(source.Options.FontEmbedding, owned.Package.Options.FontEmbedding);
+        Assert.Equal(73, owned.Package.Options.FontEmbedding.MaximumCmapParseWork);
+        owned.Package.Options.FontEmbedding.MaximumCmapParseWork = 11;
+        Assert.Equal(73, source.Options.FontEmbedding.MaximumCmapParseWork);
+        guard.AssertUnchanged(source, context);
+    }
+
+    [Fact]
+    public void Audit011_SourceGuardRejectsCmapLimitMutationAfterCapture()
+    {
+        var source = Document(); source.Options.FontEmbedding.MaximumCmapParseWork = 73;
+        using var context = new OfdControlledEditContext(new OfdModelLimits());
+        var guard = context.CaptureSource(source);
+        guard.AssertUnchanged(source, context);
+        source.Options.FontEmbedding.MaximumCmapParseWork = 74;
+        Assert.Throws<InvalidDataException>(() => guard.AssertUnchanged(source, context));
+    }
+
     private static OfdDocumentPackage Document()
     {
         var source = new OfdDocumentPackage(); source.Options.Metadata.CreationDate = DateTimeOffset.Parse("2020-01-02T03:04:05+08:00");

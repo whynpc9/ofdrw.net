@@ -94,6 +94,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
                     MaximumFontBytes = source.Options.FontEmbedding.MaximumFontBytes,
                     MaximumCollectionBytes = source.Options.FontEmbedding.MaximumCollectionBytes,
                     MaximumUsedScalars = source.Options.FontEmbedding.MaximumUsedScalars,
+                    MaximumCmapParseWork = source.Options.FontEmbedding.MaximumCmapParseWork,
                     MaximumGlyphClosureOperations = source.Options.FontEmbedding.MaximumGlyphClosureOperations
                 },
                 DefaultPageWidthMillimeters = source.Options.DefaultPageWidthMillimeters,

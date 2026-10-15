@@ -60,6 +60,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                     MaximumFontBytes = Math.Min(_options.MaxEmbeddedFontBytes, _options.FontEmbedding.MaximumFontBytes),
                     MaximumCollectionBytes = _options.FontEmbedding.MaximumCollectionBytes,
                     MaximumUsedScalars = _options.FontEmbedding.MaximumUsedScalars,
+                    MaximumCmapParseWork = _options.FontEmbedding.MaximumCmapParseWork,
                     MaximumGlyphClosureOperations = _options.FontEmbedding.MaximumGlyphClosureOperations
                 },
                 DocType = "OFD-H",

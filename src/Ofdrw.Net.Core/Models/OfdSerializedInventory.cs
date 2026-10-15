@@ -41,6 +41,7 @@ internal static class OfdSerializedInventory
         V("fontMode", options.FontEmbedding.Mode); V("fontMaxBytes", options.FontEmbedding.MaximumFontBytes);
         V("fontMaxCollection", options.FontEmbedding.MaximumCollectionBytes);
         V("fontMaxScalars", options.FontEmbedding.MaximumUsedScalars);
+        V("fontMaxCmapParseWork", options.FontEmbedding.MaximumCmapParseWork);
         V("fontMaxClosure", options.FontEmbedding.MaximumGlyphClosureOperations);
         var metadata = options.Metadata;
         S("title", metadata.Title); S("author", metadata.Author); S("subject", metadata.Subject);

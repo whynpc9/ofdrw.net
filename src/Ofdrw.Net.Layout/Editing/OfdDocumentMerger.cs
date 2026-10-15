@@ -309,6 +309,7 @@ public static class OfdDocumentMerger
                 MaximumFontBytes = source.FontEmbedding.MaximumFontBytes,
                 MaximumCollectionBytes = source.FontEmbedding.MaximumCollectionBytes,
                 MaximumUsedScalars = source.FontEmbedding.MaximumUsedScalars,
+                MaximumCmapParseWork = source.FontEmbedding.MaximumCmapParseWork,
                 MaximumGlyphClosureOperations = source.FontEmbedding.MaximumGlyphClosureOperations
             },
             DefaultPageWidthMillimeters = source.DefaultPageWidthMillimeters,
