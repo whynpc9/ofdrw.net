@@ -82,8 +82,8 @@ issue #3 的逐项状态见 [实现对照](issue-3-implementation.md)，不因 0
 
 ## 11 票：独立口令扩展
 
-`Ofdrw.Net.Crypto.Password`（net8.0）提供本包 profile v1 的 SM3 KDF、
-SM4-CBC/PKCS#7 文件密钥包装、显式部分页/条目加密与恢复字节校验。
+`Ofdrw.Net.Crypto.Password`（net8.0）提供本包 profile v2 的随机盐/有界 scrypt、
+独立 IV 的 SM4-CBC/PKCS#7 与先验 HMAC、显式部分页/条目加密及精确恢复；拒绝v1。
 核心 `SupportsGmT0099EncryptionEnvelope=false` 保持不变，不进入默认 Converter。
 仅自闭环：无厂商互认、非商用密码认证、非长期保存格式；不支持证书、
 GM/T 完整性协议、多重加密。契约与限制见[口令扩展](password-crypto.md)，

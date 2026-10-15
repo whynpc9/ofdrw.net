@@ -42,7 +42,7 @@ var results = new Dictionary<string, object>();
 foreach (var mode in new[] { "native", "default" })
 {
     var baselinePath = Path.Combine(output, "baseline-" + mode + ".ofd");
-    var options = new DocxConversionOptions { FontDirectories = { fonts } };
+    var options = new DocxConversionOptions { FontDirectories = { fonts }, UseInstalledMicrosoftOfficeFonts = false };
     if (mode == "native") options.OfdMode = DocxToOfdMode.Native;
     using (var input = File.OpenRead(docx)) using (var target = File.Create(baselinePath))
         await new DocxToOfdConverter(options).ConvertAsync(input, target);

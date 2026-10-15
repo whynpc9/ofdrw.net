@@ -19,6 +19,14 @@ public sealed class OfdPasswordOptions
     /// <summary>Maximum envelope/map XML bytes. Default 4 MiB.</summary>
     public int MaxMetadataBytes { get; set; } = 4 * 1024 * 1024;
 
+    /// <summary>Conservative per-call scrypt memory budget, separate from ZIP limits. Default 160 MiB.
+    /// A lower budget rejects v2 before deriving; a higher budget never changes its fixed parameters.</summary>
+    public long MaxKdfMemoryBytes { get; set; } = 160L * 1024 * 1024;
+
+    /// <summary>Maximum scrypt N*r*p work units. Default 1048576. A lower budget refuses v2;
+    /// no lower-cost derivation or legacy fallback is available.</summary>
+    public long MaxKdfWorkUnits { get; set; } = 1048576;
+
     /// <summary>Explicit canonical package paths to encrypt. Empty selection is rejected.</summary>
     public IList<string> EntryNames { get; } = new List<string>();
 

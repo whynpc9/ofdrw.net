@@ -9,32 +9,18 @@ using Org.BouncyCastle.Crypto.Parameters;
 
 namespace Ofdrw.Net.Crypto.Password.Tests;
 
-public sealed class PasswordEnvelopeTests
+public sealed partial class PasswordEnvelopeTests
 {
     private const string Password = "口令🔒";
     private const string Page0 = "Doc_0/Pages/P0/Content.xml";
     private const string Page1 = "Doc_0/Pages/P1/Content.xml";
     private static readonly XNamespace Ns = "http://www.ofdspec.org";
-    private static readonly XNamespace Profile = "urn:ofdrw-net:password-profile:1";
+    private static readonly XNamespace Profile = "urn:ofdrw-net:password-profile:2";
 
     [Theory]
     [InlineData("abc", "66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0")]
     [InlineData("abcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd", "debe9ff92275b8a138604889c18e5a4d6fdb70e5387e5765293dcba39c0c5732")]
     public void Sm3PublishedVectors(string input, string expected) => Assert.Equal(expected, Hex(PasswordPrimitives.Sm3(Encoding.ASCII.GetBytes(input))));
-
-    [Theory]
-    [InlineData("12345678", "34d6effbd5bdc7c8020f619bfd8303b5")]
-    [InlineData(Password, "786851358d2b990766550167a3f8981c")]
-    public void KdfMatchesIndependentOpenSsl(string password, string expected) => Assert.Equal(expected, Hex(PasswordPrimitives.PasswordKey(password)));
-
-    [Fact]
-    public void KdfCounterIsBigEndianAndContinuesBeyondFirstBlock()
-    {
-        var bytes = Encoding.ASCII.GetBytes("12345678");
-        var result = PasswordPrimitives.Kdf(bytes, 48);
-        Assert.Equal("34d6effbd5bdc7c8020f619bfd8303b5", Hex(result[..16]));
-        Assert.Equal("0e4073094460ecd0cbb91abaadc0886c", Hex(result[32..])); // independently computed OpenSSL counter-2 vector
-    }
 
     [Fact]
     public void Sm4PublishedBlockVector()
@@ -60,22 +46,10 @@ public sealed class PasswordEnvelopeTests
     }
 
     [Fact]
-    public void WrappedFileKeyMatchesIndependentOpenSsl()
-    {
-        var fek = Convert.FromHexString("0123456789abcdeffedcba9876543210");
-        var iv = Convert.FromHexString("000102030405060708090a0b0c0d0e0f");
-        var kek = PasswordPrimitives.PasswordKey("12345678");
-        Assert.Equal("033ff79878445981b81938ec7d4f901c58885f048714e56831e5e1c1349f128c", Hex(PasswordPrimitives.Cbc(true, fek, kek, iv, default)));
-        var invalidPadding = PasswordPrimitives.Cbc(true, fek, kek, iv, default); invalidPadding[15] ^= 0x10;
-        Assert.Throws<InvalidDataException>(() => PasswordPrimitives.Cbc(false, invalidPadding, kek, iv, default));
-        Assert.Throws<InvalidDataException>(() => PasswordPrimitives.Cbc(false, invalidPadding[..31], kek, iv, default));
-    }
-
-    [Fact]
     public void InvalidPasswordsFail()
     {
-        Assert.ThrowsAny<ArgumentException>(() => PasswordPrimitives.PasswordKey(""));
-        Assert.ThrowsAny<ArgumentException>(() => PasswordPrimitives.PasswordKey(new string((char)0xd800, 1)));
+        Assert.ThrowsAny<ArgumentException>(() => PasswordPrimitives.PasswordBytes(""));
+        Assert.ThrowsAny<ArgumentException>(() => PasswordPrimitives.PasswordBytes(new string((char)0xd800, 1)));
     }
 
     [Theory]
@@ -95,10 +69,10 @@ public sealed class PasswordEnvelopeTests
         if (!all) Assert.Equal(original[Page0], stored[Page0]);
         var envelope = XElement.Parse(Encoding.UTF8.GetString(stored["Encryptions.xml"]));
         Assert.Equal("Partial", envelope.Descendants(Ns + "EncryptScope").Single().Value);
-        Assert.Equal("1", (string?)envelope.Attribute(Profile + "Version"));
+        Assert.Equal("2", (string?)envelope.Attribute(Profile + "Version"));
         var seed = XElement.Parse(Encoding.UTF8.GetString(stored["PasswordCrypto/decryptseed.dat"]));
         Assert.Equal(Ns + "DecyptSeed", seed.Name);
-        Assert.Equal("1.1.1", (string?)seed.Attribute("EncryptCaseId"));
+        Assert.Equal("2.scrypt-sm4-etm", (string?)seed.Attribute("EncryptCaseId"));
         Assert.Equal(32, Convert.FromBase64String(seed.Descendants(Ns + "EncryptedWK").Single().Value).Length);
         using var ciphertext = new MemoryStream(encrypted);
         var restored = Unzip(await OfdPasswordEnvelope.DecryptAsync(ciphertext, Password));
@@ -149,12 +123,12 @@ public sealed class PasswordEnvelopeTests
             case "missing-cipher": encrypted.Remove("PasswordCrypto/entry-00001.dat"); break;
             case "extra-entry": encrypted.Add("extra.xml", Encoding.UTF8.GetBytes("extra")); break;
             case "unselected-corrupt": encrypted[Page0][0] ^= 1; break;
-            case "unknown-profile": MutateXml(encrypted, "Encryptions.xml", root => root.SetAttributeValue(Profile + "Version", "2")); break;
-            case "duplicate-info": MutateXml(encrypted, "Encryptions.xml", root => root.Add(new XElement(root.Elements().Single()))); break;
+            case "unknown-profile": MutateXml(encrypted, "Encryptions.xml", root => root.SetAttributeValue(Profile + "Version", "3")); break;
+            case "duplicate-info": MutateXml(encrypted, "Encryptions.xml", root => root.Add(new XElement(root.Element(Ns + "EncryptInfo")!))); break;
             case "malformed-base64": MutateXml(encrypted, "PasswordCrypto/decryptseed.dat", root => root.Descendants(Ns + "EncryptedWK").Single().Value = "!"); break;
             case "short-iv": MutateXml(encrypted, "PasswordCrypto/decryptseed.dat", root => root.Descendants(Ns + "IVValue").Single().Value = "AA=="); break;
             case "certificate": MutateXml(encrypted, "PasswordCrypto/decryptseed.dat", root => root.SetAttributeValue("EncryptCaseId", "1.1.2")); break;
-            case "relative": MutateXml(encrypted, "Encryptions.xml", root => root.Elements().Single().SetAttributeValue("Relative", "0")); break;
+            case "relative": MutateXml(encrypted, "Encryptions.xml", root => root.Element(Ns + "EncryptInfo")!.SetAttributeValue("Relative", "0")); break;
             case "dtd": encrypted["Encryptions.xml"] = Encoding.UTF8.GetBytes("<!DOCTYPE Encryptions [<!ENTITY x 'bad'>]><Encryptions>&x;</Encryptions>"); break;
             default:
                 MutateMap(encrypted, root =>
@@ -512,10 +486,17 @@ public sealed class PasswordEnvelopeTests
     {
         var seed = XElement.Parse(Encoding.UTF8.GetString(entries["PasswordCrypto/decryptseed.dat"]));
         var iv = Convert.FromBase64String(seed.Descendants(Ns + "IVValue").Single().Value);
-        var key = PasswordPrimitives.Cbc(false, Convert.FromBase64String(seed.Descendants(Ns + "EncryptedWK").Single().Value), PasswordPrimitives.PasswordKey(Password), iv, default);
-        var map = XElement.Parse(Encoding.UTF8.GetString(PasswordPrimitives.Cbc(false, entries["PasswordCrypto/entriesmap.dat"], key, iv, default)));
+        var envelope = XElement.Parse(Encoding.UTF8.GetString(entries["Encryptions.xml"]));
+        var salt = Convert.FromBase64String(envelope.Element(Profile + "Kdf")!.Attribute("Salt")!.Value);
+        var keys = PasswordPrimitives.PasswordKey(PasswordPrimitives.PasswordBytes(Password), salt, default);
+        var key = PasswordPrimitives.Cbc(false, Convert.FromBase64String(seed.Descendants(Ns + "EncryptedWK").Single().Value), keys[..16], iv, default);
+        var record = entries["PasswordCrypto/entriesmap.dat"];
+        var map = XElement.Parse(Encoding.UTF8.GetString(PasswordPrimitives.Cbc(false, record[16..], key, record[..16], default)));
         action(map);
-        entries["PasswordCrypto/entriesmap.dat"] = PasswordPrimitives.Cbc(true, Encoding.UTF8.GetBytes(map.ToString(SaveOptions.DisableFormatting)), key, iv, default);
+        entries["PasswordCrypto/entriesmap.dat"] = record[..16].Concat(PasswordPrimitives.Cbc(true, Encoding.UTF8.GetBytes(map.ToString(SaveOptions.DisableFormatting)), key, record[..16], default)).ToArray();
+        // Reauthenticate a malicious map to exercise structural/inventory checks
+        // beyond the outer MAC, rather than stopping at an invalid tag.
+        entries["PasswordCrypto/auth.dat"] = PasswordPrimitives.Authenticate(entries, "PasswordCrypto/auth.dat", keys[16..], default);
     }
     private sealed class CancellingStream(byte[] input, CancellationTokenSource cancellation) : MemoryStream(input)
     {

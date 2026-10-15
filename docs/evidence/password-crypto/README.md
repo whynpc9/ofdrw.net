@@ -1,6 +1,8 @@
-# 11 票：私有口令 profile 验收证据
+# 11 票：口令 profile 历史与本轮状态
 
-**最新状态：[review3](review3/README.md)**。raw ZIP预检/有界输入snapshot及超限XML ownership修复通过66专项/466全套/8 Python、实际review3包主/Low独立消费6组；2026-10-08在 macOS Preview 逐份重新打开最新6PDF并检查12/12页，未发现视觉缺陷，已关闭本票窗口并释放GUI。历史review2的4/12与原R3锁定快照保留，最新结论见review3外置follow-up。
+**当前 v2 修复验证进行中，尚未验收。** 下列 initial/review1/review2/review3 均为已确认使用廉价无盐KDF的历史v1记录，其通过结果不能关闭该安全问题，也不作为v2证据。v2只读/写新版本，拒绝v1，无回退。
+
+**历史 v1 状态：[review3](review3/README.md)**。raw ZIP预检/有界输入snapshot及超限XML ownership修复通过66专项/466全套/8 Python、实际review3包主/Low独立消费6组；2026-10-08在 macOS Preview 逐份重新打开最新6PDF并检查12/12页，未发现视觉缺陷，已关闭本票窗口并释放GUI。历史review2的4/12与原R3锁定快照保留，最新结论见review3外置follow-up。
 
 基线 `df71c7f`，独立分支 `codex/gmt0099-password-crypto`，PR base 为 `codex/document-tools`。
 本票仅交付 `Ofdrw.Net.Crypto.Password` net8.0 可选包，使用 BouncyCastle.Cryptography
