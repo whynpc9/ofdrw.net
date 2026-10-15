@@ -4,6 +4,7 @@ using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
+using Ofdrw.Net.Layout;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Reader.Extraction;
@@ -19,6 +20,26 @@ PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = Ofdrw.Net.Converter.Pdf.Pdf
 var outputDir = Environment.GetEnvironmentVariable("OFDRW_E2E_OUTPUT_DIR") ?? Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "output");
 var testDataDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "testdata", "upstream-ofdrw");
 Directory.CreateDirectory(outputDir);
+
+// Consume the public Layout package through the built nupkg, with no project reference.
+var publicFlow = new FlowDocument();
+publicFlow.Options.PageHeightMillimeters = 60;
+publicFlow.Options.MarginTopMillimeters = 8;
+publicFlow.Options.MarginBottomMillimeters = 8;
+for (var i = 0; i < 30; i++)
+    publicFlow.Blocks.Add(new Paragraph($"第{i + 1}段 Public flow words information preserve text."));
+var flowPackage = publicFlow.Render();
+if (flowPackage.Pages.Count < 2) throw new InvalidOperationException("Public flow did not paginate.");
+var flowPath = Path.Combine(outputDir, "public-flow.ofd");
+await using (var stream = File.Create(flowPath)) await new OfdPackageWriter().WriteAsync(flowPackage, stream);
+await using (var stream = File.OpenRead(flowPath))
+{
+    var parsed = await new OfdReader().ReadAsync(stream);
+    if (parsed.Pages.Count != flowPackage.Pages.Count ||
+        !string.Concat(parsed.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().Select(text => text.Text)).Contains("information"))
+        throw new InvalidOperationException("Public flow package lost text during round trip.");
+}
+Console.WriteLine($"[E2E] Public Flow package generated {flowPackage.Pages.Count} pages from Paragraph/Span.");
 
 // Used and unused name-only resources must survive unavailable/unsupported host
 // fonts. This exercises XFont initialization and the actual Arial draw fallback,

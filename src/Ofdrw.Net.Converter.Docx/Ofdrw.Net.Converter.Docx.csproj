@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="../Ofdrw.Net.Converter.Abstractions/Ofdrw.Net.Converter.Abstractions.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
+    <ProjectReference Include="../Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />

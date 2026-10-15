@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Converter.Pdf;
+using Ofdrw.Net.Layout.Internal.Flow;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Fonts;
 
@@ -16,7 +17,7 @@ namespace Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 /// Lays out a <see cref="BuiltInDocumentModel"/> directly as structured OFD page
 /// objects (text + table borders) without PDF rasterization.
 /// </summary>
-internal sealed class BuiltInOfdRenderer
+internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
 {
     private const double PointsPerInch = 72d;
     private const double MillimetersPerInch = 25.4d;
@@ -30,6 +31,9 @@ internal sealed class BuiltInOfdRenderer
     private int _lastPageNumber;
     private readonly Dictionary<string, XFont> _fonts = new();
     private readonly Dictionary<string, (byte[] Data, string FileName)> _fontFiles = new();
+    private int _pendingPageBreaks;
+    private double _pendingSpaceAfter;
+    private readonly List<double> _pendingLineBreakHeights = new();
 
     internal BuiltInOfdRenderer(
         DocxConversionOptions options,
@@ -71,10 +75,10 @@ internal sealed class BuiltInOfdRenderer
             : model.Sections;
 
         LayoutState? lastState = null;
-        foreach (var section in sections)
+        for (var sectionIndex = 0; sectionIndex < sections.Count; sectionIndex++)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            lastState = RenderSection(package, section);
+            lastState = RenderSection(package, sections[sectionIndex], sectionIndex + 1 < sections.Count);
         }
         if (lastState is not null)
         {
@@ -96,14 +100,22 @@ internal sealed class BuiltInOfdRenderer
         return package;
     }
 
-    private LayoutState RenderSection(OfdDocumentPackage package, BuiltInSectionModel section)
+    private LayoutState RenderSection(OfdDocumentPackage package, BuiltInSectionModel section, bool hasFollowingSection)
     {
+        _pendingSpaceAfter = 0;
+        _pendingLineBreakHeights.Clear();
         var state = new LayoutState(section, section.PageNumberStart ?? _lastPageNumber + 1);
         EnsurePage(package, state);
         foreach (var block in section.Blocks)
         {
             _cancellationToken.ThrowIfCancellationRequested();
             RenderBlock(package, state, block);
+        }
+        // A section boundary commits explicit breaks using the section that owns them.
+        if (hasFollowingSection)
+        {
+            ApplyPendingPageBreaks(package, state);
+            ApplyPendingLineBreaks(package, state);
         }
         return state;
     }
@@ -116,6 +128,7 @@ internal sealed class BuiltInOfdRenderer
                 RenderParagraph(package, state, paragraph, state.ContentLeft, state.ContentWidth);
                 break;
             case BuiltInTableModel table:
+                ApplyPendingPageBreaks(package, state);
                 RenderTable(package, state, table);
                 state.HasBodyContent = true;
                 break;
@@ -129,35 +142,94 @@ internal sealed class BuiltInOfdRenderer
         double left,
         double availableWidth)
     {
-        if (paragraph.Format.PageBreakBefore && state.HasBodyContent)
+        var hadPendingBreaks = _pendingPageBreaks > 0;
+        ApplyPendingPageBreaks(package, state);
+        if (paragraph.Format.PageBreakBefore && (state.HasBodyContent || hadPendingBreaks || _pendingLineBreakHeights.Count > 0))
         {
             StartNewPage(package, state);
+            _pendingSpaceAfter = 0;
+            _pendingLineBreakHeights.Clear();
         }
 
         var spaceBefore = PointsToMillimeters(paragraph.Format.SpaceBeforePoints ?? 0);
         var spaceAfter = PointsToMillimeters(paragraph.Format.SpaceAfterPoints ?? 0);
-        EnsureVerticalSpace(package, state, spaceBefore);
-        state.Y += spaceBefore;
 
         var leftIndent = PointsToMillimeters(paragraph.Format.LeftIndentPoints ?? 0);
         var rightIndent = PointsToMillimeters(paragraph.Format.RightIndentPoints ?? 0);
         var firstIndent = PointsToMillimeters(paragraph.Format.FirstLineIndentPoints ?? 0);
         var width = Math.Max(availableWidth - leftIndent - rightIndent, 5d);
-        foreach (var line in LayoutParagraph(paragraph, width, firstIndent, state.PageNumber))
+        var firstLine = true;
+        var preparedFirstLine = false;
+        var leadingLines = 0;
+        var lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber);
+        if (paragraph.Inlines.OfType<BuiltInPageNumberModel>().Any(field => field.Kind == BuiltInPageFieldKind.Page))
+        {
+            // Body PAGE uses the paragraph's first body line page context. Resolve that context
+            // after deferred pagination, and remeasure when its number gains a digit.
+            while (leadingLines < lines.Count && lines[leadingLines].Glyphs.Count == 0)
+            {
+                var control = lines[leadingLines++];
+                if (control.PageBreak) { _pendingPageBreaks++; continue; }
+                if (control.TerminalNewline) { _pendingLineBreakHeights.Add(control.Height); continue; }
+                ApplyPendingPageBreaks(package, state);
+                if (firstLine)
+                {
+                    ApplyPendingLineBreaks(package, state);
+                    PlaceFirstLine(package, state, control.Height, _pendingSpaceAfter + spaceBefore);
+                    _pendingSpaceAfter = 0;
+                    firstLine = false;
+                }
+                else EnsureVerticalSpace(package, state, control.Height);
+                state.Y += control.Height;
+                state.HasBodyContent = true;
+            }
+            ApplyPendingPageBreaks(package, state);
+            ApplyPendingLineBreaks(package, state);
+            var gap = firstLine ? Math.Max(0, _pendingSpaceAfter + spaceBefore) : 0;
+            while (true)
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber);
+                var first = lines.Skip(leadingLines).First(line => !line.PageBreak && !line.TerminalNewline);
+                if (first.Height > state.ContentBottom - state.ContentTop)
+                    throw new InvalidDataException("DOCX content exceeds the usable page area.");
+                if (state.Y + gap + first.Height > state.ContentBottom + 0.000001d &&
+                    (state.HasBodyContent || state.Y > state.ContentTop))
+                {
+                    StartNewPage(package, state);
+                    continue;
+                }
+                PlaceFirstLine(package, state, first.Height, gap);
+                _pendingSpaceAfter = 0;
+                preparedFirstLine = true;
+                firstLine = false;
+                break;
+            }
+        }
+        foreach (var line in lines.Skip(leadingLines))
         {
             if (line.PageBreak)
             {
-                StartNewPage(package, state);
+                _pendingPageBreaks++;
                 continue;
             }
-            EnsureVerticalSpace(package, state, line.Height);
+            if (line.TerminalNewline) { _pendingLineBreakHeights.Add(line.Height); continue; }
+            ApplyPendingPageBreaks(package, state);
+            if (preparedFirstLine) preparedFirstLine = false;
+            else if (firstLine)
+            {
+                ApplyPendingLineBreaks(package, state);
+                PlaceFirstLine(package, state, line.Height, _pendingSpaceAfter + spaceBefore);
+                _pendingSpaceAfter = 0;
+                firstLine = false;
+            }
+            else EnsureVerticalSpace(package, state, line.Height);
             DrawLine(package, state.Page!, line, left + leftIndent, state.Y, width);
             state.Y += line.Height;
             state.HasBodyContent = true;
         }
 
-        EnsureVerticalSpace(package, state, spaceAfter);
-        state.Y += spaceAfter;
+        _pendingSpaceAfter += spaceAfter;
     }
 
     private void RenderTable(
@@ -166,6 +238,7 @@ internal sealed class BuiltInOfdRenderer
         BuiltInTableModel table)
     {
         var columnWidths = ResolveColumnWidths(table, state.ContentWidth);
+        var firstRow = true;
 
         foreach (var row in table.Rows)
         {
@@ -175,7 +248,14 @@ internal sealed class BuiltInOfdRenderer
                 ? PointsToMillimeters(DefaultFontSizePoints) * 1.5d
                 : cellLayouts.Max(cell => cell.Height);
 
-            EnsureVerticalSpace(package, state, rowHeight);
+            if (firstRow)
+            {
+                ApplyPendingLineBreaks(package, state);
+                PlaceFirstLine(package, state, rowHeight, _pendingSpaceAfter);
+                _pendingSpaceAfter = 0;
+                firstRow = false;
+            }
+            else EnsureVerticalSpace(package, state, rowHeight);
             var rowTop = state.Y;
             var x = state.ContentLeft;
             var columnIndex = 0;
@@ -229,7 +309,7 @@ internal sealed class BuiltInOfdRenderer
             }
 
             var textWidth = Math.Max(cellWidth - (MinCellPaddingMillimeters * 2), 1d);
-            var lines = new List<StyledLine>();
+            var lines = new List<FlowLine>();
             foreach (var paragraph in cell.Paragraphs)
             {
                 lines.AddRange(LayoutParagraph(paragraph, textWidth, 0).Where(line => !line.PageBreak));
@@ -343,53 +423,75 @@ internal sealed class BuiltInOfdRenderer
 
     private double Advance(string text, BuiltInTextFormat format)
     {
+        // Missing whitespace glyphs must not inherit a .notdef advance.
+        if (text.Length > 0 && text[0] == '\u00A0') return Advance(" ", format);
+        if (text.Length > 0 && text[0] == '\u202F') return PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints) * 0.2d;
+        if (text.Length > 0 && text[0] == '\u2007') return Advance("0", format);
         var key = FontKey(format) + "\n" + text;
         if (!_advances.TryGetValue(key, out var advance))
         {
             // linux1 / 宋体 CJK is one em. PDFsharp without a CJK face (typical Linux
             // ARM without FontDirectories) measures ideographs on a Latin substitute
             // at ~0.6em, which overlaps when the viewer later binds SimSun/SimHei.
-            if (IsCjkTypographicUnit(text))
+            if (FlowTextMetrics.IsCjkTypographicUnit(text))
                 advance = 1d;
             else
             {
                 using var measure = XGraphics.CreateMeasureContext(new XSize(1000, 1000), XGraphicsUnit.Point, XPageDirection.Downwards);
-                advance = measure.MeasureString(text == "\t" ? "    " : text, GetLatinCompatibleFont(format)).Width / 1000d;
+                advance = measure.MeasureString(text == "\t" ? "    " : FlowTextMetrics.NormalizeLatinForMeasurement(text),
+                    GetLatinCompatibleFont(format)).Width / 1000d;
             }
             _advances[key] = advance;
         }
         return advance * PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints);
     }
 
-    private static bool IsCjkTypographicUnit(string text)
+    public double AdvanceMillimeters(string grapheme, FlowTextStyle style) =>
+        Advance(grapheme, (BuiltInTextFormat)style.Source!);
+
+    private void ApplyPendingLineBreaks(OfdDocumentPackage package, LayoutState state)
     {
-        if (string.IsNullOrEmpty(text)) return false;
-        foreach (var c in text)
+        foreach (var height in _pendingLineBreakHeights)
         {
-            if (c >= '\u2E80' && c <= '\u9FFF') return true;
-            if (c >= '\uF900' && c <= '\uFAFF') return true;
-            if (c >= '\uFF00' && c <= '\uFFEF') return true;
+            _cancellationToken.ThrowIfCancellationRequested();
+            EnsureVerticalSpace(package, state, height);
+            state.Y += height;
+            state.HasBodyContent = true;
         }
-        return false;
+        _pendingLineBreakHeights.Clear();
     }
 
-    private List<StyledLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber = 1, int totalPages = 1, int sectionPages = 1)
+    private void ApplyPendingPageBreaks(OfdDocumentPackage package, LayoutState state)
     {
-        var glyphs = new List<StyledGlyph>();
-        var fallback = paragraph.Inlines.OfType<BuiltInTextModel>().FirstOrDefault()?.Format ?? new BuiltInTextFormat();
-        void Add(string value, BuiltInTextFormat format)
+        if (_pendingPageBreaks > 0) { _pendingSpaceAfter = 0; _pendingLineBreakHeights.Clear(); }
+        while (_pendingPageBreaks > 0)
         {
-            foreach (var glyph in EnumerateTextElements(value.Replace("\r\n", "\n").Replace('\r', '\n')))
-                glyphs.Add(new StyledGlyph(glyph, format, glyph == "\n" || glyph == "\f" ? 0 : Advance(glyph, format)));
+            StartNewPage(package, state);
+            _pendingPageBreaks--;
         }
+    }
+
+    private IReadOnlyList<FlowLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber = 1, int totalPages = 1, int sectionPages = 1)
+    {
+        var inlines = new List<FlowInline>();
+        FlowTextStyle Style(BuiltInTextFormat format) => new()
+        {
+            FontFamily = NormalizeFontFamily(format.FontFamily),
+            FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
+            Bold = format.Bold, Italic = format.Italic, Source = format
+        };
+        var fallbackFormat = paragraph.Inlines.OfType<BuiltInTextModel>().FirstOrDefault()?.Format ?? new BuiltInTextFormat();
+        var fallback = Style(fallbackFormat);
+        void Add(string value, BuiltInTextFormat format) =>
+            inlines.Add(new FlowInline { Text = value, Style = Style(format) });
         foreach (var inline in paragraph.Inlines)
         {
             _cancellationToken.ThrowIfCancellationRequested();
             switch (inline)
             {
                 case BuiltInTextModel text: Add(text.Text, text.Format); break;
-                case BuiltInTabModel: Add("\t", fallback); break;
-                case BuiltInBreakModel br: Add(br.IsPageBreak ? "\f" : "\n", fallback); break;
+                case BuiltInTabModel: Add("\t", fallbackFormat); break;
+                case BuiltInBreakModel br: Add(br.IsPageBreak ? "\f" : "\n", br.Format ?? fallbackFormat); break;
                 case BuiltInPageNumberModel field:
                     var value = field.Kind == BuiltInPageFieldKind.TotalPages ? totalPages :
                         field.Kind == BuiltInPageFieldKind.SectionPages ? sectionPages : pageNumber;
@@ -398,55 +500,29 @@ internal sealed class BuiltInOfdRenderer
                 case BuiltInImageModel image:
                     var imageWidth = PointsToMillimeters(image.WidthPoints ?? 72);
                     var imageHeight = PointsToMillimeters(image.HeightPoints ?? 72);
-                    if (imageWidth > width) { imageHeight *= width / imageWidth; imageWidth = width; }
-                    glyphs.Add(new StyledGlyph(string.Empty, fallback, imageWidth) { Image = image, ImageHeight = imageHeight });
+                    inlines.Add(new FlowInline { Style = fallback, Image = image,
+                        ImageWidthMillimeters = imageWidth, ImageHeightMillimeters = imageHeight });
                     break;
             }
         }
-        var result = new List<StyledLine>();
-        var current = new List<StyledGlyph>();
-        var currentWidth = 0d;
-        var indent = firstIndent;
-        void Flush()
+        var alignment = paragraph.Format.Alignment switch
         {
-            var size = current.Count == 0 ? PointsToMillimeters(fallback.FontSizePoints ?? DefaultFontSizePoints)
-                : current.Max(g => PointsToMillimeters(g.Format.FontSizePoints ?? DefaultFontSizePoints));
-            var imageHeight = current.Where(glyph => glyph.Image is not null).Select(glyph => glyph.ImageHeight).DefaultIfEmpty(0).Max();
-            result.Add(new StyledLine(current, Math.Max(imageHeight, Math.Max(size * 1.3, PointsToMillimeters(paragraph.Format.LineSpacingPoints ?? 0))),
-                indent, paragraph.Format.Alignment));
-            current = new List<StyledGlyph>();
-            currentWidth = 0;
-            indent = 0;
-        }
-        for (var i = 0; i < glyphs.Count; i++)
+            BuiltInParagraphAlignment.Center => FlowAlignment.Center,
+            BuiltInParagraphAlignment.Right => FlowAlignment.Right,
+            _ => FlowAlignment.Left
+        };
+        return FlowParagraphLayout.Layout(inlines, new FlowParagraphFormat
         {
-            var glyph = glyphs[i];
-            if (glyph.Text == "\f" || glyph.Text == "\n")
-            {
-                if (current.Count > 0 || glyph.Text == "\n") Flush();
-                if (glyph.Text == "\f") result.Add(new StyledLine(new List<StyledGlyph>(), 0, 0, paragraph.Format.Alignment) { PageBreak = true });
-                continue;
-            }
-            // Keep Latin words intact when they fit on a fresh line, even across run boundaries.
-            bool Word(StyledGlyph g) => g.Text.Length == 1 && g.Text[0] < 128 && char.IsLetterOrDigit(g.Text[0]);
-            if (Word(glyph) && (i == 0 || !Word(glyphs[i - 1])))
-            {
-                var wordWidth = 0d;
-                for (var j = i; j < glyphs.Count && Word(glyphs[j]); j++) wordWidth += glyphs[j].Width;
-                if (current.Count > 0 && wordWidth <= width && currentWidth + wordWidth > width - indent) Flush();
-            }
-            if (current.Count > 0 && currentWidth + glyph.Width > width - indent) Flush();
-            current.Add(glyph);
-            currentWidth += glyph.Width;
-        }
-        if (current.Count > 0 || result.Count == 0) Flush();
-        return result;
+            Alignment = alignment,
+            FirstLineIndentMillimeters = firstIndent,
+            MinimumLineHeightMillimeters = PointsToMillimeters(paragraph.Format.LineSpacingPoints ?? 0)
+        }, width, this, fallback, _cancellationToken, allowOversizeGlyph: true);
     }
 
-    private void DrawLine(OfdDocumentPackage package, OfdPage page, StyledLine line, double left, double top, double width)
+    private void DrawLine(OfdDocumentPackage package, OfdPage page, FlowLine line, double left, double top, double width)
     {
-        var x = AlignHorizontally(left + line.Indent, width - line.Indent, line.Glyphs.Sum(g => g.Width), line.Alignment);
-        var baseline = line.Glyphs.Count == 0 ? 0 : line.Glyphs.Max(g => PointsToMillimeters(g.Format.FontSizePoints ?? DefaultFontSizePoints));
+        var x = FlowParagraphLayout.Align(left + line.Indent, width - line.Indent, line.AlignmentWidth, line.Alignment);
+        var baseline = line.BaselineMillimeters;
         for (var i = 0; i < line.Glyphs.Count;)
         {
             var start = i;
@@ -461,15 +537,17 @@ internal sealed class BuiltInOfdRenderer
                 x += glyph.Width;
                 continue;
             }
-            var format = line.Glyphs[i].Format;
-            while (i < line.Glyphs.Count && line.Glyphs[i].Image is null && ReferenceEquals(line.Glyphs[i].Format, format)) i++;
+            var format = (BuiltInTextFormat)line.Glyphs[i].Style.Source!;
+            while (i < line.Glyphs.Count && line.Glyphs[i].Image is null && ReferenceEquals(line.Glyphs[i].Style.Source, format)) i++;
             var group = line.Glyphs.GetRange(start, i - start);
+            var groupWidth = group.Sum(g => g.Width);
+            var elementWidth = Math.Max(groupWidth, 0.1);
             var declaredName = DeclaredFontName(format);
             var resource = GetOrAddFontResource(package, format, declaredName);
             var text = new OfdTextElement
             {
-                LayerType = "Body", XMillimeters = x, YMillimeters = top,
-                WidthMillimeters = Math.Max(group.Sum(g => g.Width), 0.1), HeightMillimeters = line.Height,
+                LayerType = "Body", XMillimeters = groupWidth == 0 ? Math.Min(x, left + width - elementWidth) : x,
+                YMillimeters = top, WidthMillimeters = elementWidth, HeightMillimeters = line.Height,
                 FontName = declaredName, FontResourceId = resource.Id,
                 // Viewers apply bold/italic from the text object, not from the font
                 // resource flags, so declare the requested style on both.
@@ -481,29 +559,8 @@ internal sealed class BuiltInOfdRenderer
             text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = baseline,
                 DeltaX = group.Count > 1 ? string.Join(" ", group.Take(group.Count - 1).Select(g => g.Width.ToString("0.######", CultureInfo.InvariantCulture))) : null });
             page.Elements.Add(text);
-            x += group.Sum(g => g.Width);
+            x += groupWidth;
         }
-    }
-
-    private sealed class StyledGlyph
-    {
-        internal StyledGlyph(string text, BuiltInTextFormat format, double width) { Text = text; Format = format; Width = width; }
-        internal string Text { get; }
-        internal BuiltInTextFormat Format { get; }
-        internal double Width { get; }
-        internal BuiltInImageModel? Image { get; set; }
-        internal double ImageHeight { get; set; }
-    }
-
-    private sealed class StyledLine
-    {
-        internal StyledLine(List<StyledGlyph> glyphs, double height, double indent, BuiltInParagraphAlignment alignment)
-        { Glyphs = glyphs; Height = height; Indent = indent; Alignment = alignment; }
-        internal List<StyledGlyph> Glyphs { get; }
-        internal double Height { get; }
-        internal double Indent { get; }
-        internal BuiltInParagraphAlignment Alignment { get; }
-        internal bool PageBreak { get; set; }
     }
 
     private static void DrawCell(OfdPage page, BuiltInTableModel table, BuiltInTableCellModel cell,
@@ -531,25 +588,6 @@ internal sealed class BuiltInOfdRenderer
         Border("right", column + cell.ColumnSpan >= columnCount ? "right" : "insideV", width, 0, width, height);
     }
 
-    private static double AlignHorizontally(
-        double left,
-        double availableWidth,
-        double contentWidth,
-        BuiltInParagraphAlignment alignment)
-    {
-        if (contentWidth >= availableWidth)
-        {
-            return left;
-        }
-
-        return alignment switch
-        {
-            BuiltInParagraphAlignment.Center => left + ((availableWidth - contentWidth) / 2d),
-            BuiltInParagraphAlignment.Right => left + (availableWidth - contentWidth),
-            _ => left
-        };
-    }
-
     private static double AlignBlockVertically(
         double rowTop,
         double rowHeight,
@@ -569,23 +607,6 @@ internal sealed class BuiltInOfdRenderer
             BuiltInVerticalAlignment.Bottom => paddedTop + (available - contentHeight),
             _ => paddedTop
         };
-    }
-
-    private static List<string> EnumerateTextElements(string text)
-    {
-        var glyphs = new List<string>();
-        if (string.IsNullOrEmpty(text))
-        {
-            return glyphs;
-        }
-
-        var enumerator = StringInfo.GetTextElementEnumerator(text);
-        while (enumerator.MoveNext())
-        {
-            glyphs.Add(enumerator.GetTextElement());
-        }
-
-        return glyphs;
     }
 
     private static IReadOnlyList<double> ResolveColumnWidths(BuiltInTableModel table, double contentWidth)
@@ -692,10 +713,34 @@ internal sealed class BuiltInOfdRenderer
 
     private void EnsureVerticalSpace(OfdDocumentPackage package, LayoutState state, double needed)
     {
-        if (state.Page is null || state.Y + needed > state.ContentBottom)
+        if (state.Page is null) StartNewPage(package, state);
+        try
         {
-            StartNewPage(package, state);
+            if (FlowPagination.NeedsNewPage(state.Y, needed, state.ContentTop, state.ContentBottom))
+                StartNewPage(package, state);
+            // Header and footer variants can change the usable area on the next page.
+            if (FlowPagination.NeedsNewPage(state.Y, needed, state.ContentTop, state.ContentBottom))
+                throw new InvalidDataException("DOCX content cannot fit on a fresh page.");
         }
+        catch (InvalidOperationException exception)
+        {
+            throw new InvalidDataException("DOCX content exceeds the usable page area.", exception);
+        }
+    }
+
+    private void PlaceFirstLine(OfdDocumentPackage package, LayoutState state, double height, double gap)
+    {
+        if (state.Page is null) StartNewPage(package, state);
+        if (height > state.ContentBottom - state.ContentTop)
+            throw new InvalidDataException("DOCX content exceeds the usable page area.");
+        gap = Math.Max(0, gap);
+        if (state.Y + gap + height > state.ContentBottom + 0.000001d &&
+            (state.HasBodyContent || state.Y > state.ContentTop))
+            StartNewPage(package, state);
+        var availableGap = state.ContentBottom - state.ContentTop - height;
+        if (availableGap < 0) throw new InvalidDataException("DOCX content cannot fit on a fresh page.");
+        state.Y += Math.Min(gap, availableGap);
+        EnsureVerticalSpace(package, state, height);
     }
 
     private void StartNewPage(OfdDocumentPackage package, LayoutState state)
@@ -775,7 +820,7 @@ internal sealed class BuiltInOfdRenderer
     private sealed class DecorationLayout
     {
         internal double Height { get; set; }
-        internal List<(StyledLine Line, double Left, double Top, double Width)> Lines { get; } = new();
+        internal List<(FlowLine Line, double Left, double Top, double Width)> Lines { get; } = new();
     }
 
     private void EnsurePage(OfdDocumentPackage package, LayoutState state)
@@ -841,7 +886,7 @@ internal sealed class BuiltInOfdRenderer
         internal CellLayout(
             int columnSpan,
             double height,
-            List<StyledLine> lines,
+            List<FlowLine> lines,
             BuiltInVerticalAlignment verticalAlignment)
         {
             ColumnSpan = columnSpan;
@@ -854,7 +899,7 @@ internal sealed class BuiltInOfdRenderer
 
         internal double Height { get; }
 
-        internal List<StyledLine> Lines { get; }
+        internal List<FlowLine> Lines { get; }
 
         internal BuiltInVerticalAlignment VerticalAlignment { get; }
     }
