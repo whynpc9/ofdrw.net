@@ -1,0 +1,43 @@
+{
+  "runtime_body_commit": "d4eb787585c0a13a992c1ca2c6cefe5ed5e0cbdf",
+  "change_scope": "Description and PackageTags only; C# runtime bodies unchanged; generated assembly metadata/version and package hashes differ",
+  "version": "0.1.0-issue11.v2meta",
+  "package_id": "Ofdrw.Net.Crypto.Password",
+  "description": "Optional private-profile v2 OFD password envelopes using salted bounded scrypt, independent-IV SM4-CBC and HMAC-SHA256 authentication. Legacy v1 is rejected; no vendor interoperability, certification or archival claim.",
+  "tags": "OFD password scrypt SM4 HMAC-SHA256 authenticated private-profile optional",
+  "license": "MIT",
+  "target": "net8.0",
+  "dependencies": {
+    "Ofdrw.Net.Packaging": "0.1.0-issue11.v2meta",
+    "BouncyCastle.Cryptography": "2.6.2"
+  },
+  "readme_matches_runtime_contract": true,
+  "readme_sha256": "ed911fef8b6c03755749fe0604d35714672c7c86af9b1282f2b8c7ced105f034",
+  "package_sha256": "cedf9b4af94fa9f8bc9e121a3bf7721f110b999960daee3a4bced4353c7fbecc",
+  "package_bytes": 56410,
+  "dll_sha256": "df5e9f5d6fc4a7d898354648b3421b0ec2eee8a4f51aed58288185d3a1a318b6",
+  "previous_v2main_dll_sha256": "d6b8a0293bec613117e2e651e9047f7d1574b57edc0e7367c2b198a83c7da2c3",
+  "runtime_body_hashes": {
+    "src/Ofdrw.Net.Core/IO/OfdPackagePath.cs": "e3bc1b834869e0d3f3c87c8cef6c4426fba2a4b786155c8fcd0a681b011ccf0e",
+    "src/Ofdrw.Net.Crypto.Password/Internal/OwnedBuffers.cs": "d24473c184c4045f0827eb5544d220c03275d97ac47fa6dc1a0d31023bd46100",
+    "src/Ofdrw.Net.Crypto.Password/Internal/PasswordPrimitives.cs": "f31c00efeb9d031667589699d7c70aeea4a96fb997bebedcbcb2e8657e82328a",
+    "src/Ofdrw.Net.Crypto.Password/OfdPasswordEnvelope.cs": "2c7e4124be1e78fb84019b55c33351ae1d2fdb04c4710a8224f95660cb111c4d",
+    "src/Ofdrw.Net.Crypto.Password/OfdPasswordOptions.cs": "c774ea4f1757e6e7ad436b331e727687582eafc06e5b8fc3cfe52c402d3902e0"
+  },
+  "existing_actual_consumers_and_12_Preview_pages": "Retain frozen identity; not regenerated or rerun for metadata-only change",
+  "command": [
+    "dotnet",
+    "pack",
+    "src/Ofdrw.Net.Crypto.Password/Ofdrw.Net.Crypto.Password.csproj",
+    "-c",
+    "Release",
+    "-o",
+    "/private/var/folders/5d/t544b0wd4yxdytzqnb3nl76c0000gn/T/codex-security-artifacts-1856350feaa6c59ca3b0f5b313bfc39d51150bac0025f077f19e590765802f3f/metadata-package",
+    "-p:Version=0.1.0-issue11.v2meta",
+    "-p:PackageVersion=0.1.0-issue11.v2meta",
+    "--disable-build-servers",
+    "-m:1",
+    "/nodeReuse:false",
+    "/p:UseSharedCompilation=false"
+  ]
+}
