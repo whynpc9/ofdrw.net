@@ -64,8 +64,17 @@ internal static class OfdDocumentEnvelopeWriter
             var declaration = originalPages.TryGetValue(id, out var existing) ? new XElement(existing) : new XElement(ns + "Page");
             declaration.SetAttributeValue("ID", id); declaration.SetAttributeValue("BaseLoc", generatedPages[id].Attribute("BaseLoc")!.Value); return declaration;
         }, token);
-        foreach (var name in new[] { "Outlines", "Actions", "Bookmarks", "Attachments", "CustomTags" })
+        foreach (var name in new[] { "Outlines", "Actions", "Bookmarks", "Attachments" })
             OfdXmlEnvelope.Singleton(root, name, fresh.Root.Element(ns + name));
+        var originalTags = root.Elements(ns + "CustomTags").ToArray();
+        var generatedTags = fresh.Root.Elements(ns + "CustomTags").ToArray();
+        if (package.CustomTagSource is null) OfdXmlEnvelope.Singleton(root, "CustomTags", generatedTags.SingleOrDefault());
+        else
+        {
+            // Imported declarations retain their attributes, child nodes and positions.
+            if (originalTags.Length == 0 && generatedTags.Length == 1) OfdXmlEnvelope.Singleton(root, "CustomTags", generatedTags[0]);
+            else foreach (var declaration in generatedTags.Skip(originalTags.Length)) root.Add(new XElement(declaration));
+        }
         return original;
     }
 

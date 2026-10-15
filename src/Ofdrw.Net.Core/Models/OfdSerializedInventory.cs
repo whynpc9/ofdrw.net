@@ -85,6 +85,7 @@ internal static class OfdSerializedInventory
         NavigationOwner("outlines", package.OutlineOwnership); NavigationOwner("bookmarks", package.BookmarkOwnership);
         NavigationOwner("actions", package.ActionOwnership);
         V("sourceEnvelope", package.SourceEnvelope, true); package.SourceEnvelope?.VisitInventory(sink);
+        V("customTagSource", package.CustomTagSource, true); package.CustomTagSource?.VisitInventory(sink);
         V("annotationIndexSource", package.AnnotationIndexSource, true); package.AnnotationIndexSource?.VisitInventory(sink);
         V("sourceIdentity", package.SourceIdentity, true); package.SourceIdentity?.VisitInventory(sink);
         token.ThrowIfCancellationRequested();
