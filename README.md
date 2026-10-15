@@ -25,6 +25,7 @@ implementation batches, and the encryption/signature boundary without a crypto v
 See [conversion contracts](docs/conversion-contracts.md) for page selection, original-text diagnostics, font initialization, resource budgets, and editing behavior.
 See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk through GB/T 33190 package structure, pages, text, paths, images, templates, and signatures, plus OFD-H medical-record profile notes, mapped to both ofdrw and this repository.
 
+- Native graphics API in `Ofdrw.Net.Layout.Graphics`: millimeter paths/text, affine transforms, clipping and Save/Restore; no SkiaSharp or System.Drawing dependency. See [tutorial](docs/tutorials/16-native-graphics.md).
 - OFD core models, document builder API, globally unique object IDs, layers, templates, text runs, vector paths, images, fonts, attachments, annotations, and custom tags.
 - Bounded OFD ZIP loading with path traversal, entry count, expanded-size, and compression-ratio checks.
 - Standard package writing with `OFD.xml`, document/page/resource references, attachments, custom tags, templates, and preserved extension entries.
@@ -34,6 +35,7 @@ See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk 
 - Direct DOCX/OpenXML to native OFD text conversion without PDF, plus an optional dual-layer mode that combines rendered pages with the original DOCX text.
 - OFD to PDF conversion with templates, layers, embedded fonts, positioned text runs, vector paths, images, crop origins, image transforms, opacity, and path clipping.
 - OFD page to self-contained SVG conversion with template vectors, text, colors, transforms, and embedded images.
+- Source capability: OFD page to PNG/JPEG at a chosen ppm, and PNG/JPEG to centered OFD pages; see [image conversion](docs/tutorials/15-image-conversion.md) for APIs, CLI and budgets.
 - OFD signature description generation through a pluggable signed-value provider.
 - SM3, SHA-1, and SHA-256 protected-entry digest verification plus pluggable `SignedValue.dat` verification.
 - Command-line conversion, extraction, editing, SVG, and signature verification tools packaged as `Ofdrw.Net.Cli`.
@@ -359,3 +361,20 @@ This ticket has validated source and local-feed artifacts and has not published 
 - SM3 reference digests are built in. SES/SM2 electronic-seal verification must be supplied through `IOfdSignedValueVerifier`.
 - GM/T 0099 encrypted-envelope processing and long-term archival validation are not built in. `OfdCryptographicCapabilities` exposes these support boundaries to applications.
 - A repository license has not yet been selected by the project owner. The NuGet workflow now blocks publication until both a license file and NuGet license metadata exist. Direct dependency declarations are recorded in `THIRD-PARTY-NOTICES.md`.
+
+### Optional PDF vector mode
+
+`Ofdrw.Net.Converter.Pdf.Vector` exposes `PdfVectorToOfdConverter` for a bounded
+PDF path/text profile through the existing Skia producer-event adapter. Original
+Unicode and embedded-font glyph identity are checked; unsupported pages fail by
+default or explicitly fall back as whole dual-layer pages. Default converters
+and CLI remain dual-layer and do not acquire Skia. See the [API tutorial](docs/tutorials/18-pdf-vector-mode.md)
+and [design contract](docs/pdf-vector-design-contract.md).
+
+### Optional Skia producer-event adapter
+
+`Ofdrw.Net.Graphics.SkiaSharp` adapts explicitly recorded Skia-typed producer
+events to native OFD paths/text through OfdGraphics. It requires producer
+integration and does not intercept arbitrary SKCanvas/SKPicture/PDF calls.
+Default Layout/Converter packages have no Skia dependency. See the
+[bounded profile and migration sample](docs/tutorials/17-skia-event-adapter.md).

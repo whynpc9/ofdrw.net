@@ -1,0 +1,409 @@
+{
+  "runtimeSource": "17dea14282ee58c00051e36a3257449102883d7b",
+  "status": "functional-and-visual-passed; latest GitHub CI and review required separately",
+  "functionTests": {
+    "Passed": 2099,
+    "NotExecuted": 12
+  },
+  "automaticRendering": "Selected 33 pages rendered. Latest vector 15/15 pages byte-identical to initial Previewed matrix and reopened anyway. Default11, optional12 SES and optional13 vector actual PackageReference consumers passed. Frozen PDF failure inputs unchanged. Default SES CLI stays Unsupported/exit2.",
+  "pngVisual": "10 graphics pages and 2 new whitespace pages visually inspected. Other selected pages inspected in actual macOS Preview; no claim of independent PNG visual inspection for those.",
+  "preview": {
+    "files": 16,
+    "pages": 33,
+    "status": "passed",
+    "taskWindowsClosed": true,
+    "publicPages": 31,
+    "localDiagnosticPages": 2,
+    "method": "Finder file identity -> Preview single page, each page body screenshot, close owned windows. Initial31 pages at94a; final vector15 pages and whitespace2 pages at17dea reopened. Unaffected graphics/typed94a records retained with explicit source hashes."
+  },
+  "samples": [
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/graphics-r2/graphics.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/graphics-r2/graphics.pdf",
+      "pages": 2,
+      "previewChecked": 2,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "94a2d9a56723d9e6bb8bc9b5deb75a400970d6c7",
+      "pdfSha256": "776b8dbcfa1a5be94480d8a370d76c976d752f7b2d26ad7fea1233c0c08b3dc1",
+      "pdfBytes": 124031,
+      "notes": "Bilingual ticket, colored table, proportional/italic text and rotated stamp; transforms/fill-rule holes/clip page.",
+      "checkedAt": "2026-10-15T10:40:05.992646+08:00",
+      "publicPdf": "samples/graphics/graphics.pdf",
+      "pageImages": [
+        "samples/graphics/png/graphics-1.png",
+        "samples/graphics/png/graphics-2.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/graphics-r2/graphics-roundtrip.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/graphics-r2/graphics-roundtrip.pdf",
+      "pages": 2,
+      "previewChecked": 2,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "94a2d9a56723d9e6bb8bc9b5deb75a400970d6c7",
+      "pdfSha256": "22cf939c7d394894fb3991aad6d712ab35e455c0966e2966f455d791a948ede9",
+      "pdfBytes": 124031,
+      "notes": "Two-page read/write roundtrip matches ticket and transforms.",
+      "checkedAt": "2026-10-15T10:40:05.992937+08:00",
+      "publicPdf": "samples/graphics/graphics-roundtrip.pdf",
+      "pageImages": [
+        "samples/graphics/png/graphics-roundtrip-1.png",
+        "samples/graphics/png/graphics-roundtrip-2.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/graphics-r2/graphics-name-only.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/graphics-r2/graphics-name-only.pdf",
+      "pages": 1,
+      "previewChecked": 1,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "94a2d9a56723d9e6bb8bc9b5deb75a400970d6c7",
+      "pdfSha256": "12855bb936fa95a8cc7fb8160ee639140fef5d06818e7631759da166565532d3",
+      "pdfBytes": 68549,
+      "notes": "Upright, italic, user CTM+italic and clipped italic baselines checked.",
+      "checkedAt": "2026-10-15T10:40:05.993166+08:00",
+      "publicPdf": "samples/graphics/graphics-name-only.pdf",
+      "pageImages": [
+        "samples/graphics/png/graphics-name-only-1.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/graphics-r2/graphics-fractional-clip.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/graphics-r2/graphics-fractional-clip.pdf",
+      "pages": 1,
+      "previewChecked": 1,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "94a2d9a56723d9e6bb8bc9b5deb75a400970d6c7",
+      "pdfSha256": "601a8890d965077f8106a98a27213c1b9a4ff9aae14c7f5ec65b923d3ccaefac",
+      "pdfBytes": 67325,
+      "notes": "Right border remains visible left of reference line.",
+      "checkedAt": "2026-10-15T10:40:05.993431+08:00",
+      "publicPdf": "samples/graphics/graphics-fractional-clip.pdf",
+      "pageImages": [
+        "samples/graphics/png/graphics-fractional-clip-1.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/graphics-r2/baseline-native.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/graphics-r2/baseline-native.pdf",
+      "pages": 2,
+      "previewChecked": 2,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "94a2d9a56723d9e6bb8bc9b5deb75a400970d6c7",
+      "pdfSha256": "d221a575113dcd453a6f27e34ce5b0acd341715b50a8c0b92082b3584c434222",
+      "pdfBytes": 117111,
+      "notes": "DOCX -> explicit native OFD -> PDF. Two-page CJK/Latin, italic subtitle, table fill/borders and local red bold checked.",
+      "checkedAt": "2026-10-15T10:40:05.993703+08:00",
+      "publicPdf": "samples/graphics/baseline-native.pdf",
+      "pageImages": [
+        "samples/graphics/png/baseline-native-1.png",
+        "samples/graphics/png/baseline-native-2.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/graphics-r2/baseline-default.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/graphics-r2/baseline-default.pdf",
+      "pages": 2,
+      "previewChecked": 2,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "94a2d9a56723d9e6bb8bc9b5deb75a400970d6c7",
+      "pdfSha256": "aba4be2dc94ba7d8b33be487106229e3f8bcee987d097d26be8ccc9e870fb4ee",
+      "pdfBytes": 117111,
+      "notes": "DOCX -> default OFD -> PDF. Same two-page expected structure and styling.",
+      "checkedAt": "2026-10-15T10:40:05.993964+08:00",
+      "publicPdf": "samples/graphics/baseline-default.pdf",
+      "pageImages": [
+        "samples/graphics/png/baseline-default-1.png",
+        "samples/graphics/png/baseline-default-2.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/typed-consumer/output/before.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/typed-consumer/output/before.pdf",
+      "pages": 2,
+      "previewChecked": 2,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "94a2d9a56723d9e6bb8bc9b5deb75a400970d6c7",
+      "pdfSha256": "9d78f3802394605d8344cfd8b64b4f9d1c148045d418657b05f678f44bd3601a",
+      "pdfBytes": 154861,
+      "notes": "Typed composite placements, picture/pattern, table; two-Clip intersection, fill-rule hole and local annotation.",
+      "checkedAt": "2026-10-15T10:40:05.994245+08:00",
+      "publicPdf": "samples/typed/before.pdf",
+      "pageImages": [
+        "samples/typed/png/before-1.png",
+        "samples/typed/png/before-2.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/typed-consumer/output/after.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/typed-consumer/output/after.pdf",
+      "pages": 2,
+      "previewChecked": 2,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "94a2d9a56723d9e6bb8bc9b5deb75a400970d6c7",
+      "pdfSha256": "ae3afdd9b21cb9a839905f5f69f9691fc55582b38b1dbf66430293ba40f26bc1",
+      "pdfBytes": 154896,
+      "notes": "Only left composite moves +8/+6; page2 image Clip Area transform intentionally changes +5; payload/other drawing preserved.",
+      "checkedAt": "2026-10-15T10:40:05.994506+08:00",
+      "publicPdf": "samples/typed/after.pdf",
+      "pageImages": [
+        "samples/typed/png/after-1.png",
+        "samples/typed/png/after-2.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/typed-consumer/output/original-v1.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/typed-consumer/output/original-v1.pdf",
+      "pages": 2,
+      "previewChecked": 2,
+      "scope": "local diagnostic only; original binary excluded from public archive",
+      "previewPages": [
+        1,
+        2
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "94a2d9a56723d9e6bb8bc9b5deb75a400970d6c7",
+      "pdfSha256": "d30e3d1c695560ec9365a4d5ef35a201bd3e542928771213b02e1151497cc428",
+      "pdfBytes": 118738,
+      "notes": "Local diagnostic original: proportional italic, two tables, annotation-local transform, image and footer. Original binary not redistributed.",
+      "checkedAt": "2026-10-15T10:40:05.994808+08:00",
+      "publicPdf": null,
+      "pageImages": [
+        "samples/typed/png/original-v1-1.png",
+        "samples/typed/png/original-v1-2.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/vector-r4/output/same-source.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/vector-r4/output/same-source.pdf",
+      "pages": 2,
+      "previewChecked": 2,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "17dea14282ee58c00051e36a3257449102883d7b",
+      "pdfSha256": "6f3da907dd576dde5d5133355bf89114eb559b31fe1fc403672d3adf558f698a",
+      "pdfBytes": 21667775,
+      "notes": "Same raw PDF source: bilingual table and payment stamp; affine red overlay intentionally occludes text, Bezier and two holes.",
+      "checkedAt": "2026-10-15T10:47:17.927830+08:00",
+      "reopenedAfterRegeneration": true,
+      "pixelReadback": "vector-r4/output/pixel-readback.json",
+      "publicPdf": "samples/vector/same-source.pdf",
+      "pageImages": [
+        "samples/vector/png/same-source-1.png",
+        "samples/vector/png/same-source-2.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/vector-r4/output/vector.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/vector-r4/output/vector.pdf",
+      "pages": 2,
+      "previewChecked": 2,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "17dea14282ee58c00051e36a3257449102883d7b",
+      "pdfSha256": "b257a6e592642e4df3af12c207c56e1ac982e25ba913ec1181ea064b7d424075",
+      "pdfBytes": 80120,
+      "notes": "Native OFD -> PDF matches same-source: path/text order, spaces, CJK, style and signed winding.",
+      "checkedAt": "2026-10-15T10:47:17.928017+08:00",
+      "reopenedAfterRegeneration": true,
+      "pixelReadback": "vector-r4/output/pixel-readback.json",
+      "publicPdf": "samples/vector/vector.pdf",
+      "pageImages": [
+        "samples/vector/png/vector-1.png",
+        "samples/vector/png/vector-2.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/vector-r4/output/fallback.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/vector-r4/output/fallback.pdf",
+      "pages": 5,
+      "previewChecked": 5,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "17dea14282ee58c00051e36a3257449102883d7b",
+      "pdfSha256": "908ffd5ea574a62bcb1668e98134ddec2dd42622adf0e030bfb5a2e7bf217bd6",
+      "pdfBytes": 199911,
+      "notes": "5 pages: narrow clip leaves only footer; 40% alpha mixed ticket; full-page 2x2 raster; intentionally empty source page; native Pure text / 中文. All match explicit fixture bodies.",
+      "checkedAt": "2026-10-15T10:47:17.928151+08:00",
+      "reopenedAfterRegeneration": true,
+      "pixelReadback": "vector-r4/output/pixel-readback.json",
+      "publicPdf": "samples/vector/fallback.pdf",
+      "pageImages": [
+        "samples/vector/png/fallback-1.png",
+        "samples/vector/png/fallback-2.png",
+        "samples/vector/png/fallback-3.png",
+        "samples/vector/png/fallback-4.png",
+        "samples/vector/png/fallback-5.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/vector-r4/output/xml-ufffe.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/vector-r4/output/xml-ufffe.pdf",
+      "pages": 3,
+      "previewChecked": 3,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2,
+        3
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "17dea14282ee58c00051e36a3257449102883d7b",
+      "pdfSha256": "45cdf897a21758bfa33b7571ee16676c063dd25bb2b4c9f3632eb8586ddd877d",
+      "pdfBytes": 9361,
+      "notes": "Before CJK, middle rasterized Z+blue rectangle, After CJK. No duplicate text or missing neighboring page.",
+      "checkedAt": "2026-10-15T10:47:17.928205+08:00",
+      "reopenedAfterRegeneration": true,
+      "pixelReadback": "vector-r4/output/pixel-readback.json",
+      "publicPdf": "samples/vector/xml-ufffe.pdf",
+      "pageImages": [
+        "samples/vector/png/xml-ufffe-1.png",
+        "samples/vector/png/xml-ufffe-2.png",
+        "samples/vector/png/xml-ufffe-3.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/vector-r4/output/xml-uffff.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/vector-r4/output/xml-uffff.pdf",
+      "pages": 3,
+      "previewChecked": 3,
+      "scope": "OFL/MIT public fixture",
+      "previewPages": [
+        1,
+        2,
+        3
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "17dea14282ee58c00051e36a3257449102883d7b",
+      "pdfSha256": "79b5abc9e17d9934541644082a8f5af3c459fd0182ac476423ba052fd8a0cd5f",
+      "pdfBytes": 9361,
+      "notes": "Before CJK, middle rasterized Z+blue rectangle, After CJK. No duplicate text or missing neighboring page.",
+      "checkedAt": "2026-10-15T10:47:17.928255+08:00",
+      "reopenedAfterRegeneration": true,
+      "pixelReadback": "vector-r4/output/pixel-readback.json",
+      "publicPdf": "samples/vector/xml-uffff.pdf",
+      "pageImages": [
+        "samples/vector/png/xml-uffff-1.png",
+        "samples/vector/png/xml-uffff-2.png",
+        "samples/vector/png/xml-uffff-3.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/whitespace-visual/positioned-narrow-space-False.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/whitespace-visual/positioned-narrow-space-False.pdf",
+      "pages": 1,
+      "previewChecked": 1,
+      "previewPages": [
+        1
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "17dea14",
+      "scope": "MIT original synthetic font fixture",
+      "pdfSha256": "50ebf472fd3e6d97af349f5224ea25087640e8f7948eac2c20a75bfdbac9af9b",
+      "pdfBytes": 2826,
+      "checkedAt": "2026-10-15T10:42:10.221589+08:00",
+      "notes": "Two intentional synthetic glyph blocks (A/B) at explicit origins, blank narrow NBSP slot has no third .notdef outline. Regular/bold exact-pixel comparison with separate A/B baseline passed.",
+      "publicPdf": "samples/whitespace/positioned-narrow-space-False.pdf",
+      "pageImages": [
+        "samples/whitespace/png/positioned-narrow-space-False.png"
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/whitespace-visual/positioned-narrow-space-True.pdf",
+      "relative": "artifacts/merge-round-2026-10-15/whitespace-visual/positioned-narrow-space-True.pdf",
+      "pages": 1,
+      "previewChecked": 1,
+      "previewPages": [
+        1
+      ],
+      "previewStatus": "passed",
+      "windowClosed": true,
+      "sourceBaseline": "17dea14",
+      "scope": "MIT original synthetic font fixture",
+      "pdfSha256": "cee2d95e57410d127883741d7799824192a781fa29cc4d3f1027829131b3ec5e",
+      "pdfBytes": 2961,
+      "checkedAt": "2026-10-15T10:42:10.236416+08:00",
+      "notes": "Two intentional synthetic glyph blocks (A/B) at explicit origins, blank narrow NBSP slot has no third .notdef outline. Regular/bold exact-pixel comparison with separate A/B baseline passed.",
+      "publicPdf": "samples/whitespace/positioned-narrow-space-True.pdf",
+      "pageImages": [
+        "samples/whitespace/png/positioned-narrow-space-True.png"
+      ]
+    }
+  ],
+  "limits": [
+    "Representative deterministic fixtures only; no arbitrary PDF/Word fidelity claim.",
+    "Skia producer scope and bounded vector fallback remain explicit; core has no mandatory Skia dependency.",
+    "SES and password profiles remain optional development/private profiles, not general trusted interoperability or certification.",
+    "Original-v1 OFD/PDF/SVG binaries are local diagnostics only and excluded; page PNG and hashes retained.",
+    "Default eleven packages only; no NuGet publish, tag, dispatch or changes to unrelated primary checkout files.",
+    "Release record remains not-reviewed."
+  ]
+}

@@ -1,0 +1,66 @@
+Window: "after.pdf", App: Preview.
+0 standard window after.pdf – Page 2 of 2, ID: PVDocumentWindow, Secondary Actions: Raise, URL: file:///Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer-output/after.pdf
+	1 split group
+		2 scroll area
+			3 outline Description: outline view, ID: DocumentOutlineView
+				4 row (selectable) after.pdf
+		5 pop up button Description: add, Help: Insert Page…
+		6 splitter (disabled, settable, float) 168
+		7 scroll area
+			8 container document
+				9 Page (disabled)
+					10 container
+						11 text Typed clips and composites / 强类型图形
+						12 text One definition, two placements; red overflow is clipped
+						13 text 共享组合 / shared vector
+						14 text Proportional Wiim: ABC xyz
+						15 text 共享组合 / shared vector
+						16 text Proportional Wiim: ABC xyz
+						17 text Only the left placement moves (+8,+6) after save
+						18 text Original multi-M compound table reference
+						19 text 项目 / Item 
+						20 text Alpha 128
+						21 text 数量 / Count
+						22 text Page 1 / 第一页
+				23 Page (disabled)
+					24 container
+						25 text Clips: one Path Area per Clip; successive intersection
+						26 text Clipped text 中文 ABC xyz
+						27 text Intentional text crop at 38 mm
+						28 text Image: explicit CTM + Area CTM + two Clip intersection
+						29 text NonZero: same winding, solid
+						30 text EvenOdd: visible hole
+						31 text 局部批注 / local annotation once
+						32 text Page 2 / 第二页
+	33 toolbar
+		34 menu button Description: View, Help: Choose sidebar display
+		35 container Zoom
+			36 button Description: zoom out, Help: Scale document down, Details: Zoom Out
+			37 button Description: zoom to actual size, Help: Display at actual size, Details: Actual Size
+			38 button Description: zoom in, Help: Scale document up, Details: Zoom In
+		39 Highlight Selection
+			40 radio button Description: highlight, Value: 0
+			41 menu button
+		42 button (disabled) Description: Remove Background, Secondary Actions: Move previous, Move next, Remove from toolbar
+		43 radio button Description: Rotate, Help: Rotate Left, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		44 checkbox Description: Form Filling, Help: Show Form Filling Toolbar, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		45 checkbox Description: Markup, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		46 checkbox Description: Inspector, Help: Show the Inspector, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		47 button Description: Share, Secondary Actions: Move previous, Move next, Remove from toolbar
+		48 search text field (settable)
+			49 button
+	50 close button
+	51 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	52 minimize button
+	53 text after.pdf Page 2 of 2
+54 menu bar
+	55 Preview
+	56 File
+	57 Edit
+	58 View
+	59 Go
+	60 Tools
+	61 Window
+	62 Help
+
+The focused UI element is 8 container document

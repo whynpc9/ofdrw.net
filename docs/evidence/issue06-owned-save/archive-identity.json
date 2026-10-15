@@ -1,0 +1,13 @@
+{
+  "file": "review-evidence.zip",
+  "bytes": 24611338,
+  "sha256": "391c1301ab9db96a7cadb9c914904200eb1cc659c233bfde3b01e82c3925cc47",
+  "member_count": 146,
+  "member_inventory_sha256": "f9e0620a266841460db7874d4875710bc31931158c28006de3acfa07c50a23cd",
+  "font_license_map_sha256": "31104562e9eaa6f8519f3931af13ae6949a9f3c4148ba6bdca3e3dc448b1c3e2",
+  "product_source_baseline": "0ff9db5eb6a9baaeaa57497534fabf07f0e08848",
+  "runtime_source_pair": [
+    "0e2452473f47c8aa0f916423be6362276ad15666",
+    "f7e3a62b6e63522a836643e59ff8144162ab5bfa"
+  ]
+}

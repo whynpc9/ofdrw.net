@@ -44,7 +44,11 @@ Generated files are under:
 - `e2e/Ofdrw.Net.Converter.Pdf.E2E/output/generated-docx.ofd`
 - `e2e/Ofdrw.Net.Converter.Pdf.E2E/output/upstream-ofdrw/**`
 
-For manual Preview validation, open one of the generated `.ofd` files from the output directory and compare the generated `source.png` and `roundtrip.png` images beside it.
+For manual Preview validation, open `generated-docx-native.pdf` and
+`generated-docx-default.pdf` in macOS Preview. Both PDFs are exported from the
+freshly generated OFDs of the same stem; `generated-docx.pdf` is a direct
+DOCX-to-PDF output and does not prove Native OFD rendering. Use
+`docs/preview-acceptance-template.md` to record the pages actually checked.
 
 The preferred entry point is `scripts/run-converter-package-e2e.sh <version>`.
 It uses a fresh consumer directory, a private package cache and source mapping;
@@ -52,3 +56,4 @@ it also installs the CLI from the same artifact feed. Outputs include the exact
 package SHA256 manifest and Native/default/CLI page renders. Required visual
 tools failing is a test failure. Use `--consume-only --packages-dir <directory>`
 to validate already-built release packages without rebuilding them.
+The script's default output directory is `artifacts/package-e2e/<version>/output/`.

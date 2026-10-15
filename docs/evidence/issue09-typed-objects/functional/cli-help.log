@@ -1,0 +1,48 @@
+Ofdrw.Net CLI
+
+Usage:
+  ofdrw convert <input> <output> [--pages 1,3-5]
+  ofdrw docx-to-pdf --input <input.docx> --output <output.pdf> [--docx-engine auto|word|libreoffice|built-in]
+  ofdrw docx-to-ofd --input <input.docx> --output <output.ofd> [--pages 1,3-5] [--docx-ofd-mode native|dual-layer] [--docx-engine auto|word|libreoffice|built-in]
+  ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5]
+  ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--pages 1,3-5]
+  ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--pages 1]
+  ofdrw verify-signatures --input <input.ofd>
+  ofdrw extract-text <input.ofd> [output.txt] [--include-templates]
+  ofdrw watermark <input.ofd> <output.ofd> --pages 1,2 --text DRAFT
+  ofdrw watermark <input.ofd> <output.ofd> --image mark.png --layer-type Foreground
+  ofdrw split <input.ofd> <output.ofd> --pages 3,1
+  ofdrw mix <output.ofd> <input1.ofd> 1 <input2.ofd> 2
+  ofdrw clean-signatures <input.ofd> <output.ofd>
+  ofdrw replace-text <input.ofd> <output.ofd> --find TEXT --replace TEXT --trusted-font SHA256:BYTECOUNT [--pages 1,3-5]
+  ofdrw reorder <input.ofd> <output.ofd> --pages 3,1,2
+  ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
+
+Commands:
+  convert     Infer conversion direction from .docx/.pdf/.ofd extensions.
+  docx-to-pdf Convert DOCX to PDF using Word on macOS when available, or LibreOffice.
+  docx-to-ofd Convert DOCX directly to native OFD text, or use a dual visual/text layer.
+  pdf-to-ofd  Convert PDF to OFD.
+  ofd-to-pdf  Convert OFD to PDF.
+  ofd-to-svg  Convert one OFD page to self-contained SVG.
+  verify-signatures Verify protected-entry digests and registered signed-value algorithms.
+  extract-text Extract page text, optionally including template text.
+  replace-text Replace literal simple text using vetted original Regular fonts and translation-only geometry.
+  reorder      Reorder every page using a complete 1-based page list.
+  watermark    Add ordinary text/image objects to selected layers (millimeters).
+  split        Select distinct pages in 1-based list order into a new OFD.
+  mix          Overlay source/page pairs in input order, first page dimensions.
+  clean-signatures Remove all declarations and unreferenced owned signature payloads.
+  merge        Merge OFD pages into a self-contained output document.
+
+Options:
+  -i, --input   Input file path.
+  -o, --output  Output file path.
+  -p, --pages   1-based page list or ranges, for example 1,3-5.
+  --include-templates Include template text during extraction.
+  --skip-unsupported  Drop unsupported raw objects during merge.
+  --docx-engine      DOCX renderer: auto, word (macOS), libreoffice, or built-in.
+  --docx-ofd-mode    DOCX to OFD mode: native (default, no PDF) or dual-layer.
+  --libreoffice       Path to the LibreOffice soffice executable for DOCX conversion.
+  --font-directory    Additional font directory for DOCX rendering; may be repeated.
+  -h, --help    Show help.

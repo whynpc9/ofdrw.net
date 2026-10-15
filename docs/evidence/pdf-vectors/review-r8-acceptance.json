@@ -1,0 +1,142 @@
+{
+  "head": "d8d197ec448c5dad690a72a1bb5a776c2e7019e2",
+  "main": {
+    "dotnet": 625,
+    "python": 5,
+    "default_packages": 11,
+    "optional_packages": 13
+  },
+  "independent_low10_failure": {
+    "worker": "independent Low10",
+    "status": "failed_first_actual_gate",
+    "exact_head": "d8d197ec448c5dad690a72a1bb5a776c2e7019e2",
+    "source": {
+      "commit": "d8d197ec448c5dad690a72a1bb5a776c2e7019e2",
+      "tracked_blobs": 357,
+      "archive_mismatches": [],
+      "src_diff_from_deda6d2": [],
+      "post_run_mismatches": []
+    },
+    "golden": {
+      "compressed_bytes": 11532803,
+      "compressed_sha256": "024e4dbd0f735b90c9cf50f91d1e245cfab1caca9e2e73af243afa8fb4def3fa",
+      "raw_bytes": 21698835,
+      "raw_sha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb",
+      "font_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    "gates": {
+      "default11": "passed",
+      "optional13": "passed including automatic asset copy",
+      "dotnet_counts": [
+        13,
+        49,
+        88,
+        168,
+        5,
+        28,
+        20,
+        250,
+        4
+      ],
+      "dotnet_total": 625,
+      "trx_files": 9,
+      "python_tests": 5,
+      "clipped_observer": "failed after indexed image and control checks: wrong invocation supplied gzip path instead of raw PDF; no retry",
+      "original_observer": "not run after failure",
+      "model_comparison": "not run after failure",
+      "auxiliary_visual": "not run after failure"
+    },
+    "limits": {
+      "Preview": "pending GUI prohibited",
+      "Linux_CI": "pending",
+      "latest_reviews": "pending"
+    }
+  },
+  "independent_low11_completion": {
+    "worker": "independent Low11",
+    "exact_head": "d8d197ec448c5dad690a72a1bb5a776c2e7019e2",
+    "status": "passed_bounded_completion",
+    "retained_low10_failure": "Low10 passed gzip instead of raw PDF to TextObserver source identity; retained and not rewritten",
+    "referenced_unchanged_low10_gates": {
+      "default_packages": 11,
+      "optional_packages": 13,
+      "dotnet_total": 625,
+      "dotnet_trx_files": 9,
+      "python_tests": 5,
+      "tracked_blobs": 357
+    },
+    "low11": {
+      "high_observer": "passed existing compiled DLL with raw d78e PDF; clipped 999600 OFD and 999600 PDF RGB samples",
+      "text_observer": {
+        "status": "passed",
+        "sourceHash": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb",
+        "failSentinel": true,
+        "native": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "selected": [
+          5,
+          0,
+          5
+        ],
+        "selectedNative": [
+          true,
+          false,
+          true
+        ],
+        "fontResources": 4,
+        "fontSha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+        "lastText": "A  B\u4e2d\u6587 C"
+      },
+      "original_observer": "first build of unchanged separate original source authorized by coordinator; passed original 49994 source 999600 OFD and PDF RGB samples",
+      "original_dll_sha256": "d1033d44cee0270bb5cef8bc6067bf8fe9dec8457d3c2bdbf2a6fb2fcc892291",
+      "model_compare": "18 unaffected OFDs; no payload differences; dual OFD.xml metadata differs",
+      "auxiliary_png": "six source/export page pairs inspected via contact sheet; pages 1-4 localized glyph differences, pages 5-6 common viewport pixel-identical; no visible omission/overlap/clipping at inspected scale",
+      "logs": "observer-output-low11",
+      "new_export_pdf_byte_hashes": {
+        "clipped": "ed4afee2f7e8a26d998d6513bd2470bb19eb0a383bdb09377f844127b0c19c5a",
+        "original": "d79917503877a70ec286e22bf09edeb4d1693a7688c46a9bc9875d0b65eac156",
+        "text_original": "5e7cad1627297e23d1227b090965ec26259ac08b4f2b9e4d8d4a3090d547182b"
+      }
+    },
+    "immutability": {
+      "reused_inputs_sources_binaries_nupkgs_changes": [],
+      "source_archive_mismatches": []
+    },
+    "limits": {
+      "preview": "not performed; GUI prohibited",
+      "linux_ci": "pending",
+      "latest_reviews": "pending",
+      "release_acceptance": false
+    }
+  },
+  "visual": {
+    "r8_preview_performed": false,
+    "r6_original_observations_retained": true,
+    "new_pdf_bytes_are_not_previously_viewed": true
+  },
+  "font_performance": {
+    "status": "confirmed finding, design only; repair not implemented",
+    "font_bytes": 21659544,
+    "bounded_runs": [
+      1,
+      10,
+      50,
+      100
+    ],
+    "actual_r8_package_timings": true,
+    "stream_counts": "artifact-only diagnostic source copy; actual package counts derived from loaded IL",
+    "report": "font-identity-r9-design/report.md"
+  },
+  "release_accepted": false,
+  "merged": false,
+  "published": false
+}

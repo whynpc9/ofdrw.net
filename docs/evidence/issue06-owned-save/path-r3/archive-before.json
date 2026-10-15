@@ -1,0 +1,2039 @@
+{
+  "expected_head": "439cf4404c63362ceeceb56e77078fcabb966763",
+  "actual_head": "439cf4404c63362ceeceb56e77078fcabb966763",
+  "tracked_status": [],
+  "file_count": 406,
+  "files": {
+    ".github/workflows/ci.yml": {
+      "bytes": 4951,
+      "sha256": "1e9ec60f9fd1365116ea29a41b3439aac57de1f0baf3a6b152d415ebdb416942",
+      "git_blob": "3df7c9398c7c56a51a6bd17eec12130cca3b2b0e"
+    },
+    ".github/workflows/publish-nuget.yml": {
+      "bytes": 3452,
+      "sha256": "524359ffde94aa098636406937794b06a4d052ee05aafac76c01c0a44dccbb6c",
+      "git_blob": "6865ebf5af880c73240539267cfc08db181cc1e7"
+    },
+    ".gitignore": {
+      "bytes": 245,
+      "sha256": "8217b56e73419575da644612266a6be8980230b0e42d6b8c7a80400e43b0d17b",
+      "git_blob": "2d0affc22561842ac49039d037fc55912bcfb183"
+    },
+    ".scratch/capability-roadmap/issues/01-public-flow-layout.md": {
+      "bytes": 1805,
+      "sha256": "db7bcfc215d2133c307ea20249202d02f85d96ccfc57b14064f85e58a0487e5a",
+      "git_blob": "de38b93919c2a0bcd244a848650c95e43c75772c"
+    },
+    ".scratch/capability-roadmap/issues/02-ofd-image-io.md": {
+      "bytes": 1407,
+      "sha256": "65b013febf4ff35864f21f725f3ee284b486482f20c9f5c112dbd2f9e498a16c",
+      "git_blob": "0fc97173b97fc1d0a9397736d4dbfe621edc685e"
+    },
+    ".scratch/capability-roadmap/issues/03-document-tools.md": {
+      "bytes": 2545,
+      "sha256": "9a1bc85f154198a5354b2dd722cbe615d81b5b4d29c3077cd6fe9c9edcae826f",
+      "git_blob": "0263cfb9a5fb61c488a2230f688be693dc0336e3"
+    },
+    ".scratch/capability-roadmap/issues/04-ofd-graphics-api.md": {
+      "bytes": 1597,
+      "sha256": "075b7275fbf52afbb7007f5ea596c011a4a731664717c0d97a468d6001c7ebdc",
+      "git_blob": "9dcc6fd258363b1073cdfe31d59886bbc21d95be"
+    },
+    ".scratch/capability-roadmap/issues/05-font-subset-and-reuse.md": {
+      "bytes": 1650,
+      "sha256": "96658aea66cdf14a4f5b7f0e878f9f19987abe9edac5599dac43ba06800f8bbe",
+      "git_blob": "ee6b7963c6c7c142bae79a18ac89e28929599fba"
+    },
+    ".scratch/capability-roadmap/issues/06-keyword-locate-and-replace.md": {
+      "bytes": 1528,
+      "sha256": "9c1d98384cdb1e2ecf63ec01e1cc2df7800a10889a207c5b8f7484f172381e42",
+      "git_blob": "1d89e7df27191217f66e38dbd3870a0637746b63"
+    },
+    ".scratch/capability-roadmap/issues/07-attachment-add-remove.md": {
+      "bytes": 1305,
+      "sha256": "d5c103bbec6d62938fd1b39b320c80c922c9bc47797211a94f951973a7649822",
+      "git_blob": "c477867908823a3673fb082c98282f345494b368"
+    },
+    ".scratch/capability-roadmap/issues/08-ofd-to-html.md": {
+      "bytes": 1163,
+      "sha256": "3e7a19e1c7ac8b3968f5faa0b5f25a01a09941af35f11eb14ea5b4fff4c1bf65",
+      "git_blob": "50b3b1f82180d8df0da316acc11692d94571da47"
+    },
+    ".scratch/capability-roadmap/issues/09-typed-object-model.md": {
+      "bytes": 1374,
+      "sha256": "d176367c5932182ec87bb4e343483fd7980e8acc2d14024544ec99e9e195fc35",
+      "git_blob": "f92180e492fe167c9b6fef6c98c4033c2a727aa2"
+    },
+    ".scratch/capability-roadmap/issues/10-multi-docbody.md": {
+      "bytes": 1273,
+      "sha256": "40e75f13678725b4b6d5a70c6dcf71dc6fe29058ce9eaf1f7636adc1fd54d705",
+      "git_blob": "2c5ce531d35b9814d4e0a6c387c94a125984a807"
+    },
+    ".scratch/capability-roadmap/issues/11-gmt0099-password-crypto.md": {
+      "bytes": 1802,
+      "sha256": "5b238cdbd2717012aa2d7540170d4fe234ac42ed50242b8022f727b88115fde0",
+      "git_blob": "b670f9dac4d0794e99712207a582972f78a738cf"
+    },
+    ".scratch/capability-roadmap/issues/12-ses-self-sign-interop.md": {
+      "bytes": 1666,
+      "sha256": "c8f786a7892340525dfe70a6c3211bc8e8f288564becf00777fa7045610db13a",
+      "git_blob": "12dfd108803c755b7db3469e5fc420743885d9b1"
+    },
+    ".scratch/capability-roadmap/issues/13-lock-and-continue-sign.md": {
+      "bytes": 1416,
+      "sha256": "c06da8db42bd053927ab599fccad3f1aaf4fc08cddeb7dd175fda007ad3187ee",
+      "git_blob": "d8f135edb3219fccde887f7ee1d25c643303cbce"
+    },
+    ".scratch/capability-roadmap/issues/14-ofd-a-checker.md": {
+      "bytes": 1140,
+      "sha256": "5870d3446a3fe4f632f1c7e0ef12c0f3f71aae788214e76ca6e1ddaebb90e957",
+      "git_blob": "a4fb69bb01bc88c1bb02426ef9caaa058f23f427"
+    },
+    ".scratch/capability-roadmap/issues/15-release-engineering-gates.md": {
+      "bytes": 2032,
+      "sha256": "1f8373199584c935e74323c0025cdabdadf0d59a231e637fcf5fb96b20335a5c",
+      "git_blob": "0eebdd9e8d4ec7eb13f9f605d852103ed8cc70da"
+    },
+    ".scratch/capability-roadmap/issues/16-public-tables.md": {
+      "bytes": 1436,
+      "sha256": "bdd7e9c952d53cb3989c1e02c363d5e40f85fc7bfc63b6cf46e9721ddac4f520",
+      "git_blob": "2ca3bd31f35d3d1660640496833c38d09a6e13f9"
+    },
+    ".scratch/capability-roadmap/issues/17-area-holders.md": {
+      "bytes": 1156,
+      "sha256": "72a1d68766904d552f14025f86217abc68934b1ee489a540ff8e71b35f39e943",
+      "git_blob": "342cd41d45d7a4af6438211f270bbd312ac57961"
+    },
+    ".scratch/capability-roadmap/issues/18-plain-text-to-ofd.md": {
+      "bytes": 1005,
+      "sha256": "4a52f683f52f501940c5e1ce42a5b2e6085af4b989a979485915f295e4bcc1ea",
+      "git_blob": "6d7523e4c5f599c4e30e84edb13ffdc7790f0ffb"
+    },
+    ".scratch/capability-roadmap/issues/19-skiasharp-graphics-adapter.md": {
+      "bytes": 1256,
+      "sha256": "64c8ffc554143b0ecd39a02b66b2378f94be883ee75f9cfb8fd6e0b2da96aab9",
+      "git_blob": "70df4d5e18ca52283812642cc12eeffd10734ea7"
+    },
+    ".scratch/capability-roadmap/issues/20-layout-canvas-drawcontext.md": {
+      "bytes": 1201,
+      "sha256": "9a25293e6c661c11c4575a1c093b0c71b414ddddb1f3a75b4b8162a6468f2049",
+      "git_blob": "36db659aef77a5c064e6bcaa48d96bf194889086"
+    },
+    ".scratch/capability-roadmap/issues/21-pdf-to-ofd-vectors.md": {
+      "bytes": 1760,
+      "sha256": "bbbfb49f3df1df754a5aac12098271c6a4317696c6b4926db4fa9668498f5cf3",
+      "git_blob": "7382041343aacd06b4afb2e0bd555cf177f570ac"
+    },
+    ".scratch/capability-roadmap/issues/22-riding-seal-appearance.md": {
+      "bytes": 1217,
+      "sha256": "50b83b179c47039cbd8f5fa17d97b3b0c86b3bc25dc0be19fc329642053ba052",
+      "git_blob": "f9d647a34f8411df8bd778b2d4aa0b6ad9c44431"
+    },
+    ".scratch/capability-roadmap/issues/README.md": {
+      "bytes": 2718,
+      "sha256": "0597ab2a3b390bb6096a9d929f42a01d41d5a9ab79a3854b8d8450a4db5b45bd",
+      "git_blob": "fb1265b170f7fbfecf3eac9aec8f067e4c4a9319"
+    },
+    "AGENTS.md": {
+      "bytes": 3009,
+      "sha256": "e9ed47e475dbc25f4f74ab12d1a210dfe57b966bfb0a584d5f0599d5e74d581f",
+      "git_blob": "ebcfe47c6c3eaf03894ba3653bfc4600c48c54cd"
+    },
+    "Directory.Build.props": {
+      "bytes": 2206,
+      "sha256": "5502479a9337275e10c29c3b9d631d2c297f1a5268f4089836e8c71b8635761a",
+      "git_blob": "a44b1d15495ff62d406a7a17835e3b745b7b916d"
+    },
+    "LICENSE": {
+      "bytes": 1064,
+      "sha256": "2b4dd513f6505b2522a1f6eb3c07dccf04c37b19daf13c3a26aa9bcafe3436fc",
+      "git_blob": "125f17109652acae61e4365e986f4574dcdd0d12"
+    },
+    "Ofdrw.Net.sln": {
+      "bytes": 21715,
+      "sha256": "e57d9a55fc9408e024997b26b41fd840aa787e8ef03e832dcf344f61694f88fb",
+      "git_blob": "5ce2bf2935450dc58621f327cb47ff3e718712d3"
+    },
+    "README.md": {
+      "bytes": 15686,
+      "sha256": "713e30219c5d46612dd0062e0bb498c53600ba32d9e9ea7940985fff60786b9e",
+      "git_blob": "bba9f1722d956fd50a343d2ba265e7cb7b569652"
+    },
+    "THIRD-PARTY-NOTICES.md": {
+      "bytes": 1612,
+      "sha256": "d8fe99f36beb3d6ecfb35deb8c7158478874f77a3dc746d049cd9887e06f0a7a",
+      "git_blob": "3170c08b28c9d09283b7ae5b225bb31d29360c05"
+    },
+    "docs/builtin-docx-conversion-engine-plan.md": {
+      "bytes": 14986,
+      "sha256": "04f5d4f5466f3b1cb76a65339befb41928782dbc9ec02d33b2436cfb5b079808",
+      "git_blob": "53e618124150d81178c7bbfed5e75d423a7f4d61"
+    },
+    "docs/capability-roadmap-development-plan-review-2026-09-29.md": {
+      "bytes": 8756,
+      "sha256": "c53e3d940580090e895bec29ad501ff2a81950110ff1114f09d5c2ac5c5f2b5b",
+      "git_blob": "eb57765115d3b1fbf737806567794b3e9efa762d"
+    },
+    "docs/capability-roadmap-development-plan.md": {
+      "bytes": 34929,
+      "sha256": "f6611e15e57ecd6964cf622063a86dcec8de4cb5bd3eb13ed28d5b708ffad9fc",
+      "git_blob": "35adf67bf9f33fce9f6cfaa08741d6b3231def7e"
+    },
+    "docs/capability-roadmap.md": {
+      "bytes": 12506,
+      "sha256": "a11a2957bd4d46b63876a1c792d5275c0fac4599c20d04ac05f1e31a7d27a3a2",
+      "git_blob": "a619e9d7e081d26c226f9632d7489f4b8273c557"
+    },
+    "docs/conversion-contracts.md": {
+      "bytes": 10295,
+      "sha256": "12ea794c4e5156f6c8315b776d271dc4f7492abb26965fb14a31ea127fc0c9eb",
+      "git_blob": "f62ef69b2d6e2fbfc8761d93ee1c98367171bd06"
+    },
+    "docs/document-tools-integration-notes.md": {
+      "bytes": 8965,
+      "sha256": "ef5d09ce563c4ca935944f2aeb0d679257a3ff669538a86eb1a6c65c5f3bb680",
+      "git_blob": "67b885c8b706d91f37cc0f51ef03d9656172c966"
+    },
+    "docs/evidence/document-tools/.gitignore": {
+      "bytes": 7,
+      "sha256": "3ecad88596ff579d0dc5705f252db02eb59213c29821099750041aeebb332c19",
+      "git_blob": "a37273b305f60a2b193004bed1e8b3ce0aa24c5f"
+    },
+    "docs/evidence/document-tools/README.md": {
+      "bytes": 8747,
+      "sha256": "9882f7fb247947a7d458138d5374e79cb8f6970fd839fe359a279517f23c11e8",
+      "git_blob": "783a5e6c0fc2d1ca3344b3169e63d64075f72a97"
+    },
+    "docs/evidence/document-tools/acceptance.json": {
+      "bytes": 43546,
+      "sha256": "4d4ac93741111e7b4734ffd0c0c0baf66dd45fc32c19585a21439f3f66649e3a",
+      "git_blob": "e543b013e8e0ec324886f4b4323b84aeb541d59f"
+    },
+    "docs/evidence/document-tools/evidence.tar.zst": {
+      "bytes": 42676338,
+      "sha256": "13e7cee4b830846473aee4f2625c120272b8187973aa2c4711b7092b621af1dc",
+      "git_blob": "62ec9f6b390a826e3613df75e3d168ffd13c4619"
+    },
+    "docs/evidence/document-tools/manifest.json": {
+      "bytes": 83523,
+      "sha256": "a2604b8e28996ec556d9d72bbd4bbee5d708bb3d8a8363519a3392d3a1acde77",
+      "git_blob": "484c70ab8edb0e9947daa934dd4915df8f3b4e8e"
+    },
+    "docs/evidence/document-tools/preview-progress.json": {
+      "bytes": 37995,
+      "sha256": "e37751840714a039bacd710fde59f99b84f3dab1a1cb13c94fafe15e41eeaa74",
+      "git_blob": "025984777016002a4198818b2797d05fee840071"
+    },
+    "docs/evidence/issue06-owned-save/README.md": {
+      "bytes": 9540,
+      "sha256": "8a9128e66c1d69cc2c4f180e2c2d33681410f170969abd45a5f9b0bcc3e2d248",
+      "git_blob": "844e77c76820da681ee07ff93e7e90b51e49d2a9"
+    },
+    "docs/evidence/issue06-owned-save/archive-identity.json": {
+      "bytes": 554,
+      "sha256": "0c7857e06e4d366db55ff9ccbd7dd14de2e7cfea8d74e304f7791f4bbc2cf3ef",
+      "git_blob": "807abc618d8aab473e4241ff8828dc4e9bc63ec2"
+    },
+    "docs/evidence/issue06-owned-save/build_review_archive.py": {
+      "bytes": 16469,
+      "sha256": "2e243797d801743cd0cef9b7a833342b433c9b7eb91748844d0c9880188151ff",
+      "git_blob": "8d98d8a7836d10f32df378cd12e9dd352888abcd"
+    },
+    "docs/evidence/issue06-owned-save/font-gate-r1/archive-after.json": {
+      "bytes": 88774,
+      "sha256": "8fb6bf680c47473ae4c9ddcd176d3bc45115da4fe5ab0fe9c3c7094b3dc70a04",
+      "git_blob": "95dca2077416bf3784c425c2494b4b8e0e6c00d0"
+    },
+    "docs/evidence/issue06-owned-save/font-gate-r1/archive-before.json": {
+      "bytes": 88774,
+      "sha256": "8fb6bf680c47473ae4c9ddcd176d3bc45115da4fe5ab0fe9c3c7094b3dc70a04",
+      "git_blob": "95dca2077416bf3784c425c2494b4b8e0e6c00d0"
+    },
+    "docs/evidence/issue06-owned-save/font-gate-r1/invocation.json": {
+      "bytes": 1035,
+      "sha256": "8f44e88e0c947e57d68a14aa0643467a11ac06e1ad27bc32ef48cc6387dcb274",
+      "git_blob": "a75d63695848f0dba4f33bf303d6b7df03af40e7"
+    },
+    "docs/evidence/issue06-owned-save/font-gate-r1/member-hashes.json": {
+      "bytes": 1307,
+      "sha256": "2124c7bc768aea4908d590069e69a3156c59bfda55e11d51e0f4211d2b903042",
+      "git_blob": "101a373db2842aefb68706a6f005c54fb266f29e"
+    },
+    "docs/evidence/issue06-owned-save/font-gate-r1/results/command.json": {
+      "bytes": 1570,
+      "sha256": "315190d9cf38ccf8207df1ab54c0ae85c6c0d23736b6c1bdcb1122d06383af92",
+      "git_blob": "faf217a5bbb569df2fbfd2f76fcf8df243ca1fd5"
+    },
+    "docs/evidence/issue06-owned-save/font-gate-r1/results/summary.json": {
+      "bytes": 482,
+      "sha256": "f27490589dbc317efb187f6f2125f646e9dc4b47047f017f22274b6db0d67a66",
+      "git_blob": "af12e9c2b9429bf2bf2e5baba0ce02bb1243b419"
+    },
+    "docs/evidence/issue06-owned-save/font-gate-r1/results/trusted-fonts.trx": {
+      "bytes": 152772,
+      "sha256": "e27a714135a115a3453dc445a4f2fd089274d2acb390c1c751beaf50e5e073b1",
+      "git_blob": "5daab29c8d41d85d1f01b1befd94908f75ce0c15"
+    },
+    "docs/evidence/issue06-owned-save/font-gate-r1/runner.log": {
+      "bytes": 11803,
+      "sha256": "17f04ac90a6865c304578a56f12f909c0b64098a052a34a29b2a34fbf317be52",
+      "git_blob": "a95f197bcca3c014461df658491cde472094610d"
+    },
+    "docs/evidence/issue06-owned-save/font-gate-r1/summary.json": {
+      "bytes": 16952,
+      "sha256": "8fa1f8c31d28b5f45c8ed33a314618b2cb4f03c0c37b35dd4aaff2622a0a3983",
+      "git_blob": "2804ba33496e52345bc3e77625f8da49acf0a553"
+    },
+    "docs/evidence/issue06-owned-save/font-license-map.json": {
+      "bytes": 7541,
+      "sha256": "31104562e9eaa6f8519f3931af13ae6949a9f3c4148ba6bdca3e3dc448b1c3e2",
+      "git_blob": "59fc3693562954bae89618740ac5e79574fc1839"
+    },
+    "docs/evidence/issue06-owned-save/member-inventory.json": {
+      "bytes": 56212,
+      "sha256": "f9e0620a266841460db7874d4875710bc31931158c28006de3acfa07c50a23cd",
+      "git_blob": "e1500c5b5cb1c92701f995039f669d7c68eb1f27"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/archive-after.json": {
+      "bytes": 91234,
+      "sha256": "2c23b3fe91d3f67c5f546c4b0b41ef6298656a29c0029706621f18f1ad769d69",
+      "git_blob": "9e1a85cd4ac1b334925f38350a869975ce7cfa16"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/archive-before.json": {
+      "bytes": 91234,
+      "sha256": "2c23b3fe91d3f67c5f546c4b0b41ef6298656a29c0029706621f18f1ad769d69",
+      "git_blob": "9e1a85cd4ac1b334925f38350a869975ce7cfa16"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/commands.json": {
+      "bytes": 5802,
+      "sha256": "8945e2c989f223cacdd6865f1a7f70d2767ca5e5141cf7656ef56c11bec26dab",
+      "git_blob": "6a3e0c24e24eba20923bcea65d9b2a2b5af3ff31"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/environment.json": {
+      "bytes": 781,
+      "sha256": "4bf62f1768924d29d894914f187d28f0142a9b79b765bb1412a7b8902a79c962",
+      "git_blob": "abf49321a0152d0b29b0814fee7df78efaf7fe0c"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/logs/build-Converter.Pdf.log": {
+      "bytes": 13070,
+      "sha256": "874f5be3969369f360f661915c81861fbee0f2362efe576fdbffad93003416f1",
+      "git_blob": "2d4a229645dbcfd03d7f4f4a2cd4c531a7afa7b2"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/logs/build-Core.log": {
+      "bytes": 516,
+      "sha256": "79a5e587863e9063483bd3c0329093d568b49e8daf0bfee5101b80a6f8b872e9",
+      "git_blob": "9df7dbed8ef3cd07582323f5916ac607d36ff6b6"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/logs/build-Layout.log": {
+      "bytes": 1650,
+      "sha256": "add74f5a45cf276178d7972405c7707bf338dd5f3eb0e7774e9c17d6028812e6",
+      "git_blob": "603b26b32de5d42dd21e6a64a41ab2189009b405"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/logs/build-Reader.log": {
+      "bytes": 1278,
+      "sha256": "215f30811ce16bf76ef9b70a6ace304566b16e896b155c7d53351998b99e1ce9",
+      "git_blob": "2e22432c9629924a66b1e22c9ecf4141036625e6"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/logs/test-Cli.log": {
+      "bytes": 21051,
+      "sha256": "5922061a715e0e3dc8e31b15c33519318d2aa2f42e9557a184609301913237b6",
+      "git_blob": "ca9d6338e19ff03b9a773224b70cfea9dfa6bf17"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/logs/test-Core.log": {
+      "bytes": 2407,
+      "sha256": "25db23495bf260683f1d705e37e6a6311f3f0e1c638407bff1356268e6047626",
+      "git_blob": "e30e9711e3e1ae6ec5dffb1d1fe1d7df8a12104e"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/logs/test-Packaging.log": {
+      "bytes": 3868,
+      "sha256": "9d3d0504a3de852355c3939395b8712423d52a5b9d18e4668fbfdca77a0a92d3",
+      "git_blob": "9f0610fa91a1b49d06eb76d71c6d4546cb310b2c"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/member-hashes.json": {
+      "bytes": 2868,
+      "sha256": "83453eb329f7ac164d1ab3a4d7a6812150d91442de90c65ba2008fb7f28ee12e",
+      "git_blob": "be40e4501e2aff1c7ba36fe9dcf6e47ffa357a8f"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/pr19-owned-path-case-closure.md": {
+      "bytes": 2553,
+      "sha256": "0f2b7737a0913a2d8253322be68bc2b5c0a6eea437cd355bd9047a07b1569d0a",
+      "git_blob": "ac7fbf60ac63cfae3c0a6d5befc5d5876082abdd"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/pr19-owned-path-case-review.md": {
+      "bytes": 5029,
+      "sha256": "f060c292a3638755c3a5a0589270cf02d657fee805a8133b2755d9118c09c514",
+      "git_blob": "834f2f8f94f13a2ed1615819d1321afd1d7c6ded"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/report.md": {
+      "bytes": 1614,
+      "sha256": "07dc6e626b725fe15e63f55b12e58f2bdb95bd100301496b59b27af4463012ba",
+      "git_blob": "cee34c8c18eb4ce6b4a1af078c207e739478a272"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/results/Cli.trx": {
+      "bytes": 65562,
+      "sha256": "71d106ae4f9f41aaa6c3fcf9301db6a070c135125172c4d228ac353d950ee5e5",
+      "git_blob": "04bffc4c776cec159cf0be4d9ff287b6d8a7427b"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/results/Core.trx": {
+      "bytes": 109099,
+      "sha256": "cc57023d93ae8006e1c7a436df5775738d18440cc539c5f86dec4ad0547e102b",
+      "git_blob": "b90a0558475a0eeee4e5c6441b414a4bff1c7f8e"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/results/Packaging.trx": {
+      "bytes": 124152,
+      "sha256": "fef05c07eab224b713b394e70eefd26e90beba5228ce4feccf7d07cb25100e94",
+      "git_blob": "05b3be24c4729162dad3d61305c814c50fe724e8"
+    },
+    "docs/evidence/issue06-owned-save/path-r2/summary.json": {
+      "bytes": 21450,
+      "sha256": "12e73f2677593d45081cda23854b79d439b197f4afe2bfd222c544ab73ee738b",
+      "git_blob": "135019ff4e9de7b42bcc4cc1446cf2ef7b1b61b3"
+    },
+    "docs/evidence/issue06-owned-save/review-evidence.zip": {
+      "bytes": 24611338,
+      "sha256": "391c1301ab9db96a7cadb9c914904200eb1cc659c233bfde3b01e82c3925cc47",
+      "git_blob": "df5eb7e0b4ef4638426d50667a9737d765adfe96"
+    },
+    "docs/feature-parity.md": {
+      "bytes": 7458,
+      "sha256": "dadae8fc7f4fb9fda2464dc5a9e2b899d01306623d941430d62ce42587a6154a",
+      "git_blob": "e2e1610e6786b330bc28cdc2dae3e3c7f44cb414"
+    },
+    "docs/release-notes-0.1.0-preview.6.md": {
+      "bytes": 1319,
+      "sha256": "8a7ff4aa89ff3b2fc9b5581494fdd173ab928132655d53bc5243949187ec45e4",
+      "git_blob": "6d31b3bc2b4ec861c5f6c9c1243bf8cd4a89ce20"
+    },
+    "docs/release-notes-0.1.0-preview.7.md": {
+      "bytes": 2242,
+      "sha256": "58de1d230929627247ea3db60e0cb987fa9dcd421ae6b60626fa6ee50e41a9cd",
+      "git_blob": "364c9e1a79ae56b8defbd69dc5e7dee97572d23d"
+    },
+    "docs/release-notes-0.1.0-preview.8.md": {
+      "bytes": 1332,
+      "sha256": "b71c9474cfeb2d7c8a3b8e27c804d2eb2bcc261304006dd64df155d4ad8efad9",
+      "git_blob": "6fd3f30aafbe68df769eff2d434118c18191d158"
+    },
+    "docs/repository-acceptance-2026-09-06.md": {
+      "bytes": 2639,
+      "sha256": "037aa9e79b82cecb01c450fac2f55207c57d214a3d4f71de43bc450dfc1cf474",
+      "git_blob": "497a6fe6b44fa95ad18ec0d5a1af2ba4fc52c08d"
+    },
+    "docs/repository-fixes-2026-09-05.md": {
+      "bytes": 4701,
+      "sha256": "30ec44c955ae641d172b3c90efe462437deab80fa2f8151dc8c3f6631181f000",
+      "git_blob": "42af502b4549eac6d2a2f977b3f7bee4ed84bae1"
+    },
+    "docs/tutorials/01-open-the-package.md": {
+      "bytes": 4590,
+      "sha256": "ba0ca1eba8772e0ed80876fee82f4ff7ac0a79cb01a10d6b9a8f9946504bb838",
+      "git_blob": "5412424e6f15569436b29e525bfd86fcfd2e5d93"
+    },
+    "docs/tutorials/02-basic-types.md": {
+      "bytes": 9130,
+      "sha256": "056d3a141ca0b8fecf5dda74477d76eac43a8d82afb4a8b08efba392b71089fc",
+      "git_blob": "1e6d7ac909925363b212e3211869bbccc034740a"
+    },
+    "docs/tutorials/03-ofd-xml.md": {
+      "bytes": 4231,
+      "sha256": "55ec0d5137ff5dd1a9b7c79b18381168dd9de69735f2925ada7d958006ecb836",
+      "git_blob": "027ef81a974351bb6ee88d7d825014037608ccda"
+    },
+    "docs/tutorials/04-document-and-pages.md": {
+      "bytes": 4946,
+      "sha256": "779d2d00c90a46ad9f9a587e3da09bd2752894cc7cfaec7fd6fe27b97d5fd53a",
+      "git_blob": "858fad6ef377d80723c40f22b56a77586597e8ba"
+    },
+    "docs/tutorials/05-coordinates-and-layers.md": {
+      "bytes": 4538,
+      "sha256": "664c1130d3e33ea10a848229a24bbe850d31e52bd81d67ad45d0dcec8a42e181",
+      "git_blob": "ef1c8eb12e3faaa50f7a2f848d8d9a8d17e8e6ca"
+    },
+    "docs/tutorials/06-text.md": {
+      "bytes": 4593,
+      "sha256": "562949fcb03732e4c971cea1918d5f5751d143fc8700e6c975b174df47d10ce8",
+      "git_blob": "9be3881241a1e1d9b54de5dd3008e75205719d9b"
+    },
+    "docs/tutorials/07-paths.md": {
+      "bytes": 4132,
+      "sha256": "83deb7977e065c9f594805d50be80d91e0dc34836936ab5389427d4ccafdd4c3",
+      "git_blob": "bc438bc842dd6b6acd567baf9d5040c2504a0ec9"
+    },
+    "docs/tutorials/08-images-and-resources.md": {
+      "bytes": 4026,
+      "sha256": "0940bfb47b9011d1d04dd789ae12f9b84e12aa4e16abccd3a13cc82014a49c3c",
+      "git_blob": "3f52b8b215b7275761c331fdda32c24a70883ac0"
+    },
+    "docs/tutorials/09-templates-attachments-tags.md": {
+      "bytes": 8750,
+      "sha256": "7bdc88b3344b4ad5379593a348218358bfda3593d3e60b9d9b098d2465e33ee1",
+      "git_blob": "b65d0bd239a5c18f8f40156749075760a55ada81"
+    },
+    "docs/tutorials/10-signatures.md": {
+      "bytes": 5110,
+      "sha256": "9e3a94bc6ce8b745ac2e68e02b7df849e4cdf082d1569d301f94b4319e90a1ab",
+      "git_blob": "5a5ef7e7a3a202b12177157443d31d2219c2f932"
+    },
+    "docs/tutorials/11-ofd-h-overview.md": {
+      "bytes": 4715,
+      "sha256": "346a25939d25fab9b18242ea171d772c0c663a00f9dc3e4607e941262acebd57",
+      "git_blob": "b96f2f03ee51ac722f5bb26fce82b45e0fd29b25"
+    },
+    "docs/tutorials/12-ofd-h-package-profile.md": {
+      "bytes": 5455,
+      "sha256": "c56da21b641b251fb2bc1f1bf9a79a38d06ba4e81a42a699f01b3d691b49dc1e",
+      "git_blob": "174e71f11dad22bf1b2e99d1b6a6b4a05f5c0f13"
+    },
+    "docs/tutorials/13-ofd-h-medical-content.md": {
+      "bytes": 5819,
+      "sha256": "cf4d93fac6724149d3eea66a488b909c5d869401ec5c63059af7a9ce3fccc7f8",
+      "git_blob": "131ab29585349f1ed9f9a5f0abd42cfcb88b5ae9"
+    },
+    "docs/tutorials/14-ofd-h-security-and-software.md": {
+      "bytes": 5199,
+      "sha256": "a9a29d5ae1d771d8e0771f2b380efd37707c5d71277d3f408b20c2f7bebfba60",
+      "git_blob": "c06b48fdc96bfb27d17edb74932057d87b250928"
+    },
+    "docs/tutorials/15-document-tools.md": {
+      "bytes": 12988,
+      "sha256": "a8bf244f6601cd6c5402ddf8e93ebb38ef441c63377e9d5c08f6934d7ebaa0d8",
+      "git_blob": "169afd32f46696224b0932ff2495a9d5dd5b4be7"
+    },
+    "docs/tutorials/16-keyword-replacement.md": {
+      "bytes": 5431,
+      "sha256": "d530aea3eeff3f15530ee76437ec89d4e414e561248788dedab4302b36e585f1",
+      "git_blob": "bda5913dd114072f9e4a1ec9e1b53b17055c6ecc"
+    },
+    "docs/tutorials/README.md": {
+      "bytes": 5856,
+      "sha256": "03d4f3c2a59180d8f48ba8089af5ebebc9c76c5bd6eebb0ef05d9d7dc098f57a",
+      "git_blob": "b9d04f43484007c53b155bdfb87528860714aa70"
+    },
+    "e2e/Ofdrw.Net.Benchmarks/Ofdrw.Net.Benchmarks.csproj": {
+      "bytes": 498,
+      "sha256": "666e6902973e2da1a87b827f65bc3da50caad9cad75ae472b38be63da598a68f",
+      "git_blob": "e1245fbabdb7caab80134154cbea5c849d87ed38"
+    },
+    "e2e/Ofdrw.Net.Benchmarks/Program.cs": {
+      "bytes": 3909,
+      "sha256": "71652b944c2c241ccb5d0b2b7f163670d0911fe46b4c8dfe8e7c2ff61ec042fb",
+      "git_blob": "24f2619c01d400e2eca9dd80e350e6f398a7a8d5"
+    },
+    "e2e/Ofdrw.Net.Benchmarks/README.md": {
+      "bytes": 1346,
+      "sha256": "29bd75d6a534052064718f49ac9ca902bb076cc0c89354d7a32456c07b3ab540",
+      "git_blob": "66bbc042e3af7a65afb6696c046cd2a4f11166b8"
+    },
+    "e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx": {
+      "bytes": 3347,
+      "sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+      "git_blob": "6ac2b24b69022251ce687d58737235a11c362070"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/.gitignore": {
+      "bytes": 8,
+      "sha256": "b5726d3ec9335a09c124469eca039523847a6b0f08a083efaefd002b83326600",
+      "git_blob": "ea1472ec1f38b2d1410951194a02f8fb9f1c820a"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/NuGet.config": {
+      "bytes": 478,
+      "sha256": "d1a0598697405f0e6f38de6638ffc6e9dbd360c9eca4ed5c95bc0a7c5a5c303f",
+      "git_blob": "c48bd55a4fd2073351c0b6d6d40eb55a55e5c6fc"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj": {
+      "bytes": 659,
+      "sha256": "1c89e98a14b05f18a74f34c22db94c598e439be4b262aa984b0d6a99dabcdda7",
+      "git_blob": "c164343664785f3f7e2b1cbcbb2259e8bd6fa8aa"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/Program.cs": {
+      "bytes": 23453,
+      "sha256": "e9de4c9dec8467ab37d574314ca5a25121794863d275bad9ba9caa2946c9b392",
+      "git_blob": "e2abc4a87850d504444e7631f1f46e2e8c831ad7"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/README.md": {
+      "bytes": 2318,
+      "sha256": "429f1caab2b864ba3af9b9b9b2876434ce5788710a896c9ae926df9f0d4fc3ff",
+      "git_blob": "d944fb42767d20532c01b26af696f7834fc6462a"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/budget.ttf": {
+      "bytes": 5200,
+      "sha256": "12e1013aa66ab0b37dda0b2514627c3629157a41cb047e332d4bd5937c6b0bc6",
+      "git_blob": "8d30f5e630ec97a73acdf70fbb0ca05b428e45c3"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/narrow.ttf": {
+      "bytes": 5408,
+      "sha256": "4129db97b03c0fa2ba4c319b63769a593bb3cf6217a0f3b0889e9db5e8e422bc",
+      "git_blob": "699ebf65f932b9b5a78d219f6aeb7ec04c1f47a3"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/style-collection.ttc": {
+      "bytes": 5424,
+      "sha256": "11f3c8ccaece5d37513d8e73b2c091977c30a591004d8cbcdd6a90750c8e093e",
+      "git_blob": "aaa5134596225d61ba7901b8608dd430367db943"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/style-metrics.ttf": {
+      "bytes": 5428,
+      "sha256": "6ad3e1aecf8fb376ba07d83a61dcdf7fb3ffc25276cb3cf0f55659f70919c50a",
+      "git_blob": "1203eed02d014b989f5eeb2e600590f4b791577f"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/wide.ttf": {
+      "bytes": 5192,
+      "sha256": "ff144ee25864f79c1ef7f3bf8df8ef635cfb379d2a25de49e462fd89a304edfa",
+      "git_blob": "7ca463a592ebddb845773377e0988bbabf651292"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/upstream-ofdrw/999.ofd": {
+      "bytes": 29752,
+      "sha256": "a2b9080ae35184135160c48ce45fb609c35d5ecfdb538ebc16132c48a2186a80",
+      "git_blob": "59fe3244d7cf9a834629191b10ef76bf1e9d9ca0"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/upstream-ofdrw/Test.pdf": {
+      "bytes": 590522,
+      "sha256": "c600405c631ba148ea4a5f48b0a7c16cc05c6ee77ec4898cf93a6cbee515cd13",
+      "git_blob": "03120ca367328871614e37c66de33e53fdd52725"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/upstream-ofdrw/Test3.pdf": {
+      "bytes": 86459,
+      "sha256": "68aac125da63353abea0dfe64b8501604c206f3d1a45892887ac1744e6f960b2",
+      "git_blob": "fbb6e9b666773200f8f9035c2cd13551ccb363ec"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/upstream-ofdrw/ff.pdf": {
+      "bytes": 27115,
+      "sha256": "37536a644d67c22ecae458a822c61fcf379f7e7e4775f331b8f38edcebd13aa1",
+      "git_blob": "a7df19300c18c9a22ca209cebd06bbd704b50358"
+    },
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/upstream-ofdrw/helloworld.ofd": {
+      "bytes": 1651,
+      "sha256": "a7b6f9eceb7ca4eafc73a318ac06f5476af6010d0dbcc99337912049748e141e",
+      "git_blob": "5a3c16a251e068ef29f83f68b4763ea488c58dd7"
+    },
+    "e2e/Ofdrw.Net.DocumentTools.E2E/Ofdrw.Net.DocumentTools.E2E.csproj": {
+      "bytes": 776,
+      "sha256": "c13adf8aff38adceb7ae0db4ea9b44ecc4f8029bbb87700e9bf535ad84ff2b90",
+      "git_blob": "05d25d7c937bab64943397380415157a90146419"
+    },
+    "e2e/Ofdrw.Net.DocumentTools.E2E/Program.cs": {
+      "bytes": 43336,
+      "sha256": "17a8d421fbffe8a0cc1e018c29f49c098b80795695a33ecc0457499c2072bff0",
+      "git_blob": "d37e6c833ac2f3dce274917028aa6f9c7fdd1d20"
+    },
+    "e2e/Ofdrw.Net.DocumentTools.E2E/README.md": {
+      "bytes": 4295,
+      "sha256": "a07642a447ca2227296422d79eaf7e6019464d1d071423108372d8d83d482c2c",
+      "git_blob": "79fa8a574b0c7230817bcf5dd1e055b96eb60187"
+    },
+    "e2e/Ofdrw.Net.DocumentTools.E2E/mark.png": {
+      "bytes": 192,
+      "sha256": "34832fa63eb6efe8ece18e2b8a47cf16bdd7e12b17e85a2c3ea04b1a1dd4518a",
+      "git_blob": "f6fe52faa1e4bcad86b0b587d5349822685a0fc3"
+    },
+    "global.json": {
+      "bytes": 81,
+      "sha256": "b48d6da8fa62c0da7cc8a2da4ea036ac55836660a448ba533135abb5b8451b73",
+      "git_blob": "512142d2bea1add9d1cf54884a7fde22666bad51"
+    },
+    "scripts/generate-docx-test-fixture.py": {
+      "bytes": 7203,
+      "sha256": "e6b72906eddf8c868ce3073e3ef9eb246b7dcad7c5687677b9906437d41198f6",
+      "git_blob": "1e586d343f021aa5685ac31ce4d81ccedd9f7d0f"
+    },
+    "scripts/generate-font-test-fixtures.py": {
+      "bytes": 2902,
+      "sha256": "018147fb606f0edee60ef975ef3d6a2014d44924fb21968e871d7203fd1a721b",
+      "git_blob": "3343df787ea82fbf83caded700e72b426138a63c"
+    },
+    "scripts/install-ci-fonts.py": {
+      "bytes": 2939,
+      "sha256": "c98b4fc700580542214f230f532771778cf843c33fce84e71723ceb98691ff25",
+      "git_blob": "1a4e302cc9385548c4ee9ee7699f6e6137f2caba"
+    },
+    "scripts/prepare-trusted-fonts.py": {
+      "bytes": 9920,
+      "sha256": "2bc0914cf4167369dac20ac17fb081e24b8a3989ddaaee5028612aba9e529829",
+      "git_blob": "f70536774ebbabf19e04973772b50bf757861125"
+    },
+    "scripts/run-converter-package-e2e.sh": {
+      "bytes": 4235,
+      "sha256": "f15342f52171947995d883eaae80a439505844bf1adae12e3931ff28d1c48e53",
+      "git_blob": "4d65aa293256965758a282caa595b51af15610ec"
+    },
+    "scripts/run-document-tools-e2e.sh": {
+      "bytes": 3622,
+      "sha256": "33d88fd05cd4096ff92bfcae895daf80ac54f8f3b371578c79d815b0ccf5e918",
+      "git_blob": "ec543dfb6e5bc0def7f6d739a5fd5f3eeba5b323"
+    },
+    "scripts/run-trusted-font-tests.py": {
+      "bytes": 2854,
+      "sha256": "f4619d98b6aa8260a6993259e07fbd2c75cea7e3c5a79bbe07a48be901f4bd0b",
+      "git_blob": "c4c7e61f0e3604a015abaffef4afb70425111603"
+    },
+    "scripts/tests/test_package_artifacts.py": {
+      "bytes": 3131,
+      "sha256": "ac0ffdb919e325fdbeb75587991f83d28a9b4fb63bedd196fe757b73111f4b90",
+      "git_blob": "41d5f46439e71bbfe658e61224697f6c8dcb7e65"
+    },
+    "scripts/tests/test_trusted_fonts.py": {
+      "bytes": 6697,
+      "sha256": "9573ec69f7dccd56de2815ecc214b35e6c680fd4c0010f141dc464a69edbbde9",
+      "git_blob": "ce20e830cf86f7ce58b12b3cc797bf7854f8ed39"
+    },
+    "scripts/unpack-document-tools-evidence.py": {
+      "bytes": 1819,
+      "sha256": "90a043fefc48daee51980e8d8c2f3e5e95363a41958137b08a06185af58dbcae",
+      "git_blob": "095646f476c1f60c651c52171fb4dffdf416ca2e"
+    },
+    "scripts/verify-document-tools-evidence.py": {
+      "bytes": 12380,
+      "sha256": "a7b1d25eafd1178e70f59fcca3e01e5e9f78a50dcf5e48d9679fba4ac7799252",
+      "git_blob": "875d666a7aa5fe41a2bdea9d337996c27d6eb0b6"
+    },
+    "scripts/verify-package-artifacts.py": {
+      "bytes": 3857,
+      "sha256": "d4ba1120511ca0bdf608915d54500abcde386fede17cb2bc4176f37c09d746ba",
+      "git_blob": "48d625058787ecf9315942731d750f125d41b8fa"
+    },
+    "src/Ofdrw.Net.Cli/AtomicOutput.cs": {
+      "bytes": 1497,
+      "sha256": "af01c56e150bbbab68433580cdd6489d56994ffeb47487e205999ccd35e9d8e6",
+      "git_blob": "26bab810c5cfc0692c6e64877a2b4184465d4987"
+    },
+    "src/Ofdrw.Net.Cli/DocumentTools.cs": {
+      "bytes": 6591,
+      "sha256": "d13d6c935a87cbabb5a29fd1946e6de7e4e816f3ed8deef3de17830f42fdaf61",
+      "git_blob": "00b1098a929c0042f037f9c8476fd4f9d5034ba8"
+    },
+    "src/Ofdrw.Net.Cli/Ofdrw.Net.Cli.csproj": {
+      "bytes": 916,
+      "sha256": "c0dd7c8de93481d5bc4c61325a7664455ad26134559b6845478c2b97b53cb0f9",
+      "git_blob": "c3daf28eeb17fca61570d18088ed60423ecc6b37"
+    },
+    "src/Ofdrw.Net.Cli/Program.cs": {
+      "bytes": 26766,
+      "sha256": "8e6f830b32a43c1bde51fe8e19c364ccb357187bc940ab297034e2d774bbc2fc",
+      "git_blob": "3cfddc72128df4f573dbbfb7f844ab8639cb668a"
+    },
+    "src/Ofdrw.Net.Cli/TextReplacementArguments.cs": {
+      "bytes": 5759,
+      "sha256": "862b31e828618030c879d2f8081d16e4cd543adf9e755882b0d7031eda8ee75b",
+      "git_blob": "50eeecb7e8a72b35644fbc04783319605c08862d"
+    },
+    "src/Ofdrw.Net.Cli/TextReplacementCommand.cs": {
+      "bytes": 12129,
+      "sha256": "85ec729f034f4de78545db220f63d983bf82817dd7929181b3d3cd35372acaf6",
+      "git_blob": "5b1e8ad5e69e99251bcb887b5075752c17e02f32"
+    },
+    "src/Ofdrw.Net.Converter.Abstractions/Interfaces/IDocxToOfdConverter.cs": {
+      "bytes": 602,
+      "sha256": "0825eeba8624b52d7650d76781c426ae0af0a8bbca190587dbcff5babc86a75a",
+      "git_blob": "1d14a1945103e4d72f4d0efb1e8a03983987986d"
+    },
+    "src/Ofdrw.Net.Converter.Abstractions/Interfaces/IDocxToPdfConverter.cs": {
+      "bytes": 474,
+      "sha256": "c196741b7c1f806ea4a8c538861d01131385db9b83bf5da5ee609f2b79afdd64",
+      "git_blob": "8f09fe6eb752fa50b15e75b22c6f348cd8847faa"
+    },
+    "src/Ofdrw.Net.Converter.Abstractions/Interfaces/IOfdToPdfConverter.cs": {
+      "bytes": 341,
+      "sha256": "a3a03c134e7f97d7b3f4744daa2189984c6559375698f1bc15f696a2b79e63f2",
+      "git_blob": "485d92a7fec9cd78918d112d7b532fcca70e416f"
+    },
+    "src/Ofdrw.Net.Converter.Abstractions/Interfaces/IPdfToOfdConverter.cs": {
+      "bytes": 341,
+      "sha256": "5e7b013dfccee8e76242e8a582e905b784b049533fe36706ea127cd10a2ababe",
+      "git_blob": "312e291b75deb9dffe6e7021248a863c165232c9"
+    },
+    "src/Ofdrw.Net.Converter.Abstractions/Ofdrw.Net.Converter.Abstractions.csproj": {
+      "bytes": 410,
+      "sha256": "933751cc1b7ee2177f7430494ee69c7e58e33b3066ea125d07466ef04945bb5b",
+      "git_blob": "8979ed9218d193c7fb5306ca725fe11725461722"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Converters/DocxToOfdConverter.cs": {
+      "bytes": 16840,
+      "sha256": "7946c5a5dcb708395ddfb5167581be25f2e531da953670d2ecd92424df66e971",
+      "git_blob": "784e2a0731096341cb709c1f66a040b025c8f9c7"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Converters/DocxToPdfConverter.cs": {
+      "bytes": 20633,
+      "sha256": "e62ea6a5fcd9f0d7a9efd8790e2bc7671b4451bec46de14de817f56069120703",
+      "git_blob": "f059741176efc0b7e81d00cf9b05a8b5548acf74"
+    },
+    "src/Ofdrw.Net.Converter.Docx/DocxConversionDiagnostic.cs": {
+      "bytes": 1226,
+      "sha256": "b09c5f56eb90f3ef8200ed894345e46052414353d863ec80b2cecd52d341e1a7",
+      "git_blob": "e0fc1b5dff31b30d81fee4e8440d0dee7c2ae484"
+    },
+    "src/Ofdrw.Net.Converter.Docx/DocxConversionEngine.cs": {
+      "bytes": 778,
+      "sha256": "0ad10cd540ffdc3329a1155a78f4b78ac7636cc5177f663b300283e13a9a3124",
+      "git_blob": "76001a932ba92eded8ea21caf9a1d88f404f280e"
+    },
+    "src/Ofdrw.Net.Converter.Docx/DocxConversionOptions.cs": {
+      "bytes": 5030,
+      "sha256": "6798b7529b4a8d114e41fd739cac192e7f49d4995350497aac3520137d1e64cd",
+      "git_blob": "1a9196d4b985bdc7edd9050dba9b77e347a138a0"
+    },
+    "src/Ofdrw.Net.Converter.Docx/DocxConversionResult.cs": {
+      "bytes": 1005,
+      "sha256": "3d04b6d246fc726f611c105c71aea58c15d434567b9b27d5c440398b90ee34bc",
+      "git_blob": "b84f11d35639fed320b0e2f30700392e2d27b7a1"
+    },
+    "src/Ofdrw.Net.Converter.Docx/DocxToOfdConversionResult.cs": {
+      "bytes": 1748,
+      "sha256": "f0ce17fba460e98507fda1b9f6fe5b60742ebaacf6d47ad07910bea965bee404",
+      "git_blob": "a2c74876b9b1b0c9fa846bf37b241c2ed49de43a"
+    },
+    "src/Ofdrw.Net.Converter.Docx/DocxToOfdMode.cs": {
+      "bytes": 431,
+      "sha256": "e79de4ea091b58c34cf8b275f83ef402ec162eb7847236c5af10b4a5ccd8c640",
+      "git_blob": "8bfb7fe8592fb2925df176c9ee44aacca364c948"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/BuiltInDocumentModel.cs": {
+      "bytes": 6202,
+      "sha256": "9c4c7afde243b333df5d983e9ee2f13cd73884f497ac8d2543cc6393d03b6f95",
+      "git_blob": "e600d33316381565b412705554687f197dd20e2e"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/BuiltInDocxRenderer.cs": {
+      "bytes": 781,
+      "sha256": "48e084e4132eaf648df1e2b7dead3d41fb8d2f4c587733ec03e63c68fd2f5cf1",
+      "git_blob": "dd786b3e4c3736e8210d7b2355319a4b20892d7f"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/BuiltInOfdRenderer.cs": {
+      "bytes": 37200,
+      "sha256": "d33b545beae8e0e1df0e8dc020bd6f44e21426b814424c6775c96ffb98ceb8fa",
+      "git_blob": "f89a451ae4e3888858ee22520f008385c4917bab"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/BuiltInPdfRenderer.cs": {
+      "bytes": 13314,
+      "sha256": "0de4d2e49d70b1cdcfe218ef6fb1f6ebdbc58cd00f23958fec77fa1ce932c162",
+      "git_blob": "20bfa4bb7e709a838eab019ba3d2fae0e54725d6"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/DocxFontCatalog.cs": {
+      "bytes": 12968,
+      "sha256": "f0cc84105ff6c86f104b1c4f36005d5a0b29af92066e7cb7177bfed04dea172d",
+      "git_blob": "ac20d3532f688915c9311a7a319df9b40355312f"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/DocxModelReader.cs": {
+      "bytes": 34842,
+      "sha256": "3940c29b05907560adc87a60c4e554f70a616c9605f2029fdffdfe9f20187512",
+      "git_blob": "9c7a1e9ab9aee5e34f1c9e0d5c0ae574ce1ee9ee"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/DocxPackageValidator.cs": {
+      "bytes": 4059,
+      "sha256": "3a79d6733e876792c3e37ced999715a8a2e1f859f26c3bf090bdeb70aadcee7d",
+      "git_blob": "b482a7dd36e14c9de60523cd1f953dab7a656367"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/DocxPdfTextMapper.cs": {
+      "bytes": 16272,
+      "sha256": "1216226f9f4d445b5fcd67d79ce1e349b223aa330e29c4eb26335ce7eda4b45f",
+      "git_blob": "c5c5d194fa2cb376f0edbe87726cac04357af6dc"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/DocxSemanticTextExtractor.cs": {
+      "bytes": 11492,
+      "sha256": "c8af62a48d8ee81e81b93e61845563c608c2097b0df0f47978e5a6a2ce87516b",
+      "git_blob": "ef4524e683022781f6094b0a7d982ce9cea579c0"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/LibreOfficeExecutableResolver.cs": {
+      "bytes": 9404,
+      "sha256": "85bd753856c165b256514f70c09232f1e623b2c6980b982d086199087616ae41",
+      "git_blob": "200174f35c89790166fd1792e704583e7bf953f2"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/LibreOfficeFontStager.cs": {
+      "bytes": 7746,
+      "sha256": "bcf5c17bc323cbadd2e701b426912babd511bc65809dbd4fb0e70897dcee2deb",
+      "git_blob": "eb335c1f01f91d3796d1ed45cad28afbc6dcd2cd"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/ProcessArguments.cs": {
+      "bytes": 1376,
+      "sha256": "ea099c6f37b1966c9d01ca070859b5e64d2f8955201372447f4923b99f2be0c8",
+      "git_blob": "583990efabfa5deaaff95f903e02c2de2731d380"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Internal/StagedRasterNamespaceAdapter.cs": {
+      "bytes": 14592,
+      "sha256": "05706ab4d61dec46369875679ca6ee9e823bb7cd85a331a1418b846462b4a5b3",
+      "git_blob": "5b8997a9ca7962f9aac301bde8a2d2e8af073541"
+    },
+    "src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj": {
+      "bytes": 1041,
+      "sha256": "e3f57582b418b831d8e76c650223db4b24e54fd7bd95ef117cee065fdb003092",
+      "git_blob": "54175efc703639428a2ea601851b7c4132f7943f"
+    },
+    "src/Ofdrw.Net.Converter.Docx/UnsupportedDocxFeatureBehavior.cs": {
+      "bytes": 549,
+      "sha256": "9c11fd366261d08dd613ae415ef4882eb63233b4b61c8ac3bd7808152ba95b0d",
+      "git_blob": "69db15c49b3f8e8e4bc1e64566541aeaf5249dd7"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs": {
+      "bytes": 25040,
+      "sha256": "e13344884f0ed91b8bda3bcac9560e7797a9b72771cc768bea5bcf819038f678",
+      "git_blob": "135b8b212ec06907b7f90ba2bf1b2ae59db9033e"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Converters/PdfToOfdConverter.cs": {
+      "bytes": 13601,
+      "sha256": "4ec17425db7a71a68ac9ca3dce5156f591ef9ba9cdbc0096bdd849087295b88e",
+      "git_blob": "001a595fe6ed3f9a78d874e7ebe2a48f46d74bd4"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Geometry/OfdPrivateGeometryFactory.cs": {
+      "bytes": 4292,
+      "sha256": "066c70736ed65d62fd9d4faffbe5144b6f8596b806ba93314eeb740e9f8213af",
+      "git_blob": "a15768af5cfa4e2dbdd26427e058b019cd698a88"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Geometry/OfdTrustedEmbeddedFontGeometryProvider.cs": {
+      "bytes": 18923,
+      "sha256": "0bce66a519b6d86bd341ceb46f553295b0e04520ee2262e8fc6ea1c234850af1",
+      "git_blob": "813e131851c5ff2ba7250a787e2d5b18792a1c5f"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Geometry/OfdTrustedEmbeddedFontIdentity.cs": {
+      "bytes": 1832,
+      "sha256": "9a3102f127f6172bb0d3f6ee2e89cacc1fb4baaa0ecd51799c125a47b105e97c",
+      "git_blob": "69675a95beb985095942ac4d1bb15ae1d4f1ba51"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Geometry/TrustedFontMetadata.cs": {
+      "bytes": 12317,
+      "sha256": "a01e7e60617b683b15f8564ba7e0708d67898a2626e4f09d48c47f3810c75f3a",
+      "git_blob": "65bed25a3bed6fb58e58d7736031da03dd4edc2b"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/CjkViewerFontLoader.cs": {
+      "bytes": 3867,
+      "sha256": "dcd5b5351ce0701f1b6f1c0e6360560d1fa16b34eec33b4f503ca2ed59067328",
+      "git_blob": "b6a4c4a98bb8b073b2c2cfef9be5a1610c905ec3"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/DocnetPdfRasterizer.cs": {
+      "bytes": 2983,
+      "sha256": "96c099a3de5d95afd1f89f636d7f360a842218b2db3d7172c36ba07573f4fd46",
+      "git_blob": "e2e4db06df7538da7b2d5d589efb0fd47745ccdb"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/DocumentFontContext.cs": {
+      "bytes": 2830,
+      "sha256": "908066ddc43d50d51798875245e42b0e89e485a91a5b296d6717d3bc5af9e849",
+      "git_blob": "f79fbfa7221872f25a9c59f4bf218e29d5eb632e"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/OfdEmbeddedFontResolver.cs": {
+      "bytes": 8612,
+      "sha256": "8fcdd5453bab0afe5ed83d242c774fc7fe741a0b8f6d19e0b02bc491d9e692d2",
+      "git_blob": "23a261c163c3a72f3a54b17426c78396386494d8"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/OfdPathRenderer.cs": {
+      "bytes": 18313,
+      "sha256": "cd659504a1144bbaf4d3d2f3e394ef9d9a23e957b4bdbdb993356fca471d3781",
+      "git_blob": "b795d53640fa8e8bc6f0094e23f4786f28349ebe"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/OfdSignatureAppearanceReader.cs": {
+      "bytes": 15173,
+      "sha256": "ef23637133510bc272b9babbcb49c28967639bb7bf7eda976cfbf57d08d1815d",
+      "git_blob": "e2321b687722d6c9971a9e848d625ed0d5352418"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/OpenTypeCollection.cs": {
+      "bytes": 5086,
+      "sha256": "b71f1765600135edf7c06963528ddd7c41329306bbfcf7b50df57108390b4576",
+      "git_blob": "50f970eae3304add48e485dcac50318cd9a830aa"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/OpenTypeFontIdentity.cs": {
+      "bytes": 7290,
+      "sha256": "868da59990f715a3c41929e0eed041c6f2135cbf2c3d72de57a93438e89cec11",
+      "git_blob": "db76b465e060cefe9cc355c67ab73db3a2efc884"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/PdfGlyphOutlineRenderer.cs": {
+      "bytes": 1916,
+      "sha256": "a5b07e74159d09f4241140ada45371bb968002dd718f00fa1c2500dd2c6c18ce",
+      "git_blob": "68dff7187373715399e5c4c70e65e234f4bcfc65"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Internal/PdfToPpmRasterizer.cs": {
+      "bytes": 2355,
+      "sha256": "d2ec65c6725ef99add6b9b44136e5e396cdb1baea37730cb4ba13a036efd74e9",
+      "git_blob": "ec8cee9da7eb55416341591c1700021ad176ad45"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/OfdToPdfOptions.cs": {
+      "bytes": 334,
+      "sha256": "06e372365d8b499b11207a1d0d43920985e2482282f9682d1abde7135e4b07ed",
+      "git_blob": "2264399ad097bfdc45624c5ce205caccfb957890"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj": {
+      "bytes": 1304,
+      "sha256": "4a034e1c5b5f564c43a9249af238e6ee0e4019d4d2330bb993a28e655504d985",
+      "git_blob": "f7e0874718f9f301a29b4c721a3f2bdc35371877"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/PdfConversionResult.cs": {
+      "bytes": 1082,
+      "sha256": "649bed4804c8e71dab8c2eedc96a9a31f1b058c196ceb4e5ab1504799053249d",
+      "git_blob": "4888d1ff60af8abe7192d1a0da94965adbc27188"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/PdfFontRegistry.cs": {
+      "bytes": 2348,
+      "sha256": "31f7af37a3562e9ec0bcbead0c00870110a0c26ed7fbf56253858a9a29e95452",
+      "git_blob": "0fbcaf906ff5558470ff7d73a41c6822f8e65cb1"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/PdfTextLayerMode.cs": {
+      "bytes": 517,
+      "sha256": "c28ae3869a99357f3eda5215c98a76ec771b2666f43595350cff3c53e6075070",
+      "git_blob": "df1e5b1e65fd1e3ba55973408ab1f5f50b58381b"
+    },
+    "src/Ofdrw.Net.Converter.Pdf/PdfToOfdOptions.cs": {
+      "bytes": 2919,
+      "sha256": "23febc85ffac45499f2c39cf481517e99fc07f9d9317066bcd0435d011a1825b",
+      "git_blob": "fd4a814547836649dd85b4e1a69426db4d57eec4"
+    },
+    "src/Ofdrw.Net.Converter.Svg/Converters/OfdToSvgConverter.cs": {
+      "bytes": 16534,
+      "sha256": "2703e11096e9831ef8a672b2ddb82ed84bb51ebda29d45e3baf6d331d7fa661e",
+      "git_blob": "fa1ce9990bdedec809fbe7f7ef78afa71fba1299"
+    },
+    "src/Ofdrw.Net.Converter.Svg/Ofdrw.Net.Converter.Svg.csproj": {
+      "bytes": 467,
+      "sha256": "680bdad0b107d5ae1de16fcb66318facf91e664258d4e9b2c59c00b78255a50b",
+      "git_blob": "f8c452d0402941c389526a9de20392f97d7c9e32"
+    },
+    "src/Ofdrw.Net.Converter/Ofdrw.Net.Converter.csproj": {
+      "bytes": 794,
+      "sha256": "188510e0420e19e249047515011ef8c3054d144c91d4e3a02a85ff710fa24ede",
+      "git_blob": "ef6b33d631bd1b873e238d34bdd23853b16d9361"
+    },
+    "src/Ofdrw.Net.Core/Constants/OfdConstants.cs": {
+      "bytes": 358,
+      "sha256": "762d58d9a79e662aa84cb135506dd9bbbe5f8571d554562ab30838eb4858168e",
+      "git_blob": "6a801c5eabb6d636f217a3696eeead99c7fc67d7"
+    },
+    "src/Ofdrw.Net.Core/IO/BinaryIdentity.cs": {
+      "bytes": 327,
+      "sha256": "c4bbb6f3f245567533b4a1968a5ace9d0bda5ee4f59ab5481edab0e77d61009a",
+      "git_blob": "b3757a08576f31dc67a989879b33d042d8156a20"
+    },
+    "src/Ofdrw.Net.Core/IO/BoundedStreamCopy.cs": {
+      "bytes": 2738,
+      "sha256": "f4babf9a9a347a70c06eae0422e8345fa86659f7bcd78a034b8b886b09c904dd",
+      "git_blob": "a44eedc4cefc2c19212c1183c5ccf22434bec168"
+    },
+    "src/Ofdrw.Net.Core/IO/OfdPackagePath.cs": {
+      "bytes": 1704,
+      "sha256": "e3bc1b834869e0d3f3c87c8cef6c4426fba2a4b786155c8fcd0a681b011ccf0e",
+      "git_blob": "518d930e581ae8f4cbcb76ca2ac56284dcd4ba58"
+    },
+    "src/Ofdrw.Net.Core/IO/OfdXmlContentProbe.cs": {
+      "bytes": 1451,
+      "sha256": "8defdccb5d6d096f1c769743710abaf01bff90db106c6ba7d89a13405fd36228",
+      "git_blob": "552831c234db44b7835cf69e195b2bfe4ff667e8"
+    },
+    "src/Ofdrw.Net.Core/Interfaces/IOfdDocumentBuilder.cs": {
+      "bytes": 509,
+      "sha256": "10d1075a48cf0184a2b017b2b0814d3fc6aaede37a3be008dd47fc0ea8e5a651",
+      "git_blob": "0c366ff8776904d827fb70f66c518fb64b4dbba1"
+    },
+    "src/Ofdrw.Net.Core/Interfaces/IOfdReader.cs": {
+      "bytes": 276,
+      "sha256": "b81b424a1acd21beb3cf9de75e50ea672fbd08d1858b20f29382fb4667f2161d",
+      "git_blob": "ed06bb09f7a32b26ad8a69fd8b980cb5913ca5cd"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdAttachment.cs": {
+      "bytes": 666,
+      "sha256": "b1d727399983a445177b9f0a128dd755878d896eb17ae0e353a63cbbf6832aff",
+      "git_blob": "862c9e348b6c2db88aa4ad534cc010f6bcfdbe41"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdBoxParser.cs": {
+      "bytes": 1330,
+      "sha256": "7a8cccd979a20013f533c6f8f23731309c3cabe395dacbfbd8a301632ffe608b",
+      "git_blob": "c08369a57ecc7328de51db339395e624c20b2c56"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdClipGeometry.cs": {
+      "bytes": 4001,
+      "sha256": "2bb0cf9d32eccd2f5e07b788074a8a442636cd2236e5284a778b21fcd855dd9e",
+      "git_blob": "dfb690f8f89ee0cf693172dfe3bd27f92e8c1a6a"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdCurrentPayloadEvidence.cs": {
+      "bytes": 5456,
+      "sha256": "bbd100f8403dffe154c2c06a85e1c91edc895e955a0182de3c3ab8c7a07397ba",
+      "git_blob": "0c02fb009ecae3378373496f16cd1892458e56df"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdDocumentEnvelope.cs": {
+      "bytes": 8753,
+      "sha256": "268a02ed3982578be29ff3d7073d6a5dd0254512cf55c86ee7fb54e464c7efa2",
+      "git_blob": "4306a6b38b96a17b159582b3ca9d19124a6ad33d"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdDocumentOptions.cs": {
+      "bytes": 594,
+      "sha256": "ed485a9e99656b89b267238d5ef8de8d3d030df5711b1bd9695309c5c88c8a55",
+      "git_blob": "6c9a01d302e9769dd1217ec4f669dd84c6f66cb2"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdDocumentPackage.cs": {
+      "bytes": 3137,
+      "sha256": "2c3335de0adaf93ba9ff3f887a1d8301a68ebae8393e50b74a25440bf119bb24",
+      "git_blob": "8da400b096fac7eb5bcc3a184adaf0a81be0d311"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdElement.cs": {
+      "bytes": 5470,
+      "sha256": "a96b8dbe110d2a3664a7cdb2d1eb818e446d156e5d96d344a5d1dcf37ded8a2c",
+      "git_blob": "ae7cb06257f6c6ce770fd013f2b97cd800d4212b"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdFontResource.cs": {
+      "bytes": 512,
+      "sha256": "143aa38e2b138c735b4fa98a216d9aeea8022f7c55de1daf90b63fc61c6cfffa",
+      "git_blob": "3e7645725d66b270c530021e0ef76b459a6ee81b"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdFontSelection.cs": {
+      "bytes": 870,
+      "sha256": "68ecb8eaf4e7e064148522a784baf0728803eb1008a1d7c3f8625fee4339e11b",
+      "git_blob": "ab6f7ef39cf084077a83cb08d6c734fae3236007"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdFontStyle.cs": {
+      "bytes": 1059,
+      "sha256": "d076243475dd20e4bede8baea509422bbf0ede37eb3a356dc73d259d1d575dc0",
+      "git_blob": "ee8237913670f73eea2418d52783a897a5448efc"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdGraphicOccurrence.cs": {
+      "bytes": 2610,
+      "sha256": "70c01ff3aebc8b5619e2bfb672a79f768392caedd8865c3b6cbdafd8fe0f517a",
+      "git_blob": "d79250c039522bc36b3dbf8bf51169c7e99f69a5"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdGraphicXmlContract.cs": {
+      "bytes": 3972,
+      "sha256": "8bb5a5be303166bf5d9832164c4f66e7c32995fa01a5302049ddf101d5adcf08",
+      "git_blob": "8bf66cebf51c212e488481311831f2ea14b9b404"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdMetadata.cs": {
+      "bytes": 406,
+      "sha256": "59e42c764557ddfde7ce51e317a362f3856bf6d48507b7fe4a99de754ab23b7d",
+      "git_blob": "e40936c091973999a21f248a5f9413a1f9552420"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdModelCloner.cs": {
+      "bytes": 8735,
+      "sha256": "65882ab1ccd732b3d8945804ff9a05f14ed8c57983d04e1444eb9c018f37734d",
+      "git_blob": "998a3c5ad507985985ece118bc6915b01ba4a207"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdModelLimits.cs": {
+      "bytes": 3871,
+      "sha256": "a3e21397e188d4ed57fefb477f6b4b5070c946f0f738b877f915d10c1c274ef6",
+      "git_blob": "e8bd0f85a314cd0c6e59b2f9cabddd38265390b1"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdModelMaterialization.cs": {
+      "bytes": 19418,
+      "sha256": "20c7923aad3bca97229eca1fcd4f0ce2f6d511b835865086d5d175a28cbc0b92",
+      "git_blob": "a6853be6307dd0e76b2a5b8268279387cd75a774"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdModelTraversal.cs": {
+      "bytes": 18653,
+      "sha256": "81d77f56941a30eb14b4e84551d43e3a45dbc72c0cf98c5a6085239c74571548",
+      "git_blob": "27767a36744e7ac86be9bdec836bf9ded614c02c"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdNavigation.cs": {
+      "bytes": 7951,
+      "sha256": "44468061c9f660fdf0d6600ca1285310fd734252984172d4d999760a942a9261",
+      "git_blob": "b6726c6ba650503980f02ad51ebda5f1bd2e3364"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdNavigationCloner.cs": {
+      "bytes": 6780,
+      "sha256": "7ab845719251bcc17203baceffef01be8eda2ceba903a9dde18acc460ccd3f75",
+      "git_blob": "02af9d298a2f20c4321fabe9266bbcbc1b58855e"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdNavigationSnapshot.cs": {
+      "bytes": 9441,
+      "sha256": "0c60f9ca9ef927a525d1cfc18412fe3c2e40099112cb272027890957375ae326",
+      "git_blob": "94421b5480ea9975f1daabbfb5f29b772098201e"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdNavigationXml.cs": {
+      "bytes": 26681,
+      "sha256": "ab110acc4bd537a24e0c394a622694fae531240c5afed405561f51edfc5a3d1e",
+      "git_blob": "0489c5c3a79930837f10588ad9edc761766f574f"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdOwnedEditCandidate.cs": {
+      "bytes": 11544,
+      "sha256": "7fb990f965dc3d4f8cdbe3d6a47044b7886a0421c49116b3b001f8f81f14e7c4",
+      "git_blob": "b3d4fc3cc59408fa25070ae543926b1118beb38f"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdOwnedFontEvidence.cs": {
+      "bytes": 6052,
+      "sha256": "bfe32f761a2ac6764bf6f49b3dafd29cdaf9785520ba5ef7b3be59c451abc9f4",
+      "git_blob": "89609703a3f2cd9b6565cbcc808962e233dae0f4"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdOwnedSaveAuthority.cs": {
+      "bytes": 51205,
+      "sha256": "937c2497089a36c997a1a26c5dc9b555b7500b92bda2b33500dcb0561b38f6ac",
+      "git_blob": "b87476f9183294e4c003edef7aaf0e11372cd8b5"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdOwnedSaveStatistics.cs": {
+      "bytes": 16570,
+      "sha256": "0e4509c327bfbbd563caa07f2c4aea04c75c320d6a6b6d6b9cab785fde7860d0",
+      "git_blob": "ae10f0b571a82b5c44461c63384a9219fd2e4f26"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdPage.cs": {
+      "bytes": 1097,
+      "sha256": "569c6fe54c8497396b95462832ebc0470a8f6b8464fb16077159387999a98550",
+      "git_blob": "d60e116b4522d153a6c36eeda733f1216c691c16"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdPageSelection.cs": {
+      "bytes": 3472,
+      "sha256": "914c038069433f9252f08dbc17e96bcdee3219c6de351867003cc54bb193dc9c",
+      "git_blob": "23f9320b0fc612323aff15c256e2c01b048f33ce"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdPageSize.cs": {
+      "bytes": 170,
+      "sha256": "81e782b0ee6ecb738daf0b34a0f081c7a8b626deae88e4846aa5be0e2e7fd2e7",
+      "git_blob": "82a9ab2f8d85c3ec2a61bc6683cb7533cf7a6c7d"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdPageXmlContract.cs": {
+      "bytes": 5037,
+      "sha256": "8bd79e27f3d83d61d5cbff63c6205cd7381eb932130936978770899f4cd9bae1",
+      "git_blob": "382918c9ab4df31c56280b83d4801b31fd61152e"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdPayloadCloneSession.cs": {
+      "bytes": 3122,
+      "sha256": "36aab113279732ffcb441a1407a00f6f44dc9802de0ed999d292fac523c5bb7b",
+      "git_blob": "f0b1451572ebcbcc3dc8d3e9d9d74d43f550d8d5"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdReaderAccounting.cs": {
+      "bytes": 10633,
+      "sha256": "1a8936e23ae44979eb63ba2f0712a9813fd4f16e6d159b6a129bb4a88b636823",
+      "git_blob": "41de9b17fd1b00de69350b0f8c6195aa00a4d6c0"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdRetainedTextEditBatch.cs": {
+      "bytes": 8076,
+      "sha256": "8dcb894d0d43f68398dc2632ad08dea001a5261abb3e3eb9f11e2ebc596529b8",
+      "git_blob": "186bf77f12b2d17d98674e147c09a57aa6e2dc7d"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdRetainedTextSlots.cs": {
+      "bytes": 12296,
+      "sha256": "d2e24481841f44e646dfb0ac8d937db45c99b3e52dca2f9edd4ac08b49becc31",
+      "git_blob": "613e63db60b0742d57f65c909df0883ea9b7af6d"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdSerializedGuard.cs": {
+      "bytes": 6584,
+      "sha256": "428b1d127e5f888d05c7ebadaa8e28e8f6c10dc3f235aeb73d889e5a64dadd96",
+      "git_blob": "e2f6d967ecfa171c12e05eeff4bddc27baaccb9d"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdSerializedInventory.cs": {
+      "bytes": 12787,
+      "sha256": "af7a5a67709361d92920cb512f5bd17bd9f68169475d25715096924ebfb04f99",
+      "git_blob": "37f03ddc22da4b9d8ed0e9dbb7371ff575a722f9"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdSourceIdentity.cs": {
+      "bytes": 27339,
+      "sha256": "eb51c6fa05890ab11a25ea45186d9ba6efa69d49b506aeaf8d92c9e4fb98a83a",
+      "git_blob": "c56712fbf8469792147788cae641ff74d3eb91f9"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdTemplateContent.cs": {
+      "bytes": 327,
+      "sha256": "601ebf02398a2856e9723056894f292635c2e2eecd503f1285c859d6c6bf233f",
+      "git_blob": "295e84f82a7387381ace67313ebcb663db8765f4"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdTextEmphasis.cs": {
+      "bytes": 1849,
+      "sha256": "5dae28ad3d47c8dc1f5493cbea5dd91d9080d34becd031244bef3d7229181ecf",
+      "git_blob": "ec7a0a83c97e4897b08280c0701721cb6c68d17a"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdTextGeometry.cs": {
+      "bytes": 1777,
+      "sha256": "867db64bf5f248a5d44f23e34678e8dd0c0ddcf45bc78459f674b1a0de585484",
+      "git_blob": "9c3d8a43c5367989b8b1e6adb9ee2c0f3ecd748a"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdTraversalDiagnostic.cs": {
+      "bytes": 1592,
+      "sha256": "8af1ea7f164ab1bb533e1ce5282dacd37a7ea599111d455c3d606d45208c607a",
+      "git_blob": "44767b7fa258706af04a8081176227828359499c"
+    },
+    "src/Ofdrw.Net.Core/Models/OfdXmlEnvelope.cs": {
+      "bytes": 11933,
+      "sha256": "d80c782d12b783a2683b4371cd97a4086c9397423e63cddce6b7163a4dae1d82",
+      "git_blob": "eb541772b4d2e1b247af4f1cb085b1c7fa0daa6d"
+    },
+    "src/Ofdrw.Net.Core/Ofdrw.Net.Core.csproj": {
+      "bytes": 824,
+      "sha256": "7fa4136e42f3facd8031aac17b567717f97c3c7c12316f2b07d96ec0ca7bcfe4",
+      "git_blob": "78f40eb4bed7a9f582cba92866ae541c924ace6c"
+    },
+    "src/Ofdrw.Net.Core/Processes/ExternalProcessRunner.cs": {
+      "bytes": 7118,
+      "sha256": "0bd0616752618e36e0e39aca9039de7857cb3db2369aa2af70862760a5f6a890",
+      "git_blob": "6fe0ba02e4a72e65dc44718217b687254c407294"
+    },
+    "src/Ofdrw.Net.Core/Validation/ValidationReport.cs": {
+      "bytes": 953,
+      "sha256": "dc9ccda630437c0562b0f70f49e5444c0d6193c7b77eda7b89d924b6dc237931",
+      "git_blob": "9c9fdd5e427ec359464a204a869c351c6aa581e7"
+    },
+    "src/Ofdrw.Net.Layout/Builders/OfdDocumentBuilder.cs": {
+      "bytes": 3282,
+      "sha256": "3707cae9d990ac9881171ab17d2105a384df4f91c60022219839ec2b507b00ec",
+      "git_blob": "65661e0352e284f4dc15cbe920e31c51bea97c50"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdOwnedGeometryExpectation.cs": {
+      "bytes": 3278,
+      "sha256": "3ef59105df9322cf201708dac0e5297ba04d8bffb520942e74626ad6c6b1cb63",
+      "git_blob": "b20d0fb78a578c58cf931f2f39c0c22e0f95ef69"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdPrivateAtomicBridge.cs": {
+      "bytes": 4753,
+      "sha256": "fe277545a14ab9613bda2dad51bf9bde055e1e7ce1105971238868907d5210ff",
+      "git_blob": "2a81a7a40245f5d425a5f8c91631bcf5981903b4"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdPrivateSaveStatistics.cs": {
+      "bytes": 10344,
+      "sha256": "a0ad4ed7457a3dd8a9296e9e99d155002de2a297a4f04f1b38985ee859037f36",
+      "git_blob": "27dcf27638473834c4d9ad28375dfa6d87ffa0d8"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdPrivateSaveWorker.cs": {
+      "bytes": 18292,
+      "sha256": "c2758b9a4ec3c8ad18c9616757035f584cc55b522d9754db3a907c940fc53a15",
+      "git_blob": "564856fb595a0beef4d72b133ee969089554cefb"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextFitBudget.cs": {
+      "bytes": 3484,
+      "sha256": "bccaea596032a09b48ef90580fde4bfd7e71630e152441934e0c92ebd07ba00d",
+      "git_blob": "a2a3d32e73be8fc7dfe8687f82bd438c6de7a5c2"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextFitPlanner.cs": {
+      "bytes": 25905,
+      "sha256": "4c0bdfbb5d7e4969b04491d69e85e41f80b34eae85040e20f22c02888469ac50",
+      "git_blob": "61bde6ec1257d0637dddb63687544011a6d4063b"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextFitValues.cs": {
+      "bytes": 11397,
+      "sha256": "002360fcec2e9b87b5b3ba51de45c651a2d115bf4644d18e4611d81b246fbe59",
+      "git_blob": "d40e94991c0a06a795eb61d99c9aeaeb3a51da8d"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextGeometryExpectation.cs": {
+      "bytes": 19588,
+      "sha256": "4a713e54834fbb247ee9c583bd3dfabe3ccd33dae085aafc94a741456d1dfb42",
+      "git_blob": "4e5b059f19d7981499eef5ac5bd64c3fae14f7aa"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextGeometryInputVerifier.cs": {
+      "bytes": 32496,
+      "sha256": "16aa03700efb32d565c47c86e48a9fe06f0db059dafd0555c7f2bd16dbf3fcd2",
+      "git_blob": "6f57316c72a589d0182c01af3a7d2a621df5268d"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextReplacementFileSession.cs": {
+      "bytes": 39407,
+      "sha256": "6521416eeb463b699a7cfcf340ff2a21582483f44c6de31ef8087eda24c5d0b6",
+      "git_blob": "6cd4beb47b290617fafc2681e8cc768b6aa3fca9"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextReplacementFitAdapter.cs": {
+      "bytes": 8231,
+      "sha256": "0d8b7b12c00e6f9093192eacb250383b67dd611a30025fcc9e19a57d98d5ad48",
+      "git_blob": "34bdc23e830ee47509be9cdc121e3e13116323d3"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextReplacementOperation.cs": {
+      "bytes": 12586,
+      "sha256": "0a2973d049a75c13dcedf2e088078cf314b86474978f2bebf906f62815094a81",
+      "git_blob": "157b7e42b83aab917459c37b23f871bc337686cd"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextReplacementOwnedReport.cs": {
+      "bytes": 1721,
+      "sha256": "4b278c35d7f9a5495e2292ec4dd123d4ca3deb98a56247edb774ea9a4bc5de0c",
+      "git_blob": "a13b99eef5de0c2254a7dbdf965b2a9ace0c5736"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextReplacementSpool.cs": {
+      "bytes": 3838,
+      "sha256": "db24926f9d8f00991b668373c698452539285a971d8aab8000af59165fae133e",
+      "git_blob": "58bc45cd24902a8d889f642e9b2afe2dc71c920b"
+    },
+    "src/Ofdrw.Net.Layout/Editing/Internal/OfdTextSlotCompiler.cs": {
+      "bytes": 5718,
+      "sha256": "3ecfbfd62518e8437e752386451e5cc4bf5f34c0fea4e37af5bab05a14d3026d",
+      "git_blob": "8add31df6d51dff5675967ecd1ba50eee170e249"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdDocumentEditor.cs": {
+      "bytes": 4464,
+      "sha256": "79bffb461c46024ee98bfc448b99387478de00efeee6c25f821d99240a1a79bc",
+      "git_blob": "b838db8410e70ebd1f35ef9223afa7c0110ecc46"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdDocumentMergeResult.cs": {
+      "bytes": 531,
+      "sha256": "4a75386c32dee79ef76fc47bcc2898174f12618745b1b7e1e182f7ba22456ea2",
+      "git_blob": "74a096389b35466befcae7b4592b70352c4c1dbd"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdDocumentMerger.cs": {
+      "bytes": 16076,
+      "sha256": "ec5600ee75f9e25bedbe129afaff75ddada0532d251a540b0b32b34c378ee2b7",
+      "git_blob": "7372db7588b76d2ebfaa3b59673ad8f5f7f72b0d"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdDocumentMixer.cs": {
+      "bytes": 19259,
+      "sha256": "1fed6875d8374501eab18cb7e2e787a2f7c4dacdf964fa076881c49c72b2a072",
+      "git_blob": "366f754e59d8fe6b53c6c437f028d81cfa145cd3"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdDocumentSplitter.cs": {
+      "bytes": 8947,
+      "sha256": "e35a4368e2340127d8c27afd47d3b5797fb23db3f2950d8bade4e8cc56ac86d8",
+      "git_blob": "dde71954180f139070a32f34a35074ed334084af"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdSignatureCleaner.cs": {
+      "bytes": 875,
+      "sha256": "3614438e81959d9a6f4e6bd0d867c89fed1908d4884cc470626aeec31ddc009d",
+      "git_blob": "f8c80792695d0692e75f1339dc8b994725900b21"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdTextReplacement.cs": {
+      "bytes": 5921,
+      "sha256": "375d80f567a531f37fc948e8a01327d2f7281e0254e4da8b34e7d8c6a9c28aef",
+      "git_blob": "1229c0582b9b36f312fc99136b684d151957bc56"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdTextReplacementResult.cs": {
+      "bytes": 2724,
+      "sha256": "3af50537d3a35d075e3ec01f299cb4ae94fa685a97b7746055ae52878b5b7990",
+      "git_blob": "1e5605f33a32a36d420111b0a80237aa05ce6361"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdTextReplacer.cs": {
+      "bytes": 26685,
+      "sha256": "e78808be1701241c12f2db79634b35689786b0a365e68da9bb52169bb3ae7b36",
+      "git_blob": "973430c2fd0b260eeda2674db63bf1c2ec795eda"
+    },
+    "src/Ofdrw.Net.Layout/Editing/OfdWatermark.cs": {
+      "bytes": 7481,
+      "sha256": "8ec7a29c450cf9f585e137f337323914c52b831794d56f60d0f5395f1f644e17",
+      "git_blob": "665570fa364325ce17a83ab1bce1b027b2ff06ab"
+    },
+    "src/Ofdrw.Net.Layout/Editing/WatermarkImageBudget.cs": {
+      "bytes": 2126,
+      "sha256": "ce1eb500ce51ded677e7a8cca3d40e1e4347861c5dabda561ebc59f7c161ddaf",
+      "git_blob": "dff493d570383de3f45cfd9db9966bf0c48c6be8"
+    },
+    "src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj": {
+      "bytes": 776,
+      "sha256": "7e5beb23f522d6f1d655490d6f49731020abcc675785739c8aca948289a56fad",
+      "git_blob": "2b59b0a2a29ea6572cb18cd4e41568d23147328f"
+    },
+    "src/Ofdrw.Net.Packaging/Archive/OfdAccountedPackageLoader.cs": {
+      "bytes": 11467,
+      "sha256": "04c9cd8a6d3cd80791a4a826995d0316b63e237547aec1575d732bd6097a507a",
+      "git_blob": "588ec084340b99e61826221cdcedc377305435ce"
+    },
+    "src/Ofdrw.Net.Packaging/Archive/OfdOwnedZipCensus.cs": {
+      "bytes": 3543,
+      "sha256": "7bf65b19690a604d4dc2d61549919bebc2efacd945b9acdf48bac29d5764b73c",
+      "git_blob": "b3430ff484d0f59d2641fc507cdec444b40390ae"
+    },
+    "src/Ofdrw.Net.Packaging/Archive/OfdPackageArchive.cs": {
+      "bytes": 1445,
+      "sha256": "2584d9a8582f4ddb18937f7524db2d0b9569973348892d2f83da03c13d35092c",
+      "git_blob": "2591623b2aa05a1d707c2f58dba0376f8464660f"
+    },
+    "src/Ofdrw.Net.Packaging/Archive/OfdPackageLoadOptions.cs": {
+      "bytes": 1050,
+      "sha256": "34fb872202721d21ce408d2140cab5130db806c319dfb14ab750496ad4b0fc0a",
+      "git_blob": "b0f93cc18f4c5bb666a1444e9d3878ba4f6332a4"
+    },
+    "src/Ofdrw.Net.Packaging/Archive/OfdPackageLoader.cs": {
+      "bytes": 5144,
+      "sha256": "6970bc1186d0454228f21dfca183c920d3d84bc20aead87ebd6a5c84eefc98b8",
+      "git_blob": "42a6420c51239502ea53303cc0652a87bb305a4b"
+    },
+    "src/Ofdrw.Net.Packaging/OfdAccountedTemporaryFile.cs": {
+      "bytes": 23348,
+      "sha256": "b624919a011109f1dea92a53322443a0b4c5f27b565003e7a2a8346b1cfcaa77",
+      "git_blob": "b981c098c5030b510b70d5d0d26c13bf50ad8951"
+    },
+    "src/Ofdrw.Net.Packaging/OfdDocumentEnvelopeWriter.cs": {
+      "bytes": 6277,
+      "sha256": "f87f32b805c178b001b24780ed6400e872e65bb2c987c7edb93cb0241c7f876d",
+      "git_blob": "dbc3996f09ecc1fd41d5613f5162fd209c6fe480"
+    },
+    "src/Ofdrw.Net.Packaging/OfdIdPlan.cs": {
+      "bytes": 15929,
+      "sha256": "67ab9886ad6c7be36775dccd82849aceb790072beedeabdff9d4ab2c2fffcbfd",
+      "git_blob": "8a6c1e799e348728593804fbacf256a883be6099"
+    },
+    "src/Ofdrw.Net.Packaging/OfdOwnedAtomicStage.cs": {
+      "bytes": 8672,
+      "sha256": "ace1aa2a686a8d8a0ea5d45268c99713d330fa92564eaee27aed34d8b34951c1",
+      "git_blob": "e50ea98f9b38dfbc2f3dfd039a1c23a36a28e158"
+    },
+    "src/Ofdrw.Net.Packaging/OfdOwnedFontPlanEvidence.cs": {
+      "bytes": 6542,
+      "sha256": "6ed50f947d6f56faf950e2b5544c3b3344107f5969179f60ec296e1e43e89f96",
+      "git_blob": "ead2c2414c50f043f2d45ef256c5c7a231f7551c"
+    },
+    "src/Ofdrw.Net.Packaging/OfdOwnedInputSnapshot.cs": {
+      "bytes": 8771,
+      "sha256": "393d329567344feaf32347a47843b66185b4dfbc20f1fd2be88128cd8899b2c8",
+      "git_blob": "7d9ffb1f733591780563ce53bc693d706150c1ca"
+    },
+    "src/Ofdrw.Net.Packaging/OfdOwnedPackageSave.cs": {
+      "bytes": 2517,
+      "sha256": "7281fb78c0d2be57fa260bf17bdc63222e5bb996639a4cf909a0fa803a70ef3e",
+      "git_blob": "fb0271dc67cf0958aa5e6f1099570d79c6e47858"
+    },
+    "src/Ofdrw.Net.Packaging/OfdOwnedPruneDispositions.cs": {
+      "bytes": 6211,
+      "sha256": "627e262efab2e5df2cc246cbfc86ea935e451f9dcf84f922654205ae0a93cb2e",
+      "git_blob": "22c86ae13009d24859e2e8b56855d4e8bdf5c4ea"
+    },
+    "src/Ofdrw.Net.Packaging/OfdOwnedWrittenSpool.cs": {
+      "bytes": 10435,
+      "sha256": "2e3eed66a4e0c4beb3a461b55f500894520b06466567805ca0b139aa75f81cfe",
+      "git_blob": "4d86f444a0b6717e3c015170d7682573212a59c7"
+    },
+    "src/Ofdrw.Net.Packaging/OfdOwnedXmlPreservation.cs": {
+      "bytes": 8143,
+      "sha256": "65ea5db5f1d0ca26fdd8004050522f4cd3d2f918dc863e64eab1e542a1b0b6aa",
+      "git_blob": "9ea63e3215066362140f2166584a5653eb99425d"
+    },
+    "src/Ofdrw.Net.Packaging/OfdPackagePruner.cs": {
+      "bytes": 31258,
+      "sha256": "31aef6a806b1576dbbbf8ebd22a55398853804fbf7fc4cabe0d5fa037c60da83",
+      "git_blob": "617e48137cc1cf2177283e929efbd24638146781"
+    },
+    "src/Ofdrw.Net.Packaging/OfdPackageSignatureCleaner.cs": {
+      "bytes": 3400,
+      "sha256": "0f5f8005b7bc0dafc05e6e0d9331c99a41fa5ded039d16b3a3c74a2334185348",
+      "git_blob": "89bb558affc2d5d306506d4bc0aa29757b5ec075"
+    },
+    "src/Ofdrw.Net.Packaging/OfdPackageWriteResult.cs": {
+      "bytes": 490,
+      "sha256": "47efad1655076edc4df4d5daa76cf4e55ef8c960a0040faa0cd532c069413261",
+      "git_blob": "920003cf6258a9d3d65841ece1fe26870028389f"
+    },
+    "src/Ofdrw.Net.Packaging/OfdPackageWriter.Owned.cs": {
+      "bytes": 28405,
+      "sha256": "3834fd91733dd835a86916af33c13efde3ffb7aa4d46b63e0dcf46e39535862d",
+      "git_blob": "bda52af46b4ece6480c530a72846b5322cf2b12d"
+    },
+    "src/Ofdrw.Net.Packaging/OfdPackageWriter.cs": {
+      "bytes": 63657,
+      "sha256": "fa5a3bb1e9a2d9ad11122cb26fbc6ac156be86605222f77fa3a386e945eaf999",
+      "git_blob": "5119196fc7512e7f991c44136144be65b3eb6579"
+    },
+    "src/Ofdrw.Net.Packaging/OfdReadbackRootAddress.cs": {
+      "bytes": 2420,
+      "sha256": "014516071c93bfff5234bdacada4220720465ed665ab0cc51fc104def7108d54",
+      "git_blob": "3b86c13bd8337308b13e2f8054427841de15d054"
+    },
+    "src/Ofdrw.Net.Packaging/OfdResourceCatalog.cs": {
+      "bytes": 15287,
+      "sha256": "54d03b197e256f9e38d6eaac4970fdcdbcfff2f41e785734fc3d378f2baa12d3",
+      "git_blob": "b562a165a00f333812e9f71b1bbefffeb03952ef"
+    },
+    "src/Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj": {
+      "bytes": 591,
+      "sha256": "868c5585c1f835f3931afa8fc8c7fa0f00aad473041c9b0395c0d701ddcd7ef4",
+      "git_blob": "8cb5b0096a9dfa4d308179ab2d2e12b6b98d49d8"
+    },
+    "src/Ofdrw.Net.Packaging/Validation/OfdPackageStructureChecker.cs": {
+      "bytes": 5665,
+      "sha256": "2d2e42913ad26b4aaf167de7a6f178a7e7fcf62c9ae7432ad2526c91e1ed4d17",
+      "git_blob": "8164087e6500850c5a8014113566bcee3a082c79"
+    },
+    "src/Ofdrw.Net.Packaging/Validation/OfdPackageStructureIssue.cs": {
+      "bytes": 241,
+      "sha256": "88da8af50c7deaef43ac6e452236713852f051c9e4acb1d9e54bb730a67fff83",
+      "git_blob": "ba03be34f28f09b7ffcf2b286a69400aee073bc9"
+    },
+    "src/Ofdrw.Net.Reader/Extraction/OfdTextExtractor.cs": {
+      "bytes": 2426,
+      "sha256": "94324228150301f1a8bf36ba9e994c0d515ba6101ecd3694f12a926bd166c861",
+      "git_blob": "07a672ca5c6771c1731541641062ad4d2eb6c947"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdKeywordAnalysis.cs": {
+      "bytes": 24856,
+      "sha256": "142256159184d4a7ea1b43c9f48d1f4835859f5a909ac66b0cca41f4b1517622",
+      "git_blob": "3d2e906230a27dd74b6e5fa6780ae7d5cb6f7583"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdKeywordEditSource.cs": {
+      "bytes": 11639,
+      "sha256": "a4dacbdfecb0fce55ba8828255e96251b9e9b7725d086afe362061cfa9e1e602",
+      "git_blob": "ed12fda8cb159d48fd76d534e2fa50951a0d7208"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdKeywordGeometryCache.cs": {
+      "bytes": 1199,
+      "sha256": "ceb100ca714bffd4f19a4891c0b79dd9acd2f97af8c1799120454e0c395c1dcf",
+      "git_blob": "62754a2a50c913bddc1fe3c175ba3ac0924aaae1"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdKeywordInputCapture.cs": {
+      "bytes": 10699,
+      "sha256": "be63a320669eb89a8f42c2e19f6824519dd9d98f1cf585b2b7d83fb0e7fd1b3f",
+      "git_blob": "92acdff0a14f49ed4fd76e14d458aca49e5e111a"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdKeywordLocatorBudget.cs": {
+      "bytes": 6303,
+      "sha256": "f2c4e36308f4fdbd0ca77fb96759dd38d7a9e32a26faecba53982dbc0cd74d98",
+      "git_blob": "96e776024ec1198ffc77d938d36956d19cdef89a"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdKeywordOperation.cs": {
+      "bytes": 9918,
+      "sha256": "90fc0e0d51a43326dccec815962cdc674e716204f3f4bed27d3522024c620fc9",
+      "git_blob": "9515743536191cab744de219622096d5f0ae53c9"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdKeywordSourceAdmission.cs": {
+      "bytes": 29802,
+      "sha256": "4f5543430af9ee7ad6e37a12ea1b074cc214b2b62567b2120bca918b71193686",
+      "git_blob": "071196fcaabc65b434cee4f6376b72a3c5be7e36"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdKeywordSourceSnapshot.cs": {
+      "bytes": 15161,
+      "sha256": "a914f3e0d1ea7e9fd241593997d2608779fbf6755bed18aa90d4cb9ff6be3595",
+      "git_blob": "f1f5f93669b5dbeeac48b4dd25819a9df871e4ea"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdOrdinalMatcher.cs": {
+      "bytes": 5021,
+      "sha256": "c9b0c2b624d992bcd3815abe6e11b7b64911e89b932db9a5eb9d1653cadf98b2",
+      "git_blob": "68cc7ce794b83bfb9cb42f325b0f6d9945fb4138"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdOwnedGlyphGeometryHost.cs": {
+      "bytes": 616,
+      "sha256": "7fbd7bfb3578ba6b7441c48a207e863a9ce1375ae8b833b00d15e435f92f16cd",
+      "git_blob": "e2561826fa472eff1c3a8e573ec481524b205eb6"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/Internal/OfdStrictTextGeometry.cs": {
+      "bytes": 32416,
+      "sha256": "53c03e57d5508e5cc1dbef0c83da2257503a7766b92bf0a428e0df988685c0b6",
+      "git_blob": "7a09038ae8a760518e4b960b5b766f55ba5e7541"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/OfdGlyphGeometryContracts.cs": {
+      "bytes": 13753,
+      "sha256": "c2a4124219b568c028c5654d071ae983b194c84c0276c97e05a97e1cefb5e58d",
+      "git_blob": "41578f5f9226fc4cc1c5c7ab620e0d2a52c9255f"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/OfdKeywordLocator.cs": {
+      "bytes": 2345,
+      "sha256": "4298787cc4607f15c6d9eabf81de6277f7b8e3e5994aa9c4d93228c2e6242fb3",
+      "git_blob": "5d0550154b3c6a6d556ccbc1b5d382704103cc91"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/OfdKeywordLocatorLimits.cs": {
+      "bytes": 3976,
+      "sha256": "a181edfc3dd0508a07d5fff72f675d48f904d5886da4779212325a62b808033b",
+      "git_blob": "0dac6d4dd85120166d6a40345ff89f51dbcabe4f"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/OfdKeywordOptions.cs": {
+      "bytes": 6147,
+      "sha256": "5f0db5bf55a4825f1ff429b7e9832ca0bebc9f50ee283a301277584f62522c8e",
+      "git_blob": "428c31fe6d0a109fee9e829fbb7675eb2cde5b52"
+    },
+    "src/Ofdrw.Net.Reader/Keywords/OfdKeywordSearchResult.cs": {
+      "bytes": 16347,
+      "sha256": "9b82ba42bf4b6fdc2390b0e2dc6ca6069e46e0510b9dd56e36d88292c2ece075",
+      "git_blob": "c89646c9f36fea5f85153ef28525b961d992d01f"
+    },
+    "src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj": {
+      "bytes": 769,
+      "sha256": "500664f39132beb1a141444cdf235c56cfafa267bad6f1fc0533357d29f4eaa2",
+      "git_blob": "2057029b38b71bc0a8a63bfa2ba106aa3b70c6e5"
+    },
+    "src/Ofdrw.Net.Reader/Readers/OfdOwnedReader.cs": {
+      "bytes": 3362,
+      "sha256": "c4a6c0d447ecbec385e5a6dc260ada87c230275d69bbc83014b14553dc5f606e",
+      "git_blob": "08d8a91805449b92f8d819f7aec2c7b7638d586c"
+    },
+    "src/Ofdrw.Net.Reader/Readers/OfdReader.cs": {
+      "bytes": 72148,
+      "sha256": "ca98f3681f8df7c67c5bd52b62ecd4613ae7fc5ad087a0b6038ed51ba51f0ff3",
+      "git_blob": "3a2b879a4986a052d53cbab907cf05610fd7537e"
+    },
+    "src/Ofdrw.Net.Signatures/Crypto/OfdDigestAlgorithms.cs": {
+      "bytes": 1724,
+      "sha256": "4876bf3185bc5f7547f0e708aa0a61a450ab9352011c5b3cfd39c7f334372264",
+      "git_blob": "b61fa2edcc96dc997824e65a20a54915305379d4"
+    },
+    "src/Ofdrw.Net.Signatures/Crypto/Sm3Digest.cs": {
+      "bytes": 4206,
+      "sha256": "568589593c7e46c773de04e1ae5c90ac32deb8911f09c5a8ae4aaa49daca1b35",
+      "git_blob": "ac4ba209432fbf57eb9c24c6e9aff9a6cea7314a"
+    },
+    "src/Ofdrw.Net.Signatures/Ofdrw.Net.Signatures.csproj": {
+      "bytes": 479,
+      "sha256": "9ea722867e0e85ecd601916ae0b832da4d9da01fd36a3c1fef26167f0f71706f",
+      "git_blob": "931d79ea6bf9fbd54dfee9fb37babf1c8f4065dc"
+    },
+    "src/Ofdrw.Net.Signatures/Signing/IOfdSignatureProvider.cs": {
+      "bytes": 478,
+      "sha256": "5fea62bcaad3513c67ba0997aef49690ba06f1756c58a7905e850407374dfc3d",
+      "git_blob": "2b5b2add36ac773453f49e5d17df8792baf1520c"
+    },
+    "src/Ofdrw.Net.Signatures/Signing/OfdSignatureOptions.cs": {
+      "bytes": 246,
+      "sha256": "9f417f89b25af2a406760f93be4ed05c311415ac54b887a5ceca2702137741c7",
+      "git_blob": "49601c19e94ec74555c87829129ea9cba9598564"
+    },
+    "src/Ofdrw.Net.Signatures/Signing/OfdSignatureService.cs": {
+      "bytes": 13353,
+      "sha256": "ca9a7c16833bed04aa508fbc1d2c03fb2e19d4d2641675979b1a2f982517d53c",
+      "git_blob": "6c0e768675044095621b1b92aca4f626fdc39a3f"
+    },
+    "src/Ofdrw.Net.Signatures/Verification/IOfdSignedValueVerifier.cs": {
+      "bytes": 360,
+      "sha256": "faf093eb726a46de98900f5d2ccff4eed11517fd0570c1d1bbbadfdc57bef4b4",
+      "git_blob": "9126e5a63801b6dd3bc10d063085a4ea903f6681"
+    },
+    "src/Ofdrw.Net.Signatures/Verification/OfdSignatureVerificationModels.cs": {
+      "bytes": 2431,
+      "sha256": "8d7c374d71723f099c0a0fc72759b9e440b9be7518a55d33be2baf77c67245b3",
+      "git_blob": "54af9548a1d3b9c24b28213581e51cad471aa7bc"
+    },
+    "src/Ofdrw.Net.Signatures/Verification/OfdSignatureVerifier.cs": {
+      "bytes": 11696,
+      "sha256": "b9b1bbae645191908899b4ece2de9801cdc42e010a602554afe786971b07f6c7",
+      "git_blob": "416a9d044e827fe7a6d80ec11ecdea02879e774e"
+    },
+    "tests/Ofdrw.Net.Cli.Tests/DocumentToolsCliTests.cs": {
+      "bytes": 6168,
+      "sha256": "cafe9bf5d8d4ca1d738e5ff80b51897beda43a2679992674795df0013764a891",
+      "git_blob": "32d26adc7d45f7c4ce0f988a157cfb0b53d8b215"
+    },
+    "tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj": {
+      "bytes": 583,
+      "sha256": "39cfb0c8e58b7e3ad8d475174ea3df0d3331f1a64f88e993d73a7bb296657b2d",
+      "git_blob": "02ad592ed078e742f18a430e5b04db168d9dc0d3"
+    },
+    "tests/Ofdrw.Net.Cli.Tests/OutputSafetyTests.cs": {
+      "bytes": 3810,
+      "sha256": "20ee71e85f6cd7f9036f9f5d4cf88d8330081b2e1294af87ada4a690da914c48",
+      "git_blob": "7cc5af97b4a82fdd35143029e3d1d428e6e5a822"
+    },
+    "tests/Ofdrw.Net.Cli.Tests/TextReplacementArgumentsTests.cs": {
+      "bytes": 3942,
+      "sha256": "ecf5144c4eab2a86f8dab540daab3b650a943bddb2bc540646c3ade698d2031b",
+      "git_blob": "e1e2904ca2a16b75086e9c1c9e87e3beca813d65"
+    },
+    "tests/Ofdrw.Net.Cli.Tests/TextReplacementCommitNotificationTests.cs": {
+      "bytes": 19069,
+      "sha256": "644406d9775c9a9bcbb2f61de4d5120d47b6727eaa7f3b8b7ca6549f3a3bc0f5",
+      "git_blob": "2aa4f5e79f697f3486660aae01683a7ef022312d"
+    },
+    "tests/Ofdrw.Net.Converter.Docx.Tests/DocxConversionTests.cs": {
+      "bytes": 37164,
+      "sha256": "4bfa3b263ee8fde9ada6f42db33e929c37b2ca20cee5128ecc23539cb2df0f0f",
+      "git_blob": "941ff7b668c412f6b7d99a88e7237b13de96c136"
+    },
+    "tests/Ofdrw.Net.Converter.Docx.Tests/DocxRevisionTests.cs": {
+      "bytes": 38537,
+      "sha256": "f9d661ca1651cb4d32d7c48210f2ffafd5cddd0cec9d77fdb7514ba2c7ae9233",
+      "git_blob": "10b36e6a7867b6102c5a0e812f5450a774ebbd7c"
+    },
+    "tests/Ofdrw.Net.Converter.Docx.Tests/LibreOfficeFontStagingTests.cs": {
+      "bytes": 4033,
+      "sha256": "25f82516852a8a66e6d4de6616d014dde1df0239bec44b54e403d8efcd9e5d5c",
+      "git_blob": "f88f03c921dd3b06f955220f4e8509fa22711e1f"
+    },
+    "tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj": {
+      "bytes": 896,
+      "sha256": "102b7517c5d005f6b2abc6fbfc4709ed01875d8ffbd0184b5584acb18cc44972",
+      "git_blob": "806d2c6ada72ed785e8e9b79822bfe097167d8d5"
+    },
+    "tests/Ofdrw.Net.Converter.Docx.Tests/StagedRasterNamespaceAdapterTests.cs": {
+      "bytes": 6531,
+      "sha256": "5ed22834dee3a393158ea14f8bbeb25a33973cc702b64fff32c77d4894d82175",
+      "git_blob": "818d7821200d93e73ba69932140e62f972b859ac"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/AnnotationToolVisualTests.cs": {
+      "bytes": 29672,
+      "sha256": "75a4988980474e685f8d1a2c29e3b28d7fd1e0b0640e2beee0d154e7c1402ed9",
+      "git_blob": "b5f72c43aefb7aa9489a7d0f88c79a06919e561d"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/BoldAlignmentTests.cs": {
+      "bytes": 3551,
+      "sha256": "707a4648f9289f5df81e2a0eef9cf85fb1867992be35007b8dcccff327104257",
+      "git_blob": "0c9ae90ea3cdad4350223623905165cb7993ed46"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/FontIsolationTests.cs": {
+      "bytes": 10759,
+      "sha256": "95c268788447904879d1890651424c17f1564d9f0c60afab23444a84566bef8a",
+      "git_blob": "5c59a3fe6697968b2078a08b7009a6650453af29"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/GlyphRendererTypeLoadTests.cs": {
+      "bytes": 416,
+      "sha256": "ab193ba71631e8bf6cd264d1cbf97685c1cca1294979147e4bd8606346d46e1a",
+      "git_blob": "e6159ef38caac9fbeaedaea01f8a820a3c7653ba"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/ItalicMatrixTests.cs": {
+      "bytes": 7816,
+      "sha256": "d843b722ad089326010b43f0fda8c23f231ba30eccc54b07faed012318c823f3",
+      "git_blob": "3c55a21da0bdd2b4d3d0ee1127f128bb6ce7db9a"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/KeywordLocatorRealFontTests.cs": {
+      "bytes": 20413,
+      "sha256": "d6c8ab9e70d88f694faa20d4d22dfe0213ec8891fae35f3dc8d6519e88e80b0a",
+      "git_blob": "bb9561f711e17c695051034932262a6516a51a79"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/MergeVisualTests.cs": {
+      "bytes": 6619,
+      "sha256": "e45f04f6ded39839edb1534ab6851768ddc50149aed9a2fe2c05b65e661c81c2",
+      "git_blob": "e3a21d65835ac4b03a787f5e71fe8ae3943a4d4f"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj": {
+      "bytes": 1654,
+      "sha256": "2c00a743203b7092b7edb63313c03dab328ad8863443e28702c48a1eeaa78c6b",
+      "git_blob": "e1f4e901ae49b4733b4dc46513b30d1b41e1166d"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/PdfConversionTests.cs": {
+      "bytes": 14269,
+      "sha256": "e02e03ff4ee31a2b63fbf1f9a33a013cb245e505f1216b74383dea7e37cdd559",
+      "git_blob": "c4424ae7b245215f5b293682e2b7b0b7bd562c94"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/ResourceBudgetTests.cs": {
+      "bytes": 1961,
+      "sha256": "8ce5c1735b4af5a53c38de493cad800db566e972ddce6f4988631cf5da7bae18",
+      "git_blob": "1013f5d757524bc3eb8b07ecad8b43d49d997e6d"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/SvgGeometryTests.cs": {
+      "bytes": 3908,
+      "sha256": "09f3b3fcf0810fc3095920a3490a7fc48fbe3dcb97f2854dcb44403dc38f3583",
+      "git_blob": "9d468713bb9c9824540062b813cdfbd4cebfb3f1"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/TextReplacementRealFontTests.cs": {
+      "bytes": 12239,
+      "sha256": "0120dc122670d738dbb2cfd73f91eb63f619247fa2663aba870237c29a2ebfa9",
+      "git_blob": "cf0fb17ecb9f7b7c0df15dfce60869f04ec494ad"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/TrustedFontFixtures.cs": {
+      "bytes": 3853,
+      "sha256": "d1ec3366f072ba497f8bfc32a6ba4cb215654f46b6760afad1c3741e7665875c",
+      "git_blob": "cf6fc13e2a7db92feabcc0b0bb9c9d234d805b8e"
+    },
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/TrustedFontGeometryTests.cs": {
+      "bytes": 20699,
+      "sha256": "cf803d9a871328228011dc5ec8857bf0705baa184352677ed9c53af8caf1da46",
+      "git_blob": "297b17736eabbb6686c41ba7934f6540467ad577"
+    },
+    "tests/Ofdrw.Net.Core.Tests/ExternalProcessTests.cs": {
+      "bytes": 3724,
+      "sha256": "9d0576717154fccf39ba93d81fbd4237a47f2b2426ff7154e31e6b9b67aac888",
+      "git_blob": "6a93b99ef0295d38fddf99ba8fecccf00bce6f7c"
+    },
+    "tests/Ofdrw.Net.Core.Tests/ModelDefaultsTests.cs": {
+      "bytes": 936,
+      "sha256": "7df0e40b50cc0eb5eeda157692c6fe0838b94d5b86ce36c38a61157bda03c220",
+      "git_blob": "ed5cc5f3993c000d0805b7b96863d0f06a87faa2"
+    },
+    "tests/Ofdrw.Net.Core.Tests/OfdControlledEditTests.cs": {
+      "bytes": 6127,
+      "sha256": "74c6c38d350efec346cebc39ab2fbbd064ae9759b860b0e90984d4ae9d0ac050",
+      "git_blob": "76d9edf828a9a2bc378b03811d2c3338943b6fc4"
+    },
+    "tests/Ofdrw.Net.Core.Tests/OfdMaterializationTests.cs": {
+      "bytes": 5100,
+      "sha256": "92b74bc17875761ccc8edfd60ffc69a5b4ccea9dade89023455bfbb0479f44d5",
+      "git_blob": "c3c5f35c806c566c9ba6df631cc69f5369af09c3"
+    },
+    "tests/Ofdrw.Net.Core.Tests/OfdModelTraversalTests.cs": {
+      "bytes": 18189,
+      "sha256": "6a0c60286920d10fb41dc7d3c6a44500f3ae130f507eed7dc7ae660373ede35d",
+      "git_blob": "aad2bd9e22a66a0c0728edb3460a58c06138f7cc"
+    },
+    "tests/Ofdrw.Net.Core.Tests/OfdNavigationTests.cs": {
+      "bytes": 6337,
+      "sha256": "e260ad110e066d7b4ffdf63b3e46e70916d311ca8154c4cef65fc5c970a1e8e5",
+      "git_blob": "56479f1502b411addfd2b538ec91e995ec2e41ee"
+    },
+    "tests/Ofdrw.Net.Core.Tests/OfdOwnedFileIntentTests.cs": {
+      "bytes": 3627,
+      "sha256": "da1d378eb6df9d8bad40d0c48032b6e7544f82ff52f9657c2b4b011852ec5469",
+      "git_blob": "90679b14898c3b9f7063625507120cf2e18928f4"
+    },
+    "tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj": {
+      "bytes": 738,
+      "sha256": "37fd31d45e957709276b3768832cf7d4c4039e8622dec50f9878f932a99983ce",
+      "git_blob": "900af1eb9f1a4f82e0ad39d84dffc8f3ff554f90"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/ContinuousTextEditTests.cs": {
+      "bytes": 16670,
+      "sha256": "271de4b2fe14117d77e14463eac481f9b563d277d1ba9871602fa34322fbf578",
+      "git_blob": "8b5ecda8df2c2fda7d4c85ab7b95594154d8d469"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/ContinuousTextWriteThroughTests.cs": {
+      "bytes": 17367,
+      "sha256": "c4c4dba623ba07459a750fc8132ed4b8c99070e1d7fc64996fb74772ece5261f",
+      "git_blob": "8426b7d66bb9d45e9c00ef153bf16e520d393db1"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/ControlledEditWriterTests.cs": {
+      "bytes": 17814,
+      "sha256": "8b3605b8836b1348dd7dab185e4bf5259bbee04c32d0e862d321aa38a8d5d273",
+      "git_blob": "3d356eeb18ab70e00b2417bb12cc1b8ccec69a7b"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/ControlledReaderAccountingTests.cs": {
+      "bytes": 27606,
+      "sha256": "aa6fc8a2d70319f7d5bbd3272846420e29f68376c1cc0c1a613b82a18a2b0ca8",
+      "git_blob": "79a1bede482341e22548f7b1890c098c8571817e"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/DocumentToolTests.cs": {
+      "bytes": 116998,
+      "sha256": "ebf00d6a2fccb1e1f241259b159699d15bd1ed4e473f5e3638bac0a065cdfbd3",
+      "git_blob": "280e1f73e19dd670307d575cd51ec6e8f42d3c57"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/EditingIntegrityTests.cs": {
+      "bytes": 11503,
+      "sha256": "559835fe55c86f6c03dc5078eb1e231d1be5783a642c10ff1ffadfb635cf7094",
+      "git_blob": "954bcd3603940de07a7b078edc5cc7aef2edf9a6"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/GlyphGeometryConstructionTests.cs": {
+      "bytes": 2057,
+      "sha256": "b642ad7483fd488305d131f41ab0845e7abd33d11a8287c2c08525b7deb90d82",
+      "git_blob": "6294227ec173458aa86a13c013fc402b2351b030"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/InputBudgetTests.cs": {
+      "bytes": 4697,
+      "sha256": "aac83ceb167b7db3d70025a10e358cbe7bf6c6ea2a00369e9bde8db0e52421a4",
+      "git_blob": "545dc915ff2e5d4c50d26e7ba2064d1ee47d2b23"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/KeywordLocatorEmptyTextTests.cs": {
+      "bytes": 15330,
+      "sha256": "acfbe093a844ffc3f0333810d0f7feda3e1e3a65dcbabe7ad6a5d9a38a974e14",
+      "git_blob": "39d7e5a3d1356717dc557c53a54e130639baf043"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/KeywordLocatorMultiEmptyTextTests.cs": {
+      "bytes": 19860,
+      "sha256": "755e9a7cd797635e80592e541e4ba8c75180b62248eecc4a8d7770d1811abf59",
+      "git_blob": "b2d782753cd1d4e8e14750e73a180578c2d35662"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/KeywordLocatorRoundtripTests.cs": {
+      "bytes": 10873,
+      "sha256": "538da3b3c8ca3cd62df6cf786c5d3e0d0cb998257b23dc5a1f4e4c68713bf1d8",
+      "git_blob": "b3cd93df3df98c45699bd046759850624d989ac0"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/KeywordLocatorSourceTests.cs": {
+      "bytes": 15836,
+      "sha256": "b6a92411332eb698b278a70449edb9906162acc847ca9f8fc41083f7efa0c10d",
+      "git_blob": "7705d909e246c11d55c5107dc686b7bc1b5a05fc"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/KeywordLocatorTests.cs": {
+      "bytes": 20392,
+      "sha256": "1f97f226f257c08e39df4c4123c06eb8fc3798dd36799993bf4911747edfa466",
+      "git_blob": "579c75c89a5db1792fcc9d45de9a12779fdeb590"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/KeywordsFoundationTests.cs": {
+      "bytes": 14059,
+      "sha256": "24afdf5ba30097f851f4ad0d59de3c02d7f1a587c09ac9a780e0219f811fb5bd",
+      "git_blob": "51fa495418e9b21b76d4abe0118eaad2ad879822"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/LazyFontFileTests.cs": {
+      "bytes": 9072,
+      "sha256": "8d5451a695fa6de04eef8ee43544501295d86f6ad393cb75204421a879a9b5dd",
+      "git_blob": "f10d44a8ba052bf244c2d9940c9941240bcc26c3"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/Ofdrw.Net.Packaging.Tests.csproj": {
+      "bytes": 907,
+      "sha256": "369cd2a93022538eb8f37d717ba383b680b2795a95d59ec4a04f034e751c5fc4",
+      "git_blob": "6453d91b7a11539710f99286fe35d04aae683dd3"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/OwnedPayloadCloneTests.cs": {
+      "bytes": 8739,
+      "sha256": "6298413718d6c42248e240275ddcf34c7e559ca62a0bc26c79ee15a3234fb006",
+      "git_blob": "2bcbc4ac8da344bcb4bf636b06e8500778cf6fa4"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/OwnedSaveBoundaryTests.cs": {
+      "bytes": 7298,
+      "sha256": "bacad81ee950706ae82f35927f493a7bc6253198d8f1c78160eac50d638765c5",
+      "git_blob": "79b0079eebef726db870dd18dbba3f8a111a9ed0"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/OwnedSaveObservationTests.cs": {
+      "bytes": 4471,
+      "sha256": "06d60427e39b6ce06a1bd96603d5ec1e2140741a20bc4e2c235c365f919d0d3c",
+      "git_blob": "9b6461824d73d07f738fe6bd45a31057e0ec65bb"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/OwnedXmlPreservationTests.cs": {
+      "bytes": 7614,
+      "sha256": "87f717ba04d886768bd5636dbce1684e791583fcdab059c3bc9da9c20379e606",
+      "git_blob": "548b89b5c8b4f559e203fa1073c017d6bc18e60d"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/PackageRoundTripTests.cs": {
+      "bytes": 24421,
+      "sha256": "9e1d9e617fe6566acc1026fb009b659c2db93c79c24039203334ab201a7e63c9",
+      "git_blob": "3a2dad4b2f8addca9a10f8a6ec2869186a43d5af"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextFitPlannerBudgetTests.cs": {
+      "bytes": 9414,
+      "sha256": "09eb2366441b2402f6a1ea34a67262f1a49a6c9d4128b96e7231fcef0738631e",
+      "git_blob": "2705e7f4270e055374bbf75355a0ed9b4a8bca01"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextFitPlannerTests.cs": {
+      "bytes": 18757,
+      "sha256": "d55994e1f730f9ae2a7adb507c607a0a62226b2debae78ff151aa8552afcefca",
+      "git_blob": "bac6042ec32ab18e991cf6e3b85bc52c99260811"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextGeometryInputEquivalenceTests.cs": {
+      "bytes": 39077,
+      "sha256": "9a6f0c42aa57cb20dab5e2ec4ebb5c42ea0902c5efbcabcbe4f53af1280cda31",
+      "git_blob": "f4f6e834e012eef8e70b1b4a9bdb3e7abf060533"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextReplacementBudgetTests.cs": {
+      "bytes": 13091,
+      "sha256": "a92ce35318a4f66bea7a6fe4a876d356a4327131bf91f2d13b5f6e15057b110b",
+      "git_blob": "035b2a66e0b0d4814a3c7e5b957ea6bd266ed4a0"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextReplacementFileSessionTests.cs": {
+      "bytes": 18432,
+      "sha256": "0fa83e04bc18fb16e1159a0edb5a665bcb7aa3d826a17f4c34b17be79db42615",
+      "git_blob": "feae52e7328edaecf551b044428a566331b1a66a"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextReplacementFusionTests.cs": {
+      "bytes": 16327,
+      "sha256": "2f56c00126b03aad31cc913a4b524c360d1661f85381cfccfe360a960b0f3600",
+      "git_blob": "32ffe68c9318358974476e8193d0a729bf69d9e7"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextReplacementIntegrityTests.cs": {
+      "bytes": 7318,
+      "sha256": "da862c2c60ceae4ba2068076f1d56cdcdff797237b09c13000783c4251747cbc",
+      "git_blob": "549d5a954a8d137c727d6d0b678839c78b8b66e2"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextReplacementOwnedSessionTests.cs": {
+      "bytes": 11009,
+      "sha256": "ae705c53670d02b66a45f748084fa2a0ee65488138c9b642206e1c24229f9d83",
+      "git_blob": "ccfc642841d28d2fb6c03667190ab85dcd55967d"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextReplacementSpoolTests.cs": {
+      "bytes": 7505,
+      "sha256": "b9f275837a3885cdaa271a206f4070aef6282dcf94bc063cf5648da516e9db0b",
+      "git_blob": "6ba2ea6fba094801c4c0c0211c1683bfde3e1514"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TextReplacementTests.cs": {
+      "bytes": 12234,
+      "sha256": "1ce4d9945463f4bed41d50423e78d2c6e2d3b0cc2a9803803464d5cd94bd8dea",
+      "git_blob": "dc21da587219bb2ac67b5f5e661c17b88ef8aad9"
+    },
+    "tests/Ofdrw.Net.Packaging.Tests/TypedNavigationTests.cs": {
+      "bytes": 26291,
+      "sha256": "b4c0aed58ca63bb2a97b34946a221a497642d3145312c38f7e0af41a22240a1b",
+      "git_blob": "d6e8617661192034bd627ae6b7e570fcbb8a1dee"
+    },
+    "tests/Ofdrw.Net.ProcessFixture/Ofdrw.Net.ProcessFixture.csproj": {
+      "bytes": 197,
+      "sha256": "08242ae7386c4c3ebdc48793d0906b320fe398dfc24ed35caa5f8e6ac311caa7",
+      "git_blob": "ebacb7645c8099ff6ed7b8830c82788338b09053"
+    },
+    "tests/Ofdrw.Net.ProcessFixture/Program.cs": {
+      "bytes": 1145,
+      "sha256": "976a2754547902553143a3c59dfab0d27e42c48a0dd8cec6613aea7f2f4fe9d9",
+      "git_blob": "215465c7a9fab7adaf761ebf6ba470d83445fa80"
+    },
+    "tests/Ofdrw.Net.Signatures.Tests/Ofdrw.Net.Signatures.Tests.csproj": {
+      "bytes": 829,
+      "sha256": "18de9a2de204f114dec20166e113caf18db2101e91530a4cf30d115d0623b69a",
+      "git_blob": "a222794607007812a12a64b0ce52b6e48076511d"
+    },
+    "tests/Ofdrw.Net.Signatures.Tests/SignatureTests.cs": {
+      "bytes": 7530,
+      "sha256": "52e7007b8be4586f0cad70debccfd343d6220f1c7389c4db57189232ab8e487d",
+      "git_blob": "585f4386d5a77fa623e0446ded75eb0a12fa9222"
+    },
+    "tests/TestSupport/NonSeekableInput.cs": {
+      "bytes": 471,
+      "sha256": "d6b38fd935ab7da876a2c4779132379f9ea3382ddbf2511e18f18ef60e5054b7",
+      "git_blob": "ac9cc9717c489e9cf6483aa22865dcee0d7700cc"
+    },
+    "tests/fixtures/trusted-fonts/NOTICE.md": {
+      "bytes": 1042,
+      "sha256": "69a8c93c5d20562d9930d0e09e419e5ee8bf88b77f122152ae0d47a64f7fa3c9",
+      "git_blob": "b5ee52b43e4ab7634b7697d340e0eb0692b96a78"
+    },
+    "tests/fixtures/trusted-fonts/README.md": {
+      "bytes": 2484,
+      "sha256": "e0bdd2e77a217edd83c7ec4932310456f75d829c732b0e554b90b967ae24cf8d",
+      "git_blob": "30fb00e9015616575426e755e92101b2bff2b659"
+    },
+    "tests/fixtures/trusted-fonts/bundle.json": {
+      "bytes": 1218,
+      "sha256": "a5215982dd59177a0846b183f6cc89e683c281be281993f97eda1181367e5264",
+      "git_blob": "d413731620104461702b557038798e0a693e986c"
+    },
+    "tests/fixtures/trusted-fonts/licenses/NotoSans-LICENSE": {
+      "bytes": 4377,
+      "sha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb",
+      "git_blob": "c82d72e422e2d08c5ab439b6bac7c2177ea0c565"
+    },
+    "tests/fixtures/trusted-fonts/licenses/Ofdrw-CI-Noto-OFL.txt": {
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "git_blob": "d952d62c065f3f35fb83a173496e90b21525aef3"
+    },
+    "tests/fixtures/trusted-fonts/manifest.json": {
+      "bytes": 4801,
+      "sha256": "0abcc1f74375452213e48cda416dff577125cc9618dd013a63c3ded54f8087d2",
+      "git_blob": "f2a9a863e9f30b29e706106cf20d921bf8c68f1e"
+    },
+    "tests/fixtures/trusted-fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59.zip": {
+      "bytes": 11821583,
+      "sha256": "40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59",
+      "git_blob": "bf9167a21c9d3ff2358439d18b419a9058c483de"
+    }
+  },
+  "errors": []
+}

@@ -1,0 +1,432 @@
+{
+  "source": "0a21fbedaf284ace51e0e7d742eb0a4efd8b3529",
+  "historicalVerifiedRuntime": "17dea14282ee58c00051e36a3257449102883d7b",
+  "excludedIssue11HeadNotAncestor": true,
+  "otherRuntimeSourceBytesIdenticalToHistoricalCandidate": true,
+  "changes": [
+    "M\t.github/workflows/ci.yml",
+    "M\tOfdrw.Net.sln",
+    "M\tREADME.md",
+    "M\tTHIRD-PARTY-NOTICES.md",
+    "D\tdocs/evidence/password-crypto/README.md",
+    "D\tdocs/evidence/password-crypto/acceptance.json",
+    "D\tdocs/evidence/password-crypto/bundle-manifest.json",
+    "D\tdocs/evidence/password-crypto/default-package-manifest.json",
+    "D\tdocs/evidence/password-crypto/default-package-review1-manifest.json",
+    "D\tdocs/evidence/password-crypto/design.md",
+    "D\tdocs/evidence/password-crypto/evidence.tar.zst",
+    "D\tdocs/evidence/password-crypto/independent-functional.json",
+    "D\tdocs/evidence/password-crypto/independent-review1-functional.json",
+    "D\tdocs/evidence/password-crypto/independent-verification.md",
+    "D\tdocs/evidence/password-crypto/kdf-oracle-correction.json",
+    "D\tdocs/evidence/password-crypto/manifest.json",
+    "D\tdocs/evidence/password-crypto/package-functional.json",
+    "D\tdocs/evidence/password-crypto/package-initial-manifest.json",
+    "D\tdocs/evidence/password-crypto/package-manifest.json",
+    "D\tdocs/evidence/password-crypto/review1-manifest.json",
+    "D\tdocs/evidence/password-crypto/review1-validation.json",
+    "D\tdocs/evidence/password-crypto/review1-validation.tar.zst",
+    "D\tdocs/evidence/password-crypto/review2/README.md",
+    "D\tdocs/evidence/password-crypto/review2/acceptance.json",
+    "D\tdocs/evidence/password-crypto/review2/bundle-manifest.json",
+    "D\tdocs/evidence/password-crypto/review2/default-release-package-manifest.json",
+    "D\tdocs/evidence/password-crypto/review2/evidence.tar.zst",
+    "D\tdocs/evidence/password-crypto/review2/independent-functional.json",
+    "D\tdocs/evidence/password-crypto/review2/manifest.json",
+    "D\tdocs/evidence/password-crypto/review2/old-package-budget-repro.json",
+    "D\tdocs/evidence/password-crypto/review2/package-functional.json",
+    "D\tdocs/evidence/password-crypto/review2/package-manifest.json",
+    "D\tdocs/evidence/password-crypto/review3/README.md",
+    "D\tdocs/evidence/password-crypto/review3/acceptance.json",
+    "D\tdocs/evidence/password-crypto/review3/bundle-manifest.json",
+    "D\tdocs/evidence/password-crypto/review3/evidence.tar.zst",
+    "D\tdocs/evidence/password-crypto/review3/independent-functional.json",
+    "D\tdocs/evidence/password-crypto/review3/manifest.json",
+    "D\tdocs/evidence/password-crypto/review3/package-functional.json",
+    "D\tdocs/evidence/password-crypto/review3/package-manifest.json",
+    "D\tdocs/evidence/password-crypto/review3/preview-followup.json",
+    "D\tdocs/evidence/password-crypto/test-results.json",
+    "M\tdocs/evidence/roadmap-merge-round-2026-10-15/README.md",
+    "M\tdocs/feature-parity.md",
+    "D\tdocs/password-crypto.md",
+    "M\tdocs/roadmap-merge-round-2026-10-15.md",
+    "M\tdocs/tutorials/README.md",
+    "D\te2e/Ofdrw.Net.Crypto.Password.E2E/Consumer.cs.txt",
+    "D\te2e/Ofdrw.Net.Crypto.Password.E2E/Ofdrw.Net.Crypto.Password.E2E.csproj",
+    "D\te2e/Ofdrw.Net.Crypto.Password.E2E/Program.cs",
+    "D\te2e/Ofdrw.Net.Crypto.Password.E2E/README.md",
+    "D\tscripts/run-password-crypto-e2e.sh",
+    "D\tsrc/Ofdrw.Net.Crypto.Password/Internal/OwnedBuffers.cs",
+    "D\tsrc/Ofdrw.Net.Crypto.Password/Internal/PasswordPrimitives.cs",
+    "D\tsrc/Ofdrw.Net.Crypto.Password/OfdPasswordEnvelope.cs",
+    "D\tsrc/Ofdrw.Net.Crypto.Password/OfdPasswordOptions.cs",
+    "D\tsrc/Ofdrw.Net.Crypto.Password/Ofdrw.Net.Crypto.Password.csproj",
+    "D\ttests/Ofdrw.Net.Crypto.Password.Tests/Ofdrw.Net.Crypto.Password.Tests.csproj",
+    "D\ttests/Ofdrw.Net.Crypto.Password.Tests/PasswordEnvelopeTests.cs"
+  ],
+  "visualDisposition": "No rendering source/font/sample changes; retain actual 33-page Preview evidence at its explicit original source baselines; do not claim new UI viewing.",
+  "acceptedHeadAncestry": [
+    {
+      "pr": 8,
+      "head": "c1d8ab20a760a635a562183e29856feed7a7ae17",
+      "included": true
+    },
+    {
+      "pr": 9,
+      "head": "5d71dc9e4fb3ccfa4dd028386436e58cd261bc39",
+      "included": true
+    },
+    {
+      "pr": 10,
+      "head": "17d0d0626d957cd58a87d5157172b054185328c6",
+      "included": true
+    },
+    {
+      "pr": 11,
+      "head": "b29ed9db8d157569881d9dcd2a6d56f085f32baa",
+      "included": false
+    },
+    {
+      "pr": 12,
+      "head": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+      "included": true
+    },
+    {
+      "pr": 13,
+      "head": "ab87bcade2ec5df6fa1f7ea0b86c590d13225653",
+      "included": true
+    },
+    {
+      "pr": 14,
+      "head": "d8dfda455b44ef5857c3a87088ed08cf80d810dc",
+      "included": true
+    },
+    {
+      "pr": 15,
+      "head": "f7cbbcf991f33b6bc9c90cc118c636dbcca78404",
+      "included": false
+    },
+    {
+      "pr": 16,
+      "head": "02f516ea61f5f73cdf3a6a015d4e02d6b46ddd7e",
+      "included": true
+    },
+    {
+      "pr": 17,
+      "head": "d878aeda57c1da79917e11d0a35bcc028bc4c1fd",
+      "included": true
+    },
+    {
+      "pr": 18,
+      "head": "0a97c980fa0846c931e199caf26e88f437472744",
+      "included": true
+    },
+    {
+      "pr": 19,
+      "head": "7caa8b54f2b28e0479d051e6ddf9b6d3227b5c3d",
+      "included": true
+    },
+    {
+      "pr": 20,
+      "head": "03b5f29484a623a00ca8d92725bd7f1f8036491a",
+      "included": true
+    }
+  ],
+  "functional": {
+    "source": "0a21fbedaf284ace51e0e7d742eb0a4efd8b3529",
+    "outcomes": {
+      "Passed": 2033,
+      "NotExecuted": 12
+    },
+    "projects": [
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_14_net10.0.trx",
+        "firstTest": "Ofdrw.Net.Core.Tests.OfdModelTraversalTests.SourceByteBudgetRejectsBeforeMalformedXmlIsParsed",
+        "outcomes": {
+          "Passed": 71
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_16_net10.0.trx",
+        "firstTest": "Ofdrw.Net.Packaging.Tests.KeywordLocatorEmptyTextTests.EmptyBearingAllSlotsAndRootTypedProjectionRemainAuthoritative(kind: \"size\")",
+        "outcomes": {
+          "Passed": 1073
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_19_net10.0.trx",
+        "firstTest": "Ofdrw.Net.Converter.Pdf.Tests.FontIsolationTests.ComposedResolver_ShouldPreserveHostRequestsAndResolveEmbeddedFaces",
+        "outcomes": {
+          "Passed": 200,
+          "NotExecuted": 12
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_23_net10.0.trx",
+        "firstTest": "Ofdrw.Net.Signatures.Tests.SignatureTests.Sm3_ShouldMatchPublishedAbcVector",
+        "outcomes": {
+          "Passed": 4
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_23_net10.0[1].trx",
+        "firstTest": "Ofdrw.Net.Converter.Docx.Tests.DocxConversionTests.Native_BodyPageField_WithLeadingLfAndFf_ShouldConsumeControlsOnce",
+        "outcomes": {
+          "Passed": 151
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_41_net10.0.trx",
+        "firstTest": "Ofdrw.Net.Cli.Tests.TextReplacementArgumentsTests.InvalidOrUnboundedPageSelectionsRejectBeforeAnyFileWork(pages: \"2-1\")",
+        "outcomes": {
+          "Passed": 44
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_41_net10.0[1].trx",
+        "firstTest": "Ofdrw.Net.Layout.Tests.FlowDocumentTests.LatinWordWithPrecomposedOrCrossSpanCombiningMark_IsMeasuredAsOneWord(baseText: \"X über\", mark: \"\")",
+        "outcomes": {
+          "Passed": 94
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_42_net10.0.trx",
+        "firstTest": "Ofdrw.Net.Signatures.SesInterop.Tests.SesTests.RejectsMalformedDerBeforeRecursiveLibraryParsing",
+        "outcomes": {
+          "Passed": 37
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_43_net10.0.trx",
+        "firstTest": "Ofdrw.Net.Graphics.SkiaSharp.Tests.AdapterTests.MissingOrDuplicateIdIsAtomic(duplicate: True)",
+        "outcomes": {
+          "Passed": 44
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_02_44_net10.0.trx",
+        "firstTest": "Ofdrw.Net.Converter.Pdf.Vector.Tests.BudgetOrderingTests.RealPaintCapacityPrecedesItsProfileAndEnoughCapacityKeepsPolicy(body: \"q 1 0 0 1 -16777216 0 cm 16777216 100 m 16777217 1\"···, reason: \"PATH_FLOAT_PRECISION\", required: 1)",
+        "outcomes": {
+          "Passed": 315
+        }
+      }
+    ],
+    "expectedExclusion": "66 password tests removed from the earlier 2099-passed candidate",
+    "earlierAttempt": "tests-no-password.log is an unsuccessful test-with-build attempt after branch reconstruction; explicit full build followed by --no-build suite passed."
+  },
+  "mandatoryFonts": {
+    "counters": {
+      "total": "65",
+      "executed": "65",
+      "passed": "65",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "bundleSha256": "40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59",
+    "mandatory": true
+  },
+  "pythonTests": {
+    "passed": 20
+  },
+  "apiDocumentation": {
+    "status": "passed",
+    "historicalSymbols": 272
+  },
+  "actualPackages": {
+    "version": "0.1.0-merge.20261015.4",
+    "defaultProducts": 11,
+    "sesFeed": 12,
+    "vectorFeed": 13,
+    "status": "passed",
+    "projectReferenceConsumers": false,
+    "published": false
+  },
+  "renderReadback": {
+    "pages": 15,
+    "allByteIdenticalToActuallyPreviewedMatrix": true,
+    "note": "No new Preview claim: prior per-page UI inspection retains its explicit baselines; only the separate password project was excluded."
+  },
+  "validationArchive": {
+    "path": "exclusion-validation.tar.zst",
+    "bytes": 291362,
+    "sha256": "fad06bf6f3d7642f9c7ef75544d64cf722095a4d655acd8117a8b89f9f1e97c5",
+    "files": [
+      {
+        "path": "ancestor-no-password.json",
+        "bytes": 1303,
+        "sha256": "0a0f8739a607e811e225bb8a264b5b28da06c2f118be53ce4a3f903bccbeab90"
+      },
+      {
+        "path": "api-docs-no-password.log",
+        "bytes": 173,
+        "sha256": "56e7828b46e8850e412950190f7b7e4144d26b2ff839ca5f3640a9f55c360a26"
+      },
+      {
+        "path": "build-no-password.log",
+        "bytes": 83995,
+        "sha256": "22ff04728b54e7dce017df9b81ded365d86fc327bd3845e6cd1b6246a15e87ec"
+      },
+      {
+        "path": "exclusion-source-audit.json",
+        "bytes": 4063,
+        "sha256": "2081acfd713bba42285ec16607329741d650d71ce26249fbb0cee0e3cc2e6bae"
+      },
+      {
+        "path": "packages/default-eleven.json",
+        "bytes": 2249,
+        "sha256": "4da41f941982689352847e96e814435baa8395cb8c21d891d84a19ad9125ec2a"
+      },
+      {
+        "path": "packages/ses-assets.json",
+        "bytes": 61776,
+        "sha256": "3b7e0abf96e8c22f2115b576b76c3aec2eb9956f2b2c32d7b3d5d8a7c1b994e5"
+      },
+      {
+        "path": "packages/ses-twelve.json",
+        "bytes": 2364,
+        "sha256": "ee35f8bb5bdfcd2eb7829821c262a91d991e36a8255ddf1637b5cf33e0128791"
+      },
+      {
+        "path": "packages/vector-assets.json",
+        "bytes": 60982,
+        "sha256": "0a388fdab5103ad8f811ac5fd93c689887c3b46b85489c92640d3617e4001f05"
+      },
+      {
+        "path": "packages/vector-thirteen.json",
+        "bytes": 5451,
+        "sha256": "42ab98dec30616991d7debac0be968f758362a1f094e5924ce1ef7b653bf6552"
+      },
+      {
+        "path": "python-no-password.log",
+        "bytes": 3197,
+        "sha256": "e5cb7e91f8c09b6f70eb4c543b79e9a4c704bddf5048e8751bf2a32caf77e95c"
+      },
+      {
+        "path": "reports/ses-functional.json",
+        "bytes": 2802,
+        "sha256": "d1cb31471b7716bceaf706b5dd8dad6ed0f0929c344cc02175d6426ed505772d"
+      },
+      {
+        "path": "reports/vector-functional.json",
+        "bytes": 4850,
+        "sha256": "f59e6012308872a0aa3e407951ac39b7999fa077a8b2fb8a3962d2bcdc594829"
+      },
+      {
+        "path": "reports/vector-pixel-readback.json",
+        "bytes": 2471,
+        "sha256": "b373cc5d2f90ddf82b55439f9005befdf824656d4b4904cb7748135bbea0e2f0"
+      },
+      {
+        "path": "ses-no-password.log",
+        "bytes": 120413,
+        "sha256": "fd7897033fbc6555f581a6e58a7500af0224d411d4c96bc9eb2574e4c9b3a60e"
+      },
+      {
+        "path": "test-summary-no-password.json",
+        "bytes": 3259,
+        "sha256": "e210ec0782e21d6b97b017e3a8a89c1cfd2d27feed28c2b761dfcfae3294b607"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_14_net10.0.trx",
+        "bytes": 107893,
+        "sha256": "2be28dd534f8d8d7dae602dd0c4f1f107dfbcd8122cb04898a1421c945e726f5"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_16_net10.0.trx",
+        "bytes": 1785175,
+        "sha256": "5cde3a40a4b85e2f3e1eb4a0b039585a71730bd47eddec1e4e9fc74fdb2f55c6"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_19_net10.0.trx",
+        "bytes": 347906,
+        "sha256": "f86a765acdc39c086b2434b9e2cb8c46d123bc4e29f5437d1f7f86f3bcc73b11"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_23_net10.0.trx",
+        "bytes": 7385,
+        "sha256": "d4d98e533b55d0db6d8171acb71352ac955b86d7620e2e9cf4d9588ab87ba472"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_23_net10.0[1].trx",
+        "bytes": 242260,
+        "sha256": "06d1e97bda2b9eb1585430071b615b104e386c0f56eaae82bce23f11000599b9"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_41_net10.0.trx",
+        "bytes": 72108,
+        "sha256": "9a238e0b3139f636ced2b0d24bcfe054e89d8c1cb138af25463f3618046dba92"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_41_net10.0[1].trx",
+        "bytes": 143912,
+        "sha256": "0adc71a68ef85a327d301865faa178969f1a99930fefc58642e1f84076061111"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_42_net10.0.trx",
+        "bytes": 59030,
+        "sha256": "110f6ffdb62ac151b8788d2bb50345f272273df1d1de49f91e92804f9fd83b02"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_43_net10.0.trx",
+        "bytes": 70523,
+        "sha256": "e6e44ca569e99d15145d7ebafd169493617b06dcb1b667a7b22f41ced78671d5"
+      },
+      {
+        "path": "tests-no-password-final/_wanghongyideMacBook-Pro_2026-10-15_11_02_44_net10.0.trx",
+        "bytes": 520910,
+        "sha256": "218ad1f4a0efad9561ba2e969103980380d606ab2a3d8182f3d2fa306b13bb87"
+      },
+      {
+        "path": "tests-no-password-final.log",
+        "bytes": 9408,
+        "sha256": "90ccd1d6b962912b28f4c7fdac9a99f080628108de7d378b29a8dd03723f6b07"
+      },
+      {
+        "path": "tests-no-password.log",
+        "bytes": 51630,
+        "sha256": "ae1e1551caea8262dd9c7c66d07accc7e4b829bd8517060a3285961fc2176b50"
+      },
+      {
+        "path": "trusted-no-password/command.json",
+        "bytes": 1591,
+        "sha256": "ef830cced07288c10881d58c8e1ad79a9016fc2a0405306e6e63ef9c850dc674"
+      },
+      {
+        "path": "trusted-no-password/summary.json",
+        "bytes": 482,
+        "sha256": "f27490589dbc317efb187f6f2125f646e9dc4b47047f017f22274b6db0d67a66"
+      },
+      {
+        "path": "trusted-no-password/trusted-fonts.trx",
+        "bytes": 148222,
+        "sha256": "5c98b9d5a07ff58672328bfc5ccf498a11173b3d497831a6b46dbd5a06f9c8cd"
+      },
+      {
+        "path": "trusted-no-password.log",
+        "bytes": 10699,
+        "sha256": "92ee001aabadf921384ffbe01dc8c17eabf281f0db9725d51f01b8bc82f2a565"
+      },
+      {
+        "path": "vector-no-password.log",
+        "bytes": 15745,
+        "sha256": "79b24f77901408f7bb6bcc442267031e93ea70e97fdd7df605aa5dc00d749c72"
+      }
+    ]
+  },
+  "remoteGates": "Read latest PR22 CI and bot status separately before merge; not inferred from local gates.",
+  "archiveReadback": {
+    "payloads": 32,
+    "allVerified": true
+  }
+}

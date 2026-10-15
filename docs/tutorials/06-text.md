@@ -95,7 +95,7 @@ var text = new OfdTextExtractor().Extract(package, includeTemplates: true);
 2. 拿它的 `Font` ID 去 `PublicRes.xml` 对上 `Font` 声明
 3. 若 `FontFile` 存在，确认 ZIP 里真有该文件
 
-用 Builder 写一行字（见 [README 示例](../../README.md) 的 `OfdTextElement`）。源项目更常见的是 `new Paragraph("你好")` 交给布局引擎，由 Render 生成 `TextObject`；调试格式时仍应打开生成后的 `Content.xml`。
+用 Builder 写一行字（见 [README 示例](../../README.md) 的 `OfdTextElement`）。本仓库也可将 `new Paragraph("你好")` 加入公开 `FlowDocument.Blocks`，由 `Render()` 自动折行、分页并生成 `TextObject`；完整写包示例与尺寸约定见[公开流式布局 API](../flow-layout.md)。调试格式时仍应打开生成后的 `Content.xml`。
 
 ## 常见坑
 

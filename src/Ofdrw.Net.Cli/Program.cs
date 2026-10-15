@@ -28,8 +28,8 @@ internal static partial class Cli
 
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
-            "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures"))
+            "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-image" or "image-to-ofd" or
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -39,6 +39,12 @@ internal static partial class Cli
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (command is "ofd-to-image" or "image-to-ofd")
+                return await ConvertImagesAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+
+
+            if (command == "replace-text")
+                return await ReplaceTextAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "watermark" or "split" or "mix" or "clean-signatures")
                 return await DocumentToolsAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "merge")
@@ -627,6 +633,8 @@ internal static partial class Cli
           ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5]
           ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--pages 1,3-5]
           ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--pages 1]
+          ofdrw ofd-to-image <input.ofd> <output.png> [--pages 1] [--ppm 5.669291] [--format png|jpeg]
+          ofdrw image-to-ofd <input.png> [input2.jpg ...] --output <output.ofd> [--ppm 5.669291] [--page-width 210 --page-height 297]
           ofdrw verify-signatures --input <input.ofd>
           ofdrw extract-text <input.ofd> [output.txt] [--include-templates]
           ofdrw watermark <input.ofd> <output.ofd> --pages 1,2 --text DRAFT
@@ -634,6 +642,7 @@ internal static partial class Cli
           ofdrw split <input.ofd> <output.ofd> --pages 3,1
           ofdrw mix <output.ofd> <input1.ofd> 1 <input2.ofd> 2
           ofdrw clean-signatures <input.ofd> <output.ofd>
+          ofdrw replace-text <input.ofd> <output.ofd> --find TEXT --replace TEXT --trusted-font SHA256:BYTECOUNT [--pages 1,3-5]
           ofdrw reorder <input.ofd> <output.ofd> --pages 3,1,2
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
 
@@ -644,8 +653,11 @@ internal static partial class Cli
           pdf-to-ofd  Convert PDF to OFD.
           ofd-to-pdf  Convert OFD to PDF.
           ofd-to-svg  Convert one OFD page to self-contained SVG.
+          ofd-to-image Export one OFD page to white-background PNG (default) or JPEG.
+          image-to-ofd Import PNG/JPEG, one image per page; centered, shrink to fit, no enlargement.
           verify-signatures Verify protected-entry digests and registered signed-value algorithms.
           extract-text Extract page text, optionally including template text.
+          replace-text Replace literal simple text using vetted original Regular fonts and translation-only geometry.
           reorder      Reorder every page using a complete 1-based page list.
           watermark    Add ordinary text/image objects to selected layers (millimeters).
           split        Select distinct pages in 1-based list order into a new OFD.
@@ -657,6 +669,14 @@ internal static partial class Cli
           -i, --input   Input file path.
           -o, --output  Output file path.
           -p, --pages   1-based page list or ranges, for example 1,3-5.
+          --ppm         Image commands: finite positive pixels per millimeter; default 144/25.4.
+          --format      ofd-to-image: png (default) or jpeg, independent of filename.
+          --jpeg-quality ofd-to-image: quality 1-100 (default 90).
+          image-to-ofd: use --output, or a final positional .ofd destination; inputs retain argument order.
+          --page-width, --page-height image-to-ofd: paired dimensions in millimeters; default natural image size.
+          --max-pixels, --max-working-bytes, --max-input-bytes, --max-output-bytes Image command budgets.
+          --max-pdf-bytes, --max-signature-appearances ofd-to-image: PDF bytes / selected stamp count budgets.
+          --max-total-input-bytes, --max-pages, --max-entries image-to-ofd: cumulative input/page/entry budgets.
           --include-templates Include template text during extraction.
           --skip-unsupported  Drop unsupported raw objects during merge.
           --docx-engine      DOCX renderer: auto, word (macOS), libreoffice, or built-in.
