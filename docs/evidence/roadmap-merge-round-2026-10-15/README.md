@@ -1,4 +1,4 @@
-> 本归档保留排除前运行源码 17dea14 的历史验收，不作为排除版当前全套计数。人类已选择本轮排除 Issue11；当前分支无口令包源码或其接受 head 祖先。其余产品源码、字体、页面字节未变，Preview 原基线保留。排除版重测、祖先及范围差异见后续 exclusion-readback.json。
+> 本归档保留排除前运行源码 17dea14 的历史验收，不作为排除版当前全套计数。人类已选择本轮排除 Issue11；当前分支无口令包源码或其接受 head 祖先。其余产品源码、字体、页面字节未变，Preview 原基线保留。排除版重测、祖先及范围差异见 [exclusion-readback.json](exclusion-readback.json)。
 
 # 首轮集成验收证据
 
@@ -22,3 +22,9 @@ tar --zstd -xf evidence.tar.zst -C /your/empty/output-directory
 ```
 
 归档使用 Zstandard long window 27 压缩重复的公开字体载荷；解码需要支持 Zstandard 的 tar/zstd。逐项身份以 manifest 为准。功能结果、渲染检查、PNG 目视和 Preview 在 acceptance 中分别列出；范围仅限这些确定性样例。正式发布记录仍为 `not-reviewed`，没有发布 NuGet、创建 tag 或触发 dispatch。
+
+## 排除版当前结果
+
+[PR22](https://github.com/whynpc9/ofdrw.net/pull/22)，运行源码 0a21fbe：2,033 全套通过/12 可选未执行、强制真实字体 65/65 零跳过、20 脚本用例、默认 11/SES 12/vector 13 真实包消费通过。只有独立口令项目被排除，其余产品与已有实际 Preview 基线源码逐文件相同；新 15 页 PNG 读回一致。原 33 页实际 Preview 记录保留其原始源码/字体/页码，本次不虚报重新查看 GUI。
+
+[排除版读回](exclusion-readback.json) 列出 11 个接纳 head 和两个明确排除 head、全部范围差异、原始 TRX 计数及 [32 文件验证归档](exclusion-validation.tar.zst) 的逐文件哈希。旧 evidence.tar.zst 不改写为新候选全套结果。最新远端 CI/review 仍须在 PR22 单独读回。
