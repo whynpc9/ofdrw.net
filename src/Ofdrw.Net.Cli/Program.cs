@@ -408,14 +408,7 @@ internal static partial class Cli
     }
 
     private static void EnsureDifferentPaths(string inputPath, string outputPath)
-    {
-        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (string.Equals(Path.GetFullPath(inputPath), Path.GetFullPath(outputPath), comparison))
-        {
-            throw new ArgumentException("Conversion input and output must use different paths.");
-        }
-    }
+        => ConversionPathIdentity.RequireDifferentPaths(inputPath, outputPath);
 
     private static ConversionMode ResolveMode(string command, string inputPath, string outputPath)
     {
