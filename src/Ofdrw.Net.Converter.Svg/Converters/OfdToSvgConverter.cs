@@ -122,7 +122,7 @@ public sealed class OfdToSvgConverter
             objectIndex++;
             if (element is OfdTextElement text)
             {
-                AddText(target, svgNs, page, text, package.Fonts, families, cancellationToken);
+                AddText(target, svgNs, page, OfdTextRenderProjection.Create(text, material, cancellationToken), package.Fonts, families, cancellationToken);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {

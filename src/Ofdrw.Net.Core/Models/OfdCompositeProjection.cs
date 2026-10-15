@@ -45,7 +45,8 @@ internal static class OfdCompositeProjection
                 if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node) || node.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a)))
                     throw new NotSupportedException("Unsupported composite child style cannot be exported.");
             }
-            var projected = OfdModelCloner.CloneElement(element, clonePayloads: false, material: material, cancellationToken: token);
+            var renderSource = element is OfdTextElement sourceText ? OfdTextRenderProjection.Create(sourceText, material, token) : element;
+            var projected = OfdModelCloner.CloneElement(renderSource, clonePayloads: false, material: material, cancellationToken: token);
             var inner = element switch { OfdTextElement t => t.Transform, OfdImageElement i => i.Transform ?? new[] { i.WidthMillimeters, 0, 0, i.HeightMillimeters, 0, 0 }, OfdPathElement p => p.Transform, _ => null } ?? Identity();
             var transformed = Multiply(origin, inner);
             var clipsForLeaf = inherited.Select(p => new OfdPathElement { AbbreviatedData = p.AbbreviatedData, Transform = p.Transform, FillRule = p.FillRule, Fill = true, Stroke = false }).ToList(); AddClips(element, origin, clipsForLeaf);
