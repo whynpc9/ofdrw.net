@@ -29,6 +29,10 @@ internal sealed class DocxModelReader
     private MainDocumentPart _mainPart = null!;
     private int _elementCount;
     private BuiltInSectionModel? _previousSection;
+    private readonly Dictionary<string, IList<BuiltInParagraphModel>> _decorations = new(StringComparer.Ordinal);
+
+    internal bool HasOmittedDecorationText { get; private set; }
+
     private readonly HashSet<string> _supplementalKeys = new(StringComparer.Ordinal);
 
     internal DocxModelReader(
@@ -760,8 +764,7 @@ internal sealed class DocxModelReader
             var reference = properties.Elements<HeaderReference>().FirstOrDefault(value => (value.Type?.Value ?? HeaderFooterValues.Default) == kind);
             if (reference?.Id?.Value is string id && _mainPart.GetPartById(id) is HeaderPart part)
             {
-                if (part.Header is not null) CountElements(part.Header);
-                foreach (var paragraph in part.Header?.Elements<WpParagraph>() ?? []) destination.Add(ReadParagraph(paragraph, part));
+                ReadDecoration(part.Header, part, "header", kind, destination);
             }
             else if (inherited is not null) foreach (var paragraph in inherited) destination.Add(paragraph);
         }
@@ -770,8 +773,7 @@ internal sealed class DocxModelReader
             var reference = properties.Elements<FooterReference>().FirstOrDefault(value => (value.Type?.Value ?? HeaderFooterValues.Default) == kind);
             if (reference?.Id?.Value is string id && _mainPart.GetPartById(id) is FooterPart part)
             {
-                if (part.Footer is not null) CountElements(part.Footer);
-                foreach (var paragraph in part.Footer?.Elements<WpParagraph>() ?? []) destination.Add(ReadParagraph(paragraph, part));
+                ReadDecoration(part.Footer, part, "footer", kind, destination);
             }
             else if (inherited is not null) foreach (var paragraph in inherited) destination.Add(paragraph);
         }
@@ -782,6 +784,41 @@ internal sealed class DocxModelReader
         Footer(HeaderFooterValues.First, target.FirstFooters, _previousSection?.FirstFooters);
         Footer(HeaderFooterValues.Even, target.EvenFooters, _previousSection?.EvenFooters);
         _previousSection = target;
+    }
+
+    private void ReadDecoration(OpenXmlElement? root, OpenXmlPart part, string decoration,
+        HeaderFooterValues kind, IList<BuiltInParagraphModel> destination)
+    {
+        if (root is null) return;
+        var key = part.Uri.ToString();
+        if (!_decorations.TryGetValue(key, out var paragraphs))
+        {
+            CountElements(root);
+            paragraphs = new List<BuiltInParagraphModel>();
+            _decorations.Add(key, paragraphs);
+            var index = 0;
+            foreach (var child in root.ChildElements)
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                index++;
+                if (child is WpParagraph paragraph)
+                {
+                    paragraphs.Add(ReadParagraph(paragraph, part));
+                    continue;
+                }
+
+                // Unsupported blocks may carry text in tables, SDTs or extension markup.
+                // Keep loss independent of placeholder policy and diagnostic wording.
+                if (!string.IsNullOrEmpty(child.InnerText)) HasOmittedDecorationText = true;
+                var variant = kind == HeaderFooterValues.First ? "first" : kind == HeaderFooterValues.Even ? "even" : "default";
+                var location = $"{decoration} {variant} {part.Uri} child[{index}]/{child.LocalName}";
+                ReportUnsupported(decoration == "header" ? "DOCX_HEADER_CONTENT_UNSUPPORTED" : "DOCX_FOOTER_CONTENT_UNSUPPORTED",
+                    location, "The block is omitted; direct paragraphs remain supported.");
+                if (_options.UnsupportedFeatureBehavior == UnsupportedDocxFeatureBehavior.Placeholder)
+                    paragraphs.Add(CreateUnsupportedParagraph(location));
+            }
+        }
+        foreach (var paragraph in paragraphs) destination.Add(paragraph);
     }
 
     private void ReportUnsupported(string code, string feature, string? degradation = null)
