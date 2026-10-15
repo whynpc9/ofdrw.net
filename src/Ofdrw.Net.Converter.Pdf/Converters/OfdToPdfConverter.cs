@@ -26,11 +26,19 @@ namespace Ofdrw.Net.Converter.Pdf.Converters;
 public sealed class OfdToPdfConverter : IOfdToPdfConverter
 {
     private readonly OfdToPdfOptions _options;
+    private readonly long _maximumFontParseWork;
 
     public OfdToPdfConverter() : this(new OfdToPdfOptions()) { }
 
-    public OfdToPdfConverter(OfdToPdfOptions options)
+    public OfdToPdfConverter(OfdToPdfOptions options) : this(options, FontParseBudget.DefaultMaximumWork) { }
+
+    /// <summary>Creates an exporter with a cumulative finite cmap budget shared by document, fallback and signature fonts.</summary>
+    /// <param name="options">PDF conversion options.</param>
+    /// <param name="maximumCmapParseWork">Positive maximum bytes and records processed while parsing cmap tables.</param>
+    public OfdToPdfConverter(OfdToPdfOptions options, long maximumCmapParseWork)
     {
+        if (maximumCmapParseWork <= 0) throw new ArgumentOutOfRangeException(nameof(maximumCmapParseWork));
+        _maximumFontParseWork = maximumCmapParseWork;
         _options = options ?? throw new ArgumentNullException(nameof(options));
         if (options.PackageLoadOptions is null || options.MaxDecodedImagePixels <= 0)
             throw new ArgumentException("OFD load options and a positive image pixel budget are required.", nameof(options));
@@ -78,10 +86,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 selectedIds.Add(id!);
             }
         }
-        var fonts = new DocumentFontContext(package.Fonts);
+        var parseBudget = new FontParseBudget(_maximumFontParseWork, cancellationToken);
+        var fonts = new DocumentFontContext(package.Fonts, parseBudget: parseBudget, cancellationToken: cancellationToken);
         var signatureAppearances = await PrepareSignatureAppearancesAsync(
                 package, selectedIds, strictAppearanceBudgets, maximumSignatureAppearances,
-                annotationMaterial, cancellationToken)
+                annotationMaterial, parseBudget, cancellationToken)
             .ConfigureAwait(false);
 
         using var document = new PdfDocument();
@@ -115,7 +124,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
     private async Task<IReadOnlyList<PreparedSignatureAppearance>> PrepareSignatureAppearancesAsync(
         OfdDocumentPackage package, HashSet<string>? selectedIds, bool strictAppearanceBudgets,
-        int? maximumSignatureAppearances, OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken)
+        int? maximumSignatureAppearances, OfdModelMaterialization annotationMaterial, FontParseBudget parseBudget, CancellationToken cancellationToken)
     {
         var result = new List<PreparedSignatureAppearance>();
         var nestedCache = new Dictionary<string, (OfdDocumentPackage? Package, DocumentFontContext? Fonts)>();
@@ -141,7 +150,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         ? RemainingAppearanceBudget(usedBytes, usedEntries, usedPages)
                         : null;
                     var nested = await ReadAppearanceOfdPackageAsync(appearance.Data, remaining, annotationMaterial, cancellationToken).ConfigureAwait(false);
-                    cached = (nested, nested is null ? null : new DocumentFontContext(nested.Fonts));
+                    cached = (nested, nested is null ? null : new DocumentFontContext(nested.Fonts, parseBudget: parseBudget, cancellationToken: cancellationToken));
                     if (strictAppearanceBudgets)
                     {
                         nestedCache.Add(key, cached);
