@@ -1,0 +1,23 @@
+{
+  "pageBlockAttributes": {
+    "ID": "999008"
+  },
+  "pageBlockChildren": [
+    "999007",
+    "999013",
+    "999014"
+  ],
+  "noInheritedTransformClipStyle": true,
+  "childOrderAttributesAndContentEqual": true,
+  "appearanceAttributesPreserved": {
+    "ID": "999006",
+    "Boundary": "135 10 60 12",
+    "CTM": "1 0 0 1 0 0"
+  },
+  "newCreator": "document tools fixture",
+  "newLastModDate": "2026-10-15",
+  "negativeRefusal": "Unclaimed annotation source prevents destructive page removal.",
+  "matrixSamples": 36,
+  "pdfPagesGeneratedAndAutomaticallyChecked": 55,
+  "PreviewCompleted": false
+}

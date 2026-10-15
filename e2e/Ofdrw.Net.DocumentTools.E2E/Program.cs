@@ -240,7 +240,25 @@ Mutate("signed", entries =>
     signature.Root.Element(signNs + "SignedInfo")!.Add(new XElement(signNs + "StampAnnot", new XAttribute("ID", "999010"), new XAttribute("PageRef", source.Pages[0].Id!), new XAttribute("Boundary", "175 240 15 15")));
     entries[description] = Bytes(signature);
 });
-File.Copy(PathFor("signed.ofd"), PathFor("binary-xml-input.ofd"), true);
+// The legacy PageBlock appearance stays unclaimed. Removing its page must
+// refuse, while positive destructive-split cases use an explicitly owned
+// equivalent fixture rather than relaxing unknown-source protection.
+try { OfdDocumentSplitter.Split(await Read("signed"), [1]); throw new Exception("Unclaimed annotation page removal must refuse."); }
+catch (NotSupportedException exception) { File.WriteAllText(PathFor("unclaimed-annotation-split.rejection.txt"), exception.Message); }
+File.Copy(PathFor("signed.ofd"), PathFor("owned-annotation-split-input.ofd"), true);
+Mutate("owned-annotation-split-input", entries =>
+{
+    var xml = Xml(entries["Doc_0/Annots/Page.xml"]);
+    var annotation = xml.Root!.Element(ns + "Annot")!;
+    annotation.SetAttributeValue("Creator", "document tools fixture");
+    annotation.SetAttributeValue("LastModDate", "2026-10-15");
+    var block = annotation.Element(ns + "Appearance")!.Element(ns + "PageBlock")!;
+    block.ReplaceWith(block.Elements().Select(element => new XElement(element)).ToArray());
+    entries["Doc_0/Annots/Page.xml"] = Bytes(xml);
+});
+if ((await Read("owned-annotation-split-input")).Pages[0].Annotations?.Items.Count != 1)
+    throw new Exception("Positive split fixture must have one reader-owned annotation.");
+File.Copy(PathFor("owned-annotation-split-input.ofd"), PathFor("binary-xml-input.ofd"), true);
 Mutate("binary-xml-input", entries =>
 {
     var description = entries.Keys.Single(path => path.EndsWith("/Signature.xml")); var signature = Xml(entries[description]); var location = signature.Root!.Element(signature.Root.Name.Namespace + "SignedValue")!;
@@ -343,7 +361,7 @@ var conflictingTags = await Read("rich"); conflictingTags.CustomTags["fixture"] 
 try { OfdDocumentMixer.Mix([new(await Read("custom-tags-input"), 0), new(await Read("custom-tags-conflict"), 0)]); throw new Exception("Mix must reject conflicting CustomTags."); }
 catch (NotSupportedException exception) { File.WriteAllText(PathFor("custom-tags-input.rejection.txt"), exception.Message); }
 await Save(OfdDocumentSplitter.Split(signed, [1, 0]), "split");
-File.Copy(PathFor("signed.ofd"), PathFor("template-liveness-input.ofd"), true);
+File.Copy(PathFor("owned-annotation-split-input.ofd"), PathFor("template-liveness-input.ofd"), true);
 Mutate("template-liveness-input", entries => entries["Doc_0/Extensions/state.dat"] = Encoding.UTF8.GetBytes("<Wrapper><Extension BaseLoc='../Templates'><File>Content.xml</File></Extension></Wrapper>"));
 await Save(OfdDocumentSplitter.Split(await Read("template-liveness-input"), [1]), "split-template-liveness");
 File.Copy(PathFor("rich.ofd"), PathFor("template-wrapper-extension.ofd"), true);

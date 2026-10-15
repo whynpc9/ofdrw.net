@@ -49,6 +49,9 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
         var reader = new OfdReader();
         var package = await reader.ReadAsync(ofdInput, _options.PackageLoadOptions, cancellationToken).ConfigureAwait(false);
+        var annotationMaterial = new OfdModelMaterialization(new OfdModelLimits());
+        OfdCompositeGraph.Validate(package, annotationMaterial, cancellationToken);
+        OfdAnnotationContract.Validate(package, annotationMaterial, cancellationToken);
         var fonts = new DocumentFontContext(package.Fonts);
         var signatureAppearances = await PrepareSignatureAppearancesAsync(
                 package,
@@ -71,13 +74,13 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             pdfPage.Height = MillimetersToPoints(pageModel.HeightMillimeters);
 
             using var graphics = XGraphics.FromPdfPage(pdfPage);
-            DrawPage(graphics, pageModel, fonts, _options.MaxDecodedImagePixels, cancellationToken);
+            DrawPage(graphics, pageModel, fonts, _options.MaxDecodedImagePixels, annotationMaterial, cancellationToken);
 
             DrawSignatureAppearances(
                 document,
                 graphics,
                 pageModel,
-                signatureAppearances, _options.MaxDecodedImagePixels, cancellationToken);
+                signatureAppearances, _options.MaxDecodedImagePixels, annotationMaterial, cancellationToken);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -156,7 +159,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         OfdPage page,
         IReadOnlyList<PreparedSignatureAppearance> appearances,
         long maximumPixels,
-        CancellationToken cancellationToken)
+        OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken)
     {
         foreach (var appearance in appearances.Where(item =>
             string.Equals(
@@ -184,7 +187,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             appearance.OfdPage.HeightMillimeters));
                     using (var formGraphics = XGraphics.FromForm(form))
                     {
-                        DrawPage(formGraphics, appearance.OfdPage, appearance.Fonts!, maximumPixels, cancellationToken);
+                        DrawPage(formGraphics, appearance.OfdPage, appearance.Fonts!, maximumPixels, annotationMaterial, cancellationToken);
                     }
 
                     graphics.DrawImage(form, target);
@@ -219,12 +222,12 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     }
 
     private static void DrawPage(XGraphics graphics, OfdPage page, DocumentFontContext fonts,
-        long maximumPixels, CancellationToken cancellationToken)
+        long maximumPixels, OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken)
     {
         try
         {
             var outlineFonts = fonts.OutlineFonts;
-            foreach (var element in EnumerateRenderableElements(page))
+            foreach (var element in OfdCompositeProjection.Expand(EnumerateRenderableElements(page, annotationMaterial, cancellationToken), annotationMaterial, cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (!OfdGraphicXmlContract.IsVisible(element)) continue;
@@ -235,12 +238,12 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 var elementState = graphics.Save();
                 try
                 {
-                    if (element is not OfdImageElement && !string.IsNullOrWhiteSpace(element.ClippingXml))
+                    if (element is not OfdImageElement && (element.Clips is not null || !string.IsNullOrWhiteSpace(element.ClippingXml)))
                     {
                         var dx = MillimetersToPoints(element.XMillimeters - page.XMillimeters);
                         var dy = MillimetersToPoints(element.YMillimeters - page.YMillimeters);
                         graphics.TranslateTransform(dx, dy);
-                        foreach (var region in OfdClipGeometry.Read(element.ClippingXml)) graphics.IntersectClip(OfdPathRenderer.BuildClip(region));
+                        foreach (var region in OfdClipGeometry.Read(element, annotationMaterial, cancellationToken)) graphics.IntersectClip(OfdPathRenderer.BuildClip(region));
                         graphics.TranslateTransform(-dx, -dy);
                     }
                     if (element is OfdTextElement text)
@@ -308,16 +311,13 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
                     if (element is OfdImageElement image && image.Data.Length > 0)
                     {
-                        DrawImage(graphics, page, image, maximumPixels);
+                        DrawImage(graphics, page, image, maximumPixels, annotationMaterial, cancellationToken);
                     }
 
                     if (element is OfdPathElement path)
                     {
-                        OfdPathRenderer.TryDraw(
-                            graphics,
-                            path,
-                            page.XMillimeters,
-                            page.YMillimeters);
+                        if ((path.Stroke || path.Fill) && !OfdPathRenderer.TryDraw(graphics, path, page.XMillimeters, page.YMillimeters))
+                            throw new NotSupportedException("OFD path literal could not be rendered.");
                     }
                 }
                 finally { graphics.Restore(elementState); }
@@ -333,7 +333,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
     }
 
-    private static void DrawImage(XGraphics graphics, OfdPage page, OfdImageElement image, long maximumPixels)
+    private static void DrawImage(XGraphics graphics, OfdPage page, OfdImageElement image, long maximumPixels, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
         ValidateImage(image.Data, maximumPixels);
         var state = graphics.Save();
@@ -342,7 +342,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             graphics.TranslateTransform(MillimetersToPoints(image.XMillimeters - page.XMillimeters),
                 MillimetersToPoints(image.YMillimeters - page.YMillimeters));
             graphics.IntersectClip(new XRect(0, 0, MillimetersToPoints(image.WidthMillimeters), MillimetersToPoints(image.HeightMillimeters)));
-            foreach (var clip in OfdClipGeometry.Read(image.ClipsXml))
+            foreach (var clip in OfdClipGeometry.Read(image, material, cancellationToken))
                 graphics.IntersectClip(OfdPathRenderer.BuildClip(clip));
             var matrix = image.Transform ?? new double[] { image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0 };
             if (matrix.Length != 6 || matrix.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
@@ -511,7 +511,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         finally { graphics.Restore(state); }
     }
 
-    private static IEnumerable<OfdElement> EnumerateRenderableElements(OfdPage page)
+    private static IEnumerable<OfdElement> EnumerateRenderableElements(OfdPage page, OfdModelMaterialization annotationMaterial, CancellationToken token)
     {
         foreach (var template in page.Templates.Where(x =>
             string.Equals(x.ZOrder, "Background", StringComparison.OrdinalIgnoreCase)))
@@ -535,7 +535,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 yield return element;
             }
         }
-        foreach (var element in page.AnnotationAppearances) yield return element;
+        foreach (var occurrence in OfdAnnotationProjection.Resolve(page, annotationMaterial, token)) yield return occurrence.RenderElement;
     }
 
     private sealed class PreparedSignatureAppearance

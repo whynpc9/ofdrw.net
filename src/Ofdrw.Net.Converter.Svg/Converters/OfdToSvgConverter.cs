@@ -59,7 +59,10 @@ public sealed class OfdToSvgConverter
             throw new ArgumentOutOfRangeException(nameof(pageIndex));
         }
 
-        var svg = BuildSvg(package, pages[pageIndex], cancellationToken);
+        var material = new OfdModelMaterialization(new OfdModelLimits());
+        OfdCompositeGraph.Validate(package, material, cancellationToken);
+        OfdAnnotationContract.Validate(package, material, cancellationToken);
+        var svg = BuildSvg(package, pages[pageIndex], material, cancellationToken);
         var bytes = Encoding.UTF8.GetBytes(
             new XDocument(new XDeclaration("1.0", "utf-8", null), svg)
                 .ToString(SaveOptions.DisableFormatting));
@@ -68,7 +71,7 @@ public sealed class OfdToSvgConverter
         await svgOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, CancellationToken cancellationToken)
+    private static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
         var svgNs = XNamespace.Get("http://www.w3.org/2000/svg");
         var root = new XElement(
@@ -83,7 +86,7 @@ public sealed class OfdToSvgConverter
         var families = AddEmbeddedFonts(root, svgNs, package.Fonts);
         var imageIndex = 0;
         var objectIndex = 0;
-        foreach (var element in EnumerateElements(page))
+        foreach (var element in OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
@@ -92,12 +95,12 @@ public sealed class OfdToSvgConverter
             if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
                 throw new NotSupportedException($"Annotation appearance on page {page.Index + 1} contains unsupported drawing; export would lose content.");
             var target = root;
-            if (element is not OfdImageElement && !string.IsNullOrWhiteSpace(element.ClippingXml))
+            if (element is not OfdImageElement && (element.Clips is not null || !string.IsNullOrWhiteSpace(element.ClippingXml)))
             {
                 var defs = root.Element(svgNs + "defs");
                 if (defs is null) { defs = new XElement(svgNs + "defs"); root.AddFirst(defs); }
                 var regionIndex = 0;
-                foreach (var region in OfdClipGeometry.Read(element.ClippingXml))
+                foreach (var region in OfdClipGeometry.Read(element, material, cancellationToken))
                 {
                     var id = $"object-{objectIndex}-clip-{regionIndex++}";
                     defs.Add(new XElement(svgNs + "clipPath", new XAttribute("id", id), new XAttribute("clipPathUnits", "userSpaceOnUse"),
@@ -115,7 +118,7 @@ public sealed class OfdToSvgConverter
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
-                AddImage(root, svgNs, page, image, imageIndex++);
+                AddImage(root, svgNs, page, image, imageIndex++, material, cancellationToken);
             }
             else if (element is OfdPathElement path &&
                 !string.IsNullOrWhiteSpace(path.AbbreviatedData))
@@ -124,6 +127,7 @@ public sealed class OfdToSvgConverter
                     svgNs + "path",
                     new XAttribute("fill-rule", OfdPathStyle.EvenOdd(path) ? "evenodd" : "nonzero"),
                     new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
+                    new XAttribute("fill-rule", path.FillRule == OfdFillRule.EvenOdd ? "evenodd" : "nonzero"),
                     new XAttribute(
                         "stroke",
                         path.Stroke ? ToCssColor(path.StrokeColor) : "none"),
@@ -197,7 +201,7 @@ public sealed class OfdToSvgConverter
         return families;
     }
 
-    private static void AddImage(XElement root, XNamespace ns, OfdPage page, OfdImageElement image, int index)
+    private static void AddImage(XElement root, XNamespace ns, OfdPage page, OfdImageElement image, int index, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
         var group = new XElement(ns + "g", new XAttribute("transform", BuildTransform(
             image.XMillimeters - page.XMillimeters, image.YMillimeters - page.YMillimeters, null)),
@@ -210,11 +214,12 @@ public sealed class OfdToSvgConverter
         var content = new XElement(ns + "g", new XAttribute("clip-path", $"url(#{boundaryId})"));
         group.Add(content);
         var clipIndex = 0;
-        foreach (var region in OfdClipGeometry.Read(image.ClipsXml))
+        foreach (var region in OfdClipGeometry.Read(image, material, cancellationToken))
         {
             var id = $"image-{index}-clip-{clipIndex++}";
             defs.Add(new XElement(ns + "clipPath", new XAttribute("id", id), new XAttribute("clipPathUnits", "userSpaceOnUse"),
                 region.Paths.Select(path => new XElement(ns + "path", new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
+                    new XAttribute("fill-rule", path.FillRule == OfdFillRule.EvenOdd ? "evenodd" : "nonzero"),
                     new XAttribute("clip-rule", region.EvenOdd ? "evenodd" : "nonzero"),
                     new XAttribute("transform", BuildTransform(0, 0, path.Transform))))));
             var clipped = new XElement(ns + "g", new XAttribute("clip-path", $"url(#{id})"));
@@ -357,7 +362,7 @@ public sealed class OfdToSvgConverter
         return string.Join(" ", tokens);
     }
 
-    private static IEnumerable<OfdElement> EnumerateElements(OfdPage page)
+    private static IEnumerable<OfdElement> EnumerateElements(OfdPage page, OfdModelMaterialization material, CancellationToken token, string documentNamespace)
     {
         return page.Templates
             .Where(template => string.Equals(
@@ -372,7 +377,7 @@ public sealed class OfdToSvgConverter
                     "Background",
                     StringComparison.OrdinalIgnoreCase))
                 .SelectMany(template => template.Elements))
-            .Concat(page.AnnotationAppearances);
+            .Concat(OfdAnnotationProjection.Resolve(page, material, token, documentNamespace: documentNamespace).Select(occurrence => occurrence.RenderElement));
     }
 
     private static string BuildTransform(
