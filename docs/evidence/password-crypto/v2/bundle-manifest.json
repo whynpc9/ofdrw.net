@@ -1,0 +1,45 @@
+{
+  "allowlist": [
+    "Ofdrw-CI-Noto-OFL.txt",
+    "baseline-default.ofd",
+    "baseline-default.pdf",
+    "baseline-native.ofd",
+    "baseline-native.pdf",
+    "default-all-encrypted.ofd",
+    "default-all-restored.ofd",
+    "default-all-restored.pdf",
+    "default-partial-encrypted.ofd",
+    "default-partial-restored.ofd",
+    "default-partial-restored.pdf",
+    "licensed-layout.docx",
+    "native-all-encrypted.ofd",
+    "native-all-restored.ofd",
+    "native-all-restored.pdf",
+    "native-partial-encrypted.ofd",
+    "native-partial-restored.ofd",
+    "native-partial-restored.pdf",
+    "pages/baseline-default-1.png",
+    "pages/baseline-default-2.png",
+    "pages/baseline-native-1.png",
+    "pages/baseline-native-2.png",
+    "pages/default-all-restored-1.png",
+    "pages/default-all-restored-2.png",
+    "pages/default-partial-restored-1.png",
+    "pages/default-partial-restored-2.png",
+    "pages/native-all-restored-1.png",
+    "pages/native-all-restored-2.png",
+    "pages/native-partial-restored-1.png",
+    "pages/native-partial-restored-2.png"
+  ],
+  "licensing": "Synthetic source/sample outputs MIT; embedded pinned Noto font and included license OFL1.1. No dependency/cache/build trees.",
+  "excluded": [
+    "NuGet/CLI_HOME caches",
+    "commercial fonts/diagnostics",
+    "project/build trees",
+    "nupkg binaries"
+  ],
+  "bundle": {
+    "bytes": 65137839,
+    "sha256": "8fc54aeab2920978b980ed6e71255283850a9cdb0f92537f86f981b658acefed"
+  }
+}

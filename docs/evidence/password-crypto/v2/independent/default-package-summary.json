@@ -1,0 +1,26 @@
+{
+  "version": "0.1.0-issue11.v2freeze",
+  "package_count": 11,
+  "package_ids": [
+    "Ofdrw.Net.Core",
+    "Ofdrw.Net.Packaging",
+    "Ofdrw.Net.Layout",
+    "Ofdrw.Net.Reader",
+    "Ofdrw.Net.Converter.Abstractions",
+    "Ofdrw.Net.Converter.Docx",
+    "Ofdrw.Net.Converter.Pdf",
+    "Ofdrw.Net.Converter.Svg",
+    "Ofdrw.Net.Signatures",
+    "Ofdrw.Net.Converter",
+    "Ofdrw.Net.Cli"
+  ],
+  "password_absent_from_default_feed": true,
+  "actual_package_consumer_completed": true,
+  "cli_outputs": {
+    "cli-native.ofd": 170602,
+    "cli-image.png": 21036,
+    "cli-image.ofd": 20466,
+    "package-manifest.json": 2249
+  },
+  "manifest_sha256": "d1e733d5bf7ee22cd71a4ea4e8bf04dd87f86c282213ac0e8b4218a94ed22bea"
+}

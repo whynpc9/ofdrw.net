@@ -1,0 +1,22 @@
+[
+  {
+    "password_synthetic": "12345678",
+    "salt_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "N": 131072,
+    "r": 8,
+    "p": 1,
+    "dkLen": 48,
+    "expected": "abdfba6fc9f6641b83bf0c2a9c7cc696cb5b54bb425c01040f75186441fb31159ec392ab1545f70d284552a9993ebabf",
+    "backend": "Python hashlib.scrypt/OpenSSL"
+  },
+  {
+    "password_synthetic": "口令🔒",
+    "salt_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "N": 131072,
+    "r": 8,
+    "p": 1,
+    "dkLen": 48,
+    "expected": "11f8415821a0272b083b8ce7505f6245ab1a4086a3bbf877e898539f3b0fadf0043b2a8c9bdf7ea172b5b4952363aa76",
+    "backend": "Python hashlib.scrypt/OpenSSL"
+  }
+]
