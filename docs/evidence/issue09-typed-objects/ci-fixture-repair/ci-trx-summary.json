@@ -1,0 +1,94 @@
+[
+  {
+    "file": "_runnervmmprz5_2026-10-14_18_28_33_net10.0.trx",
+    "counts": {
+      "Passed": 63
+    },
+    "nonPassed": []
+  },
+  {
+    "file": "_runnervmmprz5_2026-10-14_18_28_45_net10.0.trx",
+    "counts": {
+      "Passed": 44
+    },
+    "nonPassed": []
+  },
+  {
+    "file": "_runnervmmprz5_2026-10-14_18_28_19_net10.0.trx",
+    "counts": {
+      "Passed": 987
+    },
+    "nonPassed": []
+  },
+  {
+    "file": "_runnervmmprz5_2026-10-14_18_28_27_net10.0.trx",
+    "counts": {
+      "Passed": 114,
+      "NotExecuted": 12
+    },
+    "nonPassed": [
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalCjkKeywordLowerCapacityIsAnExplicitOutputlessRefusal",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualLocatorReusesOneOriginalFontAcrossManyReadObjects",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.MixedEmptySlotsDefaultWriterFreshReaderKeepOriginalOflGlyphsAndSourceSpans",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.MultipleEmptySlotsKeepOriginalOflIdentityWithoutAnyProviderCalls",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalOflKeywordReplacementTransfersUnderDefaultBudgetAndSeparateWriterReadback",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.ActualOriginalOflFontVariableReplacementRetainsIndependentAnchorsAndGlyphs",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.RealOriginalOflNotoBytesPassReaderSnapshotAndIndependentMetricExpectations",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.CanonicalEmptyKeepsOriginalOflResourceIdentityWithoutFaceOrGlyphCalls",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualArchiveReaderAndQ1ProviderHaveIndependentAffineExpectations",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.PublicWriterDefaultIndentedOutputReadsAndLocatesWithOriginalOflFont",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualReaderAndQ1FontFailuresDoNotBecomeCompleteNoHit",
+        "outcome": "NotExecuted"
+      },
+      {
+        "test": "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalOflFontLibraryTransferAndSeparatelyBudgetedWriterPassActualReadback",
+        "outcome": "NotExecuted"
+      }
+    ]
+  },
+  {
+    "file": "_runnervmmprz5_2026-10-14_18_28_15_net10.0.trx",
+    "counts": {
+      "Passed": 70
+    },
+    "nonPassed": []
+  },
+  {
+    "file": "_runnervmmprz5_2026-10-14_18_28_32_net10.0.trx",
+    "counts": {
+      "Passed": 4
+    },
+    "nonPassed": []
+  }
+]

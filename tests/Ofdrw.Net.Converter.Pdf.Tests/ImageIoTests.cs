@@ -826,8 +826,18 @@ public sealed class ImageIoTests
         using var input = new MemoryStream(rewritten.ToArray()); using var sentinel = Sentinel();
         var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToImageConverter(new OfdToImageOptions
         { PixelsPerMillimeter = 2 }).ConvertAsync(input, sentinel));
-        Assert.Contains("page ID", error.Message); AssertSentinel(sentinel);
-        input.Position = 0; using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
+        Assert.Contains(kind is "missing" or "duplicate" ? "page ID" : "Unsupported non-positive or non-numeric", error.Message);
+        AssertSentinel(sentinel);
+        input.Position = 0;
+        if (kind != "missing")
+        {
+            // Main's navigation/source validation now rejects these documents before either renderer.
+            using var rejectedPdf = Sentinel();
+            await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToPdfConverter().ConvertAsync(input, rejectedPdf));
+            AssertSentinel(rejectedPdf);
+            return;
+        }
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(input, pdf);
         using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
         using var page = reader.GetPageReader(0); var pixels = page.GetImage();
         var offset = ((int)(52 * 72d / 25.4d * 2) * page.GetPageWidth() + (int)(82 * 72d / 25.4d * 2)) * 4;

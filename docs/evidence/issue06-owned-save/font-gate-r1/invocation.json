@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "python3",
+    "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/source/scripts/run-trusted-font-tests.py",
+    "--font-output-dir",
+    "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/fonts",
+    "--results-directory",
+    "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/results"
+  ],
+  "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/source",
+  "env_overrides": {
+    "DOTNET_CLI_HOME": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/dotnet-home",
+    "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+  },
+  "inherited_ofdrw_removed": true,
+  "started": 1791991106.995988,
+  "stdout_stderr": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/font-gate-r1/runner.log",
+  "ended": 1791991138.993943,
+  "exit_code": 0
+}

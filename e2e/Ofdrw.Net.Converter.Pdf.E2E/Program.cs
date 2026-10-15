@@ -5,6 +5,9 @@ using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
 using Ofdrw.Net.Layout.Editing;
+
+using Ofdrw.Net.Layout;
+using Ofdrw.Net.Layout.Graphics;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Reader.Extraction;
@@ -21,9 +24,80 @@ var outputDir = Environment.GetEnvironmentVariable("OFDRW_E2E_OUTPUT_DIR") ?? Pa
 var testDataDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "testdata", "upstream-ofdrw");
 Directory.CreateDirectory(outputDir);
 
+// Consume the public Layout package through the built nupkg, with no project reference.
+var publicFlow = new FlowDocument();
+publicFlow.Options.PageHeightMillimeters = 60;
+publicFlow.Options.MarginTopMillimeters = 8;
+publicFlow.Options.MarginBottomMillimeters = 8;
+for (var i = 0; i < 30; i++)
+    publicFlow.Blocks.Add(new Paragraph($"第{i + 1}段 Public flow words information preserve text."));
+var flowPackage = publicFlow.Render();
+if (flowPackage.Pages.Count < 2) throw new InvalidOperationException("Public flow did not paginate.");
+var flowPath = Path.Combine(outputDir, "public-flow.ofd");
+await using (var stream = File.Create(flowPath)) await new OfdPackageWriter().WriteAsync(flowPackage, stream);
+await using (var stream = File.OpenRead(flowPath))
+{
+    var parsed = await new OfdReader().ReadAsync(stream);
+    if (parsed.Pages.Count != flowPackage.Pages.Count ||
+        !string.Concat(parsed.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().Select(text => text.Text)).Contains("information"))
+        throw new InvalidOperationException("Public flow package lost text during round trip.");
+}
+Console.WriteLine($"[E2E] Public Flow package generated {flowPackage.Pages.Count} pages from Paragraph/Span.");
+
+var publicTables = new FlowDocument();
+publicTables.Options.PageHeightMillimeters = 60;
+publicTables.Options.MarginTopMillimeters = publicTables.Options.MarginBottomMillimeters = 8;
+var consumerTable = new Table();
+for (var i = 0; i < 5; i++)
+{
+    var row = new Row { MinimumHeightMillimeters = 18 };
+    row.Cells.Add(new Cell($"合并{i}") { ColumnSpan = 2, BackgroundColor = new OfdColor(220, 230, 250) });
+    var right = new Cell($"Right{i}") { VerticalAlignment = CellVerticalAlignment.Bottom };
+    right.Paragraphs[0].Alignment = ParagraphAlignment.Right;
+    row.Cells.Add(right); consumerTable.Rows.Add(row);
+}
+publicTables.Blocks.Add(consumerTable);
+var tablePackage = publicTables.Render();
+if (tablePackage.Pages.Count != 3) throw new InvalidOperationException("Public table did not paginate whole rows.");
+var tablePath = Path.Combine(outputDir, "public-tables.ofd");
+await using (var stream = File.Create(tablePath)) await new OfdPackageWriter().WriteAsync(tablePackage, stream);
+await using (var stream = File.OpenRead(tablePath))
+{
+    var parsed = await new OfdReader().ReadAsync(stream);
+    var expected = string.Concat(Enumerable.Range(0, 5).Select(i => $"合并{i}Right{i}"));
+    if (string.Concat(parsed.Pages.SelectMany(p => p.Elements).OfType<OfdTextElement>().Select(t => t.Text)) != expected)
+        throw new InvalidOperationException("Public table package lost or repeated text.");
+}
+await using (var input = File.OpenRead(tablePath))
+await using (var output = File.Create(Path.Combine(outputDir, "public-tables.pdf")))
+    await new OfdToPdfConverter().ConvertAsync(input, output);
+Console.WriteLine("[E2E] Public Table/Row/Cell consumed from nupkg: horizontal merge, alignment, shading, 3 whole-row pages.");
+// The package-consumer copy of this program must resolve the new Layout surface
+// from the local NuGet feed, including its internal Core numeric dependency.
+var graphicsPackage = new OfdDocumentPackage();
+var graphicsPage = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 };
+graphicsPackage.Pages.Add(graphicsPage);
+var graphics = new OfdGraphics(graphicsPackage, graphicsPage);
+graphics.Scale(0.9996, 1);
+graphics.IntersectClip(new OfdGraphicsPath().AddRectangle(0, 0, 100, 80));
+graphics.DrawRectangle(new OfdPen(OfdColor.Black, 0.5), 5, 5, 90, 60);
+graphics.DrawString("Graphics 包消费", new OfdFont("Graphics fixture", 3.3334, italic: true), new OfdBrush(OfdColor.Black), 10, 20);
+using (var encoded = new MemoryStream())
+{
+    await new OfdPackageWriter().WriteAsync(graphicsPackage, encoded);
+    File.WriteAllBytes(Path.Combine(outputDir, "native-graphics-package.ofd"), encoded.ToArray());
+    encoded.Position = 0;
+    var decoded = await new OfdReader().ReadAsync(encoded);
+    if (decoded.Pages[0].Elements.Count != 2 || decoded.Pages[0].Elements.OfType<OfdImageElement>().Any()) throw new InvalidOperationException("Package graphics lost native objects.");
+    if (decoded.Pages[0].Elements.OfType<OfdPathElement>().Single().Transform![0] != 0.9996) throw new InvalidOperationException("Package graphics lost CTM precision.");
+    var text = decoded.Pages[0].Elements.OfType<OfdTextElement>().Single();
+    if (text.Text != "Graphics 包消费" || !text.SourceXml!.Contains("FauxItalicMatrixV1", StringComparison.Ordinal)) throw new InvalidOperationException("Package graphics lost text/native italic.");
+}
+Console.WriteLine("[E2E] Installed Layout native graphics, exact CTM and name-only italic package consumption passed.");
+
 // Used and unused name-only resources must survive unavailable/unsupported host
-// fonts. This exercises XFont initialization and the actual Arial draw fallback,
-// not just the optional DocumentFontContext registration.
+// fonts. Each used text must obtain a registered physical face with verified
+// coverage, including default/Arial candidates after optional host failures.
 foreach (var failure in new[] { "Resolve", "Read", "Ttc", "Broken" })
 {
     foreach (var used in new[] { false, true })
@@ -188,8 +262,134 @@ var docxSamplePath = Path.Combine(
     "testdata",
     "generated-layout.docx");
 await ValidateDocxSampleAsync(docxSamplePath, outputDir);
+await ValidateVisualCorpusAsync(repoRoot, outputDir);
 
 Console.WriteLine("[E2E] Success: package installation and conversion flow is working.");
+
+static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
+{
+    var platform = OperatingSystem.IsLinux() ? "linux" : OperatingSystem.IsMacOS() ? "macos" :
+        throw new PlatformNotSupportedException("Visual corpus requires a reviewed platform baseline.");
+    var goldenDir = Path.Combine(repoRoot, "e2e", "visual-corpus", "golden", platform);
+    var actualDir = Path.Combine(outputDir, "visual-corpus");
+    Directory.CreateDirectory(actualDir);
+    var missingGoldens = new List<string>();
+    var comparisonFailures = new List<string>();
+    var metrics = new List<string> { "sample,page,region,normalized_rmse,threshold" };
+    foreach (var kind in new[] { "ticket", "invoice", "template", "edge-layout" })
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { Index = 0, WidthMillimeters = 120, HeightMillimeters = 80 };
+        package.Pages.Add(page);
+        static OfdPathElement Box(double x, double y, double w, double h, OfdColor color) => new()
+        {
+            XMillimeters = x, YMillimeters = y, WidthMillimeters = w, HeightMillimeters = h,
+            AbbreviatedData = FormattableString.Invariant($"M 0 0 L {w} 0 L {w} {h} L 0 {h} C"),
+            Stroke = false, Fill = true, FillColor = color
+        };
+        static OfdPathElement Rule(double x, double y, double w, double h) => new()
+        {
+            XMillimeters = x, YMillimeters = y, WidthMillimeters = Math.Max(0.4, w),
+            HeightMillimeters = Math.Max(0.4, h),
+            AbbreviatedData = FormattableString.Invariant($"M 0 0 L {w} {h}"),
+            Stroke = true, Fill = false, LineWidthMillimeters = 0.35,
+            StrokeColor = new OfdColor(45, 68, 88)
+        };
+        page.Elements.Add(Box(5, 5, 110, 70, new OfdColor(238, 244, 250)));
+        page.Elements.Add(Box(8, 8, 104, 12, new OfdColor(28, 75, 126)));
+        page.Elements.Add(new OfdTextElement { Text = kind.ToUpperInvariant(), FontName = "Noto Sans CJK SC",
+            FontSizeMillimeters = 5, XMillimeters = 12, YMillimeters = 10,
+            WidthMillimeters = 85, HeightMillimeters = 8, FillColor = new OfdColor(255, 255, 255) });
+        var caption = kind switch
+        {
+            "ticket" => "票据编号 0001 / Ticket No. 0001",
+            "invoice" => "发票明细 / Invoice items",
+            "template" => "模板字段：姓名、日期 / Template fields",
+            _ => "异常布局：边界与叠放 / Edge layout"
+        };
+        page.Elements.Add(new OfdTextElement { Text = caption, FontName = "Noto Sans CJK SC",
+            FontSizeMillimeters = 3.2, XMillimeters = 12, YMillimeters = 22,
+            WidthMillimeters = 100, HeightMillimeters = 6,
+            FillColor = new OfdColor(35, 55, 75) });
+        switch (kind)
+        {
+            case "ticket":
+                page.Elements.Add(Box(12, 29, 72, 3, new OfdColor(35, 35, 35)));
+                page.Elements.Add(Box(12, 38, 48, 3, new OfdColor(35, 35, 35)));
+                page.Elements.Add(Box(92, 28, 12, 25, new OfdColor(12, 12, 12)));
+                break;
+            case "invoice":
+                for (var row = 0; row < 4; row++)
+                    page.Elements.Add(Rule(10, 31 + row * 9, 100, 0));
+                page.Elements.Add(Rule(10, 31, 0, 27));
+                page.Elements.Add(Rule(70, 31, 0, 27));
+                page.Elements.Add(Rule(110, 31, 0, 27));
+                page.Elements.Add(new OfdTextElement { Text = "Item A  12.50", FontName = "Noto Sans CJK SC",
+                    FontSizeMillimeters = 3.2, XMillimeters = 14, YMillimeters = 33,
+                    WidthMillimeters = 74, HeightMillimeters = 5 });
+                page.Elements.Add(Box(86, 62, 24, 5, new OfdColor(196, 42, 42)));
+                break;
+            case "template":
+                page.Elements.Add(Box(12, 28, 96, 40, new OfdColor(214, 231, 221)));
+                page.Elements.Add(Box(18, 34, 70, 3, new OfdColor(52, 96, 68)));
+                page.Elements.Add(Box(18, 46, 50, 3, new OfdColor(52, 96, 68)));
+                break;
+            default:
+                // A valid, intentionally awkward layout: touching and clipped shapes.
+                page.Elements.Add(Box(16, 30, 76, 18, new OfdColor(245, 178, 42)));
+                page.Elements.Add(Box(78, 40, 33, 25, new OfdColor(96, 45, 145)));
+                page.Elements.Add(Box(105, 55, 25, 10, new OfdColor(210, 58, 58)));
+                break;
+        }
+
+        var ofdPath = Path.Combine(actualDir, kind + ".ofd");
+        var pdfPath = Path.Combine(actualDir, kind + ".pdf");
+        await using (var ofd = File.Create(ofdPath))
+            await new OfdPackageWriter().WriteAsync(package, ofd);
+        await using (var ofd = File.OpenRead(ofdPath))
+        await using (var pdf = File.Create(pdfPath))
+            await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        var imagePath = Path.Combine(actualDir, kind + ".png");
+        var render = await RunProcessAsync("pdftoppm", $"-f 1 -l 1 -r 144 -png -singlefile \"{pdfPath}\" \"{Path.Combine(actualDir, kind)}\"");
+        if (render.ExitCode != 0 || !File.Exists(imagePath))
+            throw new InvalidOperationException($"Visual corpus render failed for {kind}: {render.Error}");
+        var golden = Path.Combine(goldenDir, kind + ".png");
+        if (!File.Exists(golden))
+            missingGoldens.Add(golden);
+        else
+        {
+            try
+            {
+                var error = await AssertImagesCloseAsync(golden, imagePath, 0.035,
+                    Path.Combine(actualDir, kind + "-diff.png"));
+                metrics.Add(FormattableString.Invariant($"{kind},1,full,{error:R},0.035"));
+                foreach (var (region, geometry) in new[] { ("title", "400x90+40+30"), ("body", "560x260+55+145") })
+                {
+                    var expectedCrop = Path.Combine(actualDir, kind + "-" + region + "-expected.png");
+                    var actualCrop = Path.Combine(actualDir, kind + "-" + region + "-actual.png");
+                    foreach (var (source, target) in new[] { (golden, expectedCrop), (imagePath, actualCrop) })
+                    {
+                        var crop = await RunProcessAsync("convert", $"\"{source}\" -crop {geometry} +repage \"{target}\"");
+                        if (crop.ExitCode != 0)
+                            throw new InvalidOperationException($"Visual corpus crop failed: {crop.Error}");
+                    }
+                    var regionError = await AssertImagesCloseAsync(expectedCrop, actualCrop, 0.035,
+                        Path.Combine(actualDir, kind + "-" + region + "-diff.png"));
+                    metrics.Add(FormattableString.Invariant($"{kind},1,{region},{regionError:R},0.035"));
+                }
+                Console.WriteLine(FormattableString.Invariant($"[E2E] Visual corpus {kind}: page 1 RMSE {error:R} <= 0.035."));
+            }
+            catch (InvalidOperationException failure)
+            {
+                comparisonFailures.Add(failure.Message);
+            }
+        }
+    }
+    File.WriteAllLines(Path.Combine(actualDir, "visual-metrics.csv"), metrics);
+    if (missingGoldens.Count != 0 || comparisonFailures.Count != 0)
+        throw new InvalidOperationException("Visual corpus gate failed: " +
+            string.Join("; ", missingGoldens.Select(path => "Missing golden " + path).Concat(comparisonFailures)));
+}
 
 static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
 {
@@ -404,7 +604,13 @@ static async Task ValidatePdfSampleAsync(string samplePdf, string outputDir)
     var ofdPath = Path.Combine(sampleOutputDir, $"{sampleName}.ofd");
     var pdfPath = Path.Combine(sampleOutputDir, $"{sampleName}.roundtrip.pdf");
 
-    var pdfToOfd = new PdfToOfdConverter();
+    // This smoke checks raster appearance and page size. Imported private-use
+    // CID text has no source font bytes; semantic re-export is tested separately
+    // and must refuse unverified glyphs rather than drawing fallback boxes.
+    var pdfToOfd = new PdfToOfdConverter(new Ofdrw.Net.Converter.Pdf.PdfToOfdOptions
+    {
+        TextLayerMode = Ofdrw.Net.Converter.Pdf.PdfTextLayerMode.None
+    });
     await using (var pdfInput = File.OpenRead(samplePdf))
     await using (var ofdOutput = File.Create(ofdPath))
     {
@@ -486,14 +692,15 @@ static async Task AssertImagesSameSizeAsync(string expectedPath, string actualPa
     }
 }
 
-static async Task AssertImagesCloseAsync(string expected, string actual, double tolerance)
+static async Task<double> AssertImagesCloseAsync(string expected, string actual, double tolerance, string? diffPath = null)
 {
     await AssertImagesSameSizeAsync(expected, actual);
-    var result = await RunProcessAsync("compare", $"-metric RMSE \"{expected}\" \"{actual}\" null:");
+    var result = await RunProcessAsync("compare", $"-metric RMSE \"{expected}\" \"{actual}\" \"{diffPath ?? "null:"}\"");
     var match = System.Text.RegularExpressions.Regex.Match(result.Error, @"\(([0-9.eE+-]+)\)");
     if (result.ExitCode > 1 || !match.Success ||
         !double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var error) || error > tolerance)
         throw new InvalidOperationException($"Rendered pages differ beyond {tolerance}: {expected} vs {actual}; {result.Error}");
+    return error;
 }
 
 static async Task AssertSignedSealRegionAsync(string imagePath)

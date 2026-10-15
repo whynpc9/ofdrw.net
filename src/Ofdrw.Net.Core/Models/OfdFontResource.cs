@@ -20,4 +20,7 @@ public sealed class OfdFontResource
     public string? FileName { get; set; }
 
     public byte[] Data { get; set; } = [];
+
+    /// <summary>Zero-based face in a supplied TTC. Standalone font data requires zero.</summary>
+    public int CollectionFaceIndex { get; set; }
 }

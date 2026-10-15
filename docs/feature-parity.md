@@ -1,6 +1,6 @@
 # Ofdrw.Net 与 OFDRW 功能对照
 
-更新时间：2026-09-06
+更新时间：2026-10-15
 
 本表以 OFDRW `master` 分支公开模块和文档为能力基线，以当前
 Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标示工程能力
@@ -19,23 +19,27 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | --- | --- | --- | --- |
 | OFD 核心模型 | `ofdrw-core` 提供较完整标准数据结构 | 页面、图层、模板、文本游程、路径、图片、字体、附件、自定义标签、保留未知 XML/包条目 | **部分支持**；常用读写闭环已具备，完整标准对象模型尚未覆盖 |
 | 容器与打包 | `ofdrw-pkg` | 标准入口/文档/页面/资源引用，附件、模板和扩展条目；ZIP 路径、数量、展开大小和压缩比限制 | **已支持** |
+| 大纲、书签、动作与注释 | `ofdrw-core` | typed 层次/页目标、GoTo、局部 Text/Image/Path Appearance；未知动作/XML 保留 | **部分支持**；动作仅序列化；导入图元编辑、未证明闭包的合并/混合拒绝。见[教程](tutorials/09-templates-attachments-tags.md) |
+| 裁剪与组合对象 | `ofdrw-core` | typed Path Clip/Area、共享 CompositeGraphicUnit 与 nested DAG placement；读写、独立克隆和 PDF/SVG | **部分支持**；每 Clip 一个填充 Path Area，可包含多子路径，多个 Clip 相交；多 Area 可往返，导出拒绝一般 union；Text clip、group opacity/DrawParam 等保留并拒绝不安全导出。见[路径教程](tutorials/07-paths.md) |
 | 文档读取 | `ofdrw-reader`，含反序列化及签章读取 | 多图层/模板/资源解析，未知内容无损保留，结构检查 | **部分支持**；当前以首个 `DocBody` 为主 |
-| 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层页面对象与 builder API | **部分支持**；缺少成熟的段落、表格、分页、表单式区块和 Graphics2D 布局引擎 |
-| 字体 | `ofdrw-font`，字体生成与字形处理 | 读取/写入嵌入字体，PDF 渲染字体解析及回退 | **部分支持**；已增加字体内容身份隔离和注册预算；仍缺少字体子集化、完整字形映射和专门字体工具链 |
+| 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层 builder、公开 FlowDocument/Paragraph/Span、Table/Row/Cell 与原生 OfdGraphics API | **部分支持**；中英段落/局部样式/分页、固定列宽/水平合并/整行分页与毫米路径/文字/状态/裁剪已实现；布局 Canvas 与复杂 Word 版式仍按各票范围交付 |
+| 字体 | `ofdrw-font`，字体生成与字形处理 | 按全包用字生成静态 TrueType 子集、复合/GSUB/UVS 字形闭包、TTC 选面、内容身份载荷复用，缺字明确失败 | **部分支持**；TTF/glyf 子集已实现；CFF/变量/AAT/RTL 与保留未知 XML 的字体以全量和诊断保护，详见[字体子集契约](font-subset-and-reuse.md) |
 | OFD → PDF | `ofdrw-converter` 导出能力 | 模板、图层、字体、文本游程、矢量路径、图片、变换、颜色/透明度和裁剪原点 | **已支持（预览）**；仍需更大票据/印章语料库做保真度回归 |
-| PDF → OFD | `ofdrw-converter` 转换能力 | 逐页栅格化形成视觉层，同时将可提取文字按坐标写为透明 OFD `TextObject` 语义层 | **部分支持**；具备双层搜索/抽取能力，但尚未保留原始矢量、字体语义和阅读顺序标记，扫描件仍需 OCR |
+| PDF → OFD | `ofdrw-converter` 转换能力 | 默认双层；可选 Pdf.Vector 包经 19/04 输出受限 native PathObject/TextObject，校验原文与嵌入字体字形 | **部分支持**；[矢量模式](tutorials/18-pdf-vector-mode.md) 支持明确页框/路径/TrueType profile；压缩流、clip/图像/effects/复杂字体等明确整页回退或失败；默认 CLI 仍双层，扫描件无 OCR，不承诺任意 PDF 保真/阅读顺序标记 |
 | DOCX → PDF / OFD | 上游不提供 Office 文档渲染 | 默认直接将 DOCX/OpenXML 原文写为原生 OFD `TextObject`，完全跳过 PDF；可选 `DualLayer` 使用 Word/LibreOffice/BuiltIn 页面图像，并继续以 OpenXML 原文作为语义层 | **已支持（预览）**；原文可直接抽取，Native 支持常见段落、表格、内嵌图片与按页页眉页脚；附属正文带标签追加，DualLayer 按实际页定位原文，不承诺复杂 Word 版式和浮动对象保真 |
 | OFD → SVG | 上游推荐/生态具备 SVG 预览方案 | 自包含单页 SVG，支持模板、路径、文本、颜色、变换和内嵌图片 | **已支持（预览）** |
 | OFD ↔ PNG/JPEG | 图片导出与一图一页导入 | `Converter.Pdf` 的 `OfdToImageConverter` / `ImageToOfdConverter` 及 CLI；指定零基页/ppm导出、PNG默认/JPEG、自然或固定页等比居中导入、有界暂存 | **已实现（本票源码）**；PDF/PDFium 预览保真边界，视觉门状态见 [Issue 02 验证记录](validation/issue02/README.md) |
 | HTML 导出 | 转换模块覆盖 HTML 方向 | 无直接 HTML API | **未支持** |
 | 文本提取 | 上游提供文字抽取 | 页面和模板文本提取，API 与 CLI | **已支持** |
+| 关键词定位与替换 | 文本位置查询及文档工具 | 正文字面匹配、原嵌入字体字形/基线/advance/字形框证据；受限替换 API 与原子文件 CLI | **部分支持**；Regular 原字体、简单 scalar、水平正向与仅平移替换；模板/批注、复杂 shaping 和超出原区域的替换明确拒绝。见[教程](tutorials/16-keyword-replacement.md)和[验收证据](evidence/issue06-owned-save/README.md) |
 | 文档工具 | `ofdrw-tool` 提供合并、裁剪、重组、混合等 | 页重排、删除、裁剪、自包含合并；指定层文字/图片水印、按列表 Split、带模板/可见注释的 Mix、全部 DocBody 清签，API 与 CLI | **部分支持**；03 实现范围见[工具教程](tutorials/15-document-tools.md)，复杂未知引用明确失败、共享资源保守保留；附件增删另票，视觉/review 状态见[03 证据](evidence/document-tools/README.md) |
 | 数字签名 | `ofdrw-sign` | 标准签名目录/引用生成、签名值 provider、签名值 verifier | **扩展点** |
 | 摘要校验 | 上游签章验证链路 | 内置 SM3、SHA-1、SHA-256，逐引用恒定时间比较，篡改检测 | **已支持** |
 | SES/SM2 电子签章 | `ofdrw-sign` + `ofdrw-gm` | 可注册厂商 `IOfdSignedValueVerifier` / `IOfdSignatureProvider` | **扩展点**；无内置 SES/SM2 实现和印章外观验证 |
+| SES dev/interop 测试容器 | 固定上游 SES V1/V4 测试容器 | 可选 `Ofdrw.Net.Signatures.SesInterop`：常见字段解析、SM2 测试自签/双层验签、完整测试证书固定 | **测试扩展**；仅显式注册，默认 verifier/CLI 不给自签 FullyValid；核心能力标志仍 false。无阅读器互认、法律效力或合格 TSA，范围见[教程](tutorials/16-ses-dev-interop.md)与[证据](evidence/ses-interop/README.md) |
 | GM/T 0099 密码应用 | `ofdrw-crypto` | 能力标志明确返回不支持 | **未支持** |
 | CLI/工具分发 | `ofdrw-tool` 及各模块工具 | 转换、SVG、PNG/JPEG图片进出、文本提取、重排、合并、签名验证的 .NET tool | **已支持** |
-| Graphics2D 兼容层 | `ofdrw-graphics2d` | 无对应 System.Drawing/SkiaSharp 绘图适配层 | **未支持** |
+| Graphics2D 兼容层 | `ofdrw-graphics2d` | Layout 公开 OfdGraphics/OfdPen/OfdBrush/OfdFont/OfdGraphicsPath/OfdMatrix，输出原生 PathObject/TextObject | **部分支持**；04 原语绘图已实现，无 Skia 必需依赖；19 已实现受限合作 producer 事件适配（不透明捕捉 SKCanvas，验收见独立证据）；05 字体子集仍独立交付 |
 | 兼容性与发布 | Maven 多模块、长期演进 | `netstandard2.0/2.1` SDK + `net10.0` CLI，NuGet 包消费 E2E | **部分支持**；仓库采用 MIT 并附第三方声明；发布候选需通过同一批 NuGet 包的消费验证 |
 
 ## 本轮补强结果
@@ -73,3 +77,5 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 - 依赖审计：当前 CLI 依赖图无已知 vulnerable/deprecated 包。
 
 详细行为与兼容边界见 [转换、编辑与资源约定](conversion-contracts.md)。
+
+issue #3 的逐项状态见 [实现对照](issue-3-implementation.md)，不因 04 单票而宣称整个 issue 完成。

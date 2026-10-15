@@ -1,0 +1,34 @@
+{
+  "head": "60163cca80a4da62bf748ba19a300a8d714b80c4",
+  "base": "8d907a13651b21dec07d40cc5a46ef76ff05c15e",
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "blob": "14c86c82cd15ecdac2c8e93bf14c7bb077f92a2f",
+      "sha256": "d942d840403620fb89e26544e8979cd3e02aee1a3301aeb6c4c7cc1d4bf2b227",
+      "disk_matches_commit": true
+    },
+    {
+      "path": "src/Ofdrw.Net.Core/Models/OfdClipCloner.cs",
+      "blob": "a6cd9f8b81e0a061ef76badfce6b04f3c1bebd0d",
+      "sha256": "231da7b1d861ffc4c6e93a3ccf51eac60424aade3b1a21be468dfbcf13092ce5",
+      "disk_matches_commit": true
+    },
+    {
+      "path": "src/Ofdrw.Net.Core/Models/OfdClipGeometry.cs",
+      "blob": "9b8cade0dc0867a619c23342924b0236e53a7f22",
+      "sha256": "a09944a262c73a2a47414d188acfaaf68052bc738ee140f2864511c0471c5d5f",
+      "disk_matches_commit": true
+    },
+    {
+      "path": "src/Ofdrw.Net.Core/Models/OfdCompositeProjection.cs",
+      "blob": "a5d04f9af9285156161accc1cfbc217e75f9bf95",
+      "sha256": "1af336e4d5a38c10fb688cdbfaaa1d4528ca30b19c4588c5b4db9b9e31f34d8d",
+      "disk_matches_commit": true
+    }
+  ],
+  "tracked_status": "",
+  "verdict": "No blocking finding in four-file regression-fix diff",
+  "review": "static only",
+  "tests_builds_gui_executed": false
+}

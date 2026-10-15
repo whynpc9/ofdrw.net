@@ -28,16 +28,22 @@ public static class OfdDocumentEditor
             throw new ArgumentNullException(nameof(pageOrder));
         }
 
-        if (pageOrder.Count != package.Pages.Count ||
-            pageOrder.Distinct().Count() != package.Pages.Count ||
-            pageOrder.Any(index => index < 0 || index >= package.Pages.Count))
+        var material = new OfdModelMaterialization(new OfdModelLimits());
+        material.InspectStorage(package, default); material.GuardPreservedXml(package, default);
+        if (pageOrder.Count != package.Pages.Count)
+            throw new ArgumentException("Page order must contain every zero-based page position exactly once.", nameof(pageOrder));
+        var seen = new HashSet<int>(); var reordered = new List<OfdPage>();
+        foreach (var index in pageOrder)
         {
-            throw new ArgumentException(
-                "Page order must contain every zero-based page position exactly once.",
-                nameof(pageOrder));
+            material.Structure.Reference();
+            if (index < 0 || index >= package.Pages.Count || !seen.Add(index))
+                throw new ArgumentException("Page order must contain every zero-based page position exactly once.", nameof(pageOrder));
+            reordered.Add(package.Pages[index]);
         }
-
-        var reordered = pageOrder.Select(index => package.Pages[index]).ToList();
+        if (seen.Count != package.Pages.Count) throw new ArgumentException("Page order count is inconsistent.", nameof(pageOrder));
+        OfdAnnotationContract.ValidatePageSelection(package, reordered, material, default);
+        OfdNavigationXml.Validate(package, reordered, default, material);
+        package.SourceEnvelope?.ValidatePageOrder(package, reordered, material, default);
         package.Pages.Clear();
         for (var index = 0; index < reordered.Count; index++)
         {
@@ -63,7 +69,10 @@ public static class OfdDocumentEditor
             throw new ArgumentNullException(nameof(pageIndexes));
         }
 
-        var indexes = new HashSet<int>(pageIndexes);
+        var material = new OfdModelMaterialization(new OfdModelLimits());
+        material.InspectStorage(package, default); material.GuardPreservedXml(package, default);
+        var indexes = new HashSet<int>();
+        foreach (var index in pageIndexes) { material.Structure.Reference(); indexes.Add(index); }
         if (indexes.Any(index => index < 0 || index >= package.Pages.Count))
         {
             throw new ArgumentOutOfRangeException(
@@ -74,6 +83,9 @@ public static class OfdDocumentEditor
         var remaining = package.Pages
             .Where((_, index) => !indexes.Contains(index))
             .ToList();
+        OfdAnnotationContract.ValidatePageSelection(package, remaining, material, default);
+        OfdNavigationXml.Validate(package, remaining, default, material);
+        package.SourceEnvelope?.ValidatePageOrder(package, remaining, material, default);
         package.Pages.Clear();
         for (var index = 0; index < remaining.Count; index++)
         {

@@ -1,0 +1,491 @@
+{
+  "baseline": "d878aeda57c1da79917e11d0a35bcc028bc4c1fd",
+  "runtime_head": "58a710731b93026e2efbd7ca0bf0420e5be0bf65",
+  "status": "scoped_functional_package_and_preview_passed_reviews_pending",
+  "design": "GPT-6 Astra High, real PDF probes; original image repair design separately probed",
+  "implementation": "GPT-6.1 Sol High",
+  "independent": "GPT-6 Sol Low, git archive immutable source, actual local packages, no repair by validator",
+  "functional": {
+    "full_solution_tests": {
+      "passed": 507,
+      "assemblies": [
+        {
+          "failed": 0,
+          "passed": 5,
+          "skipped": 0,
+          "total": 5,
+          "assembly": "Ofdrw.Net.Core.Tests.dll"
+        },
+        {
+          "failed": 0,
+          "passed": 250,
+          "skipped": 0,
+          "total": 250,
+          "assembly": "Ofdrw.Net.Packaging.Tests.dll"
+        },
+        {
+          "failed": 0,
+          "passed": 88,
+          "skipped": 0,
+          "total": 88,
+          "assembly": "Ofdrw.Net.Converter.Pdf.Tests.dll"
+        },
+        {
+          "failed": 0,
+          "passed": 4,
+          "skipped": 0,
+          "total": 4,
+          "assembly": "Ofdrw.Net.Signatures.Tests.dll"
+        },
+        {
+          "failed": 0,
+          "passed": 49,
+          "skipped": 0,
+          "total": 49,
+          "assembly": "Ofdrw.Net.Converter.Docx.Tests.dll"
+        },
+        {
+          "failed": 0,
+          "passed": 13,
+          "skipped": 0,
+          "total": 13,
+          "assembly": "Ofdrw.Net.Cli.Tests.dll"
+        },
+        {
+          "failed": 0,
+          "passed": 20,
+          "skipped": 0,
+          "total": 20,
+          "assembly": "Ofdrw.Net.Layout.Tests.dll"
+        },
+        {
+          "failed": 0,
+          "passed": 28,
+          "skipped": 0,
+          "total": 28,
+          "assembly": "Ofdrw.Net.Graphics.SkiaSharp.Tests.dll"
+        },
+        {
+          "failed": 0,
+          "passed": 50,
+          "skipped": 0,
+          "total": 50,
+          "assembly": "Ofdrw.Net.Converter.Pdf.Vector.Tests.dll"
+        }
+      ],
+      "log_sha256": "bdee378dd527666ecdfe318c2f73a09bef316ea92ae4655a4ea52b8667e6df92"
+    },
+    "python_tests": {
+      "passed": 5,
+      "log_sha256": "b6e5b31ede216b86b0092f7b9694ea611b7d51953dc4a2d71aa53b763e2e1217"
+    },
+    "default11_package_consumer": {
+      "passed": true,
+      "log_sha256": "42cf6d9d31777eab3b938acc604f32adcfc371e1cd86b2ffca4b3b25a7ff3ae9"
+    },
+    "optional13_package_consumer": {
+      "passed": true,
+      "log_sha256": "0b1c2d39e450b8de24d509fbf006246d4aa524de2231000085971724229e2edc"
+    },
+    "independent_nupkg_observer": {
+      "passed": true,
+      "result": {
+        "status": "passed",
+        "sourcePages": [
+          0,
+          0,
+          1
+        ],
+        "native": [
+          false,
+          false,
+          true
+        ],
+        "fallbackImages": [
+          1,
+          1
+        ],
+        "nativeText": "A  B中文",
+        "limitFailedWithoutOutput": true,
+        "precancelFailedWithoutOutput": true,
+        "sourcePdfBytes": 21661924,
+        "outputOfdBytes": 11603952
+      },
+      "log_sha256": "c78320e1f96b94e290eca8ecb6304ac1597225febae966d476f4eeabdb121719"
+    },
+    "graphics_e2e": {
+      "passed": true,
+      "log_sha256": "7284017cc0341128dee27caf04d99c9f641d425c3e5f09f849bdfdd55bba031e"
+    }
+  },
+  "primary_package_version": "0.1.0-pdfvector.20261008.r2",
+  "independent_package_version": "0.1.0-pdfvector.20261008.low3",
+  "native_objects": {
+    "pages": 2,
+    "PathObject": 14,
+    "TextObject": 27,
+    "ImageObject": 0,
+    "original_unicode_and_spaces_preserved": true
+  },
+  "png_auxiliary": {
+    "source_vs_native_png": {
+      "1": {
+        "normalized_rmse": 0.000243833,
+        "maximum": 0.015,
+        "role": "automated regression only, Preview separate"
+      },
+      "2": {
+        "normalized_rmse": 0.000517245,
+        "maximum": 0.015,
+        "role": "automated regression only, Preview separate"
+      }
+    },
+    "source_vs_preserved_image_png": {
+      "absent": {
+        "normalized_rmse": 0.0,
+        "maximum": 0.001,
+        "source_and_output_canvas": [
+          [
+            840,
+            1190
+          ],
+          [
+            841,
+            1191
+          ]
+        ],
+        "common_viewport": "840x1190+0+0",
+        "same_renderer": "Poppler144DPI; no resampling; existing physical-page mm rounding recorded; across-renderer algorithms not compared"
+      },
+      "false": {
+        "normalized_rmse": 0.0,
+        "maximum": 0.001,
+        "source_and_output_canvas": [
+          [
+            840,
+            1190
+          ],
+          [
+            841,
+            1191
+          ]
+        ],
+        "common_viewport": "840x1190+0+0",
+        "same_renderer": "Poppler144DPI; no resampling; existing physical-page mm rounding recorded; across-renderer algorithms not compared"
+      },
+      "true": {
+        "normalized_rmse": 0.0,
+        "maximum": 0.001,
+        "source_and_output_canvas": [
+          [
+            840,
+            1190
+          ],
+          [
+            841,
+            1191
+          ]
+        ],
+        "common_viewport": "840x1190+0+0",
+        "same_renderer": "Poppler144DPI; no resampling; existing physical-page mm rounding recorded; across-renderer algorithms not compared"
+      }
+    }
+  },
+  "preview": {
+    "runtime_head": "58a710731b93026e2efbd7ca0bf0420e5be0bf65",
+    "status": "passed-for-scoped-fixtures",
+    "docs": [
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r1/output/fallback-source.pdf",
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "bytes": 21669867,
+        "sha256": "40567d531b000b269f5c6a8e3af7d49b54cc0e6b8be66a2096d1fd0e6beae7a2",
+        "chain": "unchanged original R1 source SHA40567d",
+        "checked_pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "result": "passed-for-scoped-fixture",
+        "observations": [
+          "Reopened exactoriginalR1SHA40567d all5pages: clippedfooter, alpha/Multiply invoice, Preview smooth2x2, intentionalblank, readable puretext."
+        ],
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "AX_URL_verified": true
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/golden-r2-observer/output/golden-r1-repaired.pdf",
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "bytes": 212861,
+        "sha256": "8116b90d9d3706d8979504d51415df80f872556a60b96fa465deab7f99336110",
+        "chain": "original R1 PDF -> actualR2 package fallback OFD -> PDF",
+        "checked_pages": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "result": "passed-for-scoped-fixture",
+        "observations": [
+          "ActualR2 nupkg consumed unchangedR1source; fiveOFDtoPDFpages checked. Clip/effect/blank/text agree; p3smooth shape/color agrees with exactoriginal sameviewer, resolvingR1hardblock mismatch. No visible text/path added on imagepage."
+        ],
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "AX_URL_verified": true
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r2/output/image-absent-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21661381,
+        "sha256": "746a578fbf277f2037ddd0474f85599c1cfaa4a11f733c3d6eec94b0b67cf041",
+        "chain": "source asymmetric3x2 RGB",
+        "checked_pages": [
+          1
+        ],
+        "result": "passed-for-scoped-fixture",
+        "observations": [
+          "Absent original3x2source actualPreview: red/green/blue top, yellow/black/white bottom, viewer smoothing; no flip/crop."
+        ],
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "AX_URL_verified": true
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r2/output/image-absent.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 1542,
+        "sha256": "1ade4573fcbf1397c713a3e62802b0f1f88902cb20b9096a8c0760793cb92932",
+        "chain": "actualR2 package original-image OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "result": "passed-for-scoped-fixture",
+        "observations": [
+          "Absent target originalsamples/effectivefalse independentlyverified; actualPreview sameRGBorientation and smoothing as source."
+        ],
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "AX_URL_verified": true
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r2/output/image-false-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21661399,
+        "sha256": "a045aea99ba6127bbc5beed19fe6740cc1ecc1ac26c3e470fca229913a7fcd53",
+        "chain": "source asymmetric3x2 RGB",
+        "checked_pages": [
+          1
+        ],
+        "result": "passed-for-scoped-fixture",
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "observations": [
+          "Explicit false source: full asymmetric RGB grid visible with Preview smoothing; correct top and bottom row orientation, no flip or crop."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r2/output/image-false.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 1542,
+        "sha256": "8d1f6926f38e6d588d71cae19618907aabf07f6b361ccd831055b8a231316621",
+        "chain": "actualR2 package original-image OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "result": "passed-for-scoped-fixture",
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "observations": [
+          "Explicit false export: same-viewer source and target agree; independent decoded RGB, original dimensions and PDF effective flag checks passed."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r2/output/image-true-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21661398,
+        "sha256": "44f082620ba7e9430d606cf9e456464731f0ff7207c3870403c4a996b4f4a8ca",
+        "chain": "source asymmetric3x2 RGB",
+        "checked_pages": [
+          1
+        ],
+        "result": "passed-for-scoped-fixture",
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "observations": [
+          "Explicit true source: full asymmetric RGB grid visible with Preview smoothing; correct orientation and placement."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r2/output/image-true.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 1560,
+        "sha256": "b437f96a1a0f84bd6155d23d5a5b88dcd047d89b2fd119d7aca0c4ba8f248d96",
+        "chain": "actualR2 package original-image OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "result": "passed-for-scoped-fixture",
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "observations": [
+          "Explicit true export: source and target agree in Preview; independent decoded RGB, sample dimensions and true PDF flag checks passed. Preview alone does not distinguish flags."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r2/output/image-flags-mixed.pdf",
+        "pages": [
+          1,
+          2,
+          3
+        ],
+        "bytes": 2904,
+        "sha256": "a15f7c779a200ad2255aa68bc42e12445eeef05697099e41847b3707264f8bb5",
+        "chain": "actualR2 package OFD merge -> PDF, samebytes false/true/false",
+        "checked_pages": [
+          1,
+          2,
+          3
+        ],
+        "result": "passed-for-scoped-fixture",
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "observations": [
+          "All three merged pages viewed: same asymmetric RGB geometry, false/true/false flags independently checked. Preview smooths all three; no claim that visual similarity proves cache isolation."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r2/output/vector.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 79846,
+        "sha256": "76a7aa6ec15182b72422eea89bdf7a0e2bedcbc6ba395d12197f9def1481cbdd",
+        "chain": "same PDF -> actualR2 package vector OFD -> PDF",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed-for-scoped-fixture",
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "observations": [
+          "Both native vector pages checked: readable CJK and proportional Latin, local blue affine shear and red total, table fill and borders, rotated stamp; page 2 intentional crop and overpaint, cubic/v paths, evenodd and signed winding holes; no duplicate footer."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r2/output/dual.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 190814,
+        "sha256": "45d62973f7bd6726307ea38968d224ca2a7720e35bcc8a1273fb0ece3d97974e",
+        "chain": "same PDF -> actualR2 package dual OFD -> PDF",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed-for-scoped-fixture",
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "observations": [
+          "Both legacy dual pages checked: same intended geometry, local styles, table, crop and occlusion; expected raster softness retained, no visible transparent text repaint. No exact color-management equivalence claimed."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/graphics-regression-r3/baseline-native.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 117021,
+        "sha256": "0cb7444d77e440075d82808f60236cc97e4f31470b814895e60e2726d94d9ae7",
+        "chain": "new shared renderer DOCX baseline-native -> OFD -> PDF",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed-for-scoped-fixture",
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "observations": [
+          "Fresh DOCX -> native OFD -> PDF, both pages checked: CJK/Latin body, local bold/italic/color, title and subtitle, table fill/borders/alignment; intentional page break, isolated red run and right-aligned date."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/graphics-regression-r3/baseline-default.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 117021,
+        "sha256": "157730ff47f0da3de77a6140abcc857562bde5c5b1411a9738348dfde266d8b8",
+        "chain": "new shared renderer DOCX baseline-default -> OFD -> PDF",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "result": "passed-for-scoped-fixture",
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T13:43:38.114804+08:00",
+        "observations": [
+          "Fresh DOCX -> default OFD -> PDF, both pages checked against sample expectations: CJK/Latin styles, table and alignment, intentional page break, no extra blank page."
+        ]
+      }
+    ],
+    "checked_pages": 27,
+    "windows_opened": 13,
+    "windows_closed": 13,
+    "gui_released": true,
+    "completed_at": "2026-10-08T13:43:38.114804+08:00",
+    "cleanup": "Each task document closed with Command-W. Last document closure led to automatic Open panel; Escape dismissed it. No unrelated documents closed.",
+    "limitations": [
+      "Preview smooths absent/false/true image flags alike; effective flags and exact decoded samples were verified independently.",
+      "R1 failed image appearance and all original evidence remain preserved.",
+      "Conclusions cover only the recorded fixtures and pages; no arbitrary PDF or Word fidelity claim."
+    ]
+  },
+  "failure_history": [
+    "Initial real probe reader lost continuous spaces while raw XML retained them; grouped native runs repaired and tested.",
+    "Low1: 480 passed / 1 failed because real LibreOffice wrapper missing from worker PATH; original log retained; Low2 and Low3 use verified native wrapper.",
+    "R1 Preview not-overall-passed: raw 2x2 source smooth in Preview but DPI raster fallback had hard blocks. Original source SHA40567d preserved unchanged; exact eligible image-only production repair validated.",
+    "Astra image repair parser probe found trailing operand dropped by parser; strict native lexical and exact operator-arity guards added."
+  ],
+  "limitations": [
+    "Only recorded fixtures and pages are accepted. Native profile is intentionally restricted; unsupported pages Fail by default or explicit whole-page raster fallback.",
+    "Original-image preservation is raster content, not vector or OCR. Third-party OFD viewers may ignore the private interpolation hint.",
+    "Preview smooths absent/false/true flags alike; exact samples, dimensions and PDF flags were independently inspected. No cross-renderer algorithm or DeviceRGB color equivalence claim.",
+    "Existing millimeter page serialization causes at most one-pixel canvas difference at144DPI; common viewport comparison has no resampling.",
+    "Full fixed Noto CJK font embedded; subset/resolver service issue05 not implemented. Input/work limits are not hard process heap/time or final ZIP caps."
+  ],
+  "reviews": "pending public PR and latest head Codex/Cursor/checks/thread readback",
+  "merged": false,
+  "tagged": false,
+  "published": false,
+  "production_release_accepted": false
+}

@@ -1,0 +1,1213 @@
+{
+  "status": "explicit curated public review allowlist; no release/tag",
+  "actual_product_source_head": "0ff9db5eb6a9baaeaa57497534fabf07f0e08848",
+  "validated_source_pair": [
+    "0e2452473f47c8aa0f916423be6362276ad15666",
+    "f7e3a62b6e63522a836643e59ff8144162ab5bfa"
+  ],
+  "source_identity_members": 306,
+  "members": [
+    {
+      "path": "identity/actual-merge-full-source-binding.json",
+      "bytes": 58294,
+      "sha256": "468437491c8311938dcae115dfd84eca92e59772daa259fac7baa31f9c7eb4eb",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/actual-merge-full-source-binding.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "identity/actual-merge-source-binding.json",
+      "bytes": 52250,
+      "sha256": "3f6b1f7d9f50ffb8cf1f201c106dd45589f056c1553eafafd1e5739c42c3c1c3",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/actual-merge-source-binding.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "identity/actual-merge-cli-build.json",
+      "bytes": 7831,
+      "sha256": "e61d793234ab4e968a1d29354b81b0d1c6328b52707611eea76b904f0b1d5e5a",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/actual-merge-cli-build.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "identity/actual-merge-cli-build.log",
+      "bytes": 14672,
+      "sha256": "054ddd8b76c4ef30ba47790bb5c21efa166ea3536ed7d18e167313084d5c4aad",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/actual-merge-cli-build.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "identity/attempt6-source-source-binding.json",
+      "bytes": 63660,
+      "sha256": "17ecb384f30dc873e4a0d67f1132d6bc57e6effe2b338a159a5184de79233ddc",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-source-source-binding.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "identity/attempt6-cli-build-command.json",
+      "bytes": 982,
+      "sha256": "0a3177ff513fd4ec7b5831e97ddfdd1141c9b2f8eca21b18d4de9aa44ddda1bc",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-build-command.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "identity/attempt6-diagnostic-dll-binding.json",
+      "bytes": 20033,
+      "sha256": "2ab7b989209486522c19973923191052656f8cf41c4a5701296d9baef7df0494",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-diagnostic-dll-binding.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "identity/attempt6-runtime-binary-snapshot.json",
+      "bytes": 11314,
+      "sha256": "f881a55afd08989b1b447acc6c9e2e92d1df780fcfb6c4babc3743cef87051bf",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-runtime-binary-snapshot.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "licenses/PROJECT-MIT.txt",
+      "bytes": 1064,
+      "sha256": "2b4dd513f6505b2522a1f6eb3c07dccf04c37b19daf13c3a26aa9bcafe3436fc",
+      "source": "LICENSE",
+      "license": "MIT",
+      "role": "original evidence"
+    },
+    {
+      "path": "licenses/THIRD-PARTY-NOTICES.md",
+      "bytes": 1612,
+      "sha256": "d8fe99f36beb3d6ecfb35deb8c7158478874f77a3dc746d049cd9887e06f0a7a",
+      "source": "THIRD-PARTY-NOTICES.md",
+      "license": "project third-party notices",
+      "role": "original evidence"
+    },
+    {
+      "path": "font-provenance/NOTICE.md",
+      "bytes": 1042,
+      "sha256": "69a8c93c5d20562d9930d0e09e419e5ee8bf88b77f122152ae0d47a64f7fa3c9",
+      "source": "tests/fixtures/trusted-fonts/NOTICE.md",
+      "license": "OFL-1.1 font provenance",
+      "role": "original evidence"
+    },
+    {
+      "path": "font-provenance/manifest.json",
+      "bytes": 4801,
+      "sha256": "0abcc1f74375452213e48cda416dff577125cc9618dd013a63c3ded54f8087d2",
+      "source": "tests/fixtures/trusted-fonts/manifest.json",
+      "license": "OFL-1.1 font provenance",
+      "role": "original evidence"
+    },
+    {
+      "path": "font-provenance/bundle.json",
+      "bytes": 1218,
+      "sha256": "a5215982dd59177a0846b183f6cc89e683c281be281993f97eda1181367e5264",
+      "source": "tests/fixtures/trusted-fonts/bundle.json",
+      "license": "OFL-1.1 font provenance",
+      "role": "original evidence"
+    },
+    {
+      "path": "font-provenance/README.md",
+      "bytes": 2331,
+      "sha256": "7fd4fe28aa08a723dd19518554a6a3e6d91493112da30284ae385c448437f755",
+      "source": "tests/fixtures/trusted-fonts/README.md",
+      "license": "OFL-1.1 font provenance",
+      "role": "original evidence"
+    },
+    {
+      "path": "licenses/NotoSans-LICENSE",
+      "bytes": 4377,
+      "sha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb",
+      "source": "tests/fixtures/trusted-fonts/licenses/NotoSans-LICENSE",
+      "license": "OFL-1.1",
+      "role": "original evidence"
+    },
+    {
+      "path": "licenses/Ofdrw-CI-Noto-OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "source": "tests/fixtures/trusted-fonts/licenses/Ofdrw-CI-Noto-OFL.txt",
+      "license": "OFL-1.1",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/latin-noop-identical/stdout.log",
+      "bytes": 331,
+      "sha256": "1dd792af02b96c93c3b558b0b88e68fdc442c8eba0936bf36a8cedcb91c3d8ab",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/latin-noop-identical/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/latin-noop-identical/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/latin-noop-identical/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/latin-noop-identical/numeric-report.json",
+      "bytes": 24922,
+      "sha256": "32b5e3fd7c954399c25e0c17164a7660c2d77f276d40929bc7c8acba1a17eb25",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/latin-noop-identical/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/latin-noop-identical/stdout.log",
+      "bytes": 171,
+      "sha256": "9667f36be59bcc7d7b8560bcbacccaf5cc415d97d5209eb924208d560c662cd8",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/latin-noop-identical/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/latin-noop-identical/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/latin-noop-identical/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/latin-noop-nohit/stdout.log",
+      "bytes": 323,
+      "sha256": "ea2567319a53128dfc750148b97d6720e36b7bfa87ecb2e53495528286b38864",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/latin-noop-nohit/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/latin-noop-nohit/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/latin-noop-nohit/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/latin-noop-nohit/numeric-report.json",
+      "bytes": 24922,
+      "sha256": "d2eca7308a40e0a232e8eea72af6633933bcee6a9fb43c85d371f7fbc31f5af3",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/latin-noop-nohit/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/latin-noop-nohit/stdout.log",
+      "bytes": 167,
+      "sha256": "b57f27c8c5ad07b138a0cac85f1c474885be2357cd4127d23c02e4f4e6f1fc2f",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/latin-noop-nohit/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/latin-noop-nohit/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/latin-noop-nohit/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/latin-changed/stdout.log",
+      "bytes": 317,
+      "sha256": "64da8d8353255a9ea28fb749a482032e591976f1622064ef2578dbd3b8b24cff",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/latin-changed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/latin-changed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/latin-changed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/latin-changed/numeric-report.json",
+      "bytes": 35431,
+      "sha256": "5a706337e3be9a478c51a5f08f913d8a571ee2feb4d3b690e16eec39b7b4f59c",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/latin-changed/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/latin-changed/stdout.log",
+      "bytes": 164,
+      "sha256": "17804307cd23fbb89319bc48df55a1a5d59758b8b2500f4bb977f7829ee02adc",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/latin-changed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/latin-changed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/latin-changed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/cjk-noop-identical/stdout.log",
+      "bytes": 327,
+      "sha256": "0cbfa1187a551d585ee374fc07055737ea17d0134f01c3d32cde914f04efa452",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-noop-identical/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/cjk-noop-identical/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-noop-identical/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/cjk-noop-identical/numeric-report.json",
+      "bytes": 25200,
+      "sha256": "c480e73972bd7c9a863b88964e47a7cf22654d88c29095cf269e6abff13229dc",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-noop-identical/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/cjk-noop-identical/stdout.log",
+      "bytes": 169,
+      "sha256": "da99a0c583e75ff774a25f3762f46df0c2de7c7ca2eec7b00659e534a9bcd543",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-noop-identical/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/cjk-noop-identical/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-noop-identical/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/cjk-noop-nohit/stdout.log",
+      "bytes": 319,
+      "sha256": "05440a4df276fb1fcfb5efa8ea63c7be8c5cf83a3c007c577b395a0de2b3e187",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-noop-nohit/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/cjk-noop-nohit/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-noop-nohit/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/cjk-noop-nohit/numeric-report.json",
+      "bytes": 25200,
+      "sha256": "5466302bb79941a437f18fc17c5b5ed87d95d180134bf34315e7e09818a895ea",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-noop-nohit/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/cjk-noop-nohit/stdout.log",
+      "bytes": 165,
+      "sha256": "3775e098b9d2c35d1ec7ca9b97aa883bbbe2a2943c9007c93c32f49c5e19a617",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-noop-nohit/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/cjk-noop-nohit/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-noop-nohit/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/cjk-changed/stdout.log",
+      "bytes": 313,
+      "sha256": "f6995524bfeb51551ff8877e3209aa84c642cde12f86c785f4a60076e087ad9e",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-changed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/cjk-changed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-changed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/cjk-changed/numeric-report.json",
+      "bytes": 35953,
+      "sha256": "bf80919ed8e14dcd34020c4400a5c7fe61bdb054515922d49d24411cae5d8278",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-changed/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/cjk-changed/stdout.log",
+      "bytes": 162,
+      "sha256": "200d39d213e36bcc1aaafeba51432aaa3613b109ac102c5223ae598564aeb8f7",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-changed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/cjk-changed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/cjk-changed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/results-corrected.json",
+      "bytes": 33338,
+      "sha256": "64a93791e3ed57c54e8d698172a87465f2af7149dd4fdaf2795e8ea41688c8c5",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/results-corrected.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "cli/metadata-correction.json",
+      "bytes": 896,
+      "sha256": "dd2ab90a1f22da32de11029f84b1b179cf2b950083beacab6f0ae336f2bcc3d6",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/metadata-correction.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "typed/results.json",
+      "bytes": 231984,
+      "sha256": "63225dfa639c888d6f7bcdad575255d2f6497653ff7f85f4e08dfa87a23b6afe",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-owned-runtime/results.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "documents/latin-input.ofd",
+      "bytes": 290296,
+      "sha256": "89e77104079c5bfa4540baaa941e76396fe01b02e05a92f2b34f25eb92bc93c6",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/latin-changed/input.ofd",
+      "license": "OFL-1.1 embedded font; MIT sample document",
+      "role": "original evidence"
+    },
+    {
+      "path": "documents/latin-input.pdf",
+      "bytes": 11922,
+      "sha256": "51deb4014358b5f5f15094355b676eb631f2b0c620346616378f061c61263d52",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/latin-input.pdf",
+      "license": "OFL-1.1 derived font subset; MIT sample rendering",
+      "role": "original evidence"
+    },
+    {
+      "path": "documents/latin-output.ofd",
+      "bytes": 290306,
+      "sha256": "b1b47dbc4ea73b53adcf3745d96a8278d1a11da790913847a9270a304dfaa941",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/latin-changed/output.ofd",
+      "license": "OFL-1.1 embedded font; MIT sample document",
+      "role": "original evidence"
+    },
+    {
+      "path": "documents/latin-output.pdf",
+      "bytes": 11856,
+      "sha256": "f0ec1a365f6ac3542c0bc91d0be8ab84b42f48a96d2144c2cf8241d327fb6de8",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/latin-output.pdf",
+      "license": "OFL-1.1 derived font subset; MIT sample rendering",
+      "role": "original evidence"
+    },
+    {
+      "path": "documents/cjk-input.ofd",
+      "bytes": 11599908,
+      "sha256": "bc0282f62b24d97cfb02542ddf6e1e1c25925eff8ee5e813c668eaf760523783",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-changed/input.ofd",
+      "license": "OFL-1.1 embedded font; MIT sample document",
+      "role": "original evidence"
+    },
+    {
+      "path": "documents/cjk-input.pdf",
+      "bytes": 60905,
+      "sha256": "12cb9b4ac2cb9a023d89b4ee7c17f8dd33029c0be51ddc6f70e4ad9b5aac9a0e",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/cjk-input.pdf",
+      "license": "OFL-1.1 derived font subset; MIT sample rendering",
+      "role": "original evidence"
+    },
+    {
+      "path": "documents/cjk-output.ofd",
+      "bytes": 11599915,
+      "sha256": "22a1270356935c95dfa32433474cd6d533406fd4b24254672f5dd1937b673054",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-cli-runtime/cjk-changed/output.ofd",
+      "license": "OFL-1.1 embedded font; MIT sample document",
+      "role": "original evidence"
+    },
+    {
+      "path": "documents/cjk-output.pdf",
+      "bytes": 60848,
+      "sha256": "3dfab58b74c4d86f075e4e45bcf23553acab6c893478aeeef1545973dec4bdfd",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/cjk-output.pdf",
+      "license": "OFL-1.1 derived font subset; MIT sample rendering",
+      "role": "original evidence"
+    },
+    {
+      "path": "sample/generated-layout.docx",
+      "bytes": 3347,
+      "sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+      "source": "e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx",
+      "license": "MIT original public deterministic sample",
+      "role": "original evidence"
+    },
+    {
+      "path": "pages/latin-input-1.png",
+      "bytes": 6691,
+      "sha256": "25b38c0baa98867250083f1699e42068d19f18bb3ac78bd4c2c51a2d877f8e74",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/latin-input-1.png",
+      "license": "MIT sample bitmap rendering; no embedded font software",
+      "role": "original evidence"
+    },
+    {
+      "path": "pages/latin-output-1.png",
+      "bytes": 5961,
+      "sha256": "7749781b4a6e9211160977a9ba9b4d44f07ea32c7e87a8cfb7cc8064115c3849",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/latin-output-1.png",
+      "license": "MIT sample bitmap rendering; no embedded font software",
+      "role": "original evidence"
+    },
+    {
+      "path": "pages/cjk-input-1.png",
+      "bytes": 6336,
+      "sha256": "764c13b4ab175af0371f5450cdc6f1c5b3b49bd49f9ad2a507cca549b377c03c",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/cjk-input-1.png",
+      "license": "MIT sample bitmap rendering; no embedded font software",
+      "role": "original evidence"
+    },
+    {
+      "path": "pages/cjk-output-1.png",
+      "bytes": 5871,
+      "sha256": "48e9de39324c0a58de2c71ec9259b1e3ba79a75a3ac988d1799ff06d0e4e0f28",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/cjk-output-1.png",
+      "license": "MIT sample bitmap rendering; no embedded font software",
+      "role": "original evidence"
+    },
+    {
+      "path": "pages/generated-layout-native-1.png",
+      "bytes": 64231,
+      "sha256": "c003458a6a80bb73d3a5e394fa7ed5c072ca80e3bfe10a0c3632e75c569949c3",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-native-1.png",
+      "license": "MIT sample bitmap rendering; no embedded font software",
+      "role": "original evidence"
+    },
+    {
+      "path": "pages/generated-layout-native-2.png",
+      "bytes": 32369,
+      "sha256": "fc9c4514b1d7594a5212bb72a1c9a60fd40d86d6a0f0752c404ec8688d6b37ca",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-native-2.png",
+      "license": "MIT sample bitmap rendering; no embedded font software",
+      "role": "original evidence"
+    },
+    {
+      "path": "pages/generated-layout-default-1.png",
+      "bytes": 64231,
+      "sha256": "c003458a6a80bb73d3a5e394fa7ed5c072ca80e3bfe10a0c3632e75c569949c3",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-default-1.png",
+      "license": "MIT sample bitmap rendering; no embedded font software",
+      "role": "original evidence"
+    },
+    {
+      "path": "pages/generated-layout-default-2.png",
+      "bytes": 32369,
+      "sha256": "fc9c4514b1d7594a5212bb72a1c9a60fd40d86d6a0f0752c404ec8688d6b37ca",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-default-2.png",
+      "license": "MIT sample bitmap rendering; no embedded font software",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/visual-acceptance2.json",
+      "bytes": 12133,
+      "sha256": "9852d4518fa5e273b1a8601faaaf069cbccd1abaababa8e75ca001921de365ef",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/visual-acceptance2.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/text-readback.json",
+      "bytes": 8369,
+      "sha256": "e0c08c1191e6d8d63405e511b1d0de9cdc38aad76bf76fc258066fc7425dea32",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/text-readback.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/preparation.json",
+      "bytes": 19569,
+      "sha256": "4e71b80b52d3c3eaab98d280497276976161bfcba43da242bd4ab6fde33dac9a",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/preparation.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/latin-input-pdf-text.txt",
+      "bytes": 5,
+      "sha256": "7649f624a07549a5529a331925222cc20e43b5fb996c26c23132804f030327c2",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/latin-input-pdf-text.txt",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/latin-output-pdf-text.txt",
+      "bytes": 5,
+      "sha256": "a13dad831db91b89a216e8819732cf6138e56a5cd0a5742269c8536a7225f8a1",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/latin-output-pdf-text.txt",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/cjk-input-pdf-text.txt",
+      "bytes": 5,
+      "sha256": "7649f624a07549a5529a331925222cc20e43b5fb996c26c23132804f030327c2",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/cjk-input-pdf-text.txt",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/cjk-output-pdf-text.txt",
+      "bytes": 5,
+      "sha256": "a13dad831db91b89a216e8819732cf6138e56a5cd0a5742269c8536a7225f8a1",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/cjk-output-pdf-text.txt",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/generated-layout-native-ofd-text.txt",
+      "bytes": 414,
+      "sha256": "f7d0b5f4ca0117c9787883686e5a045f172997a41a3f40a8aed37bc3f1add031",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-native-ofd-text.txt",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/generated-layout-default-ofd-text.txt",
+      "bytes": 414,
+      "sha256": "f7d0b5f4ca0117c9787883686e5a045f172997a41a3f40a8aed37bc3f1add031",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-default-ofd-text.txt",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/generated-layout-native-pdf-text.txt",
+      "bytes": 657,
+      "sha256": "28ccadb366ca6dd69cc29b10859ca42835194d82d7362693b674c52998e2d59c",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-native-pdf-text.txt",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "visual/generated-layout-default-pdf-text.txt",
+      "bytes": 657,
+      "sha256": "28ccadb366ca6dd69cc29b10859ca42835194d82d7362693b674c52998e2d59c",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-default-pdf-text.txt",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/summary.json",
+      "bytes": 4119,
+      "sha256": "1d9d20db05273d74b6ead1604fcdfcaf8ebae1980d30380df6cb6ee77907ec5b",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/summary.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/test-summary.json",
+      "bytes": 17434,
+      "sha256": "171fb07d52dfe874f4d974269c749a58cbefe191b4c7120e4e4517d9898a3caf",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-summary.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/test-env.json",
+      "bytes": 3552,
+      "sha256": "457e7f258cb46d63577763ab960952df293895d31b400bf018fdc8642ad8c059",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-env.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/test-commands.json",
+      "bytes": 9058,
+      "sha256": "7fab941e31c593f1270766a988d7527a1773d87c22a8236b2f298b223a4967e7",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-commands.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/fonts-after.json",
+      "bytes": 2397,
+      "sha256": "bf7d1b284de693563281ed6cca2274195bc26e8c1bbe53c49f3fda1f2b75c2a6",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/fonts-after.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/after-source-check3.json",
+      "bytes": 545,
+      "sha256": "6a46bd144a95f834130ed5afa67ce69aaf94eea6dedc8fcd35c1e604fef84915",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/after-source-check3.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/before-source-check3.json",
+      "bytes": 545,
+      "sha256": "6a46bd144a95f834130ed5afa67ce69aaf94eea6dedc8fcd35c1e604fef84915",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/before-source-check3.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/copy-binding-after.json",
+      "bytes": 3359,
+      "sha256": "0291d7ababddfe8e451f0c872ae2fa18fcaa4684e1959047673dc1a78182358f",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/copy-binding-after.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/prior-runtime-audit-after.json",
+      "bytes": 44257,
+      "sha256": "dfaa75939bde8e573c46863ed2e519b619f1922a19c6f1a5e67afff119165dda",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/prior-runtime-audit-after.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/package-audit.json",
+      "bytes": 8343,
+      "sha256": "ca19b8057c0257733b5d35ec0d3c366aa12c569a8f5ea0fbabd18a3c740036b1",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/package-audit.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/package-command.json",
+      "bytes": 1859,
+      "sha256": "e609009fd7b584cb28f090b708324d3dca24b568909cf75c378e3d55e3fe53d0",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/package-command.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/package-e2e.log",
+      "bytes": 85626,
+      "sha256": "005a5a8789a711608979ea41d357587672d4557162c7d7a8257e5a0879917747",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/package-e2e.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/public-consumer-commands.json",
+      "bytes": 6498,
+      "sha256": "6f01a9ed5ebe7cee7cd1a9f759be27c50e4d465273093b0cd9273a6db5c7ebb7",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/public-consumer-commands.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/consumer-restore.log",
+      "bytes": 1836,
+      "sha256": "e02df1f0da7f8de65df8ab2a3bdf8ff4b5d5422b6f17686bd55eea0d121c4d8b",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/consumer-restore.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/consumer-build.log",
+      "bytes": 5082,
+      "sha256": "ce043fad929685f68c82d20f679e63542859b6a46e58ebfe37008f83d841fe33",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/consumer-build.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/consumer-latin.log",
+      "bytes": 3680,
+      "sha256": "09462add76d86d527efffddfe7fb9dd1c1c5d2b3a9b3801b7a1382f8de27c653",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/consumer-latin.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/consumer-cjk.log",
+      "bytes": 3807,
+      "sha256": "66260c3485811d8cb8c58249057dde02e19d9e6509330328943c101ebd57a0e8",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/consumer-cjk.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/package-manifest.json",
+      "bytes": 2393,
+      "sha256": "8137d3229c73863a7497f2f852cd3ef346d481df32f83ce75f7022c8673ad302",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/package-output/package-manifest.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/trx/Core.trx",
+      "bytes": 111915,
+      "sha256": "6ebfd90580c1895fd75d8058f03194ef7f34192f4601dae87f6f6488d07627f9",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-results/Core.trx",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/logs/test-Core.log",
+      "bytes": 2767,
+      "sha256": "c0c51457f72e7d38933faa2e6adf96a6f4076e7cc4ebcb3870a8befc302b5043",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-logs/test-Core.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/trx/Packaging.trx",
+      "bytes": 1711820,
+      "sha256": "6c587f2dbeddb7c83feb09c7018267b7ef3b52966ff909fe70ab04d2528a31ff",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-results/Packaging.trx",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/logs/test-Packaging.log",
+      "bytes": 5215,
+      "sha256": "5469d58511d04c49a108c44264501a19c132056205b2990e8a8b471122e05a38",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-logs/test-Packaging.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/trx/Cli.trx",
+      "bytes": 60989,
+      "sha256": "daaaa215720f789aa3051e39040790cc580920121c567308147d6da99b0e0dfb",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-results/Cli.trx",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/logs/test-Cli.log",
+      "bytes": 20889,
+      "sha256": "a319e29005da1549e0c603ad1d6457771f8fd8c5844b8b9bb093d808cc88c38a",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-logs/test-Cli.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/trx/Converter.Docx.trx",
+      "bytes": 109451,
+      "sha256": "ac46f34f501de34e7b0e7abe9121cb0ac8574bd37e302d78003f23ecad14f503",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-results/Converter.Docx.trx",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/logs/test-Converter.Docx.log",
+      "bytes": 16744,
+      "sha256": "14bcf2e7c9e8dd4934f3561e5c9cfc41371ffdffdd6555ac9246ffa7ae2c59bf",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-logs/test-Converter.Docx.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/trx/Converter.Pdf.trx",
+      "bytes": 295906,
+      "sha256": "78d5bdce98488942629985a5f93c13ebe3b2b4c9bfbde8a2b26ed00511638d68",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-results/Converter.Pdf.trx",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/logs/test-Converter.Pdf.log",
+      "bytes": 11480,
+      "sha256": "3fc768c2ecdbed5399c3edd560e50488d89a0b538ebee87ad4d462c375713140",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-logs/test-Converter.Pdf.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/trx/Signatures.trx",
+      "bytes": 7985,
+      "sha256": "838b2e5a0fce7d672ebfe75edf73de8388d4b67299ce36dcf0d7804e2549a494",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-results/Signatures.trx",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/logs/test-Signatures.log",
+      "bytes": 1898,
+      "sha256": "84ab2ac5454b24be13f66b4bb9c33b6b1c91ff943c369f29702b178ae829752a",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-logs/test-Signatures.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/logs/build-Reader.log",
+      "bytes": 1548,
+      "sha256": "973a73cde2feef46025f8841d2f4e5705a44826e2d2491f5f0cf78b7617884b5",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-logs/build-Reader.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/logs/build-Layout.log",
+      "bytes": 2010,
+      "sha256": "f75387a492aaeecad3b62e2ca2abc05060363f70f784dc8ab6afb5fd76a5e32f",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-logs/build-Layout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "verification/logs/build-Converter.Pdf.log",
+      "bytes": 15140,
+      "sha256": "0a9da47dd3b6ca17ad663ba2e105e263a25ee697c610fa6f091c929117b5782f",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/test-logs/build-Converter.Pdf.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "public-consumer/Program.cs",
+      "bytes": 8344,
+      "sha256": "04caf499f93a575e198e8a546db0a3e99e508d1eb00d9b4179d6efee1ab97ff7",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/public-consumer/Program.cs",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "public-consumer/PublicOutputVerifier.csproj",
+      "bytes": 562,
+      "sha256": "c4df52acf5bd2a6e3c457fe01f86951bbc337ea2f6408b8b7fa61a04c561c276",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-independent/public-consumer/PublicOutputVerifier.csproj",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/results.json",
+      "bytes": 167615,
+      "sha256": "d7ee0ad39bd327adb1279574e95d03e75764a9a52a82d4b793b34c9254f58678",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/results.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/evidence.json",
+      "bytes": 8547,
+      "sha256": "98bf5fc57b00671dbc9bf069283f55298837609bd360dbe66606c98a961d6c50",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/evidence.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/notes.md",
+      "bytes": 1636,
+      "sha256": "49626e58c2560a01350d577f671d4f4dfb4729c1e3e2502bc108e32dbfe8a099",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/notes.md",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/same-path-unmodified/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/same-path-unmodified/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/same-path-unmodified/stderr.log",
+      "bytes": 62,
+      "sha256": "7d7ea71500ac281f250a79777a05b283ae6440d6b8eeec41339fab84eeebfea5",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/same-path-unmodified/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/same-path-typed/stdout.log",
+      "bytes": 169,
+      "sha256": "2c139d1c7689e0a4046f44bb72934697e94b1dea8b9b409622eea5b9d97a7acf",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/same-path-typed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/same-path-typed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/same-path-typed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/same-path-typed/numeric-report.json",
+      "bytes": 431,
+      "sha256": "929c5fccc92a4e5ada10c12a8cdf316ed6efcd0a87c00c387dfa4e92fae77961",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/same-path-typed/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/output-symlink-input-unmodified/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/output-symlink-input-unmodified/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/output-symlink-input-unmodified/stderr.log",
+      "bytes": 75,
+      "sha256": "2e270db1f0620ce157f3ea9a868668af9530be2ddec52dff96ce83e47df93517",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/output-symlink-input-unmodified/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/output-symlink-input-typed/stdout.log",
+      "bytes": 180,
+      "sha256": "7a574701d4a7a142396a1c57de82a4c9dc1445ecf56dfc3efddd8fe2ec920eb3",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/output-symlink-input-typed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/output-symlink-input-typed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/output-symlink-input-typed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/output-symlink-input-typed/numeric-report.json",
+      "bytes": 6347,
+      "sha256": "857b3ebbf990619720e8720ccb540c86c4820a5d655d77a985b00ff695751d85",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/output-symlink-input-typed/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/wrong-trusted-sha-unmodified/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/wrong-trusted-sha-unmodified/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/wrong-trusted-sha-unmodified/stderr.log",
+      "bytes": 67,
+      "sha256": "51ea601782d94397255fc17f10650ffaa412ca0ba618160b3da5bd5435907579",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/wrong-trusted-sha-unmodified/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/wrong-trusted-sha-typed/stdout.log",
+      "bytes": 177,
+      "sha256": "a0241b97dda08e51dae70d7c3d82000f762dd3b370095e008fdf134b725341b6",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/wrong-trusted-sha-typed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/wrong-trusted-sha-typed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/wrong-trusted-sha-typed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/wrong-trusted-sha-typed/numeric-report.json",
+      "bytes": 15242,
+      "sha256": "fb88b1932584539d5ac021e18008e751da8ec72dc008aaa05360e0ba2112af31",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/wrong-trusted-sha-typed/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/replacement-overflow-unmodified/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/replacement-overflow-unmodified/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/replacement-overflow-unmodified/stderr.log",
+      "bytes": 47,
+      "sha256": "efc46ef13e9bc997f0c4bd1b61dbf4a913f4059e7e13d35741c998ac142b82e1",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/replacement-overflow-unmodified/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/replacement-overflow-typed/stdout.log",
+      "bytes": 180,
+      "sha256": "72725378099ebdb0edf4586bbb8f389a0eaffe341bf936fd0f6afdb3325a643e",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/replacement-overflow-typed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/replacement-overflow-typed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/replacement-overflow-typed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/replacement-overflow-typed/numeric-report.json",
+      "bytes": 15222,
+      "sha256": "58f98feccde2c5bae00c40976aca0774ca356c551923f5cb617ed9fb3f982121",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/replacement-overflow-typed/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/directory-target-unmodified/stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/directory-target-unmodified/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/directory-target-unmodified/stderr.log",
+      "bytes": 206,
+      "sha256": "6b4ab81d5c292101be52f54f681eade3e9f7d4cff3331e3a62051bb8db97ace1",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/directory-target-unmodified/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/directory-target-typed/stdout.log",
+      "bytes": 176,
+      "sha256": "195fd396ddbff3bbc791c9771326b36e9e0faa9d728119c6728abc14b81c5927",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/directory-target-typed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/directory-target-typed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/directory-target-typed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/directory-target-typed/numeric-report.json",
+      "bytes": 36221,
+      "sha256": "58003e214a78dde30a58f93312c2d262c2979f1fee715281419143994480f150",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/directory-target-typed/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/late-input-marker-typed/stdout.log",
+      "bytes": 177,
+      "sha256": "143475d8809f77fd148110ef8dd0c1d99ad7becb2e0772d6c953673058b6ce51",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/late-input-marker-typed/stdout.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/late-input-marker-typed/stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/late-input-marker-typed/stderr.log",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/late-input-marker-typed/numeric-report.json",
+      "bytes": 22300,
+      "sha256": "1bfbc5714c29c12f6d227beddff4b8dc8f5ddac632b7296201e0e522d323a5cf",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-runtime1/late-input-marker-typed/numeric-report.json",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "failures/run_failure_matrix.py",
+      "bytes": 14916,
+      "sha256": "6667dc0142f83d1c88f96d2f72e2c2e0dc62507b247d191af8f9ecda7dd15757",
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-failure-prep/run_failure_matrix.py",
+      "license": "MIT project evidence",
+      "role": "original evidence"
+    },
+    {
+      "path": "font-license-map.json",
+      "bytes": 7541,
+      "sha256": "31104562e9eaa6f8519f3931af13ae6949a9f3c4148ba6bdca3e3dc448b1c3e2",
+      "source": "generated by build_review_archive.py",
+      "license": "MIT project evidence",
+      "role": "font/subset license mapping"
+    },
+    {
+      "path": "ARCHIVE-NOTES.txt",
+      "bytes": 2066,
+      "sha256": "d2a82c567886694d629fa9c4f3e780c80d84b9ce96c51ba243f84cc8ee151924",
+      "source": "generated by build_review_archive.py",
+      "license": "MIT project evidence",
+      "role": "curation scope and exclusions"
+    }
+  ],
+  "member_count": 146,
+  "uncompressed_bytes": 27768804,
+  "estimated_max_zip_bytes": 27918308,
+  "explicit_exclusions": [
+    {
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-native.ofd",
+      "bytes": 15288611,
+      "sha256": "6f66dc9afd767da19511b4368d1aaf8f7c9c9af180a94456bb0d9910ffa07b52",
+      "reason": "LOCAL ONLY: native/default chain embeds commercial PingFang SC font software; public archive includes bitmap/text/Preview records only"
+    },
+    {
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-default.ofd",
+      "bytes": 15288611,
+      "sha256": "99566448a560793362a2199848c6d9ee6918fc2b9c9cbcb791515b00e63c3e78",
+      "reason": "LOCAL ONLY: native/default chain embeds commercial PingFang SC font software; public archive includes bitmap/text/Preview records only"
+    },
+    {
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-native.pdf",
+      "bytes": 117459,
+      "sha256": "d33bd58f7ad9941838379b93ec6eb0ab16a3ff9daabf31e6aa4972b90055e9da",
+      "reason": "LOCAL ONLY: native/default chain embeds commercial PingFang SC font software; public archive includes bitmap/text/Preview records only"
+    },
+    {
+      "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-default.pdf",
+      "bytes": 117459,
+      "sha256": "ea10fbebd813aa70727b6534b1693b7de50a35a63932b497d40a7a58c83ba02b",
+      "reason": "LOCAL ONLY: native/default chain embeds commercial PingFang SC font software; public archive includes bitmap/text/Preview records only"
+    },
+    {
+      "source": "all other artifacts, raw fonts, repository font bundle duplicate, old Arial Unicode/native payloads, cache/feed/nupkg/bin/obj/DLL trees/private material",
+      "reason": "Not in the explicit allowlist."
+    }
+  ],
+  "archive_identity_note": "This external inventory lists every ZIP member; it is not itself a ZIP member, avoiding self-hash ambiguity."
+}
