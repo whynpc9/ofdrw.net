@@ -69,7 +69,7 @@ internal static class OfdStrictTextGeometry
         };
         if (occurrence.ParentToPage.Count != 6 || !occurrence.ParentToPage.SequenceEqual(new double[] { 1, 0, 0, 1, 0, 0 }))
             throw new NotSupportedException("UnprovedParentTransform");
-        if (!string.IsNullOrEmpty(text.ClippingXml)) throw new NotSupportedException("ExplicitClipping");
+        if (text.Clips is not null || !string.IsNullOrEmpty(text.ClippingXml)) throw new NotSupportedException("ExplicitClipping");
         if (text.SourceXml is { } source)
         {
             // Numeric/attribute token arrays and strings are additional to the

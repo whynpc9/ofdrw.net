@@ -1,0 +1,60 @@
+Window: "original-v1.pdf", App: Preview.
+0 standard window original-v1.pdf – Page 2 of 2, ID: PVDocumentWindow, Secondary Actions: Raise, URL: file:///Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer-output/original-v1.pdf
+	1 split group
+		2 scroll area
+			3 outline Description: outline view, ID: DocumentOutlineView
+				4 row (selectable) original-v1.pdf
+		5 pop up button Description: add, Help: Insert Page…
+		6 splitter (disabled, settable, float) 168
+		7 scroll area
+			8 container document
+				9 Page (disabled)
+					10 container
+						11 text 批注局部坐标 / Local annotation
+						12 text Proportional Wiim: ABC xyz
+						13 text 项目 / Item 
+						14 text 数量 / Count
+						15 text Alpha 128
+						16 text 本地批注 Local annotation
+						17 text 移位 / moved once
+						18 text 2026-10-14
+				19 Page (disabled)
+					20 container
+						21 text 第二页 / Page two
+						22 text Proportional Wiim: ABC xyz
+						23 text 项目 / Item 
+						24 text Alpha 128
+						25 text 数量 / Count
+						26 text 第二页批注 / page two note
+						27 text 2026-10-14
+	28 toolbar
+		29 menu button Description: View, Help: Choose sidebar display
+		30 container Zoom
+			31 button Description: zoom out, Help: Scale document down, Details: Zoom Out
+			32 button Description: zoom to actual size, Help: Display at actual size, Details: Actual Size
+			33 button Description: zoom in, Help: Scale document up, Details: Zoom In
+		34 Highlight Selection
+			35 radio button Description: highlight, Value: 0
+			36 menu button
+		37 button (disabled) Description: Remove Background, Secondary Actions: Move previous, Move next, Remove from toolbar
+		38 radio button Description: Rotate, Help: Rotate Left, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		39 checkbox Description: Form Filling, Help: Show Form Filling Toolbar, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		40 checkbox Description: Markup, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		41 checkbox Description: Inspector, Help: Show the Inspector, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		42 button Description: Share, Secondary Actions: Move previous, Move next, Remove from toolbar
+		43 button Search
+	44 close button
+	45 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	46 minimize button
+	47 text original-v1.pdf Page 2 of 2
+48 menu bar
+	49 Preview
+	50 File
+	51 Edit
+	52 View
+	53 Go
+	54 Tools
+	55 Window
+	56 Help
+
+The focused UI element is 8 container document

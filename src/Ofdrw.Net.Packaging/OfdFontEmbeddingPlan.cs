@@ -158,6 +158,8 @@ internal sealed class OfdFontEmbeddingPlan
     private static string? PreservationReason(OfdDocumentPackage package, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (package.CompositeResources.Count > 0)
+            return "Composite resources retain original font payloads; their glyph references may be shared.";
         if (package.PreservedEntries.Count > 0 || package.PreservedCommonDataElements.Count > 0 ||
             package.PreservedDocumentElements.Count > 0 || package.PreservedDocBodyElements.Count > 0)
             return "Read/edited package has preserved content; glyph references may be unmodeled.";

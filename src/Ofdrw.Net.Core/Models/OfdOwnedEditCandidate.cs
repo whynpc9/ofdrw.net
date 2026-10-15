@@ -75,6 +75,8 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         var material = context.Material;
         material.GuardPreservedXml(source, token); source.SourceIdentity?.Reconcile(source, material, token);
         OfdNavigationXml.Validate(source, source.Pages, token, material);
+        OfdAnnotationContract.Validate(source, material, token);
+        OfdCompositeGraph.Validate(source, material, token, rejectRepeatedOwners: true);
         material.ChargeCopy(4096L + (long)(source.Fonts.Count + source.Attachments.Count) * 256, token);
         var mapping = new Dictionary<object, object>(OfdReferenceIdentity.Instance);
         using var payloads = OfdPayloadCloneSession.Create(context, token);
@@ -102,6 +104,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         Map(source.CustomTags, copy.CustomTags); Map(source.PreservedEntries, copy.PreservedEntries);
         Map(source.PreservedCommonDataElements, copy.PreservedCommonDataElements);
         Map(source.PreservedDocumentElements, copy.PreservedDocumentElements); Map(source.PreservedDocBodyElements, copy.PreservedDocBodyElements);
+        OfdCompositeGraph.CloneResources(source, copy, mapping, material, token, payloads);
         foreach (var page in source.Pages) { token.ThrowIfCancellationRequested(); copy.Pages.Add(Page(page)); }
         // Original-page identities are evidence even after removal. Their
         // detached clones never become new active pages or borrow source data.
@@ -112,7 +115,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
             token.ThrowIfCancellationRequested(); var clone = new OfdFontResource
             {
                 Id = font.Id, FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
-                Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = Bytes(font.Data)
+                Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = Bytes(font.Data), CollectionFaceIndex = font.CollectionFaceIndex
             };
             Map(font, clone); copy.Fonts.Add(clone);
         }
@@ -132,6 +135,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         Strings(source.PreservedCommonDataElements, copy.PreservedCommonDataElements);
         Strings(source.PreservedDocumentElements, copy.PreservedDocumentElements); Strings(source.PreservedDocBodyElements, copy.PreservedDocBodyElements);
         OfdNavigationCloner.Clone(source, copy, mapping, material, token, requireClosedMap: true);
+        copy.AnnotationIndexSource = source.AnnotationIndexSource?.Clone(source, copy, material, token);
         copy.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, token, requireClosedMap: true);
         copy.SourceIdentity = source.SourceIdentity?.CloneFor(copy, mapping, material, token, requireClosedMap: true);
         // Both callers retain this graph on their synchronous private stack

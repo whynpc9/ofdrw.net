@@ -39,6 +39,9 @@ internal sealed partial class OfdModelMaterialization
         ReserveReadModel(32768, token); ReadWriterAdmissions++;
     }
     internal long ReadParserAdmissions { get; private set; }
+    internal long ReadAnnotationFileAdmissions { get; private set; }
+    internal void ReadAnnotationFileAdmissionCheckpoint()
+    { if (IsControlledRead) ReadAnnotationFileAdmissions++; }
     internal long ReadAnnotationClones { get; private set; }
     internal long ReadNumericParses { get; private set; }
 
