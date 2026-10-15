@@ -56,7 +56,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             .ConfigureAwait(false);
 
         var orderedPages = package.Pages.OrderBy(x => x.Index).ToList();
-        var selected = OfdPageSelection.Normalize(orderedPages.Count, pages);
+        var selected = OfdPageSelection.Normalize(orderedPages.Count, pages, cancellationToken);
 
         using var document = new PdfDocument();
         foreach (var selectedIndex in selected)

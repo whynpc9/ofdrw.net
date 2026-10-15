@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "dotnet",
+    "build",
+    "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/harness/OwnedDiagnostics.csproj",
+    "-c",
+    "Release",
+    "--disable-build-servers",
+    "-m:1",
+    "/nodeReuse:false",
+    "/p:UseSharedCompilation=false"
+  ],
+  "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net",
+  "environment": {
+    "DOTNET_CLI_HOME": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic/dotnet-home",
+    "DOTNET_SKIP_FIRST_TIME_EXPERIENCE": "1",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+  },
+  "exit_code": 0,
+  "log": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r3/diagnostic-build.log"
+}
