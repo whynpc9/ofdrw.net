@@ -1,0 +1,17 @@
+Typed clips and composites / 强类型图形
+One definition, two placements; red overflow is clipped
+共享组合 / shared vector
+共享组合 / shared vector
+Proportional Wiim: ABC xyz
+Proportional Wiim: ABC xyz
+Only the left placement moves (+8,+6) after save
+Original multi-M compound table reference
+项目 / Item数量 / Count
+Alpha128
+Page 1 / 第一页Clips: one Path Area per Clip; successive intersection
+Clipped text 中文 ABC xyz
+Intentional text crop at 38 mm
+Image: explicit CTM + Area CTM + two Clip intersection
+NonZero: same winding, solidEvenOdd: visible hole
+局部批注 / local annotation once
+Page 2 / 第二页

@@ -163,10 +163,28 @@ internal sealed class OfdSourceIdentity
                     if (storage is not null) budget.AdoptReadString(key, storage, token);
                     result.resources.Add(key, owner);
                 }
+                if (node.Name.LocalName == "CompositeGraphicUnit" && package.CompositeResources is { } compositeResources)
+                {
+                    var definition = compositeResources.Items.SingleOrDefault(r => r.SourceEntryPath == path && r.Id == owner.Id);
+                    if (definition is not null)
+                    {
+                        Bind(definition, node, owners);
+                        var children = node.Elements().ToArray();
+                        if (children.Length != definition.Elements.Count) throw new InvalidDataException("Composite definition slots changed.");
+                        for (var i = 0; i < children.Length; i++)
+                        {
+                            var graphic = definition.Elements[i]; var child = children[i]; Bind(graphic, child, owners);
+                            result.graphicIds.Add(graphic, new GraphicIds(CaptureIds(child, budget, token), CaptureIds(child.Element(resourceNs + "Clips"), budget, token)));
+                            if (graphic is OfdImageElement image && result.TryResource("MultiMedia", child.Attribute("ResourceID")?.Value, out var media)) result.images.Add(image, media);
+                        }
+                    }
+                }
                 if (node.Name.LocalName == "Font" && fontsById.TryGetValue(owner.Number, out var matchedFonts))
                     foreach (var font in matchedFonts) result.models.Add(font, owner);
             }
         }
+        foreach (var graphic in package.CompositeResources?.Items.SelectMany(r => r.Elements).OfType<OfdImageElement>() ?? Enumerable.Empty<OfdImageElement>())
+            if (!result.images.ContainsKey(graphic) && result.TryResource("MultiMedia", graphic.ResourceId, out var media)) result.images.Add(graphic, media);
         foreach (var path in contentPaths)
             if (package.PreservedEntries.ContainsKey(path)) Register(path, Read(path), "Page");
         foreach (var page in package.Pages)
@@ -174,6 +192,71 @@ internal sealed class OfdSourceIdentity
             if (page.SourceEntryPath is string path) BindGraphics(path, page.Elements);
             foreach (var template in page.Templates)
                 if (template.BaseLocation is string location) BindGraphics<OfdElement>(budget.ResolvePath(documentPath, location, token), template.Elements);
+        }
+        // Strict editing admission must close the same authenticated resource scope.
+        // Permissively rendered legacy annotations remain unclaimed when it cannot.
+        foreach (var page in package.Pages)
+        {
+            var collection = page.Annotations;
+            if (collection is null) continue;
+            budget.ChargeCopy(256L + collection.Items.Count * 16L, token); var admitted = new OfdAnnotationCollection();
+            foreach (var annotation in collection.Items)
+            {
+                token.ThrowIfCancellationRequested();
+                var closed = true;
+                foreach (var graphic in annotation.Appearance.Elements)
+                {
+                    budget.Structure.Reference();
+                    if (graphic is OfdTextElement text && (!result.TryResource("Font", text.FontResourceId, out _) ||
+                        !fontsById.ContainsKey(ParseId(text.FontResourceId)))) closed = false;
+                    if (graphic is OfdImageElement image && !result.TryResource("MultiMedia", image.ResourceId, out _)) closed = false;
+                }
+                if (closed) admitted.Items.Add(annotation); else page.AnnotationOwnership.HasUnclaimedSource = true;
+            }
+            if (admitted.Items.Count != collection.Items.Count)
+                page.AnnotationOwnership.Bind(page, admitted.Items.Count == 0 ? null : admitted, budget, token);
+        }
+        budget.ReserveReadModel(512, token);
+        var annotationEntries = new Dictionary<string, (XDocument Xml, Dictionary<XElement, int> Ordinals, XElement[] Slots)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var page in package.Pages)
+        foreach (var annotation in page.AnnotationOwnership.Original?.Items ?? Enumerable.Empty<OfdAnnotation>())
+        {
+            var source = annotation.Source!;
+            if (!annotationEntries.TryGetValue(source.Entry, out var entry))
+            {
+                var annotationDocument = Read(source.Entry); budget.ReserveReadModel(512, token);
+                var ordinals = new Dictionary<XElement, int>(); var ordinal = 0;
+                foreach (var descendant in annotationDocument.Root!.DescendantsAndSelf())
+                { token.ThrowIfCancellationRequested(); budget.ChargeCopy(128, token); ordinals.Add(descendant, ordinal++); }
+                budget.ChargeCopy(16L * annotationDocument.Root.Elements().Count(), token);
+                entry = (annotationDocument, ordinals, annotationDocument.Root.Elements().ToArray()); annotationEntries.Add(source.Entry, entry);
+            }
+            var root = entry.Xml.Root!;
+            if (!result.entries.TryGetValue(source.Entry, out var entrySlots))
+            {
+                budget.ReserveReadModel(512, token);
+                entrySlots = new Dictionary<int, Owner>(); result.entries.Add(source.Entry, entrySlots);
+                result.rootNames.Add(source.Entry, root.Name); result.trustedEntries.Add(source.Entry);
+            }
+            var node = entry.Slots[source.Slot];
+            AnnotationBind(annotation, node);
+            var appearance = node.Element(node.Name.Namespace + "Appearance")!;
+            budget.ReserveReadModel(256L + 32L * appearance.Elements().Count(), token);
+            var children = appearance.Elements().ToArray();
+            for (var index = 0; index < children.Length; index++)
+            {
+                var graphic = annotation.Appearance.Elements[index]; var child = children[index];
+                AnnotationBind(graphic, child);
+                result.graphicIds.Add(graphic, new GraphicIds(CaptureIds(child, budget, token), CaptureIds(child.Element(child.Name.Namespace + "Clips"), budget, token)));
+                if (graphic is OfdImageElement image && result.TryResource("MultiMedia", child.Attribute("ResourceID")?.Value, out var media)) result.images.Add(image, media);
+            }
+            void AnnotationBind(object model, XElement sourceNode)
+            {
+                token.ThrowIfCancellationRequested(); budget.ChargeCopy(256, token);
+                var owner = new Owner(source.Entry, sourceNode.Name, entry.Ordinals[sourceNode], sourceNode.Attribute("ID")!.Value, true);
+                if (result.active.ContainsKey(owner.Number)) throw new InvalidDataException("Annotation active ID admission is ambiguous.");
+                result.active.Add(owner.Number, owner); entrySlots.Add(owner.Slot, owner); result.models.Add(model, owner);
+            }
         }
         return result;
 
@@ -197,7 +280,8 @@ internal sealed class OfdSourceIdentity
                 var definitionRole = Accepted(node.Name.Namespace, sourceNs) && IsDefinition(node, xml.Root);
                 if (definitionRole && id is not null && ParseId(id) == 0) throw new InvalidDataException("Unsupported non-positive or non-numeric source document-unit ID.");
                 var activeDefinition = definitionRole && ParseId(id) != 0;
-                var opaqueRoot = node.Parent?.Name.LocalName == "Layer" && node.Parent.Parent?.Name.LocalName == "Content" && node.Parent.Parent.Parent == xml.Root;
+                var opaqueRoot = node.Parent?.Name.LocalName == "Layer" && node.Parent.Parent?.Name.LocalName == "Content" && node.Parent.Parent.Parent == xml.Root ||
+                    xml.Root.Name.LocalName == "Res" && node.Parent?.Name == sourceNs + "CompositeGraphicUnit" && node.Parent.Parent?.Name == sourceNs + "CompositeGraphicUnits" && node.Parent.Parent.Parent == xml.Root;
                 if (!activeDefinition && !opaqueRoot) continue;
                 id ??= string.Empty;
                 budget.ReserveReadModel(2048, token);
@@ -259,7 +343,9 @@ internal sealed class OfdSourceIdentity
         {
             var container = node.Name.LocalName switch
             { "Font" => "Fonts", "MultiMedia" => "MultiMedias", "DrawParam" => "DrawParams", "ColorSpace" => "ColorSpaces", "CompositeGraphicUnit" => "CompositeGraphicUnits", _ => null };
-            return container is not null && node.Parent?.Name == ns + container && node.Parent.Parent == root;
+            if (container is not null) return node.Parent?.Name == ns + container && node.Parent.Parent == root;
+            if (node.Name.Namespace != ns || node.Name.LocalName is not ("TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;
+            return node.Parent?.Name == ns + "CompositeGraphicUnit" && node.Parent.Parent?.Name == ns + "CompositeGraphicUnits" && node.Parent.Parent.Parent == root;
         }
         if (node.Name.LocalName == "Layer" && node.Parent?.Name != ns + "Content") return false;
         if (root.Name.LocalName != "Page" || node.Name.LocalName is not ("Layer" or "PageBlock" or "TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;
@@ -400,7 +486,11 @@ internal sealed class OfdSourceIdentity
                         throw new InvalidDataException("Preserved source gained an unauthenticated active definition.");
                     continue;
                 }
-                var currentActive = Accepted(node.Name.Namespace, xml.Root.Name.Namespace) && IsDefinition(node, xml.Root) && ParseId(node.Attribute("ID")?.Value) != 0;
+                var currentActive = Accepted(node.Name.Namespace, xml.Root.Name.Namespace) &&
+                    (IsDefinition(node, xml.Root) || xml.Root.Name.LocalName == "PageAnnot" &&
+                     (node.Parent == xml.Root && node.Name == xml.Root.Name.Namespace + "Annot" ||
+                      node.Parent?.Name == xml.Root.Name.Namespace + "Appearance" && node.Parent.Parent?.Name == xml.Root.Name.Namespace + "Annot" && node.Parent.Parent.Parent == xml.Root &&
+                      node.Name.LocalName is "TextObject" or "ImageObject" or "PathObject")) && ParseId(node.Attribute("ID")?.Value) != 0;
                 if (currentActive != owner.ActiveDefinition) throw new InvalidDataException("Preserved definition role changed.");
                 if (node.Name != owner.Kind || (node.Attribute("ID")?.Value ?? string.Empty) != owner.Id)
                     throw new InvalidDataException("Preserved source identity is stale.");

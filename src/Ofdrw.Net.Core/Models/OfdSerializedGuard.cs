@@ -88,6 +88,7 @@ internal sealed partial class OfdSerializedGuard
             // IEEE bits preserve negative zero and NaN payload changes; dates
             // include their offset, which DateTimeOffset.Equals alone ignores.
             if (value is double number) value = BitConverter.DoubleToInt64Bits(number);
+            else if (value is DateTime civil) value = (civil.Ticks, civil.Kind);
             else if (value is DateTimeOffset date) value = (date.Ticks, date.Offset.Ticks);
             material.ChargeWork(value is string text ? 2L * text.Length : 16, token);
             if (!comparing) { material.ChargeCopy(128, token); entries.Add(new Entry(role, value, identity)); }

@@ -17,8 +17,11 @@ internal static class OfdModelCloner
             material = new OfdModelMaterialization(new OfdModelLimits());
             var input = new OfdDocumentPackage(); input.Pages.Add(source); material.InspectStorage(input, cancellationToken);
         }
-        cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1);
-        if (mapping is not null) material.ChargeCopy(1024L + (long)(source.Elements.Count + source.AnnotationAppearances.Count + source.Templates.Count + source.PreservedPageElements.Count) * IntPtr.Size * 2, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (mapping is null) material.ChargeCopy(256, cancellationToken);
+        var cloneMap = mapping ?? new Dictionary<object, object>();
+        material.Structure.Node(1);
+        material.ChargeCopy(1024L + (long)(source.Elements.Count + source.AnnotationAppearances.Count + source.Templates.Count + source.PreservedPageElements.Count) * IntPtr.Size * 2, cancellationToken);
         var page = new OfdPage
         {
             Id = keepSourcePath ? source.Id : null,
@@ -26,26 +29,28 @@ internal static class OfdModelCloner
             Index = source.Index, XMillimeters = source.XMillimeters, YMillimeters = source.YMillimeters,
             WidthMillimeters = source.WidthMillimeters, HeightMillimeters = source.HeightMillimeters
         };
-        foreach (var element in source.Elements) page.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping, payloads: payloads));
+        foreach (var element in source.Elements) page.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: cloneMap, payloads: payloads));
         foreach (var template in source.Templates)
         {
             cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(2);
-            if (mapping is not null) material.ChargeCopy(256L + (long)template.Elements.Count * IntPtr.Size * 2, cancellationToken);
+            material.ChargeCopy(256L + (long)template.Elements.Count * IntPtr.Size * 2, cancellationToken);
             var clone = new OfdTemplateContent
             {
                 TemplateId = template.TemplateId, ZOrder = template.ZOrder, BaseLocation = template.BaseLocation
             };
-            foreach (var element in template.Elements) clone.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping, payloads: payloads));
+            foreach (var element in template.Elements) clone.Elements.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: cloneMap, payloads: payloads));
             page.Templates.Add(clone);
-            if (mapping is not null) { mapping.Add(template, clone); mapping.Add(template.Elements, clone.Elements); }
+            { cloneMap.Add(template, clone); cloneMap.Add(template.Elements, clone.Elements); }
         }
-        foreach (var element in source.AnnotationAppearances) page.AnnotationAppearances.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: mapping, payloads: payloads));
+        foreach (var element in source.AnnotationAppearances) page.AnnotationAppearances.Add(CloneElement(element, clonePayloads: clonePayloads, material: material, cancellationToken: cancellationToken, mapping: cloneMap, payloads: payloads));
         page.PreservedPageElements.AddRange(source.PreservedPageElements);
-        if (mapping is not null)
         {
-            mapping.Add(source, page); mapping.Add(source.Elements, page.Elements); mapping.Add(source.AnnotationAppearances, page.AnnotationAppearances);
-            mapping.Add(source.Templates, page.Templates); mapping.Add(source.PreservedPageElements, page.PreservedPageElements);
+            cloneMap.Add(source, page); cloneMap.Add(source.Elements, page.Elements); cloneMap.Add(source.AnnotationAppearances, page.AnnotationAppearances);
+            cloneMap.Add(source.Templates, page.Templates); cloneMap.Add(source.PreservedPageElements, page.PreservedPageElements);
         }
+        if (keepSourcePath || source.Annotations is not null || source.AnnotationOwnership.Original is not null)
+            OfdAnnotationCloner.Clone(source, page, cloneMap, clonePayloads, material, cancellationToken, payloads);
+        else source.AnnotationOwnership.Validate(source, material, cancellationToken);
         return page;
     }
 
@@ -98,10 +103,15 @@ internal static class OfdModelCloner
                 result = new OfdPathElement
                 {
                     AbbreviatedData = path.AbbreviatedData, Transform = Matrix(path.Transform),
-                    LineWidthMillimeters = path.LineWidthMillimeters, Stroke = path.Stroke, Fill = path.Fill,
+                    FillRule = path.FillRule, LineWidthMillimeters = path.LineWidthMillimeters, Stroke = path.Stroke, Fill = path.Fill,
                     StrokeColor = path.StrokeColor, FillColor = path.FillColor,
                     SourceXml = CloneXml(path.SourceXml, targetNamespace, material, cancellationToken)
                 };
+                break;
+            case OfdCompositeElement composite:
+                if (mapping is null || !mapping.TryGetValue(composite.Resource, out var resource))
+                    throw new NotSupportedException("Composite cloning requires the package resource closure.");
+                result = new OfdCompositeElement { Resource = (OfdCompositeResource)resource, Transform = Matrix(composite.Transform), SourceXml = composite.SourceXml };
                 break;
             case OfdRawElement raw:
                 result = new OfdRawElement { LocalName = raw.LocalName, Xml = CloneXml(raw.Xml, targetNamespace, material, cancellationToken) ?? string.Empty };
@@ -118,6 +128,7 @@ internal static class OfdModelCloner
         result.WidthMillimeters = source.WidthMillimeters;
         result.HeightMillimeters = source.HeightMillimeters;
         mapping?.Add(source, result);
+        OfdClipCloner.Clone(source, result, mapping, material, cancellationToken, clonePayloads, payloads);
         return result;
         double[]? Matrix(double[]? value)
         {

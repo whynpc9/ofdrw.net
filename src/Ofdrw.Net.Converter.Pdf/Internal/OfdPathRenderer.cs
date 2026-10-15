@@ -40,7 +40,7 @@ internal static class OfdPathRenderer
         try
         {
             var tokens = Tokenize(element.AbbreviatedData);
-            var path = new XGraphicsPath { FillMode = OfdPathStyle.EvenOdd(element) ? XFillMode.Alternate : XFillMode.Winding };
+            var path = new XGraphicsPath { FillMode = (element.FillRule is { } rule ? rule == OfdFillRule.EvenOdd : OfdPathStyle.EvenOdd(element)) ? XFillMode.Alternate : XFillMode.Winding };
             // Keep path geometry local, so affine transforms affect both geometry
             // and stroke outlines. BuildClip continues to flatten its own CTM.
             var local = new OfdPathElement { AbbreviatedData = element.AbbreviatedData };
@@ -155,7 +155,8 @@ internal static class OfdPathRenderer
                                 return false;
                             }
 
-                            _path.StartFigure();
+                            var moved = Transform(point);
+                            _path.AddMove(moved.X, moved.Y);
                             _current = point;
                             _figureStart = point;
                             _command = relative ? 'l' : 'L';

@@ -67,7 +67,7 @@ internal static class OfdGraphicXmlContract
 
     internal static bool IsVisible(OfdElement element)
     {
-        var xml = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, _ => null };
+        var xml = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdCompositeElement composite => composite.SourceXml, _ => null };
         if (string.IsNullOrWhiteSpace(xml)) return true;
         return XElement.Parse(xml!).Attribute("Visible")?.Value.ToLowerInvariant() is not ("false" or "0");
     }
