@@ -19,6 +19,7 @@ using PdfSharpCore.Pdf;
 using PdfSharpCore.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Processing;
 
 namespace Ofdrw.Net.Converter.Pdf.Converters;
@@ -438,8 +439,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
     }
 
-    private static void DrawImage(XGraphics graphics, OfdPage page, OfdImageElement image, long maximumPixels, OfdModelMaterialization material, CancellationToken cancellationToken)
+    internal static void DrawImage(XGraphics graphics, OfdPage page, OfdImageElement image, long maximumPixels, OfdModelMaterialization material, CancellationToken cancellationToken,
+        Func<byte[], Image<Rgba32>>? decode = null)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ValidateImage(image.Data, maximumPixels);
         var state = graphics.Save();
         try
@@ -457,15 +460,17 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             var data = image.Data;
             if (image.Alpha < 255)
             {
-                using var pixels = Image.Load<Rgba32>(data);
+                using var pixels = decode is null ? Image.Load<Rgba32>(data) : decode(data);
+                cancellationToken.ThrowIfCancellationRequested();
                 pixels.Mutate(context => context.Opacity(Math.Max(0, image.Alpha) / 255f));
                 using var png = new MemoryStream();
-                pixels.SaveAsPng(png);
+                // RGB PNG metadata can otherwise discard the alpha added by Opacity.
+                pixels.Save(png, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });
                 data = png.ToArray();
             }
-            using var xImage = XImage.FromStream(() => new MemoryStream(data, writable: false));
-            var interpolate = OfdImageRenderingHints.ReadPdfInterpolate(image);
-            if (interpolate.HasValue) xImage.Interpolate = interpolate.Value;
+            var interpolate = OfdImageRenderingHints.ReadPdfInterpolate(image) ?? true;
+            using var xImage = XImage.FromImageSource(new EncodedBitmapImageSource(data, maximumPixels, cancellationToken, decode, interpolate));
+            xImage.Interpolate = interpolate;
             graphics.DrawImage(xImage, 0, 0, 1, 1);
         }
         finally
