@@ -86,6 +86,10 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 - GM/T 0099 加密包（ofdrw-crypto；本仓库未实现）
 - OFD-A 档案子集的加工细则（GB/T 42133；ofdrw-archive）。电子病历在档案方向上仍引用它，轮廓差异见第 11–14 课
 
+## 转换 API 实操
+
+- [OFD 与 PNG/JPEG 图片转换](15-image-conversion.md)：指定页/ppm、居中导入、预算与原子输出。
+
 ## 相关文档
 
 - [SES V1/V4 dev/interop 测试容器](16-ses-dev-interop.md)：独立可选包，显式测试自签自验及其边界
