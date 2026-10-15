@@ -124,7 +124,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
             token.ThrowIfCancellationRequested(); var clone = new OfdFontResource
             {
                 Id = font.Id, FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
-                Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = Bytes(font.Data)
+                Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = Bytes(font.Data), CollectionFaceIndex = font.CollectionFaceIndex
             };
             Map(font, clone); copy.Fonts.Add(clone);
         }

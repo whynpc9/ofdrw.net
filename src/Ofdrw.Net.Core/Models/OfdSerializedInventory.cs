@@ -53,7 +53,7 @@ internal static class OfdSerializedInventory
         {
             Own("font", font); S("fontId", font.Id); S("fontName", font.FontName); S("family", font.FamilyName);
             S("charset", font.Charset); S("fileName", font.FileName); P(font.FileName);
-            V("bold", font.Bold); V("italic", font.Italic); sink.Bytes("fontBytes", font.Data);
+            V("collectionFace", font.CollectionFaceIndex); V("bold", font.Bold); V("italic", font.Italic); sink.Bytes("fontBytes", font.Data);
         }
         Container("attachments", package.Attachments, package.Attachments.Count);
         foreach (var attachment in package.Attachments)

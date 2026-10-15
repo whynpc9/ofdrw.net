@@ -63,3 +63,10 @@ Unicode 17.0.0 Character Database (DerivedBidiClass.txt), licensed under
 Unicode-3.0. The source URL/SHA-256 are recorded in UnicodeFontSubsetProfile.cs;
 `docs/licenses/UNICODE-LICENSE.txt` accompanies every NuGet artifact.
 
+
+The optional producer-event adapter has its own SkiaSharp dependency. Default
+Layout/Converter products do not depend on it. Skia native binaries include
+additional third-party notices shipped by their NativeAssets packages; see
+`THIRD-PARTY-NOTICES.txt` in the resolved native package. NativeAssets
+macOS/Win32 are SkiaSharp transitive runtime dependencies. No custom Skia build
+or native bridge is redistributed by this adapter.

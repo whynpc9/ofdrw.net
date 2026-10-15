@@ -1,3 +1,5 @@
+> 本归档保留排除前运行源码 17dea14 的历史验收，不作为排除版当前全套计数。人类已选择本轮排除 Issue11；当前分支无口令包源码或其接受 head 祖先。其余产品源码、字体、页面字节未变，Preview 原基线保留。排除版重测、祖先及范围差异见后续 exclusion-readback.json。
+
 # 首轮集成验收证据
 
 运行源码：`17dea14282ee58c00051e36a3257449102883d7b`。完整范围、限制和每份产物的实际基线见 [acceptance.json](acceptance.json)，环境见 [environment.json](environment.json)。这是合并前证据，不是 NuGet 发布记录。

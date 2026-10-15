@@ -60,7 +60,7 @@ public static class OfdDocumentSplitter
                 {
                     material.ChargeCopy(256L + font.Data.LongLength, cancellationToken);
                     selected.Fonts.Add(new OfdFontResource { Id = font.Id, FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
-                        Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray() });
+                        Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray(), CollectionFaceIndex = font.CollectionFaceIndex });
                 }
                 selected.Attachments.Clear(); OfdDocumentMerger.CopyAttachments(source, selected, cancellationToken, material);
                 var typedPageMap = new Dictionary<object, object>();
