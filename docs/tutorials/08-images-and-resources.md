@@ -102,6 +102,10 @@ page.Elements.Add(new OfdImageElement
 - **把 JPEG 标成 PNG**。`Format` 与真实编码不一致时部分阅读器解码失败。
 - **删除页面后留下孤儿图片**。本仓库写包时会修剪仅被删页引用的图像；手工改 ZIP 容易漏。
 
+## 图片进出 API
+
+按页导出 PNG/JPEG，以及一图一页等比居中导入，见 [转换实操](15-image-conversion.md)。
+
 ## 共享组合资源
 
 `OfdCompositeResource` 是资源定义，`OfdCompositeElement` 是放置实例。定义加入 `package.CompositeResources.Items` 一次，多个实例引用同一个资源对象；Writer 为定义、子图元和各实例分别规划 ID，不修改调用方 ID。

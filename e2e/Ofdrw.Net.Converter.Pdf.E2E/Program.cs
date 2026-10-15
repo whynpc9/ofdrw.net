@@ -4,6 +4,8 @@ using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Builders;
+using Ofdrw.Net.Layout.Editing;
+
 using Ofdrw.Net.Layout;
 using Ofdrw.Net.Layout.Graphics;
 using Ofdrw.Net.Packaging;
@@ -191,6 +193,43 @@ Console.WriteLine($"[E2E] Source OFD:    {sourceOfdPath}");
 Console.WriteLine($"[E2E] Converted PDF: {convertedPdfPath}");
 Console.WriteLine($"[E2E] Roundtrip OFD: {roundtripOfdPath}");
 Console.WriteLine($"[E2E] Roundtrip page count: {roundtrip.Pages.Count}");
+// Consume the new public image APIs from the packed assembly, not a project reference.
+var imageExportPath = Path.Combine(outputDir, "image-api.png");
+await using (var input = File.OpenRead(sourceOfdPath))
+await using (var output = File.Create(imageExportPath))
+    await new OfdToImageConverter(new Ofdrw.Net.Converter.Pdf.OfdToImageOptions { PixelsPerMillimeter = 2 }).ConvertAsync(input, output);
+await AssertImageHasContentAsync(imageExportPath);
+var imageImportPath = Path.Combine(outputDir, "image-api.ofd");
+await using (var input = File.OpenRead(imageExportPath))
+await using (var output = File.Create(imageImportPath))
+    await new ImageToOfdConverter(new Ofdrw.Net.Converter.Pdf.ImageToOfdOptions
+    { PixelsPerMillimeter = 2, PageSize = new OfdPageSize { WidthMillimeters = 220, HeightMillimeters = 307 } }).ConvertAsync(input, output);
+await using (var input = File.OpenRead(imageImportPath))
+{
+    var imported = await reader.ReadAsync(input);
+    var imagePage = imported.Pages.Single(); var image = imagePage.Elements.OfType<OfdImageElement>().Single();
+    if (image.XMillimeters != 5 || image.YMillimeters != 5 || image.WidthMillimeters != 210 || image.HeightMillimeters != 297)
+        throw new InvalidOperationException("Packed image API lost natural-size centering geometry.");
+}
+Console.WriteLine("[E2E] Packed PNG export and image import retained 210×297 mm content centered on 220×307 mm page.");
+// The installed Layout/Reader/Packaging assemblies must compose with the new image APIs.
+var imageToolsPath = Path.Combine(outputDir, "image-tools.ofd");
+await using (var input = File.OpenRead(imageImportPath))
+{
+    var imported = await reader.ReadAsync(input);
+    OfdWatermark.AddImage(imported, [0], File.ReadAllBytes(Path.Combine(repoRoot, "e2e/Ofdrw.Net.DocumentTools.E2E/mark.png")),
+        "image/png", new OfdWatermarkOptions { XMillimeters = 1, YMillimeters = 1, WidthMillimeters = 8, HeightMillimeters = 4 }, alpha: 255);
+    var split = OfdDocumentSplitter.Split(imported, [0]);
+    if (split.Pages.Single().Elements.OfType<OfdImageElement>().Count() != 2)
+        throw new InvalidOperationException("Packed watermark/split lost image resource ownership.");
+    await using var target = File.Create(imageToolsPath); await writer.WriteAsync(split, target);
+}
+var imageToolsPng = Path.Combine(outputDir, "image-tools.png");
+await using (var input = File.OpenRead(imageToolsPath))
+await using (var output = File.Create(imageToolsPng))
+    await new OfdToImageConverter(new Ofdrw.Net.Converter.Pdf.OfdToImageOptions { PixelsPerMillimeter = 2 }).ConvertAsync(input, output);
+await AssertImageHasContentAsync(imageToolsPng);
+Console.WriteLine("[E2E] Packed image import -> image watermark -> split -> PNG retained both image objects.");
 Console.WriteLine("[E2E] Running upstream sample validation...");
 
 foreach (var sampleOfd in Directory.EnumerateFiles(testDataDir, "*.ofd").OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
