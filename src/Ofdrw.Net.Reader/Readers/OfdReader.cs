@@ -1125,9 +1125,8 @@ public sealed class OfdReader : IOfdReader
                         SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken)
                     };
 
-                    if (mediaMap.TryGetValue(resourceId, out var mediaFile))
+                    if (mediaMap.TryGetValue(resourceId, out var mediaPath))
                     {
-                        var mediaPath = mediaFile.Contains('/') ? mediaFile : material.ResolvePath(pageResPath, mediaFile, cancellationToken);
                         if (archive.TryGetBytes(mediaPath, out var bytes))
                         {
                             image.Data = bytes;
