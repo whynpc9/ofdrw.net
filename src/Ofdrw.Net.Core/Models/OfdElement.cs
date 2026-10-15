@@ -5,11 +5,16 @@ public enum OfdElementType
     Text,
     Image,
     Path,
-    Raw
+    Raw,
+    /// <summary>Placement of a shared composite vector resource.</summary>
+    Composite
 }
 
 public abstract class OfdElement
 {
+    internal OfdClipOwnership ClipOwnership { get; } = new();
+    /// <summary>Typed path clips. Null preserves an unclaimed source; an empty collection clears known clips.</summary>
+    public OfdClipCollection? Clips { get => ClipOwnership.Value; set => ClipOwnership.Set(value); }
     public OfdElementType Type { get; protected set; }
 
     public string? ObjectId { get; set; }
@@ -122,6 +127,8 @@ public sealed class OfdImageElement : OfdElement
 /// </summary>
 public sealed class OfdPathElement : OfdElement
 {
+    /// <summary>Null preserves a source Rule; newly constructed paths default to NonZero.</summary>
+    public OfdFillRule? FillRule { get; set; }
     public OfdPathElement()
     {
         Type = OfdElementType.Path;

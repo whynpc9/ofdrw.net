@@ -1,0 +1,377 @@
+{
+  "schemaVersion": 1,
+  "retrievedAtUtc": "2026-10-07T15:51:39+00:00",
+  "purpose": "Issue 12 SES dev/interop design source evidence. Source inspection only; not reader interoperability, production validation, legal-effect or timestamp-authority evidence.",
+  "lineNumbering": "One-based physical source lines; BOM is excluded from text decoding but retained in original downloaded bytes and SHA-256.",
+  "downloadMethod": "curl --fail --silent --show-error --location; raw source bytes saved without rewriting",
+  "fileCount": 14,
+  "totalSourceBytes": 72860,
+  "sources": [
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-sign/src/main/java/org/ofdrw/sign/signContainer/SESV1Container.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-sign/src/main/java/org/ofdrw/sign/signContainer/SESV1Container.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-sign/src/main/java/org/ofdrw/sign/signContainer/SESV1Container.java",
+      "sha256": "fc05a584b730f5ce852be55787a67d4a2a29dedba7447c5a0d73ee5f06cf0254",
+      "bytes": 4773,
+      "lineCount": 148,
+      "checkedLineRanges": [
+        {
+          "start": 69,
+          "end": 81,
+          "finding": "SM3 digest and SM2-with-SM3 algorithm OID",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-sign/src/main/java/org/ofdrw/sign/signContainer/SESV1Container.java#L69-L81"
+        },
+        {
+          "start": 99,
+          "end": 123,
+          "finding": "Signature.xml bytes are hashed; V1 timeInfo is raw UTF8 yyyy-MM-dd HH:mm:ss local time; SM2 signs DER TBS",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-sign/src/main/java/org/ofdrw/sign/signContainer/SESV1Container.java#L99-L123"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-sign/src/main/java/org/ofdrw/sign/signContainer/SESV4Container.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-sign/src/main/java/org/ofdrw/sign/signContainer/SESV4Container.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-sign/src/main/java/org/ofdrw/sign/signContainer/SESV4Container.java",
+      "sha256": "8446e11fa2b8c42ce7fef64613037e88ce17ccecd9fb6db4bc41e59e601fb384",
+      "bytes": 5909,
+      "lineCount": 194,
+      "checkedLineRanges": [
+        {
+          "start": 130,
+          "end": 160,
+          "finding": "V4 GeneralizedTime, SM3 XML digest, DER TBS signing, outer certificate and optional timestamp hook",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-sign/src/main/java/org/ofdrw/sign/signContainer/SESV4Container.java#L130-L160"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/TBS_Sign.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/TBS_Sign.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/TBS_Sign.java",
+      "sha256": "6c8f01224c5c37e2f0d4d232c2e352bbd81ad739ec02a365209b124c4c66c8af",
+      "bytes": 4781,
+      "lineCount": 189,
+      "checkedLineRanges": [
+        {
+          "start": 75,
+          "end": 103,
+          "finding": "V1 fields and upstream OCTET STRING compatibility for time/hash",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/TBS_Sign.java#L75-L103"
+        },
+        {
+          "start": 178,
+          "end": 187,
+          "finding": "Seven-field V1 TBS DER order including certificate and algorithm",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/TBS_Sign.java#L178-L187"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/TBS_Sign.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/TBS_Sign.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/TBS_Sign.java",
+      "sha256": "39d2f54f337a9ab36c619594959bcc6870b834acc67b76e60d23d3a54a32914e",
+      "bytes": 4053,
+      "lineCount": 165,
+      "checkedLineRanges": [
+        {
+          "start": 64,
+          "end": 77,
+          "finding": "V4 field decoding and optional explicitly tagged extension",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/TBS_Sign.java#L64-L77"
+        },
+        {
+          "start": 152,
+          "end": 164,
+          "finding": "Five required TBS fields; optional [0] EXPLICIT extension",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/TBS_Sign.java#L152-L164"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_Signature.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_Signature.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_Signature.java",
+      "sha256": "e79f63edd266f4e4956c70e088fda374cf93dc354c6281ae3df622046f0531a2",
+      "bytes": 2230,
+      "lineCount": 91,
+      "checkedLineRanges": [
+        {
+          "start": 35,
+          "end": 40,
+          "finding": "V1 outer sequence decoding",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_Signature.java#L35-L40"
+        },
+        {
+          "start": 84,
+          "end": 90,
+          "finding": "V1 outer sequence contains TBS and signature BIT STRING",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_Signature.java#L84-L90"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_Signature.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_Signature.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_Signature.java",
+      "sha256": "b2e8f25bc81fba2067a18e1efc474b3dbf532277149917aad6a29cc3f04a9152",
+      "bytes": 4210,
+      "lineCount": 157,
+      "checkedLineRanges": [
+        {
+          "start": 59,
+          "end": 71,
+          "finding": "V4 outer fields and optional timestamp decoding",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_Signature.java#L59-L71"
+        },
+        {
+          "start": 145,
+          "end": 156,
+          "finding": "V4 certificate and OID outside TBS; optional [0] EXPLICIT timestamp BIT STRING",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_Signature.java#L145-L156"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SESeal.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SESeal.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SESeal.java",
+      "sha256": "1c29bf649c33b12ccafa024ac8f1d64409a7c35352d1ea3038f56c48be899043",
+      "bytes": 2417,
+      "lineCount": 92,
+      "checkedLineRanges": [
+        {
+          "start": 34,
+          "end": 45,
+          "finding": "Upstream V1 seal decoding tolerates malformed signInfo; this tolerance is not an acceptance requirement",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SESeal.java#L34-L45"
+        },
+        {
+          "start": 85,
+          "end": 91,
+          "finding": "V1 seal DER contains sealInfo and nested signInfo",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SESeal.java#L85-L91"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SESeal.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SESeal.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SESeal.java",
+      "sha256": "be4ce5c1ed78c5d83210249a27af9d3b1d1a29811bf794b7258ac83ab57c3b61",
+      "bytes": 3375,
+      "lineCount": 133,
+      "checkedLineRanges": [
+        {
+          "start": 52,
+          "end": 58,
+          "finding": "V4 seal fields",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SESeal.java#L52-L58"
+        },
+        {
+          "start": 124,
+          "end": 132,
+          "finding": "V4 four-element seal DER order",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SESeal.java#L124-L132"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_ESPropertyInfo.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_ESPropertyInfo.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_ESPropertyInfo.java",
+      "sha256": "bc1564d68155cde0721529cc4560fc8dfc029bff6c06b2bcf209b85336ede7ed",
+      "bytes": 4199,
+      "lineCount": 176,
+      "checkedLineRanges": [
+        {
+          "start": 61,
+          "end": 80,
+          "finding": "V1 certificate list and UTCTime fields with upstream GeneralizedTime compatibility",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_ESPropertyInfo.java#L61-L80"
+        },
+        {
+          "start": 165,
+          "end": 175,
+          "finding": "V1 six-element property DER order",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v1/SES_ESPropertyInfo.java#L165-L175"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_ESPropertyInfo.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_ESPropertyInfo.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_ESPropertyInfo.java",
+      "sha256": "e73af5743d68307c58918326390460dc8673bdd891859b52b975df7ec44d4c17",
+      "bytes": 4558,
+      "lineCount": 177,
+      "checkedLineRanges": [
+        {
+          "start": 15,
+          "end": 23,
+          "finding": "V4 certificate list discriminator values 1 and 2",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_ESPropertyInfo.java#L15-L23"
+        },
+        {
+          "start": 82,
+          "end": 91,
+          "finding": "V4 GeneralizedTime fields and certificate-list discriminator",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_ESPropertyInfo.java#L82-L91"
+        },
+        {
+          "start": 165,
+          "end": 176,
+          "finding": "V4 seven-element property DER order",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/main/java/org/ofdrw/gm/ses/v4/SES_ESPropertyInfo.java#L165-L176"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v1/SESealTest.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v1/SESealTest.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v1/SESealTest.java",
+      "sha256": "7b4cd8d9bf4259ef6adfced658fea38ee6cc1d91b0419c5d652498a83487cb08",
+      "bytes": 5159,
+      "lineCount": 138,
+      "checkedLineRanges": [
+        {
+          "start": 94,
+          "end": 109,
+          "finding": "V1 maker signs DER SEQUENCE of sealInfo, maker certificate and algorithm",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v1/SESealTest.java#L94-L109"
+        },
+        {
+          "start": 123,
+          "end": 136,
+          "finding": "V1 seal verification reconstructs the same signed sequence",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v1/SESealTest.java#L123-L136"
+        }
+      ]
+    },
+    {
+      "repository": "ofdrw/ofdrw",
+      "revision": "5fe9c4276c64e40b455e6ea649b695adf8a9a734",
+      "path": "ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v4/SESealTest.java",
+      "localPath": "artifacts/ses-interop/upstream/ofdrw/ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v4/SESealTest.java",
+      "url": "https://raw.githubusercontent.com/ofdrw/ofdrw/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v4/SESealTest.java",
+      "sha256": "1c0f47286f2d3aa410bafd1107af0a1d2c8345c0205b12399c56491bb95c8b29",
+      "bytes": 5360,
+      "lineCount": 130,
+      "checkedLineRanges": [
+        {
+          "start": 58,
+          "end": 75,
+          "finding": "V4 full-certificate list fixture and GeneralizedTime validity",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v4/SESealTest.java#L58-L75"
+        },
+        {
+          "start": 89,
+          "end": 99,
+          "finding": "V4 maker signs DER sealInfo only",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v4/SESealTest.java#L89-L99"
+        },
+        {
+          "start": 119,
+          "end": 127,
+          "finding": "V4 seal verification uses sealInfo encoding",
+          "sourceUrl": "https://github.com/ofdrw/ofdrw/blob/5fe9c4276c64e40b455e6ea649b695adf8a9a734/ofdrw-gm/src/test/java/org/ofdrw/gm/ses/v4/SESealTest.java#L119-L127"
+        }
+      ]
+    },
+    {
+      "repository": "bcgit/bc-csharp",
+      "revision": "release-2.6.2",
+      "path": "crypto/src/crypto/signers/SM2Signer.cs",
+      "localPath": "artifacts/ses-interop/upstream/bc-csharp/crypto/src/crypto/signers/SM2Signer.cs",
+      "url": "https://raw.githubusercontent.com/bcgit/bc-csharp/release-2.6.2/crypto/src/crypto/signers/SM2Signer.cs",
+      "sha256": "41fbcb389d484af42a65197325ec242af50922bd4db3c3c6c648233671972a40",
+      "bytes": 9325,
+      "lineCount": 321,
+      "checkedLineRanges": [
+        {
+          "start": 35,
+          "end": 53,
+          "finding": "Default StandardDsaEncoding and SM3Digest",
+          "sourceUrl": "https://github.com/bcgit/bc-csharp/blob/release-2.6.2/crypto/src/crypto/signers/SM2Signer.cs#L35-L53"
+        },
+        {
+          "start": 61,
+          "end": 112,
+          "finding": "Explicit ParametersWithID; default ID 1234567812345678; ID length and key initialization",
+          "sourceUrl": "https://github.com/bcgit/bc-csharp/blob/release-2.6.2/crypto/src/crypto/signers/SM2Signer.cs#L61-L112"
+        },
+        {
+          "start": 139,
+          "end": 181,
+          "finding": "Random nonce signing equation and DER signature encoding",
+          "sourceUrl": "https://github.com/bcgit/bc-csharp/blob/release-2.6.2/crypto/src/crypto/signers/SM2Signer.cs#L139-L181"
+        },
+        {
+          "start": 230,
+          "end": 263,
+          "finding": "Signature r/s bounds and public-key verification equation",
+          "sourceUrl": "https://github.com/bcgit/bc-csharp/blob/release-2.6.2/crypto/src/crypto/signers/SM2Signer.cs#L230-L263"
+        },
+        {
+          "start": 266,
+          "end": 302,
+          "finding": "ZA prefix and identity/curve/public-key binding",
+          "sourceUrl": "https://github.com/bcgit/bc-csharp/blob/release-2.6.2/crypto/src/crypto/signers/SM2Signer.cs#L266-L302"
+        }
+      ]
+    },
+    {
+      "repository": "bcgit/bc-csharp",
+      "revision": "release-2.6.2",
+      "path": "crypto/test/src/crypto/test/SM2SignerTest.cs",
+      "localPath": "artifacts/ses-interop/upstream/bc-csharp/crypto/test/src/crypto/test/SM2SignerTest.cs",
+      "url": "https://raw.githubusercontent.com/bcgit/bc-csharp/release-2.6.2/crypto/test/src/crypto/test/SM2SignerTest.cs",
+      "sha256": "b202a27731398c9ad05d8aaed995cafe31b4f235a3349a3204fffc8a9f81832f",
+      "bytes": 12511,
+      "lineCount": 299,
+      "checkedLineRanges": [
+        {
+          "start": 56,
+          "end": 68,
+          "finding": "Independent sm2p256v1 SM3 known-answer vector: ID, message, private scalar, nonce, r and s",
+          "sourceUrl": "https://github.com/bcgit/bc-csharp/blob/release-2.6.2/crypto/test/src/crypto/test/SM2SignerTest.cs#L56-L68"
+        },
+        {
+          "start": 84,
+          "end": 96,
+          "finding": "BC also tests SM2Signer on P-256; the SES test profile must explicitly restrict its curve",
+          "sourceUrl": "https://github.com/bcgit/bc-csharp/blob/release-2.6.2/crypto/test/src/crypto/test/SM2SignerTest.cs#L84-L96"
+        },
+        {
+          "start": 140,
+          "end": 166,
+          "finding": "Known-answer test explicitly supplies ID and test-only nonce and verifies DER signature",
+          "sourceUrl": "https://github.com/bcgit/bc-csharp/blob/release-2.6.2/crypto/test/src/crypto/test/SM2SignerTest.cs#L140-L166"
+        }
+      ]
+    }
+  ]
+}

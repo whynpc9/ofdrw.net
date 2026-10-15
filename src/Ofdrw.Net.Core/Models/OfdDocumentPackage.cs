@@ -1,10 +1,55 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Ofdrw.Net.Core.Models;
 
 public sealed class OfdDocumentPackage
 {
+    internal OfdCompositeResourceCollection? CompositeValue, OriginalCompositeResources;
+    internal OfdModelSnapshot? CompositeBaseline;
+    internal OfdCompositeResource[] OriginalCompositeOrder = Array.Empty<OfdCompositeResource>();
+    /// <summary>Shared vector definitions. Null preserves imported content; imported definitions require proven closure before removal or reorder.</summary>
+    public OfdCompositeResourceCollection? CompositeResources
+    {
+        get => CompositeValue;
+        set
+        {
+            if (value is null && CompositeValue is not null && CompositeBaseline is not null && !CompositeBaseline.Matches(CompositeValue))
+                throw new InvalidOperationException("Cannot withdraw changed typed composite resources.");
+            CompositeValue = value;
+        }
+    }
+    internal void ValidateCompositeOwnership(OfdModelMaterialization material, System.Threading.CancellationToken token)
+    {
+        if (CompositeValue is null && OriginalCompositeResources is not null && !CompositeBaseline!.Matches(OriginalCompositeResources, material, token))
+            throw new System.IO.InvalidDataException("Withdrawn composite resources were modified.");
+        if (CompositeValue is not null && OriginalCompositeOrder.Length > 0 &&
+            (CompositeValue.Items.Count < OriginalCompositeOrder.Length || !OriginalCompositeOrder.SequenceEqual(CompositeValue.Items.Take(OriginalCompositeOrder.Length))))
+            throw new NotSupportedException("Imported composite definitions cannot be removed or reordered without proven closure; delete placements and let Writer prune unreachable resources.");
+        if (OriginalCompositeResources is not null && CompositeValue is not null && CompositeValue != OriginalCompositeResources)
+            throw new NotSupportedException("Imported composite collection replacement requires a proven resource closure.");
+    }
+    internal OfdDocumentEnvelope? SourceEnvelope { get; set; }
+    internal OfdAnnotationIndexSource? AnnotationIndexSource { get; set; }
+    internal OfdSourceIdentity? SourceIdentity { get; set; }
+    private readonly OfdNavigationOwnership<OfdOutlineCollection> outlines = new();
+    private readonly OfdNavigationOwnership<OfdBookmarkCollection> bookmarks = new();
+    private readonly OfdNavigationOwnership<OfdActionCollection> actions = new();
+
+    /// <summary>Outline tree. Null preserves source; an empty collection removes modeled entries while retaining extensions.</summary>
+    public OfdOutlineCollection? Outlines { get => outlines.Value; set => outlines.Set(value); }
+
+    /// <summary>Named positions. Null preserves source; withdrawing a changed typed collection fails.</summary>
+    public OfdBookmarkCollection? Bookmarks { get => bookmarks.Value; set => bookmarks.Set(value); }
+
+    /// <summary>Document actions, serialized but never executed.</summary>
+    public OfdActionCollection? Actions { get => actions.Value; set => actions.Set(value); }
+
+    internal OfdNavigationOwnership<OfdOutlineCollection> OutlineOwnership => outlines;
+    internal OfdNavigationOwnership<OfdBookmarkCollection> BookmarkOwnership => bookmarks;
+    internal OfdNavigationOwnership<OfdActionCollection> ActionOwnership => actions;
+
     /// <summary>Original document XML entry, or null for a newly created document.</summary>
     public string? DocumentEntryPath { get; set; }
 

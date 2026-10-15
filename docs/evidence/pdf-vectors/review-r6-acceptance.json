@@ -1,0 +1,257 @@
+{
+  "runtime_head": "deda6d2928c2db0e05640d2df96e50b79131ccfa",
+  "status": "bounded-functional-and20page-Preview-passed-Linux-frozen-input-CI-failed-PR-open",
+  "main_tests": {
+    "dotnet_passed": 625,
+    "python_passed": 5,
+    "vector_passed": 168,
+    "main_trx_files": 9
+  },
+  "independent": {
+    "ticket": "21",
+    "worker": "independent Low8",
+    "created_utc": "2026-10-09T05:19:18.058848+00:00",
+    "status": "passed_bounded",
+    "source": {
+      "commit": "deda6d2928c2db0e05640d2df96e50b79131ccfa",
+      "tracked_blobs": 346,
+      "initial_mismatches": [],
+      "post_run_mismatches": []
+    },
+    "environment": {
+      "dotnet": "10.0.401",
+      "libreoffice": "LibreOfficeDev 26.8.0.0.alpha0 2c87e51eeaa2b413ff4ae097b2705eea1995d8e5",
+      "font_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "license_sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "flags": "--disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false",
+      "pre_entry_issue": "Initial font license copy named OFL.txt failed before gates; actual adjacent Ofdrw-CI-Noto-OFL.txt copied. A later dotnet --version identity query omitted required env; no build/test/restore/pack did."
+    },
+    "functional": {
+      "dotnet_counts": [
+        5,
+        250,
+        88,
+        4,
+        49,
+        13,
+        20,
+        28,
+        168
+      ],
+      "total": 625,
+      "python_tests": 5,
+      "default_packages": 11,
+      "optional_packages": 13,
+      "package_reference_only": true,
+      "logs": "logs-low8"
+    },
+    "package": {
+      "version": "0.1.0-pdfvector.20261009.low8",
+      "hash_manifest": "optional13-low8/package-dll-hashes.json"
+    },
+    "observer": {
+      "r4_original_sha256": "49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441",
+      "r4_original_expected": "49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441",
+      "high_source_sha256": "525f7c78b433f5ad9935c03994e76a899f64ab96940114b7d01fa2074ce11fbe",
+      "high_indices": {
+        "0": 501200,
+        "255": 498400
+      },
+      "decoded_ofd_pixels": 999600,
+      "decoded_pdf_pixels": 999600,
+      "text_source_sha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb",
+      "text_report": "observer-output-low8/text-observation.json",
+      "high_report": "observer-output-low8/high-index/r4-observation.json",
+      "selected": [
+        5,
+        0,
+        5
+      ],
+      "selected_native": [
+        true,
+        false,
+        true
+      ],
+      "r4_original_report": "observer-output-low8/original-r4/r4-observation.json",
+      "control_counts": {
+        "interpolation": 3,
+        "malformed_palette": 5,
+        "fallback_profile": 4,
+        "budget_and_cancel": 5
+      },
+      "stale_log_label": "Copied observer prints 6 malformed controls, but actual executed cases are 5; valid out-of-range index is clamped."
+    },
+    "raster": {
+      "renderer": "Poppler pdftoppm 144 dpi",
+      "inspected_pages": [
+        "text-source-1",
+        "text-export-1",
+        "text-source-2",
+        "text-export-2",
+        "text-source-3",
+        "text-export-3",
+        "text-source-4",
+        "text-export-4",
+        "text-source-5",
+        "text-export-5",
+        "text-source-6",
+        "text-export-6",
+        "clipped-source",
+        "clipped-export"
+      ],
+      "common_viewport": "840x1190; exported pages 841x1191; no resizing",
+      "pixel_observation": "text pages 5/6 and clipped exact common viewport; text pages 1-4 show localized differences under viewed glyph bounds; no visible missing text, overlap, or clipping in six inspected pages",
+      "preview_used": false
+    },
+    "limits": {
+      "preview_new_text_and_clipping": "pending; GUI prohibited for Low8",
+      "full_visual_acceptance": false,
+      "release_acceptance": false,
+      "source_specific_only": true
+    }
+  },
+  "primary_package_version": "0.1.0-pdfvector.20261009.r6",
+  "preview": {
+    "runtime_head": "deda6d2928c2db0e05640d2df96e50b79131ccfa",
+    "primary_package_version": "0.1.0-pdfvector.20261009.r6",
+    "docs": [
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r6/output/text-precision-source.pdf",
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "bytes": 21698835,
+        "sha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb",
+        "chain": "unchanged Astra raw source PDF",
+        "checked_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-glyph-color-policy",
+        "view": "Single Page full page; page navigation verified by title; zoom redraw used",
+        "observations": [
+          "Pages1-3 retain the intended visible Chinese glyph and layout; original first glyph lies off-page. Page4 intentionally overlays2049 glyphs into two visible dense clusters; that source appearance is preserved, no additional visible native overlay. Page5 initially retained prior-page display until singleZoomOut left at the new scale forced redraw; actual source and export were then fully blank, consistent with huge glyph outside page. Pages6-9 preserve readable proportional English, shear with English/CJK, original Chinese text, and A-double-space-B/character/TJ spacing. Source1-3 were explicitly revisited with zoom redraw. Raster first5 softness remains expected; native/fallback and tiny numerical changes are independently proven, not claimed visible at subpixel precision."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r6/output/text-precision.pdf",
+        "pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "bytes": 147573,
+        "sha256": "e72afed8c57fd4a3e2b996b32452171ad48f2adba50ee13955995e99f873a2be",
+        "chain": "actual R6 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-glyph-color-policy",
+        "view": "Single Page full page; page navigation verified by title; zoom redraw used",
+        "observations": [
+          "Pages1-3 retain the intended visible Chinese glyph and layout; original first glyph lies off-page. Page4 intentionally overlays2049 glyphs into two visible dense clusters; that source appearance is preserved, no additional visible native overlay. Page5 initially retained prior-page display until singleZoomOut left at the new scale forced redraw; actual source and export were then fully blank, consistent with huge glyph outside page. Pages6-9 preserve readable proportional English, shear with English/CJK, original Chinese text, and A-double-space-B/character/TJ spacing. Source1-3 were explicitly revisited with zoom redraw. Raster first5 softness remains expected; native/fallback and tiny numerical changes are independently proven, not claimed visible at subpixel precision."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r6/output/indexed-image-clipped-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 22661825,
+        "sha256": "525f7c78b433f5ad9935c03994e76a899f64ab96940114b7d01fa2074ce11fbe",
+        "chain": "raw generated PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-glyph-color-policy",
+        "view": "Single Page full page; page navigation verified by title; zoom redraw used",
+        "observations": [
+          "Entire checker grid, all four edges, orientation and blue/light appearance agree between raw high-index source and actual R6 OFD export. Valid0/255 with hival1 is clamped to0/1. Precise999600 samples separately checked by main/Low actual packages; no universal monitor or renderer guarantee."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r6/output/indexed-image-clipped.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 18947,
+        "sha256": "726ed684ff2cf1c54ab82332e551feede4910f7a54c66380c7a47437d77fb476",
+        "chain": "actual R6 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-glyph-color-policy",
+        "view": "Single Page full page; page navigation verified by title; zoom redraw used",
+        "observations": [
+          "Entire checker grid, all four edges, orientation and blue/light appearance agree between raw high-index source and actual R6 OFD export. Valid0/255 with hival1 is clamped to0/1. Precise999600 samples separately checked by main/Low actual packages; no universal monitor or renderer guarantee."
+        ]
+      }
+    ],
+    "pages": 20,
+    "status": "passed-scoped20page-layout-glyph-color-policy-no-device-pixel-guarantee",
+    "checked_pages": 20,
+    "checked_at": "2026-10-09T13:31:45.882981+08:00",
+    "gui_released": true,
+    "owned_pdf_windows_closed": 4,
+    "last_open_panel_cancelled": true,
+    "unknown_windows_changed": false,
+    "global_window_count_verified": false,
+    "cleanup": "All4 exact owned document URLs checked before CmdW. Automatic Open panel cancelled; repeated Preview AX activation reopened an Open panel, so last Cancel followed by read-only inventory and no further Preview activation. Preview still running; inventory lacked windows field, so globalzero count not inferred.",
+    "preserved_failures": [
+      "OriginalR4 Indexed hue failure remains original date/hash; R5 sampled repair and scoped8page Preview acceptance unchanged.",
+      "Astra optionalPIL contact-sheet failure and main pre-entrydotnet-run flag error retained. Low8 initial font-license copy issue and environment-less version query retained, full gates passed separately."
+    ],
+    "limits": [
+      "Producer1e-4pt/1e-5 numeric bounds are not end-to-end decimal serialization, arbitrary-font ink, topology or device-pixel accuracy promises.",
+      "Page4 intentional overlap and page5 deliberate off-page glyph are numerical policy controls, not observed tiny ink-displacement proofs.",
+      "Current final-head CI/Codex/Cursor/allthread closure remains pending."
+    ]
+  },
+  "ci_failure": {
+    "run": 37887601242,
+    "job": 113681779442,
+    "stage": "optional real-package TextPrecisionProbe",
+    "message": "Frozen Astra text source changed.",
+    "log": "acceptance/pr18-package-ci-r6-failed.log",
+    "cause_proven": "Harness regenerates a PDF expected to have the original frozen SHA; Linux regeneration did not match. Exact failed in-memory nine-page bytes were not persisted before the assertion and remain unavailable.",
+    "repair_required": "Consume compressed unchanged original source, retain d78e SHA and original embedded-font identity, rerun exact new harness/package/Low/LinuxCI gates."
+  },
+  "low_trx_limit": "Low8 fixedTRXfilename was overwritten perassembly; its complete9assembly console counts and main9separateTRX are retained. Do not claim9LowTRXfiles.",
+  "raster_scope_correction": "Low8 phrase no overlap means no extra visible discrepancy: page4 intentionally overlaps2049 glyphs and page5 intentionally has an off-page huge glyph.",
+  "overall_ticket_accepted": false,
+  "production_release_accepted": false,
+  "archive_verified_files": 205
+}

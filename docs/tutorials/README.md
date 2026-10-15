@@ -61,6 +61,7 @@ unzip -l artifacts/hello.ofd
 ## 实用工具
 
 - [15. 文档工具：水印、Split、Mix 与清签](15-document-tools.md)
+- [16. 关键词定位与受限文字替换](16-keyword-replacement.md)
 
 ## 源项目模块对照
 
@@ -87,6 +88,8 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 
 ## 相关文档
 
+- [SES V1/V4 dev/interop 测试容器](16-ses-dev-interop.md)：独立可选包，显式测试自签自验及其边界
+
 - [功能对照](../feature-parity.md)：本仓库已支持什么
 - [公开流式表格 API](../public-tables.md)：用 Table/Row/Cell 生成有限跨页表格
 - [公开流式布局 API](../flow-layout.md)：用 Paragraph/Span 生成多页 OFD
@@ -94,3 +97,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 - [转换、编辑与资源约定](../conversion-contracts.md)：DOCX/PDF 转换行为，不是格式课
 - 源项目布局说明：[ofdrw-layout/doc/layout](https://github.com/ofdrw/ofdrw/blob/master/ofdrw-layout/doc/layout/README.md)
 - 源项目签章入门：[ofdrw-sign/doc/quickstart](https://github.com/ofdrw/ofdrw/blob/master/ofdrw-sign/doc/quickstart/README.md)
+
+- [16 原生绘图 API：毫米、基线与状态](16-native-graphics.md)（仅 Layout 生成样例；PDF/SVG 用于验收）。
+
+- [可选 Skia 合作式事件适配](17-skia-event-adapter.md)：需要 producer 显式接入；不捕获任意 SKCanvas。
