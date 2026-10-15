@@ -6,13 +6,13 @@
 
 ## 状态
 
-- 状态：IMPLEMENTED；功能测试通过，solution build / 文档门 / 视觉验收进行中
+- 状态：DONE（独立CLI169、Preview4页）
 - 来源：F21
 - 优先级：P2；工作量：S；修复/实施风险：LOW
 - 类别：正确性/DX
 - 依赖：无硬前置；见下方文件协作边界。
 - 编写基线：`d0f88c7321a57443a4cb0ec92631664f66ed8cc0`，2026-10-15
-- 当前证据：HIGH 静态路径核实；本计划未实现、未执行其 .NET/视觉门。
+- 当前证据：源码78c2febf；root完整source/test与独立CLI169通过，4份字面水印PDF实际Preview通过，root完整URL/页数/原PDF与截图哈希核验通过。证据在原worktree artifacts/plan-021/preview/inspection.json。
 
 ## 为什么要做
 
@@ -180,12 +180,3 @@ git status --short
 先消费选项参数再判断控制 token，新命令不要恢复全局字符串扫描。
 
 计划完成只表示本计划的交付和验收完成，不自动意味着整体审查关闭、PR 合并或包已发布。
-
-
-## 执行记录（2026-10-15）
-
-- 独立 worktree：`/Users/wanghongyi/.codex/worktrees/ofdrw-plan-021/ofdrw.net`；分支 `codex/plan-021-cli-help-token-parsing`；继承基线 `f79c98dceba1fb3bfb186a233183ec235981c05d`（004/006/020）。操作者已明确授权本地提交，覆盖原计划“不授权提交”句；未授权 push/PR/merge/publish。索引由 root 协调者维护。
-- 漂移已核对：Program.cs 的路径身份、页范围上限、提交后通知保护与 Cli.Images.cs 的通知变化均保留；未发现未提交改动。
-- 正常控制先绿 8/8；初始矩阵基线 38 项为 16 红/22 绿（字面水印、合法 help 路径、未知选项被 help 吞掉）；修复后 38/38。补充通用输出路径独立验证为 2 红/1 绿（`--output --help` / `--output -h` 被误判缺值），统一取值后最终新增 41/41；CLI 项目 169/169，0 skipped。
-- 修改：移除 DocumentTools、Images、Merge 的 `Any(IsHelp)` 全局扫描；带值选项逐个消费字面 token；顶层 bare `help` 和实际选项位置 `-h` / `--help` 保留。文档工具固定输入/输出位置的 help-looking token 属于路径。未新增 `--` 分隔符；现有未知选项仍报错，不为本票扩展语法。
-- 本次产物/日志位于 `artifacts/plan-021/`，红绿 TRX 位于 `tests/` 子目录。最终构建与视觉门仍进行中，未标 DONE。
