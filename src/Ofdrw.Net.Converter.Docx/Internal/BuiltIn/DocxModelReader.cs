@@ -611,17 +611,23 @@ internal sealed class DocxModelReader
             var spacing = properties.SpacingBetweenLines;
             if (spacing is not null)
             {
-                target.SpaceBeforePoints = TwipsToNullablePoints(spacing.Before?.Value);
-                target.SpaceAfterPoints = TwipsToNullablePoints(spacing.After?.Value);
-                target.LineSpacingPoints = TwipsToNullablePoints(spacing.Line?.Value);
+                if (spacing.Before is not null)
+                    target.SpaceBeforePoints = TwipsToNullablePoints(spacing.Before.Value);
+                if (spacing.After is not null)
+                    target.SpaceAfterPoints = TwipsToNullablePoints(spacing.After.Value);
+                if (spacing.Line is not null)
+                    target.LineSpacingPoints = TwipsToNullablePoints(spacing.Line.Value);
             }
 
             var indentation = properties.Indentation;
             if (indentation is not null)
             {
-                target.LeftIndentPoints = TwipsToNullablePoints(indentation.Left?.Value ?? indentation.Start?.Value);
-                target.RightIndentPoints = TwipsToNullablePoints(indentation.Right?.Value ?? indentation.End?.Value);
-                target.FirstLineIndentPoints = TwipsToNullablePoints(indentation.FirstLine?.Value);
+                if (indentation.Left is not null || indentation.Start is not null)
+                    target.LeftIndentPoints = TwipsToNullablePoints(indentation.Left?.Value ?? indentation.Start?.Value);
+                if (indentation.Right is not null || indentation.End is not null)
+                    target.RightIndentPoints = TwipsToNullablePoints(indentation.Right?.Value ?? indentation.End?.Value);
+                if (indentation.FirstLine is not null)
+                    target.FirstLineIndentPoints = TwipsToNullablePoints(indentation.FirstLine.Value);
                 if (indentation.Hanging?.Value is string hanging &&
                     double.TryParse(hanging, NumberStyles.Number, CultureInfo.InvariantCulture, out var hangingTwips))
                 {
@@ -629,8 +635,8 @@ internal sealed class DocxModelReader
                 }
             }
 
-            target.PageBreakBefore |= IsOn(properties.PageBreakBefore);
-            target.KeepWithNext |= IsOn(properties.KeepNext);
+            target.PageBreakBefore = MergeOnOff(target.PageBreakBefore, properties.PageBreakBefore);
+            target.KeepWithNext = MergeOnOff(target.KeepWithNext, properties.KeepNext);
         }
     }
 
