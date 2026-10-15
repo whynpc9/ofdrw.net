@@ -12,6 +12,21 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 
 public sealed class ImageIoTests
 {
+    private static readonly Lazy<byte[]> FixtureFont = new(() =>
+    {
+        // Tests must not depend on a host Arial installation or its CJK fallback.
+        using var archive = ZipFile.OpenRead(Path.Combine(AppContext.BaseDirectory, "fonts/trusted-fonts.zip"));
+        var entry = archive.GetEntry("fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf")
+            ?? throw new InvalidDataException("Pinned OFL CJK fixture is missing.");
+        if (entry.Length != 21659544) throw new InvalidDataException("Pinned OFL CJK fixture size mismatch.");
+        var bytes = new byte[21659544];
+        using var stream = entry.Open(); stream.ReadExactly(bytes);
+        if (stream.ReadByte() != -1 || Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)) !=
+            "3012A9B63F5ECA3E3B38F23A1BE5ED504675E394ABF8E7A4FA981506582C04AA")
+            throw new InvalidDataException("Pinned OFL CJK fixture identity mismatch.");
+        return bytes;
+    });
+
     internal static byte[] ImageBytes(bool jpeg = false)
     {
         using var image = new Image<Rgb24>(80, 40);
@@ -27,8 +42,9 @@ public sealed class ImageIoTests
     internal static async Task<byte[]> Source(byte[]? licensedFont = null)
     {
         var package = new OfdDocumentPackage();
-        var fontName = licensedFont is null ? "Arial" : "OFD Image IO Noto OFL";
-        if (licensedFont is not null) package.Fonts.Add(new OfdFontResource { Id = "10", FontName = fontName,
+        licensedFont ??= FixtureFont.Value;
+        var fontName = "OFD Image IO Noto OFL";
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = fontName,
             FileName = "Ofdrw-CI-NotoSansCJKsc-Regular.ttf", Data = licensedFont });
         package.Options.Metadata.Title = "Deterministic image IO fixture";
         for (var index = 0; index < 2; index++)

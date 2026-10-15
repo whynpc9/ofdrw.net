@@ -1,35 +1,22 @@
 {
-  "source_commit": "00a4c263ed5a15059bcdc2c09bb0d8f3500bf7e7",
-  "dependency_commit": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+  "source_commit": "f53545ea83390318384be6fbe2e7cb06dfbe80f4",
+  "dependency_commit": "ea198538f26b1552a9902dcae898ffce8ef4362d",
+  "candidate_commit": "b6146bf7321ae02bf13e24105c2c50676f313f3a",
+  "date": "2026-10-15",
+  "timezone": "Asia/Shanghai",
+  "application": "macOS Preview",
   "status": "passed",
   "overall_visual_accepted": true,
-  "reason": "All 15 required public pages plus 2 local diagnostic pages were reopened and visually checked in macOS Preview on 2026-10-03; every document window and final open panel was closed.",
-  "required": [
-    "source.pdf:1-2",
-    "imported.pdf:1-2",
-    "baseline-native.pdf:1-2",
-    "baseline-default.pdf:1-2",
-    "shared-seal.pdf:1",
-    "italic-fixed-anchor.pdf:1",
-    "annotation-clipped.pdf:1",
-    "cli-watermark.pdf:1-2",
-    "cli-clean.pdf:1-2"
-  ],
-  "local_only_required": [
-    "original-source-reexported.pdf:1-2"
-  ],
-  "date": "2026-10-03",
-  "timezone": "Asia/Shanghai",
-  "candidate_commit": "77095596530f6977551edbaf025d3666175fd035",
-  "public_pages_checked": 15,
+  "public_pages_checked": 17,
   "local_diagnostic_pages_checked": 2,
-  "application": "macOS Preview",
+  "all_task_windows_closed": true,
+  "gui_released": true,
   "visits": [
     {
       "file": "source.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/source.pdf",
-      "sha256": "308e089b9575e814adaf4c71479e54da1ec9eb079cf2edad0fce70a28c9cc9fe",
-      "bytes": 75821,
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/source.pdf",
+      "sha256": "a995be619fe050a81aba0ae6098dba54aabbb2643589987a726668303a167899",
+      "bytes": 75863,
       "checked_pages": [
         1,
         2
@@ -41,8 +28,8 @@
     },
     {
       "file": "imported.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/imported.pdf",
-      "sha256": "703ef2871f1be0b3cc1526b9794228324edd49b50561a21636c5dceb4c639cf7",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/imported.pdf",
+      "sha256": "7bd359af983245ecf1238938e652bbdd77eee1111c701d190612619daf7c53e3",
       "bytes": 3416,
       "checked_pages": [
         1,
@@ -55,9 +42,9 @@
     },
     {
       "file": "baseline-native.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/baseline-native.pdf",
-      "sha256": "95558bf5cab2fcd49c8195483d5247817a037f8ca4c440fe436e7fa66d3ec996",
-      "bytes": 117058,
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/baseline-native.pdf",
+      "sha256": "eac2d86a17250bf31a4722f3eb431b0715900f3cde058ba386c07011d3b53d7e",
+      "bytes": 117111,
       "checked_pages": [
         1,
         2
@@ -69,9 +56,9 @@
     },
     {
       "file": "baseline-default.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/baseline-default.pdf",
-      "sha256": "f47ef5e5b2e4df2bc5a30adf77ba65c6bab2b6fe36f52d7ef8185b4c9c270436",
-      "bytes": 117058,
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/baseline-default.pdf",
+      "sha256": "b79332fcc2a307939be59e4393d785495509d813ec33cf5304687c2c63dff231",
+      "bytes": 117111,
       "checked_pages": [
         1,
         2
@@ -83,9 +70,9 @@
     },
     {
       "file": "shared-seal.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/shared-seal.pdf",
-      "sha256": "14bf658af68b0c68fd3a4ba4e95b01dc4d34ff72c723f1d5a75edbfdf4a971cc",
-      "bytes": 3255,
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/shared-seal.pdf",
+      "sha256": "742f9517d0f924d5b58dbcdfd47cc31c06c4fb7ed021969e5377034994944cf4",
+      "bytes": 3249,
       "checked_pages": [
         1
       ],
@@ -96,9 +83,9 @@
     },
     {
       "file": "italic-fixed-anchor.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/italic-fixed-anchor.pdf",
-      "sha256": "89c7b5e1357277c53276cbd5fa3bc770ad734a4a4940f7c92ac764d23393d961",
-      "bytes": 63329,
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/italic-fixed-anchor.pdf",
+      "sha256": "a803aaf2948955b0deae3bc22abb4837fc6713342804beee4dc0816c281042c2",
+      "bytes": 63332,
       "checked_pages": [
         1
       ],
@@ -109,8 +96,8 @@
     },
     {
       "file": "annotation-clipped.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/annotation-clipped.pdf",
-      "sha256": "638d9419c6927971a280b698b2dd1b8337a75665b4067175fc0c319fb170202d",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/annotation-clipped.pdf",
+      "sha256": "5590931a0f38cfcf6b60b710e5a8a10ce3fb1ea21c01f842ab480b0e5f2462ec",
       "bytes": 62695,
       "checked_pages": [
         1
@@ -122,9 +109,9 @@
     },
     {
       "file": "cli-watermark.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/cli-watermark.pdf",
-      "sha256": "d61f03acb5153da687c27f1bcc6d35784835a9c98829736b2d44ee0a76e7a944",
-      "bytes": 131620,
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/cli-watermark.pdf",
+      "sha256": "f032c6049208f2c356cc94ad58bcb3f1311e379400ee41326be6fdc7af2ce235",
+      "bytes": 131675,
       "checked_pages": [
         1,
         2
@@ -136,9 +123,9 @@
     },
     {
       "file": "cli-clean.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/cli-clean.pdf",
-      "sha256": "f8a721fb01f685d4344251d4235b48912d5425ed5a78db8bca97f11c31d76976",
-      "bytes": 127956,
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/cli-clean.pdf",
+      "sha256": "b29b2dd5cbc191547ea8c2c712bbf4a46edcdd913c3b94b0a111e37ad6b3ad3d",
+      "bytes": 128020,
       "checked_pages": [
         1,
         2
@@ -147,14 +134,40 @@
       "result": "pass",
       "finding": "Cleanup retains body/table, annotation and lower layer; second page retains local styles/date; no unintended blank page or stale seal.",
       "window_closed": true
+    },
+    {
+      "file": "typed-composite.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/typed-composite.pdf",
+      "sha256": "d9ba73b48e1219f39fa90d95a6f4a04353e311aabc7c56323586d17ef4ad2466",
+      "bytes": 1400,
+      "checked_pages": [
+        1
+      ],
+      "chain": "Current typed composite OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Two diagonal red placements retain centered white even-odd holes; no leakage into opposite quadrants.",
+      "window_closed": true
+    },
+    {
+      "file": "typed-composite-seal.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/typed-composite-seal.pdf",
+      "sha256": "e6d34cf338ea7b8a3b8823c78b6198a6231c2615aa8151bc4dbdd327dbc603b4",
+      "bytes": 2181,
+      "checked_pages": [
+        1
+      ],
+      "chain": "Current typed composite OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Two nested stamps each retain two diagonal composite rings, centered white holes and uniform shrink scale.",
+      "window_closed": true
     }
   ],
   "local_only_visits": [
     {
       "file": "original-source-reexported.pdf",
-      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/local-diagnostic/original-source-reexported.pdf",
-      "sha256": "c3c215d024d88f5689d24dd544532857a12fe3dd8cc8c248f122f00a6d325b87",
-      "bytes": 69703,
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/local-diagnostic/original-source-reexported.pdf",
+      "sha256": "c53a9350ede3327f612d64b7258955f6ff6032a78fe27ab66704778731c2a77a",
+      "bytes": 77833,
       "checked_pages": [
         1,
         2
@@ -166,10 +179,9 @@
       "public_payload": false
     }
   ],
-  "all_task_windows_closed": true,
-  "gui_released": true,
   "limitations": [
-    "Acceptance is restricted to these exact fixtures and checked pages. The 36-sample/55-page document-tools matrix passed automatic validation; its full 55 pages were not all inspected in this integration Preview session.",
-    "Current public payloads contain only Noto OFL and original MIT fixtures; historical Git blobs are preserved and are not removed by replacement."
+    "Only the exact 17 public and 2 local diagnostic pages were checked in Preview; the entire 36-sample/55-page automatic matrix is not claimed as full Preview acceptance.",
+    "Fixture-only test/CI corrections after runtime source f53545e do not change these generated artifacts; their original source and hashes remain explicit.",
+    "Current public font payloads are OFL/MIT; preserving Git history does not remove older blobs."
   ]
 }

@@ -1,8 +1,8 @@
 {
-  "source_commit": "00a4c263ed5a15059bcdc2c09bb0d8f3500bf7e7",
-  "dependency_commit": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
-  "preintegration_commit": "b29ed9db8d157569881d9dcd2a6d56f085f32baa",
-  "date": "2026-10-02",
+  "source_commit": "f53545ea83390318384be6fbe2e7cb06dfbe80f4",
+  "dependency_commit": "ea198538f26b1552a9902dcae898ffce8ef4362d",
+  "prior_integration_runtime": "00a4c263ed5a15059bcdc2c09bb0d8f3500bf7e7",
+  "date": "2026-10-15",
   "timezone": "Asia/Shanghai",
   "environment": {
     "sdk": "10.0.401",
@@ -10,71 +10,39 @@
     "Docnet": "2.6.0"
   },
   "tests": {
-    "total": 563,
+    "total": 2249,
     "failed": 0,
-    "independent_total": 563,
+    "skipped": 0,
+    "independent_total": 2249,
+    "mandatory_original_fonts": 65,
+    "fixture_r3_images": 143,
+    "fixture_r3_independent_images": 143,
+    "fixture_r3_full_pdf": 387,
+    "python": 20,
     "packages": 11,
-    "package_version": "0.1.0-issue02.integration1",
+    "package_version": "0.1.0-issue02.main1",
     "document_tools_samples": 36,
     "document_tools_pdf_pages": 55
   },
-  "modes": {
-    "source": "Licensed Noto OFL synthetic OFD -> strict selected PDF -> PDFium PNG/JPEG, ppm=4",
-    "imported": "PNG/JPEG -> centered OFD -> PDF/PNG",
-    "baseline-native": "licensed-layout.docx -> explicit Native OFD -> PDF -> strict PNG",
-    "baseline-default": "licensed-layout.docx -> default Native OFD -> PDF -> strict PNG",
-    "italic-fixed-anchor": "MIT rectangle + Noto labels, identity/unmarked CTM at fixed anchors",
-    "additional": "fresh precise annotation clip, image watermark and signature cleanup -> strict PNG"
-  },
-  "font_audit": "font-audit.json; only Noto OFL and original MIT raw fonts/subsets in current bundle",
-  "png_visual_review": [
-    "annotation-clipped.png",
-    "baseline-default-1.png",
-    "baseline-default-2.png",
-    "baseline-native-1.png",
-    "baseline-native-2.png",
-    "cli-clean.png",
-    "cli-watermark.png",
-    "export-1.png",
-    "export-2.jpg",
-    "export-2.png",
-    "imported-1.png",
-    "imported-2.png",
-    "input.jpg",
-    "input.png",
-    "italic-fixed-anchor.png",
-    "shared-seal.png"
-  ],
   "preview": {
+    "source_commit": "f53545ea83390318384be6fbe2e7cb06dfbe80f4",
+    "dependency_commit": "ea198538f26b1552a9902dcae898ffce8ef4362d",
+    "candidate_commit": "b6146bf7321ae02bf13e24105c2c50676f313f3a",
+    "date": "2026-10-15",
+    "timezone": "Asia/Shanghai",
+    "application": "macOS Preview",
     "status": "passed",
     "overall_visual_accepted": true,
-    "reason": "All 15 required public pages plus 2 local diagnostic pages were reopened and visually checked in macOS Preview on 2026-10-03; every document window and final open panel was closed.",
-    "required": [
-      "source.pdf:1-2",
-      "imported.pdf:1-2",
-      "baseline-native.pdf:1-2",
-      "baseline-default.pdf:1-2",
-      "shared-seal.pdf:1",
-      "italic-fixed-anchor.pdf:1",
-      "annotation-clipped.pdf:1",
-      "cli-watermark.pdf:1-2",
-      "cli-clean.pdf:1-2"
-    ],
-    "local_only_required": [
-      "original-source-reexported.pdf:1-2"
-    ],
-    "date": "2026-10-03",
-    "timezone": "Asia/Shanghai",
-    "candidate_commit": "77095596530f6977551edbaf025d3666175fd035",
-    "public_pages_checked": 15,
+    "public_pages_checked": 17,
     "local_diagnostic_pages_checked": 2,
-    "application": "macOS Preview",
+    "all_task_windows_closed": true,
+    "gui_released": true,
     "visits": [
       {
         "file": "source.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/source.pdf",
-        "sha256": "308e089b9575e814adaf4c71479e54da1ec9eb079cf2edad0fce70a28c9cc9fe",
-        "bytes": 75821,
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/source.pdf",
+        "sha256": "a995be619fe050a81aba0ae6098dba54aabbb2643589987a726668303a167899",
+        "bytes": 75863,
         "checked_pages": [
           1,
           2
@@ -86,8 +54,8 @@
       },
       {
         "file": "imported.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/imported.pdf",
-        "sha256": "703ef2871f1be0b3cc1526b9794228324edd49b50561a21636c5dceb4c639cf7",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/imported.pdf",
+        "sha256": "7bd359af983245ecf1238938e652bbdd77eee1111c701d190612619daf7c53e3",
         "bytes": 3416,
         "checked_pages": [
           1,
@@ -100,9 +68,9 @@
       },
       {
         "file": "baseline-native.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/baseline-native.pdf",
-        "sha256": "95558bf5cab2fcd49c8195483d5247817a037f8ca4c440fe436e7fa66d3ec996",
-        "bytes": 117058,
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/baseline-native.pdf",
+        "sha256": "eac2d86a17250bf31a4722f3eb431b0715900f3cde058ba386c07011d3b53d7e",
+        "bytes": 117111,
         "checked_pages": [
           1,
           2
@@ -114,9 +82,9 @@
       },
       {
         "file": "baseline-default.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/baseline-default.pdf",
-        "sha256": "f47ef5e5b2e4df2bc5a30adf77ba65c6bab2b6fe36f52d7ef8185b4c9c270436",
-        "bytes": 117058,
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/baseline-default.pdf",
+        "sha256": "b79332fcc2a307939be59e4393d785495509d813ec33cf5304687c2c63dff231",
+        "bytes": 117111,
         "checked_pages": [
           1,
           2
@@ -128,9 +96,9 @@
       },
       {
         "file": "shared-seal.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/shared-seal.pdf",
-        "sha256": "14bf658af68b0c68fd3a4ba4e95b01dc4d34ff72c723f1d5a75edbfdf4a971cc",
-        "bytes": 3255,
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/shared-seal.pdf",
+        "sha256": "742f9517d0f924d5b58dbcdfd47cc31c06c4fb7ed021969e5377034994944cf4",
+        "bytes": 3249,
         "checked_pages": [
           1
         ],
@@ -141,9 +109,9 @@
       },
       {
         "file": "italic-fixed-anchor.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/italic-fixed-anchor.pdf",
-        "sha256": "89c7b5e1357277c53276cbd5fa3bc770ad734a4a4940f7c92ac764d23393d961",
-        "bytes": 63329,
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/italic-fixed-anchor.pdf",
+        "sha256": "a803aaf2948955b0deae3bc22abb4837fc6713342804beee4dc0816c281042c2",
+        "bytes": 63332,
         "checked_pages": [
           1
         ],
@@ -154,8 +122,8 @@
       },
       {
         "file": "annotation-clipped.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/annotation-clipped.pdf",
-        "sha256": "638d9419c6927971a280b698b2dd1b8337a75665b4067175fc0c319fb170202d",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/annotation-clipped.pdf",
+        "sha256": "5590931a0f38cfcf6b60b710e5a8a10ce3fb1ea21c01f842ab480b0e5f2462ec",
         "bytes": 62695,
         "checked_pages": [
           1
@@ -167,9 +135,9 @@
       },
       {
         "file": "cli-watermark.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/cli-watermark.pdf",
-        "sha256": "d61f03acb5153da687c27f1bcc6d35784835a9c98829736b2d44ee0a76e7a944",
-        "bytes": 131620,
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/cli-watermark.pdf",
+        "sha256": "f032c6049208f2c356cc94ad58bcb3f1311e379400ee41326be6fdc7af2ce235",
+        "bytes": 131675,
         "checked_pages": [
           1,
           2
@@ -181,9 +149,9 @@
       },
       {
         "file": "cli-clean.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/cli-clean.pdf",
-        "sha256": "f8a721fb01f685d4344251d4235b48912d5425ed5a78db8bca97f11c31d76976",
-        "bytes": 127956,
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/cli-clean.pdf",
+        "sha256": "b29b2dd5cbc191547ea8c2c712bbf4a46edcdd913c3b94b0a111e37ad6b3ad3d",
+        "bytes": 128020,
         "checked_pages": [
           1,
           2
@@ -192,14 +160,40 @@
         "result": "pass",
         "finding": "Cleanup retains body/table, annotation and lower layer; second page retains local styles/date; no unintended blank page or stale seal.",
         "window_closed": true
+      },
+      {
+        "file": "typed-composite.pdf",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/typed-composite.pdf",
+        "sha256": "d9ba73b48e1219f39fa90d95a6f4a04353e311aabc7c56323586d17ef4ad2466",
+        "bytes": 1400,
+        "checked_pages": [
+          1
+        ],
+        "chain": "Current typed composite OFD -> integrated PDF writer -> macOS Preview",
+        "result": "pass",
+        "finding": "Two diagonal red placements retain centered white even-odd holes; no leakage into opposite quadrants.",
+        "window_closed": true
+      },
+      {
+        "file": "typed-composite-seal.pdf",
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/pages/typed-composite-seal.pdf",
+        "sha256": "e6d34cf338ea7b8a3b8823c78b6198a6231c2615aa8151bc4dbdd327dbc603b4",
+        "bytes": 2181,
+        "checked_pages": [
+          1
+        ],
+        "chain": "Current typed composite OFD -> integrated PDF writer -> macOS Preview",
+        "result": "pass",
+        "finding": "Two nested stamps each retain two diagonal composite rings, centered white holes and uniform shrink scale.",
+        "window_closed": true
       }
     ],
     "local_only_visits": [
       {
         "file": "original-source-reexported.pdf",
-        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/local-diagnostic/original-source-reexported.pdf",
-        "sha256": "c3c215d024d88f5689d24dd544532857a12fe3dd8cc8c248f122f00a6d325b87",
-        "bytes": 69703,
+        "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/main-integration/local-diagnostic/original-source-reexported.pdf",
+        "sha256": "c53a9350ede3327f612d64b7258955f6ff6032a78fe27ab66704778731c2a77a",
+        "bytes": 77833,
         "checked_pages": [
           1,
           2
@@ -211,23 +205,28 @@
         "public_payload": false
       }
     ],
-    "all_task_windows_closed": true,
-    "gui_released": true,
     "limitations": [
-      "Acceptance is restricted to these exact fixtures and checked pages. The 36-sample/55-page document-tools matrix passed automatic validation; its full 55 pages were not all inspected in this integration Preview session.",
-      "Current public payloads contain only Noto OFL and original MIT fixtures; historical Git blobs are preserved and are not removed by replacement."
+      "Only the exact 17 public and 2 local diagnostic pages were checked in Preview; the entire 36-sample/55-page automatic matrix is not claimed as full Preview acceptance.",
+      "Fixture-only test/CI corrections after runtime source f53545e do not change these generated artifacts; their original source and hashes remain explicit.",
+      "Current public font payloads are OFL/MIT; preserving Git history does not remove older blobs."
     ]
+  },
+  "font_audit": "font-audit.json",
+  "size_change": {
+    "prior_source_ofd_bytes": 11601570,
+    "current_source_ofd_bytes": 261189,
+    "reason": "Main font-subset backend reduces the fresh synthetic Noto fixture; read/edited Native/default packages conservatively preserve full fonts."
   },
   "files": [
     {
       "path": "annotation-clipped.ofd",
-      "bytes": 11601279,
-      "sha256": "cc7c66bf6be4bbbc142d8ded0ccfe0615927885a455d54af11adbc9cd314cfc4"
+      "bytes": 11601283,
+      "sha256": "1dc030da3a3854ed8548e98f641bb1f61bc3a0682f6fee47257ed36f9187393c"
     },
     {
       "path": "annotation-clipped.pdf",
       "bytes": 62695,
-      "sha256": "638d9419c6927971a280b698b2dd1b8337a75665b4067175fc0c319fb170202d"
+      "sha256": "5590931a0f38cfcf6b60b710e5a8a10ce3fb1ea21c01f842ab480b0e5f2462ec"
     },
     {
       "path": "annotation-clipped.png",
@@ -246,13 +245,13 @@
     },
     {
       "path": "baseline-default.ofd",
-      "bytes": 11602908,
-      "sha256": "756051e3ed976a947311be9716b1e29bd9ef5ee71a4eedf4f38aab183f7f9214"
+      "bytes": 11602914,
+      "sha256": "62429f974d57717e43a25db9c092b61e27692b4addf775c0440a50088c70670e"
     },
     {
       "path": "baseline-default.pdf",
-      "bytes": 117058,
-      "sha256": "f47ef5e5b2e4df2bc5a30adf77ba65c6bab2b6fe36f52d7ef8185b4c9c270436"
+      "bytes": 117111,
+      "sha256": "b79332fcc2a307939be59e4393d785495509d813ec33cf5304687c2c63dff231"
     },
     {
       "path": "baseline-native-1.png",
@@ -266,43 +265,58 @@
     },
     {
       "path": "baseline-native.ofd",
-      "bytes": 11602908,
-      "sha256": "756051e3ed976a947311be9716b1e29bd9ef5ee71a4eedf4f38aab183f7f9214"
+      "bytes": 11602918,
+      "sha256": "abbc81f9c2540249f475195cc922ac2a6c67bac36f053df75fcd4e06cdc0fb99"
     },
     {
       "path": "baseline-native.pdf",
-      "bytes": 117058,
-      "sha256": "95558bf5cab2fcd49c8195483d5247817a037f8ca4c440fe436e7fa66d3ec996"
+      "bytes": 117111,
+      "sha256": "eac2d86a17250bf31a4722f3eb431b0715900f3cde058ba386c07011d3b53d7e"
     },
     {
-      "path": "cli-clean.ofd",
-      "bytes": 11604532,
-      "sha256": "09bc5dd86f1c1157e78256faf004c7081c3199e2fe9112b20bc1e94a8fe27d0d"
-    },
-    {
-      "path": "cli-clean.pdf",
-      "bytes": 127956,
-      "sha256": "f8a721fb01f685d4344251d4235b48912d5425ed5a78db8bca97f11c31d76976"
-    },
-    {
-      "path": "cli-clean.png",
+      "path": "cli-clean-1.png",
       "bytes": 66075,
       "sha256": "3f56df81f0e6c94c9bc128372938741d48ec3fa801b82bfd281f1c3a34f76689"
     },
     {
+      "path": "cli-clean-2.png",
+      "bytes": 26891,
+      "sha256": "12d5946af6882056272dfd9d38027d2d6517e584820a7a41be0d4b669965d2e3"
+    },
+    {
+      "path": "cli-clean.ofd",
+      "bytes": 11604564,
+      "sha256": "cd09958185a4f79efbc3852f4a140fd24f503ecc7bfd5ab07b0099b72d52a89c"
+    },
+    {
+      "path": "cli-clean.pdf",
+      "bytes": 128020,
+      "sha256": "b29b2dd5cbc191547ea8c2c712bbf4a46edcdd913c3b94b0a111e37ad6b3ad3d"
+    },
+    {
+      "path": "cli-watermark-1.png",
+      "bytes": 72692,
+      "sha256": "d9e525a1285580707ed10153b451fae5c5e5c418c152709ac6d30c6fadd6f778"
+    },
+    {
+      "path": "cli-watermark-2.png",
+      "bytes": 26891,
+      "sha256": "12d5946af6882056272dfd9d38027d2d6517e584820a7a41be0d4b669965d2e3"
+    },
+    {
       "path": "cli-watermark.ofd",
-      "bytes": 11605618,
-      "sha256": "846799d58be452e75dd331a9fab4e9fe4bed2019a4a9b1ef49e2d74b67fc90fe"
+      "bytes": 11605612,
+      "sha256": "f37f9ccac3b4bdf8664e4b7a1c1c684d207b0eb7771e3b72a5c68e011caaa462"
     },
     {
       "path": "cli-watermark.pdf",
-      "bytes": 131620,
-      "sha256": "d61f03acb5153da687c27f1bcc6d35784835a9c98829736b2d44ee0a76e7a944"
+      "bytes": 131675,
+      "sha256": "f032c6049208f2c356cc94ad58bcb3f1311e379400ee41326be6fdc7af2ce235"
     },
     {
-      "path": "cli-watermark.png",
-      "bytes": 72692,
-      "sha256": "d9e525a1285580707ed10153b451fae5c5e5c418c152709ac6d30c6fadd6f778"
+      "path": "document-tools-matrix-manifest.json",
+      "bytes": 56346,
+      "sha256": "d650466759daefc7bd282cb516f6350b2138467768a9a0ce2e53565d6f9bf514"
     },
     {
       "path": "export-1.png",
@@ -320,6 +334,36 @@
       "sha256": "501759bdcdfa9b1019a6ea3f76f1583aa04d0c6a8cb7f208b332cf0573354daf"
     },
     {
+      "path": "font-audit.json",
+      "bytes": 11460,
+      "sha256": "6e6dad47c84812da86095bfb51d1eda85822a2ec0781c55ab397f337626bff9a"
+    },
+    {
+      "path": "fonts/MIT-rectangle-LICENSE.txt",
+      "bytes": 1064,
+      "sha256": "2b4dd513f6505b2522a1f6eb3c07dccf04c37b19daf13c3a26aa9bcafe3436fc"
+    },
+    {
+      "path": "fonts/Ofdrw-CI-Noto-OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "path": "fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+      "bytes": 21659544,
+      "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    {
+      "path": "fonts/generate-font-test-fixtures.py",
+      "bytes": 2902,
+      "sha256": "018147fb606f0edee60ef975ef3d6a2014d44924fb21968e871d7203fd1a721b"
+    },
+    {
+      "path": "fonts/narrow.ttf",
+      "bytes": 5408,
+      "sha256": "4129db97b03c0fa2ba4c319b63769a593bb3cf6217a0f3b0889e9db5e8e422bc"
+    },
+    {
       "path": "imported-1.png",
       "bytes": 749,
       "sha256": "eb3a4daf322c8837e5e240620db81ca51ff51da32749e534ca1bd1c4320a9376"
@@ -331,13 +375,18 @@
     },
     {
       "path": "imported.ofd",
-      "bytes": 3405,
-      "sha256": "517739f7573db0cfcbe423396ffab05d8839c2d12eb34344c736be005f738c67"
+      "bytes": 3406,
+      "sha256": "0614500b737ae91e47c845b9a317e309d813b3303e7233ad6c7368dafd745c8b"
     },
     {
       "path": "imported.pdf",
       "bytes": 3416,
-      "sha256": "703ef2871f1be0b3cc1526b9794228324edd49b50561a21636c5dceb4c639cf7"
+      "sha256": "7bd359af983245ecf1238938e652bbdd77eee1111c701d190612619daf7c53e3"
+    },
+    {
+      "path": "independent/trusted-fonts.trx",
+      "bytes": 146272,
+      "sha256": "63ae008e344d953f9f86528b6497c4f4ae39f5de32c1ce9e6f915b2a73e7253b"
     },
     {
       "path": "input.jpg",
@@ -351,13 +400,13 @@
     },
     {
       "path": "italic-fixed-anchor.ofd",
-      "bytes": 11601704,
-      "sha256": "ca8c1956ae066081e680fe977ca7d0011cfcc03224c81af03996d0e2f1ced79e"
+      "bytes": 256505,
+      "sha256": "dfa9a32f5b9f7865bf9be82dcbd75fb056675f0e81f96062b560fbc753b16dea"
     },
     {
       "path": "italic-fixed-anchor.pdf",
-      "bytes": 63329,
-      "sha256": "89c7b5e1357277c53276cbd5fa3bc770ad734a4a4940f7c92ac764d23393d961"
+      "bytes": 63332,
+      "sha256": "a803aaf2948955b0deae3bc22abb4837fc6713342804beee4dc0816c281042c2"
     },
     {
       "path": "italic-fixed-anchor.png",
@@ -365,14 +414,84 @@
       "sha256": "fc3b1b9b60d1f7571349b10f841213048118328d224bf10b917ea94cde5b9395"
     },
     {
+      "path": "licensed-layout.docx",
+      "bytes": 3311,
+      "sha256": "73403ad2e5faaf56570bd730b72ec8c4de9a4c68d4c6fb62bf853c0ae5001af9"
+    },
+    {
+      "path": "logs/ci-round1-failures.log",
+      "bytes": 596848,
+      "sha256": "ea627002f7a71015f287c9938fb5cd405834d562b1c764895434f15868850a30"
+    },
+    {
+      "path": "logs/document-tools-e2e.log",
+      "bytes": 47177,
+      "sha256": "ec700c37dc61b17df49041ab0a2756de57e39e520d902740760cee7c8050d86f"
+    },
+    {
+      "path": "logs/fixture-r3-full-pdf.log",
+      "bytes": 545,
+      "sha256": "e464fbd010dbf3501bec701e84c67457c3750910eb5500ff522a88c4ef2d2fec"
+    },
+    {
+      "path": "logs/fixture-r3-images.log",
+      "bytes": 4920,
+      "sha256": "6211f70284fb701d590e10889e29017e8952132df4b0305fed73fa1cc4dbf23f"
+    },
+    {
+      "path": "logs/independent-fixture-r3.log",
+      "bytes": 519,
+      "sha256": "3a24cbc69fb68185f8354b3c5902a23a2a171de7aeb8b204636b85a600d27d6a"
+    },
+    {
+      "path": "logs/independent-fonts.log",
+      "bytes": 504,
+      "sha256": "60859f9f2d2c9c897069539f382f344f0b4a119fde5ffdf88a04f4909bddd24d"
+    },
+    {
+      "path": "logs/independent-full-test.log",
+      "bytes": 6055,
+      "sha256": "e9549bbb52dd98d405f58a504923100943e2949a269823974f296d26f215d0ad"
+    },
+    {
+      "path": "logs/independent-package-readback.log",
+      "bytes": 46,
+      "sha256": "9366132b65ec492b33b102c97c4b8cc5f5607b058a06db8ddd25596d71333eff"
+    },
+    {
+      "path": "logs/package-e2e.log",
+      "bytes": 102788,
+      "sha256": "a37c14a113595aedc1658b47ab4d829a0958ebfdd706716a7fff228de2b7991a"
+    },
+    {
+      "path": "logs/python.log",
+      "bytes": 3197,
+      "sha256": "5483f6443d775dc375a8ae631a01059d1ea6039909e402bbf785d9a89ec0dd83"
+    },
+    {
+      "path": "logs/tests-first-failed.log",
+      "bytes": 60508,
+      "sha256": "52dc4f56ed22830f8c39b43e593297794d01f12eee71c83ef0413614822743c8"
+    },
+    {
+      "path": "logs/tests-passed.log",
+      "bytes": 29856,
+      "sha256": "c8c0d33c7d5cd06a60090cc5f933462f27418fd4d2e4a3f4d349371e18c0a8a4"
+    },
+    {
+      "path": "package-manifest.json",
+      "bytes": 2213,
+      "sha256": "3e147caa8fe9d9dd05120838ae8f530deb9fa02404045af1586560ec5b1f34da"
+    },
+    {
       "path": "shared-seal.ofd",
-      "bytes": 3279,
-      "sha256": "e318712abf804eac02accbe63053f97bf7afff6fa51c7a1418ee80aaded01b6f"
+      "bytes": 3280,
+      "sha256": "170ab929a579fbcaf09085bd584f663b2647b2f8e4de5c49893c4452da2d4401"
     },
     {
       "path": "shared-seal.pdf",
-      "bytes": 3255,
-      "sha256": "14bf658af68b0c68fd3a4ba4e95b01dc4d34ff72c723f1d5a75edbfdf4a971cc"
+      "bytes": 3249,
+      "sha256": "742f9517d0f924d5b58dbcdfd47cc31c06c4fb7ed021969e5377034994944cf4"
     },
     {
       "path": "shared-seal.png",
@@ -381,79 +500,63 @@
     },
     {
       "path": "source.ofd",
-      "bytes": 11601570,
-      "sha256": "1bbbb0eff98dfe061dd3220e163932fc00d851a626b642b3b641abab543013f0"
+      "bytes": 261189,
+      "sha256": "02e9273c854e6c38d2e7ce98511cde2dd0defc9ff8827ec05392ed9c6cbcd0cc"
     },
     {
       "path": "source.pdf",
-      "bytes": 75821,
-      "sha256": "308e089b9575e814adaf4c71479e54da1ec9eb079cf2edad0fce70a28c9cc9fe"
+      "bytes": 75863,
+      "sha256": "a995be619fe050a81aba0ae6098dba54aabbb2643589987a726668303a167899"
     },
     {
-      "path": "fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
-      "bytes": 21659544,
-      "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+      "path": "text-integrity.json",
+      "bytes": 761,
+      "sha256": "4779243f5a1ab1ebc8eafc3008f2f8fd9f78765e923314f747cd2ce5f662cfa6"
     },
     {
-      "path": "fonts/Ofdrw-CI-Noto-OFL.txt",
-      "bytes": 4301,
-      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+      "path": "typed-composite-seal.ofd",
+      "bytes": 2994,
+      "sha256": "9d6d708a8d501aedc82bc02667df864585e4cc77afad60c1c0d2c795945f64b2"
     },
     {
-      "path": "fonts/narrow.ttf",
-      "bytes": 5408,
-      "sha256": "4129db97b03c0fa2ba4c319b63769a593bb3cf6217a0f3b0889e9db5e8e422bc"
+      "path": "typed-composite-seal.pdf",
+      "bytes": 2181,
+      "sha256": "e6d34cf338ea7b8a3b8823c78b6198a6231c2615aa8151bc4dbdd327dbc603b4"
     },
     {
-      "path": "fonts/MIT-rectangle-LICENSE.txt",
-      "bytes": 1064,
-      "sha256": "2b4dd513f6505b2522a1f6eb3c07dccf04c37b19daf13c3a26aa9bcafe3436fc"
+      "path": "typed-composite-seal.png",
+      "bytes": 3767,
+      "sha256": "2000c61ef9655a366e7294db26451dff34d259c65cf33720846154e0cfef8f47"
     },
     {
-      "path": "fonts/generate-font-test-fixtures.py",
-      "bytes": 2902,
-      "sha256": "018147fb606f0edee60ef975ef3d6a2014d44924fb21968e871d7203fd1a721b"
+      "path": "typed-composite.ofd",
+      "bytes": 1610,
+      "sha256": "e24334f3dce1026bf2356abd3600d215e915037efea4498aed2d7c1ab9aabd11"
     },
     {
-      "path": "licensed-layout.docx",
-      "bytes": 3311,
-      "sha256": "2a1e817a2e5b00173b37bf496432c3c1a66eacefba1853ca870de99a15229ff3"
+      "path": "typed-composite.pdf",
+      "bytes": 1400,
+      "sha256": "d9ba73b48e1219f39fa90d95a6f4a04353e311aabc7c56323586d17ef4ad2466"
     },
     {
-      "path": "font-audit.json",
-      "bytes": 10092,
-      "sha256": "0917481813dbfba308359793dd1a0fe69d06cf22c0584fdff9bd9b4422affd89"
-    },
-    {
-      "path": "document-tools-matrix-manifest.json",
-      "bytes": 56063,
-      "sha256": "3a09d9cc040895b346edff85cc11ab13f3524662e9db7cf311e3ceee52193eff"
-    },
-    {
-      "path": "package-manifest.json",
-      "bytes": 2297,
-      "sha256": "89dfe9955a1e7033e25c2ae298c46394bc73b1de38939937c0c3d2188f8269d3"
-    },
-    {
-      "path": "tests.txt",
-      "bytes": 5776,
-      "sha256": "942ffdfe7b7327e9d61bd916d8625dbda9e8bf7acb6d2fa9d5aa99b842ff1510"
-    },
-    {
-      "path": "package-e2e.txt",
-      "bytes": 12333,
-      "sha256": "937c5bb8806a6107d8a95acb15e76422b433a044a89bc523d12ab7acc5a66595"
-    },
-    {
-      "path": "document-tools-e2e.txt",
-      "bytes": 6469,
-      "sha256": "24b94a2fd19f17c5c73369ef19b4a23d66a48265e8d8406523a57c7fd1450e88"
+      "path": "typed-composite.png",
+      "bytes": 1185,
+      "sha256": "e19a1c05c438384739a30cdf2c96ce9f2988c91fc9045877888d4f8956d6423d"
     }
   ],
   "archive": {
     "path": "evidence.tar.xz",
-    "bytes": 20683632,
-    "sha256": "755b15b948e11d716a940d0bca74e6f890760da756c6d00f413e5b6c35560fea"
+    "bytes": 21217296,
+    "sha256": "e7a06dc5645a9d715677f3d1d83a5c97e62421e11d49c45cdb4cc6beaeeb36f7"
   },
-  "review_generation": "integration1; fresh merge-source artifacts, prior proprietary-font bundle replaced; current Preview pending"
+  "fixture_correction_files": [
+    {
+      "path": "tests/Ofdrw.Net.Converter.Pdf.Tests/ImageIoTests.cs",
+      "sha256": "2459d015b3019a6f8bdcfc960118f7a7aaac4ab7705eea9a4300db822f35d35f"
+    },
+    {
+      "path": "tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj",
+      "sha256": "eb07a3dd18dba3e7ab84847302f0934ded5c46a0a000fc59994b7517f3eb6a1b"
+    }
+  ]
 }
