@@ -398,7 +398,8 @@ internal static partial class Cli
             new OfdDocumentMergeOptions
             {
                 SkipUnsupportedRawElements = skipUnsupported
-            });
+            },
+            cancellationToken);
         await using var output = new AtomicOutput(outputPath);
         foreach (var diagnostic in merged.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
         var writeResult = await new OfdPackageWriter().WriteWithResultAsync(merged.Package, output.Stream, cancellationToken).ConfigureAwait(false);
