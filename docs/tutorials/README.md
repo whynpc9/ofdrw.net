@@ -102,3 +102,5 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 ## 可选密码扩展
 
 - [11 票：口令加解密 API、私有恢复 profile 与适用边界](../password-crypto.md)
+
+- [可选 Skia 合作式事件适配](17-skia-event-adapter.md)：需要 producer 显式接入；不捕获任意 SKCanvas。
