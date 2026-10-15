@@ -1,0 +1,66 @@
+{
+  "productSource": "60163cca80a4da62bf748ba19a300a8d714b80c4",
+  "chain": "public PackageReference API -> native OFD -> PDF -> macOS Preview; PNG auxiliary",
+  "pngPagesInspected": {
+    "before.pdf": [
+      1,
+      2
+    ],
+    "after.pdf": [
+      1,
+      2
+    ],
+    "original-v1.pdf": [
+      1,
+      2
+    ]
+  },
+  "previewCompleted": true,
+  "previewReason": "Completed 2026-10-15 in native macOS Preview; see preview-acceptance-2026-10-15.json",
+  "observations": [
+    "Chinese and proportional English readable with local bold/italic/color",
+    "Original compound table no diagonal bridges or triangular fill gaps",
+    "Two shared nested placements, only left edit moves",
+    "Image transform/clip intersection, labelled intentional text crop",
+    "NonZero solid; EvenOdd hole",
+    "Local annotation once, footer labels present, no unexpected blank page"
+  ],
+  "scopeLimits": [
+    "No SVG browser visual verdict",
+    "No general multi-Area union export",
+    "No automatic header/footer or page-number feature acceptance"
+  ],
+  "affectedCiFixturePngPagesInspected": {
+    "binary-xml-split.pdf": [
+      1
+    ],
+    "split-template-liveness.pdf": [
+      1
+    ]
+  },
+  "affectedCiFixturePreviewCompleted": true,
+  "previewPagesInspected": {
+    "sample/before.pdf": [
+      1,
+      2
+    ],
+    "sample/after.pdf": [
+      1,
+      2
+    ],
+    "sample/original-v1.pdf": [
+      1,
+      2
+    ],
+    "ci-fixture-repair/binary-xml-split.pdf": [
+      1
+    ],
+    "ci-fixture-repair/split-template-liveness.pdf": [
+      1
+    ]
+  },
+  "previewRecord": "preview-acceptance-2026-10-15.json",
+  "ownedWindowsClosed": true,
+  "nativePreviewCaptureDirectory": "preview-captures",
+  "nativePreviewCaptureCount": 8
+}

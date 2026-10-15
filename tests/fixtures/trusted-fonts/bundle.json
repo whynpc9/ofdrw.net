@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "archive": {
+    "file": "sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59.zip",
+    "bytes": 11821583,
+    "sha256": "40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59"
+  },
+  "members": [
+    {
+      "path": "NOTICE.md",
+      "bytes": 1042,
+      "sha256": "69a8c93c5d20562d9930d0e09e419e5ee8bf88b77f122152ae0d47a64f7fa3c9"
+    },
+    {
+      "path": "fonts/NotoSans-Regular.ttf",
+      "bytes": 569208,
+      "sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5"
+    },
+    {
+      "path": "fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+      "bytes": 21659544,
+      "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    {
+      "path": "licenses/NotoSans-LICENSE",
+      "bytes": 4377,
+      "sha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb"
+    },
+    {
+      "path": "licenses/Ofdrw-CI-Noto-OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 4801,
+      "sha256": "0abcc1f74375452213e48cda416dff577125cc9618dd013a63c3ded54f8087d2"
+    }
+  ]
+}

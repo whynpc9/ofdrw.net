@@ -5,6 +5,7 @@
     <PackageTags>OFD;PDF;converter;format-conversion</PackageTags>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Ofdrw.Net.Cli" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Tests" />
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />

@@ -9,7 +9,7 @@ using Ofdrw.Net.Core.IO;
 
 namespace Ofdrw.Net.Packaging.Archive;
 
-public sealed class OfdPackageLoader
+public sealed partial class OfdPackageLoader
 {
     public async Task<OfdPackageArchive> LoadAsync(Stream ofdStream, CancellationToken cancellationToken = default)
     {

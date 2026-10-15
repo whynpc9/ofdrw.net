@@ -1,0 +1,7 @@
+# PR 19 R4 independent affected gate
+
+Exact committed source `73d68c88c604f502c1f923bff3e4613ea30956b0` was Git-archived into an isolated tree. All 439 archived files matched the commit's Git blobs before and after the run, with identical byte counts and SHA-256 values. The owner checkout was clean before the run; afterward it showed a root-owned two-line tutorial edit, confirmed as documentation outside the frozen archive. No product file in the archived candidate changed.
+
+One fresh Release Packaging test invocation selected only `KeywordLocatorTests` and `TextReplacementTests`. TRX records **75/75 passed**, zero failed and zero skipped: Locator 49, Replacement 26. The two new actual-Reader cross-occurrence negative rows ran and passed separately for explicit-hit and fused replacement. The strengthened positive `MultipleTextCodesAndAdjacentObjectsJoinOnlyWithProvenContinuity` and `CrossSlotEditKeepsConsumedSlotsEmptyAndFreezesSuffix` tests also ran and passed, preserving single-occurrence editability while marking cross-occurrence hits non-replaceable. The command used writable `DOTNET_CLI_HOME`, skipped first-time experience and telemetry, disabled build servers, and used single-node/no-reuse/no-shared-compilation flags. Raw output and TRX are retained here.
+
+This result covers the two affected classes on this exact source checkpoint. It does not rerun or establish the full suite, original-font gate, package consumer, CLI capacity or Preview visual acceptance, and it does not provide a new CJK budget observation.

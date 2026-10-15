@@ -1,0 +1,82 @@
+{
+  "Runtime": "10.0.12",
+  "Source": "0.1.0-issue09.c.60163cc\u002B60163cca80a4da62bf748ba19a300a8d714b80c4",
+  "Passed": true,
+  "PreviewCompleted": false,
+  "ResourceDefinitions": 2,
+  "Placements": 2,
+  "Fonts": [
+    {
+      "FontName": "Noto Sans",
+      "Bytes": 569208,
+      "Sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5"
+    },
+    {
+      "FontName": "Noto Sans CJK SC",
+      "Bytes": 21659544,
+      "Sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    }
+  ],
+  "Files": [
+    {
+      "Name": "original-v1-2.svg",
+      "Bytes": 29641661,
+      "Sha256": "11612c675f944a1d0babbe674dd17bb774ce37a9c47895faa6aa4211f2045ff8"
+    },
+    {
+      "Name": "before.pdf",
+      "Bytes": 155008,
+      "Sha256": "97e90f630187a6b0a8bf0c704a28a99e70038a6e207f57f03c146117fe7d8044"
+    },
+    {
+      "Name": "before.ofd",
+      "Bytes": 11892889,
+      "Sha256": "b64b0d6acbda8ef37c00db34bb6bce7cd2918fe03b94d82b7bf28e5e4c36abbf"
+    },
+    {
+      "Name": "original-v1-1.svg",
+      "Bytes": 29644024,
+      "Sha256": "9d6f5f4f9a0ec03af5e93d855e0216b777a751e750c373d96b44d356cdf57095"
+    },
+    {
+      "Name": "after.pdf",
+      "Bytes": 155041,
+      "Sha256": "5543ee01d8ecc8c832f00fcd43e58cbb77cb91ddbaa51ecd05dcabec5b334955"
+    },
+    {
+      "Name": "after.ofd",
+      "Bytes": 11892891,
+      "Sha256": "743f8481291ad681791369fa1368d0b4575529a9aeb0841f16cbcdb5a88c36d7"
+    },
+    {
+      "Name": "before-1.svg",
+      "Bytes": 29657250,
+      "Sha256": "a80902c6a96e6783336b05006351375d9445ac574332be7cbed3e9165fb93cd8"
+    },
+    {
+      "Name": "before-2.svg",
+      "Bytes": 29644334,
+      "Sha256": "1652a0c3acfe52ec0f9318e3d265e70bec7c7a5d21622af640b572c36e33669d"
+    },
+    {
+      "Name": "after-2.svg",
+      "Bytes": 29644334,
+      "Sha256": "b72080890b469f6487dfc56e811b3353fd312c69a4c38068b37b5e93e7a2ea40"
+    },
+    {
+      "Name": "after-1.svg",
+      "Bytes": 29657250,
+      "Sha256": "d8c939ff13c76c37c75135237825941aa1d1ff29a40049e9dc05bf58ded69297"
+    },
+    {
+      "Name": "original-v1.ofd",
+      "Bytes": 11892467,
+      "Sha256": "9c3444ca5aa6a1ce3e2d957db697cdfcb3afd61fc126ff76823260bef4114c2f"
+    },
+    {
+      "Name": "original-v1.pdf",
+      "Bytes": 118716,
+      "Sha256": "595b40c84890762a944e7c5fff15dab20328dcd38999c32723e10ece10dcdd59"
+    }
+  ]
+}

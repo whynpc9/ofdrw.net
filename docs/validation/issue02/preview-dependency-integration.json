@@ -1,0 +1,176 @@
+{
+  "source_commit": "00a4c263ed5a15059bcdc2c09bb0d8f3500bf7e7",
+  "dependency_commit": "df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9",
+  "status": "passed",
+  "overall_visual_accepted": true,
+  "reason": "All 15 required public pages plus 2 local diagnostic pages were reopened and visually checked in macOS Preview on 2026-10-03; every document window and final open panel was closed.",
+  "required": [
+    "source.pdf:1-2",
+    "imported.pdf:1-2",
+    "baseline-native.pdf:1-2",
+    "baseline-default.pdf:1-2",
+    "shared-seal.pdf:1",
+    "italic-fixed-anchor.pdf:1",
+    "annotation-clipped.pdf:1",
+    "cli-watermark.pdf:1-2",
+    "cli-clean.pdf:1-2"
+  ],
+  "local_only_required": [
+    "original-source-reexported.pdf:1-2"
+  ],
+  "date": "2026-10-03",
+  "timezone": "Asia/Shanghai",
+  "candidate_commit": "77095596530f6977551edbaf025d3666175fd035",
+  "public_pages_checked": 15,
+  "local_diagnostic_pages_checked": 2,
+  "application": "macOS Preview",
+  "visits": [
+    {
+      "file": "source.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/source.pdf",
+      "sha256": "308e089b9575e814adaf4c71479e54da1ec9eb079cf2edad0fce70a28c9cc9fe",
+      "bytes": 75821,
+      "checked_pages": [
+        1,
+        2
+      ],
+      "chain": "Licensed synthetic OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Chinese titles, proportional bold, purple italic, quadrant image and bordered fills match the expected positions.",
+      "window_closed": true
+    },
+    {
+      "file": "imported.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/imported.pdf",
+      "sha256": "703ef2871f1be0b3cc1526b9794228324edd49b50561a21636c5dceb4c639cf7",
+      "bytes": 3416,
+      "checked_pages": [
+        1,
+        2
+      ],
+      "chain": "PNG/JPEG -> centered OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "PNG/JPEG images centered with preserved proportions and equal margins; no crop.",
+      "window_closed": true
+    },
+    {
+      "file": "baseline-native.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/baseline-native.pdf",
+      "sha256": "95558bf5cab2fcd49c8195483d5247817a037f8ca4c440fe436e7fa66d3ec996",
+      "bytes": 117058,
+      "checked_pages": [
+        1,
+        2
+      ],
+      "chain": "licensed-layout.docx -> explicit Native OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Explicit Native OFD preserves Chinese/English text, centered title, italic subtitle, table fill/borders, local red bold, right aligned date and two-page break.",
+      "window_closed": true
+    },
+    {
+      "file": "baseline-default.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/baseline-default.pdf",
+      "sha256": "f47ef5e5b2e4df2bc5a30adf77ba65c6bab2b6fe36f52d7ef8185b4c9c270436",
+      "bytes": 117058,
+      "checked_pages": [
+        1,
+        2
+      ],
+      "chain": "licensed-layout.docx -> default Native OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Default Native OFD matches explicit Native on both pages; no missing glyphs, spread styles, overlap, ghost text or unintended blank page.",
+      "window_closed": true
+    },
+    {
+      "file": "shared-seal.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/shared-seal.pdf",
+      "sha256": "14bf658af68b0c68fd3a4ba4e95b01dc4d34ff72c723f1d5a75edbfdf4a971cc",
+      "bytes": 3255,
+      "checked_pages": [
+        1
+      ],
+      "chain": "Fresh integrated document-tools/signature OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Six equal red nested appearances remain at six distinct expected positions.",
+      "window_closed": true
+    },
+    {
+      "file": "italic-fixed-anchor.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/italic-fixed-anchor.pdf",
+      "sha256": "89c7b5e1357277c53276cbd5fa3bc770ad734a4a4940f7c92ac764d23393d961",
+      "bytes": 63329,
+      "checked_pages": [
+        1
+      ],
+      "chain": "Fresh integrated document-tools/signature OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Identity rectangle upright; unmarked CTM, italic identity and combined italic/CTM shear correctly at fixed anchors.",
+      "window_closed": true
+    },
+    {
+      "file": "annotation-clipped.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/annotation-clipped.pdf",
+      "sha256": "638d9419c6927971a280b698b2dd1b8337a75665b4067175fc0c319fb170202d",
+      "bytes": 62695,
+      "checked_pages": [
+        1
+      ],
+      "chain": "Fresh integrated document-tools/signature OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Red parallelogram has exact slanted edges without AABB leakage; rotated/enlarged labels match expected positions, hidden content absent.",
+      "window_closed": true
+    },
+    {
+      "file": "cli-watermark.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/cli-watermark.pdf",
+      "sha256": "d61f03acb5153da687c27f1bcc6d35784835a9c98829736b2d44ee0a76e7a944",
+      "bytes": 131620,
+      "checked_pages": [
+        1,
+        2
+      ],
+      "chain": "Fresh integrated document-tools/signature OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "First page retains body/table with NOTE annotation, vertical pale strip and lower UNDER LAYER box; second page retains styles/date without unintended spreading.",
+      "window_closed": true
+    },
+    {
+      "file": "cli-clean.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/pages/cli-clean.pdf",
+      "sha256": "f8a721fb01f685d4344251d4235b48912d5425ed5a78db8bca97f11c31d76976",
+      "bytes": 127956,
+      "checked_pages": [
+        1,
+        2
+      ],
+      "chain": "Fresh integrated document-tools/signature OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Cleanup retains body/table, annotation and lower layer; second page retains local styles/date; no unintended blank page or stale seal.",
+      "window_closed": true
+    }
+  ],
+  "local_only_visits": [
+    {
+      "file": "original-source-reexported.pdf",
+      "actual_path": "/Users/wanghongyi/.codex/worktrees/8a8a/ofdrw.net/artifacts/issue02/integration/local-diagnostic/original-source-reexported.pdf",
+      "sha256": "c3c215d024d88f5689d24dd544532857a12fe3dd8cc8c248f122f00a6d325b87",
+      "bytes": 69703,
+      "checked_pages": [
+        1,
+        2
+      ],
+      "chain": "Original preintegration source OFD -> integrated PDF writer -> macOS Preview",
+      "result": "pass",
+      "finding": "Both purple Italic color runs are visibly slanted; Chinese titles, proportional bold, quadrant images and fills preserved. Diagnostic PDF and original fonts remain local, outside the public bundle.",
+      "window_closed": true,
+      "public_payload": false
+    }
+  ],
+  "all_task_windows_closed": true,
+  "gui_released": true,
+  "limitations": [
+    "Acceptance is restricted to these exact fixtures and checked pages. The 36-sample/55-page document-tools matrix passed automatic validation; its full 55 pages were not all inspected in this integration Preview session.",
+    "Current public payloads contain only Noto OFL and original MIT fixtures; historical Git blobs are preserved and are not removed by replacement."
+  ],
+  "historical_record_at_commit": "792d5c0e3d6a275b061b31affc6de579f67cae8e"
+}

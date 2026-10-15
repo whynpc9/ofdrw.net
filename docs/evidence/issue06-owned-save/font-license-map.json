@@ -1,0 +1,154 @@
+{
+  "status": "exact archive font payload inventory and adjacent notices",
+  "raw_fonts": {
+    "latin": [
+      "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      569208,
+      "licenses/NotoSans-LICENSE"
+    ],
+    "cjk": [
+      "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      21659544,
+      "licenses/Ofdrw-CI-Noto-OFL.txt"
+    ]
+  },
+  "payloads": [
+    {
+      "owner": "documents/latin-input.ofd",
+      "entry": "Doc_0/Res/Font_b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5.ttf",
+      "payload_sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "payload_bytes": 569208,
+      "source_font_sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "license": "OFL-1.1",
+      "license_member": "licenses/NotoSans-LICENSE",
+      "kind": "unchanged complete original font"
+    },
+    {
+      "owner": "documents/latin-input.pdf",
+      "resource": "/F0",
+      "base_font": "/QCDGFY+Ofdrw-b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "payload_sha256": "8f5e1bad5b4980d66e541c39847f1f36f651491cd62aabe3cb503a6463881672",
+      "payload_bytes": 34640,
+      "source_ofd_member": "documents/latin-input.ofd",
+      "source_font_sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "source_font_bytes": 569208,
+      "license": "OFL-1.1",
+      "license_member": "licenses/NotoSans-LICENSE",
+      "kind": "actual PDF subset; different bytes from the complete source font"
+    },
+    {
+      "owner": "documents/latin-output.ofd",
+      "entry": "Doc_0/Res/Font_b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5.ttf",
+      "payload_sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "payload_bytes": 569208,
+      "source_font_sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "license": "OFL-1.1",
+      "license_member": "licenses/NotoSans-LICENSE",
+      "kind": "unchanged complete original font"
+    },
+    {
+      "owner": "documents/latin-output.pdf",
+      "resource": "/F0",
+      "base_font": "/OIFVCT+Ofdrw-b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "payload_sha256": "3573b2ed42d211e77a4eef50388ab0c833bdd0cfad4e15a8dff5c06b6c8bb600",
+      "payload_bytes": 34580,
+      "source_ofd_member": "documents/latin-output.ofd",
+      "source_font_sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "source_font_bytes": 569208,
+      "license": "OFL-1.1",
+      "license_member": "licenses/NotoSans-LICENSE",
+      "kind": "actual PDF subset; different bytes from the complete source font"
+    },
+    {
+      "owner": "documents/cjk-input.ofd",
+      "entry": "Doc_0/Res/Font_3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa.ttf",
+      "payload_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "payload_bytes": 21659544,
+      "source_font_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "license": "OFL-1.1",
+      "license_member": "licenses/Ofdrw-CI-Noto-OFL.txt",
+      "kind": "unchanged complete original font"
+    },
+    {
+      "owner": "documents/cjk-input.pdf",
+      "resource": "/F0",
+      "base_font": "/SOGITM+Ofdrw-3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "payload_sha256": "13ec0b3af15c206d44fdde4801f6820fe39b86b142c5995b4952907f4be4c102",
+      "payload_bytes": 524668,
+      "source_ofd_member": "documents/cjk-input.ofd",
+      "source_font_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "source_font_bytes": 21659544,
+      "license": "OFL-1.1",
+      "license_member": "licenses/Ofdrw-CI-Noto-OFL.txt",
+      "kind": "actual PDF subset; different bytes from the complete source font"
+    },
+    {
+      "owner": "documents/cjk-output.ofd",
+      "entry": "Doc_0/Res/Font_3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa.ttf",
+      "payload_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "payload_bytes": 21659544,
+      "source_font_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "license": "OFL-1.1",
+      "license_member": "licenses/Ofdrw-CI-Noto-OFL.txt",
+      "kind": "unchanged complete original font"
+    },
+    {
+      "owner": "documents/cjk-output.pdf",
+      "resource": "/F0",
+      "base_font": "/PZRBVS+Ofdrw-3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "payload_sha256": "e0bbdf7cddcd724b7fb5fb73fd95d9f5ae81c3d327747581fa6839d03f0f0d7b",
+      "payload_bytes": 524624,
+      "source_ofd_member": "documents/cjk-output.ofd",
+      "source_font_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "source_font_bytes": 21659544,
+      "license": "OFL-1.1",
+      "license_member": "licenses/Ofdrw-CI-Noto-OFL.txt",
+      "kind": "actual PDF subset; different bytes from the complete source font"
+    }
+  ],
+  "docx": {
+    "member": "sample/generated-layout.docx",
+    "entries": [
+      "[Content_Types].xml",
+      "_rels/.rels",
+      "docProps/app.xml",
+      "docProps/core.xml",
+      "word/_rels/document.xml.rels",
+      "word/document.xml",
+      "word/styles.xml"
+    ],
+    "embedded_font_or_binary": false
+  },
+  "commercial_exclusion": {
+    "font": "PingFang SC",
+    "bytes": 23278008,
+    "sha256": "876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec",
+    "binaries": [
+      {
+        "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-native.ofd",
+        "bytes": 15288611,
+        "sha256": "6f66dc9afd767da19511b4368d1aaf8f7c9c9af180a94456bb0d9910ffa07b52",
+        "reason": "LOCAL ONLY: native/default chain embeds commercial PingFang SC font software; public archive includes bitmap/text/Preview records only"
+      },
+      {
+        "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-default.ofd",
+        "bytes": 15288611,
+        "sha256": "99566448a560793362a2199848c6d9ee6918fc2b9c9cbcb791515b00e63c3e78",
+        "reason": "LOCAL ONLY: native/default chain embeds commercial PingFang SC font software; public archive includes bitmap/text/Preview records only"
+      },
+      {
+        "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-native.pdf",
+        "bytes": 117459,
+        "sha256": "d33bd58f7ad9941838379b93ec6eb0ab16a3ff9daabf31e6aa4972b90055e9da",
+        "reason": "LOCAL ONLY: native/default chain embeds commercial PingFang SC font software; public archive includes bitmap/text/Preview records only"
+      },
+      {
+        "source": "artifacts/issue06-q3-implementation/option-b-integration/attempt6-visual/generated-layout-default.pdf",
+        "bytes": 117459,
+        "sha256": "ea10fbebd813aa70727b6534b1693b7de50a35a63932b497d40a7a58c83ba02b",
+        "reason": "LOCAL ONLY: native/default chain embeds commercial PingFang SC font software; public archive includes bitmap/text/Preview records only"
+      }
+    ]
+  },
+  "policy": "Reject every font payload outside the two exact original OFL hashes and four pinned derived PDF subsets. Thus PingFang, old Arial Unicode and all unknown embedded payloads are excluded. Full TTFs/bundle ZIP are not duplicated; existing repository tests/fixtures/trusted-fonts bundle remains separately referenced."
+}

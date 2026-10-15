@@ -1234,7 +1234,7 @@ public sealed class DocumentToolTests
     public async Task Reader_PageAndTemplateLeavesUseOnlyDirectLiteralTextAndPreserveExtensions(bool template)
     {
         var source = await RoundTrip(Source()); var ns = XNamespace.Get(source.Options.Namespace); var pagePath = source.Pages[0].SourceEntryPath!;
-        var fixture = XElement.Parse($"<Page xmlns='{ns}'><Content><Layer ID='700'><TextObject ID='701' Font='10' Size='4' Boundary='0 0 40 10'><TextCode X='0' Y='4'>OK<Note>SECRET</Note></TextCode><Note><TextCode>NESTED</TextCode></Note></TextObject><TextObject ID='702' Boundary='0 20 40 10'><Note>FALLBACK</Note></TextObject><PathObject ID='703' Boundary='0 30 40 10'><AbbreviatedData>M 0 0 L 1 0<Note> L 9 9</Note></AbbreviatedData></PathObject></Layer></Content></Page>");
+        var fixture = XElement.Parse($"<Page xmlns='{ns}'><Content><Layer ID='704'><TextObject ID='701' Font='10' Size='4' Boundary='0 0 40 10'><TextCode X='0' Y='4'>OK<Note>SECRET</Note></TextCode><Note><TextCode>NESTED</TextCode></Note></TextObject><TextObject ID='702' Boundary='0 20 40 10'><Note>FALLBACK</Note></TextObject><PathObject ID='703' Boundary='0 30 40 10'><AbbreviatedData>M 0 0 L 1 0<Note> L 9 9</Note></AbbreviatedData></PathObject></Layer></Content></Page>");
         var fixturePath = template ? "Doc_0/Templates/Content.xml" : pagePath;
         source.PreservedEntries[fixturePath] = Encoding.UTF8.GetBytes(fixture.ToString());
         if (template)
@@ -1448,6 +1448,9 @@ public sealed class DocumentToolTests
     }
     private static async Task<OfdDocumentPackage> RoundTrip(OfdDocumentPackage source)
     {
+        // These editing fixtures deliberately use opaque marker bytes as fonts.
+        if (source.Fonts.Any(font => font.Data.Length is > 0 and < 12))
+            source.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
         using var stream = new MemoryStream(); await new OfdPackageWriter().WriteAsync(source, stream); stream.Position = 0; return await new OfdReader().ReadAsync(stream);
     }
 }

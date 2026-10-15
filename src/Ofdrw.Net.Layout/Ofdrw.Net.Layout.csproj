@@ -5,7 +5,16 @@
     <PackageTags>OFD;layout;builder;document-generation</PackageTags>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Packaging.Tests" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Cli" />
+    <ProjectReference Include="../Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Layout.Tests" />
   </ItemGroup>
 </Project>

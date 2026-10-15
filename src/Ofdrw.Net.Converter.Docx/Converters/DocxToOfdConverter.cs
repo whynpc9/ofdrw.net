@@ -116,7 +116,7 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
                     }
                 }
                 var sourcePageCount = package.Pages.Count;
-                var selected = OfdPageSelection.Apply(package, pages, _semanticOptions.MaxPageCount);
+                var selected = OfdPageSelection.Apply(package, pages, _semanticOptions.MaxPageCount, cancellationToken);
                 await new OfdPackageWriter().WriteAsync(package, ofdOutput, cancellationToken).ConfigureAwait(false);
                 return new DocxToOfdConversionResult(DocxToOfdMode.Native, null, new DocxConversionEngine[0], diagnostics,
                     sourcePageCount, selected, !diagnostics.Any(diagnostic => diagnostic.Code.Contains("UNSUPPORTED")), true);
@@ -135,7 +135,7 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
                 renderResult?.ActualEngine == DocxConversionEngine.BuiltIn, cancellationToken);
             if ((mapping.HasUnplacedSupplementalText || mapping.HasUnplacedBodyText) && pages is { Count: > 0 })
                 throw new InvalidDataException("DOCX_PAGE_TEXT_SCOPE_AMBIGUOUS: page selection requires a reliable anchor for every original text part.");
-            var sourcePages = OfdPageSelection.Normalize(mapping.Pages.Count, pages);
+            var sourcePages = OfdPageSelection.Normalize(mapping.Pages.Count, pages, cancellationToken);
             if (sourcePages.Count > _semanticOptions.MaxPageCount)
                 throw new InvalidDataException("DOCX selection exceeds the configured page count limit.");
             OfdDocumentPackage visual;
@@ -159,6 +159,9 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
             }
             if (visual.Pages.Count != sourcePages.Count)
                 throw new InvalidDataException("The visual converter did not preserve the requested page selection.");
+            var targetNamespace = string.IsNullOrWhiteSpace(_semanticOptions.OfdNamespace) ? OfdConstants.Namespace : _semanticOptions.OfdNamespace;
+            if (visual.SourceIdentity is not null && visual.Options.Namespace != targetNamespace)
+                visual = StagedRasterNamespaceAdapter.Rebuild(visual, cancellationToken, targetNamespace);
             ApplyDocxPackageProfile(visual);
             AddSourceTextLayer(visual, mapping, sourcePages);
             await new OfdPackageWriter().WriteAsync(visual, ofdOutput, cancellationToken).ConfigureAwait(false);
