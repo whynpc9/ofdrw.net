@@ -954,13 +954,13 @@ public sealed partial class OfdPackageWriter
                             !string.IsNullOrWhiteSpace(run.DeltaY)
                                 ? new XAttribute("DeltaY", run.DeltaY)
                                 : null,
-                            run.Text.Replace("\\", "\\005C")))
+                            OfdTextRenderProjection.EncodeLiteral(run.Text, idAllocator.Material, idAllocator.Token)))
                         : new[]
                         {
                             new XElement(ns + "TextCode",
                                 new XAttribute("X", "0"),
                                 new XAttribute("Y", ToInvariant(Math.Max(text.FontSizeMillimeters, 1d))),
-                                text.Text.Replace("\\", "\\005C"))
+                                OfdTextRenderProjection.EncodeLiteral(text.Text, idAllocator.Material, idAllocator.Token))
                         });
                 ApplyNameOnlyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
             }

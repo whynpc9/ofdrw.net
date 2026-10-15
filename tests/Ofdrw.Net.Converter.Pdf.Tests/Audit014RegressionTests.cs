@@ -158,6 +158,8 @@ public sealed class Audit014RegressionTests
         var input = await Input("<TextCode X=\"2\" Y=\"8\">" + value + "</TextCode>");
         await Assert.ThrowsAsync<InvalidDataException>(() => Svg(input));
         await Assert.ThrowsAsync<InvalidDataException>(() => Pdf(input));
+        using var source = new MemoryStream(input); var model = await new OfdReader().ReadAsync(source);
+        Assert.Throws<InvalidDataException>(() => new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().Extract(model));
     }
 
     [Theory]
@@ -252,6 +254,21 @@ public sealed class Audit014RegressionTests
         using var pdf = UglyToad.PdfPig.PdfDocument.Open(await Pdf(bytes)); Assert.Equal(literal + literal, pdf.GetPage(1).Text);
         var raw = Assert.IsType<OfdTextElement>(Assert.Single(read.CompositeResources!.Items).Elements[0]);
         Assert.Equal(literal.Replace("\\", "\\005C"), raw.Text);
+    }
+
+    [Fact]
+    public void Audit014_LiteralEncoding_ReservesBudgetsAndObservesCancellation()
+    {
+        var copy = new OfdModelMaterialization(new OfdModelLimits { MaxMaterializedBytes = 512 });
+        var copyError = Assert.Throws<InvalidDataException>(() => OfdTextRenderProjection.EncodeLiteral(new string('\\', 100), copy, default));
+        Assert.Contains("clone-copy", copyError.Message); Assert.Equal(0, copy.CloneCopyBytes);
+        var work = new OfdModelMaterialization(new OfdModelLimits { MaxMaterializedBytes = 64 });
+        var workError = Assert.Throws<InvalidDataException>(() => OfdTextRenderProjection.EncodeLiteral(new string('A', 100), work, default));
+        Assert.Contains("validation work", workError.Message); Assert.Equal(0, work.CloneCopyBytes);
+        using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() => OfdTextRenderProjection.EncodeLiteral(@"A\B", new(new OfdModelLimits()), cancellation.Token));
+        var literal = new string('A', 20); var budget = new OfdModelMaterialization(new OfdModelLimits());
+        Assert.Same(literal, OfdTextRenderProjection.EncodeLiteral(literal, budget, default)); Assert.Equal(0, budget.CloneCopyBytes);
     }
 
     [Fact]
