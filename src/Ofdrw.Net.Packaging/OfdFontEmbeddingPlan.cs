@@ -16,9 +16,11 @@ internal sealed class OfdFontEmbeddingPlan
     internal List<string> Diagnostics { get; } = new();
     internal bool CanonicalPayloads { get; }
 
-    internal OfdFontEmbeddingPlan(OfdDocumentPackage package, CancellationToken cancellationToken, OfdModelMaterialization? material = null)
+    internal OfdFontEmbeddingPlan(OfdDocumentPackage package, CancellationToken cancellationToken)
+        : this(package, cancellationToken, new OfdModelMaterialization(new OfdModelLimits())) { }
+
+    internal OfdFontEmbeddingPlan(OfdDocumentPackage package, CancellationToken cancellationToken, OfdModelMaterialization material)
     {
-        material ??= new OfdModelMaterialization(new OfdModelLimits());
         var options = package.Options.FontEmbedding ?? throw new ArgumentException("FontEmbedding is required.");
         if (options.MaximumCmapParseWork <= 0 || options.MaximumCollectionBytes <= 0 || options.MaximumFontBytes <= 0 || options.MaximumUsedScalars <= 0 || options.MaximumGlyphClosureOperations <= 0 || !Enum.IsDefined(typeof(OfdFontEmbeddingMode), options.Mode))
             throw new ArgumentOutOfRangeException(nameof(package), "Invalid font embedding options.");
