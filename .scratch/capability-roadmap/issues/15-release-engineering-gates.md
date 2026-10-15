@@ -6,13 +6,13 @@
 
 **Priority:** Q
 
-**Status:** ready-for-agent
+**Status:** in-review (PR #8; release candidate Preview still pending)
 
-- [ ] 发包核对 license 与第三方声明，并跑同批包消费 E2E
-- [ ] 票据/模板/异常包语料带像素差阈值
-- [ ] 坏包、路径穿越、超限 ZIP 稳定拒绝
-- [ ] 新增 API 消除 CS1591
-- [ ] Preview 验收留下记录模板（Native OFD，不得用 DOCX→PDF 代替）
+- [x] 发包核对 license 与第三方声明，并跑同批包消费 E2E
+- [x] 票据/模板/异常包语料带像素差阈值
+- [x] 坏包、路径穿越、超限 ZIP 稳定拒绝
+- [x] 新增 API 消除 CS1591
+- [x] Preview 验收留下记录模板（Native OFD，不得用 DOCX→PDF 代替）
 
 ## Parent
 
@@ -24,11 +24,13 @@
 
 ## Acceptance criteria
 
-- [ ] 发布核对 license 与第三方声明；同批 NuGet 消费 E2E 仍作为发包前置
-- [ ] 视觉回归语料覆盖票据/发票/模板/异常包一类无隐私样本；比较是像素差阈值，而不只是「页非空」
-- [ ] 模糊或固定坏包集覆盖路径穿越、条目超限、解压炸弹；拒绝稳定、有测试
-- [ ] 本轮新增的公开 API 无 CS1591；旧债按模块清的顺序写在文档里即可，不要求一次清完历史
-- [ ] 提供 Preview 验收记录模板（源码基线、样例、模式、查看链路、已检查页、遗留问题）；不把自动化绿当成 Preview 完成
+- [x] 发布核对 license 与第三方声明；同批 NuGet 消费 E2E 仍作为发包前置
+- [x] 视觉回归语料覆盖票据/发票/模板/异常包一类无隐私样本；比较是像素差阈值，而不只是「页非空」
+- [x] 模糊或固定坏包集覆盖路径穿越、条目超限、解压炸弹；拒绝稳定、有测试
+- [x] 本轮新增的公开 API 无 CS1591；旧债按模块清的顺序写在文档里即可，不要求一次清完历史
+- [x] 提供 Preview 验收记录模板（源码基线、样例、模式、查看链路、已检查页、遗留问题）；不把自动化绿当成 Preview 完成
+
+实现正在 PR #8 审查；勾选表示闸门代码与模板已提交，不表示发布候选的人工 Preview 已完成或允许发包。`docs/release-preview-acceptance.json` 保持 `not-reviewed`，直到实际候选被逐页查看。
 
 ## Blocked by
 

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using System.Xml;
 using Ofdrw.Net.Core.Constants;
@@ -29,6 +30,25 @@ public sealed class OfdReader : IOfdReader
         Stream ofdStream,
         OfdPackageLoadOptions options,
         CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await ReadCoreAsync(ofdStream, options, cancellationToken).ConfigureAwait(false);
+        }
+        catch (XmlException error)
+        {
+            throw new InvalidDataException("OFD package contains malformed XML.", error);
+        }
+        catch (KeyNotFoundException error)
+        {
+            throw new InvalidDataException("OFD package references a missing entry.", error);
+        }
+    }
+
+    private async Task<OfdDocumentPackage> ReadCoreAsync(
+        Stream ofdStream,
+        OfdPackageLoadOptions options,
+        CancellationToken cancellationToken)
     {
         var archive = await _loader.LoadAsync(ofdStream, options, cancellationToken).ConfigureAwait(false);
         var package = new OfdDocumentPackage();

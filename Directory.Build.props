@@ -20,7 +20,7 @@
     <!-- Keep shipping XML documentation while allowing public API docs to be
          completed incrementally. Other XML documentation diagnostics, such as
          malformed cref/param tags, remain enabled. -->
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <NoWarn Condition="'$(EnforcePublicApiDocs)' != 'true'">$(NoWarn);CS1591</NoWarn>
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
     <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.8</VersionSuffix>
     <PackageVersion Condition="'$(PackageVersion)' == ''">$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
