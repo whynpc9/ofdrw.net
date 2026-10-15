@@ -1,9 +1,12 @@
 using System.IO.Compression;
 using System.Text.Json;
+using System.Text;
+using System.Xml.Linq;
 using Ofdrw.Net.Crypto.Password;
 
 var inputDirectory = Path.GetFullPath(args[0]); var output = Path.GetFullPath(args[1]); Directory.CreateDirectory(output);
 var reports = new Dictionary<string, object>();
+var salts = new HashSet<string>();
 foreach (var mode in new[] { "native", "default" })
 {
     var baseline = Path.Combine(inputDirectory, "baseline-" + mode + ".ofd"); var original = Entries(baseline);
@@ -13,6 +16,14 @@ foreach (var mode in new[] { "native", "default" })
         if (scope == "partial") options.PageIndices.Add(1); else foreach (var path in original.Keys) options.EntryNames.Add(path);
         var encrypted = Path.Combine(output, mode + "-" + scope + "-encrypted.ofd"); var restored = Path.Combine(output, mode + "-" + scope + "-restored.ofd");
         await OfdPasswordEnvelope.EncryptFileAsync(baseline, encrypted, "actual-package-test-口令", options);
+        var stored = Entries(encrypted);
+        var envelope = XElement.Parse(Encoding.UTF8.GetString(stored["Encryptions.xml"]));
+        XNamespace profile = "urn:ofdrw-net:password-profile:2";
+        var kdf = envelope.Element(profile + "Kdf")!;
+        if ((string?)envelope.Attribute(profile + "Version") != "2" || (string?)kdf.Attribute("N") != "131072" ||
+            (string?)kdf.Attribute("Algorithm") != "scrypt" || stored["PasswordCrypto/auth.dat"].Length != 32 ||
+            Convert.FromBase64String(kdf.Attribute("Salt")!.Value).Length != 32 || !salts.Add(kdf.Attribute("Salt")!.Value))
+            throw new Exception("Actual package did not emit distinct authenticated salted v2 envelopes.");
         await OfdPasswordEnvelope.DecryptFileAsync(encrypted, restored, "actual-package-test-口令", options);
         var roundTrip = Entries(restored);
         if (!original.Keys.Order().SequenceEqual(roundTrip.Keys.Order()) || original.Any(pair => !pair.Value.SequenceEqual(roundTrip[pair.Key]))) throw new Exception("Actual package failed exact recovery.");
@@ -24,7 +35,26 @@ foreach (var mode in new[] { "native", "default" })
         try { await OfdPasswordEnvelope.DecryptFileAsync(encrypted, restored, "actual-package-test-口令", options, cancelled.Token); throw new Exception("Cancellation succeeded."); }
         catch (OperationCanceledException) { }
         if (!before.SequenceEqual(File.ReadAllBytes(restored))) throw new Exception("Cancellation damaged existing output.");
-        reports[mode + "-" + scope] = new { original_entries = original.Count, recovered_entry_bytes_equal = true, wrong_password_atomic = true, pre_cancel_atomic = true };
+        foreach (var attack in new[] { "tag", "cost", "v1" })
+        {
+            var malformed = Entries(encrypted);
+            if (attack == "tag") malformed["PasswordCrypto/auth.dat"][0] ^= 1;
+            else
+            {
+                var xml = XElement.Parse(Encoding.UTF8.GetString(malformed["Encryptions.xml"]));
+                if (attack == "cost") xml.Element(profile + "Kdf")!.SetAttributeValue("N", "2147483647");
+                else { xml.Attribute(profile + "Version")!.Remove(); xml.SetAttributeValue(XName.Get("Version", "urn:ofdrw-net:password-profile:1"), "1"); }
+                malformed["Encryptions.xml"] = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+            }
+            var attackPath = Path.Combine(output, mode + "-" + scope + "-" + attack + ".ofd");
+            WriteEntries(attackPath, malformed);
+            try { await OfdPasswordEnvelope.DecryptFileAsync(attackPath, restored, "actual-package-test-口令", options); throw new Exception("V2 security trigger survived: " + attack); }
+            catch (InvalidDataException) { }
+            if (!before.SequenceEqual(File.ReadAllBytes(restored)) || Directory.GetFiles(output, ".ofd-password-*.tmp").Length > 0)
+                throw new Exception("V2 security failure was not atomic.");
+        }
+        reports[mode + "-" + scope] = new { original_entries = original.Count, profile = 2, salt_bytes = 32,
+            recovered_entry_bytes_equal = true, wrong_password_atomic = true, pre_cancel_atomic = true, tag_cost_v1_rejected_atomically = true };
     }
 }
 // Regression for the old successful-output / same-options-input mismatch.
@@ -55,4 +85,9 @@ Dictionary<string, byte[]> Entries(string path)
 {
     using var zip = ZipFile.OpenRead(path);
     return zip.Entries.Where(entry => entry.Name.Length > 0).ToDictionary(entry => entry.FullName, entry => { using var input = entry.Open(); using var output = new MemoryStream(); input.CopyTo(output); return output.ToArray(); });
+}
+void WriteEntries(string path, Dictionary<string, byte[]> entries)
+{
+    using var zip = ZipFile.Open(path, ZipArchiveMode.Create);
+    foreach (var entry in entries) { using var stream = zip.CreateEntry(entry.Key, CompressionLevel.NoCompression).Open(); stream.Write(entry.Value); }
 }

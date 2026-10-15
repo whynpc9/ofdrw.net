@@ -11,22 +11,23 @@ using Ofdrw.Net.Packaging.Archive;
 namespace Ofdrw.Net.Crypto.Password;
 
 /// <summary>Opt-in, single-layer password envelopes for this package's own profile. No vendor interoperability,
-/// cryptographic authenticity, certification, or long-term archival suitability is implied.</summary>
+/// signature identity, certification, or long-term archival suitability is implied.</summary>
 public static class OfdPasswordEnvelope
 {
     private const string EnvelopePath = "Encryptions.xml";
     private const string SeedPath = "PasswordCrypto/decryptseed.dat";
     private const string MapPath = "PasswordCrypto/entriesmap.dat";
+    private const string AuthPath = "PasswordCrypto/auth.dat";
     private const string ProviderName = "Ofdrw.Net.Crypto.Password";
     private static readonly XNamespace Ns = "http://www.ofdspec.org";
-    private static readonly XNamespace Profile = "urn:ofdrw-net:password-profile:1";
+    private static readonly XNamespace Profile = "urn:ofdrw-net:password-profile:2";
 
     /// <summary>Encrypts an explicitly selected set of entries and returns a complete ZIP. Leaves input open.
     /// On failure no result is returned. The caller owns and should clear returned bytes when no longer needed.</summary>
     public static Task<byte[]> EncryptAsync(Stream source, string password, OfdPasswordOptions options,
         CancellationToken cancellationToken = default) => TransformAsync(source, password, options, true, cancellationToken);
 
-    /// <summary>Decrypts only this package's versioned profile after verifying its recovery checksums.
+    /// <summary>Decrypts only profile v2 after authenticating all logical file entries. Legacy v1 is rejected.
     /// Wrong password and damaged ciphertext share InvalidDataException. Leaves input open; returns no partial plaintext.</summary>
     public static Task<byte[]> DecryptAsync(Stream source, string password, OfdPasswordOptions? options = null,
         CancellationToken cancellationToken = default) => TransformAsync(source, password, options ?? new(), false, cancellationToken);
@@ -45,23 +46,45 @@ public static class OfdPasswordEnvelope
         ArgumentNullException.ThrowIfNull(source);
         var settings = new Settings(options);
         token.ThrowIfCancellationRequested();
-        var kek = PasswordPrimitives.PasswordKey(password);
         var owned = new OwnedBuffers();
+        var passwordBytes = PasswordPrimitives.PasswordBytes(password); owned.Add(passwordBytes);
         Dictionary<string, byte[]>? entries = null;
+        bool hasLease = false;
         try
         {
             var archive = await LoadRawValidatedAsync(source, settings, token).ConfigureAwait(false);
             entries = archive.EntryNames.ToDictionary(path => path, archive.GetBytes, StringComparer.OrdinalIgnoreCase);
             AdoptAndValidateEntries(entries, owned);
-            if (encrypt) Encrypt(entries, kek, settings, owned, token);
-            else Decrypt(entries, kek, settings, owned, token);
+            var salt = encrypt ? RandomNumberGenerator.GetBytes(32) : ReadKdfSalt(entries, settings);
+            owned.Add(salt);
+            if (settings.KdfMemory < PasswordPrimitives.KdfMemoryBudget || settings.KdfWork < PasswordPrimitives.KdfWorkUnits)
+                throw new InvalidDataException("Profile v2 exceeds the caller's KDF budget.");
+            await PasswordPrimitives.KdfGate.WaitAsync(token).ConfigureAwait(false);
+            hasLease = true;
+            // SCrypt has no mid-call cancellation. Never detach the computation:
+            // it finishes/clears its work arrays before cancellation is reported.
+            var keys = PasswordPrimitives.PasswordKey(passwordBytes, salt, token); owned.Add(keys);
+            var kek = keys[..16]; var macKey = keys[16..]; owned.Add(kek); owned.Add(macKey);
+            if (encrypt)
+            {
+                Encrypt(entries, kek, salt, settings, owned, token);
+                var tag = PasswordPrimitives.Authenticate(entries, AuthPath, macKey, token); owned.Add(tag);
+                entries.Add(AuthPath, tag);
+                CheckExpanded(entries, settings);
+            }
+            else
+            {
+                var actual = PasswordPrimitives.Authenticate(entries, AuthPath, macKey, token); owned.Add(actual);
+                Require(CryptographicOperations.FixedTimeEquals(actual, Get(entries, AuthPath)), "Password or authenticated data is invalid.");
+                Decrypt(entries, kek, settings, owned, token);
+            }
             token.ThrowIfCancellationRequested();
             return await Pack(entries, settings, token).ConfigureAwait(false);
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(kek);
             owned.Dispose();
+            if (hasLease) PasswordPrimitives.KdfGate.Release();
         }
     }
 
@@ -124,7 +147,7 @@ public static class OfdPasswordEnvelope
         foreach (var path in entries.Keys) Canonical(path);
     }
 
-    private static void Encrypt(Dictionary<string, byte[]> entries, byte[] kek, Settings settings, OwnedBuffers owned, CancellationToken token)
+    private static void Encrypt(Dictionary<string, byte[]> entries, byte[] kek, byte[] salt, Settings settings, OwnedBuffers owned, CancellationToken token)
     {
         if (entries.Keys.Any(Reserved)) throw new InvalidDataException("Input already contains encryption metadata or a reserved PasswordCrypto path.");
         var root = ValidateDocument(entries, settings);
@@ -133,7 +156,7 @@ public static class OfdPasswordEnvelope
         var fek = RandomNumberGenerator.GetBytes(16);
         var iv = RandomNumberGenerator.GetBytes(16);
         owned.Add(fek); owned.Add(iv);
-        var map = new XElement(Ns + "EncryptEntries", new XAttribute("ID", "1"), new XAttribute(Profile + "Version", "1"));
+        var map = new XElement(Ns + "EncryptEntries", new XAttribute("ID", "1"), new XAttribute(Profile + "Version", "2"));
         var inventory = new XElement(Profile + "Inventory");
         foreach (var entry in entries.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
@@ -146,46 +169,59 @@ public static class OfdPasswordEnvelope
         {
             token.ThrowIfCancellationRequested();
             var cipherPath = $"PasswordCrypto/entry-{++index:D5}.dat";
-            var cipher = PasswordPrimitives.Cbc(true, entries[path], fek, iv, token);
+            var cipher = EncryptRecord(entries[path], fek, owned, token);
             owned.Add(cipher);
             entries.Remove(path); entries.Add(cipherPath, cipher);
             map.Add(new XElement(Ns + "EncryptEntry", new XAttribute("Path", "/" + path), new XAttribute("EPath", "/" + cipherPath)));
         }
         map.Add(inventory);
         var mapBytes = XmlBytes(map, settings.Metadata, owned);
-        var encryptedMap = PasswordPrimitives.Cbc(true, mapBytes, fek, iv, token); owned.Add(encryptedMap);
+        var encryptedMap = EncryptRecord(mapBytes, fek, owned, token); owned.Add(encryptedMap);
         entries.Add(MapPath, encryptedMap);
         var wrapped = PasswordPrimitives.Cbc(true, fek, kek, iv, token); owned.Add(wrapped);
-        var seed = new XElement(Ns + "DecyptSeed", new XAttribute("ID", "1"), new XAttribute("EncryptCaseId", "1.1.1"),
+        var seed = new XElement(Ns + "DecyptSeed", new XAttribute("ID", "1"), new XAttribute("EncryptCaseId", "2.scrypt-sm4-etm"),
             new XElement(Ns + "UserInfo", new XAttribute("UserName", settings.UserName), new XAttribute("UserType", "User"),
                 new XElement(Ns + "EncryptedWK", Convert.ToBase64String(wrapped)),
                 new XElement(Ns + "IVValue", Convert.ToBase64String(iv))), new XElement(Ns + "ExtendParams"));
         var seedBytes = XmlBytes(seed, settings.Metadata, owned); entries.Add(SeedPath, seedBytes);
-        var envelope = new XElement(Ns + "Encryptions", new XAttribute(Profile + "Version", "1"),
+        var envelope = new XElement(Ns + "Encryptions", new XAttribute(Profile + "Version", "2"),
+            new XElement(Profile + "Kdf", new XAttribute("Algorithm", "scrypt"), new XAttribute("N", "131072"),
+                new XAttribute("r", "8"), new XAttribute("p", "1"), new XAttribute("dkLen", "48"), new XAttribute("Salt", Convert.ToBase64String(salt))),
             new XElement(Ns + "EncryptInfo", new XAttribute("ID", "1"),
-                new XElement(Ns + "Provider", new XAttribute("Name", ProviderName), new XAttribute("Company", "Ofdrw.Net"), new XAttribute("Version", "1")),
+                new XElement(Ns + "Provider", new XAttribute("Name", ProviderName), new XAttribute("Company", "Ofdrw.Net"), new XAttribute("Version", "2")),
                 new XElement(Ns + "EncryptScope", "Partial"),
                 new XElement(Ns + "DecryptSeedLoc", "/" + SeedPath), new XElement(Ns + "EntriesMapLoc", "/" + MapPath)));
         var envelopeBytes = XmlBytes(envelope, settings.Metadata, owned); entries.Add(EnvelopePath, envelopeBytes);
         CheckExpanded(entries, settings);
     }
 
-    private static void Decrypt(Dictionary<string, byte[]> entries, byte[] kek, Settings settings, OwnedBuffers owned, CancellationToken token)
+    private static byte[] ReadKdfSalt(Dictionary<string, byte[]> entries, Settings settings)
     {
         var envelope = Parse(Get(entries, EnvelopePath), settings);
-        Require(envelope.Name == Ns + "Encryptions" && (string?)envelope.Attribute(Profile + "Version") == "1", "Unsupported password profile.");
-        Shape(envelope, [Profile + "Version"], [Ns + "EncryptInfo"]);
+        Require(envelope.Name == Ns + "Encryptions" && (string?)envelope.Attribute(Profile + "Version") == "2", "Only password profile v2 is supported; v1 and unknown profiles are rejected.");
+        Shape(envelope, [Profile + "Version"], [Ns + "EncryptInfo", Profile + "Kdf"]);
         var info = Single(envelope, Ns + "EncryptInfo");
         Shape(info, ["ID"], [Ns + "Provider", Ns + "EncryptScope", Ns + "DecryptSeedLoc", Ns + "EntriesMapLoc"]);
         Require((string?)info.Attribute("ID") == "1", "Unsupported encryption ID.");
         var provider = Single(info, Ns + "Provider");
         Shape(provider, ["Name", "Company", "Version"], []);
-        Require((string?)provider.Attribute("Name") == ProviderName && (string?)provider.Attribute("Version") == "1", "Unsupported provider.");
+        Require((string?)provider.Attribute("Name") == ProviderName && (string?)provider.Attribute("Company") == "Ofdrw.Net" && (string?)provider.Attribute("Version") == "2", "Unsupported provider.");
         Require(Leaf(info, "EncryptScope") == "Partial" && Leaf(info, "DecryptSeedLoc") == "/" + SeedPath &&
                 Leaf(info, "EntriesMapLoc") == "/" + MapPath, "Unsupported encryption locations or scope.");
+        var kdf = Single(envelope, Profile + "Kdf");
+        Shape(kdf, ["Algorithm", "N", "r", "p", "dkLen", "Salt"], []);
+        Require(!kdf.HasElements && string.IsNullOrEmpty(kdf.Value) && (string?)kdf.Attribute("Algorithm") == "scrypt" &&
+            (string?)kdf.Attribute("N") == "131072" && (string?)kdf.Attribute("r") == "8" &&
+            (string?)kdf.Attribute("p") == "1" && (string?)kdf.Attribute("dkLen") == "48", "Unsupported or excessive KDF parameters.");
+        Require(entries.Keys.Contains(AuthPath, StringComparer.Ordinal) && Get(entries, AuthPath).Length == 32, "Missing or invalid authentication record.");
+        return Base64(kdf.Attribute("Salt")!.Value, 32);
+    }
+
+    private static void Decrypt(Dictionary<string, byte[]> entries, byte[] kek, Settings settings, OwnedBuffers owned, CancellationToken token)
+    {
         var seed = Parse(Get(entries, SeedPath), settings);
         Require(seed.Name == Ns + "DecyptSeed" && (string?)seed.Attribute("ID") == "1" &&
-                (string?)seed.Attribute("EncryptCaseId") == "1.1.1", "Unsupported key descriptor.");
+                (string?)seed.Attribute("EncryptCaseId") == "2.scrypt-sm4-etm", "Unsupported key descriptor.");
         Shape(seed, ["ID", "EncryptCaseId"], [Ns + "UserInfo", Ns + "ExtendParams"]);
         Shape(Single(seed, Ns + "ExtendParams"), [], []);
         var user = Single(seed, Ns + "UserInfo");
@@ -197,11 +233,11 @@ public static class OfdPasswordEnvelope
         var fek = PasswordPrimitives.Cbc(false, wrapped, kek, iv, token); owned.Add(fek);
         Require(fek.Length == 16, "Password or encrypted data is invalid.");
         var mapCipher = Get(entries, MapPath);
-        Require(mapCipher.Length <= settings.Metadata + 16, "Encrypted map exceeds metadata budget.");
-        var mapBytes = PasswordPrimitives.Cbc(false, mapCipher, fek, iv, token); owned.Add(mapBytes);
+        Require(mapCipher.Length <= settings.Metadata + 32, "Encrypted map exceeds metadata budget.");
+        var mapBytes = DecryptRecord(mapCipher, fek, owned, token); owned.Add(mapBytes);
         var map = Parse(mapBytes, settings);
         Require(map.Name == Ns + "EncryptEntries" && (string?)map.Attribute("ID") == "1" &&
-            (string?)map.Attribute(Profile + "Version") == "1", "Unsupported recovery map.");
+            (string?)map.Attribute(Profile + "Version") == "2", "Unsupported recovery map.");
         Shape(map, ["ID", Profile + "Version"], [Ns + "EncryptEntry", Profile + "Inventory"], allowRepeated: Ns + "EncryptEntry");
         var mappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var cipherPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -234,17 +270,17 @@ public static class OfdPasswordEnvelope
         }
         Require(original.Count <= settings.Load.MaxEntryCount && mappings.Keys.All(original.ContainsKey), "Invalid recovery inventory.");
         var expected = new HashSet<string>(original.Keys.Where(path => !mappings.ContainsKey(path)), StringComparer.OrdinalIgnoreCase);
-        expected.UnionWith(cipherPaths); expected.UnionWith([EnvelopePath, SeedPath, MapPath]);
+        expected.UnionWith(cipherPaths); expected.UnionWith([EnvelopePath, SeedPath, MapPath, AuthPath]);
         Require(expected.SetEquals(entries.Keys), "Encrypted package has missing or unexpected entries.");
         foreach (var item in mappings)
         {
             token.ThrowIfCancellationRequested();
             var cipher = Get(entries, item.Value);
-            Require(cipher.Length == (original[item.Key].Length / 16 + 1) * 16, "Inconsistent ciphertext length.");
-            var plaintext = PasswordPrimitives.Cbc(false, cipher, fek, iv, token); owned.Add(plaintext);
+            Require(cipher.Length == (original[item.Key].Length / 16 + 1) * 16 + 16, "Inconsistent ciphertext length.");
+            var plaintext = DecryptRecord(cipher, fek, owned, token); owned.Add(plaintext);
             entries.Remove(item.Value); entries.Add(item.Key, plaintext);
         }
-        entries.Remove(EnvelopePath); entries.Remove(SeedPath); entries.Remove(MapPath);
+        entries.Remove(EnvelopePath); entries.Remove(SeedPath); entries.Remove(MapPath); entries.Remove(AuthPath);
         foreach (var item in original)
         {
             token.ThrowIfCancellationRequested();
@@ -254,6 +290,23 @@ public static class OfdPasswordEnvelope
         }
         ValidateDocument(entries, settings);
         CheckExpanded(entries, settings);
+    }
+
+    private static byte[] EncryptRecord(byte[] plaintext, byte[] key, OwnedBuffers owned, CancellationToken token)
+    {
+        var iv = RandomNumberGenerator.GetBytes(16); owned.Add(iv);
+        var cipher = PasswordPrimitives.Cbc(true, plaintext, key, iv, token); owned.Add(cipher);
+        var record = new byte[checked(16 + cipher.Length)]; owned.Add(record);
+        iv.CopyTo(record, 0); cipher.CopyTo(record, 16);
+        return record;
+    }
+
+    private static byte[] DecryptRecord(byte[] record, byte[] key, OwnedBuffers owned, CancellationToken token)
+    {
+        Require(record.Length >= 32 && record.Length % 16 == 0, "Invalid authenticated CBC record.");
+        var iv = record[..16]; owned.Add(iv);
+        var cipher = record[16..]; owned.Add(cipher);
+        return PasswordPrimitives.Cbc(false, cipher, key, iv, token);
     }
 
     private static XElement ValidateDocument(Dictionary<string, byte[]> entries, Settings settings)
@@ -476,12 +529,16 @@ public static class OfdPasswordEnvelope
         internal string[] Paths { get; }
         internal int[] Pages { get; }
         internal string UserName { get; }
+        internal long KdfMemory { get; }
+        internal long KdfWork { get; }
         internal Settings(OfdPasswordOptions options)
         {
             ArgumentNullException.ThrowIfNull(options); ArgumentNullException.ThrowIfNull(options.LoadOptions);
             if (options.MaxOutputBytes <= 0 || options.MaxOutputBytes > int.MaxValue || options.MaxMetadataBytes <= 0 ||
                 options.MaxMetadataBytes > 16 * 1024 * 1024 || string.IsNullOrWhiteSpace(options.UserName) || options.UserName.Length > 256)
                 throw new ArgumentOutOfRangeException(nameof(options), "Invalid password profile budgets or user name.");
+            if (options.MaxKdfMemoryBytes <= 0 || options.MaxKdfWorkUnits <= 0)
+                throw new ArgumentOutOfRangeException(nameof(options), "KDF budgets must be positive.");
             var input = options.LoadOptions;
             if (input.MaxInputBytes <= 0 || input.MaxInputBytes > int.MaxValue || input.MaxEntryCount <= 0)
                 throw new ArgumentOutOfRangeException(nameof(options), "Snapshot input must fit an in-memory array and entry count must be positive.");
@@ -495,6 +552,7 @@ public static class OfdPasswordEnvelope
                 MaxAnnotationXmlBytes = input.MaxAnnotationXmlBytes
             };
             Output = options.MaxOutputBytes; Metadata = options.MaxMetadataBytes; UserName = options.UserName;
+            KdfMemory = options.MaxKdfMemoryBytes; KdfWork = options.MaxKdfWorkUnits;
             Paths = options.EntryNames.ToArray(); Pages = options.PageIndices.ToArray();
             if (Paths.Distinct(StringComparer.OrdinalIgnoreCase).Count() != Paths.Length || Pages.Distinct().Count() != Pages.Length)
                 throw new ArgumentException("Duplicate selections are not allowed.", nameof(options));
