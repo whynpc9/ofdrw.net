@@ -12,6 +12,65 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 
 public sealed class SvgGeometryTests
 {
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(128, false)]
+    [InlineData(254, false)]
+    [InlineData(1, true)]
+    [InlineData(128, true)]
+    [InlineData(254, true)]
+    public async Task BlankText_ShouldStayNonpaintingWithPartialFillAlpha(byte alpha, bool hasRun)
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "fixture",
+            Data = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fonts", "style-metrics.ttf")) });
+        var page = new OfdPage { WidthMillimeters = 80, HeightMillimeters = 60 };
+        package.Pages.Add(page);
+        foreach (var value in new[] { "\u202F", "A" })
+        {
+            var text = new OfdTextElement { Text = value, FontName = "fixture", FontResourceId = "10",
+                FontSizeMillimeters = 8, XMillimeters = value == "A" ? 40 : 15,
+                YMillimeters = 20, WidthMillimeters = 20, HeightMillimeters = 15,
+                FillColor = new OfdColor(0, 0, 0, alpha) };
+            if (hasRun) text.Runs.Add(new OfdTextRun { Text = value, YMillimeters = 8 });
+            page.Elements.Add(text);
+        }
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        // A valid external OFD may explicitly preserve a whitespace-only TextCode.
+        // Exercise that input through the public archive reader and SVG exporter.
+        using (var archive = new System.IO.Compression.ZipArchive(ofd, System.IO.Compression.ZipArchiveMode.Update, true))
+        {
+            var entry = archive.GetEntry("Doc_0/Pages/Page_0/Content.xml")!;
+            XDocument content;
+            using (var input = entry.Open()) content = XDocument.Load(input, LoadOptions.PreserveWhitespace);
+            foreach (var code in content.Descendants().Where(node => node.Name.LocalName == "TextCode"))
+                code.SetAttributeValue(XNamespace.Xml + "space", "preserve");
+            entry.Delete();
+            using var replacement = archive.CreateEntry("Doc_0/Pages/Page_0/Content.xml").Open();
+            content.Save(replacement);
+        }
+        ofd.Position = 0;
+        using var output = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(ofd, output);
+        output.Position = 0;
+        var svg = XDocument.Load(output);
+        if (alpha == 128 && hasRun && Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
+            svg.Save(Path.Combine(directory, "blank-run-alpha.svg"));
+            await File.WriteAllBytesAsync(Path.Combine(directory, "blank-run-alpha.ofd"), ofd.ToArray());
+            ofd.Position = 0;
+            using var pdf = new MemoryStream();
+            await new Ofdrw.Net.Converter.Pdf.Converters.OfdToPdfConverter().ConvertAsync(ofd, pdf);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "blank-run-alpha.pdf"), pdf.ToArray());
+        }
+        var nodes = svg.Descendants().Where(node => node.Name.LocalName == "text").ToArray();
+        Assert.Equal("0", Assert.Single(nodes, node => node.Value == "\u202F").Attribute("fill-opacity")?.Value);
+        Assert.Equal((alpha / 255d).ToString("0.###", CultureInfo.InvariantCulture),
+            Assert.Single(nodes, node => node.Value == "A").Attribute("fill-opacity")?.Value);
+    }
+
     [Fact]
     public async Task PositionedText_ShouldUseOriginalOriginsAndPreserveSpaces()
     {

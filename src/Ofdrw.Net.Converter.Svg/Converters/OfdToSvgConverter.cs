@@ -303,7 +303,6 @@ public sealed class OfdToSvgConverter
                 new XAttribute("fill", ToCssColor(text.FillColor)),
                 new XAttribute("transform", transform),
                 run.Text);
-            if (run.Text.All(char.IsWhiteSpace)) node.SetAttributeValue("fill-opacity", "0");
             var glyphs = OfdTextGeometry.Glyphs(run.Text);
             var deltaX = OfdTextGeometry.ExpandDeltas(run.DeltaX, Math.Max(0, glyphs.Count - 1));
             var deltaY = OfdTextGeometry.ExpandDeltas(run.DeltaY, Math.Max(0, glyphs.Count - 1));
@@ -333,6 +332,7 @@ public sealed class OfdToSvgConverter
                     Invariant(text.FillColor.Alpha / 255d));
             }
 
+            if (run.Text.All(char.IsWhiteSpace)) node.SetAttributeValue("fill-opacity", "0");
             root.Add(node);
         }
     }
