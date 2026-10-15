@@ -51,3 +51,10 @@ The compiled font subset bidi profile derives factual scalar ranges from the
 Unicode 17.0.0 Character Database (DerivedBidiClass.txt), licensed under
 Unicode-3.0. The source URL/SHA-256 are recorded in UnicodeFontSubsetProfile.cs;
 `docs/licenses/UNICODE-LICENSE.txt` accompanies every NuGet artifact.
+
+## Optional password envelope extension
+
+`Ofdrw.Net.Crypto.Password` alone directly references `BouncyCastle.Cryptography`
+2.6.2, MIT, source https://github.com/bcgit/bc-csharp/tree/release-2.6.2.
+Its nuspec pins upstream commit `b4f2f6ad76bcd1f11f365ee50cc7447fbce79077`.
+This dependency is not added to Core, Writer or the default Converter metapackage.
