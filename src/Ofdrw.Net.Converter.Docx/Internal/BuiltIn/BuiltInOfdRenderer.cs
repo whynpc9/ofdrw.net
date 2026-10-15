@@ -240,10 +240,11 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         var columnWidths = ResolveColumnWidths(table, state.ContentWidth);
         var firstRow = true;
 
-        foreach (var row in table.Rows)
+        for (var rowIndex = 0; rowIndex < table.Rows.Count; rowIndex++)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            var cellLayouts = MeasureRow(row, columnWidths);
+            var row = table.Rows[rowIndex];
+            var cellLayouts = MeasureRow(row, columnWidths, rowIndex + 1);
             var rowHeight = cellLayouts.Count == 0
                 ? PointsToMillimeters(DefaultFontSizePoints) * 1.5d
                 : cellLayouts.Max(cell => cell.Height);
@@ -263,24 +264,16 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             foreach (var cellLayout in cellLayouts)
             {
                 _cancellationToken.ThrowIfCancellationRequested();
-                var cellWidth = 0d;
-                for (var span = 0; span < cellLayout.ColumnSpan && columnIndex + span < columnWidths.Count; span++)
-                {
-                    cellWidth += columnWidths[columnIndex + span];
-                }
+                var cellWidth = cellLayout.Width;
 
                 var cell = row.Cells[cellLayouts.IndexOf(cellLayout)];
-                DrawCell(state.Page!, table, cell, table.Rows.IndexOf(row), columnIndex, columnWidths.Count,
+                DrawCell(state.Page!, table, cell, rowIndex, columnIndex, columnWidths.Count,
                     x, rowTop, cellWidth, rowHeight);
                 var textLeft = x + MinCellPaddingMillimeters;
-                var textWidth = Math.Max(cellWidth - MinCellPaddingMillimeters * 2, 1d);
-                var localY = AlignBlockVertically(rowTop, rowHeight,
-                    cellLayout.Lines.Sum(line => line.Height), cellLayout.VerticalAlignment);
-                foreach (var line in cellLayout.Lines)
-                {
-                    DrawLine(package, state.Page!, line, textLeft, localY, textWidth);
-                    localY += line.Height;
-                }
+
+                var localY = rowTop + FlowTableLayout.VerticalOffset(rowHeight, cellLayout, (int)cell.VerticalAlignment);
+                foreach (var line in cellLayout.Content.Lines)
+                    DrawLine(package, state.Page!, line.Line, textLeft + line.Left, localY + line.Top, line.Width);
 
                 x += cellWidth;
                 columnIndex += cellLayout.ColumnSpan;
@@ -290,37 +283,30 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         }
     }
 
-    private List<CellLayout> MeasureRow(BuiltInTableRowModel row, IReadOnlyList<double> columnWidths)
+    private List<FlowMeasuredCell> MeasureRow(BuiltInTableRowModel row, IReadOnlyList<double> columnWidths, int rowNumber)
     {
-        var layouts = new List<CellLayout>();
-        var columnIndex = 0;
-        foreach (var cell in row.Cells)
+        var specs = row.Cells.Select(cell => new FlowCellSpec
         {
-            if (columnIndex >= columnWidths.Count)
+            ColumnSpan = cell.ColumnSpan,
+            Padding = MinCellPaddingMillimeters,
+            Measure = width =>
             {
-                break;
+                var content = new FlowCellContent();
+                // Preserve the existing Native cell paragraph policy while sharing row geometry.
+                foreach (var paragraph in cell.Paragraphs)
+                    foreach (var line in LayoutParagraph(paragraph, width, 0).Where(line => !line.PageBreak))
+                    {
+                        content.Lines.Add(new FlowCellLine(line, content.Height, 0, width));
+                        content.Height += line.Height;
+                    }
+                return content;
             }
-
-            var span = Math.Max(1, cell.ColumnSpan);
-            var cellWidth = 0d;
-            for (var i = 0; i < span && columnIndex + i < columnWidths.Count; i++)
-            {
-                cellWidth += columnWidths[columnIndex + i];
-            }
-
-            var textWidth = Math.Max(cellWidth - (MinCellPaddingMillimeters * 2), 1d);
-            var lines = new List<FlowLine>();
-            foreach (var paragraph in cell.Paragraphs)
-            {
-                lines.AddRange(LayoutParagraph(paragraph, textWidth, 0).Where(line => !line.PageBreak));
-            }
-
-            var height = lines.Sum(line => line.Height) + (MinCellPaddingMillimeters * 2);
-            layouts.Add(new CellLayout(span, height, lines, cell.VerticalAlignment));
-            columnIndex += span;
+        });
+        try { return FlowTableLayout.MeasureRow(columnWidths, specs, _cancellationToken); }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidDataException($"DOCX table row {rowNumber} has an invalid grid or unusable cell width: {exception.Message}", exception);
         }
-
-        return layouts;
     }
 
     private DocxFontCatalog _configuredFonts = null!;
@@ -586,27 +572,6 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         Border("bottom", row == table.Rows.Count - 1 ? "bottom" : "insideH", 0, height, width, height);
         Border("left", column == 0 ? "left" : "insideV", 0, 0, 0, height);
         Border("right", column + cell.ColumnSpan >= columnCount ? "right" : "insideV", width, 0, width, height);
-    }
-
-    private static double AlignBlockVertically(
-        double rowTop,
-        double rowHeight,
-        double contentHeight,
-        BuiltInVerticalAlignment alignment)
-    {
-        var paddedTop = rowTop + MinCellPaddingMillimeters;
-        var available = Math.Max(rowHeight - (MinCellPaddingMillimeters * 2), 0d);
-        if (contentHeight >= available)
-        {
-            return paddedTop;
-        }
-
-        return alignment switch
-        {
-            BuiltInVerticalAlignment.Center => paddedTop + ((available - contentHeight) / 2d),
-            BuiltInVerticalAlignment.Bottom => paddedTop + (available - contentHeight),
-            _ => paddedTop
-        };
     }
 
     private static IReadOnlyList<double> ResolveColumnWidths(BuiltInTableModel table, double contentWidth)
@@ -879,29 +844,6 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         internal double ContentWidth { get; }
 
         internal double Y { get; set; }
-    }
-
-    private sealed class CellLayout
-    {
-        internal CellLayout(
-            int columnSpan,
-            double height,
-            List<FlowLine> lines,
-            BuiltInVerticalAlignment verticalAlignment)
-        {
-            ColumnSpan = columnSpan;
-            Height = height;
-            Lines = lines;
-            VerticalAlignment = verticalAlignment;
-        }
-
-        internal int ColumnSpan { get; }
-
-        internal double Height { get; }
-
-        internal List<FlowLine> Lines { get; }
-
-        internal BuiltInVerticalAlignment VerticalAlignment { get; }
     }
 
 }
