@@ -24,7 +24,7 @@ await OfdPasswordEnvelope.DecryptFileAsync("encrypted.ofd", "restored.ofd", pass
 
 ## 算法与结构
 
-v2 的口令派生采用 [RFC 7914 scrypt](https://www.rfc-editor.org/rfc/rfc7914)，后端固定 `BouncyCastle.Cryptography 2.6.2`（MIT）。口令严格 UTF-8，不 trim、不规范化；接受 1–1024 UTF-16 单元，拒绝无效代理项。
+v2 的口令派生采用 [RFC 7914 scrypt](https://www.rfc-editor.org/rfc/rfc7914)，后端声明精确 NuGet 依赖范围 `[2.6.2]`：`BouncyCastle.Cryptography 2.6.2`（MIT）。消费应用显式覆盖后端版本不属于已验证的契约；NuGet 的直接依赖优先规则及其版本约束警告不能视为本包验证了其他版本。口令严格 UTF-8，不 trim、不规范化；接受 1–1024 UTF-16 单元，拒绝无效代理项。
 
 每包用系统随机源生成独立 32 字节盐，以固定 `N=131072, r=8, p=1, dkLen=48` 派生：前16字节为包装密钥，后32字节为 HMAC-SHA256 密钥。主 ROMix 表约128 MiB；本包按160 MiB保守预算，工作单位为 `N*r*p=1048576`。参数是本私有版本的策略，并非 RFC 对所有环境规定的统一安全等级；口令仍可能被离线猜测，盐和成本使每次猜测必须独立执行昂贵派生。此工作因子不保证弱口令无法恢复。
 
