@@ -14,7 +14,7 @@ public sealed class FlowDocument
     /// <summary>Page, margin, font and resource limits for this document.</summary>
     public FlowDocumentOptions Options { get; } = new();
 
-    /// <summary>Ordered flow blocks. Paragraph is the supported block in this release.</summary>
+    /// <summary>Ordered Paragraph and Table blocks. Do not mutate the description during rendering.</summary>
     public IList<FlowBlock> Blocks { get; } = new List<FlowBlock>();
 
     /// <summary>Measures and paginates the blocks into native OFD text objects.</summary>
@@ -79,9 +79,11 @@ public sealed class FlowDocumentOptions
     public int MaxPageCount { get; set; } = 10_000;
     public int MaxCharacters { get; set; } = 1_000_000;
     public int MaxTextElements { get; set; } = 1_000_000;
+    /// <summary>Maximum table cells across all blocks, including empty cells.</summary>
+    public int MaxTableCells { get; set; } = 100_000;
 }
 
-internal sealed class FlowDocumentRenderer : IFlowFontMetrics
+internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
 {
     private readonly FlowDocumentOptions _options;
     private readonly IList<FlowBlock> _blocks;
@@ -104,21 +106,44 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         ValidateOptions();
         _package.Options.DefaultPageWidthMillimeters = _options.PageWidthMillimeters;
         _package.Options.DefaultPageHeightMillimeters = _options.PageHeightMillimeters;
-        var paragraphs = _blocks.ToArray();
+        var blocks = _blocks.ToArray();
         var characterCount = 0L;
-        foreach (var block in paragraphs)
+        var cellCount = 0L;
+        foreach (var block in blocks)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            if (block is not Paragraph paragraph) throw new NotSupportedException("Unsupported flow block.");
-            var spans = paragraph.Spans.ToArray();
-            foreach (var span in spans)
+            IEnumerable<Paragraph> paragraphs;
+            if (block is Paragraph p) paragraphs = new[] { p };
+            else if (block is Table table)
             {
-                if (span is null || span.Text is null) throw new ArgumentException("A paragraph contains a null span or text.");
-                characterCount += span.Text.Length;
-                if (characterCount > _options.MaxCharacters)
-                    throw new InvalidOperationException("Flow text exceeds MaxCharacters.");
+                var list = new List<Paragraph>();
+                foreach (var row in table.Rows)
+                {
+                    if (row is null) throw new ArgumentException("A table contains a null row.");
+                    foreach (var cell in row.Cells)
+                    {
+                        _cancellationToken.ThrowIfCancellationRequested();
+                        if (++cellCount > _options.MaxTableCells) throw new InvalidOperationException("Flow tables exceed MaxTableCells.");
+                        if (cell is null) throw new ArgumentException("A row contains a null cell.");
+                        list.AddRange(cell.Paragraphs);
+                    }
+                }
+                paragraphs = list;
             }
-            RenderParagraph(paragraph, spans);
+            else throw new NotSupportedException("Unsupported flow block.");
+            foreach (var paragraph in paragraphs)
+            {
+                if (paragraph is null) throw new ArgumentException("A cell contains a null paragraph.");
+                foreach (var span in paragraph.Spans)
+                {
+                    _cancellationToken.ThrowIfCancellationRequested();
+                    if (span is null || span.Text is null) throw new ArgumentException("A paragraph contains a null span or text.");
+                    characterCount += span.Text.Length;
+                    if (characterCount > _options.MaxCharacters) throw new InvalidOperationException("Flow text exceeds MaxCharacters.");
+                }
+            }
+            if (block is Paragraph paragraphBlock) RenderParagraph(paragraphBlock, paragraphBlock.Spans.ToArray());
+            else RenderTable((Table)block);
         }
         if (_page is null) StartPage();
         return _package;
@@ -193,7 +218,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
         _pendingSpaceAfter += paragraph.SpaceAfterMillimeters;
     }
 
-    private void DrawLine(FlowLine line, double left, double width)
+    private void DrawLine(FlowLine line, double left, double width, double? top = null)
     {
         var x = FlowParagraphLayout.Align(left + line.Indent, width - line.Indent,
             line.AlignmentWidth, line.Alignment);
@@ -212,7 +237,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
             var element = new OfdTextElement
             {
                 LayerType = "Body", XMillimeters = groupWidth == 0 ? Math.Min(x, left + width - elementWidth) : x,
-                YMillimeters = _y, WidthMillimeters = elementWidth, HeightMillimeters = line.Height,
+                YMillimeters = top ?? _y, WidthMillimeters = elementWidth, HeightMillimeters = line.Height,
                 FontName = font.FontName, FontResourceId = font.Id,
                 FontSizeMillimeters = style.FontSizeMillimeters,
                 Weight = style.Bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight,
@@ -306,7 +331,7 @@ internal sealed class FlowDocumentRenderer : IFlowFontMetrics
             throw new ArgumentException("Margins leave no usable page area.");
         if (string.IsNullOrWhiteSpace(_options.DefaultFontFamily)) throw new ArgumentException("Default font family is required.");
         if (_options.DefaultColor is null) throw new ArgumentException("Default color is required.");
-        if (_options.MaxPageCount < 1 || _options.MaxCharacters < 1 || _options.MaxTextElements < 1)
+        if (_options.MaxPageCount < 1 || _options.MaxCharacters < 1 || _options.MaxTextElements < 1 || _options.MaxTableCells < 1)
             throw new ArgumentOutOfRangeException(nameof(_options.MaxPageCount));
     }
 
