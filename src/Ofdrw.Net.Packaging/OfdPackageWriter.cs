@@ -395,7 +395,7 @@ public sealed partial class OfdPackageWriter
         plan.DocumentLocation = package.DocumentResourceLocation ?? (plan.Images.Count > 0 || package.CompositeResources is not null ? "DocumentRes.xml" : null);
         var publicPath = material.ResolvePath(plan.DocumentPath, plan.PublicLocation, token);
         var knownPaths = new List<string> { publicPath };
-        foreach (var path in plan.PagePaths.Values) knownPaths.Add(OfdPackagePath.GetDirectory(path) + "/PageRes.xml");
+        foreach (var path in plan.PagePaths.Values) knownPaths.Add(EntryInDirectory(OfdPackagePath.GetDirectory(path), "PageRes.xml"));
         if (!string.IsNullOrWhiteSpace(plan.DocumentLocation)) knownPaths.Add(material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token));
         material.ChargeCopy(32L * plan.Directory.Length + 1024, token);
         var outputRoles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -408,15 +408,15 @@ public sealed partial class OfdPackageWriter
         if (!string.IsNullOrWhiteSpace(plan.DocumentLocation)) Role(material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token), "Res");
         if (package.Attachments.Count > 0)
         {
-            Role($"{plan.Directory}/Attachs/Attachments.xml", "Attachments");
+            Role(EntryInDirectory(plan.Directory, "Attachs/Attachments.xml"), "Attachments");
             for (var index = 0; index < package.Attachments.Count; index++)
             {
                 var attachment = package.Attachments[index]; if (attachment.IsExternal) continue;
                 material.ChargeCopy(8L * attachment.Name.Length + 4L * plan.Directory.Length + 256, token);
-                Role($"{plan.Directory}/Attachs/Attach_{index + 1}_{SanitizeFileName(attachment.Name)}", "AttachmentPayload");
+                Role(EntryInDirectory(plan.Directory, $"Attachs/Attach_{index + 1}_{SanitizeFileName(attachment.Name)}"), "AttachmentPayload");
             }
         }
-        if (package.CustomTags.Count > 0) { Role($"{plan.Directory}/Tags/CustomTags.xml", "Tags"); Role($"{plan.Directory}/Tags/CustomTag_EMR.xml", "TagsDetail"); }
+        if (package.CustomTags.Count > 0) { Role(EntryInDirectory(plan.Directory, "Tags/CustomTags.xml"), "Tags"); Role(EntryInDirectory(plan.Directory, "Tags/CustomTag_EMR.xml"), "TagsDetail"); }
         plan.Resources = new OfdResourceCatalog(plan.Entries, plan.DocumentPath, plan.Namespace, knownPaths, material, token, package.SourceIdentity, package, outputRoles.Keys);
         plan.Resources.PlanDocument(publicPath, plan.Namespace);
         foreach (var font in plan.Fonts.Resources)
@@ -437,7 +437,7 @@ public sealed partial class OfdPackageWriter
             do
             {
                 token.ThrowIfCancellationRequested(); material.ChargeCopy(128L + 8L * (plan.Directory.Length + stem.Length), token);
-                path = plan.Directory + "/Annots/" + stem + "_" + (ordinal++).ToString(CultureInfo.InvariantCulture) + ".xml";
+                path = EntryInDirectory(plan.Directory, "Annots/" + stem + "_" + (ordinal++).ToString(CultureInfo.InvariantCulture) + ".xml");
             } while (plan.Entries.ContainsKey(path) || plan.NewAnnotationPaths.Values.Contains(path, StringComparer.OrdinalIgnoreCase));
             return path;
         }
@@ -643,7 +643,7 @@ public sealed partial class OfdPackageWriter
                 var index = page.Index;
                 do
                 {
-                    path = material.ResolvePath("OFD.xml", $"/{documentDirectory}/Pages/Page_{index++}/Content.xml", cancellationToken);
+                    path = material.ResolvePath("OFD.xml", "/" + EntryInDirectory(documentDirectory, $"Pages/Page_{index++}/Content.xml"), cancellationToken);
                 } while (!used.Add(path));
             }
             else
@@ -1178,6 +1178,10 @@ public sealed partial class OfdPackageWriter
         colorElement.SetAttributeValue("Alpha", color.Alpha == 255 ? null : color.Alpha.ToString(CultureInfo.InvariantCulture));
     }
 
+    // ZIP entry names are relative even when their owning document is at the package root.
+    private static string EntryInDirectory(string directory, string relativePath) =>
+        directory.Length == 0 ? relativePath : directory + "/" + relativePath;
+
     private static void BuildAttachments(OfdDocumentPackage package, IDictionary<string, byte[]> entries, XNamespace ns, string docId)
     {
         if (package.Attachments.Count == 0)
@@ -1194,7 +1198,7 @@ public sealed partial class OfdPackageWriter
                     var fileName = $"Attach_{index + 1}_{SanitizeFileName(attachment.Name)}";
                     if (!attachment.IsExternal)
                     {
-                        entries[$"{docId}/Attachs/{fileName}"] = attachment.Data;
+                        entries[EntryInDirectory(docId, $"Attachs/{fileName}")] = attachment.Data;
                     }
 
                     var fileLoc = attachment.IsExternal
@@ -1222,7 +1226,7 @@ public sealed partial class OfdPackageWriter
                         new XElement(ns + "FileLoc", fileLoc));
                 })));
 
-        entries[$"{docId}/Attachs/Attachments.xml"] = ToUtf8Bytes(attachments);
+        entries[EntryInDirectory(docId, "Attachs/Attachments.xml")] = ToUtf8Bytes(attachments);
     }
 
     private static void BuildCustomTags(OfdDocumentPackage package, IDictionary<string, byte[]> entries, XNamespace ns, string docId)
@@ -1241,7 +1245,7 @@ public sealed partial class OfdPackageWriter
                     new XAttribute("NameSpace", "urn:ofdrw-net:custom-tags:emr"),
                     new XElement(ns + "FileLoc", "CustomTag_EMR.xml"))));
 
-        entries[$"{docId}/Tags/CustomTags.xml"] = ToUtf8Bytes(list);
+        entries[EntryInDirectory(docId, "Tags/CustomTags.xml")] = ToUtf8Bytes(list);
 
         var detail = new XDocument(
             new XDeclaration("1.0", "UTF-8", null),
@@ -1249,7 +1253,7 @@ public sealed partial class OfdPackageWriter
                 new XAttribute(XNamespace.Xmlns + "ofd", ns.NamespaceName),
                 package.CustomTags.Select(x => new XElement(ns + "Tag", new XAttribute("Key", x.Key), new XAttribute("Value", x.Value)))));
 
-        entries[$"{docId}/Tags/CustomTag_EMR.xml"] = ToUtf8Bytes(detail);
+        entries[EntryInDirectory(docId, "Tags/CustomTag_EMR.xml")] = ToUtf8Bytes(detail);
     }
 
     private static IEnumerable<XElement> BuildDocInfo(XNamespace ns, OfdMetadata metadata)
