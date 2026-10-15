@@ -19,25 +19,25 @@ internal static class OfdPageXmlContract
             box.Nodes().All(node => node is XText or XComment) && OfdBoxParser.TryParse(box.Value, out var bounds) &&
             OfdBoxParser.IsWritablePositiveSide(bounds.w) && OfdBoxParser.IsWritablePositiveSide(bounds.h));
 
-    internal static void ValidateDocumentArea(OfdDocumentPackage package, CancellationToken token)
+    internal static void ValidateDocumentArea(OfdDocumentPackage package, CancellationToken token, OfdModelMaterialization? material = null)
     {
         token.ThrowIfCancellationRequested();
         var path = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
         if (!package.PreservedEntries.TryGetValue(path, out var data)) return;
-        using var input = new MemoryStream(data, false);
-        var xml = XDocument.Load(input, LoadOptions.PreserveWhitespace); var ns = xml.Root!.Name.Namespace;
+        material ??= new OfdModelMaterialization(new OfdModelLimits());
+        var xml = material.ReadXml(path, data, token); var ns = xml.Root!.Name.Namespace;
         var areas = xml.Root.Element(ns + "CommonData")?.Elements().Where(node => node.Name.LocalName == "PageArea").ToList();
         if (areas is not null && (areas.Count > 1 || areas.Any(area => !IsRepresentedArea(area, ns))))
             throw new NotSupportedException("Document PageArea cannot preserve unmodeled boxes or malformed PhysicalBox values.");
     }
 
-    internal static void ValidateForRewrite(OfdDocumentPackage package, OfdPage page, CancellationToken token)
+    internal static void ValidateForRewrite(OfdDocumentPackage package, OfdPage page, CancellationToken token, OfdModelMaterialization? material = null)
     {
         token.ThrowIfCancellationRequested();
         ValidateWritableDimensions(page.WidthMillimeters, page.HeightMillimeters);
         if (page.SourceEntryPath is null || !package.PreservedEntries.TryGetValue(page.SourceEntryPath, out var data)) return;
-        using var input = new MemoryStream(data, false);
-        var xml = XDocument.Load(input, LoadOptions.PreserveWhitespace);
+        material ??= new OfdModelMaterialization(new OfdModelLimits());
+        var xml = material.ReadXml(page.SourceEntryPath, data, token);
         var root = xml.Root;
         bool Plain(XElement node, params string[] attributes) => node.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
             attribute.Name.Namespace == XNamespace.None && attributes.Contains(attribute.Name.LocalName)) &&
