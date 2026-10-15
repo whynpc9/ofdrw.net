@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Xml.Linq;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Layout.Graphics;
 using Ofdrw.Net.Packaging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -61,6 +62,71 @@ public sealed class SvgGeometryTests
         Assert.Contains("matrix(0 20 -20 0 20 0)", image.Attribute("transform")?.Value);
         Assert.Contains(svg.Descendants(), element => element.Name.LocalName == "clipPath");
         Assert.Contains(image.Ancestors(), element => element.Attribute("opacity")?.Value == "0.502");
+    }
+
+    [Fact]
+    public async Task GraphicsEvenOddPath_ShouldExportSvgFillRule()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        package.Pages.Add(page);
+        var graphics = new OfdGraphics(package, page);
+        var path = new OfdGraphicsPath(OfdFillRule.EvenOdd)
+            .AddRectangle(5, 5, 50, 50).AddRectangle(15, 15, 20, 20);
+        graphics.FillPath(new OfdBrush(OfdColor.Black), path);
+        var svg = await ConvertAsync(package);
+        var node = Assert.Single(svg.Descendants(), element => element.Name.LocalName == "path");
+        Assert.Equal("evenodd", node.Attribute("fill-rule")?.Value);
+    }
+
+    [Fact]
+    public async Task GraphicsAcuteMiter_ShouldExportMiterLimitTen()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        package.Pages.Add(page);
+        var graphics = new OfdGraphics(package, page);
+        var path = new OfdGraphicsPath().MoveTo(30, 70).LineTo(40, 10).LineTo(50, 70);
+        graphics.DrawPath(path, new OfdPen(OfdColor.Black, 1));
+        var svg = await ConvertAsync(package);
+        var node = Assert.Single(svg.Descendants(), element => element.Name.LocalName == "path");
+        Assert.Equal("miter", node.Attribute("stroke-linejoin")?.Value);
+        Assert.Equal("10", node.Attribute("stroke-miterlimit")?.Value);
+    }
+
+    [Fact]
+    public async Task FractionalGraphicsScale_ShouldSurviveBothClipAndObjectSvgTransforms()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 1001, HeightMillimeters = 20 };
+        package.Pages.Add(page);
+        var graphics = new OfdGraphics(package, page);
+        graphics.Scale(0.9996, 1);
+        graphics.IntersectClip(new OfdGraphicsPath().AddRectangle(0, 0, 1000, 10));
+        graphics.DrawRectangle(new OfdPen(OfdColor.Black, 0.5), 0, 0, 1000, 10);
+        var svg = await ConvertAsync(package);
+        var paths = svg.Descendants().Where(node => node.Name.LocalName == "path").ToArray();
+        Assert.Equal(2, paths.Length);
+        Assert.All(paths, path => Assert.Contains("matrix(0.9996 0 0 1 ", path.Attribute("transform")?.Value));
+        Assert.Equal(paths[0].Attribute("transform")?.Value, paths[1].Attribute("transform")?.Value);
+    }
+
+    [Fact]
+    public async Task TinyAdvance_UnderLargeScale_ShouldRetainSecondGlyphSvgOrigin()
+    {
+        var package = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        package.Pages.Add(page);
+        var graphics = new OfdGraphics(package, page);
+        graphics.Scale(1000, 1);
+        graphics.DrawString("AB", new OfdFont("SimSun", 3.333), new OfdBrush(OfdColor.Black), 0.01, 10, new[] { 0.0004 });
+        var svg = await ConvertAsync(package);
+        var text = Assert.Single(svg.Descendants(), node => node.Name.LocalName == "text");
+        var glyphs = text.Elements().Where(node => node.Name.LocalName == "tspan").ToArray();
+        Assert.Equal(2, glyphs.Length);
+        Assert.Equal("0", glyphs[0].Attribute("x")?.Value);
+        Assert.Equal("0.0004", glyphs[1].Attribute("x")?.Value);
+        Assert.Contains("matrix(1000 0 0 1", text.Attribute("transform")?.Value);
     }
 
     private static async Task<XDocument> ConvertAsync(OfdDocumentPackage package)
