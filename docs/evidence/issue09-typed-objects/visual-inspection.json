@@ -60,5 +60,7 @@
     ]
   },
   "previewRecord": "preview-acceptance-2026-10-15.json",
-  "ownedWindowsClosed": true
+  "ownedWindowsClosed": true,
+  "nativePreviewCaptureDirectory": "preview-captures",
+  "nativePreviewCaptureCount": 8
 }

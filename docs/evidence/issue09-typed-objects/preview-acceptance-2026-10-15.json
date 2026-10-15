@@ -91,11 +91,87 @@
     "No automatic header/footer or page-number feature acceptance",
     "The other 53 generated DocumentTools matrix pages were not manually inspected in this Preview session"
   ],
-  "evidenceImages": "Native screenshots were viewed live in this chat. Existing checked-in page PNGs remain Poppler auxiliary images and are not labelled as Preview screenshots.",
+  "evidenceImages": "Eight unmodified native Preview window JPEG screenshots returned by CUA getScreenshot, plus corresponding native AX snapshots, are checked in under preview-captures and bound by member-manifest.json. Auxiliary Poppler PNGs remain separately labelled.",
   "ownedWindowsClosed": true,
   "closeConfirmation": "After closing split-template-liveness.pdf and binary-xml-split.pdf, native API returned noWindowsAvailable.",
   "historicalLockFailure": "Earlier lock-screen failure remains historical; this successful native session supersedes its pending-Preview state.",
   "functionalTestsRerun": false,
   "packagesRebuilt": false,
-  "artifactsRegenerated": false
+  "artifactsRegenerated": false,
+  "nativePreviewCaptures": [
+    {
+      "pdf": "sample/before.pdf",
+      "page": 1,
+      "capture": "preview-captures/before-1.jpg",
+      "ax": "preview-captures/before-1.ax.txt",
+      "mediaType": "image/jpeg",
+      "bytes": 251941,
+      "sha256": "231fcee9480635c0b5c6d7eb4b3627f1570ec772bd705f17aa5ab55e6b32c64a"
+    },
+    {
+      "pdf": "sample/before.pdf",
+      "page": 2,
+      "capture": "preview-captures/before-2.jpg",
+      "ax": "preview-captures/before-2.ax.txt",
+      "mediaType": "image/jpeg",
+      "bytes": 219432,
+      "sha256": "493d2b9fef4da5f3063932cdce5ccaf0be4d99eefaf5395d60e369123bf86bc1"
+    },
+    {
+      "pdf": "sample/after.pdf",
+      "page": 1,
+      "capture": "preview-captures/after-1.jpg",
+      "ax": "preview-captures/after-1.ax.txt",
+      "mediaType": "image/jpeg",
+      "bytes": 249464,
+      "sha256": "0b8d2b46ca63946a978eee0f17fd2e60c945aba00a4d857a45d63f545f237883"
+    },
+    {
+      "pdf": "sample/after.pdf",
+      "page": 2,
+      "capture": "preview-captures/after-2.jpg",
+      "ax": "preview-captures/after-2.ax.txt",
+      "mediaType": "image/jpeg",
+      "bytes": 218097,
+      "sha256": "2030cb0dec69f59f01f15fd90a6b0753bd4f25b5f23700968c6cb3bf66a54066"
+    },
+    {
+      "pdf": "sample/original-v1.pdf",
+      "page": 1,
+      "capture": "preview-captures/original-v1-1.jpg",
+      "ax": "preview-captures/original-v1-1.ax.txt",
+      "mediaType": "image/jpeg",
+      "bytes": 169637,
+      "sha256": "7f763732fc5557b9894196307c9555fd3eb7a4a1e68ca52b84a4c693d6e75ffa"
+    },
+    {
+      "pdf": "sample/original-v1.pdf",
+      "page": 2,
+      "capture": "preview-captures/original-v1-2.jpg",
+      "ax": "preview-captures/original-v1-2.ax.txt",
+      "mediaType": "image/jpeg",
+      "bytes": 150520,
+      "sha256": "6d6d1bbd52a2880a30bca59c902338ab6e0136f2be0f0507c1f5866687d7b4b7"
+    },
+    {
+      "pdf": "ci-fixture-repair/binary-xml-split.pdf",
+      "page": 1,
+      "capture": "preview-captures/binary-xml-split-1.jpg",
+      "ax": "preview-captures/binary-xml-split-1.ax.txt",
+      "mediaType": "image/jpeg",
+      "bytes": 106013,
+      "sha256": "b410135c84ec86849e52609ee83aec7e4a5e65c97cbc2831decfbaf8378bdcc5"
+    },
+    {
+      "pdf": "ci-fixture-repair/split-template-liveness.pdf",
+      "page": 1,
+      "capture": "preview-captures/split-template-liveness-1.jpg",
+      "ax": "preview-captures/split-template-liveness-1.ax.txt",
+      "mediaType": "image/jpeg",
+      "bytes": 106204,
+      "sha256": "64f0b22e49d1b1cab02bc5867c09fe368b88a31ef42a49de303f7aeb35024b58"
+    }
+  ],
+  "captureSupplementHead": "7e8b4bea38578997e7bc4dd4aceaded2533bccab",
+  "captureSupplementReason": "Preserve native screenshots for reviewers outside the original chat; same five PDFs re-opened and their eight pages rechecked without regenerating products."
 }
