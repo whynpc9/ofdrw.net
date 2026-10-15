@@ -14,6 +14,56 @@ public sealed class DocumentToolsCliTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "ofd-document-tools-" + Guid.NewGuid().ToString("N"));
     public DocumentToolsCliTests() => Directory.CreateDirectory(_directory);
     private string PathFor(string name) => Path.Combine(_directory, name);
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Audit022_CliNoPublication(bool preCanceled)
+    {
+        var input = PathFor("merge-source.ofd");
+        var output = PathFor("merge-target.ofd");
+        var source = new OfdDocumentPackage();
+        source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 });
+        await using (var stream = File.Create(input)) await new OfdPackageWriter().WriteAsync(source, stream);
+        using (var zip = ZipFile.Open(input, ZipArchiveMode.Update))
+        {
+            var entry = zip.Entries.Single(item => item.FullName.EndsWith("/Content.xml", StringComparison.Ordinal));
+            XDocument xml; using (var stream = entry.Open()) xml = XDocument.Load(stream);
+            xml.Descendants().Single(node => node.Name.LocalName == "Layer").Add(new XElement(XName.Get("Unknown", "urn:vendor")));
+            var path = entry.FullName; entry.Delete();
+            using var target = zip.CreateEntry(path).Open(); target.Write(Encoding.UTF8.GetBytes(xml.ToString()));
+        }
+        await File.WriteAllTextAsync(output, "unchanged target");
+        using var cancellation = new CancellationTokenSource();
+        if (preCanceled) cancellation.Cancel();
+        var savedError = Console.Error;
+        using var error = new CancelOnMergeWarning(cancellation);
+        try
+        {
+            Console.SetError(error);
+            Assert.Equal(130, await global::Cli.RunAsync(["merge", output, input, input, "--skip-unsupported"], cancellation.Token));
+        }
+        finally { Console.SetError(savedError); }
+        Assert.Equal(preCanceled ? 0 : 2, error.Warnings);
+        Assert.Contains("Conversion canceled.", error.ToString());
+        Assert.Equal("unchanged target", await File.ReadAllTextAsync(output));
+        Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+    }
+
+    private sealed class CancelOnMergeWarning(CancellationTokenSource cancellation) : StringWriter
+    {
+        public int Warnings { get; private set; }
+        public override void WriteLine(string? value)
+        {
+            base.WriteLine(value);
+            if (value?.StartsWith("Warning:", StringComparison.Ordinal) == true)
+            {
+                Warnings++;
+                cancellation.Cancel();
+            }
+        }
+    }
+
     [Fact]
     public async Task Commands_UseOneBasedPagesAndAtomicInPlaceOutput()
     {
