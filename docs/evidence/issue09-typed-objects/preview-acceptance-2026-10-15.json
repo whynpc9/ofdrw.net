@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-15",
+  "timezone": "Asia/Shanghai",
+  "productSource": "60163cca80a4da62bf748ba19a300a8d714b80c4",
+  "reviewedBranchHead": "a1cebe30cbe4105fe3717fb6316077ca32c8fc13",
+  "packageVersion": "0.1.0-issue09.c.60163cc",
+  "application": "macOS Preview",
+  "applicationVersion": "11.0",
+  "applicationBundle": "com.apple.Preview",
+  "primaryChain": "fresh public PackageReference API -> native OFD -> PDF -> macOS Preview",
+  "affectedCiChain": "DOCX native OFD -> document tools Split OFD -> PDF -> macOS Preview",
+  "previewCompleted": true,
+  "totalPdfFiles": 5,
+  "totalPagesInspected": 8,
+  "files": [
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer-output/before.pdf",
+      "publicPath": "sample/before.pdf",
+      "bytes": 155008,
+      "sha256": "97e90f630187a6b0a8bf0c704a28a99e70038a6e207f57f03c146117fe7d8044",
+      "pagesInspected": [
+        1,
+        2
+      ],
+      "windowTitle": "before.pdf – Page 1 of 2; Page 2 of 2",
+      "verdict": "pass"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer-output/after.pdf",
+      "publicPath": "sample/after.pdf",
+      "bytes": 155041,
+      "sha256": "5543ee01d8ecc8c832f00fcd43e58cbb77cb91ddbaa51ecd05dcabec5b334955",
+      "pagesInspected": [
+        1,
+        2
+      ],
+      "windowTitle": "after.pdf – Page 1 of 2; Page 2 of 2",
+      "verdict": "pass"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer-output/original-v1.pdf",
+      "publicPath": "sample/original-v1.pdf",
+      "bytes": 118716,
+      "sha256": "595b40c84890762a944e7c5fff15dab20328dcd38999c32723e10ece10dcdd59",
+      "pagesInspected": [
+        1,
+        2
+      ],
+      "windowTitle": "original-v1.pdf – Page 1 of 2; Page 2 of 2",
+      "verdict": "pass"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/pr20/document-tools-repair/binary-xml-split.pdf",
+      "publicPath": "ci-fixture-repair/binary-xml-split.pdf",
+      "bytes": 85053,
+      "sha256": "927e53a0f9c0fd4c30ccd8c1abe40117382c4c99372e0e5320944b6d80843c65",
+      "pagesInspected": [
+        1
+      ],
+      "windowTitle": "binary-xml-split.pdf – 1 page",
+      "verdict": "pass"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/pr20/document-tools-repair/split-template-liveness.pdf",
+      "publicPath": "ci-fixture-repair/split-template-liveness.pdf",
+      "bytes": 85053,
+      "sha256": "2c41eba98053a1eeef3c39227e99ca88418290fe457a06a02dc99f3acec7dc4c",
+      "pagesInspected": [
+        1
+      ],
+      "windowTitle": "split-template-liveness.pdf – 1 page",
+      "verdict": "pass"
+    }
+  ],
+  "inspection": "Opened original generated PDFs through native file dialogs; verified exact path and document title/page count; inspected every stated page in Single Page view and initial larger view; used live native screenshots, not text extraction, for visual decisions.",
+  "observations": [
+    "Chinese and proportional Latin readable; bold, italic and local colors stay local",
+    "Compound table has continuous borders and uniform fill without unintended diagonal edges or triangular gaps",
+    "Shared nested resource appears twice; only left placement moves by intended +8,+6; right transformed placement stays consistent",
+    "Checkerboard image, viewport overflow mask, successive clips and edited Area CTM match the explicit sample intent",
+    "38 mm text crop is intentional and labelled; remaining text is retained in the OFD/readback",
+    "NonZero same-winding region stays solid and EvenOdd region has a hole",
+    "Local annotation rendered once without ghosting; footer labels and V1 dates present",
+    "Both one-page Split outputs preserve page-two Chinese text, local red bold text, date and intentional whitespace",
+    "No observed missing glyph, unexpected clipping/overlap/duplicate paint or anomalous blank page in these eight pages"
+  ],
+  "scopeLimits": [
+    "Only the listed five PDFs and eight pages are accepted",
+    "No claim of arbitrary complex Word/OFD fidelity",
+    "No SVG browser visual acceptance",
+    "No automatic header/footer or page-number feature acceptance",
+    "The other 53 generated DocumentTools matrix pages were not manually inspected in this Preview session"
+  ],
+  "evidenceImages": "Native screenshots were viewed live in this chat. Existing checked-in page PNGs remain Poppler auxiliary images and are not labelled as Preview screenshots.",
+  "ownedWindowsClosed": true,
+  "closeConfirmation": "After closing split-template-liveness.pdf and binary-xml-split.pdf, native API returned noWindowsAvailable.",
+  "historicalLockFailure": "Earlier lock-screen failure remains historical; this successful native session supersedes its pending-Preview state.",
+  "functionalTestsRerun": false,
+  "packagesRebuilt": false,
+  "artifactsRegenerated": false
+}

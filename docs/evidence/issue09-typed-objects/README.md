@@ -1,6 +1,6 @@
 # Issue09 typed object acceptance
 
-The functional and package gates passed on product candidate `60163cca80a4da62bf748ba19a300a8d714b80c4`. **Overall acceptance remains open: macOS Preview could not start because the Mac was locked, and current-head PR review/CI is pending.** PNG inspection is auxiliary and does not replace Preview. Later documentation/evidence and E2E-only commits do not change or relabel this measured product source.
+The functional and package gates passed on product candidate `60163cca80a4da62bf748ba19a300a8d714b80c4`. **macOS Preview visual acceptance completed on 2026-10-15: five PDFs, eight pages, no observed defect within the stated sample scope.** [Actual Preview record](preview-acceptance-2026-10-15.md). PR review and all six checks were closed on a1cebe3; later documentation-only head checks are recorded in the PR. Documentation/evidence and E2E-only commits do not change or relabel the measured product source. PNG images remain auxiliary. No merge or release is implied.
 
 The branch preserves original B `c68a6c7` and accepted shared foundation `f7e3a62` through the normal merge `45aeec5`, whose second parent is exact Issue06 `7caa8b54f2b28e0479d051e6ddf9b6d3227b5c3d`. The stacked PR targets `codex/keyword-locate-replace`; its delta is Issue09. No merge, tag or package publication is implied.
 
@@ -12,7 +12,7 @@ The branch preserves original B `c68a6c7` and accepted shared foundation `f7e3a6
 | Public API sample | Construct → write/read → public Split clone → placement and Area CTM edit → write/read; outlines/bookmark/GoTo, sharing, source independence, original fonts/image and extraction asserted |
 | Static review | Astra C review findings repaired; final narrow compatibility repair has no blocker. [Exact-source report](static-review/review.md) |
 | PNG auxiliary inspection | Six pages: before/after two-page sample and unchanged original V1 input newly exported with the package converter; no observed missing glyphs, diagonal bridges, triangular table gaps, annotation duplication, unexpected blank pages or overlap |
-| macOS Preview | Not completed. Native UI reported locked Mac and failed automatic unlock; manual unlock requested. No PDF was opened in Preview by this run yet |
+| macOS Preview | Passed for five PDFs/eight pages: before/after/reference two pages each plus two affected one-page Split outputs; actual OFD → PDF → Preview, all session windows closed |
 
 [Independent report](functional/verdict.md), [machine evidence](functional/evidence.json), [original TRX](functional/trx/), and [sample readback](sample/results.json) retain source, commands, package/DLL identity, font bytes and output sizes. The earlier `8d907a1` failed full run (1318/1320) remains local historical evidence; the two actual compatibility regressions were repaired before this successful new run.
 
@@ -36,4 +36,4 @@ Both public OFDs contain only full Noto OFL originals, recorded in [font payload
 
 ## PR20 initial CI fixture correction
 
-The first CI failure came from a legacy unclaimed annotation being destructively removed by the DocumentTools positive Split fixture. The original fixture and safety refusal are retained; a separate owned direct-appearance input restores the intended positive cases. [Repair record](ci-fixture-repair/README.md) includes the actual 36-case/55-page matrix result and two affected PNGs. Product source remains 60163cc. Preview and latest-head PR closure are still pending.
+The first CI failure came from a legacy unclaimed annotation being destructively removed by the DocumentTools positive Split fixture. The original fixture and safety refusal are retained; a separate owned direct-appearance input restores the intended positive cases. [Repair record](ci-fixture-repair/README.md) includes the actual 36-case/55-page matrix result and two affected PNGs. Product source remains 60163cc. Preview for both affected Split pages is complete; the earlier pending status in raw repair records remains historical. PR review/CI closure is recorded separately on the PR.

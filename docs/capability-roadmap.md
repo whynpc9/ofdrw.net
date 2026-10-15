@@ -107,7 +107,7 @@
 | P1-07 | 附件增删 | ofdrw-layout attachment | 对已有包增删 `Attachments.xml` 及文件 | 与合并选项 `IncludeAttachments` 一致 |
 | P1-08 | 纯文本 → OFD | ofdrw `TextConverter` | 调用 P0-01 布局引擎 | 可设字号与页尺寸 |
 | P1-09 | OFD → HTML | ofdrw `HTMLExporter` | 多页 SVG 包进单 HTML | 浏览器可预览；不承诺可选中全部文字 |
-| P1-10 | 强类型对象补齐 | ofdrw-core | 最小强类型闭环已实现：大纲/书签、局部注释、GoTo、Path 裁剪、共享嵌套组合；其余继续 `Raw` / `Preserved*` | 读写往返、未知 XML 与纯包消费已通过；[Preview 与 PR 验收待完成](evidence/issue09-typed-objects/README.md) |
+| P1-10 | 强类型对象补齐 | ofdrw-core | 最小强类型闭环已实现：大纲/书签、局部注释、GoTo、Path 裁剪、共享嵌套组合；其余继续 `Raw` / `Preserved*` | 最小范围读写往返、未知 XML、纯包消费及 8 页 Preview 验收通过；[记录与边界](evidence/issue09-typed-objects/README.md) |
 | P1-11 | 多 `DocBody` | ofdrw-reader | 读包不再只取第一个文档 | 有多样本；写入策略有文档 |
 | P1-12 | SkiaSharp 绘图层 | ofdrw-graphics2d | 可选适配，主要服务 P1-04 | 不替代 P1-01 的 OFD 原语 API |
 
