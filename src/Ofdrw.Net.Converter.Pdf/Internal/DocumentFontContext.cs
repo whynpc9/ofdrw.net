@@ -3,6 +3,7 @@ using Ofdrw.Net.Core.IO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Ofdrw.Net.Core.Models;
 using PdfSharpCore.Fonts;
 
@@ -10,6 +11,8 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 
 internal sealed class DocumentFontContext
 {
+    private readonly FontParseBudget _parseBudget;
+    private readonly CancellationToken _cancellationToken;
     private readonly IReadOnlyList<OfdFontResource> _fonts;
     private readonly IFontResolver _fallbackResolver;
     private readonly Dictionary<string, OpenTypeCmap> _fallbackCoverage = new();
@@ -22,14 +25,19 @@ internal sealed class DocumentFontContext
     private readonly Dictionary<(string Family, bool Bold, bool Italic), OfdFontResource> _unbound = new();
     internal Dictionary<string, SixLabors.Fonts.FontFamily> OutlineFonts { get; } = new();
 
-    internal DocumentFontContext(IReadOnlyList<OfdFontResource> fonts, IFontResolver? fallbackResolver = null)
+    internal DocumentFontContext(IReadOnlyList<OfdFontResource> fonts, IFontResolver? fallbackResolver = null,
+        FontParseBudget? parseBudget = null, CancellationToken cancellationToken = default)
     {
+        _parseBudget = parseBudget ?? new FontParseBudget(cancellationToken: cancellationToken);
+        _cancellationToken = cancellationToken;
+        _parseBudget.Spend(0);
         _fonts = fonts;
         PdfFontRegistry.EnsureInstalled();
         fallbackResolver ??= GlobalFontSettings.FontResolver;
         _fallbackResolver = fallbackResolver;
         foreach (var font in fonts)
         {
+            _parseBudget.Spend(0);
             if (font.Data.Length > 0)
             {
                 var data = (byte[])OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex).Clone();
@@ -37,7 +45,7 @@ internal sealed class DocumentFontContext
                 StorePhysical(font, data);
                 try
                 {
-                    var coverage = new OpenTypeCmap(new OpenTypeFace(data));
+                    var coverage = new OpenTypeCmap(new OpenTypeFace(data), _parseBudget);
                     if (coverage.IsSymbol) throw new NotSupportedException("Windows symbol cmap character semantics are unmodeled; the original OFD font remains preserved.");
                     _coverage[font] = coverage;
                 }
@@ -61,7 +69,7 @@ internal sealed class DocumentFontContext
                 if (IsStandaloneFont(local))
                 {
                     local = (byte[])local!.Clone();
-                    var coverage = new OpenTypeCmap(new OpenTypeFace(local));
+                    var coverage = new OpenTypeCmap(new OpenTypeFace(local), _parseBudget);
                     if (coverage.IsSymbol)
                         discoveredUnsupported = new NotSupportedException("Windows symbol cmap character semantics are unmodeled; use an explicit Unicode font.");
                     else
@@ -73,7 +81,7 @@ internal sealed class DocumentFontContext
                 }
             }
             catch (Exception exception) when (exception is not OutOfMemoryException &&
-                                               exception is not OperationCanceledException)
+                                               exception is not OperationCanceledException && !_parseBudget.IsExhausted)
             {
                 // Includes malformed font parsing, host I/O, and optional registry
                 // budget exhaustion. Embedded OFD fonts above remain strict.
@@ -94,6 +102,7 @@ internal sealed class DocumentFontContext
 
     internal string Resolve(OfdTextElement text, out OfdFontResource? resource)
     {
+        _parseBudget.Spend(0);
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
             throw new NotSupportedException("PDF export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
         foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
@@ -125,7 +134,7 @@ internal sealed class DocumentFontContext
                 if (selectedFace is not null)
                 {
                     var bytes = (byte[])OpenTypeCollection.SelectNamedFace(_fallbackResolver.GetFont(selectedFace.FaceName), selectedFace.FaceName).Clone();
-                    var selectedCoverage = new OpenTypeCmap(new OpenTypeFace(bytes));
+                    var selectedCoverage = new OpenTypeCmap(new OpenTypeFace(bytes), _parseBudget);
                     if (selectedCoverage.IsSymbol)
                         unsupportedName = new NotSupportedException("Windows symbol cmap character semantics are unmodeled; use an explicit Unicode font.");
                     else
@@ -136,7 +145,7 @@ internal sealed class DocumentFontContext
                     }
                 }
             }
-            catch (Exception exception) when (exception is not OutOfMemoryException && exception is not OperationCanceledException) { }
+            catch (Exception exception) when (exception is not OutOfMemoryException && exception is not OperationCanceledException && !_parseBudget.IsExhausted) { }
             if (unsupportedName is not null) _unsupportedCoverage[resource] = unsupportedName;
             if (!_families.ContainsKey(resource) && !_unsupportedCoverage.ContainsKey(resource))
                 return ResolveCoveringFallback(text, resource);
@@ -147,9 +156,9 @@ internal sealed class DocumentFontContext
         {
             try
             {
-                EmbeddedFontCoverage.Validate(text, coverage, resource.FontName);
+                EmbeddedFontCoverage.Validate(text, coverage, resource.FontName, _cancellationToken);
             }
-            catch (System.IO.InvalidDataException) when (resource.Data.Length == 0)
+            catch (System.IO.InvalidDataException) when (resource.Data.Length == 0 && !_parseBudget.IsExhausted)
             {
                 return ResolveCoveringFallback(text, resource);
             }
@@ -191,7 +200,7 @@ internal sealed class DocumentFontContext
             if (!string.IsNullOrWhiteSpace(defaultName)) candidates.Add(defaultName);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException &&
-                                           exception is not OperationCanceledException)
+                                           exception is not OperationCanceledException && !_parseBudget.IsExhausted)
         { lastFailure = exception; }
         candidates.Add("Arial");
         foreach (var candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
@@ -203,15 +212,15 @@ internal sealed class DocumentFontContext
                 var face = _fallbackResolver.ResolveTypeface(candidate, bold, italic);
                 if (face is null) continue;
                 var bytes = (byte[])OpenTypeCollection.SelectNamedFace(_fallbackResolver.GetFont(face.FaceName), face.FaceName, allowSingleFace: true).Clone();
-                var fallbackCmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+                var fallbackCmap = new OpenTypeCmap(new OpenTypeFace(bytes), _parseBudget);
                 if (fallbackCmap.IsSymbol) throw new NotSupportedException("A Windows symbol cmap cannot cover a Unicode fallback request.");
-                EmbeddedFontCoverage.Validate(text, fallbackCmap, candidate);
+                EmbeddedFontCoverage.Validate(text, fallbackCmap, candidate, _cancellationToken);
                 var fallbackFamily = PdfFontRegistry.RegisterFontFace(bytes, bold, italic);
                 _fallbackCoverage[fallbackFamily] = fallbackCmap;
                 return fallbackFamily;
             }
             catch (Exception exception) when (exception is not OutOfMemoryException &&
-                                               exception is not OperationCanceledException)
+                                               exception is not OperationCanceledException && !_parseBudget.IsExhausted)
             {
                 lastFailure = exception;
             }

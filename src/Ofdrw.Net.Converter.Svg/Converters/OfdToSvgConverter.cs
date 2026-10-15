@@ -26,11 +26,19 @@ public sealed class OfdToSvgConverter
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly OfdPackageLoadOptions _loadOptions;
+    private readonly long _maximumFontParseWork;
 
     public OfdToSvgConverter() : this(new OfdPackageLoadOptions()) { }
 
-    public OfdToSvgConverter(OfdPackageLoadOptions loadOptions)
+    public OfdToSvgConverter(OfdPackageLoadOptions loadOptions) : this(loadOptions, FontParseBudget.DefaultMaximumWork) { }
+
+    /// <summary>Creates an SVG exporter with a finite cumulative cmap parse budget.</summary>
+    /// <param name="loadOptions">OFD loading limits.</param>
+    /// <param name="maximumCmapParseWork">Positive maximum bytes and records processed while parsing cmap tables.</param>
+    public OfdToSvgConverter(OfdPackageLoadOptions loadOptions, long maximumCmapParseWork)
     {
+        if (maximumCmapParseWork <= 0) throw new ArgumentOutOfRangeException(nameof(maximumCmapParseWork));
+        _maximumFontParseWork = maximumCmapParseWork;
         _loadOptions = loadOptions ?? throw new ArgumentNullException(nameof(loadOptions));
     }
 
@@ -62,7 +70,7 @@ public sealed class OfdToSvgConverter
         var material = new OfdModelMaterialization(new OfdModelLimits());
         OfdCompositeGraph.Validate(package, material, cancellationToken);
         OfdAnnotationContract.Validate(package, material, cancellationToken);
-        var svg = BuildSvg(package, pages[pageIndex], material, cancellationToken);
+        var svg = BuildSvg(package, pages[pageIndex], material, new FontParseBudget(_maximumFontParseWork, cancellationToken), cancellationToken);
         var bytes = Encoding.UTF8.GetBytes(
             new XDocument(new XDeclaration("1.0", "utf-8", null), svg)
                 .ToString(SaveOptions.DisableFormatting));
@@ -71,7 +79,7 @@ public sealed class OfdToSvgConverter
         await svgOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, CancellationToken cancellationToken)
+    private static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, FontParseBudget parseBudget, CancellationToken cancellationToken)
     {
         var svgNs = XNamespace.Get("http://www.w3.org/2000/svg");
         var root = new XElement(
@@ -83,7 +91,7 @@ public sealed class OfdToSvgConverter
                 "viewBox",
                 $"0 0 {Invariant(page.WidthMillimeters)} {Invariant(page.HeightMillimeters)}"));
 
-        var families = AddEmbeddedFonts(root, svgNs, package.Fonts);
+        var families = AddEmbeddedFonts(root, svgNs, package.Fonts, parseBudget);
         var imageIndex = 0;
         var objectIndex = 0;
         foreach (var element in OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken))
@@ -114,7 +122,7 @@ public sealed class OfdToSvgConverter
             objectIndex++;
             if (element is OfdTextElement text)
             {
-                AddText(target, svgNs, page, text, package.Fonts, families);
+                AddText(target, svgNs, page, text, package.Fonts, families, cancellationToken);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
@@ -174,18 +182,19 @@ public sealed class OfdToSvgConverter
     }
 
     private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> AddEmbeddedFonts(
-        XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts)
+        XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, FontParseBudget parseBudget)
     {
         var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
         var css = new StringBuilder();
         foreach (var font in fonts.Where(font => font.Data.Length > 0))
         {
+            parseBudget.Spend(0);
             var data = OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
             var family = "ofd-font-" + BinaryIdentity.Hash(data);
             if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known); continue; }
             var face = new OpenTypeFace(data); OpenTypeCmap? coverage = null;
-            try { coverage = new OpenTypeCmap(face); }
+            try { coverage = new OpenTypeCmap(face, parseBudget); }
             catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
             families[font] = (family, coverage); emitted.Add(family, coverage);
             var style = face.Style;
@@ -240,7 +249,7 @@ public sealed class OfdToSvgConverter
         OfdPage page,
         OfdTextElement text,
         IReadOnlyList<OfdFontResource> fonts,
-        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families)
+        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families, CancellationToken cancellationToken)
     {
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
             throw new NotSupportedException("SVG export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
@@ -250,7 +259,7 @@ public sealed class OfdToSvgConverter
         {
             family = embedded.Family;
             if (embedded.Coverage is null || embedded.Coverage.IsSymbol) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
-            EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName);
+            EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName, cancellationToken);
         }
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
