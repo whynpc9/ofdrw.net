@@ -360,18 +360,21 @@ internal static partial class Cli
 
     private static async Task<int> MergeAsync(string[] args, CancellationToken cancellationToken)
     {
-        if (args.Length == 0 || args.Any(IsHelp))
+        if (args.Length == 0)
         {
             PrintHelp();
             return 0;
         }
 
-        var skipUnsupported = args.Contains("--skip-unsupported", StringComparer.Ordinal);
-        var paths = args.Where(arg => !string.Equals(
-            arg,
-            "--skip-unsupported",
-            StringComparison.Ordinal)).ToArray();
-        if (paths.Length < 3)
+        var skipUnsupported = false;
+        var paths = new List<string>();
+        foreach (var arg in args)
+        {
+            if (arg is "-h" or "--help") { PrintHelp(); return 0; }
+            if (arg == "--skip-unsupported") skipUnsupported = true;
+            else paths.Add(arg);
+        }
+        if (paths.Count < 3)
         {
             throw new ArgumentException(
                 "Merge requires an output path followed by at least two input OFD files.");
@@ -521,11 +524,12 @@ internal static partial class Cli
 
     private static string ReadValue(string[] args, ref int index, string option)
     {
-        if (index + 1 >= args.Length || args[index + 1].StartsWith("-", StringComparison.Ordinal))
+        if (index + 1 >= args.Length)
         {
             throw new ArgumentException($"Missing value for {option}.");
         }
 
+        // A required value owns the next token, including literal -h/--help paths.
         index++;
         return args[index];
     }

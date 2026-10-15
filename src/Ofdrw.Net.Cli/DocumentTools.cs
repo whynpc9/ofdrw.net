@@ -9,10 +9,9 @@ internal static partial class Cli
 {
     private static async Task<int> DocumentToolsAsync(string command, string[] args, CancellationToken token)
     {
-        if (args.Length == 0 || args.Any(IsHelp))
+        if (args.Length == 0 || args[0] is "-h" or "--help")
         {
-            PrintHelp();
-            Console.WriteLine("Watermark options: --pages 1,2 --text TEXT | --image FILE --layer ID --layer-type Background|Body|Foreground --x MM --y MM --width MM --height MM --font NAME --font-size MM --alpha 0..255");
+            PrintDocumentToolsHelp();
             return 0;
         }
         if (command == "mix")
@@ -51,6 +50,8 @@ internal static partial class Cli
         var allowed = command == "split" ? new[] { "--pages" } : new[] { "--pages", "--text", "--image", "--layer", "--layer-type", "--x", "--y", "--width", "--height", "--font", "--font-size", "--alpha" };
         for (var i = 2; i < args.Length; i += 2)
         {
+            if (args[i] is "-h" or "--help") { PrintDocumentToolsHelp(); return 0; }
+            // Consume values literally, including help-looking text and paths.
             if (!allowed.Contains(args[i]) || i + 1 >= args.Length || !options.TryAdd(args[i], args[i + 1])) throw new ArgumentException("Unknown, duplicate or incomplete document-tool option.");
         }
         var source = await ReadToolInputAsync(args[0], token);
@@ -84,6 +85,12 @@ internal static partial class Cli
         }
         await WriteToolOutputAsync(source, args[1], token);
         return 0;
+    }
+
+    private static void PrintDocumentToolsHelp()
+    {
+        PrintHelp();
+        Console.WriteLine("Watermark options: --pages 1,2 --text TEXT | --image FILE --layer ID --layer-type Background|Body|Foreground --x MM --y MM --width MM --height MM --font NAME --font-size MM --alpha 0..255");
     }
 
     private static async Task<OfdDocumentPackage> ReadToolInputAsync(string path, CancellationToken token)

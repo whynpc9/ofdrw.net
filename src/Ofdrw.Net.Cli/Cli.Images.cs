@@ -8,7 +8,6 @@ internal static partial class Cli
     // A small command-local parser keeps multi-image positional syntax out of existing commands.
     private static async Task<int> ConvertImagesAsync(string command, string[] args, CancellationToken token)
     {
-        if (args.Any(IsHelp)) { PrintHelp(); return 0; }
         var export = command == "ofd-to-image";
         var inputs = new List<string>();
         int? lastPositionalIndex = null;
@@ -20,6 +19,7 @@ internal static partial class Cli
         for (var index = 0; index < args.Length; index++)
         {
             var option = args[index];
+            if (option is "-h" or "--help") { PrintHelp(); return 0; }
             if (!option.StartsWith('-')) { lastPositionalIndex = inputs.Count; inputs.Add(option); continue; }
             var value = ReadValue(args, ref index, option);
             switch (option)
