@@ -942,6 +942,8 @@ public sealed partial class OfdPackageWriter
                                 ? new XAttribute("Alpha", text.FillColor.Alpha)
                                 : null)
                         : null,
+                    // New typed text is literal; encode its slash once for the source TextCode grammar.
+                    // Retained source envelopes above already own their encoding and remain untouched.
                     text.Runs.Count > 0
                         ? text.Runs.Select(run => new XElement(ns + "TextCode",
                             new XAttribute("X", ToInvariant(run.XMillimeters)),
@@ -952,13 +954,13 @@ public sealed partial class OfdPackageWriter
                             !string.IsNullOrWhiteSpace(run.DeltaY)
                                 ? new XAttribute("DeltaY", run.DeltaY)
                                 : null,
-                            run.Text))
+                            run.Text.Replace("\\", "\\005C")))
                         : new[]
                         {
                             new XElement(ns + "TextCode",
                                 new XAttribute("X", "0"),
                                 new XAttribute("Y", ToInvariant(Math.Max(text.FontSizeMillimeters, 1d))),
-                                text.Text)
+                                text.Text.Replace("\\", "\\005C"))
                         });
                 ApplyNameOnlyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
             }
