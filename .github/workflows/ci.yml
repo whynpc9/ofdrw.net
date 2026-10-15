@@ -112,6 +112,9 @@ jobs:
       - name: Test native conversion path safety and replacement publication
         run: dotnet test tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj -c Release --filter "FullyQualifiedName~Audit004RegressionTests|FullyQualifiedName~TextReplacementCommitNotificationTests" --logger trx --results-directory artifacts/native-path-tests/cli --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
+      - name: Test native external process ownership
+        run: dotnet test tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ExternalProcessTests|FullyQualifiedName~Audit024RegressionTests" --logger trx --results-directory artifacts/native-path-tests/processes --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
       - name: Test native owned file intent
         run: dotnet test tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj -c Release --filter "FullyQualifiedName~OfdOwnedFileIntentTests" --logger trx --results-directory artifacts/native-path-tests/core --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
