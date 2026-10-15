@@ -6,12 +6,12 @@
 
 **Priority:** P0
 
-**Status:** ready-for-agent
+**Status:** review-in-progress (PR #12; functional review fixes verified; Preview blocked by locked Mac)
 
-- [ ] 文字/图片水印写入指定图层；合并与导出保留
-- [ ] `split`：按页生成新包；资源与失效签名按现有合并约定处理
-- [ ] Mix：多页叠成一页，页尺寸以第一页为准；图层顺序有文档
-- [ ] 签名清理后 `verify-signatures` 报告无签名声明
+- [x] 文字/图片水印写入指定图层；合并与导出保留
+- [x] `split`：按页生成新包；资源与失效签名按现有合并约定处理
+- [x] Mix：多页叠成一页，页尺寸以第一页为准；图层顺序有文档
+- [x] 签名清理后 `verify-signatures` 报告无签名声明
 
 ## Parent
 
@@ -34,3 +34,12 @@
 ## Blocked by
 
 - None (can start immediately)
+
+## Implementation evidence
+
+- API/CLI 契约：[工具教程](../../../docs/tutorials/15-document-tools.md)。
+- 可复现四项 API/CLI 样例：[DocumentTools E2E](../../../e2e/Ofdrw.Net.DocumentTools.E2E/README.md)。
+- 持久产物、完整性清单与分层验收：[证据](../../../docs/evidence/document-tools/README.md)。
+- 完整视觉门及最新 PR review 未闭合前，本票保持未完成。
+
+- PR: https://github.com/whynpc9/ofdrw.net/pull/12 （base main；不合并、不发布）。

@@ -55,11 +55,7 @@ internal sealed class DocumentFontContext
 
     internal string Resolve(OfdTextElement text, out OfdFontResource? resource)
     {
-        resource = !string.IsNullOrEmpty(text.FontResourceId)
-            ? _fonts.FirstOrDefault(font => font.Id == text.FontResourceId) : null;
-        resource ??= _fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase)
-                && !font.Bold && !font.Italic)
-            ?? _fonts.FirstOrDefault(font => string.Equals(font.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
+        resource = OfdFontSelection.Resolve(_fonts, text);
         return resource is not null && _families.TryGetValue(resource, out var family)
             ? family : string.IsNullOrWhiteSpace(text.FontName) ? "Arial" : text.FontName;
     }

@@ -36,8 +36,12 @@ public sealed class OfdPackageWriter
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        var entries = BuildEntries(package);
-        var result = OfdPackagePruner.Prune(package, entries);
+        OfdPageXmlContract.ValidateDocumentArea(package, cancellationToken);
+        foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, cancellationToken);
+        if (package.Pages.Count == 0) OfdPageXmlContract.ValidateWritableDimensions(
+            package.Options.DefaultPageWidthMillimeters, package.Options.DefaultPageHeightMillimeters);
+        var entries = BuildEntries(package, cancellationToken);
+        var result = OfdPackagePruner.Prune(package, entries, cancellationToken);
         using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
 
         foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
@@ -49,7 +53,7 @@ public sealed class OfdPackageWriter
         return result;
     }
 
-    private Dictionary<string, byte[]> BuildEntries(OfdDocumentPackage package)
+    private Dictionary<string, byte[]> BuildEntries(OfdDocumentPackage package, CancellationToken cancellationToken)
     {
         var entries = new Dictionary<string, byte[]>(package.PreservedEntries, StringComparer.OrdinalIgnoreCase);
         var ns = XNamespace.Get(package.Options.Namespace);
@@ -72,6 +76,7 @@ public sealed class OfdPackageWriter
                 )));
         entries[OfdConstants.OfdRootFile] = ToUtf8Bytes(ofdXml);
 
+        foreach (var page in package.Pages) cancellationToken.ThrowIfCancellationRequested();
         var orderedPages = package.Pages.OrderBy(x => x.Index).ToList();
         if (orderedPages.Count == 0)
         {
@@ -84,7 +89,7 @@ public sealed class OfdPackageWriter
         }
 
         var idAllocator = new OfdIdAllocator();
-        idAllocator.AdvancePast(GetPreservedMaxId(package.PreservedEntries));
+        idAllocator.AdvancePast(GetPreservedMaxId(package.PreservedEntries, cancellationToken));
         var pageIds = orderedPages.ToDictionary(page => page, page => idAllocator.AllocatePreferred(page.Id));
         var pagePaths = BuildPagePaths(orderedPages, docId);
         var elementIds = new Dictionary<OfdElement, string>();
@@ -94,8 +99,10 @@ public sealed class OfdPackageWriter
         var publicResourceLocation = package.PublicResourceLocation ?? "PublicRes.xml";
         var documentResourceLocation = package.DocumentResourceLocation ??
             (imageResources.Count > 0 ? "DocumentRes.xml" : null);
-        var resources = new OfdResourceCatalog(entries);
         var publicPath = OfdPackagePath.Resolve(documentPath, publicResourceLocation);
+        var knownResourcePaths = new List<string> { publicPath };
+        if (!string.IsNullOrWhiteSpace(documentResourceLocation)) knownResourcePaths.Add(OfdPackagePath.Resolve(documentPath, documentResourceLocation!));
+        var resources = new OfdResourceCatalog(entries, documentPath, ns, knownResourcePaths);
         resources.EnsureDocument(publicPath, ns);
         foreach (var font in fonts.Resources) resources.WriteFont(font.Id, font.Resource, publicPath, ns);
         if (!string.IsNullOrWhiteSpace(documentResourceLocation))
@@ -208,11 +215,8 @@ public sealed class OfdPackageWriter
         {
             FontBinding? binding = null;
             if (!string.IsNullOrEmpty(text.FontResourceId)) byId.TryGetValue(text.FontResourceId!, out binding);
-            binding ??= result.Resources.FirstOrDefault(font =>
-                string.Equals(font.Resource.FontName, text.FontName, StringComparison.OrdinalIgnoreCase) &&
-                !font.Resource.Bold && !font.Resource.Italic)
-                ?? result.Resources.FirstOrDefault(font =>
-                    string.Equals(font.Resource.FontName, text.FontName, StringComparison.OrdinalIgnoreCase));
+            var selectedFont = OfdFontSelection.Resolve(package.Fonts, text);
+            binding ??= result.Resources.FirstOrDefault(font => ReferenceEquals(font.Resource, selectedFont));
             if (binding is null)
             {
                 binding = new FontBinding
@@ -393,6 +397,7 @@ public sealed class OfdPackageWriter
                             ApplyNameOnlyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
                         }
 
+                        ApplyClipping(textObject, text);
                         AssignNestedIds(textObject, idAllocator);
                         layer.Add(textObject);
                     }
@@ -420,9 +425,8 @@ public sealed class OfdPackageWriter
                             ? string.Join(" ", image.Transform.Select(ToInvariant))
                             : BuildMatrix(image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0));
                         imageObject.SetAttributeValue("Alpha", image.Alpha == 255 ? null : (object)Math.Max(0, Math.Min(255, image.Alpha)));
-                        imageObject.Elements().Where(child => child.Name.LocalName == "Clips").Remove();
-                        if (!string.IsNullOrWhiteSpace(image.ClipsXml))
-                            imageObject.Add(XElement.Parse(image.ClipsXml!, LoadOptions.PreserveWhitespace));
+                        imageObject.Elements(imageObject.Name.Namespace + "Clips").Remove();
+                        ApplyClipping(imageObject, image);
 
                         AssignNestedIds(imageObject, idAllocator);
                         layer.Add(imageObject);
@@ -447,17 +451,22 @@ public sealed class OfdPackageWriter
                         SetPathColor(pathObject, ns, "StrokeColor", path.Stroke ? path.StrokeColor : null);
                         SetPathColor(pathObject, ns, "FillColor", path.Fill ? path.FillColor : null);
 
-                        var abbreviatedData = pathObject.Elements()
-                            .FirstOrDefault(x => x.Name.LocalName == "AbbreviatedData");
+                        var abbreviatedData = pathObject.Element(pathObject.Name.Namespace + "AbbreviatedData");
                         if (abbreviatedData is null)
                         {
-                            pathObject.Add(new XElement(ns + "AbbreviatedData", path.AbbreviatedData));
+                            pathObject.Add(new XElement(pathObject.Name.Namespace + "AbbreviatedData", path.AbbreviatedData));
                         }
                         else
                         {
-                            abbreviatedData.Value = path.AbbreviatedData;
+                            var literal = string.Concat(abbreviatedData.Nodes().OfType<XText>().Select(text => text.Value));
+                            if (literal != path.AbbreviatedData)
+                            {
+                                abbreviatedData.Nodes().OfType<XText>().Remove();
+                                abbreviatedData.AddFirst(new XText(path.AbbreviatedData));
+                            }
                         }
 
+                        ApplyClipping(pathObject, path);
                         AssignNestedIds(pathObject, idAllocator);
                         layer.Add(pathObject);
                     }
@@ -473,13 +482,35 @@ public sealed class OfdPackageWriter
                 content.Add(layer);
             }
 
-            if (!content.HasElements)
+            if (page.SourceEntryPath is not null && entries.TryGetValue(page.SourceEntryPath, out var sourceBytes))
             {
-                content.Add(new XElement(
-                    ns + "Layer",
-                    new XAttribute("ID", idAllocator.Allocate()),
-                    new XAttribute("Type", "Body")));
+                using var input = new MemoryStream(sourceBytes, false);
+                var source = XDocument.Load(input, LoadOptions.PreserveWhitespace);
+                var originals = source.Root?.Element(source.Root.Name.Namespace + "Content")?.Elements(source.Root.Name.Namespace + "Layer").ToList() ?? [];
+                var rebuilt = content.Elements().ToDictionary(layer => layer.Attribute("ID")!.Value, StringComparer.Ordinal);
+                XElement? next = null;
+                for (var position = originals.Count - 1; position >= 0; position--)
+                {
+                    var original = originals[position];
+                    var originalId = original.Attribute("ID")?.Value;
+                    XElement? existing = null;
+                    if (originalId is not null) rebuilt.TryGetValue(originalId, out existing);
+                    if (original.HasElements) { if (existing is not null) next = existing; continue; }
+                    if (existing is not null)
+                    {
+                        // A caller explicitly filled this original layer through its ID.
+                        existing.AddFirst(original.Nodes().OfType<XComment>().Select(comment => new XComment(comment.Value)));
+                        next = existing;
+                        continue;
+                    }
+                    var emptyLayer = new XElement(original); emptyLayer.Name = ns + "Layer";
+                    emptyLayer.SetAttributeValue("ID", idAllocator.AllocatePreferred(originalId));
+                    if (next is not null) next.AddBeforeSelf(emptyLayer);
+                    else content.Add(emptyLayer);
+                    next = emptyLayer;
+                }
             }
+            if (!content.HasElements) content.Add(new XElement(ns + "Layer", new XAttribute("ID", idAllocator.Allocate()), new XAttribute("Type", "Body")));
 
             var pageRoot = new XElement(
                 ns + "Page",
@@ -553,7 +584,9 @@ public sealed class OfdPackageWriter
 
         if (!italic || textObject.Attribute("CTM") is not null) return;
         const double shear = 0.2;
-        textObject.SetAttributeValue("CTM", BuildMatrix(1, 0, -shear, 1, shear * size, 0));
+        var factor = BuildMatrix(1, 0, -shear, 1, shear * size, 0);
+        textObject.SetAttributeValue("CTM", factor);
+        textObject.SetAttributeValue(OfdTextEmphasis.FauxItalicFactor, factor);
         if (textObject.Attribute("Boundary")?.Value is not string box) return;
         var parts = box.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length != 4) return;
@@ -563,6 +596,18 @@ public sealed class OfdPackageWriter
             !double.TryParse(parts[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var h))
             return;
         textObject.SetAttributeValue("Boundary", BuildBox(x, y, w + shear * h, h));
+    }
+
+    private static void ApplyClipping(XElement xml, OfdElement element)
+    {
+        if (element.ClippingXml is null) return;
+        xml.Elements(xml.Name.Namespace + "Clips").Remove();
+        if (!string.IsNullOrWhiteSpace(element.ClippingXml))
+        {
+            var clip = XElement.Parse(element.ClippingXml!, LoadOptions.PreserveWhitespace);
+            var actions = xml.Elements(xml.Name.Namespace + "Actions").LastOrDefault();
+            if (actions is null) xml.AddFirst(clip); else actions.AddAfterSelf(clip);
+        }
     }
 
     private static string GetLayerKey(OfdElement element)
@@ -825,16 +870,14 @@ public sealed class OfdPackageWriter
         return ms.ToArray();
     }
 
-    private static long GetPreservedMaxId(IReadOnlyDictionary<string, byte[]> entries)
+    private static long GetPreservedMaxId(IReadOnlyDictionary<string, byte[]> entries, CancellationToken cancellationToken)
     {
         var maxId = 0L;
         foreach (var entry in entries)
         {
-            if (!entry.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
+            cancellationToken.ThrowIfCancellationRequested();
+            // Reservation does not confer mutation ownership. Any readable XML
+            // can retain IDs, including resource/extension files with other suffixes.
             try
             {
                 using var stream = new MemoryStream(entry.Value, writable: false);
