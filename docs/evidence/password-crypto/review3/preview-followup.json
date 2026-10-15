@@ -1,0 +1,111 @@
+{
+  "source_commit": "3347a5219bb70c829b3d5e3fd1ca98c44e329606",
+  "recorded_at": "2026-10-08T04:28:24.747150+08:00",
+  "artifact_root": "/Users/wanghongyi/.codex/worktrees/587a/ofdrw.net/artifacts/password-crypto/review3-current",
+  "viewer": "macOS Preview",
+  "chain": "licensed generated-layout DOCX -> native/default OFD -> actual 0.1.0-issue11.review3 nupkg encrypt/decrypt -> restored OFD -> unchanged CLI PDF -> Preview",
+  "status": "passed_for_listed_sample_and_pages",
+  "checked_pages": 12,
+  "required_pages": 12,
+  "checked_files": {
+    "baseline-default.pdf": {
+      "pages": [
+        1,
+        2
+      ],
+      "bytes": 117058,
+      "sha256": "ba47cdba20561e4aa0da54e549365723d87b081ba826ee94cb4601b80869d14a"
+    },
+    "baseline-native.pdf": {
+      "pages": [
+        1,
+        2
+      ],
+      "bytes": 117058,
+      "sha256": "2e3716d5031be213d68f495f1f4193b65feb4f339cc7087c67b08c2a18f27675"
+    },
+    "default-all-restored.pdf": {
+      "pages": [
+        1,
+        2
+      ],
+      "bytes": 117058,
+      "sha256": "0e0c77ebbe64a27e136f8069f1864fd53c8e8b7d3f6f4f0827e62a1085cb2aba"
+    },
+    "default-partial-restored.pdf": {
+      "pages": [
+        1,
+        2
+      ],
+      "bytes": 117058,
+      "sha256": "186c24cbae8c69bc363530c84df06ab1a3f0f1580062fea8d68a21adfc5275ed"
+    },
+    "native-all-restored.pdf": {
+      "pages": [
+        1,
+        2
+      ],
+      "bytes": 117058,
+      "sha256": "562bf4b06f59525b6ad1d562932cb169839b1db7c72d8aee4ac8a98da23764e0"
+    },
+    "native-partial-restored.pdf": {
+      "pages": [
+        1,
+        2
+      ],
+      "bytes": 117058,
+      "sha256": "1fd0c6898881d273b179fbdf15caafbd8d75f00251f1be6736b1c8af13c2fa71"
+    }
+  },
+  "checks": [
+    "Chinese glyphs and complete body",
+    "proportional English spacing and line breaks",
+    "centered gray italic subtitle",
+    "blue bold headings",
+    "table blue fill, blue outer and gray inner borders, alignment",
+    "page 2 red bold run limited to intended text",
+    "right-aligned date",
+    "stable two-page pagination; no clipping, overlap, ghost text or extra blank page"
+  ],
+  "findings": [],
+  "excluded_sample_features": [
+    "images",
+    "headers and footers",
+    "page numbers"
+  ],
+  "scope": "Only these deterministic sample pages; no arbitrary Word fidelity, vendor interoperability, GM/T certification or long-term archive claim.",
+  "window_cleanup": "All ticket 11 current and historical document windows closed; Open panel canceled; parent notified of GUI release.",
+  "history": "Original evidence.tar.zst retains the pre-unlock pending acceptance snapshot; this external follow-up supersedes its Preview status only, with all artifact hashes reverified.",
+  "previous_preview_status": {
+    "status": "not_reviewed_pending_manual_mac_unlock",
+    "checked_pages": 0,
+    "required_pages": 12,
+    "pending_files": {
+      "default-all-restored.pdf": [
+        1,
+        2
+      ],
+      "native-partial-restored.pdf": [
+        1,
+        2
+      ],
+      "baseline-default.pdf": [
+        1,
+        2
+      ],
+      "default-partial-restored.pdf": [
+        1,
+        2
+      ],
+      "native-all-restored.pdf": [
+        1,
+        2
+      ],
+      "baseline-native.pdf": [
+        1,
+        2
+      ]
+    },
+    "window_cleanup": "pending manual unlock"
+  }
+}

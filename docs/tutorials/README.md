@@ -1,6 +1,6 @@
 # OFD 格式教程
 
-Last verified: 2026-09-09
+Last verified: 2026-09-29
 
 这是一组面向开发者的 **OFD 格式（Spec）教程**，不是转换器 API 手册。读完后应能打开一份 `.ofd`、看懂常用 XML、并知道文字、路径、图片分别写在哪里。
 
@@ -58,6 +58,11 @@ unzip -l artifacts/hello.ofd
 
 本仓库默认 `DocType` 为 `OFD-H`、默认命名空间为 `http://www.ofdspec.org`，与这篇轮廓一致；不等于已经满足嵌字、签章范围和阅读器行为。
 
+## 实用工具
+
+- [15. 文档工具：水印、Split、Mix 与清签](15-document-tools.md)
+- [16. 关键词定位与受限文字替换](16-keyword-replacement.md)
+
 ## 源项目模块对照
 
 ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的强类型模型，读包时把尚未建模的节点保存在 `SourceXml` / `Preserved*` 里。
@@ -67,7 +72,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 | 基础类型 `ST_*` | `ofdrw-core` `org.ofdrw.core.basicType` | 写入时直接格式化为字符串 |
 | `OFD.xml` / `Document.xml` / 页 | `ofdrw-core` `basicStructure` + `ofdrw-pkg` | `OfdPackageWriter` / `OfdReader` |
 | 图元 | `pageDescription`、`text`、`graph`、`image` | `OfdTextElement`、`OfdPathElement`、`OfdImageElement`、`OfdRawElement` |
-| 布局（段落、分页） | `ofdrw-layout` | 低层 `OfdDocumentBuilder`；无段落引擎 |
+| 布局（段落、分页） | `ofdrw-layout` | `FlowDocument` / `Paragraph` / `Span` 公开流式段落与分页；DOCX Native 共享折行核心；公开 `Table` / `Row` / `Cell` 支持水平合并、对齐、底色、边框、整行跨页，与 Native 共用行几何 |
 | 签章 | `ofdrw-sign`、`ofdrw-gm` | `Ofdrw.Net.Signatures`（摘要已实现，SES/SM2 为扩展点） |
 
 ## 刻意后置的内容
@@ -78,13 +83,29 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 - 视频/音频与动作（第 12、14 章）
 - 注释（第 15 章）
 - 版本链（第 19 章）
-- GM/T 0099 加密包（ofdrw-crypto；本仓库未实现）
+- GM/T 0099 加密包（ofdrw-crypto；通用 GM/T 0099 加密包处理尚未实现；可选口令包仅支持私有 profile 自闭环）
 - OFD-A 档案子集的加工细则（GB/T 42133；ofdrw-archive）。电子病历在档案方向上仍引用它，轮廓差异见第 11–14 课
+
+## 转换 API 实操
+
+- [OFD 与 PNG/JPEG 图片转换](15-image-conversion.md)：指定页/ppm、居中导入、预算与原子输出。
 
 ## 相关文档
 
+- [SES V1/V4 dev/interop 测试容器](16-ses-dev-interop.md)：独立可选包，显式测试自签自验及其边界
+
 - [功能对照](../feature-parity.md)：本仓库已支持什么
+- [公开流式表格 API](../public-tables.md)：用 Table/Row/Cell 生成有限跨页表格
+- [公开流式布局 API](../flow-layout.md)：用 Paragraph/Span 生成多页 OFD
 - [能力路线图](../capability-roadmap.md)：后续 TODO、批次与无厂商时的加密/签章边界
 - [转换、编辑与资源约定](../conversion-contracts.md)：DOCX/PDF 转换行为，不是格式课
 - 源项目布局说明：[ofdrw-layout/doc/layout](https://github.com/ofdrw/ofdrw/blob/master/ofdrw-layout/doc/layout/README.md)
 - 源项目签章入门：[ofdrw-sign/doc/quickstart](https://github.com/ofdrw/ofdrw/blob/master/ofdrw-sign/doc/quickstart/README.md)
+
+- [16 原生绘图 API：毫米、基线与状态](16-native-graphics.md)（仅 Layout 生成样例；PDF/SVG 用于验收）。
+
+- [可选 Skia 合作式事件适配](17-skia-event-adapter.md)：需要 producer 显式接入；不捕获任意 SKCanvas。
+
+## 可选密码扩展
+
+- [11 票：口令加解密 API、私有恢复 profile 与适用边界](../password-crypto.md)

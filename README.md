@@ -25,6 +25,7 @@ implementation batches, and the encryption/signature boundary without a crypto v
 See [conversion contracts](docs/conversion-contracts.md) for page selection, original-text diagnostics, font initialization, resource budgets, and editing behavior.
 See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk through GB/T 33190 package structure, pages, text, paths, images, templates, and signatures, plus OFD-H medical-record profile notes, mapped to both ofdrw and this repository.
 
+- Native graphics API in `Ofdrw.Net.Layout.Graphics`: millimeter paths/text, affine transforms, clipping and Save/Restore; no SkiaSharp or System.Drawing dependency. See [tutorial](docs/tutorials/16-native-graphics.md).
 - OFD core models, document builder API, globally unique object IDs, layers, templates, text runs, vector paths, images, fonts, attachments, annotations, and custom tags.
 - Bounded OFD ZIP loading with path traversal, entry count, expanded-size, and compression-ratio checks.
 - Standard package writing with `OFD.xml`, document/page/resource references, attachments, custom tags, templates, and preserved extension entries.
@@ -34,6 +35,7 @@ See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk 
 - Direct DOCX/OpenXML to native OFD text conversion without PDF, plus an optional dual-layer mode that combines rendered pages with the original DOCX text.
 - OFD to PDF conversion with templates, layers, embedded fonts, positioned text runs, vector paths, images, crop origins, image transforms, opacity, and path clipping.
 - OFD page to self-contained SVG conversion with template vectors, text, colors, transforms, and embedded images.
+- Source capability: OFD page to PNG/JPEG at a chosen ppm, and PNG/JPEG to centered OFD pages; see [image conversion](docs/tutorials/15-image-conversion.md) for APIs, CLI and budgets.
 - OFD signature description generation through a pluggable signed-value provider.
 - SM3, SHA-1, and SHA-256 protected-entry digest verification plus pluggable `SignedValue.dat` verification.
 - Command-line conversion, extraction, editing, SVG, and signature verification tools packaged as `Ofdrw.Net.Cli`.
@@ -326,11 +328,13 @@ dotnet build Ofdrw.Net.sln
 dotnet test Ofdrw.Net.sln
 ```
 
-Pack locally:
+Pack all solution products, including optional extensions:
 
 ```bash
 dotnet pack Ofdrw.Net.sln -c Release -o artifacts/nuget
 ```
+
+The default 11-product artifact feed is packed and validated by the following script; optional extensions have independent package consumption gates.
 
 Run the package-consumer E2E check:
 
@@ -344,12 +348,33 @@ Use a specific local package version for E2E:
 scripts/run-converter-package-e2e.sh 0.1.0-preview.local
 ```
 
+## Optional password envelopes
+
+This ticket has validated source and local-feed artifacts and has not published a NuGet package. Explicitly reference `Ofdrw.Net.Crypto.Password` (net8.0) for this package's private profile v2 authenticated self-round-trips with salted, bounded scrypt; v1 is rejected. It is separate from the default Converter dependencies; general GM/T 0099/vendor interoperability, certification, and archival acceptance are not supported. See [the API and limits](docs/password-crypto.md).
+
 ## Notes
 
-- SDK libraries target `netstandard2.0` and `netstandard2.1`.
+- Default SDK libraries target `netstandard2.0` and `netstandard2.1`.
 - The CLI targets `net10.0`.
 - Existing source XML is preserved for high-fidelity round trips. Clear an element's `SourceXml` before expecting all typed property changes to be serialized.
 - Merge produces a self-contained typed document, flattens referenced templates, and rejects unknown raw objects unless `SkipUnsupportedRawElements` is explicitly enabled.
 - SM3 reference digests are built in. SES/SM2 electronic-seal verification must be supplied through `IOfdSignedValueVerifier`.
 - GM/T 0099 encrypted-envelope processing and long-term archival validation are not built in. `OfdCryptographicCapabilities` exposes these support boundaries to applications.
 - A repository license has not yet been selected by the project owner. The NuGet workflow now blocks publication until both a license file and NuGet license metadata exist. Direct dependency declarations are recorded in `THIRD-PARTY-NOTICES.md`.
+
+### Optional PDF vector mode
+
+`Ofdrw.Net.Converter.Pdf.Vector` exposes `PdfVectorToOfdConverter` for a bounded
+PDF path/text profile through the existing Skia producer-event adapter. Original
+Unicode and embedded-font glyph identity are checked; unsupported pages fail by
+default or explicitly fall back as whole dual-layer pages. Default converters
+and CLI remain dual-layer and do not acquire Skia. See the [API tutorial](docs/tutorials/18-pdf-vector-mode.md)
+and [design contract](docs/pdf-vector-design-contract.md).
+
+### Optional Skia producer-event adapter
+
+`Ofdrw.Net.Graphics.SkiaSharp` adapts explicitly recorded Skia-typed producer
+events to native OFD paths/text through OfdGraphics. It requires producer
+integration and does not intercept arbitrary SKCanvas/SKPicture/PDF calls.
+Default Layout/Converter packages have no Skia dependency. See the
+[bounded profile and migration sample](docs/tutorials/17-skia-event-adapter.md).

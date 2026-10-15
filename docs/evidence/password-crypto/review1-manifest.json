@@ -1,0 +1,52 @@
+{
+  "files": {
+    "ci-first-round.json": {
+      "bytes": 2703,
+      "sha256": "5e27792407bb5f3782b4bfcf27fcb6a51da0b607be11ae1b4529cec30f55b178"
+    },
+    "default-pack-isolation-final.patch": {
+      "bytes": 1390,
+      "sha256": "a930deead713fdd2bd616c5301ff969a9f2887465bfc34ccc5d2d658d2a62c27"
+    },
+    "default-package-review1-manifest.json": {
+      "bytes": 2249,
+      "sha256": "7e96c49e35031bf3058923b5a5bbbe8e132f51352fd0e48ba6c63eb93059c19d"
+    },
+    "default-package-review1.log": {
+      "bytes": 43252,
+      "sha256": "3653d1bbf0dd4033e73763eef5ae26ac2d58931189f1fda4fc3378d7c0c6899f"
+    },
+    "failfast-proof.json": {
+      "bytes": 288,
+      "sha256": "35d6f5648d0c250ec7b8ab7039c7df9ddbfa3f962601f92c594898c6c60d3f60"
+    },
+    "platform-tests/_wanghongyideMacBook-Pro_2026-10-08_00_13_37_net10.0.trx": {
+      "bytes": 75249,
+      "sha256": "7737c4df0d0528288258ac96b7f2cbd9f4ceb02d6c75f172caefdd7454a82c5b"
+    },
+    "pr-comments-first-round.json": {
+      "bytes": 1723,
+      "sha256": "6c0561f042c6cbae13a91d0f8a1de9d6a06768912e104c883dd93c580cd55701"
+    },
+    "pr-initial.json": {
+      "bytes": 3762,
+      "sha256": "8a66781e6423961bad5e5a7a0bfa3b6d083efa4992e12df4201d7e9639c41af4"
+    },
+    "python-final.log": {
+      "bytes": 916,
+      "sha256": "12e7061ee243b713c3ec195f0d15dde94f24ec4ca549b1a0f917324254259dea"
+    },
+    "python-old-head-red.log": {
+      "bytes": 1783,
+      "sha256": "676137be7a3923320a1e004eb035fb562541d8db273f29371ffddafca0e3fbc6"
+    },
+    "review1-validation.json": {
+      "bytes": 995,
+      "sha256": "d10b136e9914379a8000064ccac8543fc29c31c8ba0d36b7234e4ba1a2c94edd"
+    },
+    "windows-initial-failure-clean.log": {
+      "bytes": 16415,
+      "sha256": "da43596486a3eacbc6f1342c9d6db34f75b99fc941677437bd5aafa936052c8f"
+    }
+  }
+}

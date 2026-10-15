@@ -4,6 +4,13 @@ namespace Ofdrw.Net.Core.Models;
 
 public sealed class OfdPage
 {
+    private readonly OfdAnnotationOwnership annotations = new();
+
+    /// <summary>Local annotation definitions. Null preserves source; empty clears only modeled source slots.</summary>
+    public OfdAnnotationCollection? Annotations { get => annotations.Value; set => annotations.Set(value); }
+
+    internal OfdAnnotationOwnership AnnotationOwnership => annotations;
+
     /// <summary>Original package entry for this page; retained when editing to preserve relative references.</summary>
     public string? SourceEntryPath { get; set; }
 
@@ -20,6 +27,9 @@ public sealed class OfdPage
     public double HeightMillimeters { get; set; }
 
     public List<OfdElement> Elements { get; } = [];
+
+    /// <summary>Load-time compatibility projection in page coordinates. Reader-owned projections cannot be edited; use Annotations.</summary>
+    public List<OfdElement> AnnotationAppearances { get; } = [];
 
     public List<OfdTemplateContent> Templates { get; } = [];
 

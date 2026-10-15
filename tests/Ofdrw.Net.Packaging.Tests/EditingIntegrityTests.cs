@@ -94,7 +94,7 @@ public sealed class EditingIntegrityTests
         Assert.Contains(result.Diagnostics, warning => warning.Contains("opaque.xml"));
         output.Position = 0;
         var archive = await new OfdPackageLoader().LoadAsync(output);
-        Assert.DoesNotContain(archive.EntryNames, path => path == "Doc_0/Pages/Page_1/Content.xml");
+        Assert.Contains("Doc_0/Pages/Page_1/Content.xml", archive.EntryNames);
         Assert.Contains(archive.EntryNames, path => archive.GetBytes(path).SequenceEqual(new byte[] { 8, 8, 8 }));
     }
 
@@ -138,7 +138,7 @@ public sealed class EditingIntegrityTests
                 Data = [1, 2, 3], WidthMillimeters = 20, HeightMillimeters = 20,
                 Alpha = 128, Transform = [0, 20, -20, 0, 20, 0],
                 SourceXml = "<ImageObject VendorStyle='retained' />",
-                ClipsXml = "<Clips><Clip><Area><Path ID='100'><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></Path></Area></Clip></Clips>"
+                ClipsXml = $"<Clips><Clip><Area><Path ID='{100 + marker}'><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></Path></Area></Clip></Clips>"
             });
             source.Pages.Add(page);
             return source;
@@ -195,6 +195,9 @@ public sealed class EditingIntegrityTests
 
     private static async Task<OfdDocumentPackage> RoundTrip(OfdDocumentPackage package)
     {
+        // These editing fixtures deliberately use opaque marker bytes as fonts.
+        if (package.Fonts.Any(font => font.Data.Length is > 0 and < 12))
+            package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
         using var stream = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(package, stream);
         stream.Position = 0;

@@ -56,9 +56,10 @@ public sealed class OfdSignatureVerifier
             return report;
         }
 
-        var signatureLocations = ofd
-            .Descendants()
-            .Where(element => element.Name.LocalName == "Signatures")
+        var declarations = ofd.Root?.Elements(ofd.Root.Name.Namespace + "DocBody")
+            .Elements(ofd.Root.Name.Namespace + "Signatures").ToList() ?? new List<XElement>();
+        report.HasSignatureDeclarations = declarations.Count > 0;
+        var signatureLocations = declarations
             .Select(element => element.Value)
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.OrdinalIgnoreCase)

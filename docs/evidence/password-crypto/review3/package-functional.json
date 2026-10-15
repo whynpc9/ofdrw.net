@@ -1,0 +1,36 @@
+{
+  "native-partial": {
+    "original_entries": 8,
+    "recovered_entry_bytes_equal": true,
+    "wrong_password_atomic": true,
+    "pre_cancel_atomic": true
+  },
+  "native-all": {
+    "original_entries": 8,
+    "recovered_entry_bytes_equal": true,
+    "wrong_password_atomic": true,
+    "pre_cancel_atomic": true
+  },
+  "default-partial": {
+    "original_entries": 8,
+    "recovered_entry_bytes_equal": true,
+    "wrong_password_atomic": true,
+    "pre_cancel_atomic": true
+  },
+  "default-all": {
+    "original_entries": 8,
+    "recovered_entry_bytes_equal": true,
+    "wrong_password_atomic": true,
+    "pre_cancel_atomic": true
+  },
+  "same-options-input-budget": {
+    "rejected_before_publication": true,
+    "preserved_output": true,
+    "input_budget": 11602908
+  },
+  "raw-zip-names": {
+    "cases": 3,
+    "rejected_before_publication": true,
+    "preserved_output": true
+  }
+}

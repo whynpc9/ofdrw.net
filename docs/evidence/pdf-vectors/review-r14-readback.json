@@ -1,0 +1,19 @@
+{
+  "runtime_head": "35fe18e01ef3cbf2f287b5d70018681f9f46deaa",
+  "status": "passed",
+  "archive_bytes": 48775678,
+  "archive_sha256": "af8dacc7cebd9358d2feae91cada0af128ad494424dc042a6aceb573c8245bb4",
+  "parts": [
+    {
+      "order": 1,
+      "file": "review-r14.tar.zst.part01",
+      "bytes": 48775678,
+      "sha256": "af8dacc7cebd9358d2feae91cada0af128ad494424dc042a6aceb573c8245bb4"
+    }
+  ],
+  "filesVerified": 1156,
+  "actualVerifierOutput": "Verified 1156 files; original archive SHA256 af8dacc7cebd9358d2feae91cada0af128ad494424dc042a6aceb573c8245bb4",
+  "checkedAtUtc": "2026-10-13T06:00:29.670417+00:00",
+  "scope": "Actual concatenation, whole SHA, zstd stream and every file size/SHA checked. Remote Git bytes checked separately after push.",
+  "draftCorrection": "Local initial cd786d... draft had stale main preview=pending alongside completed status; final af8dacc... reflects corrected metadata. Product/visual hashes unchanged."
+}

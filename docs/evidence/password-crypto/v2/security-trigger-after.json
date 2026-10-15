@@ -1,0 +1,1 @@
+{"legitimate_control":"exact original entry bytes recovered","security_trigger":"same cheap legacy guessing method cannot recover v2 FEK/map even with correct candidate; actual v2 public control succeeds","candidate_count":2,"sm3_digests":2,"profile":"v2","synthetic_only":true}
