@@ -31,6 +31,7 @@ public static class OfdDocumentMixer
     {
         if (sources is null) throw new ArgumentNullException(nameof(sources));
         if (maxSourceCount <= 0 || maxExpandedBytes <= 0 || maxObjectCount <= 0) throw new ArgumentOutOfRangeException(nameof(maxSourceCount));
+        var material = new OfdModelMaterialization(new OfdModelLimits());
         var selected = new List<OfdDocumentPackage>();
         var customTags = new Dictionary<string, string>(StringComparer.Ordinal);
         long bytes = 0;
@@ -39,34 +40,36 @@ public static class OfdDocumentMixer
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
-            OfdDocumentSplitter.ValidateSingleDocument(item.Package);
-            OfdDocumentSplitter.ValidatePages(item.Package, new[] { item.PageIndex });
+            material.InspectStorage(item.Package, cancellationToken); material.GuardPreservedXml(item.Package, cancellationToken);
+            if (OfdNavigationXml.HasTypedNavigation(item.Package, material, cancellationToken)) throw new NotSupportedException("Mix cannot remap typed navigation source ownership.");
+            OfdDocumentSplitter.ValidateSingleDocument(item.Package, material, cancellationToken);
+            OfdDocumentSplitter.ValidatePages(item.Package, new[] { item.PageIndex }, material, cancellationToken);
             OfdPageXmlContract.ValidateWritableDimensions(item.Package.Pages[item.PageIndex].WidthMillimeters, item.Package.Pages[item.PageIndex].HeightMillimeters);
-            OfdPageXmlContract.ValidateDocumentArea(item.Package, cancellationToken);
-            ValidateCustomTags(item.Package, cancellationToken);
+            OfdPageXmlContract.ValidateDocumentArea(item.Package, cancellationToken, material);
+            ValidateCustomTags(item.Package, cancellationToken, material);
             foreach (var tag in item.Package.CustomTags)
             {
                 if (customTags.TryGetValue(tag.Key, out var value) && !string.Equals(value, tag.Value, StringComparison.Ordinal))
                     throw new NotSupportedException($"Mix CustomTags conflict for key '{tag.Key}' in source {selected.Count + 1}.");
                 customTags[tag.Key] = tag.Value;
             }
-            var rootNamespace = EntryNamespace(item.Package, "OFD.xml");
+            var rootNamespace = EntryNamespace(item.Package, "OFD.xml", material, cancellationToken);
             if (item.Package.PreservedDocBodyElements.Any(xml => XElement.Parse(xml).Name != rootNamespace + "Signatures"))
                 throw new NotSupportedException("Mix cannot safely remap DocBody extensions.");
-            var documentNamespace = EntryNamespace(item.Package, item.Package.DocumentEntryPath);
+            var documentNamespace = EntryNamespace(item.Package, item.Package.DocumentEntryPath, material, cancellationToken);
             if (item.Package.PreservedDocumentElements.Any(xml => !SupportedDeclaration(XElement.Parse(xml), documentNamespace, false)) ||
                 item.Package.PreservedCommonDataElements.Any(xml => !SupportedDeclaration(XElement.Parse(xml), documentNamespace, true)))
                 throw new NotSupportedException("Mix cannot safely remap document extensions or shared drawing resources.");
             var page = item.Package.Pages[item.PageIndex];
-            var pageNamespace = EntryNamespace(item.Package, page.SourceEntryPath);
-            ValidatePageContainers(item.Package, page.SourceEntryPath, cancellationToken, true);
+            var pageNamespace = EntryNamespace(item.Package, page.SourceEntryPath, material, cancellationToken);
+            ValidatePageContainers(item.Package, page.SourceEntryPath, cancellationToken, material, true);
             foreach (var template in page.Templates)
             {
                 if (template.ZOrder is not ("Background" or "Foreground"))
                     throw new NotSupportedException("Mix supports only Background/Foreground template ordering.");
                 if (template.BaseLocation is not null)
-                    ValidatePageContainers(item.Package, OfdPackagePath.Resolve(item.Package.DocumentEntryPath ??
-                        item.Package.Options.DocumentId + "/Document.xml", template.BaseLocation), cancellationToken);
+                    ValidatePageContainers(item.Package, material.ResolvePath(item.Package.DocumentEntryPath ??
+                        item.Package.Options.DocumentId + "/Document.xml", template.BaseLocation, cancellationToken), cancellationToken, material);
             }
             foreach (var reference in page.PreservedPageElements.Select(XElement.Parse).Where(node => node.Name == pageNamespace + "Template"))
             {
@@ -92,7 +95,7 @@ public static class OfdDocumentMixer
             selected.Add(package);
         }
         if (selected.Count == 0) throw new ArgumentException("At least one source page is required.", nameof(sources));
-        var merged = OfdDocumentMerger.Merge(selected, new OfdDocumentMergeOptions { RequireKnownAttributes = true }, cancellationToken);
+        var merged = OfdDocumentMerger.MergeForMix(selected, new OfdDocumentMergeOptions { RequireKnownAttributes = true }, material, cancellationToken);
         foreach (var tag in customTags) merged.CustomTags.Add(tag.Key, tag.Value);
         var first = merged.Pages[0];
         var target = new OfdPage { WidthMillimeters = first.WidthMillimeters, HeightMillimeters = first.HeightMillimeters,
@@ -127,20 +130,19 @@ public static class OfdDocumentMixer
     private static bool SupportedTemplateOrder(XElement node) => node.Attribute("ZOrder") is null ||
         node.Attribute("ZOrder")!.Value is "Background" or "Foreground";
 
-    private static void ValidatePageContainers(OfdDocumentPackage package, string? path, CancellationToken cancellationToken, bool allowTemplateReferences = false)
+    private static void ValidatePageContainers(OfdDocumentPackage package, string? path, CancellationToken cancellationToken, OfdModelMaterialization material, bool allowTemplateReferences = false)
     {
         if (path is null) return; // Newly constructed model pages have no source XML.
         cancellationToken.ThrowIfCancellationRequested();
         if (!package.PreservedEntries.TryGetValue(path, out var bytes))
             throw new NotSupportedException("Mix cannot inspect missing page/template XML.");
-        using var input = new MemoryStream(bytes, false);
-        var xml = XDocument.Load(input); var root = xml.Root;
+        var xml = material.ReadXml(path, bytes, cancellationToken); var root = xml.Root;
         bool Plain(XElement node, params string[] attributes) => node.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
             attribute.Name.Namespace == XNamespace.None && attributes.Contains(attribute.Name.LocalName)) &&
             node.Nodes().All(child => child is XElement or XComment || child is XText text && string.IsNullOrWhiteSpace(text.Value));
         bool supported = root is not null && root.Name.LocalName == "Page" &&
             (root.Name.NamespaceName == package.Options.Namespace || root.Name.NamespaceName == OfdConstants.Namespace || root.Name.NamespaceName == OfdConstants.StandardNamespace) &&
-            Plain(root) && xml.Nodes().All(node => node is XElement or XComment);
+            Plain(root) && xml.Nodes().All(node => node is XElement or XComment || node is XText text && string.IsNullOrWhiteSpace(text.Value));
         if (supported)
         {
             var ns = root!.Name.Namespace;
@@ -172,7 +174,7 @@ public static class OfdDocumentMixer
         if (!supported) throw new NotSupportedException("Mix cannot flatten unmodeled page/template containers, area boxes or drawing resources.");
     }
 
-    private static void ValidateCustomTags(OfdDocumentPackage package, CancellationToken cancellationToken)
+    private static void ValidateCustomTags(OfdDocumentPackage package, CancellationToken cancellationToken, OfdModelMaterialization material)
     {
         var documentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
         var detailPaths = new List<string>();
@@ -181,7 +183,7 @@ public static class OfdDocumentMixer
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!package.PreservedEntries.TryGetValue(path, out var data)) throw new NotSupportedException("Mix cannot preserve missing CustomTags XML.");
-            using var input = new MemoryStream(data, false); var xml = XDocument.Load(input);
+            var xml = material.ReadXml(path, data, cancellationToken);
             if (xml.Nodes().Any(node => node is not XElement and not XComment && (node is not XText text || !string.IsNullOrWhiteSpace(text.Value))))
                 throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags XML nodes.");
             return xml;
@@ -202,7 +204,7 @@ public static class OfdDocumentMixer
             {
                 if (declaration.Name != ns + "CustomTags" || !Literal(declaration))
                     throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags declarations.");
-                var listPath = OfdPackagePath.Resolve(documentPath, declaration.Value); var list = Read(listPath);
+                var listPath = material.ResolvePath(documentPath, declaration.Value, cancellationToken); var list = Read(listPath);
                 if (list.Root is null || !Supported(list.Root, "CustomTags", ns) || !Plain(list.Root)) throw new NotSupportedException("Mix supports only flat EMR CustomTags.");
                 foreach (var record in list.Root.Elements())
                 {
@@ -212,7 +214,7 @@ public static class OfdDocumentMixer
                     var location = record.Elements().Single();
                     if (location.Name != record.Name.Namespace + "FileLoc" || !Literal(location))
                         throw new NotSupportedException("Mix cannot preserve unmodeled CustomTags file references.");
-                    detailPaths.Add(OfdPackagePath.Resolve(listPath, location.Value));
+                    detailPaths.Add(material.ResolvePath(listPath, location.Value, cancellationToken));
                 }
             }
             if (declarations.Count == 0)
@@ -243,17 +245,16 @@ public static class OfdDocumentMixer
                 throw new NotSupportedException($"Mix cannot remap the attachment reference in CustomTags key '{tag.Key}'.");
             foreach (var basis in detailPaths.Concat(new[] { documentPath, "OFD.xml" }))
             {
-                string path; try { path = OfdPackagePath.Resolve(basis, tag.Value); } catch (InvalidDataException) { continue; }
+                string path; try { path = material.ResolvePath(basis, tag.Value, cancellationToken); } catch (InvalidDataException exception) when (!OfdTraversalBudget.IsLimit(exception)) { continue; }
                 if (package.PreservedEntries.ContainsKey(path)) throw new NotSupportedException($"Mix cannot remap the package reference in CustomTags key '{tag.Key}'.");
             }
         }
     }
-    private static XNamespace EntryNamespace(OfdDocumentPackage package, string? path)
+    private static XNamespace EntryNamespace(OfdDocumentPackage package, string? path, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
         if (path is not null && package.PreservedEntries.TryGetValue(path, out var bytes))
         {
-            using var input = new MemoryStream(bytes, false);
-            return XDocument.Load(input).Root!.Name.Namespace;
+            return material.ReadXml(path, bytes, cancellationToken).Root!.Name.Namespace;
         }
         return XNamespace.Get(package.Options.Namespace);
     }

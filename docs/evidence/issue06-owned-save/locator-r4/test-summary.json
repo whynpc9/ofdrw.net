@@ -1,0 +1,344 @@
+{
+  "counters": {
+    "total": "75",
+    "executed": "75",
+    "passed": "75",
+    "failed": "0",
+    "error": "0",
+    "timeout": "0",
+    "aborted": "0",
+    "inconclusive": "0",
+    "passedButRunAborted": "0",
+    "notRunnable": "0",
+    "notExecuted": "0",
+    "disconnected": "0",
+    "warning": "0",
+    "completed": "0",
+    "inProgress": "0",
+    "pending": "0"
+  },
+  "groups": {
+    "KeywordLocatorTests": {
+      "count": 49,
+      "cases": [
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CustomProviderCoverageCannotBypassValidation(kind: \"null\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.UnsupportedProviderIsExplicitlyIncompleteAndCannotReturnANoHitClaim",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \" \", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.UnprovedClippingAndDegenerateTransformsHaveExplicitUnsupportedResults(kind: \"boundary\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CapturePrecedesCallbacksAndRejectsMutatingLaterInputs(kind: \"font-bytes\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CustomProviderCoverageCannotBypassValidation(kind: \"gap\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.NameOnlyAndAmbiguousFontsNeverFallBackAndSharedDefinitionsAreNotEditable",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CustomProviderCoverageCannotBypassValidation(kind: \"empty\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.StructuralBarriersPreventTextConcatenation(barrier: \"raw\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"1 2 3\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.LimitsAreCumulativeInclusiveAndFailuresDoNotReturnTruncatedSuccess",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.DistinctTextDefinitionsSharingAMutableRunCannotAdvertiseEditableOwnership",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CapturePrecedesCallbacksAndRejectsMutatingLaterInputs(kind: \"matrix\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CustomProviderCoverageCannotBypassValidation(kind: \"surrogate\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"NaN 2\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EveryProviderCallbackIsFollowedBySourceValidation(phase: \"dispose\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.UnprovedClippingAndDegenerateTransformsHaveExplicitUnsupportedResults(kind: \"singular\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.RepeatAndNegativeDeltasUseScalarCountAndMissingAxisStaysZero",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"1e309 2\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"g 2147483647 1\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EveryProviderCallbackIsFollowedBySourceValidation(phase: \"measure\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.StructuralBarriersPreventTextConcatenation(barrier: \"layer\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CustomProviderCoverageCannotBypassValidation(kind: \"cluster\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CumulativeOverflowIsFatalEvenWhenAnEarlierGlyphWouldBeClipped",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"1\", length: 1)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CapturePrecedesCallbacksAndRejectsMutatingLaterInputs(kind: \"later-text\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"g 2147483648 1\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"g -1 1\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.UnprovedClippingAndDegenerateTransformsHaveExplicitUnsupportedResults(kind: \"page\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.ExcludedTemplateAndAnnotationScopesAreDeclaredWithoutClaimingFullPageSearch",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.SpaceHasAdvanceWithoutAnInventedBoxAndSupplementaryCountsAsOneGlyph",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EveryProviderCallbackIsFollowedBySourceValidation(phase: \"statistics\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"1\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.ACallerSelectionIndexerCannotChangePageOwnershipDuringTheCopy",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"g 2 1 garbage\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.MultipleTextCodesAndAdjacentObjectsJoinOnlyWithProvenContinuity",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CapturePrecedesCallbacksAndRejectsMutatingLaterInputs(kind: \"page-order\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EveryProviderCallbackIsFollowedBySourceValidation(phase: \"open\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.StructuralBarriersPreventTextConcatenation(barrier: \"path\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"1 2 garbage\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CustomProviderCoverageCannotBypassValidation(kind: \"overlap\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"g 0 1\", length: 3)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.ImmutableHitBindsExactPackageAndRejectsStaleSameIdSource",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.CapturePrecedesCallbacksAndRejectsMutatingLaterInputs(kind: \"font-owner\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.WorkLimitsAlsoCoverReturnedClustersTokensAndOrdinalComparisons",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.SnapshotStreamsAreReleasedOnProviderFailureAndCancelledSupplementaryScan",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.OverlapsAreOrdinalAndNoDeltaKeepsCoincidentOrigins",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.SelectionAndCancellationNeverSilentlyFallBackToAllPages",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.KeywordLocatorTests.EntireDeltaArrayMustBeValid(delta: \"g 2\", length: 3)",
+          "outcome": "Passed"
+        }
+      ]
+    },
+    "TextReplacementTests": {
+      "count": 26,
+      "cases": [
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.WholeSerializedSourceGuardFollowsEveryProviderCallback(phase: \"open\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.StaleForeignMixedAndOverlappingHitsReject(kind: \"duplicate\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.StaleForeignMixedAndOverlappingHitsReject(kind: \"stale-font\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.OverflowAndUnsafeLogicalProfilesRejectWithoutChangingSource(replacement: \"\u0645\u0631\u062d\u0628\u0627\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.WholeSerializedSourceGuardFollowsEveryProviderCallback(phase: \"statistics\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.StaleForeignMixedAndOverlappingHitsReject(kind: \"mixed\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.ActualReaderCrossOccurrenceHitRejectsBothReplacementRoutesWithoutMutation(explicitHit: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.StaleForeignMixedAndOverlappingHitsReject(kind: \"foreign\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.StaleForeignMixedAndOverlappingHitsReject(kind: \"stale-text\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.OverflowAndUnsafeLogicalProfilesRejectWithoutChangingSource(replacement: \"a\u0301\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.ActualReaderHitReplacementWriterReaderPreservesSuffix(replacement: \"-\", expected: \"A-C\", delta: \"3 3\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.ActualReaderCrossOccurrenceHitRejectsBothReplacementRoutesWithoutMutation(explicitHit: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.FullDeletionRetainsRootAllOriginalSlotsAndExplicitEmptyAnchors",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.OverflowAndUnsafeLogicalProfilesRejectWithoutChangingSource(replacement: \"WW\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.NoOpIsLazyIndependentAndSingleUse",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.CancelledOrStaleConsumptionIsTerminal",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.OverflowAndUnsafeLogicalProfilesRejectWithoutChangingSource(replacement: \"\\n\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.OverflowAndUnsafeLogicalProfilesRejectWithoutChangingSource(replacement: \" \")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.OverflowAndUnsafeLogicalProfilesRejectWithoutChangingSource(replacement: \"\\\\\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.ActualReaderHitReplacementWriterReaderPreservesSuffix(replacement: \"--\", expected: \"A--C\", delta: \"3 1.25 1.75\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.KeywordOverloadCompletesSearchAndFitInsideOneOwnedProviderSession",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.ActualReaderHitReplacementWriterReaderPreservesSuffix(replacement: \"\", expected: \"AC\", delta: \"6\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.WholeSerializedSourceGuardFollowsEveryProviderCallback(phase: \"dispose\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.WholeSerializedSourceGuardFollowsEveryProviderCallback(phase: \"measure\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.CrossSlotEditKeepsConsumedSlotsEmptyAndFreezesSuffix",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.LowBudgetFailsBeforeProviderAndIncludesPhaseCounters",
+          "outcome": "Passed"
+        }
+      ]
+    }
+  },
+  "new_negative_routes": [
+    {
+      "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.ActualReaderCrossOccurrenceHitRejectsBothReplacementRoutesWithoutMutation(explicitHit: False)",
+      "outcome": "Passed"
+    },
+    {
+      "name": "Ofdrw.Net.Packaging.Tests.TextReplacementTests.ActualReaderCrossOccurrenceHitRejectsBothReplacementRoutesWithoutMutation(explicitHit: True)",
+      "outcome": "Passed"
+    }
+  ],
+  "other": [],
+  "errors": []
+}

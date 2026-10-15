@@ -1,0 +1,504 @@
+{
+  "head": "6b12e018c21f905904d1994b6c5b8f3875e1e1cf",
+  "source_file_count": 387,
+  "source_before_after_equal": true,
+  "projects": {
+    "Cli": {
+      "total": "39",
+      "executed": "39",
+      "passed": "39",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "Core": {
+      "total": "69",
+      "executed": "69",
+      "passed": "69",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "Packaging": {
+      "total": "74",
+      "executed": "74",
+      "passed": "74",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    }
+  },
+  "packaging_groups": {
+    "OwnedXmlPreservation": {
+      "count": 24,
+      "cases": [
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"v:second='2'\", to: \"\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.ActualPageAreaIndentationIsStructuralAndItsWhitespaceScanIsCharged",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"v:first='1'\", to: \"v:first='9'\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"Value='opaque'\", to: \"Value='changed'\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.WhitespaceCdataAndOpaqueOrPreservedWhitespaceStayExact(original: \"<Content xml:space='preserve'> <Layer ID='2'/></Co\"\u00b7\u00b7\u00b7, changed: \"<Content xml:space='preserve'><Layer ID='2'/></Con\"\u00b7\u00b7\u00b7)",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"<!--keep--><v:B/>\", to: \"<v:B/><!--keep-->\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"v:first='1' v:second='2'\", to: \"v:second='2' v:first='1'\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"Original\", to: \"Changed\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.ImportedFragmentDropsOnlyReifiedSourceAncestorBindings(defaultNamespace: True)",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"<v:B/>\", to: \"<v:B/><v:new/>\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"<?vendor keep?>\", to: \"\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"<!--keep-->\", to: \"\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.UnselectedTextSizeFillTransformAndTextStayProtected",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.OnlyStructuralIndentationCanChangeWithoutAnExplicitPlanPermission",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.OriginalOrNonInheritedNamespaceDeclarationsStayProtected",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"v:second='2'\", to: \"v:second='2' v:added='new'\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"<Pages><Page ID='1' BaseLoc='Pages/P1.xml'/></Page\"\u00b7\u00b7\u00b7, to: \"<Pages><Page ID='1' BaseLoc='Pages/P2.xml'/></Page\"\u00b7\u00b7\u00b7)",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.WhitespaceCdataAndOpaqueOrPreservedWhitespaceStayExact(original: \"<v:Opaque><Content> <Layer ID='2'/></Content></v:O\"\u00b7\u00b7\u00b7, changed: \"<v:Opaque><Content><Layer ID='2'/></Content></v:Op\"\u00b7\u00b7\u00b7)",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.PageReferenceDoesNotAcquirePageRootContentPermission",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.WhitespaceCdataAndOpaqueOrPreservedWhitespaceStayExact(original: \"<Content><![CDATA[ ]]><Layer ID='2'/></Content>\", changed: \"<Content><Layer ID='2'/></Content>\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.WhitespaceCdataAndOpaqueOrPreservedWhitespaceStayExact(original: \"<Extension><Content> <Layer ID='2'/></Content></Ex\"\u00b7\u00b7\u00b7, changed: \"<Extension><Content><Layer ID='2'/></Content></Ext\"\u00b7\u00b7\u00b7)",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.ImportedFragmentDropsOnlyReifiedSourceAncestorBindings(defaultNamespace: False)",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"<?vendor keep?>\", to: \"<?vendor changed?>\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedXmlPreservationTests.AttributesKnownScalarsOpaqueNodesAndOrderedRepresentationRequireExactPermission(from: \"<![CDATA[visible raw]]>\", to: \"visible raw\")",
+          "outcome": "Passed",
+          "stdout": null
+        }
+      ]
+    },
+    "OwnedSaveBoundary": {
+      "count": 6,
+      "cases": [
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedSaveBoundaryTests.CurrentInventoryFactsAreConsumedAndCannotReplaceALaterFreshAssert",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedSaveBoundaryTests.CurrentInputBindingDetectsSameLengthTamperAndTerminatesContext",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedSaveBoundaryTests.CapabilityOwnersHavePrivateConstructorsAndNoPublicMutablePayloadAccessors",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedSaveBoundaryTests.SharedSnapshotHashAndStageCopyUseActualBytesAndCumulativeFees",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedSaveBoundaryTests.AffectedCoverageIncludesUnchangedNeighborsInActualPageOrder",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedSaveBoundaryTests.IssuersFromOtherAssembliesFailBeforeTheyCanAuthorizeAnyWork",
+          "outcome": "Passed",
+          "stdout": null
+        }
+      ]
+    },
+    "OwnedSaveObservation": {
+      "count": 2,
+      "cases": [
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedSaveObservationTests.ActualFileEventsSeparateReservationsOriginalReadsAndTemporaryFilePeak",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedSaveObservationTests.FailureAndSnapshotExhaustionDoNotAllocateRequestQuotaOrReturnStaleCounters",
+          "outcome": "Passed",
+          "stdout": null
+        }
+      ]
+    },
+    "OwnedPayloadClone": {
+      "count": 9,
+      "cases": [
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedPayloadCloneTests.WholeClonePreservesAliasesAcrossEveryExistingPayloadRoleWithoutBorrowingSource",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedPayloadCloneTests.CopyQuotaAdmitsNeitherArrayNorUnfundedDictionaryGrowth",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedPayloadCloneTests.MutationThroughEitherAliasedOwnerStillRefusesBeforeOutput(sourceMutation: False)",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedPayloadCloneTests.PayloadSharingCannotMakeRepeatedGraphicOwnershipValid",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedPayloadCloneTests.GenericPageCloneAndProjectionKeepTheirExistingPayloadPolicy",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedPayloadCloneTests.DetachedOriginalPageSharesOnlyTheCandidatePayloadCopy",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedPayloadCloneTests.RetainedStorageQuotaRejectsBeforePayloadAllocationAndConsumesFactory",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedPayloadCloneTests.EqualDistinctArraysAndDistinctEmptyArraysRemainIndependent",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.OwnedPayloadCloneTests.MutationThroughEitherAliasedOwnerStillRefusesBeforeOutput(sourceMutation: True)",
+          "outcome": "Passed",
+          "stdout": null
+        }
+      ]
+    },
+    "TextReplacementSpool": {
+      "count": 10,
+      "cases": [
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.PositionLimitRejectsBeforeFileGrowthAndMakesTheContextTerminal(operation: \"write\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.PositionLimitRejectsBeforeFileGrowthAndMakesTheContextTerminal(operation: \"setlength\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.PositionLimitRejectsBeforeFileGrowthAndMakesTheContextTerminal(operation: \"seek\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.StageCopyWorkQuotaFailsBeforeReadingOrWritingAnyByte",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.HashMismatchMakesTheCopyTerminalAndNeverTouchesTheExistingTarget",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.OriginalCancellationIsEnforcedEvenWhenTheIoCallSuppliesDefault",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.ExhaustedWorkCannotWriteOrChangeTheReservedPosition",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.TinyCopyQuotaRejectsBeforeThePrivateFileIsCreated",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.WritesRewritesAndReadsArePrepaidAndPositionReservationsNeverRefund",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementSpoolTests.StageCopyChargesBothFilePositionsAndBindsExactBytesOnce",
+          "outcome": "Passed",
+          "stdout": null
+        }
+      ]
+    },
+    "TextReplacementFileSession": {
+      "count": 16,
+      "cases": [
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.OriginalCancellationRemainsBindingThroughSaveAndNeverRestarts",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.TinyQuotaRejectsBeforeOpeningMissingInputOrAllocatingOwnedBuffer",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.FailedPreparationKeepsItsPrimaryErrorEvenWhenSnapshotDeletionFails",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.ForeignBindingFailsOnlyTheOwnedSessionAndCannotRetry(mismatch: \"token\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.ExternalAbaCounterexampleCannotChangeTheOwnedSnapshotUsedByNoOp",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.PreparationFailureIsTerminalAndProviderCleanupOccursExactlyOnce",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.ActualFileReaderPreparationAndWriterShareExactlyOneContext",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.ForeignBindingFailsOnlyTheOwnedSessionAndCannotRetry(mismatch: \"context\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.ActiveSaveLeaseRejectsDisposeAndRawReentryUntilConsumptionCompletes",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.SimultaneousRawChecksEitherSerializeOrRejectWithoutCorruptingCounters",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.NoOpCopiesExactBoundSnapshotEvenWhenOriginalPathIsReplaced",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.PublicGapSourceMutationStillFailsExistingWriterGuard",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.ForeignBindingFailsOnlyTheOwnedSessionAndCannotRetry(mismatch: \"source\")",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.ProviderReentryCannotValidateOrDisposeTheBusySession",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.ReplacedPathCannotPassByHashingOnlyTheRetainedOldHandle",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementFileSessionTests.OperationUseAdmissionFailureIsTerminalAndCanStillReleaseItsSaveLease",
+          "outcome": "Passed",
+          "stdout": null
+        }
+      ]
+    },
+    "TextReplacementOwnedSession": {
+      "count": 7,
+      "cases": [
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementOwnedSessionTests.HostileExceptionDataObservesTerminalContextAndKeepsPrimaryDuringSpoolCleanup",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementOwnedSessionTests.PrivateRouteStillDetectsMutationAfterActualProviderCallback",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementOwnedSessionTests.PrivateWriteThroughReturnsCopiedValuesAfterRealWriteAndRejectsLegacyConsumption",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementOwnedSessionTests.LaterFreshSourceGuardRejectsMutationAndCleansWrittenOwnerAndSpool",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementOwnedSessionTests.NoOpStagesExactSnapshotThenReleasesPrivateInputBeforeCommit",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementOwnedSessionTests.BusyClaimRejectsConcurrentWriteReadValidateAndDispose",
+          "outcome": "Passed",
+          "stdout": null
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.Tests.TextReplacementOwnedSessionTests.SnapshotCleanupFailureBeforeCommitPreservesTheExistingTarget",
+          "outcome": "Passed",
+          "stdout": null
+        }
+      ]
+    }
+  },
+  "packaging_extra": [],
+  "new_core_cases": [
+    {
+      "name": "Ofdrw.Net.Core.Tests.OfdOwnedFileIntentTests.ActualFreshTicketSameCanonicalPathRejectsAndRemainsTerminal",
+      "outcome": "Passed",
+      "stdout": null
+    },
+    {
+      "name": "Ofdrw.Net.Core.Tests.OfdOwnedFileIntentTests.ActualFreshTicketCaseVariantsFollowPlatformPolicy",
+      "outcome": "Passed",
+      "stdout": "Actual OS: macOS 26.6.2; case names alias on volume: True; insensitive policy: True"
+    }
+  ],
+  "new_cli_cases": [
+    {
+      "name": "Ofdrw.Net.Cli.Tests.TextReplacementCommitNotificationTests.CaseVariantOwnedPathsFollowActualPlatformPolicyWithoutChangingInput(replacement: \"A\")",
+      "outcome": "Passed",
+      "stdout": "Actual OS: macOS 26.6.2; case names already alias on this volume: True; insensitive policy: True\nExecuted conservative Windows/macOS rejection; Linux independent-file publication is not exercised on this host."
+    },
+    {
+      "name": "Ofdrw.Net.Cli.Tests.TextReplacementCommitNotificationTests.CaseVariantOwnedPathsFollowActualPlatformPolicyWithoutChangingInput(replacement: \"AAA\")",
+      "outcome": "Passed",
+      "stdout": "Actual OS: macOS 26.6.2; case names already alias on this volume: True; insensitive policy: True\nExecuted conservative Windows/macOS rejection; Linux independent-file publication is not exercised on this host."
+    },
+    {
+      "name": "Ofdrw.Net.Cli.Tests.TextReplacementCommitNotificationTests.ValidInputCanonicalAndActualSymlinkAliasesRejectWithoutChangingFiles(symbolicLink: True)",
+      "outcome": "Passed",
+      "stdout": "Executed actual valid-OFD output symlink-to-input rejection."
+    },
+    {
+      "name": "Ofdrw.Net.Cli.Tests.TextReplacementCommitNotificationTests.ValidInputCanonicalAndActualSymlinkAliasesRejectWithoutChangingFiles(symbolicLink: False)",
+      "outcome": "Passed",
+      "stdout": "Executed actual valid-OFD same-canonical-path rejection."
+    }
+  ],
+  "errors": []
+}

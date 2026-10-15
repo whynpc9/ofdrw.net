@@ -1004,6 +1004,43 @@ public sealed partial class DocxConversionTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StagedDualLayerNamespaceChangeRejectsForeignStructureBeforeOutput(bool imageReference)
+    {
+        var options = new DocxConversionOptions { Engine = DocxConversionEngine.BuiltIn, OfdMode = DocxToOfdMode.DualLayer };
+        var staged = new ForeignStagedVisualConverter(imageReference);
+        var converter = new DocxToOfdConverter(new DocxToPdfConverter(options), staged);
+        await using var output = new MemoryStream(); await using var input = File.OpenRead(ResolveGeneratedSample());
+        await Assert.ThrowsAsync<NotSupportedException>(() => converter.ConvertAsync(input, output));
+        Assert.Equal(0, output.Length); Assert.Equal(staged.Snapshot, staged.EmittedBytes);
+    }
+
+    private sealed class ForeignStagedVisualConverter(bool imageReference) : Ofdrw.Net.Converter.Abstractions.Interfaces.IPdfToOfdConverter
+    {
+        public byte[] EmittedBytes { get; private set; } = [];
+        public byte[] Snapshot { get; private set; } = [];
+        public async Task ConvertAsync(Stream pdfInput, Stream ofdOutput, System.Collections.Generic.IReadOnlyList<int>? pages = null,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            using var staged = new MemoryStream();
+            await new PdfToOfdConverter(new PdfToOfdOptions { TextLayerMode = PdfTextLayerMode.None, Namespace = OfdConstants.StandardNamespace })
+                .ConvertAsync(pdfInput, staged, pages, cancellationToken);
+            staged.Position = 0;
+            using (var zip = new ZipArchive(staged, ZipArchiveMode.Update, true))
+            {
+                var entry = imageReference ? zip.Entries.First(item => item.FullName.EndsWith("Content.xml", StringComparison.Ordinal)) : zip.GetEntry("OFD.xml")!;
+                var name = entry.FullName; XDocument xml; using (var stream = entry.Open()) xml = XDocument.Load(stream);
+                var node = imageReference ? xml.Descendants().First(item => item.Name.LocalName == "ImageObject") : xml.Root!;
+                node.SetAttributeValue(XName.Get("ResourceID", "urn:vendor"), "opaque-reference"); entry.Delete();
+                using var replacement = zip.CreateEntry(name).Open(); xml.Save(replacement);
+            }
+            EmittedBytes = staged.ToArray(); Snapshot = EmittedBytes.ToArray();
+            await ofdOutput.WriteAsync(EmittedBytes, 0, EmittedBytes.Length, cancellationToken);
+        }
+    }
+
     private sealed class StagedPdfToOfdConverter : Ofdrw.Net.Converter.Abstractions.Interfaces.IPdfToOfdConverter
     {
         private readonly PdfToOfdConverter _inner;
