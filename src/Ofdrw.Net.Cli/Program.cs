@@ -18,6 +18,8 @@ return await Cli.RunAsync(args, shutdown.Token);
 
 internal static partial class Cli
 {
+    private const int MaximumSelectedPages = 10_000;
+
     public static async Task<int> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
         if (args.Length == 0 || IsHelp(args[0]))
@@ -103,11 +105,7 @@ internal static partial class Cli
 
             if (command == "ofd-to-svg")
             {
-                var svgPages = ParsePages(options.Pages);
-                if (svgPages is { Count: > 1 })
-                {
-                    throw new ArgumentException("OFD to SVG accepts at most one page.");
-                }
+                var svgPages = ParsePages(options.Pages, maximumSelectedPages: 1);
 
                 await ConvertToSvgAsync(
                     options.InputPath,
@@ -533,7 +531,16 @@ internal static partial class Cli
     }
 
     private static IReadOnlyList<int>? ParsePages(string? value)
+        => ParsePages(value, MaximumSelectedPages);
+
+    private static IReadOnlyList<int>? ParsePages(string? value, int maximumSelectedPages)
     {
+        // Bound splitting and whitespace scanning as well as the eventual page list.
+        if (value is not null && value.Length > 32 * maximumSelectedPages)
+        {
+            throw new ArgumentException("Page selection expression capacity exceeded.");
+        }
+
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
@@ -543,31 +550,37 @@ internal static partial class Cli
         foreach (var part in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             var range = part.Split('-', StringSplitOptions.TrimEntries);
-            if (range.Length == 1)
-            {
-                pages.Add(ParseOneBasedPage(range[0]));
-                continue;
-            }
-
-            if (range.Length != 2)
+            if (range.Length is < 1 or > 2)
             {
                 throw new ArgumentException($"Invalid page range: {part}");
             }
 
             var start = ParseOneBasedPage(range[0]);
-            var end = ParseOneBasedPage(range[1]);
+            var end = range.Length == 1 ? start : ParseOneBasedPage(range[1]);
             if (end < start)
             {
                 throw new ArgumentException($"Invalid descending page range: {part}");
             }
 
-            for (var page = start; page <= end; page++)
+            var count = GetPageRangeCount(start, end, maximumSelectedPages - pages.Count);
+            for (var offset = 0; offset < count; offset++)
             {
-                pages.Add(page);
+                pages.Add(checked(start + offset));
             }
         }
 
         return pages;
+    }
+
+    private static long GetPageRangeCount(int start, int end, int remainingCapacity)
+    {
+        var count = checked((long)end - start + 1);
+        if (count > remainingCapacity)
+        {
+            throw new ArgumentException("Selected-page capacity exceeded.");
+        }
+
+        return count;
     }
 
     private static int ParseOneBasedPage(string value)
