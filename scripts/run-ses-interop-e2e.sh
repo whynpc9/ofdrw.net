@@ -46,4 +46,4 @@ for mode in native default; do
   done
 done
 python3 "$ROOT_DIR/scripts/verify-ses-interop-evidence.py" "$OUTPUT_DIR" "$VERSION" "$TASK_DIR/consumer/obj/project.assets.json" "$TASK_DIR/tools/.store/ofdrw.net.cli/$VERSION/ofdrw.net.cli/$VERSION/tools/net10.0/any/Ofdrw.Net.Cli.deps.json"
-python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUTPUT_DIR/packages/sdk" "$VERSION" --verify-manifest
+NUGET_PACKAGES="$SOURCE_CACHE" python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUTPUT_DIR/packages/sdk" "$VERSION" --verify-manifest
