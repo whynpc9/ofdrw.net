@@ -90,6 +90,12 @@ public sealed class DocxConversionOptions
     /// </summary>
     public int MaxDocumentElements { get; set; } = 1_000_000;
 
+    /// <summary>
+    /// Gets or sets the positive maximum number of columns in each explicit or inferred
+    /// table grid processed by Native OFD and BuiltIn PDF rendering. The default is 4096.
+    /// </summary>
+    public int MaxTableColumnCount { get; set; } = 4096;
+
     /// <summary>Gets or sets the maximum number of rendered or selected pages.</summary>
     public int MaxPageCount { get; set; } = 10_000;
 

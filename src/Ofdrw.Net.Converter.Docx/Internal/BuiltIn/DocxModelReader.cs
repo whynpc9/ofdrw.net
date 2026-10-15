@@ -360,14 +360,19 @@ internal sealed class DocxModelReader
 
         ReadBorders(table.TableProperties?.TableBorders, model.Borders);
         var grid = table.GetFirstChild<TableGrid>();
+        var explicitColumnCount = 0;
         if (grid is not null)
         {
             foreach (var column in grid.Elements<GridColumn>())
             {
-                model.ColumnWidthsPoints.Add(TwipsToPoints(column.Width?.Value, 1440));
+                _cancellationToken.ThrowIfCancellationRequested();
+                if (explicitColumnCount >= _options.MaxTableColumnCount)
+                    throw new InvalidDataException($"DOCX table grid column {(long)explicitColumnCount + 1}: exceeds the configured column count limit of {_options.MaxTableColumnCount}.");
+                explicitColumnCount++;
             }
         }
 
+        long inferredColumnCount = 1;
         foreach (var row in table.Elements<TableRow>())
         {
             _cancellationToken.ThrowIfCancellationRequested();
@@ -376,6 +381,7 @@ internal sealed class DocxModelReader
                 IsHeader = row.TableRowProperties?.GetFirstChild<TableHeader>() is not null
             };
 
+            long rowColumnCount = 0;
             foreach (var cell in row.Elements<TableCell>())
             {
                 _cancellationToken.ThrowIfCancellationRequested();
@@ -388,6 +394,9 @@ internal sealed class DocxModelReader
 
                 if (cellModel.ColumnSpan < 1)
                     throw new InvalidDataException($"DOCX table row {model.Rows.Count + 1}, cell {rowModel.Cells.Count + 1}: gridSpan must be positive.");
+                rowColumnCount = checked(rowColumnCount + cellModel.ColumnSpan);
+                if (rowColumnCount > _options.MaxTableColumnCount)
+                    throw new InvalidDataException($"DOCX table row {model.Rows.Count + 1}, cell {rowModel.Cells.Count + 1}: exceeds the configured column count limit of {_options.MaxTableColumnCount}.");
                 ReadBorders(cell.TableCellProperties?.TableCellBorders, cellModel.Borders);
                 foreach (var paragraph in cell.Elements<WpParagraph>())
                 {
@@ -419,14 +428,24 @@ internal sealed class DocxModelReader
                 rowModel.Cells.Add(cellModel);
             }
 
+            inferredColumnCount = Math.Max(inferredColumnCount, rowColumnCount);
             model.Rows.Add(rowModel);
         }
 
-        if (model.ColumnWidthsPoints.Count == 0)
+        // Both explicit and inferred grids are budgeted before any widths are materialized.
+        if (explicitColumnCount > 0)
         {
-            var count = Math.Max(1, model.Rows.Select(x => x.Cells.Sum(c => c.ColumnSpan)).DefaultIfEmpty(1).Max());
-            for (var index = 0; index < count; index++)
+            foreach (var column in grid!.Elements<GridColumn>())
             {
+                _cancellationToken.ThrowIfCancellationRequested();
+                model.ColumnWidthsPoints.Add(TwipsToPoints(column.Width?.Value, 1440));
+            }
+        }
+        else
+        {
+            for (long index = 0; index < inferredColumnCount; index++)
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
                 model.ColumnWidthsPoints.Add(72);
             }
         }
