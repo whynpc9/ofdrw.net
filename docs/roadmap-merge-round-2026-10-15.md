@@ -35,7 +35,18 @@ Issue11 / PR15：静态确认私有 v1 口令 KEK 使用无盐、无成本参数
 
 Issue02 / PR11 的远端仍为旧 `b29ed9d`，未包含本地最终集成与验收候选，不在本轮合并。其余待开发票 07、08、10、13、14、17、18、20、22 不在本轮范围。
 
-## 排除 Issue11 后的当前验证
+## 最新 SVG 评审修复与验收
+
+运行源码 `8018d70be81ce2fe62bb6d588eca5b6e8b109c18`。Cursor 指出纯空白 run 的透明设置会被部分 alpha 覆盖：已把空白覆盖赋值移到颜色 alpha 之后，其他产品逻辑不变。
+
+- 有效外部 OFD 使用 `xml:space="preserve"` 保留窄不换行空白；alpha 1/128/254、producer 有/无显式 run 六个回归修复前均失败、修复后均通过，正常 A 的半透明颜色不变。
+- **完整回归 2,039 通过、12 可选未执行、零失败**。此前 65/65 强制字体入口保留明确 0a21fbe 基线；本次没有改变 Core、字体几何或 PDF 实现。
+- 新 `0.1.0-merge.20261015.5` 的默认 11 包、SES 12 包、vector 13 包实际消费全部通过；默认 SES 验签仍 Unsupported/退出码 2。
+- 当前 SVG PNG 目视通过；同一当前 OFD→PDF 的一页已实际在 macOS Preview 打开、查看正文并关闭。MIT 测试字体把 A 定义为矩形，PDF 仅见一枚灰矩形，空白区域无额外轮廓。SVG 渲染器显示灰 A；不把不同文字引擎的字形形状宣称为相同。该 PNG 渲染器修复前也不画缺字框，因此缺陷复现实证是 SVG opacity 错误及六项失败，而不是伪造像素差异。
+- 原 33 页 Preview 记录仍按原始基线保留；新增此 1 页，选定范围共 **34 页**。不重复验收未改的 PDF 页面。
+- 新 [SVG 修复读回](evidence/roadmap-merge-round-2026-10-15/svg-alpha-readback.json) 与 [验证归档](evidence/roadmap-merge-round-2026-10-15/svg-alpha-validation.tar.zst) 保存当前样例、页面图、修复前失败、原始全套 TRX、实际包清单及逐项解包哈希。PR22 最新 CI、双 bot 和有效线程须再闭合后才 merge。
+
+## 排除 Issue11 后的首次验证（修复 SVG 之前）
 
 运行源码 `0a21fbedaf284ace51e0e7d742eb0a4efd8b3529`；PR22 后续证据提交不改变产品源码。
 

@@ -28,3 +28,7 @@ tar --zstd -xf evidence.tar.zst -C /your/empty/output-directory
 [PR22](https://github.com/whynpc9/ofdrw.net/pull/22)，运行源码 0a21fbe：2,033 全套通过/12 可选未执行、强制真实字体 65/65 零跳过、20 脚本用例、默认 11/SES 12/vector 13 真实包消费通过。只有独立口令项目被排除，其余产品与已有实际 Preview 基线源码逐文件相同；新 15 页 PNG 读回一致。原 33 页实际 Preview 记录保留其原始源码/字体/页码，本次不虚报重新查看 GUI。
 
 [排除版读回](exclusion-readback.json) 列出 11 个接纳 head 和两个明确排除 head、全部范围差异、原始 TRX 计数及 [32 文件验证归档](exclusion-validation.tar.zst) 的逐文件哈希。旧 evidence.tar.zst 不改写为新候选全套结果。最新远端 CI/review 仍须在 PR22 单独读回。
+
+## 最新 SVG 半透明空白修复
+
+运行源码 8018d70：2,039 全套通过/12 可选未执行，六项外部 OFD 空白 alpha 回归修复前失败、修复后通过。新 0.1.0-merge.20261015.5 默认 11/SES 12/vector 13 包消费通过。当前 SVG PNG 已目视，对应当前 OFD→PDF 一页在 Preview 查看并关闭；加上原明确基线的 33 页，选定范围共 34 页。[完整读回](svg-alpha-readback.json) 与 [原始日志/TRX/当前页面/包清单](svg-alpha-validation.tar.zst) 逐项解包校验。首次排除报告和 17dea14 归档保留其历史身份，不重写成当前结果。
