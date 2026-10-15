@@ -21,20 +21,20 @@ internal static class EmbeddedFontCoverage
     {
         if (text.Runs.Count == 0)
         {
-            Validate(text.Text, cmap, name, cancellationToken, text.Text.All(char.IsWhiteSpace));
+            Validate(text.Text, cmap, name, cancellationToken, OfdTextGeometry.IsWhiteSpace(text.Text, cancellationToken));
             return;
         }
         foreach (var run in text.Runs)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var glyphs = OfdTextGeometry.Glyphs(run.Text);
-            var positioned = OfdTextGeometry.ExpandDeltas(run.DeltaX, System.Math.Max(0, glyphs.Count - 1)).Count > 0 ||
-                OfdTextGeometry.ExpandDeltas(run.DeltaY, System.Math.Max(0, glyphs.Count - 1)).Count > 0;
+            var deltas = OfdTextGeometry.PositioningDeltas(run, cancellationToken);
+            var positioned = deltas.X.Count > 0 || deltas.Y.Count > 0;
             // Only independently positioned blank glyphs may lack an outline.
             // A mixed unpositioned run must resolve a real covering font.
             if (positioned)
-                foreach (var glyph in glyphs) Validate(glyph, cmap, name, cancellationToken, glyph.All(char.IsWhiteSpace));
-            else Validate(run.Text, cmap, name, cancellationToken, run.Text.All(char.IsWhiteSpace));
+                foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
+                    Validate(glyph, cmap, name, cancellationToken, OfdTextGeometry.IsWhiteSpace(glyph, cancellationToken));
+            else Validate(run.Text, cmap, name, cancellationToken, OfdTextGeometry.IsWhiteSpace(run.Text, cancellationToken));
         }
     }
 

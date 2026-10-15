@@ -284,7 +284,7 @@ public sealed class OfdToSvgConverter
                     Invariant(text.FillColor.Alpha / 255d));
             }
 
-            if (text.Text.All(char.IsWhiteSpace)) node.SetAttributeValue("fill-opacity", "0");
+            if (OfdTextGeometry.IsWhiteSpace(text.Text, cancellationToken)) node.SetAttributeValue("fill-opacity", "0");
             root.Add(node);
             return;
         }
@@ -305,9 +305,8 @@ public sealed class OfdToSvgConverter
                 new XAttribute("fill", ToCssColor(text.FillColor)),
                 new XAttribute("transform", transform),
                 run.Text);
-            var glyphs = OfdTextGeometry.Glyphs(run.Text);
-            var deltaX = OfdTextGeometry.ExpandDeltas(run.DeltaX, Math.Max(0, glyphs.Count - 1));
-            var deltaY = OfdTextGeometry.ExpandDeltas(run.DeltaY, Math.Max(0, glyphs.Count - 1));
+            var deltas = OfdTextGeometry.PositioningDeltas(run, cancellationToken);
+            var deltaX = deltas.X; var deltaY = deltas.Y;
             if (deltaX.Count > 0 || deltaY.Count > 0)
             {
                 // OFD deltas locate adjacent origins. SVG dx/dy add to the
@@ -315,15 +314,17 @@ public sealed class OfdToSvgConverter
                 node.RemoveNodes();
                 var x = run.XMillimeters;
                 var y = run.YMillimeters;
-                for (var index = 0; index < glyphs.Count; index++)
+                var index = 0;
+                foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
                 {
                     var glyphAnchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
                     var span = new XElement(svgNs + "tspan", new XAttribute("x", OfdNumericFormat.Plain(glyphAnchor.X)),
-                        new XAttribute("y", OfdNumericFormat.Plain(glyphAnchor.Y)), glyphs[index]);
-                    if (glyphs[index].All(char.IsWhiteSpace)) span.SetAttributeValue("fill-opacity", "0");
+                        new XAttribute("y", OfdNumericFormat.Plain(glyphAnchor.Y)), glyph);
+                    if (OfdTextGeometry.IsWhiteSpace(glyph, cancellationToken)) span.SetAttributeValue("fill-opacity", "0");
                     node.Add(span);
                     if (index < deltaX.Count) x += deltaX[index];
                     if (index < deltaY.Count) y += deltaY[index];
+                    index++;
                 }
             }
 
@@ -334,7 +335,7 @@ public sealed class OfdToSvgConverter
                     Invariant(text.FillColor.Alpha / 255d));
             }
 
-            if (run.Text.All(char.IsWhiteSpace)) node.SetAttributeValue("fill-opacity", "0");
+            if (OfdTextGeometry.IsWhiteSpace(run.Text, cancellationToken)) node.SetAttributeValue("fill-opacity", "0");
             root.Add(node);
         }
     }

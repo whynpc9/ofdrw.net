@@ -403,7 +403,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 page.XMillimeters,
                                 page.YMillimeters,
                                 outlineFont,
-                                simulateItalic, coverage);
+                                simulateItalic, coverage, cancellationToken);
                         }
                         else
                         {
@@ -575,15 +575,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         double pageOriginX,
         double pageOriginY,
         SixLabors.Fonts.Font? outlineFont,
-        bool simulateItalic, OpenTypeCmap? coverage)
+        bool simulateItalic, OpenTypeCmap? coverage, CancellationToken cancellationToken)
     {
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
             foreach (var run in text.Runs)
             {
-                var glyphs = OfdTextGeometry.Glyphs(run.Text);
-                var deltaX = OfdTextGeometry.ExpandDeltas(run.DeltaX, Math.Max(0, glyphs.Count - 1));
-                var deltaY = OfdTextGeometry.ExpandDeltas(run.DeltaY, Math.Max(0, glyphs.Count - 1));
+                var deltas = OfdTextGeometry.PositioningDeltas(run, cancellationToken);
+                var deltaX = deltas.X; var deltaY = deltas.Y;
                 if (deltaX.Count == 0 && deltaY.Count == 0)
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
@@ -592,13 +591,15 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     continue;
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
-                for (var i = 0; i < glyphs.Count; i++)
+                var i = 0;
+                foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
                 {
                     var anchor = OfdTextEmphasis.Anchor(x, y, factor);
-                    DrawStyledString(graphics, glyphs[i], font, brush,
+                    DrawStyledString(graphics, glyph, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, coverage: coverage);
                     if (i < deltaX.Count) x += deltaX[i];
                     if (i < deltaY.Count) y += deltaY[i];
+                    i++;
                 }
             }
         });
