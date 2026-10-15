@@ -482,6 +482,7 @@ internal sealed class DocxModelReader
             BoundedStreamCopy.Copy(stream, data, _options.MaxEmbeddedImageBytes, "Embedded DOCX image", _cancellationToken);
 
             var imageBytes = data.ToArray();
+            ImageFormatAdmission.RejectBigTiff(imageBytes);
             var imageInfo = Image.Identify(imageBytes, out var imageFormat);
             if (imageInfo is null)
             {

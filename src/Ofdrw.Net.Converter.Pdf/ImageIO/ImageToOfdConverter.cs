@@ -69,6 +69,7 @@ public sealed class ImageToOfdConverter
             if (available <= 0) throw new InvalidDataException("Total encoded image input budget exceeded.");
             using var staged = new MemoryStream();
             total += await BoundedStreamCopy.CopyAsync(imageInputs[index], staged, available, "Encoded image", cancellationToken).ConfigureAwait(false);
+            ImageFormatAdmission.RequirePngOrJpeg(staged.GetBuffer(), (int)staged.Length);
             staged.Position = 0;
             var identified = await Image.IdentifyWithFormatAsync(staged, cancellationToken).ConfigureAwait(false);
             var info = identified.ImageInfo;

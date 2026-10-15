@@ -23,6 +23,7 @@ internal sealed class EncodedBitmapImageSource : ImageSource.IImageSource
         _encoded = encoded;
         _token = token;
         token.ThrowIfCancellationRequested();
+        ImageFormatAdmission.RejectBigTiff(encoded);
         var info = Image.Identify(encoded, out var format) ?? throw new InvalidDataException("Cannot identify signature bitmap.");
         ImageIoBudget.Pixels(info.Width, info.Height, maximumPixels, long.MaxValue);
         Width = info.Width; Height = info.Height;
@@ -37,6 +38,7 @@ internal sealed class EncodedBitmapImageSource : ImageSource.IImageSource
     public void SaveAsJpeg(MemoryStream stream)
     {
         _token.ThrowIfCancellationRequested();
+        ImageFormatAdmission.RejectBigTiff(_encoded);
         using var image = _decode(_encoded);
         image.Save(stream, new JpegEncoder { Quality = 75 });
         _token.ThrowIfCancellationRequested();
@@ -44,6 +46,7 @@ internal sealed class EncodedBitmapImageSource : ImageSource.IImageSource
     public void SaveAsPdfBitmap(MemoryStream stream)
     {
         _token.ThrowIfCancellationRequested();
+        ImageFormatAdmission.RejectBigTiff(_encoded);
         using var image = _decode(_encoded);
         image.Save(stream, new BmpEncoder { BitsPerPixel = BmpBitsPerPixel.Pixel32 });
         _token.ThrowIfCancellationRequested();

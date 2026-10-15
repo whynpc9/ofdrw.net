@@ -1211,11 +1211,45 @@ public sealed partial class DocxConversionTests
         Assert.Contains("UnsupportedDOCXfeature", placeholderText, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(true, "pdf")]
+    [InlineData(false, "pdf")]
+    [InlineData(true, "native")]
+    [InlineData(false, "native")]
+    [InlineData(true, "default")]
+    [InlineData(false, "default")]
+    public async Task Audit010_BigTiffAllEntrypoints_DocxRejectsBeforeIdentify(bool littleEndian, string mode)
+    {
+        // A truncated four-byte signature only; never execute an attacker-controlled IFD count.
+        var bytes = littleEndian ? new byte[] { 0x49, 0x49, 0x2b, 0 } : new byte[] { 0x4d, 0x4d, 0, 0x2b };
+        await using var input = CreateMinimalDocx("""
+            <w:p><w:r><w:drawing><wp:inline><wp:extent cx="9525" cy="9525" />
+              <a:graphic><a:graphicData><a:blip r:embed="rId2" /></a:graphicData></a:graphic>
+            </wp:inline></w:drawing></w:r></w:p>
+            """, """
+            <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+              <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png" />
+            </Relationships>
+            """, new Dictionary<string, byte[]> { ["word/media/image1.png"] = bytes });
+        await using var output = new MemoryStream();
+        var options = new DocxConversionOptions { Engine = DocxConversionEngine.BuiltIn };
+        if (mode == "native") options.OfdMode = DocxToOfdMode.Native;
+        var exception = await Assert.ThrowsAsync<InvalidDataException>(() => mode == "pdf"
+            ? new DocxToPdfConverter(options).ConvertAsync(input, output)
+            : new DocxToOfdConverter(options).ConvertAsync(input, output));
+        Assert.Contains("BigTIFF", exception.Message);
+        Assert.Empty(output.ToArray());
+    }
+
     /// <summary>
     /// Verifies an embedded raster relationship is rendered without external processes.
     /// </summary>
-    [Fact]
-    public async Task BuiltIn_ShouldRenderEmbeddedImage()
+    [Theory]
+    [InlineData("png")]
+    [InlineData("tiff")]
+    [InlineData("gif")]
+    [InlineData("bmp")]
+    public async Task BuiltIn_ShouldRenderEmbeddedImage(string format)
     {
         const string body = """
             <w:p><w:r><w:drawing><wp:inline>
@@ -1237,8 +1271,17 @@ public sealed partial class DocxConversionTests
                 Target="media/image1.png" />
             </Relationships>
             """;
-        var image = Convert.FromBase64String(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        using var pixels = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(2, 3);
+        using var encoded = new MemoryStream();
+        SixLabors.ImageSharp.Formats.IImageEncoder encoder = format switch
+        {
+            "tiff" => new SixLabors.ImageSharp.Formats.Tiff.TiffEncoder(),
+            "gif" => new SixLabors.ImageSharp.Formats.Gif.GifEncoder(),
+            "bmp" => new SixLabors.ImageSharp.Formats.Bmp.BmpEncoder(),
+            _ => new SixLabors.ImageSharp.Formats.Png.PngEncoder()
+        };
+        pixels.Save(encoded, encoder);
+        var image = encoded.ToArray();
         await using var input = CreateMinimalDocx(
             body,
             relationships,

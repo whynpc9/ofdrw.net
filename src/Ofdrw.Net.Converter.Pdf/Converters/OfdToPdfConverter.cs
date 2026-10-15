@@ -475,6 +475,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
     private static void ValidateImage(byte[] data, long maximumPixels)
     {
+        ImageFormatAdmission.RejectBigTiff(data);
         var info = Image.Identify(data);
         if (info is null || info.Width <= 0 || info.Height <= 0 || (long)info.Width * info.Height > maximumPixels)
             throw new InvalidDataException("OFD image exceeds the configured decoded pixel limit or has invalid dimensions.");
