@@ -1,4 +1,28 @@
-# Issue 02 当前依赖集成验收
+# Issue 02 当前 main 集成验收
+
+2026-10-15（Asia/Shanghai）。运行时代码 `f53545ea83390318384be6fbe2e7cb06dfbe80f4`，历史保留 merge 原候选 `792d5c0` 和已接纳 main `ea198538f26b1552a9902dcae898ffce8ef4362d`；PR #11 base 仍为 main。Issue11 口令包继续排除，默认消费集合精确为11包。
+
+| 验证层 | 当前结果 | 范围 |
+|---|---|---|
+| 全套 Release 回归 | 2249/2249，独立2249/2249，零跳过 | 含143个图片用例及新 typed/composite/嵌套签章/已加载页ID防线 |
+| 强制原字体 | 独立65/65，零跳过 | 仓库固定OFL字体及真实几何/定位/替换 |
+| Python / API docs / notices | 20/20；检查通过 | 保留main发布门禁 |
+| 实际本地包消费 | 11/11 | 0.1.0-issue02.main1；独立缓存、安装CLI、图片→水印→拆分→PNG、字体subset与现有消费 |
+| 文档工具矩阵 | 36样例、55 PDF页自动验证 | 当前Reader/Writer/PDF重生成，不称55页全部Preview |
+| macOS Preview | **17公开页 + 2本地诊断页通过** | 当前OFD→PDF逐页检查，任务窗口与面板全部关闭，GUI释放 |
+| 最新PR CI/双bot | 进行中 | 首轮Ubuntu/Windows测试fixture依赖Arial中文；生产coverage不放宽，测试改为固定OFL绑定，143受影响项本地通过；旧head Codex无重大问题；字体修正已独立验证，随当前验收证据提交重审；迟到Cursor意见继续处理 |
+
+实际路径、每个PDF的SHA-256、查看链路和逐页结论在 [preview-acceptance.json](preview-acceptance.json)。包含source两页、PNG/JPEG居中导入两页、DOCX→显式Native/default OFD→PDF各两页、重复签章、固定锚点CTM/假斜体、注解精确clip、watermark/clean各两页，以及新typed composite和嵌套重复签章各一页。原商业字体source的两页只用于忽略目录内本地诊断，不进入公开归档。
+
+[evidence.tar.xz](evidence.tar.xz)当前载荷集合与精确大小见manifest；索引由[manifest.json](manifest.json)给出，运行 `python3 scripts/verify-image-io-evidence.py`核对归档全集、大小与SHA-256。只收纳选定OFD/PDF/PNG/JPEG、固定Noto OFL/MIT字体与许可、licensed DOCX、日志/独立字体TRX及结果清单；不递归归档dotnet-home、NuGet缓存、用户/认证配置或本地商业字体诊断。字体审计确认8份OFD嵌入字体和8份PDF字体，PDF alias均关联到已审计OFD字体程序哈希；PDF子集流另记哈希。
+
+主线subset使新source OFD从11,601,570 bytes降至261,189 bytes；Native/default仍各约11.6 MB，读取/编辑包按主线保守保留原字体。该体积变化与字体策略一致，非删减正文。Preview确认中英文、比例间距、局部粗斜体/颜色、表格底色/边框、对齐、分页、图像、裁切、重叠、重影和空白符合样例预期。不能据此推断任意复杂Word/OFD保真或厂商互认。
+
+[集成说明](integration-notes.md)记录6冲突的合并取舍和Astra只读复核；Sol独立全套、65字体及实际11包manifest复核已完成。字体fixture修正后143图像用例经主代理及Sol独立通过，完整PDF387/387通过。后续仅测试fixture/CI和验收文档修订，不改变这些产物对应的运行时代码与哈希。历史17页结论另存[02/03依赖集成记录](preview-dependency-integration.json)。
+
+# 历史：02/03 依赖集成验收
+
+以下保留当时状态与取舍。当时46载荷归档可从Git提交 `792d5c0` 恢复；不对应当前覆盖后的60载荷归档。
 
 当前源码 `00a4c263ed5a15059bcdc2c09bb0d8f3500bf7e7`，保留历史merge自02 `b29ed9d`及已审查03依赖 `df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9`。原PR #11保留，拟以 `codex/document-tools` 为stacked base；没有GitHub PR merge或NuGet发布。
 

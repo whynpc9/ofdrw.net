@@ -6,7 +6,7 @@
 
 **Priority:** P0
 
-**Status:** in-progress — implementation/test complete; Preview and PR review pending
+**Status:** in-progress — accepted main integrated; 2249 tests / 11 packages / 19 Preview pages complete; latest CI and bot review pending
 
 - [x] `ofd-to-image`：指定页、指定 ppm，默认 PNG
 - [x] `image-to-ofd`：PNG/JPEG，可设页尺寸与 ppm，一图一页居中
@@ -35,6 +35,6 @@
 ## Delivery evidence
 
 - Public API/CLI and bounded PDF/PDFium raster path: [image conversion tutorial](../../../docs/tutorials/15-image-conversion.md).
-- Full regression: 280/280; 11-package local consumer E2E includes packed image APIs and installed CLI.
+- Current main integration: 2249/2249 full regression and independent verification, mandatory fonts 65/65, actual default 11-package consumer E2E; 17 public + 2 local diagnostic Preview pages passed with windows closed.
 - [Persistent artifacts, hashes and acceptance record](../../../docs/validation/issue02/README.md).
 - Completion gate remains open until actual macOS Preview pages and latest PR CI/bot review are closed; PNG inspection is a separate evidence layer.

@@ -1,3 +1,19 @@
+# 2026-10-15 accepted main integration
+
+Runtime source `f53545ea83390318384be6fbe2e7cb06dfbe80f4` merges `792d5c0` and main `ea198538f26b1552a9902dcae898ffce8ef4362d`. The original PR #11 stays based on main. Six actual conflicts were resolved locally; no password package, GitHub merge, tag, NuGet publish or dispatch is part of this change.
+
+Astra High bounded design and final read-only audit found no deterministic merge defect. PDF keeps the image-only strict entry/budgets/cache/geometry while main owns ordinary drawing, font subset/coverage, typed/composite projection, full matrices, flow and model contracts. Shared ConvertPackageAsync performs main graph/annotation preflight; each unique nested package validates within the existing strict/legacy error boundary before font context/cache insertion. The same operation material is passed through nested forms. All package-load options, including both annotation limits, remain copied/snapshotted and inherited.
+
+CLI takes the union of image commands, document tools and replace-text before general parsing. CI retains main branch filters and all existing gates, and all three image test classes run on Linux/Windows/macOS. E2E retains main flow/table/graphics/subset probes plus image APIs, installed CLI and import -> watermark -> split -> PNG. The default feed is still verify-package-artifacts.PACKAGES, exactly11, with optional extensions independent and Issue11 excluded.
+
+New tests prove shared typed composite placements/holes in direct images and repeated nested signature forms, unsupported typed clip output preservation, and strict already-loaded page IDs. Main Reader now refuses empty/non-numeric/duplicate page IDs before either renderer; existing tests assert both refusals and unchanged targets for those inputs, while missing-ID legacy behavior and valid-document signature-tolerance pixel tests remain. No production coverage or failure assertion was weakened.
+
+First remote CI found host Arial CJK dependence in seven image-fixture cases on Ubuntu/Windows. The fixture correction reads the repository-pinned OFL CJK ZIP entry with exact size and SHA-256 verification and binds it as an embedded document font. Production fallback/coverage is unchanged; 143 image tests pass locally. Existing current public source fixtures already used that exact explicit OFL input, so this fixture-only correction does not invalidate the runtime-source/hash-specific Preview artifacts.
+
+Sol Low independently ran2249/2249 complete Release tests and65/65 mandatory original-font tests, zero skips, and read back the actual11 package identities/manifests. Local consumer version0.1.0-issue02.main1 retains both image objects after image import/watermark/split/export. Preview on2026-10-15 reopened17 public pages and2 local original-source diagnostic pages; all passed and all task windows/open panels were closed. The exact bounded record and archive hashes are in manifest.json and preview-acceptance.json.
+
+# Historical dependency integration
+
 # Issue02 / Issue03 dependency integration
 
 Issue02 pre-integration head: `b29ed9db8d157569881d9dcd2a6d56f085f32baa`.
