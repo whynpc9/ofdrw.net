@@ -56,10 +56,9 @@ internal sealed class OfdFontEmbeddingPlan
         // group. Cancellation is checked before every examined element.
         var usage = new Dictionary<string, List<OfdTextElement>>(StringComparer.Ordinal);
         if (options.Mode != OfdFontEmbeddingMode.Full)
-            foreach (var page in package.Pages)
-                foreach (var element in page.Elements
-                    .Concat(page.Templates.SelectMany(template => template.Elements))
-                    .Concat(page.AnnotationAppearances))
+            foreach (var element in OfdCompositeGraph.Definitions(package)
+                .Concat(package.Pages.SelectMany(page => page.Templates.SelectMany(template => template.Elements)))
+                .Concat(package.Pages.SelectMany(page => page.AnnotationAppearances)).Distinct())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     if (element is not OfdTextElement text) continue;
@@ -158,7 +157,7 @@ internal sealed class OfdFontEmbeddingPlan
     private static string? PreservationReason(OfdDocumentPackage package, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (package.CompositeResources.Count > 0)
+        if (package.CompositeResources?.Items.Count > 0)
             return "Composite resources retain original font payloads; their glyph references may be shared.";
         if (package.PreservedEntries.Count > 0 || package.PreservedCommonDataElements.Count > 0 ||
             package.PreservedDocumentElements.Count > 0 || package.PreservedDocBodyElements.Count > 0)

@@ -45,6 +45,9 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
             var selection = OfdPageSelection.Normalize(count, pages);
             if (selection.Count > limits.Compatibility.MaxPageCount) throw new InvalidDataException("PDF output page limit exceeded.");
             var package = new OfdDocumentPackage();
+            // This converter validates exact original PDF font bytes and bindings.
+            // Preserve them rather than applying generation-time subsetting.
+            package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
             package.Options.Namespace = limits.Compatibility.Namespace;
             package.Options.Metadata.Title = "PDF vector document";
             package.Options.Metadata.Creator = "Ofdrw.Net PdfVectorToOfdConverter";
@@ -115,7 +118,21 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                         native = false; diagnostic = "PDFV_RASTER_PAGE: " + exception.Message + "; " + string.Join("; ", fallback.Diagnostics);
                     }
                 }
-                page.Index = package.Pages.Count; package.Pages.Add(page);
+                // Staged pages have independent local IDs. Their trusted producer
+                // fragments keep rendering attributes but must not claim shared IDs
+                // when native and raster pages enter the final package together.
+                foreach (var element in page.Elements)
+                {
+                    element.ObjectId = null; element.LayerId = null;
+                    if (element is OfdImageElement freshImage) freshImage.ResourceId = null;
+                    switch (element)
+                    {
+                        case OfdPathElement pathElement: pathElement.SourceXml = WithoutRootId(pathElement.SourceXml); break;
+                        case OfdTextElement textElement: textElement.SourceXml = WithoutRootId(textElement.SourceXml); break;
+                        case OfdImageElement imageElement: imageElement.SourceXml = WithoutRootId(imageElement.SourceXml); break;
+                    }
+                }
+                page.Id = null; page.Index = package.Pages.Count; package.Pages.Add(page);
                 results.Add(new PdfVectorPageResult(index, native, page.Elements.OfType<OfdPathElement>().Count(),
                     page.Elements.OfType<OfdTextElement>().Count(), page.Elements.OfType<OfdImageElement>().Count(), diagnostic));
             }
@@ -124,6 +141,13 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
             return new PdfVectorConversionResult(count, results.ToArray());
         }
         finally { try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
+    }
+    private static string? WithoutRootId(string? source)
+    {
+        if (source is null) return null;
+        var root = System.Xml.Linq.XElement.Parse(source);
+        root.Attribute("ID")?.Remove();
+        return root.ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
     }
     private static bool PlainCatalog(PdfDocument document)
     {

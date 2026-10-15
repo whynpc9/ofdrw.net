@@ -6,6 +6,7 @@ public enum OfdElementType
     Image,
     Path,
     Raw,
+    /// <summary>Placement of a shared composite vector resource.</summary>
     Composite
 }
 

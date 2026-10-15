@@ -297,7 +297,8 @@ public sealed class ControlledReaderAccountingTests
     [Fact]
     public void DirectControlledCaptureOfExistingPackageRejectsDtdWithoutAReaderScope()
     {
-        var source = new OfdDocumentPackage(); source.PreservedEntries.Add("existing.xml", DtdPayload());
+        var source = new OfdDocumentPackage(); source.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full; // Opaque fixture payloads.
+        source.PreservedEntries.Add("existing.xml", DtdPayload());
         using var context = new OfdControlledEditContext(new()); Assert.False(context.Material.IsControlledRead);
         Assert.Throws<InvalidDataException>(() => context.CaptureSource(source));
         Assert.Equal(1, context.Material.ReadParserAdmissions); Assert.Throws<InvalidOperationException>(context.AssertActive);
@@ -347,7 +348,8 @@ public sealed class ControlledReaderAccountingTests
     [Fact]
     public void ExistingMalformedXmlAlsoFailsControlledCaptureBeforeAnyReaderScope()
     {
-        var source = new OfdDocumentPackage(); source.PreservedEntries.Add("existing.xml", Encoding.UTF8.GetBytes("<root>"));
+        var source = new OfdDocumentPackage(); source.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full; // Opaque fixture payloads.
+        source.PreservedEntries.Add("existing.xml", Encoding.UTF8.GetBytes("<root>"));
         using var context = new OfdControlledEditContext(new());
         Assert.Throws<InvalidDataException>(() => context.CaptureSource(source));
         Assert.Throws<InvalidOperationException>(context.AssertActive);
@@ -371,7 +373,8 @@ public sealed class ControlledReaderAccountingTests
 
     private static async Task<byte[]> Source()
     {
-        var source = new OfdDocumentPackage(); source.Fonts.Add(new OfdFontResource { Id = "100", FontName = "test", FileName = "test.ttf", Data = new byte[128] });
+        var source = new OfdDocumentPackage(); source.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full; // Opaque fixture payloads.
+        source.Fonts.Add(new OfdFontResource { Id = "100", FontName = "test", FileName = "test.ttf", Data = new byte[128] });
         var page = new OfdPage { WidthMillimeters = 210, HeightMillimeters = 297 };
         page.Elements.Add(new OfdTextElement { Text = "ORIGINAL", FontResourceId = "100", WidthMillimeters = 40, HeightMillimeters = 10 }); source.Pages.Add(page);
         using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(source, output); return output.ToArray();

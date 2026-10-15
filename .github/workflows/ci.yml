@@ -57,12 +57,17 @@ jobs:
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
+      - name: Run mandatory original-font geometry and replacement tests without skips
+        run: python3 scripts/run-trusted-font-tests.py --results-directory artifacts/trusted-font-tests
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: artifacts/test-results
+          path: |
+            artifacts/test-results
+            artifacts/trusted-font-tests
 
   builtin-docx:
     name: BuiltIn DOCX (${{ matrix.os }})
@@ -202,6 +207,10 @@ jobs:
   password-crypto:
     name: Optional password crypto (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/password-dotnet-home
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     strategy:
       fail-fast: false
       matrix:

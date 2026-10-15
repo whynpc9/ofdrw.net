@@ -88,6 +88,14 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
             {
                 DocType = source.Options.DocType, Namespace = source.Options.Namespace, DocumentId = source.Options.DocumentId,
                 EnableDeflateCompression = source.Options.EnableDeflateCompression,
+                FontEmbedding = new OfdFontEmbeddingOptions
+                {
+                    Mode = source.Options.FontEmbedding.Mode,
+                    MaximumFontBytes = source.Options.FontEmbedding.MaximumFontBytes,
+                    MaximumCollectionBytes = source.Options.FontEmbedding.MaximumCollectionBytes,
+                    MaximumUsedScalars = source.Options.FontEmbedding.MaximumUsedScalars,
+                    MaximumGlyphClosureOperations = source.Options.FontEmbedding.MaximumGlyphClosureOperations
+                },
                 DefaultPageWidthMillimeters = source.Options.DefaultPageWidthMillimeters,
                 DefaultPageHeightMillimeters = source.Options.DefaultPageHeightMillimeters,
                 Metadata = new OfdMetadata
@@ -99,6 +107,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
                 }
             }
         };
+        Map(source.Options.FontEmbedding, copy.Options.FontEmbedding);
         Map(source, copy); Map(source.Options, copy.Options); Map(source.Options.Metadata, copy.Options.Metadata);
         Map(source.Pages, copy.Pages); Map(source.Fonts, copy.Fonts); Map(source.Attachments, copy.Attachments);
         Map(source.CustomTags, copy.CustomTags); Map(source.PreservedEntries, copy.PreservedEntries);

@@ -8,6 +8,7 @@ using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Packaging.Archive;
 
+/// <summary>Loads OFD containers with one cumulative bounded-read accounting context.</summary>
 public sealed partial class OfdPackageLoader
 {
     internal static OfdPackageLoadOptions SnapshotOptions(OfdPackageLoadOptions options)

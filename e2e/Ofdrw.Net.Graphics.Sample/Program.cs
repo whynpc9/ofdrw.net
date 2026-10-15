@@ -1,3 +1,4 @@
+using OfdFillRule = Ofdrw.Net.Layout.Graphics.OfdFillRule;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Graphics;
 using Ofdrw.Net.Packaging;

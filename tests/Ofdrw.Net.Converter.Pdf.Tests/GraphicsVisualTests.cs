@@ -1,3 +1,4 @@
+using OfdFillRule = Ofdrw.Net.Layout.Graphics.OfdFillRule;
 using Docnet.Core;
 using Docnet.Core.Models;
 using Ofdrw.Net.Converter.Pdf.Converters;

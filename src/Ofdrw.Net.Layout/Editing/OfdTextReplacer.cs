@@ -18,6 +18,7 @@ public sealed class OfdTextReplacer
 {
     private readonly IOfdGlyphGeometryProvider provider;
     private readonly OfdKeywordLocatorLimits locatorLimits;
+    /// <summary>Creates a replacer using the supplied trusted geometry provider and optional locator limits.</summary>
     public OfdTextReplacer(IOfdGlyphGeometryProvider geometryProvider, OfdKeywordLocatorLimits? locatorLimits = null)
     { provider = geometryProvider ?? throw new ArgumentNullException(nameof(geometryProvider)); this.locatorLimits = locatorLimits ?? new(); }
 
@@ -101,6 +102,7 @@ public sealed class OfdTextReplacer
         internal readonly OfdOwnedGlyphGeometryHost Host = host;
     }
 
+    /// <summary>Prepares a complete atomic replacement batch; unsupported content, stale hits and overflow fail before returning an owned result.</summary>
     public OfdTextReplacementResult Replace(OfdDocumentPackage source, IReadOnlyList<OfdTextReplacement> replacements,
         OfdTextReplacementOptions? options = null, CancellationToken cancellationToken = default)
     {
@@ -110,9 +112,11 @@ public sealed class OfdTextReplacer
         try { return Prepare(operation, Freeze(replacements, policies.Limits, operation.Context.Material, cancellationToken), cancellationToken); }
         catch (Exception error) { operation.Fail(error); operation.Dispose(); throw; }
     }
+    /// <summary>Prepares a complete atomic replacement batch; unsupported content, stale hits and overflow fail before returning an owned result.</summary>
     public OfdTextReplacementResult Replace(OfdDocumentPackage source, string keyword, string replacementText,
         OfdTextReplacementOptions? options = null, CancellationToken cancellationToken = default)
         => ReplaceKeyword(source, null, keyword, replacementText, options, cancellationToken);
+    /// <summary>Prepares a complete atomic replacement batch; unsupported content, stale hits and overflow fail before returning an owned result.</summary>
     public OfdTextReplacementResult Replace(OfdDocumentPackage source, IReadOnlyList<int> pageIndexes,
         string keyword, string replacementText, OfdTextReplacementOptions? options = null, CancellationToken cancellationToken = default)
     {
