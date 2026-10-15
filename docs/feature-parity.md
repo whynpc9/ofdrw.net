@@ -35,7 +35,7 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | SES dev/interop 测试容器 | 固定上游 SES V1/V4 测试容器 | 可选 `Ofdrw.Net.Signatures.SesInterop`：常见字段解析、SM2 测试自签/双层验签、完整测试证书固定 | **测试扩展**；仅显式注册，默认 verifier/CLI 不给自签 FullyValid；核心能力标志仍 false。无阅读器互认、法律效力或合格 TSA，范围见[教程](tutorials/16-ses-dev-interop.md)与[证据](evidence/ses-interop/README.md) |
 | GM/T 0099 密码应用 | `ofdrw-crypto` | 能力标志明确返回不支持 | **未支持** |
 | CLI/工具分发 | `ofdrw-tool` 及各模块工具 | 转换、SVG、文本提取、重排、合并、签名验证的 .NET tool | **已支持** |
-| Graphics2D 兼容层 | `ofdrw-graphics2d` | Layout 公开 OfdGraphics/OfdPen/OfdBrush/OfdFont/OfdGraphicsPath/OfdMatrix，输出原生 PathObject/TextObject | **部分支持**；04 原语绘图已实现，无 Skia 必需依赖；19 的可选 Skia 适配、05 字体子集仍独立交付 |
+| Graphics2D 兼容层 | `ofdrw-graphics2d` | Layout 公开 OfdGraphics/OfdPen/OfdBrush/OfdFont/OfdGraphicsPath/OfdMatrix，输出原生 PathObject/TextObject | **部分支持**；04 原语绘图已实现，无 Skia 必需依赖；19 已实现受限合作 producer 事件适配（不透明捕捉 SKCanvas，验收见独立证据）；05 字体子集仍独立交付 |
 | 兼容性与发布 | Maven 多模块、长期演进 | `netstandard2.0/2.1` SDK + `net10.0` CLI，NuGet 包消费 E2E | **部分支持**；仓库采用 MIT 并附第三方声明；发布候选需通过同一批 NuGet 包的消费验证 |
 
 ## 本轮补强结果
