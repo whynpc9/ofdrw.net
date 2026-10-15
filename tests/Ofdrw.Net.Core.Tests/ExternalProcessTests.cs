@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.ComponentModel;
+using System.Text;
 using Ofdrw.Net.Core.Processes;
 
 namespace Ofdrw.Net.Core.Tests;
@@ -45,6 +47,73 @@ public sealed class ExternalProcessTests : IDisposable
         var pid = int.Parse(await File.ReadAllTextAsync(pidFile));
         await Assert.ThrowsAsync<TimeoutException>(() => running);
         await AssertProcessExitedAsync(pid);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Runner_ShouldPreserveArgumentVector(bool useRawArguments)
+    {
+        var arguments = new[] { "", "one two", "中文 空格", "back\\slash", "quote\"x", "trail\\", "two\"\"quotes", "tab\tvalue", "'$(echo unsafe);*" };
+        var start = CreateStart(new[] { "arguments" }.Concat(arguments).ToArray());
+        if (useRawArguments)
+        {
+            start.Arguments = string.Join(" ", start.ArgumentList.Select(QuoteArgument));
+            start.ArgumentList.Clear();
+        }
+        var result = await ExternalProcessRunner.RunAsync(start, TimeSpan.FromSeconds(10), default);
+        Assert.Equal(0, result.ExitCode);
+        var actual = result.Output.Replace("\r", "").Split('\n').SkipLast(1)
+            .Select(value => Encoding.UTF8.GetString(Convert.FromBase64String(value)));
+        Assert.Equal(arguments, actual);
+    }
+
+    [Fact]
+    public async Task Runner_ShouldPreserveWorkingDirectoryAndEnvironment()
+    {
+        var directory = Path.Combine(_directory, "中文 directory");
+        Directory.CreateDirectory(directory);
+        var marker = Guid.NewGuid().ToString("N");
+        await File.WriteAllTextAsync(Path.Combine(directory, "cwd-marker"), marker);
+        var start = CreateStart("context");
+        start.WorkingDirectory = directory;
+        start.Environment["OFDRW_AUDIT024_VALUE"] = "value 空格 \" \\";
+        var result = await ExternalProcessRunner.RunAsync(start, TimeSpan.FromSeconds(10), default);
+        var lines = result.Output.Replace("\r", "").Split('\n');
+        Assert.Equal(marker, await File.ReadAllTextAsync(Path.Combine(lines[0], "cwd-marker")));
+        Assert.Equal(start.Environment["OFDRW_AUDIT024_VALUE"], lines[1]);
+        Assert.Equal(0, result.ExitCode);
+    }
+
+    [Fact]
+    public async Task Runner_ShouldReportMissingExecutableAsNativeStartFailure()
+    {
+        var start = new ProcessStartInfo(Path.Combine(_directory, "missing-executable"));
+        await Assert.ThrowsAsync<Win32Exception>(() => ExternalProcessRunner.RunAsync(start, TimeSpan.FromSeconds(10), default));
+    }
+
+    [Fact]
+    public async Task Runner_ShouldRejectCancellationBeforeStarting()
+    {
+        var pidFile = Path.Combine(_directory, "must-not-start");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ExternalProcessRunner.RunAsync(
+            CreateStart("wait", pidFile), TimeSpan.FromSeconds(10), cancellation.Token));
+        Assert.False(File.Exists(pidFile));
+    }
+
+    private static string QuoteArgument(string argument)
+    {
+        var result = new StringBuilder("\"");
+        var slashes = 0;
+        foreach (var character in argument)
+        {
+            if (character == '\\') { slashes++; continue; }
+            result.Append('\\', character == '\"' ? slashes * 2 + 1 : slashes).Append(character);
+            slashes = 0;
+        }
+        return result.Append('\\', slashes * 2).Append('\"').ToString();
     }
 
     private static string RuntimeConfig => Path.Combine(
