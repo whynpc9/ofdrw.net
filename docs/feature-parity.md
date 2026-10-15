@@ -23,7 +23,7 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 | 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层 builder、公开 FlowDocument/Paragraph/Span、Table/Row/Cell 与原生 OfdGraphics API | **部分支持**；中英段落/局部样式/分页、固定列宽/水平合并/整行分页与毫米路径/文字/状态/裁剪已实现；布局 Canvas 与复杂 Word 版式仍按各票范围交付 |
 | 字体 | `ofdrw-font`，字体生成与字形处理 | 按全包用字生成静态 TrueType 子集、复合/GSUB/UVS 字形闭包、TTC 选面、内容身份载荷复用，缺字明确失败 | **部分支持**；TTF/glyf 子集已实现；CFF/变量/AAT/RTL 与保留未知 XML 的字体以全量和诊断保护，详见[字体子集契约](font-subset-and-reuse.md) |
 | OFD → PDF | `ofdrw-converter` 导出能力 | 模板、图层、字体、文本游程、矢量路径、图片、变换、颜色/透明度和裁剪原点 | **已支持（预览）**；仍需更大票据/印章语料库做保真度回归 |
-| PDF → OFD | `ofdrw-converter` 转换能力 | 逐页栅格化形成视觉层，同时将可提取文字按坐标写为透明 OFD `TextObject` 语义层 | **部分支持**；具备双层搜索/抽取能力，但尚未保留原始矢量、字体语义和阅读顺序标记，扫描件仍需 OCR |
+| PDF → OFD | `ofdrw-converter` 转换能力 | 默认双层；可选 Pdf.Vector 包经 19/04 输出受限 native PathObject/TextObject，校验原文与嵌入字体字形 | **部分支持**；[矢量模式](tutorials/18-pdf-vector-mode.md) 支持明确页框/路径/TrueType profile；压缩流、clip/图像/effects/复杂字体等明确整页回退或失败；默认 CLI 仍双层，扫描件无 OCR，不承诺任意 PDF 保真/阅读顺序标记 |
 | DOCX → PDF / OFD | 上游不提供 Office 文档渲染 | 默认直接将 DOCX/OpenXML 原文写为原生 OFD `TextObject`，完全跳过 PDF；可选 `DualLayer` 使用 Word/LibreOffice/BuiltIn 页面图像，并继续以 OpenXML 原文作为语义层 | **已支持（预览）**；原文可直接抽取，Native 支持常见段落、表格、内嵌图片与按页页眉页脚；附属正文带标签追加，DualLayer 按实际页定位原文，不承诺复杂 Word 版式和浮动对象保真 |
 | OFD → SVG | 上游推荐/生态具备 SVG 预览方案 | 自包含单页 SVG，支持模板、路径、文本、颜色、变换和内嵌图片 | **已支持（预览）** |
 | 图片/HTML 等导出 | 转换模块覆盖图片、文本、PDF 等方向 | SVG 可再栅格化；无直接 PNG/JPEG/HTML API | **未完整支持** |

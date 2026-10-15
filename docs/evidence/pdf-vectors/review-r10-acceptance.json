@@ -1,0 +1,652 @@
+{
+  "runtime_head": "28fc29daeab5e93b0afa5da2af504a1534ee8116",
+  "main": {
+    "dotnet": 641,
+    "trx_files": 9,
+    "python": 5,
+    "default_packages": 11,
+    "optional_packages": 13
+  },
+  "independent_low12": {
+    "status": "passed_with_explicit_visual_limit",
+    "head": "6fa0a3095bdf34b7a519173159bbc0ed12206f16",
+    "runtimeHead": "28fc29daeab5e93b0afa5da2af504a1534ee8116",
+    "packageVersion": "0.1.0-pdfvector.20261013.low12",
+    "verifiedAtUtc": "2026-10-13T02:31:59.809416+00:00",
+    "scope": "Independent read-only review and isolated package/observer validation; no product, repository tests, scripts, docs, Git, PR, or GUI edits.",
+    "freeze": {
+      "sourceBlobCount": 365,
+      "mainNupkgCount": 13,
+      "allSourceAndMainPackageHashesStillMatch": true,
+      "fontBytes": 21659544,
+      "fontSha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "rawTextPdfBytes": 21698835,
+      "rawTextPdfSha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb"
+    },
+    "review": {
+      "finding": "no gate-blocking defect observed in 19 SkiaDrawEvent, fixed binding/IVT, VectorFont, FlushText",
+      "notes": [
+        "private clone and owned face; first native stream bounded byte comparison and SHA; identity published only after complete read and cancellation check",
+        "public Text authenticates each call; Append validates font ID/style and current resource hash per batch",
+        "snapshot carries managed values and hash, not native face; event limit and cancellation precede font snapshot",
+        "no observed global identity cache or quota/04/05/output budget semantic change"
+      ]
+    },
+    "tests": {
+      "dotnet": "641/641 in 9 TRX",
+      "python": "5/5",
+      "trxDirectory": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/results",
+      "logs": [
+        "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/dotnet-test.log",
+        "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/python-tests.log"
+      ]
+    },
+    "package": {
+      "default11": "passed, fresh PackageReference consumer",
+      "optional13": "passed, fresh PackageReference consumer",
+      "optionalManifest": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/package-manifest.json",
+      "stress": "8 Tj/TJ OFDs with 1/10/50/100 text/path objects, original Unicode/order and full font preserved",
+      "stressReport": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-report.json"
+    },
+    "mainNupkgMeasurement": {
+      "packageReferenceOnly": true,
+      "explicitRuntimeAssemblies": 3,
+      "allConsumerOfdrwDllCopies": 8,
+      "allConsumerCopiesMatchR10NupkgEntry": true,
+      "ownedCounts": [
+        1,
+        10,
+        50,
+        100
+      ],
+      "privateIdentitySameForEachCount": true,
+      "derivedActualNupkgOpenCountPerBinding": 1,
+      "sourceDiagnosticNotNupkg": "one 21659544-byte read and SHA per binding for each count",
+      "publicText": "elapsed times observed, per-call reads are derived from loaded IL, not nupkg counters",
+      "cancellation": "diagnostic-only injection after first 8192-byte chunk: no partial identity; retry passed; actual nupkg mid-hash latency not measured",
+      "evidenceDirectory": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/main-measure"
+    },
+    "observers": {
+      "original": "999600 OFD/PDF RGB pixels checked, passed",
+      "highIndex": "999600 OFD/PDF RGB pixels checked, passed",
+      "rawText": "5 fallback + 4 native; selection [5,0,5]; four full font resources; passed",
+      "directory": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers"
+    },
+    "equivalence": {
+      "r8LegacyOfds": 21,
+      "r10VsLow12VsR8": "all payload entries identical; dual.ofd OFD.xml metadata differs",
+      "newStressOfds": 8,
+      "newStressVsR10": "all ZIP entries byte equal",
+      "auxPngPairs": 6,
+      "auxPngResult": "RGB pixel identical on vector pages 1-2 and text positive pages 6-9",
+      "evidence": [
+        "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/ofd-comparison.json",
+        "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/stress-comparison.json",
+        "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/aux-png-comparison.json"
+      ]
+    },
+    "commandsAndExits": {
+      "dotnet-test.exit": 0,
+      "converter-package.exit": 0,
+      "optional-package.exit": 0,
+      "python-tests.exit": 0,
+      "main-measure/restore.exit": 0,
+      "main-measure/run.exit": 0,
+      "main-measure/build.exit": 0,
+      "observers/high/restore.exit": 0,
+      "observers/high/run.exit": 0,
+      "observers/high/build.exit": 0,
+      "observers/original/restore.exit": 0,
+      "observers/original/run.exit": 0,
+      "observers/original/build.exit": 0
+    },
+    "limits": [
+      "No macOS Preview or desktop-reader visual acceptance was performed by this verifier. PNG pairs are auxiliary only.",
+      "No CI, current-head review closure, merge, release, or general Word/PDF fidelity conclusion.",
+      "Loaded package IL plus reflection provides derived full-read count, not instrumented actual-nupkg counters.",
+      "Runtime.json explicitly records 3 loaded assemblies; 8 matching consumer DLL copies are binary provenance, not an AppDomain loaded assembly inventory."
+    ],
+    "artifactInventory": [
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/main-measure/output/diagnostic-cancellation.json",
+        "bytes": 228,
+        "sha256": "dc057cede2eaca8305d425bcdad9220733e6c2f0713d8f4bf77dde70b158103f"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/main-measure/output/limits.json",
+        "bytes": 195,
+        "sha256": "7001e85d3fbd5bff7f7dc353e15eff054681ab3a34d5e1e8fe5d11494030a74b"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/main-measure/output/loaded-package-il.txt",
+        "bytes": 20865,
+        "sha256": "0d7138bb77448f818877875bbdaf51c5e3d0c3cc04a88e1d0e733824cb9a9f3a"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/main-measure/output/measurements.json",
+        "bytes": 3232,
+        "sha256": "8858a41e91b2a06b452ff04f1720a8c6183d9601861b22301ffdfd668cde11e7"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/main-measure/output/runtime.json",
+        "bytes": 1512,
+        "sha256": "75cb410a11453f2609d323653f6a863e699a158c25b4bf28a4da1df565dff245"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/high/output/r4-indexed-export.pdf",
+        "bytes": 18947,
+        "sha256": "f2c81afe6f0d962b1d3b17553dc0ba51268acb9508e1cd7569dd0f5c9fc326de"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/high/output/r4-indexed.ofd",
+        "bytes": 2244,
+        "sha256": "af777e06d5d951a5e7ed57f72ab1446cb5cd045b970becbb912b60254059a1cd"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/high/output/r4-observation.json",
+        "bytes": 440,
+        "sha256": "c1c8509cf980b5b17be78b8f48b186e24fc524d95e799db517dad741b0fd50c0"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/high/output/text-observation.json",
+        "bytes": 485,
+        "sha256": "e9d546f0f2024d2bd1d64e9c9ade2c4a977c77e82b4e5693a629598ec7007bc0"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/high/output/text-original-export.pdf",
+        "bytes": 147573,
+        "sha256": "0b753d37a6d36c6db4c59d9a0f3ec21047de9290024cd490b26d420fa31fb691"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/high/output/text-original.ofd",
+        "bytes": 11607115,
+        "sha256": "7a9f4f84ec266edf374e9e2302f9b28873aa73873ddbc9cef4074605b15cd453"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/high/output/text-selected.ofd",
+        "bytes": 11602580,
+        "sha256": "c641a3daadb3633674cd41d81ec9ee076edf0524551614261089180fc149a623"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/original/output/r4-indexed-export.pdf",
+        "bytes": 18947,
+        "sha256": "d0f054ae082f76e196f610b36f26621f800699378d4e884651983df8110f5568"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/original/output/r4-indexed.ofd",
+        "bytes": 2244,
+        "sha256": "44cbdbd1cc434e73ef14afd9bff574479c4513f452d7be8faf5f252db05b33a5"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/observers/original/output/r4-observation.json",
+        "bytes": 440,
+        "sha256": "dc61e712c23411672f2e1944742b91a627dadba20cb7376250bc954afd69ebde"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Cli.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 25037931,
+        "sha256": "a28b904ce7f810688557ea6d4a8e3840cc83a6707196b9344a95d58ed202575d"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Converter.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 20816,
+        "sha256": "d4aa8867093906ce5c847a56af5a5d8f5a1295c1bc34aa218c66cc3f2dfe92ae"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Converter.Abstractions.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 27198,
+        "sha256": "2437fd495e7dbe916be81fd9a331d2111843da8eb56e2265c9677ebfbcc19ac6"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Converter.Docx.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 173851,
+        "sha256": "7bff323e0ef242557a3ea4721fa1c5dd8d3a8b2800a8bf5430da8ea1eaf24f5f"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Converter.Pdf.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 106177,
+        "sha256": "965874d96537e55c2c3b9998d096428bedc5664a10fa39099fa1e3720fd349ec"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Converter.Pdf.Vector.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 91158,
+        "sha256": "3c2ad86f2b20543452433f480c56f52beabd5005add750ae8724c30002b0f970"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Converter.Svg.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 43172,
+        "sha256": "fa99a9e9e0ea3eb30cc1a632723c666a11a3dc9ea78f847011c5d81bd452ea42"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Core.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 82007,
+        "sha256": "6d4d94c28a760e44fa855c4bd4307a5a7327e0f39d9173e3285ba46edbddc25f"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Graphics.SkiaSharp.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 48927,
+        "sha256": "30fd53ede30dbd11a0a306c1d168651e0fccaff50621e3c4c272d2f8663b49d7"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Layout.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 94676,
+        "sha256": "f01ddf271d54e800bbb69a3531f83c3938741655ab34a3544f7e89f9fc5f3b6e"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Packaging.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 96577,
+        "sha256": "26007b6e823a225fb51dd86d8d9f168edd0b84fe953384a45e24f4ce0fb383f1"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Reader.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 70913,
+        "sha256": "bbb1d080af4fd9440c5bbb71f73a11059e3284c38079ece8d788dd8c912c1faf"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/feed/Ofdrw.Net.Signatures.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 56004,
+        "sha256": "a7003861032a6481feedd3db1a93fc4e8aa5e82750d4dc1e21ff23fad4845a3e"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/cid-map-stream.ofd",
+        "bytes": 17321,
+        "sha256": "700f392263fea39c7603e0e3223239b45840b64e763a2c596725bbb5fbdeaa62"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/closed-point.ofd",
+        "bytes": 17481,
+        "sha256": "3290cc15a076ecafad31248f94c326e3bab103dad757dee2fc715cdc76651a7d"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/dual.ofd",
+        "bytes": 119749,
+        "sha256": "5c02ad53d6b9bc089b6c41d2688d1cca95dcff0b7d0fb79c5e2ad996562ade51"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/encoding-stream.ofd",
+        "bytes": 17527,
+        "sha256": "7e97bd493817dcbcafebe5e0f2a3b703264b08e4b2836bdfa0948caa861860d4"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/fallback.ofd",
+        "bytes": 11674183,
+        "sha256": "410a1f789f111c375815215947d3948b131276f0c5543a02208c0ece7c1475c5"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-report.json",
+        "bytes": 4745,
+        "sha256": "e35368b3f4139eee91eb012382ae75949796be14d71a034cb5605bde5328227d"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-tj-1.ofd",
+        "bytes": 11600186,
+        "sha256": "78a8ab82c67f7ab945e5420157a11b42d696dc3ef64eb5273c895fbb103838b5"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-tj-10.ofd",
+        "bytes": 11600375,
+        "sha256": "9b90e2110a4abb8dd6b233836dfcb55225421ec3af45352eaf98ab5f70dd95ae"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-tj-100.ofd",
+        "bytes": 11601741,
+        "sha256": "4951233db3251140abd49e62769da274d7f4cceded295ccad2cf7fe5efb2bdb9"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-tj-50.ofd",
+        "bytes": 11601006,
+        "sha256": "fe76cb9d7d0cc3008dcc4a5b054ebde41d7cf9ba9eea9c8a7c884f8132d55a5a"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-tj-array-1.ofd",
+        "bytes": 11600186,
+        "sha256": "e93e86f72232985861b12c5247322ce648961e67264c5c9e11bffcf58d26e4f6"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-tj-array-10.ofd",
+        "bytes": 11600375,
+        "sha256": "9b90e2110a4abb8dd6b233836dfcb55225421ec3af45352eaf98ab5f70dd95ae"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-tj-array-100.ofd",
+        "bytes": 11601741,
+        "sha256": "4951233db3251140abd49e62769da274d7f4cceded295ccad2cf7fe5efb2bdb9"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/font-identity-tj-array-50.ofd",
+        "bytes": 11601006,
+        "sha256": "07b93a4e374c962742a34a55d8de36ff38292dd21a0e71f99674760be3866657"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/image-absent.ofd",
+        "bytes": 2026,
+        "sha256": "78d1c7d187c9f1618a3c45266bce71f27a65a0781464e11bce807bb7d9615d31"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/image-false.ofd",
+        "bytes": 2026,
+        "sha256": "78d1c7d187c9f1618a3c45266bce71f27a65a0781464e11bce807bb7d9615d31"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/image-flags-mixed.ofd",
+        "bytes": 2887,
+        "sha256": "e3587df08733985d4e323c933662b4e3d1cf5276fc764fe659d399f649977764"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/image-true.ofd",
+        "bytes": 2025,
+        "sha256": "9a905cda714b76f7cff3cb9c3482f4d20aae8785998e71cbb9ec7267cf1b5ea8"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/indexed-absent.ofd",
+        "bytes": 2028,
+        "sha256": "f44c84d89af54a3bef147ca78b7ebff99c815ace647106fd944eadd0a333d3f1"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/indexed-false.ofd",
+        "bytes": 2028,
+        "sha256": "f44c84d89af54a3bef147ca78b7ebff99c815ace647106fd944eadd0a333d3f1"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/indexed-image-clipped.ofd",
+        "bytes": 2244,
+        "sha256": "b735e99c8b7af2c641921adf29399fa4cd9e130e2d6ea962c4c006ab7796bdb4"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/indexed-image.ofd",
+        "bytes": 2244,
+        "sha256": "b735e99c8b7af2c641921adf29399fa4cd9e130e2d6ea962c4c006ab7796bdb4"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/indexed-true.ofd",
+        "bytes": 2027,
+        "sha256": "10ccf96ef48108e96bd3bf95dd0df9d0933ae443099c4638fa0ab9b805395543"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/no-content.ofd",
+        "bytes": 2121,
+        "sha256": "6333f99e69aeb6045faf40a8d03435aa380ffa1256c420fe1de498921332b742"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/no-op-scan.ofd",
+        "bytes": 11601915,
+        "sha256": "7e784f40a22164516735eb44422f3a09495ce0e17eee80a87a114e03a9f862c4"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/no-op.ofd",
+        "bytes": 11600688,
+        "sha256": "929a3d475204aacb67dbc342c99bb2e1098e90d2d68fa5d532d79534db3aac34"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/precision.ofd",
+        "bytes": 11620562,
+        "sha256": "b7b9ac0dd1b7cb6a2caf2d60dc2b13d3c0437e99840217dd6df1ee72cb15a74f"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/singular.ofd",
+        "bytes": 16846,
+        "sha256": "3396b2697633d7ba0d8b8057c65d8b5b08fd02f71bb12859d7adef2018d70d0f"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/text-precision.ofd",
+        "bytes": 11607115,
+        "sha256": "1ff736e85c03043f37afffc25f528856842c1a31227c636ca1cb4c0396b43fb1"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/optional/output/vector.ofd",
+        "bytes": 11604461,
+        "sha256": "3967f5930db671d01f2a8906882ef2914aff173df7684d629f1f7853085e1cc3"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Cli.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 25037931,
+        "sha256": "a28b904ce7f810688557ea6d4a8e3840cc83a6707196b9344a95d58ed202575d"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Converter.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 20816,
+        "sha256": "d4aa8867093906ce5c847a56af5a5d8f5a1295c1bc34aa218c66cc3f2dfe92ae"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Converter.Abstractions.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 27198,
+        "sha256": "2437fd495e7dbe916be81fd9a331d2111843da8eb56e2265c9677ebfbcc19ac6"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Converter.Docx.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 173851,
+        "sha256": "7bff323e0ef242557a3ea4721fa1c5dd8d3a8b2800a8bf5430da8ea1eaf24f5f"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Converter.Pdf.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 106177,
+        "sha256": "965874d96537e55c2c3b9998d096428bedc5664a10fa39099fa1e3720fd349ec"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Converter.Svg.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 43172,
+        "sha256": "fa99a9e9e0ea3eb30cc1a632723c666a11a3dc9ea78f847011c5d81bd452ea42"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Core.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 82007,
+        "sha256": "6d4d94c28a760e44fa855c4bd4307a5a7327e0f39d9173e3285ba46edbddc25f"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Layout.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 94676,
+        "sha256": "f01ddf271d54e800bbb69a3531f83c3938741655ab34a3544f7e89f9fc5f3b6e"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Packaging.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 96577,
+        "sha256": "26007b6e823a225fb51dd86d8d9f168edd0b84fe953384a45e24f4ce0fb383f1"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Reader.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 70913,
+        "sha256": "bbb1d080af4fd9440c5bbb71f73a11059e3284c38079ece8d788dd8c912c1faf"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/Ofdrw.Net.Signatures.0.1.0-pdfvector.20261013.low12.nupkg",
+        "bytes": 56004,
+        "sha256": "a7003861032a6481feedd3db1a93fc4e8aa5e82750d4dc1e21ff23fad4845a3e"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/low12/source/artifacts/package-e2e/0.1.0-pdfvector.20261013.low12/packages/package-manifest.json",
+        "bytes": 2345,
+        "sha256": "9a89a062affc0513eaa565322a5f35ba7c4318eee9e77e18949b0299abf8386c"
+      }
+    ]
+  },
+  "preview": {
+    "runtime_head": "28fc29daeab5e93b0afa5da2af504a1534ee8116",
+    "delivery_head": "6fa0a3095bdf34b7a519173159bbc0ed12206f16",
+    "status": "passed_bounded_visual_inspection",
+    "chain": "original PDF -> R10 native/whole-page-policy OFD -> exported PDF -> Preview",
+    "docs": [
+      {
+        "name": "same-source",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/same-source.pdf",
+        "bytes": 21667775,
+        "sha256": "6f3da907dd576dde5d5133355bf89114eb559b31fe1fc403672d3adf558f698a",
+        "pages": 2,
+        "checked_pages": [
+          1,
+          2
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/same-source.pdf"
+      },
+      {
+        "name": "vector",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/vector.pdf",
+        "bytes": 79846,
+        "sha256": "0feb4026cda4f138fe03704fc3fcf139220d667662930288b7290e612bf73bc9",
+        "pages": 2,
+        "checked_pages": [
+          1,
+          2
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/vector.pdf"
+      },
+      {
+        "name": "text-precision-source",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/text-precision-source.pdf",
+        "bytes": 21698835,
+        "sha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb",
+        "pages": 9,
+        "checked_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/text-precision-source.pdf"
+      },
+      {
+        "name": "text-precision",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/text-precision.pdf",
+        "bytes": 147573,
+        "sha256": "8535880ab6e31a27648c1d19bd493ab7d131ba239849d60e4f1420ff3031d7bd",
+        "pages": 9,
+        "checked_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/text-precision.pdf"
+      },
+      {
+        "name": "indexed-image-clipped-source",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/indexed-image-clipped-source.pdf",
+        "bytes": 22661825,
+        "sha256": "525f7c78b433f5ad9935c03994e76a899f64ab96940114b7d01fa2074ce11fbe",
+        "pages": 1,
+        "checked_pages": [
+          1
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/indexed-image-clipped-source.pdf"
+      },
+      {
+        "name": "indexed-image-clipped",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/indexed-image-clipped.pdf",
+        "bytes": 18947,
+        "sha256": "77423bbe138df534a2bf05b692c43078f5d54758e9b8ff0503644084ab1e2849",
+        "pages": 1,
+        "checked_pages": [
+          1
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/indexed-image-clipped.pdf"
+      },
+      {
+        "name": "font-identity-tj-100-source",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/font-identity-tj-100-source.pdf",
+        "bytes": 21668891,
+        "sha256": "93f9eff6ba04ad310dd2f7678a6abeba7a40941b160f43e937c3c2abb57b018b",
+        "pages": 1,
+        "checked_pages": [
+          1
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/font-identity-tj-100-source.pdf"
+      },
+      {
+        "name": "font-identity-tj-100",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/font-identity-tj-100.pdf",
+        "bytes": 62156,
+        "sha256": "22d6d76ee361c0cccd038350b7a9633cc054b1cd512388e7f774c3db3439e659",
+        "pages": 1,
+        "checked_pages": [
+          1
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/font-identity-tj-100.pdf"
+      },
+      {
+        "name": "font-identity-tj-array-100-source",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/font-identity-tj-array-100-source.pdf",
+        "bytes": 21669091,
+        "sha256": "1204a900b2f0062e07fcf71844d0834d9a3580c4b98351d7b522c7f8bf231ab4",
+        "pages": 1,
+        "checked_pages": [
+          1
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/font-identity-tj-array-100-source.pdf"
+      },
+      {
+        "name": "font-identity-tj-array-100",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/font-identity-tj-array-100.pdf",
+        "bytes": 62156,
+        "sha256": "f5174983fc6b219ccd5e1bff50f539d6fdc93ddcd312e88531718ec2bcf22f0a",
+        "pages": 1,
+        "checked_pages": [
+          1
+        ],
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r10/output/font-identity-tj-array-100.pdf"
+      }
+    ],
+    "total_pages": 28,
+    "notes": [
+      "same-source and frozen nine-page original have unchanged prior raw hashes",
+      "source9 page4 intentional 2049-glyph overlap; page5 huge off-page glyph yields actual blank",
+      "100-run stress sources intentionally place size12 glyphs at 4pt baseline spacing: dense overlapping column; preserve source order and source appearance",
+      "all new export PDF hashes require fresh inspection; PNG does not substitute Preview"
+    ],
+    "independent_verification": "artifacts/pdf-vectors/independent/low12/verification.json",
+    "observed_at": "2026-10-13T02:53:38.441625+00:00",
+    "application": "macOS Preview",
+    "actual_inspection": "Cua native Preview screenshots and AX document URL/page title; full page and normal ticket actual-size view; per-page navigation; zoom redraw on precision pages 4/5",
+    "findings": [],
+    "functional_tests": "reported separately in Low12 and main logs",
+    "scope_limits": [
+      "Only these actual 10 PDFs / 28 pages; no arbitrary PDF or Word fidelity claim.",
+      "Precision pages 1-5 are whole-page raster policy outputs, not native text acceptance.",
+      "Dense 100-run overlapping column is deliberate source layout; no claim that individual overlapped glyphs were visually countable.",
+      "PNG evidence is auxiliary and not the Preview acceptance.",
+      "Screenshots were observed inline through Cua; no standalone screenshot files are claimed."
+    ],
+    "observations": {
+      "normal_1_2": "CJK/proportional English, table borders/fills/alignment, local red and blue/italic text, paid stamp, footer, affine text and occlusion, cubic and fill holes matched source; no visible added text or clipping.",
+      "text_1_3": "One visible CJK glyph per source/target page at corresponding position; small numeric differences are not claimed visually distinguishable.",
+      "text_4": "Source first showed cached prior-page glyph; one zoom out at a new scale redrew two overlapped glyph clusters. Target two clusters matched at same zoom-out scale.",
+      "text_5": "Full page blank in source and target, including single zoom-out redraw left at new scale.",
+      "text_6_9": "Proportional English, sheared English/CJK, Chinese original text and consecutive-space layout readable and source-corresponding.",
+      "high_index": "Blue/light checkerboard, four sides, orientation and clipped high-index samples visually correspond.",
+      "stress_tj_tj_array_100": "Full-page dense alternating A/B column and lower path mark match original sources."
+    },
+    "ui_incident": {
+      "kind": "Open panel selected output directory files during an early path automation attempt; no product defect or visual acceptance inferred.",
+      "cleanup": "Closed the accidental 91-image group (first image removed, then group close) and 78 subsequently exposed AX documents. Exact output-path URLs are recorded; temporary PostScript ownership was inferred from incident timing and matching basenames, not independently proved. No unknown-window cleanup continued.",
+      "valid_acceptance": "Only the declared 10 PDFs and deliberately navigated pages count.",
+      "ownership_evidence": "preview-r10-cleanup-urls.json and preview-r10-ui-events.json",
+      "ownership_limit": "No complete pre-incident global document inventory; temporary PostScript original paths were not verified. Earlier task-owned wording was too strong for those URLs."
+    },
+    "cleanup": {
+      "normal_source_and_vector": "Closed after both pages were inspected, before incident.",
+      "remaining_eight": "Each exact package-r10/output PDF URL verified before closing.",
+      "open_panel": "Cancelled after final close; stopped activating Preview.",
+      "gui_released": true,
+      "global_zero_windows_claimed": false
+    }
+  },
+  "measurement_report": "measurement/r10/report.md",
+  "preserved_failures": [
+    "R9 initial CS0122 build",
+    "R9 unnecessary public stream comparison slowdown",
+    "R10 first model comparison expected 20 OFDs instead of actual 21",
+    "Preview open-panel misselection, cleanup URLs and unproven temporary PostScript ownership"
+  ],
+  "final_head_reviews_and_ci": "Tracked separately in PR18; not inherited from an older commit",
+  "release_accepted": false,
+  "merged": false,
+  "published": false
+}

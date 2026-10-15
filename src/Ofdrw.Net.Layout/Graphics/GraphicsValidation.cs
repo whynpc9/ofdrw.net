@@ -17,6 +17,6 @@ internal static class GraphicsValidation
         Finite(written);
         if (value <= 0 || written <= 0) throw new ArgumentOutOfRangeException(nameof(value), "Size must remain positive at OFD writer precision.");
     }
-    internal static double WriterValue(double value) => double.Parse(value.ToString("0.###", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+    internal static double WriterValue(double value) => Ofdrw.Net.Core.Models.OfdNumericFormat.WriterValue(value);
     internal static string Number(double value) => Ofdrw.Net.Core.Models.OfdNumericFormat.Plain(value);
 }
