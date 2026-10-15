@@ -1,0 +1,46 @@
+{
+  "allowlist": [
+    "files/Ofdrw-CI-Noto-OFL.txt",
+    "files/baseline-default.ofd",
+    "files/baseline-default.pdf",
+    "files/baseline-native.ofd",
+    "files/baseline-native.pdf",
+    "files/default-all-encrypted.ofd",
+    "files/default-all-restored.ofd",
+    "files/default-all-restored.pdf",
+    "files/default-partial-encrypted.ofd",
+    "files/default-partial-restored.ofd",
+    "files/default-partial-restored.pdf",
+    "files/licensed-layout.docx",
+    "files/native-all-encrypted.ofd",
+    "files/native-all-restored.ofd",
+    "files/native-all-restored.pdf",
+    "files/native-partial-encrypted.ofd",
+    "files/native-partial-restored.ofd",
+    "files/native-partial-restored.pdf",
+    "files/pages/baseline-default-1.png",
+    "files/pages/baseline-default-2.png",
+    "files/pages/baseline-native-1.png",
+    "files/pages/baseline-native-2.png",
+    "files/pages/default-all-restored-1.png",
+    "files/pages/default-all-restored-2.png",
+    "files/pages/default-partial-restored-1.png",
+    "files/pages/default-partial-restored-2.png",
+    "files/pages/native-all-restored-1.png",
+    "files/pages/native-all-restored-2.png",
+    "files/pages/native-partial-restored-1.png",
+    "files/pages/native-partial-restored-2.png"
+  ],
+  "licensing": "Synthetic source/sample outputs MIT; embedded pinned Noto font and included license OFL1.1. No dependency/cache/build trees.",
+  "excluded": [
+    "NuGet/CLI_HOME caches",
+    "commercial fonts/diagnostics",
+    "project/build trees",
+    "nupkg binaries"
+  ],
+  "bundle": {
+    "bytes": 65137839,
+    "sha256": "8fc54aeab2920978b980ed6e71255283850a9cdb0f92537f86f981b658acefed"
+  },
+  "manifest_file_root": "files/"
+}

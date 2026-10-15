@@ -83,7 +83,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 - 视频/音频与动作（第 12、14 章）
 - 注释（第 15 章）
 - 版本链（第 19 章）
-- GM/T 0099 加密包（ofdrw-crypto；本仓库未实现）
+- GM/T 0099 加密包（ofdrw-crypto；通用 GM/T 0099 加密包处理尚未实现；可选口令包仅支持私有 profile 自闭环）
 - OFD-A 档案子集的加工细则（GB/T 42133；ofdrw-archive）。电子病历在档案方向上仍引用它，轮廓差异见第 11–14 课
 
 ## 转换 API 实操
@@ -105,3 +105,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 - [16 原生绘图 API：毫米、基线与状态](16-native-graphics.md)（仅 Layout 生成样例；PDF/SVG 用于验收）。
 
 - [可选 Skia 合作式事件适配](17-skia-event-adapter.md)：需要 producer 显式接入；不捕获任意 SKCanvas。
+
+## 可选密码扩展
+
+- [11 票：口令加解密 API、私有恢复 profile 与适用边界](../password-crypto.md)

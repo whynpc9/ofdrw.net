@@ -1,0 +1,60 @@
+{
+  "version": "0.1.0-issue11.v2main",
+  "packages": [
+    {
+      "id": "Ofdrw.Net.Core",
+      "file": "Ofdrw.Net.Core.0.1.0-issue11.v2main.nupkg",
+      "sha256": "aadab4e2eca718f2b9dbea90d5bee6a67b1a17005e646c07a4adc86c7555c8c1"
+    },
+    {
+      "id": "Ofdrw.Net.Packaging",
+      "file": "Ofdrw.Net.Packaging.0.1.0-issue11.v2main.nupkg",
+      "sha256": "1dea9120fafcf085d883b917378706c839aef413dc4f86ad94e566d2ed07a4bb"
+    },
+    {
+      "id": "Ofdrw.Net.Layout",
+      "file": "Ofdrw.Net.Layout.0.1.0-issue11.v2main.nupkg",
+      "sha256": "2e8c7b08a2be2b2720e265877aaa4e21e951baed7a2d72d86c2acfe17e13a596"
+    },
+    {
+      "id": "Ofdrw.Net.Reader",
+      "file": "Ofdrw.Net.Reader.0.1.0-issue11.v2main.nupkg",
+      "sha256": "466cb068229b953736e4b50028da80e6c284abbf495d29d913692bf9e2630cb8"
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Abstractions",
+      "file": "Ofdrw.Net.Converter.Abstractions.0.1.0-issue11.v2main.nupkg",
+      "sha256": "08ed9b97ba58706aaf1b948e0971ecd0685b2bf93e1b9cb8ba330304717198cc"
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Docx",
+      "file": "Ofdrw.Net.Converter.Docx.0.1.0-issue11.v2main.nupkg",
+      "sha256": "ec7dfcc816aa4731683943e079c75a7cc59815d1c9ce204323ca963a04be6bb7"
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Pdf",
+      "file": "Ofdrw.Net.Converter.Pdf.0.1.0-issue11.v2main.nupkg",
+      "sha256": "1c6a5ad49c14a2fbd6a8d9f29940e7a58e8877d136a61d2b961cc9d441f25f22"
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Svg",
+      "file": "Ofdrw.Net.Converter.Svg.0.1.0-issue11.v2main.nupkg",
+      "sha256": "e95ceab630beadf3d83967e63c4f3922e5080164eab7939d836bb360da588c17"
+    },
+    {
+      "id": "Ofdrw.Net.Signatures",
+      "file": "Ofdrw.Net.Signatures.0.1.0-issue11.v2main.nupkg",
+      "sha256": "da860f3d53a04669f85cd5e9bf9088c78fbda55a40a3cd7570afd409140ec87a"
+    },
+    {
+      "id": "Ofdrw.Net.Converter",
+      "file": "Ofdrw.Net.Converter.0.1.0-issue11.v2main.nupkg",
+      "sha256": "fd178cbe79b265980dcfd148e02020783a82f34a5072086d11929549a5317c27"
+    },
+    {
+      "id": "Ofdrw.Net.Cli",
+      "file": "Ofdrw.Net.Cli.0.1.0-issue11.v2main.nupkg",
+      "sha256": "ce918f0e2f39927eefed24c934f104f8c959b560e2fa908826d054cc899ab297"
+    }
+  ]
+}

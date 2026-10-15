@@ -1,0 +1,188 @@
+{
+  "runtime_commit": "d4eb787585c0a13a992c1ca2c6cefe5ed5e0cbdf",
+  "source_prepatch": "f7cbbcf991f33b6bc9c90cc118c636dbcca78404",
+  "main_integrated": "e081e83a874e520b7adb3fe05434508ee52f6aed",
+  "integration_commit": "777c8180d28693985b6e40dc3b11e9a85476885d",
+  "environment": {
+    "os": "macOS",
+    "sdk": "10.0.401",
+    "timezone": "Asia/Shanghai"
+  },
+  "kdf": {
+    "algorithm": "scrypt",
+    "N": 131072,
+    "r": 8,
+    "p": 1,
+    "dkLen": 48,
+    "salt_bytes": 32,
+    "memory_budget_bytes": 167772160,
+    "work_units": 1048576,
+    "v1": "rejected_without_fallback"
+  },
+  "full_regression": [
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_09_59_net10.0.trx",
+      "total": 71,
+      "passed": 71,
+      "failed": 0,
+      "actual_not_executed": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_03_net10.0.trx",
+      "total": 1073,
+      "passed": 1073,
+      "failed": 0,
+      "actual_not_executed": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_07_net10.0.trx",
+      "total": 361,
+      "passed": 349,
+      "failed": 0,
+      "actual_not_executed": 12
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_12_net10.0.trx",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "actual_not_executed": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_15_net10.0.trx",
+      "total": 151,
+      "passed": 151,
+      "failed": 0,
+      "actual_not_executed": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_35_net10.0.trx",
+      "total": 73,
+      "passed": 73,
+      "failed": 0,
+      "actual_not_executed": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_37_net10.0.trx",
+      "total": 94,
+      "passed": 94,
+      "failed": 0,
+      "actual_not_executed": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_39_net10.0.trx",
+      "total": 37,
+      "passed": 37,
+      "failed": 0,
+      "actual_not_executed": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_43_net10.0.trx",
+      "total": 44,
+      "passed": 44,
+      "failed": 0,
+      "actual_not_executed": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_46_net10.0.trx",
+      "total": 315,
+      "passed": 315,
+      "failed": 0,
+      "actual_not_executed": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_13_10_52_net10.0.trx",
+      "total": 98,
+      "passed": 98,
+      "failed": 0,
+      "actual_not_executed": 0
+    }
+  ],
+  "full_total": 2321,
+  "full_passed": 2309,
+  "full_failed": 0,
+  "ordinary_skipped_cases": [
+    "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.PublicWriterDefaultIndentedOutputReadsAndLocatesWithOriginalOflFont",
+    "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualLocatorReusesOneOriginalFontAcrossManyReadObjects",
+    "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.MixedEmptySlotsDefaultWriterFreshReaderKeepOriginalOflGlyphsAndSourceSpans",
+    "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualReaderAndQ1FontFailuresDoNotBecomeCompleteNoHit",
+    "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalOflFontLibraryTransferAndSeparatelyBudgetedWriterPassActualReadback",
+    "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.ActualArchiveReaderAndQ1ProviderHaveIndependentAffineExpectations",
+    "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.CanonicalEmptyKeepsOriginalOflResourceIdentityWithoutFaceOrGlyphCalls",
+    "Ofdrw.Net.Converter.Pdf.Tests.KeywordLocatorRealFontTests.MultipleEmptySlotsKeepOriginalOflIdentityWithoutAnyProviderCalls",
+    "Ofdrw.Net.Converter.Pdf.Tests.TrustedFontGeometryTests.RealOriginalOflNotoBytesPassReaderSnapshotAndIndependentMetricExpectations",
+    "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.ActualOriginalOflFontVariableReplacementRetainsIndependentAnchorsAndGlyphs",
+    "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalOflKeywordReplacementTransfersUnderDefaultBudgetAndSeparateWriterReadback",
+    "Ofdrw.Net.Converter.Pdf.Tests.TextReplacementRealFontTests.OriginalCjkKeywordLowerCapacityIsAnExplicitOutputlessRefusal"
+  ],
+  "mandatory_fonts": {
+    "passed": 65,
+    "skipped": 0,
+    "includes_every_ordinary_skip": true
+  },
+  "focused": {
+    "passed": 98,
+    "failed": 0,
+    "skipped": 0
+  },
+  "python": {
+    "passed": 20
+  },
+  "actual_main_default11": "precise 11 feed validated; clean isolated consumer/CLI/native+dual-layer and font subset passed",
+  "actual_optional": "Core/Packaging/Password only, one direct Password PackageReference, independent product mapping/cache; four v2 exact-entry recoveries + tag/cost/v1/wrong-password/cancel/budget/rawZIP atomic rejection",
+  "independent_low": "Frozen d4eb787: focused98/full2309+12skips/mandatory65/Python20/default11+optional actual consumers passed;531 selected tracked blobs matched before and after",
+  "supplemental_history": "Additional relocated-output repeated full invocation had fixture failures (no repository ancestor above AppContext.BaseDirectory); interrupted only its verified PID56055 with SIGINT after coordinator scope instruction; not an acceptance run. First focused candidate had2 stale v1 EncryptCaseId expectations; updated expectation and98 tests passed. Full logs/TRX retained in managed artifacts outside public allowlist.",
+  "scope": "Private authenticated v2 self round trips only; no vendor, generic GM/T, certification or archive claim; no merge/tag/dispatch/NuGet publication",
+  "preview": {
+    "runtime_commit": "d4eb787585c0a13a992c1ca2c6cefe5ed5e0cbdf",
+    "date": "2026-10-15",
+    "timezone": "Asia/Shanghai",
+    "viewer": "macOS Preview",
+    "status": "passed_for_listed_sample_pages",
+    "checked_pages": 12,
+    "required_pages": 12,
+    "checked_files": {
+      "baseline-native.pdf": [
+        1,
+        2
+      ],
+      "baseline-default.pdf": [
+        1,
+        2
+      ],
+      "native-partial-restored.pdf": [
+        1,
+        2
+      ],
+      "native-all-restored.pdf": [
+        1,
+        2
+      ],
+      "default-partial-restored.pdf": [
+        1,
+        2
+      ],
+      "default-all-restored.pdf": [
+        1,
+        2
+      ]
+    },
+    "chain": "fresh licensed DOCX -> native/default OFD -> actual v2main nupkg encrypt/decrypt -> restored OFD -> actual default11 v2main CLI nupkg OFD-to-PDF -> macOS Preview",
+    "checks": [
+      "Chinese and proportional English complete",
+      "gray centered italic subtitle",
+      "blue bold headings",
+      "table fill/borders/alignment",
+      "page2 localized red bold run and right-aligned date",
+      "no clipping, overlap, ghost text, extra blank page"
+    ],
+    "findings": [],
+    "excluded_features": [
+      "images",
+      "headers/footers",
+      "page numbers"
+    ],
+    "window_cleanup": "Six ticket document windows each closed; final Open panel canceled; coordinator notified GUI released",
+    "limits": "Only generated-layout deterministic sample and listed pages; no generic Word fidelity/vendor/GM/T/certification/archive acceptance"
+  }
+}
