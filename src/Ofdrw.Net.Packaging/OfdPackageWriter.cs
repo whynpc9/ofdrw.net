@@ -46,7 +46,7 @@ public sealed partial class OfdPackageWriter
             _ = Ofdrw.Net.Core.Fonts.EmbeddedFontCoverage.HasExplicitGlyphReferences(text);
         // Normal generation honors the explicit font embedding policy. Controlled
         // text-edit continuations retain their admitted original font payloads.
-        var fontPlan = new OfdFontEmbeddingPlan(package, cancellationToken);
+        var fontPlan = new OfdFontEmbeddingPlan(package, cancellationToken, material);
         var plan = PreparePlan(package, material, cancellationToken, fontPlan);
         var entries = BuildEntries(package, material, cancellationToken, plan);
         var result = OfdPackagePruner.Prune(package, entries, cancellationToken, material);
