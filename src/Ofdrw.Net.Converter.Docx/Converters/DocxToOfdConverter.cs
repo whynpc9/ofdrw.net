@@ -102,12 +102,15 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
             {
                 var diagnostics = new List<DocxConversionDiagnostic>();
                 OfdDocumentPackage package;
+                var hasOmittedDecorationText = false;
                 using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
                 {
                     timeout.CancelAfter(_semanticOptions.ProcessTimeout);
                     try
                     {
-                        var model = new DocxModelReader(_semanticOptions, diagnostics, timeout.Token).Read(inputPath);
+                        var reader = new DocxModelReader(_semanticOptions, diagnostics, timeout.Token);
+                        var model = reader.Read(inputPath);
+                        hasOmittedDecorationText = reader.HasOmittedDecorationText;
                         package = new BuiltInOfdRenderer(_semanticOptions, diagnostics, timeout.Token).Render(model);
                     }
                     catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
@@ -119,7 +122,10 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
                 var selected = OfdPageSelection.Apply(package, pages, _semanticOptions.MaxPageCount, cancellationToken);
                 await new OfdPackageWriter().WriteAsync(package, ofdOutput, cancellationToken).ConfigureAwait(false);
                 return new DocxToOfdConversionResult(DocxToOfdMode.Native, null, new DocxConversionEngine[0], diagnostics,
-                    sourcePageCount, selected, !diagnostics.Any(diagnostic => diagnostic.Code.Contains("UNSUPPORTED")), true);
+                    sourcePageCount, selected, !hasOmittedDecorationText && !diagnostics.Any(diagnostic =>
+                        diagnostic.Code.Contains("UNSUPPORTED") &&
+                        diagnostic.Code != "DOCX_HEADER_CONTENT_UNSUPPORTED" &&
+                        diagnostic.Code != "DOCX_FOOTER_CONTENT_UNSUPPORTED"), true);
             }
 
             var source = DocxSemanticTextExtractor.ExtractDocument(inputPath, _semanticOptions, cancellationToken);
