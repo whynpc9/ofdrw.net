@@ -12,6 +12,8 @@ password extension into a local feed and creates a clean PackageReference-only
 consumer with an isolated cache and product source mapping. Consumer.cs.txt uses
 both generated baseline OFDs, verifies all four actual-package recoveries by exact
 entry name/bytes, and verifies wrong-password/cancellation preserving existing output.
+It checks the v2 descriptor and distinct salts, and rejects tag tampering, excessive
+KDF parameters and v1 confusion while preserving the restored output.
 No ProjectReference or installed Ofdrw.Net cache can satisfy that consumer.
 
 ```sh
@@ -22,7 +24,9 @@ dotnet e2e/Ofdrw.Net.Crypto.Password.E2E/bin/Release/net10.0/Ofdrw.Net.Crypto.Pa
 ./scripts/run-password-crypto-e2e.sh
 ```
 
-The private profile recovery checksums are fault detection, not authenticity or
-GM/T integrity protocol implementation. Tests do not establish vendor interoperation,
-certification or archival acceptance. Actual Preview scope is recorded separately
-in docs/evidence/password-crypto/acceptance.json; automated PDF export is not Preview.
+Profile v2 authenticates logical file names and bytes with HMAC before decrypting;
+its recovery checksums provide additional fault/structure checks. It rejects v1
+without fallback. This is not a GM/T integrity protocol implementation. Tests do
+not establish vendor interoperation, certification or archival acceptance. Actual
+v2 Preview scope must be recorded separately; the initial/review1/review2/review3
+records describe only historical v1. Automated PDF export is not Preview.

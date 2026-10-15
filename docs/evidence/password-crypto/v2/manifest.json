@@ -1,0 +1,127 @@
+{
+  "runtime_commit": "d4eb787585c0a13a992c1ca2c6cefe5ed5e0cbdf",
+  "actual_package_version": "0.1.0-issue11.v2main",
+  "chain": "fresh DOCX -> native/default OFD -> actual nupkg encrypt/decrypt -> restored OFD -> actual default11 CLI nupkg OFD-to-PDF -> PNG auxiliary + Preview pending",
+  "files": {
+    "Ofdrw-CI-Noto-OFL.txt": {
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    "baseline-default.ofd": {
+      "bytes": 11602914,
+      "sha256": "aa23209d8765628eafa77c53170bacd9a55938833274504c264e2566d1a6a624"
+    },
+    "baseline-default.pdf": {
+      "bytes": 117111,
+      "sha256": "28bccee4587faf082cfef7581ee438aa7c7682a35ee61a31e09eab611fa1bfb6"
+    },
+    "baseline-native.ofd": {
+      "bytes": 11602919,
+      "sha256": "545d9c88e073bfb718a38297814be62edf2b76503d46f1479ae2327312152b33"
+    },
+    "baseline-native.pdf": {
+      "bytes": 117111,
+      "sha256": "4e20c3bee3cd631d3c122ae337c59f3cd6fd2db4fca919775f0b66e05594cd6e"
+    },
+    "default-all-encrypted.ofd": {
+      "bytes": 21684327,
+      "sha256": "b25e9ee0979257fc7baec495bbacb9baa13cf38a94a84f87e62f7b0d9ab6a491"
+    },
+    "default-all-restored.ofd": {
+      "bytes": 21680934,
+      "sha256": "d8162c98ce66656ba2bbe06cd95de53b34213c449887dc889081f75d62f38cf1"
+    },
+    "default-all-restored.pdf": {
+      "bytes": 117111,
+      "sha256": "15d3fd78bfbd2546058ef6b8920a215611319422ce9acabb1acd3a5674b55284"
+    },
+    "default-partial-encrypted.ofd": {
+      "bytes": 21683472,
+      "sha256": "50bc08f53563d1d98e54d4a7dab213e880a7a2bbf94ee7a55a436f06e4b02475"
+    },
+    "default-partial-restored.ofd": {
+      "bytes": 21680934,
+      "sha256": "d8162c98ce66656ba2bbe06cd95de53b34213c449887dc889081f75d62f38cf1"
+    },
+    "default-partial-restored.pdf": {
+      "bytes": 117111,
+      "sha256": "da8b63fd2a6911645b826cf6c0c5a7ee56b2013e20e64f275e9bf50db870b2b7"
+    },
+    "licensed-layout.docx": {
+      "bytes": 3529,
+      "sha256": "ceb5e9f3ff63e0f7edd967f21dc668a8ad53a5cfdc6142d897d0f4d61dc33473"
+    },
+    "native-all-encrypted.ofd": {
+      "bytes": 21684327,
+      "sha256": "b784402115057b923ac5f50ebe93dfb53ae3a8861b9f44124f1c2ed5b7941a56"
+    },
+    "native-all-restored.ofd": {
+      "bytes": 21680934,
+      "sha256": "0468b12a091e7384d156afc01bbdb2e4a33e463511e6c0785644828be96518e8"
+    },
+    "native-all-restored.pdf": {
+      "bytes": 117111,
+      "sha256": "9bcd011e1fb1be515ea336999ae48139b83770ebcf40347648b4f02637c1a12c"
+    },
+    "native-partial-encrypted.ofd": {
+      "bytes": 21683472,
+      "sha256": "06d260fecb41de028e9bd537d27dde7d8d7aece70cc541303da5d7c4ec438c47"
+    },
+    "native-partial-restored.ofd": {
+      "bytes": 21680934,
+      "sha256": "0468b12a091e7384d156afc01bbdb2e4a33e463511e6c0785644828be96518e8"
+    },
+    "native-partial-restored.pdf": {
+      "bytes": 117111,
+      "sha256": "e9ff01b6ffb7fd533e989b2050ffbabec36b31f8ee204456bad9b52a5c059042"
+    },
+    "pages/baseline-default-1.png": {
+      "bytes": 42482,
+      "sha256": "5b9f742312543605d9ee19a509195727efd64de571659e65edf6280a1e3cd00a"
+    },
+    "pages/baseline-default-2.png": {
+      "bytes": 20888,
+      "sha256": "08108deefff4831b8c175ab686ec34bdc440a36391eb7c97a4fe93d5799ef1a1"
+    },
+    "pages/baseline-native-1.png": {
+      "bytes": 42482,
+      "sha256": "5b9f742312543605d9ee19a509195727efd64de571659e65edf6280a1e3cd00a"
+    },
+    "pages/baseline-native-2.png": {
+      "bytes": 20888,
+      "sha256": "08108deefff4831b8c175ab686ec34bdc440a36391eb7c97a4fe93d5799ef1a1"
+    },
+    "pages/default-all-restored-1.png": {
+      "bytes": 42482,
+      "sha256": "5b9f742312543605d9ee19a509195727efd64de571659e65edf6280a1e3cd00a"
+    },
+    "pages/default-all-restored-2.png": {
+      "bytes": 20888,
+      "sha256": "08108deefff4831b8c175ab686ec34bdc440a36391eb7c97a4fe93d5799ef1a1"
+    },
+    "pages/default-partial-restored-1.png": {
+      "bytes": 42482,
+      "sha256": "5b9f742312543605d9ee19a509195727efd64de571659e65edf6280a1e3cd00a"
+    },
+    "pages/default-partial-restored-2.png": {
+      "bytes": 20888,
+      "sha256": "08108deefff4831b8c175ab686ec34bdc440a36391eb7c97a4fe93d5799ef1a1"
+    },
+    "pages/native-all-restored-1.png": {
+      "bytes": 42482,
+      "sha256": "5b9f742312543605d9ee19a509195727efd64de571659e65edf6280a1e3cd00a"
+    },
+    "pages/native-all-restored-2.png": {
+      "bytes": 20888,
+      "sha256": "08108deefff4831b8c175ab686ec34bdc440a36391eb7c97a4fe93d5799ef1a1"
+    },
+    "pages/native-partial-restored-1.png": {
+      "bytes": 42482,
+      "sha256": "5b9f742312543605d9ee19a509195727efd64de571659e65edf6280a1e3cd00a"
+    },
+    "pages/native-partial-restored-2.png": {
+      "bytes": 20888,
+      "sha256": "08108deefff4831b8c175ab686ec34bdc440a36391eb7c97a4fe93d5799ef1a1"
+    }
+  }
+}

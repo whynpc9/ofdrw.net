@@ -1,0 +1,88 @@
+{
+  "source": "full-test.log (dotnet test console lines; shared TRX filename retained only final suite)",
+  "suites": [
+    {
+      "dll": "Ofdrw.Net.Core.Tests.dll",
+      "passed": 71,
+      "failed": 0,
+      "skipped": 0,
+      "total": 71
+    },
+    {
+      "dll": "Ofdrw.Net.Packaging.Tests.dll",
+      "passed": 1073,
+      "failed": 0,
+      "skipped": 0,
+      "total": 1073
+    },
+    {
+      "dll": "Ofdrw.Net.Converter.Pdf.Tests.dll",
+      "passed": 349,
+      "failed": 0,
+      "skipped": 12,
+      "total": 361
+    },
+    {
+      "dll": "Ofdrw.Net.Signatures.Tests.dll",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "total": 4
+    },
+    {
+      "dll": "Ofdrw.Net.Converter.Docx.Tests.dll",
+      "passed": 151,
+      "failed": 0,
+      "skipped": 0,
+      "total": 151
+    },
+    {
+      "dll": "Ofdrw.Net.Cli.Tests.dll",
+      "passed": 73,
+      "failed": 0,
+      "skipped": 0,
+      "total": 73
+    },
+    {
+      "dll": "Ofdrw.Net.Layout.Tests.dll",
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "total": 94
+    },
+    {
+      "dll": "Ofdrw.Net.Signatures.SesInterop.Tests.dll",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "total": 37
+    },
+    {
+      "dll": "Ofdrw.Net.Graphics.SkiaSharp.Tests.dll",
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0,
+      "total": 44
+    },
+    {
+      "dll": "Ofdrw.Net.Converter.Pdf.Vector.Tests.dll",
+      "passed": 315,
+      "failed": 0,
+      "skipped": 0,
+      "total": 315
+    },
+    {
+      "dll": "Ofdrw.Net.Crypto.Password.Tests.dll",
+      "passed": 98,
+      "failed": 0,
+      "skipped": 0,
+      "total": 98
+    }
+  ],
+  "totals": {
+    "passed": 2309,
+    "failed": 0,
+    "skipped": 12,
+    "total": 2321
+  }
+}

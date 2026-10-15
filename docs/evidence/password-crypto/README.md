@@ -1,6 +1,6 @@
 # 11 票：口令 profile 历史与本轮状态
 
-**当前 v2 修复验证进行中，尚未验收。** 下列 initial/review1/review2/review3 均为已确认使用廉价无盐KDF的历史v1记录，其通过结果不能关闭该安全问题，也不作为v2证据。v2只读/写新版本，拒绝v1，无回退。
+**当前 v2：[本轮记录](v2/README.md)**。runtime d4eb787 的专项、主/Low独立回归与实际包消费、12/12页新产物Preview均已完成；最终远端head审查/CI以PR15审计为准。 下列 initial/review1/review2/review3 均为已确认使用廉价无盐KDF的历史v1记录，其通过结果不能关闭该安全问题，也不作为v2证据。v2只读/写新版本，拒绝v1，无回退。
 
 **历史 v1 状态：[review3](review3/README.md)**。raw ZIP预检/有界输入snapshot及超限XML ownership修复通过66专项/466全套/8 Python、实际review3包主/Low独立消费6组；2026-10-08在 macOS Preview 逐份重新打开最新6PDF并检查12/12页，未发现视觉缺陷，已关闭本票窗口并释放GUI。历史review2的4/12与原R3锁定快照保留，最新结论见review3外置follow-up。
 

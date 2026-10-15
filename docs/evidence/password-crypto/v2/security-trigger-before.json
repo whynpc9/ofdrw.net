@@ -1,0 +1,1 @@
+{"legitimate_control":"exact original entry bytes recovered","security_trigger":"offline candidate recovered FEK and map using one SM3 digest per guess, no salt or cost","candidate_count":2,"sm3_digests":2,"profile":"v1","synthetic_only":true}
