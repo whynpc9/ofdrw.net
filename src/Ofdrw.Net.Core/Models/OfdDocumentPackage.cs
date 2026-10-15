@@ -9,6 +9,7 @@ public sealed class OfdDocumentPackage
     internal OfdCompositeResourceCollection? CompositeValue, OriginalCompositeResources;
     internal OfdModelSnapshot? CompositeBaseline;
     internal OfdCompositeResource[] OriginalCompositeOrder = Array.Empty<OfdCompositeResource>();
+    /// <summary>Shared vector definitions. Null preserves imported content; imported definitions require proven closure before removal or reorder.</summary>
     public OfdCompositeResourceCollection? CompositeResources
     {
         get => CompositeValue;

@@ -127,7 +127,6 @@ public sealed class OfdToSvgConverter
                     svgNs + "path",
                     new XAttribute("fill-rule", OfdPathStyle.EvenOdd(path) ? "evenodd" : "nonzero"),
                     new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
-                    new XAttribute("fill-rule", path.FillRule == OfdFillRule.EvenOdd ? "evenodd" : "nonzero"),
                     new XAttribute(
                         "stroke",
                         path.Stroke ? ToCssColor(path.StrokeColor) : "none"),
@@ -219,7 +218,6 @@ public sealed class OfdToSvgConverter
             var id = $"image-{index}-clip-{clipIndex++}";
             defs.Add(new XElement(ns + "clipPath", new XAttribute("id", id), new XAttribute("clipPathUnits", "userSpaceOnUse"),
                 region.Paths.Select(path => new XElement(ns + "path", new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
-                    new XAttribute("fill-rule", path.FillRule == OfdFillRule.EvenOdd ? "evenodd" : "nonzero"),
                     new XAttribute("clip-rule", region.EvenOdd ? "evenodd" : "nonzero"),
                     new XAttribute("transform", BuildTransform(0, 0, path.Transform))))));
             var clipped = new XElement(ns + "g", new XAttribute("clip-path", $"url(#{id})"));

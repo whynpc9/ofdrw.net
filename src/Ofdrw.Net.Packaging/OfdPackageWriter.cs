@@ -38,6 +38,12 @@ public sealed partial class OfdPackageWriter
 
         cancellationToken.ThrowIfCancellationRequested();
         var material = new OfdModelMaterialization(new OfdModelLimits());
+        OfdPageXmlContract.ValidateDocumentArea(package, cancellationToken);
+        foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, cancellationToken);
+        if (package.Pages.Count == 0) OfdPageXmlContract.ValidateWritableDimensions(
+            package.Options.DefaultPageWidthMillimeters, package.Options.DefaultPageHeightMillimeters);
+        foreach (var text in OfdCompositeGraph.Definitions(package).OfType<OfdTextElement>())
+            _ = Ofdrw.Net.Core.Fonts.EmbeddedFontCoverage.HasExplicitGlyphReferences(text);
         // Normal generation honors the explicit font embedding policy. Controlled
         // text-edit continuations retain their admitted original font payloads.
         var fontPlan = new OfdFontEmbeddingPlan(package, cancellationToken);

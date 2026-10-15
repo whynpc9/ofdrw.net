@@ -55,4 +55,12 @@ public sealed class Cell
 }
 
 /// <summary>Vertical alignment within the padded cell area.</summary>
-public enum CellVerticalAlignment { Top, Center, Bottom }
+public enum CellVerticalAlignment
+{
+    /// <summary>Place the cell content at its top padding edge.</summary>
+    Top,
+    /// <summary>Center cell content vertically inside the row.</summary>
+    Center,
+    /// <summary>Place cell content at its bottom padding edge.</summary>
+    Bottom,
+}

@@ -7,30 +7,55 @@ using System.Threading;
 namespace Ofdrw.Net.Core.Models;
 
 /// <summary>The five annotation types defined by OFD.</summary>
-public enum OfdAnnotationType { Link, Path, Highlight, Stamp, Watermark }
+public enum OfdAnnotationType
+{
+    /// <summary>Link annotation; actions are modeled but never executed by this SDK.</summary>
+    Link,
+    /// <summary>Path annotation.</summary>
+    Path,
+    /// <summary>Highlight annotation.</summary>
+    Highlight,
+    /// <summary>Stamp annotation, without implying cryptographic validity.</summary>
+    Stamp,
+    /// <summary>Watermark annotation.</summary>
+    Watermark,
+}
 
 /// <summary>Ordered editable annotations. Unmodeled source slots are preserved separately.</summary>
 public sealed class OfdAnnotationCollection
 {
+    /// <summary>Ordered typed definitions; retained imported owners preserve their source order.</summary>
     public List<OfdAnnotation> Items { get; } = [];
 }
 
 /// <summary>An annotation whose Appearance is expressed in local coordinates.</summary>
 public sealed class OfdAnnotation
 {
+    /// <summary>Document-unit identifier; null lets the writer allocate a new identity.</summary>
     public string? Id { get; set; }
+    /// <summary>OFD annotation category.</summary>
     public OfdAnnotationType Type { get; set; }
+    /// <summary>Creator required when serializing a typed annotation.</summary>
     public string Creator { get; set; } = string.Empty;
     /// <summary>A civil date: midnight with DateTimeKind.Unspecified.</summary>
     public DateTime? LastModifiedDate { get; set; }
+    /// <summary>Optional annotation subtype literal.</summary>
     public string? Subtype { get; set; }
+    /// <summary>Whether the annotation is visible; null preserves the unspecified state.</summary>
     public bool? Visible { get; set; }
+    /// <summary>Whether the annotation is printable; null leaves it unspecified.</summary>
     public bool? Print { get; set; }
+    /// <summary>Whether the annotation keeps its size when the page is zoomed.</summary>
     public bool? NoZoom { get; set; }
+    /// <summary>Whether the annotation keeps its orientation when the page rotates.</summary>
     public bool? NoRotate { get; set; }
+    /// <summary>Whether viewers should treat this annotation as read-only.</summary>
     public bool? ReadOnly { get; set; }
+    /// <summary>Optional human-readable annotation remark.</summary>
     public string? Remark { get; set; }
+    /// <summary>Local primitive definitions and their placement on the page.</summary>
     public OfdAnnotationAppearance Appearance { get; set; } = new();
+    /// <summary>Original Reader-owned XML, retained for extension and ownership checks.</summary>
     public string? SourceXml { get; internal set; }
     internal OfdAnnotationSource? Source { get; set; }
 }
@@ -38,12 +63,19 @@ public sealed class OfdAnnotation
 /// <summary>Local primitive definitions, placed once by Boundary and optional CTM.</summary>
 public sealed class OfdAnnotationAppearance
 {
+    /// <summary>Horizontal origin of the appearance Boundary, in millimeters.</summary>
     public double XMillimeters { get; set; }
+    /// <summary>Vertical origin of the appearance Boundary, in millimeters.</summary>
     public double YMillimeters { get; set; }
+    /// <summary>Positive local width in millimeters.</summary>
     public double WidthMillimeters { get; set; }
+    /// <summary>Positive local height in millimeters.</summary>
     public double HeightMillimeters { get; set; }
+    /// <summary>Optional six-component affine transform [a,b,c,d,e,f] in local millimeter coordinates.</summary>
     public double[]? Transform { get; set; }
+    /// <summary>Ordered local graphic definitions; repeated owners are rejected.</summary>
     public List<OfdElement> Elements { get; } = [];
+    /// <summary>Original Reader-owned XML, retained for extension and ownership checks.</summary>
     public string? SourceXml { get; internal set; }
 }
 

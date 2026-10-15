@@ -74,7 +74,9 @@ def verify_release_notices():
     direct = set()
     for project in (ROOT / 'src').glob('*/*.csproj'):
         for node in ET.parse(project).iter('PackageReference'):
-            direct.add((node.attrib['Include'], node.attrib['Version']))
+            version = node.attrib['Version']
+            exact = re.fullmatch(r'\[([^,\[\]]+)\]', version)
+            direct.add((node.attrib['Include'], exact.group(1) if exact else version))
     for package, version in sorted(direct):
         row = re.search(r'^\| ' + re.escape(package) + r' \| ' + re.escape(version) + r' \| ([^|]+) \| (https://[^| ]+) \|$', notices, re.M)
         if row is None or not row.group(1).strip():

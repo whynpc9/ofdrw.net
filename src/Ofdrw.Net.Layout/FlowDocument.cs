@@ -39,45 +39,80 @@ public sealed class Paragraph : FlowBlock
 
     /// <summary>Inline text in reading order.</summary>
     public IList<Span> Spans { get; } = new List<Span>();
+    /// <summary>Horizontal alignment of each laid-out paragraph line.</summary>
     public ParagraphAlignment Alignment { get; set; }
+    /// <summary>Vertical space preceding the paragraph, in millimeters.</summary>
     public double SpaceBeforeMillimeters { get; set; }
+    /// <summary>Vertical space following the paragraph, in millimeters.</summary>
     public double SpaceAfterMillimeters { get; set; }
+    /// <summary>Left paragraph indent measured inside the content width.</summary>
     public double LeftIndentMillimeters { get; set; }
+    /// <summary>Right paragraph indent measured inside the content width.</summary>
     public double RightIndentMillimeters { get; set; }
+    /// <summary>Additional first-line indent relative to the paragraph left edge.</summary>
     public double FirstLineIndentMillimeters { get; set; }
+    /// <summary>Optional minimum line height in millimeters; null uses measured metrics.</summary>
     public double? MinimumLineHeightMillimeters { get; set; }
+    /// <summary>Whether to begin this block on a new page.</summary>
     public bool PageBreakBefore { get; set; }
 }
 
 /// <summary>Supported horizontal paragraph alignment.</summary>
-public enum ParagraphAlignment { Left, Center, Right }
+public enum ParagraphAlignment
+{
+    /// <summary>Align visible line content to the left edge.</summary>
+    Left,
+    /// <summary>Center visible line content.</summary>
+    Center,
+    /// <summary>Align visible line content to the right edge.</summary>
+    Right,
+}
 
 /// <summary>Text and styling local to this span; omitted family, size and color use document defaults.</summary>
 public sealed class Span
 {
+    /// <summary>Creates a span from non-null logical Unicode text.</summary>
     public Span(string text) => Text = text ?? throw new ArgumentNullException(nameof(text));
+    /// <summary>Logical Unicode text emitted into native OFD text objects.</summary>
     public string Text { get; set; }
+    /// <summary>Optional span font-family override; null uses the document default.</summary>
     public string? FontFamily { get; set; }
+    /// <summary>Optional span font size in millimeters; null uses the document default.</summary>
     public double? FontSizeMillimeters { get; set; }
+    /// <summary>Whether this span requests bold styling.</summary>
     public bool Bold { get; set; }
+    /// <summary>Whether this span requests italic styling.</summary>
     public bool Italic { get; set; }
+    /// <summary>Optional span text color; null uses the document default.</summary>
     public OfdColor? Color { get; set; }
 }
 
 /// <summary>Geometry in millimeters and per-render resource limits.</summary>
 public sealed class FlowDocumentOptions
 {
+    /// <summary>Output page width in millimeters.</summary>
     public double PageWidthMillimeters { get; set; } = 210;
+    /// <summary>Output page height in millimeters.</summary>
     public double PageHeightMillimeters { get; set; } = 297;
+    /// <summary>Left page margin in millimeters.</summary>
     public double MarginLeftMillimeters { get; set; } = 25.4;
+    /// <summary>Right page margin in millimeters.</summary>
     public double MarginRightMillimeters { get; set; } = 25.4;
+    /// <summary>Top page margin in millimeters.</summary>
     public double MarginTopMillimeters { get; set; } = 25.4;
+    /// <summary>Bottom page margin in millimeters.</summary>
     public double MarginBottomMillimeters { get; set; } = 25.4;
+    /// <summary>Font family used when a span provides no override.</summary>
     public string DefaultFontFamily { get; set; } = "SimSun";
+    /// <summary>Default native text font size in millimeters.</summary>
     public double DefaultFontSizeMillimeters { get; set; } = 10.5 * 25.4 / 72;
+    /// <summary>Text color used when a span provides no override.</summary>
     public OfdColor DefaultColor { get; set; } = OfdColor.Black;
+    /// <summary>Maximum generated pages; exceeding the limit rejects rendering.</summary>
     public int MaxPageCount { get; set; } = 10_000;
+    /// <summary>Maximum logical input characters admitted for rendering.</summary>
     public int MaxCharacters { get; set; } = 1_000_000;
+    /// <summary>Maximum generated native text elements.</summary>
     public int MaxTextElements { get; set; } = 1_000_000;
     /// <summary>Maximum table cells across all blocks, including empty cells.</summary>
     public int MaxTableCells { get; set; } = 100_000;
