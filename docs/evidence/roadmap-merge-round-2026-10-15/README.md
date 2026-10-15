@@ -1,0 +1,22 @@
+# 首轮集成验收证据
+
+运行源码：`17dea14282ee58c00051e36a3257449102883d7b`。完整范围、限制和每份产物的实际基线见 [acceptance.json](acceptance.json)，环境见 [environment.json](environment.json)。这是合并前证据，不是 NuGet 发布记录。
+
+- [evidence.tar.zst](evidence.tar.zst)：111 个可审阅载荷，约 22.8 MiB。
+- [manifest.json](manifest.json)：每个载荷的相对路径、体积、SHA-256。
+- [archive.json](archive.json) 和 [readback.json](readback.json)：归档身份与逐项解包读回结果。
+- 2,099 项完整回归通过，12 项可选未执行；另强制字体 65/65、零跳过，与完整回归重叠。
+- 实际默认 11、SES 12、vector 13 包消费。样例输出、包依赖和原始失败/最终成功日志都在归档中。
+- Preview：33 页样例范围全部逐页检查并关闭窗口。其中不受最终空格校验改动影响的 graphics/typed 记录保留 `94a2d9a` 基线；最新 vector 15 页与空格 2 页基于 `17dea14` 重新生成、重开。不得把不同基线描述成同一次生成。
+- PNG 自动渲染完整；PNG 独立目视仅 graphics 10 页、空格 2 页。其他样例实际 Preview 验收通过，不把 PNG 或文本提取当 Preview。
+- fallback 第 1 页的裁剪仅保留页脚，第 4 页源内容为空，均是明确的边界样例；第 2 页 40% 透明文字、第 3 页实际图像及第 5 页原生文字按预期出现。
+- 空格修复样例字体是仓库原创的矩形测试符号，A/B 显示为两个黑色块是预期；窄 NBSP 槽位不得出现第三个缺字轮廓，普通/粗体均与分开 A/B 基准像素一致。
+- 公共样例的字体仅 Noto OFL 或仓库 MIT 原创字体；完整许可和生成来源在归档 `licenses/`。本地 original-v1 诊断仅保留页面图/哈希，不包含原 OFD/PDF/SVG 二进制。
+
+解包：
+
+```sh
+tar --zstd -xf evidence.tar.zst -C /your/empty/output-directory
+```
+
+归档使用 Zstandard long window 27 压缩重复的公开字体载荷；解码需要支持 Zstandard 的 tar/zstd。逐项身份以 manifest 为准。功能结果、渲染检查、PNG 目视和 Preview 在 acceptance 中分别列出；范围仅限这些确定性样例。正式发布记录仍为 `not-reviewed`，没有发布 NuGet、创建 tag 或触发 dispatch。
