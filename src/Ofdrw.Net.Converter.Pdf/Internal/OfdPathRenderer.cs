@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Ofdrw.Net.Core.Models;
 using PdfSharpCore.Drawing;
@@ -37,10 +38,21 @@ internal static class OfdPathRenderer
             return false;
         }
 
+        // Validate before the legacy geometry try-path: malformed styles must
+        // remain InvalidDataException, not become an unrendered solid path.
+        var style = OfdPathStyle.Read(element);
+        if (element.Stroke)
+        {
+            if (style.DashPattern?.Any(value => value == 0) == true)
+                throw new NotSupportedException("PDF path dash patterns containing zero cannot be represented by this backend.");
+            if (style.MiterLimit is { } limit && (limit != Math.Truncate(limit) || limit > int.MaxValue ||
+                style.Cap is "round" or "square" && limit != 10))
+                throw new NotSupportedException("PDF path miter limit cannot be represented exactly by this backend.");
+        }
         try
         {
             var tokens = Tokenize(element.AbbreviatedData);
-            var path = new XGraphicsPath { FillMode = (element.FillRule is { } rule ? rule == OfdFillRule.EvenOdd : OfdPathStyle.EvenOdd(element)) ? XFillMode.Alternate : XFillMode.Winding };
+            var path = new XGraphicsPath { FillMode = style.IsEvenOdd ? XFillMode.Alternate : XFillMode.Winding };
             // Keep path geometry local, so affine transforms affect both geometry
             // and stroke outlines. BuildClip continues to flatten its own CTM.
             var local = new OfdPathElement { AbbreviatedData = element.AbbreviatedData };
@@ -52,16 +64,30 @@ internal static class OfdPathRenderer
 
             XPen? pen = null;
             XSolidBrush? brush = null;
-            if (element.Stroke)
+            if (element.Stroke && element.StrokeColor.Alpha > 0 && style.Alpha > 0)
             {
                 pen = new XPen(
-                    ToXColor(element.StrokeColor),
+                    ToXColor(element.StrokeColor, style.Alpha),
                     MillimetersToPoints(element.LineWidthMillimeters > 0 ? element.LineWidthMillimeters : 0.01d));
+                if (style.Cap is { } cap) pen.LineCap = cap == "round" ? XLineCap.Round : cap == "square" ? XLineCap.Square : XLineCap.Flat;
+                if (style.Join is { } join) pen.LineJoin = join == "round" ? XLineJoin.Round : join == "bevel" ? XLineJoin.Bevel : XLineJoin.Miter;
+                if (style.MiterLimit is { } miter) pen.MiterLimit = miter;
+                if (style.DashPattern is { } dash)
+                {
+                    // XPen lengths/phase are multiples of the pen width.
+                    var width = element.LineWidthMillimeters > 0 ? element.LineWidthMillimeters : 0.01d;
+                    var normalized = dash.Select(value => value / width).ToArray();
+                    var offset = style.DashOffset / width;
+                    if (normalized.Any(value => double.IsInfinity(value) || value <= 0) || double.IsInfinity(offset))
+                        throw new NotSupportedException("PDF path dash values cannot be represented at this line width.");
+                    pen.DashPattern = normalized;
+                    pen.DashOffset = offset;
+                }
             }
 
-            if (element.Fill)
+            if (element.Fill && (element.FillColor ?? element.StrokeColor).Alpha > 0 && style.Alpha > 0)
             {
-                brush = new XSolidBrush(ToXColor(element.FillColor ?? element.StrokeColor));
+                brush = new XSolidBrush(ToXColor(element.FillColor ?? element.StrokeColor, style.Alpha));
             }
 
             var drawingState = graphics.Save();
@@ -78,6 +104,7 @@ internal static class OfdPathRenderer
 
             return true;
         }
+        catch (NotSupportedException) { throw; }
         catch
         {
             return false;
@@ -96,9 +123,11 @@ internal static class OfdPathRenderer
         return tokens;
     }
 
-    private static XColor ToXColor(OfdColor color)
+    private static XColor ToXColor(OfdColor color, double objectAlpha)
     {
-        return XColor.FromArgb(color.Alpha, color.Red, color.Green, color.Blue);
+        var result = XColor.FromArgb(color.Red, color.Green, color.Blue);
+        result.A = color.Alpha / 255d * objectAlpha;
+        return result;
     }
 
     private static double MillimetersToPoints(double millimeters)

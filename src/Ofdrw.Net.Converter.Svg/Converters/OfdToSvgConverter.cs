@@ -131,9 +131,10 @@ public sealed class OfdToSvgConverter
             else if (element is OfdPathElement path &&
                 !string.IsNullOrWhiteSpace(path.AbbreviatedData))
             {
+                var style = OfdPathStyle.Read(path);
                 var pathNode = new XElement(
                     svgNs + "path",
-                    new XAttribute("fill-rule", OfdPathStyle.EvenOdd(path) ? "evenodd" : "nonzero"),
+                    new XAttribute("fill-rule", style.IsEvenOdd ? "evenodd" : "nonzero"),
                     new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
                     new XAttribute(
                         "stroke",
@@ -152,27 +153,19 @@ public sealed class OfdToSvgConverter
                         path.Transform)));
                 if (path.Stroke)
                 {
-                    // Preserve declared stroke settings; absent attributes retain
-                    // the existing exporter defaults for legacy objects.
-                    foreach (var pair in new[] { ("Cap", "stroke-linecap"), ("Join", "stroke-linejoin"), ("MiterLimit", "stroke-miterlimit") })
+                    if (style.Cap is { } cap) pathNode.SetAttributeValue("stroke-linecap", cap);
+                    if (style.Join is { } join) pathNode.SetAttributeValue("stroke-linejoin", join);
+                    if (style.MiterLimit is { } miter) pathNode.SetAttributeValue("stroke-miterlimit", OfdNumericFormat.Plain(miter));
+                    if (style.DashPattern is { } dash)
                     {
-                        var value = OfdPathStyle.Attribute(path, pair.Item1);
-                        if (value is not null) pathNode.SetAttributeValue(pair.Item2, pair.Item1 == "MiterLimit" ? value : value.ToLowerInvariant());
+                        pathNode.SetAttributeValue("stroke-dasharray", string.Join(" ", dash.Select(OfdNumericFormat.Plain)));
+                        pathNode.SetAttributeValue("stroke-dashoffset", OfdNumericFormat.Plain(style.DashOffset));
                     }
                 }
-                if (path.Stroke && path.StrokeColor.Alpha != 255)
-                {
-                    pathNode.SetAttributeValue(
-                        "stroke-opacity",
-                        Invariant(path.StrokeColor.Alpha / 255d));
-                }
-
-                if (path.Fill && (path.FillColor ?? path.StrokeColor).Alpha != 255)
-                {
-                    pathNode.SetAttributeValue(
-                        "fill-opacity",
-                        Invariant((path.FillColor ?? path.StrokeColor).Alpha / 255d));
-                }
+                var strokeAlpha = path.StrokeColor.Alpha / 255d * style.Alpha;
+                var fillAlpha = (path.FillColor ?? path.StrokeColor).Alpha / 255d * style.Alpha;
+                if (path.Stroke && strokeAlpha != 1) pathNode.SetAttributeValue("stroke-opacity", OfdNumericFormat.Plain(strokeAlpha));
+                if (path.Fill && fillAlpha != 1) pathNode.SetAttributeValue("fill-opacity", OfdNumericFormat.Plain(fillAlpha));
 
                 target.Add(pathNode);
             }
