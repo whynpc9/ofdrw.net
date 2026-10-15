@@ -104,7 +104,7 @@ jobs:
           python scripts/install-ci-fonts.py
 
       - name: Test image API on each platform
-        run: dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj -c Release --filter "FullyQualifiedName~ImageIoTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+        run: dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj -c Release --filter "FullyQualifiedName~ImageIoTests|FullyQualifiedName~ImageDocumentToolsIntegrationTests|FullyQualifiedName~ImageMainIntegrationTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Test image CLI on each platform
         run: dotnet test tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj -c Release --filter "FullyQualifiedName~ImageCommandTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
