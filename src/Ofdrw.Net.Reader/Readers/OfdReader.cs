@@ -434,33 +434,41 @@ public sealed class OfdReader : IOfdReader
             }
         }
 
-        var customTagsLoc = ReadValue(documentXml.Root?.Elements().FirstOrDefault(x => x.Name.LocalName == "CustomTags"), material, cancellationToken);
-        if (!string.IsNullOrWhiteSpace(customTagsLoc))
+        var customTagDeclarations = documentXml.Root!.Elements(docNs + "CustomTags").ToArray();
+        var customTagIndexes = new List<string>();
+        var customTagDetails = new List<string>();
+        foreach (var declaration in customTagDeclarations)
         {
-            var customTagsPath = material.ResolvePath(docRoot, customTagsLoc!, cancellationToken);
-            if (archive.Contains(customTagsPath))
+            var location = ReadValue(declaration, material, cancellationToken);
+            if (string.IsNullOrWhiteSpace(location)) continue;
+            var listPath = material.ResolvePath(docRoot, location!, cancellationToken);
+            customTagIndexes.Add(listPath);
+            if (!archive.Contains(listPath)) continue;
+            var list = material.ReadXml(listPath, archive.GetBytes(listPath), cancellationToken);
+            if (list.Root?.Name != docNs + "CustomTags") continue;
+            foreach (var customTag in list.Root.Elements(docNs + "CustomTag") ?? Enumerable.Empty<XElement>())
             {
-                var customTagsXml = material.ReadXml(customTagsPath, archive.GetBytes(customTagsPath), cancellationToken);
-                foreach (var customTag in customTagsXml.Root?.Elements()
-                    .Where(x => x.Name.LocalName == "CustomTag") ?? Enumerable.Empty<XElement>())
-                {
-                    var detailLoc = ReadValue(customTag.Elements().FirstOrDefault(x => x.Name.LocalName == "FileLoc"), material, cancellationToken)
-                        ?? customTag.Attribute("FileLoc")?.Value;
-                    if (string.IsNullOrWhiteSpace(detailLoc))
-                    {
-                        continue;
-                    }
-
-                    var detailPath = material.ResolvePath(customTagsPath, detailLoc!, cancellationToken);
-                    ReadKeyValueCustomTags(archive, detailPath, package.CustomTags, material, cancellationToken);
-                }
+                // Other schemas may use Tag/Key/Value too; their payloads remain opaque.
+                if (customTag.Attribute("TypeID")?.Value != "EMR" ||
+                    customTag.Attribute("NameSpace")?.Value != OfdCustomTagSource.EmrNamespace) continue;
+                var locationNode = customTag.Element(docNs + "FileLoc");
+                var detailLoc = ReadValue(locationNode, material, cancellationToken) ?? customTag.Attribute("FileLoc")?.Value;
+                if (string.IsNullOrWhiteSpace(detailLoc)) continue;
+                var detailPath = material.ResolvePath(listPath, detailLoc!, cancellationToken);
+                if (ReadKeyValueCustomTags(archive, detailPath, package.CustomTags, docNs, material, cancellationToken))
+                    customTagDetails.Add(detailPath);
             }
         }
-        else
+        if (customTagDeclarations.Length == 0)
         {
-            var legacyCustomTagPath = material.ReadConcat(package.Options.DocumentId, "/Tags/CustomTag_EMR.xml", cancellationToken);
-            ReadKeyValueCustomTags(archive, legacyCustomTagPath, package.CustomTags, material, cancellationToken);
+            var directory = OfdPackagePath.GetDirectory(docRoot);
+            var legacyPath = (directory.Length == 0 ? "" : directory + "/") + "Tags/CustomTag_EMR.xml";
+            if (ReadKeyValueCustomTags(archive, legacyPath, package.CustomTags, docNs, material, cancellationToken))
+                customTagDetails.Add(legacyPath);
         }
+        if (customTagDeclarations.Length > 0 || customTagDetails.Count > 0) package.CustomTagSource = new OfdCustomTagSource(package,
+            customTagDeclarations.Select(node => OfdXmlEnvelope.Capture(node, material, cancellationToken)).ToArray(),
+            customTagIndexes, customTagDetails, material, cancellationToken);
 
         material.ReserveReadModel(1024L + (documentXml.Root?.DescendantNodesAndSelf().Count() ?? 0) * 4096L, cancellationToken);
         OfdNavigationXml.Read(package, documentXml.Root ?? throw new InvalidDataException("Missing document root."), material, cancellationToken);
@@ -1224,19 +1232,19 @@ public sealed class OfdReader : IOfdReader
         => node is null ? null : OfdXmlEnvelope.SerializeForRead(node, material, token);
 
 
-    private static void ReadKeyValueCustomTags(
+    private static bool ReadKeyValueCustomTags(
         OfdPackageArchive archive,
         string detailPath,
-        IDictionary<string, string> destination, OfdModelMaterialization material, CancellationToken cancellationToken)
+        IDictionary<string, string> destination, XNamespace ns, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
         if (!archive.Contains(detailPath))
         {
-            return;
+            return false;
         }
 
         var tagsXml = material.ReadXml(detailPath, archive.GetBytes(detailPath), cancellationToken);
-        foreach (var tag in tagsXml.Root?.Elements().Where(x => x.Name.LocalName == "Tag")
-            ?? Enumerable.Empty<XElement>())
+        if (tagsXml.Root?.Name != ns + "EMRTags") return false;
+        foreach (var tag in tagsXml.Root.Elements(ns + "Tag"))
         {
             var key = tag.Attribute("Key")?.Value;
             var value = tag.Attribute("Value")?.Value;
@@ -1246,6 +1254,7 @@ public sealed class OfdReader : IOfdReader
                 destination[key!] = value;
             }
         }
+        return true;
     }
 
     private static string ResolveFontName(string? fontRef, IReadOnlyDictionary<string, string> fontMap)

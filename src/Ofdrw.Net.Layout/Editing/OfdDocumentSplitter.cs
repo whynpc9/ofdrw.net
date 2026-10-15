@@ -129,6 +129,7 @@ public static class OfdDocumentSplitter
             }
         }
         OfdNavigationCloner.Clone(source, result, mapping, material, cancellationToken);
+        result.CustomTagSource = source.CustomTagSource?.Clone(source, result, material, cancellationToken);
         result.AnnotationIndexSource = source.AnnotationIndexSource?.Clone(source, result, material, cancellationToken);
         result.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, cancellationToken);
         result.SourceIdentity = source.SourceIdentity?.CloneFor(result, mapping, material, cancellationToken);
