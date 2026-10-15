@@ -59,21 +59,31 @@ public sealed class OfdSignatureVerifier
         var declarations = ofd.Root?.Elements(ofd.Root.Name.Namespace + "DocBody")
             .Elements(ofd.Root.Name.Namespace + "Signatures").ToList() ?? new List<XElement>();
         report.HasSignatureDeclarations = declarations.Count > 0;
+        var declarationsComplete = declarations.All(element => !string.IsNullOrWhiteSpace(element.Value));
+        if (!declarationsComplete)
+        {
+            report.Issues.Add("A signatures list declaration has a blank location.");
+        }
+
         var signatureLocations = declarations
             .Select(element => element.Value)
             .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(NormalizePath)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (signatureLocations.Count == 0)
         {
-            report.Issues.Add("The document does not declare a signatures list.");
+            if (!report.HasSignatureDeclarations)
+            {
+                report.Issues.Add("The document does not declare a signatures list.");
+            }
             return report;
         }
 
         foreach (var location in signatureLocations)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await VerifySignatureListAsync(
+            declarationsComplete &= await VerifySignatureListAsync(
                     archive,
                     location,
                     report,
@@ -81,10 +91,11 @@ public sealed class OfdSignatureVerifier
                 .ConfigureAwait(false);
         }
 
+        report.SignatureDeclarationsComplete = declarationsComplete;
         return report;
     }
 
-    private async Task VerifySignatureListAsync(
+    private async Task<bool> VerifySignatureListAsync(
         OfdPackageArchive archive,
         string location,
         OfdSignatureVerificationReport report,
@@ -94,7 +105,7 @@ public sealed class OfdSignatureVerifier
         if (!archive.TryGetBytes(listPath, out var listBytes))
         {
             report.Issues.Add($"Signatures list is missing: {location}");
-            return;
+            return false;
         }
 
         XDocument list;
@@ -108,12 +119,20 @@ public sealed class OfdSignatureVerifier
         {
             report.Issues.Add(
                 $"Signatures list '{listPath}' could not be parsed: {exception.Message}");
-            return;
+            return false;
         }
 
-        foreach (var record in list
+        var records = list
             .Descendants()
-            .Where(element => element.Name.LocalName == "Signature"))
+            .Where(element => element.Name.LocalName == "Signature")
+            .ToList();
+        if (records.Count == 0)
+        {
+            report.Issues.Add($"Signatures list '{listPath}' contains no signature records.");
+            return false;
+        }
+
+        foreach (var record in records)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var baseLocation = record.Attribute("BaseLoc")?.Value;
@@ -147,6 +166,8 @@ public sealed class OfdSignatureVerifier
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+
+        return true;
     }
 
     private async Task VerifySignatureAsync(
