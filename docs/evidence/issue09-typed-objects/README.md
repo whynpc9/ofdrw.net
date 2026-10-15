@@ -1,6 +1,6 @@
 # Issue09 typed object acceptance
 
-The functional and package gates passed on product candidate `60163cca80a4da62bf748ba19a300a8d714b80c4`. **macOS Preview visual acceptance completed on 2026-10-15: five PDFs, eight pages, no observed defect within the stated sample scope.** [Actual Preview record](preview-acceptance-2026-10-15.md). PR review and all six checks were closed on a1cebe3; later documentation-only head checks are recorded in the PR. Documentation/evidence and E2E-only commits do not change or relabel the measured product source. PNG images remain auxiliary. No merge or release is implied.
+The functional and package gates passed on product candidate `60163cca80a4da62bf748ba19a300a8d714b80c4`. **macOS Preview visual acceptance completed on 2026-10-15: five PDFs, eight pages, no observed defect within the stated sample scope.** [Actual Preview record](preview-acceptance-2026-10-15.md), including [eight native window captures](preview-captures/). PR review and all six checks were closed on a1cebe3; later documentation-only head checks are recorded in the PR. Documentation/evidence and E2E-only commits do not change or relabel the measured product source. PNG images remain auxiliary. No merge or release is implied.
 
 The branch preserves original B `c68a6c7` and accepted shared foundation `f7e3a62` through the normal merge `45aeec5`, whose second parent is exact Issue06 `7caa8b54f2b28e0479d051e6ddf9b6d3227b5c3d`. The stacked PR targets `codex/keyword-locate-replace`; its delta is Issue09. No merge, tag or package publication is implied.
 
