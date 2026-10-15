@@ -3,13 +3,13 @@
   "members": [
     {
       "path": "README.md",
-      "bytes": 6823,
-      "sha256": "c6ece8a72c4d70431f571dae24d02ef6e5fc2b473758e76da160de5cef6894e0"
+      "bytes": 7141,
+      "sha256": "db1d897f5bb50475e1a9854cc4776a7ba3a51017bd72a37db5db85f7656f6aac"
     },
     {
       "path": "ci-fixture-repair/README.md",
-      "bytes": 2752,
-      "sha256": "458f7de5e0b0c9c8d4c8a493f68876a4b492d100797edc48ae1b2eab93f4dd7a"
+      "bytes": 2840,
+      "sha256": "2ecfc9c9b89b62c47b990777196ab454c19c8268390261db0835486003dc3d64"
     },
     {
       "path": "ci-fixture-repair/binary-xml-split-1.png",
@@ -292,6 +292,16 @@
       "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
     },
     {
+      "path": "preview-acceptance-2026-10-15.json",
+      "bytes": 5161,
+      "sha256": "5649e602a4c6f42a3193d047f8bf6ed8aba562e09944cbfc9edf53677066e453"
+    },
+    {
+      "path": "preview-acceptance-2026-10-15.md",
+      "bytes": 3326,
+      "sha256": "ddf825d5a45fc21bc8ef050facf458894c57cc7047c3366e92c51c434b6d67d9"
+    },
+    {
       "path": "sample/after-1.png",
       "bytes": 93386,
       "sha256": "73ba9ce755b3be414e7e2cf1c9ecc38f0381c66ab162e491347437f396621707"
@@ -373,8 +383,8 @@
     },
     {
       "path": "visual-inspection.json",
-      "bytes": 1252,
-      "sha256": "995d57692e5589050b4e71c08df77f85f36e70d1c92783bfeee68fa5312eb628"
+      "bytes": 1650,
+      "sha256": "4e4500c1f0dfb09db0b39f77a49f3d348fa708b2edd45a6535c8aefe66ff2034"
     }
   ]
 }
