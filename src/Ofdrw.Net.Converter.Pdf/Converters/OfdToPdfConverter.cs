@@ -352,6 +352,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     }
                     if (element is OfdTextElement text)
                     {
+                        text = OfdTextRenderProjection.Create(text, annotationMaterial, cancellationToken);
                         var fontSize = Math.Max(0.1, MillimetersToPoints(text.FontSizeMillimeters));
                         var familyName = fonts.Resolve(text, out var resource);
                         if ((text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text)).All(string.IsNullOrEmpty)) continue;
