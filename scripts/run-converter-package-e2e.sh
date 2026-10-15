@@ -74,6 +74,6 @@ dotnet tool install Ofdrw.Net.Cli --tool-path "$TASK_DIR/tools" --version "$VERS
   "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx" "$RESULT_DIR/cli-native.ofd"
 OFDRW_REPO_ROOT="$ROOT_DIR" OFDRW_E2E_OUTPUT_DIR="$RESULT_DIR" dotnet run \
   --project "$CONSUMER" -c Release --no-build --no-restore
-python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION" --verify-manifest
+NUGET_PACKAGES="$SOURCE_CACHE" python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION" --verify-manifest
 cp "$OUT_DIR/package-manifest.json" "$RESULT_DIR/package-manifest.json"
 echo "[E2E] Verified package bytes and output: $RESULT_DIR"
