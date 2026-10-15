@@ -4,7 +4,7 @@
 
 人类授权梳理已完成票并执行首轮 merge。保留所有已审查提交历史；不发布 NuGet，不创建 tag 或 dispatch，不修改主 checkout 的未提交文件。
 
-下表是本轮开始时逐票已完成实现、测试与视觉验收的候选。Issue01、16、03 已合入 main，其合并后 CI 全绿；其余九票已在独立 `codex/roadmap-merge-round` 完成集成验收，汇总为 [PR21](https://github.com/whynpc9/ofdrw.net/pull/21)。本文件是合并前验收快照；最终合并状态以 PR21 和 main 提交历史为准。
+下表是本轮开始时逐票已完成实现、测试与视觉验收的候选。Issue01、16、03 已合入 main，其合并后 CI 全绿；其余八票在独立 `codex/roadmap-merge-without-password` 集成。原 PR21 因口令 KDF P1 被新的排除版汇总取代；人类明确选择先排除 Issue11，再合入其余已完成任务。本文件是合并前验收快照；最终合并状态以 PR21 和 main 提交历史为准。
 
 | Issue | 能力 | PR | 接纳的原 head |
 | --- | --- | --- | --- |
@@ -14,7 +14,6 @@
 | 03 | 水印、拆分、混合、清签 | [#12](https://github.com/whynpc9/ofdrw.net/pull/12) | `df71c7f20e0c45e9cba9cb78f2d2a91d61413ec9` |
 | 04 | 原生绘图 API | [#13](https://github.com/whynpc9/ofdrw.net/pull/13) | `ab87bcade2ec5df6fa1f7ea0b86c590d13225653` |
 | 05 | 字体子集与复用 | [#14](https://github.com/whynpc9/ofdrw.net/pull/14) | `d8dfda455b44ef5857c3a87088ed08cf80d810dc` |
-| 11 | 可选私有口令 profile | [#15](https://github.com/whynpc9/ofdrw.net/pull/15) | `f7cbbcf991f33b6bc9c90cc118c636dbcca78404` |
 | 12 | 可选 SES 开发互操作 | [#16](https://github.com/whynpc9/ofdrw.net/pull/16) | `02f516ea61f5f73cdf3a6a015d4e02d6b46ddd7e` |
 | 19 | 合作式 Skia 事件适配 | [#17](https://github.com/whynpc9/ofdrw.net/pull/17) | `d878aeda57c1da79917e11d0a35bcc028bc4c1fd` |
 | 21 | 受限 PDF 原生矢量转换 | [#18](https://github.com/whynpc9/ofdrw.net/pull/18) | `0a97c980fa0846c931e199caf26e88f437472744` |
@@ -23,7 +22,7 @@
 
 ## 集成边界
 
-- 默认包清单仍为精确 11 包。Password、SES、Skia 和 PDF.Vector 保持可选；核心能力开关与默认验签限制不变。
+- 默认包清单仍为精确 11 包。SES、Skia 和 PDF.Vector 保持可选；Password 本轮不纳入；核心能力开关与默认验签限制不变。
 - 普通生成保留 05 的字体子集策略；06 的受控替换保留已接纳原字体字节。选面、字体配置克隆和回调变更检测同时保留。
 - 01/16 流式布局、表格消费者与 04 绘图消费者同时保留；统一重复 solution 项目标识。
 - 保留矩阵精度、Latin 组合测量、非绘制空白、typed fill rule、多子路径 AddMove。SVG 每个路径只写一次 fill-rule。
@@ -32,9 +31,15 @@
 
 ## 本轮排除
 
+Issue11 / PR15：静态确认私有 v1 口令 KEK 使用无盐、无成本参数的单次 SM3 派生。原文档披露此限制，但不构成抗离线猜测保护。按人类本轮直接选择，保留 PR15 独立未合并；新分支不含该 head 祖先、源码、测试、E2E 或 CI job。仅保留与其他可选包共用的默认精确 11 包打包白名单及失败即停测试。新口令协议另行设计、审查。
+
 Issue02 / PR11 的远端仍为旧 `b29ed9d`，未包含本地最终集成与验收候选，不在本轮合并。其余待开发票 07、08、10、13、14、17、18、20、22 不在本轮范围。
 
-## 当前验证
+## 原汇总候选的历史验证
+
+以下记录明确来自排除前 17dea14 候选，包含其独立口令项目测试；不是排除版的全套计数。排除版保留其余产品源码逐文件字节一致，重新执行全套和包消费后另记结果。视觉产物、渲染源码及字体均未改动，实际 Preview 记录保留原始基线。
+
+### 已实际完成
 
 - 本轮集成编译成功；脚本测试 20/20 成功。
 - 运行源码 `17dea14282ee58c00051e36a3257449102883d7b`：完整回归 2,099 项通过、12 项可选字体测试未执行；强制真实字体入口 65/65、零跳过。这 65 项与完整回归有重叠，不叠加为独立测试数。
@@ -43,6 +48,6 @@ Issue02 / PR11 的远端仍为旧 `b29ed9d`，未包含本地最终集成与验�
 - PNG 自动渲染完整；独立 PNG 目视范围为绘图 10 页与空格 2 页，其余页面由实际 Preview 逐页验收，不冒称做过独立 PNG 目视。
 - 公开 [验收记录及产物归档](evidence/roadmap-merge-round-2026-10-15/README.md) 已封存 111 个载荷并逐项解包校验。约 22.8 MiB，含 OFD/PDF/页面图、许可、原始 TRX/日志、包与依赖清单、哈希及环境。原始本地诊断的 OFD/PDF/SVG 不公开。
 - CI 的 unused cmap4 与 SES 校验缓存问题已修；Linux dual 消费者为 `FixtureFace` 显式绑定同一份许可字体，不再依赖主机 Arial。Cursor 缺字空格反馈由上下文校验修复：无定位混合文本须真实覆盖/回退，单独定位空白保持不绘制，Writer 原子失败及既有像素回归通过。
-- 最新 GitHub head 的 CI、Codex、Cursor 及线程闭合另在 PR21 实时核对；本记录不把本地通过替代远端门禁。
+- 最新 GitHub head 的 CI、Codex、Cursor 及线程闭合另在替代汇总 PR 实时核对；本记录不把本地通过替代远端门禁。
 - 补充本轮 129 处新增 API XML 文档，不扩大 CS1591 历史基线。
 - 原票历史证据继续在各自 `docs/evidence/`，其基线和验收范围不改写为本次集成运行结果。
