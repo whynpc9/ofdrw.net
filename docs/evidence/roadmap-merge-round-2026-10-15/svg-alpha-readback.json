@@ -1,0 +1,300 @@
+{
+  "runtimeSource": "8018d70be81ce2fe62bb6d588eca5b6e8b109c18",
+  "functional": {
+    "runtimeSource": "8018d70be81ce2fe62bb6d588eca5b6e8b109c18",
+    "outcomes": {
+      "Passed": 2039,
+      "NotExecuted": 12
+    },
+    "newAlphaRegressions": {
+      "before": {
+        "Failed": 6
+      },
+      "after": {
+        "Passed": 6
+      },
+      "input": "Public OFD archive with explicit xml:space preservation, alpha 1/128/254, producer run/no-run inputs; visible A control retains its alpha."
+    },
+    "projects": [
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_14_13_net10.0[1].trx",
+        "outcomes": {
+          "Passed": 315
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_14_10_net10.0.trx",
+        "outcomes": {
+          "Passed": 44
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_13_47_net10.0.trx",
+        "outcomes": {
+          "Passed": 1073
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_13_52_net10.0.trx",
+        "outcomes": {
+          "Passed": 4
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_13_44_net10.0.trx",
+        "outcomes": {
+          "Passed": 71
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_14_13_net10.0.trx",
+        "outcomes": {
+          "Passed": 44
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_13_53_net10.0.trx",
+        "outcomes": {
+          "Passed": 151
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_14_11_net10.0.trx",
+        "outcomes": {
+          "Passed": 94
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_13_49_net10.0.trx",
+        "outcomes": {
+          "Passed": 206,
+          "NotExecuted": 12
+        }
+      },
+      {
+        "trx": "_wanghongyideMacBook-Pro_2026-10-15_11_14_12_net10.0.trx",
+        "outcomes": {
+          "Passed": 37
+        }
+      }
+    ]
+  },
+  "actualPackageConsumption": {
+    "version": "0.1.0-merge.20261015.5",
+    "defaultProducts": 11,
+    "sesFeed": 12,
+    "vectorFeed": 13,
+    "status": "passed",
+    "nugetPublished": false
+  },
+  "scopeDeltaFrom0a21fbe": [
+    "src/Ofdrw.Net.Converter.Svg/Converters/OfdToSvgConverter.cs: move whitespace opacity override below alpha assignment",
+    "tests/Ofdrw.Net.Converter.Pdf.Tests/SvgGeometryTests.cs: six public archive-reader/SVG regressions; explicit xml:space input preserves narrow no-break space"
+  ],
+  "pngVisual": {
+    "svgPages": 1,
+    "status": "passed",
+    "observation": "Only the grey visible A control; blank run at left remains unpainted. This renderer does not reproduce a visible missing-glyph box before the fix; pre-fix regression evidence is the incorrect nonzero SVG opacity, not a claimed raster difference."
+  },
+  "preview": {
+    "actualPdf": "/Users/wanghongyi/.codex/worktrees/roadmap-merge-round/ofdrw.net/artifacts/merge-round-2026-10-15/svg-alpha-after/blank-run-alpha.pdf",
+    "sha256": "28c45709031ba8b0f093a3893284528f787c452936e2b1d279a4deb480f224f4",
+    "pages": [
+      1
+    ],
+    "chain": "Synthetic fixture -> current OFD with explicit xml:space -> PDF -> Finder double click -> actual macOS Preview page body screenshot",
+    "status": "passed",
+    "observed": "One grey rectangular A glyph intentionally defined by the MIT synthetic font; left whitespace area blank, no extra outline. SVG raster uses its text engine and shows an A shape; not a font-shape equivalence claim.",
+    "taskWindowClosed": true,
+    "recordedAt": "2026-10-15T11:17:15.604754+08:00"
+  },
+  "priorPreview": "Retain 33 actually inspected prior pages with their explicit baselines. PDF renderer/font/sample source bytes are unchanged by this SVG-only correction. One additional current regression page inspected, total selected scope 34 pages.",
+  "mandatoryFonts": "65/65 zero-skip gate at 0a21fbe is retained; Core, font geometry and PDF logic unchanged by this correction. Counts overlap full suite.",
+  "archive": {
+    "path": "svg-alpha-validation.tar.zst",
+    "bytes": 287755,
+    "sha256": "9484eb84f51d40a1863f6a023e6494e386acea7efa5c9a22296628acfb792bbc",
+    "files": [
+      {
+        "path": "build-svg-alpha.log",
+        "bytes": 102393,
+        "sha256": "2030de0f2a640e467b3edd941a774e64cd2c28483b7d769ee451c8e9a1bda1b4"
+      },
+      {
+        "path": "packages/default11.json",
+        "bytes": 2249,
+        "sha256": "e5d12b6c0dd89535631157b755adab91ec6e00a20c1f7e5126e1df1c5f35556f"
+      },
+      {
+        "path": "packages/ses-assets.json",
+        "bytes": 61772,
+        "sha256": "737765ad2d2b7c2069ec97ed8302b00db4aea837a7f43b9f6adc0ad3f50b999c"
+      },
+      {
+        "path": "packages/ses12.json",
+        "bytes": 2364,
+        "sha256": "2dc1cd8e0794f597231a8931d47aae7e44482db4a5a771f613700843fb30f633"
+      },
+      {
+        "path": "packages/vector-assets.json",
+        "bytes": 60980,
+        "sha256": "5fed7c52729376c583b1b06c936df5947cdc07516a1d43d2469cc6a7222b248e"
+      },
+      {
+        "path": "packages/vector13.json",
+        "bytes": 5451,
+        "sha256": "adc014c68f0284e2e1d89efc9027a76dc610f1d5c347ee8bc2e24b4689ac33e3"
+      },
+      {
+        "path": "reports/ses-functional.json",
+        "bytes": 2802,
+        "sha256": "dff8331e9ef0ea0e776841f06d452c686a53df2e69b591e81006361210e6517f"
+      },
+      {
+        "path": "reports/vector-functional.json",
+        "bytes": 4850,
+        "sha256": "f59e6012308872a0aa3e407951ac39b7999fa077a8b2fb8a3962d2bcdc594829"
+      },
+      {
+        "path": "review-before-svg-fix.json",
+        "bytes": 2834,
+        "sha256": "024007c1bac17abc2d08d3fcb81aecde5550ee5560da2529fc638d2deab5383b"
+      },
+      {
+        "path": "sample/MIT-LICENSE.txt",
+        "bytes": 1064,
+        "sha256": "2b4dd513f6505b2522a1f6eb3c07dccf04c37b19daf13c3a26aa9bcafe3436fc"
+      },
+      {
+        "path": "sample/after/blank-run-alpha.ofd",
+        "bytes": 2794,
+        "sha256": "3734e631b12bf3f531ee0356d19660c391b40b624ef6edcd2e069039fe9c0676"
+      },
+      {
+        "path": "sample/after/blank-run-alpha.pdf",
+        "bytes": 2816,
+        "sha256": "28c45709031ba8b0f093a3893284528f787c452936e2b1d279a4deb480f224f4"
+      },
+      {
+        "path": "sample/after/blank-run-alpha.png",
+        "bytes": 4310,
+        "sha256": "5907d134e006d31087d5d21fbf9f056a52a146ba16fa7bba446d797ac3aeed7e"
+      },
+      {
+        "path": "sample/after/blank-run-alpha.svg",
+        "bytes": 5076,
+        "sha256": "7bf148e1ed79c07914df964fe0327cae8fa46c2de6a17d1cf7fb12bb6bce919a"
+      },
+      {
+        "path": "sample/after/pdf-page-1.png",
+        "bytes": 1029,
+        "sha256": "da6f79fa9237dfaaea7ea068955ef0e20a43908242738ee84cead95f1ac6f963"
+      },
+      {
+        "path": "sample/before/blank-run-alpha.ofd",
+        "bytes": 2794,
+        "sha256": "fbba9254c1d9ff2e026a4adc62907db9f99fa9b6ac4759426c045f57ac108488"
+      },
+      {
+        "path": "sample/before/blank-run-alpha.pdf",
+        "bytes": 2816,
+        "sha256": "0dc6e9004e9c265ab5ff0687e0ef5c3904577ad63547cb3f8c7a30e7014ce708"
+      },
+      {
+        "path": "sample/before/blank-run-alpha.png",
+        "bytes": 4310,
+        "sha256": "5907d134e006d31087d5d21fbf9f056a52a146ba16fa7bba446d797ac3aeed7e"
+      },
+      {
+        "path": "sample/before/blank-run-alpha.svg",
+        "bytes": 5080,
+        "sha256": "27d24fea3f8a013ea0f6dcac7188988275591748ecd02968831f41f49a3166a3"
+      },
+      {
+        "path": "sample/font-fixture-source.py",
+        "bytes": 2902,
+        "sha256": "018147fb606f0edee60ef975ef3d6a2014d44924fb21968e871d7203fd1a721b"
+      },
+      {
+        "path": "ses-svg-alpha.log",
+        "bytes": 120351,
+        "sha256": "3ef003bef439bdbc2d55b4d2ec5df0586a4fbdce59c057ae0b18a2853bafea93"
+      },
+      {
+        "path": "svg-alpha-before.log",
+        "bytes": 12786,
+        "sha256": "c5d160ef35b9e4461155f51072563b78d96a6f23a8c3977e03803f3b5c44c0cf"
+      },
+      {
+        "path": "svg-alpha-test-summary.json",
+        "bytes": 1800,
+        "sha256": "4da29dbc1e652d6b0e38b299cff99aa187d6447b3eb7e5ba714b45b279e0efe7"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_13_44_net10.0.trx",
+        "bytes": 107893,
+        "sha256": "6c4dc1ab1e5c27f66e2aa8c1a79b0a9b705637cac3eb2a9ba2a6192c816bf7ef"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_13_47_net10.0.trx",
+        "bytes": 1785175,
+        "sha256": "9dc6167193293e8167ad5c995ffaa19d206f4cc95d0ae3a3006bdae608688272"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_13_49_net10.0.trx",
+        "bytes": 357216,
+        "sha256": "fdd5c4e5e82b604d9af3e98fa034372e985da98aeeb6dc77ddfe941a1e152b10"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_13_52_net10.0.trx",
+        "bytes": 7385,
+        "sha256": "d5f3f67439cbcda31c1730e595fcbbfc5b69b1ff040e566cb5f8b46d172582ec"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_13_53_net10.0.trx",
+        "bytes": 242260,
+        "sha256": "c601ecf5d49fb5858853c8646c3742b28f1d48c4832e2d772a7228d5a22dd03f"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_14_10_net10.0.trx",
+        "bytes": 72108,
+        "sha256": "4b67570c9e46dab94ba158753e383c3dfbf0ced30d81ab0633826308483aecec"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_14_11_net10.0.trx",
+        "bytes": 143912,
+        "sha256": "afb0b15d4a64508b7d23b0bc98ec909581f4da7ff81c4eaf83a0c599156586cb"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_14_12_net10.0.trx",
+        "bytes": 59030,
+        "sha256": "d880f38a0b5dfabc3c74580bccb3da39d84f28c2b90f714b1e5b45b2ac1a6d93"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_14_13_net10.0.trx",
+        "bytes": 70523,
+        "sha256": "2cec15d961bd5803fa32d9bf727fd40718ee21116e3ec50ec613a12fef27429f"
+      },
+      {
+        "path": "tests-svg-alpha/_wanghongyideMacBook-Pro_2026-10-15_11_14_13_net10.0[1].trx",
+        "bytes": 520910,
+        "sha256": "97749032f344bf67307e47fc6f9fe0f94d9ea2d6d7fa73070fe83b610e47e6ee"
+      },
+      {
+        "path": "tests-svg-alpha.log",
+        "bytes": 9325,
+        "sha256": "c6ec6a03e982506066ef64548d186fd622c6b7e190f0e54f05fc5833dca25a6b"
+      },
+      {
+        "path": "vector-svg-alpha.log",
+        "bytes": 17542,
+        "sha256": "f6c67281d47fd7e189c29ef0eab87b5dab6118300f91ec8898449ec3f4fc5118"
+      }
+    ]
+  },
+  "remoteGates": "Read current PR22 CI and both review bots separately; not asserted by local results.",
+  "archiveReadback": {
+    "payloads": 35,
+    "allVerified": true
+  }
+}
