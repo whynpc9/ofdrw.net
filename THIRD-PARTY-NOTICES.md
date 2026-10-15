@@ -70,3 +70,10 @@ additional third-party notices shipped by their NativeAssets packages; see
 `THIRD-PARTY-NOTICES.txt` in the resolved native package. NativeAssets
 macOS/Win32 are SkiaSharp transitive runtime dependencies. No custom Skia build
 or native bridge is redistributed by this adapter.
+
+## Optional password envelope extension
+
+`Ofdrw.Net.Crypto.Password` directly references `BouncyCastle.Cryptography`
+2.6.2, MIT, source https://github.com/bcgit/bc-csharp/tree/release-2.6.2.
+Its nuspec pins upstream commit `b4f2f6ad76bcd1f11f365ee50cc7447fbce79077`.
+This dependency is not added to Core, Writer or the default Converter metapackage.

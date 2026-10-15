@@ -1,0 +1,29 @@
+{
+  "version": "0.1.0-issue11.review3",
+  "packages": [
+    {
+      "file": "Ofdrw.Net.Core.0.1.0-issue11.review3.nupkg",
+      "bytes": 78679,
+      "sha256": "b922afb8175be7d19ce33244ca28b1a100784142eed9b75113692014a1d8841d",
+      "dependencies": {}
+    },
+    {
+      "file": "Ofdrw.Net.Crypto.Password.0.1.0-issue11.review3.nupkg",
+      "bytes": 48333,
+      "sha256": "3a6b8db878990cfff64fcfca9a559615a4c5e23cd7968214f15291bcaa983c2f",
+      "dependencies": {
+        "Ofdrw.Net.Packaging": "0.1.0-issue11.review3",
+        "BouncyCastle.Cryptography": "2.6.2"
+      }
+    },
+    {
+      "file": "Ofdrw.Net.Packaging.0.1.0-issue11.review3.nupkg",
+      "bytes": 95533,
+      "sha256": "96cf80dca636e7cd8a65d1c0f6aa7ea64b70e3054272f970b2198e8c5546e128",
+      "dependencies": {
+        "Ofdrw.Net.Core": "0.1.0-issue11.review3"
+      }
+    }
+  ],
+  "default_dependencies_unchanged": true
+}

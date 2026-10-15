@@ -348,6 +348,9 @@ Use a specific local package version for E2E:
 scripts/run-converter-package-e2e.sh 0.1.0-preview.local
 ```
 
+## Optional password envelopes
+
+This ticket has validated source and local-feed artifacts and has not published a NuGet package. Explicitly reference `Ofdrw.Net.Crypto.Password` (net8.0) for this package's private profile v2 authenticated self-round-trips with salted, bounded scrypt; v1 is rejected. It is separate from the default Converter dependencies; general GM/T 0099/vendor interoperability, certification, and archival acceptance are not supported. See [the API and limits](docs/password-crypto.md).
 
 ## Notes
 
