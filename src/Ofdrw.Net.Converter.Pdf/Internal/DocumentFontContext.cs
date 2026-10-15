@@ -147,8 +147,7 @@ internal sealed class DocumentFontContext
         {
             try
             {
-                foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
-                    EmbeddedFontCoverage.Validate(value, coverage, resource.FontName);
+                EmbeddedFontCoverage.Validate(text, coverage, resource.FontName);
             }
             catch (System.IO.InvalidDataException) when (resource.Data.Length == 0)
             {
@@ -206,8 +205,7 @@ internal sealed class DocumentFontContext
                 var bytes = (byte[])OpenTypeCollection.SelectNamedFace(_fallbackResolver.GetFont(face.FaceName), face.FaceName, allowSingleFace: true).Clone();
                 var fallbackCmap = new OpenTypeCmap(new OpenTypeFace(bytes));
                 if (fallbackCmap.IsSymbol) throw new NotSupportedException("A Windows symbol cmap cannot cover a Unicode fallback request.");
-                foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
-                    EmbeddedFontCoverage.Validate(value, fallbackCmap, candidate);
+                EmbeddedFontCoverage.Validate(text, fallbackCmap, candidate);
                 var fallbackFamily = PdfFontRegistry.RegisterFontFace(bytes, bold, italic);
                 _fallbackCoverage[fallbackFamily] = fallbackCmap;
                 return fallbackFamily;

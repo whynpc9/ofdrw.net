@@ -10,6 +10,9 @@ using Ofdrw.Net.Reader.Readers;
 if (args.Length != 2) throw new ArgumentException("Usage: output-directory licensed-full-static-Noto.ttf");
 var output = Path.GetFullPath(args[0]); Directory.CreateDirectory(output);
 var font = File.ReadAllBytes(args[1]); using var fixture = new PdfFixture(font);
+// The legacy dual-layer reader retains the PDF's face name rather than its bytes.
+// Bind that fixture name explicitly so re-export does not depend on host fonts.
+PdfFontRegistry.RegisterFont("FixtureFace", font);
 var p1 = "0.91 0.945 0.976 rg 28 490 364 70 re f 0.12 0.365 0.65 rg\n" + fixture.Text("矢量转换票面 / VECTOR TICKET", 42, 532, 17) +
     "0.12 0.17 0.23 rg\n" + fixture.Text("原文与绘制顺序 / Unicode and paint order", 42, 507, 10) +
     fixture.Text("No. 2026-021", 34, 465, 11) + fixture.Text("日期 Date: 2026-10-08", 215, 465, 11) +

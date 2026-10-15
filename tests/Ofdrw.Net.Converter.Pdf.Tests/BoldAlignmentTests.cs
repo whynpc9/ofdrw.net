@@ -71,6 +71,11 @@ public sealed class BoldAlignmentTests
             return pdf.ToArray();
         }
         var baseline = await Convert(false); var actual = await Convert(true);
+        if (separator == "\u202F" && Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
+            await File.WriteAllBytesAsync(Path.Combine(directory, $"positioned-narrow-space-{bold}.pdf"), actual);
+        }
         using var expectedReader = DocLib.Instance.GetDocReader(baseline, new PageDimensions(4d));
         using var actualReader = DocLib.Instance.GetDocReader(actual, new PageDimensions(4d));
         using var expectedPage = expectedReader.GetPageReader(0); using var actualPage = actualReader.GetPageReader(0);
