@@ -144,7 +144,10 @@ public sealed class TextReplacementRealFontTests(Xunit.Abstractions.ITestOutputH
     private static OfdTextElement Text(OfdDocumentPackage package) => (OfdTextElement)package.Pages[0].Elements[0];
     private static async Task<OfdDocumentPackage> Read(byte[] bytes, double advance, string value = "AAA")
     {
-        var package = new OfdDocumentPackage(); package.Fonts.Add(new() { Id = "10", FontName = "OriginalOFL", FileName = "font.ttf", Data = bytes });
+        var package = new OfdDocumentPackage();
+        // The trust profile below authenticates the original full OFL bytes, not a subset.
+        package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
+        package.Fonts.Add(new() { Id = "10", FontName = "OriginalOFL", FileName = "font.ttf", Data = bytes });
         var page = new OfdPage { Id = "1", XMillimeters = 5, YMillimeters = 7, WidthMillimeters = 200, HeightMillimeters = 200 };
         var text = new OfdTextElement { ObjectId = "30", LayerId = "20", FontResourceId = "10", FontName = "OriginalOFL", Text = value,
             XMillimeters = 20, YMillimeters = 30, WidthMillimeters = 100, HeightMillimeters = 50, FontSizeMillimeters = 4 };
