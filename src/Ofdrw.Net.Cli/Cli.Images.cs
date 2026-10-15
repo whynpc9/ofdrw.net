@@ -78,7 +78,7 @@ internal static partial class Cli
             await output.CommitAsync(token).ConfigureAwait(false);
         }
         finally { foreach (var stream in streams) stream.Dispose(); }
-        Console.WriteLine($"Converted {inputs.Count} input(s) -> {destination}");
+        WriteSuccessNotification($"Converted {inputs.Count} input(s) -> {destination}");
         return 0;
     }
 
