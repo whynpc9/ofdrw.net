@@ -1,0 +1,91 @@
+using Ofdrw.Net.Core.Fonts;
+using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Reader.Readers;
+
+namespace Ofdrw.Net.Packaging.Tests;
+
+public sealed class RoadmapIntegrationTests
+{
+    [Theory]
+    [InlineData(" ", false)] [InlineData("\u00a0", false)]
+    [InlineData("\u202f", false)] [InlineData("\u3000", false)]
+    [InlineData(" ", true)] [InlineData("\u00a0", true)]
+    [InlineData("\u202f", true)] [InlineData("\u3000", true)]
+    public async Task UnpositionedMixedWhitespaceRequiresActualFontCoverage(string separator, bool run)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var face = new OpenTypeFace(File.ReadAllBytes(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf")));
+        var cmap = new OpenTypeCmap(face);
+        face.Tables["cmap"] = OpenTypeCmap.Build(new Dictionary<int, int> { ['A'] = cmap.Glyph('A') });
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new() { Id = "10", FontName = "missing-space", Data = face.Build() });
+        var text = new OfdTextElement { FontResourceId = "10", Text = "A" + separator,
+            WidthMillimeters = 40, HeightMillimeters = 10 };
+        if (run) text.Runs.Add(new OfdTextRun { Text = text.Text });
+        package.Pages.Add(new OfdPage { Elements = { text } });
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdPackageWriter().WriteAsync(package, output));
+        Assert.Contains($"U+{(int)separator[0]:X4}", error.Message);
+        Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
+    public async Task SubsettingIncludesTextUsedOnlyByTypedAnnotationAppearance()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var bytes = await File.ReadAllBytesAsync(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf"));
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new() { Id = "10", FontName = "Noto Sans", Data = bytes });
+        var page = new OfdPage(); package.Pages.Add(page);
+        page.Elements.Add(new OfdTextElement { FontResourceId = "10", Text = "A", WidthMillimeters = 30, HeightMillimeters = 10 });
+        page.Annotations = new();
+        var annotation = new OfdAnnotation { Type = OfdAnnotationType.Watermark, Creator = "integration",
+            LastModifiedDate = new DateTime(2026, 10, 15),
+            Appearance = new() { WidthMillimeters = 30, HeightMillimeters = 10 } };
+        annotation.Appearance.Elements.Add(new OfdTextElement { FontResourceId = "10", Text = "Z",
+            WidthMillimeters = 30, HeightMillimeters = 10 });
+        page.Annotations.Items.Add(annotation);
+        using var output = new MemoryStream();
+        var report = await new OfdPackageWriter().WriteWithResultAsync(package, output);
+        Assert.True(Assert.Single(report.FontEmbedding).IsSubset);
+        output.Position = 0; var read = await new OfdReader().ReadAsync(output);
+        var cmap = new OpenTypeCmap(new OpenTypeFace(Assert.Single(read.Fonts).Data));
+        Assert.NotEqual(0, cmap.Glyph('A')); Assert.NotEqual(0, cmap.Glyph('Z'));
+        Assert.Equal("Z", Assert.IsType<OfdTextElement>(read.Pages[0].Annotations!.Items[0].Appearance.Elements[0]).Text);
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void ControlledGuardIncludesNewFontOptionsAndCollectionFace(bool changeFace)
+    {
+        var package = new OfdDocumentPackage(); package.Pages.Add(new());
+        package.Fonts.Add(new() { Id = "10", FontName = "marker", Data = [1, 2, 3] });
+        using var context = new OfdControlledEditContext(new());
+        var guard = context.CaptureSource(package);
+        if (changeFace) package.Fonts[0].CollectionFaceIndex++;
+        else package.Options.FontEmbedding.MaximumUsedScalars--;
+        Assert.Throws<InvalidDataException>(() => guard.AssertUnchanged(package, context));
+    }
+    [Theory]
+    [InlineData(true)] [InlineData(false)]
+    public void OnlyAuthoritativeCmapIsValidatedForLookup(bool hasUnicode12)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var face = new OpenTypeFace(File.ReadAllBytes(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf")));
+        var original = new OpenTypeCmap(face); var glyph = original.Glyph('A');
+        var table = OpenTypeCmap.Build(new Dictionary<int, int> { ['A'] = glyph });
+        var offset = (int)OpenTypeFace.U32(table, 8); var count = OpenTypeFace.U16(table, offset + 6) / 2;
+        OpenTypeFace.Put16(table, offset + 16 + count * 2, 'B'); // start exceeds end in legacy table
+        if (!hasUnicode12) OpenTypeFace.Put16(table, 2, 1);
+        face.Tables["cmap"] = table;
+        if (hasUnicode12) Assert.Equal(glyph, new OpenTypeCmap(face).Glyph('A'));
+        else Assert.Throws<InvalidDataException>(() => new OpenTypeCmap(face));
+    }
+
+}

@@ -40,8 +40,18 @@ if [[ "$CONSUME_ONLY" == false ]]; then
   dotnet restore "$ROOT_DIR/Ofdrw.Net.sln" "${BUILD_FLAGS[@]}"
   dotnet build "$ROOT_DIR/Ofdrw.Net.sln" -c Release --no-restore \
     -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
-  dotnet pack "$ROOT_DIR/Ofdrw.Net.sln" -c Release --no-build --no-restore -o "$OUT_DIR" \
-    -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+  # The default converter/tool feed is deliberately the validator's original
+  # product set. Optional extensions have independent consumption gates.
+  python3 - "$ROOT_DIR/scripts" > "$TASK_DIR/default-products.txt" <<'PY_PACKAGES'
+import sys
+sys.path.insert(0, sys.argv[1])
+from importlib import import_module
+print('\n'.join(import_module('verify-package-artifacts').PACKAGES))
+PY_PACKAGES
+  while IFS= read -r product; do
+    dotnet pack "$ROOT_DIR/src/$product/$product.csproj" -c Release --no-build --no-restore -o "$OUT_DIR" \
+      -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+  done < "$TASK_DIR/default-products.txt"
 fi
 python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION"
 
@@ -72,8 +82,18 @@ dotnet build "$CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSIO
 dotnet tool install Ofdrw.Net.Cli --tool-path "$TASK_DIR/tools" --version "$VERSION" --configfile "$TASK_DIR/NuGet.Config"
 "$TASK_DIR/tools/ofdrw" docx-to-ofd \
   "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx" "$RESULT_DIR/cli-native.ofd"
+"$TASK_DIR/tools/ofdrw" ofd-to-image "$RESULT_DIR/cli-native.ofd" "$RESULT_DIR/cli-image.png" --pages 1 --ppm 2
+"$TASK_DIR/tools/ofdrw" image-to-ofd "$RESULT_DIR/cli-image.png" "$RESULT_DIR/cli-image.ofd" --ppm 2 --page-width 220 --page-height 307
 OFDRW_REPO_ROOT="$ROOT_DIR" OFDRW_E2E_OUTPUT_DIR="$RESULT_DIR" dotnet run \
   --project "$CONSUMER" -c Release --no-build --no-restore
-python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION" --verify-manifest
+# Exercise the production subset backend from the newly packed SDK as well.
+mkdir -p "$TASK_DIR/font-consumer"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.FontSubset.E2E/Program.cs" "$TASK_DIR/font-consumer/Program.cs"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj" "$TASK_DIR/font-consumer/Consumer.csproj"
+FONT_CONSUMER="$TASK_DIR/font-consumer/Consumer.csproj"
+dotnet restore "$FONT_CONSUMER" --configfile "$TASK_DIR/NuGet.Config" -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+dotnet build "$FONT_CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+dotnet run --project "$FONT_CONSUMER" -c Release --no-build --no-restore -- "$ROOT_DIR" "$RESULT_DIR/font-subset"
+NUGET_PACKAGES="$SOURCE_CACHE" python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION" --verify-manifest
 cp "$OUT_DIR/package-manifest.json" "$RESULT_DIR/package-manifest.json"
 echo "[E2E] Verified package bytes and output: $RESULT_DIR"

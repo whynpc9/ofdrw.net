@@ -2,13 +2,18 @@ name: CI
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "master", "codex/document-tools"]
   pull_request:
-    branches: ["main", "master"]
+    branches: ["main", "master", "codex/**"]
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
+      NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
 
     steps:
       - name: Checkout
@@ -20,7 +25,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Install document conversion dependencies
-        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils
+        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils zstd
 
       - uses: actions/setup-python@v5
         with:
@@ -32,27 +37,46 @@ jobs:
           python scripts/install-ci-fonts.py
 
       - name: Restore
-        run: dotnet restore Ofdrw.Net.sln
+        run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Check release notices
+        run: python3 scripts/verify-package-artifacts.py --notices-only
 
       - name: Test package artifact validation
         run: python3 -m unittest discover -s scripts/tests -v
 
+      - name: Verify retained public table acceptance evidence
+        run: python3 scripts/verify-public-table-evidence.py
+
       - name: Build
-        run: dotnet build Ofdrw.Net.sln -c Release --no-restore
+        run: dotnet build Ofdrw.Net.sln -c Release --no-restore --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Reject new undocumented public API
+        run: python3 scripts/check-public-api-docs.py
 
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Run mandatory original-font geometry and replacement tests without skips
+        run: python3 scripts/run-trusted-font-tests.py --results-directory artifacts/trusted-font-tests
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: artifacts/test-results
+          path: |
+            artifacts/test-results
+            artifacts/trusted-font-tests
 
   builtin-docx:
     name: BuiltIn DOCX (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
+      NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -79,6 +103,12 @@ jobs:
           python -m pip install fonttools==4.59.2
           python scripts/install-ci-fonts.py
 
+      - name: Test image API on each platform
+        run: dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj -c Release --filter "FullyQualifiedName~ImageIoTests|FullyQualifiedName~ImageDocumentToolsIntegrationTests|FullyQualifiedName~ImageMainIntegrationTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Test image CLI on each platform
+        run: dotnet test tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj -c Release --filter "FullyQualifiedName~ImageCommandTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
       - name: Test BuiltIn without office applications
         run: dotnet test tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~BuiltIn|FullyQualifiedName~Auto|FullyQualifiedName~Native|FullyQualifiedName~DualLayer" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
@@ -96,6 +126,11 @@ jobs:
 
   package-e2e:
     runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
+      NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     needs: [build-test, builtin-docx]
 
     steps:
@@ -122,9 +157,88 @@ jobs:
       - name: Run package E2E
         run: ./scripts/run-converter-package-e2e.sh
 
+      - name: Run document tool API and CLI matrix
+        run: |
+          mkdir -p artifacts/document-tools-fonts
+          cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/document-tools-fonts/
+          ./scripts/run-document-tools-e2e.sh artifacts/document-tools-e2e
+
+      - name: Run native graphics matrix
+        run: |
+          mkdir -p artifacts/graphics-fonts
+          cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/graphics-fonts/
+          ./scripts/run-graphics-e2e.sh artifacts/graphics/current
+
+      - name: Consume optional Skia event adapter from exact local packages
+        run: ./scripts/run-skia-package-e2e.sh 0.1.0-preview.8 artifacts/package-e2e/0.1.0-preview.8/packages artifacts/skia/package-e2e
+
+      - name: Consume optional PDF vector converter from exact local packages
+        run: ./scripts/run-pdf-vector-package-e2e.sh 0.1.0-preview.8 artifacts/package-e2e/0.1.0-preview.8/packages artifacts/pdf-vectors/package-e2e
+
+      - name: Upload PDF vector same-source and fallback comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-vector-pages
+          path: artifacts/pdf-vectors/package-e2e
+
+      - name: Upload Skia adapter comparison pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skia-adapter-pages
+          path: artifacts/skia/package-e2e
+
+      - name: Upload native graphics pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-graphics-pages
+          path: artifacts/graphics/current
+
+      - name: Upload document tool matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: document-tools-pages
+          path: artifacts/document-tools-e2e
+
       - name: Upload package manifests and rendered pages
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: package-e2e-pages
           path: artifacts/package-e2e
+
+  password-crypto:
+    name: Optional password crypto (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Password vectors, atomic failure and selected-entry recovery
+        run: dotnet test tests/Ofdrw.Net.Crypto.Password.Tests/Ofdrw.Net.Crypto.Password.Tests.csproj -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+      - uses: actions/setup-python@v5
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          python-version: "3.12"
+      - name: Generate native/default password fixtures and consume actual optional package
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m pip install fonttools==4.59.2
+          python scripts/install-ci-fonts.py --directory artifacts/password-crypto/fonts
+          export DOTNET_CLI_HOME="$RUNNER_TEMP/password-crypto-dotnet-home" DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_CLI_TELEMETRY_OPTOUT=1
+          dotnet build e2e/Ofdrw.Net.Crypto.Password.E2E/Ofdrw.Net.Crypto.Password.E2E.csproj -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+          dotnet e2e/Ofdrw.Net.Crypto.Password.E2E/bin/Release/net10.0/Ofdrw.Net.Crypto.Password.E2E.dll "$PWD" "$PWD/artifacts/password-crypto/current" "$PWD/artifacts/password-crypto/fonts"
+          ./scripts/run-password-crypto-e2e.sh
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.os == 'ubuntu-latest'
+        with:
+          name: password-crypto-evidence
+          path: artifacts/password-crypto

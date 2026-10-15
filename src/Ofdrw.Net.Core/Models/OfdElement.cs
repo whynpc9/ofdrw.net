@@ -5,11 +5,16 @@ public enum OfdElementType
     Text,
     Image,
     Path,
-    Raw
+    Raw,
+    /// <summary>Placement of a shared composite vector resource.</summary>
+    Composite
 }
 
 public abstract class OfdElement
 {
+    internal OfdClipOwnership ClipOwnership { get; } = new();
+    /// <summary>Typed path clips. Null preserves an unclaimed source; an empty collection clears known clips.</summary>
+    public OfdClipCollection? Clips { get => ClipOwnership.Value; set => ClipOwnership.Set(value); }
     public OfdElementType Type { get; protected set; }
 
     public string? ObjectId { get; set; }
@@ -17,6 +22,9 @@ public abstract class OfdElement
     public string? LayerId { get; set; }
 
     public string LayerType { get; set; } = "Body";
+
+    /// <summary>OFD Clips XML in object coordinates, applied before the object's CTM. Text/path null preserves source XML; empty clears it. Image ClipsXml remains authoritative.</summary>
+    public string? ClippingXml { get; set; }
 
     public double XMillimeters { get; set; }
 
@@ -104,7 +112,7 @@ public sealed class OfdImageElement : OfdElement
     public int Alpha { get; set; } = 255;
 
     /// <summary>Optional OFD Clips XML in object coordinates.</summary>
-    public string? ClipsXml { get; set; }
+    public string? ClipsXml { get => ClippingXml; set => ClippingXml = value; }
 
     /// <summary>
     /// Complete source XML retained to preserve transforms, clipping, alpha and
@@ -119,6 +127,8 @@ public sealed class OfdImageElement : OfdElement
 /// </summary>
 public sealed class OfdPathElement : OfdElement
 {
+    /// <summary>Null preserves a source Rule; newly constructed paths default to NonZero.</summary>
+    public OfdFillRule? FillRule { get; set; }
     public OfdPathElement()
     {
         Type = OfdElementType.Path;

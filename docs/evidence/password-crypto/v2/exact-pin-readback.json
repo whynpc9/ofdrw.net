@@ -1,0 +1,74 @@
+{
+  "scope": "Exact NuGet dependency range plus actual-package assertion and public contract clarification; no C# implementation change",
+  "required_backend_range": "[2.6.2]",
+  "actual_resolved_backend": "2.6.2",
+  "version": "0.1.0-issue11.v2pin",
+  "package": {
+    "file": "Ofdrw.Net.Crypto.Password.0.1.0-issue11.v2pin.nupkg",
+    "bytes": 56518,
+    "sha256": "6b08a5c033933df64ea6bad9856159d9cd77f4b8a15d122a986de0557212bfe4",
+    "dependencies": {
+      "Ofdrw.Net.Packaging": "0.1.0-issue11.v2pin",
+      "BouncyCastle.Cryptography": "[2.6.2]"
+    }
+  },
+  "actual_consumer_passed": true,
+  "readme_matches_current_contract": true,
+  "runtime_body_commit": "d4eb787585c0a13a992c1ca2c6cefe5ed5e0cbdf",
+  "runtime_body_hashes": {
+    "src/Ofdrw.Net.Crypto.Password/Internal/OwnedBuffers.cs": "d24473c184c4045f0827eb5544d220c03275d97ac47fa6dc1a0d31023bd46100",
+    "src/Ofdrw.Net.Crypto.Password/Internal/PasswordPrimitives.cs": "f31c00efeb9d031667589699d7c70aeea4a96fb997bebedcbcb2e8657e82328a",
+    "src/Ofdrw.Net.Crypto.Password/OfdPasswordEnvelope.cs": "2c7e4124be1e78fb84019b55c33351ae1d2fdb04c4710a8224f95660cb111c4d",
+    "src/Ofdrw.Net.Crypto.Password/OfdPasswordOptions.cs": "c774ea4f1757e6e7ad436b331e727687582eafc06e5b8fc3cfe52c402d3902e0",
+    "src/Ofdrw.Net.Core/IO/OfdPackagePath.cs": "e3bc1b834869e0d3f3c87c8cef6c4426fba2a4b786155c8fcd0a681b011ccf0e"
+  },
+  "original_v2main_Preview_artifacts_regenerated": false,
+  "functional": {
+    "native-partial": {
+      "original_entries": 8,
+      "profile": 2,
+      "salt_bytes": 32,
+      "recovered_entry_bytes_equal": true,
+      "wrong_password_atomic": true,
+      "pre_cancel_atomic": true,
+      "tag_cost_v1_rejected_atomically": true
+    },
+    "native-all": {
+      "original_entries": 8,
+      "profile": 2,
+      "salt_bytes": 32,
+      "recovered_entry_bytes_equal": true,
+      "wrong_password_atomic": true,
+      "pre_cancel_atomic": true,
+      "tag_cost_v1_rejected_atomically": true
+    },
+    "default-partial": {
+      "original_entries": 8,
+      "profile": 2,
+      "salt_bytes": 32,
+      "recovered_entry_bytes_equal": true,
+      "wrong_password_atomic": true,
+      "pre_cancel_atomic": true,
+      "tag_cost_v1_rejected_atomically": true
+    },
+    "default-all": {
+      "original_entries": 8,
+      "profile": 2,
+      "salt_bytes": 32,
+      "recovered_entry_bytes_equal": true,
+      "wrong_password_atomic": true,
+      "pre_cancel_atomic": true,
+      "tag_cost_v1_rejected_atomically": true
+    },
+    "same-options-input-budget": {
+      "rejected_before_publication": true,
+      "preserved_output": true,
+      "input_budget": 11602919
+    },
+    "raw-zip-names": {
+      "cases": 3,
+      "rejected_before_publication": true,
+      "preserved_output": true
+    }
+  }
+}

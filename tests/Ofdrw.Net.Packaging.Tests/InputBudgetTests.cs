@@ -64,6 +64,19 @@ public class InputBudgetTests
         Assert.True(input.CanRead);
     }
 
+    [Theory]
+    [InlineData(true, 0)]
+    [InlineData(true, -1)]
+    [InlineData(false, 0)]
+    [InlineData(false, -1)]
+    public async Task Loader_RejectsNonpositiveCumulativeAnnotationLimits(bool objects, long limit)
+    {
+        using var input = CreateZip(); var options = new OfdPackageLoadOptions();
+        if (objects) options.MaxAnnotationObjectCount = (int)limit; else options.MaxAnnotationXmlBytes = limit;
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => new OfdPackageLoader().LoadAsync(input, options));
+        Assert.Equal(0, input.Position);
+    }
+
     private static MemoryStream CreateZip()
     {
         var stream = new MemoryStream();

@@ -1,0 +1,7 @@
+{
+  "frozen_commit": "d4eb787585c0a13a992c1ca2c6cefe5ed5e0cbdf",
+  "phase": "after-all-independent-tests-and-package-consumers",
+  "selected_tracked_paths": 531,
+  "copy_matches_frozen_blobs": true,
+  "mismatches": []
+}
