@@ -26,7 +26,7 @@ public sealed class TextReplacementCommitNotificationTests
         {
             var font = await File.ReadAllBytesAsync(FontFixture());
             var input = Path.Combine(directory, "input.ofd"); var output = Path.Combine(directory, "output.ofd");
-            var package = new OfdDocumentPackage();
+            var package = new OfdDocumentPackage(); package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
             package.Fonts.Add(new() { Id = "10", FontName = "Ofdrw Test Face", Data = font });
             var page = new OfdPage { Id = "1", WidthMillimeters = 200, HeightMillimeters = 200 };
             var text = new OfdTextElement { ObjectId = "30", LayerId = "20", FontResourceId = "10", FontName = "Ofdrw Test Face",
@@ -276,7 +276,7 @@ public sealed class TextReplacementCommitNotificationTests
 
     private static async Task WriteCaseFixtureAsync(string input, byte[] font)
     {
-        var package = new OfdDocumentPackage(); package.Fonts.Add(new() { Id = "10", FontName = "Ofdrw Test Face", Data = font });
+        var package = new OfdDocumentPackage(); package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full; package.Fonts.Add(new() { Id = "10", FontName = "Ofdrw Test Face", Data = font });
         var page = new OfdPage { Id = "1", WidthMillimeters = 200, HeightMillimeters = 200 };
         foreach (var (id, value, y) in new[] { ("30", "AAA", 30d), ("31", "A", 85d) })
         {

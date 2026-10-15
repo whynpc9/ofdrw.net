@@ -5,28 +5,44 @@ using System.Threading;
 
 namespace Ofdrw.Net.Core.Models;
 
-public enum OfdFillRule { NonZero, EvenOdd }
+/// <summary>Fill rule applied to typed path geometry.</summary>
+public enum OfdFillRule
+{
+    /// <summary>Nonzero winding fill rule.</summary>
+    NonZero,
+    /// <summary>Even-odd parity fill rule.</summary>
+    EvenOdd,
+}
 
 /// <summary>Successive clips intersect. Areas within one clip form a union.</summary>
 public sealed class OfdClipCollection
 {
+    /// <summary>Ordered typed definitions; retained imported owners preserve their source order.</summary>
     public List<OfdClip> Items { get; } = [];
+    /// <summary>Original Reader-owned XML, retained for extension and ownership checks.</summary>
     public string? SourceXml { get; internal set; }
 }
 
+/// <summary>A single clipping operation; successive clips intersect.</summary>
 public sealed class OfdClip
 {
+    /// <summary>Areas forming this clip; export currently requires one filled Path Area per Clip.</summary>
     public List<OfdClipArea> Areas { get; } = [];
+    /// <summary>Original Reader-owned XML, retained for extension and ownership checks.</summary>
     public string? SourceXml { get; internal set; }
     internal int SourceSlot { get; set; } = -1;
 }
 
+/// <summary>A transformed path area inside one clipping operation.</summary>
 public sealed class OfdClipArea
 {
     internal OfdPathElement? OriginalPath;
     internal string? OriginalPathXml;
+    /// <summary>Optional six-component affine transform [a,b,c,d,e,f] in local millimeter coordinates.</summary>
     public double[]? Transform { get; set; }
+    /// <summary>Filled local path defining this clipping area.</summary>
     public OfdPathElement Path { get; set; } = new() { Stroke = false, Fill = true };
+    /// <summary>Original Reader-owned XML, retained for extension and ownership checks.</summary>
     public string? SourceXml { get; internal set; }
     internal int SourceSlot { get; set; } = -1;
 }

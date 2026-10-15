@@ -1,5 +1,12 @@
 [
   {
+    "id": "BouncyCastle.Cryptography",
+    "version": "2.6.2",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://www.bouncycastle.org/stable/nuget/csharp/website"
+  },
+  {
     "id": "Docnet.Core",
     "version": "2.6.0",
     "license_type": "expression",
@@ -106,6 +113,34 @@
     "source": "https://github.com/SixLabors/ImageSharp"
   },
   {
+    "id": "SkiaSharp",
+    "version": "3.119.1",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://go.microsoft.com/fwlink/?linkid=868515"
+  },
+  {
+    "id": "SkiaSharp.NativeAssets.Win32",
+    "version": "3.119.1",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://go.microsoft.com/fwlink/?linkid=868515"
+  },
+  {
+    "id": "SkiaSharp.NativeAssets.macOS",
+    "version": "3.119.1",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://go.microsoft.com/fwlink/?linkid=868515"
+  },
+  {
+    "id": "System.Buffers",
+    "version": "4.5.1",
+    "license_type": "legacy-url",
+    "license": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
+    "source": "https://dot.net/"
+  },
+  {
     "id": "System.Buffers",
     "version": "4.6.0",
     "license_type": "expression",
@@ -128,6 +163,13 @@
   },
   {
     "id": "System.Memory",
+    "version": "4.5.5",
+    "license_type": "legacy-url",
+    "license": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
+    "source": "https://dot.net/"
+  },
+  {
+    "id": "System.Memory",
     "version": "4.6.0",
     "license_type": "expression",
     "license": "MIT",
@@ -135,10 +177,24 @@
   },
   {
     "id": "System.Numerics.Vectors",
+    "version": "4.4.0",
+    "license_type": "legacy-url",
+    "license": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
+    "source": "https://dot.net/"
+  },
+  {
+    "id": "System.Numerics.Vectors",
     "version": "4.6.0",
     "license_type": "expression",
     "license": "MIT",
     "source": "https://github.com/dotnet/maintenance-packages"
+  },
+  {
+    "id": "System.Runtime.CompilerServices.Unsafe",
+    "version": "4.5.3",
+    "license_type": "legacy-url",
+    "license": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
+    "source": "https://dot.net/"
   },
   {
     "id": "System.Runtime.CompilerServices.Unsafe",

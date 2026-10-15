@@ -211,6 +211,7 @@ public sealed class TextReplacementTests
     }
     internal static async Task<OfdDocumentPackage> Roundtrip(OfdDocumentPackage package)
     {
+        package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full; // Opaque test font payloads.
         using var stream = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, stream); stream.Position = 0;
         return await new OfdReader().ReadAsync(stream);
     }

@@ -61,7 +61,19 @@ public sealed class OfdBookmark : IOfdNavigationNode
 }
 
 /// <summary>How a reader aligns the destination page.</summary>
-public enum OfdDestinationType { XYZ, Fit, FitH, FitV, FitR }
+public enum OfdDestinationType
+{
+    /// <summary>Position and optional zoom destination.</summary>
+    XYZ,
+    /// <summary>Fit the complete page.</summary>
+    Fit,
+    /// <summary>Fit page width at a vertical position.</summary>
+    FitH,
+    /// <summary>Fit page height at a horizontal position.</summary>
+    FitV,
+    /// <summary>Fit the specified page rectangle.</summary>
+    FitR,
+}
 
 /// <summary>An OFD page destination. Coordinates are millimeters.</summary>
 public sealed class OfdDestination : IOfdNavigationNode

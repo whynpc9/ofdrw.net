@@ -16,7 +16,7 @@ public sealed class GraphicsEmphasisAndNumberTests
     private static readonly XName Marker = XName.Get("FauxItalicMatrixV1", "https://ofdrw.net/style-hints");
     private static (OfdDocumentPackage Package, OfdGraphics Graphics) Create()
     {
-        var package = new OfdDocumentPackage();
+        var package = new OfdDocumentPackage(); package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
         var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
         package.Pages.Add(page);
         return (package, new OfdGraphics(package, page));
@@ -126,7 +126,7 @@ public sealed class GraphicsEmphasisAndNumberTests
     {
         static (OfdDocumentPackage Package, OfdPage Page, OfdGraphics Graphics) Limited()
         {
-            var package = new OfdDocumentPackage();
+            var package = new OfdDocumentPackage(); package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
             var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
             package.Pages.Add(page);
             var graphics = new OfdGraphics(package, page,

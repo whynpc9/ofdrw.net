@@ -18,11 +18,17 @@ public sealed class OfdTextReplacementResult : IDisposable
         RequestedCount = observations.Length; ChangedCount = observations.Count(value => value.Changed);
         Diagnostics = Array.AsReadOnly(Array.Empty<OfdTextReplacementDiagnostic>()); Statistics = operation.Snapshot();
     }
+    /// <summary>Whether at least one requested logical string differs from its original text.</summary>
     public bool Changed => ChangedCount != 0;
+    /// <summary>Number of authenticated requests in the prepared batch.</summary>
     public int RequestedCount { get; }
+    /// <summary>Number of requests whose logical text changes.</summary>
     public int ChangedCount { get; }
+    /// <summary>Copied immutable observations; these retain no source package or live hit.</summary>
     public IReadOnlyList<OfdTextReplacementObservation> Replacements { get; }
+    /// <summary>Bounded notices produced during replacement preparation.</summary>
     public IReadOnlyList<OfdTextReplacementDiagnostic> Diagnostics { get; }
+    /// <summary>Preparation counters; subsequent independent saves have their own budgets.</summary>
     public OfdTextReplacementStatistics Statistics { get; }
     /// <summary>Consumes this result once and transfers its independent package without a second changed-package clone.</summary>
     public OfdDocumentPackage CreatePackageCopy(CancellationToken cancellationToken = default)
@@ -48,6 +54,7 @@ public sealed class OfdTextReplacementResult : IDisposable
             state = 2;
         }
     }
+    /// <summary>Releases an abandoned prepared operation; disposal during active consumption is rejected.</summary>
     public void Dispose()
     {
         lock (sync)

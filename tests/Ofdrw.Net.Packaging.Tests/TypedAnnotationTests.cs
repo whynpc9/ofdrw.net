@@ -188,6 +188,7 @@ public sealed class TypedAnnotationTests
     public async Task AnnotationOnlyImageAndEmbeddedFontResourcesSurviveReadback(string documentNamespace)
     {
         var source = Fresh(); source.Options.Namespace = documentNamespace;
+        source.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full; // Opaque marker font, not a subset fixture.
         source.Fonts.Add(new OfdFontResource { Id = "100", FontName = "test", Data = [1, 2, 3], FileName = "font.ttf" });
         ((OfdTextElement)source.Pages[0].Annotations!.Items[0].Appearance.Elements[0]).FontResourceId = "100";
         var image = new OfdImageElement { Data = [1, 2, 3, 4], WidthMillimeters = 15, HeightMillimeters = 15, FileName = "sample.png", MediaType = "image/png" };

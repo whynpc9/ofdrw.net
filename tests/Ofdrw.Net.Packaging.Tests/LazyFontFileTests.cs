@@ -47,7 +47,8 @@ public sealed class LazyFontFileTests
     public void MissingLiteralKeepsExactContentHashFilename(string inputExtension, string outputExtension)
     {
         var bytes = new byte[] { 1, 2, 3, 4 };
-        var source = new OfdDocumentPackage();
+        var source = new OfdDocumentPackage(); source.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full; // Opaque fixture payloads.
+
         var (entries, material, catalog) = Catalog(source);
         var font = new OfdFontResource { Id = "1", FontName = "fixture", FileName = "font" + inputExtension, Data = bytes };
         catalog.PlanFont(font.Id, font, ResourcePath, Ns);
@@ -128,7 +129,8 @@ public sealed class LazyFontFileTests
     private static async Task<(OfdDocumentPackage Source, byte[] Bytes, string Literal, string PayloadPath)> Imported(Action<XElement> change, bool twoFonts = false)
     {
         var bytes = new byte[4096]; bytes[0] = 1; bytes[100] = 7;
-        var source = new OfdDocumentPackage(); source.Pages.Add(new OfdPage());
+        var source = new OfdDocumentPackage(); source.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full; // Opaque fixture payloads.
+        source.Pages.Add(new OfdPage());
         source.Fonts.Add(new OfdFontResource { Id = "100", FontName = "fixture", Data = bytes });
         if (twoFonts) source.Fonts.Add(new OfdFontResource { Id = "101", FontName = "second", Data = bytes });
         using var written = new MemoryStream(); await new OfdPackageWriter().WriteAsync(source, written); written.Position = 0;

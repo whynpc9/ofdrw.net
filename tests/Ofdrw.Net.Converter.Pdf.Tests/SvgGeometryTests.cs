@@ -1,3 +1,4 @@
+using OfdFillRule = Ofdrw.Net.Layout.Graphics.OfdFillRule;
 using System.Globalization;
 using System.Xml.Linq;
 using Ofdrw.Net.Converter.Svg.Converters;
