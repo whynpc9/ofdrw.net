@@ -18,10 +18,16 @@ internal static class EmbeddedFontCoverage
     }
 
     internal static void Validate(OfdTextElement text, OpenTypeCmap cmap, string name, CancellationToken cancellationToken = default)
+        => Validate(text, cmap, name, cancellationToken, null);
+
+    // Per-operation test seam: observe completed scalar validation without a
+    // global hook, asynchronous timing, or changing the existing entry point.
+    internal static void Validate(OfdTextElement text, OpenTypeCmap cmap, string name,
+        CancellationToken cancellationToken, System.Action<int>? scalarValidated)
     {
         if (text.Runs.Count == 0)
         {
-            Validate(text.Text, cmap, name, cancellationToken, OfdTextGeometry.IsWhiteSpace(text.Text, cancellationToken));
+            Validate(text.Text, cmap, name, cancellationToken, OfdTextGeometry.IsWhiteSpace(text.Text, cancellationToken), scalarValidated);
             return;
         }
         foreach (var run in text.Runs)
@@ -33,8 +39,8 @@ internal static class EmbeddedFontCoverage
             // A mixed unpositioned run must resolve a real covering font.
             if (positioned)
                 foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
-                    Validate(glyph, cmap, name, cancellationToken, OfdTextGeometry.IsWhiteSpace(glyph, cancellationToken));
-            else Validate(run.Text, cmap, name, cancellationToken, OfdTextGeometry.IsWhiteSpace(run.Text, cancellationToken));
+                    Validate(glyph, cmap, name, cancellationToken, OfdTextGeometry.IsWhiteSpace(glyph, cancellationToken), scalarValidated);
+            else Validate(run.Text, cmap, name, cancellationToken, OfdTextGeometry.IsWhiteSpace(run.Text, cancellationToken), scalarValidated);
         }
     }
 
@@ -42,6 +48,10 @@ internal static class EmbeddedFontCoverage
         => Validate(text, cmap, name, cancellationToken, false);
 
     private static void Validate(string text, OpenTypeCmap cmap, string name, CancellationToken cancellationToken, bool blankGlyph)
+        => Validate(text, cmap, name, cancellationToken, blankGlyph, null);
+
+    private static void Validate(string text, OpenTypeCmap cmap, string name, CancellationToken cancellationToken,
+        bool blankGlyph, System.Action<int>? scalarValidated)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var previous = -1;
@@ -56,6 +66,7 @@ internal static class EmbeddedFontCoverage
             else if (scalar != 9 && scalar != 10 && scalar != 13 && !(blankGlyph && scalar <= 0xFFFF && char.IsWhiteSpace((char)scalar)) && !UnicodeFontSubsetProfile.IsNonRenderingControl(scalar) && cmap.Glyph(scalar) == 0)
                 throw new InvalidDataException($"Font '{name}' lacks U+{scalar:X4}; bind a configured fallback font before writing.");
             previous = scalar;
+            scalarValidated?.Invoke(scalar);
         }
     }
 }

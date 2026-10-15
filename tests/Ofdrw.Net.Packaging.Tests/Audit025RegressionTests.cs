@@ -81,6 +81,23 @@ public sealed class Audit025RegressionTests
         Assert.Throws<OperationCanceledException>(() => EmbeddedFontCoverage.Validate(Element(new string('A', 8192)), Coverage.Value, "cancel", source.Token));
     }
 
+    [Fact]
+    public void Audit025_ElementNoDeltaMidScanCancellation()
+    {
+        using var source = new CancellationTokenSource();
+        var text = Element(new string('A', 4096)); var completedScalars = 0;
+        Assert.Throws<OperationCanceledException>(() => EmbeddedFontCoverage.Validate(text, Coverage.Value,
+            "element-mid-scan", source.Token, scalar =>
+            {
+                Assert.Equal('A', scalar);
+                completedScalars++;
+                source.Cancel();
+            }));
+        // The actual element overload reached coverage, validated one scalar,
+        // then observed cancellation before completing another scalar.
+        Assert.Equal(1, completedScalars);
+    }
+
     private static string FontPath()
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
