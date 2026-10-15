@@ -34,7 +34,7 @@ public sealed class OfdToSvgConverter
 
     /// <summary>Creates an SVG exporter with a finite cumulative cmap parse budget.</summary>
     /// <param name="loadOptions">OFD loading limits.</param>
-    /// <param name="maximumCmapParseWork">Positive maximum bytes and records processed while parsing cmap tables.</param>
+    /// <param name="maximumCmapParseWork">Positive cumulative limit for cmap bytes, parsed records and entries inspected by variation coverage queries.</param>
     public OfdToSvgConverter(OfdPackageLoadOptions loadOptions, long maximumCmapParseWork)
     {
         if (maximumCmapParseWork <= 0) throw new ArgumentOutOfRangeException(nameof(maximumCmapParseWork));

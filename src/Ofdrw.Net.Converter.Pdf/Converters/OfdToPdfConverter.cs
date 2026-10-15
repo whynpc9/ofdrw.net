@@ -34,7 +34,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
     /// <summary>Creates an exporter with a cumulative finite cmap budget shared by document, fallback and signature fonts.</summary>
     /// <param name="options">PDF conversion options.</param>
-    /// <param name="maximumCmapParseWork">Positive maximum bytes and records processed while parsing cmap tables.</param>
+    /// <param name="maximumCmapParseWork">Positive cumulative limit for cmap bytes, parsed records and entries inspected by variation coverage queries.</param>
     public OfdToPdfConverter(OfdToPdfOptions options, long maximumCmapParseWork)
     {
         if (maximumCmapParseWork <= 0) throw new ArgumentOutOfRangeException(nameof(maximumCmapParseWork));

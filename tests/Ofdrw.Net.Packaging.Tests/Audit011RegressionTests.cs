@@ -113,6 +113,23 @@ public sealed class Audit011RegressionTests
         Assert.Equal(1, new OpenTypeCmap(new OpenTypeFace(saved.Fonts[0].Data)).Glyph('A'));
     }
 
+    [Fact]
+    public async Task Audit011_MergePreservesNondefaultCmapLimitAndWriterEnforcesIt()
+    {
+        var first = Package(Face(Aliases(1)).Build());
+        first.Options.FontEmbedding.MaximumCmapParseWork = 29;
+        var second = new OfdDocumentPackage(); second.Pages.Add(new OfdPage());
+        second.Options.FontEmbedding.MaximumCmapParseWork = 1000;
+        var merged = Ofdrw.Net.Layout.Editing.OfdDocumentMerger.Merge(new[] { first, second });
+        Assert.Equal(29, merged.Options.FontEmbedding.MaximumCmapParseWork);
+        Assert.NotSame(first.Options.FontEmbedding, merged.Options.FontEmbedding);
+        using var output = new MemoryStream();
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdPackageWriter().WriteAsync(merged, output));
+        Assert.Contains("MaximumCmapParseWork", failure.Message); Assert.Equal(0, output.Length);
+        merged.Options.FontEmbedding.MaximumCmapParseWork = 1000;
+        Assert.Equal(29, first.Options.FontEmbedding.MaximumCmapParseWork);
+    }
+
     private static OfdDocumentPackage Package(byte[] bytes)
     {
         var package = new OfdDocumentPackage();
