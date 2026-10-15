@@ -87,6 +87,8 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 
 ## 相关文档
 
+- [SES V1/V4 dev/interop 测试容器](16-ses-dev-interop.md)：独立可选包，显式测试自签自验及其边界
+
 - [功能对照](../feature-parity.md)：本仓库已支持什么
 - [公开流式表格 API](../public-tables.md)：用 Table/Row/Cell 生成有限跨页表格
 - [公开流式布局 API](../flow-layout.md)：用 Paragraph/Span 生成多页 OFD
