@@ -12,6 +12,7 @@ using Ofdrw.Net.Converter.Docx.Internal;
 using Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Processes;
+using UglyToad.PdfPig;
 
 namespace Ofdrw.Net.Converter.Docx.Converters;
 
@@ -26,6 +27,7 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
     private readonly DocxConversionOptions _options;
     private readonly Func<bool> _canUseMicrosoftWord;
     private readonly Func<bool> _canUseLibreOffice;
+    private readonly Func<DocxConversionEngine, string, CancellationToken, Task<IReadOnlyList<DocxConversionDiagnostic>>>? _renderCandidate;
 
     /// <summary>
     /// Initializes a converter with default options.
@@ -59,9 +61,11 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
     internal DocxToPdfConverter(
         DocxConversionOptions options,
         Func<bool> canUseMicrosoftWord,
-        Func<bool> canUseLibreOffice)
+        Func<bool> canUseLibreOffice,
+        Func<DocxConversionEngine, string, CancellationToken, Task<IReadOnlyList<DocxConversionDiagnostic>>>? renderCandidate = null)
         : this(options)
     {
+        _renderCandidate = renderCandidate;
         _canUseMicrosoftWord = canUseMicrosoftWord ??
             throw new ArgumentNullException(nameof(canUseMicrosoftWord));
         _canUseLibreOffice = canUseLibreOffice ??
@@ -110,6 +114,9 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         var diagnostics = new List<DocxConversionDiagnostic>();
         var attempted = new List<DocxConversionEngine>();
         Exception? lastFailure = null;
+        string? selectedOutputPath = null;
+        string? selectedWorkDirectory = null;
+        DocxConversionEngine? selectedEngine = null;
 
         Directory.CreateDirectory(stagingDirectory);
         try
@@ -136,12 +143,13 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
                         outputPath,
                         workDirectory,
                         cancellationToken).ConfigureAwait(false);
-                    ValidatePdfOutput(engine, outputPath);
+                    ValidatePdfOutput(engine, outputPath, cancellationToken);
 
-                    using var pdfFile = File.OpenRead(outputPath);
-                    await pdfFile.CopyToAsync(pdfOutput, 81920, cancellationToken).ConfigureAwait(false);
                     diagnostics.AddRange(engineDiagnostics);
-                    return new DocxConversionResult(engine, attempted, diagnostics);
+                    selectedOutputPath = outputPath;
+                    selectedWorkDirectory = workDirectory;
+                    selectedEngine = engine;
+                    break;
                 }
                 catch (OperationCanceledException)
                 {
@@ -157,16 +165,32 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
                 }
                 finally
                 {
-                    TryDeleteDirectory(workDirectory);
+                    if (selectedWorkDirectory != workDirectory)
+                    {
+                        TryDeleteDirectory(workDirectory);
+                    }
                 }
             }
 
-            throw new InvalidOperationException(
-                "No available DOCX conversion engine produced a valid PDF.",
-                lastFailure);
+            if (selectedOutputPath is null || selectedEngine is null)
+            {
+                throw new InvalidOperationException(
+                    "No available DOCX conversion engine produced a valid PDF.",
+                    lastFailure);
+            }
+
+            // The caller owns this stream. A partial write cannot be rolled back,
+            // and must never be retried with another renderer.
+            using var pdfFile = File.OpenRead(selectedOutputPath);
+            await pdfFile.CopyToAsync(pdfOutput, 81920, cancellationToken).ConfigureAwait(false);
+            return new DocxConversionResult(selectedEngine.Value, attempted, diagnostics);
         }
         finally
         {
+            if (selectedWorkDirectory is not null)
+            {
+                TryDeleteDirectory(selectedWorkDirectory);
+            }
             TryDeleteDirectory(stagingDirectory);
         }
     }
@@ -213,6 +237,11 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         string workDirectory,
         CancellationToken cancellationToken)
     {
+        if (_renderCandidate is not null)
+        {
+            return await _renderCandidate(engine, outputPath, cancellationToken).ConfigureAwait(false);
+        }
+
         if (engine == DocxConversionEngine.BuiltIn)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -268,20 +297,40 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
         return Array.Empty<DocxConversionDiagnostic>();
     }
 
-    private static void ValidatePdfOutput(DocxConversionEngine engine, string outputPath)
+    private static void ValidatePdfOutput(
+        DocxConversionEngine engine, string outputPath, CancellationToken cancellationToken)
     {
         if (!File.Exists(outputPath) || new FileInfo(outputPath).Length < 5)
         {
             throw new InvalidOperationException($"{GetEngineName(engine)} did not produce a PDF.");
         }
 
-        using var stream = File.OpenRead(outputPath);
-        var signature = new byte[5];
-        if (stream.Read(signature, 0, signature.Length) != signature.Length ||
-            signature[0] != '%' || signature[1] != 'P' || signature[2] != 'D' ||
-            signature[3] != 'F' || signature[4] != '-')
+        try
         {
-            throw new InvalidOperationException($"{GetEngineName(engine)} produced an invalid PDF.");
+            using var pdf = PdfDocument.Open(outputPath, new ParsingOptions { UseLenientParsing = false });
+            if (pdf.NumberOfPages <= 0)
+            {
+                throw new InvalidDataException("The candidate PDF has no pages.");
+            }
+
+            for (var pageNumber = 1; pageNumber <= pdf.NumberOfPages; pageNumber++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // Opening the catalog alone does not resolve every page or its content.
+                var page = pdf.GetPage(pageNumber);
+                if (page.Width <= 0 || page.Height <= 0 ||
+                    double.IsNaN(page.Width) || double.IsNaN(page.Height) ||
+                    double.IsInfinity(page.Width) || double.IsInfinity(page.Height))
+                {
+                    throw new InvalidDataException("The candidate PDF has invalid page dimensions.");
+                }
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Candidate corruption is renderer failure, not an input safety rejection.
+            throw new InvalidOperationException($"{GetEngineName(engine)} produced an invalid PDF.", exception);
         }
     }
 
