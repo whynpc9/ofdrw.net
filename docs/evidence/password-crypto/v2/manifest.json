@@ -1,7 +1,7 @@
 {
   "runtime_commit": "d4eb787585c0a13a992c1ca2c6cefe5ed5e0cbdf",
   "actual_package_version": "0.1.0-issue11.v2main",
-  "chain": "fresh DOCX -> native/default OFD -> actual nupkg encrypt/decrypt -> restored OFD -> actual default11 CLI nupkg OFD-to-PDF -> PNG auxiliary + Preview pending",
+  "chain": "fresh licensed DOCX -> native/default OFD -> actual v2main nupkg encrypt/decrypt -> restored OFD -> actual default11 v2main CLI nupkg OFD-to-PDF -> macOS Preview; PNG auxiliary",
   "files": {
     "Ofdrw-CI-Noto-OFL.txt": {
       "bytes": 4301,
@@ -123,5 +123,13 @@
       "bytes": 20888,
       "sha256": "08108deefff4831b8c175ab686ec34bdc440a36391eb7c97a4fe93d5799ef1a1"
     }
+  },
+  "preview": {
+    "status": "passed_for_listed_sample_pages",
+    "checked_pages": 12,
+    "required_pages": 12,
+    "date": "2026-10-15",
+    "timezone": "Asia/Shanghai",
+    "record": "acceptance.json#/preview"
   }
 }
