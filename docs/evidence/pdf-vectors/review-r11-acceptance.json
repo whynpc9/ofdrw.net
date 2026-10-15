@@ -1,0 +1,1473 @@
+{
+  "runtime_head": "61204987565bcb38821f877e0010d2c79f8c7730",
+  "main": {
+    "dotnet": 661,
+    "trx_files": 9,
+    "python": 5,
+    "default_packages": 11,
+    "optional_packages": 13
+  },
+  "independent_low13": {
+    "status": "functional_pass_visual_pending",
+    "verifiedAtUtc": "2026-10-13T03:36:24.276530+00:00",
+    "head": "61204987565bcb38821f877e0010d2c79f8c7730",
+    "sourceFreeze": {
+      "count": 348,
+      "workspaceMismatches": [],
+      "archiveMismatches": [],
+      "workspaceMismatchesAtFinal": []
+    },
+    "mainPackageFreeze": {
+      "count": 13,
+      "mismatches": []
+    },
+    "font": {
+      "path": "artifacts/graphics-fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+      "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "licenseSha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    "raw9Pdf": {
+      "path": "artifacts/pdf-vectors/independent/low13/optional/output/text-precision-source.pdf",
+      "sha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb"
+    },
+    "tests": {
+      "trx": [
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results/low13_net10.0_20261013113213.trx",
+          "passed": 6,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results/low13_net10.0_20261013113215.trx",
+          "passed": 250,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results/low13_net10.0_20261013113218.trx",
+          "passed": 88,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results/low13_net10.0_20261013113220.trx",
+          "passed": 4,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results/low13_net10.0_20261013113234.trx",
+          "passed": 49,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results/low13_net10.0_20261013113236.trx",
+          "passed": 13,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results/low13_net10.0_20261013113237.trx",
+          "passed": 20,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results/low13_net10.0_20261013113240.trx",
+          "passed": 44,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results/low13_net10.0_20261013113246.trx",
+          "passed": 187,
+          "failed": 0
+        }
+      ],
+      "passed": 661,
+      "failed": 0,
+      "pythonPassed": 5,
+      "dotnetWrapperNote": "Initial wrapper failed on zsh reserved variable after tests completed; original 9 TRX retained. Corrected no-build confirmation reran 9 TRX with 661 passed, 0 failed and exit 0.",
+      "confirmTrx": [
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results-confirm/low13-confirm_net10.0_20261013113641.trx",
+          "passed": 6,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results-confirm/low13-confirm_net10.0_20261013113642.trx",
+          "passed": 250,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results-confirm/low13-confirm_net10.0_20261013113644.trx",
+          "passed": 88,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results-confirm/low13-confirm_net10.0_20261013113645.trx",
+          "passed": 4,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results-confirm/low13-confirm_net10.0_20261013113656.trx",
+          "passed": 49,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results-confirm/low13-confirm_net10.0_20261013113657.trx",
+          "passed": 13,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results-confirm/low13-confirm_net10.0_20261013113658.trx",
+          "passed": 20,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results-confirm/low13-confirm_net10.0_20261013113659.trx",
+          "passed": 44,
+          "failed": 0
+        },
+        {
+          "file": "artifacts/pdf-vectors/independent/low13/results-confirm/low13-confirm_net10.0_20261013113701.trx",
+          "passed": 187,
+          "failed": 0
+        }
+      ],
+      "confirmPassed": 661,
+      "confirmFailed": 0,
+      "dotnetConfirmedExit": 0
+    },
+    "commands": {
+      "dotnetTest": "dotnet test low13/source/Ofdrw.Net.sln -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false --logger trx",
+      "python": "python3 -m unittest discover -s low13/source/scripts/tests -v",
+      "default": "bash scripts/run-converter-package-e2e.sh 0.1.0-pdfvector.20261013.low13 --packages-dir low13/default/feed --output-dir low13/default/output",
+      "optional": "bash scripts/run-pdf-vector-package-e2e.sh 0.1.0-pdfvector.20261013.low13 low13/default/feed low13/optional",
+      "mainConsumer": "dotnet restore/build/run copied Astra Repro.csproj against package-r11/feed",
+      "dotnetConfirm": "dotnet test low13/source/Ofdrw.Net.sln -c Release --no-build --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false --logger trx"
+    },
+    "exits": {
+      "python": 0,
+      "default": 0,
+      "optional": 0,
+      "mainConsumer": 0
+    },
+    "review": {
+      "WriterValue": "Core delegate is exact one-line 0.### invariant ToString/Parse extraction; GraphicsValidation.Positive order/message unchanged",
+      "WriterPositive": "Rejects nonfinite and nonpositive then exact writer-rounding zero and nonfinite",
+      "path": "float precision guard precedes writer scalar preflight; cancellation and event budget checked before unsupported fallback",
+      "text": "original whitespace/shaping and event/cancellation precede writer scalar preflight; font Snapshot follows",
+      "noObservedBudgetCancellationDowngrade": true,
+      "noObservedUnitRescaleClampBroadCatch": true
+    },
+    "mainActualPackage": {
+      "version": "0.1.0-pdfvector.20261013.r11",
+      "cases": 36,
+      "sameOriginalInputSha": true,
+      "changedCases": [
+        {
+          "name": "stroke-0004",
+          "policy": "Fail",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "exception System.NotSupportedException"
+        },
+        {
+          "name": "stroke-0004",
+          "policy": "RasterizePage",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "success "
+        },
+        {
+          "name": "text-0004",
+          "policy": "Fail",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "exception System.NotSupportedException"
+        },
+        {
+          "name": "text-0004",
+          "policy": "RasterizePage",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "success "
+        },
+        {
+          "name": "stroke-0004-scale10000",
+          "policy": "Fail",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "exception System.NotSupportedException"
+        },
+        {
+          "name": "stroke-0004-scale10000",
+          "policy": "RasterizePage",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "success "
+        },
+        {
+          "name": "text-0004-scale10000",
+          "policy": "Fail",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "exception System.NotSupportedException"
+        },
+        {
+          "name": "text-0004-scale10000",
+          "policy": "RasterizePage",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "success "
+        },
+        {
+          "name": "stroke-half-float-below",
+          "policy": "Fail",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "exception System.NotSupportedException"
+        },
+        {
+          "name": "stroke-half-float-below",
+          "policy": "RasterizePage",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "success "
+        },
+        {
+          "name": "text-half-float-below",
+          "policy": "Fail",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "exception System.NotSupportedException"
+        },
+        {
+          "name": "text-half-float-below",
+          "policy": "RasterizePage",
+          "before": "exception System.ArgumentOutOfRangeException",
+          "after": "success "
+        }
+      ],
+      "roundingContractEqual": true,
+      "loadedOfdrwDllCount": 8,
+      "allLoadedDllsMatchedPackage": true
+    },
+    "writerProbe": {
+      "result": {
+        "SourcePageCount": 4,
+        "Pages": [
+          {
+            "SourcePageIndex": 0,
+            "IsNative": true,
+            "PathObjects": 2,
+            "TextObjects": 2,
+            "ImageObjects": 0,
+            "Diagnostic": "PDFV_NATIVE: bounded opaque paths and exact-font Unicode text."
+          },
+          {
+            "SourcePageIndex": 1,
+            "IsNative": false,
+            "PathObjects": 0,
+            "TextObjects": 12,
+            "ImageObjects": 1,
+            "Diagnostic": "PDFV_RASTER_PAGE: PDFV_UNSUPPORTED page=2 STROKE_WRITER_PRECISION: local width must remain positive at OFD writer precision.; "
+          },
+          {
+            "SourcePageIndex": 2,
+            "IsNative": false,
+            "PathObjects": 0,
+            "TextObjects": 13,
+            "ImageObjects": 1,
+            "Diagnostic": "PDFV_RASTER_PAGE: PDFV_UNSUPPORTED page=3 TEXT_WRITER_PRECISION: local font size must remain positive at OFD writer precision.; "
+          },
+          {
+            "SourcePageIndex": 3,
+            "IsNative": true,
+            "PathObjects": 2,
+            "TextObjects": 2,
+            "ImageObjects": 0,
+            "Diagnostic": "PDFV_NATIVE: bounded opaque paths and exact-font Unicode text."
+          }
+        ]
+      },
+      "controls": [
+        {
+          "isText": false,
+          "size": ".000499999999",
+          "scale": "1",
+          "native": true
+        },
+        {
+          "isText": false,
+          "size": ".0005",
+          "scale": "1",
+          "native": true
+        },
+        {
+          "isText": false,
+          "size": ".00050001",
+          "scale": "1",
+          "native": true
+        },
+        {
+          "isText": false,
+          "size": ".001",
+          "scale": ".1",
+          "native": true
+        },
+        {
+          "isText": true,
+          "size": ".000499999999",
+          "scale": "1",
+          "native": true
+        },
+        {
+          "isText": true,
+          "size": ".0005",
+          "scale": "1",
+          "native": true
+        },
+        {
+          "isText": true,
+          "size": ".00050001",
+          "scale": "1",
+          "native": true
+        },
+        {
+          "isText": true,
+          "size": ".001",
+          "scale": ".1",
+          "native": true
+        }
+      ],
+      "failSentinelsUnchanged": true,
+      "fallbackHasNoVisibleNativeLeakage": true,
+      "sourceSha256": "47faf94e852d7f8a310628ee9c5f90c95dc65e97430ccbae7d524926c6954dce",
+      "ofdSha256": "8d278cd5204202dffe0c1338d7fb447ec1aba35ea7da8c0eb8cfa19b82c8f603",
+      "scope": "actual PackageReference consumer; Preview acceptance recorded separately"
+    },
+    "ofdComparison": {
+      "count": 30,
+      "payloadExact": 29,
+      "exception": "dual.ofd differs only OFD.xml CreationDate/ModDate; all remaining ZIP entries match"
+    },
+    "sourcePdfComparison": "28 common source PDFs byte SHA identical, including raw9 text-precision-source.pdf",
+    "artifactInventory": [
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Cli.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 25038091,
+        "sha256": "243f151b298e2f7a5e414ec7a7b2b65bb4158202b479a00e07f6ed21a6f1e002"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Converter.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 20816,
+        "sha256": "3d9aa138c02236b26843e8220ddb18542633e26f4a40e634d7dd43ed316c5621"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Converter.Abstractions.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 27194,
+        "sha256": "bb1b7cd9579416b284565b217f45008212e514f254e591a156f71cd6a9ff5a45"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Converter.Docx.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 173840,
+        "sha256": "658545f4b5361e187166389ae4bea401fd5f7c4199b922ce4c149b1d9353af6a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Converter.Pdf.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 106175,
+        "sha256": "0b7cdd1028803e5a7187b2131e838d4cd83b6892692bb9e6e345330355ed5a4d"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Converter.Svg.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 43160,
+        "sha256": "e614c0c7acbd7a1cf1235ae7824edfa9e60ead28c8dce227042a5963725f5b3f"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Core.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 82156,
+        "sha256": "12c955d04a2211c487c1048e81c4c9a118783b4bcf2385e2a0c8e18aefe9efaf"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Layout.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 94526,
+        "sha256": "027742e351b06f15102fde6769046b3ab45b24652dd129f2f2c22eec798b9116"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Packaging.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 96577,
+        "sha256": "3a8d0b7f544d68de6c9c707081a60e0fbd941b18ac5091286ec2b6b77fb58ea1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Reader.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 70909,
+        "sha256": "6e27c1a6107a43ba8d1e2aa744e5b38049dbc5d147294814fe5740b7480b2925"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/Ofdrw.Net.Signatures.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 56001,
+        "sha256": "5ca05216d7f13334ca8a2cc0a1d1ff4e90ce01d8ddc5ebfd27b3cbcc3e1472a7"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/default/feed/package-manifest.json",
+        "bytes": 2345,
+        "sha256": "da96f0aeb66a2a2bdffc1337d0da3c46e64776830c8702e88fc0ee0c242f35fc"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Cli.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 25038091,
+        "sha256": "243f151b298e2f7a5e414ec7a7b2b65bb4158202b479a00e07f6ed21a6f1e002"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Converter.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 20816,
+        "sha256": "3d9aa138c02236b26843e8220ddb18542633e26f4a40e634d7dd43ed316c5621"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Converter.Abstractions.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 27194,
+        "sha256": "bb1b7cd9579416b284565b217f45008212e514f254e591a156f71cd6a9ff5a45"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Converter.Docx.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 173840,
+        "sha256": "658545f4b5361e187166389ae4bea401fd5f7c4199b922ce4c149b1d9353af6a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Converter.Pdf.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 106175,
+        "sha256": "0b7cdd1028803e5a7187b2131e838d4cd83b6892692bb9e6e345330355ed5a4d"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Converter.Pdf.Vector.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 91585,
+        "sha256": "4aaf05a4f9c6c1f02e92ce2e21a5f3451730acee97793537c80f3e4f49c84de8"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Converter.Svg.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 43160,
+        "sha256": "e614c0c7acbd7a1cf1235ae7824edfa9e60ead28c8dce227042a5963725f5b3f"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Core.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 82156,
+        "sha256": "12c955d04a2211c487c1048e81c4c9a118783b4bcf2385e2a0c8e18aefe9efaf"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Graphics.SkiaSharp.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 48932,
+        "sha256": "47f739a7fc42a273cfeec10014e0f1f1ff25854319ccf30b0ba36a6d751a2c56"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Layout.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 94526,
+        "sha256": "027742e351b06f15102fde6769046b3ab45b24652dd129f2f2c22eec798b9116"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Packaging.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 96577,
+        "sha256": "3a8d0b7f544d68de6c9c707081a60e0fbd941b18ac5091286ec2b6b77fb58ea1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Reader.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 70909,
+        "sha256": "6e27c1a6107a43ba8d1e2aa744e5b38049dbc5d147294814fe5740b7480b2925"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/feed/Ofdrw.Net.Signatures.0.1.0-pdfvector.20261013.low13.nupkg",
+        "bytes": 56001,
+        "sha256": "5ca05216d7f13334ca8a2cc0a1d1ff4e90ce01d8ddc5ebfd27b3cbcc3e1472a7"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/cid-map-stream-source.pdf",
+        "bytes": 21794073,
+        "sha256": "eb1ab1c55cd74510c11afea92cc3a5963dcb9de0e71240f42549a02f0ae4d681"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/cid-map-stream.ofd",
+        "bytes": 17321,
+        "sha256": "ca07563dd93e8478db6019483da3a9f8fdc7ea309ee06e71510c1f7c29b71cd6"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/cid-map-stream.pdf",
+        "bytes": 85501,
+        "sha256": "7c8d4da27a74f4b501cdc75b80b78ce2a004e739da398f0b3ced1980aae547fe"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/closed-point-source.pdf",
+        "bytes": 21662931,
+        "sha256": "23fc0a4fa019baf325e2c38bfeef7bd28ac713614658bc0161becd0951494962"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/closed-point.ofd",
+        "bytes": 17481,
+        "sha256": "a4bbcb66912b5dd4377a056cfb14f20aea10920d442bdddd307eda7274c64b71"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/closed-point.pdf",
+        "bytes": 87503,
+        "sha256": "1f77a1c274c7a97ef78f77503de7978a3c4a706831913ef6675de56b81548fab"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/dual.ofd",
+        "bytes": 119749,
+        "sha256": "e25e1d381eb7a8b15c53a5a7260107be874f76d71a9f03959d585e32be861e34"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/dual.pdf",
+        "bytes": 190814,
+        "sha256": "fcd4c7b465a82b58a0065e95eb576b39679a170e1cc3d1713ecdacf2e025e900"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/encoding-stream-source.pdf",
+        "bytes": 21663357,
+        "sha256": "61f6b226384c1a872e022972e11def53064753a1c234d9f81eac4938e418c927"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/encoding-stream.ofd",
+        "bytes": 17527,
+        "sha256": "1508e54989c5986adb98fe46a411260f919dc82971bed6b749ee0420e319eeb1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/encoding-stream.pdf",
+        "bytes": 86105,
+        "sha256": "50982650c76eda2cc7a0cf27c124b0a9e236b2f0247cd282e23de3dfa51f71a6"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/fallback-source.pdf",
+        "bytes": 21669869,
+        "sha256": "3d5c6f66546ad51025edccb7cc6fd85dbd86ac114d7e488eca7c3d5299d41cf0"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/fallback.ofd",
+        "bytes": 11674183,
+        "sha256": "fbdce0f7ffa8c30eae6e94f024238cd0ff1a10d370abf490d0774a98e8444f32"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/fallback.pdf",
+        "bytes": 212861,
+        "sha256": "ee9761985b7e3979193f65781e49f95c7b850e7b27e3775a022cda7a8ee5a7e1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-report.json",
+        "bytes": 4743,
+        "sha256": "bb6fdb29709ce9de527265a0ec407fd5f706b7aea31ef7307bc58846e927ef05"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-1-source.pdf",
+        "bytes": 21661441,
+        "sha256": "3044bea0025866169b2801f0f49aefcdd7aeb334eb5f9b4604e76f74ae9ecf46"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-1.ofd",
+        "bytes": 11600186,
+        "sha256": "8ce2a3893dc00d2a6c5244ca39586f985de38a4fd1b8fc780962fdaf59975510"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-10-source.pdf",
+        "bytes": 21662140,
+        "sha256": "4a037f23766c8b71e3ba757038a4e976ec7e50f80b267eea7b37aec3e74d6d81"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-10.ofd",
+        "bytes": 11600375,
+        "sha256": "b51701e67aaac083152744723fef3b2e06c3b8e73e01d0c0de9ca1f14b163f44"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-100-source.pdf",
+        "bytes": 21668891,
+        "sha256": "93f9eff6ba04ad310dd2f7678a6abeba7a40941b160f43e937c3c2abb57b018b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-100.ofd",
+        "bytes": 11601741,
+        "sha256": "11b0e33f5e8f8ac15a633f82eddf5e14e597083785d5e923872a501614e8004d"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-50-source.pdf",
+        "bytes": 21665141,
+        "sha256": "c87dbba0c2239b35ea73e666aa4995292c745a31d2b8303a3741c5a3f455a9b0"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-50.ofd",
+        "bytes": 11601006,
+        "sha256": "7e7acb282869da234834b4a9a1ea614279307bc47c813aa4fc9771cf7f00ca87"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-array-1-source.pdf",
+        "bytes": 21661443,
+        "sha256": "5caf880a4593bd8974b0212d706cf6cb4d4609b995c9bb84149d881411f18077"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-array-1.ofd",
+        "bytes": 11600186,
+        "sha256": "8ce2a3893dc00d2a6c5244ca39586f985de38a4fd1b8fc780962fdaf59975510"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-array-10-source.pdf",
+        "bytes": 21662160,
+        "sha256": "ad9f5fa57e395123236f75f2b964fb560a76f081ec01e56ef535fab3be4a358b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-array-10.ofd",
+        "bytes": 11600375,
+        "sha256": "dd54df0355b35cc9c563aaca6e60593a97024c49ac729eee1bb3edb696b79240"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-array-100-source.pdf",
+        "bytes": 21669091,
+        "sha256": "1204a900b2f0062e07fcf71844d0834d9a3580c4b98351d7b522c7f8bf231ab4"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-array-100.ofd",
+        "bytes": 11601741,
+        "sha256": "eb7d82cd153181c864fc519946ed0cf111dcbdb8c37bfdbcacdbff6dd22f83e1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-array-50-source.pdf",
+        "bytes": 21665241,
+        "sha256": "7c35aebd2af17f61bc0d013bf35a3c4b270c6312d81f659192a3c2a9b8a6f4b3"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/font-identity-tj-array-50.ofd",
+        "bytes": 11601006,
+        "sha256": "7e7acb282869da234834b4a9a1ea614279307bc47c813aa4fc9771cf7f00ca87"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-absent-source.pdf",
+        "bytes": 21661381,
+        "sha256": "746a578fbf277f2037ddd0474f85599c1cfaa4a11f733c3d6eec94b0b67cf041"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-absent.ofd",
+        "bytes": 2026,
+        "sha256": "cfe8797ea214bab14f806e757bca557eecaa5d2ac16da1f68a135a7604694926"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-absent.pdf",
+        "bytes": 1542,
+        "sha256": "4e7a59baee2c76e5768d311cad04eace0a0cfb1c5276e1f908f716f668ede9f9"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-false-source.pdf",
+        "bytes": 21661399,
+        "sha256": "a045aea99ba6127bbc5beed19fe6740cc1ecc1ac26c3e470fca229913a7fcd53"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-false.ofd",
+        "bytes": 2026,
+        "sha256": "cfe8797ea214bab14f806e757bca557eecaa5d2ac16da1f68a135a7604694926"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-false.pdf",
+        "bytes": 1542,
+        "sha256": "61c4bda66cbd75a40b8e0f7b4d869fd8c8af5ce0b220791c5796300c58f51057"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-flags-mixed.ofd",
+        "bytes": 2887,
+        "sha256": "12af25e20d635b3ced86751bbd64a59ecd88c9c69a10dafa2f9f1a068b81fb65"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-flags-mixed.pdf",
+        "bytes": 2904,
+        "sha256": "ef19400f12953cce06ce8b1367fd1975c3375575561d212fcafef2fe90845613"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-hint-report.json",
+        "bytes": 2066,
+        "sha256": "12bf4a914f1c47b7f3096fbc86070527d1b3282007566b84de41cc9a7ca51f7c"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-true-source.pdf",
+        "bytes": 21661398,
+        "sha256": "44f082620ba7e9430d606cf9e456464731f0ff7207c3870403c4a996b4f4a8ca"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-true.ofd",
+        "bytes": 2025,
+        "sha256": "e937290b0de2a9240a0c1bee76004fc0283c9a943ba463d8ff89edeeecb1ed84"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/image-true.pdf",
+        "bytes": 1560,
+        "sha256": "c33780a18b71690db62d44b7b883daed1b8745186a68f1aa676ad411aa08347a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-absent-source.pdf",
+        "bytes": 21661396,
+        "sha256": "9497aa265bb66833b6a52a94179103158afb4df627625f64c0c26c51b8fb93d6"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-absent.ofd",
+        "bytes": 2028,
+        "sha256": "0f77b8d9280ae021f78e751b873536ea1a3de705e00c3187408425f1bde07fe6"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-absent.pdf",
+        "bytes": 1542,
+        "sha256": "8ac6f13a30d4cd7dfafeb8a8cf9dc449f1076c204a9006e15ed13c388fdc66f3"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-false-source.pdf",
+        "bytes": 21661414,
+        "sha256": "e6b36f3373118a205036370e02c530ac71828c0ec5d6ce2b1909bb7f541d511c"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-false.ofd",
+        "bytes": 2028,
+        "sha256": "0f77b8d9280ae021f78e751b873536ea1a3de705e00c3187408425f1bde07fe6"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-false.pdf",
+        "bytes": 1542,
+        "sha256": "5b30ef27eb71642061a92cd3e221cdc675c8ad4bbc6a6285bd2daf3404673349"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-image-clipped-source.pdf",
+        "bytes": 22661825,
+        "sha256": "525f7c78b433f5ad9935c03994e76a899f64ab96940114b7d01fa2074ce11fbe"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-image-clipped.ofd",
+        "bytes": 2244,
+        "sha256": "a86e34b55915727fa7c767520bb0bd538089215fdb1cb7a4b7a1591c6967e4c1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-image-clipped.pdf",
+        "bytes": 18947,
+        "sha256": "ed2ef2bf5aab3a6190d8754e77a2b7e802070fd0114f0ce30e3acbce825cc5fa"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-image-source.pdf",
+        "bytes": 22661825,
+        "sha256": "49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-image.ofd",
+        "bytes": 2244,
+        "sha256": "a86e34b55915727fa7c767520bb0bd538089215fdb1cb7a4b7a1591c6967e4c1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-image.pdf",
+        "bytes": 18947,
+        "sha256": "d8488dd4f34531b61b0e40cb0bfaa3d650a0cc87b51961db820a5c49f6c67a4b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-palette-report.json",
+        "bytes": 1971,
+        "sha256": "8f3f2365b5c6fa74ce7156638e797a78c1a508a9ea364a39bf910f89d44ce059"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-true-source.pdf",
+        "bytes": 21661413,
+        "sha256": "bd24e4fca0d94455ddea527440212baa081737f263c78eb3a3501d6cf0a8201d"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-true.ofd",
+        "bytes": 2027,
+        "sha256": "a4798a6c06fab911b6a341d1b0a843119e7b6ac62183da90653f67e4518a9c34"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/indexed-true.pdf",
+        "bytes": 1560,
+        "sha256": "a9593a1504c079e0d592b7834f0f74320bc3b7d38ac295728b85aeca0650b3b0"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/no-content-source.pdf",
+        "bytes": 21662478,
+        "sha256": "ba865da0c4c1a59051fde35dcb1a5c5e36bd8cc41e008a03662d63507e97fe21"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/no-content.ofd",
+        "bytes": 2121,
+        "sha256": "6c4c56430c44d1b9ffceea3272055a9290286d9e510ad9375a6fda4e0c18bd4c"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/no-content.pdf",
+        "bytes": 4477,
+        "sha256": "c4a7e10c722da34311b82c07298edc2ffee032c24ff1a24a7f4b8ae83f86fbbb"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/no-op-scan-source.pdf",
+        "bytes": 21663321,
+        "sha256": "a9eeef615151dfec1795c559e7123ba63426edb6eae764577559f8456b34645a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/no-op-scan.ofd",
+        "bytes": 11601915,
+        "sha256": "8c5df9613227e39176379ce89f68a95a28f64222fa7083947aec7dc131410e09"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/no-op-source.pdf",
+        "bytes": 21662978,
+        "sha256": "cf841a1fc1df325900be4527b33e352a599ff8a335ddd1407115970cdf29bae3"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/no-op.ofd",
+        "bytes": 11600688,
+        "sha256": "80a1c14309a31b28952ba3fc9e0c17ab45dd36ed92c79d404a7e1a19939554a1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/no-op.pdf",
+        "bytes": 64269,
+        "sha256": "d098999d06433845df512d40bd33dbdec7699726c8525992a20c64effb22d276"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/nonpainting-report.json",
+        "bytes": 2660,
+        "sha256": "3f0dae11db9ec716bd718be33cab9cff850304c123b4e3dc1e8bb31baff7b253"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/precision-resource-report.json",
+        "bytes": 3863,
+        "sha256": "92c03c1f67cf2dfe07d70ad85fb248249fc7825de53255106098552eaaa76843"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/precision-source.pdf",
+        "bytes": 21663450,
+        "sha256": "6e8feb2241e842f79a8cb6f898d9bcc2e403f58f0cd0af3c2090ab86aa764ed1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/precision.ofd",
+        "bytes": 11620562,
+        "sha256": "1b4f7b50be79e107939c8e6a4f3916c30352c772ff87a766806ca3f816114579"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/precision.pdf",
+        "bytes": 149822,
+        "sha256": "523def518466622371f1b5cfa6ffb27be3a1b0000fc529e480c0d378c5d28a2e"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/same-source.pdf",
+        "bytes": 21667775,
+        "sha256": "6f3da907dd576dde5d5133355bf89114eb559b31fe1fc403672d3adf558f698a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/sample-report.json",
+        "bytes": 4850,
+        "sha256": "f59e6012308872a0aa3e407951ac39b7999fa077a8b2fb8a3962d2bcdc594829"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/singular-source.pdf",
+        "bytes": 21662960,
+        "sha256": "7810066bac0ac14c5ef18d40269ef00df3b6e25cc9511e38f663e596f51de835"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/singular.ofd",
+        "bytes": 16846,
+        "sha256": "c0d846aae00d0bc7994943dd2058fc62e1072991c8e5b787374aea74614a5651"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/singular.pdf",
+        "bytes": 84848,
+        "sha256": "1b1c0967d8b6ca6410088317701b0041b78e6280b6d3fb3ea80725716734307d"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/text-precision-report.json",
+        "bytes": 3428,
+        "sha256": "14235a867c641d32c9c0291fb2c6240d7b2d9e183ec1c8a66c9cc9edb8f9cf4a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/text-precision-source.pdf",
+        "bytes": 21698835,
+        "sha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/text-precision.ofd",
+        "bytes": 11607115,
+        "sha256": "f16a68170cd93ceb6c1826ad16492dd365cec0df493937387ab5d53c060e4b84"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/text-precision.pdf",
+        "bytes": 147573,
+        "sha256": "806c284fb76960791207802f10047012cfebd9a7268ade9b2faa2680d78d4094"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/vector.ofd",
+        "bytes": 11604461,
+        "sha256": "c0b8f6a93df469bd9f379834564cbb0b029800c1edaf8f103cb9976c7a80941b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/vector.pdf",
+        "bytes": 79846,
+        "sha256": "d567164b0a3bb09ae94f0a3bb8cd91810606344b7a02544fabb001ff2b32e820"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/verified-evidence.json",
+        "bytes": 33773,
+        "sha256": "7e5ff327f95ea01698683422f23dc4a7de8e4fc2f3b0df389f778bac992b7cb3"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/writer-precision-report.json",
+        "bytes": 2332,
+        "sha256": "996e7249f504338c941022ba98e37970d22f784fbc832d918b0dd2be220d428b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/writer-precision-source.pdf",
+        "bytes": 21664865,
+        "sha256": "47faf94e852d7f8a310628ee9c5f90c95dc65e97430ccbae7d524926c6954dce"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/writer-precision.ofd",
+        "bytes": 11635496,
+        "sha256": "8d278cd5204202dffe0c1338d7fb447ec1aba35ea7da8c0eb8cfa19b82c8f603"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/optional/output/writer-precision.pdf",
+        "bytes": 170450,
+        "sha256": "f63716fa7b9f885741e1bb9e5f2fa2cc55261b53364a5a9b2a68ad25e953f595"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/conversion-results.json",
+        "bytes": 60913,
+        "sha256": "992a1ea01ce52b03c5ca5de5875ca1429f5463839b02c850922c91b1d9561e09"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/rounding-contract.json",
+        "bytes": 2679,
+        "sha256": "351e892f136fd6fd7ab1febdcd6bbd8e96cb7d51cb796013cb8591441b490250"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/runtime-loaded-package-hashes.json",
+        "bytes": 3821,
+        "sha256": "3be3d922cd864f06dbb00d9312361c5d26b9ea4ba085774e2a435d75aacbd492"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-0004-RasterizePage.ofd",
+        "bytes": 2750,
+        "sha256": "81e5b9d100ba6ec137bb2e024d4263986955d7b9273a954800d68173f28e94e2"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-0004-scale10000-RasterizePage.ofd",
+        "bytes": 2748,
+        "sha256": "7833655fc821367070d601f3322622900ca1fe56ca8ee043626c5fc117a4377e"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-0004.pdf",
+        "bytes": 21661767,
+        "sha256": "20a4579ee543bc39bda1b7f1db27917b99f24b41ce0095cc672a8c0c54f8b1f7"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-001-Fail.ofd",
+        "bytes": 2046,
+        "sha256": "2f8a1903c49e6623f6b8aeb29fbb63d2584b24926de0adbbfe3faee1b6018b76"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-001-RasterizePage.ofd",
+        "bytes": 2046,
+        "sha256": "2f8a1903c49e6623f6b8aeb29fbb63d2584b24926de0adbbfe3faee1b6018b76"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-001-scale01-Fail.ofd",
+        "bytes": 2064,
+        "sha256": "c50de84cf0af40fb9083b689d6635e9141828cf0afb7a458967fcec789c5f918"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-001-scale01-RasterizePage.ofd",
+        "bytes": 2064,
+        "sha256": "c50de84cf0af40fb9083b689d6635e9141828cf0afb7a458967fcec789c5f918"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-half-Fail.ofd",
+        "bytes": 2046,
+        "sha256": "d5bb600df166d1b6b729f66c1a41e8d4017144ebf2fc93edfa9b535fddd75273"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-half-RasterizePage.ofd",
+        "bytes": 2046,
+        "sha256": "d5bb600df166d1b6b729f66c1a41e8d4017144ebf2fc93edfa9b535fddd75273"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-half-double-below-Fail.ofd",
+        "bytes": 2046,
+        "sha256": "d5bb600df166d1b6b729f66c1a41e8d4017144ebf2fc93edfa9b535fddd75273"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-half-double-below-RasterizePage.ofd",
+        "bytes": 2046,
+        "sha256": "d5bb600df166d1b6b729f66c1a41e8d4017144ebf2fc93edfa9b535fddd75273"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-half-float-above-Fail.ofd",
+        "bytes": 2046,
+        "sha256": "5e9e6cf7f88d33a4bc77c3e7b87575e82ff31e3fc02bce31029c23a25fe02300"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-half-float-above-RasterizePage.ofd",
+        "bytes": 2046,
+        "sha256": "5e9e6cf7f88d33a4bc77c3e7b87575e82ff31e3fc02bce31029c23a25fe02300"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-half-float-below-RasterizePage.ofd",
+        "bytes": 2750,
+        "sha256": "488407e78531d35d658c2faa25d98463023f4d3da772bbc70eb3d3432ce949b2"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/stroke-zero-control-RasterizePage.ofd",
+        "bytes": 2747,
+        "sha256": "5ccf02fbeddd665abc4d9c5c973eeacac3a26b1cc95392bfff915c7ee2495d04"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-0004-RasterizePage.ofd",
+        "bytes": 2879,
+        "sha256": "6ea4adecf4d09b59f5f72c439d1441838936d0312442e815a99b2a01d4e8bfb9"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-0004-scale10000-RasterizePage.ofd",
+        "bytes": 3025,
+        "sha256": "a60189e95453a2e58c1e0f5274149b5433cf5e3c2ae6d4d228cc74a01afd0dae"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-0004.pdf",
+        "bytes": 21661787,
+        "sha256": "806c872cea606a5c72d44080c6b2dd204717842858426391af875c7da42a7ce4"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-001-Fail.ofd",
+        "bytes": 11600743,
+        "sha256": "5790a51a44db75bd715d3f0c12dd9748f7d7a9f928c7abadba4ff0b9ca003399"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-001-RasterizePage.ofd",
+        "bytes": 11600743,
+        "sha256": "5790a51a44db75bd715d3f0c12dd9748f7d7a9f928c7abadba4ff0b9ca003399"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-001-scale01-Fail.ofd",
+        "bytes": 11600757,
+        "sha256": "35f6bf6338334d7afc27feeab9eaf13267ff965b51bcfa0a2b904e73e5607c80"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-001-scale01-RasterizePage.ofd",
+        "bytes": 11600757,
+        "sha256": "fde508001dac0039190c69d0c6211dfdc8bad9ea1de2c3d2ffb36d3a031ecda8"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-half-Fail.ofd",
+        "bytes": 11600743,
+        "sha256": "3758065deeb09f08713b31ed0a681ed543a31ae2cebe6533214a6649578b1d2a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-half-RasterizePage.ofd",
+        "bytes": 11600743,
+        "sha256": "3758065deeb09f08713b31ed0a681ed543a31ae2cebe6533214a6649578b1d2a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-half-double-below-Fail.ofd",
+        "bytes": 11600743,
+        "sha256": "e7f213763a72914b2fb2f76ae9a2ef421be3d8122b39f3a60e6c08b6d61d6f21"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-half-double-below-RasterizePage.ofd",
+        "bytes": 11600743,
+        "sha256": "6a339f79e2d8fbebd0aca78085e0b0669aa8ca8e5c7f8db06235029f496dfe32"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-half-float-above-Fail.ofd",
+        "bytes": 11600743,
+        "sha256": "6a339f79e2d8fbebd0aca78085e0b0669aa8ca8e5c7f8db06235029f496dfe32"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-half-float-above-RasterizePage.ofd",
+        "bytes": 11600743,
+        "sha256": "6a339f79e2d8fbebd0aca78085e0b0669aa8ca8e5c7f8db06235029f496dfe32"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-half-float-below-RasterizePage.ofd",
+        "bytes": 2879,
+        "sha256": "b264fb487d88cbd272e06411e0906bddbb7d2b977af0b3c39b01257f1ff7abb4"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-consumer/results/text-zero-control-RasterizePage.ofd",
+        "bytes": 2879,
+        "sha256": "127c3dd320b650d1a414379c4af4a88cf673ecbe14ae05db9a463bb4930e52db"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/low13/main-r10-r11-ofd-comparison.json",
+        "bytes": 11679,
+        "sha256": "3bf09b664abbd6896b555c24a2a0c8b851e8153e0875b6b95347e7018d06ef66"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/cid-map-stream.ofd",
+        "bytes": 17321,
+        "sha256": "2264921ad7a34dc41afc51adc99c47edaff8901c2bd0baa60c793b6399180d94"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/cid-map-stream.ofd",
+        "bytes": 17321,
+        "sha256": "40420bc67f2304edc0419f5324ac1679997f185f9c8abf02712b3275324b481d"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/closed-point.ofd",
+        "bytes": 17481,
+        "sha256": "a197b69179bcbcd6f46aaaa74bb1270f5e8a368069559ddc06993c48bbaf245c"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/closed-point.ofd",
+        "bytes": 17481,
+        "sha256": "019e08dd3e07e58ae1653770533b804fa01ce010de53336a8543245c1db57bc0"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/dual.ofd",
+        "bytes": 119749,
+        "sha256": "e0e139d9cea71bd9a0ffd1e6b9b6d79954a7f18db4da79d5777441a9555ff8da"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/dual.ofd",
+        "bytes": 119748,
+        "sha256": "116632bb4d9bd8b7443a5b054d20b1b08d5c6916a51968bb35bf6362340d7799"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/encoding-stream.ofd",
+        "bytes": 17527,
+        "sha256": "e3a6d581989d629f84214ebeb2034eec9c5c0b291424ce7f25d366486aa5fb22"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/encoding-stream.ofd",
+        "bytes": 17527,
+        "sha256": "6b4076c63c7daf7dc7e118c0db9e2800ac61d0cb171db649a2f980e8efa28545"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/fallback.ofd",
+        "bytes": 11674183,
+        "sha256": "ebe2600459f8e55883236c205bca9b49d702f5452cc44d1769decd24ef1e20cc"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/fallback.ofd",
+        "bytes": 11674183,
+        "sha256": "dc481b1ec4e51efbaf16be33ad1c5fc49b816e78bb6b452254a8af59103c1554"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/font-identity-tj-1.ofd",
+        "bytes": 11600186,
+        "sha256": "4328b736c579fc20e86a6eb3b2db928ff548d21ec5fb17c0a44dda46c568a8ce"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/font-identity-tj-1.ofd",
+        "bytes": 11600186,
+        "sha256": "b03143a97e74a6c249b4533a94b844403a441dc129bb0da073602243eb8ca5ec"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/font-identity-tj-10.ofd",
+        "bytes": 11600375,
+        "sha256": "f00a3c6ded5cefe7b52277d01abafc7820b00a363290a27ebcfeea760d22472b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/font-identity-tj-10.ofd",
+        "bytes": 11600375,
+        "sha256": "323c38d7bacdeb7f230c22d968b30550b1d3bc56d80b23a4cd02e60c7091dfa0"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/font-identity-tj-100.ofd",
+        "bytes": 11601741,
+        "sha256": "8be6b1b9cd9d5993ea0f8fc02af9047d7923c92e31c20e20aa7f6186834ba8bc"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/font-identity-tj-100.ofd",
+        "bytes": 11601741,
+        "sha256": "1ba116581011c11a2be8522ea9651b7bbb30e13e5f25ef0958725111dfed5e69"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/font-identity-tj-50.ofd",
+        "bytes": 11601006,
+        "sha256": "f605a0c99d095494431de59dc54b50a34f22ed43ac90d8278a2c8bf84f39d3c8"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/font-identity-tj-50.ofd",
+        "bytes": 11601006,
+        "sha256": "c104c68439e8511ab8065d11e4e0b9955bb1c4354169e3a88d3e4d2fa2518032"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/font-identity-tj-array-1.ofd",
+        "bytes": 11600186,
+        "sha256": "c9c9ddfcdabb64348d8ad34f97337a0ed1ded2373be87aef74f84eee3fc79f00"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/font-identity-tj-array-1.ofd",
+        "bytes": 11600186,
+        "sha256": "b03143a97e74a6c249b4533a94b844403a441dc129bb0da073602243eb8ca5ec"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/font-identity-tj-array-10.ofd",
+        "bytes": 11600375,
+        "sha256": "f00a3c6ded5cefe7b52277d01abafc7820b00a363290a27ebcfeea760d22472b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/font-identity-tj-array-10.ofd",
+        "bytes": 11600375,
+        "sha256": "b882867e87213fe511fc8c9e67210729b777c682bea053abcc76ed3bea9a8a4c"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/font-identity-tj-array-100.ofd",
+        "bytes": 11601741,
+        "sha256": "8be6b1b9cd9d5993ea0f8fc02af9047d7923c92e31c20e20aa7f6186834ba8bc"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/font-identity-tj-array-100.ofd",
+        "bytes": 11601741,
+        "sha256": "f20e91710665d85588582ab77d82690ef4d0e4a90c47ca8f65f19b59ba5c63c0"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/font-identity-tj-array-50.ofd",
+        "bytes": 11601006,
+        "sha256": "ef340259b99cda3a118dfdd6a014cb136aebd706b2e6cf3f9b485b1327e55c24"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/font-identity-tj-array-50.ofd",
+        "bytes": 11601006,
+        "sha256": "c104c68439e8511ab8065d11e4e0b9955bb1c4354169e3a88d3e4d2fa2518032"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/image-absent.ofd",
+        "bytes": 2026,
+        "sha256": "d0038dde5876ac131625c4f0b4c35fa76ae1082317d450f92fa3156f1181f361"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/image-absent.ofd",
+        "bytes": 2026,
+        "sha256": "8d4b4ebf09149d0e0b15ebed053a8070bf077f918750fe1999a7882f14d39fe6"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/image-false.ofd",
+        "bytes": 2026,
+        "sha256": "d0038dde5876ac131625c4f0b4c35fa76ae1082317d450f92fa3156f1181f361"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/image-false.ofd",
+        "bytes": 2026,
+        "sha256": "8d4b4ebf09149d0e0b15ebed053a8070bf077f918750fe1999a7882f14d39fe6"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/image-flags-mixed.ofd",
+        "bytes": 2887,
+        "sha256": "3c723c1a11bc7079a37ab35528a3c40fc0b14c98ea2ed75c7592ffbecf35a4d9"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/image-flags-mixed.ofd",
+        "bytes": 2887,
+        "sha256": "c6a9a65345b7c6be21ec4992472557b200a10c3114b8597fe185a24ec92f30be"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/image-true.ofd",
+        "bytes": 2025,
+        "sha256": "5426b90a31bfd5ef0e6cbc3182060a0e54292d5b45545c52b72cf3a20e6a2c84"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/image-true.ofd",
+        "bytes": 2025,
+        "sha256": "c73b45412453eecefb6f23b8afd181d6bdc3604c1066c6ea9ba14f20883c019a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/indexed-absent.ofd",
+        "bytes": 2028,
+        "sha256": "63f8c2ecfea11d7b037da3f39ef1f7ab851d882fc52c62dd0dbdccc17080be2c"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/indexed-absent.ofd",
+        "bytes": 2028,
+        "sha256": "ddd2eea76afd5c0a0a60f15fa342e18cc62e9f327066b7194fe10aff32d0f05b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/indexed-false.ofd",
+        "bytes": 2028,
+        "sha256": "63f8c2ecfea11d7b037da3f39ef1f7ab851d882fc52c62dd0dbdccc17080be2c"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/indexed-false.ofd",
+        "bytes": 2028,
+        "sha256": "ddd2eea76afd5c0a0a60f15fa342e18cc62e9f327066b7194fe10aff32d0f05b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/indexed-image-clipped.ofd",
+        "bytes": 2244,
+        "sha256": "9edd9928c4106c29128879bb050f79af8fd74230b1f271b035b23ac6fc4cb827"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/indexed-image-clipped.ofd",
+        "bytes": 2244,
+        "sha256": "693634f6029ced0a35821dc63a51ffde30980def4f3b4490a0fb615788ccb801"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/indexed-image.ofd",
+        "bytes": 2244,
+        "sha256": "9edd9928c4106c29128879bb050f79af8fd74230b1f271b035b23ac6fc4cb827"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/indexed-image.ofd",
+        "bytes": 2244,
+        "sha256": "693634f6029ced0a35821dc63a51ffde30980def4f3b4490a0fb615788ccb801"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/indexed-true.ofd",
+        "bytes": 2027,
+        "sha256": "2a58e9beec5b420e64b7ce11555240ce4ae2114c183568f86e12e96407d52f33"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/indexed-true.ofd",
+        "bytes": 2027,
+        "sha256": "659c88a9711bce7967919efe2e3d2e7eeb283421bd01f25bc50848394cd0ad71"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/no-content.ofd",
+        "bytes": 2121,
+        "sha256": "8ad37630c7341063d7f98ad50856a692f1d9cdc5047cb2686b43a7041f2dd5b1"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/no-content.ofd",
+        "bytes": 2121,
+        "sha256": "a5cfb89e79a87b96a50109dff3ad62c96e0a9ff034a75c8aa242c1fc9347f036"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/no-op-scan.ofd",
+        "bytes": 11601915,
+        "sha256": "b8237a3da42f639f59b6a781d37b018df1cc70d7f8a6965e50a1242141f9ee8d"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/no-op-scan.ofd",
+        "bytes": 11601915,
+        "sha256": "2d4b387473fd44d4eee376b5a054798cb7f882d4e99b9726d4e6d64e81baf7ec"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/no-op.ofd",
+        "bytes": 11600688,
+        "sha256": "68d5a8ea9ff518f5a2a79334a0d9ff9ca88234419682ccae81ab493ef3cb0e4a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/no-op.ofd",
+        "bytes": 11600688,
+        "sha256": "c650f33e6c419054ec1ae9c869bd9057780c19e1440f0ad38b384511ee9877e4"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/precision.ofd",
+        "bytes": 11620562,
+        "sha256": "202313d51554d52582648f411ba4733fc206708c27f2e6a037b20f2e536dcf33"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/precision.ofd",
+        "bytes": 11620562,
+        "sha256": "3c17a08ae5d7ec5a1fe1eda410aa080701639fc85a33e1dd0560ff534221a183"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/singular.ofd",
+        "bytes": 16846,
+        "sha256": "9db776e7d62c3020589ce750a9abf1e50c76844859726c345a7b1b7f87bb08d4"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/singular.ofd",
+        "bytes": 16846,
+        "sha256": "5d9bc2e3de3709735a741c8760c8579e321e21ab43abea00440c0b8c0b3837e3"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/text-precision.ofd",
+        "bytes": 11607115,
+        "sha256": "8e2cf0230ec5240fc3672800a359f88626efeedb097a0250a2ed769f46c641a5"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/text-precision.ofd",
+        "bytes": 11607115,
+        "sha256": "da01a9c7c9a9a538253f7300f9ff327c0a80722da5f3874057998ca93598a403"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r10/output/vector.ofd",
+        "bytes": 11604461,
+        "sha256": "4888f968a19d0214cf9d91e3d4da7b3a107ba539f80e0b45b311c1f0f5521db7"
+      },
+      {
+        "path": "artifacts/pdf-vectors/package-r11/output/vector.ofd",
+        "bytes": 11604461,
+        "sha256": "e8f88bf4954f5f6cf31d76994b358e0970a765d9634af39e31ed732f748e7e79"
+      }
+    ],
+    "limits": [
+      "No macOS Preview page-by-page visual acceptance performed by this low verifier; PNG evidence is auxiliary.",
+      "No CI, PR review closure, merge, or release claim."
+    ],
+    "mainR10ToR11History": {
+      "evidence": "artifacts/pdf-vectors/independent/low13/main-r10-r11-ofd-comparison.json",
+      "oldOfds": 29,
+      "payloadEquivalent": 29,
+      "exactEntryMatch": 28,
+      "metadataOnly": "dual.ofd OFD.xml CreationDate and ModDate; all other ZIP payload entries match",
+      "newR11Only": [
+        "writer-precision.ofd"
+      ]
+    }
+  },
+  "preview": {
+    "runtime_head": "61204987565bcb38821f877e0010d2c79f8c7730",
+    "status": "passed_bounded_visual_inspection",
+    "chain": "original PDF -> R11 native/whole-page-policy OFD -> exported PDF -> Preview",
+    "docs": [
+      {
+        "name": "writer-precision-source",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r11/output/writer-precision-source.pdf",
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r11/output/writer-precision-source.pdf",
+        "bytes": 21664865,
+        "sha256": "47faf94e852d7f8a310628ee9c5f90c95dc65e97430ccbae7d524926c6954dce",
+        "pages": 4,
+        "checked_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "sha256_after": "47faf94e852d7f8a310628ee9c5f90c95dc65e97430ccbae7d524926c6954dce",
+        "bytes_after": 21664865
+      },
+      {
+        "name": "writer-precision",
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r11/output/writer-precision.pdf",
+        "preview_document_url": "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r11/output/writer-precision.pdf",
+        "bytes": 170450,
+        "sha256": "c21c1f1a0ad886b3b38f88f476be436ea16966cec4a526c58b7046aaa393b7b3",
+        "pages": 4,
+        "checked_pages": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "sha256_after": "c21c1f1a0ad886b3b38f88f476be436ea16966cec4a526c58b7046aaa393b7b3",
+        "bytes_after": 170450
+      }
+    ],
+    "total_pages": 8,
+    "expected_pages": {
+      "1": "native CJK/English/local colors/header fill/border",
+      "2": "STROKE_WRITER_PRECISION raster, visible red 2pt line from local .0004 under CTM5000",
+      "3": "TEXT_WRITER_PRECISION raster, visible green A at 16pt from local .0004 under CTM40000",
+      "4": "native same CJK/English normal page after unsupported pages"
+    },
+    "prior_r10_visual": "10 PDFs/28 pages at28fc29d retained historically; no reopening or claim that R11 exported versions of those PDFs were viewed",
+    "limits": [
+      "Only this deterministic four-page source and four-page exported pair inspected.",
+      "No claim of pixel equality: fallback pages intentionally rasterize and show softer edges.",
+      "Historical R10 28-page inspection stays scoped to runtime28fc29d; those PDF versions were not reopened.",
+      "Nonzero scalar quantization remains existing04 writer contract.",
+      "Preview screenshots were observed inline through cua_repl; no standalone Preview screenshot files claimed."
+    ],
+    "inspected_at": "2026-10-13T03:48:07.657794+00:00",
+    "viewer": "macOS Preview via cua_repl",
+    "view": "Single Page; View > Zoom All to Fit for both PDFs in same window size and sidebar width",
+    "observations": {
+      "1": "Original and exported native page preserve Chinese/English title and body, light-blue fill and blue border; no clipping, missing glyph, duplicate or unexpected blank page observed.",
+      "2": "Exported whole-page raster preserves the visible red horizontal line, position and surrounding text/fill/border. Raster text edges are softer than source vector at the same fit view, as expected for page rasterization.",
+      "3": "Exported whole-page raster preserves the green A, position and surrounding text/fill/border. Raster edges are softer than source vector at the same fit view.",
+      "4": "Exported native page returns to sharp normal text/fill/border with layout corresponding to source; no spillover from unsupported pages."
+    },
+    "cleanup": {
+      "closed_document_urls": [
+        "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r11/output/writer-precision-source.pdf",
+        "file:///Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r11/output/writer-precision.pdf"
+      ],
+      "unknown_windows_closed": false,
+      "open_panel_cancelled": true,
+      "note": "AX confirmed exact URLs before closing each document. getAXState reactivation displayed Open again after Cancel/Escape; final Cancel followed only by nonactivating listApps. No more Preview activation.",
+      "gui_released": true
+    }
+  },
+  "prior_r10_visual": "28 pages remain historical at 28fc29d; unchanged old pages not reopened",
+  "preserved_failures": [
+    "unmodified R10 actual package P2 exceptions under both policies",
+    "two initial test-fixture float-boundary assumptions corrected",
+    "first Core test assumed MaxValue remained finite after fixed formatting; corrected",
+    "design review found and repaired budget precedence before final acceptance",
+    "Low13 first shell wrapper assigned readonly zsh status after tests; corrected wrapper reran no-build tests to fresh nine TRX and confirmed exit0"
+  ],
+  "final_head_reviews_and_ci": "Tracked separately in PR18; not inherited",
+  "release_accepted": false,
+  "merged": false,
+  "published": false,
+  "open_followup": {
+    "thread": "PRRT_kwDORQ4ZKs6rsyhK",
+    "reviewed_head": "61204987565bcb38821f877e0010d2c79f8c7730",
+    "issue": "Tf-selected fonts with no rendered glyph still load/embed and consume output font budget",
+    "status": "open_pending_R12_design_fix_and_validation"
+  }
+}

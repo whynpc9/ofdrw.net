@@ -1,0 +1,267 @@
+{
+  "runtime_head": "b9c136bc6f701388fb6a58483a45e2055c22408f",
+  "status": "scoped-functional-package-layout-accepted-current-head-reviews-CI-pending",
+  "main_tests": {
+    "dotnet_passed": 542,
+    "python_passed": 5,
+    "vector_passed": 85
+  },
+  "independent": {
+    "model": "GPT-6 Sol Low",
+    "source_archive_files": 324,
+    "gates": {
+      "full_solution": {
+        "passed": 542,
+        "assemblies": [
+          5,
+          250,
+          88,
+          4,
+          49,
+          13,
+          20,
+          28,
+          85
+        ],
+        "expected": 542
+      },
+      "python": 5,
+      "default_packages": 11,
+      "optional_manifest_packages": 13,
+      "observer": "passed",
+      "legacy_imagemagick_standalone": true
+    },
+    "report": "independent/verification-low5.json",
+    "package_version": "0.1.0-pdfvector.20261008.low5"
+  },
+  "primary_package_version": "0.1.0-pdfvector.20261008.r3",
+  "preview": {
+    "runtime_head": "b9c136bc6f701388fb6a58483a45e2055c22408f",
+    "status": "passed-scoped-layout-policy-device-pixel-fidelity-unestablished",
+    "docs": [
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r3/output/no-op-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21662978,
+        "sha256": "cf841a1fc1df325900be4527b33e352a599ff8a335ddd1407115970cdf29bae3",
+        "chain": "raw source PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T14:41:56.622384+08:00",
+        "result": "passed-scoped-layout-and-policy",
+        "observations": [
+          "Source full page checked: readable CJK/Latin, original A  B spacing, blue title, black subtitle, pale rectangle fill and blue border; no marks from move-only/close-only operations."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r3/output/no-op.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 64269,
+        "sha256": "787f12e58b09026ae3fdfa42fe5e4a9cbffb3243d9a8d79b401eebe05c6d5399",
+        "chain": "actual r3 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T14:41:56.622384+08:00",
+        "result": "passed-scoped-layout-and-policy",
+        "observations": [
+          "Actual r3 nupkg native OFD -> PDF full page checked: source text, spacing, rectangle geometry/fill/border preserved; no ghost marks, visible text overlay, extra blank page or clipping."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r3/output/no-content-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21662478,
+        "sha256": "ba865da0c4c1a59051fde35dcb1a5c5e36bd8cc41e008a03662d63507e97fe21",
+        "chain": "raw source PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T14:41:56.622384+08:00",
+        "result": "passed-scoped-layout-and-policy",
+        "observations": [
+          "Source only move/close butt stroke is intentionally blank, one full page viewed."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r3/output/no-content.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 4477,
+        "sha256": "1a8074d32fc1a4ebd9991ebff2946f8bb619d59ae1a39675414678c3dd5fee72",
+        "chain": "actual r3 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T14:41:56.622384+08:00",
+        "result": "passed-scoped-layout-and-policy",
+        "observations": [
+          "Actual r3 whole-page raster output is intentionally blank like source; per-page report independently proves IsNative=false and one ImageObject, never native empty success."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r3/output/closed-point-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21662931,
+        "sha256": "23fc0a4fa019baf325e2c38bfeef7bd28ac713614658bc0161becd0951494962",
+        "chain": "raw source PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T14:41:56.622384+08:00",
+        "result": "passed-scoped-layout-and-policy",
+        "observations": [
+          "Closed-singleton fill source full page plus twice zoom-in/lower point region checked: title, CJK/subtitle and rectangle readable; no prominent singleton mark visible at these Preview scales. This observation does not establish a universal device-pixel rendering rule."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r3/output/closed-point.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 87503,
+        "sha256": "2c8e195f8f05a8b0cfcd69c1c75cccbb423be25bd848cd7232219737a4c7861a",
+        "chain": "actual r3 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T14:41:56.622384+08:00",
+        "result": "passed-scoped-layout-and-policy",
+        "observations": [
+          "Actual r3 closed-singleton whole-page fallback full page plus same zoomed region checked: same layout/title/CJK/rectangle, expected144DPI raster softness; no visible native overlay. Device-pixel fidelity is unestablished and renderer/scale dependent; do not claim pixel identity."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r3/output/singular-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21662960,
+        "sha256": "7810066bac0ac14c5ef18d40269ef00df3b6e25cc9511e38f663e596f51de835",
+        "chain": "raw source PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T14:41:56.622384+08:00",
+        "result": "passed-scoped-layout-and-policy",
+        "observations": [
+          "Singular CTM source full page checked: visible CJK/English text before rejected transform remains readable; no path paint under zero matrix."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r3/output/singular.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 84848,
+        "sha256": "d6aabee9fd0db45df996ec378af52015b7dd0b4bacf4c1a22bf93b32fda936fe",
+        "chain": "actual r3 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-08T14:41:56.622384+08:00",
+        "result": "passed-scoped-layout-and-policy",
+        "observations": [
+          "Actual r3 whole-page fallback checked against source: both text lines remain visible at expected positions, expected raster softness; no duplicate or missing visible text, stray path or unexpected blank page."
+        ]
+      }
+    ],
+    "gui_released": true,
+    "completed_at": "2026-10-08T14:41:56.622384+08:00",
+    "checked_pages": 8,
+    "windows_opened": 8,
+    "windows_closed": 8,
+    "cleanup": "First no-op source closed before opening target. Seven remaining task URLs verified before Command-W; last closure reported noWindowsAvailable. All Open/Go sheets had been consumed by opens; no unrelated documents closed.",
+    "limits": [
+      "Closed-singleton source/export looked alike in Preview layout and zoomed region; no prominent singleton mark was visible at inspected scales. Device-pixel fidelity is not established.",
+      "Fallback raster softness is expected; no cross-renderer pixel/color equivalence claim.",
+      "Original R2 13 PDFs / 27 pages retain their original observation dates and exact hashes. Runtime shared renderer and DOCX source unchanged; normal native/image/fallback OFD entries unchanged, dual only OFD.xml metadata differs."
+    ]
+  },
+  "retained_preview": {
+    "record": "acceptance/preview-r2.json in evidence.tar.zst",
+    "pages": 27,
+    "pdfs": 13,
+    "date": "2026-10-08",
+    "scope": "Unchanged recorded files and original hashes; not newly viewed regenerated PDFs."
+  },
+  "uncompressed_baseline_comparison": {
+    "dual": {
+      "entries": 8,
+      "changed": [
+        "OFD.xml"
+      ],
+      "page_content_and_resources_unchanged": true
+    },
+    "vector": {
+      "entries": 6,
+      "changed": [],
+      "page_content_and_resources_unchanged": true
+    },
+    "fallback": {
+      "entries": 14,
+      "changed": [],
+      "page_content_and_resources_unchanged": true
+    },
+    "image-absent": {
+      "entries": 6,
+      "changed": [],
+      "page_content_and_resources_unchanged": true
+    },
+    "image-false": {
+      "entries": 6,
+      "changed": [],
+      "page_content_and_resources_unchanged": true
+    },
+    "image-true": {
+      "entries": 6,
+      "changed": [],
+      "page_content_and_resources_unchanged": true
+    },
+    "image-flags-mixed": {
+      "entries": 8,
+      "changed": [],
+      "page_content_and_resources_unchanged": true
+    }
+  },
+  "repairs": [
+    "Safe open move and supported butt singleton stroke paths are consumed without phantom events; no-event pages use NO_NATIVE_CONTENT policy.",
+    "Closed singleton fill explicitly rejects as DEGENERATE_POINT_FILL, including coexistence with other segments; no claim of device-pixel fidelity.",
+    "Before creating events, float and millimeter transforms use existing04 exact nonsingular serialized-coefficient validation; unsupported matrices honor Fail/RasterizePage.",
+    "ImageMagick7 magick or ImageMagick6 standalone tool selection; comparison thresholds and common viewport unchanged. Existing validation report excluded from its own hash list."
+  ],
+  "failure_history": [
+    "First current-head Codex and Cursor P2 reports, actual R2 nupkg reproduction, source PDFs and first CI missing-magick failure preserved.",
+    "Initial main budget test fixture lacked separator between S/s and BT, making invalid operators. Original three failing test logs preserved; fixed before source freeze.",
+    "Low4 observer incorrectly expected a1e-11 diagonal scale to collapse; report remains failed. Actual low4 package confirms native original A under both policies; true near-one float-collapse is separately verified.",
+    "Low5 initial observer launch used wrong font path and stopped at File.ReadAllBytes before converter entry; launch error preserved. Same compiled observer rerun with actual licensed font path passed; product/test/script source not repaired by validator."
+  ],
+  "limits": [
+    "Closed-singleton device-pixel fidelity remains unestablished; only layout and page-policy scope accepted.",
+    "No cross-renderer or DeviceRGB color/pixel equivalence. Standalone tool selection was actually tested on ImageMagick7 host; Linux6 CI must independently pass.",
+    "Only recorded fixtures/pages and bounded native profile. Font service/subsetting issue05, hard heap/time/ZIP caps, arbitraryPDF/Word fidelity are outside scope."
+  ],
+  "reviews": "Await latest pushed evidence head Codex/Cursor, current-head CI and all review threads; final readback will be an immutable-head PR comment.",
+  "merged": false,
+  "tagged": false,
+  "published": false,
+  "production_release_accepted": false
+}
