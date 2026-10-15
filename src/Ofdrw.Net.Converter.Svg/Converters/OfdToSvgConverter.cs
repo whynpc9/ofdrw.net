@@ -250,8 +250,7 @@ public sealed class OfdToSvgConverter
         {
             family = embedded.Family;
             if (embedded.Coverage is null || embedded.Coverage.IsSymbol) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
-            foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
-                EmbeddedFontCoverage.Validate(value, embedded.Coverage, resource.FontName);
+            EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName);
         }
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
@@ -283,6 +282,7 @@ public sealed class OfdToSvgConverter
                     Invariant(text.FillColor.Alpha / 255d));
             }
 
+            if (text.Text.All(char.IsWhiteSpace)) node.SetAttributeValue("fill-opacity", "0");
             root.Add(node);
             return;
         }
@@ -303,6 +303,7 @@ public sealed class OfdToSvgConverter
                 new XAttribute("fill", ToCssColor(text.FillColor)),
                 new XAttribute("transform", transform),
                 run.Text);
+            if (run.Text.All(char.IsWhiteSpace)) node.SetAttributeValue("fill-opacity", "0");
             var glyphs = OfdTextGeometry.Glyphs(run.Text);
             var deltaX = OfdTextGeometry.ExpandDeltas(run.DeltaX, Math.Max(0, glyphs.Count - 1));
             var deltaY = OfdTextGeometry.ExpandDeltas(run.DeltaY, Math.Max(0, glyphs.Count - 1));
@@ -316,8 +317,10 @@ public sealed class OfdToSvgConverter
                 for (var index = 0; index < glyphs.Count; index++)
                 {
                     var glyphAnchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
-                    node.Add(new XElement(svgNs + "tspan", new XAttribute("x", OfdNumericFormat.Plain(glyphAnchor.X)),
-                        new XAttribute("y", OfdNumericFormat.Plain(glyphAnchor.Y)), glyphs[index]));
+                    var span = new XElement(svgNs + "tspan", new XAttribute("x", OfdNumericFormat.Plain(glyphAnchor.X)),
+                        new XAttribute("y", OfdNumericFormat.Plain(glyphAnchor.Y)), glyphs[index]);
+                    if (glyphs[index].All(char.IsWhiteSpace)) span.SetAttributeValue("fill-opacity", "0");
+                    node.Add(span);
                     if (index < deltaX.Count) x += deltaX[index];
                     if (index < deltaY.Count) y += deltaY[index];
                 }

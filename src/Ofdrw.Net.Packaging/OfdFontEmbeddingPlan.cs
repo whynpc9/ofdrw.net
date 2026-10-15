@@ -106,10 +106,10 @@ internal sealed class OfdFontEmbeddingPlan
                         Diagnostics.Add("FONT_COVERAGE_UNVERIFIED " + group.Key + ": CGTransform has explicit glyph references; original font preserved.");
                         continue;
                     }
+                    if (cmap is not null) EmbeddedFontCoverage.Validate(text, cmap, aliases[0].FontName, cancellationToken);
                     var strings = text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text);
                     foreach (var value in strings)
                     {
-                        if (cmap is not null) EmbeddedFontCoverage.Validate(value, cmap, aliases[0].FontName, cancellationToken);
                         foreach (var normalized in NormalizeForUsage(value, cancellationToken))
                             foreach (var scalar in OpenTypeFace.Scalars(normalized))
                             {
