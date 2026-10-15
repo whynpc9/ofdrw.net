@@ -17,7 +17,31 @@ internal static class EmbeddedFontCoverage
         }
     }
 
+    internal static void Validate(OfdTextElement text, OpenTypeCmap cmap, string name, CancellationToken cancellationToken = default)
+    {
+        if (text.Runs.Count == 0)
+        {
+            Validate(text.Text, cmap, name, cancellationToken, text.Text.All(char.IsWhiteSpace));
+            return;
+        }
+        foreach (var run in text.Runs)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var glyphs = OfdTextGeometry.Glyphs(run.Text);
+            var positioned = OfdTextGeometry.ExpandDeltas(run.DeltaX, System.Math.Max(0, glyphs.Count - 1)).Count > 0 ||
+                OfdTextGeometry.ExpandDeltas(run.DeltaY, System.Math.Max(0, glyphs.Count - 1)).Count > 0;
+            // Only independently positioned blank glyphs may lack an outline.
+            // A mixed unpositioned run must resolve a real covering font.
+            if (positioned)
+                foreach (var glyph in glyphs) Validate(glyph, cmap, name, cancellationToken, glyph.All(char.IsWhiteSpace));
+            else Validate(run.Text, cmap, name, cancellationToken, run.Text.All(char.IsWhiteSpace));
+        }
+    }
+
     internal static void Validate(string text, OpenTypeCmap cmap, string name, CancellationToken cancellationToken = default)
+        => Validate(text, cmap, name, cancellationToken, false);
+
+    private static void Validate(string text, OpenTypeCmap cmap, string name, CancellationToken cancellationToken, bool blankGlyph)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var previous = -1;
@@ -29,7 +53,7 @@ internal static class EmbeddedFontCoverage
                 if (previous < 0 || !cmap.SupportsVariation(previous, scalar))
                     throw new InvalidDataException($"Font '{name}' lacks variation sequence U+{previous:X}/U+{scalar:X}.");
             }
-            else if (!(scalar <= 0xFFFF && char.IsWhiteSpace((char)scalar)) && !UnicodeFontSubsetProfile.IsNonRenderingControl(scalar) && cmap.Glyph(scalar) == 0)
+            else if (scalar != 9 && scalar != 10 && scalar != 13 && !(blankGlyph && scalar <= 0xFFFF && char.IsWhiteSpace((char)scalar)) && !UnicodeFontSubsetProfile.IsNonRenderingControl(scalar) && cmap.Glyph(scalar) == 0)
                 throw new InvalidDataException($"Font '{name}' lacks U+{scalar:X4}; bind a configured fallback font before writing.");
             previous = scalar;
         }

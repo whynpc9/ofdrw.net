@@ -6,6 +6,31 @@ namespace Ofdrw.Net.Packaging.Tests;
 
 public sealed class RoadmapIntegrationTests
 {
+    [Theory]
+    [InlineData(" ", false)] [InlineData("\u00a0", false)]
+    [InlineData("\u202f", false)] [InlineData("\u3000", false)]
+    [InlineData(" ", true)] [InlineData("\u00a0", true)]
+    [InlineData("\u202f", true)] [InlineData("\u3000", true)]
+    public async Task UnpositionedMixedWhitespaceRequiresActualFontCoverage(string separator, bool run)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var face = new OpenTypeFace(File.ReadAllBytes(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf")));
+        var cmap = new OpenTypeCmap(face);
+        face.Tables["cmap"] = OpenTypeCmap.Build(new Dictionary<int, int> { ['A'] = cmap.Glyph('A') });
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new() { Id = "10", FontName = "missing-space", Data = face.Build() });
+        var text = new OfdTextElement { FontResourceId = "10", Text = "A" + separator,
+            WidthMillimeters = 40, HeightMillimeters = 10 };
+        if (run) text.Runs.Add(new OfdTextRun { Text = text.Text });
+        package.Pages.Add(new OfdPage { Elements = { text } });
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdPackageWriter().WriteAsync(package, output));
+        Assert.Contains($"U+{(int)separator[0]:X4}", error.Message);
+        Assert.Equal(0, output.Length);
+    }
+
     [Fact]
     public async Task SubsettingIncludesTextUsedOnlyByTypedAnnotationAppearance()
     {

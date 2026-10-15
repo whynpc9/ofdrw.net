@@ -15,6 +15,35 @@ public sealed class FontIsolationTests
     public FontIsolationTests() => PdfFontRegistry.EnsureInstalled();
 
     [Theory]
+    [InlineData(" ")] [InlineData("\u00a0")] [InlineData("\u202f")] [InlineData("\u3000")]
+    public async Task MissingWhitespaceInMixedRunFallsBackOrFailsBeforePdfWrites(string separator)
+    {
+        var primary = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        var map = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(primary);
+        primary.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int, int> { ['A'] = map.Glyph('A') });
+        var missing = primary.Build();
+        var covering = new Ofdrw.Net.Core.Fonts.OpenTypeFace(missing);
+        covering.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int, int>
+            { ['A'] = map.Glyph('A'), [separator[0]] = map.Glyph('A') });
+        var resource = new OfdFontResource { Id = "10", FontName = "missing-mixed-space" };
+        var text = new OfdTextElement { FontResourceId = "10", Text = "A" + separator };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], new CoveringResolver(missing, covering.Build()));
+        var family = context.Resolve(text, out _);
+        var selected = GlobalFontSettings.FontResolver.ResolveTypeface(family, false, false);
+        Assert.Equal(covering.Build(), PdfFontRegistry.GetOriginalFont(selected.FaceName));
+        var insufficient = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource], new CoveringResolver(missing, missing));
+        Assert.Throws<InvalidDataException>(() => insufficient.Resolve(text, out _));
+
+        resource.Data = missing;
+        var package = new OfdDocumentPackage(); package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
+        package.Fonts.Add(resource); package.Pages.Add(new OfdPage { Elements = { text } });
+        using var ofd = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, ofd); ofd.Position = 0;
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdToPdfConverter().ConvertAsync(ofd, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]
     [InlineData(true, true)]
