@@ -1,0 +1,703 @@
+{
+  "runtime_head": "8de595865ab599955f9f492fb9deb1b85287efb7",
+  "status": "bounded-sampling-functional-and-eight-page-Preview-accepted-ticket-open",
+  "main_tests": {
+    "dotnet_passed": 602,
+    "python_passed": 5,
+    "vector_passed": 145
+  },
+  "independent": {
+    "ticket": "21",
+    "worker": "independent low7",
+    "created_utc": "2026-10-09T04:47:12.298955+00:00",
+    "status": "passed_bounded",
+    "source": {
+      "commit": "8de595865ab599955f9f492fb9deb1b85287efb7",
+      "tracked_blobs": 338,
+      "initial_mismatches": [],
+      "post_run_mismatches": []
+    },
+    "environment": {
+      "dotnet": "10.0.401",
+      "libreoffice": "LibreOfficeDev 26.8.0.0.alpha0 2c87e51eeaa2b413ff4ae097b2705eea1995d8e5",
+      "font_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "font_license": "fonts-low7/Ofdrw-CI-Noto-OFL.txt",
+      "flags": "--disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false"
+    },
+    "functional": {
+      "dotnet_test_counts": [
+        5,
+        250,
+        88,
+        4,
+        49,
+        13,
+        20,
+        28,
+        145
+      ],
+      "dotnet_total": 602,
+      "dotnet_log": "logs-low7/full-tests.log",
+      "python_count": 5,
+      "python_log": "logs-low7/python-tests.log",
+      "default_packages": 11,
+      "default_log": "logs-low7/default11.log",
+      "optional_packages": 13,
+      "optional_log": "logs-low7/optional13.log",
+      "optional_package_reference_only": true,
+      "optional_indexed_3x2": "optional13-low7/output/indexed-palette-report.json"
+    },
+    "package": {
+      "version": "0.1.0-pdfvector.20261009.low7",
+      "files": [
+        {
+          "name": "Ofdrw.Net.Cli.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "c3ddab48cbb4db20ae6deb00080c751eb495d1c5e5df901983e0ad02747fa9eb",
+          "dll_sha256": {
+            "tools/net10.0/any/Docnet.Core.dll": "a596d9f7a0d71f52593aefe794139c1327e2c7901731e9c2f9d564992d81c8aa",
+            "tools/net10.0/any/DocumentFormat.OpenXml.Framework.dll": "ff3ed8318388d84fa5bbc5736df6144ecfa3165c0b95f6b45b5330f463edf7ae",
+            "tools/net10.0/any/DocumentFormat.OpenXml.dll": "ee2a31ff79db570e2eb98ec7513b222f2b8c6bfcb638d66c2cec8255b0bbe499",
+            "tools/net10.0/any/ICSharpCode.SharpZipLib.dll": "32ea2d0ce3512e74f1c7ad82591fe67e6b8939d76a8a4ff9c93ead030131e71c",
+            "tools/net10.0/any/MigraDocCore.DocumentObjectModel.dll": "18421c81acde74cdb701317d93335c4f637c79be3837004d9a23451722a26620",
+            "tools/net10.0/any/MigraDocCore.Rendering.dll": "9e76dbad45c8a2134fcba95c948f4a92ec76818500f1b711f255001e8c82f71b",
+            "tools/net10.0/any/Ofdrw.Net.Cli.dll": "ec2b1b264a3a9e34311dff10f8de2ac724cea834d135235ef10e4fdaa854057c",
+            "tools/net10.0/any/Ofdrw.Net.Converter.Abstractions.dll": "c0e3e5996d17edef0775e1e3ffd413b31fd0364366d91a987f37e19e2d5d30ab",
+            "tools/net10.0/any/Ofdrw.Net.Converter.Docx.dll": "4d0c6ea08fce860c9f9e2ee46ab177bcfafbe776e90893105f99b0079d4146ed",
+            "tools/net10.0/any/Ofdrw.Net.Converter.Pdf.dll": "8e661f653cd94cf1ec0dfbf385bbd657fa3d2b8b930a38f85f3d98c2da318947",
+            "tools/net10.0/any/Ofdrw.Net.Converter.Svg.dll": "54e4ef7f5c877406427db812cb520ded3cddfe63c8df1bfa3bd652f8f73a9b30",
+            "tools/net10.0/any/Ofdrw.Net.Core.dll": "0c54bf110d084d6c12b14b8ad356cf5c7797743e93b4ed2513322fa52cf52982",
+            "tools/net10.0/any/Ofdrw.Net.Layout.dll": "e477b385bca47235b956a12d1070bf2a2141c9573932e3bd410a44e44817b4e8",
+            "tools/net10.0/any/Ofdrw.Net.Packaging.dll": "897c5cedb7c9ebfe66acaaba737b86cbb0fd1b880503aaabb900c99dd31f7dcf",
+            "tools/net10.0/any/Ofdrw.Net.Reader.dll": "7191bb48dc44be668699a2bed5940454dd9ae0ee80f66d1a4ca692f34c234290",
+            "tools/net10.0/any/Ofdrw.Net.Signatures.dll": "031f471da46045bba57c862d0601bac40975f14697d1d2111a58804f5a654888",
+            "tools/net10.0/any/PdfSharpCore.Charting.dll": "daf0205f351c01be7414df002256faf9ad37c9fb41a117153c75e364af44bd3d",
+            "tools/net10.0/any/PdfSharpCore.dll": "0b5bbc9ada9860b51c776ff96ca3c465d716ca249608603d088212689ef08ef7",
+            "tools/net10.0/any/SixLabors.Fonts.dll": "36e2e4c0af507538b1e98babeb475699e2e8908defae586cc519b4b5aedb2e36",
+            "tools/net10.0/any/SixLabors.ImageSharp.dll": "6ee59130bd4bc86a3557aae8304b2e35c4f325934faa398ebbacedb7136d6935",
+            "tools/net10.0/any/System.IO.Packaging.dll": "1f27c2b1f02a185b370ef9d801597074b0ee09e338c6cf89193e403f7808821c",
+            "tools/net10.0/any/UglyToad.PdfPig.Core.dll": "b416a728a382f4e63e164caa9405664d3b4c9ab3cb3d2efa92b183981e1ec8f4",
+            "tools/net10.0/any/UglyToad.PdfPig.DocumentLayoutAnalysis.dll": "95b6694cccd3f65774cc9ba9e03a68d0e3e651c68c45d26a6ef6cd01e9fc19fe",
+            "tools/net10.0/any/UglyToad.PdfPig.Fonts.dll": "c6b5e61da965a6bb4eb4dcc38baea581fa88dc6ad58f9e73651bd98d1bf89231",
+            "tools/net10.0/any/UglyToad.PdfPig.Package.dll": "00fc2f4870b345625c1a092d5a8d1aaad0c98eec23b519c47c6e0876ee4c4ac5",
+            "tools/net10.0/any/UglyToad.PdfPig.Tokenization.dll": "af80fe541bd79237a790ff8e904daee47ac0460de12ad102a06247519d777902",
+            "tools/net10.0/any/UglyToad.PdfPig.Tokens.dll": "f0c6e3ecc190d32569b86bbe9d707d67cc2355e5e32e5ffa38908dbb2c341bdb",
+            "tools/net10.0/any/UglyToad.PdfPig.dll": "d6aa1d42b9b324e59b1e0800e51bdf471b82fb5b2e8ec8efe6d43ba9bf199251",
+            "tools/net10.0/any/de/PdfSharpCore.resources.dll": "e53ae5001e540ed7161e438178f24dbe1e3833d86c77382a7c09ab4b945a0e61",
+            "tools/net10.0/any/runtimes/win-x64/native/pdfium.dll": "bca96944d731dd72877116d3472083c847fe307fc58ca39bce16cbe998c478f1",
+            "tools/net10.0/any/runtimes/win-x86/native/pdfium.dll": "b7851fd6581b8bfe40c485a7c7e2f08fca245a7c2d1d5dcf051807488d346f09"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Converter.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "06110f7b6c6ebe24476ad488b60dab753e3da8e115a2595a7d6fd995c79d2722",
+          "dll_sha256": {}
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Abstractions.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "6fc0cd48a2543c4abff7a08d7930880ad740c5b83e59b9a116c2e155b9a0536c",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Abstractions.dll": "4cd9e1c77701ccb76652ccaf99a95434d9048c96d0b67fc1870be37e1a23290b",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Abstractions.dll": "c0e3e5996d17edef0775e1e3ffd413b31fd0364366d91a987f37e19e2d5d30ab"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Docx.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "ad60567f611a6727e2c0975315ed0c6c66cc724b205e1a9b94c6e7aa339a9a10",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Docx.dll": "39b41ff7857c7ae1bc6c8b559b33109d64571250811bd6d00bb036c43d0d534c",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Docx.dll": "4d0c6ea08fce860c9f9e2ee46ab177bcfafbe776e90893105f99b0079d4146ed"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Pdf.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "606ac80cb9118f635fedfa3672de65acd17386cf99c2cd3320c6053628a39d5a",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Pdf.dll": "f2318fc2ef9ebeff6a234f1f5c1a335949bcde289090b14de9b8b56505894684",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Pdf.dll": "8e661f653cd94cf1ec0dfbf385bbd657fa3d2b8b930a38f85f3d98c2da318947"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Pdf.Vector.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "832c51dcba4dd3132efa8095fe0ccdaa8c5b4cb2b0950a209963400cf8fd800e",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Pdf.Vector.dll": "69220ad3d9da8186d91599a01b096cb694d2abbebc5a92ef8987455a273c9aff",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Pdf.Vector.dll": "52b3fe42c748cd1ada7dcd0fba147f355bddebd9864a5c8c1dc0e334c882683d"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Svg.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "97829a72d1621c973a254b243a733942c7709d284039f90d2774a1e0cb3ff65f",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Svg.dll": "37e559d5d5cef8fa2e6df6dc8cfe0296e86221fe2ef615b8d10994f1ccad9602",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Svg.dll": "54e4ef7f5c877406427db812cb520ded3cddfe63c8df1bfa3bd652f8f73a9b30"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Core.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "d12598a133e1a56b5cd4025e63941c2f9166584597b41f649c5966a25aeab09c",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Core.dll": "472d53faf8f76da5c026f73a8eb2a315a5cfeea581c0cde2dd18f28fac0e35da",
+            "lib/netstandard2.1/Ofdrw.Net.Core.dll": "0c54bf110d084d6c12b14b8ad356cf5c7797743e93b4ed2513322fa52cf52982"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Graphics.SkiaSharp.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "1afb9303c1b65814d9ee4a2e96986596bc75a83e65d699a2fb3c0b6b6ded8df6",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Graphics.SkiaSharp.dll": "43ebea447430480813298c43a053c94c6d98913f58ab88f3209913f08686205e",
+            "lib/netstandard2.1/Ofdrw.Net.Graphics.SkiaSharp.dll": "142be9de729a2798c4ce010701fa4e1b70cca391edc1d177a0e43f58ef4e9dd7"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Layout.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "2646e610e04292a10044baa9d5455ed396d8431a111c7ebef788d16be45baf08",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Layout.dll": "2569b9a75d89e419691209c890fcec9699722c2b354258d76d892d6287e1d02f",
+            "lib/netstandard2.1/Ofdrw.Net.Layout.dll": "e477b385bca47235b956a12d1070bf2a2141c9573932e3bd410a44e44817b4e8"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "1b524f3132f296d9567a59dc7e0240f08064966ead004c4c220f58ec56528e27",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Packaging.dll": "a39584588ba6855cc30970aebe44cb12811d9c663e3c3cf740f2993a286f4cd5",
+            "lib/netstandard2.1/Ofdrw.Net.Packaging.dll": "897c5cedb7c9ebfe66acaaba737b86cbb0fd1b880503aaabb900c99dd31f7dcf"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Reader.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "2ce6100b6fffebb21e5b2437462e01d6618b27c414fc739c856d3b6db024360c",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Reader.dll": "b79f8d40592ae04a96d15f3365463be6543398df956785f0dfc8176d11ea7ef1",
+            "lib/netstandard2.1/Ofdrw.Net.Reader.dll": "7191bb48dc44be668699a2bed5940454dd9ae0ee80f66d1a4ca692f34c234290"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Signatures.0.1.0-pdfvector.20261009.low7.nupkg",
+          "sha256": "e461f49b18e4e01f483721d73bfc3d5d8194abda76ee551b942d15ef14ea7d79",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Signatures.dll": "4b98cd088e7adf2dd69eda2f8f89e1c8a28ce0ee9edd693ebf6491b852924970",
+            "lib/netstandard2.1/Ofdrw.Net.Signatures.dll": "031f471da46045bba57c862d0601bac40975f14697d1d2111a58804f5a654888"
+          }
+        }
+      ]
+    },
+    "r4_observer": {
+      "source": "artifacts/pdf-vectors/package-r4/output/indexed-image-source.pdf",
+      "source_sha256": "49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441",
+      "source_bytes": 22661825,
+      "palette": "1f5da6e9f1f9",
+      "raw_indices": 999600,
+      "index_counts": {
+        "0": 501200,
+        "1": 498400
+      },
+      "ofd_rgb_pixels_compared": 999600,
+      "pdf_rgb_pixels_compared": 999600,
+      "result": "passed",
+      "observation": "observer-output-low7/r4-observation.json",
+      "invocation_issue": "First dotnet run passed MSBuild flags to executable and failed before source open; logs-low7/observer.log retained. Direct built DLL run passed in logs-low7/observer-direct.log.",
+      "package_controls": {
+        "interpolation": 3,
+        "malformed_palette_index_atomic": 6,
+        "fallback_profile_decode_stream_lookup_filter_default_rgb": 4,
+        "budget_precancel_atomic_including_accumulated": 5,
+        "log": "logs-low7/observer-controls2.log"
+      },
+      "observer_package_reference_only": true
+    },
+    "raster_observation": {
+      "source_pdf_to_ofd_to_export_pdf": "observer-output-low7/r4-indexed-export.pdf",
+      "ghostscript_144_dpi": "840x1190 both, exact shared viewport",
+      "poppler_144_dpi": "source 840x1190, export 841x1191; exact cropped common 840x1190 viewport without resizing",
+      "universal_renderer_pixel_claim": false,
+      "preview_used": false,
+      "inspected_pngs": [
+        "precision-1.png",
+        "precision-2.png",
+        "precision-3.png",
+        "encoding-stream-2.png",
+        "cid-map-stream-2.png",
+        "indexed-image-1.png"
+      ],
+      "poppler_common_mismatch_pixels": 0,
+      "ghostscript_mismatch_pixels": 0,
+      "pillow_probe_issue": "Pillow absent; renderer comparison used ImageMagick compare on same-size common viewport without resizing."
+    },
+    "limits": {
+      "package_r4_previous_failure": "23520 pixel mismatch retained in existing R4 report",
+      "textmatrix_precision_p2": "open outside candidate",
+      "preview_blue_hue": "open outside candidate",
+      "overall_visual_or_release_accepted": false
+    }
+  },
+  "primary_package_version": "0.1.0-pdfvector.20261009.r5",
+  "preview": {
+    "runtime_head": "8de595865ab599955f9f492fb9deb1b85287efb7",
+    "primary_package_version": "0.1.0-pdfvector.20261009.r5",
+    "docs": [
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/indexed-image-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 22661825,
+        "sha256": "49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441",
+        "chain": "unchanged raw R4 source",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-color-appearance",
+        "view": "Single Page full-page redraw",
+        "observations": [
+          "Full checker grid with four page edges and source orientation checked. Original and actual R5 export blue/light cells visually agree after fresh Single Page redraw and matched Actual Size redraw; the R4 appearance difference is no longer visible on this candidate. This is a scoped human visual judgment, not screenshot colorimetry or universal device fidelity."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-image.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 18947,
+        "sha256": "b9a17c667c69c6f26f3241a8264d389f8d0ef46f8e93d41d25f357628dadfd88",
+        "chain": "actual R5 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-color-appearance",
+        "view": "Single Page full-page redraw",
+        "observations": [
+          "Full checker grid with four page edges and source orientation checked. Original and actual R5 export blue/light cells visually agree after fresh Single Page redraw and matched Actual Size redraw; the R4 appearance difference is no longer visible on this candidate. This is a scoped human visual judgment, not screenshot colorimetry or universal device fidelity."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-absent-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21661396,
+        "sha256": "9497aa265bb66833b6a52a94179103158afb4df627625f64c0c26c51b8fb93d6",
+        "chain": "raw source PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-color-appearance",
+        "view": "Single Page full-page redraw",
+        "observations": [
+          "Complete3x2 source/export pages checked; asymmetric color arrangement/orientation, blue/light appearance and smooth gradients agree. Preview smooths absent/false/true alike, so no visual flag-discrimination claim; actual flag is independently decoded from package output."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-absent.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 1542,
+        "sha256": "88074c630f55fd179627b8aa1af42c32d5767f4b83adacd9b5952377acaefa41",
+        "chain": "actual R5 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-color-appearance",
+        "view": "Single Page full-page redraw",
+        "observations": [
+          "Complete3x2 source/export pages checked; asymmetric color arrangement/orientation, blue/light appearance and smooth gradients agree. Preview smooths absent/false/true alike, so no visual flag-discrimination claim; actual flag is independently decoded from package output."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-false-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21661414,
+        "sha256": "e6b36f3373118a205036370e02c530ac71828c0ec5d6ce2b1909bb7f541d511c",
+        "chain": "raw source PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-color-appearance",
+        "view": "Single Page full-page redraw",
+        "observations": [
+          "Complete3x2 source/export pages checked; asymmetric color arrangement/orientation, blue/light appearance and smooth gradients agree. Preview smooths absent/false/true alike, so no visual flag-discrimination claim; actual flag is independently decoded from package output."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-false.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 1542,
+        "sha256": "4fb4b35daba7a0b358e19ee91d946038c0a11a3b26fff0dd5b00247640307205",
+        "chain": "actual R5 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-color-appearance",
+        "view": "Single Page full-page redraw",
+        "observations": [
+          "Complete3x2 source/export pages checked; asymmetric color arrangement/orientation, blue/light appearance and smooth gradients agree. Preview smooths absent/false/true alike, so no visual flag-discrimination claim; actual flag is independently decoded from package output."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-true-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 21661413,
+        "sha256": "bd24e4fca0d94455ddea527440212baa081737f263c78eb3a3501d6cf0a8201d",
+        "chain": "raw source PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-color-appearance",
+        "view": "Single Page full-page redraw",
+        "observations": [
+          "Complete3x2 source/export pages checked; asymmetric color arrangement/orientation, blue/light appearance and smooth gradients agree. Preview smooths absent/false/true alike, so no visual flag-discrimination claim; actual flag is independently decoded from package output."
+        ]
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-true.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 1560,
+        "sha256": "e0e3ba33b078aa675e3f4933e50951d1a067457e8eb607ee980a63e6d2923946",
+        "chain": "actual R5 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "result": "passed-scoped-layout-color-appearance",
+        "view": "Single Page full-page redraw",
+        "observations": [
+          "Complete3x2 source/export pages checked; asymmetric color arrangement/orientation, blue/light appearance and smooth gradients agree. Preview smooths absent/false/true alike, so no visual flag-discrimination claim; actual flag is independently decoded from package output."
+        ]
+      }
+    ],
+    "pages": 8,
+    "status": "passed-scoped-eight-pages-original-blue-appearance-finding-not-visible-after-repair",
+    "prior_blue_difference": "FAIL/OPEN pending fresh matched-zoom/redraw source/target Preview",
+    "checked_pages": 8,
+    "checked_at": "2026-10-09T12:55:43.885671+08:00",
+    "gui_released": true,
+    "owned_pdf_windows_closed": 8,
+    "open_panel_closed": true,
+    "unknown_windows_changed": false,
+    "overall_ticket_accepted": false,
+    "cleanup": "All8 exact owned PVDocumentWindow URLs verified before CmdW; auto Open panel Escape then noWindowsAvailable. No unknown window closed.",
+    "preserved_failure": "preview-r4.json unchanged, Indexed hue actual failure retained with original hashes/date.",
+    "open_items": [
+      "TEXT_FLOAT_PRECISION P2 design completed, implementation/newpackage/Low/affectedPreview/reviews pending.",
+      "Indexed hival range clipping requires a new source freeze and meaningful regression; current scope admits only original samples0..hival.",
+      "Latest final head CI/Codex/Cursor/allthreads closure pending."
+    ]
+  },
+  "color_storage_and_renderers": {
+    "runtime_head": "8de595865ab599955f9f492fb9deb1b85287efb7",
+    "package_version": "0.1.0-pdfvector.20261009.r5",
+    "original_source_sha256": "49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441",
+    "pixels": 999600,
+    "ofd_palette_differences": 0,
+    "export_palette_differences": 0,
+    "original_expanded_sha256": "86ec2f2db482745540e27d5e65c4852d3bce89a99d570137678a0e0763464c44",
+    "palette": "1f5da6e9f1f9",
+    "effective_interpolate": false,
+    "actual_export_dictionary": "{'/Type': '/XObject', '/Subtype': '/Image', '/Filter': '/FlateDecode', '/Width': 840, '/Height': 1190, '/BitsPerComponent': 8, '/ColorSpace': '/DeviceRGB'}",
+    "commands": [
+      {
+        "argv": [
+          "pdftoppm",
+          "-f",
+          "1",
+          "-l",
+          "1",
+          "-r",
+          "144",
+          "-png",
+          "-singlefile",
+          "-x",
+          "0",
+          "-y",
+          "0",
+          "-W",
+          "840",
+          "-H",
+          "1190",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/indexed-image-source.pdf",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r5-actual/source-poppler"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "gs",
+          "-dSAFER",
+          "-dBATCH",
+          "-dNOPAUSE",
+          "-dFirstPage=1",
+          "-dLastPage=1",
+          "-sDEVICE=png16m",
+          "-r144",
+          "-g840x1190",
+          "-dFIXEDMEDIA",
+          "-sOutputFile=/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r5-actual/source-gs.png",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/indexed-image-source.pdf"
+        ],
+        "exit_code": 0,
+        "stdout": "GPL Ghostscript 10.08.0 (2026-09-08)\nCopyright (C) 2026 Artifex Software, Inc.  All rights reserved.\nThis software is supplied under the GNU AGPLv3 and comes with NO WARRANTY:\nsee the file COPYING for details.\nProcessing pages 1 through 1.\nPage 1\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r4-design/quartz-render",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/indexed-image-source.pdf",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r5-actual/source-quartz.png",
+          "srgb"
+        ],
+        "exit_code": 0,
+        "stdout": "CoreGraphics drawPDFPage; destination srgb; 840x1190; scale 2; no GUI; page (0.0, 0.0, 420.0, 595.0)\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "pdftoppm",
+          "-f",
+          "1",
+          "-l",
+          "1",
+          "-r",
+          "144",
+          "-png",
+          "-singlefile",
+          "-x",
+          "0",
+          "-y",
+          "0",
+          "-W",
+          "840",
+          "-H",
+          "1190",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-image.pdf",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r5-actual/export-poppler"
+        ],
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "gs",
+          "-dSAFER",
+          "-dBATCH",
+          "-dNOPAUSE",
+          "-dFirstPage=1",
+          "-dLastPage=1",
+          "-sDEVICE=png16m",
+          "-r144",
+          "-g840x1190",
+          "-dFIXEDMEDIA",
+          "-sOutputFile=/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r5-actual/export-gs.png",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-image.pdf"
+        ],
+        "exit_code": 0,
+        "stdout": "GPL Ghostscript 10.08.0 (2026-09-08)\nCopyright (C) 2026 Artifex Software, Inc.  All rights reserved.\nThis software is supplied under the GNU AGPLv3 and comes with NO WARRANTY:\nsee the file COPYING for details.\nProcessing pages 1 through 1.\nPage 1\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r4-design/quartz-render",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-image.pdf",
+          "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r5-actual/export-quartz.png",
+          "srgb"
+        ],
+        "exit_code": 0,
+        "stdout": "CoreGraphics drawPDFPage; destination srgb; 840x1190; scale 2; no GUI; page (0.0, 0.0, 420.00100000000003, 595.001)\n",
+        "stderr": ""
+      }
+    ],
+    "renders": {
+      "source-poppler": {
+        "different_palette_pixels": 23520,
+        "pixel_sha256": "2a6c63608f75d100b02bdd8dbee1f1960e3716188a7c664ea6ec5f1ab405fea6",
+        "samples": {
+          "(40, 40)": [
+            31,
+            93,
+            166
+          ],
+          "(120, 40)": [
+            233,
+            241,
+            249
+          ],
+          "(400, 400)": [
+            130,
+            165,
+            206
+          ]
+        }
+      },
+      "source-gs": {
+        "different_palette_pixels": 0,
+        "pixel_sha256": "86ec2f2db482745540e27d5e65c4852d3bce89a99d570137678a0e0763464c44",
+        "samples": {
+          "(40, 40)": [
+            31,
+            93,
+            166
+          ],
+          "(120, 40)": [
+            233,
+            241,
+            249
+          ],
+          "(400, 400)": [
+            31,
+            93,
+            166
+          ]
+        }
+      },
+      "source-quartz": {
+        "different_palette_pixels": 0,
+        "pixel_sha256": "86ec2f2db482745540e27d5e65c4852d3bce89a99d570137678a0e0763464c44",
+        "samples": {
+          "(40, 40)": [
+            31,
+            93,
+            166
+          ],
+          "(120, 40)": [
+            233,
+            241,
+            249
+          ],
+          "(400, 400)": [
+            31,
+            93,
+            166
+          ]
+        }
+      },
+      "export-poppler": {
+        "different_palette_pixels": 23520,
+        "pixel_sha256": "2a6c63608f75d100b02bdd8dbee1f1960e3716188a7c664ea6ec5f1ab405fea6",
+        "samples": {
+          "(40, 40)": [
+            31,
+            93,
+            166
+          ],
+          "(120, 40)": [
+            233,
+            241,
+            249
+          ],
+          "(400, 400)": [
+            130,
+            165,
+            206
+          ]
+        }
+      },
+      "export-gs": {
+        "different_palette_pixels": 0,
+        "pixel_sha256": "86ec2f2db482745540e27d5e65c4852d3bce89a99d570137678a0e0763464c44",
+        "samples": {
+          "(40, 40)": [
+            31,
+            93,
+            166
+          ],
+          "(120, 40)": [
+            233,
+            241,
+            249
+          ],
+          "(400, 400)": [
+            31,
+            93,
+            166
+          ]
+        }
+      },
+      "export-quartz": {
+        "different_palette_pixels": 0,
+        "pixel_sha256": "86ec2f2db482745540e27d5e65c4852d3bce89a99d570137678a0e0763464c44",
+        "samples": {
+          "(40, 40)": [
+            31,
+            93,
+            166
+          ],
+          "(120, 40)": [
+            233,
+            241,
+            249
+          ],
+          "(400, 400)": [
+            31,
+            93,
+            166
+          ]
+        }
+      }
+    },
+    "preview": "not inspected; blue appearance finding remains open",
+    "png_chunks": [
+      "IHDR",
+      "pHYs",
+      "IDAT",
+      "IEND"
+    ],
+    "files": [
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/indexed-image-source.pdf",
+        "bytes": 22661825,
+        "sha256": "49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-image.ofd",
+        "bytes": 2244,
+        "sha256": "318b45d9bfdd7344cdbcd670daa13ea547d2a3daee415363064978e1f2b9bf6a"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/output/indexed-image.pdf",
+        "bytes": 18947,
+        "sha256": "b9a17c667c69c6f26f3241a8264d389f8d0ef46f8e93d41d25f357628dadfd88"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r5/package-manifest.json",
+        "bytes": 5404,
+        "sha256": "75eaf1e59abd1d3f57bf51fd383693fed377ba0c8d1c71342664f9c6ba2e5010"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r4-design/quartz.swift",
+        "bytes": 984,
+        "sha256": "c017a29489efe1c404da5e029842e5e5b72768f8c0ab6bd5dee193a652e5cf1d"
+      },
+      {
+        "path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/indexed-color-r4-design/quartz-render",
+        "bytes": 57824,
+        "sha256": "10277736815110097ffe881ec9f90e70a3858e855947d66a2868d1a82e8f2a2f"
+      }
+    ]
+  },
+  "overall_ticket_accepted": false,
+  "production_release_accepted": false,
+  "open_items": [
+    "Text-matrix/advances/font-size producer precision P2, actual R4 defect reproduction retained and Astra design complete; main repair/newfreeze/gates/Preview/reviews required.",
+    "Main standards audit identifies legal Indexed samples beyondhival require clamping, not malformed-input classification; current0..hival fixture scope passed but boundary repair required.",
+    "Final current-head CI/bothreviews/allthreads closure pending."
+  ],
+  "archive_verified_files": 159
+}

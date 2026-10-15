@@ -5,6 +5,16 @@ namespace Ofdrw.Net.Core.Models;
 
 internal static class OfdNumericFormat
 {
+    // Match the package writer's scalar format exactly. This is deliberately
+    // separate from round-trip path/matrix literals and from Math.Round.
+    internal static double WriterValue(double value) => double.Parse(value.ToString("0.###", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+    internal static bool WriterPositive(double value)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0) return false;
+        var written = WriterValue(value);
+        return !double.IsNaN(written) && !double.IsInfinity(written) && written > 0;
+    }
+
     internal static bool Nonsingular(double a, double b, double c, double d)
     {
         var leftA = DecimalParts(a); var leftD = DecimalParts(d);

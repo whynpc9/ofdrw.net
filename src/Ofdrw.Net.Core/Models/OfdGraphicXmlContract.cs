@@ -40,6 +40,8 @@ internal static class OfdGraphicXmlContract
         if (attribute.IsNamespaceDeclaration) return true;
         var parent = attribute.Parent!.Name.LocalName;
         if (parent == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor) return true;
+        if (parent == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfInterpolateV1)
+            return OfdImageRenderingHints.IsCanonicalValue(attribute.Value);
         if (attribute.Name.Namespace != XNamespace.None) return false;
         var name = attribute.Name.LocalName;
         if (parent is "TextObject" or "ImageObject" or "PathObject" or "Path" && name is "ID" or "Name" or "Visible" or "Boundary" or "CTM" or "Alpha" or "LineWidth" or "Cap" or "Join" or "MiterLimit" or "DashOffset" or "DashPattern") return true;

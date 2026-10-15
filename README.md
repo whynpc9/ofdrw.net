@@ -355,6 +355,15 @@ scripts/run-converter-package-e2e.sh 0.1.0-preview.local
 - GM/T 0099 encrypted-envelope processing and long-term archival validation are not built in. `OfdCryptographicCapabilities` exposes these support boundaries to applications.
 - A repository license has not yet been selected by the project owner. The NuGet workflow now blocks publication until both a license file and NuGet license metadata exist. Direct dependency declarations are recorded in `THIRD-PARTY-NOTICES.md`.
 
+### Optional PDF vector mode
+
+`Ofdrw.Net.Converter.Pdf.Vector` exposes `PdfVectorToOfdConverter` for a bounded
+PDF path/text profile through the existing Skia producer-event adapter. Original
+Unicode and embedded-font glyph identity are checked; unsupported pages fail by
+default or explicitly fall back as whole dual-layer pages. Default converters
+and CLI remain dual-layer and do not acquire Skia. See the [API tutorial](docs/tutorials/18-pdf-vector-mode.md)
+and [design contract](docs/pdf-vector-design-contract.md).
+
 ### Optional Skia producer-event adapter
 
 `Ofdrw.Net.Graphics.SkiaSharp` adapts explicitly recorded Skia-typed producer

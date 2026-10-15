@@ -1,0 +1,22 @@
+{
+  "runtime_head": "7afd12042e9099093d9974472d1431686304a162",
+  "archive_bytes": 109299339,
+  "archive_sha256": "091e7ac59e04e353fb36a8d6e18dc1bf5df66ff32edf2d0a1d1b63288a411805",
+  "parts": [
+    {
+      "order": 1,
+      "file": "review-r13.tar.zst.part01",
+      "bytes": 90000000,
+      "sha256": "a574eb7377873eb05b676af3ed9233d3eddf5cf52fa694e27fa77856bb14ce6b"
+    },
+    {
+      "order": 2,
+      "file": "review-r13.tar.zst.part02",
+      "bytes": 19299339,
+      "sha256": "1216ccbdeae1be55d9b53fa7e672c8a513c96b4783f8d10c292abc8fc0d3ca07"
+    }
+  ],
+  "files_verified": 1043,
+  "verification": "verify-r13.py actually reconstructed all parts; verified original archive size/SHA and every tar member size/SHA; exit0",
+  "draft_archive_note": "main/r13-public-parts-reconstruction.log inside archive describes a previously verified unpublished draft d0c0...; this final readback and current manifest identify final091e... archive."
+}
