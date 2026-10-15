@@ -99,7 +99,7 @@ internal static partial class Cli
                     options.InputPath,
                     options.OutputPath,
                     pageOrder, cancellationToken).ConfigureAwait(false);
-                Console.WriteLine($"Reordered {options.InputPath} -> {options.OutputPath}");
+                WriteSuccessNotification($"Reordered {options.InputPath} -> {options.OutputPath}");
                 return 0;
             }
 
@@ -111,7 +111,7 @@ internal static partial class Cli
                     options.InputPath,
                     options.OutputPath,
                     svgPages is { Count: 1 } ? svgPages[0] : 0, cancellationToken).ConfigureAwait(false);
-                Console.WriteLine($"Converted {options.InputPath} -> {options.OutputPath}");
+                WriteSuccessNotification($"Converted {options.InputPath} -> {options.OutputPath}");
                 return 0;
             }
 
@@ -126,7 +126,7 @@ internal static partial class Cli
                 options.DocxOfdMode,
                 options.LibreOfficePath,
                 options.FontDirectories, cancellationToken).ConfigureAwait(false);
-            Console.WriteLine($"Converted {options.InputPath} -> {options.OutputPath}");
+            WriteSuccessNotification($"Converted {options.InputPath} -> {options.OutputPath}");
             return 0;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -252,7 +252,7 @@ internal static partial class Cli
         var bytes = System.Text.Encoding.UTF8.GetBytes(text);
         await output.Stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
-        Console.WriteLine($"Extracted text {inputPath} -> {outputPath}");
+        WriteSuccessNotification($"Extracted text {inputPath} -> {outputPath}");
     }
 
     private static async Task ConvertToSvgAsync(
@@ -401,7 +401,7 @@ internal static partial class Cli
         var writeResult = await new OfdPackageWriter().WriteWithResultAsync(merged.Package, output.Stream, cancellationToken).ConfigureAwait(false);
         foreach (var diagnostic in writeResult.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
-        Console.WriteLine($"Merged {sources.Count} OFD files -> {outputPath}");
+        WriteSuccessNotification($"Merged {sources.Count} OFD files -> {outputPath}");
         return 0;
     }
 
