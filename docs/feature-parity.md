@@ -74,7 +74,7 @@ Ofdrw.Net 工作区代码和自动化验证结果为实现依据。它用于标�
 - 上游样本：`999.ofd` 的 5 页、图层、模板、路径、文字对象、注释保留、
   SVG 视觉输出和 20/20 个 SM3 保护引用通过验证。
 - PDF 互操作：3 个上游 PDF 样本完成 PDF → OFD → PDF 视觉冒烟。
-- 依赖审计：当前 CLI 依赖图无已知 vulnerable/deprecated 包。
+- 依赖健康（2026-10-15）：固定的 ImageSharp 2.1.13 处于维护者 [GHSA-wmxv-xphr-5c9g](https://github.com/SixLabors/ImageSharp/security/advisories/GHSA-wmxv-xphr-5c9g) 的影响范围（Moderate / CVSS 5.3）。图片导入在 Identify 前只准入 PNG/JPEG；DOCX、OFD 与签章位图在 Identify/解码前拒绝 BigTIFF 的两种字节序，保留经典 TIFF 等既有格式。此边界修复不代表全部 ImageSharp 风险已消除；版本、目标框架与许可未变。
 
 详细行为与兼容边界见 [转换、编辑与资源约定](conversion-contracts.md)。
 
