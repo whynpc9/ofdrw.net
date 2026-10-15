@@ -29,7 +29,7 @@ internal static partial class Cli
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
             "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-image" or "image-to-ofd" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures"))
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -42,6 +42,9 @@ internal static partial class Cli
             if (command is "ofd-to-image" or "image-to-ofd")
                 return await ConvertImagesAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
 
+
+            if (command == "replace-text")
+                return await ReplaceTextAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "watermark" or "split" or "mix" or "clean-signatures")
                 return await DocumentToolsAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "merge")
@@ -639,6 +642,7 @@ internal static partial class Cli
           ofdrw split <input.ofd> <output.ofd> --pages 3,1
           ofdrw mix <output.ofd> <input1.ofd> 1 <input2.ofd> 2
           ofdrw clean-signatures <input.ofd> <output.ofd>
+          ofdrw replace-text <input.ofd> <output.ofd> --find TEXT --replace TEXT --trusted-font SHA256:BYTECOUNT [--pages 1,3-5]
           ofdrw reorder <input.ofd> <output.ofd> --pages 3,1,2
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
 
@@ -653,6 +657,7 @@ internal static partial class Cli
           image-to-ofd Import PNG/JPEG, one image per page; centered, shrink to fit, no enlargement.
           verify-signatures Verify protected-entry digests and registered signed-value algorithms.
           extract-text Extract page text, optionally including template text.
+          replace-text Replace literal simple text using vetted original Regular fonts and translation-only geometry.
           reorder      Reorder every page using a complete 1-based page list.
           watermark    Add ordinary text/image objects to selected layers (millimeters).
           split        Select distinct pages in 1-based list order into a new OFD.

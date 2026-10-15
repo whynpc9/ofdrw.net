@@ -1,0 +1,400 @@
+{
+  "head": "60163cca80a4da62bf748ba19a300a8d714b80c4",
+  "trackedStatus": "",
+  "version": "0.1.0-issue09.c.60163cc",
+  "packageManifestSha256": "3a8a75913fc37c1cd077f8d257d953080b0303eedb8fc9e3f2a9a0d288163678",
+  "packages": [
+    {
+      "id": "Ofdrw.Net.Core",
+      "file": "Ofdrw.Net.Core.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "1f1a9cab48194395f970e33a51c900640f4a57c5c2b424966ffa43dcb7df75b4",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Packaging",
+      "file": "Ofdrw.Net.Packaging.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "cf4456c5d904921d77304b7f1117d1df8811e7a03ad0194f23cdb7df4dc7dbaf",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Layout",
+      "file": "Ofdrw.Net.Layout.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "688df943efc5c2c78df11b5a2e7a8791ecb6a3445f32a93247dc68612f874e36",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Reader",
+      "file": "Ofdrw.Net.Reader.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "10811cd4717b52a8e7bbd39c9240a2f3ac2a805ca477001fcdb1d82e6fd3e00c",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Abstractions",
+      "file": "Ofdrw.Net.Converter.Abstractions.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "f3796649bd8d3b3677003e46e65c458fe110793abb74d1b3eda07514a245fba6",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Docx",
+      "file": "Ofdrw.Net.Converter.Docx.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "daf40146e58bbb2a743b5aad81086ddabcda557c1ced39c50bb1208a8605d47d",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Pdf",
+      "file": "Ofdrw.Net.Converter.Pdf.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "aad9c2344faa975b0dd7bc804cecca43928b438919284cd859b0f2eb6c503646",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Svg",
+      "file": "Ofdrw.Net.Converter.Svg.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "d0b986e664f3bd9d7ac62650d30d55f2d2e41f0455de629dcc2ac45367aad036",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Signatures",
+      "file": "Ofdrw.Net.Signatures.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "222bccbe0d514a0ae78af91ca54d9809014b4f9f8eb6a1f39ae216406ddba879",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Converter",
+      "file": "Ofdrw.Net.Converter.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "7615f6a6257988d8c7ae98117293134f23eb529ca2d744d23bd0f0e509d36f0d",
+      "manifestMatch": true
+    },
+    {
+      "id": "Ofdrw.Net.Cli",
+      "file": "Ofdrw.Net.Cli.0.1.0-issue09.c.60163cc.nupkg",
+      "sha256": "739c2e60d04fb9d36c7bcbd61562f1f527069a152cb4b3b324b2b988f82012a8",
+      "manifestMatch": true
+    }
+  ],
+  "dlls": [
+    {
+      "id": "Ofdrw.Net.Core",
+      "member": "lib/netstandard2.1/Ofdrw.Net.Core.dll",
+      "payloadSha256": "d6089ba7b53d6780f0e25f1be8fee6a0029a035c99f5ccc23a1a1cd99ca08e6b",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer/bin/Release/net10.0/Ofdrw.Net.Core.dll",
+      "consumerSha256": "d6089ba7b53d6780f0e25f1be8fee6a0029a035c99f5ccc23a1a1cd99ca08e6b",
+      "match": true
+    },
+    {
+      "id": "Ofdrw.Net.Packaging",
+      "member": "lib/netstandard2.1/Ofdrw.Net.Packaging.dll",
+      "payloadSha256": "73a008f10e185873b233443596b8d860bec6a68471ba98ef678410d3851182d1",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer/bin/Release/net10.0/Ofdrw.Net.Packaging.dll",
+      "consumerSha256": "73a008f10e185873b233443596b8d860bec6a68471ba98ef678410d3851182d1",
+      "match": true
+    },
+    {
+      "id": "Ofdrw.Net.Layout",
+      "member": "lib/netstandard2.1/Ofdrw.Net.Layout.dll",
+      "payloadSha256": "c4e560994cd7f04f9bdf6c2c17a811c14e45fe2de86ad26c7892fc87af478311",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer/bin/Release/net10.0/Ofdrw.Net.Layout.dll",
+      "consumerSha256": "c4e560994cd7f04f9bdf6c2c17a811c14e45fe2de86ad26c7892fc87af478311",
+      "match": true
+    },
+    {
+      "id": "Ofdrw.Net.Reader",
+      "member": "lib/netstandard2.1/Ofdrw.Net.Reader.dll",
+      "payloadSha256": "2a459d52e78d438584c8298565a4856625a89e2bfcfcf8fea69c27f7399abaf0",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer/bin/Release/net10.0/Ofdrw.Net.Reader.dll",
+      "consumerSha256": "2a459d52e78d438584c8298565a4856625a89e2bfcfcf8fea69c27f7399abaf0",
+      "match": true
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Abstractions",
+      "member": "lib/netstandard2.1/Ofdrw.Net.Converter.Abstractions.dll",
+      "payloadSha256": "811fdfb04a3ebf1db35735e5e3af2b4dfb87ec353304cc4206de4597a383b086",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer/bin/Release/net10.0/Ofdrw.Net.Converter.Abstractions.dll",
+      "consumerSha256": "811fdfb04a3ebf1db35735e5e3af2b4dfb87ec353304cc4206de4597a383b086",
+      "match": true
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Docx",
+      "member": "lib/netstandard2.1/Ofdrw.Net.Converter.Docx.dll",
+      "payloadSha256": "1534e30f81859ece3cbf295663faab388fe5ce45b4d2b84e3492f465aa98afb8",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer/bin/Release/net10.0/Ofdrw.Net.Converter.Docx.dll",
+      "consumerSha256": "1534e30f81859ece3cbf295663faab388fe5ce45b4d2b84e3492f465aa98afb8",
+      "match": true
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Pdf",
+      "member": "lib/netstandard2.1/Ofdrw.Net.Converter.Pdf.dll",
+      "payloadSha256": "3c358b2b22a25050afa890a58bde711431457567335dfcd8af04346b2b161cdd",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer/bin/Release/net10.0/Ofdrw.Net.Converter.Pdf.dll",
+      "consumerSha256": "3c358b2b22a25050afa890a58bde711431457567335dfcd8af04346b2b161cdd",
+      "match": true
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Svg",
+      "member": "lib/netstandard2.1/Ofdrw.Net.Converter.Svg.dll",
+      "payloadSha256": "025b7108f6ca7963c6f2463852bc47379373ad6a808fd3e582007a207c1acc5f",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer/bin/Release/net10.0/Ofdrw.Net.Converter.Svg.dll",
+      "consumerSha256": "025b7108f6ca7963c6f2463852bc47379373ad6a808fd3e582007a207c1acc5f",
+      "match": true
+    },
+    {
+      "id": "Ofdrw.Net.Signatures",
+      "member": "lib/netstandard2.1/Ofdrw.Net.Signatures.dll",
+      "payloadSha256": "caf425a2f2faf7eaa02abfe877e6bb0b5387a77c0e892e60ef36914244262aea",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/consumer/bin/Release/net10.0/Ofdrw.Net.Signatures.dll",
+      "consumerSha256": "caf425a2f2faf7eaa02abfe877e6bb0b5387a77c0e892e60ef36914244262aea",
+      "match": true
+    },
+    {
+      "id": "Ofdrw.Net.Cli",
+      "member": "tools/net10.0/any/Ofdrw.Net.Cli.dll",
+      "payloadSha256": "0536bd7578cf35a63a49498c456bab626c12d47efd677ab8306af0925413bbd4",
+      "consumerPath": "/Users/wanghongyi/.codex/worktrees/4b89/ofdrw.net/artifacts/issue-09-design/c-implementation/low-60163cc/tools/.store/ofdrw.net.cli/0.1.0-issue09.c.60163cc/ofdrw.net.cli/0.1.0-issue09.c.60163cc/tools/net10.0/any/Ofdrw.Net.Cli.dll",
+      "consumerSha256": "0536bd7578cf35a63a49498c456bab626c12d47efd677ab8306af0925413bbd4",
+      "match": true
+    }
+  ],
+  "trx": [
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_02_19_11_net10.0.trx",
+      "total": 70,
+      "passed": 70,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_02_19_15_net10.0.trx",
+      "total": 987,
+      "passed": 987,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_02_19_17_net10.0.trx",
+      "total": 152,
+      "passed": 152,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_02_19_32_net10.0.trx",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_02_19_34_net10.0.trx",
+      "total": 63,
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "file": "_wanghongyideMacBook-Pro_2026-10-15_02_19_46_net10.0.trx",
+      "total": 44,
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "totalPassed": 1320,
+  "consumerAssetsOfdrw": [
+    "Ofdrw.Net.Converter/0.1.0-issue09.c.60163cc",
+    "Ofdrw.Net.Converter.Abstractions/0.1.0-issue09.c.60163cc",
+    "Ofdrw.Net.Converter.Docx/0.1.0-issue09.c.60163cc",
+    "Ofdrw.Net.Converter.Pdf/0.1.0-issue09.c.60163cc",
+    "Ofdrw.Net.Converter.Svg/0.1.0-issue09.c.60163cc",
+    "Ofdrw.Net.Core/0.1.0-issue09.c.60163cc",
+    "Ofdrw.Net.Layout/0.1.0-issue09.c.60163cc",
+    "Ofdrw.Net.Packaging/0.1.0-issue09.c.60163cc",
+    "Ofdrw.Net.Reader/0.1.0-issue09.c.60163cc",
+    "Ofdrw.Net.Signatures/0.1.0-issue09.c.60163cc"
+  ],
+  "consumerProjectHasProjectReference": false,
+  "consumerResult": {
+    "Runtime": "10.0.12",
+    "Source": "0.1.0-issue09.c.60163cc+60163cca80a4da62bf748ba19a300a8d714b80c4",
+    "Passed": true,
+    "PreviewCompleted": false,
+    "ResourceDefinitions": 2,
+    "Placements": 2,
+    "Fonts": [
+      {
+        "FontName": "Noto Sans",
+        "Bytes": 569208,
+        "Sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5"
+      },
+      {
+        "FontName": "Noto Sans CJK SC",
+        "Bytes": 21659544,
+        "Sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+      }
+    ],
+    "Files": [
+      {
+        "Name": "original-v1-2.svg",
+        "Bytes": 29641661,
+        "Sha256": "11612c675f944a1d0babbe674dd17bb774ce37a9c47895faa6aa4211f2045ff8"
+      },
+      {
+        "Name": "before.pdf",
+        "Bytes": 155008,
+        "Sha256": "97e90f630187a6b0a8bf0c704a28a99e70038a6e207f57f03c146117fe7d8044"
+      },
+      {
+        "Name": "before.ofd",
+        "Bytes": 11892889,
+        "Sha256": "b64b0d6acbda8ef37c00db34bb6bce7cd2918fe03b94d82b7bf28e5e4c36abbf"
+      },
+      {
+        "Name": "original-v1-1.svg",
+        "Bytes": 29644024,
+        "Sha256": "9d6f5f4f9a0ec03af5e93d855e0216b777a751e750c373d96b44d356cdf57095"
+      },
+      {
+        "Name": "after.pdf",
+        "Bytes": 155041,
+        "Sha256": "5543ee01d8ecc8c832f00fcd43e58cbb77cb91ddbaa51ecd05dcabec5b334955"
+      },
+      {
+        "Name": "after.ofd",
+        "Bytes": 11892891,
+        "Sha256": "743f8481291ad681791369fa1368d0b4575529a9aeb0841f16cbcdb5a88c36d7"
+      },
+      {
+        "Name": "before-1.svg",
+        "Bytes": 29657250,
+        "Sha256": "a80902c6a96e6783336b05006351375d9445ac574332be7cbed3e9165fb93cd8"
+      },
+      {
+        "Name": "before-2.svg",
+        "Bytes": 29644334,
+        "Sha256": "1652a0c3acfe52ec0f9318e3d265e70bec7c7a5d21622af640b572c36e33669d"
+      },
+      {
+        "Name": "after-2.svg",
+        "Bytes": 29644334,
+        "Sha256": "b72080890b469f6487dfc56e811b3353fd312c69a4c38068b37b5e93e7a2ea40"
+      },
+      {
+        "Name": "after-1.svg",
+        "Bytes": 29657250,
+        "Sha256": "d8c939ff13c76c37c75135237825941aa1d1ff29a40049e9dc05bf58ded69297"
+      },
+      {
+        "Name": "original-v1.ofd",
+        "Bytes": 11892467,
+        "Sha256": "9c3444ca5aa6a1ce3e2d957db697cdfcb3afd61fc126ff76823260bef4114c2f"
+      },
+      {
+        "Name": "original-v1.pdf",
+        "Bytes": 118716,
+        "Sha256": "595b40c84890762a944e7c5fff15dab20328dcd38999c32723e10ece10dcdd59"
+      }
+    ]
+  },
+  "outputFiles": [
+    {
+      "name": "after-1.png",
+      "bytes": 93386,
+      "sha256": "73ba9ce755b3be414e7e2cf1c9ecc38f0381c66ab162e491347437f396621707"
+    },
+    {
+      "name": "after-1.svg",
+      "bytes": 29657250,
+      "sha256": "d8c939ff13c76c37c75135237825941aa1d1ff29a40049e9dc05bf58ded69297"
+    },
+    {
+      "name": "after-2.png",
+      "bytes": 64842,
+      "sha256": "61b0db820a802a024da8cac4d4a2bd11680697ae1f381b9d988a7b01c5c9280c"
+    },
+    {
+      "name": "after-2.svg",
+      "bytes": 29644334,
+      "sha256": "b72080890b469f6487dfc56e811b3353fd312c69a4c38068b37b5e93e7a2ea40"
+    },
+    {
+      "name": "after.ofd",
+      "bytes": 11892891,
+      "sha256": "743f8481291ad681791369fa1368d0b4575529a9aeb0841f16cbcdb5a88c36d7"
+    },
+    {
+      "name": "after.pdf",
+      "bytes": 155041,
+      "sha256": "5543ee01d8ecc8c832f00fcd43e58cbb77cb91ddbaa51ecd05dcabec5b334955"
+    },
+    {
+      "name": "before-1.png",
+      "bytes": 93883,
+      "sha256": "3bf8854de9a9bf60f6d76b29f426eb1573a865a966dd7575ed3654066cdf30e8"
+    },
+    {
+      "name": "before-1.svg",
+      "bytes": 29657250,
+      "sha256": "a80902c6a96e6783336b05006351375d9445ac574332be7cbed3e9165fb93cd8"
+    },
+    {
+      "name": "before-2.png",
+      "bytes": 65291,
+      "sha256": "6a0a7c6863e66a66ebd355cdcbad00a97e4f355efd5b97a514829113a426cf1f"
+    },
+    {
+      "name": "before-2.svg",
+      "bytes": 29644334,
+      "sha256": "1652a0c3acfe52ec0f9318e3d265e70bec7c7a5d21622af640b572c36e33669d"
+    },
+    {
+      "name": "before.ofd",
+      "bytes": 11892889,
+      "sha256": "b64b0d6acbda8ef37c00db34bb6bce7cd2918fe03b94d82b7bf28e5e4c36abbf"
+    },
+    {
+      "name": "before.pdf",
+      "bytes": 155008,
+      "sha256": "97e90f630187a6b0a8bf0c704a28a99e70038a6e207f57f03c146117fe7d8044"
+    },
+    {
+      "name": "extracted.txt",
+      "bytes": 634,
+      "sha256": "9933acd4c127c35603d93492787a19c8880d803f42877aa68d7ac1b54404c97d"
+    },
+    {
+      "name": "original-v1-1.png",
+      "bytes": 52469,
+      "sha256": "2a51114c39c836f42bb2d0a91c29d0c14d8102dab4c575a0b156d50651c58e26"
+    },
+    {
+      "name": "original-v1-1.svg",
+      "bytes": 29644024,
+      "sha256": "9d6f5f4f9a0ec03af5e93d855e0216b777a751e750c373d96b44d356cdf57095"
+    },
+    {
+      "name": "original-v1-2.png",
+      "bytes": 34498,
+      "sha256": "3c613115e59a2d2ae5aa39732c06266b20c72baf6aaffacad14b27097f08d565"
+    },
+    {
+      "name": "original-v1-2.svg",
+      "bytes": 29641661,
+      "sha256": "11612c675f944a1d0babbe674dd17bb774ce37a9c47895faa6aa4211f2045ff8"
+    },
+    {
+      "name": "original-v1.ofd",
+      "bytes": 11892467,
+      "sha256": "9c3444ca5aa6a1ce3e2d957db697cdfcb3afd61fc126ff76823260bef4114c2f"
+    },
+    {
+      "name": "original-v1.pdf",
+      "bytes": 118716,
+      "sha256": "595b40c84890762a944e7c5fff15dab20328dcd38999c32723e10ece10dcdd59"
+    },
+    {
+      "name": "results.json",
+      "bytes": 2358,
+      "sha256": "7e41c160a55a966ad2cfdf2e2f6d366f05259b927c2f0a6168ad7b798df1e722"
+    }
+  ],
+  "originalV1Sha256": "9c3444ca5aa6a1ce3e2d957db697cdfcb3afd61fc126ff76823260bef4114c2f",
+  "trustedFontsSha256": "2bcc9759bf3e371503d8a28ac24ac927b2ea53c0713b9f38e72bb8ef78f4b6d7"
+}

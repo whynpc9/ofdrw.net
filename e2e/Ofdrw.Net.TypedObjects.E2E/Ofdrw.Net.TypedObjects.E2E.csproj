@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(OfdrwPackageVersion)' == ''">
+    <ProjectReference Include="../../src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Converter.Svg/Ofdrw.Net.Converter.Svg.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(OfdrwPackageVersion)' != ''">
+    <PackageReference Include="Ofdrw.Net.Layout" Version="$(OfdrwPackageVersion)" />
+    <PackageReference Include="Ofdrw.Net.Reader" Version="$(OfdrwPackageVersion)" />
+    <PackageReference Include="Ofdrw.Net.Packaging" Version="$(OfdrwPackageVersion)" />
+    <PackageReference Include="Ofdrw.Net.Converter.Pdf" Version="$(OfdrwPackageVersion)" />
+    <PackageReference Include="Ofdrw.Net.Converter.Svg" Version="$(OfdrwPackageVersion)" />
+  </ItemGroup>
+</Project>

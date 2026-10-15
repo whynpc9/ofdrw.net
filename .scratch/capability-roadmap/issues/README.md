@@ -8,7 +8,7 @@
 
 与路线图第 8 节一致。同一批次内可以并行。不要因为编号更小就先做 08–15。
 
-1. **生成**：01，然后 16（P0 表格，被 01 阻塞）
+1. **生成**：01，然后 16（P0 表格；已在 01 未合并 head 上实施 stacked PR #10）
 2. **进出与工具**：02、03
 3. **issue #3**：04、05
 4. **无厂商密码上限**：11、12（不要接到默认验签）
@@ -20,11 +20,11 @@
 | 票 | 优先级 | 状态 | 阻塞 | 路线图 |
 | --- | --- | --- | --- | --- |
 | [01 公开流式布局](01-public-flow-layout.md) | P0 | ready-for-agent | 无 | P0-01 |
-| [16 公开表格](16-public-tables.md) | P0 | blocked | 01 | P0-02 |
+| [16 公开表格](16-public-tables.md) | P0 | implemented / [PR #10](https://github.com/whynpc9/ofdrw.net/pull/10) open | 01（stacked，未合并） | P0-02 |
 | [17 区域占位](17-area-holders.md) | P0 | blocked | 01 | P0-03 |
 | [02 图片进出](02-ofd-image-io.md) | P0 | in-progress: Preview/review pending | 无 | P0-04、P0-05 |
 | [03 文档工具](03-document-tools.md) | P0 | ready-for-agent | 无 | P0-06–P0-09 |
-| [04 OfdGraphics](04-ofd-graphics-api.md) | P1 | ready-for-agent | 无 | P1-01 |
+| [04 OfdGraphics](04-ofd-graphics-api.md) | P1 | implemented-validated-unmerged | 无 | P1-01 |
 | [05 字体子集与复用](05-font-subset-and-reuse.md) | P1 | ready-for-agent | 无 | P1-02 |
 | [20 布局 Canvas](20-layout-canvas-drawcontext.md) | P1 | blocked | 01、04 | P1-03 |
 | [21 PDF 矢量](21-pdf-to-ofd-vectors.md) | P1 | blocked | 04、19 | P1-04 |

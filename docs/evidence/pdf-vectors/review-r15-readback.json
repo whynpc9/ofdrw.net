@@ -1,0 +1,19 @@
+{
+  "runtime_head": "f5914e6d41d63da541da5d8e031e7d97090296cc",
+  "status": "passed",
+  "archive_bytes": 49629544,
+  "archive_sha256": "88d1dd408e68adfebb42e390335e84ea29fbc8f6b73ccc3916ab360ca734d74f",
+  "parts": [
+    {
+      "order": 1,
+      "file": "review-r15.tar.zst.part01",
+      "bytes": 49629544,
+      "sha256": "88d1dd408e68adfebb42e390335e84ea29fbc8f6b73ccc3916ab360ca734d74f"
+    }
+  ],
+  "filesVerified": 2624,
+  "actualVerifierOutput": "Verified 2624 files; original archive SHA256 88d1dd408e68adfebb42e390335e84ea29fbc8f6b73ccc3916ab360ca734d74f",
+  "checkedAtUtc": "2026-10-13T07:24:35.716427+00:00",
+  "scope": "Actual concatenation, whole SHA, zstd stream and every member size/SHA checked. Remote Git bytes checked separately after push.",
+  "draftHistory": "Initial local880d53... draft verified before requested additional read-only color attribution; final88d1dd... includes attribution and local draft history. Product/visual hashes unchanged."
+}

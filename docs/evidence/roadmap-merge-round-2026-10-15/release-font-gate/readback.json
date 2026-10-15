@@ -1,0 +1,47 @@
+{
+  "productRuntime": "8018d70be81ce2fe62bb6d588eca5b6e8b109c18",
+  "scope": "Only publish-nuget.yml and acceptance evidence changed; no product source, font or sample delta.",
+  "order": [
+    "Restore",
+    "Verify release license",
+    "Mandatory original-font gate (actual 65/65, zero skips)",
+    "Build candidate with tag version",
+    "Broad solution Test",
+    "Pack exact default11",
+    "Consume exact release feed",
+    "Existing candidate-bound Preview gate",
+    "Existing NuGet publish step"
+  ],
+  "placementReason": "Run the font runner before candidate-version Build so its ordinary test-project rebuild cannot replace release-version DLL metadata immediately before --no-build packing.",
+  "workflowFailureSemantics": "No if or continue-on-error on mandatory gate; default Actions failure skips Build, Pack and Publish. Retained always-upload includes release-trusted-font-tests.",
+  "localRun": "Executed the exact trusted-font runner and script tests20 locally. Did not execute a tag workflow, workflow dispatch or any NuGet push.",
+  "currentProductGates": "Retain 2039 full-suite/12 optional not executed, version5 actual default11/SES12/vector13 package consumers, 34 actually inspected selected Preview pages with explicit baselines.",
+  "releaseState": "not-reviewed; no release authorization",
+  "files": [
+    {
+      "path": "command.json",
+      "bytes": 1529,
+      "sha256": "397f294920407c223bc1f0ec29122ed2ad29a35aa4df3dadea30a10e55164f0d"
+    },
+    {
+      "path": "python-tests.log",
+      "bytes": 3197,
+      "sha256": "b2bfbec2b3af6e4ea477e27f110348b0fa327dc96eac016fd6821a6571ac1f86"
+    },
+    {
+      "path": "run.log",
+      "bytes": 10705,
+      "sha256": "74cf87ae57aa2d2cb46f976afbab3a6e6bf3d1ff6071f2ef0560ebbf95794f91"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 482,
+      "sha256": "f27490589dbc317efb187f6f2125f646e9dc4b47047f017f22274b6db0d67a66"
+    },
+    {
+      "path": "trusted-fonts.trx",
+      "bytes": 148222,
+      "sha256": "ac89e4302046c7626dbb4bf30fdff77fe3c0a89cccb2db094c12ec5b498d2f58"
+    }
+  ]
+}

@@ -1,8 +1,8 @@
+using Ofdrw.Net.Core.Fonts;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using Ofdrw.Net.Core.IO;
-using SixLabors.Fonts;
 using PdfSharpCore.Fonts;
 using PdfSharpCore.Utils;
 
@@ -82,8 +82,7 @@ internal sealed class OfdEmbeddedFontResolver : IFontResolver
         var family = $"ofd-font-{identity}-{(bold ? 'b' : 'r')}{(italic ? 'i' : 'n')}";
         var faceName = "ofd:" + identity;
         var key = BuildFamilyKey(family, bold, italic);
-        using var stream = new MemoryStream(snapshot, writable: false);
-        var actualStyle = FontDescription.LoadDescription(stream).Style;
+        var actualStyle = new OpenTypeFace(snapshot).Style;
         lock (Sync)
         {
             if (Instance._faceByFamily.ContainsKey(key)) return family;
@@ -97,8 +96,8 @@ internal sealed class OfdEmbeddedFontResolver : IFontResolver
                 Instance._registeredBytes += fontData.Length;
             }
             AddFace(key, new FontResolverInfo(faceName,
-                bold && (actualStyle & FontStyle.Bold) == 0,
-                italic && (actualStyle & FontStyle.Italic) == 0));
+                bold && !actualStyle.Bold,
+                italic && !actualStyle.Italic));
         }
         return family;
     }

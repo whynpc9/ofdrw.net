@@ -1,0 +1,485 @@
+{
+  "runtime_head": "8478b84c6ffbc3a3dc68149d446ba528d87e8160",
+  "status": "functional-passed-overall-visual-FAIL-OPEN",
+  "main_tests": {
+    "dotnet_passed": 578,
+    "python_passed": 5,
+    "vector_passed": 121
+  },
+  "independent": {
+    "ticket": "21",
+    "worker": "independent low6",
+    "created_utc": "2026-10-09T02:29:09.860052+00:00",
+    "source": {
+      "commit": "8478b84c6ffbc3a3dc68149d446ba528d87e8160",
+      "git_blob_count": 332,
+      "archive_blob_mismatches": [],
+      "post_run_source_mismatches": [],
+      "source_manifest": "source-hashes-low6.json"
+    },
+    "environment": {
+      "dotnet": "10.0.401",
+      "libreoffice": "LibreOfficeDev 26.8.0.0.alpha0 2c87e51eeaa2b413ff4ae097b2705eea1995d8e5",
+      "font": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/graphics-fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+      "font_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "font_license": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/graphics-fonts/Ofdrw-CI-Noto-OFL.txt",
+      "flags": "--disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false",
+      "imagemagick_local": "Version: ImageMagick 7.1.2-31 Q16-HDRI aarch64 8309dc92a:20260903 https://imagemagick.org"
+    },
+    "functional": {
+      "full_solution": {
+        "passed": 578,
+        "groups": [
+          5,
+          250,
+          88,
+          4,
+          49,
+          13,
+          20,
+          28,
+          121
+        ],
+        "failed": 0,
+        "log": "logs-low6/full-tests.log"
+      },
+      "python": {
+        "passed": 5,
+        "log": "logs-low6/python-tests.log"
+      },
+      "default11": {
+        "status": "passed",
+        "packages": 11,
+        "native_default_docx": "passed, two pages reported",
+        "log": "logs-low6/default11.log"
+      },
+      "optional13": {
+        "status": "passed",
+        "packages": 13,
+        "log": "logs-low6/optional13.log"
+      },
+      "observer": {
+        "status": "passed",
+        "case_count": 23,
+        "resource_case_count": 3,
+        "fatal_cases": [
+          {
+            "name": "missing-reference",
+            "error": "InvalidDataException",
+            "outputBytes": 0
+          },
+          {
+            "name": "cyclic-reference",
+            "error": "InvalidDataException",
+            "outputBytes": 0
+          },
+          {
+            "name": "depth-reference",
+            "error": "InvalidDataException",
+            "outputBytes": 0
+          }
+        ],
+        "selected_pages": [
+          0,
+          0,
+          1
+        ],
+        "selected_native": [
+          false,
+          false,
+          true
+        ],
+        "original_native_text": "A  B中文",
+        "limit_failed_without_output": true,
+        "precancel_failed_without_output": true,
+        "log": "logs-low6/observer-run.log"
+      }
+    },
+    "package": {
+      "version": "0.1.0-pdfvector.20261009.low6",
+      "files": [
+        {
+          "name": "Ofdrw.Net.Cli.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "971b3ed479d2d5bd32fd8a691e56b9520c48e6dce5debcab39b45d2b11684955",
+          "dll_sha256": {}
+        },
+        {
+          "name": "Ofdrw.Net.Converter.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "719056b046c36301dea6b2696b3ad9dfefa022ec954b77289dcb52584b8e1475",
+          "dll_sha256": {}
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Abstractions.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "6468786bf618f6c3db300b5431927adf68bcbc185808853b4e48f57219f1bfae",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Abstractions.dll": "9ed1daacd60f0accfe0f83fe64529eed73f77bf7871f755c157f1a140b1a2b98",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Abstractions.dll": "64b95e3642db3d86bb9ef12586d40c4eee5a5723f161537993719f76e62c5735"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Docx.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "1498a4281b41288ec2db977a68d07e25a42efa378584ed2b6da26ac387ef0891",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Docx.dll": "350b5ca772bb45997ec8a6dfc7fb8e726cf3d71c2307a6fe4d65233fcb5d7714",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Docx.dll": "747b18f2a20e1d0883651cc608716d81b0356872b137d03f14be19f9191e2697"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Pdf.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "be3a43cc0b2de3142f139cc05b8f4f31a5cb979ca4460b8fda7e8d454f95b5d9",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Pdf.dll": "eabb93882ec595d9e8ed565b2eed1f3a07a48d42b858b109265f0da183847e42",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Pdf.dll": "522c59e4325273a2e9976ef817b38e52e957fc43b17e0e8980aa4602b5e3a62e"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Pdf.Vector.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "9335541934cbd892636f2e28b07c868582d2c8552689f70d044057a3015e71b8",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Pdf.Vector.dll": "f7c11d1a1462c901ccdab8c3f607ac869e6275ce201beac2a88337032a0554a7",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Pdf.Vector.dll": "9f9ec09d5655956476a615ca596c7d4e361c05ea562e3d0d17e875f554a5f040"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Converter.Svg.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "c8510d3b5d3f0ccda961f6a74db2a3995e288494f0f51a956e0bf82a57681edb",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Converter.Svg.dll": "95f966b42e803cfcdb15c3905a61abc532ee4ca5fb5fc08fe9699587a7e607ee",
+            "lib/netstandard2.1/Ofdrw.Net.Converter.Svg.dll": "1761b9c6edfa054b6fd9cd41fd1494b3a73152cde7847f2ca65f52c3b6ff634d"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Core.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "5e7b5b0532a51881f5bfcaa0a61ad1f07300870a814baff89f62e8217441391e",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Core.dll": "7d275b79e329ab35f29ba055c7081539da82ed44180098a799555be47ec8842b",
+            "lib/netstandard2.1/Ofdrw.Net.Core.dll": "3ca5f0a5979474d246865f43e0454478ce7393df8de814931778733294fb5463"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Graphics.SkiaSharp.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "230d0bffd2619cac6f7ce1c3ff2d05924df9aa13869e565b3eec58147316ba98",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Graphics.SkiaSharp.dll": "9a81e86307cce37cdeee9a941e8894ac55d9a22c0ad59fc1d7fadd974ac67c12",
+            "lib/netstandard2.1/Ofdrw.Net.Graphics.SkiaSharp.dll": "c942b01039bbac958ed9e7c8715ab721285df53f9c27d2a9452ca815fe06397b"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Layout.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "85d166a6418dea454b8a1b75b589d5ca014c5170c996ef1df96216a3076a2396",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Layout.dll": "ae4168e7aa56bc4e9bf989ea84c17a9c1f703b7221d1b62f061bd000485bb62c",
+            "lib/netstandard2.1/Ofdrw.Net.Layout.dll": "21896d55e558033b6eb6272b69ca6a419c478e8904de7a2734e80f744c823263"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Packaging.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "af972e57e0e00a57b7a76b3aaf7120dd022ab5b8627e88c3cf6cd5f95abbfb7b",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Packaging.dll": "778535109f024712fef1772589158e6382bba1d721b08fb5919549dc2303e014",
+            "lib/netstandard2.1/Ofdrw.Net.Packaging.dll": "15a062dc38cc6ad7ff5f9ccf1999597b00b97d74551e5a697c33211b8aecd646"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Reader.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "5f5c7c97ef7a018e14658c73265528f6535f46915c8078ba27e2d67553cd744f",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Reader.dll": "7f56e53c594acc00507b0f1fada3c60205e19a72a4aa8d4d41087d6817012252",
+            "lib/netstandard2.1/Ofdrw.Net.Reader.dll": "c8d1361b243c45d9035dde726b4f573684e2834d1620282f35b801c979bee029"
+          }
+        },
+        {
+          "name": "Ofdrw.Net.Signatures.0.1.0-pdfvector.20261009.low6.nupkg",
+          "sha256": "08a9d8e3cf13925de9dfa2485ef1f10e2cebb96633f8da2a3a44030e7963d5ec",
+          "dll_sha256": {
+            "lib/netstandard2.0/Ofdrw.Net.Signatures.dll": "4fdbbb1d834ab0f2bf0765d56d6076fcbf6e7f6774e6a2326d0f3ad91f8448bf",
+            "lib/netstandard2.1/Ofdrw.Net.Signatures.dll": "2bffe074bfe016a25695d6c5f0ab0c825b0644444af0b4e7b69065de94824846"
+          }
+        }
+      ],
+      "optional_consumer_project_refs": 0,
+      "observer_project_refs": 0,
+      "optional_assets": "optional13-low6/consumer.assets.json",
+      "observer_assets": "observer-low6/obj/project.assets.json",
+      "cache": "observer-cache-low6",
+      "default_manifest": "default-low6/output/package-manifest.json",
+      "optional_manifest": "optional13-low6/package-manifest.json"
+    },
+    "precision_resources": {
+      "cases": [
+        {
+          "name": "precision",
+          "native": [
+            false,
+            false,
+            true
+          ],
+          "diagnostics": [
+            "PDFV_RASTER_PAGE: PDFV_UNSUPPORTED page=1 PATH_FLOAT_PRECISION: added path/control/CTM/stroke conversion error exceeds bounded profile.; ",
+            "PDFV_RASTER_PAGE: PDFV_UNSUPPORTED page=2 PATH_FLOAT_PRECISION: added path/control/CTM/stroke conversion error exceeds bounded profile.; ",
+            "PDFV_NATIVE: bounded opaque paths and exact-font Unicode text."
+          ],
+          "source_sha256": "6e8feb2241e842f79a8cb6f898d9bcc2e403f58f0cd0af3c2090ab86aa764ed1"
+        },
+        {
+          "name": "encoding-stream",
+          "native": [
+            true,
+            false
+          ],
+          "diagnostics": [
+            "PDFV_NATIVE: bounded opaque paths and exact-font Unicode text.",
+            "PDFV_RASTER_PAGE: PDFV_UNSUPPORTED page=2 FONT_PROFILE: Encoding CMap stream outside Identity-H profile.; "
+          ],
+          "source_sha256": "61f6b226384c1a872e022972e11def53064753a1c234d9f81eac4938e418c927"
+        },
+        {
+          "name": "cid-map-stream",
+          "native": [
+            true,
+            false
+          ],
+          "diagnostics": [
+            "PDFV_NATIVE: bounded opaque paths and exact-font Unicode text.",
+            "PDFV_RASTER_PAGE: PDFV_UNSUPPORTED page=2 CID_MAPPING: CIDToGIDMap stream outside identity profile.; "
+          ],
+          "source_sha256": "eb1ab1c55cd74510c11afea92cc3a5963dcb9de0e71240f42549a02f0ae4d681"
+        },
+        {
+          "name": "indexed-image",
+          "native": [
+            false
+          ],
+          "diagnostics": [
+            "PDFV_RASTER_PAGE: PDFV_UNSUPPORTED page=1 operation=3 operator=Do; "
+          ],
+          "source_sha256": "49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441"
+        }
+      ],
+      "source_report": "optional13-low6/output/precision-resource-report.json",
+      "indexed_original_rgb_hint": false,
+      "embedded_font_note": "Name-only fonts have empty Data array; membership checks use Data.Length > 0"
+    },
+    "png": {
+      "chain": "raw PDF -> package-produced OFD -> exported PDF -> Poppler 144 DPI PNG -> view_image",
+      "inspected": [
+        "precision-1.png",
+        "precision-2.png",
+        "precision-3.png",
+        "encoding-stream-2.png",
+        "cid-map-stream-2.png",
+        "indexed-image-1.png"
+      ],
+      "scope": "auxiliary inspection only; Preview GUI not used",
+      "observation": "headers, visible fallback text, native short strokes, and Indexed checkerboard rendered without obvious clipping or duplicate overprint on named pages"
+    },
+    "image_tools": {
+      "optional_evidence_status": "passed",
+      "standalone_evidence_status": "passed",
+      "standalone_compare": [
+        "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/legacy-tools-low6/bin/compare"
+      ],
+      "standalone_identify": [
+        "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/independent/legacy-tools-low6/bin/identify"
+      ],
+      "note": "Local ImageMagick 7 compatibility entry with magick absent from task PATH; no Linux 6 simulation. First attempt lacked pdftotext in constrained PATH, recorded, then retried with real pdftotext."
+    },
+    "limits": {
+      "producer_position_pt": 0.0001,
+      "producer_linear_relative": 1e-05,
+      "producer_miter10_stroke_envelope_pt": 0.0001,
+      "short_segment": "60.1,350.2 to 61.3,351.4 correctly declines native because relative bound exceeded",
+      "claim": "producer precision only; no end-to-end, topology, device-pixel, or Preview acceptance claim"
+    },
+    "logs_dir": "logs-low6",
+    "status": "passed"
+  },
+  "primary_package_version": "0.1.0-pdfvector.20261009.r4",
+  "preview": {
+    "runtime_head": "8478b84c6ffbc3a3dc68149d446ba528d87e8160",
+    "status": "scoped-layout-glyph-policy-checked-indexed-color-appearance-difference-retained",
+    "docs": [
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/precision-source.pdf",
+        "pages": [
+          1,
+          2,
+          3
+        ],
+        "bytes": 21663450,
+        "sha256": "6e8feb2241e842f79a8cb6f898d9bcc2e403f58f0cd0af3c2090ab86aa764ed1",
+        "chain": "raw licensed source PDF",
+        "checked_pages": [
+          1,
+          2,
+          3
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-09T10:56:41.841091+08:00",
+        "observations": [
+          "Pages1-3 full-page checked: visible one-point stroke after large translation; signed narrow rectangle and cubic artwork; exact representable line and ordinary decimal positive control. CJK/Latin title and spacing readable, no unexpected blank page."
+        ],
+        "result": "passed-scoped-layout-glyph-policy"
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/precision.pdf",
+        "pages": [
+          1,
+          2,
+          3
+        ],
+        "bytes": 149822,
+        "sha256": "5b90416bad9d6b159c412404d51f4d29c2b7d98520f5f5520335c9dee1f1f1f4",
+        "chain": "actualr4 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1,
+          2,
+          3
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-09T10:56:41.841091+08:00",
+        "observations": [
+          "Actualr4 OFD->PDF pages1-3: precision-rejected first two pages keep stroke/rectangle/cubic via whole-page image, expected raster softness, no visible native overlay; page3 remains native with clear original CJK/Latin and actual paths. No image-as-native or pixel/topology equivalence conclusion."
+        ],
+        "result": "passed-scoped-layout-glyph-policy"
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/encoding-stream-source.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 21663357,
+        "sha256": "61f6b226384c1a872e022972e11def53064753a1c234d9f81eac4938e418c927",
+        "chain": "raw licensed source PDF",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-09T10:56:41.841091+08:00",
+        "observations": [
+          "Source pages1-2 checked: solid blue native-eligible path page followed by legal Encoding CMap text, readable Chinese/English and complete visible lines."
+        ],
+        "result": "passed-scoped-layout-glyph-policy"
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/encoding-stream.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 86105,
+        "sha256": "d4c75a1863414da55ce9c3dc140031c6c4159f14b8785d880d70f98090035491",
+        "chain": "actualr4 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-09T10:56:41.841091+08:00",
+        "observations": [
+          "Actualr4 pages1-2 checked: blue rectangle and layout preserved; CMap page whole-page raster text readable with expected softness, no missing glyph, duplication or extra blank page."
+        ],
+        "result": "passed-scoped-layout-glyph-policy"
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/cid-map-stream-source.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 21794073,
+        "sha256": "eb1ab1c55cd74510c11afea92cc3a5963dcb9de0e71240f42549a02f0ae4d681",
+        "chain": "raw licensed source PDF",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-09T10:56:41.841091+08:00",
+        "observations": [
+          "Source pages1-2 checked: solid blue path then legal CIDToGIDMap stream text, readable CJK/Latin and complete lines."
+        ],
+        "result": "passed-scoped-layout-glyph-policy"
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/cid-map-stream.pdf",
+        "pages": [
+          1,
+          2
+        ],
+        "bytes": 85501,
+        "sha256": "2a0bdecd0a614352a2ef3644fa268a381234fa0e54b2d8fe0182124190291c0c",
+        "chain": "actualr4 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1,
+          2
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-09T10:56:41.841091+08:00",
+        "observations": [
+          "Actualr4 pages1-2 checked: path page preserved native; stream-font page whole-page raster, visible CJK/Latin retained without overlay, clipping or blank output."
+        ],
+        "result": "passed-scoped-layout-glyph-policy"
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/indexed-image-source.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 22661825,
+        "sha256": "49994fe3d745b9623ab098c98285c9a9cf6c39024edeba3da439714410913441",
+        "chain": "raw licensed source PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-09T10:56:41.841091+08:00",
+        "observations": [
+          "Indexed source page checked at full-page reduced zoom including all four edges: alternating blue/light cells, expected row/column pattern and orientation. Initial ScreenshotKit3811 transient recovered via actual screenshot retry; zoom changes briefly displayed a solid color until zoom-out redraw; complete grid then visually observed."
+        ],
+        "result": "scoped-layout-policy-checked-color-fidelity-unestablished"
+      },
+      {
+        "absolute_path": "/Users/wanghongyi/.codex/worktrees/3a07/ofdrw.net/artifacts/pdf-vectors/package-r4/output/indexed-image.pdf",
+        "pages": [
+          1
+        ],
+        "bytes": 19582,
+        "sha256": "00c6c9cbfc1aa250055b066e667c935fbfaab85fc0b18c0b087d421d4d7b77b4",
+        "chain": "actualr4 nupkg -> OFD -> PDF",
+        "checked_pages": [
+          1
+        ],
+        "AX_URL_verified": true,
+        "checked_at": "2026-10-09T10:56:41.841091+08:00",
+        "observations": [
+          "Actualr4 Indexed whole-page fallback full page checked: grid complete, same orientation/row-column pattern and all edges, no image flip/blank/visible overlay. Blue appearance differs from source in Preview; geometry/page-policy acceptance only, color/pixel fidelity NOT established."
+        ],
+        "result": "scoped-layout-policy-checked-color-fidelity-unestablished"
+      }
+    ],
+    "expected_pages": 16,
+    "gui_released": true,
+    "checked_pages": 16,
+    "windows_opened": 8,
+    "windows_closed": 8,
+    "completed_at": "2026-10-09T10:56:41.841091+08:00",
+    "cleanup": "Each of8actualtaskURLs verified beforeCommand-W; automaticOpenpanel afterlast closure dismissed withEscape. No unrelated documents closed.",
+    "limits": [
+      "Indexed blue appearance differs in samePreview; no overall color/pixel fidelity or arbitraryPDF promise.",
+      "Expected raster softness in unsupported whole-page fallback retained.",
+      "Precision criteria describe incoming producer error only, not topology/antialiasing/device/renderer fidelity.",
+      "Unchanged prior35pages retain original dates/hashes and are not claimed newly inspected."
+    ]
+  },
+  "overall_visual_accepted": false,
+  "production_release_accepted": false,
+  "open_items": [
+    "Indexed source/actual export blue appearance difference in Preview; cause unproved. Fresh production repair, independent actual package verification and affected Preview required.",
+    "New Codex text-matrix precision review at8478 is pending design and repair.",
+    "Latest final head review/CI/all threads closure pending."
+  ],
+  "archive_verified_files": 217
+}
