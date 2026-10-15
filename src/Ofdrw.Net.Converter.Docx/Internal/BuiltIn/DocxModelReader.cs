@@ -24,6 +24,8 @@ internal sealed class DocxModelReader
     private readonly DocxConversionOptions _options;
     private readonly IList<DocxConversionDiagnostic> _diagnostics;
     private readonly CancellationToken _cancellationToken;
+    private readonly Action<string>? _imagePayloadObserver;
+    private readonly Dictionary<Uri, ImagePayload> _imagePayloads = new();
     private readonly Dictionary<string, Style> _styles = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _numberingCounters = new(StringComparer.Ordinal);
     private MainDocumentPart _mainPart = null!;
@@ -39,13 +41,36 @@ internal sealed class DocxModelReader
         DocxConversionOptions options,
         IList<DocxConversionDiagnostic> diagnostics,
         CancellationToken cancellationToken)
+        : this(options, diagnostics, cancellationToken, null)
     {
+    }
+
+    internal DocxModelReader(
+        DocxConversionOptions options,
+        IList<DocxConversionDiagnostic> diagnostics,
+        CancellationToken cancellationToken,
+        Action<string>? imagePayloadObserver)
+    {
+        _imagePayloadObserver = imagePayloadObserver;
         _options = options;
         _diagnostics = diagnostics;
         _cancellationToken = cancellationToken;
     }
 
     internal BuiltInDocumentModel Read(string inputPath)
+    {
+        try
+        {
+            return ReadCore(inputPath);
+        }
+        finally
+        {
+            // Only the returned model retains the bytes after this package is closed.
+            _imagePayloads.Clear();
+        }
+    }
+
+    private BuiltInDocumentModel ReadCore(string inputPath)
     {
         _cancellationToken.ThrowIfCancellationRequested();
         DocxPackageValidator.Validate(inputPath, _options);
@@ -477,33 +502,28 @@ internal sealed class DocxModelReader
                 return;
             }
 
-            using var stream = imagePart.GetStream(FileMode.Open, FileAccess.Read);
-            using var data = new MemoryStream();
-            BoundedStreamCopy.Copy(stream, data, _options.MaxEmbeddedImageBytes, "Embedded DOCX image", _cancellationToken);
-
-            var imageBytes = data.ToArray();
-            ImageFormatAdmission.RejectBigTiff(imageBytes);
-            var imageInfo = Image.Identify(imageBytes, out var imageFormat);
-            if (imageInfo is null)
+            _cancellationToken.ThrowIfCancellationRequested();
+            // Part URIs are unique inside this package; relationship IDs are only
+            // unique within the owning part (body, header, footer, or note).
+            if (!_imagePayloads.TryGetValue(imagePart.Uri, out var payload))
             {
-                ReportUnsupported("DOCX_IMAGE_FORMAT_UNSUPPORTED", imagePart.ContentType);
-                AddUnsupportedPlaceholder(paragraph, imagePart.ContentType);
-                return;
-            }
+                payload = ReadImagePayload(imagePart);
+                if (payload is null)
+                {
+                    ReportUnsupported("DOCX_IMAGE_FORMAT_UNSUPPORTED", imagePart.ContentType);
+                    AddUnsupportedPlaceholder(paragraph, imagePart.ContentType);
+                    return;
+                }
 
-            var pixelCount = checked((long)imageInfo.Width * imageInfo.Height);
-            if (pixelCount > _options.MaxEmbeddedImagePixels)
-            {
-                throw new InvalidDataException(
-                    $"An embedded DOCX image exceeds {_options.MaxEmbeddedImagePixels} decoded pixels.");
+                _imagePayloads.Add(imagePart.Uri, payload);
             }
 
             var extent = drawing.Descendants<DW.Extent>().FirstOrDefault();
             paragraph.Inlines.Add(new BuiltInImageModel
             {
-                Data = imageBytes,
-                MediaType = imageFormat.DefaultMimeType,
-                Name = "image" + GuessImageExtension(imageFormat.DefaultMimeType),
+                Data = payload.Data,
+                MediaType = payload.MediaType,
+                Name = payload.Name,
                 WidthPoints = EmuToPoints(extent?.Cx?.Value),
                 HeightPoints = EmuToPoints(extent?.Cy?.Value)
             });
@@ -517,6 +537,48 @@ internal sealed class DocxModelReader
         {
             ReportUnsupported("DOCX_IMAGE_FORMAT_UNSUPPORTED", "embedded image format");
             AddUnsupportedPlaceholder(paragraph, "embedded image format");
+        }
+    }
+
+    private ImagePayload? ReadImagePayload(ImagePart imagePart)
+    {
+        _cancellationToken.ThrowIfCancellationRequested();
+        using var stream = imagePart.GetStream(FileMode.Open, FileAccess.Read);
+        _imagePayloadObserver?.Invoke("Open");
+        _cancellationToken.ThrowIfCancellationRequested();
+        using var data = new MemoryStream();
+        BoundedStreamCopy.Copy(stream, data, _options.MaxEmbeddedImageBytes, "Embedded DOCX image", _cancellationToken);
+
+        var imageBytes = data.ToArray();
+        ImageFormatAdmission.RejectBigTiff(imageBytes);
+        _cancellationToken.ThrowIfCancellationRequested();
+        var imageInfo = Image.Identify(imageBytes, out var imageFormat);
+        _imagePayloadObserver?.Invoke("Identify");
+        _cancellationToken.ThrowIfCancellationRequested();
+        if (imageInfo is null) return null;
+
+        var pixelCount = checked((long)imageInfo.Width * imageInfo.Height);
+        if (pixelCount > _options.MaxEmbeddedImagePixels)
+        {
+            throw new InvalidDataException(
+                $"An embedded DOCX image exceeds {_options.MaxEmbeddedImagePixels} decoded pixels.");
+        }
+
+        return new ImagePayload(imageBytes, imageFormat.DefaultMimeType);
+    }
+
+    private sealed class ImagePayload
+    {
+        // Owned by this conversion and read-only in both rendering paths.
+        internal byte[] Data { get; }
+        internal string MediaType { get; }
+        internal string Name { get; }
+
+        internal ImagePayload(byte[] data, string mediaType)
+        {
+            Data = data;
+            MediaType = mediaType;
+            Name = "image" + GuessImageExtension(mediaType);
         }
     }
 
