@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,7 +34,11 @@ internal abstract class OwnedProcessGroup : IDisposable
         var arguments = GetArguments(info);
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return new WindowsGroup(info, arguments);
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            if (IntPtr.Size != 8)
+                throw new PlatformNotSupportedException("Owned Unix processes require a validated 64-bit native ABI.");
             return new UnixGroup(info, arguments);
+        }
         throw new PlatformNotSupportedException("Owned process groups require Windows, macOS or Linux.");
     }
 
@@ -96,8 +101,33 @@ internal abstract class OwnedProcessGroup : IDisposable
         return result;
     }
 
-    private static StreamReader Reader(IntPtr handle, Encoding? encoding) => new StreamReader(
-        new AnonymousPipeClientStream(PipeDirection.In, new SafePipeHandle(handle, true)), encoding ?? Console.OutputEncoding);
+    private static StreamReader Reader(IntPtr handle, Encoding? encoding)
+    {
+        var ownedHandle = new SafePipeHandle(handle, true);
+        AnonymousPipeClientStream? stream = null;
+        try
+        {
+            stream = new AnonymousPipeClientStream(PipeDirection.In, ownedHandle);
+            return new StreamReader(stream, encoding ?? Console.OutputEncoding);
+        }
+        catch (Exception exception)
+        {
+            Exception? failure = exception;
+            Cleanup(ref failure, "close failed reader stream", () => stream?.Dispose());
+            Cleanup(ref failure, "close failed reader handle", ownedHandle.Dispose);
+            throw;
+        }
+    }
+
+    private static void Cleanup(ref Exception? failure, string operation, Action action)
+    {
+        try { action(); }
+        catch (Exception exception)
+        {
+            if (failure == null) failure = exception;
+            else failure.Data["OwnedProcessCleanup." + operation] = exception.ToString();
+        }
+    }
 
     private static Win32Exception NativeError(string operation) => new Win32Exception(Marshal.GetLastWin32Error(), operation);
 
@@ -145,13 +175,16 @@ internal abstract class OwnedProcessGroup : IDisposable
         {
             // Darwin's opaque types are pointers; Linux glibc/musl structures
             // fit the documented ABI storage (spawnattr 336, file actions 80).
-            var attributes = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 336);
-            var actions = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 80);
+            var attributes = IntPtr.Zero;
+            var actions = IntPtr.Zero;
             var attributesReady = false;
             var actionsReady = false;
             var descriptors = new List<int>();
+            Exception? failure = null;
             try
             {
+                attributes = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 336);
+                actions = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 80);
                 using var argv = new NativeStrings(new[] { info.FileName }.Concat(arguments));
                 using var environment = new NativeStrings(info.Environment.Where(pair => pair.Value != null)
                     .Select(pair => pair.Key + "=" + pair.Value));
@@ -180,26 +213,34 @@ internal abstract class OwnedProcessGroup : IDisposable
                     // Resolve like Process.Start, before the child's chdir. Passing
                     // an absolute path also preserves missing/invalid-executable errno.
                     var executable = ResolveExecutable(info.FileName);
-                    Check(posix_spawn(out _pid, executable, actions, attributes, argv.Pointer, environment.Pointer), "posix_spawn " + info.FileName);
-                    close(output[1]); descriptors.Remove(output[1]);
-                    close(error[1]); descriptors.Remove(error[1]);
-                    StandardOutput = Reader((IntPtr)output[0], info.StandardOutputEncoding); descriptors.Remove(output[0]);
-                    StandardError = Reader((IntPtr)error[0], info.StandardErrorEncoding); descriptors.Remove(error[0]);
+                    Check(posix_spawn(out var pid, executable, actions, attributes, argv.Pointer, environment.Pointer), "posix_spawn " + info.FileName);
+                    _pid = pid; // A failed spawn does not establish PID ownership.
+                    descriptors.Remove(output[1]); CloseDescriptor(output[1]);
+                    descriptors.Remove(error[1]); CloseDescriptor(error[1]);
+                    descriptors.Remove(output[0]); StandardOutput = Reader((IntPtr)output[0], info.StandardOutputEncoding);
+                    descriptors.Remove(error[0]); StandardError = Reader((IntPtr)error[0], info.StandardErrorEncoding);
                 }
             }
-            catch
-            {
-                if (_pid != 0) { Terminate(); WaitForExit(5000); waitpid(_pid, out _, 1); }
-                StandardOutput?.Dispose(); StandardError?.Dispose();
-                Marshal.FreeHGlobal(_status);
-                throw;
-            }
+            catch (Exception exception) { failure = exception; }
             finally
             {
-                foreach (var descriptor in descriptors) close(descriptor);
-                if (actionsReady) posix_spawn_file_actions_destroy(actions);
-                if (attributesReady) posix_spawnattr_destroy(attributes);
-                Marshal.FreeHGlobal(actions); Marshal.FreeHGlobal(attributes);
+                foreach (var descriptor in descriptors) Cleanup(ref failure, "close fd " + descriptor, () => CloseDescriptor(descriptor));
+                if (actionsReady) Cleanup(ref failure, "destroy spawn actions", () => Check(posix_spawn_file_actions_destroy(actions), "destroy spawn actions"));
+                if (attributesReady) Cleanup(ref failure, "destroy spawn attributes", () => Check(posix_spawnattr_destroy(attributes), "destroy spawn attributes"));
+                Cleanup(ref failure, "free spawn actions", () => Marshal.FreeHGlobal(actions));
+                Cleanup(ref failure, "free spawn attributes", () => Marshal.FreeHGlobal(attributes));
+            }
+            if (failure != null)
+            {
+                if (_pid != 0)
+                {
+                    Cleanup(ref failure, "terminate failed launch", Terminate);
+                    Cleanup(ref failure, "reap failed launch", () => ReapLeader(5000));
+                }
+                Cleanup(ref failure, "close stdout", () => StandardOutput?.Dispose());
+                Cleanup(ref failure, "close stderr", () => StandardError?.Dispose());
+                Cleanup(ref failure, "free process status", () => Marshal.FreeHGlobal(_status));
+                ExceptionDispatchInfo.Capture(failure!).Throw();
             }
         }
 
@@ -240,28 +281,46 @@ internal abstract class OwnedProcessGroup : IDisposable
         {
             if (_disposed) return;
             _disposed = true;
+            Exception? failure = null;
+            Cleanup(ref failure, "terminate", Terminate);
+            Cleanup(ref failure, "reap", () => ReapLeader(WaitAttempted ? 0 : 5000));
+            Cleanup(ref failure, "close stdout", StandardOutput.Dispose);
+            Cleanup(ref failure, "close stderr", StandardError.Dispose);
+            Cleanup(ref failure, "free process status", () => Marshal.FreeHGlobal(_status));
+            if (failure != null) ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+
+        private void ReapLeader(int milliseconds)
+        {
             try
             {
-                Terminate();
-                if (WaitAttempted ? HasExited : WaitForExit(5000))
-                {
-                    var result = waitpid(_pid, out _, 1);
-                    if (result != _pid) throw NativeError("reap owned process");
-                }
-                else
-                {
-                    // A killed process stuck in uninterruptible kernel work may
-                    // exit later. Reap only this reserved PID without holding up
-                    // the caller or ever signalling the group again.
-                    var pid = _pid;
-                    _ = Task.Run(() => { while (waitpid(pid, out _, 0) < 0 && Marshal.GetLastWin32Error() == 4) { } });
-                    throw new TimeoutException("Owned process did not exit within the cleanup deadline.");
-                }
+                if (!WaitForExit(milliseconds)) throw new TimeoutException("Owned process did not exit within the cleanup deadline.");
+                int result;
+                do { result = waitpid(_pid, out _, 1); }
+                while (result < 0 && Marshal.GetLastWin32Error() == 4);
+                if (result != _pid) throw NativeError("reap owned process");
             }
-            finally
+            catch (Exception exception)
             {
-                StandardOutput.Dispose(); StandardError.Dispose(); Marshal.FreeHGlobal(_status);
+                // ECHILD means an external reaper already took ownership. Do
+                // not wait on a potentially reused PID in that case.
+                if (!(exception is Win32Exception native && native.NativeErrorCode == 10))
+                {
+                    var pid = _pid;
+                    _ = Task.Run(() =>
+                    {
+                        // Only reap the still-reserved leader. Never signal its
+                        // group again after handing off this final wait.
+                        while (waitpid(pid, out _, 0) < 0 && Marshal.GetLastWin32Error() == 4) { }
+                    });
+                }
+                throw;
             }
+        }
+
+        private static void CloseDescriptor(int descriptor)
+        {
+            if (close(descriptor) != 0) throw NativeError("close process pipe");
         }
         private bool DarwinGroupHasOnlyZombies()
         {
@@ -340,6 +399,7 @@ internal abstract class OwnedProcessGroup : IDisposable
             var environment = IntPtr.Zero;
             var thread = IntPtr.Zero;
             var initialized = false;
+            Exception? failure = null;
             try
             {
                 _job = CreateJobObjectW(IntPtr.Zero, null);
@@ -388,26 +448,46 @@ internal abstract class OwnedProcessGroup : IDisposable
                 if (!AssignProcessToJobObject(_job, _process)) throw NativeError("AssignProcessToJobObject");
                 // CreateProcess was suspended: no target code/descendant can escape assignment.
                 if (ResumeThread(thread) == uint.MaxValue) throw NativeError("ResumeThread");
-                CloseHandle(output[1]); handles.Remove(output[1]);
-                CloseHandle(error[1]); handles.Remove(error[1]);
-                StandardOutput = Reader(output[0], info.StandardOutputEncoding); handles.Remove(output[0]);
-                StandardError = Reader(error[0], info.StandardErrorEncoding); handles.Remove(error[0]);
+                handles.Remove(output[1]); CloseNativeHandle(output[1]);
+                handles.Remove(error[1]); CloseNativeHandle(error[1]);
+                handles.Remove(output[0]); StandardOutput = Reader(output[0], info.StandardOutputEncoding);
+                handles.Remove(error[0]); StandardError = Reader(error[0], info.StandardErrorEncoding);
             }
-            catch
-            {
-                if (_process != IntPtr.Zero) { TerminateProcess(_process, 1); WaitForSingleObject(_process, 5000); CloseHandle(_process); }
-                if (_job != IntPtr.Zero) CloseHandle(_job);
-                StandardOutput?.Dispose(); StandardError?.Dispose();
-                throw;
-            }
+            catch (Exception exception) { failure = exception; }
             finally
             {
-                foreach (var handle in handles) CloseHandle(handle);
-                if (thread != IntPtr.Zero) CloseHandle(thread);
-                if (initialized) DeleteProcThreadAttributeList(attributes);
-                if (attributes != IntPtr.Zero) Marshal.FreeHGlobal(attributes);
-                if (attributeHandles != IntPtr.Zero) Marshal.FreeHGlobal(attributeHandles);
-                if (environment != IntPtr.Zero) Marshal.FreeHGlobal(environment);
+                foreach (var handle in handles) Cleanup(ref failure, "close launch handle " + handle, () => CloseNativeHandle(handle));
+                if (thread != IntPtr.Zero) Cleanup(ref failure, "close thread", () => CloseNativeHandle(thread));
+                if (initialized) Cleanup(ref failure, "delete launch attributes", () => DeleteProcThreadAttributeList(attributes));
+                Cleanup(ref failure, "free launch attributes", () => Marshal.FreeHGlobal(attributes));
+                Cleanup(ref failure, "free launch handle list", () => Marshal.FreeHGlobal(attributeHandles));
+                Cleanup(ref failure, "free environment", () => Marshal.FreeHGlobal(environment));
+            }
+            if (failure != null)
+            {
+                if (_process != IntPtr.Zero)
+                {
+                    Cleanup(ref failure, "terminate failed launch", () =>
+                    {
+                        if (!HasExited && !TerminateProcess(_process, 1)) throw NativeError("TerminateProcess after failed launch");
+                    });
+                }
+                // Closing the Job also cleans descendants if a failure occurred
+                // after ResumeThread. Always attempt it, even if termination failed.
+                if (_job != IntPtr.Zero) Cleanup(ref failure, "close failed launch job", () => CloseNativeHandle(_job));
+                if (_process != IntPtr.Zero)
+                {
+                    Cleanup(ref failure, "wait failed launch", () =>
+                    {
+                        var status = WaitForSingleObject(_process, 5000);
+                        if (status == uint.MaxValue) throw NativeError("wait failed launch");
+                        if (status != 0) throw new TimeoutException("Failed launch did not terminate within the cleanup deadline.");
+                    });
+                    Cleanup(ref failure, "close failed launch process", () => CloseNativeHandle(_process));
+                }
+                Cleanup(ref failure, "close stdout", () => StandardOutput?.Dispose());
+                Cleanup(ref failure, "close stderr", () => StandardError?.Dispose());
+                ExceptionDispatchInfo.Capture(failure!).Throw();
             }
         }
         internal override bool HasExited
@@ -438,12 +518,22 @@ internal abstract class OwnedProcessGroup : IDisposable
         {
             if (_disposed) return;
             _disposed = true;
-            try { Terminate(); if (!(WaitAttempted ? HasExited : WaitForExit(5000))) throw new TimeoutException("Owned process did not exit within the cleanup deadline."); }
-            finally
+            Exception? failure = null;
+            Cleanup(ref failure, "terminate", Terminate);
+            Cleanup(ref failure, "wait", () =>
             {
-                CloseHandle(_job); CloseHandle(_process);
-                StandardOutput.Dispose(); StandardError.Dispose();
-            }
+                if (!(WaitAttempted ? HasExited : WaitForExit(5000)))
+                    throw new TimeoutException("Owned process did not exit within the cleanup deadline.");
+            });
+            Cleanup(ref failure, "close job", () => CloseNativeHandle(_job));
+            Cleanup(ref failure, "close process", () => CloseNativeHandle(_process));
+            Cleanup(ref failure, "close stdout", StandardOutput.Dispose);
+            Cleanup(ref failure, "close stderr", StandardError.Dispose);
+            if (failure != null) ExceptionDispatchInfo.Capture(failure).Throw();
+        }
+        private static void CloseNativeHandle(IntPtr handle)
+        {
+            if (!CloseHandle(handle)) throw NativeError("CloseHandle for owned process");
         }
         private static IntPtr[] CreatePipe(List<IntPtr> handles, ref SecurityAttributes security)
         {
