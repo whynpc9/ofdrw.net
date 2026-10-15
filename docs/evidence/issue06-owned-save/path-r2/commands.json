@@ -1,0 +1,149 @@
+[
+  {
+    "name": "test-Core",
+    "argv": [
+      "dotnet",
+      "test",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj",
+      "-c",
+      "Release",
+      "--results-directory",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/results",
+      "--logger",
+      "trx;LogFileName=Core.trx",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false"
+    ],
+    "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source",
+    "log": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/logs/test-Core.log",
+    "started": 1791993199.3327029,
+    "ended": 1791993210.536385,
+    "exit_code": 0
+  },
+  {
+    "name": "test-Cli",
+    "argv": [
+      "dotnet",
+      "test",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj",
+      "-c",
+      "Release",
+      "--results-directory",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/results",
+      "--logger",
+      "trx;LogFileName=Cli.trx",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false"
+    ],
+    "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source",
+    "log": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/logs/test-Cli.log",
+    "started": 1791993210.536688,
+    "ended": 1791993230.7734048,
+    "exit_code": 0
+  },
+  {
+    "name": "test-Packaging",
+    "argv": [
+      "dotnet",
+      "test",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/tests/Ofdrw.Net.Packaging.Tests/Ofdrw.Net.Packaging.Tests.csproj",
+      "-c",
+      "Release",
+      "--results-directory",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/results",
+      "--logger",
+      "trx;LogFileName=Packaging.trx",
+      "--filter",
+      "FullyQualifiedName~OwnedXmlPreservation|FullyQualifiedName~OwnedSaveBoundary|FullyQualifiedName~OwnedSaveObservation|FullyQualifiedName~OwnedPayloadClone|FullyQualifiedName~TextReplacementSpool|FullyQualifiedName~TextReplacementFileSession|FullyQualifiedName~TextReplacementOwnedSession",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false"
+    ],
+    "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source",
+    "log": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/logs/test-Packaging.log",
+    "started": 1791993230.773665,
+    "ended": 1791993233.5895941,
+    "exit_code": 0
+  },
+  {
+    "name": "build-Core",
+    "argv": [
+      "dotnet",
+      "build",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/src/Ofdrw.Net.Core/Ofdrw.Net.Core.csproj",
+      "-c",
+      "Release",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false"
+    ],
+    "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source",
+    "log": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/logs/build-Core.log",
+    "started": 1791993233.589901,
+    "ended": 1791993234.6197891,
+    "exit_code": 0
+  },
+  {
+    "name": "build-Reader",
+    "argv": [
+      "dotnet",
+      "build",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj",
+      "-c",
+      "Release",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false"
+    ],
+    "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source",
+    "log": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/logs/build-Reader.log",
+    "started": 1791993234.620102,
+    "ended": 1791993236.4705799,
+    "exit_code": 0
+  },
+  {
+    "name": "build-Layout",
+    "argv": [
+      "dotnet",
+      "build",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj",
+      "-c",
+      "Release",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false"
+    ],
+    "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source",
+    "log": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/logs/build-Layout.log",
+    "started": 1791993236.470907,
+    "ended": 1791993237.8668969,
+    "exit_code": 0
+  },
+  {
+    "name": "build-Converter.Pdf",
+    "argv": [
+      "dotnet",
+      "build",
+      "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source/src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj",
+      "-c",
+      "Release",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false"
+    ],
+    "cwd": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/source",
+    "log": "/Users/wanghongyi/.codex/worktrees/0b1c/ofdrw.net/artifacts/issue06-pr19-review/path-r2/logs/build-Converter.Pdf.log",
+    "started": 1791993237.867222,
+    "ended": 1791993239.8533828,
+    "exit_code": 0
+  }
+]

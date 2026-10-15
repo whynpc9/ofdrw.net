@@ -90,7 +90,7 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
         using var document = PdfDocument.Open(pdfPath);
         if (document.NumberOfPages > _options.MaxPageCount)
             throw new InvalidDataException("PDF exceeds the configured source page limit.");
-        var selected = OfdPageSelection.Normalize(document.NumberOfPages, pages);
+        var selected = OfdPageSelection.Normalize(document.NumberOfPages, pages, cancellationToken);
         if (selected.Count > _options.MaxPageCount)
             throw new InvalidDataException("PDF selection exceeds the configured output page limit.");
         using var docnet = new DocnetPdfRasterizer(pdfPath, _options.Dpi, _options.MaxRasterizedPixelsPerPage);

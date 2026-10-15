@@ -2,13 +2,18 @@ name: CI
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "master", "codex/document-tools"]
   pull_request:
-    branches: ["main", "master", "codex/public-flow-layout"]
+    branches: ["main", "master", "codex/**"]
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
+      NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
 
     steps:
       - name: Checkout
@@ -32,7 +37,10 @@ jobs:
           python scripts/install-ci-fonts.py
 
       - name: Restore
-        run: dotnet restore Ofdrw.Net.sln
+        run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Check release notices
+        run: python3 scripts/verify-package-artifacts.py --notices-only
 
       - name: Test package artifact validation
         run: python3 -m unittest discover -s scripts/tests -v
@@ -41,21 +49,34 @@ jobs:
         run: python3 scripts/verify-public-table-evidence.py
 
       - name: Build
-        run: dotnet build Ofdrw.Net.sln -c Release --no-restore
+        run: dotnet build Ofdrw.Net.sln -c Release --no-restore --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Reject new undocumented public API
+        run: python3 scripts/check-public-api-docs.py
 
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Run mandatory original-font geometry and replacement tests without skips
+        run: python3 scripts/run-trusted-font-tests.py --results-directory artifacts/trusted-font-tests
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: artifacts/test-results
+          path: |
+            artifacts/test-results
+            artifacts/trusted-font-tests
 
   builtin-docx:
     name: BuiltIn DOCX (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
+      NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -99,6 +120,11 @@ jobs:
 
   package-e2e:
     runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
+      NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     needs: [build-test, builtin-docx]
 
     steps:
@@ -131,6 +157,39 @@ jobs:
           cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/document-tools-fonts/
           ./scripts/run-document-tools-e2e.sh artifacts/document-tools-e2e
 
+      - name: Run native graphics matrix
+        run: |
+          mkdir -p artifacts/graphics-fonts
+          cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/graphics-fonts/
+          ./scripts/run-graphics-e2e.sh artifacts/graphics/current
+
+      - name: Consume optional Skia event adapter from exact local packages
+        run: ./scripts/run-skia-package-e2e.sh 0.1.0-preview.8 artifacts/package-e2e/0.1.0-preview.8/packages artifacts/skia/package-e2e
+
+      - name: Consume optional PDF vector converter from exact local packages
+        run: ./scripts/run-pdf-vector-package-e2e.sh 0.1.0-preview.8 artifacts/package-e2e/0.1.0-preview.8/packages artifacts/pdf-vectors/package-e2e
+
+      - name: Upload PDF vector same-source and fallback comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-vector-pages
+          path: artifacts/pdf-vectors/package-e2e
+
+      - name: Upload Skia adapter comparison pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skia-adapter-pages
+          path: artifacts/skia/package-e2e
+
+      - name: Upload native graphics pages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-graphics-pages
+          path: artifacts/graphics/current
+
       - name: Upload document tool matrix
         if: always()
         uses: actions/upload-artifact@v4
@@ -144,3 +203,4 @@ jobs:
         with:
           name: package-e2e-pages
           path: artifacts/package-e2e
+

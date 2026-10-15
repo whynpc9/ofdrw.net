@@ -1,0 +1,628 @@
+{
+  "head": "abd85f3b613e96fdd1aa2bc27c71b51c029bd243",
+  "status": "failed-first-optional-consumer-gate",
+  "main": {
+    "full_tests": 625,
+    "python": 5,
+    "default11": "passed",
+    "optional13": "failed missing testdata output path"
+  },
+  "independent": {
+    "worker": "independent Low9",
+    "created_utc": "2026-10-09T05:52:46.783440+00:00",
+    "status": "failed_first_actual_gate",
+    "exact_head": "abd85f3b613e96fdd1aa2bc27c71b51c029bd243",
+    "source": {
+      "tracked_blobs": 353,
+      "initial_mismatches": [],
+      "post_run_mismatches": [],
+      "archived_mismatches": [],
+      "src_diff_from_deda6d2": []
+    },
+    "golden": {
+      "compressed_bytes": 11532803,
+      "compressed_sha256": "024e4dbd0f735b90c9cf50f91d1e245cfab1caca9e2e73af243afa8fb4def3fa",
+      "raw_bytes": 21698835,
+      "raw_sha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb"
+    },
+    "environment": {
+      "font_sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+      "license_sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "libreoffice_path": "/Users/wanghongyi/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice",
+      "dotnet_flags": "--disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false"
+    },
+    "gates": {
+      "default11": {
+        "status": "passed",
+        "log": "logs-low9/default11.log",
+        "manifest": "default-low9/packages/package-manifest.json"
+      },
+      "optional13": {
+        "status": "failed",
+        "exit_code": 134,
+        "log": "logs-low9/optional13.log",
+        "failure": "DirectoryNotFoundException loading consumer bin/Release/net10.0/testdata/text-precision-source.pdf.gz",
+        "packages_built": 13,
+        "manifest": null
+      },
+      "full_625_tests": "not_run_after_failure",
+      "python_5": "not_run_after_failure",
+      "independent_observers": "not_run_after_failure",
+      "model_comparison": "not_run_after_failure",
+      "visual_auxiliary": "not_run_after_failure"
+    },
+    "optional_packages": [
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Cli.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 25037896,
+        "sha256": "ca879f74449459be4cc02ef1de654680ffe0be489451850e4e90c06aec4d4db6"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Converter.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 20814,
+        "sha256": "4a18a4998e16395a78b7eb8386736488ba86e9c1e3d2c49561d261acc3986f5a"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Converter.Abstractions.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 27191,
+        "sha256": "8ccbdc828df9f43c6c2125f2e531f30ee50589b90efcc4f37aea0bbffcab138e"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Converter.Docx.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 173841,
+        "sha256": "f5e3fe17b4f942e962367f1851be025d357577afd852aca8ac05cb3cb80477fd"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Converter.Pdf.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 106182,
+        "sha256": "90aaabf432d8020bc7c7b533bad7ba251e08174026c8d31ab400aaa2a410a345"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Converter.Pdf.Vector.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 91757,
+        "sha256": "9289da6f51e43564b6fb636fa65f5ac61cbf25d2fdbbb6a3350e66439f815a25"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Converter.Svg.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 43172,
+        "sha256": "6c3a3b1ced187df82c3c23ec59c23d19cd19f730010e7d93a89f6a299228615b"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Core.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 82015,
+        "sha256": "9d1c945d484c2d500d78ee3a69f860a0e85bec53cc00bd5477413191b182e1ce"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Graphics.SkiaSharp.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 45325,
+        "sha256": "aab55e11b00e2fd1ced41a6d742f54bdc5a49dc1f997d63ddfbe20b77c088c91"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Layout.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 94666,
+        "sha256": "8c4031699ef3d717feb2315025c8aaeb9938e10e8ace245a0a369a985053e346"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Packaging.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 96575,
+        "sha256": "dc36ee234b2b60dce16cf686d5a7be8aecda47eef7c530f391a4ab8fb26021ba"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Reader.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 70905,
+        "sha256": "be895a78dfcd9eeb0f3677f655555cbe88d9893ed24ef540d7fcf84a8324bf90"
+      },
+      {
+        "path": "artifacts/pdf-vectors/independent/optional13-low9/feed/Ofdrw.Net.Signatures.0.1.0-pdfvector.20261009.low9.nupkg",
+        "bytes": 56007,
+        "sha256": "1e882fc1b86cd9f26fe3e61a8948a82a67c96584e38ed3cbc96ca5b3dd2a0ac8"
+      }
+    ],
+    "remaining": [
+      "Repair frozen testdata output-copy failure in source/harness under separate ownership",
+      "Rerun failed and downstream gates from a new freeze",
+      "Latest Linux CI",
+      "Preview inspection of actual new PDF",
+      "Current-head reviews"
+    ],
+    "limits": {
+      "full_visual_acceptance": false,
+      "release_acceptance": false,
+      "r6_failed_source_bytes_recovered": false
+    }
+  },
+  "ci_forensics": {
+    "ci_source_sha": "1fd02c9014cf5c1d40ab278d193bbecec81e2a40104b8c2dd2c44c1cf9ccdb77",
+    "local_source_sha": "6f3da907dd576dde5d5133355bf89114eb559b31fe1fc403672d3adf558f698a",
+    "ci_font_sha": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+    "local_font_sha": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa",
+    "font_bytes_equal": true,
+    "different_widths": [
+      {
+        "gid": 1,
+        "ci_width": 223.999741,
+        "local_width": 224.0
+      },
+      {
+        "gid": 12,
+        "ci_width": 554.999084,
+        "local_width": 555.0
+      },
+      {
+        "gid": 13,
+        "ci_width": 277.999634,
+        "local_width": 278.0
+      },
+      {
+        "gid": 14,
+        "ci_width": 346.99942,
+        "local_width": 347.0
+      },
+      {
+        "gid": 15,
+        "ci_width": 277.999634,
+        "local_width": 278.0
+      },
+      {
+        "gid": 16,
+        "ci_width": 391.999237,
+        "local_width": 392.0
+      },
+      {
+        "gid": 17,
+        "ci_width": 554.999084,
+        "local_width": 555.0
+      },
+      {
+        "gid": 18,
+        "ci_width": 554.999084,
+        "local_width": 555.0
+      },
+      {
+        "gid": 19,
+        "ci_width": 554.999084,
+        "local_width": 555.0
+      },
+      {
+        "gid": 21,
+        "ci_width": 554.999084,
+        "local_width": 555.0
+      },
+      {
+        "gid": 23,
+        "ci_width": 554.999084,
+        "local_width": 555.0
+      },
+      {
+        "gid": 25,
+        "ci_width": 554.999084,
+        "local_width": 555.0
+      },
+      {
+        "gid": 26,
+        "ci_width": 554.999084,
+        "local_width": 555.0
+      },
+      {
+        "gid": 27,
+        "ci_width": 277.999634,
+        "local_width": 278.0
+      },
+      {
+        "gid": 34,
+        "ci_width": 607.999084,
+        "local_width": 608.0
+      },
+      {
+        "gid": 35,
+        "ci_width": 656.998901,
+        "local_width": 657.0
+      },
+      {
+        "gid": 36,
+        "ci_width": 637.99884,
+        "local_width": 638.0
+      },
+      {
+        "gid": 37,
+        "ci_width": 687.998779,
+        "local_width": 688.0
+      },
+      {
+        "gid": 38,
+        "ci_width": 588.999023,
+        "local_width": 589.0
+      },
+      {
+        "gid": 39,
+        "ci_width": 551.999084,
+        "local_width": 552.0
+      },
+      {
+        "gid": 42,
+        "ci_width": 292.999512,
+        "local_width": 293.0
+      },
+      {
+        "gid": 44,
+        "ci_width": 645.998962,
+        "local_width": 646.0
+      },
+      {
+        "gid": 47,
+        "ci_width": 722.99884,
+        "local_width": 723.0
+      },
+      {
+        "gid": 48,
+        "ci_width": 741.998657,
+        "local_width": 742.0
+      },
+      {
+        "gid": 49,
+        "ci_width": 632.998962,
+        "local_width": 633.0
+      },
+      {
+        "gid": 50,
+        "ci_width": 741.998657,
+        "local_width": 742.0
+      },
+      {
+        "gid": 51,
+        "ci_width": 634.999023,
+        "local_width": 635.0
+      },
+      {
+        "gid": 52,
+        "ci_width": 595.999023,
+        "local_width": 596.0
+      },
+      {
+        "gid": 53,
+        "ci_width": 598.999023,
+        "local_width": 599.0
+      },
+      {
+        "gid": 54,
+        "ci_width": 720.998779,
+        "local_width": 721.0
+      },
+      {
+        "gid": 55,
+        "ci_width": 574.999084,
+        "local_width": 575.0
+      },
+      {
+        "gid": 56,
+        "ci_width": 877.998596,
+        "local_width": 878.0
+      },
+      {
+        "gid": 58,
+        "ci_width": 530.999207,
+        "local_width": 531.0
+      },
+      {
+        "gid": 66,
+        "ci_width": 562.999023,
+        "local_width": 563.0
+      },
+      {
+        "gid": 67,
+        "ci_width": 617.99884,
+        "local_width": 618.0
+      },
+      {
+        "gid": 68,
+        "ci_width": 509.999023,
+        "local_width": 510.0
+      },
+      {
+        "gid": 69,
+        "ci_width": 619.998901,
+        "local_width": 620.0
+      },
+      {
+        "gid": 70,
+        "ci_width": 553.998962,
+        "local_width": 554.0
+      },
+      {
+        "gid": 71,
+        "ci_width": 324.999329,
+        "local_width": 325.0
+      },
+      {
+        "gid": 72,
+        "ci_width": 563.998962,
+        "local_width": 564.0
+      },
+      {
+        "gid": 73,
+        "ci_width": 606.998901,
+        "local_width": 607.0
+      },
+      {
+        "gid": 74,
+        "ci_width": 274.999634,
+        "local_width": 275.0
+      },
+      {
+        "gid": 77,
+        "ci_width": 283.999451,
+        "local_width": 284.0
+      },
+      {
+        "gid": 78,
+        "ci_width": 925.998474,
+        "local_width": 926.0
+      },
+      {
+        "gid": 79,
+        "ci_width": 609.998962,
+        "local_width": 610.0
+      },
+      {
+        "gid": 80,
+        "ci_width": 605.999023,
+        "local_width": 606.0
+      },
+      {
+        "gid": 81,
+        "ci_width": 619.998901,
+        "local_width": 620.0
+      },
+      {
+        "gid": 83,
+        "ci_width": 387.999298,
+        "local_width": 388.0
+      },
+      {
+        "gid": 84,
+        "ci_width": 467.999207,
+        "local_width": 468.0
+      },
+      {
+        "gid": 85,
+        "ci_width": 376.99939,
+        "local_width": 377.0
+      },
+      {
+        "gid": 86,
+        "ci_width": 606.998901,
+        "local_width": 607.0
+      },
+      {
+        "gid": 87,
+        "ci_width": 520.999207,
+        "local_width": 521.0
+      },
+      {
+        "gid": 88,
+        "ci_width": 801.998596,
+        "local_width": 802.0
+      },
+      {
+        "gid": 89,
+        "ci_width": 497.999207,
+        "local_width": 498.0
+      },
+      {
+        "gid": 90,
+        "ci_width": 520.999207,
+        "local_width": 521.0
+      },
+      {
+        "gid": 9498,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 9544,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 9792,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 11206,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 11786,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 11949,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 15808,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 16662,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 16908,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 18028,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 18711,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 19046,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 19992,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 20036,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 20220,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 20735,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 20763,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 21170,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 21230,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 22545,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 27864,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 28269,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 28282,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 28816,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 28904,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 29405,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 31693,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 31747,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 31768,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 33608,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 38430,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 39928,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 40128,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 40744,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 41224,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 41228,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 43096,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 43691,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 44152,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 44153,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      },
+      {
+        "gid": 44188,
+        "ci_width": 999.998352,
+        "local_width": 1000.0
+      }
+    ],
+    "scope": "Actual retained CI normal same-source fixture, not the unpersisted failed nine-page source. Shows regenerated width operands differ despite identical original font bytes; does not fabricate the missing nine-page input."
+  },
+  "diagnosis": "Actual clean consumer copied gzip flat into bin root; expected bin/testdata path absent. None items existed with CopyToOutputDirectory. Explicit TargetPath structural proof is separately retained for next freeze.",
+  "overall_ticket_accepted": false,
+  "production_release_accepted": false,
+  "preview_new_files": "not performed and not accepted after failed gate"
+}

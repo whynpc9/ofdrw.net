@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>Optional bounded PDF vector producer for native OFD paths and Unicode text.</Description>
+    <PackageTags>OFD;PDF;vector;SkiaSharp</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
+    <ProjectReference Include="../Ofdrw.Net.Graphics.SkiaSharp/Ofdrw.Net.Graphics.SkiaSharp.csproj" />
+    <None Include="../../docs/tutorials/18-pdf-vector-mode.md" Pack="true" PackagePath="docs/tutorials/" />
+    <None Include="../../docs/pdf-vector-design-contract.md" Pack="true" PackagePath="docs/" />
+  </ItemGroup>
+</Project>

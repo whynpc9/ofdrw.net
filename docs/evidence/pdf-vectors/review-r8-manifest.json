@@ -1,0 +1,777 @@
+{
+  "runtime_head": "d8d197ec448c5dad690a72a1bb5a776c2e7019e2",
+  "production_src_same_as": "deda6d2928c2db0e05640d2df96e50b79131ccfa",
+  "version": "0.1.0-pdfvector.20261009.r8",
+  "archive": "review-r8.tar.zst",
+  "archive_bytes": 27192342,
+  "archive_sha256": "19658840da480cf505545f1f5b7f85bd828c5ad19669890b05548e8d5bcc2cd7",
+  "files": [
+    {
+      "file": "candidate/image-hint-report.json",
+      "bytes": 2066,
+      "sha256": "12bf4a914f1c47b7f3096fbc86070527d1b3282007566b84de41cc9a7ca51f7c"
+    },
+    {
+      "file": "candidate/indexed-image-clipped-1.png",
+      "bytes": 7318,
+      "sha256": "f18a68c67ded90e26609382345eca68b4f9bdea42f284e0453a006d127c1088a"
+    },
+    {
+      "file": "candidate/indexed-image-clipped-source-1.png",
+      "bytes": 7227,
+      "sha256": "789cb3eaecf1a4ba39d7ceab80cf326e85f1d5cf483139980895e6331bcbfb28"
+    },
+    {
+      "file": "candidate/indexed-image-clipped-source.pdf",
+      "bytes": 22661825,
+      "sha256": "525f7c78b433f5ad9935c03994e76a899f64ab96940114b7d01fa2074ce11fbe"
+    },
+    {
+      "file": "candidate/indexed-image-clipped.ofd",
+      "bytes": 2244,
+      "sha256": "2ebf4fbb9b266e0642e045e39a73713542ab1b73a6757ba8efddcba7ac7cb89f"
+    },
+    {
+      "file": "candidate/indexed-image-clipped.pdf",
+      "bytes": 18947,
+      "sha256": "754226476a1f4b92fe71be9d55ebcbc4eef09e80d264fac7da54ec2efe85ce14"
+    },
+    {
+      "file": "candidate/indexed-palette-report.json",
+      "bytes": 1971,
+      "sha256": "8f3f2365b5c6fa74ce7156638e797a78c1a508a9ea364a39bf910f89d44ce059"
+    },
+    {
+      "file": "candidate/nonpainting-report.json",
+      "bytes": 2660,
+      "sha256": "3f0dae11db9ec716bd718be33cab9cff850304c123b4e3dc1e8bb31baff7b253"
+    },
+    {
+      "file": "candidate/precision-resource-report.json",
+      "bytes": 3863,
+      "sha256": "92c03c1f67cf2dfe07d70ad85fb248249fc7825de53255106098552eaaa76843"
+    },
+    {
+      "file": "candidate/sample-report.json",
+      "bytes": 4850,
+      "sha256": "f59e6012308872a0aa3e407951ac39b7999fa077a8b2fb8a3962d2bcdc594829"
+    },
+    {
+      "file": "candidate/text-precision-1.png",
+      "bytes": 5282,
+      "sha256": "56b5a0a78f6bbb33061f60348e20d689f2b27c4e2a0447c6937d7e2b2ccf172e"
+    },
+    {
+      "file": "candidate/text-precision-2.png",
+      "bytes": 5282,
+      "sha256": "56b5a0a78f6bbb33061f60348e20d689f2b27c4e2a0447c6937d7e2b2ccf172e"
+    },
+    {
+      "file": "candidate/text-precision-3.png",
+      "bytes": 5282,
+      "sha256": "56b5a0a78f6bbb33061f60348e20d689f2b27c4e2a0447c6937d7e2b2ccf172e"
+    },
+    {
+      "file": "candidate/text-precision-4.png",
+      "bytes": 5337,
+      "sha256": "08895dc614982938bd6ef0d565c0c87f93f69ffcec0ad834bee7bc772e498d5d"
+    },
+    {
+      "file": "candidate/text-precision-5.png",
+      "bytes": 4666,
+      "sha256": "4f4850734114f89f79d84cd3f56d15491ca4cfc32697fe32e696a43a924a0dfe"
+    },
+    {
+      "file": "candidate/text-precision-6.png",
+      "bytes": 9498,
+      "sha256": "b23093f03b6e28a54f20b1bae8d3cc0e37cc4d2c36d054e06bf512f5546b069a"
+    },
+    {
+      "file": "candidate/text-precision-7.png",
+      "bytes": 9747,
+      "sha256": "15380f60ed25bb747784354a13015ebf173368e62942efed7b54edc3d9e12726"
+    },
+    {
+      "file": "candidate/text-precision-8.png",
+      "bytes": 10467,
+      "sha256": "3f8635507e48526fe150f19e2856501a923ff0587eb3817c0645ab65f93d8438"
+    },
+    {
+      "file": "candidate/text-precision-9.png",
+      "bytes": 7863,
+      "sha256": "d26b0630c11bb7483c8120683a9075fa13514df4c13603ed7efd761aa26039d7"
+    },
+    {
+      "file": "candidate/text-precision-report.json",
+      "bytes": 3428,
+      "sha256": "14235a867c641d32c9c0291fb2c6240d7b2d9e183ec1c8a66c9cc9edb8f9cf4a"
+    },
+    {
+      "file": "candidate/text-precision-source-1.png",
+      "bytes": 4976,
+      "sha256": "be725c871c6f20ee28a522f82d1dfe79d0d6aa40ab967ac1504ab1af6e77c305"
+    },
+    {
+      "file": "candidate/text-precision-source-2.png",
+      "bytes": 4976,
+      "sha256": "be725c871c6f20ee28a522f82d1dfe79d0d6aa40ab967ac1504ab1af6e77c305"
+    },
+    {
+      "file": "candidate/text-precision-source-3.png",
+      "bytes": 4976,
+      "sha256": "be725c871c6f20ee28a522f82d1dfe79d0d6aa40ab967ac1504ab1af6e77c305"
+    },
+    {
+      "file": "candidate/text-precision-source-4.png",
+      "bytes": 4888,
+      "sha256": "cdf217db1d84f1bee28474f78926dac2822605595fe0f5d3d13c8a2c39a1933a"
+    },
+    {
+      "file": "candidate/text-precision-source-5.png",
+      "bytes": 4655,
+      "sha256": "9459adb96b4e6dceadc9cabe93a2466c3d84dcc98676359fae734ed81319ed41"
+    },
+    {
+      "file": "candidate/text-precision-source-6.png",
+      "bytes": 9496,
+      "sha256": "4c051bf39b0c31211ab9b81f7a10c0e5606f15f695cadf7d7afcaa163a84e79c"
+    },
+    {
+      "file": "candidate/text-precision-source-7.png",
+      "bytes": 9747,
+      "sha256": "20c8b6234e1b5d1d721e0804c48292bfa64926b0f247b2653cf5ec164c3583d3"
+    },
+    {
+      "file": "candidate/text-precision-source-8.png",
+      "bytes": 10466,
+      "sha256": "d76e52d1a6e16f5420fddc1cf8b59924dfca76d11fd7d122f2a918733fb12eec"
+    },
+    {
+      "file": "candidate/text-precision-source-9.png",
+      "bytes": 7846,
+      "sha256": "f02c053a7a4a27546c9e5d43328363257975175f4598c7c43fd769f76ee24714"
+    },
+    {
+      "file": "candidate/text-precision-source.pdf",
+      "bytes": 21698835,
+      "sha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb"
+    },
+    {
+      "file": "candidate/text-precision.ofd",
+      "bytes": 11607115,
+      "sha256": "b5fa73ce195fc40be45279891fcbde94e54706767328104713ef76553d262455"
+    },
+    {
+      "file": "candidate/text-precision.pdf",
+      "bytes": 147573,
+      "sha256": "3102e5675e1e2189b5dfa04de18ee4effbaf54d11c46678d8242fca36db65f1c"
+    },
+    {
+      "file": "candidate/verified-evidence.json",
+      "bytes": 30272,
+      "sha256": "47008709b4535fe830906ce8829a74c8934b6fa44a4d3f6722d85d54816be664"
+    },
+    {
+      "file": "font-identity-r9-design/OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "file": "font-identity-r9-design/baseline.json",
+      "bytes": 51315,
+      "sha256": "2049d971550eaed5e1e39b409b83da2617936db6302c81215e4ce2caa630c7e1"
+    },
+    {
+      "file": "font-identity-r9-design/commands.jsonl",
+      "bytes": 1994,
+      "sha256": "ebe583f711b3076ae7549816a64a2e9694af0500bc492dab595ffa1a6ffbe08f"
+    },
+    {
+      "file": "font-identity-r9-design/consumer/Consumer.csproj",
+      "bytes": 362,
+      "sha256": "5a3879200be929642886847bbe138bcd8fd3565d27edd6704f7f2287d6a86512"
+    },
+    {
+      "file": "font-identity-r9-design/consumer/DiagnosticSkiaDrawEvent.cs",
+      "bytes": 17206,
+      "sha256": "a1617299452993eceb9f68a45ea8584eb492e83ceb54a0268655cd620557cee1"
+    },
+    {
+      "file": "font-identity-r9-design/consumer/NuGet.Config",
+      "bytes": 483,
+      "sha256": "2e690c3d5ec443529d9f1efef155525fc7fa06d7028a86b69c30d60fd5527e5f"
+    },
+    {
+      "file": "font-identity-r9-design/consumer/PdfFixture.cs",
+      "bytes": 6158,
+      "sha256": "78fc6f4a3239f1cfa3872f5184a6f2b1c5088d3b20706170e6fcbc657c53f9c6"
+    },
+    {
+      "file": "font-identity-r9-design/consumer/Program.cs",
+      "bytes": 9669,
+      "sha256": "d5beec1d09862296dcb21092567b9803b53fc9587abcf28b5b0be4b3429a1654"
+    },
+    {
+      "file": "font-identity-r9-design/diagnostic-instrumentation.diff",
+      "bytes": 2679,
+      "sha256": "c2575a7a5cf79ce3c6135361aa57cb3b92b6fc65e49a99925a17080fda92d7a5"
+    },
+    {
+      "file": "font-identity-r9-design/evidence-manifest.json",
+      "bytes": 5636,
+      "sha256": "8c3f45232ed7070a3f07387bcb50444a1e64b00c671da19b50fd4613e247ea82"
+    },
+    {
+      "file": "font-identity-r9-design/logs/bounded-runtime.log",
+      "bytes": 706,
+      "sha256": "a4caeacff9257c4cc770b09ae96873c9c089c5b27dcb92ea51b8f052c28e740b"
+    },
+    {
+      "file": "font-identity-r9-design/logs/build.log",
+      "bytes": 226,
+      "sha256": "159e82b901ef1c4caf787ac00fb3503a7d7c4d5567d3516a4e8c933ba1167e03"
+    },
+    {
+      "file": "font-identity-r9-design/logs/dependency-feed-attempt-1.log",
+      "bytes": 354,
+      "sha256": "193155684234c9cb32304e07144c8367ee2c3c5f060b7a3d508312bc4dfd4575"
+    },
+    {
+      "file": "font-identity-r9-design/logs/dependency-feed-availability.json",
+      "bytes": 19,
+      "sha256": "38fb65134db16edc53eaf4fd2d10408a63af4bbfe10ddd8d2bf2ac54145a3a36"
+    },
+    {
+      "file": "font-identity-r9-design/logs/preflight-notes.txt",
+      "bytes": 424,
+      "sha256": "3f7d5e79fba8ea5e81af4ede8406f7f1bf2f1917696c18a201efb2d8909491cf"
+    },
+    {
+      "file": "font-identity-r9-design/logs/restore.log",
+      "bytes": 950,
+      "sha256": "4b906351bbe1305fc1b1aabc3d8eb574a5db9819d085c7d8380b6553f3107ec1"
+    },
+    {
+      "file": "font-identity-r9-design/output/accepted-normal.ofd",
+      "bytes": 11604461,
+      "sha256": "abe625e9db133729663774f196572783ea5c3521696c63848fb4c1dc3e73be53"
+    },
+    {
+      "file": "font-identity-r9-design/output/accepted-normal.pdf",
+      "bytes": 21667775,
+      "sha256": "6f3da907dd576dde5d5133355bf89114eb559b31fe1fc403672d3adf558f698a"
+    },
+    {
+      "file": "font-identity-r9-design/output/budget-cancellation.json",
+      "bytes": 932,
+      "sha256": "f703200b5387654284b9365383e63d8c625666645d5a5f69aa35d70e50723103"
+    },
+    {
+      "file": "font-identity-r9-design/output/conversion-measurements.json",
+      "bytes": 14573,
+      "sha256": "7c74e6f51b5f84c91fa4783cb83174a2aa03bb2e45fe90ed27e32ae8157977da"
+    },
+    {
+      "file": "font-identity-r9-design/output/event-measurements.json",
+      "bytes": 2684,
+      "sha256": "625a71455833d02fbfd88b88f621e5aa74ecd18d86f6f8547788445f8892d6b5"
+    },
+    {
+      "file": "font-identity-r9-design/output/loaded-package-il.txt",
+      "bytes": 16765,
+      "sha256": "9d47888265c05263d24321c2721a2fc949d095c48131b60d0e0d05e838f1d5e5"
+    },
+    {
+      "file": "font-identity-r9-design/output/normal-r8-comparison.json",
+      "bytes": 72,
+      "sha256": "aa068e4b1a88312158d81953ec370ced70e2f2aca00fa64b8d4d61e9afd0fd1b"
+    },
+    {
+      "file": "font-identity-r9-design/output/opened-face.json",
+      "bytes": 185,
+      "sha256": "836ca458b304aaa2f5a1a7282b5f746c182b02f1fce74856e985328edb2962f2"
+    },
+    {
+      "file": "font-identity-r9-design/output/runtime.json",
+      "bytes": 3394,
+      "sha256": "06b649e123ac457d68fee9ba74ad5e1728127633f1cd278a577172d794dc35b4"
+    },
+    {
+      "file": "font-identity-r9-design/output/source9-native-positives.ofd",
+      "bytes": 11601753,
+      "sha256": "67edf8d7396e696c6636dc25b453a6cef72600faf2bea347afa3ee51fa55081a"
+    },
+    {
+      "file": "font-identity-r9-design/output/source9-native-positives.pdf",
+      "bytes": 21698835,
+      "sha256": "d78e78154690b11a2e6c8db61d5ef458aef583e2706aa0da8ae065b3460898eb"
+    },
+    {
+      "file": "font-identity-r9-design/output/tj-1.ofd",
+      "bytes": 11600021,
+      "sha256": "748d8e607de210fbf1958fbcdfc87f15f2d935fb59009456a2e1fca52810ca07"
+    },
+    {
+      "file": "font-identity-r9-design/output/tj-1.pdf",
+      "bytes": 21661410,
+      "sha256": "ae0ed70d70f5ffc8db4a8f1bbc69c26775c334d6e5edb19e075e8bd45ad88666"
+    },
+    {
+      "file": "font-identity-r9-design/output/tj-10.ofd",
+      "bytes": 11600132,
+      "sha256": "01224d1c766bcbbdd7bc90d785ac10ae587b8a82a53dde590a417ae48e087132"
+    },
+    {
+      "file": "font-identity-r9-design/output/tj-10.pdf",
+      "bytes": 21661807,
+      "sha256": "f4700fc857344bb0217977e478ce56b416516b337bbf9150ccb6b4e097569b08"
+    },
+    {
+      "file": "font-identity-r9-design/output/tj-100.ofd",
+      "bytes": 11600933,
+      "sha256": "432804a57e8d4654bcdada252a5065ec0f789e99ea0b63919a35825a0243911a"
+    },
+    {
+      "file": "font-identity-r9-design/output/tj-100.pdf",
+      "bytes": 21665768,
+      "sha256": "e8cec4e6590a8bf25510a78f3e37fed3c82775baac035d18b08710bb11040eb6"
+    },
+    {
+      "file": "font-identity-r9-design/output/tj-50.ofd",
+      "bytes": 11600509,
+      "sha256": "d92bc0b94846e382c3b2f04c8cceed461e15be74c97dedacc96b74eea000f0d0"
+    },
+    {
+      "file": "font-identity-r9-design/output/tj-50.pdf",
+      "bytes": 21663568,
+      "sha256": "8259f94602b98f8b2bfee8db1acb0e1648d87c7ecb8604bda2010faa9d446aad"
+    },
+    {
+      "file": "font-identity-r9-design/package-dll-provenance.json",
+      "bytes": 5488,
+      "sha256": "f5ea21414b742023da8789c92b6b7457b8f85f7e2b9d6e5731cc721bf00791f7"
+    },
+    {
+      "file": "font-identity-r9-design/report.md",
+      "bytes": 28850,
+      "sha256": "bf5a91a82045f73f90ddbee4c0850045ab0e43e6e2a98fe8113f46b68f9d5eed"
+    },
+    {
+      "file": "font-identity-r9-design/run.py",
+      "bytes": 935,
+      "sha256": "db063fa747354d14ea3b51835971ebb8675b14efa3d712120e1984219a757f9c"
+    },
+    {
+      "file": "font-identity-r9-design/unchanged-check.json",
+      "bytes": 113,
+      "sha256": "ff1d4af11dfef836561631d9acc2c8d62b2390a39094c77e58fd31c0e675e30f"
+    },
+    {
+      "file": "independent/auxiliary-low11/six-page-rgb.json",
+      "bytes": 2665,
+      "sha256": "a141df501bbdefda0c64fbe324f347107764b03bd57b88f7672aac9eef88a69b"
+    },
+    {
+      "file": "independent/auxiliary-low11/six-pages-contact.png",
+      "bytes": 68497,
+      "sha256": "9d6dbde92f6c484449017a4ce38a7e637c1bf31054b753b0bbe71724ac8094c4"
+    },
+    {
+      "file": "independent/consumer.assets.json",
+      "bytes": 60953,
+      "sha256": "6c2503f5e137299b43d459b0fc84564d85d78761ac201da903c2b71737fe8976"
+    },
+    {
+      "file": "independent/default11.json",
+      "bytes": 2345,
+      "sha256": "17413d6e4a69c3efbf4b3f0ee42fc4f2cb6df42f54d4837ce8b7dd232efe3bee"
+    },
+    {
+      "file": "independent/hashes-low11-before.json",
+      "bytes": 11523,
+      "sha256": "5461ea5289469f7d477e2dc6e69d6a8b07b85648c1c904ffbbc8fc388267ac56"
+    },
+    {
+      "file": "independent/logs-low10/default11.log",
+      "bytes": 97051,
+      "sha256": "3fd4925eef129bc4a6c09d4a87887027f2c917dc9253bd3497b140835cd3f256"
+    },
+    {
+      "file": "independent/logs-low10/full-tests.log",
+      "bytes": 63091,
+      "sha256": "9aac69a48cfe00fca374e732598e450ebc6cf05b0f10f6d42c82ec6c99593dcc"
+    },
+    {
+      "file": "independent/logs-low10/observer-build.log",
+      "bytes": 4353,
+      "sha256": "afce6bf6d9b5d9d2dbc062b0ff3b5f5ea9cd8e583a7ee4ca9f2260a641b50b88"
+    },
+    {
+      "file": "independent/logs-low10/observer.log",
+      "bytes": 980,
+      "sha256": "c5eba6b0d7d8cacd9b69f50104d343a0b4ca6e5df3ca4c2e539d84ffd38013ce"
+    },
+    {
+      "file": "independent/logs-low10/optional13.log",
+      "bytes": 17295,
+      "sha256": "1a7b78bd0ec508527c6109b34ed25164b7f108bf5924dc3093dbe0bcdae04518"
+    },
+    {
+      "file": "independent/logs-low10/python-tests.log",
+      "bytes": 750,
+      "sha256": "f3cef60c1bc1071386e85a5a6ff79688f750cab3f41584f35b0acd60a5773f71"
+    },
+    {
+      "file": "independent/model-compare-low11.json",
+      "bytes": 4624,
+      "sha256": "da698503cede8a33609660a53c3c8cb3a733330924d8f846bf052334b9f9f910"
+    },
+    {
+      "file": "independent/observer-low10/Controls.cs",
+      "bytes": 5656,
+      "sha256": "c11227aa11e049bacc52ab869b9c04a99d3e22391606d0f888bb6c7551f66eb8"
+    },
+    {
+      "file": "independent/observer-low10/NuGet.Config",
+      "bytes": 374,
+      "sha256": "e4fe9d89bb2b00d21ab8a0ce623367e4039950e8d6acc1ef0af8bfba1359689b"
+    },
+    {
+      "file": "independent/observer-low10/Observer.csproj",
+      "bytes": 428,
+      "sha256": "969603efa134bab5bfc92266f821a5c34870a26d9a16b3730f145c9842f18117"
+    },
+    {
+      "file": "independent/observer-low10/PdfFixture.cs",
+      "bytes": 6158,
+      "sha256": "78fc6f4a3239f1cfa3872f5184a6f2b1c5088d3b20706170e6fcbc657c53f9c6"
+    },
+    {
+      "file": "independent/observer-low10/Program.cs",
+      "bytes": 3963,
+      "sha256": "12599dc5dda22c193d51bf9a3130c4f0a3c3e8c515506d9f54da761f533f5d7f"
+    },
+    {
+      "file": "independent/observer-low10/TextObserver.cs",
+      "bytes": 4061,
+      "sha256": "77c6ea5e029cd7e523e77c80477b0e6a9e704141d9533f38aa581146796290c1"
+    },
+    {
+      "file": "independent/observer-original-low10/Controls.cs",
+      "bytes": 5656,
+      "sha256": "c11227aa11e049bacc52ab869b9c04a99d3e22391606d0f888bb6c7551f66eb8"
+    },
+    {
+      "file": "independent/observer-original-low10/NuGet.Config",
+      "bytes": 374,
+      "sha256": "e4fe9d89bb2b00d21ab8a0ce623367e4039950e8d6acc1ef0af8bfba1359689b"
+    },
+    {
+      "file": "independent/observer-original-low10/Observer.csproj",
+      "bytes": 428,
+      "sha256": "969603efa134bab5bfc92266f821a5c34870a26d9a16b3730f145c9842f18117"
+    },
+    {
+      "file": "independent/observer-original-low10/PdfFixture.cs",
+      "bytes": 6158,
+      "sha256": "78fc6f4a3239f1cfa3872f5184a6f2b1c5088d3b20706170e6fcbc657c53f9c6"
+    },
+    {
+      "file": "independent/observer-original-low10/Program.cs",
+      "bytes": 3863,
+      "sha256": "236fe8fa1a3a1cb682b98b6c5e5317e570a32ce63a6b835c9628610f7f33eb47"
+    },
+    {
+      "file": "independent/observer-output-low10/high-index/r4-indexed-export.pdf",
+      "bytes": 18947,
+      "sha256": "a8e36b5e2ca696e306159dc7c669088dd96a323497b5a813b8e457488d8d3d56"
+    },
+    {
+      "file": "independent/observer-output-low10/high-index/r4-indexed.ofd",
+      "bytes": 2244,
+      "sha256": "c23f7679b96e227cc79f3b164a45eb686ab79aa528cad15983eb6b1334927f06"
+    },
+    {
+      "file": "independent/observer-output-low10/high-index/r4-observation.json",
+      "bytes": 440,
+      "sha256": "c1c8509cf980b5b17be78b8f48b186e24fc524d95e799db517dad741b0fd50c0"
+    },
+    {
+      "file": "independent/observer-output-low11/high-index/r4-indexed-export.pdf",
+      "bytes": 18947,
+      "sha256": "ed4afee2f7e8a26d998d6513bd2470bb19eb0a383bdb09377f844127b0c19c5a"
+    },
+    {
+      "file": "independent/observer-output-low11/high-index/r4-indexed.ofd",
+      "bytes": 2244,
+      "sha256": "5dbe91cdbc002a8c364536fc21318520f1f9dc9540dcde746b28997f8cf653cc"
+    },
+    {
+      "file": "independent/observer-output-low11/high-index/r4-observation.json",
+      "bytes": 440,
+      "sha256": "c1c8509cf980b5b17be78b8f48b186e24fc524d95e799db517dad741b0fd50c0"
+    },
+    {
+      "file": "independent/observer-output-low11/high-index/text-observation.json",
+      "bytes": 485,
+      "sha256": "e9d546f0f2024d2bd1d64e9c9ade2c4a977c77e82b4e5693a629598ec7007bc0"
+    },
+    {
+      "file": "independent/observer-output-low11/high-index/text-original-export.pdf",
+      "bytes": 147573,
+      "sha256": "5e7cad1627297e23d1227b090965ec26259ac08b4f2b9e4d8d4a3090d547182b"
+    },
+    {
+      "file": "independent/observer-output-low11/high-index/text-original.ofd",
+      "bytes": 11607115,
+      "sha256": "4ec45d329d5f0a96090ac7d56704948299f1c289d65b748fcc1a77e11ea8580f"
+    },
+    {
+      "file": "independent/observer-output-low11/high-index/text-selected.ofd",
+      "bytes": 11602580,
+      "sha256": "c8f0c6774cbab5124ba7d0983fa2214a0d7cdd89b37eedf414946940be37ffc1"
+    },
+    {
+      "file": "independent/observer-output-low11/observer.log",
+      "bytes": 896,
+      "sha256": "1c584c10ca4fedf31ccada9849ba8ca37efd9b50e90c09e2c903b5e28b3412a9"
+    },
+    {
+      "file": "independent/observer-output-low11/original-build.log",
+      "bytes": 4506,
+      "sha256": "9b2ef57591bfeeb02c8d36ba0a31a0227bd78eb6ff9d3274c8c2eaec2331bf33"
+    },
+    {
+      "file": "independent/observer-output-low11/original-observer.log",
+      "bytes": 531,
+      "sha256": "8616921e8f2d821bea5786fda97f0d1261f835e76b18e20e880da8cb99715f20"
+    },
+    {
+      "file": "independent/observer-output-low11/original-r4/r4-indexed-export.pdf",
+      "bytes": 18947,
+      "sha256": "d79917503877a70ec286e22bf09edeb4d1693a7688c46a9bc9875d0b65eac156"
+    },
+    {
+      "file": "independent/observer-output-low11/original-r4/r4-indexed.ofd",
+      "bytes": 2244,
+      "sha256": "2c52fdc6e6eb82626950e1d6642dd112825fda79d88e394efe83458613e36858"
+    },
+    {
+      "file": "independent/observer-output-low11/original-r4/r4-observation.json",
+      "bytes": 440,
+      "sha256": "dc61e712c23411672f2e1944742b91a627dadba20cb7376250bc954afd69ebde"
+    },
+    {
+      "file": "independent/package-manifest.json",
+      "bytes": 5446,
+      "sha256": "5c38a65c199c1647bb87ce4835109de79307c69d1d7c02d92503767ecc1f09a2"
+    },
+    {
+      "file": "independent/source-hashes-low10.json",
+      "bytes": 171,
+      "sha256": "08f17b9abd290b8ac60f69952dfb5d0f85728c8a8c94113959dcb5e4dea083e3"
+    },
+    {
+      "file": "independent/test-results-low10/low10-Ofdrw.Net.Cli.Tests.trx",
+      "bytes": 22369,
+      "sha256": "7211403fb1b53dbb6225e331833d283f95a6fa9f8b32cae9e444119507c8151c"
+    },
+    {
+      "file": "independent/test-results-low10/low10-Ofdrw.Net.Converter.Docx.Tests.trx",
+      "bytes": 80325,
+      "sha256": "729bbe68bf8a1a11eef48162a9c64495b06aaab6959a06552f2e467456506f7f"
+    },
+    {
+      "file": "independent/test-results-low10/low10-Ofdrw.Net.Converter.Pdf.Tests.trx",
+      "bytes": 147020,
+      "sha256": "21d2c5254c289593ecff71840e961d5cf0e692c47619e28ac013060f67e131a5"
+    },
+    {
+      "file": "independent/test-results-low10/low10-Ofdrw.Net.Converter.Pdf.Vector.Tests.trx",
+      "bytes": 288781,
+      "sha256": "b77ceab622096866528e44248a3d2fd99eec5a248b90cdda6b8862e87cb279ff"
+    },
+    {
+      "file": "independent/test-results-low10/low10-Ofdrw.Net.Core.Tests.trx",
+      "bytes": 9013,
+      "sha256": "9421135be29500c3c85038cf329b22e673eddb267e4f935c9fed0d1d06d9f07a"
+    },
+    {
+      "file": "independent/test-results-low10/low10-Ofdrw.Net.Graphics.SkiaSharp.Tests.trx",
+      "bytes": 47117,
+      "sha256": "755aa197a0aee4c05b6b7f5a1b0ab747ce68d52a6c259f70ad0672bd130321fc"
+    },
+    {
+      "file": "independent/test-results-low10/low10-Ofdrw.Net.Layout.Tests.trx",
+      "bytes": 33518,
+      "sha256": "d72a63c4fae314f08cc667685d0181eb929d5ab335d9673d89ef8c3c68e106d9"
+    },
+    {
+      "file": "independent/test-results-low10/low10-Ofdrw.Net.Packaging.Tests.trx",
+      "bytes": 414663,
+      "sha256": "092bc891ecf15562099e5238017e0713ff94a1d9cb893bc4ca32c56aa7850ebd"
+    },
+    {
+      "file": "independent/test-results-low10/low10-Ofdrw.Net.Signatures.Tests.trx",
+      "bytes": 7641,
+      "sha256": "89678e277d363c87025bef2a83d8c641a87b96d0f96f4a48721431a8b0a04feb"
+    },
+    {
+      "file": "independent/verification-low10.json",
+      "bytes": 1373,
+      "sha256": "e5cd12a11a78efdcba34a86b304dd3591da0bb48655bacfafc2b17a911e51a94"
+    },
+    {
+      "file": "independent/verification-low11.json",
+      "bytes": 2418,
+      "sha256": "665766c18dba4e95b6d442bc5975c4e01c577958a723c04f7885d25ab6aa165e"
+    },
+    {
+      "file": "licenses/MIT.txt",
+      "bytes": 1064,
+      "sha256": "2b4dd513f6505b2522a1f6eb3c07dccf04c37b19daf13c3a26aa9bcafe3436fc"
+    },
+    {
+      "file": "licenses/Noto-OFL.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "file": "licenses/THIRD-PARTY-NOTICES.md",
+      "bytes": 2299,
+      "sha256": "ae2061956df0f992324a9fbadedf5d345f8b8108abfa5b188ffba2bc8d2c5642"
+    },
+    {
+      "file": "main/consumer.assets.json",
+      "bytes": 60767,
+      "sha256": "1c25cf7e031c8c9aa1c707e9a6b433fe17ce20f62fe0a4a90aa544c07a26fc64"
+    },
+    {
+      "file": "main/default-package-r8.log",
+      "bytes": 80711,
+      "sha256": "2596b4b5c56d09f2e5e05fc17f2e49cb89ef278819204ef2cf5b043cc003eeff"
+    },
+    {
+      "file": "main/default11.json",
+      "bytes": 2309,
+      "sha256": "2fa7def956b3380247b31c5d3f69527ad6e45bf946eec38c9ad3d1c374941b84"
+    },
+    {
+      "file": "main/full-r8.log",
+      "bytes": 44469,
+      "sha256": "730c539e64ae080cdc54a7a0c9ab9445f5591054b0057bc0990a86041ed1c76d"
+    },
+    {
+      "file": "main/optional-package-r8.log",
+      "bytes": 14764,
+      "sha256": "21f51f6acce7f8d8361608f1cb3fcf7ad98584f872de54419e9bad78fac81e3d"
+    },
+    {
+      "file": "main/package-manifest.json",
+      "bytes": 5404,
+      "sha256": "5855f3a64aef59068f8dda2a65c2903da2a5252b91d3d39573c475980003e594"
+    },
+    {
+      "file": "main/pr18-state-resume-oct13.json",
+      "bytes": 45631,
+      "sha256": "209740af599b97ffcfa0ac0220e131d4e0efc8168cc395c6ddf4249ab124a20e"
+    },
+    {
+      "file": "main/preview-r8-ready.json",
+      "bytes": 1755,
+      "sha256": "726416b9609c9f64c2e8d8bd6943f0ed928f2d73e6bf28f69103751fcb624490"
+    },
+    {
+      "file": "main/python-r8.log",
+      "bytes": 750,
+      "sha256": "e973fd73a9f323c1e2200453dafeb5715098c89c9f9f480b64b033f576aee55e"
+    },
+    {
+      "file": "main/trx/r8_net10.0_20261009140259.trx",
+      "bytes": 8543,
+      "sha256": "cb9b1e9dc48de0682f7593533daa390b9644c0b23dc3ca724e410cfbd34475d5"
+    },
+    {
+      "file": "main/trx/r8_net10.0_20261009140301.trx",
+      "bytes": 391163,
+      "sha256": "ecd0755d8a754da7db2036ce729ad4157c4412c7b0d137453a1dcd532e6ee2d6"
+    },
+    {
+      "file": "main/trx/r8_net10.0_20261009140303.trx",
+      "bytes": 138748,
+      "sha256": "2d806ad2a61342882e36bd64ccedcaf9f06297554a7046fb78f4d1171f5ad39a"
+    },
+    {
+      "file": "main/trx/r8_net10.0_20261009140305.trx",
+      "bytes": 7265,
+      "sha256": "3000e65275b9668e8a5f59e5e8e7ff5cbc6649cf91c679b7b2ca74cdb37103e2"
+    },
+    {
+      "file": "main/trx/r8_net10.0_20261009140317.trx",
+      "bytes": 75719,
+      "sha256": "4e7acea306ba6fe8efc2a2654c4530395359fe2cf34f88c9586ba95f976803d4"
+    },
+    {
+      "file": "main/trx/r8_net10.0_20261009140319.trx",
+      "bytes": 21147,
+      "sha256": "39715367eb3d29c862d2038fa7f7b559f32892bfc10d0607d71bba04ed72bf1a"
+    },
+    {
+      "file": "main/trx/r8_net10.0_20261009140320.trx",
+      "bytes": 31638,
+      "sha256": "6e5bc98161984fc4f8ce7e3f9c90b3ee8024e87a7c1ee0304cfa61b31e09b894"
+    },
+    {
+      "file": "main/trx/r8_net10.0_20261009140322.trx",
+      "bytes": 44485,
+      "sha256": "65945ac5e9680428658660506a414824decc4fb5fef5fa6fdfeeeaff968998e8"
+    },
+    {
+      "file": "main/trx/r8_net10.0_20261009140327.trx",
+      "bytes": 272989,
+      "sha256": "7616d91d2f219c17287472f7a622ee3a758af4fad23e9ef1632e1853a7b25b3a"
+    },
+    {
+      "file": "main/unchanged-baseline-r8.json",
+      "bytes": 2670,
+      "sha256": "b154b2cf604f2a0e4d2e50fad40bd603e7680457cc875037970290c5540ea69c"
+    },
+    {
+      "file": "packages/Ofdrw.Net.Converter.Pdf.Vector.0.1.0-pdfvector.20261009.r8.nupkg",
+      "bytes": 91674,
+      "sha256": "3d6e64d1346ee0c3e86645d8b92540052853e3db9dc2ba891c791ae0995865dd"
+    },
+    {
+      "file": "packages/Ofdrw.Net.Graphics.SkiaSharp.0.1.0-pdfvector.20261009.r8.nupkg",
+      "bytes": 45244,
+      "sha256": "a991acb93562137559f1fd51e1c5d277722ce29bcead708f2c3cb8b9625f6f16"
+    }
+  ],
+  "status": "R8 functional gates passed; Low10 pre-entry failure retained; Low11 bounded completion; font P1 open; no R8 Preview",
+  "prior_archives": [
+    {
+      "file": "evidence.tar.zst",
+      "sha256": "2ae4ae60765fd32a6ce37c2256d34cd44d5a3486796ef22e72a5219ca6f5808e"
+    },
+    {
+      "file": "review-r3.tar.zst",
+      "sha256": "91db74049cdfedcb2f9ea0db4fab14da48860941d65659eb6faa8e78437a2a41"
+    },
+    {
+      "file": "review-r4.tar.zst",
+      "sha256": "f876981e7a9c4978c531035f4384ee37b0841c404c0914593575efeb3b70541d"
+    },
+    {
+      "file": "review-r5.tar.zst",
+      "sha256": "a24947e43771889c46d6975a30610afba25158b5abc8cb14d7d4845b3a8caeb2"
+    },
+    {
+      "file": "review-r6.tar.zst",
+      "sha256": "d95763b0de05668efd7a25a9b1dee4d0c33fbea4f6102be366771f0b9b9e4604"
+    },
+    {
+      "file": "review-r7-failed.tar.zst",
+      "sha256": "ceb0a8c104eb189f731ffbcbab827094abe316795196eae0ba1c680c4e4a0c13"
+    }
+  ]
+}

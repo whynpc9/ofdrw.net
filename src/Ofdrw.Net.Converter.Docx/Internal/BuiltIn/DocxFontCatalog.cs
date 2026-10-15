@@ -1,3 +1,4 @@
+using Ofdrw.Net.Core.Fonts;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -170,7 +171,7 @@ internal sealed class DocxFontCatalog
                 var bytes = File.ReadAllBytes(path);
                 if (isCollection)
                 {
-                    foreach (var face in OpenTypeCollection.ExtractFaces(bytes))
+                    foreach (var face in OpenTypeCollection.ExtractFaces(bytes, Math.Min(256L * 1024 * 1024, PdfFontRegistry.MaximumRegisteredFontBytes)))
                         AddFace(fileStem: null, face);
                 }
                 else
