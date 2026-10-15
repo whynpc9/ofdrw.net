@@ -55,6 +55,9 @@ jobs:
       - name: Verify release license and resolved dependency inventory
         run: python3 scripts/verify-package-artifacts.py --notices-only
 
+      - name: Run mandatory original-font geometry and replacement tests without skips
+        run: python3 scripts/run-trusted-font-tests.py --results-directory artifacts/release-trusted-font-tests
+
       - name: Build
         run: dotnet build Ofdrw.Net.sln -c Release --no-restore -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }} --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
@@ -89,6 +92,7 @@ jobs:
           name: release-validation
           path: |
             artifacts/release-validation
+            artifacts/release-trusted-font-tests
             artifacts/nuget/package-manifest.json
 
       - name: List artifacts

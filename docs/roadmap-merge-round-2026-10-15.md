@@ -35,6 +35,12 @@ Issue11 / PR15：静态确认私有 v1 口令 KEK 使用无盐、无成本参数
 
 Issue02 / PR11 的远端仍为旧 `b29ed9d`，未包含本地最终集成与验收候选，不在本轮合并。其余待开发票 07、08、10、13、14、17、18、20、22 不在本轮范围。
 
+## 最新发布工作流门禁修复
+
+Codex 指出 tag 工作流未自行执行强制真实字体入口。现已在 `.github/workflows/publish-nuget.yml` 的候选版本 Build/Pack 之前加入既有 runner，并把记录纳入 always-upload。故障默认终止后续 Build/Pack/Publish，没有跳过条件或 continue-on-error。置于候选 Build 之前，避免 runner 普通测试重编译覆盖待打包的 tag 版本 DLL 元数据。
+
+本地实际执行同一入口 **65/65、零跳过**，脚本测试 **20/20**；[原始 TRX、运行命令与日志](evidence/roadmap-merge-round-2026-10-15/release-font-gate/readback.json) 已持久保存。产品源码仍为 8018d70；下方 2,039 全套、实际包与 34 页视觉记录继续有效。不执行 tag/dispatch/NuGet push；正式发布记录仍 **not-reviewed**。最终 head 的 CI/双 bot/线程闭合后执行本轮 merge。
+
 ## 最新 SVG 评审修复与验收
 
 运行源码 `8018d70be81ce2fe62bb6d588eca5b6e8b109c18`。Cursor 指出纯空白 run 的透明设置会被部分 alpha 覆盖：已把空白覆盖赋值移到颜色 alpha 之后，其他产品逻辑不变。

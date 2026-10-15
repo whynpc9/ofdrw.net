@@ -32,3 +32,7 @@ tar --zstd -xf evidence.tar.zst -C /your/empty/output-directory
 ## 最新 SVG 半透明空白修复
 
 运行源码 8018d70：2,039 全套通过/12 可选未执行，六项外部 OFD 空白 alpha 回归修复前失败、修复后通过。新 0.1.0-merge.20261015.5 默认 11/SES 12/vector 13 包消费通过。当前 SVG PNG 已目视，对应当前 OFD→PDF 一页在 Preview 查看并关闭；加上原明确基线的 33 页，选定范围共 34 页。[完整读回](svg-alpha-readback.json) 与 [原始日志/TRX/当前页面/包清单](svg-alpha-validation.tar.zst) 逐项解包校验。首次排除报告和 17dea14 归档保留其历史身份，不重写成当前结果。
+
+## tag 工作流的强制字体入口
+
+[同一 runner 的实际 65/65 零跳过结果及顺序读回](release-font-gate/readback.json)。工作流在候选版本 Build/Pack 之前运行门禁，默认失败阻止后续发布；always-upload 保留记录。只改工作流和证据，产品运行源码仍 8018d70。没有运行 tag、dispatch 或发布。
