@@ -1,0 +1,31 @@
+{
+  "source": "aef66e76d923d706bcd440eb1583c906f300eeb7",
+  "cases": {
+    "003": {
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0
+    },
+    "027": {
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0
+    },
+    "028": {
+      "passed": 56,
+      "failed": 0,
+      "skipped": 0
+    },
+    "029": {
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0
+    },
+    "030": {
+      "passed": 81,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "note": "003 includes10 original transaction cases; all237 scoped cases are present in combined full run."
+}

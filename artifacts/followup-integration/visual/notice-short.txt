@@ -1,0 +1,2 @@
+纯文本 HTML 联合验证 Plain text iii WWW
+第二行保留 <literal> & text。

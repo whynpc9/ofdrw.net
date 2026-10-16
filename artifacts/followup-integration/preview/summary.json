@@ -1,0 +1,20 @@
+{
+  "source": "aef66e76d923d706bcd440eb1583c906f300eeb7",
+  "manifest_sha256": "2cfc5a3e148333d8599f0b9d8207accc62e6e251e69b3877b969cf4d93cf7adb",
+  "status": "PASS",
+  "reviewed_pdf_count": 7,
+  "reviewed_pages": 12,
+  "png_visual_review": "PASS12/12;noticep2original-detailrecheckincluded",
+  "preview": "PASS12/12",
+  "pdf_hashes_unchanged": true,
+  "screenshot_format": "12 original JPEG byte captures, no recompression or resizing",
+  "original_003_head": "0fda098f43d6662cfdf2fde1a4ba5b2e3f00df8b",
+  "original_003_head_unchanged": true,
+  "all_integration_pdf_tabs_closed": true,
+  "user_windows_preserved": true,
+  "gui_released": true,
+  "html_review": "Not performed here;029 owns four HTML pages",
+  "known_legacy_issue": "Existing source landscape page-setup swap remains unfixed and outside these portrait samples.",
+  "date": "2026-10-16T11:26:09.966591+08:00",
+  "gui_released_at": "2026-10-16T11:26:09.966908+08:00"
+}

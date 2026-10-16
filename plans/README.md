@@ -4,23 +4,21 @@
 
 每份计划独立包含代码摘录、修改范围、回归场景、命令/预期、停止条件和验收要求。S=数小时、M=约一天、L=多日，均为实施粗估，复杂跨平台/分页任务按 L；风险指改动引入回归的风险。编号是建议执行顺序，不是必须把前面全部完成才能启动后面。
 
-## 后续实施
+## 后续统一集成
 
-除004外的五项保留边界现已分别启动独立新会话实施；全部完成后统一集成，见[后续调度记录](followup-2026-10-16.md)。下列验收统计属于上一轮冻结交付。
+003、027、028、029、030已分别由独立新会话和受管worktree实际实施，协调者完整复核后，全部以`merge --no-ff`合入本地`codex/audit-integration`。004按用户要求排除。当前已测试源码`aef66e76d923d706bcd440eb1583c906f300eeb7`位于`/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net`，详见[后续调度记录](followup-2026-10-16.md)。
 
-## 当前执行候选
+合并后全套3039/3039零失败/零跳过，可信字体65、Python20、API文档、11包真实消费及新增HTML/纯文本/预检包消费通过。最终7PDF/12页PNG目视与macOS Preview、4HTML/9个页面出现项实际浏览器验收全部通过。五项统一集成验收完成，详见[最终验收报告](followup-integration-acceptance-2026-10-16.md)。上一轮2812项与003 PARTIAL是历史快照，后续003已关闭直接BuiltIn斜体问题。
 
-本地综合候选：`codex/audit-integration`，源码 `b40e9c1dc5011ab08979e10e2bbbc9766b855770`，位于 `/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net`。[集成验收记录](/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net/artifacts/integration/final/acceptance.md) 与 [38项原提交映射](/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net/artifacts/integration/mapping.json) 可逐项复查。
-
-当前已完成最终全套2812/2812零跳过、可信字体65、Python20、API文档、11包消费与独立六项目516/516。最终20页PNG、2份SVG及13份PDF共20页macOS Preview均已实际检查通过；协调者核验全部20条URL/页码AX、原始JPEG与PDF哈希并抽查截图。30份计划均已分别执行，其中29项完成各自范围验收，003为IMPLEMENTED/PARTIAL。003直接BuiltIn副标题斜体是基线已存在的视觉失败，未冒充全部视觉通过；027只调查确认，028–030只设计。主checkout生产源码未改，未推送、创建PR、合并或发布。
+本轮仅本地合并，未追加推送、创建PR、合入main、tag或发布。004 Windows链接7项权限跳过、既有DOCX landscape尺寸问题、HTML保守预算及只读预检非认证等边界均保留。
 
 ## 粒度与合并依据
 
 - **003 = F03 + F17**：同属 DOCX→PDF 候选校验与最终提交边界，可共用假渲染器和异常流；保留“错误候选可回退”和“输出提交失败不可回退”两个独立断言。
 - **004 = F04 + F26**：路径别名保护必须在真实 Windows/macOS 分支验证，修复与已有测试矩阵一起交付。
 - **007** 包含根目录 Writer 与 Signing 两处同类路径问题，可分两个提交，统一以公开 loader 回读验收。
-- 其余发现按独立根因/所有权/验收保留独立计划。**013** 只加强验证，不能顺手修改产品；**024** 先设计进程所有权再实现，不压成小修；**027** 只调查，不把未知问题当确定缺陷。
-- **028–030** 是可选产品方向的设计/spike，不与缺陷优先级混排，也不自动启动新功能实现。
+- 其余发现按独立根因/所有权/验收保留独立计划。**013** 只加强验证，不能顺手修改产品；**024** 先设计进程所有权再实现，不压成小修；**027** 原计划先调查，确认后才在本轮实施来源保留修复。
+- **028–030** 原为可选方向设计/spike；本轮依据用户后续授权单独实施。
 
 ## 修复计划
 
@@ -28,7 +26,7 @@
 |---|---|---|---|---|---|---|
 | [001 让验签总结果覆盖每个声明列表](001-signature-completeness.md) | F01 | P1 | S | LOW | — | DONE（独立复核通过） |
 | [002 保留根目录图片的真实载荷](002-root-image-roundtrip.md) | F02 | P1 | S | LOW | — | DONE（独立复核及12页Preview） |
-| [003 在有效 PDF 候选与最终输出提交之间建立明确边界](003-docx-pdf-output-transaction.md) | F03 + F17 | P1 | M | MED | — | 已实现；既有斜体缺陷导致视觉部分失败 |
+| [003 在有效 PDF 候选与最终输出提交之间建立明确边界](003-docx-pdf-output-transaction.md) | F03 + F17 | P1 | M | MED | — | DONE：后续斜体修复与原事务17项；集成视觉通过 |
 | [004 阻止转换路径别名覆盖输入并覆盖真实平台分支](004-cli-path-identity-native-gates.md) | F04 + F26 | P1 | M | MED | — | DONE（Preview通过；Windows链接7项跳过） |
 | [005 在展开 DOCX 表格网格前限制派生列数](005-docx-table-grid-budget.md) | F05 | P1 | S | LOW | — | DONE（独立18项及12页Preview） |
 | [006 在 CLI 展开页范围前校验容量](006-cli-page-selection-budget.md) | F06 | P1 | S | LOW | — | DONE（独立复核通过） |
@@ -57,19 +55,19 @@
 
 | 计划 | 对应发现 | 优先级 | 工作量 | 风险 | 硬前置 | 状态 |
 |---|---|---|---|---|---|---|
-| [027 先验证附件描述符的无操作往返边界](027-attachment-preservation-investigation.md) | I01 | P2 | S | LOW | — | DONE（调查CONFIRMED；修复未实施） |
+| [027 先验证附件描述符的无操作往返边界](027-attachment-preservation-investigation.md) | I01 | P2 | S | LOW | — | DONE：后续同文档未知附件元数据修复 |
 
-027 的结果可为 CONFIRMED / REJECTED / INCONCLUSIVE。调查交付 DONE 不意味着附件问题已修复；若确认需修复，在结果中形成最小实施范围再安排执行。
+027最初调查确认为CONFIRMED；后续已按用户授权完成实际修复，见[实施记录](027-followup-implementation.md)。原调查证据及范围保持可复查。
 
 ## 可选方向设计
 
 | 计划 | 对应发现 | 优先级 | 工作量 | 风险 | 硬前置 | 状态 |
 |---|---|---|---|---|---|---|
-| [028 设计复用 FlowDocument 的纯文本入口](028-plain-text-ofd-design.md) | D01 | P3 | M | LOW–MED | — | DONE（仅设计；独立26链接检查） |
-| [029 设计有界多页 SVG HTML 预览](029-multipage-html-design.md) | D02 | P3 | M | MED | — | DONE（仅设计；11链接复核） |
-| [030 界定可解释的只读归档预检](030-archival-preflight-spike.md) | D03 | P3 | L | MED | — | DONE（仅设计；19链接复核） |
+| [028 设计复用 FlowDocument 的纯文本入口](028-plain-text-ofd-design.md) | D01 | P3 | M | LOW–MED | — | DONE：实际API/CLI实现、集成验收通过 |
+| [029 设计有界多页 SVG HTML 预览](029-multipage-html-design.md) | D02 | P3 | M | MED | — | DONE：实际有界HTML API/CLI、集成验收通过 |
+| [030 界定可解释的只读归档预检](030-archival-preflight-spike.md) | D03 | P3 | L | MED | — | DONE：实际六条本地APF只读API、集成验收通过 |
 
-这些计划的 DONE 只表示设计交付完成。028 复用 FlowDocument 的文本入口；029 设计一次读包的多页 SVG/HTML，明确转义、ID 隔离与预算；030 设计只读归档预检，不承诺标准认证。三者均不修改生产实现。
+028–030原计划仅设计的交付是历史阶段；本轮经用户另行授权均已实施并合并。实际范围见[028](028-followup-implementation.md)、[029](029-followup-implementation.md)、[030](030-followup-implementation.md)。028沿用Flow分页和portable metrics，029一次读包且受资源预算与静态准入限制，030只读本地预检且不承诺标准认证。
 
 ## 推荐执行批次
 
@@ -105,7 +103,7 @@ flowchart LR
 |---|---|---|
 | Cli/Program.cs、DocumentTools、Images | 001 的CLI测试、004、006、020、021、022 | 004→006→020→021→022 串行整合；001通常仅结果模型变化 |
 | DocxModelReader.cs | 005、009、010、017、018 | 005/009可独立设计，010→017；合并时重跑完整 Docx 项目 |
-| OfdReader / PackageWriter / envelope | 002、007、008；027只读调查 | 002→007→008，先锁普通往返与来源保留契约 |
+| OfdReader / PackageWriter / envelope | 002、007、008；027后续来源保留修复 | 002→007→008，先锁普通往返与来源保留契约 |
 | OfdToPdfConverter / SvgConverter / DocumentFontContext | 010、011、014、015、016、025 | 先010/011，再014/015/016按函数范围整合，025最后 |
 | 字体解析与覆盖 | 011、025 | 可先独立实现；集成时确认预算/取消/字素语义均保留 |
 | Signatures verifier | 001、012 | 001→012 |
@@ -132,5 +130,5 @@ flowchart LR
 - Native/DualLayer 差异、整行分页、受限图形/字体回退、SES dev/interop 和默认 Unsupported 是既定边界。
 - 不盲升 ImageSharp/PdfSharpCore、不因文件大做全库重构、不为了覆盖把完整CI矩阵机械三倍复制。
 - 不把历史未合并/未验收快照改写为当前通过，不把只读依赖检查当发布资格。
-- 附件未知字段保留仅列027调查；没有借CustomTags证据直接判定。
+- 附件未知字段保留先由027独立调查确认，再经后续授权实际修复；没有借CustomTags证据直接判定。
 - 更多被排除项及证据边界见原审查报告，原报告的静态结论不等于已执行运行时复现。
