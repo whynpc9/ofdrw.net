@@ -1,0 +1,13 @@
+{
+  "source": "aef66e76d923d706bcd440eb1583c906f300eeb7",
+  "status": "PASS",
+  "report": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/followup-integration/preview/report.md",
+  "summary": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/followup-integration/preview/summary.json",
+  "checked_pages": 12,
+  "checked_pdfs": 7,
+  "gui_released": true,
+  "original_003_head": "0fda098f43d6662cfdf2fde1a4ba5b2e3f00df8b",
+  "original_003_head_unchanged": true,
+  "known_legacy_issue": "Source landscape page-setup issue remains outside scope",
+  "date": "2026-10-16T11:26:09.966908+08:00"
+}

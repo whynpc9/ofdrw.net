@@ -1,5 +1,7 @@
 # Plan 028: 设计复用 FlowDocument 的纯文本入口
 
+> 后续授权实施已完成并统一本地合并。实际交付见[028-followup-implementation.md](028-followup-implementation.md)，合并后验证见[最终验收](followup-integration-acceptance-2026-10-16.md)。下文保留最初调查/设计范围和当时状态。
+
 > 执行者须按步骤完成验证；发生 STOP 条件时报告证据，不自行扩范围。本计划独立包含所需背景，无需读取会话。完成后更新 `plans/README.md` 对应行；如果协调者维护索引，只提交状态证据。
 >
 > **先查漂移**：`git diff --stat d0f88c7321a57443a4cb0ec92631664f66ed8cc0..HEAD -- "plans/028-plain-text-design.md"`；再运行 `git status --short`、`git diff -- "plans/028-plain-text-design.md"` 与 `git diff --cached -- "plans/028-plain-text-design.md"`。不要覆盖他人的未提交改动。前置计划造成的变化也必须重读相关符号；若当前语义与下列依据冲突，先修订计划再实施。

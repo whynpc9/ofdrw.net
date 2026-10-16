@@ -17,10 +17,21 @@
       "status": "DONE（独立复核及12页Preview）"
     },
     "003": {
-      "agent": "/root/execute_plan_003",
-      "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-003/ofdrw.net",
-      "commit": "86adab14",
-      "status": "IMPLEMENTED; actual Preview7 PARTIAL/FAIL pre-existing direct subtitle italic"
+      "thread": "01a14281-a666-75f3-b005-a1e2518078c6",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "worktree": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net",
+      "commit": "0fda098f43d6662cfdf2fde1a4ba5b2e3f00df8b",
+      "status": "DONE_SCOPED; implemented, independently reviewed, merged and integrated gates passed",
+      "independent_review": {
+        "source_head": "432077e938e8c9d2fdf7930d07087c7b82e4eb22",
+        "complete_diff_read": true,
+        "independent_tests": "17/17, zero skipped, root-review-003/final17",
+        "evidence": "all12 persistentAX URL/page and JPEG hashes/magic,7 actualPDF hashes,allvisual file hashes,actual11 TRX2819/0/0 verified;directsubtitle/boundary screenshots visually sampled",
+        "verdict": "ACCEPTED scoped italic closure; final evidence commit only; legacy landscape setup issue retained",
+        "retained_new_finding": "legacy source landscape PageSetup swaps dimensions, unchanged and not counted as passed DOCX landscape fidelity",
+        "head": "0fda098f43d6662cfdf2fde1a4ba5b2e3f00df8b"
+      }
     },
     "004": {
       "agent": "/root/execute_plan_004",
@@ -163,43 +174,138 @@
       "status": "DONE"
     },
     "027": {
-      "agent": "/root/execute_plan_027",
-      "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-027/ofdrw.net",
-      "commit": "19e58deb",
-      "status": "DONE（调查CONFIRMED；修复未实施）"
+      "thread": "01a14282-7cff-7fb1-96e1-171a67a75413",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "worktree": "/Users/wanghongyi/.codex/worktrees/audit-followup-027/ofdrw.net",
+      "commit": "470de1ebb98b2f9cf1448e0dfbc1763e527b3913",
+      "status": "DONE_SCOPED; implemented, independently reviewed, merged and integrated gates passed",
+      "independent_review": {
+        "head": "470de1ebb98b2f9cf1448e0dfbc1763e527b3913",
+        "validated_source": "9a165122127b765e02b12699473c88ba80e28f71",
+        "source_and_tests": "Complete source, inventory/clone/typed-copy integration and38 regression changes read, final helper removal read",
+        "independent_tests": "38/38 passed, zero skipped; root-review-027/tests TRX",
+        "evidence": "Actual11 full TRX counters2850/0/0;6 artifact SHA and4 actual ZIP payload SHA verified; final docs-only source identity checked",
+        "verdict": "ACCEPTED task scope; await all five then integration gates"
+      }
     },
     "028": {
-      "agent": "/root/execute_plan_028",
-      "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-028/ofdrw.net",
-      "commit": "e35fb82e",
-      "status": "DONE（仅设计；独立26链接检查）"
+      "thread": "01a14282-823e-70f2-a8b0-34a65983949f",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "worktree": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net",
+      "commit": "8a37f4e23c982dd387f9d467f1898429e8ce0b9b",
+      "status": "DONE_SCOPED; implemented, independently reviewed, merged and integrated gates passed",
+      "independent_review": {
+        "head": "8a37f4e23c982dd387f9d467f1898429e8ce0b9b",
+        "source_and_tests": "complete new source/test/E2E changes read",
+        "independent_tests": "Layout35+CLI21=56 passed, 0 skipped, no-build exact committed source hashes verified",
+        "evidence": "all10 Preview AX URL/page and AX/JPEG hashes/magic verified; actual5 PDF hashes verified; actual11 full TRX counters2868/0/0; two screenshots viewed",
+        "verdict": "ACCEPTED task scope; await all five then integration gates"
+      }
     },
     "029": {
-      "agent": "/root/execute_plan_029",
-      "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-029/ofdrw.net",
-      "commit": "1ca3e287",
-      "status": "DONE（仅设计；11链接复核）"
+      "thread": "01a14282-8859-7481-8bb2-ae92c54cc461",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "worktree": "/Users/wanghongyi/.codex/worktrees/audit-followup-029/ofdrw.net",
+      "commit": "924a9130d86d656c401e786117ec7814e06369d8",
+      "status": "DONE_SCOPED; implemented, independently reviewed, merged and integrated gates passed",
+      "independent_review": {
+        "head": "924a9130d86d656c401e786117ec7814e06369d8",
+        "source_head": "9a67e2658e94b45d695fb383b1f10f91cef178b3",
+        "source_and_tests": "complete source and test increments including pixel/PNG/typography revisions read",
+        "independent_tests": "29 library +16 CLI=45 passed, zero skipped",
+        "evidence": "actual11TRX2857/0/0;7finalHTML/17occurrence URL+screenshotSHA; positive/zeroattack sentinel;5Preview AX/JPEG/PDF SHA verified; mixed screenshot viewed",
+        "verdict": "ACCEPTED task scope; await combined gates"
+      }
     },
     "030": {
-      "agent": "/root/execute_plan_030",
-      "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-030/ofdrw.net",
-      "commit": "fe01184f",
-      "status": "DONE（仅设计；19链接复核）"
+      "thread": "01a14282-8cf2-78d3-a1d7-4b4e8115efb0",
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "worktree": "/Users/wanghongyi/.codex/worktrees/audit-followup-030/ofdrw.net",
+      "commit": "5e565eec31aff4d7374bf528571a5adfedee4ea3",
+      "status": "DONE_SCOPED; implemented, independently reviewed, merged and integrated gates passed",
+      "independent_review": {
+        "head": "5e565eec31aff4d7374bf528571a5adfedee4ea3",
+        "source": "complete checker/models/tests/E2E/docs read; source-manifest hashes all match",
+        "independent_tests": "81/81, zero skipped, root-review-030/tests",
+        "evidence": "Actual11TRX2893/0/0;2 nupkg hashes, consumed DLL hash,4 unchanged consumerinput hashes verified",
+        "verdict": "ACCEPTED task scope; no visual gate applies"
+      }
     }
   },
   "preview_lease": null,
   "ego_lease": null,
   "integration": {
-    "agent": "/root/integration_candidate",
-    "worktree": "/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net",
+    "worktree": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net",
     "branch": "codex/audit-integration",
-    "status": "COMPLETED local candidate; whole2812/root516/trusted65/Python20/docs/11package/PNG20/SVG2/Preview20 PASS; 003 retained visual PARTIAL/FAIL",
-    "source_head": "b40e9c1dc5011ab08979e10e2bbbc9766b855770",
-    "pre025_full": "2789/2789 zero skip",
-    "pre025_gates": "trusted65/Python20/docs/11package pass",
-    "acceptance": "/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net/artifacts/integration/final/acceptance.md",
-    "preview": "13 PDFs / 20 pages actual Preview PASS; all original hashes unchanged; user four-document window preserved",
-    "root_evidence_review": "20/20 URL/page AX and original JPEG hashes/magic; 13 PDF and 20 PNG hashes; screenshot samples checked"
+    "source_head": "aef66e76d923d706bcd440eb1583c906f300eeb7",
+    "status": "COMPLETE_SCOPED_LOCAL_INTEGRATION",
+    "full_tests": "3039/3039 zero failed/skipped",
+    "trusted_fonts": "65/65",
+    "python": "20/20",
+    "docs": "PASS",
+    "packages": "11 fresh packages plus new PlainText/HTML API+installedCLI and preflight PackageReference consumer PASS",
+    "excluded": [
+      "004"
+    ],
+    "pushed": false,
+    "merged_main": false,
+    "published": false,
+    "png_visual": "12/12 PASS",
+    "macos_preview": "7 PDFs/12 pages PASS; current source outputs, unchanged hashes; own PDFs closed",
+    "html_browser": "4 HTML/9 occurrences PASS; zero external requests; own browser closed",
+    "root_evidence": "artifacts/followup-integration/root-evidence-review.json",
+    "acceptance": "plans/followup-integration-acceptance-2026-10-16.md"
   },
-  "plan_verdict": "29 DONE; 003 IMPLEMENTED/PARTIAL visual fail pre-existing"
+  "plan_verdict": "Five authorized followups implemented/reviewed/merged and final integrated gates passed;004 excluded; all retained boundaries in acceptance",
+  "initial_delivery": {
+    "integration": {
+      "agent": "/root/integration_candidate",
+      "worktree": "/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net",
+      "branch": "codex/audit-integration",
+      "status": "COMPLETED local candidate; whole2812/root516/trusted65/Python20/docs/11package/PNG20/SVG2/Preview20 PASS; 003 retained visual PARTIAL/FAIL",
+      "source_head": "b40e9c1dc5011ab08979e10e2bbbc9766b855770",
+      "pre025_full": "2789/2789 zero skip",
+      "pre025_gates": "trusted65/Python20/docs/11package pass",
+      "acceptance": "/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net/artifacts/integration/final/acceptance.md",
+      "preview": "13 PDFs / 20 pages actual Preview PASS; all original hashes unchanged; user four-document window preserved",
+      "root_evidence_review": "20/20 URL/page AX and original JPEG hashes/magic; 13 PDF and 20 PNG hashes; screenshot samples checked"
+    },
+    "plan_verdict": "29 DONE; 003 IMPLEMENTED/PARTIAL visual fail pre-existing",
+    "plans": {
+      "003": {
+        "agent": "/root/execute_plan_003",
+        "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-003/ofdrw.net",
+        "commit": "86adab14",
+        "status": "IMPLEMENTED; actual Preview7 PARTIAL/FAIL pre-existing direct subtitle italic"
+      },
+      "027": {
+        "agent": "/root/execute_plan_027",
+        "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-027/ofdrw.net",
+        "commit": "19e58deb",
+        "status": "DONE（调查CONFIRMED；修复未实施）"
+      },
+      "028": {
+        "agent": "/root/execute_plan_028",
+        "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-028/ofdrw.net",
+        "commit": "e35fb82e",
+        "status": "DONE（仅设计；独立26链接检查）"
+      },
+      "029": {
+        "agent": "/root/execute_plan_029",
+        "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-029/ofdrw.net",
+        "commit": "1ca3e287",
+        "status": "DONE（仅设计；11链接复核）"
+      },
+      "030": {
+        "agent": "/root/execute_plan_030",
+        "worktree": "/Users/wanghongyi/.codex/worktrees/ofdrw-plan-030/ofdrw.net",
+        "commit": "fe01184f",
+        "status": "DONE（仅设计；19链接复核）"
+      }
+    }
+  }
 }
