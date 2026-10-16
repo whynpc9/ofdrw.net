@@ -1,0 +1,20 @@
+{
+  "pid": 53834,
+  "initialStat": null,
+  "initialIdentity": "639277274897905070",
+  "initialGroup": null,
+  "diagnostics": {},
+  "observations": [
+    {
+      "milliseconds": 1.2451,
+      "stat": null,
+      "alive": false,
+      "nativeError": 3,
+      "identity": null,
+      "group": null,
+      "zombie": false,
+      "exiting": false,
+      "reused": false
+    }
+  ]
+}

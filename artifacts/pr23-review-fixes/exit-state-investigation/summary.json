@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "runs": 100,
+  "transient_nonterminal_first": 0,
+  "max_stop_observation_ms": 0.2255,
+  "exiting_first": 0,
+  "cleanup_diagnostics_count": 0,
+  "samples": []
+}

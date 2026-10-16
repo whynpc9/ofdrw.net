@@ -4,6 +4,10 @@
 
 每份计划独立包含代码摘录、修改范围、回归场景、命令/预期、停止条件和验收要求。S=数小时、M=约一天、L=多日，均为实施粗估，复杂跨平台/分页任务按 L；风险指改动引入回归的风险。编号是建议执行顺序，不是必须把前面全部完成才能启动后面。
 
+## PR #23 审查后续
+
+Cursor 的进程 PID1/SIGCHLD 和持久化拆分附件问题均已修复并合入 PR 分支。当前源码 979a93e 的本地全套 3059/3059、可信字体65、Python31、11包、跨平台进程252断言及14页Preview均通过；新远端head的CI与复审另行跟进。详见[审查修复验收](pr23-review-fixes-2026-10-16.md)。以下原集成结果为历史快照。
+
 ## 后续统一集成
 
 003、027、028、029、030已分别由独立新会话和受管worktree实际实施，协调者完整复核后，全部以`merge --no-ff`合入本地`codex/audit-integration`。004按用户要求排除。当前已测试源码`aef66e76d923d706bcd440eb1583c906f300eeb7`位于`/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net`，详见[后续调度记录](followup-2026-10-16.md)。

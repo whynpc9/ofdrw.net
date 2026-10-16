@@ -1,0 +1,8 @@
+Unhandled exception. System.InvalidOperationException: descendant still executing after cleanup
+   at Program.<<Main>$>g__Require|0_4(Boolean condition, String why) in /Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/process-consumer/Program.cs:line 41
+   at Program.<>c__DisplayClass0_0.<<<Main>$>b__14>d.MoveNext() in /Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/process-consumer/Program.cs:line 119
+--- End of stack trace from previous location ---
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__Check|3>d.MoveNext() in /Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/process-consumer/Program.cs:line 37
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in /Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/process-consumer/Program.cs:line 111
+   at Program.<Main>(String[] args)

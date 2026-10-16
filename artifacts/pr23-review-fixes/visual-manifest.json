@@ -1,0 +1,155 @@
+{
+  "source_head": "979a93e39dd8cec3fbb4bdd2121d301ea84b2e39",
+  "chain": "DOCX/native or default OFD/PDF/PNG/Preview; direct BuiltIn separately; actual external LibreOffice separately; plain text/native OFD/PDF; HTML current API/CLI",
+  "entries": [
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/generated-docx-native.pdf",
+      "pages": 2,
+      "bytes": 183154,
+      "sha256": "4f5b60c38b1107094be7971c797a4412a3aef7a1042f5960d49ff7f06df6f723",
+      "images": [
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/generated-docx-native-page-1.png",
+          "sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a"
+        },
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/generated-docx-native-page-2.png",
+          "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+        }
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/generated-docx-default.pdf",
+      "pages": 2,
+      "bytes": 183154,
+      "sha256": "f4ca661590e18037364fbd73b4515beed2548775374c1c9228b45bd7bf547542",
+      "images": [
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/generated-docx-default-page-1.png",
+          "sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a"
+        },
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/generated-docx-default-page-2.png",
+          "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+        }
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/cli-native.pdf",
+      "pages": 2,
+      "bytes": 183154,
+      "sha256": "9f0a2774d29fecf0370940764d2d5b48f4735978d2602b1337c8a354d1c91c7e",
+      "images": [
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/cli-native-page-1.png",
+          "sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a"
+        },
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/cli-native-page-2.png",
+          "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+        }
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/direct-built-in.pdf",
+      "pages": 2,
+      "bytes": 160909,
+      "sha256": "1742a95069ed83a10ef4afdb635403bcb1fc8c1a25479d5be15eba4a1fa38271",
+      "images": [
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/direct-built-in-page-1.png",
+          "sha256": "311afe35c5e1625373c0dac2f1d38ea1d209ae7d187e8de63542fe3550b50253"
+        },
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/direct-built-in-page-2.png",
+          "sha256": "5f33dabc6dc9c74385ed929438cbb509c81734347783815fd31a2090c065126f"
+        }
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/selected.pdf",
+      "pages": 1,
+      "bytes": 148130,
+      "sha256": "ff3c896c8c4ee56f52a9fbf6e9831226ca8822b28f2aa00cf8555a47d240dd44",
+      "images": [
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/selected-page-1.png",
+          "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+        }
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice.pdf",
+      "pages": 2,
+      "bytes": 97646,
+      "sha256": "6198a50cd6a60899b4a2ffd5043f53ca74ec79e25fdc7ff838feef68eeb6f2f6",
+      "images": [
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice-page-1.png",
+          "sha256": "9c3934d082ee13d2769700c4b0be3355861a9071c37f42154722780903faf513"
+        },
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice-page-2.png",
+          "sha256": "dc3b739c690e9b94a5a1cbfa5b36dcfa6b6476e17a33949fda33f080407fa94d"
+        }
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/italic-boundaries.pdf",
+      "pages": 1,
+      "bytes": 172514,
+      "sha256": "79e0ec610de7febb6877140e774860e2c99cfa03e431635e96ffdded38b06a93",
+      "images": [
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/italic-boundaries-page-1.png",
+          "sha256": "49e3d85b6e3688d58150d8f4d88dfe9a816e411671cf36c592ce8deba3fe6fbf"
+        }
+      ]
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/external-libreoffice.pdf",
+      "pages": 2,
+      "bytes": 79502,
+      "sha256": "f860120c85e583b66ca7f3f991c19e109a6147a77b4b441284a64b1b6b2371f9",
+      "images": [
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/external-libreoffice-page-1.png",
+          "sha256": "f666c9ce1bb62d5b3d695aee5c861b453bceeb15bfca9c98850b01d6a9e2a9f3"
+        },
+        {
+          "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/external-libreoffice-page-2.png",
+          "sha256": "181d6cf0fa8ffe95f5b44ca4d74577312881d75d0d623d59928f10e69fc1faff"
+        }
+      ]
+    }
+  ],
+  "pdf_count": 8,
+  "page_count": 14,
+  "html": [
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/native.html",
+      "sha256": "e754a150d44b2c6e5dc6df001fc684b49ebea3efff5c09edc30e9df8ba571a5d"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice-short.html",
+      "sha256": "64bdde3be37ab17a4105bed3148aba479b6ae8fcc61af183619cd90d8decc91d"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/html-fixtures/mixed.html",
+      "sha256": "e231eca4f1662bbe7a67d2a5675a596b263b8289258762181052a5aac8d69614"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/html-package-output/package-api.html",
+      "sha256": "e9cd1995aa0cb1d462d5f02993bdc42d4a6f2bbdc9f804700896a7b691d8440e"
+    }
+  ],
+  "cli_sha256": "cb9f320e479d2118f2f8406c7379ed2075e810510f6430e30ccea996262d6e14",
+  "docx_dll_sha256": "6f7f557f6393e53938a73c5fb802b76ef301e742083347d00cdfbcdadc9034e3",
+  "core_dll_sha256": "247ff719befb264119d2728d5a830eeae68553c01d812b45b6e50cef023705b6",
+  "native_source_sha256": "4fab29e88329fa58530273a684c0bf3f95aca5f62ef9bf1eccb1c01f16986973",
+  "native_manifest_sha256": "ff97209f3c3c976cbf0546b79e3d4e11e63533d8322c49cd8fef487621761ec4",
+  "automatic_render": "PASS",
+  "png_visual_review": "PENDING",
+  "preview": "PENDING",
+  "browser": "PENDING"
+}
