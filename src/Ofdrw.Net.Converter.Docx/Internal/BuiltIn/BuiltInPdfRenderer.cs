@@ -98,10 +98,19 @@ internal sealed class BuiltInPdfRenderer
             WorkingDirectory = Path.GetDirectoryName(outputPath)
         };
         _cancellationToken.ThrowIfCancellationRequested();
+        RenderPreparedPages(renderer, _italicFaces.ActualItalic, _options.MaxPageCount, _cancellationToken);
+        renderer.PdfDocument.Save(outputPath);
+    }
+
+    // Kept separate so actual portrait/landscape PageInfo can be compared with
+    // MigraDoc's original RenderPages independently of DOCX page-setup parsing.
+    internal static void RenderPreparedPages(PdfDocumentRenderer renderer, IReadOnlyDictionary<string, bool> italicFaces,
+        int maximumPages, CancellationToken cancellationToken)
+    {
         renderer.PrepareRenderPages();
-        if (renderer.PageCount > _options.MaxPageCount)
+        if (renderer.PageCount > maximumPages)
             throw new InvalidDataException("DOCX exceeds the configured rendered page limit.");
-        if (_italicFaces.ActualItalic.Count == 0)
+        if (italicFaces.Count == 0)
         {
             renderer.RenderPages(1, renderer.PageCount);
         }
@@ -109,7 +118,7 @@ internal sealed class BuiltInPdfRenderer
         {
             for (var number = 1; number <= renderer.PageCount; number++)
             {
-                _cancellationToken.ThrowIfCancellationRequested();
+                cancellationToken.ThrowIfCancellationRequested();
                 var page = renderer.PdfDocument.AddPage();
                 var info = renderer.DocumentRenderer.FormattedDocument.GetPageInfo(number);
                 page.Width = info.Width;
@@ -117,16 +126,15 @@ internal sealed class BuiltInPdfRenderer
                 page.Orientation = info.Orientation;
                 using var target = XGraphics.FromPdfPage(page);
                 target.MUH = PdfSharpCore.Pdf.PdfFontEncoding.Unicode;
-                using var graphics = XGraphics.FromRenderer(new BuiltInPdfItalicRenderer(target, _italicFaces.ActualItalic),
+                using var graphics = XGraphics.FromRenderer(new BuiltInPdfItalicRenderer(target, italicFaces),
                     new XSize(page.Width, page.Height), XGraphicsUnit.Point, XPageDirection.Downwards);
                 graphics.MUH = PdfSharpCore.Pdf.PdfFontEncoding.Unicode;
                 renderer.DocumentRenderer.RenderPage(graphics, number);
             }
         }
-        _cancellationToken.ThrowIfCancellationRequested();
-        if (renderer.PdfDocument.PageCount > _options.MaxPageCount)
+        cancellationToken.ThrowIfCancellationRequested();
+        if (renderer.PdfDocument.PageCount > maximumPages)
             throw new InvalidDataException("DOCX exceeds the configured rendered page limit.");
-        renderer.PdfDocument.Save(outputPath);
     }
 
     private DocxFontCatalog _configuredFonts = null!;
