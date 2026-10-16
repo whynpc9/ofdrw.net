@@ -305,7 +305,8 @@ public sealed class OfdSignatureService
             index++;
         }
 
-        return signaturesDirectory.TrimEnd('/') + "/Sign_" + index;
+        // GetDirectory already includes the separator for a non-root list.
+        return signaturesDirectory + "Sign_" + index;
     }
 
     private static async Task WritePackageAsync(

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "restore",
+    "command": [
+      "dotnet",
+      "restore",
+      "Ofdrw.Net.sln",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "api-docs",
+    "command": [
+      "python3",
+      "scripts/check-public-api-docs.py"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "full-tests",
+    "command": [
+      "dotnet",
+      "test",
+      "Ofdrw.Net.sln",
+      "-c",
+      "Release",
+      "--no-build",
+      "--no-restore",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false",
+      "--logger",
+      "trx",
+      "--results-directory",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/full-tests-final"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "trusted-font-tests",
+    "command": [
+      "python3",
+      "scripts/run-trusted-font-tests.py",
+      "--font-output-dir",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/trusted-fonts",
+      "--results-directory",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/trusted-font-tests-final"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "python-tests",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts/tests",
+      "-v"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "package-e2e",
+    "command": [
+      "bash",
+      "scripts/run-converter-package-e2e.sh",
+      "0.0.0-audit003final",
+      "--output-dir",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/package-output-final"
+    ],
+    "exit_code": 0
+  }
+]

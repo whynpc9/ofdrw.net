@@ -1,0 +1,12 @@
+BuiltIn italic boundaries: exact run / exact anchor
+Same words Same words Same words
+Genuine Arial italic: Slanted source face, no
+second shear.
+Host regular fallback: Synthetic italic from original
+selected face.
+Wrap begins Repeated mixed italic words
+continue across a narrow paragraph, then regular
+resumes and italic finishes.
+中文保持完整，English spacing; adjacent regular
+after italic.
+

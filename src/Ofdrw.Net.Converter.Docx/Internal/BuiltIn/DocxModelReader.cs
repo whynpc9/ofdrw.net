@@ -24,24 +24,53 @@ internal sealed class DocxModelReader
     private readonly DocxConversionOptions _options;
     private readonly IList<DocxConversionDiagnostic> _diagnostics;
     private readonly CancellationToken _cancellationToken;
+    private readonly Action<string>? _imagePayloadObserver;
+    private readonly Dictionary<Uri, ImagePayload> _imagePayloads = new();
     private readonly Dictionary<string, Style> _styles = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _numberingCounters = new(StringComparer.Ordinal);
     private MainDocumentPart _mainPart = null!;
     private int _elementCount;
     private BuiltInSectionModel? _previousSection;
+    private readonly Dictionary<string, IList<BuiltInParagraphModel>> _decorations = new(StringComparer.Ordinal);
+
+    internal bool HasOmittedDecorationText { get; private set; }
+
     private readonly HashSet<string> _supplementalKeys = new(StringComparer.Ordinal);
 
     internal DocxModelReader(
         DocxConversionOptions options,
         IList<DocxConversionDiagnostic> diagnostics,
         CancellationToken cancellationToken)
+        : this(options, diagnostics, cancellationToken, null)
     {
+    }
+
+    internal DocxModelReader(
+        DocxConversionOptions options,
+        IList<DocxConversionDiagnostic> diagnostics,
+        CancellationToken cancellationToken,
+        Action<string>? imagePayloadObserver)
+    {
+        _imagePayloadObserver = imagePayloadObserver;
         _options = options;
         _diagnostics = diagnostics;
         _cancellationToken = cancellationToken;
     }
 
     internal BuiltInDocumentModel Read(string inputPath)
+    {
+        try
+        {
+            return ReadCore(inputPath);
+        }
+        finally
+        {
+            // Only the returned model retains the bytes after this package is closed.
+            _imagePayloads.Clear();
+        }
+    }
+
+    private BuiltInDocumentModel ReadCore(string inputPath)
     {
         _cancellationToken.ThrowIfCancellationRequested();
         DocxPackageValidator.Validate(inputPath, _options);
@@ -360,14 +389,19 @@ internal sealed class DocxModelReader
 
         ReadBorders(table.TableProperties?.TableBorders, model.Borders);
         var grid = table.GetFirstChild<TableGrid>();
+        var explicitColumnCount = 0;
         if (grid is not null)
         {
             foreach (var column in grid.Elements<GridColumn>())
             {
-                model.ColumnWidthsPoints.Add(TwipsToPoints(column.Width?.Value, 1440));
+                _cancellationToken.ThrowIfCancellationRequested();
+                if (explicitColumnCount >= _options.MaxTableColumnCount)
+                    throw new InvalidDataException($"DOCX table grid column {(long)explicitColumnCount + 1}: exceeds the configured column count limit of {_options.MaxTableColumnCount}.");
+                explicitColumnCount++;
             }
         }
 
+        long inferredColumnCount = 1;
         foreach (var row in table.Elements<TableRow>())
         {
             _cancellationToken.ThrowIfCancellationRequested();
@@ -376,6 +410,7 @@ internal sealed class DocxModelReader
                 IsHeader = row.TableRowProperties?.GetFirstChild<TableHeader>() is not null
             };
 
+            long rowColumnCount = 0;
             foreach (var cell in row.Elements<TableCell>())
             {
                 _cancellationToken.ThrowIfCancellationRequested();
@@ -388,6 +423,9 @@ internal sealed class DocxModelReader
 
                 if (cellModel.ColumnSpan < 1)
                     throw new InvalidDataException($"DOCX table row {model.Rows.Count + 1}, cell {rowModel.Cells.Count + 1}: gridSpan must be positive.");
+                rowColumnCount = checked(rowColumnCount + cellModel.ColumnSpan);
+                if (rowColumnCount > _options.MaxTableColumnCount)
+                    throw new InvalidDataException($"DOCX table row {model.Rows.Count + 1}, cell {rowModel.Cells.Count + 1}: exceeds the configured column count limit of {_options.MaxTableColumnCount}.");
                 ReadBorders(cell.TableCellProperties?.TableCellBorders, cellModel.Borders);
                 foreach (var paragraph in cell.Elements<WpParagraph>())
                 {
@@ -419,14 +457,24 @@ internal sealed class DocxModelReader
                 rowModel.Cells.Add(cellModel);
             }
 
+            inferredColumnCount = Math.Max(inferredColumnCount, rowColumnCount);
             model.Rows.Add(rowModel);
         }
 
-        if (model.ColumnWidthsPoints.Count == 0)
+        // Both explicit and inferred grids are budgeted before any widths are materialized.
+        if (explicitColumnCount > 0)
         {
-            var count = Math.Max(1, model.Rows.Select(x => x.Cells.Sum(c => c.ColumnSpan)).DefaultIfEmpty(1).Max());
-            for (var index = 0; index < count; index++)
+            foreach (var column in grid!.Elements<GridColumn>())
             {
+                _cancellationToken.ThrowIfCancellationRequested();
+                model.ColumnWidthsPoints.Add(TwipsToPoints(column.Width?.Value, 1440));
+            }
+        }
+        else
+        {
+            for (long index = 0; index < inferredColumnCount; index++)
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
                 model.ColumnWidthsPoints.Add(72);
             }
         }
@@ -454,32 +502,28 @@ internal sealed class DocxModelReader
                 return;
             }
 
-            using var stream = imagePart.GetStream(FileMode.Open, FileAccess.Read);
-            using var data = new MemoryStream();
-            BoundedStreamCopy.Copy(stream, data, _options.MaxEmbeddedImageBytes, "Embedded DOCX image", _cancellationToken);
-
-            var imageBytes = data.ToArray();
-            var imageInfo = Image.Identify(imageBytes, out var imageFormat);
-            if (imageInfo is null)
+            _cancellationToken.ThrowIfCancellationRequested();
+            // Part URIs are unique inside this package; relationship IDs are only
+            // unique within the owning part (body, header, footer, or note).
+            if (!_imagePayloads.TryGetValue(imagePart.Uri, out var payload))
             {
-                ReportUnsupported("DOCX_IMAGE_FORMAT_UNSUPPORTED", imagePart.ContentType);
-                AddUnsupportedPlaceholder(paragraph, imagePart.ContentType);
-                return;
-            }
+                payload = ReadImagePayload(imagePart);
+                if (payload is null)
+                {
+                    ReportUnsupported("DOCX_IMAGE_FORMAT_UNSUPPORTED", imagePart.ContentType);
+                    AddUnsupportedPlaceholder(paragraph, imagePart.ContentType);
+                    return;
+                }
 
-            var pixelCount = checked((long)imageInfo.Width * imageInfo.Height);
-            if (pixelCount > _options.MaxEmbeddedImagePixels)
-            {
-                throw new InvalidDataException(
-                    $"An embedded DOCX image exceeds {_options.MaxEmbeddedImagePixels} decoded pixels.");
+                _imagePayloads.Add(imagePart.Uri, payload);
             }
 
             var extent = drawing.Descendants<DW.Extent>().FirstOrDefault();
             paragraph.Inlines.Add(new BuiltInImageModel
             {
-                Data = imageBytes,
-                MediaType = imageFormat.DefaultMimeType,
-                Name = "image" + GuessImageExtension(imageFormat.DefaultMimeType),
+                Data = payload.Data,
+                MediaType = payload.MediaType,
+                Name = payload.Name,
                 WidthPoints = EmuToPoints(extent?.Cx?.Value),
                 HeightPoints = EmuToPoints(extent?.Cy?.Value)
             });
@@ -493,6 +537,48 @@ internal sealed class DocxModelReader
         {
             ReportUnsupported("DOCX_IMAGE_FORMAT_UNSUPPORTED", "embedded image format");
             AddUnsupportedPlaceholder(paragraph, "embedded image format");
+        }
+    }
+
+    private ImagePayload? ReadImagePayload(ImagePart imagePart)
+    {
+        _cancellationToken.ThrowIfCancellationRequested();
+        using var stream = imagePart.GetStream(FileMode.Open, FileAccess.Read);
+        _imagePayloadObserver?.Invoke("Open");
+        _cancellationToken.ThrowIfCancellationRequested();
+        using var data = new MemoryStream();
+        BoundedStreamCopy.Copy(stream, data, _options.MaxEmbeddedImageBytes, "Embedded DOCX image", _cancellationToken);
+
+        var imageBytes = data.ToArray();
+        ImageFormatAdmission.RejectBigTiff(imageBytes);
+        _cancellationToken.ThrowIfCancellationRequested();
+        var imageInfo = Image.Identify(imageBytes, out var imageFormat);
+        _imagePayloadObserver?.Invoke("Identify");
+        _cancellationToken.ThrowIfCancellationRequested();
+        if (imageInfo is null) return null;
+
+        var pixelCount = checked((long)imageInfo.Width * imageInfo.Height);
+        if (pixelCount > _options.MaxEmbeddedImagePixels)
+        {
+            throw new InvalidDataException(
+                $"An embedded DOCX image exceeds {_options.MaxEmbeddedImagePixels} decoded pixels.");
+        }
+
+        return new ImagePayload(imageBytes, imageFormat.DefaultMimeType);
+    }
+
+    private sealed class ImagePayload
+    {
+        // Owned by this conversion and read-only in both rendering paths.
+        internal byte[] Data { get; }
+        internal string MediaType { get; }
+        internal string Name { get; }
+
+        internal ImagePayload(byte[] data, string mediaType)
+        {
+            Data = data;
+            MediaType = mediaType;
+            Name = "image" + GuessImageExtension(mediaType);
         }
     }
 
@@ -525,17 +611,23 @@ internal sealed class DocxModelReader
             var spacing = properties.SpacingBetweenLines;
             if (spacing is not null)
             {
-                target.SpaceBeforePoints = TwipsToNullablePoints(spacing.Before?.Value);
-                target.SpaceAfterPoints = TwipsToNullablePoints(spacing.After?.Value);
-                target.LineSpacingPoints = TwipsToNullablePoints(spacing.Line?.Value);
+                if (spacing.Before is not null)
+                    target.SpaceBeforePoints = TwipsToNullablePoints(spacing.Before.Value);
+                if (spacing.After is not null)
+                    target.SpaceAfterPoints = TwipsToNullablePoints(spacing.After.Value);
+                if (spacing.Line is not null)
+                    target.LineSpacingPoints = TwipsToNullablePoints(spacing.Line.Value);
             }
 
             var indentation = properties.Indentation;
             if (indentation is not null)
             {
-                target.LeftIndentPoints = TwipsToNullablePoints(indentation.Left?.Value ?? indentation.Start?.Value);
-                target.RightIndentPoints = TwipsToNullablePoints(indentation.Right?.Value ?? indentation.End?.Value);
-                target.FirstLineIndentPoints = TwipsToNullablePoints(indentation.FirstLine?.Value);
+                if (indentation.Left is not null || indentation.Start is not null)
+                    target.LeftIndentPoints = TwipsToNullablePoints(indentation.Left?.Value ?? indentation.Start?.Value);
+                if (indentation.Right is not null || indentation.End is not null)
+                    target.RightIndentPoints = TwipsToNullablePoints(indentation.Right?.Value ?? indentation.End?.Value);
+                if (indentation.FirstLine is not null)
+                    target.FirstLineIndentPoints = TwipsToNullablePoints(indentation.FirstLine.Value);
                 if (indentation.Hanging?.Value is string hanging &&
                     double.TryParse(hanging, NumberStyles.Number, CultureInfo.InvariantCulture, out var hangingTwips))
                 {
@@ -543,8 +635,8 @@ internal sealed class DocxModelReader
                 }
             }
 
-            target.PageBreakBefore |= IsOn(properties.PageBreakBefore);
-            target.KeepWithNext |= IsOn(properties.KeepNext);
+            target.PageBreakBefore = MergeOnOff(target.PageBreakBefore, properties.PageBreakBefore);
+            target.KeepWithNext = MergeOnOff(target.KeepWithNext, properties.KeepNext);
         }
     }
 
@@ -741,8 +833,7 @@ internal sealed class DocxModelReader
             var reference = properties.Elements<HeaderReference>().FirstOrDefault(value => (value.Type?.Value ?? HeaderFooterValues.Default) == kind);
             if (reference?.Id?.Value is string id && _mainPart.GetPartById(id) is HeaderPart part)
             {
-                if (part.Header is not null) CountElements(part.Header);
-                foreach (var paragraph in part.Header?.Elements<WpParagraph>() ?? []) destination.Add(ReadParagraph(paragraph, part));
+                ReadDecoration(part.Header, part, "header", kind, destination);
             }
             else if (inherited is not null) foreach (var paragraph in inherited) destination.Add(paragraph);
         }
@@ -751,8 +842,7 @@ internal sealed class DocxModelReader
             var reference = properties.Elements<FooterReference>().FirstOrDefault(value => (value.Type?.Value ?? HeaderFooterValues.Default) == kind);
             if (reference?.Id?.Value is string id && _mainPart.GetPartById(id) is FooterPart part)
             {
-                if (part.Footer is not null) CountElements(part.Footer);
-                foreach (var paragraph in part.Footer?.Elements<WpParagraph>() ?? []) destination.Add(ReadParagraph(paragraph, part));
+                ReadDecoration(part.Footer, part, "footer", kind, destination);
             }
             else if (inherited is not null) foreach (var paragraph in inherited) destination.Add(paragraph);
         }
@@ -763,6 +853,41 @@ internal sealed class DocxModelReader
         Footer(HeaderFooterValues.First, target.FirstFooters, _previousSection?.FirstFooters);
         Footer(HeaderFooterValues.Even, target.EvenFooters, _previousSection?.EvenFooters);
         _previousSection = target;
+    }
+
+    private void ReadDecoration(OpenXmlElement? root, OpenXmlPart part, string decoration,
+        HeaderFooterValues kind, IList<BuiltInParagraphModel> destination)
+    {
+        if (root is null) return;
+        var key = part.Uri.ToString();
+        if (!_decorations.TryGetValue(key, out var paragraphs))
+        {
+            CountElements(root);
+            paragraphs = new List<BuiltInParagraphModel>();
+            _decorations.Add(key, paragraphs);
+            var index = 0;
+            foreach (var child in root.ChildElements)
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                index++;
+                if (child is WpParagraph paragraph)
+                {
+                    paragraphs.Add(ReadParagraph(paragraph, part));
+                    continue;
+                }
+
+                // Unsupported blocks may carry text in tables, SDTs or extension markup.
+                // Keep loss independent of placeholder policy and diagnostic wording.
+                if (!string.IsNullOrEmpty(child.InnerText)) HasOmittedDecorationText = true;
+                var variant = kind == HeaderFooterValues.First ? "first" : kind == HeaderFooterValues.Even ? "even" : "default";
+                var location = $"{decoration} {variant} {part.Uri} child[{index}]/{child.LocalName}";
+                ReportUnsupported(decoration == "header" ? "DOCX_HEADER_CONTENT_UNSUPPORTED" : "DOCX_FOOTER_CONTENT_UNSUPPORTED",
+                    location, "The block is omitted; direct paragraphs remain supported.");
+                if (_options.UnsupportedFeatureBehavior == UnsupportedDocxFeatureBehavior.Placeholder)
+                    paragraphs.Add(CreateUnsupportedParagraph(location));
+            }
+        }
+        foreach (var paragraph in paragraphs) destination.Add(paragraph);
     }
 
     private void ReportUnsupported(string code, string feature, string? degradation = null)

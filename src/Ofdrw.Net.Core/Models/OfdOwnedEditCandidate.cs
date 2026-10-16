@@ -74,6 +74,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
     {
         var material = context.Material;
         material.GuardPreservedXml(source, token); source.SourceIdentity?.Reconcile(source, material, token);
+        OfdAttachmentSource.ValidateOrigins(source, token); source.AttachmentSource?.Validate(source, material, token);
         OfdNavigationXml.Validate(source, source.Pages, token, material);
         OfdAnnotationContract.Validate(source, material, token);
         OfdCompositeGraph.Validate(source, material, token, rejectRepeatedOwners: true);
@@ -94,6 +95,7 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
                     MaximumFontBytes = source.Options.FontEmbedding.MaximumFontBytes,
                     MaximumCollectionBytes = source.Options.FontEmbedding.MaximumCollectionBytes,
                     MaximumUsedScalars = source.Options.FontEmbedding.MaximumUsedScalars,
+                    MaximumCmapParseWork = source.Options.FontEmbedding.MaximumCmapParseWork,
                     MaximumGlyphClosureOperations = source.Options.FontEmbedding.MaximumGlyphClosureOperations
                 },
                 DefaultPageWidthMillimeters = source.Options.DefaultPageWidthMillimeters,
@@ -144,6 +146,8 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         Strings(source.PreservedCommonDataElements, copy.PreservedCommonDataElements);
         Strings(source.PreservedDocumentElements, copy.PreservedDocumentElements); Strings(source.PreservedDocBodyElements, copy.PreservedDocBodyElements);
         OfdNavigationCloner.Clone(source, copy, mapping, material, token, requireClosedMap: true);
+        copy.AttachmentSource = source.AttachmentSource?.Clone(source, copy, mapping, material, token);
+        copy.CustomTagSource = source.CustomTagSource?.Clone(source, copy, material, token);
         copy.AnnotationIndexSource = source.AnnotationIndexSource?.Clone(source, copy, material, token);
         copy.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, token, requireClosedMap: true);
         copy.SourceIdentity = source.SourceIdentity?.CloneFor(copy, mapping, material, token, requireClosedMap: true);

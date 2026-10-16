@@ -29,6 +29,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private readonly Dictionary<string, double> _advances = new();
     private readonly List<PageDecoration> _decorations = new();
     private int _lastPageNumber;
+    private int _totalPages = 1;
+    private Dictionary<BuiltInSectionModel, int> _sectionPages = new();
     private readonly Dictionary<string, XFont> _fonts = new();
     private readonly Dictionary<string, (byte[] Data, string FileName)> _fontFiles = new();
     private int _pendingPageBreaks;
@@ -50,6 +52,42 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         _cancellationToken.ThrowIfCancellationRequested();
 
         RegisterConfiguredFonts();
+        OfdDocumentPackage? result = null;
+        FinalizePagination(() =>
+        {
+            _decorations.Clear();
+            _lastPageNumber = 0;
+            _pendingPageBreaks = 0;
+            _pendingSpaceAfter = 0;
+            _pendingLineBreakHeights.Clear();
+            result = RenderPass(model);
+            var counts = _decorations.GroupBy(value => value.Section)
+                .ToDictionary(group => group.Key, group => group.Count());
+            var stable = result.Pages.Count == _totalPages &&
+                counts.All(pair => SectionPages(pair.Key) == pair.Value);
+            _totalPages = result.Pages.Count;
+            _sectionPages = counts;
+            return stable;
+        });
+        return result!;
+    }
+
+    // A pass is committed only when every measured field context matches the actual
+    // pagination. Rebuild all geometry after total digit widths change; never patch text.
+    internal static void FinalizePagination(Func<bool> layoutPass)
+    {
+        const int maximumPasses = 8;
+        for (var pass = 0; pass < maximumPasses; pass++)
+            if (layoutPass()) return;
+        throw new InvalidDataException("DOCX page field layout did not converge within 8 passes.");
+    }
+
+    private int SectionPages(BuiltInSectionModel section) =>
+        _sectionPages.TryGetValue(section, out var count) ? count : 1;
+
+    private OfdDocumentPackage RenderPass(BuiltInDocumentModel model)
+    {
+        _cancellationToken.ThrowIfCancellationRequested();
         var package = new OfdDocumentPackage
         {
             Options = new OfdDocumentOptions
@@ -60,6 +98,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                     MaximumFontBytes = Math.Min(_options.MaxEmbeddedFontBytes, _options.FontEmbedding.MaximumFontBytes),
                     MaximumCollectionBytes = _options.FontEmbedding.MaximumCollectionBytes,
                     MaximumUsedScalars = _options.FontEmbedding.MaximumUsedScalars,
+                    MaximumCmapParseWork = _options.FontEmbedding.MaximumCmapParseWork,
                     MaximumGlyphClosureOperations = _options.FontEmbedding.MaximumGlyphClosureOperations
                 },
                 DocType = "OFD-H",
@@ -169,7 +208,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         var firstLine = true;
         var preparedFirstLine = false;
         var leadingLines = 0;
-        var lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber);
+        var lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber, _totalPages, SectionPages(state.Section));
         if (paragraph.Inlines.OfType<BuiltInPageNumberModel>().Any(field => field.Kind == BuiltInPageFieldKind.Page))
         {
             // Body PAGE uses the paragraph's first body line page context. Resolve that context
@@ -197,7 +236,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             while (true)
             {
                 _cancellationToken.ThrowIfCancellationRequested();
-                lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber);
+                lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber, _totalPages, SectionPages(state.Section));
                 var first = lines.Skip(leadingLines).First(line => !line.PageBreak && !line.TerminalNewline);
                 if (first.Height > state.ContentBottom - state.ContentTop)
                     throw new InvalidDataException("DOCX content exceeds the usable page area.");
@@ -252,19 +291,27 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         {
             _cancellationToken.ThrowIfCancellationRequested();
             var row = table.Rows[rowIndex];
-            var cellLayouts = MeasureRow(row, columnWidths, rowIndex + 1);
-            var rowHeight = cellLayouts.Count == 0
-                ? PointsToMillimeters(DefaultFontSizePoints) * 1.5d
-                : cellLayouts.Max(cell => cell.Height);
-
-            if (firstRow)
+            if (firstRow) ApplyPendingLineBreaks(package, state);
+            List<FlowMeasuredCell> cellLayouts;
+            double rowHeight;
+            // PAGE belongs to the row's actual placement page. A move can change
+            // digit width and row height, so measure again before drawing any cell.
+            while (true)
             {
-                ApplyPendingLineBreaks(package, state);
-                PlaceFirstLine(package, state, rowHeight, _pendingSpaceAfter);
-                _pendingSpaceAfter = 0;
-                firstRow = false;
+                _cancellationToken.ThrowIfCancellationRequested();
+                var measuredPage = state.PageNumber;
+                cellLayouts = MeasureRow(row, columnWidths, rowIndex + 1, state);
+                rowHeight = cellLayouts.Count == 0
+                    ? PointsToMillimeters(DefaultFontSizePoints) * 1.5d
+                    : cellLayouts.Max(cell => cell.Height);
+                if (firstRow) PlaceFirstLine(package, state, rowHeight, _pendingSpaceAfter);
+                else EnsureVerticalSpace(package, state, rowHeight);
+                if (measuredPage == state.PageNumber) break;
+                // PlaceFirstLine already consumed the paragraph gap on the fresh page.
+                // Undo it before remeasuring to avoid applying spacing twice.
+                if (firstRow) state.Y = state.ContentTop;
             }
-            else EnsureVerticalSpace(package, state, rowHeight);
+            if (firstRow) { _pendingSpaceAfter = 0; firstRow = false; }
             var rowTop = state.Y;
             var x = state.ContentLeft;
             var columnIndex = 0;
@@ -291,7 +338,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         }
     }
 
-    private List<FlowMeasuredCell> MeasureRow(BuiltInTableRowModel row, IReadOnlyList<double> columnWidths, int rowNumber)
+    private List<FlowMeasuredCell> MeasureRow(BuiltInTableRowModel row, IReadOnlyList<double> columnWidths, int rowNumber, LayoutState state)
     {
         var specs = row.Cells.Select(cell => new FlowCellSpec
         {
@@ -302,7 +349,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 var content = new FlowCellContent();
                 // Preserve the existing Native cell paragraph policy while sharing row geometry.
                 foreach (var paragraph in cell.Paragraphs)
-                    foreach (var line in LayoutParagraph(paragraph, width, 0).Where(line => !line.PageBreak))
+                    foreach (var line in LayoutParagraph(paragraph, width, 0, state.PageNumber, _totalPages, SectionPages(state.Section)).Where(line => !line.PageBreak))
                     {
                         content.Lines.Add(new FlowCellLine(line, content.Height, 0, width));
                         content.Height += line.Height;
@@ -465,7 +512,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         }
     }
 
-    private IReadOnlyList<FlowLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber = 1, int totalPages = 1, int sectionPages = 1)
+    private IReadOnlyList<FlowLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber, int totalPages, int sectionPages)
     {
         var inlines = new List<FlowInline>();
         FlowTextStyle Style(BuiltInTextFormat format) => new()
@@ -725,8 +772,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         _lastPageNumber = state.PageNumber;
         var headers = state.Section.GetHeaders(state.SectionPageIndex, state.PageNumber);
         var footers = state.Section.GetFooters(state.SectionPageIndex, state.PageNumber);
-        var header = LayoutDecoration(headers, state.ContentWidth, state.PageNumber, _options.MaxPageCount, _options.MaxPageCount);
-        var footer = LayoutDecoration(footers, state.ContentWidth, state.PageNumber, _options.MaxPageCount, _options.MaxPageCount);
+        var header = LayoutDecoration(headers, state.ContentWidth, state.PageNumber, _totalPages, SectionPages(state.Section));
+        var footer = LayoutDecoration(footers, state.ContentWidth, state.PageNumber, _totalPages, SectionPages(state.Section));
         var headerBottom = PointsToMillimeters(state.Section.HeaderDistancePoints) + header.Height;
         var footerTop = state.Page.HeightMillimeters - PointsToMillimeters(state.Section.FooterDistancePoints) - footer.Height;
         state.ContentTop = Math.Max(PointsToMillimeters(state.Section.MarginTopPoints), headers.Count > 0 ? headerBottom + 1 : 0);

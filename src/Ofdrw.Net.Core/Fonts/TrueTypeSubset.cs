@@ -16,7 +16,12 @@ internal static class TrueTypeSubset
     };
     internal static byte[] Create(OpenTypeFace face, IEnumerable<int> scalars, CancellationToken cancellationToken, long maximumOperations,
         out int keptGlyphs, out int originalGlyphs)
+        => Create(face, scalars, cancellationToken, maximumOperations, new FontParseBudget(cancellationToken: cancellationToken), out keptGlyphs, out originalGlyphs);
+
+    internal static byte[] Create(OpenTypeFace face, IEnumerable<int> scalars, CancellationToken cancellationToken, long maximumOperations,
+        FontParseBudget parseBudget, out int keptGlyphs, out int originalGlyphs, OpenTypeCmap? parsedCmap = null)
     {
+        parseBudget.Spend(0);
         foreach (var tag in face.Tables.Keys)
             if (!KnownTables.Contains(tag)) throw new NotSupportedException("Unmodeled font table '" + tag + "' requires full preservation.");
         var head = face.Table("head", 54); var maxp = face.Table("maxp", 6); var glyf = face.Table("glyf"); var loca = face.Table("loca");
@@ -34,7 +39,7 @@ internal static class TrueTypeSubset
             offsets[i] = format == 0 ? U16(loca, i * 2) * 2 : Size(U32(loca, i * 4));
             if (offsets[i] > glyf.Length || (i > 0 && offsets[i] < offsets[i - 1])) throw new InvalidDataException("Invalid glyph offset.");
         }
-        var cmap = new OpenTypeCmap(face);
+        var cmap = parsedCmap ?? new OpenTypeCmap(face, parseBudget);
         var mapping = new Dictionary<int, int>(); var keep = new HashSet<int> { 0 };
         foreach (var scalar in scalars.Distinct())
         {

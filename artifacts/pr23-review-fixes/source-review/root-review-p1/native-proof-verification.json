@@ -1,0 +1,37 @@
+{
+  "source": "4fab29e88329fa58530273a684c0bf3f95aca5f62ef9bf1eccb1c01f16986973",
+  "files": [
+    {
+      "rid": "linux-x64",
+      "environment": "glibc",
+      "binary_sha256": "79b3117e47835dff8f137d6e7363a87e622c7a1b891e278d7a1d94417c858595"
+    },
+    {
+      "rid": "linux-x64",
+      "environment": "musl",
+      "binary_sha256": "79b3117e47835dff8f137d6e7363a87e622c7a1b891e278d7a1d94417c858595"
+    },
+    {
+      "rid": "linux-arm64",
+      "environment": "glibc",
+      "binary_sha256": "1de0494b48e430cd69a47a3eabf3b933d8bdbd87f97cb59289afd2b07ec48956"
+    },
+    {
+      "rid": "linux-arm64",
+      "environment": "musl",
+      "binary_sha256": "1de0494b48e430cd69a47a3eabf3b933d8bdbd87f97cb59289afd2b07ec48956"
+    },
+    {
+      "rid": "osx-x64",
+      "environment": "macos-rosetta",
+      "binary_sha256": "2a8e4b0e362d2c8e8150d482e236b1d3bc2fb57f4c118c37e9f6687493cba5ae"
+    },
+    {
+      "rid": "osx-arm64",
+      "environment": "macos-native",
+      "binary_sha256": "1fe91767b723a916a9c75331117440654bee04435f654a7d8b69bdba65ee981f"
+    }
+  ],
+  "actual_native_cases_passed": 30,
+  "harness_sha_verified": true
+}

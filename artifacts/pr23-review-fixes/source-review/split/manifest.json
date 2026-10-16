@@ -1,0 +1,587 @@
+[
+  {
+    "path": "baseline/canonical-entries.json",
+    "bytes": 653,
+    "sha256": "ad27ec3a078d4332aad9087e6437b14e9fea858a011450802eabbacdbe33a13b"
+  },
+  {
+    "path": "baseline/canonical-input.ofd",
+    "bytes": 2045,
+    "sha256": "6f7a84f4516d9b23e5ebf3003b668971da00b705be807e20acd22c4a50f3f9a0",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "baseline/canonical-output.ofd",
+    "bytes": 2337,
+    "sha256": "8dc69c602df32a63cf66587f402dbc2d7285563be40343155f86f44d7ffc27a9",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml.1",
+        "bytes": 372,
+        "sha256": "3d06b4c425b862e7488a0ffadc2d3bc7fd962f150ab2d2c4e14bab6592a46b7c"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_renamed.bin",
+        "bytes": 5,
+        "sha256": "71e25bb8096c0f6848cc31bee738361672fe2bed008f2b042cd47d59ecbfe7a5"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin.1",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "baseline/canonical-preflight.json",
+    "bytes": 10345,
+    "sha256": "744cbd53fa9cc9b331d4e71afa5159549a86c7f1ee3b67b9173e653ad62a24bb"
+  },
+  {
+    "path": "baseline/nested-entries.json",
+    "bytes": 733,
+    "sha256": "2c4b93f772ca1b33b8109419f4c5ee8f715ba35e1dcdfdb3a253c2aafae79dda"
+  },
+  {
+    "path": "baseline/nested-input.ofd",
+    "bytes": 2117,
+    "sha256": "512da2fe5435a2c3da84b8d4cf873a8dc38c53f7dbcfac433f992fd67c5b3df5",
+    "attachments": [
+      {
+        "entry": "Nested/Doc/Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "baseline/nested-output.ofd",
+    "bytes": 2429,
+    "sha256": "4042c7d1422eab08e7d363bde3802884c63c948cd7254aad1ef6949a43be0b24",
+    "attachments": [
+      {
+        "entry": "Nested/Doc/Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attachments.xml.1",
+        "bytes": 372,
+        "sha256": "3d06b4c425b862e7488a0ffadc2d3bc7fd962f150ab2d2c4e14bab6592a46b7c"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_1_renamed.bin",
+        "bytes": 5,
+        "sha256": "71e25bb8096c0f6848cc31bee738361672fe2bed008f2b042cd47d59ecbfe7a5"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_2_second.bin.1",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "baseline/nested-preflight.json",
+    "bytes": 10440,
+    "sha256": "0750fe90a1de62a453c0efbe3b8e373b52c863b348647ad29307817207bed911"
+  },
+  {
+    "path": "baseline/root-entries.json",
+    "bytes": 557,
+    "sha256": "eb5b744b6f1a44b5be3fa03fbe13db4b547687de4425b45d34caec9ca1e51804"
+  },
+  {
+    "path": "baseline/root-input.ofd",
+    "bytes": 1956,
+    "sha256": "b2575fb6bd03c243023c7c2a17f27605adedf7eb6ce9fb964f7d22a8fd4f018a",
+    "attachments": [
+      {
+        "entry": "Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "baseline/root-output.ofd",
+    "bytes": 2224,
+    "sha256": "739877d8441db93a8f490f795bc1b703679e55f56b1e064714bb377c179fe62d",
+    "attachments": [
+      {
+        "entry": "Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Attachs/Attachments.xml.1",
+        "bytes": 372,
+        "sha256": "3d06b4c425b862e7488a0ffadc2d3bc7fd962f150ab2d2c4e14bab6592a46b7c"
+      },
+      {
+        "entry": "Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Attachs/Attach_1_renamed.bin",
+        "bytes": 5,
+        "sha256": "71e25bb8096c0f6848cc31bee738361672fe2bed008f2b042cd47d59ecbfe7a5"
+      },
+      {
+        "entry": "Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      },
+      {
+        "entry": "Attachs/Attach_2_second.bin.1",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "baseline/root-preflight.json",
+    "bytes": 10231,
+    "sha256": "03571680215c6af4057c308c526a9df7b2a0c870e21288b3553389102495e9aa"
+  },
+  {
+    "path": "fixed/canonical-entries.json",
+    "bytes": 529,
+    "sha256": "cfb74b88de75e653cb1de2e31fc70aa94c6aab03b163e50f873998df20bc443c"
+  },
+  {
+    "path": "fixed/canonical-input.ofd",
+    "bytes": 2045,
+    "sha256": "acfa46d88dabdd5758a685586d4d69f6d780b67a1bbda062c4f227ee97f8d73b",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/canonical-output.ofd",
+    "bytes": 1741,
+    "sha256": "03103f0f682311546926d4792a7aa79b5ae9521cf77dc161275a08ffb4f510ec",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 441,
+        "sha256": "d4a15025d787d8919b83a0301d77b182c034e96ba0e16aa13a5c595d2b4fd655"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 5,
+        "sha256": "71e25bb8096c0f6848cc31bee738361672fe2bed008f2b042cd47d59ecbfe7a5"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/canonical-preflight.json",
+    "bytes": 9580,
+    "sha256": "d9edafcccfa177163b8e4b1a02b0e812057faf81d28d9a61c7632adbdd227438"
+  },
+  {
+    "path": "fixed/clear-entries.json",
+    "bytes": 529,
+    "sha256": "cfb74b88de75e653cb1de2e31fc70aa94c6aab03b163e50f873998df20bc443c"
+  },
+  {
+    "path": "fixed/clear-input.ofd",
+    "bytes": 2045,
+    "sha256": "acfa46d88dabdd5758a685586d4d69f6d780b67a1bbda062c4f227ee97f8d73b",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/clear-output.ofd",
+    "bytes": 1718,
+    "sha256": "110eaffbbe7df04e0eb9c98d55ee48c13dd23638fc8605bd1ed16eec0b224829",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/clear-preflight.json",
+    "bytes": 7655,
+    "sha256": "92a1f2c76bbd6cafe241ca3ffa472e987dab3b6703f4ba49113ec382cfe022d7"
+  },
+  {
+    "path": "fixed/external-entries.json",
+    "bytes": 529,
+    "sha256": "cfb74b88de75e653cb1de2e31fc70aa94c6aab03b163e50f873998df20bc443c"
+  },
+  {
+    "path": "fixed/external-input.ofd",
+    "bytes": 2081,
+    "sha256": "e1d1917e293da11775905d3ac97ca2bc686d8d8b7fd4101ec591d280c7fab769",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 609,
+        "sha256": "c724c14201bb15c48d3c447b434403c1944e4830e52fd650d4455d6c9d9915f0"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/external-output.ofd",
+    "bytes": 1771,
+    "sha256": "be355b82863c7efa87b6b442f856e9d7c406fbedd08b2643094e86c53874e158",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 644,
+        "sha256": "547b7f2921ed16836b7db25c8fc497c59521898c321362fa352373823fe5ff42"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/external-preflight.json",
+    "bytes": 10443,
+    "sha256": "17961c3cb5011d720c87119379107898b5582461e882f38ddb2476964e70b883"
+  },
+  {
+    "path": "fixed/nested-entries.json",
+    "bytes": 594,
+    "sha256": "52eb9be7530593a571904632de49a1720e2e02625d9a76418a5e9891f81953ca"
+  },
+  {
+    "path": "fixed/nested-input.ofd",
+    "bytes": 2117,
+    "sha256": "ac777c526a7089b7013628553da8852b2db2d8435037488591ca28b42abf0867",
+    "attachments": [
+      {
+        "entry": "Nested/Doc/Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/nested-output.ofd",
+    "bytes": 1803,
+    "sha256": "e2abd3765dd0fca1de9a3f44ab148bc01f22dcd0f6102d893a8ff8aac80d626d",
+    "attachments": [
+      {
+        "entry": "Nested/Doc/Attachs/Attachments.xml",
+        "bytes": 441,
+        "sha256": "d4a15025d787d8919b83a0301d77b182c034e96ba0e16aa13a5c595d2b4fd655"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_1_original.bin",
+        "bytes": 5,
+        "sha256": "71e25bb8096c0f6848cc31bee738361672fe2bed008f2b042cd47d59ecbfe7a5"
+      },
+      {
+        "entry": "Nested/Doc/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/nested-preflight.json",
+    "bytes": 9670,
+    "sha256": "72a2a4807e1dcc5d2a81f0b86dd5f785f16d698db7ee3fbac49927746cb13685"
+  },
+  {
+    "path": "fixed/relocated-entries.json",
+    "bytes": 517,
+    "sha256": "46483bd3ccd5e6d34a4bd0a9f888d2c2ec427af40ad3a1f3cb7dcdc989a67ba5"
+  },
+  {
+    "path": "fixed/relocated-input.ofd",
+    "bytes": 1999,
+    "sha256": "f41cf82cdfdd26143982d736986e086f06e8d13963cd702259a01d696cd9187d",
+    "attachments": [
+      {
+        "entry": "Doc_0/Metadata/List.xml",
+        "bytes": 394,
+        "sha256": "bdda2023eebfeddfb2d2145fbcde0687a643aff97adeda2da22367ad56e5af98"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/relocated-output.ofd",
+    "bytes": 1735,
+    "sha256": "7e98b512e191ecac084f8c55a2139dec9a27b5ac11c8bacf0ee17274b7eebb73",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 5,
+        "sha256": "71e25bb8096c0f6848cc31bee738361672fe2bed008f2b042cd47d59ecbfe7a5"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      },
+      {
+        "entry": "Doc_0/Metadata/List.xml",
+        "bytes": 464,
+        "sha256": "2a4efd9ce9938a251ca3ba2051ab7f180b04d16f660e3f11f2a054eff99f3527"
+      }
+    ]
+  },
+  {
+    "path": "fixed/relocated-preflight.json",
+    "bytes": 9567,
+    "sha256": "82ff86cd5bab4600756e56dc7018525e4565892dc63036cb523e663670bcf4cf"
+  },
+  {
+    "path": "fixed/remove-one-entries.json",
+    "bytes": 529,
+    "sha256": "cfb74b88de75e653cb1de2e31fc70aa94c6aab03b163e50f873998df20bc443c"
+  },
+  {
+    "path": "fixed/remove-one-input.ofd",
+    "bytes": 2045,
+    "sha256": "acfa46d88dabdd5758a685586d4d69f6d780b67a1bbda062c4f227ee97f8d73b",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/remove-one-output.ofd",
+    "bytes": 1716,
+    "sha256": "cf4538a3e0e905a1e4e284541502d049bfa6a3c66320cf374a353726891dbaa4",
+    "attachments": [
+      {
+        "entry": "Doc_0/Attachs/Attachments.xml",
+        "bytes": 254,
+        "sha256": "733745e75b885fef34c59d1a13c0170398fad15de2ad574494b12336c6821824"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Doc_0/Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/remove-one-preflight.json",
+    "bytes": 8655,
+    "sha256": "a3b8f1ffe0d0d60695501bfd50d9cc2e795e117dd924d80cd4a16248b35fdae5"
+  },
+  {
+    "path": "fixed/root-entries.json",
+    "bytes": 451,
+    "sha256": "671cb0baa8e38eb6253008c866091cb43acc224f47da6f371fbf34ed42e44599"
+  },
+  {
+    "path": "fixed/root-input.ofd",
+    "bytes": 1956,
+    "sha256": "4a8057779a8e9bdadf53cf994a7b896f10162a1659f0542065f8870b83853493",
+    "attachments": [
+      {
+        "entry": "Attachs/Attachments.xml",
+        "bytes": 372,
+        "sha256": "48adfdecc109fe89bbcdaa0275dbc4ceeed7608f88aaafc300302a1078bc3b57"
+      },
+      {
+        "entry": "Attachs/Attach_1_original.bin",
+        "bytes": 4,
+        "sha256": "3d1f57c984978ef98a18378c8166c1cb8ede02c03eeb6aee7e2f121dfeee3e56"
+      },
+      {
+        "entry": "Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/root-output.ofd",
+    "bytes": 1664,
+    "sha256": "8d2067b2bf07d6e0c65ff37f864b1f90ccd6f8d44664346a3265814e46a4171e",
+    "attachments": [
+      {
+        "entry": "Attachs/Attachments.xml",
+        "bytes": 441,
+        "sha256": "d4a15025d787d8919b83a0301d77b182c034e96ba0e16aa13a5c595d2b4fd655"
+      },
+      {
+        "entry": "Attachs/Attach_1_original.bin",
+        "bytes": 5,
+        "sha256": "71e25bb8096c0f6848cc31bee738361672fe2bed008f2b042cd47d59ecbfe7a5"
+      },
+      {
+        "entry": "Attachs/Attach_2_second.bin",
+        "bytes": 3,
+        "sha256": "2848698aa4b3431e3db06c343ca2cb0455f8aaf16c85cdd828c92ddf7dc134f8"
+      }
+    ]
+  },
+  {
+    "path": "fixed/root-preflight.json",
+    "bytes": 9472,
+    "sha256": "505e3fab650714c789deb79e4d576ad50efd6fc54e2707caf027093a91770ed6"
+  }
+]

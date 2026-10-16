@@ -1,0 +1,112 @@
+[
+  {
+    "sample": "control",
+    "page": 1,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf",
+    "ax": "control-page-1.ax.txt",
+    "ax_sha256": "f8490a916946d86160c47c5c6250babb02505d19c671dacd46762d759b441758",
+    "screenshot": "control-page-1.jpg",
+    "screenshot_sha256": "866f6345b3db52aeafdc399c57c235f354f4fa4481e885d273f6a1a64f56d298",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  },
+  {
+    "sample": "control",
+    "page": 2,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf",
+    "ax": "control-page-2.ax.txt",
+    "ax_sha256": "ec122868d84cf9dd13a20d18070736ba092e50c495e17bcf7d26fe21fa3027b0",
+    "screenshot": "control-page-2.jpg",
+    "screenshot_sha256": "639940aa7c90fca341db611f9084308ab19feaae1b6e9f28e079ae5565305ddc",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  },
+  {
+    "sample": "control",
+    "page": 3,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf",
+    "ax": "control-page-3.ax.txt",
+    "ax_sha256": "0f607a5446a16d965fcf0003f0d16ecb5fc715aa83dbe103e4a2d8d8b425377b",
+    "screenshot": "control-page-3.jpg",
+    "screenshot_sha256": "a29d4fac2dc2647ad77e8fe27d74575336251f2036c3748b951af0d22b97e5f7",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  },
+  {
+    "sample": "empty",
+    "page": 1,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.pdf",
+    "ax": "empty-page-1.ax.txt",
+    "ax_sha256": "96c87364585d713c2e49111de931cfa84d27fee5ee50ae2976924c8f3fe27124",
+    "screenshot": "empty-page-1.jpg",
+    "screenshot_sha256": "3358b8d64985b450d64556f4c3ff2d7d887f48e08a4e2d6170a9d21feff9e892",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  },
+  {
+    "sample": "generated-docx-default",
+    "page": 1,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/package-output/generated-docx-default.pdf",
+    "ax": "generated-docx-default-page-1.ax.txt",
+    "ax_sha256": "cbd415d5528ea672807c5ef5eeeebdf91fa712e59559457caec39bfbb6ee347b",
+    "screenshot": "generated-docx-default-page-1.jpg",
+    "screenshot_sha256": "fe684cb11d6c2532cd88390793e9b1b15a810a1363b3c8f4d4dfcd808ccbc9db",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  },
+  {
+    "sample": "generated-docx-default",
+    "page": 2,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/package-output/generated-docx-default.pdf",
+    "ax": "generated-docx-default-page-2.ax.txt",
+    "ax_sha256": "e2dbeac9e5c0de21277f2423f61793a57d3cbda63b463fcf4e318f9284bb0227",
+    "screenshot": "generated-docx-default-page-2.jpg",
+    "screenshot_sha256": "0177de05eeb643760287baefb7f3b33462e7f841b56d092b09c1b1465c10fb8b",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  },
+  {
+    "sample": "generated-docx-native",
+    "page": 1,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/package-output/generated-docx-native.pdf",
+    "ax": "generated-docx-native-page-1.ax.txt",
+    "ax_sha256": "26b38d792c717f7ca5360b4385b483d0118b6b472260046b6e51d7021708f39b",
+    "screenshot": "generated-docx-native-page-1.jpg",
+    "screenshot_sha256": "4769f79f1120ee80a7933e76e37ba9644f10f10fbae61a7b6eebef7d89b1f883",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  },
+  {
+    "sample": "generated-docx-native",
+    "page": 2,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/package-output/generated-docx-native.pdf",
+    "ax": "generated-docx-native-page-2.ax.txt",
+    "ax_sha256": "3e29d7e600061fc86d429cbf077acac53dbb89bdf05f5e3a351c56ff6277a000",
+    "screenshot": "generated-docx-native-page-2.jpg",
+    "screenshot_sha256": "1f365d3376ac8c5d3d16d2d82aa0a28b08c4b89e09c619825167120f1ef2aea7",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  },
+  {
+    "sample": "notice",
+    "page": 1,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.pdf",
+    "ax": "notice-page-1.ax.txt",
+    "ax_sha256": "5ead974ef3f81ff20b67262cc5ca8784f840b7d79c4783d2d981c54c063c8f6c",
+    "screenshot": "notice-page-1.jpg",
+    "screenshot_sha256": "99e0b2bcf40c54eee27237f400dbc4b1d33559b36a6f90a509f24721c1d6687e",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  },
+  {
+    "sample": "notice",
+    "page": 2,
+    "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.pdf",
+    "ax": "notice-page-2.ax.txt",
+    "ax_sha256": "9e7ea8866965063340da48d8c7de667aa648080b55f057b4ac673bdc78940fbf",
+    "screenshot": "notice-page-2.jpg",
+    "screenshot_sha256": "6676a2d2061739b9e9b649b12d3bc05eb1b685f6c39a357d0be7671a357ffa5c",
+    "review": "passed",
+    "screenshot_encoding": "original JPEG bytes, no recompression"
+  }
+]

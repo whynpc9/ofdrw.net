@@ -44,6 +44,17 @@ public static class OfdDocumentMerger
         IEnumerable<OfdDocumentPackage> sources,
         OfdDocumentMergeOptions? options = null) => MergeCore(sources, options, default);
 
+    /// <summary>Merges documents with cooperative cancellation and reports objects dropped under the explicit skip option.</summary>
+    /// <param name="sources">The documents to merge in enumeration order.</param>
+    /// <param name="options">Optional merge behavior.</param>
+    /// <param name="cancellationToken">Cancellation checked before source access and between resource and object copies.</param>
+    /// <returns>The merged document and diagnostics for skipped objects.</returns>
+    /// <exception cref="OperationCanceledException">The cancellation token was canceled.</exception>
+    public static OfdDocumentMergeResult MergeWithResult(
+        IEnumerable<OfdDocumentPackage> sources,
+        OfdDocumentMergeOptions? options,
+        CancellationToken cancellationToken) => MergeCore(sources, options, cancellationToken);
+
     internal static OfdDocumentPackage MergeForSplit(OfdDocumentPackage source, OfdModelMaterialization material, CancellationToken token)
         => MergeCore(new[] { source }, null, token, material).Package;
 
@@ -62,17 +73,25 @@ public static class OfdDocumentMerger
         options ??= new OfdDocumentMergeOptions();
         material ??= new OfdModelMaterialization(new OfdModelLimits());
         var sourceList = new List<OfdDocumentPackage>();
-        foreach (var source in sources)
+        using (var enumerator = sources.GetEnumerator())
         {
-            cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1); material.Structure.Reference();
-            if (source is null) throw new ArgumentException("Source documents cannot contain null.", nameof(sources));
-            material.InspectStorage(source, cancellationToken); material.GuardPreservedXml(source, cancellationToken);
-            if (source.CompositeResources is not null || OfdCompositeGraph.Definitions(source).Any(e => e.Clips is not null))
-                throw new NotSupportedException("Merge cannot remap typed composites or clips.");
-            OfdAnnotationContract.Validate(source, material, cancellationToken);
-            if (OfdAnnotationContract.HasTyped(source)) throw new NotSupportedException("Merger cannot remap typed annotation ownership.");
-            if (OfdNavigationXml.HasTypedNavigation(source, material, cancellationToken)) throw new NotSupportedException("Merge cannot remap navigation source ownership.");
-            sourceList.Add(source);
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var hasSource = enumerator.MoveNext();
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!hasSource) break;
+                var source = enumerator.Current;
+                cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1); material.Structure.Reference();
+                if (source is null) throw new ArgumentException("Source documents cannot contain null.", nameof(sources));
+                material.InspectStorage(source, cancellationToken); material.GuardPreservedXml(source, cancellationToken);
+                if (source.CompositeResources is not null || OfdCompositeGraph.Definitions(source).Any(e => e.Clips is not null))
+                    throw new NotSupportedException("Merge cannot remap typed composites or clips.");
+                OfdAnnotationContract.Validate(source, material, cancellationToken);
+                if (OfdAnnotationContract.HasTyped(source)) throw new NotSupportedException("Merger cannot remap typed annotation ownership.");
+                if (OfdNavigationXml.HasTypedNavigation(source, material, cancellationToken)) throw new NotSupportedException("Merge cannot remap navigation source ownership.");
+                sourceList.Add(source);
+            }
         }
         if (sourceList.Count == 0)
         {
@@ -273,14 +292,20 @@ public static class OfdDocumentMerger
         return mapping;
     }
 
-    internal static void CopyAttachments(OfdDocumentPackage source, OfdDocumentPackage destination, CancellationToken cancellationToken = default, OfdModelMaterialization? material = null)
+    internal static void CopyAttachments(OfdDocumentPackage source, OfdDocumentPackage destination, CancellationToken cancellationToken = default,
+        OfdModelMaterialization? material = null, Dictionary<object, object>? retainedSourceMapping = null)
     {
+        material ??= new OfdModelMaterialization(new OfdModelLimits());
+        OfdAttachmentSource.AssertCopyable(source, material, cancellationToken);
+        if (retainedSourceMapping is not null && source.DocumentEntryPath != destination.DocumentEntryPath)
+            throw new NotSupportedException("Retained attachment source requires the original document path.");
         foreach (var attachment in source.Attachments)
         {
-            material?.ChargeCopy(attachment.Data.LongLength, cancellationToken);
+            material.ChargeCopy(256L + attachment.Data.LongLength, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            destination.Attachments.Add(new OfdAttachment
+            var clone = new OfdAttachment
             {
+                Id = retainedSourceMapping is not null ? attachment.Id : null,
                 Name = attachment.Name,
                 MediaType = attachment.MediaType,
                 Format = attachment.Format,
@@ -292,8 +317,19 @@ public static class OfdDocumentMerger
                 IsExternal = attachment.IsExternal,
                 ExternalPath = attachment.ExternalPath,
                 Data = attachment.Data.ToArray()
-            });
+            };
+            destination.Attachments.Add(clone);
+            if (retainedSourceMapping is not null)
+            {
+                material.ChargeCopy(128, cancellationToken);
+                if (retainedSourceMapping.ContainsKey(attachment)) throw new InvalidDataException("Ambiguous retained attachment ownership.");
+                retainedSourceMapping.Add(attachment, clone);
+            }
         }
+        // Only the retained-path Split opts in. Merge/Mix still reconstruct
+        // closed typed attachments without importing another document's owner.
+        if (retainedSourceMapping is not null)
+            destination.AttachmentSource = source.AttachmentSource?.Clone(source, destination, retainedSourceMapping, material, cancellationToken);
     }
 
     internal static OfdDocumentOptions CloneOptions(OfdDocumentOptions source)
@@ -309,6 +345,7 @@ public static class OfdDocumentMerger
                 MaximumFontBytes = source.FontEmbedding.MaximumFontBytes,
                 MaximumCollectionBytes = source.FontEmbedding.MaximumCollectionBytes,
                 MaximumUsedScalars = source.FontEmbedding.MaximumUsedScalars,
+                MaximumCmapParseWork = source.FontEmbedding.MaximumCmapParseWork,
                 MaximumGlyphClosureOperations = source.FontEmbedding.MaximumGlyphClosureOperations
             },
             DefaultPageWidthMillimeters = source.DefaultPageWidthMillimeters,

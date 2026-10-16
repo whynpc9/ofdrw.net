@@ -1,6 +1,8 @@
-# Ofdrw.Net 能力路线图开发计划
+# Ofdrw.Net 能力路线图开发计划（历史设计）
 
-> 计划基线：2026-09-28；评审修订：2026-09-29。本文件是设计与实施安排，不表示任何能力票已经完成。需求边界以 [22 张 issue 票](../.scratch/capability-roadmap/issues/README.md) 和 [能力路线图](capability-roadmap.md) 为准；现状以本次核对的源码为准。
+> 历史计划基线：2026-09-28；评审修订：2026-09-29。以下原设计、当时差异、批次/阻塞和验收记录原意保留，文中的“当前”“未实现”“待办”均指当时快照，不是 2026-10-15 的派发依据。
+>
+> 2026-10-15 在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0` 进行状态核对：Flow、Table、Graphics、字体子集、图片进出、文档工具、受限定位替换/typed、可选 Skia/PDF Vector/password v2/SES 已有源码；18 纯文本仅前置已具备，适配器仍未实现，HTML/归档仍属未来方向。当前权威状态、剩余范围与源码/测试/历史页面证据见 [ticket 索引](../.scratch/capability-roadmap/issues/README.md) 和 [能力路线图](capability-roadmap.md)。本次未重跑功能/视觉门、未查询实时合并或 NuGet，不能由历史批次/勾选推断当前发包许可。
 
 ## 1. 基线、目标与证据
 

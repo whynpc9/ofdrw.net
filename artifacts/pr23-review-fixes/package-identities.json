@@ -1,0 +1,61 @@
+{
+  "source": "979a93e39dd8cec3fbb4bdd2121d301ea84b2e39",
+  "packages": [
+    {
+      "name": "Ofdrw.Net.Cli.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 25506876,
+      "sha256": "526c657a6388ceb3709ef0dee4b6e55de49b21c946235847a9ca64c7dc331e7b"
+    },
+    {
+      "name": "Ofdrw.Net.Converter.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 26580,
+      "sha256": "cfac158a44ac634fe118edbdfccbcb3d9ee0f67e2ead2815f0ea4d58ea02a5ec"
+    },
+    {
+      "name": "Ofdrw.Net.Converter.Abstractions.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 32865,
+      "sha256": "b3e15d1b75e179999d4b73d7aa4560611c562177431449309327c295b1d3f558"
+    },
+    {
+      "name": "Ofdrw.Net.Converter.Docx.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 204643,
+      "sha256": "fb637af8bfa7f81b46b6619040a4e1fcb932db581aa51f390ebeff36bbe78149"
+    },
+    {
+      "name": "Ofdrw.Net.Converter.Pdf.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 164467,
+      "sha256": "b487149af8b2358d9bda3e7c77e211bd7b37152f6896eb086b5df0e8f0c0b6f1"
+    },
+    {
+      "name": "Ofdrw.Net.Converter.Svg.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 84612,
+      "sha256": "0cf977862dbb6f8bff63cf354dcabaf4f4f0dd0a37513de226bb53629a22af9d"
+    },
+    {
+      "name": "Ofdrw.Net.Core.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 453127,
+      "sha256": "26a2838f80d15be933030b10e55171f273611a086cfbc201f57cdc5db95e394f"
+    },
+    {
+      "name": "Ofdrw.Net.Layout.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 289396,
+      "sha256": "86ea9492e8763665ed6972f9f9e527eb04758cd33ce4318ba029e6069f4f2023"
+    },
+    {
+      "name": "Ofdrw.Net.Packaging.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 256233,
+      "sha256": "50642ba31560389256775dc8aab929e5468c0c5464f41da3b04184def8638ba0"
+    },
+    {
+      "name": "Ofdrw.Net.Reader.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 203601,
+      "sha256": "97afbc4891458e0d05bb40eba47cc0e59b1da66b17f97aee6de825845903d3bc"
+    },
+    {
+      "name": "Ofdrw.Net.Signatures.0.0.0-pr23.20261016.1.nupkg",
+      "bytes": 65838,
+      "sha256": "73572f5b7cd43a7ea8be09acfae12a7c274048741ac609c7e66f882fc253848e"
+    }
+  ],
+  "excluded": "Package bytes remain local; no feeds/cache/runtime/host font payloads committed."
+}

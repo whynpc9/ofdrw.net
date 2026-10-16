@@ -1,0 +1,8 @@
+{
+  "nupkg": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/package-e2e/0.0.0-audit003final/packages/Ofdrw.Net.Converter.Docx.0.0.0-audit003final.nupkg",
+  "nupkg_sha256": "34df032f4637119cb77f544f1b10540f8467960c832a38bee3f6d1fc3ae39b26",
+  "entry": "lib/netstandard2.1/Ofdrw.Net.Converter.Docx.dll",
+  "dll_sha256": "c79360ae7f07b3be4d2dc83fd5e52ad1e441336e892e4c23c9169e16f2ab5d64",
+  "test_runtime_dll": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/tests/Ofdrw.Net.Converter.Docx.Tests/bin/Release/net10.0/Ofdrw.Net.Converter.Docx.dll",
+  "byte_equal": true
+}

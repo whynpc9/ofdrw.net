@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <OfdrwPackageVersion Condition="'$(OfdrwPackageVersion)' == ''">0.1.0-preview.8</OfdrwPackageVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Ofdrw.Net.Converter.Svg" Version="$(OfdrwPackageVersion)" />
+    <PackageReference Include="Ofdrw.Net.Packaging" Version="$(OfdrwPackageVersion)" />
+  </ItemGroup>
+</Project>

@@ -24,6 +24,24 @@ var outputDir = Environment.GetEnvironmentVariable("OFDRW_E2E_OUTPUT_DIR") ?? Pa
 var testDataDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "testdata", "upstream-ofdrw");
 Directory.CreateDirectory(outputDir);
 
+// Consume both plain-text entrypoints from the installed Layout candidate.
+const string plainSource = "  中英 iii WWW\tX\u00A0Y e\u0301  \r\n\r\n尾行\n";
+var plainConverter = new PlainTextOfdConverter();
+var plainString = plainConverter.Render(plainSource);
+using var plainInput = new MemoryStream(System.Text.Encoding.UTF8.GetBytes("\uFEFF" + plainSource));
+var plainUtf8 = await plainConverter.RenderUtf8Async(plainInput);
+foreach (var (label, plainPackage) in new[] { ("string", plainString), ("utf8", plainUtf8) })
+{
+    var path = Path.Combine(outputDir, "plain-text-" + label + ".ofd");
+    await using (var output = File.Create(path)) await new OfdPackageWriter().WriteAsync(plainPackage, output);
+    await using var input = File.OpenRead(path);
+    var parsed = await new OfdReader().ReadAsync(input);
+    var actual = string.Concat(parsed.Pages.SelectMany(p => p.Elements).OfType<OfdTextElement>().Select(t => t.Text));
+    if (actual != plainSource.Replace("\r", "").Replace("\n", "") || parsed.Pages.SelectMany(p => p.Elements).Any(e => e is not OfdTextElement))
+        throw new InvalidOperationException("Plain text package lost whitespace/Unicode or used non-native content.");
+}
+Console.WriteLine("[E2E] Installed Layout plain-text string/strict UTF-8 APIs passed exact native-text roundtrip.");
+
 // Consume the public Layout package through the built nupkg, with no project reference.
 var publicFlow = new FlowDocument();
 publicFlow.Options.PageHeightMillimeters = 60;
@@ -641,13 +659,103 @@ static async Task ValidatePdfSampleAsync(string samplePdf, string outputDir)
         await ofdToPdf.ConvertAsync(ofdInput, pdfOutput);
     }
 
-    var sourcePng = await RenderFirstPageAsync(samplePdf, sampleOutputDir, "source");
-    var roundtripPng = await RenderFirstPageAsync(pdfPath, sampleOutputDir, "roundtrip");
-    await AssertImageHasContentAsync(sourcePng);
-    await AssertImageHasContentAsync(roundtripPng);
-    await AssertImagesSameSizeAsync(sourcePng, roundtripPng);
+    using var sourcePdf = UglyToad.PdfPig.PdfDocument.Open(samplePdf);
+    using var roundtripPdf = UglyToad.PdfPig.PdfDocument.Open(pdfPath);
+    var pageCount = sourcePdf.NumberOfPages;
+    if (pageCount == 0 || roundtripPdf.NumberOfPages != pageCount || parsed.Pages.Count != pageCount)
+        throw new InvalidOperationException(
+            $"Raster roundtrip page count mismatch: source={pageCount}, OFD={parsed.Pages.Count}, output={roundtripPdf.NumberOfPages}: {samplePdf}");
 
-    Console.WriteLine($"[E2E] PDF visual smoke passed: {Path.GetFileName(samplePdf)} -> {ofdPath}");
+    const int dpi = 144;
+    // PDFium import and Poppler readback differ in antialiasing and fractional
+    // resampling: the reviewed 11-page Test/Test3/ff corpus peaks at 0.0942145
+    // (dense Chinese Test page 5). This fixed 0.10 raster-profile limit is not
+    // pixel equality; renderer changes require fresh calibration and review.
+    const double tolerance = 0.10;
+    var resultsPath = Path.Combine(sampleOutputDir, "page-comparisons.csv");
+    await File.WriteAllTextAsync(resultsPath, "page,source_pages,ofd_pages,output_pages,dpi,rmse,tolerance,result\n");
+    for (var page = 1; page <= pageCount; page++)
+    {
+        var pageOutputDir = Path.Combine(sampleOutputDir, $"page-{page:D3}");
+        Directory.CreateDirectory(pageOutputDir);
+        var sourcePng = await RenderPageAsync(samplePdf, page, dpi, pageOutputDir, "source");
+        var roundtripPng = await RenderPageAsync(pdfPath, page, dpi, pageOutputDir, "roundtrip");
+        await AssertImageHasContentAsync(sourcePng);
+        await AssertImageHasContentAsync(roundtripPng);
+        var error = await AssertImagesCloseAsync(sourcePng, roundtripPng, tolerance,
+            Path.Combine(pageOutputDir, "diff.png"));
+        await File.AppendAllTextAsync(resultsPath,
+            FormattableString.Invariant($"{page},{pageCount},{parsed.Pages.Count},{roundtripPdf.NumberOfPages},{dpi},{error:R},{tolerance:R},passed\n"));
+        Console.WriteLine(FormattableString.Invariant(
+            $"[E2E] Raster roundtrip {Path.GetFileName(samplePdf)} page {page}/{pageCount}: RMSE {error:R} <= {tolerance:R} at {dpi} DPI."));
+        if (page == 1)
+            await ValidateRasterComparisonControlsAsync(sourcePng, pageOutputDir, tolerance);
+    }
+
+    Console.WriteLine($"[E2E] PDF raster roundtrip passed all {pageCount} pages: {Path.GetFileName(samplePdf)} -> {ofdPath}");
+}
+
+static async Task ValidateRasterComparisonControlsAsync(string sourcePng, string outputDir, double tolerance)
+{
+    var size = await IdentifySizeAsync(sourcePng);
+    var alteredPath = Path.Combine(outputDir, "negative-content.png");
+    // Preserve size and nonblank content while replacing the central quarter
+    // of the page, including existing sample content, with a visible block.
+    var alter = await RunProcessAsync("convert",
+        $"\"{sourcePng}\" -fill magenta -draw \"rectangle {size.Width / 4},{size.Height / 4} {size.Width * 3 / 4},{size.Height * 3 / 4}\" \"{alteredPath}\"");
+    if (alter.ExitCode != 0)
+        throw new InvalidOperationException($"Content negative control generation failed: {alter.Error}");
+    await AssertImageHasContentAsync(alteredPath);
+    if (await IdentifySizeAsync(alteredPath) != size)
+        throw new InvalidOperationException("Content negative control changed image dimensions.");
+    var resultsPath = Path.Combine(outputDir, "negative-controls.txt");
+    try
+    {
+        await AssertImagesCloseAsync(sourcePng, alteredPath, tolerance,
+            Path.Combine(outputDir, "negative-content-diff.png"));
+    }
+    catch (RenderedPageDifferenceException rejected)
+    {
+        await File.WriteAllTextAsync(resultsPath, FormattableString.Invariant(
+            $"Content: expected rejection, rejected at RMSE {rejected.Error:R} > {tolerance:R}; dimensions {size.Width}x{size.Height} unchanged; nonblank checked.\n"));
+        Console.WriteLine(FormattableString.Invariant(
+            $"[E2E] Content negative control rejected by raster comparator: RMSE {rejected.Error:R} > {tolerance:R}."));
+        await ValidateDimensionControlAsync(sourcePng, outputDir, size, tolerance, resultsPath);
+        return;
+    }
+    throw new InvalidOperationException("Raster comparator accepted the changed-content negative control.");
+}
+
+static async Task ValidateDimensionControlAsync(string sourcePng, string outputDir,
+    (int Width, int Height) size, double tolerance, string resultsPath)
+{
+    var resizedPath = Path.Combine(outputDir, "negative-dimensions.png");
+    var resize = await RunProcessAsync("convert",
+        $"\"{sourcePng}\" -crop {size.Width - 8}x{size.Height}+0+0 +repage \"{resizedPath}\"");
+    if (resize.ExitCode != 0)
+        throw new InvalidOperationException($"Dimension negative control generation failed: {resize.Error}");
+    await AssertImageHasContentAsync(resizedPath);
+    try
+    {
+        await AssertImagesCloseAsync(sourcePng, resizedPath, tolerance);
+    }
+    catch (InvalidOperationException rejected) when (rejected.Message.StartsWith("Rendered image size mismatch.", StringComparison.Ordinal))
+    {
+        await File.AppendAllTextAsync(resultsPath, $"Dimensions: expected rejection, rejected: {rejected.Message}\n");
+        Console.WriteLine($"[E2E] Dimension negative control rejected by raster comparator: {rejected.Message}");
+        return;
+    }
+    throw new InvalidOperationException("Raster comparator accepted the dimension-mismatch negative control.");
+}
+
+static async Task<string> RenderPageAsync(string pdfPath, int page, int dpi, string outputDir, string name)
+{
+    var outputPrefix = Path.Combine(outputDir, name);
+    var result = await RunProcessAsync("pdftoppm", $"-f {page} -l {page} -r {dpi} -png -singlefile \"{pdfPath}\" \"{outputPrefix}\"");
+    var pngPath = outputPrefix + ".png";
+    if (result.ExitCode != 0 || !File.Exists(pngPath))
+        throw new InvalidOperationException($"pdftoppm failed for page {page} of {pdfPath}: {result.Error}");
+    return pngPath;
 }
 
 static async Task<string> RenderFirstPageAsync(string pdfPath, string outputDir, string name)
@@ -698,8 +806,11 @@ static async Task<double> AssertImagesCloseAsync(string expected, string actual,
     var result = await RunProcessAsync("compare", $"-metric RMSE \"{expected}\" \"{actual}\" \"{diffPath ?? "null:"}\"");
     var match = System.Text.RegularExpressions.Regex.Match(result.Error, @"\(([0-9.eE+-]+)\)");
     if (result.ExitCode > 1 || !match.Success ||
-        !double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var error) || error > tolerance)
-        throw new InvalidOperationException($"Rendered pages differ beyond {tolerance}: {expected} vs {actual}; {result.Error}");
+        !double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var error) || !double.IsFinite(error))
+        throw new InvalidOperationException($"Image comparison failed: {expected} vs {actual}; {result.Error}");
+    if (error > tolerance)
+        throw new RenderedPageDifferenceException(error,
+            $"Rendered pages differ beyond {tolerance}: {expected} vs {actual}; {result.Error}");
     return error;
 }
 
@@ -785,6 +896,11 @@ static async Task<(int ExitCode, string Output, string Error)> RunProcessAsync(s
         try { await Task.WhenAll(stdout, stderr); } catch (OperationCanceledException) { }
         throw new TimeoutException($"Visual validation process timed out: {fileName}", exception);
     }
+}
+
+sealed class RenderedPageDifferenceException(double error, string message) : InvalidOperationException(message)
+{
+    public double Error { get; } = error;
 }
 
 sealed class HostFailureResolver(PdfSharpCore.Fonts.IFontResolver host, string repoRoot) : PdfSharpCore.Fonts.IFontResolver

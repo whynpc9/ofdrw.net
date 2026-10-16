@@ -1,4 +1,5 @@
 using Ofdrw.Net.Core.Fonts;
+using Ofdrw.Net.Converter.Svg.Internal;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -26,11 +27,19 @@ public sealed class OfdToSvgConverter
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly OfdPackageLoadOptions _loadOptions;
+    private readonly long _maximumFontParseWork;
 
     public OfdToSvgConverter() : this(new OfdPackageLoadOptions()) { }
 
-    public OfdToSvgConverter(OfdPackageLoadOptions loadOptions)
+    public OfdToSvgConverter(OfdPackageLoadOptions loadOptions) : this(loadOptions, FontParseBudget.DefaultMaximumWork) { }
+
+    /// <summary>Creates an SVG exporter with a finite cumulative cmap parse budget.</summary>
+    /// <param name="loadOptions">OFD loading limits.</param>
+    /// <param name="maximumCmapParseWork">Positive cumulative limit for cmap bytes, parsed records and entries inspected by variation coverage queries.</param>
+    public OfdToSvgConverter(OfdPackageLoadOptions loadOptions, long maximumCmapParseWork)
     {
+        if (maximumCmapParseWork <= 0) throw new ArgumentOutOfRangeException(nameof(maximumCmapParseWork));
+        _maximumFontParseWork = maximumCmapParseWork;
         _loadOptions = loadOptions ?? throw new ArgumentNullException(nameof(loadOptions));
     }
 
@@ -62,7 +71,7 @@ public sealed class OfdToSvgConverter
         var material = new OfdModelMaterialization(new OfdModelLimits());
         OfdCompositeGraph.Validate(package, material, cancellationToken);
         OfdAnnotationContract.Validate(package, material, cancellationToken);
-        var svg = BuildSvg(package, pages[pageIndex], material, cancellationToken);
+        var svg = BuildSvg(package, pages[pageIndex], material, new FontParseBudget(_maximumFontParseWork, cancellationToken), cancellationToken);
         var bytes = Encoding.UTF8.GetBytes(
             new XDocument(new XDeclaration("1.0", "utf-8", null), svg)
                 .ToString(SaveOptions.DisableFormatting));
@@ -71,8 +80,9 @@ public sealed class OfdToSvgConverter
         await svgOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, CancellationToken cancellationToken)
+    internal static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, FontParseBudget parseBudget, CancellationToken cancellationToken, HtmlRenderContext? preview = null)
     {
+        preview?.StartPage(page);
         var svgNs = XNamespace.Get("http://www.w3.org/2000/svg");
         var root = new XElement(
             svgNs + "svg",
@@ -83,13 +93,14 @@ public sealed class OfdToSvgConverter
                 "viewBox",
                 $"0 0 {Invariant(page.WidthMillimeters)} {Invariant(page.HeightMillimeters)}"));
 
-        var families = AddEmbeddedFonts(root, svgNs, package.Fonts);
+        var families = AddEmbeddedFonts(root, svgNs, package.Fonts, parseBudget, preview);
         var imageIndex = 0;
         var objectIndex = 0;
         foreach (var element in OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
+            preview?.BeforeElement(element);
             if (element is OfdRawElement glyphXml && EmbeddedFontCoverage.HasExplicitGlyphReferences(glyphXml.Xml))
                 throw new NotSupportedException("SVG export does not model raw CGTransform glyph substitutions.");
             if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
@@ -102,7 +113,7 @@ public sealed class OfdToSvgConverter
                 var regionIndex = 0;
                 foreach (var region in OfdClipGeometry.Read(element, material, cancellationToken))
                 {
-                    var id = $"object-{objectIndex}-clip-{regionIndex++}";
+                    var id = (preview?.Prefix ?? "") + $"object-{objectIndex}-clip-{regionIndex++}";
                     defs.Add(new XElement(svgNs + "clipPath", new XAttribute("id", id), new XAttribute("clipPathUnits", "userSpaceOnUse"),
                         region.Paths.Select(path => new XElement(svgNs + "path", new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
                             new XAttribute("clip-rule", region.EvenOdd ? "evenodd" : "nonzero"),
@@ -114,18 +125,19 @@ public sealed class OfdToSvgConverter
             objectIndex++;
             if (element is OfdTextElement text)
             {
-                AddText(target, svgNs, page, text, package.Fonts, families);
+                AddText(target, svgNs, page, OfdTextRenderProjection.Create(text, material, cancellationToken), package.Fonts, families, cancellationToken);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
-                AddImage(root, svgNs, page, image, imageIndex++, material, cancellationToken);
+                AddImage(root, svgNs, page, image, imageIndex++, material, cancellationToken, preview);
             }
             else if (element is OfdPathElement path &&
                 !string.IsNullOrWhiteSpace(path.AbbreviatedData))
             {
+                var style = OfdPathStyle.Read(path);
                 var pathNode = new XElement(
                     svgNs + "path",
-                    new XAttribute("fill-rule", OfdPathStyle.EvenOdd(path) ? "evenodd" : "nonzero"),
+                    new XAttribute("fill-rule", style.IsEvenOdd ? "evenodd" : "nonzero"),
                     new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
                     new XAttribute(
                         "stroke",
@@ -144,27 +156,19 @@ public sealed class OfdToSvgConverter
                         path.Transform)));
                 if (path.Stroke)
                 {
-                    // Preserve declared stroke settings; absent attributes retain
-                    // the existing exporter defaults for legacy objects.
-                    foreach (var pair in new[] { ("Cap", "stroke-linecap"), ("Join", "stroke-linejoin"), ("MiterLimit", "stroke-miterlimit") })
+                    if (style.Cap is { } cap) pathNode.SetAttributeValue("stroke-linecap", cap);
+                    if (style.Join is { } join) pathNode.SetAttributeValue("stroke-linejoin", join);
+                    if (style.MiterLimit is { } miter) pathNode.SetAttributeValue("stroke-miterlimit", OfdNumericFormat.Plain(miter));
+                    if (style.DashPattern is { } dash)
                     {
-                        var value = OfdPathStyle.Attribute(path, pair.Item1);
-                        if (value is not null) pathNode.SetAttributeValue(pair.Item2, pair.Item1 == "MiterLimit" ? value : value.ToLowerInvariant());
+                        pathNode.SetAttributeValue("stroke-dasharray", string.Join(" ", dash.Select(OfdNumericFormat.Plain)));
+                        pathNode.SetAttributeValue("stroke-dashoffset", OfdNumericFormat.Plain(style.DashOffset));
                     }
                 }
-                if (path.Stroke && path.StrokeColor.Alpha != 255)
-                {
-                    pathNode.SetAttributeValue(
-                        "stroke-opacity",
-                        Invariant(path.StrokeColor.Alpha / 255d));
-                }
-
-                if (path.Fill && (path.FillColor ?? path.StrokeColor).Alpha != 255)
-                {
-                    pathNode.SetAttributeValue(
-                        "fill-opacity",
-                        Invariant((path.FillColor ?? path.StrokeColor).Alpha / 255d));
-                }
+                var strokeAlpha = path.StrokeColor.Alpha / 255d * style.Alpha;
+                var fillAlpha = (path.FillColor ?? path.StrokeColor).Alpha / 255d * style.Alpha;
+                if (path.Stroke && strokeAlpha != 1) pathNode.SetAttributeValue("stroke-opacity", OfdNumericFormat.Plain(strokeAlpha));
+                if (path.Fill && fillAlpha != 1) pathNode.SetAttributeValue("fill-opacity", OfdNumericFormat.Plain(fillAlpha));
 
                 target.Add(pathNode);
             }
@@ -174,21 +178,29 @@ public sealed class OfdToSvgConverter
     }
 
     private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> AddEmbeddedFonts(
-        XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts)
+        XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, FontParseBudget parseBudget, HtmlRenderContext? preview)
     {
         var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
         var css = new StringBuilder();
         foreach (var font in fonts.Where(font => font.Data.Length > 0))
         {
-            var data = OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
-            var family = "ofd-font-" + BinaryIdentity.Hash(data);
+            parseBudget.Spend(0);
+            var cached = preview?.Font(font, parseBudget);
+            var data = cached?.Data ?? OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
+            var family = (preview?.FontPrefix ?? "ofd-font-") + (cached?.Hash ?? BinaryIdentity.Hash(data));
             if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known); continue; }
-            var face = new OpenTypeFace(data); OpenTypeCmap? coverage = null;
-            try { coverage = new OpenTypeCmap(face); }
-            catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
+            preview?.BeforeFontEmission(data);
+            OpenTypeCmap? coverage = cached?.Coverage;
+            (bool Bold, bool Italic) style;
+            if (cached.HasValue) style = (cached.Value.Bold, cached.Value.Italic);
+            else
+            {
+                var face = new OpenTypeFace(data); style = face.Style;
+                try { coverage = new OpenTypeCmap(face, parseBudget); }
+                catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
+            }
             families[font] = (family, coverage); emitted.Add(family, coverage);
-            var style = face.Style;
             var openType = data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O';
             css.Append("@font-face{font-family:'").Append(family).Append("';src:url(data:font/")
                 .Append(openType ? "otf" : "ttf").Append(";base64,").Append(Convert.ToBase64String(data))
@@ -200,14 +212,14 @@ public sealed class OfdToSvgConverter
         return families;
     }
 
-    private static void AddImage(XElement root, XNamespace ns, OfdPage page, OfdImageElement image, int index, OfdModelMaterialization material, CancellationToken cancellationToken)
+    private static void AddImage(XElement root, XNamespace ns, OfdPage page, OfdImageElement image, int index, OfdModelMaterialization material, CancellationToken cancellationToken, HtmlRenderContext? preview)
     {
         var group = new XElement(ns + "g", new XAttribute("transform", BuildTransform(
             image.XMillimeters - page.XMillimeters, image.YMillimeters - page.YMillimeters, null)),
             new XAttribute("opacity", Invariant(Math.Max(0, Math.Min(255, image.Alpha)) / 255d)));
         var defs = root.Element(ns + "defs");
         if (defs is null) { defs = new XElement(ns + "defs"); root.AddFirst(defs); }
-        var boundaryId = $"image-{index}-boundary";
+        var boundaryId = (preview?.Prefix ?? "") + $"image-{index}-boundary";
         defs.Add(new XElement(ns + "clipPath", new XAttribute("id", boundaryId), new XAttribute("clipPathUnits", "userSpaceOnUse"),
             new XElement(ns + "rect", new XAttribute("width", Invariant(image.WidthMillimeters)), new XAttribute("height", Invariant(image.HeightMillimeters)))));
         var content = new XElement(ns + "g", new XAttribute("clip-path", $"url(#{boundaryId})"));
@@ -215,7 +227,7 @@ public sealed class OfdToSvgConverter
         var clipIndex = 0;
         foreach (var region in OfdClipGeometry.Read(image, material, cancellationToken))
         {
-            var id = $"image-{index}-clip-{clipIndex++}";
+            var id = (preview?.Prefix ?? "") + $"image-{index}-clip-{clipIndex++}";
             defs.Add(new XElement(ns + "clipPath", new XAttribute("id", id), new XAttribute("clipPathUnits", "userSpaceOnUse"),
                 region.Paths.Select(path => new XElement(ns + "path", new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
                     new XAttribute("clip-rule", region.EvenOdd ? "evenodd" : "nonzero"),
@@ -240,7 +252,7 @@ public sealed class OfdToSvgConverter
         OfdPage page,
         OfdTextElement text,
         IReadOnlyList<OfdFontResource> fonts,
-        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families)
+        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families, CancellationToken cancellationToken)
     {
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
             throw new NotSupportedException("SVG export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
@@ -250,7 +262,7 @@ public sealed class OfdToSvgConverter
         {
             family = embedded.Family;
             if (embedded.Coverage is null || embedded.Coverage.IsSymbol) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
-            EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName);
+            EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName, cancellationToken);
         }
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
@@ -282,7 +294,7 @@ public sealed class OfdToSvgConverter
                     Invariant(text.FillColor.Alpha / 255d));
             }
 
-            if (text.Text.All(char.IsWhiteSpace)) node.SetAttributeValue("fill-opacity", "0");
+            if (OfdTextGeometry.IsWhiteSpace(text.Text, cancellationToken)) node.SetAttributeValue("fill-opacity", "0");
             root.Add(node);
             return;
         }
@@ -303,9 +315,8 @@ public sealed class OfdToSvgConverter
                 new XAttribute("fill", ToCssColor(text.FillColor)),
                 new XAttribute("transform", transform),
                 run.Text);
-            var glyphs = OfdTextGeometry.Glyphs(run.Text);
-            var deltaX = OfdTextGeometry.ExpandDeltas(run.DeltaX, Math.Max(0, glyphs.Count - 1));
-            var deltaY = OfdTextGeometry.ExpandDeltas(run.DeltaY, Math.Max(0, glyphs.Count - 1));
+            var deltas = OfdTextGeometry.PositioningDeltas(run, cancellationToken);
+            var deltaX = deltas.X; var deltaY = deltas.Y;
             if (deltaX.Count > 0 || deltaY.Count > 0)
             {
                 // OFD deltas locate adjacent origins. SVG dx/dy add to the
@@ -313,15 +324,17 @@ public sealed class OfdToSvgConverter
                 node.RemoveNodes();
                 var x = run.XMillimeters;
                 var y = run.YMillimeters;
-                for (var index = 0; index < glyphs.Count; index++)
+                var index = 0;
+                foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
                 {
                     var glyphAnchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
                     var span = new XElement(svgNs + "tspan", new XAttribute("x", OfdNumericFormat.Plain(glyphAnchor.X)),
-                        new XAttribute("y", OfdNumericFormat.Plain(glyphAnchor.Y)), glyphs[index]);
-                    if (glyphs[index].All(char.IsWhiteSpace)) span.SetAttributeValue("fill-opacity", "0");
+                        new XAttribute("y", OfdNumericFormat.Plain(glyphAnchor.Y)), glyph);
+                    if (OfdTextGeometry.IsWhiteSpace(glyph, cancellationToken)) span.SetAttributeValue("fill-opacity", "0");
                     node.Add(span);
                     if (index < deltaX.Count) x += deltaX[index];
                     if (index < deltaY.Count) y += deltaY[index];
+                    index++;
                 }
             }
 
@@ -332,7 +345,7 @@ public sealed class OfdToSvgConverter
                     Invariant(text.FillColor.Alpha / 255d));
             }
 
-            if (run.Text.All(char.IsWhiteSpace)) node.SetAttributeValue("fill-opacity", "0");
+            if (OfdTextGeometry.IsWhiteSpace(run.Text, cancellationToken)) node.SetAttributeValue("fill-opacity", "0");
             root.Add(node);
         }
     }

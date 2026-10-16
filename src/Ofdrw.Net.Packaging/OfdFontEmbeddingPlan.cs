@@ -17,10 +17,14 @@ internal sealed class OfdFontEmbeddingPlan
     internal bool CanonicalPayloads { get; }
 
     internal OfdFontEmbeddingPlan(OfdDocumentPackage package, CancellationToken cancellationToken)
+        : this(package, cancellationToken, new OfdModelMaterialization(new OfdModelLimits())) { }
+
+    internal OfdFontEmbeddingPlan(OfdDocumentPackage package, CancellationToken cancellationToken, OfdModelMaterialization material)
     {
         var options = package.Options.FontEmbedding ?? throw new ArgumentException("FontEmbedding is required.");
-        if (options.MaximumCollectionBytes <= 0 || options.MaximumFontBytes <= 0 || options.MaximumUsedScalars <= 0 || options.MaximumGlyphClosureOperations <= 0 || !Enum.IsDefined(typeof(OfdFontEmbeddingMode), options.Mode))
+        if (options.MaximumCmapParseWork <= 0 || options.MaximumCollectionBytes <= 0 || options.MaximumFontBytes <= 0 || options.MaximumUsedScalars <= 0 || options.MaximumGlyphClosureOperations <= 0 || !Enum.IsDefined(typeof(OfdFontEmbeddingMode), options.Mode))
             throw new ArgumentOutOfRangeException(nameof(package), "Invalid font embedding options.");
+        var parseBudget = new FontParseBudget(options.MaximumCmapParseWork, cancellationToken);
         var unsafeReason = PreservationReason(package, cancellationToken);
         CanonicalPayloads = unsafeReason is null;
         // Snapshot selected faces once per content/index, then aggregate aliases
@@ -90,7 +94,7 @@ internal sealed class OfdFontEmbeddingPlan
             if (options.Mode != OfdFontEmbeddingMode.Full)
             {
                 OpenTypeCmap? cmap = null;
-                try { if (face is not null) { cmap = new OpenTypeCmap(face); if (cmap.IsSymbol)
+                try { if (face is not null) { cmap = new OpenTypeCmap(face, parseBudget); if (cmap.IsSymbol)
                     {
                         reason ??= "Windows symbol cmap retained in full; Unicode coverage/subsetting is unverified.";
                         cmap = null;
@@ -106,8 +110,9 @@ internal sealed class OfdFontEmbeddingPlan
                         Diagnostics.Add("FONT_COVERAGE_UNVERIFIED " + group.Key + ": CGTransform has explicit glyph references; original font preserved.");
                         continue;
                     }
-                    if (cmap is not null) EmbeddedFontCoverage.Validate(text, cmap, aliases[0].FontName, cancellationToken);
-                    var strings = text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text);
+                    var effective = OfdTextRenderProjection.CreateLogical(text, material, cancellationToken);
+                    if (cmap is not null) EmbeddedFontCoverage.Validate(effective, cmap, aliases[0].FontName, cancellationToken);
+                    var strings = effective.Runs.Count == 0 ? new[] { effective.Text } : effective.Runs.Select(run => run.Text);
                     foreach (var value in strings)
                     {
                         foreach (var normalized in NormalizeForUsage(value, cancellationToken))
@@ -126,7 +131,7 @@ internal sealed class OfdFontEmbeddingPlan
                 {
                     if (reason is not null) throw new NotSupportedException(reason);
                     if (face is null || !face.Tables.ContainsKey("glyf")) throw new NotSupportedException("CFF/CFF2 outline subsetting is not implemented; full font retained.");
-                    payload = TrueTypeSubset.Create(face, used, cancellationToken, options.MaximumGlyphClosureOperations, out var retained, out var original);
+                    payload = TrueTypeSubset.Create(face, used, cancellationToken, options.MaximumGlyphClosureOperations, parseBudget, out var retained, out var original, cmap);
                     payload = OpenTypeFontIdentity.WithUniqueNames(payload, BinaryIdentity.Hash(payload));
                     result.RetainedGlyphs = retained; result.OriginalGlyphs = original; result.IsSubset = retained < original;
                     if (!result.IsSubset) { payload = source; reason = "Glyph closure retains every glyph; full font retained."; }

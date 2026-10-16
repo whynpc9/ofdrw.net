@@ -80,6 +80,17 @@ CONSUMER="$TASK_DIR/consumer/Consumer.csproj"
 dotnet restore "$CONSUMER" --configfile "$TASK_DIR/NuGet.Config" -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
 dotnet build "$CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
 dotnet tool install Ofdrw.Net.Cli --tool-path "$TASK_DIR/tools" --version "$VERSION" --configfile "$TASK_DIR/NuGet.Config"
+python3 - "$RESULT_DIR/cli-plain-text.txt" <<'PY_TEXT'
+import pathlib, sys
+pathlib.Path(sys.argv[1]).write_bytes("\ufeff中英 iii WWW\r\n\r\n尾行\n".encode('utf-8'))
+PY_TEXT
+"$TASK_DIR/tools/ofdrw" text-to-ofd "$RESULT_DIR/cli-plain-text.txt" "$RESULT_DIR/cli-plain-text.ofd"
+"$TASK_DIR/tools/ofdrw" extract-text "$RESULT_DIR/cli-plain-text.ofd" "$RESULT_DIR/cli-plain-text-extracted.txt"
+python3 - "$RESULT_DIR/cli-plain-text-extracted.txt" <<'PY_TEXT_CHECK'
+import pathlib, sys
+text = pathlib.Path(sys.argv[1]).read_text()
+assert text.count('中英 iii WWW') == 1 and text.count('尾行') == 1, repr(text)
+PY_TEXT_CHECK
 "$TASK_DIR/tools/ofdrw" docx-to-ofd \
   "$ROOT_DIR/e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx" "$RESULT_DIR/cli-native.ofd"
 "$TASK_DIR/tools/ofdrw" ofd-to-image "$RESULT_DIR/cli-native.ofd" "$RESULT_DIR/cli-image.png" --pages 1 --ppm 2

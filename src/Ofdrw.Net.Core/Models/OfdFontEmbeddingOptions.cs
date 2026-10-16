@@ -15,6 +15,9 @@ public sealed class OfdFontEmbeddingOptions
     /// <summary>Maximum distinct Unicode scalars in a face's package-wide usage closure.</summary>
     public int MaximumUsedScalars { get; set; } = 65535;
 
+    /// <summary>Maximum cumulative cmap work per embedding operation. Charges bytes and records before parse expansion and entries inspected by variation coverage queries against the same budget; the finite 64 Mi-unit default permits repeated CJK font parses with a generous corpus margin.</summary>
+    public long MaximumCmapParseWork { get; set; } = 64L * 1024 * 1024;
+
     /// <summary>Maximum total GSUB/composite closure operations per face, including repeated passes.</summary>
     public long MaximumGlyphClosureOperations { get; set; } = 2_000_000;
 }

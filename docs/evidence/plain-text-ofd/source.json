@@ -1,0 +1,25 @@
+{
+  "frozen_base": "3247c76f95c9a3312cc26144e24c4984767af26f",
+  "implementation_commit": "7e336785e91c835a86919966cd59908893281ecd",
+  "worktree": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net",
+  "package_version": "0.0.0-audit028",
+  "package_source_note": "Built/tested prospective source before its local commit; files below match implementation commit. Package repository commit metadata may name frozen base. No source changes occurred after validation.",
+  "files": {
+    "docs/plain-text-ofd.md": "f54f7e34a97f30de44e7a21ae844a575c7dcb2058ef11b3e46467e9a155606ce",
+    "e2e/Ofdrw.Net.Converter.Pdf.E2E/Program.cs": "8665361a674e2cfcfd3df46bb002a2e7e1420ede5b47e5c53ad201bc7b74f2b4",
+    "scripts/run-converter-package-e2e.sh": "469a53b9597b4135c2a623f1ed1c623e06037716327957834fe59290b9fdff80",
+    "src/Ofdrw.Net.Cli/Cli.PlainText.cs": "8530c0a272bf4ad01fe9c03a491ce9f7436d612836638eb730e98dbe131bd23f",
+    "src/Ofdrw.Net.Cli/Ofdrw.Net.Cli.csproj": "b5310263c1cfbdaa69699d763dc9459d2e2c707d8477347e7295bcec17100821",
+    "src/Ofdrw.Net.Cli/Program.cs": "c99bde4b393606270d66de90b4d16c0dd25d1d722bb56dbe2e598edf94a9d18a",
+    "src/Ofdrw.Net.Layout/PlainTextOfdConverter.cs": "3c78deeeea9eabe9a105f6a45d373b96eeefe00810ddec55592db3bcfe7b5a17",
+    "src/Ofdrw.Net.Layout/PlainTextOfdOptions.cs": "f4f5d5c696bafd877bb27ed7a4396568d16de0eee56c892175bfe1b281977ebc",
+    "tests/Ofdrw.Net.Cli.Tests/PlainTextCommandTests.cs": "d6971efa5e9711484485551814f5aa3aaaca122f6654bde13d8465d75c25d869",
+    "tests/Ofdrw.Net.Layout.Tests/PlainTextOfdTests.cs": "717b12b3b4bf643d296955cb036dac2844a02c4852be86e4bc7e1de7018a7064"
+  },
+  "font": {
+    "ofd": "name-only SimSun; portable Flow metrics; no embedded bytes",
+    "pdf_fallback_path": "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    "pdf_fallback_sha256": "876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec",
+    "coverage": "actual scoped CJK/Latin samples inspected; no general glyph-coverage guarantee"
+  }
+}

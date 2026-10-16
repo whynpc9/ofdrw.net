@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="6874dd58-cf18-45f4-9239-ab0c5faf788f" name="@wanghongyideMacBook-Pro 2026-10-16 10:23:32" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-16T10:23:32.6637000+08:00" queuing="2026-10-16T10:23:32.6637000+08:00" start="2026-10-16T10:23:31.9258810+08:00" finish="2026-10-16T10:23:32.6660770+08:00" />
+  <TestSettings name="default" id="cb874b90-8497-4760-b4e8-f9286962f1d1">
+    <Deployment runDeploymentRoot="_wanghongyideMacBook-Pro_2026-10-16_10_23_32" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="c3ccbdeb-79bf-4d39-a302-f445a5609c22" testId="e0c96849-62c8-a471-3560-f79b8766b4fd" testName="Ofdrw.Net.Converter.Docx.Tests.DocxConversionTests.BuiltInPdf_RegularFaceItalicKeepsAnchorsAndAdjacentRegularUpright" computerName="wanghongyideMacBook-Pro" duration="00:00:00.3806049" startTime="2026-10-16T10:23:32.2265840+08:00" endTime="2026-10-16T10:23:32.6136350+08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c3ccbdeb-79bf-4d39-a302-f445a5609c22">
+      <Output>
+        <ErrorInfo>
+          <Message>Glyph 3 must be visibly italic; skew=0</Message>
+          <StackTrace>   at Ofdrw.Net.Converter.Docx.Tests.DocxConversionTests.BuiltInPdf_RegularFaceItalicKeepsAnchorsAndAdjacentRegularUpright() in /Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/tests/Ofdrw.Net.Converter.Docx.Tests/BuiltInPdfItalicTests.cs:line 42
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Ofdrw.Net.Converter.Docx.Tests.DocxConversionTests.BuiltInPdf_RegularFaceItalicKeepsAnchorsAndAdjacentRegularUpright" storage="/users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/tests/ofdrw.net.converter.docx.tests/bin/release/net10.0/ofdrw.net.converter.docx.tests.dll" id="e0c96849-62c8-a471-3560-f79b8766b4fd">
+      <Execution id="c3ccbdeb-79bf-4d39-a302-f445a5609c22" />
+      <TestMethod codeBase="/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/tests/Ofdrw.Net.Converter.Docx.Tests/bin/Release/net10.0/Ofdrw.Net.Converter.Docx.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Ofdrw.Net.Converter.Docx.Tests.DocxConversionTests" name="BuiltInPdf_RegularFaceItalicKeepsAnchorsAndAdjacentRegularUpright" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="e0c96849-62c8-a471-3560-f79b8766b4fd" executionId="c3ccbdeb-79bf-4d39-a302-f445a5609c22" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="1" executed="1" passed="0" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.12)
+[xUnit.net 00:00:00.04]   Discovering: Ofdrw.Net.Converter.Docx.Tests
+[xUnit.net 00:00:00.07]   Discovered:  Ofdrw.Net.Converter.Docx.Tests
+[xUnit.net 00:00:00.08]   Starting:    Ofdrw.Net.Converter.Docx.Tests
+[xUnit.net 00:00:00.48]       Glyph 3 must be visibly italic; skew=0
+[xUnit.net 00:00:00.48]       Stack Trace:
+[xUnit.net 00:00:00.48]         /Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/tests/Ofdrw.Net.Converter.Docx.Tests/BuiltInPdfItalicTests.cs(42,0): at Ofdrw.Net.Converter.Docx.Tests.DocxConversionTests.BuiltInPdf_RegularFaceItalicKeepsAnchorsAndAdjacentRegularUpright()
+[xUnit.net 00:00:00.48]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.49]   Finished:    Ofdrw.Net.Converter.Docx.Tests
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="wanghongyideMacBook-Pro" outcome="Error" timestamp="2026-10-16T10:23:32.6147830+08:00">
+        <Text>[xUnit.net 00:00:00.48]     Ofdrw.Net.Converter.Docx.Tests.DocxConversionTests.BuiltInPdf_RegularFaceItalicKeepsAnchorsAndAdjacentRegularUpright [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

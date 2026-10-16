@@ -1,0 +1,56 @@
+{
+  "mode": "default",
+  "pid": 53835,
+  "runtime": ".NET 10.0.12",
+  "os": "macOS 26.6.2",
+  "architecture": "Arm64",
+  "corePath": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/process-matrix-v2-app/netstandard20/Ofdrw.Net.Core.dll",
+  "coreSha256": "E02EE3869D2919A117DC36213E049ADB19F69EF41BB5E82F03FE606542188872",
+  "cases": [
+    {
+      "name": "all-four-embedded-assets-and-private-extraction",
+      "outcome": "Passed",
+      "milliseconds": 15
+    },
+    {
+      "name": "real-zero-no-shell",
+      "outcome": "Passed",
+      "milliseconds": 213
+    },
+    {
+      "name": "real-seven",
+      "outcome": "Passed",
+      "milliseconds": 245
+    },
+    {
+      "name": "argv-cwd-environment",
+      "outcome": "Passed",
+      "milliseconds": 236
+    },
+    {
+      "name": "missing-executable-native-error",
+      "outcome": "Passed",
+      "milliseconds": 174
+    },
+    {
+      "name": "non-executable-native-error",
+      "outcome": "Passed",
+      "milliseconds": 186
+    },
+    {
+      "name": "bounded-timeout",
+      "outcome": "Passed",
+      "milliseconds": 384
+    },
+    {
+      "name": "bounded-cancellation",
+      "outcome": "Passed",
+      "milliseconds": 381
+    },
+    {
+      "name": "parent-first-descendant-cleanup",
+      "outcome": "Passed",
+      "milliseconds": 1032
+    }
+  ]
+}

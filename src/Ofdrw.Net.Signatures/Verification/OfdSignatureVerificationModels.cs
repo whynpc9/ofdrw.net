@@ -47,8 +47,13 @@ public sealed class OfdSignatureVerificationReport
     public List<string> Issues { get; } = new();
     /// <summary>True when OFD.xml declares a signatures list, including a missing, empty or malformed list.</summary>
     public bool HasSignatureDeclarations { get; internal set; }
+    /// <summary>True when every declared signatures list has a nonblank location, can be parsed, and contains at least one signature record.</summary>
+    public bool SignatureDeclarationsComplete { get; internal set; }
+    /// <summary>False when verification stopped because a configured cumulative work limit was exceeded.</summary>
+    public bool VerificationWorkComplete { get; internal set; } = true;
     public bool HasSignatures => Signatures.Count > 0;
     public bool ReferenceIntegrityValid =>
+        VerificationWorkComplete && SignatureDeclarationsComplete &&
         HasSignatures && Signatures.All(signature => signature.ReferenceIntegrityValid);
     public bool FullyValid =>
         ReferenceIntegrityValid &&

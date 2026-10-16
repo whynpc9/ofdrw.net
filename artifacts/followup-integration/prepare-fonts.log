@@ -1,0 +1,9 @@
+{
+  "bundleSha256": "40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59",
+  "directory": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/followup-integration/trusted-fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59",
+  "environment": {
+    "OFDRW_REQUIRE_TRUSTED_FONTS": "1",
+    "OFDRW_TEST_TRUSTED_LATIN_FONT": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/followup-integration/trusted-fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59/fonts/NotoSans-Regular.ttf",
+    "OFDRW_TEST_TRUSTED_CJK_FONT": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/followup-integration/trusted-fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59/fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf"
+  }
+}

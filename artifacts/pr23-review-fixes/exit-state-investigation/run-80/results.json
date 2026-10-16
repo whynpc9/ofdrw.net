@@ -1,0 +1,16 @@
+{
+  "mode": "default",
+  "pid": 1529,
+  "runtime": ".NET 10.0.13",
+  "os": "Ubuntu 24.04.5 LTS",
+  "architecture": "Arm64",
+  "corePath": "/app/netstandard20/Ofdrw.Net.Core.dll",
+  "coreSha256": "E02EE3869D2919A117DC36213E049ADB19F69EF41BB5E82F03FE606542188872",
+  "cases": [
+    {
+      "name": "parent-first-descendant-cleanup",
+      "outcome": "Passed",
+      "milliseconds": 174
+    }
+  ]
+}

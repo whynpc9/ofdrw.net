@@ -1,0 +1,24 @@
+{
+  "input": [
+    "Nested/Doc/Attachs/Attachments.xml",
+    "Nested/Doc/Attachs/Attach_1_original.bin",
+    "Nested/Doc/Attachs/Attach_2_second.bin",
+    "Nested/Doc/Document.xml",
+    "Nested/Doc/Pages/Page_0/Content.xml",
+    "Nested/Doc/Pages/Page_1/Content.xml",
+    "Nested/Doc/PublicRes.xml",
+    "OFD.xml"
+  ],
+  "output": [
+    "Nested/Doc/Attachs/Attachments.xml",
+    "Nested/Doc/Attachs/Attachments.xml.1",
+    "Nested/Doc/Attachs/Attach_1_original.bin",
+    "Nested/Doc/Attachs/Attach_1_renamed.bin",
+    "Nested/Doc/Attachs/Attach_2_second.bin",
+    "Nested/Doc/Attachs/Attach_2_second.bin.1",
+    "Nested/Doc/Document.xml",
+    "Nested/Doc/Pages/Page_1/Content.xml",
+    "Nested/Doc/PublicRes.xml",
+    "OFD.xml"
+  ]
+}

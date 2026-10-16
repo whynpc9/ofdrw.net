@@ -61,6 +61,28 @@ Doc_0/Signs/
 
 源项目 `ofdrw-sign` + `ofdrw-gm` 覆盖更完整的国密签章数据结构；密码应用包 `ofdrw-crypto` 对应 GM/T 0099，本仓库明确未实现。无密码厂商时能做什么、不做什么，见 [能力路线图](../capability-roadmap.md) 第 1 节与 P2。
 
+## 验签工作额度与取消
+
+`OfdSignatureVerifier` 的既有构造方法和 `VerifyAsync` 调用保持可用。默认每次验证最多访问 1,024 条签名记录、100,000 次引用，实际引用摘要累计最多散列 1 GiB。可按受信业务文件的规模调整正值上限：
+
+```csharp
+var verifier = new OfdSignatureVerifier(
+    signedValueVerifiers: null,
+    options: new OfdSignatureVerificationOptions
+    {
+        MaxSignatureRecords = 64,
+        MaxReferenceVisits = 10_000,
+        MaxDigestBytes = 256L * 1024 * 1024
+    });
+var report = await verifier.VerifyAsync(input, cancellationToken);
+```
+
+额度在每次 `VerifyAsync` 开始时独立计数；构造时复制选项，后续修改选项不会改变验证器。所有签名列表共享同一次验证的额度，恰好达到上限仍可完成。越界会停止后续验证，`VerificationWorkComplete` 为 `false`，`Issues` 说明耗尽的额度，`ReferenceIntegrityValid` 与 `FullyValid` 均为 `false`。已检查的单条结果只能说明该条的结果，不能代表整份文件完成验证。缺失、空白、损坏或空的签名列表仍会使 `SignatureDeclarationsComplete` 为 `false`。
+
+同一真实包条目和同一规范化摘要算法在一次验证内只散列一次；斜杠、前导斜杠、大小写和算法别名按包读取规则识别。每次引用访问仍扣访问额度，并独立比较各自的 `CheckValue`，缓存命中也不例外。缓存不会跨输入包或验证调用复用。未注册签名值插件、缺失引用和不支持的摘要算法也受访问额度约束。
+
+这些额度限制引用摘要编排；ZIP 解压仍受包加载器已有额度控制，插件内部密码学工作由插件负责。取消会在签名/引用访问、实际散列及插件调用前检查；同步摘要不能在单次散列中途打断，返回后会再次检查取消。调用方取消（包括插件响应传入 token 的取消）以 `OperationCanceledException` 传播。
+
 ## 外观不是签名值
 
 印章图片或矢量出现在页面上，只是 **外观**。删除外观图元不等于去掉签名；反之，贴一张章图片也不等于已签名。验证必须走 `Signature.xml` + `SignedValue.dat`。

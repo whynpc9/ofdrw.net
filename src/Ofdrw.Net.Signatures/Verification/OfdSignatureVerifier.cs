@@ -13,10 +13,29 @@ namespace Ofdrw.Net.Signatures.Verification;
 public sealed class OfdSignatureVerifier
 {
     private readonly Dictionary<string, IOfdSignedValueVerifier> _signedValueVerifiers;
+    private readonly OfdSignatureVerificationOptions _options;
 
     public OfdSignatureVerifier(
         IEnumerable<IOfdSignedValueVerifier>? signedValueVerifiers = null)
+        : this(signedValueVerifiers, new OfdSignatureVerificationOptions())
     {
+    }
+
+    /// <summary>Creates a verifier with plugins and finite per-operation work limits.</summary>
+    /// <param name="signedValueVerifiers">Optional signed-value verification plugins.</param>
+    /// <param name="options">Positive limits, validated and copied when the verifier is created.</param>
+    public OfdSignatureVerifier(
+        IEnumerable<IOfdSignedValueVerifier>? signedValueVerifiers,
+        OfdSignatureVerificationOptions options)
+    {
+        if (options is null) throw new ArgumentNullException(nameof(options));
+        options.Validate();
+        _options = new OfdSignatureVerificationOptions
+        {
+            MaxSignatureRecords = options.MaxSignatureRecords,
+            MaxReferenceVisits = options.MaxReferenceVisits,
+            MaxDigestBytes = options.MaxDigestBytes
+        };
         _signedValueVerifiers = (signedValueVerifiers ??
                 Array.Empty<IOfdSignedValueVerifier>())
             .ToDictionary(
@@ -59,42 +78,65 @@ public sealed class OfdSignatureVerifier
         var declarations = ofd.Root?.Elements(ofd.Root.Name.Namespace + "DocBody")
             .Elements(ofd.Root.Name.Namespace + "Signatures").ToList() ?? new List<XElement>();
         report.HasSignatureDeclarations = declarations.Count > 0;
+        var declarationsComplete = declarations.All(element => !string.IsNullOrWhiteSpace(element.Value));
+        if (!declarationsComplete)
+        {
+            report.Issues.Add("A signatures list declaration has a blank location.");
+        }
+
         var signatureLocations = declarations
             .Select(element => element.Value)
             .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(NormalizePath)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (signatureLocations.Count == 0)
         {
-            report.Issues.Add("The document does not declare a signatures list.");
+            if (!report.HasSignatureDeclarations)
+            {
+                report.Issues.Add("The document does not declare a signatures list.");
+            }
             return report;
         }
 
-        foreach (var location in signatureLocations)
+        var budget = new OfdSignatureVerificationBudget(_options);
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            await VerifySignatureListAsync(
-                    archive,
-                    location,
-                    report,
-                    cancellationToken)
-                .ConfigureAwait(false);
+            foreach (var location in signatureLocations)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                declarationsComplete &= await VerifySignatureListAsync(
+                        archive,
+                        location,
+                        report,
+                        budget,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+        catch (OfdSignatureVerificationBudgetExceededException exception)
+        {
+            report.VerificationWorkComplete = false;
+            report.Issues.Add(exception.Message);
+            declarationsComplete = false;
         }
 
+        report.SignatureDeclarationsComplete = declarationsComplete;
         return report;
     }
 
-    private async Task VerifySignatureListAsync(
+    private async Task<bool> VerifySignatureListAsync(
         OfdPackageArchive archive,
         string location,
         OfdSignatureVerificationReport report,
+        OfdSignatureVerificationBudget budget,
         CancellationToken cancellationToken)
     {
         var listPath = NormalizePath(location);
         if (!archive.TryGetBytes(listPath, out var listBytes))
         {
             report.Issues.Add($"Signatures list is missing: {location}");
-            return;
+            return false;
         }
 
         XDocument list;
@@ -108,14 +150,15 @@ public sealed class OfdSignatureVerifier
         {
             report.Issues.Add(
                 $"Signatures list '{listPath}' could not be parsed: {exception.Message}");
-            return;
+            return false;
         }
 
-        foreach (var record in list
-            .Descendants()
-            .Where(element => element.Name.LocalName == "Signature"))
+        var hasRecords = false;
+        foreach (var record in list.Descendants()
+                     .Where(element => element.Name.LocalName == "Signature"))
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            budget.VisitSignature(cancellationToken);
+            hasRecords = true;
             var baseLocation = record.Attribute("BaseLoc")?.Value;
             var result = new OfdSignatureVerificationResult
             {
@@ -144,9 +187,16 @@ public sealed class OfdSignatureVerifier
                     signatureBytes,
                     signaturePath,
                     result,
+                    budget,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+
+        if (!hasRecords)
+        {
+            report.Issues.Add($"Signatures list '{listPath}' contains no signature records.");
+        }
+        return hasRecords;
     }
 
     private async Task VerifySignatureAsync(
@@ -154,6 +204,7 @@ public sealed class OfdSignatureVerifier
         byte[] signatureBytes,
         string signaturePath,
         OfdSignatureVerificationResult result,
+        OfdSignatureVerificationBudget budget,
         CancellationToken cancellationToken)
     {
         XDocument signature;
@@ -184,6 +235,7 @@ public sealed class OfdSignatureVerifier
                      .Where(element => element.Name.LocalName == "Reference") ??
                  Enumerable.Empty<XElement>())
         {
+            budget.VisitReference(cancellationToken);
             var fileReference = reference.Attribute("FileRef")?.Value ?? string.Empty;
             var referenceResult = new OfdReferenceVerificationResult
             {
@@ -221,10 +273,29 @@ public sealed class OfdSignatureVerifier
                         .FirstOrDefault(element =>
                             element.Name.LocalName == "CheckValue")
                         ?.Value ?? string.Empty);
-                var actual = OfdDigestAlgorithms.Compute(
-                    result.CheckMethod,
-                    entryBytes);
+                var algorithm = OfdSignatureVerificationBudget.NormalizeAlgorithm(result.CheckMethod);
+                if (!budget.Digests.TryGetValue(entryName, out var entryDigests))
+                {
+                    entryDigests = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+                    budget.Digests.Add(entryName, entryDigests);
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!entryDigests.TryGetValue(algorithm, out var actual))
+                {
+                    budget.HashBytes(entryBytes.Length, cancellationToken);
+                    actual = OfdDigestAlgorithms.Compute(result.CheckMethod, entryBytes);
+                    entryDigests.Add(algorithm, actual);
+                }
+                cancellationToken.ThrowIfCancellationRequested();
                 referenceResult.DigestMatches = FixedTimeEquals(expected, actual);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OfdSignatureVerificationBudgetExceededException)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -265,6 +336,7 @@ public sealed class OfdSignatureVerifier
             return;
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var propertyInformation = "/" + signaturePath;
@@ -275,12 +347,17 @@ public sealed class OfdSignatureVerifier
                     propertyInformation,
                     cancellationToken)
                 .ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
             result.CryptographicStatus = valid
                 ? OfdCryptographicVerificationStatus.Valid
                 : OfdCryptographicVerificationStatus.Invalid;
             result.CryptographicMessage = valid
                 ? "The signed value is valid."
                 : "The signed value is invalid.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception exception)
         {

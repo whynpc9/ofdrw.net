@@ -1,0 +1,56 @@
+{
+  "mode": "default",
+  "pid": 6,
+  "runtime": ".NET 10.0.13",
+  "os": "Ubuntu 24.04.5 LTS",
+  "architecture": "Arm64",
+  "corePath": "/app/Ofdrw.Net.Core.dll",
+  "coreSha256": "247FF719BEFB264119D2728D5A830EEAE68553C01D812B45B6E50CEF023705B6",
+  "cases": [
+    {
+      "name": "all-four-embedded-assets-and-private-extraction",
+      "outcome": "Passed",
+      "milliseconds": 13
+    },
+    {
+      "name": "real-zero-no-shell",
+      "outcome": "Passed",
+      "milliseconds": 45
+    },
+    {
+      "name": "real-seven",
+      "outcome": "Passed",
+      "milliseconds": 29
+    },
+    {
+      "name": "argv-cwd-environment",
+      "outcome": "Passed",
+      "milliseconds": 65
+    },
+    {
+      "name": "missing-executable-native-error",
+      "outcome": "Passed",
+      "milliseconds": 31
+    },
+    {
+      "name": "non-executable-native-error",
+      "outcome": "Passed",
+      "milliseconds": 24
+    },
+    {
+      "name": "bounded-timeout",
+      "outcome": "Passed",
+      "milliseconds": 399
+    },
+    {
+      "name": "bounded-cancellation",
+      "outcome": "Passed",
+      "milliseconds": 368
+    },
+    {
+      "name": "parent-first-descendant-cleanup",
+      "outcome": "Passed",
+      "milliseconds": 1031
+    }
+  ]
+}

@@ -4,11 +4,46 @@ using Ofdrw.Net.Reader.Readers;
 
 namespace Ofdrw.Net.Cli.Tests;
 
+[Collection("Owned CLI console")]
 public sealed class OutputSafetyTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "ofdrw-cli-tests-" + Guid.NewGuid().ToString("N"));
 
     public OutputSafetyTests() => Directory.CreateDirectory(_directory);
+
+    [Theory]
+    [InlineData("convert", "1-10001")]
+    [InlineData("ofd-to-pdf", "1-10001")]
+    [InlineData("pdf-to-ofd", "1-10001")]
+    [InlineData("docx-to-ofd", "1-10001")]
+    [InlineData("reorder", "1-10001")]
+    [InlineData("ofd-to-svg", "1,2")]
+    [InlineData("ofd-to-svg", "1,1")]
+    [InlineData("ofd-to-svg", "1-10001")]
+    public async Task OverBudgetPages_ShouldFailBeforeReadingInputAndPreserveExistingOutput(string command, string pages)
+    {
+        var input = Path.Combine(_directory, "missing.ofd");
+        var output = Path.Combine(_directory, "existing.pdf");
+        await File.WriteAllTextAsync(output, "existing output");
+        using var errors = new StringWriter();
+        var originalError = Console.Error;
+        int exitCode;
+        try
+        {
+            Console.SetError(errors);
+            exitCode = await global::Cli.RunAsync([command, input, output, "--pages", pages]);
+        }
+        finally
+        {
+            Console.SetError(originalError);
+        }
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("capacity exceeded", errors.ToString(), StringComparison.Ordinal);
+        Assert.False(File.Exists(input));
+        Assert.Equal("existing output", await File.ReadAllTextAsync(output));
+        Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+    }
 
     [Fact]
     public async Task InvalidDocxPageOption_ShouldPreserveExistingOutput()

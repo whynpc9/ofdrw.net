@@ -1,0 +1,21 @@
+{
+  "input": [
+    "Doc_0/Metadata/List.xml",
+    "Doc_0/Attachs/Attach_1_original.bin",
+    "Doc_0/Attachs/Attach_2_second.bin",
+    "Doc_0/Document.xml",
+    "Doc_0/Pages/Page_0/Content.xml",
+    "Doc_0/Pages/Page_1/Content.xml",
+    "Doc_0/PublicRes.xml",
+    "OFD.xml"
+  ],
+  "output": [
+    "Doc_0/Attachs/Attach_1_original.bin",
+    "Doc_0/Attachs/Attach_2_second.bin",
+    "Doc_0/Document.xml",
+    "Doc_0/Metadata/List.xml",
+    "Doc_0/Pages/Page_1/Content.xml",
+    "Doc_0/PublicRes.xml",
+    "OFD.xml"
+  ]
+}

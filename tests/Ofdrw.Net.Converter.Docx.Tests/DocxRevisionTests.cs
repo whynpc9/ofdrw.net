@@ -650,6 +650,16 @@ public sealed partial class DocxConversionTests
 
     private static string? TryFindCjkMetricFont()
     {
+        // Use the same offline fixture supplied to the mandatory PDF font gate.
+        // A required gate must not silently return before its assertions run.
+        var trusted = Environment.GetEnvironmentVariable("OFDRW_TEST_TRUSTED_CJK_FONT");
+        if (!string.IsNullOrEmpty(trusted))
+        {
+            if (!File.Exists(trusted)) throw new FileNotFoundException("Required CJK fixture is missing.", trusted);
+            return trusted;
+        }
+        if (Environment.GetEnvironmentVariable("OFDRW_REQUIRE_TRUSTED_FONTS") == "1")
+            throw new InvalidOperationException("Required DOCX font gate needs OFDRW_TEST_TRUSTED_CJK_FONT.");
         foreach (var directory in DocxFontCatalog.DefaultPlatformFontDirectories())
         {
             foreach (var name in new[]

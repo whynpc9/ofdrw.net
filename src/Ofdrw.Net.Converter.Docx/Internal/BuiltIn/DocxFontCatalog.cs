@@ -155,7 +155,7 @@ internal sealed class DocxFontCatalog
         CancellationToken cancellationToken,
         bool cjkOnly)
     {
-        foreach (var path in EnumerateFontFiles(directory).OrderBy(candidate => candidate, StringComparer.Ordinal))
+        foreach (var path in DiscoverFontFiles(directory, cancellationToken, diagnostics))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var extension = Path.GetExtension(path);
@@ -197,25 +197,117 @@ internal sealed class DocxFontCatalog
                name.Contains("fang");
     }
 
-    private static IEnumerable<string> EnumerateFontFiles(string directory)
+    // Only font candidates are buffered, preserving the existing ordinal face preference.
+    // The injectable enumerators keep cancellation/fault tests bounded and independent of host fonts.
+    internal static IReadOnlyList<string> DiscoverFontFiles(
+        string directory,
+        CancellationToken cancellationToken,
+        IList<DocxConversionDiagnostic> diagnostics,
+        Func<string, IEnumerable<string>>? enumerateFiles = null,
+        Func<string, IEnumerable<string>>? enumerateDirectories = null)
+    {
+        var files = EnumerateFontFiles(directory, cancellationToken, diagnostics,
+            enumerateFiles ?? Directory.EnumerateFiles,
+            enumerateDirectories ?? Directory.EnumerateDirectories).ToList();
+        cancellationToken.ThrowIfCancellationRequested();
+        files.Sort(StringComparer.Ordinal);
+        cancellationToken.ThrowIfCancellationRequested();
+        return files;
+    }
+
+    private static IEnumerable<string> EnumerateFontFiles(
+        string directory,
+        CancellationToken cancellationToken,
+        IList<DocxConversionDiagnostic> diagnostics,
+        Func<string, IEnumerable<string>> enumerateFiles,
+        Func<string, IEnumerable<string>> enumerateDirectories)
     {
         var pending = new Stack<string>();
+        // A configured linked root is allowed. Linked children are skipped, including
+        // links back to that root, so stable directory links cannot amplify traversal.
         pending.Push(directory);
         while (pending.Count > 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var current = pending.Pop();
-            string[] files;
-            string[] children;
-            try { files = Directory.GetFiles(current); }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            { files = Array.Empty<string>(); }
-            try { children = Directory.GetDirectories(current); }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-            { children = Array.Empty<string>(); }
-            foreach (var file in files) yield return file;
-            foreach (var child in children) pending.Push(child);
+            foreach (var file in ReadDirectoryEntries(() => enumerateFiles(current), cancellationToken, diagnostics))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var extension = Path.GetExtension(file);
+                if (extension.Equals(".ttf", StringComparison.OrdinalIgnoreCase) ||
+                    extension.Equals(".otf", StringComparison.OrdinalIgnoreCase) ||
+                    extension.Equals(".ttc", StringComparison.OrdinalIgnoreCase))
+                    yield return file;
+            }
+            foreach (var child in ReadDirectoryEntries(() => enumerateDirectories(current), cancellationToken, diagnostics))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    if ((File.GetAttributes(child) & FileAttributes.ReparsePoint) != 0)
+                    {
+                        diagnostics.Add(new DocxConversionDiagnostic("DOCX_FONT_DIRECTORY_LINK_SKIPPED",
+                            "A linked font subdirectory was skipped. Configure it as a font root to scan it explicitly."));
+                        continue;
+                    }
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    AddDirectoryFailure(diagnostics, exception);
+                    continue;
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                pending.Push(child);
+            }
         }
     }
+
+    private static IEnumerable<string> ReadDirectoryEntries(
+        Func<IEnumerable<string>> enumerate,
+        CancellationToken cancellationToken,
+        IList<DocxConversionDiagnostic> diagnostics)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        IEnumerator<string> iterator;
+        try { iterator = enumerate().GetEnumerator(); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            AddDirectoryFailure(diagnostics, exception);
+            yield break;
+        }
+        using (iterator)
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                bool moved;
+                string entry;
+                // Lazy directory access can fail in MoveNext, not just GetEnumerator.
+                // A synchronous OS call already in progress cannot be interrupted;
+                // observe cancellation as soon as that call returns or throws.
+                try
+                {
+                    moved = iterator.MoveNext();
+                    entry = moved ? iterator.Current : string.Empty;
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    AddDirectoryFailure(diagnostics, exception);
+                    yield break;
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!moved) yield break;
+                yield return entry;
+            }
+        }
+    }
+
+    private static void AddDirectoryFailure(IList<DocxConversionDiagnostic> diagnostics, Exception exception) =>
+        diagnostics.Add(new DocxConversionDiagnostic("DOCX_FONT_DIRECTORY_READ_FAILED",
+            $"A font directory could not be enumerated: {exception.Message}"));
 
     private static string StripStyleSuffix(string family)
     {

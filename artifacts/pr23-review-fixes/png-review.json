@@ -1,0 +1,137 @@
+{
+  "source_head": "979a93e39dd8cec3fbb4bdd2121d301ea84b2e39",
+  "manifest_sha256": "6da5cc063ac6b67fbf3fb99fa5aa717dc248719bb6dd67a3b22447f9070d7976",
+  "date": "2026-10-16T05:58:40.172476+00:00",
+  "reviewed_pages": 14,
+  "passed_pages": 14,
+  "failed_pages": 0,
+  "status": "PASS",
+  "pages": [
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/generated-docx-native.pdf",
+      "pdf_sha256": "4f5b60c38b1107094be7971c797a4412a3aef7a1042f5960d49ff7f06df6f723",
+      "page": 1,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/generated-docx-native-page-1.png",
+      "png_sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a",
+      "result": "PASS",
+      "observations": "Blue title/headings; grey italic subtitle; Chinese and proportional English complete. Table fill, grid and aligned cells visible."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/generated-docx-native.pdf",
+      "pdf_sha256": "4f5b60c38b1107094be7971c797a4412a3aef7a1042f5960d49ff7f06df6f723",
+      "page": 2,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/generated-docx-native-page-2.png",
+      "png_sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262",
+      "result": "PASS",
+      "observations": "Second page blue heading, red emphasis and right aligned date complete; expected page break, no unintended blank page."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/generated-docx-default.pdf",
+      "pdf_sha256": "f4ca661590e18037364fbd73b4515beed2548775374c1c9228b45bd7bf547542",
+      "page": 1,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/generated-docx-default-page-1.png",
+      "png_sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a",
+      "result": "PASS",
+      "observations": "Blue title/headings; grey italic subtitle; Chinese/English and filled bordered table visible."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/generated-docx-default.pdf",
+      "pdf_sha256": "f4ca661590e18037364fbd73b4515beed2548775374c1c9228b45bd7bf547542",
+      "page": 2,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/generated-docx-default-page-2.png",
+      "png_sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262",
+      "result": "PASS",
+      "observations": "Second page heading, local red emphasis and right aligned date; surrounding text unaffected."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/cli-native.pdf",
+      "pdf_sha256": "9f0a2774d29fecf0370940764d2d5b48f4735978d2602b1337c8a354d1c91c7e",
+      "page": 1,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/cli-native-page-1.png",
+      "png_sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a",
+      "result": "PASS",
+      "observations": "CLI native page 1: Chinese/English, local italic subtitle and table readable without clipping."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/cli-native.pdf",
+      "pdf_sha256": "9f0a2774d29fecf0370940764d2d5b48f4735978d2602b1337c8a354d1c91c7e",
+      "page": 2,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/cli-native-page-2.png",
+      "png_sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262",
+      "result": "PASS",
+      "observations": "CLI native page 2: blue heading, red emphasis, black surrounding text and date readable."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/direct-built-in.pdf",
+      "pdf_sha256": "1742a95069ed83a10ef4afdb635403bcb1fc8c1a25479d5be15eba4a1fa38271",
+      "page": 1,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/direct-built-in-page-1.png",
+      "png_sha256": "311afe35c5e1625373c0dac2f1d38ea1d209ae7d187e8de63542fe3550b50253",
+      "result": "PASS",
+      "observations": "Direct BuiltIn: grey italic subtitle bounded; regular body upright; table fill and black borders visible; engine layout differs from native."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/direct-built-in.pdf",
+      "pdf_sha256": "1742a95069ed83a10ef4afdb635403bcb1fc8c1a25479d5be15eba4a1fa38271",
+      "page": 2,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/direct-built-in-page-2.png",
+      "png_sha256": "5f33dabc6dc9c74385ed929438cbb509c81734347783815fd31a2090c065126f",
+      "result": "PASS",
+      "observations": "Direct BuiltIn: blue heading, red emphasis and date complete, no overlap."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/selected.pdf",
+      "pdf_sha256": "ff3c896c8c4ee56f52a9fbf6e9831226ca8822b28f2aa00cf8555a47d240dd44",
+      "page": 1,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/selected-page-1.png",
+      "png_sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262",
+      "result": "PASS",
+      "observations": "Only source page 2; heading, red emphasis and date retained without extra blank page."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice.pdf",
+      "pdf_sha256": "6198a50cd6a60899b4a2ffd5043f53ca74ec79e25fdc7ff838feef68eeb6f2f6",
+      "page": 1,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice-page-1.png",
+      "png_sha256": "9c3934d082ee13d2769700c4b0be3355861a9071c37f42154722780903faf513",
+      "result": "PASS",
+      "observations": "Long proportional English paragraph wraps; Chinese headings and numbered lines 01-04 readable; blank paragraphs and page boundary visible."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice.pdf",
+      "pdf_sha256": "6198a50cd6a60899b4a2ffd5043f53ca74ec79e25fdc7ff838feef68eeb6f2f6",
+      "page": 2,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice-page-2.png",
+      "png_sha256": "dc3b739c690e9b94a5a1cbfa5b36dcfa6b6476e17a33949fda33f080407fa94d",
+      "result": "PASS",
+      "observations": "Lines 05-24 and End of notice complete; specifically viewed separate lines 23 and 24 in Preview; no overlap or clipping."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/italic-boundaries.pdf",
+      "pdf_sha256": "79e0ec610de7febb6877140e774860e2c99cfa03e431635e96ffdded38b06a93",
+      "page": 1,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/italic-boundaries-page-1.png",
+      "png_sha256": "49e3d85b6e3688d58150d8f4d88dfe9a816e411671cf36c592ce8deba3fe6fbf",
+      "result": "PASS",
+      "observations": "Same words regular/red italic/regular remain distinct; genuine Arial italic and synthetic fallback visibly slanted; wrapped mixed italic resumes regular; Chinese and spacing complete."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/external-libreoffice.pdf",
+      "pdf_sha256": "f860120c85e583b66ca7f3f991c19e109a6147a77b4b441284a64b1b6b2371f9",
+      "page": 1,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/external-libreoffice-page-1.png",
+      "png_sha256": "f666c9ce1bb62d5b3d695aee5c861b453bceeb15bfca9c98850b01d6a9e2a9f3",
+      "result": "PASS",
+      "observations": "Actual external LibreOffice DOCX-to-PDF: title/subtitle, Chinese/English, blue table border and fill visible with its own layout."
+    },
+    {
+      "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/external-libreoffice.pdf",
+      "pdf_sha256": "f860120c85e583b66ca7f3f991c19e109a6147a77b4b441284a64b1b6b2371f9",
+      "page": 2,
+      "png": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/external-libreoffice-page-2.png",
+      "png_sha256": "181d6cf0fa8ffe95f5b44ca4d74577312881d75d0d623d59928f10e69fc1faff",
+      "result": "PASS",
+      "observations": "LibreOffice page 2 blue heading, bold red local emphasis and right date complete; no clipping or duplicate text."
+    }
+  ]
+}

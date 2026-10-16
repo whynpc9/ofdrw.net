@@ -39,6 +39,9 @@ jobs:
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
+      - name: Verify all immutable native supervisor assets
+        run: python3 scripts/verify-process-supervisor-assets.py
+
       - name: Check release notices
         run: python3 scripts/verify-package-artifacts.py --notices-only
 
@@ -108,6 +111,25 @@ jobs:
 
       - name: Test image CLI on each platform
         run: dotnet test tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj -c Release --filter "FullyQualifiedName~ImageCommandTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Test native conversion path safety and replacement publication
+        run: dotnet test tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj -c Release --filter "FullyQualifiedName~Audit004RegressionTests|FullyQualifiedName~TextReplacementCommitNotificationTests" --logger trx --results-directory artifacts/native-path-tests/cli --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Test native external process ownership
+        run: dotnet test tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ExternalProcessTests|FullyQualifiedName~Audit024" --logger trx --results-directory artifacts/native-path-tests/processes --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Test native owned file intent
+        run: dotnet test tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj -c Release --filter "FullyQualifiedName~OfdOwnedFileIntentTests" --logger trx --results-directory artifacts/native-path-tests/core --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Test native replacement file and owned sessions
+        run: dotnet test tests/Ofdrw.Net.Packaging.Tests/Ofdrw.Net.Packaging.Tests.csproj -c Release --filter "FullyQualifiedName~TextReplacementFileSessionTests|FullyQualifiedName~TextReplacementOwnedSessionTests" --logger trx --results-directory artifacts/native-path-tests/packaging --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Upload native path safety results and skip reasons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-path-tests-${{ matrix.os }}
+          path: artifacts/native-path-tests
 
       - name: Test BuiltIn without office applications
         run: dotnet test tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~BuiltIn|FullyQualifiedName~Auto|FullyQualifiedName~Native|FullyQualifiedName~DualLayer" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false

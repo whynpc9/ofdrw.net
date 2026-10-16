@@ -18,6 +18,8 @@ return await Cli.RunAsync(args, shutdown.Token);
 
 internal static partial class Cli
 {
+    private const int MaximumSelectedPages = 10_000;
+
     public static async Task<int> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
         if (args.Length == 0 || IsHelp(args[0]))
@@ -28,7 +30,7 @@ internal static partial class Cli
 
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
-            "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-image" or "image-to-ofd" or
+            "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-html" or "ofd-to-image" or "image-to-ofd" or
             "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
@@ -39,6 +41,10 @@ internal static partial class Cli
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (command == "text-to-ofd")
+                return await PlainTextAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "ofd-to-html")
+                return await ConvertHtmlAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "ofd-to-image" or "image-to-ofd")
                 return await ConvertImagesAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
 
@@ -97,23 +103,19 @@ internal static partial class Cli
                     options.InputPath,
                     options.OutputPath,
                     pageOrder, cancellationToken).ConfigureAwait(false);
-                Console.WriteLine($"Reordered {options.InputPath} -> {options.OutputPath}");
+                WriteSuccessNotification($"Reordered {options.InputPath} -> {options.OutputPath}");
                 return 0;
             }
 
             if (command == "ofd-to-svg")
             {
-                var svgPages = ParsePages(options.Pages);
-                if (svgPages is { Count: > 1 })
-                {
-                    throw new ArgumentException("OFD to SVG accepts at most one page.");
-                }
+                var svgPages = ParsePages(options.Pages, maximumSelectedPages: 1);
 
                 await ConvertToSvgAsync(
                     options.InputPath,
                     options.OutputPath,
                     svgPages is { Count: 1 } ? svgPages[0] : 0, cancellationToken).ConfigureAwait(false);
-                Console.WriteLine($"Converted {options.InputPath} -> {options.OutputPath}");
+                WriteSuccessNotification($"Converted {options.InputPath} -> {options.OutputPath}");
                 return 0;
             }
 
@@ -128,7 +130,7 @@ internal static partial class Cli
                 options.DocxOfdMode,
                 options.LibreOfficePath,
                 options.FontDirectories, cancellationToken).ConfigureAwait(false);
-            Console.WriteLine($"Converted {options.InputPath} -> {options.OutputPath}");
+            WriteSuccessNotification($"Converted {options.InputPath} -> {options.OutputPath}");
             return 0;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -254,7 +256,7 @@ internal static partial class Cli
         var bytes = System.Text.Encoding.UTF8.GetBytes(text);
         await output.Stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
-        Console.WriteLine($"Extracted text {inputPath} -> {outputPath}");
+        WriteSuccessNotification($"Extracted text {inputPath} -> {outputPath}");
     }
 
     private static async Task ConvertToSvgAsync(
@@ -362,18 +364,21 @@ internal static partial class Cli
 
     private static async Task<int> MergeAsync(string[] args, CancellationToken cancellationToken)
     {
-        if (args.Length == 0 || args.Any(IsHelp))
+        if (args.Length == 0)
         {
             PrintHelp();
             return 0;
         }
 
-        var skipUnsupported = args.Contains("--skip-unsupported", StringComparer.Ordinal);
-        var paths = args.Where(arg => !string.Equals(
-            arg,
-            "--skip-unsupported",
-            StringComparison.Ordinal)).ToArray();
-        if (paths.Length < 3)
+        var skipUnsupported = false;
+        var paths = new List<string>();
+        foreach (var arg in args)
+        {
+            if (arg is "-h" or "--help") { PrintHelp(); return 0; }
+            if (arg == "--skip-unsupported") skipUnsupported = true;
+            else paths.Add(arg);
+        }
+        if (paths.Count < 3)
         {
             throw new ArgumentException(
                 "Merge requires an output path followed by at least two input OFD files.");
@@ -397,25 +402,19 @@ internal static partial class Cli
             new OfdDocumentMergeOptions
             {
                 SkipUnsupportedRawElements = skipUnsupported
-            });
+            },
+            cancellationToken);
         await using var output = new AtomicOutput(outputPath);
         foreach (var diagnostic in merged.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
         var writeResult = await new OfdPackageWriter().WriteWithResultAsync(merged.Package, output.Stream, cancellationToken).ConfigureAwait(false);
         foreach (var diagnostic in writeResult.Diagnostics) Console.Error.WriteLine($"Warning: {diagnostic}");
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
-        Console.WriteLine($"Merged {sources.Count} OFD files -> {outputPath}");
+        WriteSuccessNotification($"Merged {sources.Count} OFD files -> {outputPath}");
         return 0;
     }
 
     private static void EnsureDifferentPaths(string inputPath, string outputPath)
-    {
-        var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
-            ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        if (string.Equals(Path.GetFullPath(inputPath), Path.GetFullPath(outputPath), comparison))
-        {
-            throw new ArgumentException("Conversion input and output must use different paths.");
-        }
-    }
+        => ConversionPathIdentity.RequireDifferentPaths(inputPath, outputPath);
 
     private static ConversionMode ResolveMode(string command, string inputPath, string outputPath)
     {
@@ -530,17 +529,27 @@ internal static partial class Cli
 
     private static string ReadValue(string[] args, ref int index, string option)
     {
-        if (index + 1 >= args.Length || args[index + 1].StartsWith("-", StringComparison.Ordinal))
+        if (index + 1 >= args.Length)
         {
             throw new ArgumentException($"Missing value for {option}.");
         }
 
+        // A required value owns the next token, including literal -h/--help paths.
         index++;
         return args[index];
     }
 
     private static IReadOnlyList<int>? ParsePages(string? value)
+        => ParsePages(value, MaximumSelectedPages);
+
+    private static IReadOnlyList<int>? ParsePages(string? value, int maximumSelectedPages)
     {
+        // Bound splitting and whitespace scanning as well as the eventual page list.
+        if (value is not null && value.Length > 32 * maximumSelectedPages)
+        {
+            throw new ArgumentException("Page selection expression capacity exceeded.");
+        }
+
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
@@ -550,31 +559,37 @@ internal static partial class Cli
         foreach (var part in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             var range = part.Split('-', StringSplitOptions.TrimEntries);
-            if (range.Length == 1)
-            {
-                pages.Add(ParseOneBasedPage(range[0]));
-                continue;
-            }
-
-            if (range.Length != 2)
+            if (range.Length is < 1 or > 2)
             {
                 throw new ArgumentException($"Invalid page range: {part}");
             }
 
             var start = ParseOneBasedPage(range[0]);
-            var end = ParseOneBasedPage(range[1]);
+            var end = range.Length == 1 ? start : ParseOneBasedPage(range[1]);
             if (end < start)
             {
                 throw new ArgumentException($"Invalid descending page range: {part}");
             }
 
-            for (var page = start; page <= end; page++)
+            var count = GetPageRangeCount(start, end, maximumSelectedPages - pages.Count);
+            for (var offset = 0; offset < count; offset++)
             {
-                pages.Add(page);
+                pages.Add(checked(start + offset));
             }
         }
 
         return pages;
+    }
+
+    private static long GetPageRangeCount(int start, int end, int remainingCapacity)
+    {
+        var count = checked((long)end - start + 1);
+        if (count > remainingCapacity)
+        {
+            throw new ArgumentException("Selected-page capacity exceeded.");
+        }
+
+        return count;
     }
 
     private static int ParseOneBasedPage(string value)
@@ -630,9 +645,11 @@ internal static partial class Cli
           ofdrw convert <input> <output> [--pages 1,3-5]
           ofdrw docx-to-pdf --input <input.docx> --output <output.pdf> [--docx-engine auto|word|libreoffice|built-in]
           ofdrw docx-to-ofd --input <input.docx> --output <output.ofd> [--pages 1,3-5] [--docx-ofd-mode native|dual-layer] [--docx-engine auto|word|libreoffice|built-in]
+          ofdrw text-to-ofd <input.txt> <output.ofd> [--font-family NAME] [--font-size-mm NUMBER]
           ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5]
           ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--pages 1,3-5]
           ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--pages 1]
+          ofdrw ofd-to-html --input <input.ofd> --output <output.html> [--pages 3,1,3] [--title text] [--max-pages 200] [--max-output-bytes N] [--max-page-bytes N]
           ofdrw ofd-to-image <input.ofd> <output.png> [--pages 1] [--ppm 5.669291] [--format png|jpeg]
           ofdrw image-to-ofd <input.png> [input2.jpg ...] --output <output.ofd> [--ppm 5.669291] [--page-width 210 --page-height 297]
           ofdrw verify-signatures --input <input.ofd>
@@ -650,9 +667,11 @@ internal static partial class Cli
           convert     Infer conversion direction from .docx/.pdf/.ofd extensions.
           docx-to-pdf Convert DOCX to PDF using Word on macOS when available, or LibreOffice.
           docx-to-ofd Convert DOCX directly to native OFD text, or use a dual visual/text layer.
+          text-to-ofd Convert strict UTF-8 plain text to native OFD with Flow pagination.
           pdf-to-ofd  Convert PDF to OFD.
           ofd-to-pdf  Convert OFD to PDF.
           ofd-to-svg  Convert one OFD page to self-contained SVG.
+          ofd-to-html Convert selected OFD pages to a static HTML preview.
           ofd-to-image Export one OFD page to white-background PNG (default) or JPEG.
           image-to-ofd Import PNG/JPEG, one image per page; centered, shrink to fit, no enlargement.
           verify-signatures Verify protected-entry digests and registered signed-value algorithms.
@@ -666,6 +685,11 @@ internal static partial class Cli
           merge        Merge OFD pages into a self-contained output document.
 
         Options:
+          text-to-ofd: positional paths or --input/--output; no mixing or duplicate options.
+          --font-family, --font-size-mm text-to-ofd: family request and size in millimeters; no font embedding.
+          --page-width, --page-height text-to-ofd: paired page dimensions in millimeters.
+          --margin-left, --margin-right, --margin-top, --margin-bottom text-to-ofd: nonnegative millimeters.
+          --max-input-bytes, --max-characters, --max-pages, --max-text-elements text-to-ofd: positive budgets.
           -i, --input   Input file path.
           -o, --output  Output file path.
           -p, --pages   1-based page list or ranges, for example 1,3-5.

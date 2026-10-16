@@ -1,0 +1,17 @@
+{
+  "mode": "pid1",
+  "pid": 1,
+  "runtime": ".NET 10.0.13",
+  "os": "Alpine Linux v3.24",
+  "architecture": "Arm64",
+  "corePath": "/app/Ofdrw.Net.Core.dll",
+  "coreSha256": "F0DD218759E0497ADF9D185A3F92ACF1BF8E52194308A37A353BF124864D1D77",
+  "cases": [
+    {
+      "name": "real-zero-no-shell",
+      "outcome": "Failed",
+      "milliseconds": 25,
+      "error": "System.ComponentModel.Win32Exception (10): waitid on owned process\n   at Ofdrw.Net.Core.Processes.OwnedProcessGroup.UnixGroup.get_HasExited()\n   at Ofdrw.Net.Core.Processes.ExternalProcessRunner.RunAsync(ProcessStartInfo startInfo, TimeSpan timeout, CancellationToken cancellationToken, String expectedOutputPath)\n   at Ofdrw.Net.Core.Processes.ExternalProcessRunner.RunAsync(ProcessStartInfo startInfo, TimeSpan timeout, CancellationToken cancellationToken, String expectedOutputPath)\n   at Program.\u003C\u003Ec__DisplayClass0_0.\u003C\u003C\u003CMain\u003E$\u003Eg__Run|0\u003Ed.MoveNext() in /Users/wanghongyi/Projects/ofdrw.net/.git/codex-pr-babysit-20261016/root-process-consumer-baseline/Program.cs:line 29\n--- End of stack trace from previous location ---\n   at Program.\u003C\u003Ec__DisplayClass0_0.\u003C\u003C\u003CMain\u003E$\u003Eb__6\u003Ed.MoveNext() in /Users/wanghongyi/Projects/ofdrw.net/.git/codex-pr-babysit-20261016/root-process-consumer-baseline/Program.cs:line 44\n--- End of stack trace from previous location ---\n   at Program.\u003C\u003Ec__DisplayClass0_0.\u003C\u003C\u003CMain\u003E$\u003Eg__Check|3\u003Ed.MoveNext() in /Users/wanghongyi/Projects/ofdrw.net/.git/codex-pr-babysit-20261016/root-process-consumer-baseline/Program.cs:line 37"
+    }
+  ]
+}

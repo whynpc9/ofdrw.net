@@ -13,25 +13,38 @@ internal sealed class OpenTypeCmap
     internal bool IsSymbol { get; }
     internal byte[]? VariationSequences { get; }
     internal HashSet<int> VariationGlyphs { get; } = new();
-    internal OpenTypeCmap(OpenTypeFace face)
+    private readonly FontParseBudget budget;
+    internal OpenTypeCmap(OpenTypeFace face) : this(face, new FontParseBudget()) { }
+    internal OpenTypeCmap(OpenTypeFace face, FontParseBudget budget)
     {
+        this.budget = budget ?? throw new ArgumentNullException(nameof(budget));
+        budget.Spend(0);
         table = face.Table("cmap", 4);
         var symbol4 = -1;
         var count = U16(table, 2); Require(table, 4, count * 8);
+        var parsed = new HashSet<(int Offset, int Format)>();
+        var variations = new Dictionary<int, byte[]>();
         for (var i = 0; i < count; i++)
         {
+            budget.Spend(1);
             var record = 4 + i * 8; var platform = U16(table, record); var encoding = U16(table, record + 2);
             var offset = Size(U32(table, record + 4)); var format = U16(table, offset);
             if (format == 14)
             {
-                var length = Size(U32(table, offset + 2)); Require(table, offset, length);
-                VariationSequences = new byte[length]; Buffer.BlockCopy(table, offset, VariationSequences, 0, length);
-                ReadVariations(VariationSequences);
+                if (!variations.TryGetValue(offset, out var variation))
+                {
+                    var length = Size(U32(table, offset + 2)); Require(table, offset, length);
+                    budget.Spend(length);
+                    variation = new byte[length]; Buffer.BlockCopy(table, offset, variation, 0, length);
+                    ReadVariations(variation);
+                    variations.Add(offset, variation);
+                }
+                VariationSequences = variation;
             }
             if (platform == 3 && encoding == 0 && format == 4) symbol4 = offset;
             if (platform != 0 && !(platform == 3 && (encoding == 1 || encoding == 10))) continue;
             if (format == 4) format4 = offset;
-            if (format == 12) { Validate12(offset); format12 = offset; }
+            if (format == 12) { if (parsed.Add((offset, format))) Validate12(offset); format12 = offset; }
         }
         if (format4 < 0 && format12 < 0 && symbol4 >= 0) { format4 = symbol4; IsSymbol = true; }
         // Format 12 is authoritative in GlyphCore. An unused legacy/symbol
@@ -43,25 +56,35 @@ internal sealed class OpenTypeCmap
     private void ReadVariations(byte[] variation)
     {
         Require(variation, 0, 10); var count = Size(U32(variation, 6)); Require(variation, 10, checked(count * 11));
+        var arrays = new HashSet<(int Offset, bool NonDefault)>();
+        budget.Spend(count);
         for (var i = 0; i < count; i++)
         {
+            budget.Spend(0);
             var record = 10 + i * 11; var defaults = Size(U32(variation, record + 3)); var nonDefaults = Size(U32(variation, record + 7));
-            if (defaults != 0)
-            { var number = Size(U32(variation, defaults)); Require(variation, defaults + 4, checked(number * 4)); }
-            if (nonDefaults != 0)
+            if (defaults != 0 && arrays.Add((defaults, false)))
+            {
+                var number = Size(U32(variation, defaults));
+                Require(variation, defaults + 4, checked(number * 4)); budget.Spend(number);
+            }
+            if (nonDefaults != 0 && arrays.Add((nonDefaults, true)))
             {
                 var number = Size(U32(variation, nonDefaults)); Require(variation, nonDefaults + 4, checked(number * 5));
-                for (var j = 0; j < number; j++) VariationGlyphs.Add(U16(variation, nonDefaults + 4 + j * 5 + 3));
+                budget.Spend(number);
+                for (var j = 0; j < number; j++)
+                { budget.Spend(0); VariationGlyphs.Add(U16(variation, nonDefaults + 4 + j * 5 + 3)); }
             }
         }
     }
     internal static bool IsVariationSelector(int scalar) => scalar is >= 0xFE00 and <= 0xFE0F or >= 0xE0100 and <= 0xE01EF;
     internal bool SupportsVariation(int scalar, int selector)
     {
+        budget.Spend(0);
         if (VariationSequences is not { } variation) return false;
         var count = Size(U32(variation, 6));
         for (var i = 0; i < count; i++)
         {
+            budget.Spend(1);
             var record = 10 + i * 11;
             if (U24(variation, record) != selector) continue;
             var defaults = Size(U32(variation, record + 3)); var nonDefaults = Size(U32(variation, record + 7));
@@ -69,13 +92,13 @@ internal sealed class OpenTypeCmap
             {
                 var number = Size(U32(variation, defaults));
                 for (var j = 0; j < number; j++)
-                { var p = defaults + 4 + j * 4; var start = U24(variation, p); if (scalar >= start && scalar <= start + variation[p + 3]) return Glyph(scalar) != 0; }
+                { budget.Spend(1); var p = defaults + 4 + j * 4; var start = U24(variation, p); if (scalar >= start && scalar <= start + variation[p + 3]) return Glyph(scalar) != 0; }
             }
             if (nonDefaults != 0)
             {
                 var number = Size(U32(variation, nonDefaults));
                 for (var j = 0; j < number; j++)
-                { var p = nonDefaults + 4 + j * 5; if (U24(variation, p) == scalar) return U16(variation, p + 3) != 0; }
+                { budget.Spend(1); var p = nonDefaults + 4 + j * 5; if (U24(variation, p) == scalar) return U16(variation, p + 3) != 0; }
             }
         }
         return false;
@@ -88,9 +111,11 @@ internal sealed class OpenTypeCmap
         var count = U16(table, offset + 6) / 2;
         if (count == 0 || U16(table, offset + 6) % 2 != 0 || 16L + count * 8 > length)
             throw new InvalidDataException("Invalid cmap format 4 segments.");
+        budget.Spend(length + (long)count);
         var previous = -1;
         for (var i = 0; i < count; i++)
         {
+            budget.Spend(0);
             var end = U16(table, offset + 14 + i * 2); var start = U16(table, offset + 16 + count * 2 + i * 2);
             if (start > end || start <= previous) throw new InvalidDataException("Unordered cmap segments.");
             previous = end;
@@ -101,9 +126,11 @@ internal sealed class OpenTypeCmap
         Require(table, offset, 16); var length = Size(U32(table, offset + 4)); Require(table, offset, length);
         var count = Size(U32(table, offset + 12));
         if (16L + count * 12L > length) throw new InvalidDataException("Invalid cmap format 12 groups.");
+        budget.Spend(length + (long)count);
         long previous = -1;
         for (var i = 0; i < count; i++)
         {
+            budget.Spend(0);
             var p = offset + 16 + i * 12; var start = U32(table, p); var end = U32(table, p + 4);
             if (start > end || start <= previous || end > 0x10FFFF || U32(table, p + 8) + (ulong)(end - start) > ushort.MaxValue)
                 throw new InvalidDataException("Invalid Unicode cmap group.");
@@ -112,6 +139,7 @@ internal sealed class OpenTypeCmap
     }
     internal int Glyph(int scalar)
     {
+        budget.Spend(0);
         var glyph = GlyphCore(scalar);
         return IsSymbol && glyph == 0 && scalar <= 0xFF ? GlyphCore(scalar + 0xF000) : glyph;
     }

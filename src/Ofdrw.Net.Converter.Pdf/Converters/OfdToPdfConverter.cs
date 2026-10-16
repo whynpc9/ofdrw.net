@@ -19,6 +19,7 @@ using PdfSharpCore.Pdf;
 using PdfSharpCore.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Processing;
 
 namespace Ofdrw.Net.Converter.Pdf.Converters;
@@ -26,11 +27,19 @@ namespace Ofdrw.Net.Converter.Pdf.Converters;
 public sealed class OfdToPdfConverter : IOfdToPdfConverter
 {
     private readonly OfdToPdfOptions _options;
+    private readonly long _maximumFontParseWork;
 
     public OfdToPdfConverter() : this(new OfdToPdfOptions()) { }
 
-    public OfdToPdfConverter(OfdToPdfOptions options)
+    public OfdToPdfConverter(OfdToPdfOptions options) : this(options, FontParseBudget.DefaultMaximumWork) { }
+
+    /// <summary>Creates an exporter with a cumulative finite cmap budget shared by document, fallback and signature fonts.</summary>
+    /// <param name="options">PDF conversion options.</param>
+    /// <param name="maximumCmapParseWork">Positive cumulative limit for cmap bytes, parsed records and entries inspected by variation coverage queries.</param>
+    public OfdToPdfConverter(OfdToPdfOptions options, long maximumCmapParseWork)
     {
+        if (maximumCmapParseWork <= 0) throw new ArgumentOutOfRangeException(nameof(maximumCmapParseWork));
+        _maximumFontParseWork = maximumCmapParseWork;
         _options = options ?? throw new ArgumentNullException(nameof(options));
         if (options.PackageLoadOptions is null || options.MaxDecodedImagePixels <= 0)
             throw new ArgumentException("OFD load options and a positive image pixel budget are required.", nameof(options));
@@ -78,10 +87,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 selectedIds.Add(id!);
             }
         }
-        var fonts = new DocumentFontContext(package.Fonts);
+        var parseBudget = new FontParseBudget(_maximumFontParseWork, cancellationToken);
+        var fonts = new DocumentFontContext(package.Fonts, parseBudget: parseBudget, cancellationToken: cancellationToken);
         var signatureAppearances = await PrepareSignatureAppearancesAsync(
                 package, selectedIds, strictAppearanceBudgets, maximumSignatureAppearances,
-                annotationMaterial, cancellationToken)
+                annotationMaterial, parseBudget, cancellationToken)
             .ConfigureAwait(false);
 
         using var document = new PdfDocument();
@@ -115,7 +125,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
     private async Task<IReadOnlyList<PreparedSignatureAppearance>> PrepareSignatureAppearancesAsync(
         OfdDocumentPackage package, HashSet<string>? selectedIds, bool strictAppearanceBudgets,
-        int? maximumSignatureAppearances, OfdModelMaterialization annotationMaterial, CancellationToken cancellationToken)
+        int? maximumSignatureAppearances, OfdModelMaterialization annotationMaterial, FontParseBudget parseBudget, CancellationToken cancellationToken)
     {
         var result = new List<PreparedSignatureAppearance>();
         var nestedCache = new Dictionary<string, (OfdDocumentPackage? Package, DocumentFontContext? Fonts)>();
@@ -141,7 +151,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         ? RemainingAppearanceBudget(usedBytes, usedEntries, usedPages)
                         : null;
                     var nested = await ReadAppearanceOfdPackageAsync(appearance.Data, remaining, annotationMaterial, cancellationToken).ConfigureAwait(false);
-                    cached = (nested, nested is null ? null : new DocumentFontContext(nested.Fonts));
+                    cached = (nested, nested is null ? null : new DocumentFontContext(nested.Fonts, parseBudget: parseBudget, cancellationToken: cancellationToken));
                     if (strictAppearanceBudgets)
                     {
                         nestedCache.Add(key, cached);
@@ -343,6 +353,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     }
                     if (element is OfdTextElement text)
                     {
+                        text = OfdTextRenderProjection.Create(text, annotationMaterial, cancellationToken);
                         var fontSize = Math.Max(0.1, MillimetersToPoints(text.FontSizeMillimeters));
                         var familyName = fonts.Resolve(text, out var resource);
                         if ((text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text)).All(string.IsNullOrEmpty)) continue;
@@ -392,7 +403,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 page.XMillimeters,
                                 page.YMillimeters,
                                 outlineFont,
-                                simulateItalic, coverage);
+                                simulateItalic, coverage, cancellationToken);
                         }
                         else
                         {
@@ -428,8 +439,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
     }
 
-    private static void DrawImage(XGraphics graphics, OfdPage page, OfdImageElement image, long maximumPixels, OfdModelMaterialization material, CancellationToken cancellationToken)
+    internal static void DrawImage(XGraphics graphics, OfdPage page, OfdImageElement image, long maximumPixels, OfdModelMaterialization material, CancellationToken cancellationToken,
+        Func<byte[], Image<Rgba32>>? decode = null)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ValidateImage(image.Data, maximumPixels);
         var state = graphics.Save();
         try
@@ -447,15 +460,17 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             var data = image.Data;
             if (image.Alpha < 255)
             {
-                using var pixels = Image.Load<Rgba32>(data);
+                using var pixels = decode is null ? Image.Load<Rgba32>(data) : decode(data);
+                cancellationToken.ThrowIfCancellationRequested();
                 pixels.Mutate(context => context.Opacity(Math.Max(0, image.Alpha) / 255f));
                 using var png = new MemoryStream();
-                pixels.SaveAsPng(png);
+                // RGB PNG metadata can otherwise discard the alpha added by Opacity.
+                pixels.Save(png, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });
                 data = png.ToArray();
             }
-            using var xImage = XImage.FromStream(() => new MemoryStream(data, writable: false));
-            var interpolate = OfdImageRenderingHints.ReadPdfInterpolate(image);
-            if (interpolate.HasValue) xImage.Interpolate = interpolate.Value;
+            var interpolate = OfdImageRenderingHints.ReadPdfInterpolate(image) ?? true;
+            using var xImage = XImage.FromImageSource(new EncodedBitmapImageSource(data, maximumPixels, cancellationToken, decode, interpolate));
+            xImage.Interpolate = interpolate;
             graphics.DrawImage(xImage, 0, 0, 1, 1);
         }
         finally
@@ -466,6 +481,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
     private static void ValidateImage(byte[] data, long maximumPixels)
     {
+        ImageFormatAdmission.RejectBigTiff(data);
         var info = Image.Identify(data);
         if (info is null || info.Width <= 0 || info.Height <= 0 || (long)info.Width * info.Height > maximumPixels)
             throw new InvalidDataException("OFD image exceeds the configured decoded pixel limit or has invalid dimensions.");
@@ -559,15 +575,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         double pageOriginX,
         double pageOriginY,
         SixLabors.Fonts.Font? outlineFont,
-        bool simulateItalic, OpenTypeCmap? coverage)
+        bool simulateItalic, OpenTypeCmap? coverage, CancellationToken cancellationToken)
     {
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
             foreach (var run in text.Runs)
             {
-                var glyphs = OfdTextGeometry.Glyphs(run.Text);
-                var deltaX = OfdTextGeometry.ExpandDeltas(run.DeltaX, Math.Max(0, glyphs.Count - 1));
-                var deltaY = OfdTextGeometry.ExpandDeltas(run.DeltaY, Math.Max(0, glyphs.Count - 1));
+                var deltas = OfdTextGeometry.PositioningDeltas(run, cancellationToken);
+                var deltaX = deltas.X; var deltaY = deltas.Y;
                 if (deltaX.Count == 0 && deltaY.Count == 0)
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
@@ -576,13 +591,15 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     continue;
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
-                for (var i = 0; i < glyphs.Count; i++)
+                var i = 0;
+                foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
                 {
                     var anchor = OfdTextEmphasis.Anchor(x, y, factor);
-                    DrawStyledString(graphics, glyphs[i], font, brush,
+                    DrawStyledString(graphics, glyph, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X), MillimetersToPoints(anchor.Y)), outlineFont, simulateItalic, coverage: coverage);
                     if (i < deltaX.Count) x += deltaX[i];
                     if (i < deltaY.Count) y += deltaY[i];
+                    i++;
                 }
             }
         });

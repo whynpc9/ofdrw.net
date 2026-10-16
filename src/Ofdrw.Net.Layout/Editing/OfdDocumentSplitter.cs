@@ -111,7 +111,7 @@ public static class OfdDocumentSplitter
             };
             result.Fonts.Add(clone); mapping.Add(font, clone);
         }
-        OfdDocumentMerger.CopyAttachments(source, result, cancellationToken, material);
+        OfdDocumentMerger.CopyAttachments(source, result, cancellationToken, material, retainedSourceMapping: mapping);
         foreach (var tag in source.CustomTags) result.CustomTags.Add(tag.Key, tag.Value);
         foreach (var index in pages)
         {
@@ -129,6 +129,7 @@ public static class OfdDocumentSplitter
             }
         }
         OfdNavigationCloner.Clone(source, result, mapping, material, cancellationToken);
+        result.CustomTagSource = source.CustomTagSource?.Clone(source, result, material, cancellationToken);
         result.AnnotationIndexSource = source.AnnotationIndexSource?.Clone(source, result, material, cancellationToken);
         result.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, cancellationToken);
         result.SourceIdentity = source.SourceIdentity?.CloneFor(result, mapping, material, cancellationToken);

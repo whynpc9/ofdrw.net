@@ -4,6 +4,8 @@ using Ofdrw.Net.Reader.Readers;
 using System.IO.Compression;
 using System.Xml.Linq;
 using System.Text;
+using Ofdrw.Net.Signatures.Crypto;
+using Ofdrw.Net.Signatures.Verification;
 
 namespace Ofdrw.Net.Cli.Tests;
 
@@ -12,6 +14,56 @@ public sealed class DocumentToolsCliTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "ofd-document-tools-" + Guid.NewGuid().ToString("N"));
     public DocumentToolsCliTests() => Directory.CreateDirectory(_directory);
     private string PathFor(string name) => Path.Combine(_directory, name);
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Audit022_CliNoPublication(bool preCanceled)
+    {
+        var input = PathFor("merge-source.ofd");
+        var output = PathFor("merge-target.ofd");
+        var source = new OfdDocumentPackage();
+        source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 });
+        await using (var stream = File.Create(input)) await new OfdPackageWriter().WriteAsync(source, stream);
+        using (var zip = ZipFile.Open(input, ZipArchiveMode.Update))
+        {
+            var entry = zip.Entries.Single(item => item.FullName.EndsWith("/Content.xml", StringComparison.Ordinal));
+            XDocument xml; using (var stream = entry.Open()) xml = XDocument.Load(stream);
+            xml.Descendants().Single(node => node.Name.LocalName == "Layer").Add(new XElement(XName.Get("Unknown", "urn:vendor")));
+            var path = entry.FullName; entry.Delete();
+            using var target = zip.CreateEntry(path).Open(); target.Write(Encoding.UTF8.GetBytes(xml.ToString()));
+        }
+        await File.WriteAllTextAsync(output, "unchanged target");
+        using var cancellation = new CancellationTokenSource();
+        if (preCanceled) cancellation.Cancel();
+        var savedError = Console.Error;
+        using var error = new CancelOnMergeWarning(cancellation);
+        try
+        {
+            Console.SetError(error);
+            Assert.Equal(130, await global::Cli.RunAsync(["merge", output, input, input, "--skip-unsupported"], cancellation.Token));
+        }
+        finally { Console.SetError(savedError); }
+        Assert.Equal(preCanceled ? 0 : 2, error.Warnings);
+        Assert.Contains("Conversion canceled.", error.ToString());
+        Assert.Equal("unchanged target", await File.ReadAllTextAsync(output));
+        Assert.Empty(Directory.GetFiles(_directory, ".ofdrw-*.tmp"));
+    }
+
+    private sealed class CancelOnMergeWarning(CancellationTokenSource cancellation) : StringWriter
+    {
+        public int Warnings { get; private set; }
+        public override void WriteLine(string? value)
+        {
+            base.WriteLine(value);
+            if (value?.StartsWith("Warning:", StringComparison.Ordinal) == true)
+            {
+                Warnings++;
+                cancellation.Cancel();
+            }
+        }
+    }
+
     [Fact]
     public async Task Commands_UseOneBasedPagesAndAtomicInPlaceOutput()
     {
@@ -86,6 +138,56 @@ public sealed class DocumentToolsCliTests : IDisposable
         }
         Assert.Equal(3, await global::Cli.RunAsync(["verify-signatures", input]));
     }
+
+    [Theory]
+    [InlineData("missing", 3)]
+    [InlineData("malformed", 3)]
+    [InlineData("empty", 3)]
+    [InlineData("blank", 3)]
+    [InlineData("complete", 2)]
+    public async Task Audit001_CliIncompleteReport(string kind, int expectedExitCode)
+    {
+        var input = PathFor("declarations.ofd");
+        XNamespace ns = "http://www.ofdspec.org/2016";
+        using (var zip = ZipFile.Open(input, ZipArchiveMode.Create))
+        {
+            var body = new XElement(ns + "DocBody", new XElement(ns + "Signatures", "Signs/Signatures.xml"));
+            if (kind != "complete") body.Add(new XElement(ns + "Signatures", kind == "blank" ? "   " : "broken.xml"));
+            WriteVerificationEntry(zip, "OFD.xml", new XElement(ns + "OFD", body).ToString());
+            WriteVerificationEntry(zip, "content.txt", "protected content");
+            WriteVerificationEntry(zip, "Signs/Signatures.xml", new XElement(ns + "Signatures", new XElement(ns + "Signature",
+                new XAttribute("ID", "1"), new XAttribute("BaseLoc", "Signature.xml"))).ToString());
+            var checkValue = Convert.ToBase64String(OfdDigestAlgorithms.Compute(
+                OfdDigestAlgorithms.Sha256Oid, Encoding.UTF8.GetBytes("protected content")));
+            var references = new XElement(ns + "References",
+                new XAttribute("CheckMethod", OfdDigestAlgorithms.Sha256Oid),
+                new XElement(ns + "Reference", new XAttribute("FileRef", "/content.txt"),
+                    new XElement(ns + "CheckValue", checkValue)));
+            var signature = new XElement(ns + "Signature",
+                new XElement(ns + "SignedInfo",
+                    new XElement(ns + "SignatureMethod", "urn:audit001:unregistered"), references),
+                new XElement(ns + "SignedValue", "SignedValue.dat"));
+            WriteVerificationEntry(zip, "Signs/Signature.xml", signature.ToString());
+            WriteVerificationEntry(zip, "Signs/SignedValue.dat", "unregistered algorithm fixture");
+            if (kind == "malformed") WriteVerificationEntry(zip, "broken.xml", "<Signatures>");
+            if (kind == "empty") WriteVerificationEntry(zip, "broken.xml", new XElement(ns + "Signatures").ToString());
+        }
+
+        await using (var stream = File.OpenRead(input))
+        {
+            var report = await new OfdSignatureVerifier().VerifyAsync(stream);
+            Assert.True(Assert.Single(report.Signatures).ReferenceIntegrityValid);
+            Assert.Equal(OfdCryptographicVerificationStatus.Unsupported, report.Signatures[0].CryptographicStatus);
+        }
+        Assert.Equal(expectedExitCode, await global::Cli.RunAsync(["verify-signatures", input]));
+    }
+
+    private static void WriteVerificationEntry(ZipArchive zip, string path, string text)
+    {
+        using var stream = zip.CreateEntry(path).Open();
+        stream.Write(Encoding.UTF8.GetBytes(text));
+    }
+
     [Fact]
     public async Task Clean_RejectsOrdinaryZipWithoutReplacingExistingOutput()
     {
