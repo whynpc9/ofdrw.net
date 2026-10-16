@@ -239,6 +239,8 @@ internal abstract class OwnedProcessGroup : IDisposable
                 }
                 var protocolElapsed = Stopwatch.StartNew();
                 while (!_started) ReceiveFrame(protocolElapsed, ProtocolTimeout, cancellationToken, true);
+                cancellationToken.ThrowIfCancellationRequested();
+                CheckStartBudget();
                 _starting = false;
             }
             catch (Win32Exception exception) when (!resolving && !_targetStartError) { failure = ProtocolError("Cannot initialize the owned-process supervisor.", exception.NativeErrorCode); }
