@@ -1,0 +1,46 @@
+[
+  {
+    "sample": "notice",
+    "pages": 2,
+    "source": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.txt",
+    "ofd": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.ofd",
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.pdf",
+    "text_ordinal": "passed",
+    "pdf_text_no_duplicates": "passed",
+    "fonts": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nAGHRAJ+Ofdrw-876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec CID TrueType      Identity-H       yes yes yes     10  0\n"
+  },
+  {
+    "sample": "control",
+    "pages": 3,
+    "source": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.txt",
+    "ofd": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.ofd",
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf",
+    "text_ordinal": "passed",
+    "pdf_text_no_duplicates": "passed",
+    "fonts": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nMENNZD+Ofdrw-876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec CID TrueType      Identity-H       yes yes yes     10  0\n"
+  },
+  {
+    "sample": "empty",
+    "pages": 1,
+    "source": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.txt",
+    "ofd": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.ofd",
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.pdf",
+    "text_ordinal": "passed",
+    "pdf_text_no_duplicates": "passed",
+    "fonts": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\n"
+  },
+  {
+    "sample": "generated-docx-native",
+    "pages": 2,
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/package-output/generated-docx-native.pdf",
+    "png_source": "package-e2e outputs",
+    "fonts": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nYRVWQH+Ofdrw-876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec CID TrueType      Identity-H       yes yes yes     10  0\nJWEYRF+Ofdrw-a7245b7b10db0d13ea023768e24ad3703481e374a1814f8b5d8ae402fa62a337 CID TrueType      Identity-H       yes yes yes     15  0\n"
+  },
+  {
+    "sample": "generated-docx-default",
+    "pages": 2,
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/package-output/generated-docx-default.pdf",
+    "png_source": "package-e2e outputs",
+    "fonts": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nDPPMSA+Ofdrw-876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec CID TrueType      Identity-H       yes yes yes     10  0\nVHBCDW+Ofdrw-a7245b7b10db0d13ea023768e24ad3703481e374a1814f8b5d8ae402fa62a337 CID TrueType      Identity-H       yes yes yes     15  0\n"
+  }
+]

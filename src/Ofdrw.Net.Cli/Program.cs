@@ -30,7 +30,7 @@ internal static partial class Cli
 
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
-            "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-image" or "image-to-ofd" or
+            "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-image" or "image-to-ofd" or
             "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
@@ -41,6 +41,8 @@ internal static partial class Cli
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (command == "text-to-ofd")
+                return await PlainTextAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "ofd-to-image" or "image-to-ofd")
                 return await ConvertImagesAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
 
@@ -641,6 +643,7 @@ internal static partial class Cli
           ofdrw convert <input> <output> [--pages 1,3-5]
           ofdrw docx-to-pdf --input <input.docx> --output <output.pdf> [--docx-engine auto|word|libreoffice|built-in]
           ofdrw docx-to-ofd --input <input.docx> --output <output.ofd> [--pages 1,3-5] [--docx-ofd-mode native|dual-layer] [--docx-engine auto|word|libreoffice|built-in]
+          ofdrw text-to-ofd <input.txt> <output.ofd> [--font-family NAME] [--font-size-mm NUMBER]
           ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5]
           ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--pages 1,3-5]
           ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--pages 1]
@@ -661,6 +664,7 @@ internal static partial class Cli
           convert     Infer conversion direction from .docx/.pdf/.ofd extensions.
           docx-to-pdf Convert DOCX to PDF using Word on macOS when available, or LibreOffice.
           docx-to-ofd Convert DOCX directly to native OFD text, or use a dual visual/text layer.
+          text-to-ofd Convert strict UTF-8 plain text to native OFD with Flow pagination.
           pdf-to-ofd  Convert PDF to OFD.
           ofd-to-pdf  Convert OFD to PDF.
           ofd-to-svg  Convert one OFD page to self-contained SVG.
@@ -677,6 +681,11 @@ internal static partial class Cli
           merge        Merge OFD pages into a self-contained output document.
 
         Options:
+          text-to-ofd: positional paths or --input/--output; no mixing or duplicate options.
+          --font-family, --font-size-mm text-to-ofd: family request and size in millimeters; no font embedding.
+          --page-width, --page-height text-to-ofd: paired page dimensions in millimeters.
+          --margin-left, --margin-right, --margin-top, --margin-bottom text-to-ofd: nonnegative millimeters.
+          --max-input-bytes, --max-characters, --max-pages, --max-text-elements text-to-ofd: positive budgets.
           -i, --input   Input file path.
           -o, --output  Output file path.
           -p, --pages   1-based page list or ranges, for example 1,3-5.
