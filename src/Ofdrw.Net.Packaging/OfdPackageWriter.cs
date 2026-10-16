@@ -340,6 +340,7 @@ public sealed partial class OfdPackageWriter
         internal OfdIdPlan Ids = null!;
         internal OfdResourceCatalog Resources = null!;
         internal CustomTagWritePlan CustomTags = null!;
+        internal OfdAttachmentWritePlan Attachments = null!;
         internal string DocumentPath = string.Empty, Directory = string.Empty, PublicLocation = string.Empty;
         internal string? DocumentLocation;
         internal XNamespace Namespace = XNamespace.None;
@@ -407,16 +408,9 @@ public sealed partial class OfdPackageWriter
         foreach (var path in package.Pages.SelectMany(page => page.AnnotationOwnership.Entries.Keys).Distinct(StringComparer.OrdinalIgnoreCase)) Role(path, "PageAnnot");
         Role(publicPath, "Res");
         if (!string.IsNullOrWhiteSpace(plan.DocumentLocation)) Role(material.ResolvePath(plan.DocumentPath, plan.DocumentLocation!, token), "Res");
-        if (package.Attachments.Count > 0)
-        {
-            Role(EntryInDirectory(plan.Directory, "Attachs/Attachments.xml"), "Attachments");
-            for (var index = 0; index < package.Attachments.Count; index++)
-            {
-                var attachment = package.Attachments[index]; if (attachment.IsExternal) continue;
-                material.ChargeCopy(8L * attachment.Name.Length + 4L * plan.Directory.Length + 256, token);
-                Role(EntryInDirectory(plan.Directory, $"Attachs/Attach_{index + 1}_{SanitizeFileName(attachment.Name)}"), "AttachmentPayload");
-            }
-        }
+        plan.Attachments = OfdAttachmentWriter.Prepare(package, plan.DocumentPath, plan.Namespace, outputRoles.Keys, material, token);
+        foreach (var path in plan.Attachments.Entries.Keys)
+            Role(path, path == plan.Attachments.DescriptorPath ? "Attachments" : "AttachmentPayload");
         plan.CustomTags = BuildCustomTags(package, plan.Entries, plan.Namespace, plan.DocumentPath, material, token);
         foreach (var path in plan.CustomTags.Entries.Keys) Role(path, "CustomTags");
         plan.Resources = new OfdResourceCatalog(plan.Entries, plan.DocumentPath, plan.Namespace, knownPaths, material, token, package.SourceIdentity, package, outputRoles.Keys);
@@ -476,7 +470,7 @@ public sealed partial class OfdPackageWriter
         plan.Resources.Apply(); plan.Resources.Flush();
         BuildComposites(package, plan, material, cancellationToken);
         BuildPages(orderedPages, entries, ns, pagePaths, pageIds, layerIds, elementIds, fonts.TextBindings, imageResources, idAllocator, material, cancellationToken);
-        BuildAttachments(package, entries, ns, docId);
+        foreach (var entry in plan.Attachments.Entries) entries[entry.Key] = entry.Value;
         foreach (var entry in plan.CustomTags.Entries) entries[entry.Key] = entry.Value;
 
         var docXml = new XDocument(
@@ -507,9 +501,7 @@ public sealed partial class OfdPackageWriter
                     )
                 ),
                 plan.CustomTags.Declarations,
-                package.Attachments.Count > 0
-                    ? new XElement(ns + "Attachments", "Attachs/Attachments.xml")
-                    : null,
+                plan.Attachments.Declaration,
                 package.PreservedDocumentElements.Select(xml =>
                     XElement.Parse(xml, LoadOptions.PreserveWhitespace))));
         foreach (var navigation in OfdNavigationXml.Write(package, pageIds, ns, cancellationToken, material))
@@ -1184,53 +1176,6 @@ public sealed partial class OfdPackageWriter
     private static string EntryInDirectory(string directory, string relativePath) =>
         directory.Length == 0 ? relativePath : directory + "/" + relativePath;
 
-    private static void BuildAttachments(OfdDocumentPackage package, IDictionary<string, byte[]> entries, XNamespace ns, string docId)
-    {
-        if (package.Attachments.Count == 0)
-        {
-            return;
-        }
-
-        var attachments = new XDocument(
-            new XDeclaration("1.0", "UTF-8", null),
-            new XElement(ns + "Attachments",
-                new XAttribute(XNamespace.Xmlns + "ofd", ns.NamespaceName),
-                package.Attachments.Select((attachment, index) =>
-                {
-                    var fileName = $"Attach_{index + 1}_{SanitizeFileName(attachment.Name)}";
-                    if (!attachment.IsExternal)
-                    {
-                        entries[EntryInDirectory(docId, $"Attachs/{fileName}")] = attachment.Data;
-                    }
-
-                    var fileLoc = attachment.IsExternal
-                        ? attachment.ExternalPath ?? string.Empty
-                        : fileName;
-                    return new XElement(ns + "Attachment",
-                        new XAttribute("ID", attachment.Id ?? $"Attachment_{index + 1}"),
-                        new XAttribute("Name", attachment.Name),
-                        new XAttribute("Format", attachment.Format ?? attachment.MediaType),
-                        attachment.CreationDate.HasValue
-                            ? new XAttribute("CreationDate", attachment.CreationDate.Value.ToString("O", CultureInfo.InvariantCulture))
-                            : null,
-                        attachment.ModificationDate.HasValue
-                            ? new XAttribute("ModDate", attachment.ModificationDate.Value.ToString("O", CultureInfo.InvariantCulture))
-                            : null,
-                        attachment.SizeKilobytes.HasValue
-                            ? new XAttribute("Size", ToInvariant(attachment.SizeKilobytes.Value))
-                            : null,
-                        attachment.Visible.HasValue
-                            ? new XAttribute("Visible", attachment.Visible.Value)
-                            : null,
-                        !string.IsNullOrWhiteSpace(attachment.Usage)
-                            ? new XAttribute("Usage", attachment.Usage)
-                            : null,
-                        new XElement(ns + "FileLoc", fileLoc));
-                })));
-
-        entries[EntryInDirectory(docId, "Attachs/Attachments.xml")] = ToUtf8Bytes(attachments);
-    }
-
     private sealed class CustomTagWritePlan
     {
         internal readonly List<XElement> Declarations = new();
@@ -1386,18 +1331,6 @@ public sealed partial class OfdPackageWriter
     private static string ToInvariant(double value)
     {
         return value.ToString("0.###", CultureInfo.InvariantCulture);
-    }
-
-    private static string SanitizeFileName(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "Attachment.bin";
-        }
-
-        var invalid = Path.GetInvalidFileNameChars();
-        var chars = value.Select(c => invalid.Contains(c) ? '_' : c).ToArray();
-        return new string(chars);
     }
 
     private static string GetImageExtension(string format)

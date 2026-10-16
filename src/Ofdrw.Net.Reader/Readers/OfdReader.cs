@@ -389,7 +389,14 @@ public sealed class OfdReader : IOfdReader
             package.Pages.Add(page);
         }
 
-        var attachmentsLoc = ReadValue(documentXml.Root?.Elements().FirstOrDefault(x => x.Name.LocalName == "Attachments"), material, cancellationToken);
+        XElement? attachmentDeclaration = null;
+        foreach (var declaration in documentXml.Root!.Elements(docNs + "Attachments"))
+        {
+            cancellationToken.ThrowIfCancellationRequested(); material.Structure.Reference();
+            if (attachmentDeclaration is not null) throw new InvalidDataException("Duplicate attachment descriptor references.");
+            attachmentDeclaration = declaration;
+        }
+        var attachmentsLoc = ReadValue(attachmentDeclaration, material, cancellationToken);
         if (!string.IsNullOrWhiteSpace(attachmentsLoc))
         {
             var attachmentsPath = material.ResolvePath(docRoot, attachmentsLoc!, cancellationToken);
@@ -397,9 +404,9 @@ public sealed class OfdReader : IOfdReader
             {
                 var attachmentsXml = material.ReadXml(attachmentsPath, archive.GetBytes(attachmentsPath), cancellationToken);
                 foreach (var node in attachmentsXml.Root?.Elements()
-                    .Where(x => x.Name.LocalName == "Attachment") ?? Enumerable.Empty<XElement>())
+                    .Where(x => x.Name == attachmentsXml.Root.Name.Namespace + "Attachment") ?? Enumerable.Empty<XElement>())
                 {
-                    var fileLoc = ReadValue(node.Elements().FirstOrDefault(x => x.Name.LocalName == "FileLoc"), material, cancellationToken)
+                    var fileLoc = ReadValue(node.Element(node.Name.Namespace + "FileLoc"), material, cancellationToken)
                         ?? node.Attribute("FileLoc")?.Value
                         ?? string.Empty;
                     var contentPath = material.ResolvePath(attachmentsPath, fileLoc, cancellationToken);
@@ -431,6 +438,7 @@ public sealed class OfdReader : IOfdReader
 
                     package.Attachments.Add(attachment);
                 }
+                package.AttachmentSource = OfdAttachmentSource.Capture(package, attachmentDeclaration!, attachmentsPath, attachmentsXml.Root!, material, cancellationToken);
             }
         }
 
