@@ -1,0 +1,119 @@
+# Path: <build>/osx-x64/first/ofdrw-supervisor
+# Arch: x86_64
+# Object files:
+[  0] linker synthesized
+[  1] <supervisor.o>
+[  2] /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libproc.tbd
+[  3] /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libSystem.tbd
+[  4] /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/system/libdyld.tbd
+[  5] /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/system/libsystem_c.tbd
+[  6] /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/system/libsystem_kernel.tbd
+[  7] /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/system/libsystem_pthread.tbd
+# Sections:
+# Address	Size    	Segment	Section
+0x100000600	0x00001481	__TEXT	__text
+0x100001A81	0x00000096	__TEXT	__stubs
+0x100001B18	0x0000013A	__TEXT	__stub_helper
+0x100001C60	0x00000010	__TEXT	__const
+0x100001C70	0x00000090	__TEXT	__unwind_info
+0x100002000	0x00000018	__DATA_CONST	__got
+0x100003000	0x000000C8	__DATA	__la_symbol_ptr
+0x1000030C8	0x00000008	__DATA	__data
+0x1000030D0	0x00000004	__DATA	__bss
+# Symbols:
+# Address	Size    	File  Name
+0x100000000	0x00000000	[  0] __mh_execute_header
+0x100000600	0x00000A90	[  1] _main
+0x100001090	0x00000010	[  1] _on_signal
+0x1000010A0	0x00000040	[  1] _nonblocking
+0x1000010E0	0x00000150	[  1] _close_unrelated
+0x100001230	0x00000220	[  1] _frame
+0x100001450	0x00000080	[  1] _make_pipe
+0x1000014D0	0x00000080	[  1] _child_record
+0x100001550	0x00000050	[  1] _milliseconds
+0x1000015A0	0x00000050	[  1] _observe
+0x1000015F0	0x00000380	[  1] _cleanup
+0x100001970	0x00000111	[  1] _only_zombies
+0x100001A81	0x00000006	[  7] ____chkstk_darwin.stub
+0x100001A87	0x00000006	[  6] ___error.stub
+0x100001A8D	0x00000006	[  5] ___stack_chk_fail.stub
+0x100001A93	0x00000006	[  6] __exit.stub
+0x100001A99	0x00000006	[  5] _clock_gettime.stub
+0x100001A9F	0x00000006	[  6] _close.stub
+0x100001AA5	0x00000006	[  6] _execve.stub
+0x100001AAB	0x00000006	[  6] _fcntl.stub
+0x100001AB1	0x00000006	[  5] _fork.stub
+0x100001AB7	0x00000006	[  6] _getpgid.stub
+0x100001ABD	0x00000006	[  6] _getrlimit.stub
+0x100001AC3	0x00000006	[  6] _getsockopt.stub
+0x100001AC9	0x00000006	[  6] _kill.stub
+0x100001ACF	0x00000006	[  5] _nanosleep.stub
+0x100001AD5	0x00000006	[  6] _pipe.stub
+0x100001ADB	0x00000006	[  6] _poll.stub
+0x100001AE1	0x00000006	[  6] _proc_listpgrppids.stub
+0x100001AE7	0x00000006	[  6] _proc_pidinfo.stub
+0x100001AED	0x00000006	[  6] _read.stub
+0x100001AF3	0x00000006	[  6] _setpgid.stub
+0x100001AF9	0x00000006	[  5] _sigaction.stub
+0x100001AFF	0x00000006	[  6] _sigprocmask.stub
+0x100001B05	0x00000006	[  6] _waitid.stub
+0x100001B0B	0x00000006	[  5] _waitpid.stub
+0x100001B11	0x00000006	[  6] _write.stub
+0x100001B18	0x00000010	[  0] anon
+0x100001B28	0x0000000A	[  0] anon
+0x100001B34	0x0000000A	[  0] anon
+0x100001B40	0x0000000A	[  0] anon
+0x100001B4C	0x0000000A	[  0] anon
+0x100001B58	0x0000000A	[  0] anon
+0x100001B64	0x0000000A	[  0] anon
+0x100001B70	0x0000000A	[  0] anon
+0x100001B7C	0x0000000A	[  0] anon
+0x100001B88	0x0000000A	[  0] anon
+0x100001B94	0x0000000A	[  0] anon
+0x100001BA0	0x0000000A	[  0] anon
+0x100001BAC	0x0000000A	[  0] anon
+0x100001BB8	0x0000000A	[  0] anon
+0x100001BC4	0x0000000A	[  0] anon
+0x100001BD0	0x0000000A	[  0] anon
+0x100001BDC	0x0000000A	[  0] anon
+0x100001BE8	0x0000000A	[  0] anon
+0x100001BF4	0x0000000A	[  0] anon
+0x100001C00	0x0000000A	[  0] anon
+0x100001C0C	0x0000000A	[  0] anon
+0x100001C18	0x0000000A	[  0] anon
+0x100001C24	0x0000000A	[  0] anon
+0x100001C30	0x0000000A	[  0] anon
+0x100001C3C	0x0000000A	[  0] anon
+0x100001C48	0x0000000A	[  0] anon
+0x100001C60	0x00000010	[  1] 16-byte-literal
+0x100001C70	0x00000090	[  0] compact unwind info
+0x100002000	0x00000008	[  5] ___stack_chk_guard.got
+0x100002008	0x00000008	[  4] _environ.got
+0x100002010	0x00000008	[  4] dyld_stub_binder.got
+0x100003000	0x00000008	[  7] ____chkstk_darwin.lazy_ptr
+0x100003008	0x00000008	[  6] ___error.lazy_ptr
+0x100003010	0x00000008	[  5] ___stack_chk_fail.lazy_ptr
+0x100003018	0x00000008	[  6] __exit.lazy_ptr
+0x100003020	0x00000008	[  5] _clock_gettime.lazy_ptr
+0x100003028	0x00000008	[  6] _close.lazy_ptr
+0x100003030	0x00000008	[  6] _execve.lazy_ptr
+0x100003038	0x00000008	[  6] _fcntl.lazy_ptr
+0x100003040	0x00000008	[  5] _fork.lazy_ptr
+0x100003048	0x00000008	[  6] _getpgid.lazy_ptr
+0x100003050	0x00000008	[  6] _getrlimit.lazy_ptr
+0x100003058	0x00000008	[  6] _getsockopt.lazy_ptr
+0x100003060	0x00000008	[  6] _kill.lazy_ptr
+0x100003068	0x00000008	[  5] _nanosleep.lazy_ptr
+0x100003070	0x00000008	[  6] _pipe.lazy_ptr
+0x100003078	0x00000008	[  6] _poll.lazy_ptr
+0x100003080	0x00000008	[  6] _proc_listpgrppids.lazy_ptr
+0x100003088	0x00000008	[  6] _proc_pidinfo.lazy_ptr
+0x100003090	0x00000008	[  6] _read.lazy_ptr
+0x100003098	0x00000008	[  6] _setpgid.lazy_ptr
+0x1000030A0	0x00000008	[  5] _sigaction.lazy_ptr
+0x1000030A8	0x00000008	[  6] _sigprocmask.lazy_ptr
+0x1000030B0	0x00000008	[  6] _waitid.lazy_ptr
+0x1000030B8	0x00000008	[  5] _waitpid.lazy_ptr
+0x1000030C0	0x00000008	[  6] _write.lazy_ptr
+0x1000030C8	0x00000008	[  0] __dyld_private
+0x1000030D0	0x00000004	[  1] _interrupted

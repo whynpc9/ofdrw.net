@@ -77,3 +77,18 @@ or native bridge is redistributed by this adapter.
 2.6.2, MIT, source https://github.com/bcgit/bc-csharp/tree/release-2.6.2.
 Its nuspec pins upstream commit `b4f2f6ad76bcd1f11f365ee50cc7447fbce79077`.
 This dependency is not added to Core, Writer or the default Converter metapackage.
+
+## Native process supervisor
+
+The first-party `Ofdrw.ProcessSupervisor` Linux x64 and ARM64 executables
+statically link musl 1.2.5 (MIT), source
+https://musl.libc.org/releases/musl-1.2.5.tar.gz, SHA-256
+`a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4`.
+The complete upstream copyright/license notice and applicable individual
+source notices are retained in `docs/licenses/MUSL-COPYRIGHT.txt` and in the
+Core package. The pinned GCC build tools are not redistributed; explicit
+`-nostdlib` linking and retained link maps establish that no libgcc or other
+compiler support library is statically included. macOS executables link only
+to operating-system libSystem/libproc; those libraries are not redistributed.
+The exact source, toolchain digests, flags, headers and binary hashes are in
+`native/Ofdrw.ProcessSupervisor/assets/manifest.json`.
