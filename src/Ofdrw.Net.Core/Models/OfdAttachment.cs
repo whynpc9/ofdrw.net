@@ -4,6 +4,8 @@ namespace Ofdrw.Net.Core.Models;
 
 public sealed class OfdAttachment
 {
+    internal OfdDocumentPackage? SourceOwner { get; set; }
+
     public string? Id { get; set; }
 
     public string Name { get; set; } = string.Empty;
