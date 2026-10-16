@@ -292,16 +292,20 @@ public static class OfdDocumentMerger
         return mapping;
     }
 
-    internal static void CopyAttachments(OfdDocumentPackage source, OfdDocumentPackage destination, CancellationToken cancellationToken = default, OfdModelMaterialization? material = null)
+    internal static void CopyAttachments(OfdDocumentPackage source, OfdDocumentPackage destination, CancellationToken cancellationToken = default,
+        OfdModelMaterialization? material = null, Dictionary<object, object>? retainedSourceMapping = null)
     {
         material ??= new OfdModelMaterialization(new OfdModelLimits());
         OfdAttachmentSource.AssertCopyable(source, material, cancellationToken);
+        if (retainedSourceMapping is not null && source.DocumentEntryPath != destination.DocumentEntryPath)
+            throw new NotSupportedException("Retained attachment source requires the original document path.");
         foreach (var attachment in source.Attachments)
         {
-            material?.ChargeCopy(attachment.Data.LongLength, cancellationToken);
+            material.ChargeCopy(256L + attachment.Data.LongLength, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            destination.Attachments.Add(new OfdAttachment
+            var clone = new OfdAttachment
             {
+                Id = retainedSourceMapping is not null ? attachment.Id : null,
                 Name = attachment.Name,
                 MediaType = attachment.MediaType,
                 Format = attachment.Format,
@@ -313,8 +317,19 @@ public static class OfdDocumentMerger
                 IsExternal = attachment.IsExternal,
                 ExternalPath = attachment.ExternalPath,
                 Data = attachment.Data.ToArray()
-            });
+            };
+            destination.Attachments.Add(clone);
+            if (retainedSourceMapping is not null)
+            {
+                material.ChargeCopy(128, cancellationToken);
+                if (retainedSourceMapping.ContainsKey(attachment)) throw new InvalidDataException("Ambiguous retained attachment ownership.");
+                retainedSourceMapping.Add(attachment, clone);
+            }
         }
+        // Only the retained-path Split opts in. Merge/Mix still reconstruct
+        // closed typed attachments without importing another document's owner.
+        if (retainedSourceMapping is not null)
+            destination.AttachmentSource = source.AttachmentSource?.Clone(source, destination, retainedSourceMapping, material, cancellationToken);
     }
 
     internal static OfdDocumentOptions CloneOptions(OfdDocumentOptions source)
