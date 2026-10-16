@@ -1333,18 +1333,6 @@ public sealed partial class OfdPackageWriter
         return value.ToString("0.###", CultureInfo.InvariantCulture);
     }
 
-    private static string SanitizeFileName(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "Attachment.bin";
-        }
-
-        var invalid = Path.GetInvalidFileNameChars();
-        var chars = value.Select(c => invalid.Contains(c) ? '_' : c).ToArray();
-        return new string(chars);
-    }
-
     private static string GetImageExtension(string format)
     {
         return format switch
