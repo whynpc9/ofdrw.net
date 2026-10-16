@@ -50,7 +50,12 @@ public sealed partial class DocxConversionTests
                 Assert.Equal(original[i].StartBaseLine.X, letters[i].StartBaseLine.X, 3);
                 Assert.Equal(original[i].StartBaseLine.Y, letters[i].StartBaseLine.Y, 3);
                 var skew = letters[i].BoundingBox.TopLeft.X - letters[i].BoundingBox.BottomLeft.X;
-                if (i is >= 3 and < 6) Assert.True(skew > 0.5, $"Glyph {i} must be visibly italic; skew={skew}");
+                if (i is >= 3 and < 6)
+                {
+                    Assert.True(skew > 0.5, $"Glyph {i} must be visibly italic; skew={skew}");
+                    var height = letters[i].BoundingBox.TopLeft.Y - letters[i].BoundingBox.BottomLeft.Y;
+                    Assert.Equal(0.342020143325669, skew / height, 5);
+                }
                 else Assert.Equal(0, skew, 3);
             }
         }
@@ -107,7 +112,12 @@ public sealed class BuiltInPdfItalicRendererTests
             var skew = letters[i].BoundingBox.TopLeft.X - letters[i].BoundingBox.BottomLeft.X;
             var controlSkew = letters[i + 3].BoundingBox.TopLeft.X - letters[i + 3].BoundingBox.BottomLeft.X;
             if (physicalItalic) Assert.Equal(controlSkew, skew, 4);
-            else Assert.True(skew > controlSkew + 1);
+            else
+            {
+                Assert.True(skew > controlSkew + 1);
+                var height = letters[i].BoundingBox.TopLeft.Y - letters[i].BoundingBox.BottomLeft.Y;
+                Assert.Equal(0.342020143325669, skew / height, 5);
+            }
         }
     }
 
