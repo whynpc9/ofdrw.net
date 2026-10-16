@@ -1,7 +1,37 @@
+using System.Runtime.InteropServices;
+using Ofdrw.Net.Core.Processes;
 using System.Diagnostics;
 
 switch (args[0])
 {
+    case "owned-signal-probe":
+    {
+        var expected = int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture);
+        if (!OperatingSystem.IsWindows()) UnixSignals.IgnoreChildExit();
+        var closedStandardDescriptors = args.Length > 3 && args[3] == "closed-stdio";
+        if (closedStandardDescriptors && !OperatingSystem.IsWindows()) UnixSignals.CloseStandardDescriptors();
+        var target = new ProcessStartInfo(Environment.ProcessPath!);
+        foreach (var value in new[] { "exec", "--runtimeconfig", args[2], typeof(ProcessFixtureMarker).Assembly.Location, "exit", args[1] })
+            target.ArgumentList.Add(value);
+        try
+        {
+            var result = await ExternalProcessRunner.RunAsync(target, TimeSpan.FromSeconds(10), default);
+            var report = $"actual={result.ExitCode};stdout={result.Output.Trim()};stderr={result.Error.Trim()}";
+            if (closedStandardDescriptors) await File.WriteAllTextAsync(args[4], report);
+            else Console.WriteLine(report);
+            return result.ExitCode == expected && result.Output.Trim() == "normal output" && result.Error.Trim() == "normal error" ? 0 : 41;
+        }
+        catch (Exception exception)
+        {
+            if (closedStandardDescriptors) await File.WriteAllTextAsync(args[4], exception.ToString());
+            else Console.Error.WriteLine(exception);
+            return 42;
+        }
+    }
+    case "exit":
+        Console.Out.WriteLine("normal output");
+        Console.Error.WriteLine("normal error");
+        return int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture);
     case "flood":
         var line = new string('x', 1024);
         for (var i = 0; i < 1024; i++)
@@ -64,3 +94,15 @@ static async Task PublishProcessIdAsync(string path)
 }
 
 public sealed class ProcessFixtureMarker;
+
+internal static class UnixSignals
+{
+    internal static void IgnoreChildExit()
+    {
+        var number = OperatingSystem.IsMacOS() ? 20 : 17;
+        if (signal(number, (IntPtr)1) == (IntPtr)(-1)) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+    internal static void CloseStandardDescriptors() { close(0); close(1); close(2); }
+    [DllImport("libc")] private static extern int close(int descriptor);
+    [DllImport("libc", SetLastError = true)] private static extern IntPtr signal(int number, IntPtr handler);
+}

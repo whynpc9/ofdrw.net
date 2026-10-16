@@ -1,3 +1,13 @@
+# These exact bytes are bound by the native supervisor delivery manifest.
+native/Ofdrw.ProcessSupervisor/supervisor.c text eol=lf
+native/Ofdrw.ProcessSupervisor/assets/manifest.json text eol=lf
+native/Ofdrw.ProcessSupervisor/assets/NativeSupervisorAssetManifest.g.cs text eol=lf
+native/Ofdrw.ProcessSupervisor/assets/SupervisorAssetHashes.props text eol=lf
+native/Ofdrw.ProcessSupervisor/assets/*/ofdrw-supervisor -text
+native/Ofdrw.ProcessSupervisor/assets/*/link.map text eol=lf
+native/Ofdrw.ProcessSupervisor/assets/*/readelf.txt text eol=lf
+docs/licenses/MUSL-COPYRIGHT.txt text eol=lf
+THIRD-PARTY-NOTICES.md text eol=lf
 *.tar filter=lfs diff=lfs merge=lfs -text
 *.zst filter=lfs diff=lfs merge=lfs -text
 *.zst.part* filter=lfs diff=lfs merge=lfs -text

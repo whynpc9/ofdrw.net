@@ -10,7 +10,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
 
 namespace Ofdrw.Net.Core.Processes;
@@ -26,7 +25,7 @@ internal abstract class OwnedProcessGroup : IDisposable
     internal abstract void Terminate();
     public abstract void Dispose();
 
-    internal static OwnedProcessGroup Start(ProcessStartInfo info)
+    internal static OwnedProcessGroup Start(ProcessStartInfo info, TimeSpan timeout, Stopwatch elapsed, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(info.FileName)) throw new ArgumentException("An executable is required.", nameof(info));
         if (!string.IsNullOrEmpty(info.UserName) || info.RedirectStandardInput)
@@ -37,7 +36,7 @@ internal abstract class OwnedProcessGroup : IDisposable
         {
             if (IntPtr.Size != 8)
                 throw new PlatformNotSupportedException("Owned Unix processes require a validated 64-bit native ABI.");
-            return new UnixGroup(info, arguments);
+            return new UnixGroup(info, arguments, timeout, elapsed, cancellationToken);
         }
         throw new PlatformNotSupportedException("Owned process groups require Windows, macOS or Linux.");
     }
@@ -164,28 +163,43 @@ internal abstract class OwnedProcessGroup : IDisposable
     {
         private static readonly object LaunchLock = new object();
         private static readonly bool Darwin = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+        private const int ProtocolTimeout = 6000;
         private readonly int _pid;
-        private readonly IntPtr _status = Marshal.AllocHGlobal(128);
-        private bool _terminated;
-        private bool _disposed;
-        private bool _exited;
+        private readonly string _executable;
+        private readonly IntPtr _frame = Marshal.AllocHGlobal(16);
+        private NativeSupervisorAssets.Extraction? _extraction;
+        private int _protocol = -1;
+        private int _frameLength;
+        private Stopwatch? _partialFrame;
+        private int _targetPid;
+        private bool _started, _terminated, _disposed, _exited;
         private int _exitCode;
+        private readonly Stopwatch _startElapsed;
+        private readonly TimeSpan _startTimeout;
+        private bool _starting = true, _targetStartError;
+        private Win32Exception? _startFailure;
 
-        internal UnixGroup(ProcessStartInfo info, List<string> arguments)
+        internal UnixGroup(ProcessStartInfo info, List<string> arguments, TimeSpan timeout, Stopwatch elapsed, CancellationToken cancellationToken)
         {
-            // Darwin's opaque types are pointers; Linux glibc/musl structures
-            // fit the documented ABI storage (spawnattr 336, file actions 80).
+            _executable = info.FileName;
+            _startElapsed = elapsed; _startTimeout = timeout;
             var attributes = IntPtr.Zero;
             var actions = IntPtr.Zero;
             var attributesReady = false;
             var actionsReady = false;
             var descriptors = new List<int>();
             Exception? failure = null;
+            var resolving = true;
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                CheckStartBudget();
+                var executable = ResolveExecutable(info.FileName);
+                resolving = false;
+                _extraction = NativeSupervisorAssets.Extract();
                 attributes = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 336);
                 actions = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 80);
-                using var argv = new NativeStrings(new[] { info.FileName }.Concat(arguments));
+                using var argv = new NativeStrings(new[] { _extraction.ExecutablePath, executable, info.FileName }.Concat(arguments));
                 using var environment = new NativeStrings(info.Environment.Where(pair => pair.Value != null)
                     .Select(pair => pair.Key + "=" + pair.Value));
                 lock (LaunchLock)
@@ -202,26 +216,40 @@ internal abstract class OwnedProcessGroup : IDisposable
                             throw new PlatformNotSupportedException("Owned processes with a working directory require posix_spawn_file_actions_addchdir_np (macOS 10.15+ or Linux libc providing this extension).", exception);
                         }
                     }
+                    var control = CreateSocket(descriptors);
                     var output = CreatePipe(descriptors);
                     var error = CreatePipe(descriptors);
-                    foreach (var descriptor in new[] { output[0], error[0] })
-                        Check(posix_spawn_file_actions_addclose(actions, descriptor), "posix_spawn close");
+                    Check(posix_spawn_file_actions_adddup2(actions, control[1], 3), "posix_spawn protocol");
                     Check(posix_spawn_file_actions_adddup2(actions, output[1], 1), "posix_spawn stdout");
                     Check(posix_spawn_file_actions_adddup2(actions, error[1], 2), "posix_spawn stderr");
-                    foreach (var descriptor in new[] { output[1], error[1] })
+                    foreach (var descriptor in descriptors)
                         Check(posix_spawn_file_actions_addclose(actions, descriptor), "posix_spawn close");
-                    // Resolve like Process.Start, before the child's chdir. Passing
-                    // an absolute path also preserves missing/invalid-executable errno.
-                    var executable = ResolveExecutable(info.FileName);
-                    Check(posix_spawn(out var pid, executable, actions, attributes, argv.Pointer, environment.Pointer), "posix_spawn " + info.FileName);
-                    _pid = pid; // A failed spawn does not establish PID ownership.
-                    descriptors.Remove(output[1]); CloseDescriptor(output[1]);
-                    descriptors.Remove(error[1]); CloseDescriptor(error[1]);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    CheckStartBudget();
+                    var spawnError = posix_spawn(out var pid, _extraction.ExecutablePath, actions, attributes, argv.Pointer, environment.Pointer);
+                    if (spawnError != 0)
+                        throw new IOException("Cannot start the owned-process supervisor (the temporary filesystem must permit execution).", new Win32Exception(spawnError));
+                    _pid = pid;
+                    descriptors.Remove(control[0]); _protocol = control[0];
+                    SetNonblocking(_protocol);
+                    foreach (var descriptor in new[] { control[1], output[1], error[1] })
+                    { descriptors.Remove(descriptor); CloseDescriptor(descriptor); }
                     descriptors.Remove(output[0]); StandardOutput = Reader((IntPtr)output[0], info.StandardOutputEncoding);
                     descriptors.Remove(error[0]); StandardError = Reader((IntPtr)error[0], info.StandardErrorEncoding);
                 }
+                var protocolElapsed = Stopwatch.StartNew();
+                while (!_started) ReceiveFrame(protocolElapsed, ProtocolTimeout, cancellationToken, true);
+                cancellationToken.ThrowIfCancellationRequested();
+                CheckStartBudget();
+                _starting = false;
             }
-            catch (Exception exception) { failure = exception; }
+            catch (Win32Exception exception) when (!resolving && !_targetStartError) { failure = ProtocolError("Cannot initialize the owned-process supervisor.", exception.NativeErrorCode); }
+            catch (Exception exception)
+            {
+                failure = _startFailure ?? exception;
+                if (_startFailure != null && !ReferenceEquals(exception, _startFailure))
+                    failure.Data["OwnedProcessCleanup.start failure"] = exception.ToString();
+            }
             finally
             {
                 foreach (var descriptor in descriptors) Cleanup(ref failure, "close fd " + descriptor, () => CloseDescriptor(descriptor));
@@ -232,14 +260,14 @@ internal abstract class OwnedProcessGroup : IDisposable
             }
             if (failure != null)
             {
-                if (_pid != 0)
-                {
-                    Cleanup(ref failure, "terminate failed launch", Terminate);
-                    Cleanup(ref failure, "reap failed launch", () => ReapLeader(5000));
-                }
+                // EOF asks the native owner to clean up, including a launch that
+                // has not yet reached exec. Never signal a cached numeric PID.
+                Cleanup(ref failure, "close supervisor protocol", CloseProtocol);
+                Cleanup(ref failure, "reap supervisor", () => ReapSupervisor(ProtocolTimeout));
                 Cleanup(ref failure, "close stdout", () => StandardOutput?.Dispose());
                 Cleanup(ref failure, "close stderr", () => StandardError?.Dispose());
-                Cleanup(ref failure, "free process status", () => Marshal.FreeHGlobal(_status));
+                Cleanup(ref failure, "remove supervisor executable", () => _extraction?.Dispose());
+                Cleanup(ref failure, "free process frame", () => Marshal.FreeHGlobal(_frame));
                 ExceptionDispatchInfo.Capture(failure!).Throw();
             }
         }
@@ -248,104 +276,173 @@ internal abstract class OwnedProcessGroup : IDisposable
         {
             get
             {
-                if (_exited) return true;
-                for (var offset = 0; offset < 128; offset += 4) Marshal.WriteInt32(_status, offset, 0);
-                // WNOWAIT reserves the leader PID until no further kill(-pgid)
-                // can occur. Do not register this child with System.Diagnostics.Process.
-                if (waitid(1, _pid, _status, 1 | 4 | (Darwin ? 0x20 : 0x1000000)) != 0)
-                    throw NativeError("waitid on owned process");
-                var code = Marshal.ReadInt32(_status, 8);
-                if (Marshal.ReadInt32(_status, Darwin ? 12 : 16) != _pid || code < 1 || code > 3) return false;
-                var status = Marshal.ReadInt32(_status, Darwin ? 20 : 24);
-                _exitCode = code == 1 ? status : 128 + status;
-                return _exited = true;
+                if (!_exited) ReceiveFrame(Stopwatch.StartNew(), 0, default, false);
+                return _exited;
             }
         }
         internal override int ExitCode => HasExited ? _exitCode : throw new InvalidOperationException("Process has not exited.");
+
         internal override void Terminate()
         {
             if (_terminated) return;
-            // Verify the waitable leader still belongs to us before signalling.
-            _ = HasExited;
-            if (kill(-_pid, 9) != 0)
+            var elapsed = Stopwatch.StartNew();
+            var command = new[] { (byte)'K' };
+            while (true)
             {
+                if (elapsed.ElapsedMilliseconds >= ProtocolTimeout) throw ProtocolError("Timed out requesting process cleanup.");
+                var written = send(_protocol, command, (UIntPtr)1, Darwin ? 0 : 0x4000).ToInt64();
+                if (written == 1) break;
                 var error = Marshal.GetLastWin32Error();
-                // Darwin reports EPERM, rather than ESRCH, for an all-zombie
-                // group. Prove that state before treating it as terminated.
-                if (error != 3 && !(Darwin && error == 1 && HasExited && DarwinGroupHasOnlyZombies()))
-                    throw new Win32Exception(error, "kill owned process group");
+                if (written >= 0 || (error != 4 && error != (Darwin ? 35 : 11)))
+                    throw ProtocolError("Cannot request process cleanup.", error);
+                Poll(4, elapsed, ProtocolTimeout, default, true);
             }
-            _terminated = true;
+            while (!_terminated) ReceiveFrame(elapsed, ProtocolTimeout, default, true);
         }
+
         public override void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
             Exception? failure = null;
             Cleanup(ref failure, "terminate", Terminate);
-            Cleanup(ref failure, "reap", () => ReapLeader(WaitAttempted ? 0 : 5000));
+            Cleanup(ref failure, "close supervisor protocol", CloseProtocol);
+            Cleanup(ref failure, "reap supervisor", () => ReapSupervisor(failure == null ? 1000 : ProtocolTimeout));
             Cleanup(ref failure, "close stdout", StandardOutput.Dispose);
             Cleanup(ref failure, "close stderr", StandardError.Dispose);
-            Cleanup(ref failure, "free process status", () => Marshal.FreeHGlobal(_status));
+            Cleanup(ref failure, "remove supervisor executable", () => _extraction?.Dispose());
+            Cleanup(ref failure, "free process frame", () => Marshal.FreeHGlobal(_frame));
             if (failure != null) ExceptionDispatchInfo.Capture(failure).Throw();
         }
 
-        private void ReapLeader(int milliseconds)
+        private void ReceiveFrame(Stopwatch elapsed, int milliseconds, CancellationToken cancellationToken, bool blocking)
         {
-            try
+            do
             {
-                if (!WaitForExit(milliseconds)) throw new TimeoutException("Owned process did not exit within the cleanup deadline.");
-                int result;
-                do { result = waitpid(_pid, out _, 1); }
-                while (result < 0 && Marshal.GetLastWin32Error() == 4);
-                if (result != _pid) throw NativeError("reap owned process");
-            }
-            catch (Exception exception)
-            {
-                // ECHILD means an external reaper already took ownership. Do
-                // not wait on a potentially reused PID in that case.
-                if (!(exception is Win32Exception native && native.NativeErrorCode == 10))
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_partialFrame != null && _partialFrame.ElapsedMilliseconds >= ProtocolTimeout)
+                    throw ProtocolError("Incomplete supervisor frame exceeded its deadline.");
+                if (!Poll(1, elapsed, milliseconds, cancellationToken, blocking)) return;
+                var received = read(_protocol, IntPtr.Add(_frame, _frameLength), (UIntPtr)(16 - _frameLength)).ToInt64();
+                if (received == 0) throw ProtocolError("The owned-process supervisor closed its protocol unexpectedly; target cleanup could not be confirmed.");
+                if (received < 0)
                 {
-                    var pid = _pid;
-                    _ = Task.Run(() =>
-                    {
-                        // Only reap the still-reserved leader. Never signal its
-                        // group again after handing off this final wait.
-                        while (waitpid(pid, out _, 0) < 0 && Marshal.GetLastWin32Error() == 4) { }
-                    });
+                    var error = Marshal.GetLastWin32Error();
+                    if (error == 4 || error == (Darwin ? 35 : 11)) continue;
+                    throw ProtocolError("Cannot read owned-process supervisor protocol.", error);
                 }
-                throw;
-            }
+                if (_frameLength == 0) _partialFrame = Stopwatch.StartNew();
+                _frameLength += (int)received;
+                if (_frameLength != 16) continue;
+                var bytes = new byte[16]; Marshal.Copy(_frame, bytes, 0, bytes.Length);
+                _frameLength = 0; _partialFrame = null;
+                int Word(int index) => unchecked((int)((uint)bytes[index] << 24 | (uint)bytes[index + 1] << 16 | (uint)bytes[index + 2] << 8 | bytes[index + 3]));
+                var kind = Word(4); var target = Word(8); var value = Word(12);
+                if (Word(0) != 0x4f465301 || target < 0 || target == _pid || (_targetPid != 0 && target != _targetPid))
+                    throw ProtocolError("Invalid supervisor frame identity or version.");
+                if (kind == 5 && value > 0) throw ProtocolError("Owned-process supervisor failed.", value);
+                if (target == 0) throw ProtocolError("Supervisor did not identify its target.");
+                if (_targetPid == 0) _targetPid = target;
+                switch (kind)
+                {
+                    case 1 when !_started && _startFailure == null && value == 0: _started = true; return;
+                    case 2 when _started && !_exited && value >= 0 && value <= 255: _exitCode = value; _exited = true; return;
+                    case 3 when !_started && _startFailure == null && value > 0:
+                        _targetStartError = true;
+                        _startFailure = new Win32Exception(value, "execve " + _executable);
+                        return;
+                    case 4 when value == 0 && ((_started && _exited) || _startFailure != null):
+                        _terminated = true;
+                        if (_startFailure != null) throw _startFailure;
+                        return;
+                    default: throw ProtocolError("Invalid supervisor protocol state.");
+                }
+            } while (blocking);
         }
 
-        private static void CloseDescriptor(int descriptor)
+        private bool Poll(short events, Stopwatch elapsed, int milliseconds, CancellationToken cancellationToken, bool blocking)
         {
-            if (close(descriptor) != 0) throw NativeError("close process pipe");
-        }
-        private bool DarwinGroupHasOnlyZombies()
-        {
-            var members = new int[4096];
-            var bytes = proc_listpgrppids(_pid, members, members.Length * sizeof(int));
-            if (bytes < 0 || bytes >= members.Length * sizeof(int)) return false;
-            var status = new byte[64]; // proc_bsdshortinfo has a fixed 64-byte ABI.
-            for (var index = 0; index < bytes / sizeof(int); index++)
+            while (true)
             {
-                if (members[index] == 0) continue;
-                var length = proc_pidinfo(members[index], 13, 0, status, status.Length);
-                if (length == 0 && Marshal.GetLastWin32Error() == 3) continue;
-                if (length != status.Length || BitConverter.ToInt32(status, 8) != _pid ||
-                    BitConverter.ToInt32(status, 12) != 5) return false;
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_starting) CheckStartBudget();
+                var remaining = milliseconds - elapsed.ElapsedMilliseconds;
+                if (blocking && remaining <= 0) throw ProtocolError("Owned-process supervisor exceeded its protocol deadline.");
+                var descriptors = new[] { new PollDescriptor { Descriptor = _protocol, Events = events } };
+                var result = poll(descriptors, (UIntPtr)1, blocking ? (int)Math.Min(25, remaining) : 0);
+                if (result > 0) return true;
+                if (result == 0) { if (!blocking) return false; continue; }
+                var error = Marshal.GetLastWin32Error();
+                if (error != 4) throw ProtocolError("Cannot poll owned-process supervisor.", error);
             }
-            return true;
+        }
+        private void CheckStartBudget()
+        {
+            if (_startElapsed.Elapsed >= _startTimeout)
+                throw new TimeoutException($"{_executable} exceeded {_startTimeout} during process startup.");
+        }
+        private static IOException ProtocolError(string message, int error = 0) =>
+            error == 0 ? new IOException(message) : new IOException(message, new Win32Exception(error));
+        private void CloseProtocol()
+        {
+            if (_protocol < 0) return;
+            var descriptor = _protocol; _protocol = -1; CloseDescriptor(descriptor);
+        }
+        private void ReapSupervisor(int milliseconds)
+        {
+            if (_pid == 0) return;
+            var elapsed = Stopwatch.StartNew();
+            while (true)
+            {
+                var result = waitpid(_pid, out _, 1);
+                if (result == _pid || (result < 0 && Marshal.GetLastWin32Error() == 10)) return;
+                if (result < 0 && Marshal.GetLastWin32Error() != 4) throw ProtocolError("Cannot reap supervisor.", Marshal.GetLastWin32Error());
+                if (elapsed.ElapsedMilliseconds >= milliseconds)
+                {
+                    throw ProtocolError("Supervisor cleanup did not finish within its deadline.");
+                }
+                Thread.Sleep(10);
+            }
+        }
+        private static void CloseDescriptor(int descriptor) { if (close(descriptor) != 0) throw NativeError("close process descriptor"); }
+        private static void SetNonblocking(int descriptor)
+        {
+            var flags = fcntl(descriptor, 3, 0);
+            if (flags < 0 || fcntl(descriptor, 4, flags | (Darwin ? 4 : 0x800)) != 0) throw NativeError("set process protocol nonblocking");
+        }
+        private static int[] Normalize(int[] pair, List<int> descriptors)
+        {
+            descriptors.AddRange(pair);
+            for (var index = 0; index < pair.Length; index++)
+            {
+                if (pair[index] >= 10) continue;
+                var original = pair[index];
+                var duplicate = fcntl(original, Darwin ? 67 : 1030, 10);
+                if (duplicate < 0) throw NativeError("reserve process descriptor");
+                descriptors.Add(duplicate); pair[index] = duplicate;
+                descriptors.Remove(original); CloseDescriptor(original);
+            }
+            return pair;
         }
         private static int[] CreatePipe(List<int> descriptors)
         {
             var pair = new int[2];
             if ((Darwin ? pipe(pair) : pipe2(pair, 0x80000)) != 0) throw NativeError("pipe");
-            descriptors.AddRange(pair);
+            Normalize(pair, descriptors);
+            if (Darwin) foreach (var descriptor in pair) if (fcntl(descriptor, 2, 1) < 0) throw NativeError("pipe close-on-exec");
+            return pair;
+        }
+        private static int[] CreateSocket(List<int> descriptors)
+        {
+            var pair = new int[2];
+            if (socketpair(1, 1 | (Darwin ? 0 : 0x80000), 0, pair) != 0) throw NativeError("process socketpair");
+            Normalize(pair, descriptors);
             if (Darwin)
-                foreach (var descriptor in pair)
-                    if (fcntl(descriptor, 2, 1) < 0) throw NativeError("pipe close-on-exec");
+            {
+                foreach (var descriptor in pair) if (fcntl(descriptor, 2, 1) < 0) throw NativeError("socket close-on-exec");
+                var enabled = 1;
+                if (setsockopt(pair[0], 0xffff, 0x1022, ref enabled, sizeof(int)) != 0) throw NativeError("socket no SIGPIPE");
+            }
             return pair;
         }
         private static string ResolveExecutable(string name)
@@ -361,16 +458,17 @@ internal abstract class OwnedProcessGroup : IDisposable
             throw new Win32Exception(2, "Executable not found: " + name);
         }
         private static void Check(int error, string operation) { if (error != 0) throw new Win32Exception(error, operation); }
-
-        [DllImport("/usr/lib/libproc.dylib", SetLastError = true)] private static extern int proc_listpgrppids(int group, int[] members, int size);
-        [DllImport("/usr/lib/libproc.dylib", SetLastError = true)] private static extern int proc_pidinfo(int pid, int flavor, ulong argument, byte[] buffer, int size);
+        [StructLayout(LayoutKind.Sequential)] private struct PollDescriptor { internal int Descriptor; internal short Events; internal short ReturnedEvents; }
         [DllImport("libc", SetLastError = true)] private static extern int pipe(int[] descriptors);
         [DllImport("libc", SetLastError = true)] private static extern int pipe2(int[] descriptors, int flags);
+        [DllImport("libc", SetLastError = true)] private static extern int socketpair(int domain, int type, int protocol, int[] pair);
+        [DllImport("libc", SetLastError = true)] private static extern int setsockopt(int socket, int level, int option, ref int value, int length);
         [DllImport("libc", SetLastError = true)] private static extern int fcntl(int fd, int command, int value);
-        [DllImport("libc")] private static extern int close(int fd);
+        [DllImport("libc", SetLastError = true)] private static extern int close(int fd);
         [DllImport("libc", SetLastError = true)] private static extern int access(string path, int mode);
-        [DllImport("libc", SetLastError = true)] private static extern int kill(int pid, int signal);
-        [DllImport("libc", SetLastError = true)] private static extern int waitid(int type, int pid, IntPtr info, int options);
+        [DllImport("libc", SetLastError = true)] private static extern IntPtr send(int fd, byte[] data, UIntPtr length, int flags);
+        [DllImport("libc", SetLastError = true)] private static extern IntPtr read(int fd, IntPtr data, UIntPtr length);
+        [DllImport("libc", SetLastError = true)] private static extern int poll(PollDescriptor[] descriptors, UIntPtr count, int milliseconds);
         [DllImport("libc", SetLastError = true)] private static extern int waitpid(int pid, out int status, int options);
         [DllImport("libc")] private static extern int posix_spawnattr_init(IntPtr attributes);
         [DllImport("libc")] private static extern int posix_spawnattr_destroy(IntPtr attributes);
@@ -379,8 +477,8 @@ internal abstract class OwnedProcessGroup : IDisposable
         [DllImport("libc")] private static extern int posix_spawn_file_actions_init(IntPtr actions);
         [DllImport("libc")] private static extern int posix_spawn_file_actions_destroy(IntPtr actions);
         [DllImport("libc")] private static extern int posix_spawn_file_actions_addchdir_np(IntPtr actions, string directory);
+        [DllImport("libc")] private static extern int posix_spawn_file_actions_adddup2(IntPtr actions, int source, int target);
         [DllImport("libc")] private static extern int posix_spawn_file_actions_addclose(IntPtr actions, int descriptor);
-        [DllImport("libc")] private static extern int posix_spawn_file_actions_adddup2(IntPtr actions, int descriptor, int destination);
         [DllImport("libc")] private static extern int posix_spawn(out int pid, string path, IntPtr actions, IntPtr attributes, IntPtr argv, IntPtr envp);
     }
 

@@ -12,6 +12,8 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DEPENDENCY_BASELINE = ROOT / 'docs' / 'third-party-dependency-baseline.json'
+MUSL_COPYRIGHT_ENTRY = 'docs/licenses/MUSL-COPYRIGHT.txt'
+NATIVE_SUPERVISOR_PACKAGES = {'Ofdrw.Net.Core', 'Ofdrw.Net.Cli'}
 
 PACKAGES = (
     'Ofdrw.Net.Core', 'Ofdrw.Net.Packaging', 'Ofdrw.Net.Layout', 'Ofdrw.Net.Reader',
@@ -54,11 +56,15 @@ def inspect(directory: Path, version: str):
                         else [] if name == 'Ofdrw.Net.Converter'
                         else [f'lib/{framework}/{name}{extension}' for framework in ('netstandard2.0', 'netstandard2.1') for extension in ('.dll', '.xml')])
             required += ['README.md', 'THIRD-PARTY-NOTICES.md', 'docs/feature-parity.md', 'docs/conversion-contracts.md']
+            if name in NATIVE_SUPERVISOR_PACKAGES:
+                required.append(MUSL_COPYRIGHT_ENTRY)
             for entry in required:
                 if entry not in package.namelist():
                     raise ValueError(f'Missing {entry} in {path.name}')
             if package.read('THIRD-PARTY-NOTICES.md') != (ROOT / 'THIRD-PARTY-NOTICES.md').read_bytes():
                 raise ValueError(f'Third-party notices differ from the reviewed source: {path.name}')
+            if name in NATIVE_SUPERVISOR_PACKAGES and package.read(MUSL_COPYRIGHT_ENTRY) != (ROOT / MUSL_COPYRIGHT_ENTRY).read_bytes():
+                raise ValueError(f'musl copyright differs from the reviewed source: {path.name}')
         packages.append({'id': name, 'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
     return {'version': version, 'packages': packages}
 

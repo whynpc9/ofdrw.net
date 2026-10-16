@@ -41,12 +41,12 @@ internal static class ExternalProcessRunner
         startInfo.CreateNoWindow = true;
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
-        var process = OwnedProcessGroup.Start(startInfo);
+        var elapsed = Stopwatch.StartNew();
+        var process = OwnedProcessGroup.Start(startInfo, timeout, elapsed, cancellationToken);
 
         var output = CaptureAsync(process.StandardOutput);
         var error = CaptureAsync(process.StandardError);
         var pipes = Task.WhenAll(output, error);
-        var elapsed = Stopwatch.StartNew();
         var stableSince = Stopwatch.StartNew();
         long previousLength = -1;
         var stoppedAfterOutput = false;
@@ -86,6 +86,8 @@ internal static class ExternalProcessRunner
 
             cancellationToken.ThrowIfCancellationRequested();
             await pipes.ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (elapsed.Elapsed >= timeout) throw new TimeoutException($"{startInfo.FileName} exceeded {timeout}.");
             var exitCode = stoppedAfterOutput ? 0 : process.ExitCode;
             return new ExternalProcessResult(exitCode, output.Result, error.Result);
         }

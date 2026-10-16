@@ -9,6 +9,48 @@ public sealed class Audit024RegressionTests : IDisposable
 
     public Audit024RegressionTests() => Directory.CreateDirectory(_directory);
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(7)]
+    public async Task Audit024_IsolatedIgnoredSigchldPreservesRealStatus(int exitCode)
+    {
+        // Signal disposition is changed only in this isolated fixture process.
+        // Windows exercises the same fixture through the unchanged Job backend.
+        var info = Start("owned-signal-probe", exitCode.ToString(System.Globalization.CultureInfo.InvariantCulture), RuntimeConfig);
+        info.RedirectStandardOutput = true;
+        info.RedirectStandardError = true;
+        using var process = Process.Start(info)!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        try
+        {
+            Assert.True(process.WaitForExit(20000), "Isolated signal probe exceeded its deadline.");
+            Assert.True(process.ExitCode == 0, await error);
+            Assert.Equal($"actual={exitCode};stdout=normal output;stderr=normal error", (await output).Trim());
+        }
+        finally
+        {
+            if (!process.HasExited) { process.Kill(entireProcessTree: true); process.WaitForExit(3000); }
+        }
+    }
+
+    [Fact]
+    public async Task Audit024_ClosedStandardDescriptorsDoNotCollideWithProtocol()
+    {
+        var report = Path.Combine(_directory, "closed-stdio-report");
+        using var process = Process.Start(Start("owned-signal-probe", "7", RuntimeConfig, "closed-stdio", report))!;
+        try
+        {
+            Assert.True(process.WaitForExit(20000), "Closed-descriptor fixture exceeded its deadline.");
+            Assert.Equal(0, process.ExitCode);
+            Assert.Equal("actual=7;stdout=normal output;stderr=normal error", await File.ReadAllTextAsync(report));
+        }
+        finally
+        {
+            if (!process.HasExited) { process.Kill(entireProcessTree: true); process.WaitForExit(3000); }
+        }
+    }
+
     [Fact]
     public async Task Audit024_NormalExit()
     {

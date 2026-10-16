@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Ofdrw.Net.Core.Tests" />
+    <InternalsVisibleTo Include="Ofdrw.Net.ProcessFixture" />
     <InternalsVisibleTo Include="Ofdrw.Net.Packaging.Tests" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx.Tests" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Tests" />
@@ -17,4 +18,24 @@
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Vector" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Svg" />
   </ItemGroup>
+  <Import Project="../../native/Ofdrw.ProcessSupervisor/assets/SupervisorAssetHashes.props" />
+  <ItemGroup>
+    <Compile Include="../../native/Ofdrw.ProcessSupervisor/assets/NativeSupervisorAssetManifest.g.cs" Link="Processes/NativeSupervisorAssetManifest.g.cs" />
+    <EmbeddedResource Include="../../native/Ofdrw.ProcessSupervisor/assets/linux-x64/ofdrw-supervisor" LogicalName="Ofdrw.ProcessSupervisor.linux-x64" />
+    <EmbeddedResource Include="../../native/Ofdrw.ProcessSupervisor/assets/linux-arm64/ofdrw-supervisor" LogicalName="Ofdrw.ProcessSupervisor.linux-arm64" />
+    <EmbeddedResource Include="../../native/Ofdrw.ProcessSupervisor/assets/osx-x64/ofdrw-supervisor" LogicalName="Ofdrw.ProcessSupervisor.osx-x64" />
+    <EmbeddedResource Include="../../native/Ofdrw.ProcessSupervisor/assets/osx-arm64/ofdrw-supervisor" LogicalName="Ofdrw.ProcessSupervisor.osx-arm64" />
+    <EmbeddedResource Include="../../native/Ofdrw.ProcessSupervisor/assets/manifest.json" LogicalName="Ofdrw.ProcessSupervisor.manifest.json" />
+    <None Include="../../docs/licenses/MUSL-COPYRIGHT.txt" Pack="true" PackagePath="docs/licenses/" Link="docs/licenses/MUSL-COPYRIGHT.txt" />
+  </ItemGroup>
+  <Target Name="RequirePublishableNativeSupervisorAssets" BeforeTargets="Pack">
+    <Error Condition="'$(ProcessSupervisorAssetsPublishable)' != 'true'" Text="Native process supervisor assets have not completed their publication gates." />
+  </Target>
+  <Target Name="ValidateNativeSupervisorAssets" BeforeTargets="CoreCompile;Pack">
+    <GetFileHash Files="@(ProcessSupervisorAssetHash)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="CheckedProcessSupervisorAssetHash" />
+    </GetFileHash>
+    <Error Condition="'%(CheckedProcessSupervisorAssetHash.FileHash)' != '%(CheckedProcessSupervisorAssetHash.ExpectedHash)'"
+           Text="Native process supervisor asset does not match its immutable manifest: %(CheckedProcessSupervisorAssetHash.Identity)" />
+  </Target>
 </Project>

@@ -1,0 +1,41 @@
+ELF Header:
+  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           AArch64
+  Version:                           0x1
+  Entry point address:               0x400bc8
+  Start of program headers:          64 (bytes into file)
+  Start of section headers:          76480 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               64 (bytes)
+  Size of program headers:           56 (bytes)
+  Number of program headers:         4
+  Size of section headers:           64 (bytes)
+  Number of section headers:         14
+  Section header string table index: 13
+
+Program Headers:
+  Type           Offset             VirtAddr           PhysAddr
+                 FileSiz            MemSiz              Flags  Align
+  LOAD           0x0000000000000000 0x0000000000400000 0x0000000000400000
+                 0x00000000000030c0 0x00000000000030c0  R E    0x10000
+  LOAD           0x000000000000ffa8 0x000000000041ffa8 0x000000000041ffa8
+                 0x0000000000000068 0x00000000000002e0  RW     0x10000
+  GNU_STACK      0x0000000000000000 0x0000000000000000 0x0000000000000000
+                 0x0000000000000000 0x0000000000000000  RW     0x10
+  GNU_RELRO      0x000000000000ffa8 0x000000000041ffa8 0x000000000041ffa8
+                 0x0000000000000058 0x0000000000000058  R      0x1
+
+ Section to Segment mapping:
+  Segment Sections...
+   00     .init .text .fini .rodata .eh_frame
+   01     .got .got.plt .data .bss
+   02
+   03     .got .got.plt
+
+There is no dynamic section in this file.
