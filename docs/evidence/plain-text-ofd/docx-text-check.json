@@ -1,0 +1,14 @@
+[
+  {
+    "mode": "native",
+    "source_docx_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+    "pdf_sha256": "2cc191263db29a64e29d2cba72c350a495e80edf6db7e7b0cee58feb8e239f50",
+    "pdf_extraction": "same source text after whitespace compaction; no repeated glyph text"
+  },
+  {
+    "mode": "default",
+    "source_docx_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+    "pdf_sha256": "46c86772a36a3077280ebf3054e217020a01aac38ce2a2f32e1ee92975c820e7",
+    "pdf_extraction": "same source text after whitespace compaction; no repeated glyph text"
+  }
+]

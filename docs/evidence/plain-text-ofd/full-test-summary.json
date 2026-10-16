@@ -1,0 +1,88 @@
+{
+  "projects": 11,
+  "totals": {
+    "total": 2868,
+    "passed": 2868,
+    "skipped": 0,
+    "failed": 0
+  },
+  "results": [
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_10_net10.0.trx",
+      "total": 44,
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_09_net10.0.trx",
+      "total": 129,
+      "passed": 129,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_15_net10.0.trx",
+      "total": 98,
+      "passed": 98,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_09_net10.0[1].trx",
+      "total": 37,
+      "passed": 37,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_16_net10.0.trx",
+      "total": 85,
+      "passed": 85,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_23_net10.0.trx",
+      "total": 1127,
+      "passed": 1127,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_11_net10.0.trx",
+      "total": 315,
+      "passed": 315,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_26_net10.0.trx",
+      "total": 514,
+      "passed": 514,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_07_net10.0.trx",
+      "total": 197,
+      "passed": 197,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_49_net10.0[1].trx",
+      "total": 278,
+      "passed": 278,
+      "skipped": 0,
+      "failed": 0
+    },
+    {
+      "file": "artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_49_net10.0.trx",
+      "total": 44,
+      "passed": 44,
+      "skipped": 0,
+      "failed": 0
+    }
+  ]
+}

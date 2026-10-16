@@ -1,0 +1,55 @@
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Core.Tests/bin/Release/net10.0/Ofdrw.Net.Core.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_16_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    85, Skipped:     0, Total:    85, Duration: 6 s - Ofdrw.Net.Core.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Packaging.Tests/bin/Release/net10.0/Ofdrw.Net.Packaging.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_23_net10.0.trx
+
+Passed!  - Failed:     0, Passed:  1127, Skipped:     0, Total:  1127, Duration: 1 s - Ofdrw.Net.Packaging.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Converter.Pdf.Tests/bin/Release/net10.0/Ofdrw.Net.Converter.Pdf.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_26_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   514, Skipped:     0, Total:   514, Duration: 22 s - Ofdrw.Net.Converter.Pdf.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Signatures.Tests/bin/Release/net10.0/Ofdrw.Net.Signatures.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_49_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    44, Skipped:     0, Total:    44, Duration: 73 ms - Ofdrw.Net.Signatures.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Converter.Docx.Tests/bin/Release/net10.0/Ofdrw.Net.Converter.Docx.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_26_49_net10.0[1].trx
+
+Passed!  - Failed:     0, Passed:   278, Skipped:     0, Total:   278, Duration: 17 s - Ofdrw.Net.Converter.Docx.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Cli.Tests/bin/Release/net10.0/Ofdrw.Net.Cli.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_07_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   197, Skipped:     0, Total:   197, Duration: 1 s - Ofdrw.Net.Cli.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Layout.Tests/bin/Release/net10.0/Ofdrw.Net.Layout.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_09_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   129, Skipped:     0, Total:   129, Duration: 89 ms - Ofdrw.Net.Layout.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Signatures.SesInterop.Tests/bin/Release/net10.0/Ofdrw.Net.Signatures.SesInterop.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_09_net10.0[1].trx
+
+Passed!  - Failed:     0, Passed:    37, Skipped:     0, Total:    37, Duration: 365 ms - Ofdrw.Net.Signatures.SesInterop.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Graphics.SkiaSharp.Tests/bin/Release/net10.0/Ofdrw.Net.Graphics.SkiaSharp.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_10_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    44, Skipped:     0, Total:    44, Duration: 418 ms - Ofdrw.Net.Graphics.SkiaSharp.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Converter.Pdf.Vector.Tests/bin/Release/net10.0/Ofdrw.Net.Converter.Pdf.Vector.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_11_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   315, Skipped:     0, Total:   315, Duration: 2 s - Ofdrw.Net.Converter.Pdf.Vector.Tests.dll (net10.0)
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Crypto.Password.Tests/bin/Release/net10.0/Ofdrw.Net.Crypto.Password.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests/_wanghongyideMacBook-Pro_2026-10-16_10_27_15_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    98, Skipped:     0, Total:    98, Duration: 30 s - Ofdrw.Net.Crypto.Password.Tests.dll (net10.0)

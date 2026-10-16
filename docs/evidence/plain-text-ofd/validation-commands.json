@@ -1,0 +1,43 @@
+[
+  {
+    "name": "api-docs",
+    "command": [
+      "python3",
+      "scripts/check-public-api-docs.py"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "full-tests",
+    "command": [
+      "dotnet",
+      "test",
+      "Ofdrw.Net.sln",
+      "-c",
+      "Release",
+      "--no-build",
+      "--no-restore",
+      "--disable-build-servers",
+      "-m:1",
+      "/nodeReuse:false",
+      "/p:UseSharedCompilation=false",
+      "--logger",
+      "trx",
+      "--results-directory",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/full-tests"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "trusted-font-tests",
+    "command": [
+      "python3",
+      "scripts/run-trusted-font-tests.py",
+      "--font-output-dir",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/trusted-fonts",
+      "--results-directory",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/trusted-font-tests"
+    ],
+    "exit_code": 0
+  }
+]

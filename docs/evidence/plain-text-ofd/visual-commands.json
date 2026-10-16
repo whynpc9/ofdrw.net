@@ -1,0 +1,202 @@
+[
+  {
+    "command": [
+      "dotnet",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Cli.dll",
+      "text-to-ofd",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.txt",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.ofd",
+      "--page-width",
+      "150",
+      "--page-height",
+      "130",
+      "--margin-left",
+      "10",
+      "--margin-right",
+      "10",
+      "--margin-top",
+      "10",
+      "--margin-bottom",
+      "10",
+      "--font-size-mm",
+      "4"
+    ],
+    "exit": 0,
+    "output": "Converted /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.txt -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.ofd\n"
+  },
+  {
+    "command": [
+      "dotnet",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Cli.dll",
+      "ofd-to-pdf",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.ofd",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.pdf"
+    ],
+    "exit": 0,
+    "output": "Converted /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.ofd -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.pdf\n"
+  },
+  {
+    "command": [
+      "pdftotext",
+      "-raw",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.pdf",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice-pdf-text.txt"
+    ],
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "pdftoppm",
+      "-png",
+      "-r",
+      "144",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.pdf",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice-page"
+    ],
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "pdffonts",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.pdf"
+    ],
+    "exit": 0,
+    "output": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nAGHRAJ+Ofdrw-876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec CID TrueType      Identity-H       yes yes yes     10  0\n"
+  },
+  {
+    "command": [
+      "dotnet",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Cli.dll",
+      "text-to-ofd",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.txt",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.ofd",
+      "--page-width",
+      "40",
+      "--page-height",
+      "30",
+      "--margin-left",
+      "5",
+      "--margin-right",
+      "5",
+      "--margin-top",
+      "5",
+      "--margin-bottom",
+      "5",
+      "--font-size-mm",
+      "10"
+    ],
+    "exit": 0,
+    "output": "Converted /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.txt -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.ofd\n"
+  },
+  {
+    "command": [
+      "dotnet",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Cli.dll",
+      "ofd-to-pdf",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.ofd",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf"
+    ],
+    "exit": 0,
+    "output": "Converted /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.ofd -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf\n"
+  },
+  {
+    "command": [
+      "pdftotext",
+      "-raw",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control-pdf-text.txt"
+    ],
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "pdftoppm",
+      "-png",
+      "-r",
+      "144",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control-page"
+    ],
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "pdffonts",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf"
+    ],
+    "exit": 0,
+    "output": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nMENNZD+Ofdrw-876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec CID TrueType      Identity-H       yes yes yes     10  0\n"
+  },
+  {
+    "command": [
+      "dotnet",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Cli.dll",
+      "text-to-ofd",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.txt",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.ofd"
+    ],
+    "exit": 0,
+    "output": "Converted /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.txt -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.ofd\n"
+  },
+  {
+    "command": [
+      "dotnet",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Cli.dll",
+      "ofd-to-pdf",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.ofd",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.pdf"
+    ],
+    "exit": 0,
+    "output": "Converted /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.ofd -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.pdf\n"
+  },
+  {
+    "command": [
+      "pdftotext",
+      "-raw",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.pdf",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty-pdf-text.txt"
+    ],
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "pdftoppm",
+      "-png",
+      "-r",
+      "144",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.pdf",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty-page"
+    ],
+    "exit": 0,
+    "output": ""
+  },
+  {
+    "command": [
+      "pdffonts",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.pdf"
+    ],
+    "exit": 0,
+    "output": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\n"
+  },
+  {
+    "command": [
+      "pdffonts",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/package-output/generated-docx-native.pdf"
+    ],
+    "exit": 0,
+    "output": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nYRVWQH+Ofdrw-876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec CID TrueType      Identity-H       yes yes yes     10  0\nJWEYRF+Ofdrw-a7245b7b10db0d13ea023768e24ad3703481e374a1814f8b5d8ae402fa62a337 CID TrueType      Identity-H       yes yes yes     15  0\n"
+  },
+  {
+    "command": [
+      "pdffonts",
+      "/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/package-output/generated-docx-default.pdf"
+    ],
+    "exit": 0,
+    "output": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nDPPMSA+Ofdrw-876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec CID TrueType      Identity-H       yes yes yes     10  0\nVHBCDW+Ofdrw-a7245b7b10db0d13ea023768e24ad3703481e374a1814f8b5d8ae402fa62a337 CID TrueType      Identity-H       yes yes yes     15  0\n"
+  }
+]

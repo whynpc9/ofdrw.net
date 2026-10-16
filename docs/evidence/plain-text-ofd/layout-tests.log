@@ -1,0 +1,11 @@
+  Ofdrw.Net.Core -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Core/bin/Release/netstandard2.1/Ofdrw.Net.Core.dll
+  Ofdrw.Net.Packaging -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Packaging/bin/Release/netstandard2.1/Ofdrw.Net.Packaging.dll
+/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Reader/Readers/OfdReader.cs(10,7): warning CS0105: The using directive for 'System.Xml' appeared previously in this namespace [/Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj::TargetFramework=netstandard2.1]
+  Ofdrw.Net.Reader -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Reader/bin/Release/netstandard2.1/Ofdrw.Net.Reader.dll
+  Ofdrw.Net.Layout -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/src/Ofdrw.Net.Layout/bin/Release/netstandard2.1/Ofdrw.Net.Layout.dll
+  Ofdrw.Net.Layout.Tests -> /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Layout.Tests/bin/Release/net10.0/Ofdrw.Net.Layout.Tests.dll
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/tests/Ofdrw.Net.Layout.Tests/bin/Release/net10.0/Ofdrw.Net.Layout.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/layout-tests/layout.trx
+
+Passed!  - Failed:     0, Passed:    89, Skipped:     0, Total:    89, Duration: 125 ms - Ofdrw.Net.Layout.Tests.dll (net10.0)

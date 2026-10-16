@@ -1,0 +1,71 @@
+Window: "generated-docx-native.pdf", App: Preview.
+0 standard window generated-docx-native.pdf – Page 1 of 2, ID: PVDocumentWindow, Secondary Actions: Raise, URL: file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/package-output/generated-docx-native.pdf
+	1 split group
+		2 scroll area
+			3 container document
+				4 Page (disabled)
+					5 container
+						6 text 文档转换视觉回归样例
+						7 text G enerat ed D O C X / P D F / O F D F i xt ure
+						8 text 1. 表格与中英文排版
+						9 text 本文件仅包含虚构数据，用于验证中文字体、段落间距、分页以及表格边框。No private
+information is included.
+						10 table (disabled)
+							11 row (disabled)
+								12 cell (disabled)
+									13 text 项目 
+								14 cell (disabled)
+									15 text 数量 
+								16 cell (disabled) 2-3
+									17 text 状态
+							18 row (disabled)
+								19 cell (disabled)
+									20 text Alpha
+								21 cell (disabled)
+									22 text 128
+								23 cell (disabled) 2-3
+									24 text 正常
+							25 row (disabled)
+								26 cell (disabled)
+									27 text Beta
+								28 cell (disabled)
+									29 text 256
+								30 cell (disabled)
+									31 text 待复核
+				32 Page (disabled)
+					33 container
+						34 text 2. 第二页与强调文本
+第二页用于确认分页保持稳定。 这段文字应为红色粗体。
+						35 text 测试日期：2026-01-01
+	36 toolbar
+		37 menu button Description: View, Help: Choose sidebar display
+		38 container Zoom
+			39 button Description: zoom out, Help: Scale document down, Details: Zoom Out
+			40 button Description: zoom to actual size, Help: Display at actual size, Details: Actual Size
+			41 button Description: zoom in, Help: Scale document up, Details: Zoom In
+		42 Highlight Selection
+			43 radio button Description: highlight, Value: 0
+			44 menu button
+		45 button (disabled) Description: Remove Background, Secondary Actions: Move previous, Move next, Remove from toolbar
+		46 radio button Description: Rotate, Help: Rotate Left, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		47 checkbox Description: Form Filling, Help: Show Form Filling Toolbar, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		48 checkbox Description: Markup, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		49 checkbox Description: Inspector, Help: Show the Inspector, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		50 button Description: Share, Secondary Actions: Move previous, Move next, Remove from toolbar
+		51 search text field (settable)
+			52 button
+	53 close button
+	54 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	55 minimize button
+	56 text generated-docx-native.pdf Page 1 of 2
+57 menu bar
+	58 Preview
+	59 File
+	60 Edit
+	61 View
+	62 Go
+	63 Tools
+	64 Window
+	65 Help
+
+The focused UI element is 3 container document

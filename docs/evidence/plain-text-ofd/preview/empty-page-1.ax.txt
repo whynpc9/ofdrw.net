@@ -1,0 +1,37 @@
+Window: "empty.pdf", App: Preview.
+0 standard window empty.pdf – 1 page, ID: PVDocumentWindow, Secondary Actions: Raise, URL: file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/empty.pdf
+	1 split group
+		2 scroll area
+			3 container document
+	4 toolbar
+		5 menu button Description: View, Help: Choose sidebar display
+		6 container Zoom
+			7 button Description: zoom out, Help: Scale document down, Details: Zoom Out
+			8 button Description: zoom to actual size, Help: Display at actual size, Details: Actual Size
+			9 button Description: zoom in, Help: Scale document up, Details: Zoom In
+		10 Highlight Selection
+			11 radio button Description: highlight, Value: 0
+			12 menu button
+		13 button (disabled) Description: Remove Background, Secondary Actions: Move previous, Move next, Remove from toolbar
+		14 radio button Description: Rotate, Help: Rotate Left, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		15 checkbox (disabled) Description: Form Filling, Help: Show Form Filling Toolbar, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		16 checkbox Description: Markup, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		17 checkbox Description: Inspector, Help: Show the Inspector, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		18 button Description: Share, Secondary Actions: Move previous, Move next, Remove from toolbar
+		19 search text field (settable)
+			20 button
+	21 close button
+	22 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	23 minimize button
+	24 text empty.pdf 1 page
+25 menu bar
+	26 Preview
+	27 File
+	28 Edit
+	29 View
+	30 Go
+	31 Tools
+	32 Window
+	33 Help
+
+The focused UI element is 3 container document
