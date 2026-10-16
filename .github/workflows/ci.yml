@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ["main", "master", "codex/**"]
 
+# Fetch fixtures explicitly; historical evidence is optional.
+env:
+  GIT_LFS_SKIP_SMUDGE: "1"
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -18,6 +22,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch test fixtures from LFS
+        shell: bash
+        run: git lfs pull --include="e2e/**,tests/**" --exclude=""
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -36,6 +45,9 @@ jobs:
           python -m pip install fonttools==4.59.2
           python scripts/install-ci-fonts.py
 
+      - name: Check repository storage and fixture payloads
+        run: python scripts/check-repository-storage.py --require-materialized e2e --require-materialized tests
+
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
@@ -49,7 +61,9 @@ jobs:
         run: python3 -m unittest discover -s scripts/tests -v
 
       - name: Verify retained public table acceptance evidence
-        run: python3 scripts/verify-public-table-evidence.py
+        run: |
+          git lfs pull --include="docs/validation/public-tables-evidence/**" --exclude=""
+          python3 scripts/verify-public-table-evidence.py
 
       - name: Build
         run: dotnet build Ofdrw.Net.sln -c Release --no-restore --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
@@ -58,7 +72,7 @@ jobs:
         run: python3 scripts/check-public-api-docs.py
 
       - name: Test
-        run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+        run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity minimal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Run mandatory original-font geometry and replacement tests without skips
         run: python3 scripts/run-trusted-font-tests.py --results-directory artifacts/trusted-font-tests
@@ -88,6 +102,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch test fixtures from LFS
+        shell: bash
+        run: git lfs pull --include="e2e/**,tests/**" --exclude=""
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -158,6 +177,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch test fixtures from LFS
+        shell: bash
+        run: git lfs pull --include="e2e/**,tests/**" --exclude=""
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -241,6 +265,11 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch test fixtures from LFS
+        shell: bash
+        run: git lfs pull --include="e2e/**,tests/**" --exclude=""
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"

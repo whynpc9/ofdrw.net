@@ -1,21 +1,0 @@
-Portrait header
-
-Portrait italic
-Portrait regular
-Cell A             Cell B
-
-
-
-
-Page 1 of 2
-SecondPortrait header
-
-SecondPortrait italic
-SecondPortrait regular
-Cell A            Cell B
-
-
-
-
-Page 2 of 2
-

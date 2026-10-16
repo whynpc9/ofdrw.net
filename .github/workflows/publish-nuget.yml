@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
 
+# Fetch fixtures explicitly; historical evidence is optional.
+env:
+  GIT_LFS_SKIP_SMUDGE: "1"
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -19,6 +23,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch test fixtures from LFS
+        shell: bash
+        run: git lfs pull --include="e2e/**,tests/**" --exclude=""
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -65,7 +74,7 @@ jobs:
         run: python3 scripts/check-public-api-docs.py --package-version "${{ env.PACKAGE_VERSION }}"
 
       - name: Test
-        run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity normal --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+        run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity minimal --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Pack SDK packages
         shell: bash

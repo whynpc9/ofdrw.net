@@ -1,5 +1,0 @@
-{
-  "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/italic-boundaries-text.txt",
-  "sha256": "ae1f941c846387e82a1349984019aa2eb51d5fc4a92ab10f731d069d006cb7f5",
-  "utf8": "BuiltIn italic boundaries: exact run / exact anchor\nSame words Same words Same words\nGenuine Arial italic: Slanted source face, no\nsecond shear.\nHost regular fallback: Synthetic italic from original\nselected face.\nWrap begins Repeated mixed italic words\ncontinue across a narrow paragraph, then regular\nresumes and italic finishes.\n中文保持完整，English spacing; adjacent regular\nafter italic.\n\f"
-}

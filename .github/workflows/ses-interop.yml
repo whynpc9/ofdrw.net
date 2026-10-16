@@ -4,6 +4,10 @@ on:
     branches: ["main", "master", "codex/document-tools"]
   push:
     branches: ["main", "master"]
+# Fetch fixtures explicitly; historical evidence is optional.
+env:
+  GIT_LFS_SKIP_SMUDGE: "1"
+
 jobs:
   ses-interop:
     runs-on: ubuntu-latest
@@ -13,6 +17,11 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch test fixtures from LFS
+        shell: bash
+        run: git lfs pull --include="e2e/**,tests/**" --exclude=""
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"

@@ -1,5 +1,0 @@
-{
-  "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/direct-built-in-text.txt",
-  "sha256": "24ff642c150ddb1d247c6a96f3e8f511db54e3ee29ec6fdbc26be4282dc73957",
-  "utf8": "                 文档转换视觉回归样例\n                  Generated DOCX / PDF / OFD Fixture\n\n1. 表格与中英文排版\n本文件仅包含虚构数据，用于验证中文字体、段落间距、分页以及表格边框。No private information is\nincluded.\n项目                 数量                            状态\nAlpha              128                           正常\nBeta               256                           待复核\n\f2. 第二页与强调文本\n第二页用于确认分页保持稳定。 这段文字应为红色粗体。\n\n\n                             测试日期：2026-01-01\n\f"
-}

@@ -42,6 +42,37 @@ See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk 
 
 `DocxConversionOptions.OfdMode` defaults to `Native`: DOCX/OpenXML text is written directly as visible OFD `TextObject` elements and no PDF renderer is invoked. Select `DualLayer` when Word-compatible visual fidelity matters; Word, LibreOffice, or BuiltIn then supplies page images while the machine-readable layer still comes directly from the original DOCX/OpenXML rather than PDF extraction. `DocxConversionEngine.Auto` prefers Microsoft Word on macOS, then LibreOffice, and finally BuiltIn for that rendered path. PDF-to-OFD independently retains extractable PDF words as transparent OFD text unless `PdfToOfdOptions.TextLayerMode` is `None`.
 
+## Clone and large files
+
+Install [Git LFS](https://git-lfs.com/) before cloning. Binary test fixtures and
+retained validation bundles use LFS. Only `e2e/` and `tests/` payloads download
+by default; historical evidence remains as small pointer files.
+
+```sh
+git lfs install
+GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/whynpc9/ofdrw.net.git
+cd ofdrw.net
+git lfs pull --include="e2e/**,tests/**" --exclude=""
+```
+
+`GIT_LFS_SKIP_SMUDGE=1` is a POSIX shell environment assignment. In PowerShell,
+set `$env:GIT_LFS_SKIP_SMUDGE='1'` before cloning, then remove it with
+`Remove-Item Env:GIT_LFS_SKIP_SMUDGE` afterward. Without `--depth 1`, Git also
+fetches ordinary historical blobs until the separate history migration is
+published. Fetch one evidence directory when reviewing it:
+
+```sh
+git lfs pull --include="docs/evidence/pdf-vectors/**" --exclude=""
+```
+
+To materialize every LFS payload at the current commit, use
+`git lfs pull --include="" --exclude=""`. Keep generated runs in ignored
+`artifacts/`; retain only necessary review material with a manifest in a named
+LFS bundle. The [PR23 evidence index](docs/evidence/pr23-integration/README.md)
+restores the original validation paths on demand. Before committing, stage the
+changes and run `python3 scripts/check-repository-storage.py`; it rejects raw
+LFS payloads, ordinary Git blobs above 5 MiB and tracked `artifacts/` files.
+
 ## For Developers
 
 Published packages are available on [NuGet](https://www.nuget.org/profiles/whynpc). The current release is `0.1.0-preview.8`. See the [release notes](docs/release-notes-0.1.0-preview.8.md).

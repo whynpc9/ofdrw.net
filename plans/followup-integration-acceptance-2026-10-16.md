@@ -34,9 +34,9 @@
 
 自动渲染：7份PDF共12页已重新生成PNG，通过。PNG实际目视：12/12页通过。macOS Preview：7份本次PDF共12/12页通过，分别为native/default/CLI各2页、direct BuiltIn2页、选页1页、纯文本notice2页、真实italic边界1页。原始AX完整URL/页码与原JPEG保留，7PDF前后SHA均一致，本轮PDF已关闭，用户窗口保留。root核对全12条URL/页码/原JPEG魔数与SHA、12PNG及7PDF冻结SHA，并抽查新的direct副标题与italic边界显示。
 
-浏览器：4份本次HTML、9个页面出现项全部实际查看通过（native2、纯文本短样例1、mixed3/1/3、真实包API3/1/3）。本次DOM脚本/事件属性/外部请求均为0，重复页ID唯一、clip引用均属本页，物理比例符合viewBox，HTML查看前后SHA一致。root核验所有精确URL/标题/页序/DOM与网络记录、4原HTML及截图SHA，并抽查native与mixed整页截图；浏览器任务空间已关闭、GUI租约已释放。[浏览器报告](../artifacts/followup-integration/browser/report.md)与[协调者复核](../artifacts/followup-integration/root-evidence-review.json)可复查。冻结清单中初始PENDING字段保持原样，以避免改变被验收产物清单的SHA；最终状态以本验收记录和各实际执行记录为准。
+浏览器：4份本次HTML、9个页面出现项全部实际查看通过（native2、纯文本短样例1、mixed3/1/3、真实包API3/1/3）。本次DOM脚本/事件属性/外部请求均为0，重复页ID唯一、clip引用均属本页，物理比例符合viewBox，HTML查看前后SHA一致。root核验所有精确URL/标题/页序/DOM与网络记录、4原HTML及截图SHA，并抽查native与mixed整页截图；浏览器任务空间已关闭、GUI租约已释放。[浏览器报告](../docs/evidence/pr23-integration/README.md)与[协调者复核](../docs/evidence/pr23-integration/README.md)可复查。冻结清单中初始PENDING字段保持原样，以避免改变被验收产物清单的SHA；最终状态以本验收记录和各实际执行记录为准。
 
-实际路径、链路、观察、PDF前后哈希及关闭证据见[Preview报告](../artifacts/followup-integration/preview/report.md)、[PNG逐页记录](../artifacts/followup-integration/png-review.json)、[冻结清单](../artifacts/followup-integration/visual-manifest.json)。直接BuiltIn DOCX→PDF单列，native/default均为本次DOCX→native OFD→PDF→Preview；纯文本为text→native OFD→PDF→Preview。未用直接DOCX→PDF代替native产物。
+实际路径、链路、观察、PDF前后哈希及关闭证据见[Preview报告](../docs/evidence/pr23-integration/README.md)、[PNG逐页记录](../docs/evidence/pr23-integration/README.md)、[冻结清单](../docs/evidence/pr23-integration/README.md)。直接BuiltIn DOCX→PDF单列，native/default均为本次DOCX→native OFD→PDF→Preview；纯文本为text→native OFD→PDF→Preview。未用直接DOCX→PDF代替native产物。
 
 本次集成样例没有重新覆盖所有图片/页眉页脚/页码或复杂横向源文档场景；003分支自身有独立控制和报告，本次不将历史页面冒充新集成页面。
 
@@ -55,6 +55,6 @@
 
 ## 复跑与交接
 
-实际完整命令及退出码见[gates.json](../artifacts/followup-integration/gates.json)，功能runner为[run-gates.py](../artifacts/followup-integration/run-gates.py)，产物runner为[generate-visual.py](../artifacts/followup-integration/generate-visual.py)。重跑需按约定取得validation/GUI租约并用新目录保存证据；任何产物重新生成后必须重新完成适用视觉验收。本次验收未重生成冻结后产物。
+实际完整命令及退出码见[gates.json](../docs/evidence/pr23-integration/README.md)，功能runner为[run-gates.py](../docs/evidence/pr23-integration/README.md)，产物runner为[generate-visual.py](../docs/evidence/pr23-integration/README.md)。重跑需按约定取得validation/GUI租约并用新目录保存证据；任何产物重新生成后必须重新完成适用视觉验收。本次验收未重生成冻结后产物。
 
 五个独立会话及受管worktree均保留；所有最终交付HEAD为目标分支祖先。最终提交只补协调文档与可复查证据，生产/测试/e2e/scripts与已验证源码aef66完全相同。004原生权限门及上述已知边界均不是本次完成声明的一部分。

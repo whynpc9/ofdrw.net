@@ -1,9 +1,0 @@
-{
-  "source": "aef66e76d923d706bcd440eb1583c906f300eeb7",
-  "html_implementation_source": "9a67e2658e94b45d695fb383b1f10f91cef178b3",
-  "svg_assembly_changed_paths": [],
-  "own_branch_head_before": "924a9130d86d656c401e786117ec7814e06369d8",
-  "prior_positive_zero_attack_record": "/Users/wanghongyi/.codex/worktrees/audit-followup-029/ofdrw.net/artifacts/plan-029-followup/final-gates/visual/network-summary.json",
-  "prior_standalone_svg_record": "/Users/wanghongyi/.codex/worktrees/audit-followup-029/ofdrw.net/artifacts/plan-029-followup/final-gates/visual/standalone-font-control.json",
-  "original_029_state_sha256_before": "ce6f78d21869d32bba72e542857abc4c8fa81ae7cdfe1b03bea50a5cbb1d7813"
-}

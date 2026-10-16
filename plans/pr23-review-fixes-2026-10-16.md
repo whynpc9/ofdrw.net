@@ -12,7 +12,7 @@ P2（持久化拆分附件）：原实现对 Doc_0、根目录和嵌套文档的
 
 ## 当前源码功能与包验证
 
-证据目录为 [artifacts/pr23-review-fixes](../artifacts/pr23-review-fixes/curated-evidence.json)，其中清单保存每个保留文件的 SHA256。所有 .NET 调用使用可写 CLI_HOME、禁止首次初始化/遥测和单节点禁用 build server 参数；先 restore。全套 build/test/docs/pack 持有共享 validation 锁。
+证据目录为 [artifacts/pr23-review-fixes](../docs/evidence/pr23-integration/README.md)，其中清单保存每个保留文件的 SHA256。所有 .NET 调用使用可写 CLI_HOME、禁止首次初始化/遥测和单节点禁用 build server 参数；先 restore。全套 build/test/docs/pack 持有共享 validation 锁。
 
 | 门禁 | 实际结果 |
 |---|---|
@@ -37,6 +37,6 @@ P2（持久化拆分附件）：原实现对 Doc_0、根目录和嵌套文档的
 - macOS Preview：14/14，14 张原始 JPEG 及各页完整 URL/page AX 证据保留。PDF 查看前后 SHA256 相同；只关闭本任务窗口，gui 锁已释放。
 - 实际浏览器：4 个 HTML、9 个页面出现项，检查宿主字体、混合媒体、裁切与 ID 作用域；无脚本、事件属性和外部请求，ID 唯一、物理页面比例误差小于 0.000006。HTML 前后 SHA256 相同，任务空间已结束，用户的登录空间未接管。
 
-协调者复核全部 Preview URL/页码/AX/JPEG 格式及 SHA、PDF 前后身份、HTML 实际 DOM/请求/截图身份，并抽看 native 浏览器、LibreOffice 和斜体边界页面。详细范围和观察见 [视觉汇总](../artifacts/pr23-review-fixes/visual-acceptance-summary.json)、[Preview](../artifacts/pr23-review-fixes/preview/report.md) 与 [浏览器](../artifacts/pr23-review-fixes/browser/report.md)。
+协调者复核全部 Preview URL/页码/AX/JPEG 格式及 SHA、PDF 前后身份、HTML 实际 DOM/请求/截图身份，并抽看 native 浏览器、LibreOffice 和斜体边界页面。详细范围和观察见 [视觉汇总](../docs/evidence/pr23-integration/README.md)、[Preview](../docs/evidence/pr23-integration/README.md) 与 [浏览器](../docs/evidence/pr23-integration/README.md)。
 
 保留 direct BuiltIn 较轻的 CJK 字重及引擎布局差异，不声称跨引擎像素一致或补上粗体模拟；长 notice 的默认 HTML 节点预算拒绝保持，仅短 notice HTML 获实际验收。本组 PDF 不覆盖图片/页眉页脚/页码专项，不推断任意复杂 Word 均保真。原 004 Windows 链接权限跳过不改写为通过，既有 landscape PageSetup 未修；028 portable metrics、029 静态资源/预算/宿主字体回退、030 六条本地 APF 四态只读且不作认证/验签/解密/字体许可验证等边界继续保留。

@@ -1,0 +1,2 @@
+[lfs]
+    fetchinclude = e2e/**,tests/**
