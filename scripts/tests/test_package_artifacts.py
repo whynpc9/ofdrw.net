@@ -24,6 +24,8 @@ class PackageArtifactsTests(unittest.TestCase):
                 archive.writestr(name + '.nuspec', f'<package><metadata><id>{name}</id><version>{self.version}</version><license type="expression">MIT</license></metadata></package>')
                 for file in ('README.md', 'THIRD-PARTY-NOTICES.md', 'docs/feature-parity.md', 'docs/conversion-contracts.md'):
                     archive.writestr(file, (packages.ROOT / file).read_bytes() if file == 'THIRD-PARTY-NOTICES.md' else 'fixture')
+                if name in ('Ofdrw.Net.Core', 'Ofdrw.Net.Cli'):
+                    archive.writestr('docs/licenses/MUSL-COPYRIGHT.txt', (packages.ROOT / 'docs/licenses/MUSL-COPYRIGHT.txt').read_bytes())
                 if name == 'Ofdrw.Net.Cli':
                     archive.writestr('tools/net10.0/any/Ofdrw.Net.Cli.dll', b'fixture')
                 elif name != 'Ofdrw.Net.Converter':
@@ -83,6 +85,31 @@ class PackageArtifactsTests(unittest.TestCase):
             for name, data in contents.items(): archive.writestr(name, data)
         with self.assertRaisesRegex(ValueError, 'notices differ'):
             packages.inspect(self.root, self.version)
+
+    def test_missing_musl_copyright_is_rejected_for_core_and_cli(self):
+        self._check_musl_copyright_rejection(None, 'Missing docs/licenses/MUSL-COPYRIGHT.txt')
+
+    def test_changed_musl_copyright_is_rejected_for_core_and_cli(self):
+        self._check_musl_copyright_rejection(b'truncated or altered copyright', 'musl copyright differs')
+
+    def _check_musl_copyright_rejection(self, replacement, message):
+        for package in ('Ofdrw.Net.Core', 'Ofdrw.Net.Cli'):
+            with self.subTest(package=package):
+                path = self.root / f'{package}.{self.version}.nupkg'
+                original = path.read_bytes()
+                with zipfile.ZipFile(path) as archive:
+                    contents = {name: archive.read(name) for name in archive.namelist()}
+                if replacement is None:
+                    del contents['docs/licenses/MUSL-COPYRIGHT.txt']
+                else:
+                    contents['docs/licenses/MUSL-COPYRIGHT.txt'] = replacement
+                try:
+                    with zipfile.ZipFile(path, 'w') as archive:
+                        for name, data in contents.items(): archive.writestr(name, data)
+                    with self.assertRaisesRegex(ValueError, message + '.*' + package):
+                        packages.inspect(self.root, self.version)
+                finally:
+                    path.write_bytes(original)
 
     def test_product_list_failure_does_not_accept_existing_feed(self):
         # This feed is valid before the injected generator failure. It must not

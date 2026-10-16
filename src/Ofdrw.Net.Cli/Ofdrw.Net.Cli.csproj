@@ -10,6 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- A dotnet-tool package embeds Core.dll and its native supervisor assets. -->
+    <None Include="../../docs/licenses/MUSL-COPYRIGHT.txt" Pack="true" PackagePath="docs/licenses/" Link="docs/licenses/MUSL-COPYRIGHT.txt" />
     <InternalsVisibleTo Include="Ofdrw.Net.Cli.Tests" />
     <ProjectReference Include="../Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
