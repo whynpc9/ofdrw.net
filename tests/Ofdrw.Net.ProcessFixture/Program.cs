@@ -14,6 +14,9 @@ switch (args[0])
         foreach (var argument in args.Skip(1)) Console.WriteLine(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(argument)));
         return 0;
     case "context":
+        // The context probe has a UTF-8 protocol independent of the Windows
+        // console code page; its caller selects the same decoding explicitly.
+        Console.OutputEncoding = new System.Text.UTF8Encoding(false);
         Console.WriteLine(Directory.GetCurrentDirectory());
         Console.WriteLine(Environment.GetEnvironmentVariable("OFDRW_AUDIT024_VALUE"));
         return 0;
@@ -22,7 +25,7 @@ switch (args[0])
         Console.Error.WriteLine("normal error");
         return 7;
     case "wait":
-        await File.WriteAllTextAsync(args[1], Environment.ProcessId.ToString());
+        await PublishProcessIdAsync(args[1]);
         await Task.Delay(TimeSpan.FromSeconds(30));
         return 0;
     case "stable-output":
@@ -35,7 +38,7 @@ switch (args[0])
         start.ArgumentList.Add(typeof(ProcessFixtureMarker).Assembly.Location);
         start.ArgumentList.Add("wait");
         start.ArgumentList.Add(args[1] + ".child");
-        await File.WriteAllTextAsync(args[1], Environment.ProcessId.ToString());
+        await PublishProcessIdAsync(args[1]);
         using (var child = Process.Start(start)!)
         {
             if (args[0] == "parent-exits-first")
@@ -49,6 +52,15 @@ switch (args[0])
         return 0;
     default:
         return 2;
+}
+
+static async Task PublishProcessIdAsync(string path)
+{
+    // File existence is the fixture readiness signal. Publish only after the
+    // writer has closed, so Windows readers cannot race its exclusive handle.
+    var pending = path + ".pending";
+    await File.WriteAllTextAsync(pending, Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    File.Move(pending, path);
 }
 
 public sealed class ProcessFixtureMarker;
