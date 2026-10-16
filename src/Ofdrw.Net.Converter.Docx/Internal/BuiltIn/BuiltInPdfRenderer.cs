@@ -98,7 +98,31 @@ internal sealed class BuiltInPdfRenderer
             WorkingDirectory = Path.GetDirectoryName(outputPath)
         };
         _cancellationToken.ThrowIfCancellationRequested();
-        renderer.RenderDocument();
+        renderer.PrepareRenderPages();
+        if (renderer.PageCount > _options.MaxPageCount)
+            throw new InvalidDataException("DOCX exceeds the configured rendered page limit.");
+        if (_italicFaces.ActualItalic.Count == 0)
+        {
+            renderer.RenderPages(1, renderer.PageCount);
+        }
+        else
+        {
+            for (var number = 1; number <= renderer.PageCount; number++)
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                var page = renderer.PdfDocument.AddPage();
+                var info = renderer.DocumentRenderer.FormattedDocument.GetPageInfo(number);
+                page.Width = info.Width;
+                page.Height = info.Height;
+                page.Orientation = info.Orientation;
+                using var target = XGraphics.FromPdfPage(page);
+                target.MUH = PdfSharpCore.Pdf.PdfFontEncoding.Unicode;
+                using var graphics = XGraphics.FromRenderer(new BuiltInPdfItalicRenderer(target, _italicFaces.ActualItalic),
+                    new XSize(page.Width, page.Height), XGraphicsUnit.Point, XPageDirection.Downwards);
+                graphics.MUH = PdfSharpCore.Pdf.PdfFontEncoding.Unicode;
+                renderer.DocumentRenderer.RenderPage(graphics, number);
+            }
+        }
         _cancellationToken.ThrowIfCancellationRequested();
         if (renderer.PdfDocument.PageCount > _options.MaxPageCount)
             throw new InvalidDataException("DOCX exceeds the configured rendered page limit.");
@@ -106,10 +130,12 @@ internal sealed class BuiltInPdfRenderer
     }
 
     private DocxFontCatalog _configuredFonts = null!;
+    private BuiltInPdfItalicFaces _italicFaces = null!;
 
     private void RegisterConfiguredFonts()
     {
         _configuredFonts = new DocxFontCatalog(_options, _diagnostics, _cancellationToken);
+        _italicFaces = new BuiltInPdfItalicFaces(GlobalFontSettings.FontResolver);
     }
 
     private static void ApplyPageSetup(MigraSection target, BuiltInSectionModel source)
@@ -255,7 +281,8 @@ internal sealed class BuiltInPdfRenderer
 
         if (!string.IsNullOrWhiteSpace(family))
         {
-            formatted.Font.Name = _configuredFonts.Resolve(family!, source.Format.Bold, source.Format.Italic);
+            var resolved = _configuredFonts.Resolve(family!, source.Format.Bold, source.Format.Italic);
+            formatted.Font.Name = source.Format.Italic ? _italicFaces.Resolve(resolved, source.Format.Bold) : resolved;
         }
 
         if (source.Format.FontSizePoints is double size)
