@@ -111,7 +111,7 @@ public static class OfdDocumentSplitter
             };
             result.Fonts.Add(clone); mapping.Add(font, clone);
         }
-        OfdDocumentMerger.CopyAttachments(source, result, cancellationToken, material);
+        OfdDocumentMerger.CopyAttachments(source, result, cancellationToken, material, retainedSourceMapping: mapping);
         foreach (var tag in source.CustomTags) result.CustomTags.Add(tag.Key, tag.Value);
         foreach (var index in pages)
         {
