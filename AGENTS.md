@@ -5,6 +5,14 @@
 - If local IPC reports `SocketException (13): Permission denied`, treat it as a sandbox constraint, shut down build servers, and retry with the flags above.
 - Do not routinely clear the global NuGet package cache; it is not the cause and may make restricted-network restores fail.
 
+# 仓库体积与验证资料
+
+- 源码仓库只保留复现问题和评估验收结论必需的资料。日常运行产物放在已忽略的 `artifacts/` 或 CI artifacts；不得强制提交 `artifacts/`、`bin/`、`obj/`、包缓存、运行时目录、冻结源码副本、重复完整日志或重复字体载荷。源码身份用提交 SHA 记录。
+- 字体、文档/图片样例、验收压缩包及其分卷必须按 `.gitattributes` 使用 Git LFS；不得绕过 LFS 直接提交二进制载荷。历史验收资料按需下载，默认开发和 CI 只获取实际需要的样例，不自动拉取所有历史证据。
+- 验收保留简短报告，以及支撑结论必需的输入、输出和视觉记录；大型资料合成命名明确的 LFS 归档并附大小/SHA-256 清单。复用已有资料，不因新增一轮验证重复归档整个源码树、全量包和历史产物；失败记录仅在证明回归或解释遗留限制时保留。不得通过删掉必要视觉证据或回归覆盖来缩小仓库。
+- 测试优先复用确定性样例和共享 fixture；新增测试须对应明确缺陷或独立行为，避免同一行为的重复测试及重复大文件副本。
+- 暂存后、提交前运行 `python3 scripts/check-repository-storage.py`；涉及 fixture 时加 `--require-materialized e2e --require-materialized tests`。检查不得跳过：禁止已跟踪的 `artifacts/`、超过 5 MiB 的普通 Git blob，以及 LFS 路径中的原始载荷或无效指针。详见 `docs/repository-storage.md`。
+
 # 转换与渲染的视觉验证
 
 - 测试或修改 DOCX/OFD/PDF 转换、排版、字体、表格或渲染功能时，必须验证实际生成的页面。自动化测试通过、文件生成成功、页数正确或文本可提取，均不能代替视觉验收。
