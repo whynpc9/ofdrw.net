@@ -59,7 +59,7 @@ internal static class OfdSerializedInventory
         Container("attachments", package.Attachments, package.Attachments.Count);
         foreach (var attachment in package.Attachments)
         {
-            Own("attachment", attachment); S("attachmentId", attachment.Id); S("name", attachment.Name);
+            Own("attachment", attachment); V("attachmentOrigin", attachment.SourceOwner, true); S("attachmentId", attachment.Id); S("name", attachment.Name);
             S("mediaType", attachment.MediaType); S("format", attachment.Format); S("usage", attachment.Usage);
             V("creation", attachment.CreationDate); V("modified", attachment.ModificationDate);
             V("size", attachment.SizeKilobytes); V("visible", attachment.Visible); V("external", attachment.IsExternal);
@@ -85,6 +85,7 @@ internal static class OfdSerializedInventory
         NavigationOwner("outlines", package.OutlineOwnership); NavigationOwner("bookmarks", package.BookmarkOwnership);
         NavigationOwner("actions", package.ActionOwnership);
         V("sourceEnvelope", package.SourceEnvelope, true); package.SourceEnvelope?.VisitInventory(sink);
+        V("attachmentSource", package.AttachmentSource, true); package.AttachmentSource?.VisitInventory(sink);
         V("customTagSource", package.CustomTagSource, true); package.CustomTagSource?.VisitInventory(sink);
         V("annotationIndexSource", package.AnnotationIndexSource, true); package.AnnotationIndexSource?.VisitInventory(sink);
         V("sourceIdentity", package.SourceIdentity, true); package.SourceIdentity?.VisitInventory(sink);
