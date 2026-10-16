@@ -195,6 +195,13 @@ public sealed class HtmlPreviewTests
         Assert.Equal(4096, charged);
     }
     [Fact]
+    public void IndexedPngIsExplicitlyOutsideTheNarrowProfile()
+    {
+        using var pixels = new Image<Rgba32>(4, 4, Color.Red); using var encoded = new MemoryStream();
+        pixels.Save(encoded, new SixLabors.ImageSharp.Formats.Png.PngEncoder { ColorType = SixLabors.ImageSharp.Formats.Png.PngColorType.Palette });
+        Assert.Throws<NotSupportedException>(() => HtmlImageAdmission.Validate(encoded.ToArray(), "image/png", default));
+    }
+    [Fact]
     public async Task FinalCopyFailureAndCancellationDoNotPretendRollback()
     {
         var source = await Fixture(); using var fail = new FailingOutput();

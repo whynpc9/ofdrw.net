@@ -21,7 +21,7 @@ internal static class HtmlImageAdmission
         byte[] signature = { 137, 80, 78, 71, 13, 10, 26, 10 };
         if (data.Length < 45) Bad();
         for (var i = 0; i < 8; i++) if (data[i] != signature[i]) Bad();
-        var position = 8; var header = false; var pixels = false; var afterPixels = false;
+        var position = 8; var header = false; var pixels = false; var metadata = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
         while (position < data.Length)
         {
             token.ThrowIfCancellationRequested();
@@ -46,13 +46,21 @@ internal static class HtmlImageAdmission
                         (long)Read32(data, type + 4) * Read32(data, type + 8) > 100_000_000 ||
                         data[type + 14] != 0 || data[type + 15] != 0 || data[type + 16] > 1) Bad();
                     reservePixels?.Invoke(checked((long)Read32(data, type + 4) * Read32(data, type + 8)));
-                    token.ThrowIfCancellationRequested(); header = true; break;
-                case "IDAT": if (afterPixels) Bad(); pixels = true; break;
+                    token.ThrowIfCancellationRequested();
+                    if (data[type + 13] == 3) throw new NotSupportedException("Indexed PNG is outside the HTML preview image profile.");
+                    header = true; break;
+                case "IDAT": pixels = true; break;
                 case "IEND": if (!pixels || count != 0 || position + 12 != data.Length) Bad(); PngPixels(data, token); return;
                 // Keep a narrow static profile: no animation, compressed metadata,
                 // private critical chunks, embedded XML or arbitrary text payloads.
                 case "PLTE": case "tRNS": case "sRGB": case "gAMA": case "cHRM": case "pHYs":
-                    if (pixels) afterPixels = true; break;
+                    if (pixels || !metadata.Add(name)) Bad();
+                    var color = data[25];
+                    if (name == "PLTE" && (color is 0 or 4 || count == 0 || count > 768 || count % 3 != 0) ||
+                        name == "tRNS" && (color == 0 ? count != 2 : color != 2 || count != 6) ||
+                        name == "sRGB" && (count != 1 || data[type + 4] > 3) || name == "gAMA" && count != 4 ||
+                        name == "cHRM" && count != 32 || name == "pHYs" && (count != 9 || data[type + 12] > 1)) Bad();
+                    break;
                 default: throw new NotSupportedException("PNG chunk is outside the static HTML image profile: " + name);
             }
             position += count + 12;
