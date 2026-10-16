@@ -1,5 +1,9 @@
 # 003 follow-up: direct BuiltIn PDF italic
 
+> Storage update: historical `artifacts/` paths below are restored from the
+> [optional PR23 evidence bundle](../docs/evidence/pr23-integration/README.md).
+> The original bytes and acceptance scope are unchanged.
+
 Status: scoped implementation and acceptance complete (2026-10-16).
 
 Base: `3247c76f95c9a3312cc26144e24c4984767af26f`. Worktree: `audit-followup-003`.

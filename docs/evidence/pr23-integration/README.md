@@ -18,7 +18,8 @@ zstd -d -c --long=27 docs/evidence/pr23-integration/evidence.tar.zst | tar -xf -
 Extract into a clean temporary directory if those `artifacts/` paths already
 contain another run. `manifest.json` records every original relative path,
 size and SHA-256, plus the archive size and SHA-256. Nothing was regenerated.
-Original reports are at:
+The [small coordinator summary](root-evidence-review.json) remains directly
+readable. Original reports are at:
 
 - `artifacts/followup-integration/acceptance.md`
 - `artifacts/followup-integration/root-evidence-review.json`

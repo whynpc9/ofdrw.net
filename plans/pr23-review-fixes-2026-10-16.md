@@ -1,5 +1,9 @@
 # PR #23 Cursor 审查修复验收
 
+> Storage update: historical `artifacts/` paths below are restored from the
+> [optional PR23 evidence bundle](../docs/evidence/pr23-integration/README.md).
+> The original bytes and acceptance scope are unchanged.
+
 本记录对应已复核生产源码 `979a93e39dd8cec3fbb4bdd2121d301ea84b2e39`，PR 为 https://github.com/whynpc9/ofdrw.net/pull/23 。本次在 `codex/audit-integration` 合入两项有效审查修复；本记录提交仅增加验收证据，不改变已测试源码。远端新提交的 CI 和两家机器人复审须另行闭环，本地通过不代表远端已通过。PR 保持 OPEN，未合入 main、tag 或发布。
 
 ## 两项修复

@@ -1,5 +1,9 @@
 # 五项后续实施统一集成验收
 
+> Storage update: historical `artifacts/` paths below are restored from the
+> [optional PR23 evidence bundle](../docs/evidence/pr23-integration/README.md).
+> The original bytes and acceptance scope are unchanged.
+
 共同起点：`3247c76f95c9a3312cc26144e24c4984767af26f`。目标分支：`codex/audit-integration`。已测试源码：`aef66e76d923d706bcd440eb1583c906f300eeb7`。
 
 五项均由独立sol/high新会话、独立受管worktree完成，协调者先完整复核后逐一使用merge --no-ff合入。004按用户要求排除。所有五个最终交付HEAD均为当前集成HEAD祖先。唯一源码冲突是CLI Program.cs的命令列表及分发，同时保留text-to-ofd与ofd-to-html；其他各任务src/tests/e2e/scripts文件逐一与原交付核对一致。

@@ -257,7 +257,7 @@
     "png_visual": "12/12 PASS",
     "macos_preview": "7 PDFs/12 pages PASS; current source outputs, unchanged hashes; own PDFs closed",
     "html_browser": "4 HTML/9 occurrences PASS; zero external requests; own browser closed",
-    "root_evidence": "artifacts/followup-integration/root-evidence-review.json",
+    "root_evidence": "docs/evidence/pr23-integration/root-evidence-review.json",
     "acceptance": "plans/followup-integration-acceptance-2026-10-16.md"
   },
   "plan_verdict": "Five authorized followups implemented/reviewed/merged and final integrated gates passed;004 excluded; all retained boundaries in acceptance",
