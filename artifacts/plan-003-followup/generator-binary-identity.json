@@ -1,0 +1,26 @@
+{
+  "current_source_head": "432077e938e8c9d2fdf7930d07087c7b82e4eb22",
+  "baseline_source_head": "3247c76f95c9a3312cc26144e24c4984767af26f",
+  "binaries": [
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Cli.dll",
+      "sha256": "44232fa36e2829015c9ce619d0172f986e42967eb3e17cbf46c64203a4daddbf",
+      "bytes": 79872
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Converter.Docx.dll",
+      "sha256": "887eabf4b785b322563783378c3e7f02d7d85ce3c8724ccb4d8f6186f495a4a4",
+      "bytes": 190976
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/baseline-src/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Cli.dll",
+      "sha256": "ebbef5d9d846afb5407ed19d9d2253749cb9bfb5ebef9e6fd86236066fa0c09c",
+      "bytes": 79872
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/baseline-src/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Converter.Docx.dll",
+      "sha256": "51e71955610f368ab301f2b1703a699e2747caa982daf5f71dbc488fe38d0d29",
+      "bytes": 184832
+    }
+  ]
+}
