@@ -39,6 +39,9 @@ jobs:
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
+      - name: Verify all immutable native supervisor assets
+        run: python3 scripts/verify-process-supervisor-assets.py
+
       - name: Check release notices
         run: python3 scripts/verify-package-artifacts.py --notices-only
 
@@ -113,7 +116,7 @@ jobs:
         run: dotnet test tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj -c Release --filter "FullyQualifiedName~Audit004RegressionTests|FullyQualifiedName~TextReplacementCommitNotificationTests" --logger trx --results-directory artifacts/native-path-tests/cli --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Test native external process ownership
-        run: dotnet test tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ExternalProcessTests|FullyQualifiedName~Audit024RegressionTests" --logger trx --results-directory artifacts/native-path-tests/processes --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+        run: dotnet test tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj -c Release --filter "FullyQualifiedName~ExternalProcessTests|FullyQualifiedName~Audit024" --logger trx --results-directory artifacts/native-path-tests/processes --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Test native owned file intent
         run: dotnet test tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj -c Release --filter "FullyQualifiedName~OfdOwnedFileIntentTests" --logger trx --results-directory artifacts/native-path-tests/core --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
