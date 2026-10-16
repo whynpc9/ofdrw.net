@@ -1,0 +1,21 @@
+{
+  "source": "git archive3247c76f95c9a3312cc26144e24c4984767af26f",
+  "source_files": [
+    {
+      "path": "src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/BuiltInPdfRenderer.cs",
+      "sha256": "0de4d2e49d70b1cdcfe218ef6fb1f6ebdbc58cd00f23958fec77fa1ce932c162",
+      "git_show_source_equal": true
+    },
+    {
+      "path": "src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj",
+      "sha256": "ce625a30fbd156e81be3301ee8581484c11f34d082728e1cd12d4fdbc116d14f",
+      "git_show_source_equal": true
+    },
+    {
+      "path": "src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj",
+      "sha256": "4a034e1c5b5f564c43a9249af238e6ee0e4019d4d2330bb993a28e655504d985",
+      "git_show_source_equal": true
+    }
+  ],
+  "note": "Archive build is beneath current checkout; source attribution comes from git archive and file equality, not an inherited parent Git build metadata value."
+}
