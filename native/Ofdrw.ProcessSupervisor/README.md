@@ -4,7 +4,7 @@
 frameworks. Windows continues using its native Job backend. Linux x64/ARM64 assets
 are statically linked against musl; macOS x64/ARM64 assets use system libraries.
 No compiler, shell, Python or separately installed runtime is used by consumers.
-See `assets/manifest.json` and `PROVENANCE.md` for exact build and license inputs.
+See `assets/manifest.json` and `ASSET-PROVENANCE.md` for exact build and license inputs.
 
 The host starts a fresh supervisor with `posix_spawn`, a private socket at fd 3
 and separate stdout/stderr pipes. The supervisor is outside the target group and
