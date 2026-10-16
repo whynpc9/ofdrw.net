@@ -1,5 +1,7 @@
 # 003 follow-up: direct BuiltIn PDF italic
 
+Status: scoped implementation and acceptance complete (2026-10-16).
+
 Base: `3247c76f95c9a3312cc26144e24c4984767af26f`. Worktree: `audit-followup-003`.
 The later implementation authorization supersedes the original plan's read-only/dependency scope limitation. Original transaction production code and ten regressions remain untouched.
 
@@ -21,9 +23,13 @@ The adapter uses the pinned PDFsharp simulation angle (`sin(20 degrees)`). It do
 
 ## Acceptance
 
-Initial full regression 2817/2817, trusted fonts 65/65, Python 20/20, API docs and 11-package consumption passed at 643e06a. Final helper extraction/breadth controls and fresh visual generation are being verified. Current focused tests: 17/17 (seven new style/drawing checks and ten original transaction checks). Mixed-page controls verify 300x420 portrait and 420x300 landscape PageInfo against original MigraDoc RenderPages, including exact regular and italic anchors; another control verifies headers, PAGE/NUMPAGES fields, table fill/borders, images and different page sizes. The true italic deterministic control uses the repository's authored synthetic italic face, whose outlines are actually slanted; additionally inspect the system's genuine Arial italic in the visual boundary fixture. Never infer arbitrary complex DOCX fidelity from these samples.
+Final validated source `432077e938e8c9d2fdf7930d07087c7b82e4eb22`: full solution **2819/2819**, DOCX **285/285**, PDF **514/514**, trusted fonts **65/65**, Python **20/20**, API docs/dual TFMs passed, local **11/11** packages consumed at `0.0.0-audit003final`. The packed DOCX DLL is byte-identical to the runtime DLL used for the final **17/17** style/drawing/transaction check. All **12 target pages** passed PNG visual review and native Preview inspection with actual file URLs/page indicators, raw JPEG hashes and unchanged pre/post PDF hashes. Original transaction production code and its ten tests remain unchanged.
 
-Full results will be recorded in `artifacts/plan-003-followup/acceptance.md` and task coordination `003.json`. This plan is not itself completion evidence.
+Mixed-page controls verify 300x420 portrait and 420x300 landscape PageInfo against original MigraDoc RenderPages, including exact regular and italic anchors; another control verifies headers, PAGE/NUMPAGES fields, table fill/borders, images and different page sizes. The true italic deterministic control uses the repository's authored synthetic italic outlines; the separate real Arial Italic visual fixture was also verified by physical font SHA and independent pypdf CM/TM inspection.
+
+No outstanding scoped gate remains. This does not claim arbitrary complex DOCX fidelity or repair the pre-existing source landscape page-setup finding below.
+
+Full results are recorded in `artifacts/plan-003-followup/acceptance.md` and task coordination `003.json`. The report links the actual test, package, text, PNG and native Preview evidence.
 
 ## Pre-existing source page-setup finding
 
