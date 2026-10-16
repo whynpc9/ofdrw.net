@@ -86,6 +86,8 @@ internal static class ExternalProcessRunner
 
             cancellationToken.ThrowIfCancellationRequested();
             await pipes.ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (elapsed.Elapsed >= timeout) throw new TimeoutException($"{startInfo.FileName} exceeded {timeout}.");
             var exitCode = stoppedAfterOutput ? 0 : process.ExitCode;
             return new ExternalProcessResult(exitCode, output.Result, error.Result);
         }
