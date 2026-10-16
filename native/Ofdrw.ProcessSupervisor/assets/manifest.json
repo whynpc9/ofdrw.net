@@ -1,0 +1,1107 @@
+{
+  "schemaVersion": 1,
+  "protocolVersion": 1,
+  "sourcePath": "native/Ofdrw.ProcessSupervisor/supervisor.c",
+  "sourceSha256": "4fab29e88329fa58530273a684c0bf3f95aca5f62ef9bf1eccb1c01f16986973",
+  "publishable": true,
+  "files": [
+    {
+      "rid": "linux-x64",
+      "path": "linux-x64/ofdrw-supervisor",
+      "sha256": "79b3117e47835dff8f137d6e7363a87e622c7a1b891e278d7a1d94417c858595",
+      "size": 28904,
+      "format": "ELF64",
+      "architecture": "x64",
+      "minimumOS": "Linux (minimum kernel not certified; see execution evidence)",
+      "toolchain": {
+        "image": "gcc@sha256:82549aa8f90ada3236a8be70c74543132a76662ef33f0c3271ed802b81584a82",
+        "platform": "linux/amd64",
+        "compiler": "gcc (GCC) 14.2.0",
+        "linker": "GNU ld (GNU Binutils for Debian) 2.40",
+        "muslVersion": "1.2.5",
+        "muslSource": "https://musl.libc.org/releases/musl-1.2.5.tar.gz",
+        "muslSourceSha256": "a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4",
+        "compilerRuntimeLinked": false
+      },
+      "buildCommand": [
+        "sh",
+        "-c",
+        "set -eu\nexport LC_ALL=C TZ=UTC SOURCE_DATE_EPOCH=1735689600 ZERO_AR_DATE=1\nmkdir /work\ncd /work\ntar xzf /input/musl.tar.gz\ncd musl-1.2.5\n./configure --prefix=/opt/musl --disable-shared > /out/musl-configure.log\nmake -j8 > /out/musl-build.log 2>&1\nmake install > /out/musl-install.log 2>&1\ngcc --version > /out/compiler.txt\nld --version > /out/linker.txt\nfor pass in first second; do\n  mkdir /out/$pass\n  /opt/musl/bin/musl-gcc -std=c11 -Wall -Wextra -Werror -O2 -fno-ident \\\n    -ffile-prefix-map=/input=/src -fno-pie -no-pie -nostdlib -static \\\n    -Wl,--build-id=none,-z,noexecstack,-Map=/out/$pass/link.map \\\n    /opt/musl/lib/crt1.o /opt/musl/lib/crti.o /input/supervisor.c \\\n    /opt/musl/lib/libc.a /opt/musl/lib/crtn.o -o /out/$pass/ofdrw-supervisor\ndone\nreadelf -h -l -d /out/first/ofdrw-supervisor > /out/readelf.txt\nnm -u /out/first/ofdrw-supervisor > /out/undefined-symbols.txt\n"
+      ],
+      "header": {
+        "format": "ELF64",
+        "machine": 62,
+        "type": "ET_EXEC",
+        "interpreter": null,
+        "dynamic": false
+      },
+      "reproducible": {
+        "firstSha256": "79b3117e47835dff8f137d6e7363a87e622c7a1b891e278d7a1d94417c858595",
+        "secondSha256": "79b3117e47835dff8f137d6e7363a87e622c7a1b891e278d7a1d94417c858595"
+      }
+    },
+    {
+      "rid": "linux-arm64",
+      "path": "linux-arm64/ofdrw-supervisor",
+      "sha256": "1de0494b48e430cd69a47a3eabf3b933d8bdbd87f97cb59289afd2b07ec48956",
+      "size": 77376,
+      "format": "ELF64",
+      "architecture": "arm64",
+      "minimumOS": "Linux (minimum kernel not certified; see execution evidence)",
+      "toolchain": {
+        "image": "gcc@sha256:ab78e7a512cead0e90364bb21f91c299a913e8b19fc481bf700d97218524f46d",
+        "platform": "linux/arm64",
+        "compiler": "gcc (GCC) 14.2.0",
+        "linker": "GNU ld (GNU Binutils for Debian) 2.40",
+        "muslVersion": "1.2.5",
+        "muslSource": "https://musl.libc.org/releases/musl-1.2.5.tar.gz",
+        "muslSourceSha256": "a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4",
+        "compilerRuntimeLinked": false
+      },
+      "buildCommand": [
+        "sh",
+        "-c",
+        "set -eu\nexport LC_ALL=C TZ=UTC SOURCE_DATE_EPOCH=1735689600 ZERO_AR_DATE=1\nmkdir /work\ncd /work\ntar xzf /input/musl.tar.gz\ncd musl-1.2.5\n./configure --prefix=/opt/musl --disable-shared > /out/musl-configure.log\nmake -j8 > /out/musl-build.log 2>&1\nmake install > /out/musl-install.log 2>&1\ngcc --version > /out/compiler.txt\nld --version > /out/linker.txt\nfor pass in first second; do\n  mkdir /out/$pass\n  /opt/musl/bin/musl-gcc -std=c11 -Wall -Wextra -Werror -O2 -fno-ident \\\n    -ffile-prefix-map=/input=/src -fno-pie -no-pie -nostdlib -static \\\n    -Wl,--build-id=none,-z,noexecstack,-Map=/out/$pass/link.map \\\n    /opt/musl/lib/crt1.o /opt/musl/lib/crti.o /input/supervisor.c \\\n    /opt/musl/lib/libc.a /opt/musl/lib/crtn.o -o /out/$pass/ofdrw-supervisor\ndone\nreadelf -h -l -d /out/first/ofdrw-supervisor > /out/readelf.txt\nnm -u /out/first/ofdrw-supervisor > /out/undefined-symbols.txt\n"
+      ],
+      "header": {
+        "format": "ELF64",
+        "machine": 183,
+        "type": "ET_EXEC",
+        "interpreter": null,
+        "dynamic": false
+      },
+      "reproducible": {
+        "firstSha256": "1de0494b48e430cd69a47a3eabf3b933d8bdbd87f97cb59289afd2b07ec48956",
+        "secondSha256": "1de0494b48e430cd69a47a3eabf3b933d8bdbd87f97cb59289afd2b07ec48956"
+      }
+    },
+    {
+      "rid": "osx-x64",
+      "path": "osx-x64/ofdrw-supervisor",
+      "sha256": "2a8e4b0e362d2c8e8150d482e236b1d3bc2fb57f4c118c37e9f6687493cba5ae",
+      "size": 36704,
+      "format": "Mach-O64",
+      "architecture": "x64",
+      "minimumOS": "macOS 10.15",
+      "toolchain": {
+        "clt": "26.6.0.0.1781586589",
+        "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+        "sdkVersion": "26.5",
+        "sdkBuild": "25F70",
+        "sdkSettingsSha256": "f8d005f09381389167f9e0aeaa169bc9e7dff162ef22ca2fd8e98df7ff1acafe",
+        "clangSha256": "f30550eab15fdf5ab8c0dc54c52679711241e5d4b636b027e18c09fef531775d",
+        "ldSha256": "28d85b9af18c923db12e0b4ce70b80ee217f2b7cade0e872baa9e8ddc396c08d",
+        "linker": "@(#)PROGRAM:ld PROJECT:ld-1267\nBUILD 16:38:58 Jun  8 2026\nconfigured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em armv8m.main armv8.1m.main\nwill use ld-classic for: armv6 armv7 armv7s i386 armv6m armv7k armv7m armv7em\nLTO support using: LLVM version 21.0.0 (static support for 30, runtime is 30)\nTAPI support using: Apple TAPI version 21.0.0 (tapi-2100.0.2.6)",
+        "uuidRule": "SHA256(sourceSha256 + ':' + rid) first 16 bytes, before signing",
+        "codesignCommand": [
+          "codesign",
+          "--force",
+          "--sign",
+          "-",
+          "--identifier",
+          "org.ofdrw.process-supervisor",
+          "--timestamp=none",
+          "<output>/ofdrw-supervisor"
+        ],
+        "signatureVerificationCommand": [
+          "codesign",
+          "--verify",
+          "--strict",
+          "<output>/ofdrw-supervisor"
+        ]
+      },
+      "buildCommand": [
+        "xcrun",
+        "clang",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-fno-ident",
+        "-arch",
+        "x86_64",
+        "-isysroot",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-mmacosx-version-min=10.15",
+        "-ffile-prefix-map=<build>/input=/src",
+        "-Wl,-no_adhoc_codesign",
+        "<build>/input/supervisor.c",
+        "-lproc",
+        "-Wl,-map,<output>/link.map",
+        "-o",
+        "<output>/ofdrw-supervisor"
+      ],
+      "header": {
+        "format": "Mach-O64",
+        "cpuType": 16777223,
+        "type": "MH_EXECUTE",
+        "minimumOS": "10.15.0",
+        "sdk": "26.5.0",
+        "dylibs": [
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "uuid": "e24f4943d626a3c62c18a07af36656f6",
+        "adHocSigned": true
+      },
+      "reproducible": {
+        "firstSha256": "2a8e4b0e362d2c8e8150d482e236b1d3bc2fb57f4c118c37e9f6687493cba5ae",
+        "secondSha256": "2a8e4b0e362d2c8e8150d482e236b1d3bc2fb57f4c118c37e9f6687493cba5ae"
+      }
+    },
+    {
+      "rid": "osx-arm64",
+      "path": "osx-arm64/ofdrw-supervisor",
+      "sha256": "1fe91767b723a916a9c75331117440654bee04435f654a7d8b69bdba65ee981f",
+      "size": 69424,
+      "format": "Mach-O64",
+      "architecture": "arm64",
+      "minimumOS": "macOS 11.0",
+      "toolchain": {
+        "clt": "26.6.0.0.1781586589",
+        "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)",
+        "sdkVersion": "26.5",
+        "sdkBuild": "25F70",
+        "sdkSettingsSha256": "f8d005f09381389167f9e0aeaa169bc9e7dff162ef22ca2fd8e98df7ff1acafe",
+        "clangSha256": "f30550eab15fdf5ab8c0dc54c52679711241e5d4b636b027e18c09fef531775d",
+        "ldSha256": "28d85b9af18c923db12e0b4ce70b80ee217f2b7cade0e872baa9e8ddc396c08d",
+        "linker": "@(#)PROGRAM:ld PROJECT:ld-1267\nBUILD 16:38:58 Jun  8 2026\nconfigured to support archs: armv6 armv7 armv7s arm64 arm64e arm64_32 i386 x86_64 x86_64h armv6m armv7k armv7m armv7em armv8m.main armv8.1m.main\nwill use ld-classic for: armv6 armv7 armv7s i386 armv6m armv7k armv7m armv7em\nLTO support using: LLVM version 21.0.0 (static support for 30, runtime is 30)\nTAPI support using: Apple TAPI version 21.0.0 (tapi-2100.0.2.6)",
+        "uuidRule": "SHA256(sourceSha256 + ':' + rid) first 16 bytes, before signing",
+        "codesignCommand": [
+          "codesign",
+          "--force",
+          "--sign",
+          "-",
+          "--identifier",
+          "org.ofdrw.process-supervisor",
+          "--timestamp=none",
+          "<output>/ofdrw-supervisor"
+        ],
+        "signatureVerificationCommand": [
+          "codesign",
+          "--verify",
+          "--strict",
+          "<output>/ofdrw-supervisor"
+        ]
+      },
+      "buildCommand": [
+        "xcrun",
+        "clang",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O2",
+        "-fno-ident",
+        "-arch",
+        "arm64",
+        "-isysroot",
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+        "-mmacosx-version-min=11.0",
+        "-ffile-prefix-map=<build>/input=/src",
+        "-Wl,-no_adhoc_codesign",
+        "<build>/input/supervisor.c",
+        "-lproc",
+        "-Wl,-map,<output>/link.map",
+        "-o",
+        "<output>/ofdrw-supervisor"
+      ],
+      "header": {
+        "format": "Mach-O64",
+        "cpuType": 16777228,
+        "type": "MH_EXECUTE",
+        "minimumOS": "11.0.0",
+        "sdk": "26.5.0",
+        "dylibs": [
+          "/usr/lib/libSystem.B.dylib"
+        ],
+        "uuid": "adb86d75d474253261ce90f88acabdc2",
+        "adHocSigned": true
+      },
+      "reproducible": {
+        "firstSha256": "1fe91767b723a916a9c75331117440654bee04435f654a7d8b69bdba65ee981f",
+        "secondSha256": "1fe91767b723a916a9c75331117440654bee04435f654a7d8b69bdba65ee981f"
+      }
+    }
+  ],
+  "licenses": [
+    {
+      "path": "docs/licenses/MUSL-COPYRIGHT.txt",
+      "sha256": "41c681ab36d2e05dc2fbfc875f6a68186ec8e425de61354adaee0845caee272e",
+      "source": "https://musl.libc.org/releases/musl-1.2.5.tar.gz",
+      "sourceSha256": "a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4"
+    }
+  ],
+  "executionEvidence": {
+    "sourceSha256": "4fab29e88329fa58530273a684c0bf3f95aca5f62ef9bf1eccb1c01f16986973",
+    "date": "2026-10-16",
+    "harnessSha256": "d1f04ad1822e08a6bccb7e964ced27f7f05ac917126d12b1668248b1be3c8b75",
+    "harness": "import errno,fcntl,hashlib,json,os,platform,signal,socket,struct,sys,time,subprocess\nbinary=os.path.abspath(sys.argv[1]); results=[]\ndef exact(sock,n):\n data=b''\n while len(data)<n:\n  more=sock.recv(n-len(data))\n  if not more:raise AssertionError('premature EOF')\n  data+=more\n return struct.unpack('!IIII',data)\ndef probe(code,ignore=False,missing=False):\n parent,child=socket.socketpair();parent.settimeout(12)\n fd=fcntl.fcntl(child.fileno(),fcntl.F_DUPFD_CLOEXEC,10);child.close()\n before=signal.signal(signal.SIGCHLD,signal.SIG_IGN if ignore else signal.SIG_DFL)\n path='/ofdrw-no-such-executable' if missing else '/bin/sh'\n try:\n  pid=os.posix_spawn(binary,[binary,path,'/bin/sh','-c',f'exit {code}'],os.environ.copy(),file_actions=[(os.POSIX_SPAWN_DUP2,fd,3),(os.POSIX_SPAWN_CLOSE,fd)])\n finally:\n  os.close(fd);signal.signal(signal.SIGCHLD,before)\n first=exact(parent,16)\n assert first[0]==0x4f465301,first\n if missing:\n  assert first[1]==3 and first[3]==errno.ENOENT,first\n  last=exact(parent,16)\n else:\n  assert first[1]==1 and first[2]>0,first\n  status=exact(parent,16);assert status==(0x4f465301,2,first[2],code),status\n  parent.sendall(b'K');last=exact(parent,16)\n assert last[1]==4 and last[2]==first[2] and last[3]==0,last\n parent.close()\n helper_exit=None\n try:\n  _,wait=os.waitpid(pid,0);helper_exit=os.waitstatus_to_exitcode(wait)\n  assert helper_exit==0,wait\n except ChildProcessError:\n  assert ignore\n results.append({'helperExitCode':helper_exit,'cleanupSuccess':helper_exit==0,'targetExit':code,'ignoredSigchld':ignore,'missingTarget':missing,'first':first,'exitFrame':None if missing else status,'last':last})\nfor ignored in (False,True):\n for code in (0,7):probe(code,ignored)\nprobe(0,missing=True)\nprint(json.dumps({'binarySha256':hashlib.sha256(open(binary,'rb').read()).hexdigest(),'uname':platform.uname()._asdict(),'python':sys.version,'pid':os.getpid(),'osRelease':open('/etc/os-release').read() if os.path.exists('/etc/os-release') else None,'libc':platform.libc_ver(),'libcCommand':subprocess.run(['ldd','--version'],capture_output=True,text=True).stdout+subprocess.run(['ldd','--version'],capture_output=True,text=True).stderr if platform.system()=='Linux' else None,'results':results},indent=2))\n",
+    "checks": [
+      {
+        "binarySha256": "79b3117e47835dff8f137d6e7363a87e622c7a1b891e278d7a1d94417c858595",
+        "uname": {
+          "system": "Linux",
+          "node": "legion-pc",
+          "release": "5.15.167.4-microsoft-standard-WSL2",
+          "version": "#1 SMP Tue Nov 5 00:21:55 UTC 2024",
+          "machine": "x86_64",
+          "processor": "x86_64"
+        },
+        "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+        "pid": 35401,
+        "osRelease": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "libc": [
+          "glibc",
+          "2.39"
+        ],
+        "libcCommand": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\nWritten by Roland McGrath and Ulrich Drepper.\n",
+        "results": [
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              35403,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              35403,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              35403,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              35405,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              35405,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              35405,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              35407,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              35407,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              35407,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              35409,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              35409,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              35409,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": true,
+            "first": [
+              1330008833,
+              3,
+              35411,
+              2
+            ],
+            "exitFrame": null,
+            "last": [
+              1330008833,
+              4,
+              35411,
+              0
+            ]
+          }
+        ],
+        "rid": "linux-x64",
+        "environment": "glibc",
+        "command": "ssh legion python3 /tmp/ofdrw-pr23-native-assets-4fab29e8/smoke.py /tmp/ofdrw-pr23-native-assets-4fab29e8/ofdrw-supervisor"
+      },
+      {
+        "binarySha256": "79b3117e47835dff8f137d6e7363a87e622c7a1b891e278d7a1d94417c858595",
+        "uname": {
+          "system": "Linux",
+          "node": "6c58735a14a2",
+          "release": "5.15.167.4-microsoft-standard-WSL2",
+          "version": "#1 SMP Tue Nov 5 00:21:55 UTC 2024",
+          "machine": "x86_64",
+          "processor": ""
+        },
+        "python": "3.12.14 (main, Sep  1 2026, 00:06:25) [GCC 15.2.0]",
+        "pid": 1,
+        "osRelease": "NAME=\"Alpine Linux\"\nID=alpine\nVERSION_ID=3.24.1\nPRETTY_NAME=\"Alpine Linux v3.24\"\nHOME_URL=\"https://alpinelinux.org/\"\nBUG_REPORT_URL=\"https://gitlab.alpinelinux.org/alpine/aports/-/issues\"\n",
+        "libc": [
+          "",
+          ""
+        ],
+        "libcCommand": "musl libc (x86_64)\nVersion 1.2.6\nDynamic Program Loader\nUsage: /lib/ld-musl-x86_64.so.1 [options] [--] pathname\n",
+        "results": [
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              8,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              8,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              8,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              10,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              10,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              10,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              12,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              12,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              12,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              14,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              14,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              14,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": true,
+            "first": [
+              1330008833,
+              3,
+              16,
+              2
+            ],
+            "exitFrame": null,
+            "last": [
+              1330008833,
+              4,
+              16,
+              0
+            ]
+          }
+        ],
+        "rid": "linux-x64",
+        "environment": "musl",
+        "command": "ssh legion docker run --rm --network=none -v /tmp/ofdrw-pr23-native-assets-4fab29e8:/probe:ro docker.m.daocloud.io/library/python@sha256:b64631e04e4920160c50fbe8d8df828f7f35f06f425cb44aa09bca53e708a35a python /probe/smoke.py /probe/ofdrw-supervisor"
+      },
+      {
+        "binarySha256": "1de0494b48e430cd69a47a3eabf3b933d8bdbd87f97cb59289afd2b07ec48956",
+        "uname": {
+          "system": "Linux",
+          "node": "293c26551d55",
+          "release": "7.0.14-orbstack-00380-ga7e0a2dc9535",
+          "version": "#1 SMP PREEMPT Fri Aug  7 03:48:40 UTC 2026",
+          "machine": "aarch64",
+          "processor": ""
+        },
+        "python": "3.11.2 (main, Apr 28 2025, 14:11:48) [GCC 12.2.0]",
+        "pid": 1,
+        "osRelease": "PRETTY_NAME=\"Debian GNU/Linux 12 (bookworm)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"12\"\nVERSION=\"12 (bookworm)\"\nVERSION_CODENAME=bookworm\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+        "libc": [
+          "glibc",
+          "2.36"
+        ],
+        "libcCommand": "ldd (Debian GLIBC 2.36-9+deb12u10) 2.36\nCopyright (C) 2022 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\nWritten by Roland McGrath and Ulrich Drepper.\n",
+        "results": [
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              7,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              7,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              7,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              9,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              9,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              9,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              11,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              11,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              11,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              13,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              13,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              13,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": true,
+            "first": [
+              1330008833,
+              3,
+              15,
+              2
+            ],
+            "exitFrame": null,
+            "last": [
+              1330008833,
+              4,
+              15,
+              0
+            ]
+          }
+        ],
+        "rid": "linux-arm64",
+        "environment": "glibc",
+        "command": "docker run --rm --network=none --platform linux/arm64 -v <checkout>:/repo:ro gcc@sha256:ab78e7a512cead0e90364bb21f91c299a913e8b19fc481bf700d97218524f46d python3 /repo/artifacts/pr23-process-reaper/native-assets/smoke.py /repo/native/Ofdrw.ProcessSupervisor/assets/linux-arm64/ofdrw-supervisor"
+      },
+      {
+        "binarySha256": "1de0494b48e430cd69a47a3eabf3b933d8bdbd87f97cb59289afd2b07ec48956",
+        "uname": {
+          "system": "Linux",
+          "node": "b687f9fc6c1f",
+          "release": "7.0.14-orbstack-00380-ga7e0a2dc9535",
+          "version": "#1 SMP PREEMPT Fri Aug  7 03:48:40 UTC 2026",
+          "machine": "aarch64",
+          "processor": ""
+        },
+        "python": "3.12.13 (main, Jun 16 2026, 00:19:39) [GCC 15.2.0]",
+        "pid": 1,
+        "osRelease": "NAME=\"Alpine Linux\"\nID=alpine\nVERSION_ID=3.24.1\nPRETTY_NAME=\"Alpine Linux v3.24\"\nHOME_URL=\"https://alpinelinux.org/\"\nBUG_REPORT_URL=\"https://gitlab.alpinelinux.org/alpine/aports/-/issues\"\n",
+        "libc": [
+          "",
+          ""
+        ],
+        "libcCommand": "musl libc (aarch64)\nVersion 1.2.6\nDynamic Program Loader\nUsage: /lib/ld-musl-aarch64.so.1 [options] [--] pathname\n",
+        "results": [
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              7,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              7,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              7,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              9,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              9,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              9,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              11,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              11,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              11,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              13,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              13,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              13,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": true,
+            "first": [
+              1330008833,
+              3,
+              15,
+              2
+            ],
+            "exitFrame": null,
+            "last": [
+              1330008833,
+              4,
+              15,
+              0
+            ]
+          }
+        ],
+        "rid": "linux-arm64",
+        "environment": "musl",
+        "command": "docker run --rm --network=none --platform linux/arm64 -v <checkout>:/repo:ro python@sha256:6d43704baacd1bfbe7c295d7f13079d5d8104ed33568873133f8fc69980419df python /repo/artifacts/pr23-process-reaper/native-assets/smoke.py /repo/native/Ofdrw.ProcessSupervisor/assets/linux-arm64/ofdrw-supervisor"
+      },
+      {
+        "binarySha256": "2a8e4b0e362d2c8e8150d482e236b1d3bc2fb57f4c118c37e9f6687493cba5ae",
+        "uname": {
+          "system": "Darwin",
+          "node": "wanghongyideMacBook-Pro.local",
+          "release": "25.6.0",
+          "version": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:17:26 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6041",
+          "machine": "arm64",
+          "processor": "arm"
+        },
+        "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+        "pid": 31226,
+        "osRelease": null,
+        "libc": [
+          "",
+          ""
+        ],
+        "libcCommand": null,
+        "results": [
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              31288,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              31288,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              31288,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              31290,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              31290,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              31290,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              31292,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              31292,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              31292,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              31294,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              31294,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              31294,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": true,
+            "first": [
+              1330008833,
+              3,
+              31296,
+              2
+            ],
+            "exitFrame": null,
+            "last": [
+              1330008833,
+              4,
+              31296,
+              0
+            ]
+          }
+        ],
+        "rid": "osx-x64",
+        "environment": "macos-rosetta",
+        "command": "python3 artifacts/pr23-process-reaper/native-assets/smoke.py native/Ofdrw.ProcessSupervisor/assets/osx-x64/ofdrw-supervisor"
+      },
+      {
+        "binarySha256": "1fe91767b723a916a9c75331117440654bee04435f654a7d8b69bdba65ee981f",
+        "uname": {
+          "system": "Darwin",
+          "node": "wanghongyideMacBook-Pro.local",
+          "release": "25.6.0",
+          "version": "Darwin Kernel Version 25.6.0: Fri Jul 31 19:17:26 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6041",
+          "machine": "arm64",
+          "processor": "arm"
+        },
+        "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+        "pid": 31257,
+        "osRelease": null,
+        "libc": [
+          "",
+          ""
+        ],
+        "libcCommand": null,
+        "results": [
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              31268,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              31268,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              31268,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": false,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              31270,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              31270,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              31270,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              31272,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              31272,
+              0
+            ],
+            "last": [
+              1330008833,
+              4,
+              31272,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 7,
+            "ignoredSigchld": true,
+            "missingTarget": false,
+            "first": [
+              1330008833,
+              1,
+              31275,
+              0
+            ],
+            "exitFrame": [
+              1330008833,
+              2,
+              31275,
+              7
+            ],
+            "last": [
+              1330008833,
+              4,
+              31275,
+              0
+            ]
+          },
+          {
+            "helperExitCode": 0,
+            "cleanupSuccess": true,
+            "targetExit": 0,
+            "ignoredSigchld": false,
+            "missingTarget": true,
+            "first": [
+              1330008833,
+              3,
+              31277,
+              2
+            ],
+            "exitFrame": null,
+            "last": [
+              1330008833,
+              4,
+              31277,
+              0
+            ]
+          }
+        ],
+        "rid": "osx-arm64",
+        "environment": "macos-native",
+        "command": "python3 artifacts/pr23-process-reaper/native-assets/smoke.py native/Ofdrw.ProcessSupervisor/assets/osx-arm64/ofdrw-supervisor"
+      }
+    ]
+  }
+}
