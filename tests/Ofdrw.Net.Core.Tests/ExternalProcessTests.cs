@@ -76,6 +76,7 @@ public sealed class ExternalProcessTests : IDisposable
         var marker = Guid.NewGuid().ToString("N");
         await File.WriteAllTextAsync(Path.Combine(directory, "cwd-marker"), marker);
         var start = CreateStart("context");
+        start.StandardOutputEncoding = Encoding.UTF8;
         start.WorkingDirectory = directory;
         start.Environment["OFDRW_AUDIT024_VALUE"] = "value 空格 \" \\";
         var result = await ExternalProcessRunner.RunAsync(start, TimeSpan.FromSeconds(10), default);
