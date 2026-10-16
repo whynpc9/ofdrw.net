@@ -24,6 +24,24 @@ var outputDir = Environment.GetEnvironmentVariable("OFDRW_E2E_OUTPUT_DIR") ?? Pa
 var testDataDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "testdata", "upstream-ofdrw");
 Directory.CreateDirectory(outputDir);
 
+// Consume both plain-text entrypoints from the installed Layout candidate.
+const string plainSource = "  中英 iii WWW\tX\u00A0Y e\u0301  \r\n\r\n尾行\n";
+var plainConverter = new PlainTextOfdConverter();
+var plainString = plainConverter.Render(plainSource);
+using var plainInput = new MemoryStream(System.Text.Encoding.UTF8.GetBytes("\uFEFF" + plainSource));
+var plainUtf8 = await plainConverter.RenderUtf8Async(plainInput);
+foreach (var (label, plainPackage) in new[] { ("string", plainString), ("utf8", plainUtf8) })
+{
+    var path = Path.Combine(outputDir, "plain-text-" + label + ".ofd");
+    await using (var output = File.Create(path)) await new OfdPackageWriter().WriteAsync(plainPackage, output);
+    await using var input = File.OpenRead(path);
+    var parsed = await new OfdReader().ReadAsync(input);
+    var actual = string.Concat(parsed.Pages.SelectMany(p => p.Elements).OfType<OfdTextElement>().Select(t => t.Text));
+    if (actual != plainSource.Replace("\r", "").Replace("\n", "") || parsed.Pages.SelectMany(p => p.Elements).Any(e => e is not OfdTextElement))
+        throw new InvalidOperationException("Plain text package lost whitespace/Unicode or used non-native content.");
+}
+Console.WriteLine("[E2E] Installed Layout plain-text string/strict UTF-8 APIs passed exact native-text roundtrip.");
+
 // Consume the public Layout package through the built nupkg, with no project reference.
 var publicFlow = new FlowDocument();
 publicFlow.Options.PageHeightMillimeters = 60;
