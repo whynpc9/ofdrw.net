@@ -4,6 +4,10 @@
 
 每份计划独立包含代码摘录、修改范围、回归场景、命令/预期、停止条件和验收要求。S=数小时、M=约一天、L=多日，均为实施粗估，复杂跨平台/分页任务按 L；风险指改动引入回归的风险。编号是建议执行顺序，不是必须把前面全部完成才能启动后面。
 
+## 后续实施
+
+除004外的五项保留边界现已分别启动独立新会话实施；全部完成后统一集成，见[后续调度记录](followup-2026-10-16.md)。下列验收统计属于上一轮冻结交付。
+
 ## 当前执行候选
 
 本地综合候选：`codex/audit-integration`，源码 `b40e9c1dc5011ab08979e10e2bbbc9766b855770`，位于 `/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net`。[集成验收记录](/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net/artifacts/integration/final/acceptance.md) 与 [38项原提交映射](/Users/wanghongyi/.codex/worktrees/audit-integration/ofdrw.net/artifacts/integration/mapping.json) 可逐项复查。
