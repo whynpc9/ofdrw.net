@@ -1,0 +1,36 @@
+Window: "control.pdf", App: Preview.
+0 standard window control.pdf – Page 1 of 3, ID: PVDocumentWindow, Secondary Actions: Raise, URL: file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/control.pdf
+	1 split group
+		2 scroll area
+			3 container document
+				4 Page (disabled)
+					5 text A
+				6 Page (disabled)
+					7 text B
+	8 toolbar
+		9 menu button Description: View, Help: Choose sidebar display
+		10 container Zoom
+			11 button Description: zoom out, Help: Scale document down, Details: Zoom Out
+			12 button Description: zoom to actual size, Help: Display at actual size, Details: Actual Size
+			13 button Description: zoom in, Help: Scale document up, Details: Zoom In
+		14 Highlight Selection
+			15 radio button Description: highlight, Value: 0
+			16 menu button
+		17 button (disabled) Description: Remove Background, Secondary Actions: Move previous, Move next, Remove from toolbar
+		18 button Search
+		19 pop up button more toolbar items
+	20 close button
+	21 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	22 minimize button
+	23 text control.pdf Page 1 of 3
+24 menu bar
+	25 Preview
+	26 File
+	27 Edit
+	28 View
+	29 Go
+	30 Tools
+	31 Window
+	32 Help
+
+The focused UI element is 3 container document

@@ -1,0 +1,32 @@
+[
+  {
+    "tfm": "netstandard2.0",
+    "assembly_sha256": "293ea71c20ff1a483511502f4125398751528f5f03923704176d6a8bfc52cd06",
+    "xml_sha256": "7c973ed558a9f576536293c880e786f4cffed0090d006a8f5483f1f10c557e6d",
+    "new_public_documented_members": [
+      "T:Ofdrw.Net.Layout.PlainTextOfdConverter",
+      "M:Ofdrw.Net.Layout.PlainTextOfdConverter.#ctor",
+      "M:Ofdrw.Net.Layout.PlainTextOfdConverter.#ctor(Ofdrw.Net.Layout.PlainTextOfdOptions)",
+      "M:Ofdrw.Net.Layout.PlainTextOfdConverter.Render(System.String,System.Threading.CancellationToken)",
+      "M:Ofdrw.Net.Layout.PlainTextOfdConverter.RenderUtf8Async(System.IO.Stream,System.Threading.CancellationToken)",
+      "T:Ofdrw.Net.Layout.PlainTextOfdOptions",
+      "P:Ofdrw.Net.Layout.PlainTextOfdOptions.Layout",
+      "P:Ofdrw.Net.Layout.PlainTextOfdOptions.MaxInputBytes"
+    ]
+  },
+  {
+    "tfm": "netstandard2.1",
+    "assembly_sha256": "519c970ca92a811a683d86288546318660dff25fa9a56a5ef9113b0eff617497",
+    "xml_sha256": "7c973ed558a9f576536293c880e786f4cffed0090d006a8f5483f1f10c557e6d",
+    "new_public_documented_members": [
+      "T:Ofdrw.Net.Layout.PlainTextOfdConverter",
+      "M:Ofdrw.Net.Layout.PlainTextOfdConverter.#ctor",
+      "M:Ofdrw.Net.Layout.PlainTextOfdConverter.#ctor(Ofdrw.Net.Layout.PlainTextOfdOptions)",
+      "M:Ofdrw.Net.Layout.PlainTextOfdConverter.Render(System.String,System.Threading.CancellationToken)",
+      "M:Ofdrw.Net.Layout.PlainTextOfdConverter.RenderUtf8Async(System.IO.Stream,System.Threading.CancellationToken)",
+      "T:Ofdrw.Net.Layout.PlainTextOfdOptions",
+      "P:Ofdrw.Net.Layout.PlainTextOfdOptions.Layout",
+      "P:Ofdrw.Net.Layout.PlainTextOfdOptions.MaxInputBytes"
+    ]
+  }
+]

@@ -1,0 +1,257 @@
+Window: "notice.ofd", App: Preview.
+0 standard window notice.ofd – Page 1 of 2, URL: file:///Users/wanghongyi/Library/Containers/com.apple.Preview/Data/tmp/PostScript-heyLGk/notice.pdf, ID: PVDocumentWindow, Secondary Actions: Raise
+	1 split group
+		2 scroll area Secondary Actions: Scroll Up, Scroll Down
+			3 container document
+				4 Page (disabled)
+					5 container
+						6 text 纯文本转换验收
+中英文比例文字
+						7 text P l ai n
+A l pha
+						8 text t ext
+i i i
+W W W
+						9 text nat i ve O F D
+i nf or m
+						10 text at i on
+						11 text pr opor t i onal
+						12 text spaci ng.
+						13 text Long
+l i ne
+w r aps
+w i t hout
+l osi ng
+w or ds:
+i i i
+W W W
+al phabet pr opor t i onal
+i nf or m at i on.
+Long
+l i ne
+w r aps
+w i t hout
+l osi ng
+w or ds:
+i i i
+W W W
+al phabet
+pr opor t i onal
+i nf or m at i on.
+Long
+l i ne
+w r aps
+w i t hout
+l osi ng
+w or ds:
+i i i
+W W W
+al phabet pr opor t i onal
+i nf or m at i on.
+Long
+l i ne
+w r aps
+w i t hout
+l osi ng
+w or ds:
+i i i
+W W W
+al phabet pr opor t i onal
+i nf or m at i on.
+Long
+l i ne
+w r aps
+w i t hout
+l osi ng
+w or ds:
+i i i
+W W W
+al phabet pr opor t i onal
+i nf or m at i on.
+Long
+l i ne
+w r aps
+w i t h out
+l o sin g
+w o rd s:
+i i i
+W W W
+a lp habet p ro port i o nal
+i n fo rm a ti o n.
+L ong
+l i ne
+w r aps
+w i t hout
+l osi ng
+w or ds:
+i i i
+W W W
+al phabet pr opor t i onal
+i nf or m at i on.
+Long
+l i ne
+w r aps
+w i t hout
+l osi ng
+w or ds:
+i i i
+W W W
+al phabet
+pr opor t i onal
+i nf or m at i on.
+Long
+l i ne
+w r aps
+w i t hout
+l osi ng
+w or ds:
+i i i
+W W W
+al phabet pr opor t i onal
+i nf or m at i on.
+Long
+l i ne
+w r aps
+w i t hout
+l osi ng
+w or ds:
+i i i
+W W W
+al phabet pr opor t i onal
+i nf or m at i on.
+						14 text 空行后的正文，检查基线、字距和分页。
+第01行 中英文正文
+N at i ve O F D
+第02行 中英文正文
+N at i ve O F D
+第03行 中英文正文
+N at i ve O F D
+第04行 中英文正文
+N at i ve O F D
+						15 text keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+						16 text 01.
+02.
+03.
+04.
+				17 Page (disabled)
+					18 container
+						19 text 第05行 中英文正文
+第06行 中英文正文
+第07行 中英文正文
+第08行 中英文正文
+第09行 中英文正文
+第10行 中英文正文
+第11行 中英文正文
+第12行 中英文正文
+第13行 中英文正文
+第14行 中英文正文
+第15行 中英文正文
+第16行 中英文正文
+第17行 中英文正文
+第18行 中英文正文
+第19行 中英文正文
+第20行 中英文正文
+第21行 中英文正文
+第22行 中英文正文
+第23行 中英文正文
+第24行 中英文正文
+结束
+E nd of
+not i ce.
+						20 text N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+N at i ve O F D
+						21 text keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+keeps ever y char act er
+						22 text 05.
+06.
+07.
+08.
+09.
+10.
+11.
+12.
+13.
+14.
+15.
+16.
+17.
+18.
+19.
+20.
+21.
+22.
+23.
+24.
+			23 scroll bar (settable, float) 0.1434055234455797
+				24 value indicator (settable, float) 0.1434055234455797
+				25 increment arrow button
+				26 decrement arrow button
+				27 increment page button
+				28 decrement page button
+	29 toolbar
+		30 menu button Description: View, Help: Choose sidebar display
+		31 container Zoom
+			32 button Description: zoom out, Help: Scale document down, Details: Zoom Out
+			33 button (disabled) Description: zoom to actual size, Help: Display at actual size, Details: Actual Size
+			34 button Description: zoom in, Help: Scale document up, Details: Zoom In
+		35 button Description: Highlight, Help: Highlights and Notes, Secondary Actions: Move previous, Move next, Remove from toolbar
+		36 button (disabled) Description: Remove Background, Secondary Actions: Move previous, Move next, Remove from toolbar
+		37 radio button Description: Rotate, Help: Rotate Left, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		38 checkbox Description: Markup, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		39 checkbox Description: Inspector, Help: Show the Inspector, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		40 button Description: Share, Secondary Actions: Move previous, Move next, Remove from toolbar
+		41 button Search
+	42 close button
+	43 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	44 minimize button
+	45 text notice.ofd Page 1 of 2
+46 menu bar
+	47 Preview
+	48 File
+	49 Edit
+	50 View
+	51 Go
+	52 Tools
+	53 Window
+	54 Help
+
+The focused UI element is 3 container document

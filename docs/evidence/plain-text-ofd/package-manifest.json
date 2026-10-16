@@ -1,0 +1,60 @@
+{
+  "version": "0.0.0-audit028",
+  "packages": [
+    {
+      "id": "Ofdrw.Net.Core",
+      "file": "Ofdrw.Net.Core.0.0.0-audit028.nupkg",
+      "sha256": "ef09cefc2d11a3b318ef033492cbb56d86f7a5e7e351d83671a7b9a81ee9a6e0"
+    },
+    {
+      "id": "Ofdrw.Net.Packaging",
+      "file": "Ofdrw.Net.Packaging.0.0.0-audit028.nupkg",
+      "sha256": "d329099d0d9dc5cc09d1eb8585d81a5cc2c539e68e8c125ec1626ec98266b7d2"
+    },
+    {
+      "id": "Ofdrw.Net.Layout",
+      "file": "Ofdrw.Net.Layout.0.0.0-audit028.nupkg",
+      "sha256": "0d92307ae4acd83f327c1d3031dd5bb5978cb1b7e48a951594f2b6f23f055576"
+    },
+    {
+      "id": "Ofdrw.Net.Reader",
+      "file": "Ofdrw.Net.Reader.0.0.0-audit028.nupkg",
+      "sha256": "8788111259469da7e8caf541d7c13365e5d741dd8aca42940edd5bf9d9b48092"
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Abstractions",
+      "file": "Ofdrw.Net.Converter.Abstractions.0.0.0-audit028.nupkg",
+      "sha256": "404927d0f13ea02541ab2dc243c7bc43d5bb3425919f59244d4c841f9bdc0d87"
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Docx",
+      "file": "Ofdrw.Net.Converter.Docx.0.0.0-audit028.nupkg",
+      "sha256": "eeef6c17b1b2e794ef6a542a2dba3c78a9041c94e5fc09f00be849aac31b3d3d"
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Pdf",
+      "file": "Ofdrw.Net.Converter.Pdf.0.0.0-audit028.nupkg",
+      "sha256": "b6c1dd1d095b50dbf1fd26300a0e7910f30b77742171eadfa63ec9bcca7a4262"
+    },
+    {
+      "id": "Ofdrw.Net.Converter.Svg",
+      "file": "Ofdrw.Net.Converter.Svg.0.0.0-audit028.nupkg",
+      "sha256": "49498804af2fc290fcea76ca64e69dd73c7fe7eda1378a815fbe67df9a9f1381"
+    },
+    {
+      "id": "Ofdrw.Net.Signatures",
+      "file": "Ofdrw.Net.Signatures.0.0.0-audit028.nupkg",
+      "sha256": "8ff81787c9430185bd1117c8fd1fc70e08013e01a04c7f7f4fb2ecdbbc2e4fa1"
+    },
+    {
+      "id": "Ofdrw.Net.Converter",
+      "file": "Ofdrw.Net.Converter.0.0.0-audit028.nupkg",
+      "sha256": "8dbfde24fdfa35a7b33fcd7ef2fe2be23fd1bc922d54fd2e952234f3918e6b4e"
+    },
+    {
+      "id": "Ofdrw.Net.Cli",
+      "file": "Ofdrw.Net.Cli.0.0.0-audit028.nupkg",
+      "sha256": "15954271f9e1b07fdb2ab3b0eef6935e0480edd4dd4ddf5ca5579c2324e05e75"
+    }
+  ]
+}

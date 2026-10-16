@@ -1,0 +1,308 @@
+Window: "notice.pdf", App: Preview.
+0 standard window notice.pdf – Page 1 of 2, ID: PVDocumentWindow, Secondary Actions: Raise, URL: file:///Users/wanghongyi/.codex/worktrees/audit-followup-028/ofdrw.net/artifacts/plan-028/visual/notice.pdf
+	1 split group
+		2 scroll area
+			3 container document
+				4 Page (disabled)
+					5 container
+						6 text 纯文本转换验收 Plain text native OFD
+中英文比例文字 Alpha iii WWW information proportional spacing. Long line wraps without losing words: iii WWW alphabet proportional
+information. Long line wraps without losing words: iii WWW alphabet
+proportional information. Long line wraps without losing words: iii WWW
+alphabet proportional information. Long line wraps without losing words:
+iii WWW alphabet proportional information. Long line wraps without
+losing words: iii WWW alphabet proportional information. Long line wraps
+without losing words: iii WWW alphabet proportional information. Long
+line wraps without losing words: iii WWW alphabet proportional
+information. Long line wraps without losing words: iii WWW alphabet
+proportional information. Long line wraps without losing words: iii WWW
+alphabet proportional information. Long line wraps without losing words:
+iii WWW alphabet proportional information. 空行后的正文，检查基线、字距和分页。
+第01行 中英文正文 Native OFD keeps every character 01.
+第02行 中英文正文 Native OFD keeps every character 02.
+第03行 中英文正文 Native OFD keeps every character 03.
+第04行 中英文正文 Native OFD keeps every character 04.
+				7 Page (disabled)
+					8 table (disabled)
+						9 row (disabled)
+							10 cell (disabled)
+								11 text 第05行 中英文正文 Native OFD keeps every character 05.
+						12 row (disabled)
+							13 cell (disabled)
+								14 text 第06行
+							15 cell (disabled)
+								16 text 中英文正文 
+							17 cell (disabled)
+								18 text Native
+							19 cell (disabled)
+								20 text OFD keeps
+							21 cell (disabled)
+								22 text every character
+							23 cell (disabled)
+								24 text 06.
+						25 row (disabled)
+							26 cell (disabled)
+								27 text 第07行
+							28 cell (disabled)
+								29 text 中英文正文 
+							30 cell (disabled)
+								31 text Native
+							32 cell (disabled)
+								33 text OFD keeps
+							34 cell (disabled)
+								35 text every character
+							36 cell (disabled)
+								37 text 07.
+						38 row (disabled)
+							39 cell (disabled)
+								40 text 第08行
+							41 cell (disabled)
+								42 text 中英文正文 
+							43 cell (disabled)
+								44 text Native
+							45 cell (disabled)
+								46 text OFD keeps
+							47 cell (disabled)
+								48 text every character
+							49 cell (disabled)
+								50 text 08.
+						51 row (disabled)
+							52 cell (disabled)
+								53 text 第09行
+							54 cell (disabled)
+								55 text 中英文正文 
+							56 cell (disabled)
+								57 text Native
+							58 cell (disabled)
+								59 text OFD keeps
+							60 cell (disabled)
+								61 text every character
+							62 cell (disabled)
+								63 text 09.
+						64 row (disabled)
+							65 cell (disabled)
+								66 text 第10行
+							67 cell (disabled)
+								68 text 中英文正文 
+							69 cell (disabled)
+								70 text Native
+							71 cell (disabled)
+								72 text OFD keeps
+							73 cell (disabled)
+								74 text every character
+							75 cell (disabled)
+								76 text 10.
+						77 row (disabled)
+							78 cell (disabled)
+								79 text 第11行
+							80 cell (disabled)
+								81 text 中英文正文 
+							82 cell (disabled)
+								83 text Native
+							84 cell (disabled)
+								85 text OFD keeps
+							86 cell (disabled)
+								87 text every character
+							88 cell (disabled)
+								89 text 11.
+						90 row (disabled)
+							91 cell (disabled)
+								92 text 第12行
+							93 cell (disabled)
+								94 text 中英文正文 
+							95 cell (disabled)
+								96 text Native
+							97 cell (disabled)
+								98 text OFD keeps
+							99 cell (disabled)
+								100 text every character
+							101 cell (disabled)
+								102 text 12.
+						103 row (disabled)
+							104 cell (disabled)
+								105 text 第13行
+							106 cell (disabled)
+								107 text 中英文正文 
+							108 cell (disabled)
+								109 text Native
+							110 cell (disabled)
+								111 text OFD keeps
+							112 cell (disabled)
+								113 text every character
+							114 cell (disabled)
+								115 text 13.
+						116 row (disabled)
+							117 cell (disabled)
+								118 text 第14行
+							119 cell (disabled)
+								120 text 中英文正文 
+							121 cell (disabled)
+								122 text Native
+							123 cell (disabled)
+								124 text OFD keeps
+							125 cell (disabled)
+								126 text every character
+							127 cell (disabled)
+								128 text 14.
+						129 row (disabled)
+							130 cell (disabled)
+								131 text 第15行
+							132 cell (disabled)
+								133 text 中英文正文 
+							134 cell (disabled)
+								135 text Native
+							136 cell (disabled)
+								137 text OFD keeps
+							138 cell (disabled)
+								139 text every character
+							140 cell (disabled)
+								141 text 15.
+						142 row (disabled)
+							143 cell (disabled)
+								144 text 第16行
+							145 cell (disabled)
+								146 text 中英文正文 
+							147 cell (disabled)
+								148 text Native
+							149 cell (disabled)
+								150 text OFD keeps
+							151 cell (disabled)
+								152 text every character
+							153 cell (disabled)
+								154 text 16.
+						155 row (disabled)
+							156 cell (disabled)
+								157 text 第17行
+							158 cell (disabled)
+								159 text 中英文正文 
+							160 cell (disabled)
+								161 text Native
+							162 cell (disabled)
+								163 text OFD keeps
+							164 cell (disabled)
+								165 text every character
+							166 cell (disabled)
+								167 text 17.
+						168 row (disabled)
+							169 cell (disabled)
+								170 text 第18行
+							171 cell (disabled)
+								172 text 中英文正文 
+							173 cell (disabled)
+								174 text Native
+							175 cell (disabled)
+								176 text OFD keeps
+							177 cell (disabled)
+								178 text every character
+							179 cell (disabled)
+								180 text 18.
+						181 row (disabled)
+							182 cell (disabled)
+								183 text 第19行
+							184 cell (disabled)
+								185 text 中英文正文 
+							186 cell (disabled)
+								187 text Native
+							188 cell (disabled)
+								189 text OFD keeps
+							190 cell (disabled)
+								191 text every character
+							192 cell (disabled)
+								193 text 19.
+						194 row (disabled)
+							195 cell (disabled)
+								196 text 第20行
+							197 cell (disabled)
+								198 text 中英文正文 
+							199 cell (disabled)
+								200 text Native
+							201 cell (disabled)
+								202 text OFD keeps
+							203 cell (disabled)
+								204 text every character
+							205 cell (disabled)
+								206 text 20.
+						207 row (disabled)
+							208 cell (disabled)
+								209 text 第21行
+							210 cell (disabled)
+								211 text 中英文正文 
+							212 cell (disabled)
+								213 text Native
+							214 cell (disabled)
+								215 text OFD keeps
+							216 cell (disabled)
+								217 text every character
+							218 cell (disabled)
+								219 text 21.
+						220 row (disabled)
+							221 cell (disabled)
+								222 text 第22行
+							223 cell (disabled)
+								224 text 中英文正文 
+							225 cell (disabled)
+								226 text Native
+							227 cell (disabled)
+								228 text OFD keeps
+							229 cell (disabled)
+								230 text every character
+							231 cell (disabled)
+								232 text 22.
+						233 row (disabled)
+							234 cell (disabled)
+								235 text 第23行
+							236 cell (disabled)
+								237 text 中英文正文 
+							238 cell (disabled)
+								239 text Native
+							240 cell (disabled)
+								241 text OFD keeps
+							242 cell (disabled)
+								243 text every character
+							244 cell (disabled)
+								245 text 23.
+						246 row (disabled)
+							247 cell (disabled)
+								248 text 第24行
+							249 cell (disabled)
+								250 text 中英文正文 
+							251 cell (disabled)
+								252 text Native
+							253 cell (disabled)
+								254 text OFD keeps
+							255 cell (disabled)
+								256 text every character
+							257 cell (disabled)
+								258 text 24.
+						259 row (disabled)
+							260 cell (disabled)
+								261 text 结束 End of notice.
+	262 toolbar
+		263 menu button Description: View, Help: Choose sidebar display
+		264 container Zoom
+			265 button Description: zoom out, Help: Scale document down, Details: Zoom Out
+			266 button Description: zoom to actual size, Help: Display at actual size, Details: Actual Size
+			267 button Description: zoom in, Help: Scale document up, Details: Zoom In
+		268 Highlight Selection
+			269 radio button Description: highlight, Value: 0
+			270 menu button
+		271 button (disabled) Description: Remove Background, Secondary Actions: Move previous, Move next, Remove from toolbar
+		272 radio button Description: Rotate, Help: Rotate Left, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		273 checkbox (disabled) Description: Form Filling, Help: Show Form Filling Toolbar, Value: 0, Secondary Actions: Move previous, Move next, Remove from toolbar
+		274 button Search
+		275 pop up button more toolbar items
+	276 close button
+	277 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	278 minimize button
+	279 text notice.pdf Page 1 of 2
+280 menu bar
+	281 Preview
+	282 File
+	283 Edit
+	284 View
+	285 Go
+	286 Tools
+	287 Window
+	288 Help
+
+The focused UI element is 3 container document
