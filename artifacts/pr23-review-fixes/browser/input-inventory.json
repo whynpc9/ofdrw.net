@@ -1,0 +1,84 @@
+{
+  "source": "979a93e39dd8cec3fbb4bdd2121d301ea84b2e39",
+  "checked_utc": "2026-10-16T05:58:40.172476+00:00",
+  "manifest": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual-manifest.json",
+  "manifest_sha256": "6da5cc063ac6b67fbf3fb99fa5aa717dc248719bb6dd67a3b22447f9070d7976",
+  "html": [
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/native.html",
+      "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/native.html",
+      "bytes": 2424951,
+      "sha256_before": "e754a150d44b2c6e5dc6df001fc684b49ebea3efff5c09edc30e9df8ba571a5d",
+      "title": "OFD preview",
+      "occurrences": 2,
+      "sections": [
+        {
+          "id": "ofd-preview-page-0",
+          "source_page": "1"
+        },
+        {
+          "id": "ofd-preview-page-1",
+          "source_page": "2"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice-short.html",
+      "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice-short.html",
+      "bytes": 4253,
+      "sha256_before": "64bdde3be37ab17a4105bed3148aba479b6ae8fcc61af183619cd90d8decc91d",
+      "title": "OFD preview",
+      "occurrences": 1,
+      "sections": [
+        {
+          "id": "ofd-preview-page-0",
+          "source_page": "1"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/html-fixtures/mixed.html",
+      "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/html-fixtures/mixed.html",
+      "bytes": 5148,
+      "sha256_before": "e231eca4f1662bbe7a67d2a5675a596b263b8289258762181052a5aac8d69614",
+      "title": "</title><script>fetch('http://127.0.0.1:9/attack')</script>&\"",
+      "occurrences": 3,
+      "sections": [
+        {
+          "id": "ofd-preview-page-0",
+          "source_page": "3"
+        },
+        {
+          "id": "ofd-preview-page-1",
+          "source_page": "1"
+        },
+        {
+          "id": "ofd-preview-page-2",
+          "source_page": "3"
+        }
+      ]
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/html-package-output/package-api.html",
+      "url": "file:///Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/html-package-output/package-api.html",
+      "bytes": 2269,
+      "sha256_before": "e9cd1995aa0cb1d462d5f02993bdc42d4a6f2bbdc9f804700896a7b691d8440e",
+      "title": "Package <literal> & title",
+      "occurrences": 3,
+      "sections": [
+        {
+          "id": "ofd-preview-page-0",
+          "source_page": "3"
+        },
+        {
+          "id": "ofd-preview-page-1",
+          "source_page": "1"
+        },
+        {
+          "id": "ofd-preview-page-2",
+          "source_page": "3"
+        }
+      ]
+    }
+  ]
+}

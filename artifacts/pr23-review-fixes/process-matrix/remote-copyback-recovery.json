@@ -1,0 +1,67 @@
+{
+  "remote": "/tmp/ofdrw-pr23-package-979a93e39dd8-a6af5f2bf431",
+  "archive_sha256": "422aea40f47081dd0ce3f079f601e99d582d209f65fcc045cdda2d8320a3b5b7",
+  "results": [
+    {
+      "name": "linux-x64-glibc-net21-ignore",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-musl-net21-pid1",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-musl-net20-pid1",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-musl-net21-ignore",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-glibc-net20-ignore",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-glibc-net21-pid1",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-musl-net21-default",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-glibc-net20-default",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-glibc-net21-default",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-musl-net20-ignore",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-musl-net20-default",
+      "passed": 9,
+      "total": 9
+    },
+    {
+      "name": "linux-x64-glibc-net20-pid1",
+      "passed": 9,
+      "total": 9
+    }
+  ],
+  "note": "Recursive SFTP original copy failed; archived exact owned directory as container root to preserve restrictive test-file modes. Original raw inputs retained in archive."
+}

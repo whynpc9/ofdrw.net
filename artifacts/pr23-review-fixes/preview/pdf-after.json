@@ -1,0 +1,42 @@
+[
+  {
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/generated-docx-native.pdf",
+    "sha256": "4f5b60c38b1107094be7971c797a4412a3aef7a1042f5960d49ff7f06df6f723",
+    "matches_before": true
+  },
+  {
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/generated-docx-default.pdf",
+    "sha256": "f4ca661590e18037364fbd73b4515beed2548775374c1c9228b45bd7bf547542",
+    "matches_before": true
+  },
+  {
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/package-output/cli-native.pdf",
+    "sha256": "9f0a2774d29fecf0370940764d2d5b48f4735978d2602b1337c8a354d1c91c7e",
+    "matches_before": true
+  },
+  {
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/direct-built-in.pdf",
+    "sha256": "1742a95069ed83a10ef4afdb635403bcb1fc8c1a25479d5be15eba4a1fa38271",
+    "matches_before": true
+  },
+  {
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/selected.pdf",
+    "sha256": "ff3c896c8c4ee56f52a9fbf6e9831226ca8822b28f2aa00cf8555a47d240dd44",
+    "matches_before": true
+  },
+  {
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/notice.pdf",
+    "sha256": "6198a50cd6a60899b4a2ffd5043f53ca74ec79e25fdc7ff838feef68eeb6f2f6",
+    "matches_before": true
+  },
+  {
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/italic-boundaries.pdf",
+    "sha256": "79e0ec610de7febb6877140e774860e2c99cfa03e431635e96ffdded38b06a93",
+    "matches_before": true
+  },
+  {
+    "pdf": "/Users/wanghongyi/.codex/worktrees/audit-followup-coordination/ofdrw.net/artifacts/pr23-review-fixes/visual/external-libreoffice.pdf",
+    "sha256": "f860120c85e583b66ca7f3f991c19e109a6147a77b4b441284a64b1b6b2371f9",
+    "matches_before": true
+  }
+]

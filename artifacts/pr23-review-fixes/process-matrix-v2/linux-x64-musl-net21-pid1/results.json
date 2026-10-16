@@ -1,0 +1,56 @@
+{
+  "mode": "pid1",
+  "pid": 1,
+  "runtime": ".NET 10.0.13",
+  "os": "Alpine Linux v3.24",
+  "architecture": "X64",
+  "corePath": "/app/Ofdrw.Net.Core.dll",
+  "coreSha256": "247FF719BEFB264119D2728D5A830EEAE68553C01D812B45B6E50CEF023705B6",
+  "cases": [
+    {
+      "name": "all-four-embedded-assets-and-private-extraction",
+      "outcome": "Passed",
+      "milliseconds": 16
+    },
+    {
+      "name": "real-zero-no-shell",
+      "outcome": "Passed",
+      "milliseconds": 51
+    },
+    {
+      "name": "real-seven",
+      "outcome": "Passed",
+      "milliseconds": 39
+    },
+    {
+      "name": "argv-cwd-environment",
+      "outcome": "Passed",
+      "milliseconds": 124
+    },
+    {
+      "name": "missing-executable-native-error",
+      "outcome": "Passed",
+      "milliseconds": 12
+    },
+    {
+      "name": "non-executable-native-error",
+      "outcome": "Passed",
+      "milliseconds": 11
+    },
+    {
+      "name": "bounded-timeout",
+      "outcome": "Passed",
+      "milliseconds": 366
+    },
+    {
+      "name": "bounded-cancellation",
+      "outcome": "Passed",
+      "milliseconds": 355
+    },
+    {
+      "name": "parent-first-descendant-cleanup",
+      "outcome": "Passed",
+      "milliseconds": 1034
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+Unhandled exception. System.ComponentModel.Win32Exception (10): waitid on owned process
+   at Ofdrw.Net.Core.Processes.OwnedProcessGroup.UnixGroup.get_HasExited()
+   at Ofdrw.Net.Core.Processes.ExternalProcessRunner.RunAsync(ProcessStartInfo startInfo, TimeSpan timeout, CancellationToken cancellationToken, String expectedOutputPath)
+   at Ofdrw.Net.Core.Processes.ExternalProcessRunner.RunAsync(ProcessStartInfo startInfo, TimeSpan timeout, CancellationToken cancellationToken, String expectedOutputPath)
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__Run|0>d.MoveNext() in /Users/wanghongyi/Projects/ofdrw.net/.git/codex-pr-babysit-20261016/root-process-consumer-baseline/Program.cs:line 29
+--- End of stack trace from previous location ---
+   at Program.<>c__DisplayClass0_0.<<<Main>$>b__6>d.MoveNext() in /Users/wanghongyi/Projects/ofdrw.net/.git/codex-pr-babysit-20261016/root-process-consumer-baseline/Program.cs:line 44
+--- End of stack trace from previous location ---
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__Check|3>d.MoveNext() in /Users/wanghongyi/Projects/ofdrw.net/.git/codex-pr-babysit-20261016/root-process-consumer-baseline/Program.cs:line 37
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in /Users/wanghongyi/Projects/ofdrw.net/.git/codex-pr-babysit-20261016/root-process-consumer-baseline/Program.cs:line 44
+   at Program.<Main>(String[] args)

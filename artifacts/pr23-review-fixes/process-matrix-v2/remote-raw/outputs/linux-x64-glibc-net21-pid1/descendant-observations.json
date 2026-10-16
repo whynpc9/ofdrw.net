@@ -1,0 +1,20 @@
+{
+  "pid": 45,
+  "initialStat": "45 (sleep) S 1 44 1 0 -1 1077936128 82 0 0 0 0 0 0 0 20 0 1 0 18399235 2764800 263 18446744073709551615 93995123609600 93995123623601 140735871574624 0 0 0 0 4102 0 1 0 0 17 18 0 0 0 0 0 93995123633104 93995123634328 93995539226624 140735871577740 140735871577749 140735871577749 140735871578089 0\n",
+  "initialIdentity": "18399235",
+  "initialGroup": "44",
+  "diagnostics": {},
+  "observations": [
+    {
+      "milliseconds": 0.3508,
+      "stat": null,
+      "alive": false,
+      "nativeError": 3,
+      "identity": null,
+      "group": null,
+      "zombie": false,
+      "exiting": false,
+      "reused": false
+    }
+  ]
+}
