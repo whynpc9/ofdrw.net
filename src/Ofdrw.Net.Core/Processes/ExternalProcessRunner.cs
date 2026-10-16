@@ -41,12 +41,12 @@ internal static class ExternalProcessRunner
         startInfo.CreateNoWindow = true;
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
-        var process = OwnedProcessGroup.Start(startInfo);
+        var elapsed = Stopwatch.StartNew();
+        var process = OwnedProcessGroup.Start(startInfo, timeout, elapsed, cancellationToken);
 
         var output = CaptureAsync(process.StandardOutput);
         var error = CaptureAsync(process.StandardError);
         var pipes = Task.WhenAll(output, error);
-        var elapsed = Stopwatch.StartNew();
         var stableSince = Stopwatch.StartNew();
         long previousLength = -1;
         var stoppedAfterOutput = false;
