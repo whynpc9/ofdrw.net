@@ -30,7 +30,7 @@ internal static partial class Cli
 
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
-            "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-image" or "image-to-ofd" or
+            "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-html" or "ofd-to-image" or "image-to-ofd" or
             "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
@@ -43,6 +43,8 @@ internal static partial class Cli
             cancellationToken.ThrowIfCancellationRequested();
             if (command == "text-to-ofd")
                 return await PlainTextAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "ofd-to-html")
+                return await ConvertHtmlAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "ofd-to-image" or "image-to-ofd")
                 return await ConvertImagesAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
 
@@ -647,6 +649,7 @@ internal static partial class Cli
           ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5]
           ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--pages 1,3-5]
           ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--pages 1]
+          ofdrw ofd-to-html --input <input.ofd> --output <output.html> [--pages 3,1,3] [--title text] [--max-pages 200] [--max-output-bytes N] [--max-page-bytes N]
           ofdrw ofd-to-image <input.ofd> <output.png> [--pages 1] [--ppm 5.669291] [--format png|jpeg]
           ofdrw image-to-ofd <input.png> [input2.jpg ...] --output <output.ofd> [--ppm 5.669291] [--page-width 210 --page-height 297]
           ofdrw verify-signatures --input <input.ofd>
@@ -668,6 +671,7 @@ internal static partial class Cli
           pdf-to-ofd  Convert PDF to OFD.
           ofd-to-pdf  Convert OFD to PDF.
           ofd-to-svg  Convert one OFD page to self-contained SVG.
+          ofd-to-html Convert selected OFD pages to a static HTML preview.
           ofd-to-image Export one OFD page to white-background PNG (default) or JPEG.
           image-to-ofd Import PNG/JPEG, one image per page; centered, shrink to fit, no enlargement.
           verify-signatures Verify protected-entry digests and registered signed-value algorithms.

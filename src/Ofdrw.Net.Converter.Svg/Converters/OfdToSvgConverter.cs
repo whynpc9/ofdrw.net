@@ -1,4 +1,5 @@
 using Ofdrw.Net.Core.Fonts;
+using Ofdrw.Net.Converter.Svg.Internal;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -79,8 +80,9 @@ public sealed class OfdToSvgConverter
         await svgOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, FontParseBudget parseBudget, CancellationToken cancellationToken)
+    internal static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, FontParseBudget parseBudget, CancellationToken cancellationToken, HtmlRenderContext? preview = null)
     {
+        preview?.StartPage(page);
         var svgNs = XNamespace.Get("http://www.w3.org/2000/svg");
         var root = new XElement(
             svgNs + "svg",
@@ -91,13 +93,14 @@ public sealed class OfdToSvgConverter
                 "viewBox",
                 $"0 0 {Invariant(page.WidthMillimeters)} {Invariant(page.HeightMillimeters)}"));
 
-        var families = AddEmbeddedFonts(root, svgNs, package.Fonts, parseBudget);
+        var families = AddEmbeddedFonts(root, svgNs, package.Fonts, parseBudget, preview);
         var imageIndex = 0;
         var objectIndex = 0;
         foreach (var element in OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
+            preview?.BeforeElement(element);
             if (element is OfdRawElement glyphXml && EmbeddedFontCoverage.HasExplicitGlyphReferences(glyphXml.Xml))
                 throw new NotSupportedException("SVG export does not model raw CGTransform glyph substitutions.");
             if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
@@ -110,7 +113,7 @@ public sealed class OfdToSvgConverter
                 var regionIndex = 0;
                 foreach (var region in OfdClipGeometry.Read(element, material, cancellationToken))
                 {
-                    var id = $"object-{objectIndex}-clip-{regionIndex++}";
+                    var id = (preview?.Prefix ?? "") + $"object-{objectIndex}-clip-{regionIndex++}";
                     defs.Add(new XElement(svgNs + "clipPath", new XAttribute("id", id), new XAttribute("clipPathUnits", "userSpaceOnUse"),
                         region.Paths.Select(path => new XElement(svgNs + "path", new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
                             new XAttribute("clip-rule", region.EvenOdd ? "evenodd" : "nonzero"),
@@ -126,7 +129,7 @@ public sealed class OfdToSvgConverter
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
-                AddImage(root, svgNs, page, image, imageIndex++, material, cancellationToken);
+                AddImage(root, svgNs, page, image, imageIndex++, material, cancellationToken, preview);
             }
             else if (element is OfdPathElement path &&
                 !string.IsNullOrWhiteSpace(path.AbbreviatedData))
@@ -175,7 +178,7 @@ public sealed class OfdToSvgConverter
     }
 
     private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> AddEmbeddedFonts(
-        XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, FontParseBudget parseBudget)
+        XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, FontParseBudget parseBudget, HtmlRenderContext? preview)
     {
         var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
@@ -183,14 +186,21 @@ public sealed class OfdToSvgConverter
         foreach (var font in fonts.Where(font => font.Data.Length > 0))
         {
             parseBudget.Spend(0);
-            var data = OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
-            var family = "ofd-font-" + BinaryIdentity.Hash(data);
+            var cached = preview?.Font(font, parseBudget);
+            var data = cached?.Data ?? OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
+            var family = (preview?.FontPrefix ?? "ofd-font-") + (cached?.Hash ?? BinaryIdentity.Hash(data));
             if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known); continue; }
-            var face = new OpenTypeFace(data); OpenTypeCmap? coverage = null;
-            try { coverage = new OpenTypeCmap(face, parseBudget); }
-            catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
+            preview?.BeforeFontEmission(data);
+            OpenTypeCmap? coverage = cached?.Coverage;
+            (bool Bold, bool Italic) style;
+            if (cached.HasValue) style = (cached.Value.Bold, cached.Value.Italic);
+            else
+            {
+                var face = new OpenTypeFace(data); style = face.Style;
+                try { coverage = new OpenTypeCmap(face, parseBudget); }
+                catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
+            }
             families[font] = (family, coverage); emitted.Add(family, coverage);
-            var style = face.Style;
             var openType = data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O';
             css.Append("@font-face{font-family:'").Append(family).Append("';src:url(data:font/")
                 .Append(openType ? "otf" : "ttf").Append(";base64,").Append(Convert.ToBase64String(data))
@@ -202,14 +212,14 @@ public sealed class OfdToSvgConverter
         return families;
     }
 
-    private static void AddImage(XElement root, XNamespace ns, OfdPage page, OfdImageElement image, int index, OfdModelMaterialization material, CancellationToken cancellationToken)
+    private static void AddImage(XElement root, XNamespace ns, OfdPage page, OfdImageElement image, int index, OfdModelMaterialization material, CancellationToken cancellationToken, HtmlRenderContext? preview)
     {
         var group = new XElement(ns + "g", new XAttribute("transform", BuildTransform(
             image.XMillimeters - page.XMillimeters, image.YMillimeters - page.YMillimeters, null)),
             new XAttribute("opacity", Invariant(Math.Max(0, Math.Min(255, image.Alpha)) / 255d)));
         var defs = root.Element(ns + "defs");
         if (defs is null) { defs = new XElement(ns + "defs"); root.AddFirst(defs); }
-        var boundaryId = $"image-{index}-boundary";
+        var boundaryId = (preview?.Prefix ?? "") + $"image-{index}-boundary";
         defs.Add(new XElement(ns + "clipPath", new XAttribute("id", boundaryId), new XAttribute("clipPathUnits", "userSpaceOnUse"),
             new XElement(ns + "rect", new XAttribute("width", Invariant(image.WidthMillimeters)), new XAttribute("height", Invariant(image.HeightMillimeters)))));
         var content = new XElement(ns + "g", new XAttribute("clip-path", $"url(#{boundaryId})"));
@@ -217,7 +227,7 @@ public sealed class OfdToSvgConverter
         var clipIndex = 0;
         foreach (var region in OfdClipGeometry.Read(image, material, cancellationToken))
         {
-            var id = $"image-{index}-clip-{clipIndex++}";
+            var id = (preview?.Prefix ?? "") + $"image-{index}-clip-{clipIndex++}";
             defs.Add(new XElement(ns + "clipPath", new XAttribute("id", id), new XAttribute("clipPathUnits", "userSpaceOnUse"),
                 region.Paths.Select(path => new XElement(ns + "path", new XAttribute("d", NormalizePathData(path.AbbreviatedData)),
                     new XAttribute("clip-rule", region.EvenOdd ? "evenodd" : "nonzero"),

@@ -378,3 +378,5 @@ events to native OFD paths/text through OfdGraphics. It requires producer
 integration and does not intercept arbitrary SKCanvas/SKPicture/PDF calls.
 Default Layout/Converter packages have no Skia dependency. See the
 [bounded profile and migration sample](docs/tutorials/17-skia-event-adapter.md).
+
+Static multi-page HTML previews are available through `OfdToHtmlConverter` and the explicit `ofd-to-html` command; see [limits and supported formats](docs/html-preview.md).
