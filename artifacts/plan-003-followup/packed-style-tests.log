@@ -1,0 +1,5 @@
+Test run for /Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/tests/Ofdrw.Net.Converter.Docx.Tests/bin/Release/net10.0/Ofdrw.Net.Converter.Docx.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/packed-style-tests/packed-style.trx
+
+Passed!  - Failed:     0, Passed:    17, Skipped:     0, Total:    17, Duration: 499 ms - Ofdrw.Net.Converter.Docx.Tests.dll (net10.0)

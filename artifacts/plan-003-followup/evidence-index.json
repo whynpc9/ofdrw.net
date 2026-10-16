@@ -1,0 +1,655 @@
+{
+  "validated_source_head": "432077e938e8c9d2fdf7930d07087c7b82e4eb22",
+  "files": [
+    {
+      "path": "artifacts/plan-003-followup/acceptance.md",
+      "bytes": 10234,
+      "sha256": "9a93a729ba9a1705d7ff815fa27fac9b4bf132da063aff0417703df1c5940474"
+    },
+    {
+      "path": "artifacts/plan-003-followup/api-docs-final.log",
+      "bytes": 173,
+      "sha256": "56e7828b46e8850e412950190f7b7e4144d26b2ff839ca5f3640a9f55c360a26"
+    },
+    {
+      "path": "artifacts/plan-003-followup/baseline-build.log",
+      "bytes": 25065,
+      "sha256": "9716e5ec428bdada82cda2681520cb011d0f1fb2311b136a2baaac9cd61aea9e"
+    },
+    {
+      "path": "artifacts/plan-003-followup/baseline-source-provenance.json",
+      "bytes": 899,
+      "sha256": "20e6bb35e8ee16eae17f69dd7a5779e1ba36d6467de0928252638d05231d0539"
+    },
+    {
+      "path": "artifacts/plan-003-followup/baseline-test.log",
+      "bytes": 16016,
+      "sha256": "ac3e4aaecdecfbc623324eafa25f920b0eb14c9df637a2766cc7e805c36f12fc"
+    },
+    {
+      "path": "artifacts/plan-003-followup/baseline-tests/baseline-italic.trx",
+      "bytes": 4478,
+      "sha256": "15b320d0c3f79d14ac9584c0a90faa0a415af870a3969a22896d2136ec65ec84"
+    },
+    {
+      "path": "artifacts/plan-003-followup/breadth-test.log",
+      "bytes": 6875,
+      "sha256": "2c3da6ebe8f3f7d185600613aca33ae14012a9876724bb775072ca787b56c4a6"
+    },
+    {
+      "path": "artifacts/plan-003-followup/breadth-tests/breadth.trx",
+      "bytes": 28315,
+      "sha256": "01270b0180c0a77d013908eac8d1742fbbbb05a6f935b037fd76828433ec4135"
+    },
+    {
+      "path": "artifacts/plan-003-followup/check-artifacts.py",
+      "bytes": 3774,
+      "sha256": "53742c0e9199073288a0b568de7ca3297fa5ee6fa8e4c23a6096a833fa0fbf3c"
+    },
+    {
+      "path": "artifacts/plan-003-followup/check-pdf-styles.py",
+      "bytes": 1471,
+      "sha256": "69b3d6257d672a8688b8eab6093eb221d889263228f4c9dbe4ba2a71d87eb580"
+    },
+    {
+      "path": "artifacts/plan-003-followup/current-cli-build.log",
+      "bytes": 21211,
+      "sha256": "9ac12d2b1ec07af7379963f1f1301cf8300b582dfae1d8881d0487303e17cc76"
+    },
+    {
+      "path": "artifacts/plan-003-followup/directBuiltIn2-fonts.txt",
+      "bytes": 417,
+      "sha256": "36c7fc6426d1c4c85e978e61b85e0a356c4f5142c259f68df0ab719c07ed6497"
+    },
+    {
+      "path": "artifacts/plan-003-followup/dotnet-info.txt",
+      "bytes": 2935,
+      "sha256": "57097e1208db5729e572d4b154d9c8033b0a54eb98365646ba6e7c5a93c58bd7"
+    },
+    {
+      "path": "artifacts/plan-003-followup/environment.json",
+      "bytes": 430,
+      "sha256": "261e8fa8f122ed93b4fd2d16f1caa418c62e275aafd8385d59199b8e63953720"
+    },
+    {
+      "path": "artifacts/plan-003-followup/final-model-tests.log",
+      "bytes": 538,
+      "sha256": "4d36d629deda9ce36e28a291543561672d9f5c7a018a22c555774ac555e98a78"
+    },
+    {
+      "path": "artifacts/plan-003-followup/final-model-tests/final-model-artifacts.trx",
+      "bytes": 4768,
+      "sha256": "83da1f21ce077b7606abc447f69d6f5e2e20b53ebdcc838b6ec7443882b04cb3"
+    },
+    {
+      "path": "artifacts/plan-003-followup/final-png-equivalence.json",
+      "bytes": 192,
+      "sha256": "620abd80e03373ddca7d441d29ee8dccf68ae39c33d32ae90760cb283bf725d1"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final.log",
+      "bytes": 6168,
+      "sha256": "87713b070caf0bca06b289892b5c7525b30b2d04c5510c42b443fef1b8016453"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_48_16_net10.0.trx",
+      "bytes": 127647,
+      "sha256": "bb474712bade03f5d929e11885c99fa5532ab4a0711a5a34e30f90dc391b54a5"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_48_24_net10.0.trx",
+      "bytes": 1863182,
+      "sha256": "51171a023f985cdc8961535078052a93a08c5dca73028661780873d48a630a43"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_48_26_net10.0.trx",
+      "bytes": 850933,
+      "sha256": "967b6869f0ea3be5a9659e2a89ceaf8380ce8a5dfa7ef58d32b223313f3b7719"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_48_50_net10.0.trx",
+      "bytes": 67305,
+      "sha256": "86925057fd757909cbd4fda6edfc0f01817a2718c3d4a14164702f313442ded8"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_48_50_net10.0[1].trx",
+      "bytes": 449901,
+      "sha256": "b9698b0f7c2d0773d20e0d253b87ef292380bacb716849dc0d70faa28a3ebac5"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_49_08_net10.0.trx",
+      "bytes": 335407,
+      "sha256": "76670cab2eea2f35f9279c96b5bdf1433e21eecb87755bbbd64de4cc649f9248"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_49_10_net10.0.trx",
+      "bytes": 143724,
+      "sha256": "53189f884f5a35eae5a230909cecaa5ca6cc93dfd4b3cb0ed1b703784571a751"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_49_11_net10.0.trx",
+      "bytes": 58956,
+      "sha256": "cc25b118430b5db9020b0a9daa6de284bc6b8b5fd00ac7bdc72004fab734f6b2"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_49_12_net10.0.trx",
+      "bytes": 70435,
+      "sha256": "53063fd83e1e798cbea57eb7ad3092b01fa6e786636440ca3f3f34726a6b7b41"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_49_13_net10.0.trx",
+      "bytes": 520280,
+      "sha256": "cfe240f372ccd123bcc73eaa54c0548e3e192cb9fe9e34698f4947e359b2ca66"
+    },
+    {
+      "path": "artifacts/plan-003-followup/full-tests-final/_wanghongyideMacBook-Pro_2026-10-16_10_49_16_net10.0.trx",
+      "bytes": 155780,
+      "sha256": "c35263af18e900bde73f3a3983b8302e5c7affa18ae35d8bd18b4ecf1ff6cdf6"
+    },
+    {
+      "path": "artifacts/plan-003-followup/generate-visual-focused.py",
+      "bytes": 4399,
+      "sha256": "261084b211f937f81af8a222dd0aa7fa4c3a4cd33371369073fa2b1f7a0a264d"
+    },
+    {
+      "path": "artifacts/plan-003-followup/generator-binary-identity.json",
+      "bytes": 1287,
+      "sha256": "05a560181f722ad329fc2f632e981ba5bf206c454c3df1aa9ba8cfa506ebb635"
+    },
+    {
+      "path": "artifacts/plan-003-followup/host-font-manifest.json",
+      "bytes": 532,
+      "sha256": "e41b1cd851666da6fd31c0bde710543e49924c90cf080d5f605058a3e9accb0a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/italic-boundaries-fonts.txt",
+      "bytes": 694,
+      "sha256": "f2ae7db85c542e9f399c146eae556556e65d1da3a26d8cd420f6875880215ad5"
+    },
+    {
+      "path": "artifacts/plan-003-followup/legacy-orientation-evidence/manifest.json",
+      "bytes": 1689,
+      "sha256": "71e243bb3f854a9b76e2361a73002480b95e4ede3d39e03aad43f3f2485858b5"
+    },
+    {
+      "path": "artifacts/plan-003-followup/legacy-orientation-evidence/mixed-sections-control.pdf",
+      "bytes": 69369,
+      "sha256": "5ecf9c05c55d8003dc24375202b6472024db13770598efdd1409fe9b29856873"
+    },
+    {
+      "path": "artifacts/plan-003-followup/legacy-orientation-evidence/mixed-sections-control.pdfinfo.txt",
+      "bytes": 524,
+      "sha256": "6197aee400c0123d3bf32fb0e589fc0082172d84c2fd67dfc12bde80f387dfb4"
+    },
+    {
+      "path": "artifacts/plan-003-followup/legacy-orientation-evidence/mixed-sections.pdf",
+      "bytes": 134347,
+      "sha256": "608ff5b24359786b0ea987d9bab5c6dd0865ba98a2ddbeb1bf78d0030b0c5bfc"
+    },
+    {
+      "path": "artifacts/plan-003-followup/legacy-orientation-evidence/mixed-sections.pdfinfo.txt",
+      "bytes": 525,
+      "sha256": "af9e35d93a020a74357ca1b68cd965e11588ed447ab5a62e5a3cf2bf38451838"
+    },
+    {
+      "path": "artifacts/plan-003-followup/legacy-orientation-evidence/repro.md",
+      "bytes": 1120,
+      "sha256": "5d71748f08b33540e4943730e04ee87dd9ff9849cb1bcc76bbcf2a83dd16a262"
+    },
+    {
+      "path": "artifacts/plan-003-followup/make-style-fixture.py",
+      "bytes": 1901,
+      "sha256": "bd5461630189144636e433e621a0aef1c525b7f9fb818dcbf6ccc28222b7fd93"
+    },
+    {
+      "path": "artifacts/plan-003-followup/package-e2e-final.log",
+      "bytes": 113515,
+      "sha256": "9a7ad0f4cd57d6800cf38573a72fe7e7aa0608cc4e25d20c43858480fddec5a6"
+    },
+    {
+      "path": "artifacts/plan-003-followup/package-output-final/package-manifest.json",
+      "bytes": 2213,
+      "sha256": "544475c2f81ca5d507ce99ff9fbcb4e32811808de0176171a57d867b3b5bd49a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/packed-style-runtime.json",
+      "bytes": 611,
+      "sha256": "57b2e38308742671f78cf885d9f7f91ac98a478a396b91a534ef6607bdad6003"
+    },
+    {
+      "path": "artifacts/plan-003-followup/packed-style-tests.log",
+      "bytes": 530,
+      "sha256": "2395156a3910601e6dfb421f7b4bd99c0fb3e9647185faea2f78a7df5340fd7a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/packed-style-tests/packed-style.trx",
+      "bytes": 28315,
+      "sha256": "b3e4b0272d480d6e88191321d7683ae51c9541c29147154efa7e8b44cf31c2e1"
+    },
+    {
+      "path": "artifacts/plan-003-followup/pdf-style-proof.json",
+      "bytes": 8780,
+      "sha256": "942efe80ca65b883e20de0c4fc94044b00fc5383f98ab858e133572a6431c25b"
+    },
+    {
+      "path": "artifacts/plan-003-followup/png-review.json",
+      "bytes": 4585,
+      "sha256": "5370719cc78ef98fee85a79a33321bf5982684b7f675a1783f7416849ae7ee4a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/default2-p1.ax.json",
+      "bytes": 4055,
+      "sha256": "b513d0493ee687c65a40932c8df4ee1e26a7ae61c4dca29999a246e752599ef1"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/default2-p1.jpg",
+      "bytes": 238674,
+      "sha256": "b2347d96037dde20e47e68c21b703cb6f43ee29b4438864c093b21838c5fab1c"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/default2-p2.ax.json",
+      "bytes": 4053,
+      "sha256": "2b65a77212bbba105f004ae608115b84fdf1771d648d0c2ac142ae621de6baa9"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/default2-p2.jpg",
+      "bytes": 164376,
+      "sha256": "9adc57ed8108033c016226c1a17af3787dcb9d32aaffeafe958d885a8644a1d2"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/directBuiltIn2-p1.ax.json",
+      "bytes": 4097,
+      "sha256": "ce074bdbe9e5ca4b5427e9df72d6a2f679d589f03a5f0f854721095ce7d3dcd7"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/directBuiltIn2-p1.jpg",
+      "bytes": 230387,
+      "sha256": "ce29df096a78d202337016d20adebeb7cdc80ee2fa01fde617d9b2bf5bed6489"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/directBuiltIn2-p2.ax.json",
+      "bytes": 4095,
+      "sha256": "fcc102cf4025391e0d736d45152b3a1c8f5d19a1cbf48fe9b9331bbdfab780c1"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/directBuiltIn2-p2.jpg",
+      "bytes": 164818,
+      "sha256": "95c8e8e3c054feb701953a8d4a1579ac908a15762c5c998b8db1f269b7a39361"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/italic-boundaries-p1.ax.json",
+      "bytes": 2900,
+      "sha256": "8df5feaef3cc3883d0382561312733ab1da23dd10951180d4e7f4e90015c0d0d"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/italic-boundaries-p1.jpg",
+      "bytes": 315865,
+      "sha256": "45e803ac11f2f22f1b90f8e46a117c4e1b275f9d4919d34613ba66186e0afca3"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/mixed-orientations-p1.ax.json",
+      "bytes": 2866,
+      "sha256": "a79f472b0afdda20fd522868a81f94a084fce5214b43a62a568f12d8fb9a02e1"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/mixed-orientations-p1.jpg",
+      "bytes": 127967,
+      "sha256": "4f8ec8bd6909a95fb0f2705f1964e2896839f5f00c92a753591be46c9f069958"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/mixed-orientations-p2.ax.json",
+      "bytes": 2830,
+      "sha256": "85c6f31b955353e39cddcea90fd7f1e16d00a7aa7230b50a55de04c3f4aa79e5"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/mixed-orientations-p2.jpg",
+      "bytes": 139167,
+      "sha256": "b27dce98c7198f68cb738b29a30f75e85e5e84497d39a97cc13a5d2573cc9b90"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/mixed-sections-p1.ax.json",
+      "bytes": 3181,
+      "sha256": "60ae67d35de6f73d2da2af88c41a7ac20fe04ac46c2536a707454f2e8bfd415c"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/mixed-sections-p1.jpg",
+      "bytes": 197680,
+      "sha256": "fc07b9c847eadddb52d63f5804e0cd254e9e196b7db2d7fa0589be5f6d9738bb"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/mixed-sections-p2.ax.json",
+      "bytes": 3177,
+      "sha256": "56e9cb9dbc3abec0b02f2e02bf50079db6a8c1fa82d13f60bfaec3c7061e6dd8"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/mixed-sections-p2.jpg",
+      "bytes": 176731,
+      "sha256": "8edcc1713eb91017833472862cf249c6ee47608771df54b4427064c1f105d63d"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/native2-p1.ax.json",
+      "bytes": 4037,
+      "sha256": "5fa5ba3b3fd71dad0827314139c93cbd7184f5ad608d23dd3fd5b005a00b1149"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/native2-p1.jpg",
+      "bytes": 238459,
+      "sha256": "b0154475caf6aaa3a0b61afba1e229b83eca0d4a8b9d4063b56b876fb31c788a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/native2-p2.ax.json",
+      "bytes": 4035,
+      "sha256": "c61e04493249c422ffe5b9b62e97deb4fff617c195bf713ec20d0edb76affaca"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/native2-p2.jpg",
+      "bytes": 164021,
+      "sha256": "d0ac5bb12b478f0658796623898663f5d516fbb657a77de9e154f2d549768aff"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/pages.json",
+      "bytes": 9501,
+      "sha256": "80fc80fc7c022d0f616dde923c9549b23b40ec633be8023118c1c3f8340a7eaf"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/pdf-after.json",
+      "bytes": 3681,
+      "sha256": "a8f688ace5f6819886a26234136500db5feb8578e0f9d1dbb99f9ee249391b52"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/pdf-before.json",
+      "bytes": 2806,
+      "sha256": "045c756f699775c2e89f5a580ec13d6409dc5a23c33af8b72b54dca1e8f903f2"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/remaining-windows.ax.json",
+      "bytes": 4415,
+      "sha256": "7789a3887adef58eb5e5bc7f985bf171dd771eddbd6e86ac96aee610f947fb5a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/selected1-p1.ax.json",
+      "bytes": 2927,
+      "sha256": "deba8800718618da3e2bcb16834e4de3b94a572a4c1a826605c3ab6332505541"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/selected1-p1.jpg",
+      "bytes": 155552,
+      "sha256": "76281488145ab76645a7818b49024380870248ace38eaae1c5d630af77188e92"
+    },
+    {
+      "path": "artifacts/plan-003-followup/preview/summary.json",
+      "bytes": 10291,
+      "sha256": "42e517a88119c2519bc6b3c34dd1f86e8b9bcb891ecd9695838a8bfd3d34a3ad"
+    },
+    {
+      "path": "artifacts/plan-003-followup/python-tests-final.log",
+      "bytes": 3197,
+      "sha256": "131d9fe2faec619db68b33606e86fb666b4b5ec06a37cddec38303e52486a2ba"
+    },
+    {
+      "path": "artifacts/plan-003-followup/run-validation-final.py",
+      "bytes": 2107,
+      "sha256": "00594af5cbd11e1069de7a1fb093c89ecde19273c2587ce9f1e62fbf9ea0765e"
+    },
+    {
+      "path": "artifacts/plan-003-followup/test-summary-final.json",
+      "bytes": 9687,
+      "sha256": "d42dd760c2d7659fb3a9b8465c6553643ff96a78113a8f9fa67ccad3ebdcc151"
+    },
+    {
+      "path": "artifacts/plan-003-followup/text-integrity.json",
+      "bytes": 1424,
+      "sha256": "026b515afaa2f030ea98588ac456b91a1a00e4d06268f90ac30c94f8f51d3138"
+    },
+    {
+      "path": "artifacts/plan-003-followup/trusted-font-tests-final.log",
+      "bytes": 15067,
+      "sha256": "6ffe22ee11c3742c92f0e8642252c565474a6cbb9b3b2321799c2454a0e9cc6f"
+    },
+    {
+      "path": "artifacts/plan-003-followup/trusted-font-tests-final/command.json",
+      "bytes": 1571,
+      "sha256": "441ac8dce55893083f2f2676f2d8fa3e5df9caaec2a74f60ca56757646712b58"
+    },
+    {
+      "path": "artifacts/plan-003-followup/trusted-font-tests-final/summary.json",
+      "bytes": 482,
+      "sha256": "f27490589dbc317efb187f6f2125f646e9dc4b47047f017f22274b6db0d67a66"
+    },
+    {
+      "path": "artifacts/plan-003-followup/trusted-font-tests-final/trusted-fonts.trx",
+      "bytes": 148092,
+      "sha256": "21a8767f0b64f9b6f938fbebbd4bc0943584c54622be7b14ec359c0032e2cd2e"
+    },
+    {
+      "path": "artifacts/plan-003-followup/validation-commands-final.json",
+      "bytes": 1813,
+      "sha256": "f1be883955a5dbacae1daa08680e3942cdfca58f116c26678c2a1f819991a3ee"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual-commands.json",
+      "bytes": 13541,
+      "sha256": "e59f3b3d6e31f18efba7c6a25ae9bed346076de04ca2d028fa7c886d48168fd2"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual-manifest-initial.json",
+      "bytes": 13754,
+      "sha256": "86370d976eb6dbff6c0de466cd6a98c28fb9e010f2345946d84d482c5a30fc6a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual-manifest.json",
+      "bytes": 13945,
+      "sha256": "b6bbc1d90f2da3767477999be4651fea25bbed0e13ce4db7225165fc28cf0b59"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/baseline-direct2/baseline-direct2-1.png",
+      "bytes": 58864,
+      "sha256": "b1ef7e41de35c2230a463538e32a65c454805d5ed023c43a1a0d3248798f3513"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/baseline-direct2/baseline-direct2-2.png",
+      "bytes": 29622,
+      "sha256": "5f33dabc6dc9c74385ed929438cbb509c81734347783815fd31a2090c065126f"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/baseline-direct2/baseline-direct2.pdf",
+      "bytes": 97038,
+      "sha256": "f0f4e74481f853e0ae636c9107eae4e770085587653e2df744878af7be97ba2d"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/baseline-direct2/baseline-direct2.txt",
+      "bytes": 611,
+      "sha256": "24ff642c150ddb1d247c6a96f3e8f511db54e3ee29ec6fdbc26be4282dc73957"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/default2/default2-1.png",
+      "bytes": 62205,
+      "sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/default2/default2-2.png",
+      "bytes": 30562,
+      "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/default2/default2.ofd",
+      "bytes": 170596,
+      "sha256": "b28a2943779ca72851406ba284b0c8c2ac8e031d48b6be5ec83dd5a896e3360d"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/default2/default2.pdf",
+      "bytes": 183154,
+      "sha256": "834e0dfb6918dacde8b87282a7ff649718b4e12fe21bd65a899513ae8059d185"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/default2/default2.txt",
+      "bytes": 657,
+      "sha256": "28ccadb366ca6dd69cc29b10859ca42835194d82d7362693b674c52998e2d59c"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/directBuiltIn2/directBuiltIn2-1.png",
+      "bytes": 60390,
+      "sha256": "311afe35c5e1625373c0dac2f1d38ea1d209ae7d187e8de63542fe3550b50253"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/directBuiltIn2/directBuiltIn2-2.png",
+      "bytes": 29622,
+      "sha256": "5f33dabc6dc9c74385ed929438cbb509c81734347783815fd31a2090c065126f"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/directBuiltIn2/directBuiltIn2.pdf",
+      "bytes": 160909,
+      "sha256": "b83660df99d66f411c4d15500313d2304bc8cde9d8457d56c30e15e1b182da2f"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/directBuiltIn2/directBuiltIn2.txt",
+      "bytes": 611,
+      "sha256": "24ff642c150ddb1d247c6a96f3e8f511db54e3ee29ec6fdbc26be4282dc73957"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/italic-boundaries.docx",
+      "bytes": 2960,
+      "sha256": "e9280486cfc03af876c25b03193321ef1e35dff4feae5061e5b68610010965e3"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/italic-boundaries/italic-boundaries-1.png",
+      "bytes": 85971,
+      "sha256": "49e3d85b6e3688d58150d8f4d88dfe9a816e411671cf36c592ce8deba3fe6fbf"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/italic-boundaries/italic-boundaries.pdf",
+      "bytes": 172514,
+      "sha256": "a5ccc191368fad5a6d586a20a9e9d644d8acfaa94a9f69fd6804eb4bd78450e8"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/italic-boundaries/italic-boundaries.txt",
+      "bytes": 402,
+      "sha256": "ae1f941c846387e82a1349984019aa2eb51d5fc4a92ab10f731d069d006cb7f5"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-1.png",
+      "bytes": 3085,
+      "sha256": "597ae0020d7bf2247c93e732b1f9be41ee2403ad00123c17415ebc2d8b755c83"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-2.png",
+      "bytes": 2849,
+      "sha256": "fd4aa02ea67e54645056ccc6c8a795548a452c01a868201a64b182cfb319a758"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-control-1.png",
+      "bytes": 2671,
+      "sha256": "4aeb8c95f19567bc44098cbffb83766ab56c636b430a7a6b1cfae03ba85e07f8"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-control-2.png",
+      "bytes": 2447,
+      "sha256": "32c662f42a812ec1b96599a08cf063a99eba09fd85d4dff46f406930cef83b21"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-control.pdf",
+      "bytes": 2961,
+      "sha256": "58b04daf3aaef79caddd7ca208baa058c3122df6c032d04b829ef5bdeff78f6a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-control.txt",
+      "bytes": 22,
+      "sha256": "be97de09ef6e89ecd30d2f98b6b1e3a56e14ccf8f09331f6d899c91d1f347f6f"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations.pdf",
+      "bytes": 3030,
+      "sha256": "097d82b7a39d3d7d8028fcac7ae3c07533c0837bdb071aa2d02a06c711d03cb0"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations.txt",
+      "bytes": 22,
+      "sha256": "be97de09ef6e89ecd30d2f98b6b1e3a56e14ccf8f09331f6d899c91d1f347f6f"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-1.png",
+      "bytes": 17256,
+      "sha256": "d22c629b773b50037d1bf0aea044ffff5adf8facae30c7d5db1065b2f5874473"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-2.png",
+      "bytes": 21135,
+      "sha256": "9006fe00e3fc44e2708619e3a1ac42cf0e7404d2aa91b9e7c631862a1b3e7abe"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-control-1.png",
+      "bytes": 16617,
+      "sha256": "eb80df05ae8153ae99c0c84cb5ea5aa346dd88107deb1150014de8808482d062"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-control-2.png",
+      "bytes": 20445,
+      "sha256": "d06f561ccdb054e82325d6584e1697746a91923ecee6f3fc63f000b04aec7092"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-control.pdf",
+      "bytes": 69002,
+      "sha256": "4e700cff34a7b7de431962663d26767eaeeb7b8704ec3f61a4972fee5a89c678"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-control.txt",
+      "bytes": 205,
+      "sha256": "869d0c5db37f564f40b06f08825089a19675d3c002e8518c2a174d7fea157cdd"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-sections.pdf",
+      "bytes": 133585,
+      "sha256": "2aa766af4ed6cf22b3550d215d64c3db55dfb8852304961479c0e446945fd529"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/mixed-sections/mixed-sections.txt",
+      "bytes": 203,
+      "sha256": "0ec8b2265fc97dd5d39162fd64f8b2f68215ddfe855da19745b3cd96ac0892a5"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/native2/native2-1.png",
+      "bytes": 62205,
+      "sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/native2/native2-2.png",
+      "bytes": 30562,
+      "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/native2/native2.ofd",
+      "bytes": 170597,
+      "sha256": "b6e66f35484542194ab12933c07eee4c9b2bfd1eca4e6c23a0d0010c80e49bb1"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/native2/native2.pdf",
+      "bytes": 183154,
+      "sha256": "5c12b3a98e83f2a86f7839eae6e4440ca21a779b5dbc898535bb017ab3a24c46"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/native2/native2.txt",
+      "bytes": 657,
+      "sha256": "28ccadb366ca6dd69cc29b10859ca42835194d82d7362693b674c52998e2d59c"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/selected1/selected1-1.png",
+      "bytes": 30562,
+      "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/selected1/selected1.ofd",
+      "bytes": 149002,
+      "sha256": "373b9a168e4d7a89d6fd60046a62ea09b964dbc18d65d9dfe1550725fbac52bf"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/selected1/selected1.pdf",
+      "bytes": 148130,
+      "sha256": "cfcd701945989310ec785ae26b910f5ce3613c4faa7117384b025e020435d0e5"
+    },
+    {
+      "path": "artifacts/plan-003-followup/visual/selected1/selected1.txt",
+      "bytes": 163,
+      "sha256": "e5aaf199464e84d667826ac2a0b18144eb0259f89594789e9a8919849786c021"
+    }
+  ]
+}

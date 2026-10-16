@@ -1,0 +1,298 @@
+{
+  "source_commit": "432077e938e8c9d2fdf7930d07087c7b82e4eb22",
+  "checks": [
+    {
+      "mode": "native2",
+      "complete_text_exactly_once": true,
+      "normalized_characters": 189
+    },
+    {
+      "mode": "default2",
+      "complete_text_exactly_once": true,
+      "normalized_characters": 189
+    },
+    {
+      "mode": "directBuiltIn2",
+      "complete_text_exactly_once": true,
+      "normalized_characters": 189
+    },
+    {
+      "mode": "baseline-direct2",
+      "complete_text_exactly_once": true,
+      "normalized_characters": 189
+    },
+    {
+      "mode": "italic-boundaries",
+      "complete_text_exactly_once": true,
+      "normalized_characters": 332
+    },
+    {
+      "mode": "selected1",
+      "source_page2_text_exactly_once": true
+    },
+    {
+      "mode": "native2",
+      "native_source_text_exactly_once": true,
+      "raw_characters": 202,
+      "raw_source_equality": true,
+      "pages": 2
+    },
+    {
+      "mode": "default2",
+      "native_source_text_exactly_once": true,
+      "raw_characters": 202,
+      "raw_source_equality": true,
+      "pages": 2
+    },
+    {
+      "mode": "selected1",
+      "native_source_text_exactly_once": true,
+      "raw_characters": 52,
+      "raw_source_equality": true,
+      "pages": 1
+    },
+    {
+      "native_default_pngs_equal": [
+        1,
+        2
+      ],
+      "direct_unaffected_page2_equal_baseline": true
+    },
+    {
+      "real_italic_arial_physical_sha256": "ce1d2f1ab89db45f9796100eee960f5702a40e84c225c2b48c3ec3e81d153f98",
+      "regular_fallback_sha256": "876af2cd4854644e7f3e7feb2f688997fdb3343c6df6693611209c9dfb47ccec"
+    }
+  ],
+  "files": [
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/baseline-direct2/baseline-direct2-1.png",
+      "bytes": 58864,
+      "sha256": "b1ef7e41de35c2230a463538e32a65c454805d5ed023c43a1a0d3248798f3513"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/baseline-direct2/baseline-direct2-2.png",
+      "bytes": 29622,
+      "sha256": "5f33dabc6dc9c74385ed929438cbb509c81734347783815fd31a2090c065126f"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/baseline-direct2/baseline-direct2.pdf",
+      "bytes": 97038,
+      "sha256": "f0f4e74481f853e0ae636c9107eae4e770085587653e2df744878af7be97ba2d"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/baseline-direct2/baseline-direct2.txt",
+      "bytes": 611,
+      "sha256": "24ff642c150ddb1d247c6a96f3e8f511db54e3ee29ec6fdbc26be4282dc73957"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/default2/default2-1.png",
+      "bytes": 62205,
+      "sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/default2/default2-2.png",
+      "bytes": 30562,
+      "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/default2/default2.ofd",
+      "bytes": 170596,
+      "sha256": "b28a2943779ca72851406ba284b0c8c2ac8e031d48b6be5ec83dd5a896e3360d"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/default2/default2.pdf",
+      "bytes": 183154,
+      "sha256": "834e0dfb6918dacde8b87282a7ff649718b4e12fe21bd65a899513ae8059d185"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/default2/default2.txt",
+      "bytes": 657,
+      "sha256": "28ccadb366ca6dd69cc29b10859ca42835194d82d7362693b674c52998e2d59c"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/directBuiltIn2/directBuiltIn2-1.png",
+      "bytes": 60390,
+      "sha256": "311afe35c5e1625373c0dac2f1d38ea1d209ae7d187e8de63542fe3550b50253"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/directBuiltIn2/directBuiltIn2-2.png",
+      "bytes": 29622,
+      "sha256": "5f33dabc6dc9c74385ed929438cbb509c81734347783815fd31a2090c065126f"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/directBuiltIn2/directBuiltIn2.pdf",
+      "bytes": 160909,
+      "sha256": "b83660df99d66f411c4d15500313d2304bc8cde9d8457d56c30e15e1b182da2f"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/directBuiltIn2/directBuiltIn2.txt",
+      "bytes": 611,
+      "sha256": "24ff642c150ddb1d247c6a96f3e8f511db54e3ee29ec6fdbc26be4282dc73957"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/italic-boundaries/italic-boundaries-1.png",
+      "bytes": 85971,
+      "sha256": "49e3d85b6e3688d58150d8f4d88dfe9a816e411671cf36c592ce8deba3fe6fbf"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/italic-boundaries/italic-boundaries.pdf",
+      "bytes": 172514,
+      "sha256": "a5ccc191368fad5a6d586a20a9e9d644d8acfaa94a9f69fd6804eb4bd78450e8"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/italic-boundaries/italic-boundaries.txt",
+      "bytes": 402,
+      "sha256": "ae1f941c846387e82a1349984019aa2eb51d5fc4a92ab10f731d069d006cb7f5"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/italic-boundaries.docx",
+      "bytes": 2960,
+      "sha256": "e9280486cfc03af876c25b03193321ef1e35dff4feae5061e5b68610010965e3"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-1.png",
+      "bytes": 3085,
+      "sha256": "597ae0020d7bf2247c93e732b1f9be41ee2403ad00123c17415ebc2d8b755c83"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-2.png",
+      "bytes": 2849,
+      "sha256": "fd4aa02ea67e54645056ccc6c8a795548a452c01a868201a64b182cfb319a758"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-control-1.png",
+      "bytes": 2671,
+      "sha256": "4aeb8c95f19567bc44098cbffb83766ab56c636b430a7a6b1cfae03ba85e07f8"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-control-2.png",
+      "bytes": 2447,
+      "sha256": "32c662f42a812ec1b96599a08cf063a99eba09fd85d4dff46f406930cef83b21"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-control.pdf",
+      "bytes": 2961,
+      "sha256": "58b04daf3aaef79caddd7ca208baa058c3122df6c032d04b829ef5bdeff78f6a"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations-control.txt",
+      "bytes": 22,
+      "sha256": "be97de09ef6e89ecd30d2f98b6b1e3a56e14ccf8f09331f6d899c91d1f347f6f"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations.pdf",
+      "bytes": 3030,
+      "sha256": "097d82b7a39d3d7d8028fcac7ae3c07533c0837bdb071aa2d02a06c711d03cb0"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-orientations.txt",
+      "bytes": 22,
+      "sha256": "be97de09ef6e89ecd30d2f98b6b1e3a56e14ccf8f09331f6d899c91d1f347f6f"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-1.png",
+      "bytes": 17256,
+      "sha256": "d22c629b773b50037d1bf0aea044ffff5adf8facae30c7d5db1065b2f5874473"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-2.png",
+      "bytes": 21135,
+      "sha256": "9006fe00e3fc44e2708619e3a1ac42cf0e7404d2aa91b9e7c631862a1b3e7abe"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-control-1.png",
+      "bytes": 16617,
+      "sha256": "eb80df05ae8153ae99c0c84cb5ea5aa346dd88107deb1150014de8808482d062"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-control-2.png",
+      "bytes": 20445,
+      "sha256": "d06f561ccdb054e82325d6584e1697746a91923ecee6f3fc63f000b04aec7092"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-control.pdf",
+      "bytes": 69002,
+      "sha256": "4e700cff34a7b7de431962663d26767eaeeb7b8704ec3f61a4972fee5a89c678"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-sections-control.txt",
+      "bytes": 205,
+      "sha256": "869d0c5db37f564f40b06f08825089a19675d3c002e8518c2a174d7fea157cdd"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-sections.pdf",
+      "bytes": 133585,
+      "sha256": "2aa766af4ed6cf22b3550d215d64c3db55dfb8852304961479c0e446945fd529"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/mixed-sections/mixed-sections.txt",
+      "bytes": 203,
+      "sha256": "0ec8b2265fc97dd5d39162fd64f8b2f68215ddfe855da19745b3cd96ac0892a5"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/native2/native2-1.png",
+      "bytes": 62205,
+      "sha256": "212d35d9a3afd9f98178701ae8d3c7bc22b3cb3a1c55b4d894546c816992925a"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/native2/native2-2.png",
+      "bytes": 30562,
+      "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/native2/native2.ofd",
+      "bytes": 170597,
+      "sha256": "b6e66f35484542194ab12933c07eee4c9b2bfd1eca4e6c23a0d0010c80e49bb1"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/native2/native2.pdf",
+      "bytes": 183154,
+      "sha256": "5c12b3a98e83f2a86f7839eae6e4440ca21a779b5dbc898535bb017ab3a24c46"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/native2/native2.txt",
+      "bytes": 657,
+      "sha256": "28ccadb366ca6dd69cc29b10859ca42835194d82d7362693b674c52998e2d59c"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/real-italic-fonts/Arial Italic.ttf",
+      "bytes": 553284,
+      "sha256": "ce1d2f1ab89db45f9796100eee960f5702a40e84c225c2b48c3ec3e81d153f98"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/real-italic-fonts/Arial.ttf",
+      "bytes": 773236,
+      "sha256": "525979822591a3447cfc49d943d6f7683508e25543407871c0ed8fed05fd2bd9"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/selected1/selected1-1.png",
+      "bytes": 30562,
+      "sha256": "9d611685264ee3e2c4a329619fdadfc5a49ccd28f6a251ea87e07b14a5c01262"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/selected1/selected1.ofd",
+      "bytes": 149002,
+      "sha256": "373b9a168e4d7a89d6fd60046a62ea09b964dbc18d65d9dfe1550725fbac52bf"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/selected1/selected1.pdf",
+      "bytes": 148130,
+      "sha256": "cfcd701945989310ec785ae26b910f5ce3613c4faa7117384b025e020435d0e5"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/artifacts/plan-003-followup/visual/selected1/selected1.txt",
+      "bytes": 163,
+      "sha256": "e5aaf199464e84d667826ac2a0b18144eb0259f89594789e9a8919849786c021"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx",
+      "bytes": 3347,
+      "sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6"
+    },
+    {
+      "path": "/Users/wanghongyi/.codex/worktrees/audit-followup-003/ofdrw.net/src/Ofdrw.Net.Converter.Docx/bin/Release/netstandard2.1/Ofdrw.Net.Converter.Docx.dll",
+      "bytes": 190976,
+      "sha256": "887eabf4b785b322563783378c3e7f02d7d85ce3c8724ccb4d8f6186f495a4a4"
+    }
+  ]
+}

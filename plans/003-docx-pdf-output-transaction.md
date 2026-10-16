@@ -6,13 +6,14 @@
 
 ## 状态
 
-- 状态：IMPLEMENTED；实际视觉 PARTIAL/FAIL（基线已存在的直接 BuiltIn PDF 副标题斜体缺失）
+- 状态：IMPLEMENTED；本次授权的直接 BuiltIn PDF 斜体后续已修复并验收（历史 PARTIAL/FAIL 记录保留在下方旧证据）
 - 来源：F03、F17
 - 优先级：P1；工作量：M；修复/实施风险：MED
 - 类别：正确性/输出契约 / 正确性/契约漂移
 - 依赖：无硬前置；见下方文件协作边界。
 - 编写基线：`d0f88c7321a57443a4cb0ec92631664f66ed8cc0`，2026-10-15
-- 当前证据：源码156541ec；root完整diff与独立10/10通过，实际7页Preview中Native/default/选页5页通过、direct BuiltIn 2页保留副标题斜体缺陷。d0f88c7同环境PNG逐字节相同，已有缺陷；artifacts/plan-003/style-investigation.md记录PdfSharp1.3.67 simulation flags及宿主fallback根因与未实施方案。未在本计划内扩大字体依赖修复，不宣称全部视觉通过。
+- 当前证据：后续源码 `432077e938e8c9d2fdf7930d07087c7b82e4eb22` 全套2819/2819、原事务10/10、字体65/65、11包消费及12页 PNG/Preview 通过；完整记录见 `plans/003-followup-implementation.md` 和 `artifacts/plan-003-followup/acceptance.md`。既有源横向页面设置问题单独记录，未扩大修复。
+- 历史证据：源码156541ec；root完整diff与独立10/10通过，实际7页Preview中Native/default/选页5页通过、direct BuiltIn 2页保留副标题斜体缺陷。d0f88c7同环境PNG逐字节相同，已有缺陷；artifacts/plan-003/style-investigation.md记录PdfSharp1.3.67 simulation flags及宿主fallback根因与未实施方案。未在本计划内扩大字体依赖修复，不宣称全部视觉通过。
 
 ## 为什么要做
 
@@ -187,11 +188,11 @@ git status --short
 
 ## Done criteria
 
-- [ ] 新用例编译/被发现，缺陷修复后全部通过，既有项目回归通过。
-- [ ] 所有本计划要求的命令都有实际结果；未执行/跳过项明确列出，无零测试伪通过。
-- [ ] 功能、PNG 自动渲染、PNG 目视和 macOS Preview 四项分别记录；完整视觉验收已完成。
-- [ ] 全套回归与本次本地包消费 E2E 均通过。
-- [ ] `git diff --check` 退出 0，改动只在 Scope（原有用户改动保持），索引更新真实完成范围。
+- [x] 新用例编译/被发现，缺陷修复后全部通过，既有项目回归通过。
+- [x] 所有本计划要求的命令都有实际结果；未执行/跳过项明确列出，无零测试伪通过。
+- [x] 功能、PNG 自动渲染、PNG 目视和 macOS Preview 四项分别记录；完整视觉验收已完成。
+- [x] 全套回归与本次本地包消费 E2E 均通过。
+- [x] `git diff --check` 退出 0，改动只在 Scope（原有用户改动保持），索引更新真实完成范围。
 
 ## STOP conditions
 
