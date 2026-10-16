@@ -1,6 +1,6 @@
 # PR 23 P1: native supervisor delivery proposal
 
-Status: **prototype verified; production implementation and release gates pending**.
+Status: **production candidate implemented after root approval; final native assets and release gates pending**.
 Source baseline: `26dc12087ddff71af31c1b46d5eb216723a36fad`.
 Worker: `codex/pr23-process-reaper` (separate managed worktree).
 
@@ -165,5 +165,6 @@ Production files, after root design approval:
    absence must fail clearly before target executes. Exact supported Linux kernel
    and macOS deployment minimums follow the asset/toolchain manifest and tests.
 
-Only source/prototype/design evidence exists at this checkpoint; this proposal
-is not a claim that P1 is fixed in production or the PR is ready to merge.
+Production source/protocol/managed/tests are implemented in the reviewed worker
+checkout. Final immutable assets, native consumers and integration gates must be
+recorded separately; this design proposal does not declare the PR ready to merge.
