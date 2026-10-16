@@ -1,0 +1,4 @@
+# Raw accessibility and UTF-8 fixtures include significant whitespace and CRLF.
+# Preserve their bytes on checkout; do not trim evidence to satisfy source lint.
+preview/*.ax.txt -text whitespace=-blank-at-eol,-blank-at-eof
+visual/*.txt -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

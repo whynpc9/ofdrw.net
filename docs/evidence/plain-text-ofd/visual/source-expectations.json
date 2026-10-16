@@ -1,0 +1,21 @@
+{
+  "notice": {
+    "expected_native_text": "纯文本转换验收 Plain text native OFD中英文比例文字 Alpha iii WWW information proportional spacing.Long line wraps without losing words: iii WWW alphabet proportional information. Long line wraps without losing words: iii WWW alphabet proportional information. Long line wraps without losing words: iii WWW alphabet proportional information. Long line wraps without losing words: iii WWW alphabet proportional information. Long line wraps without losing words: iii WWW alphabet proportional information. Long line wraps without losing words: iii WWW alphabet proportional information. Long line wraps without losing words: iii WWW alphabet proportional information. Long line wraps without losing words: iii WWW alphabet proportional information. Long line wraps without losing words: iii WWW alphabet proportional information. Long line wraps without losing words: iii WWW alphabet proportional information. 空行后的正文，检查基线、字距和分页。第01行 中英文正文 Native OFD keeps every character 01.第02行 中英文正文 Native OFD keeps every character 02.第03行 中英文正文 Native OFD keeps every character 03.第04行 中英文正文 Native OFD keeps every character 04.第05行 中英文正文 Native OFD keeps every character 05.第06行 中英文正文 Native OFD keeps every character 06.第07行 中英文正文 Native OFD keeps every character 07.第08行 中英文正文 Native OFD keeps every character 08.第09行 中英文正文 Native OFD keeps every character 09.第10行 中英文正文 Native OFD keeps every character 10.第11行 中英文正文 Native OFD keeps every character 11.第12行 中英文正文 Native OFD keeps every character 12.第13行 中英文正文 Native OFD keeps every character 13.第14行 中英文正文 Native OFD keeps every character 14.第15行 中英文正文 Native OFD keeps every character 15.第16行 中英文正文 Native OFD keeps every character 16.第17行 中英文正文 Native OFD keeps every character 17.第18行 中英文正文 Native OFD keeps every character 18.第19行 中英文正文 Native OFD keeps every character 19.第20行 中英文正文 Native OFD keeps every character 20.第21行 中英文正文 Native OFD keeps every character 21.第22行 中英文正文 Native OFD keeps every character 22.第23行 中英文正文 Native OFD keeps every character 23.第24行 中英文正文 Native OFD keeps every character 24.结束 End of notice.",
+    "font_family": "SimSun",
+    "size_mm": 4,
+    "page_mm": [
+      150,
+      130
+    ],
+    "margins_mm": 10
+  },
+  "control": {
+    "expected_native_text": "AB",
+    "pages": 3,
+    "blank_page": 2
+  },
+  "empty": {
+    "pages": 1,
+    "expected_native_text": ""
+  }
+}
