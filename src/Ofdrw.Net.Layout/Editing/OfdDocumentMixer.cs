@@ -96,7 +96,7 @@ public static class OfdDocumentMixer
             var package = new OfdDocumentPackage { Options = item.Package.Options };
             var legacyPage = OfdModelCloner.ClonePage(page, material: material, cancellationToken: cancellationToken);
             package.Pages.Add(legacyPage); package.Fonts.AddRange(item.Package.Fonts);
-            package.Attachments.AddRange(item.Package.Attachments);
+            OfdDocumentMerger.CopyAttachments(item.Package, package, cancellationToken, material);
             selected.Add(package);
         }
         if (selected.Count == 0) throw new ArgumentException("At least one source page is required.", nameof(sources));

@@ -192,7 +192,13 @@ page.Annotations.Items.Add(note);
 <ofd:Attachments>Attachs/Attachments.xml</ofd:Attachments>
 ```
 
-列表文件再给出名称、格式、是否可见、载荷位置。本仓库写入 `Doc_0/Attachs/Attachments.xml` 和 `Attachs/Attach_N_…` 载荷；模型为 `OfdAttachment`（`Name`、`MediaType`、`Data` 或外部路径）。
+列表文件再给出名称、格式、是否可见、载荷位置。新建文档默认写入 `Doc_0/Attachs/Attachments.xml` 和 `Attachs/Attach_N_…` 载荷；已有同名条目时为新条目选择未占用的名称。模型为 `OfdAttachment`（`Name`、`MediaType`、`Data` 或外部路径）。
+
+经公开 `OfdReader → OfdPackageWriter` 保存同一文档时，保留导入的活动列表路径和内部载荷路径。列表根、附件、`FileLoc` 以及 `Document/Attachments` 引用的未知属性、命名空间、子节点与顺序会保留；编辑建模字段只更新对应槽位。来源按 Reader 捕获的对象身份关联，修改 Name/ID 或新增同名附件不会借用其他节点的扩展。原有 `MediaType`/`Format` 各自保留；这里不定义两者在外部规范中的优先级。
+
+`Attachments.Remove`/`Clear` 控制活动附件；删除后不会由来源 XML 恢复。删除所有原附件会移除活动引用，但 ZIP 中的旧列表及载荷可能保留，因此不能用于物理擦除。原本没有建模附件的扩展列表仍可无操作保存。外部附件只保留定位，不抓取、不内嵌；导入附件内外部属性切换、跨不透明节点重排、来源路径迁移或混合内容的定位改写会在无法证明安全时拒绝。
+
+受控编辑克隆保留这些来源身份和防变更检查。Split/Mix/Merge 继续支持闭合的普通附件描述符；包含未知属性、节点、引用包络或未证明可重建的别名时明确拒绝跨文档复制，避免丢失扩展或猜测 Name/ID 映射。需要跨文档迁移这类附件时，应另行证明引用闭包。
 
 源项目 README 将附件操作列为独立文档，和自定义元素、Canvas、水印等一起放在 `ofdrw-layout/doc` 下；入口见 [ofdrw README](https://github.com/ofdrw/ofdrw/blob/master/README.md)。
 

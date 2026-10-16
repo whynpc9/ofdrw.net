@@ -142,7 +142,7 @@ internal static class OfdModelTraversal
         var state = new State(limits);
         OfdCompositeGraph.Validate(package, state.Material, token);
         OfdAnnotationContract.Validate(package, state.Material, token);
-        if (OfdAnnotationContract.HasTyped(package)) state.Material.InspectStorage(package, token);
+        if (OfdAnnotationContract.HasTyped(package) || package.AttachmentSource is not null) state.Material.InspectStorage(package, token);
         state.Budget.Node(1);
         if (package.Options is null) throw new InvalidDataException("OFD model has no document options.");
         if (package.DocumentEntryPath is not null) GuardPath(package.DocumentEntryPath);

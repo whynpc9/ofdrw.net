@@ -294,6 +294,8 @@ public static class OfdDocumentMerger
 
     internal static void CopyAttachments(OfdDocumentPackage source, OfdDocumentPackage destination, CancellationToken cancellationToken = default, OfdModelMaterialization? material = null)
     {
+        material ??= new OfdModelMaterialization(new OfdModelLimits());
+        OfdAttachmentSource.AssertCopyable(source, material, cancellationToken);
         foreach (var attachment in source.Attachments)
         {
             material?.ChargeCopy(attachment.Data.LongLength, cancellationToken);
