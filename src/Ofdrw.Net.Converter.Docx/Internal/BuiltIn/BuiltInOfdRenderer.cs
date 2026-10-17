@@ -1,4 +1,5 @@
 using System;
+using Ofdrw.Net.Core.Fonts;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -32,7 +33,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private int _totalPages = 1;
     private Dictionary<BuiltInSectionModel, int> _sectionPages = new();
     private readonly Dictionary<string, XFont> _fonts = new();
-    private readonly Dictionary<string, (byte[] Data, string FileName)> _fontFiles = new();
+    private readonly Dictionary<string, (byte[] Data, string FileName, bool Bold, bool Italic)> _fontFiles = new();
+    private readonly HashSet<string> _simulatedBoldFamilies = new(StringComparer.OrdinalIgnoreCase);
     private int _pendingPageBreaks;
     private double _pendingSpaceAfter;
     private readonly List<double> _pendingLineBreakHeights = new();
@@ -42,6 +44,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         IList<DocxConversionDiagnostic> diagnostics,
         CancellationToken cancellationToken)
     {
+        if (!Enum.IsDefined(typeof(DocxEmbeddedBoldBehavior), options.NativeEmbeddedBoldBehavior))
+            throw new ArgumentOutOfRangeException(nameof(options), "Unknown native embedded bold behavior.");
         _options = options;
         _diagnostics = diagnostics;
         _cancellationToken = cancellationToken;
@@ -382,17 +386,17 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         return FontKey(format);
     }
 
-    // Preserve the source family and requested style even when a viewer substitutes
-    // a regular CJK face. The PDF resolver inspects the actual bytes and simulates
-    // only styles that the selected font does not supply.
+    // Name-only resources retain requested style for viewer substitution.
+    // Embedded resources override these flags with the physical face style.
     private (bool Bold, bool Italic) DeclaredResourceStyle(BuiltInTextFormat format) =>
         (format.Bold, format.Italic);
 
     private OfdFontResource GetOrAddFontResource(OfdDocumentPackage package, BuiltInTextFormat format, string declaredName)
     {
         var (bold, italic) = DeclaredResourceStyle(format);
+        var embedded = _configuredFonts.ShouldEmbed(declaredName);
         var existing = package.Fonts.FirstOrDefault(font =>
-            font.FontName == declaredName && font.Bold == bold && font.Italic == italic);
+            font.FontName == declaredName && (embedded || font.Bold == bold && font.Italic == italic));
         if (existing is not null)
             return existing;
 
@@ -405,7 +409,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             Bold = bold,
             Italic = italic
         };
-        if (_configuredFonts.ShouldEmbed(declaredName))
+        if (embedded)
         {
             var resolveFamily = DocxFontCatalog.IsViewerLocalCjkFamily(declaredName)
                 ? declaredName
@@ -419,11 +423,24 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 var data = PdfFontRegistry.GetOriginalFont(face.FaceName);
                 using var hash = SHA256.Create();
                 var digest = BitConverter.ToString(hash.ComputeHash(data)).Replace("-", string.Empty).ToLowerInvariant();
-                file = (data, "native-font-" + digest + ".ttf");
+                var physicalStyle = new OpenTypeFace(data).Style;
+                file = (data, "native-font-" + digest + ".ttf", physicalStyle.Bold, physicalStyle.Italic);
                 _fontFiles[face.FaceName] = file;
             }
             resource.FileName = file.FileName;
             resource.Data = file.Data;
+            // Font flags describe the actual embedded face, not requested text
+            // emphasis. The latter is carried by Weight/Italic on TextObject.
+            resource.Bold = file.Bold;
+            resource.Italic = file.Italic;
+            if (format.Bold && !file.Bold)
+            {
+                if (_options.NativeEmbeddedBoldBehavior == DocxEmbeddedBoldBehavior.Throw)
+                    throw new InvalidDataException($"Native bold text requires an actual bold face for '{resource.FamilyName}'. Supply it through FontDirectories or explicitly allow TextStroke simulation.");
+                if (_simulatedBoldFamilies.Add(resource.FamilyName))
+                    _diagnostics.Add(new DocxConversionDiagnostic("DOCX_EMBEDDED_BOLD_SIMULATED",
+                        $"'{resource.FamilyName}' has no selected bold face; native OFD uses a text stroke for emphasis while preserving the original font bytes and text."));
+            }
         }
         package.Fonts.Add(resource);
         return resource;
@@ -591,8 +608,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 LayerType = "Body", XMillimeters = groupWidth == 0 ? Math.Min(x, left + width - elementWidth) : x,
                 YMillimeters = top, WidthMillimeters = elementWidth, HeightMillimeters = line.Height,
                 FontName = declaredName, FontResourceId = resource.Id,
-                // Viewers apply bold/italic from the text object, not from the font
-                // resource flags, so declare the requested style on both.
+                // Keep requested text style separate from the physical font face.
+                EmitSyntheticBoldStroke = format.Bold && resource.Data.Length > 0 && !resource.Bold,
                 Weight = format.Bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight,
                 Italic = format.Italic,
                 FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),

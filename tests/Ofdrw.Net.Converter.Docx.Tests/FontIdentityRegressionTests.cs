@@ -5,7 +5,7 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 public sealed class FontIdentityRegressionTests
 {
     [Fact]
-    public void NativeEmbedsThePhysicalBoldFaceSelectedForLayout()
+    public async Task NativeEmbedsThePhysicalBoldFaceSelectedForLayout()
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
         while (!File.Exists(System.IO.Path.Combine(root!.FullName, "Ofdrw.Net.sln"))) root = root.Parent;
@@ -24,13 +24,21 @@ public sealed class FontIdentityRegressionTests
         try
         {
             for (var i = 0; i < faces.Length; i++) File.WriteAllBytes(System.IO.Path.Combine(directory, i + ".ttf"), faces[i]);
-            var options = new DocxConversionOptions(); options.FontDirectories.Add(directory);
+            var options = new DocxConversionOptions { NativeEmbeddedBoldBehavior = DocxEmbeddedBoldBehavior.Throw }; options.FontDirectories.Add(directory);
             var paragraph = new BuiltInParagraphModel();
             paragraph.Inlines.Add(new BuiltInTextModel { Text = "AA", Format = { FontFamily = family, Bold = true } });
             var section = new BuiltInSectionModel(); section.Blocks.Add(paragraph);
             var model = new BuiltInDocumentModel(); model.Sections.Add(section);
             var package = new BuiltInOfdRenderer(options, new List<DocxConversionDiagnostic>(), default).Render(model);
             Assert.Equal(bold, Assert.Single(package.Fonts).Data);
+            Assert.True(Assert.Single(package.Fonts).Bold);
+            Assert.False(Assert.Single(package.Pages[0].Elements.OfType<Ofdrw.Net.Core.Models.OfdTextElement>()).EmitSyntheticBoldStroke);
+            using var output = new MemoryStream();
+            await new Ofdrw.Net.Packaging.OfdPackageWriter().WriteAsync(package, output);
+            output.Position = 0;
+            var read = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(output);
+            var text = Assert.Single(read.Pages[0].Elements.OfType<Ofdrw.Net.Core.Models.OfdTextElement>());
+            Assert.Null(System.Xml.Linq.XElement.Parse(text.SourceXml!).Attribute("Stroke"));
         }
         finally { Directory.Delete(directory, true); }
     }
