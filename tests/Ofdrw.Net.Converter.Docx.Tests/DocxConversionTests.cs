@@ -796,9 +796,12 @@ public sealed partial class DocxConversionTests
     [Fact]
     public async Task Native_ShouldPreserveVisualStylesAndProportionalAdvances()
     {
+        using var fonts = new PinnedCjkFontDirectory();
+        var options = new DocxConversionOptions { UseInstalledMicrosoftOfficeFonts = false };
+        options.FontDirectories.Add(fonts.Path);
         await using var input = File.OpenRead(ResolveGeneratedSample());
         await using var output = new MemoryStream();
-        await new DocxToOfdConverter().ConvertAsync(input, output);
+        await new DocxToOfdConverter(options).ConvertAsync(input, output);
         output.Position = 0;
         var package = await new OfdReader().ReadAsync(output);
         Assert.Equal(2, package.Pages.Count);
@@ -819,9 +822,7 @@ public sealed partial class DocxConversionTests
         Assert.All(package.Fonts, font =>
         {
             Assert.False(string.IsNullOrWhiteSpace(font.FontName));
-            var baseName = font.FontName.Split('|')[0];
-            if (DocxFontCatalog.IsViewerLocalCjkFamily(font.FontName) ||
-                baseName.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase))
+            if (DocxFontCatalog.IsViewerLocalCjkFamily(font.FontName))
             {
                 Assert.Empty(font.Data);
             }

@@ -400,7 +400,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         {
             Id = "F" + (package.Fonts.Count + 1),
             FontName = declaredName,
-            FamilyName = declaredName,
+            FamilyName = NormalizeFontFamily(format.FontFamily),
             Charset = "unicode",
             Bold = bold,
             Italic = italic
@@ -410,8 +410,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             var resolveFamily = DocxFontCatalog.IsViewerLocalCjkFamily(declaredName)
                 ? declaredName
                 : NormalizeFontFamily(format.FontFamily);
-            var resolveBold = format.Bold &&
-                declaredName.Equals(NormalizeFontFamily(format.FontFamily), StringComparison.OrdinalIgnoreCase);
+            // Use the same physical style selection as GetFont (layout).
+            var resolveBold = format.Bold;
             var resolver = GlobalFontSettings.FontResolver;
             var face = resolver.ResolveTypeface(_configuredFonts.Resolve(resolveFamily, resolveBold, format.Italic), resolveBold, format.Italic);
             if (!_fontFiles.TryGetValue(face.FaceName, out var file))
@@ -446,8 +446,9 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private XFont GetLatinCompatibleFont(BuiltInTextFormat format)
     {
         var family = NormalizeFontFamily(format.FontFamily);
-        if (!DocxFontCatalog.IsViewerLocalCjkFamily(family) &&
-            !family.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase))
+        // Name-only system CJK output retains its historical compatibility
+        // metrics. Embedded faces must measure Latin with their own bytes.
+        if (!DocxFontCatalog.IsViewerLocalCjkFamily(family))
         {
             return GetFont(format);
         }

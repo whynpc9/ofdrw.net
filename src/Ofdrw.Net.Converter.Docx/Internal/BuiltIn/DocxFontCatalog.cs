@@ -141,7 +141,6 @@ internal sealed class DocxFontCatalog
         if (string.IsNullOrWhiteSpace(family)) return false;
         var baseName = StripStyleSuffix(family);
         if (IsViewerLocalCjkFamily(baseName)) return false;
-        if (baseName.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase)) return false;
         return _authentic.Contains(baseName) || !IsKnownCjkFamily(baseName);
     }
 
@@ -318,7 +317,7 @@ internal sealed class DocxFontCatalog
     private bool TryGetFaces(string family, out List<(byte[] Data, FontStyle Style)> faces)
     {
         if (_fonts.TryGetValue(family, out faces!)) return true;
-        if (IsKnownCjkFamily(family))
+        if (IsViewerLocalCjkFamily(family))
         {
             foreach (var name in CjkSubstituteOrder)
             {
@@ -348,6 +347,9 @@ internal sealed class DocxFontCatalog
             foreach (var name in group)
             {
                 if (!_fonts.ContainsKey(name)) _fonts[name] = source;
+                // Names within a group denote the same family, unlike the
+                // cross-family stand-ins used only for viewer-local names below.
+                _authentic.Add(name);
             }
         }
 
@@ -364,7 +366,7 @@ internal sealed class DocxFontCatalog
         if (substitute is null) return;
         foreach (var group in CjkAliasGroups)
         {
-            if (group.Any(name => _fonts.ContainsKey(name))) continue;
+            if (!IsViewerLocalCjkFamily(group[0]) || group.Any(name => _fonts.ContainsKey(name))) continue;
             foreach (var name in group)
             {
                 if (!_fonts.ContainsKey(name)) _fonts[name] = substitute;
