@@ -26,7 +26,7 @@ Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域�
 
 ## 字体与宿主程序
 
-BuiltIn 按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中的真实 TTF/OTF 字体，也支持从 TTC 中抽取独立面。未配置目录时扫描平台字体目录。Native 排版和嵌入使用同一物理字体面：配置了真实 Noto CJK 字体时会嵌入，拉丁字符也使用该字体的度量，不再以宿主西文字体度量替代。等价的 Noto 家族名称可以匹配真实字体，但不会把其他中文字体伪装成 Noto。
+BuiltIn 按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中的真实 TTF/OTF 字体，也支持从 TTC 中抽取独立面。未配置目录时扫描平台字体目录。Native 排版和嵌入使用同一物理字体面：配置了真实 Noto CJK 字体时会嵌入，拉丁字符也使用该字体的度量，不再以宿主西文字体度量替代。等价的 Noto 家族名称可以匹配真实字体，但不会把其他中文字体伪装成 Noto。 未从目录加载的 `Noto Sans CJK*` 家族（含 JP/TC/KR 等变体）保留名称字体，不嵌入宿主解析器的替代字节；这一路径的拉丁字符仍沿用 Arial 兼容度量。
 
 宋体/黑体等系统中文族保留名称字体兼容路径：OFD 只声明 `SimSun` / `SimHei`，不嵌入替代字体，由阅读器解析本机字体；这一路径的中日韩全宽字符仍使用 1em，拉丁字符保留原兼容度量。名称字体不能保证不同机器显示一致。LibreOffice Portable 默认关闭独立 UserInstallation；仍会将配置的 CJK 字体复制到便携版用户字体目录。
 

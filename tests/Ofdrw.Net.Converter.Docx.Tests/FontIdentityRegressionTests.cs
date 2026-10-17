@@ -50,6 +50,9 @@ public sealed class FontIdentityRegressionTests
     [Theory]
     [InlineData("Noto Sans CJK SC")]
     [InlineData("Noto Sans CJK SC Regular")]
+    [InlineData("Noto Sans CJK JP")]
+    [InlineData("Noto Sans CJK TC")]
+    [InlineData("Noto Sans CJK KR")]
     public void MissingNotoMustNotBecomeAViewerLocalSubstitute(string requested)
     {
         var directory = Path.Combine(Path.GetTempPath(), "ofdrw-missing-noto-" + Guid.NewGuid().ToString("N"));
@@ -73,6 +76,39 @@ public sealed class FontIdentityRegressionTests
         }
         finally { Directory.Delete(directory, true); }
     }
+    [Fact]
+    public void MissingNotoLatinUsesNameOnlyCompatibilityMetrics()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(root!.FullName, "Ofdrw.Net.sln"))) root = root.Parent;
+        var name = "Noto Sans CJK Missing-" + Guid.NewGuid().ToString("N");
+        // A hostile/unrelated host stand-in must not supply embedded bytes or
+        // Latin advances when the configured catalog has no authentic Noto face.
+        Ofdrw.Net.Converter.Pdf.PdfFontRegistry.RegisterFont(name, File.ReadAllBytes(Path.Combine(root.FullName,
+            "e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/narrow.ttf")));
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-noto-absent-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var options = new DocxConversionOptions { UseInstalledMicrosoftOfficeFonts = false };
+            options.FontDirectories.Add(directory); // Explicitly empty; do not scan installed faces.
+            var section = new BuiltInSectionModel();
+            foreach (var family in new[] { name, "SimSun" })
+            {
+                var paragraph = new BuiltInParagraphModel();
+                paragraph.Inlines.Add(new BuiltInTextModel { Text = "AA", Format = { FontFamily = family } });
+                section.Blocks.Add(paragraph);
+            }
+            var model = new BuiltInDocumentModel(); model.Sections.Add(section);
+            var package = new BuiltInOfdRenderer(options, new List<DocxConversionDiagnostic>(), default).Render(model);
+            Assert.All(package.Fonts, font => Assert.Empty(font.Data));
+            var texts = package.Pages.Single().Elements.OfType<Ofdrw.Net.Core.Models.OfdTextElement>().ToArray();
+            Assert.Equal(2, texts.Length);
+            Assert.Equal(texts[1].Runs.Single().DeltaX, texts[0].Runs.Single().DeltaX);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
 }
 
 // Reuse the repository's pinned OFL bundle without installing a host font.

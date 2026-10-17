@@ -145,8 +145,12 @@ internal sealed class DocxFontCatalog
         if (string.IsNullOrWhiteSpace(family)) return false;
         var baseName = StripStyleSuffix(family);
         if (IsViewerLocalCjkFamily(baseName)) return false;
+        if (IsNotoCjkFamily(baseName)) return _authentic.Contains(baseName);
         return _authentic.Contains(baseName) || !IsKnownCjkFamily(baseName);
     }
+
+    internal static bool IsNotoCjkFamily(string family) =>
+        family.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase);
 
     internal static bool IsViewerLocalCjkFamily(string family) =>
         ViewerLocalCjkFamilies.Contains(StripStyleSuffix(family));

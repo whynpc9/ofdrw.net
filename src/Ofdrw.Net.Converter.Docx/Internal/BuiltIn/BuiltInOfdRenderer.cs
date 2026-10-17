@@ -463,9 +463,12 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private XFont GetLatinCompatibleFont(BuiltInTextFormat format)
     {
         var family = NormalizeFontFamily(format.FontFamily);
-        // Name-only system CJK output retains its historical compatibility
-        // metrics. Embedded faces must measure Latin with their own bytes.
-        if (!DocxFontCatalog.IsViewerLocalCjkFamily(family))
+        // Name-only CJK output retains compatibility metrics. In particular,
+        // missing Noto must not measure a host resolver's unrelated stand-in.
+        // Configured embedded faces measure Latin with their own bytes.
+        var nameOnlyCjk = DocxFontCatalog.IsViewerLocalCjkFamily(family) ||
+            DocxFontCatalog.IsNotoCjkFamily(family) && !_configuredFonts.ShouldEmbed(family);
+        if (!nameOnlyCjk)
         {
             return GetFont(format);
         }
