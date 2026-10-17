@@ -96,6 +96,10 @@ internal sealed class DocxFontCatalog
         if (!TryGetFaces(family, out var faces)) return family;
         var style = (bold ? FontStyle.Bold : FontStyle.Regular) | (italic ? FontStyle.Italic : FontStyle.Regular);
         var face = faces.FirstOrDefault(candidate => candidate.Style == style);
+        // Preserve an available physical bold face when only italic is missing.
+        // This also lets strict native bold accept the caller's actual bold file.
+        if (face.Data is null && bold && italic)
+            face = faces.FirstOrDefault(candidate => candidate.Style == FontStyle.Bold);
         if (face.Data is null) face = faces.FirstOrDefault(candidate => candidate.Style == FontStyle.Regular);
         if (face.Data is null) face = faces[0];
         resolved = PdfFontRegistry.RegisterFontFace(face.Data, bold, italic);

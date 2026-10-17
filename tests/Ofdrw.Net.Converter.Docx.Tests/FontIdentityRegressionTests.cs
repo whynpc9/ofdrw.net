@@ -4,8 +4,10 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 
 public sealed class FontIdentityRegressionTests
 {
-    [Fact]
-    public async Task NativeEmbedsThePhysicalBoldFaceSelectedForLayout()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NativeEmbedsThePhysicalBoldFaceSelectedForLayout(bool italic)
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
         while (!File.Exists(System.IO.Path.Combine(root!.FullName, "Ofdrw.Net.sln"))) root = root.Parent;
@@ -26,12 +28,14 @@ public sealed class FontIdentityRegressionTests
             for (var i = 0; i < faces.Length; i++) File.WriteAllBytes(System.IO.Path.Combine(directory, i + ".ttf"), faces[i]);
             var options = new DocxConversionOptions { NativeEmbeddedBoldBehavior = DocxEmbeddedBoldBehavior.Throw }; options.FontDirectories.Add(directory);
             var paragraph = new BuiltInParagraphModel();
-            paragraph.Inlines.Add(new BuiltInTextModel { Text = "AA", Format = { FontFamily = family, Bold = true } });
+            paragraph.Inlines.Add(new BuiltInTextModel { Text = "AA", Format = { FontFamily = family, Bold = true, Italic = italic } });
             var section = new BuiltInSectionModel(); section.Blocks.Add(paragraph);
             var model = new BuiltInDocumentModel(); model.Sections.Add(section);
             var package = new BuiltInOfdRenderer(options, new List<DocxConversionDiagnostic>(), default).Render(model);
             Assert.Equal(bold, Assert.Single(package.Fonts).Data);
             Assert.True(Assert.Single(package.Fonts).Bold);
+            Assert.False(Assert.Single(package.Fonts).Italic);
+            Assert.Equal(italic, Assert.Single(package.Pages[0].Elements.OfType<Ofdrw.Net.Core.Models.OfdTextElement>()).Italic);
             Assert.False(Assert.Single(package.Pages[0].Elements.OfType<Ofdrw.Net.Core.Models.OfdTextElement>()).EmitSyntheticBoldStroke);
             using var output = new MemoryStream();
             await new Ofdrw.Net.Packaging.OfdPackageWriter().WriteAsync(package, output);

@@ -156,8 +156,8 @@ jobs:
       - name: Verify original font identity through native OFD and PDF
         env:
           OFDRW_REQUIRE_TRUSTED_FONTS: "1"
-        run: |
-          python scripts/prepare-trusted-fonts.py --output-dir artifacts/trusted-fonts
+        run: >-
+          python scripts/prepare-trusted-fonts.py --output-dir artifacts/trusted-fonts &&
           dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj -c Release --filter "FullyQualifiedName~DocxFontIdentityTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Test embedded font identity and bold compatibility
