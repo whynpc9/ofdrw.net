@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mandatory original-font geometry/locator/replacement gate (currently 65 cases). Missing/invalid fixtures or any skipped case fail."""
+"""Mandatory original-font geometry/locator/replacement gate (including DOCX font identity). Missing/invalid fixtures or any skipped case fail."""
 import argparse
 import importlib.util
 import json
@@ -33,7 +33,7 @@ def main():
     Path(env['DOTNET_CLI_HOME']).mkdir(parents=True, exist_ok=True)
     command = ['dotnet', 'test', str(root / 'tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj'),
                '-c', 'Release', '--disable-build-servers', '-m:1', '/nodeReuse:false', '/p:UseSharedCompilation=false',
-               '--filter', 'FullyQualifiedName~TrustedFontGeometryTests|FullyQualifiedName~KeywordLocatorRealFontTests|FullyQualifiedName~TextReplacementRealFontTests',
+               '--filter', 'FullyQualifiedName~TrustedFontGeometryTests|FullyQualifiedName~KeywordLocatorRealFontTests|FullyQualifiedName~TextReplacementRealFontTests|FullyQualifiedName~DocxFontIdentityTests',
                '--results-directory', str(results), '--logger', 'trx;LogFileName=trusted-fonts.trx']
     (results / 'command.json').write_text(json.dumps({'command': command, 'prepared': prepared}, indent=2))
     code = subprocess.call(command, cwd=root, env=env)

@@ -552,7 +552,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     baselineOffset += (float)(font.GetHeight() * font.CellAscent / font.CellSpace);
                 }
                 SixLabors.Fonts.TextRenderer.RenderTextTo(
-                    new PdfGlyphOutlineRenderer(graphics, solid.Color, font.Size * 0.025), text,
+                    new PdfGlyphOutlineRenderer(graphics, solid.Color, FontEmphasisMetrics.BoldStrokeWidth(font.Size)), text,
                     new SixLabors.Fonts.TextOptions(outlineFont)
                     {
                         Dpi = 72,

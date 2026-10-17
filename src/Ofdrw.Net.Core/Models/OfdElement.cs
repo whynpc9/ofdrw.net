@@ -37,6 +37,10 @@ public abstract class OfdElement
 
 public sealed class OfdTextElement : OfdElement
 {
+    // Opt-in from freshly laid out native DOCX text only. Imported source XML
+    // owns its painting attributes and never acquires this request implicitly.
+    internal bool EmitSyntheticBoldStroke { get; set; }
+
     public OfdTextElement()
     {
         Type = OfdElementType.Text;

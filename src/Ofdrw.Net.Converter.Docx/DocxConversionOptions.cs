@@ -112,6 +112,14 @@ public sealed class DocxConversionOptions
     /// <summary>Gets or sets the maximum size of one configured font file.</summary>
     public long MaxEmbeddedFontBytes { get; set; } = 64L * 1024 * 1024;
 
+    /// <summary>
+    /// Controls native OFD bold text when the selected embedded font has no bold
+    /// face. The default paints a text stroke and reports a diagnostic, preserving
+    /// original font bytes and text. Throw requires an actual bold face supplied
+    /// through FontDirectories. Name-only system fonts keep their compatibility policy.
+    /// </summary>
+    public DocxEmbeddedBoldBehavior NativeEmbeddedBoldBehavior { get; set; } = DocxEmbeddedBoldBehavior.TextStroke;
+
     /// <summary>Native OFD font payload policy and subset budgets.</summary>
     public Ofdrw.Net.Core.Models.OfdFontEmbeddingOptions FontEmbedding { get; set; } = new();
 

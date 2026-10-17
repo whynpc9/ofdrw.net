@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Constants;
+using Ofdrw.Net.Core.Fonts;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Core.IO;
 
@@ -904,7 +905,7 @@ public sealed partial class OfdPackageWriter
                 textObject.SetAttributeValue("Weight", text.Weight != OfdTextElement.DefaultWeight
                     ? text.Weight.ToString(CultureInfo.InvariantCulture) : null);
                 textObject.SetAttributeValue("Italic", text.Italic ? "true" : null);
-                ApplyNameOnlyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
+                ApplyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
             }
             else
             {
@@ -954,7 +955,7 @@ public sealed partial class OfdPackageWriter
                                 new XAttribute("Y", ToInvariant(Math.Max(text.FontSizeMillimeters, 1d))),
                                 OfdTextRenderProjection.EncodeLiteral(text.Text, idAllocator.Material, idAllocator.Token))
                         });
-                ApplyNameOnlyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
+                ApplyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
             }
 
             ApplyClipping(textObject, text, idAllocator);
@@ -1065,21 +1066,23 @@ public sealed partial class OfdPackageWriter
     /// <summary>
     /// Name-only CJK faces (SimSun/SimHei) have no bold/italic file. Spec
     /// <c>Weight</c>/<c>Italic</c> are ignored by several OFD-H viewers, so also
-    /// stroke the glyphs (faux bold) and shear the CTM (faux italic). Invisible
-    /// DualLayer text and embedded faces are left untouched.
+    /// stroke the glyphs (faux bold) and shear the CTM (faux italic). Fresh native
+    /// DOCX may explicitly request a bold text stroke for an embedded regular
+    /// face. Imported embedded text and invisible DualLayer text stay untouched.
     /// </summary>
-    private static void ApplyNameOnlyEmphasis(
+    private static void ApplyEmphasis(
         XElement textObject, OfdTextElement text, OfdFontResource? resource, int weight, bool italic, XNamespace ns)
     {
         if (text.FillColor.Alpha == 0) return;
-        if (resource is { Data.Length: > 0 }) return;
+        var embedded = resource is { Data.Length: > 0 };
+        if (embedded && (!text.EmitSyntheticBoldStroke || !string.IsNullOrWhiteSpace(text.SourceXml))) return;
 
         var size = text.FontSizeMillimeters > 0 ? text.FontSizeMillimeters : 4d;
         if (weight >= 600)
         {
             textObject.SetAttributeValue("Stroke", "true");
             textObject.SetAttributeValue("Fill", "true");
-            textObject.SetAttributeValue("LineWidth", ToInvariant(Math.Max(0.08, size * 0.045)));
+            textObject.SetAttributeValue("LineWidth", ToInvariant(embedded ? FontEmphasisMetrics.BoldStrokeWidth(size) : Math.Max(0.08, size * 0.045)));
             if (!textObject.Elements().Any(node => node.Name.LocalName == "StrokeColor"))
             {
                 var stroke = new XElement(ns + "StrokeColor",
@@ -1092,7 +1095,8 @@ public sealed partial class OfdPackageWriter
             }
         }
 
-        if (!italic) return;
+        // Embedded italic rendering is independent of this bold compatibility fix.
+        if (embedded || !italic) return;
         const double shear = 0.2;
         if (textObject.Attribute("CTM")?.Value is string existingMatrix)
         {

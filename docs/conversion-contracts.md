@@ -26,11 +26,13 @@ Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域�
 
 ## 字体与宿主程序
 
-BuiltIn 渲染未指定字体的 DOCX 文本时，按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中已加载的 TTF/OTF，以及从 `simsun.ttc`、Noto CJK 等集合中抽出的独立面；这些字节只用于 Native 排版度量。未配置 `FontDirectories` 时扫描 Windows Fonts、`/usr/share/fonts`（含子目录）等平台目录。OFD 对宋体/黑体等系统中文族只声明 `SimSun` / `SimHei`，不写入 `FontFile`，由阅读器解析本机字体。宋体加粗仍声明为 `SimSun`，并保留 `Bold=true`；斜体同样保留 `Italic` 标志，不再通过改名黑体表达强调。汉字、假名、全角字符的 `DeltaX` 固定为字号（1em），不依赖宿主是否装了宋体，避免 Linux 上用西文字体量出约 0.6em 导致叠字。不要把替代 TTF 标成宋体嵌入。拉丁等非系统中文族在目录中有真实文件时仍会嵌入。LibreOffice Portable 默认关闭独立 UserInstallation；此时仍会把 `FontDirectories` 中的 CJK 字体复制到便携版 `Data/settings/user/fonts`，避免宋体缺失导致 PDF 中文叠字。
+BuiltIn 按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中的真实 TTF/OTF 字体，也支持从 TTC 中抽取独立面。未配置目录时扫描平台字体目录。Native 排版和嵌入使用同一物理字体面：配置了真实 Noto CJK 字体时会嵌入，拉丁字符也使用该字体的度量，不再以宿主西文字体度量替代。等价的 Noto 家族名称可以匹配真实字体，但不会把其他中文字体伪装成 Noto。 未从目录加载的 `Noto Sans CJK*` 家族（含 JP/TC/KR 等变体）保留名称字体，不嵌入宿主解析器的替代字节；这一路径的拉丁字符仍沿用 Arial 兼容度量。
+
+宋体/黑体等系统中文族保留名称字体兼容路径：OFD 只声明 `SimSun` / `SimHei`，不嵌入替代字体，由阅读器解析本机字体；这一路径的中日韩全宽字符仍使用 1em，拉丁字符保留原兼容度量。名称字体不能保证不同机器显示一致。LibreOffice Portable 默认关闭独立 UserInstallation；仍会将配置的 CJK 字体复制到便携版用户字体目录。
 
 OFD → PDF 根据实际选中字形文件的样式判断是否模拟粗体/斜体；对名称字体仅在请求这些样式时额外探测宿主后备面。该探测只注册独立 TTF/OTF，TTC、无效字节、读取/解析异常或可选注册预算不足会跳过注册，保留逐文本字体回退；OFD 内嵌字体失败仍严格报错。成功探测的字体会计入进程级注册预算，常规名称字体不因该探测被额外复制注册。
 
-Native OFD 中的加粗/斜体同时写在两处：字体资源 `ofd:Font` 上的 `Bold`/`Italic` 只描述字体面；文本对象 `ofd:TextObject` 上的 CT_Text `Weight`（加粗为 `700`，常规 `400` 时省略）与 `Italic="true"` 才是规范要求的样式。仅声明 `SimSun`/`SimHei` 名称字体时，不少 OFD-H 阅读器会忽略这两类标志，因此对无 `FontFile` 的名称字体，写出器还会描边字形（`Stroke="true"` `Fill="true"` `LineWidth`≈0.045em）做假粗体，并用 CTM 错切做假斜体。透明 DualLayer 文字和已嵌入字体面不描边。`OfdReader` 读回 `Weight`/`Italic`，OFD → PDF/SVG 仍以 `Weight >= 600` 或 `Italic` 作为模拟粗体/斜体的依据。
+Native OFD 中的加粗/斜体同时写在两处：字体资源 `ofd:Font` 上的 `Bold`/`Italic` 只描述字体面；文本对象 `ofd:TextObject` 上的 CT_Text `Weight`（加粗为 `700`，常规 `400` 时省略）与 `Italic="true"` 才是规范要求的样式。仅声明 `SimSun`/`SimHei` 名称字体时，不少 OFD-H 阅读器会忽略这两类标志，因此对无 `FontFile` 的名称字体，写出器还会描边字形（`Stroke="true"` `Fill="true"` `LineWidth`≈0.045em）做假粗体，并用 CTM 错切做假斜体。透明 DualLayer 文字不描边。Native DOCX 请求粗体、但选中的嵌入字体只有常规面时，默认 `NativeEmbeddedBoldBehavior = DocxEmbeddedBoldBehavior.TextStroke`：保留真实字体字节和原始文字，以 0.025em 的文字描边补充强调，并返回 `DOCX_EMBEDDED_BOLD_SIMULATED` 诊断。提供真实粗体面时不额外描边。若要求真实粗体，设置 `DocxEmbeddedBoldBehavior.Throw`；缺少实际粗体面时转换在写出前失败。此选项仅适用于 Native 嵌入文字，不是全局缺字体策略。CLI 使用默认策略。导入的嵌入文字保留原有绘制属性，不自动获得这项补绘。`OfdReader` 读回 `Weight`/`Italic`，OFD → PDF/SVG 仍以 `Weight >= 600` 或 `Italic` 作为模拟粗体/斜体的依据。
 
 CI 使用 `scripts/install-ci-fonts.py` 下载固定版本且校验 SHA-256 的 Noto Sans CJK SC，生成 Regular 静态 TrueType 字体，以避免操作系统镜像的字体差异。脚本依赖 `fonttools==4.59.2`；本地可用 `--directory /path/to/fonts` 生成隔离目录，再通过 `FontDirectories` 或 CLI `--font-directory` 指定。字体及 OFL 许可证仅写入验证环境，不进入 NuGet 包。
 

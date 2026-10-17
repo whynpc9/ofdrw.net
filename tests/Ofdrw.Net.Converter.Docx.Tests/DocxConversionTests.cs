@@ -796,9 +796,12 @@ public sealed partial class DocxConversionTests
     [Fact]
     public async Task Native_ShouldPreserveVisualStylesAndProportionalAdvances()
     {
+        using var fonts = new PinnedCjkFontDirectory();
+        var options = new DocxConversionOptions { UseInstalledMicrosoftOfficeFonts = false };
+        options.FontDirectories.Add(fonts.Path);
         await using var input = File.OpenRead(ResolveGeneratedSample());
         await using var output = new MemoryStream();
-        await new DocxToOfdConverter().ConvertAsync(input, output);
+        await new DocxToOfdConverter(options).ConvertAsync(input, output);
         output.Position = 0;
         var package = await new OfdReader().ReadAsync(output);
         Assert.Equal(2, package.Pages.Count);
@@ -808,20 +811,20 @@ public sealed partial class DocxConversionTests
         Assert.Equal(OfdColor.Black, normal.FillColor);
         Assert.False(ResolveFont(package, normal).Bold);
         Assert.Equal((192, 0, 0), Rgb(emphasized.FillColor));
-        Assert.True(ResolveFont(package, emphasized).Bold);
+        // The pinned font is regular; emphasis belongs to the text, not its font metadata.
+        Assert.False(ResolveFont(package, emphasized).Bold);
+        Assert.Equal("true", XElement.Parse(emphasized.SourceXml!).Attribute("Stroke")?.Value);
         Assert.Equal(OfdTextElement.DefaultWeight, normal.Weight);
         Assert.Equal(OfdTextElement.BoldWeight, emphasized.Weight);
         Assert.Equal(normal.YMillimeters, emphasized.YMillimeters);
         Assert.True(emphasized.XMillimeters >= normal.XMillimeters + normal.WidthMillimeters - 0.002);
         var subtitle = Assert.Single(text, t => t.Text.Contains("Generated DOCX"));
-        Assert.True(ResolveFont(package, subtitle).Italic);
+        Assert.False(ResolveFont(package, subtitle).Italic);
         Assert.True(subtitle.Italic);
         Assert.All(package.Fonts, font =>
         {
             Assert.False(string.IsNullOrWhiteSpace(font.FontName));
-            var baseName = font.FontName.Split('|')[0];
-            if (DocxFontCatalog.IsViewerLocalCjkFamily(font.FontName) ||
-                baseName.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase))
+            if (DocxFontCatalog.IsViewerLocalCjkFamily(font.FontName))
             {
                 Assert.Empty(font.Data);
             }
@@ -875,7 +878,7 @@ public sealed partial class DocxConversionTests
         Assert.InRange(large.FontSizeMillimeters / small.FontSizeMillimeters, 1.99, 2.01);
         Assert.Equal(small.YMillimeters + small.Runs.Single().YMillimeters,
             large.YMillimeters + large.Runs.Single().YMillimeters);
-        Assert.True(package.Fonts.Single(f => f.FontName == large.FontName).Italic);
+        Assert.True(large.Italic); // Per-object intent; the embedded face may be regular.
         Assert.Equal(OfdColor.Black, texts.Single(t => t.Text == "Plain").FillColor);
         Assert.Equal((0, 128, 0), Rgb(texts.Single(t => t.Text == "Green").FillColor));
         var borders = package.Pages[0].Elements.OfType<OfdPathElement>().Where(p => p.Stroke).ToList();

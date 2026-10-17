@@ -15,6 +15,11 @@ using DocumentFormat.OpenXml.Packaging;
 using Ofdrw.Net.Signatures.Verification;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text;
+using PdfSharpCore.Drawing;
 
 var repoRoot = ResolveRepoRoot();
 // Exercise host resolver composition before PDFsharp initializes its cache.
@@ -23,6 +28,18 @@ PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = Ofdrw.Net.Converter.Pdf.Pdf
 var outputDir = Environment.GetEnvironmentVariable("OFDRW_E2E_OUTPUT_DIR") ?? Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "output");
 var testDataDir = Path.Combine(repoRoot, "e2e", "Ofdrw.Net.Converter.Pdf.E2E", "testdata", "upstream-ofdrw");
 Directory.CreateDirectory(outputDir);
+var visualOnly = args.Contains("--visual-corpus-only");
+var captureBaseline = args.Contains("--capture-visual-baseline");
+if (args.Any(arg => arg is not ("--visual-corpus-only" or "--capture-visual-baseline")) ||
+    (captureBaseline && !visualOnly))
+    throw new ArgumentException("Supported options: --visual-corpus-only [--capture-visual-baseline].");
+if (visualOnly)
+{
+    await ValidateVisualCorpusAsync(repoRoot, outputDir, captureBaseline);
+    Console.WriteLine(captureBaseline ? "[E2E] CAPTURE_ONLY_NOT_VALIDATED: review before adding golden images."
+        : "[E2E] Visual corpus gate passed.");
+    return;
+}
 
 // Consume both plain-text entrypoints from the installed Layout candidate.
 const string plainSource = "  中英 iii WWW\tX\u00A0Y e\u0301  \r\n\r\n尾行\n";
@@ -284,13 +301,18 @@ await ValidateVisualCorpusAsync(repoRoot, outputDir);
 
 Console.WriteLine("[E2E] Success: package installation and conversion flow is working.");
 
-static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
+static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir, bool captureBaseline = false)
 {
-    var platform = OperatingSystem.IsLinux() ? "linux" : OperatingSystem.IsMacOS() ? "macos" :
+    var platform = OperatingSystem.IsLinux() ? "linux" : OperatingSystem.IsMacOS() ? "macos" : OperatingSystem.IsWindows() ? "windows" :
         throw new PlatformNotSupportedException("Visual corpus requires a reviewed platform baseline.");
     var goldenDir = Path.Combine(repoRoot, "e2e", "visual-corpus", "golden", platform);
     var actualDir = Path.Combine(outputDir, "visual-corpus");
     Directory.CreateDirectory(actualDir);
+    // Bind Windows fixtures to the real reviewed font, rather than a host fallback.
+    // Preserve the historical Linux/macOS fixture configuration and baselines.
+    var windowsFont = OperatingSystem.IsWindows() ? ReadVisualCorpusFont(repoRoot) : null;
+    var windowsFamily = windowsFont is null ? null : Ofdrw.Net.Converter.Pdf.PdfFontRegistry.RegisterFontFace(windowsFont);
+    var captures = new List<object>();
     var missingGoldens = new List<string>();
     var comparisonFailures = new List<string>();
     var metrics = new List<string> { "sample,page,region,normalized_rmse,threshold" };
@@ -360,6 +382,23 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
                 break;
         }
 
+        if (windowsFont is not null)
+        {
+            package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans CJK SC",
+                FamilyName = "Noto Sans CJK SC", Data = windowsFont });
+            using var measure = XGraphics.CreateMeasureContext(new XSize(1000, 1000), XGraphicsUnit.Point, XPageDirection.Downwards);
+            foreach (var text in page.Elements.OfType<OfdTextElement>())
+            {
+                text.FontResourceId = "10";
+                var font = new XFont(windowsFamily!, text.FontSizeMillimeters * 72 / 25.4, XFontStyle.Regular);
+                // Real glyph advances make the fixture's placement explicit in
+                // direct OFD readers, including readers that omit implicit advances.
+                text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = text.FontSizeMillimeters,
+                    DeltaX = string.Join(" ", text.Text.EnumerateRunes().SkipLast(1).Select(rune =>
+                        (measure.MeasureString(rune.ToString(), font).Width * 25.4 / 72)
+                            .ToString("0.######", CultureInfo.InvariantCulture))) });
+            }
+        }
         var ofdPath = Path.Combine(actualDir, kind + ".ofd");
         var pdfPath = Path.Combine(actualDir, kind + ".pdf");
         await using (var ofd = File.Create(ofdPath))
@@ -371,6 +410,9 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
         var render = await RunProcessAsync("pdftoppm", $"-f 1 -l 1 -r 144 -png -singlefile \"{pdfPath}\" \"{Path.Combine(actualDir, kind)}\"");
         if (render.ExitCode != 0 || !File.Exists(imagePath))
             throw new InvalidOperationException($"Visual corpus render failed for {kind}: {render.Error}");
+        captures.Add(new { sample = kind, page = 1, image = Path.GetFileName(imagePath),
+            sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(imagePath))).ToLowerInvariant() });
+        if (captureBaseline) continue;
         var golden = Path.Combine(goldenDir, kind + ".png");
         if (!File.Exists(golden))
             missingGoldens.Add(golden);
@@ -403,19 +445,57 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir)
             }
         }
     }
+    File.WriteAllText(Path.Combine(actualDir, "visual-run.json"), JsonSerializer.Serialize(new {
+        status = captureBaseline ? "CAPTURE_ONLY_NOT_VALIDATED" :
+            missingGoldens.Count == 0 && comparisonFailures.Count == 0 ? "PASS" : "FAIL",
+        platform, dpi = 144, threshold = 0.035,
+        sourceSha = Environment.GetEnvironmentVariable("OFDRW_SOURCE_SHA"),
+        fontSha256 = windowsFont is null ? null : Convert.ToHexString(SHA256.HashData(windowsFont)).ToLowerInvariant(),
+        captures, missingGoldens, comparisonFailures
+    }, new JsonSerializerOptions { WriteIndented = true }));
     File.WriteAllLines(Path.Combine(actualDir, "visual-metrics.csv"), metrics);
     if (missingGoldens.Count != 0 || comparisonFailures.Count != 0)
         throw new InvalidOperationException("Visual corpus gate failed: " +
             string.Join("; ", missingGoldens.Select(path => "Missing golden " + path).Concat(comparisonFailures)));
 }
 
+static byte[] ReadVisualCorpusFont(string repoRoot)
+{
+    const string digest = "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa";
+    var archive = Path.Combine(repoRoot, "tests", "fixtures", "trusted-fonts",
+        "sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59.zip");
+    using var zip = ZipFile.OpenRead(archive);
+    using var input = (zip.GetEntry("fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf") ??
+        throw new InvalidDataException("Trusted visual font is absent; materialize test fixtures with Git LFS.")).Open();
+    using var output = new MemoryStream();
+    input.CopyTo(output);
+    var bytes = output.ToArray();
+    if (bytes.Length != 21659544 || Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant() != digest)
+        throw new InvalidDataException("Trusted visual font hash mismatch.");
+    return bytes;
+}
+
+static DocxConversionOptions CreateDocxFixtureOptions(string outputDir)
+{
+    var options = new DocxConversionOptions();
+    if (OperatingSystem.IsWindows())
+    {
+        // The DOCX requests Noto explicitly. Isolated Windows validation must
+        // supply its real bytes instead of relying on installed host fonts.
+        var directory = Path.Combine(outputDir, "fixture-fonts");
+        Directory.CreateDirectory(directory);
+        File.WriteAllBytes(Path.Combine(directory, "NotoSansCJKsc-Regular.ttf"), ReadVisualCorpusFont(ResolveRepoRoot()));
+        options.FontDirectories.Add(directory);
+        options.UseInstalledMicrosoftOfficeFonts = false;
+    }
+    return options;
+}
+
 static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
 {
-    var docxOptions = new DocxConversionOptions
-    {
-        Engine = DocxConversionEngine.BuiltIn,
-        OfdMode = DocxToOfdMode.DualLayer
-    };
+    var docxOptions = CreateDocxFixtureOptions(outputDir);
+    docxOptions.Engine = DocxConversionEngine.BuiltIn;
+    docxOptions.OfdMode = DocxToOfdMode.DualLayer;
     var pdfPath = Path.Combine(outputDir, "generated-docx.pdf");
     var nativeOfdPath = Path.Combine(outputDir, "generated-docx-native.ofd");
     var defaultOfdPath = Path.Combine(outputDir, "generated-docx-default.ofd");
@@ -437,10 +517,9 @@ static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
     await using (var docxInput = File.OpenRead(samplePath))
     await using (var ofdOutput = File.Create(nativeOfdPath))
     {
-        await new DocxToOfdConverter(new DocxConversionOptions
-        {
-            OfdMode = DocxToOfdMode.Native
-        }).ConvertAsync(docxInput, ofdOutput);
+        var nativeOptions = CreateDocxFixtureOptions(outputDir);
+        nativeOptions.OfdMode = DocxToOfdMode.Native;
+        await new DocxToOfdConverter(nativeOptions).ConvertAsync(docxInput, ofdOutput);
     }
 
     await using (var pdfInput = File.OpenRead(pdfPath))
@@ -451,7 +530,7 @@ static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
 
     await using (var docxInput = File.OpenRead(samplePath))
     await using (var ofdOutput = File.Create(defaultOfdPath))
-        await new DocxToOfdConverter().ConvertAsync(docxInput, ofdOutput);
+        await new DocxToOfdConverter(CreateDocxFixtureOptions(outputDir)).ConvertAsync(docxInput, ofdOutput);
 
     foreach (var ofdPath in new[] { directOfdPath, pdfOfdPath })
     {
@@ -858,6 +937,20 @@ static async Task<(int Width, int Height)> IdentifySizeAsync(string imagePath)
 
 static async Task<(int ExitCode, string Output, string Error)> RunProcessAsync(string fileName, string arguments)
 {
+    var variable = "OFDRW_" + fileName.Replace('-', '_').ToUpperInvariant();
+    var configured = Environment.GetEnvironmentVariable(variable);
+    if (!string.IsNullOrWhiteSpace(configured))
+    {
+        if (!Path.IsPathFullyQualified(configured) || !File.Exists(configured))
+            throw new InvalidOperationException($"{variable} must name an existing absolute executable path.");
+        fileName = configured;
+    }
+    else if (OperatingSystem.IsWindows() && fileName is "convert" or "identify" or "compare")
+    {
+        // Windows ships an unrelated convert.exe. Never search PATH for that name.
+        arguments = fileName + " " + arguments;
+        fileName = Environment.GetEnvironmentVariable("OFDRW_MAGICK") ?? "magick";
+    }
     using var process = new Process
     {
         StartInfo = new ProcessStartInfo

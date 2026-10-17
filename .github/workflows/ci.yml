@@ -153,6 +153,16 @@ jobs:
       - name: Test BuiltIn without office applications
         run: dotnet test tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~BuiltIn|FullyQualifiedName~Auto|FullyQualifiedName~Native|FullyQualifiedName~DualLayer" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
+      - name: Verify original font identity through native OFD and PDF
+        env:
+          OFDRW_REQUIRE_TRUSTED_FONTS: "1"
+        run: >-
+          python scripts/prepare-trusted-fonts.py --output-dir artifacts/trusted-fonts &&
+          dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj -c Release --filter "FullyQualifiedName~DocxFontIdentityTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Test embedded font identity and bold compatibility
+        run: dotnet test tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj -c Release --no-restore --filter "FullyQualifiedName~EmbeddedBoldCompatibilityTests|FullyQualifiedName~FontIdentityRegressionTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
       - name: Restore CLI for real Auto fallback probe
         if: matrix.os == 'ubuntu-latest'
         run: dotnet restore src/Ofdrw.Net.Cli/Ofdrw.Net.Cli.csproj --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
@@ -255,6 +265,61 @@ jobs:
         with:
           name: package-e2e-pages
           path: artifacts/package-e2e
+
+  windows-package-e2e:
+    name: Windows package and visual regression
+    runs-on: windows-latest
+    needs: package-e2e
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
+      NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch visual and font fixtures
+        shell: bash
+        run: git lfs pull --include="e2e/**,tests/**" --exclude=""
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned Windows rendering tools
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bootstrap = Join-Path $env:RUNNER_TEMP 'micromamba.exe'
+          Invoke-WebRequest 'https://github.com/mamba-org/micromamba-releases/releases/download/2.9.0-0/micromamba-win-64.exe' -OutFile $bootstrap
+          if ((Get-FileHash $bootstrap -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'a6d804394b2418991c4e29562853eaace2f2ce9d9da661a98e74e02e8dbb44b0') { throw 'micromamba hash mismatch' }
+          $prefix = Join-Path $env:RUNNER_TEMP 'ofdrw-render'
+          & $bootstrap create -y --no-rc --prefix $prefix -c conda-forge 'poppler=26.09.0' 'imagemagick=7.1.2_31' 'librsvg=2.62.4'
+          if ($LASTEXITCODE) { throw 'Rendering tool installation failed' }
+          $bin = Join-Path $prefix 'Library/bin'
+          $bin | Out-File $env:GITHUB_PATH -Append -Encoding utf8
+          foreach ($pair in @(@('PDFTOPPM','pdftoppm'), @('CONVERT','convert'), @('IDENTIFY','identify'), @('COMPARE','compare'), @('RSVG_CONVERT','rsvg-convert'))) {
+            "OFDRW_$($pair[0])=$(Join-Path $bin ($pair[1] + '.exe'))" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          }
+          'PANGOCAIRO_BACKEND=fc' | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Install deterministic CJK font
+        run: |
+          python -m pip install fonttools==4.59.2
+          python scripts/install-ci-fonts.py
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-e2e-pages
+          path: artifacts/linux-package-candidate
+      - name: Consume the exact Linux candidate packages on native Windows
+        run: python scripts/run-converter-package-e2e.py 0.1.0-preview.8 --consume-only --packages-dir artifacts/linux-package-candidate/0.1.0-preview.8/packages --output-dir artifacts/windows-package-e2e
+      - name: Upload package identity, logs and page comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package-e2e-pages
+          path: artifacts/windows-package-e2e
 
   password-crypto:
     name: Optional password crypto (${{ matrix.os }})

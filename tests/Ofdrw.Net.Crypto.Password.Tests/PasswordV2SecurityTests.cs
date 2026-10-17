@@ -187,15 +187,24 @@ public sealed partial class PasswordEnvelopeTests
             await File.WriteAllBytesAsync(input, await EncryptFixture()); var sentinel = new byte[] { 12, 34, 56 };
             await File.WriteAllBytesAsync(output, sentinel);
             using var cancel = new CancellationTokenSource();
-            // Cancel on a separate thread only once the production lease is held.
-            var cancelTask = Task.Run(async () =>
+            // The synchronous KDF can occupy the available pool workers on CI.
+            // Start a dedicated observer before decrypting so cancellation cannot
+            // be delayed until after the backend has already returned.
+            using var observerReady = new ManualResetEventSlim();
+            var cancelTask = Task.Factory.StartNew(() =>
             {
-                while (PasswordPrimitives.KdfGate.CurrentCount != 0) await Task.Delay(1);
-                await Task.Delay(30);
+                observerReady.Set();
+                if (!SpinWait.SpinUntil(() => PasswordPrimitives.KdfGate.CurrentCount == 0, TimeSpan.FromSeconds(10)))
+                    throw new TimeoutException("The decrypt operation never acquired the KDF lease.");
+                Thread.Sleep(30);
                 cancel.Cancel();
-            });
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => OfdPasswordEnvelope.DecryptFileAsync(input, output, Password, cancellationToken: cancel.Token));
-            await cancelTask;
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            try
+            {
+                Assert.True(observerReady.Wait(TimeSpan.FromSeconds(5)), "The cancellation observer did not start.");
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => OfdPasswordEnvelope.DecryptFileAsync(input, output, Password, cancellationToken: cancel.Token));
+            }
+            finally { await cancelTask; }
             Assert.Equal(1, PasswordPrimitives.KdfGate.CurrentCount);
             Assert.Equal(sentinel, await File.ReadAllBytesAsync(output));
             Assert.Empty(Directory.GetFiles(directory, ".ofd-password-*.tmp"));

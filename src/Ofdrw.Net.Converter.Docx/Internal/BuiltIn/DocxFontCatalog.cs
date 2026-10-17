@@ -96,6 +96,10 @@ internal sealed class DocxFontCatalog
         if (!TryGetFaces(family, out var faces)) return family;
         var style = (bold ? FontStyle.Bold : FontStyle.Regular) | (italic ? FontStyle.Italic : FontStyle.Regular);
         var face = faces.FirstOrDefault(candidate => candidate.Style == style);
+        // Preserve an available physical bold face when only italic is missing.
+        // This also lets strict native bold accept the caller's actual bold file.
+        if (face.Data is null && bold && italic)
+            face = faces.FirstOrDefault(candidate => candidate.Style == FontStyle.Bold);
         if (face.Data is null) face = faces.FirstOrDefault(candidate => candidate.Style == FontStyle.Regular);
         if (face.Data is null) face = faces[0];
         resolved = PdfFontRegistry.RegisterFontFace(face.Data, bold, italic);
@@ -141,9 +145,12 @@ internal sealed class DocxFontCatalog
         if (string.IsNullOrWhiteSpace(family)) return false;
         var baseName = StripStyleSuffix(family);
         if (IsViewerLocalCjkFamily(baseName)) return false;
-        if (baseName.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase)) return false;
+        if (IsNotoCjkFamily(baseName)) return _authentic.Contains(baseName);
         return _authentic.Contains(baseName) || !IsKnownCjkFamily(baseName);
     }
+
+    internal static bool IsNotoCjkFamily(string family) =>
+        family.StartsWith("Noto Sans CJK", StringComparison.OrdinalIgnoreCase);
 
     internal static bool IsViewerLocalCjkFamily(string family) =>
         ViewerLocalCjkFamilies.Contains(StripStyleSuffix(family));
@@ -318,7 +325,7 @@ internal sealed class DocxFontCatalog
     private bool TryGetFaces(string family, out List<(byte[] Data, FontStyle Style)> faces)
     {
         if (_fonts.TryGetValue(family, out faces!)) return true;
-        if (IsKnownCjkFamily(family))
+        if (IsViewerLocalCjkFamily(family))
         {
             foreach (var name in CjkSubstituteOrder)
             {
@@ -348,6 +355,9 @@ internal sealed class DocxFontCatalog
             foreach (var name in group)
             {
                 if (!_fonts.ContainsKey(name)) _fonts[name] = source;
+                // Names within a group denote the same family, unlike the
+                // cross-family stand-ins used only for viewer-local names below.
+                _authentic.Add(name);
             }
         }
 
@@ -364,7 +374,7 @@ internal sealed class DocxFontCatalog
         if (substitute is null) return;
         foreach (var group in CjkAliasGroups)
         {
-            if (group.Any(name => _fonts.ContainsKey(name))) continue;
+            if (!IsViewerLocalCjkFamily(group[0]) || group.Any(name => _fonts.ContainsKey(name))) continue;
             foreach (var name in group)
             {
                 if (!_fonts.ContainsKey(name)) _fonts[name] = substitute;
