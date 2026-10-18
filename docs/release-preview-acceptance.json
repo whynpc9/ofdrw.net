@@ -1,19 +1,26 @@
 {
-  "status": "not-reviewed",
-  "package_version": "",
-  "source_fingerprint": "",
-  "sample_sha256": "",
-  "native_ofd_sha256": "",
-  "preview_pdf_sha256": "",
-  "default_ofd_sha256": "",
-  "default_preview_pdf_sha256": "",
+  "status": "accepted",
+  "package_version": "0.1.0-preview.9",
+  "source_fingerprint": "95cc1514b0ed6691d03ba92ee468656fdc642009230c7b0c903a7a0938fabd61",
+  "sample_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+  "native_ofd_sha256": "8818e41c7eb84a184bdb14185bc3710493bf5b1d4d4cc3c98fb6c9614935fb04",
+  "preview_pdf_sha256": "df601d4325e909d74e1f8d84f14d8c7fd032a5934652f2480221443e5723656e",
+  "default_ofd_sha256": "fee16b673c6a8cdd31be0a38db50fcbdaffcafb7e909686cec5bd2f11d476978",
+  "default_preview_pdf_sha256": "85047b5bc03493b5925398eea48959f4c2c4bd0a1729010e4164af9edd7cad03",
   "conversion_mode": "native",
   "view_chain": "DOCX -> native OFD -> PDF -> macOS Preview",
   "default_conversion_mode": "default",
   "default_view_chain": "DOCX -> default OFD -> PDF -> macOS Preview",
-  "reviewer": "",
-  "reviewed_at": "",
-  "checked_pages": [],
-  "default_checked_pages": [],
-  "open_findings": []
+  "reviewer": "Codex (AI reviewer; explicitly authorized by user for this release)",
+  "reviewed_at": "2026-10-18T01:38:09.928074+00:00",
+  "checked_pages": [
+    1,
+    2
+  ],
+  "default_checked_pages": [
+    1,
+    2
+  ],
+  "open_findings": [],
+  "review_exception": "User explicitly authorized Codex actual macOS Preview review instead of human sign-off on 2026-10-18; this does not assert a human reviewed the pages."
 }
