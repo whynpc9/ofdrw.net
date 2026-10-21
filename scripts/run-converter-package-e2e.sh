@@ -40,8 +40,9 @@ if [[ "$CONSUME_ONLY" == false ]]; then
   dotnet restore "$ROOT_DIR/Ofdrw.Net.sln" "${BUILD_FLAGS[@]}"
   dotnet build "$ROOT_DIR/Ofdrw.Net.sln" -c Release --no-restore \
     -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
-  # The default converter/tool feed is deliberately the validator's original
-  # product set. Optional extensions have independent consumption gates.
+  # The default converter/tool feed follows the validator's current product
+  # set, including the optional HarfBuzz text adapter. Other optional
+  # extensions have independent consumption gates.
   python3 - "$ROOT_DIR/scripts" > "$TASK_DIR/default-products.txt" <<'PY_PACKAGES'
 import sys
 sys.path.insert(0, sys.argv[1])

@@ -365,7 +365,7 @@ Pack all solution products, including optional extensions:
 dotnet pack Ofdrw.Net.sln -c Release -o artifacts/nuget
 ```
 
-The default 11-product artifact feed is packed and validated by the following script; optional extensions have independent package consumption gates.
+The default 12-product artifact feed, including the optional HarfBuzz text adapter, is packed and validated by the following script; other optional extensions have independent package consumption gates.
 
 Run the package-consumer E2E check:
 
