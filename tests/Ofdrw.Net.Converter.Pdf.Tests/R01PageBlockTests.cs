@@ -121,6 +121,69 @@ public sealed class R01PageBlockTests
         Retain("palette-drawparam", bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ForeignResourceNamespaceDoesNotResolvePaint(bool drawParam)
+    {
+        var resources = drawParam
+            ? "<DrawParams><DrawParam ID='30'><FillColor Value='0 0 255'/></DrawParam></DrawParams>"
+            : "<ColorSpaces><ColorSpace ID='20' Type='RGB'/></ColorSpaces>";
+        var style = drawParam ? "DrawParam='30'" : "";
+        var color = drawParam ? "" : "<FillColor ColorSpace='20' Value='0 0 255'/>";
+        var body = $"<PathObject ID='501' Boundary='10 10 20 20' Fill='true' {style}>{color}" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var source = await Source(body, resources: resources);
+        using var patched = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(source), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(patched, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var data = entry.Open(); using var buffer = new MemoryStream(); await data.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName == "Doc_0/DocumentRes.xml")
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    XNamespace extension = "urn:r01:paint-extension";
+                    foreach (var node in xml.Descendants())
+                    {
+                        foreach (var declaration in node.Attributes().Where(a => a.IsNamespaceDeclaration).ToArray())
+                            declaration.Remove();
+                        node.Name = extension + node.Name.LocalName;
+                    }
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        var ofd = patched.ToArray();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html));
+        Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
+    [InlineData("<CV Extra='x'>0 0 255</CV>")]
+    [InlineData("<CV><VendorChild>0 0 255</VendorChild></CV>")]
+    [InlineData("<CV><?vendor key?>0 0 255</CV>")]
+    public async Task ExtendedPaletteEntryFailsAllRenderers(string entry)
+    {
+        var resources = "<ColorSpaces><ColorSpace ID='20' Type='RGB'><Palette><CV>0 0 0</CV>" +
+            entry + "</Palette></ColorSpace></ColorSpaces>";
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true'>" +
+            "<FillColor ColorSpace='20' Index='1'/>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html));
+        Assert.Equal(0, html.Length);
+    }
+
     [Fact]
     public async Task TopLevelGrayAndCmykPathsRemainRenderableAfterWriteAndReread()
     {
@@ -200,6 +263,19 @@ public sealed class R01PageBlockTests
         var failure = await Assert.ThrowsAsync<NotSupportedException>(() =>
             new OfdToPdfConverter().ConvertAsync(new MemoryStream(outer), pdf));
         Assert.Contains("ColorSpace", failure.Message);
+        Assert.Equal(0, pdf.Length);
+    }
+
+    [Theory]
+    [InlineData("<VendorDrawing ID='501'/>")]
+    [InlineData("<PathObject ID='501' Boundary='10 10 20 20' Fill='true'><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData><VendorChild/></PathObject>")]
+    public async Task UnsupportedPageBlockDrawingInSealFailsInsteadOfDroppingAppearance(string body)
+    {
+        var seal = await Source(body);
+        var outer = await ImageIoTests.WithSeals([seal], pageCount: 1);
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(outer), pdf));
         Assert.Equal(0, pdf.Length);
     }
 
@@ -340,6 +416,24 @@ public sealed class R01PageBlockTests
         using var html = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
         Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PageBlockTextCodePreservesXmlSpace(bool template)
+    {
+        var bytes = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4' xml:space='preserve'>two  spaces</TextCode></TextObject>", template, font: true);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), pdf);
+        Assert.True(pdf.Length > 0);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), svg);
+        Assert.Contains("two  spaces", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream();
+        await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html);
+        Assert.Contains("two  spaces", Encoding.UTF8.GetString(html.ToArray()));
     }
 
     [Theory]

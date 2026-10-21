@@ -290,7 +290,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 catch (OperationCanceledException) { throw; }
                 catch (InvalidDataException) { throw; }
                 catch (OutOfMemoryException) { throw; }
-                catch (NotSupportedException exception) when (OfdRenderPreflight.IsPaintFailure(exception)) { throw; }
+                catch (NotSupportedException exception) when (
+                    OfdRenderPreflight.IsPaintFailure(exception) || appearance.OfdPage is not null && !reusePayloads) { throw; }
                 catch (Exception exception) when (reusePayloads)
                 {
                     throw new InvalidDataException("Cannot render selected signature appearance.", exception);

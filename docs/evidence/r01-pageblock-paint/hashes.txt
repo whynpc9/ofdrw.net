@@ -221,3 +221,22 @@ ad958d783610701c29880227a1bdb4cad23d2da7a5a77467aa80570e1bf4a287  artifacts/road
 bbe18f3e265aeaa655e62abd011e6d9d92409b1c18bb0e2a88f93ce7675db10b  artifacts/roadmap-v12/R01/paint-marker-ses/files/default-v4.pdf
 e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/paint-marker-ses/files/pages/default-v4/page-1.png
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/paint-marker-ses/files/pages/default-v4/page-2.png
+
+# Final resource and signature admission review, local source outputs
+8209fcf0cfee730bc43009781e2b4f71390a8c3145cad5f55e753bd0d1899a30  artifacts/roadmap-v12/R01/cursor-final-full-failed.log
+c7ea5393fb3f12009adee4b128fcc4148047c51f18276300480282dbc30e0e59  artifacts/roadmap-v12/R01/cursor-final-focused-repair.log
+91bd5b999f041e85525cc1d8fce1575729192027b481a76738b72e66a576be83  artifacts/roadmap-v12/R01/resource-admission-focused-repair.log
+0e24c9dbe770332f3f32da48eade83372f0cea8fb4d38dd47064495672cfa280  artifacts/roadmap-v12/R01/resource-final-full.log
+f45c8843790591dc738a798c6e41645fb2df30e4837be6341d1d55e88bdaf295  artifacts/roadmap-v12/R01/resource-final-ses.log
+2b98b05213871ed9bca376bccf3f429cb0447d6ad12a158651be27f2e3418519  artifacts/roadmap-v12/R01/resource-final-ses/files/package-manifest.json
+0dd415cf9c50023fd44b8a14657479fe70f8f79e2470947ed413f118184d5012  artifacts/roadmap-v12/R01/resource-final-ses/files/functional.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/resource-final-ses/files/rendered-pages.json
+d0d6a8cb348e23c25d37fd3f9adc166594c76b1907e0469fc93a4754278a651f  artifacts/roadmap-v12/R01/resource-final-ses/sdk-output/package-manifest.json
+3ded7de76218726e2b6dd26594e396b4d34615cf499b6c73e7174820c0fd9b8d  artifacts/roadmap-v12/R01/resource-final-ses/files/native-v1.ofd
+f697a19fc2b249f63eb2d2a98f7f7ce8dc9f649a44cf183bbcfe50153e84cdaa  artifacts/roadmap-v12/R01/resource-final-ses/files/native-v1.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/resource-final-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/resource-final-ses/files/pages/native-v1/page-2.png
+b6b6ab802f7a1979d7f4e7d5e3d3d0ac0a45f827878a748ca0ceb055d5b99d6d  artifacts/roadmap-v12/R01/resource-final-ses/files/default-v4.ofd
+55fdc86d4528499da6df25bedd6fbe5ac7f8557bc4094bc3a42a2335ea0e68a3  artifacts/roadmap-v12/R01/resource-final-ses/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/resource-final-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/resource-final-ses/files/pages/default-v4/page-2.png

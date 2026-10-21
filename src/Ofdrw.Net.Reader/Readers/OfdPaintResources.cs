@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Xml.Linq;
+using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging.Archive;
 
@@ -36,7 +37,8 @@ internal sealed class OfdPaintResources
         if (!archive.Contains(path)) return;
         var xml = material.ReadXml(path, archive.GetBytes(path), token);
         var ns = xml.Root?.Name.Namespace;
-        if (ns is null || xml.Root!.Name != ns + "Res") return;
+        if (ns is null || ns != XNamespace.None && ns != OfdConstants.Namespace && ns != OfdConstants.StandardNamespace ||
+            xml.Root!.Name != ns + "Res") return;
         foreach (var container in xml.Root.Elements())
         {
             var table = container.Name.LocalName switch
@@ -158,10 +160,15 @@ internal sealed class OfdPaintResources
             if (space is null) throw new NotSupportedException("Color Index needs a ColorSpace palette.");
             var palette = space.Element(space.Name.Namespace + "Palette");
             if (palette is null || palette.Attributes().Any(a => !a.IsNamespaceDeclaration) ||
-                palette.Elements().Any(e => e.Name != space.Name.Namespace + "CV"))
+                palette.Elements().Any(e => e.Name != space.Name.Namespace + "CV") ||
+                palette.Nodes().Any(n => n is not XElement and not XText ||
+                    n is XText text && !string.IsNullOrWhiteSpace(text.Value)))
                 throw new NotSupportedException("Missing or unsupported palette.");
             var entries = palette.Elements().ToArray();
             if (entries.Length == 0 || entries.Length > 256) throw new NotSupportedException("Palette size outside supported range.");
+            if (entries.Any(entry => entry.Attributes().Any(a => !a.IsNamespaceDeclaration) ||
+                entry.Nodes().Any(n => n is not XText)))
+                throw new NotSupportedException("Palette entry has unsupported content.");
             var ordinal = Integer(index.Value, -1);
             if (ordinal < 0 || ordinal >= entries.Length) throw new InvalidDataException("Palette Index is out of range.");
             components = Components(entries[ordinal].Value, count);
