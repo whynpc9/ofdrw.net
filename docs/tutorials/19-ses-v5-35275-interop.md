@@ -46,7 +46,7 @@ SES V5 与 GB/T 35275 在 OFD `Signature.xml` 中使用相同的 SM2/SM3 OID。�
 
 ## 本次交叉验证的复现入口
 
-`e2e/Ofdrw.Net.Signatures.SesInterop.E2E/CrossInterop/` 生成与验证 .NET 签名值；`JavaInterop.java` 用 `org.ofdrw:ofdrw-sign:2.3.9` 双向生成与验证 V5、GB/T 35275。`GoInterop/verify.py` 用固定版本 `tjfoc/gmsm` 解析两种 GB/T 35275 容器、核对附带的 `SM3(Signature.xml)`，再用 OpenSSL 3 的 SM2 原语独立验签。样例输入为同目录 `testdata/r12-Signature.xml`；证书、印章和签名值保存在本次忽略的 `artifacts/` 证据目录，不提交测试私钥或重复二进制载荷。
+`e2e/Ofdrw.Net.Signatures.SesInterop.E2E/CrossInterop/` 生成与验证 .NET 签名值；`JavaInterop.java` 用 `org.ofdrw:ofdrw-sign:2.3.9` 双向生成与验证 V5、GB/T 35275。`GoInterop/verify.py` 用固定版本 `tjfoc/gmsm` 解析两种 GB/T 35275 容器、核对附带的 `SM3(Signature.xml)`，再用 OpenSSL 3 的 SM2 原语独立验签。.NET 输入为同目录 `testdata/r12-Signature.xml`（UTC 时间）；Java 输入为 `testdata/r12-JavaSignature.xml`（上游使用的不带时区格式）。两种输入分别与各自签名值配对验证，避免将 Java 当前生成的 TBS 时间与预先固定的 UTC XML 时间误配。证书、印章和签名值保存在本次忽略的 `artifacts/` 证据目录，不提交测试私钥或重复二进制载荷。
 
 Go 库的 PKCS7 高层 `Verify()` 接受 `.501` 签名算法 OID，而固定 Java GB/T 35275 容器发出 `.301.1`。独立探针显式检查 `.301.1` 后使用 OpenSSL 验证准确的签名内容，不能据此声称 Go 的高层接口原生接受该容器。两种独立路径均只验证这组实测样例。
 

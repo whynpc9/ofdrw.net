@@ -11,9 +11,10 @@ import (
 )
 
 func main() {
-    if len(os.Args) != 4 { panic("expected Signature.xml, .NET SignedData, Java SignedData") }
-    xml, err := os.ReadFile(os.Args[1]); if err != nil { panic(err) }
-    for _, name := range os.Args[2:] {
+    if len(os.Args) != 5 { panic("expected .NET Signature.xml, .NET SignedData, Java Signature.xml, Java SignedData") }
+    for i := 1; i < len(os.Args); i += 2 {
+        xml, err := os.ReadFile(os.Args[i]); if err != nil { panic(err) }
+        name := os.Args[i+1]
         data, err := os.ReadFile(name); if err != nil { panic(err) }
         p7, err := x509.ParsePKCS7(data); if err != nil { panic(err) }
         if len(p7.Signers) != 1 || len(p7.Certificates) != 1 { panic(fmt.Errorf("%s: expected one signer/certificate", name)) }
