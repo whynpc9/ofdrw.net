@@ -172,7 +172,7 @@ public sealed class OfdSignatureService
         }
 
         var selection = OfdSignatureFileSelection.Select(
-            entries, ofd, signaturesPath, options, cancellationToken);
+            entries, ofd, signaturesPath, signaturePath, options, cancellationToken);
         var protectedEntries = selection.Protected.ToDictionary(
             path => path, path => entries[path], StringComparer.OrdinalIgnoreCase);
 

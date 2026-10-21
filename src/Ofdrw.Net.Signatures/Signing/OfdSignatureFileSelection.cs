@@ -15,12 +15,13 @@ internal static class OfdSignatureFileSelection
         IReadOnlyDictionary<string, byte[]> entries,
         XDocument ofd,
         string signaturesPath,
+        string newSignaturePath,
         OfdSignatureOptions options,
         CancellationToken cancellationToken)
     {
         var required = options.ProtectFile is null
             ? null
-            : FindRequiredFiles(entries, ofd, cancellationToken);
+            : FindRequiredFiles(entries, ofd, signaturesPath, newSignaturePath, cancellationToken);
         var selected = new List<string>();
         var omitted = new List<string>();
         foreach (var path in entries.Keys.OrderBy(x => x, StringComparer.Ordinal))
@@ -45,6 +46,7 @@ internal static class OfdSignatureFileSelection
 
     private static HashSet<string> FindRequiredFiles(
         IReadOnlyDictionary<string, byte[]> entries, XDocument ofd,
+        string signaturesPath, string newSignaturePath,
         CancellationToken cancellationToken)
     {
         var required = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "OFD.xml" };
@@ -60,29 +62,36 @@ internal static class OfdSignatureFileSelection
         }
         var directories = documentPaths
             .Select(path => path.Substring(0, path.LastIndexOf('/') + 1)).ToArray();
+        var mutableAnnotations = FindMutableAnnotations(entries, documentPaths);
+        var mutableSignatureFiles = FindDeclaredSignatureFiles(entries, signaturesPath, newSignaturePath);
+        var mutable = new HashSet<string>(mutableAnnotations, StringComparer.OrdinalIgnoreCase);
+        mutable.UnionWith(mutableSignatureFiles);
         foreach (var entry in entries)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var path = entry.Key;
-            if (IsXmlCandidate(path, entry.Value) &&
-                !IsSignatureMaterial(path) && !IsAnnotationMaterial(path, directories))
+            if (IsXmlCandidate(path, entry.Value) && !mutable.Contains(path))
                 required.Add(path);
-            if (!IsSignatureMaterial(path) && !IsAnnotationMaterial(path, directories) && directories.Any(dir =>
+            if (!mutable.Contains(path) && directories.Any(dir =>
                     path.StartsWith(dir, StringComparison.OrdinalIgnoreCase)))
                 required.Add(path);
         }
 
         // External shared resources may sit outside a DocBody directory. A path
         // explicitly named by any non-signature XML also remains protected.
-        foreach (var entry in entries.Where(pair =>
-                     IsXmlCandidate(pair.Key, pair.Value) &&
-                     !IsSignatureMaterial(pair.Key)))
+        var xmlPaths = new HashSet<string>(entries.Where(pair =>
+                IsXmlCandidate(pair.Key, pair.Value) && !mutableSignatureFiles.Contains(pair.Key))
+            .Select(pair => pair.Key), StringComparer.OrdinalIgnoreCase);
+        var pending = new Queue<string>(xmlPaths.OrderBy(path => path, StringComparer.Ordinal));
+        while (pending.Count > 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var path = pending.Dequeue();
+            var bytes = entries[path];
             XDocument document;
             try
             {
-                using var stream = new MemoryStream(entry.Value, writable: false);
+                using var stream = new MemoryStream(bytes, writable: false);
                 using var reader = XmlReader.Create(stream, new XmlReaderSettings
                 {
                     DtdProcessing = DtdProcessing.Prohibit,
@@ -94,7 +103,16 @@ internal static class OfdSignatureFileSelection
             catch (Exception exception) when (exception is XmlException or InvalidOperationException)
             {
                 throw new InvalidDataException(
-                    "Cannot prove document dependency closure for /" + entry.Key, exception);
+                    "Cannot prove document dependency closure for /" + path, exception);
+            }
+            foreach (var table in document.Root!.DescendantsAndSelf().Where(node =>
+                         node.Name.LocalName == "PublicRes" || node.Name.LocalName == "DocumentRes"))
+            {
+                var location = Resolve(path, table.Value.Trim());
+                if (!entries.ContainsKey(location))
+                    throw new InvalidDataException("Cannot prove resource table dependency: /" + path);
+                required.Add(location);
+                if (xmlPaths.Add(location)) pending.Enqueue(location);
             }
             foreach (var candidate in document.Root!.DescendantsAndSelf()
                          .SelectMany(node => node.Attributes().Where(a => !a.IsNamespaceDeclaration)
@@ -103,16 +121,55 @@ internal static class OfdSignatureFileSelection
             {
                 var value = candidate.Trim();
                 if (value.Length == 0) continue;
-                var resolved = Resolve(entry.Key, value);
-                if (entries.ContainsKey(resolved) && !IsAnnotationMaterial(resolved, directories))
+                var resolved = Resolve(path, value);
+                if (entries.ContainsKey(resolved) && !mutable.Contains(resolved))
                     required.Add(resolved);
                 var fromRoot = Normalize(value);
-                if (entries.ContainsKey(fromRoot) && !IsAnnotationMaterial(fromRoot, directories))
+                if (entries.ContainsKey(fromRoot) && !mutable.Contains(fromRoot))
                     required.Add(fromRoot);
             }
-            AddComposedResourceFiles(entry.Key, document, entries, required);
+            foreach (var page in document.Root.DescendantsAndSelf().Where(node =>
+                         node.Name.LocalName == "Page" || node.Name.LocalName == "TemplatePage"))
+            {
+                var baseLoc = page.Attribute("BaseLoc")?.Value;
+                if (string.IsNullOrWhiteSpace(baseLoc)) continue;
+                var pagePath = Resolve(path, baseLoc!);
+                if (!entries.ContainsKey(pagePath))
+                    throw new InvalidDataException("Cannot prove page dependency: /" + path + " -> " + baseLoc);
+                required.Add(pagePath);
+            }
+            AddComposedResourceFiles(path, document, entries, required);
         }
         return required;
+    }
+
+    private static HashSet<string> FindDeclaredSignatureFiles(
+        IReadOnlyDictionary<string, byte[]> entries, string signaturesPath, string newSignaturePath)
+    {
+        var optional = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!entries.TryGetValue(signaturesPath, out var listBytes)) return optional;
+        var list = ParseDependencyXml(listBytes, signaturesPath);
+        foreach (var record in list.Root!.Elements().Where(node => node.Name.LocalName == "Signature"))
+        {
+            var baseLoc = record.Attribute("BaseLoc")?.Value;
+            if (string.IsNullOrWhiteSpace(baseLoc))
+                throw new InvalidDataException("Cannot prove declared signature location in /" + signaturesPath);
+            var signaturePath = Resolve(signaturesPath, baseLoc!);
+            if (string.Equals(signaturePath, newSignaturePath, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!entries.TryGetValue(signaturePath, out var signatureBytes))
+                throw new InvalidDataException("Cannot prove declared signature: /" + signaturePath);
+            var signature = ParseDependencyXml(signatureBytes, signaturePath);
+            var valueLoc = signature.Descendants()
+                .FirstOrDefault(node => node.Name.LocalName == "SignedValue")?.Value;
+            if (string.IsNullOrWhiteSpace(valueLoc))
+                throw new InvalidDataException("Cannot prove SignedValue in /" + signaturePath);
+            var valuePath = Resolve(signaturePath, valueLoc!.Trim());
+            if (!entries.ContainsKey(valuePath))
+                throw new InvalidDataException("Cannot prove SignedValue: /" + valuePath);
+            optional.Add(signaturePath);
+            optional.Add(valuePath);
+        }
+        return optional;
     }
 
     private static void AddComposedResourceFiles(
@@ -140,9 +197,68 @@ internal static class OfdSignatureFileSelection
         }
     }
 
-    private static bool IsSignatureMaterial(string path) =>
-        path.StartsWith("Signs/", StringComparison.OrdinalIgnoreCase) ||
-        path.IndexOf("/Signs/", StringComparison.OrdinalIgnoreCase) >= 0;
+    private static HashSet<string> FindMutableAnnotations(
+        IReadOnlyDictionary<string, byte[]> entries, IEnumerable<string> documentPaths)
+    {
+        var optional = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var documentPath in documentPaths)
+        {
+            var document = ParseDependencyXml(entries[documentPath], documentPath);
+            var ns = document.Root!.Name.Namespace;
+            var pageIds = new HashSet<string>(document.Root.Descendants(ns + "Pages")
+                .Elements(ns + "Page").Select(page => page.Attribute("ID")?.Value)
+                .Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id!), StringComparer.Ordinal);
+            foreach (var declaration in document.Root.Elements(ns + "Annotations"))
+            {
+                if (declaration.HasElements || declaration.HasAttributes || string.IsNullOrWhiteSpace(declaration.Value))
+                    throw new InvalidDataException("Cannot prove annotation index location in /" + documentPath);
+                var indexPath = Resolve(documentPath, declaration.Value.Trim());
+                if (!entries.TryGetValue(indexPath, out var indexBytes))
+                    throw new InvalidDataException("Cannot prove annotation index: /" + indexPath);
+                var index = ParseDependencyXml(indexBytes, indexPath);
+                if (index.Root?.Name != ns + "Annotations")
+                    throw new InvalidDataException("Cannot prove annotation index structure: /" + indexPath);
+                if (index.Root.Elements().Any(node => node.Name != ns + "Page"))
+                    throw new InvalidDataException("Cannot prove annotation index records: /" + indexPath);
+                optional.Add(indexPath);
+                foreach (var page in index.Root.Elements(ns + "Page"))
+                {
+                    var locations = page.Elements(ns + "FileLoc").ToArray();
+                    if (!pageIds.Contains(page.Attribute("PageID")?.Value ?? string.Empty) ||
+                        page.Attributes().Any(attribute => attribute.Name != "PageID" && !attribute.IsNamespaceDeclaration) ||
+                        page.Elements().Count() != 1 || locations.Length != 1 || locations[0].HasElements ||
+                        locations[0].Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
+                        string.IsNullOrWhiteSpace(locations[0].Value))
+                        throw new InvalidDataException("Cannot prove annotation record in /" + indexPath);
+                    var annotationPath = Resolve(indexPath, locations[0].Value.Trim());
+                    if (!entries.TryGetValue(annotationPath, out var annotationBytes) ||
+                        ParseDependencyXml(annotationBytes, annotationPath).Root?.Name != ns + "PageAnnot")
+                        throw new InvalidDataException("Cannot prove annotation record: /" + annotationPath);
+                    optional.Add(annotationPath);
+                }
+            }
+        }
+        return optional;
+    }
+
+    private static XDocument ParseDependencyXml(byte[] bytes, string path)
+    {
+        try
+        {
+            using var stream = new MemoryStream(bytes, writable: false);
+            using var reader = XmlReader.Create(stream, new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null,
+                MaxCharactersInDocument = 16 * 1024 * 1024
+            });
+            return XDocument.Load(reader);
+        }
+        catch (Exception exception) when (exception is XmlException or InvalidOperationException)
+        {
+            throw new InvalidDataException("Cannot prove document dependency closure for /" + path, exception);
+        }
+    }
 
     private static bool IsXmlCandidate(string path, byte[] bytes)
     {
@@ -159,9 +275,6 @@ internal static class OfdSignatureFileSelection
                 bytes[offset] == '\r' || bytes[offset] == '\n')) offset++;
         return offset < bytes.Length && bytes[offset] == '<';
     }
-
-    private static bool IsAnnotationMaterial(string path, IEnumerable<string> documentDirectories) =>
-        documentDirectories.Any(directory => path.StartsWith(directory + "Annots/", StringComparison.OrdinalIgnoreCase));
 
     private static string Resolve(string containingPath, string value)
     {

@@ -2,7 +2,7 @@
 
 `OfdSignatureService.SignWithResultAsync` 返回本次签名的包条目清单：`ProtectedFiles` 的原始字节进入 `References`，`UnprotectedFiles` 未进入。新生成的 `Signature.xml` 和 `SignedValue.dat` 必然列为本次未保护；它们由签名值本身的校验关系覆盖。旧 `SignAsync` 仍可用，默认保护所有签署前存在的条目，仅排除可变的 `Signatures.xml`。显式 `ProtectSignatureList=true` 后，后续追加签名会被拒绝。
 
-`OfdSignatureOptions.ProtectFile` 接收以 `/` 开头的包内绝对路径，返回是否保护。它只能缩小默认引用集；不能排除根索引、正文目录中的非批注内容、非批注 XML 或从这些 XML 指向的共享资源。按内容识别的资源 XML 即使采用 `.dat` 等后缀，`BaseLoc` 与 `MultiMedia/@MediaFile`、`Font/FontFile` 仍会组合成真实包路径，再检查保护范围。调用者可显式排除文档目录中的 `Annots/` 子树，让后续批注更新不破坏这份签名；由此批注本身不受这份签名保护。无法证明依赖闭包时签署失败，且在调用 provider、写入输出流之前失败。不支持以此忽略页面、字体、图片或未知有引用的数据。签署结果逐条列出选择，不能从签名值有效推断任意未保护条目也完整。
+`OfdSignatureOptions.ProtectFile` 接收以 `/` 开头的包内绝对路径，返回是否保护。它只能缩小默认引用集；不能排除根索引、正文目录中的非批注内容、非批注 XML 或从这些 XML 指向的共享资源。文档引用的 `PublicRes`、`DocumentRes` 资源表会按 XML 强制解析，不依赖 `.xml` 后缀或字节前缀；`BaseLoc` 与 `MultiMedia/@MediaFile`、`Font/FontFile` 会组合成真实包路径，再检查保护范围。调用者可显式排除文档声明的批注索引及其中的 `PageAnnot` 文件，让后续批注更新不破坏这份签名；由此批注本身不受这份签名保护。目录名本身不赋予例外：即使页面、字体或图片位于 `Annots/` 或 `Signs/` 下，正文与资源引用仍优先受保护。无法证明依赖闭包时签署失败，且在调用 provider、写入输出流之前失败。签署结果逐条列出选择，不能从签名值有效推断任意未保护条目也完整。
 
 Java OFDRW 标作 OFD 2.0 的 `RelativeSignatureId` 写在 `Signatures.xml` 的 `<Signature Relative="...">` 记录上，必须指向同一清单中的一个既有 ID。验签报告的 `RelativeIntegrityValid` 单独检查该关系及基签名的摘要和已注册容器验签结果；缺失、歧义或无效的基签名使整体 `FullyValid=false`。`Parameters` 写在新 `Signature.xml` 的 `SignedInfo/Parameters/Parameter`，每项有唯一非空 `Name`、可选 `Type` 和文本值。签名 provider 接收完整原始 `Signature.xml` 字节，因此参数变化应由签名值校验检出。当前 Writer 输出 OFD 1.0；使用这两个扩展字段时，签署器只接受明确声明 `Version="2.0"` 且使用 2016 命名空间的输入包，不会悄悄升级文档版本。
 

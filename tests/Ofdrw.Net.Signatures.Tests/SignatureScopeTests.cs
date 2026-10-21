@@ -87,7 +87,7 @@ public sealed class SignatureScopeTests
     }
 
     [Fact]
-    public async Task AnnotationSubtreeCanBeExcludedWhilePageContentStaysProtected()
+    public async Task DeclaredAnnotationFilesCanBeExcludedWhilePageContentStaysProtected()
     {
         using var source = await CreatePackage();
         using var signed = new MemoryStream();
@@ -103,6 +103,99 @@ public sealed class SignatureScopeTests
         using var annotationChanged = await Rewrite(signed, "Doc_0/Annots/Page_0.xml",
             _ => Encoding.UTF8.GetBytes("<PageAnnot changed=\"true\"/>"));
         Assert.True(await IsFullyValid(annotationChanged));
+    }
+
+    [Fact]
+    public async Task PageUnderAnnotationDirectoryRemainsRequired()
+    {
+        using var source = await CreatePackage();
+        using var moved = await AddReferencedPage(source, "Doc_0/Annots/VisibleContent.xml");
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(moved, output, provider,
+                new OfdSignatureOptions
+                {
+                    ProtectFile = path => path != "/Doc_0/Annots/VisibleContent.xml"
+                }));
+        Assert.Contains("/Doc_0/Annots/VisibleContent.xml", error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData("PageRes.xml")]
+    [InlineData("Res/logo.png")]
+    [InlineData("Res/typeface.ttf")]
+    public async Task PageResourcesUnderSignatureNamedDirectoryRemainRequired(string resource)
+    {
+        using var source = await CreatePackage();
+        var additions = new Dictionary<string, byte[]>
+        {
+            ["Doc_0/Signs/Visible/PageRes.xml"] = Encoding.UTF8.GetBytes(
+                "<Res BaseLoc=\"Res\"><MultiMedia ID=\"2\" MediaFile=\"logo.png\"/>" +
+                "<Font ID=\"3\" FontName=\"Fixture\"><FontFile>typeface.ttf</FontFile></Font></Res>"),
+            ["Doc_0/Signs/Visible/Res/logo.png"] = [1, 2, 3],
+            ["Doc_0/Signs/Visible/Res/typeface.ttf"] = [4, 5, 6]
+        };
+        using var moved = await AddReferencedPage(source, "Doc_0/Signs/Visible/Content.xml", additions);
+        var excluded = "/Doc_0/Signs/Visible/" + resource;
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(moved, output, provider,
+                new OfdSignatureOptions { ProtectFile = path => path != excluded }));
+        Assert.Contains(excluded, error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+
+        moved.Position = 0;
+        using var signed = new MemoryStream();
+        var selection = await new OfdSignatureService().SignWithResultAsync(moved, signed,
+            new Provider(), new OfdSignatureOptions
+            {
+                ProtectFile = path => path != "/Extras/optional.bin"
+            });
+        Assert.Contains(excluded, selection.ProtectedFiles);
+        using var changed = await Rewrite(signed, excluded.TrimStart('/'), _ => [9, 9, 9]);
+        Assert.False((await Verify(changed)).ReferenceIntegrityValid);
+    }
+
+    [Fact]
+    public async Task AnnotationAndPageResourceSharingAnAnnotsPayloadKeepsItProtected()
+    {
+        using var source = await CreatePackage();
+        var ns = OfdConstants.Namespace;
+        using var shared = await AddEntries(source, new Dictionary<string, byte[]>
+        {
+            ["Doc_0/Pages/Page_0/PageRes.xml"] = Encoding.UTF8.GetBytes(
+                "<Res xmlns=\"" + ns + "\" BaseLoc=\"../../Annots/Res\">" +
+                "<MultiMedia ID=\"2\" MediaFile=\"shared.png\"/></Res>"),
+            ["Doc_0/Annots/Res/shared.png"] = [1, 2, 3],
+            ["Doc_0/Annots/Page_0.xml"] = Encoding.UTF8.GetBytes(
+                "<PageAnnot xmlns=\"" + ns + "\"><Annot ID=\"4\"><Appearance>" +
+                "<ImageObject ResourceID=\"2\"/></Appearance></Annot></PageAnnot>")
+        });
+        const string excluded = "/Doc_0/Annots/Res/shared.png";
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(shared, output, provider,
+                new OfdSignatureOptions { ProtectFile = path => path != excluded }));
+        Assert.Contains(excluded, error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+
+        shared.Position = 0;
+        using var signed = new MemoryStream();
+        var scope = await new OfdSignatureService().SignWithResultAsync(shared, signed,
+            new Provider(), new OfdSignatureOptions
+            {
+                ProtectFile = path => path != "/Extras/optional.bin"
+            });
+        Assert.Contains(excluded, scope.ProtectedFiles);
+        using var changed = await Rewrite(signed, excluded.TrimStart('/'), _ => [9, 9, 9]);
+        Assert.False((await Verify(changed)).ReferenceIntegrityValid);
     }
 
     [Theory]
@@ -156,6 +249,25 @@ public sealed class SignatureScopeTests
         Assert.Contains(excluded, selection.ProtectedFiles);
         using var modified = await Rewrite(signed, excluded.TrimStart('/'), _ => [9, 9, 9]);
         Assert.False((await Verify(modified)).ReferenceIntegrityValid);
+    }
+
+    [Fact]
+    public async Task ReferencedResourceTableIsParsedWithoutXmlSuffixOrUtf16Bom()
+    {
+        using var source = await CreatePackage(resourceXmlPath: "Shared/PublicRes.dat",
+            resourceBaseLoc: "Res", resourcePayloadDirectory: "Shared/Res",
+            resourceUtf16Be: true);
+        using var target = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(source, target, provider,
+                new OfdSignatureOptions
+                {
+                    ProtectFile = path => path != "/Shared/Res/typeface.ttf"
+                }));
+        Assert.Contains("/Shared/Res/typeface.ttf", error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, target.Length);
     }
 
     [Fact]
@@ -267,7 +379,8 @@ public sealed class SignatureScopeTests
 
     private static async Task<MemoryStream> CreatePackage(bool version2 = false,
         string? rootReferencedPath = null, string? resourceXmlPath = null,
-        string? resourceBaseLoc = null, string? resourcePayloadDirectory = null)
+        string? resourceBaseLoc = null, string? resourcePayloadDirectory = null,
+        bool resourceUtf16Be = false)
     {
         var package = new OfdDocumentPackage();
         if (version2) package.Options.Namespace = OfdConstants.StandardNamespace;
@@ -276,9 +389,10 @@ public sealed class SignatureScopeTests
         package.PreservedEntries["Doc_0/Res/opaque.bin"] = [4, 5, 6];
         package.PreservedEntries["Shared/external.bin"] = [7, 8, 9];
         package.PreservedEntries["Doc_0/Annots/Annotations.xml"] =
-            Encoding.UTF8.GetBytes("<Annotations><PageAnnot FileLoc=\"Page_0.xml\"/></Annotations>");
+            Encoding.UTF8.GetBytes("<Annotations xmlns=\"" + package.Options.Namespace +
+                "\"><Page PageID=\"1\"><FileLoc>Page_0.xml</FileLoc></Page></Annotations>");
         package.PreservedEntries["Doc_0/Annots/Page_0.xml"] =
-            Encoding.UTF8.GetBytes("<PageAnnot/>");
+            Encoding.UTF8.GetBytes("<PageAnnot xmlns=\"" + package.Options.Namespace + "\"/>");
         if (rootReferencedPath is not null)
         {
             package.PreservedEntries[rootReferencedPath] = [3, 2, 1];
@@ -302,12 +416,15 @@ public sealed class SignatureScopeTests
         var withResources = withAnnotations;
         if (resourceXmlPath is not null)
         {
+            var resourceXml = "<Res xmlns=\"http://www.ofdspec.org/2016\" BaseLoc=\"" +
+                resourceBaseLoc + "\">" +
+                "<MultiMedias><MultiMedia ID=\"2\" MediaFile=\"logo.png\"/></MultiMedias>" +
+                "<Fonts><Font ID=\"3\" FontName=\"Fixture\"><FontFile>typeface.ttf</FontFile></Font></Fonts></Res>";
             withResources = await AddEntries(withAnnotations, new Dictionary<string, byte[]>
             {
-                [resourceXmlPath] = Encoding.UTF8.GetBytes(
-                    "<Res xmlns=\"http://www.ofdspec.org/2016\" BaseLoc=\"" + resourceBaseLoc + "\">" +
-                    "<MultiMedias><MultiMedia ID=\"2\" MediaFile=\"logo.png\"/></MultiMedias>" +
-                    "<Fonts><Font ID=\"3\" FontName=\"Fixture\"><FontFile>typeface.ttf</FontFile></Font></Fonts></Res>"),
+                [resourceXmlPath] = resourceUtf16Be
+                    ? Encoding.BigEndianUnicode.GetBytes("<?xml version=\"1.0\" encoding=\"utf-16BE\"?>" + resourceXml)
+                    : Encoding.UTF8.GetBytes(resourceXml),
                 [resourcePayloadDirectory + "/logo.png"] = [1, 2, 3],
                 [resourcePayloadDirectory + "/typeface.ttf"] = [4, 5, 6]
             });
@@ -347,6 +464,27 @@ public sealed class SignatureScopeTests
         }
         output.Position = 0;
         return output;
+    }
+
+    private static async Task<MemoryStream> AddReferencedPage(MemoryStream source,
+        string pagePath, IReadOnlyDictionary<string, byte[]>? otherEntries = null)
+    {
+        source.Position = 0;
+        var archive = await new OfdPackageLoader().LoadAsync(source);
+        var additions = new Dictionary<string, byte[]>
+        {
+            [pagePath] = archive.GetBytes("Doc_0/Pages/Page_0/Content.xml")
+        };
+        if (otherEntries is not null)
+            foreach (var item in otherEntries) additions.Add(item.Key, item.Value);
+        using var withPage = await AddEntries(source, additions);
+        return await Rewrite(withPage, "Doc_0/Document.xml", bytes =>
+        {
+            var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            var page = document.Descendants().First(element => element.Name.LocalName == "Page");
+            page.SetAttributeValue("BaseLoc", pagePath.Substring("Doc_0/".Length));
+            return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        });
     }
 
     private static async Task<MemoryStream> Rewrite(MemoryStream source, string path, Func<byte[], byte[]> change)
