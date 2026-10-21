@@ -524,6 +524,22 @@ public sealed class R18AttachmentPhysicalCleanupTests
         await RefusesWithoutOutput(package, "mixed XML path content");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DocumentExtensionsPathCannotHideAttachmentAlias(bool split)
+    {
+        var entries = Entries(Seed());
+        var extension = split
+            ? "<Extensions><Title>Payload/</Title><Author>original.bin</Author></Extensions>"
+            : "<Extensions>Payload/original%2Ebin</Extensions>";
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</Document>", extension + "</Document>", StringComparison.Ordinal));
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, split ? "mixed XML path content" : "encoded or backslash XML reference");
+    }
+
     [Fact]
     public async Task NonXmlSuffixUtf16DescriptorUsesSourcePathAndCanBeRemoved()
     {
