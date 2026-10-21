@@ -37,3 +37,24 @@ URI schemes, UNC and double-slash paths are classified before package resolution
 Reports use public read-only properties and can be serialized by the caller's serializer (for example System.Text.Json with JsonStringEnumConverter). The library introduces no serialization or network dependency and no CLI. The existing `ValidationReport` and permissive `OfdPackageStructureChecker` retain their original contracts; there is no implicit lossy boolean adapter.
 
 Executable boundary examples are in `ArchivalPreflightTests`. Its four-byte font and SignedValue sentinels intentionally prove presence only and must never be used as rendering or signature-validity evidence. No pages are generated or modified by preflight, so page rendering, PNG inspection and Preview acceptance do not apply to this implementation.
+
+## Opt-in archival rule subset and independent copy
+
+`ArchivalRuleService.CheckAsync` adds two separate, standard-mapped observations while retaining the six APF results unchanged in `LocalPreflight`. The mapping is to **GB/T 42133-2022 section 6.2.2(a)** (remove `Document.xml/Permissions`) and **6.2.2(b)** (remove `Document.xml/VPreferences`). The edition and clauses were checked against the [standard PDF hosted by Jianghan University Library](https://tsgdag.jhun.edu.cn/_upload/article/files/93/cc/4d8bf26643f49ee8a76ee25d4ef6/82cca584-f57d-47db-9363-a1497f03326a.pdf), SHA-256 `7d76c086e1384ff200c0df8f5a40bf67660e841340c5e2630e582c81c22f1b82`, PDF page 8 (printed page 4). `VerifiedSubset` describes only this mapping. It is not a claim of complete GB/T 42133 conformance or certification; the report's `Certification` remains `NotAssessed`. Other clauses have not been implemented or inferred from the number of rules. GB/T 33190-2016 allows Permissions in general OFD, so its document-root clause does not justify this archival removal.
+
+The new check requires a seekable, stable input at position zero and leaves it open and rewound. If the local inspection is incomplete, the document is ambiguous, or a foreign namespace affects the scope, the added rules return `Unknown`. A recognized declaration is `Fail`; its absence is `Pass` for this narrow rule. The caller must inspect `LocalPreflight` and the added results separately. An archival-subset Pass does not establish that images, fonts, actions, signatures, attachments or every resource reference are archivally conforming.
+
+`ArchivalCopyConverter.ConvertAsync(inputPath, outputPath, options)` is an explicit, separate operation. It accepts only a clean single-document local preflight, rejects signatures and suspected orphan signature payloads with `SignedInputRequiresResigning`, and refuses unknown fields inside either target declaration. The internal handlers remove only supported `Permissions` and `VPreferences` nodes from `Document.xml`. R16 typed objects guide recognized shapes, but the copy handler does not rewrite pages or other package payloads through the general writer. Signed input is not modified, silently unsigned or represented as valid after editing. No-op input produces no output.
+
+The converter snapshots the bounded source file, writes a temporary ZIP in the destination directory, reruns local and subset checks, and compares the entry set and every non-target entry's bytes before publishing. It also emits `<output>.audit.xml` with source/output SHA-256, changed and unchanged entry hashes, removed declarations, clauses, information-loss notice and signature disposition. Failure removes temporary files. The output and audit paths must not already exist. The input remains untouched. The checks prove that this operation preserves the existing page, resource and attachment payload edges byte for byte; they do not establish that the original input had complete semantic resource closure beyond the finite APF scope. The handler fails rather than hiding that boundary.
+
+```csharp
+var options = new ArchivalPreflightOptions();
+using (var input = File.OpenRead("source.ofd"))
+{
+    var observations = await new ArchivalRuleService().CheckAsync(input, options);
+    // Inspect observations.LocalPreflight, observations.RuleResults and Scope.
+}
+var copy = await new ArchivalCopyConverter().ConvertAsync("source.ofd", "archive-copy.ofd", options);
+// Retain copy.OutputPath and copy.AuditPath together.
+```
