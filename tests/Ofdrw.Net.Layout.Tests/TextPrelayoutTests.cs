@@ -409,7 +409,7 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
-    public void CmapMappingPastMaxpCannotWinWholeRunFallback()
+    public void ReducedMaxpCannotPassFaceValidation()
     {
         var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));
         var tableCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(4, 2));
@@ -422,11 +422,48 @@ public sealed class TextPrelayoutTests
         }
         Assert.True(maxp >= 0);
         BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(maxp + 4, 2), 2);
-        var invalid = new TextFontFace("Invalid", bytes);
-        var error = Assert.Throws<TextLayoutException>(() => HarfBuzzTextPrelayout.Create().Layout(
-            new TextPrelayoutRequest("A", new[] { invalid, Noto() }, 4, 100)));
+        var error = Assert.Throws<TextLayoutException>(() => new TextFontFace("Invalid", bytes));
         Assert.Equal(TextLayoutError.InvalidFont, error.Error);
-        Assert.IsType<System.IO.InvalidDataException>(error.InnerException);
+    }
+
+    [Theory]
+    [InlineData("maxp-version")]
+    [InlineData("maxp-count")]
+    [InlineData("hhea-count")]
+    [InlineData("loca-offset")]
+    public void MalformedGlyphTableDimensionsFailBeforeShaping(string mutation)
+    {
+        var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));
+        var tableCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(4, 2));
+        var tables = new System.Collections.Generic.Dictionary<string, (int Offset, int Length)>();
+        for (var i = 0; i < tableCount; i++)
+        {
+            var record = 12 + i * 16;
+            tables.Add(System.Text.Encoding.ASCII.GetString(bytes, record, 4),
+                ((int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(record + 8, 4)),
+                 (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(record + 12, 4))));
+        }
+        var maxp = tables["maxp"].Offset;
+        var glyphCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(maxp + 4, 2));
+        switch (mutation)
+        {
+            case "maxp-version":
+                BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(maxp, 4), 0x00005000);
+                break;
+            case "maxp-count":
+                BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(maxp + 4, 2), (ushort)(glyphCount + 1));
+                break;
+            case "hhea-count":
+                BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(tables["hhea"].Offset + 34, 2), 0);
+                break;
+            case "loca-offset":
+                var location = tables["loca"].Offset + glyphCount * 4;
+                BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(location, 4), (uint)(tables["glyf"].Length + 1));
+                break;
+            default: throw new ArgumentOutOfRangeException(nameof(mutation));
+        }
+        var error = Assert.Throws<TextLayoutException>(() => new TextFontFace("Invalid", bytes));
+        Assert.Equal(TextLayoutError.InvalidFont, error.Error);
     }
 
     [Fact]

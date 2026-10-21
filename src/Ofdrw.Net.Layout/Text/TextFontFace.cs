@@ -37,11 +37,14 @@ public sealed class TextFontFace
                     "Only static, monochrome TrueType outline faces are in the initial text profile.");
             var head = face.Table("head", 54);
             var hhea = face.Table("hhea", 36);
-            face.Table("hmtx", 4);
-            var maxp = face.Table("maxp", 6);
+            var hmtx = face.Table("hmtx", 4);
+            var maxp = face.Table("maxp", 32);
+            if (OpenTypeFace.U32(maxp, 0) != 0x00010000)
+                throw new TextLayoutException(TextLayoutError.InvalidFont, "Invalid TrueType maxp version.");
             _glyphCount = OpenTypeFace.U16(maxp, 4);
             if (_glyphCount == 0)
                 throw new TextLayoutException(TextLayoutError.InvalidFont, "The selected font has no glyphs.");
+            ValidateGlyphTables(face, head, hhea, hmtx, _glyphCount);
             UnitsPerEm = OpenTypeFace.U16(head, 18);
             if (UnitsPerEm < 16 || UnitsPerEm > 16384)
                 throw new TextLayoutException(TextLayoutError.InvalidFont, "Invalid font units per em.");
@@ -98,6 +101,32 @@ public sealed class TextFontFace
     internal int GlyphCount => _glyphCount;
     internal int CoverageLookupWorkUpperBound => _cmap.GlyphLookupWorkUpperBound;
     internal int FaceByteLength => _faceBytes.Length;
+
+    private static void ValidateGlyphTables(OpenTypeFace face, byte[] head, byte[] hhea, byte[] hmtx, int glyphCount)
+    {
+        var horizontalMetrics = OpenTypeFace.U16(hhea, 34);
+        if (horizontalMetrics == 0 || horizontalMetrics > glyphCount ||
+            hmtx.Length < horizontalMetrics * 4 + (glyphCount - horizontalMetrics) * 2)
+            throw new TextLayoutException(TextLayoutError.InvalidFont, "The font glyph count exceeds its horizontal metrics.");
+
+        var locationFormat = OpenTypeFace.U16(head, 50);
+        if (locationFormat != 0 && locationFormat != 1)
+            throw new TextLayoutException(TextLayoutError.InvalidFont, "Invalid TrueType glyph location format.");
+        var loca = face.Table("loca");
+        var glyf = face.Table("glyf");
+        var locationSize = locationFormat == 0 ? 2 : 4;
+        OpenTypeFace.Require(loca, 0, (glyphCount + 1) * locationSize);
+        var previous = 0;
+        for (var index = 0; index <= glyphCount; index++)
+        {
+            var offset = locationFormat == 0
+                ? OpenTypeFace.U16(loca, index * 2) * 2L
+                : OpenTypeFace.U32(loca, index * 4);
+            if (offset < previous || offset > glyf.Length)
+                throw new TextLayoutException(TextLayoutError.InvalidFont, "Invalid TrueType glyph location.");
+            previous = (int)offset;
+        }
+    }
 
     private int CheckedGlyph(int unicodeScalar)
     {
