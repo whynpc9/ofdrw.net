@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Xml;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Layout.Text;
@@ -35,6 +36,12 @@ public static class TextPrelayoutOfdWriter
         if (result.Request.Script != "Latn" || result.Face.Bold || result.Face.Italic)
             throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
                 "The first OFD output profile is regular, horizontal Latin ASCII only.");
+        try { XmlConvert.VerifyXmlChars(result.Face.Name); }
+        catch (XmlException exception)
+        {
+            throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
+                "The selected font name cannot be written as OFD XML.", exception);
+        }
         var scale = result.Request.FontSizeMillimeters / result.Face.UnitsPerEm;
         // Complete preflight before creating even an in-memory package. The typed OFD model
         // cannot yet carry arbitrary GIDs, clusters, offsets, or bidi semantics.

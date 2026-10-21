@@ -535,6 +535,27 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public async Task WriterRejectsXmlInvalidFaceNameBeforeCreatingOutput()
+    {
+        var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));
+        var invalid = new TextFontFace("Noto\0Sans", bytes);
+        var layout = HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest("AV", new[] { invalid }, 4, 50));
+        Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
+            TextPrelayoutOfdWriter.CreateSinglePage(layout, 100, 100, 10, 10)).Error);
+
+        var valid = new TextFontFace("Noto & Sans", bytes);
+        var validLayout = HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest("AV", new[] { valid }, 4, 50));
+        using var stream = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(
+            TextPrelayoutOfdWriter.CreateSinglePage(validLayout, 100, 100, 10, 10), stream);
+        stream.Position = 0;
+        var read = await new OfdReader().ReadAsync(stream);
+        Assert.Equal("Noto & Sans", Assert.Single(read.Fonts).FontName);
+    }
+
+    [Fact]
     public void WriterChecksActualAdvanceAndInkAtPageEdges()
     {
         var face = Noto();
