@@ -556,6 +556,38 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("Bold")]
+    [InlineData("Italic")]
+    public async Task MalformedCompositeFontFlagPreservesTextButFailsAllRenderers(string flag)
+    {
+        var resources = $"<Fonts><Font ID='550' FontName='Noto Sans' {flag}='bogus'/></Fonts>" +
+            "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='550' Size='4'>" +
+            "<TextCode X='0' Y='4'>composite text</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var body = "<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>" +
+            "<TextObject ID='554' Boundary='10 40 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>sibling text</TextCode></TextObject>";
+        var ofd = await Source(body, resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var extracted = new OfdTextExtractor().Extract(read);
+        Assert.Contains("composite text", extracted);
+        Assert.Contains("sibling text", extracted);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Contains("Font", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("root")]
     [InlineData("container")]
     [InlineData("font")]

@@ -1084,6 +1084,17 @@ public sealed class OfdReader : IOfdReader
             material.ReserveReadModel(2048L + definition.Node.Elements().Count() * 128L, token);
             foreach (var element in ParseGraphicNodes(archive, definition.Node.Elements(), null, "Body", fonts, media, mediaTypes, definition.Path, material, token, map, definition.Node.Name.Namespace))
             {
+                if (element is OfdTextElement unresolvedText &&
+                    !string.IsNullOrWhiteSpace(unresolvedText.FontResourceId) &&
+                    !fonts.ContainsKey(unresolvedText.FontResourceId) &&
+                    package.Fonts.Any(font => string.Equals(font.Id, unresolvedText.FontResourceId, StringComparison.OrdinalIgnoreCase)))
+                {
+                    // The font exists but its declaration was rejected for
+                    // rendering. Preserve TextCode for logical extraction.
+                    unresolvedText.RenderPaintError ??= "Composite text has an unresolved Font resource.";
+                    definition.Resource.Elements.Add(unresolvedText);
+                    continue;
+                }
                 if (element is OfdTextElement text && (text.FontResourceId is null || !fonts.ContainsKey(text.FontResourceId)) ||
                     element is OfdImageElement { Data.Length: 0 })
                 {
