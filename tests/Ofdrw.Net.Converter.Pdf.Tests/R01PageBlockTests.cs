@@ -26,7 +26,8 @@ public sealed class R01PageBlockTests
         File.WriteAllBytes(Path.Combine(dir, name + ".html"), html);
     }
 
-    private static async Task<byte[]> Source(string body, bool template = false, string? resources = null, bool font = false, bool image = false)
+    private static async Task<byte[]> Source(string body, bool template = false, string? resources = null, bool font = false, bool image = false,
+        string? resourceNamespace = null)
     {
         var package = new OfdDocumentPackage();
         if (font)
@@ -82,7 +83,8 @@ public sealed class R01PageBlockTests
             if (resources is not null)
             {
                 var wrapper = XElement.Parse($"<R xmlns='{Ns}'>{resources}</R>");
-                var resourceXml = new XDocument(new XElement(ns + "Res", wrapper.Elements()));
+                var resNs = resourceNamespace is null ? ns : XNamespace.Get(resourceNamespace);
+                var resourceXml = new XDocument(new XElement(resNs + "Res", wrapper.Elements()));
                 using var resourceStream = outputZip.CreateEntry("Doc_0/DocumentRes.xml").Open();
                 await resourceStream.WriteAsync(Encoding.UTF8.GetBytes(resourceXml.ToString(SaveOptions.DisableFormatting)));
             }
@@ -508,6 +510,65 @@ public sealed class R01PageBlockTests
             Assert.Contains("Font", error.Message);
             Assert.Equal(0, output.Length);
         }
+    }
+
+    [Theory]
+    [InlineData("root")]
+    [InlineData("container")]
+    [InlineData("font")]
+    public async Task ForeignNamespaceFontCannotResolvePageBlockText(string foreignPart)
+    {
+        const string text = "<TextObject ID='501' Boundary='10 10 50 10' Font='20' Size='4'>" +
+            "<TextCode X='0' Y='4'>recoverable text</TextCode></TextObject>";
+        const string vendor = "urn:vendor";
+        var fonts = foreignPart switch
+        {
+            "container" => "<Fonts xmlns='urn:vendor'><Font ID='20' FontName='Vendor'/></Fonts>",
+            "font" => "<Fonts><Font xmlns='urn:vendor' ID='20' FontName='Vendor'/></Fonts>",
+            _ => "<Fonts><Font ID='20' FontName='Vendor'/></Fonts>"
+        };
+        var bytes = await Source(text, resources: fonts, resourceNamespace: foreignPart == "root" ? vendor : null);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(bytes));
+        Assert.Equal("recoverable text", new OfdTextExtractor().Extract(read));
+        Assert.DoesNotContain(read.Fonts, f => f.Id == "20");
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(bytes), output));
+            Assert.Contains("Font", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(Ns)]
+    [InlineData("http://www.ofdspec.org/2016")]
+    public async Task AdmittedResourceFontResolvesPageBlockText(string resourceNamespace)
+    {
+        var fonts = $"<Fonts xmlns='{resourceNamespace}'><Font ID='20' FontName='Noto Sans'/></Fonts>";
+        var bytes = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='20' Size='4'>" +
+            "<TextCode X='0' Y='4'>known font</TextCode></TextObject>", resources: fonts,
+            resourceNamespace: resourceNamespace);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(bytes));
+        Assert.Contains(read.Fonts, f => f.Id == "20" && f.FontName == "Noto Sans");
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), pdf);
+        Assert.True(pdf.Length > 0);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), svg);
+        using var html = new MemoryStream();
+        await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html);
+        Assert.Contains("known font", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("known font", Encoding.UTF8.GetString(html.ToArray()));
+        Retain(resourceNamespace.Length == 0 ? "font-resource-unqualified" :
+            resourceNamespace == Ns ? "font-resource-2009" : "font-resource-2016",
+            bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]

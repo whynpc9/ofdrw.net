@@ -147,6 +147,13 @@
 - 新增 9 个负例覆盖普通/模板 PageBlock 的缺失与未知字体、图像缺失/零/负边界、路径负边界和文本缺失边界；PDF/SVG/HTML 均在输出前拒绝，文字仍可提取。定向测试 **9/9**；修订后完整 Release 解决方案 **3331 passed、0 skipped、0 failed**，Core `netstandard2.0` 通过。正例重新生成 **12/12**。本地 `0.1.0-r01.fontboundary` 的 12 个基础包及 1 个可选 SES 包来源、独立消费者、显式 native/默认 DOCX→OFD→PDF、V1/V4 测试签章和逐页 PNG 比对通过；默认密码学验证仍为 `Unsupported`，包未发布。最初两次消费尝试分别因字体目录缺失、许可文件缺失停止；使用已有完整字体与许可目录后全链路通过，属于测试资料前置条件。
 - 本轮普通与模板 PageBlock 各 1/1 页的 144 DPI PNG 像素哈希相同，蓝色路径和 `nested text` 均可见；图像页 1/1 显示蓝色路径与红色图像；相对 DrawParam 页 1/1 显示黄色填充、蓝色边框/文本和洋红局部文本。上述四份从本轮 OFD 导出的 PDF 均在 macOS Preview 检查第 1 页。`font-boundary-final-ses-verified/files/native-v1.pdf` 和 `default-v4.pdf` 各自由本轮显式 native/默认 OFD 导出，两条 DOCX→OFD→PDF→Preview 链各检查第 1–2 页：中英文、斜体、蓝色表格底色/边框、第二页红色粗体与分页符合样例，未见缺字、裁切、重叠、重影或异常空白页。本轮四张 DOCX 页面 PNG 与既有验收哈希一致；全部 Preview 窗口关闭并登记 `20261021T1602Z` GUI 释放。结论仅覆盖实查页面，不推断外部 OFD 阅读器或任意 DOCX 的保真性。
 
+
+## 外来命名空间字体资源复审
+
+- Codex 对 `97c399c` 指出：仅凭本地名 `Font` 查找资源，会把外来命名空间的 `<Res>`、`<Fonts>` 或 `<Font>` 当作已解析字体，绕开 PageBlock 未知字体的拒绝。Reader 现在只接收无命名空间及 OFD 2009/2016 命名空间的资源根、字体容器和字体节点，并在相同命名空间查找 `FontFile`。三个外来节点位置均有拒绝回归；三个受支持的资源版本均有成功绘制回归。拒绝时原始文字仍可由 Reader 提取，PDF/SVG/HTML 输出为空。
+- 当前源码完整 Release 解决方案 **3337 passed、0 skipped、0 failed**，修复的定向回归 **6/6**，最终选中测试 **18/18**。本地 `0.1.0-r01.fontorigin` 的 12 个基础包和 1 个可选 SES 包来源与独立消费、DOCX 显式 native/默认转 OFD、四份 V1/V4 测试签章均通过；原文完整，签章前后两页 PNG 分别相同。包未发布。
+- 从本轮 OFD 导出的普通/模板 PageBlock、图片 PageBlock、相对 DrawParam PageBlock，以及三种受支持字体资源 PageBlock 共七份 PDF，各在 macOS Preview 查看第 1/1 页，并检查对应 144 DPI PNG。蓝色图形、红色图片、黄底蓝框、局部洋红文字及三份 `known font` 均可见；无缺字、裁切、重影或意外空白页。四份本轮 DOCX→显式 native/默认 OFD→PDF→Preview 产物 `native-v1`、`default-v1`、`native-v4`、`default-v4` 均逐页查看第 1–2 页；中英文、英文斜体、蓝色表格填充/边框、第二页局部红色粗体和分页符合样例。本轮 8 张 DOCX 页面 PNG 亦逐页复查。Preview 全部窗口已关闭并登记 `20261021T1632Z` GUI 释放。结论限于所列页面；外部 OFD 阅读器互操作和任意 DOCX 保真未验证。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |

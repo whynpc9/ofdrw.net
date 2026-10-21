@@ -974,15 +974,20 @@ public sealed class OfdReader : IOfdReader
     {
         if (!archive.Contains(resourcePath)) return;
         var xml = material.ReadXml(resourcePath, archive.GetBytes(resourcePath), cancellationToken);
-        var baseLocation = xml.Root?.Attribute("BaseLoc")?.Value;
-        foreach (var font in xml.Descendants().Where(node => node.Name.LocalName == "Font"))
+        var root = xml.Root;
+        if (root is null || root.Name.LocalName != "Res" ||
+            root.Name.Namespace != XNamespace.None && root.Name.NamespaceName is not (OfdConstants.Namespace or OfdConstants.StandardNamespace))
+            return;
+        var ns = root.Name.Namespace;
+        var baseLocation = root.Attribute("BaseLoc")?.Value;
+        foreach (var font in root.Elements(ns + "Fonts").SelectMany(fonts => fonts.Elements(ns + "Font")))
         {
             var id = font.Attribute("ID")?.Value;
             var name = font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value;
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name)) continue;
             fontMap[id!] = name!;
             if (package.Fonts.Any(existing => existing.Id == id)) continue;
-            var file = ReadValue(font.Elements().FirstOrDefault(node => node.Name.LocalName == "FontFile"), material, cancellationToken);
+            var file = ReadValue(font.Element(ns + "FontFile"), material, cancellationToken);
             material.ReserveReadModel(512, cancellationToken);
             var resource = new OfdFontResource
             {
