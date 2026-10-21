@@ -129,6 +129,39 @@ public sealed class OfdGoToAction : OfdAction
     public OfdBookmark? Bookmark { get; set; }
 }
 
+/// <summary>An external URI declaration. Reading or writing never opens the URI.</summary>
+public sealed class OfdUriAction : OfdAction
+{
+    public string Uri { get; set; } = string.Empty;
+    public string? Base { get; set; }
+    public string? Target { get; set; }
+}
+
+/// <summary>A reference to an attachment in the selected document; never opened automatically.</summary>
+public sealed class OfdAttachmentAction : OfdAction
+{
+    public string AttachId { get; set; } = string.Empty;
+    public bool? NewWindow { get; set; }
+}
+
+/// <summary>An audio resource action declaration; playback is outside this library.</summary>
+public sealed class OfdSoundAction : OfdAction
+{
+    public string ResourceId { get; set; } = string.Empty;
+    public int? Volume { get; set; }
+    public bool? Repeat { get; set; }
+    public bool? Synchronous { get; set; }
+}
+
+public enum OfdMovieOperator { Play, Stop, Pause, Resume }
+
+/// <summary>A video resource action declaration; playback is outside this library.</summary>
+public sealed class OfdMovieAction : OfdAction
+{
+    public string ResourceId { get; set; } = string.Empty;
+    public OfdMovieOperator? Operator { get; set; }
+}
+
 /// <summary>An unsupported action retained as a complete Action XML element.</summary>
 public sealed class OfdRawAction : OfdAction
 {

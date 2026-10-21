@@ -358,6 +358,7 @@ public sealed partial class OfdPackageWriter
         OfdDocumentEnvelope.ValidateOwnedFragments(package, material, token);
         package.SourceEnvelope?.ValidatePageOrder(package, package.Pages.OrderBy(page => page.Index).ToArray(), material, token);
         OfdNavigationXml.Validate(package, package.Pages, token, material);
+        OfdStandardXml.Validate(package, material, token);
         OfdAnnotationContract.ValidatePageSelection(package, package.Pages, material, token);
         OfdPageXmlContract.ValidateDocumentArea(package, token, material);
         foreach (var page in package.Pages) OfdPageXmlContract.ValidateForRewrite(package, page, token, material);
@@ -508,10 +509,14 @@ public sealed partial class OfdPackageWriter
         foreach (var navigation in OfdNavigationXml.Write(package, pageIds, ns, cancellationToken, material))
             OfdXmlEnvelope.Singleton(docXml.Root!, navigation.Name.LocalName, navigation);
 
+        OfdStandardXml.WriteMetadata(package, ofdXml.Root!.Element(ns + "DocBody")!.Element(ns + "DocInfo")!);
+        OfdStandardXml.WriteVersions(package, ofdXml.Root.Element(ns + "DocBody")!);
+        OfdStandardXml.WriteDocument(package, docXml.Root!);
+
         ofdXml = OfdDocumentEnvelopeWriter.Ofd(package, ofdXml, material, cancellationToken);
         docXml = OfdDocumentEnvelopeWriter.Document(package, docXml, orderedPages, pageIds, material, cancellationToken);
         BuildAnnotations(package, plan, docXml, material, cancellationToken);
-        entries[OfdConstants.OfdRootFile] = ToUtf8Bytes(ofdXml);
+        entries[OfdConstants.OfdRootFile] = ToUtf8Bytes(ofdXml, preserveWhitespace: true);
         entries[documentPath] = ToUtf8Bytes(docXml);
         return entries;
     }
@@ -1410,12 +1415,12 @@ public sealed partial class OfdPackageWriter
         return string.Join("/", segments.Reverse());
     }
 
-    private static byte[] ToUtf8Bytes(XDocument xml)
+    private static byte[] ToUtf8Bytes(XDocument xml, bool preserveWhitespace = false)
     {
         using var ms = new MemoryStream();
         using (var writer = new StreamWriter(ms, new UTF8Encoding(false), 1024, leaveOpen: true))
         {
-            xml.Save(writer, SaveOptions.OmitDuplicateNamespaces);
+            xml.Save(writer, SaveOptions.OmitDuplicateNamespaces | (preserveWhitespace ? SaveOptions.DisableFormatting : SaveOptions.None));
         }
 
         return ms.ToArray();

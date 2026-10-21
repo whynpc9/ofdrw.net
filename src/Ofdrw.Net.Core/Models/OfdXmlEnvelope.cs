@@ -187,6 +187,19 @@ internal static class OfdXmlEnvelope
     {
         if (parent == "CommonData") return name switch { "MaxUnitID" => 0, "PageArea" => 1, "PublicRes" => 2, "DocumentRes" => 3, "TemplatePage" => 4, "DefaultCS" => 5, _ => int.MaxValue };
         if (parent == "DocBody") return name switch { "DocInfo" => 0, "DocRoot" => 1, "Versions" => 2, "Signatures" => 3, _ => int.MaxValue };
+        if (parent == "DocInfo") return name switch {
+            "DocID" => 0, "Title" => 1, "Author" => 2, "Subject" => 3, "Abstract" => 4,
+            "CreationDate" => 5, "ModDate" => 6, "DocUsage" => 7, "Cover" => 8,
+            "Keywords" => 9, "Creator" => 10, "CreatorVersion" => 11, "CustomDatas" => 12,
+            _ => int.MaxValue };
+        if (parent == "Permissions") return name switch {
+            "Edit" => 0, "Annot" => 1, "Export" => 2, "Signature" => 3,
+            "Watermark" => 4, "PrintScreen" => 5, "Print" => 6, "ValidPeriod" => 7,
+            _ => int.MaxValue };
+        if (parent == "VPreferences") return name switch {
+            "PageMode" => 0, "PageLayout" => 1, "TabDisplay" => 2, "HideToolbar" => 3,
+            "HideMenubar" => 4, "HideWindowUI" => 5, "ZoomMode" => 6, "Zoom" => 6,
+            _ => int.MaxValue };
         if (parent == "PageArea") return name switch { "PhysicalBox" => 0, "ApplicationBox" => 1, "ContentBox" => 2, "BleedBox" => 3, _ => int.MaxValue };
         return name switch
     {

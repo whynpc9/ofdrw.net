@@ -47,6 +47,10 @@ internal static class OfdSerializedInventory
         S("title", metadata.Title); S("author", metadata.Author); S("subject", metadata.Subject);
         S("keywords", metadata.Keywords); S("creator", metadata.Creator);
         V("creation", metadata.CreationDate); V("modified", metadata.ModificationDate);
+        V("docUsage", metadata.DocUsage); S("cover", metadata.Cover); P(metadata.Cover);
+        S("creatorVersion", metadata.CreatorVersion);
+        Standard("customDatas", metadata.CustomDatas); Standard("permissions", package.Permissions);
+        Standard("viewingPreferences", package.ViewingPreferences); Standard("versions", package.Versions);
         Container("entries", package.PreservedEntries, package.PreservedEntries.Count);
         foreach (var entry in package.PreservedEntries) { S("entryName", entry.Key); sink.Bytes("entryBytes", entry.Value); }
         Container("fonts", package.Fonts, package.Fonts.Count);
@@ -93,6 +97,14 @@ internal static class OfdSerializedInventory
 
         void V(string role, object? value, bool identity = false) { token.ThrowIfCancellationRequested(); sink.Item(role, value, identity); }
         void S(string role, string? value) => V(role, value);
+        void Standard(string role, OfdStandardNode? value)
+        {
+            V(role, value, true);
+            if (value is null) return;
+            var xml = value.InventoryXml; S("standardXml", xml); sink.Xml(xml);
+            S("standardOriginalXml", value.OriginalXml); sink.Xml(value.OriginalXml);
+            V("standardOwner", value.DocumentOwner, true);
+        }
         void P(string? value) => sink.Path(value);
         void Object(string role, object? value)
         { if (value is null) throw new InvalidDataException("Null serialized owner: " + role); material.Structure.Node(1); V(role, value, true); }
@@ -258,6 +270,10 @@ internal static class OfdSerializedInventory
                     V("left", destination.Left); V("top", destination.Top); V("right", destination.Right); V("bottom", destination.Bottom); V("zoom", destination.Zoom); break;
                 case OfdGoToAction go: S("event", go.Event); Nav(go.Destination, depth + 1); Nav(go.Bookmark, depth + 1); break;
                 case OfdRawAction raw: S("event", raw.Event); Source(raw.Xml); break;
+                case OfdUriAction uri: S("event", uri.Event); S("uri", uri.Uri); S("base", uri.Base); S("target", uri.Target); break;
+                case OfdAttachmentAction attachment: S("event", attachment.Event); S("attachId", attachment.AttachId); V("newWindow", attachment.NewWindow); break;
+                case OfdSoundAction sound: S("event", sound.Event); S("resourceId", sound.ResourceId); V("volume", sound.Volume); V("repeat", sound.Repeat); V("synchronous", sound.Synchronous); break;
+                case OfdMovieAction movie: S("event", movie.Event); S("resourceId", movie.ResourceId); V("operator", movie.Operator); break;
                 default: throw new NotSupportedException("Unknown serialized navigation contract.");
             }
         }

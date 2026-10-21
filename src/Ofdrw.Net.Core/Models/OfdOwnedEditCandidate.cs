@@ -105,12 +105,22 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
                     Title = source.Options.Metadata.Title, Author = source.Options.Metadata.Author,
                     Subject = source.Options.Metadata.Subject, Keywords = source.Options.Metadata.Keywords,
                     Creator = source.Options.Metadata.Creator, CreationDate = source.Options.Metadata.CreationDate,
-                    ModificationDate = source.Options.Metadata.ModificationDate
+                    ModificationDate = source.Options.Metadata.ModificationDate,
+                    DocUsage = source.Options.Metadata.DocUsage, Cover = source.Options.Metadata.Cover,
+                    CreatorVersion = source.Options.Metadata.CreatorVersion
                 }
             }
         };
         Map(source.Options.FontEmbedding, copy.Options.FontEmbedding);
         Map(source, copy); Map(source.Options, copy.Options); Map(source.Options.Metadata, copy.Options.Metadata);
+        copy.Options.Metadata.CustomDatas = OfdStandardXml.Clone(source.Options.Metadata.CustomDatas, copy);
+        copy.Permissions = OfdStandardXml.Clone(source.Permissions, copy);
+        copy.ViewingPreferences = OfdStandardXml.Clone(source.ViewingPreferences, copy);
+        copy.Versions = OfdStandardXml.Clone(source.Versions, copy);
+        if (source.Options.Metadata.CustomDatas is not null) Map(source.Options.Metadata.CustomDatas, copy.Options.Metadata.CustomDatas!);
+        if (source.Permissions is not null) Map(source.Permissions, copy.Permissions!);
+        if (source.ViewingPreferences is not null) Map(source.ViewingPreferences, copy.ViewingPreferences!);
+        if (source.Versions is not null) Map(source.Versions, copy.Versions!);
         Map(source.Pages, copy.Pages); Map(source.Fonts, copy.Fonts); Map(source.Attachments, copy.Attachments);
         Map(source.CustomTags, copy.CustomTags); Map(source.PreservedEntries, copy.PreservedEntries);
         Map(source.PreservedCommonDataElements, copy.PreservedCommonDataElements);

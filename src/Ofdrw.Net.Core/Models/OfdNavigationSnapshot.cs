@@ -136,6 +136,10 @@ internal sealed class OfdNavigationSnapshot
                     if (go.Destination is not null) PushOne(go.Destination, frame.Depth);
                     break;
                 case OfdRawAction raw: Add(raw.Event); Add(raw.Xml); break;
+                case OfdUriAction uri: Add(uri.Event); Add(uri.Uri); Add(uri.Base); Add(uri.Target); break;
+                case OfdAttachmentAction attachment: Add(attachment.Event); Add(attachment.AttachId); Add(attachment.NewWindow); break;
+                case OfdSoundAction sound: Add(sound.Event); Add(sound.ResourceId); Add(sound.Volume); Add(sound.Repeat); Add(sound.Synchronous); break;
+                case OfdMovieAction movie: Add(movie.Event); Add(movie.ResourceId); Add(movie.Operator); break;
                 default: throw new NotSupportedException("Unsupported typed navigation node.");
             }
         }
