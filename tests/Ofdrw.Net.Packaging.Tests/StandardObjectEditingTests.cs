@@ -231,6 +231,37 @@ public sealed class StandardObjectEditingTests
     }
 
     [Fact]
+    public async Task DuplicateImportedVersionIds_RemainPreservedXmlOnUnchangedSave()
+    {
+        var entries = await MultiDocumentFixture.CreateEntriesAsync();
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        root.Root.Elements(ns + "DocBody").Last().Add(XElement.Parse($"<Versions xmlns='{ns}'><Version ID='v1' Index='1' BaseLoc='Doc_1/a.xml'/><Version ID='v1' Index='2' BaseLoc='Doc_1/b.xml'/></Versions>"));
+        entries["OFD.xml"] = Bytes(root);
+        using var input = MultiDocumentFixture.Zip(entries);
+        var selected = await new OfdReader().ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = 1 });
+        Assert.Null(selected.Versions);
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(selected, output);
+        var saved = Xml(MultiDocumentFixture.Unzip(output)["OFD.xml"]);
+        Assert.Equal(2, saved.Root!.Elements(ns + "DocBody").Last().Descendants(ns + "Version").Count());
+    }
+
+    [Fact]
+    public async Task EmptyImportedCustomDataName_RemainsPreservedXmlOnUnchangedSave()
+    {
+        var entries = await MultiDocumentFixture.CreateEntriesAsync();
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        root.Root.Elements(ns + "DocBody").Last().Element(ns + "DocInfo")!.Add(
+            XElement.Parse($"<CustomDatas xmlns='{ns}'><CustomData Name=''>value</CustomData></CustomDatas>"));
+        entries["OFD.xml"] = Bytes(root);
+        using var input = MultiDocumentFixture.Zip(entries);
+        var selected = await new OfdReader().ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = 1 });
+        Assert.Null(selected.Options.Metadata.CustomDatas);
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(selected, output);
+        var saved = Xml(MultiDocumentFixture.Unzip(output)["OFD.xml"]);
+        Assert.Equal("", saved.Root!.Elements(ns + "DocBody").Last().Descendants(ns + "CustomData").Single().Attribute("Name")!.Value);
+    }
+
+    [Fact]
     public async Task ImportedUriAction_DoesNotBlockUnrelatedPageDeletion()
     {
         var package = new OfdDocumentPackage();

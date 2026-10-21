@@ -349,12 +349,17 @@ public sealed class OfdVersions : OfdStandardNode
             if (source.originalLocations.TryGetValue(originals[index], out var original))
                 originalLocations.Add(copies[index], original);
     }
-    internal static bool Recognized(XElement root) => root.Elements(root.Name.Namespace + "Version").Any() &&
-        root.Elements(root.Name.Namespace + "Version").All(e =>
-        e.Attribute("ID") is XAttribute id && ValidId(id.Value) &&
-        e.Attribute("Index") is XAttribute index && int.TryParse(index.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) &&
-        e.Attribute("BaseLoc") is XAttribute path && !string.IsNullOrWhiteSpace(path.Value) &&
-        (e.Attribute("Current") is not XAttribute current || TryBoolean(current.Value).HasValue));
+    internal static bool Recognized(XElement root)
+    {
+        var versions = root.Elements(root.Name.Namespace + "Version").ToArray();
+        return versions.Length > 0 &&
+            versions.Select(e => e.Attribute("ID")?.Value).Distinct(StringComparer.Ordinal).Count() == versions.Length &&
+            versions.All(e =>
+                e.Attribute("ID") is XAttribute id && ValidId(id.Value) &&
+                e.Attribute("Index") is XAttribute index && int.TryParse(index.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) &&
+                e.Attribute("BaseLoc") is XAttribute path && !string.IsNullOrWhiteSpace(path.Value) &&
+                (e.Attribute("Current") is not XAttribute current || TryBoolean(current.Value).HasValue));
+    }
     private static bool ValidId(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return false;
@@ -378,7 +383,8 @@ internal static class OfdStandardXml
         if (info.Elements(ns + "CustomDatas").Count() == 1)
         {
             var element = info.Element(ns + "CustomDatas")!;
-            if (element.Elements(ns + "CustomData").All(e => e.Attribute("Name") is not null && !e.HasElements))
+            if (element.Elements(ns + "CustomData").All(e =>
+                e.Attribute("Name") is XAttribute name && !string.IsNullOrEmpty(name.Value) && !e.HasElements))
             {
                 var xml = OfdXmlEnvelope.Capture(element, material, token);
                 var model = new OfdCustomDatas(OfdXmlEnvelope.Parse(xml)); model.Bind(package, xml); metadata.CustomDatas = model;
