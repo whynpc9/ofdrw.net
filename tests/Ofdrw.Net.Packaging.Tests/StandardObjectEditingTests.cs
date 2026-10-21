@@ -743,6 +743,45 @@ public sealed class StandardObjectEditingTests
         Assert.Equal(2, imported.Pages.Count);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicateMediaId_WithMissingPayload_RejectsImportAndPageDeletion(bool movie)
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        var resource = Xml(entries["Doc_0/PublicRes.xml"]); var ns = resource.Root!.Name.Namespace;
+        var type = movie ? "Video" : "Audio";
+        resource.Root.Add(new XElement(ns + "MultiMedias",
+            new XElement(ns + "MultiMedia", new XAttribute("ID", "901"), new XAttribute("Type", type),
+                new XElement(ns + "MediaFile", "present.bin")),
+            new XElement(ns + "MultiMedia", new XAttribute("ID", "901"), new XAttribute("Type", type),
+                new XElement(ns + "MediaFile", "missing.bin"))));
+        entries["Doc_0/PublicRes.xml"] = Bytes(resource);
+        entries["Doc_0/Res/present.bin"] = [1, 2, 3];
+        var document = Xml(entries["Doc_0/Document.xml"]);
+        document.Root!.Add(new XElement(ns + "Actions", new XElement(ns + "Action", new XAttribute("Event", "CLICK"),
+            new XElement(ns + (movie ? "Movie" : "Sound"), new XAttribute("ResourceID", "901")))));
+        entries["Doc_0/Document.xml"] = Bytes(document);
+        using var input = MultiDocumentFixture.Zip(entries);
+        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(input));
+
+        package.DocumentEntryPath = "Doc_0/Document.xml";
+        package.PublicResourceLocation = "PublicRes.xml";
+        package.PreservedEntries["Doc_0/PublicRes.xml"] = entries["Doc_0/PublicRes.xml"];
+        package.PreservedEntries["Doc_0/Res/present.bin"] = entries["Doc_0/Res/present.bin"];
+        package.Actions = new OfdActionCollection();
+        package.Actions.Items.Add(movie
+            ? new OfdMovieAction { Event = "CLICK", ResourceId = "901" }
+            : new OfdSoundAction { Event = "CLICK", ResourceId = "901" });
+        var rejected = Assert.Throws<NotSupportedException>(() => OfdDocumentEditor.RemovePages(package, [1]));
+        Assert.Contains(movie ? "Movie action requires" : "Sound action requires", rejected.Message);
+        Assert.Equal(2, package.Pages.Count);
+    }
+
     [Fact]
     public async Task PageDeletion_PreservesLocalActionsOnlyWithClosedTargetsAndKnownXml()
     {

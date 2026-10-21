@@ -443,7 +443,7 @@ internal static class OfdNavigationXml
     private static bool MediaResource(OfdDocumentPackage package, string id, string type, OfdModelMaterialization material, CancellationToken token)
     {
         var documentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
-        var found = 0; var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var declarations = 0; var found = 0; var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var location in new[] { package.PublicResourceLocation, package.DocumentResourceLocation })
         {
             token.ThrowIfCancellationRequested(); if (string.IsNullOrWhiteSpace(location)) continue;
@@ -459,6 +459,7 @@ internal static class OfdNavigationXml
             {
                 token.ThrowIfCancellationRequested();
                 if (media.Attribute("ID")?.Value != id) continue;
+                if (++declarations > 1) return false;
                 if (containers.Length != 1 || media.Parent != containers[0] || media.Attribute("Type")?.Value != type)
                     return false;
                 var files = media.Elements(ns + "MediaFile").ToArray();
@@ -472,7 +473,7 @@ internal static class OfdNavigationXml
                 if (package.PreservedEntries.ContainsKey(resolved)) found++;
             }
         }
-        return found == 1;
+        return declarations == 1 && found == 1;
     }
     private static bool HasOpaqueLocal(XElement root)
     {
