@@ -39,7 +39,7 @@ internal static class OfdCompositeProjection
             if (element is OfdCompositeElement composite)
             {
                 if (composite.Resource is null || !active.Add(composite.Resource)) throw new InvalidDataException("Cyclic or missing composite resource.");
-                AdmitComposite(composite, material, token);
+                AdmitComposite(composite, pageBlockChild, material, token);
                 var local = Multiply(origin, composite.Transform ?? Identity());
                 var clips = new List<OfdPathElement>(inherited);
                 clips.Add(Rectangle(composite.WidthMillimeters, composite.HeightMillimeters, origin));
@@ -125,11 +125,17 @@ internal static class OfdCompositeProjection
                 { path.Transform = Multiply(origin, path.Transform ?? Identity()); path.FillRule = region.EvenOdd ? OfdFillRule.EvenOdd : OfdFillRule.NonZero; clips.Add(path); }
         }
     }
-    private static void AdmitComposite(OfdCompositeElement composite, OfdModelMaterialization material, CancellationToken token)
+    private static void AdmitComposite(OfdCompositeElement composite, bool pageBlockChild, OfdModelMaterialization material, CancellationToken token)
     {
+        if (pageBlockChild && composite.SourceXml is null)
+            throw new NotSupportedException("PageBlock composite placement has no original drawing attributes.");
         if (composite.SourceXml is { } source)
         {
             material.GuardFragmentXml(source, token); var node = OfdXmlEnvelope.Parse(source);
+            if (pageBlockChild &&
+                (!OfdBoxParser.TryParse(node.Attribute("Boundary")?.Value, out var box) || box.w <= 0 || box.h <= 0 ||
+                    !HasWellFormedScalars(node, material, token)))
+                throw new NotSupportedException("Malformed PageBlock composite placement cannot be exported.");
             if (node.Attributes().Any(a => !a.IsNamespaceDeclaration && (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("ID" or "Boundary" or "CTM" or "ResourceID" or "Visible"))) || node.Elements().Any(n => n.Name != node.Name.Namespace + "Clips") || node.Nodes().Any(n => n is XProcessingInstruction || n is XText text && !string.IsNullOrWhiteSpace(text.Value)))
                 throw new NotSupportedException("Composite opacity, drawing parameters and extensions are outside the render profile.");
         }

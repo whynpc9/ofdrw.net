@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
@@ -10,6 +11,66 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 
 public sealed class TypedGraphicRenderingTests
 {
+    [Theory]
+    [InlineData("valid", true)]
+    [InlineData("missingBoundary", false)]
+    [InlineData("zeroWidth", false)]
+    [InlineData("malformedCtm", false)]
+    public async Task PageBlockCompositePlacementAdmitsOriginalScalarsBeforeProjection(string kind, bool accepted)
+    {
+        var package = new OfdDocumentPackage { CompositeResources = new() };
+        var resource = new OfdCompositeResource { WidthMillimeters = 20, HeightMillimeters = 20 };
+        resource.Elements.Add(new OfdPathElement { WidthMillimeters = 20, HeightMillimeters = 20,
+            AbbreviatedData = "M 0 0 L 20 0 L 20 20 L 0 20 C", Fill = true, Stroke = false });
+        package.CompositeResources.Items.Add(resource);
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        page.Elements.Add(new OfdCompositeElement { Resource = resource, XMillimeters = 10,
+            YMillimeters = 10, WidthMillimeters = 20, HeightMillimeters = 20 });
+        package.Pages.Add(page);
+        using var fresh = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, fresh);
+        using var patched = new MemoryStream();
+        using (var input = new System.IO.Compression.ZipArchive(new MemoryStream(fresh.ToArray()), System.IO.Compression.ZipArchiveMode.Read))
+        using (var output = new System.IO.Compression.ZipArchive(patched, System.IO.Compression.ZipArchiveMode.Create, true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var target = output.CreateEntry(entry.FullName).Open();
+                if (!entry.FullName.EndsWith("/Pages/Page_0/Content.xml", System.StringComparison.Ordinal))
+                { source.CopyTo(target); continue; }
+                var xml = System.Xml.Linq.XDocument.Load(source);
+                var placement = xml.Descendants().Single(n => n.Name.LocalName == "CompositeObject");
+                if (kind == "missingBoundary") placement.Attribute("Boundary")!.Remove();
+                if (kind == "zeroWidth") placement.SetAttributeValue("Boundary", "10 10 0 20");
+                if (kind == "malformedCtm") placement.SetAttributeValue("CTM", "1 0 bogus 1 0 0");
+                placement.ReplaceWith(new System.Xml.Linq.XElement(placement.Name.Namespace + "PageBlock", new System.Xml.Linq.XElement(placement)));
+                xml.Save(target);
+            }
+        }
+        var ofd = patched.ToArray();
+        var loaded = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.IsType<OfdCompositeElement>(Assert.Single(Assert.IsType<OfdRawElement>(Assert.Single(loaded.Pages[0].Elements)).PageBlockChildren!));
+        if (accepted)
+        {
+            using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+            using var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray());
+            Assert.Contains(parsed.GetPage(1).Operations, op => op.Operator == "f");
+            using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+            Assert.Contains("<path", Encoding.UTF8.GetString(svg.ToArray()));
+            if (System.Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } dir)
+            {
+                Directory.CreateDirectory(dir);
+                File.WriteAllBytes(Path.Combine(dir, "pageblock-composite-valid.ofd"), ofd);
+                File.WriteAllBytes(Path.Combine(dir, "pageblock-composite-valid.pdf"), pdf.ToArray());
+            }
+        }
+        else
+        {
+            await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+            await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+            await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        }
+    }
+
     [Fact]
     public async Task SharedNestedVectorPlacementsDrawTwiceWithIntersectingClips()
     {
