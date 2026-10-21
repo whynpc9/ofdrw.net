@@ -312,12 +312,18 @@ internal static class OfdAttachmentPhysicalCleaner
     private static bool IsControlReference(XElement element, string? attributeName) =>
         attributeName == "BaseLoc" && element.Name.LocalName is ("Page" or "TemplatePage" or "Version" or "Signature") ||
         attributeName == "FileLoc" && element.Name.LocalName == "PageAnnot" ||
+        attributeName == "FileLoc" && element.Name == element.Name.Namespace + "CustomTag" &&
+            element.Parent?.Name == element.Name.Namespace + "CustomTags" && element.Document?.Root == element.Parent ||
         attributeName is null && element.Name.LocalName is
             ("DocRoot" or "PublicRes" or "DocumentRes" or "PageRes" or "Signatures" or
              "Attachments" or "Annotations" or "CustomTags" or "Extensions") ||
         attributeName is null && element.Name.LocalName == "FileLoc" &&
             element.Parent?.Name == element.Name.Namespace + "Page" &&
             element.Parent.Parent?.Name == element.Name.Namespace + "Annotations" &&
+            element.Document?.Root == element.Parent.Parent ||
+        attributeName is null && element.Name == element.Name.Namespace + "FileLoc" &&
+            element.Parent?.Name == element.Name.Namespace + "CustomTag" &&
+            element.Parent.Parent?.Name == element.Name.Namespace + "CustomTags" &&
             element.Document?.Root == element.Parent.Parent;
 
     private static void CheckScalar(string entry, XElement element, string value, bool pathBearing, bool controlReference,

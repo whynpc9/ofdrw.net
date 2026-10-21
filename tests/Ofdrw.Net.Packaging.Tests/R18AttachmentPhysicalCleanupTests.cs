@@ -276,6 +276,32 @@ public sealed class R18AttachmentPhysicalCleanupTests
         await RefusesWithoutOutput(package, "opaque binary entry ownership");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RetainedBinaryCannotAlsoOwnCustomTagDetailFile(bool attributeLocation)
+    {
+        var entries = Entries(Seed());
+        var descriptor = XDocument.Parse(Encoding.UTF8.GetString(entries["Doc_0/Metadata/List.xml"]));
+        descriptor.Root!.Add(new XElement(XName.Get("Attachment", Ns), new XAttribute("ID", "8"),
+            new XAttribute("Name", "custom.bin"),
+            new XElement(XName.Get("FileLoc", Ns), "../Extras/custom.bin")));
+        entries["Doc_0/Metadata/List.xml"] = Utf8(descriptor.ToString(SaveOptions.DisableFormatting));
+        entries["Doc_0/Extras/custom.bin"] = [4, 5, 6];
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</Document>", "<CustomTags>Metadata/CustomTags.xml</CustomTags></Document>", StringComparison.Ordinal));
+        var tag = new XElement(XName.Get("CustomTag", Ns), new XAttribute("ID", "9"),
+            new XAttribute("NameSpace", "urn:unknown"));
+        if (attributeLocation) tag.SetAttributeValue("FileLoc", "../Extras/custom.bin");
+        else tag.Add(new XElement(XName.Get("FileLoc", Ns), "../Extras/custom.bin"));
+        entries["Doc_0/Metadata/CustomTags.xml"] = Utf8(new XElement(XName.Get("CustomTags", Ns), tag)
+            .ToString(SaveOptions.DisableFormatting));
+
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "opaque binary entry ownership");
+    }
+
     [Fact]
     public async Task FakeOfdCoverCannotAuthenticateOpaqueArchiveBytes()
     {
