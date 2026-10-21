@@ -623,6 +623,34 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task WhitespaceAroundSignaturePathCannotHideAttachmentAlias()
+    {
+        var entries = Entries(Seed());
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot><Signatures>Doc_0/Signs/Signatures.xml</Signatures></DocBody></OFD>");
+        entries["Doc_0/Signs/Signatures.xml"] = Utf8($"<Signatures xmlns='{Ns}'><Signature BaseLoc='sig/Signature.xml'/></Signatures>");
+        entries["Doc_0/Signs/sig/Signature.xml"] = Utf8($"<Signature xmlns='{Ns}'><SignedValue> ../../Payload/original.bin </SignedValue></Signature>");
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "surrounding whitespace");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProcessingInstructionCannotHideAttachmentReference(bool documentLevel)
+    {
+        var entries = Entries(Seed());
+        const string instruction = "<?xml-stylesheet href='../Payload/original.bin'?>";
+        var document = Encoding.UTF8.GetString(entries["Doc_0/Document.xml"]);
+        entries["Doc_0/Document.xml"] = Utf8(documentLevel
+            ? instruction + document
+            : document.Replace("</Document>", instruction + "</Document>", StringComparison.Ordinal));
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "processing instruction reference closure");
+    }
+
+    [Fact]
     public async Task ImportedSealBaseLocElementIsScannedWhileInvalidatingSignature()
     {
         var entries = Entries(Seed());

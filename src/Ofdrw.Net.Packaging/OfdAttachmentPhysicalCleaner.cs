@@ -149,6 +149,8 @@ internal static class OfdAttachmentPhysicalCleaner
             try { xml = material.ReadXml(entry.Key, entry.Value, token); }
             catch (XmlException exception) { throw new NotSupportedException("Physical attachment removal cannot inspect XML-looking content: " + entry.Key, exception); }
             if (xml.Root is null) throw new NotSupportedException("Physical attachment removal cannot inspect empty XML content.");
+            if (xml.DescendantNodes().OfType<XProcessingInstruction>().Any())
+                throw new NotSupportedException("Physical attachment removal cannot prove a processing instruction reference closure: " + entry.Key);
             var root = xml.Root;
             if (root.Name.NamespaceName != OfdConstants.Namespace && root.Name.NamespaceName != OfdConstants.StandardNamespace)
                 throw new NotSupportedException("Physical attachment removal cannot prove an extension XML reference closure: " + entry.Key);
@@ -243,6 +245,8 @@ internal static class OfdAttachmentPhysicalCleaner
         // metadata values may contain those characters. Resolve every ancestor
         // BaseLoc explicitly for resource and nested annotation/signature paths.
         if (string.IsNullOrWhiteSpace(value)) return;
+        if (pathBearing && !string.Equals(value, value.Trim(), StringComparison.Ordinal))
+            throw new NotSupportedException("Physical attachment removal cannot prove a path with surrounding whitespace.");
         if (pathBearing && ContainsAmbiguousPathSyntax(value))
             throw new NotSupportedException("Physical attachment removal cannot prove an encoded or backslash XML reference.");
         material.ChargeCopy(256L + 4L * entry.Length, token);
