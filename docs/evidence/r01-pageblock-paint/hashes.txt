@@ -204,3 +204,20 @@ e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/road
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r12-combined-ses/files/pages/native-v1/page-2.png
 e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/r12-combined-ses/files/pages/default-v4/page-1.png
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r12-combined-ses/files/pages/default-v4/page-2.png
+
+# Signed PageBlock paint-failure marker review fix, local source outputs
+6a4bdcc24c6e563bcc14020e81d9ab4193253fef176ac3a485c6006718e2319c  artifacts/roadmap-v12/R01/paint-marker-focused.log
+2f9e0ac49d4df0c4f37cb02b725b920bb9db92149017708598827f24d1a554fa  artifacts/roadmap-v12/R01/paint-marker-full.log
+a2155c894f3d27e3893c5072f81217886d430314fe376bd2ea9420fa0e84473b  artifacts/roadmap-v12/R01/paint-marker-ses.log
+62e4df9bcbc45b42059f64c4d51f10bf5c137f727dc7ed39608b6b4b16add190  artifacts/roadmap-v12/R01/paint-marker-ses/files/package-manifest.json
+2bd63ef69e8e4fa3db9cc53d3dba77fe5dda2e1c923609092bc76f4f02f509ba  artifacts/roadmap-v12/R01/paint-marker-ses/files/functional.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/paint-marker-ses/files/rendered-pages.json
+35ab98792c61788cd4eb4e5ea82d5c68cb4b15b6a1df8b3839048c8ec25386ca  artifacts/roadmap-v12/R01/paint-marker-ses/sdk-output/package-manifest.json
+d8f9f551bd88b05ebd73e282095caba77d2c871ca9e91a03961de55a31a9bf90  artifacts/roadmap-v12/R01/paint-marker-ses/files/native-v1.ofd
+be279921417fdea918da941d214dded0cc896982e48480a4326a973a830893fd  artifacts/roadmap-v12/R01/paint-marker-ses/files/native-v1.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/paint-marker-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/paint-marker-ses/files/pages/native-v1/page-2.png
+ad958d783610701c29880227a1bdb4cad23d2da7a5a77467aa80570e1bf4a287  artifacts/roadmap-v12/R01/paint-marker-ses/files/default-v4.ofd
+bbe18f3e265aeaa655e62abd011e6d9d92409b1c18bb0e2a88f93ce7675db10b  artifacts/roadmap-v12/R01/paint-marker-ses/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/paint-marker-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/paint-marker-ses/files/pages/default-v4/page-2.png

@@ -12,7 +12,7 @@ internal static class OfdRenderPreflight
 
     internal static bool IsPaintFailure(Exception exception) => exception.Data.Contains(PaintFailureKey);
 
-    private static NotSupportedException PaintFailure(string message)
+    internal static NotSupportedException PaintFailure(string message)
     {
         var exception = new NotSupportedException(message);
         exception.Data[PaintFailureKey] = true;

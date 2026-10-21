@@ -52,6 +52,8 @@ internal static class OfdCompositeProjection
             if (element is OfdRawElement { LocalName: "CompositeObject" }) throw new NotSupportedException("Unresolved or opaque composite placement cannot be exported.");
             if (compositeChild && element is not (OfdTextElement or OfdImageElement or OfdPathElement))
                 throw new NotSupportedException("Opaque composite children cannot be exported.");
+            if (pageBlockChild && element.RenderPaintError is { Length: > 0 } paintError)
+                throw OfdRenderPreflight.PaintFailure(paintError);
             var source = element switch { OfdTextElement t => t.SourceXml, OfdImageElement i => i.SourceXml, OfdPathElement p => p.SourceXml, _ => null };
             if (pageBlockChild && element.RenderSourceXml is { } resolvedSource) source = resolvedSource;
             if ((compositeChild || pageBlockChild) && source is not null)

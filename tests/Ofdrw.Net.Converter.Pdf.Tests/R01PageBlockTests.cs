@@ -189,6 +189,21 @@ public sealed class R01PageBlockTests
     }
 
     [Fact]
+    public async Task InvalidPageBlockPaintInSealFailsInsteadOfDroppingAppearance()
+    {
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor ColorSpace='999' Value='0 0 255'/>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var seal = await Source(body);
+        var outer = await ImageIoTests.WithSeals([seal], pageCount: 1);
+        using var pdf = new MemoryStream();
+        var failure = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(outer), pdf));
+        Assert.Contains("ColorSpace", failure.Message);
+        Assert.Equal(0, pdf.Length);
+    }
+
+    [Fact]
     public async Task StrokedScaledTextUsesInheritedPaintAndKeepsLogicalText()
     {
         var resources = "<ColorSpaces><ColorSpace ID='20' Type='RGB'><Palette><CV>255 0 0</CV></Palette></ColorSpace></ColorSpaces>" +
