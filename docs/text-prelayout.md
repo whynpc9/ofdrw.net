@@ -44,9 +44,10 @@ after break selection. Prelayout rejects
 other script tags; direct single-run shaping remains caller-analyzed and has no
 paragraph bidi or word-breaking contract. Format controls, variation selectors,
 and variable/color/CFF fonts fail explicitly.
-The bounded Han break profile keeps common closing punctuation with the preceding
-character, opening punctuation with the following character, and no-break spaces
-attached on both sides; it does not claim full Unicode line-breaking behavior.
+The bounded Han break profile permits a break before a Han ideograph after Latin
+text, keeps common closing punctuation with the preceding character, opening
+punctuation with the following character, and no-break spaces attached on both
+sides; it does not claim full Unicode line-breaking behavior.
 
 At a soft wrap, trailing breakable spaces stay in the source-addressed shaped
 run and its reported total advance. Fit and overflow checks use the visible

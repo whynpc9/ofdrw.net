@@ -369,9 +369,9 @@ public sealed class TextPrelayoutEngine
             var current = elements[i];
             if (current.After == end) { yield return end; continue; }
             var next = elements[i + 1].Scalar;
-            if (IsNoBreakSpace(next) || IsNoStartPunctuation(next)) continue;
-            if (IsBreakableWhitespace(current.Last) ||
-                IsCjk(current.Scalar) && !IsOpeningPunctuation(current.Scalar))
+            if (IsNoBreakSpace(current.Scalar) || IsNoBreakSpace(next) ||
+                IsNoStartPunctuation(next) || IsOpeningPunctuation(current.Scalar)) continue;
+            if (IsBreakableWhitespace(current.Last) || IsCjk(current.Scalar) || IsHan(next))
                 yield return current.After;
         }
     }
@@ -390,8 +390,11 @@ public sealed class TextPrelayoutEngine
         scalar is '（' or '［' or '｛' or '《' or '「' or '『' or '【' or '〖' or '〘' or '〚' or
             '(' or '[' or '{';
 
-    private static bool IsCjk(int scalar) => scalar is >= 0x3000 and <= 0x9fff or
-        >= 0xac00 and <= 0xd7af or >= 0xf900 and <= 0xfaff or
+    private static bool IsCjk(int scalar) => scalar is >= 0x3000 and <= 0x33ff or
+        >= 0xac00 and <= 0xd7af || IsHan(scalar);
+
+    private static bool IsHan(int scalar) => scalar is >= 0x3400 and <= 0x9fff or
+        >= 0xf900 and <= 0xfaff or
         >= 0x20000 and <= 0x2a6df or >= 0x2a700 and <= 0x2ee5f or
         >= 0x2f800 and <= 0x2fa1f or >= 0x30000 and <= 0x3347f;
 

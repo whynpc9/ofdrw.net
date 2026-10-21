@@ -303,6 +303,21 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public void MixedLatinHanCanBreakImmediatelyBeforeIdeograph()
+    {
+        var face = new TextFontFace("WenKai", File.ReadAllBytes(Font("LXGWWenKai-Regular.ttf")));
+        var engine = HarfBuzzTextPrelayout.Create();
+        TextPrelayoutResult Layout(string text, double width) => engine.Layout(
+            new TextPrelayoutRequest(text, new[] { face }, 4, width, script: "Hani", language: "zh"));
+        var width = Math.Max(Layout("A", 100).WidthMillimeters,
+            Layout("中", 100).WidthMillimeters) + 0.01;
+        Assert.True(Layout("A中", 100).WidthMillimeters > width);
+        var result = Layout("A中", width);
+        Assert.Equal(new[] { "A", "中" }, result.Lines.Select(line => line.ShapedRun.Request.Text));
+        Assert.False(result.Overflows);
+    }
+
+    [Fact]
     public void UnsupportedCmapFormatHasStructuredFontProfileFailure()
     {
         var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));
