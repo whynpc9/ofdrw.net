@@ -10,6 +10,10 @@ namespace Ofdrw.Net.Signatures.SesInterop;
 internal static class SesSignatureInput
 {
     internal static DateTime Validate(byte[] xml, string property, bool allowJavaLocalTime = false)
+        => Validate(xml, property, allowJavaLocalTime, out _);
+
+    internal static DateTime Validate(byte[] xml, string property, bool allowJavaLocalTime,
+        out bool hasUtcTime)
     {
         if (xml is null) throw new ArgumentNullException(nameof(xml));
         if (property is null) throw new ArgumentNullException(nameof(property));
@@ -41,8 +45,9 @@ internal static class SesSignatureInput
         if (Unique("SignatureMethod", infos[0]).Value != SesTestCrypto.Algorithm)
             throw new InvalidDataException("Expected SM2-with-SM3 method.");
         var text = Unique("SignatureDateTime", infos[0]).Value;
-        if (!DateTime.TryParseExact(text, "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var time))
+        hasUtcTime = DateTime.TryParseExact(text, "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var time);
+        if (!hasUtcTime)
         {
             // Java OFDRW writes a timezone-less local wall clock in Signature.xml.
             // Its value is a signed assertion, not a UTC timestamp. Use the current UTC

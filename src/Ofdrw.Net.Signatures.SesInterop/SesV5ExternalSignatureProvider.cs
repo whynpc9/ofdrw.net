@@ -13,6 +13,8 @@ public sealed class SesV5ExternalSignatureProvider : IOfdSignatureProvider
 {
     private readonly byte[] _signerCertificate;
     private readonly byte[] _sealDer;
+    private readonly DateTime _validFrom;
+    private readonly DateTime _validUntil;
     private readonly ISesExternalSm2Signer _signer;
     private readonly Func<byte[], CancellationToken, Task<byte[]?>>? _timestampHook;
 
@@ -37,6 +39,8 @@ public sealed class SesV5ExternalSignatureProvider : IOfdSignatureProvider
             throw new InvalidDataException("V5 seal maker signature is invalid.");
         _signerCertificate = (byte[])signerCertificateDer.Clone();
         _sealDer = (byte[])sealDer.Clone();
+        _validFrom = seal.ValidFrom;
+        _validUntil = seal.ValidUntil;
         _timestampHook = timestampHook;
     }
 
@@ -59,6 +63,8 @@ public sealed class SesV5ExternalSignatureProvider : IOfdSignatureProvider
     {
         cancellationToken.ThrowIfCancellationRequested();
         var time = SesSignatureInput.Validate(signatureXml, propertyInformation, allowJavaLocalTime: true);
+        if (time < _validFrom || time > _validUntil)
+            throw new InvalidDataException("V5 signature time is outside the seal validity interval.");
         var tbs = new DerSequence(new DerInteger(5), SesDer.Read(_sealDer),
             new DerGeneralizedTime(time), new DerBitString(SesTestProfile.Hash(signatureXml)),
             new DerIA5String(propertyInformation));

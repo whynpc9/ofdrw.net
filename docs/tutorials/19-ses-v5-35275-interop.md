@@ -27,7 +27,7 @@ var pinned = new SesV5PinnedVerifier(signerCertificate, makerCertificate);
 var report = await new OfdSignatureVerifier(new[] { pinned }).VerifyAsync(signedOfd);
 ```
 
-V5 的受验子集要求完整证书授权列表、无额外印章扩展或印章时间戳。验签检查文档 `Signature.xml` 的原始字节摘要、包内属性路径、TBS 时间是否落在印章声明的有效区间、签名者证书 pin、印章制作者证书 pin、授权列表、印章签名与文档签名。对 Java OFDRW 的无时区 `SignatureDateTime` 仅验证格式，不推断其 UTC 偏移，也不要求它与独立 TBS 时间相等。无法解析的结构、算法、扩展或证书不尝试替代 profile。签名值的外层时间戳在无 TSA 验证器时使显式 V5 验签返回无效；字段读取仍可观察原始 token。
+V5 的受验子集要求完整证书授权列表、无额外印章扩展或印章时间戳。验签检查文档 `Signature.xml` 的原始字节摘要、包内属性路径、TBS 时间是否落在印章声明的有效区间、签名者证书 pin、印章制作者证书 pin、授权列表、印章签名与文档签名。带 `Z` 的 UTC `SignatureDateTime` 必须与已签 TBS 时间一致；对 Java OFDRW 的无时区格式只验证格式，不推断其 UTC 偏移，也不要求它与独立 TBS 时间相等。签名入口在调用外部签名操作前检查所用时间落入印章有效区间。无法解析的结构、算法、扩展或证书不尝试替代 profile。签名值的外层时间戳在无 TSA 验证器时使显式 V5 验签返回无效；字段读取仍可观察原始 token。
 
 ## GB/T 35275 的受验子集
 

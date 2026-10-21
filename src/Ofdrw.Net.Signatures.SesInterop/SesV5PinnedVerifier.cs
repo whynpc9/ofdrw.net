@@ -52,7 +52,8 @@ public sealed class SesV5PinnedVerifier : IOfdSignedValueVerifier
 
     private bool Verify(byte[] xml, byte[] signedValue, string property)
     {
-        _ = SesSignatureInput.Validate(xml, property, allowJavaLocalTime: true);
+        var xmlTime = SesSignatureInput.Validate(xml, property, allowJavaLocalTime: true,
+            out var hasUtcTime);
         var parsed = SesSignedValueReader.Parse(signedValue);
         if (parsed.Version != SesVersion.V5 || parsed.Timestamp is not null ||
             parsed.SignatureAlgorithm != SignatureMethod || parsed.PropertyInformation != property ||
@@ -61,6 +62,7 @@ public sealed class SesV5PinnedVerifier : IOfdSignedValueVerifier
         var tbs = SesDer.Sequence(SesDer.Read(parsed.ToBeSignedDer), 5);
         if (tbs[2].ToAsn1Object() is not Asn1GeneralizedTime signedTimeField) return false;
         var signedTime = signedTimeField.ToDateTime().ToUniversalTime();
+        if (hasUtcTime && signedTime != xmlTime) return false;
         var seal = SesV5Seal.Read(parsed.SealDer);
         if (!SesTestCrypto.Equal(seal.MakerCertificate, _makerCertificate) ||
             !seal.Authorizes(_signerCertificate) || signedTime < seal.ValidFrom || signedTime > seal.ValidUntil)

@@ -28,6 +28,15 @@ public sealed class SesV5AndGbtTests
         Assert.Equal(SesVersion.V5, SesSignedValueReader.Parse(value).Version);
         var verifier = new SesV5PinnedVerifier(signer.CertificateDer, maker.CertificateDer);
         Assert.True(await verifier.VerifyAsync(Xml, value, Property));
+        var outer = SesDer.Sequence(SesDer.Read(value), 4);
+        var originalTbs = SesDer.Sequence(outer[0], 5);
+        var differentTimeTbs = new DerSequence(originalTbs[0], originalTbs[1],
+            new DerGeneralizedTime(new DateTime(2026, 10, 21, 12, 0, 1, DateTimeKind.Utc)),
+            originalTbs[3], originalTbs[4]);
+        var differentTimeValue = new DerSequence(differentTimeTbs, outer[1], outer[2],
+            new DerBitString(SesTestCrypto.Sign(differentTimeTbs.GetEncoded("DER"), signer.PrivateKey)))
+            .GetEncoded("DER");
+        Assert.False(await verifier.VerifyAsync(Xml, differentTimeValue, Property));
         Assert.False(await new SesV5PinnedVerifier(SesTestIdentity.Generate().CertificateDer, maker.CertificateDer)
             .VerifyAsync(Xml, value, Property));
         Assert.False(await new SesV5PinnedVerifier(signer.CertificateDer, SesTestIdentity.Generate().CertificateDer)
@@ -45,6 +54,18 @@ public sealed class SesV5AndGbtTests
             signer.CertificateDer, corruptedSeal, new Signer(signer)));
         await Assert.ThrowsAsync<InvalidDataException>(() =>
             new SesV5ExternalSignatureProvider(signer.CertificateDer, seal, new Signer(maker)).SignAsync(Xml, Property));
+        var expiredSigner = new Signer(signer);
+        var expiredProvider = new SesV5ExternalSignatureProvider(signer.CertificateDer,
+            Seal(maker, signer.CertificateDer, validUntil: new DateTime(2025, 1, 1, 0, 0, 0,
+                DateTimeKind.Utc)), expiredSigner);
+        await Assert.ThrowsAsync<InvalidDataException>(() => expiredProvider.SignAsync(Xml, Property));
+        Assert.Equal(0, expiredSigner.Calls);
+        var futureSigner = new Signer(signer);
+        var futureProvider = new SesV5ExternalSignatureProvider(signer.CertificateDer,
+            Seal(maker, signer.CertificateDer, validFrom: new DateTime(2027, 1, 1, 0, 0, 0,
+                DateTimeKind.Utc)), futureSigner);
+        await Assert.ThrowsAsync<InvalidDataException>(() => futureProvider.SignAsync(Xml, Property));
+        Assert.Equal(0, futureSigner.Calls);
 
         byte[]? seenSignature = null;
         var withTimestamp = new SesV5ExternalSignatureProvider(signer.CertificateDer, seal, new Signer(signer),
@@ -122,19 +143,27 @@ public sealed class SesV5AndGbtTests
 
     private sealed class Signer(SesTestIdentity identity) : ISesExternalSm2Signer
     {
+        public int Calls { get; private set; }
         public Task<byte[]> SignAsync(byte[] data, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            Calls++;
             return Task.FromResult(SesTestCrypto.Sign(data, identity.PrivateKey));
         }
     }
 
-    private static byte[] Seal(SesTestIdentity maker, byte[] authorizedSignerCertificate)
+    private static byte[] Seal(SesTestIdentity maker, byte[] authorizedSignerCertificate,
+        DateTime? validFrom = null, DateTime? validUntil = null)
     {
         var v4Info = SesDer.Sequence(SesTestProfile.SealInfo(SesVersion.V4, authorizedSignerCertificate), 4);
+        var originalProperties = SesDer.Sequence(v4Info[2], 7);
+        var properties = new DerSequence(originalProperties[0], originalProperties[1],
+            originalProperties[2], originalProperties[3], originalProperties[4],
+            new DerGeneralizedTime(validFrom ?? SesTestProfile.Begin),
+            new DerGeneralizedTime(validUntil ?? SesTestProfile.End));
         var info = new DerSequence(
             new DerSequence(new DerIA5String("ES"), new DerInteger(5), new DerIA5String("Ofdrw.Net.external-test")),
-            v4Info[1], v4Info[2], v4Info[3]);
+            v4Info[1], properties, v4Info[3]);
         return new DerSequence(info, new DerOctetString(maker.CertificateDer),
             new DerObjectIdentifier(SesTestCrypto.Algorithm),
             new DerBitString(SesTestCrypto.Sign(info.GetEncoded("DER"), maker.PrivateKey))).GetEncoded("DER");
