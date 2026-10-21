@@ -26,7 +26,7 @@ public sealed class R01PageBlockTests
         File.WriteAllBytes(Path.Combine(dir, name + ".html"), html);
     }
 
-    private static async Task<byte[]> Source(string body, bool template = false, string? resources = null, bool font = false)
+    private static async Task<byte[]> Source(string body, bool template = false, string? resources = null, bool font = false, bool image = false)
     {
         var package = new OfdDocumentPackage();
         if (font)
@@ -85,6 +85,13 @@ public sealed class R01PageBlockTests
                 var resourceXml = new XDocument(new XElement(ns + "Res", wrapper.Elements()));
                 using var resourceStream = outputZip.CreateEntry("Doc_0/DocumentRes.xml").Open();
                 await resourceStream.WriteAsync(Encoding.UTF8.GetBytes(resourceXml.ToString(SaveOptions.DisableFormatting)));
+            }
+            if (image)
+            {
+                using var pixel = new Image<Rgba32>(1, 1);
+                using var imageData = new MemoryStream(); await pixel.SaveAsPngAsync(imageData);
+                using var imageStream = outputZip.CreateEntry("Doc_0/image.png").Open();
+                await imageStream.WriteAsync(imageData.ToArray());
             }
         }
         return revised.ToArray();
@@ -686,6 +693,81 @@ public sealed class R01PageBlockTests
         using var html = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
         Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
+    [InlineData("PathObject", "Fill='bogus'", false)]
+    [InlineData("PathObject", "CTM='bogus'", false)]
+    [InlineData("PathObject", "LineWidth='bogus'", false)]
+    [InlineData("PathObject", "Stroke='2'", false)]
+    [InlineData("PathObject", "Visible='bogus'", false)]
+    [InlineData("PathObject", "Boundary='10 10 20 20 5'", false)]
+    [InlineData("ImageObject", "Alpha='bogus'", false)]
+    [InlineData("ImageObject", "Alpha='300'", false)]
+    [InlineData("TextObject", "Size='bogus'", true)]
+    [InlineData("TextObject", "Italic='bogus'", true)]
+    [InlineData("TextObject", "Weight='bogus'", true)]
+    public async Task MalformedKnownPageBlockAttributesFailBeforeReaderDefaults(
+        string kind, string malformedAttribute, bool font)
+    {
+        var content = kind switch
+        {
+            "PathObject" => "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData>",
+            "TextObject" => "<TextCode X='0' Y='4'>original text</TextCode>",
+            _ => ""
+        };
+        var extra = kind == "TextObject" ? "Font='10'" : kind == "ImageObject" ? "ResourceID='99'" : "Fill='true'";
+        // A malformed Fill replaces the valid default instead of duplicating it.
+        if (malformedAttribute.StartsWith("Fill=", StringComparison.Ordinal)) extra = "";
+        var boundary = malformedAttribute.StartsWith("Boundary=", StringComparison.Ordinal)
+            ? malformedAttribute : "Boundary='10 10 20 20'";
+        var attribute = malformedAttribute.StartsWith("Boundary=", StringComparison.Ordinal) ? "" : malformedAttribute;
+        var body = $"<{kind} ID='501' {boundary} {extra} {attribute}>{content}</{kind}>";
+        var resources = kind == "ImageObject"
+            ? "<MultiMedias><MultiMedia ID='99' Type='Image' Format='PNG'><MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>"
+            : null;
+        var bytes = await Source(body, resources: resources, font: font, image: kind == "ImageObject");
+        if (kind == "TextObject")
+        {
+            var imported = await new OfdReader().ReadAsync(new MemoryStream(bytes));
+            Assert.Equal("original text", new OfdTextExtractor().Extract(imported));
+        }
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(bytes), output));
+            Assert.Contains("Malformed PageBlock", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("0 0", true)]
+    [InlineData("1 2", false)]
+    public async Task PageBlockClipStartMustPreserveRenderedGeometry(string start, bool supported)
+    {
+        var body = $"<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            $"<Clips><Clip><Area Start='{start}'><Path><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></Path></Area></Clip></Clips>" +
+            "<FillColor Value='255 0 0'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var bytes = await Source(body);
+        using var pdf = new MemoryStream();
+        if (supported)
+        {
+            await new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), pdf);
+            Assert.True(pdf.Length > 0);
+        }
+        else
+        {
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() =>
+                new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), pdf));
+            Assert.Contains("Malformed PageBlock", error.Message);
+            Assert.Equal(0, pdf.Length);
+        }
     }
 
     [Theory]

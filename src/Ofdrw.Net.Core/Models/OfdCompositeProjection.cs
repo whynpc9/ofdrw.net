@@ -54,19 +54,44 @@ internal static class OfdCompositeProjection
                 throw new NotSupportedException("Opaque composite children cannot be exported.");
             var source = element switch { OfdTextElement t => t.SourceXml, OfdImageElement i => i.SourceXml, OfdPathElement p => p.SourceXml, _ => null };
             if (pageBlockChild && element.RenderSourceXml is { } resolvedSource) source = resolvedSource;
+            string? scalarError = null;
             // This admission is for rendering. Keep a Reader paint failure on
             // the projected leaf so text extraction can still read TextCode;
             // every renderer rejects the leaf in OfdRenderPreflight.
             if ((compositeChild || pageBlockChild) && source is not null &&
                 element.RenderPaintError is not { Length: > 0 })
             {
-                material.GuardFragmentXml(source, token); var node = OfdXmlEnvelope.Parse(source);
-                if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node) || node.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a)))
-                    throw new NotSupportedException("Unsupported PageBlock or composite child style cannot be exported.");
+                // Paint normalization can replace the source XML, and Reader
+                // applies defaults to malformed scalar attributes. Admit the
+                // original lexemes before checking the normalized render XML.
+                var original = element switch { OfdTextElement t => t.SourceXml, OfdImageElement i => i.SourceXml, OfdPathElement p => p.SourceXml, _ => null };
+                if (original is not null)
+                {
+                    material.GuardFragmentXml(original, token);
+                    if (!HasWellFormedScalars(OfdXmlEnvelope.Parse(original)))
+                        scalarError = "Malformed PageBlock or composite child attribute cannot be exported.";
+                }
+                if (scalarError is null)
+                {
+                    material.GuardFragmentXml(source, token); var node = OfdXmlEnvelope.Parse(source);
+                    if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node) || node.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a)))
+                        throw new NotSupportedException("Unsupported PageBlock or composite child style cannot be exported.");
+                }
             }
-            if (!compositeChild) { result.Add(element); return; }
-            var renderSource = element is OfdTextElement sourceText ? OfdTextRenderProjection.Create(sourceText, material, token) : element;
+            if (!compositeChild)
+            {
+                if (scalarError is null) result.Add(element);
+                else
+                {
+                    var rejected = OfdModelCloner.CloneElement(element, clonePayloads: false, material: material, cancellationToken: token);
+                    rejected.RenderPaintError = scalarError; result.Add(rejected);
+                }
+                return;
+            }
+            var renderSource = scalarError is null && element is OfdTextElement sourceText
+                ? OfdTextRenderProjection.Create(sourceText, material, token) : element;
             var projected = OfdModelCloner.CloneElement(renderSource, clonePayloads: false, material: material, cancellationToken: token);
+            if (scalarError is not null) projected.RenderPaintError = scalarError;
             var inner = element switch { OfdTextElement t => t.Transform, OfdImageElement i => i.Transform ?? new[] { i.WidthMillimeters, 0, 0, i.HeightMillimeters, 0, 0 }, OfdPathElement p => p.Transform, _ => null } ?? Identity();
             var transformed = Multiply(origin, inner);
             var clipsForLeaf = inherited.Select(p => new OfdPathElement { AbbreviatedData = p.AbbreviatedData, Transform = p.Transform, FillRule = p.FillRule, Fill = true, Stroke = false }).ToList(); AddClips(element, origin, clipsForLeaf);
@@ -81,7 +106,7 @@ internal static class OfdCompositeProjection
             projected.HeightMillimeters = Math.Abs(origin[1]) * element.WidthMillimeters + Math.Abs(origin[3]) * element.HeightMillimeters;
             material.StoreMatrix(transformed);
             if (projected is OfdTextElement text) { text.Transform = transformed; text.SourceXml = null; }
-            if (projected is OfdPathElement path) { OfdPathStyle.CaptureProjection((OfdPathElement)element, path); path.Transform = transformed; path.SourceXml = null; }
+            if (projected is OfdPathElement path) { if (scalarError is null) OfdPathStyle.CaptureProjection((OfdPathElement)element, path); path.Transform = transformed; path.SourceXml = null; }
             if (projected is OfdImageElement image) { image.Transform = transformed; image.SourceXml = null; }
             projected.ClipOwnership.Value = projected.ClipOwnership.Original = null; projected.ClipOwnership.Baseline = null;
             projected.ClippingXml = Encode(clipsForLeaf, material, token); result.Add(projected);
@@ -133,6 +158,64 @@ internal static class OfdCompositeProjection
         var encoded = OfdXmlEnvelope.Capture(root, material, token); material.StoreString(encoded); return encoded;
     }
     private static string Number(double value) => value.ToString("R", CultureInfo.InvariantCulture);
+    private static bool HasWellFormedScalars(XElement root)
+    {
+        foreach (var attribute in root.DescendantsAndSelf().Attributes())
+        {
+            if (attribute.IsNamespaceDeclaration || attribute.Name.Namespace != XNamespace.None) continue;
+            var name = attribute.Name.LocalName;
+            var value = attribute.Value;
+            if (name is "Visible" or "Stroke" or "Fill" or "Italic")
+            {
+                if (value is not ("0" or "1") && !bool.TryParse(value, out _)) return false;
+                if (name == "Visible" && attribute.Parent!.Name.LocalName == "Path" &&
+                    (value == "0" || string.Equals(value, "false", StringComparison.OrdinalIgnoreCase))) return false;
+            }
+            else if (name == "Boundary")
+            {
+                if (!OfdBoxParser.TryParse(value, out _)) return false;
+            }
+            else if (name == "CTM")
+            {
+                if (!FiniteNumbers(value, 6, 6)) return false;
+            }
+            else if (name == "Start")
+            {
+                var parts = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length != 2 || !FiniteNumber(parts[0], out var x) || !FiniteNumber(parts[1], out var y) || x != 0 || y != 0) return false;
+            }
+            else if (name is "Alpha" or "Weight" or "ReadDirection" or "CharDirection" or "CodePosition" or "CodeCount" or "GlyphCount")
+            {
+                if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ||
+                    (name == "Alpha" && n is < 0 or > 255) ||
+                    (name == "Weight" && n is < 0 or > 1000) ||
+                    (name is "CodePosition" or "CodeCount" or "GlyphCount") && n < 0)
+                    return false;
+            }
+            else if (name is "Size" or "LineWidth" or "HScale" or "MiterLimit" or "DashOffset" or "X" or "Y")
+            {
+                if (!FiniteNumber(value, out var n) ||
+                    (name is "Size" or "HScale" or "MiterLimit") && n <= 0 ||
+                    (name is "LineWidth" or "DashOffset") && n < 0) return false;
+            }
+            else if (name == "DashPattern")
+            {
+                if (!FiniteNumbers(value, 1, int.MaxValue)) return false;
+            }
+            else if (name == "Rule" && value is not ("NonZero" or "Even-Odd")) return false;
+            else if (name == "Cap" && value.ToLowerInvariant() is not ("butt" or "round" or "square")) return false;
+            else if (name == "Join" && value.ToLowerInvariant() is not ("miter" or "round" or "bevel")) return false;
+        }
+        return true;
+    }
+    private static bool FiniteNumber(string value, out double number) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number) &&
+        !double.IsNaN(number) && !double.IsInfinity(number);
+    private static bool FiniteNumbers(string value, int minimum, int maximum)
+    {
+        var parts = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= minimum && parts.Length <= maximum && parts.All(part => FiniteNumber(part, out _));
+    }
     internal static double[] Identity() => new[] { 1d, 0, 0, 1, 0, 0 };
     internal static double[] Multiply(double[] a, double[] b) => new[] { a[0]*b[0]+a[2]*b[1], a[1]*b[0]+a[3]*b[1], a[0]*b[2]+a[2]*b[3], a[1]*b[2]+a[3]*b[3], a[0]*b[4]+a[2]*b[5]+a[4], a[1]*b[4]+a[3]*b[5]+a[5] };
 }

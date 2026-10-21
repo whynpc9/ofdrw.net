@@ -111,6 +111,14 @@
 - 本地 `0.1.0-r01.r13paint` 的 **12 个基础 SDK 包与 1 个可选 SES 包**来源清单、独立消费、显式 native/默认 DOCX→OFD、四份 V1/V4 测试签章及页面 PNG 等同性通过；该本地包未发布。包消费针对 `0ba5e6a` 生产代码运行，后续 `34650a9` 仅增加测试。四份签章 PDF 与签章前基线各两页 PNG 像素一致；默认密码学验证仍返回 `Unsupported`，不据此作外部阅读器或签名法律有效性结论。
 - 本轮重新生成的 `value-precedence-pages/palette-value-priority-direct.pdf` 与 `palette-value-priority-drawparam.pdf` 由各自 OFD 导出，在 macOS Preview 各查看第 1/1 页，方块均为红色；对应 PNG 也逐页检查。`final-paint-ses-e2e/files/native-v1.pdf`、`default-v4.pdf` 分别由本轮显式 native 和默认 OFD 导出，经 Preview 各检查第 1–2 页：中文、英文、蓝色表格填充与边框、局部红色粗体和分页可见，未见缺字、裁切、重叠、重影或异常空白页。查看后关闭四个文档窗口，并登记 `20261021T1231Z` GUI 代次释放。其余签章 PDF 只有功能和逐页 PNG 等同性证据；没有外部 OFD 阅读器或 V5/GBT 端到端验收。
 
+## R15 主线整合与非法属性词元拒绝
+
+- 合入已进主线的 R15 多 DocBody 提交 `2be7500f89ec6c4245ee7bbbaffe3945a202653f`，本分支合并提交 `69a5c44`。核对 Reader 的所选 DocBody 路径和 PDF 签章只取所选 DocBody 的清单；R01 的 PageBlock 绘制准入继续作用于所选文档内的元素。完整解决方案测试包含 R15 的多文档回归。
+- Codex 复审指出，Reader 对已知属性的非法原始值可能使用默认值或夹限值，例如 ImageObject `Alpha`、PathObject `Fill`/`CTM`。投影现对**原始 XML** 的布尔、有限数值、边界、矩阵、Alpha 等已知标量做有界词元检查，再审查资源归一化后的绘图 XML。非法值在 PDF/SVG/HTML 的绘制预检中明确失败，不留下部分输出；错误留在投影叶子，原始 TextCode 仍可提取。裁剪 `Area Start` 仅接受当前可保持语义的原点，非原点明确拒绝。
+- 新回归覆盖 Path/Image/Text 的非法布尔、矩阵、线宽、可见性、边界、Alpha、字号、斜体及字重 **11 个案例**，以及裁剪 Start 原点接受/非原点拒绝 **2 个案例**；R15 整合源码定向 **13/13**，完整 Release 解决方案 11 个项目 **3297 passed、0 skipped、0 failed**。其中非法 TextObject 仍可由文本提取器取得原文。Value 优先冲突回归另定向 **2/2**。
+- 本地 `0.1.0-r01.r15scalar` 的 12 个基础 SDK 包加 1 个可选 SES 包来源及独立消费通过。显式 native/默认 DOCX→OFD、四份 V1/V4 测试签章与其签章前基线的两页 PNG 像素等同性通过；包未发布。默认密码学验证保持 `Unsupported`，不推出外部 OFD 阅读器或签名法律有效性结论。
+- 最终源码新生成的 `r15-scalar-value-pages/palette-value-priority-direct.pdf` 与 `palette-value-priority-drawparam.pdf` 由 OFD 导出，macOS Preview 各检查第 1/1 页，方块均为红色；两份 144 DPI PNG 逐字节一致。`r15-scalar-final-ses/files/native-v1.pdf`、`default-v4.pdf` 分别来自本轮显式 native 和默认 OFD，经 Preview 各检查第 1–2 页：中英文、表格底色/边框、局部红色粗体及分页正常，未见缺字、裁切、重叠、重影或异常空白页。两条查看链路均为 DOCX → OFD → PDF → Preview；检查后关闭四个文档窗口并登记 `20261021T1301Z` GUI 代次释放。其余签章版本仅有功能和逐页 PNG 等同性证据。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |
