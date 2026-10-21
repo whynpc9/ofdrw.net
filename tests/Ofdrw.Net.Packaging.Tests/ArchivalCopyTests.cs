@@ -123,6 +123,37 @@ public class ArchivalCopyTests
     }
 
     [Fact]
+    public async Task CoverageKeepsKnownFailuresBesideForeignDocumentDeclarations()
+    {
+        var entries = Seed("<Actions><Action><URI URI='https://example.org'/></Action></Actions>");
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A' xmlns:x='urn:foreign'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody><x:DocBody/></OFD>");
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalCoverageService().CheckAsync(input, new());
+            Assert.Equal(PreflightOutcome.Unknown, report.RuleResults[1].Outcome);
+            Assert.Equal(PreflightOutcome.Fail, report.RuleResults[2].Outcome);
+            Assert.Equal("NonGotoDocumentAction", report.RuleResults[2].ReasonCode);
+            Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
+        }
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A' xmlns:x='urn:foreign'><x:DocBody/></OFD>");
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalCoverageService().CheckAsync(input, new());
+            Assert.Equal(PreflightOutcome.Fail, report.RuleResults[1].Outcome);
+            Assert.Equal("DocumentMissing", report.RuleResults[1].ReasonCode);
+            Assert.Equal(PreflightOutcome.Unknown, report.RuleResults[2].Outcome);
+            Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
+        }
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A' xmlns:x='urn:foreign'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot><x:DocRoot/></DocBody></OFD>");
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalCoverageService().CheckAsync(input, new());
+            Assert.Equal(PreflightOutcome.Fail, report.RuleResults[2].Outcome);
+            Assert.Equal("NonGotoDocumentAction", report.RuleResults[2].ReasonCode);
+        }
+    }
+
+    [Fact]
     public async Task CoverageFailsForMultipleDocumentsAndKeepsForeignScopeUnknown()
     {
         var entries = Seed();
@@ -158,6 +189,13 @@ public class ArchivalCopyTests
             Assert.Equal(PreflightOutcome.Fail, report.RuleResults[0].Outcome);
             Assert.Equal("NonArchivalDocType", report.RuleResults[0].ReasonCode);
             Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
+        }
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' xmlns:x='urn:foreign' x:DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalCoverageService().CheckAsync(input, new());
+            Assert.Equal(PreflightOutcome.Fail, report.RuleResults[0].Outcome);
+            Assert.Equal("DocTypeMissing", report.RuleResults[0].ReasonCode);
         }
     }
 

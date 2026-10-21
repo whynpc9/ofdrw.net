@@ -136,11 +136,11 @@ public sealed class ArchivalCoverageService
         var rule = ArchivalCoverageRuleCatalog.Rules[0];
         var selector = Selector(root) + "/@DocType";
         var value = (string?)root.Attribute("DocType");
-        if (value != null && value != "OFD-A")
+        if (value == null) return Result(rule, PreflightOutcome.Fail, "DocTypeMissing", selector, "DocType absent");
+        if (value != "OFD-A")
             return Result(rule, PreflightOutcome.Fail, "NonArchivalDocType", selector, "DocType is not OFD-A");
         if (root.Attributes().Any(x => x.Name.LocalName == "DocType" && x.Name.Namespace != XNamespace.None))
             return Result(rule, PreflightOutcome.Unknown, "AmbiguousDocType", selector, "Foreign DocType attribute present");
-        if (value == null) return Result(rule, PreflightOutcome.Fail, "DocTypeMissing", selector, "DocType absent");
         return Result(rule, PreflightOutcome.Pass, "ArchivalDocType", selector, "DocType=OFD-A");
     }
 
@@ -150,11 +150,10 @@ public sealed class ArchivalCoverageService
         var selector = Selector(root) + "/{" + root.Name.NamespaceName + "}DocBody";
         var count = root.Elements(root.Name.Namespace + "DocBody").Count();
         if (count > 1) return Result(rule, PreflightOutcome.Fail, "MultipleDocuments", selector, "Recognized DocBody count=" + count);
+        if (count == 0) return Result(rule, PreflightOutcome.Fail, "DocumentMissing", selector, "Recognized DocBody count=0");
         if (root.Elements().Any(x => x.Name.LocalName == "DocBody" && x.Name.Namespace != root.Name.Namespace))
             return Result(rule, PreflightOutcome.Unknown, "AmbiguousDocumentScope", selector, "Foreign DocBody present");
-        return count == 1
-            ? Result(rule, PreflightOutcome.Pass, "SingleDocument", selector, "Recognized DocBody count=1")
-            : Result(rule, PreflightOutcome.Fail, "DocumentMissing", selector, "Recognized DocBody count=0");
+        return Result(rule, PreflightOutcome.Pass, "SingleDocument", selector, "Recognized DocBody count=1");
     }
 
     private static ArchivalCoverageRuleResult DocumentActions(OfdPackageArchive archive,
@@ -163,14 +162,15 @@ public sealed class ArchivalCoverageService
         var rule = ArchivalCoverageRuleCatalog.Rules[2];
         var rootNs = root.Name.Namespace;
         var bodies = root.Elements(rootNs + "DocBody").ToArray();
-        if (bodies.Length != 1 || root.Elements().Any(x => x.Name.LocalName == "DocBody" && x.Name.Namespace != rootNs))
+        if (bodies.Length != 1)
             return Result(rule, PreflightOutcome.Unknown, "DocumentScopeUnavailable", "<document>",
                 "Document root unresolved", "<input>");
+        var foreignBody = root.Elements().Any(x => x.Name.LocalName == "DocBody" && x.Name.Namespace != rootNs);
         var roots = bodies[0].Elements(rootNs + "DocRoot").ToArray();
-        if (roots.Length != 1 || roots[0].HasElements || roots[0].Attributes().Any(x => !x.IsNamespaceDeclaration) ||
-            bodies[0].Elements().Any(x => x.Name.LocalName == "DocRoot" && x.Name.Namespace != rootNs))
+        if (roots.Length != 1 || roots[0].HasElements || roots[0].Attributes().Any(x => !x.IsNamespaceDeclaration))
             return Result(rule, PreflightOutcome.Unknown, "DocumentScopeUnavailable", "<document>",
                 "Document root unresolved", "<input>");
+        var foreignRoot = bodies[0].Elements().Any(x => x.Name.LocalName == "DocRoot" && x.Name.Namespace != rootNs);
         var documentPath = roots[0].Value.Trim();
         if (string.IsNullOrWhiteSpace(documentPath) || documentPath.Contains(":") || documentPath.Contains("?") ||
             documentPath.Contains("#") || documentPath.Contains("%") || documentPath.Contains("\\") ||
@@ -202,6 +202,9 @@ public sealed class ArchivalCoverageService
                         "}Actions[" + (containerIndex + 1) + "]/{" + document.Name.NamespaceName +
                         "}Action[" + (actionIndex + 1) + "]", "Known non-Goto action present", entry);
         }
+        if (foreignBody || foreignRoot)
+            return Result(rule, PreflightOutcome.Unknown, "DocumentScopeUnavailable", selector,
+                "Foreign document declaration present", entry);
         if (document.Elements().Any(x => x.Name.LocalName == "Actions" && x.Name.Namespace != ns))
             return Result(rule, PreflightOutcome.Unknown, "AmbiguousActions", selector, "Foreign Actions declaration", entry);
         if (containers.Length == 0)
