@@ -72,6 +72,7 @@ internal sealed class OfdPaintResources
             token.ThrowIfCancellationRequested();
             material.ChargeCopy(checked(1024L + 16L * sourceXmlCharacters), token);
             var node = new XElement(source);
+            RejectDuplicateColors(node);
             if (node.Attribute("DrawParam") is { } draw)
             {
                 var style = ResolveDrawParam(draw.Value, token);
@@ -120,6 +121,7 @@ internal sealed class OfdPaintResources
                 throw new NotSupportedException("DrawParam has an unknown attribute.");
             if (item.Elements().Any(e => e.Name.Namespace != item.Name.Namespace || e.Name.LocalName is not ("FillColor" or "StrokeColor")))
                 throw new NotSupportedException("DrawParam has an unknown child.");
+            RejectDuplicateColors(item);
             foreach (var attribute in item.Attributes().Where(a => a.Name.LocalName is not ("ID" or "Relative")))
                 result.SetAttributeValue(attribute.Name, attribute.Value);
             foreach (var color in item.Elements())
@@ -132,6 +134,13 @@ internal sealed class OfdPaintResources
             }
         }
         return result;
+    }
+
+    private static void RejectDuplicateColors(XElement node)
+    {
+        if (node.Elements().Count(child => child.Name.LocalName == "FillColor") > 1 ||
+            node.Elements().Count(child => child.Name.LocalName == "StrokeColor") > 1)
+            throw new NotSupportedException("Drawing has duplicate FillColor or StrokeColor children.");
     }
 
     private void NormalizeColor(XElement color, CancellationToken token)

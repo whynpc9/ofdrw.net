@@ -30,7 +30,8 @@ internal static class OfdRenderPreflight
             // The reader retains opaque annotation index records in this
             // synthetic metadata envelope. They are not page drawings; an
             // unsupported annotation appearance has its own failure marker.
-            if (element is OfdRawElement { LocalName: "Annotations", Xml: var annotationXml } &&
+            if (element is OfdRawElement { LocalName: "Annotations", Xml: var annotationXml } annotationIndex &&
+                annotationIndex.ReaderAnnotationMetadataXml == annotationXml &&
                 annotationXml.StartsWith("<UnmodeledAnnotations>", StringComparison.Ordinal) &&
                 annotationXml.EndsWith("</UnmodeledAnnotations>", StringComparison.Ordinal)) continue;
             if (element is OfdRawElement raw)

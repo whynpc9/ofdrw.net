@@ -207,6 +207,40 @@ public sealed class R01PageBlockTests
         Assert.Equal(0, html.Length);
     }
 
+    [Theory]
+    [InlineData("TextObject", "FillColor")]
+    [InlineData("TextObject", "StrokeColor")]
+    [InlineData("PathObject", "FillColor")]
+    [InlineData("PathObject", "StrokeColor")]
+    public async Task DuplicateDrawingColorsFailAllRenderers(string objectName, string colorName)
+    {
+        var colors = $"<{colorName} Value='255 0 0'/><{colorName} Value='0 0 255'/>";
+        var body = objectName == "TextObject"
+            ? $"<TextObject ID='501' Boundary='10 10 40 10' Font='10' Size='4'>{colors}<TextCode X='0' Y='4'>color</TextCode></TextObject>"
+            : $"<PathObject ID='501' Boundary='10 10 20 20' Fill='true'>{colors}<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, font: objectName == "TextObject");
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html));
+        Assert.Equal(0, html.Length);
+    }
+
+    [Fact]
+    public async Task DuplicateDrawParamColorsFailAllRenderers()
+    {
+        const string resources = "<DrawParams><DrawParam ID='20'><FillColor Value='255 0 0'/>" +
+            "<FillColor Value='0 0 255'/></DrawParam></DrawParams>";
+        const string body = "<PathObject ID='501' Boundary='10 10 20 20' DrawParam='20' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html));
+        Assert.Equal(0, html.Length);
+    }
+
     [Fact]
     public async Task TopLevelGrayAndCmykPathsRemainRenderableAfterWriteAndReread()
     {
@@ -683,6 +717,23 @@ public sealed class R01PageBlockTests
         using var html = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html));
         Assert.Equal(0, html.Length);
+    }
+
+    [Fact]
+    public void UnmodeledAnnotationIndexEnvelopeRequiresReaderProvenance()
+    {
+        const string xml = "<UnmodeledAnnotations><VendorDrawing/></UnmodeledAnnotations>";
+        var forged = new OfdRawElement { LocalName = "Annotations", Xml = xml };
+        var page = new OfdPage();
+        page.Elements.Add(forged);
+        Assert.Throws<NotSupportedException>(() => OfdRenderPreflight.Validate(page.Elements));
+        page.AnnotationAppearances.Add(forged);
+        Assert.Throws<NotSupportedException>(() => OfdRenderPreflight.Validate(page.AnnotationAppearances));
+
+        var readerOwned = new OfdRawElement { LocalName = "Annotations", Xml = xml, ReaderAnnotationMetadataXml = xml };
+        OfdRenderPreflight.Validate(new[] { readerOwned });
+        readerOwned.Xml = "<UnmodeledAnnotations><DifferentDrawing/></UnmodeledAnnotations>";
+        Assert.Throws<NotSupportedException>(() => OfdRenderPreflight.Validate(new[] { readerOwned }));
     }
 
     [Theory]

@@ -22,6 +22,10 @@ public sealed class OfdReader : IOfdReader
     {
         LocalName = "UnmodeledAnnotationMetadata", Xml = xml, ReaderAnnotationMetadataXml = xml
     };
+    private static OfdRawElement AnnotationIndexMetadata(string xml) => new()
+    {
+        LocalName = "Annotations", Xml = xml, ReaderAnnotationMetadataXml = xml
+    };
 
     public async Task<OfdDocumentPackage> ReadAsync(Stream ofdStream, CancellationToken cancellationToken = default)
     {
@@ -670,11 +674,11 @@ public sealed class OfdReader : IOfdReader
         material.ReserveReadModel(512, cancellationToken);
         var typed = new OfdAnnotationCollection();
         if (index.UnmodeledXml is not null)
-            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Annotations", Xml = index.UnmodeledXml });
+            page.AnnotationAppearances.Add(AnnotationIndexMetadata(index.UnmodeledXml));
         if (page.Id is null || !index.Files.TryGetValue(page.Id, out var files))
         { page.AnnotationOwnership.Bind(page, null, material, cancellationToken); return; }
         if (files.UnmodeledXml is not null)
-            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "Annotations", Xml = files.UnmodeledXml });
+            page.AnnotationAppearances.Add(AnnotationIndexMetadata(files.UnmodeledXml));
         foreach (var annotationPath in files.Paths)
         {
             cancellationToken.ThrowIfCancellationRequested();

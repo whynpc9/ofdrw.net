@@ -207,7 +207,7 @@ public sealed class OfdRawElement : OfdElement
     // page root for package writeback; these children are never serialized.
     internal List<OfdElement>? PageBlockChildren { get; set; }
     internal string? PageBlockSourceXml { get; set; }
-    // Set only by the Reader for annotation metadata outside the page drawing tree.
+    // Set only by the Reader for annotation metadata and index envelopes outside the page drawing tree.
     // A caller changing Xml invalidates this render-only provenance.
     internal string? ReaderAnnotationMetadataXml { get; set; }
     public OfdRawElement()
