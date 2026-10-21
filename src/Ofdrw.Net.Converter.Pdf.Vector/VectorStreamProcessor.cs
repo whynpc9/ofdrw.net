@@ -239,7 +239,10 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
             throw Unsupported("STROKE_PROFILE: PDF export requires miter limit 10 with round/square cap.");
         var dash = state.LineDashPattern;
         var values = dash.Array?.ToArray() ?? Array.Empty<double>();
-        if (values.Length > 32 || values.Any(value => !(value > 0) || double.IsNaN(value) || double.IsInfinity(value)) ||
+        // PdfSharpCore does not retain PDF's repeated-array meaning for odd
+        // dash patterns, so this profile only admits directly representable pairs.
+        if (values.Length > 32 || values.Length % 2 != 0 ||
+            values.Any(value => !(value > 0) || double.IsNaN(value) || double.IsInfinity(value)) ||
             dash.Phase < 0 || (values.Length == 0 && dash.Phase != 0) ||
             values.Length != 0 && (double.IsInfinity(values.Sum()) || double.IsInfinity(dash.Phase / state.LineWidth)))
             throw Unsupported("STROKE_PROFILE: dash must be bounded, positive and representable by PDF export.");

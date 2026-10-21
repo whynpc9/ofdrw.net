@@ -120,7 +120,7 @@ public sealed class VectorTests
     }
     [Theory]
     [InlineData("1 J 1 j [6 3] 2 d", "Round", "Round", "6 3", "2")]
-    [InlineData("2 J 2 j [5 2 1] 1 d", "Square", "Bevel", "5 2 1", "1")]
+    [InlineData("2 J 2 j [5 2] 1 d", "Square", "Bevel", "5 2", "1")]
     [InlineData("0 J 0 j 4 M [] 0 d", "Butt", "Miter", null, null)]
     public async Task BoundedStrokeStyleSurvivesWriteAndRead(string state, string cap, string join, string? dash, string? phase)
     {
@@ -137,6 +137,7 @@ public sealed class VectorTests
     }
     [Theory]
     [InlineData("[0 3] 0 d", "STROKE_PROFILE")]
+    [InlineData("[5 2 1] 1 d", "STROKE_PROFILE")]
     [InlineData("1 J 5 M", "STROKE_PROFILE")]
     [InlineData("11 M", "STROKE_PROFILE")]
     public async Task UnrepresentableStrokeStyleStillFailsWholePage(string state, string diagnostic)

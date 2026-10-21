@@ -68,7 +68,7 @@ R5原Indexed样例已由主/Low真实包及八页Preview复验，原R4失败保�
 
 在上述首版契约之上，页框现接纳有限正尺寸的 MediaBox、位于其中的 CropBox 与 0/90/180/270 度旋转，输出页按裁切后显示方向计算尺寸。越界或退化 CropBox、非直角旋转仍整页拒绝。路径 `W`/`W*` 裁切按 PDF 的后续 `n` 或绘制操作生效，随 `q/Q` 恢复；裁切几何以本次输出对象坐标写出。只接纳非退化、可精确表示的路径裁切；复杂裁切、透明组、ExtGState、marked content 仍拒绝。
 
-描边接纳 butt/round/square cap、miter/round/bevel join，以及有界的正值 dash 和 phase。实际样式写入 OFD PathObject；不能由现有 PDF/OFD 导出共同表达的组合仍按 `STROKE_PROFILE` 整页处理。圆头或方头的零长度路径可能绘制一个点，故不能作为空操作静默丢弃。
+描边接纳 butt/round/square cap、miter/round/bevel join，以及有界、偶数长度的正值 dash 和 phase；奇数长度的 PDF dash 数组因现有 OFD→PDF 后端无法保持其重复语义而整页拒绝。实际样式写入 OFD PathObject；不能由现有 PDF/OFD 导出共同表达的组合仍按 `STROKE_PROFILE` 整页处理。圆头或方头的零长度路径可能绘制一个点，故不能作为空操作静默丢弃。
 
 混合路径/文字页可接纳未过滤、无 mask/Decode/透明扩展的原始 DeviceRGB/8 Image XObject；转换保留图像像素、绘制顺序、变换及裁切，输出原生 OFD ImageObject，并按 PNG 字节计入累计图像预算。纯图像页继续走既有 `PDFV_ORIGINAL_IMAGE_PAGE` 或整页回退路径，报告 `IsNative=false`。Form XObject、索引/ICC 或带滤镜的混合图像仍拒绝或显式整页回退，不把先前绘制的原生对象留在回退页。
 
