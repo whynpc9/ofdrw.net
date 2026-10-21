@@ -78,9 +78,13 @@ jobs:
         run: |
           dotnet run --project e2e/Ofdrw.Net.Text.HarfBuzz.E2E/Ofdrw.Net.Text.HarfBuzz.E2E.csproj -c Release --no-build --no-restore -- artifacts/r21-fixed-font
           pdftoppm -f 1 -l 1 -png -singlefile -r 144 artifacts/r21-fixed-font/r21-ascii.pdf artifacts/r21-fixed-font/pdf-page-1
+          pdftoppm -f 1 -l 1 -png -singlefile -r 144 artifacts/r21-fixed-font/r21-han.pdf artifacts/r21-fixed-font/han-pdf-page-1
           test -s artifacts/r21-fixed-font/r21-ascii.ofd
           test -s artifacts/r21-fixed-font/r21-ascii.png
           test -s artifacts/r21-fixed-font/pdf-page-1.png
+          test -s artifacts/r21-fixed-font/r21-han.ofd
+          test -s artifacts/r21-fixed-font/r21-han.png
+          test -s artifacts/r21-fixed-font/han-pdf-page-1.png
 
       - name: Run mandatory original-font geometry and replacement tests without skips
         run: python3 scripts/run-trusted-font-tests.py --results-directory artifacts/trusted-font-tests

@@ -100,7 +100,11 @@ public sealed class TextShapeRequest
                 i++;
             }
             else if (char.IsLowSurrogate(text[i])) throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.");
-            else if (text[i] == '\r' || text[i] == '\n' || text[i] == '\t') throw new TextLayoutException(TextLayoutError.InvalidText, "A shaping run cannot contain line or tab controls.");
+            else if (text[i] == '\r' || text[i] == '\n' || text[i] == '\t' ||
+                IsUnsupportedLineSeparator(text[i]))
+                throw new TextLayoutException(TextLayoutError.InvalidText,
+                    "A shaping run cannot contain line or tab controls.",
+                    sourceStart: sourceStart + i, sourceLength: 1);
             else if (char.GetUnicodeCategory(scalar) == System.Globalization.UnicodeCategory.Format ||
                 scalar is >= '\ufe00' and <= '\ufe0f')
                 throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
@@ -121,6 +125,8 @@ public sealed class TextShapeRequest
         SourceStart = sourceStart; Direction = direction; Script = script; Language = language;
         Features = new ReadOnlyCollection<TextFeature>(featureCopy);
     }
+    internal static bool IsUnsupportedLineSeparator(char value) =>
+        value is '\u000b' or '\u000c' or '\u0085' or '\u2028' or '\u2029';
     /// <summary>Unmodified logical Unicode source for this run.</summary>
     public string Text { get; }
     /// <summary>Absolute UTF-16 start offset of this run in the caller's source.</summary>

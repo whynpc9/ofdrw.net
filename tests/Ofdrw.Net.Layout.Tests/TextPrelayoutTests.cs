@@ -251,6 +251,58 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public void MandatoryUnicodeSeparatorsRequireAnExplicitSupportedParagraphProfile()
+    {
+        var face = Noto();
+        foreach (var separator in new[] { '\u000b', '\u000c', '\u0085', '\u2028', '\u2029' })
+        {
+            var text = "A" + separator + "B";
+            var layoutError = Assert.Throws<TextLayoutException>(() =>
+                new TextPrelayoutRequest(text, new[] { face }, 4, 100));
+            Assert.Equal(TextLayoutError.InvalidText, layoutError.Error);
+            Assert.Equal(1, layoutError.SourceStart);
+            var shapeError = Assert.Throws<TextLayoutException>(() =>
+                new TextShapeRequest(text, 7, face));
+            Assert.Equal(TextLayoutError.InvalidText, shapeError.Error);
+            Assert.Equal(8, shapeError.SourceStart);
+        }
+    }
+
+    [Fact]
+    public void SupplementaryHanUsesScalarSafeLineOpportunities()
+    {
+        var face = new TextFontFace("WenKai", File.ReadAllBytes(Font("LXGWWenKai-Regular.ttf")));
+        const string text = "\U00020003\U0002000B\U0002000E";
+        Assert.True(face.Covers(0x20003));
+        Assert.True(face.Covers(0x2000b));
+        Assert.True(face.Covers(0x2000e));
+        var result = HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest(text, new[] { face }, 4, 5, script: "Hani", language: "zh"));
+        Assert.Equal(new[] { 0, 2, 4 }, result.Lines.Select(line => line.SourceStart));
+        Assert.All(result.Lines, line => Assert.Equal(2, line.SourceLength));
+        Assert.False(result.Overflows);
+    }
+
+    [Fact]
+    public void HanBreaksKeepClosingPunctuationAndNoBreakSpacesAttached()
+    {
+        var face = new TextFontFace("WenKai", File.ReadAllBytes(Font("LXGWWenKai-Regular.ttf")));
+        var engine = HarfBuzzTextPrelayout.Create();
+        TextPrelayoutResult Layout(string text, double width) => engine.Layout(
+            new TextPrelayoutRequest(text, new[] { face }, 4, width, script: "Hani", language: "zh"));
+        var firstLineWidth = Layout("中、", 100).WidthMillimeters;
+        var punctuation = Layout("中、文", firstLineWidth + 0.01);
+        Assert.Equal(new[] { "中、", "文" }, punctuation.Lines.Select(line => line.ShapedRun.Request.Text));
+        Assert.False(punctuation.Overflows);
+
+        Assert.True(face.Covers('\u00a0'));
+        var glued = Layout("中\u00a0文", 5);
+        Assert.Single(glued.Lines);
+        Assert.Equal("中\u00a0文", glued.Lines[0].ShapedRun.Request.Text);
+        Assert.True(glued.Overflows);
+    }
+
+    [Fact]
     public void UnsupportedCmapFormatHasStructuredFontProfileFailure()
     {
         var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));

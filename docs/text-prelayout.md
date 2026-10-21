@@ -37,11 +37,16 @@ and their order can decrease in RTL. They are not character, grapheme or caret
 indexes. The prelayout result reports total advance width/height, final line
 positions and baselines, source intervals, ink rectangles, overflow, diagnostics,
 and the exact shaped run used for each final line. Y is converted to downward
-page millimeters once. Explicit LF/CRLF and bounded Latin/Han line opportunities
-are supported; final lines are reshaped after break selection. Prelayout rejects
+page millimeters once. Explicit LF/CRLF and bounded Latin/Han line opportunities,
+including supplementary Han ideographs through Unicode 18, are supported;
+other mandatory Unicode line separators are rejected. Final lines are reshaped
+after break selection. Prelayout rejects
 other script tags; direct single-run shaping remains caller-analyzed and has no
 paragraph bidi or word-breaking contract. Format controls, variation selectors,
 and variable/color/CFF fonts fail explicitly.
+The bounded Han break profile keeps common closing punctuation with the preceding
+character, opening punctuation with the following character, and no-break spaces
+attached on both sides; it does not claim full Unicode line-breaking behavior.
 
 At a soft wrap, trailing breakable spaces stay in the source-addressed shaped
 run and its reported total advance. Fit and overflow checks use the visible
@@ -59,6 +64,9 @@ extents, including negative side bearings. Arbitrary GID/cluster output,
 glyph-aware subsetting, mixed-direction paragraphs and PDF/SVG semantic
 consumption remain the separate
 R22 stages; a successful R21 query does not imply those output profiles work.
+The E2E also renders a fixed Han sample through a sample-only, preflighted
+one-glyph-per-BMP-Han OFD probe to inspect fallback, measured wrapping and baseline
+geometry. That probe does not extend the public writer's ASCII output contract.
 
 The API enforces 32 MiB per font, 4096 UTF-16 units per run/request, 256 lines,
 8192 maximum caller-selected shape calls, 8 million estimated cmap lookup steps

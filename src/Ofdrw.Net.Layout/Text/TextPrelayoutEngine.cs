@@ -48,9 +48,10 @@ public sealed class TextPrelayoutRequest
                         sourceStart: i, sourceLength: 2);
                 i++;
             }
-            else if (char.IsLowSurrogate(text[i]) || text[i] == '\t' || text[i] == '\r' &&
+            else if (char.IsLowSurrogate(text[i]) || text[i] == '\t' || TextShapeRequest.IsUnsupportedLineSeparator(text[i]) || text[i] == '\r' &&
                 (i + 1 >= text.Length || text[i + 1] != '\n'))
-                throw new TextLayoutException(TextLayoutError.InvalidText, "Unsupported control or unpaired UTF-16 surrogate.");
+                throw new TextLayoutException(TextLayoutError.InvalidText, "Unsupported control or unpaired UTF-16 surrogate.",
+                    sourceStart: i, sourceLength: 1);
             else if (char.GetUnicodeCategory(text[i]) == UnicodeCategory.Format ||
                 text[i] is >= '\ufe00' and <= '\ufe0f')
                 throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
@@ -345,21 +346,44 @@ public sealed class TextPrelayoutEngine
     {
         var part = text.Substring(start, end - start);
         var enumerator = StringInfo.GetTextElementEnumerator(part);
+        var elements = new List<(int After, int Scalar, char Last)>();
         while (enumerator.MoveNext())
         {
             var element = enumerator.GetTextElement();
             var after = start + enumerator.ElementIndex + element.Length;
             var scalar = char.IsHighSurrogate(element[0]) && element.Length > 1 ? char.ConvertToUtf32(element, 0) : element[0];
-            var last = element[element.Length - 1];
-            if (IsBreakableWhitespace(last) ||
-                IsCjk(scalar) || after == end) yield return after;
+            elements.Add((after, scalar, element[element.Length - 1]));
+        }
+        for (var i = 0; i < elements.Count; i++)
+        {
+            var current = elements[i];
+            if (current.After == end) { yield return end; continue; }
+            var next = elements[i + 1].Scalar;
+            if (IsNoBreakSpace(next) || IsNoStartPunctuation(next)) continue;
+            if (IsBreakableWhitespace(current.Last) ||
+                IsCjk(current.Scalar) && !IsOpeningPunctuation(current.Scalar))
+                yield return current.After;
         }
     }
 
     private static bool IsBreakableWhitespace(char value) => char.IsWhiteSpace(value) &&
-        value is not ('\u00a0' or '\u2007' or '\u202f');
+        !IsNoBreakSpace(value);
 
-    private static bool IsCjk(int scalar) => scalar is >= 0x3000 and <= 0x9fff or >= 0xac00 and <= 0xd7af;
+    private static bool IsNoBreakSpace(int scalar) => scalar is 0x00a0 or 0x2007 or 0x202f;
+
+    private static bool IsNoStartPunctuation(int scalar) =>
+        scalar is '、' or '。' or '，' or '．' or '：' or '；' or '！' or '？' or
+            '）' or '］' or '｝' or '》' or '」' or '』' or '】' or '〗' or '〙' or '〛' or
+            ')' or ']' or '}' or ',' or '.' or ':' or ';' or '!' or '?';
+
+    private static bool IsOpeningPunctuation(int scalar) =>
+        scalar is '（' or '［' or '｛' or '《' or '「' or '『' or '【' or '〖' or '〘' or '〚' or
+            '(' or '[' or '{';
+
+    private static bool IsCjk(int scalar) => scalar is >= 0x3000 and <= 0x9fff or
+        >= 0xac00 and <= 0xd7af or >= 0xf900 and <= 0xfaff or
+        >= 0x20000 and <= 0x2a6df or >= 0x2a700 and <= 0x2ee5f or
+        >= 0x2f800 and <= 0x2fa1f or >= 0x30000 and <= 0x3347f;
 
     private static IEnumerable<(int Scalar, int Offset)> Scalars(string text, CancellationToken cancellationToken)
     {
