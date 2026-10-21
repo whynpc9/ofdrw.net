@@ -373,6 +373,22 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task OpaqueXmlSuffixResourceIsOwnedRegardlessOfZipEntryOrder()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "<PublicRes>Res/PublicRes.xml</PublicRes></CommonData>", StringComparison.Ordinal));
+        entries["Doc_0/Res/Assets/media.xml"] = [4, 5, 6];
+        entries["Doc_0/Res/PublicRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='Assets'><MultiMedias><MultiMedia ID='9'><MediaFile>media.xml</MediaFile></MultiMedia></MultiMedias></Res>");
+
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        Assert.Equal(entries["Doc_0/Res/Assets/media.xml"], Entries(output)["Doc_0/Res/Assets/media.xml"]);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+    }
+
+    [Fact]
     public async Task PublicFontMetadataSurvivesPhysicalCleanupWithoutResourceRelocation()
     {
         var entries = Entries(Seed());
@@ -831,6 +847,22 @@ public sealed class R18AttachmentPhysicalCleanupTests
         Assert.Empty((await Read(output)).Attachments);
         Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
         Assert.DoesNotContain("GotoA", Encoding.UTF8.GetString(Entries(output)["Doc_0/Document.xml"]));
+    }
+
+    [Fact]
+    public async Task StandardActionRegionSurvivesPhysicalAttachmentRemoval()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</Document>", "<Actions><Action Event='CLICK'><Region><Area Start='0 0'><Move Point1='0 0'/><Line Point1='10 10'/><Close/></Area></Region><URI URI='https://example.invalid'/></Action></Actions></Document>", StringComparison.Ordinal));
+        var package = await Read(Zip(entries));
+        Assert.IsType<OfdUriAction>(Assert.Single(package.Actions!.Items));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        var document = XDocument.Parse(Encoding.UTF8.GetString(Entries(output)["Doc_0/Document.xml"]));
+        Assert.Equal("0 0", document.Descendants(XName.Get("Region", Ns)).Single()
+            .Element(XName.Get("Area", Ns))!.Attribute("Start")!.Value);
+        Assert.Empty((await Read(output)).Attachments);
     }
 
     [Fact]

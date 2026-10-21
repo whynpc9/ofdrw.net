@@ -24,12 +24,12 @@ internal static class OfdAttachmentPhysicalCleaner
     private static readonly HashSet<string> KnownElements = new(StringComparer.Ordinal)
     {
         "OFD", "DocBody", "DocInfo", "DocID", "Title", "Author", "Subject", "Abstract", "Keywords", "Keyword", "Creator", "CreatorVersion", "CreationDate", "ModDate", "DocUsage", "Cover", "CustomDatas", "CustomData", "DocRoot", "Versions", "Version", "DocVersion", "FileList", "File", "Signatures", "MaxSignId", "Signature", "SignedInfo", "SignedValue", "References", "Reference", "FileRef", "CheckValue", "DigestMethod", "DigestValue", "Provider", "SignatureMethod", "SignatureDateTime", "StampAnnot", "Seal", "BaseLoc", "Parameters", "Parameter",
-        "Document", "CommonData", "MaxUnitID", "PageArea", "PhysicalBox", "ApplicationBox", "ContentBox", "BleedBox", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS", "Pages", "Page", "Area", "Content", "Layer", "PageBlock", "Outlines", "OutlineElem", "Bookmarks", "Bookmark", "Dest", "Actions", "Action", "Goto", "GotoA", "URI", "Sound", "Movie", "Permissions", "Edit", "Export", "Signature", "Watermark", "PrintScreen", "Print", "ValidPeriod", "VPreferences", "PageMode", "PageLayout", "TabDisplay", "HideToolbar", "HideMenubar", "HideWindowUI", "ZoomMode", "Zoom", "Annotations", "PageAnnot", "Annot", "Appearance", "Remark", "CustomTags", "CustomTag", "EMRTags", "Tag", "Extensions", "Extension",
+        "Document", "CommonData", "MaxUnitID", "PageArea", "PhysicalBox", "ApplicationBox", "ContentBox", "BleedBox", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS", "Pages", "Page", "Area", "Content", "Layer", "PageBlock", "Outlines", "OutlineElem", "Bookmarks", "Bookmark", "Dest", "Actions", "Action", "Region", "Move", "Line", "QuadraticBezier", "CubicBezier", "Arc", "Close", "Goto", "GotoA", "URI", "Sound", "Movie", "Permissions", "Edit", "Export", "Signature", "Watermark", "PrintScreen", "Print", "ValidPeriod", "VPreferences", "PageMode", "PageLayout", "TabDisplay", "HideToolbar", "HideMenubar", "HideWindowUI", "ZoomMode", "Zoom", "Annotations", "PageAnnot", "Annot", "Appearance", "Remark", "CustomTags", "CustomTag", "EMRTags", "Tag", "Extensions", "Extension",
         "Attachments", "Attachment", "FileLoc", "Res", "Fonts", "Font", "FontFile", "MultiMedias", "MultiMedia", "MediaFile", "ColorSpaces", "ColorSpace", "DrawParams", "DrawParam", "CompositeGraphicUnits", "CompositeGraphicUnit", "TextObject", "TextCode", "ImageObject", "PathObject", "Path", "CompositeObject", "AbbreviatedData", "FillColor", "StrokeColor", "Clips", "Clip", "Area", "CGTransform", "Glyphs", "Substitution", "Segment", "Template", "ImageMask"
     };
     private static readonly HashSet<string> KnownAttributes = new(StringComparer.Ordinal)
     {
-        "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "MediaFile", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "Printable", "Copies", "StartDate", "EndDate", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Substitution", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "Start", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "Serif", "FixedWidth", "Current", "URI", "Base", "Target", "AttachID", "NewWindow", "Volume", "Repeat", "Synchronous", "Operator", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
+        "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "MediaFile", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "Printable", "Copies", "StartDate", "EndDate", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Substitution", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "Start", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "Serif", "FixedWidth", "Current", "URI", "Base", "Target", "AttachID", "NewWindow", "Volume", "Repeat", "Synchronous", "Operator", "Point1", "Point2", "Point3", "SweepDirection", "LargeArc", "RotationAngle", "EllipseSize", "EndPoint", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
     };
     private static readonly HashSet<string> ScalarPathElements = new(StringComparer.Ordinal)
     { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes", "File", "BaseLoc", "Cover" };
@@ -143,8 +143,6 @@ internal static class OfdAttachmentPhysicalCleaner
             var looksXml = OfdXmlContentProbe.LooksLikeXml(entry.Value, token, count => material.ChargeWork(count, token));
             if (!looksXml)
             {
-                if (entry.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) && !knownBinary.Contains(entry.Key))
-                    throw new NotSupportedException("Physical attachment removal cannot inspect an XML control entry: " + entry.Key);
                 material.ChargeCopy(128L + 4L * entry.Key.Length, token);
                 opaqueBinary.Add(entry.Key);
                 continue;
@@ -171,6 +169,8 @@ internal static class OfdAttachmentPhysicalCleaner
                 if (!KnownElements.Contains(element.Name.LocalName) || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     a.Name.Namespace == XNamespace.None && !KnownAttributes.Contains(a.Name.LocalName)))
                     throw new NotSupportedException("Physical attachment removal cannot prove an unknown OFD field reference closure: " + entry.Key);
+                if (element.Name.LocalName == "Region" && !IsStandardActionRegion(element))
+                    throw new NotSupportedException("Physical attachment removal cannot prove an action Region reference closure: " + entry.Key);
                 // Actions can be deleted or retargeted by the typed writer.
                 // Only the output plan can prove a dangling action remains.
                 if (finalEntries is null && element.Name.LocalName == "GotoA" && element.Attribute("AttachID") is XAttribute targetId &&
@@ -213,13 +213,50 @@ internal static class OfdAttachmentPhysicalCleaner
         }
         foreach (var path in opaqueBinary)
             if (!knownBinary.Contains(path) && (finalEntries is null || finalEntries.ContainsKey(path)))
-                throw new NotSupportedException("Physical attachment removal cannot prove opaque binary entry ownership: " + path);
+                throw new NotSupportedException(path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)
+                    ? "Physical attachment removal cannot inspect an XML control entry: " + path
+                    : "Physical attachment removal cannot prove opaque binary entry ownership: " + path);
     }
 
     private static bool IsWriterOwnedHint(XElement element, XAttribute attribute) =>
         element.Name.LocalName == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor ||
         element.Name.LocalName == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfInterpolateV1 &&
         OfdImageRenderingHints.IsCanonicalValue(attribute.Value);
+
+    private static bool IsStandardActionRegion(XElement region)
+    {
+        var ns = region.Name.Namespace;
+        if (region.Parent?.Name != ns + "Action" ||
+            !ReferenceEquals(region.Parent.Elements().FirstOrDefault(), region) ||
+            region.Parent.Elements(ns + "Region").Count() != 1 ||
+            region.Attributes().Any(a => !a.IsNamespaceDeclaration) ||
+            region.Nodes().OfType<XText>().Any(t => !string.IsNullOrWhiteSpace(t.Value)))
+            return false;
+        var areas = region.Elements().ToArray();
+        if (areas.Length == 0) return false;
+        foreach (var area in areas)
+        {
+            if (area.Name != ns + "Area" || string.IsNullOrWhiteSpace(area.Attribute("Start")?.Value) ||
+                area.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name != "Start") ||
+                area.Nodes().OfType<XText>().Any(t => !string.IsNullOrWhiteSpace(t.Value))) return false;
+            var commands = area.Elements().ToArray();
+            if (commands.Length == 0) return false;
+            foreach (var command in commands)
+            {
+                if (command.HasElements || command.Nodes().OfType<XText>().Any(t => !string.IsNullOrWhiteSpace(t.Value))) return false;
+                var names = command.Name == ns + "Move" || command.Name == ns + "Line" ? new[] { "Point1" } :
+                    command.Name == ns + "QuadraticBezier" ? new[] { "Point1", "Point2" } :
+                    command.Name == ns + "CubicBezier" ? new[] { "Point1", "Point2", "Point3" } :
+                    command.Name == ns + "Arc" ? new[] { "SweepDirection", "LargeArc", "RotationAngle", "EllipseSize", "EndPoint" } :
+                    command.Name == ns + "Close" ? Array.Empty<string>() : null;
+                if (names is null || command.Attributes().Any(a => !a.IsNamespaceDeclaration && !names.Contains(a.Name.LocalName))) return false;
+                if (command.Name == ns + "Move" || command.Name == ns + "Line" || command.Name == ns + "QuadraticBezier" || command.Name == ns + "Arc")
+                    if (names.Any(name => string.IsNullOrWhiteSpace(command.Attribute(name)?.Value))) return false;
+                if (command.Name == ns + "CubicBezier" && string.IsNullOrWhiteSpace(command.Attribute("Point3")?.Value)) return false;
+            }
+        }
+        return true;
+    }
 
     private static bool IsStandardDocVersion(XElement root)
     {
