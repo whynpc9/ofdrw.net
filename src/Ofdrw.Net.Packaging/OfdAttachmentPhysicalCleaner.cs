@@ -161,6 +161,17 @@ internal static class OfdAttachmentPhysicalCleaner
                 throw new NotSupportedException("Physical attachment removal cannot prove an extension XML reference closure: " + entry.Key);
             if (root.Name.LocalName == "DocVersion" && !IsStandardDocVersion(root))
                 throw new NotSupportedException("Physical attachment removal cannot prove a malformed DocVersion reference closure: " + entry.Key);
+            var externalAttachments = new HashSet<XElement>();
+            if (package.AttachmentSource?.DescriptorPath == entry.Key && root.Name == package.AttachmentSource.RootName)
+            {
+                // The writer emits active attachments in package order. Reader
+                // may infer External from a missing payload without an XML flag.
+                var nodes = root.Elements(root.Name.Namespace + "Attachment").ToArray();
+                if (nodes.Length != package.Attachments.Count)
+                    throw new NotSupportedException("Physical attachment removal cannot align retained attachment slots.");
+                for (var i = 0; i < nodes.Length; i++)
+                    if (package.Attachments[i].IsExternal) externalAttachments.Add(nodes[i]);
+            }
             foreach (var element in root.DescendantsAndSelf())
             {
                 token.ThrowIfCancellationRequested(); material.ChargeWork(64, token);
@@ -189,7 +200,7 @@ internal static class OfdAttachmentPhysicalCleaner
                          string.IsNullOrWhiteSpace(child.Attribute("BaseLoc")?.Value) ||
                          child.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name.LocalName is not ("ID" or "Index" or "Current" or "BaseLoc")))))
                     throw new NotSupportedException("Physical attachment removal cannot prove a malformed Versions wrapper: " + entry.Key);
-                if (element.HasElements && (IsPathBearingText(element) ||
+                if (element.HasElements && (IsPathBearingText(element, externalAttachments) ||
                     element.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value))))
                     throw new NotSupportedException("Physical attachment removal cannot prove mixed XML path content: " + entry.Key);
                 foreach (var attribute in element.Attributes().Where(a => !a.IsNamespaceDeclaration))
@@ -206,14 +217,14 @@ internal static class OfdAttachmentPhysicalCleaner
                         // once the entire signature entry is actually pruned.
                         continue;
                     }
-                    CheckScalar(entry.Key, element, attribute.Value, IsPathBearingAttribute(element, attribute.Name.LocalName),
+                    CheckScalar(entry.Key, element, attribute.Value, IsPathBearingAttribute(element, attribute.Name.LocalName, externalAttachments),
                         IsControlReference(element, attribute.Name.LocalName), candidates, knownBinary, controlReferences,
-                        IsTrustedPayloadSlot(package, entry.Key, element, attribute.Name.LocalName, trustedResources), material, token);
+                        IsTrustedPayloadSlot(package, entry.Key, element, attribute.Name.LocalName, trustedResources, externalAttachments), material, token);
                 }
                 if (!element.HasElements && !string.IsNullOrWhiteSpace(element.Value))
-                    CheckScalar(entry.Key, element, element.Value, IsPathBearingText(element), IsControlReference(element, null),
+                    CheckScalar(entry.Key, element, element.Value, IsPathBearingText(element, externalAttachments), IsControlReference(element, null),
                         candidates, knownBinary, controlReferences,
-                        IsTrustedPayloadSlot(package, entry.Key, element, null, trustedResources), material, token);
+                        IsTrustedPayloadSlot(package, entry.Key, element, null, trustedResources, externalAttachments), material, token);
             }
         }
         foreach (var path in opaqueBinary)
@@ -281,21 +292,22 @@ internal static class OfdAttachmentPhysicalCleaner
                !children[1].HasElements && !string.IsNullOrWhiteSpace(children[1].Value);
     }
 
-    private static bool IsPathBearingAttribute(XElement element, string name) =>
+    private static bool IsPathBearingAttribute(XElement element, string name, ISet<XElement> externalAttachments) =>
         name is "BaseLoc" or "FileRef" or "MediaFile" ||
-        name == "FileLoc" && !IsExternalAttachment(element) ||
+        name == "FileLoc" && !IsExternalAttachment(element, externalAttachments) ||
         name == "URI" && !(element.Name.LocalName == "URI" && element.Parent?.Name.LocalName == "Action");
 
-    private static bool IsPathBearingText(XElement element) =>
+    private static bool IsPathBearingText(XElement element, ISet<XElement> externalAttachments) =>
         ScalarPathElements.Contains(element.Name.LocalName) &&
-        !(element.Name.LocalName == "FileLoc" && IsExternalAttachment(element.Parent)) ||
+        !(element.Name.LocalName == "FileLoc" && IsExternalAttachment(element.Parent, externalAttachments)) ||
         (element.Parent?.Name.LocalName == "DocBody" && element.Name.LocalName == "Signatures") ||
         (element.Document?.Root?.Name.LocalName == "Document" &&
             element.Name.LocalName is ("Attachments" or "Annotations" or "CustomTags" or "Extensions"));
 
-    private static bool IsExternalAttachment(XElement? element) =>
+    private static bool IsExternalAttachment(XElement? element, ISet<XElement> externalAttachments) =>
         element?.Name.LocalName == "Attachment" &&
-        bool.TryParse(element.Attribute("External")?.Value, out var external) && external;
+        (externalAttachments.Contains(element) ||
+         bool.TryParse(element.Attribute("External")?.Value, out var external) && external);
 
     private static bool IsControlReference(XElement element, string? attributeName) =>
         attributeName == "BaseLoc" && element.Name.LocalName is ("Page" or "TemplatePage" or "Version" or "Signature") ||
@@ -395,7 +407,7 @@ internal static class OfdAttachmentPhysicalCleaner
     }
 
     private static PayloadOwnerScope IsTrustedPayloadSlot(OfdDocumentPackage package, string path, XElement element,
-        string? attributeName, ISet<string> trustedResources)
+        string? attributeName, ISet<string> trustedResources, ISet<XElement> externalAttachments)
     {
         var root = element.Document?.Root;
         if (root is null) return PayloadOwnerScope.None;
@@ -431,10 +443,9 @@ internal static class OfdAttachmentPhysicalCleaner
         }
         if (package.AttachmentSource?.DescriptorPath != path || root.Name.LocalName != "Attachments") return PayloadOwnerScope.None;
         var attachment = attributeName == "FileLoc" ? element : element.Parent;
-        // Reader treats External=true as a navigation target, not an archive
-        // payload. Fresh internal attachments are emitted by the writer here.
+        // Reader may also infer external ownership from an absent archive entry.
         if (attachment?.Name != ns + "Attachment" ||
-            bool.TryParse(attachment.Attribute("External")?.Value, out var external) && external)
+            IsExternalAttachment(attachment, externalAttachments))
             return PayloadOwnerScope.None;
         return attributeName == "FileLoc" && element == attachment && attachment.Parent == root &&
                attachment.Element(ns + "FileLoc") is null ||

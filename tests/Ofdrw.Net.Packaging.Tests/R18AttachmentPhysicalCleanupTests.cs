@@ -222,6 +222,24 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task InferredExternalAttachmentLocationRemainsNavigationOnly()
+    {
+        var entries = Entries(Seed(external: true));
+        var descriptor = XDocument.Parse(Encoding.UTF8.GetString(entries["Doc_0/Metadata/List.xml"]));
+        var external = descriptor.Root!.Elements(XName.Get("Attachment", Ns)).Last();
+        external.Attribute("External")!.Remove();
+        external.Element(XName.Get("FileLoc", Ns))!.Value = "https://example.invalid/a%20b";
+        entries["Doc_0/Metadata/List.xml"] = Utf8(descriptor.ToString(SaveOptions.DisableFormatting));
+
+        var package = await Read(Zip(entries));
+        Assert.True(package.Attachments[1].IsExternal);
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        Assert.Equal("https://example.invalid/a%20b", Assert.Single((await Read(output)).Attachments).ExternalPath);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+    }
+
+    [Fact]
     public async Task RetainedBinaryCannotAlsoOwnDocumentExtensionsControlEntry()
     {
         var entries = Entries(Seed());
