@@ -156,6 +156,18 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public void LaterShapedOpportunityCanFitAfterAnEarlierOneOverflows()
+    {
+        var shaper = new NonMonotonicShaper();
+        var result = new TextPrelayoutEngine(shaper).Layout(
+            new TextPrelayoutRequest("A A", new[] { Noto() }, 4, 5));
+        Assert.Equal(new[] { "A ", "A", "A A" }, shaper.Requests);
+        Assert.Single(result.Lines);
+        Assert.Equal("A A", result.Lines[0].ShapedRun.Request.Text);
+        Assert.False(result.Overflows);
+    }
+
+    [Fact]
     public void ComplexCmapCoverageIsBoundedBeforeNativeShaping()
     {
         var bytes = File.ReadAllBytes(Font("LXGWWenKai-Regular.ttf"));
@@ -504,6 +516,18 @@ public sealed class TextPrelayoutTests
             Calls++;
             return new TextShapedRun(request, new[] { new TextShapedGlyph(1, request.SourceStart,
                 request.Text.Length, request.Text.Length * 500, 0, 0, 0, null, false) }, "counting-test");
+        }
+    }
+
+    private sealed class NonMonotonicShaper : ITextShaper
+    {
+        public System.Collections.Generic.List<string> Requests { get; } = new();
+        public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default)
+        {
+            Requests.Add(request.Text);
+            var advance = request.Text.Length == 3 ? 1000 : 2000;
+            return new TextShapedRun(request, new[] { new TextShapedGlyph(1, request.SourceStart,
+                request.Text.Length, advance, 0, 0, 0, null, false) }, "nonmonotonic-test");
         }
     }
 

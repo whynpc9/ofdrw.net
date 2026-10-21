@@ -320,28 +320,27 @@ public sealed class TextPrelayoutEngine
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var opportunities = BreakOpportunities(request.Text, cursor, paragraphEnd);
+                var firstEnd = -1;
+                TextShapedRun? first = null;
+                double firstFitAdvance = 0;
                 var fittingEnd = -1;
-                var selectedEnd = paragraphEnd;
-                TextShapedRun? selected = null;
-                double selectedFitAdvance = 0;
+                TextShapedRun? fitting = null;
+                double fittingAdvance = 0;
                 foreach (var end in opportunities)
                 {
                     var candidate = Shape(cursor, end - cursor);
                     var fitAdvance = FitAdvance(cursor, end, candidate);
+                    if (first is null) { firstEnd = end; first = candidate; firstFitAdvance = fitAdvance; }
                     if (fitAdvance * scale <= request.WidthMillimeters + 1e-8)
-                    { fittingEnd = end; selected = candidate; selectedFitAdvance = fitAdvance; continue; }
-                    selectedEnd = fittingEnd > cursor ? fittingEnd : end;
-                    if (fittingEnd <= cursor) { selected = candidate; selectedFitAdvance = fitAdvance; }
-                    break;
+                    { fittingEnd = end; fitting = candidate; fittingAdvance = fitAdvance; }
                 }
-                if (selected is null) throw new TextLayoutException(TextLayoutError.InvalidRequest, "No line break candidate was available.");
-                if (selectedEnd == paragraphEnd && fittingEnd == paragraphEnd) { /* complete paragraph */ }
-                else if (fittingEnd > cursor) selectedEnd = fittingEnd;
-                if (selected.Request.Text.Length != selectedEnd - cursor)
-                {
-                    selected = Shape(cursor, selectedEnd - cursor);
-                    selectedFitAdvance = FitAdvance(cursor, selectedEnd, selected);
-                }
+                if (first is null) throw new TextLayoutException(TextLayoutError.InvalidRequest, "No line break candidate was available.");
+                // Shaped advances need not grow with source length: kerning,
+                // substitutions, and replacement shapers can make a later
+                // opportunity fit after an earlier one failed.
+                var selectedEnd = fittingEnd > cursor ? fittingEnd : firstEnd;
+                var selected = fitting ?? first;
+                var selectedFitAdvance = fitting is null ? firstFitAdvance : fittingAdvance;
                 AddLine(cursor, selectedEnd - cursor, selectedEnd == paragraphEnd ? terminator : 0,
                     selected, selectedFitAdvance);
                 cursor = selectedEnd;
