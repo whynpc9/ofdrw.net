@@ -65,26 +65,19 @@ internal static class OfdSignatureFileSelection
         var mutableAnnotations = FindMutableAnnotations(entries, documentPaths);
         var mutableSignatureFiles = FindDeclaredSignatureFiles(entries, signaturesPath, newSignaturePath);
         mutableSignatureFiles.Add(signaturesPath);
-        var signatureDirectory = signaturesPath.Substring(0, signaturesPath.LastIndexOf('/') + 1);
         foreach (var entry in entries)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var path = entry.Key;
-            var signatureOwned = mutableSignatureFiles.Contains(path) &&
-                (signatureDirectory.Length == 0 ||
-                 path.StartsWith(signatureDirectory, StringComparison.OrdinalIgnoreCase));
-            if (!mutableAnnotations.Contains(path) &&
-                ((!mutableSignatureFiles.Contains(path) && IsXmlCandidate(path, entry.Value)) ||
-                 (!signatureOwned && directories.Any(dir =>
-                     path.StartsWith(dir, StringComparison.OrdinalIgnoreCase)))))
+            if (!mutableAnnotations.Contains(path) && !mutableSignatureFiles.Contains(path) &&
+                (IsXmlCandidate(path, entry.Value) || directories.Any(dir =>
+                     path.StartsWith(dir, StringComparison.OrdinalIgnoreCase))))
                 required.Add(path);
         }
 
         // External shared resources may sit outside a DocBody directory. A path
         // explicitly named by any non-signature XML also remains protected.
-        var xmlPaths = new HashSet<string>(entries.Where(pair =>
-                IsXmlCandidate(pair.Key, pair.Value) && !mutableSignatureFiles.Contains(pair.Key))
-            .Select(pair => pair.Key), StringComparer.OrdinalIgnoreCase);
+        var xmlPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "OFD.xml" };
         xmlPaths.UnionWith(documentPaths);
         xmlPaths.UnionWith(mutableAnnotations);
         var pending = new Queue<string>(xmlPaths.OrderBy(path => path, StringComparer.Ordinal));
@@ -149,9 +142,21 @@ internal static class OfdSignatureFileSelection
                     var value = candidate.Trim();
                     if (value.Length == 0) continue;
                     var resolved = Resolve(path, value);
-                    if (entries.ContainsKey(resolved)) required.Add(resolved);
+                    if (entries.TryGetValue(resolved, out var resolvedBytes))
+                    {
+                        required.Add(resolved);
+                        if (!mutableSignatureFiles.Contains(resolved) &&
+                            IsXmlCandidate(resolved, resolvedBytes) && xmlPaths.Add(resolved))
+                            pending.Enqueue(resolved);
+                    }
                     var fromRoot = Normalize(value);
-                    if (entries.ContainsKey(fromRoot)) required.Add(fromRoot);
+                    if (entries.TryGetValue(fromRoot, out var rootBytes))
+                    {
+                        required.Add(fromRoot);
+                        if (!mutableSignatureFiles.Contains(fromRoot) &&
+                            IsXmlCandidate(fromRoot, rootBytes) && xmlPaths.Add(fromRoot))
+                            pending.Enqueue(fromRoot);
+                    }
                 }
             }
             foreach (var page in document.Root.DescendantsAndSelf().Where(node =>

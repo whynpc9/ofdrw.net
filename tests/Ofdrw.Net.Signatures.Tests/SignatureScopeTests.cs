@@ -290,7 +290,6 @@ public sealed class SignatureScopeTests
 
     [Theory]
     [InlineData("Doc_0/Pages/Page_0/Content.xml")]
-    [InlineData("Doc_0/Res/opaque.bin")]
     [InlineData("Shared/Res/logo.png")]
     [InlineData("Shared/Res/typeface.ttf")]
     public async Task SignedValueAliasCannotDemotePageOrResource(string dependency)
@@ -364,6 +363,42 @@ public sealed class SignatureScopeTests
         Assert.Contains("/Doc_0/Signs/Signatures.xml", error.Message);
         Assert.Equal(0, provider.Calls);
         Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
+    public async Task UnreferencedMalformedXmlDoesNotBlockDefaultSigning()
+    {
+        using var source = await CreatePackage();
+        using var withOptional = await AddEntries(source, new Dictionary<string, byte[]>
+        {
+            ["Extras/data.xml"] = [1, 2, 3]
+        });
+        using var signed = new MemoryStream();
+        var provider = new Provider();
+        await new OfdSignatureService().SignAsync(withOptional, signed, provider);
+        Assert.Equal(1, provider.Calls);
+        Assert.True(await IsFullyValid(signed));
+    }
+
+    [Fact]
+    public async Task DeclaredSignedValueOutsideListDirectoryCanBeAppended()
+    {
+        using var source = await CreatePackage();
+        using var first = new MemoryStream();
+        await new OfdSignatureService().SignAsync(source, first, new Provider());
+        first.Position = 0;
+        var archive = await new OfdPackageLoader().LoadAsync(first);
+        using var withValue = await AddEntries(first, new Dictionary<string, byte[]>
+        {
+            ["Doc_0/ExternalValue.dat"] = archive.GetBytes("Doc_0/Signs/Sign_0/SignedValue.dat")
+        });
+        using var external = await AliasFirstSignedValue(withValue, "Doc_0/ExternalValue.dat");
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        await new OfdSignatureService().SignAsync(external, output, provider,
+            new OfdSignatureOptions { ProtectFile = _ => true });
+        Assert.Equal(1, provider.Calls);
+        Assert.True(output.Length > 0);
     }
 
     [Theory]
@@ -575,6 +610,9 @@ public sealed class SignatureScopeTests
             var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
             document.Root!.Add(new XElement(document.Root.Name.Namespace + "Annotations",
                 "Annots/Annotations.xml"));
+            if (rootReferencedPath is not null)
+                document.Root.Add(new XElement(document.Root.Name.Namespace + "VendorResource",
+                    "/Shared/manifest.xml"));
             if (resourceXmlPath is not null)
                 document.Root.Add(new XElement(document.Root.Name.Namespace + "PublicRes",
                     "/" + resourceXmlPath));
