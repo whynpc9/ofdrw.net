@@ -106,7 +106,11 @@ public static class OfdStandardEncryption
         var archive = await OfdPasswordEnvelope.LoadRawValidatedAsync(source, settings, cancellationToken).ConfigureAwait(false);
         var entries = archive.EntryNames.ToDictionary(path => path, archive.GetBytes, StringComparer.OrdinalIgnoreCase);
         OfdPasswordEnvelope.AdoptAndValidateEntries(entries, owned);
-        if (!entries.ContainsKey(EnvelopePath) || !entries.ContainsKey(SeedPath) || !entries.ContainsKey(MapPath))
+        if (!entries.Keys.Contains(EnvelopePath, StringComparer.Ordinal) ||
+            !entries.Keys.Contains(SeedPath, StringComparer.Ordinal) ||
+            !entries.Keys.Contains(MapPath, StringComparer.Ordinal) ||
+            !entries.Keys.Contains(ManifestPath, StringComparer.Ordinal) ||
+            !entries.Keys.Contains(SignedValuePath, StringComparer.Ordinal))
             throw new InvalidDataException("Required standard encryption metadata is missing.");
         var contentVerified = VerifyManifest(entries, options, settings, cancellationToken);
         var envelope = OfdPasswordEnvelope.Parse(OfdPasswordEnvelope.Get(entries, EnvelopePath), settings);
@@ -203,7 +207,7 @@ public static class OfdStandardEncryption
             Need(!Reserved(plainPath) && !Metadata(encrypted) && clear.Add(plainPath) && cipher.Add(encrypted) &&
                 !entries.ContainsKey(plainPath), "Colliding or duplicate encrypted map entry.");
         }
-        var expected = new HashSet<string>(cipher, StringComparer.OrdinalIgnoreCase)
+        var expected = new HashSet<string>(cipher, StringComparer.Ordinal)
             { EnvelopePath, SeedPath, MapPath, ManifestPath, SignedValuePath };
         Need(expected.SetEquals(entries.Keys), "Encrypted package has missing or unexpected file entries.");
         foreach (var mapping in mappings)
@@ -307,7 +311,7 @@ public static class OfdStandardEncryption
             "OFDEntries signature or signer is invalid.");
         var list = One(manifest, Ns + "FileList");
         Need(!list.HasAttributes && list.Elements().All(x => x.Name == Ns + "File"), "Unsupported file inventory.");
-        var listed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var listed = new HashSet<string>(StringComparer.Ordinal);
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var file in list.Elements())
         {
@@ -317,7 +321,7 @@ public static class OfdStandardEncryption
                 file.Attributes().Count() == 2 && !file.HasElements &&
                 listed.Add(Absolute((string?)file.Attribute("FileLoc"))), "Duplicate or malformed file inventory.");
         }
-        var actual = new HashSet<string>(entries.Keys, StringComparer.OrdinalIgnoreCase);
+        var actual = new HashSet<string>(entries.Keys, StringComparer.Ordinal);
         actual.Remove(ManifestPath); actual.Remove(SignedValuePath);
         Need(listed.SetEquals(actual), "Manifest has missing or extra package entries.");
         var extensions = manifest.Elements(Ext + "ContentDigests").ToArray();
@@ -330,7 +334,7 @@ public static class OfdStandardEncryption
         var digestList = extensions[0];
         Need((string?)digestList.Attribute("Algorithm") == "SM3" && AttrsOnly(digestList, "Algorithm") &&
             digestList.Elements().All(x => x.Name == Ext + "Entry"), "Unsupported content digest extension.");
-        var hashed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var hashed = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in digestList.Elements())
         {
             token.ThrowIfCancellationRequested();

@@ -23,7 +23,7 @@
 - 本包自闭环：签名清单及私有签名逐文件 SM3 扩展均验证。错误口令/证书、密文改动、额外或缺失条目、清单改动拒绝。文件 API 在失败时保持目的文件原值；旧私有 v2 回归继续通过。
 - 本地包消费：[`run-standard-crypto-e2e.sh`](../../../scripts/run-standard-crypto-e2e.sh) 生成 Core、Packaging、Crypto.Password 三个实际 `.nupkg`，用隔离 `PackageReference` 消费端验证口令/证书多接收人、内容认证、失败原子性及私有 v2。版本 `0.1.0-r14.local` 仅为本地测试，不是公开发布。包 SHA 与依赖保存在忽略目录 `artifacts/roadmap-v12/R14/package-e2e/package-manifest.json`。
 
-2026-10-21 本次本地复跑：`Ofdrw.Net.Crypto.Password.Tests` **104/104**（含五份已物化 Java fixture）通过；最终解析器修改后的隔离包消费通过，构建 0 warning / 0 error。三个本地包的 SHA-256 依次为 Core `728f9c5e9b8850882cd6a3a2c97599e172c128d3e37d9be9991d04d21db37810`、Packaging `724144434bc54f5017b8cc36055d9b074c34f612156b9a72b81ca6048923b0ce`、Crypto.Password `d9812d2fdc4cc0570c000e688d0e0250284317dca3e138de8d625cb3e0086da5`。反向 Java 复跑在本次修改后对两份新 .NET 包的清单均输出 `true`，解密后原始文件条目字节相同；两份 .NET 包的 SHA-256 分别为 `a58627984e67d4f2040a8732c88422a0fa0df7d201de004284c3cdf67f3af27c`、`0c1b90a838214497d2c4cc726a6a9d2df9256acdf512c524735e3026a27757d7`。该哈希仅标识这次随机输出。
+2026-10-21 本次本地复跑：`Ofdrw.Net.Crypto.Password.Tests` **104/104**（含五份已物化 Java fixture、大小写路径更名拒绝）通过；最终解析器修改后的隔离包消费通过，构建 0 warning / 0 error。三个本地包的 SHA-256 依次为 Core `e6ed85dc023947347bf8e7d01b907e9b8742937e859c81fac3b445328cb5f884`、Packaging `7478f549405eb37fd92e12c6fd8d2155986d12b856bba0aa830b8cb8e3d7f727`、Crypto.Password `e33434c4e756e5d69197f80ae3d872308cf31b2546a5ada6784258dad55d32fe`。反向 Java 复跑在本次修改后对两份新 .NET 包的清单均输出 `true`，解密后原始文件条目字节相同；两份 .NET 包的 SHA-256 分别为 `6080c591b5f9ee59cff10014e06679a6440bd2524c99afd5916adbdacce98807`、`13993520eccaa3f0f3d53c5cdbeb53d2a16f5b122811493e6896315d63b8915d`。该哈希仅标识这次随机输出。
 
 本地复查命令：
 

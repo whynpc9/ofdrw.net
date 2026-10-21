@@ -170,6 +170,12 @@ public sealed class StandardEncryptionTests
         entries.Remove("Cipher/entry-00001.dat");
         await Assert.ThrowsAsync<InvalidDataException>(() => OfdStandardEncryption.DecryptAsync(
             new MemoryStream(Zip(entries)), credential, verifier));
+        entries = Unzip(encrypted);
+        var renamedPayload = entries["Cipher/entry-00001.dat"];
+        entries.Remove("Cipher/entry-00001.dat");
+        entries.Add("Cipher/ENTRY-00001.dat", renamedPayload);
+        await Assert.ThrowsAsync<InvalidDataException>(() => OfdStandardEncryption.DecryptAsync(
+            new MemoryStream(Zip(entries)), credential, verifier));
     }
 
     private static Dictionary<string, byte[]> Fixture() => new(StringComparer.OrdinalIgnoreCase)
