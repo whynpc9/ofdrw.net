@@ -171,7 +171,9 @@ internal static class OfdAttachmentPhysicalCleaner
                 if (!KnownElements.Contains(element.Name.LocalName) || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     a.Name.Namespace == XNamespace.None && !KnownAttributes.Contains(a.Name.LocalName)))
                     throw new NotSupportedException("Physical attachment removal cannot prove an unknown OFD field reference closure: " + entry.Key);
-                if (element.Name.LocalName == "GotoA" && element.Attribute("AttachID") is XAttribute targetId &&
+                // Actions can be deleted or retargeted by the typed writer.
+                // Only the output plan can prove a dangling action remains.
+                if (finalEntries is null && element.Name.LocalName == "GotoA" && element.Attribute("AttachID") is XAttribute targetId &&
                     removedAttachmentIds.Contains(targetId.Value.Trim()))
                     throw new NotSupportedException("A retained action targets the removed attachment ID: " + entry.Key);
                 if (element.Parent?.Name.LocalName == "DocBody" && element.Name.LocalName == "Versions" &&

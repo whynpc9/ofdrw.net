@@ -813,6 +813,12 @@ public sealed class R18AttachmentPhysicalCleanupTests
         Assert.IsType<OfdRawAction>(Assert.Single(package.Actions!.Items));
         Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
         await RefusesWithoutOutput(package, "retained action targets the removed attachment ID");
+
+        package.Actions.Items.Clear();
+        var (output, _) = await Write(package);
+        Assert.Empty((await Read(output)).Attachments);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+        Assert.DoesNotContain("GotoA", Encoding.UTF8.GetString(Entries(output)["Doc_0/Document.xml"]));
     }
 
     [Fact]
