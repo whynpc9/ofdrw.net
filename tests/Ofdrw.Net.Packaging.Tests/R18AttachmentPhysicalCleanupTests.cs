@@ -193,6 +193,22 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task ExternalAttachmentFileLocCannotAuthenticateOpaqueArchiveBytes()
+    {
+        var entries = Entries(Seed());
+        var descriptor = XDocument.Parse(Encoding.UTF8.GetString(entries["Doc_0/Metadata/List.xml"]));
+        descriptor.Root!.Add(new XElement(XName.Get("Attachment", Ns), new XAttribute("ID", "8"),
+            new XAttribute("Name", "external.bin"), new XAttribute("External", "true"),
+            new XElement(XName.Get("FileLoc", Ns), "../Extras/orphan.bin")));
+        entries["Doc_0/Metadata/List.xml"] = Utf8(descriptor.ToString(SaveOptions.DisableFormatting));
+        entries["Doc_0/Extras/orphan.bin"] = [4, 5, 6];
+
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "opaque binary entry ownership");
+    }
+
+    [Fact]
     public async Task FakeResourceSlotCannotAuthenticateAnOpaqueBinary()
     {
         var entries = Entries(Seed());
@@ -765,7 +781,7 @@ public sealed class R18AttachmentPhysicalCleanupTests
         package.Permissions!.Edit = false;
         package.ViewingPreferences!.PageMode = OfdPageMode.UseBookmarks;
         package.Actions ??= new OfdActionCollection();
-        package.Actions.Items.Add(new OfdUriAction { Event = "CLICK", Uri = "https://example.invalid" });
+        package.Actions.Items.Add(new OfdUriAction { Event = "CLICK", Uri = "https://example.invalid/a%20b" });
         Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
         var (output, _) = await Write(package);
         Assert.Equal(entries["Doc_0/Cover.png"], Entries(output)["Doc_0/Cover.png"]);
@@ -774,7 +790,7 @@ public sealed class R18AttachmentPhysicalCleanupTests
         Assert.Equal("new", saved.Options.Metadata.CustomDatas!.Items[0].Value);
         Assert.False(saved.Permissions!.Edit);
         Assert.Equal(OfdPageMode.UseBookmarks, saved.ViewingPreferences!.PageMode);
-        Assert.Equal("https://example.invalid", Assert.IsType<OfdUriAction>(Assert.Single(saved.Actions!.Items)).Uri);
+        Assert.Equal("https://example.invalid/a%20b", Assert.IsType<OfdUriAction>(Assert.Single(saved.Actions!.Items)).Uri);
 
         entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocInfo><Cover>Doc_0/Payload/original.bin</Cover></DocInfo><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
         package = await Read(Zip(entries));

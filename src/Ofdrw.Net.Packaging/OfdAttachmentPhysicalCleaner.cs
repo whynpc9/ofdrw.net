@@ -201,7 +201,7 @@ internal static class OfdAttachmentPhysicalCleaner
                         // once the entire signature entry is actually pruned.
                         continue;
                     }
-                    CheckScalar(entry.Key, element, attribute.Value, IsPathBearingAttribute(attribute.Name.LocalName), candidates, knownBinary,
+                    CheckScalar(entry.Key, element, attribute.Value, IsPathBearingAttribute(element, attribute.Name.LocalName), candidates, knownBinary,
                         IsTrustedPayloadSlot(package, entry.Key, element, attribute.Name.LocalName, trustedResources), material, token);
                 }
                 if (!element.HasElements && !string.IsNullOrWhiteSpace(element.Value))
@@ -236,7 +236,9 @@ internal static class OfdAttachmentPhysicalCleaner
                !children[1].HasElements && !string.IsNullOrWhiteSpace(children[1].Value);
     }
 
-    private static bool IsPathBearingAttribute(string name) => name is "BaseLoc" or "FileLoc" or "FileRef" or "MediaFile" or "URI";
+    private static bool IsPathBearingAttribute(XElement element, string name) =>
+        name is "BaseLoc" or "FileLoc" or "FileRef" or "MediaFile" ||
+        name == "URI" && !(element.Name.LocalName == "URI" && element.Parent?.Name.LocalName == "Action");
 
     private static bool IsPathBearingText(XElement element) => ScalarPathElements.Contains(element.Name.LocalName) ||
         (element.Parent?.Name.LocalName == "DocBody" && element.Name.LocalName == "Signatures") ||
@@ -360,10 +362,16 @@ internal static class OfdAttachmentPhysicalCleaner
             return PayloadOwnerScope.None;
         }
         if (package.AttachmentSource?.DescriptorPath != path || root.Name.LocalName != "Attachments") return PayloadOwnerScope.None;
-        return attributeName == "FileLoc" && element.Name == ns + "Attachment" && element.Parent == root &&
-               element.Element(ns + "FileLoc") is null ||
-               attributeName is null && element.Name == ns + "FileLoc" && element.Parent?.Name == ns + "Attachment" &&
-               element.Parent.Parent == root && ReferenceEquals(element.Parent.Element(ns + "FileLoc"), element)
+        var attachment = attributeName == "FileLoc" ? element : element.Parent;
+        // Reader treats External=true as a navigation target, not an archive
+        // payload. Fresh internal attachments are emitted by the writer here.
+        if (attachment?.Name != ns + "Attachment" ||
+            bool.TryParse(attachment.Attribute("External")?.Value, out var external) && external)
+            return PayloadOwnerScope.None;
+        return attributeName == "FileLoc" && element == attachment && attachment.Parent == root &&
+               attachment.Element(ns + "FileLoc") is null ||
+               attributeName is null && element.Name == ns + "FileLoc" && element.Parent == attachment &&
+               attachment.Parent == root && ReferenceEquals(attachment.Element(ns + "FileLoc"), element)
             ? PayloadOwnerScope.Entry : PayloadOwnerScope.None;
     }
 
