@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="${1:?Supply the frozen default feed version}"
-DEFAULT_FEED="${2:?Supply the validated default 11-package feed}"
+DEFAULT_FEED="${2:?Supply the validated default package feed}"
 OUTPUT_DIR="${3:-$ROOT_DIR/artifacts/pdf-vectors/package-e2e}"
 FONT_DIR="${OFDRW_GRAPHICS_FONTS:-$ROOT_DIR/artifacts/graphics-fonts}"
 mkdir -p "$OUTPUT_DIR/feed" "$OUTPUT_DIR/output"
@@ -33,7 +33,7 @@ dotnet restore "$TASK_DIR/Consumer.csproj" --configfile "$TASK_DIR/NuGet.Config"
 dotnet build "$TASK_DIR/Consumer.csproj" -c Release --no-restore -p:OfdrwPackageVersion="$VERSION" "${FLAGS[@]}"
 dotnet "$TASK_DIR/bin/Release/net10.0/Consumer.dll" "$OUTPUT_DIR/output" "$FONT_DIR/Ofdrw-CI-NotoSansCJKsc-Regular.ttf"
 cp "$TASK_DIR/obj/project.assets.json" "$OUTPUT_DIR/consumer.assets.json"
-python3 - "$OUTPUT_DIR" "$VERSION" <<'PY'
+python3 - "$OUTPUT_DIR" "$VERSION" "$DEFAULT_FEED" <<'PY'
 from pathlib import Path
 import hashlib,json,sys,zipfile,xml.etree.ElementTree as ET
 root=Path(sys.argv[1]); version=sys.argv[2]; packages=[]
@@ -45,7 +45,9 @@ for path in sorted((root/'feed').glob('*.nupkg')):
   deps=[n.attrib['id'] for n in nodes if n.tag.rsplit('}',1)[-1]=='dependency']
   if find('id') not in ('Ofdrw.Net.Graphics.SkiaSharp','Ofdrw.Net.Converter.Pdf.Vector') and any('SkiaSharp' in d or d=='Ofdrw.Net.Converter.Pdf.Vector' for d in deps): raise ValueError('Default product acquired optional dependency')
   packages.append({'id':find('id'),'file':path.name,'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'dependencies':deps})
-if len(packages)!=13: raise ValueError('Expected 11 defaults plus 2 optional packages')
+default_ids={item['id'] for item in json.loads((Path(sys.argv[3])/'package-manifest.json').read_text())['packages']}
+expected=default_ids|{'Ofdrw.Net.Graphics.SkiaSharp','Ofdrw.Net.Converter.Pdf.Vector'}
+if len(packages)!=len(expected) or {item['id'] for item in packages}!=expected: raise ValueError('Expected validated defaults plus exactly two optional packages')
 assets=json.loads((root/'consumer.assets.json').read_text())
 if any(v['type']=='project' for v in assets['libraries'].values()): raise ValueError('Consumer used project references')
 (root/'package-manifest.json').write_text(json.dumps({'version':version,'status':'passed','consumer':'fresh cache, PackageReference only','packages':packages},indent=2)+'\n')

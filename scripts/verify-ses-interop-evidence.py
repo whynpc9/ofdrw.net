@@ -7,7 +7,7 @@ assets=json.loads(pathlib.Path(sys.argv[3]).read_text())
 assert not any(v['type']=='project' for v in assets['libraries'].values()), 'Consumer must use packages only'
 assert f'Ofdrw.Net.Signatures.SesInterop/{version}' in assets['libraries']
 cli_deps=pathlib.Path(sys.argv[4]); cli=json.loads(cli_deps.read_text())
-assert not any('SesInterop' in k or 'BouncyCastle' in k for k in cli['libraries']), 'CLI must not load optional crypto'
+assert not any('SesInterop' in k or 'BouncyCastle' in k or 'HarfBuzz' in k for k in cli['libraries']), 'CLI must not load optional adapters'
 data=json.loads((files/'functional.json').read_text())
 assert data['capabilities']['coreBuiltInSesSm2'] is False
 assert len(data['samples'])==4
@@ -17,12 +17,13 @@ for sample in data['samples']:
  text=(files/(sample['name']+'-cli.txt')).read_text()
  assert 'signed-value Unsupported' in text and 'reference integrity valid' in text and 'fully valid' not in text
 
-packages={}
+packages={}; package_ids=[]
 for package in sorted((root/'packages').rglob('*.nupkg')):
  with zipfile.ZipFile(package) as z:
   spec=E.fromstring(z.read(next(n for n in z.namelist() if n.endswith('.nuspec'))))
   values={n.tag.rsplit('}',1)[-1]:n.text for n in spec.iter()}
   assert values['version']==version
+  package_ids.append(values['id'])
   identity=values['id']+'/'+version
   content_hash=base64.b64encode(hashlib.sha512(package.read_bytes()).digest()).decode()
   if identity in assets['libraries']: assert assets['libraries'][identity]['sha512']==content_hash, 'Consumed package hash mismatch'
@@ -36,7 +37,8 @@ for package in sorted((root/'packages').rglob('*.nupkg')):
   elif values['id'] in ('Ofdrw.Net.Core','Ofdrw.Net.Packaging','Ofdrw.Net.Signatures','Ofdrw.Net.Converter','Ofdrw.Net.Cli'):
    assert not any(n.get('id','') in ('Ofdrw.Net.Signatures.SesInterop','BouncyCastle.Cryptography') for n in spec.iter())
  packages[str(package.relative_to(root))]={'bytes':package.stat().st_size,'sha256':hashlib.sha256(package.read_bytes()).hexdigest()}
-assert len(packages)==12
+default_ids={item['id'] for item in json.loads((root/'packages/sdk/package-manifest.json').read_text())['packages']}
+assert len(package_ids)==len(packages) and set(package_ids)==default_ids|{'Ofdrw.Net.Signatures.SesInterop'}, 'Package set differs from validated default feed plus SES adapter'
 cli_package=root/'packages/sdk'/f'Ofdrw.Net.Cli.{version}.nupkg'
 installed_cli_dlls={}
 with zipfile.ZipFile(cli_package) as z:
@@ -49,6 +51,7 @@ with zipfile.ZipFile(cli_package) as z:
    installed_cli_dlls[installed.name]=hashlib.sha256(installed.read_bytes()).hexdigest()
  for package in (root/'packages/sdk').glob('*.nupkg'):
   if package==cli_package: continue
+  if package.name==f'Ofdrw.Net.Text.HarfBuzz.{version}.nupkg': continue
   with zipfile.ZipFile(package) as sdk:
    names=[n for n in sdk.namelist() if n.startswith('lib/netstandard2.1/') and n.endswith('.dll')]
    for name in names:
@@ -71,4 +74,4 @@ for sample in data['samples']:
  assert len(actual)==sample['pages']==len(baseline)
  assert [p['sha256'] for p in actual]==[p['sha256'] for p in baseline], 'Signing changed rendered page pixels'
 (files/'rendered-pages.json').write_text(json.dumps({'dpi':96,'pages':pages,'signedPixelsEqualBaseline':True,'previewAccepted':False},indent=2)+'\n')
-print('Local 12-package provenance, default CLI exit 2, four test signatures and all page PNG comparisons passed; Preview remains separate.')
+print(f'Local {len(packages)}-package provenance, default CLI exit 2, four test signatures and all page PNG comparisons passed; Preview remains separate.')

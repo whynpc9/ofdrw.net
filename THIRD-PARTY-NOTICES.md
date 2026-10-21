@@ -12,6 +12,10 @@ license for Ofdrw.Net itself.
 | PdfSharpCore | 1.3.67 | MIT | https://github.com/ststeiger/PdfSharpCore |
 | PdfPig | 0.1.15 | Apache-2.0 | https://github.com/UglyToad/PdfPig |
 | SkiaSharp | 3.119.1 | MIT | https://go.microsoft.com/fwlink/?linkid=868515 |
+| HarfBuzzSharp | 14.2.1.301 | MIT | https://go.microsoft.com/fwlink/?linkid=868515 |
+| HarfBuzzSharp.NativeAssets.macOS | 14.2.1.301 | MIT | https://go.microsoft.com/fwlink/?linkid=868515 |
+| HarfBuzzSharp.NativeAssets.Win32 | 14.2.1.301 | MIT | https://go.microsoft.com/fwlink/?linkid=868515 |
+| HarfBuzzSharp.NativeAssets.Linux | 14.2.1.301 | MIT | https://go.microsoft.com/fwlink/?linkid=868515 |
 | BouncyCastle.Cryptography | 2.6.2 | MIT | https://www.bouncycastle.org/stable/nuget/csharp/website |
 | SkiaSharp.NativeAssets.Linux.NoDependencies (19 tests/sample only) | 3.119.1 | MIT, bundled native notices | https://github.com/mono/SkiaSharp/tree/v3.119.1 |
 | SixLabors.Fonts | 1.0.1 | Apache-2.0 | https://github.com/SixLabors/Fonts |
@@ -55,8 +59,12 @@ original license files accompany the fonts. These fixtures are not included
 in the production NuGet packages. Modified LXGW subsets replace Reserved Font
 Names while retaining copyright and license records. Subsetting does not grant
 embedding rights. The managed subset implementation introduces no third-party
-runtime backend; HarfBuzz/fonttools used for independent development probes are
-not production dependencies.
+runtime backend for the existing Layout and Converter packages. HarfBuzz and
+fonttools were previously used only for independent development probes; the
+new optional `Ofdrw.Net.Text.HarfBuzz` adapter is a separate runtime dependency.
+It pins the managed package and macOS, Win32 and Linux native asset packages
+to the same version. The native packages carry `THIRD-PARTY-NOTICES.txt`,
+including the HarfBuzz Old MIT notice. This does not grant font embedding rights.
 
 The compiled font subset bidi profile derives factual scalar ranges from the
 Unicode 17.0.0 Character Database (DerivedBidiClass.txt), licensed under

@@ -40,8 +40,9 @@ if [[ "$CONSUME_ONLY" == false ]]; then
   dotnet restore "$ROOT_DIR/Ofdrw.Net.sln" "${BUILD_FLAGS[@]}"
   dotnet build "$ROOT_DIR/Ofdrw.Net.sln" -c Release --no-restore \
     -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
-  # The default converter/tool feed is deliberately the validator's original
-  # product set. Optional extensions have independent consumption gates.
+  # The default converter/tool feed follows the validator's current product
+  # set, including the optional HarfBuzz text adapter. Other optional
+  # extensions have independent consumption gates.
   python3 - "$ROOT_DIR/scripts" > "$TASK_DIR/default-products.txt" <<'PY_PACKAGES'
 import sys
 sys.path.insert(0, sys.argv[1])
@@ -105,6 +106,44 @@ FONT_CONSUMER="$TASK_DIR/font-consumer/Consumer.csproj"
 dotnet restore "$FONT_CONSUMER" --configfile "$TASK_DIR/NuGet.Config" -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
 dotnet build "$FONT_CONSUMER" -c Release --no-restore -p:OfdrwPackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
 dotnet run --project "$FONT_CONSUMER" -c Release --no-build --no-restore -- "$ROOT_DIR" "$RESULT_DIR/font-subset"
+
+# The release feed includes the optional HarfBuzz adapter. Restore and run the
+# fixed-font page probe from packages only, so missing native assets or a bad
+# adapter dependency cannot pass the candidate gate on project references.
+mkdir -p "$TASK_DIR/text-consumer"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Text.HarfBuzz.E2E/Program.cs" "$TASK_DIR/text-consumer/Program.cs"
+cat > "$TASK_DIR/text-consumer/Consumer.csproj" <<EOF_TEXT_CONSUMER
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Ofdrw.Net.Text.HarfBuzz" Version="$VERSION" />
+    <PackageReference Include="Ofdrw.Net.Packaging" Version="$VERSION" />
+    <PackageReference Include="Ofdrw.Net.Reader" Version="$VERSION" />
+    <PackageReference Include="Ofdrw.Net.Converter.Pdf" Version="$VERSION" />
+  </ItemGroup>
+</Project>
+EOF_TEXT_CONSUMER
+TEXT_CONSUMER="$TASK_DIR/text-consumer/Consumer.csproj"
+TEXT_OUTPUT="$RESULT_DIR/text-prelayout"
+dotnet restore "$TEXT_CONSUMER" --configfile "$TASK_DIR/NuGet.Config" "${BUILD_FLAGS[@]}"
+dotnet build "$TEXT_CONSUMER" -c Release --no-restore "${BUILD_FLAGS[@]}"
+(cd "$ROOT_DIR" && R21_SOURCE_SHA="$(git rev-parse HEAD)" dotnet run \
+  --project "$TEXT_CONSUMER" -c Release --no-build --no-restore -- "$TEXT_OUTPUT")
+for sample in ascii han; do
+  pdftoppm -f 1 -l 1 -png -singlefile -r 144 \
+    "$TEXT_OUTPUT/r21-$sample.pdf" "$TEXT_OUTPUT/r21-$sample-pdf-page"
+  test -s "$TEXT_OUTPUT/r21-$sample.ofd"
+  test -s "$TEXT_OUTPUT/r21-$sample.png"
+  test -s "$TEXT_OUTPUT/r21-$sample-pdf-page.png"
+done
+python3 - "$TEXT_OUTPUT/r21-receipt.json" <<'PY_TEXT_CONSUMER'
+import json, sys
+receipt = json.load(open(sys.argv[1]))
+assert receipt['ofdText'] == receipt['ascii']
+assert receipt['han']['ofdText'] == '中\n文\nA\n中'
+assert 'TEXT_FACE_FALLBACK' in receipt['han']['fallback']
+assert all(output['bytes'] > 0 for output in receipt['outputs'])
+PY_TEXT_CONSUMER
 NUGET_PACKAGES="$SOURCE_CACHE" python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION" --verify-manifest
 cp "$OUT_DIR/package-manifest.json" "$RESULT_DIR/package-manifest.json"
 echo "[E2E] Verified package bytes and output: $RESULT_DIR"

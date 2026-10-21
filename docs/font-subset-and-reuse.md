@@ -16,7 +16,7 @@ foreach (var face in result.FontEmbedding)
 
 ## 生产后端与支持边界
 
-SDK 内部使用纯 .NET managed sfnt/glyf 后端，无 Python/fonttools、HarfBuzz CLI、本地动态库或额外生产包依赖。Core 的 `OpenTypeFace` 是字体表读取/重建的共同来源，DOCX 集合选面、PDF 名称隔离、SVG、coverage 与子集生成共用。Native 的测量和完整嵌入源仍来自同一个 PDF 注册源；写出时才生成独立子集，不改变调用方字节、字体资源或已计算坐标。
+现有字体子集路径使用纯 .NET managed sfnt/glyf 后端，无 Python/fonttools、HarfBuzz CLI 或本地动态库依赖。Core 的 `OpenTypeFace` 是字体表读取/重建的共同来源，DOCX 集合选面、PDF 名称隔离、SVG、coverage 与子集生成共用。Native 的测量和完整嵌入源仍来自同一个 PDF 注册源；写出时才生成独立子集，不改变调用方字节、字体资源或已计算坐标。新增的可选 [HarfBuzz 预布局适配器](text-prelayout.md)是另一条显式新入口，不改变此子集路径。
 
 | 范围 | 行为 |
 | --- | --- |
@@ -45,7 +45,7 @@ SDK 内部使用纯 .NET managed sfnt/glyf 后端，无 Python/fonttools、HarfB
 
 子集化不授予字体嵌入权，不改变原字体许可证。自动子集模式尊重 `OS/2.fsType`：restricted/bitmap-only 禁止新嵌入，no-subsetting 保留全量；fsType 为 0 也不能代替调用方取得授权。Full 和未知内容保留也检查可解析字体的这些标记；无法解析的旧不透明载荷仅可保留并诊断。调用方仍须确保有权分发原载荷。
 
-样例使用固定、可再分发的 LXGW WenKai（OFL 1.1，RFN 子集内部改名）和 Noto Sans（OFL 1.1）。来源、版本、SHA-256 和原许可见 `e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts`，不包含专有系统字体。后端未引入第三方 subset 代码；HarfBuzz/fonttools 仅用于独立开发探针，不是 SDK 运行时。
+样例使用固定、可再分发的 LXGW WenKai（OFL 1.1，RFN 子集内部改名）和 Noto Sans（OFL 1.1）。来源、版本、SHA-256 和原许可见 `e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts`，不包含专有系统字体。现有子集后端未引入第三方 subset 代码；新的可选预布局适配器单独锁定 HarfBuzzSharp 与 native 资产，不承接子集输出。
 
 执行 `e2e/Ofdrw.Net.FontSubset.E2E` 可生成同文档的 full/subset OFD、各页 SVG、经本次 OFD 导出的 PDF、固定字体的 generated-layout native/default DOCX，以及字节/身份对照 JSON。11 包实际消费脚本也运行此样例。功能、自动渲染、PNG 和 macOS Preview 的证据分列在[验收目录](evidence/font-subset/README.md)。
 

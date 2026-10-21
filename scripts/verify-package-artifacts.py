@@ -16,7 +16,7 @@ MUSL_COPYRIGHT_ENTRY = 'docs/licenses/MUSL-COPYRIGHT.txt'
 NATIVE_SUPERVISOR_PACKAGES = {'Ofdrw.Net.Core', 'Ofdrw.Net.Cli'}
 
 PACKAGES = (
-    'Ofdrw.Net.Core', 'Ofdrw.Net.Packaging', 'Ofdrw.Net.Layout', 'Ofdrw.Net.Reader',
+    'Ofdrw.Net.Core', 'Ofdrw.Net.Packaging', 'Ofdrw.Net.Layout', 'Ofdrw.Net.Text.HarfBuzz', 'Ofdrw.Net.Reader',
     'Ofdrw.Net.Converter.Abstractions', 'Ofdrw.Net.Converter.Docx', 'Ofdrw.Net.Converter.Pdf',
     'Ofdrw.Net.Converter.Svg', 'Ofdrw.Net.Signatures', 'Ofdrw.Net.Converter', 'Ofdrw.Net.Cli',
 )

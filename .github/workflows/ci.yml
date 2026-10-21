@@ -74,6 +74,18 @@ jobs:
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity minimal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
+      - name: Generate and render fixed-font OFD, PDF, and PNG
+        run: |
+          dotnet run --project e2e/Ofdrw.Net.Text.HarfBuzz.E2E/Ofdrw.Net.Text.HarfBuzz.E2E.csproj -c Release --no-build --no-restore -- artifacts/r21-fixed-font
+          pdftoppm -f 1 -l 1 -png -singlefile -r 144 artifacts/r21-fixed-font/r21-ascii.pdf artifacts/r21-fixed-font/pdf-page-1
+          pdftoppm -f 1 -l 1 -png -singlefile -r 144 artifacts/r21-fixed-font/r21-han.pdf artifacts/r21-fixed-font/han-pdf-page-1
+          test -s artifacts/r21-fixed-font/r21-ascii.ofd
+          test -s artifacts/r21-fixed-font/r21-ascii.png
+          test -s artifacts/r21-fixed-font/pdf-page-1.png
+          test -s artifacts/r21-fixed-font/r21-han.ofd
+          test -s artifacts/r21-fixed-font/r21-han.png
+          test -s artifacts/r21-fixed-font/han-pdf-page-1.png
+
       - name: Run mandatory original-font geometry and replacement tests without skips
         run: python3 scripts/run-trusted-font-tests.py --results-directory artifacts/trusted-font-tests
 
@@ -85,6 +97,7 @@ jobs:
           path: |
             artifacts/test-results
             artifacts/trusted-font-tests
+            artifacts/r21-fixed-font
 
   builtin-docx:
     name: BuiltIn DOCX (${{ matrix.os }})
@@ -124,6 +137,9 @@ jobs:
         run: |
           python -m pip install fonttools==4.59.2
           python scripts/install-ci-fonts.py
+
+      - name: Test pinned HarfBuzz native loading and prelayout
+        run: dotnet test tests/Ofdrw.Net.Layout.Tests/Ofdrw.Net.Layout.Tests.csproj -c Release --filter "FullyQualifiedName~TextPrelayoutTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Test image API on each platform
         run: dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj -c Release --filter "FullyQualifiedName~ImageIoTests|FullyQualifiedName~ImageDocumentToolsIntegrationTests|FullyQualifiedName~ImageMainIntegrationTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
