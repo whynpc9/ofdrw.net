@@ -324,6 +324,37 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnresolvedPageBlockTextPaintPreservesExtractionButFailsAllRenderers(bool template)
+    {
+        var body = "<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<FillColor ColorSpace='999' Value='0 0 255'/>" +
+            "<TextCode X='0' Y='4'>recoverable text</TextCode></TextObject>";
+        var bytes = await Source(body, template: template, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(bytes));
+        Assert.Equal("recoverable text", new OfdTextExtractor().Extract(read, includeTemplates: true));
+
+        using var pdf = new MemoryStream();
+        var pdfFailure = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), pdf));
+        Assert.Contains("ColorSpace", pdfFailure.Message);
+        Assert.Equal(0, pdf.Length);
+
+        using var svg = new MemoryStream();
+        var svgFailure = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), svg));
+        Assert.Contains("ColorSpace", svgFailure.Message);
+        Assert.Equal(0, svg.Length);
+
+        using var html = new MemoryStream();
+        var htmlFailure = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
+        Assert.Contains("ColorSpace", htmlFailure.Message);
+        Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
     [InlineData("<VendorDrawing ID='501'/>")]
     [InlineData("<PathObject ID='501' Boundary='10 10 20 20' Fill='true'><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData><VendorChild/></PathObject>")]
     public async Task UnsupportedPageBlockDrawingInSealFailsInsteadOfDroppingAppearance(string body)
