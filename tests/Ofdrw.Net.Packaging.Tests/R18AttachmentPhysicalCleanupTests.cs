@@ -339,6 +339,26 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task LiteralBackslashAndPercentTextDoNotBlockPhysicalCleanup()
+    {
+        const string literal = @"C:\Temp %2F literal";
+        var source = await Read(Seed());
+        source.Options.Metadata.Title = literal;
+        source.CustomTags.Add("display", literal);
+        source.Pages[0].Elements.Add(new OfdTextElement { Text = literal, FontName = "SimSun", FontSizeMillimeters = 4 });
+        var (generated, _) = await Write(source);
+        var loaded = await Read(generated);
+        var originalText = Assert.IsType<OfdTextElement>(Assert.Single(loaded.Pages[0].Elements)).Text;
+        Assert.True(loaded.RemoveAttachment(Assert.Single(loaded.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, result) = await Write(loaded);
+        Assert.Contains(result.RemovedEntries, path => path == "Doc_0/Payload/original.bin");
+        var reread = await Read(output);
+        Assert.Equal(literal, reread.Options.Metadata.Title);
+        Assert.Equal(literal, reread.CustomTags["display"]);
+        Assert.Equal(originalText, Assert.IsType<OfdTextElement>(Assert.Single(reread.Pages[0].Elements)).Text);
+    }
+
+    [Fact]
     public async Task EncodedAliasInSignatureIsRejectedBeforeSignaturePruning()
     {
         var entries = Entries(Seed());

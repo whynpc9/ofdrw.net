@@ -177,11 +177,11 @@ internal static class OfdAttachmentPhysicalCleaner
                         // once the entire signature entry is actually pruned.
                         continue;
                     }
-                    CheckScalar(entry.Key, element, attribute.Value, candidates, knownBinary,
+                    CheckScalar(entry.Key, element, attribute.Value, IsPathBearingAttribute(attribute.Name.LocalName), candidates, knownBinary,
                         IsTrustedPayloadSlot(package, entry.Key, element, attribute.Name.LocalName, trustedResources), material, token);
                 }
                 if (!element.HasElements && !string.IsNullOrWhiteSpace(element.Value))
-                    CheckScalar(entry.Key, element, element.Value, candidates, knownBinary,
+                    CheckScalar(entry.Key, element, element.Value, IsPathBearingText(element), candidates, knownBinary,
                         IsTrustedPayloadSlot(package, entry.Key, element, null, trustedResources), material, token);
             }
         }
@@ -190,14 +190,22 @@ internal static class OfdAttachmentPhysicalCleaner
                 throw new NotSupportedException("Physical attachment removal cannot prove opaque binary entry ownership: " + path);
     }
 
-    private static void CheckScalar(string entry, XElement element, string value, ISet<string> candidates,
+    private static bool IsPathBearingAttribute(string name) => name is "BaseLoc" or "FileLoc" or "FileRef" or "MediaFile" or "URI";
+
+    private static bool IsPathBearingText(XElement element) => ScalarPathElements.Contains(element.Name.LocalName) ||
+        (element.Parent?.Name.LocalName == "DocBody" && element.Name.LocalName == "Signatures") ||
+        (element.Parent?.Name.LocalName == "Document" &&
+            element.Name.LocalName is ("Attachments" or "Annotations" or "CustomTags"));
+
+    private static void CheckScalar(string entry, XElement element, string value, bool pathBearing, ISet<string> candidates,
         ISet<string> knownBinary, bool payloadSlot, OfdModelMaterialization material, CancellationToken token)
     {
-        // Scan every scalar conservatively, then interpret all ancestor BaseLoc
-        // scopes explicitly. Res/@BaseLoc + FontFile/MediaFile and nested
-        // annotation/signature paths are covered even without a literal full path.
+        // Scan every scalar for literal aliases, but reject encoded/backslash
+        // syntax only in fields that can carry paths. Ordinary TextCode and
+        // metadata values may contain those characters. Resolve every ancestor
+        // BaseLoc explicitly for resource and nested annotation/signature paths.
         if (string.IsNullOrWhiteSpace(value)) return;
-        if (ContainsAmbiguousPathSyntax(value))
+        if (pathBearing && ContainsAmbiguousPathSyntax(value))
             throw new NotSupportedException("Physical attachment removal cannot prove an encoded or backslash XML reference.");
         material.ChargeCopy(256L + 4L * entry.Length, token);
         var bases = new List<string> { entry };
