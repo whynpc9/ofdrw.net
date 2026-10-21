@@ -103,6 +103,14 @@
 - 修复源码 `79e5d53e34530237fc1706e7eec31f9e939d02fc` 的定向测试 **3/3**，完整 Release 解决方案 11 个项目 **3167 passed、13 skipped、0 failed**。本地 `0.1.0-r01.review4` 的 12 基础 SDK 包和 1 个可选 SES 包来源、独立消费、R21 预布局、显式 native/默认 DOCX→OFD 及四份 V1/V4 签章链路均通过；未发布包。
 - 本轮 `physical-face-review/outline-only-physical-bold.pdf` 与 `outline-only-physical-italic.pdf` 均由本轮 OFD 导出，在 macOS Preview 各查看第 1/1 页：实体粗体直立轮廓和斜体倾斜轮廓均可见，无空白、裁切或重复文字。包消费重新生成 `physical-face-ses/files/native-v1.pdf`、`default-v4.pdf`；在 Preview 各查看第 1–2 页，中英文字、灰色斜体、蓝色表格填充/边框、第二页红色粗体及分页符合样例。四张本轮 96 DPI 页面 PNG 与先前验收页面逐字节一致。四份文档窗口均关闭，GUI 代次 `20261021T1211Z` 已释放。其余签章 PDF 仅有自动页面 PNG 等同性和功能测试证据；未验证外部 OFD 阅读器或 V5/GBT 互操作。产物和日志在已忽略的 `artifacts/roadmap-v12/R01/`，哈希见清单。
 
+## R13 主线整合与 PageBlock 绘制失败复审
+
+- 合入已进入主线的 R13 签名范围提交 `070594e414fcb43b55a11a7927799afe797a3cfe`，本分支合并提交 `66f886727fa8b271054a87d7fe0cb005a101e726`。合并后 11 项目完整 Release 测试为 **3265 passed、0 skipped、0 failed**；R13 四包范围的本地包消费、独立 Go XML/SHA 核验通过。首次全套测试因本地受许可字体 fixture 未物化而失败，运行仓库的字体准备脚本后重新执行通过。
+- Codex 复审发现：嵌套 PageBlock 的叶子绘制若有未解析颜色，投影层提前拒绝会阻断原始 `TextCode` 提取。`0ba5e6ab1d03da8ab13cb80a67112833126dcba3` 保留 Reader 的 `RenderPaintError`，使文本提取继续读取原文，而 PDF/SVG/HTML 绘制预检明确失败；普通页、模板页及签章拒绝路径定向 **3/3**。修复后 11 项目完整 Release 测试 **3267 passed、0 skipped、0 failed**。
+- [GB/T 33190—2016 第 8.3.2 节表 26](https://tsgdag.jhun.edu.cn/_upload/article/files/71/fc/4ed26d5841caab5bc999e19f8f14/02a71fcf-7b6e-4661-9991-eb309c7614c6.pdf)规定：`Value` 出现时采用该值，仅缺少 `Value` 时才取调色板 `Index`。因此未采纳与此相反的复审意见；`34650a9fa7a7aa57e905c05b2a7172a6a022d3d2` 增加直接颜色和继承 `DrawParam` 冲突值回归，PDF/SVG/HTML 均断言红色 `Value` 优先于蓝色 `Index`，定向 **2/2**。
+- 本地 `0.1.0-r01.r13paint` 的 **12 个基础 SDK 包与 1 个可选 SES 包**来源清单、独立消费、显式 native/默认 DOCX→OFD、四份 V1/V4 测试签章及页面 PNG 等同性通过；该本地包未发布。包消费针对 `0ba5e6a` 生产代码运行，后续 `34650a9` 仅增加测试。四份签章 PDF 与签章前基线各两页 PNG 像素一致；默认密码学验证仍返回 `Unsupported`，不据此作外部阅读器或签名法律有效性结论。
+- 本轮重新生成的 `value-precedence-pages/palette-value-priority-direct.pdf` 与 `palette-value-priority-drawparam.pdf` 由各自 OFD 导出，在 macOS Preview 各查看第 1/1 页，方块均为红色；对应 PNG 也逐页检查。`final-paint-ses-e2e/files/native-v1.pdf`、`default-v4.pdf` 分别由本轮显式 native 和默认 OFD 导出，经 Preview 各检查第 1–2 页：中文、英文、蓝色表格填充与边框、局部红色粗体和分页可见，未见缺字、裁切、重叠、重影或异常空白页。查看后关闭四个文档窗口，并登记 `20261021T1231Z` GUI 代次释放。其余签章 PDF 只有功能和逐页 PNG 等同性证据；没有外部 OFD 阅读器或 V5/GBT 端到端验收。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |
