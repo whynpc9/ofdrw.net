@@ -66,6 +66,8 @@ internal static class OfdAttachmentPhysicalCleaner
             payloads.Add(request.PayloadPath);
             if (original.Values.TryGetValue("ID", out var originalId) && !string.IsNullOrWhiteSpace(originalId))
                 removedAttachmentIds.Add(originalId!.Trim());
+            if (!string.IsNullOrWhiteSpace(attachment.Id))
+                removedAttachmentIds.Add(attachment.Id!.Trim());
         }
         foreach (var slot in source.Slots.Slots)
         {

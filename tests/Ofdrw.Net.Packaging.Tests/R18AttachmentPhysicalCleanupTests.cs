@@ -838,8 +838,15 @@ public sealed class R18AttachmentPhysicalCleanupTests
         entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
             .Replace("</Document>", "<Actions><Action Event='INVALID'><GotoA AttachID='7'/></Action></Actions></Document>", StringComparison.Ordinal));
         var package = await Read(Zip(entries));
-        Assert.IsType<OfdRawAction>(Assert.Single(package.Actions!.Items));
-        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var raw = Assert.IsType<OfdRawAction>(Assert.Single(package.Actions!.Items));
+        var removed = Assert.Single(package.Attachments);
+        Assert.True(package.RemoveAttachment(removed, OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "retained action targets the removed attachment ID");
+
+        removed.Id = "17";
+        var actionXml = XElement.Parse(raw.Xml);
+        actionXml.Element(XName.Get("GotoA", Ns))!.SetAttributeValue("AttachID", "17");
+        raw.Xml = actionXml.ToString(SaveOptions.DisableFormatting);
         await RefusesWithoutOutput(package, "retained action targets the removed attachment ID");
 
         package.Actions.Items.Clear();
