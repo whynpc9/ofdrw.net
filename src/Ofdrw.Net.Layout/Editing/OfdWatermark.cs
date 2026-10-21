@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Packaging;
 
 namespace Ofdrw.Net.Layout.Editing;
 
@@ -77,7 +78,7 @@ public static class OfdWatermark
         Func<OfdElement> create, CancellationToken token)
     {
         if (package is null) throw new ArgumentNullException(nameof(package));
-        OfdDocumentSplitter.ValidateSingleDocument(package);
+        OfdMultiDocumentWriteGuard.ValidateSource(package, token);
         OfdDocumentSplitter.ValidatePages(package, pages);
         if (options.MaxPageCount <= 0 || pages.Count > options.MaxPageCount) throw new ArgumentException("Watermark page budget exceeded.");
         if (options.LayerType is not ("Background" or "Body" or "Foreground")) throw new ArgumentException("Invalid OFD layer type.");

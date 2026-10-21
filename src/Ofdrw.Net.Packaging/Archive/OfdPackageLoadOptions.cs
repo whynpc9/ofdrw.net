@@ -2,6 +2,9 @@ namespace Ofdrw.Net.Packaging.Archive;
 
 public sealed class OfdPackageLoadOptions
 {
+    /// <summary>Zero-based DocBody to read or export. Defaults to the first document.</summary>
+    public int DocumentIndex { get; set; }
+
     /// <summary>Maximum compressed input size, enforced before or during staging.</summary>
     public long MaxInputBytes { get; set; } = 512L * 1024 * 1024;
 

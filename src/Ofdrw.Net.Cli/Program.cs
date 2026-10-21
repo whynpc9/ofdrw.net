@@ -4,6 +4,7 @@ using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Layout.Editing;
 using Ofdrw.Net.Packaging;
+using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Reader.Extraction;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Signatures.Verification;
@@ -75,12 +76,13 @@ internal static partial class Cli
                 await ExtractTextAsync(
                     options.InputPath,
                     options.OutputPath,
-                    options.IncludeTemplates, cancellationToken).ConfigureAwait(false);
+                    options.IncludeTemplates, options.DocumentIndex ?? 0, cancellationToken).ConfigureAwait(false);
                 return 0;
             }
 
             if (command == "verify-signatures")
             {
+                if (options.DocumentIndex.HasValue) throw new ArgumentException("--document does not apply to whole-package signature verification.");
                 if (string.IsNullOrWhiteSpace(options.InputPath))
                 {
                     throw new ArgumentException("An input OFD path is required.");
@@ -102,7 +104,7 @@ internal static partial class Cli
                 await ReorderAsync(
                     options.InputPath,
                     options.OutputPath,
-                    pageOrder, cancellationToken).ConfigureAwait(false);
+                    pageOrder, options.DocumentIndex ?? 0, cancellationToken).ConfigureAwait(false);
                 WriteSuccessNotification($"Reordered {options.InputPath} -> {options.OutputPath}");
                 return 0;
             }
@@ -114,12 +116,14 @@ internal static partial class Cli
                 await ConvertToSvgAsync(
                     options.InputPath,
                     options.OutputPath,
-                    svgPages is { Count: 1 } ? svgPages[0] : 0, cancellationToken).ConfigureAwait(false);
+                    svgPages is { Count: 1 } ? svgPages[0] : 0, options.DocumentIndex ?? 0, cancellationToken).ConfigureAwait(false);
                 WriteSuccessNotification($"Converted {options.InputPath} -> {options.OutputPath}");
                 return 0;
             }
 
             var mode = ResolveMode(command, options.InputPath, options.OutputPath);
+            if (options.DocumentIndex.HasValue && mode != ConversionMode.OfdToPdf)
+                throw new ArgumentException("--document applies only to OFD input commands.");
             var pages = ParsePages(options.Pages);
             await ConvertAsync(
                 mode,
@@ -129,7 +133,7 @@ internal static partial class Cli
                 options.DocxEngine,
                 options.DocxOfdMode,
                 options.LibreOfficePath,
-                options.FontDirectories, cancellationToken).ConfigureAwait(false);
+                options.FontDirectories, options.DocumentIndex ?? 0, cancellationToken).ConfigureAwait(false);
             WriteSuccessNotification($"Converted {options.InputPath} -> {options.OutputPath}");
             return 0;
         }
@@ -154,6 +158,7 @@ internal static partial class Cli
         DocxToOfdMode docxOfdMode,
         string? libreOfficePath,
         IReadOnlyList<string> fontDirectories,
+        int documentIndex,
         CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
@@ -198,7 +203,8 @@ internal static partial class Cli
         }
         else
         {
-            var ofdToPdf = new OfdToPdfConverter();
+            var ofdToPdf = new OfdToPdfConverter(new Ofdrw.Net.Converter.Pdf.OfdToPdfOptions
+            { PackageLoadOptions = new OfdPackageLoadOptions { DocumentIndex = documentIndex } });
             await ofdToPdf.ConvertAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
         }
 
@@ -235,6 +241,7 @@ internal static partial class Cli
         string inputPath,
         string? outputPath,
         bool includeTemplates,
+        int documentIndex,
         CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
@@ -243,7 +250,7 @@ internal static partial class Cli
         }
 
         await using var input = File.OpenRead(inputPath);
-        var package = await new OfdReader().ReadAsync(input, cancellationToken).ConfigureAwait(false);
+        var package = await new OfdReader().ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = documentIndex }, cancellationToken).ConfigureAwait(false);
         var text = new OfdTextExtractor().Extract(package, includeTemplates);
         if (string.IsNullOrWhiteSpace(outputPath))
         {
@@ -263,6 +270,7 @@ internal static partial class Cli
         string inputPath,
         string outputPath,
         int pageIndex,
+        int documentIndex,
         CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
@@ -273,7 +281,7 @@ internal static partial class Cli
         EnsureDifferentPaths(inputPath, outputPath);
         await using var input = File.OpenRead(inputPath);
         await using var output = new AtomicOutput(outputPath);
-        await new OfdToSvgConverter()
+        await new OfdToSvgConverter(new OfdPackageLoadOptions { DocumentIndex = documentIndex })
             .ConvertAsync(input, output.Stream, pageIndex, cancellationToken)
             .ConfigureAwait(false);
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -343,6 +351,7 @@ internal static partial class Cli
         string inputPath,
         string outputPath,
         IReadOnlyList<int> pageOrder,
+        int documentIndex,
         CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
@@ -353,7 +362,7 @@ internal static partial class Cli
         Ofdrw.Net.Core.Models.OfdDocumentPackage package;
         await using (var input = File.OpenRead(inputPath))
         {
-            package = await new OfdReader().ReadAsync(input, cancellationToken).ConfigureAwait(false);
+            package = await new OfdReader().ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = documentIndex }, cancellationToken).ConfigureAwait(false);
         }
         OfdDocumentEditor.ReorderPages(package, pageOrder);
         await using var output = new AtomicOutput(outputPath);
@@ -482,6 +491,10 @@ internal static partial class Cli
                 case "-p":
                 case "--pages":
                     options.Pages = ReadValue(args, ref i, arg);
+                    break;
+                case "--document":
+                    if (options.DocumentIndex.HasValue) throw new ArgumentException("Duplicate --document.");
+                    options.DocumentIndex = ParseOneBasedPage(ReadValue(args, ref i, arg));
                     break;
                 case "--include-templates":
                     options.IncludeTemplates = true;
@@ -647,20 +660,20 @@ internal static partial class Cli
           ofdrw docx-to-ofd --input <input.docx> --output <output.ofd> [--pages 1,3-5] [--docx-ofd-mode native|dual-layer] [--docx-engine auto|word|libreoffice|built-in]
           ofdrw text-to-ofd <input.txt> <output.ofd> [--font-family NAME] [--font-size-mm NUMBER]
           ofdrw pdf-to-ofd --input <input.pdf> --output <output.ofd> [--pages 1,3-5]
-          ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--pages 1,3-5]
-          ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--pages 1]
-          ofdrw ofd-to-html --input <input.ofd> --output <output.html> [--pages 3,1,3] [--title text] [--max-pages 200] [--max-output-bytes N] [--max-page-bytes N]
-          ofdrw ofd-to-image <input.ofd> <output.png> [--pages 1] [--ppm 5.669291] [--format png|jpeg]
+          ofdrw ofd-to-pdf --input <input.ofd> --output <output.pdf> [--document 2] [--pages 1,3-5]
+          ofdrw ofd-to-svg --input <input.ofd> --output <output.svg> [--document 2] [--pages 1]
+          ofdrw ofd-to-html --input <input.ofd> --output <output.html> [--document 2] [--pages 3,1,3] [--title text] [--max-pages 200] [--max-output-bytes N] [--max-page-bytes N]
+          ofdrw ofd-to-image <input.ofd> <output.png> [--document 2] [--pages 1] [--ppm 5.669291] [--format png|jpeg]
           ofdrw image-to-ofd <input.png> [input2.jpg ...] --output <output.ofd> [--ppm 5.669291] [--page-width 210 --page-height 297]
           ofdrw verify-signatures --input <input.ofd>
           ofdrw extract-text <input.ofd> [output.txt] [--include-templates]
-          ofdrw watermark <input.ofd> <output.ofd> --pages 1,2 --text DRAFT
+          ofdrw watermark <input.ofd> <output.ofd> [--document 2] --pages 1,2 --text DRAFT
           ofdrw watermark <input.ofd> <output.ofd> --image mark.png --layer-type Foreground
           ofdrw split <input.ofd> <output.ofd> --pages 3,1
           ofdrw mix <output.ofd> <input1.ofd> 1 <input2.ofd> 2
           ofdrw clean-signatures <input.ofd> <output.ofd>
           ofdrw replace-text <input.ofd> <output.ofd> --find TEXT --replace TEXT --trusted-font SHA256:BYTECOUNT [--pages 1,3-5]
-          ofdrw reorder <input.ofd> <output.ofd> --pages 3,1,2
+          ofdrw reorder <input.ofd> <output.ofd> [--document 2] --pages 3,1,2
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
 
         Commands:
@@ -693,6 +706,7 @@ internal static partial class Cli
           -i, --input   Input file path.
           -o, --output  Output file path.
           -p, --pages   1-based page list or ranges, for example 1,3-5.
+          --document   1-based DocBody position for OFD read/export and supported edits; default 1.
           --ppm         Image commands: finite positive pixels per millimeter; default 144/25.4.
           --format      ofd-to-image: png (default) or jpeg, independent of filename.
           --jpeg-quality ofd-to-image: quality 1-100 (default 90).
@@ -718,6 +732,7 @@ internal static partial class Cli
         public string? OutputPath { get; set; }
 
         public string? Pages { get; set; }
+        public int? DocumentIndex { get; set; }
 
         public bool IncludeTemplates { get; set; }
 

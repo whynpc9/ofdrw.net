@@ -120,7 +120,7 @@ public sealed partial class OfdPackageLoader
 
     private static void ValidateOptions(OfdPackageLoadOptions options)
     {
-        if (options.MaxInputBytes <= 0 || options.MaxEntryCount <= 0 || options.MaxPageCount <= 0 ||
+        if (options.DocumentIndex < 0 || options.MaxInputBytes <= 0 || options.MaxEntryCount <= 0 || options.MaxPageCount <= 0 ||
             options.MaxAnnotationObjectCount <= 0 || options.MaxAnnotationXmlBytes <= 0 ||
             options.MaxEntryUncompressedBytes <= 0 ||
             options.MaxTotalUncompressedBytes <= 0 ||
