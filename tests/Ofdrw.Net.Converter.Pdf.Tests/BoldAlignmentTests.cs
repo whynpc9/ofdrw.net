@@ -128,6 +128,67 @@ public sealed class BoldAlignmentTests
         Assert.InRange(Math.Abs(actual.Right - expected.Right), 0, 3);
     }
 
+    [Fact]
+    public async Task OutlineOnlyTextKeepsOpenCounterWhenBoldIsSimulated()
+    {
+        async Task<byte[]> Convert(bool bold)
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Ofdrw.Net.sln"))) dir = dir.Parent;
+            var regularFace = Path.Combine(dir!.FullName,
+                "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf");
+            var package = new OfdDocumentPackage();
+            package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans",
+                Data = File.ReadAllBytes(regularFace) });
+            var page = new OfdPage { WidthMillimeters = 80, HeightMillimeters = 60 };
+            page.Elements.Add(new OfdTextElement
+            {
+                Text = "O", FontName = "Noto Sans", FontResourceId = "10", FontSizeMillimeters = 8,
+                Weight = bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight,
+                XMillimeters = 15, YMillimeters = 20, WidthMillimeters = 30, HeightMillimeters = 15,
+                SourceXml = "<TextObject xmlns='http://www.ofdspec.org' Boundary='15 20 30 15' Size='8' " +
+                    "Stroke='true' Fill='false' LineWidth='0.1'><StrokeColor Value='0 0 0'/>" +
+                    "<TextCode X='2' Y='10'>O</TextCode></TextObject>"
+            });
+            package.Pages.Add(page);
+            using var ofd = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, ofd);
+            ofd.Position = 0;
+            using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+            if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } directory)
+            {
+                Directory.CreateDirectory(directory);
+                var name = bold ? "outline-only-simulated-bold" : "outline-only-regular";
+                await File.WriteAllBytesAsync(Path.Combine(directory, name + ".ofd"), ofd.ToArray());
+                await File.WriteAllBytesAsync(Path.Combine(directory, name + ".pdf"), pdf.ToArray());
+            }
+            return pdf.ToArray();
+        }
+        var regular = await Convert(false); var bold = await Convert(true);
+        using var semantic = UglyToad.PdfPig.PdfDocument.Open(bold);
+        Assert.Equal("O", semantic.GetPage(1).Text);
+        using var regularReader = DocLib.Instance.GetDocReader(regular, new PageDimensions(4d));
+        using var boldReader = DocLib.Instance.GetDocReader(bold, new PageDimensions(4d));
+        using var regularPage = regularReader.GetPageReader(0); using var boldPage = boldReader.GetPageReader(0);
+        var regularInk = Ink(regularPage.GetImage(), regularPage.GetPageWidth());
+        var boldPixels = boldPage.GetImage(); var width = boldPage.GetPageWidth();
+        var boldInk = Ink(boldPixels, width);
+        Assert.True(boldInk.Count > regularInk.Count * 1.1, "Simulated bold must visibly thicken the unfilled outline.");
+        Assert.InRange(Math.Abs(boldInk.Left - regularInk.Left), 0, 5);
+        Assert.InRange(Math.Abs(boldInk.Right - regularInk.Right), 0, 5);
+        var clearCounterPixels = 0;
+        for (var y = boldInk.Top + (boldInk.Bottom - boldInk.Top) / 3;
+            y <= boldInk.Bottom - (boldInk.Bottom - boldInk.Top) / 3; y++)
+        for (var x = boldInk.Left + (boldInk.Right - boldInk.Left) / 3;
+            x <= boldInk.Right - (boldInk.Right - boldInk.Left) / 3; x++)
+        {
+            var offset = (y * width + x) * 4;
+            if (boldPixels[offset + 3] < 128 ||
+                boldPixels[offset] > 200 && boldPixels[offset + 1] > 200 && boldPixels[offset + 2] > 200)
+                clearCounterPixels++;
+        }
+        Assert.True(clearCounterPixels > 0, $"The O counter must remain unfilled: bounds={boldInk}.");
+    }
+
     private static (int Left, int Top, int Right, int Bottom, int Count) Ink(byte[] pixels, int width)
     {
         var left = width; var top = int.MaxValue; var right = 0; var bottom = 0; var count = 0;

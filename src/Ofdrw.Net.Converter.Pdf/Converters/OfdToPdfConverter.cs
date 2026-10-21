@@ -580,8 +580,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 if (simulatedStroke)
                     RenderOutline(solid.Color, FontEmphasisMetrics.BoldStrokeWidth(font.Size), true);
                 if (explicitStroke)
+                {
+                    // Outline-only text has no fill for the usual bold overlay.
+                    // Thicken its existing stroke while keeping the counters open.
+                    var strokeWidth = MillimetersToPoints(paint!.LineWidthMillimeters) +
+                        (simulateBold && !paint.Fill ? FontEmphasisMetrics.BoldStrokeWidth(font.Size) : 0);
                     RenderOutline(XColor.FromArgb(paint!.StrokeColor.Alpha, paint.StrokeColor.Red,
-                        paint.StrokeColor.Green, paint.StrokeColor.Blue), MillimetersToPoints(paint.LineWidthMillimeters), false);
+                        paint.StrokeColor.Green, paint.StrokeColor.Blue), strokeWidth, false);
+                }
             }
         }
         finally
