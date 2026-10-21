@@ -121,3 +121,20 @@ d1db777972cced791b3c8843866e7eb7f0c85105c4a71aeeb2a5a8e4e90b2a22  artifacts/road
 6d11a1472eb6820a8b05ca7ecccbdb684fac41ac08c3fd50c60212902f7c816f  artifacts/roadmap-v12/R01/review2-docx.log
 8007f07fdf74ab61f717b6fe1d273976c608d391d12b033eed657104a3770da9  artifacts/roadmap-v12/R01/review2-named-areas.log
 80d15ac08b1382af12272b9bf591006deb4a4c1312aa102db212b93595dd1acf  artifacts/roadmap-v12/R01/review2-package.log
+
+# Codex Split clone review fix, final local source outputs
+cfc8c7397dc7a21e25e23d7754a58375520fa0eae49a002da238f4987c66d8e5  artifacts/roadmap-v12/R01/codex-clone-visual/split-ordinary-block.html
+d635394f43834c0163313e9db5072bcf9ec3f9fb0abdae017dafb6a515a9165a  artifacts/roadmap-v12/R01/codex-clone-visual/split-ordinary-block.ofd
+ad76a383295f68b558df7b895c5ba55026d4fc44c05c7d2f0ca408ac41c8381b  artifacts/roadmap-v12/R01/codex-clone-visual/split-ordinary-block.pdf
+c1970cdf8be54918d373ff71a2f7d5d9b236f4e81949b3528c1a8817a4fdb75f  artifacts/roadmap-v12/R01/codex-clone-visual/split-ordinary-block.png
+e04f5625a992cac833fc600a6aed0be5213d99998c1160aa7d7c693afc646407  artifacts/roadmap-v12/R01/codex-clone-visual/split-ordinary-block.svg
+cfc8c7397dc7a21e25e23d7754a58375520fa0eae49a002da238f4987c66d8e5  artifacts/roadmap-v12/R01/codex-clone-visual/split-template-block.html
+c7d1176e04ad4e73f40dd2cac9fe4cec0b8668aede910ae2213f0098a2a99cd4  artifacts/roadmap-v12/R01/codex-clone-visual/split-template-block.ofd
+9e663916b52ad4cd2f8a98401b3c9317c247ba8639e2b3b1daba5a90bfe8890e  artifacts/roadmap-v12/R01/codex-clone-visual/split-template-block.pdf
+c1970cdf8be54918d373ff71a2f7d5d9b236f4e81949b3528c1a8817a4fdb75f  artifacts/roadmap-v12/R01/codex-clone-visual/split-template-block.png
+e04f5625a992cac833fc600a6aed0be5213d99998c1160aa7d7c693afc646407  artifacts/roadmap-v12/R01/codex-clone-visual/split-template-block.svg
+69f9e6c7128fe4899cfd384a0750b6378efb58f10d8a4722ea94a763a776e6a5  artifacts/roadmap-v12/R01/codex-clone-visual.log
+8aaf92f038737918c65bdb499bc1a33e7ef34ca993fbf283042442291bd89895  artifacts/roadmap-v12/R01/codex-clone-full.log
+f8aa058e8cda630d7fe1769a8d828e44909430c61aed9fd2206f48334c195897  artifacts/roadmap-v12/R01/codex-clone-package.log
+33a550af6a1b5e78bcae8ca02d67c4d0f930b5bd2a887b142657f67b20750efd  artifacts/roadmap-v12/R01/codex-clone-document-tools.log
+98b8ac52609ab6e32c9d589d4b18f4a5c2ff4363a248ccf4cd92499a6f3e26f0  artifacts/package-e2e/0.1.0-r01.r03e/output/package-manifest.json

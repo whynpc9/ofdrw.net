@@ -23,6 +23,12 @@
 - 本次生成的普通/模板 PageBlock、调色板/DrawParam、文字描边/横向缩放、嵌套图片、纯描边文字和灰度注释页面已在 macOS Preview 检查；DOCX 显式 native 和默认模式各 2 页，以及 R03 命名区域空白/填充各 2 页也逐页检查。最后重生成的顶层 GRAY/CMYK 保存重开页在 Preview 第 1/1 页显示预期灰色与红色方块。所有对应文档窗口均已关闭。最终生成的既有样例页面 PNG 与这些 Preview 检查时的 PNG 逐字节一致。
 - 本地版本 `0.1.0-r01.r03d` 的 11 个包校验和独立消费者 E2E 通过；CLI、DOCX、PDF、图片及上游视觉样本均由打包结果消费。仅用于本地验证，未发布。
 
+## Split 克隆审查修复
+
+- Codex 复审指出：Reader 建立的 `PageBlock` 只读子元素投影在 `OfdDocumentSplitter.Split` 克隆时丢失，导致返回包的文字提取拒绝该嵌套绘图。克隆现仅在投影仍与原始 XML 一致时递归复制子元素，保留克隆后 XML 的权威性和独立对象身份；原本已失效的投影继续失效。
+- 新增普通页及模板页回归：Split 后提取文本、写出重读、PDF/SVG/HTML 三出口均须保留 `split nested`。定向测试 17/17；联合源码全套 11 个项目 **3063 passed、13 skipped、0 failed**。本地 `0.1.0-r01.r03e` 的 11 个包和独立消费 E2E 通过；文档工具 API/CLI 矩阵验证 **36 个样本、55 页 PDF**。
+- 两份 Split 派生 OFD 各导出 1 页 PDF、PNG、SVG、HTML。本轮 PDF 在 macOS Preview 逐页检查：普通页和模板页均显示相同的 `split nested`，无裁切、重影或空白页；检查后已关闭窗口。两张本轮 PNG 字节一致，路径和哈希见清单。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |
@@ -33,10 +39,11 @@
 | `image-block` | 1 页；同上 | 蓝色路径和红色图片方块按顺序可见 |
 | `implicit-stroke`、`annotation-gray` | 各 1 页；本轮 PDF/PNG 与 macOS Preview，SVG/HTML 断言 | 未指定描边色的空心文字为黑色；未引用 ColorSpace 的注释单分量灰色文字可见 |
 | `top-level-gray-cmyk`：顶层路径读入 → 保存 → 重开 → PDF/SVG/HTML | 1 页；本轮 PDF/PNG 与 macOS Preview | 灰色及红色方块正确，无丢色或空白页；三出口断言通过 |
+| `split-ordinary-block`、`split-template-block`：Reader → Split → 写出 → PDF/SVG/HTML | 各 1 页；本轮 PDF/PNG 与 macOS Preview | `split nested` 均显示，位置一致；原始文本可提取 |
 | `generated-layout.docx` → 显式 native OFD → PDF → macOS Preview；默认模式单独重复 | 两条链各 2 页，另核对选第 2 页产物的 PNG | 中文、英文、斜体、红色局部粗体、表格底色/边框与分页符合样例；未见缺字、裁切、重影或异常空白页；选页 PNG 与完整文档第 2 页字节一致 |
 | 原始 `upstream-ofdrw/999.ofd`；另制 render-only 副本 → PDF | 原始签名 SM3 引用完整性与无效 ColorSpace 拒绝；副本 PDF 5 页逐页 PNG | 原件的嵌入章将 `ColorSpace=4` 指向字体资源，转换明确拒绝。仅在**签名已失效的呈现副本**把两处引用改成正确 RGB ID 5 后，章面与 5 页内容可见；副本不作签名有效性或原件互操作结论。此副本未做 Preview 验收 |
 
-PDF 和 SVG 的页面 PNG 均从本轮生成文件渲染，HTML 五页由浏览器截图复查。macOS Preview 已重新打开 R01 PDF，检查七个既有 1 页样本、顶层颜色保存重开样本及 DOCX native/default 各 1–2 页，检查后关闭 R01 窗口。最终源码重生成的七个既有 PDF 页面 PNG、DOCX native/default 四张页面 PNG 与此前 Preview 验收时的页面图分别逐字节一致。R03 命名区域空白/填充共四张最终 PNG 也与此前逐页检查的页面图逐字节一致。先前 `review3` 签章副本的五页 PNG 与此前逐页查看的 PNG 逐字节一致；它仅作包消费回归与 PNG 辅助检查。没有独立第三方 OFD 阅读器互操作结论，也不将这些有限样本推广到任意复杂文档。
+PDF 和 SVG 的页面 PNG 均从本轮生成文件渲染，HTML 五页由浏览器截图复查。macOS Preview 已重新打开 R01 PDF，检查七个既有 1 页样本、顶层颜色保存重开样本、Split 普通/模板页及 DOCX native/default 各 1–2 页，检查后关闭 R01 窗口。最终源码重生成的七个既有 PDF 页面 PNG、DOCX native/default 四张页面 PNG 与此前 Preview 验收时的页面图分别逐字节一致。R03 命名区域空白/填充共四张最终 PNG 也与此前逐页检查的页面图逐字节一致。先前 `review3` 签章副本的五页 PNG 与此前逐页查看的 PNG 逐字节一致；它仅作包消费回归与 PNG 辅助检查。没有独立第三方 OFD 阅读器互操作结论，也不将这些有限样本推广到任意复杂文档。
 
 ## 产物身份
 

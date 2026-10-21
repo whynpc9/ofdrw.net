@@ -4,6 +4,7 @@ using System.Xml.Linq;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Layout.Editing;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Extraction;
 using Ofdrw.Net.Reader.Readers;
@@ -266,6 +267,33 @@ public sealed class R01PageBlockTests
         var preserved = Assert.IsType<OfdRawElement>(Assert.Single(template ? again.Pages[0].Templates[0].Elements : again.Pages[0].Elements));
         Assert.Contains("ID=\"502\"", preserved.Xml);
         Assert.Contains("ID=\"503\"", preserved.Xml);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SplitClonesPageBlockProjectionWithoutSharingChildren(bool template)
+    {
+        var body = "<PageBlock ID='501'><TextObject ID='502' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>split nested</TextCode></TextObject></PageBlock>";
+        var source = await new OfdReader().ReadAsync(new MemoryStream(await Source(body, template, font: true)));
+        var original = Assert.IsType<OfdRawElement>(Assert.Single(template ? source.Pages[0].Templates[0].Elements : source.Pages[0].Elements));
+        var split = OfdDocumentSplitter.Split(source, [0]);
+        var cloned = Assert.IsType<OfdRawElement>(Assert.Single(template ? split.Pages[0].Templates[0].Elements : split.Pages[0].Elements));
+        Assert.NotSame(original, cloned);
+        Assert.NotSame(original.PageBlockChildren, cloned.PageBlockChildren);
+        Assert.Equal("split nested", new OfdTextExtractor().Extract(split, includeTemplates: true));
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(split, output);
+        var reread = await new OfdReader().ReadAsync(new MemoryStream(output.ToArray()));
+        Assert.Equal("split nested", new OfdTextExtractor().Extract(reread, includeTemplates: true));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(output.ToArray()), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(output.ToArray()), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(output.ToArray()), html);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("split nested", parsed.GetPage(1).Text);
+        Assert.Contains("split nested", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("split nested", Encoding.UTF8.GetString(html.ToArray()));
+        Retain(template ? "split-template-block" : "split-ordinary-block", output.ToArray(), pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Fact]
