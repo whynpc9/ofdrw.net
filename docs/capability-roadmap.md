@@ -13,7 +13,7 @@
 
 [开发计划](capability-roadmap-development-plan.md) 是 2026-09-28/29 的历史设计，不再作为当前开工顺序。
 
-原状态核对固定在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0`（2026-10-15）。R00 在 `6aa8183ea31e193f500fb9d9717677b15e86c5d3` 核对现有入口与证据；新增 23 项矩阵、各出口的输入语义和 fallback 见 [v1.2 能力契约](capability-contract-v12.md)。R00 仅运行纯文本/HTML 定向功能测试，不生成独立视觉验收产物或重做 Preview，不把历史证据提升为当前发布或任意输入的验收。
+原状态核对固定在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0`（2026-10-15）。R00 在 `6aa8183ea31e193f500fb9d9717677b15e86c5d3` 核对现有入口与证据；新增 23 项矩阵、各出口的输入语义和 fallback 见 [v1.2 能力契约](capability-contract-v12.md)。R00 运行纯文本/HTML 定向功能测试，并对一个新生成的 PageBlock 缺陷样本作 PNG/Preview 负面复查，不把历史证据提升为当前发布或任意输入的验收。
 
 状态：
 

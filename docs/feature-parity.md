@@ -2,7 +2,7 @@
 
 更新时间：2026-10-21（R00 契约核对）
 
-本表沿用[历史开发计划](capability-roadmap-development-plan.md)固定的 OFDRW 比较快照；原状态核对固定在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0`。R00 在 `6aa8183ea31e193f500fb9d9717677b15e86c5d3` 重核源码入口与仓库文件，逐出口、输入和 fallback 边界见 [v1.2 能力契约](capability-contract-v12.md)。历史 ticket 状态和验收记录见 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)。R00 仅运行定向功能测试，未生成独立视觉验收产物或重做 Preview；源码、测试入口、合并、视觉和发布状态不能互相替代。本表不代表 GB/T 33190 或密码应用规范的合规认证。
+本表沿用[历史开发计划](capability-roadmap-development-plan.md)固定的 OFDRW 比较快照；原状态核对固定在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0`。R00 在 `6aa8183ea31e193f500fb9d9717677b15e86c5d3` 重核源码入口与仓库文件，逐出口、输入和 fallback 边界见 [v1.2 能力契约](capability-contract-v12.md)。历史 ticket 状态和验收记录见 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)。R00 除定向功能测试外，重生成并用 PNG/Preview 复查了一个 PageBlock 缺陷样本；该样本视觉未通过；源码、测试入口、合并、视觉和发布状态不能互相替代。本表不代表 GB/T 33190 或密码应用规范的合规认证。
 
 状态说明：
 
@@ -22,10 +22,10 @@
 | 文档读取 | `ofdrw-reader`，含反序列化及签章读取 | 多图层/模板/资源解析，未知内容无损保留，结构检查 | **部分支持**；当前以首个 `DocBody` 为主 |
 | 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层 builder、公开 FlowDocument/Paragraph/Span、Table/Row/Cell 与原生 OfdGraphics API | **部分支持**；中英段落/局部样式/分页、固定列宽/水平合并/整行分页与毫米路径/文字/状态/裁剪已实现；布局 Canvas 与复杂 Word 版式仍按各票范围交付 |
 | 字体 | `ofdrw-font`，字体生成与字形处理 | 按全包用字生成静态 TrueType 子集、复合/GSUB/UVS 字形闭包、TTC 选面、内容身份载荷复用，缺字明确失败 | **部分支持**；TTF/glyf 子集已实现；CFF/变量/AAT/RTL 与保留未知 XML 的字体以全量和诊断保护，详见[字体子集契约](font-subset-and-reuse.md) |
-| OFD → PDF | `ofdrw-converter` 导出能力 | 模板、图层、字体、文本游程、矢量路径、图片、变换、颜色/透明度和裁剪原点 | **部分支持（预览）**；CGTransform 明确拒绝，外来 PageBlock/文字/颜色语义待最小样本逐出口复现，见[契约](capability-contract-v12.md) |
+| OFD → PDF | `ofdrw-converter` 导出能力 | 模板、图层、字体、文本游程、矢量路径、图片、变换、颜色/透明度和裁剪原点 | **部分支持（预览）**；CGTransform 明确拒绝，普通 PageBlock 路径已复现成功导出但漏绘；其它文字/颜色语义待逐出口复现，见[契约](capability-contract-v12.md) |
 | PDF → OFD | `ofdrw-converter` 转换能力 | 默认双层；可选 Pdf.Vector 包经 19/04 输出受限 native PathObject/TextObject，校验原文与嵌入字体字形 | **部分支持**；[矢量模式](tutorials/18-pdf-vector-mode.md) 支持明确页框/路径/TrueType profile；压缩流、clip/图像/effects/复杂字体等明确整页回退或失败；默认 CLI 仍双层，扫描件无 OCR，不承诺任意 PDF 保真/阅读顺序标记 |
 | DOCX → PDF / OFD | 上游不提供 Office 文档渲染 | 默认直接将 DOCX/OpenXML 原文写为原生 OFD `TextObject`，完全跳过 PDF；可选 `DualLayer` 使用 Word/LibreOffice/BuiltIn 页面图像，并继续以 OpenXML 原文作为语义层 | **已支持（预览）**；原文可直接抽取，Native 支持常见段落、表格、内嵌图片与按页页眉页脚；附属正文带标签追加，DualLayer 按实际页定位原文，不承诺复杂 Word 版式和浮动对象保真 |
-| OFD → SVG | 上游推荐/生态具备 SVG 预览方案 | 自包含单页 SVG，支持模板、路径、文本、颜色、变换和内嵌图片 | **部分支持（预览）**；CGTransform 明确拒绝，外来普通图元语义不从 PDF/HTML 结果推定 |
+| OFD → SVG | 上游推荐/生态具备 SVG 预览方案 | 自包含单页 SVG，支持模板、路径、文本、颜色、变换和内嵌图片 | **部分支持（预览）**；CGTransform 明确拒绝，普通 PageBlock 路径已复现成功导出但漏绘；其它语义不从 PDF/HTML 结果推定 |
 | OFD ↔ PNG/JPEG | 图片导出与一图一页导入 | `Converter.Pdf` 的 `OfdToImageConverter` / `ImageToOfdConverter` 及 CLI；指定零基页/ppm导出、PNG默认/JPEG、自然或固定页等比居中导入、有界暂存 | **已实现（本票源码）**；PDF/PDFium 预览保真边界，视觉门状态见 [Issue 02 验证记录](validation/issue02/README.md) |
 | 纯文本 → OFD | `TextConverter` | `PlainTextOfdConverter` 与 `text-to-ofd` CLI：严格 UTF-8、有限预算、Flow 分页 | **部分支持**；首版源码及测试入口已存在，复杂 shaping/字体嵌入不由此推定；见[契约](plain-text-ofd.md) |
 | HTML 导出 | 转换模块覆盖 HTML 方向 | `OfdToHtmlConverter` 与 `ofd-to-html` CLI：有界、自包含静态 SVG 页面、严格预检 | **部分支持**；首版源码及测试入口已存在；外来复杂图元及各出口分别验收，见[教程](html-preview.md)与[契约](capability-contract-v12.md) |
@@ -88,7 +88,7 @@ issue #3 的逐项状态见 [实现对照](issue-3-implementation.md)，不因 0
 | --- | --- | --- |
 | 本地源码 | `6aa8183` 的公开实现；R00 定向运行纯文本 35/35、HTML 29/29，见[本轮契约](capability-contract-v12.md) | 未重跑全套回归，不扩大有限 profile |
 | 已合并 | R00 起始时 `origin/main=6aa8183`；旧能力按已有历史记录和本轮源码判定 | R00 分支在本表编写时尚未合并；后续票不凭旧 open/unmerged 文案推断状态 |
-| 实际视觉 | 原记录仅证明当时具名产物与页码 | 本次未生成新产物、未做 PNG/Preview 验收 |
+| 实际视觉 | 历史记录只证明当时具名产物与页码；R00 [缺陷样本](evidence/r00-pageblock/README.md) 新 PDF 第 1 页已用 PNG/Preview 确认漏绘 | 此次检查是负面证据，不是其它文档的视觉通过 |
 | 已发布版本 | 本地消费包只证明该次包消费；[preview.9 页面接受记录](release-preview-acceptance.json)在其固定源码指纹及具名页面上为 `accepted` | R00 未查询新的 NuGet 版本、未打包/发布；历史接受记录不延伸到新产物 |
 
 ## 11 票：独立口令扩展
