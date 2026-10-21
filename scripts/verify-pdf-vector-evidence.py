@@ -71,6 +71,27 @@ for name in ('absent','false','true'):
 text=subprocess.check_output(['pdftotext','-raw',str(root/'vector.pdf'),'-'],text=True)
 for phrase in ('No. 2026-021','192.00','Restored context - page 2 / 2'):
  assert text.count(phrase)==1,(phrase,text.count(phrase))
+profile_metrics={}
+for name,paths,images,expected_text,maximum in (
+ ('r06-frame',2,0,'旋转裁切 / ROTATED CROP',0.002),
+ ('r06-mixed',3,1,'A  B中文 / native image',0.015),
+ ('r06-cid-map',1,0,'CID mapping stream: A  B中文',0.001),
+ ('r06-winansi',1,0,'WinAnsi native: A  Bé',0.001)):
+ row=json.loads((root/(name+'-report.json')).read_text())
+ assert row['native'] is True and row['paths']==paths and row['images']==images and row['text']==expected_text,(name,row)
+ with zipfile.ZipFile(root/(name+'.ofd')) as z:
+  page=ET.fromstring(z.read('Doc_0/Pages/Page_0/Content.xml'))
+  original=''.join(n.text or '' for n in page.iter() if local(n)=='TextCode')
+  objects=collections.Counter(local(n) for n in page.iter() if local(n).endswith('Object'))
+  assert expected_text in original and objects['PathObject']==paths and objects['ImageObject']==images,(name,original,objects)
+ source=root/(name+'-source-1.png'); exported=root/(name+'-1.png')
+ result=subprocess.run(compare+['-metric','RMSE',str(source),str(exported),'null:'],capture_output=True,text=True)
+ assert result.returncode in (0,1),result.stderr
+ match=re.search(r'\(([0-9.eE+-]+)\)',result.stderr); assert match,result.stderr
+ error=float(match[1]); assert error<maximum,(name,error,maximum)
+ rendered=subprocess.check_output(['pdftotext','-raw',str(root/(name+'.pdf')),'-'],text=True)
+ assert rendered.count(expected_text.replace('  ',' '))==1,(name,rendered)
+ profile_metrics[name]={'normalized_rmse':error,'maximum':maximum,'native_objects':dict(objects),'original_text':expected_text,'exported_text_once':True}
 files=[{'file':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.iterdir()) if p.is_file() and p.name!='verified-evidence.json']
-(root/'verified-evidence.json').write_text(json.dumps({'status':'passed','structures':structures,'source_vs_native_png':metrics,'source_vs_preserved_image_png':image_metrics,'image_tools':{'compare':compare,'identify':identify,'version':subprocess.check_output(compare+['-version'],text=True)},'files':files,'preview':'not inferred'},ensure_ascii=False,indent=2)+'\n')
+(root/'verified-evidence.json').write_text(json.dumps({'status':'passed','structures':structures,'source_vs_native_png':metrics,'source_vs_preserved_image_png':image_metrics,'r06_profile':profile_metrics,'image_tools':{'compare':compare,'identify':identify,'version':subprocess.check_output(compare+['-version'],text=True)},'files':files,'preview':'not inferred'},ensure_ascii=False,indent=2)+'\n')
 print('PDF vector structure, original text, no duplicate export text and same-source PNG gates passed.')

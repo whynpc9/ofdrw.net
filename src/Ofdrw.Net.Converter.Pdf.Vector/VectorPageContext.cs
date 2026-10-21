@@ -121,48 +121,70 @@ internal sealed class VectorPageContext
         if (fontTokens.Data.Count > options.MaxFontsPerPage) throw new InvalidDataException("PDF page font count limit exceeded.");
         var bindings = new Dictionary<string, VectorFont>(StringComparer.Ordinal);
         long attemptedFontBytes = 0; var loadedFrames = 0;
-        (IToken Token, DictionaryToken Font) HorizontalFont(string name)
+        (IToken Token, DictionaryToken Font, bool WinAnsi) HorizontalFont(string name)
         {
             token.ThrowIfCancellationRequested();
             if (!fontTokens.Data.TryGetValue(name, out var fontToken)) throw new InvalidDataException("PDF referenced font is missing: " + name);
             var font = FontObject<DictionaryToken>(fontToken, options, token);
-            if (FontObject<NameToken>(FontEntry(font, "Subtype"), options, token).Data != "Type0") throw Unsupported("FONT_PROFILE: " + name);
+            var subtype = FontObject<NameToken>(FontEntry(font, "Subtype"), options, token).Data;
             var encoding = ProfileToken(FontEntry(font, "Encoding"), options.MaxStackDepth, token);
             if (encoding is StreamToken) throw Unsupported("FONT_PROFILE: Encoding CMap stream outside Identity-H profile.");
+            if (encoding is ArrayToken or DictionaryToken) throw Unsupported("FONT_PROFILE: Encoding Differences are outside the exact-font profile.");
             if (encoding is not NameToken encodingName) throw new InvalidDataException("PDF font Encoding must be a name or CMap stream.");
-            if (encodingName.Data != "Identity-H") throw Unsupported("FONT_PROFILE: " + name);
-            return (fontToken, font);
+            if (subtype == "Type0" && encodingName.Data == "Identity-H") return (fontToken, font, false);
+            if (subtype == "TrueType" && encodingName.Data == "WinAnsiEncoding") return (fontToken, font, true);
+            throw Unsupported("FONT_PROFILE: " + name);
         }
         void EnsureFont(string name)
         {
             token.ThrowIfCancellationRequested();
             if (bindings.ContainsKey(name)) return;
             var selected = HorizontalFont(name); var font = selected.Font;
-            var descendants = FontObject<ArrayToken>(FontEntry(font, "DescendantFonts"), options, token);
-            if (descendants.Length != 1) throw Unsupported("FONT_DESCENDANTS: " + name);
-            var cid = FontObject<DictionaryToken>(descendants.Data[0], options, token);
-            if (FontObject<NameToken>(FontEntry(cid, "Subtype"), options, token).Data != "CIDFontType2") throw Unsupported("CID_MAPPING: " + name);
             byte[]? cidToGid = null;
-            if (cid.Data.TryGetValue("CIDToGIDMap", out var mappingToken))
+            DictionaryToken descriptor;
+            if (selected.WinAnsi)
             {
-                var mapping = ProfileToken(mappingToken, options.MaxStackDepth, token);
-                if (mapping is StreamToken mapStream)
+                var first = FontObject<NumericToken>(FontEntry(font, "FirstChar"), options, token).Double;
+                var last = FontObject<NumericToken>(FontEntry(font, "LastChar"), options, token).Double;
+                var widths = FontObject<ArrayToken>(FontEntry(font, "Widths"), options, token);
+                if (first < 0 || last > 255 || first > last || first != Math.Truncate(first) || last != Math.Truncate(last) ||
+                    widths.Length != last - first + 1 || widths.Data.Any(value =>
+                        ProfileToken(value, options.MaxStackDepth, token) is not NumericToken number ||
+                        number.Double < 0 || double.IsNaN(number.Double) || double.IsInfinity(number.Double)))
+                    throw Unsupported("FONT_PROFILE: invalid bounded WinAnsi widths.");
+                descriptor = FontObject<DictionaryToken>(FontEntry(font, "FontDescriptor"), options, token);
+                var flags = FontObject<NumericToken>(FontEntry(descriptor, "Flags"), options, token).Double;
+                if (flags < 0 || flags > int.MaxValue || flags != Math.Truncate(flags) ||
+                    (((int)flags & 32) == 0) || (((int)flags & 4) != 0))
+                    throw Unsupported("FONT_PROFILE: WinAnsi TrueType requires a nonsymbolic embedded face.");
+            }
+            else
+            {
+                var descendants = FontObject<ArrayToken>(FontEntry(font, "DescendantFonts"), options, token);
+                if (descendants.Length != 1) throw Unsupported("FONT_DESCENDANTS: " + name);
+                var cid = FontObject<DictionaryToken>(descendants.Data[0], options, token);
+                if (FontObject<NameToken>(FontEntry(cid, "Subtype"), options, token).Data != "CIDFontType2") throw Unsupported("CID_MAPPING: " + name);
+                if (cid.Data.TryGetValue("CIDToGIDMap", out var mappingToken))
                 {
-                    cidToGid = Unfiltered(mapStream, 131072, "CIDToGIDMap");
-                    if (cidToGid.Length == 0 || (cidToGid.Length & 1) != 0)
-                        throw new InvalidDataException("PDF CIDToGIDMap must contain big-endian 16-bit glyph IDs.");
+                    var mapping = ProfileToken(mappingToken, options.MaxStackDepth, token);
+                    if (mapping is StreamToken mapStream)
+                    {
+                        cidToGid = Unfiltered(mapStream, 131072, "CIDToGIDMap");
+                        if (cidToGid.Length == 0 || (cidToGid.Length & 1) != 0)
+                            throw new InvalidDataException("PDF CIDToGIDMap must contain big-endian 16-bit glyph IDs.");
+                    }
+                    else if (mapping is not NameToken mappingName) throw new InvalidDataException("PDF CIDToGIDMap must be a name or stream.");
+                    else if (mappingName.Data != "Identity") throw Unsupported("CID_MAPPING: " + name);
                 }
-                else if (mapping is not NameToken mappingName) throw new InvalidDataException("PDF CIDToGIDMap must be a name or stream.");
-                else if (mappingName.Data != "Identity") throw Unsupported("CID_MAPPING: " + name);
+                descriptor = FontObject<DictionaryToken>(FontEntry(cid, "FontDescriptor"), options, token);
             }
             _ = Unfiltered(FontObject<StreamToken>(FontEntry(font, "ToUnicode"), options, token), options.MaxContentBytesPerPage, "ToUnicode");
-            var descriptor = FontObject<DictionaryToken>(FontEntry(cid, "FontDescriptor"), options, token);
             var allowance = (int)Math.Min(options.MaxFontBytes, options.MaxFontReadBytesPerPage - attemptedFontBytes);
             // Check the original stream before copying or invoking either font loader.
             var bytes = Unfiltered(FontObject<StreamToken>(FontEntry(descriptor, "FontFile2"), options, token), allowance, "font read");
             attemptedFontBytes += bytes.Length; // Attempts are never refunded on rejection or failure.
             token.ThrowIfCancellationRequested();
-            bindings.Add(name, new VectorFont("font-" + bindings.Count, bytes, options.MaxFontBytes, cidToGid));
+            bindings.Add(name, new VectorFont("font-" + bindings.Count, bytes, options.MaxFontBytes, cidToGid, selected.WinAnsi));
             // PdfPig pushes all four stacks before decoding this single font. Count
             // this frame before Load so the finally also balances a loader failure.
             loadedFrames++;
@@ -474,15 +496,27 @@ internal sealed class VectorFont : IDisposable
 {
     internal readonly SkiaDrawEvent.FixedFontBinding Binding;
     internal readonly OfdFontResource Resource;
+    internal readonly bool WinAnsi;
     private readonly byte[]? _cidToGid;
-    internal VectorFont(string id, byte[] bytes, int maxFontBytes, byte[]? cidToGid = null)
+    internal VectorFont(string id, byte[] bytes, int maxFontBytes, byte[]? cidToGid = null, bool winAnsi = false)
     {
-        _cidToGid = cidToGid;
+        _cidToGid = cidToGid; WinAnsi = winAnsi;
         Binding = SkiaDrawEvent.FixedFontBinding.FromOriginalBytes(bytes, id, maxFontBytes);
         Resource = new OfdFontResource { Id = id, FontName = Binding.FamilyName, FileName = id + ".ttf",
             Data = bytes, Bold = Binding.Bold, Italic = Binding.Italic };
     }
     internal int GlyphForCid(int cid) => _cidToGid is null ? cid : cid >= 0 && cid < _cidToGid.Length / 2
         ? _cidToGid[cid * 2] * 256 + _cidToGid[cid * 2 + 1] : 0;
+    internal static char WinAnsiCharacter(int code) => code switch
+    {
+        >= 32 and <= 126 or >= 160 and <= 255 => (char)code,
+        128 => '\u20AC', 130 => '\u201A', 131 => '\u0192', 132 => '\u201E', 133 => '\u2026',
+        134 => '\u2020', 135 => '\u2021', 136 => '\u02C6', 137 => '\u2030', 138 => '\u0160',
+        139 => '\u2039', 140 => '\u0152', 142 => '\u017D', 145 => '\u2018', 146 => '\u2019',
+        147 => '\u201C', 148 => '\u201D', 149 => '\u2022', 150 => '\u2013', 151 => '\u2014',
+        152 => '\u02DC', 153 => '\u2122', 154 => '\u0161', 155 => '\u203A', 156 => '\u0153',
+        158 => '\u017E', 159 => '\u0178',
+        _ => '\0'
+    };
     public void Dispose() => Binding.Dispose();
 }

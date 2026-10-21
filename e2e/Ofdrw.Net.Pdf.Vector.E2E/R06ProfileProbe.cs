@@ -33,6 +33,12 @@ internal static class R06ProfileProbe
         var map = Enumerable.Range(0, 65536).SelectMany(value => new[] { (byte)(value >> 8), (byte)value }).ToArray();
         await Convert("r06-cid-map", fixture.Create(new[] { cid }, cidMapStream: map), output,
             expectedPaths: 1, expectedImages: 0, expectedText: "CID mapping stream: A  B中文");
+
+        using var winAnsi = new PdfFixture(font);
+        var latin = "0.12 0.36 0.62 rg " + winAnsi.TextWinAnsi("WinAnsi native: A  Bé", 35, 500, 16) +
+            "0.73 0.23 0.25 rg 40 365 210 80 re f";
+        await Convert("r06-winansi", winAnsi.Create(new[] { latin }, simpleWinAnsi: true), output,
+            expectedPaths: 1, expectedImages: 0, expectedText: "WinAnsi native: A  Bé");
     }
 
     private static async Task Convert(string name, byte[] source, string output, int expectedPaths, int expectedImages, string expectedText)

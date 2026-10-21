@@ -49,4 +49,4 @@ R15 写出证书保留旧 float 门及其诊断优先级，并按原解析值到
 
 ## R06 有界扩展
 
-R06 在上述首版边界上增加裁切显示页框、直角旋转、`W/W*` 路径裁切、cap/join/dash 描边、混合页 raw opaque RGB Image XObject 和未过滤 CIDToGIDMap stream。具体准入、仍拒绝的 Form/复杂图像/字体编码与预算见 [教程](tutorials/18-pdf-vector-mode.md#r06-扩展-profile)。每个新特性须以独立正反样本、实际 OFD 对象、OFD→PDF/SVG 输出及本次逐页视觉结果验收；早期段落的“首版”描述仅说明原始基线。原生页可以包含 ImageObject，但不包含整页回退图像；任何后续拒绝仍丢弃该页全部暂存对象。
+R06 在上述首版边界上增加裁切显示页框、直角旋转、`W/W*` 路径裁切、cap/join/dash 描边、混合页 raw opaque RGB Image XObject、未过滤 CIDToGIDMap stream 与受限的嵌入 WinAnsi TrueType 简单字体。具体准入、仍拒绝的 Form/复杂图像/字体编码与预算见 [教程](tutorials/18-pdf-vector-mode.md#r06-扩展-profile)。每个新特性须以独立正反样本、实际 OFD 对象、OFD→PDF/SVG 输出及本次逐页视觉结果验收；早期段落的“首版”描述仅说明原始基线。原生页可以包含 ImageObject，但不包含整页回退图像；任何后续拒绝仍丢弃该页全部暂存对象。

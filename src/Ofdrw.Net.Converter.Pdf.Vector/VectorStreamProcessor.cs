@@ -243,9 +243,10 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
             dash.Phase < 0 || (values.Length == 0 && dash.Phase != 0) ||
             values.Length != 0 && (double.IsInfinity(values.Sum()) || double.IsInfinity(dash.Phase / state.LineWidth)))
             throw Unsupported("STROKE_PROFILE: dash must be bounded, positive and representable by PDF export.");
-        const double millimetersPerPoint = 25.4 / 72;
-        return new StrokeShape(cap, join, state.MiterLimit, dash.Phase * millimetersPerPoint,
-            values.Select(value => value * millimetersPerPoint).ToArray());
+        // The adapter keeps the path and pen in source user units and applies
+        // the pt-to-mm factor in the object's CTM. Dash values share those
+        // local units, so scaling them here would shorten the pattern twice.
+        return new StrokeShape(cap, join, state.MiterLimit, dash.Phase, values);
     }
     private void Command(int count = 1)
     {
@@ -342,7 +343,8 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         if (!(fontSize > 0) || state.FontState.HorizontalScaling != 100 || state.FontState.Rise != 0) throw Unsupported("TEXT_STATE");
         if (!_fonts.TryGetValue(state.FontState.FontName.Data, out var binding)) throw Unsupported("FONT_RESOURCE");
         var glyph = binding.Binding.GetGlyph(original[0]);
-        if (glyph == 0 || glyph != binding.GlyphForCid(code)) throw Unsupported("SOURCE_GLYPH_CMAP_MISMATCH: font=" + state.FontState.FontName.Data + " code=" + code);
+        if (glyph == 0 || (binding.WinAnsi ? VectorFont.WinAnsiCharacter(code) != original[0] : glyph != binding.GlyphForCid(code)))
+            throw Unsupported("SOURCE_GLYPH_CMAP_MISMATCH: font=" + state.FontState.FontName.Data + " code=" + code);
         _characters++;
         var matrix = text.Multiply(ctm); var color = Color(false);
         var first = _text.Length == 0; var advance = 0f;

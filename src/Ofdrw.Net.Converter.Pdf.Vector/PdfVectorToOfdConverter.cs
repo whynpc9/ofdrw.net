@@ -15,7 +15,7 @@ using UglyToad.PdfPig;
 namespace Ofdrw.Net.Converter.Pdf.Vector;
 
 /// <summary>Explicit optional PDF vector mode with whole-page dual-layer fallback.</summary>
-/// <remarks>Only the documented fixed-font, opaque path/text profile is supported. No canvas calls are intercepted.</remarks>
+/// <remarks>Only the documented bounded opaque path/text/image profile is supported. No canvas calls are intercepted.</remarks>
 public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
 {
     private readonly PdfVectorToOfdOptions _options;
@@ -80,7 +80,7 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                         foreach (var text in page.Elements.OfType<OfdTextElement>().Where(text => text.FontResourceId == old)) text.FontResourceId = font.Id;
                         package.Fonts.Add(font);
                     }
-                    native = true; diagnostic = "PDFV_NATIVE: bounded opaque paths and exact-font Unicode text.";
+                    native = true; diagnostic = "PDFV_NATIVE: bounded opaque paths, exact-font Unicode text and raw image XObjects.";
                 }
                 catch (NotSupportedException exception) when (limits.UnsupportedPagePolicy == PdfVectorUnsupportedPagePolicy.RasterizePage &&
                     exception is not UnrepresentablePageException)

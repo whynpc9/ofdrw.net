@@ -72,4 +72,4 @@ R5原Indexed样例已由主/Low真实包及八页Preview复验，原R4失败保�
 
 混合路径/文字页可接纳未过滤、无 mask/Decode/透明扩展的原始 DeviceRGB/8 Image XObject；转换保留图像像素、绘制顺序、变换及裁切，输出原生 OFD ImageObject，并按 PNG 字节计入累计图像预算。纯图像页继续走既有 `PDFV_ORIGINAL_IMAGE_PAGE` 或整页回退路径，报告 `IsNative=false`。Form XObject、索引/ICC 或带滤镜的混合图像仍拒绝或显式整页回退，不把先前绘制的原生对象留在回退页。
 
-固定 TrueType 的 Type0 Identity-H/CIDFontType2 现在还接纳有界未过滤的 CIDToGIDMap stream。每个实际字符仍必须由 ToUnicode 给出单个原 Unicode 标量，且同一嵌入字体的 Unicode cmap glyph 与 stream 中的源 CID 映射完全相同。超界/缺项映射拒绝；任意 Encoding CMap、WinAnsi/simple font 与字体替换仍不在原生 profile。受限扩展只证明被准入样例的字体字节和字形身份，不推断任意 PDF 字体等价。
+固定 TrueType 的 Type0 Identity-H/CIDFontType2 现在还接纳有界未过滤的 CIDToGIDMap stream。每个实际字符仍必须由 ToUnicode 给出单个原 Unicode 标量，且同一嵌入字体的 Unicode cmap glyph 与 stream 中的源 CID 映射完全相同。另接纳带显式 WinAnsiEncoding、完整 bounded Widths、nonsymbolic FontDescriptor、ToUnicode 与同一嵌入 TrueType 的简单字体；每个源 code 还必须按 WinAnsi 映射回同一个 Unicode，缺字或映射冲突拒绝。任意 Encoding CMap、Differences、MacRoman、符号字体与字体替换仍不在原生 profile。受限扩展只证明被准入样例的字体字节和字形身份，不推断任意 PDF 字体等价。

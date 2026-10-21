@@ -133,16 +133,7 @@ public sealed class VectorTests
         Assert.Contains("Cap=\"" + cap + "\"", path.SourceXml);
         Assert.Contains("Join=\"" + join + "\"", path.SourceXml);
         if (dash is null) Assert.DoesNotContain("DashPattern", path.SourceXml);
-        else
-        {
-            var xml = System.Xml.Linq.XElement.Parse(path.SourceXml!);
-            var actual = xml.Attribute("DashPattern")!.Value.Split(' ').Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
-            var expected = dash.Split(' ').Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture) * 25.4 / 72).ToArray();
-            Assert.Equal(expected.Length, actual.Length);
-            for (var i = 0; i < actual.Length; i++) Assert.Equal(expected[i], actual[i], 6);
-            Assert.Equal(double.Parse(phase!, System.Globalization.CultureInfo.InvariantCulture) * 25.4 / 72,
-                double.Parse(xml.Attribute("DashOffset")!.Value, System.Globalization.CultureInfo.InvariantCulture), 6);
-        }
+        else { Assert.Contains("DashPattern=\"" + dash + "\"", path.SourceXml); Assert.Contains("DashOffset=\"" + phase + "\"", path.SourceXml); }
     }
     [Theory]
     [InlineData("[0 3] 0 d", "STROKE_PROFILE")]
