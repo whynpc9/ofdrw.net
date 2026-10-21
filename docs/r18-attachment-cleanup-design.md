@@ -14,7 +14,7 @@ Reader 捕获的 `OfdAttachmentSource` 是唯一来源证据：owner、描述符
 
 本轮将 XML 形态的附件载荷判为不确定角色并拒绝物理删除；二进制附件仍须通过完整引用闭包检查。此限制避免附件路径同时充当不显式声明的 XML 控制条目。
 
-封闭标准字段集合包含仓库写入器实际输出的路径绘制属性 `Cap`、`Join`、`Rule` 与裁切 `Clip/Area/Path`，Reader 接纳的文本方向属性 `ReadDirection`、`CharDirection`，标准模板引用 `Template/@TemplateID`，批注的 `Creator`、`LastModDate`、`Subtype`、`Print`、`NoZoom`、`NoRotate`、`ReadOnly`、`Remark`，以及导航 `Dest`、`Goto` 和 EMR 自定义标签 `EMRTags/Tag` 的实际字段。`PageAnnot` 是可包含 `Annot` 子节点的标准根，不是路径标量。这些字段仍逐一扫描其值和祖先 `BaseLoc`，因此不能藏匿被删路径；正常页面模板、批注、导航与自定义标签不再因字段遗漏而被误判为未知扩展。任何新增字段仍需验证引用语义后才能准入。
+封闭标准字段集合包含仓库写入器实际输出的路径绘制属性 `Cap`、`Join`、`Rule` 与裁切 `Clip/Area/Path`，Reader 接纳的裁切 `Area/@Start`、图片 `ImageObject/@Substitution` 和文本方向属性 `ReadDirection`、`CharDirection`，标准模板引用 `Template/@TemplateID`，批注的 `Creator`、`LastModDate`、`Subtype`、`Print`、`NoZoom`、`NoRotate`、`ReadOnly`、`Remark`，以及导航 `Dest`、`Goto` 和 EMR 自定义标签 `EMRTags/Tag` 的实际字段。`PageAnnot` 是可包含 `Annot` 子节点的标准根，不是路径标量。这些字段仍逐一扫描其值和祖先 `BaseLoc`，因此不能藏匿被删路径；正常页面模板、批注、导航与自定义标签不再因字段遗漏而被误判为未知扩展。任何新增字段仍需验证引用语义后才能准入。
 
 只有 Document 声明的资源表及页面或 `CommonData/TemplatePage` 位置旁置的隐式 `PageRes.xml` 中、结构合法的 `Fonts/Font/FontFile` 和 `MultiMedias/MultiMedia/MediaFile` 才能证明其它二进制条目属于标准资源；伪造在其它 XML 位置的同名元素无效。模板旁置资源按 Reader、资源目录和裁剪器相同的 `TemplatePage/@BaseLoc` 相对路径发现。路径字段和祖先 `BaseLoc` 若包含 `%HH` 编码或反斜杠即拒绝；普通正文和元数据可包含这些字面字符，但仍参与完整路径别名扫描。混合内容路径标量继续拒绝，避免 Reader 与清理器对路径的解释不同。
 

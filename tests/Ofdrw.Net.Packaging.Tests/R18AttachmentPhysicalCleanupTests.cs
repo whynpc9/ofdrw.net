@@ -179,15 +179,31 @@ public sealed class R18AttachmentPhysicalCleanupTests
         var graphics = new OfdGraphics(package, Assert.Single(package.Pages));
         graphics.IntersectClip(new OfdGraphicsPath().AddRectangle(1, 1, 20, 20));
         graphics.DrawRectangle(new OfdPen(OfdColor.Black), 2, 2, 10, 10);
+        package.Pages[0].Elements.Add(new OfdImageElement
+        {
+            Data = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg=="),
+            WidthMillimeters = 10, HeightMillimeters = 10
+        });
         var (drawn, _) = await Write(package);
-        var pageXml = Encoding.UTF8.GetString(Entries(drawn)["Doc_0/Pages/Content.xml"]);
-        Assert.Contains("Rule=", pageXml);
-        Assert.NotEmpty(XDocument.Parse(pageXml).Descendants(XName.Get("Path", Ns)));
+        var entries = Entries(drawn);
+        var page = XDocument.Parse(Encoding.UTF8.GetString(entries["Doc_0/Pages/Content.xml"]).TrimStart('\uFEFF'));
+        var ns = page.Root!.Name.Namespace;
+        Assert.NotEmpty(page.Descendants(ns + "Path"));
+        Assert.Contains("Rule=", page.ToString());
+        page.Descendants(ns + "Clip").Descendants(ns + "Area").First().SetAttributeValue("Start", "0 0");
+        var image = page.Descendants(ns + "ImageObject").Single();
+        image.SetAttributeValue("Substitution", image.Attribute("ResourceID")!.Value);
+        entries["Doc_0/Pages/Content.xml"] = Utf8(page.ToString(SaveOptions.DisableFormatting));
 
-        package = await Read(drawn);
+        package = await Read(Zip(entries));
         Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
         var (output, _) = await Write(package);
         Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+        var savedPage = XDocument.Parse(Encoding.UTF8.GetString(Entries(output)["Doc_0/Pages/Content.xml"]).TrimStart('\uFEFF'));
+        Assert.Contains(savedPage.Descendants(ns + "Clip").Descendants(ns + "Area"),
+            area => area.Attribute("Start")?.Value == "0 0");
+        var savedImage = savedPage.Descendants(ns + "ImageObject").Single();
+        Assert.Equal(savedImage.Attribute("ResourceID")!.Value, savedImage.Attribute("Substitution")!.Value);
         Assert.Single((await Read(output)).Pages);
     }
 
