@@ -191,6 +191,44 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task NestedBaseLocCannotAuthenticateOpaqueResourceOrAttachmentBytes()
+    {
+        var resource = Entries(Seed());
+        resource["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(resource["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "<PublicRes>Res/PublicRes.xml</PublicRes></CommonData>", StringComparison.Ordinal));
+        resource["Doc_0/Res/PublicRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='Assets'><MultiMedias><MultiMedia ID='9' BaseLoc='../Extras' MediaFile='orphan.bin'/></MultiMedias></Res>");
+        resource["Doc_0/Res/Extras/orphan.bin"] = [4, 5, 6];
+        var package = await Read(Zip(resource));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "opaque binary entry ownership");
+
+        resource.Remove("Doc_0/Res/Extras/orphan.bin");
+        resource["Doc_0/Res/Assets/orphan.bin"] = [4, 5, 6];
+        package = await Read(Zip(resource));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (resourceOutput, _) = await Write(package);
+        Assert.Equal(resource["Doc_0/Res/Assets/orphan.bin"], Entries(resourceOutput)["Doc_0/Res/Assets/orphan.bin"]);
+
+        var attachment = Entries(Seed());
+        var descriptor = XDocument.Parse(Encoding.UTF8.GetString(attachment["Doc_0/Metadata/List.xml"]));
+        descriptor.Root!.Add(new XElement(XName.Get("Attachment", Ns), new XAttribute("ID", "8"),
+            new XAttribute("Name", "retained.bin"), new XAttribute("BaseLoc", "../Extras"),
+            new XElement(XName.Get("FileLoc", Ns), "retained.bin")));
+        attachment["Doc_0/Metadata/List.xml"] = Utf8(descriptor.ToString(SaveOptions.DisableFormatting));
+        attachment["Doc_0/Metadata/retained.bin"] = [7, 8, 9];
+        attachment["Doc_0/Extras/retained.bin"] = [10, 11, 12];
+        package = await Read(Zip(attachment));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "opaque binary entry ownership");
+
+        attachment.Remove("Doc_0/Extras/retained.bin");
+        package = await Read(Zip(attachment));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        var (attachmentOutput, _) = await Write(package);
+        Assert.Equal(attachment["Doc_0/Metadata/retained.bin"], Entries(attachmentOutput)["Doc_0/Metadata/retained.bin"]);
+    }
+
+    [Fact]
     public async Task DeclaredResourceTableKeepsItsOwnBinaryWhileCleaningAttachment()
     {
         var entries = Entries(Seed());

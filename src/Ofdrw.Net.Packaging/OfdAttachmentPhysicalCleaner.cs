@@ -16,6 +16,7 @@ namespace Ofdrw.Net.Packaging;
 // closure before removing any entry from the output plan.
 internal static class OfdAttachmentPhysicalCleaner
 {
+    private enum PayloadOwnerScope { None, Entry, ResourceRoot }
     private static readonly HashSet<string> ControlNames = new(StringComparer.OrdinalIgnoreCase)
     { "Document.xml", "PublicRes.xml", "DocumentRes.xml", "PageRes.xml", "Attachments.xml", "Annotations.xml", "Signatures.xml", "Signature.xml" };
     // A closed set for this cleanup profile. Unknown standard-looking names may
@@ -206,7 +207,7 @@ internal static class OfdAttachmentPhysicalCleaner
         (element.Document?.Root?.Name.LocalName == "Document" && element.Name.LocalName == "Extensions");
 
     private static void CheckScalar(string entry, XElement element, string value, bool pathBearing, ISet<string> candidates,
-        ISet<string> knownBinary, bool payloadSlot, OfdModelMaterialization material, CancellationToken token)
+        ISet<string> knownBinary, PayloadOwnerScope payloadSlot, OfdModelMaterialization material, CancellationToken token)
     {
         // Scan every scalar for literal aliases, but reject encoded/backslash
         // syntax only in fields that can carry paths. Ordinary TextCode and
@@ -217,6 +218,7 @@ internal static class OfdAttachmentPhysicalCleaner
             throw new NotSupportedException("Physical attachment removal cannot prove an encoded or backslash XML reference.");
         material.ChargeCopy(256L + 4L * entry.Length, token);
         var bases = new List<string> { entry };
+        var resourceRootIndex = 0;
         var basis = entry;
         foreach (var owner in element.AncestorsAndSelf().Reverse())
         {
@@ -229,6 +231,7 @@ internal static class OfdAttachmentPhysicalCleaner
             {
                 basis = material.ResolvePath(basis, location!.TrimEnd('/') + "/_attachment_reference", token);
                 material.ChargeCopy(128L + 4L * basis.Length, token); bases.Add(basis);
+                if (ReferenceEquals(owner, element.Document?.Root)) resourceRootIndex = bases.Count - 1;
             }
             catch (InvalidDataException exception) when (!OfdTraversalBudget.IsLimit(exception))
             { throw new NotSupportedException("Physical attachment removal cannot resolve an ancestor BaseLoc.", exception); }
@@ -241,9 +244,11 @@ internal static class OfdAttachmentPhysicalCleaner
                 var target = material.ResolvePath(bases[i], value, token);
                 if (candidates.Contains(target))
                     throw new NotSupportedException("Attachment payload or descriptor remains referenced from " + entry);
-                // All scopes are checked for aliases, but only the innermost
-                // BaseLoc gives a standard resource payload its owned path.
-                if (payloadSlot && i == bases.Count - 1) knownBinary.Add(target);
+                // Every scope is checked for aliases. Only the BaseLoc used by
+                // the actual consumer can authenticate an opaque payload.
+                if (payloadSlot == PayloadOwnerScope.Entry && i == 0 ||
+                    payloadSlot == PayloadOwnerScope.ResourceRoot && i == resourceRootIndex)
+                    knownBinary.Add(target);
             }
             catch (InvalidDataException exception) when (!OfdTraversalBudget.IsLimit(exception))
             { /* Non-path scalar in a closed OFD XML field. */ }
@@ -281,11 +286,11 @@ internal static class OfdAttachmentPhysicalCleaner
         return paths;
     }
 
-    private static bool IsTrustedPayloadSlot(OfdDocumentPackage package, string path, XElement element,
+    private static PayloadOwnerScope IsTrustedPayloadSlot(OfdDocumentPackage package, string path, XElement element,
         string? attributeName, ISet<string> trustedResources)
     {
         var root = element.Document?.Root;
-        if (root is null) return false;
+        if (root is null) return PayloadOwnerScope.None;
         var ns = root.Name.Namespace;
         if (root.Name.LocalName == "Res" && trustedResources.Contains(path))
         {
@@ -295,7 +300,8 @@ internal static class OfdAttachmentPhysicalCleaner
                 var font = element.Parent;
                 return !string.IsNullOrWhiteSpace(font.Attribute("ID")?.Value) &&
                        !string.IsNullOrWhiteSpace(font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value) &&
-                       ReferenceEquals(font.Element(ns + "FontFile"), element);
+                       ReferenceEquals(font.Element(ns + "FontFile"), element)
+                    ? PayloadOwnerScope.ResourceRoot : PayloadOwnerScope.None;
             }
             var media = attributeName == "MediaFile" ? element : element.Parent;
             if (media?.Name == ns + "MultiMedia" && media.Parent?.Name == ns + "MultiMedias" &&
@@ -303,13 +309,15 @@ internal static class OfdAttachmentPhysicalCleaner
                 return attributeName == "MediaFile" && element == media ||
                        attributeName is null && element.Name == ns + "MediaFile" &&
                        media.Attribute("MediaFile") is null &&
-                       ReferenceEquals(media.Element(ns + "MediaFile"), element);
-            return false;
+                       ReferenceEquals(media.Element(ns + "MediaFile"), element)
+                    ? PayloadOwnerScope.ResourceRoot : PayloadOwnerScope.None;
+            return PayloadOwnerScope.None;
         }
-        if (package.AttachmentSource?.DescriptorPath != path || root.Name.LocalName != "Attachments") return false;
+        if (package.AttachmentSource?.DescriptorPath != path || root.Name.LocalName != "Attachments") return PayloadOwnerScope.None;
         return attributeName == "FileLoc" && element.Name == ns + "Attachment" && element.Parent == root ||
                attributeName is null && element.Name == ns + "FileLoc" && element.Parent?.Name == ns + "Attachment" &&
-               element.Parent.Parent == root;
+               element.Parent.Parent == root
+            ? PayloadOwnerScope.Entry : PayloadOwnerScope.None;
     }
 
     private static bool ContainsAmbiguousPathSyntax(string value)

@@ -10,13 +10,13 @@
 
 ## 证明与写入顺序
 
-Reader 捕获的 `OfdAttachmentSource` 是唯一来源证据：owner、描述符摘要、原对象身份/槽位、原 `FileLoc` 解出的实际路径。ID、Name 和 `Attach_*` 文件名均不是删除权限。保存前重验来源、待删除槽位未复活、路径仍在原包中、内部/外部属性未改；保存时从最终构造的条目和签名清理结果核对所有标准引用。以真实文件路径检查全部 XML 后缀和无后缀的 XML。对无法解析的疑似 XML、扩展引用、不明确的嵌套 `BaseLoc`、别名与多 DocBody 共享，物理清理拒绝。明确处理 Res 的 `BaseLoc` 与 `FontFile`/`MediaFile`、PageRes 的隐式位置、签名和批注的 `BaseLoc`/`FileLoc`；不能用普通字符串包含或归档预检无告警代替闭包。
+Reader 捕获的 `OfdAttachmentSource` 是唯一来源证据：owner、描述符摘要、原对象身份/槽位、原 `FileLoc` 解出的实际路径。ID、Name 和 `Attach_*` 文件名均不是删除权限。保存前重验来源、待删除槽位未复活、路径仍在原包中、内部/外部属性未改；保存时从最终构造的条目和签名清理结果核对所有标准引用。以真实文件路径检查全部 XML 后缀和无后缀的 XML。对无法解析的疑似 XML、扩展引用、不能证明所有权的嵌套 `BaseLoc`、别名与多 DocBody 共享，物理清理拒绝。明确处理 Res 的 `BaseLoc` 与 `FontFile`/`MediaFile`、PageRes 的隐式位置、签名和批注的 `BaseLoc`/`FileLoc`；不能用普通字符串包含或归档预检无告警代替闭包。
 
 本轮将 XML 形态的附件载荷判为不确定角色并拒绝物理删除；二进制附件仍须通过完整引用闭包检查。已由 Reader 来源槽位认证的保留二进制附件可以使用 `.xml` 后缀；未认证的非 XML 控制条目不能借后缀或伪造附件名获准。此限制避免附件路径同时充当不显式声明的 XML 控制条目。
 
 封闭标准字段集合包含仓库写入器实际输出的路径绘制属性 `Cap`、`Join`、`Rule` 与裁切 `Clip/Area/Path`，Reader 接纳的裁切 `Area/@Start`、图片 `ImageObject/@Substitution` 和文本方向属性 `ReadDirection`、`CharDirection`，标准模板引用 `Template/@TemplateID`，批注的 `Creator`、`LastModDate`、`Subtype`、`Print`、`NoZoom`、`NoRotate`、`ReadOnly`、`Remark`，以及导航 `Dest`、`Goto` 和 EMR 自定义标签 `EMRTags/Tag` 的实际字段。写入器自有的精确 QName `TextObject` 斜体标记和取值规范的 `ImageObject` 插值标记也可通过；其它外部命名空间属性仍拒绝。`PageAnnot` 是可包含 `Annot` 子节点的标准根，不是路径标量。这些字段仍逐一扫描其值和祖先 `BaseLoc`，因此不能藏匿被删路径；正常页面模板、批注、导航与自定义标签不再因字段遗漏而被误判为未知扩展。任何新增字段仍需验证引用语义后才能准入。
 
-只有 Document 声明的资源表及页面或 `CommonData/TemplatePage` 位置旁置的隐式 `PageRes.xml` 中、结构合法的 `Fonts/Font/FontFile`（包含标准 `Serif`、`FixedWidth` 元数据）、`MultiMedias/MultiMedia/MediaFile` 或 Reader 接纳的 `MultiMedia/@MediaFile` 才能证明其它二进制条目属于标准资源；资源节点还需具备 Reader 接纳的 ID、字体名称和首个文件定位；同时存在属性与子元素时只认 Reader 优先读取的属性，伪造在其它 XML 位置的同名元素无效。模板旁置资源按 Reader、资源目录和裁剪器相同的 `TemplatePage/@BaseLoc` 相对路径发现。路径字段和祖先 `BaseLoc` 若包含 `%HH` 编码或反斜杠即拒绝；普通正文和元数据可包含这些字面字符，但仍参与完整路径别名扫描。所有会被 Reader 当作路径文本读取的节点（包括 `DocBody/Signatures` 和 `Document/Extensions`）只接纳纯标量内容；子元素分段拼接的路径继续拒绝，避免 Reader 与清理器对路径的解释不同。
+只有 Document 声明的资源表及页面或 `CommonData/TemplatePage` 位置旁置的隐式 `PageRes.xml` 中、结构合法的 `Fonts/Font/FontFile`（包含标准 `Serif`、`FixedWidth` 元数据）、`MultiMedias/MultiMedia/MediaFile` 或 Reader 接纳的 `MultiMedia/@MediaFile` 才能证明其它二进制条目属于标准资源；资源节点还需具备 Reader 接纳的 ID、字体名称和首个文件定位；同时存在属性与子元素时只认 Reader 优先读取的属性，伪造在其它 XML 位置的同名元素无效。模板旁置资源按 Reader、资源目录和裁剪器相同的 `TemplatePage/@BaseLoc` 相对路径发现。所有祖先 `BaseLoc` 都参与待删路径别名检查；授予二进制所有权时，资源文件只采用 Reader 使用的资源表根 `Res/@BaseLoc`，附件 `FileLoc` 只采用描述符条目自身路径，不采用嵌套 `BaseLoc`。路径字段和祖先 `BaseLoc` 若包含 `%HH` 编码或反斜杠即拒绝；普通正文和元数据可包含这些字面字符，但仍参与完整路径别名扫描。所有会被 Reader 当作路径文本读取的节点（包括 `DocBody/Signatures` 和 `Document/Extensions`）只接纳纯标量内容；子元素分段拼接的路径继续拒绝，避免 Reader 与清理器对路径的解释不同。
 
 删除在 `WriteWithResultAsync` 创建 ZIP/触碰目标流前完成；不改调用方 `PreservedEntries`。`OfdPackageWriteResult.RemovedEntries` 报真实删除路径，签名失效沿用既有 `SignaturesInvalidated` 与重签诊断。受控写入克隆及同路径 Split 要么保留来源请求并重验，要么在操作前明确拒绝，不能漏掉请求后写出貌似成功的包。合并/混合不继承原包删除权限。
 
