@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <Description>Optional HarfBuzz shaping adapter and native assets for the Ofdrw.Net text prelayout API.</Description>
+    <PackageTags>OFD;text;fonts;shaping;HarfBuzz</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj" />
+    <PackageReference Include="HarfBuzzSharp" Version="14.2.1.301" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.macOS" Version="14.2.1.301" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" Version="14.2.1.301" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" Version="14.2.1.301" />
+  </ItemGroup>
+</Project>
