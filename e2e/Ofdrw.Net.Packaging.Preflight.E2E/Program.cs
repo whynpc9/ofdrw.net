@@ -82,8 +82,10 @@ async Task CheckArchiveCopy()
     var items = new Dictionary<string, string>
     {
         ["OFD.xml"] = Xml("OFD", "<DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody>", "DocType='OFD-A'"),
-        ["Doc_0/Document.xml"] = Xml("Document", "<Pages><Page ID='1' BaseLoc='Pages/P0/Content.xml'/></Pages><Permissions><Edit>false</Edit></Permissions><VPreferences><HideToolbar>true</HideToolbar></VPreferences>"),
-        ["Doc_0/Pages/P0/Content.xml"] = Xml("Page", "<Content><Layer><PathObject/></Layer></Content>")
+        ["Doc_0/Document.xml"] = Xml("Document", "<Pages><Page ID='1' BaseLoc='Pages/P0/Content.xml'/></Pages><Permissions><Edit>false</Edit></Permissions><VPreferences><HideToolbar>true</HideToolbar></VPreferences><Attachments>Attachs/Attachments.xml</Attachments>"),
+        ["Doc_0/Pages/P0/Content.xml"] = Xml("Page", "<Content><Layer><PathObject/></Layer></Content>"),
+        ["Doc_0/Attachs/Attachments.xml"] = Xml("Attachments", "<Attachment ID='A' Name='retained'><FileLoc>a.txt</FileLoc></Attachment>"),
+        ["Doc_0/Attachs/a.txt"] = "retained attachment"
     };
     using (var file = File.Create(source))
     using (var zip = new ZipArchive(file, ZipArchiveMode.Create))
@@ -121,6 +123,16 @@ async Task CheckArchiveCopy()
             coverage.StandardOutcome != PreflightOutcome.Unknown || coverage.Certification != "NotAssessed")
             throw new InvalidOperationException("A successful subset copy must retain an incomplete full-standard outcome.");
     }
+    using (var outputFile = File.OpenRead(target))
+    using (var zip = new ZipArchive(outputFile, ZipArchiveMode.Read))
+        foreach (var name in new[] { "Doc_0/Attachs/Attachments.xml", "Doc_0/Attachs/a.txt" })
+        {
+            using var payload = zip.GetEntry(name)?.Open() ?? throw new InvalidOperationException("Archival copy lost an attachment entry.");
+            using var bytes = new MemoryStream();
+            await payload.CopyToAsync(bytes);
+            if (!bytes.ToArray().SequenceEqual(Encoding.UTF8.GetBytes(items[name])))
+                throw new InvalidOperationException("Archival copy changed an attachment entry.");
+        }
     await File.WriteAllTextAsync(Path.Combine(output, "archival-subset-result.json"), JsonSerializer.Serialize(new
     {
         sourceSha256 = sourceSha, copy.OutputSha256, copy.AuditPath, copy.RemovedDeclarations,

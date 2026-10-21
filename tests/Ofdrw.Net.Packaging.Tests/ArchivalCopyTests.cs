@@ -2,8 +2,10 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
+using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Packaging.Preflight;
+using Ofdrw.Net.Reader.Readers;
 
 namespace Ofdrw.Net.Packaging.Tests;
 
@@ -176,6 +178,43 @@ public class ArchivalCopyTests
             Assert.Equal(PreflightOutcome.NotApplicable, report.RuleResults[2].Outcome);
             Assert.Equal(PreflightOutcome.Unknown, report.StandardOutcome);
             Assert.Equal(PreflightOutcome.Pass, report.FoundationalRules.SummaryOutcome);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
+    public async Task ArchivalCopyKeepsAttachmentOwnershipForSeparatePhysicalRemoval()
+    {
+        var entries = Seed("<Permissions><Edit>false</Edit></Permissions><Attachments>Attachs/Attachments.xml</Attachments>");
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        entries["Doc_0/Attachs/Attachments.xml"] = Utf8($"<Attachments xmlns='{Ns}'><Attachment ID='A' Name='sample'><FileLoc>a.bin</FileLoc></Attachment></Attachments>");
+        entries["Doc_0/Attachs/a.bin"] = [1, 2, 3, 4];
+        var folder = Path.Combine(Path.GetTempPath(), "r20-r18-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "source.ofd");
+            var copyPath = Path.Combine(folder, "copy.ofd");
+            File.WriteAllBytes(source, Zip(entries));
+            await new ArchivalCopyConverter().ConvertAsync(source, copyPath, new());
+            using var copyFile = File.OpenRead(copyPath);
+            var coverage = await new ArchivalCoverageService().CheckAsync(copyFile, new());
+            Assert.Equal(PreflightOutcome.Pass, coverage.RuleResults[0].Outcome);
+            Assert.Equal(PreflightOutcome.Pass, coverage.RuleResults[1].Outcome);
+            Assert.Equal(PreflightOutcome.Unknown, coverage.StandardOutcome);
+            copyFile.Position = 0;
+            var package = await new OfdReader().ReadAsync(copyFile);
+            Assert.Single(package.Attachments);
+            Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+            using var removed = new MemoryStream();
+            var result = await new OfdPackageWriter().WriteWithResultAsync(package, removed);
+            Assert.Contains("Doc_0/Attachs/a.bin", result.RemovedEntries);
+            using var output = new ZipArchive(new MemoryStream(removed.ToArray()), ZipArchiveMode.Read);
+            Assert.Null(output.GetEntry("Doc_0/Attachs/a.bin"));
+            Assert.Null(output.GetEntry("Doc_0/Attachs/Attachments.xml"));
+            using var retainedCopy = File.OpenRead(copyPath);
+            var retained = await new OfdPackageLoader().LoadAsync(retainedCopy);
+            Assert.Equal(entries["Doc_0/Attachs/a.bin"], retained.GetBytes("Doc_0/Attachs/a.bin"));
         }
         finally { Directory.Delete(folder, true); }
     }
