@@ -136,6 +136,7 @@ internal static class OfdAttachmentPhysicalCleaner
     {
         material.ChargeCopy(512L + 128L * (authenticatedPayloads?.Count ?? 0), token);
         var knownBinary = new HashSet<string>((IEnumerable<string>?)authenticatedPayloads ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+        var controlReferences = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var trustedResources = TrustedResourceTables(package, entries, material, token);
         var opaqueBinary = new List<string>();
         foreach (var entry in entries)
@@ -205,16 +206,19 @@ internal static class OfdAttachmentPhysicalCleaner
                         // once the entire signature entry is actually pruned.
                         continue;
                     }
-                    CheckScalar(entry.Key, element, attribute.Value, IsPathBearingAttribute(element, attribute.Name.LocalName), candidates, knownBinary,
+                    CheckScalar(entry.Key, element, attribute.Value, IsPathBearingAttribute(element, attribute.Name.LocalName),
+                        IsControlReference(element, attribute.Name.LocalName), candidates, knownBinary, controlReferences,
                         IsTrustedPayloadSlot(package, entry.Key, element, attribute.Name.LocalName, trustedResources), material, token);
                 }
                 if (!element.HasElements && !string.IsNullOrWhiteSpace(element.Value))
-                    CheckScalar(entry.Key, element, element.Value, IsPathBearingText(element), candidates, knownBinary,
+                    CheckScalar(entry.Key, element, element.Value, IsPathBearingText(element), IsControlReference(element, null),
+                        candidates, knownBinary, controlReferences,
                         IsTrustedPayloadSlot(package, entry.Key, element, null, trustedResources), material, token);
             }
         }
         foreach (var path in opaqueBinary)
-            if (!knownBinary.Contains(path) && (finalEntries is null || finalEntries.ContainsKey(path)))
+            if ((controlReferences.Contains(path) || !knownBinary.Contains(path)) &&
+                (finalEntries is null || finalEntries.ContainsKey(path)))
                 throw new NotSupportedException(path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)
                     ? "Physical attachment removal cannot inspect an XML control entry: " + path
                     : "Physical attachment removal cannot prove opaque binary entry ownership: " + path);
@@ -278,16 +282,31 @@ internal static class OfdAttachmentPhysicalCleaner
     }
 
     private static bool IsPathBearingAttribute(XElement element, string name) =>
-        name is "BaseLoc" or "FileLoc" or "FileRef" or "MediaFile" ||
+        name is "BaseLoc" or "FileRef" or "MediaFile" ||
+        name == "FileLoc" && !IsExternalAttachment(element) ||
         name == "URI" && !(element.Name.LocalName == "URI" && element.Parent?.Name.LocalName == "Action");
 
-    private static bool IsPathBearingText(XElement element) => ScalarPathElements.Contains(element.Name.LocalName) ||
+    private static bool IsPathBearingText(XElement element) =>
+        ScalarPathElements.Contains(element.Name.LocalName) &&
+        !(element.Name.LocalName == "FileLoc" && IsExternalAttachment(element.Parent)) ||
         (element.Parent?.Name.LocalName == "DocBody" && element.Name.LocalName == "Signatures") ||
         (element.Document?.Root?.Name.LocalName == "Document" &&
             element.Name.LocalName is ("Attachments" or "Annotations" or "CustomTags" or "Extensions"));
 
-    private static void CheckScalar(string entry, XElement element, string value, bool pathBearing, ISet<string> candidates,
-        ISet<string> knownBinary, PayloadOwnerScope payloadSlot, OfdModelMaterialization material, CancellationToken token)
+    private static bool IsExternalAttachment(XElement? element) =>
+        element?.Name.LocalName == "Attachment" &&
+        bool.TryParse(element.Attribute("External")?.Value, out var external) && external;
+
+    private static bool IsControlReference(XElement element, string? attributeName) =>
+        attributeName == "BaseLoc" && element.Name.LocalName is ("Page" or "TemplatePage" or "Version" or "Signature") ||
+        attributeName == "FileLoc" && element.Name.LocalName == "PageAnnot" ||
+        attributeName is null && element.Name.LocalName is
+            ("DocRoot" or "PublicRes" or "DocumentRes" or "PageRes" or "Signatures" or
+             "Attachments" or "Annotations" or "CustomTags" or "Extensions");
+
+    private static void CheckScalar(string entry, XElement element, string value, bool pathBearing, bool controlReference,
+        ISet<string> candidates, ISet<string> knownBinary, ISet<string> controlReferences, PayloadOwnerScope payloadSlot,
+        OfdModelMaterialization material, CancellationToken token)
     {
         // Scan every scalar for literal aliases, but reject encoded/backslash
         // syntax only in fields that can carry paths. Ordinary TextCode and
@@ -326,6 +345,7 @@ internal static class OfdAttachmentPhysicalCleaner
                 var target = material.ResolvePath(bases[i], value, token);
                 if (candidates.Contains(target))
                     throw new NotSupportedException("Attachment payload or descriptor remains referenced from " + entry);
+                if (controlReference) controlReferences.Add(target);
                 // Every scope is checked for aliases. Only the BaseLoc used by
                 // the actual consumer can authenticate an opaque payload.
                 if (payloadSlot == PayloadOwnerScope.Entry && i == 0 ||

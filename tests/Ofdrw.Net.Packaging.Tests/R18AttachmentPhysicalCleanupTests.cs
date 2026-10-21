@@ -209,6 +209,37 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task PercentEncodedExternalAttachmentLocationRemainsNavigationOnly()
+    {
+        var entries = Entries(Seed(external: true));
+        entries["Doc_0/Metadata/List.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Metadata/List.xml"])
+            .Replace("https://invalid.example/never-fetch.bin", "https://example.invalid/a%20b", StringComparison.Ordinal));
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        Assert.Equal("https://example.invalid/a%20b", Assert.Single((await Read(output)).Attachments).ExternalPath);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+    }
+
+    [Fact]
+    public async Task RetainedBinaryCannotAlsoOwnDocumentExtensionsControlEntry()
+    {
+        var entries = Entries(Seed());
+        var descriptor = XDocument.Parse(Encoding.UTF8.GetString(entries["Doc_0/Metadata/List.xml"]));
+        descriptor.Root!.Add(new XElement(XName.Get("Attachment", Ns), new XAttribute("ID", "8"),
+            new XAttribute("Name", "manifest.bin"),
+            new XElement(XName.Get("FileLoc", Ns), "../Extras/manifest.bin")));
+        entries["Doc_0/Metadata/List.xml"] = Utf8(descriptor.ToString(SaveOptions.DisableFormatting));
+        entries["Doc_0/Extras/manifest.bin"] = [4, 5, 6];
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</Document>", "<Extensions>Extras/manifest.bin</Extensions></Document>", StringComparison.Ordinal));
+
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "opaque binary entry ownership");
+    }
+
+    [Fact]
     public async Task FakeOfdCoverCannotAuthenticateOpaqueArchiveBytes()
     {
         var entries = Entries(Seed());
