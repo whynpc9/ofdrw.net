@@ -69,7 +69,14 @@
 
 - Cursor 复审指出：无命名空间或另一官方 OFD 命名空间的 `DrawParam` 颜色直接复制到绘图节点时，颜色节点仍保留资源命名空间，PageBlock 准入会拒绝；普通图层文字则可能找不到继承的描边色而回退黑色。现按绘图节点命名空间重建继承色，并按颜色本地名识别图元自身的显式覆盖色。测试分别覆盖这两种资源命名空间、PageBlock/普通图层、继承的绿色填充与红色文字描边，以及显式蓝色描边优先；PDF/SVG/HTML 均验证，定向 **4/4**，R01 类 **53/53**。
 - 修复后完整解决方案 11 个项目 **3139 passed、13 skipped、0 failed**。本地 `0.1.0-r01.r21d` 的 13 包来源与独立消费、R21 文字预布局、DOCX native/默认模式及 V1/V4 签章链路通过；签章 PDF 与基线两页 PNG 像素一致。首次打包尝试因未提供本地受许可字体目录在 SES 消费阶段停止，设置 `OFDRW_SES_FONTS` 后以全新输出目录复验通过；失败属于验证环境，不是产品回归。
-- 四个跨命名空间样本各生成 1 页 OFD → PDF → 144 DPI PNG，四张页面图逐字节一致：绿色填充方块、红色空心 `inherited red`、蓝色空心 `local blue` 均清晰且不重叠。macOS Preview 实查 `2016-block.pdf` 与 `unqualified-layer.pdf` 各第 1/1 页；其余两个变体依靠同一轮 PNG 等同性和功能断言。另重新打开最终包的 `native-v1.pdf`、`default-v4.pdf` 各第 1–2 页，表格、中文/英文、红色粗体和分页正常；两份 PDF 的页面 PNG 也与上一轮 Preview 页面逐字节一致。全部窗口检查后已关闭。外部 OFD 阅读器及 V5/GBT 仍未验收。
+- 四个跨命名空间样本各生成 1 页 OFD → PDF → 144 DPI PNG，四张页面图逐字节一致：绿色填充方块、红色空心 `inherited red`、蓝色空心 `local blue` 均清晰且不重叠。最终源码又将四份样本重新生成到 `crossnamespace-pages-final/`，macOS Preview 对四份最终 PDF 的第 1/1 页逐份重新打开并检查。另重新打开本轮包的 `native-v1.pdf`、`default-v4.pdf` 各第 1–2 页，表格、中文/英文、红色粗体和分页正常；两份 PDF 的页面 PNG 也与上一轮 Preview 页面逐字节一致。全部窗口检查后已关闭。外部 OFD 阅读器及 V5/GBT 仍未验收。
+
+## 跨资源文件 Relative 颜色覆盖复审
+
+- Codex 复审指出：`DocumentRes` 与 `PageRes` 采用不同的受支持命名空间时，父子 `DrawParam` 的同名颜色原本按完整 XML 名称并存，父色可挡住子色。现沿 `Relative` 链按 `FillColor`/`StrokeColor` 的本地语义名替换，并归一到目标 DrawParam 命名空间；图元显式颜色仍优先。
+- 新回归覆盖两种官方命名空间的双向组合、无命名空间资源的父/子边界，以及 PageBlock/普通图层，总计 **8/8**。三层继承中的子级蓝色描边覆盖父级红色，孙级黄色填充覆盖父级绿色，图元本地洋红色描边覆盖继承蓝色；PDF/SVG/HTML 均有断言，PDF 文本可提取。完整解决方案 11 个项目 **3147 passed、13 skipped、0 failed**。
+- 八个样本各生成 1 页 OFD → PDF → 144 DPI PNG，页面图逐字节一致。macOS Preview 对八份 PDF 的第 1/1 页**逐份实际打开检查**：黄色方块和蓝色边框、蓝色 `child blue` 空心字、洋红色 `local magenta` 空心字均显示，未见缺字、重影、裁切、重叠或异常空白页；随后关闭全部窗口。
+- 本地 `0.1.0-r01.r21e` 13 包来源与独立消费、R21 预布局、DOCX native/默认模式及四份 V1/V4 签章链路均通过；签章前后各两页 96 DPI PNG 像素一致。最新包的 `native-v1.pdf` 与 `default-v4.pdf` 又在 Preview 各实查第 1–2 页，表格、中英文、红色粗体、分页正常；本轮输出页面 PNG 与上轮逐字节一致。查看后关闭全部窗口。未作外部 OFD 阅读器和 V5/GBT 结论。
 
 ## 本次页面视觉复查
 

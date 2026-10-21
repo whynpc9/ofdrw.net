@@ -123,7 +123,13 @@ internal sealed class OfdPaintResources
             foreach (var attribute in item.Attributes().Where(a => a.Name.LocalName is not ("ID" or "Relative")))
                 result.SetAttributeValue(attribute.Name, attribute.Value);
             foreach (var color in item.Elements())
-            { result.Element(color.Name)?.Remove(); result.Add(new XElement(color)); }
+            {
+                foreach (var prior in result.Elements().Where(existing => existing.Name.LocalName == color.Name.LocalName).ToArray())
+                    prior.Remove();
+                var inherited = new XElement(color);
+                inherited.Name = result.Name.Namespace + color.Name.LocalName;
+                result.Add(inherited);
+            }
         }
         return result;
     }

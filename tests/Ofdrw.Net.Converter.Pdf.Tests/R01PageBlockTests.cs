@@ -376,6 +376,87 @@ public sealed class R01PageBlockTests
             ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Theory]
+    [InlineData(Ns, "http://www.ofdspec.org/2016", false)]
+    [InlineData(Ns, "http://www.ofdspec.org/2016", true)]
+    [InlineData("http://www.ofdspec.org/2016", Ns, false)]
+    [InlineData("http://www.ofdspec.org/2016", Ns, true)]
+    [InlineData("", Ns, false)]
+    [InlineData("", Ns, true)]
+    [InlineData(Ns, "", false)]
+    [InlineData(Ns, "", true)]
+    public async Task RelativeDrawParamChildColorsOverrideAcrossResourceNamespaces(string documentNamespace,
+        string pageNamespace, bool layer)
+    {
+        const string resources = "<DrawParams><DrawParam ID='30'><FillColor Value='0 255 0'/>" +
+            "<StrokeColor Value='255 0 0'/></DrawParam></DrawParams>";
+        var body = "<PathObject ID='501' Boundary='5 5 20 20' DrawParam='32' Fill='true' Stroke='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>" +
+            "<TextObject ID='502' Boundary='5 30 80 15' Font='10' Size='6' DrawParam='31' Fill='false' Stroke='true'>" +
+            "<TextCode X='2' Y='8'>child blue</TextCode></TextObject>" +
+            "<TextObject ID='503' Boundary='5 50 80 15' Font='10' Size='6' DrawParam='31' Fill='false' Stroke='true'>" +
+            "<StrokeColor Value='255 0 255'/><TextCode X='2' Y='8'>local magenta</TextCode></TextObject>";
+        var original = await Source(body, resources: resources, font: true);
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(original), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var stream = entry.Open(); using var buffer = new MemoryStream(); await stream.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName == "Doc_0/DocumentRes.xml")
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    XNamespace ns = documentNamespace;
+                    foreach (var node in xml.Descendants())
+                    {
+                        foreach (var declaration in node.Attributes().Where(a => a.IsNamespaceDeclaration).ToArray())
+                            declaration.Remove();
+                        node.Name = ns + node.Name.LocalName;
+                    }
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                if (layer && entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    var block = xml.Descendants().Single(node => node.Name.LocalName == "PageBlock");
+                    block.ReplaceWith(block.Elements().ToArray());
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+            XNamespace pageNs = pageNamespace;
+            var pageRes = new XElement(pageNs + "Res", new XElement(pageNs + "DrawParams",
+                new XElement(pageNs + "DrawParam", new XAttribute("ID", "31"), new XAttribute("Relative", "30"),
+                    new XElement(pageNs + "StrokeColor", new XAttribute("Value", "0 0 255"))),
+                new XElement(pageNs + "DrawParam", new XAttribute("ID", "32"), new XAttribute("Relative", "31"),
+                    new XElement(pageNs + "FillColor", new XAttribute("Value", "255 255 0")))));
+            using var pageStream = output.CreateEntry("Doc_0/Pages/Page_0/PageRes.xml").Open();
+            await pageStream.WriteAsync(Encoding.UTF8.GetBytes(pageRes.ToString(SaveOptions.DisableFormatting)));
+        }
+        var ofd = rewritten.ToArray();
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        var drawing = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()));
+        var path = Assert.Single(drawing.Descendants().Where(node => node.Name.LocalName == "path"));
+        Assert.Equal("rgb(255,255,0)", path.Attribute("fill")?.Value);
+        Assert.Equal("rgb(0,0,255)", path.Attribute("stroke")?.Value);
+        var texts = drawing.Descendants().Where(node => node.Name.LocalName == "text").ToArray();
+        Assert.Equal(2, texts.Length);
+        Assert.Equal("rgb(0,0,255)", texts[0].Attribute("stroke")?.Value);
+        Assert.Equal("rgb(255,0,255)", texts[1].Attribute("stroke")?.Value);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("rgb(255,255,0)", Encoding.UTF8.GetString(html.ToArray()));
+        Assert.Contains("rgb(255,0,255)", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray());
+        Assert.Contains("child blue", parsed.GetPage(1).Text);
+        Assert.Contains("local magenta", parsed.GetPage(1).Text);
+        var pair = (documentNamespace.Length == 0 ? "none" : documentNamespace == Ns ? "2009" : "2016") + "-" +
+            (pageNamespace.Length == 0 ? "none" : pageNamespace == Ns ? "2009" : "2016");
+        Retain($"drawparam-relative-{pair}-{(layer ? "layer" : "block")}", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
     [Fact]
     public async Task OutlineOnlyTextWithoutStrokeColorUsesOpaqueBlack()
     {
