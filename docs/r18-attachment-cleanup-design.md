@@ -14,7 +14,7 @@ Reader 捕获的 `OfdAttachmentSource` 是唯一来源证据：owner、描述符
 
 本轮将 XML 形态的附件载荷判为不确定角色并拒绝物理删除；二进制附件仍须通过完整引用闭包检查。此限制避免附件路径同时充当不显式声明的 XML 控制条目。
 
-只有 Document 声明的资源表及页面位置对应的 PageRes 中、结构合法的 `Fonts/Font/FontFile` 和 `MultiMedias/MultiMedia/MediaFile` 才能证明其它二进制条目属于标准资源；伪造在其它 XML 位置的同名元素无效。扫描期间遇到 `%HH` 形式的编码标量或 `BaseLoc` 即拒绝物理清理，避免编码别名绕过路径比较。
+只有 Document 声明的资源表及页面位置对应的 PageRes 中、结构合法的 `Fonts/Font/FontFile` 和 `MultiMedias/MultiMedia/MediaFile` 才能证明其它二进制条目属于标准资源；伪造在其它 XML 位置的同名元素无效。扫描期间遇到 `%HH` 编码、反斜杠路径或混合内容路径标量即拒绝物理清理，避免 Reader 与清理器对路径的解释不同。
 
 删除在 `WriteWithResultAsync` 创建 ZIP/触碰目标流前完成；不改调用方 `PreservedEntries`。`OfdPackageWriteResult.RemovedEntries` 报真实删除路径，签名失效沿用既有 `SignaturesInvalidated` 与重签诊断。受控写入克隆及同路径 Split 要么保留来源请求并重验，要么在操作前明确拒绝，不能漏掉请求后写出貌似成功的包。合并/混合不继承原包删除权限。
 

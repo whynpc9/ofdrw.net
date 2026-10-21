@@ -166,6 +166,28 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task BackslashResourceAliasIsRejectedBeforeOutput()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Res/DocumentRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='../Payload'><MultiMedias><MultiMedia ID='12'><MediaFile>\\original.bin</MediaFile></MultiMedia></MultiMedias></Res>");
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+    }
+
+    [Fact]
+    public async Task MixedSignaturePathIsRejectedBeforeSignaturePruning()
+    {
+        var entries = Entries(Seed());
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot><Signatures>Doc_0/Signs/Signatures.xml</Signatures></DocBody></OFD>");
+        entries["Doc_0/Signs/Signatures.xml"] = Utf8($"<Signatures xmlns='{Ns}'><Signature BaseLoc='sig/Signature.xml'/></Signatures>");
+        entries["Doc_0/Signs/sig/Signature.xml"] = Utf8($"<Signature xmlns='{Ns}'><SignedValue>../../Payload/orig<FileRef>inal.bin</FileRef></SignedValue></Signature>");
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+    }
+
+    [Fact]
     public async Task NonXmlSuffixUtf16DescriptorUsesSourcePathAndCanBeRemoved()
     {
         var entries = Entries(Seed());

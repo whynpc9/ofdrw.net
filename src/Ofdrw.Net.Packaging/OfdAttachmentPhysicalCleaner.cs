@@ -30,6 +30,8 @@ internal static class OfdAttachmentPhysicalCleaner
     {
         "Version", "DocType", "ID", "Name", "BaseLoc", "FileLoc", "Format", "MediaType", "External", "CreationDate", "ModDate", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
     };
+    private static readonly HashSet<string> ScalarPathElements = new(StringComparer.Ordinal)
+    { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes", "PageAnnot" };
 
     internal static void Prune(OfdDocumentPackage package, IDictionary<string, byte[]> entries, OfdPackageWriteResult result,
         OfdModelMaterialization material, CancellationToken token, OfdOwnedPruneDispositions? dispositions)
@@ -157,6 +159,9 @@ internal static class OfdAttachmentPhysicalCleaner
                 if (!KnownElements.Contains(element.Name.LocalName) || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     a.Name.Namespace == XNamespace.None && !KnownAttributes.Contains(a.Name.LocalName)))
                     throw new NotSupportedException("Physical attachment removal cannot prove an unknown OFD field reference closure: " + entry.Key);
+                if (element.HasElements && (ScalarPathElements.Contains(element.Name.LocalName) ||
+                    element.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value))))
+                    throw new NotSupportedException("Physical attachment removal cannot prove mixed XML path content: " + entry.Key);
                 foreach (var attribute in element.Attributes().Where(a => !a.IsNamespaceDeclaration))
                     CheckScalar(entry.Key, element, attribute.Value, candidates, knownBinary,
                         IsTrustedPayloadSlot(package, entry.Key, element, attribute.Name.LocalName, trustedResources), material, token);
@@ -177,8 +182,8 @@ internal static class OfdAttachmentPhysicalCleaner
         // scopes explicitly. Res/@BaseLoc + FontFile/MediaFile and nested
         // annotation/signature paths are covered even without a literal full path.
         if (string.IsNullOrWhiteSpace(value)) return;
-        if (ContainsEncodedOctet(value))
-            throw new NotSupportedException("Physical attachment removal cannot prove an encoded XML reference.");
+        if (ContainsAmbiguousPathSyntax(value))
+            throw new NotSupportedException("Physical attachment removal cannot prove an encoded or backslash XML reference.");
         material.ChargeCopy(256L + 4L * entry.Length, token);
         var bases = new List<string> { entry };
         var basis = entry;
@@ -187,8 +192,8 @@ internal static class OfdAttachmentPhysicalCleaner
             token.ThrowIfCancellationRequested();
             var location = owner.Attribute("BaseLoc")?.Value;
             if (string.IsNullOrWhiteSpace(location)) continue;
-            if (ContainsEncodedOctet(location!))
-                throw new NotSupportedException("Physical attachment removal cannot prove an encoded BaseLoc.");
+            if (ContainsAmbiguousPathSyntax(location!))
+                throw new NotSupportedException("Physical attachment removal cannot prove an encoded or backslash BaseLoc.");
             try
             {
                 basis = material.ResolvePath(basis, location!.TrimEnd('/') + "/_attachment_reference", token);
@@ -228,7 +233,7 @@ internal static class OfdAttachmentPhysicalCleaner
         {
             var value = common?.Element(root.Name.Namespace + name)?.Value;
             if (string.IsNullOrWhiteSpace(value)) continue;
-            if (ContainsEncodedOctet(value!)) throw new NotSupportedException("Encoded resource table location is ambiguous.");
+            if (ContainsAmbiguousPathSyntax(value!)) throw new NotSupportedException("Resource table location is ambiguous.");
             paths.Add(material.ResolvePath(documentPath, value!, token));
         }
         foreach (var page in root.Element(root.Name.Namespace + "Pages")?.Elements(root.Name.Namespace + "Page") ?? Enumerable.Empty<XElement>())
@@ -236,7 +241,7 @@ internal static class OfdAttachmentPhysicalCleaner
             token.ThrowIfCancellationRequested(); material.ChargeWork(64, token);
             var value = page.Attribute("BaseLoc")?.Value;
             if (string.IsNullOrWhiteSpace(value)) continue;
-            if (ContainsEncodedOctet(value!)) throw new NotSupportedException("Encoded page location is ambiguous.");
+            if (ContainsAmbiguousPathSyntax(value!)) throw new NotSupportedException("Page location is ambiguous.");
             var pagePath = material.ResolvePath(documentPath, value!, token);
             paths.Add(pagePath.Substring(0, pagePath.LastIndexOf('/') + 1) + "PageRes.xml");
         }
@@ -260,8 +265,9 @@ internal static class OfdAttachmentPhysicalCleaner
                element.Parent.Parent == root;
     }
 
-    private static bool ContainsEncodedOctet(string value)
+    private static bool ContainsAmbiguousPathSyntax(string value)
     {
+        if (value.IndexOf('\\') >= 0) return true;
         for (var i = 0; i + 2 < value.Length; i++)
             if (value[i] == '%' && Uri.IsHexDigit(value[i + 1]) && Uri.IsHexDigit(value[i + 2])) return true;
         return false;
