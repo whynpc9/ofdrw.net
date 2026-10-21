@@ -101,6 +101,7 @@ internal static class OfdSerializedInventory
         {
             V(role, value, true);
             if (value is null) return;
+            OfdStandardXml.ReserveXml(value.Root, material, token, serialization: true);
             var xml = value.InventoryXml; S("standardXml", xml); sink.Xml(xml);
             S("standardOriginalXml", value.OriginalXml); sink.Xml(value.OriginalXml);
             V("standardOwner", value.DocumentOwner, true);

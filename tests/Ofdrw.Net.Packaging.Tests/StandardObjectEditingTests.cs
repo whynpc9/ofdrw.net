@@ -353,6 +353,33 @@ public sealed class StandardObjectEditingTests
     }
 
     [Fact]
+    public void ControlledStandardRead_BindsCapturedBaselinesWithoutReparsing()
+    {
+        var ns = XNamespace.Get("http://www.ofdspec.org/2016");
+        var custom = new XElement(ns + "CustomDatas", new XElement(ns + "CustomData",
+            new XAttribute("Name", "large"), new string('x', 20_000)));
+        var info = new XElement(ns + "DocInfo", custom);
+        var permissions = new XElement(ns + "Permissions", new XElement(ns + "Edit", "true"));
+        var preferences = new XElement(ns + "VPreferences", new XElement(ns + "PageMode", "UseOutlines"));
+        var versions = new XElement(ns + "Versions", new XElement(ns + "Version", new XAttribute("ID", "v1"),
+            new XAttribute("Index", "1"), new XAttribute("BaseLoc", "Doc_0/Version.xml")));
+        var body = new XElement(ns + "DocBody", versions);
+        var document = new XElement(ns + "Document", permissions, preferences);
+        var package = new OfdDocumentPackage();
+        using var context = new OfdControlledEditContext(new());
+        using var scope = context.Material.BeginControlledRead(context, default);
+        OfdStandardXml.ReadMetadata(package, info, context.Material, default);
+        OfdStandardXml.ReadDocument(package, body, document, context.Material, default);
+        Assert.Equal(0, context.Material.ReadParserAdmissions);
+        Assert.Equal(4, context.Material.ReadSourceClones);
+        Assert.NotSame(custom, package.Options.Metadata.CustomDatas!.Root);
+        Assert.NotSame(permissions, package.Permissions!.Root);
+        Assert.NotSame(preferences, package.ViewingPreferences!.Root);
+        Assert.NotSame(versions, package.Versions!.Root);
+        Assert.Contains(new string('x', 20_000), package.Options.Metadata.CustomDatas.OriginalXml);
+    }
+
+    [Fact]
     public async Task MultiDocument_RejectsChangedRootReferencesIntoOtherDocument()
     {
         var entries = await MultiDocumentFixture.CreateEntriesAsync();

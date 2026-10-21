@@ -437,7 +437,9 @@ internal static class OfdStandardXml
                 e.Attribute("Name") is XAttribute name && !string.IsNullOrEmpty(name.Value) && !e.HasElements))
             {
                 var xml = OfdXmlEnvelope.Capture(element, material, token);
-                var model = new OfdCustomDatas(OfdXmlEnvelope.Parse(xml)); model.Bind(package, xml); metadata.CustomDatas = model;
+                material.ReserveReadModel(256, token);
+                ReserveXml(element, material, token, serialization: false);
+                var model = new OfdCustomDatas(new XElement(element)); model.Bind(package, xml); metadata.CustomDatas = model;
             }
         }
     }
@@ -448,16 +450,22 @@ internal static class OfdStandardXml
         var ns = document.Name.Namespace;
         if (document.Elements(ns + "Permissions").Count() == 1 &&
             document.Element(ns + "Permissions") is XElement permissions && OfdPermissions.Recognized(permissions))
-            package.Permissions = Bind(new OfdPermissions(OfdXmlEnvelope.Parse(OfdXmlEnvelope.Capture(permissions, material, token))), permissions);
+            package.Permissions = Bind(permissions, element => new OfdPermissions(element));
         if (document.Elements(ns + "VPreferences").Count() == 1 &&
             document.Element(ns + "VPreferences") is XElement preferences && OfdViewingPreferences.Recognized(preferences))
-            package.ViewingPreferences = Bind(new OfdViewingPreferences(OfdXmlEnvelope.Parse(OfdXmlEnvelope.Capture(preferences, material, token))), preferences);
+            package.ViewingPreferences = Bind(preferences, element => new OfdViewingPreferences(element));
         if (body?.Elements(body.Name.Namespace + "Versions").Count() == 1 &&
             body.Element(body.Name.Namespace + "Versions") is XElement versions && OfdVersions.Recognized(versions))
-            package.Versions = Bind(new OfdVersions(OfdXmlEnvelope.Parse(OfdXmlEnvelope.Capture(versions, material, token))), versions);
+            package.Versions = Bind(versions, element => new OfdVersions(element),
+                192L * versions.Elements(versions.Name.Namespace + "Version").Count());
 
-        T Bind<T>(T model, XElement source) where T : OfdStandardNode
-        { model.Bind(package, model.InventoryXml); return model; }
+        T Bind<T>(XElement source, Func<XElement, T> create, long extra = 0) where T : OfdStandardNode
+        {
+            var xml = OfdXmlEnvelope.Capture(source, material, token);
+            material.ReserveReadModel(checked(256L + extra), token);
+            ReserveXml(source, material, token, serialization: false);
+            var model = create(new XElement(source)); model.Bind(package, xml); return model;
+        }
     }
 
     internal static void Validate(OfdDocumentPackage package, OfdModelMaterialization material,
@@ -504,6 +512,7 @@ internal static class OfdStandardXml
         {
             if (value.DocumentOwner is not null && !ReferenceEquals(value.DocumentOwner, package))
                 throw new NotSupportedException("Imported standard object belongs to another document.");
+            ReserveXml(value.Root, material, token, serialization: true);
             material.GuardFragmentXml(value.InventoryXml, token);
         }
         void ExistingPath(string role, string location)
@@ -599,8 +608,24 @@ internal static class OfdStandardXml
     internal static T? Clone<T>(T? model, object target, OfdModelMaterialization material, CancellationToken token) where T : OfdStandardNode
     {
         if (model is null) return null;
+        ReserveXml(model.Root, material, token, serialization: false);
+        var root = new XElement(model.Root);
+        OfdStandardNode clone = model switch
+        {
+            OfdCustomDatas => new OfdCustomDatas(root), OfdPermissions => new OfdPermissions(root),
+            OfdViewingPreferences => new OfdViewingPreferences(root), OfdVersions => new OfdVersions(root),
+            _ => throw new NotSupportedException("Unsupported standard object clone.")
+        };
+        if (model.OriginalXml is string source) clone.Bind(target, source);
+        if (model is OfdVersions originalVersions && clone is OfdVersions clonedVersions)
+            clonedVersions.CopyLocationBaselines(originalVersions);
+        return (T)clone;
+    }
+
+    internal static void ReserveXml(XElement root, OfdModelMaterialization material, CancellationToken token, bool serialization)
+    {
         long nodes = 0, attributes = 0, characters = 0;
-        foreach (var node in model.Root.DescendantNodesAndSelf())
+        foreach (var node in root.DescendantNodesAndSelf())
         {
             token.ThrowIfCancellationRequested(); nodes++;
             if (node is XElement element)
@@ -617,17 +642,9 @@ internal static class OfdStandardXml
             else if (node is XProcessingInstruction instruction)
                 characters = checked(characters + instruction.Target.Length + instruction.Data.Length);
         }
-        material.ChargeCopy(checked(256L + 256L * nodes + 192L * attributes + 6L * characters), token);
-        var root = new XElement(model.Root);
-        OfdStandardNode clone = model switch
-        {
-            OfdCustomDatas => new OfdCustomDatas(root), OfdPermissions => new OfdPermissions(root),
-            OfdViewingPreferences => new OfdViewingPreferences(root), OfdVersions => new OfdVersions(root),
-            _ => throw new NotSupportedException("Unsupported standard object clone.")
-        };
-        if (model.OriginalXml is string source) clone.Bind(target, source);
-        if (model is OfdVersions originalVersions && clone is OfdVersions clonedVersions)
-            clonedVersions.CopyLocationBaselines(originalVersions);
-        return (T)clone;
+        var bytes = serialization
+            ? checked(32768L + 512L * nodes + 384L * attributes + 12L * characters)
+            : checked(256L + 256L * nodes + 192L * attributes + 6L * characters);
+        material.ChargeCopy(bytes, token);
     }
 }
