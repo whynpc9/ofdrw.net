@@ -240,6 +240,25 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task RetainedBinaryCannotAlsoOwnAnnotationIndexPageFile()
+    {
+        var entries = Entries(Seed());
+        var descriptor = XDocument.Parse(Encoding.UTF8.GetString(entries["Doc_0/Metadata/List.xml"]));
+        descriptor.Root!.Add(new XElement(XName.Get("Attachment", Ns), new XAttribute("ID", "8"),
+            new XAttribute("Name", "annotations.bin"),
+            new XElement(XName.Get("FileLoc", Ns), "../Extras/annotations.bin")));
+        entries["Doc_0/Metadata/List.xml"] = Utf8(descriptor.ToString(SaveOptions.DisableFormatting));
+        entries["Doc_0/Extras/annotations.bin"] = [4, 5, 6];
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</Document>", "<Annotations>Metadata/Annotations.xml</Annotations></Document>", StringComparison.Ordinal));
+        entries["Doc_0/Metadata/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'><Page PageID='1'><FileLoc>../Extras/annotations.bin</FileLoc></Page></Annotations>");
+
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "opaque binary entry ownership");
+    }
+
+    [Fact]
     public async Task FakeOfdCoverCannotAuthenticateOpaqueArchiveBytes()
     {
         var entries = Entries(Seed());
@@ -965,6 +984,30 @@ public sealed class R18AttachmentPhysicalCleanupTests
         await prepared.WriteAsync(output);
         Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output.ToArray()).Keys);
         Assert.DoesNotContain("Doc_0/Metadata/List.xml", Entries(output.ToArray()).Keys);
+    }
+
+    [Fact]
+    public async Task ControlledCloneRetainsRemovedAttachmentsEditedIdForActionClosure()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</Document>", "<Actions><Action Event='INVALID'><GotoA AttachID='7'/></Action></Actions></Document>", StringComparison.Ordinal));
+        using var context = new OfdControlledEditContext(new());
+        var loaded = await new OfdReader().ReadControlledAsync(new MemoryStream(Zip(entries)), new(), context);
+        var raw = Assert.IsType<OfdRawAction>(Assert.Single(loaded.Actions!.Items));
+        var removed = Assert.Single(loaded.Attachments);
+        Assert.True(loaded.RemoveAttachment(removed, OfdAttachmentRemovalMode.Physical));
+        removed.Id = "17";
+        var actionXml = XElement.Parse(raw.Xml);
+        actionXml.Element(XName.Get("GotoA", Ns))!.SetAttributeValue("AttachID", "17");
+        raw.Xml = actionXml.ToString(SaveOptions.DisableFormatting);
+
+        using var owned = OfdOwnedEditCandidate.CloneForControlledEdit(loaded, context.CaptureSource(loaded), context);
+        using var prepared = OfdPackageWriter.PrepareOwnedWrite(owned);
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() => prepared.WriteAsync(output));
+        Assert.Contains("retained action targets the removed attachment ID", error.Message);
+        Assert.Equal(0, output.Length);
     }
 
     [Fact]

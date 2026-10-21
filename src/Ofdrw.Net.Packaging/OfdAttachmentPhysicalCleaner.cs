@@ -302,7 +302,11 @@ internal static class OfdAttachmentPhysicalCleaner
         attributeName == "FileLoc" && element.Name.LocalName == "PageAnnot" ||
         attributeName is null && element.Name.LocalName is
             ("DocRoot" or "PublicRes" or "DocumentRes" or "PageRes" or "Signatures" or
-             "Attachments" or "Annotations" or "CustomTags" or "Extensions");
+             "Attachments" or "Annotations" or "CustomTags" or "Extensions") ||
+        attributeName is null && element.Name.LocalName == "FileLoc" &&
+            element.Parent?.Name == element.Name.Namespace + "Page" &&
+            element.Parent.Parent?.Name == element.Name.Namespace + "Annotations" &&
+            element.Document?.Root == element.Parent.Parent;
 
     private static void CheckScalar(string entry, XElement element, string value, bool pathBearing, bool controlReference,
         ISet<string> candidates, ISet<string> knownBinary, ISet<string> controlReferences, PayloadOwnerScope payloadSlot,
