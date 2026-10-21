@@ -14,6 +14,11 @@ namespace Ofdrw.Net.Core.Models;
 internal static class OfdXmlEnvelope
 {
     internal static string Capture(XElement source, OfdModelMaterialization budget, CancellationToken token)
+        => CaptureModel(source, budget, token).Xml;
+
+    // The captured clone already carries inherited namespace bindings. Reuse
+    // it for typed source models instead of parsing or cloning it again.
+    internal static (string Xml, XElement Model) CaptureModel(XElement source, OfdModelMaterialization budget, CancellationToken token)
     {
         budget.ReserveReadModel(8192, token);
         long nodes = 0, attributes = 0;
@@ -59,7 +64,7 @@ internal static class OfdXmlEnvelope
         budget.ReadSourceStringCheckpoint();
         var result = copy.ToString(SaveOptions.DisableFormatting);
         if (storage is not null) budget.AdoptReadString(result, storage, token);
-        return result;
+        return (result, copy);
     }
 
     internal static string SerializeForRead(XNode source, OfdModelMaterialization budget, CancellationToken token)
@@ -112,7 +117,13 @@ internal static class OfdXmlEnvelope
         {
             // Modeled document order; existing unknown siblings retain their
             // relative positions. Outline actions precede nested OutlineElem.
-            var next = parent.Elements().FirstOrDefault(child => child.Name.Namespace == parent.Name.Namespace && Order(parent.Name.LocalName, child.Name.LocalName) > Order(parent.Name.LocalName, localName));
+            var desiredOrder = Order(parent.Name.LocalName, localName);
+            var next = parent.Elements().FirstOrDefault(child =>
+            {
+                if (child.Name.Namespace != parent.Name.Namespace) return false;
+                var childOrder = Order(parent.Name.LocalName, child.Name.LocalName);
+                return childOrder != int.MaxValue && childOrder > desiredOrder;
+            });
             if (next is null) parent.Add(replacement); else next.AddBeforeSelf(replacement);
         }
     }
@@ -187,6 +198,19 @@ internal static class OfdXmlEnvelope
     {
         if (parent == "CommonData") return name switch { "MaxUnitID" => 0, "PageArea" => 1, "PublicRes" => 2, "DocumentRes" => 3, "TemplatePage" => 4, "DefaultCS" => 5, _ => int.MaxValue };
         if (parent == "DocBody") return name switch { "DocInfo" => 0, "DocRoot" => 1, "Versions" => 2, "Signatures" => 3, _ => int.MaxValue };
+        if (parent == "DocInfo") return name switch {
+            "DocID" => 0, "Title" => 1, "Author" => 2, "Subject" => 3, "Abstract" => 4,
+            "CreationDate" => 5, "ModDate" => 6, "DocUsage" => 7, "Cover" => 8,
+            "Keywords" => 9, "Creator" => 10, "CreatorVersion" => 11, "CustomDatas" => 12,
+            _ => int.MaxValue };
+        if (parent == "Permissions") return name switch {
+            "Edit" => 0, "Annot" => 1, "Export" => 2, "Signature" => 3,
+            "Watermark" => 4, "PrintScreen" => 5, "Print" => 6, "ValidPeriod" => 7,
+            _ => int.MaxValue };
+        if (parent == "VPreferences") return name switch {
+            "PageMode" => 0, "PageLayout" => 1, "TabDisplay" => 2, "HideToolbar" => 3,
+            "HideMenubar" => 4, "HideWindowUI" => 5, "ZoomMode" => 6, "Zoom" => 6,
+            _ => int.MaxValue };
         if (parent == "PageArea") return name switch { "PhysicalBox" => 0, "ApplicationBox" => 1, "ContentBox" => 2, "BleedBox" => 3, _ => int.MaxValue };
         return name switch
     {
