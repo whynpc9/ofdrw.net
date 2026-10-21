@@ -488,9 +488,12 @@ internal static class OfdNavigationXml
             {
                 "Outlines" => child.Name.LocalName == "OutlineElem", "OutlineElem" => child.Name.LocalName is "OutlineElem" or "Actions",
                 "Bookmarks" => child.Name.LocalName == "Bookmark", "Bookmark" => child.Name.LocalName == "Dest",
-                "Actions" => child.Name.LocalName == "Action", "Action" => child.Name.LocalName == "Goto", _ => false
+                "Actions" => child.Name.LocalName == "Action", "Action" => child.Name.LocalName is "Goto" or "URI", _ => false
             };
             if (!allowed) return true;
+            if (child.Name == ns + "URI" && (child.Nodes().Any(OpaqueNode) ||
+                child.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
+                    (attribute.Name.Namespace != XNamespace.None || attribute.Name.LocalName is not ("URI" or "Base" or "Target"))))) return true;
             if (child.Name == ns + "Goto" && (child.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
                 child.Nodes().Any(OpaqueNode) || child.Elements().Any(target => target.Name != ns + "Dest" && target.Name != ns + "Bookmark" ||
                     target.Name == ns + "Bookmark" && (target.HasElements || target.Nodes().Any(OpaqueNode) || target.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name != "Name"))))) return true;

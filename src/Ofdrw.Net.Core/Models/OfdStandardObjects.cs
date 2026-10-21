@@ -317,9 +317,14 @@ public sealed class OfdVersion : OfdStandardNode
 /// <summary>Ordered version descriptors. Referenced version files are preserved, never synthesized.</summary>
 public sealed class OfdVersions : OfdStandardNode
 {
+    private readonly Dictionary<XElement, string?> originalLocations = new();
     /// <summary>Creates an empty version descriptor collection.</summary>
     public OfdVersions() : base("Versions") { }
-    internal OfdVersions(XElement source) : base(source) { }
+    internal OfdVersions(XElement source) : base(source)
+    {
+        foreach (var version in Root.Elements(Root.Name.Namespace + "Version"))
+            originalLocations.Add(version, version.Attribute("BaseLoc")?.Value);
+    }
     /// <summary>Ordered view of the current version descriptors.</summary>
     public IReadOnlyList<OfdVersion> Items => Root.Elements(Root.Name.Namespace + "Version").Select(e => new OfdVersion(e)).ToArray();
     /// <summary>Adds a descriptor for an existing version file.</summary>
@@ -333,6 +338,17 @@ public sealed class OfdVersions : OfdStandardNode
     public void RemoveAt(int index) => Root.Elements(Root.Name.Namespace + "Version").ElementAt(index).Remove();
     /// <summary>Removes modeled descriptors while retaining extension children.</summary>
     public void Clear() { foreach (var item in Root.Elements(Root.Name.Namespace + "Version").ToArray()) item.Remove(); }
+    internal bool LocationChanged(OfdVersion version) =>
+        !originalLocations.TryGetValue(version.Root, out var original) || original != version.BaseLocation;
+    internal void CopyLocationBaselines(OfdVersions source)
+    {
+        originalLocations.Clear();
+        var originals = source.Root.Elements(source.Root.Name.Namespace + "Version").ToArray();
+        var copies = Root.Elements(Root.Name.Namespace + "Version").ToArray();
+        for (var index = 0; index < originals.Length; index++)
+            if (source.originalLocations.TryGetValue(originals[index], out var original))
+                originalLocations.Add(copies[index], original);
+    }
     internal static bool Recognized(XElement root) => root.Elements(root.Name.Namespace + "Version").Any() &&
         root.Elements(root.Name.Namespace + "Version").All(e =>
         e.Attribute("ID") is XAttribute id && !string.IsNullOrWhiteSpace(id.Value) &&
@@ -410,19 +426,15 @@ internal static class OfdStandardXml
         if (package.Versions is { } versions)
         {
             CheckOwner(versions);
+            if (versions.Items.Count == 0) return;
             if (!OfdVersions.Recognized(versions.Root)) throw new ArgumentException("Invalid version declaration.");
-            if (versions.Items.Count == 0 && versions.Root.Elements().Count() == 0) return;
             var ids = new HashSet<string>(StringComparer.Ordinal);
             foreach (var version in versions.Items)
             {
                 if (!ids.Add(version.Id)) throw new ArgumentException("Duplicate version ID.");
                 try { XmlConvert.VerifyNCName(version.Id); }
                 catch (XmlException error) { throw new ArgumentException("Version ID must be an XML ID.", error); }
-                var original = versions.OriginalXml is string source
-                    ? OfdXmlEnvelope.Parse(source).Elements().FirstOrDefault(e =>
-                        e.Name.LocalName == "Version" && e.Attribute("ID")?.Value == version.Id)
-                    : null;
-                if (original?.Attribute("BaseLoc")?.Value != version.BaseLocation)
+                if (versions.LocationChanged(version))
                     ExistingPath("Version BaseLoc", version.BaseLocation);
             }
         }
@@ -530,6 +542,8 @@ internal static class OfdStandardXml
             _ => throw new NotSupportedException("Unsupported standard object clone.")
         };
         if (model.OriginalXml is string source) clone.Bind(target, source);
+        if (model is OfdVersions originalVersions && clone is OfdVersions clonedVersions)
+            clonedVersions.CopyLocationBaselines(originalVersions);
         return (T)clone;
     }
 }

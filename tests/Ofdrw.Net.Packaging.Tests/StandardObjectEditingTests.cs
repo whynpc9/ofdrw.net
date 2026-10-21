@@ -1,6 +1,7 @@
 using System.Text;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Layout.Editing;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Reader.Readers;
@@ -180,10 +181,56 @@ public sealed class StandardObjectEditingTests
         Assert.Equal(2, saved.Versions!.Items[0].Index);
         Assert.Equal("Doc_1/missing.xml", saved.Versions.Items[0].BaseLocation);
 
+        selected.Versions.Items[0].Id = "v2";
+        using var renamed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(selected, renamed);
+        renamed.Position = 0;
+        var renamedVersion = await new OfdReader().ReadAsync(renamed, new OfdPackageLoadOptions { DocumentIndex = 1 });
+        Assert.Equal("v2", renamedVersion.Versions!.Items[0].Id);
+        Assert.Equal("Doc_1/missing.xml", renamedVersion.Versions.Items[0].BaseLocation);
+
         selected.Versions.Items[0].BaseLocation = "Doc_1/also-missing.xml";
         using var rejected = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(selected, rejected));
         Assert.Equal(0, rejected.Length);
+    }
+
+    [Fact]
+    public async Task ClearingVersions_OmitsEmptyWrapperAndRetainsExtensionChildren()
+    {
+        var entries = await MultiDocumentFixture.CreateEntriesAsync();
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        root.Root.Elements(ns + "DocBody").Last().Add(XElement.Parse($"<Versions xmlns='{ns}' xmlns:v='urn:vendor'><Version ID='v1' Index='1' BaseLoc='Doc_1/missing.xml'/><v:Keep/></Versions>"));
+        entries["OFD.xml"] = Bytes(root);
+        using var input = MultiDocumentFixture.Zip(entries);
+        var selected = await new OfdReader().ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = 1 });
+        selected.Versions!.Clear();
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(selected, output);
+        var body = Xml(MultiDocumentFixture.Unzip(output)["OFD.xml"]).Root!.Elements(ns + "DocBody").Last();
+        Assert.Empty(body.Descendants(ns + "Version"));
+        Assert.NotNull(body.Element(ns + "Versions")!.Element(XName.Get("Keep", "urn:vendor")));
+
+        var clean = new OfdDocumentPackage(); clean.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        clean.Versions = new OfdVersions(); clean.Versions.Add("v1", 1, "missing.xml"); clean.Versions.Clear();
+        using var cleanOutput = new MemoryStream(); await new OfdPackageWriter().WriteAsync(clean, cleanOutput);
+        Assert.Empty(Xml(MultiDocumentFixture.Unzip(cleanOutput)["OFD.xml"]).Descendants(ns + "Versions"));
+    }
+
+    [Fact]
+    public async Task ImportedUriAction_DoesNotBlockUnrelatedPageDeletion()
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Actions = new OfdActionCollection();
+        package.Actions.Items.Add(new OfdUriAction { Event = "CLICK", Uri = "https://example.invalid" });
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        seed.Position = 0; var imported = await new OfdReader().ReadAsync(seed);
+        Assert.IsType<OfdUriAction>(Assert.Single(imported.Actions!.Items));
+        OfdDocumentEditor.RemovePages(imported, [1]);
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(imported, output);
+        output.Position = 0; var saved = await new OfdReader().ReadAsync(output);
+        Assert.Single(saved.Pages);
+        Assert.IsType<OfdUriAction>(Assert.Single(saved.Actions!.Items));
     }
 
     [Fact]
