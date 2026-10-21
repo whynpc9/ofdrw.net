@@ -42,11 +42,20 @@ public sealed class TextPrelayoutRequest
             {
                 if (i + 1 >= text.Length || !char.IsLowSurrogate(text[i + 1]))
                     throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.");
+                if (char.ConvertToUtf32(text, i) is >= 0xe0100 and <= 0xe01ef)
+                    throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
+                        "Variation selectors need a separately verified text profile.",
+                        sourceStart: i, sourceLength: 2);
                 i++;
             }
             else if (char.IsLowSurrogate(text[i]) || text[i] == '\t' || text[i] == '\r' &&
                 (i + 1 >= text.Length || text[i + 1] != '\n'))
                 throw new TextLayoutException(TextLayoutError.InvalidText, "Unsupported control or unpaired UTF-16 surrogate.");
+            else if (char.GetUnicodeCategory(text[i]) == UnicodeCategory.Format ||
+                text[i] is >= '\ufe00' and <= '\ufe0f')
+                throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
+                    "Format controls and variation selectors need a separately verified text profile.",
+                    sourceStart: i, sourceLength: 1);
         }
         foreach (var feature in Features)
             if (feature is null || feature.Start > text.Length || feature.Length > text.Length - feature.Start)

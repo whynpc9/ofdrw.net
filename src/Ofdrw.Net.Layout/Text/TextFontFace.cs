@@ -50,6 +50,11 @@ public sealed class TextFontFace
             (Bold, Italic) = face.Style;
         }
         catch (TextLayoutException) { throw; }
+        catch (NotSupportedException exception)
+        {
+            throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
+                "The selected font face needs an unsupported managed font profile.", exception);
+        }
         catch (Exception exception) when (exception is InvalidDataException || exception is OverflowException || exception is IndexOutOfRangeException)
         {
             throw new TextLayoutException(TextLayoutError.InvalidFont, "The selected font face cannot be parsed.", exception);

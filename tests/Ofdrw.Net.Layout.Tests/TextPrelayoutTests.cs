@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -157,6 +158,49 @@ public sealed class TextPrelayoutTests
         old.Blocks.Add(new Paragraph("AV fi"));
         Assert.Single(old.Render().Pages);
         Assert.Single(old.Render().Pages[0].Elements);
+    }
+
+    [Fact]
+    public void PrelayoutRejectsUnsupportedControlsBeforeFontCoverage()
+    {
+        var face = Noto();
+        foreach (var text in new[] { "A\ufe0f", "A\udb40\udd00", "A\u200d" })
+        {
+            var error = Assert.Throws<TextLayoutException>(() =>
+                new TextPrelayoutRequest(text, new[] { face }, 4, 20));
+            Assert.Equal(TextLayoutError.UnsupportedFontProfile, error.Error);
+            Assert.Equal(1, error.SourceStart);
+        }
+    }
+
+    [Fact]
+    public void UnsupportedCmapFormatHasStructuredFontProfileFailure()
+    {
+        var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));
+        var tableCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(4, 2));
+        var cmap = -1;
+        for (var i = 0; i < tableCount; i++)
+        {
+            var record = 12 + i * 16;
+            if (System.Text.Encoding.ASCII.GetString(bytes, record, 4) == "cmap")
+                cmap = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(record + 8, 4));
+        }
+        Assert.True(cmap >= 0);
+        var subtableCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(cmap + 2, 2));
+        var changed = 0;
+        for (var i = 0; i < subtableCount; i++)
+        {
+            var offset = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(cmap + 4 + i * 8 + 4, 4));
+            var subtable = cmap + offset;
+            var format = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(subtable, 2));
+            if (format != 4 && format != 12) continue;
+            bytes[subtable] = 0;
+            bytes[subtable + 1] = 6;
+            changed++;
+        }
+        Assert.True(changed > 0);
+        var error = Assert.Throws<TextLayoutException>(() => new TextFontFace("Noto Sans", bytes));
+        Assert.Equal(TextLayoutError.UnsupportedFontProfile, error.Error);
     }
 
     [Fact]
