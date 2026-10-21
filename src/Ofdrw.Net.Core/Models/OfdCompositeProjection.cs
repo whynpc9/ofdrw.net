@@ -68,7 +68,12 @@ internal static class OfdCompositeProjection
                 if (original is not null)
                 {
                     material.GuardFragmentXml(original, token);
-                    if (!HasWellFormedScalars(OfdXmlEnvelope.Parse(original), material, token))
+                    var originalNode = OfdXmlEnvelope.Parse(original);
+                    if (pageBlockChild &&
+                        (!OfdBoxParser.TryParse(originalNode.Attribute("Boundary")?.Value, out var box) ||
+                            box.w <= 0 || box.h <= 0))
+                        scalarError = "Malformed PageBlock drawing boundary cannot be exported.";
+                    if (scalarError is null && !HasWellFormedScalars(originalNode, material, token))
                         scalarError = "Malformed PageBlock or composite child attribute cannot be exported.";
                 }
                 if (scalarError is null)

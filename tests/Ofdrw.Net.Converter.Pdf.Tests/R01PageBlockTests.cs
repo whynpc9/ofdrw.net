@@ -485,6 +485,74 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false, null)]
+    [InlineData(false, "999")]
+    [InlineData(true, null)]
+    [InlineData(true, "999")]
+    public async Task UnresolvedPageBlockFontPreservesTextButFailsAllRenderers(bool template, string? fontId)
+    {
+        var fontAttribute = fontId is null ? "" : $" Font='{fontId}'";
+        var bytes = await Source($"<TextObject ID='501' Boundary='10 10 50 10'{fontAttribute} Size='4'>" +
+            "<TextCode X='0' Y='4'>recoverable text</TextCode></TextObject>", template: template, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(bytes));
+        Assert.Equal("recoverable text", new OfdTextExtractor().Extract(read, includeTemplates: true));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(bytes), output));
+            Assert.Contains("Font", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("ImageObject", null)]
+    [InlineData("ImageObject", "10 10 0 20")]
+    [InlineData("ImageObject", "10 10 -1 20")]
+    [InlineData("PathObject", "10 10 20 -1")]
+    [InlineData("TextObject", null)]
+    public async Task PageBlockDrawingRequiresPositiveBoundary(string kind, string? boundary)
+    {
+        var boundaryAttribute = boundary is null ? "" : $" Boundary='{boundary}'";
+        var content = kind switch
+        {
+            "PathObject" => "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData>",
+            "TextObject" => "<TextCode X='0' Y='4'>recoverable text</TextCode>",
+            _ => ""
+        };
+        var attribute = kind switch
+        {
+            "ImageObject" => " ResourceID='99'",
+            "TextObject" => " Font='10' Size='4'",
+            _ => " Fill='true'"
+        };
+        var body = $"<{kind} ID='501'{boundaryAttribute}{attribute}>{content}</{kind}>";
+        var resources = kind == "ImageObject"
+            ? "<MultiMedias><MultiMedia ID='99' Type='Image' Format='PNG'><MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>"
+            : null;
+        var bytes = await Source(body, resources: resources, font: kind == "TextObject", image: kind == "ImageObject");
+        if (kind == "TextObject")
+            Assert.Equal("recoverable text", new OfdTextExtractor().Extract(await new OfdReader().ReadAsync(new MemoryStream(bytes))));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(bytes), output));
+            Assert.Contains("Malformed PageBlock drawing boundary", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("<VendorDrawing ID='501'/>")]
     [InlineData("<PathObject ID='501' Boundary='10 10 20 20' Fill='true'><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData><VendorChild/></PathObject>")]
     public async Task UnsupportedPageBlockDrawingInSealFailsInsteadOfDroppingAppearance(string body)

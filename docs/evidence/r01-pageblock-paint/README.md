@@ -141,6 +141,12 @@
 - 本地 `0.1.0-r01.pathpaint` 的 12 个基础包和 1 个可选 SES 包来源、独立消费者、显式 native/默认 DOCX→OFD→PDF、四份 V1/V4 测试签章与各自基线逐页 PNG 等同性通过；包未发布。默认密码学验证仍为 `Unsupported`。功能、生成链路与哈希见 `artifacts/roadmap-v12/R01/pathpaint-final-ses/` 及本目录清单。
 - 从本轮 OFD 导出的三份单页 PDF 在 144 DPI PNG 与 macOS Preview 各检查第 1/1 页：半透明黑色路径呈灰色矩形，有效注释路径为红色，相对 `DrawParam` 页为黄色填充、蓝色描边，并保留蓝色 `child blue` 与洋红 `local magenta`。本轮 `native-v1.pdf`、`default-v4.pdf` 分别由显式 native 和默认 OFD 导出；两条 DOCX→OFD→PDF→Preview 链各检查第 1–2 页。中英文、斜体、蓝色表格底色/边框、第二页局部红色粗体及分页符合样例；未见缺字、裁切、重叠、重影或异常空白页。四张本轮 DOCX 页面 PNG 与既有已验收像素哈希一致；所有本轮 Preview 文档窗口已关闭，GUI 代次 `20261021T1502Z` 已释放。结论仅适用于这些实际检查的页面，不推出外部 OFD 阅读器互操作或任意 DOCX 保真。
 
+## PageBlock 字体与绘图边界复审
+
+- Codex 对 `15edd37` 指出 PageBlock `TextObject` 的缺失/未知 `Font` 会落入宿主字体回退，以及缺失或非正 `Boundary` 的图像可能被静默省略。Reader 现在给 PageBlock 未解析字体子项保留可提取的文本并标记渲染错误；投影在准入时要求 PageBlock 文本、路径、图像的原始 `Boundary` 存在且宽高为有限正数。普通层的既有解析行为不受这项 PageBlock 门禁影响。
+- 新增 9 个负例覆盖普通/模板 PageBlock 的缺失与未知字体、图像缺失/零/负边界、路径负边界和文本缺失边界；PDF/SVG/HTML 均在输出前拒绝，文字仍可提取。定向测试 **9/9**；修订后完整 Release 解决方案 **3331 passed、0 skipped、0 failed**，Core `netstandard2.0` 通过。正例重新生成 **12/12**。本地 `0.1.0-r01.fontboundary` 的 12 个基础包及 1 个可选 SES 包来源、独立消费者、显式 native/默认 DOCX→OFD→PDF、V1/V4 测试签章和逐页 PNG 比对通过；默认密码学验证仍为 `Unsupported`，包未发布。最初两次消费尝试分别因字体目录缺失、许可文件缺失停止；使用已有完整字体与许可目录后全链路通过，属于测试资料前置条件。
+- 本轮普通与模板 PageBlock 各 1/1 页的 144 DPI PNG 像素哈希相同，蓝色路径和 `nested text` 均可见；图像页 1/1 显示蓝色路径与红色图像；相对 DrawParam 页 1/1 显示黄色填充、蓝色边框/文本和洋红局部文本。上述四份从本轮 OFD 导出的 PDF 均在 macOS Preview 检查第 1 页。`font-boundary-final-ses-verified/files/native-v1.pdf` 和 `default-v4.pdf` 各自由本轮显式 native/默认 OFD 导出，两条 DOCX→OFD→PDF→Preview 链各检查第 1–2 页：中英文、斜体、蓝色表格底色/边框、第二页红色粗体与分页符合样例，未见缺字、裁切、重叠、重影或异常空白页。本轮四张 DOCX 页面 PNG 与既有验收哈希一致；全部 Preview 窗口关闭并登记 `20261021T1602Z` GUI 释放。结论仅覆盖实查页面，不推断外部 OFD 阅读器或任意 DOCX 的保真性。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |
