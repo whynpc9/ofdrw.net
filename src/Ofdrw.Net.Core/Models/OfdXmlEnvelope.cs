@@ -14,6 +14,11 @@ namespace Ofdrw.Net.Core.Models;
 internal static class OfdXmlEnvelope
 {
     internal static string Capture(XElement source, OfdModelMaterialization budget, CancellationToken token)
+        => CaptureModel(source, budget, token).Xml;
+
+    // The captured clone already carries inherited namespace bindings. Reuse
+    // it for typed source models instead of parsing or cloning it again.
+    internal static (string Xml, XElement Model) CaptureModel(XElement source, OfdModelMaterialization budget, CancellationToken token)
     {
         budget.ReserveReadModel(8192, token);
         long nodes = 0, attributes = 0;
@@ -59,7 +64,7 @@ internal static class OfdXmlEnvelope
         budget.ReadSourceStringCheckpoint();
         var result = copy.ToString(SaveOptions.DisableFormatting);
         if (storage is not null) budget.AdoptReadString(result, storage, token);
-        return result;
+        return (result, copy);
     }
 
     internal static string SerializeForRead(XNode source, OfdModelMaterialization budget, CancellationToken token)

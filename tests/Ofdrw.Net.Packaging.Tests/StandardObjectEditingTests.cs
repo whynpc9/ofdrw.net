@@ -356,9 +356,11 @@ public sealed class StandardObjectEditingTests
     public void ControlledStandardRead_BindsCapturedBaselinesWithoutReparsing()
     {
         var ns = XNamespace.Get("http://www.ofdspec.org/2016");
+        var vendor = XNamespace.Get("urn:standard-read-vendor");
         var custom = new XElement(ns + "CustomDatas", new XElement(ns + "CustomData",
-            new XAttribute("Name", "large"), new string('x', 20_000)));
-        var info = new XElement(ns + "DocInfo", custom);
+            new XAttribute("Name", "large"), new string('x', 20_000)),
+            new XElement(vendor + "Keep", new XAttribute("Kind", "v:Type")));
+        var info = new XElement(ns + "DocInfo", new XAttribute(XNamespace.Xmlns + "v", vendor.NamespaceName), custom);
         var permissions = new XElement(ns + "Permissions", new XElement(ns + "Edit", "true"));
         var preferences = new XElement(ns + "VPreferences", new XElement(ns + "PageMode", "UseOutlines"));
         var versions = new XElement(ns + "Versions", new XElement(ns + "Version", new XAttribute("ID", "v1"),
@@ -377,6 +379,7 @@ public sealed class StandardObjectEditingTests
         Assert.NotSame(preferences, package.ViewingPreferences!.Root);
         Assert.NotSame(versions, package.Versions!.Root);
         Assert.Contains(new string('x', 20_000), package.Options.Metadata.CustomDatas.OriginalXml);
+        Assert.Equal(vendor.NamespaceName, package.Options.Metadata.CustomDatas.Root.Attribute(XNamespace.Xmlns + "v")?.Value);
     }
 
     [Fact]

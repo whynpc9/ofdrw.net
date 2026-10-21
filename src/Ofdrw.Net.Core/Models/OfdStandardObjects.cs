@@ -436,10 +436,9 @@ internal static class OfdStandardXml
             if (element.Elements(ns + "CustomData").All(e =>
                 e.Attribute("Name") is XAttribute name && !string.IsNullOrEmpty(name.Value) && !e.HasElements))
             {
-                var xml = OfdXmlEnvelope.Capture(element, material, token);
+                var captured = OfdXmlEnvelope.CaptureModel(element, material, token);
                 material.ReserveReadModel(256, token);
-                ReserveXml(element, material, token, serialization: false);
-                var model = new OfdCustomDatas(new XElement(element)); model.Bind(package, xml); metadata.CustomDatas = model;
+                var model = new OfdCustomDatas(captured.Model); model.Bind(package, captured.Xml); metadata.CustomDatas = model;
             }
         }
     }
@@ -461,10 +460,9 @@ internal static class OfdStandardXml
 
         T Bind<T>(XElement source, Func<XElement, T> create, long extra = 0) where T : OfdStandardNode
         {
-            var xml = OfdXmlEnvelope.Capture(source, material, token);
+            var captured = OfdXmlEnvelope.CaptureModel(source, material, token);
             material.ReserveReadModel(checked(256L + extra), token);
-            ReserveXml(source, material, token, serialization: false);
-            var model = create(new XElement(source)); model.Bind(package, xml); return model;
+            var model = create(captured.Model); model.Bind(package, captured.Xml); return model;
         }
     }
 
