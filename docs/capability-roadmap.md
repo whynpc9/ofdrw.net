@@ -1,8 +1,8 @@
 # Ofdrw.Net 能力路线图
 
-更新时间：2026-10-15
+更新时间：2026-10-21（R00 契约核对）
 
-本文件是当前仓库的 **能力状态与剩余 TODO 清单**。它把与
+本文件保留 2026-10-15 旧票的 **能力状态与剩余 TODO 快照**。v1.2 的 23 项新工作及其依赖、出口验收以[能力契约](capability-contract-v12.md)为新基线；旧票编号仍可用于追溯历史证据。它把与
 [ofdrw/ofdrw](https://github.com/ofdrw/ofdrw) 的能力差距、
 [issue #3](https://github.com/whynpc9/ofdrw.net/issues/3)、
 以及无密码厂商前提下的加密/签章边界收成一份可执行计划。
@@ -13,7 +13,7 @@
 
 [开发计划](capability-roadmap-development-plan.md) 是 2026-09-28/29 的历史设计，不再作为当前开工顺序。
 
-本次状态核对固定在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0`（2026-10-15）。只检查本地源码/测试与已存记录，未查询实时 GitHub 合并、CI/review 或 NuGet 发布状态，未运行新构建、转换或 Preview；不得将源码已实现解释为这些门已通过。
+原状态核对固定在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0`（2026-10-15）。R00 在 `6aa8183ea31e193f500fb9d9717677b15e86c5d3` 核对现有入口与证据；新增 23 项矩阵、各出口的输入语义和 fallback 见 [v1.2 能力契约](capability-contract-v12.md)。R00 仅运行纯文本/HTML 定向功能测试，不生成独立视觉验收产物或重做 Preview，不把历史证据提升为当前发布或任意输入的验收。
 
 状态：
 
@@ -115,7 +115,7 @@
 | P1-06 | 文档内容替换 | ofdrw `DocContentReplace` | 依赖 P1-05 | 替换后版面不塌、摘要约定有说明 | 源码已实现（受限替换）：06 |
 | P1-07 | 附件增删 | ofdrw-layout attachment | 对已有包增删 `Attachments.xml` 及文件 | 与合并选项 `IncludeAttachments` 一致 | 待办：07 |
 | P1-08 | 纯文本 → OFD | ofdrw `TextConverter` | 调用 P0-01 布局引擎 | 可设字号与页尺寸 | 已实现首版：Layout `PlainTextOfdConverter` 与显式 `text-to-ofd` CLI；严格 UTF-8/Unicode、额度、取消和原子提交；[契约](plain-text-ofd.md)、[本地测试/包消费/10页验收](../plans/028-followup-implementation.md) |
-| P1-09 | OFD → HTML | ofdrw `HTMLExporter` | 多页 SVG 包进单 HTML | 浏览器可预览；不承诺可选中全部文字 | 未来方向：08；未实现 |
+| P1-09 | OFD → HTML | ofdrw `HTMLExporter` | 多页 SVG 包进单 HTML | 有界静态预览；不承诺可选中全部文字或复杂图元通用保真 | 已有首版 `OfdToHtmlConverter`/`ofd-to-html` 源码及测试入口；外来复杂语义另验，见[能力契约](capability-contract-v12.md) |
 | P1-10 | 强类型对象补齐 | ofdrw-core | 最小强类型闭环已实现：大纲/书签、局部注释、GoTo、Path 裁剪、共享嵌套组合；其余继续 `Raw` / `Preserved*` | 历史记录包含最小范围读写往返、未知 XML、纯包消费及 8 页 Preview；[记录与边界](evidence/issue09-typed-objects/README.md) | 源码已实现（最小范围）：09 |
 | P1-11 | 多 `DocBody` | ofdrw-reader | 读包不再只取第一个文档 | 有多样本；写入策略有文档 | 待办：10 |
 | P1-12 | SkiaSharp 绘图层 | ofdrw-graphics2d | 可选适配，主要服务 P1-04 | 不替代 P1-01 的 OFD 原语 API | 源码已实现（合作 producer）：19 |
@@ -152,8 +152,8 @@ issue #3 的完成定义就是 **P1-01 + P1-02**。API 形状以 issue 中的类
 ## 8. 当前剩余工作入口
 
 1. **已有能力的验收/修复**：按各证据中的范围与未完成门逐项复核，涉及页面变更时重新生成并走 Native OFD → PDF → Preview；不得用本次文档核对关闭这些门。
-2. **有源码前置的新增薄层**：17 区域占位、20 布局 Canvas、22 骑缝外观仍未实现。18 纯文本薄适配已完成首版 API/CLI 与本地验收；字体、抽取和输入边界见[契约](plain-text-ofd.md)。
-3. **其余按需求**：07 附件编辑、10 多 DocBody、13 锁定/继续签；08 HTML、14 OFD-A 为未来方向。P2-06 未建票，不默认开工。
+2. **有源码前置的新增薄层**：17 区域占位、20 布局 Canvas、22 骑缝外观仍未实现。18 纯文本与 08 HTML 已有首版 API/CLI 和测试入口；输入及出口边界分别见[纯文本契约](plain-text-ofd.md)与[v1.2 能力契约](capability-contract-v12.md)。
+3. **其余按需求**：07 附件编辑、10 多 DocBody、13 锁定/继续签；14 已有有限 archive preflight，完整标准 Rule/Handler 与条款覆盖仍需分票核准。P2-06 未建旧票，不默认开工。
 4. **工程发布门**：15 有检查代码/模板，但候选人工验收与实时发布状态须另行核对，不能视为全绿。
 
 上述状态及源码/测试入口统一见 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)。是否领取仍由调用方需求与设计范围决定，源码前置可用不表示上游票所有历史验收和发布门均已关闭。跨票触及同一文件时串行整合；可选 SES 不进入默认验签路径。
