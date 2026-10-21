@@ -259,6 +259,23 @@ public sealed class R18AttachmentPhysicalCleanupTests
         Assert.Equal(attachment["Doc_0/Metadata/retained.bin"], Entries(attachmentOutput)["Doc_0/Metadata/retained.bin"]);
     }
 
+    [Fact]
+    public async Task TemplateWithoutReaderAcceptedIdFailsBeforeAdjacentResourceCanBeWritten()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "<TemplatePage BaseLoc='Templates/Content.xml'/></CommonData>", StringComparison.Ordinal));
+        entries["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer ID='9'/></Content></Page>");
+        entries["Doc_0/Templates/PageRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='Assets'><MultiMedias><MultiMedia ID='10' MediaFile='orphan.bin'/></MultiMedias></Res>");
+        entries["Doc_0/Templates/Assets/orphan.bin"] = [4, 5, 6];
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdPackageWriter().WriteWithResultAsync(package, output));
+        Assert.Contains("Template declaration requires a positive numeric ID", error.Message);
+        Assert.Equal(0, output.Length);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

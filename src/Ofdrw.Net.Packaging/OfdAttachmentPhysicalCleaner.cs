@@ -310,6 +310,8 @@ internal static class OfdAttachmentPhysicalCleaner
         foreach (var page in pageLocations)
         {
             token.ThrowIfCancellationRequested(); material.ChargeWork(64, token);
+            if (page.Name.LocalName == "TemplatePage" && string.IsNullOrWhiteSpace(page.Attribute("ID")?.Value))
+                continue;
             var value = page.Attribute("BaseLoc")?.Value;
             if (string.IsNullOrWhiteSpace(value)) continue;
             if (ContainsAmbiguousPathSyntax(value!)) throw new NotSupportedException("Page location is ambiguous.");
