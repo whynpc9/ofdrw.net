@@ -34,6 +34,11 @@
 - 后续 Codex 审查指出 Reader 的未知绘图以 `OfdRawElement.Xml` 保存，原可见性检查只读取已建模元素的 `SourceXml`，导致明确 `Visible="false"` 的非绘制对象也被预检拒绝。现对原始绘图读取其原始 XML 可见性；可见或未声明可见性的未知绘图仍明确拒绝。
 - 回归覆盖普通页和模板 `PageBlock` 中隐藏未知绘图与可见兄弟文字：PDF/SVG/HTML 均保留 `visible sibling`；显式 `Visible="true"` 和未声明可见性的未知绘图仍被三出口拒绝。最终联合源码全套 11 个项目 **3066 passed、13 skipped、0 failed**；本地 `0.1.0-r01.r03f` 的 11 个包及独立消费 E2E、文档工具 **36 个样本、55 页 PDF** 通过。本轮各导出 1 页 PDF/PNG，两份 PDF 在 macOS Preview 逐页检查，均只有可见兄弟文字，无遮挡、裁切或异常空白页；窗口已关闭。
 
+## 外来命名空间审查修复
+
+- Reader 对 `TextObject`、`PathObject`、`ImageObject` 的类型分派现仅接受两种 OFD 标准命名空间和无命名空间兼容形式；同名扩展节点保留为原始未知绘图，不由 PDF/SVG 误当受支持对象呈现。普通页和模板的三类扩展节点共 6 个回归，逐一断言 Reader 保留原始类型，PDF/SVG/HTML 均明确拒绝。R01 定向测试 26/26。最初只接受与父层相同命名空间导致 PDF vector 回归失败；纳入历史兼容的另一个标准命名空间后，PDF vector 测试 315/315 通过。
+- 最终联合源码全套 11 个项目 **3072 passed、13 skipped、0 failed**；本地 `0.1.0-r01.r03g` 的 11 个包及独立消费 E2E、文档工具 **36 个样本、55 页 PDF** 通过。此次源码重新生成普通页、模板页及隐藏未知绘图两种页的 PDF/PNG；各 1 页已在 macOS Preview 检查并关闭窗口。新 PNG 与先前检查过的对应页面逐字节一致：蓝色方块与 `nested text`，以及仅显示 `visible sibling` 的隐藏对象页面，均未见缺字、裁切、重叠或空白页。完整产物哈希见清单。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |

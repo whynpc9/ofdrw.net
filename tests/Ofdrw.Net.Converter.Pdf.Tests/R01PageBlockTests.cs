@@ -310,6 +310,35 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("TextObject", false)]
+    [InlineData("TextObject", true)]
+    [InlineData("PathObject", false)]
+    [InlineData("PathObject", true)]
+    [InlineData("ImageObject", false)]
+    [InlineData("ImageObject", true)]
+    public async Task ForeignNamespaceObjectsRemainOpaque(string localName, bool template)
+    {
+        var children = localName switch
+        {
+            "TextObject" => "<ext:TextCode X='0' Y='4'>foreign</ext:TextCode>",
+            "PathObject" => "<ext:AbbreviatedData>M 0 0 L 20 0 L 20 20 C</ext:AbbreviatedData>",
+            _ => string.Empty
+        };
+        var body = $"<ext:{localName} xmlns:ext='urn:vendor' ID='501' Boundary='10 10 20 20' Font='10' Size='4' ResourceID='10'>" +
+            children + $"</ext:{localName}>";
+        var bytes = await Source(body, template, font: true);
+        var source = await new OfdReader().ReadAsync(new MemoryStream(bytes));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(template ? source.Pages[0].Templates[0].Elements : source.Pages[0].Elements));
+        var child = Assert.IsType<OfdRawElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Equal(localName, child.LocalName);
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
+        Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task HiddenUnknownNestedDrawingDoesNotBlockVisibleContent(bool template)

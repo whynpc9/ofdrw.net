@@ -1081,6 +1081,10 @@ public sealed class OfdReader : IOfdReader
             {
                 material.ReserveReadModel(512, cancellationToken);
                 var localName = node.Name.LocalName;
+                // Existing vector imports can mix the two OFD namespaces or use
+                // unqualified graphic names. Extension namespaces remain opaque.
+                var knownGraphicNamespace = node.Name.Namespace == XNamespace.None ||
+                    node.Name.NamespaceName is OfdConstants.Namespace or OfdConstants.StandardNamespace;
                 if (node.Name == structuralNamespace + "PageBlock")
                 {
                     material.Structure.Depth(blockDepth + 1);
@@ -1098,7 +1102,7 @@ public sealed class OfdReader : IOfdReader
                     yield return block;
                     continue;
                 }
-                if (string.Equals(localName, "TextObject", StringComparison.OrdinalIgnoreCase))
+                if (knownGraphicNamespace && string.Equals(localName, "TextObject", StringComparison.OrdinalIgnoreCase))
                 {
                     var sourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken);
                     var (renderNode, paintError) = paint?.Normalize(node, sourceXml.Length, material, cancellationToken) ?? (node, (string?)null);
@@ -1146,7 +1150,7 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
 
-                if (string.Equals(localName, "ImageObject", StringComparison.OrdinalIgnoreCase))
+                if (knownGraphicNamespace && string.Equals(localName, "ImageObject", StringComparison.OrdinalIgnoreCase))
                 {
                     var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                     var resourceId = node.Attribute("ResourceID")?.Value ?? string.Empty;
@@ -1181,7 +1185,7 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
 
-                if (string.Equals(localName, "PathObject", StringComparison.OrdinalIgnoreCase))
+                if (knownGraphicNamespace && string.Equals(localName, "PathObject", StringComparison.OrdinalIgnoreCase))
                 {
                     var sourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken);
                     var (renderNode, paintError) = paint?.Normalize(node, sourceXml.Length, material, cancellationToken) ?? (node, (string?)null);
