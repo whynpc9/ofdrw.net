@@ -622,6 +622,33 @@ public sealed class R18AttachmentPhysicalCleanupTests
         await RefusesWithoutOutput(package, "mixed XML path content");
     }
 
+    [Fact]
+    public async Task ImportedSealBaseLocElementIsScannedWhileInvalidatingSignature()
+    {
+        var entries = Entries(Seed());
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot><Signatures>Doc_0/Signs/Signatures.xml</Signatures></DocBody></OFD>");
+        entries["Doc_0/Signs/Signatures.xml"] = Utf8($"<Signatures xmlns='{Ns}'><Signature BaseLoc='sig/Signature.xml'/></Signatures>");
+        const string signaturePath = "Doc_0/Signs/sig/Signature.xml";
+        entries[signaturePath] = Utf8($"<Signature xmlns='{Ns}'><SignedInfo><Seal><BaseLoc>Seal.esl</BaseLoc></Seal></SignedInfo><SignedValue>Value.dat</SignedValue></Signature>");
+        entries["Doc_0/Signs/sig/Seal.esl"] = [4, 5, 6];
+        entries["Doc_0/Signs/sig/Value.dat"] = [7, 8, 9];
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, result) = await Write(package);
+        Assert.True(result.SignaturesInvalidated);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+
+        entries[signaturePath] = Utf8($"<Signature xmlns='{Ns}'><SignedInfo><Seal><BaseLoc>../../Payload/original%2Ebin</BaseLoc></Seal></SignedInfo><SignedValue>Value.dat</SignedValue></Signature>");
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+
+        entries[signaturePath] = Utf8($"<Signature xmlns='{Ns}'><SignedInfo><Seal><BaseLoc><Title>../../Payload/</Title><Author>original.bin</Author></BaseLoc></Seal></SignedInfo><SignedValue>Value.dat</SignedValue></Signature>");
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
