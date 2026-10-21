@@ -120,6 +120,36 @@ public class ArchivalCopyTests
     }
 
     [Fact]
+    public async Task DisabledSingleDocumentPolicyStillInspectsOneUnambiguousDocument()
+    {
+        var entries = Seed("<Permissions><Edit>false</Edit></Permissions>");
+        var options = new ArchivalPreflightOptions { RequireSingleDocument = false };
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalRuleService().CheckAsync(input, options);
+            Assert.Equal(PreflightOutcome.NotApplicable, report.LocalPreflight.GetRuleOutcome("APF-001"));
+            Assert.Equal(PreflightOutcome.Fail, report.RuleResults[0].Outcome);
+            Assert.Equal("DeclarationPresent", report.RuleResults[0].ReasonCode);
+        }
+        var ambiguous = Seed("<Permissions><Edit>false</Edit></Permissions>");
+        ambiguous["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        using (var input = new MemoryStream(Zip(ambiguous), false))
+        {
+            var report = await new ArchivalRuleService().CheckAsync(input, options);
+            Assert.All(report.RuleResults, result => Assert.Equal(PreflightOutcome.Unknown, result.Outcome));
+        }
+        var folder = Path.Combine(Path.GetTempPath(), "r17-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "source.ofd"); var destination = Path.Combine(folder, "copy.ofd");
+            File.WriteAllBytes(source, Zip(entries));
+            var result = await new ArchivalCopyConverter().ConvertAsync(source, destination, options);
+            Assert.Equal(PreflightOutcome.Pass, result.Postflight.SummaryOutcome);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
     public async Task CaseDistinctDestinationWorksOnCaseSensitiveVolume()
     {
         var folder = Path.Combine(Path.GetTempPath(), "r17-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);

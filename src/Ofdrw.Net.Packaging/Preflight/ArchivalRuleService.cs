@@ -105,7 +105,9 @@ public sealed class ArchivalRuleService
         try
         {
             var local = await new ArchivalPreflightChecker().CheckAsync(input, snapshot, cancellationToken).ConfigureAwait(false);
-            if (local.RunState != PreflightRunState.Complete || local.GetRuleOutcome("APF-001") != PreflightOutcome.Pass)
+            var documentPolicy = local.GetRuleOutcome("APF-001");
+            if (local.RunState != PreflightRunState.Complete ||
+                (documentPolicy != PreflightOutcome.Pass && documentPolicy != PreflightOutcome.NotApplicable))
                 return Unknown(local, "DocumentScopeUnavailable");
             OfdPackageArchive archive;
             try { archive = await new OfdPackageLoader().LoadAsync(input, snapshot.LoadOptions, cancellationToken).ConfigureAwait(false); }
