@@ -216,6 +216,21 @@ public sealed class StandardObjectEditingTests
     }
 
     [Fact]
+    public async Task InvalidImportedVersionId_RemainsPreservedXmlOnUnchangedSave()
+    {
+        var entries = await MultiDocumentFixture.CreateEntriesAsync();
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        root.Root.Elements(ns + "DocBody").Last().Add(XElement.Parse($"<Versions xmlns='{ns}'><Version ID='1' Index='1' BaseLoc='Doc_1/missing.xml'/></Versions>"));
+        entries["OFD.xml"] = Bytes(root);
+        using var input = MultiDocumentFixture.Zip(entries);
+        var selected = await new OfdReader().ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = 1 });
+        Assert.Null(selected.Versions);
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(selected, output);
+        var saved = Xml(MultiDocumentFixture.Unzip(output)["OFD.xml"]);
+        Assert.Equal("1", saved.Root!.Elements(ns + "DocBody").Last().Descendants(ns + "Version").Single().Attribute("ID")!.Value);
+    }
+
+    [Fact]
     public async Task ImportedUriAction_DoesNotBlockUnrelatedPageDeletion()
     {
         var package = new OfdDocumentPackage();

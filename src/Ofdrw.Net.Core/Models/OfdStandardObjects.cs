@@ -351,10 +351,16 @@ public sealed class OfdVersions : OfdStandardNode
     }
     internal static bool Recognized(XElement root) => root.Elements(root.Name.Namespace + "Version").Any() &&
         root.Elements(root.Name.Namespace + "Version").All(e =>
-        e.Attribute("ID") is XAttribute id && !string.IsNullOrWhiteSpace(id.Value) &&
+        e.Attribute("ID") is XAttribute id && ValidId(id.Value) &&
         e.Attribute("Index") is XAttribute index && int.TryParse(index.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _) &&
         e.Attribute("BaseLoc") is XAttribute path && !string.IsNullOrWhiteSpace(path.Value) &&
         (e.Attribute("Current") is not XAttribute current || TryBoolean(current.Value).HasValue));
+    private static bool ValidId(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        try { XmlConvert.VerifyNCName(value); return true; }
+        catch (XmlException) { return false; }
+    }
 }
 
 internal static class OfdStandardXml
