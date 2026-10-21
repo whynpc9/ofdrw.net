@@ -29,6 +29,12 @@ public sealed class OfdSignatureVerificationResult
     public string SignatureMethod { get; set; } = string.Empty;
     public string CheckMethod { get; set; } = string.Empty;
     public string? SignedValuePath { get; set; }
+    /// <summary>OFD 2.0 base signature ID from the containing list, when declared.</summary>
+    public string? RelativeSignatureId { get; set; }
+    /// <summary>Whether the currently declared base signature is unique, earlier, and valid; the mutable list relationship is not itself authenticated.</summary>
+    public bool RelativeIntegrityValid { get; internal set; } = true;
+    /// <summary>Reason a Relative relationship could not be established.</summary>
+    public string? RelativeIssue { get; internal set; }
     public List<OfdReferenceVerificationResult> References { get; } = new();
     public OfdCryptographicVerificationStatus CryptographicStatus { get; set; }
     public string? CryptographicMessage { get; set; }
@@ -58,7 +64,8 @@ public sealed class OfdSignatureVerificationReport
     public bool FullyValid =>
         ReferenceIntegrityValid &&
         Signatures.All(signature =>
-            signature.CryptographicStatus == OfdCryptographicVerificationStatus.Valid);
+            signature.CryptographicStatus == OfdCryptographicVerificationStatus.Valid &&
+            signature.RelativeIntegrityValid);
 }
 
 public static class OfdCryptographicCapabilities

@@ -1,5 +1,7 @@
 using System.Text;
+using System.IO.Compression;
 using Org.BouncyCastle.Asn1;
+using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Signatures.Signing;
@@ -139,6 +141,66 @@ public sealed class SesV5AndGbtTests
         Assert.False(OfdCryptographicCapabilities.SupportsBuiltInSesSm2Verification);
         Assert.True(SesInteropCapabilities.SupportsExplicitExternalV5);
         Assert.True(SesInteropCapabilities.SupportsExplicitGbt35275SingleSigner);
+    }
+
+    [Fact]
+    public async Task Ofd2ScopeAndRelativeWorkWithRealV5AndGbtContainers()
+    {
+        var maker = SesTestIdentity.Generate(); var signer = SesTestIdentity.Generate();
+        var v5 = new SesV5ExternalSignatureProvider(signer.CertificateDer,
+            Seal(maker, signer.CertificateDer), new Signer(signer));
+        var gbt = new Gbt35275SignatureProvider(signer.CertificateDer, new Signer(signer));
+        var verifier = new OfdSignatureVerifier(new IOfdSignedValueVerifier[]
+        {
+            new SesSm2ContainerVerifier(
+                new SesV5PinnedVerifier(signer.CertificateDer, maker.CertificateDer),
+                new Gbt35275PinnedVerifier(signer.CertificateDer))
+        });
+        var document = new OfdDocumentPackage();
+        document.Options.Namespace = OfdConstants.StandardNamespace;
+        document.Pages.Add(new OfdPage { WidthMillimeters = 210, HeightMillimeters = 297 });
+        using var unsigned = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(document, unsigned);
+        unsigned.Position = 0;
+        using (var zip = new ZipArchive(unsigned, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            var original = zip.GetEntry("OFD.xml")!;
+            string xml;
+            using (var reader = new StreamReader(original.Open(), Encoding.UTF8))
+                xml = await reader.ReadToEndAsync();
+            original.Delete();
+            using var writer = new StreamWriter(zip.CreateEntry("OFD.xml").Open(),
+                new UTF8Encoding(false));
+            await writer.WriteAsync(xml.Replace("Version=\"1.0\"", "Version=\"2.0\""));
+        }
+        unsigned.Position = 0;
+        var service = new OfdSignatureService();
+        using var first = new MemoryStream();
+        await service.SignAsync(unsigned, first, v5);
+        first.Position = 0;
+        var firstArchive = await new Ofdrw.Net.Packaging.Archive.OfdPackageLoader().LoadAsync(first);
+        var oldXml = firstArchive.GetBytes("Doc_0/Signs/Sign_0/Signature.xml");
+        var oldValue = firstArchive.GetBytes("Doc_0/Signs/Sign_0/SignedValue.dat");
+
+        var options = new OfdSignatureOptions
+        {
+            RelativeSignatureId = "1",
+            ProtectFile = path => path != "/Doc_0/Signs/Sign_0/SignedValue.dat"
+        };
+        options.Parameters.Add(new OfdSignatureParameter("purpose", "approval", "text"));
+        first.Position = 0;
+        using var second = new MemoryStream();
+        var scope = await service.SignWithResultAsync(first, second, gbt, options);
+        Assert.Contains("/Doc_0/Signs/Sign_0/SignedValue.dat", scope.UnprotectedFiles);
+        second.Position = 0;
+        var secondArchive = await new Ofdrw.Net.Packaging.Archive.OfdPackageLoader().LoadAsync(second);
+        Assert.Equal(oldXml, secondArchive.GetBytes("Doc_0/Signs/Sign_0/Signature.xml"));
+        Assert.Equal(oldValue, secondArchive.GetBytes("Doc_0/Signs/Sign_0/SignedValue.dat"));
+        second.Position = 0;
+        var report = await verifier.VerifyAsync(second);
+        Assert.True(report.ReferenceIntegrityValid);
+        Assert.True(report.FullyValid);
+        Assert.True(report.Signatures[1].RelativeIntegrityValid);
     }
 
     private sealed class Signer(SesTestIdentity identity) : ISesExternalSm2Signer
