@@ -1173,6 +1173,10 @@ public sealed partial class OfdPackageWriter
         }
 
         colorElement.SetAttributeValue("Value", $"{color.Red} {color.Green} {color.Blue}");
+        // The model color is resolved RGB. A preserved source ColorSpace or
+        // palette index would reinterpret these three components on reread.
+        colorElement.SetAttributeValue("ColorSpace", null);
+        colorElement.SetAttributeValue("Index", null);
         colorElement.SetAttributeValue("Alpha", color.Alpha == 255 ? null : color.Alpha.ToString(CultureInfo.InvariantCulture));
     }
 

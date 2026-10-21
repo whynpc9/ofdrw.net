@@ -18,6 +18,45 @@ public sealed class AnnotationToolVisualTests
 {
     public AnnotationToolVisualTests() => PdfFontRegistry.EnsureInstalled();
 
+    [Fact]
+    public async Task AnnotationTextAcceptsUnreferencedGrayInAllRenderers()
+    {
+        var source = await Annotated("<TextObject ID='901' Boundary='0 0 20 8' Size='5'>" +
+            "<FillColor Value='64'/><TextCode X='0' Y='5'>Gray</TextCode></TextObject>", "10 10 30 20");
+        Assert.Equal("Gray", Assert.Single(source.Pages[0].AnnotationAppearances.OfType<OfdTextElement>()).Text);
+        using var ofd = await Write(source);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("Gray", parsed.GetPage(1).Text);
+        ofd.Position = 0; using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(ofd, svg);
+        Assert.Contains("rgb(64,64,64)", Encoding.UTF8.GetString(svg.ToArray()));
+        ofd.Position = 0; using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(ofd, html);
+        Assert.Contains("rgb(64,64,64)", Encoding.UTF8.GetString(html.ToArray()));
+        if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllBytes(Path.Combine(directory, "annotation-gray.ofd"), ofd.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, "annotation-gray.pdf"), pdf.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, "annotation-gray.svg"), svg.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, "annotation-gray.html"), html.ToArray());
+        }
+    }
+
+    [Fact]
+    public async Task AnnotationTextRejectsUnresolvedColorSpaceInAllRenderers()
+    {
+        var source = await Annotated("<TextObject ID='901' Boundary='0 0 20 8' Size='5'>" +
+            "<FillColor ColorSpace='999' Value='64'/><TextCode X='0' Y='5'>Gray</TextCode></TextObject>", "10 10 30 20");
+        using var ofd = await Write(source);
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(ofd, pdf));
+        ofd.Position = 0; using var svg = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(ofd, svg));
+        ofd.Position = 0; using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(ofd, html));
+        Assert.Equal(0, html.Length);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

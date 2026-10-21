@@ -121,6 +121,73 @@ public sealed class R01PageBlockTests
     }
 
     [Fact]
+    public async Task TopLevelGrayAndCmykPathsRemainRenderableAfterWriteAndReread()
+    {
+        var resources = "<ColorSpaces><ColorSpace ID='20' Type='GRAY'/><ColorSpace ID='21' Type='CMYK'/></ColorSpaces>";
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor ColorSpace='20' Value='80'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>" +
+            "<PathObject ID='502' Boundary='40 10 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor ColorSpace='21' Value='0 255 255 0'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var nested = await Source(body, resources: resources);
+        using var topLevel = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(nested), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(topLevel, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    var layer = xml.Descendants().Single(node => node.Name.LocalName == "Layer");
+                    var block = layer.Elements().Single(node => node.Name.LocalName == "PageBlock");
+                    block.ReplaceWith(block.Elements().ToArray());
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        var imported = await new OfdReader().ReadAsync(new MemoryStream(topLevel.ToArray()));
+        using var rewritten = new MemoryStream(); await new OfdPackageWriter().WriteAsync(imported, rewritten);
+        using (var archive = new ZipArchive(new MemoryStream(rewritten.ToArray()), ZipArchiveMode.Read))
+        using (var content = archive.Entries.Single(entry => entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal)).Open())
+        {
+            var xml = XDocument.Load(content);
+            var fills = xml.Descendants().Where(node => node.Name.LocalName == "FillColor").ToArray();
+            Assert.Equal(new[] { "80 80 80", "255 0 0" }, fills.Select(node => node.Attribute("Value")?.Value));
+            Assert.All(fills, node => { Assert.Null(node.Attribute("ColorSpace")); Assert.Null(node.Attribute("Index")); });
+        }
+        var reread = await new OfdReader().ReadAsync(new MemoryStream(rewritten.ToArray()));
+        Assert.Equal(2, reread.Pages[0].Elements.OfType<OfdPathElement>().Count());
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(rewritten.ToArray()), svg);
+        var fillsAfter = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants()
+            .Where(node => node.Name.LocalName == "path").Select(node => node.Attribute("fill")?.Value).ToArray();
+        Assert.Equal(new[] { "rgb(80,80,80)", "rgb(255,0,0)" }, fillsAfter);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(rewritten.ToArray()), pdf);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(rewritten.ToArray()), html);
+        Assert.Contains("rgb(80,80,80)", Encoding.UTF8.GetString(html.ToArray()));
+        Assert.Contains("rgb(255,0,0)", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("top-level-gray-cmyk", rewritten.ToArray(), pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Fact]
+    public async Task MissingSealImageFailsInsteadOfDroppingSiblingDrawings()
+    {
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor Value='0 0 255'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>" +
+            "<TextObject ID='502' Boundary='10 40 30 10' Font='10' Size='4'><TextCode X='0' Y='4'>sibling</TextCode></TextObject>" +
+            "<ImageObject ID='503' Boundary='40 10 20 20' ResourceID='999'/>";
+        var seal = await Source(body, font: true);
+        var outer = await ImageIoTests.WithSeals([seal], pageCount: 1);
+        using var pdf = new MemoryStream();
+        var failure = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(outer), pdf));
+        Assert.Contains("no resolved payload", failure.Message);
+        Assert.Equal(0, pdf.Length);
+    }
+
+    [Fact]
     public async Task StrokedScaledTextUsesInheritedPaintAndKeepsLogicalText()
     {
         var resources = "<ColorSpaces><ColorSpace ID='20' Type='RGB'><Palette><CV>255 0 0</CV></Palette></ColorSpace></ColorSpaces>" +
@@ -143,6 +210,28 @@ public sealed class R01PageBlockTests
         using var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray());
         Assert.Contains("R01 text", parsed.GetPage(1).Text);
         Retain("stroke-hscale", bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Fact]
+    public async Task OutlineOnlyTextWithoutStrokeColorUsesOpaqueBlack()
+    {
+        var body = "<TextObject ID='501' Boundary='10 10 60 20' Font='10' Size='6' Fill='false' Stroke='true'>" +
+            "<TextCode X='2' Y='8'>Outline</TextCode></TextObject>";
+        var bytes = await Source(body, font: true);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), svg);
+        var text = Assert.Single(XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants(),
+            node => node.Name.LocalName == "text");
+        Assert.Equal("none", text.Attribute("fill")?.Value);
+        Assert.Equal("rgb(0,0,0)", text.Attribute("stroke")?.Value);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html);
+        Assert.Contains("rgb(0,0,0)", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), pdf);
+        using var reader = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
+        using var page = reader.GetPageReader(0);
+        var pixels = page.GetImage();
+        Assert.Contains(Enumerable.Range(0, pixels.Length / 4), index =>
+            pixels[index * 4] < 180 && pixels[index * 4 + 1] < 180 && pixels[index * 4 + 2] < 180);
+        Retain("implicit-stroke", bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]

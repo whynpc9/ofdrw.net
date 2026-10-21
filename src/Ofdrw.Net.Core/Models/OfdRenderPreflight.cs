@@ -25,12 +25,18 @@ internal static class OfdRenderPreflight
         {
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
             if (element is OfdRawElement { LocalName: "UnmodeledAnnotationMetadata" }) continue;
+            // The reader retains opaque annotation index records in this
+            // synthetic metadata envelope. They are not page drawings; an
+            // unsupported annotation appearance has its own failure marker.
+            if (element is OfdRawElement { LocalName: "Annotations", Xml: var annotationXml } &&
+                annotationXml.StartsWith("<UnmodeledAnnotations>", StringComparison.Ordinal) &&
+                annotationXml.EndsWith("</UnmodeledAnnotations>", StringComparison.Ordinal)) continue;
             if (element is OfdRawElement raw)
                 throw new NotSupportedException($"Opaque OFD drawing '{raw.LocalName}' cannot be rendered.");
             if (element is not (OfdTextElement or OfdImageElement or OfdPathElement))
                 throw new NotSupportedException("Unknown OFD drawing cannot be rendered.");
             if (element is OfdImageElement unresolvedImage && unresolvedImage.Data is not { Length: > 0 })
-                throw new NotSupportedException("OFD image resource has no resolved payload.");
+                throw PaintFailure("OFD image resource has no resolved payload.");
             var source = element switch
             {
                 OfdTextElement sourceText => sourceText.SourceXml,
