@@ -181,6 +181,65 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task StandardTemplateAndWriterAnnotationSurvivePhysicalCleanup()
+    {
+        var fresh = new OfdDocumentPackage { DocumentEntryPath = "Doc_0/Document.xml" };
+        fresh.Attachments.Add(new OfdAttachment { Name = "remove.bin", Data = Payload });
+        fresh.Pages.Add(new OfdPage
+        {
+            WidthMillimeters = 210, HeightMillimeters = 297,
+            Annotations = new OfdAnnotationCollection
+            {
+                Items = { new OfdAnnotation
+                {
+                    Type = OfdAnnotationType.Stamp, Creator = "R18", LastModifiedDate = new DateTime(2026, 10, 21),
+                    Subtype = "Seal", Remark = "retain", Visible = true, Print = true, NoZoom = false,
+                    NoRotate = true, ReadOnly = true,
+                    Appearance = new() { XMillimeters = 10, YMillimeters = 15, WidthMillimeters = 20, HeightMillimeters = 20 }
+                } }
+            }
+        });
+        var (generated, _) = await Write(fresh);
+        var generatedModel = await Read(generated);
+        var entries = Entries(generated);
+        var documentPath = generatedModel.DocumentEntryPath!;
+        var pagePath = Assert.Single(generatedModel.Pages).SourceEntryPath!;
+        var annotationPath = Assert.Single(generatedModel.Pages[0].Annotations!.Items).Source!.Entry;
+        var document = XDocument.Parse(Encoding.UTF8.GetString(entries[documentPath]));
+        var ns = document.Root!.Name.Namespace;
+        var annotationIndexPath = "Doc_0/" + document.Root.Element(ns + "Annotations")!.Value;
+        document.Root!.Element(ns + "CommonData")!.Add(new XElement(ns + "TemplatePage",
+            new XAttribute("ID", "500"), new XAttribute("BaseLoc", "Templates/Content.xml")));
+        entries[documentPath] = Utf8(document.ToString(SaveOptions.DisableFormatting));
+        var page = XDocument.Parse(Encoding.UTF8.GetString(entries[pagePath]));
+        page.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "500"),
+            new XAttribute("ZOrder", "Background")));
+        entries[pagePath] = Utf8(page.ToString(SaveOptions.DisableFormatting));
+        const string templatePath = "Doc_0/Templates/Content.xml";
+        entries[templatePath] = Utf8($"<Page xmlns='{ns}'><Content><Layer ID='501'/></Content></Page>");
+        var originalAnnotation = entries[annotationPath].ToArray();
+        var originalAnnotationIndex = entries[annotationIndexPath].ToArray();
+        var originalTemplate = entries[templatePath].ToArray();
+
+        var loaded = await Read(Zip(entries));
+        Assert.Single(loaded.Pages[0].Templates);
+        Assert.True(loaded.RemoveAttachment(Assert.Single(loaded.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, result) = await Write(loaded);
+        var saved = Entries(output);
+        Assert.Contains(result.RemovedEntries, path => path.Contains("remove.bin", StringComparison.Ordinal));
+        Assert.Equal(originalAnnotation, saved[annotationPath]);
+        Assert.Equal(originalAnnotationIndex, saved[annotationIndexPath]);
+        Assert.Equal(originalTemplate, saved[templatePath]);
+        Assert.Equal("500", XDocument.Parse(Encoding.UTF8.GetString(saved[pagePath]))
+            .Descendants(ns + "Template").Single().Attribute("TemplateID")!.Value);
+        Assert.Equal("Templates/Content.xml", XDocument.Parse(Encoding.UTF8.GetString(saved[documentPath]))
+            .Descendants(ns + "TemplatePage").Single().Attribute("BaseLoc")!.Value);
+        var reread = await Read(output);
+        Assert.Single(reread.Pages[0].Templates);
+        Assert.Equal("retain", Assert.Single(reread.Pages[0].Annotations!.Items).Remark);
+    }
+
+    [Fact]
     public async Task EncodedAliasInSignatureIsRejectedBeforeSignaturePruning()
     {
         var entries = Entries(Seed());
