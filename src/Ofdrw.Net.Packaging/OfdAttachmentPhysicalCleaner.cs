@@ -242,9 +242,8 @@ internal static class OfdAttachmentPhysicalCleaner
 
     private static bool IsPathBearingText(XElement element) => ScalarPathElements.Contains(element.Name.LocalName) ||
         (element.Parent?.Name.LocalName == "DocBody" && element.Name.LocalName == "Signatures") ||
-        (element.Parent?.Name.LocalName == "Document" &&
-            element.Name.LocalName is ("Attachments" or "Annotations" or "CustomTags")) ||
-        (element.Document?.Root?.Name.LocalName == "Document" && element.Name.LocalName == "Extensions");
+        (element.Document?.Root?.Name.LocalName == "Document" &&
+            element.Name.LocalName is ("Attachments" or "Annotations" or "CustomTags" or "Extensions"));
 
     private static void CheckScalar(string entry, XElement element, string value, bool pathBearing, ISet<string> candidates,
         ISet<string> knownBinary, PayloadOwnerScope payloadSlot, OfdModelMaterialization material, CancellationToken token)

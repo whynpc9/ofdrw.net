@@ -20,7 +20,7 @@ R16 标准对象已实际合入后，封闭集合补纳 Reader/Writer 支持的 
 
 只有 Document 声明的资源表及页面或 `CommonData/TemplatePage` 位置旁置的隐式 `PageRes.xml` 中、结构合法的 `Fonts/Font/FontFile`（包含标准 `Serif`、`FixedWidth` 元数据）、`MultiMedias/MultiMedia/MediaFile` 或 Reader 接纳的 `MultiMedia/@MediaFile` 才能证明其它二进制条目属于标准资源；资源节点还需具备 Reader 接纳的 ID、字体名称和首个文件定位；同时存在属性与子元素时只认 Reader 优先读取的属性，伪造在其它 XML 位置的同名元素无效。附件描述符也只认 Reader 优先读取的第一个 `FileLoc` 子元素，缺少子元素时才认 `FileLoc` 属性；未被读取的重复子元素或属性不授予二进制所有权。`External=true` 的附件从不授予包内二进制所有权，即使其 `FileLoc` 恰好可解为 ZIP 条目。模板旁置资源按 Reader、资源目录和裁剪器相同的 `TemplatePage/@BaseLoc` 相对路径发现，且模板声明必须具备 Reader 接纳的非空 `ID`。所有祖先 `BaseLoc` 都参与待删路径别名检查；授予二进制所有权时，资源文件只采用 Reader 使用的资源表根 `Res/@BaseLoc`，附件 `FileLoc` 只采用描述符条目自身路径，不采用嵌套 `BaseLoc`。路径字段和祖先 `BaseLoc` 若包含 `%HH` 编码或反斜杠即拒绝；普通正文和元数据可包含这些字面字符，但仍参与完整路径别名扫描。所有会被 Reader 当作路径文本读取的节点（包括 `DocBody/Signatures` 和 `Document/Extensions`）只接纳纯标量内容；子元素分段拼接的路径继续拒绝，避免 Reader 与清理器对路径的解释不同。按 GB/T 33190—2016 第 19.1 节及规范附录 A.1、A.12，`DocBody/Versions` 是包含 `Version/@BaseLoc` 的容器，不是路径标量；物理清理保留合法版本容器，并扫描版本描述文件中 `DocVersion/FileList/File` 的路径，拒绝伪造的叶子文本和异常子结构。
 
-删除在 `WriteWithResultAsync` 创建 ZIP/触碰目标流前完成；不改调用方 `PreservedEntries`。`OfdPackageWriteResult.RemovedEntries` 报真实删除路径，签名失效沿用既有 `SignaturesInvalidated` 与重签诊断。受控写入克隆及同路径 Split 要么保留来源请求并重验，要么在操作前明确拒绝，不能漏掉请求后写出貌似成功的包。合并/混合不继承原包删除权限。
+嵌套于 `Document` 任意位置的 `Attachments`、`Annotations`、`CustomTags` 和 `Extensions` 声明也按路径标量检查；子元素拆分拒绝，因为结构检查器会读取整段聚合文本。删除在 `WriteWithResultAsync` 创建 ZIP/触碰目标流前完成；不改调用方 `PreservedEntries`。`OfdPackageWriteResult.RemovedEntries` 报真实删除路径，签名失效沿用既有 `SignaturesInvalidated` 与重签诊断。受控写入克隆及同路径 Split 要么保留来源请求并重验，要么在操作前明确拒绝，不能漏掉请求后写出貌似成功的包。合并/混合不继承原包删除权限。
 
 若既有签名被本次写入完整失效并实际移除，签名描述中的标准 `SignedInfo/References/Reference/@FileRef` 仅作摘要范围记录，不构成输出包中的资源所有权；原签名中其它路径仍逐项检查。未被实际移除的签名描述及异常编码引用不得借此例外绕过闭包检查。
 

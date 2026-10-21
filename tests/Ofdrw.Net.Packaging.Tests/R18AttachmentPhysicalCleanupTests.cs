@@ -816,6 +816,17 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task NestedDocumentAttachmentDeclarationCannotSplitItsPath()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "<Attachments>Payload/orig<Title>inal.bin</Title></Attachments></CommonData>", StringComparison.Ordinal));
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "mixed XML path content");
+    }
+
+    [Fact]
     public async Task NonXmlSuffixUtf16DescriptorUsesSourcePathAndCanBeRemoved()
     {
         var entries = Entries(Seed());
