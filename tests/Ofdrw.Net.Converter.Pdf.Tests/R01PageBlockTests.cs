@@ -572,15 +572,15 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
-    [InlineData("Bold")]
-    [InlineData("Italic")]
-    public async Task MalformedFontFlagPreservesPageBlockTextButFailsAllRenderers(string flag)
+    [InlineData("Bold", "020")]
+    [InlineData("Italic", "20")]
+    public async Task MalformedFontFlagPreservesPageBlockTextButFailsAllRenderers(string flag, string fontId)
     {
-        var resources = $"<Fonts><Font ID='20' FontName='Noto Sans' {flag}='bogus'/></Fonts>";
+        var resources = $"<Fonts><Font ID='{fontId}' FontName='Noto Sans' {flag}='bogus'/></Fonts>";
         var ofd = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='20' Size='4'>" +
             "<TextCode X='0' Y='4'>recoverable text</TextCode></TextObject>", resources: resources);
         var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
-        Assert.Contains(read.Fonts, font => font.Id == "20");
+        Assert.Contains(read.Fonts, font => font.Id == fontId);
         Assert.Equal("recoverable text", new OfdTextExtractor().Extract(read));
         foreach (var convert in new Func<Stream, Stream, Task>[]
         {
@@ -751,6 +751,42 @@ public sealed class R01PageBlockTests
         Retain(resourceNamespace.Length == 0 ? "font-resource-unqualified" :
             resourceNamespace == Ns ? "font-resource-2009" : "font-resource-2016",
             bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Fact]
+    public async Task NumericFontIdsResolveEquivalentSpellingsInPageBlockAndComposite()
+    {
+        const string resources = "<Fonts><Font ID='030' FontName='Noto Sans'/></Fonts>" +
+            "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='10'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='30' Size='4'>" +
+            "<TextCode X='0' Y='4'>composite font</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        const string body = "<TextObject ID='501' Boundary='10 10 50 10' Font='30' Size='4'>" +
+            "<TextCode X='0' Y='4'>pageblock font</TextCode></TextObject>" +
+            "<CompositeObject ID='553' Boundary='10 30 50 10' ResourceID='551'/>";
+        var ofd = await Source(body, resources: resources);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Contains(read.Fonts, font => font.Id == "030" && font.FontName == "Noto Sans");
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var direct = Assert.IsType<OfdTextElement>(block.PageBlockChildren![0]);
+        var composite = Assert.IsType<OfdCompositeElement>(block.PageBlockChildren[1]);
+        var nested = Assert.IsType<OfdTextElement>(Assert.Single(composite.Resource.Elements));
+        Assert.Equal("Noto Sans", direct.FontName);
+        Assert.Equal("Noto Sans", nested.FontName);
+        Assert.Null(direct.RenderPaintError);
+        Assert.Null(nested.RenderPaintError);
+        var extracted = new OfdTextExtractor().Extract(read);
+        Assert.Contains("pageblock font", extracted);
+        Assert.Contains("composite font", extracted);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        Assert.True(pdf.Length > 0);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        Assert.Contains("pageblock font", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("composite font", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("pageblock font", Encoding.UTF8.GetString(html.ToArray()));
+        Assert.Contains("composite font", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("numeric-font-ids", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]

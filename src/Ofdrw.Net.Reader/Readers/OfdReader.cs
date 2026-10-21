@@ -987,12 +987,14 @@ public sealed class OfdReader : IOfdReader
             var id = font.Attribute("ID")?.Value;
             var name = font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value;
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name)) continue;
+            var key = CanonicalFontId(id);
+            if (key is null) continue;
             var validBold = TryParseFontFlag(font.Attribute("Bold")?.Value, out var bold);
             var validItalic = TryParseFontFlag(font.Attribute("Italic")?.Value, out var italic);
             // Keep the resource readable, but never let a malformed declaration
             // satisfy PageBlock text's resolved-font admission.
-            if (validBold && validItalic) fontMap[id!] = name!;
-            else fontMap.Remove(id!);
+            if (validBold && validItalic) fontMap[key] = name!;
+            else fontMap.Remove(key);
             if (package.Fonts.Any(existing => existing.Id == id)) continue;
             var file = ReadValue(font.Element(ns + "FontFile"), material, cancellationToken);
             material.ReserveReadModel(512, cancellationToken);
@@ -1086,8 +1088,8 @@ public sealed class OfdReader : IOfdReader
             {
                 if (element is OfdTextElement unresolvedText &&
                     !string.IsNullOrWhiteSpace(unresolvedText.FontResourceId) &&
-                    !fonts.ContainsKey(unresolvedText.FontResourceId) &&
-                    package.Fonts.Any(font => string.Equals(font.Id, unresolvedText.FontResourceId, StringComparison.OrdinalIgnoreCase)))
+                    !HasFont(fonts, unresolvedText.FontResourceId) &&
+                    package.Fonts.Any(font => OfdSourceIdentity.ParseId(font.Id) == OfdSourceIdentity.ParseId(unresolvedText.FontResourceId)))
                 {
                     // The font exists but its declaration was rejected for
                     // rendering. Preserve TextCode for logical extraction.
@@ -1095,7 +1097,7 @@ public sealed class OfdReader : IOfdReader
                     definition.Resource.Elements.Add(unresolvedText);
                     continue;
                 }
-                if (element is OfdTextElement text && (text.FontResourceId is null || !fonts.ContainsKey(text.FontResourceId)) ||
+                if (element is OfdTextElement text && !HasFont(fonts, text.FontResourceId) ||
                     element is OfdImageElement { Data.Length: 0 })
                 {
                     var source = element is OfdTextElement t ? t.SourceXml! : ((OfdImageElement)element).SourceXml!;
@@ -1195,8 +1197,7 @@ public sealed class OfdReader : IOfdReader
                         ClippingXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken)
                     };
                     AttachPaint(text, node, renderNode, paintError, material, cancellationToken);
-                    if (blockDepth > 0 &&
-                        (string.IsNullOrWhiteSpace(text.FontResourceId) || !fontMap.ContainsKey(text.FontResourceId)))
+                    if (blockDepth > 0 && !HasFont(fontMap, text.FontResourceId))
                         text.RenderPaintError ??= "PageBlock text has an unresolved Font resource.";
                     foreach (var textCode in textCodes)
                     {
@@ -1381,9 +1382,18 @@ public sealed class OfdReader : IOfdReader
         return true;
     }
 
+    private static string? CanonicalFontId(string? id)
+    {
+        var numericId = OfdSourceIdentity.ParseId(id);
+        return numericId == 0 ? null : numericId.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static bool HasFont(IReadOnlyDictionary<string, string> fontMap, string? fontRef)
+        => CanonicalFontId(fontRef) is { } key && fontMap.ContainsKey(key);
+
     private static string ResolveFontName(string? fontRef, IReadOnlyDictionary<string, string> fontMap)
     {
-        if (!string.IsNullOrWhiteSpace(fontRef) && fontMap.TryGetValue(fontRef!, out var fontName))
+        if (CanonicalFontId(fontRef) is { } key && fontMap.TryGetValue(key, out var fontName))
         {
             return fontName;
         }
