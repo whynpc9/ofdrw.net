@@ -28,6 +28,34 @@
     "source": "https://github.com/dotnet/Open-XML-SDK"
   },
   {
+    "id": "HarfBuzzSharp",
+    "version": "14.2.1.301",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://go.microsoft.com/fwlink/?linkid=868515"
+  },
+  {
+    "id": "HarfBuzzSharp.NativeAssets.Linux",
+    "version": "14.2.1.301",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://go.microsoft.com/fwlink/?linkid=868515"
+  },
+  {
+    "id": "HarfBuzzSharp.NativeAssets.Win32",
+    "version": "14.2.1.301",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://go.microsoft.com/fwlink/?linkid=868515"
+  },
+  {
+    "id": "HarfBuzzSharp.NativeAssets.macOS",
+    "version": "14.2.1.301",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://go.microsoft.com/fwlink/?linkid=868515"
+  },
+  {
     "id": "Microsoft.Bcl.HashCode",
     "version": "6.0.0",
     "license_type": "expression",
@@ -148,6 +176,13 @@
     "source": "https://github.com/dotnet/maintenance-packages"
   },
   {
+    "id": "System.Buffers",
+    "version": "4.6.1",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://github.com/dotnet/maintenance-packages"
+  },
+  {
     "id": "System.IO.Packaging",
     "version": "10.0.2",
     "license_type": "expression",
@@ -176,6 +211,13 @@
     "source": "https://github.com/dotnet/maintenance-packages"
   },
   {
+    "id": "System.Memory",
+    "version": "4.6.3",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://github.com/dotnet/maintenance-packages"
+  },
+  {
     "id": "System.Numerics.Vectors",
     "version": "4.4.0",
     "license_type": "legacy-url",
@@ -190,6 +232,13 @@
     "source": "https://github.com/dotnet/maintenance-packages"
   },
   {
+    "id": "System.Numerics.Vectors",
+    "version": "4.6.1",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://github.com/dotnet/maintenance-packages"
+  },
+  {
     "id": "System.Runtime.CompilerServices.Unsafe",
     "version": "4.5.3",
     "license_type": "legacy-url",
@@ -199,6 +248,13 @@
   {
     "id": "System.Runtime.CompilerServices.Unsafe",
     "version": "6.1.0",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://github.com/dotnet/maintenance-packages"
+  },
+  {
+    "id": "System.Runtime.CompilerServices.Unsafe",
+    "version": "6.1.2",
     "license_type": "expression",
     "license": "MIT",
     "source": "https://github.com/dotnet/maintenance-packages"
