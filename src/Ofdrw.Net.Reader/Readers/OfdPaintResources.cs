@@ -15,21 +15,21 @@ namespace Ofdrw.Net.Reader.Readers;
 // unsupported paint remains readable/writable and fails only on rendering.
 internal sealed class OfdPaintResources
 {
-    private readonly Dictionary<string, XElement> spaces;
-    private readonly Dictionary<string, XElement> parameters;
-    private readonly HashSet<string> ambiguous;
+    private readonly Dictionary<long, XElement> spaces;
+    private readonly Dictionary<long, XElement> parameters;
+    private readonly HashSet<long> ambiguous;
 
     internal OfdPaintResources()
     {
-        spaces = new(StringComparer.Ordinal); parameters = new(StringComparer.Ordinal);
-        ambiguous = new(StringComparer.Ordinal);
+        spaces = new(); parameters = new();
+        ambiguous = new();
     }
 
     internal OfdPaintResources(OfdPaintResources parent)
     {
-        spaces = new(parent.spaces, StringComparer.Ordinal);
-        parameters = new(parent.parameters, StringComparer.Ordinal);
-        ambiguous = new(parent.ambiguous, StringComparer.Ordinal);
+        spaces = new(parent.spaces);
+        parameters = new(parent.parameters);
+        ambiguous = new(parent.ambiguous);
     }
 
     internal void Read(OfdPackageArchive archive, string path, OfdModelMaterialization material, CancellationToken token)
@@ -53,11 +53,11 @@ internal sealed class OfdPaintResources
             {
                 token.ThrowIfCancellationRequested(); material.ReserveReadModel(256, token);
                 if (node.Name != ns + (ReferenceEquals(table, spaces) ? "ColorSpace" : "DrawParam")) continue;
-                var id = node.Attribute("ID")?.Value;
-                if (string.IsNullOrWhiteSpace(id)) continue;
-                if (ambiguous.Contains(id!) || table.ContainsKey(id!))
-                { ambiguous.Add(id!); table.Remove(id!); }
-                else table.Add(id!, node);
+                var id = OfdSourceIdentity.ParseId(node.Attribute("ID")?.Value);
+                if (id == 0) continue;
+                if (ambiguous.Contains(id) || table.ContainsKey(id))
+                { ambiguous.Add(id); table.Remove(id); }
+                else table.Add(id, node);
             }
         }
     }
@@ -100,13 +100,14 @@ internal sealed class OfdPaintResources
 
     private XElement ResolveDrawParam(string id, CancellationToken token)
     {
-        var chain = new List<XElement>(); var seen = new HashSet<string>(StringComparer.Ordinal);
+        var chain = new List<XElement>(); var seen = new HashSet<long>();
         for (string? current = id; ;)
         {
             token.ThrowIfCancellationRequested();
-            if (string.IsNullOrWhiteSpace(current) || chain.Count >= 32 || !seen.Add(current))
+            var numericId = OfdSourceIdentity.ParseId(current);
+            if (numericId == 0 || chain.Count >= 32 || !seen.Add(numericId))
                 throw new NotSupportedException("DrawParam inheritance cycle or depth limit.");
-            if (ambiguous.Contains(current) || !parameters.TryGetValue(current, out var item))
+            if (ambiguous.Contains(numericId) || !parameters.TryGetValue(numericId, out var item))
                 throw new NotSupportedException($"Missing or ambiguous DrawParam '{current}'.");
             chain.Add(item);
             current = item.Attribute("Relative")?.Value;
@@ -160,7 +161,8 @@ internal sealed class OfdPaintResources
         XElement? space = null;
         if (spaceId is not null)
         {
-            if (ambiguous.Contains(spaceId) || !spaces.TryGetValue(spaceId, out space))
+            var numericId = OfdSourceIdentity.ParseId(spaceId);
+            if (numericId == 0 || ambiguous.Contains(numericId) || !spaces.TryGetValue(numericId, out space))
                 throw new NotSupportedException($"Missing or ambiguous ColorSpace '{spaceId}'.");
         }
         var type = space?.Attribute("Type")?.Value ?? "RGB";

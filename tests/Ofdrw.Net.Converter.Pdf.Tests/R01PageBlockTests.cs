@@ -130,6 +130,24 @@ public sealed class R01PageBlockTests
         Retain("palette-drawparam", bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Fact]
+    public async Task NumericPaintResourceIdsResolveEquivalentSpellings()
+    {
+        const string resources = "<ColorSpaces><ColorSpace ID='020' Type='RGB'><Palette><CV>255 0 0</CV></Palette></ColorSpace></ColorSpaces>" +
+            "<DrawParams><DrawParam ID='031'><FillColor ColorSpace='20' Index='0'/></DrawParam>" +
+            "<DrawParam ID='030' Relative='31'/></DrawParams>";
+        const string body = "<PathObject ID='501' Boundary='10 10 20 20' DrawParam='30' Fill='true' Stroke='false'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        Assert.Contains("rgb(255,0,0)", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("rgb(255,0,0)", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        Assert.True(pdf.Length > 0);
+        Retain("numeric-paint-ids", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
     [Theory]
     [InlineData("between", "<CV>255 0 0</CV><!--between--><CV>0 0 255</CV>")]
     [InlineData("inside", "<CV>255 0 0</CV><CV>0 <!--inside--> 0 255</CV>")]
@@ -849,6 +867,45 @@ public sealed class R01PageBlockTests
             Assert.Contains("path data", error.Message);
             Assert.Equal(0, output.Length);
         }
+    }
+
+    [Theory]
+    [InlineData("0 10 0 0 1")]
+    [InlineData("-10 10 0 0 1")]
+    [InlineData("10 10 0 2 2")]
+    [InlineData("10 10 0 -1 1")]
+    public async Task PageBlockArcRejectsInvalidRadiiAndFlags(string operands)
+    {
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='false' Stroke='true'>" +
+            $"<StrokeColor Value='0 0 255'/><AbbreviatedData>M 0 10 A {operands} 20 10</AbbreviatedData></PathObject>";
+        var ofd = await Source(body);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Contains("path data", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Fact]
+    public async Task PageBlockValidArcRendersInAllOutputs()
+    {
+        const string body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='false' Stroke='true'>" +
+            "<StrokeColor Value='0 0 255'/><AbbreviatedData>M 0 10 A 10 10 0 0 1 20 10</AbbreviatedData></PathObject>";
+        var ofd = await Source(body);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        Assert.Contains("A 10 10 0 0 1 20 10", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("A 10 10 0 0 1 20 10", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        Assert.True(pdf.Length > 0);
+        Retain("pageblock-arc", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]
