@@ -113,7 +113,7 @@
 | P1-04 | PDF → OFD 保留矢量 | ofdrw PDFConverter（Graphics2D 桥接） | PdfPig 文本/路径写入 OFD；页面图可继续当稳定视觉层 | 可选模式；默认可仍为双层。矢量模式有样例对比 | 源码已实现（受限可选模式）：21 |
 | P1-05 | 关键字定位 | ofdrw reader keyword | 从 `TextObject` 重建字形框 | 返回页码与毫米坐标；供盖章和替换使用 | 源码已实现（严格几何范围）：06 |
 | P1-06 | 文档内容替换 | ofdrw `DocContentReplace` | 依赖 P1-05 | 替换后版面不塌、摘要约定有说明 | 源码已实现（受限替换）：06 |
-| P1-07 | 附件增删 | ofdrw-layout attachment | 对已有包增删 `Attachments.xml` 及文件 | 与合并选项 `IncludeAttachments` 一致 | 待办：07 |
+| P1-07 | 附件增删 | ofdrw-layout attachment | 已有新增及逻辑移除；显式物理清理只对来源身份、独占载荷与引用闭包可证明的现包附件生效 | 与合并选项 `IncludeAttachments` 和保存读回分别验收；未知引用拒绝 | R18 受限实现；[附件教程](tutorials/09-templates-attachments-tags.md)与[能力契约](capability-contract-v12.md) |
 | P1-08 | 纯文本 → OFD | ofdrw `TextConverter` | 调用 P0-01 布局引擎 | 可设字号与页尺寸 | 已实现首版：Layout `PlainTextOfdConverter` 与显式 `text-to-ofd` CLI；严格 UTF-8/Unicode、额度、取消和原子提交；[契约](plain-text-ofd.md)、[本地测试/包消费/10页验收](../plans/028-followup-implementation.md) |
 | P1-09 | OFD → HTML | ofdrw `HTMLExporter` | 多页 SVG 包进单 HTML | 有界静态预览；不承诺可选中全部文字或复杂图元通用保真 | 已有首版 `OfdToHtmlConverter`/`ofd-to-html` 源码及测试入口；外来复杂语义另验，见[能力契约](capability-contract-v12.md) |
 | P1-10 | 强类型对象补齐 | ofdrw-core | 最小强类型闭环已实现：大纲/书签、局部注释、GoTo、Path 裁剪、共享嵌套组合；其余继续 `Raw` / `Preserved*` | 历史记录包含最小范围读写往返、未知 XML、纯包消费及 8 页 Preview；[记录与边界](evidence/issue09-typed-objects/README.md) | 源码已实现（最小范围）：09 |

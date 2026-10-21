@@ -144,6 +144,17 @@ assert receipt['han']['ofdText'] == '中\n文\nA\n中'
 assert 'TEXT_FACE_FALLBACK' in receipt['han']['fallback']
 assert all(output['bytes'] > 0 for output in receipt['outputs'])
 PY_TEXT_CONSUMER
+# Verify the public attachment-removal API through the same exact local feed.
+mkdir -p "$TASK_DIR/attachment-consumer"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.AttachmentCleanup.E2E/Program.cs" "$TASK_DIR/attachment-consumer/Program.cs"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.AttachmentCleanup.E2E/Ofdrw.Net.AttachmentCleanup.E2E.csproj" "$TASK_DIR/attachment-consumer/Consumer.csproj"
+ATTACHMENT_CONSUMER="$TASK_DIR/attachment-consumer/Consumer.csproj"
+dotnet restore "$ATTACHMENT_CONSUMER" --configfile "$TASK_DIR/NuGet.Config" \
+  -p:R18PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+dotnet build "$ATTACHMENT_CONSUMER" -c Release --no-restore \
+  -p:R18PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+R18_SOURCE_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD)" R18_E2E_OUTPUT_DIR="$RESULT_DIR/attachment-cleanup" \
+  dotnet "$TASK_DIR/attachment-consumer/bin/Release/net10.0/Consumer.dll" | tee "$RESULT_DIR/attachment-cleanup-consumer.txt"
 NUGET_PACKAGES="$SOURCE_CACHE" python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION" --verify-manifest
 cp "$OUT_DIR/package-manifest.json" "$RESULT_DIR/package-manifest.json"
 echo "[E2E] Verified package bytes and output: $RESULT_DIR"

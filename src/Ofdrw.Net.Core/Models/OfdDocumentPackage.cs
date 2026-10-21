@@ -4,6 +4,21 @@ using System.Linq;
 
 namespace Ofdrw.Net.Core.Models;
 
+/// <summary>Controls whether an attachment is removed only from the active list or also from the saved ZIP.</summary>
+public enum OfdAttachmentRemovalMode
+{
+    /// <summary>Removes the active reference while retaining historical ZIP entries.</summary>
+    Logical,
+    /// <summary>Requires proven exclusive source ownership and reference closure before deleting the internal payload.</summary>
+    Physical
+}
+
+internal sealed class OfdAttachmentPhysicalRemoval(int ordinal, string payloadPath)
+{
+    internal int Ordinal { get; } = ordinal;
+    internal string PayloadPath { get; } = payloadPath;
+}
+
 public sealed class OfdDocumentPackage
 {
     internal OfdCompositeResourceCollection? CompositeValue, OriginalCompositeResources;
@@ -84,6 +99,31 @@ public sealed class OfdDocumentPackage
     public List<OfdPage> Pages { get; } = [];
 
     public List<OfdAttachment> Attachments { get; } = [];
+
+    internal List<OfdAttachmentPhysicalRemoval> PhysicalAttachmentRemovals { get; } = [];
+
+    /// <summary>
+    /// Removes an active attachment. Logical removal retains historical ZIP entries;
+    /// physical removal requests deletion of its authenticated, unreferenced internal
+    /// payload when this package is next written. An unsafe physical request makes
+    /// the write fail before the destination stream is touched.
+    /// </summary>
+    public bool RemoveAttachment(OfdAttachment attachment, OfdAttachmentRemovalMode mode = OfdAttachmentRemovalMode.Logical)
+    {
+        if (attachment is null) throw new ArgumentNullException(nameof(attachment));
+        if (mode != OfdAttachmentRemovalMode.Logical && mode != OfdAttachmentRemovalMode.Physical)
+            throw new ArgumentOutOfRangeException(nameof(mode));
+        if (!Attachments.Contains(attachment)) return false;
+        if (mode == OfdAttachmentRemovalMode.Physical)
+        {
+            if (!ReferenceEquals(attachment.SourceOwner, this) || AttachmentSource?.TryOriginal(attachment, out var original) != true ||
+                original.External || original.PayloadPath is null || attachment.IsExternal ||
+                !PreservedEntries.ContainsKey(original.PayloadPath))
+                throw new NotSupportedException("Physical attachment removal requires a reader-owned internal payload in this document.");
+            PhysicalAttachmentRemovals.Add(new OfdAttachmentPhysicalRemoval(original.Ordinal, original.PayloadPath));
+        }
+        return Attachments.Remove(attachment);
+    }
 
     public List<OfdFontResource> Fonts { get; } = [];
 

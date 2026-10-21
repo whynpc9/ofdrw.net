@@ -157,6 +157,11 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         Strings(source.PreservedDocumentElements, copy.PreservedDocumentElements); Strings(source.PreservedDocBodyElements, copy.PreservedDocBodyElements);
         OfdNavigationCloner.Clone(source, copy, mapping, material, token, requireClosedMap: true);
         copy.AttachmentSource = source.AttachmentSource?.Clone(source, copy, mapping, material, token);
+        foreach (var removal in source.PhysicalAttachmentRemovals)
+        {
+            token.ThrowIfCancellationRequested(); material.ChargeCopy(128, token);
+            copy.PhysicalAttachmentRemovals.Add(new OfdAttachmentPhysicalRemoval(removal.Ordinal, removal.PayloadPath));
+        }
         copy.CustomTagSource = source.CustomTagSource?.Clone(source, copy, material, token);
         copy.AnnotationIndexSource = source.AnnotationIndexSource?.Clone(source, copy, material, token);
         copy.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, token, requireClosedMap: true);

@@ -50,7 +50,7 @@
 | R15 多 DocBody | Reader 枚举和显式选择、PDF/SVG/HTML/图像导出；隔离无签名目录下的选中文档编辑 `limited`，详见[多文档契约](multi-docbody.md) | 默认仍首文档；未选条目与 DocBody 保留；签名、共享资源和跨文档引用的编辑拒绝，不猜映射或自动清签 |
 | R16 强类型对象 | 少量 typed `limited`；DocInfo/权限/版本/动作读改写 | 未知节点保留；权限声明不等于执行策略 |
 | R17 归档 Rule/Handler | 结构预检 `limited`；具名条款、Pass/Fail/Unknown、独立副本 | Unknown 不升格 Pass，修复后重检 |
-| R18 附件清理 | 附件读写及部分编辑 `limited`；逻辑/物理移除、引用闭包 | 无法证明无引用则不物理删除 |
+| R18 附件清理 | 现有 List 移除保持逻辑语义；新增显式 `RemoveAttachment(..., Physical)` 仅对 Reader 来源的独占内部载荷、可证明的 XML/二进制所有权闭包执行物理删除，仍为 `limited` | 外部/共享、未知 XML 或二进制、编码路径、别名及多 DocBody 不能证明安全时，写流前拒绝；不自动降级为逻辑移除 |
 | R19 跨页复杂表格 | 整行分页 `limited`；RowSpan、拆行、重复表头、图片单元格 | 超出有限规则明确失败，逐页视觉验收 |
 | R20 完整归档规则 | `new`；逐条标准版本、条款、fixture 与独立核准 | 缺规范保持 Unknown/阻断，不声称认证 |
 | R21 真实字体测量 | 新查询 `limited`：固定静态 TrueType face、HarfBuzz 单 run GID/cluster/advance/ink、有限 Latin/Han 预排版及严格 ASCII OFD 出口；旧 Flow 仍用原度量 | 缺 native/字体或超出已验 profile 明确失败；混合字体、段落 bidi 和通用 GID 输出留待 R22，详见 [R21 profile](text-prelayout.md) |
