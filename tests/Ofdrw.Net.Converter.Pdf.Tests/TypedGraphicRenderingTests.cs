@@ -22,11 +22,27 @@ public sealed class TypedGraphicRenderingTests
         var resource = new OfdCompositeResource { WidthMillimeters = 20, HeightMillimeters = 20 };
         resource.Elements.Add(new OfdPathElement { WidthMillimeters = 20, HeightMillimeters = 20,
             AbbreviatedData = "M 0 0 L 20 0 L 20 20 L 0 20 C", Fill = true, Stroke = false });
+        if (!accepted)
+        {
+            var inside = new OfdTextElement { Text = "inside", FontName = "Arial", FontSizeMillimeters = 4,
+                XMillimeters = 2, YMillimeters = 2, WidthMillimeters = 15, HeightMillimeters = 5 };
+            inside.Runs.Add(new OfdTextRun { Text = "inside", YMillimeters = 4 });
+            resource.Elements.Add(inside);
+        }
         package.CompositeResources.Items.Add(resource);
         var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
         page.Elements.Add(new OfdCompositeElement { Resource = resource, XMillimeters = 10,
             YMillimeters = 10, WidthMillimeters = 20, HeightMillimeters = 20 });
         package.Pages.Add(page);
+        if (!accepted)
+        {
+            page.Elements.Add(new OfdTextElement { Text = "sibling", FontName = "Arial", FontSizeMillimeters = 4,
+                XMillimeters = 5, YMillimeters = 60, WidthMillimeters = 30, HeightMillimeters = 5 });
+            var later = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+            later.Elements.Add(new OfdTextElement { Text = "later", FontName = "Arial", FontSizeMillimeters = 4,
+                XMillimeters = 5, YMillimeters = 5, WidthMillimeters = 30, HeightMillimeters = 5 });
+            package.Pages.Add(later);
+        }
         using var fresh = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, fresh);
         using var patched = new MemoryStream();
         using (var input = new System.IO.Compression.ZipArchive(new MemoryStream(fresh.ToArray()), System.IO.Compression.ZipArchiveMode.Read))
@@ -48,7 +64,7 @@ public sealed class TypedGraphicRenderingTests
         }
         var ofd = patched.ToArray();
         var loaded = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(new MemoryStream(ofd));
-        Assert.IsType<OfdCompositeElement>(Assert.Single(Assert.IsType<OfdRawElement>(Assert.Single(loaded.Pages[0].Elements)).PageBlockChildren!));
+        Assert.IsType<OfdCompositeElement>(Assert.Single(Assert.IsType<OfdRawElement>(loaded.Pages[0].Elements[0]).PageBlockChildren!));
         if (accepted)
         {
             using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
@@ -65,6 +81,11 @@ public sealed class TypedGraphicRenderingTests
         }
         else
         {
+            var extracted = new Ofdrw.Net.Reader.Extraction.OfdTextExtractor().ExtractPages(loaded);
+            Assert.Equal(2, extracted.Count);
+            Assert.Contains("inside", extracted[0]);
+            Assert.Contains("sibling", extracted[0]);
+            Assert.Contains("later", extracted[1]);
             await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
             await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
             await Assert.ThrowsAsync<System.NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
