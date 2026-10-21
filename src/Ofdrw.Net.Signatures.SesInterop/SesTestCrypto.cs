@@ -40,17 +40,23 @@ internal static class SesTestCrypto
     }
     internal static ECPublicKeyParameters ReadPinnedCertificate(byte[] certificate)
     {
-        SesDer.Read(certificate, 64 * 1024);
+        var key = ReadSm2PublicKey(certificate);
         var parsed = new X509CertificateParser().ReadCertificate(certificate);
-        if (parsed.GetPublicKey() is not ECPublicKeyParameters key ||
-            key.PublicKeyParamSet is null || !key.PublicKeyParamSet.Equals(GMObjectIdentifiers.sm2p256v1) ||
-            !key.Parameters.Equals(Domain) || key.Q.IsInfinity || !key.Q.IsValid())
-            throw new InvalidDataException("Test certificate must use the named SM2 curve.");
         if (parsed.SubjectDN.ToString() != "CN=OFD SES DEV INTEROP TEST" ||
             !parsed.SubjectDN.Equivalent(parsed.IssuerDN) || parsed.SigAlgOid != Algorithm ||
             parsed.NotBefore.ToUniversalTime() != SesTestProfile.Begin || parsed.NotAfter.ToUniversalTime() != SesTestProfile.End)
             throw new InvalidDataException("Expected a self-signed dev/interop test certificate.");
         parsed.Verify(key);
+        return key;
+    }
+    internal static ECPublicKeyParameters ReadSm2PublicKey(byte[] certificate)
+    {
+        SesDer.Read(certificate, 64 * 1024);
+        var parsed = new X509CertificateParser().ReadCertificate(certificate);
+        if (parsed.GetPublicKey() is not ECPublicKeyParameters key ||
+            key.PublicKeyParamSet is null || !key.PublicKeyParamSet.Equals(GMObjectIdentifiers.sm2p256v1) ||
+            !key.Parameters.Equals(Domain) || key.Q.IsInfinity || !key.Q.IsValid())
+            throw new InvalidDataException("Certificate must use the named SM2 curve.");
         return key;
     }
     internal static bool Equal(byte[] left, byte[] right)
