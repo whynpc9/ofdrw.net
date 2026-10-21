@@ -32,6 +32,138 @@ public class ArchivalCopyTests
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
 
     [Theory]
+    [InlineData("OFD-A", PreflightOutcome.Pass, "ArchivalDocType")]
+    [InlineData("OFD", PreflightOutcome.Fail, "NonArchivalDocType")]
+    [InlineData("", PreflightOutcome.Fail, "DocTypeMissing")]
+    public async Task CoverageChecksVerifiedArchiveDocTypeWithoutChangingR17(string docType,
+        PreflightOutcome expected, string reason)
+    {
+        var entries = Seed();
+        var attribute = docType.Length == 0 ? "" : $" DocType='{docType}'";
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'{attribute}><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        using var input = new MemoryStream(Zip(entries), false);
+        var report = await new ArchivalCoverageService().CheckAsync(input, new());
+        Assert.Equal(0, input.Position);
+        Assert.Equal(expected, report.RuleResults[0].Outcome);
+        Assert.Equal(reason, report.RuleResults[0].ReasonCode);
+        Assert.Equal(PreflightOutcome.Pass, report.RuleResults[1].Outcome);
+        Assert.Equal(PreflightOutcome.NotApplicable, report.RuleResults[2].Outcome);
+        Assert.Equal("6.2.1(a)", report.RuleResults[0].Rule.Clause);
+        Assert.Equal("6.2.1(c)", report.RuleResults[1].Rule.Clause);
+        Assert.Equal("Incomplete", report.CoverageStatus);
+        Assert.Equal("NotAssessed", report.Certification);
+        Assert.Equal(expected == PreflightOutcome.Fail ? PreflightOutcome.Fail : PreflightOutcome.Unknown, report.StandardOutcome);
+        Assert.Equal(2, report.FoundationalRules.RuleResults.Count);
+        Assert.Equal("OFD.xml", report.RuleResults[0].Evidence.Entry);
+        Assert.NotEmpty(report.RuleResults[0].Evidence.Observed);
+    }
+
+    [Theory]
+    [InlineData("", PreflightOutcome.NotApplicable, "NoDocumentActions")]
+    [InlineData("<Actions><Action><Goto><Bookmark Name='next'/></Goto></Action></Actions>",
+        PreflightOutcome.Pass, "GotoOnly")]
+    [InlineData("<Actions><Action><URI URI='https://example.org'/></Action></Actions>",
+        PreflightOutcome.Fail, "NonGotoDocumentAction")]
+    [InlineData("<Actions><Action><FutureAction xmlns='urn:foreign'/></Action></Actions>",
+        PreflightOutcome.Unknown, "DocumentScopeUnavailable")]
+    public async Task CoverageClassifiesDocumentActionTypeWithoutRewritingIt(string extra,
+        PreflightOutcome expected, string reason)
+    {
+        var entries = Seed(extra);
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        using var input = new MemoryStream(Zip(entries), false);
+        var before = Hash(input.ToArray());
+        var report = await new ArchivalCoverageService().CheckAsync(input, new());
+        Assert.Equal(expected, report.RuleResults[2].Outcome);
+        Assert.Equal(reason, report.RuleResults[2].ReasonCode);
+        Assert.Equal("6.2.2(c)", report.RuleResults[2].Rule.Clause);
+        Assert.Equal(expected == PreflightOutcome.Unknown ? "<input>" : "Doc_0/Document.xml",
+            report.RuleResults[2].Evidence.Entry);
+        Assert.Equal(expected == PreflightOutcome.Fail ? PreflightOutcome.Fail : PreflightOutcome.Unknown,
+            report.StandardOutcome);
+        Assert.Equal(before, Hash(input.ToArray()));
+        Assert.Equal(0, input.Position);
+    }
+
+    [Fact]
+    public async Task CoverageFailsForMultipleDocumentsAndKeepsForeignScopeUnknown()
+    {
+        var entries = Seed();
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalCoverageService().CheckAsync(input,
+                new ArchivalPreflightOptions { RequireSingleDocument = false });
+            Assert.Equal(PreflightOutcome.NotApplicable,
+                report.FoundationalRules.LocalPreflight.GetRuleOutcome("APF-001"));
+            Assert.Equal(PreflightOutcome.Fail, report.RuleResults[1].Outcome);
+            Assert.Equal("MultipleDocuments", report.RuleResults[1].ReasonCode);
+            Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
+        }
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A' xmlns:x='urn:foreign'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody><x:DocBody/></OFD>");
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalCoverageService().CheckAsync(input, new());
+            Assert.Equal(PreflightOutcome.Unknown, report.RuleResults[1].Outcome);
+            Assert.Equal(PreflightOutcome.Unknown, report.StandardOutcome);
+        }
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A' xmlns:x='urn:foreign' x:DocType='OFD'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalCoverageService().CheckAsync(input, new());
+            Assert.Equal(PreflightOutcome.Unknown, report.RuleResults[0].Outcome);
+            Assert.Equal("AmbiguousDocType", report.RuleResults[0].ReasonCode);
+        }
+    }
+
+    [Fact]
+    public async Task CoverageCannotTurnRejectedInputIntoStandardPass()
+    {
+        using var input = new MemoryStream(Utf8("not a ZIP"), false);
+        var report = await new ArchivalCoverageService().CheckAsync(input, new());
+        Assert.Equal(0, input.Position);
+        Assert.Equal(PreflightRunState.Incomplete, report.FoundationalRules.LocalPreflight.RunState);
+        Assert.All(report.RuleResults, result => Assert.Equal(PreflightOutcome.Unknown, result.Outcome));
+        Assert.Equal(PreflightOutcome.Unknown, report.StandardOutcome);
+    }
+
+    [Fact]
+    public async Task CoverageDoesNotInterpretForeignRootAsKnownStandardEvidence()
+    {
+        var entries = Seed();
+        entries["OFD.xml"] = Utf8("<OFD xmlns='urn:foreign' DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        using var input = new MemoryStream(Zip(entries), false);
+        var report = await new ArchivalCoverageService().CheckAsync(input, new());
+        Assert.All(report.RuleResults, result => Assert.Equal(PreflightOutcome.Unknown, result.Outcome));
+        Assert.Equal(PreflightOutcome.Unknown, report.StandardOutcome);
+    }
+
+    [Fact]
+    public async Task R17CopyPreservesR20RootObservationsAndOriginal()
+    {
+        var entries = Seed("<Permissions><Edit>false</Edit></Permissions>");
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        var folder = Path.Combine(Path.GetTempPath(), "r20-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "source.ofd"); var destination = Path.Combine(folder, "copy.ofd");
+            File.WriteAllBytes(source, Zip(entries));
+            var inputHash = Hash(File.ReadAllBytes(source));
+            var copy = await new ArchivalCopyConverter().ConvertAsync(source, destination, new());
+            Assert.True(File.Exists(copy.AuditPath));
+            Assert.Equal(inputHash, Hash(File.ReadAllBytes(source)));
+            using var output = File.OpenRead(destination);
+            var report = await new ArchivalCoverageService().CheckAsync(output, new());
+            Assert.Equal(PreflightOutcome.Pass, report.RuleResults[0].Outcome);
+            Assert.Equal(PreflightOutcome.Pass, report.RuleResults[1].Outcome);
+            Assert.Equal(PreflightOutcome.NotApplicable, report.RuleResults[2].Outcome);
+            Assert.Equal(PreflightOutcome.Unknown, report.StandardOutcome);
+            Assert.Equal(PreflightOutcome.Pass, report.FoundationalRules.SummaryOutcome);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Theory]
     [InlineData("", PreflightOutcome.Pass, PreflightOutcome.Pass)]
     [InlineData("<Permissions><Edit>false</Edit></Permissions>", PreflightOutcome.Fail, PreflightOutcome.Pass)]
     [InlineData("<VPreferences><HideToolbar>true</HideToolbar></VPreferences>", PreflightOutcome.Pass, PreflightOutcome.Fail)]

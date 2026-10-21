@@ -58,3 +58,16 @@ using (var input = File.OpenRead("source.ofd"))
 var copy = await new ArchivalCopyConverter().ConvertAsync("source.ofd", "archive-copy.ofd", options);
 // Retain copy.OutputPath and copy.AuditPath together.
 ```
+
+## Versioned coverage inventory
+
+The [GB/T 42133-2022 clause ledger](archival-standard-coverage.md) tracks sections 5-7 and normative Annex A, including clauses that remain open or need external evidence. `ArchivalCoverageService.CheckAsync` adds three opt-in, read-only observations: `AC-001` maps to 6.2.1(a), `DocType=OFD-A`; `AC-002` maps to 6.2.1(c), exactly one `DocBody`; `AC-003` maps to 6.2.2(c), document actions limited to Goto. A document without actions gives `NotApplicable` for AC-003; unsupported action shapes give `Unknown`. It retains the unchanged R17 report rather than expanding its copy handler or changing the six local APF rules.
+
+```csharp
+using var file = File.OpenRead("candidate.ofd");
+var coverage = await new ArchivalCoverageService().CheckAsync(file, new ArchivalPreflightOptions());
+// Inspect coverage.RuleResults and coverage.FoundationalRules separately.
+// coverage.StandardOutcome cannot be Pass while clause coverage is incomplete.
+```
+
+`CoverageStatus` is always `Incomplete` and `Certification` is `NotAssessed`. A definite violation is `StandardOutcome=Fail`; otherwise the full-standard outcome is `Unknown`, even when all four mapped conditions pass. Input rejection, unsupported root namespaces and ambiguous foreign `DocBody` or `DocType` forms are Unknown. The PDF source and SHA are pinned in each rule definition and in the ledger; no standard PDF bytes are shipped with the package. R17's audited copy can be checked before and after with this service, but that copy only removes its two documented declaration types.

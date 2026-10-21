@@ -81,7 +81,7 @@ async Task CheckArchiveCopy()
     var target = Path.Combine(output, "archival-subset-copy.ofd");
     var items = new Dictionary<string, string>
     {
-        ["OFD.xml"] = Xml("OFD", "<DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody>"),
+        ["OFD.xml"] = Xml("OFD", "<DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody>", "DocType='OFD-A'"),
         ["Doc_0/Document.xml"] = Xml("Document", "<Pages><Page ID='1' BaseLoc='Pages/P0/Content.xml'/></Pages><Permissions><Edit>false</Edit></Permissions><VPreferences><HideToolbar>true</HideToolbar></VPreferences>"),
         ["Doc_0/Pages/P0/Content.xml"] = Xml("Page", "<Content><Layer><PathObject/></Layer></Content>")
     };
@@ -100,11 +100,27 @@ async Task CheckArchiveCopy()
             report.RuleResults[0].Rule.Clause != "6.2.2(a)" || report.RuleResults[1].Rule.Clause != "6.2.2(b)" ||
             report.Certification != "NotAssessed")
             throw new InvalidOperationException("Archival subset preflight did not report the two verified clauses.");
+        var coverage = await new ArchivalCoverageService().CheckAsync(input, new());
+        if (coverage.RuleResults.Count != 3 || coverage.RuleResults[0].Outcome != PreflightOutcome.Pass ||
+            coverage.RuleResults[1].Outcome != PreflightOutcome.Pass ||
+            coverage.RuleResults[2].Outcome != PreflightOutcome.NotApplicable ||
+            coverage.StandardOutcome != PreflightOutcome.Fail || coverage.CoverageStatus != "Incomplete")
+            throw new InvalidOperationException("Archive root observations or incomplete coverage boundary changed.");
     }
     var copy = await new ArchivalCopyConverter().ConvertAsync(source, target, new());
     if (copy.Postflight.SummaryOutcome != PreflightOutcome.Pass || copy.RemovedDeclarations.Count != 2 ||
         copy.SignaturesInvalidated || sourceSha != Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(source))))
         throw new InvalidOperationException("Archival subset copy did not preserve input and pass postflight.");
+    using (var outputFile = File.OpenRead(target))
+    {
+        var coverage = await new ArchivalCoverageService().CheckAsync(outputFile, new());
+        if (coverage.RuleResults[0].Outcome != PreflightOutcome.Pass ||
+            coverage.RuleResults[1].Outcome != PreflightOutcome.Pass ||
+            coverage.RuleResults[2].Outcome != PreflightOutcome.NotApplicable ||
+            coverage.FoundationalRules.SummaryOutcome != PreflightOutcome.Pass ||
+            coverage.StandardOutcome != PreflightOutcome.Unknown || coverage.Certification != "NotAssessed")
+            throw new InvalidOperationException("A successful subset copy must retain an incomplete full-standard outcome.");
+    }
     await File.WriteAllTextAsync(Path.Combine(output, "archival-subset-result.json"), JsonSerializer.Serialize(new
     {
         sourceSha256 = sourceSha, copy.OutputSha256, copy.AuditPath, copy.RemovedDeclarations,
