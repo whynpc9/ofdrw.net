@@ -252,6 +252,29 @@ public sealed class R01PageBlockTests
         Assert.Equal(0, html.Length);
     }
 
+    [Theory]
+    [InlineData("<Palette Vendor='x'><CV>0 0 255</CV></Palette>")]
+    [InlineData("<Palette><?vendor key?><CV>0 0 255</CV></Palette>")]
+    [InlineData("<Palette><CV>0 0 255</CV><CV>bad</CV></Palette>")]
+    public async Task DirectValueDoesNotBypassPaletteAdmission(string palette)
+    {
+        var resources = $"<ColorSpaces><ColorSpace ID='20' Type='RGB'>{palette}</ColorSpace></ColorSpaces>";
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor ColorSpace='20' Value='0 0 255'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Equal(0, output.Length);
+        }
+    }
+
     [Fact]
     public async Task DuplicatePalettesInReferencedColorSpaceFailAllRenderers()
     {
@@ -800,6 +823,30 @@ public sealed class R01PageBlockTests
             using var output = new MemoryStream();
             var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(bytes), output));
             Assert.Contains("Malformed PageBlock drawing boundary", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("<AbbreviatedData/>")]
+    [InlineData("<AbbreviatedData>M 0 0 L 20</AbbreviatedData>")]
+    [InlineData("<AbbreviatedData>M 0 0 L 20 0 C</AbbreviatedData><AbbreviatedData>M 0 0 L 20 20</AbbreviatedData>")]
+    public async Task PageBlockPathDataFailsBeforeAnyRenderer(string pathData)
+    {
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor Value='0 0 255'/>" + pathData + "</PathObject>";
+        var ofd = await Source(body);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Contains("path data", error.Message);
             Assert.Equal(0, output.Length);
         }
     }
