@@ -138,6 +138,37 @@ public sealed class R18AttachmentPhysicalCleanupTests
         await RefusesWithoutOutput(package);
     }
 
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    public async Task BomlessMultibyteXmlAttachmentCannotBePhysicallyDeleted(bool utf32, bool bigEndian)
+    {
+        var entries = Entries(Seed());
+        Encoding encoding = utf32 ? new UTF32Encoding(bigEndian, false) : new UnicodeEncoding(bigEndian, false);
+        var name = utf32 ? (bigEndian ? "UTF-32BE" : "UTF-32LE") : (bigEndian ? "UTF-16BE" : "UTF-16LE");
+        entries["Doc_0/Payload/original.bin"] = encoding.GetBytes($"<?xml version='1.0' encoding='{name}'?><Page xmlns='{Ns}'/>");
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "lost its reader-owned payload");
+    }
+
+    [Fact]
+    public async Task BomlessMultibyteRetainedXmlIsScannedForAttachmentReferences()
+    {
+        var entries = Entries(Seed());
+        var descriptor = XDocument.Parse(Encoding.UTF8.GetString(entries["Doc_0/Metadata/List.xml"]));
+        descriptor.Root!.Add(new XElement(XName.Get("Attachment", Ns), new XAttribute("ID", "8"),
+            new XAttribute("Name", "retained.bin"), new XElement(XName.Get("FileLoc", Ns), "../Payload/retained.bin")));
+        entries["Doc_0/Metadata/List.xml"] = Utf8(descriptor.ToString(SaveOptions.DisableFormatting));
+        entries["Doc_0/Payload/retained.bin"] = new UnicodeEncoding(true, false)
+            .GetBytes($"<Page xmlns='{Ns}'><Title>original.bin</Title></Page>");
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "remains referenced");
+    }
+
     [Fact]
     public async Task RetainedAuthenticatedBinaryWithXmlSuffixDoesNotBlockOtherPayloadRemoval()
     {
