@@ -676,6 +676,38 @@ public sealed class StandardObjectEditingTests
         Assert.Equal(0, rejected.Length);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MediaAction_OutsideStandardResourceEnvelope_RemainsOpaque(bool wrongNamespace)
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        var resource = Xml(entries["Doc_0/PublicRes.xml"]); var ns = resource.Root!.Name.Namespace;
+        var media = new XElement(ns + "MultiMedia", new XAttribute("ID", "901"), new XAttribute("Type", "Audio"),
+            new XElement(ns + "MediaFile", "audio.wav"));
+        if (wrongNamespace)
+        {
+            resource.Root.Name = XNamespace.Get("urn:wrong-resource") + "Res";
+            resource.Root.Add(new XElement(ns + "MultiMedias", media));
+        }
+        else resource.Root.Add(new XElement(ns + "Extension", media));
+        entries["Doc_0/PublicRes.xml"] = Bytes(resource);
+        entries["Doc_0/Res/audio.wav"] = [1, 2, 3];
+        var document = Xml(entries["Doc_0/Document.xml"]);
+        document.Root!.Add(new XElement(ns + "Actions", new XElement(ns + "Action", new XAttribute("Event", "CLICK"),
+            new XElement(ns + "Sound", new XAttribute("ResourceID", "901")))));
+        entries["Doc_0/Document.xml"] = Bytes(document);
+        using var input = MultiDocumentFixture.Zip(entries);
+        var imported = await new OfdReader().ReadAsync(input);
+        Assert.IsType<OfdRawAction>(Assert.Single(imported.Actions!.Items));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentEditor.RemovePages(imported, [1]));
+        Assert.Equal(2, imported.Pages.Count);
+    }
+
     [Fact]
     public async Task PageDeletion_PreservesLocalActionsOnlyWithClosedTargetsAndKnownXml()
     {

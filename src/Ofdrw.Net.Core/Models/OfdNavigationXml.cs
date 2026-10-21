@@ -451,13 +451,19 @@ internal static class OfdNavigationXml
             if (!paths.Add(path)) continue;
             if (!package.PreservedEntries.TryGetValue(path, out var bytes)) continue;
             var xml = material.ReadXml(path, bytes, token);
-            if (xml.Root?.Name.LocalName != "Res") continue;
-            var ns = xml.Root.Name.Namespace;
+            var ns = XNamespace.Get(package.Options.Namespace);
+            if (xml.Root?.Name != ns + "Res") continue;
+            var containers = xml.Root.Elements(ns + "MultiMedias").ToArray();
+            if (containers.Length > 1) return false;
             foreach (var media in xml.Root.Descendants(ns + "MultiMedia"))
             {
                 token.ThrowIfCancellationRequested();
-                if (media.Attribute("ID")?.Value != id || media.Attribute("Type")?.Value != type) continue;
-                var file = media.Attribute("MediaFile")?.Value ?? media.Element(ns + "MediaFile")?.Value;
+                if (media.Attribute("ID")?.Value != id) continue;
+                if (containers.Length != 1 || media.Parent != containers[0] || media.Attribute("Type")?.Value != type)
+                    return false;
+                var files = media.Elements(ns + "MediaFile").ToArray();
+                if (files.Length > 1 || files.Length == 1 && media.Attribute("MediaFile") is not null) return false;
+                var file = media.Attribute("MediaFile")?.Value ?? files.FirstOrDefault()?.Value;
                 if (string.IsNullOrWhiteSpace(file)) continue;
                 var baseLoc = xml.Root.Attribute("BaseLoc")?.Value;
                 var mediaLoc = string.IsNullOrWhiteSpace(baseLoc) || file!.StartsWith("/", StringComparison.Ordinal)
