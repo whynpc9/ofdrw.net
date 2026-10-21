@@ -29,6 +29,8 @@ internal static class OfdRenderPreflight
                 throw new NotSupportedException($"Opaque OFD drawing '{raw.LocalName}' cannot be rendered.");
             if (element is not (OfdTextElement or OfdImageElement or OfdPathElement))
                 throw new NotSupportedException("Unknown OFD drawing cannot be rendered.");
+            if (element is OfdImageElement unresolvedImage && unresolvedImage.Data is not { Length: > 0 })
+                throw new NotSupportedException("OFD image resource has no resolved payload.");
             var source = element switch
             {
                 OfdTextElement sourceText => sourceText.SourceXml,

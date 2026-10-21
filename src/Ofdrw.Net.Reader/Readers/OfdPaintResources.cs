@@ -59,11 +59,15 @@ internal sealed class OfdPaintResources
         }
     }
 
-    internal (XElement Node, string? Error) Normalize(XElement source, OfdModelMaterialization material, CancellationToken token)
+    internal (XElement Node, string? Error) Normalize(XElement source, int sourceXmlCharacters,
+        OfdModelMaterialization material, CancellationToken token)
     {
         try
         {
-            token.ThrowIfCancellationRequested(); material.ChargeCopy(checked(1024L + 16L * source.ToString().Length), token);
+            // Reuse the caller's source-envelope length instead of creating a
+            // second serialization string solely to account for this clone.
+            token.ThrowIfCancellationRequested();
+            material.ChargeCopy(checked(1024L + 16L * sourceXmlCharacters), token);
             var node = new XElement(source);
             if (node.Attribute("DrawParam") is { } draw)
             {
@@ -80,7 +84,8 @@ internal sealed class OfdPaintResources
                 NormalizeColor(color, token);
             return (node, null);
         }
-        catch (Exception error) when (error is NotSupportedException or InvalidDataException or FormatException or OverflowException)
+        catch (Exception error) when ((error is NotSupportedException or InvalidDataException or FormatException or OverflowException) &&
+            !OfdTraversalBudget.IsLimit(error))
         { return (source, "Unsupported OFD paint: " + error.Message); }
     }
 

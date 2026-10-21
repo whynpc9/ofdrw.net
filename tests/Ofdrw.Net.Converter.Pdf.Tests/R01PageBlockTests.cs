@@ -190,6 +190,27 @@ public sealed class R01PageBlockTests
         Assert.Equal(0, html.Length);
     }
 
+    [Fact]
+    public async Task MissingNestedImagePayloadFailsAllRenderers()
+    {
+        var bytes = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='999'/>");
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
+        Assert.Equal(0, html.Length);
+    }
+
+    [Fact]
+    public void PaintNormalizationPreservesMaterializationLimit()
+    {
+        var paint = new OfdPaintResources();
+        var material = new OfdModelMaterialization(new OfdModelLimits { MaxMaterializedBytes = 1024 });
+        var source = XElement.Parse($"<PathObject xmlns='{Ns}' ID='501'/>");
+        var error = Assert.Throws<InvalidDataException>(() => paint.Normalize(source, 100, material, default));
+        Assert.True(OfdTraversalBudget.IsLimit(error));
+    }
+
     [Theory]
     [InlineData("<FillColor ColorSpace='999' Value='0 0 255'/>", "")]
     [InlineData("<FillColor><AxialShd/></FillColor>", "")]

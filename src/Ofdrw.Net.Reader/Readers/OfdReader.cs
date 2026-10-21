@@ -1100,7 +1100,8 @@ public sealed class OfdReader : IOfdReader
                 }
                 if (string.Equals(localName, "TextObject", StringComparison.OrdinalIgnoreCase))
                 {
-                    var (renderNode, paintError) = paint?.Normalize(node, material, cancellationToken) ?? (node, (string?)null);
+                    var sourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken);
+                    var (renderNode, paintError) = paint?.Normalize(node, sourceXml.Length, material, cancellationToken) ?? (node, (string?)null);
                     var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                     material.ReserveReadModel(256L + node.Elements().Count() * 160L, cancellationToken);
                     var textCodes = node.Elements(node.Name.Namespace + "TextCode").ToList();
@@ -1123,7 +1124,7 @@ public sealed class OfdReader : IOfdReader
                         Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
                         FillColor = ParseColor(renderNode.Elements()
                             .FirstOrDefault(x => x.Name.LocalName == "FillColor"), material, cancellationToken) ?? OfdColor.Black,
-                        SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken),
+                        SourceXml = sourceXml,
                         ClippingXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken)
                     };
                     AttachPaint(text, node, renderNode, paintError, material, cancellationToken);
@@ -1182,7 +1183,8 @@ public sealed class OfdReader : IOfdReader
 
                 if (string.Equals(localName, "PathObject", StringComparison.OrdinalIgnoreCase))
                 {
-                    var (renderNode, paintError) = paint?.Normalize(node, material, cancellationToken) ?? (node, (string?)null);
+                    var sourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken);
+                    var (renderNode, paintError) = paint?.Normalize(node, sourceXml.Length, material, cancellationToken) ?? (node, (string?)null);
                     var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                     var strokeColor = ParseColor(renderNode.Elements()
                         .FirstOrDefault(x => x.Name.LocalName == "StrokeColor"), material, cancellationToken);
@@ -1205,7 +1207,7 @@ public sealed class OfdReader : IOfdReader
                         Fill = ParseBoolean(node.Attribute("Fill")?.Value, false),
                         StrokeColor = strokeColor ?? OfdColor.Black,
                         FillColor = fillColor,
-                        SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken),
+                        SourceXml = sourceXml,
                         ClippingXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken)
                     };
                     AttachPaint(path, node, renderNode, paintError, material, cancellationToken);
