@@ -19,6 +19,11 @@ if (args.Contains("--tables-only"))
     await PublicTableSamples.Run(outputDirectory, docxPath);
     return;
 }
+if (args.Contains("--named-areas-only"))
+{
+    await NamedAreaSamples.Run(outputDirectory);
+    return;
+}
 
 var flow = new FlowDocument();
 flow.Options.MarginLeftMillimeters = 22;
