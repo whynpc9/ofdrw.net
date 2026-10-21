@@ -108,6 +108,20 @@ public class ArchivalCopyTests
         Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
     }
 
+    [Theory]
+    [InlineData("<Actions/>")]
+    [InlineData("<x:Actions xmlns:x='urn:foreign'/>")]
+    public async Task CoverageKeepsKnownNonGotoFailureBesideAmbiguousActions(string extra)
+    {
+        var entries = Seed("<Actions><Action><URI URI='https://example.org'/></Action></Actions>" + extra);
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        using var input = new MemoryStream(Zip(entries), false);
+        var report = await new ArchivalCoverageService().CheckAsync(input, new());
+        Assert.Equal(PreflightOutcome.Fail, report.RuleResults[2].Outcome);
+        Assert.Equal("NonGotoDocumentAction", report.RuleResults[2].ReasonCode);
+        Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
+    }
+
     [Fact]
     public async Task CoverageFailsForMultipleDocumentsAndKeepsForeignScopeUnknown()
     {
@@ -136,6 +150,14 @@ public class ArchivalCopyTests
             var report = await new ArchivalCoverageService().CheckAsync(input, new());
             Assert.Equal(PreflightOutcome.Unknown, report.RuleResults[0].Outcome);
             Assert.Equal("AmbiguousDocType", report.RuleResults[0].ReasonCode);
+        }
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD' xmlns:x='urn:foreign' x:DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalCoverageService().CheckAsync(input, new());
+            Assert.Equal(PreflightOutcome.Fail, report.RuleResults[0].Outcome);
+            Assert.Equal("NonArchivalDocType", report.RuleResults[0].ReasonCode);
+            Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
         }
     }
 

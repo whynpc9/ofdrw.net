@@ -135,13 +135,13 @@ public sealed class ArchivalCoverageService
     {
         var rule = ArchivalCoverageRuleCatalog.Rules[0];
         var selector = Selector(root) + "/@DocType";
+        var value = (string?)root.Attribute("DocType");
+        if (value != null && value != "OFD-A")
+            return Result(rule, PreflightOutcome.Fail, "NonArchivalDocType", selector, "DocType is not OFD-A");
         if (root.Attributes().Any(x => x.Name.LocalName == "DocType" && x.Name.Namespace != XNamespace.None))
             return Result(rule, PreflightOutcome.Unknown, "AmbiguousDocType", selector, "Foreign DocType attribute present");
-        var value = (string?)root.Attribute("DocType");
         if (value == null) return Result(rule, PreflightOutcome.Fail, "DocTypeMissing", selector, "DocType absent");
-        return value == "OFD-A"
-            ? Result(rule, PreflightOutcome.Pass, "ArchivalDocType", selector, "DocType=OFD-A")
-            : Result(rule, PreflightOutcome.Fail, "NonArchivalDocType", selector, "DocType is not OFD-A");
+        return Result(rule, PreflightOutcome.Pass, "ArchivalDocType", selector, "DocType=OFD-A");
     }
 
     private static ArchivalCoverageRuleResult DocumentCount(XElement root)
@@ -190,9 +190,20 @@ public sealed class ArchivalCoverageService
                 "Document root unsupported", entry);
         var ns = document.Name.Namespace;
         var selector = "/{" + document.Name.NamespaceName + "}Document[1]/{" + document.Name.NamespaceName + "}Actions[1]";
+        var containers = document.Elements(ns + "Actions").ToArray();
+        for (var containerIndex = 0; containerIndex < containers.Length; containerIndex++)
+        {
+            var recognized = containers[containerIndex].Elements(ns + "Action").ToArray();
+            for (var actionIndex = 0; actionIndex < recognized.Length; actionIndex++)
+                if (recognized[actionIndex].Elements().Any(x => x.Name.Namespace == ns &&
+                        x.Name.LocalName is "URI" or "GotoA" or "Sound" or "Movie"))
+                    return Result(rule, PreflightOutcome.Fail, "NonGotoDocumentAction",
+                        "/{" + document.Name.NamespaceName + "}Document[1]/{" + document.Name.NamespaceName +
+                        "}Actions[" + (containerIndex + 1) + "]/{" + document.Name.NamespaceName +
+                        "}Action[" + (actionIndex + 1) + "]", "Known non-Goto action present", entry);
+        }
         if (document.Elements().Any(x => x.Name.LocalName == "Actions" && x.Name.Namespace != ns))
             return Result(rule, PreflightOutcome.Unknown, "AmbiguousActions", selector, "Foreign Actions declaration", entry);
-        var containers = document.Elements(ns + "Actions").ToArray();
         if (containers.Length == 0)
             return Result(rule, PreflightOutcome.NotApplicable, "NoDocumentActions", selector, "No Actions declaration", entry);
         if (containers.Length != 1 || containers[0].Attributes().Any(x => !x.IsNamespaceDeclaration) ||
