@@ -26,7 +26,9 @@ public sealed class OfdStandardRecipient
 public sealed class OfdStandardManifestSigner(byte[] certificateDer,
     Func<byte[], CancellationToken, Task<byte[]>> signDigestAsync)
 {
+    /// <summary>Signer certificate embedded in the signed value; callers must pin it independently when verifying.</summary>
     public byte[] CertificateDer { get; } = (byte[])(certificateDer ?? throw new ArgumentNullException(nameof(certificateDer))).Clone();
+    /// <summary>Sign the supplied 32-byte SM3 digest with SM3-with-SM2 and return a DER signature.</summary>
     public Func<byte[], CancellationToken, Task<byte[]>> SignDigestAsync { get; } =
         signDigestAsync ?? throw new ArgumentNullException(nameof(signDigestAsync));
 }
@@ -34,7 +36,9 @@ public sealed class OfdStandardManifestSigner(byte[] certificateDer,
 /// <summary>Explicit finite profile. All original file entries are encrypted, as in the pinned Java writer.</summary>
 public sealed class OfdStandardEncryptionOptions
 {
+    /// <summary>One to 32 uniquely named recipients, all using the same wrapping scheme.</summary>
     public IList<OfdStandardRecipient> Recipients { get; } = new List<OfdStandardRecipient>();
+    /// <summary>Required signing callback and certificate for the package inventory.</summary>
     public OfdStandardManifestSigner? ManifestSigner { get; set; }
     /// <summary>ZIP and metadata limits shared with the optional v2 implementation; KDF settings do not apply.</summary>
     public OfdPasswordOptions Limits { get; set; } = new();
@@ -49,8 +53,10 @@ public sealed class OfdStandardCredential
     internal byte[]? CertificateDer { get; }
     private OfdStandardCredential(string name, string? password, byte[]? privateKey, byte[]? certificate)
     { Name = name; Password = password; PrivateKeyPkcs8Der = privateKey; CertificateDer = certificate; }
+    /// <summary>Select one exact recipient name and password; no other user is tried.</summary>
     public static OfdStandardCredential ForPassword(string name, string password) =>
         new(RequireName(name), password ?? throw new ArgumentNullException(nameof(password)), null, null);
+    /// <summary>Select one recipient using its PKCS#8 SM2 private key and independently pinned X.509 certificate.</summary>
     public static OfdStandardCredential ForCertificate(string name, byte[] privateKeyPkcs8Der, byte[] expectedCertificateDer) =>
         new(RequireName(name), null,
             (byte[])(privateKeyPkcs8Der ?? throw new ArgumentNullException(nameof(privateKeyPkcs8Der))).Clone(),
@@ -62,9 +68,11 @@ public sealed class OfdStandardCredential
 /// <summary>Manifest signer must be pinned independently of the OFD package.</summary>
 public sealed class OfdStandardDecryptionOptions
 {
+    /// <summary>Certificate pinned from outside the encrypted package for its manifest signature.</summary>
     public byte[]? ExpectedManifestSignerCertificateDer { get; set; }
     /// <summary>Explicitly allow a Java manifest with only a signed file-name list. Result reports unverified contents.</summary>
     public bool AllowUnverifiedContents { get; set; }
+    /// <summary>ZIP and metadata limits shared with the optional v2 implementation; v2 KDF settings do not apply.</summary>
     public OfdPasswordOptions Limits { get; set; } = new();
 }
 

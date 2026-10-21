@@ -19,6 +19,7 @@ public static class OfdStandardEncryption
     private const string ManifestPath = "OFDEntries.xml";
     private const string SignedValuePath = "signedvalue.dat";
 
+    /// <summary>Encrypt every entry of one OFD into the explicit Java-compatible profile.</summary>
     public static async Task<byte[]> EncryptAsync(Stream source, OfdStandardEncryptionOptions options,
         CancellationToken cancellationToken = default)
     {
@@ -94,6 +95,7 @@ public static class OfdStandardEncryption
         return await OfdPasswordEnvelope.Pack(entries, settings, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Verify the pinned inventory and recover one named recipient's OFD.</summary>
     public static async Task<OfdStandardDecryptionResult> DecryptAsync(Stream source, OfdStandardCredential credential,
         OfdStandardDecryptionOptions options, CancellationToken cancellationToken = default)
     {
