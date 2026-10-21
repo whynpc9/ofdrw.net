@@ -375,21 +375,18 @@ internal static class OfdNavigationXml
                     if (!ValidEvent(attachment.Event) || string.IsNullOrWhiteSpace(attachment.AttachId) ||
                         package.Attachments.Count(item => item.Id == attachment.AttachId) != 1)
                         throw new NotSupportedException("Attachment action target is not a retained local attachment.");
-                    if (deletingSourcePage) throw new NotSupportedException("Attachment action reference closure is not proven for page deletion.");
                     break;
                 case OfdSoundAction sound:
                     if (!ValidEvent(sound.Event) || !Id(sound.ResourceId, out _) || sound.Volume is < 0 or > 100)
                         throw new ArgumentException("Invalid Sound action.");
                     if (!MediaResource(package, sound.ResourceId, "Audio", material ?? new OfdModelMaterialization(new OfdModelLimits()), token))
                         throw new NotSupportedException("Sound action requires a retained audio resource.");
-                    if (deletingSourcePage) throw new NotSupportedException("Media action resource closure is not proven for page deletion.");
                     break;
                 case OfdMovieAction movie:
                     if (!ValidEvent(movie.Event) || !Id(movie.ResourceId, out _) || movie.Operator.HasValue && !Enum.IsDefined(typeof(OfdMovieOperator), movie.Operator.Value))
                         throw new ArgumentException("Invalid Movie action.");
                     if (!MediaResource(package, movie.ResourceId, "Video", material ?? new OfdModelMaterialization(new OfdModelLimits()), token))
                         throw new NotSupportedException("Movie action requires a retained video resource.");
-                    if (deletingSourcePage) throw new NotSupportedException("Media action resource closure is not proven for page deletion.");
                     break;
                 default: throw new NotSupportedException("Unsupported typed navigation node.");
             }
@@ -489,7 +486,7 @@ internal static class OfdNavigationXml
             {
                 "Outlines" => child.Name.LocalName == "OutlineElem", "OutlineElem" => child.Name.LocalName is "OutlineElem" or "Actions",
                 "Bookmarks" => child.Name.LocalName == "Bookmark", "Bookmark" => child.Name.LocalName == "Dest",
-                "Actions" => child.Name.LocalName == "Action", "Action" => child.Name.LocalName is "Goto" or "URI", _ => false
+                "Actions" => child.Name.LocalName == "Action", "Action" => child.Name.LocalName is "Goto" or "URI" or "GotoA" or "Sound" or "Movie", _ => false
             };
             if (!allowed) return true;
             if (child.Name == ns + "URI" && (child.Nodes().Any(OpaqueNode) ||
@@ -498,6 +495,15 @@ internal static class OfdNavigationXml
             if (child.Name == ns + "Goto" && (child.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
                 child.Nodes().Any(OpaqueNode) || child.Elements().Any(target => target.Name != ns + "Dest" && target.Name != ns + "Bookmark" ||
                     target.Name == ns + "Bookmark" && (target.HasElements || target.Nodes().Any(OpaqueNode) || target.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name != "Name"))))) return true;
+            if (child.Name.LocalName is "GotoA" or "Sound" or "Movie" &&
+                (child.HasElements || child.Nodes().Any(OpaqueNode) || child.Attributes().Any(attribute =>
+                    !attribute.IsNamespaceDeclaration && (attribute.Name.Namespace != XNamespace.None || (child.Name.LocalName switch
+                    {
+                        "GotoA" => attribute.Name.LocalName is not ("AttachID" or "NewWindow"),
+                        "Sound" => attribute.Name.LocalName is not ("ResourceID" or "Volume" or "Repeat" or "Synchronous"),
+                        "Movie" => attribute.Name.LocalName is not ("ResourceID" or "Operator"),
+                        _ => true
+                    }))))) return true;
         }
         return false;
         static bool OpaqueNode(XNode node) => node is XProcessingInstruction || node is XText text && !string.IsNullOrWhiteSpace(text.Value);

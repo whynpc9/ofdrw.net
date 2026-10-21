@@ -441,6 +441,64 @@ public sealed class StandardObjectEditingTests
         Assert.Equal(0, rejected.Length);
     }
 
+    [Fact]
+    public async Task PageDeletion_PreservesLocalActionsOnlyWithClosedTargetsAndKnownXml()
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Attachments.Add(new OfdAttachment { Id = "51", Name = "memo.txt", Data = [1, 2, 3] });
+        package.Actions = new OfdActionCollection();
+        package.Actions.Items.Add(new OfdAttachmentAction { Event = "CLICK", AttachId = "51" });
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        OfdDocumentEditor.RemovePages(package, [1]);
+        Assert.Single(package.Pages);
+        var resource = Xml(entries["Doc_0/PublicRes.xml"]); var ns = resource.Root!.Name.Namespace;
+        resource.Root.Add(new XElement(ns + "MultiMedias",
+            new XElement(ns + "MultiMedia", new XAttribute("ID", "901"), new XAttribute("Type", "Audio"), new XElement(ns + "MediaFile", "audio.wav")),
+            new XElement(ns + "MultiMedia", new XAttribute("ID", "902"), new XAttribute("Type", "Video"), new XElement(ns + "MediaFile", "video.mp4"))));
+        entries["Doc_0/PublicRes.xml"] = Bytes(resource);
+        entries["Doc_0/Res/audio.wav"] = [4, 5, 6]; entries["Doc_0/Res/video.mp4"] = [7, 8, 9];
+        var document = Xml(entries["Doc_0/Document.xml"]);
+        var actions = document.Root!.Element(ns + "Actions")!;
+        actions.Add(new XElement(ns + "Action", new XAttribute("Event", "CLICK"),
+            new XElement(ns + "Sound", new XAttribute("ResourceID", "901"), new XAttribute("Volume", "50"))));
+        actions.Add(new XElement(ns + "Action", new XAttribute("Event", "CLICK"),
+            new XElement(ns + "Movie", new XAttribute("ResourceID", "902"), new XAttribute("Operator", "Play"))));
+        entries["Doc_0/Document.xml"] = Bytes(document);
+
+        using var input = MultiDocumentFixture.Zip(entries);
+        var source = await new OfdReader().ReadAsync(input);
+        Assert.IsType<OfdAttachmentAction>(source.Actions!.Items[0]);
+        Assert.IsType<OfdSoundAction>(source.Actions.Items[1]);
+        Assert.IsType<OfdMovieAction>(source.Actions.Items[2]);
+        OfdDocumentEditor.RemovePages(source, [1]);
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(source, output);
+        output.Position = 0; var saved = await new OfdReader().ReadAsync(output);
+        Assert.Single(saved.Pages);
+        Assert.IsType<OfdAttachmentAction>(saved.Actions!.Items[0]);
+        Assert.IsType<OfdSoundAction>(saved.Actions.Items[1]);
+        Assert.IsType<OfdMovieAction>(saved.Actions.Items[2]);
+        Assert.Equal(new byte[] { 4, 5, 6 }, saved.PreservedEntries["Doc_0/Res/audio.wav"]);
+        Assert.Equal(new byte[] { 7, 8, 9 }, saved.PreservedEntries["Doc_0/Res/video.mp4"]);
+
+        using var opaqueInput = MultiDocumentFixture.Zip(entries);
+        var opaqueEntries = MultiDocumentFixture.Unzip(opaqueInput);
+        var opaqueDocument = Xml(opaqueEntries["Doc_0/Document.xml"]);
+        opaqueDocument.Descendants(ns + "Sound").Single().SetAttributeValue(XName.Get("Keep", "urn:vendor"), "x");
+        opaqueEntries["Doc_0/Document.xml"] = Bytes(opaqueDocument);
+        using var opaqueZip = MultiDocumentFixture.Zip(opaqueEntries);
+        var opaque = await new OfdReader().ReadAsync(opaqueZip);
+        Assert.IsType<OfdSoundAction>(opaque.Actions!.Items[1]);
+        Assert.Throws<NotSupportedException>(() => OfdDocumentEditor.RemovePages(opaque, [1]));
+
+        using var missingInput = MultiDocumentFixture.Zip(entries);
+        var missing = await new OfdReader().ReadAsync(missingInput);
+        missing.Attachments.Clear();
+        Assert.Throws<NotSupportedException>(() => OfdDocumentEditor.RemovePages(missing, [1]));
+    }
+
     private static XDocument Xml(byte[] bytes) => XDocument.Load(new MemoryStream(bytes));
     private static byte[] Bytes(XDocument xml) => Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
 }

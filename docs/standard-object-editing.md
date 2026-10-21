@@ -27,6 +27,8 @@ Permissions are **declarations only**. The Reader, Writer and editing APIs do no
 
 Existing local `OfdGoToAction` remains available. `OfdUriAction`, `OfdAttachmentAction` (`GotoA`), `OfdSoundAction`, and `OfdMovieAction` model the other standard action forms. URI, attachment and media actions are serialized only; the library does not request a URI, open an attachment or play media. Attachment and media targets must be retained local resources for new or edited typed actions. Unsupported, ambiguous or unprovable source actions remain `OfdRawAction` with their full XML.
 
+Deleting an unrelated page keeps a modeled attachment or media action when its target remains in the package. An action carrying unknown XML, or one whose target is removed, still blocks the deletion.
+
 Imported wrappers preserve unknown XML, namespaces and unmodeled siblings. Assigning null to a pristine imported typed wrapper preserves its source. Withdrawing a modified imported wrapper fails. A typed node from another document cannot be installed into the selected document. Page deletion or cross-document migration still fails when reference closure cannot be proven. This API provides targeted editing of the named objects, not whole-document XSD validation or archival certification.
 
 `OfdDocumentSplitter.Split` carries edited custom metadata, permissions, viewer preferences, and version descriptors into the selected package with new document ownership. `OfdDocumentMerger.Merge` carries the first source's `DocUsage`, `Cover`, and `CreatorVersion`; a cover image must be an existing, distinct package entry so its bytes can be copied into the merged package.
