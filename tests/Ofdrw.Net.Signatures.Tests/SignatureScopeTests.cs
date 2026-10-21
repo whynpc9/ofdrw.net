@@ -225,6 +225,56 @@ public sealed class SignatureScopeTests
         Assert.Equal(0, output.Length);
     }
 
+    [Fact]
+    public async Task DeclaredUtf32AttachmentIndexWithoutXmlSuffixProtectsExternalPayload()
+    {
+        using var source = await CreatePackage();
+        using var withIndex = await AddEntries(source, new Dictionary<string, byte[]>
+        {
+            ["Doc_0/Attachs/Index.dat"] = new UTF32Encoding(true, false).GetBytes(
+                "<?xml version=\"1.0\" encoding=\"utf-32BE\"?>" +
+                "<Attachments xmlns=\"" + OfdConstants.Namespace + "\">" +
+                "<Attachment ID=\"A1\" Name=\"shared\"><FileLoc>/Shared/attachment.bin</FileLoc>" +
+                "</Attachment></Attachments>"),
+            ["Shared/attachment.bin"] = [1, 2, 3]
+        });
+        using var referenced = await Rewrite(withIndex, "Doc_0/Document.xml", bytes =>
+        {
+            var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            document.Root!.Add(new XElement(document.Root.Name.Namespace + "Attachments",
+                "Attachs/Index.dat"));
+            return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        });
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(referenced, output, provider,
+                new OfdSignatureOptions { ProtectFile = path => path != "/Shared/attachment.bin" }));
+        Assert.Contains("/Shared/attachment.bin", error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+
+        referenced.Position = 0;
+        using var signed = new MemoryStream();
+        var scope = await new OfdSignatureService().SignWithResultAsync(referenced, signed,
+            new Provider(), new OfdSignatureOptions
+            {
+                ProtectFile = path => path != "/Extras/optional.bin"
+            });
+        Assert.Contains("/Doc_0/Attachs/Index.dat", scope.ProtectedFiles);
+        Assert.Contains("/Shared/attachment.bin", scope.ProtectedFiles);
+        using var changed = await Rewrite(signed, "Shared/attachment.bin", _ => [9, 9, 9]);
+        Assert.False((await Verify(changed)).ReferenceIntegrityValid);
+
+        using var malformed = await Rewrite(referenced, "Doc_0/Attachs/Index.dat", _ => [1, 2, 3]);
+        using var rejected = new MemoryStream();
+        var malformedProvider = new Provider();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdSignatureService().SignAsync(
+            malformed, rejected, malformedProvider, new OfdSignatureOptions { ProtectFile = _ => true }));
+        Assert.Equal(0, malformedProvider.Calls);
+        Assert.Equal(0, rejected.Length);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

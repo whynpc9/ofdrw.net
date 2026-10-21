@@ -108,13 +108,25 @@ internal static class OfdSignatureFileSelection
                     "Cannot prove document dependency closure for /" + path, exception);
             }
             foreach (var table in document.Root!.DescendantsAndSelf().Where(node =>
-                         node.Name.LocalName == "PublicRes" || node.Name.LocalName == "DocumentRes"))
+                         node.Name.LocalName is "PublicRes" or "DocumentRes"))
             {
                 var location = Resolve(path, table.Value.Trim());
                 if (!entries.ContainsKey(location))
                     throw new InvalidDataException("Cannot prove resource table dependency: /" + path);
                 required.Add(location);
                 if (xmlPaths.Add(location)) pending.Enqueue(location);
+            }
+            if (documentPaths.Contains(path, StringComparer.OrdinalIgnoreCase))
+            {
+                foreach (var descriptor in document.Root.Elements().Where(node =>
+                             node.Name.LocalName is "Attachments" or "CustomTags" or "Extensions"))
+                {
+                    var location = Resolve(path, descriptor.Value.Trim());
+                    if (descriptor.HasElements || location.Length == 0 || !entries.ContainsKey(location))
+                        throw new InvalidDataException("Cannot prove XML descriptor dependency: /" + path);
+                    required.Add(location);
+                    if (xmlPaths.Add(location)) pending.Enqueue(location);
+                }
             }
             foreach (var candidate in document.Root!.DescendantsAndSelf()
                          .SelectMany(node => node.Attributes().Where(a => !a.IsNamespaceDeclaration)
