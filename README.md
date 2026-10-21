@@ -391,7 +391,7 @@ This ticket has validated source and local-feed artifacts and has not published 
 - Merge produces a self-contained typed document, flattens referenced templates, and rejects unknown raw objects unless `SkipUnsupportedRawElements` is explicitly enabled.
 - SM3 reference digests are built in. SES/SM2 electronic-seal verification must be supplied through `IOfdSignedValueVerifier`.
 - GM/T 0099 encrypted-envelope processing and long-term archival validation are not built in. `OfdCryptographicCapabilities` exposes these support boundaries to applications.
-- A repository license has not yet been selected by the project owner. The NuGet workflow now blocks publication until both a license file and NuGet license metadata exist. Direct dependency declarations are recorded in `THIRD-PARTY-NOTICES.md`.
+- The repository uses the MIT [license](LICENSE), with NuGet license metadata in `Directory.Build.props`. The publish workflow checks the license and resolved dependency inventory; direct dependency declarations are recorded in `THIRD-PARTY-NOTICES.md`. These files alone do not establish that a particular release passed its publication gates.
 
 ### Optional PDF vector mode
 
