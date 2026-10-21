@@ -150,7 +150,7 @@ public sealed class TextLayoutLine
     public TextLayoutBounds? InkBoundsMillimeters { get; }
     /// <summary>The exact final shaped run used for this line's measurement.</summary>
     public TextShapedRun ShapedRun { get; }
-    /// <summary>Whether the final advance exceeds the available line width.</summary>
+    /// <summary>Whether the final visible advance, excluding trailing breakable spaces, exceeds the available width.</summary>
     public bool OverflowsWidth { get; }
 }
 
@@ -261,7 +261,14 @@ public sealed class TextPrelayoutEngine
                 throw new TextLayoutException(TextLayoutError.InvalidRequest, "Shaper returned a result for a different run or invalid direction.");
             return shaped;
         }
-        void AddLine(int start, int length, int terminatorLength, TextShapedRun run)
+        double FitAdvance(int start, int end, TextShapedRun run)
+        {
+            if (run.XAdvance * scale <= request.WidthMillimeters + 1e-8) return run.XAdvance;
+            var visibleEnd = end;
+            while (visibleEnd > start && IsBreakableWhitespace(request.Text[visibleEnd - 1])) visibleEnd--;
+            return visibleEnd == end ? run.XAdvance : Shape(start, visibleEnd - start).XAdvance;
+        }
+        void AddLine(int start, int length, int terminatorLength, TextShapedRun run, double fitAdvance)
         {
             if (lines.Count >= request.MaximumLines)
                 throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Prelayout line budget exceeded.");
@@ -286,7 +293,7 @@ public sealed class TextPrelayoutEngine
             var ink = minX.HasValue ? new TextLayoutBounds(minX.Value, minY!.Value,
                 maxX!.Value - minX.Value, maxY!.Value - minY.Value) : null;
             lines.Add(new TextLayoutLine(start, length, terminatorLength, top, baseline, height,
-                advance, ink, run, advance > request.WidthMillimeters + 1e-8));
+                advance, ink, run, fitAdvance * scale > request.WidthMillimeters + 1e-8));
         }
         var paragraphStart = 0;
         while (paragraphStart <= request.Text.Length)
@@ -297,7 +304,7 @@ public sealed class TextPrelayoutEngine
                 request.Text[newline - 1] == '\r' ? newline - 1 : newline;
             var terminator = newline < 0 ? 0 : newline - paragraphEnd + 1;
             var cursor = paragraphStart;
-            if (cursor == paragraphEnd) AddLine(cursor, 0, terminator, Shape(cursor, 0));
+            if (cursor == paragraphEnd) AddLine(cursor, 0, terminator, Shape(cursor, 0), 0);
             while (cursor < paragraphEnd)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -305,20 +312,27 @@ public sealed class TextPrelayoutEngine
                 var fittingEnd = -1;
                 var selectedEnd = paragraphEnd;
                 TextShapedRun? selected = null;
+                double selectedFitAdvance = 0;
                 foreach (var end in opportunities)
                 {
                     var candidate = Shape(cursor, end - cursor);
-                    if (candidate.XAdvance * scale <= request.WidthMillimeters + 1e-8)
-                    { fittingEnd = end; selected = candidate; continue; }
+                    var fitAdvance = FitAdvance(cursor, end, candidate);
+                    if (fitAdvance * scale <= request.WidthMillimeters + 1e-8)
+                    { fittingEnd = end; selected = candidate; selectedFitAdvance = fitAdvance; continue; }
                     selectedEnd = fittingEnd > cursor ? fittingEnd : end;
-                    if (fittingEnd <= cursor) selected = candidate;
+                    if (fittingEnd <= cursor) { selected = candidate; selectedFitAdvance = fitAdvance; }
                     break;
                 }
                 if (selected is null) throw new TextLayoutException(TextLayoutError.InvalidRequest, "No line break candidate was available.");
                 if (selectedEnd == paragraphEnd && fittingEnd == paragraphEnd) { /* complete paragraph */ }
                 else if (fittingEnd > cursor) selectedEnd = fittingEnd;
-                if (selected.Request.Text.Length != selectedEnd - cursor) selected = Shape(cursor, selectedEnd - cursor);
-                AddLine(cursor, selectedEnd - cursor, selectedEnd == paragraphEnd ? terminator : 0, selected);
+                if (selected.Request.Text.Length != selectedEnd - cursor)
+                {
+                    selected = Shape(cursor, selectedEnd - cursor);
+                    selectedFitAdvance = FitAdvance(cursor, selectedEnd, selected);
+                }
+                AddLine(cursor, selectedEnd - cursor, selectedEnd == paragraphEnd ? terminator : 0,
+                    selected, selectedFitAdvance);
                 cursor = selectedEnd;
             }
             if (newline < 0) break;
@@ -337,10 +351,13 @@ public sealed class TextPrelayoutEngine
             var after = start + enumerator.ElementIndex + element.Length;
             var scalar = char.IsHighSurrogate(element[0]) && element.Length > 1 ? char.ConvertToUtf32(element, 0) : element[0];
             var last = element[element.Length - 1];
-            if (char.IsWhiteSpace(last) && last is not ('\u00a0' or '\u2007' or '\u202f') ||
+            if (IsBreakableWhitespace(last) ||
                 IsCjk(scalar) || after == end) yield return after;
         }
     }
+
+    private static bool IsBreakableWhitespace(char value) => char.IsWhiteSpace(value) &&
+        value is not ('\u00a0' or '\u2007' or '\u202f');
 
     private static bool IsCjk(int scalar) => scalar is >= 0x3000 and <= 0x9fff or >= 0xac00 and <= 0xd7af;
 

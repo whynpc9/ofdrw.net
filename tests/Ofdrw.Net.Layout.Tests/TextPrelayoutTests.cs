@@ -143,6 +143,19 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public void TrailingBreakSpaceDoesNotOverflowFittingWords()
+    {
+        var face = Noto();
+        var result = HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest("AV To", new[] { face }, 4, 5));
+        Assert.Equal(new[] { "AV ", "To" }, result.Lines.Select(line => line.ShapedRun.Request.Text));
+        Assert.True(result.Lines[0].AdvanceMillimeters > 5);
+        Assert.False(result.Lines[0].OverflowsWidth);
+        Assert.False(result.Overflows);
+        Assert.Single(TextPrelayoutOfdWriter.CreateSinglePage(result, 100, 100, 10, 10).Pages);
+    }
+
+    [Fact]
     public void ComplexCmapCoverageIsBoundedBeforeNativeShaping()
     {
         var bytes = File.ReadAllBytes(Font("LXGWWenKai-Regular.ttf"));
@@ -361,10 +374,24 @@ public sealed class TextPrelayoutTests
         Assert.Single(TextPrelayoutOfdWriter.CreateSinglePage(shortLine, 50, 50, 1, 10).Pages);
 
         var overhanging = engine.Layout(new TextPrelayoutRequest("J", new[] { face }, 4, 100));
-        Assert.True(overhanging.Lines[0].InkBoundsMillimeters!.X < 0);
+        var jInk = overhanging.Lines[0].InkBoundsMillimeters!;
+        Assert.True(jInk.X < 0);
         Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
             TextPrelayoutOfdWriter.CreateSinglePage(overhanging, 50, 50, 0, 10)).Error);
-        Assert.Single(TextPrelayoutOfdWriter.CreateSinglePage(overhanging, 50, 50, 1, 10).Pages);
+        var j = Assert.IsType<OfdTextElement>(Assert.Single(
+            Assert.Single(TextPrelayoutOfdWriter.CreateSinglePage(overhanging, 50, 50, 1, 10).Pages).Elements));
+        Assert.True(j.XMillimeters < 1);
+        Assert.Equal(1, j.XMillimeters + j.Runs[0].XMillimeters, 6);
+        Assert.True(j.XMillimeters <= 1 + jInk.X);
+        Assert.True(j.XMillimeters + j.WidthMillimeters >= 1 + jInk.X + jInk.Width);
+
+        var rightOverhang = engine.Layout(new TextPrelayoutRequest("f", new[] { face }, 4, 100));
+        var ink = rightOverhang.Lines[0].InkBoundsMillimeters!;
+        Assert.True(ink.X + ink.Width > rightOverhang.Lines[0].AdvanceMillimeters);
+        var f = Assert.IsType<OfdTextElement>(Assert.Single(
+            Assert.Single(TextPrelayoutOfdWriter.CreateSinglePage(rightOverhang, 50, 50, 1, 10).Pages).Elements));
+        Assert.Equal(1, f.XMillimeters + f.Runs[0].XMillimeters, 6);
+        Assert.True(f.XMillimeters + f.WidthMillimeters >= 1 + ink.X + ink.Width);
     }
 
     private static TextFontFace Noto() => new("Noto Sans", File.ReadAllBytes(Font("NotoSans-Regular.ttf")));

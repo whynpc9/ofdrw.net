@@ -67,18 +67,25 @@ public static class TextPrelayoutOfdWriter
         foreach (var line in result.Lines.Where(value => value.SourceLength > 0))
         {
             var text = result.Request.Text.Substring(line.SourceStart, line.SourceLength);
+            var ink = line.InkBoundsMillimeters;
+            var inkTop = ink?.Y - line.TopMillimeters ?? 0;
+            var boundaryLeft = Math.Min(0, ink?.X ?? 0);
+            var boundaryTop = Math.Min(0, inkTop);
+            var boundaryRight = Math.Max(line.AdvanceMillimeters, ink is null ? 0 : ink.X + ink.Width);
+            var boundaryBottom = Math.Max(line.HeightMillimeters, ink is null ? 0 : inkTop + ink.Height);
             var element = new OfdTextElement
             {
-                LayerType = "Body", XMillimeters = leftMillimeters,
-                YMillimeters = topMillimeters + line.TopMillimeters,
-                WidthMillimeters = Math.Max(0.1, line.AdvanceMillimeters),
-                HeightMillimeters = line.HeightMillimeters,
+                LayerType = "Body", XMillimeters = leftMillimeters + boundaryLeft,
+                YMillimeters = topMillimeters + line.TopMillimeters + boundaryTop,
+                WidthMillimeters = Math.Max(0.1, boundaryRight - boundaryLeft),
+                HeightMillimeters = Math.Max(0.1, boundaryBottom - boundaryTop),
                 FontName = result.Face.Name, FontResourceId = "F1",
                 FontSizeMillimeters = result.Request.FontSizeMillimeters, Text = text,
             };
             element.Runs.Add(new OfdTextRun
             {
-                Text = text, YMillimeters = line.BaselineMillimeters - line.TopMillimeters,
+                Text = text, XMillimeters = -boundaryLeft,
+                YMillimeters = line.BaselineMillimeters - line.TopMillimeters - boundaryTop,
                 DeltaX = text.Length > 1 ? string.Join(" ", line.ShapedRun.Glyphs.Take(text.Length - 1)
                     .Select(glyph => (glyph.XAdvance * scale).ToString("0.###############", CultureInfo.InvariantCulture))) : null,
             });

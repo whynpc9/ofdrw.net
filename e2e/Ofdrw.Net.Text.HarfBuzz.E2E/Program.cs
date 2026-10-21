@@ -15,7 +15,7 @@ var fixture = Path.Combine(root, "e2e", "Ofdrw.Net.FontSubset.E2E", "testdata", 
 var noto = new TextFontFace("Noto Sans", File.ReadAllBytes(Path.Combine(fixture, "NotoSans-Regular.ttf")));
 var wenkai = new TextFontFace("LXGW WenKai", File.ReadAllBytes(Path.Combine(fixture, "LXGWWenKai-Regular.ttf")));
 var engine = HarfBuzzTextPrelayout.Create();
-const string ascii = "AV To\nWide WWW\nNarrow iii";
+const string ascii = "JAV To\nWide WWW\nNarrow iii f";
 var layout = engine.Layout(new TextPrelayoutRequest(ascii, new[] { noto }, 5, 55));
 var han = engine.Layout(new TextPrelayoutRequest("中文", new[] { noto, wenkai }, 5, 55,
     script: "Hani", language: "zh"));

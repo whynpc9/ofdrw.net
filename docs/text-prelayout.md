@@ -43,10 +43,16 @@ other script tags; direct single-run shaping remains caller-analyzed and has no
 paragraph bidi or word-breaking contract. Format controls, variation selectors,
 and variable/color/CFF fonts fail explicitly.
 
+At a soft wrap, trailing breakable spaces stay in the source-addressed shaped
+run and its reported total advance. Fit and overflow checks use the visible
+prefix before those spaces, so an invisible trailing space cannot turn a
+fitting word into an overflowing line. No-break spaces are never wrap points.
+
 `TextPrelayoutOfdWriter.CreateSinglePage` consumes a completed result only for
 regular ASCII Latin where each source character maps to one nominal glyph with
 no offset or vertical advance. It preflights the whole page, uses the measured
-Delta and baseline, and embeds the exact selected full face. A ligature,
+Delta and baseline, expands each TextObject boundary to measured ink without
+moving its pen, and embeds the exact selected full face. A ligature,
 combining sequence, unsupported style or overflowing page is rejected before
 creating a package; page preflight checks both final advance and translated ink
 extents, including negative side bearings. Arbitrary GID/cluster output,
