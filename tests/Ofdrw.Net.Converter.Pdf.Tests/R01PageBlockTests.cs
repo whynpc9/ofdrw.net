@@ -191,6 +191,23 @@ public sealed class R01PageBlockTests
     }
 
     [Fact]
+    public async Task DuplicatePalettesInReferencedColorSpaceFailAllRenderers()
+    {
+        var resources = "<ColorSpaces><ColorSpace ID='20' Type='RGB'>" +
+            "<Palette><CV>255 0 0</CV></Palette><Palette><CV>0 0 255</CV></Palette>" +
+            "</ColorSpace></ColorSpaces>";
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true'>" +
+            "<FillColor ColorSpace='20' Index='0'/>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html));
+        Assert.Equal(0, html.Length);
+    }
+
+    [Fact]
     public async Task TopLevelGrayAndCmykPathsRemainRenderableAfterWriteAndReread()
     {
         var resources = "<ColorSpaces><ColorSpace ID='20' Type='GRAY'/><ColorSpace ID='21' Type='CMYK'/></ColorSpaces>";
@@ -636,6 +653,35 @@ public sealed class R01PageBlockTests
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
         using var html = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
+        Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PageDrawingCannotImpersonateAnnotationMetadata(bool pageBlock)
+    {
+        const string xml = "<ext:UnmodeledAnnotationMetadata xmlns:ext='urn:vendor' ID='501'/>";
+        byte[] ofd;
+        if (pageBlock) ofd = await Source(xml);
+        else
+        {
+            var package = new OfdDocumentPackage();
+            var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+            page.Elements.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = xml });
+            package.Pages.Add(page);
+            using var written = new MemoryStream();
+            await new OfdPackageWriter().WriteAsync(package, written);
+            ofd = written.ToArray();
+        }
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var root = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.Equal(pageBlock ? "PageBlock" : "UnmodeledAnnotationMetadata", root.LocalName);
+        if (pageBlock) Assert.Equal("UnmodeledAnnotationMetadata", Assert.IsType<OfdRawElement>(Assert.Single(root.PageBlockChildren!)).LocalName);
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html));
         Assert.Equal(0, html.Length);
     }
 

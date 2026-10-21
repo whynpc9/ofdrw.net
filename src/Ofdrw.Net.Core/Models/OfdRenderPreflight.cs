@@ -24,7 +24,9 @@ internal static class OfdRenderPreflight
         foreach (var element in elements)
         {
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
-            if (element is OfdRawElement { LocalName: "UnmodeledAnnotationMetadata" }) continue;
+            if (element is OfdRawElement { LocalName: "UnmodeledAnnotationMetadata" } metadata &&
+                metadata.ReaderAnnotationMetadataXml is not null &&
+                metadata.ReaderAnnotationMetadataXml == metadata.Xml) continue;
             // The reader retains opaque annotation index records in this
             // synthetic metadata envelope. They are not page drawings; an
             // unsupported annotation appearance has its own failure marker.

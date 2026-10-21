@@ -116,6 +116,8 @@ internal static class OfdModelCloner
                 break;
             case OfdRawElement raw:
                 result = new OfdRawElement { LocalName = raw.LocalName, Xml = CloneXml(raw.Xml, targetNamespace, material, cancellationToken) ?? string.Empty };
+                if (raw.ReaderAnnotationMetadataXml is not null && raw.ReaderAnnotationMetadataXml == raw.Xml)
+                    ((OfdRawElement)result).ReaderAnnotationMetadataXml = ((OfdRawElement)result).Xml;
                 break;
             default:
                 throw new NotSupportedException($"Cannot clone OFD element '{source.GetType().Name}'.");

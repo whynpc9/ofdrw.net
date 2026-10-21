@@ -156,7 +156,8 @@ internal sealed class OfdPaintResources
                 Integer(space.Attribute("BitsPerComponent")?.Value, 8) != 8 ||
                 space.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("ID" or "Type" or "BitsPerComponent" or "Profile"))) ||
-                space.Elements().Any(e => e.Name != space.Name.Namespace + "Palette"))
+                space.Elements().Any(e => e.Name != space.Name.Namespace + "Palette") ||
+                space.Elements().Skip(1).Any())
                 throw new NotSupportedException("ColorSpace profile, bit depth or extension.");
         }
         var count = type switch { "GRAY" => 1, "RGB" => 3, "CMYK" => 4,

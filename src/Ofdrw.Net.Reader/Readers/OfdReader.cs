@@ -18,6 +18,10 @@ namespace Ofdrw.Net.Reader.Readers;
 public sealed class OfdReader : IOfdReader
 {
     private readonly OfdPackageLoader _loader = new();
+    private static OfdRawElement AnnotationMetadata(string xml) => new()
+    {
+        LocalName = "UnmodeledAnnotationMetadata", Xml = xml, ReaderAnnotationMetadataXml = xml
+    };
 
     public async Task<OfdDocumentPackage> ReadAsync(Stream ofdStream, CancellationToken cancellationToken = default)
     {
@@ -709,7 +713,7 @@ public sealed class OfdReader : IOfdReader
             var shared = index.Files.Values.Count(candidate => candidate.Known.Contains(annotationPath)) > 1;
             var annotationSlot = -1;
             if (!PlainContainer(annotations.Root!) || annotations.Nodes().Any(node => node is not XElement and not XComment && (node is not XText text || !string.IsNullOrWhiteSpace(text.Value))))
-                page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotations, material, cancellationToken) });
+                page.AnnotationAppearances.Add(AnnotationMetadata(OfdXmlEnvelope.SerializeForRead(annotations, material, cancellationToken)));
             foreach (var annotation in annotations.Root.Elements())
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -722,11 +726,11 @@ public sealed class OfdReader : IOfdReader
                 {
                 if (annotation.Name != annotations.Root.Name.Namespace + "Annot")
                 {
-                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken) });
+                    page.AnnotationAppearances.Add(AnnotationMetadata(OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken)));
                     continue;
                 }
                 if (!SupportedAnnotationWrapper(annotation))
-                    page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken) });
+                    page.AnnotationAppearances.Add(AnnotationMetadata(OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken)));
                 if (annotation.Attribute("Visible")?.Value is "false" or "0")
                 {
                     var hiddenAppearance = annotation.Element(annotations.Root.Name.Namespace + "Appearance");
@@ -737,7 +741,7 @@ public sealed class OfdReader : IOfdReader
                             !TryParseBox(hiddenAppearance.Attribute("Boundary")?.Value, material, cancellationToken, out _) ||
                             hiddenNodes.SelectMany(node => node.DescendantsAndSelf().Attributes()).Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute) ||
                                 attribute.Name == "Boundary" && !TryParseBox(attribute.Value, material, cancellationToken, out _)))
-                            page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken) });
+                            page.AnnotationAppearances.Add(AnnotationMetadata(OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken)));
                     }
                     continue;
                 }
@@ -752,7 +756,7 @@ public sealed class OfdReader : IOfdReader
                 if (appearance is null)
                 {
                     if (annotation.Elements().Any(node => node.Name.LocalName == "Appearance"))
-                        page.AnnotationAppearances.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken) });
+                        page.AnnotationAppearances.Add(AnnotationMetadata(OfdXmlEnvelope.SerializeForRead(annotation, material, cancellationToken)));
                     continue;
                 }
                 var appearanceTransform = ParseMatrix(appearance.Attribute("CTM")?.Value, material, cancellationToken);
@@ -778,9 +782,9 @@ public sealed class OfdReader : IOfdReader
                 var xml = new XDocument(new XElement(ns + "Page", new XElement(ns + "Content",
                     new XElement(ns + "Layer", new XAttribute("ID", layerId), nodes))));
                 var staged = new List<OfdElement>();
-                if (hasUnmodeledMetadata) staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken) });
+                if (hasUnmodeledMetadata) staged.Add(AnnotationMetadata(OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken)));
                 if (nodes.SelectMany(node => node.DescendantsAndSelf().Attributes()).Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute)))
-                    staged.Add(new OfdRawElement { LocalName = "UnmodeledAnnotationMetadata", Xml = OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken) });
+                    staged.Add(AnnotationMetadata(OfdXmlEnvelope.SerializeForRead(appearance, material, cancellationToken)));
                 foreach (var element in ParsePageObjects(archive, xml, fonts, media, mediaTypes, annotationPath, material, cancellationToken))
                 {
                     if (element is OfdImageElement { Data.Length: 0 })
