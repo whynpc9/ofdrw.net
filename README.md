@@ -24,6 +24,7 @@ See [docs/capability-roadmap.md](docs/capability-roadmap.md) for the TODO list,
 implementation batches, and the encryption/signature boundary without a crypto vendor.
 See [conversion contracts](docs/conversion-contracts.md) for page selection, original-text diagnostics, font initialization, resource budgets, and editing behavior.
 See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk through GB/T 33190 package structure, pages, text, paths, images, templates, and signatures, plus OFD-H medical-record profile notes, mapped to both ofdrw and this repository.
+See the [archival preflight API](docs/archival-preflight.md) and [GB/T 42133-2022 coverage ledger](docs/archival-standard-coverage.md) for the verified rule subset and remaining archival requirements.
 
 - Native graphics API in `Ofdrw.Net.Layout.Graphics`: millimeter paths/text, affine transforms, clipping and Save/Restore; no SkiaSharp or System.Drawing dependency. See [tutorial](docs/tutorials/16-native-graphics.md).
 - OFD core models, document builder API, globally unique object IDs, layers, templates, text runs, vector paths, images, fonts, attachments, annotations, and custom tags.
