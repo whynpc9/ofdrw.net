@@ -605,6 +605,70 @@ public sealed class SignatureScopeTests
         Assert.Equal(OfdCryptographicVerificationStatus.Invalid, changedReport.Signatures[1].CryptographicStatus);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LegacyRelativeAttributeIsNotTreatedAsOfd2Relationship(bool versionTwoWithLegacyNamespace)
+    {
+        using var source = await CreatePackage();
+        using var prepared = await Rewrite(source, "OFD.xml", bytes =>
+            versionTwoWithLegacyNamespace
+                ? Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes)
+                    .Replace("Version=\"1.0\"", "Version=\"2.0\""))
+                : bytes);
+        var service = new OfdSignatureService();
+        using var first = new MemoryStream();
+        await service.SignAsync(prepared, first, new Provider());
+        first.Position = 0;
+        using var second = new MemoryStream();
+        await service.SignAsync(first, second, new Provider());
+        using var withVendorRelative = await Rewrite(second, "Doc_0/Signs/Signatures.xml", bytes =>
+        {
+            var list = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            list.Root!.Elements().Last().SetAttributeValue("Relative", "missing");
+            return Encoding.UTF8.GetBytes(list.ToString(SaveOptions.DisableFormatting));
+        });
+        var report = await Verify(withVendorRelative);
+        Assert.True(report.FullyValid);
+        Assert.Null(report.Signatures[1].RelativeSignatureId);
+        Assert.True(report.Signatures[1].RelativeIntegrityValid);
+    }
+
+    [Theory]
+    [InlineData("PublicRes")]
+    [InlineData("DocumentRes")]
+    [InlineData("Attachments")]
+    [InlineData("CustomTags")]
+    [InlineData("Extensions")]
+    public async Task BlankOptionalDescriptorLocationIsIgnored(string name)
+    {
+        using var source = await CreatePackage();
+        using var withBlank = await AddDocumentLocation(source, name, " \t ");
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        await new OfdSignatureService().SignAsync(withBlank, output, provider);
+        Assert.Equal(1, provider.Calls);
+        Assert.True(await IsFullyValid(output));
+    }
+
+    [Theory]
+    [InlineData("PublicRes")]
+    [InlineData("DocumentRes")]
+    [InlineData("Attachments")]
+    [InlineData("CustomTags")]
+    [InlineData("Extensions")]
+    public async Task NonblankMissingDescriptorStillFailsBeforeProvider(string name)
+    {
+        using var source = await CreatePackage();
+        using var missing = await AddDocumentLocation(source, name, "/Missing/index.xml");
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(missing, output, provider));
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+    }
+
     [Fact]
     public async Task Ofd2ExtensionsRejectVersionOneAndMissingBaseBeforeProvider()
     {
@@ -748,6 +812,18 @@ public sealed class SignatureScopeTests
             return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
         });
     }
+
+    private static Task<MemoryStream> AddDocumentLocation(MemoryStream source,
+        string name, string location) => Rewrite(source, "Doc_0/Document.xml", bytes =>
+        {
+            var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            var ns = document.Root!.Name.Namespace;
+            var parent = name is "PublicRes" or "DocumentRes"
+                ? document.Root.Element(ns + "CommonData")!
+                : document.Root;
+            parent.Add(new XElement(ns + name, location));
+            return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        });
 
     private static Task<MemoryStream> AliasFirstSignedValue(MemoryStream source, string target) =>
         Rewrite(source, "Doc_0/Signs/Sign_0/Signature.xml", bytes =>

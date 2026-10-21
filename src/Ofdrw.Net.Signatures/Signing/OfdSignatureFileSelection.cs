@@ -106,6 +106,7 @@ internal static class OfdSignatureFileSelection
             foreach (var table in document.Root!.DescendantsAndSelf().Where(node =>
                          node.Name.LocalName is "PublicRes" or "DocumentRes"))
             {
+                if (string.IsNullOrWhiteSpace(table.Value) && !table.HasElements) continue;
                 var location = Resolve(path, table.Value.Trim());
                 if (!entries.ContainsKey(location))
                     throw new InvalidDataException("Cannot prove resource table dependency: /" + path);
@@ -117,6 +118,7 @@ internal static class OfdSignatureFileSelection
                 foreach (var descriptor in document.Root.Elements().Where(node =>
                              node.Name.LocalName is "Attachments" or "CustomTags" or "Extensions"))
                 {
+                    if (string.IsNullOrWhiteSpace(descriptor.Value) && !descriptor.HasElements) continue;
                     var location = Resolve(path, descriptor.Value.Trim());
                     if (descriptor.HasElements || location.Length == 0 || !entries.ContainsKey(location))
                         throw new InvalidDataException("Cannot prove XML descriptor dependency: /" + path);

@@ -100,6 +100,8 @@ public sealed class OfdSignatureVerifier
         }
 
         var budget = new OfdSignatureVerificationBudget(_options);
+        var supportsRelative = string.Equals(ofd.Root?.Attribute("Version")?.Value, "2.0", StringComparison.Ordinal) &&
+            ofd.Root?.Name.NamespaceName == "http://www.ofdspec.org/2016";
         try
         {
             foreach (var location in signatureLocations)
@@ -108,6 +110,7 @@ public sealed class OfdSignatureVerifier
                 declarationsComplete &= await VerifySignatureListAsync(
                         archive,
                         location,
+                        supportsRelative,
                         report,
                         budget,
                         cancellationToken)
@@ -128,6 +131,7 @@ public sealed class OfdSignatureVerifier
     private async Task<bool> VerifySignatureListAsync(
         OfdPackageArchive archive,
         string location,
+        bool supportsRelative,
         OfdSignatureVerificationReport report,
         OfdSignatureVerificationBudget budget,
         CancellationToken cancellationToken)
@@ -164,7 +168,7 @@ public sealed class OfdSignatureVerifier
             var result = new OfdSignatureVerificationResult
             {
                 Id = record.Attribute("ID")?.Value ?? string.Empty,
-                RelativeSignatureId = record.Attribute("Relative")?.Value
+                RelativeSignatureId = supportsRelative ? record.Attribute("Relative")?.Value : null
             };
             report.Signatures.Add(result);
             listResults.Add(result);
@@ -195,7 +199,7 @@ public sealed class OfdSignatureVerifier
                 .ConfigureAwait(false);
         }
 
-        ValidateRelations(listResults, report);
+        if (supportsRelative) ValidateRelations(listResults, report);
 
         if (!hasRecords)
         {
