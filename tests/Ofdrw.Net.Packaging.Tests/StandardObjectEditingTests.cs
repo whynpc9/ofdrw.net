@@ -12,6 +12,87 @@ namespace Ofdrw.Net.Packaging.Tests;
 public sealed class StandardObjectEditingTests
 {
     [Fact]
+    public async Task Split_RetainsEditedStandardObjectsAndTheirDocumentOwnership()
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Permissions = new OfdPermissions { Edit = true };
+        package.ViewingPreferences = new OfdViewingPreferences { PageMode = OfdPageMode.UseOutlines };
+        package.Options.Metadata.CustomDatas = new OfdCustomDatas();
+        package.Options.Metadata.CustomDatas.Add("case", "old");
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        var body = root.Root.Element(ns + "DocBody")!;
+        body.Element(ns + "DocInfo")!.Add(new XElement(ns + "DocUsage", "EBook"),
+            new XElement(ns + "CreatorVersion", "1.0"));
+        var vendor = XNamespace.Get("urn:split-vendor");
+        body.Element(ns + "DocInfo")!.Element(ns + "CustomDatas")!.Add(new XElement(vendor + "Keep", "metadata"));
+        body.Add(new XElement(ns + "Versions", new XElement(ns + "Version",
+            new XAttribute("ID", "v1"), new XAttribute("Index", "1"), new XAttribute("BaseLoc", "Doc_0/Versions/v1.xml")),
+            new XElement(vendor + "Keep", "versions")));
+        entries["OFD.xml"] = Bytes(root);
+        entries["Doc_0/Versions/v1.xml"] = Encoding.UTF8.GetBytes("<VersionFile/>");
+        var document = Xml(entries["Doc_0/Document.xml"]);
+        document.Root!.Element(ns + "Permissions")!.Add(new XElement(vendor + "Keep", "permissions"));
+        document.Root.Element(ns + "VPreferences")!.Add(new XElement(vendor + "Keep", "preferences"));
+        entries["Doc_0/Document.xml"] = Bytes(document);
+        using var input = MultiDocumentFixture.Zip(entries);
+        var source = await new OfdReader().ReadAsync(input);
+        source.Options.Metadata.DocUsage = OfdDocUsage.ENewsPaper;
+        source.Options.Metadata.CreatorVersion = "2.0";
+        source.Options.Metadata.CustomDatas!.Items[0].Value = "new";
+        source.Permissions!.Edit = false;
+        source.ViewingPreferences!.PageMode = OfdPageMode.UseBookmarks;
+        source.Versions!.Items[0].Index = 2;
+
+        var split = OfdDocumentSplitter.Split(source, [1]);
+        Assert.NotSame(source.Permissions, split.Permissions);
+        Assert.NotSame(source.Options.Metadata.CustomDatas, split.Options.Metadata.CustomDatas);
+        Assert.NotSame(source.Versions, split.Versions);
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(split, output);
+        var written = MultiDocumentFixture.Unzip(output);
+        Assert.Equal(new[] { "metadata", "versions" },
+            Xml(written["OFD.xml"]).Descendants(vendor + "Keep").Select(element => element.Value));
+        Assert.Equal(2, Xml(written["Doc_0/Document.xml"]).Descendants(vendor + "Keep").Count());
+        output.Position = 0; var saved = await new OfdReader().ReadAsync(output);
+        Assert.Single(saved.Pages);
+        Assert.Equal(OfdDocUsage.ENewsPaper, saved.Options.Metadata.DocUsage);
+        Assert.Equal("2.0", saved.Options.Metadata.CreatorVersion);
+        Assert.Equal("new", saved.Options.Metadata.CustomDatas!.Items[0].Value);
+        Assert.False(saved.Permissions!.Edit);
+        Assert.Equal(OfdPageMode.UseBookmarks, saved.ViewingPreferences!.PageMode);
+        Assert.Equal(2, saved.Versions!.Items[0].Index);
+    }
+
+    [Fact]
+    public async Task Merge_CopiesNewScalarMetadataAndExistingCoverPayload()
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        root.Root.Element(ns + "DocBody")!.Element(ns + "DocInfo")!.Add(
+            new XElement(ns + "DocUsage", "EBook"), new XElement(ns + "Cover", "Doc_0/Cover.png"),
+            new XElement(ns + "CreatorVersion", "1.0"));
+        entries["OFD.xml"] = Bytes(root); entries["Doc_0/Cover.png"] = [1, 2, 3];
+        using var input = MultiDocumentFixture.Zip(entries);
+        var source = await new OfdReader().ReadAsync(input);
+        var merged = OfdDocumentMerger.Merge([source]);
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(merged, output);
+        output.Position = 0; var saved = await new OfdReader().ReadAsync(output);
+        Assert.Equal(OfdDocUsage.EBook, saved.Options.Metadata.DocUsage);
+        Assert.Equal("Doc_0/Cover.png", saved.Options.Metadata.Cover);
+        Assert.Equal("1.0", saved.Options.Metadata.CreatorVersion);
+        Assert.Equal(new byte[] { 1, 2, 3 }, saved.PreservedEntries["Doc_0/Cover.png"]);
+
+        source.PreservedEntries.Remove("Doc_0/Cover.png");
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMerger.Merge([source]));
+    }
+
+    [Fact]
     public async Task SelectedDocument_StandardObjectsRoundTripWithoutLosingUnknownOrOtherDocument()
     {
         var entries = await MultiDocumentFixture.CreateEntriesAsync();

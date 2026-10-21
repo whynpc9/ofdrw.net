@@ -107,6 +107,15 @@ public static class OfdDocumentMerger
             Options = CloneOptions(first.Options)
         };
         destination.Options.DocumentId = "Doc_0";
+        if (first.Options.Metadata.Cover is string cover)
+        {
+            var path = material.ResolvePath("OFD.xml", cover, cancellationToken);
+            if (!first.PreservedEntries.TryGetValue(path, out var bytes) ||
+                path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                throw new NotSupportedException("Merge cannot retain a Cover without a distinct existing package entry.");
+            material.ChargeCopy(bytes.LongLength, cancellationToken);
+            destination.PreservedEntries.Add(path, bytes.ToArray());
+        }
 
         foreach (var source in sourceList)
         {
@@ -358,7 +367,10 @@ public static class OfdDocumentMerger
                 Keywords = source.Metadata.Keywords,
                 Creator = source.Metadata.Creator,
                 CreationDate = source.Metadata.CreationDate,
-                ModificationDate = source.Metadata.ModificationDate
+                ModificationDate = source.Metadata.ModificationDate,
+                DocUsage = source.Metadata.DocUsage,
+                Cover = source.Metadata.Cover,
+                CreatorVersion = source.Metadata.CreatorVersion
             }
         };
     }
