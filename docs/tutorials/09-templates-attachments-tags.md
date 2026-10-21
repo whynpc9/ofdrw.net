@@ -198,6 +198,8 @@ page.Annotations.Items.Add(note);
 
 `Attachments.Remove`/`Clear` 控制活动附件；删除后不会由来源 XML 恢复。删除所有原附件会移除活动引用，但 ZIP 中的旧列表及载荷可能保留，因此不能用于物理擦除。原本没有建模附件的扩展列表仍可无操作保存。外部附件只保留定位，不抓取、不内嵌；导入附件内外部属性切换、跨不透明节点重排、来源路径迁移或混合内容的定位改写会在无法证明安全时拒绝。
 
+需要连同 ZIP 中的历史内部载荷一起清理时，显式调用 `package.RemoveAttachment(attachment, OfdAttachmentRemovalMode.Physical)`，再用 `OfdPackageWriter.WriteWithResultAsync` 保存，并核对 `RemovedEntries`。此模式只接受同一文档由 Reader 捕获的内部附件；外部定位、新建附件、共享载荷、其它控制/资源/签名/批注或未知 XML 可能引用的路径均不能凭名字推断可删。无法证明独占和引用闭包时，写包在触碰输出流前拒绝，不会自动改为逻辑移除。最后一个附件移除时，还必须能安全删除原列表文件；其它未知列表内容会阻止物理清理。重写有签名的包时须检查 `SignaturesInvalidated` 和重签诊断。调用方提供的 Stream 在实际 ZIP 写入失败时仍须自行丢弃，不保证 I/O 回滚。
+
 受控编辑克隆保留这些来源身份和防变更检查。Split/Mix/Merge 继续支持闭合的普通附件描述符；包含未知属性、节点、引用包络或未证明可重建的别名时明确拒绝跨文档复制，避免丢失扩展或猜测 Name/ID 映射。需要跨文档迁移这类附件时，应另行证明引用闭包。
 
 源项目 README 将附件操作列为独立文档，和自定义元素、Canvas、水印等一起放在 `ofdrw-layout/doc` 下；入口见 [ofdrw README](https://github.com/ofdrw/ofdrw/blob/master/README.md)。

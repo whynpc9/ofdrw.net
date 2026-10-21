@@ -11,7 +11,7 @@ namespace Ofdrw.Net.Packaging;
 internal enum OfdOwnedPruneReason
 {
     DeletedPage, DeletedPageResource, UnusedTemplate, DeletedAnnotation,
-    UnreachableResourcePayload, InvalidatedSignature
+    UnreachableResourcePayload, InvalidatedSignature, RemovedAttachmentPayload, RemovedAttachmentDescriptor
 }
 
 // Recorded at the actual removal edge, never inferred from a missing final key.

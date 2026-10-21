@@ -178,6 +178,8 @@ internal static class OfdModelTraversal
         ScanPreserved(package.PreservedDocBodyElements);
         foreach (var font in package.Fonts) { token.ThrowIfCancellationRequested(); state.Budget.Reference(); state.Budget.Node(2); }
         foreach (var attachment in package.Attachments) { token.ThrowIfCancellationRequested(); state.Budget.Reference(); state.Budget.Node(2); }
+        foreach (var removal in package.PhysicalAttachmentRemovals)
+        { token.ThrowIfCancellationRequested(); state.Budget.Reference(); state.Budget.Node(2); GuardPath(removal.PayloadPath); }
         foreach (var entry in package.PreservedEntries) { token.ThrowIfCancellationRequested(); state.Budget.Reference(); state.Budget.Node(2); }
         foreach (var tag in package.CustomTags) { token.ThrowIfCancellationRequested(); state.Budget.Reference(); state.Budget.Node(2); }
         token.ThrowIfCancellationRequested();

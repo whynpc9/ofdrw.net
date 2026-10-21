@@ -34,6 +34,13 @@ internal sealed class OfdAttachmentSource
 
     internal bool TryOriginal(OfdAttachment attachment, out Original original) => originals.TryGetValue(attachment, out original!);
 
+    internal bool TryOriginal(int ordinal, out OfdAttachment attachment, out Original original)
+    {
+        foreach (var pair in originals)
+            if (pair.Value.Ordinal == ordinal) { attachment = pair.Key; original = pair.Value; return true; }
+        attachment = null!; original = null!; return false;
+    }
+
     internal static OfdAttachmentSource Capture(OfdDocumentPackage package, XElement declaration, string path, XElement root,
         OfdModelMaterialization material, CancellationToken token)
     {

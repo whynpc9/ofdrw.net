@@ -23,7 +23,7 @@ public sealed partial class OfdPackageWriter
         _ = await WriteWithResultAsync(package, destination, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Writes the package and reports removed page resources and invalidated signatures.</summary>
+    /// <summary>Writes the package and reports removed entries, including requested attachment cleanup, and invalidated signatures.</summary>
     public async Task<OfdPackageWriteResult> WriteWithResultAsync(
         OfdDocumentPackage package, Stream destination, CancellationToken cancellationToken = default)
     {

@@ -86,6 +86,11 @@ internal static class OfdSerializedInventory
         NavigationOwner("actions", package.ActionOwnership);
         V("sourceEnvelope", package.SourceEnvelope, true); package.SourceEnvelope?.VisitInventory(sink);
         V("attachmentSource", package.AttachmentSource, true); package.AttachmentSource?.VisitInventory(sink);
+        Container("physicalAttachmentRemovals", package.PhysicalAttachmentRemovals, package.PhysicalAttachmentRemovals.Count);
+        foreach (var removal in package.PhysicalAttachmentRemovals)
+        {
+            V("physicalAttachmentOrdinal", removal.Ordinal); S("physicalAttachmentPayload", removal.PayloadPath); P(removal.PayloadPath);
+        }
         V("customTagSource", package.CustomTagSource, true); package.CustomTagSource?.VisitInventory(sink);
         V("annotationIndexSource", package.AnnotationIndexSource, true); package.AnnotationIndexSource?.VisitInventory(sink);
         V("sourceIdentity", package.SourceIdentity, true); package.SourceIdentity?.VisitInventory(sink);

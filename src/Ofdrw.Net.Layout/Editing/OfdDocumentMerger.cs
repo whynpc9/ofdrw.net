@@ -329,7 +329,14 @@ public static class OfdDocumentMerger
         // Only the retained-path Split opts in. Merge/Mix still reconstruct
         // closed typed attachments without importing another document's owner.
         if (retainedSourceMapping is not null)
+        {
             destination.AttachmentSource = source.AttachmentSource?.Clone(source, destination, retainedSourceMapping, material, cancellationToken);
+            foreach (var removal in source.PhysicalAttachmentRemovals)
+            {
+                cancellationToken.ThrowIfCancellationRequested(); material.ChargeCopy(128, cancellationToken);
+                destination.PhysicalAttachmentRemovals.Add(new OfdAttachmentPhysicalRemoval(removal.Ordinal, removal.PayloadPath));
+            }
+        }
     }
 
     internal static OfdDocumentOptions CloneOptions(OfdDocumentOptions source)
