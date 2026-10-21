@@ -296,15 +296,36 @@ public sealed class R01PageBlockTests
         Retain(template ? "split-template-block" : "split-ordinary-block", output.ToArray(), pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
-    [Fact]
-    public async Task UnknownNestedDrawingFailsAllRenderers()
+    [Theory]
+    [InlineData("")]
+    [InlineData(" Visible='true'")]
+    public async Task UnknownNestedDrawingFailsAllRenderers(string visibility)
     {
-        var bytes = await Source("<VendorDrawing ID='501'/>");
+        var bytes = await Source($"<VendorDrawing ID='501'{visibility}/>");
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
         using var html = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
         Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HiddenUnknownNestedDrawingDoesNotBlockVisibleContent(bool template)
+    {
+        var body = "<VendorDrawing ID='501' Visible='false'/>" +
+            "<TextObject ID='502' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>visible sibling</TextCode></TextObject>";
+        var bytes = await Source(body, template, font: true);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("visible sibling", parsed.GetPage(1).Text);
+        Assert.Contains("visible sibling", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("visible sibling", Encoding.UTF8.GetString(html.ToArray()));
+        Retain(template ? "hidden-opaque-template" : "hidden-opaque-ordinary", bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Fact]

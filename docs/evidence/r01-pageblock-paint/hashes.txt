@@ -138,3 +138,22 @@ e04f5625a992cac833fc600a6aed0be5213d99998c1160aa7d7c693afc646407  artifacts/road
 f8aa058e8cda630d7fe1769a8d828e44909430c61aed9fd2206f48334c195897  artifacts/roadmap-v12/R01/codex-clone-package.log
 33a550af6a1b5e78bcae8ca02d67c4d0f930b5bd2a887b142657f67b20750efd  artifacts/roadmap-v12/R01/codex-clone-document-tools.log
 98b8ac52609ab6e32c9d589d4b18f4a5c2ff4363a248ccf4cd92499a6f3e26f0  artifacts/package-e2e/0.1.0-r01.r03e/output/package-manifest.json
+
+# Hidden raw drawing visibility review fix, final local source outputs
+99af9c453e624b51a8634aa7f2b8eaddfbc2295f2f113d3f5a421868152f2675  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-ordinary.html
+e5fef13c0e6bdbf9a997ba79eabc1ee31c6ec4b45b1c1d15a4ea3b14ef5df82d  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-ordinary.ofd
+ae9b156a1edc1ce1d680f22ff47a27ff1b34ec90878cfd5cbbcd55fadbb7e2ac  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-ordinary.pdf
+1161ec646fdce2f0cd0b7961921ac2a74f8a139dccec7afdf544cb99b8157517  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-ordinary.png
+470eec987eeb4a99e3fe128bfc3216721e296b9eee77c695c4b3795b76870088  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-ordinary.svg
+99af9c453e624b51a8634aa7f2b8eaddfbc2295f2f113d3f5a421868152f2675  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-template.html
+1ba38b96dcd41e0a36faeff200e8741693e5f9575612f2f49eab5fa18dd6c6e1  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-template.ofd
+a4b5a8b65273d4262a783a5561f21346932b82b601782a9c7942e23260130073  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-template.pdf
+1161ec646fdce2f0cd0b7961921ac2a74f8a139dccec7afdf544cb99b8157517  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-template.png
+470eec987eeb4a99e3fe128bfc3216721e296b9eee77c695c4b3795b76870088  artifacts/roadmap-v12/R01/hidden-opaque-visual/hidden-opaque-template.svg
+a6ff7b42139e6e0e42c23baba7d899c11c1ce2c892c9382179ab7cbf8fd07450  artifacts/roadmap-v12/R01/hidden-opaque-focused.log
+67d93db4166fac2d99d6115914ed89e0f37ae55109a8d9ca651647df4507264f  artifacts/roadmap-v12/R01/hidden-opaque-visual.log
+60d88065185bb5d5e287d89dcd569fe8c8793bb3a4ca37fc3b1c63b269e169d6  artifacts/roadmap-v12/R01/hidden-opaque-full.log
+e5ccb6fc07bbe7116907ea16aa08c1ca85f771378cc98c532b24c6a8e53c2937  artifacts/roadmap-v12/R01/hidden-opaque-package.log
+74147116718cac9356e429051ee0d4999ae8de5a27a2b1a385f24c1c8dfb5093  artifacts/roadmap-v12/R01/hidden-opaque-document-tools.log
+6e8c5c0a8bf236b1d148f78da10171946d7fd8982a3052b5c686f01f4a826478  artifacts/package-e2e/0.1.0-r01.r03f/output/package-manifest.json
+3711fa466b7f77dac3a1d94502d03a26c1941518b3e43ab80490a3b4586204d5  artifacts/roadmap-v12/R01/hidden-opaque-final-full.log
