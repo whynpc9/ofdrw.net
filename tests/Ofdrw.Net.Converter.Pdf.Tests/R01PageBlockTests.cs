@@ -122,6 +122,41 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PaletteValueOverridesConflictingIndexInAllOutputs(bool drawParam)
+    {
+        // GB/T 33190-2016, 8.3.2 table 26: Index is used only if Value is absent.
+        const string palette = "<ColorSpaces><ColorSpace ID='20' Type='RGB'><Palette>" +
+            "<CV>255 0 0</CV><CV>0 0 255</CV></Palette></ColorSpace></ColorSpaces>";
+        var resources = palette + (drawParam
+            ? "<DrawParams><DrawParam ID='30'><FillColor ColorSpace='20' Index='1' Value='255 0 0'/></DrawParam></DrawParams>"
+            : "");
+        var style = drawParam ? "DrawParam='30'" : "";
+        var color = drawParam ? "" : "<FillColor ColorSpace='20' Index='1' Value='255 0 0'/>";
+        var body = $"<PathObject ID='501' Boundary='10 10 30 30' {style} Fill='true' Stroke='false'>" +
+            color + "<AbbreviatedData>M 0 0 L 30 0 L 30 30 L 0 30 C</AbbreviatedData></PathObject>";
+        var bytes = await Source(body, resources: resources);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), svg);
+        var path = Assert.Single(XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants(),
+            node => node.Name.LocalName == "path");
+        Assert.Equal("rgb(255,0,0)", path.Attribute("fill")?.Value);
+
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html);
+        Assert.Contains("rgb(255,0,0)", Encoding.UTF8.GetString(html.ToArray()));
+
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), pdf);
+        using var document = Docnet.Core.DocLib.Instance.GetDocReader(pdf.ToArray(), new Docnet.Core.Models.PageDimensions(2d));
+        using var page = document.GetPageReader(0);
+        var pixels = page.GetImage();
+        var offset = ((int)(20 * 72 / 25.4 * 2) * page.GetPageWidth() + (int)(20 * 72 / 25.4 * 2)) * 4;
+        Assert.True(pixels[offset] < 30 && pixels[offset + 1] < 30 && pixels[offset + 2] > 230,
+            "PDF path interior should be red from Value when Index is also present.");
+        Retain(drawParam ? "palette-value-priority-drawparam" : "palette-value-priority-direct",
+            bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]
