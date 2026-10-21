@@ -19,7 +19,7 @@ internal static class OfdSignatureFileSelection
         OfdSignatureOptions options,
         CancellationToken cancellationToken)
     {
-        var required = options.ProtectFile is null
+        var required = options.ProtectFile is null && options.ProtectSignatureList
             ? null
             : FindRequiredFiles(entries, ofd, signaturesPath, newSignaturePath, cancellationToken);
         var selected = new List<string>();
@@ -71,12 +71,12 @@ internal static class OfdSignatureFileSelection
             cancellationToken.ThrowIfCancellationRequested();
             var path = entry.Key;
             var signatureOwned = mutableSignatureFiles.Contains(path) &&
-                (string.Equals(path, signaturesPath, StringComparison.OrdinalIgnoreCase) ||
-                 signatureDirectory.Length > 0 &&
+                (signatureDirectory.Length == 0 ||
                  path.StartsWith(signatureDirectory, StringComparison.OrdinalIgnoreCase));
-            if (!mutableAnnotations.Contains(path) && !signatureOwned &&
-                (IsXmlCandidate(path, entry.Value) || directories.Any(dir =>
-                    path.StartsWith(dir, StringComparison.OrdinalIgnoreCase))))
+            if (!mutableAnnotations.Contains(path) &&
+                ((!mutableSignatureFiles.Contains(path) && IsXmlCandidate(path, entry.Value)) ||
+                 (!signatureOwned && directories.Any(dir =>
+                     path.StartsWith(dir, StringComparison.OrdinalIgnoreCase)))))
                 required.Add(path);
         }
 

@@ -336,6 +336,36 @@ public sealed class SignatureScopeTests
         Assert.Equal(0, output.Length);
     }
 
+    [Fact]
+    public async Task DefaultSelectionRejectsAttachmentAliasOfMutableSignatureList()
+    {
+        using var source = await CreatePackage();
+        using var first = new MemoryStream();
+        await new OfdSignatureService().SignAsync(source, first, new Provider());
+        using var withIndex = await AddEntries(first, new Dictionary<string, byte[]>
+        {
+            ["Doc_0/Attachs/Index.dat"] = Encoding.UTF8.GetBytes(
+                "<Attachments xmlns=\"" + OfdConstants.Namespace + "\">" +
+                "<Attachment ID=\"A1\" Name=\"alias\">" +
+                "<FileLoc>/Doc_0/Signs/Signatures.xml</FileLoc>" +
+                "</Attachment></Attachments>")
+        });
+        using var referenced = await Rewrite(withIndex, "Doc_0/Document.xml", bytes =>
+        {
+            var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            document.Root!.Add(new XElement(document.Root.Name.Namespace + "Attachments",
+                "Attachs/Index.dat"));
+            return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        });
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignWithResultAsync(referenced, output, provider));
+        Assert.Contains("/Doc_0/Signs/Signatures.xml", error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
