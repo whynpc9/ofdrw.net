@@ -20,10 +20,10 @@
 
 - Java → .NET：本包分别以 `bob` 口令和测试证书私钥解出两份 Java 包；按 ZIP 逻辑文件名及每项原始字节与 `hello.ofd` 比对，均相同。两份清单的 Java 签名与精确文件名集合可验，原生清单没有逐文件内容摘要；默认解密拒绝，只有显式 `AllowUnverifiedContents=true` 才返回 `FileContentsVerified=false`。
 - .NET → Java：本包从同一 `hello.ofd` 产生口令与证书各含两个接收人的包。Java `OFDIntegrityVerifier` 对两份包均返回 `true`；Java 分别以 `bob` 解密后，原始 OFD 文件名及每项字节与 `hello.ofd` 相同。Java 解密器同时保留旧 `OFDEntries.xml`、`signedvalue.dat`，这两个残留文件已不描述恢复后的明文包，不能作为解密后完整性证据。
-- 本包自闭环：签名清单及私有签名逐文件 SM3 扩展均验证。错误口令/证书、密文改动、额外或缺失条目、清单改动拒绝。文件 API 在失败时保持目的文件原值；旧私有 v2 回归继续通过。
+- 本包自闭环：签名清单及私有签名逐文件 SM3 扩展均验证。错误口令/证书、密文改动、额外或缺失条目、清单改动和损坏的 Java SM2 包装拒绝；损坏包装按 `InvalidDataException` 报告。文件 API 在失败时保持目的文件原值；旧私有 v2 回归继续通过。
 - 本地包消费：[`run-standard-crypto-e2e.sh`](../../../scripts/run-standard-crypto-e2e.sh) 生成 Core、Packaging、Crypto.Password 三个实际 `.nupkg`，用隔离 `PackageReference` 消费端验证口令/证书多接收人、内容认证、失败原子性及私有 v2。版本 `0.1.0-r14.local` 仅为本地测试，不是公开发布。包 SHA 与依赖保存在忽略目录 `artifacts/roadmap-v12/R14/package-e2e/package-manifest.json`。
 
-2026-10-21 本次本地复跑：`Ofdrw.Net.Crypto.Password.Tests` **104/104**（含五份已物化 Java fixture、大小写路径更名拒绝）通过；最终解析器修改后的隔离包消费通过，构建 0 warning / 0 error。三个本地包的 SHA-256 依次为 Core `e6ed85dc023947347bf8e7d01b907e9b8742937e859c81fac3b445328cb5f884`、Packaging `7478f549405eb37fd92e12c6fd8d2155986d12b856bba0aa830b8cb8e3d7f727`、Crypto.Password `e33434c4e756e5d69197f80ae3d872308cf31b2546a5ada6784258dad55d32fe`。反向 Java 复跑在本次修改后对两份新 .NET 包的清单均输出 `true`，解密后原始文件条目字节相同；两份 .NET 包的 SHA-256 分别为 `6080c591b5f9ee59cff10014e06679a6440bd2524c99afd5916adbdacce98807`、`13993520eccaa3f0f3d53c5cdbeb53d2a16f5b122811493e6896315d63b8915d`。该哈希仅标识这次随机输出。
+2026-10-21 本次本地复跑：`Ofdrw.Net.Crypto.Password.Tests` **105/105**（含五份已物化 Java fixture、大小写路径更名及损坏 SM2 包装拒绝）通过；最终解析器修改后的隔离包消费通过，构建 0 warning / 0 error。三个本地包的 SHA-256 依次为 Core `e5a318462e0ec424e31d5d5d7e026c8bddf5f618c025807aeb40f95033889595`、Packaging `035c0ec4835b53c9da14c7ec2e0e7168d3c730348317ffc6842c28181b40210d`、Crypto.Password `ce650e903b8a54ceb6eee7917a33b63b5a3b91895a044ac7a59f88eab7e34af7`。反向 Java 复跑对两份新 .NET 包的清单均输出 `true`，解密后原始文件条目字节相同；两份 .NET 包的 SHA-256 分别为 `6080c591b5f9ee59cff10014e06679a6440bd2524c99afd5916adbdacce98807`、`13993520eccaa3f0f3d53c5cdbeb53d2a16f5b122811493e6896315d63b8915d`。该哈希仅标识这次随机输出。
 
 本地复查命令：
 

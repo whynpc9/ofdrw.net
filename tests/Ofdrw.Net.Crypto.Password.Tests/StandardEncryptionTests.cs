@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml.Linq;
 using Org.BouncyCastle.Asn1.GM;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
@@ -54,6 +55,27 @@ public sealed class StandardEncryptionTests
         Assert.True(result.ManifestSignatureVerified && result.ExactEntrySetVerified);
         Assert.False(result.FileContentsVerified);
         AssertEqual(Unzip(File.ReadAllBytes(Path.Combine(dir, "hello.ofd"))), Unzip(result.OfdBytes));
+    }
+
+    [Fact]
+    public async Task MalformedJavaCertificateWrapperIsReportedAsInvalidPackageData()
+    {
+        var dir = FixtureDirectory();
+        var cert = (Org.BouncyCastle.X509.X509Certificate)new PemReader(
+            new StringReader(File.ReadAllText(Path.Combine(dir, "sign_cert.pem")))).ReadObject()!;
+        var pair = (Org.BouncyCastle.Crypto.AsymmetricCipherKeyPair)new PemReader(
+            new StringReader(File.ReadAllText(Path.Combine(dir, "sign_key.pem")))).ReadObject()!;
+        var entries = Unzip(File.ReadAllBytes(Path.Combine(dir, "java-cert.ofd")));
+        var seed = XDocument.Parse(Encoding.UTF8.GetString(entries["decryptseed.dat"]));
+        seed.Descendants().Single(x => x.Name.LocalName == "UserInfo" && (string?)x.Attribute("UserName") == "bob")
+            .Elements().Single(x => x.Name.LocalName == "EncryptedWK").Value = Convert.ToBase64String(new byte[64]);
+        entries["decryptseed.dat"] = Encoding.UTF8.GetBytes(seed.ToString());
+        await Assert.ThrowsAsync<InvalidDataException>(() => OfdStandardEncryption.DecryptAsync(
+            new MemoryStream(Zip(entries)),
+            OfdStandardCredential.ForCertificate("bob", PrivateKeyInfoFactory.CreatePrivateKeyInfo(pair.Private).GetEncoded(),
+                cert.GetEncoded()),
+            new OfdStandardDecryptionOptions
+            { ExpectedManifestSignerCertificateDer = cert.GetEncoded(), AllowUnverifiedContents = true }));
     }
 
     [Fact]

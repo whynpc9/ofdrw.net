@@ -56,7 +56,11 @@ internal static class StandardCryptoPrimitives
         }
         catch (Exception ex) when (ex is ArgumentException or IOException)
         { throw new InvalidDataException("Invalid recipient private key.", ex); }
-        var raw = FromJavaDer(wrapped);
+        byte[] raw;
+        try { raw = FromJavaDer(wrapped); }
+        catch (Exception ex) when (ex is not InvalidDataException and not OutOfMemoryException and
+            not StackOverflowException and not OperationCanceledException)
+        { throw new InvalidDataException("Invalid SM2 wrapped file key.", ex); }
         try
         {
             var engine = new SM2Engine(SM2Engine.Mode.C1C3C2);
