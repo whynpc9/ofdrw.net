@@ -37,7 +37,7 @@
 | 摘要校验 | 上游签章验证链路 | 内置 SM3、SHA-1、SHA-256，逐引用恒定时间比较，篡改检测 | **已支持** |
 | SES/SM2 电子签章 | `ofdrw-sign` + `ofdrw-gm` | 可注册厂商 `IOfdSignedValueVerifier` / `IOfdSignatureProvider` | **扩展点**；核心无默认 SES/SM2 实现和印章外观验证 |
 | SES dev/interop 测试容器 | 固定上游 SES V1/V4 测试容器 | 可选 `Ofdrw.Net.Signatures.SesInterop`：常见字段解析、SM2 测试自签/双层验签、完整测试证书固定 | **测试扩展**；仅显式注册，默认 verifier/CLI 不给自签 FullyValid；核心能力标志仍 false。无阅读器互认、法律效力或合格 TSA，范围见[教程](tutorials/16-ses-dev-interop.md)与[证据](evidence/ses-interop/README.md) |
-| GM/T 0099 密码应用 / 私有口令扩展 | `ofdrw-crypto` | 核心能力标志仍 false；独立 `Crypto.Password` 已实现私有 password profile v2，拒绝 v1 | **核心未支持 / 可选私有扩展已实现**；有界 scrypt、独立 IV SM4-CBC 与 HMAC，自闭环不等于通用 GM/T/证书/厂商互操作，见[契约](password-crypto.md)及[v2 证据](evidence/password-crypto/v2/README.md) |
+| GM/T 0099 密码应用 / 可选加密扩展 | `ofdrw-crypto` | 核心能力标志仍 false；独立 `Crypto.Password` 保留私有 password v2，新增显式 Java 2.4.0 兼容的口令/SM2 证书同类多接收人及签名 `OFDEntries` 有限子集 | **核心未支持 / 可选有限扩展**；v2 有 scrypt/HMAC；标准子集的 Java 原生清单只证明路径，逐文件内容仅在本包的签名摘要扩展存在时可验；非通用 GM/T/厂商互认或生产 PKI，见[契约](password-crypto.md)及[R14 证据](evidence/r14-standard-encryption/README.md) |
 | CLI/工具分发 | `ofdrw-tool` 及各模块工具 | 转换、SVG、PNG/JPEG图片进出、文本提取、重排、合并、签名验证的 .NET tool | **已支持** |
 | Graphics2D 兼容层 | `ofdrw-graphics2d` | Layout 公开 OfdGraphics/OfdPen/OfdBrush/OfdFont/OfdGraphicsPath/OfdMatrix，输出原生 PathObject/TextObject | **部分支持**；04 原语绘图已实现，无 Skia 必需依赖；19 已实现受限合作 producer 事件适配（不透明捕捉 SKCanvas，验收见独立证据）；05 已有有限 TrueType 子集实现，其他字体格式继续遵循[契约](font-subset-and-reuse.md) |
 | 兼容性与发布 | Maven 多模块、长期演进 | `netstandard2.0/2.1` SDK + `net10.0` CLI，NuGet 包消费 E2E | **部分支持**；仓库采用 MIT 并附第三方声明；发布候选需通过同一批 NuGet 包的消费验证 |
@@ -96,6 +96,7 @@ issue #3 的逐项状态见 [实现对照](issue-3-implementation.md)，不因 0
 `Ofdrw.Net.Crypto.Password`（net8.0）提供本包 profile v2 的随机盐/有界 scrypt、
 独立 IV 的 SM4-CBC/PKCS#7 与先验 HMAC、显式部分页/条目加密及精确恢复；拒绝v1。
 核心 `SupportsGmT0099EncryptionEnvelope=false` 保持不变，不进入默认 Converter。
-仅自闭环：无厂商互认、非商用密码认证、非长期保存格式；不支持证书、
-GM/T 完整性协议、多重加密。契约与限制见[口令扩展](password-crypto.md)，
+私有 v2 仍仅自闭环；显式 R14 入口支持固定 Java 2.4.0 的口令或 SM2 证书同类多接收人、
+签名清单及本包逐文件摘要扩展，仍不支持混合接收人或多层加密。无厂商互认、非商用密码认证、非长期保存格式。
+契约与限制见[可选加密扩展](password-crypto.md)，
 功能/页面/review 状态见[本票证据](evidence/password-crypto/README.md)。

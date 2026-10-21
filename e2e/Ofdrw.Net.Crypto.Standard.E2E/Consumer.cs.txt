@@ -1,0 +1,117 @@
+using System.IO.Compression;
+using System.Security.Cryptography;
+using System.Text;
+using Ofdrw.Net.Crypto.Password;
+using Org.BouncyCastle.Asn1.GM;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Operators;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Crypto.Signers;
+using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.X509;
+
+var random = new SecureRandom();
+var generator = new ECKeyPairGenerator();
+generator.Init(new ECKeyGenerationParameters(GMObjectIdentifiers.sm2p256v1, random));
+var pair = generator.GenerateKeyPair();
+var certGen = new X509V3CertificateGenerator(); var name = new X509Name("CN=OFD R14 PACKAGE TEST");
+certGen.SetSerialNumber(new BigInteger(128, random).Add(BigInteger.One));
+certGen.SetIssuerDN(name); certGen.SetSubjectDN(name);
+certGen.SetNotBefore(DateTime.UtcNow.AddDays(-1)); certGen.SetNotAfter(DateTime.UtcNow.AddDays(30));
+certGen.SetPublicKey(pair.Public);
+certGen.AddExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(false));
+certGen.AddExtension(X509Extensions.KeyUsage, true, new KeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyEncipherment));
+var certificate = certGen.Generate(new Asn1SignatureFactory("SM3WITHSM2", pair.Private, random)).GetEncoded();
+var privateKey = PrivateKeyInfoFactory.CreatePrivateKeyInfo(pair.Private).GetEncoded();
+var signer = new OfdStandardManifestSigner(certificate, (digest, token) =>
+{
+    token.ThrowIfCancellationRequested(); var sm2 = new SM2Signer();
+    sm2.Init(true, new ParametersWithRandom(pair.Private, new SecureRandom()));
+    sm2.BlockUpdate(digest, 0, digest.Length); return Task.FromResult(sm2.GenerateSignature());
+});
+var original = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase)
+{
+    ["OFD.xml"] = Encoding.UTF8.GetBytes("<OFD xmlns='http://www.ofdspec.org'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>"),
+    ["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes("<Document xmlns='http://www.ofdspec.org'><Pages><Page ID='1' BaseLoc='Pages/P0/Content.xml'/><Page ID='2' BaseLoc='Pages/P1/Content.xml'/></Pages></Document>"),
+    ["Doc_0/Pages/P0/Content.xml"] = Encoding.UTF8.GetBytes("中英文 ABC"),
+    ["Doc_0/Pages/P1/Content.xml"] = Encoding.UTF8.GetBytes("第二页 0123456789")
+};
+var input = Zip(original);
+foreach (var mode in new[] { "password", "certificate" })
+{
+    var options = new OfdStandardEncryptionOptions { ManifestSigner = signer };
+    if (mode == "password")
+    {
+        options.Recipients.Add(OfdStandardRecipient.ForPassword("alice", "one 🔒"));
+        options.Recipients.Add(OfdStandardRecipient.ForPassword("bob", "two"));
+    }
+    else
+    {
+        options.Recipients.Add(OfdStandardRecipient.ForCertificate("alice", certificate));
+        options.Recipients.Add(OfdStandardRecipient.ForCertificate("bob", certificate));
+    }
+    var encrypted = await OfdStandardEncryption.EncryptAsync(new MemoryStream(input), options);
+    foreach (var recipient in new[] { "alice", "bob" })
+    {
+        var credential = mode == "password" ? OfdStandardCredential.ForPassword(recipient, recipient == "alice" ? "one 🔒" : "two")
+            : OfdStandardCredential.ForCertificate(recipient, privateKey, certificate);
+        var result = await OfdStandardEncryption.DecryptAsync(new MemoryStream(encrypted), credential,
+            new OfdStandardDecryptionOptions { ExpectedManifestSignerCertificateDer = certificate });
+        if (!result.ManifestSignatureVerified || !result.ExactEntrySetVerified || !result.FileContentsVerified)
+            throw new Exception("Standard package did not verify all recorded properties.");
+        Compare(original, Entries(result.OfdBytes));
+    }
+    var root = Path.Combine(Path.GetTempPath(), "ofd-r14-consumer-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(root);
+    try
+    {
+        var source = Path.Combine(root, "encrypted.ofd"); var output = Path.Combine(root, "restored.ofd");
+        File.WriteAllBytes(source, encrypted); File.WriteAllBytes(output, [4, 5, 6]);
+        var wrong = mode == "password" ? OfdStandardCredential.ForPassword("bob", "wrong")
+            : OfdStandardCredential.ForCertificate("bob", PrivateKeyInfoFactory.CreatePrivateKeyInfo(
+                new ECKeyPairGeneratorForWrongKey().Generate()).GetEncoded(), certificate);
+        try { await OfdStandardEncryption.DecryptFileAsync(source, output, wrong,
+            new OfdStandardDecryptionOptions { ExpectedManifestSignerCertificateDer = certificate });
+            throw new Exception("Wrong credential accepted."); }
+        catch (InvalidDataException) { }
+        if (!File.ReadAllBytes(output).SequenceEqual(new byte[] { 4, 5, 6 }) ||
+            Directory.GetFiles(root, ".ofd-standard-*.tmp").Length != 0)
+            throw new Exception("Failed file decrypt changed output or left staging.");
+    }
+    finally { Directory.Delete(root, true); }
+}
+var privateOptions = new OfdPasswordOptions(); privateOptions.PageIndices.Add(1);
+var v2 = await OfdPasswordEnvelope.EncryptAsync(new MemoryStream(input), "v2 password", privateOptions);
+Compare(original, Entries(await OfdPasswordEnvelope.DecryptAsync(new MemoryStream(v2), "v2 password")));
+Console.WriteLine("PackageReference consumer: standard password/certificate multi-recipient, manifest/content checks, atomic failure, and private v2 passed.");
+
+static byte[] Zip(Dictionary<string, byte[]> entries)
+{
+    using var output = new MemoryStream(); using (var zip = new ZipArchive(output, ZipArchiveMode.Create, true))
+        foreach (var item in entries)
+        { using var stream = zip.CreateEntry(item.Key, CompressionLevel.NoCompression).Open(); stream.Write(item.Value); }
+    return output.ToArray();
+}
+static Dictionary<string, byte[]> Entries(byte[] bytes)
+{
+    using var zip = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
+    return zip.Entries.ToDictionary(x => x.FullName, x =>
+    { using var stream = x.Open(); using var output = new MemoryStream(); stream.CopyTo(output); return output.ToArray(); }, StringComparer.OrdinalIgnoreCase);
+}
+static void Compare(Dictionary<string, byte[]> expected, Dictionary<string, byte[]> actual)
+{
+    if (!expected.Keys.Order().SequenceEqual(actual.Keys.Order()) || expected.Any(x => !x.Value.SequenceEqual(actual[x.Key])))
+        throw new Exception("Exact package entry recovery failed.");
+}
+sealed class ECKeyPairGeneratorForWrongKey
+{
+    public ECPrivateKeyParameters Generate()
+    {
+        var generator = new ECKeyPairGenerator();
+        generator.Init(new ECKeyGenerationParameters(GMObjectIdentifiers.sm2p256v1, new SecureRandom()));
+        return (ECPrivateKeyParameters)generator.GenerateKeyPair().Private;
+    }
+}
