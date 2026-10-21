@@ -343,9 +343,10 @@ internal static class OfdAttachmentPhysicalCleaner
             return PayloadOwnerScope.None;
         }
         if (package.AttachmentSource?.DescriptorPath != path || root.Name.LocalName != "Attachments") return PayloadOwnerScope.None;
-        return attributeName == "FileLoc" && element.Name == ns + "Attachment" && element.Parent == root ||
+        return attributeName == "FileLoc" && element.Name == ns + "Attachment" && element.Parent == root &&
+               element.Element(ns + "FileLoc") is null ||
                attributeName is null && element.Name == ns + "FileLoc" && element.Parent?.Name == ns + "Attachment" &&
-               element.Parent.Parent == root
+               element.Parent.Parent == root && ReferenceEquals(element.Parent.Element(ns + "FileLoc"), element)
             ? PayloadOwnerScope.Entry : PayloadOwnerScope.None;
     }
 
