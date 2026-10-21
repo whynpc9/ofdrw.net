@@ -64,9 +64,10 @@ internal static class OfdSignatureFileSelection
         {
             cancellationToken.ThrowIfCancellationRequested();
             var path = entry.Key;
-            if (path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) && !IsSignatureMaterial(path))
+            if (path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) &&
+                !IsSignatureMaterial(path) && !IsAnnotationMaterial(path, directories))
                 required.Add(path);
-            if (!IsSignatureMaterial(path) && directories.Any(dir =>
+            if (!IsSignatureMaterial(path) && !IsAnnotationMaterial(path, directories) && directories.Any(dir =>
                     path.StartsWith(dir, StringComparison.OrdinalIgnoreCase)))
                 required.Add(path);
         }
@@ -95,17 +96,19 @@ internal static class OfdSignatureFileSelection
                 throw new InvalidDataException(
                     "Cannot prove document dependency closure for /" + entry.Key, exception);
             }
-            foreach (var candidate in document.Descendants()
+            foreach (var candidate in document.Root!.DescendantsAndSelf()
                          .SelectMany(node => node.Attributes().Where(a => !a.IsNamespaceDeclaration)
                              .Select(a => a.Value).Concat(
                                  node.HasElements ? Array.Empty<string>() : new[] { node.Value })))
             {
                 var value = candidate.Trim();
-                if (value.Length == 0 || value.Length > 1024) continue;
+                if (value.Length == 0) continue;
                 var resolved = Resolve(entry.Key, value);
-                if (entries.ContainsKey(resolved)) required.Add(resolved);
+                if (entries.ContainsKey(resolved) && !IsAnnotationMaterial(resolved, directories))
+                    required.Add(resolved);
                 var fromRoot = Normalize(value);
-                if (entries.ContainsKey(fromRoot)) required.Add(fromRoot);
+                if (entries.ContainsKey(fromRoot) && !IsAnnotationMaterial(fromRoot, directories))
+                    required.Add(fromRoot);
             }
         }
         return required;
@@ -114,6 +117,9 @@ internal static class OfdSignatureFileSelection
     private static bool IsSignatureMaterial(string path) =>
         path.StartsWith("Signs/", StringComparison.OrdinalIgnoreCase) ||
         path.IndexOf("/Signs/", StringComparison.OrdinalIgnoreCase) >= 0;
+
+    private static bool IsAnnotationMaterial(string path, IEnumerable<string> documentDirectories) =>
+        documentDirectories.Any(directory => path.StartsWith(directory + "Annots/", StringComparison.OrdinalIgnoreCase));
 
     private static string Resolve(string containingPath, string value)
     {

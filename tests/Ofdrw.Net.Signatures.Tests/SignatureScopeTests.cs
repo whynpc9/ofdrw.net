@@ -87,6 +87,42 @@ public sealed class SignatureScopeTests
     }
 
     [Fact]
+    public async Task AnnotationSubtreeCanBeExcludedWhilePageContentStaysProtected()
+    {
+        using var source = await CreatePackage();
+        using var signed = new MemoryStream();
+        var selection = await new OfdSignatureService().SignWithResultAsync(source, signed,
+            new Provider(), new OfdSignatureOptions
+            {
+                ProtectFile = path => !path.StartsWith("/Doc_0/Annots/", StringComparison.Ordinal)
+            });
+        Assert.Contains("/Doc_0/Annots/Annotations.xml", selection.UnprotectedFiles);
+        Assert.Contains("/Doc_0/Annots/Page_0.xml", selection.UnprotectedFiles);
+        Assert.Contains("/Doc_0/Document.xml", selection.ProtectedFiles);
+        Assert.True(await IsFullyValid(signed));
+        using var annotationChanged = await Rewrite(signed, "Doc_0/Annots/Page_0.xml",
+            _ => Encoding.UTF8.GetBytes("<PageAnnot changed=\"true\"/>"));
+        Assert.True(await IsFullyValid(annotationChanged));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RootXmlAttributeReferencesRemainRequiredEvenForLongPaths(bool longPath)
+    {
+        var path = "Shared/" + (longPath ? new string('x', 1100) : "payload") + ".bin";
+        using var source = await CreatePackage(rootReferencedPath: path);
+        using var target = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(source, target, provider,
+                new OfdSignatureOptions { ProtectFile = candidate => candidate != "/" + path }));
+        Assert.Contains("/" + path, error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, target.Length);
+    }
+
+    [Fact]
     public async Task DefaultSelectionAndProtectedListRetainExistingLockBehavior()
     {
         using var source = await CreatePackage();
@@ -193,7 +229,8 @@ public sealed class SignatureScopeTests
         Assert.Equal(0, output3.Length);
     }
 
-    private static async Task<MemoryStream> CreatePackage(bool version2 = false)
+    private static async Task<MemoryStream> CreatePackage(bool version2 = false,
+        string? rootReferencedPath = null)
     {
         var package = new OfdDocumentPackage();
         if (version2) package.Options.Namespace = OfdConstants.StandardNamespace;
@@ -201,12 +238,30 @@ public sealed class SignatureScopeTests
         package.PreservedEntries["Extras/optional.bin"] = [1, 2, 3];
         package.PreservedEntries["Doc_0/Res/opaque.bin"] = [4, 5, 6];
         package.PreservedEntries["Shared/external.bin"] = [7, 8, 9];
+        package.PreservedEntries["Doc_0/Annots/Annotations.xml"] =
+            Encoding.UTF8.GetBytes("<Annotations><PageAnnot FileLoc=\"Page_0.xml\"/></Annotations>");
+        package.PreservedEntries["Doc_0/Annots/Page_0.xml"] =
+            Encoding.UTF8.GetBytes("<PageAnnot/>");
+        if (rootReferencedPath is not null)
+        {
+            package.PreservedEntries[rootReferencedPath] = [3, 2, 1];
+            package.PreservedEntries["Shared/manifest.xml"] = Encoding.UTF8.GetBytes(
+                "<Root FileLoc=\"/" + rootReferencedPath + "\"/>");
+        }
         var output = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(package, output);
         output.Position = 0;
-        if (!version2) return output;
-        using (output)
-            return await Rewrite(output, "OFD.xml", bytes =>
+        var withAnnotations = await Rewrite(output, "Doc_0/Document.xml", bytes =>
+        {
+            var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            document.Root!.Add(new XElement(document.Root.Name.Namespace + "Annotations",
+                "Annots/Annotations.xml"));
+            return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        });
+        output.Dispose();
+        if (!version2) return withAnnotations;
+        using (withAnnotations)
+            return await Rewrite(withAnnotations, "OFD.xml", bytes =>
                 Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes).Replace("Version=\"1.0\"", "Version=\"2.0\"")));
     }
 
