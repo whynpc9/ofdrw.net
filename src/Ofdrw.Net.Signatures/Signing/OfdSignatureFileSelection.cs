@@ -110,8 +110,35 @@ internal static class OfdSignatureFileSelection
                 if (entries.ContainsKey(fromRoot) && !IsAnnotationMaterial(fromRoot, directories))
                     required.Add(fromRoot);
             }
+            AddComposedResourceFiles(entry.Key, document, entries, required);
         }
         return required;
+    }
+
+    private static void AddComposedResourceFiles(
+        string resourceXmlPath, XDocument document,
+        IReadOnlyDictionary<string, byte[]> entries, HashSet<string> required)
+    {
+        var root = document.Root!;
+        if (root.Name.LocalName != "Res") return;
+        var baseLocation = root.Attribute("BaseLoc")?.Value;
+        foreach (var node in root.Descendants())
+        {
+            string? file = null;
+            if (node.Name.LocalName == "MultiMedia")
+                file = node.Attribute("MediaFile")?.Value ??
+                    node.Elements().FirstOrDefault(child => child.Name.LocalName == "MediaFile")?.Value;
+            else if (node.Name.LocalName == "Font")
+                file = node.Elements().FirstOrDefault(child => child.Name.LocalName == "FontFile")?.Value;
+            if (string.IsNullOrWhiteSpace(file)) continue;
+            var location = string.IsNullOrWhiteSpace(baseLocation) || file!.StartsWith("/", StringComparison.Ordinal)
+                ? file!
+                : baseLocation!.TrimEnd('/') + "/" + file.TrimStart('/');
+            var resolved = Resolve(resourceXmlPath, location);
+            if (resolved.Length == 0 || !entries.ContainsKey(resolved))
+                throw new InvalidDataException("Cannot prove resource dependency: /" + resourceXmlPath + " -> " + location);
+            required.Add(resolved);
+        }
     }
 
     private static bool IsSignatureMaterial(string path) =>

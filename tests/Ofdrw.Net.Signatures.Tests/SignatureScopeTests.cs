@@ -122,6 +122,22 @@ public sealed class SignatureScopeTests
         Assert.Equal(0, target.Length);
     }
 
+    [Theory]
+    [InlineData("/PublicRes/Res/logo.png")]
+    [InlineData("/PublicRes/Res/typeface.ttf")]
+    public async Task ComposedSharedMediaAndFontLocationsCannotBeOmitted(string excluded)
+    {
+        using var source = await CreatePackage(composedResources: true);
+        using var target = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(source, target, provider,
+                new OfdSignatureOptions { ProtectFile = path => path != excluded }));
+        Assert.Contains(excluded, error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, target.Length);
+    }
+
     [Fact]
     public async Task DefaultSelectionAndProtectedListRetainExistingLockBehavior()
     {
@@ -230,7 +246,7 @@ public sealed class SignatureScopeTests
     }
 
     private static async Task<MemoryStream> CreatePackage(bool version2 = false,
-        string? rootReferencedPath = null)
+        string? rootReferencedPath = null, bool composedResources = false)
     {
         var package = new OfdDocumentPackage();
         if (version2) package.Options.Namespace = OfdConstants.StandardNamespace;
@@ -248,6 +264,15 @@ public sealed class SignatureScopeTests
             package.PreservedEntries["Shared/manifest.xml"] = Encoding.UTF8.GetBytes(
                 "<Root FileLoc=\"/" + rootReferencedPath + "\"/>");
         }
+        if (composedResources)
+        {
+            package.PreservedEntries["PublicRes/PublicRes.xml"] = Encoding.UTF8.GetBytes(
+                "<Res xmlns=\"http://www.ofdspec.org/2016\" BaseLoc=\"Res\">" +
+                "<MultiMedias><MultiMedia ID=\"2\" MediaFile=\"logo.png\"/></MultiMedias>" +
+                "<Fonts><Font ID=\"3\" FontName=\"Fixture\"><FontFile>typeface.ttf</FontFile></Font></Fonts></Res>");
+            package.PreservedEntries["PublicRes/Res/logo.png"] = [1, 2, 3];
+            package.PreservedEntries["PublicRes/Res/typeface.ttf"] = [4, 5, 6];
+        }
         var output = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(package, output);
         output.Position = 0;
@@ -256,6 +281,9 @@ public sealed class SignatureScopeTests
             var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
             document.Root!.Add(new XElement(document.Root.Name.Namespace + "Annotations",
                 "Annots/Annotations.xml"));
+            if (composedResources)
+                document.Root.Add(new XElement(document.Root.Name.Namespace + "PublicRes",
+                    "/PublicRes/PublicRes.xml"));
             return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
         });
         output.Dispose();
