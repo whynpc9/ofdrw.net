@@ -82,6 +82,57 @@ public sealed class MultiDocumentTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompoundResourceBaseLoc_RejectsCrossDocumentFontDependency(bool nestedResource)
+    {
+        var entries = await MultiDocumentFixture.CreateEntriesAsync();
+        var resource = XDocument.Load(new MemoryStream(entries["Doc_0/PublicRes.xml"]));
+        resource.Root!.SetAttributeValue("BaseLoc", nestedResource ? ".." : "../Doc_1/Res");
+        var font = resource.Descendants().First(node => node.Name.LocalName == "Font");
+        font.Elements().Where(node => node.Name.LocalName == "FontFile").Remove();
+        font.Add(new XElement(resource.Root.Name.Namespace + "FontFile", nestedResource ? "../../Doc_1/Res/font.ttf" : "font.ttf"));
+        if (nestedResource)
+        {
+            entries.Remove("Doc_0/PublicRes.xml");
+            entries["Doc_0/Res/Sub/PublicRes.xml"] = Encoding.UTF8.GetBytes(resource.ToString());
+            var document = XDocument.Load(new MemoryStream(entries["Doc_0/Document.xml"]));
+            document.Descendants().First(node => node.Name.LocalName == "PublicRes").Value = "Res/Sub/PublicRes.xml";
+            entries["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes(document.ToString());
+        }
+        else entries["Doc_0/PublicRes.xml"] = Encoding.UTF8.GetBytes(resource.ToString());
+        entries["Doc_1/Res/font.ttf"] = [1, 2, 3];
+        using var input = MultiDocumentFixture.Zip(entries);
+        var selected = await new OfdReader().ReadAsync(input);
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(selected, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
+    public async Task CompoundResourceBaseLoc_RejectsCrossDocumentMediaDependency()
+    {
+        var entries = await MultiDocumentFixture.CreateEntriesAsync();
+        var resource = XDocument.Load(new MemoryStream(entries["Doc_0/PublicRes.xml"]));
+        var ns = resource.Root!.Name.Namespace;
+        resource.Root.SetAttributeValue("BaseLoc", "..");
+        resource.Root.Add(new XElement(ns + "MultiMedias",
+            new XElement(ns + "MultiMedia", new XAttribute("ID", "987"),
+                new XAttribute("MediaFile", "../../Doc_1/Res/image.png"))));
+        entries.Remove("Doc_0/PublicRes.xml");
+        entries["Doc_0/Res/Sub/PublicRes.xml"] = Encoding.UTF8.GetBytes(resource.ToString());
+        var document = XDocument.Load(new MemoryStream(entries["Doc_0/Document.xml"]));
+        document.Descendants().First(node => node.Name.LocalName == "PublicRes").Value = "Res/Sub/PublicRes.xml";
+        entries["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes(document.ToString());
+        entries["Doc_1/Res/image.png"] = [1, 2, 3];
+        using var input = MultiDocumentFixture.Zip(entries);
+        var selected = await new OfdReader().ReadAsync(input);
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(selected, output));
+        Assert.Equal(0, output.Length);
+    }
+
     [Fact]
     public async Task RemovingSelectedSecondPage_PrunesOnlySecondDocument()
     {

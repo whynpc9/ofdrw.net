@@ -62,8 +62,9 @@ public sealed class OfdReader : IOfdReader
         OfdPackageLoadOptions options,
         CancellationToken cancellationToken)
     {
-        var archive = await _loader.LoadAsync(ofdStream, options, cancellationToken).ConfigureAwait(false);
-        return ReadArchive(archive, options, new OfdModelMaterialization(new OfdModelLimits()), cancellationToken);
+        var snapshot = OfdPackageLoader.SnapshotOptions(options);
+        var archive = await _loader.LoadAsync(ofdStream, snapshot, cancellationToken).ConfigureAwait(false);
+        return ReadArchive(archive, snapshot, new OfdModelMaterialization(new OfdModelLimits()), cancellationToken);
     }
 
     internal async Task<OfdDocumentPackage> ReadControlledAsync(Stream ownedSpool, OfdPackageLoadOptions options,

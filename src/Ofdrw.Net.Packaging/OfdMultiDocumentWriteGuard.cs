@@ -47,6 +47,34 @@ internal static class OfdMultiDocumentWriteGuard
             XDocument xml;
             try { xml = material.ReadXml(entry.Key, entry.Value, token); }
             catch (System.Xml.XmlException) { throw Unsupported("an XML-looking entry cannot be inspected"); }
+            // BaseLoc can name a directory rather than an existing archive entry.
+            // A Res/FontFile (or MediaFile) is resolved relative to that base,
+            // so checking its leaf value alone misses compound cross-doc paths.
+            foreach (var baseLoc in xml.Descendants().Attributes().Where(attribute => attribute.Name.LocalName == "BaseLoc"))
+            {
+                token.ThrowIfCancellationRequested();
+                if (string.IsNullOrWhiteSpace(baseLoc.Value)) continue;
+                string resolved;
+                try { resolved = OfdPackagePath.Resolve(entry.Key, baseLoc.Value.Trim()); }
+                catch (InvalidDataException) { throw Unsupported("a BaseLoc cannot be inspected"); }
+                if (!resolved.Equals(owner, StringComparison.OrdinalIgnoreCase) &&
+                    !resolved.StartsWith(owner + "/", StringComparison.OrdinalIgnoreCase))
+                    throw Unsupported("cross-document BaseLoc");
+            }
+            var resourceBase = xml.Root?.Name.LocalName == "Res" ? xml.Root.Attribute("BaseLoc")?.Value : null;
+            if (!string.IsNullOrWhiteSpace(resourceBase))
+            {
+                foreach (var file in ResourceFiles(xml.Root!))
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (string.IsNullOrWhiteSpace(file) || file.StartsWith("/", StringComparison.Ordinal)) continue;
+                    string resolved;
+                    try { resolved = OfdPackagePath.Resolve(entry.Key, resourceBase!.TrimEnd('/') + "/" + file); }
+                    catch (InvalidDataException) { throw Unsupported("a resource path cannot be inspected"); }
+                    if (!resolved.StartsWith(owner + "/", StringComparison.OrdinalIgnoreCase))
+                        throw Unsupported("cross-document compound resource path");
+                }
+            }
             // Any path resolving to an existing entry of another document is a
             // cross-document dependency. Unknown paths are retained by the writer.
             foreach (var value in Values(xml))
@@ -103,6 +131,17 @@ internal static class OfdMultiDocumentWriteGuard
         foreach (var node in xml.Descendants().Where(node => !node.HasElements)) yield return node.Value;
         foreach (var attribute in xml.Descendants().Attributes().Where(attribute => !attribute.IsNamespaceDeclaration && attribute.Name.LocalName != "ID"))
             yield return attribute.Value;
+    }
+
+    private static IEnumerable<string> ResourceFiles(XElement root)
+    {
+        foreach (var fontFile in root.Descendants().Where(node => node.Name.LocalName == "FontFile"))
+            yield return fontFile.Value.Trim();
+        foreach (var media in root.Descendants().Where(node => node.Name.LocalName == "MultiMedia"))
+        {
+            var path = media.Attribute("MediaFile")?.Value ?? media.Elements().FirstOrDefault(node => node.Name.LocalName == "MediaFile")?.Value;
+            if (path is not null) yield return path.Trim();
+        }
     }
 
     private static NotSupportedException Unsupported(string reason) => new("Multi-DocBody edit requires isolated unsigned documents: " + reason + ".");
