@@ -88,6 +88,11 @@ public sealed class TextPrelayoutTests
                 Assert.Throws<TextLayoutException>(() => new TextShapedRun(request, glyphs, "replacement")).Error);
         var shared = new TextShapedRun(request, new[] { Glyph(7, 3), Glyph(7, 3) }, "replacement");
         Assert.Equal(2, shared.Glyphs.Count);
+
+        var supplementary = new TextShapeRequest("\ud83d\ude00", 0, Noto());
+        Assert.Equal(TextLayoutError.InvalidRequest, Assert.Throws<TextLayoutException>(() =>
+            new TextShapedRun(supplementary, new[] { Glyph(0, 1), Glyph(1, 1) }, "replacement")).Error);
+        Assert.Single(new TextShapedRun(supplementary, new[] { Glyph(0, 2) }, "replacement").Glyphs);
     }
 
     [Fact]
@@ -201,6 +206,44 @@ public sealed class TextPrelayoutTests
         Assert.True(changed > 0);
         var error = Assert.Throws<TextLayoutException>(() => new TextFontFace("Noto Sans", bytes));
         Assert.Equal(TextLayoutError.UnsupportedFontProfile, error.Error);
+    }
+
+    [Fact]
+    public void DeferredCmapFailureRemainsStructuredDuringCoverageLookup()
+    {
+        var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));
+        var tableCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(4, 2));
+        var cmap = -1;
+        for (var i = 0; i < tableCount; i++)
+        {
+            var record = 12 + i * 16;
+            if (System.Text.Encoding.ASCII.GetString(bytes, record, 4) == "cmap")
+                cmap = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(record + 8, 4));
+        }
+        Assert.True(cmap >= 0);
+        var subtableCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(cmap + 2, 2));
+        var mutated = false;
+        for (var i = 0; i < subtableCount; i++)
+        {
+            var offset = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(cmap + 4 + i * 8 + 4, 4));
+            var subtable = cmap + offset;
+            if (BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(subtable, 2)) != 4) continue;
+            var segmentCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(subtable + 6, 2)) / 2;
+            for (var segment = 0; segment < segmentCount; segment++)
+            {
+                var end = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(subtable + 14 + segment * 2, 2));
+                var start = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(subtable + 16 + segmentCount * 2 + segment * 2, 2));
+                if (start > 'A' || end < 'A') continue;
+                BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(subtable + 16 + segmentCount * 6 + segment * 2, 2), 0xfffe);
+                mutated = true;
+                break;
+            }
+        }
+        Assert.True(mutated);
+        var face = new TextFontFace("Noto Sans", bytes);
+        var error = Assert.Throws<TextLayoutException>(() => face.Covers('A'));
+        Assert.Equal(TextLayoutError.InvalidFont, error.Error);
+        Assert.IsType<System.IO.InvalidDataException>(error.InnerException);
     }
 
     [Fact]

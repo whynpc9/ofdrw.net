@@ -211,6 +211,12 @@ public sealed class TextShapedRun
                 glyph.ClusterLength <= 0 || (long)glyph.ClusterStart + glyph.ClusterLength >
                 (long)request.SourceStart + request.Text.Length)
                 throw new TextLayoutException(TextLayoutError.InvalidRequest, "Shaper returned an invalid glyph or source interval.");
+            var relativeStart = glyph.ClusterStart - request.SourceStart;
+            var relativeEnd = relativeStart + glyph.ClusterLength;
+            if (relativeStart > 0 && char.IsLowSurrogate(request.Text[relativeStart]) ||
+                relativeEnd < request.Text.Length && char.IsLowSurrogate(request.Text[relativeEnd]))
+                throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                    "Shaper split a UTF-16 surrogate pair at a cluster boundary.");
             intervals.Add((glyph.ClusterStart, glyph.ClusterStart + glyph.ClusterLength));
             x += glyph.XAdvance; y += glyph.YAdvance;
         }

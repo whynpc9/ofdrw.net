@@ -88,9 +88,20 @@ public sealed class TextFontFace
 
     /// <summary>Checks Unicode cmap coverage without selecting an implicit host fallback.</summary>
     public bool Covers(int unicodeScalar) => unicodeScalar >= 0 && unicodeScalar <= 0x10ffff &&
-        _cmap.Glyph(unicodeScalar) != 0;
+        CheckedGlyph(unicodeScalar) != 0;
 
-    internal int NominalGlyph(int unicodeScalar) => _cmap.Glyph(unicodeScalar);
+    internal int NominalGlyph(int unicodeScalar) => CheckedGlyph(unicodeScalar);
+
+    private int CheckedGlyph(int unicodeScalar)
+    {
+        try { return _cmap.Glyph(unicodeScalar); }
+        catch (Exception exception) when (exception is InvalidDataException || exception is OverflowException ||
+            exception is IndexOutOfRangeException)
+        {
+            throw new TextLayoutException(TextLayoutError.InvalidFont,
+                "The selected font cmap failed during glyph lookup.", exception);
+        }
+    }
 
     private static string Hash(byte[] data)
     {
