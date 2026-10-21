@@ -82,6 +82,11 @@ public sealed class R18AttachmentPhysicalCleanupTests
         package = await Read(Zip(aliased));
         Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
         await RefusesWithoutOutput(package);
+
+        aliased["Doc_0/Res/DocumentRes.dat"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='/Doc_0/Payload'><MultiMedias><MultiMedia ID='12'><MediaFile>original.bin</MediaFile></MultiMedia></MultiMedias></Res>");
+        package = await Read(Zip(aliased));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
     }
 
     [Fact]
@@ -274,9 +279,13 @@ public sealed class R18AttachmentPhysicalCleanupTests
 
     private static async Task RefusesWithoutOutput(OfdDocumentPackage package)
     {
+        var preserved = package.PreservedEntries.ToDictionary(entry => entry.Key, entry => entry.Value.ToArray());
         using var output = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteWithResultAsync(package, output));
         Assert.Equal(0, output.Length);
+        Assert.Equal(preserved.Keys.OrderBy(path => path), package.PreservedEntries.Keys.OrderBy(path => path));
+        foreach (var entry in preserved)
+            Assert.Equal(entry.Value, package.PreservedEntries[entry.Key]);
     }
 
     private static byte[] Seed(bool external = false)
