@@ -12,6 +12,11 @@ public enum OfdElementType
 
 public abstract class OfdElement
 {
+    // Reader-resolved render view of an imported source fragment. The original
+    // SourceXml/Raw XML remains authoritative for editing and package writing.
+    internal string? RenderSourceXml { get; set; }
+    internal string? RenderSourceAuthority { get; set; }
+    internal string? RenderPaintError { get; set; }
     internal OfdClipOwnership ClipOwnership { get; } = new();
     /// <summary>Typed path clips. Null preserves an unclaimed source; an empty collection clears known clips.</summary>
     public OfdClipCollection? Clips { get => ClipOwnership.Value; set => ClipOwnership.Set(value); }
@@ -198,6 +203,10 @@ public sealed class OfdColor
 /// </summary>
 public sealed class OfdRawElement : OfdElement
 {
+    // Reader-owned, read-only rendering view. Xml remains the authenticated
+    // page root for package writeback; these children are never serialized.
+    internal List<OfdElement>? PageBlockChildren { get; set; }
+    internal string? PageBlockSourceXml { get; set; }
     public OfdRawElement()
     {
         Type = OfdElementType.Raw;

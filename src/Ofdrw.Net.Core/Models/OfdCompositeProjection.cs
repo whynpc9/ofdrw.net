@@ -14,13 +14,27 @@ internal static class OfdCompositeProjection
     {
         material.ChargeCopy(512, token); var result = new List<OfdElement>();
         var active = new HashSet<OfdCompositeResource>();
-        foreach (var root in roots) Visit(root, Identity(), new List<OfdPathElement>(), 1);
+        foreach (var root in roots) Visit(root, Identity(), new List<OfdPathElement>(), 1, false);
         return result;
-        void Visit(OfdElement element, double[] parent, List<OfdPathElement> inherited, int depth)
+        void Visit(OfdElement element, double[] parent, List<OfdPathElement> inherited, int depth, bool compositeChild)
         {
             token.ThrowIfCancellationRequested(); material.Structure.Depth(depth); material.Structure.Node(depth); material.Structure.Result(false);
             material.ChargeCopy(1024L + 32L * inherited.Count, token); material.ChargeWork(128, token);
             if (!OfdGraphicXmlContract.IsVisible(element)) return;
+            if (element is OfdRawElement { LocalName: "PageBlock" } block)
+            {
+                if (block.PageBlockChildren is null || block.PageBlockSourceXml != block.Xml)
+                    throw new NotSupportedException("Opaque or modified PageBlock cannot be rendered.");
+                material.GuardFragmentXml(block.Xml, token);
+                var node = OfdXmlEnvelope.Parse(block.Xml);
+                if (node.Name.LocalName != "PageBlock" ||
+                    node.Attributes().Any(a => !a.IsNamespaceDeclaration &&
+                        (a.Name.Namespace != XNamespace.None || a.Name.LocalName != "ID")) ||
+                    node.Nodes().Any(n => n is XProcessingInstruction || n is XText t && !string.IsNullOrWhiteSpace(t.Value)))
+                    throw new NotSupportedException("PageBlock has unsupported drawing attributes or content.");
+                foreach (var child in block.PageBlockChildren) Visit(child, parent, inherited, depth + 1, compositeChild);
+                return;
+            }
             var origin = Multiply(parent, new[] { 1d, 0, 0, 1, element.XMillimeters, element.YMillimeters });
             if (element is OfdCompositeElement composite)
             {
@@ -31,12 +45,12 @@ internal static class OfdCompositeProjection
                 clips.Add(Rectangle(composite.WidthMillimeters, composite.HeightMillimeters, origin));
                 clips.Add(Rectangle(composite.Resource.WidthMillimeters, composite.Resource.HeightMillimeters, local));
                 AddClips(composite, origin, clips);
-                foreach (var child in composite.Resource.Elements) Visit(child, local, clips, depth + 1);
+                foreach (var child in composite.Resource.Elements) Visit(child, local, clips, depth + 1, true);
                 active.Remove(composite.Resource); return;
             }
             if (ReferenceEquals(parent, null)) throw new InvalidDataException("Missing parent transform.");
             if (element is OfdRawElement { LocalName: "CompositeObject" }) throw new NotSupportedException("Unresolved or opaque composite placement cannot be exported.");
-            if (depth == 1) { result.Add(element); return; }
+            if (!compositeChild) { result.Add(element); return; }
             if (element is not (OfdTextElement or OfdImageElement or OfdPathElement)) throw new NotSupportedException("Opaque composite children cannot be exported.");
             var source = element switch { OfdTextElement t => t.SourceXml, OfdImageElement i => i.SourceXml, OfdPathElement p => p.SourceXml, _ => null };
             if (source is not null)

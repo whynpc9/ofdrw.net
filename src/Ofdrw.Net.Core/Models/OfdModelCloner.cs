@@ -121,6 +121,9 @@ internal static class OfdModelCloner
                 throw new NotSupportedException($"Cannot clone OFD element '{source.GetType().Name}'.");
         }
         result.ClippingXml = CloneXml(source.ClippingXml, targetNamespace, material, cancellationToken);
+        result.RenderSourceXml = source.RenderSourceXml;
+        result.RenderSourceAuthority = source.RenderSourceAuthority;
+        result.RenderPaintError = source.RenderPaintError;
         result.ObjectId = source.ObjectId;
         result.LayerId = source.LayerId;
         result.LayerType = source.LayerType;

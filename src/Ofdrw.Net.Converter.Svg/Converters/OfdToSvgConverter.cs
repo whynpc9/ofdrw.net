@@ -96,7 +96,9 @@ public sealed class OfdToSvgConverter
         var families = AddEmbeddedFonts(root, svgNs, package.Fonts, parseBudget, preview);
         var imageIndex = 0;
         var objectIndex = 0;
-        foreach (var element in OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken))
+        var elements = OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken);
+        OfdRenderPreflight.Validate(elements);
+        foreach (var element in elements)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
@@ -266,17 +268,32 @@ public sealed class OfdToSvgConverter
         }
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
+        var paint = OfdTextPaint.Read(text);
         var drawing = OfdTextEmphasis.DrawingTransform(text);
         var transform = BuildTransform(
             text.XMillimeters - page.XMillimeters,
             text.YMillimeters - page.YMillimeters,
-            drawing.Matrix);
+            paint.HScale == 1 ? drawing.Matrix : OfdCompositeProjection.Multiply(
+                drawing.Matrix ?? OfdCompositeProjection.Identity(), new[] { paint.HScale, 0d, 0d, 1d, 0d, 0d }));
+        void ApplyPaint(XElement node, string value)
+        {
+            node.SetAttributeValue("fill", paint.Fill ? ToCssColor(paint.FillColor) : "none");
+            node.SetAttributeValue("stroke", paint.Stroke && paint.StrokeColor.Alpha > 0 ? ToCssColor(paint.StrokeColor) : "none");
+            if (paint.Stroke)
+            {
+                node.SetAttributeValue("stroke-width", Invariant(paint.LineWidthMillimeters));
+                if (paint.StrokeColor.Alpha != 255) node.SetAttributeValue("stroke-opacity", Invariant(paint.StrokeColor.Alpha / 255d));
+            }
+            if (paint.FillColor.Alpha != 255) node.SetAttributeValue("fill-opacity", Invariant(paint.FillColor.Alpha / 255d));
+            if (OfdTextGeometry.IsWhiteSpace(value, cancellationToken))
+            { node.SetAttributeValue("fill-opacity", "0"); node.SetAttributeValue("stroke-opacity", "0"); }
+        }
         if (text.Runs.Count == 0)
         {
             var anchor = OfdTextEmphasis.Anchor(0, text.FontSizeMillimeters, drawing.Factor);
             var node = new XElement(
                 svgNs + "text",
-                new XAttribute("x", OfdNumericFormat.Plain(anchor.X)),
+                new XAttribute("x", OfdNumericFormat.Plain(anchor.X / paint.HScale)),
                 new XAttribute("y", OfdNumericFormat.Plain(anchor.Y)),
                 new XAttribute("font-family", family),
                 new XAttribute("font-weight", fontWeight),
@@ -284,17 +301,9 @@ public sealed class OfdToSvgConverter
                 new XAttribute(XNamespace.Xml + "space", "preserve"),
                 new XAttribute("style", "white-space:pre"),
                 new XAttribute("font-size", Invariant(text.FontSizeMillimeters)),
-                new XAttribute("fill", ToCssColor(text.FillColor)),
                 new XAttribute("transform", transform),
                 text.Text);
-            if (text.FillColor.Alpha != 255)
-            {
-                node.SetAttributeValue(
-                    "fill-opacity",
-                    Invariant(text.FillColor.Alpha / 255d));
-            }
-
-            if (OfdTextGeometry.IsWhiteSpace(text.Text, cancellationToken)) node.SetAttributeValue("fill-opacity", "0");
+            ApplyPaint(node, text.Text);
             root.Add(node);
             return;
         }
@@ -304,7 +313,7 @@ public sealed class OfdToSvgConverter
             var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, drawing.Factor);
             var node = new XElement(
                 svgNs + "text",
-                new XAttribute("x", OfdNumericFormat.Plain(anchor.X)),
+                new XAttribute("x", OfdNumericFormat.Plain(anchor.X / paint.HScale)),
                 new XAttribute("y", OfdNumericFormat.Plain(anchor.Y)),
                 new XAttribute("font-family", family),
                 new XAttribute("font-weight", fontWeight),
@@ -312,7 +321,6 @@ public sealed class OfdToSvgConverter
                 new XAttribute(XNamespace.Xml + "space", "preserve"),
                 new XAttribute("style", "white-space:pre"),
                 new XAttribute("font-size", Invariant(text.FontSizeMillimeters)),
-                new XAttribute("fill", ToCssColor(text.FillColor)),
                 new XAttribute("transform", transform),
                 run.Text);
             var deltas = OfdTextGeometry.PositioningDeltas(run, cancellationToken);
@@ -328,9 +336,10 @@ public sealed class OfdToSvgConverter
                 foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
                 {
                     var glyphAnchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
-                    var span = new XElement(svgNs + "tspan", new XAttribute("x", OfdNumericFormat.Plain(glyphAnchor.X)),
+                    var span = new XElement(svgNs + "tspan", new XAttribute("x", OfdNumericFormat.Plain(glyphAnchor.X / paint.HScale)),
                         new XAttribute("y", OfdNumericFormat.Plain(glyphAnchor.Y)), glyph);
-                    if (OfdTextGeometry.IsWhiteSpace(glyph, cancellationToken)) span.SetAttributeValue("fill-opacity", "0");
+                    if (OfdTextGeometry.IsWhiteSpace(glyph, cancellationToken))
+                    { span.SetAttributeValue("fill-opacity", "0"); span.SetAttributeValue("stroke-opacity", "0"); }
                     node.Add(span);
                     if (index < deltaX.Count) x += deltaX[index];
                     if (index < deltaY.Count) y += deltaY[index];
@@ -338,14 +347,7 @@ public sealed class OfdToSvgConverter
                 }
             }
 
-            if (text.FillColor.Alpha != 255)
-            {
-                node.SetAttributeValue(
-                    "fill-opacity",
-                    Invariant(text.FillColor.Alpha / 255d));
-            }
-
-            if (OfdTextGeometry.IsWhiteSpace(run.Text, cancellationToken)) node.SetAttributeValue("fill-opacity", "0");
+            ApplyPaint(node, run.Text);
             root.Add(node);
         }
     }

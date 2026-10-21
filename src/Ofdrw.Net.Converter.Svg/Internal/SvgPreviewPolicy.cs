@@ -20,8 +20,8 @@ internal static class SvgPreviewPolicy
         ["path"] = new[] { "d", "transform", "clip-rule", "fill-rule", "stroke", "fill", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray", "stroke-dashoffset", "stroke-opacity", "fill-opacity" },
         ["rect"] = new[] { "width", "height" },
         ["image"] = new[] { "width", "height", "preserveAspectRatio", "transform", "href", "image-rendering" },
-        ["text"] = new[] { "x", "y", "font-family", "font-size", "font-weight", "font-style", "space", "style", "fill", "fill-opacity", "transform" },
-        ["tspan"] = new[] { "x", "y", "fill-opacity" }, ["style"] = new[] { "type" }
+        ["text"] = new[] { "x", "y", "font-family", "font-size", "font-weight", "font-style", "space", "style", "fill", "fill-opacity", "stroke", "stroke-width", "stroke-opacity", "transform" },
+        ["tspan"] = new[] { "x", "y", "fill-opacity", "stroke-opacity" }, ["style"] = new[] { "type" }
     };
     private static readonly Regex FontCss = new(@"\G@font-face\{font-family:'(?<family>[a-z0-9-]+)';src:url\(data:font/(?:ttf|otf);base64,[A-Za-z0-9+/]+={0,2}\) format\('(?:truetype|opentype)'\);font-weight:(?:normal|bold);font-style:(?:normal|italic);\}\n", RegexOptions.CultureInvariant);
     private static readonly Regex Color = new(@"\Argb\((?:[0-9]{1,3},){2}[0-9]{1,3}\)\z", RegexOptions.CultureInvariant);
