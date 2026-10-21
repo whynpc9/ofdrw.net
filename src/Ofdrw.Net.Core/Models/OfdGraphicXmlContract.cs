@@ -71,6 +71,6 @@ internal static class OfdGraphicXmlContract
     {
         var xml = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdCompositeElement composite => composite.SourceXml, OfdRawElement raw => raw.Xml, _ => null };
         if (string.IsNullOrWhiteSpace(xml)) return true;
-        return XElement.Parse(xml!).Attribute("Visible")?.Value.ToLowerInvariant() is not ("false" or "0");
+        return XElement.Parse(xml!).Attribute("Visible")?.Value.Trim().ToLowerInvariant() is not ("false" or "0");
     }
 }

@@ -1080,6 +1080,22 @@ public sealed class R01PageBlockTests
         Retain("text-integer-" + name.ToLowerInvariant(), ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Fact]
+    public async Task WhitespaceTextPaintBooleansRenderInAllOutputs()
+    {
+        var body = "<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4' Fill=' true ' Stroke=' false '>" +
+            "<TextCode X='0' Y='4'>paint text</TextCode></TextObject>";
+        var ofd = await Source(body, font: true);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        Assert.Contains("paint text", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("paint text", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("paint text", parsed.GetPage(1).Text);
+        Retain("text-paint-boolean-whitespace", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
     [Theory]
     [InlineData("DeltaX", "1 bogus")]
     [InlineData("DeltaY", "1 bogus")]
@@ -1289,6 +1305,38 @@ public sealed class R01PageBlockTests
         Assert.Contains("visible sibling", Encoding.UTF8.GetString(svg.ToArray()));
         Assert.Contains("visible sibling", Encoding.UTF8.GetString(html.ToArray()));
         Retain(template ? "hidden-opaque-template" : "hidden-opaque-ordinary", bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WhitespaceFalseVisibilityHidesPageBlockChild(bool text)
+    {
+        var hidden = text
+            ? "<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4' Visible=' false '>" +
+              "<TextCode X='0' Y='4'>hidden payload</TextCode></TextObject>"
+            : "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false' Visible=' false '>" +
+              "<FillColor Value='0 0 255'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var body = hidden + "<TextObject ID='502' Boundary='10 30 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>visible sibling</TextCode></TextObject>";
+        var ofd = await Source(body, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Equal("visible sibling", new OfdTextExtractor().Extract(read));
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        foreach (var markup in new[] { Encoding.UTF8.GetString(svg.ToArray()), Encoding.UTF8.GetString(html.ToArray()) })
+        {
+            Assert.Contains("visible sibling", markup);
+            Assert.DoesNotContain("hidden payload", markup);
+            Assert.DoesNotContain("rgb(0,0,255)", markup);
+        }
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+        {
+            Assert.Contains("visible sibling", parsed.GetPage(1).Text);
+            Assert.DoesNotContain("hidden payload", parsed.GetPage(1).Text);
+        }
+        Retain(text ? "hidden-whitespace-text" : "hidden-whitespace-path", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Fact]

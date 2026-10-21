@@ -36,7 +36,7 @@ internal sealed class OfdTextPaint
 
     internal static OfdTextPaint Read(OfdTextElement text) => new(text);
 
-    private static bool Boolean(string? value, bool fallback) => value is null ? fallback : value switch
+    private static bool Boolean(string? value, bool fallback) => value is null ? fallback : value.Trim() switch
     {
         "true" or "1" => true,
         "false" or "0" => false,
