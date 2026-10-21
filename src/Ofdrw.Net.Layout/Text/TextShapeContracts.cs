@@ -93,7 +93,8 @@ public sealed class TextShapeRequest
             if (char.IsHighSurrogate(text[i]))
             {
                 if (i + 1 >= text.Length || !char.IsLowSurrogate(text[i + 1]))
-                    throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.");
+                    throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.",
+                        sourceStart: sourceStart + i, sourceLength: 1);
                 var codepoint = char.ConvertToUtf32(text, i);
                 if (codepoint is >= 0xe0100 and <= 0xe01ef)
                     throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
@@ -101,7 +102,9 @@ public sealed class TextShapeRequest
                         sourceStart: sourceStart + i, sourceLength: 2);
                 i++;
             }
-            else if (char.IsLowSurrogate(text[i])) throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.");
+            else if (char.IsLowSurrogate(text[i]))
+                throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.",
+                    sourceStart: sourceStart + i, sourceLength: 1);
             else if (text[i] == '\r' || text[i] == '\n' || text[i] == '\t' ||
                 IsUnsupportedLineSeparator(text[i]))
                 throw new TextLayoutException(TextLayoutError.InvalidText,

@@ -270,6 +270,24 @@ public sealed class TextPrelayoutTests
         Assert.Single(old.Render().Pages[0].Elements);
     }
 
+    [Theory]
+    [InlineData(0xd800)]
+    [InlineData(0xdc00)]
+    public void UnpairedSurrogateErrorsPreserveAbsoluteSourceInterval(int codeUnit)
+    {
+        var text = new string(new[] { 'A', (char)codeUnit });
+        var direct = Assert.Throws<TextLayoutException>(() => new TextShapeRequest(text, 7, Noto()));
+        Assert.Equal(TextLayoutError.InvalidText, direct.Error);
+        Assert.Equal(8, direct.SourceStart);
+        Assert.Equal(1, direct.SourceLength);
+
+        var paragraph = Assert.Throws<TextLayoutException>(() =>
+            new TextPrelayoutRequest(text, new[] { Noto() }, 4, 50));
+        Assert.Equal(TextLayoutError.InvalidText, paragraph.Error);
+        Assert.Equal(1, paragraph.SourceStart);
+        Assert.Equal(1, paragraph.SourceLength);
+    }
+
     [Fact]
     public void PrelayoutRejectsUnsupportedControlsBeforeFontCoverage()
     {

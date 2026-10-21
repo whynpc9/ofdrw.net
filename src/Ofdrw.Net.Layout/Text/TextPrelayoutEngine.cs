@@ -41,7 +41,8 @@ public sealed class TextPrelayoutRequest
             if (char.IsHighSurrogate(text[i]))
             {
                 if (i + 1 >= text.Length || !char.IsLowSurrogate(text[i + 1]))
-                    throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.");
+                    throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.",
+                        sourceStart: i, sourceLength: 1);
                 if (char.ConvertToUtf32(text, i) is >= 0xe0100 and <= 0xe01ef)
                     throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
                         "Variation selectors need a separately verified text profile.",
