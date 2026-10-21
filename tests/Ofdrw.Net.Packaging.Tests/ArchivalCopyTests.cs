@@ -171,6 +171,30 @@ public class ArchivalCopyTests
         finally { Directory.Delete(folder, true); }
     }
 
+    [Fact]
+    public async Task UnsupportedUnsignedControlScopeIsNotReportedAsSigned()
+    {
+        var entries = Seed("<Permissions><Edit>false</Edit></Permissions><Annotations/>");
+        var folder = Path.Combine(Path.GetTempPath(), "r17-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "source.ofd"); var destination = Path.Combine(folder, "copy.ofd");
+            var bytes = Zip(entries); File.WriteAllBytes(source, bytes);
+            using (var input = new MemoryStream(bytes, false))
+            {
+                var preflight = await new ArchivalPreflightChecker().CheckAsync(input, new());
+                Assert.Equal(PreflightOutcome.Unknown, preflight.GetRuleOutcome("APF-006"));
+            }
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                new ArchivalCopyConverter().ConvertAsync(source, destination, new()));
+            Assert.DoesNotContain("SignedInputRequiresResigning", error.Message);
+            Assert.Contains("Preflight", error.Message);
+            Assert.Equal(Hash(bytes), Hash(File.ReadAllBytes(source)));
+            Assert.False(File.Exists(destination));
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
     private sealed class OnReadStream : Stream
     {
         private readonly MemoryStream inner;

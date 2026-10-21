@@ -75,7 +75,8 @@ public sealed class ArchivalCopyConverter
             stream.Position = 0;
             original = await new OfdPackageLoader().LoadAsync(stream, snapshotOptions.LoadOptions, cancellationToken).ConfigureAwait(false);
         }
-        if (before.LocalPreflight.GetRuleOutcome("APF-006") != PreflightOutcome.NotApplicable ||
+        if (before.LocalPreflight.RuleResults.Any(x => x.RuleId == "APF-006" &&
+                (x.Outcome == PreflightOutcome.Pass || x.Outcome == PreflightOutcome.Fail)) ||
             original.EntryNames.Any(x => x.IndexOf("/Signs/", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 x.EndsWith("Signatures.xml", StringComparison.OrdinalIgnoreCase) ||
                 x.EndsWith("SignedValue.dat", StringComparison.OrdinalIgnoreCase)))
