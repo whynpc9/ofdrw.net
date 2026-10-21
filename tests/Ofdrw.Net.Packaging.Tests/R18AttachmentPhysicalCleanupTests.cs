@@ -3,6 +3,7 @@ using System.Text;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Editing;
+using Ofdrw.Net.Layout.Graphics;
 using Ofdrw.Net.Reader.Readers;
 using Ofdrw.Net.Signatures.Crypto;
 using Ofdrw.Net.Signatures.Signing;
@@ -158,6 +159,25 @@ public sealed class R18AttachmentPhysicalCleanupTests
         package = await Read(Zip(entries));
         Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
         await RefusesWithoutOutput(package);
+    }
+
+    [Fact]
+    public async Task WriterGeneratedPathAndClipRemainAfterPhysicalCleanup()
+    {
+        var package = await Read(Seed());
+        var graphics = new OfdGraphics(package, Assert.Single(package.Pages));
+        graphics.IntersectClip(new OfdGraphicsPath().AddRectangle(1, 1, 20, 20));
+        graphics.DrawRectangle(new OfdPen(OfdColor.Black), 2, 2, 10, 10);
+        var (drawn, _) = await Write(package);
+        var pageXml = Encoding.UTF8.GetString(Entries(drawn)["Doc_0/Pages/Content.xml"]);
+        Assert.Contains("Rule=", pageXml);
+        Assert.NotEmpty(XDocument.Parse(pageXml).Descendants(XName.Get("Path", Ns)));
+
+        package = await Read(drawn);
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+        Assert.Single((await Read(output)).Pages);
     }
 
     [Fact]
