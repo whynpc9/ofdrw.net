@@ -238,6 +238,41 @@ public sealed class StandardObjectEditingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task FreshSplit_PreservesAttachmentActionTarget(bool withTypedAnnotation)
+    {
+        var source = new OfdDocumentPackage();
+        source.Pages.Add(new OfdPage { Index = 0, WidthMillimeters = 100, HeightMillimeters = 80 });
+        source.Pages.Add(new OfdPage { Index = 1, WidthMillimeters = 100, HeightMillimeters = 80 });
+        if (withTypedAnnotation)
+        {
+            var annotations = new OfdAnnotationCollection();
+            annotations.Items.Add(new OfdAnnotation
+            {
+                Type = OfdAnnotationType.Stamp, Creator = "author", LastModifiedDate = new DateTime(2026, 10, 22),
+                Appearance = new OfdAnnotationAppearance { WidthMillimeters = 20, HeightMillimeters = 10 }
+            });
+            source.Pages[1].Annotations = annotations;
+        }
+        source.Attachments.Add(new OfdAttachment { Id = "51", Name = "memo.txt", Data = Encoding.UTF8.GetBytes("memo") });
+        source.Actions = new OfdActionCollection();
+        source.Actions.Items.Add(new OfdAttachmentAction { Event = "CLICK", AttachId = "51" });
+
+        var split = OfdDocumentSplitter.Split(source, [1]);
+        Assert.NotSame(source.Attachments[0], Assert.Single(split.Attachments));
+        Assert.Equal("51", split.Attachments[0].Id);
+        Assert.Equal("51", Assert.IsType<OfdAttachmentAction>(Assert.Single(split.Actions!.Items)).AttachId);
+        using var output = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(split, output);
+        output.Position = 0;
+        var saved = await new OfdReader().ReadAsync(output);
+        Assert.Equal("51", Assert.Single(saved.Attachments).Id);
+        Assert.Equal("memo", Encoding.UTF8.GetString(saved.Attachments[0].Data));
+        Assert.Equal("51", Assert.IsType<OfdAttachmentAction>(Assert.Single(saved.Actions!.Items)).AttachId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task AttachmentAction_WithExternalOrMissingPayload_RemainsOpaque(bool missingPayload)
     {
         var package = new OfdDocumentPackage();

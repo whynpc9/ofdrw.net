@@ -63,7 +63,7 @@ public static class OfdDocumentSplitter
                     selected.Fonts.Add(new OfdFontResource { Id = font.Id, FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
                         Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray(), CollectionFaceIndex = font.CollectionFaceIndex });
                 }
-                selected.Attachments.Clear(); OfdDocumentMerger.CopyAttachments(source, selected, cancellationToken, material);
+                selected.Attachments.Clear(); OfdDocumentMerger.CopyAttachments(source, selected, cancellationToken, material, preserveIds: true);
                 var typedPageMap = new Dictionary<object, object>();
                 for (var position = 0; position < pages.Count; position++) typedPageMap.Add(source.Pages[pages[position]], selected.Pages[position]);
                 OfdNavigationCloner.Clone(source, selected, typedPageMap, material, cancellationToken);

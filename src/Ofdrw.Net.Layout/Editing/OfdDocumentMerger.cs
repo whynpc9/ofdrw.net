@@ -56,13 +56,14 @@ public static class OfdDocumentMerger
         CancellationToken cancellationToken) => MergeCore(sources, options, cancellationToken);
 
     internal static OfdDocumentPackage MergeForSplit(OfdDocumentPackage source, OfdModelMaterialization material, CancellationToken token)
-        => MergeCore(new[] { source }, null, token, material).Package;
+        => MergeCore(new[] { source }, null, token, material, preserveAttachmentIdsForSplit: true).Package;
 
     internal static OfdDocumentPackage MergeForMix(IEnumerable<OfdDocumentPackage> sources, OfdDocumentMergeOptions options, OfdModelMaterialization material, CancellationToken token)
         => MergeCore(sources, options, token, material).Package;
 
     private static OfdDocumentMergeResult MergeCore(IEnumerable<OfdDocumentPackage> sources,
-        OfdDocumentMergeOptions? options, CancellationToken cancellationToken, OfdModelMaterialization? material = null)
+        OfdDocumentMergeOptions? options, CancellationToken cancellationToken, OfdModelMaterialization? material = null,
+        bool preserveAttachmentIdsForSplit = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (sources is null)
@@ -124,7 +125,7 @@ public static class OfdDocumentMerger
             var fonts = CopyFonts(source, destination, knownFonts, cancellationToken, material);
             if (options.IncludeAttachments)
             {
-                CopyAttachments(source, destination, cancellationToken, material);
+                CopyAttachments(source, destination, cancellationToken, material, preserveIds: preserveAttachmentIdsForSplit);
             }
 
             foreach (var sourcePage in source.Pages.OrderBy(page => page.Index))
@@ -303,7 +304,7 @@ public static class OfdDocumentMerger
     }
 
     internal static void CopyAttachments(OfdDocumentPackage source, OfdDocumentPackage destination, CancellationToken cancellationToken = default,
-        OfdModelMaterialization? material = null, Dictionary<object, object>? retainedSourceMapping = null)
+        OfdModelMaterialization? material = null, Dictionary<object, object>? retainedSourceMapping = null, bool preserveIds = false)
     {
         material ??= new OfdModelMaterialization(new OfdModelLimits());
         OfdAttachmentSource.AssertCopyable(source, material, cancellationToken);
@@ -315,7 +316,7 @@ public static class OfdDocumentMerger
             cancellationToken.ThrowIfCancellationRequested();
             var clone = new OfdAttachment
             {
-                Id = retainedSourceMapping is not null ? attachment.Id : null,
+                Id = retainedSourceMapping is not null || preserveIds ? attachment.Id : null,
                 Name = attachment.Name,
                 MediaType = attachment.MediaType,
                 Format = attachment.Format,
