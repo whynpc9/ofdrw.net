@@ -142,13 +142,10 @@ public static class OfdDocumentSplitter
     private static void CloneStandardObjects(OfdDocumentPackage source, OfdDocumentPackage destination,
         OfdModelMaterialization material, CancellationToken token)
     {
-        foreach (var node in new OfdStandardNode?[] { source.Options.Metadata.CustomDatas, source.Permissions,
-                     source.ViewingPreferences, source.Versions })
-            if (node is not null) material.ChargeCopy(256L + 2L * node.InventoryXml.Length, token);
-        destination.Options.Metadata.CustomDatas = OfdStandardXml.Clone(source.Options.Metadata.CustomDatas, destination);
-        destination.Permissions = OfdStandardXml.Clone(source.Permissions, destination);
-        destination.ViewingPreferences = OfdStandardXml.Clone(source.ViewingPreferences, destination);
-        destination.Versions = OfdStandardXml.Clone(source.Versions, destination);
+        destination.Options.Metadata.CustomDatas = OfdStandardXml.Clone(source.Options.Metadata.CustomDatas, destination, material, token);
+        destination.Permissions = OfdStandardXml.Clone(source.Permissions, destination, material, token);
+        destination.ViewingPreferences = OfdStandardXml.Clone(source.ViewingPreferences, destination, material, token);
+        destination.Versions = OfdStandardXml.Clone(source.Versions, destination, material, token);
     }
 
     internal static void ValidateSingleDocument(OfdDocumentPackage package, OfdModelMaterialization? material = null, CancellationToken cancellationToken = default)

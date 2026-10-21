@@ -338,6 +338,21 @@ public sealed class StandardObjectEditingTests
     }
 
     [Fact]
+    public void StandardObjectClone_ReservesLargeXmlBeforeAllocatingCopy()
+    {
+        var data = new OfdCustomDatas();
+        data.Add("large", new string('x', 256_000));
+        using var context = new OfdControlledEditContext(new OfdModelLimits { MaxMaterializedBytes = 1_000_000 });
+        context.Material.ChargeCopy(1_000_000 - 1024, default);
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        Assert.Throws<InvalidDataException>(() => OfdStandardXml.Clone(data, new OfdDocumentPackage(), context.Material, default));
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+        Assert.True(allocated < 64_000, $"Rejected XML clone allocated {allocated} bytes.");
+        Assert.Equal(1_000_000 - 1024, context.Material.CloneCopyBytes);
+        Assert.Equal(256_000, data.Items[0].Value.Length);
+    }
+
+    [Fact]
     public async Task MultiDocument_RejectsChangedRootReferencesIntoOtherDocument()
     {
         var entries = await MultiDocumentFixture.CreateEntriesAsync();

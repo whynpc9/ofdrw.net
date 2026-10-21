@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.IO;
@@ -595,9 +596,28 @@ internal static class OfdStandardXml
         return nodes.Length == 1 && !nodes[0].HasElements ? nodes[0].Value : null;
     }
 
-    internal static T? Clone<T>(T? model, object target) where T : OfdStandardNode
+    internal static T? Clone<T>(T? model, object target, OfdModelMaterialization material, CancellationToken token) where T : OfdStandardNode
     {
         if (model is null) return null;
+        long nodes = 0, attributes = 0, characters = 0;
+        foreach (var node in model.Root.DescendantNodesAndSelf())
+        {
+            token.ThrowIfCancellationRequested(); nodes++;
+            if (node is XElement element)
+            {
+                characters = checked(characters + element.Name.NamespaceName.Length + element.Name.LocalName.Length);
+                foreach (var attribute in element.Attributes())
+                {
+                    token.ThrowIfCancellationRequested(); attributes++;
+                    characters = checked(characters + attribute.Name.NamespaceName.Length + attribute.Name.LocalName.Length + attribute.Value.Length);
+                }
+            }
+            else if (node is XText text) characters = checked(characters + text.Value.Length);
+            else if (node is XComment comment) characters = checked(characters + comment.Value.Length);
+            else if (node is XProcessingInstruction instruction)
+                characters = checked(characters + instruction.Target.Length + instruction.Data.Length);
+        }
+        material.ChargeCopy(checked(256L + 256L * nodes + 192L * attributes + 6L * characters), token);
         var root = new XElement(model.Root);
         OfdStandardNode clone = model switch
         {

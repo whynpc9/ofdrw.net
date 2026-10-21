@@ -113,10 +113,10 @@ internal sealed partial class OfdOwnedEditCandidate : IDisposable
         };
         Map(source.Options.FontEmbedding, copy.Options.FontEmbedding);
         Map(source, copy); Map(source.Options, copy.Options); Map(source.Options.Metadata, copy.Options.Metadata);
-        copy.Options.Metadata.CustomDatas = OfdStandardXml.Clone(source.Options.Metadata.CustomDatas, copy);
-        copy.Permissions = OfdStandardXml.Clone(source.Permissions, copy);
-        copy.ViewingPreferences = OfdStandardXml.Clone(source.ViewingPreferences, copy);
-        copy.Versions = OfdStandardXml.Clone(source.Versions, copy);
+        copy.Options.Metadata.CustomDatas = OfdStandardXml.Clone(source.Options.Metadata.CustomDatas, copy, material, token);
+        copy.Permissions = OfdStandardXml.Clone(source.Permissions, copy, material, token);
+        copy.ViewingPreferences = OfdStandardXml.Clone(source.ViewingPreferences, copy, material, token);
+        copy.Versions = OfdStandardXml.Clone(source.Versions, copy, material, token);
         if (source.Options.Metadata.CustomDatas is not null) Map(source.Options.Metadata.CustomDatas, copy.Options.Metadata.CustomDatas!);
         if (source.Permissions is not null) Map(source.Permissions, copy.Permissions!);
         if (source.ViewingPreferences is not null) Map(source.ViewingPreferences, copy.ViewingPreferences!);
