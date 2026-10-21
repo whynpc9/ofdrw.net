@@ -124,7 +124,8 @@ public sealed class ArchivalRuleService
             try { entry = OfdPackagePath.Resolve("OFD.xml", documentPath); }
             catch (InvalidDataException) { return Unknown(local, "DocumentScopeUnavailable"); }
             var document = Read(archive, entry, snapshot)?.Root;
-            if (document == null || document.Name != root.Name.Namespace + "Document") return Unknown(local, "DocumentScopeUnavailable");
+            if (document == null || document.Name.LocalName != "Document" || !Supported(document.Name.NamespaceName))
+                return Unknown(local, "DocumentScopeUnavailable");
             var results = ArchivalRuleCatalog.Rules.Select(rule => Evaluate(rule, document, entry)).ToArray();
             return new ArchivalRuleReport(local, Array.AsReadOnly(results), entry);
         }

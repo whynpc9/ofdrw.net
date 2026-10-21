@@ -10,6 +10,7 @@ namespace Ofdrw.Net.Packaging.Tests;
 public class ArchivalCopyTests
 {
     private const string Ns = "http://www.ofdspec.org";
+    private const string Ns2016 = "http://www.ofdspec.org/2016";
     private static byte[] Utf8(string value) => Encoding.UTF8.GetBytes(value);
     private static Dictionary<string, byte[]> Seed(string extra = "") => new(StringComparer.OrdinalIgnoreCase)
     {
@@ -145,6 +146,51 @@ public class ArchivalCopyTests
             File.WriteAllBytes(source, Zip(entries));
             var result = await new ArchivalCopyConverter().ConvertAsync(source, destination, options);
             Assert.Equal(PreflightOutcome.Pass, result.Postflight.SummaryOutcome);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Theory]
+    [InlineData(Ns, Ns2016)]
+    [InlineData(Ns2016, Ns)]
+    public async Task DistinctSupportedPackageAndDocumentNamespacesRemainInspectable(string packageNs, string documentNs)
+    {
+        var entries = Seed();
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{packageNs}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        entries["Doc_0/Document.xml"] = Utf8($"<Document xmlns='{documentNs}'><Pages><Page ID='1' BaseLoc='Pages/P0/Content.xml'/></Pages><Permissions><Edit>false</Edit></Permissions></Document>");
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{documentNs}'><Content><Layer><PathObject/></Layer></Content></Page>");
+        using (var input = new MemoryStream(Zip(entries), false))
+        {
+            var report = await new ArchivalRuleService().CheckAsync(input, new());
+            Assert.Equal(PreflightOutcome.Fail, report.RuleResults[0].Outcome);
+            Assert.Equal("DeclarationPresent", report.RuleResults[0].ReasonCode);
+        }
+        var folder = Path.Combine(Path.GetTempPath(), "r17-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "source.ofd"); var destination = Path.Combine(folder, "copy.ofd");
+            File.WriteAllBytes(source, Zip(entries));
+            var result = await new ArchivalCopyConverter().ConvertAsync(source, destination, new());
+            Assert.Equal(PreflightOutcome.Pass, result.Postflight.SummaryOutcome);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
+    public async Task UnsupportedDocumentNamespaceRemainsUnknown()
+    {
+        var entries = Seed();
+        entries["Doc_0/Document.xml"] = Utf8("<Document xmlns='urn:unsupported'><Pages><Page ID='1' BaseLoc='Pages/P0/Content.xml'/></Pages><Permissions/></Document>");
+        using var input = new MemoryStream(Zip(entries), false);
+        var report = await new ArchivalRuleService().CheckAsync(input, new());
+        Assert.All(report.RuleResults, result => Assert.Equal(PreflightOutcome.Unknown, result.Outcome));
+        var folder = Path.Combine(Path.GetTempPath(), "r17-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "source.ofd"); var destination = Path.Combine(folder, "copy.ofd");
+            File.WriteAllBytes(source, Zip(entries));
+            await Assert.ThrowsAsync<InvalidDataException>(() => new ArchivalCopyConverter().ConvertAsync(source, destination, new()));
+            Assert.False(File.Exists(destination));
         }
         finally { Directory.Delete(folder, true); }
     }
