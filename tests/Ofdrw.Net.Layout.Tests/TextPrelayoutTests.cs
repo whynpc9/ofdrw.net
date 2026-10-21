@@ -371,6 +371,39 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public void CmapMappingPastMaxpCannotWinWholeRunFallback()
+    {
+        var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));
+        var tableCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(4, 2));
+        var maxp = -1;
+        for (var i = 0; i < tableCount; i++)
+        {
+            var record = 12 + i * 16;
+            if (System.Text.Encoding.ASCII.GetString(bytes, record, 4) == "maxp")
+                maxp = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(record + 8, 4));
+        }
+        Assert.True(maxp >= 0);
+        BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(maxp + 4, 2), 2);
+        var invalid = new TextFontFace("Invalid", bytes);
+        var error = Assert.Throws<TextLayoutException>(() => HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest("A", new[] { invalid, Noto() }, 4, 100)));
+        Assert.Equal(TextLayoutError.InvalidFont, error.Error);
+        Assert.IsType<System.IO.InvalidDataException>(error.InnerException);
+    }
+
+    [Fact]
+    public void CumulativeFontCopiesStopWideHanCandidateScan()
+    {
+        var face = new TextFontFace("WenKai", File.ReadAllBytes(Font("LXGWWenKai-Regular.ttf")));
+        var shaper = new CountingShaper();
+        var error = Assert.Throws<TextLayoutException>(() => new TextPrelayoutEngine(shaper).Layout(
+            new TextPrelayoutRequest(new string('中', 4096), new[] { face }, 4, 1_000_000,
+                script: "Hani", language: "zh", maximumShapeCalls: 8192)));
+        Assert.Equal(TextLayoutError.BudgetExceeded, error.Error);
+        Assert.InRange(shaper.Calls, 1, 50);
+    }
+
+    [Fact]
     public void CancellationAndShapeBudgetFailWithoutAnyPartialLayout()
     {
         var face = Noto();
@@ -447,6 +480,17 @@ public sealed class TextPrelayoutTests
     }
 
     private static TextFontFace Noto() => new("Noto Sans", File.ReadAllBytes(Font("NotoSans-Regular.ttf")));
+
+    private sealed class CountingShaper : ITextShaper
+    {
+        public int Calls { get; private set; }
+        public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            return new TextShapedRun(request, new[] { new TextShapedGlyph(1, request.SourceStart,
+                request.Text.Length, request.Text.Length * 500, 0, 0, 0, null, false) }, "counting-test");
+        }
+    }
 
     private static string Font(string file) => Fixture("Ofdrw.Net.FontSubset.E2E", file);
     private static string OtherFont(string file) => Fixture("Ofdrw.Net.SkiaSharp.E2E", file);

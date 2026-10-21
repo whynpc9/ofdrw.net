@@ -70,7 +70,11 @@ geometry. That probe does not extend the public writer's ASCII output contract.
 
 The API enforces 32 MiB per font, 4096 UTF-16 units per run/request, 256 lines,
 8192 maximum caller-selected shape calls, 8 million estimated cmap lookup steps
-during whole-run face selection, and bounded native glyph expansion.
+during whole-run face selection, and 512 MiB of cumulative shaping work. Each
+nonempty candidate is charged for two full face copies plus 64 work units per
+UTF-16 code unit before invoking the shaper; wide Han paragraphs with many
+candidate boundaries can therefore fail explicitly before exhausting the call
+limit. Native glyph expansion is bounded separately.
 Cancellation is checked before and after native shaping and during layout;
 the synchronous native call is not interruptible mid-instruction. Query failure
 returns no partial result. File/stream writing retains the repository's separate

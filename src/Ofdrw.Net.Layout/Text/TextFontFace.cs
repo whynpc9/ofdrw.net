@@ -11,6 +11,7 @@ public sealed class TextFontFace
     private const int MaximumFontBytes = 32 * 1024 * 1024;
     private readonly byte[] _faceBytes;
     private readonly OpenTypeCmap _cmap;
+    private readonly int _glyphCount;
 
     /// <summary>Selects one face from supplied font bytes. Font names never trigger host discovery.</summary>
     public TextFontFace(string name, byte[] data, int collectionFaceIndex = 0)
@@ -37,7 +38,10 @@ public sealed class TextFontFace
             var head = face.Table("head", 54);
             var hhea = face.Table("hhea", 36);
             face.Table("hmtx", 4);
-            face.Table("maxp", 6);
+            var maxp = face.Table("maxp", 6);
+            _glyphCount = OpenTypeFace.U16(maxp, 4);
+            if (_glyphCount == 0)
+                throw new TextLayoutException(TextLayoutError.InvalidFont, "The selected font has no glyphs.");
             UnitsPerEm = OpenTypeFace.U16(head, 18);
             if (UnitsPerEm < 16 || UnitsPerEm > 16384)
                 throw new TextLayoutException(TextLayoutError.InvalidFont, "Invalid font units per em.");
@@ -92,10 +96,17 @@ public sealed class TextFontFace
 
     internal int NominalGlyph(int unicodeScalar) => CheckedGlyph(unicodeScalar);
     internal int CoverageLookupWorkUpperBound => _cmap.GlyphLookupWorkUpperBound;
+    internal int FaceByteLength => _faceBytes.Length;
 
     private int CheckedGlyph(int unicodeScalar)
     {
-        try { return _cmap.Glyph(unicodeScalar); }
+        try
+        {
+            var glyph = _cmap.Glyph(unicodeScalar);
+            if (glyph >= _glyphCount)
+                throw new InvalidDataException("The font cmap maps a scalar beyond maxp.numGlyphs.");
+            return glyph;
+        }
         catch (Exception exception) when (exception is InvalidDataException || exception is OverflowException ||
             exception is IndexOutOfRangeException)
         {

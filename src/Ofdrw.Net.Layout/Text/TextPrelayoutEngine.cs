@@ -246,11 +246,21 @@ public sealed class TextPrelayoutEngine
         var baselineOffset = face.Ascender * scale;
         var lines = new List<TextLayoutLine>();
         var calls = 0;
+        const long maximumCumulativeShapeWork = 512L * 1024 * 1024;
+        long cumulativeShapeWork = 0;
         TextShapedRun Shape(int start, int length)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (++calls > request.MaximumShapeCalls)
                 throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Prelayout shaping-call budget exceeded.");
+            // The pinned adapter copies each nonempty face into managed and native
+            // storage per call. Charge that traffic and weighted text work before
+            // invoking any replacement shaper, including reshaping for final lines.
+            var work = (length == 0 ? 0L : 2L * face.FaceByteLength) + 64L * length;
+            if (cumulativeShapeWork > maximumCumulativeShapeWork - work)
+                throw new TextLayoutException(TextLayoutError.BudgetExceeded,
+                    "Prelayout cumulative shaping-work budget exceeded.");
+            cumulativeShapeWork += work;
             var features = request.Features.Where(feature => feature.Start < start + length &&
                 feature.Start + feature.Length > start).Select(feature =>
                 new TextFeature(feature.Tag, feature.Value, Math.Max(0, feature.Start - start),
