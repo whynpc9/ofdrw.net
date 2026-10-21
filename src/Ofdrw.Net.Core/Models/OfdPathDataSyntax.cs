@@ -56,14 +56,15 @@ internal static class OfdPathDataSyntax
                 while (index < value.Length && Digit(value[index])) index++;
                 if (exponent == index) return false;
             }
-            if (!double.TryParse(value.Substring(start, index - start), NumberStyles.Float,
+            var literal = value.Substring(start, index - start);
+            if (!double.TryParse(literal, NumberStyles.Float,
                     CultureInfo.InvariantCulture, out var number) || double.IsNaN(number) || double.IsInfinity(number))
                 return false;
             if (command == 'A')
             {
                 var slot = operands % 7;
                 if ((slot is 0 or 1) && number <= 0 ||
-                    (slot is 3 or 4) && number != 0 && number != 1) return false;
+                    (slot is 3 or 4) && literal is not ("0" or "1")) return false;
             }
             operands++;
         }

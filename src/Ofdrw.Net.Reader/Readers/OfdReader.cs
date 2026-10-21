@@ -1269,7 +1269,9 @@ public sealed class OfdReader : IOfdReader
                         YMillimeters = boundary.y,
                         WidthMillimeters = boundary.w,
                         HeightMillimeters = boundary.h,
-                        AbbreviatedData = ReadDirectText(node.Element(node.Name.Namespace + "AbbreviatedData"), material, cancellationToken),
+                        // Match XElement.Value used by path admission, including whitespace between XML comments.
+                        AbbreviatedData = ReadDirectText(node.Element(node.Name.Namespace + "AbbreviatedData"), material, cancellationToken,
+                            preserveWhitespace: true),
                         Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
                         FillRule = node.Attribute("Rule")?.Value switch { "NonZero" => OfdFillRule.NonZero, "Even-Odd" => OfdFillRule.EvenOdd, _ => null },
                         LineWidthMillimeters = ParseDouble(renderNode.Attribute("LineWidth")?.Value, 0.353d),
@@ -1330,11 +1332,12 @@ public sealed class OfdReader : IOfdReader
         element.RenderSourceXml = OfdXmlEnvelope.Capture(render, material, token);
     }
 
-    private static string ReadDirectText(XElement? node, OfdModelMaterialization material, CancellationToken token)
+    private static string ReadDirectText(XElement? node, OfdModelMaterialization material, CancellationToken token,
+        bool preserveWhitespace = false)
     {
         if (node is null) return string.Empty;
         material.ReserveReadModel(512, token);
-        var values = node.Nodes().OfType<XText>().Where(text => text is XCData || !string.IsNullOrWhiteSpace(text.Value) ||
+        var values = node.Nodes().OfType<XText>().Where(text => preserveWhitespace || text is XCData || !string.IsNullOrWhiteSpace(text.Value) ||
             node.AncestorsAndSelf().Select(element => element.Attribute(XNamespace.Xml + "space")?.Value).FirstOrDefault(value => value is not null) == "preserve").Select(text => text.Value);
         return ReadJoinText(values, material, token);
     }

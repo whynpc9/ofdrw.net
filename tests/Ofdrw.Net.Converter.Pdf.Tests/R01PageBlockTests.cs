@@ -849,6 +849,7 @@ public sealed class R01PageBlockTests
     [InlineData("")]
     [InlineData("<AbbreviatedData/>")]
     [InlineData("<AbbreviatedData>M 0 0 L 20</AbbreviatedData>")]
+    [InlineData("<AbbreviatedData>M 1<!--a--><!--b-->0 2 3</AbbreviatedData>")]
     [InlineData("<AbbreviatedData>M 0 0 L 20 0 C</AbbreviatedData><AbbreviatedData>M 0 0 L 20 20</AbbreviatedData>")]
     public async Task PageBlockPathDataFailsBeforeAnyRenderer(string pathData)
     {
@@ -869,11 +870,32 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Fact]
+    public async Task PageBlockPathKeepsWhitespaceSeparatedByComments()
+    {
+        const string path = "M 0 0 L 20 0 L 20 20 C";
+        const string body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor Value='0 0 255'/><AbbreviatedData>M 0<!--a--> <!--b-->0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.Equal(path, Assert.IsType<OfdPathElement>(Assert.Single(block.PageBlockChildren!)).AbbreviatedData);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        Assert.Contains("M 0 0 L 20 0 L 20 20 Z", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("M 0 0 L 20 0 L 20 20 Z", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        Assert.True(pdf.Length > 0);
+        Retain("pageblock-comment-whitespace", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
     [Theory]
     [InlineData("0 10 0 0 1")]
     [InlineData("-10 10 0 0 1")]
     [InlineData("10 10 0 2 2")]
     [InlineData("10 10 0 -1 1")]
+    [InlineData("10 10 0 1.0 0")]
+    [InlineData("10 10 0 +1 0")]
     public async Task PageBlockArcRejectsInvalidRadiiAndFlags(string operands)
     {
         var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='false' Stroke='true'>" +
