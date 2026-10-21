@@ -53,9 +53,11 @@ if any(v['type']=='project' for v in assets['libraries'].values()): raise ValueE
 (root/'package-manifest.json').write_text(json.dumps({'version':version,'status':'passed','consumer':'fresh cache, PackageReference only','packages':packages},indent=2)+'\n')
 PY
 for name in same-source dual vector fallback-source fallback image-absent-source image-absent image-false-source image-false image-true-source image-true image-flags-mixed no-op-source no-op no-content-source no-content closed-point-source closed-point singular-source singular precision-source precision encoding-stream-source encoding-stream cid-map-stream-source cid-map-stream indexed-image-source indexed-image indexed-absent-source indexed-absent indexed-false-source indexed-false indexed-true-source indexed-true indexed-image-clipped-source indexed-image-clipped text-precision-source text-precision budget-ordering-source budget-ordering writer-accuracy-source writer-accuracy r06-frame-source r06-frame r06-mixed-source r06-mixed r06-cid-map-source r06-cid-map r06-winansi-source r06-winansi; do
-  crop=()
-  if [[ "$name" == r06-frame-source ]]; then crop=(-cropbox); fi
-  pdftoppm "${crop[@]}" -r 144 -png "$OUTPUT_DIR/output/$name.pdf" "$OUTPUT_DIR/output/$name" >/dev/null 2>&1
+  if [[ "$name" == r06-frame-source ]]; then
+    pdftoppm -cropbox -r 144 -png "$OUTPUT_DIR/output/$name.pdf" "$OUTPUT_DIR/output/$name" >/dev/null 2>&1
+  else
+    pdftoppm -r 144 -png "$OUTPUT_DIR/output/$name.pdf" "$OUTPUT_DIR/output/$name" >/dev/null 2>&1
+  fi
 done
 python3 - "$OUTPUT_DIR/fontconfig.xml" "$FONT_DIR" "$OUTPUT_DIR/font-cache" <<'PY'
 import sys,xml.etree.ElementTree as ET
