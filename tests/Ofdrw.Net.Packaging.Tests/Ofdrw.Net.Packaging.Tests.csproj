@@ -14,6 +14,7 @@
     <ProjectReference Include="../../src/Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj" />
     <ProjectReference Include="../../src/Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
     <ProjectReference Include="../../src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Signatures/Ofdrw.Net.Signatures.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

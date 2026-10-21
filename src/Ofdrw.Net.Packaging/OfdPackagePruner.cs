@@ -42,7 +42,9 @@ internal sealed class OfdPackagePruner
             material = new OfdModelMaterialization(new OfdModelLimits());
             material.InspectStorage(package, cancellationToken); material.GuardPreservedXml(package, cancellationToken);
         }
-        return new OfdPackagePruner(material, cancellationToken, ownedDispositions).PruneCore(package, entries, cancellationToken);
+        var result = new OfdPackagePruner(material, cancellationToken, ownedDispositions).PruneCore(package, entries, cancellationToken);
+        OfdAttachmentPhysicalCleaner.Prune(package, entries, result, material, cancellationToken, ownedDispositions);
+        return result;
     }
     private OfdPackageWriteResult PruneCore(OfdDocumentPackage package, IDictionary<string, byte[]> entries, CancellationToken cancellationToken)
     {

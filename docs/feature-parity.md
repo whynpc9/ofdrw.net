@@ -32,7 +32,7 @@
 | OFD-A 归档检查 | `ofdrw-archive` | 有限只读 archive preflight；完整标准 Rule/Handler 与条款覆盖尚无可确认实现 | **部分支持**；结构/有限预检不代表档案合规或认证，见[预检契约](archival-preflight.md)与[本轮契约](capability-contract-v12.md) |
 | 文本提取 | 上游提供文字抽取 | 页面和模板文本提取，API 与 CLI | **已支持** |
 | 关键词定位与替换 | 文本位置查询及文档工具 | 正文字面匹配、原嵌入字体字形/基线/advance/字形框证据；受限替换 API 与原子文件 CLI | **部分支持**；Regular 原字体、简单 scalar、水平正向与仅平移替换；模板/批注、复杂 shaping 和超出原区域的替换明确拒绝。见[教程](tutorials/16-keyword-replacement.md)和[验收证据](evidence/issue06-owned-save/README.md) |
-| 文档工具 | `ofdrw-tool` 提供合并、裁剪、重组、混合等 | 页重排、删除、裁剪、自包含合并；指定层文字/图片水印、按列表 Split、带模板/可见注释的 Mix、全部 DocBody 清签，API 与 CLI | **部分支持**；03 实现范围见[工具教程](tutorials/15-document-tools.md)，复杂未知引用明确失败、共享资源保守保留；附件增删另票，视觉/review 状态见[03 证据](evidence/document-tools/README.md) |
+| 文档工具 | `ofdrw-tool` 提供合并、裁剪、重组、混合等 | 页重排、删除、裁剪、自包含合并；指定层文字/图片水印、按列表 Split、带模板/可见注释的 Mix、全部 DocBody 清签，API 与 CLI | **部分支持**；03 实现范围见[工具教程](tutorials/15-document-tools.md)，复杂未知引用明确失败、共享资源保守保留；附件已有逻辑移除与受限显式物理清理，见[附件教程](tutorials/09-templates-attachments-tags.md)；视觉/review 状态见[03 证据](evidence/document-tools/README.md) |
 | 数字签名 | `ofdrw-sign` | 标准签名目录/引用生成、签名值 provider、签名值 verifier | **扩展点** |
 | 摘要校验 | 上游签章验证链路 | 内置 SM3、SHA-1、SHA-256，逐引用恒定时间比较，篡改检测 | **已支持** |
 | SES/SM2 电子签章 | `ofdrw-sign` + `ofdrw-gm` | 可注册厂商 `IOfdSignedValueVerifier` / `IOfdSignatureProvider` | **扩展点**；核心无默认 SES/SM2 实现和印章外观验证 |
