@@ -120,7 +120,6 @@ internal static class OfdSignatureFileSelection
         IReadOnlyDictionary<string, byte[]> entries, HashSet<string> required)
     {
         var root = document.Root!;
-        if (root.Name.LocalName != "Res") return;
         var baseLocation = root.Attribute("BaseLoc")?.Value;
         foreach (var node in root.Descendants())
         {

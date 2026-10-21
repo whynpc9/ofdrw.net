@@ -123,11 +123,18 @@ public sealed class SignatureScopeTests
     }
 
     [Theory]
-    [InlineData("/PublicRes/Res/logo.png")]
-    [InlineData("/PublicRes/Res/typeface.ttf")]
-    public async Task ComposedSharedMediaAndFontLocationsCannotBeOmitted(string excluded)
+    [InlineData("PublicRes/PublicRes.xml", "Res", "PublicRes/Res", "logo.png")]
+    [InlineData("PublicRes/PublicRes.xml", "Res", "PublicRes/Res", "typeface.ttf")]
+    [InlineData("Doc_0/PublicRes.xml", "../Shared", "Shared", "logo.png")]
+    [InlineData("Doc_0/PublicRes.xml", "../Shared", "Shared", "typeface.ttf")]
+    [InlineData("Shared/PublicRes.xml", "Res", "Shared/Res", "logo.png")]
+    [InlineData("Shared/PublicRes.xml", "Res", "Shared/Res", "typeface.ttf")]
+    public async Task ComposedSharedMediaAndFontLocationsCannotBeOmitted(
+        string resourceXmlPath, string baseLocation, string payloadDirectory, string fileName)
     {
-        using var source = await CreatePackage(composedResources: true);
+        var excluded = "/" + payloadDirectory + "/" + fileName;
+        using var source = await CreatePackage(resourceXmlPath: resourceXmlPath,
+            resourceBaseLoc: baseLocation, resourcePayloadDirectory: payloadDirectory);
         using var target = new MemoryStream();
         var provider = new Provider();
         var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
@@ -136,6 +143,17 @@ public sealed class SignatureScopeTests
         Assert.Contains(excluded, error.Message);
         Assert.Equal(0, provider.Calls);
         Assert.Equal(0, target.Length);
+
+        source.Position = 0;
+        using var signed = new MemoryStream();
+        var selection = await new OfdSignatureService().SignWithResultAsync(source, signed,
+            new Provider(), new OfdSignatureOptions
+            {
+                ProtectFile = path => path != "/Extras/optional.bin"
+            });
+        Assert.Contains(excluded, selection.ProtectedFiles);
+        using var modified = await Rewrite(signed, excluded.TrimStart('/'), _ => [9, 9, 9]);
+        Assert.False((await Verify(modified)).ReferenceIntegrityValid);
     }
 
     [Fact]
@@ -246,7 +264,8 @@ public sealed class SignatureScopeTests
     }
 
     private static async Task<MemoryStream> CreatePackage(bool version2 = false,
-        string? rootReferencedPath = null, bool composedResources = false)
+        string? rootReferencedPath = null, string? resourceXmlPath = null,
+        string? resourceBaseLoc = null, string? resourcePayloadDirectory = null)
     {
         var package = new OfdDocumentPackage();
         if (version2) package.Options.Namespace = OfdConstants.StandardNamespace;
@@ -264,15 +283,6 @@ public sealed class SignatureScopeTests
             package.PreservedEntries["Shared/manifest.xml"] = Encoding.UTF8.GetBytes(
                 "<Root FileLoc=\"/" + rootReferencedPath + "\"/>");
         }
-        if (composedResources)
-        {
-            package.PreservedEntries["PublicRes/PublicRes.xml"] = Encoding.UTF8.GetBytes(
-                "<Res xmlns=\"http://www.ofdspec.org/2016\" BaseLoc=\"Res\">" +
-                "<MultiMedias><MultiMedia ID=\"2\" MediaFile=\"logo.png\"/></MultiMedias>" +
-                "<Fonts><Font ID=\"3\" FontName=\"Fixture\"><FontFile>typeface.ttf</FontFile></Font></Fonts></Res>");
-            package.PreservedEntries["PublicRes/Res/logo.png"] = [1, 2, 3];
-            package.PreservedEntries["PublicRes/Res/typeface.ttf"] = [4, 5, 6];
-        }
         var output = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(package, output);
         output.Position = 0;
@@ -281,16 +291,60 @@ public sealed class SignatureScopeTests
             var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
             document.Root!.Add(new XElement(document.Root.Name.Namespace + "Annotations",
                 "Annots/Annotations.xml"));
-            if (composedResources)
+            if (resourceXmlPath is not null)
                 document.Root.Add(new XElement(document.Root.Name.Namespace + "PublicRes",
-                    "/PublicRes/PublicRes.xml"));
+                    "/" + resourceXmlPath));
             return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
         });
         output.Dispose();
-        if (!version2) return withAnnotations;
-        using (withAnnotations)
-            return await Rewrite(withAnnotations, "OFD.xml", bytes =>
+        var withResources = withAnnotations;
+        if (resourceXmlPath is not null)
+        {
+            withResources = await AddEntries(withAnnotations, new Dictionary<string, byte[]>
+            {
+                [resourceXmlPath] = Encoding.UTF8.GetBytes(
+                    "<Res xmlns=\"http://www.ofdspec.org/2016\" BaseLoc=\"" + resourceBaseLoc + "\">" +
+                    "<MultiMedias><MultiMedia ID=\"2\" MediaFile=\"logo.png\"/></MultiMedias>" +
+                    "<Fonts><Font ID=\"3\" FontName=\"Fixture\"><FontFile>typeface.ttf</FontFile></Font></Fonts></Res>"),
+                [resourcePayloadDirectory + "/logo.png"] = [1, 2, 3],
+                [resourcePayloadDirectory + "/typeface.ttf"] = [4, 5, 6]
+            });
+            withAnnotations.Dispose();
+        }
+        if (!version2) return withResources;
+        using (withResources)
+            return await Rewrite(withResources, "OFD.xml", bytes =>
                 Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(bytes).Replace("Version=\"1.0\"", "Version=\"2.0\"")));
+    }
+
+    private static async Task<MemoryStream> AddEntries(MemoryStream source,
+        IReadOnlyDictionary<string, byte[]> additions)
+    {
+        source.Position = 0;
+        var output = new MemoryStream();
+        using (var input = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true))
+        using (var target = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var written = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in input.Entries)
+            {
+                written.Add(entry.FullName);
+                using var stream = entry.Open();
+                using var destination = target.CreateEntry(entry.FullName).Open();
+                if (additions.TryGetValue(entry.FullName, out var replacement))
+                    await destination.WriteAsync(replacement);
+                else
+                    await stream.CopyToAsync(destination);
+            }
+            foreach (var addition in additions)
+            {
+                if (written.Contains(addition.Key)) continue;
+                using var destination = target.CreateEntry(addition.Key).Open();
+                await destination.WriteAsync(addition.Value);
+            }
+        }
+        output.Position = 0;
+        return output;
     }
 
     private static async Task<MemoryStream> Rewrite(MemoryStream source, string path, Func<byte[], byte[]> change)
