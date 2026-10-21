@@ -264,3 +264,34 @@ ade46dc8006767faf5e6fb08e48d0fa0b8468feb04b0175fbfa3370e800ec5f5  artifacts/road
 c560a80265696a596de21a2e27ad537c1db4158abadf7c4d7263f947d6f592a6  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-han.pdf
 e31290e67d27aa7ccc546e177322886650be7dbf00f4cae8feb16e34d35c97e0  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-han-pdf-page.png
 5990032abf806dea5a5a663a9556fd930c18e86edede32f3fad63dd09d13df55  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-receipt.json
+
+# Cross-namespace DrawParam inheritance review, final local source outputs
+f1f16de4d01d33bb296eb8905b279b522e6f055fc9cd8baddb1542f13dfe567d  artifacts/roadmap-v12/R01/r21-crossnamespace-focused.log
+23949ab4282108324f8ee1f41e885fbbb097b76b7ace8b09c2a483ce5dfde7e1  artifacts/roadmap-v12/R01/r21-crossnamespace-full.log
+5d02655085bde6ace723508d2cf272f553136c3c43624de0a4f80aa6b7ba066c  artifacts/roadmap-v12/R01/r21-crossnamespace-pages.log
+a252b05d497763f0bb4dc8f61f3407e64e99c8c5f955b7b8cceb79d1e4e12502  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2.log
+fb9abe660e3087813703b63db4a7712609f6ec719ea3dd64f0af87ac37885403  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/package-manifest.json
+7dd21ba10bdb78e8bcdebb88232bafacc4d6c2a5484fe06d78380c0e45fbcf0c  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/sdk-output/package-manifest.json
+8dbd03898052d0adeb394c3084199a9b463c6975d7187e8ed49d0d916bb5d1c6  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/functional.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/rendered-pages.json
+ccdd366bf8cbd578080e07898ff3d911332ce9ae598009e5779470de25b324ba  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/native-v1.ofd
+af904cb7e51c6589a52d95b608fe8843ff2a0f48d587f5e89748b4da1750b73d  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/native-v1.pdf
+2f4ff9235aa230d9b48818458d2d31cd9d1e02ec1b70c233c510ccca4d284c74  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/default-v4.ofd
+910c3e71c934171c65db5b1af36ed67dd25ea017717e12db4eb1376ce69bee6c  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/pages/native-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/files/pages/default-v4/page-2.png
+83cb1a3cc16eb3144acc1121276a091a0c5e4daa3228196635329ffc94836237  artifacts/roadmap-v12/R01/r21-crossnamespace-ses2/sdk-output/text-prelayout/r21-receipt.json
+7adfcd3dfa2e8f977fa5b42d4712b315b4cade60015b36ee3bcca1f43777195a  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-2016-block.ofd
+e484a56e16444c28e83360d77097dd7d5f6e64561d1c47bd86e8e9e2938d903a  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-2016-block.pdf
+29a0fe6491c74efbbef8a047c2eb6dfd6095456259a07a0b99e55959fdd9a1ae  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-2016-block.png
+f92986fbacc420b3476597e4e8fa35629cac5f4991b3d280bc64051ed56aaa74  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-2016-layer.ofd
+2fb39de2dbb3181954741421ba1344ec911621ad746f1913b682de0dc6abfd5c  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-2016-layer.pdf
+29a0fe6491c74efbbef8a047c2eb6dfd6095456259a07a0b99e55959fdd9a1ae  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-2016-layer.png
+964e918f2cf9debdddba630cb9b5bb9768dbd839732d5b3405f89ba22e2783bc  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-unqualified-block.ofd
+893c7cb6e9a5b5db36544f3c6c6369298c01230b235056ee2adf916b5112398f  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-unqualified-block.pdf
+29a0fe6491c74efbbef8a047c2eb6dfd6095456259a07a0b99e55959fdd9a1ae  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-unqualified-block.png
+ebfb2148b9585301b22bdddcb46ae3ca115da9a19086cba2f5bc801b6e156d10  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-unqualified-layer.ofd
+7b06633241e9bcc6ff936f5d9ee88d89d911eb1201e68158ee8107ed91b21118  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-unqualified-layer.pdf
+29a0fe6491c74efbbef8a047c2eb6dfd6095456259a07a0b99e55959fdd9a1ae  artifacts/roadmap-v12/R01/crossnamespace-pages/drawparam-ns-unqualified-layer.png

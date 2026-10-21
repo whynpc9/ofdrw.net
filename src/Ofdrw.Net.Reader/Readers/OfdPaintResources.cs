@@ -79,8 +79,13 @@ internal sealed class OfdPaintResources
                     if (attribute.Name.LocalName is not ("ID" or "Relative") && node.Attribute(attribute.Name) is null)
                         node.SetAttributeValue(attribute.Name, attribute.Value);
                 foreach (var color in style.Elements())
-                    if (color.Name.LocalName is "FillColor" or "StrokeColor" && node.Element(color.Name) is null)
-                        node.Add(new XElement(color));
+                    if (color.Name.LocalName is "FillColor" or "StrokeColor" &&
+                        !node.Elements().Any(existing => existing.Name.LocalName == color.Name.LocalName))
+                    {
+                        var inherited = new XElement(color);
+                        inherited.Name = node.Name.Namespace + color.Name.LocalName;
+                        node.Add(inherited);
+                    }
                 draw.Remove();
             }
             foreach (var color in node.Elements().Where(n => n.Name.LocalName is "FillColor" or "StrokeColor").ToArray())

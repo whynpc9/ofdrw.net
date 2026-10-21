@@ -310,6 +310,72 @@ public sealed class R01PageBlockTests
         Retain("stroke-hscale", bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Theory]
+    [InlineData("", false)]
+    [InlineData("", true)]
+    [InlineData("http://www.ofdspec.org/2016", false)]
+    [InlineData("http://www.ofdspec.org/2016", true)]
+    public async Task DrawParamColorsUseDrawingNamespaceAndKeepLocalOverrides(string resourceNamespace, bool layer)
+    {
+        var resources = "<DrawParams><DrawParam ID='30'><FillColor Value='0 255 0'/>" +
+            "<StrokeColor Value='255 0 0'/></DrawParam><DrawParam ID='31' Relative='30'/></DrawParams>";
+        var body = "<PathObject ID='501' Boundary='5 5 20 20' DrawParam='31' Fill='true' Stroke='false'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>" +
+            "<TextObject ID='502' Boundary='5 30 80 15' Font='10' Size='6' DrawParam='31' Fill='false' Stroke='true'>" +
+            "<TextCode X='2' Y='8'>inherited red</TextCode></TextObject>" +
+            "<TextObject ID='503' Boundary='5 50 80 15' Font='10' Size='6' DrawParam='31' Fill='false' Stroke='true'>" +
+            "<StrokeColor Value='0 0 255'/><TextCode X='2' Y='8'>local blue</TextCode></TextObject>";
+        var original = await Source(body, resources: resources, font: true);
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(original), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var stream = entry.Open(); using var buffer = new MemoryStream(); await stream.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName == "Doc_0/DocumentRes.xml")
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    XNamespace ns = resourceNamespace;
+                    foreach (var node in xml.Descendants())
+                    {
+                        foreach (var declaration in node.Attributes().Where(a => a.IsNamespaceDeclaration).ToArray())
+                            declaration.Remove();
+                        node.Name = ns + node.Name.LocalName;
+                    }
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                if (layer && entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    var block = xml.Descendants().Single(node => node.Name.LocalName == "PageBlock");
+                    block.ReplaceWith(block.Elements().ToArray());
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        var ofd = rewritten.ToArray();
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        var drawing = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()));
+        var path = Assert.Single(drawing.Descendants().Where(node => node.Name.LocalName == "path"));
+        Assert.Equal("rgb(0,255,0)", path.Attribute("fill")?.Value);
+        var texts = drawing.Descendants().Where(node => node.Name.LocalName == "text").ToArray();
+        Assert.Equal(2, texts.Length);
+        Assert.Equal("rgb(255,0,0)", texts[0].Attribute("stroke")?.Value);
+        Assert.Equal("rgb(0,0,255)", texts[1].Attribute("stroke")?.Value);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("rgb(255,0,0)", Encoding.UTF8.GetString(html.ToArray()));
+        Assert.Contains("rgb(0,0,255)", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray());
+        Assert.Contains("inherited red", parsed.GetPage(1).Text);
+        Assert.Contains("local blue", parsed.GetPage(1).Text);
+        Retain($"drawparam-ns-{(resourceNamespace.Length == 0 ? "unqualified" : "2016")}-{(layer ? "layer" : "block")}",
+            ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
     [Fact]
     public async Task OutlineOnlyTextWithoutStrokeColorUsesOpaqueBlack()
     {
