@@ -509,3 +509,29 @@ e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/road
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r15-review-final-ses/files/pages/native-v1/page-2.png
 e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/r15-review-final-ses/files/pages/default-v4/page-1.png
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r15-review-final-ses/files/pages/default-v4/page-2.png
+
+# Annotation empty-color final source and local outputs
+7a72373030e7c6f6b11280e37c4495e78528862cd813a97d78a3f7073173eb92  artifacts/roadmap-v12/R01/annotation-default-full.log
+7ea7d0f2c2e1c7a5797d2d6f743f3bcf7ccf62f3b3d547c37491c3c30bbe84d6  artifacts/roadmap-v12/R01/annotation-default-exact-focused.log
+e44567d760bbd46b1d1bcdb3f9044137563d288c558d45ea94b1e62711bb62b8  artifacts/roadmap-v12/R01/annotation-default-ses.log
+964dd37777b6ee1c8fcfca95b3b8d1f5622b02dd860feefdba7ede1c03a61bfc  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-alpha.html
+a00875d003a7166c5ea5514fe0de9a0430bdb4c3abc37b0d2efba83a08b6ef24  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-alpha.ofd
+a2d3c8675a90760d2038944b9db1592257b3c85d6e3d05536d114533d96ad915  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-alpha.pdf
+c2159ba1f0248406f7d86db6adf767506bb3b9f550772a99ee81fc66c5b6045c  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-alpha.png
+eed9318c59c76e0b564b67d486f6e5321338d9d3acfaa6b9b1d4db45135870b3  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-alpha.svg
+02743fd3afd3396935e4d56b01f38bc1451c082a2ddbae45fd961756c29cf678  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-default.html
+e37f12322d55086071cf534054a9c28d23a70647fe65762f12a98f4bcfadd6ed  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-default.ofd
+35aaefe804701e63c8f5ae1410288c39957d9ddffaf5aae8aa8e688ab6f5c4bb  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-default.pdf
+45eac2e690425fd37d394fd4dbb92ed3256bb40e780833ebc452d39f65bd07a8  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-default.png
+60bb94a43d54de6b6ede393979dead23bba36516d36ee235a8c52f5c2234f9a2  artifacts/roadmap-v12/R01/annotation-default-pages/annotation-default.svg
+ff531cc9fd78c385452dc50fa5574f375850e4ac65c84f79441b2bd113d8c552  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/package-manifest.json
+9266deda43a28129175c21b3fcf8ba4dd1b65054e980069194dbab52ff473736  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/functional.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/rendered-pages.json
+0845f7b286e88c9932619b35ae0a3b93ba9d9b0b2a2f895e863f71fa49589c9f  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/native-v1.ofd
+bd605e287dbf85cfb9f5fb8b441a6d817930ea18f027f4c1144640e0264f77f1  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/native-v1.pdf
+632be3aa0abdda9b8b5b65200767dae92df128bd5dec9fae1e61f49bc060350a  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/default-v4.ofd
+4d3b0f49dad1f78a698fa9628d94e39b8552c53bf5b31e8ccf37a1072fffe8aa  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/pages/native-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/pages/default-v4/page-2.png

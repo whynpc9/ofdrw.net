@@ -42,6 +42,38 @@ public sealed class AnnotationToolVisualTests
         }
     }
 
+    [Theory]
+    [InlineData("<FillColor/>", "<StrokeColor/>", "Default")]
+    [InlineData("<FillColor Alpha='128'/>", "<StrokeColor Alpha='128'/>", "Alpha")]
+    public async Task AnnotationTextDefaultsUnreferencedEmptyColorsToBlackInAllRenderers(
+        string fillColor, string strokeColor, string label)
+    {
+        var source = await Annotated("<TextObject ID='901' Boundary='0 0 30 8' Size='5' Fill='true' Stroke='true'>" +
+            fillColor + strokeColor + $"<TextCode X='0' Y='5'>{label}</TextCode></TextObject>", "10 10 40 20");
+        using var ofd = await Write(source);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains(label, parsed.GetPage(1).Text);
+        ofd.Position = 0; using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(ofd, svg);
+        var svgText = Encoding.UTF8.GetString(svg.ToArray());
+        Assert.Contains("rgb(0,0,0)", svgText);
+        if (label == "Alpha")
+        {
+            Assert.Contains("fill-opacity=\"0.502\"", svgText);
+            Assert.Contains("stroke-opacity=\"0.502\"", svgText);
+        }
+        ofd.Position = 0; using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(ofd, html);
+        Assert.Contains("rgb(0,0,0)", Encoding.UTF8.GetString(html.ToArray()));
+        if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllBytes(Path.Combine(directory, $"annotation-{label.ToLowerInvariant()}.ofd"), ofd.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, $"annotation-{label.ToLowerInvariant()}.pdf"), pdf.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, $"annotation-{label.ToLowerInvariant()}.svg"), svg.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, $"annotation-{label.ToLowerInvariant()}.html"), html.ToArray());
+        }
+    }
+
     [Fact]
     public async Task AnnotationTextRejectsUnresolvedColorSpaceInAllRenderers()
     {

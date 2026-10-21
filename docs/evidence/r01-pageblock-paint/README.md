@@ -126,6 +126,14 @@
 - 本地 `0.1.0-r01.r15review` 的 12 个基础 SDK 包加 1 个可选 SES 包来源、独立消费者、显式 native/默认 DOCX→OFD、四份 V1/V4 测试签章及页面 PNG 等同性均通过；包未发布。另从最终测试源码生成 5 个单页正例 PDF：重复字距、100/900 字重、直接/继承的 `Value` 优先调色板。PDF 均为 1 页，144 DPI PNG 逐页复查：`A B` 间距清楚、字重端点分别呈常规/粗体、两份调色板页均为红色。最初测试正例的 1 mm 字距造成预期中的字形相贴；改为 3 mm 后重新生成并复查，最终产物无重叠。
 - macOS Preview 对本轮上述 5 份 PDF 各检查第 1/1 页；对 `r15-review-final-ses/files/native-v1.pdf` 和 `default-v4.pdf` 分别检查第 1–2 页。查看链路为正例 OFD→PDF→Preview，以及由 `generated-layout.docx` 制作的本轮受许可字体样本→显式 native/默认 OFD→PDF→Preview，未使用 DOCX→PDF 代替。正文中英文、斜体、蓝色表格底色/边框、第二页红色局部粗体和分页符合样例；未见缺字、裁切、重影或异常空白页。四张本轮 DOCX 页面 PNG 与此前验收的对应页逐字节一致。检查后关闭全部 Preview 文档窗口，GUI 代次 `20261021T1341Z` 释放。非法输入是拒绝路径，没有成功页面；本次仍不作外部 OFD 阅读器或 V5/GBT 互操作结论。
 
+## 注释空颜色默认值复审
+
+- Codex 指出注释外观绕过 Reader 颜色规范化：无资源引用且没有 `Value` 的空 `FillColor`/`StrokeColor`，以及仅有 `Alpha` 的颜色，原应以黑色分量呈现，先前文字绘制校验会拒绝。Core 的注释绘制解析现给这种颜色补零分量并保留 Alpha；有 `ColorSpace`、`Index`、非法 `Value` 或未识别子内容的颜色继续拒绝。
+- 两组实际注释输入分别覆盖空填充/描边色与 `Alpha=128` 的填充/描边色。PDF 原文可抽取；SVG/HTML 为黑色，SVG 同时保留填充与描边的不透明度。最终源码完整 Release 解决方案 **3313 passed、0 skipped、0 failed**，包括 Core `netstandard2.0` 编译；定向回归 2/2。测试及构建日志在 `artifacts/roadmap-v12/R01/annotation-default-*.log`。
+- 从新生成的两份 OFD 各导出 1 页 PDF，并渲染 144 DPI PNG。macOS Preview 已各检查第 1/1 页：`Default` 为黑色、`Alpha` 为半透明灰色外观，字形完整，无裁切、重影或异常空白页；PNG 逐页复查结果一致。查看后已关闭这两份 Preview 文档窗口。
+- 本地 `0.1.0-r01.annotation` 的 12 个基础 SDK 包及 1 个可选 SES 包来源清单、独立消费者、显式 native/默认 DOCX→OFD、四份 V1/V4 测试签章及逐页 PNG 等同性通过；包未发布。默认密码学验证仍为 `Unsupported`，不据此认定外部阅读器或签名法律有效性。
+- 本轮 `annotation-default-final-ses/files/native-v1.pdf` 与 `default-v4.pdf` 均为各自 OFD 导出的新产物；在 macOS Preview 各检查第 1–2 页。查看链路分别为 DOCX → 显式 native OFD → PDF → Preview、DOCX → 默认 OFD → PDF → Preview。中文、英文、蓝色表格底色与边框、第二页红色粗体及分页与样例一致；四张本轮 PNG 与前轮已验收页面逐字节一致。检查后关闭全部文档窗口，并登记 `20261021T1422Z` GUI 代次释放。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |
@@ -135,6 +143,7 @@
 | `stroke-hscale` | 1 页；同上 | 红色空心 `R01 text`，横向缩放可见；PDF 原文可抽取，无重复文字 |
 | `image-block` | 1 页；同上 | 蓝色路径和红色图片方块按顺序可见 |
 | `implicit-stroke`、`annotation-gray` | 各 1 页；本轮 PDF/PNG 与 macOS Preview，SVG/HTML 断言 | 未指定描边色的空心文字为黑色；未引用 ColorSpace 的注释单分量灰色文字可见 |
+| `annotation-default`、`annotation-alpha`：注释空颜色和仅有 Alpha 的文字 | 各 1 页；本轮 OFD→PDF、PNG 与 macOS Preview，SVG/HTML 断言 | 默认黑色及半透明黑色均可见；填充与描边无缺失、裁切或重影 |
 | `top-level-gray-cmyk`：顶层路径读入 → 保存 → 重开 → PDF/SVG/HTML | 1 页；本轮 PDF/PNG 与 macOS Preview | 灰色及红色方块正确，无丢色或空白页；三出口断言通过 |
 | `split-ordinary-block`、`split-template-block`：Reader → Split → 写出 → PDF/SVG/HTML | 各 1 页；本轮 PDF/PNG 与 macOS Preview | `split nested` 均显示，位置一致；原始文本可提取 |
 | `hidden-opaque-ordinary`、`hidden-opaque-template`：隐藏未知绘图与可见兄弟文字 | 各 1 页；本轮 PDF/PNG 与 macOS Preview | 仅 `visible sibling` 可见，模板与普通页一致；PDF/SVG/HTML 断言通过 |
