@@ -1,5 +1,5 @@
-# R01 after R17 integration evidence, 2026-10-22
-# Product source 7abeb3163fc713ea9574b9f13cd0db81dc4263d9; integrated main 903a7c8a09e3e68cc1d1d9b6abfdccd64372db0a at e6065ada574505d177204a2da21998a6fa748ec9
+# R01 PageBlock evidence after duplicate-font identity review and R18 integration, 2026-10-22
+# Product source 7abeb3163fc713ea9574b9f13cd0db81dc4263d9; integrated main 66ce3908828342de4a08583a6620540b2ae8717b at b4a557b35364b116ed9953d6281d51923f041203
 # Format: SHA-256  repository-relative path. Generated files are ignored local artifacts.
 17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6  e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx
 3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa  artifacts/roadmap-v12/R01/cursor-fix-document-tools/fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf
@@ -89,3 +89,57 @@ e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/road
 268ad5ec2edbd074d5e0052c12312a3e61dc0f04b57c3a44e22f2cb92e2943ed  artifacts/roadmap-v12/R01/r17-archival-consumer/run.log
 3e45d84e18ec391051907d0c72dded46cf00cf586061894fadfad6a937dcc122  artifacts/roadmap-v12/R01/r17-archival-consumer/output/manifest.json
 9b40b81d843938039bbfd4caec6559f6e5adfa19bc32fa116eb569f12243f9f1  artifacts/roadmap-v12/R01/r17-archival-consumer/output/archival-subset-result.json
+d0b085ce97724c5299f4e62ce8ae3a1ef0ade9a94a0e5ca36d4181ae44cb4970  artifacts/roadmap-v12/R01/font-dupe-focused.log
+5f0964c8f1fbf994f96bd59605b5ad7992a715979c4c81eac72731c54a6a9fc9  artifacts/roadmap-v12/R01/font-dupe-full-release.log
+bd432a953ac589c7ba9b17eeee187514bea7a9bed9c2d5c28bcd99a16f293c87  artifacts/roadmap-v12/R01/font-dupe-ses.log
+ed9a9e28167420c2da3bc19740104fb8ccab28554cf304b858a403a68975085a  artifacts/roadmap-v12/R01/font-dupe-full-pages/unique-font-resources.ofd
+640a53bb74a16a8c8ae451319acbbc1ee646d9602d55b488e8822fd1879429db  artifacts/roadmap-v12/R01/font-dupe-full-pages/unique-font-resources.pdf
+66eadb2ab896101e80633d54f126d457dea4d8ca83c6433a1df9489c730b57ab  artifacts/roadmap-v12/R01/font-dupe-full-pages/unique-font-resources-page-1.png
+9c9edd698ad6471a89c53498fc143c902733341699ae94708ec1b147443071d0  artifacts/roadmap-v12/R01/font-dupe-full-pages/unique-font-resources.svg
+d5d0776f76a3da2f500097c5f80099b550e488f1bdda75c2c331696879006a8f  artifacts/roadmap-v12/R01/font-dupe-full-pages/unique-font-resources.html
+6e56463ea7277514f809f3de18bc307b42fed25c9e8fb0ca3e34283c4b39e47d  artifacts/roadmap-v12/R01/font-dupe-ses/files/package-manifest.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/font-dupe-ses/files/rendered-pages.json
+69a861915153f61ddd497b75fb7bcab5f989a2c34ad0692c42eedfac5747c48a  artifacts/roadmap-v12/R01/font-dupe-ses/files/functional.json
+d556627b5d8bd3ca5a04822a2afa2fb601cc17f4e33c9218c506eb384429e679  artifacts/roadmap-v12/R01/font-dupe-ses/files/licensed-layout.docx
+dbc8270e9abcfaeb502ed18d2f7612ff6810122812f0bcd19259e6908a375d05  artifacts/roadmap-v12/R01/font-dupe-ses/files/native-v1.ofd
+07eae0660d7baffbe234acc0065c17e586ac01f0189be5abfba41b9fbba251bd  artifacts/roadmap-v12/R01/font-dupe-ses/files/native-v1.pdf
+270af34671ba43357499acb7905bea8862e5d869bcb0ae56627f367462f5b99a  artifacts/roadmap-v12/R01/font-dupe-ses/files/default-v4.ofd
+cff20e1936a2a8e818dc5387919f331429943dc139680f83387484e61bc1d99f  artifacts/roadmap-v12/R01/font-dupe-ses/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/font-dupe-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/font-dupe-ses/files/pages/native-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/font-dupe-ses/files/pages/native-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/font-dupe-ses/files/pages/native-v4/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/font-dupe-ses/files/pages/default-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/font-dupe-ses/files/pages/default-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/font-dupe-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/font-dupe-ses/files/pages/default-v4/page-2.png
+46686a057b1cf5bf792d1656d35117b58645fbb3961c4db529677876f81492ed  artifacts/roadmap-v12/R01/font-dupe-r18-full-release.log
+2e6000b408ffa12402cfe5d59f154bd2310965891524ab041da13b19cee1f2a0  artifacts/roadmap-v12/R01/font-dupe-r18-ses.log
+6e229651d06158c883d6f4f7bee0a4d5806c2898adae7320d7d1a7900c46f810  artifacts/roadmap-v12/R01/font-dupe-r18-attachment.log
+c4b173b9b2c68f059eb7e6b0aae4bf554fd431e328f716511e9f07d8dcd74239  artifacts/roadmap-v12/R01/font-dupe-r18-pages/unique-font-resources.ofd
+8b13a16888881113403be44fa63c38d193e023ac581c3c001ff5cc7fae231ed6  artifacts/roadmap-v12/R01/font-dupe-r18-pages/unique-font-resources.pdf
+66eadb2ab896101e80633d54f126d457dea4d8ca83c6433a1df9489c730b57ab  artifacts/roadmap-v12/R01/font-dupe-r18-pages/unique-font-resources-page-1.png
+9c9edd698ad6471a89c53498fc143c902733341699ae94708ec1b147443071d0  artifacts/roadmap-v12/R01/font-dupe-r18-pages/unique-font-resources.svg
+d5d0776f76a3da2f500097c5f80099b550e488f1bdda75c2c331696879006a8f  artifacts/roadmap-v12/R01/font-dupe-r18-pages/unique-font-resources.html
+788b7b496a774990070551000c09fa82dd9b6a4a5d9f614290fd05753fc51131  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/package-manifest.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/rendered-pages.json
+dbb31cbc2c0239e6bd4c38ceb60e88a09591bb55d1eea92985852c805a258c38  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/functional.json
+836c729356a01269113f548d8e3c8f281e3d4386a4cea2d746cc7e225f51f41e  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/licensed-layout.docx
+c163eb2ca08c075b14fa0235d8bdb7b07ffaa3e1c54566ed7985b4ddc8e650b8  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/native-v1.ofd
+54d3bcdcd7756cdeb3f485ee7d5f7d4a10b978da73d03ec7d50e485aed09a3ab  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/native-v1.pdf
+0ffc38a8be8a2b81bb699c6155898d8b483e1fc6797e0dc43243c38682520865  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/default-v4.ofd
+a9adaa3edd250c3ab4c61aabc2fea9ccddf0e8f7ad807beacafc0dfe79f0c5f9  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/pages/native-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/pages/native-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/pages/native-v4/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/pages/default-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/pages/default-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/font-dupe-r18-ses/files/pages/default-v4/page-2.png
+23974703fa5c99d10464e110dec37937eceeef0e5605bb3654b322e487642454  artifacts/roadmap-v12/R01/font-dupe-r18-attachment/manifest.json
+aef011534ff9a84da7d1111cc69f33a22f5c87a714c9954c8d912aa92ecd48ab  artifacts/roadmap-v12/R01/font-dupe-r18-attachment/consumer-result.txt
+f434d01885aa86e78d79b1aa424fa2e09e3cdeb1bede4fe1bc8253efc62eae33  artifacts/roadmap-v12/R01/font-dupe-r18-attachment/output/receipt.json
+9f1ccdff1fae87d783e8b36547aa855fb67059671e5748eacf0eafdf5301eebd  artifacts/roadmap-v12/R01/font-dupe-r18-attachment/output/source.ofd
+26e31b170f148fc5a92296d06fd9933621e2b41d3ad764a66fd0de9157d8a75f  artifacts/roadmap-v12/R01/font-dupe-r18-attachment/output/logical.ofd
+3e062c4f884c00f7f2b182752463b1fea85f1c712452a9601426676b9d28b2b1  artifacts/roadmap-v12/R01/font-dupe-r18-attachment/output/physical.ofd

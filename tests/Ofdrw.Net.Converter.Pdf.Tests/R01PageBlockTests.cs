@@ -588,6 +588,72 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicateFontIdsAreRejectedBeforeAnyRenderer(bool acrossResourceFiles)
+    {
+        var id = acrossResourceFiles ? "10" : "20";
+        var resources = $"<Fonts><Font ID='{id}' FontName='First Face'/>" +
+            (acrossResourceFiles ? "" : $"<Font ID='{id}' FontName='Second Face'/>") +
+            "</Fonts><VendorExtension Key='keep'/>" +
+            "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            $"<TextObject ID='552' Boundary='0 0 50 10' Font='{id}' Size='4'>" +
+            "<TextCode X='0' Y='4'>composite text</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var body = "<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>" +
+            $"<TextObject ID='554' Boundary='10 40 50 10' Font='{id}' Size='4'>" +
+            "<TextCode X='0' Y='4'>sibling text</TextCode></TextObject>";
+        var ofd = await Source(body, resources: resources, font: acrossResourceFiles);
+        // SourceIdentity rejects repeated active numeric IDs across and within
+        // resource files before a Reader package can reach any font consumer.
+        var readError = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdReader().ReadAsync(new MemoryStream(ofd)));
+        Assert.Contains("Duplicate active document-unit ID", readError.Message);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Contains("Duplicate active document-unit ID", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Fact]
+    public async Task UniqueFontIdsAcrossResourcesStillRender()
+    {
+        const string resources = "<Fonts><Font ID='20' FontName='Noto Sans'/></Fonts><VendorExtension Key='keep'/>" +
+            "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='20' Size='4'>" +
+            "<TextCode X='0' Y='4'>composite text</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        const string body = "<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>" +
+            "<TextObject ID='554' Boundary='10 40 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>sibling text</TextCode></TextObject>";
+        var ofd = await Source(body, resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var composite = Assert.IsType<OfdCompositeElement>(block.PageBlockChildren![0]);
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(composite.Resource.Elements));
+        Assert.Null(text.RenderPaintError);
+        var extracted = new OfdTextExtractor().Extract(read);
+        Assert.Contains("composite text", extracted);
+        Assert.Contains("sibling text", extracted);
+        Assert.Contains("VendorExtension", Encoding.UTF8.GetString(read.PreservedEntries["Doc_0/DocumentRes.xml"]));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        Assert.True(pdf.Length > 0);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        Assert.Contains("composite text", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("composite text", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("unique-font-resources", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
     [InlineData("root")]
     [InlineData("container")]
     [InlineData("font")]
