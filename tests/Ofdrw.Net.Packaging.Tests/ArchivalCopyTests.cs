@@ -88,12 +88,16 @@ public class ArchivalCopyTests
         Assert.Equal(0, input.Position);
     }
 
-    [Fact]
-    public async Task CoverageFindsKnownDocumentActionWhenLocalPagePolicyFails()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CoverageFindsKnownDocumentActionWhenLocalPagePolicyFails(bool missingPageEntry)
     {
-        var entries = Seed();
+        var action = "<Actions><Action><URI URI='https://example.org'/></Action></Actions>";
+        var entries = Seed(action);
         entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
-        entries["Doc_0/Document.xml"] = Utf8($"<Document xmlns='{Ns}'><Actions><Action><URI URI='https://example.org'/></Action></Actions></Document>");
+        if (missingPageEntry) entries.Remove("Doc_0/Pages/P0/Content.xml");
+        else entries["Doc_0/Document.xml"] = Utf8($"<Document xmlns='{Ns}'>{action}</Document>");
         using var input = new MemoryStream(Zip(entries), false);
         var report = await new ArchivalCoverageService().CheckAsync(input, new());
         Assert.Equal(PreflightOutcome.Fail, report.FoundationalRules.LocalPreflight.GetRuleOutcome("APF-001"));
