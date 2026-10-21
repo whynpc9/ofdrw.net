@@ -22,6 +22,18 @@ public sealed class OfdSignatureService
         OfdSignatureOptions? options = null,
         CancellationToken cancellationToken = default)
     {
+        await SignWithResultAsync(ofdInput, ofdOutput, provider, options, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Signs an OFD and returns the exact protected and unprotected final package entries.</summary>
+    public async Task<OfdSignatureCreationResult> SignWithResultAsync(
+        Stream ofdInput,
+        Stream ofdOutput,
+        IOfdSignatureProvider provider,
+        OfdSignatureOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
         if (ofdInput is null)
         {
             throw new ArgumentNullException(nameof(ofdInput));
@@ -37,7 +49,7 @@ public sealed class OfdSignatureService
             throw new ArgumentNullException(nameof(provider));
         }
 
-        options ??= new OfdSignatureOptions();
+        options = SnapshotOptions(options ?? new OfdSignatureOptions());
         if (!OfdDigestAlgorithms.IsSupported(options.CheckMethod))
         {
             throw new NotSupportedException(
@@ -57,6 +69,7 @@ public sealed class OfdSignatureService
         }
 
         var ofd = ParseXml(ofdBytes, "OFD.xml");
+        ValidateExtensions(options, ofd);
         var documentBody = ofd
             .Descendants()
             .FirstOrDefault(element => element.Name.LocalName == "DocBody")
@@ -127,6 +140,16 @@ public sealed class OfdSignatureService
             new XAttribute(
                 "BaseLoc",
                 signaturePath.Substring(signaturesDirectory.Length)));
+        if (options.RelativeSignatureId is not null)
+        {
+            var relativeId = options.RelativeSignatureId;
+            var matchingBases = signatureRecords.Where(item => string.Equals(
+                item.Attribute("ID")?.Value, relativeId, StringComparison.Ordinal)).ToArray();
+            if (string.IsNullOrWhiteSpace(relativeId) || matchingBases.Length != 1)
+                throw new InvalidDataException("Relative must identify exactly one existing signature in this list.");
+            EnsureRelativeBaseExists(entries, matchingBases[0], signaturesPath);
+            record.SetAttributeValue("Relative", relativeId);
+        }
         listRoot.Add(record);
         var maxSignId = listRoot
             .Elements()
@@ -148,9 +171,13 @@ public sealed class OfdSignatureService
                 (byte[])provider.SealData.Clone();
         }
 
+        var selection = OfdSignatureFileSelection.Select(
+            entries, ofd, signaturesPath, options, cancellationToken);
+        var protectedEntries = selection.Protected.ToDictionary(
+            path => path, path => entries[path], StringComparer.OrdinalIgnoreCase);
+
         var signature = BuildSignatureXml(
-            entries,
-            signaturesPath,
+            protectedEntries,
             signaturePath,
             signedValuePath,
             provider,
@@ -170,11 +197,14 @@ public sealed class OfdSignatureService
         entries[signedValuePath] = signedValue;
         await WritePackageAsync(entries, ofdOutput, cancellationToken)
             .ConfigureAwait(false);
+        return new OfdSignatureCreationResult(
+            selection.Protected.Select(path => "/" + path).ToArray(),
+            selection.Unprotected.Concat(new[] { signaturePath, signedValuePath })
+                .Select(path => "/" + path).OrderBy(path => path, StringComparer.Ordinal).ToArray());
     }
 
     private static XDocument BuildSignatureXml(
         IReadOnlyDictionary<string, byte[]> entries,
-        string signaturesPath,
         string signaturePath,
         string signedValuePath,
         IOfdSignatureProvider provider,
@@ -184,14 +214,7 @@ public sealed class OfdSignatureService
         var references = new XElement(
             ns + "References",
             new XAttribute("CheckMethod", options.CheckMethod));
-        foreach (var entry in entries
-            .Where(pair =>
-                options.ProtectSignatureList ||
-                !string.Equals(
-                    pair.Key,
-                    signaturesPath,
-                    StringComparison.OrdinalIgnoreCase))
-            .OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        foreach (var entry in entries.OrderBy(pair => pair.Key, StringComparer.Ordinal))
         {
             references.Add(
                 new XElement(
@@ -212,12 +235,21 @@ public sealed class OfdSignatureService
                 new XAttribute("ProviderName", provider.ProviderName),
                 new XAttribute("Company", provider.Company),
                 new XAttribute("Version", provider.Version)),
-            new XElement(ns + "SignatureMethod", provider.SignatureMethod),
-            new XElement(
-                ns + "SignatureDateTime",
-                DateTime.UtcNow.ToString(
-                    "yyyy-MM-ddTHH:mm:ss'Z'",
-                    System.Globalization.CultureInfo.InvariantCulture)));
+            new XElement(ns + "SignatureMethod", provider.SignatureMethod));
+        if (options.Parameters.Count > 0)
+        {
+            signedInfo.Add(new XElement(ns + "Parameters",
+                options.Parameters.Select(parameter =>
+                    new XElement(ns + "Parameter",
+                        new XAttribute("Name", parameter.Name),
+                        parameter.Type is null ? null : new XAttribute("Type", parameter.Type),
+                        parameter.Value))));
+        }
+        signedInfo.Add(new XElement(
+            ns + "SignatureDateTime",
+            DateTime.UtcNow.ToString(
+                "yyyy-MM-ddTHH:mm:ss'Z'",
+                System.Globalization.CultureInfo.InvariantCulture)));
         if (provider.SealData is { Length: > 0 })
         {
             signedInfo.Add(
@@ -235,6 +267,59 @@ public sealed class OfdSignatureService
                 ns + "Signature",
                 signedInfo,
                 new XElement(ns + "SignedValue", "/" + signedValuePath)));
+    }
+
+    private static void ValidateExtensions(OfdSignatureOptions options, XDocument ofd)
+    {
+        if (options.RelativeSignatureId is null && options.Parameters.Count == 0) return;
+        if (!string.Equals(ofd.Root?.Attribute("Version")?.Value, "2.0", StringComparison.Ordinal))
+            throw new NotSupportedException("Relative and Parameters require an OFD 2.0 document.");
+        if (ofd.Root?.Name.NamespaceName != "http://www.ofdspec.org/2016")
+            throw new NotSupportedException("OFD 2.0 signature extensions require the 2016 namespace.");
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var parameter in options.Parameters)
+        {
+            if (parameter is null || string.IsNullOrWhiteSpace(parameter.Name) ||
+                parameter.Name.Length > 256 || parameter.Value.Length > 4096 ||
+                parameter.Type?.Length > 256 || !names.Add(parameter.Name))
+                throw new InvalidDataException("Invalid or duplicate signature Parameter name/value/type.");
+        }
+    }
+
+    private static OfdSignatureOptions SnapshotOptions(OfdSignatureOptions source)
+    {
+        var copy = new OfdSignatureOptions
+        {
+            CheckMethod = source.CheckMethod,
+            ProtectSignatureList = source.ProtectSignatureList,
+            ProtectFile = source.ProtectFile,
+            RelativeSignatureId = source.RelativeSignatureId
+        };
+        foreach (var parameter in source.Parameters) copy.Parameters.Add(parameter);
+        return copy;
+    }
+
+    private static void EnsureRelativeBaseExists(
+        IReadOnlyDictionary<string, byte[]> entries, XElement record, string signaturesPath)
+    {
+        var baseLocation = record.Attribute("BaseLoc")?.Value;
+        if (string.IsNullOrWhiteSpace(baseLocation))
+            throw new InvalidDataException("Relative base has no Signature.xml location.");
+        var basePath = baseLocation!.StartsWith("/", StringComparison.Ordinal)
+            ? NormalizePath(baseLocation)
+            : GetDirectory(signaturesPath) + NormalizePath(baseLocation);
+        if (!entries.TryGetValue(basePath, out var bytes) || bytes.Length == 0)
+            throw new InvalidDataException("Relative base Signature.xml is missing.");
+        var baseSignature = ParseXml(bytes, basePath);
+        var valueLocation = baseSignature.Descendants()
+            .FirstOrDefault(element => element.Name.LocalName == "SignedValue")?.Value;
+        if (string.IsNullOrWhiteSpace(valueLocation))
+            throw new InvalidDataException("Relative base has no SignedValue location.");
+        var valuePath = valueLocation!.StartsWith("/", StringComparison.Ordinal)
+            ? NormalizePath(valueLocation)
+            : GetDirectory(basePath) + NormalizePath(valueLocation);
+        if (!entries.TryGetValue(valuePath, out var value) || value.Length == 0)
+            throw new InvalidDataException("Relative base SignedValue is missing.");
     }
 
     private static void EnsureListCanBeUpdated(

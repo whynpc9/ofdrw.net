@@ -105,6 +105,8 @@ dotnet run --project src/Ofdrw.Net.Cli -- verify-signatures --input signed.ofd
 
 创建签名需要实现 `IOfdSignatureProvider`：接收序列化后的 `Signature.xml` 字节，返回厂商签名值。编排由 `OfdSignatureService` 写入列表和保护引用。算法细节不在本教程展开。
 
+新签名的受保护文件选择、OFD 2.0 `Relative`/`Parameters` 扩展及其验收边界见[签名保护范围与关系](../signature-scope-v12.md)。调用方应查看逐条范围结果；摘要通过只说明列出的文件没有变化。
+
 ## 常见坑
 
 - **验了摘要就对外宣称合法电子签章**。缺证书链、时间戳、印章外观校验时只能报告完整性。

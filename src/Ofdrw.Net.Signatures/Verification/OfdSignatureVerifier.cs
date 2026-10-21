@@ -154,6 +154,7 @@ public sealed class OfdSignatureVerifier
         }
 
         var hasRecords = false;
+        var listResults = new List<OfdSignatureVerificationResult>();
         foreach (var record in list.Descendants()
                      .Where(element => element.Name.LocalName == "Signature"))
         {
@@ -162,9 +163,11 @@ public sealed class OfdSignatureVerifier
             var baseLocation = record.Attribute("BaseLoc")?.Value;
             var result = new OfdSignatureVerificationResult
             {
-                Id = record.Attribute("ID")?.Value ?? string.Empty
+                Id = record.Attribute("ID")?.Value ?? string.Empty,
+                RelativeSignatureId = record.Attribute("Relative")?.Value
             };
             report.Signatures.Add(result);
+            listResults.Add(result);
             if (string.IsNullOrWhiteSpace(baseLocation))
             {
                 result.CryptographicStatus = OfdCryptographicVerificationStatus.Error;
@@ -192,11 +195,45 @@ public sealed class OfdSignatureVerifier
                 .ConfigureAwait(false);
         }
 
+        ValidateRelations(listResults, report);
+
         if (!hasRecords)
         {
             report.Issues.Add($"Signatures list '{listPath}' contains no signature records.");
         }
         return hasRecords;
+    }
+
+    private static void ValidateRelations(
+        IReadOnlyList<OfdSignatureVerificationResult> signatures,
+        OfdSignatureVerificationReport report)
+    {
+        var idCounts = signatures.GroupBy(s => s.Id, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        var earlier = new Dictionary<string, OfdSignatureVerificationResult>(StringComparer.Ordinal);
+        foreach (var signature in signatures)
+        {
+            var relative = signature.RelativeSignatureId;
+            if (relative is not null)
+            {
+                if (string.IsNullOrWhiteSpace(relative) ||
+                    !idCounts.TryGetValue(relative, out var count) || count != 1 ||
+                    !earlier.TryGetValue(relative, out var basis))
+                {
+                    signature.RelativeIntegrityValid = false;
+                    signature.RelativeIssue = "Relative must identify one earlier signature in the same list.";
+                }
+                else if (!basis.RelativeIntegrityValid || !basis.ReferenceIntegrityValid ||
+                         basis.CryptographicStatus != OfdCryptographicVerificationStatus.Valid)
+                {
+                    signature.RelativeIntegrityValid = false;
+                    signature.RelativeIssue = "The base signature is not fully valid.";
+                }
+                if (!signature.RelativeIntegrityValid)
+                    report.Issues.Add("Signature '" + signature.Id + "': " + signature.RelativeIssue);
+            }
+            if (!earlier.ContainsKey(signature.Id)) earlier.Add(signature.Id, signature);
+        }
     }
 
     private async Task VerifySignatureAsync(
