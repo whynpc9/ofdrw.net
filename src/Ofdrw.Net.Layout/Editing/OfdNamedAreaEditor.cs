@@ -18,23 +18,36 @@ public sealed class OfdNamedArea
     { Name = entry.Name; PageIndex = entry.Page.Index; PageId = entry.Page.Id!;
       XMillimeters = entry.X; YMillimeters = entry.Y;
       WidthMillimeters = entry.Width; HeightMillimeters = entry.Height; IsFilled = entry.Filled; }
+    /// <summary>Gets the unique name assigned to the area in this document.</summary>
     public string Name { get; }
+    /// <summary>Gets the zero-based page index containing the area.</summary>
     public int PageIndex { get; }
+    /// <summary>Gets the persisted identifier of the containing page.</summary>
     public string PageId { get; }
+    /// <summary>Gets the left edge of the reserved rectangle in millimeters.</summary>
     public double XMillimeters { get; }
+    /// <summary>Gets the top edge of the reserved rectangle in millimeters.</summary>
     public double YMillimeters { get; }
+    /// <summary>Gets the width of the reserved rectangle in millimeters.</summary>
     public double WidthMillimeters { get; }
+    /// <summary>Gets the height of the reserved rectangle in millimeters.</summary>
     public double HeightMillimeters { get; }
+    /// <summary>Gets whether this area has already been filled.</summary>
     public bool IsFilled { get; }
 }
 
 /// <summary>Text settings for the explicitly limited legacy Flow measuring path.</summary>
 public sealed class NamedAreaTextOptions
 {
+    /// <summary>Gets or sets the font family used for the fill text.</summary>
     public string FontFamily { get; set; } = "SimSun";
+    /// <summary>Gets or sets the font size in millimeters.</summary>
     public double FontSizeMillimeters { get; set; } = 3.704166666666667;
+    /// <summary>Gets or sets whether the fill text uses bold weight.</summary>
     public bool Bold { get; set; }
+    /// <summary>Gets or sets whether the fill text uses italic style.</summary>
     public bool Italic { get; set; }
+    /// <summary>Gets or sets the fill text color.</summary>
     public OfdColor Color { get; set; } = OfdColor.Black;
     /// <summary>Maximum UTF-16 units accepted for one area.</summary>
     public int MaxCharacters { get; set; } = 10000;
@@ -100,6 +113,11 @@ public sealed class OfdNamedAreaEditor
             top += line.Height;
         }
         if (created.Count == 0) throw new ArgumentException("Fill text has no visible content.", nameof(text));
+        // BuildFonts resolves each text element through the package font catalog.
+        // Declare a matching face once so wrapped lines share one resource.
+        if (!package.Fonts.Any(font => string.Equals(font.FontName, style.FontFamily, StringComparison.OrdinalIgnoreCase) &&
+            font.Bold == style.Bold && font.Italic == style.Italic))
+            package.Fonts.Add(new OfdFontResource { FontName = style.FontFamily, Bold = style.Bold, Italic = style.Italic });
         area.Filled = true;
         OfdNamedAreaIndex.Save(package, areas);
         area.Page.Elements.AddRange(created);

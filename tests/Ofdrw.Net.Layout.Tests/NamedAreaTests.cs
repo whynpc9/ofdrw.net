@@ -76,6 +76,23 @@ public sealed class NamedAreaTests
     }
 
     [Fact]
+    public async Task WrappedFillSharesOneFontResource()
+    {
+        var flow = new FlowDocument();
+        flow.Blocks.Add(new AreaHolderBlock("lines", 100));
+        var package = await RoundTrip(flow.Render());
+        Assert.Empty(package.Fonts);
+        new OfdNamedAreaEditor().FillText(package, "lines", string.Join("\n", Enumerable.Repeat("line", 12)),
+            new NamedAreaTextOptions { FontFamily = "R03 test face", Bold = true });
+        var final = await RoundTrip(package);
+        Assert.True(final.Pages[0].Elements.OfType<OfdTextElement>().Count() >= 12);
+        var font = Assert.Single(final.Fonts);
+        Assert.Equal("R03 test face", font.FontName);
+        Assert.True(font.Bold);
+        Assert.All(final.Pages[0].Elements.OfType<OfdTextElement>(), text => Assert.Equal(font.Id, text.FontResourceId));
+    }
+
+    [Fact]
     public void BadReferencesAndOverflowRejectWithoutMutation()
     {
         var flow = new FlowDocument();
