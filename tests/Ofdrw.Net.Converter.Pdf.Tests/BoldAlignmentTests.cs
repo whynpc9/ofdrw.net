@@ -189,6 +189,45 @@ public sealed class BoldAlignmentTests
         Assert.True(clearCounterPixels > 0, $"The O counter must remain unfilled: bounds={boldInk}.");
     }
 
+    [Theory]
+    [InlineData("bold.ttf", true, false)]
+    [InlineData("italic.ttf", false, true)]
+    public async Task OutlineOnlyTextUsesPhysicalFaceStyle(string fileName, bool bold, bool italic)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Ofdrw.Net.sln"))) dir = dir.Parent;
+        var fontPath = Path.Combine(dir!.FullName, "e2e/Ofdrw.Net.SkiaSharp.E2E/testdata/fonts", fileName);
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "physical fixture", Bold = bold,
+            Italic = italic, Data = File.ReadAllBytes(fontPath) });
+        var page = new OfdPage { WidthMillimeters = 80, HeightMillimeters = 60 };
+        page.Elements.Add(new OfdTextElement
+        {
+            Text = "O", FontName = "physical fixture", FontResourceId = "10", FontSizeMillimeters = 8,
+            XMillimeters = 15, YMillimeters = 20, WidthMillimeters = 30, HeightMillimeters = 15,
+            SourceXml = "<TextObject xmlns='http://www.ofdspec.org' Boundary='15 20 30 15' Size='8' " +
+                "Stroke='true' Fill='false' LineWidth='0.1'><StrokeColor Value='0 0 0'/>" +
+                "<TextCode X='2' Y='10'>O</TextCode></TextObject>"
+        });
+        package.Pages.Add(page);
+        using var ofd = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, ofd);
+        ofd.Position = 0;
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using var semantic = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray());
+        Assert.Equal("O", semantic.GetPage(1).Text);
+        Assert.Single(semantic.GetPage(1).Letters);
+        using var reader = DocLib.Instance.GetDocReader(pdf.ToArray(), new PageDimensions(4d));
+        using var rendered = reader.GetPageReader(0);
+        Assert.True(Ink(rendered.GetImage(), rendered.GetPageWidth()).Count > 0);
+        if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+        {
+            Directory.CreateDirectory(artifacts);
+            var name = bold ? "outline-only-physical-bold" : "outline-only-physical-italic";
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, name + ".ofd"), ofd.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, name + ".pdf"), pdf.ToArray());
+        }
+    }
+
     private static (int Left, int Top, int Right, int Bottom, int Count) Ink(byte[] pixels, int width)
     {
         var left = width; var top = int.MaxValue; var right = 0; var bottom = 0; var count = 0;

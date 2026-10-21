@@ -385,13 +385,18 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         SixLabors.Fonts.Font? outlineFont = null;
                         if (simulateBold || paint.Stroke && paint.StrokeColor.Alpha > 0)
                         {
-                            if (!outlineFonts.TryGetValue(face.FaceName, out var family))
+                            if (!outlineFonts.TryGetValue(face.FaceName, out var outlineFace))
                             {
-                                using var fontStream = new MemoryStream(GlobalFontSettings.FontResolver.GetFont(face.FaceName));
-                                family = new SixLabors.Fonts.FontCollection().Add(fontStream);
-                                outlineFonts.Add(face.FaceName, family);
+                                var fontBytes = GlobalFontSettings.FontResolver.GetFont(face.FaceName);
+                                using var fontStream = new MemoryStream(fontBytes);
+                                var family = new SixLabors.Fonts.FontCollection().Add(fontStream);
+                                var physical = new OpenTypeFace(fontBytes).Style;
+                                var physicalStyle = (physical.Bold ? SixLabors.Fonts.FontStyle.Bold : SixLabors.Fonts.FontStyle.Regular) |
+                                    (physical.Italic ? SixLabors.Fonts.FontStyle.Italic : SixLabors.Fonts.FontStyle.Regular);
+                                outlineFace = (family, physicalStyle);
+                                outlineFonts.Add(face.FaceName, outlineFace);
                             }
-                            outlineFont = family.CreateFont((float)fontSize);
+                            outlineFont = outlineFace.Family.CreateFont((float)fontSize, outlineFace.Style);
                         }
                         var brush = new XSolidBrush(XColor.FromArgb(
                             paint.Fill ? paint.FillColor.Alpha : 0,
