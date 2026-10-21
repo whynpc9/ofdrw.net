@@ -53,8 +53,8 @@ internal sealed class PdfFixture : IDisposable
         var cmap = "/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def /CMapName /Fixture def /CMapType 2 def 1 begincodespacerange " +
             (simpleWinAnsi ? "<00> <FF>" : "<0000> <FFFF>") + " endcodespacerange " + _characters.Count + " beginbfchar " +
             string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => $"<{pair.Key.ToString(simpleWinAnsi ? "X2" : "X4")}> <{(pair.Value == 'A' && aUnicodeHex is not null ? aUnicodeHex : ((int)(wrongUnicode && pair.Value == 'A' ? 'B' : pair.Value)).ToString("X4"))}>")) + " endbfchar endcmap CMapName currentdict /CMap defineresource pop end end";
-        var widths = string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => pair.Key + " [" + Number(_font.MeasureText(pair.Value.ToString())) + "]"));
-        var simpleWidths = string.Join(" ", Enumerable.Range(32, 224).Select(code => Number(_font.MeasureText(((char)code).ToString()))));
+        var widths = string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => pair.Key + " [" + GlyphWidth(pair.Value.ToString()) + "]"));
+        var simpleWidths = string.Join(" ", Enumerable.Range(32, 224).Select(code => GlyphWidth(((char)code).ToString())));
         var resources = "/Resources << /Font << " + fontResources + " >> /XObject << /Im1 8 0 R >> /ExtGState << /GS1 << /ca .4 /BM /Multiply >> >> " + resourceEntries + ">>";
         var objects = new List<byte[]> {
             Ascii("<< /Type /Catalog /Pages 2 0 R >>"),
@@ -91,5 +91,14 @@ internal sealed class PdfFixture : IDisposable
     { using var output = new MemoryStream(); output.Write(Ascii("<< /Length " + bytes.Length + " " + extra + " >>\nstream\n")); output.Write(bytes); output.Write(Ascii("\nendstream")); return output.ToArray(); }
     private static byte[] Ascii(string value) => Encoding.ASCII.GetBytes(value);
     private static string Number(double value) => value.ToString("0.######", CultureInfo.InvariantCulture);
+    private string GlyphWidth(string text)
+    {
+        var measured = (double)_font.MeasureText(text);
+        var nearest = Math.Round(measured);
+        // Skia can return 223.999741 on x64 and 224 on arm64 for this pinned
+        // fixture face. Normalize only near-integer noise so the source PDF's
+        // advance table and rendered comparison stay identical across CI hosts.
+        return Number(Math.Abs(measured - nearest) < 0.01 ? nearest : measured);
+    }
     public void Dispose() { _font.Dispose(); _face.Dispose(); }
 }

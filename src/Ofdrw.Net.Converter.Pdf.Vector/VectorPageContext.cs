@@ -488,6 +488,13 @@ internal sealed class VectorOperations : IGraphicsStateOperationFactory
         if (++_count > _limits.MaxOperationsPerPage) throw new InvalidDataException("PDF operation limit exceeded.");
         if (!Allowed.Contains(operation.Data)) throw new NotSupportedException("PDFV_UNSUPPORTED page=" + _page + " operation=" + _count + " operator=" + operation.Data);
         if (operands.Count != Arity(operation.Data)) throw new NotSupportedException("PDFV_OPERATOR_ARITY page=" + _page + " operator=" + operation.Data);
+        // PdfPig 0.1.15 converts the dash phase to int before exposing the
+        // graphics state. Reject values it would silently truncate or wrap.
+        if (operation.Data == "d" && (operands[1] is not NumericToken phase ||
+            phase.Double < 0 || phase.Double > int.MaxValue ||
+            double.IsNaN(phase.Double) || double.IsInfinity(phase.Double) ||
+            phase.Double != Math.Truncate(phase.Double)))
+            throw new NotSupportedException("PDFV_UNSUPPORTED page=" + _page + " operation=" + _count + " DASH_PHASE: nonnegative integral phase required.");
         return ReflectionGraphicsStateOperationFactory.Instance.Create(operation, operands) ?? throw new NotSupportedException("PDFV_UNKNOWN_OPERATOR " + operation.Data);
     }
 }

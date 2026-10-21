@@ -138,6 +138,9 @@ public sealed class VectorTests
     [Theory]
     [InlineData("[0 3] 0 d", "STROKE_PROFILE")]
     [InlineData("[5 2 1] 1 d", "STROKE_PROFILE")]
+    [InlineData("[6 3] 2.5 d", "DASH_PHASE")]
+    [InlineData("[6 3] -0.5 d", "DASH_PHASE")]
+    [InlineData("[6 3] 2147483648 d", "DASH_PHASE")]
     [InlineData("1 J 5 M", "STROKE_PROFILE")]
     [InlineData("11 M", "STROKE_PROFILE")]
     public async Task UnrepresentableStrokeStyleStillFailsWholePage(string state, string diagnostic)
