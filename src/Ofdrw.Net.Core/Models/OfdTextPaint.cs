@@ -52,7 +52,7 @@ internal sealed class OfdTextPaint
         return result;
     }
 
-    private static OfdColor Color(XElement? node, OfdColor fallback)
+    internal static OfdColor Color(XElement? node, OfdColor fallback)
     {
         if (node is null) return fallback;
         // Annotation appearances can reach this parser without the Reader's

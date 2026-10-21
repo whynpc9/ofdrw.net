@@ -535,3 +535,29 @@ e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/road
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/pages/native-v1/page-2.png
 e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/pages/default-v4/page-1.png
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/annotation-default-final-ses/files/pages/default-v4/page-2.png
+
+# Annotation path and inherited DrawParam final source, local outputs
+0f0ef6cb65a450835ff79a5d9eb056b168db78d546b82d6547b971c1b2c647df  artifacts/roadmap-v12/R01/pathpaint-alpha-focused.log
+c748af6f725ea99cd3cb52675e63b29c0ceda51f15b5583e66d32a6eb79bf983  artifacts/roadmap-v12/R01/pathpaint-full-release-final.log
+b32205ac49197738f6e5791091deadcc7bf6e85d5726f18d199fc13e5d326a52  artifacts/roadmap-v12/R01/pathpaint-positive-generation-final.log
+f2f236513342251642b61aeb411cf54649dc697689ef8b109a620298c15f2151  artifacts/roadmap-v12/R01/pathpaint-final-ses.log
+1a75109a4fdfab3cdc86bb5287e8cb8c51fba17063791744c5a73dee3fc88e50  artifacts/roadmap-v12/R01/pathpaint-final-pages/annotation-path-alpha.ofd
+43f910b6506f4b9582c76083cc1078481e8168b79095230e25b6a98b971a99ca  artifacts/roadmap-v12/R01/pathpaint-final-pages/annotation-path-alpha.pdf
+de581febce5b14c8129c4efefc3e8e4d1f2c45a148c0542de0134f2b4fb93f24  artifacts/roadmap-v12/R01/pathpaint-final-pages/annotation-path-alpha.png
+d22ce5469362313afaa951ff36ed3f4d8974a521d42359333591371d954caa0d  artifacts/roadmap-v12/R01/pathpaint-final-pages/annotation-valid-path.ofd
+bdbbb8469cbdb6ba09d9055ba83f4aa2daa83cf4dd9be6969a8e382f6c34651c  artifacts/roadmap-v12/R01/pathpaint-final-pages/annotation-valid-path.pdf
+640d8220fd668e15fc8930115cbe8d57a3319da3df9b241565dddf19510e043f  artifacts/roadmap-v12/R01/pathpaint-final-pages/annotation-valid-path.png
+13a51ca02a9ab6400404dab6f768f578ae680e22e816ff95d50c72be3631c712  artifacts/roadmap-v12/R01/pathpaint-final-pages/drawparam-relative-2009-2016-block.ofd
+a4db035af35794b4c5177584db8ecd5eb0477f0ccc5764753f3bb378ac8bc161  artifacts/roadmap-v12/R01/pathpaint-final-pages/drawparam-relative-2009-2016-block.pdf
+fc30096d9797a5e5d0365cbcc1518a7b4aadd12ca0f9b77d34a32e1a15e10196  artifacts/roadmap-v12/R01/pathpaint-final-pages/drawparam-relative-2009-2016-block.png
+b1afb2f8023bec08810979b6bb292dd96213ca4dd74368c85ece2edd3f5a3a66  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/package-manifest.json
+5bbc2527633cefb71339bb47bbfc4c749eedc3cbd205f564c6f631253ec7524d  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/functional.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/rendered-pages.json
+d35f533c5800f06bc28f5ff5d13bff60f5bfdb96b5411dfd95d9d67e8beda6f8  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/native-v1.ofd
+4575dd0accec58f3776545fb5d9433c7a8c53e62b608bed07a4bd10d2e94d7eb  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/native-v1.pdf
+169644ad535eb55df60a88f06671ad337dbe767889c689ca5b4fb0424e8647c6  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/default-v4.ofd
+a2eefe2b719839fbe24414b147a3f0718e50437c30e328472fa142f3a7c964ce  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/pages/native-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/pathpaint-final-ses/files/pages/default-v4/page-2.png

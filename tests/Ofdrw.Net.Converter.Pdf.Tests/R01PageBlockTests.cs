@@ -306,6 +306,30 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Theory]
+    [InlineData("<FillColor Value='0 0 0' xmlns:v='urn:vendor' v:Mode='x'/>")]
+    [InlineData("<FillColor Value='0 0 0'><?vendor key?></FillColor>")]
+    [InlineData("<FillColor ColorSpace='999' Value='0 0 0'/>")]
+    public async Task OverriddenAncestorDrawParamColorStillNeedsValidPaint(string ancestorColor)
+    {
+        var resources = $"<DrawParams><DrawParam ID='20'>{ancestorColor}</DrawParam>" +
+            "<DrawParam ID='21' Relative='20'><FillColor Value='255 0 0'/></DrawParam></DrawParams>";
+        const string body = "<PathObject ID='501' Boundary='10 10 20 20' DrawParam='21' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Equal(0, output.Length);
+        }
+    }
+
     [Fact]
     public async Task ReferencedDrawParamAllowsCommentsAndWhitespace()
     {

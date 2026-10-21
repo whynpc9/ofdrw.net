@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Xml.Linq;
 
 namespace Ofdrw.Net.Core.Models;
 
@@ -56,6 +58,21 @@ internal static class OfdRenderPreflight
                 source = element.RenderSourceXml;
             }
             if (string.IsNullOrWhiteSpace(source)) continue;
+            if (element is OfdPathElement)
+            {
+                try
+                {
+                    var root = OfdXmlEnvelope.Parse(source!);
+                    // Annotation artwork can retain unrelated extension metadata,
+                    // while its source paint must be resolved and well formed.
+                    if (OfdGraphicXmlContract.HasUnsupportedReferences(root))
+                        throw new NotSupportedException("OFD path paint has an unresolved resource reference.");
+                    foreach (var color in root.Elements().Where(node => node.Name.LocalName is "FillColor" or "StrokeColor"))
+                        _ = OfdTextPaint.Color(color, OfdColor.Black);
+                }
+                catch (Exception paintError) when (paintError is NotSupportedException or InvalidDataException)
+                { throw PaintFailure(paintError.Message); }
+            }
             if (element is OfdTextElement text)
             {
                 try

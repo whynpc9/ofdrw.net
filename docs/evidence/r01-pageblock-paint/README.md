@@ -134,6 +134,13 @@
 - 本地 `0.1.0-r01.annotation` 的 12 个基础 SDK 包及 1 个可选 SES 包来源清单、独立消费者、显式 native/默认 DOCX→OFD、四份 V1/V4 测试签章及逐页 PNG 等同性通过；包未发布。默认密码学验证仍为 `Unsupported`，不据此认定外部阅读器或签名法律有效性。
 - 本轮 `annotation-default-final-ses/files/native-v1.pdf` 与 `default-v4.pdf` 均为各自 OFD 导出的新产物；在 macOS Preview 各检查第 1–2 页。查看链路分别为 DOCX → 显式 native OFD → PDF → Preview、DOCX → 默认 OFD → PDF → Preview。中文、英文、蓝色表格底色与边框、第二页红色粗体及分页与样例一致；四张本轮 PNG 与前轮已验收页面逐字节一致。检查后关闭全部文档窗口，并登记 `20261021T1422Z` GUI 代次释放。
 
+## 注释路径与继承绘制参数复审
+
+- Codex 对 `4f0ac41` 指出两处绘制准入缺口：未解析资源的注释路径可能使用类型化回退色，继承链上被子项覆盖的父级颜色可能在校验前丢失。渲染预检现在检查路径源 XML 的资源引用与直接填充/描边颜色；Reader 在合并每个 `DrawParam` 节点前校验其颜色，包含父项后来被覆盖的情形。注释路径仅声明 `Alpha` 时，Reader 用黑色默认分量保留透明度。与绘制无关的注释扩展元数据仍按原有路径保留。
+- 负例覆盖缺失 `DrawParam`/`ColorSpace`、无颜色空间的 `Index`、非法颜色分量/Alpha，以及父级颜色的扩展属性、处理指令和缺失颜色空间；PDF/SVG/HTML 均在绘制前拒绝且输出为空。正例覆盖有效注释路径、仅有 Alpha 的半透明黑色路径、跨资源命名空间的相对 `DrawParam` 子项覆盖。修订后完整 Release 解决方案 **3322 passed、0 skipped、0 failed**；定向负例与 Alpha 回归 9/9，正例生成 13/13。Core `netstandard2.0` 由完整解决方案编译通过。
+- 本地 `0.1.0-r01.pathpaint` 的 12 个基础包和 1 个可选 SES 包来源、独立消费者、显式 native/默认 DOCX→OFD→PDF、四份 V1/V4 测试签章与各自基线逐页 PNG 等同性通过；包未发布。默认密码学验证仍为 `Unsupported`。功能、生成链路与哈希见 `artifacts/roadmap-v12/R01/pathpaint-final-ses/` 及本目录清单。
+- 从本轮 OFD 导出的三份单页 PDF 在 144 DPI PNG 与 macOS Preview 各检查第 1/1 页：半透明黑色路径呈灰色矩形，有效注释路径为红色，相对 `DrawParam` 页为黄色填充、蓝色描边，并保留蓝色 `child blue` 与洋红 `local magenta`。本轮 `native-v1.pdf`、`default-v4.pdf` 分别由显式 native 和默认 OFD 导出；两条 DOCX→OFD→PDF→Preview 链各检查第 1–2 页。中英文、斜体、蓝色表格底色/边框、第二页局部红色粗体及分页符合样例；未见缺字、裁切、重叠、重影或异常空白页。四张本轮 DOCX 页面 PNG 与既有已验收像素哈希一致；所有本轮 Preview 文档窗口已关闭，GUI 代次 `20261021T1502Z` 已释放。结论仅适用于这些实际检查的页面，不推出外部 OFD 阅读器互操作或任意 DOCX 保真。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |

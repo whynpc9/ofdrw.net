@@ -124,6 +124,9 @@ internal sealed class OfdPaintResources
             if (HasUnsupportedNodeContent(item))
                 throw new NotSupportedException("DrawParam has unsupported content.");
             RejectDuplicateColors(item);
+            // An overridden ancestor is still part of the referenced paint
+            // chain. Validate its colors before a descendant can discard them.
+            foreach (var color in item.Elements()) NormalizeColor(new XElement(color), token);
             foreach (var attribute in item.Attributes().Where(a => a.Name.LocalName is not ("ID" or "Relative")))
                 result.SetAttributeValue(attribute.Name, attribute.Value);
             foreach (var color in item.Elements())

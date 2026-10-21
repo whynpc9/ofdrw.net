@@ -1457,7 +1457,17 @@ public sealed class OfdReader : IOfdReader
 
     private static OfdColor? ParseColor(XElement? colorElement, OfdModelMaterialization material, CancellationToken token)
     {
-        var value = colorElement?.Attribute("Value")?.Value;
+        if (colorElement is null) return null;
+        var value = colorElement.Attribute("Value")?.Value;
+        if (value is null)
+        {
+            var defaultAlpha = 255;
+            var literal = colorElement.Attribute("Alpha")?.Value;
+            if (literal is not null && (!int.TryParse(literal, NumberStyles.Integer, CultureInfo.InvariantCulture, out defaultAlpha) ||
+                defaultAlpha is < 0 or > 255)) return null;
+            material.ReserveReadModel(512, token);
+            return new OfdColor(0, 0, 0, defaultAlpha);
+        }
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;

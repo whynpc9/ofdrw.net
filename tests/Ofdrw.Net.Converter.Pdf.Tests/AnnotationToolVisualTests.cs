@@ -90,6 +90,69 @@ public sealed class AnnotationToolVisualTests
     }
 
     [Theory]
+    [InlineData("DrawParam='999'", "")]
+    [InlineData("", "<FillColor ColorSpace='999' Value='255 0 0'/>")]
+    [InlineData("", "<FillColor Index='1'/>")]
+    [InlineData("", "<FillColor Value='bad'/>")]
+    [InlineData("", "<StrokeColor Alpha='999'/>")]
+    public async Task AnnotationPathRejectsUnresolvedPaintInAllRenderers(string attribute, string color)
+    {
+        var source = await Annotated($"<PathObject ID='901' Boundary='0 0 20 10' Fill='true' Stroke='false' {attribute}>" +
+            color + "<AbbreviatedData>M 0 0 L 20 0 L 20 10 L 0 10 C</AbbreviatedData></PathObject>", "10 10 30 20");
+        // Annotation projection already rejects unresolved references when it
+        // cannot prove the local appearance owns their resources. The shared
+        // renderer admission must also reject a typed path supplied directly.
+        var directPath = new OfdPathElement { SourceXml =
+            $"<PathObject Boundary='0 0 20 10' Fill='true' {attribute}>{color}" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 10 C</AbbreviatedData></PathObject>" };
+        Assert.Throws<NotSupportedException>(() => OfdRenderPreflight.Validate(new[] { directPath }));
+        using var ofd = await Write(source);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd.ToArray()), output));
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Fact]
+    public async Task AnnotationPathDefaultsAlphaOnlyColorsToBlackInAllRenderers()
+    {
+        var source = await Annotated("<PathObject ID='901' Boundary='0 0 20 10' Fill='true' Stroke='true'>" +
+            "<FillColor Alpha='128'/><StrokeColor Alpha='128'/>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 10 L 0 10 C</AbbreviatedData></PathObject>", "10 10 30 20");
+        var path = Assert.Single(source.Pages[0].AnnotationAppearances.OfType<OfdPathElement>());
+        Assert.Equal(128, path.FillColor?.Alpha);
+        Assert.Equal(128, path.StrokeColor.Alpha);
+        using var ofd = await Write(source);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using (var document = DocLib.Instance.GetDocReader(pdf.ToArray(), new PageDimensions(2d)))
+        using (var page = document.GetPageReader(0))
+            Assert.InRange(Pixel(page.GetImage(), page.GetPageWidth(), 15, 15, 0), 124, 131);
+        ofd.Position = 0; using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(ofd, svg);
+        var drawing = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()));
+        var shape = Assert.Single(drawing.Descendants().Where(node => node.Name.LocalName == "path" &&
+            node.Attribute("fill-opacity") is not null));
+        Assert.InRange(double.Parse(shape.Attribute("fill-opacity")!.Value, System.Globalization.CultureInfo.InvariantCulture), .501, .503);
+        Assert.InRange(double.Parse(shape.Attribute("stroke-opacity")!.Value, System.Globalization.CultureInfo.InvariantCulture), .501, .503);
+        ofd.Position = 0; using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(ofd, html);
+        Assert.Contains("rgb(0,0,0)", Encoding.UTF8.GetString(html.ToArray()));
+        if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllBytes(Path.Combine(directory, "annotation-path-alpha.ofd"), ofd.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, "annotation-path-alpha.pdf"), pdf.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, "annotation-path-alpha.svg"), svg.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, "annotation-path-alpha.html"), html.ToArray());
+        }
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task InexactAnnotationBoxKeepsOrdinaryPaintButRefusesMix(bool primitive)
@@ -103,6 +166,13 @@ public sealed class AnnotationToolVisualTests
         Assert.InRange(Pixel(page.GetImage(), page.GetPageWidth(), 15, 15, 1), 0, 10);
         ofd.Position = 0; using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(ofd, svg);
         Assert.Contains("255,0,0", Encoding.UTF8.GetString(svg.ToArray()).Replace(" ", ""));
+        if (!primitive && Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllBytes(Path.Combine(directory, "annotation-valid-path.ofd"), ofd.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, "annotation-valid-path.pdf"), pdf.ToArray());
+            File.WriteAllBytes(Path.Combine(directory, "annotation-valid-path.svg"), svg.ToArray());
+        }
         Assert.Throws<NotSupportedException>(() => OfdDocumentMixer.Mix([new(source, 0)]));
     }
 
