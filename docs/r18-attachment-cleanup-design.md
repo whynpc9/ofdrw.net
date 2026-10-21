@@ -18,6 +18,8 @@ Reader 捕获的 `OfdAttachmentSource` 是唯一来源证据：owner、描述符
 
 删除在 `WriteWithResultAsync` 创建 ZIP/触碰目标流前完成；不改调用方 `PreservedEntries`。`OfdPackageWriteResult.RemovedEntries` 报真实删除路径，签名失效沿用既有 `SignaturesInvalidated` 与重签诊断。受控写入克隆及同路径 Split 要么保留来源请求并重验，要么在操作前明确拒绝，不能漏掉请求后写出貌似成功的包。合并/混合不继承原包删除权限。
 
+若既有签名被本次写入完整失效并实际移除，签名描述中的标准 `SignedInfo/References/Reference/@FileRef` 仅作摘要范围记录，不构成输出包中的资源所有权；原签名中其它路径仍逐项检查。未被实际移除的签名描述及异常编码引用不得借此例外绕过闭包检查。
+
 ## 首轮固定验收
 
 复用 `Audit027RegressionTests` 和 `Pr23AttachmentSplitTests` 证明默认逻辑行为；针对物理模式增加同源独占正例、非规范路径、同名新对象、共享载荷、其它 XML/资源/批注/签名/跨 DocBody 引用、未知及损坏 XML、全删描述符、零字节失败输出、签名失效、再次读写和 Split 来源。对成功样本比较 ZIP 清单、保留条目字节、payload SHA-256 及 preflight。附件元数据票不改变页面呈现，视觉门记录为不适用；若实现触及页面/渲染则另按 `AGENTS.md` 完成逐页检查。

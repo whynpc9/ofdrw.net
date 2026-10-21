@@ -22,13 +22,13 @@ internal static class OfdAttachmentPhysicalCleaner
     // carry implicit references, so they cannot be admitted by string matching.
     private static readonly HashSet<string> KnownElements = new(StringComparer.Ordinal)
     {
-        "OFD", "DocBody", "DocInfo", "DocID", "Title", "Author", "Subject", "Keywords", "Creator", "CreationDate", "ModDate", "DocRoot", "Versions", "Version", "Signatures", "Signature", "SignedInfo", "SignedValue", "References", "Reference", "FileRef", "DigestMethod", "DigestValue", "Provider", "SignatureMethod", "SignatureDateTime", "StampAnnot", "Seal",
+        "OFD", "DocBody", "DocInfo", "DocID", "Title", "Author", "Subject", "Keywords", "Creator", "CreationDate", "ModDate", "DocRoot", "Versions", "Version", "Signatures", "MaxSignId", "Signature", "SignedInfo", "SignedValue", "References", "Reference", "FileRef", "CheckValue", "DigestMethod", "DigestValue", "Provider", "SignatureMethod", "SignatureDateTime", "StampAnnot", "Seal", "Parameters", "Parameter",
         "Document", "CommonData", "MaxUnitID", "PageArea", "PhysicalBox", "ApplicationBox", "ContentBox", "BleedBox", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS", "Pages", "Page", "Area", "Content", "Layer", "PageBlock", "Outlines", "OutlineElem", "Bookmarks", "Bookmark", "Actions", "Action", "Permissions", "VPreferences", "Annotations", "PageAnnot", "Annot", "Appearance", "CustomTags", "CustomTag", "Extensions", "Extension",
         "Attachments", "Attachment", "FileLoc", "Res", "Fonts", "Font", "FontFile", "MultiMedias", "MultiMedia", "MediaFile", "ColorSpaces", "ColorSpace", "DrawParams", "DrawParam", "CompositeGraphicUnits", "CompositeGraphicUnit", "TextObject", "TextCode", "ImageObject", "PathObject", "CompositeObject", "AbbreviatedData", "FillColor", "StrokeColor", "Clips", "Clip", "Area", "CGTransform", "Glyphs", "Substitution", "Segment", "Template", "ImageMask"
     };
     private static readonly HashSet<string> KnownAttributes = new(StringComparer.Ordinal)
     {
-        "Version", "DocType", "ID", "Name", "BaseLoc", "FileLoc", "Format", "MediaType", "External", "CreationDate", "ModDate", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
+        "Version", "DocType", "ID", "Name", "BaseLoc", "FileLoc", "FileRef", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
     };
     private static readonly HashSet<string> ScalarPathElements = new(StringComparer.Ordinal)
     { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes", "PageAnnot" };
@@ -95,10 +95,10 @@ internal static class OfdAttachmentPhysicalCleaner
         }
         // Original references catch signature, annotation and resource aliases
         // that an earlier prune pass might have removed from the final plan.
-        AssertNoReferences(package, package.PreservedEntries, payloads, source.DescriptorPath, authenticatedOriginalPayloads, entries, material, token);
+        AssertNoReferences(package, package.PreservedEntries, payloads, source.DescriptorPath, authenticatedOriginalPayloads, entries, result.SignaturesInvalidated, material, token);
         var candidates = new HashSet<string>(payloads, StringComparer.OrdinalIgnoreCase);
         if (deleteDescriptor) candidates.Add(source.DescriptorPath);
-        AssertNoReferences(package, entries, candidates, deleteDescriptor ? source.DescriptorPath : null, null, null, material, token);
+        AssertNoReferences(package, entries, candidates, deleteDescriptor ? source.DescriptorPath : null, null, null, false, material, token);
         foreach (var path in candidates)
         {
             token.ThrowIfCancellationRequested();
@@ -123,6 +123,7 @@ internal static class OfdAttachmentPhysicalCleaner
 
     private static void AssertNoReferences(OfdDocumentPackage package, IDictionary<string, byte[]> entries, ISet<string> candidates,
         string? excludedDescriptor, ISet<string>? authenticatedPayloads, IDictionary<string, byte[]>? finalEntries,
+        bool invalidatedSignatures,
         OfdModelMaterialization material, CancellationToken token)
     {
         material.ChargeCopy(512L + 128L * (authenticatedPayloads?.Count ?? 0), token);
@@ -163,8 +164,22 @@ internal static class OfdAttachmentPhysicalCleaner
                     element.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value))))
                     throw new NotSupportedException("Physical attachment removal cannot prove mixed XML path content: " + entry.Key);
                 foreach (var attribute in element.Attributes().Where(a => !a.IsNamespaceDeclaration))
+                {
+                    if (invalidatedSignatures && finalEntries is not null && !finalEntries.ContainsKey(entry.Key) &&
+                        root.Name.LocalName == "Signature" && element.Name == root.Name.Namespace + "Reference" &&
+                        element.Parent?.Name == root.Name.Namespace + "References" &&
+                        element.Parent.Parent?.Name == root.Name.Namespace + "SignedInfo" && element.Parent.Parent.Parent == root &&
+                        attribute.Name.LocalName == "FileRef")
+                    {
+                        if (ContainsAmbiguousPathSyntax(attribute.Value))
+                            throw new NotSupportedException("Invalidated signature has an ambiguous digest reference.");
+                        // This standard digest reference has no remaining owner
+                        // once the entire signature entry is actually pruned.
+                        continue;
+                    }
                     CheckScalar(entry.Key, element, attribute.Value, candidates, knownBinary,
                         IsTrustedPayloadSlot(package, entry.Key, element, attribute.Name.LocalName, trustedResources), material, token);
+                }
                 if (!element.HasElements && !string.IsNullOrWhiteSpace(element.Value))
                     CheckScalar(entry.Key, element, element.Value, candidates, knownBinary,
                         IsTrustedPayloadSlot(package, entry.Key, element, null, trustedResources), material, token);

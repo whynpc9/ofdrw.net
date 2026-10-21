@@ -4,6 +4,8 @@ using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Editing;
 using Ofdrw.Net.Reader.Readers;
+using Ofdrw.Net.Signatures.Crypto;
+using Ofdrw.Net.Signatures.Signing;
 
 namespace Ofdrw.Net.Packaging.Tests;
 
@@ -248,18 +250,16 @@ public sealed class R18AttachmentPhysicalCleanupTests
     [Fact]
     public async Task SignedPackageReportsInvalidationAndPhysicalDeletion()
     {
-        var signed = Entries(Seed());
-        signed["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot><Signatures>Doc_0/Signs/Signatures.xml</Signatures></DocBody></OFD>");
-        signed["Doc_0/Signs/Signatures.xml"] = Utf8($"<Signatures xmlns='{Ns}'><Signature BaseLoc='sig/Signature.xml'/></Signatures>");
-        signed["Doc_0/Signs/sig/Signature.xml"] = Utf8($"<Signature xmlns='{Ns}'><SignedValue>SignedValue.dat</SignedValue></Signature>");
-        signed["Doc_0/Signs/sig/SignedValue.dat"] = [7, 8, 9];
-        var package = await Read(Zip(signed));
+        using var signed = new MemoryStream();
+        await new OfdSignatureService().SignAsync(new MemoryStream(Seed()), signed, new TestSignatureProvider(),
+            new OfdSignatureOptions { CheckMethod = OfdDigestAlgorithms.Sha256Oid });
+        var package = await Read(signed.ToArray());
         Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
         var (output, result) = await Write(package);
         Assert.True(result.SignaturesInvalidated);
         Assert.Contains(result.Diagnostics, item => item.Contains("sign", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
-        Assert.DoesNotContain("Doc_0/Signs/sig/SignedValue.dat", Entries(output).Keys);
+        Assert.DoesNotContain(Entries(output).Keys, path => path.EndsWith("/SignedValue.dat", StringComparison.OrdinalIgnoreCase));
         Assert.Null(XDocument.Parse(Encoding.UTF8.GetString(Entries(output)["OFD.xml"])).Root!
             .Descendants(XName.Get("Signatures", Ns)).FirstOrDefault());
     }
@@ -329,5 +329,17 @@ public sealed class R18AttachmentPhysicalCleanupTests
         using var output = new MemoryStream();
         var result = await new OfdPackageWriter().WriteWithResultAsync(package, output);
         return (output.ToArray(), result);
+    }
+
+    private sealed class TestSignatureProvider : IOfdSignatureProvider
+    {
+        public string ProviderName => "R18 test";
+        public string Company => "Ofdrw.Net";
+        public string Version => "1";
+        public string SignatureMethod => "urn:ofdrw-net:r18-test";
+        public string SignatureType => "Sign";
+        public byte[]? SealData => null;
+        public Task<byte[]> SignAsync(byte[] signatureXml, string propertyInformation,
+            CancellationToken cancellationToken = default) => Task.FromResult(new byte[] { 7, 8, 9 });
     }
 }
