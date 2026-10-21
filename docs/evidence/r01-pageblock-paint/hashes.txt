@@ -1,4 +1,4 @@
-# R01 PageBlock evidence after duplicate-font identity review and R18 integration, 2026-10-22
+# R01 PageBlock evidence after final path/palette P2 fixes, 2026-10-22
 # Product source 7abeb3163fc713ea9574b9f13cd0db81dc4263d9; integrated main 66ce3908828342de4a08583a6620540b2ae8717b at b4a557b35364b116ed9953d6281d51923f041203
 # Format: SHA-256  repository-relative path. Generated files are ignored local artifacts.
 17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6  e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx
@@ -143,3 +143,33 @@ f434d01885aa86e78d79b1aa424fa2e09e3cdeb1bede4fe1bc8253efc62eae33  artifacts/road
 9f1ccdff1fae87d783e8b36547aa855fb67059671e5748eacf0eafdf5301eebd  artifacts/roadmap-v12/R01/font-dupe-r18-attachment/output/source.ofd
 26e31b170f148fc5a92296d06fd9933621e2b41d3ad764a66fd0de9157d8a75f  artifacts/roadmap-v12/R01/font-dupe-r18-attachment/output/logical.ofd
 3e062c4f884c00f7f2b182752463b1fea85f1c712452a9601426676b9d28b2b1  artifacts/roadmap-v12/R01/font-dupe-r18-attachment/output/physical.ofd
+# Current product fix c43a5a4c54019135423af006288a0a49e3417bec; local 0.1.0-r01.p2
+c4c35baee73534fbfe7b5065c54631f24e5dbe78126891d5fdb7b09ce86a64f2  artifacts/roadmap-v12/R01/p2-full-release.log
+fd3e21fb5bbd76ed1a66a7c27dfb9a953054b668d12aae7ff68a8587ae98c31f  artifacts/roadmap-v12/R01/p2-focused-pages.log
+1b5d04347b10eedeb0226c63c0c047b8a496dc8dd768198e7f9d304b1ab8e383  artifacts/roadmap-v12/R01/p2-ses.log
+091463b23c9851d3bf6335d967a651c1bd42b310677fc24dabfff00638209982  artifacts/roadmap-v12/R01/p2-attachment.log
+2bd5a3ee3fcf8ce970b649b6280c4609f5517ad2616766eaa362ee7ac6d29cff  artifacts/roadmap-v12/R01/p2-pages/ordinary-block.ofd
+66354f39af5fd1b7f27899794bf9a6cf40baa747332f4cf5693d557908a26dc7  artifacts/roadmap-v12/R01/p2-pages/ordinary-block.pdf
+03d4cd1a2713f7324a43f313336b84110eab4d550841a089fe530943b20b72d7  artifacts/roadmap-v12/R01/p2-pages/ordinary-block-page-1.png
+e33379af79fbd74af5fde9907be5a3c91485d69cd42beff02320d3b2dda45ec7  artifacts/roadmap-v12/R01/p2-pages/palette-value-priority-direct.ofd
+0d0c55e7770d960bb83b4c2f743e714c3021684a97ecec76a3faadd61d36563f  artifacts/roadmap-v12/R01/p2-pages/palette-value-priority-direct.pdf
+02d452fb1a24b4f7f855ae45b0fd6f3c9bc9801d678791e8af3d8b50cb9e60bc  artifacts/roadmap-v12/R01/p2-pages/palette-value-priority-direct-page-1.png
+b3b4570c449ffaab00130448a17278425024b0451f811e5bce8b2a436562f684  artifacts/roadmap-v12/R01/p2-ses/files/package-manifest.json
+d98534bb48d396c0f1b634536f28bf3eb27318f8eb8ff00be784e55ed0f7c6a9  artifacts/roadmap-v12/R01/p2-ses/files/functional.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/p2-ses/files/rendered-pages.json
+f54ce6f1d91da6ade7dc498ba03f2fb41adae72021f9acfd538c0681b41715e7  artifacts/roadmap-v12/R01/p2-ses/files/licensed-layout.docx
+25ba8250973785fb0efc673a34c98dca09a2a345700fd7f70e33e9120eeaa72d  artifacts/roadmap-v12/R01/p2-ses/files/native-v1.ofd
+099ccf18194512e01afd700d690300e964882b3c3eaa71f3fd4b5e7142806f89  artifacts/roadmap-v12/R01/p2-ses/files/native-v1.pdf
+777229d845e648b512a76bde84e5b0e977eab7ec35a3516ed463a8a2ff86bae3  artifacts/roadmap-v12/R01/p2-ses/files/default-v4.ofd
+90a5a9f2010f758c30297b99462a84aa0301178e5d73fc8c8535bd8b75f30fda  artifacts/roadmap-v12/R01/p2-ses/files/default-v4.pdf
+e46f0fc7f1c1731cb30c37e590186ba89a66abefac57bbbb19054be6719ecf41  artifacts/roadmap-v12/R01/p2-attachment/manifest.json
+aef011534ff9a84da7d1111cc69f33a22f5c87a714c9954c8d912aa92ecd48ab  artifacts/roadmap-v12/R01/p2-attachment/consumer-result.txt
+58ca4d0976b130abf46ffb86a1418e473e7c64b4cb09485622b7730b22d36373  artifacts/roadmap-v12/R01/p2-attachment/output/receipt.json
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/p2-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2-ses/files/pages/native-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/p2-ses/files/pages/native-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2-ses/files/pages/native-v4/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/p2-ses/files/pages/default-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2-ses/files/pages/default-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/p2-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2-ses/files/pages/default-v4/page-2.png
