@@ -119,14 +119,16 @@ public sealed class OfdPermissions : OfdStandardNode
     public bool? PrintScreen { get => Boolean("PrintScreen"); set => Boolean("PrintScreen", value); }
     public OfdPrintPermission? Print
     {
-        get => Root.Element(Root.Name.Namespace + "Print") is XElement e ? new OfdPrintPermission(e) : null;
-        set => OfdXmlEnvelope.Singleton(Root, "Print", value?.Emit(Root.Name.Namespace, this));
+        get => Root.Element(Root.Name.Namespace + "Print") is XElement e ? BindChild(new OfdPrintPermission(e)) : null;
+        set => OfdXmlEnvelope.Singleton(Root, "Print", value?.Emit(Root.Name.Namespace, DocumentOwner ?? this));
     }
     public OfdValidPeriod? ValidPeriod
     {
-        get => Root.Element(Root.Name.Namespace + "ValidPeriod") is XElement e ? new OfdValidPeriod(e) : null;
-        set => OfdXmlEnvelope.Singleton(Root, "ValidPeriod", value?.Emit(Root.Name.Namespace, this));
+        get => Root.Element(Root.Name.Namespace + "ValidPeriod") is XElement e ? BindChild(new OfdValidPeriod(e)) : null;
+        set => OfdXmlEnvelope.Singleton(Root, "ValidPeriod", value?.Emit(Root.Name.Namespace, DocumentOwner ?? this));
     }
+    private T BindChild<T>(T child) where T : OfdStandardNode
+    { if (DocumentOwner is not null) child.Bind(DocumentOwner, child.InventoryXml); return child; }
     internal static bool Recognized(XElement root) => WellFormed(root, "Edit", "Annot", "Export", "Signature", "Watermark", "PrintScreen", "Print", "ValidPeriod") &&
         ValidBoolean(root, "Edit", "Annot", "Export", "Signature", "Watermark", "PrintScreen") &&
         (root.Element(root.Name.Namespace + "Print") is not XElement print ||
@@ -304,7 +306,12 @@ internal static class OfdStandardXml
                 if (!ids.Add(version.Id)) throw new ArgumentException("Duplicate version ID.");
                 try { XmlConvert.VerifyNCName(version.Id); }
                 catch (XmlException error) { throw new ArgumentException("Version ID must be an XML ID.", error); }
-                if (versions.OriginalXml is null || versions.IsDirty) ExistingPath("Version BaseLoc", version.BaseLocation);
+                var original = versions.OriginalXml is string source
+                    ? OfdXmlEnvelope.Parse(source).Elements().FirstOrDefault(e =>
+                        e.Name.LocalName == "Version" && e.Attribute("ID")?.Value == version.Id)
+                    : null;
+                if (original?.Attribute("BaseLoc")?.Value != version.BaseLocation)
+                    ExistingPath("Version BaseLoc", version.BaseLocation);
             }
         }
         void CheckOwner(OfdStandardNode value)
@@ -319,6 +326,16 @@ internal static class OfdStandardXml
             var resolved = material.ResolvePath("OFD.xml", location, token);
             if (!package.PreservedEntries.ContainsKey(resolved))
                 throw new NotSupportedException(role + " reference is not an existing package entry.");
+            if (package.DocumentEntryPath is string selected && package.PreservedEntries.TryGetValue("OFD.xml", out var rootBytes))
+            {
+                var root = material.ReadXml("OFD.xml", rootBytes, token);
+                if (root.Root?.Elements(root.Root.Name.Namespace + "DocBody").Skip(1).Any() == true)
+                {
+                    var directory = selected.Split('/')[0] + "/";
+                    if (!resolved.StartsWith(directory, StringComparison.OrdinalIgnoreCase))
+                        throw new NotSupportedException(role + " reference crosses the selected document directory.");
+                }
+            }
         }
     }
 

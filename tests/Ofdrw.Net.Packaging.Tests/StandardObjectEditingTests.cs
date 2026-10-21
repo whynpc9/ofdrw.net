@@ -146,6 +146,65 @@ public sealed class StandardObjectEditingTests
     }
 
     [Fact]
+    public async Task MultiDocument_RejectsChangedRootReferencesIntoOtherDocument()
+    {
+        var entries = await MultiDocumentFixture.CreateEntriesAsync();
+        using var input = MultiDocumentFixture.Zip(entries);
+        var selected = await new OfdReader().ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = 1 });
+        selected.Options.Metadata.Cover = "Doc_0/Document.xml";
+        using var coverOutput = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(selected, coverOutput));
+        Assert.Equal(0, coverOutput.Length);
+
+        selected.Options.Metadata.Cover = null;
+        selected.Versions = new OfdVersions();
+        selected.Versions.Add("v1", 1, "Doc_0/Document.xml");
+        using var versionOutput = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(selected, versionOutput));
+        Assert.Equal(0, versionOutput.Length);
+    }
+
+    [Fact]
+    public async Task UnchangedMissingVersionLocation_AllowsIndexEditButChangedLocationFails()
+    {
+        var entries = await MultiDocumentFixture.CreateEntriesAsync();
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        root.Root.Elements(ns + "DocBody").Last().Add(XElement.Parse($"<Versions xmlns='{ns}'><Version ID='v1' Index='1' BaseLoc='Doc_1/missing.xml'/></Versions>"));
+        entries["OFD.xml"] = Bytes(root);
+        using var input = MultiDocumentFixture.Zip(entries);
+        var selected = await new OfdReader().ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = 1 });
+        selected.Versions!.Items[0].Index = 2;
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(selected, output);
+        output.Position = 0;
+        var saved = await new OfdReader().ReadAsync(output, new OfdPackageLoadOptions { DocumentIndex = 1 });
+        Assert.Equal(2, saved.Versions!.Items[0].Index);
+        Assert.Equal("Doc_1/missing.xml", saved.Versions.Items[0].BaseLocation);
+
+        selected.Versions.Items[0].BaseLocation = "Doc_1/also-missing.xml";
+        using var rejected = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(selected, rejected));
+        Assert.Equal(0, rejected.Length);
+    }
+
+    [Fact]
+    public async Task NestedPermissionFromAnotherDocumentCannotBeAssigned()
+    {
+        var package = new OfdDocumentPackage(); package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Permissions = new OfdPermissions
+        {
+            Print = new OfdPrintPermission { Printable = true },
+            ValidPeriod = new OfdValidPeriod { StartDate = "2026-10-21T00:00:00Z" }
+        };
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var bytes = seed.ToArray();
+        using var first = new MemoryStream(bytes); using var second = new MemoryStream(bytes);
+        var source = await new OfdReader().ReadAsync(first);
+        var target = await new OfdReader().ReadAsync(second);
+        Assert.Throws<NotSupportedException>(() => target.Permissions!.Print = source.Permissions!.Print);
+        Assert.Throws<NotSupportedException>(() => target.Permissions!.ValidPeriod = source.Permissions!.ValidPeriod);
+    }
+
+    [Fact]
     public async Task MediaAndAttachmentActions_RequireRetainedLocalTargets()
     {
         var package = new OfdDocumentPackage(); package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
