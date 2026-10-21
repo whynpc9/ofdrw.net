@@ -450,6 +450,55 @@ public sealed class StandardObjectEditingTests
     }
 
     [Fact]
+    public async Task RemovingStandardEntries_RejectsUnknownContentAtomically()
+    {
+        var package = new OfdDocumentPackage(); package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Options.Metadata.CustomDatas = new OfdCustomDatas();
+        package.Options.Metadata.CustomDatas.Add("plain", "one");
+        package.Options.Metadata.CustomDatas.Add("opaque", "two");
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        var vendor = XNamespace.Get("urn:entry-vendor");
+        var body = root.Root.Element(ns + "DocBody")!;
+        var custom = body.Element(ns + "DocInfo")!.Element(ns + "CustomDatas")!;
+        custom.Elements(ns + "CustomData").Last().SetAttributeValue(vendor + "Keep", "custom");
+        body.Add(new XElement(ns + "Versions",
+            new XElement(ns + "Version", new XAttribute("ID", "v1"), new XAttribute("Index", "1"), new XAttribute("BaseLoc", "Doc_0/Versions/v1.xml")),
+            new XElement(ns + "Version", new XAttribute("ID", "v2"), new XAttribute("Index", "2"), new XAttribute("BaseLoc", "Doc_0/Versions/v2.xml"),
+                new XElement(vendor + "Keep", "version"))));
+        entries["OFD.xml"] = Bytes(root);
+        entries["Doc_0/Versions/v1.xml"] = Encoding.UTF8.GetBytes("<VersionFile/>");
+        entries["Doc_0/Versions/v2.xml"] = Encoding.UTF8.GetBytes("<VersionFile/>");
+        var originalRoot = entries["OFD.xml"].ToArray();
+        using var input = MultiDocumentFixture.Zip(entries);
+        var imported = await new OfdReader().ReadAsync(input);
+        var data = imported.Options.Metadata.CustomDatas!; var versions = imported.Versions!;
+        var dataXml = data.InventoryXml; var versionsXml = versions.InventoryXml;
+        Assert.Throws<NotSupportedException>(() => data.RemoveAt(1));
+        Assert.Throws<NotSupportedException>(() => data.Clear());
+        Assert.Throws<NotSupportedException>(() => versions.RemoveAt(1));
+        Assert.Throws<NotSupportedException>(() => versions.Clear());
+        Assert.Equal(dataXml, data.InventoryXml);
+        Assert.Equal(versionsXml, versions.InventoryXml);
+        Assert.Equal(originalRoot, imported.PreservedEntries["OFD.xml"]);
+        using var unchanged = new MemoryStream(); await new OfdPackageWriter().WriteAsync(imported, unchanged);
+        var unchangedRoot = Xml(MultiDocumentFixture.Unzip(unchanged)["OFD.xml"]);
+        var writtenCustom = unchangedRoot.Descendants(ns + "CustomDatas").Single();
+        Assert.Equal(new[] { "plain", "opaque" }, writtenCustom.Elements(ns + "CustomData").Select(item => item.Attribute("Name")!.Value));
+        Assert.Equal("custom", writtenCustom.Elements(ns + "CustomData").Last().Attribute(vendor + "Keep")!.Value);
+        var writtenVersions = unchangedRoot.Descendants(ns + "Versions").Single();
+        Assert.Equal(new[] { "v1", "v2" }, writtenVersions.Elements(ns + "Version").Select(item => item.Attribute("ID")!.Value));
+        Assert.Equal("version", writtenVersions.Descendants(vendor + "Keep").Single().Value);
+
+        data.RemoveAt(0); versions.RemoveAt(0);
+        using var edited = new MemoryStream(); await new OfdPackageWriter().WriteAsync(imported, edited);
+        edited.Position = 0; var saved = await new OfdReader().ReadAsync(edited);
+        Assert.Equal("opaque", Assert.Single(saved.Options.Metadata.CustomDatas!.Items).Name);
+        Assert.Equal("v2", Assert.Single(saved.Versions!.Items).Id);
+    }
+
+    [Fact]
     public async Task MediaAndAttachmentActions_RequireRetainedLocalTargets()
     {
         var package = new OfdDocumentPackage(); package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });

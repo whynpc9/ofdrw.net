@@ -17,6 +17,8 @@ await new OfdPackageWriter().WriteAsync(document, output);
 
 `OfdCustomDatas.Items` and `OfdVersions.Items` are ordered views. Editing an item changes its parent; `Add`, `RemoveAt` and `Clear` manage modeled entries. An empty wrapper with no extension content is omitted at write time. Unknown attributes and children remain in their original positions. A malformed or ambiguous source node stays as preserved XML and cannot be replaced through a new typed instance without an explicit failure.
 
+`RemoveAt` rejects an entry with unknown source content. `Clear` checks every entry before removing any, so a rejected clear leaves the collection unchanged.
+
 ## Permissions, preferences and versions
 
 `OfdPermissions` models the six optional Boolean declarations plus `Print` (`Printable`, `Copies`) and `ValidPeriod` (`StartDate`, `EndDate` XML dateTime strings). Nullable Boolean properties preserve omission separately from the standard's defaults. `OfdViewingPreferences` models page mode, layout, tab display, hide flags, and the exclusive `ZoomMode` or numeric `Zoom` choice. `OfdVersions` models the selected DocBody's ordered `Version` descriptors (`Id`, `Index`, optional `Current`, `BaseLocation`). Changed or new version locations must resolve to existing package entries. Version files themselves are preserved, not generated.

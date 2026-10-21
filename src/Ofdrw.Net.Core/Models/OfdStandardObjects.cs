@@ -85,6 +85,13 @@ public abstract class OfdStandardNode
         var ns = root.Name.Namespace;
         return names.All(name => root.Element(ns + name) is not XElement e || TryBoolean(e.Value).HasValue);
     }
+    internal static void GuardRemoval(XElement element, bool textIsModeled, params string[] modeledAttributes)
+    {
+        if (element.Attributes().Any(attribute => attribute.IsNamespaceDeclaration || attribute.Name.Namespace != XNamespace.None ||
+                !modeledAttributes.Contains(attribute.Name.LocalName, StringComparer.Ordinal)) ||
+            element.Nodes().Any(node => node is not XText text || !textIsModeled && !string.IsNullOrWhiteSpace(text.Value)))
+            throw new NotSupportedException("Cannot remove standard object entry with unknown source content.");
+    }
 }
 
 /// <summary>An ordered DocInfo custom metadata entry. Name is required by the OFD schema.</summary>
@@ -124,9 +131,18 @@ public sealed class OfdCustomDatas : OfdStandardNode
         var attached = item.Emit(Root.Name.Namespace, this); Root.Add(attached); return new OfdCustomData(attached);
     }
     /// <summary>Removes the modeled entry at its zero-based index.</summary>
-    public void RemoveAt(int index) => Root.Elements(Root.Name.Namespace + "CustomData").ElementAt(index).Remove();
+    public void RemoveAt(int index)
+    {
+        var item = Root.Elements(Root.Name.Namespace + "CustomData").ElementAt(index);
+        GuardRemoval(item, true, "Name"); item.Remove();
+    }
     /// <summary>Removes modeled entries while retaining extension children.</summary>
-    public void Clear() { foreach (var item in Root.Elements(Root.Name.Namespace + "CustomData").ToArray()) item.Remove(); }
+    public void Clear()
+    {
+        var items = Root.Elements(Root.Name.Namespace + "CustomData").ToArray();
+        foreach (var item in items) GuardRemoval(item, true, "Name");
+        foreach (var item in items) item.Remove();
+    }
 }
 
 /// <summary>Document permission declarations. This model does not enforce access restrictions.</summary>
@@ -357,9 +373,18 @@ public sealed class OfdVersions : OfdStandardNode
         var attached = item.Emit(Root.Name.Namespace, this); Root.Add(attached); return new OfdVersion(attached);
     }
     /// <summary>Removes the modeled descriptor at its zero-based index.</summary>
-    public void RemoveAt(int index) => Root.Elements(Root.Name.Namespace + "Version").ElementAt(index).Remove();
+    public void RemoveAt(int index)
+    {
+        var item = Root.Elements(Root.Name.Namespace + "Version").ElementAt(index);
+        GuardRemoval(item, false, "ID", "Index", "Current", "BaseLoc"); item.Remove();
+    }
     /// <summary>Removes modeled descriptors while retaining extension children.</summary>
-    public void Clear() { foreach (var item in Root.Elements(Root.Name.Namespace + "Version").ToArray()) item.Remove(); }
+    public void Clear()
+    {
+        var items = Root.Elements(Root.Name.Namespace + "Version").ToArray();
+        foreach (var item in items) GuardRemoval(item, false, "ID", "Index", "Current", "BaseLoc");
+        foreach (var item in items) item.Remove();
+    }
     internal bool LocationChanged(OfdVersion version) =>
         !originalLocations.TryGetValue(version.Root, out var original) || original != version.BaseLocation;
     internal void CopyLocationBaselines(OfdVersions source)
