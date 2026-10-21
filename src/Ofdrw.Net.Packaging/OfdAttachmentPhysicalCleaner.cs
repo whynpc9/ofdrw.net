@@ -28,7 +28,7 @@ internal static class OfdAttachmentPhysicalCleaner
     };
     private static readonly HashSet<string> KnownAttributes = new(StringComparer.Ordinal)
     {
-        "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Substitution", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "Start", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
+        "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "MediaFile", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Substitution", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "Start", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "Serif", "FixedWidth", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
     };
     private static readonly HashSet<string> ScalarPathElements = new(StringComparer.Ordinal)
     { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes" };
@@ -286,11 +286,25 @@ internal static class OfdAttachmentPhysicalCleaner
         var root = element.Document?.Root;
         if (root is null) return false;
         var ns = root.Name.Namespace;
-        if (root.Name.LocalName == "Res" && trustedResources.Contains(path) && attributeName is null)
-            return (element.Name == ns + "FontFile" && element.Parent?.Name == ns + "Font" &&
-                    element.Parent.Parent?.Name == ns + "Fonts" && element.Parent.Parent.Parent == root) ||
-                   (element.Name == ns + "MediaFile" && element.Parent?.Name == ns + "MultiMedia" &&
-                    element.Parent.Parent?.Name == ns + "MultiMedias" && element.Parent.Parent.Parent == root);
+        if (root.Name.LocalName == "Res" && trustedResources.Contains(path))
+        {
+            if (attributeName is null && element.Name == ns + "FontFile" && element.Parent?.Name == ns + "Font" &&
+                element.Parent.Parent?.Name == ns + "Fonts" && element.Parent.Parent.Parent == root)
+            {
+                var font = element.Parent;
+                return !string.IsNullOrWhiteSpace(font.Attribute("ID")?.Value) &&
+                       !string.IsNullOrWhiteSpace(font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value) &&
+                       ReferenceEquals(font.Element(ns + "FontFile"), element);
+            }
+            var media = attributeName == "MediaFile" ? element : element.Parent;
+            if (media?.Name == ns + "MultiMedia" && media.Parent?.Name == ns + "MultiMedias" &&
+                media.Parent.Parent == root && !string.IsNullOrWhiteSpace(media.Attribute("ID")?.Value))
+                return attributeName == "MediaFile" && element == media ||
+                       attributeName is null && element.Name == ns + "MediaFile" &&
+                       media.Attribute("MediaFile") is null &&
+                       ReferenceEquals(media.Element(ns + "MediaFile"), element);
+            return false;
+        }
         if (package.AttachmentSource?.DescriptorPath != path || root.Name.LocalName != "Attachments") return false;
         return attributeName == "FileLoc" && element.Name == ns + "Attachment" && element.Parent == root ||
                attributeName is null && element.Name == ns + "FileLoc" && element.Parent?.Name == ns + "Attachment" &&

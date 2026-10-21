@@ -171,6 +171,23 @@ public sealed class R18AttachmentPhysicalCleanupTests
         var package = await Read(Zip(entries));
         Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
         await RefusesWithoutOutput(package);
+
+        entries = Entries(Seed());
+        entries["Doc_0/Extras/manifest.bin"] = [4, 5, 6];
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</Document>", "<MultiMedia ID='9' MediaFile='Extras/manifest.bin'/></Document>", StringComparison.Ordinal));
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+
+        entries = Entries(Seed());
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "<PublicRes>Res/PublicRes.xml</PublicRes></CommonData>", StringComparison.Ordinal));
+        entries["Doc_0/Res/PublicRes.xml"] = Utf8($"<Res xmlns='{Ns}'><Fonts><Font><FontFile>orphan.bin</FontFile></Font></Fonts><MultiMedias><MultiMedia MediaFile='orphan.bin'/></MultiMedias></Res>");
+        entries["Doc_0/Res/orphan.bin"] = [7, 8, 9];
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
     }
 
     [Fact]
@@ -187,12 +204,49 @@ public sealed class R18AttachmentPhysicalCleanupTests
         Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
         Assert.Equal(new byte[] { 4, 5, 6 }, Entries(output)["Doc_0/Res/Assets/image.bin"]);
 
+        var legacy = Entries(Seed());
+        legacy["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(legacy["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "<PublicRes>Res/PublicRes.xml</PublicRes></CommonData>", StringComparison.Ordinal));
+        legacy["Doc_0/Res/PublicRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='Assets'><MultiMedias><MultiMedia ID='9' MediaFile='image.bin'/></MultiMedias></Res>");
+        legacy["Doc_0/Res/Assets/image.bin"] = [4, 5, 6];
+        package = await Read(Zip(legacy));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        (output, _) = await Write(package);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+        Assert.Equal(new byte[] { 4, 5, 6 }, Entries(output)["Doc_0/Res/Assets/image.bin"]);
+
+        legacy["Doc_0/Res/PublicRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='Assets'><MultiMedias><MultiMedia ID='9' MediaFile='image.bin'><MediaFile>orphan.bin</MediaFile></MultiMedia></MultiMedias></Res>");
+        legacy["Doc_0/Res/Assets/orphan.bin"] = [7, 8, 9];
+        package = await Read(Zip(legacy));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+
         // The lexical MediaFile also resolves relative to the table itself,
         // but BaseLoc owns only the Assets path. It must not bless an orphan.
         entries["Doc_0/Res/image.bin"] = [7, 8, 9];
         package = await Read(Zip(entries));
         Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
         await RefusesWithoutOutput(package);
+    }
+
+    [Fact]
+    public async Task PublicFontMetadataSurvivesPhysicalCleanupWithoutResourceRelocation()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "<PublicRes>PublicRes.xml</PublicRes></CommonData>", StringComparison.Ordinal));
+        entries["Doc_0/PublicRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='Assets'><Fonts><Font ID='3' FontName='R18' Serif='true' FixedWidth='false'><FontFile>font.bin</FontFile></Font></Fonts></Res>");
+        entries["Doc_0/Assets/font.bin"] = [4, 5, 6];
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        var saved = Entries(output);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", saved.Keys);
+        Assert.Equal(entries["Doc_0/Assets/font.bin"], saved["Doc_0/Assets/font.bin"]);
+        var resource = XDocument.Parse(Encoding.UTF8.GetString(saved["Doc_0/PublicRes.xml"]).TrimStart('\uFEFF'));
+        var font = resource.Descendants(XName.Get("Font", Ns)).Single();
+        Assert.Equal("true", font.Attribute("Serif")!.Value);
+        Assert.Equal("false", font.Attribute("FixedWidth")!.Value);
     }
 
     [Fact]
