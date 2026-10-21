@@ -5,7 +5,7 @@ using Org.BouncyCastle.Asn1;
 
 namespace Ofdrw.Net.Signatures.SesInterop;
 
-/// <summary>Bounded, structural SES V1/V4 inspection. It does not establish trust or signature validity.</summary>
+/// <summary>Bounded, structural SES V1/V4/V5 inspection. It does not establish trust or signature validity.</summary>
 public static class SesSignedValueReader
 {
     /// <summary>Maximum DER input size in bytes.</summary>
@@ -22,9 +22,10 @@ public static class SesSignedValueReader
             var outer = SesDer.Sequence(SesDer.Read(signedValue), 2, 4, 5);
             var tbs = SesDer.Sequence(outer[0], 5, 6, 7);
             var version = (SesVersion)SesDer.Integer(tbs[0]);
-            if (version != SesVersion.V1 && version != SesVersion.V4) throw new InvalidDataException("Unsupported SES version.");
+            if (version != SesVersion.V1 && version != SesVersion.V4 && version != SesVersion.V5)
+                throw new InvalidDataException("Unsupported SES version.");
             if (version == SesVersion.V1 && (outer.Count != 2 || tbs.Count != 7) ||
-                version == SesVersion.V4 && (outer.Count < 4 || tbs.Count > 6))
+                version != SesVersion.V1 && (outer.Count < 4 || tbs.Count > 6))
                 throw new InvalidDataException("SES version/layout mismatch.");
             var seal = ReadSeal(tbs[1], version);
             byte[] time; string timeText;
@@ -36,7 +37,7 @@ public static class SesSignedValueReader
             else
             {
                 if (tbs[2].ToAsn1Object() is not Asn1GeneralizedTime generalized)
-                    throw new InvalidDataException("Expected V4 GeneralizedTime.");
+                    throw new InvalidDataException("Expected V4/V5 GeneralizedTime.");
                 time = generalized.GetEncoded("DER"); timeText = generalized.TimeString;
                 _ = generalized.ToDateTime();
                 if (tbs.Count == 6) Tagged(tbs[5]);
@@ -47,7 +48,7 @@ public static class SesSignedValueReader
             var algorithm = SesDer.Oid(version == SesVersion.V1 ? tbs[6] : outer[2]);
             var signature = SesDer.Bits(version == SesVersion.V1 ? outer[1] : outer[3], 4096);
             byte[]? timestamp = null;
-            if (version == SesVersion.V4 && outer.Count == 5)
+            if (version != SesVersion.V1 && outer.Count == 5)
                 timestamp = SesDer.Bits(Tagged(outer[4]), 64 * 1024);
             return new SesSignedValue(version, seal, time, timeText, hash, property, cert, algorithm,
                 signature, tbs.GetEncoded("DER"), tbs[1].GetEncoded("DER"), timestamp);
@@ -68,7 +69,8 @@ public static class SesSignedValueReader
 
     private static SesSealInfo ReadSeal(Asn1Encodable value, SesVersion version)
     {
-        var seal = SesDer.Sequence(value, version == SesVersion.V1 ? 2 : 4);
+        var seal = version == SesVersion.V5 ? SesDer.Sequence(value, 4, 5)
+            : SesDer.Sequence(value, version == SesVersion.V1 ? 2 : 4);
         var info = SesDer.Sequence(seal[0], 4, 5);
         var header = SesDer.Sequence(info[0], 3);
         if (SesDer.Ia5(header[0]) != "ES" || SesDer.Integer(header[1]) != (int)version)
@@ -95,7 +97,7 @@ public static class SesSignedValueReader
         for (var i = certIndex + 1; i < properties.Count; i++)
         {
             if (version == SesVersion.V1 && properties[i].ToAsn1Object() is Asn1UtcTime utc) _ = utc.ToDateTime();
-            else if (version == SesVersion.V4 && properties[i].ToAsn1Object() is Asn1GeneralizedTime date) _ = date.ToDateTime();
+            else if (version != SesVersion.V1 && properties[i].ToAsn1Object() is Asn1GeneralizedTime date) _ = date.ToDateTime();
             else throw new InvalidDataException("Expected version-specific seal time.");
         }
         var picture = SesDer.Sequence(info[3], 4);
@@ -105,6 +107,8 @@ public static class SesSignedValueReader
         var offset = version == SesVersion.V1 ? 0 : 1;
         _ = SesDer.Octets(signInfo[offset], 64 * 1024);
         _ = SesDer.Oid(signInfo[offset + 1]); _ = SesDer.Bits(signInfo[offset + 2], 4096);
+        if (version == SesVersion.V5 && seal.Count == 5)
+            _ = SesDer.Bits(Tagged(seal[4]), 64 * 1024);
         return new SesSealInfo(SesDer.Ia5(info[1]), SesDer.Ia5(header[2]), (int)version,
             SesDer.Integer(properties[0]), name.GetString(), SesDer.Ia5(picture[0]),
             SesDer.Octets(picture[1], 512 * 1024), width, height);

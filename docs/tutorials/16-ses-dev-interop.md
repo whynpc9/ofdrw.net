@@ -1,5 +1,7 @@
 # SES V1/V4 dev/interop 测试容器
 
+本页说明原有 V1/V4 测试 profile；外部身份的 V5 与 GB/T 35275 有限 profile 见[新教程](19-ses-v5-35275-interop.md)。
+
 `Ofdrw.Net.Signatures.SesInterop` 是独立可选包，支持常见 SES V1/V4 字段检查和
 SM2 测试密钥的自签自验。**仅供 dev/interop**：没有阅读器互认、法律效力、
 证书链/吊销校验、商用密码认证、印章外观校验或合格 TSA。生成的自签证书和

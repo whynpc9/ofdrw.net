@@ -44,7 +44,7 @@
 | R09 绘图上下文 | Path/Text/状态栈 `limited`；DrawImage、源裁切、dash/cap/join、渐变逐子集 | 不支持 brush/effect 拒绝或明确回退 |
 | R10 专用图像/区域提取 | JBIG2/ImageMask `new`；字符级 CTM/Delta 矩形筛选 `candidate` | 超预算/未知解码或几何语义显式失败/Unknown |
 | R11 签章外观 | 外来外观显示 `limited`；新生成普通章/骑缝章各页和签后重读 | 视觉外观不等于签名值或信任结论 |
-| R12 SES V5/外部签名 | provider 与测试容器 `limited`；双向/独立实现样本 | 错证书/容器拒绝；PKI/TSA/法律效力不推定 |
+| R12 SES V5/外部签名 | provider 与 V1/V4 测试容器 `limited`；显式 V5 与 GB/T 35275 单签名者 profile 已与固定版本 Java OFDRW 双向验证，仍为 `limited` | 错证书/容器拒绝；PKI/TSA/法律效力不推定，默认验签仍 `Unsupported`；完整标准符合性和真实设备互操作未验证 |
 | R13 签名范围 | 默认引用策略 `limited`；Relative/Parameters、续签与漏保护文件 | 默认保守，显式策略不得无签名值假锁定 |
 | R14 标准加密 | 私有 password v2 `limited`；标准 profile、多 UserInfo、OFDEntries 与交叉样本 | v2 保留原义；错误口令/额外条目拒绝 |
 | R15 多 DocBody | 首文档接口 `limited`；枚举/选择、未选文档资源与签名 | 不默认改其它 DocBody，不猜跨文档引用 |
