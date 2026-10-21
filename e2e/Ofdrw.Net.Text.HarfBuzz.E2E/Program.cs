@@ -17,11 +17,12 @@ var noto = new TextFontFace("Noto Sans", File.ReadAllBytes(Path.Combine(fixture,
 var wenkai = new TextFontFace("LXGW WenKai", File.ReadAllBytes(Path.Combine(fixture, "LXGWWenKai-Regular.ttf")));
 var engine = HarfBuzzTextPrelayout.Create();
 const string ascii = "JAV To\nWide WWW\nNarrow iii f";
-const string hanText = "中文中文";
+const string hanText = "中文\nA中";
 var layout = engine.Layout(new TextPrelayoutRequest(ascii, new[] { noto }, 5, 55));
-var han = engine.Layout(new TextPrelayoutRequest(hanText, new[] { noto, wenkai }, 5, 11,
+var han = engine.Layout(new TextPrelayoutRequest(hanText, new[] { noto, wenkai }, 5, 5.01,
     script: "Hani", language: "zh"));
-if (han.Overflows || han.Lines.Count != 2 || !ReferenceEquals(han.Face, wenkai))
+if (han.Overflows || !ReferenceEquals(han.Face, wenkai) ||
+    !han.Lines.Select(line => line.ShapedRun.Request.Text).SequenceEqual(new[] { "中", "文", "A", "中" }))
     throw new InvalidDataException("The fixed Han sample did not select the expected fallback and line geometry.");
 
 // This E2E probe is limited to one-glyph-per-BMP-Han output. The public
