@@ -81,7 +81,7 @@ OfdDocumentPackage CreateHanVisualProbe()
     return package;
 }
 
-async Task<(string Text, string[] Files)> RenderAndRead(string name, string expected, OfdDocumentPackage package)
+async Task<(string Text, string[] Files)> RenderAndRead(string name, TextPrelayoutResult result, OfdDocumentPackage package)
 {
     var ofd = Path.Combine(output, "r21-" + name + ".ofd");
     var pdf = Path.Combine(output, "r21-" + name + ".pdf");
@@ -93,13 +93,18 @@ async Task<(string Text, string[] Files)> RenderAndRead(string name, string expe
         await new OfdToImageConverter().ConvertAsync(source, target);
     await using var readStream = File.OpenRead(ofd);
     var read = await new OfdReader().ReadAsync(readStream);
-    var actual = string.Join("\n", read.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>()
-        .Select(element => element.Text));
-    if (actual != expected) throw new InvalidDataException(name + " OFD text changed during save/readback.");
+    var actualLines = read.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>()
+        .Select(element => element.Text).ToArray();
+    var expectedLines = result.Lines.Where(line => line.SourceLength > 0)
+        .Select(line => result.Request.Text.Substring(line.SourceStart, line.SourceLength)).ToArray();
+    if (!actualLines.SequenceEqual(expectedLines))
+        throw new InvalidDataException(name + " OFD line text changed during save/readback.");
+    var actual = string.Join("\n", actualLines);
     return (actual, new[] { ofd, pdf, png });
 }
-var asciiOutput = await RenderAndRead("ascii", ascii, TextPrelayoutOfdWriter.CreateSinglePage(layout, 100, 75, 10, 10));
-var hanOutput = await RenderAndRead("han", hanText, CreateHanVisualProbe());
+var asciiOutput = await RenderAndRead("ascii", layout, TextPrelayoutOfdWriter.CreateSinglePage(layout, 100, 75, 10, 10));
+var hanOutput = await RenderAndRead("han", han, CreateHanVisualProbe());
+if (asciiOutput.Text != ascii) throw new InvalidDataException("ASCII OFD hard line text changed during save/readback.");
 var receipt = new
 {
     sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
