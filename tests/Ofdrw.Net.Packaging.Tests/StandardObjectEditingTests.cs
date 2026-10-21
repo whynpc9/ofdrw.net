@@ -236,9 +236,11 @@ public sealed class StandardObjectEditingTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task FreshSplit_PreservesAttachmentActionTarget(bool withTypedAnnotation)
+    [InlineData(false, "51")]
+    [InlineData(true, "51")]
+    [InlineData(false, "1")]
+    [InlineData(true, "2")]
+    public async Task FreshSplit_PreservesAttachmentActionTarget(bool withTypedAnnotation, string attachmentId)
     {
         var source = new OfdDocumentPackage();
         source.Pages.Add(new OfdPage { Index = 0, WidthMillimeters = 100, HeightMillimeters = 80 });
@@ -253,21 +255,30 @@ public sealed class StandardObjectEditingTests
             });
             source.Pages[1].Annotations = annotations;
         }
-        source.Attachments.Add(new OfdAttachment { Id = "51", Name = "memo.txt", Data = Encoding.UTF8.GetBytes("memo") });
+        source.Attachments.Add(new OfdAttachment { Id = attachmentId, Name = "memo.txt", Data = Encoding.UTF8.GetBytes("memo") });
         source.Actions = new OfdActionCollection();
-        source.Actions.Items.Add(new OfdAttachmentAction { Event = "CLICK", AttachId = "51" });
+        source.Actions.Items.Add(new OfdAttachmentAction { Event = "CLICK", AttachId = attachmentId });
 
         var split = OfdDocumentSplitter.Split(source, [1]);
         Assert.NotSame(source.Attachments[0], Assert.Single(split.Attachments));
-        Assert.Equal("51", split.Attachments[0].Id);
-        Assert.Equal("51", Assert.IsType<OfdAttachmentAction>(Assert.Single(split.Actions!.Items)).AttachId);
+        Assert.Equal(attachmentId, split.Attachments[0].Id);
+        Assert.Equal(attachmentId, Assert.IsType<OfdAttachmentAction>(Assert.Single(split.Actions!.Items)).AttachId);
         using var output = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(split, output);
+        var entries = MultiDocumentFixture.Unzip(output);
+        var document = Xml(entries["Doc_0/Document.xml"]); var ns = document.Root!.Name.Namespace;
+        var maxUnitId = long.Parse(document.Root.Element(ns + "CommonData")!.Element(ns + "MaxUnitID")!.Value);
+        var numericIds = entries.Where(entry => entry.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(entry => Xml(entry.Value).Descendants().Attributes("ID"))
+            .Select(attribute => attribute.Value).Where(value => long.TryParse(value, out var id) && id > 0)
+            .Select(value => long.Parse(value)).ToArray();
+        Assert.Equal(numericIds.Length, numericIds.Distinct().Count());
+        Assert.True(maxUnitId >= numericIds.Max());
         output.Position = 0;
         var saved = await new OfdReader().ReadAsync(output);
-        Assert.Equal("51", Assert.Single(saved.Attachments).Id);
+        Assert.Equal(attachmentId, Assert.Single(saved.Attachments).Id);
         Assert.Equal("memo", Encoding.UTF8.GetString(saved.Attachments[0].Data));
-        Assert.Equal("51", Assert.IsType<OfdAttachmentAction>(Assert.Single(saved.Actions!.Items)).AttachId);
+        Assert.Equal(attachmentId, Assert.IsType<OfdAttachmentAction>(Assert.Single(saved.Actions!.Items)).AttachId);
     }
 
     [Theory]

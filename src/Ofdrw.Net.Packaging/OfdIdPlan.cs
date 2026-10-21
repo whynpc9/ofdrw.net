@@ -50,6 +50,17 @@ internal sealed class OfdIdPlan
                 if (node.Name.LocalName == "MaxUnitID") AdvancePast(OfdSourceIdentity.ParseId(node.Value));
             }
         }
+        // Fresh attachments have no descriptor XML to reserve their numeric IDs.
+        // Their IDs must precede page/layer allocation and contribute to MaxUnitID.
+        var attachmentIds = new HashSet<long>();
+        foreach (var attachment in package.Attachments)
+        {
+            token.ThrowIfCancellationRequested();
+            var id = OfdSourceIdentity.ParseId(attachment.Id);
+            if (id == 0) continue;
+            if (!attachmentIds.Add(id)) throw new InvalidDataException("Duplicate numeric attachment ID.");
+            Reserve(id, false);
+        }
         var commonDefinitions = new HashSet<long>();
         foreach (var xml in package.PreservedCommonDataElements)
         {
