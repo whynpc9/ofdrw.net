@@ -34,6 +34,13 @@ internal sealed class OfdAttachmentSource
 
     internal bool TryOriginal(OfdAttachment attachment, out Original original) => originals.TryGetValue(attachment, out original!);
 
+    internal bool TryOriginal(int ordinal, out OfdAttachment attachment, out Original original)
+    {
+        foreach (var pair in originals)
+            if (pair.Value.Ordinal == ordinal) { attachment = pair.Key; original = pair.Value; return true; }
+        attachment = null!; original = null!; return false;
+    }
+
     internal static OfdAttachmentSource Capture(OfdDocumentPackage package, XElement declaration, string path, XElement root,
         OfdModelMaterialization material, CancellationToken token)
     {
@@ -150,7 +157,12 @@ internal sealed class OfdAttachmentSource
             token.ThrowIfCancellationRequested(); material.Structure.Reference();
             // Removed slots retain a private tombstone identity; they cannot
             // become active merely because source XML still contains a node.
-            var attachment = mapping.TryGetValue(pair.Key, out var mapped) ? (OfdAttachment)mapped : new OfdAttachment();
+            // The detached object's current ID and ownership state still
+            // participate in cleanup checks when its payload is removed.
+            var attachment = mapping.TryGetValue(pair.Key, out var mapped) ? (OfdAttachment)mapped : new OfdAttachment
+            {
+                Id = pair.Key.Id, IsExternal = pair.Key.IsExternal
+            };
             attachment.SourceOwner = destination;
             var original = pair.Value;
             copy.originals.Add(attachment, new Original(original.Ordinal, original.FileLoc, original.PayloadPath, original.External,
