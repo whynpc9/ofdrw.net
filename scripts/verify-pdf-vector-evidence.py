@@ -90,7 +90,12 @@ for name,paths,images,expected_text,maximum in (
  match=re.search(r'\(([0-9.eE+-]+)\)',result.stderr); assert match,result.stderr
  error=float(match[1]); assert error<maximum,(name,error,maximum)
  rendered=subprocess.check_output(['pdftotext','-raw',str(root/(name+'.pdf')),'-'],text=True)
- assert rendered.count(expected_text.replace('  ',' '))==1,(name,rendered)
+ # Poppler can insert line breaks at word boundaries for the same rendered
+ # glyphs on different platforms. Preserve word order and count after folding
+ # whitespace, while the OFD assertion above checks the exact source text.
+ rendered_words=re.sub(r'\s+',' ',rendered).strip()
+ expected_words=re.sub(r'\s+',' ',expected_text).strip()
+ assert rendered_words.count(expected_words)==1,(name,rendered)
  profile_metrics[name]={'normalized_rmse':error,'maximum':maximum,'native_objects':dict(objects),'original_text':expected_text,'exported_text_once':True}
 files=[{'file':p.name,'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(root.iterdir()) if p.is_file() and p.name!='verified-evidence.json']
 (root/'verified-evidence.json').write_text(json.dumps({'status':'passed','structures':structures,'source_vs_native_png':metrics,'source_vs_preserved_image_png':image_metrics,'r06_profile':profile_metrics,'image_tools':{'compare':compare,'identify':identify,'version':subprocess.check_output(compare+['-version'],text=True)},'files':files,'preview':'not inferred'},ensure_ascii=False,indent=2)+'\n')
