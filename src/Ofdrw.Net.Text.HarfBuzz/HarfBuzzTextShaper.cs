@@ -68,7 +68,8 @@ public sealed class HarfBuzzTextShaper : ITextShaper
                 if (info.Codepoint == 0)
                     throw new TextLayoutException(TextLayoutError.MissingGlyph,
                         "Selected face has an unmapped glyph at source UTF-16 offset " + (request.SourceStart + info.Cluster) + ".",
-                        sourceStart: request.SourceStart + (int)info.Cluster, sourceLength: 1);
+                        sourceStart: request.SourceStart + (int)info.Cluster,
+                        sourceLength: char.IsHighSurrogate(request.Text[(int)info.Cluster]) ? 2 : 1);
             }
             var next = new Dictionary<int, int>();
             var previous = -1;

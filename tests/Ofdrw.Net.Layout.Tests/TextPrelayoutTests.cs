@@ -53,6 +53,16 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public void DirectShapeReportsTheFullSupplementaryMissingScalar()
+    {
+        var error = Assert.Throws<TextLayoutException>(() => new HarfBuzzTextShaper().Shape(
+            new TextShapeRequest("\ud83d\ude00", 11, Noto())));
+        Assert.Equal(TextLayoutError.MissingGlyph, error.Error);
+        Assert.Equal(11, error.SourceStart);
+        Assert.Equal(2, error.SourceLength);
+    }
+
+    [Fact]
     public void SameDisplayNameWithDifferentFaceBytesChangesMeasuredWidth()
     {
         var noto = new TextFontFace("Alias", File.ReadAllBytes(Font("NotoSans-Regular.ttf")));
@@ -114,6 +124,55 @@ public sealed class TextPrelayoutTests
         Assert.True(narrow.Lines.Count >= 2);
         Assert.Equal("AV fi", string.Concat(narrow.Lines.Select(line =>
             narrow.Request.Text.Substring(line.SourceStart, line.SourceLength))));
+    }
+
+    [Fact]
+    public void NoBreakSpacesStayAttachedWhenTheLineOverflows()
+    {
+        var face = Noto();
+        foreach (var space in new[] { '\u00a0', '\u2007', '\u202f' })
+        {
+            var text = "A" + space + "B";
+            Assert.True(face.Covers(space));
+            var result = HarfBuzzTextPrelayout.Create().Layout(
+                new TextPrelayoutRequest(text, new[] { face }, 4, 1));
+            Assert.True(result.Overflows);
+            Assert.Single(result.Lines);
+            Assert.Equal(text, result.Lines[0].ShapedRun.Request.Text);
+        }
+    }
+
+    [Fact]
+    public void ComplexCmapCoverageIsBoundedBeforeNativeShaping()
+    {
+        var bytes = File.ReadAllBytes(Font("LXGWWenKai-Regular.ttf"));
+        var tableCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(4, 2));
+        var cmap = -1;
+        for (var i = 0; i < tableCount; i++)
+        {
+            var record = 12 + i * 16;
+            if (System.Text.Encoding.ASCII.GetString(bytes, record, 4) == "cmap")
+                cmap = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(record + 8, 4));
+        }
+        Assert.True(cmap >= 0);
+        var subtableCount = BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(cmap + 2, 2));
+        for (var i = 0; i < subtableCount; i++)
+        {
+            var record = cmap + 4 + i * 8;
+            var offset = (int)BinaryPrimitives.ReadUInt32BigEndian(bytes.AsSpan(record + 4, 4));
+            if (BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(cmap + offset, 2)) == 12)
+                BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(record, 2), 1);
+        }
+        var first = new TextFontFace("WenKai 1", bytes);
+        var second = new TextFontFace("WenKai 2", bytes);
+        var covered = Enumerable.Range(0x4e00, 0x5200).Where(first.Covers).Take(4095).ToArray();
+        Assert.Equal(4095, covered.Length);
+        Assert.False(first.Covers('\u0378'));
+        var text = new string(covered.Select(scalar => (char)scalar).ToArray()) + '\u0378';
+        var error = Assert.Throws<TextLayoutException>(() => HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest(text, new[] { first, second }, 4, 100,
+                script: "Hani", language: "zh")));
+        Assert.Equal(TextLayoutError.BudgetExceeded, error.Error);
     }
 
     [Fact]

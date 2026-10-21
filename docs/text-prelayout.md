@@ -55,7 +55,8 @@ consumption remain the separate
 R22 stages; a successful R21 query does not imply those output profiles work.
 
 The API enforces 32 MiB per font, 4096 UTF-16 units per run/request, 256 lines,
-8192 maximum caller-selected shape calls and bounded native glyph expansion.
+8192 maximum caller-selected shape calls, 8 million estimated cmap lookup steps
+during whole-run face selection, and bounded native glyph expansion.
 Cancellation is checked before and after native shaping and during layout;
 the synchronous native call is not interruptible mid-instruction. Query failure
 returns no partial result. File/stream writing retains the repository's separate

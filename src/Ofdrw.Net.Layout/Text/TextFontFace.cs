@@ -91,6 +91,7 @@ public sealed class TextFontFace
         CheckedGlyph(unicodeScalar) != 0;
 
     internal int NominalGlyph(int unicodeScalar) => CheckedGlyph(unicodeScalar);
+    internal int CoverageLookupWorkUpperBound => _cmap.GlyphLookupWorkUpperBound;
 
     private int CheckedGlyph(int unicodeScalar)
     {

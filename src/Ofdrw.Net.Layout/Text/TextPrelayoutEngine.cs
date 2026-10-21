@@ -197,14 +197,42 @@ public sealed class TextPrelayoutEngine
         if (request is null) throw new ArgumentNullException(nameof(request));
         cancellationToken.ThrowIfCancellationRequested();
         var scalars = Scalars(request.Text, cancellationToken).ToArray();
-        var face = request.Faces.FirstOrDefault(candidate => scalars.All(value => candidate.Covers(value.Scalar)));
+        var uniqueScalars = scalars.Select(value => value.Scalar).Distinct().ToArray();
+        var coverage = new Dictionary<(TextFontFace Face, int Scalar), bool>();
+        const long maximumCoverageWork = 8_000_000;
+        long coverageWork = 0;
+        bool Covers(TextFontFace candidate, int scalar)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var key = (candidate, scalar);
+            if (coverage.TryGetValue(key, out var cached)) return cached;
+            var cost = candidate.CoverageLookupWorkUpperBound;
+            if (coverageWork > maximumCoverageWork - cost)
+                throw new TextLayoutException(TextLayoutError.BudgetExceeded,
+                    "Prelayout font coverage lookup budget exceeded.");
+            coverageWork += cost;
+            var covered = candidate.Covers(scalar);
+            coverage.Add(key, covered);
+            return covered;
+        }
+        TextFontFace? face = null;
+        foreach (var candidate in request.Faces)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!uniqueScalars.All(scalar => Covers(candidate, scalar))) continue;
+            face = candidate;
+            break;
+        }
         if (face is null)
         {
-            var absent = scalars.Where(value => request.Faces.All(candidate => !candidate.Covers(value.Scalar))).ToArray();
-            if (absent.Length > 0)
+            foreach (var value in scalars)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (request.Faces.Any(candidate => Covers(candidate, value.Scalar))) continue;
                 throw new TextLayoutException(TextLayoutError.MissingGlyph,
-                    "No supplied face covers the scalar at UTF-16 offset " + absent[0].Offset + ".",
-                    sourceStart: absent[0].Offset, sourceLength: absent[0].Scalar > 0xffff ? 2 : 1);
+                    "No supplied face covers the scalar at UTF-16 offset " + value.Offset + ".",
+                    sourceStart: value.Offset, sourceLength: value.Scalar > 0xffff ? 2 : 1);
+            }
             throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
                 "The text needs cluster-level mixed-face fallback, which this whole-run profile does not provide.");
         }
@@ -308,7 +336,9 @@ public sealed class TextPrelayoutEngine
             var element = enumerator.GetTextElement();
             var after = start + enumerator.ElementIndex + element.Length;
             var scalar = char.IsHighSurrogate(element[0]) && element.Length > 1 ? char.ConvertToUtf32(element, 0) : element[0];
-            if (char.IsWhiteSpace(element[element.Length - 1]) || IsCjk(scalar) || after == end) yield return after;
+            var last = element[element.Length - 1];
+            if (char.IsWhiteSpace(last) && last is not ('\u00a0' or '\u2007' or '\u202f') ||
+                IsCjk(scalar) || after == end) yield return after;
         }
     }
 
