@@ -2,6 +2,7 @@ using System.IO;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout;
 using Ofdrw.Net.Layout.Editing;
+using Ofdrw.Net.Layout.Internal.Flow;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Readers;
 
@@ -106,6 +107,42 @@ public sealed class NamedAreaTests
         Assert.Empty(package.Pages[0].Elements);
         package.CustomTags[OfdNamedAreaIndex.Key] = original.Replace("PageID=\"1\"", "PageID=\"999\"");
         Assert.Throws<InvalidDataException>(() => editor.GetAreas(package));
+    }
+
+    [Fact]
+    public void SyntheticItalicShearRejectsBeforeFilling()
+    {
+        var options = new NamedAreaTextOptions { Italic = true };
+        var style = new FlowTextStyle { FontFamily = options.FontFamily,
+            FontSizeMillimeters = options.FontSizeMillimeters, Italic = true };
+        var flow = new FlowDocument();
+        flow.Options.MarginLeftMillimeters = flow.Options.MarginRightMillimeters = 0;
+        flow.Options.PageWidthMillimeters = FlowLatinMetrics.AdvanceMillimeters("i", style) + 0.01;
+        flow.Blocks.Add(new AreaHolderBlock("narrow", 10));
+        var package = flow.Render();
+        var index = package.CustomTags[OfdNamedAreaIndex.Key];
+        Assert.Throws<InvalidOperationException>(() => new OfdNamedAreaEditor().FillText(package, "narrow", "i", options));
+        Assert.Equal(index, package.CustomTags[OfdNamedAreaIndex.Key]);
+        Assert.Empty(package.Pages[0].Elements);
+        Assert.Empty(package.Fonts);
+    }
+
+    [Theory]
+    [InlineData(100.0004)]
+    [InlineData(33.333333333333336)]
+    public async Task FractionalPageWidthKeepsAreaInsideWrittenPhysicalBox(double pageWidth)
+    {
+        var flow = new FlowDocument();
+        flow.Options.PageWidthMillimeters = pageWidth;
+        flow.Options.MarginLeftMillimeters = flow.Options.MarginRightMillimeters = 0;
+        flow.Blocks.Add(new AreaHolderBlock("full-width", 10));
+        var reopened = await RoundTrip(flow.Render());
+        var editor = new OfdNamedAreaEditor();
+        var area = Assert.Single(editor.GetAreas(reopened));
+        Assert.True(area.XMillimeters + area.WidthMillimeters <= reopened.Pages[0].WidthMillimeters + 0.000001);
+        editor.FillText(reopened, "full-width", "ok");
+        var final = await RoundTrip(reopened);
+        Assert.True(Assert.Single(editor.GetAreas(final)).IsFilled);
     }
 
     [Fact]

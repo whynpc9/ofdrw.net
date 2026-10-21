@@ -98,10 +98,16 @@ public sealed class OfdNamedAreaEditor
             {
                 var width = line.Glyphs.Sum(g => g.Width);
                 if (width > area.Width + 0.000001d) throw new InvalidOperationException("Named area text exceeds its Boundary.");
+                // The writer expands name-only italic text Boundaries by 0.2 of
+                // the line height for its synthetic shear. Reserve that space
+                // before marking the area filled, even if a face is embedded.
+                var elementWidth = Math.Min(area.Width, Math.Max(0.1, width));
+                if (style.Italic && elementWidth + 0.2 * line.Height + 0.001 > area.Width)
+                    throw new InvalidOperationException("Named area italic text exceeds its Boundary.");
                 var value = string.Concat(line.Glyphs.Select(g => g.Text));
                 var element = new OfdTextElement { LayerType = "Body",
                     XMillimeters = area.X, YMillimeters = top,
-                    WidthMillimeters = Math.Min(area.Width, Math.Max(0.1, width)), HeightMillimeters = line.Height,
+                    WidthMillimeters = elementWidth, HeightMillimeters = line.Height,
                     FontName = style.FontFamily, FontSizeMillimeters = style.FontSizeMillimeters,
                     Weight = style.Bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight,
                     Italic = style.Italic, FillColor = options.Color, Text = value };

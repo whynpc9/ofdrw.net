@@ -96,9 +96,19 @@ internal static class OfdNamedAreaIndex
             if (!names.Add(entry.Name)) throw new InvalidOperationException("Duplicate named area name.");
             var index = package.Pages.IndexOf(entry.Page);
             if (index < 0 || string.IsNullOrEmpty(entry.Page.Id)) throw new InvalidOperationException("Named area page is unavailable.");
+            // PhysicalBox coordinates are written to three decimal places. A
+            // full-width holder must fit that serialized page after reopen.
+            var pageRight = Written(entry.Page.XMillimeters) + Written(entry.Page.WidthMillimeters);
+            var pageBottom = Written(entry.Page.YMillimeters) + Written(entry.Page.HeightMillimeters);
+            var x = Math.Max(entry.X, Written(entry.Page.XMillimeters));
+            var y = Math.Max(entry.Y, Written(entry.Page.YMillimeters));
+            var width = Math.Min(entry.X + entry.Width, pageRight) - x;
+            var height = Math.Min(entry.Y + entry.Height, pageBottom) - y;
+            if (width <= 0 || height <= 0)
+                throw new InvalidOperationException("Named area does not fit the serialized page Boundary.");
             nodes.Add(new XElement("Area", new XAttribute("Name", entry.Name),
                 new XAttribute("PageIndex", index), new XAttribute("PageID", entry.Page.Id),
-                new XAttribute("Boundary", string.Join(" ", new[] { entry.X, entry.Y, entry.Width, entry.Height }
+                new XAttribute("Boundary", string.Join(" ", new[] { x, y, width, height }
                     .Select(v => v.ToString("R", CultureInfo.InvariantCulture)))),
                 new XAttribute("Filled", entry.Filled ? "true" : "false")));
         }
@@ -110,4 +120,7 @@ internal static class OfdNamedAreaIndex
     private static bool Try(string value, out double number) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number) &&
         !double.IsNaN(number) && !double.IsInfinity(number);
+
+    private static double Written(double value) =>
+        double.Parse(value.ToString("0.###", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
 }
