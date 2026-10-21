@@ -14,7 +14,7 @@ using Ofdrw.Net.Reader.Readers;
 
 namespace Ofdrw.Net.Converter.Svg.Converters;
 
-/// <summary>Exports the Reader's first document as bounded, static, self-contained HTML with inline SVG pages.</summary>
+/// <summary>Exports the selected Reader document as bounded, static, self-contained HTML with inline SVG pages.</summary>
 /// <remarks>Only supported drawing projections are admitted. No scripts, external resources or interactive actions are exported.</remarks>
 public sealed class OfdToHtmlConverter
 {
@@ -115,7 +115,7 @@ public sealed class OfdToHtmlConverter
         return copy;
     }
     private static OfdPackageLoadOptions CopyLoad(OfdPackageLoadOptions value) => new()
-    { MaxInputBytes = value.MaxInputBytes, MaxEntryCount = value.MaxEntryCount, MaxPageCount = value.MaxPageCount,
+    { DocumentIndex = value.DocumentIndex, MaxInputBytes = value.MaxInputBytes, MaxEntryCount = value.MaxEntryCount, MaxPageCount = value.MaxPageCount,
         MaxAnnotationObjectCount = value.MaxAnnotationObjectCount, MaxAnnotationXmlBytes = value.MaxAnnotationXmlBytes,
         MaxEntryUncompressedBytes = value.MaxEntryUncompressedBytes, MaxTotalUncompressedBytes = value.MaxTotalUncompressedBytes, MaxCompressionRatio = value.MaxCompressionRatio };
 }

@@ -31,7 +31,7 @@ public sealed class OfdToImageConverter
             options.MaxSignatureAppearanceCount <= 0 || options.MaxPixels <= 0 || options.MaxRasterWorkingBytes <= 0 || options.MaxIntermediatePdfBytes <= 0 || options.MaxOutputBytes <= 0)
             throw new ArgumentException("Encoding, quality and positive image budgets are required.", nameof(options));
         var load = options.PackageLoadOptions ?? throw new ArgumentException("Package load budgets are required.", nameof(options));
-        if (load.MaxInputBytes <= 0 || load.MaxEntryCount <= 0 || load.MaxPageCount <= 0 || load.MaxEntryUncompressedBytes <= 0 ||
+        if (load.DocumentIndex < 0 || load.MaxInputBytes <= 0 || load.MaxEntryCount <= 0 || load.MaxPageCount <= 0 || load.MaxEntryUncompressedBytes <= 0 ||
             load.MaxAnnotationObjectCount <= 0 || load.MaxAnnotationXmlBytes <= 0 ||
             load.MaxTotalUncompressedBytes <= 0 || !(load.MaxCompressionRatio > 0) || double.IsInfinity(load.MaxCompressionRatio))
             throw new ArgumentException("Positive finite package load budgets are required.", nameof(options));
@@ -43,6 +43,7 @@ public sealed class OfdToImageConverter
             MaxIntermediatePdfBytes = options.MaxIntermediatePdfBytes, MaxOutputBytes = options.MaxOutputBytes,
             PackageLoadOptions = new OfdPackageLoadOptions
             {
+                DocumentIndex = load.DocumentIndex,
                 MaxInputBytes = load.MaxInputBytes, MaxEntryCount = load.MaxEntryCount, MaxPageCount = load.MaxPageCount,
                 MaxAnnotationObjectCount = load.MaxAnnotationObjectCount, MaxAnnotationXmlBytes = load.MaxAnnotationXmlBytes,
                 MaxEntryUncompressedBytes = load.MaxEntryUncompressedBytes, MaxTotalUncompressedBytes = load.MaxTotalUncompressedBytes,

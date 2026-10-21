@@ -52,7 +52,8 @@ internal sealed class OfdPackagePruner
         var original = package.PreservedEntries;
         if (!original.TryGetValue("OFD.xml", out var originalRootBytes)) return result;
         var originalRoot = Parse(originalRootBytes);
-        var documentPath = originalRoot.Descendants().FirstOrDefault(node => node.Name.LocalName == "DocRoot")?.Value;
+        OfdMultiDocumentWriteGuard.ValidateBefore(package, originalRoot, original, entries, material, cancellationToken);
+        var documentPath = package.DocumentEntryPath ?? originalRoot.Descendants().FirstOrDefault(node => node.Name.LocalName == "DocRoot")?.Value;
         if (string.IsNullOrWhiteSpace(documentPath)) return result;
         documentPath = material.ResolvePath("OFD.xml", documentPath!, operationToken);
         if (!original.TryGetValue(documentPath, out var originalDocument)) return result;
@@ -121,6 +122,7 @@ internal sealed class OfdPackagePruner
                 }
         }
 
+        OfdMultiDocumentWriteGuard.ValidateAfter(package, originalRoot, original, entries, material, cancellationToken);
         return result;
     }
 

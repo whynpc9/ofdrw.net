@@ -3,6 +3,7 @@ using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Editing;
 using Ofdrw.Net.Packaging;
+using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Reader.Readers;
 
 internal static partial class Cli
@@ -47,14 +48,15 @@ internal static partial class Cli
             return 0;
         }
         var options = new Dictionary<string, string>(StringComparer.Ordinal);
-        var allowed = command == "split" ? new[] { "--pages" } : new[] { "--pages", "--text", "--image", "--layer", "--layer-type", "--x", "--y", "--width", "--height", "--font", "--font-size", "--alpha" };
+        var allowed = command == "split" ? new[] { "--pages" } : new[] { "--pages", "--document", "--text", "--image", "--layer", "--layer-type", "--x", "--y", "--width", "--height", "--font", "--font-size", "--alpha" };
         for (var i = 2; i < args.Length; i += 2)
         {
             if (args[i] is "-h" or "--help") { PrintDocumentToolsHelp(); return 0; }
             // Consume values literally, including help-looking text and paths.
             if (!allowed.Contains(args[i]) || i + 1 >= args.Length || !options.TryAdd(args[i], args[i + 1])) throw new ArgumentException("Unknown, duplicate or incomplete document-tool option.");
         }
-        var source = await ReadToolInputAsync(args[0], token);
+        var source = await ReadToolInputAsync(args[0], token, options.TryGetValue("--document", out var document) ? ParseOneBasedPage(document) : 0,
+            allowMultiple: command == "watermark");
         var pages = ParsePages(options.GetValueOrDefault("--pages"));
         if (command == "split")
         {
@@ -93,12 +95,12 @@ internal static partial class Cli
         Console.WriteLine("Watermark options: --pages 1,2 --text TEXT | --image FILE --layer ID --layer-type Background|Body|Foreground --x MM --y MM --width MM --height MM --font NAME --font-size MM --alpha 0..255");
     }
 
-    private static async Task<OfdDocumentPackage> ReadToolInputAsync(string path, CancellationToken token)
+    private static async Task<OfdDocumentPackage> ReadToolInputAsync(string path, CancellationToken token, int documentIndex = 0, bool allowMultiple = false)
     {
         await using var input = File.OpenRead(path);
-        var package = await new OfdReader().ReadAsync(input, token);
+        var package = await new OfdReader().ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = documentIndex }, token);
         using var root = new MemoryStream(package.PreservedEntries["OFD.xml"], false);
-        if (XDocument.Load(root).Root!.Elements().Count(node => node.Name.LocalName == "DocBody") != 1)
+        if (!allowMultiple && XDocument.Load(root).Root!.Elements().Count(node => node.Name.LocalName == "DocBody") != 1)
             throw new NotSupportedException("Page editing requires a single DocBody; clean-signatures supports all documents.");
         return package;
     }

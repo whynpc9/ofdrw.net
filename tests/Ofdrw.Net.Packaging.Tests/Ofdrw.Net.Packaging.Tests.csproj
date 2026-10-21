@@ -17,5 +17,6 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../TestSupport/MultiDocumentFixture.cs" Link="MultiDocumentFixture.cs" />
   </ItemGroup>
 </Project>
