@@ -213,7 +213,8 @@ public sealed class TextShapedRun
         var intervals = new List<(int Start, int End)>(Glyphs.Count);
         foreach (var glyph in Glyphs)
         {
-            if (glyph is null || glyph.GlyphId == 0 || glyph.ClusterStart < request.SourceStart ||
+            if (glyph is null || glyph.GlyphId == 0 || glyph.GlyphId >= request.Face.GlyphCount ||
+                glyph.ClusterStart < request.SourceStart ||
                 glyph.ClusterLength <= 0 || (long)glyph.ClusterStart + glyph.ClusterLength >
                 (long)request.SourceStart + request.Text.Length)
                 throw new TextLayoutException(TextLayoutError.InvalidRequest, "Shaper returned an invalid glyph or source interval.");

@@ -95,6 +95,7 @@ public sealed class TextFontFace
         CheckedGlyph(unicodeScalar) != 0;
 
     internal int NominalGlyph(int unicodeScalar) => CheckedGlyph(unicodeScalar);
+    internal int GlyphCount => _glyphCount;
     internal int CoverageLookupWorkUpperBound => _cmap.GlyphLookupWorkUpperBound;
     internal int FaceByteLength => _faceBytes.Length;
 

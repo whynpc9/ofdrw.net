@@ -106,6 +106,17 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public void ReplacementShaperCannotReturnGlyphOutsideSelectedFace()
+    {
+        var face = Noto();
+        var request = new TextShapeRequest("A", 0, face);
+        TextShapedGlyph Glyph(uint id) => new(id, 0, 1, 500, 0, 0, 0, null, false);
+        Assert.Single(new TextShapedRun(request, new[] { Glyph((uint)face.GlyphCount - 1) }, "replacement").Glyphs);
+        Assert.Equal(TextLayoutError.InvalidRequest, Assert.Throws<TextLayoutException>(() =>
+            new TextShapedRun(request, new[] { Glyph((uint)face.GlyphCount) }, "replacement")).Error);
+    }
+
+    [Fact]
     public void FinalLinesExposeHeightBaselineSourceAndAdvanceSeparatelyFromInk()
     {
         var face = Noto();
