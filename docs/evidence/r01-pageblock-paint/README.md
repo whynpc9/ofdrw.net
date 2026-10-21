@@ -154,6 +154,13 @@
 - 当前源码完整 Release 解决方案 **3337 passed、0 skipped、0 failed**，修复的定向回归 **6/6**，最终选中测试 **18/18**。本地 `0.1.0-r01.fontorigin` 的 12 个基础包和 1 个可选 SES 包来源与独立消费、DOCX 显式 native/默认转 OFD、四份 V1/V4 测试签章均通过；原文完整，签章前后两页 PNG 分别相同。包未发布。
 - 从本轮 OFD 导出的普通/模板 PageBlock、图片 PageBlock、相对 DrawParam PageBlock，以及三种受支持字体资源 PageBlock 共七份 PDF，各在 macOS Preview 查看第 1/1 页，并检查对应 144 DPI PNG。蓝色图形、红色图片、黄底蓝框、局部洋红文字及三份 `known font` 均可见；无缺字、裁切、重影或意外空白页。四份本轮 DOCX→显式 native/默认 OFD→PDF→Preview 产物 `native-v1`、`default-v1`、`native-v4`、`default-v4` 均逐页查看第 1–2 页；中英文、英文斜体、蓝色表格填充/边框、第二页局部红色粗体和分页符合样例。本轮 8 张 DOCX 页面 PNG 亦逐页复查。Preview 全部窗口已关闭并登记 `20261021T1632Z` GUI 释放。结论限于所列页面；外部 OFD 阅读器互操作和任意 DOCX 保真未验证。
 
+
+## 外来命名空间图片资源复审
+
+- Codex 对 `8bb51c4` 指出：`ReadMediaResources` 从任意 `Res` 根推导命名空间并递归查找 `MultiMedia`，使外来命名空间图片可解析到 PageBlock。Reader 现只接收无命名空间及 OFD 2009/2016 命名空间的 `Res`、直接 `MultiMedias` 容器及 `MultiMedia` 条目；外来根、容器、条目均不进入媒体映射。普通和模板 PageBlock 共 **6 个拒绝回归**，三种受支持资源形式共 **3 个正例**；PDF/SVG/HTML 的拒绝输出为空。
+- 当前源码定向回归 **9/9**；完整 Release 解决方案 11 项目 **3346 passed、0 skipped、0 failed**；全部 R01 PageBlock 测试及正例生成 **128/128**。本地 `0.1.0-r01.mediaorigin` 的 12 基础包和 1 可选 SES 包来源与独立消费、DOCX 显式 native/默认模式及四份 V1/V4 测试签章通过；原文完整，签章前后对应页面 PNG 相同，包未发布。
+- 三种有效资源来源各生成一页 OFD→PDF→144 DPI PNG，三张页面图逐字节一致：红色图片方块清晰可见。三份 PDF 和 `image-block`（蓝色路径、红色图片）已在 macOS Preview 各检查第 1/1 页。本轮四份 `native-v1`、`default-v1`、`native-v4`、`default-v4` PDF 分别从其显式 native/默认 OFD 导出，均在 Preview 逐页检查第 1–2 页：中英文、英文斜体、蓝色表格底色与边框、第二页局部红色粗体、分页符合样例，未见缺字、裁切、重影或异常空白页；八张本轮页面 PNG 逐页复查。全部 Preview 窗口关闭并登记 `20261021T1702Z` GUI 释放。结论只覆盖这些实际检查的页面；外部 OFD 阅读器和任意 DOCX 保真未验证。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |

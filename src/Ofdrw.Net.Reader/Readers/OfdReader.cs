@@ -224,7 +224,7 @@ public sealed class OfdReader : IOfdReader
             if (archive.Contains(publicResPath))
             {
                 ReadFonts(archive, publicResPath, package, fontMap, material, cancellationToken);
-                ReadMediaResources(archive, publicResPath, docNs, documentMediaMap, documentMediaTypeMap, material, cancellationToken);
+                ReadMediaResources(archive, publicResPath, documentMediaMap, documentMediaTypeMap, material, cancellationToken);
                 documentPaint.Read(archive, publicResPath, material, cancellationToken);
             }
         }
@@ -234,7 +234,7 @@ public sealed class OfdReader : IOfdReader
         if (!string.IsNullOrWhiteSpace(documentResLoc))
         {
             var documentResPath = material.ResolvePath(docRoot, documentResLoc!, cancellationToken);
-            ReadMediaResources(archive, documentResPath, docNs, documentMediaMap, documentMediaTypeMap, material, cancellationToken);
+            ReadMediaResources(archive, documentResPath, documentMediaMap, documentMediaTypeMap, material, cancellationToken);
             ReadFonts(archive, documentResPath, package, fontMap, material, cancellationToken);
             documentPaint.Read(archive, documentResPath, material, cancellationToken);
         }
@@ -338,7 +338,7 @@ public sealed class OfdReader : IOfdReader
 
             if (archive.Contains(pageResPath))
             {
-                ReadMediaResources(archive, pageResPath, docNs, mediaMap, mediaTypeMap, material, cancellationToken);
+                ReadMediaResources(archive, pageResPath, mediaMap, mediaTypeMap, material, cancellationToken);
                 ReadFonts(archive, pageResPath, package, fontMap, material, cancellationToken);
                 pagePaint.Read(archive, pageResPath, material, cancellationToken);
             }
@@ -377,7 +377,7 @@ public sealed class OfdReader : IOfdReader
                 var templateMediaMap = new Dictionary<string, string>(documentMediaMap, StringComparer.OrdinalIgnoreCase);
                 var templateMediaTypeMap = new Dictionary<string, string>(documentMediaTypeMap, StringComparer.OrdinalIgnoreCase);
                 var templatePaint = new OfdPaintResources(documentPaint);
-                ReadMediaResources(archive, templateResPath, docNs, templateMediaMap, templateMediaTypeMap, material, cancellationToken);
+                ReadMediaResources(archive, templateResPath, templateMediaMap, templateMediaTypeMap, material, cancellationToken);
                 material.ReserveReadModel(256L + fontMap.Count * 160L, cancellationToken);
                 var templateFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
                 ReadFonts(archive, templateResPath, package, templateFonts, material, cancellationToken);
@@ -1010,7 +1010,6 @@ public sealed class OfdReader : IOfdReader
     private static void ReadMediaResources(
         OfdPackageArchive archive,
         string resPath,
-        XNamespace fallbackNs,
         IDictionary<string, string> mediaMap,
         IDictionary<string, string> mediaTypeMap, OfdModelMaterialization material, CancellationToken cancellationToken)
     {
@@ -1020,10 +1019,14 @@ public sealed class OfdReader : IOfdReader
         }
 
         var resXml = material.ReadXml(resPath, archive.GetBytes(resPath), cancellationToken);
-        var resNs = resXml.Root?.Name.Namespace ?? fallbackNs;
-        var baseLoc = resXml.Root?.Attribute("BaseLoc")?.Value;
+        var root = resXml.Root;
+        if (root is null || root.Name.LocalName != "Res" ||
+            root.Name.Namespace != XNamespace.None && root.Name.NamespaceName is not (OfdConstants.Namespace or OfdConstants.StandardNamespace))
+            return;
+        var resNs = root.Name.Namespace;
+        var baseLoc = root.Attribute("BaseLoc")?.Value;
 
-        foreach (var media in resXml.Descendants(resNs + "MultiMedia"))
+        foreach (var media in root.Elements(resNs + "MultiMedias").SelectMany(medias => medias.Elements(resNs + "MultiMedia")))
         {
             var id = media.Attribute("ID")?.Value;
             var file = media.Attribute("MediaFile")?.Value ?? ReadValue(media.Element(resNs + "MediaFile"), material, cancellationToken);

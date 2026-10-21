@@ -90,7 +90,7 @@ public sealed class R01PageBlockTests
             }
             if (image)
             {
-                using var pixel = new Image<Rgba32>(1, 1);
+                using var pixel = new Image<Rgba32>(1, 1, Color.Red);
                 using var imageData = new MemoryStream(); await pixel.SaveAsPngAsync(imageData);
                 using var imageStream = outputZip.CreateEntry("Doc_0/image.png").Open();
                 await imageStream.WriteAsync(imageData.ToArray());
@@ -568,6 +568,56 @@ public sealed class R01PageBlockTests
         Assert.Contains("known font", Encoding.UTF8.GetString(html.ToArray()));
         Retain(resourceNamespace.Length == 0 ? "font-resource-unqualified" :
             resourceNamespace == Ns ? "font-resource-2009" : "font-resource-2016",
+            bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData("root", false)]
+    [InlineData("container", false)]
+    [InlineData("media", false)]
+    [InlineData("root", true)]
+    [InlineData("container", true)]
+    [InlineData("media", true)]
+    public async Task ForeignNamespaceMediaCannotResolvePageBlockImage(string foreignPart, bool template)
+    {
+        var media = foreignPart switch
+        {
+            "container" => "<MultiMedias xmlns='urn:vendor'><MultiMedia ID='20' Type='Image' Format='PNG'><MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>",
+            "media" => "<MultiMedias><MultiMedia xmlns='urn:vendor' ID='20' Type='Image' Format='PNG'><MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>",
+            _ => "<MultiMedias><MultiMedia ID='20' Type='Image' Format='PNG'><MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>"
+        };
+        var bytes = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>",
+            template: template, resources: media, image: true, resourceNamespace: foreignPart == "root" ? "urn:vendor" : null);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(bytes), output));
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(Ns)]
+    [InlineData("http://www.ofdspec.org/2016")]
+    public async Task AdmittedResourceMediaResolvesPageBlockImage(string resourceNamespace)
+    {
+        var media = $"<MultiMedias xmlns='{resourceNamespace}'><MultiMedia ID='20' Type='Image' Format='PNG'><MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
+        var bytes = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>",
+            resources: media, image: true, resourceNamespace: resourceNamespace);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("data:image/png;base64,", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("data:image/png;base64,", Encoding.UTF8.GetString(html.ToArray()));
+        Retain(resourceNamespace.Length == 0 ? "media-resource-unqualified" :
+            resourceNamespace == Ns ? "media-resource-2009" : "media-resource-2016",
             bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
