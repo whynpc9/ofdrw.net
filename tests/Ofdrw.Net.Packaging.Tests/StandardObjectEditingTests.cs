@@ -413,6 +413,37 @@ public sealed class StandardObjectEditingTests
     }
 
     [Fact]
+    public async Task NestedPermissionReplacement_RejectsLossOfUnknownSourceContent()
+    {
+        var package = new OfdDocumentPackage(); package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Permissions = new OfdPermissions
+        {
+            Print = new OfdPrintPermission { Printable = true, Copies = 2 },
+            ValidPeriod = new OfdValidPeriod { StartDate = "2026-10-21T00:00:00Z" }
+        };
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        var document = Xml(entries["Doc_0/Document.xml"]); var ns = document.Root!.Name.Namespace;
+        var vendor = XNamespace.Get("urn:permission-vendor");
+        document.Descendants(ns + "Print").Single().SetAttributeValue(vendor + "Flag", "x");
+        document.Descendants(ns + "ValidPeriod").Single().Add(new XElement(vendor + "Keep", "period"));
+        entries["Doc_0/Document.xml"] = Bytes(document);
+        using var input = MultiDocumentFixture.Zip(entries);
+        var imported = await new OfdReader().ReadAsync(input);
+        Assert.NotNull(imported.Permissions);
+        Assert.Throws<NotSupportedException>(() => imported.Permissions!.Print = null);
+        Assert.Throws<NotSupportedException>(() => imported.Permissions!.ValidPeriod = null);
+        Assert.Throws<NotSupportedException>(() => imported.Permissions!.Print = new OfdPrintPermission { Printable = false });
+        Assert.Throws<NotSupportedException>(() => imported.Permissions!.ValidPeriod = new OfdValidPeriod());
+        imported.Permissions!.Print!.Copies = 3;
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(imported, output);
+        var written = Xml(MultiDocumentFixture.Unzip(output)["Doc_0/Document.xml"]);
+        Assert.Equal("3", written.Descendants(ns + "Print").Single().Attribute("Copies")!.Value);
+        Assert.Equal("x", written.Descendants(ns + "Print").Single().Attribute(vendor + "Flag")!.Value);
+        Assert.Equal("period", written.Descendants(vendor + "Keep").Single().Value);
+    }
+
+    [Fact]
     public async Task MediaAndAttachmentActions_RequireRetainedLocalTargets()
     {
         var package = new OfdDocumentPackage(); package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
@@ -473,6 +504,7 @@ public sealed class StandardObjectEditingTests
         Assert.IsType<OfdAttachmentAction>(source.Actions!.Items[0]);
         Assert.IsType<OfdSoundAction>(source.Actions.Items[1]);
         Assert.IsType<OfdMovieAction>(source.Actions.Items[2]);
+        source.DocumentResourceLocation = source.PublicResourceLocation;
         OfdDocumentEditor.RemovePages(source, [1]);
         using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(source, output);
         output.Position = 0; var saved = await new OfdReader().ReadAsync(output);

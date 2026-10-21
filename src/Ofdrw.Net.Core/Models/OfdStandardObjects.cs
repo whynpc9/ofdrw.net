@@ -151,13 +151,30 @@ public sealed class OfdPermissions : OfdStandardNode
     public OfdPrintPermission? Print
     {
         get => Root.Element(Root.Name.Namespace + "Print") is XElement e ? BindChild(new OfdPrintPermission(e)) : null;
-        set => OfdXmlEnvelope.Singleton(Root, "Print", value?.Emit(Root.Name.Namespace, DocumentOwner ?? this));
+        set
+        {
+            GuardReplacement("Print", value, "Printable", "Copies");
+            OfdXmlEnvelope.Singleton(Root, "Print", value?.Emit(Root.Name.Namespace, DocumentOwner ?? this));
+        }
     }
     /// <summary>Optional period during which the declarations are valid.</summary>
     public OfdValidPeriod? ValidPeriod
     {
         get => Root.Element(Root.Name.Namespace + "ValidPeriod") is XElement e ? BindChild(new OfdValidPeriod(e)) : null;
-        set => OfdXmlEnvelope.Singleton(Root, "ValidPeriod", value?.Emit(Root.Name.Namespace, DocumentOwner ?? this));
+        set
+        {
+            GuardReplacement("ValidPeriod", value, "StartDate", "EndDate");
+            OfdXmlEnvelope.Singleton(Root, "ValidPeriod", value?.Emit(Root.Name.Namespace, DocumentOwner ?? this));
+        }
+    }
+    private void GuardReplacement(string name, OfdStandardNode? replacement, params string[] modeledAttributes)
+    {
+        var original = Root.Element(Root.Name.Namespace + name);
+        if (original is null || ReferenceEquals(replacement?.Root, original)) return;
+        if (original.Attributes().Any(attribute => attribute.IsNamespaceDeclaration ||
+                attribute.Name.Namespace != XNamespace.None || !modeledAttributes.Contains(attribute.Name.LocalName, StringComparer.Ordinal)) ||
+            original.Nodes().Any(node => node is not XText text || !string.IsNullOrWhiteSpace(text.Value)))
+            throw new NotSupportedException("Cannot replace " + name + " with unknown source content.");
     }
     private T BindChild<T>(T child) where T : OfdStandardNode
     { if (DocumentOwner is not null) child.Bind(DocumentOwner, child.InventoryXml); return child; }

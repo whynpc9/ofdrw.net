@@ -21,6 +21,8 @@ await new OfdPackageWriter().WriteAsync(document, output);
 
 `OfdPermissions` models the six optional Boolean declarations plus `Print` (`Printable`, `Copies`) and `ValidPeriod` (`StartDate`, `EndDate` XML dateTime strings). Nullable Boolean properties preserve omission separately from the standard's defaults. `OfdViewingPreferences` models page mode, layout, tab display, hide flags, and the exclusive `ZoomMode` or numeric `Zoom` choice. `OfdVersions` models the selected DocBody's ordered `Version` descriptors (`Id`, `Index`, optional `Current`, `BaseLocation`). Changed or new version locations must resolve to existing package entries. Version files themselves are preserved, not generated.
 
+Replacing or removing an imported `Print` or `ValidPeriod` node fails when it would discard unknown attributes or child content. Edit its typed properties through the existing child object to retain that content.
+
 Permissions are **declarations only**. The Reader, Writer and editing APIs do not enforce them as access control. Viewer preferences likewise do not control a UI.
 
 ## Actions and source preservation

@@ -438,11 +438,12 @@ internal static class OfdNavigationXml
     private static bool MediaResource(OfdDocumentPackage package, string id, string type, OfdModelMaterialization material, CancellationToken token)
     {
         var documentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
-        var found = 0;
+        var found = 0; var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var location in new[] { package.PublicResourceLocation, package.DocumentResourceLocation })
         {
             token.ThrowIfCancellationRequested(); if (string.IsNullOrWhiteSpace(location)) continue;
             var path = material.ResolvePath(documentPath, location!, token);
+            if (!paths.Add(path)) continue;
             if (!package.PreservedEntries.TryGetValue(path, out var bytes)) continue;
             var xml = material.ReadXml(path, bytes, token);
             if (xml.Root?.Name.LocalName != "Res") continue;
