@@ -169,6 +169,13 @@ internal static class OfdSignatureFileSelection
                     throw new InvalidDataException("Cannot prove page dependency: /" + path + " -> " + baseLoc);
                 required.Add(pagePath);
                 if (xmlPaths.Add(pagePath)) pending.Enqueue(pagePath);
+                var slash = pagePath.LastIndexOf('/');
+                var pageResPath = (slash < 0 ? string.Empty : pagePath.Substring(0, slash + 1)) + "PageRes.xml";
+                if (entries.ContainsKey(pageResPath))
+                {
+                    required.Add(pageResPath);
+                    if (xmlPaths.Add(pageResPath)) pending.Enqueue(pageResPath);
+                }
             }
             AddComposedResourceFiles(path, document, entries, required);
         }

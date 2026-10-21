@@ -161,6 +161,61 @@ public sealed class SignatureScopeTests
         Assert.False((await Verify(changed)).ReferenceIntegrityValid);
     }
 
+    [Theory]
+    [InlineData(false, "logo.png")]
+    [InlineData(false, "typeface.ttf")]
+    [InlineData(true, "logo.png")]
+    [InlineData(true, "typeface.ttf")]
+    public async Task ImplicitPageOrTemplateResourceTableProtectsExternalPayload(
+        bool template, string resource)
+    {
+        using var source = await CreatePackage();
+        source.Position = 0;
+        var archive = await new OfdPackageLoader().LoadAsync(source);
+        var directory = template ? "Doc_0/Templates/T_0" : "Doc_0/Pages/Page_0";
+        var additions = new Dictionary<string, byte[]>
+        {
+            [directory + "/PageRes.xml"] = Encoding.UTF8.GetBytes(
+                "<Res xmlns=\"" + OfdConstants.Namespace + "\" BaseLoc=\"/Shared/PageAssets\">" +
+                "<MultiMedia ID=\"2\" MediaFile=\"logo.png\"/>" +
+                "<Font ID=\"3\" FontName=\"Fixture\"><FontFile>typeface.ttf</FontFile></Font></Res>"),
+            ["Shared/PageAssets/logo.png"] = [1, 2, 3],
+            ["Shared/PageAssets/typeface.ttf"] = [4, 5, 6]
+        };
+        if (template)
+            additions[directory + "/Content.dat"] = archive.GetBytes("Doc_0/Pages/Page_0/Content.xml");
+        using var withResources = await AddEntries(source, additions);
+        using var referenced = await Rewrite(withResources, "Doc_0/Document.xml", bytes =>
+        {
+            if (!template) return bytes;
+            var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            var common = document.Root!.Elements().First(node => node.Name.LocalName == "CommonData");
+            common.Add(new XElement(common.Name.Namespace + "TemplatePage",
+                new XAttribute("ID", "50"), new XAttribute("BaseLoc", "Templates/T_0/Content.dat")));
+            return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        });
+        var excluded = "/Shared/PageAssets/" + resource;
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(referenced, output, provider,
+                new OfdSignatureOptions { ProtectFile = path => path != excluded }));
+        Assert.Contains(excluded, error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+
+        referenced.Position = 0;
+        using var signed = new MemoryStream();
+        var scope = await new OfdSignatureService().SignWithResultAsync(referenced, signed,
+            new Provider(), new OfdSignatureOptions
+            {
+                ProtectFile = path => path != "/Extras/optional.bin"
+            });
+        Assert.Contains(excluded, scope.ProtectedFiles);
+        using var changed = await Rewrite(signed, excluded.TrimStart('/'), _ => [9, 9, 9]);
+        Assert.False((await Verify(changed)).ReferenceIntegrityValid);
+    }
+
     [Fact]
     public async Task AnnotationAndPageResourceSharingAnAnnotsPayloadKeepsItProtected()
     {
