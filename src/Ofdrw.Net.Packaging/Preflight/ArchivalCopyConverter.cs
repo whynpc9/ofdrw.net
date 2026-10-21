@@ -105,15 +105,21 @@ public sealed class ArchivalCopyConverter
         var published = false;
         try
         {
-            using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-            using (var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: false))
-                foreach (var entry in changed.OrderBy(x => x.Key, StringComparer.Ordinal))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var item = zip.CreateEntry(entry.Key, CompressionLevel.Optimal);
-                    item.LastWriteTime = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
-                    using var target = item.Open(); target.Write(entry.Value, 0, entry.Value.Length);
-                }
+            // A stored input entry can be highly compressible. Recompressing it may
+            // violate the caller's ratio budget even though the source was admissible.
+            // Relax only offending entries, and verify the actual ZIP metadata each time.
+            var compression = new Dictionary<string, CompressionLevel>(StringComparer.OrdinalIgnoreCase);
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (attempt != 0) File.Delete(temporary);
+                WritePackage(temporary, changed, compression, cancellationToken);
+                var offenders = EntriesOverRatio(temporary, snapshotOptions.LoadOptions.MaxCompressionRatio);
+                if (offenders.Count == 0) break;
+                if (attempt == 2) throw new InvalidDataException("Repacked entries exceed the configured compression ratio limit.");
+                foreach (var name in offenders)
+                    compression[name] = attempt == 0 ? CompressionLevel.Fastest : CompressionLevel.NoCompression;
+            }
             byte[] outputBytes = File.ReadAllBytes(temporary);
             ArchivalRuleReport after;
             OfdPackageArchive verified;
@@ -174,4 +180,28 @@ public sealed class ArchivalCopyConverter
     { using var sha = SHA256.Create(); return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant(); }
     private static string Hash(Stream stream)
     { using var sha = SHA256.Create(); return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant(); }
+
+    private static void WritePackage(string path, IReadOnlyDictionary<string, byte[]> entries,
+        IReadOnlyDictionary<string, CompressionLevel> compression, CancellationToken cancellationToken)
+    {
+        using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        using var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: false);
+        foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var level = compression.TryGetValue(entry.Key, out var chosen) ? chosen : CompressionLevel.Optimal;
+            var item = zip.CreateEntry(entry.Key, level);
+            item.LastWriteTime = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
+            using var target = item.Open();
+            target.Write(entry.Value, 0, entry.Value.Length);
+        }
+    }
+
+    private static IReadOnlyList<string> EntriesOverRatio(string path, double limit)
+    {
+        using var file = File.OpenRead(path);
+        using var zip = new ZipArchive(file, ZipArchiveMode.Read);
+        return zip.Entries.Where(entry => entry.CompressedLength > 0 &&
+            entry.Length / (double)entry.CompressedLength > limit).Select(entry => entry.FullName).ToArray();
+    }
 }

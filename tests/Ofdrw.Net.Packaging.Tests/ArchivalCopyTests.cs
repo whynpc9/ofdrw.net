@@ -17,13 +17,13 @@ public class ArchivalCopyTests
         ["Doc_0/Document.xml"] = Utf8($"<Document xmlns='{Ns}'><Pages><Page ID='1' BaseLoc='Pages/P0/Content.xml'/></Pages>{extra}</Document>"),
         ["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer><PathObject/></Layer></Content></Page>")
     };
-    private static byte[] Zip(Dictionary<string, byte[]> entries)
+    private static byte[] Zip(Dictionary<string, byte[]> entries, CompressionLevel level = CompressionLevel.Optimal)
     {
         using var memory = new MemoryStream();
         using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, true))
             foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.Ordinal))
             {
-                using var target = zip.CreateEntry(entry.Key).Open();
+                using var target = zip.CreateEntry(entry.Key, level).Open();
                 target.Write(entry.Value);
             }
         return memory.ToArray();
@@ -59,6 +59,42 @@ public class ArchivalCopyTests
         var report = await new ArchivalRuleService().CheckAsync(input, new());
         Assert.Equal(PreflightOutcome.Fail, report.LocalPreflight.SummaryOutcome);
         Assert.Equal(PreflightOutcome.Fail, report.SummaryOutcome);
+    }
+
+    [Fact]
+    public async Task RuleInspectionKeepsInitialBudgetsWhenCallerMutatesOptionsDuringRead()
+    {
+        var options = new ArchivalPreflightOptions();
+        using var input = new OnReadStream(Zip(Seed()), () => options.MaxSingleXmlBytes = 1);
+        var report = await new ArchivalRuleService().CheckAsync(input, options);
+        Assert.Equal(1, options.MaxSingleXmlBytes);
+        Assert.Equal(PreflightOutcome.Pass, report.LocalPreflight.SummaryOutcome);
+        Assert.All(report.RuleResults, result => Assert.Equal(PreflightOutcome.Pass, result.Outcome));
+    }
+
+    [Fact]
+    public async Task CopyKeepsStoredRepetitiveAttachmentWithinCompressionRatioBudget()
+    {
+        var entries = Seed("<Permissions><Edit>false</Edit></Permissions><Attachments>Attachs/Attachments.xml</Attachments>");
+        entries["Doc_0/Attachs/Attachments.xml"] = Utf8($"<Attachments xmlns='{Ns}'><Attachment ID='A'><FileLoc>a.txt</FileLoc></Attachment></Attachments>");
+        entries["Doc_0/Attachs/a.txt"] = Utf8(new string('x', 32_768));
+        var folder = Path.Combine(Path.GetTempPath(), "r17-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "source.ofd"); var destination = Path.Combine(folder, "copy.ofd");
+            File.WriteAllBytes(source, Zip(entries, CompressionLevel.NoCompression));
+            var options = new ArchivalPreflightOptions(); options.LoadOptions.MaxCompressionRatio = 12;
+            var result = await new ArchivalCopyConverter().ConvertAsync(source, destination, options);
+            Assert.Equal(PreflightOutcome.Pass, result.Postflight.SummaryOutcome);
+            using var file = File.OpenRead(destination);
+            using var zip = new ZipArchive(file, ZipArchiveMode.Read);
+            var attachment = zip.GetEntry("Doc_0/Attachs/a.txt")!;
+            Assert.True(attachment.Length / (double)attachment.CompressedLength <= 12);
+            using var output = File.OpenRead(destination);
+            var package = await new OfdPackageLoader().LoadAsync(output, options.LoadOptions);
+            Assert.Equal(entries["Doc_0/Attachs/a.txt"], package.GetBytes("Doc_0/Attachs/a.txt"));
+        }
+        finally { Directory.Delete(folder, true); }
     }
 
     [Fact]
@@ -133,5 +169,28 @@ public class ArchivalCopyTests
             Assert.False(File.Exists(destination));
         }
         finally { Directory.Delete(folder, true); }
+    }
+
+    private sealed class OnReadStream : Stream
+    {
+        private readonly MemoryStream inner;
+        private readonly Action onRead;
+        private bool called;
+        public OnReadStream(byte[] bytes, Action onRead) { inner = new MemoryStream(bytes, false); this.onRead = onRead; }
+        private void Mutate() { if (!called) { called = true; onRead(); } }
+        public override bool CanRead => true;
+        public override bool CanSeek => true;
+        public override bool CanWrite => false;
+        public override long Length => inner.Length;
+        public override long Position { get => inner.Position; set => inner.Position = value; }
+        public override int Read(byte[] buffer, int offset, int count) { Mutate(); return inner.Read(buffer, offset, count); }
+        public override int Read(Span<byte> buffer) { Mutate(); return inner.Read(buffer); }
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        { Mutate(); return inner.ReadAsync(buffer, offset, count, cancellationToken); }
+        public override long Seek(long offset, SeekOrigin origin) => inner.Seek(offset, origin);
+        public override void Flush() { }
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        protected override void Dispose(bool disposing) { if (disposing) inner.Dispose(); base.Dispose(disposing); }
     }
 }

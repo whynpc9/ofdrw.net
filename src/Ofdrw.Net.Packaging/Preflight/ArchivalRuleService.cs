@@ -101,15 +101,16 @@ public sealed class ArchivalRuleService
         if (options == null) throw new ArgumentNullException(nameof(options));
         if (!input.CanRead || !input.CanSeek || input.Position != 0)
             throw new ArgumentException("A seekable input at position zero is required.", nameof(input));
+        var snapshot = options.Snapshot();
         try
         {
-            var local = await new ArchivalPreflightChecker().CheckAsync(input, options, cancellationToken).ConfigureAwait(false);
+            var local = await new ArchivalPreflightChecker().CheckAsync(input, snapshot, cancellationToken).ConfigureAwait(false);
             if (local.RunState != PreflightRunState.Complete || local.GetRuleOutcome("APF-001") != PreflightOutcome.Pass)
                 return Unknown(local, "DocumentScopeUnavailable");
             OfdPackageArchive archive;
-            try { archive = await new OfdPackageLoader().LoadAsync(input, options.Snapshot().LoadOptions, cancellationToken).ConfigureAwait(false); }
+            try { archive = await new OfdPackageLoader().LoadAsync(input, snapshot.LoadOptions, cancellationToken).ConfigureAwait(false); }
             catch (InvalidDataException) { return Unknown(local, "InputRejected"); }
-            var root = Read(archive, "OFD.xml", options)?.Root;
+            var root = Read(archive, "OFD.xml", snapshot)?.Root;
             if (root == null || !Supported(root.Name.NamespaceName)) return Unknown(local, "RootScopeUnavailable");
             var bodies = root.Elements(root.Name.Namespace + "DocBody").ToArray();
             if (bodies.Length != 1) return Unknown(local, "DocumentScopeUnavailable");
@@ -118,7 +119,7 @@ public sealed class ArchivalRuleService
             string entry;
             try { entry = OfdPackagePath.Resolve("OFD.xml", roots[0].Value); }
             catch (InvalidDataException) { return Unknown(local, "DocumentScopeUnavailable"); }
-            var document = Read(archive, entry, options)?.Root;
+            var document = Read(archive, entry, snapshot)?.Root;
             if (document == null || document.Name != root.Name.Namespace + "Document") return Unknown(local, "DocumentScopeUnavailable");
             var results = ArchivalRuleCatalog.Rules.Select(rule => Evaluate(rule, document, entry)).ToArray();
             return new ArchivalRuleReport(local, Array.AsReadOnly(results), entry);
