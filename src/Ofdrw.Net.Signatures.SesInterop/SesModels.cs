@@ -8,16 +8,22 @@ public enum SesVersion
     /// <summary>Seven-field TBS and two-field signature container.</summary>
     V1 = 1,
     /// <summary>Five-field TBS and external signer certificate.</summary>
-    V4 = 4
+    V4 = 4,
+    /// <summary>Five-field TBS and external signer certificate with V5 seal layout.</summary>
+    V5 = 5
 }
 
 /// <summary>Capabilities of this optional dev/interop package, without production trust claims.</summary>
 public static class SesInteropCapabilities
 {
-    /// <summary>Common SES V1/V4 fields can be inspected.</summary>
+    /// <summary>Common SES V1/V4/V5 fields can be inspected.</summary>
     public static bool SupportsCommonSesFieldInspection => true;
     /// <summary>SM2 test self-signing requires explicit provider/verifier construction.</summary>
     public static bool SupportsExplicitTestSelfSigning => true;
+    /// <summary>Caller-owned SES V5 signing and pinned verification require explicit registration.</summary>
+    public static bool SupportsExplicitExternalV5 => true;
+    /// <summary>Only an explicit single-signer attached-data GB/T 35275 profile is available.</summary>
+    public static bool SupportsExplicitGbt35275SingleSigner => true;
 }
 
 /// <summary>Common seal fields. Parsing establishes structure only, never seal authenticity.</summary>
@@ -63,13 +69,13 @@ public sealed class SesSignedValue
     }
     private readonly byte[] _time, _hash, _certificate, _signature, _tbs, _sealDer;
     private readonly byte[]? _timestamp;
-    /// <summary>Detected V1/V4 layout.</summary>
+    /// <summary>Detected V1/V4/V5 layout.</summary>
     public SesVersion Version { get; }
     /// <summary>Common electronic seal fields.</summary>
     public SesSealInfo Seal { get; }
-    /// <summary>V1 raw time BIT STRING or V4 DER GeneralizedTime bytes, copied.</summary>
+    /// <summary>V1 raw time BIT STRING or V4/V5 DER GeneralizedTime bytes, copied.</summary>
     public byte[] TimeInformation => (byte[])_time.Clone();
-    /// <summary>V1 UTF-8 time text without timezone inference, or V4 generalized time text.</summary>
+    /// <summary>V1 UTF-8 time text without timezone inference, or V4/V5 generalized time text.</summary>
     public string TimeText { get; }
     /// <summary>Copy of the signed document digest.</summary>
     public byte[] DataHash => (byte[])_hash.Clone();
@@ -85,6 +91,6 @@ public sealed class SesSignedValue
     public byte[] ToBeSignedDer => (byte[])_tbs.Clone();
     /// <summary>Copy of the complete embedded seal.</summary>
     public byte[] SealDer => (byte[])_sealDer.Clone();
-    /// <summary>Optional V4 timestamp token bytes, copied; never validated as a TSA token.</summary>
+    /// <summary>Optional V4/V5 timestamp token bytes, copied; never validated as a TSA token.</summary>
     public byte[]? Timestamp => _timestamp is null ? null : (byte[])_timestamp.Clone();
 }
