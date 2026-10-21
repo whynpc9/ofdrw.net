@@ -28,9 +28,9 @@ public sealed class VectorTests
         Assert.Contains("DeltaX", text.SourceXml); Assert.DoesNotContain(page.Elements, element => element is OfdImageElement);
     }
     [Theory]
-    [InlineData("q 0 0 50 50 re W n Q", "W")]
+    [InlineData("q 0 0 m W n Q", "CLIP_PROFILE")]
     [InlineData("/GS1 gs", "gs")]
-    [InlineData("q 420 0 0 595 0 0 cm /Im1 Do Q", "Do")]
+    [InlineData("q 420 0 0 595 0 0 cm /Im1 Do Q", "IMAGE_ONLY")]
     [InlineData("23 42 XYZUnsupported", "XYZUnsupported")]
     [InlineData("BT 7 Tr ET", "Tr")]
     [InlineData("q 10 10 m 1 0 0 1 20 0 cm 20 20 l S Q", "PATH_STATE_CHANGE")]
@@ -59,11 +59,102 @@ public sealed class VectorTests
     public async Task GlyphMismatchAndNonRepresentablePageFailBeforeOutput()
     {
         using var fixture = new PdfFixture(Font()); var text = fixture.Text("AB", 20, 85);
-        foreach (var pdf in new[] { fixture.Create(new[] { text }, wrongUnicode: true), fixture.Create(new[] { text }, pageEntries: "/Rotate 90"), fixture.Create(new[] { text }, pageEntries: "/Annots []"), fixture.Create(new[] { "" }) })
+        foreach (var pdf in new[] { fixture.Create(new[] { text }, wrongUnicode: true), fixture.Create(new[] { text }, pageEntries: "/Rotate 45"), fixture.Create(new[] { text }, pageEntries: "/Annots []"), fixture.Create(new[] { "" }) })
         {
             using var input = new MemoryStream(pdf); using var output = new MemoryStream();
             await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter().ConvertAsync(input, output)); Assert.Equal(0, output.Length);
         }
+    }
+    [Theory]
+    [InlineData("/Rotate 90", "0 0 420 595", 595, 420)]
+    [InlineData("/Rotate 180", "0 0 420 595", 420, 595)]
+    [InlineData("/Rotate 270", "0 0 420 595", 595, 420)]
+    [InlineData("/Rotate -90", "0 0 420 595", 595, 420)]
+    [InlineData("/CropBox [10 20 300 400]", "0 0 420 595", 290, 380)]
+    [InlineData("/CropBox [10 20 300 400] /Rotate 90", "0 0 420 595", 380, 290)]
+    [InlineData("/CropBox [110 220 400 600] /Rotate 270", "100 200 520 795", 380, 290)]
+    public async Task SupportedDisplayedPageFrameRetainsNativePaintAndText(string entries, string media, double width, double height)
+    {
+        using var fixture = new PdfFixture(Font());
+        var content = "0 0 1 rg 140 270 40 25 re f " + fixture.Text("A  B中文", 160, 290);
+        using var input = new MemoryStream(fixture.Create(new[] { content }, pageEntries: entries, mediaBox: media));
+        using var output = new MemoryStream();
+        var result = await new PdfVectorToOfdConverter().ConvertWithResultAsync(input, output);
+        Assert.True(result.Pages.Single().IsNative);
+        output.Position = 0; var page = (await new OfdReader().ReadAsync(output)).Pages.Single();
+        Assert.Equal(Math.Round(width * 25.4 / 72, 3), page.WidthMillimeters, 3);
+        Assert.Equal(Math.Round(height * 25.4 / 72, 3), page.HeightMillimeters, 3);
+        var path = Assert.Single(page.Elements.OfType<OfdPathElement>());
+        Assert.InRange(path.XMillimeters, 0, page.WidthMillimeters);
+        Assert.InRange(path.YMillimeters, 0, page.HeightMillimeters);
+        Assert.Equal("A  B中文", page.Elements.OfType<OfdTextElement>().Single().Text);
+    }
+    [Theory]
+    [InlineData("/CropBox [0 0 430 595]", "CROP_BOX")]
+    [InlineData("/CropBox [20 20 20 100]", "CROP_BOX")]
+    [InlineData("/Rotate 45", "PAGE_ROTATION")]
+    public async Task InvalidDisplayedPageFrameRemainsWholePageFailure(string entries, string diagnostic)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(fixture.Create(new[] { fixture.Text("A", 20, 85) }, pageEntries: entries));
+        using var output = new MemoryStream(); output.Write(new byte[] { 4, 5, 6 }); output.Position = 0;
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter().ConvertAsync(input, output));
+        Assert.Contains(diagnostic, error.Message); Assert.Equal(new byte[] { 4, 5, 6 }, output.ToArray());
+    }
+    [Theory]
+    [InlineData("W", "NonZero")]
+    [InlineData("W*", "Even-Odd")]
+    public async Task BoundedPathClipIntersectsOnlyItsGraphicsState(string operation, string rule)
+    {
+        using var fixture = new PdfFixture(Font());
+        var content = "q 20 60 100 70 re " + operation + " n 0 0 1 rg 10 50 140 90 re f " +
+            fixture.Text("A  B中文", 30, 90) + " Q 1 0 0 rg 150 50 20 20 re f";
+        using var input = new MemoryStream(fixture.Create(new[] { content })); using var output = new MemoryStream();
+        var result = await new PdfVectorToOfdConverter().ConvertWithResultAsync(input, output);
+        Assert.True(result.Pages.Single().IsNative); output.Position = 0;
+        var page = (await new OfdReader().ReadAsync(output)).Pages.Single();
+        Assert.Collection(page.Elements,
+            path => { Assert.IsType<OfdPathElement>(path); Assert.Contains("Clips", path.ClippingXml); Assert.Contains(rule, path.ClippingXml); },
+            text => { Assert.IsType<OfdTextElement>(text); Assert.Contains("Clips", text.ClippingXml); },
+            path => { Assert.IsType<OfdPathElement>(path); Assert.Null(path.ClippingXml); });
+    }
+    [Theory]
+    [InlineData("1 J 1 j [6 3] 2 d", "Round", "Round", "6 3", "2")]
+    [InlineData("2 J 2 j [5 2 1] 1 d", "Square", "Bevel", "5 2 1", "1")]
+    [InlineData("0 J 0 j 4 M [] 0 d", "Butt", "Miter", null, null)]
+    public async Task BoundedStrokeStyleSurvivesWriteAndRead(string state, string cap, string join, string? dash, string? phase)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(fixture.Create(new[] { state + " 3 w 30 70 m 160 100 l S" }));
+        using var output = new MemoryStream();
+        var result = await new PdfVectorToOfdConverter().ConvertWithResultAsync(input, output);
+        Assert.True(result.Pages.Single().IsNative); output.Position = 0;
+        var path = (await new OfdReader().ReadAsync(output)).Pages.Single().Elements.OfType<OfdPathElement>().Single();
+        Assert.Contains("Cap=\"" + cap + "\"", path.SourceXml);
+        Assert.Contains("Join=\"" + join + "\"", path.SourceXml);
+        if (dash is null) Assert.DoesNotContain("DashPattern", path.SourceXml);
+        else
+        {
+            var xml = System.Xml.Linq.XElement.Parse(path.SourceXml!);
+            var actual = xml.Attribute("DashPattern")!.Value.Split(' ').Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            var expected = dash.Split(' ').Select(value => double.Parse(value, System.Globalization.CultureInfo.InvariantCulture) * 25.4 / 72).ToArray();
+            Assert.Equal(expected.Length, actual.Length);
+            for (var i = 0; i < actual.Length; i++) Assert.Equal(expected[i], actual[i], 6);
+            Assert.Equal(double.Parse(phase!, System.Globalization.CultureInfo.InvariantCulture) * 25.4 / 72,
+                double.Parse(xml.Attribute("DashOffset")!.Value, System.Globalization.CultureInfo.InvariantCulture), 6);
+        }
+    }
+    [Theory]
+    [InlineData("[0 3] 0 d", "STROKE_PROFILE")]
+    [InlineData("1 J 5 M", "STROKE_PROFILE")]
+    [InlineData("11 M", "STROKE_PROFILE")]
+    public async Task UnrepresentableStrokeStyleStillFailsWholePage(string state, string diagnostic)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(fixture.Create(new[] { "0 0 1 rg 10 10 20 20 re f " + state + " 3 w 30 70 m 160 100 l S" }));
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter().ConvertAsync(input, output));
+        Assert.Contains(diagnostic, error.Message); Assert.Empty(output.ToArray());
     }
     [Theory]
     [InlineData("regular", false, false)]

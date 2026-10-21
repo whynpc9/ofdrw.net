@@ -46,3 +46,7 @@ R13 XML admission is checked on the completed original BMP run after existing ch
 R15 写出证书保留旧 float 门及其诊断优先级，并按原解析值到实际 WriterValue(double)×Emit mm double CTM 的总误差检查局部笔宽/字号，不将两个分步误差分别放行。Path 使用原 miter5×最大行绝对误差≤U/10000，矩阵相对界不放宽。Text 第二游程 tracker 使用真实 P×Translation(0,-q) 与 run.Y=q，保留 glyph/em 四角、相对 sized-map、连续基线和 exact/sequential 双 prefix；新失败 latch 到 FlushText 既有预算/取消/空白/WriterPositive/XML门后。U 为 Emit 使用的实际 binary64 25.4/72；不把写出 scalar 返 cast float，不改变 Core WriterPositive 或04/19合同。
 
 物理页尺寸检查选择窄不可回退分类：成功 processor.Process、NO_NATIVE_CONTENT及已消耗硬门之后，Append前对同 computed mm 调用 WriterPositive，失败抛私有 NotSupportedException 子类 PAGE_WRITER_PRECISION。Raster catch 仅排除此类型。两策略均原子拒绝无法由既有Writer表示的页面；不改尺寸、缩放或Writer，也不将更早blank/unknown/font-profile/rawimage分支改贴相同诊断。
+
+## R06 有界扩展
+
+R06 在上述首版边界上增加裁切显示页框、直角旋转、`W/W*` 路径裁切、cap/join/dash 描边、混合页 raw opaque RGB Image XObject 和未过滤 CIDToGIDMap stream。具体准入、仍拒绝的 Form/复杂图像/字体编码与预算见 [教程](tutorials/18-pdf-vector-mode.md#r06-扩展-profile)。每个新特性须以独立正反样本、实际 OFD 对象、OFD→PDF/SVG 输出及本次逐页视觉结果验收；早期段落的“首版”描述仅说明原始基线。原生页可以包含 ImageObject，但不包含整页回退图像；任何后续拒绝仍丢弃该页全部暂存对象。

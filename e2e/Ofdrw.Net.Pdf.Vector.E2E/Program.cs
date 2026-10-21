@@ -51,7 +51,7 @@ foreach (var mode in new[] { "dual", "vector" })
     if (mode == "dual" && package.Pages.Any(page => page.Elements.OfType<OfdImageElement>().Count() != 1 || page.Elements.OfType<OfdPathElement>().Any() || page.Elements.OfType<OfdTextElement>().Any(element => element.FillColor.Alpha != 0))) throw new Exception("Default dual-layer changed.");
     reports.Add(new { mode, pages = package.Pages.Select(page => new { page.Index, page.WidthMillimeters, page.HeightMillimeters, paths = page.Elements.OfType<OfdPathElement>().Count(), texts = page.Elements.OfType<OfdTextElement>().Count(), images = page.Elements.OfType<OfdImageElement>().Count() }), result, text, fontBytes = package.Fonts.Sum(resource => resource.Data?.Length ?? 0) });
 }
-var unsupportedBodies = new[] { "q 20 20 160 160 re W n " + p1 + " Q", "/GS1 gs " + p1, "q 420 0 0 595 0 0 cm /Im1 Do Q", "", fixture.Text("Pure text / 中文", 34, 520, 15) };
+var unsupportedBodies = new[] { "q 20 20 m W n " + p1 + " Q", "/GS1 gs " + p1, "q 420 0 0 595 0 0 cm /Im1 Do Q", "", fixture.Text("Pure text / 中文", 34, 520, 15) };
 var mixed = fixture.Create(unsupportedBodies); File.WriteAllBytes(Path.Combine(output, "fallback-source.pdf"), mixed);
 using (var input = new MemoryStream(mixed))
 using (var ofd = new MemoryStream())
@@ -72,6 +72,7 @@ await FontUsageProbe.Run(output, font);
 await XmlCharacterProbe.Run(output);
 await BudgetOrderingProbe.Run(output, font);
 await WriterAccuracyProbe.Run(output, font);
+await R06ProfileProbe.Run(output, font);
 Console.WriteLine("Actual native/dual same-PDF and explicit fallback fixtures passed; Preview remains separate.");
 async Task Export(string name, MemoryStream ofd)
 {

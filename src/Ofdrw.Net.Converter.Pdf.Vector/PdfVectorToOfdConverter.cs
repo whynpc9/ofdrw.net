@@ -64,8 +64,12 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                     if (!PlainCatalog(document)) throw new NotSupportedException("PDFV_UNSUPPORTED: catalog color/optional-content/rendering extensions.");
                     document.AddPageFactory<VectorPageContext, VectorContextFactory>();
                     var context = document.GetPage<VectorPageContext>(index + 1);
-                    var staged = context.Convert(limits, cancellationToken);
+                    var staged = context.Convert(limits, cancellationToken, limits.Compatibility.MaxTotalImageBytes - imageBytes);
                     page = staged.Pages.Single();
+                    var nativeImages = page.Elements.OfType<OfdImageElement>().Sum(image => (long)image.Data.Length);
+                    if (nativeImages > limits.Compatibility.MaxTotalImageBytes - imageBytes)
+                        throw new InvalidDataException("PDF accumulated native image byte limit exceeded.");
+                    imageBytes += nativeImages;
                     var bytes = staged.Fonts.Sum(font => (long)font.Data!.Length);
                     if (bytes > limits.MaxTotalFontBytes - fontBytes) throw new InvalidDataException("PDF accumulated font byte limit exceeded.");
                     fontBytes += bytes;
@@ -124,7 +128,7 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                 foreach (var element in page.Elements)
                 {
                     element.ObjectId = null; element.LayerId = null;
-                    if (element is OfdImageElement freshImage) freshImage.ResourceId = null;
+                    if (element is OfdImageElement freshImage) freshImage.ResourceId = string.Empty;
                     switch (element)
                     {
                         case OfdPathElement pathElement: pathElement.SourceXml = WithoutRootId(pathElement.SourceXml); break;
