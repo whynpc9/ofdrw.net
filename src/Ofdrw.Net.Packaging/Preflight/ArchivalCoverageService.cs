@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Packaging.Archive;
 
 namespace Ofdrw.Net.Packaging.Preflight;
@@ -14,14 +15,23 @@ public sealed class ArchivalCoverageRuleDefinition
 {
     internal ArchivalCoverageRuleDefinition(string id, string clause, string condition)
     { RuleId = id; Clause = clause; Condition = condition; }
+    /// <summary>Stable identifier of this narrow check.</summary>
     public string RuleId { get; }
+    /// <summary>Implementation revision of this check.</summary>
     public int RuleVersion => 1;
+    /// <summary>Identifier of the mapped standard.</summary>
     public string StandardId => "GB/T 42133-2022";
+    /// <summary>Edition year of the mapped standard.</summary>
     public string StandardVersion => "2022";
+    /// <summary>Clause containing the checked condition.</summary>
     public string Clause { get; }
+    /// <summary>Bounded condition evaluated by this check.</summary>
     public string Condition { get; }
+    /// <summary>Mapping status for this subset, not full-standard conformity.</summary>
     public string StandardStatus => "VerifiedSubset";
+    /// <summary>Public location of the inspected standard PDF.</summary>
     public string Source => "https://tsgdag.jhun.edu.cn/_upload/article/files/93/cc/4d8bf26643f49ee8a76ee25d4ef6/82cca584-f57d-47db-9363-a1497f03326a.pdf";
+    /// <summary>SHA-256 of the inspected standard PDF.</summary>
     public string SourceSha256 => "7d76c086e1384ff200c0df8f5a40bf67660e841340c5e2630e582c81c22f1b82";
 }
 
@@ -34,6 +44,7 @@ public static class ArchivalCoverageRuleCatalog
         new ArchivalCoverageRuleDefinition("AC-002", "6.2.1(c)", "Recognized OFD root contains exactly one DocBody"),
         new ArchivalCoverageRuleDefinition("AC-003", "6.2.2(c)", "Document actions are intra-document Goto only")
     });
+    /// <summary>Immutable ordered list of supported coverage checks.</summary>
     public static IReadOnlyList<ArchivalCoverageRuleDefinition> Rules => RulesValue;
 }
 
@@ -48,10 +59,15 @@ public sealed class ArchivalCoverageRuleResult
         Evidence = new PreflightEvidence(entry, selector, observed, rule.Condition)
         { ResultId = ResultId, EvidenceId = ResultId + "-E1" };
     }
+    /// <summary>Identity of this observation within the report.</summary>
     public string ResultId { get; }
+    /// <summary>Check identity, standard clause and source.</summary>
     public ArchivalCoverageRuleDefinition Rule { get; }
+    /// <summary>Four-state result for the checked condition alone.</summary>
     public PreflightOutcome Outcome { get; }
+    /// <summary>Stable explanation of the result or uncertainty.</summary>
     public string ReasonCode { get; }
+    /// <summary>Package entry and selector with redacted observed metadata.</summary>
     public PreflightEvidence Evidence { get; }
 }
 
@@ -62,10 +78,13 @@ public sealed class ArchivalCoverageReport
     { FoundationalRules = r17; RuleResults = results; }
     /// <summary>R17's unchanged two-clause report, including the six local preflight rules.</summary>
     public ArchivalRuleReport FoundationalRules { get; }
+    /// <summary>One result per R20 coverage check.</summary>
     public IReadOnlyList<ArchivalCoverageRuleResult> RuleResults { get; }
     /// <summary>The rest of GB/T 42133-2022 is inventoried separately, not validated by this API.</summary>
     public string CoverageStatus => "Incomplete";
+    /// <summary>Archival certification has not been assessed.</summary>
     public string Certification => "NotAssessed";
+    /// <summary>Mapped clause subset and explicit remainder boundary.</summary>
     public string Scope => "GB/T 42133-2022 6.2.1(a),(c), 6.2.2(c) plus R17 6.2.2(a)-(b); remaining clauses are unassessed by this API.";
     /// <summary>A known failure is reported; otherwise complete-standard status stays Unknown.</summary>
     public PreflightOutcome StandardOutcome => RuleResults.Any(x => x.Outcome == PreflightOutcome.Fail) ||
@@ -76,6 +95,11 @@ public sealed class ArchivalCoverageReport
 /// <summary>Read-only checks for three additional conditions, preserving R17 default behavior.</summary>
 public sealed class ArchivalCoverageService
 {
+    /// <summary>Checks a borrowed, seekable OFD package at position zero and restores its position.</summary>
+    /// <param name="input">Stable package stream, left open.</param>
+    /// <param name="options">Local policy and resource budgets, snapshotted before inspection.</param>
+    /// <param name="cancellationToken">Cancellation propagates to the package loader.</param>
+    /// <returns>R17 observations and three additional checks; never a full-standard Pass.</returns>
     public async Task<ArchivalCoverageReport> CheckAsync(Stream input, ArchivalPreflightOptions options,
         CancellationToken cancellationToken = default)
     {
@@ -97,7 +121,7 @@ public sealed class ArchivalCoverageService
                 return Unknown(foundational, "RootScopeUnavailable");
             return new ArchivalCoverageReport(foundational, Array.AsReadOnly(new[]
             {
-                DocType(root), DocumentCount(root), DocumentActions(archive, foundational, snapshot)
+                DocType(root), DocumentCount(root), DocumentActions(archive, root, snapshot)
             }));
         }
         finally { input.Position = 0; }
@@ -134,13 +158,32 @@ public sealed class ArchivalCoverageService
     }
 
     private static ArchivalCoverageRuleResult DocumentActions(OfdPackageArchive archive,
-        ArchivalRuleReport foundational, ArchivalPreflightOptions options)
+        XElement root, ArchivalPreflightOptions options)
     {
         var rule = ArchivalCoverageRuleCatalog.Rules[2];
-        var entry = foundational.DocumentEntry;
-        if (entry == null)
+        var rootNs = root.Name.Namespace;
+        var bodies = root.Elements(rootNs + "DocBody").ToArray();
+        if (bodies.Length != 1 || root.Elements().Any(x => x.Name.LocalName == "DocBody" && x.Name.Namespace != rootNs))
             return Result(rule, PreflightOutcome.Unknown, "DocumentScopeUnavailable", "<document>",
                 "Document root unresolved", "<input>");
+        var roots = bodies[0].Elements(rootNs + "DocRoot").ToArray();
+        if (roots.Length != 1 || roots[0].HasElements || roots[0].Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+            bodies[0].Elements().Any(x => x.Name.LocalName == "DocRoot" && x.Name.Namespace != rootNs))
+            return Result(rule, PreflightOutcome.Unknown, "DocumentScopeUnavailable", "<document>",
+                "Document root unresolved", "<input>");
+        var documentPath = roots[0].Value.Trim();
+        if (string.IsNullOrWhiteSpace(documentPath) || documentPath.Contains(":") || documentPath.Contains("?") ||
+            documentPath.Contains("#") || documentPath.Contains("%") || documentPath.Contains("\\") ||
+            documentPath.StartsWith("//", StringComparison.Ordinal))
+            return Result(rule, PreflightOutcome.Unknown, "DocumentScopeUnavailable", "<document>",
+                "Document root unresolved", "<input>");
+        string entry;
+        try { entry = OfdPackagePath.Resolve("OFD.xml", documentPath); }
+        catch (InvalidDataException)
+        {
+            return Result(rule, PreflightOutcome.Unknown, "DocumentScopeUnavailable", "<document>",
+                "Document root unresolved", "<input>");
+        }
         var document = ArchivalRuleService.Read(archive, entry, options)?.Root;
         if (document == null || document.Name.LocalName != "Document" || !Supported(document.Name.NamespaceName))
             return Result(rule, PreflightOutcome.Unknown, "DocumentScopeUnavailable", "<document>",

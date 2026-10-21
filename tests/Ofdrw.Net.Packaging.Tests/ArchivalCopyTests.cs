@@ -67,7 +67,7 @@ public class ArchivalCopyTests
     [InlineData("<Actions><Action><URI URI='https://example.org'/></Action></Actions>",
         PreflightOutcome.Fail, "NonGotoDocumentAction")]
     [InlineData("<Actions><Action><FutureAction xmlns='urn:foreign'/></Action></Actions>",
-        PreflightOutcome.Unknown, "DocumentScopeUnavailable")]
+        PreflightOutcome.Unknown, "UnsupportedDocumentAction")]
     public async Task CoverageClassifiesDocumentActionTypeWithoutRewritingIt(string extra,
         PreflightOutcome expected, string reason)
     {
@@ -79,12 +79,27 @@ public class ArchivalCopyTests
         Assert.Equal(expected, report.RuleResults[2].Outcome);
         Assert.Equal(reason, report.RuleResults[2].ReasonCode);
         Assert.Equal("6.2.2(c)", report.RuleResults[2].Rule.Clause);
-        Assert.Equal(expected == PreflightOutcome.Unknown ? "<input>" : "Doc_0/Document.xml",
-            report.RuleResults[2].Evidence.Entry);
+        Assert.Equal("Doc_0/Document.xml", report.RuleResults[2].Evidence.Entry);
         Assert.Equal(expected == PreflightOutcome.Fail ? PreflightOutcome.Fail : PreflightOutcome.Unknown,
             report.StandardOutcome);
         Assert.Equal(before, Hash(input.ToArray()));
         Assert.Equal(0, input.Position);
+    }
+
+    [Fact]
+    public async Task CoverageFindsKnownDocumentActionWhenLocalPagePolicyFails()
+    {
+        var entries = Seed();
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        entries["Doc_0/Document.xml"] = Utf8($"<Document xmlns='{Ns}'><Actions><Action><URI URI='https://example.org'/></Action></Actions></Document>");
+        using var input = new MemoryStream(Zip(entries), false);
+        var report = await new ArchivalCoverageService().CheckAsync(input, new());
+        Assert.Equal(PreflightOutcome.Fail, report.FoundationalRules.LocalPreflight.GetRuleOutcome("APF-001"));
+        Assert.All(report.FoundationalRules.RuleResults, x => Assert.Equal(PreflightOutcome.Unknown, x.Outcome));
+        Assert.Equal(PreflightOutcome.Fail, report.RuleResults[2].Outcome);
+        Assert.Equal("NonGotoDocumentAction", report.RuleResults[2].ReasonCode);
+        Assert.Equal("Doc_0/Document.xml", report.RuleResults[2].Evidence.Entry);
+        Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
     }
 
     [Fact]
