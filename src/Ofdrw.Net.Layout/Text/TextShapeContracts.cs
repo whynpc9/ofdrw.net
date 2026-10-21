@@ -204,14 +204,28 @@ public sealed class TextShapedRun
         if (Glyphs.Count > request.Text.Length * 4L + 16)
             throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Shaped glyph count exceeds the expansion budget.");
         long x = 0, y = 0;
+        var intervals = new List<(int Start, int End)>(Glyphs.Count);
         foreach (var glyph in Glyphs)
         {
             if (glyph is null || glyph.GlyphId == 0 || glyph.ClusterStart < request.SourceStart ||
                 glyph.ClusterLength <= 0 || (long)glyph.ClusterStart + glyph.ClusterLength >
                 (long)request.SourceStart + request.Text.Length)
                 throw new TextLayoutException(TextLayoutError.InvalidRequest, "Shaper returned an invalid glyph or source interval.");
+            intervals.Add((glyph.ClusterStart, glyph.ClusterStart + glyph.ClusterLength));
             x += glyph.XAdvance; y += glyph.YAdvance;
         }
+        intervals.Sort((left, right) => left.Start.CompareTo(right.Start));
+        var coveredTo = request.SourceStart;
+        foreach (var interval in intervals)
+        {
+            if (interval.Start > coveredTo)
+                throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                    "Shaper omitted a source interval from the completed run.");
+            coveredTo = Math.Max(coveredTo, interval.End);
+        }
+        if (coveredTo != request.SourceStart + request.Text.Length)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                "Shaper omitted the end of the source run.");
         if (Math.Abs(x) > int.MaxValue || Math.Abs(y) > int.MaxValue)
             throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Shaped advance exceeds the coordinate budget.");
         XAdvance = (int)x; YAdvance = (int)y;

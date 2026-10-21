@@ -48,8 +48,10 @@ regular ASCII Latin where each source character maps to one nominal glyph with
 no offset or vertical advance. It preflights the whole page, uses the measured
 Delta and baseline, and embeds the exact selected full face. A ligature,
 combining sequence, unsupported style or overflowing page is rejected before
-creating a package. Arbitrary GID/cluster output, glyph-aware subsetting,
-mixed-direction paragraphs and PDF/SVG semantic consumption remain the separate
+creating a package; page preflight checks both final advance and translated ink
+extents, including negative side bearings. Arbitrary GID/cluster output,
+glyph-aware subsetting, mixed-direction paragraphs and PDF/SVG semantic
+consumption remain the separate
 R22 stages; a successful R21 query does not imply those output profiles work.
 
 The API enforces 32 MiB per font, 4096 UTF-16 units per run/request, 256 lines,

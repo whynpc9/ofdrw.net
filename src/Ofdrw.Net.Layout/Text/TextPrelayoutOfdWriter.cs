@@ -19,9 +19,19 @@ public static class TextPrelayoutOfdWriter
             pageWidthMillimeters > 1_000_000 || pageHeightMillimeters > 1_000_000 ||
             leftMillimeters < 0 || topMillimeters < 0)
             throw new TextLayoutException(TextLayoutError.InvalidRequest, "Invalid destination page geometry.");
-        if (result.Overflows || leftMillimeters + result.Request.WidthMillimeters > pageWidthMillimeters ||
+        if (result.Overflows || leftMillimeters + result.WidthMillimeters > pageWidthMillimeters ||
             topMillimeters + result.HeightMillimeters > pageHeightMillimeters)
             throw new TextLayoutException(TextLayoutError.UnsupportedOutput, "Prelayout result exceeds its destination page.");
+        foreach (var line in result.Lines)
+        {
+            var ink = line.InkBoundsMillimeters;
+            if (ink is null) continue;
+            if (leftMillimeters + ink.X < -1e-8 || topMillimeters + ink.Y < -1e-8 ||
+                leftMillimeters + ink.X + ink.Width > pageWidthMillimeters + 1e-8 ||
+                topMillimeters + ink.Y + ink.Height > pageHeightMillimeters + 1e-8)
+                throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
+                    "Measured glyph ink would extend outside the destination page.");
+        }
         if (result.Request.Script != "Latn" || result.Face.Bold || result.Face.Italic)
             throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
                 "The first OFD output profile is regular, horizontal Latin ASCII only.");

@@ -74,6 +74,22 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public void ReplacementShaperCannotOmitInteriorOrTrailingSource()
+    {
+        var request = new TextShapeRequest("ABC", 7, Noto());
+        TextShapedGlyph Glyph(int start, int length) => new(1, start, length, 500, 0, 0, 0, null, false);
+        foreach (var glyphs in new[]
+        {
+            new[] { Glyph(7, 1), Glyph(9, 1) },
+            new[] { Glyph(7, 2) },
+        })
+            Assert.Equal(TextLayoutError.InvalidRequest,
+                Assert.Throws<TextLayoutException>(() => new TextShapedRun(request, glyphs, "replacement")).Error);
+        var shared = new TextShapedRun(request, new[] { Glyph(7, 3), Glyph(7, 3) }, "replacement");
+        Assert.Equal(2, shared.Glyphs.Count);
+    }
+
+    [Fact]
     public void FinalLinesExposeHeightBaselineSourceAndAdvanceSeparatelyFromInk()
     {
         var face = Noto();
@@ -187,6 +203,22 @@ public sealed class TextPrelayoutTests
         var ligature = HarfBuzzTextPrelayout.Create().Layout(new TextPrelayoutRequest("ffi", new[] { face }, 4, 50));
         Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
             TextPrelayoutOfdWriter.CreateSinglePage(ligature, 100, 100, 10, 15)).Error);
+    }
+
+    [Fact]
+    public void WriterChecksActualAdvanceAndInkAtPageEdges()
+    {
+        var face = Noto();
+        var engine = HarfBuzzTextPrelayout.Create();
+        var shortLine = engine.Layout(new TextPrelayoutRequest("AV", new[] { face }, 4, 100));
+        Assert.True(shortLine.WidthMillimeters < 50);
+        Assert.Single(TextPrelayoutOfdWriter.CreateSinglePage(shortLine, 50, 50, 1, 10).Pages);
+
+        var overhanging = engine.Layout(new TextPrelayoutRequest("J", new[] { face }, 4, 100));
+        Assert.True(overhanging.Lines[0].InkBoundsMillimeters!.X < 0);
+        Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
+            TextPrelayoutOfdWriter.CreateSinglePage(overhanging, 50, 50, 0, 10)).Error);
+        Assert.Single(TextPrelayoutOfdWriter.CreateSinglePage(overhanging, 50, 50, 1, 10).Pages);
     }
 
     private static TextFontFace Noto() => new("Noto Sans", File.ReadAllBytes(Font("NotoSans-Regular.ttf")));
