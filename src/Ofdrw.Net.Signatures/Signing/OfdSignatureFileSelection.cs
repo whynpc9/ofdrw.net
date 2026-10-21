@@ -32,11 +32,11 @@ internal static class OfdSignatureFileSelection
             if (include && options.ProtectFile is not null)
             {
                 include = options.ProtectFile("/" + path);
-                if (!include && required!.Contains(path))
-                    throw new InvalidDataException("Signature selection omits required document entry: /" + path);
                 if (!include && isList)
                     throw new InvalidDataException("ProtectSignatureList requires /" + path);
             }
+            if (!include && required is not null && required.Contains(path))
+                throw new InvalidDataException("Signature selection omits required document entry: /" + path);
             (include ? selected : omitted).Add(path);
         }
         if (selected.Count == 0)
@@ -64,16 +64,19 @@ internal static class OfdSignatureFileSelection
             .Select(path => path.Substring(0, path.LastIndexOf('/') + 1)).ToArray();
         var mutableAnnotations = FindMutableAnnotations(entries, documentPaths);
         var mutableSignatureFiles = FindDeclaredSignatureFiles(entries, signaturesPath, newSignaturePath);
-        var mutable = new HashSet<string>(mutableAnnotations, StringComparer.OrdinalIgnoreCase);
-        mutable.UnionWith(mutableSignatureFiles);
+        mutableSignatureFiles.Add(signaturesPath);
+        var signatureDirectory = signaturesPath.Substring(0, signaturesPath.LastIndexOf('/') + 1);
         foreach (var entry in entries)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var path = entry.Key;
-            if (IsXmlCandidate(path, entry.Value) && !mutable.Contains(path))
-                required.Add(path);
-            if (!mutable.Contains(path) && directories.Any(dir =>
-                    path.StartsWith(dir, StringComparison.OrdinalIgnoreCase)))
+            var signatureOwned = mutableSignatureFiles.Contains(path) &&
+                (string.Equals(path, signaturesPath, StringComparison.OrdinalIgnoreCase) ||
+                 signatureDirectory.Length > 0 &&
+                 path.StartsWith(signatureDirectory, StringComparison.OrdinalIgnoreCase));
+            if (!mutableAnnotations.Contains(path) && !signatureOwned &&
+                (IsXmlCandidate(path, entry.Value) || directories.Any(dir =>
+                    path.StartsWith(dir, StringComparison.OrdinalIgnoreCase))))
                 required.Add(path);
         }
 
@@ -128,19 +131,28 @@ internal static class OfdSignatureFileSelection
                     if (xmlPaths.Add(location)) pending.Enqueue(location);
                 }
             }
-            foreach (var candidate in document.Root!.DescendantsAndSelf()
-                         .SelectMany(node => node.Attributes().Where(a => !a.IsNamespaceDeclaration)
-                             .Select(a => a.Value).Concat(
-                                 node.HasElements ? Array.Empty<string>() : new[] { node.Value })))
+            foreach (var node in document.Root!.DescendantsAndSelf())
             {
-                var value = candidate.Trim();
-                if (value.Length == 0) continue;
-                var resolved = Resolve(path, value);
-                if (entries.ContainsKey(resolved) && !mutable.Contains(resolved))
-                    required.Add(resolved);
-                var fromRoot = Normalize(value);
-                if (entries.ContainsKey(fromRoot) && !mutable.Contains(fromRoot))
-                    required.Add(fromRoot);
+                // Only these declared ownership links may leave annotation or
+                // signature entries mutable. Any other document reference wins.
+                var annotationDeclaration = documentPaths.Contains(path, StringComparer.OrdinalIgnoreCase) &&
+                    node.Parent == document.Root && node.Name.LocalName == "Annotations";
+                var annotationRecord = mutableAnnotations.Contains(path) &&
+                    document.Root.Name.LocalName == "Annotations" && node.Name.LocalName == "FileLoc";
+                var signatureDeclaration = string.Equals(path, "OFD.xml", StringComparison.OrdinalIgnoreCase) &&
+                    node.Name.LocalName == "Signatures";
+                if (annotationDeclaration || annotationRecord || signatureDeclaration) continue;
+                foreach (var candidate in node.Attributes().Where(a => !a.IsNamespaceDeclaration)
+                             .Select(a => a.Value).Concat(
+                                 node.HasElements ? Array.Empty<string>() : new[] { node.Value }))
+                {
+                    var value = candidate.Trim();
+                    if (value.Length == 0) continue;
+                    var resolved = Resolve(path, value);
+                    if (entries.ContainsKey(resolved)) required.Add(resolved);
+                    var fromRoot = Normalize(value);
+                    if (entries.ContainsKey(fromRoot)) required.Add(fromRoot);
+                }
             }
             foreach (var page in document.Root.DescendantsAndSelf().Where(node =>
                          node.Name.LocalName == "Page" || node.Name.LocalName == "TemplatePage"))
@@ -155,6 +167,9 @@ internal static class OfdSignatureFileSelection
             }
             AddComposedResourceFiles(path, document, entries, required);
         }
+        var signatureAlias = required.FirstOrDefault(mutableSignatureFiles.Contains);
+        if (signatureAlias is not null)
+            throw new InvalidDataException("Signature entry aliases required document content: /" + signatureAlias);
         return required;
     }
 

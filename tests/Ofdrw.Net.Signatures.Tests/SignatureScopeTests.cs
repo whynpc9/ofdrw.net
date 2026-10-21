@@ -273,6 +273,67 @@ public sealed class SignatureScopeTests
             malformed, rejected, malformedProvider, new OfdSignatureOptions { ProtectFile = _ => true }));
         Assert.Equal(0, malformedProvider.Calls);
         Assert.Equal(0, rejected.Length);
+
+        referenced.Position = 0;
+        using var first = new MemoryStream();
+        await new OfdSignatureService().SignAsync(referenced, first, new Provider());
+        using var aliased = await AliasFirstSignedValue(first, "Shared/attachment.bin");
+        using var aliasOutput = new MemoryStream();
+        var aliasProvider = new Provider();
+        var aliasError = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(aliased, aliasOutput, aliasProvider,
+                new OfdSignatureOptions { ProtectFile = path => path != "/Shared/attachment.bin" }));
+        Assert.Contains("/Shared/attachment.bin", aliasError.Message);
+        Assert.Equal(0, aliasProvider.Calls);
+        Assert.Equal(0, aliasOutput.Length);
+    }
+
+    [Theory]
+    [InlineData("Doc_0/Pages/Page_0/Content.xml")]
+    [InlineData("Doc_0/Res/opaque.bin")]
+    [InlineData("Shared/Res/logo.png")]
+    [InlineData("Shared/Res/typeface.ttf")]
+    public async Task SignedValueAliasCannotDemotePageOrResource(string dependency)
+    {
+        using var source = await CreatePackage(resourceXmlPath: "Shared/PublicRes.dat",
+            resourceBaseLoc: "Res", resourcePayloadDirectory: "Shared/Res");
+        using var first = new MemoryStream();
+        await new OfdSignatureService().SignAsync(source, first, new Provider());
+        using var aliased = await AliasFirstSignedValue(first, dependency);
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(aliased, output, provider,
+                new OfdSignatureOptions { ProtectFile = path => path != "/" + dependency }));
+        Assert.Contains("/" + dependency, error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData("Doc_0/Signs/Signatures.xml")]
+    [InlineData("Doc_0/Signs/Sign_0/Signature.xml")]
+    [InlineData("Doc_0/Signs/Sign_0/SignedValue.dat")]
+    public async Task DocumentReferenceCannotAliasSignatureEntry(string signatureEntry)
+    {
+        using var source = await CreatePackage();
+        using var first = new MemoryStream();
+        await new OfdSignatureService().SignAsync(source, first, new Provider());
+        using var referenced = await Rewrite(first, "Doc_0/Document.xml", bytes =>
+        {
+            var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            document.Root!.Add(new XElement(document.Root.Name.Namespace + "VendorResource",
+                "/" + signatureEntry));
+            return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        });
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(referenced, output, provider,
+                new OfdSignatureOptions { ProtectFile = _ => true }));
+        Assert.Contains("/" + signatureEntry, error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
     }
 
     [Theory]
@@ -564,6 +625,15 @@ public sealed class SignatureScopeTests
             return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
         });
     }
+
+    private static Task<MemoryStream> AliasFirstSignedValue(MemoryStream source, string target) =>
+        Rewrite(source, "Doc_0/Signs/Sign_0/Signature.xml", bytes =>
+        {
+            var signature = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            signature.Descendants().First(element => element.Name.LocalName == "SignedValue")
+                .Value = "/" + target;
+            return Encoding.UTF8.GetBytes(signature.ToString(SaveOptions.DisableFormatting));
+        });
 
     private static async Task<MemoryStream> Rewrite(MemoryStream source, string path, Func<byte[], byte[]> change)
     {
