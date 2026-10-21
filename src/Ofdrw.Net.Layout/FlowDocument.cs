@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Layout.Editing;
 using Ofdrw.Net.Layout.Internal.Flow;
 
 namespace Ofdrw.Net.Layout;
@@ -14,10 +15,10 @@ public sealed class FlowDocument
     /// <summary>Page, margin, font and resource limits for this document.</summary>
     public FlowDocumentOptions Options { get; } = new();
 
-    /// <summary>Ordered Paragraph and Table blocks. Do not mutate the description during rendering.</summary>
+    /// <summary>Ordered Paragraph, Table and AreaHolderBlock blocks. Do not mutate the description during rendering.</summary>
     public IList<FlowBlock> Blocks { get; } = new List<FlowBlock>();
 
-    /// <summary>Measures and paginates the blocks into native OFD text objects.</summary>
+    /// <summary>Measures and paginates the blocks into native OFD content and named blank regions.</summary>
     public OfdDocumentPackage Render(CancellationToken cancellationToken = default) =>
         new FlowDocumentRenderer(Options, Blocks, cancellationToken).Render();
 }
@@ -26,6 +27,19 @@ public sealed class FlowDocument
 public abstract class FlowBlock
 {
     internal FlowBlock() { }
+}
+
+/// <summary>A named, full-content-width blank region reserved during flow pagination.</summary>
+public sealed class AreaHolderBlock : FlowBlock
+{
+    /// <summary>Creates an unfilled region with a fixed height in millimeters.</summary>
+    public AreaHolderBlock(string name, double heightMillimeters)
+    { Name = name; HeightMillimeters = heightMillimeters; }
+
+    /// <summary>Case-sensitive name used for later lookup after the OFD is reopened.</summary>
+    public string Name { get; }
+    /// <summary>Non-splittable reserved height in millimeters.</summary>
+    public double HeightMillimeters { get; }
 }
 
 /// <summary>A paragraph composed of independently styled spans.</summary>
@@ -125,6 +139,8 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
     private readonly CancellationToken _cancellationToken;
     private readonly Dictionary<string, OfdFontResource> _fonts = new(StringComparer.Ordinal);
     private readonly OfdDocumentPackage _package = new();
+    private readonly List<OfdNamedAreaIndex.Entry> _areas = new();
+    private readonly HashSet<string> _areaNames = new(StringComparer.Ordinal);
     private OfdPage? _page;
     private double _y;
     private bool _hasBodyContent;
@@ -165,6 +181,8 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
                 }
                 paragraphs = list;
             }
+            else if (block is AreaHolderBlock)
+                paragraphs = Array.Empty<Paragraph>();
             else throw new NotSupportedException("Unsupported flow block.");
             foreach (var paragraph in paragraphs)
             {
@@ -178,10 +196,36 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
                 }
             }
             if (block is Paragraph paragraphBlock) RenderParagraph(paragraphBlock, paragraphBlock.Spans.ToArray());
+            else if (block is AreaHolderBlock holder) RenderArea(holder);
             else RenderTable((Table)block);
         }
         if (_page is null) StartPage();
+        if (_areas.Count > 0)
+        {
+            for (var i = 0; i < _package.Pages.Count; i++)
+                _package.Pages[i].Id = (i + 1).ToString(CultureInfo.InvariantCulture);
+            OfdNamedAreaIndex.Save(_package, _areas);
+        }
         return _package;
+    }
+
+    private void RenderArea(AreaHolderBlock holder)
+    {
+        OfdNamedAreaIndex.ValidateName(holder.Name);
+        ValidatePositive(holder.HeightMillimeters, nameof(holder.HeightMillimeters));
+        if (!_areaNames.Add(holder.Name)) throw new ArgumentException("Duplicate named area.", nameof(holder));
+        if (_areas.Count >= OfdNamedAreaIndex.MaxAreas) throw new InvalidOperationException("Named area limit exceeded.");
+        if (_page is null) StartPage();
+        ApplyPendingPageBreaks();
+        ApplyPendingLineBreaks();
+        PlaceFirstLine(holder.HeightMillimeters, _pendingSpaceAfter);
+        _pendingSpaceAfter = 0;
+        _areas.Add(new OfdNamedAreaIndex.Entry(holder.Name, _page!, _y,
+            _options.MarginLeftMillimeters,
+            _options.PageWidthMillimeters - _options.MarginLeftMillimeters - _options.MarginRightMillimeters,
+            holder.HeightMillimeters));
+        _y += holder.HeightMillimeters;
+        _hasBodyContent = true;
     }
 
     private void RenderParagraph(Paragraph paragraph, IReadOnlyList<Span> spans)
