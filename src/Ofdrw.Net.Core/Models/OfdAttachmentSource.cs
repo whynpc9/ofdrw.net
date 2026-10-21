@@ -157,9 +157,12 @@ internal sealed class OfdAttachmentSource
             token.ThrowIfCancellationRequested(); material.Structure.Reference();
             // Removed slots retain a private tombstone identity; they cannot
             // become active merely because source XML still contains a node.
-            // The detached object's current ID still participates in GotoA
-            // closure checks when its physical payload is removed.
-            var attachment = mapping.TryGetValue(pair.Key, out var mapped) ? (OfdAttachment)mapped : new OfdAttachment { Id = pair.Key.Id };
+            // The detached object's current ID and ownership state still
+            // participate in cleanup checks when its payload is removed.
+            var attachment = mapping.TryGetValue(pair.Key, out var mapped) ? (OfdAttachment)mapped : new OfdAttachment
+            {
+                Id = pair.Key.Id, IsExternal = pair.Key.IsExternal
+            };
             attachment.SourceOwner = destination;
             var original = pair.Value;
             copy.originals.Add(attachment, new Original(original.Ordinal, original.FileLoc, original.PayloadPath, original.External,

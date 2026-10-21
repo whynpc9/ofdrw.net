@@ -55,7 +55,8 @@ internal static class OfdAttachmentPhysicalCleaner
         {
             token.ThrowIfCancellationRequested(); material.ChargeWork(128, token);
             if (!requests.Add(request.Ordinal) || !source.TryOriginal(request.Ordinal, out var attachment, out var original) ||
-                !ReferenceEquals(attachment.SourceOwner, package) || package.Attachments.Contains(attachment) || original.External ||
+                !ReferenceEquals(attachment.SourceOwner, package) || package.Attachments.Contains(attachment) ||
+                original.External || attachment.IsExternal != original.External ||
                 original.PayloadPath is null || !string.Equals(original.PayloadPath, request.PayloadPath, StringComparison.OrdinalIgnoreCase) ||
                 !package.PreservedEntries.TryGetValue(request.PayloadPath, out var originalBytes) ||
                 !entries.TryGetValue(request.PayloadPath, out var plannedBytes) || !ReferenceEquals(originalBytes, plannedBytes) ||

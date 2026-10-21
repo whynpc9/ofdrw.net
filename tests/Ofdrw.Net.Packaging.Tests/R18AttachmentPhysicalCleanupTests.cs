@@ -1055,6 +1055,32 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task DetachedAttachmentCannotChangeExternalOwnershipBeforePhysicalWrite()
+    {
+        var package = await Read(Seed());
+        var removed = Assert.Single(package.Attachments);
+        Assert.True(package.RemoveAttachment(removed, OfdAttachmentRemovalMode.Physical));
+        removed.IsExternal = true;
+        await RefusesWithoutOutput(package, "lost its reader-owned payload or detached slot");
+    }
+
+    [Fact]
+    public async Task ControlledCloneRetainsDetachedExternalOwnershipChange()
+    {
+        using var context = new OfdControlledEditContext(new());
+        var loaded = await new OfdReader().ReadControlledAsync(new MemoryStream(Seed()), new(), context);
+        var removed = Assert.Single(loaded.Attachments);
+        Assert.True(loaded.RemoveAttachment(removed, OfdAttachmentRemovalMode.Physical));
+        removed.IsExternal = true;
+        using var owned = OfdOwnedEditCandidate.CloneForControlledEdit(loaded, context.CaptureSource(loaded), context);
+        using var prepared = OfdPackageWriter.PrepareOwnedWrite(owned);
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() => prepared.WriteAsync(output));
+        Assert.Contains("lost its reader-owned payload or detached slot", error.Message);
+        Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
     public async Task SignedPackageReportsInvalidationAndPhysicalDeletion()
     {
         using var signed = new MemoryStream();
