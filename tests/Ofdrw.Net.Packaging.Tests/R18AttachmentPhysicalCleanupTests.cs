@@ -209,6 +209,18 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task FakeOfdCoverCannotAuthenticateOpaqueArchiveBytes()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Extras/Fake.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocInfo><Cover>manifest.bin</Cover></DocInfo></DocBody></OFD>");
+        entries["Doc_0/Extras/manifest.bin"] = [4, 5, 6];
+
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "opaque binary entry ownership");
+    }
+
+    [Fact]
     public async Task FakeResourceSlotCannotAuthenticateAnOpaqueBinary()
     {
         var entries = Entries(Seed());

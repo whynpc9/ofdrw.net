@@ -337,9 +337,13 @@ internal static class OfdAttachmentPhysicalCleaner
         var root = element.Document?.Root;
         if (root is null) return PayloadOwnerScope.None;
         var ns = root.Name.Namespace;
-        if (attributeName is null && root.Name == ns + "OFD" && element.Name == ns + "Cover" &&
+        if (attributeName is null && string.Equals(path, "OFD.xml", StringComparison.OrdinalIgnoreCase) &&
+            root.Name == ns + "OFD" && element.Name == ns + "Cover" &&
             element.Parent?.Name == ns + "DocInfo" && element.Parent.Parent?.Name == ns + "DocBody" &&
-            element.Parent.Parent.Parent == root)
+            element.Parent.Parent.Parent == root &&
+            ReferenceEquals(element.Parent.Parent, root.Element(ns + "DocBody")) &&
+            ReferenceEquals(element.Parent, element.Parent.Parent.Element(ns + "DocInfo")) &&
+            ReferenceEquals(element, element.Parent.Element(ns + "Cover")))
             return PayloadOwnerScope.Entry;
         if (root.Name.LocalName == "Res" && trustedResources.Contains(path))
         {
