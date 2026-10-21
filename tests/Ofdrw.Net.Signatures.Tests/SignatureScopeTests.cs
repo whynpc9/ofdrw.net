@@ -198,6 +198,33 @@ public sealed class SignatureScopeTests
         Assert.False((await Verify(changed)).ReferenceIntegrityValid);
     }
 
+    [Fact]
+    public async Task ReferencedUtf16PageWithoutXmlSuffixIsScannedForSharedDependencies()
+    {
+        using var source = await CreatePackage();
+        source.Position = 0;
+        var archive = await new OfdPackageLoader().LoadAsync(source);
+        var page = XDocument.Parse(archive.ReadUtf8Text("Doc_0/Pages/Page_0/Content.xml"));
+        page.Root!.Add(new XElement(page.Root.Name.Namespace + "VendorResource",
+            "/Shared/page-external.bin"));
+        var pageBytes = Encoding.BigEndianUnicode.GetBytes(
+            "<?xml version=\"1.0\" encoding=\"utf-16BE\"?>" +
+            page.ToString(SaveOptions.DisableFormatting));
+        using var moved = await AddReferencedPage(source, "Doc_0/Pages/Page_0/Content.dat",
+            new Dictionary<string, byte[]> { ["Shared/page-external.bin"] = [1, 2, 3] }, pageBytes);
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(moved, output, provider,
+                new OfdSignatureOptions
+                {
+                    ProtectFile = path => path != "/Shared/page-external.bin"
+                }));
+        Assert.Contains("/Shared/page-external.bin", error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -467,13 +494,14 @@ public sealed class SignatureScopeTests
     }
 
     private static async Task<MemoryStream> AddReferencedPage(MemoryStream source,
-        string pagePath, IReadOnlyDictionary<string, byte[]>? otherEntries = null)
+        string pagePath, IReadOnlyDictionary<string, byte[]>? otherEntries = null,
+        byte[]? pageBytes = null)
     {
         source.Position = 0;
         var archive = await new OfdPackageLoader().LoadAsync(source);
         var additions = new Dictionary<string, byte[]>
         {
-            [pagePath] = archive.GetBytes("Doc_0/Pages/Page_0/Content.xml")
+            [pagePath] = pageBytes ?? archive.GetBytes("Doc_0/Pages/Page_0/Content.xml")
         };
         if (otherEntries is not null)
             foreach (var item in otherEntries) additions.Add(item.Key, item.Value);

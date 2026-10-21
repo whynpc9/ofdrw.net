@@ -82,6 +82,8 @@ internal static class OfdSignatureFileSelection
         var xmlPaths = new HashSet<string>(entries.Where(pair =>
                 IsXmlCandidate(pair.Key, pair.Value) && !mutableSignatureFiles.Contains(pair.Key))
             .Select(pair => pair.Key), StringComparer.OrdinalIgnoreCase);
+        xmlPaths.UnionWith(documentPaths);
+        xmlPaths.UnionWith(mutableAnnotations);
         var pending = new Queue<string>(xmlPaths.OrderBy(path => path, StringComparer.Ordinal));
         while (pending.Count > 0)
         {
@@ -137,6 +139,7 @@ internal static class OfdSignatureFileSelection
                 if (!entries.ContainsKey(pagePath))
                     throw new InvalidDataException("Cannot prove page dependency: /" + path + " -> " + baseLoc);
                 required.Add(pagePath);
+                if (xmlPaths.Add(pagePath)) pending.Enqueue(pagePath);
             }
             AddComposedResourceFiles(path, document, entries, required);
         }
