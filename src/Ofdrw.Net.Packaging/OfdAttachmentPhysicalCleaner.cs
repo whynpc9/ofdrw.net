@@ -98,7 +98,8 @@ internal static class OfdAttachmentPhysicalCleaner
         AssertNoReferences(package, package.PreservedEntries, payloads, source.DescriptorPath, authenticatedOriginalPayloads, entries, result.SignaturesInvalidated, material, token);
         var candidates = new HashSet<string>(payloads, StringComparer.OrdinalIgnoreCase);
         if (deleteDescriptor) candidates.Add(source.DescriptorPath);
-        AssertNoReferences(package, entries, candidates, deleteDescriptor ? source.DescriptorPath : null, null, null, false, material, token);
+        AssertNoReferences(package, entries, candidates, deleteDescriptor ? source.DescriptorPath : null,
+            authenticatedOriginalPayloads, null, false, material, token);
         foreach (var path in candidates)
         {
             token.ThrowIfCancellationRequested();
@@ -137,7 +138,7 @@ internal static class OfdAttachmentPhysicalCleaner
             var looksXml = OfdXmlContentProbe.LooksLikeXml(entry.Value, token, count => material.ChargeWork(count, token));
             if (!looksXml)
             {
-                if (entry.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                if (entry.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) && !knownBinary.Contains(entry.Key))
                     throw new NotSupportedException("Physical attachment removal cannot inspect an XML control entry: " + entry.Key);
                 material.ChargeCopy(128L + 4L * entry.Key.Length, token);
                 opaqueBinary.Add(entry.Key);
@@ -155,7 +156,8 @@ internal static class OfdAttachmentPhysicalCleaner
                 token.ThrowIfCancellationRequested(); material.ChargeWork(64, token);
                 if (element.Name.Namespace != root.Name.Namespace || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     a.Name.Namespace != XNamespace.None && !(a.Name.Namespace == XNamespace.Xml &&
-                        (a.Name.LocalName == "space" || a.Name.LocalName == "lang"))))
+                        (a.Name.LocalName == "space" || a.Name.LocalName == "lang")) &&
+                    !IsWriterOwnedHint(element, a)))
                     throw new NotSupportedException("Physical attachment removal cannot prove an extension XML reference closure: " + entry.Key);
                 if (!KnownElements.Contains(element.Name.LocalName) || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     a.Name.Namespace == XNamespace.None && !KnownAttributes.Contains(a.Name.LocalName)))
@@ -189,6 +191,11 @@ internal static class OfdAttachmentPhysicalCleaner
             if (!knownBinary.Contains(path) && (finalEntries is null || finalEntries.ContainsKey(path)))
                 throw new NotSupportedException("Physical attachment removal cannot prove opaque binary entry ownership: " + path);
     }
+
+    private static bool IsWriterOwnedHint(XElement element, XAttribute attribute) =>
+        element.Name.LocalName == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor ||
+        element.Name.LocalName == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfInterpolateV1 &&
+        OfdImageRenderingHints.IsCanonicalValue(attribute.Value);
 
     private static bool IsPathBearingAttribute(string name) => name is "BaseLoc" or "FileLoc" or "FileRef" or "MediaFile" or "URI";
 

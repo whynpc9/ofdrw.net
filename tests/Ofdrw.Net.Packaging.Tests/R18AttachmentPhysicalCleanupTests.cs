@@ -139,6 +139,29 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task RetainedAuthenticatedBinaryWithXmlSuffixDoesNotBlockOtherPayloadRemoval()
+    {
+        var entries = Entries(Seed());
+        var descriptor = XDocument.Parse(Encoding.UTF8.GetString(entries["Doc_0/Metadata/List.xml"]));
+        descriptor.Root!.Add(new XElement(XName.Get("Attachment", Ns), new XAttribute("ID", "8"),
+            new XAttribute("Name", "retained.xml"), new XElement(XName.Get("FileLoc", Ns), "../Payload/retained.xml")));
+        entries["Doc_0/Metadata/List.xml"] = Utf8(descriptor.ToString(SaveOptions.DisableFormatting));
+        entries["Doc_0/Payload/retained.xml"] = [4, 5, 6];
+
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+        Assert.Equal(new byte[] { 4, 5, 6 }, Entries(output)["Doc_0/Payload/retained.xml"]);
+        Assert.Equal("retained.xml", Assert.Single((await Read(output)).Attachments).Name);
+
+        entries["Doc_0/Extras/unowned.xml"] = [7, 8, 9];
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+    }
+
+    [Fact]
     public async Task FakeResourceSlotCannotAuthenticateAnOpaqueBinary()
     {
         var entries = Entries(Seed());
@@ -193,6 +216,8 @@ public sealed class R18AttachmentPhysicalCleanupTests
         page.Descendants(ns + "Clip").Descendants(ns + "Area").First().SetAttributeValue("Start", "0 0");
         var image = page.Descendants(ns + "ImageObject").Single();
         image.SetAttributeValue("Substitution", image.Attribute("ResourceID")!.Value);
+        var imageHint = XName.Get("PdfInterpolateV1", "https://ofdrw.net/image-hints");
+        image.SetAttributeValue(imageHint, "true");
         entries["Doc_0/Pages/Content.xml"] = Utf8(page.ToString(SaveOptions.DisableFormatting));
 
         package = await Read(Zip(entries));
@@ -204,7 +229,38 @@ public sealed class R18AttachmentPhysicalCleanupTests
             area => area.Attribute("Start")?.Value == "0 0");
         var savedImage = savedPage.Descendants(ns + "ImageObject").Single();
         Assert.Equal(savedImage.Attribute("ResourceID")!.Value, savedImage.Attribute("Substitution")!.Value);
+        Assert.Equal("true", savedImage.Attribute(imageHint)!.Value);
         Assert.Single((await Read(output)).Pages);
+    }
+
+    [Fact]
+    public async Task WriterOwnedItalicHintSurvivesPhysicalCleanup()
+    {
+        var package = await Read(Seed());
+        package.Pages[0].Elements.Add(new OfdTextElement
+        {
+            Text = "italic", FontName = "SimSun", FontSizeMillimeters = 4,
+            XMillimeters = 10, YMillimeters = 10, Italic = true
+        });
+        var (drawn, _) = await Write(package);
+        var page = XDocument.Parse(Encoding.UTF8.GetString(Entries(drawn)["Doc_0/Pages/Content.xml"]).TrimStart('\uFEFF'));
+        var italicHint = XName.Get("FauxItalicMatrixV1", "https://ofdrw.net/style-hints");
+        Assert.NotNull(page.Descendants(XName.Get("TextObject", Ns)).Single().Attribute(italicHint));
+
+        package = await Read(drawn);
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+        var savedPage = XDocument.Parse(Encoding.UTF8.GetString(Entries(output)["Doc_0/Pages/Content.xml"]).TrimStart('\uFEFF'));
+        Assert.NotNull(savedPage.Descendants(XName.Get("TextObject", Ns)).Single().Attribute(italicHint));
+
+        var foreign = Entries(drawn);
+        page.Descendants(XName.Get("TextObject", Ns)).Single()
+            .SetAttributeValue(XName.Get("FauxItalicMatrixV1", "urn:vendor"), "1");
+        foreign["Doc_0/Pages/Content.xml"] = Utf8(page.ToString(SaveOptions.DisableFormatting));
+        package = await Read(Zip(foreign));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
     }
 
     [Fact]
