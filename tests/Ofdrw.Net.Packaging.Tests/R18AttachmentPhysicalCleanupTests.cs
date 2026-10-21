@@ -462,6 +462,12 @@ public sealed class R18AttachmentPhysicalCleanupTests
         var package = await Read(Zip(entries));
         Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
         await RefusesWithoutOutput(package);
+
+        entries = Entries(Seed());
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot><Signatures><Name>Doc_0/Payload/</Name><Title>original.bin</Title></Signatures></DocBody></OFD>");
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "mixed XML path content");
     }
 
     [Fact]
@@ -547,11 +553,12 @@ public sealed class R18AttachmentPhysicalCleanupTests
         Assert.Equal(2, imported.Attachments.Count);
     }
 
-    private static async Task RefusesWithoutOutput(OfdDocumentPackage package)
+    private static async Task RefusesWithoutOutput(OfdDocumentPackage package, string? expectedMessage = null)
     {
         var preserved = package.PreservedEntries.ToDictionary(entry => entry.Key, entry => entry.Value.ToArray());
         using var output = new MemoryStream();
-        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteWithResultAsync(package, output));
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteWithResultAsync(package, output));
+        if (expectedMessage is not null) Assert.Contains(expectedMessage, error.Message);
         Assert.Equal(0, output.Length);
         Assert.Equal(preserved.Keys.OrderBy(path => path), package.PreservedEntries.Keys.OrderBy(path => path));
         foreach (var entry in preserved)

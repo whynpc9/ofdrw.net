@@ -162,7 +162,7 @@ internal static class OfdAttachmentPhysicalCleaner
                 if (!KnownElements.Contains(element.Name.LocalName) || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     a.Name.Namespace == XNamespace.None && !KnownAttributes.Contains(a.Name.LocalName)))
                     throw new NotSupportedException("Physical attachment removal cannot prove an unknown OFD field reference closure: " + entry.Key);
-                if (element.HasElements && (ScalarPathElements.Contains(element.Name.LocalName) ||
+                if (element.HasElements && (IsPathBearingText(element) ||
                     element.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value))))
                     throw new NotSupportedException("Physical attachment removal cannot prove mixed XML path content: " + entry.Key);
                 foreach (var attribute in element.Attributes().Where(a => !a.IsNamespaceDeclaration))
