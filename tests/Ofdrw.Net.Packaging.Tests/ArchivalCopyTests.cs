@@ -62,6 +62,8 @@ public class ArchivalCopyTests
     [InlineData("", PreflightOutcome.NotApplicable, "NoDocumentActions")]
     [InlineData("<Actions><Action><Goto><Bookmark Name='next'/></Goto></Action></Actions>",
         PreflightOutcome.Pass, "GotoOnly")]
+    [InlineData("<Actions><Action><Region/><Goto><Bookmark Name='next'/></Goto></Action></Actions>",
+        PreflightOutcome.Pass, "GotoOnly")]
     [InlineData("<Actions><Action><URI URI='https://example.org'/></Action></Actions>",
         PreflightOutcome.Fail, "NonGotoDocumentAction")]
     [InlineData("<Actions><Action><FutureAction xmlns='urn:foreign'/></Action></Actions>",

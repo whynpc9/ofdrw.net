@@ -169,11 +169,12 @@ public sealed class ArchivalCoverageService
                 action.Nodes().Any(x => x is XText text && !string.IsNullOrWhiteSpace(text.Value) ||
                     x is not XElement && x is not XText))
             { unknown = true; continue; }
-            var kinds = action.Elements().ToArray();
+            var regions = action.Elements(ns + "Region").ToArray();
+            var kinds = action.Elements().Where(x => x.Name != ns + "Region").ToArray();
             if (kinds.Any(x => x.Name.Namespace == ns && x.Name.LocalName is "URI" or "GotoA" or "Sound" or "Movie"))
                 return Result(rule, PreflightOutcome.Fail, "NonGotoDocumentAction", location,
                     "Known non-Goto action present", entry);
-            if (kinds.Length != 1 || kinds[0].Name != ns + "Goto" ||
+            if (regions.Length > 1 || kinds.Length != 1 || kinds[0].Name != ns + "Goto" ||
                 kinds[0].Elements().Count(x => x.Name == ns + "Dest" || x.Name == ns + "Bookmark") != 1 ||
                 kinds[0].Elements().Any(x => x.Name != ns + "Dest" && x.Name != ns + "Bookmark"))
                 unknown = true;
