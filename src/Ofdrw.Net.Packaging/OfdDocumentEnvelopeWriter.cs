@@ -33,6 +33,8 @@ internal static class OfdDocumentEnvelopeWriter
             if (package.SourceEnvelope is null && value is null) continue;
             Scalar(info, name, value);
         }
+        OfdStandardXml.WriteMetadata(package, info);
+        OfdStandardXml.WriteVersions(package, body);
         root.SetAttributeValue("DocType", package.Options.DocType);
         return original;
     }
@@ -66,6 +68,7 @@ internal static class OfdDocumentEnvelopeWriter
         }, token);
         foreach (var name in new[] { "Outlines", "Actions", "Bookmarks", "Attachments" })
             OfdXmlEnvelope.Singleton(root, name, fresh.Root.Element(ns + name));
+        OfdStandardXml.WriteDocument(package, root);
         var originalTags = root.Elements(ns + "CustomTags").ToArray();
         var generatedTags = fresh.Root.Elements(ns + "CustomTags").ToArray();
         if (package.CustomTagSource is null) OfdXmlEnvelope.Singleton(root, "CustomTags", generatedTags.SingleOrDefault());

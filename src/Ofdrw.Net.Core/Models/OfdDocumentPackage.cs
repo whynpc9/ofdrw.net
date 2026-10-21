@@ -53,6 +53,30 @@ public sealed class OfdDocumentPackage
     private readonly OfdNavigationOwnership<OfdOutlineCollection> outlines = new();
     private readonly OfdNavigationOwnership<OfdBookmarkCollection> bookmarks = new();
     private readonly OfdNavigationOwnership<OfdActionCollection> actions = new();
+    private OfdPermissions? permissions;
+    private OfdViewingPreferences? viewingPreferences;
+    private OfdVersions? versions;
+
+    /// <summary>Permission declarations; this library does not enforce them.</summary>
+    public OfdPermissions? Permissions
+    {
+        get => permissions;
+        set { if (value is null && permissions?.IsDirty == true) throw new InvalidOperationException("Cannot withdraw changed permissions."); permissions = value; }
+    }
+
+    /// <summary>Viewer preferences; no UI behavior is executed by this library.</summary>
+    public OfdViewingPreferences? ViewingPreferences
+    {
+        get => viewingPreferences;
+        set { if (value is null && viewingPreferences?.IsDirty == true) throw new InvalidOperationException("Cannot withdraw changed viewer preferences."); viewingPreferences = value; }
+    }
+
+    /// <summary>Version descriptors of the selected DocBody.</summary>
+    public OfdVersions? Versions
+    {
+        get => versions;
+        set { if (value is null && versions?.IsDirty == true) throw new InvalidOperationException("Cannot withdraw changed versions."); versions = value; }
+    }
 
     /// <summary>Outline tree. Null preserves source; an empty collection removes modeled entries while retaining extensions.</summary>
     public OfdOutlineCollection? Outlines { get => outlines.Value; set => outlines.Set(value); }

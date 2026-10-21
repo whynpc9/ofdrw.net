@@ -111,6 +111,37 @@ internal static class OfdNavigationXml
                         else if (destinations.Count == 0 && bookmarks.Count == 1 && bookmarks[0].Attribute("Name") is XAttribute name && named.TryGetValue(name.Value, out var bookmark))
                             action = new OfdGoToAction { Bookmark = bookmark, Event = eventValue };
                     }
+                    if (action is null && ValidEvent(eventValue))
+                    {
+                        var kinds = element.Elements().Where(child => child.Name.Namespace == ns && child.Name.LocalName != "Region").ToArray();
+                        if (kinds.Length == 1 && !kinds[0].HasElements)
+                        {
+                            var kind = kinds[0];
+                            switch (kind.Name.LocalName)
+                            {
+                                case "URI" when kind.Attribute("URI") is XAttribute uri && !string.IsNullOrWhiteSpace(uri.Value):
+                                    action = new OfdUriAction { Event = eventValue, Uri = uri.Value,
+                                        Base = kind.Attribute("Base")?.Value, Target = kind.Attribute("Target")?.Value }; break;
+                                case "GotoA" when kind.Attribute("AttachID") is XAttribute attachment && !string.IsNullOrWhiteSpace(attachment.Value) &&
+                                    RetainedLocalAttachment(package, attachment.Value) &&
+                                    Boolean(kind.Attribute("NewWindow")?.Value, out var newWindow):
+                                    action = new OfdAttachmentAction { Event = eventValue, AttachId = attachment.Value, NewWindow = newWindow }; break;
+                                case "Sound" when Id(kind.Attribute("ResourceID")?.Value, out _) &&
+                                    MediaResource(package, kind.Attribute("ResourceID")!.Value, "Audio", budget, token) &&
+                                    Boolean(kind.Attribute("Repeat")?.Value, out var repeat) && Boolean(kind.Attribute("Synchronous")?.Value, out var synchronous) &&
+                                    (kind.Attribute("Volume") is null || int.TryParse(kind.Attribute("Volume")!.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var volume) && volume >= 0 && volume <= 100):
+                                    action = new OfdSoundAction { Event = eventValue, ResourceId = kind.Attribute("ResourceID")!.Value,
+                                        Volume = kind.Attribute("Volume") is null ? null : int.Parse(kind.Attribute("Volume")!.Value, CultureInfo.InvariantCulture),
+                                        Repeat = repeat, Synchronous = synchronous }; break;
+                                case "Movie" when Id(kind.Attribute("ResourceID")?.Value, out _) &&
+                                    MediaResource(package, kind.Attribute("ResourceID")!.Value, "Video", budget, token) &&
+                                    (kind.Attribute("Operator") is null ||
+                                        Enum.GetNames(typeof(OfdMovieOperator)).Contains(kind.Attribute("Operator")!.Value, StringComparer.Ordinal)):
+                                    action = new OfdMovieAction { Event = eventValue, ResourceId = kind.Attribute("ResourceID")!.Value,
+                                        Operator = kind.Attribute("Operator") is null ? null : (OfdMovieOperator)Enum.Parse(typeof(OfdMovieOperator), kind.Attribute("Operator")!.Value) }; break;
+                            }
+                        }
+                    }
                     action ??= new OfdRawAction { Event = eventValue };
                     Capture(action, element); if (action is OfdRawAction raw) raw.Xml = raw.SourceXml!; result.Items.Add(action); Slot(result.Source, ordinal, action);
                 }
@@ -207,7 +238,31 @@ internal static class OfdNavigationXml
                 preserved.SetAttributeValue("Event", raw.Event);
                 return preserved;
             }
-            var go = (OfdGoToAction)action;
+            if (action is not OfdGoToAction go)
+            {
+                var local = action switch
+                {
+                    OfdUriAction => "URI", OfdAttachmentAction => "GotoA",
+                    OfdSoundAction => "Sound", OfdMovieAction => "Movie",
+                    _ => throw new NotSupportedException("Unsupported typed action.")
+                };
+                var nodeRoot = OfdXmlEnvelope.Template(action.Source, "Action", ns); nodeRoot.SetAttributeValue("Event", action.Event);
+                var child = nodeRoot.Element(ns + local) is XElement old ? new XElement(old) : new XElement(ns + local);
+                switch (action)
+                {
+                    case OfdUriAction uri:
+                        child.SetAttributeValue("URI", uri.Uri); child.SetAttributeValue("Base", uri.Base); child.SetAttributeValue("Target", uri.Target); break;
+                    case OfdAttachmentAction attachment:
+                        child.SetAttributeValue("AttachID", attachment.AttachId); child.SetAttributeValue("NewWindow", attachment.NewWindow?.ToString().ToLowerInvariant()); break;
+                    case OfdSoundAction sound:
+                        child.SetAttributeValue("ResourceID", sound.ResourceId); child.SetAttributeValue("Volume", sound.Volume);
+                        child.SetAttributeValue("Repeat", sound.Repeat?.ToString().ToLowerInvariant());
+                        child.SetAttributeValue("Synchronous", sound.Synchronous?.ToString().ToLowerInvariant()); break;
+                    case OfdMovieAction movie:
+                        child.SetAttributeValue("ResourceID", movie.ResourceId); child.SetAttributeValue("Operator", movie.Operator?.ToString()); break;
+                }
+                OfdXmlEnvelope.Singleton(nodeRoot, local, child); return nodeRoot;
+            }
             var root = OfdXmlEnvelope.Template(action.Source, "Action", ns); root.SetAttributeValue("Event", action.Event);
             var gotoElement = root.Element(ns + "Goto") is XElement original ? new XElement(original) : new XElement(ns + "Goto");
             if (go.Destination is not null)
@@ -313,6 +368,26 @@ internal static class OfdNavigationXml
                 case OfdRawAction:
                     if (deletingSourcePage) throw new NotSupportedException("Opaque navigation prevents proving page-deletion reference closure.");
                     break;
+                case OfdUriAction uri:
+                    if (!ValidEvent(uri.Event) || string.IsNullOrWhiteSpace(uri.Uri)) throw new ArgumentException("URI action requires a valid event and target.");
+                    break;
+                case OfdAttachmentAction attachment:
+                    if (!ValidEvent(attachment.Event) || string.IsNullOrWhiteSpace(attachment.AttachId) ||
+                        !RetainedLocalAttachment(package, attachment.AttachId))
+                        throw new NotSupportedException("Attachment action target is not a retained local attachment.");
+                    break;
+                case OfdSoundAction sound:
+                    if (!ValidEvent(sound.Event) || !Id(sound.ResourceId, out _) || sound.Volume is < 0 or > 100)
+                        throw new ArgumentException("Invalid Sound action.");
+                    if (!MediaResource(package, sound.ResourceId, "Audio", material ?? new OfdModelMaterialization(new OfdModelLimits()), token))
+                        throw new NotSupportedException("Sound action requires a retained audio resource.");
+                    break;
+                case OfdMovieAction movie:
+                    if (!ValidEvent(movie.Event) || !Id(movie.ResourceId, out _) || movie.Operator.HasValue && !Enum.IsDefined(typeof(OfdMovieOperator), movie.Operator.Value))
+                        throw new ArgumentException("Invalid Movie action.");
+                    if (!MediaResource(package, movie.ResourceId, "Video", material ?? new OfdModelMaterialization(new OfdModelLimits()), token))
+                        throw new NotSupportedException("Movie action requires a retained video resource.");
+                    break;
                 default: throw new NotSupportedException("Unsupported typed navigation node.");
             }
         }
@@ -360,6 +435,46 @@ internal static class OfdNavigationXml
     }
     private static bool Id(string? value, out long number) => long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out number) && number > 0;
     private static bool ValidEvent(string? value) => value is null or "DO" or "PO" or "CLICK";
+    private static bool RetainedLocalAttachment(OfdDocumentPackage package, string id)
+    {
+        var matches = package.Attachments.Where(item => item.Id == id).Take(2).ToArray();
+        return matches.Length == 1 && !matches[0].IsExternal;
+    }
+    private static bool MediaResource(OfdDocumentPackage package, string id, string type, OfdModelMaterialization material, CancellationToken token)
+    {
+        var documentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";
+        var declarations = 0; var found = 0; var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var location in new[] { package.PublicResourceLocation, package.DocumentResourceLocation })
+        {
+            token.ThrowIfCancellationRequested(); if (string.IsNullOrWhiteSpace(location)) continue;
+            var path = material.ResolvePath(documentPath, location!, token);
+            if (!paths.Add(path)) continue;
+            if (!package.PreservedEntries.TryGetValue(path, out var bytes)) continue;
+            var xml = material.ReadXml(path, bytes, token);
+            var ns = XNamespace.Get(package.Options.Namespace);
+            if (xml.Root?.Name != ns + "Res") continue;
+            var containers = xml.Root.Elements(ns + "MultiMedias").ToArray();
+            if (containers.Length > 1) return false;
+            foreach (var media in xml.Root.Descendants(ns + "MultiMedia"))
+            {
+                token.ThrowIfCancellationRequested();
+                if (media.Attribute("ID")?.Value != id) continue;
+                if (++declarations > 1) return false;
+                if (containers.Length != 1 || media.Parent != containers[0] || media.Attribute("Type")?.Value != type)
+                    return false;
+                var files = media.Elements(ns + "MediaFile").ToArray();
+                if (files.Length > 1 || files.Length == 1 && media.Attribute("MediaFile") is not null) return false;
+                var file = media.Attribute("MediaFile")?.Value ?? files.FirstOrDefault()?.Value;
+                if (string.IsNullOrWhiteSpace(file)) continue;
+                var baseLoc = xml.Root.Attribute("BaseLoc")?.Value;
+                var mediaLoc = string.IsNullOrWhiteSpace(baseLoc) || file!.StartsWith("/", StringComparison.Ordinal)
+                    ? file! : baseLoc!.TrimEnd('/') + "/" + file.TrimStart('/');
+                var resolved = material.ResolvePath(path, mediaLoc, token);
+                if (package.PreservedEntries.ContainsKey(resolved)) found++;
+            }
+        }
+        return declarations == 1 && found == 1;
+    }
     private static bool HasOpaqueLocal(XElement root)
     {
         var ns = root.Name.Namespace;
@@ -384,12 +499,24 @@ internal static class OfdNavigationXml
             {
                 "Outlines" => child.Name.LocalName == "OutlineElem", "OutlineElem" => child.Name.LocalName is "OutlineElem" or "Actions",
                 "Bookmarks" => child.Name.LocalName == "Bookmark", "Bookmark" => child.Name.LocalName == "Dest",
-                "Actions" => child.Name.LocalName == "Action", "Action" => child.Name.LocalName == "Goto", _ => false
+                "Actions" => child.Name.LocalName == "Action", "Action" => child.Name.LocalName is "Goto" or "URI" or "GotoA" or "Sound" or "Movie", _ => false
             };
             if (!allowed) return true;
+            if (child.Name == ns + "URI" && (child.Nodes().Any(OpaqueNode) ||
+                child.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
+                    (attribute.Name.Namespace != XNamespace.None || attribute.Name.LocalName is not ("URI" or "Base" or "Target"))))) return true;
             if (child.Name == ns + "Goto" && (child.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
                 child.Nodes().Any(OpaqueNode) || child.Elements().Any(target => target.Name != ns + "Dest" && target.Name != ns + "Bookmark" ||
                     target.Name == ns + "Bookmark" && (target.HasElements || target.Nodes().Any(OpaqueNode) || target.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name != "Name"))))) return true;
+            if (child.Name.LocalName is "GotoA" or "Sound" or "Movie" &&
+                (child.HasElements || child.Nodes().Any(OpaqueNode) || child.Attributes().Any(attribute =>
+                    !attribute.IsNamespaceDeclaration && (attribute.Name.Namespace != XNamespace.None || (child.Name.LocalName switch
+                    {
+                        "GotoA" => attribute.Name.LocalName is not ("AttachID" or "NewWindow"),
+                        "Sound" => attribute.Name.LocalName is not ("ResourceID" or "Volume" or "Repeat" or "Synchronous"),
+                        "Movie" => attribute.Name.LocalName is not ("ResourceID" or "Operator"),
+                        _ => true
+                    }))))) return true;
         }
         return false;
         static bool OpaqueNode(XNode node) => node is XProcessingInstruction || node is XText text && !string.IsNullOrWhiteSpace(text.Value);
