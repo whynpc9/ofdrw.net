@@ -987,7 +987,12 @@ public sealed class OfdReader : IOfdReader
             var id = font.Attribute("ID")?.Value;
             var name = font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value;
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name)) continue;
-            fontMap[id!] = name!;
+            var validBold = TryParseFontFlag(font.Attribute("Bold")?.Value, out var bold);
+            var validItalic = TryParseFontFlag(font.Attribute("Italic")?.Value, out var italic);
+            // Keep the resource readable, but never let a malformed declaration
+            // satisfy PageBlock text's resolved-font admission.
+            if (validBold && validItalic) fontMap[id!] = name!;
+            else fontMap.Remove(id!);
             if (package.Fonts.Any(existing => existing.Id == id)) continue;
             var file = ReadValue(font.Element(ns + "FontFile"), material, cancellationToken);
             material.ReserveReadModel(512, cancellationToken);
@@ -995,8 +1000,7 @@ public sealed class OfdReader : IOfdReader
             {
                 Id = id!, FontName = name!, FamilyName = font.Attribute("FamilyName")?.Value,
                 Charset = font.Attribute("Charset")?.Value,
-                Bold = ParseBoolean(font.Attribute("Bold")?.Value, false),
-                Italic = ParseBoolean(font.Attribute("Italic")?.Value, false), FileName = file
+                Bold = bold, Italic = italic, FileName = file
             };
             if (!string.IsNullOrWhiteSpace(file))
             {
@@ -1438,6 +1442,16 @@ public sealed class OfdReader : IOfdReader
 
         return value == "1" ||
             (value != "0" && bool.TryParse(value, out var parsed) ? parsed : fallback);
+    }
+
+    private static bool TryParseFontFlag(string? value, out bool result)
+    {
+        result = false;
+        if (value is null) return true;
+        var literal = value.Trim();
+        if (literal == "1") { result = true; return true; }
+        if (literal == "0") return true;
+        return bool.TryParse(literal, out result);
     }
 
     private static double[]? ParseMatrix(string? value, OfdModelMaterialization material, CancellationToken token)

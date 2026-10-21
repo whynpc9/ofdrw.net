@@ -104,8 +104,9 @@ internal sealed class HtmlRenderContext
             if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node))
                 throw new NotSupportedException("HTML preview does not support unknown drawing children or references.");
             if (element is OfdTextElement &&
-                (node.Attribute("ReadDirection") is { Value: not "0" } ||
-                 node.Attribute("CharDirection") is { Value: not "0" } || node.Attribute("Alpha") is { Value: not "255" }))
+                (!OfdRenderPreflight.MatchesInteger(node.Attribute("ReadDirection"), 0) ||
+                 !OfdRenderPreflight.MatchesInteger(node.Attribute("CharDirection"), 0) ||
+                 !OfdRenderPreflight.MatchesInteger(node.Attribute("Alpha"), 255)))
                 throw new NotSupportedException("Text direction or object alpha is outside the HTML render profile.");
             if (node.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a) &&
                 !(a.Name == XNamespace.Xml + "space" && a.Parent!.Name.LocalName == "TextCode" && a.Value == "preserve")))

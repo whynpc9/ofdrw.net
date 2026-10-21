@@ -131,6 +131,24 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("between", "<CV>255 0 0</CV><!--between--><CV>0 0 255</CV>")]
+    [InlineData("inside", "<CV>255 0 0</CV><CV>0 <!--inside--> 0 255</CV>")]
+    public async Task IndexedPaletteCommentsDoNotChangePaint(string location, string entries)
+    {
+        var resources = $"<ColorSpaces><ColorSpace ID='20' Type='RGB'><Palette>{entries}</Palette></ColorSpace></ColorSpaces>";
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor ColorSpace='20' Index='1'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        Assert.Contains("rgb(0,0,255)", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("rgb(0,0,255)", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        Assert.True(pdf.Length > 0);
+        Retain("palette-comment-" + location, ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task PaletteValueOverridesConflictingIndexInAllOutputs(bool drawParam)
@@ -507,6 +525,31 @@ public sealed class R01PageBlockTests
         {
             using var output = new MemoryStream();
             var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(bytes), output));
+            Assert.Contains("Font", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("Bold")]
+    [InlineData("Italic")]
+    public async Task MalformedFontFlagPreservesPageBlockTextButFailsAllRenderers(string flag)
+    {
+        var resources = $"<Fonts><Font ID='20' FontName='Noto Sans' {flag}='bogus'/></Fonts>";
+        var ofd = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='20' Size='4'>" +
+            "<TextCode X='0' Y='4'>recoverable text</TextCode></TextObject>", resources: resources);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Contains(read.Fonts, font => font.Id == "20");
+        Assert.Equal("recoverable text", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
             Assert.Contains("Font", error.Message);
             Assert.Equal(0, output.Length);
         }
@@ -1014,6 +1057,27 @@ public sealed class R01PageBlockTests
             Assert.Contains("Malformed PageBlock", error.Message);
             Assert.Equal(0, output.Length);
         }
+    }
+
+    [Theory]
+    [InlineData("Alpha", "0255")]
+    [InlineData("ReadDirection", "00")]
+    [InlineData("CharDirection", " 0 ")]
+    public async Task EquivalentTextIntegerLexemesRenderInAllOutputs(string name, string value)
+    {
+        var body = $"<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4' {name}='{value}'>" +
+            "<TextCode X='0' Y='4'>numeric text</TextCode></TextObject>";
+        var ofd = await Source(body, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Equal("numeric text", new OfdTextExtractor().Extract(read));
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        Assert.Contains("numeric text", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("numeric text", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("numeric text", parsed.GetPage(1).Text);
+        Retain("text-integer-" + name.ToLowerInvariant(), ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -79,9 +80,9 @@ internal static class OfdRenderPreflight
                 {
                     var root = OfdXmlEnvelope.Parse(source!);
                     _ = OfdTextPaint.Read(text);
-                    if (root.Attribute("ReadDirection") is { Value: not "0" } ||
-                        root.Attribute("CharDirection") is { Value: not "0" } ||
-                        root.Attribute("Alpha") is { Value: not "255" })
+                    if (!MatchesInteger(root.Attribute("ReadDirection"), 0) ||
+                        !MatchesInteger(root.Attribute("CharDirection"), 0) ||
+                        !MatchesInteger(root.Attribute("Alpha"), 255))
                         throw new NotSupportedException("OFD text direction or object alpha is outside this render profile.");
                 }
                 catch (Exception paintError) when (paintError is NotSupportedException or InvalidDataException)
@@ -89,4 +90,8 @@ internal static class OfdRenderPreflight
             }
         }
     }
+
+    internal static bool MatchesInteger(XAttribute? attribute, int expected) =>
+        attribute is null || int.TryParse(attribute.Value, NumberStyles.Integer,
+            CultureInfo.InvariantCulture, out var value) && value == expected;
 }

@@ -188,13 +188,13 @@ internal sealed class OfdPaintResources
             var palette = space.Element(space.Name.Namespace + "Palette");
             if (palette is null || palette.Attributes().Any(a => !a.IsNamespaceDeclaration) ||
                 palette.Elements().Any(e => e.Name != space.Name.Namespace + "CV") ||
-                palette.Nodes().Any(n => n is not XElement and not XText ||
+                palette.Nodes().Any(n => n is not XElement and not XText and not XComment ||
                     n is XText text && !string.IsNullOrWhiteSpace(text.Value)))
                 throw new NotSupportedException("Missing or unsupported palette.");
             var entries = palette.Elements().ToArray();
             if (entries.Length == 0 || entries.Length > 256) throw new NotSupportedException("Palette size outside supported range.");
             if (entries.Any(entry => entry.Attributes().Any(a => !a.IsNamespaceDeclaration) ||
-                entry.Nodes().Any(n => n is not XText)))
+                entry.Nodes().Any(n => n is not XText and not XComment)))
                 throw new NotSupportedException("Palette entry has unsupported content.");
             var ordinal = Integer(index.Value, -1);
             if (ordinal < 0 || ordinal >= entries.Length) throw new InvalidDataException("Palette Index is out of range.");
