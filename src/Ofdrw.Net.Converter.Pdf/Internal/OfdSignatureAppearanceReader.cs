@@ -26,8 +26,18 @@ internal static class OfdSignatureAppearanceReader
         {
             cancellationToken.ThrowIfCancellationRequested();
             var ofd = ParseXml(ofdBytes);
-            var signatureLists = ofd
-                .Descendants()
+            var selectedBody = ofd.Root?.Elements()
+                .Where(element => element.Name.LocalName == "DocBody")
+                .FirstOrDefault(body => body.Elements().Any(element => element.Name.LocalName == "DocRoot" &&
+                    NormalizePath(element.Value) == NormalizePath(package.DocumentEntryPath ?? string.Empty)));
+            if (selectedBody is null)
+            {
+                if (maximumAppearances.HasValue && ofd.Root?.Elements().Any(element => element.Name.LocalName == "DocBody") == true)
+                    throw new InvalidDataException("Selected DocBody is missing from signature metadata root.");
+                return Array.Empty<OfdSignatureAppearance>();
+            }
+            var signatureLists = selectedBody
+                .Elements()
                 .Where(element => element.Name.LocalName == "Signatures")
                 .Select(element => NormalizePath(element.Value))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
