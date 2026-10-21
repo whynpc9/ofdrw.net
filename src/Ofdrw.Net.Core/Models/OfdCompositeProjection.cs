@@ -14,9 +14,9 @@ internal static class OfdCompositeProjection
     {
         material.ChargeCopy(512, token); var result = new List<OfdElement>();
         var active = new HashSet<OfdCompositeResource>();
-        foreach (var root in roots) Visit(root, Identity(), new List<OfdPathElement>(), 1, false);
+        foreach (var root in roots) Visit(root, Identity(), new List<OfdPathElement>(), 1, false, false);
         return result;
-        void Visit(OfdElement element, double[] parent, List<OfdPathElement> inherited, int depth, bool compositeChild)
+        void Visit(OfdElement element, double[] parent, List<OfdPathElement> inherited, int depth, bool compositeChild, bool pageBlockChild)
         {
             token.ThrowIfCancellationRequested(); material.Structure.Depth(depth); material.Structure.Node(depth); material.Structure.Result(false);
             material.ChargeCopy(1024L + 32L * inherited.Count, token); material.ChargeWork(128, token);
@@ -32,7 +32,7 @@ internal static class OfdCompositeProjection
                         (a.Name.Namespace != XNamespace.None || a.Name.LocalName != "ID")) ||
                     node.Nodes().Any(n => n is XProcessingInstruction || n is XText t && !string.IsNullOrWhiteSpace(t.Value)))
                     throw new NotSupportedException("PageBlock has unsupported drawing attributes or content.");
-                foreach (var child in block.PageBlockChildren) Visit(child, parent, inherited, depth + 1, compositeChild);
+                foreach (var child in block.PageBlockChildren) Visit(child, parent, inherited, depth + 1, compositeChild, true);
                 return;
             }
             var origin = Multiply(parent, new[] { 1d, 0, 0, 1, element.XMillimeters, element.YMillimeters });
@@ -45,20 +45,22 @@ internal static class OfdCompositeProjection
                 clips.Add(Rectangle(composite.WidthMillimeters, composite.HeightMillimeters, origin));
                 clips.Add(Rectangle(composite.Resource.WidthMillimeters, composite.Resource.HeightMillimeters, local));
                 AddClips(composite, origin, clips);
-                foreach (var child in composite.Resource.Elements) Visit(child, local, clips, depth + 1, true);
+                foreach (var child in composite.Resource.Elements) Visit(child, local, clips, depth + 1, true, pageBlockChild);
                 active.Remove(composite.Resource); return;
             }
             if (ReferenceEquals(parent, null)) throw new InvalidDataException("Missing parent transform.");
             if (element is OfdRawElement { LocalName: "CompositeObject" }) throw new NotSupportedException("Unresolved or opaque composite placement cannot be exported.");
-            if (!compositeChild) { result.Add(element); return; }
-            if (element is not (OfdTextElement or OfdImageElement or OfdPathElement)) throw new NotSupportedException("Opaque composite children cannot be exported.");
+            if (compositeChild && element is not (OfdTextElement or OfdImageElement or OfdPathElement))
+                throw new NotSupportedException("Opaque composite children cannot be exported.");
             var source = element switch { OfdTextElement t => t.SourceXml, OfdImageElement i => i.SourceXml, OfdPathElement p => p.SourceXml, _ => null };
-            if (source is not null)
+            if (pageBlockChild && element.RenderSourceXml is { } resolvedSource) source = resolvedSource;
+            if ((compositeChild || pageBlockChild) && source is not null)
             {
                 material.GuardFragmentXml(source, token); var node = OfdXmlEnvelope.Parse(source);
                 if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node) || node.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a)))
-                    throw new NotSupportedException("Unsupported composite child style cannot be exported.");
+                    throw new NotSupportedException("Unsupported PageBlock or composite child style cannot be exported.");
             }
+            if (!compositeChild) { result.Add(element); return; }
             var renderSource = element is OfdTextElement sourceText ? OfdTextRenderProjection.Create(sourceText, material, token) : element;
             var projected = OfdModelCloner.CloneElement(renderSource, clonePayloads: false, material: material, cancellationToken: token);
             var inner = element switch { OfdTextElement t => t.Transform, OfdImageElement i => i.Transform ?? new[] { i.WidthMillimeters, 0, 0, i.HeightMillimeters, 0, 0 }, OfdPathElement p => p.Transform, _ => null } ?? Identity();

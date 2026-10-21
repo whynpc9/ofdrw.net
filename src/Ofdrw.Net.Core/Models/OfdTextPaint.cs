@@ -23,6 +23,10 @@ internal sealed class OfdTextPaint
         Stroke = Boolean(root?.Attribute("Stroke")?.Value, false);
         HScale = Number(root?.Attribute("HScale")?.Value, 1);
         LineWidthMillimeters = Number(root?.Attribute("LineWidth")?.Value, 0.353);
+        if (Stroke && (root?.Attribute("Cap") is not null || root?.Attribute("Join") is not null ||
+            root?.Attribute("MiterLimit") is not null || root?.Attribute("DashPattern") is not null ||
+            root?.Attribute("DashOffset") is not null))
+            throw new NotSupportedException("OFD text stroke parameters are outside the render profile.");
         if (HScale <= 0 || HScale > 64 || LineWidthMillimeters < 0 || LineWidthMillimeters > 100)
             throw new NotSupportedException("OFD text scale or stroke width is outside the render profile.");
         FillColor = root is null ? text.FillColor : Color(root.Element(root.Name.Namespace + "FillColor"), text.FillColor);

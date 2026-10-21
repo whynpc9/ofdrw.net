@@ -310,6 +310,45 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task UnsupportedTypedPageBlockChildFailsAllRenderers(bool text, bool template)
+    {
+        var body = text
+            ? "<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'><TextCode X='0' Y='4'>text</TextCode><VendorChild/></TextObject>"
+            : "<PathObject ID='501' Boundary='10 10 20 20' Fill='true'><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData><VendorChild/></PathObject>";
+        var bytes = await Source(body, template, font: text);
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
+        Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
+    [InlineData("Cap='Round'", false)]
+    [InlineData("Join='Bevel'", false)]
+    [InlineData("MiterLimit='3'", false)]
+    [InlineData("DashPattern='1 2'", false)]
+    [InlineData("DashOffset='1'", false)]
+    [InlineData("DashPattern='1 2'", true)]
+    public async Task UnsupportedTextStrokeParametersFailAllRenderers(string parameter, bool inherited)
+    {
+        var resources = inherited ? $"<DrawParams><DrawParam ID='30' {parameter}/></DrawParams>" : null;
+        var attribute = inherited ? "DrawParam='30'" : parameter;
+        var body = $"<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4' Stroke='true' Fill='false' {attribute}>" +
+            "<TextCode X='0' Y='4'>outline</TextCode></TextObject>";
+        var bytes = await Source(body, resources: resources, font: true);
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
+        Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
     [InlineData("TextObject", false)]
     [InlineData("TextObject", true)]
     [InlineData("PathObject", false)]
@@ -394,8 +433,10 @@ public sealed class R01PageBlockTests
         Assert.Equal(0, html.Length);
     }
 
-    [Fact]
-    public async Task NestedImageUsesOriginalMediaResourceAndPaintOrder()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NestedImageUsesOriginalMediaResourceAndPaintOrder(bool substitution)
     {
         using var pixels = new Image<Rgba32>(2, 2, Color.Red);
         using var png = new MemoryStream(); pixels.SaveAsPng(png);
@@ -422,13 +463,24 @@ public sealed class R01PageBlockTests
                     var layer = xml.Descendants().First(n => n.Name.LocalName == "Layer");
                     var block = layer.Elements().First(n => n.Name.LocalName == "PageBlock");
                     var image = layer.Elements().First(n => n.Name.LocalName == "ImageObject");
-                    image.Remove(); block.Add(image);
+                    image.Remove();
+                    if (substitution) image.SetAttributeValue("Substitution", "999");
+                    block.Add(image);
                     bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
                 }
                 using var target = destination.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
             }
         }
         var input = patched.ToArray();
+        if (substitution)
+        {
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), new MemoryStream()));
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), new MemoryStream()));
+            using var rejectedHtml = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(input), rejectedHtml));
+            Assert.Equal(0, rejectedHtml.Length);
+            return;
+        }
         using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg);
         var names = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants()
             .Where(n => n.Name.LocalName is "path" or "image").Select(n => n.Name.LocalName).ToArray();

@@ -187,3 +187,20 @@ e5ed6c16029c9d6c897f3f7a35ab3f8d8e35defb44a8f9c2ecf757e980776d40  artifacts/road
 b39ce0c01f1c4219163cf6f5935c5fa4687ecaabd084290e0c6073e916947a40  artifacts/roadmap-v12/R01/foreign-namespace-package.log
 1b724963d9487ce9acc1c53b3ff2dd799f93f55661df9c6494ad68a04a6e3224  artifacts/roadmap-v12/R01/foreign-namespace-document-tools.log
 e6998b114e1e4e24df52280d349033314094816ae4600fb20566575c20d58dd0  artifacts/package-e2e/0.1.0-r01.r03g/output/package-manifest.json
+
+# R12 integration and final review repair, local source outputs
+941757d6ea0a5dac38e0c0498f98a36ad902f1afc753c7947d844cca57394060  artifacts/roadmap-v12/R01/pageblock-leaf-stroke-focused.log
+1a6c8714860173673adcc078df1c2072ddfba8083797a646aeeed851267d76ca  artifacts/roadmap-v12/R01/r12-combined-full.log
+0b13e5fb0c3e1be8dbb3cad7f9ba5129728c78b0d9f1fdad6d1b077b2ecb489c  artifacts/roadmap-v12/R01/r12-combined-ses.log
+900ec85d551633585fe4a046bac13ac5cb420c00d2431be67c30076474b5d32d  artifacts/roadmap-v12/R01/r12-combined-ses/files/package-manifest.json
+87a92f0310cda8b24e1de9b139b1b763a8655fca5729edc9fd9805729160fb67  artifacts/roadmap-v12/R01/r12-combined-ses/files/functional.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/r12-combined-ses/files/rendered-pages.json
+d389b0e463dbe4e6517c65bd0b9a5eb09dd7b65b415d5cf60bee46547eefd3ad  artifacts/roadmap-v12/R01/r12-combined-ses/sdk-output/package-manifest.json
+60de7e56b10d309d5fe378b1e8b9bcdce99890f156bcb11c8dec30e7a26b0b19  artifacts/roadmap-v12/R01/r12-combined-ses/files/native-v1.ofd
+06eb669c6fe5aec2c90f4f1686547164a4b90e501ed43f6da3d4b79430654050  artifacts/roadmap-v12/R01/r12-combined-ses/files/native-v1.pdf
+0805f67edfb2b92c656b43eef7eebde956b565d13f101408030e092bbbc9e860  artifacts/roadmap-v12/R01/r12-combined-ses/files/default-v4.ofd
+95c58b68bc393e6c8482701433dbc275ec319c592a5f88ab73d6696f7b42833b  artifacts/roadmap-v12/R01/r12-combined-ses/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/r12-combined-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r12-combined-ses/files/pages/native-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/r12-combined-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r12-combined-ses/files/pages/default-v4/page-2.png

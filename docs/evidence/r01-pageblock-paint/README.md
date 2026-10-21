@@ -39,6 +39,14 @@
 - Reader 对 `TextObject`、`PathObject`、`ImageObject` 的类型分派现仅接受两种 OFD 标准命名空间和无命名空间兼容形式；同名扩展节点保留为原始未知绘图，不由 PDF/SVG 误当受支持对象呈现。普通页和模板的三类扩展节点共 6 个回归，逐一断言 Reader 保留原始类型，PDF/SVG/HTML 均明确拒绝。R01 定向测试 26/26。最初只接受与父层相同命名空间导致 PDF vector 回归失败；纳入历史兼容的另一个标准命名空间后，PDF vector 测试 315/315 通过。
 - 最终联合源码全套 11 个项目 **3072 passed、13 skipped、0 failed**；本地 `0.1.0-r01.r03g` 的 11 个包及独立消费 E2E、文档工具 **36 个样本、55 页 PDF** 通过。此次源码重新生成普通页、模板页及隐藏未知绘图两种页的 PDF/PNG；各 1 页已在 macOS Preview 检查并关闭窗口。新 PNG 与先前检查过的对应页面逐字节一致：蓝色方块与 `nested text`，以及仅显示 `visible sibling` 的隐藏对象页面，均未见缺字、裁切、重叠或空白页。完整产物哈希见清单。
 
+## 最后两项审查修复与 R12 主线整合
+
+- PageBlock 内已识别的 Text、Path、Image 叶子现在也经过原始绘图语义准入；未知子节点及 `ImageObject Substitution` 在 PDF/SVG/HTML 三出口明确拒绝。普通页/模板页、文字/路径未知子节点与图片替代引用均有回归。此检查不改变 PageBlock 叶子的坐标。
+- 带 `Stroke=true` 的文字若携带 `Cap`、`Join`、`MiterLimit`、`DashPattern`、`DashOffset`，现明确拒绝，避免把这些描边属性默认为标准实线；覆盖五种直接属性和 DrawParam 继承。R01 定向回归 **37/37**。
+- 合入 R12 已并入主线的提交 `a50892cf9ecc0177d243b24a89419809057a8115`，本分支合并提交 `32a616e4261c95a599819b54f9c55090b2273aa3`。R12 可选 `Ofdrw.Net.Signatures.SesInterop` 保持独立：11 个基础 SDK 包，外加一个可选 SES 包；CLI 的默认依赖闭包不含 SES。签章的签发/验证经 `IOfdSignatureProvider`、`IOfdSignedValueVerifier` 接入 `OfdSignatureService`、`OfdSignatureVerifier`。
+- 整合及上述修复后的全量解决方案 **3087 passed、13 skipped、0 failed**（11 个测试项目）。本地 `0.1.0-r01.r12a` 的 12 包来源清单、11 基础包消费和可选 SES 独立消费通过；显式 native/默认 DOCX→OFD 各生成 V1/V4 签章样本，四份签章产物的两页 PDF 像素均与各自签章前基线逐页一致。默认 CLI 对不支持的验证返回 2；本地样本不构成外部阅读器互操作或 V5/GBT 端到端验收。
+- 本次签章消费生成的 `native-v1.pdf` 与 `default-v4.pdf` 在 macOS Preview 各检查两页：标题、英文斜体、中文正文、蓝色表格底色/边框、红色局部粗体与稳定分页可见，未见裁切、缺字、重影或空白页。其余两份签章 PDF 与基线在 96 DPI 两页 PNG 上逐字节一致。检查后的文档窗口已关闭；页面、清单、日志及哈希均保存在已忽略的 `artifacts/roadmap-v12/R01/r12-combined-ses/`。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |
