@@ -168,6 +168,7 @@ public sealed class OfdReader : IOfdReader
             package.Options.Metadata.Subject = ReadValue(info.Element(ofdNs + "Subject"), material, cancellationToken);
             package.Options.Metadata.Keywords = ReadValue(info.Element(ofdNs + "Keywords"), material, cancellationToken);
             package.Options.Metadata.Creator = ReadValue(info.Element(ofdNs + "Creator"), material, cancellationToken);
+            OfdStandardXml.ReadMetadata(package, info, material, cancellationToken);
         }
 
         foreach (var bodyElement in selectedDocBody?.Elements() ?? Enumerable.Empty<XElement>())
@@ -500,6 +501,7 @@ public sealed class OfdReader : IOfdReader
 
         material.ReserveReadModel(1024L + (documentXml.Root?.DescendantNodesAndSelf().Count() ?? 0) * 4096L, cancellationToken);
         OfdNavigationXml.Read(package, documentXml.Root ?? throw new InvalidDataException("Missing document root."), material, cancellationToken);
+        OfdStandardXml.ReadDocument(package, selectedDocBody, documentXml.Root!, material, cancellationToken);
         package.SourceEnvelope = OfdDocumentEnvelope.Capture(package, selectedDocBody, documentXml.Root!, material, cancellationToken);
         package.SourceIdentity = OfdSourceIdentity.Capture(package, material, cancellationToken);
         material.InspectStorage(package, cancellationToken);

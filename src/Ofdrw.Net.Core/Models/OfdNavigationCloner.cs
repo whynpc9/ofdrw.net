@@ -32,6 +32,10 @@ internal static class OfdNavigationCloner
                 OfdBookmark bookmark => new OfdBookmark { Name = bookmark.Name },
                 OfdDestination destination => new OfdDestination { Type = destination.Type, Left = destination.Left, Top = destination.Top, Right = destination.Right, Bottom = destination.Bottom, Zoom = destination.Zoom },
                 OfdGoToAction go => new OfdGoToAction { Event = go.Event }, OfdRawAction raw => new OfdRawAction { Xml = raw.Xml, Event = raw.Event },
+                OfdUriAction uri => new OfdUriAction { Event = uri.Event, Uri = uri.Uri, Base = uri.Base, Target = uri.Target },
+                OfdAttachmentAction attachment => new OfdAttachmentAction { Event = attachment.Event, AttachId = attachment.AttachId, NewWindow = attachment.NewWindow },
+                OfdSoundAction sound => new OfdSoundAction { Event = sound.Event, ResourceId = sound.ResourceId, Volume = sound.Volume, Repeat = sound.Repeat, Synchronous = sound.Synchronous },
+                OfdMovieAction movie => new OfdMovieAction { Event = movie.Event, ResourceId = movie.ResourceId, Operator = movie.Operator },
                 _ => throw new NotSupportedException("Unknown navigation clone contract.")
             };
             mapping.Add(original, clone);

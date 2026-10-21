@@ -94,6 +94,14 @@ public static class OfdDocumentMixer
             if (page.PreservedPageElements.Any(xml => XElement.Parse(xml).Name != pageNamespace + "Template"))
                 throw new NotSupportedException("Mix cannot safely remap page extensions/actions.");
             var package = new OfdDocumentPackage { Options = item.Package.Options };
+            if (selected.Count == 0 && item.Package.Options.Metadata.Cover is string cover)
+            {
+                var coverPath = material.ResolvePath("OFD.xml", cover, cancellationToken);
+                if (!item.Package.PreservedEntries.TryGetValue(coverPath, out var coverBytes))
+                    throw new NotSupportedException("Mix cannot retain a Cover without its package entry.");
+                material.ChargeCopy(coverBytes.LongLength, cancellationToken);
+                package.PreservedEntries.Add(coverPath, coverBytes.ToArray());
+            }
             var legacyPage = OfdModelCloner.ClonePage(page, material: material, cancellationToken: cancellationToken);
             package.Pages.Add(legacyPage); package.Fonts.AddRange(item.Package.Fonts);
             OfdDocumentMerger.CopyAttachments(item.Package, package, cancellationToken, material);

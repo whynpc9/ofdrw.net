@@ -55,6 +55,7 @@ public static class OfdDocumentSplitter
             {
                 if (selected.Pages.Any(page => page.Templates.Count != 0)) throw new NotSupportedException("Fresh typed annotation split with templates requires persisted source ownership.");
                 selected.Options = OfdDocumentMerger.CloneOptions(source.Options);
+                CloneStandardObjects(source, selected, material, cancellationToken);
                 selected.Fonts.Clear();
                 foreach (var font in source.Fonts)
                 {
@@ -62,7 +63,7 @@ public static class OfdDocumentSplitter
                     selected.Fonts.Add(new OfdFontResource { Id = font.Id, FontName = font.FontName, FamilyName = font.FamilyName, Charset = font.Charset,
                         Bold = font.Bold, Italic = font.Italic, FileName = font.FileName, Data = font.Data.ToArray(), CollectionFaceIndex = font.CollectionFaceIndex });
                 }
-                selected.Attachments.Clear(); OfdDocumentMerger.CopyAttachments(source, selected, cancellationToken, material);
+                selected.Attachments.Clear(); OfdDocumentMerger.CopyAttachments(source, selected, cancellationToken, material, preserveIds: true);
                 var typedPageMap = new Dictionary<object, object>();
                 for (var position = 0; position < pages.Count; position++) typedPageMap.Add(source.Pages[pages[position]], selected.Pages[position]);
                 OfdNavigationCloner.Clone(source, selected, typedPageMap, material, cancellationToken);
@@ -70,6 +71,7 @@ public static class OfdDocumentSplitter
                 return selected;
             }
             var standalone = OfdDocumentMerger.MergeForSplit(selected, material, cancellationToken);
+            CloneStandardObjects(source, standalone, material, cancellationToken);
             var pageMap = new Dictionary<object, object>();
             for (var position = 0; position < pages.Count; position++) pageMap.Add(source.Pages[pages[position]], standalone.Pages[position]);
             OfdNavigationCloner.Clone(source, standalone, pageMap, material, cancellationToken);
@@ -94,6 +96,7 @@ public static class OfdDocumentSplitter
             PublicResourceLocation = source.PublicResourceLocation, DocumentResourceLocation = source.DocumentResourceLocation
         };
         result.Options.DocumentId = source.Options.DocumentId;
+        CloneStandardObjects(source, result, material, cancellationToken);
         result.PreservedCommonDataElements.AddRange(source.PreservedCommonDataElements);
         result.PreservedDocumentElements.AddRange(source.PreservedDocumentElements);
         result.PreservedDocBodyElements.AddRange(source.PreservedDocBodyElements);
@@ -134,6 +137,15 @@ public static class OfdDocumentSplitter
         result.SourceEnvelope = source.SourceEnvelope?.Clone(mapping, material, cancellationToken);
         result.SourceIdentity = source.SourceIdentity?.CloneFor(result, mapping, material, cancellationToken);
         return result;
+    }
+
+    private static void CloneStandardObjects(OfdDocumentPackage source, OfdDocumentPackage destination,
+        OfdModelMaterialization material, CancellationToken token)
+    {
+        destination.Options.Metadata.CustomDatas = OfdStandardXml.Clone(source.Options.Metadata.CustomDatas, destination, material, token);
+        destination.Permissions = OfdStandardXml.Clone(source.Permissions, destination, material, token);
+        destination.ViewingPreferences = OfdStandardXml.Clone(source.ViewingPreferences, destination, material, token);
+        destination.Versions = OfdStandardXml.Clone(source.Versions, destination, material, token);
     }
 
     internal static void ValidateSingleDocument(OfdDocumentPackage package, OfdModelMaterialization? material = null, CancellationToken cancellationToken = default)
