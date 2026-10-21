@@ -31,3 +31,4 @@ tests/fixtures/trusted-fonts/bundle.json text eol=lf
 *.jpeg filter=lfs diff=lfs merge=lfs -text
 *.gif filter=lfs diff=lfs merge=lfs -text
 *.webp filter=lfs diff=lfs merge=lfs -text
+tests/Ofdrw.Net.Crypto.Password.Tests/Fixtures/standard-java/*.pem filter=lfs diff=lfs merge=lfs -text

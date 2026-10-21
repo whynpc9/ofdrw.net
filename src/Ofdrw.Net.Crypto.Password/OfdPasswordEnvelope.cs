@@ -88,7 +88,7 @@ public static class OfdPasswordEnvelope
         }
     }
 
-    private static async Task<OfdPackageArchive> LoadRawValidatedAsync(Stream source, Settings settings, CancellationToken token)
+    internal static async Task<OfdPackageArchive> LoadRawValidatedAsync(Stream source, Settings settings, CancellationToken token)
     {
         // Freeze precisely the bytes read from the caller's current position so
         // raw-name validation and the loader see one identical archive.
@@ -309,7 +309,7 @@ public static class OfdPasswordEnvelope
         return PasswordPrimitives.Cbc(false, cipher, key, iv, token);
     }
 
-    private static XElement ValidateDocument(Dictionary<string, byte[]> entries, Settings settings)
+    internal static XElement ValidateDocument(Dictionary<string, byte[]> entries, Settings settings)
     {
         var root = Parse(Get(entries, "OFD.xml"), settings);
         Require(root.Name.LocalName == "OFD" && (root.Name.NamespaceName == Ns.NamespaceName ||
@@ -356,7 +356,7 @@ public static class OfdPasswordEnvelope
         return Canonical(OfdPackagePath.Resolve(container, value));
     }
 
-    private static string Canonical(string path)
+    internal static string Canonical(string path)
     {
         Require(!string.IsNullOrWhiteSpace(path) && !path.StartsWith('/') && !path.Contains('\\') && !path.Contains(':') && !path.Any(char.IsControl) &&
             path.Split('/').All(part => part.Length > 0 && part != "." && part != "..") && OfdPackagePath.Resolve("OFD.xml", "/" + path) == path,
@@ -375,7 +375,7 @@ public static class OfdPasswordEnvelope
         path.Equals("PasswordCrypto", StringComparison.OrdinalIgnoreCase) || path.StartsWith("PasswordCrypto/", StringComparison.OrdinalIgnoreCase) ||
         path.Equals("decryptseed.dat", StringComparison.OrdinalIgnoreCase) || path.Equals("entriesmap.dat", StringComparison.OrdinalIgnoreCase);
 
-    private static byte[] Get(Dictionary<string, byte[]> entries, string path) => entries.TryGetValue(path, out var bytes)
+    internal static byte[] Get(Dictionary<string, byte[]> entries, string path) => entries.TryGetValue(path, out var bytes)
         ? bytes : throw new InvalidDataException($"Required package entry is missing: {path}");
 
     private static byte[] Base64(string value, int length)
@@ -390,7 +390,7 @@ public static class OfdPasswordEnvelope
         catch (FormatException ex) { throw new InvalidDataException("Invalid base64 field.", ex); }
     }
 
-    private static XElement Parse(byte[] bytes, Settings settings)
+    internal static XElement Parse(byte[] bytes, Settings settings)
     {
         Require(bytes.Length <= settings.Metadata, "XML exceeds metadata budget.");
         try
@@ -435,18 +435,18 @@ public static class OfdPasswordEnvelope
             (!node.HasElements || !node.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value))), "Unsupported or ambiguous XML structure.");
     }
 
-    private static void Require(bool condition, string message)
+    internal static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidDataException(message);
     }
 
-    private static void CheckExpanded(Dictionary<string, byte[]> entries, Settings settings)
+    internal static void CheckExpanded(Dictionary<string, byte[]> entries, Settings settings)
     {
         Require(entries.Count <= settings.Load.MaxEntryCount && entries.Values.All(bytes => bytes.LongLength <= settings.Load.MaxEntryUncompressedBytes) &&
             entries.Values.Sum(bytes => bytes.LongLength) <= settings.Load.MaxTotalUncompressedBytes, "Result exceeds package expansion budget.");
     }
 
-    private static async Task<byte[]> Pack(Dictionary<string, byte[]> entries, Settings settings, CancellationToken token)
+    internal static async Task<byte[]> Pack(Dictionary<string, byte[]> entries, Settings settings, CancellationToken token)
     {
         using var output = new BoundedMemoryStream(Math.Min(settings.Output, settings.Load.MaxInputBytes));
         try
@@ -521,7 +521,7 @@ public static class OfdPasswordEnvelope
         public override void SetLength(long value) { Require(value <= maximum, "Result exceeds output ZIP budget."); base.SetLength(value); }
     }
 
-    private sealed class Settings
+    internal sealed class Settings
     {
         internal OfdPackageLoadOptions Load { get; }
         internal long Output { get; }
