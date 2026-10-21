@@ -96,6 +96,8 @@ public sealed class StandardObjectEditingTests
 
         source.PreservedEntries.Remove("Doc_0/Cover.png");
         Assert.Throws<NotSupportedException>(() => OfdDocumentMerger.Merge([source]));
+        source.PreservedEntries["Doc_0/Cover.png"] = Encoding.UTF8.GetBytes("<Document/>");
+        Assert.Throws<NotSupportedException>(() => OfdDocumentMerger.Merge([source]));
     }
 
     [Fact]
@@ -231,6 +233,70 @@ public sealed class StandardObjectEditingTests
         using var rejected = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(loaded, rejected));
         Assert.Equal(0, rejected.Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AttachmentAction_WithExternalOrMissingPayload_RemainsOpaque(bool missingPayload)
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Attachments.Add(new OfdAttachment { Id = "51", Name = "memo.txt", Data = Encoding.UTF8.GetBytes("memo") });
+        package.Actions = new OfdActionCollection();
+        package.Actions.Items.Add(new OfdAttachmentAction { Event = "CLICK", AttachId = "51" });
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        var descriptorPath = entries.Keys.Single(path => path.EndsWith("/Attachments.xml", StringComparison.Ordinal));
+        if (missingPayload)
+        {
+            var payloadPath = entries.Keys.Single(path => path.StartsWith("Doc_0/Attachs/Attach_", StringComparison.Ordinal));
+            entries.Remove(payloadPath);
+        }
+        else
+        {
+            var descriptor = Xml(entries[descriptorPath]);
+            descriptor.Root!.Elements().Single().SetAttributeValue("External", "true");
+            entries[descriptorPath] = Bytes(descriptor);
+        }
+        using var input = MultiDocumentFixture.Zip(entries);
+        var imported = await new OfdReader().ReadAsync(input);
+        Assert.True(Assert.Single(imported.Attachments).IsExternal);
+        Assert.IsType<OfdRawAction>(Assert.Single(imported.Actions!.Items));
+        Assert.Throws<NotSupportedException>(() => OfdDocumentEditor.RemovePages(imported, [1]));
+        Assert.Equal(2, imported.Pages.Count);
+    }
+
+    [Fact]
+    public async Task AttachmentAction_RejectsNewExternalTarget()
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Attachments.Add(new OfdAttachment { Id = "51", Name = "memo.txt", IsExternal = true, ExternalPath = "memo.txt" });
+        package.Actions = new OfdActionCollection();
+        package.Actions.Items.Add(new OfdAttachmentAction { Event = "CLICK", AttachId = "51" });
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(package, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData("Doc_0/Document.xml")]
+    [InlineData("Doc_0/PublicRes.xml")]
+    [InlineData("Doc_0/Cover.png")]
+    public async Task ChangedCover_RejectsControlXmlPayload(string location)
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        seed.Position = 0; var imported = await new OfdReader().ReadAsync(seed);
+        imported.PreservedEntries["Doc_0/Cover.png"] = Encoding.UTF8.GetBytes("<Document/>");
+        imported.Options.Metadata.Cover = location;
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(imported, output));
+        Assert.Contains("Cover", error.Message);
+        Assert.Equal(0, output.Length);
     }
 
     [Fact]

@@ -4,7 +4,7 @@
 
 ## DocInfo
 
-`OfdMetadata.DocUsage` is an optional `OfdDocUsage` value (`Normal`, `EBook`, `ENewsPaper`, `EMagzine`). `Cover` is a package-relative image location, `CreatorVersion` is text, and `CustomDatas` contains ordered `CustomData` entries with `Name` and text value. An omitted `DocUsage` retains the standard default. A newly assigned or changed `Cover` must resolve to an existing package entry; this library neither fetches nor creates the image.
+`OfdMetadata.DocUsage` is an optional `OfdDocUsage` value (`Normal`, `EBook`, `ENewsPaper`, `EMagzine`). `Cover` is a package-relative image location, `CreatorVersion` is text, and `CustomDatas` contains ordered `CustomData` entries with `Name` and text value. An omitted `DocUsage` retains the standard default. A newly assigned or changed `Cover` must resolve to an existing package entry that is not XML control content; this library neither fetches nor creates the image.
 
 ```csharp
 var reader = new OfdReader();
@@ -29,7 +29,7 @@ Permissions are **declarations only**. The Reader, Writer and editing APIs do no
 
 ## Actions and source preservation
 
-Existing local `OfdGoToAction` remains available. `OfdUriAction`, `OfdAttachmentAction` (`GotoA`), `OfdSoundAction`, and `OfdMovieAction` model the other standard action forms. URI, attachment and media actions are serialized only; the library does not request a URI, open an attachment or play media. Attachment and media targets must be retained local resources for new or edited typed actions. Unsupported, ambiguous or unprovable source actions remain `OfdRawAction` with their full XML.
+Existing local `OfdGoToAction` remains available. `OfdUriAction`, `OfdAttachmentAction` (`GotoA`), `OfdSoundAction`, and `OfdMovieAction` model the other standard action forms. URI, attachment and media actions are serialized only; the library does not request a URI, open an attachment or play media. Attachment and media targets must be retained local resources for new or edited typed actions. A `GotoA` targeting an external attachment or an attachment with a missing payload remains opaque. Unsupported, ambiguous or unprovable source actions remain `OfdRawAction` with their full XML.
 
 Deleting an unrelated page keeps a modeled attachment or media action when its target remains in the package. An action carrying unknown XML, or one whose target is removed, still blocks the deletion.
 

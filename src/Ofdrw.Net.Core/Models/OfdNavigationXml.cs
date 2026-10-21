@@ -123,7 +123,7 @@ internal static class OfdNavigationXml
                                     action = new OfdUriAction { Event = eventValue, Uri = uri.Value,
                                         Base = kind.Attribute("Base")?.Value, Target = kind.Attribute("Target")?.Value }; break;
                                 case "GotoA" when kind.Attribute("AttachID") is XAttribute attachment && !string.IsNullOrWhiteSpace(attachment.Value) &&
-                                    package.Attachments.Count(item => item.Id == attachment.Value) == 1 &&
+                                    RetainedLocalAttachment(package, attachment.Value) &&
                                     Boolean(kind.Attribute("NewWindow")?.Value, out var newWindow):
                                     action = new OfdAttachmentAction { Event = eventValue, AttachId = attachment.Value, NewWindow = newWindow }; break;
                                 case "Sound" when Id(kind.Attribute("ResourceID")?.Value, out _) &&
@@ -373,7 +373,7 @@ internal static class OfdNavigationXml
                     break;
                 case OfdAttachmentAction attachment:
                     if (!ValidEvent(attachment.Event) || string.IsNullOrWhiteSpace(attachment.AttachId) ||
-                        package.Attachments.Count(item => item.Id == attachment.AttachId) != 1)
+                        !RetainedLocalAttachment(package, attachment.AttachId))
                         throw new NotSupportedException("Attachment action target is not a retained local attachment.");
                     break;
                 case OfdSoundAction sound:
@@ -435,6 +435,11 @@ internal static class OfdNavigationXml
     }
     private static bool Id(string? value, out long number) => long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out number) && number > 0;
     private static bool ValidEvent(string? value) => value is null or "DO" or "PO" or "CLICK";
+    private static bool RetainedLocalAttachment(OfdDocumentPackage package, string id)
+    {
+        var matches = package.Attachments.Where(item => item.Id == id).Take(2).ToArray();
+        return matches.Length == 1 && !matches[0].IsExternal;
+    }
     private static bool MediaResource(OfdDocumentPackage package, string id, string type, OfdModelMaterialization material, CancellationToken token)
     {
         var documentPath = package.DocumentEntryPath ?? package.Options.DocumentId + "/Document.xml";

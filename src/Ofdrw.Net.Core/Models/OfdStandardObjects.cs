@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Xml;
 using System.Xml.Linq;
+using Ofdrw.Net.Core.IO;
 
 namespace Ofdrw.Net.Core.Models;
 
@@ -508,8 +509,11 @@ internal static class OfdStandardXml
         {
             if (string.IsNullOrWhiteSpace(location)) throw new ArgumentException(role + " path is empty.");
             var resolved = material.ResolvePath("OFD.xml", location, token);
-            if (!package.PreservedEntries.ContainsKey(resolved))
+            if (!package.PreservedEntries.TryGetValue(resolved, out var bytes))
                 throw new NotSupportedException(role + " reference is not an existing package entry.");
+            if (role == "Cover" && (resolved.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) ||
+                OfdXmlContentProbe.LooksLikeXml(bytes, token, count => material.ChargeWork(count, token))))
+                throw new NotSupportedException("Cover must reference an image payload, not control XML.");
             if (package.DocumentEntryPath is string selected && package.PreservedEntries.TryGetValue("OFD.xml", out var rootBytes))
             {
                 var root = material.ReadXml("OFD.xml", rootBytes, token);

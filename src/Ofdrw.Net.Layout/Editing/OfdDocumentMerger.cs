@@ -111,7 +111,8 @@ public static class OfdDocumentMerger
         {
             var path = material.ResolvePath("OFD.xml", cover, cancellationToken);
             if (!first.PreservedEntries.TryGetValue(path, out var bytes) ||
-                path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) ||
+                OfdXmlContentProbe.LooksLikeXml(bytes, cancellationToken, count => material.ChargeWork(count, cancellationToken)))
                 throw new NotSupportedException("Merge cannot retain a Cover without a distinct existing package entry.");
             material.ChargeCopy(bytes.LongLength, cancellationToken);
             destination.PreservedEntries.Add(path, bytes.ToArray());
