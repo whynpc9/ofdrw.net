@@ -80,6 +80,8 @@ public sealed class TextShapeRequest
     {
         Text = text ?? throw new ArgumentNullException(nameof(text));
         Face = face ?? throw new ArgumentNullException(nameof(face));
+        if (direction != TextDirection.LeftToRight && direction != TextDirection.RightToLeft)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest, "Unsupported text direction.");
         if (sourceStart < 0 || (long)sourceStart + text.Length > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(sourceStart));
         if (script is null || script.Length != 4) throw new ArgumentException("Script must be a four-letter OpenType tag.", nameof(script));
         foreach (var c in script) if (c < 'A' || c > 'z' || c is >= '[' and <= '`') throw new ArgumentException("Script tag must use ASCII letters.", nameof(script));

@@ -84,6 +84,16 @@ public sealed class TextPrelayoutTests
         Assert.All(run.Glyphs, glyph => Assert.Equal(1, glyph.ClusterLength));
     }
 
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(2)]
+    public void UndefinedTextDirectionFailsBeforeShaping(int value)
+    {
+        var error = Assert.Throws<TextLayoutException>(() =>
+            new TextShapeRequest("ABC", 0, Noto(), (TextDirection)value));
+        Assert.Equal(TextLayoutError.InvalidRequest, error.Error);
+    }
+
     [Fact]
     public void ReplacementShaperCannotOmitInteriorOrTrailingSource()
     {
