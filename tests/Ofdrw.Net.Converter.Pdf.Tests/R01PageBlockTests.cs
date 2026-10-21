@@ -122,9 +122,11 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ForeignResourceNamespaceDoesNotResolvePaint(bool drawParam)
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ForeignResourceNamespaceDoesNotResolvePaint(bool drawParam, bool foreignRoot)
     {
         var resources = drawParam
             ? "<DrawParams><DrawParam ID='30'><FillColor Value='0 0 255'/></DrawParam></DrawParams>"
@@ -146,12 +148,16 @@ public sealed class R01PageBlockTests
                 {
                     var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
                     XNamespace extension = "urn:r01:paint-extension";
-                    foreach (var node in xml.Descendants())
+                    if (foreignRoot)
                     {
-                        foreach (var declaration in node.Attributes().Where(a => a.IsNamespaceDeclaration).ToArray())
-                            declaration.Remove();
-                        node.Name = extension + node.Name.LocalName;
+                        foreach (var node in xml.Descendants())
+                        {
+                            foreach (var declaration in node.Attributes().Where(a => a.IsNamespaceDeclaration).ToArray())
+                                declaration.Remove();
+                            node.Name = extension + node.Name.LocalName;
+                        }
                     }
+                    else xml.Root!.Elements().Single().Name = extension + (drawParam ? "DrawParams" : "ColorSpaces");
                     bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
                 }
                 using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);

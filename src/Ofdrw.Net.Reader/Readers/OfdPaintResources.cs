@@ -41,6 +41,7 @@ internal sealed class OfdPaintResources
             xml.Root!.Name != ns + "Res") return;
         foreach (var container in xml.Root.Elements())
         {
+            if (container.Name.Namespace != ns) continue;
             var table = container.Name.LocalName switch
             {
                 "ColorSpaces" => spaces,

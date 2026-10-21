@@ -240,3 +240,27 @@ b6b6ab802f7a1979d7f4e7d5e3d3d0ac0a45f827878a748ca0ceb055d5b99d6d  artifacts/road
 55fdc86d4528499da6df25bedd6fbe5ac7f8557bc4094bc3a42a2335ea0e68a3  artifacts/roadmap-v12/R01/resource-final-ses/files/default-v4.pdf
 e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/resource-final-ses/files/pages/default-v4/page-1.png
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/resource-final-ses/files/pages/default-v4/page-2.png
+
+# R21 integration and resource container namespace review, local source outputs
+8f6341a5e36e134209b0b9b17e5cf73d8971fb9ca12a199722fe4b77840b5456  artifacts/roadmap-v12/R01/r21-resource-container-focused.log
+64e06c173912d5a30ad9d6e5e83fcd0b250a37f3967199b6b757adec06e0c01c  artifacts/roadmap-v12/R01/r21-final-full.log
+a3d99b81edcc9e499621b26bd9451f92d31b9cb528673f43053f41976845ed50  artifacts/roadmap-v12/R01/r21-final-ses.log
+48f1995ae61be5f3ecd62e38e59297f7a437dc4b5f2b1caa0bc39f07729779f2  artifacts/roadmap-v12/R01/r21-final-ses/files/package-manifest.json
+61fd61a119f45f48ae13babec0f90fc79980505c509bb45c54c306a9db5942ca  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/package-manifest.json
+466c320d9a827ba20a8516b076d62f258054f1a71ed6d1c97614e54698f05f26  artifacts/roadmap-v12/R01/r21-final-ses/files/functional.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/r21-final-ses/files/rendered-pages.json
+8c8703a28a87025afa9b59cee5763d4ac59168618d0a3a5074628861ca67e08e  artifacts/roadmap-v12/R01/r21-final-ses/files/native-v1.ofd
+a8185407f0716aaf94b2f220ca6ca92efbcf8c85f7ee874a5986c3733556f966  artifacts/roadmap-v12/R01/r21-final-ses/files/native-v1.pdf
+aaa10238548fb355bac376b348088eaa0e8769c01d322887f7a88d9160109349  artifacts/roadmap-v12/R01/r21-final-ses/files/default-v4.ofd
+235e70045bb5664881c03e8d99ea10f06ca5aeae63f3fdcc014b29ae0ca5839e  artifacts/roadmap-v12/R01/r21-final-ses/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/r21-final-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r21-final-ses/files/pages/native-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/r21-final-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/r21-final-ses/files/pages/default-v4/page-2.png
+2c20f854bf1575b7ce743ba0075340c84f51349abb01c4c8061a6579975ccbda  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-ascii.ofd
+e46a21dd1c2a0b40de2002fadfa52f23521f8e361ce498fba9b69f691ad9b0d7  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-ascii.pdf
+ade46dc8006767faf5e6fb08e48d0fa0b8468feb04b0175fbfa3370e800ec5f5  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-ascii-pdf-page.png
+5ee94fa43fa52a1f3089de38f8f4b9e10530beacbd7e88a4dbde3ae14e7e5903  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-han.ofd
+c560a80265696a596de21a2e27ad537c1db4158abadf7c4d7263f947d6f592a6  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-han.pdf
+e31290e67d27aa7ccc546e177322886650be7dbf00f4cae8feb16e34d35c97e0  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-han-pdf-page.png
+5990032abf806dea5a5a663a9556fd930c18e86edede32f3fad63dd09d13df55  artifacts/roadmap-v12/R01/r21-final-ses/sdk-output/text-prelayout/r21-receipt.json
