@@ -120,6 +120,24 @@ public class ArchivalCopyTests
     }
 
     [Fact]
+    public async Task CaseDistinctDestinationWorksOnCaseSensitiveVolume()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "r17-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "archive.ofd"); var destination = Path.Combine(folder, "Archive.ofd");
+            File.WriteAllBytes(source, Zip(Seed("<Permissions><Edit>false</Edit></Permissions>")));
+            if (File.Exists(destination)) return; // This volume treats the two names as one file.
+            var inputHash = Hash(File.ReadAllBytes(source));
+            var result = await new ArchivalCopyConverter().ConvertAsync(source, destination, new());
+            Assert.Equal(PreflightOutcome.Pass, result.Postflight.SummaryOutcome);
+            Assert.Equal(inputHash, Hash(File.ReadAllBytes(source)));
+            Assert.True(File.Exists(destination));
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
     public async Task CopyRemovesOnlyTwoDeclarationsAndAuditsEveryEntry()
     {
         var entries = Seed("<Permissions><Edit>false</Edit><Print Printable='true' Copies='2'/></Permissions>" +

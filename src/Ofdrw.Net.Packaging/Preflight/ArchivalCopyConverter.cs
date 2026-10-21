@@ -47,7 +47,9 @@ public sealed class ArchivalCopyConverter
         var source = Path.GetFullPath(inputPath);
         var output = Path.GetFullPath(outputPath);
         var audit = output + ".audit.xml";
-        if (string.Equals(source, output, StringComparison.OrdinalIgnoreCase) || File.Exists(output) || File.Exists(audit))
+        // File.Exists observes the destination volume's case behavior, including
+        // aliases of the input; path text alone cannot decide that on all volumes.
+        if (string.Equals(source, output, StringComparison.Ordinal) || File.Exists(output) || File.Exists(audit))
             throw new IOException("Output and audit paths must be new and distinct from the input.");
         var snapshotOptions = options.Snapshot();
         byte[] sourceBytes;
