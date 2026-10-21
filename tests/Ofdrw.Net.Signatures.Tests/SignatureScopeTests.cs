@@ -129,6 +129,8 @@ public sealed class SignatureScopeTests
     [InlineData("Doc_0/PublicRes.xml", "../Shared", "Shared", "typeface.ttf")]
     [InlineData("Shared/PublicRes.xml", "Res", "Shared/Res", "logo.png")]
     [InlineData("Shared/PublicRes.xml", "Res", "Shared/Res", "typeface.ttf")]
+    [InlineData("Shared/PublicRes.dat", "Res", "Shared/Res", "logo.png")]
+    [InlineData("Shared/PublicRes.dat", "Res", "Shared/Res", "typeface.ttf")]
     public async Task ComposedSharedMediaAndFontLocationsCannotBeOmitted(
         string resourceXmlPath, string baseLocation, string payloadDirectory, string fileName)
     {

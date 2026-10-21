@@ -64,7 +64,7 @@ internal static class OfdSignatureFileSelection
         {
             cancellationToken.ThrowIfCancellationRequested();
             var path = entry.Key;
-            if (path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) &&
+            if (IsXmlCandidate(path, entry.Value) &&
                 !IsSignatureMaterial(path) && !IsAnnotationMaterial(path, directories))
                 required.Add(path);
             if (!IsSignatureMaterial(path) && !IsAnnotationMaterial(path, directories) && directories.Any(dir =>
@@ -75,7 +75,7 @@ internal static class OfdSignatureFileSelection
         // External shared resources may sit outside a DocBody directory. A path
         // explicitly named by any non-signature XML also remains protected.
         foreach (var entry in entries.Where(pair =>
-                     pair.Key.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) &&
+                     IsXmlCandidate(pair.Key, pair.Value) &&
                      !IsSignatureMaterial(pair.Key)))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -143,6 +143,22 @@ internal static class OfdSignatureFileSelection
     private static bool IsSignatureMaterial(string path) =>
         path.StartsWith("Signs/", StringComparison.OrdinalIgnoreCase) ||
         path.IndexOf("/Signs/", StringComparison.OrdinalIgnoreCase) >= 0;
+
+    private static bool IsXmlCandidate(string path, byte[] bytes)
+    {
+        if (path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) return true;
+        var offset = 0;
+        if (bytes.Length >= 3 && bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf)
+            offset = 3;
+        else if (bytes.Length >= 2 &&
+                 ((bytes[0] == 0xff && bytes[1] == 0xfe) ||
+                  (bytes[0] == 0xfe && bytes[1] == 0xff)))
+            return true;
+        while (offset < bytes.Length &&
+               (bytes[offset] == ' ' || bytes[offset] == '\t' ||
+                bytes[offset] == '\r' || bytes[offset] == '\n')) offset++;
+        return offset < bytes.Length && bytes[offset] == '<';
+    }
 
     private static bool IsAnnotationMaterial(string path, IEnumerable<string> documentDirectories) =>
         documentDirectories.Any(directory => path.StartsWith(directory + "Annots/", StringComparison.OrdinalIgnoreCase));
