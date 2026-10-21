@@ -112,7 +112,13 @@ internal static class OfdXmlEnvelope
         {
             // Modeled document order; existing unknown siblings retain their
             // relative positions. Outline actions precede nested OutlineElem.
-            var next = parent.Elements().FirstOrDefault(child => child.Name.Namespace == parent.Name.Namespace && Order(parent.Name.LocalName, child.Name.LocalName) > Order(parent.Name.LocalName, localName));
+            var desiredOrder = Order(parent.Name.LocalName, localName);
+            var next = parent.Elements().FirstOrDefault(child =>
+            {
+                if (child.Name.Namespace != parent.Name.Namespace) return false;
+                var childOrder = Order(parent.Name.LocalName, child.Name.LocalName);
+                return childOrder != int.MaxValue && childOrder > desiredOrder;
+            });
             if (next is null) parent.Add(replacement); else next.AddBeforeSelf(replacement);
         }
     }

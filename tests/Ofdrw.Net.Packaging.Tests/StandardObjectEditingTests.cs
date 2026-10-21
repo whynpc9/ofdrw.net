@@ -300,6 +300,44 @@ public sealed class StandardObjectEditingTests
     }
 
     [Fact]
+    public async Task InsertingStandardFields_IgnoresSameNamespaceExtensionAnchors()
+    {
+        var package = new OfdDocumentPackage();
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        var info = root.Root.Element(ns + "DocBody")!.Element(ns + "DocInfo")!;
+        var docId = info.Element(ns + "DocID")?.Value ?? "doc";
+        info.ReplaceNodes(new XElement(ns + "DocID", docId), new XElement(ns + "Title", "title"),
+            new XElement(ns + "Extra", "keep"), new XElement(ns + "Keywords", "key"));
+        entries["OFD.xml"] = Bytes(root);
+        var document = Xml(entries["Doc_0/Document.xml"]);
+        document.Root!.Add(new XElement(ns + "Permissions", new XElement(ns + "Extra", "keep"), new XElement(ns + "Edit", "true")));
+        document.Root.Add(new XElement(ns + "VPreferences", new XElement(ns + "Extra", "keep"), new XElement(ns + "PageMode", "UseOutlines")));
+        entries["Doc_0/Document.xml"] = Bytes(document);
+        entries["Doc_0/Cover.png"] = [1, 2, 3];
+        using var input = MultiDocumentFixture.Zip(entries);
+        var imported = await new OfdReader().ReadAsync(input);
+        imported.Options.Metadata.Cover = "Doc_0/Cover.png";
+        imported.Options.Metadata.CreatorVersion = "1.0";
+        imported.Options.Metadata.CustomDatas = new OfdCustomDatas();
+        imported.Options.Metadata.CustomDatas.Add("case", "value");
+        imported.Permissions!.ValidPeriod = new OfdValidPeriod { StartDate = "2026-10-21T00:00:00Z" };
+        imported.ViewingPreferences!.PageLayout = OfdPageLayout.OnePage;
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(imported, output);
+        var written = MultiDocumentFixture.Unzip(output);
+        var savedInfo = Xml(written["OFD.xml"]).Descendants(ns + "DocInfo").Single();
+        Assert.Equal(new[] { "DocID", "Title", "Extra", "Cover", "Keywords", "CreatorVersion", "CustomDatas" },
+            savedInfo.Elements().Select(child => child.Name.LocalName));
+        var savedDocument = Xml(written["Doc_0/Document.xml"]);
+        Assert.Equal(new[] { "Extra", "Edit", "ValidPeriod" },
+            savedDocument.Descendants(ns + "Permissions").Single().Elements().Select(child => child.Name.LocalName));
+        Assert.Equal(new[] { "Extra", "PageMode", "PageLayout" },
+            savedDocument.Descendants(ns + "VPreferences").Single().Elements().Select(child => child.Name.LocalName));
+    }
+
+    [Fact]
     public async Task MultiDocument_RejectsChangedRootReferencesIntoOtherDocument()
     {
         var entries = await MultiDocumentFixture.CreateEntriesAsync();
