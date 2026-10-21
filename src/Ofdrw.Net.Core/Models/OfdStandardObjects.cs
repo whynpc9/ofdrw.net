@@ -283,7 +283,12 @@ public sealed class OfdViewingPreferences : OfdStandardNode
     public OfdZoomMode? ZoomMode { get => EnumValue<OfdZoomMode>("ZoomMode"); set { if (value.HasValue) Text("Zoom", null); Text("ZoomMode", value?.ToString()); } }
     /// <summary>Numeric initial zoom, mutually exclusive with ZoomMode.</summary>
     public double? Zoom { get => double.TryParse(Text("Zoom"), NumberStyles.Float, CultureInfo.InvariantCulture, out var n) ? n : null; set { if (value.HasValue && (double.IsNaN(value.Value) || double.IsInfinity(value.Value))) throw new ArgumentOutOfRangeException(nameof(value)); if (value.HasValue) Text("ZoomMode", null); Text("Zoom", value?.ToString("R", CultureInfo.InvariantCulture)); } }
-    private T? EnumValue<T>(string name) where T : struct, Enum => Enum.TryParse<T>(Text(name), false, out var value) && Enum.IsDefined(typeof(T), value) ? value : null;
+    private T? EnumValue<T>(string name) where T : struct, Enum
+    {
+        var token = Text(name);
+        return token is not null && Enum.GetNames(typeof(T)).Contains(token, StringComparer.Ordinal) &&
+            Enum.TryParse<T>(token, false, out var value) ? value : null;
+    }
     internal static bool Recognized(XElement root)
     {
         if (!WellFormed(root, "PageMode", "PageLayout", "TabDisplay", "HideToolbar", "HideMenubar", "HideWindowUI", "ZoomMode", "Zoom")) return false;
@@ -377,7 +382,8 @@ internal static class OfdStandardXml
         if (info.Elements(ns + "DocUsage").Count() == 1)
         {
             var value = info.Element(ns + "DocUsage")!.Value;
-            if (Enum.TryParse<OfdDocUsage>(value, false, out var usage) && Enum.IsDefined(typeof(OfdDocUsage), usage)) metadata.DocUsage = usage;
+            if (Enum.GetNames(typeof(OfdDocUsage)).Contains(value, StringComparer.Ordinal) &&
+                Enum.TryParse<OfdDocUsage>(value, false, out var usage)) metadata.DocUsage = usage;
         }
         metadata.Cover = Scalar(info, "Cover"); metadata.CreatorVersion = Scalar(info, "CreatorVersion");
         if (info.Elements(ns + "CustomDatas").Count() == 1)

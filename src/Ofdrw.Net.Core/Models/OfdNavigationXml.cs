@@ -135,7 +135,8 @@ internal static class OfdNavigationXml
                                         Repeat = repeat, Synchronous = synchronous }; break;
                                 case "Movie" when Id(kind.Attribute("ResourceID")?.Value, out _) &&
                                     MediaResource(package, kind.Attribute("ResourceID")!.Value, "Video", budget, token) &&
-                                    (kind.Attribute("Operator") is null || Enum.TryParse<OfdMovieOperator>(kind.Attribute("Operator")!.Value, false, out var movieOperator) && Enum.IsDefined(typeof(OfdMovieOperator), movieOperator)):
+                                    (kind.Attribute("Operator") is null ||
+                                        Enum.GetNames(typeof(OfdMovieOperator)).Contains(kind.Attribute("Operator")!.Value, StringComparer.Ordinal)):
                                     action = new OfdMovieAction { Event = eventValue, ResourceId = kind.Attribute("ResourceID")!.Value,
                                         Operator = kind.Attribute("Operator") is null ? null : (OfdMovieOperator)Enum.Parse(typeof(OfdMovieOperator), kind.Attribute("Operator")!.Value) }; break;
                             }

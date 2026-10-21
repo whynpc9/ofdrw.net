@@ -261,6 +261,40 @@ public sealed class StandardObjectEditingTests
         Assert.Equal("", saved.Root!.Elements(ns + "DocBody").Last().Descendants(ns + "CustomData").Single().Attribute("Name")!.Value);
     }
 
+    [Theory]
+    [InlineData("1", "1", "1")]
+    [InlineData("ebook", "fullscreen", "play")]
+    [InlineData(" EBook ", " FullScreen ", " Play ")]
+    public async Task NonCanonicalEnumLexemes_RemainOpaqueAndUnchanged(string usage, string mode, string operation)
+    {
+        var package = new OfdDocumentPackage(); package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        var entries = MultiDocumentFixture.Unzip(seed);
+        var root = Xml(entries["OFD.xml"]); var ns = root.Root!.Name.Namespace;
+        root.Root.Element(ns + "DocBody")!.Element(ns + "DocInfo")!.Add(new XElement(ns + "DocUsage", usage));
+        entries["OFD.xml"] = Bytes(root);
+        var document = Xml(entries["Doc_0/Document.xml"]);
+        document.Root!.Add(XElement.Parse($"<VPreferences xmlns='{ns}'><PageMode>{mode}</PageMode></VPreferences>"));
+        document.Root.Add(XElement.Parse($"<Actions xmlns='{ns}'><Action Event='CLICK'><Movie ResourceID='901' Operator='{operation}'/></Action></Actions>"));
+        entries["Doc_0/Document.xml"] = Bytes(document);
+        var resource = Xml(entries["Doc_0/PublicRes.xml"]);
+        resource.Root!.Add(new XElement(ns + "MultiMedias", new XElement(ns + "MultiMedia",
+            new XAttribute("ID", "901"), new XAttribute("Type", "Video"), new XElement(ns + "MediaFile", "video.mp4"))));
+        entries["Doc_0/PublicRes.xml"] = Bytes(resource);
+        entries["Doc_0/Res/video.mp4"] = [1, 2, 3];
+        using var input = MultiDocumentFixture.Zip(entries);
+        var loaded = await new OfdReader().ReadAsync(input);
+        Assert.Null(loaded.Options.Metadata.DocUsage);
+        Assert.Null(loaded.ViewingPreferences);
+        Assert.IsType<OfdRawAction>(Assert.Single(loaded.Actions!.Items));
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(loaded, output);
+        var written = MultiDocumentFixture.Unzip(output);
+        Assert.Equal(usage, Xml(written["OFD.xml"]).Descendants(ns + "DocUsage").Single().Value);
+        var saved = Xml(written["Doc_0/Document.xml"]);
+        Assert.Equal(mode, saved.Descendants(ns + "PageMode").Single().Value);
+        Assert.Equal(operation, saved.Descendants(ns + "Movie").Single().Attribute("Operator")!.Value);
+    }
+
     [Fact]
     public async Task ImportedUriAction_DoesNotBlockUnrelatedPageDeletion()
     {
