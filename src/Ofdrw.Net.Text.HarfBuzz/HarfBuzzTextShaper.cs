@@ -33,8 +33,7 @@ public sealed class HarfBuzzTextShaper : ITextShaper
             var engineIdentity = "HarfBuzzSharp/" + PackageVersion + ";libHarfBuzzSharp/" + nativeVersion;
             if (request.Text.Length == 0)
                 return new TextShapedRun(request, Array.Empty<TextShapedGlyph>(), engineIdentity);
-            using var bytes = new MemoryStream(request.Face.GetFaceBytes(), writable: false);
-            using var blob = Blob.FromStream(bytes);
+            using var blob = CreateOwnedBlob(request.Face.GetFaceBytes());
             using var face = new Face(blob, 0);
             if (face.UnitsPerEm != request.Face.UnitsPerEm)
                 throw new TextLayoutException(TextLayoutError.InvalidFont, "HarfBuzz and the managed reader disagree about font units.");
@@ -106,6 +105,20 @@ public sealed class HarfBuzzTextShaper : ITextShaper
         catch (Exception exception) when (exception is InvalidOperationException || exception is ArgumentException || exception is IOException)
         {
             throw new TextLayoutException(TextLayoutError.InvalidFont, "HarfBuzz rejected the selected face or run.", exception);
+        }
+    }
+
+    private static Blob CreateOwnedBlob(byte[] faceBytes)
+    {
+        var pinnedBytes = GCHandle.Alloc(faceBytes, GCHandleType.Pinned);
+        try
+        {
+            // Duplicate copies the bytes into native-owned storage before unpinning the array.
+            return new Blob(pinnedBytes.AddrOfPinnedObject(), faceBytes.Length, MemoryMode.Duplicate);
+        }
+        finally
+        {
+            pinnedBytes.Free();
         }
     }
 }
