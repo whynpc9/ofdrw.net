@@ -132,33 +132,55 @@ public sealed class OfdGoToAction : OfdAction
 /// <summary>An external URI declaration. Reading or writing never opens the URI.</summary>
 public sealed class OfdUriAction : OfdAction
 {
+    /// <summary>URI target declared by the action; it is never requested by this library.</summary>
     public string Uri { get; set; } = string.Empty;
+    /// <summary>Optional base URI used by an external viewer to resolve the target.</summary>
     public string? Base { get; set; }
+    /// <summary>Optional target window name or viewer target.</summary>
     public string? Target { get; set; }
 }
 
 /// <summary>A reference to an attachment in the selected document; never opened automatically.</summary>
 public sealed class OfdAttachmentAction : OfdAction
 {
+    /// <summary>ID of an attachment retained in the selected document.</summary>
     public string AttachId { get; set; } = string.Empty;
+    /// <summary>Whether an external viewer should open the attachment in a new window.</summary>
     public bool? NewWindow { get; set; }
 }
 
 /// <summary>An audio resource action declaration; playback is outside this library.</summary>
 public sealed class OfdSoundAction : OfdAction
 {
+    /// <summary>ID of a retained audio resource.</summary>
     public string ResourceId { get; set; } = string.Empty;
+    /// <summary>Optional playback volume from zero to one hundred.</summary>
     public int? Volume { get; set; }
+    /// <summary>Optional instruction for a viewer to repeat playback.</summary>
     public bool? Repeat { get; set; }
+    /// <summary>Optional instruction for synchronous playback.</summary>
     public bool? Synchronous { get; set; }
 }
 
-public enum OfdMovieOperator { Play, Stop, Pause, Resume }
+/// <summary>Video playback operation declared by a Movie action.</summary>
+public enum OfdMovieOperator
+{
+    /// <summary>Start playback.</summary>
+    Play,
+    /// <summary>Stop playback.</summary>
+    Stop,
+    /// <summary>Pause playback.</summary>
+    Pause,
+    /// <summary>Resume paused playback.</summary>
+    Resume
+}
 
 /// <summary>A video resource action declaration; playback is outside this library.</summary>
 public sealed class OfdMovieAction : OfdAction
 {
+    /// <summary>ID of a retained video resource.</summary>
     public string ResourceId { get; set; } = string.Empty;
+    /// <summary>Optional playback operation for an external viewer.</summary>
     public OfdMovieOperator? Operator { get; set; }
 }
 

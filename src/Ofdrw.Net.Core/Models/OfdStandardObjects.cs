@@ -9,17 +9,26 @@ using System.Xml.Linq;
 namespace Ofdrw.Net.Core.Models;
 
 /// <summary>Document usage declared in DocInfo. An omitted value has the standard's Normal default.</summary>
-public enum OfdDocUsage { Normal, EBook, ENewsPaper, EMagzine }
+public enum OfdDocUsage
+{
+    /// <summary>Ordinary document.</summary>
+    Normal,
+    /// <summary>Electronic book.</summary>
+    EBook,
+    /// <summary>Electronic newspaper.</summary>
+    ENewsPaper,
+    /// <summary>Electronic magazine; retains the standard's spelling.</summary>
+    EMagzine
+}
 
-// The XML backing is deliberately private: typed edits retain extension nodes,
-// attributes, namespace bindings and the original order without exposing a
-// second mutable XML ownership path to callers.
+/// <summary>Base for XML-backed standard objects that retain extension content and document ownership.</summary>
 public abstract class OfdStandardNode
 {
     private readonly XElement root;
     internal string? OriginalXml { get; private set; }
     internal object? DocumentOwner { get; private set; }
     internal XElement Root => root;
+    /// <summary>Creates a new standard object with the given local element name.</summary>
     protected OfdStandardNode(string local) { root = new XElement(local); }
     internal OfdStandardNode(XElement source) { root = source; }
     internal void Bind(object owner, string xml) { OriginalXml = xml; DocumentOwner = owner; }
@@ -38,7 +47,9 @@ public abstract class OfdStandardNode
         return copy;
     }
     internal string InventoryXml => root.ToString(SaveOptions.DisableFormatting);
+    /// <summary>Reads an optional child element's text.</summary>
     protected string? Text(string name) => root.Element(root.Name.Namespace + name)?.Value;
+    /// <summary>Sets or removes a child element while refusing mixed source content.</summary>
     protected void Text(string name, string? value)
     {
         var nodes = root.Elements(root.Name.Namespace + name).ToArray();
@@ -55,9 +66,13 @@ public abstract class OfdStandardNode
         }
         else if (node.Value != value) { node.Nodes().OfType<XText>().Remove(); node.AddFirst(new XText(value)); }
     }
+    /// <summary>Reads an optional unqualified attribute.</summary>
     protected string? Attribute(string name) => root.Attribute(name)?.Value;
+    /// <summary>Sets or removes an unqualified attribute.</summary>
     protected void Attribute(string name, string? value) => root.SetAttributeValue(name, value);
+    /// <summary>Reads an optional Boolean child element.</summary>
     protected bool? Boolean(string name) => TryBoolean(Text(name));
+    /// <summary>Sets or removes a Boolean child element.</summary>
     protected void Boolean(string name, bool? value) => Text(name, value?.ToString().ToLowerInvariant());
     internal static bool? TryBoolean(string? text) => text switch { "true" or "1" => true, "false" or "0" => false, _ => null };
     internal static bool WellFormed(XElement root, params string[] singletonFields)
@@ -75,9 +90,12 @@ public abstract class OfdStandardNode
 /// <summary>An ordered DocInfo custom metadata entry. Name is required by the OFD schema.</summary>
 public sealed class OfdCustomData : OfdStandardNode
 {
+    /// <summary>Creates a named custom metadata value.</summary>
     public OfdCustomData(string name, string value) : base("CustomData") { Name = name; Value = value; }
     internal OfdCustomData(XElement source) : base(source) { }
+    /// <summary>Required name of this custom metadata entry.</summary>
     public string Name { get => Attribute("Name") ?? string.Empty; set => Attribute("Name", value); }
+    /// <summary>Text value of this custom metadata entry.</summary>
     public string Value
     {
         get => Root.Value;
@@ -93,35 +111,49 @@ public sealed class OfdCustomData : OfdStandardNode
 /// <summary>Ordered DocInfo custom metadata. Unknown children remain in their source positions.</summary>
 public sealed class OfdCustomDatas : OfdStandardNode
 {
+    /// <summary>Creates an empty custom metadata collection.</summary>
     public OfdCustomDatas() : base("CustomDatas") { }
     internal OfdCustomDatas(XElement source) : base(source) { }
+    /// <summary>Ordered view of the current custom metadata entries.</summary>
     public IReadOnlyList<OfdCustomData> Items => Root.Elements(Root.Name.Namespace + "CustomData").Select(e => new OfdCustomData(e)).ToArray();
+    /// <summary>Adds a named text value and returns its attached entry.</summary>
     public OfdCustomData Add(string name, string value)
     {
         if (string.IsNullOrEmpty(name)) throw new ArgumentException("CustomData Name is required.", nameof(name));
         var item = new OfdCustomData(name, value);
         var attached = item.Emit(Root.Name.Namespace, this); Root.Add(attached); return new OfdCustomData(attached);
     }
+    /// <summary>Removes the modeled entry at its zero-based index.</summary>
     public void RemoveAt(int index) => Root.Elements(Root.Name.Namespace + "CustomData").ElementAt(index).Remove();
+    /// <summary>Removes modeled entries while retaining extension children.</summary>
     public void Clear() { foreach (var item in Root.Elements(Root.Name.Namespace + "CustomData").ToArray()) item.Remove(); }
 }
 
 /// <summary>Document permission declarations. This model does not enforce access restrictions.</summary>
 public sealed class OfdPermissions : OfdStandardNode
 {
+    /// <summary>Creates an empty set of permission declarations.</summary>
     public OfdPermissions() : base("Permissions") { }
     internal OfdPermissions(XElement source) : base(source) { }
+    /// <summary>Optional editing permission declaration.</summary>
     public bool? Edit { get => Boolean("Edit"); set => Boolean("Edit", value); }
+    /// <summary>Optional annotation permission declaration.</summary>
     public bool? Annot { get => Boolean("Annot"); set => Boolean("Annot", value); }
+    /// <summary>Optional export permission declaration.</summary>
     public bool? Export { get => Boolean("Export"); set => Boolean("Export", value); }
+    /// <summary>Optional signature permission declaration.</summary>
     public bool? Signature { get => Boolean("Signature"); set => Boolean("Signature", value); }
+    /// <summary>Optional watermark permission declaration.</summary>
     public bool? Watermark { get => Boolean("Watermark"); set => Boolean("Watermark", value); }
+    /// <summary>Optional screen-print permission declaration.</summary>
     public bool? PrintScreen { get => Boolean("PrintScreen"); set => Boolean("PrintScreen", value); }
+    /// <summary>Optional print permission details.</summary>
     public OfdPrintPermission? Print
     {
         get => Root.Element(Root.Name.Namespace + "Print") is XElement e ? BindChild(new OfdPrintPermission(e)) : null;
         set => OfdXmlEnvelope.Singleton(Root, "Print", value?.Emit(Root.Name.Namespace, DocumentOwner ?? this));
     }
+    /// <summary>Optional period during which the declarations are valid.</summary>
     public OfdValidPeriod? ValidPeriod
     {
         get => Root.Element(Root.Name.Namespace + "ValidPeriod") is XElement e ? BindChild(new OfdValidPeriod(e)) : null;
@@ -144,16 +176,22 @@ public sealed class OfdPermissions : OfdStandardNode
     }
 }
 
+/// <summary>Print permission declaration; the library does not enforce it.</summary>
 public sealed class OfdPrintPermission : OfdStandardNode
 {
+    /// <summary>Creates empty print permission details.</summary>
     public OfdPrintPermission() : base("Print") { }
     internal OfdPrintPermission(XElement source) : base(source) { }
+    /// <summary>Required printability declaration when a Print element is written.</summary>
     public bool? Printable { get => TryBoolean(Attribute("Printable")); set => Attribute("Printable", value?.ToString().ToLowerInvariant()); }
+    /// <summary>Optional maximum copy count; the schema uses minus one as its default.</summary>
     public int? Copies { get => int.TryParse(Attribute("Copies"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : null; set => Attribute("Copies", value?.ToString(CultureInfo.InvariantCulture)); }
 }
 
+/// <summary>Optional validity interval of permission declarations.</summary>
 public sealed class OfdValidPeriod : OfdStandardNode
 {
+    /// <summary>Creates an empty validity interval.</summary>
     public OfdValidPeriod() : base("ValidPeriod") { }
     internal OfdValidPeriod(XElement source) : base(source) { }
     /// <summary>XML dateTime lexical value; retained exactly to preserve timezone omission or offset.</summary>
@@ -163,23 +201,87 @@ public sealed class OfdValidPeriod : OfdStandardNode
     private static void CheckDate(string? value) { if (value is not null) _ = XmlConvert.ToDateTime(value, XmlDateTimeSerializationMode.RoundtripKind); }
 }
 
-public enum OfdPageMode { None, FullScreen, UseOutlines, UseThumbs, UseCustomTags, UseLayers, UseAttatchs, UseBookmarks }
-public enum OfdPageLayout { OnePage, OneColumn, TwoPageL, TwoColumnL, TwoPageR, TwoColumnR }
-public enum OfdTabDisplay { DocTitle, FileName }
-public enum OfdZoomMode { Default, FitHeight, FitWidth, FitRect }
+/// <summary>Initial page panel or viewing mode requested from a viewer.</summary>
+public enum OfdPageMode
+{
+    /// <summary>No special panel.</summary>
+    None,
+    /// <summary>Full-screen viewing.</summary>
+    FullScreen,
+    /// <summary>Show the outline panel.</summary>
+    UseOutlines,
+    /// <summary>Show page thumbnails.</summary>
+    UseThumbs,
+    /// <summary>Show custom tags.</summary>
+    UseCustomTags,
+    /// <summary>Show layers.</summary>
+    UseLayers,
+    /// <summary>Show attachments; retains the OFD spelling.</summary>
+    UseAttatchs,
+    /// <summary>Show bookmarks.</summary>
+    UseBookmarks
+}
+
+/// <summary>Page arrangement requested from a viewer.</summary>
+public enum OfdPageLayout
+{
+    /// <summary>Display one page.</summary>
+    OnePage,
+    /// <summary>Display a single page column.</summary>
+    OneColumn,
+    /// <summary>Display a two-page spread with the first page on the left.</summary>
+    TwoPageL,
+    /// <summary>Display two columns with the first page on the left.</summary>
+    TwoColumnL,
+    /// <summary>Display a two-page spread with the first page on the right.</summary>
+    TwoPageR,
+    /// <summary>Display two columns with the first page on the right.</summary>
+    TwoColumnR
+}
+
+/// <summary>Label to show for the document tab.</summary>
+public enum OfdTabDisplay
+{
+    /// <summary>Use the document title.</summary>
+    DocTitle,
+    /// <summary>Use the file name.</summary>
+    FileName
+}
+
+/// <summary>Initial zoom choice requested from a viewer.</summary>
+public enum OfdZoomMode
+{
+    /// <summary>Use the viewer's default zoom.</summary>
+    Default,
+    /// <summary>Fit page height.</summary>
+    FitHeight,
+    /// <summary>Fit page width.</summary>
+    FitWidth,
+    /// <summary>Fit a rectangle.</summary>
+    FitRect
+}
 
 /// <summary>Viewer preference declarations; this library does not apply them to a UI.</summary>
 public sealed class OfdViewingPreferences : OfdStandardNode
 {
+    /// <summary>Creates empty viewer preferences.</summary>
     public OfdViewingPreferences() : base("VPreferences") { }
     internal OfdViewingPreferences(XElement source) : base(source) { }
+    /// <summary>Optional initial page mode.</summary>
     public OfdPageMode? PageMode { get => EnumValue<OfdPageMode>("PageMode"); set => Text("PageMode", value?.ToString()); }
+    /// <summary>Optional page layout.</summary>
     public OfdPageLayout? PageLayout { get => EnumValue<OfdPageLayout>("PageLayout"); set => Text("PageLayout", value?.ToString()); }
+    /// <summary>Optional document-tab label choice.</summary>
     public OfdTabDisplay? TabDisplay { get => EnumValue<OfdTabDisplay>("TabDisplay"); set => Text("TabDisplay", value?.ToString()); }
+    /// <summary>Optional instruction to hide the toolbar.</summary>
     public bool? HideToolbar { get => Boolean("HideToolbar"); set => Boolean("HideToolbar", value); }
+    /// <summary>Optional instruction to hide the menu bar.</summary>
     public bool? HideMenubar { get => Boolean("HideMenubar"); set => Boolean("HideMenubar", value); }
+    /// <summary>Optional instruction to hide other window controls.</summary>
     public bool? HideWindowUI { get => Boolean("HideWindowUI"); set => Boolean("HideWindowUI", value); }
+    /// <summary>Named zoom choice, mutually exclusive with a numeric Zoom.</summary>
     public OfdZoomMode? ZoomMode { get => EnumValue<OfdZoomMode>("ZoomMode"); set { if (value.HasValue) Text("Zoom", null); Text("ZoomMode", value?.ToString()); } }
+    /// <summary>Numeric initial zoom, mutually exclusive with ZoomMode.</summary>
     public double? Zoom { get => double.TryParse(Text("Zoom"), NumberStyles.Float, CultureInfo.InvariantCulture, out var n) ? n : null; set { if (value.HasValue && (double.IsNaN(value.Value) || double.IsInfinity(value.Value))) throw new ArgumentOutOfRangeException(nameof(value)); if (value.HasValue) Text("ZoomMode", null); Text("Zoom", value?.ToString("R", CultureInfo.InvariantCulture)); } }
     private T? EnumValue<T>(string name) where T : struct, Enum => Enum.TryParse<T>(Text(name), false, out var value) && Enum.IsDefined(typeof(T), value) ? value : null;
     internal static bool Recognized(XElement root)
@@ -199,27 +301,37 @@ public sealed class OfdViewingPreferences : OfdStandardNode
 /// <summary>A version descriptor in the selected DocBody.</summary>
 public sealed class OfdVersion : OfdStandardNode
 {
+    /// <summary>Creates a version descriptor with an ID, index, and package location.</summary>
     public OfdVersion(string id, int index, string baseLocation) : base("Version") { Id = id; Index = index; BaseLocation = baseLocation; }
     internal OfdVersion(XElement source) : base(source) { }
+    /// <summary>XML ID of this version descriptor.</summary>
     public string Id { get => Attribute("ID") ?? string.Empty; set => Attribute("ID", value); }
+    /// <summary>Version index declared in OFD.xml.</summary>
     public int Index { get => int.TryParse(Attribute("Index"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : 0; set => Attribute("Index", value.ToString(CultureInfo.InvariantCulture)); }
+    /// <summary>Optional marker for the current version.</summary>
     public bool? Current { get => TryBoolean(Attribute("Current")); set => Attribute("Current", value?.ToString().ToLowerInvariant()); }
+    /// <summary>Package-relative location of this version's existing file.</summary>
     public string BaseLocation { get => Attribute("BaseLoc") ?? string.Empty; set => Attribute("BaseLoc", value); }
 }
 
 /// <summary>Ordered version descriptors. Referenced version files are preserved, never synthesized.</summary>
 public sealed class OfdVersions : OfdStandardNode
 {
+    /// <summary>Creates an empty version descriptor collection.</summary>
     public OfdVersions() : base("Versions") { }
     internal OfdVersions(XElement source) : base(source) { }
+    /// <summary>Ordered view of the current version descriptors.</summary>
     public IReadOnlyList<OfdVersion> Items => Root.Elements(Root.Name.Namespace + "Version").Select(e => new OfdVersion(e)).ToArray();
+    /// <summary>Adds a descriptor for an existing version file.</summary>
     public OfdVersion Add(string id, int index, string baseLocation)
     {
         if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(baseLocation)) throw new ArgumentException("Version ID and BaseLoc are required.");
         var item = new OfdVersion(id, index, baseLocation);
         var attached = item.Emit(Root.Name.Namespace, this); Root.Add(attached); return new OfdVersion(attached);
     }
+    /// <summary>Removes the modeled descriptor at its zero-based index.</summary>
     public void RemoveAt(int index) => Root.Elements(Root.Name.Namespace + "Version").ElementAt(index).Remove();
+    /// <summary>Removes modeled descriptors while retaining extension children.</summary>
     public void Clear() { foreach (var item in Root.Elements(Root.Name.Namespace + "Version").ToArray()) item.Remove(); }
     internal static bool Recognized(XElement root) => root.Elements(root.Name.Namespace + "Version").Any() &&
         root.Elements(root.Name.Namespace + "Version").All(e =>

@@ -25,6 +25,7 @@ public sealed class OfdMetadata
     /// <summary>Package-relative cover image location; the library does not fetch it.</summary>
     public string? Cover { get; set; }
 
+    /// <summary>Version string of the application that created this document.</summary>
     public string? CreatorVersion { get; set; }
 
     /// <summary>Ordered custom metadata. Null preserves an imported source; withdrawing edits fails.</summary>
