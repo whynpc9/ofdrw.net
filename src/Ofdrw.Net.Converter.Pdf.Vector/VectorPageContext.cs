@@ -509,7 +509,9 @@ internal sealed class VectorFont : IDisposable
         ? _cidToGid[cid * 2] * 256 + _cidToGid[cid * 2 + 1] : 0;
     internal static char WinAnsiCharacter(int code) => code switch
     {
-        >= 32 and <= 126 or >= 160 and <= 255 => (char)code,
+        // PDF WinAnsi duplicates space at A0 and hyphen at AD. The Unicode
+        // cmap entry for NBSP/soft hyphen does not certify those source glyphs.
+        >= 32 and <= 126 or >= 161 and <= 172 or >= 174 and <= 255 => (char)code,
         128 => '\u20AC', 130 => '\u201A', 131 => '\u0192', 132 => '\u201E', 133 => '\u2026',
         134 => '\u2020', 135 => '\u2021', 136 => '\u02C6', 137 => '\u2030', 138 => '\u0160',
         139 => '\u2039', 140 => '\u0152', 142 => '\u017D', 145 => '\u2018', 146 => '\u2019',

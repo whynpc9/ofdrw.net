@@ -37,4 +37,18 @@ public sealed class WinAnsiFontTests
         var error = await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter().ConvertAsync(input, output));
         Assert.Contains(code, error.Message); Assert.Equal(0, output.Length);
     }
+
+    [Theory]
+    [InlineData((byte)0xA0, ' ')]
+    [InlineData((byte)0xAD, '-')]
+    public async Task DuplicateWinAnsiCodesCannotCertifySourceGlyph(byte code, char unicode)
+    {
+        using var fixture = new PdfFixture(Font);
+        var content = fixture.TextWinAnsi("A", 25, 95) + fixture.TextWinAnsiCode(code, unicode, 50, 95);
+        using var input = new MemoryStream(fixture.Create(new[] { content }, simpleWinAnsi: true));
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter().ConvertAsync(input, output));
+        Assert.Contains("SOURCE_GLYPH_CMAP_MISMATCH", error.Message);
+        Assert.Equal(0, output.Length);
+    }
 }

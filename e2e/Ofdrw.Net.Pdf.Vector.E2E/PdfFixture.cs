@@ -35,6 +35,11 @@ internal sealed class PdfFixture : IDisposable
         }
         return $"BT /F1 {Number(size)} Tf 1 0 0 1 {Number(x)} {Number(y)} Tm <{encoded}> Tj ET\n";
     }
+    internal string TextWinAnsiCode(byte code, char unicode, double x, double y, double size = 12)
+    {
+        _characters[code] = unicode;
+        return $"BT /F1 {Number(size)} Tf 1 0 0 1 {Number(x)} {Number(y)} Tm <{code:X2}> Tj ET\n";
+    }
     internal byte[] Create(string[] contents, string pageEntries = "", bool wrongUnicode = false, string fontEntries = "", bool inheritedResources = false,
         string imageEntries = "", bool? interpolate = null, byte[]? imageBytes = null, int imageWidth = 2, int imageHeight = 2,
         byte[]? encodingStream = null, byte[]? cidMapStream = null, string? encodingOverride = null, string? cidMapOverride = null,
