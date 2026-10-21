@@ -93,10 +93,10 @@ internal static class OfdAttachmentPhysicalCleaner
         }
         // Original references catch signature, annotation and resource aliases
         // that an earlier prune pass might have removed from the final plan.
-        AssertNoReferences(package.PreservedEntries, payloads, source.DescriptorPath, authenticatedOriginalPayloads, entries, material, token);
+        AssertNoReferences(package, package.PreservedEntries, payloads, source.DescriptorPath, authenticatedOriginalPayloads, entries, material, token);
         var candidates = new HashSet<string>(payloads, StringComparer.OrdinalIgnoreCase);
         if (deleteDescriptor) candidates.Add(source.DescriptorPath);
-        AssertNoReferences(entries, candidates, deleteDescriptor ? source.DescriptorPath : null, null, null, material, token);
+        AssertNoReferences(package, entries, candidates, deleteDescriptor ? source.DescriptorPath : null, null, null, material, token);
         foreach (var path in candidates)
         {
             token.ThrowIfCancellationRequested();
@@ -119,12 +119,13 @@ internal static class OfdAttachmentPhysicalCleaner
             throw new NotSupportedException("Physical removal cannot discard opaque attachment descriptor or declaration content.");
     }
 
-    private static void AssertNoReferences(IEnumerable<KeyValuePair<string, byte[]>> entries, ISet<string> candidates,
+    private static void AssertNoReferences(OfdDocumentPackage package, IDictionary<string, byte[]> entries, ISet<string> candidates,
         string? excludedDescriptor, ISet<string>? authenticatedPayloads, IDictionary<string, byte[]>? finalEntries,
         OfdModelMaterialization material, CancellationToken token)
     {
         material.ChargeCopy(512L + 128L * (authenticatedPayloads?.Count ?? 0), token);
         var knownBinary = new HashSet<string>((IEnumerable<string>?)authenticatedPayloads ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+        var trustedResources = TrustedResourceTables(package, entries, material, token);
         var opaqueBinary = new List<string>();
         foreach (var entry in entries)
         {
@@ -158,12 +159,10 @@ internal static class OfdAttachmentPhysicalCleaner
                     throw new NotSupportedException("Physical attachment removal cannot prove an unknown OFD field reference closure: " + entry.Key);
                 foreach (var attribute in element.Attributes().Where(a => !a.IsNamespaceDeclaration))
                     CheckScalar(entry.Key, element, attribute.Value, candidates, knownBinary,
-                        attribute.Name.LocalName is "FontFile" or "MediaFile" ||
-                        (attribute.Name.LocalName == "FileLoc" && element.Name.LocalName == "Attachment"), material, token);
+                        IsTrustedPayloadSlot(package, entry.Key, element, attribute.Name.LocalName, trustedResources), material, token);
                 if (!element.HasElements && !string.IsNullOrWhiteSpace(element.Value))
                     CheckScalar(entry.Key, element, element.Value, candidates, knownBinary,
-                        element.Name.LocalName is "FontFile" or "MediaFile" ||
-                        (element.Name.LocalName == "FileLoc" && element.Parent?.Name.LocalName == "Attachment"), material, token);
+                        IsTrustedPayloadSlot(package, entry.Key, element, null, trustedResources), material, token);
             }
         }
         foreach (var path in opaqueBinary)
@@ -178,8 +177,8 @@ internal static class OfdAttachmentPhysicalCleaner
         // scopes explicitly. Res/@BaseLoc + FontFile/MediaFile and nested
         // annotation/signature paths are covered even without a literal full path.
         if (string.IsNullOrWhiteSpace(value)) return;
-        if (payloadSlot && value.IndexOf('%') >= 0)
-            throw new NotSupportedException("Physical attachment removal cannot prove an encoded payload reference.");
+        if (ContainsEncodedOctet(value))
+            throw new NotSupportedException("Physical attachment removal cannot prove an encoded XML reference.");
         material.ChargeCopy(256L + 4L * entry.Length, token);
         var bases = new List<string> { entry };
         var basis = entry;
@@ -188,6 +187,8 @@ internal static class OfdAttachmentPhysicalCleaner
             token.ThrowIfCancellationRequested();
             var location = owner.Attribute("BaseLoc")?.Value;
             if (string.IsNullOrWhiteSpace(location)) continue;
+            if (ContainsEncodedOctet(location!))
+                throw new NotSupportedException("Physical attachment removal cannot prove an encoded BaseLoc.");
             try
             {
                 basis = material.ResolvePath(basis, location!.TrimEnd('/') + "/_attachment_reference", token);
@@ -196,18 +197,73 @@ internal static class OfdAttachmentPhysicalCleaner
             catch (InvalidDataException exception) when (!OfdTraversalBudget.IsLimit(exception))
             { throw new NotSupportedException("Physical attachment removal cannot resolve an ancestor BaseLoc.", exception); }
         }
-        foreach (var candidateBasis in bases)
+        for (var i = 0; i < bases.Count; i++)
         {
             token.ThrowIfCancellationRequested();
             try
             {
-                var target = material.ResolvePath(candidateBasis, value, token);
+                var target = material.ResolvePath(bases[i], value, token);
                 if (candidates.Contains(target))
                     throw new NotSupportedException("Attachment payload or descriptor remains referenced from " + entry);
-                if (payloadSlot) knownBinary.Add(target);
+                // All scopes are checked for aliases, but only the innermost
+                // BaseLoc gives a standard resource payload its owned path.
+                if (payloadSlot && i == bases.Count - 1) knownBinary.Add(target);
             }
             catch (InvalidDataException exception) when (!OfdTraversalBudget.IsLimit(exception))
             { /* Non-path scalar in a closed OFD XML field. */ }
         }
+    }
+
+    private static HashSet<string> TrustedResourceTables(OfdDocumentPackage package, IDictionary<string, byte[]> entries,
+        OfdModelMaterialization material, CancellationToken token)
+    {
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var documentPath = package.DocumentEntryPath ?? throw new NotSupportedException("Attachment document path is missing.");
+        if (!entries.TryGetValue(documentPath, out var bytes))
+            throw new NotSupportedException("Attachment document entry is missing.");
+        var root = material.ReadXml(documentPath, bytes, token).Root!;
+        if (root.Name.LocalName != "Document") throw new NotSupportedException("Attachment document entry is not a Document.");
+        var common = root.Element(root.Name.Namespace + "CommonData");
+        foreach (var name in new[] { "PublicRes", "DocumentRes" })
+        {
+            var value = common?.Element(root.Name.Namespace + name)?.Value;
+            if (string.IsNullOrWhiteSpace(value)) continue;
+            if (ContainsEncodedOctet(value!)) throw new NotSupportedException("Encoded resource table location is ambiguous.");
+            paths.Add(material.ResolvePath(documentPath, value!, token));
+        }
+        foreach (var page in root.Element(root.Name.Namespace + "Pages")?.Elements(root.Name.Namespace + "Page") ?? Enumerable.Empty<XElement>())
+        {
+            token.ThrowIfCancellationRequested(); material.ChargeWork(64, token);
+            var value = page.Attribute("BaseLoc")?.Value;
+            if (string.IsNullOrWhiteSpace(value)) continue;
+            if (ContainsEncodedOctet(value!)) throw new NotSupportedException("Encoded page location is ambiguous.");
+            var pagePath = material.ResolvePath(documentPath, value!, token);
+            paths.Add(pagePath.Substring(0, pagePath.LastIndexOf('/') + 1) + "PageRes.xml");
+        }
+        return paths;
+    }
+
+    private static bool IsTrustedPayloadSlot(OfdDocumentPackage package, string path, XElement element,
+        string? attributeName, ISet<string> trustedResources)
+    {
+        var root = element.Document?.Root;
+        if (root is null) return false;
+        var ns = root.Name.Namespace;
+        if (root.Name.LocalName == "Res" && trustedResources.Contains(path) && attributeName is null)
+            return (element.Name == ns + "FontFile" && element.Parent?.Name == ns + "Font" &&
+                    element.Parent.Parent?.Name == ns + "Fonts" && element.Parent.Parent.Parent == root) ||
+                   (element.Name == ns + "MediaFile" && element.Parent?.Name == ns + "MultiMedia" &&
+                    element.Parent.Parent?.Name == ns + "MultiMedias" && element.Parent.Parent.Parent == root);
+        if (package.AttachmentSource?.DescriptorPath != path || root.Name.LocalName != "Attachments") return false;
+        return attributeName == "FileLoc" && element.Name == ns + "Attachment" && element.Parent == root ||
+               attributeName is null && element.Name == ns + "FileLoc" && element.Parent?.Name == ns + "Attachment" &&
+               element.Parent.Parent == root;
+    }
+
+    private static bool ContainsEncodedOctet(string value)
+    {
+        for (var i = 0; i + 2 < value.Length; i++)
+            if (value[i] == '%' && Uri.IsHexDigit(value[i + 1]) && Uri.IsHexDigit(value[i + 2])) return true;
+        return false;
     }
 }

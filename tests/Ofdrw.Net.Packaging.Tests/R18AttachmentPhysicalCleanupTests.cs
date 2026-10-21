@@ -120,6 +120,52 @@ public sealed class R18AttachmentPhysicalCleanupTests
     }
 
     [Fact]
+    public async Task FakeResourceSlotCannotAuthenticateAnOpaqueBinary()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Extras/manifest.bin"] = [4, 5, 6];
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</Document>", "<MediaFile>Extras/manifest.bin</MediaFile></Document>", StringComparison.Ordinal));
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+    }
+
+    [Fact]
+    public async Task DeclaredResourceTableKeepsItsOwnBinaryWhileCleaningAttachment()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "<PublicRes>Res/PublicRes.xml</PublicRes></CommonData>", StringComparison.Ordinal));
+        entries["Doc_0/Res/PublicRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='Assets'><MultiMedias><MultiMedia ID='9'><MediaFile>image.bin</MediaFile></MultiMedia></MultiMedias></Res>");
+        entries["Doc_0/Res/Assets/image.bin"] = [4, 5, 6];
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        Assert.DoesNotContain("Doc_0/Payload/original.bin", Entries(output).Keys);
+        Assert.Equal(new byte[] { 4, 5, 6 }, Entries(output)["Doc_0/Res/Assets/image.bin"]);
+
+        // The lexical MediaFile also resolves relative to the table itself,
+        // but BaseLoc owns only the Assets path. It must not bless an orphan.
+        entries["Doc_0/Res/image.bin"] = [7, 8, 9];
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+    }
+
+    [Fact]
+    public async Task EncodedAliasInSignatureIsRejectedBeforeSignaturePruning()
+    {
+        var entries = Entries(Seed());
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot><Signatures>Doc_0/Signs/Signatures.xml</Signatures></DocBody></OFD>");
+        entries["Doc_0/Signs/Signatures.xml"] = Utf8($"<Signatures xmlns='{Ns}'><Signature BaseLoc='sig/Signature.xml'/></Signatures>");
+        entries["Doc_0/Signs/sig/Signature.xml"] = Utf8($"<Signature xmlns='{Ns}'><SignedValue>../../Payload/original%2Ebin</SignedValue></Signature>");
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
+    }
+
+    [Fact]
     public async Task NonXmlSuffixUtf16DescriptorUsesSourcePathAndCanBeRemoved()
     {
         var entries = Entries(Seed());
