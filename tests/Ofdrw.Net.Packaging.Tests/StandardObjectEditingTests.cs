@@ -88,6 +88,12 @@ public sealed class StandardObjectEditingTests
         Assert.Equal("1.0", saved.Options.Metadata.CreatorVersion);
         Assert.Equal(new byte[] { 1, 2, 3 }, saved.PreservedEntries["Doc_0/Cover.png"]);
 
+        var mixed = OfdDocumentMixer.Mix([new OfdMixSource(source, 0)]);
+        using var mixedOutput = new MemoryStream(); await new OfdPackageWriter().WriteAsync(mixed, mixedOutput);
+        mixedOutput.Position = 0; var mixedRead = await new OfdReader().ReadAsync(mixedOutput);
+        Assert.Equal("Doc_0/Cover.png", mixedRead.Options.Metadata.Cover);
+        Assert.Equal(new byte[] { 1, 2, 3 }, mixedRead.PreservedEntries["Doc_0/Cover.png"]);
+
         source.PreservedEntries.Remove("Doc_0/Cover.png");
         Assert.Throws<NotSupportedException>(() => OfdDocumentMerger.Merge([source]));
     }
