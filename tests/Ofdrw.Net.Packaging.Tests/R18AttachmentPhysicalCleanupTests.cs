@@ -90,6 +90,17 @@ public sealed class R18AttachmentPhysicalCleanupTests
         package = await Read(Zip(aliased));
         Assert.True(package.RemoveAttachment(package.Attachments[0], OfdAttachmentRemovalMode.Physical));
         await RefusesWithoutOutput(package);
+
+        var templateAlias = Entries(Seed());
+        templateAlias["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(templateAlias["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "<TemplatePage ID='500' BaseLoc='Templates/Content.xml'/></CommonData>", StringComparison.Ordinal));
+        templateAlias["Doc_0/Pages/Content.xml"] = Utf8(Encoding.UTF8.GetString(templateAlias["Doc_0/Pages/Content.xml"])
+            .Replace("</Page>", "<Template TemplateID='500'/></Page>", StringComparison.Ordinal));
+        templateAlias["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer ID='501'/></Content></Page>");
+        templateAlias["Doc_0/Templates/PageRes.xml"] = Utf8($"<Res xmlns='{Ns}' BaseLoc='../Payload'><MultiMedias><MultiMedia ID='502'><MediaFile>original.bin</MediaFile></MultiMedia></MultiMedias></Res>");
+        package = await Read(Zip(templateAlias));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package);
     }
 
     [Fact]
@@ -216,7 +227,13 @@ public sealed class R18AttachmentPhysicalCleanupTests
             new XAttribute("ZOrder", "Background")));
         entries[pagePath] = Utf8(page.ToString(SaveOptions.DisableFormatting));
         const string templatePath = "Doc_0/Templates/Content.xml";
-        entries[templatePath] = Utf8($"<Page xmlns='{ns}'><Content><Layer ID='501'/></Content></Page>");
+        entries[templatePath] = Utf8($"<Page xmlns='{ns}'><Content><Layer ID='501'><TextObject ID='504' Font='502' Size='4' Boundary='0 0 20 10'><TextCode X='0' Y='4'>TEMPLATE</TextCode></TextObject><ImageObject ID='505' ResourceID='503' Boundary='0 0 10 10'/></Layer></Content></Page>");
+        const string templateResourcePath = "Doc_0/Templates/PageRes.xml";
+        const string templateFontPath = "Doc_0/Templates/Assets/font.bin";
+        const string templateMediaPath = "Doc_0/Templates/Assets/image.bin";
+        entries[templateResourcePath] = Utf8($"<Res xmlns='{ns}' BaseLoc='Assets'><Fonts><Font ID='502' FontName='R18'><FontFile>font.bin</FontFile></Font></Fonts><MultiMedias><MultiMedia ID='503' Format='PNG'><MediaFile>image.bin</MediaFile></MultiMedia></MultiMedias></Res>");
+        entries[templateFontPath] = [4, 5, 6];
+        entries[templateMediaPath] = [7, 8, 9];
         var originalAnnotation = entries[annotationPath].ToArray();
         var originalAnnotationIndex = entries[annotationIndexPath].ToArray();
         var originalTemplate = entries[templatePath].ToArray();
@@ -230,13 +247,95 @@ public sealed class R18AttachmentPhysicalCleanupTests
         Assert.Equal(originalAnnotation, saved[annotationPath]);
         Assert.Equal(originalAnnotationIndex, saved[annotationIndexPath]);
         Assert.Equal(originalTemplate, saved[templatePath]);
+        var savedTemplateResources = XDocument.Parse(Encoding.UTF8.GetString(saved[templateResourcePath]).TrimStart('\uFEFF'));
+        Assert.Equal("Assets", savedTemplateResources.Root!.Attribute("BaseLoc")!.Value);
+        Assert.Equal("image.bin", savedTemplateResources.Descendants(ns + "MediaFile").Single().Value);
+        Assert.Equal(entries[templateMediaPath], saved[templateMediaPath]);
+        Assert.Contains(saved.Values, bytes => bytes.SequenceEqual(entries[templateFontPath]));
         Assert.Equal("500", XDocument.Parse(Encoding.UTF8.GetString(saved[pagePath]))
             .Descendants(ns + "Template").Single().Attribute("TemplateID")!.Value);
         Assert.Equal("Templates/Content.xml", XDocument.Parse(Encoding.UTF8.GetString(saved[documentPath]))
             .Descendants(ns + "TemplatePage").Single().Attribute("BaseLoc")!.Value);
         var reread = await Read(output);
-        Assert.Single(reread.Pages[0].Templates);
+        var savedTemplate = Assert.Single(reread.Pages[0].Templates);
+        Assert.Contains(savedTemplate.Elements, element => element is OfdTextElement { Text: "TEMPLATE" });
+        Assert.Contains(savedTemplate.Elements, element => element is OfdImageElement image && image.Data.SequenceEqual(entries[templateMediaPath]));
+        Assert.Contains(reread.Fonts, font => font.Data is not null && font.Data.SequenceEqual(entries[templateFontPath]));
         Assert.Equal("retain", Assert.Single(reread.Pages[0].Annotations!.Items).Remark);
+    }
+
+    [Fact]
+    public async Task WriterNavigationAndEmrTagsSurvivePhysicalCleanup()
+    {
+        var fresh = new OfdDocumentPackage();
+        var page = new OfdPage { WidthMillimeters = 210, HeightMillimeters = 297 };
+        fresh.Pages.Add(page);
+        fresh.Attachments.Add(new OfdAttachment { Name = "remove.bin", Data = Payload });
+        var bookmark = new OfdBookmark { Name = "R18 landmark", Destination = new OfdDestination
+        {
+            Page = page, Type = OfdDestinationType.FitR, Left = 1, Top = 2, Right = 20, Bottom = 30, Zoom = 1.25
+        } };
+        fresh.Bookmarks = new OfdBookmarkCollection();
+        fresh.Bookmarks.Items.Add(bookmark);
+        fresh.Outlines = new OfdOutlineCollection();
+        var outline = new OfdOutline { Title = "R18 outline", Expanded = true, Count = 1, Actions = new OfdActionCollection() };
+        outline.Actions.Items.Add(new OfdGoToAction { Bookmark = bookmark, Event = "CLICK" });
+        fresh.Outlines.Items.Add(outline);
+        fresh.Actions = new OfdActionCollection();
+        fresh.Actions.Items.Add(new OfdGoToAction { Destination = new OfdDestination { Page = page, Type = OfdDestinationType.Fit }, Event = "DO" });
+        fresh.CustomTags.Add("patient", "保留 & 123");
+
+        var (generated, _) = await Write(fresh);
+        var source = Entries(generated);
+        var loaded = await Read(generated);
+        var documentPath = loaded.DocumentEntryPath!;
+        var originalDocument = XDocument.Parse(Encoding.UTF8.GetString(source[documentPath]));
+        var ns = originalDocument.Root!.Name.Namespace;
+        var tagIndexPath = Assert.Single(source.Keys, path => path.EndsWith("/CustomTags.xml", StringComparison.Ordinal));
+        var tagDetailPath = Assert.Single(source.Keys, path => path.EndsWith("/CustomTag_EMR.xml", StringComparison.Ordinal));
+        Assert.True(loaded.RemoveAttachment(Assert.Single(loaded.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, result) = await Write(loaded);
+        var saved = Entries(output);
+        Assert.Contains(result.RemovedEntries, path => path.Contains("remove.bin", StringComparison.Ordinal));
+        Assert.Equal(source[tagIndexPath], saved[tagIndexPath]);
+        Assert.Equal(source[tagDetailPath], saved[tagDetailPath]);
+        var savedDocument = XDocument.Parse(Encoding.UTF8.GetString(saved[documentPath]));
+        foreach (var name in new[] { "Outlines", "Bookmarks", "Actions", "CustomTags" })
+            Assert.True(XNode.DeepEquals(originalDocument.Root.Element(ns + name), savedDocument.Root!.Element(ns + name)), name);
+        var reread = await Read(output);
+        Assert.Equal("R18 outline", Assert.Single(reread.Outlines!.Items).Title);
+        Assert.Equal("R18 landmark", Assert.Single(reread.Bookmarks!.Items).Name);
+        Assert.IsType<OfdGoToAction>(Assert.Single(reread.Actions!.Items));
+        Assert.Equal("保留 & 123", reread.CustomTags["patient"]);
+    }
+
+    [Fact]
+    public async Task ImportedTextDirectionsSurvivePhysicalCleanup()
+    {
+        var fresh = new OfdDocumentPackage();
+        fresh.Attachments.Add(new OfdAttachment { Name = "remove.bin", Data = Payload });
+        fresh.Pages.Add(new OfdPage
+        {
+            WidthMillimeters = 210, HeightMillimeters = 297,
+            Elements = { new OfdTextElement { Text = "R18", FontName = "SimSun", FontSizeMillimeters = 4 } }
+        });
+        var (generated, _) = await Write(fresh);
+        var entries = Entries(generated);
+        var pagePath = Assert.Single((await Read(generated)).Pages).SourceEntryPath!;
+        var page = XDocument.Parse(Encoding.UTF8.GetString(entries[pagePath]));
+        var text = page.Descendants(page.Root!.Name.Namespace + "TextObject").Single();
+        text.SetAttributeValue("ReadDirection", "90");
+        text.SetAttributeValue("CharDirection", "90");
+        entries[pagePath] = Utf8(page.ToString(SaveOptions.DisableFormatting));
+
+        var loaded = await Read(Zip(entries));
+        Assert.True(loaded.RemoveAttachment(Assert.Single(loaded.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(loaded);
+        var savedText = XDocument.Parse(Encoding.UTF8.GetString(Entries(output)[pagePath]))
+            .Descendants(page.Root.Name.Namespace + "TextObject").Single();
+        Assert.Equal("90", savedText.Attribute("ReadDirection")!.Value);
+        Assert.Equal("90", savedText.Attribute("CharDirection")!.Value);
+        Assert.Equal("R18", Assert.IsType<OfdTextElement>(Assert.Single((await Read(output)).Pages[0].Elements)).Text);
     }
 
     [Fact]

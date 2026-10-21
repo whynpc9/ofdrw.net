@@ -23,12 +23,12 @@ internal static class OfdAttachmentPhysicalCleaner
     private static readonly HashSet<string> KnownElements = new(StringComparer.Ordinal)
     {
         "OFD", "DocBody", "DocInfo", "DocID", "Title", "Author", "Subject", "Keywords", "Creator", "CreationDate", "ModDate", "DocRoot", "Versions", "Version", "Signatures", "MaxSignId", "Signature", "SignedInfo", "SignedValue", "References", "Reference", "FileRef", "CheckValue", "DigestMethod", "DigestValue", "Provider", "SignatureMethod", "SignatureDateTime", "StampAnnot", "Seal", "Parameters", "Parameter",
-        "Document", "CommonData", "MaxUnitID", "PageArea", "PhysicalBox", "ApplicationBox", "ContentBox", "BleedBox", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS", "Pages", "Page", "Area", "Content", "Layer", "PageBlock", "Outlines", "OutlineElem", "Bookmarks", "Bookmark", "Actions", "Action", "Permissions", "VPreferences", "Annotations", "PageAnnot", "Annot", "Appearance", "Remark", "CustomTags", "CustomTag", "Extensions", "Extension",
+        "Document", "CommonData", "MaxUnitID", "PageArea", "PhysicalBox", "ApplicationBox", "ContentBox", "BleedBox", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS", "Pages", "Page", "Area", "Content", "Layer", "PageBlock", "Outlines", "OutlineElem", "Bookmarks", "Bookmark", "Dest", "Actions", "Action", "Goto", "Permissions", "VPreferences", "Annotations", "PageAnnot", "Annot", "Appearance", "Remark", "CustomTags", "CustomTag", "EMRTags", "Tag", "Extensions", "Extension",
         "Attachments", "Attachment", "FileLoc", "Res", "Fonts", "Font", "FontFile", "MultiMedias", "MultiMedia", "MediaFile", "ColorSpaces", "ColorSpace", "DrawParams", "DrawParam", "CompositeGraphicUnits", "CompositeGraphicUnit", "TextObject", "TextCode", "ImageObject", "PathObject", "Path", "CompositeObject", "AbbreviatedData", "FillColor", "StrokeColor", "Clips", "Clip", "Area", "CGTransform", "Glyphs", "Substitution", "Segment", "Template", "ImageMask"
     };
     private static readonly HashSet<string> KnownAttributes = new(StringComparer.Ordinal)
     {
-        "Version", "DocType", "ID", "Name", "BaseLoc", "FileLoc", "FileRef", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
+        "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
     };
     private static readonly HashSet<string> ScalarPathElements = new(StringComparer.Ordinal)
     { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes" };
@@ -251,7 +251,9 @@ internal static class OfdAttachmentPhysicalCleaner
             if (ContainsAmbiguousPathSyntax(value!)) throw new NotSupportedException("Resource table location is ambiguous.");
             paths.Add(material.ResolvePath(documentPath, value!, token));
         }
-        foreach (var page in root.Element(root.Name.Namespace + "Pages")?.Elements(root.Name.Namespace + "Page") ?? Enumerable.Empty<XElement>())
+        var pageLocations = (root.Element(root.Name.Namespace + "Pages")?.Elements(root.Name.Namespace + "Page") ?? Enumerable.Empty<XElement>())
+            .Concat(common?.Elements(root.Name.Namespace + "TemplatePage") ?? Enumerable.Empty<XElement>());
+        foreach (var page in pageLocations)
         {
             token.ThrowIfCancellationRequested(); material.ChargeWork(64, token);
             var value = page.Attribute("BaseLoc")?.Value;
