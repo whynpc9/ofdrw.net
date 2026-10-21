@@ -98,6 +98,28 @@ public class ArchivalCopyTests
     }
 
     [Fact]
+    public async Task FormattedDocRootUsesSameReferenceAsLocalPreflight()
+    {
+        var entries = Seed("<Permissions><Edit>false</Edit></Permissions>");
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>\n  Doc_0/Document.xml\n</DocRoot></DocBody></OFD>");
+        var folder = Path.Combine(Path.GetTempPath(), "r17-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(folder);
+        try
+        {
+            var source = Path.Combine(folder, "source.ofd"); var destination = Path.Combine(folder, "copy.ofd");
+            File.WriteAllBytes(source, Zip(entries));
+            using (var input = File.OpenRead(source))
+            {
+                var before = await new ArchivalRuleService().CheckAsync(input, new());
+                Assert.Equal(PreflightOutcome.Fail, before.RuleResults[0].Outcome);
+                Assert.Equal("DeclarationPresent", before.RuleResults[0].ReasonCode);
+            }
+            var result = await new ArchivalCopyConverter().ConvertAsync(source, destination, new());
+            Assert.Equal(PreflightOutcome.Pass, result.Postflight.SummaryOutcome);
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    [Fact]
     public async Task CopyRemovesOnlyTwoDeclarationsAndAuditsEveryEntry()
     {
         var entries = Seed("<Permissions><Edit>false</Edit><Print Printable='true' Copies='2'/></Permissions>" +

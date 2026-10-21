@@ -115,9 +115,11 @@ public sealed class ArchivalRuleService
             var bodies = root.Elements(root.Name.Namespace + "DocBody").ToArray();
             if (bodies.Length != 1) return Unknown(local, "DocumentScopeUnavailable");
             var roots = bodies[0].Elements(root.Name.Namespace + "DocRoot").ToArray();
-            if (roots.Length != 1 || UnsafePath(roots[0].Value)) return Unknown(local, "DocumentScopeUnavailable");
+            if (roots.Length != 1) return Unknown(local, "DocumentScopeUnavailable");
+            var documentPath = roots[0].Value.Trim();
+            if (UnsafePath(documentPath)) return Unknown(local, "DocumentScopeUnavailable");
             string entry;
-            try { entry = OfdPackagePath.Resolve("OFD.xml", roots[0].Value); }
+            try { entry = OfdPackagePath.Resolve("OFD.xml", documentPath); }
             catch (InvalidDataException) { return Unknown(local, "DocumentScopeUnavailable"); }
             var document = Read(archive, entry, snapshot)?.Root;
             if (document == null || document.Name != root.Name.Namespace + "Document") return Unknown(local, "DocumentScopeUnavailable");
