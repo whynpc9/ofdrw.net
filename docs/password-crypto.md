@@ -24,7 +24,7 @@ var restored = await OfdStandardEncryption.DecryptFileAsync(
 
 `OFDEntries.xml` 的标准 `FileList` 只签署文件名清单。本包在同一个签名下增加 `urn:ofdrw-net:standard-encryption-content-digests:1` 扩展，逐一记录所有**存储中的文件条目**（包括加密元数据和密文）的 SM3；解密前验证签名、路径集合闭合和每项字节摘要。Java 的验签器可验这份清单并拒绝额外条目，但不检查该扩展的内容摘要。固定 Java 自身生成的清单没有逐文件摘要：默认解密拒绝；只有调用方显式设置 `AllowUnverifiedContents=true` 才恢复，结果 `FileContentsVerified=false`。这不是内容认证成功，CBC 填充检查也不是完整性证明。清单签名、路径闭合、逐文件内容和 PKI 信任必须分别报告。
 
-固定 Java 2.4.0 写端实际省略 seed 的 `EncryptCaseId`；本包读取时在调用方已显式选择口令或证书且字段形状吻合时接受这个缺省，写端在同类接收人包中明确写 `1.1.1` 或 `1.1.2`。解密拒绝未加密包、未知/重复接收人、缺失密文、额外文件、重名/非规范路径、签名或摘要不符；不会复制 Java 的“缺失密文跳过”和“映射解密失败改试明文”回退。与 Java 互操作的实际样本及包身份见 [R14 验证记录](evidence/r14-standard-encryption/README.md)。Java 解密 .NET 包能恢复原始文件条目，但其自身保留已经指向密文条目的旧 `OFDEntries.xml`/`signedvalue.dat`；调用方不得把该残留清单作为恢复后包的有效完整性声明。
+固定 Java 2.4.0 写端实际省略 seed 的 `EncryptCaseId`；本包读取时在调用方已显式选择口令或证书且字段形状吻合时接受这个缺省，写端在同类接收人包中明确写 `1.1.1` 或 `1.1.2`。Java 对 `Report.dat` 等条目可能把密文写到仅大小写不同的 `report.dat`；本包允许**同一映射**的这种别名，恢复原始路径大小写，但拒绝与其他条目的碰撞。解密拒绝未加密包、未知/重复接收人、缺失密文、额外文件、重名/非规范路径、签名或摘要不符；不会复制 Java 的“缺失密文跳过”和“映射解密失败改试明文”回退。与 Java 互操作的实际样本及包身份见 [R14 验证记录](evidence/r14-standard-encryption/README.md)。Java 解密 .NET 包能恢复原始文件条目，但其自身保留已经指向密文条目的旧 `OFDEntries.xml`/`signedvalue.dat`；调用方不得把该残留清单作为恢复后包的有效完整性声明。
 
 私有 v2 与标准入口不能自动互解或降级；下文的 v2 说明仅适用于 `OfdPasswordEnvelope`。
 

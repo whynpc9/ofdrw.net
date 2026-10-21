@@ -206,8 +206,11 @@ public static class OfdStandardEncryption
                 "Unsupported map entry.");
             var plainPath = Absolute((string?)mapping.Attribute("Path"));
             var encrypted = Absolute((string?)mapping.Attribute("EPath"));
+            // Java may replace Report.dat with report.dat: this mapping's own ciphertext is
+            // the only allowed case-folded alias of its eventual plaintext path.
             Need(!Reserved(plainPath) && !Metadata(encrypted) && clear.Add(plainPath) && cipher.Add(encrypted) &&
-                !entries.ContainsKey(plainPath), "Colliding or duplicate encrypted map entry.");
+                (!entries.ContainsKey(plainPath) || plainPath.Equals(encrypted, StringComparison.OrdinalIgnoreCase)),
+                "Colliding or duplicate encrypted map entry.");
         }
         var expected = new HashSet<string>(cipher, StringComparer.Ordinal)
             { EnvelopePath, SeedPath, MapPath, ManifestPath, SignedValuePath };

@@ -39,6 +39,22 @@ public sealed class StandardEncryptionTests
     }
 
     [Fact]
+    public async Task JavaCaseOnlyDatCipherPathsRestoreOriginalPathCaseAndBytes()
+    {
+        var dir = FixtureDirectory();
+        var cert = (Org.BouncyCastle.X509.X509Certificate)new PemReader(
+            new StringReader(File.ReadAllText(Path.Combine(dir, "sign_cert.pem")))).ReadObject()!;
+        var result = await OfdStandardEncryption.DecryptAsync(
+            new MemoryStream(File.ReadAllBytes(Path.Combine(dir, "java-case-dat.ofd"))),
+            OfdStandardCredential.ForPassword("bob", "second-pass"),
+            new OfdStandardDecryptionOptions
+            { ExpectedManifestSignerCertificateDer = cert.GetEncoded(), AllowUnverifiedContents = true });
+        Assert.True(result.ManifestSignatureVerified && result.ExactEntrySetVerified);
+        Assert.False(result.FileContentsVerified);
+        AssertEqual(Unzip(File.ReadAllBytes(Path.Combine(dir, "case-source.ofd"))), Unzip(result.OfdBytes));
+    }
+
+    [Fact]
     public async Task JavaCertificateFixtureRestoresExactOriginalEntriesWhenExplicitlyAllowingUnverifiedContents()
     {
         var dir = FixtureDirectory();
