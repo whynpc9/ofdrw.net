@@ -733,11 +733,12 @@ public sealed class R18AttachmentPhysicalCleanupTests
         entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot>{versions}</DocBody></OFD>");
         entries["Doc_0/Versions/v1.xml"] = Utf8($"<DocVersion xmlns='{Ns}' ID='v1'><FileList><File ID='f1'>../Pages/Content.xml</File></FileList><DocRoot>../Document.xml</DocRoot></DocVersion>");
         var package = await Read(Zip(entries));
+        Assert.Single(package.Versions!.Items).Index = 2;
         Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
         var (output, _) = await Write(package);
         Assert.Equal(entries["Doc_0/Versions/v1.xml"], Entries(output)["Doc_0/Versions/v1.xml"]);
-        Assert.NotNull(XDocument.Parse(Encoding.UTF8.GetString(Entries(output)["OFD.xml"]))
-            .Descendants(XName.Get("Versions", Ns)).Single().Element(XName.Get("Version", Ns)));
+        Assert.Equal("2", XDocument.Parse(Encoding.UTF8.GetString(Entries(output)["OFD.xml"]))
+            .Descendants(XName.Get("Versions", Ns)).Single().Element(XName.Get("Version", Ns))!.Attribute("Index")!.Value);
 
         entries["Doc_0/Versions/v1.xml"] = Utf8($"<DocVersion xmlns='{Ns}' ID='v1'><FileList><File ID='f1'>../Payload/original%2Ebin</File></FileList><DocRoot>../Document.xml</DocRoot></DocVersion>");
         package = await Read(Zip(entries));
@@ -749,6 +750,53 @@ public sealed class R18AttachmentPhysicalCleanupTests
         package = await Read(Zip(entries));
         Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
         await RefusesWithoutOutput(package, "encoded or backslash BaseLoc");
+    }
+
+    [Fact]
+    public async Task R16TypedMetadataAndStandardObjectsSurvivePhysicalAttachmentRemoval()
+    {
+        var entries = Entries(Seed());
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocInfo><DocID>r18r16</DocID><DocUsage>EBook</DocUsage><CreatorVersion>1.0</CreatorVersion><Cover>Doc_0/Cover.png</Cover><CustomDatas><CustomData Name='case'>old</CustomData></CustomDatas></DocInfo><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</CommonData>", "</CommonData><Permissions><Edit>true</Edit><Print Printable='true' Copies='2'/></Permissions><VPreferences><PageMode>UseOutlines</PageMode><HideToolbar>false</HideToolbar></VPreferences>", StringComparison.Ordinal));
+        entries["Doc_0/Cover.png"] = [7, 8, 9];
+        var package = await Read(Zip(entries));
+        package.Options.Metadata.CustomDatas!.Items[0].Value = "new";
+        package.Permissions!.Edit = false;
+        package.ViewingPreferences!.PageMode = OfdPageMode.UseBookmarks;
+        package.Actions ??= new OfdActionCollection();
+        package.Actions.Items.Add(new OfdUriAction { Event = "CLICK", Uri = "https://example.invalid" });
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        Assert.Equal(entries["Doc_0/Cover.png"], Entries(output)["Doc_0/Cover.png"]);
+        var saved = await Read(output);
+        Assert.Empty(saved.Attachments);
+        Assert.Equal("new", saved.Options.Metadata.CustomDatas!.Items[0].Value);
+        Assert.False(saved.Permissions!.Edit);
+        Assert.Equal(OfdPageMode.UseBookmarks, saved.ViewingPreferences!.PageMode);
+        Assert.Equal("https://example.invalid", Assert.IsType<OfdUriAction>(Assert.Single(saved.Actions!.Items)).Uri);
+
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocInfo><Cover>Doc_0/Payload/original.bin</Cover></DocInfo><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "remains referenced");
+
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocInfo><Cover>Doc_0/Payload/original%2Ebin</Cover></DocInfo><DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "encoded or backslash XML reference");
+    }
+
+    [Fact]
+    public async Task OpaqueAttachmentActionCannotOutlivePhysicalTarget()
+    {
+        var entries = Entries(Seed());
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("</Document>", "<Actions><Action Event='INVALID'><GotoA AttachID='7'/></Action></Actions></Document>", StringComparison.Ordinal));
+        var package = await Read(Zip(entries));
+        Assert.IsType<OfdRawAction>(Assert.Single(package.Actions!.Items));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "retained action targets the removed attachment ID");
     }
 
     [Fact]

@@ -23,16 +23,16 @@ internal static class OfdAttachmentPhysicalCleaner
     // carry implicit references, so they cannot be admitted by string matching.
     private static readonly HashSet<string> KnownElements = new(StringComparer.Ordinal)
     {
-        "OFD", "DocBody", "DocInfo", "DocID", "Title", "Author", "Subject", "Keywords", "Creator", "CreationDate", "ModDate", "DocRoot", "Versions", "Version", "DocVersion", "FileList", "File", "Signatures", "MaxSignId", "Signature", "SignedInfo", "SignedValue", "References", "Reference", "FileRef", "CheckValue", "DigestMethod", "DigestValue", "Provider", "SignatureMethod", "SignatureDateTime", "StampAnnot", "Seal", "BaseLoc", "Parameters", "Parameter",
-        "Document", "CommonData", "MaxUnitID", "PageArea", "PhysicalBox", "ApplicationBox", "ContentBox", "BleedBox", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS", "Pages", "Page", "Area", "Content", "Layer", "PageBlock", "Outlines", "OutlineElem", "Bookmarks", "Bookmark", "Dest", "Actions", "Action", "Goto", "Permissions", "VPreferences", "Annotations", "PageAnnot", "Annot", "Appearance", "Remark", "CustomTags", "CustomTag", "EMRTags", "Tag", "Extensions", "Extension",
+        "OFD", "DocBody", "DocInfo", "DocID", "Title", "Author", "Subject", "Abstract", "Keywords", "Keyword", "Creator", "CreatorVersion", "CreationDate", "ModDate", "DocUsage", "Cover", "CustomDatas", "CustomData", "DocRoot", "Versions", "Version", "DocVersion", "FileList", "File", "Signatures", "MaxSignId", "Signature", "SignedInfo", "SignedValue", "References", "Reference", "FileRef", "CheckValue", "DigestMethod", "DigestValue", "Provider", "SignatureMethod", "SignatureDateTime", "StampAnnot", "Seal", "BaseLoc", "Parameters", "Parameter",
+        "Document", "CommonData", "MaxUnitID", "PageArea", "PhysicalBox", "ApplicationBox", "ContentBox", "BleedBox", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS", "Pages", "Page", "Area", "Content", "Layer", "PageBlock", "Outlines", "OutlineElem", "Bookmarks", "Bookmark", "Dest", "Actions", "Action", "Goto", "GotoA", "URI", "Sound", "Movie", "Permissions", "Edit", "Export", "Signature", "Watermark", "PrintScreen", "Print", "ValidPeriod", "VPreferences", "PageMode", "PageLayout", "TabDisplay", "HideToolbar", "HideMenubar", "HideWindowUI", "ZoomMode", "Zoom", "Annotations", "PageAnnot", "Annot", "Appearance", "Remark", "CustomTags", "CustomTag", "EMRTags", "Tag", "Extensions", "Extension",
         "Attachments", "Attachment", "FileLoc", "Res", "Fonts", "Font", "FontFile", "MultiMedias", "MultiMedia", "MediaFile", "ColorSpaces", "ColorSpace", "DrawParams", "DrawParam", "CompositeGraphicUnits", "CompositeGraphicUnit", "TextObject", "TextCode", "ImageObject", "PathObject", "Path", "CompositeObject", "AbbreviatedData", "FillColor", "StrokeColor", "Clips", "Clip", "Area", "CGTransform", "Glyphs", "Substitution", "Segment", "Template", "ImageMask"
     };
     private static readonly HashSet<string> KnownAttributes = new(StringComparer.Ordinal)
     {
-        "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "MediaFile", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Substitution", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "Start", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "Serif", "FixedWidth", "Current", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
+        "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "MediaFile", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "Printable", "Copies", "StartDate", "EndDate", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Substitution", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "Start", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "Serif", "FixedWidth", "Current", "URI", "Base", "Target", "AttachID", "NewWindow", "Volume", "Repeat", "Synchronous", "Operator", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
     };
     private static readonly HashSet<string> ScalarPathElements = new(StringComparer.Ordinal)
-    { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes", "File", "BaseLoc" };
+    { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes", "File", "BaseLoc", "Cover" };
 
     internal static void Prune(OfdDocumentPackage package, IDictionary<string, byte[]> entries, OfdPackageWriteResult result,
         OfdModelMaterialization material, CancellationToken token, OfdOwnedPruneDispositions? dispositions)
@@ -49,6 +49,7 @@ internal static class OfdAttachmentPhysicalCleaner
         material.ChargeCopy(512L + 256L * package.PhysicalAttachmentRemovals.Count, token);
         var requests = new HashSet<int>();
         var payloads = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var removedAttachmentIds = new HashSet<string>(StringComparer.Ordinal);
         var authenticatedOriginalPayloads = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var request in package.PhysicalAttachmentRemovals)
         {
@@ -63,6 +64,8 @@ internal static class OfdAttachmentPhysicalCleaner
                 throw new NotSupportedException("Physical attachment removal lost its reader-owned payload or detached slot.");
             material.ChargeCopy(128L + 4L * request.PayloadPath.Length, token);
             payloads.Add(request.PayloadPath);
+            if (original.Values.TryGetValue("ID", out var originalId) && !string.IsNullOrWhiteSpace(originalId))
+                removedAttachmentIds.Add(originalId!.Trim());
         }
         foreach (var slot in source.Slots.Slots)
         {
@@ -96,10 +99,10 @@ internal static class OfdAttachmentPhysicalCleaner
         }
         // Original references catch signature, annotation and resource aliases
         // that an earlier prune pass might have removed from the final plan.
-        AssertNoReferences(package, package.PreservedEntries, payloads, source.DescriptorPath, authenticatedOriginalPayloads, entries, result.SignaturesInvalidated, material, token);
+        AssertNoReferences(package, package.PreservedEntries, payloads, removedAttachmentIds, source.DescriptorPath, authenticatedOriginalPayloads, entries, result.SignaturesInvalidated, material, token);
         var candidates = new HashSet<string>(payloads, StringComparer.OrdinalIgnoreCase);
         if (deleteDescriptor) candidates.Add(source.DescriptorPath);
-        AssertNoReferences(package, entries, candidates, deleteDescriptor ? source.DescriptorPath : null,
+        AssertNoReferences(package, entries, candidates, removedAttachmentIds, deleteDescriptor ? source.DescriptorPath : null,
             authenticatedOriginalPayloads, null, false, material, token);
         foreach (var path in candidates)
         {
@@ -124,6 +127,7 @@ internal static class OfdAttachmentPhysicalCleaner
     }
 
     private static void AssertNoReferences(OfdDocumentPackage package, IDictionary<string, byte[]> entries, ISet<string> candidates,
+        ISet<string> removedAttachmentIds,
         string? excludedDescriptor, ISet<string>? authenticatedPayloads, IDictionary<string, byte[]>? finalEntries,
         bool invalidatedSignatures,
         OfdModelMaterialization material, CancellationToken token)
@@ -167,6 +171,9 @@ internal static class OfdAttachmentPhysicalCleaner
                 if (!KnownElements.Contains(element.Name.LocalName) || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     a.Name.Namespace == XNamespace.None && !KnownAttributes.Contains(a.Name.LocalName)))
                     throw new NotSupportedException("Physical attachment removal cannot prove an unknown OFD field reference closure: " + entry.Key);
+                if (element.Name.LocalName == "GotoA" && element.Attribute("AttachID") is XAttribute targetId &&
+                    removedAttachmentIds.Contains(targetId.Value.Trim()))
+                    throw new NotSupportedException("A retained action targets the removed attachment ID: " + entry.Key);
                 if (element.Parent?.Name.LocalName == "DocBody" && element.Name.LocalName == "Versions" &&
                     (element.Attributes().Any(a => !a.IsNamespaceDeclaration) ||
                      !element.HasElements ||
@@ -327,6 +334,10 @@ internal static class OfdAttachmentPhysicalCleaner
         var root = element.Document?.Root;
         if (root is null) return PayloadOwnerScope.None;
         var ns = root.Name.Namespace;
+        if (attributeName is null && root.Name == ns + "OFD" && element.Name == ns + "Cover" &&
+            element.Parent?.Name == ns + "DocInfo" && element.Parent.Parent?.Name == ns + "DocBody" &&
+            element.Parent.Parent.Parent == root)
+            return PayloadOwnerScope.Entry;
         if (root.Name.LocalName == "Res" && trustedResources.Contains(path))
         {
             if (attributeName is null && element.Name == ns + "FontFile" && element.Parent?.Name == ns + "Font" &&
