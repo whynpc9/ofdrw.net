@@ -1,6 +1,6 @@
 # 签名保护范围、关系与扩展参数（R13）
 
-`OfdSignatureService.SignWithResultAsync` 返回本次签名的包条目清单：`ProtectedFiles` 的原始字节进入 `References`，`UnprotectedFiles` 未进入。新生成的 `Signature.xml` 和 `SignedValue.dat` 必然列为本次未保护；它们由签名值本身的校验关系覆盖。旧 `SignAsync` 仍可用，默认保护所有签署前存在的条目，仅排除可变的 `Signatures.xml`。显式 `ProtectSignatureList=true` 后，后续追加签名会被拒绝。
+`OfdSignatureService.SignWithResultAsync` 返回本次签名的包条目清单：`ProtectedFiles` 的原始字节进入 `References`，`UnprotectedFiles` 未进入。新生成的 `Signature.xml` 和 `SignedValue.dat` 必然列为本次未保护；它们由签名值本身的校验关系覆盖。若 provider 提供印章，新生成且由 `Signature.xml` 引用的 `Seal.esl` 必须进入 `ProtectedFiles`，即使签名目录位于文档目录之外。旧 `SignAsync` 仍可用，默认保护所有签署前存在的条目，仅排除可变的 `Signatures.xml`。显式 `ProtectSignatureList=true` 后，后续追加签名会被拒绝。
 
 `OfdSignatureOptions.ProtectFile` 接收以 `/` 开头的包内绝对路径，返回是否保护。它只能缩小默认引用集；不能排除根索引、未声明为旧签名或批注的正文目录内容、文档实际依赖的 XML 或共享资源。文档引用的 `PublicRes`、`DocumentRes`、`Attachments`、`CustomTags` 和 `Extensions` 描述符在位置非空时会按 XML 强制解析，不依赖 `.xml` 后缀或字节前缀；空白的可选位置视为未声明，非空却缺失或无法解析则拒绝签署；页面和模板的同目录 `PageRes.xml` 会按阅读器的隐式加载规则进入依赖遍历；`BaseLoc` 与 `MultiMedia/@MediaFile`、`Font/FontFile` 会组合成真实包路径，再检查保护范围。调用者可显式排除文档声明的批注索引及其中的 `PageAnnot` 文件，让后续批注更新不破坏这份签名；由此批注本身不受这份签名保护。目录名本身不赋予例外：即使页面、字体或图片位于 `Annots/` 或 `Signs/` 下，正文与资源引用仍优先受保护。旧签名条目与正文依赖指向同一包路径时拒绝签署，包括默认排除可变签名清单的模式。无法证明依赖闭包时签署失败，且在调用 provider、写入输出流之前失败。签署结果逐条列出选择，不能从签名值有效推断任意未保护条目也完整。
 

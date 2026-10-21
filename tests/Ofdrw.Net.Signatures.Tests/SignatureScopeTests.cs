@@ -45,6 +45,85 @@ public sealed class SignatureScopeTests
         Assert.False((await Verify(requiredChanged)).ReferenceIntegrityValid);
     }
 
+    [Fact]
+    public async Task NewSealOutsideDocumentRootCannotBeExcludedBeforeProvider()
+    {
+        using var source = await CreatePackage();
+        using var externalList = await MoveSignatureListOutsideDocumentRoot(source);
+        using var output = new MemoryStream();
+        var provider = new Provider([1, 2, 3]);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignWithResultAsync(externalList, output, provider,
+                new OfdSignatureOptions
+                {
+                    ProtectFile = path => path != "/Shared/Signs/Sign_0/Seal.esl"
+                }));
+        Assert.Contains("/Shared/Signs/Sign_0/Seal.esl", error.Message);
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
+    public async Task NewSealOutsideDocumentRootIsProtectedAndTamperingBreaksReference()
+    {
+        using var source = await CreatePackage();
+        using var externalList = await MoveSignatureListOutsideDocumentRoot(source);
+        using var signed = new MemoryStream();
+        var selection = await new OfdSignatureService().SignWithResultAsync(externalList, signed,
+            new Provider([1, 2, 3]), new OfdSignatureOptions
+            {
+                ProtectFile = path => path != "/Extras/optional.bin"
+            });
+        var sealPath = Assert.Single(selection.ProtectedFiles, path =>
+            path.EndsWith("/Seal.esl", StringComparison.Ordinal));
+        Assert.StartsWith("/Shared/Signs/", sealPath, StringComparison.Ordinal);
+        Assert.True(await IsFullyValid(signed));
+        using var tampered = await Rewrite(signed, sealPath.TrimStart('/'), _ => [9, 9, 9]);
+        Assert.False((await Verify(tampered)).ReferenceIntegrityValid);
+    }
+
+    [Fact]
+    public async Task AnnotationLocationWithLocalNamespaceDeclarationCanRemainMutable()
+    {
+        using var source = await CreatePackage();
+        using var declaration = await Rewrite(source, "Doc_0/Document.xml", bytes =>
+        {
+            var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            document.Root!.Element(document.Root.Name.Namespace + "Annotations")!
+                .SetAttributeValue(XNamespace.Xmlns + "vendor", "urn:vendor:annotation");
+            return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        });
+        using var signed = new MemoryStream();
+        var selection = await new OfdSignatureService().SignWithResultAsync(declaration, signed,
+            new Provider(), new OfdSignatureOptions
+            {
+                ProtectFile = path => !path.StartsWith("/Doc_0/Annots/", StringComparison.Ordinal)
+            });
+        Assert.Contains("/Doc_0/Annots/Annotations.xml", selection.UnprotectedFiles);
+        Assert.Contains("/Doc_0/Annots/Page_0.xml", selection.UnprotectedFiles);
+        Assert.True(await IsFullyValid(signed));
+    }
+
+    [Fact]
+    public async Task AnnotationLocationWithNonNamespaceAttributeStillFailsBeforeProvider()
+    {
+        using var source = await CreatePackage();
+        using var declaration = await Rewrite(source, "Doc_0/Document.xml", bytes =>
+        {
+            var document = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            document.Root!.Element(document.Root.Name.Namespace + "Annotations")!
+                .SetAttributeValue("unexpected", "value");
+            return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
+        });
+        using var output = new MemoryStream();
+        var provider = new Provider();
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdSignatureService().SignAsync(declaration, output, provider,
+                new OfdSignatureOptions { ProtectFile = _ => true }));
+        Assert.Equal(0, provider.Calls);
+        Assert.Equal(0, output.Length);
+    }
+
     [Theory]
     [InlineData("/OFD.xml")]
     [InlineData("/Doc_0/Document.xml")]
@@ -825,6 +904,19 @@ public sealed class SignatureScopeTests
             return Encoding.UTF8.GetBytes(document.ToString(SaveOptions.DisableFormatting));
         });
 
+    private static Task<MemoryStream> MoveSignatureListOutsideDocumentRoot(MemoryStream source) =>
+        Rewrite(source, "OFD.xml", bytes =>
+        {
+            var ofd = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            var body = ofd.Root!.Descendants().First(node => node.Name.LocalName == "DocBody");
+            var list = body.Elements().FirstOrDefault(node => node.Name.LocalName == "Signatures");
+            if (list is null)
+                body.Add(new XElement(body.Name.Namespace + "Signatures", "/Shared/Signs/Signatures.xml"));
+            else
+                list.Value = "/Shared/Signs/Signatures.xml";
+            return Encoding.UTF8.GetBytes(ofd.ToString(SaveOptions.DisableFormatting));
+        });
+
     private static Task<MemoryStream> AliasFirstSignedValue(MemoryStream source, string target) =>
         Rewrite(source, "Doc_0/Signs/Sign_0/Signature.xml", bytes =>
         {
@@ -865,13 +957,17 @@ public sealed class SignatureScopeTests
 
     private sealed class Provider : IOfdSignatureProvider
     {
+        private readonly byte[]? _sealData;
+
+        public Provider(byte[]? sealData = null) => _sealData = sealData;
+
         public int Calls { get; private set; }
         public string ProviderName => "R13 test";
         public string Company => "Ofdrw.Net";
         public string Version => "1";
         public string SignatureMethod => Method;
         public string SignatureType => "Sign";
-        public byte[]? SealData => null;
+        public byte[]? SealData => _sealData;
 
         public Task<byte[]> SignAsync(byte[] signatureXml, string propertyInformation,
             CancellationToken cancellationToken = default)

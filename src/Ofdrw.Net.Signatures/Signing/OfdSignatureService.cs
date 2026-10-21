@@ -165,22 +165,24 @@ public sealed class OfdSignatureService
         }
 
         entries[signaturesPath] = SerializeXml(signatures);
-        if (provider.SealData is { Length: > 0 })
+        var sealData = provider.SealData;
+        var sealPath = sealData is { Length: > 0 } ? signDirectory + "/Seal.esl" : null;
+        if (sealPath is not null)
         {
-            entries[signDirectory + "/Seal.esl"] =
-                (byte[])provider.SealData.Clone();
+            entries[sealPath] =
+                (byte[])sealData!.Clone();
         }
 
         var selection = OfdSignatureFileSelection.Select(
-            entries, ofd, signaturesPath, signaturePath, options, cancellationToken);
+            entries, ofd, signaturesPath, signaturePath, sealPath, options, cancellationToken);
         var protectedEntries = selection.Protected.ToDictionary(
             path => path, path => entries[path], StringComparer.OrdinalIgnoreCase);
 
         var signature = BuildSignatureXml(
             protectedEntries,
-            signaturePath,
             signedValuePath,
             provider,
+            sealPath,
             options);
         var signatureBytes = SerializeXml(signature);
         var propertyInformation = "/" + signaturePath;
@@ -205,9 +207,9 @@ public sealed class OfdSignatureService
 
     private static XDocument BuildSignatureXml(
         IReadOnlyDictionary<string, byte[]> entries,
-        string signaturePath,
         string signedValuePath,
         IOfdSignatureProvider provider,
+        string? sealPath,
         OfdSignatureOptions options)
     {
         var ns = XNamespace.Get("http://www.ofdspec.org/2016");
@@ -250,14 +252,14 @@ public sealed class OfdSignatureService
             DateTime.UtcNow.ToString(
                 "yyyy-MM-ddTHH:mm:ss'Z'",
                 System.Globalization.CultureInfo.InvariantCulture)));
-        if (provider.SealData is { Length: > 0 })
+        if (sealPath is not null)
         {
             signedInfo.Add(
                 new XElement(
                     ns + "Seal",
                     new XAttribute(
                         "BaseLoc",
-                        "/" + GetDirectory(signaturePath) + "Seal.esl")));
+                        "/" + sealPath)));
         }
 
         signedInfo.Add(references);

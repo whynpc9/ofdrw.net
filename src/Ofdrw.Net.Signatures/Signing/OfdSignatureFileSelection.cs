@@ -16,12 +16,13 @@ internal static class OfdSignatureFileSelection
         XDocument ofd,
         string signaturesPath,
         string newSignaturePath,
+        string? newSealPath,
         OfdSignatureOptions options,
         CancellationToken cancellationToken)
     {
         var required = options.ProtectFile is null && options.ProtectSignatureList
             ? null
-            : FindRequiredFiles(entries, ofd, signaturesPath, newSignaturePath, cancellationToken);
+            : FindRequiredFiles(entries, ofd, signaturesPath, newSignaturePath, newSealPath, cancellationToken);
         var selected = new List<string>();
         var omitted = new List<string>();
         foreach (var path in entries.Keys.OrderBy(x => x, StringComparer.Ordinal))
@@ -46,10 +47,11 @@ internal static class OfdSignatureFileSelection
 
     private static HashSet<string> FindRequiredFiles(
         IReadOnlyDictionary<string, byte[]> entries, XDocument ofd,
-        string signaturesPath, string newSignaturePath,
+        string signaturesPath, string newSignaturePath, string? newSealPath,
         CancellationToken cancellationToken)
     {
         var required = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "OFD.xml" };
+        if (newSealPath is not null) required.Add(newSealPath);
         var documentPaths = ofd.Descendants().Where(e => e.Name.LocalName == "DocRoot")
             .Select(e => Normalize(e.Value)).ToArray();
         if (documentPaths.Length == 0)
@@ -254,7 +256,9 @@ internal static class OfdSignatureFileSelection
                 .Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id!), StringComparer.Ordinal);
             foreach (var declaration in document.Root.Elements(ns + "Annotations"))
             {
-                if (declaration.HasElements || declaration.HasAttributes || string.IsNullOrWhiteSpace(declaration.Value))
+                if (declaration.HasElements ||
+                    declaration.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
+                    string.IsNullOrWhiteSpace(declaration.Value))
                     throw new InvalidDataException("Cannot prove annotation index location in /" + documentPath);
                 var indexPath = Resolve(documentPath, declaration.Value.Trim());
                 if (!entries.TryGetValue(indexPath, out var indexBytes))
