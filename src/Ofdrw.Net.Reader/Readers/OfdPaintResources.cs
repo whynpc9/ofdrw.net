@@ -121,6 +121,8 @@ internal sealed class OfdPaintResources
                 throw new NotSupportedException("DrawParam has an unknown attribute.");
             if (item.Elements().Any(e => e.Name.Namespace != item.Name.Namespace || e.Name.LocalName is not ("FillColor" or "StrokeColor")))
                 throw new NotSupportedException("DrawParam has an unknown child.");
+            if (HasUnsupportedNodeContent(item))
+                throw new NotSupportedException("DrawParam has unsupported content.");
             RejectDuplicateColors(item);
             foreach (var attribute in item.Attributes().Where(a => a.Name.LocalName is not ("ID" or "Relative")))
                 result.SetAttributeValue(attribute.Name, attribute.Value);
@@ -146,7 +148,7 @@ internal sealed class OfdPaintResources
     private void NormalizeColor(XElement color, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        if (color.HasElements || color.Attributes().Any(a => !a.IsNamespaceDeclaration &&
+        if (color.HasElements || HasUnsupportedNodeContent(color) || color.Attributes().Any(a => !a.IsNamespaceDeclaration &&
             (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("Value" or "Index" or "ColorSpace" or "Alpha"))))
             throw new NotSupportedException("Color extension, pattern or gradient.");
         var alpha = Integer(color.Attribute("Alpha")?.Value, 255);
@@ -161,7 +163,7 @@ internal sealed class OfdPaintResources
         var type = space?.Attribute("Type")?.Value ?? "RGB";
         if (space is not null)
         {
-            if (space.Attribute("Profile") is not null ||
+            if (space.Attribute("Profile") is not null || HasUnsupportedNodeContent(space) ||
                 Integer(space.Attribute("BitsPerComponent")?.Value, 8) != 8 ||
                 space.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("ID" or "Type" or "BitsPerComponent" or "Profile"))) ||
@@ -209,6 +211,13 @@ internal sealed class OfdPaintResources
     }
 
     private static int Ink(int component, int black) => (255 - component) * (255 - black) / 255;
+    private static bool HasUnsupportedNodeContent(XElement element) => element.Nodes().Any(node => node switch
+    {
+        XElement => false,
+        XComment => false,
+        XText text => !string.IsNullOrWhiteSpace(text.Value),
+        _ => true
+    });
     private static int[] Components(string value, int count)
     {
         var parts = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);

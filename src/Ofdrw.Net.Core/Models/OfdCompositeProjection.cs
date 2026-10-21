@@ -68,7 +68,7 @@ internal static class OfdCompositeProjection
                 if (original is not null)
                 {
                     material.GuardFragmentXml(original, token);
-                    if (!HasWellFormedScalars(OfdXmlEnvelope.Parse(original)))
+                    if (!HasWellFormedScalars(OfdXmlEnvelope.Parse(original), material, token))
                         scalarError = "Malformed PageBlock or composite child attribute cannot be exported.";
                 }
                 if (scalarError is null)
@@ -158,10 +158,11 @@ internal static class OfdCompositeProjection
         var encoded = OfdXmlEnvelope.Capture(root, material, token); material.StoreString(encoded); return encoded;
     }
     private static string Number(double value) => value.ToString("R", CultureInfo.InvariantCulture);
-    private static bool HasWellFormedScalars(XElement root)
+    private static bool HasWellFormedScalars(XElement root, OfdModelMaterialization material, CancellationToken token)
     {
         foreach (var attribute in root.DescendantsAndSelf().Attributes())
         {
+            token.ThrowIfCancellationRequested();
             if (attribute.IsNamespaceDeclaration || attribute.Name.Namespace != XNamespace.None) continue;
             var name = attribute.Name.LocalName;
             var value = attribute.Value;
@@ -188,7 +189,7 @@ internal static class OfdCompositeProjection
             {
                 if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ||
                     (name == "Alpha" && n is < 0 or > 255) ||
-                    (name == "Weight" && n is < 0 or > 1000) ||
+                    (name == "Weight" && (n is < 100 or > 900 || n % 100 != 0)) ||
                     (name is "CodePosition" or "CodeCount" or "GlyphCount") && n < 0)
                     return false;
             }
@@ -202,10 +203,46 @@ internal static class OfdCompositeProjection
             {
                 if (!FiniteNumbers(value, 1, int.MaxValue)) return false;
             }
+            else if (name is "DeltaX" or "DeltaY")
+            {
+                if (!WellFormedDeltas(value, material, token)) return false;
+            }
             else if (name == "Rule" && value is not ("NonZero" or "Even-Odd")) return false;
             else if (name == "Cap" && value.ToLowerInvariant() is not ("butt" or "round" or "square")) return false;
             else if (name == "Join" && value.ToLowerInvariant() is not ("miter" or "round" or "bevel")) return false;
         }
+        return true;
+    }
+    private static bool WellFormedDeltas(string value, OfdModelMaterialization material, CancellationToken token)
+    {
+        // ExpandDeltas stops as soon as it has enough glyph advances. Validate
+        // the entire expression before that renderer can discard a bad suffix.
+        var index = 0;
+        while (NextDeltaToken(value, ref index, material, token, out var part))
+        {
+            token.ThrowIfCancellationRequested();
+            if (string.Equals(part, "g", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!NextDeltaToken(value, ref index, material, token, out var repeat) ||
+                    !int.TryParse(repeat, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count) || count < 0 ||
+                    !NextDeltaToken(value, ref index, material, token, out part))
+                    return false;
+            }
+            if (!FiniteNumber(part, out _)) return false;
+        }
+        return true;
+    }
+    private static bool NextDeltaToken(string value, ref int index, OfdModelMaterialization material,
+        CancellationToken token, out string part)
+    {
+        while (index < value.Length && value[index] is ' ' or '\t' or '\r' or '\n')
+        { if ((index & 1023) == 0) token.ThrowIfCancellationRequested(); index++; }
+        var start = index;
+        while (index < value.Length && value[index] is not (' ' or '\t' or '\r' or '\n'))
+        { if ((index & 1023) == 0) token.ThrowIfCancellationRequested(); index++; }
+        if (start == index) { part = string.Empty; return false; }
+        material.ChargeCopy(checked(64L + 2L * (index - start)), token);
+        part = value.Substring(start, index - start);
         return true;
     }
     private static bool FiniteNumber(string value, out double number) =>

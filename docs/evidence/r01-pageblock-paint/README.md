@@ -119,6 +119,13 @@
 - 本地 `0.1.0-r01.r15scalar` 的 12 个基础 SDK 包加 1 个可选 SES 包来源及独立消费通过。显式 native/默认 DOCX→OFD、四份 V1/V4 测试签章与其签章前基线的两页 PNG 像素等同性通过；包未发布。默认密码学验证保持 `Unsupported`，不推出外部 OFD 阅读器或签名法律有效性结论。
 - 最终源码新生成的 `r15-scalar-value-pages/palette-value-priority-direct.pdf` 与 `palette-value-priority-drawparam.pdf` 由 OFD 导出，macOS Preview 各检查第 1/1 页，方块均为红色；两份 144 DPI PNG 逐字节一致。`r15-scalar-final-ses/files/native-v1.pdf`、`default-v4.pdf` 分别来自本轮显式 native 和默认 OFD，经 Preview 各检查第 1–2 页：中英文、表格底色/边框、局部红色粗体及分页正常，未见缺字、裁切、重叠、重影或异常空白页。两条查看链路均为 DOCX → OFD → PDF → Preview；检查后关闭四个文档窗口并登记 `20261021T1301Z` GUI 代次释放。其余签章版本仅有功能和逐页 PNG 等同性证据。
 
+## 最终词元与资源内容准入复审
+
+- Codex 对 `5a75559` 的三项复审分别涉及字重合法域、`DeltaX/DeltaY` 尾部非法词元，以及被 `Elements()` 遍历忽略的 DrawParam 处理指令/正文。PageBlock 投影现按现有文字契约只接受 100–900 且步长为 100 的字重；对整个字距表达式逐词检查数字和 `g count value`，不按字形数提前停止，也不展开任意重复计数。词元扫描为 .NET Standard 2.0 兼容的有界分配，受物化预算及取消信号约束。引用的 DrawParam、FillColor/StrokeColor 与 ColorSpace 都拒绝处理指令和非空白正文；注释与空白仍可接受。Reader 的原文提取继续可用，PDF/SVG/HTML 在绘制前失败且不留下部分输出。
+- 新回归覆盖非法字重 0/1000/150、合法端点 100/900、两轴字距的非法尾词元、不完整 `g` 重复表达式、合法 `g 1 3`、DrawParam 的处理指令/正文及合法注释/空白、关联颜色/颜色空间内容扩展。R01 类 **101/101**；最终源码完整 Release 解决方案 11 个项目 **3311 passed、0 skipped、0 failed**。Core 的 `netstandard2.0` 单独编译通过。第一次完整测试虽各项目测试显示通过，但该目标框架编译因 `ReadOnlySpan` 缺失而退出 1；改用兼容解析后，从头重跑的完整命令退出 0。日志在 `artifacts/roadmap-v12/R01/r15-review-*.log`。
+- 本地 `0.1.0-r01.r15review` 的 12 个基础 SDK 包加 1 个可选 SES 包来源、独立消费者、显式 native/默认 DOCX→OFD、四份 V1/V4 测试签章及页面 PNG 等同性均通过；包未发布。另从最终测试源码生成 5 个单页正例 PDF：重复字距、100/900 字重、直接/继承的 `Value` 优先调色板。PDF 均为 1 页，144 DPI PNG 逐页复查：`A B` 间距清楚、字重端点分别呈常规/粗体、两份调色板页均为红色。最初测试正例的 1 mm 字距造成预期中的字形相贴；改为 3 mm 后重新生成并复查，最终产物无重叠。
+- macOS Preview 对本轮上述 5 份 PDF 各检查第 1/1 页；对 `r15-review-final-ses/files/native-v1.pdf` 和 `default-v4.pdf` 分别检查第 1–2 页。查看链路为正例 OFD→PDF→Preview，以及由 `generated-layout.docx` 制作的本轮受许可字体样本→显式 native/默认 OFD→PDF→Preview，未使用 DOCX→PDF 代替。正文中英文、斜体、蓝色表格底色/边框、第二页红色局部粗体和分页符合样例；未见缺字、裁切、重影或异常空白页。四张本轮 DOCX 页面 PNG 与此前验收的对应页逐字节一致。检查后关闭全部 Preview 文档窗口，GUI 代次 `20261021T1341Z` 释放。非法输入是拒绝路径，没有成功页面；本次仍不作外部 OFD 阅读器或 V5/GBT 互操作结论。
+
 ## 本次页面视觉复查
 
 | 样本/链路 | 实查范围 | 结果 |

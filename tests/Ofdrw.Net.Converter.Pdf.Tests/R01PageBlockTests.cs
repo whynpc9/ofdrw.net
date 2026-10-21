@@ -283,6 +283,70 @@ public sealed class R01PageBlockTests
         Assert.Equal(0, html.Length);
     }
 
+    [Theory]
+    [InlineData("<?vendor key?>")]
+    [InlineData("vendor extension")]
+    public async Task ReferencedDrawParamRejectsIgnoredContent(string content)
+    {
+        var resources = $"<DrawParams><DrawParam ID='20'>{content}<FillColor Value='255 0 0'/></DrawParam></DrawParams>";
+        const string body = "<PathObject ID='501' Boundary='10 10 20 20' DrawParam='20' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Contains("DrawParam has unsupported content", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Fact]
+    public async Task ReferencedDrawParamAllowsCommentsAndWhitespace()
+    {
+        const string resources = "<DrawParams><DrawParam ID='20'> \n<!-- note -->" +
+            "<FillColor Value='255 0 0'/></DrawParam></DrawParams>";
+        const string body = "<PathObject ID='501' Boundary='10 10 20 20' DrawParam='20' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        var path = Assert.Single(XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants(),
+            node => node.Name.LocalName == "path");
+        Assert.Equal("rgb(255,0,0)", path.Attribute("fill")?.Value);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ReferencedPaintNodesRejectIgnoredExtensions(bool colorSpace)
+    {
+        var resources = colorSpace
+            ? "<ColorSpaces><ColorSpace ID='20' Type='RGB'><?vendor key?></ColorSpace></ColorSpaces>"
+            : "<DrawParams><DrawParam ID='20'><FillColor Value='255 0 0'>vendor extension</FillColor></DrawParam></DrawParams>";
+        var style = colorSpace ? "" : "DrawParam='20'";
+        var color = colorSpace ? "<FillColor ColorSpace='20' Value='255 0 0'/>" : "";
+        var body = $"<PathObject ID='501' Boundary='10 10 20 20' {style} Fill='true'>" +
+            color + "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Equal(0, output.Length);
+        }
+    }
+
     [Fact]
     public async Task TopLevelGrayAndCmykPathsRemainRenderableAfterWriteAndReread()
     {
@@ -707,6 +771,9 @@ public sealed class R01PageBlockTests
     [InlineData("TextObject", "Size='bogus'", true)]
     [InlineData("TextObject", "Italic='bogus'", true)]
     [InlineData("TextObject", "Weight='bogus'", true)]
+    [InlineData("TextObject", "Weight='0'", true)]
+    [InlineData("TextObject", "Weight='1000'", true)]
+    [InlineData("TextObject", "Weight='150'", true)]
     public async Task MalformedKnownPageBlockAttributesFailBeforeReaderDefaults(
         string kind, string malformedAttribute, bool font)
     {
@@ -744,6 +811,60 @@ public sealed class R01PageBlockTests
             Assert.Contains("Malformed PageBlock", error.Message);
             Assert.Equal(0, output.Length);
         }
+    }
+
+    [Theory]
+    [InlineData("DeltaX", "1 bogus")]
+    [InlineData("DeltaY", "1 bogus")]
+    [InlineData("DeltaX", "1 g 2")]
+    public async Task PageBlockTextAdvanceRejectsMalformedTrailingTokens(string axis, string expression)
+    {
+        var body = $"<TextObject ID='501' Boundary='10 10 20 10' Font='10' Size='4'>" +
+            $"<TextCode X='0' Y='4' {axis}='{expression}'>AB</TextCode></TextObject>";
+        var ofd = await Source(body, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Equal("AB", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Contains("Malformed PageBlock", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Fact]
+    public async Task PageBlockTextAdvanceAcceptsCompleteRepeatExpression()
+    {
+        var ofd = await Source("<TextObject ID='501' Boundary='10 10 20 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4' DeltaX='g 1 3'>AB</TextCode></TextObject>", font: true);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("AB", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("AB", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("advance-repeat", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData(100)]
+    [InlineData(900)]
+    public async Task PageBlockTextAcceptsWeightEndpoints(int weight)
+    {
+        var ofd = await Source($"<TextObject ID='501' Boundary='10 10 20 10' Font='10' Size='4' Weight='{weight}'>" +
+            "<TextCode X='0' Y='4'>AB</TextCode></TextObject>", font: true);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("AB", Encoding.UTF8.GetString(svg.ToArray()));
+        Retain($"weight-{weight}", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]
