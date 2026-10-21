@@ -1451,8 +1451,13 @@ public sealed class OfdReader : IOfdReader
             return fallback;
         }
 
-        return value == "1" ||
-            (value != "0" && bool.TryParse(value, out var parsed) ? parsed : fallback);
+        var normalized = value!.Trim();
+        return normalized switch
+        {
+            "1" => true,
+            "0" => false,
+            _ => bool.TryParse(normalized, out var parsed) ? parsed : fallback
+        };
     }
 
     private static bool TryParseFontFlag(string? value, out bool result)

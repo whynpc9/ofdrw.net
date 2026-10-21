@@ -190,7 +190,7 @@ internal static class OfdCompositeProjection
             if (name is "Visible" or "Stroke" or "Fill" or "Italic")
             {
                 var normalized = value.Trim();
-                if (value is not ("0" or "1") && !bool.TryParse(value, out _)) return false;
+                if (normalized is not ("0" or "1") && !bool.TryParse(normalized, out _)) return false;
                 if (name == "Visible" && attribute.Parent!.Name.LocalName == "Path" &&
                     (normalized == "0" || string.Equals(normalized, "false", StringComparison.OrdinalIgnoreCase))) return false;
             }

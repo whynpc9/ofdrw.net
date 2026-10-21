@@ -1128,6 +1128,61 @@ public sealed class R01PageBlockTests
         Retain("text-paint-boolean-whitespace", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Fact]
+    public async Task WhitespaceIntegerTextBooleansRenderInAllOutputs()
+    {
+        var body = "<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4' Fill=' 1 ' Stroke=' 0 ' Visible=' 1 '>" +
+            "<TextCode X='0' Y='4'>numeric boolean text</TextCode></TextObject>";
+        var ofd = await Source(body, font: true);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        Assert.Contains("numeric boolean text", Encoding.UTF8.GetString(svg.ToArray()));
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.Contains("numeric boolean text", Encoding.UTF8.GetString(html.ToArray()));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("numeric boolean text", parsed.GetPage(1).Text);
+        Retain("text-paint-integer-whitespace", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WhitespaceIntegerPathBooleansKeepFillAndVisibility(bool composite)
+    {
+        var visible = "<PathObject ID='552' Boundary='10 10 20 20' Fill=' 1 ' Stroke=' 0 ' Visible=' 1 '>" +
+            "<FillColor Value='0 0 255'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var hidden = "<PathObject ID='553' Boundary='40 10 20 20' Fill=' 1 ' Stroke=' 0 ' Visible=' 0 '>" +
+            "<FillColor Value='255 0 0'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var resources = composite ? "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='60' Height='30'>" +
+            visible + hidden + "</CompositeGraphicUnit></CompositeGraphicUnits>" : null;
+        var body = (composite ? "<CompositeObject ID='501' Boundary='10 10 60 30' ResourceID='551'/>" : visible + hidden) +
+            "<TextObject ID='554' Boundary='10 50 80 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>visible sibling</TextCode></TextObject>";
+        var ofd = await Source(body, resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var parsedPath = composite
+            ? Assert.IsType<OfdPathElement>(read.CompositeResources!.Items.Single().Elements.First())
+            : Assert.IsType<OfdPathElement>(Assert.IsType<OfdRawElement>(read.Pages[0].Elements.Single()).PageBlockChildren!.First());
+        Assert.True(parsedPath.Fill);
+        Assert.False(parsedPath.Stroke);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        var markup = Encoding.UTF8.GetString(svg.ToArray());
+        Assert.Contains("rgb(0,0,255)", markup);
+        Assert.DoesNotContain("rgb(255,0,0)", markup);
+        var blue = Assert.Single(XDocument.Parse(markup).Descendants(), node =>
+            node.Name.LocalName == "path" && node.Attribute("fill")?.Value == "rgb(0,0,255)");
+        Assert.Equal("none", blue.Attribute("stroke")?.Value);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        markup = Encoding.UTF8.GetString(html.ToArray());
+        Assert.Contains("rgb(0,0,255)", markup);
+        Assert.DoesNotContain("rgb(255,0,0)", markup);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("visible sibling", parsed.GetPage(1).Text);
+        Retain(composite ? "path-integer-whitespace-composite" : "path-integer-whitespace-pageblock",
+            ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
     [Theory]
     [InlineData("DeltaX", "1 bogus")]
     [InlineData("DeltaY", "1 bogus")]
