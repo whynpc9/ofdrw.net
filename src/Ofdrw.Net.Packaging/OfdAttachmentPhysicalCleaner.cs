@@ -23,16 +23,16 @@ internal static class OfdAttachmentPhysicalCleaner
     // carry implicit references, so they cannot be admitted by string matching.
     private static readonly HashSet<string> KnownElements = new(StringComparer.Ordinal)
     {
-        "OFD", "DocBody", "DocInfo", "DocID", "Title", "Author", "Subject", "Keywords", "Creator", "CreationDate", "ModDate", "DocRoot", "Versions", "Version", "Signatures", "MaxSignId", "Signature", "SignedInfo", "SignedValue", "References", "Reference", "FileRef", "CheckValue", "DigestMethod", "DigestValue", "Provider", "SignatureMethod", "SignatureDateTime", "StampAnnot", "Seal", "Parameters", "Parameter",
+        "OFD", "DocBody", "DocInfo", "DocID", "Title", "Author", "Subject", "Keywords", "Creator", "CreationDate", "ModDate", "DocRoot", "Versions", "Version", "DocVersion", "FileList", "File", "Signatures", "MaxSignId", "Signature", "SignedInfo", "SignedValue", "References", "Reference", "FileRef", "CheckValue", "DigestMethod", "DigestValue", "Provider", "SignatureMethod", "SignatureDateTime", "StampAnnot", "Seal", "Parameters", "Parameter",
         "Document", "CommonData", "MaxUnitID", "PageArea", "PhysicalBox", "ApplicationBox", "ContentBox", "BleedBox", "PublicRes", "DocumentRes", "TemplatePage", "DefaultCS", "Pages", "Page", "Area", "Content", "Layer", "PageBlock", "Outlines", "OutlineElem", "Bookmarks", "Bookmark", "Dest", "Actions", "Action", "Goto", "Permissions", "VPreferences", "Annotations", "PageAnnot", "Annot", "Appearance", "Remark", "CustomTags", "CustomTag", "EMRTags", "Tag", "Extensions", "Extension",
         "Attachments", "Attachment", "FileLoc", "Res", "Fonts", "Font", "FontFile", "MultiMedias", "MultiMedia", "MediaFile", "ColorSpaces", "ColorSpace", "DrawParams", "DrawParam", "CompositeGraphicUnits", "CompositeGraphicUnit", "TextObject", "TextCode", "ImageObject", "PathObject", "Path", "CompositeObject", "AbbreviatedData", "FillColor", "StrokeColor", "Clips", "Clip", "Area", "CGTransform", "Glyphs", "Substitution", "Segment", "Template", "ImageMask"
     };
     private static readonly HashSet<string> KnownAttributes = new(StringComparer.Ordinal)
     {
-        "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "MediaFile", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Substitution", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "Start", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "Serif", "FixedWidth", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
+        "Version", "DocType", "ID", "Name", "Title", "Expanded", "Count", "Event", "Left", "Top", "Right", "Bottom", "Zoom", "TypeID", "NameSpace", "Key", "BaseLoc", "FileLoc", "FileRef", "MediaFile", "CheckMethod", "ProviderName", "Company", "Relative", "Format", "MediaType", "External", "CreationDate", "ModDate", "LastModDate", "Creator", "Subtype", "Print", "NoZoom", "NoRotate", "ReadOnly", "Size", "Visible", "Usage", "Type", "Boundary", "CTM", "ResourceID", "Substitution", "Font", "Size", "Weight", "Italic", "Stroke", "Fill", "HScale", "ReadDirection", "CharDirection", "DrawParam", "Value", "Index", "ColorSpace", "Alpha", "LineWidth", "MiterLimit", "DashPattern", "DashOffset", "LineCap", "LineJoin", "Cap", "Join", "Rule", "X", "Y", "W", "H", "Width", "Height", "CharCode", "CodePosition", "CodeCount", "GlyphCount", "DeltaX", "DeltaY", "Direction", "ZOrder", "Start", "TemplateID", "PageRef", "PageID", "FontName", "FamilyName", "Charset", "Bold", "Serif", "FixedWidth", "Current", "URI", "RefID", "Clipped", "LayerID", "PageIndex", "ImageMask", "BitsPerPixel", "Color"
     };
     private static readonly HashSet<string> ScalarPathElements = new(StringComparer.Ordinal)
-    { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes" };
+    { "SignedValue", "FileRef", "FileLoc", "FontFile", "MediaFile", "DocRoot", "PublicRes", "DocumentRes", "PageRes", "File" };
 
     internal static void Prune(OfdDocumentPackage package, IDictionary<string, byte[]> entries, OfdPackageWriteResult result,
         OfdModelMaterialization material, CancellationToken token, OfdOwnedPruneDispositions? dispositions)
@@ -152,6 +152,8 @@ internal static class OfdAttachmentPhysicalCleaner
             var root = xml.Root;
             if (root.Name.NamespaceName != OfdConstants.Namespace && root.Name.NamespaceName != OfdConstants.StandardNamespace)
                 throw new NotSupportedException("Physical attachment removal cannot prove an extension XML reference closure: " + entry.Key);
+            if (root.Name.LocalName == "DocVersion" && !IsStandardDocVersion(root))
+                throw new NotSupportedException("Physical attachment removal cannot prove a malformed DocVersion reference closure: " + entry.Key);
             foreach (var element in root.DescendantsAndSelf())
             {
                 token.ThrowIfCancellationRequested(); material.ChargeWork(64, token);
@@ -163,6 +165,16 @@ internal static class OfdAttachmentPhysicalCleaner
                 if (!KnownElements.Contains(element.Name.LocalName) || element.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                     a.Name.Namespace == XNamespace.None && !KnownAttributes.Contains(a.Name.LocalName)))
                     throw new NotSupportedException("Physical attachment removal cannot prove an unknown OFD field reference closure: " + entry.Key);
+                if (element.Parent?.Name.LocalName == "DocBody" && element.Name.LocalName == "Versions" &&
+                    (element.Attributes().Any(a => !a.IsNamespaceDeclaration) ||
+                     !element.HasElements ||
+                     element.Elements().Any(child => child.Name != element.Name.Namespace + "Version" ||
+                         child.HasElements || !string.IsNullOrWhiteSpace(child.Value) ||
+                         string.IsNullOrWhiteSpace(child.Attribute("ID")?.Value) ||
+                         string.IsNullOrWhiteSpace(child.Attribute("Index")?.Value) ||
+                         string.IsNullOrWhiteSpace(child.Attribute("BaseLoc")?.Value) ||
+                         child.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name.LocalName is not ("ID" or "Index" or "Current" or "BaseLoc")))))
+                    throw new NotSupportedException("Physical attachment removal cannot prove a malformed Versions wrapper: " + entry.Key);
                 if (element.HasElements && (IsPathBearingText(element) ||
                     element.Nodes().OfType<XText>().Any(text => !string.IsNullOrWhiteSpace(text.Value))))
                     throw new NotSupportedException("Physical attachment removal cannot prove mixed XML path content: " + entry.Key);
@@ -197,6 +209,23 @@ internal static class OfdAttachmentPhysicalCleaner
         element.Name.LocalName == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor ||
         element.Name.LocalName == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfInterpolateV1 &&
         OfdImageRenderingHints.IsCanonicalValue(attribute.Value);
+
+    private static bool IsStandardDocVersion(XElement root)
+    {
+        var ns = root.Name.Namespace;
+        var children = root.Elements().ToArray();
+        if (children.Length != 2 || children[0].Name != ns + "FileList" || children[1].Name != ns + "DocRoot" ||
+            string.IsNullOrWhiteSpace(root.Attribute("ID")?.Value) ||
+            root.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name.LocalName is not ("ID" or "Version" or "Name" or "CreationDate")))
+            return false;
+        var files = children[0].Elements().ToArray();
+        return children[0].Attributes().All(a => a.IsNamespaceDeclaration) &&
+               children[1].Attributes().All(a => a.IsNamespaceDeclaration) &&
+               files.Length > 0 && files.All(file => file.Name == ns + "File" && !file.HasElements &&
+                   !string.IsNullOrWhiteSpace(file.Value) && !string.IsNullOrWhiteSpace(file.Attribute("ID")?.Value) &&
+                   file.Attributes().All(a => a.IsNamespaceDeclaration || a.Name.LocalName == "ID")) &&
+               !children[1].HasElements && !string.IsNullOrWhiteSpace(children[1].Value);
+    }
 
     private static bool IsPathBearingAttribute(string name) => name is "BaseLoc" or "FileLoc" or "FileRef" or "MediaFile" or "URI";
 

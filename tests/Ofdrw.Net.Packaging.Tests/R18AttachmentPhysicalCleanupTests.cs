@@ -578,6 +578,47 @@ public sealed class R18AttachmentPhysicalCleanupTests
         await RefusesWithoutOutput(package, split ? "mixed XML path content" : "encoded or backslash XML reference");
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MalformedDocBodyVersionsCannotHideAttachmentAlias(bool split)
+    {
+        var entries = Entries(Seed());
+        var versions = split
+            ? "<Versions><Title>Doc_0/Payload/</Title><Author>original.bin</Author></Versions>"
+            : "<Versions>Doc_0/Payload/original%2Ebin</Versions>";
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot>{versions}</DocBody></OFD>");
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "malformed Versions wrapper");
+    }
+
+    [Fact]
+    public async Task StandardVersionsWrapperPreservesVersionFileAndChecksItsReferences()
+    {
+        var entries = Entries(Seed());
+        var versions = $"<Versions><Version ID='v1' Index='1' Current='true' BaseLoc='Doc_0/Versions/v1.xml'/></Versions>";
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot>{versions}</DocBody></OFD>");
+        entries["Doc_0/Versions/v1.xml"] = Utf8($"<DocVersion xmlns='{Ns}' ID='v1'><FileList><File ID='f1'>../Pages/Content.xml</File></FileList><DocRoot>../Document.xml</DocRoot></DocVersion>");
+        var package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        var (output, _) = await Write(package);
+        Assert.Equal(entries["Doc_0/Versions/v1.xml"], Entries(output)["Doc_0/Versions/v1.xml"]);
+        Assert.NotNull(XDocument.Parse(Encoding.UTF8.GetString(Entries(output)["OFD.xml"]))
+            .Descendants(XName.Get("Versions", Ns)).Single().Element(XName.Get("Version", Ns)));
+
+        entries["Doc_0/Versions/v1.xml"] = Utf8($"<DocVersion xmlns='{Ns}' ID='v1'><FileList><File ID='f1'>../Payload/original%2Ebin</File></FileList><DocRoot>../Document.xml</DocRoot></DocVersion>");
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "encoded or backslash XML reference");
+
+        entries["Doc_0/Versions/v1.xml"] = Utf8($"<DocVersion xmlns='{Ns}' ID='v1'><FileList><File ID='f1'>../Pages/Content.xml</File></FileList><DocRoot>../Document.xml</DocRoot></DocVersion>");
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}'><DocBody><DocRoot>Doc_0/Document.xml</DocRoot><Versions><Version ID='v1' Index='1' BaseLoc='Doc_0/Payload/original%2Ebin'/></Versions></DocBody></OFD>");
+        package = await Read(Zip(entries));
+        Assert.True(package.RemoveAttachment(Assert.Single(package.Attachments), OfdAttachmentRemovalMode.Physical));
+        await RefusesWithoutOutput(package, "encoded or backslash BaseLoc");
+    }
+
     [Fact]
     public async Task NonXmlSuffixUtf16DescriptorUsesSourcePathAndCanBeRemoved()
     {
