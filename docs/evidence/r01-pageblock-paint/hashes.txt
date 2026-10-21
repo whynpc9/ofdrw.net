@@ -1,5 +1,5 @@
-# R01 PageBlock evidence after final path/palette P2 fixes, 2026-10-22
-# Product source 7abeb3163fc713ea9574b9f13cd0db81dc4263d9; integrated main 66ce3908828342de4a08583a6620540b2ae8717b at b4a557b35364b116ed9953d6281d51923f041203
+# R01 PageBlock evidence through source f515a981205d0d85cf84f78b6bfe7542eb2c5c05, 2026-10-22
+# Initial product source 7abeb3163fc713ea9574b9f13cd0db81dc4263d9; integrated main 66ce3908828342de4a08583a6620540b2ae8717b at b4a557b35364b116ed9953d6281d51923f041203
 # Format: SHA-256  repository-relative path. Generated files are ignored local artifacts.
 17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6  e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx
 3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa  artifacts/roadmap-v12/R01/cursor-fix-document-tools/fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf
@@ -173,3 +173,41 @@ e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/road
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2-ses/files/pages/default-v1/page-2.png
 e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/p2-ses/files/pages/default-v4/page-1.png
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2-ses/files/pages/default-v4/page-2.png
+c5fc2f0322b8d5075755e830c4d0cddc09af251ed80db2c918f8e97ff0daa285  artifacts/roadmap-v12/R01/p2c-focused-pages.log
+2bf902758a6de8b77b27c3b2389a3c68e3a51bc747994729567e428c1b9ed913  artifacts/roadmap-v12/R01/p2c-full-release.log
+46cc765843f780773dd6b85ab16332abba9dca8062bfbac30f61d3d35131dac0  artifacts/roadmap-v12/R01/p2c-pages/numeric-paint-ids.ofd
+0277037d844bc67e171fcf9d3693edb171c7afba8d187bbafc10b1e714c64711  artifacts/roadmap-v12/R01/p2c-pages/numeric-paint-ids.pdf
+a16152f8a0e5d26c5acb1f037e2685c9d8a4a8658aabd2bd50740c87a54824fb  artifacts/roadmap-v12/R01/p2c-pages/numeric-paint-ids.svg
+d603633962efe685edf0ae4e2a03435a3bd8ef7249f41bc2bb5d0ed8b1266755  artifacts/roadmap-v12/R01/p2c-pages/numeric-paint-ids.html
+417114cc806a603c8822c0aa68f3a39003bbbce222914ac45fcd904c9d9836bd  artifacts/roadmap-v12/R01/p2c-pages/numeric-paint-ids-page-1.png
+a730a73324b2de50c355a51b6617f0973f1ec40b683132531122b6c70482edfd  artifacts/roadmap-v12/R01/p2c-pages/pageblock-arc.ofd
+841bba371ad4c85e0427d3fb0abaf45053a9270d7387ead24ea3ac0e5d5bdace  artifacts/roadmap-v12/R01/p2c-pages/pageblock-arc.pdf
+9fe419ecd1df654745cec58916e3ec074efc21eacf77a62bae38c01d1abb3860  artifacts/roadmap-v12/R01/p2c-pages/pageblock-arc.svg
+4d0d636bc06e0662f49854c8f4fcafe1f45c07cf448c174b3aafddeafcf4bfa8  artifacts/roadmap-v12/R01/p2c-pages/pageblock-arc.html
+5541433493eac0004d8133ee2afef9c759d2f1f45bf71fa3cf96c0762f3a841c  artifacts/roadmap-v12/R01/p2c-pages/pageblock-arc-page-1.png
+13a95dd0ad5b8e092a3b2437fca9d514598f80253c4a6048cf1d6f9f2ebeb475  artifacts/roadmap-v12/R01/p2c-pages/pageblock-comment-whitespace.ofd
+170f68682821099843863bea54d71d86c8d7cdfe9039ce2e3b6625de3bf68fac  artifacts/roadmap-v12/R01/p2c-pages/pageblock-comment-whitespace.pdf
+29c064eaf8d6c5f274bf716463ea83706093d96352695fa6561656068c05f307  artifacts/roadmap-v12/R01/p2c-pages/pageblock-comment-whitespace.svg
+e5387807a4a38884a61c0e02b64769f856937229db2025e8db0edcbd2c773967  artifacts/roadmap-v12/R01/p2c-pages/pageblock-comment-whitespace.html
+62ea24173e7a4bfbcfc336342b5c124fd3c4cccb08846d5bbc9e933a12e1ad27  artifacts/roadmap-v12/R01/p2c-pages/pageblock-comment-whitespace-page-1.png
+430937dd112d6eeb3b8f31c1858ed5bfd5eb7406760f6d92a9e74ac4bc6ba537  artifacts/roadmap-v12/R01/p2c-ses.log
+5182fae4d50095a0d9cfc05fd06f347fb3f5279ffbf537380cd52ab98cc4cc84  artifacts/roadmap-v12/R01/p2c-attachment.log
+e0fc5374d18ebb1af4910e0d4fe06829338ef880ea18928f7f224471c038a240  artifacts/roadmap-v12/R01/p2c-ses/files/package-manifest.json
+66bcc47850516a3b92fc0b9d53843a3086f1e1ffb79b51fa0ae0077cefe56edf  artifacts/roadmap-v12/R01/p2c-ses/files/functional.json
+940724d85e31b1a69f993d574ea6da2bcefd2e7828974c278e91450a3061cc4d  artifacts/roadmap-v12/R01/p2c-ses/files/rendered-pages.json
+611827566b14a316baa7951e2214b59785ae036193e073815d035a36cf44fcc6  artifacts/roadmap-v12/R01/p2c-ses/files/licensed-layout.docx
+352ef01257b4ce9980fc63efddcdfbb8f4d94b23d3c57bf54e89827fcb0a6c27  artifacts/roadmap-v12/R01/p2c-ses/files/native-v1.ofd
+17550bfccf47e49a21d1747522d2ca8fba6494bb85f6e7e82fd6bb6ee7caf276  artifacts/roadmap-v12/R01/p2c-ses/files/native-v1.pdf
+ee38f7b332f4f269bae3b5d18860b846ecc371943a24502ef3df4dbfda425acb  artifacts/roadmap-v12/R01/p2c-ses/files/default-v4.ofd
+56979516303e57096cddcadfc101a173f5510a7a6655d21186cdf740bb92cf3f  artifacts/roadmap-v12/R01/p2c-ses/files/default-v4.pdf
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/p2c-ses/files/pages/native-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2c-ses/files/pages/native-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/p2c-ses/files/pages/native-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2c-ses/files/pages/native-v4/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/p2c-ses/files/pages/default-v1/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2c-ses/files/pages/default-v1/page-2.png
+e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/roadmap-v12/R01/p2c-ses/files/pages/default-v4/page-1.png
+183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p2c-ses/files/pages/default-v4/page-2.png
+f6a6ce5e89dfdebae87b8c1606518ddebc5e98049fcc4c543b2c6f5b5691e072  artifacts/roadmap-v12/R01/p2c-attachment/manifest.json
+aef011534ff9a84da7d1111cc69f33a22f5c87a714c9954c8d912aa92ecd48ab  artifacts/roadmap-v12/R01/p2c-attachment/consumer-result.txt
+34bf85db95af95b41a45fc61be66fa0f9c5c3d5fa11e6365e0344715365c8115  artifacts/roadmap-v12/R01/p2c-attachment/output/receipt.json
