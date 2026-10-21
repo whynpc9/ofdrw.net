@@ -1,6 +1,32 @@
 # 可选口令加密包
 
-`Ofdrw.Net.Crypto.Password` 是显式引用的独立 `net8.0` 扩展，提供本包私有 profile v2 的自加密、自解密。它不进入 `Ofdrw.Net.Converter` 默认依赖，不修改核心 `SupportsGmT0099EncryptionEnvelope=false`。本票未发布NuGet，示例经源码和本地feed验证；可选包的未来独立发布需另行授权/配套闸门，不自动进入默认v* tag的原11产品feed。不是商用密码产品或密码认证，没有厂商互认证据，不能当作长期保存格式；OFD-H/档案入库前应解密。
+`Ofdrw.Net.Crypto.Password` 是显式引用的独立 `net8.0` 扩展。原有 `OfdPasswordEnvelope` 继续只处理本包私有 profile v2；新增 `OfdStandardEncryption` 是独立、显式的 Java OFDRW 2.4.0 交换子集。它不进入 `Ofdrw.Net.Converter` 默认依赖，不修改核心 `SupportsGmT0099EncryptionEnvelope=false`。本票未发布 NuGet；本地 feed 消费与交叉样本只证明具名实现/样本。不是商用密码产品或密码认证，没有厂商互认证据，不能当作长期保存格式；OFD-H/档案入库前应解密。
+
+## 显式 Java OFDRW 2.4.0 交换子集（R14）
+
+`OfdStandardEncryption.EncryptAsync` / `EncryptFileAsync` 要求显式传入 1–32 个具名接收人和清单签名回调。接收人可全部为口令，或全部为 SM2 X.509 证书；同一包混合口令/证书、多层加密、逐条目独立 seed 与部分条目选择暂不支持。口令按原始 UTF-8 经 Java SM3 counter KDF 得到 16 字节 KEK，没有盐或可调成本，弱口令可被离线猜测。证书路径用 SM2 C1C3C2 包装 FEK，并按 Java 的 DER `SM2Cipher` 结构存入 `EncryptedWK`。一包只有一个 FEK/IV，SM4-CBC/PKCS7 加密全部原文件条目和映射；这沿用固定 Java 格式，不能把它等同私有 v2 的独立 IV/HMAC 安全属性。
+
+```csharp
+var standard = new OfdStandardEncryptionOptions {
+    ManifestSigner = new OfdStandardManifestSigner(signerCertDer, SignSm2DigestAsync)
+};
+standard.Recipients.Add(OfdStandardRecipient.ForPassword("alice", passwordA));
+standard.Recipients.Add(OfdStandardRecipient.ForPassword("bob", passwordB));
+await OfdStandardEncryption.EncryptFileAsync("source.ofd", "encrypted.ofd", standard);
+
+var restored = await OfdStandardEncryption.DecryptFileAsync(
+    "encrypted.ofd", "restored.ofd", OfdStandardCredential.ForPassword("bob", passwordB),
+    new OfdStandardDecryptionOptions { ExpectedManifestSignerCertificateDer = signerCertDer });
+// restored.FileContentsVerified == true for this package's signed digest extension.
+```
+
+`SignSm2DigestAsync` 由调用方实现：输入为 `OFDEntries.xml` 的 32 字节 SM3 摘要，返回对该摘要作 SM3-with-SM2 后的 DER 签名；本包在发布前用证书验证回调结果并写入 GB/T 35275 形状的 `signedvalue.dat`。验签证书必须从包外独立固定；回调/固定证书不验证证书链、吊销、证书用途或业务身份。证书解密还要求包外固定预期接收人证书，并与 `UserCert` 字节匹配。
+
+`OFDEntries.xml` 的标准 `FileList` 只签署文件名清单。本包在同一个签名下增加 `urn:ofdrw-net:standard-encryption-content-digests:1` 扩展，逐一记录所有**存储中的文件条目**（包括加密元数据和密文）的 SM3；解密前验证签名、路径集合闭合和每项字节摘要。Java 的验签器可验这份清单并拒绝额外条目，但不检查该扩展的内容摘要。固定 Java 自身生成的清单没有逐文件摘要：默认解密拒绝；只有调用方显式设置 `AllowUnverifiedContents=true` 才恢复，结果 `FileContentsVerified=false`。这不是内容认证成功，CBC 填充检查也不是完整性证明。清单签名、路径闭合、逐文件内容和 PKI 信任必须分别报告。
+
+固定 Java 2.4.0 写端实际省略 seed 的 `EncryptCaseId`；本包读取时在调用方已显式选择口令或证书且字段形状吻合时接受这个缺省，写端在同类接收人包中明确写 `1.1.1` 或 `1.1.2`。Java 对 `Report.dat` 等条目可能把密文写到仅大小写不同的 `report.dat`；本包允许**同一映射**的这种别名，恢复原始路径大小写，但拒绝与其他条目的碰撞。解密拒绝未加密包、未知/重复接收人、缺失密文、额外文件、重名/非规范路径、签名或摘要不符；不会复制 Java 的“缺失密文跳过”和“映射解密失败改试明文”回退。与 Java 互操作的实际样本及包身份见 [R14 验证记录](evidence/r14-standard-encryption/README.md)。Java 解密 .NET 包能恢复原始文件条目，但其自身保留已经指向密文条目的旧 `OFDEntries.xml`/`signedvalue.dat`；调用方不得把该残留清单作为恢复后包的有效完整性声明。
+
+私有 v2 与标准入口不能自动互解或降级；下文的 v2 说明仅适用于 `OfdPasswordEnvelope`。
 
 ```csharp
 using Ofdrw.Net.Crypto.Password;

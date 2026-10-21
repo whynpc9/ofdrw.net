@@ -354,7 +354,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - name: Password vectors, atomic failure and selected-entry recovery
+      - name: Password vectors, Java fixtures, atomic failure and selected-entry recovery
         run: dotnet test tests/Ofdrw.Net.Crypto.Password.Tests/Ofdrw.Net.Crypto.Password.Tests.csproj -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
       - uses: actions/setup-python@v5
         if: matrix.os == 'ubuntu-latest'
@@ -369,8 +369,14 @@ jobs:
           dotnet build e2e/Ofdrw.Net.Crypto.Password.E2E/Ofdrw.Net.Crypto.Password.E2E.csproj -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
           dotnet e2e/Ofdrw.Net.Crypto.Password.E2E/bin/Release/net10.0/Ofdrw.Net.Crypto.Password.E2E.dll "$PWD" "$PWD/artifacts/password-crypto/current" "$PWD/artifacts/password-crypto/fonts"
           ./scripts/run-password-crypto-e2e.sh
+          ./scripts/run-standard-crypto-e2e.sh "$PWD/artifacts/standard-crypto/package-e2e"
       - uses: actions/upload-artifact@v4
         if: always() && matrix.os == 'ubuntu-latest'
         with:
           name: password-crypto-evidence
           path: artifacts/password-crypto
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.os == 'ubuntu-latest'
+        with:
+          name: standard-crypto-package-evidence
+          path: artifacts/standard-crypto/package-e2e/package-manifest.json
