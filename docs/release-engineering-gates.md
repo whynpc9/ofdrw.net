@@ -4,7 +4,7 @@
 
 | 闸门 | 自动化入口 | 判定与留存 |
 | --- | --- | --- |
-| Q-01 许可与第三方声明 | `python3 scripts/verify-package-artifacts.py --notices-only`；`scripts/run-converter-package-e2e.sh <version>` | 仓库 MIT 与 nuspec MIT 表达式一致；每个直接 NuGet 依赖的版本、许可、来源与还原的包元数据相符；22 个直接及传递依赖的许可元数据与受审查清单一致；11 个同批包内声明与仓库一致，消费前后包 SHA256 不变。 |
+| Q-01 许可与第三方声明 | `python3 scripts/verify-package-artifacts.py --notices-only`；`scripts/run-converter-package-e2e.sh <version>` | 仓库 MIT 与 nuspec MIT 表达式一致；每个直接 NuGet 依赖的版本、许可、来源与还原的包元数据相符；38 个直接及传递依赖的许可元数据与受审查清单一致；12 个同批包内声明与仓库一致，消费前后包 SHA256 不变。 |
 | Q-02 视觉语料 | 同批包消费 E2E 中的 `ValidateVisualCorpusAsync` | 票据、发票、模板样式、有效异常布局四个合成无隐私单页 OFD，均经 OFD→PDF→144 DPI PNG，与固定 golden 的全页及标题/正文区域分别比较 RMSE ≤ 0.035；保留实际 OFD/PDF/PNG、差图和 CSV 指标。此门不代替 Preview。 |
 | Q-03 坏包与结构 | `dotnet test tests/Ofdrw.Net.Packaging.Tests/...` | 固定坏包覆盖 `..`/反斜杠/绝对路径、重复条目、条目数、总展开量、压缩比、无效 ZIP；恰好等于预算的有效对照必须接受。低预算模拟炸弹，不创建巨大载荷。 |
 | Q-04 XML 文档 | `python3 scripts/check-public-api-docs.py` | 开启 CS1591，按源码路径和公开成员符号对比历史清单。新增缺文档成员使 CI 与 tag workflow 失败；旧债减少可直接通过。 |

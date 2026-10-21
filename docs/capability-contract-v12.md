@@ -53,7 +53,7 @@
 | R18 附件清理 | 附件读写及部分编辑 `limited`；逻辑/物理移除、引用闭包 | 无法证明无引用则不物理删除 |
 | R19 跨页复杂表格 | 整行分页 `limited`；RowSpan、拆行、重复表头、图片单元格 | 超出有限规则明确失败，逐页视觉验收 |
 | R20 完整归档规则 | `new`；逐条标准版本、条款、fixture 与独立核准 | 缺规范保持 Unknown/阻断，不声称认证 |
-| R21 真实字体测量 | Flow 近似度量、DOCX 部分真实测量 `limited`；新查询入口固定 face、run、来源区间、预算与旧模式 | 缺 native/字体明确失败，不默默换近似度量 |
+| R21 真实字体测量 | 新查询 `limited`：固定静态 TrueType face、HarfBuzz 单 run GID/cluster/advance/ink、有限 Latin/Han 预排版及严格 ASCII OFD 出口；旧 Flow 仍用原度量 | 缺 native/字体或超出已验 profile 明确失败；混合字体、段落 bidi 和通用 GID 输出留待 R22，详见 [R21 profile](text-prelayout.md) |
 | R22 HarfBuzz 闭环 | `new`；单 run → OFD GID/原文 → 段落 bidi/断行 → PDF/SVG 分别视觉与语义 | 各阶段各出口单独放行；缺平台资产/规范/独立阅读器仍未验收 |
 
 ## 证据与门禁

@@ -13,6 +13,9 @@ internal sealed class OpenTypeCmap
     internal bool IsSymbol { get; }
     internal byte[]? VariationSequences { get; }
     internal HashSet<int> VariationGlyphs { get; } = new();
+    // Format 4 scans segments; format 12 uses binary search even at the 32 MiB font limit.
+    internal int GlyphLookupWorkUpperBound => format12 >= 0 ? 32 :
+        (U16(table, format4 + 6) / 2) * (IsSymbol ? 2 : 1);
     private readonly FontParseBudget budget;
     internal OpenTypeCmap(OpenTypeFace face) : this(face, new FontParseBudget()) { }
     internal OpenTypeCmap(OpenTypeFace face, FontParseBudget budget)
