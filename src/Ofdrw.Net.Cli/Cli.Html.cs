@@ -1,12 +1,14 @@
 using System.Globalization;
 using Ofdrw.Net.Converter.Svg;
 using Ofdrw.Net.Converter.Svg.Converters;
+using Ofdrw.Net.Packaging.Archive;
 
 internal static partial class Cli
 {
     private static async Task<int> ConvertHtmlAsync(string[] args, CancellationToken token)
     {
         string? input = null, output = null, pages = null;
+        var documentIndex = 0;
         var options = new OfdHtmlOptions();
         for (var i = 0; i < args.Length; i++)
         {
@@ -20,6 +22,7 @@ internal static partial class Cli
                 case "--input": case "-i": input = value; break;
                 case "--output": case "-o": output = value; break;
                 case "--pages": case "-p": pages = value; break;
+                case "--document": documentIndex = ParseOneBasedPage(value); break;
                 case "--title": options.Title = value; break;
                 case "--max-pages": options.MaxPages = checked((int)HtmlLimit(value, option)); break;
                 case "--max-output-bytes": options.MaxOutputBytes = HtmlLimit(value, option); break;
@@ -28,7 +31,7 @@ internal static partial class Cli
             }
         }
         if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(output)) throw new ArgumentException("Input and output paths are required.");
-        var converter = new OfdToHtmlConverter(options);
+        var converter = new OfdToHtmlConverter(options, new OfdPackageLoadOptions { DocumentIndex = documentIndex });
         var selected = ParseHtmlPages(pages, options.MaxPages, token);
         EnsureDifferentPaths(input, output);
         await using var source = File.OpenRead(input);

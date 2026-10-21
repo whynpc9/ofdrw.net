@@ -19,7 +19,7 @@
 | 容器与打包 | `ofdrw-pkg` | 标准入口/文档/页面/资源引用，附件、模板和扩展条目；ZIP 路径、数量、展开大小和压缩比限制 | **已支持** |
 | 大纲、书签、动作与注释 | `ofdrw-core` | typed 层次/页目标、GoTo、局部 Text/Image/Path Appearance；未知动作/XML 保留 | **部分支持**；动作仅序列化；导入图元编辑、未证明闭包的合并/混合拒绝。见[教程](tutorials/09-templates-attachments-tags.md) |
 | 裁剪与组合对象 | `ofdrw-core` | typed Path Clip/Area、共享 CompositeGraphicUnit 与 nested DAG placement；读写、独立克隆和 PDF/SVG | **部分支持**；每 Clip 一个填充 Path Area，可包含多子路径，多个 Clip 相交；多 Area 可往返，导出拒绝一般 union；Text clip、group opacity/DrawParam 等保留并拒绝不安全导出。见[路径教程](tutorials/07-paths.md) |
-| 文档读取 | `ofdrw-reader`，含反序列化及签章读取 | 多图层/模板/资源解析，未知内容无损保留，结构检查 | **部分支持**；当前以首个 `DocBody` 为主 |
+| 文档读取 | `ofdrw-reader`，含反序列化及签章读取 | 多图层/模板/资源解析，未知内容无损保留，结构检查 | **部分支持**；默认首个 `DocBody`，可显式[枚举与选择](multi-docbody.md) |
 | 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层 builder、公开 FlowDocument/Paragraph/Span、Table/Row/Cell 与原生 OfdGraphics API | **部分支持**；中英段落/局部样式/分页、固定列宽/水平合并/整行分页与毫米路径/文字/状态/裁剪已实现；布局 Canvas 与复杂 Word 版式仍按各票范围交付 |
 | 字体 | `ofdrw-font`，字体生成与字形处理 | 按全包用字生成静态 TrueType 子集、复合/GSUB/UVS 字形闭包、TTC 选面、内容身份载荷复用，缺字明确失败 | **部分支持**；TTF/glyf 子集已实现；CFF/变量/AAT/RTL 与保留未知 XML 的字体以全量和诊断保护，详见[字体子集契约](font-subset-and-reuse.md) |
 | OFD → PDF | `ofdrw-converter` 导出能力 | 模板、图层、字体、文本游程、矢量路径、图片、变换、颜色/透明度和裁剪原点 | **部分支持（预览）**；CGTransform 明确拒绝，普通 PageBlock 路径已复现成功导出但漏绘；其它文字/颜色语义待逐出口复现，见[契约](capability-contract-v12.md) |

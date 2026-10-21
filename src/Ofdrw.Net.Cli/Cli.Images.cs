@@ -34,6 +34,7 @@ internal static partial class Cli
                 case "--pages" or "-p" when export:
                     // A single numeric page avoids allocating enormous ranges just to reject multiple pages.
                     page = ParseOneBasedPage(value); break;
+                case "--document" when export: exportOptions.PackageLoadOptions.DocumentIndex = ParseOneBasedPage(value); break;
                 case "--format" when export:
                     exportOptions.Format = value.ToLowerInvariant() switch
                     { "png" => OfdImageFormat.Png, "jpeg" or "jpg" => OfdImageFormat.Jpeg,

@@ -27,6 +27,19 @@ public sealed class OfdReader : IOfdReader
         LocalName = "Annotations", Xml = xml, ReaderAnnotationMetadataXml = xml
     };
 
+    /// <summary>Lists DocBody declarations in source order without materializing their pages.</summary>
+    public async Task<IReadOnlyList<OfdDocumentDescriptor>> ListDocumentsAsync(Stream ofdStream,
+        OfdPackageLoadOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        var archive = await _loader.LoadAsync(ofdStream, options ?? new OfdPackageLoadOptions(), cancellationToken).ConfigureAwait(false);
+        var material = new OfdModelMaterialization(new OfdModelLimits());
+        var xml = material.ReadXml("OFD.xml", archive.GetBytes("OFD.xml"), cancellationToken);
+        var documents = DocumentBodies(xml, material, cancellationToken).Select(body => body.Descriptor).ToArray();
+        if (documents.Any(document => !archive.Contains(document.DocumentEntryPath)))
+            throw new InvalidDataException("A DocBody references a missing document entry.");
+        return documents;
+    }
+
     public async Task<OfdDocumentPackage> ReadAsync(Stream ofdStream, CancellationToken cancellationToken = default)
     {
         return await ReadAsync(ofdStream, new OfdPackageLoadOptions(), cancellationToken).ConfigureAwait(false);
@@ -57,8 +70,9 @@ public sealed class OfdReader : IOfdReader
         OfdPackageLoadOptions options,
         CancellationToken cancellationToken)
     {
-        var archive = await _loader.LoadAsync(ofdStream, options, cancellationToken).ConfigureAwait(false);
-        return ReadArchive(archive, options, new OfdModelMaterialization(new OfdModelLimits()), cancellationToken);
+        var snapshot = OfdPackageLoader.SnapshotOptions(options);
+        var archive = await _loader.LoadAsync(ofdStream, snapshot, cancellationToken).ConfigureAwait(false);
+        return ReadArchive(archive, snapshot, new OfdModelMaterialization(new OfdModelLimits()), cancellationToken);
     }
 
     internal async Task<OfdDocumentPackage> ReadControlledAsync(Stream ownedSpool, OfdPackageLoadOptions options,
@@ -133,13 +147,10 @@ public sealed class OfdReader : IOfdReader
         var ofdNs = ofdXml.Root?.Name.Namespace ?? XNamespace.Get(OfdConstants.Namespace);
         var docType = ofdXml.Root?.Attribute("DocType")?.Value ?? OfdConstants.DefaultDocType;
 
-        var docRoot = ofdXml.Root?
-            .Elements(ofdNs + "DocBody")
-            .Elements(ofdNs + "DocRoot")
-            .Select(x => ReadValue(x, material, cancellationToken)!)
-            .FirstOrDefault() ?? "Doc_0/Document.xml";
-
-        docRoot = material.ResolvePath("OFD.xml", docRoot, cancellationToken);
+        var bodies = DocumentBodies(ofdXml, material, cancellationToken);
+        if (options.DocumentIndex >= bodies.Count && !(options.DocumentIndex == 0 && bodies.Count == 0))
+            throw new ArgumentOutOfRangeException(nameof(options), "DocumentIndex is outside the DocBody list.");
+        var docRoot = bodies.Count == 0 ? "Doc_0/Document.xml" : bodies[options.DocumentIndex].Descriptor.DocumentEntryPath;
         package.Options.DocType = docType;
         package.DocumentEntryPath = docRoot;
         package.Options.Namespace = ofdNs.NamespaceName;
@@ -148,12 +159,7 @@ public sealed class OfdReader : IOfdReader
         package.Options.DocumentId = docRoot.Split('/')[0];
         if (docIdStorage is not null) material.AdoptReadString(package.Options.DocumentId, docIdStorage, cancellationToken);
 
-        var selectedDocBody = ofdXml.Root?
-            .Elements(ofdNs + "DocBody")
-            .FirstOrDefault(body => string.Equals(
-                material.ResolvePath("OFD.xml", ReadValue(body.Element(ofdNs + "DocRoot"), material, cancellationToken) ?? string.Empty, cancellationToken),
-                docRoot,
-                StringComparison.Ordinal));
+        var selectedDocBody = bodies.Count == 0 ? null : bodies[options.DocumentIndex].Element;
         var info = selectedDocBody?.Element(ofdNs + "DocInfo");
         if (info is not null)
         {
@@ -498,6 +504,30 @@ public sealed class OfdReader : IOfdReader
         package.SourceIdentity = OfdSourceIdentity.Capture(package, material, cancellationToken);
         material.InspectStorage(package, cancellationToken);
         return package;
+    }
+
+    private static IReadOnlyList<(XElement Element, OfdDocumentDescriptor Descriptor)> DocumentBodies(
+        XDocument xml, OfdModelMaterialization material, CancellationToken token)
+    {
+        var root = xml.Root ?? throw new InvalidDataException("OFD.xml has no root element.");
+        var ns = root.Name.Namespace;
+        var result = new List<(XElement, OfdDocumentDescriptor)>();
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var body in root.Elements(ns + "DocBody"))
+        {
+            token.ThrowIfCancellationRequested();
+            var roots = body.Elements(ns + "DocRoot").ToArray();
+            if (roots.Length != 1 || string.IsNullOrWhiteSpace(roots[0].Value))
+                throw new InvalidDataException("Each DocBody must have exactly one nonblank DocRoot.");
+            var path = material.ResolvePath("OFD.xml", ReadValue(roots[0], material, token)!, token);
+            if (!paths.Add(path)) throw new InvalidDataException("DocBody roots are duplicated or case-aliased.");
+            var signatures = body.Elements(ns + "Signatures")
+                .Select(node => material.ResolvePath("OFD.xml", ReadValue(node, material, token) ?? string.Empty, token))
+                .ToArray();
+            var title = ReadValue(body.Element(ns + "DocInfo")?.Element(ns + "Title"), material, token);
+            result.Add((body, new OfdDocumentDescriptor(result.Count, path, title, signatures)));
+        }
+        return result;
     }
 
     private sealed class AnnotationFiles

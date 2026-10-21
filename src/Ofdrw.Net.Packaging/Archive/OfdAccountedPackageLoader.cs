@@ -16,6 +16,7 @@ public sealed partial class OfdPackageLoader
         if (options is null) throw new ArgumentNullException(nameof(options));
         var snapshot = new OfdPackageLoadOptions
         {
+            DocumentIndex = options.DocumentIndex,
             MaxInputBytes = options.MaxInputBytes, MaxEntryCount = options.MaxEntryCount, MaxPageCount = options.MaxPageCount,
             MaxAnnotationObjectCount = options.MaxAnnotationObjectCount, MaxAnnotationXmlBytes = options.MaxAnnotationXmlBytes,
             MaxEntryUncompressedBytes = options.MaxEntryUncompressedBytes, MaxTotalUncompressedBytes = options.MaxTotalUncompressedBytes,
