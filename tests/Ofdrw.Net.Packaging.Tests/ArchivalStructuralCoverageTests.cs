@@ -127,6 +127,31 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("<Template><Actions><Action><URI URI='https://example.invalid'/></Action></Actions></Template>")]
+    [InlineData("<Area><FutureActions><Action><URI URI='https://example.invalid'/></Action></FutureActions></Area>")]
+    [InlineData("<PageRes><Actions><Action><URI URI='https://example.invalid'/></Action></Actions></PageRes>")]
+    public async Task OpaqueAllowedPageChildPreventsFalseActionClaim(string child)
+    {
+        var entries = Seed();
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'>{child}<Content><Layer/></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+    }
+
+    [Fact]
+    public async Task RecognizedPageAreaAndTemplateReferenceRemainCheckable()
+    {
+        var entries = Seed(documentExtra: "<CommonData><TemplatePage ID='8' BaseLoc='Templates/Content.xml'/></CommonData>");
+        entries["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer/></Content></Page>");
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Area><PhysicalBox>0 0 100 100</PhysicalBox></Area><Template TemplateID='8' ZOrder='Background'/><PageRes>Res.xml</PageRes><Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions><Content><Layer/></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-004").Outcome);
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Template TemplateID='missing'/><Content><Layer/></Content></Page>");
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+    }
+
+    [Theory]
     [InlineData("<URI URI='https://example.invalid'/>", PreflightOutcome.Fail)]
     [InlineData("<Goto><Dest Type='Fit' PageID='1'/></Goto>", PreflightOutcome.Pass)]
     [InlineData("<v:Future xmlns:v='urn:vendor'/>", PreflightOutcome.Unknown)]
@@ -446,6 +471,17 @@ public class ArchivalStructuralCoverageTests
         var entries = Seed(objects: string.Concat(Enumerable.Repeat("<PathObject/>", 200)));
         var report = await Check(entries, new ArchivalPreflightOptions { MaxXmlNodes = 30 });
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+    }
+
+    [Fact]
+    public async Task XmlNodeBudgetChargesAttributesBeforeMaterializingPage()
+    {
+        var attributes = string.Concat(Enumerable.Range(0, 200).Select(i => $" a{i}='{i}'"));
+        var entries = Seed();
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'{attributes}><Content><Layer/></Content></Page>");
+        var report = await Check(entries, new ArchivalPreflightOptions { MaxXmlNodes = 100 });
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+        Assert.Equal("PageContentUnavailable", Rule(report, "AC-004").ReasonCode);
     }
 
     [Fact]

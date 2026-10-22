@@ -23,6 +23,7 @@ internal sealed class ArchivalStructuralCoverage
     private readonly Dictionary<string, XElement?> xml = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, XElement> bookmarks = new(StringComparer.Ordinal);
     private readonly HashSet<long> pageIds = new();
+    private readonly HashSet<string> templateIds = new(StringComparer.Ordinal);
     private long xmlBytes;
     private int xmlNodes;
     private int references;
@@ -71,6 +72,13 @@ internal sealed class ArchivalStructuralCoverage
 
     private void ReadPageInventory(XElement document, XNamespace ns)
     {
+        var common = document.Elements(ns + "CommonData").ToArray();
+        foreach (var template in common.SelectMany(x => x.Elements(ns + "TemplatePage")))
+        {
+            var id = (string?)template.Attribute("ID");
+            if (string.IsNullOrWhiteSpace(id) || ForeignAttribute(template, "ID") || !templateIds.Add(id!))
+                UnknownPageScope("TemplateIdAmbiguous", documentEntry);
+        }
         var pages = document.Elements(ns + "Pages").ToArray();
         if (pages.Length != 1 || Foreign(document, "Pages", ns))
         {
@@ -95,7 +103,6 @@ internal sealed class ArchivalStructuralCoverage
         }
         if (pageIds.Count == 0)
         { targetInventoryUnknown = true; UnknownPageScope("PageTreeEmpty", documentEntry); }
-        var common = document.Elements(ns + "CommonData").ToArray();
         if (common.Length > 1 || Foreign(document, "CommonData", ns))
             UnknownPageScope("CommonDataAmbiguous", documentEntry);
         if (common.Any(x => x.Attributes().Any(a => !a.IsNamespaceDeclaration) || OpaqueNodes(x) ||
@@ -142,8 +149,12 @@ internal sealed class ArchivalStructuralCoverage
             UnknownPageScope("MixedPageNamespace", entry);
         if (page.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(page) ||
             page.Elements().Any(x => x.Name.Namespace != page.Name.Namespace || x.Name.LocalName is not
-                ("Area" or "Template" or "PageRes" or "Content" or "Actions")))
+                ("Area" or "Template" or "PageRes" or "Content" or "Actions") ||
+                OpaquePageChild(x, page.Name.Namespace)))
             UnknownPageScope("OpaquePageRoot", entry);
+        if (!template && page.Elements(page.Name.Namespace + "Template").Any(x =>
+                !templateIds.Contains((string?)x.Attribute("TemplateID") ?? string.Empty)))
+            observations[0].Unknown("TemplateReferenceUnavailable", entry);
         InspectActions(page, page.Name.Namespace, observations[0], null, entry);
         if (page.Elements(page.Name.Namespace + "Content").Count() != 1 ||
             Foreign(page, "Content", page.Name.Namespace))
@@ -383,6 +394,26 @@ internal sealed class ArchivalStructuralCoverage
         return false;
     }
 
+    private static bool OpaquePageChild(XElement child, XNamespace ns)
+    {
+        if (child.Name == ns + "Area")
+            return child.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(child) ||
+                   child.Elements().Any(box => box.Name.Namespace != ns || box.Name.LocalName is not
+                       ("PhysicalBox" or "ApplicationBox" or "ContentBox" or "BleedBox") ||
+                       box.HasElements || box.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+                       box.Nodes().Any(x => x is not XText));
+        if (child.Name == ns + "Template")
+            return child.HasElements || OpaqueNodes(child) ||
+                   string.IsNullOrWhiteSpace((string?)child.Attribute("TemplateID")) ||
+                   (string?)child.Attribute("ZOrder") is not (null or "Background" or "Foreground") ||
+                   child.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                       (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("TemplateID" or "ZOrder")));
+        if (child.Name == ns + "PageRes")
+            return child.HasElements || child.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+                   child.Nodes().Any(x => x is not XText);
+        return false;
+    }
+
     private static bool OpaqueAppearance(XElement appearance)
     {
         var ns = appearance.Name.Namespace;
@@ -592,8 +623,11 @@ internal sealed class ArchivalStructuralCoverage
                 while (reader.Read())
                 {
                     token.ThrowIfCancellationRequested();
-                    if (++xmlNodes > options.MaxXmlNodes || reader.Depth > options.MaxXmlDepth)
+                    if (xmlNodes >= options.MaxXmlNodes ||
+                        reader.AttributeCount > options.MaxXmlNodes - xmlNodes - 1 ||
+                        reader.Depth > options.MaxXmlDepth)
                     { xml[entry] = null; return null; }
+                    xmlNodes += 1 + reader.AttributeCount;
                 }
             using var materialization = new MemoryStream(bytes, false);
             using var treeReader = XmlReader.Create(materialization, settings);
