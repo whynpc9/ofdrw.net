@@ -98,6 +98,10 @@ internal sealed class ArchivalStructuralCoverage
         var common = document.Elements(ns + "CommonData").ToArray();
         if (common.Length > 1 || Foreign(document, "CommonData", ns))
             UnknownPageScope("CommonDataAmbiguous", documentEntry);
+        if (common.Any(x => x.Attributes().Any(a => !a.IsNamespaceDeclaration) || OpaqueNodes(x) ||
+            x.Elements().Any(y => y.Name.Namespace != ns || y.Name.LocalName is not
+                ("MaxUnitID" or "PageArea" or "PublicRes" or "DocumentRes" or "TemplatePage" or "DefaultCS"))))
+            UnknownPageScope("OpaqueCommonData", documentEntry);
         if (common.Any(x => x.Descendants(ns + "TemplatePage").Any(y => y.Parent != x)))
             UnknownPageScope("NestedTemplatePage", documentEntry);
         foreach (var template in common.SelectMany(x => x.Elements(ns + "TemplatePage")))
@@ -108,6 +112,14 @@ internal sealed class ArchivalStructuralCoverage
 
     private void ReadPage(XElement declaration, string containing, bool template)
     {
+        if (declaration.HasElements || OpaqueNodes(declaration) ||
+            declaration.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("ID" or "BaseLoc" or "ZOrder") ||
+                 !template && x.Name.LocalName == "ZOrder")))
+        {
+            UnknownPageScope("OpaquePageDeclaration", containing);
+            if (!template) targetInventoryUnknown = true;
+        }
         if (ForeignAttribute(declaration, "BaseLoc") ||
             !TryEntry(containing, (string?)declaration.Attribute("BaseLoc"), out var entry))
         {
@@ -131,7 +143,7 @@ internal sealed class ArchivalStructuralCoverage
         if (page.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(page) ||
             page.Elements().Any(x => x.Name.Namespace != page.Name.Namespace || x.Name.LocalName is not
                 ("Area" or "Template" or "PageRes" or "Content" or "Actions")))
-            observations[0].Unknown("OpaquePageRoot", entry);
+            UnknownPageScope("OpaquePageRoot", entry);
         InspectActions(page, page.Name.Namespace, observations[0], null, entry);
         if (page.Elements(page.Name.Namespace + "Content").Count() != 1 ||
             Foreign(page, "Content", page.Name.Namespace))
@@ -152,6 +164,9 @@ internal sealed class ArchivalStructuralCoverage
                 targetInventoryUnknown = true;
             foreach (var bookmark in container.Elements(ns + "Bookmark"))
             {
+                if (bookmark.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name") ||
+                    OpaqueNodes(bookmark) || bookmark.Elements().Any(x => x.Name != ns + "Dest"))
+                    targetInventoryUnknown = true;
                 var name = (string?)bookmark.Attribute("Name");
                 if (string.IsNullOrWhiteSpace(name) || ForeignAttribute(bookmark, "Name") ||
                     bookmarks.ContainsKey(name!)) targetInventoryUnknown = true;
@@ -247,6 +262,8 @@ internal sealed class ArchivalStructuralCoverage
                 { UnknownAnnotationScope("ForeignAnnotation", entry); }
                 foreach (var annot in content.Elements(content.Name.Namespace + "Annot"))
                 {
+                    if (annot.Descendants(content.Name.Namespace + "Appearance").Any(x => x.Parent != annot))
+                        UnknownAnnotationScope("NestedAnnotationAppearance", entry);
                     observations[5].Seen(entry, Selector(annot));
                     foreach (var flag in new[] { "ReadOnly", "NoZoom", "NoRotate" })
                     {
@@ -274,6 +291,8 @@ internal sealed class ArchivalStructuralCoverage
         var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var content in page.Elements(ns + "Content"))
         {
+            if (content.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(content))
+                observations[7].Unknown("OpaqueLayerScope", entry);
             if (content.Elements().Any(x => x.Name != ns + "Layer"))
                 observations[7].Unknown("OpaqueLayerScope", entry);
             if (Foreign(content, "Layer", ns)) observations[7].Unknown("ForeignLayer", entry);
@@ -291,8 +310,7 @@ internal sealed class ArchivalStructuralCoverage
     private void InspectAnnotationBlocks(XElement appearance, string entry)
     {
         var ns = appearance.Name.Namespace;
-        if (appearance.Descendants().Any(x => x.Name.LocalName == "PageBlock" && x.Name.Namespace != ns) ||
-            appearance.Descendants().Any(x => x.Name.Namespace != ns))
+        if (OpaqueAppearance(appearance))
             observations[8].Unknown("OpaqueAnnotationAppearance", entry, Selector(appearance));
         foreach (var block in appearance.Descendants(ns + "PageBlock"))
         {
@@ -305,8 +323,12 @@ internal sealed class ArchivalStructuralCoverage
     private void InspectGraphics(XElement source, string entry)
     {
         var ns = source.Name.Namespace;
+        if (source.Name == ns + "Appearance" && OpaqueAppearance(source))
+            UnknownGraphics("OpaqueAnnotationAppearance", entry);
         if (source.Descendants().Any(x => x.Name.Namespace != ns))
             UnknownGraphics("ForeignGraphicContent", entry);
+        if (OpaqueGraphicContainers(source, ns))
+            UnknownGraphics("OpaqueGraphicContainer", entry);
         if (source.DescendantsAndSelf().Any(x =>
                 (x.Name.LocalName == "ImageObject" || x.Name.LocalName == "TextObject") && x.Name.Namespace != ns) ||
             source.DescendantsAndSelf().Any(x => x.Name == ns + "CompositeObject"))
@@ -340,6 +362,34 @@ internal sealed class ArchivalStructuralCoverage
                          (x.Name.LocalName == "Actions" || x.Name.LocalName == "Action") && x.Name.Namespace != ns))
                 observations[6].Unknown("ForeignObjectAction", entry, Selector(graphic));
         }
+    }
+
+    private static bool OpaqueGraphicContainers(XElement source, XNamespace ns)
+    {
+        foreach (var container in source.DescendantsAndSelf())
+        {
+            if (container.Name == ns + "Content")
+            {
+                if (container.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(container) ||
+                    container.Elements().Any(x => x.Name != ns + "Layer")) return true;
+            }
+            else if (container.Name == ns + "Layer" || container.Name == ns + "PageBlock" ||
+                     container.Name == ns + "Appearance")
+            {
+                if (OpaqueNodes(container) || container.Elements().Any(x => x.Name.Namespace != ns || x.Name.LocalName is not
+                    ("PageBlock" or "TextObject" or "PathObject" or "ImageObject" or "CompositeObject"))) return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool OpaqueAppearance(XElement appearance)
+    {
+        var ns = appearance.Name.Namespace;
+        return appearance.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                   (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("ID" or "Boundary" or "CTM"))) ||
+               OpaqueNodes(appearance) || OpaqueGraphicContainers(appearance, ns) ||
+               appearance.Descendants().Any(x => x.Name.Namespace != ns);
     }
 
     private void InspectActions(XElement owner, XNamespace ns, Observation type, Observation? target, string entry)
