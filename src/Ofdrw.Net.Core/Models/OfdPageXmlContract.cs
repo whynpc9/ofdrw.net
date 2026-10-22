@@ -11,13 +11,31 @@ namespace Ofdrw.Net.Core.Models;
 // top-level page children and raw drawing objects remain archive-owned XML.
 internal static class OfdPageXmlContract
 {
+    internal static bool ContainsPageBlock(XElement node) =>
+        node.Descendants().Any(child => child.Name.LocalName == "PageBlock");
+
+    internal static bool IsPlainPageEnvelope(XDocument xml) => xml.Root is { } root &&
+        PlainEnvelope(root) &&
+        xml.Nodes().All(node => node is XElement or XComment || node is XText text && string.IsNullOrWhiteSpace(text.Value)) &&
+        root.Elements(root.Name.Namespace + "Area").Count() <= 1 &&
+        root.Elements(root.Name.Namespace + "Content").Count() <= 1 &&
+        root.Elements().Where(child => child.Name.LocalName is "Area" or "Content")
+            .All(child => child.Name.Namespace == root.Name.Namespace) &&
+        root.Elements(root.Name.Namespace + "Area").All(area => IsRepresentedArea(area, root.Name.Namespace));
+
+    internal static bool IsPlainContentEnvelope(XElement content) =>
+        PlainEnvelope(content) && content.Elements().All(child => child.Name.LocalName == "Layer");
+
     internal static bool IsPlainLayerEnvelope(XElement layer) =>
-        layer.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
-            attribute.Name.Namespace == XNamespace.None && attribute.Name.LocalName is ("ID" or "Type")) &&
-        layer.Nodes().All(node => node is XElement or XComment || node is XText text && string.IsNullOrWhiteSpace(text.Value));
+        PlainEnvelope(layer, "ID", "Type");
 
     internal static bool HasPageBlock(XElement layer) =>
         layer.Elements().Any(child => child.Name.LocalName == "PageBlock");
+
+    private static bool PlainEnvelope(XElement node, params string[] attributes) =>
+        node.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
+            attribute.Name.Namespace == XNamespace.None && attributes.Contains(attribute.Name.LocalName)) &&
+        node.Nodes().All(child => child is XElement or XComment || child is XText text && string.IsNullOrWhiteSpace(text.Value));
 
     internal static bool IsRepresentedArea(XElement area, XNamespace ns) =>
         area.Name.Namespace == ns && area.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&

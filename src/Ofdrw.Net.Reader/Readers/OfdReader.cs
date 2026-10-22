@@ -987,7 +987,7 @@ public sealed class OfdReader : IOfdReader
         var ns = root.Name.Namespace;
         var baseLocation = root.Attribute("BaseLoc")?.Value;
         var containers = root.Elements(ns + "Fonts").ToArray();
-        var validContainer = containers.Length == 1 && PlainContainer(containers[0]) &&
+        var validContainer = OfdResourceXmlContract.IsPlainRoot(xml) && containers.Length == 1 && PlainContainer(containers[0]) &&
             containers[0].Elements().All(child => child.Name == ns + "Font");
         foreach (var font in containers.SelectMany(fonts => fonts.Elements(ns + "Font")))
         {
@@ -1051,7 +1051,7 @@ public sealed class OfdReader : IOfdReader
         var resNs = root.Name.Namespace;
         var baseLoc = root.Attribute("BaseLoc")?.Value;
         var containers = root.Elements(resNs + "MultiMedias").ToArray();
-        var validContainer = containers.Length == 1 && PlainContainer(containers[0]) &&
+        var validContainer = OfdResourceXmlContract.IsPlainRoot(resXml) && containers.Length == 1 && PlainContainer(containers[0]) &&
             containers[0].Elements().All(child => child.Name == resNs + "MultiMedia");
         foreach (var media in containers.SelectMany(group => group.Elements(resNs + "MultiMedia")))
         {
@@ -1113,7 +1113,7 @@ public sealed class OfdReader : IOfdReader
             var xml = material.ReadXml(path, archive.GetBytes(path), token); var root = xml.Root!;
             if (root.Name != ns + "Res") continue;
             var containers = root.Elements(ns + "CompositeGraphicUnits").ToArray();
-            var supportedContainers = containers.Length == 1 && PlainContainer(containers[0]) &&
+            var supportedContainers = OfdResourceXmlContract.IsPlainRoot(xml) && containers.Length == 1 && PlainContainer(containers[0]) &&
                 containers[0].Elements().All(child => child.Name == ns + "CompositeGraphicUnit");
             foreach (var container in containers)
             foreach (var pair in container.Elements().Select((node, slot) => (node, slot)))
@@ -1182,14 +1182,16 @@ public sealed class OfdReader : IOfdReader
     {
         material.ReserveReadModel(256L + (pageXml.Root?.Descendants().Count() ?? 0) * 32L, cancellationToken);
         var root = pageXml.Root;
-        if (root is not null && (!SupportedGraphicNamespace(root.Name.Namespace) || root.Name.LocalName != "Page"))
+        if (root is not null && (!SupportedGraphicNamespace(root.Name.Namespace) || root.Name.LocalName != "Page" ||
+            OfdPageXmlContract.ContainsPageBlock(root) && !OfdPageXmlContract.IsPlainPageEnvelope(pageXml)))
         {
             yield return new OfdRawElement { LocalName = root.Name.LocalName,
                 Xml = OfdXmlEnvelope.Capture(root, material, cancellationToken) };
             yield break;
         }
         var content = root?.Elements().FirstOrDefault(x => x.Name.LocalName == "Content");
-        if (content is not null && !SupportedGraphicNamespace(content.Name.Namespace))
+        if (content is not null && (!SupportedGraphicNamespace(content.Name.Namespace) ||
+            OfdPageXmlContract.ContainsPageBlock(content) && !OfdPageXmlContract.IsPlainContentEnvelope(content)))
         {
             yield return new OfdRawElement { LocalName = "Content",
                 Xml = OfdXmlEnvelope.Capture(content, material, cancellationToken) };

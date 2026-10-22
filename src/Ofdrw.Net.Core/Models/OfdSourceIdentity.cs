@@ -318,9 +318,11 @@ internal sealed class OfdSourceIdentity
             var xml = Read(path); var nodes = Register(path, xml, "Page"); var sourceNs = xml.Root!.Name.Namespace;
             budget.ReserveReadModel(512L + elements.Count * 128L, token);
             var content = xml.Root.Elements().FirstOrDefault(node => node.Name.LocalName == "Content");
-            var originals = !Supported(xml.Root.Name.Namespace) || xml.Root.Name.LocalName != "Page" ? new List<XElement> { xml.Root } :
+            var originals = !Supported(xml.Root.Name.Namespace) || xml.Root.Name.LocalName != "Page" ||
+                OfdPageXmlContract.ContainsPageBlock(xml.Root) && !OfdPageXmlContract.IsPlainPageEnvelope(xml) ? new List<XElement> { xml.Root } :
                 content is null ? [] :
-                !Supported(content.Name.Namespace) ? new List<XElement> { content } :
+                !Supported(content.Name.Namespace) ||
+                OfdPageXmlContract.ContainsPageBlock(content) && !OfdPageXmlContract.IsPlainContentEnvelope(content) ? new List<XElement> { content } :
                 content.Elements().Where(node => node.Name.LocalName == "Layer")
                     .SelectMany(layer => Supported(layer.Name.Namespace) &&
                         (!OfdPageXmlContract.HasPageBlock(layer) || OfdPageXmlContract.IsPlainLayerEnvelope(layer))

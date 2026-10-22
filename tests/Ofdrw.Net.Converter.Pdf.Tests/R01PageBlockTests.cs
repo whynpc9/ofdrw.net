@@ -99,6 +99,28 @@ public sealed class R01PageBlockTests
         return revised.ToArray();
     }
 
+    private static async Task<byte[]> RewriteXml(byte[] seed, string path, Action<XDocument> change)
+    {
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName == path)
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    change(xml);
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        return rewritten.ToArray();
+    }
+
     private static async Task<byte[]> ReNamespacePageBlock(byte[] seed, string layerNamespace, string blockNamespace,
         string? compositeNamespace = null)
     {
@@ -3011,6 +3033,123 @@ public sealed class R01PageBlockTests
         {
             using var sink = new MemoryStream();
             await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("Page", "extension-attribute", false)]
+    [InlineData("Page", "processing-instruction", false)]
+    [InlineData("Page", "nonwhitespace-text", false)]
+    [InlineData("Page", "duplicate-content", false)]
+    [InlineData("Page", "area-extension", false)]
+    [InlineData("Content", "extension-attribute", false)]
+    [InlineData("Content", "processing-instruction", false)]
+    [InlineData("Content", "nonwhitespace-text", false)]
+    [InlineData("Content", "foreign-child", false)]
+    [InlineData("Page", "extension-attribute", true)]
+    [InlineData("Content", "extension-attribute", true)]
+    public async Task ExtendedPageOrContentKeepsPageBlockOpaque(string scope, string change, bool template)
+    {
+        var seed = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>envelope text</TextCode></TextObject>", template: template, font: true);
+        var path = template ? "Doc_0/Tpl_0/Content.xml" : "Doc_0/Pages/Page_0/Content.xml";
+        var ofd = await RewriteXml(seed, path, xml =>
+        {
+            var node = scope == "Page" ? xml.Root! : Assert.Single(xml.Root!.Elements(), child => child.Name.LocalName == "Content");
+            switch (change)
+            {
+                case "extension-attribute": node.SetAttributeValue(XName.Get("opacity", "urn:vendor"), "0.5"); break;
+                case "processing-instruction": node.Add(new XProcessingInstruction("vendor", "opaque")); break;
+                case "nonwhitespace-text": node.Add(new XText("opaque")); break;
+                case "duplicate-content": node.Add(new XElement(node.Name.Namespace + "Content")); break;
+                case "area-extension": node.Element(node.Name.Namespace + "Area")!.SetAttributeValue(XName.Get("opacity", "urn:vendor"), "0.5"); break;
+                case "foreign-child": node.Add(new XElement(XName.Get("opacity", "urn:vendor"))); break;
+            }
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.IsType<OfdRawElement>(Assert.Single(template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        Assert.Equal(scope, raw.LocalName);
+        Assert.Contains("envelope text", raw.Xml);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("paint", "extension-attribute")]
+    [InlineData("paint", "processing-instruction")]
+    [InlineData("paint", "nonwhitespace-text")]
+    [InlineData("paint", "foreign-child")]
+    [InlineData("color", "extension-attribute")]
+    [InlineData("color", "processing-instruction")]
+    [InlineData("color", "nonwhitespace-text")]
+    [InlineData("color", "foreign-child")]
+    [InlineData("font", "extension-attribute")]
+    [InlineData("font", "processing-instruction")]
+    [InlineData("font", "nonwhitespace-text")]
+    [InlineData("font", "foreign-child")]
+    [InlineData("media", "extension-attribute")]
+    [InlineData("media", "processing-instruction")]
+    [InlineData("media", "nonwhitespace-text")]
+    [InlineData("media", "foreign-child")]
+    [InlineData("composite", "extension-attribute")]
+    [InlineData("composite", "processing-instruction")]
+    [InlineData("composite", "nonwhitespace-text")]
+    [InlineData("composite", "foreign-child")]
+    public async Task ExtendedResourceRootCannotResolvePageBlockDependency(string dependency, string change)
+    {
+        var (body, resources, image) = dependency switch
+        {
+            "paint" => ("<PathObject ID='501' Boundary='10 10 20 20' DrawParam='30' Fill='true'>" +
+                "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>",
+                "<DrawParams><DrawParam ID='30'><FillColor Value='0 0 255'/></DrawParam></DrawParams>", false),
+            "color" => ("<PathObject ID='501' Boundary='10 10 20 20' Fill='true'>" +
+                "<FillColor ColorSpace='20' Value='0 0 255'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>",
+                "<ColorSpaces><ColorSpace ID='20' Type='RGB'/></ColorSpaces>", false),
+            "font" => ("<TextObject ID='501' Boundary='10 10 50 10' Font='30' Size='4'>" +
+                "<TextCode X='0' Y='4'>resource text</TextCode></TextObject>",
+                "<Fonts><Font ID='30' FontName='Noto Sans'/></Fonts>", false),
+            "media" => ("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>",
+                "<MultiMedias><MultiMedia ID='20' Type='Image' Format='PNG'><MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>", true),
+            _ => ("<CompositeObject ID='501' Boundary='10 10 20 20' ResourceID='550'/>",
+                "<CompositeGraphicUnits><CompositeGraphicUnit ID='550' Width='20' Height='20'>" +
+                "<PathObject ID='551' Boundary='0 0 20 20' Fill='true'><FillColor Value='0 0 255'/>" +
+                "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>" +
+                "</CompositeGraphicUnit></CompositeGraphicUnits>", false)
+        };
+        var seed = await Source(body, resources: resources, image: image);
+        var ofd = await RewriteXml(seed, "Doc_0/DocumentRes.xml", xml =>
+        {
+            var root = xml.Root!;
+            switch (change)
+            {
+                case "extension-attribute": root.SetAttributeValue(XName.Get("opacity", "urn:vendor"), "0.5"); break;
+                case "processing-instruction": root.Add(new XProcessingInstruction("vendor", "opaque")); break;
+                case "nonwhitespace-text": root.Add(new XText("opaque")); break;
+                case "foreign-child": root.Add(new XElement(XName.Get("Policy", "urn:vendor"))); break;
+            }
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var preserved = Encoding.UTF8.GetString(read.PreservedEntries["Doc_0/DocumentRes.xml"]);
+        Assert.Contains(change switch { "extension-attribute" => "opacity", "foreign-child" => "Policy", _ => "opaque" }, preserved);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
             Assert.Equal(0, sink.Length);
         }
     }
