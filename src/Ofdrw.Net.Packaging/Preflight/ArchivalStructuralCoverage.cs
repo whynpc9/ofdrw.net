@@ -7,6 +7,7 @@ using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.IO;
+using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging.Archive;
 
 namespace Ofdrw.Net.Packaging.Preflight;
@@ -54,7 +55,8 @@ internal sealed class ArchivalStructuralCoverage
             OpaqueNodes(root) || root.Elements().Any(x => x.Name != root.Name.Namespace + "DocBody") ||
             body.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(body) ||
             body.Elements().Any(x => x.Name.Namespace != root.Name.Namespace || x.Name.LocalName is not
-                ("DocInfo" or "DocRoot" or "Versions" or "Signatures")))
+                ("DocInfo" or "DocRoot" or "Versions" or "Signatures") ||
+                OpaqueDocBodyChild(x, root.Name.Namespace)))
             UnknownAll("OpaqueOfdEnvelope", documentEntry);
         if (document.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(document) ||
             document.Elements().Any(x => x.Name.Namespace != ns || x.Name.LocalName is not
@@ -436,6 +438,8 @@ internal sealed class ArchivalStructuralCoverage
         var parent = node.Name.LocalName;
         if (node.Name.Namespace != ns || !node.AncestorsAndSelf().Any(x => x.Name.Namespace == ns &&
             x.Name.LocalName is ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject"))) return false;
+        if (node.Attributes().Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute) &&
+            !(parent == "ImageObject" && attribute.Name == "Interpolate"))) return true;
         if (parent is "TextCode" or "AbbreviatedData" or "Glyphs")
             return node.Nodes().Any(x => x is not XText);
         if (parent is "FillColor" or "StrokeColor")
@@ -527,6 +531,34 @@ internal sealed class ArchivalStructuralCoverage
                 kind.Name == ns + "Goto" ? GotoOpaque(kind, ns) :
                 kind.Name.Namespace != ns || kind.Name.LocalName is not ("URI" or "GotoA" or "Sound" or "Movie") ||
                 kind.HasElements || OpaqueNodes(kind)));
+    }
+
+    private static bool OpaqueDocBodyChild(XElement child, XNamespace ns)
+    {
+        if (child.Name == ns + "Signatures")
+            return child.HasElements || child.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+                   child.Nodes().Any(x => x is not XText);
+        if (child.Name == ns + "Versions")
+            return child.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(child) ||
+                   child.Elements().Any(version => version.Name != ns + "Version" || version.HasElements ||
+                       version.Nodes().Any(x => x is not XText text || !string.IsNullOrWhiteSpace(text.Value)) ||
+                       version.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                           (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("ID" or "Index" or "Current" or "BaseLoc"))));
+        if (child.Name != ns + "DocInfo") return false;
+        if (child.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(child)) return true;
+        return child.Elements().Any(field =>
+        {
+            if (field.Name == ns + "CustomDatas")
+                return field.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(field) ||
+                       field.Elements().Any(data => data.Name != ns + "CustomData" || data.HasElements ||
+                           data.Nodes().Any(x => x is not XText) || data.Attributes().Any(x =>
+                               !x.IsNamespaceDeclaration && x.Name != "Name"));
+            return field.Name.Namespace != ns || field.Name.LocalName is not
+                ("DocID" or "Title" or "Author" or "Subject" or "Abstract" or "CreationDate" or
+                 "ModDate" or "DocUsage" or "Cover" or "Keywords" or "Creator" or "CreatorVersion") ||
+                field.HasElements || field.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+                field.Nodes().Any(x => x is not XText);
+        });
     }
 
     private static bool MisplacedDocumentScope(XElement document, XNamespace ns) =>

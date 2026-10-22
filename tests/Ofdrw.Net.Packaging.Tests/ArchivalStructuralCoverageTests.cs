@@ -80,6 +80,29 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("<DocInfo><Outlines><OutlineElem Title='hidden'/></Outlines></DocInfo>")]
+    [InlineData("<Versions><Outlines><OutlineElem Title='hidden'/></Outlines></Versions>")]
+    [InlineData("<Signatures><Outlines><OutlineElem Title='hidden'/></Outlines></Signatures>")]
+    public async Task OpaqueDocBodyChildCannotHideOutlineScope(string child)
+    {
+        var entries = Seed();
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A'><DocBody>{child}<DocRoot>Doc_0/Document.xml</DocRoot></DocBody></OFD>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Fact]
+    public async Task RecognizedDocBodyMetadataDoesNotTaintOutlineAbsence()
+    {
+        var entries = Seed();
+        entries["OFD.xml"] = Utf8($"<OFD xmlns='{Ns}' DocType='OFD-A'><DocBody><DocInfo><DocID>123</DocID><CustomDatas><CustomData Name='owner'>local</CustomData></CustomDatas></DocInfo><DocRoot>Doc_0/Document.xml</DocRoot><Versions><Version ID='v1' Index='1' BaseLoc='Doc_0/Version.xml'/></Versions><Signatures>Doc_0/Signs/Signatures.xml</Signatures></DocBody></OFD>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.NotApplicable, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.NotApplicable, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
     [InlineData("<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", PreflightOutcome.Fail)]
     [InlineData("<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>", PreflightOutcome.Pass)]
     [InlineData("<x:Actions xmlns:x='urn:vendor'><x:Action/></x:Actions>", PreflightOutcome.Unknown)]
@@ -718,6 +741,18 @@ public class ArchivalStructuralCoverageTests
     [InlineData("<PathObject><FutureObject/></PathObject><ImageObject Interpolate='true'/><TextObject Size='0'/>", PreflightOutcome.Fail)]
     [InlineData("<PathObject><AbbreviatedData>M 0 0 L 1 1</AbbreviatedData></PathObject><ImageObject Interpolate='false'/><TextObject Size='3'><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Pass)]
     public async Task GraphicObjectChildrenAreShapeChecked(string objects, PreflightOutcome expected)
+    {
+        var report = await Check(Seed(objects: objects));
+        Assert.Equal(expected, Rule(report, "AC-007").Outcome);
+        Assert.Equal(expected, Rule(report, "AC-008").Outcome);
+    }
+
+    [Theory]
+    [InlineData("<ImageObject vendor='x' Interpolate='false'/><TextObject Size='3'/>", PreflightOutcome.Unknown)]
+    [InlineData("<ImageObject Interpolate='false'/><TextObject vendor='x' Size='3'/>", PreflightOutcome.Unknown)]
+    [InlineData("<ImageObject Interpolate='false'/><TextObject Size='3'><TextCode vendor='x'>OK</TextCode></TextObject>", PreflightOutcome.Unknown)]
+    [InlineData("<ImageObject ResourceID='1' Interpolate='false'/><TextObject Font='1' Size='3'><TextCode X='0' Y='0'>OK</TextCode></TextObject>", PreflightOutcome.Pass)]
+    public async Task GraphicAttributesAreShapeChecked(string objects, PreflightOutcome expected)
     {
         var report = await Check(Seed(objects: objects));
         Assert.Equal(expected, Rule(report, "AC-007").Outcome);
