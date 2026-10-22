@@ -326,11 +326,17 @@ internal sealed class ArchivalStructuralCoverage
                 var location = Selector(action);
                 type.Seen(entry, location);
                 var kinds = action.Elements().Where(x => x.Name != ns + "Region").ToArray();
+                var actionOpaque = action.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Event") ||
+                    (string?)action.Attribute("Event") is not (null or "DO" or "PO" or "CLICK") ||
+                    OpaqueNodes(action) || action.Elements(ns + "Region").Any(x =>
+                        x.DescendantsAndSelf().Any(y => y.Name.Namespace != ns || OpaqueNodes(y) ||
+                            y.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name.Namespace != XNamespace.None)));
                 if (target is not null)
                     foreach (var go in kinds.Where(x => x.Name == ns + "Goto"))
                     {
                         target.Seen(entry, location);
-                        if (go.Elements().Count(x => x.Name == ns + "Dest" || x.Name == ns + "Bookmark") == 1)
+                        if (!actionOpaque && !GotoOpaque(go, ns) &&
+                            go.Elements().Count(x => x.Name == ns + "Dest" || x.Name == ns + "Bookmark") == 1)
                             CheckTarget(go, ns, target, entry, location);
                         else target.Unknown("GotoTargetAmbiguous", entry, location);
                     }
@@ -340,13 +346,35 @@ internal sealed class ArchivalStructuralCoverage
                     action.Elements(ns + "Region").Count() > 1 ||
                     kinds[0].Elements().Count(x => x.Name == ns + "Dest" || x.Name == ns + "Bookmark") != 1 ||
                     kinds[0].Elements().Any(x => x.Name != ns + "Dest" && x.Name != ns + "Bookmark") ||
-                    action.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Event"))
+                    actionOpaque || GotoOpaque(kinds[0], ns))
                 { type.Unknown("UnsupportedAction", entry, location); target?.Unknown("UnsupportedAction", entry, location); }
-                else if (target is not null && kinds[0].Elements().Any(x => x.Name != ns + "Dest" && x.Name != ns + "Bookmark"))
-                    target.Unknown("GotoTargetAmbiguous", entry, location);
             }
         }
     }
+
+    private static bool GotoOpaque(XElement go, XNamespace ns)
+    {
+        if (go.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(go)) return true;
+        foreach (var child in go.Elements())
+        {
+            if (child.Name == ns + "Dest")
+            {
+                if (child.HasElements || OpaqueNodes(child) || child.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                    (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not
+                        ("Type" or "PageID" or "Left" or "Top" or "Right" or "Bottom" or "Zoom")))) return true;
+            }
+            else if (child.Name == ns + "Bookmark")
+            {
+                if (child.HasElements || OpaqueNodes(child) || child.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name"))
+                    return true;
+            }
+            else return true;
+        }
+        return false;
+    }
+
+    private static bool OpaqueNodes(XElement element) => element.Nodes().Any(x =>
+        x is XText text && !string.IsNullOrWhiteSpace(text.Value) || x is not XElement && x is not XText);
 
     private void CheckTarget(XElement gotoElement, XNamespace ns, Observation target, string entry, string location)
     {
@@ -364,13 +392,16 @@ internal sealed class ArchivalStructuralCoverage
                 return;
             }
             var destinations = declared.Elements(ns + "Dest").ToArray();
-            if (destinations.Length != 1 || Foreign(declared, "Dest", ns))
+            if (destinations.Length != 1 || Foreign(declared, "Dest", ns) || OpaqueNodes(declared) ||
+                declared.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name") ||
+                declared.Elements().Any(x => x.Name != ns + "Dest"))
             { target.Unknown("BookmarkDestinationAmbiguous", entry, location); return; }
             dest = destinations[0];
         }
         var pageId = (string?)dest.Attribute("PageID");
-        if (dest.HasElements || dest.Attributes().Any(x => !x.IsNamespaceDeclaration &&
-                x.Name.Namespace != XNamespace.None))
+        if (dest.HasElements || OpaqueNodes(dest) || dest.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not
+                    ("Type" or "PageID" or "Left" or "Top" or "Right" or "Bottom" or "Zoom"))))
         { target.Unknown("PageTargetAmbiguous", entry, location); return; }
         if (!Id(pageId, out var number) || ForeignAttribute(dest, "PageID"))
         { target.Unknown("PageTargetAmbiguous", entry, location); return; }

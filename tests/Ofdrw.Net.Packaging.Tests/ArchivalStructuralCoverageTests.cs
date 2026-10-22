@@ -110,6 +110,30 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("<Goto vendor='x'><Dest Type='Fit' PageID='1'/></Goto>")]
+    [InlineData("<Goto>opaque<Dest Type='Fit' PageID='1'/></Goto>")]
+    [InlineData("opaque<Goto><Dest Type='Fit' PageID='1'/></Goto>")]
+    public async Task OpaqueActionOrGotoCannotPassPageOrOutlineChecks(string actionBody)
+    {
+        var action = $"<Actions><Action>{actionBody}</Action></Actions>";
+        var report = await Check(Seed(documentExtra: $"<Outlines><OutlineElem Title='A'>{action}</OutlineElem></Outlines>", pageExtra: action));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Fact]
+    public async Task LexicallyDifferentDuplicatePageIdsMakeTargetAmbiguous()
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var entries = Seed(documentExtra: outline);
+        var document = Encoding.UTF8.GetString(entries["Doc_0/Document.xml"]);
+        entries["Doc_0/Document.xml"] = Utf8(document.Replace("</Pages>", "<Page ID='01' BaseLoc='Pages/P0/Content.xml'/></Pages>", StringComparison.Ordinal));
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
     [InlineData("<ImageObject Interpolate='true'/>", PreflightOutcome.Fail)]
     [InlineData("<ImageObject Interpolate='false'/>", PreflightOutcome.Pass)]
     [InlineData("<ImageObject/>", PreflightOutcome.NotApplicable)]
