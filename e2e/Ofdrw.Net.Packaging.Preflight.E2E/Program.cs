@@ -37,6 +37,7 @@ entries = new Dictionary<string, string>
 };
 await Check("all-inapplicable", PreflightOutcome.NotApplicable, new() { RequireNoEncryption = false, RequireSingleDocument = false });
 await CheckArchiveCopy();
+await CheckStructuralCoverage();
 await File.WriteAllTextAsync(Path.Combine(output, "manifest.json"), JsonSerializer.Serialize(new
 {
     fixtures = manifest,
@@ -103,9 +104,10 @@ async Task CheckArchiveCopy()
             report.Certification != "NotAssessed")
             throw new InvalidOperationException("Archival subset preflight did not report the two verified clauses.");
         var coverage = await new ArchivalCoverageService().CheckAsync(input, new());
-        if (coverage.RuleResults.Count != 3 || coverage.RuleResults[0].Outcome != PreflightOutcome.Pass ||
+        if (coverage.RuleResults.Count != 12 || coverage.RuleResults[0].Outcome != PreflightOutcome.Pass ||
             coverage.RuleResults[1].Outcome != PreflightOutcome.Pass ||
             coverage.RuleResults[2].Outcome != PreflightOutcome.NotApplicable ||
+            coverage.RuleResults[9].Outcome != PreflightOutcome.Unknown ||
             coverage.StandardOutcome != PreflightOutcome.Fail || coverage.CoverageStatus != "Incomplete")
             throw new InvalidOperationException("Archive root observations or incomplete coverage boundary changed.");
     }
@@ -138,4 +140,41 @@ async Task CheckArchiveCopy()
         sourceSha256 = sourceSha, copy.OutputSha256, copy.AuditPath, copy.RemovedDeclarations,
         copy.SignaturesInvalidated, result = copy.Postflight.SummaryOutcome.ToString(), copy.Postflight.Certification
     }, serializer));
+}
+
+async Task CheckStructuralCoverage()
+{
+    var file = Path.Combine(output, "archival-structural.ofd");
+    var items = new Dictionary<string, string>
+    {
+        ["OFD.xml"] = Xml("OFD", "<DocBody><DocRoot>Doc_0/Document.xml</DocRoot></DocBody>", "DocType='OFD-A'"),
+        ["Doc_0/Document.xml"] = Xml("Document", "<Pages><Page ID='1' BaseLoc='Pages/P0/Content.xml'/></Pages><Outlines><OutlineElem Title='broken'><Actions><Action><Goto><Dest Type='Fit' PageID='99'/></Goto></Action></Actions></OutlineElem></Outlines><Annotations>Annots/Annotations.xml</Annotations>"),
+        ["Doc_0/Pages/P0/Content.xml"] = Xml("Page", "<Actions><Action><URI URI='https://example.invalid'/></Action></Actions><Content><Layer><ImageObject Interpolate='true'/><TextObject Size='3'><TextCode>OK</TextCode></TextObject></Layer></Content>"),
+        ["Doc_0/Annots/Annotations.xml"] = Xml("Annotations", "<Page PageID='1'><FileLoc>Page.xml</FileLoc></Page>"),
+        ["Doc_0/Annots/Page.xml"] = Xml("PageAnnot", "<Annot ID='2' ReadOnly='false' NoZoom='true' NoRotate='true'><Appearance><PathObject/></Appearance></Annot>")
+    };
+    using (var fileStream = File.Create(file))
+    using (var zip = new ZipArchive(fileStream, ZipArchiveMode.Create))
+        foreach (var item in items.OrderBy(x => x.Key, StringComparer.Ordinal))
+        {
+            using var stream = zip.CreateEntry(item.Key).Open();
+            var bytes = Encoding.UTF8.GetBytes(item.Value);
+            stream.Write(bytes);
+        }
+    var before = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(file)));
+    using var input = File.OpenRead(file);
+    var coverage = await new ArchivalCoverageService().CheckAsync(input, new());
+    var expected = new Dictionary<string, PreflightOutcome>
+    {
+        ["AC-004"] = PreflightOutcome.Fail, ["AC-005"] = PreflightOutcome.Pass,
+        ["AC-006"] = PreflightOutcome.Fail, ["AC-007"] = PreflightOutcome.Fail,
+        ["AC-008"] = PreflightOutcome.Pass, ["AC-009"] = PreflightOutcome.Fail,
+        ["AC-010"] = PreflightOutcome.Unknown
+    };
+    if (coverage.RuleResults.Count != 12 || expected.Any(pair =>
+            coverage.RuleResults.Single(x => x.Rule.RuleId == pair.Key).Outcome != pair.Value) ||
+        coverage.StandardOutcome != PreflightOutcome.Fail || input.Position != 0 ||
+        before != Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(file))))
+        throw new InvalidOperationException("Structural coverage package API changed or modified input.");
+    await File.WriteAllTextAsync(Path.Combine(output, "archival-structural.json"), JsonSerializer.Serialize(coverage, serializer));
 }
