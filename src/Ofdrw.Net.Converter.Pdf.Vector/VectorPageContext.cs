@@ -43,10 +43,10 @@ internal sealed class VectorPageContext
     internal readonly ILookupFilterProvider Filters; internal readonly ParsingOptions Parsing;
     internal VectorPageContext(int number, DictionaryToken page, IPdfTokenScanner scanner, IResourceStore resources, ILookupFilterProvider filters, ParsingOptions parsing)
     { _number = number; _page = page; Scanner = scanner; Resources = resources; Filters = filters; Parsing = parsing; }
-    internal OfdDocumentPackage Convert(PdfVectorToOfdOptions options, CancellationToken token)
+    internal OfdDocumentPackage Convert(PdfVectorToOfdOptions options, CancellationToken token, long remainingImageBytes = long.MaxValue)
     {
         var frame = ReadFrame(options, token);
-        var numbers = frame.Box; var resource = frame.Resources;
+        var pageFrame = frame.Frame; var resource = frame.Resources;
         var lexical = new CoreTokenScanner(new MemoryInputBytes(frame.Content), false, new StackDepthGuard(options.MaxStackDepth), useLenientParsing: false);
         var pendingOperands = 0;
         while (lexical.MoveNext())
@@ -59,9 +59,9 @@ internal sealed class VectorPageContext
         var factory = new VectorOperations(options, token, _number);
         var parser = new PageContentParser(factory, new StackDepthGuard(options.MaxStackDepth), false);
         var operations = parser.Parse(_number, new MemoryInputBytes(frame.Content), Parsing.Logger);
-        return ConvertEvents(options, token, numbers, resource, parser, operations);
+        return ConvertEvents(options, token, pageFrame, resource, parser, operations, remainingImageBytes);
     }
-    private (double[] Box, DictionaryToken Resources, byte[] Content, bool SingleStream) ReadFrame(PdfVectorToOfdOptions options, CancellationToken token)
+    private (VectorPageFrame Frame, DictionaryToken Resources, byte[] Content, bool SingleStream) ReadFrame(PdfVectorToOfdOptions options, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         var ancestry = new List<DictionaryToken>(); var node = _page;
@@ -76,13 +76,21 @@ internal sealed class VectorPageContext
         IToken? Inherited(string key) => ancestry.Select(value => value.Data.TryGetValue(key, out var entry) ? entry : null).FirstOrDefault(value => value is not null);
         var media = Resolve<ArrayToken>(Inherited("MediaBox"));
         var numbers = media.Data.Select(item => Resolve<NumericToken>(item).Double).ToArray();
-        if (numbers.Length != 4 || numbers[0] != 0 || numbers[1] != 0 || !FinitePositive(numbers[2]) || !FinitePositive(numbers[3]))
-            throw Unsupported("PAGE_BOX: requires a positive zero-origin MediaBox.");
+        if (numbers.Length != 4 || numbers.Any(value => double.IsNaN(value) || double.IsInfinity(value)) ||
+            !FinitePositive(numbers[2] - numbers[0]) || !FinitePositive(numbers[3] - numbers[1]))
+            throw Unsupported("PAGE_BOX: requires a finite positive MediaBox.");
         var cropToken = Inherited("CropBox");
-        if (cropToken is not null && !Resolve<ArrayToken>(cropToken).Data.Select(item => Resolve<NumericToken>(item).Double).SequenceEqual(numbers))
-            throw Unsupported("CROP_BOX: requires CropBox=MediaBox.");
+        var crop = cropToken is null ? numbers : Resolve<ArrayToken>(cropToken).Data.Select(item => Resolve<NumericToken>(item).Double).ToArray();
+        if (crop.Length != 4 || crop.Any(value => double.IsNaN(value) || double.IsInfinity(value)) ||
+            !FinitePositive(crop[2] - crop[0]) || !FinitePositive(crop[3] - crop[1]) ||
+            crop[0] < numbers[0] || crop[1] < numbers[1] || crop[2] > numbers[2] || crop[3] > numbers[3])
+            throw Unsupported("CROP_BOX: requires a finite positive box within MediaBox.");
         var rotate = Inherited("Rotate");
-        if (rotate is not null && Resolve<NumericToken>(rotate).Double != 0) throw Unsupported("PAGE_ROTATION");
+        var angle = rotate is null ? 0 : Resolve<NumericToken>(rotate).Double;
+        if (double.IsNaN(angle) || double.IsInfinity(angle) || angle != Math.Truncate(angle) || angle % 90 != 0)
+            throw Unsupported("PAGE_ROTATION: only integral quarter turns are supported.");
+        var rotation = (int)((angle % 360 + 360) % 360);
+        var frame = new VectorPageFrame(numbers, crop, rotation);
         if (_page.Data.TryGetValue("UserUnit", out var units) && Resolve<NumericToken>(units).Double != 1) throw Unsupported("USER_UNIT");
         if (_page.ContainsKey(NameToken.Create("Annots")) || _page.ContainsKey(NameToken.Create("Group"))) throw Unsupported("ANNOTATIONS_OR_GROUP");
         var resourceToken = Inherited("Resources");
@@ -102,10 +110,10 @@ internal sealed class VectorPageContext
                 content.Write(bytes, 0, bytes.Length); content.WriteByte(10);
             }
         }
-        return (numbers, resource, content.ToArray(), singleStream);
+        return (frame, resource, content.ToArray(), singleStream);
     }
-    private OfdDocumentPackage ConvertEvents(PdfVectorToOfdOptions options, CancellationToken token, double[] numbers,
-        DictionaryToken resource, IPageContentParser parser, IReadOnlyList<IGraphicsStateOperation> operations)
+    private OfdDocumentPackage ConvertEvents(PdfVectorToOfdOptions options, CancellationToken token, VectorPageFrame frame,
+        DictionaryToken resource, IPageContentParser parser, IReadOnlyList<IGraphicsStateOperation> operations, long remainingImageBytes)
     {
         // Declared-resource structure/count is a hard input gate, even when no glyph is shown.
         var fontTokens = resource.TryGet(NameToken.Font, out var fontsToken)
@@ -113,42 +121,70 @@ internal sealed class VectorPageContext
         if (fontTokens.Data.Count > options.MaxFontsPerPage) throw new InvalidDataException("PDF page font count limit exceeded.");
         var bindings = new Dictionary<string, VectorFont>(StringComparer.Ordinal);
         long attemptedFontBytes = 0; var loadedFrames = 0;
-        (IToken Token, DictionaryToken Font) HorizontalFont(string name)
+        (IToken Token, DictionaryToken Font, bool WinAnsi) HorizontalFont(string name)
         {
             token.ThrowIfCancellationRequested();
             if (!fontTokens.Data.TryGetValue(name, out var fontToken)) throw new InvalidDataException("PDF referenced font is missing: " + name);
             var font = FontObject<DictionaryToken>(fontToken, options, token);
-            if (FontObject<NameToken>(FontEntry(font, "Subtype"), options, token).Data != "Type0") throw Unsupported("FONT_PROFILE: " + name);
+            var subtype = FontObject<NameToken>(FontEntry(font, "Subtype"), options, token).Data;
             var encoding = ProfileToken(FontEntry(font, "Encoding"), options.MaxStackDepth, token);
             if (encoding is StreamToken) throw Unsupported("FONT_PROFILE: Encoding CMap stream outside Identity-H profile.");
+            if (encoding is ArrayToken or DictionaryToken) throw Unsupported("FONT_PROFILE: Encoding Differences are outside the exact-font profile.");
             if (encoding is not NameToken encodingName) throw new InvalidDataException("PDF font Encoding must be a name or CMap stream.");
-            if (encodingName.Data != "Identity-H") throw Unsupported("FONT_PROFILE: " + name);
-            return (fontToken, font);
+            if (subtype == "Type0" && encodingName.Data == "Identity-H") return (fontToken, font, false);
+            if (subtype == "TrueType" && encodingName.Data == "WinAnsiEncoding") return (fontToken, font, true);
+            throw Unsupported("FONT_PROFILE: " + name);
         }
         void EnsureFont(string name)
         {
             token.ThrowIfCancellationRequested();
             if (bindings.ContainsKey(name)) return;
             var selected = HorizontalFont(name); var font = selected.Font;
-            var descendants = FontObject<ArrayToken>(FontEntry(font, "DescendantFonts"), options, token);
-            if (descendants.Length != 1) throw Unsupported("FONT_DESCENDANTS: " + name);
-            var cid = FontObject<DictionaryToken>(descendants.Data[0], options, token);
-            if (FontObject<NameToken>(FontEntry(cid, "Subtype"), options, token).Data != "CIDFontType2") throw Unsupported("CID_MAPPING: " + name);
-            if (cid.Data.TryGetValue("CIDToGIDMap", out var mappingToken))
+            byte[]? cidToGid = null;
+            DictionaryToken descriptor;
+            if (selected.WinAnsi)
             {
-                var mapping = ProfileToken(mappingToken, options.MaxStackDepth, token);
-                if (mapping is StreamToken) throw Unsupported("CID_MAPPING: CIDToGIDMap stream outside identity profile.");
-                if (mapping is not NameToken mappingName) throw new InvalidDataException("PDF CIDToGIDMap must be a name or stream.");
-                if (mappingName.Data != "Identity") throw Unsupported("CID_MAPPING: " + name);
+                var first = FontObject<NumericToken>(FontEntry(font, "FirstChar"), options, token).Double;
+                var last = FontObject<NumericToken>(FontEntry(font, "LastChar"), options, token).Double;
+                var widths = FontObject<ArrayToken>(FontEntry(font, "Widths"), options, token);
+                if (first < 0 || last > 255 || first > last || first != Math.Truncate(first) || last != Math.Truncate(last) ||
+                    widths.Length != last - first + 1 || widths.Data.Any(value =>
+                        ProfileToken(value, options.MaxStackDepth, token) is not NumericToken number ||
+                        number.Double < 0 || double.IsNaN(number.Double) || double.IsInfinity(number.Double)))
+                    throw Unsupported("FONT_PROFILE: invalid bounded WinAnsi widths.");
+                descriptor = FontObject<DictionaryToken>(FontEntry(font, "FontDescriptor"), options, token);
+                var flags = FontObject<NumericToken>(FontEntry(descriptor, "Flags"), options, token).Double;
+                if (flags < 0 || flags > int.MaxValue || flags != Math.Truncate(flags) ||
+                    (((int)flags & 32) == 0) || (((int)flags & 4) != 0))
+                    throw Unsupported("FONT_PROFILE: WinAnsi TrueType requires a nonsymbolic embedded face.");
+            }
+            else
+            {
+                var descendants = FontObject<ArrayToken>(FontEntry(font, "DescendantFonts"), options, token);
+                if (descendants.Length != 1) throw Unsupported("FONT_DESCENDANTS: " + name);
+                var cid = FontObject<DictionaryToken>(descendants.Data[0], options, token);
+                if (FontObject<NameToken>(FontEntry(cid, "Subtype"), options, token).Data != "CIDFontType2") throw Unsupported("CID_MAPPING: " + name);
+                if (cid.Data.TryGetValue("CIDToGIDMap", out var mappingToken))
+                {
+                    var mapping = ProfileToken(mappingToken, options.MaxStackDepth, token);
+                    if (mapping is StreamToken mapStream)
+                    {
+                        cidToGid = Unfiltered(mapStream, 131072, "CIDToGIDMap");
+                        if (cidToGid.Length == 0 || (cidToGid.Length & 1) != 0)
+                            throw new InvalidDataException("PDF CIDToGIDMap must contain big-endian 16-bit glyph IDs.");
+                    }
+                    else if (mapping is not NameToken mappingName) throw new InvalidDataException("PDF CIDToGIDMap must be a name or stream.");
+                    else if (mappingName.Data != "Identity") throw Unsupported("CID_MAPPING: " + name);
+                }
+                descriptor = FontObject<DictionaryToken>(FontEntry(cid, "FontDescriptor"), options, token);
             }
             _ = Unfiltered(FontObject<StreamToken>(FontEntry(font, "ToUnicode"), options, token), options.MaxContentBytesPerPage, "ToUnicode");
-            var descriptor = FontObject<DictionaryToken>(FontEntry(cid, "FontDescriptor"), options, token);
             var allowance = (int)Math.Min(options.MaxFontBytes, options.MaxFontReadBytesPerPage - attemptedFontBytes);
             // Check the original stream before copying or invoking either font loader.
             var bytes = Unfiltered(FontObject<StreamToken>(FontEntry(descriptor, "FontFile2"), options, token), allowance, "font read");
             attemptedFontBytes += bytes.Length; // Attempts are never refunded on rejection or failure.
             token.ThrowIfCancellationRequested();
-            bindings.Add(name, new VectorFont("font-" + bindings.Count, bytes, options.MaxFontBytes));
+            bindings.Add(name, new VectorFont("font-" + bindings.Count, bytes, options.MaxFontBytes, cidToGid, selected.WinAnsi));
             // PdfPig pushes all four stacks before decoding this single font. Count
             // this frame before Load so the finally also balances a loader failure.
             loadedFrames++;
@@ -158,12 +194,18 @@ internal sealed class VectorPageContext
         try
         {
             var package = new OfdDocumentPackage();
-            var page = new OfdPage { WidthMillimeters = numbers[2] * 25.4 / 72, HeightMillimeters = numbers[3] * 25.4 / 72 };
+            // The staged producer fragments and the final package must use the
+            // same namespace; otherwise a newly attached clip can be invisible
+            // under a TextObject when the caller selects the /2016 default.
+            package.Options.Namespace = options.Compatibility.Namespace;
+            var page = new OfdPage { WidthMillimeters = frame.Width * 25.4 / 72, HeightMillimeters = frame.Height * 25.4 / 72 };
             package.Pages.Add(page);
-            using var processor = new VectorStreamProcessor(this, parser, numbers[2], numbers[3], bindings, options, token, _number,
-                EnsureFont, name => { _ = HorizontalFont(name); });
+            using var processor = new VectorStreamProcessor(this, parser, frame, resource, bindings, options, token, _number,
+                remainingImageBytes, EnsureFont, name => { _ = HorizontalFont(name); });
             var events = processor.Process(_number, operations);
-            if (events.Count == 0) throw Unsupported("NO_NATIVE_CONTENT: blank, scan or nonpainted page.");
+            if (processor.PaintCount == 0) throw Unsupported("NO_NATIVE_CONTENT: blank, scan or nonpainted page.");
+            // Keep the established exact original-image branch for image-only pages.
+            if (events.Count == 0) throw Unsupported("IMAGE_ONLY: use the established original-image or raster page profile.");
             foreach (var binding in bindings.Values)
             {
                 if (processor.OutputFonts.Contains(binding)) package.Fonts.Add(binding.Resource);
@@ -178,6 +220,7 @@ internal sealed class VectorPageContext
                 MaxEvents = options.MaxEventsPerPage, MaxInputPathCommands = options.MaxPathCommandsPerPage, MaxFontBytes = options.MaxFontBytes,
                 Graphics = new OfdGraphicsOptions { MaxPageElements = options.MaxEventsPerPage, MaxPathCommands = options.MaxPathCommandsPerPage,
                     MaxTextCharacters = options.MaxTextCharactersPerPage } }, token);
+            processor.ApplyAnnotations(page, package.Options.Namespace);
             return package;
         }
         finally
@@ -191,6 +234,65 @@ internal sealed class VectorPageContext
     private T FontObject<T>(IToken value, PdfVectorToOfdOptions options, CancellationToken token) where T : class, IToken
         => ProfileToken(value, options.MaxStackDepth, token) as T ?? throw new InvalidDataException("PDF font resource requires " + typeof(T).Name + ".");
     internal T Resolve<T>(IToken? value) where T : class, IToken => DirectObjectFinder.Get<T>(value!, Scanner) ?? throw Unsupported("INVALID_RESOURCE: " + typeof(T).Name);
+
+    internal IToken RequireImageXObject(DictionaryToken resource, NameToken name)
+    {
+        if (!resource.Data.TryGetValue("XObject", out var all)) throw new InvalidDataException("PDF XObject resource dictionary is missing.");
+        var objects = Resolve<DictionaryToken>(all);
+        if (!objects.Data.TryGetValue(name, out var value)) throw new InvalidDataException("PDF XObject resource is missing: " + name.Data);
+        var stream = Resolve<StreamToken>(value);
+        if (!stream.StreamDictionary.Data.TryGetValue("Subtype", out var subtype)) throw new InvalidDataException("PDF XObject subtype is missing.");
+        if (Resolve<NameToken>(subtype).Data != "Image") throw Unsupported("XOBJECT_PROFILE: only bounded Image XObjects are supported.");
+        return value;
+    }
+
+    internal OfdImageElement DecodeImageXObject(StreamToken stream, PdfVectorToOfdOptions options, long remainingImageBytes, CancellationToken token)
+    {
+        var dictionary = stream.StreamDictionary;
+        var allowed = new HashSet<string>(new[] { "Type", "Subtype", "Width", "Height", "ColorSpace", "BitsPerComponent", "Length", "Interpolate" });
+        var colorSpace = ProfileToken(Entry(dictionary, "ColorSpace"), options.MaxStackDepth, token);
+        if (dictionary.Data.Keys.Any(key => !allowed.Contains(key)) || Name(dictionary, "Subtype") != "Image" ||
+            dictionary.Data.ContainsKey("Type") && Name(dictionary, "Type") != "XObject" ||
+            colorSpace is not NameToken { Data: "DeviceRGB" } || Resolve<NumericToken>(Entry(dictionary, "BitsPerComponent")).Double != 8)
+            throw Unsupported("IMAGE_PROFILE: raw opaque DeviceRGB/8 XObject required.");
+        int Dimension(string key)
+        {
+            var value = Resolve<NumericToken>(Entry(dictionary, key)).Double;
+            if (!FinitePositive(value) || value > int.MaxValue || value != Math.Truncate(value)) throw Unsupported("IMAGE_DIMENSION");
+            return (int)value;
+        }
+        var width = Dimension("Width"); var height = Dimension("Height");
+        var pixels = checked((long)width * height); var rawLength = checked(pixels * 3);
+        if (pixels > options.Compatibility.MaxRasterizedPixelsPerPage || rawLength > int.MaxValue || rawLength > remainingImageBytes)
+            throw new InvalidDataException("PDF native image pixel/byte limit exceeded.");
+        if (stream.Data.Length != rawLength || Resolve<NumericToken>(Entry(dictionary, "Length")).Double != rawLength)
+            throw new InvalidDataException("PDF raw image byte length mismatch.");
+        var interpolate = false;
+        if (dictionary.Data.TryGetValue("Interpolate", out var hint))
+        {
+            if (ProfileToken(hint, options.MaxStackDepth, token) is not BooleanToken boolean)
+                throw Unsupported("IMAGE_PROFILE: Interpolate must be boolean.");
+            interpolate = boolean.Data;
+        }
+        token.ThrowIfCancellationRequested();
+        using var bitmap = new Image<Rgb24>(width, height);
+        bitmap.ProcessPixelRows(accessor =>
+        {
+            for (var row = 0; row < height; row++)
+            {
+                token.ThrowIfCancellationRequested();
+                var original = stream.Data.Span.Slice(checked(row * width * 3), checked(width * 3));
+                var destination = accessor.GetRowSpan(row);
+                for (var column = 0; column < width; column++)
+                    destination[column] = new Rgb24(original[column * 3], original[column * 3 + 1], original[column * 3 + 2]);
+            }
+        });
+        using var encoded = new BoundedImageOutput(remainingImageBytes, token);
+        bitmap.SaveAsPng(encoded); token.ThrowIfCancellationRequested();
+        return new OfdImageElement { Data = encoded.ToArray(), MediaType = "image/png", FileName = "pdf-vector-image.png",
+            SourceXml = new XElement(XName.Get("ImageObject", options.Compatibility.Namespace),
+                new XAttribute(OfdImageRenderingHints.PdfInterpolateV1, interpolate)).ToString(SaveOptions.DisableFormatting) };
+    }
     internal OfdPage? TryOriginalImagePage(PdfVectorToOfdOptions options, long remainingImageBytes, CancellationToken token)
     {
         var encoding = false;
@@ -199,6 +301,7 @@ internal sealed class VectorPageContext
             var allowedPage = new HashSet<string>(new[] { "Type", "Parent", "MediaBox", "CropBox", "Rotate", "UserUnit", "Resources", "Contents" });
             if (_page.Data.Keys.Any(key => !allowedPage.Contains(key))) return null;
             var frame = ReadFrame(options, token);
+            if (!frame.Frame.IsLegacyFrame) return null;
             if (!frame.SingleStream) return null;
             // Stock PageContentParser silently drops trailing operands. Consume the entire token stream.
             var tokens = new List<IToken>();
@@ -215,7 +318,7 @@ internal sealed class VectorPageContext
             var matrix = new double[6];
             for (var index = 0; index < matrix.Length; index++)
             { if (tokens[index + 1] is not NumericToken number) return null; matrix[index] = number.Double; }
-            if (!matrix.SequenceEqual(new[] { frame.Box[2], 0d, 0d, frame.Box[3], 0d, 0d })) return null;
+            if (!matrix.SequenceEqual(new[] { frame.Frame.Width, 0d, 0d, frame.Frame.Height, 0d, 0d })) return null;
             if (options.MaxOperationsPerPage < 4) throw new InvalidDataException("PDF operation limit exceeded.");
             var xobjects = Resolve<DictionaryToken>(Entry(frame.Resources, "XObject"));
             var stream = Resolve<StreamToken>(Entry(xobjects, name.Data)); var dictionary = stream.StreamDictionary;
@@ -262,7 +365,7 @@ internal sealed class VectorPageContext
             var width = Dimension("Width"); var height = Dimension("Height");
             var pixels = checked((long)width * height); var rawBytes = checked(pixels * 3);
             var dpi = Math.Max(72, Math.Min(options.Compatibility.Dpi, 300));
-            var renderedPixels = Math.Ceiling(frame.Box[2] * dpi / 72) * Math.Ceiling(frame.Box[3] * dpi / 72);
+            var renderedPixels = Math.Ceiling(frame.Frame.Width * dpi / 72) * Math.Ceiling(frame.Frame.Height * dpi / 72);
             if (pixels > options.Compatibility.MaxRasterizedPixelsPerPage || renderedPixels > options.Compatibility.MaxRasterizedPixelsPerPage || rawBytes > int.MaxValue)
                 throw new InvalidDataException("PDF image/page pixel limit exceeded.");
             var sourceBytes = palette is null ? rawBytes : pixels;
@@ -302,7 +405,7 @@ internal sealed class VectorPageContext
             });
             using var encoded = new BoundedImageOutput(remainingImageBytes, token);
             bitmap.SaveAsPng(encoded); token.ThrowIfCancellationRequested();
-            var page = new OfdPage { WidthMillimeters = frame.Box[2] * 25.4 / 72, HeightMillimeters = frame.Box[3] * 25.4 / 72 };
+            var page = new OfdPage { WidthMillimeters = frame.Frame.Width * 25.4 / 72, HeightMillimeters = frame.Frame.Height * 25.4 / 72 };
             page.Elements.Add(new OfdImageElement { WidthMillimeters = page.WidthMillimeters, HeightMillimeters = page.HeightMillimeters,
                 Data = encoded.ToArray(), FileName = "original-page-image.png", MediaType = "image/png",
                 SourceXml = new XElement(XName.Get("ImageObject", options.Compatibility.Namespace), new XAttribute(OfdImageRenderingHints.PdfInterpolateV1, interpolate)).ToString(SaveOptions.DisableFormatting) });
@@ -367,14 +470,14 @@ internal sealed class BoundedImageOutput : Stream
 
 internal sealed class VectorOperations : IGraphicsStateOperationFactory
 {
-    private static readonly HashSet<string> Allowed = new("q Q cm rg RG g G w J j M m l c v y re h f F f* S s B B* b b* n BT ET Tf Tm Td TD T* Tj TJ Tc Tw TL".Split(' '));
+    private static readonly HashSet<string> Allowed = new("q Q cm rg RG g G w J j M d m l c v y re h f F f* S s B B* b b* n W W* Do BT ET Tf Tm Td TD T* Tj TJ Tc Tw TL".Split(' '));
     private static int Arity(string operation) => operation switch
     {
         "cm" or "c" or "Tm" => 6,
         "v" or "y" or "re" => 4,
         "rg" or "RG" => 3,
-        "m" or "l" or "Tf" or "Td" or "TD" => 2,
-        "g" or "G" or "w" or "J" or "j" or "M" or "Tj" or "TJ" or "Tc" or "Tw" or "TL" => 1,
+        "m" or "l" or "Tf" or "Td" or "TD" or "d" => 2,
+        "g" or "G" or "w" or "J" or "j" or "M" or "Do" or "Tj" or "TJ" or "Tc" or "Tw" or "TL" => 1,
         _ => 0
     };
     private readonly PdfVectorToOfdOptions _limits; private readonly CancellationToken _token; private readonly int _page; private int _count;
@@ -385,6 +488,18 @@ internal sealed class VectorOperations : IGraphicsStateOperationFactory
         if (++_count > _limits.MaxOperationsPerPage) throw new InvalidDataException("PDF operation limit exceeded.");
         if (!Allowed.Contains(operation.Data)) throw new NotSupportedException("PDFV_UNSUPPORTED page=" + _page + " operation=" + _count + " operator=" + operation.Data);
         if (operands.Count != Arity(operation.Data)) throw new NotSupportedException("PDFV_OPERATOR_ARITY page=" + _page + " operator=" + operation.Data);
+        if (operation.Data is "J" or "j" && (operands[0] is not NumericToken style ||
+            style.Double < 0 || style.Double > 2 ||
+            double.IsNaN(style.Double) || double.IsInfinity(style.Double) ||
+            style.Double != Math.Truncate(style.Double)))
+            throw new NotSupportedException("PDFV_UNSUPPORTED page=" + _page + " operation=" + _count + " STROKE_STYLE: integral cap/join 0..2 required.");
+        // PdfPig 0.1.15 converts the dash phase to int before exposing the
+        // graphics state. Reject values it would silently truncate or wrap.
+        if (operation.Data == "d" && (operands[1] is not NumericToken phase ||
+            phase.Double < 0 || phase.Double > int.MaxValue ||
+            double.IsNaN(phase.Double) || double.IsInfinity(phase.Double) ||
+            phase.Double != Math.Truncate(phase.Double)))
+            throw new NotSupportedException("PDFV_UNSUPPORTED page=" + _page + " operation=" + _count + " DASH_PHASE: nonnegative integral phase required.");
         return ReflectionGraphicsStateOperationFactory.Instance.Create(operation, operands) ?? throw new NotSupportedException("PDFV_UNKNOWN_OPERATOR " + operation.Data);
     }
 }
@@ -393,11 +508,29 @@ internal sealed class VectorFont : IDisposable
 {
     internal readonly SkiaDrawEvent.FixedFontBinding Binding;
     internal readonly OfdFontResource Resource;
-    internal VectorFont(string id, byte[] bytes, int maxFontBytes)
+    internal readonly bool WinAnsi;
+    private readonly byte[]? _cidToGid;
+    internal VectorFont(string id, byte[] bytes, int maxFontBytes, byte[]? cidToGid = null, bool winAnsi = false)
     {
+        _cidToGid = cidToGid; WinAnsi = winAnsi;
         Binding = SkiaDrawEvent.FixedFontBinding.FromOriginalBytes(bytes, id, maxFontBytes);
         Resource = new OfdFontResource { Id = id, FontName = Binding.FamilyName, FileName = id + ".ttf",
             Data = bytes, Bold = Binding.Bold, Italic = Binding.Italic };
     }
+    internal int GlyphForCid(int cid) => _cidToGid is null ? cid : cid >= 0 && cid < _cidToGid.Length / 2
+        ? _cidToGid[cid * 2] * 256 + _cidToGid[cid * 2 + 1] : 0;
+    internal static char WinAnsiCharacter(int code) => code switch
+    {
+        // PDF WinAnsi duplicates space at A0 and hyphen at AD. The Unicode
+        // cmap entry for NBSP/soft hyphen does not certify those source glyphs.
+        >= 32 and <= 126 or >= 161 and <= 172 or >= 174 and <= 255 => (char)code,
+        128 => '\u20AC', 130 => '\u201A', 131 => '\u0192', 132 => '\u201E', 133 => '\u2026',
+        134 => '\u2020', 135 => '\u2021', 136 => '\u02C6', 137 => '\u2030', 138 => '\u0160',
+        139 => '\u2039', 140 => '\u0152', 142 => '\u017D', 145 => '\u2018', 146 => '\u2019',
+        147 => '\u201C', 148 => '\u201D', 149 => '\u2022', 150 => '\u2013', 151 => '\u2014',
+        152 => '\u02DC', 153 => '\u2122', 154 => '\u0161', 155 => '\u203A', 156 => '\u0153',
+        158 => '\u017E', 159 => '\u0178',
+        _ => '\0'
+    };
     public void Dispose() => Binding.Dispose();
 }

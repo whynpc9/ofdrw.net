@@ -21,7 +21,7 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 });
 ```
 
-原生页具有 PathObject 与可见 TextObject，原文和连续空格保留在带字距的游程内；没有整页图或轮廓字替代原文。回退页丢弃全部已暂存矢量，只有既有页面图与可选透明文字，不会把可见文字再次叠在整页图上。有效纯文字页可以原生输出；扫描、没有可表达 native 内容和真正空白页会明确回退或失败。回退页文字沿用既有 PDF 双层的单词语义，未承诺精确原文/连续空格或 OCR。
+原生页以 PathObject、可见 TextObject 与受限的 ImageObject 保留绘制顺序；原文和连续空格保留在带字距的游程内。受限图像保留源像素，不生成整页图或轮廓字替代原文。回退页丢弃全部已暂存原生对象，只有既有页面图与可选透明文字，不会把可见文字再次叠在整页图上。有效纯文字页可以原生输出；扫描、没有可表达 native 内容和真正空白页会明确回退或失败。回退页文字沿用既有 PDF 双层的单词语义，未承诺精确原文/连续空格或 OCR。
 
 显式回退遇到可证明的单幅 full-page raw RGB/8 或 literal Indexed/DeviceRGB/8 图像时，会保留原RGB或逐像素展开原literal调色板的采样、分辨率和源 PDF 插值提示，不先做 DPI 放大；报告 `PDFV_ORIGINAL_IMAGE_PAGE`，仍为 raster 内容，`IsNative=false`。其它图像/effects 页报告 `PDFV_RASTER_PAGE` 并沿用双层。图像仅在严格页框/矩阵/操作序列及无裁剪、透明、mask、颜色重解释、滤镜时命中；复杂图像不能根据“看上去像扫描页”推断安全。插值 hint 是本库 PDF/SVG 导出提示，第三方 OFD 阅读器可能忽略；各 renderer 的插值算法、DeviceRGB 显示色彩不作跨设备完全一致保证。
 
@@ -39,7 +39,7 @@ var converter = new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
 
 转换写出前的验证失败不改目的流；最终 ZIP 写出阶段的 I/O/取消仍可留下部分流，文件调用方应自行使用临时文件与原子替换。默认 CLI 原子输出契约保持原样。
 
-设计与证据：[实证探针](../pdf-vector-probe-design.md)、[实现契约](../pdf-vector-design-contract.md)。同一 PDF 比较样例位于 `e2e/Ofdrw.Net.Pdf.Vector.E2E`；运行 `scripts/run-pdf-vector-package-e2e.sh` 消费本次默认 11 包加两个可选包。实际视觉结论以已检查的 OFD → PDF → Preview 页面为准，不推断任意 PDF 保真。
+设计与证据：[实证探针](../pdf-vector-probe-design.md)、[实现契约](../pdf-vector-design-contract.md)。同一 PDF 比较样例位于 `e2e/Ofdrw.Net.Pdf.Vector.E2E`；运行 `scripts/run-pdf-vector-package-e2e.sh` 消费已验证的默认包集合及两个可选包。实际视觉结论以已检查的 OFD → PDF → Preview 页面为准，不推断任意 PDF 保真。
 
 本次已检查的包、源码、失败历史和 Preview 页面记录见 [验收证据](../evidence/pdf-vectors/README.md)。
 
@@ -63,3 +63,13 @@ R5原Indexed样例已由主/Low真实包及八页Preview复验，原R4失败保�
 局部笔宽和字号写成正值仍须满足已有页空间精度界。转换器在旧 float 检查后，用实际 `WriterValue(SKfloat)` 的 double 值与实际 Emit 的 mm CTM，比较从原解析值到写出值的总误差。描边沿用 miter10 的保守偏移绝对界；文字同时检查字形/单位 em 四角、相对线性映射、连续基线及两种累计字距路径，不把字号正值当作准确性证明。超过界限仍按 `STROKE_WRITER_PRECISION` / `TEXT_WRITER_PRECISION` 整页 Fail/显式回退，不缩放补偿、不改原文或字距。文字新证书只记录失败，到游程已有硬门和 XML 门后才拒绝，保留后续字形字符额度检查。
 
 成功处理原生内容后，若相同计算所得的物理页宽/高在 OFD 三位毫米格式下不能保持正值，转换器以 `PAGE_WRITER_PRECISION` 的窄 NotSupportedException 分类原子拒绝。两种 page policy 都失败：栅格化仍需要同一可写物理页框，不能解决该格式限制。不会夹到最小纸张或自动缩放。这个分类仅用于成功到达 native Append 前的分支；空页、未知操作、原图回退或先前字体/profile拒绝仍保留原诊断与实际回退限制，不承诺所有极小页面都有相同诊断。
+
+## R06 扩展 profile
+
+在上述首版契约之上，页框现接纳有限正尺寸的 MediaBox、位于其中的 CropBox 与 0/90/180/270 度旋转，输出页按裁切后显示方向计算尺寸。越界或退化 CropBox、非直角旋转仍整页拒绝。路径 `W`/`W*` 裁切按 PDF 的后续 `n` 或绘制操作生效，随 `q/Q` 恢复；裁切几何以本次输出对象坐标写出。只接纳非退化、可精确表示的路径裁切；复杂裁切、透明组、ExtGState、marked content 仍拒绝。
+
+描边接纳 butt/round/square cap、miter/round/bevel join，以及有界、偶数长度的正值 dash 和非负整数 phase；cap/join 的 PDF 操作数必须是 0..2 整数。奇数长度的 PDF dash 数组因现有 OFD→PDF 后端无法保持其重复语义而整页拒绝，小数 phase 或 cap/join 因当前 PDF 解析器会截断而整页拒绝。实际样式写入 OFD PathObject；不能由现有 PDF/OFD 导出共同表达的组合仍按 `STROKE_PROFILE` 整页处理。圆头或方头的零长度路径可能绘制一个点，故不能作为空操作静默丢弃。
+
+混合路径/文字页可接纳未过滤、无 mask/Decode/透明扩展的原始 DeviceRGB/8 Image XObject；转换保留图像像素、绘制顺序、变换及裁切，输出原生 OFD ImageObject，并按 PNG 字节计入累计图像预算。纯图像页继续走既有 `PDFV_ORIGINAL_IMAGE_PAGE` 或整页回退路径，报告 `IsNative=false`。Form XObject、索引/ICC 或带滤镜的混合图像仍拒绝或显式整页回退，不把先前绘制的原生对象留在回退页。
+
+固定 TrueType 的 Type0 Identity-H/CIDFontType2 现在还接纳有界未过滤的 CIDToGIDMap stream。每个实际字符仍必须由 ToUnicode 给出单个原 Unicode 标量，且同一嵌入字体的 Unicode cmap glyph 与 stream 中的源 CID 映射完全相同。另接纳带显式 WinAnsiEncoding、完整有界 Widths、nonsymbolic FontDescriptor、ToUnicode 与同一嵌入 TrueType 的简单字体；每个源 code 还必须按 WinAnsi 映射回同一个 Unicode，缺字或映射冲突拒绝。WinAnsi 的 0xA0 空格重复码和 0xAD 连字符重复码无法凭同值 Unicode cmap 证明源 glyph，故也拒绝。任意 Encoding CMap、Differences、MacRoman、符号字体与字体替换仍不在原生 profile。受限扩展只证明被准入样例的字体字节和字形身份，不推断任意 PDF 字体等价。

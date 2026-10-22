@@ -9,7 +9,7 @@ public sealed class PdfVectorPageResult
     { SourcePageIndex = sourceIndex; IsNative = native; PathObjects = paths; TextObjects = texts; ImageObjects = images; Diagnostic = diagnostic; }
     /// <summary>Zero-based source page index; repeated selections have separate results.</summary>
     public int SourcePageIndex { get; }
-    /// <summary>True only if the whole page was expressed by native events.</summary>
+    /// <summary>True only if the whole page was expressed by native OFD objects, without a full-page raster fallback.</summary>
     public bool IsNative { get; }
     /// <summary>Number of native path objects.</summary>
     public int PathObjects { get; }

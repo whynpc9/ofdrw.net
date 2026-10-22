@@ -22,25 +22,49 @@ internal sealed class PdfFixture : IDisposable
     }
     internal string Text(string text, double x, double y, double size = 12, double shear = 0)
         => $"BT /F1 {Number(size)} Tf 1 0 {Number(shear)} 1 {Number(x)} {Number(y)} Tm <{Hex(text)}> Tj ET\n";
+    internal string TextWinAnsi(string text, double x, double y, double size = 12)
+    {
+        var encoded = new StringBuilder();
+        foreach (var character in text)
+        {
+            var code = character == '\u20AC' ? 128 : (int)character;
+            if (code is < 32 or > 255 || code is >= 127 and <= 159 && code != 128 || _face.GetGlyph(character) == 0)
+                throw new InvalidOperationException("Fixture WinAnsi face cannot encode " + character);
+            _characters[(ushort)code] = character;
+            encoded.Append(code.ToString("X2"));
+        }
+        return $"BT /F1 {Number(size)} Tf 1 0 0 1 {Number(x)} {Number(y)} Tm <{encoded}> Tj ET\n";
+    }
+    internal string TextWinAnsiCode(byte code, char unicode, double x, double y, double size = 12)
+    {
+        _characters[code] = unicode;
+        return $"BT /F1 {Number(size)} Tf 1 0 0 1 {Number(x)} {Number(y)} Tm <{code:X2}> Tj ET\n";
+    }
     internal byte[] Create(string[] contents, string pageEntries = "", bool wrongUnicode = false, string fontEntries = "", bool inheritedResources = false,
         string imageEntries = "", bool? interpolate = null, byte[]? imageBytes = null, int imageWidth = 2, int imageHeight = 2,
         byte[]? encodingStream = null, byte[]? cidMapStream = null, string? encodingOverride = null, string? cidMapOverride = null,
         string? imageColorSpace = null, string? interpolateOverride = null, string[]? trailingObjects = null, string resourceEntries = "",
-        string fontResources = "/F1 3 0 R", string? aUnicodeHex = null, string mediaBox = "0 0 420 595")
+        string fontResources = "/F1 3 0 R", string? aUnicodeHex = null, string mediaBox = "0 0 420 595", bool simpleWinAnsi = false,
+        int fontDescriptorFlags = 32)
     {
         var next = 9 + 2 * contents.Length;
         var encoding = encodingOverride ?? (encodingStream is null ? "/Identity-H" : next++ + " 0 R");
         var cidMapping = cidMapOverride ?? (cidMapStream is null ? "/Identity" : next++ + " 0 R");
-        var cmap = "/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def /CMapName /Fixture def /CMapType 2 def 1 begincodespacerange <0000> <FFFF> endcodespacerange " + _characters.Count + " beginbfchar " +
-            string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => $"<{pair.Key:X4}> <{(pair.Value == 'A' && aUnicodeHex is not null ? aUnicodeHex : ((int)(wrongUnicode && pair.Value == 'A' ? 'B' : pair.Value)).ToString("X4"))}>")) + " endbfchar endcmap CMapName currentdict /CMap defineresource pop end end";
-        var widths = string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => pair.Key + " [" + Number(_font.MeasureText(pair.Value.ToString())) + "]"));
+        var cmap = "/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def /CMapName /Fixture def /CMapType 2 def 1 begincodespacerange " +
+            (simpleWinAnsi ? "<00> <FF>" : "<0000> <FFFF>") + " endcodespacerange " + _characters.Count + " beginbfchar " +
+            string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => $"<{pair.Key.ToString(simpleWinAnsi ? "X2" : "X4")}> <{(pair.Value == 'A' && aUnicodeHex is not null ? aUnicodeHex : ((int)(wrongUnicode && pair.Value == 'A' ? 'B' : pair.Value)).ToString("X4"))}>")) + " endbfchar endcmap CMapName currentdict /CMap defineresource pop end end";
+        var widths = string.Join(" ", _characters.OrderBy(pair => pair.Key).Select(pair => pair.Key + " [" + GlyphWidth(pair.Value.ToString()) + "]"));
+        var simpleWidths = string.Join(" ", Enumerable.Range(32, 224).Select(code => GlyphWidth(((char)code).ToString())));
         var resources = "/Resources << /Font << " + fontResources + " >> /XObject << /Im1 8 0 R >> /ExtGState << /GS1 << /ca .4 /BM /Multiply >> >> " + resourceEntries + ">>";
         var objects = new List<byte[]> {
             Ascii("<< /Type /Catalog /Pages 2 0 R >>"),
             Ascii("<< /Type /Pages /Count " + contents.Length + " /Kids [" + string.Join(" ", Enumerable.Range(0, contents.Length).Select(i => (9 + 2 * i) + " 0 R")) + "] " + (inheritedResources ? resources : "") + " >>"),
-            Ascii("<< /Type /Font /Subtype /Type0 /BaseFont /FixtureFace /Encoding " + encoding + " /DescendantFonts [4 0 R] /ToUnicode 6 0 R " + fontEntries + " >>"),
+            Ascii(simpleWinAnsi
+                ? "<< /Type /Font /Subtype /TrueType /BaseFont /FixtureFace /Encoding " + (encodingOverride ?? "/WinAnsiEncoding") +
+                  " /FirstChar 32 /LastChar 255 /Widths [" + simpleWidths + "] /FontDescriptor 5 0 R /ToUnicode 6 0 R " + fontEntries + " >>"
+                : "<< /Type /Font /Subtype /Type0 /BaseFont /FixtureFace /Encoding " + encoding + " /DescendantFonts [4 0 R] /ToUnicode 6 0 R " + fontEntries + " >>"),
             Ascii("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /FixtureFace /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 5 0 R /CIDToGIDMap " + cidMapping + " /DW 1000 /W [" + widths + "] >>"),
-            Ascii("<< /Type /FontDescriptor /FontName /FixtureFace /Flags 32 /FontBBox [-1000 -1000 3000 3000] /ItalicAngle 0 /Ascent 1000 /Descent -300 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>"),
+            Ascii("<< /Type /FontDescriptor /FontName /FixtureFace /Flags " + fontDescriptorFlags + " /FontBBox [-1000 -1000 3000 3000] /ItalicAngle 0 /Ascent 1000 /Descent -300 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>"),
             Stream(Ascii(cmap)), Stream(_bytes, "/Length1 " + _bytes.Length),
             Stream(imageBytes ?? new byte[] { 210, 40, 60, 30, 130, 190, 30, 130, 190, 210, 40, 60 }, "/Type /XObject /Subtype /Image /Width " + imageWidth + " /Height " + imageHeight +
                 " /ColorSpace " + (imageColorSpace ?? "/DeviceRGB") + " /BitsPerComponent 8 " + (interpolateOverride is not null ? "/Interpolate " + interpolateOverride : interpolate.HasValue ? "/Interpolate " + (interpolate.Value ? "true" : "false") : "") + " " + imageEntries)
@@ -67,5 +91,14 @@ internal sealed class PdfFixture : IDisposable
     { using var output = new MemoryStream(); output.Write(Ascii("<< /Length " + bytes.Length + " " + extra + " >>\nstream\n")); output.Write(bytes); output.Write(Ascii("\nendstream")); return output.ToArray(); }
     private static byte[] Ascii(string value) => Encoding.ASCII.GetBytes(value);
     private static string Number(double value) => value.ToString("0.######", CultureInfo.InvariantCulture);
+    private string GlyphWidth(string text)
+    {
+        var measured = (double)_font.MeasureText(text);
+        var nearest = Math.Round(measured);
+        // Skia can return 223.999741 on x64 and 224 on arm64 for this pinned
+        // fixture face. Normalize only near-integer noise so the source PDF's
+        // advance table and rendered comparison stay identical across CI hosts.
+        return Number(Math.Abs(measured - nearest) < 0.01 ? nearest : measured);
+    }
     public void Dispose() { _font.Dispose(); _face.Dispose(); }
 }
