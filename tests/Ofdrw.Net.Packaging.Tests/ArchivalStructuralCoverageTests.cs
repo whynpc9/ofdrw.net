@@ -912,9 +912,23 @@ public class ArchivalStructuralCoverageTests
         var entries = Seed();
         entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content {attributes}>{payload}<Layer Name='body'><ImageObject Interpolate='false'/><TextObject Size='3'/></Layer></Content></Page>");
         var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-007").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-008").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-011").Outcome);
+    }
+
+    [Theory]
+    [InlineData("", "<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", PreflightOutcome.Unknown)]
+    [InlineData("<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>", "<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", PreflightOutcome.Unknown)]
+    [InlineData("<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>", "<Future/>", PreflightOutcome.Unknown)]
+    [InlineData("<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", "<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", PreflightOutcome.Fail)]
+    public async Task OpaqueContentPayloadTaintsPageActionInventory(string pageActions, string payload, PreflightOutcome expected)
+    {
+        var entries = Seed();
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'>{pageActions}<Content>{payload}<Layer/></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(expected, Rule(report, "AC-004").Outcome);
     }
 
     [Theory]
