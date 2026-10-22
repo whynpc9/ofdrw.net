@@ -1,0 +1,75 @@
+{
+  "baseline": "62887ad6af62605411e1968da662be48ce1c091c",
+  "source_commit": "29433b54716c92eb417a3f90c9365db095311738",
+  "chains": [
+    "source PDF -> dual OFD -> exported PDF -> Preview",
+    "source PDF -> vector OFD -> exported PDF -> Preview"
+  ],
+  "selected_source_pages": [
+    2,
+    1
+  ],
+  "png_dpi": 144,
+  "files": [
+    {
+      "name": "metadata-source.pdf",
+      "bytes": 21668752,
+      "sha256": "97736ec0b898917232332b2b1e34e378886c63a918a7bcbd73e16fce0a97b7f2"
+    },
+    {
+      "name": "metadata-dual.ofd",
+      "bytes": 122703,
+      "sha256": "c0379978027d10bfd8f5f941c864b26153a0657754958fdeb9309b0398cc8695"
+    },
+    {
+      "name": "metadata-dual.pdf",
+      "bytes": 177686,
+      "sha256": "02b997fc5b1237329312f0647464aa13a198368c612b3511d35d1d9b835b9db8"
+    },
+    {
+      "name": "metadata-vector.ofd",
+      "bytes": 11606288,
+      "sha256": "502546be6bb65f075959346f56f60950228870cdf151ebaa3af8dad1b9efcc18"
+    },
+    {
+      "name": "metadata-vector.pdf",
+      "bytes": 80280,
+      "sha256": "716233cf3a5fd2b42f3112e475cb1815b9788d15be5c0d3607626f11fa170eab"
+    },
+    {
+      "name": "metadata-dual-1.png",
+      "bytes": 84396,
+      "sha256": "b22ce0277364f4dcb77093233b145a901b1c1fa07b9552cd220141f043a77f85"
+    },
+    {
+      "name": "metadata-dual-2.png",
+      "bytes": 122794,
+      "sha256": "0f0d6908130b3f16c2efd875eb90fea153f5ebaed0fb44f5bf3cd83a9562fb26"
+    },
+    {
+      "name": "metadata-vector-1.png",
+      "bytes": 47691,
+      "sha256": "299a79ed76c5168ee54c706f0df849e38f7d7c8c1f9ab8c49b297ddc3894774f"
+    },
+    {
+      "name": "metadata-vector-2.png",
+      "bytes": 76354,
+      "sha256": "1b0511ffb804535d641a18c133c2c4c73826f096aa9a97b87ba8439a33cc3787"
+    },
+    {
+      "name": "metadata-report.json",
+      "bytes": 988,
+      "sha256": "c9b9dc31ce1e8f04ad4560d38af23f3fc837ba43e8771a2e00167391de64546e"
+    },
+    {
+      "name": "metadata-source-1.png",
+      "bytes": 75782,
+      "sha256": "e0e1725d23890c9f000c190a19586138d3912a3b051033fb08ddaf2193e2dd21"
+    },
+    {
+      "name": "metadata-source-2.png",
+      "bytes": 47690,
+      "sha256": "7d767e7980c2c55541c91fd92e2d034f266a2cd7b120111e825603df8f08641e"
+    }
+  ]
+}
