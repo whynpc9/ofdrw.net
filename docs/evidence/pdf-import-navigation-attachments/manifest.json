@@ -1,14 +1,15 @@
 {
   "baseline": "62887ad6af62605411e1968da662be48ce1c091c",
-  "source_commit": "7dc4e5170f4422ffe9a5a13af4ef18ba0a95d3b2",
-  "package_version": "0.1.0-r07.9",
+  "source_commit": "eddc0a6576f3b08ca07d7e41123fa5c2bda38c54",
+  "package_version": "0.1.0-r07.11",
   "chains": [
     "source PDF -> dual OFD -> exported PDF -> Preview",
     "source PDF -> vector OFD -> exported PDF -> Preview",
     "rotated source PDF -> external/default dual OFD -> exported PDF -> Preview",
     "rotated source PDF -> vector OFD -> exported PDF -> Preview",
     "bookmark-only cropped source PDF -> external dual/vector fallback OFD -> exported PDF -> Preview",
-    "hidden and nonprintable source PDFs -> rejected before OFD output"
+    "hidden and nonprintable source PDFs -> rejected before OFD output",
+    "indirect-XYZ and reversed-Rect source PDF -> dual/vector OFD -> exported PDF -> Preview"
   ],
   "selected_source_pages": [
     2,
@@ -23,17 +24,17 @@
     {
       "name": "metadata-dual.pdf",
       "bytes": 177477,
-      "sha256": "9d7e8e18fffcf19da76e8c4155cf0d9bbf6614057bf96a7803d86ddea3cf1390"
+      "sha256": "df04c739265111167aa8660f29e902050328c470f4d6055a5d0dba4833dc5bec"
     },
     {
       "name": "metadata-rot270-dual-default.pdf",
       "bytes": 67332,
-      "sha256": "70ae38dc9c7c29f1bceb927989713c50273bb93e0a35bab71d3a295828c1ceb9"
+      "sha256": "07ec231ed0903fa56e2fcd32841fee5b27fba7e31a0bc23a79c18612accb3ef3"
     },
     {
       "name": "metadata-rot270-dual.pdf",
       "bytes": 67206,
-      "sha256": "3c8e546520ee090457fd8d168be0d4b2c66ed86a8f3be72817f414980a5c267a"
+      "sha256": "26336a7e78e1c6f5123fe8a1a786970894e068f4b32a21ef203f589a9346df64"
     },
     {
       "name": "metadata-rot270-source.pdf",
@@ -43,17 +44,17 @@
     {
       "name": "metadata-rot270-vector.pdf",
       "bytes": 61867,
-      "sha256": "63de98d7c28458824fa72b839293fb4f9221edbe6c48411c90b52e4bdf654bcf"
+      "sha256": "7272e34806b7e070f15b78ed4637c23d8c3fa15fe13067b73d340c9947eb0429"
     },
     {
       "name": "metadata-rot90-dual-default.pdf",
       "bytes": 67295,
-      "sha256": "abcc5cc7b1c3c31098660d4457f98aacf8ea279c9389388ff008a0da544fde0a"
+      "sha256": "b34a49b18b50a7ae5c1f711847554a8afbcb7064deed4f2664bd01554a78e988"
     },
     {
       "name": "metadata-rot90-dual.pdf",
       "bytes": 67158,
-      "sha256": "10d0620a70a62d04ca7d10a7401895f31a152c5b4c22f251bbd854ac49309cf4"
+      "sha256": "bc948bcdbfaf85939e129aadfdb3a02ad3fb91da0a67cb8cf5b6e30da4c8cdd1"
     },
     {
       "name": "metadata-rot90-source.pdf",
@@ -63,7 +64,7 @@
     {
       "name": "metadata-rot90-vector.pdf",
       "bytes": 61859,
-      "sha256": "7ceb309913fbd0fe0aedfe6c629d57094695b1d1de4f9daa0a9218befc57ed88"
+      "sha256": "d08a2eac57f9172660f33efb5b7825619a48b5a4801625f47be1f9a4cb5c2a37"
     },
     {
       "name": "metadata-source.pdf",
@@ -73,47 +74,47 @@
     {
       "name": "metadata-vector.pdf",
       "bytes": 80280,
-      "sha256": "c835b7c7b09675c8dfd7258afbcf0ce5958f117c26c772f93c7466dd6b96a8ae"
+      "sha256": "f64fa9c42568fc0380ae36881a8dbbfd55f322bc97451fb8f7f3bcd6cad97d81"
     },
     {
       "name": "metadata-dual.ofd",
       "bytes": 122673,
-      "sha256": "b5d9f42bd2d6e23bb297bff6c9d1d59a8afe9c0bd8538af52eda0d41fca2464d"
+      "sha256": "132daf05cc333fa100e5f72b0feee33b1e5fcdbbe2a4cb4fc7f97e3e8d173939"
     },
     {
       "name": "metadata-rot270-dual-default.ofd",
       "bytes": 7726,
-      "sha256": "f64732894c6ec7ee31f286515510885492a15b00f08a27d95288d00347e33607"
+      "sha256": "93d722216d18baca6b4201c9d7f0b8088b96d2a40909909c8c62fa5853ed3488"
     },
     {
       "name": "metadata-rot270-dual.ofd",
-      "bytes": 8065,
-      "sha256": "c1e41b08578baeb74dfe6e6f603d8ad26dfe2ee1a2a79eb90d62115edb623223"
+      "bytes": 8067,
+      "sha256": "16f5d84dc1621f0b5f7eea2503869ec5ea3518905f36ad592e630f36c33875ee"
     },
     {
       "name": "metadata-rot270-vector.ofd",
       "bytes": 11602146,
-      "sha256": "ae3e3ef334641f6a3e7753b9833e54dd2f3f1da7f9651e73d53be404dfeda33a"
+      "sha256": "b063f6c212a316cfe254827a314b301ef4333025328d2594b8b70aef9e5b05d7"
     },
     {
       "name": "metadata-rot90-dual-default.ofd",
       "bytes": 7680,
-      "sha256": "37e722792c4cb2e65dcb770228272ff276a0805c0fbcbe4cd3894aac62ac5f9b"
+      "sha256": "4a302cc60dddbcfa7957c2eb7a04efe3c3fa24e81e69316a12e50f27da446170"
     },
     {
       "name": "metadata-rot90-dual.ofd",
-      "bytes": 8024,
-      "sha256": "2d599776afa6c5ce2b16dd4676386d3d7c021de29a7e5920b7e28c955a2fb96f"
+      "bytes": 8022,
+      "sha256": "2deaf08d37cbdea5ba66e72832ad7f6a6c01254e910375ce19fbce0e5c2a5042"
     },
     {
       "name": "metadata-rot90-vector.ofd",
       "bytes": 11602106,
-      "sha256": "0f5f2a0e7b6bfd8630a3e8419fa55b1973a124e0c57a5ef89dd66dfbd6fe0ee0"
+      "sha256": "7e77ccaf68c677a92e36d7eba6ff32adfcccbece6f33b24e41f421ad6119b888"
     },
     {
       "name": "metadata-vector.ofd",
       "bytes": 11606288,
-      "sha256": "66fdc19cec76fced0ebf53e4e6623ef50ee4974b671ceb61aece16a805c0607d"
+      "sha256": "50dacaa25607173a0bf7412d81e73d853758bccd869fbf91035f4c541075a4a3"
     },
     {
       "name": "metadata-dual-1.png",
@@ -188,12 +189,12 @@
     {
       "name": "metadata-report.json",
       "bytes": 988,
-      "sha256": "5d9e7bcb7eb65029381baecdf8bc81eec719ddc510177cb4594581806111a03b"
+      "sha256": "6dfb970ba47025f0263c270edeb280cb217dfe91fd8097995d277a49a69a8629"
     },
     {
       "name": "bookmark-only-crop-dual.pdf",
       "bytes": 74095,
-      "sha256": "8ff1bb739f6121881848a91bd10b655ee9ef9bd45adb60ad55e014a9849154f9"
+      "sha256": "a429bf0d35721eb30157901d031df4126b269b821a2a16da84184f5bcde972c3"
     },
     {
       "name": "bookmark-only-crop-source-hidden.pdf",
@@ -213,17 +214,17 @@
     {
       "name": "bookmark-only-crop-vector-fallback.pdf",
       "bytes": 129330,
-      "sha256": "505e0d04645ec60817fe6520e4d573b9307334d757743cc6351d56157b295798"
+      "sha256": "c4e4f80ea6a0ac8625bb4ff8e6afc95c7a33d8b177e01ba2b7b8c9b2f0946d68"
     },
     {
       "name": "bookmark-only-crop-dual.ofd",
-      "bytes": 8031,
-      "sha256": "ef1fc78eac98b9c248bcf46f94986a61b3f2d5db3c02f28a73f7096ed06fce43"
+      "bytes": 8030,
+      "sha256": "da363990f8482809a3a493de6ac25dfec878d66b874fe2c5a8b48c8156e6cd09"
     },
     {
       "name": "bookmark-only-crop-vector-fallback.ofd",
       "bytes": 11604365,
-      "sha256": "cf6474b14ed4513fdb0f37d8315f18b0b78502e582ae1da848795bb50709c937"
+      "sha256": "327284e7d73818244877727347525c1b9cda6152e8626e646a4bdbd121d5d093"
     },
     {
       "name": "bookmark-only-crop-dual-1.png",
@@ -274,6 +275,61 @@
       "name": "bookmark-only-crop-vector-fallback-2.png",
       "bytes": 6219,
       "sha256": "ee165c90ca629b00dce9511f36e22197700ca1531bf60eac217cb1e54118cc19"
+    },
+    {
+      "name": "metadata-edge-dual-1.png",
+      "bytes": 7029,
+      "sha256": "9b3b8f5ebaf88939872b96e9bf9bb7feb52765ab0264e80301a4b7bc3f12cc4c"
+    },
+    {
+      "name": "metadata-edge-dual-2.png",
+      "bytes": 6746,
+      "sha256": "0a245ca1842e8db8f5f7d7ac916212ed9313b907330944b16e3f63b259d161ee"
+    },
+    {
+      "name": "metadata-edge-dual.ofd",
+      "bytes": 9663,
+      "sha256": "6ea4392c1e74bf3db80a93033228222d09973f5ed5be156934a69cbed3886ba4"
+    },
+    {
+      "name": "metadata-edge-dual.pdf",
+      "bytes": 74121,
+      "sha256": "7900fb1351072964aea62b06b748f5797da6a6658c2e2c0e1a9178870dafecfe"
+    },
+    {
+      "name": "metadata-edge-source-1.png",
+      "bytes": 6175,
+      "sha256": "0d6c6852aadb95f56595a9b68105ec5f2797ce11a67a9fd8fd5277084b37306e"
+    },
+    {
+      "name": "metadata-edge-source-2.png",
+      "bytes": 6202,
+      "sha256": "f5ee2d2ab5b7f6743d6ec5ad5aca36e064f26cdaacd2a1755c4efccb04adff3a"
+    },
+    {
+      "name": "metadata-edge-source.pdf",
+      "bytes": 21662949,
+      "sha256": "99d15a083885ac3b9250407fff1e87f6512f5c8fe8532acd8e68d36747d7a23c"
+    },
+    {
+      "name": "metadata-edge-vector-1.png",
+      "bytes": 6703,
+      "sha256": "fb90b3710c90966e7996fcb19f850b471e290778209cb7811070e76aec95f1ed"
+    },
+    {
+      "name": "metadata-edge-vector-2.png",
+      "bytes": 6219,
+      "sha256": "ee165c90ca629b00dce9511f36e22197700ca1531bf60eac217cb1e54118cc19"
+    },
+    {
+      "name": "metadata-edge-vector.ofd",
+      "bytes": 11602321,
+      "sha256": "8c6f635d1a241fab25d64f74d18ef22e67c9fb1539b02e801fba14b479a3c0e2"
+    },
+    {
+      "name": "metadata-edge-vector.pdf",
+      "bytes": 62116,
+      "sha256": "09f24e5efcb8ebe4187c8441919f4b76baa3179c67960b21b1ff267857a19f65"
     }
   ]
 }
