@@ -16,7 +16,7 @@ public sealed class PdfMetadataMigrationTests
 
     private static byte[] Source(PdfFixture fixture, string destination = "11 0 R /Fit", bool embeddedPageFile = true,
         string? rootAction = null, string firstPageExtra = "", bool embeddedGlobalFile = true, bool mixedAnnotations = false,
-        int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null")
+        int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null", string? outlineRoot = null)
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var page = embeddedPageFile
@@ -27,7 +27,7 @@ public sealed class PdfMetadataMigrationTests
             pageEntriesByIndex: new[] { "/Annots [19 0 R" + string.Concat(Enumerable.Range(0, linkCount).Select(index => $" {22 + index} 0 R")) + "] " + firstPageExtra, "" },
             trailingObjects: new[]
             {
-                "<< /Type /Outlines /First 14 0 R /Last 14 0 R /Count 2 >>",
+                outlineRoot ?? "<< /Type /Outlines /First 14 0 R /Last 14 0 R /Count 2 >>",
                 "<< /Title (Chapter A) /Parent 13 0 R /First 15 0 R /Last 15 0 R /Count 1 " +
                     (rootAction ?? "/Dest [" + destination + "]") + " >>",
                 "<< /Title (Child) /Parent 14 0 R /Dest [9 0 R /XYZ 30 500 " + childZoom + "] >>",
@@ -155,6 +155,54 @@ public sealed class PdfMetadataMigrationTests
             await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
                 { Compatibility = options }).ConvertAsync(input, output));
         else await Assert.ThrowsAsync<NotSupportedException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData(false, "/FitH", OfdDestinationType.FitV)]
+    [InlineData(true, "/FitH", OfdDestinationType.FitV)]
+    [InlineData(false, "/FitBH", OfdDestinationType.FitV)]
+    [InlineData(true, "/FitBH", OfdDestinationType.FitV)]
+    [InlineData(false, "/FitV", OfdDestinationType.FitH)]
+    [InlineData(true, "/FitV", OfdDestinationType.FitH)]
+    [InlineData(false, "/FitBV", OfdDestinationType.FitH)]
+    [InlineData(true, "/FitBV", OfdDestinationType.FitH)]
+    public async Task NullFitCoordinateRetainsReaderPositionAfterRotation(bool vector, string fit, OfdDestinationType expected)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, destination: $"9 0 R {fit} null",
+            firstPageExtra: "/CropBox [10 20 410 570] /Rotate 90"));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options, UnsupportedPagePolicy = PdfVectorUnsupportedPagePolicy.RasterizePage })
+                .ConvertAsync(input, output);
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output);
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        var root = Assert.Single(package.Outlines!.Items);
+        var destination = Assert.IsType<OfdGoToAction>(Assert.Single(root.Actions!.Items)).Destination!;
+        Assert.Same(package.Pages[0], destination.Page);
+        Assert.Equal(expected, destination.Type);
+        Assert.Null(destination.Left);
+        Assert.Null(destination.Top);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OutlineRootCountWithoutFirstFailsBeforeOutput(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, outlineRoot: "<< /Type /Outlines /Count 1 >>"));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await Assert.ThrowsAsync<InvalidDataException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options, UnsupportedPagePolicy = PdfVectorUnsupportedPagePolicy.RasterizePage })
+                .ConvertAsync(input, output));
+        else await Assert.ThrowsAsync<InvalidDataException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
         Assert.Equal(0, output.Length);
     }
 

@@ -144,6 +144,9 @@ internal static class PdfImportMetadataMigrator
         if (!root.Data.TryGetValue("First", out var first))
         {
             if (root.Data.ContainsKey("Last")) throw new InvalidDataException("PDF outline root has a last node but no first node.");
+            if (root.Data.TryGetValue("Count", out var countToken) &&
+                (Resolve<NumericToken>(countToken, source) is not { } rootCount || rootCount.Double != 0))
+                throw new InvalidDataException("PDF outline root declares entries but has no first node.");
             return destinations;
         }
         var pageReferences = new HashSet<string>(StringComparer.Ordinal);
@@ -237,17 +240,21 @@ internal static class PdfImportMetadataMigrator
                 return result;
             case ExplicitDestinationType.FitHorizontally:
             case ExplicitDestinationType.FitBoundingBoxHorizontally:
-                if (coordinates.Top is not double top) throw new InvalidDataException("PDF horizontal destination has no position.");
-                var horizontal = Point(source, source.CropBox.Bounds.Left, top);
                 result.Type = source.Rotation.Value is 90 or 270 ? OfdDestinationType.FitV : OfdDestinationType.FitH;
-                if (result.Type == OfdDestinationType.FitH) result.Top = horizontal.Y; else result.Left = horizontal.X;
+                if (coordinates.Top is double top)
+                {
+                    var horizontal = Point(source, source.CropBox.Bounds.Left, top);
+                    if (result.Type == OfdDestinationType.FitH) result.Top = horizontal.Y; else result.Left = horizontal.X;
+                }
                 return result;
             case ExplicitDestinationType.FitVertically:
             case ExplicitDestinationType.FitBoundingBoxVertically:
-                if (coordinates.Left is not double left) throw new InvalidDataException("PDF vertical destination has no position.");
-                var vertical = Point(source, left, source.CropBox.Bounds.Bottom);
                 result.Type = source.Rotation.Value is 90 or 270 ? OfdDestinationType.FitH : OfdDestinationType.FitV;
-                if (result.Type == OfdDestinationType.FitH) result.Top = vertical.Y; else result.Left = vertical.X;
+                if (coordinates.Left is double left)
+                {
+                    var vertical = Point(source, left, source.CropBox.Bounds.Bottom);
+                    if (result.Type == OfdDestinationType.FitH) result.Top = vertical.Y; else result.Left = vertical.X;
+                }
                 return result;
             case ExplicitDestinationType.FitRectangle:
                 if (coordinates.Left is not double l || coordinates.Right is not double r ||
