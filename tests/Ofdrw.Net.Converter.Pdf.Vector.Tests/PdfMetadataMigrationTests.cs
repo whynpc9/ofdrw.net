@@ -17,7 +17,7 @@ public sealed class PdfMetadataMigrationTests
     private static byte[] Source(PdfFixture fixture, string destination = "11 0 R /Fit", bool embeddedPageFile = true,
         string? rootAction = null, string firstPageExtra = "", bool embeddedGlobalFile = true, bool mixedAnnotations = false,
         int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null", string? outlineRoot = null,
-        string attachmentName = "same.bin", int? attachmentFlags = 4)
+        string attachmentName = "same.bin", int? attachmentFlags = 4, string? rootOutlineItem = null)
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var flags = attachmentFlags is int value ? " /F " + value : string.Empty;
@@ -30,7 +30,7 @@ public sealed class PdfMetadataMigrationTests
             trailingObjects: new[]
             {
                 outlineRoot ?? "<< /Type /Outlines /First 14 0 R /Last 14 0 R /Count 2 >>",
-                "<< /Title (Chapter A) /Parent 13 0 R /First 15 0 R /Last 15 0 R /Count 1 " +
+                rootOutlineItem ?? "<< /Title (Chapter A) /Parent 13 0 R /First 15 0 R /Last 15 0 R /Count 1 " +
                     (rootAction ?? "/Dest [" + destination + "]") + " >>",
                 "<< /Title (Child) /Parent 14 0 R /Dest [9 0 R /XYZ 30 500 " + childZoom + "] >>",
                 "<< /Names [(" + attachmentName + ") 17 0 R] >>",
@@ -220,6 +220,41 @@ public sealed class PdfMetadataMigrationTests
     {
         using var fixture = new PdfFixture(Font());
         using var input = new MemoryStream(Source(fixture, outlineRoot: "<< /Type /Outlines /Count 1 >>"));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await Assert.ThrowsAsync<InvalidDataException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options, UnsupportedPagePolicy = PdfVectorUnsupportedPagePolicy.RasterizePage })
+                .ConvertAsync(input, output));
+        else await Assert.ThrowsAsync<InvalidDataException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData(false, "missing-root-last")]
+    [InlineData(true, "missing-root-last")]
+    [InlineData(false, "unreachable-root-last")]
+    [InlineData(true, "unreachable-root-last")]
+    [InlineData(false, "missing-child-last")]
+    [InlineData(true, "missing-child-last")]
+    [InlineData(false, "unreachable-child-last")]
+    [InlineData(true, "unreachable-child-last")]
+    public async Task OutlineSiblingChainMustReachDeclaredLastBeforeOutput(bool vector, string defect)
+    {
+        using var fixture = new PdfFixture(Font());
+        var root = defect switch
+        {
+            "missing-root-last" => "<< /Type /Outlines /First 14 0 R /Count 2 >>",
+            "unreachable-root-last" => "<< /Type /Outlines /First 14 0 R /Last 15 0 R /Count 2 >>",
+            _ => null
+        };
+        var rootItem = defect switch
+        {
+            "missing-child-last" => "<< /Title (Chapter A) /Parent 13 0 R /First 15 0 R /Count 1 /Dest [11 0 R /Fit] >>",
+            "unreachable-child-last" => "<< /Title (Chapter A) /Parent 13 0 R /First 15 0 R /Last 14 0 R /Count 1 /Dest [11 0 R /Fit] >>",
+            _ => null
+        };
+        using var input = new MemoryStream(Source(fixture, outlineRoot: root, rootOutlineItem: rootItem));
         using var output = new MemoryStream();
         var options = new PdfToOfdOptions { CopyBookmarks = true, PreferExternalPdfToPpm = true };
         if (vector)

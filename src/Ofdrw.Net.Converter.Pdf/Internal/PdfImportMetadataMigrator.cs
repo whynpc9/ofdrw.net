@@ -149,6 +149,8 @@ internal static class PdfImportMetadataMigrator
                 throw new InvalidDataException("PDF outline root declares entries but has no first node.");
             return destinations;
         }
+        if (!root.Data.TryGetValue("Last", out var last))
+            throw new InvalidDataException("PDF outline root has a first node but no last node.");
         var pageReferences = new HashSet<string>(StringComparer.Ordinal);
         var pendingPages = new Stack<IToken>();
         if (!catalog.Data.TryGetValue("Pages", out var pageTree)) throw new InvalidDataException("PDF page tree is missing.");
@@ -170,18 +172,27 @@ internal static class PdfImportMetadataMigrator
                 throw new InvalidDataException("PDF page tree has no children.");
             foreach (var child in kids.Data) pendingPages.Push(child);
         }
-        var pending = new Stack<(IToken Node, int Depth)>(); pending.Push((first, 1));
+        var pending = new Stack<(IToken Node, IToken Last, int Depth)>(); pending.Push((first, last, 1));
         var count = 0;
         while (pending.Count != 0)
         {
             token.ThrowIfCancellationRequested();
-            var (link, depth) = pending.Pop();
+            var (link, expectedLast, depth) = pending.Pop();
             if (depth > options.MaxBookmarkDepth || ++count > options.MaxBookmarkCount)
                 throw new InvalidDataException("PDF outline exceeds the configured node or depth limit.");
             destinations.Add((false, null));
             var item = Resolve<DictionaryToken>(link, source) ?? throw new InvalidDataException("PDF outline node cannot be resolved.");
-            if (item.Data.TryGetValue("Next", out var next)) pending.Push((next, depth));
-            if (item.Data.TryGetValue("First", out var child)) pending.Push((child, depth + 1));
+            if (item.Data.TryGetValue("Next", out var next)) pending.Push((next, expectedLast, depth));
+            else if (!SameOutlineLink(link, expectedLast))
+                throw new InvalidDataException("PDF outline sibling chain does not reach its last node.");
+            if (item.Data.TryGetValue("First", out var child))
+            {
+                if (!item.Data.TryGetValue("Last", out var childLast))
+                    throw new InvalidDataException("PDF outline node has a first child but no last child.");
+                pending.Push((child, childLast, depth + 1));
+            }
+            else if (item.Data.ContainsKey("Last"))
+                throw new InvalidDataException("PDF outline node has a last child but no first child.");
             if (item.Data.ContainsKey("Dest") && item.Data.ContainsKey("A"))
                 throw new NotSupportedException("PDF outline has conflicting destinations.");
             if (!item.Data.ContainsKey("Dest") && !item.Data.ContainsKey("A") && !item.Data.ContainsKey("First"))
@@ -221,6 +232,11 @@ internal static class PdfImportMetadataMigrator
         }
         return destinations;
     }
+
+    private static bool SameOutlineLink(IToken left, IToken right) =>
+        left is IndirectReferenceToken leftRef && right is IndirectReferenceToken rightRef
+            ? leftRef.Data.Equals(rightRef.Data)
+            : ReferenceEquals(left, right);
 
     private static OfdDestination Destination(Page source, OfdPage page, ExplicitDestination pdf, double? rawZoom)
     {
