@@ -62,7 +62,12 @@ internal static class OfdCompositeProjection
             if (compositeChild && element is not (OfdTextElement or OfdImageElement or OfdPathElement))
                 throw new NotSupportedException("Opaque composite children cannot be exported.");
             var source = element switch { OfdTextElement t => t.SourceXml, OfdImageElement i => i.SourceXml, OfdPathElement p => p.SourceXml, _ => null };
-            if (pageBlockChild && element.RenderSourceXml is { } resolvedSource) source = resolvedSource;
+            if (element.RenderSourceXml is { } resolvedSource)
+            {
+                if (element.RenderSourceAuthority != source)
+                    throw new NotSupportedException("Imported drawing changed after paint resolution.");
+                if (pageBlockChild || compositeChild) source = resolvedSource;
+            }
             string? scalarError = null;
             // This admission is for rendering. Keep a Reader paint failure on
             // the projected leaf so text extraction can still read TextCode;
@@ -125,6 +130,9 @@ internal static class OfdCompositeProjection
             if (projected is OfdTextElement text) { text.Transform = transformed; text.SourceXml = null; }
             if (projected is OfdPathElement path) { if (scalarError is null) OfdPathStyle.CaptureProjection((OfdPathElement)element, path); path.Transform = transformed; path.SourceXml = null; }
             if (projected is OfdImageElement image) { image.Transform = transformed; image.SourceXml = null; }
+            // Projection consumes the original drawing envelope. Its resolved
+            // paint now belongs to this transient leaf, whose SourceXml is null.
+            projected.RenderSourceAuthority = null;
             projected.ClipOwnership.Value = projected.ClipOwnership.Original = null; projected.ClipOwnership.Baseline = null;
             projected.ClippingXml = Encode(clipsForLeaf, material, token); result.Add(projected);
         }

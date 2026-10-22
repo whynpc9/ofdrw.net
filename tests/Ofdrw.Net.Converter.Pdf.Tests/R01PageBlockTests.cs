@@ -131,6 +131,37 @@ public sealed class R01PageBlockTests
     }
 
     [Fact]
+    public async Task CompositeGraphicUsesDocumentPaintResources()
+    {
+        const string resources = "<ColorSpaces><ColorSpace ID='20' Type='RGB'><Palette>" +
+            "<CV>255 0 0</CV><CV>0 0 255</CV></Palette></ColorSpace></ColorSpaces>" +
+            "<DrawParams><DrawParam ID='30'><FillColor ColorSpace='20' Index='0'/></DrawParam></DrawParams>" +
+            "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<PathObject ID='552' Boundary='0 0 20 20' DrawParam='30' Fill='true' Stroke='false'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>" +
+            "<PathObject ID='553' Boundary='30 0 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor ColorSpace='20' Index='1'/>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='554' Boundary='10 10 50 20' ResourceID='551'/>", resources: resources);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var paths = Assert.IsType<OfdCompositeResource>(Assert.Single(read.CompositeResources!.Items))
+            .Elements.OfType<OfdPathElement>().ToArray();
+        Assert.Equal(2, paths.Length);
+        Assert.All(paths, path => Assert.Null(path.RenderPaintError));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        foreach (var markup in new[] { Encoding.UTF8.GetString(svg.ToArray()), Encoding.UTF8.GetString(html.ToArray()) })
+        {
+            Assert.Contains("rgb(255,0,0)", markup);
+            Assert.Contains("rgb(0,0,255)", markup);
+        }
+        Retain("composite-paint-resources", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Fact]
     public async Task NumericPaintResourceIdsResolveEquivalentSpellings()
     {
         const string resources = "<ColorSpaces><ColorSpace ID='020' Type='RGB'><Palette><CV>255 0 0</CV></Palette></ColorSpace></ColorSpaces>" +
