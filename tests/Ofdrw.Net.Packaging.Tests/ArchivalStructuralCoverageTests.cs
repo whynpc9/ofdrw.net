@@ -400,6 +400,19 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("<FutureAppearance><PageBlock ID='3'/></FutureAppearance>", PreflightOutcome.Unknown)]
+    [InlineData("<Remark>reviewed</Remark><Parameters><Parameter Name='owner'>local</Parameter></Parameters>", PreflightOutcome.Pass)]
+    public async Task AnnotationWrapperRecognizesOnlySupportedChildren(string extra, PreflightOutcome expected)
+    {
+        var entries = Seed(documentExtra: "<Annotations>Annots/Annotations.xml</Annotations>");
+        entries["Doc_0/Annots/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'><Page PageID='1'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        entries["Doc_0/Annots/Page.xml"] = Utf8($"<PageAnnot xmlns='{Ns}'><Annot ID='2' ReadOnly='true' NoZoom='true' NoRotate='true'><Appearance><PageBlock ID='4'><PathObject/></PageBlock></Appearance>{extra}</Annot></PageAnnot>");
+        var report = await Check(entries);
+        Assert.Equal(expected, Rule(report, "AC-009").Outcome);
+        Assert.Equal(expected, Rule(report, "AC-012").Outcome);
+    }
+
+    [Theory]
     [InlineData("vendor='x'", "")]
     [InlineData("", "<!--opaque-->")]
     [InlineData("", "<?vendor opaque?>")]

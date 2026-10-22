@@ -262,8 +262,8 @@ internal sealed class ArchivalStructuralCoverage
                 { UnknownAnnotationScope("ForeignAnnotation", entry); }
                 foreach (var annot in content.Elements(content.Name.Namespace + "Annot"))
                 {
-                    if (annot.Descendants(content.Name.Namespace + "Appearance").Any(x => x.Parent != annot))
-                        UnknownAnnotationScope("NestedAnnotationAppearance", entry);
+                    if (OpaqueAnnotationWrapper(annot))
+                        UnknownAnnotationScope("OpaqueAnnotationWrapper", entry);
                     observations[5].Seen(entry, Selector(annot));
                     foreach (var flag in new[] { "ReadOnly", "NoZoom", "NoRotate" })
                     {
@@ -390,6 +390,32 @@ internal sealed class ArchivalStructuralCoverage
                    (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("ID" or "Boundary" or "CTM"))) ||
                OpaqueNodes(appearance) || OpaqueGraphicContainers(appearance, ns) ||
                appearance.Descendants().Any(x => x.Name.Namespace != ns);
+    }
+
+    private static bool OpaqueAnnotationWrapper(XElement annot)
+    {
+        var ns = annot.Name.Namespace;
+        if (annot.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not
+                    ("ID" or "Type" or "Creator" or "LastModDate" or "Subtype" or "Visible" or "Print" or
+                     "NoZoom" or "NoRotate" or "ReadOnly"))) || OpaqueNodes(annot) ||
+            annot.Elements(ns + "Appearance").Count() != 1 ||
+            annot.Elements(ns + "Remark").Count() > 1 ||
+            annot.Elements(ns + "Parameters").Count() > 1) return true;
+        foreach (var child in annot.Elements())
+        {
+            if (child.Name == ns + "Appearance") continue;
+            if (child.Name == ns + "Remark" && !child.HasElements &&
+                child.Attributes().All(x => x.IsNamespaceDeclaration) &&
+                child.Nodes().All(x => x is XText)) continue;
+            if (child.Name == ns + "Parameters" &&
+                child.Attributes().All(x => x.IsNamespaceDeclaration) && !OpaqueNodes(child) &&
+                child.Elements().All(parameter => parameter.Name == ns + "Parameter" && !parameter.HasElements &&
+                    parameter.Attributes().All(x => x.IsNamespaceDeclaration || x.Name == "Name") &&
+                    parameter.Nodes().All(x => x is XText))) continue;
+            return true;
+        }
+        return false;
     }
 
     private void InspectActions(XElement owner, XNamespace ns, Observation type, Observation? target, string entry)
