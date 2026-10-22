@@ -98,6 +98,25 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("vendor='x'", "")]
+    [InlineData("", "opaque")]
+    [InlineData("", "<?vendor opaque?>")]
+    [InlineData("", "<FutureActions><Action><URI URI='https://example.invalid'/></Action></FutureActions>")]
+    public async Task OpaquePageRootPreventsFalseActionClaim(string attributes, string payload)
+    {
+        var entries = Seed(pageExtra: "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>");
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}' {attributes}>{payload}<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions><Content><Layer><PathObject/></Layer></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}' {attributes}>{payload}<Content><Layer><PathObject/></Layer></Content></Page>");
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}' {attributes}>{payload}<Actions><Action><URI URI='https://example.invalid'/></Action></Actions><Content><Layer><PathObject/></Layer></Content></Page>");
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-004").Outcome);
+    }
+
+    [Theory]
     [InlineData("<URI URI='https://example.invalid'/>", PreflightOutcome.Fail)]
     [InlineData("<Goto><Dest Type='Fit' PageID='1'/></Goto>", PreflightOutcome.Pass)]
     [InlineData("<v:Future xmlns:v='urn:vendor'/>", PreflightOutcome.Unknown)]
@@ -271,8 +290,11 @@ public class ArchivalStructuralCoverageTests
 
     [Theory]
     [InlineData("<TextObject Size='3'><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Pass)]
+    [InlineData("<TextObject Size='100000000000000000000000000000'><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Pass)]
     [InlineData("<TextObject><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Fail)]
     [InlineData("<TextObject Size='0'><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Fail)]
+    [InlineData("<TextObject Size='1e1000'><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Fail)]
+    [InlineData("<TextObject Size='not-a-number'><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Fail)]
     public async Task TextObjectSizeIsExplicitAndPositive(string text, PreflightOutcome expected)
     {
         var report = await Check(Seed(objects: text));

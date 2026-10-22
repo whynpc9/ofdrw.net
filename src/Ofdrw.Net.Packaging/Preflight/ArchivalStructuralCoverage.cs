@@ -128,6 +128,10 @@ internal sealed class ArchivalStructuralCoverage
         }
         if (page.Name.Namespace != documentNamespace)
             UnknownPageScope("MixedPageNamespace", entry);
+        if (page.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(page) ||
+            page.Elements().Any(x => x.Name.Namespace != page.Name.Namespace || x.Name.LocalName is not
+                ("Area" or "Template" or "PageRes" or "Content" or "Actions")))
+            observations[0].Unknown("OpaquePageRoot", entry);
         InspectActions(page, page.Name.Namespace, observations[0], null, entry);
         if (page.Elements(page.Name.Namespace + "Content").Count() != 1 ||
             Foreign(page, "Content", page.Name.Namespace))
@@ -320,7 +324,8 @@ internal sealed class ArchivalStructuralCoverage
         {
             observations[4].Seen(entry, Selector(text));
             var value = (string?)text.Attribute("Size");
-            if (value is null || !decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var size) || size <= 0)
+            if (value is null || !double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var size) ||
+                double.IsNaN(size) || double.IsInfinity(size) || size <= 0)
                 observations[4].Fail("TextSizeUnavailable", entry, Selector(text));
             else if (ForeignAttribute(text, "Size"))
                 observations[4].Unknown("TextSizeAmbiguous", entry, Selector(text));
