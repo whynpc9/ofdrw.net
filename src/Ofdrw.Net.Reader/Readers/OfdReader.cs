@@ -1163,7 +1163,7 @@ public sealed class OfdReader : IOfdReader
                 // unqualified graphic names. Extension namespaces remain opaque.
                 var knownGraphicNamespace = node.Name.Namespace == XNamespace.None ||
                     node.Name.NamespaceName is OfdConstants.Namespace or OfdConstants.StandardNamespace;
-                if (knownGraphicNamespace && node.Name == structuralNamespace + "PageBlock")
+                if (knownGraphicNamespace && localName == "PageBlock")
                 {
                     material.Structure.Depth(blockDepth + 1);
                     var xml = OfdXmlEnvelope.Capture(node, material, cancellationToken);
@@ -1175,7 +1175,7 @@ public sealed class OfdReader : IOfdReader
                     };
                     foreach (var child in ParseGraphicNodes(archive, node.Elements(), layerId, layerType,
                         fontMap, mediaMap, mediaTypeMap, pageResPath, material, cancellationToken,
-                        compositeMap, structuralNamespace, paint, blockDepth + 1))
+                        compositeMap, node.Name.Namespace, paint, blockDepth + 1))
                         block.PageBlockChildren.Add(child);
                     yield return block;
                     continue;

@@ -99,6 +99,33 @@ public sealed class R01PageBlockTests
         return revised.ToArray();
     }
 
+    private static async Task<byte[]> ReNamespacePageBlock(byte[] seed, string layerNamespace, string blockNamespace)
+    {
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    var layer = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "Layer");
+                    var block = Assert.Single(layer.Elements(), node => node.Name.LocalName == "PageBlock");
+                    var changedBlock = new XElement(XNamespace.Get(blockNamespace) + "PageBlock",
+                        block.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), block.Nodes());
+                    layer.ReplaceWith(new XElement(XNamespace.Get(layerNamespace) + "Layer",
+                        layer.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), changedBlock));
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        return rewritten.ToArray();
+    }
+
     [Fact]
     public async Task ReferencedPaletteAndInheritedDrawParamResolveInAllOutputs()
     {
@@ -1996,30 +2023,7 @@ public sealed class R01PageBlockTests
         const string drawing = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
             "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
         var seed = await Source(drawing);
-        using var rewritten = new MemoryStream();
-        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
-        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
-        {
-            foreach (var entry in input.Entries)
-            {
-                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
-                var bytes = buffer.ToArray();
-                if (entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal))
-                {
-                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
-                    var layer = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "Layer");
-                    var block = Assert.Single(layer.Elements(), node => node.Name.LocalName == "PageBlock");
-                    XNamespace vendor = "urn:vendor";
-                    var vendorBlock = new XElement(vendor + "PageBlock",
-                        block.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), block.Nodes());
-                    layer.ReplaceWith(new XElement(vendor + "Layer",
-                        layer.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), vendorBlock));
-                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
-                }
-                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
-            }
-        }
-        var ofd = rewritten.ToArray();
+        var ofd = await ReNamespacePageBlock(seed, "urn:vendor", "urn:vendor");
         var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
         var raw = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
         Assert.Equal("PageBlock", raw.LocalName);
@@ -2036,6 +2040,29 @@ public sealed class R01PageBlockTests
             await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
             Assert.Equal(0, sink.Length);
         }
+    }
+
+    [Theory]
+    [InlineData("http://www.ofdspec.org", "", "layer09-block-unqualified")]
+    [InlineData("http://www.ofdspec.org/2016", "", "layer16-block-unqualified")]
+    [InlineData("http://www.ofdspec.org", "http://www.ofdspec.org/2016", "layer09-block16")]
+    [InlineData("http://www.ofdspec.org/2016", "http://www.ofdspec.org", "layer16-block09")]
+    public async Task SupportedMixedPageBlockNamespacesStillRender(string layerNamespace, string blockNamespace, string label)
+    {
+        const string drawing = "<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>mixed block text</TextCode></TextObject>";
+        var ofd = await ReNamespacePageBlock(await Source(drawing, font: true), layerNamespace, blockNamespace);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.NotNull(block.PageBlockChildren);
+        Assert.Contains("mixed block text", new OfdTextExtractor().Extract(read));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("mixed block text", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("mixed block text", Encoding.UTF8.GetString(html.ToArray()));
+        Retain(label, ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]
