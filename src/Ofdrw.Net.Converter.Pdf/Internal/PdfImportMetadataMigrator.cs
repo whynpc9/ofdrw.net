@@ -32,14 +32,16 @@ internal static class PdfImportMetadataMigrator
         var page = RawPage(source, zeroBasedPage, options, token);
         if (!page.Data.TryGetValue("Annots", out var annotsToken)) return Array.Empty<Annotation>();
         var annots = Resolve<ArrayToken>(annotsToken, source) ?? throw new InvalidDataException("PDF annotation array cannot be resolved.");
-        if (annots.Data.Count > options.MaxAttachmentCount) throw new InvalidDataException("PDF page attachment count exceeds the configured limit.");
         var rawFileCount = 0;
         foreach (var entry in annots.Data)
         {
             token.ThrowIfCancellationRequested();
             var annotation = Resolve<DictionaryToken>(entry, source) ?? throw new InvalidDataException("PDF page annotation cannot be resolved.");
             if (annotation.Data.TryGetValue("Subtype", out var subtype) && subtype is NameToken { Data: "FileAttachment" })
-                rawFileCount++;
+            {
+                if (++rawFileCount > options.MaxAttachmentCount)
+                    throw new InvalidDataException("PDF page attachment count exceeds the configured limit.");
+            }
             else onlyFileAttachments = false;
         }
         var parsed = source.GetPage(zeroBasedPage + 1).GetAnnotations().ToArray();
@@ -73,10 +75,11 @@ internal static class PdfImportMetadataMigrator
     }
 
     internal static void Apply(PdfDocument source, OfdDocumentPackage output, IReadOnlyList<int> selected,
-        PdfToOfdOptions options, CancellationToken token)
+        PdfToOfdOptions options, CancellationToken token, IReadOnlyList<bool> drawAttachmentPins)
     {
         if (!options.CopyBookmarks && !options.CopyAttachments) return;
-        if (selected.Count != output.Pages.Count) throw new InvalidDataException("PDF metadata page selection disagrees with output pages.");
+        if (selected.Count != output.Pages.Count || drawAttachmentPins.Count != selected.Count)
+            throw new InvalidDataException("PDF metadata page selection disagrees with output pages.");
         var pages = new Dictionary<int, List<OfdPage>>();
         for (var i = 0; i < selected.Count; i++)
         {
@@ -86,7 +89,7 @@ internal static class PdfImportMetadataMigrator
             copies.Add(output.Pages[i]);
         }
         if (options.CopyBookmarks) CopyBookmarks(source, output, pages, options, token);
-        if (options.CopyAttachments) CopyAttachments(source, output, selected, options, token);
+        if (options.CopyAttachments) CopyAttachments(source, output, selected, drawAttachmentPins, options, token);
     }
 
     private static void CopyBookmarks(PdfDocument source, OfdDocumentPackage output,
@@ -94,7 +97,7 @@ internal static class PdfImportMetadataMigrator
     {
         var rawCount = ValidateRawOutlines(source, options, token);
         if (rawCount == 0) return;
-        if (!source.TryGetBookmarks(out var bookmarks, false))
+        if (!source.TryGetBookmarks(out var bookmarks, true))
             throw new InvalidDataException("PDF outline contains a destination the parser could not resolve.");
         var collection = new OfdOutlineCollection();
         var work = new Stack<(BookmarkNode Node, List<OfdOutline> Target, int Depth)>();
@@ -240,9 +243,9 @@ internal static class PdfImportMetadataMigrator
         var point = rotation switch
         {
             0 => (x - crop.Left, crop.Top - y),
-            90 => (y - crop.Bottom, crop.Right - x),
+            90 => (y - crop.Bottom, x - crop.Left),
             180 => (crop.Right - x, y - crop.Bottom),
-            270 => (crop.Top - y, x - crop.Left),
+            270 => (crop.Top - y, crop.Right - x),
             _ => throw new NotSupportedException("PDF metadata page rotation is unsupported.")
         };
         return (point.Item1 * 25.4 / 72, point.Item2 * 25.4 / 72);
@@ -259,7 +262,7 @@ internal static class PdfImportMetadataMigrator
     }
 
     private static void CopyAttachments(PdfDocument source, OfdDocumentPackage output,
-        IReadOnlyList<int> selected, PdfToOfdOptions options, CancellationToken token)
+        IReadOnlyList<int> selected, IReadOnlyList<bool> drawAttachmentPins, PdfToOfdOptions options, CancellationToken token)
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var count = 0; long total = 0;
@@ -270,7 +273,7 @@ internal static class PdfImportMetadataMigrator
             if (++count > options.MaxAttachmentCount) throw new InvalidDataException("PDF attachment count exceeds the configured limit.");
             var remaining = Math.Min(options.MaxAttachmentBytes, options.MaxTotalAttachmentBytes - total);
             if (remaining < 0) throw new InvalidDataException("PDF attachment byte limit exceeded.");
-            var bytes = Decode(stream, remaining, token);
+            var bytes = Decode(stream, remaining, options.MaxInputBytes, token);
             total = checked(total + bytes.LongLength);
             var display = Name(name, names);
             var attachment = new OfdAttachment { Id = "800000" + count, Name = display, Data = bytes,
@@ -324,13 +327,14 @@ internal static class PdfImportMetadataMigrator
                         WidthMillimeters = box.Width, HeightMillimeters = box.Height } };
                 link.Appearance.Elements.Add(new OfdPathElement { XMillimeters = 0, YMillimeters = 0,
                     WidthMillimeters = box.Width, HeightMillimeters = box.Height,
-                    // Draw a generic PushPin for the retained attachment action.
-                    // The action remains bound to the one path's full annotation boundary.
+                    // A raster page already paints the PDF icon. Native pages draw a generic PushPin.
+                    // Both retain the action on this path's full annotation boundary.
                     AbbreviatedData = "M " + P(.55, .08) + " L " + P(.84, .38) + " L " + P(.69, .51) +
                         " L " + P(.79, .65) + " L " + P(.66, .78) + " L " + P(.52, .65) +
                         " L " + P(.16, .91) + " L " + P(.10, .85) + " L " + P(.36, .49) +
                         " L " + P(.22, .34) + " L " + P(.35, .21) + " L " + P(.48, .32) + " C",
-                    Fill = true, Stroke = true, FillColor = new OfdColor(190, 197, 187), StrokeColor = new OfdColor(110, 118, 107) });
+                    Fill = drawAttachmentPins[index], Stroke = drawAttachmentPins[index],
+                    FillColor = new OfdColor(190, 197, 187), StrokeColor = new OfdColor(110, 118, 107) });
                 page.Annotations.Items.Add(link);
                 string P(double x, double y) =>
                     (x * box.Width).ToString("R", System.Globalization.CultureInfo.InvariantCulture) + " " +
@@ -404,14 +408,18 @@ internal static class PdfImportMetadataMigrator
             DirectObjectFinder.Get<HexToken>(token, source.Structure.TokenScanner)?.Data;
     }
 
-    private static byte[] Decode(StreamToken stream, long limit, CancellationToken token)
+    private static byte[] Decode(StreamToken stream, long decodedLimit, long encodedLimit, CancellationToken token)
     {
         if (stream.StreamDictionary.Data.ContainsKey("DecodeParms") || stream.StreamDictionary.Data.ContainsKey("F") ||
             stream.StreamDictionary.Data.ContainsKey("FFilter") || stream.StreamDictionary.Data.ContainsKey("FDecodeParms"))
             throw new NotSupportedException("PDF embedded-file filter parameters are unsupported.");
         var source = stream.Data.ToArray();
-        if (source.LongLength > limit) throw new InvalidDataException("PDF attachment encoded byte limit exceeded.");
-        if (!stream.StreamDictionary.Data.TryGetValue("Filter", out var filter)) return source;
+        if (source.LongLength > encodedLimit) throw new InvalidDataException("PDF attachment encoded byte limit exceeded.");
+        if (!stream.StreamDictionary.Data.TryGetValue("Filter", out var filter))
+        {
+            if (source.LongLength > decodedLimit) throw new InvalidDataException("PDF attachment decoded byte limit exceeded.");
+            return source;
+        }
         if (filter is not NameToken { Data: "FlateDecode" } && filter is not NameToken { Data: "Fl" })
             throw new NotSupportedException("PDF embedded-file filter is unsupported.");
         if (source.Length < 6 || (source[0] & 15) != 8 || ((source[0] << 8) + source[1]) % 31 != 0 || (source[1] & 32) != 0)
@@ -425,7 +433,7 @@ internal static class PdfImportMetadataMigrator
             token.ThrowIfCancellationRequested();
             var length = inflater.Read(buffer, 0, buffer.Length);
             if (length == 0) break;
-            if (length > limit - output.Length) throw new InvalidDataException("PDF attachment decoded byte limit exceeded.");
+            if (length > decodedLimit - output.Length) throw new InvalidDataException("PDF attachment decoded byte limit exceeded.");
             output.Write(buffer, 0, length);
         }
         var bytes = output.ToArray();

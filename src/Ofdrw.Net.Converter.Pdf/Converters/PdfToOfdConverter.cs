@@ -112,7 +112,9 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             }
         };
         long imageBytes = 0;
-        var renderedPages = new Dictionary<int, byte[]>();
+        var renderedPages = new Dictionary<int, (byte[] Image, bool HasAnnotationAppearances)>();
+        var drawAttachmentPins = new List<bool>();
+        var rasterizedAnnotationAppearances = new List<bool>();
         foreach (var index in selected)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -123,23 +125,24 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                 Index = package.Pages.Count, WidthMillimeters = PointsToMillimeters(pdfPage.Width),
                 HeightMillimeters = PointsToMillimeters(pdfPage.Height)
             };
-            if (!renderedPages.TryGetValue(index, out var image))
+            if (!renderedPages.TryGetValue(index, out var rendered))
             {
-                image = await TryRasterizePageAsync(pdfPath, docnet, external, index, diagnostics, cancellationToken).ConfigureAwait(false);
-                if (image is not null)
+                var rasterized = await TryRasterizePageAsync(pdfPath, docnet, external, index, diagnostics, cancellationToken).ConfigureAwait(false);
+                rendered = (rasterized.Image!, rasterized.HasAnnotationAppearances);
+                if (rasterized.Image is not null)
                 {
-                    if (image.Length > _options.MaxTotalImageBytes - imageBytes)
+                    if (rasterized.Image.Length > _options.MaxTotalImageBytes - imageBytes)
                         throw new InvalidDataException("PDF exceeds the configured accumulated image byte limit.");
-                    imageBytes += image.Length;
-                    renderedPages.Add(index, image);
+                    imageBytes += rasterized.Image.Length;
+                    renderedPages.Add(index, rendered);
                 }
             }
-            if (image is not null)
+            if (rendered.Image is not null)
             {
                 page.Elements.Add(new OfdImageElement
                 {
                     WidthMillimeters = page.WidthMillimeters, HeightMillimeters = page.HeightMillimeters,
-                    Data = image, MediaType = "image/png", FileName = $"pdf_page_{index + 1}.png"
+                    Data = rendered.Image, MediaType = "image/png", FileName = $"pdf_page_{index + 1}.png"
                 });
                 AddSemanticTextLayer(page, pdfPage);
             }
@@ -152,10 +155,13 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                 AddTextFallbackPage(page, pdfPage, page.WidthMillimeters, page.HeightMillimeters, index);
                 AddDiagnostic(diagnostics, $"Page {index + 1}: rendered as a text/placeholder fallback.");
             }
+            rasterizedAnnotationAppearances.Add(rendered.Image is not null && rendered.HasAnnotationAppearances);
+            drawAttachmentPins.Add(rendered.Image is null || !rendered.HasAnnotationAppearances);
             package.Pages.Add(page);
         }
-        PdfImportMetadataMigrator.Apply(document, package, selected, _options, cancellationToken);
-        return new PdfToOfdPackageResult(package, new PdfConversionResult(document.NumberOfPages, selected, diagnostics));
+        PdfImportMetadataMigrator.Apply(document, package, selected, _options, cancellationToken, drawAttachmentPins);
+        return new PdfToOfdPackageResult(package, new PdfConversionResult(document.NumberOfPages, selected, diagnostics,
+            rasterizedAnnotationAppearances));
     }
 
     private void ValidatePageDimensions(double widthPoints, double heightPoints)
@@ -237,7 +243,7 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
         return string.IsNullOrWhiteSpace(normalized) ? "SimSun" : normalized;
     }
 
-    private async Task<byte[]?> TryRasterizePageAsync(
+    private async Task<(byte[]? Image, bool HasAnnotationAppearances)> TryRasterizePageAsync(
         string pdfPath, DocnetPdfRasterizer docnet, PdfToPpmRasterizer external,
         int pageIndex, IList<string> diagnostics, CancellationToken cancellationToken)
     {
@@ -246,7 +252,7 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             try
             {
                 var image = await external.TryRasterizePageAsync(pdfPath, pageIndex, cancellationToken,
-                    _options.Dpi, _options.ExternalRasterizationTimeout).ConfigureAwait(false);
+                    _options.Dpi, _options.ExternalRasterizationTimeout, _options.CopyAttachments || _options.RasterizeCropBox).ConfigureAwait(false);
                 if (image is null) AddDiagnostic(diagnostics, $"Page {pageIndex + 1}: pdftoppm failed: {external.LastFailure}");
                 return image;
             }
@@ -262,9 +268,16 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             if (image is null) AddDiagnostic(diagnostics, $"Page {pageIndex + 1}: PDFium unavailable: {docnet.LastFailure}");
             return image;
         }
-        return _options.PreferExternalPdfToPpm
-            ? await ExternalAsync().ConfigureAwait(false) ?? await DocnetAsync().ConfigureAwait(false)
-            : await DocnetAsync().ConfigureAwait(false) ?? await ExternalAsync().ConfigureAwait(false);
+        if (_options.PreferExternalPdfToPpm)
+        {
+            var externalImage = await ExternalAsync().ConfigureAwait(false);
+            if (externalImage is not null) return (externalImage, true);
+            return (await DocnetAsync().ConfigureAwait(false), false);
+        }
+        var docnetImage = await DocnetAsync().ConfigureAwait(false);
+        if (docnetImage is not null) return (docnetImage, false);
+        var fallbackImage = await ExternalAsync().ConfigureAwait(false);
+        return (fallbackImage, fallbackImage is not null);
     }
 
     private static void AddDiagnostic(IList<string> diagnostics, string message)

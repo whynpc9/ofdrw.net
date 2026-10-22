@@ -283,6 +283,65 @@ public sealed class OfdReader : IOfdReader
                 }
             }
         }
+        XElement? attachmentDeclaration = null;
+        foreach (var declaration in documentXml.Root!.Elements(docNs + "Attachments"))
+        {
+            cancellationToken.ThrowIfCancellationRequested(); material.Structure.Reference();
+            if (attachmentDeclaration is not null) throw new InvalidDataException("Duplicate attachment descriptor references.");
+            attachmentDeclaration = declaration;
+        }
+        var attachmentsLoc = ReadValue(attachmentDeclaration, material, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(attachmentsLoc))
+        {
+            var attachmentsPath = material.ResolvePath(docRoot, attachmentsLoc!, cancellationToken);
+            if (archive.Contains(attachmentsPath))
+            {
+                var attachmentsXml = material.ReadXml(attachmentsPath, archive.GetBytes(attachmentsPath), cancellationToken);
+                foreach (var node in attachmentsXml.Root?.Elements()
+                    .Where(x => x.Name == attachmentsXml.Root.Name.Namespace + "Attachment") ?? Enumerable.Empty<XElement>())
+                {
+                    var fileLoc = ReadValue(node.Element(node.Name.Namespace + "FileLoc"), material, cancellationToken)
+                        ?? node.Attribute("FileLoc")?.Value
+                        ?? string.Empty;
+                    var contentPath = material.ResolvePath(attachmentsPath, fileLoc, cancellationToken);
+                    var external = bool.TryParse(node.Attribute("External")?.Value, out var legacyExternal) && legacyExternal;
+                    external = external || !archive.Contains(contentPath);
+
+                    material.ReserveReadModel(512, cancellationToken);
+                    var attachment = new OfdAttachment
+                    {
+                        Id = node.Attribute("ID")?.Value,
+                        Name = node.Attribute("Name")?.Value ?? "Attachment",
+                        MediaType = node.Attribute("MediaType")?.Value
+                            ?? node.Attribute("Format")?.Value
+                            ?? "application/octet-stream",
+                        Format = node.Attribute("Format")?.Value,
+                        CreationDate = ParseDateTime(node.Attribute("CreationDate")?.Value),
+                        ModificationDate = ParseDateTime(node.Attribute("ModDate")?.Value),
+                        SizeKilobytes = ParseNullableDouble(node.Attribute("Size")?.Value),
+                        Visible = ParseNullableBoolean(node.Attribute("Visible")?.Value),
+                        Usage = node.Attribute("Usage")?.Value,
+                        IsExternal = external,
+                        ExternalPath = external ? fileLoc : null
+                    };
+
+                    if (!external && archive.TryGetBytes(contentPath, out var bytes))
+                    {
+                        attachment.Data = bytes;
+                    }
+
+                    package.Attachments.Add(attachment);
+                }
+                package.AttachmentSource = OfdAttachmentSource.Capture(package, attachmentDeclaration!, attachmentsPath, attachmentsXml.Root!, material, cancellationToken);
+            }
+        }
+
+        material.ReserveReadModel(256L + package.Attachments.Count * 160L, cancellationToken);
+        var localAttachmentTargets = new HashSet<string>(package.Attachments
+            .Where(item => !string.IsNullOrWhiteSpace(item.Id))
+            .GroupBy(item => item.Id!, StringComparer.Ordinal)
+            .Where(group => group.Count() == 1 && !group.Single().IsExternal)
+            .Select(group => group.Key), StringComparer.Ordinal);
         package.AnnotationIndexSource = annotationIndex.Source; annotationIndex.Source.DocumentOwner = package;
         var annotationDocuments = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
         var annotationBudget = new AnnotationReadBudget(options);
@@ -391,61 +450,9 @@ public sealed class OfdReader : IOfdReader
                 page.Templates.Add(template);
             }
 
-            ReadAnnotationAppearances(archive, annotationIndex, annotationDocuments, annotationBudget, page, annotationFonts, mediaMap, mediaTypeMap, material, cancellationToken, annotationIdCounts);
+            ReadAnnotationAppearances(archive, annotationIndex, annotationDocuments, annotationBudget, page, annotationFonts, mediaMap, mediaTypeMap,
+                material, cancellationToken, annotationIdCounts, localAttachmentTargets);
             package.Pages.Add(page);
-        }
-
-        XElement? attachmentDeclaration = null;
-        foreach (var declaration in documentXml.Root!.Elements(docNs + "Attachments"))
-        {
-            cancellationToken.ThrowIfCancellationRequested(); material.Structure.Reference();
-            if (attachmentDeclaration is not null) throw new InvalidDataException("Duplicate attachment descriptor references.");
-            attachmentDeclaration = declaration;
-        }
-        var attachmentsLoc = ReadValue(attachmentDeclaration, material, cancellationToken);
-        if (!string.IsNullOrWhiteSpace(attachmentsLoc))
-        {
-            var attachmentsPath = material.ResolvePath(docRoot, attachmentsLoc!, cancellationToken);
-            if (archive.Contains(attachmentsPath))
-            {
-                var attachmentsXml = material.ReadXml(attachmentsPath, archive.GetBytes(attachmentsPath), cancellationToken);
-                foreach (var node in attachmentsXml.Root?.Elements()
-                    .Where(x => x.Name == attachmentsXml.Root.Name.Namespace + "Attachment") ?? Enumerable.Empty<XElement>())
-                {
-                    var fileLoc = ReadValue(node.Element(node.Name.Namespace + "FileLoc"), material, cancellationToken)
-                        ?? node.Attribute("FileLoc")?.Value
-                        ?? string.Empty;
-                    var contentPath = material.ResolvePath(attachmentsPath, fileLoc, cancellationToken);
-                    var external = bool.TryParse(node.Attribute("External")?.Value, out var legacyExternal) && legacyExternal;
-                    external = external || !archive.Contains(contentPath);
-
-                    material.ReserveReadModel(512, cancellationToken);
-                    var attachment = new OfdAttachment
-                    {
-                        Id = node.Attribute("ID")?.Value,
-                        Name = node.Attribute("Name")?.Value ?? "Attachment",
-                        MediaType = node.Attribute("MediaType")?.Value
-                            ?? node.Attribute("Format")?.Value
-                            ?? "application/octet-stream",
-                        Format = node.Attribute("Format")?.Value,
-                        CreationDate = ParseDateTime(node.Attribute("CreationDate")?.Value),
-                        ModificationDate = ParseDateTime(node.Attribute("ModDate")?.Value),
-                        SizeKilobytes = ParseNullableDouble(node.Attribute("Size")?.Value),
-                        Visible = ParseNullableBoolean(node.Attribute("Visible")?.Value),
-                        Usage = node.Attribute("Usage")?.Value,
-                        IsExternal = external,
-                        ExternalPath = external ? fileLoc : null
-                    };
-
-                    if (!external && archive.TryGetBytes(contentPath, out var bytes))
-                    {
-                        attachment.Data = bytes;
-                    }
-
-                    package.Attachments.Add(attachment);
-                }
-                package.AttachmentSource = OfdAttachmentSource.Capture(package, attachmentDeclaration!, attachmentsPath, attachmentsXml.Root!, material, cancellationToken);
-            }
         }
 
         var customTagDeclarations = documentXml.Root!.Elements(docNs + "CustomTags").ToArray();
@@ -686,7 +693,8 @@ public sealed class OfdReader : IOfdReader
     private static void ReadAnnotationAppearances(OfdPackageArchive archive, AnnotationIndex index,
         IDictionary<string, XDocument?> documents, AnnotationReadBudget budget, OfdPage page, IReadOnlyDictionary<string, string> fonts,
         IReadOnlyDictionary<string, string> media, IReadOnlyDictionary<string, string> mediaTypes,
-        OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<long, int> idCounts)
+        OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<long, int> idCounts,
+        HashSet<string> localAttachmentTargets)
     {
         material.ReserveReadModel(512, cancellationToken);
         var typed = new OfdAnnotationCollection();
@@ -742,7 +750,7 @@ public sealed class OfdReader : IOfdReader
                 annotationSlot++;
                 var projectionStart = page.AnnotationAppearances.Count;
                 var admitted = shared || annotation.Name != annotations.Root.Name.Namespace + "Annot" ? null : ReadTypedAnnotation(archive, annotation, fonts, media, mediaTypes,
-                    annotationPath, idCounts, material, cancellationToken);
+                    annotationPath, idCounts, localAttachmentTargets, material, cancellationToken);
                 try
                 {
                 if (annotation.Name != annotations.Root.Name.Namespace + "Annot")
@@ -850,7 +858,7 @@ public sealed class OfdReader : IOfdReader
     private static OfdAnnotation? ReadTypedAnnotation(OfdPackageArchive archive, XElement annotation,
         IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
         IReadOnlyDictionary<string, string> mediaTypes, string path, IReadOnlyDictionary<long, int> idCounts,
-        OfdModelMaterialization material, CancellationToken token)
+        HashSet<string> localAttachmentTargets, OfdModelMaterialization material, CancellationToken token)
     {
         var ns = annotation.Name.Namespace;
         if (annotation.Name != ns + "Annot" || (ns.NamespaceName != OfdConstants.Namespace && ns.NamespaceName != OfdConstants.StandardNamespace) ||
@@ -873,7 +881,8 @@ public sealed class OfdReader : IOfdReader
         if (attachmentActions.Length > 1 || attachmentActions.Any(action => string.IsNullOrWhiteSpace(action.Attribute("AttachID")?.Value) ||
             action.Parent?.Name != ns + "Action" || action.Parent.Attribute("Event")?.Value != "CLICK")) return null;
         if (attachmentActions.Length == 1 && (type != OfdAnnotationType.Link || appearance.Elements().Count() != 1 ||
-            appearance.Elements().Single().Name != ns + "PathObject")) return null;
+            appearance.Elements().Single().Name != ns + "PathObject" ||
+            !localAttachmentTargets.Contains(attachmentActions[0].Attribute("AttachID")!.Value))) return null;
         if (!TryParseBox(appearance.Attribute("Boundary")?.Value, material, token, out _) ||
             appearance.Nodes().Any(n => n is XText t && !string.IsNullOrWhiteSpace(t.Value)) ||
             appearance.Elements().Any(n => n.Name.Namespace != ns || n.Name.LocalName is not ("TextObject" or "ImageObject" or "PathObject") ||

@@ -13,7 +13,7 @@ internal sealed class PdfToPpmRasterizer
     internal string? LastFailure { get; private set; }
     public async Task<byte[]?> TryRasterizePageAsync(
         string pdfPath, int zeroBasedPageIndex, CancellationToken cancellationToken,
-        int dpi = 144, TimeSpan? timeout = null)
+        int dpi = 144, TimeSpan? timeout = null, bool cropBox = false)
     {
         var pageNumber = zeroBasedPageIndex + 1;
         var tempDir = Path.Combine(Path.GetTempPath(), "ofdrw-net-raster", Guid.NewGuid().ToString("N"));
@@ -22,7 +22,8 @@ internal sealed class PdfToPpmRasterizer
         try
         {
             var outputPrefix = Path.Combine(tempDir, $"page_{pageNumber}");
-            var args = $"-f {pageNumber} -l {pageNumber} -r {Math.Max(72, Math.Min(dpi, 300))} -png -singlefile \"{pdfPath}\" \"{outputPrefix}\"";
+            var args = $"-f {pageNumber} -l {pageNumber} -r {Math.Max(72, Math.Min(dpi, 300))} -png -singlefile " +
+                (cropBox ? "-cropbox " : "") + $"\"{pdfPath}\" \"{outputPrefix}\"";
             ExternalProcessResult result;
             try
             {

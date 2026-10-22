@@ -62,6 +62,9 @@ public sealed class PdfToOfdOptions
     /// <summary>Copy embedded document files and page FileAttachment annotations. Off by default for compatibility.</summary>
     public bool CopyAttachments { get; set; }
 
+    // Vector raster fallback retains PDF annotation pixels but imports metadata only in its final package.
+    internal bool RasterizeCropBox { get; set; }
+
     /// <summary>Maximum number of copied outline nodes.</summary>
     public int MaxBookmarkCount { get; set; } = 10_000;
 
