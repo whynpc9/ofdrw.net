@@ -17,13 +17,14 @@ public sealed class PdfMetadataMigrationTests
     private static byte[] Source(PdfFixture fixture, string destination = "11 0 R /Fit", bool embeddedPageFile = true,
         string? rootAction = null, string firstPageExtra = "", bool embeddedGlobalFile = true, bool mixedAnnotations = false,
         int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null", string? outlineRoot = null,
-        string attachmentName = "same.bin", int? attachmentFlags = 4, string? rootOutlineItem = null)
+        string attachmentName = "same.bin", int? attachmentFlags = 4, string? rootOutlineItem = null,
+        string annotationRect = "20 30 40 50", string[]? extraObjects = null)
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var flags = attachmentFlags is int value ? " /F " + value : string.Empty;
         var page = embeddedPageFile
-            ? "<< /Type /Annot /Subtype /FileAttachment /Rect [20 30 40 50] /Contents (page note) /FS 20 0 R" + flags + " >>"
-            : "<< /Type /Annot /Subtype /FileAttachment /Rect [20 30 40 50] /FS << /F (missing.bin) >>" + flags + " >>";
+            ? "<< /Type /Annot /Subtype /FileAttachment /Rect [" + annotationRect + "] /Contents (page note) /FS 20 0 R" + flags + " >>"
+            : "<< /Type /Annot /Subtype /FileAttachment /Rect [" + annotationRect + "] /FS << /F (missing.bin) >>" + flags + " >>";
         return fixture.Create(new[] { fixture.Text("A中文", 30, 500), fixture.Text("B中文", 30, 500) },
             catalogEntries: "/Outlines 13 0 R /Names << /EmbeddedFiles 16 0 R >>",
             pageEntriesByIndex: new[] { "/Annots [19 0 R" + string.Concat(Enumerable.Range(0, linkCount).Select(index => $" {22 + index} 0 R")) + "] " + firstPageExtra, "" },
@@ -40,7 +41,8 @@ public sealed class PdfMetadataMigrationTests
                 page,
                 "<< /Type /Filespec /F (" + attachmentName + ") /EF << /F 21 0 R >> >>",
                 "<< /Type /EmbeddedFile /Length 4 >>\nstream\nPAGE\nendstream"
-            }.Concat(Enumerable.Repeat("<< /Type /Annot /Subtype /Link /Rect [60 60 80 80] /A << /S /URI /URI (https://example.invalid) >> >>", linkCount)).ToArray());
+            }.Concat(Enumerable.Repeat("<< /Type /Annot /Subtype /Link /Rect [60 60 80 80] /A << /S /URI /URI (https://example.invalid) >> >>", linkCount))
+            .Concat(extraObjects ?? Array.Empty<string>()).ToArray());
     }
 
     [Theory]
@@ -128,6 +130,53 @@ public sealed class PdfMetadataMigrationTests
         Assert.Equal(OfdDestinationType.XYZ, target.Type);
         Assert.Equal(positioned, target.Left.HasValue && target.Top.HasValue);
         Assert.Null(target.Zoom);
+    }
+
+    [Theory]
+    [InlineData(false, "11 0 R /XYZ 30 500 null", "11 0 R /XYZ 22 0 R 23 0 R null")]
+    [InlineData(true, "11 0 R /XYZ 30 500 null", "11 0 R /XYZ 22 0 R 23 0 R null")]
+    [InlineData(false, "11 0 R /FitH 500", "11 0 R /FitH 23 0 R")]
+    [InlineData(true, "11 0 R /FitH 500", "11 0 R /FitH 23 0 R")]
+    [InlineData(false, "11 0 R /FitV 30", "11 0 R /FitV 22 0 R")]
+    [InlineData(true, "11 0 R /FitV 30", "11 0 R /FitV 22 0 R")]
+    public async Task IndirectBookmarkCoordinatesMatchDirectValues(bool vector, string direct, string indirect)
+    {
+        using var fixture = new PdfFixture(Font());
+        async Task<OfdDestination> Convert(string destination)
+        {
+            using var input = new MemoryStream(Source(fixture, destination: destination, extraObjects: new[] { "30", "500" }));
+            using var output = new MemoryStream();
+            var options = new PdfToOfdOptions { CopyBookmarks = true, PreferExternalPdfToPpm = true };
+            if (vector) await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options, UnsupportedPagePolicy = PdfVectorUnsupportedPagePolicy.RasterizePage })
+                .ConvertAsync(input, output);
+            else await new PdfToOfdConverter(options).ConvertAsync(input, output);
+            output.Position = 0;
+            var package = await new OfdReader().ReadAsync(output);
+            return Assert.IsType<OfdGoToAction>(Assert.Single(Assert.Single(package.Outlines!.Items).Actions!.Items)).Destination!;
+        }
+        var expected = await Convert(direct);
+        var actual = await Convert(indirect);
+        Assert.Equal(expected.Type, actual.Type);
+        Assert.Equal(expected.Left, actual.Left);
+        Assert.Equal(expected.Top, actual.Top);
+        Assert.True(expected.Left.HasValue || expected.Top.HasValue);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NonnumericIndirectBookmarkCoordinateFailsBeforeOutput(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, destination: "11 0 R /FitV 22 0 R", extraObjects: new[] { "(bad)" }));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, PreferExternalPdfToPpm = true };
+        if (vector) await Assert.ThrowsAsync<InvalidDataException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+            { Compatibility = options, UnsupportedPagePolicy = PdfVectorUnsupportedPagePolicy.RasterizePage })
+            .ConvertAsync(input, output));
+        else await Assert.ThrowsAsync<InvalidDataException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
+        Assert.Equal(0, output.Length);
     }
 
     [Fact]
@@ -378,6 +427,47 @@ public sealed class PdfMetadataMigrationTests
             await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
                 { Compatibility = options }).ConvertAsync(input, output));
         else await Assert.ThrowsAsync<NotSupportedException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReversedFileAttachmentCornersRetainPinGeometry(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        async Task<OfdAnnotation> Convert(string rect)
+        {
+            using var input = new MemoryStream(Source(fixture, annotationRect: rect,
+                firstPageExtra: "/CropBox [10 20 410 570] /Rotate 90"));
+            using var output = new MemoryStream();
+            var options = new PdfToOfdOptions { CopyAttachments = true, PreferExternalPdfToPpm = true };
+            if (vector) await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions { Compatibility = options }).ConvertAsync(input, output);
+            else await new PdfToOfdConverter(options).ConvertAsync(input, output);
+            output.Position = 0;
+            var package = await new OfdReader().ReadAsync(output);
+            return Assert.Single(package.Pages[0].Annotations!.Items);
+        }
+        var expected = (await Convert("20 30 40 50")).Appearance;
+        var actual = (await Convert("40 50 20 30")).Appearance;
+        Assert.Equal(expected.XMillimeters, actual.XMillimeters);
+        Assert.Equal(expected.YMillimeters, actual.YMillimeters);
+        Assert.Equal(expected.WidthMillimeters, actual.WidthMillimeters);
+        Assert.Equal(expected.HeightMillimeters, actual.HeightMillimeters);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ZeroAreaFileAttachmentRectangleFailsBeforeOutput(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, annotationRect: "20 30 20 50"));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector) await Assert.ThrowsAsync<InvalidDataException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+            { Compatibility = options }).ConvertAsync(input, output));
+        else await Assert.ThrowsAsync<InvalidDataException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
         Assert.Equal(0, output.Length);
     }
 

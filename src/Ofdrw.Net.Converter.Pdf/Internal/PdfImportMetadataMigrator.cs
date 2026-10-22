@@ -8,6 +8,7 @@ using Ofdrw.Net.Core.Models;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Annotations;
 using UglyToad.PdfPig.Content;
+using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Outline;
 using UglyToad.PdfPig.Outline.Destinations;
 using UglyToad.PdfPig.Parser.Parts;
@@ -118,7 +119,7 @@ internal static class PdfImportMetadataMigrator
                     throw new InvalidDataException("PDF outline targets an invalid or excluded page.");
                 outline.Actions = new OfdActionCollection();
                 outline.Actions.Items.Add(new OfdGoToAction { Event = "CLICK",
-                    Destination = Destination(source.GetPage(local.PageNumber), retained[0], local.Destination, rawDestinations[count - 1].Zoom) });
+                    Destination = Destination(source.GetPage(local.PageNumber), retained[0], local.Destination, rawDestinations[count - 1]) });
             }
             else if (node is ContainerBookmarkNode)
             {
@@ -134,9 +135,9 @@ internal static class PdfImportMetadataMigrator
         if (collection.Items.Count != 0) output.Outlines = collection;
     }
 
-    private static List<(bool HasDestination, double? Zoom)> ValidateRawOutlines(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
+    private static List<(bool HasDestination, double? Zoom, double? Left, double? Top)> ValidateRawOutlines(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
     {
-        var destinations = new List<(bool HasDestination, double? Zoom)>();
+        var destinations = new List<(bool HasDestination, double? Zoom, double? Left, double? Top)>();
         var catalog = source.Structure.Catalog.CatalogDictionary;
         if (!catalog.Data.TryGetValue("Outlines", out var outlineToken)) return destinations;
         var root = Resolve<DictionaryToken>(outlineToken, source)
@@ -180,7 +181,7 @@ internal static class PdfImportMetadataMigrator
             var (link, expectedLast, depth) = pending.Pop();
             if (depth > options.MaxBookmarkDepth || ++count > options.MaxBookmarkCount)
                 throw new InvalidDataException("PDF outline exceeds the configured node or depth limit.");
-            destinations.Add((false, null));
+            destinations.Add((false, null, null, null));
             var item = Resolve<DictionaryToken>(link, source) ?? throw new InvalidDataException("PDF outline node cannot be resolved.");
             if (item.Data.TryGetValue("Next", out var next)) pending.Push((next, expectedLast, depth));
             else if (!SameOutlineLink(link, expectedLast))
@@ -215,19 +216,30 @@ internal static class PdfImportMetadataMigrator
             if (target.Data[1] is not NameToken destinationType || destinationType.Data is not
                 ("Fit" or "XYZ" or "FitH" or "FitV" or "FitR"))
                 throw new NotSupportedException("PDF outline destination type is unsupported.");
-            destinations[count - 1] = (true, null);
+            destinations[count - 1] = (true, null, null, null);
             if (destinationType.Data == "XYZ")
             {
                 // PdfPig's parsed destination coordinates omit zoom; a missing trailing operand retains the reader's value.
                 if (target.Data.Count > 5) throw new InvalidDataException("PDF XYZ destination has invalid coordinates.");
-                if (target.Data.Count == 5 && target.Data[4] is not NullToken)
+                var left = CoordinateOperand(target, 2, source);
+                var top = CoordinateOperand(target, 3, source);
+                if (left.HasValue != top.HasValue)
+                    throw new NotSupportedException("PDF partial XYZ destination cannot be represented without changing its position.");
+                double? zoom = null;
+                if (target.Data.Count == 5)
                 {
-                    var zoom = Resolve<NumericToken>(target.Data[4], source)?.Double
-                        ?? throw new InvalidDataException("PDF XYZ destination zoom is not numeric.");
-                    if (double.IsNaN(zoom) || double.IsInfinity(zoom) || zoom != 0 && (zoom < .1 || zoom > 64))
+                    zoom = CoordinateOperand(target, 4, source);
+                    if (zoom.HasValue && (zoom.Value != 0 && (zoom.Value < .1 || zoom.Value > 64)))
                         throw new NotSupportedException("PDF XYZ destination zoom cannot be represented in OFD.");
-                    destinations[count - 1] = (true, zoom);
                 }
+                destinations[count - 1] = (true, zoom, left, top);
+            }
+            else if (destinationType.Data is "FitH" or "FitV")
+            {
+                if (target.Data.Count > 3) throw new InvalidDataException("PDF fit destination has invalid coordinates.");
+                var coordinate = CoordinateOperand(target, 2, source);
+                destinations[count - 1] = destinationType.Data == "FitH"
+                    ? (true, null, null, coordinate) : (true, null, coordinate, null);
             }
         }
         return destinations;
@@ -238,7 +250,27 @@ internal static class PdfImportMetadataMigrator
             ? leftRef.Data.Equals(rightRef.Data)
             : ReferenceEquals(left, right);
 
-    private static OfdDestination Destination(Page source, OfdPage page, ExplicitDestination pdf, double? rawZoom)
+    private static double? CoordinateOperand(ArrayToken destination, int index, PdfDocument source)
+    {
+        if (index >= destination.Data.Count || destination.Data[index] is NullToken)
+            return null;
+        double value;
+        try
+        {
+            value = Resolve<NumericToken>(destination.Data[index], source)?.Double
+                ?? throw new InvalidDataException("PDF outline destination coordinate is not numeric.");
+        }
+        catch (PdfDocumentFormatException error)
+        {
+            throw new InvalidDataException("PDF outline destination coordinate is not numeric.", error);
+        }
+        if (double.IsNaN(value) || double.IsInfinity(value))
+            throw new InvalidDataException("PDF outline destination coordinate is not finite.");
+        return value;
+    }
+
+    private static OfdDestination Destination(Page source, OfdPage page, ExplicitDestination pdf,
+        (bool HasDestination, double? Zoom, double? Left, double? Top) raw)
     {
         var result = new OfdDestination { Page = page, Type = OfdDestinationType.Fit };
         var coordinates = pdf.Coordinates;
@@ -248,17 +280,17 @@ internal static class PdfImportMetadataMigrator
                 return result;
             case ExplicitDestinationType.XyzCoordinates:
                 result.Type = OfdDestinationType.XYZ;
-                result.Zoom = rawZoom;
-                if (coordinates.Left is double x && coordinates.Top is double y)
+                result.Zoom = raw.Zoom;
+                if (raw.Left is double x && raw.Top is double y)
                 {
                     var point = Point(source, x, y); result.Left = point.X; result.Top = point.Y;
                 }
-                else if (coordinates.Left.HasValue || coordinates.Top.HasValue)
+                else if (raw.Left.HasValue || raw.Top.HasValue)
                     throw new NotSupportedException("PDF partial XYZ destination cannot be represented without changing its position.");
                 return result;
             case ExplicitDestinationType.FitHorizontally:
                 result.Type = source.Rotation.Value is 90 or 270 ? OfdDestinationType.FitV : OfdDestinationType.FitH;
-                if (coordinates.Top is double top)
+                if (raw.Top is double top)
                 {
                     var horizontal = Point(source, source.CropBox.Bounds.Left, top);
                     if (result.Type == OfdDestinationType.FitH) result.Top = horizontal.Y; else result.Left = horizontal.X;
@@ -266,7 +298,7 @@ internal static class PdfImportMetadataMigrator
                 return result;
             case ExplicitDestinationType.FitVertically:
                 result.Type = source.Rotation.Value is 90 or 270 ? OfdDestinationType.FitH : OfdDestinationType.FitV;
-                if (coordinates.Left is double left)
+                if (raw.Left is double left)
                 {
                     var vertical = Point(source, left, source.CropBox.Bounds.Bottom);
                     if (result.Type == OfdDestinationType.FitH) result.Top = vertical.Y; else result.Left = vertical.X;
@@ -303,7 +335,7 @@ internal static class PdfImportMetadataMigrator
 
     private static (double X, double Y, double Width, double Height) Rectangle(Page page, double left, double bottom, double right, double top)
     {
-        if (!(right > left) || !(top > bottom)) throw new InvalidDataException("PDF annotation rectangle is empty or reversed.");
+        if (right == left || top == bottom) throw new InvalidDataException("PDF annotation rectangle is empty.");
         var corners = new[] { Point(page, left, bottom), Point(page, left, top), Point(page, right, bottom), Point(page, right, top) };
         var minX = corners.Min(p => p.X); var maxX = corners.Max(p => p.X);
         var minY = corners.Min(p => p.Y); var maxY = corners.Max(p => p.Y);
