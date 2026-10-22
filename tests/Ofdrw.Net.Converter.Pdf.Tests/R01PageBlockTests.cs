@@ -2359,6 +2359,7 @@ public sealed class R01PageBlockTests
         Assert.Equal("Content", raw.LocalName);
         Assert.Null(raw.PageBlockChildren);
         Assert.Contains("urn:vendor", raw.Xml);
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, new MemoryStream()));
         foreach (var convert in new Func<Stream, Stream, Task>[]
         {
             (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
@@ -2370,6 +2371,47 @@ public sealed class R01PageBlockTests
             await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
             Assert.Equal(0, sink.Length);
         }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task ForeignLayerIsOpaqueAndWriterRejectsUnmodeledStructure(int children)
+    {
+        var seed = await Source("<PathObject ID='501' Boundary='10 10 20 20' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>");
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    var layer = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "Layer");
+                    var opaque = new XElement(XNamespace.Get("urn:vendor") + "Layer",
+                        layer.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration),
+                        Enumerable.Range(0, children).Select(index =>
+                            new XElement(XNamespace.Get("urn:vendor") + "Node", new XAttribute("ID", 700 + index))));
+                    layer.ReplaceWith(opaque);
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        var ofd = rewritten.ToArray();
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.Equal("Layer", raw.LocalName);
+        Assert.Equal(children, XElement.Parse(raw.Xml).Elements().Count());
+        Assert.Contains("urn:vendor", raw.Xml);
+        using var written = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, written));
+        Assert.Equal(0, written.Length);
     }
 
     [Theory]
