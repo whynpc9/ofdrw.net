@@ -430,6 +430,60 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    public async Task PaintDefinitionsRequireOneContainerPerKind(bool drawParam, bool second, bool duplicateContainer)
+    {
+        var container = drawParam ? "DrawParams" : "ColorSpaces";
+        var first = drawParam ? "<DrawParam ID='30'><FillColor Value='255 0 0'/></DrawParam>"
+            : "<ColorSpace ID='20' Type='RGB'/>";
+        var next = drawParam ? "<DrawParam ID='31'><FillColor Value='0 0 255'/></DrawParam>"
+            : "<ColorSpace ID='21' Type='RGB'/>";
+        var resources = duplicateContainer
+            ? $"<{container}>{first}</{container}><{container}>{next}</{container}>"
+            : $"<{container}>{first}{next}</{container}>";
+        var reference = drawParam
+            ? $" DrawParam='{(second ? "31" : "30")}'"
+            : $"<FillColor ColorSpace='{(second ? "21" : "20")}' Value='0 0 255'/>";
+        var body = drawParam
+            ? $"<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'{reference}>" +
+              "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>"
+            : "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" + reference +
+              "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var path = Assert.IsType<OfdPathElement>(Assert.Single(block.PageBlockChildren!));
+        if (duplicateContainer) Assert.Contains(drawParam ? "DrawParam" : "ColorSpace", path.RenderPaintError);
+        else Assert.Null(path.RenderPaintError);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            if (duplicateContainer)
+            {
+                await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+                Assert.Equal(0, sink.Length);
+            }
+            else
+            {
+                await convert(new MemoryStream(ofd), sink);
+                Assert.True(sink.Length > 0);
+            }
+        }
+    }
+
+    [Theory]
     [InlineData("TextObject", "FillColor")]
     [InlineData("TextObject", "StrokeColor")]
     [InlineData("PathObject", "FillColor")]
@@ -1509,6 +1563,48 @@ public sealed class R01PageBlockTests
             using var sink = new MemoryStream();
             await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
             Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PageBlockCompositeImageChecksMediaDeclaration(bool ambiguous)
+    {
+        var media = $"<MultiMedias{(ambiguous ? " Vendor='opaque'" : "")}><MultiMedia ID='20' Type='Image' Format='PNG'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
+        const string composite = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<ImageObject ID='552' Boundary='0 0 10 10' ResourceID='20'/>" +
+            "<TextObject ID='553' Boundary='12 0 35 10' Font='10' Size='4'><TextCode X='0' Y='4'>nested media</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='554' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: media + composite, font: true, image: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var placement = Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!));
+        var image = Assert.IsType<OfdImageElement>(placement.Resource.Elements[0]);
+        Assert.NotEmpty(image.Data);
+        Assert.Equal(ambiguous, image.SourceMediaAmbiguous);
+        Assert.Contains("nested media", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            if (ambiguous)
+            {
+                var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+                Assert.Contains("media", error.Message, StringComparison.OrdinalIgnoreCase);
+                Assert.Equal(0, sink.Length);
+            }
+            else
+            {
+                await convert(new MemoryStream(ofd), sink);
+                Assert.True(sink.Length > 0);
+            }
         }
     }
 

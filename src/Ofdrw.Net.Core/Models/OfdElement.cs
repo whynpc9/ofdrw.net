@@ -117,6 +117,8 @@ public sealed class OfdImageElement : OfdElement
 
     public byte[] Data { get; set; } = [];
 
+    internal bool SourceMediaAmbiguous { get; set; }
+
     /// <summary>Maps the image's unit square into object coordinates. Null uses the boundary width/height.</summary>
     public double[]? Transform { get; set; }
 

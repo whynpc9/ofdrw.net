@@ -39,6 +39,8 @@ internal sealed class OfdPaintResources
         var ns = xml.Root?.Name.Namespace;
         if (ns is null || ns != XNamespace.None && ns != OfdConstants.Namespace && ns != OfdConstants.StandardNamespace ||
             xml.Root!.Name != ns + "Res") return;
+        var colorContainerCount = xml.Root.Elements(ns + "ColorSpaces").Count();
+        var drawContainerCount = xml.Root.Elements(ns + "DrawParams").Count();
         foreach (var container in xml.Root.Elements())
         {
             if (container.Name.Namespace != ns) continue;
@@ -50,7 +52,8 @@ internal sealed class OfdPaintResources
             };
             if (table is null) continue;
             var definitionName = ns + (ReferenceEquals(table, spaces) ? "ColorSpace" : "DrawParam");
-            var validContainer = container.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
+            var validContainer = (ReferenceEquals(table, spaces) ? colorContainerCount : drawContainerCount) == 1 &&
+                container.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
                 !HasUnsupportedNodeContent(container) && container.Elements().All(node => node.Name == definitionName);
             foreach (var node in container.Elements())
             {

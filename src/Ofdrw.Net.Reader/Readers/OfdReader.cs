@@ -241,7 +241,8 @@ public sealed class OfdReader : IOfdReader
             documentPaint.Read(archive, documentResPath, material, cancellationToken);
         }
 
-        var compositeMap = ReadCompositeResources(archive, package, docRoot, docNs, fontMap, documentMediaMap, documentMediaTypeMap, documentPaint, material, cancellationToken);
+        var compositeMap = ReadCompositeResources(archive, package, docRoot, docNs, fontMap, documentMediaMap,
+            documentMediaTypeMap, documentAmbiguousMedia, documentPaint, material, cancellationToken);
         material.ReserveReadModel(256L + fontMap.Count * 160L, cancellationToken);
         var documentFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
         material.ReserveReadModel(256L + (commonData?.Elements().Count() ?? 0) * 160L, cancellationToken);
@@ -1097,7 +1098,8 @@ public sealed class OfdReader : IOfdReader
 
     private static Dictionary<string, OfdCompositeResource> ReadCompositeResources(OfdPackageArchive archive, OfdDocumentPackage package,
         string documentPath, XNamespace ns, IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
-        IReadOnlyDictionary<string, string> mediaTypes, OfdPaintResources paint, OfdModelMaterialization material, CancellationToken token)
+        IReadOnlyDictionary<string, string> mediaTypes, ISet<string> ambiguousMedia,
+        OfdPaintResources paint, OfdModelMaterialization material, CancellationToken token)
     {
         material.ReserveReadModel(512, token);
         var map = new Dictionary<string, OfdCompositeResource>(StringComparer.Ordinal);
@@ -1130,7 +1132,8 @@ public sealed class OfdReader : IOfdReader
         foreach (var definition in definitions)
         {
             material.ReserveReadModel(2048L + definition.Node.Elements().Count() * 128L, token);
-            foreach (var element in ParseGraphicNodes(archive, definition.Node.Elements(), null, "Body", fonts, media, mediaTypes, definition.Path, material, token, map, definition.Node.Name.Namespace, paint))
+            foreach (var element in ParseGraphicNodes(archive, definition.Node.Elements(), null, "Body", fonts, media, mediaTypes,
+                definition.Path, material, token, map, definition.Node.Name.Namespace, paint, ambiguousMedia: ambiguousMedia))
             {
                 if (element is OfdTextElement unresolvedText &&
                     !string.IsNullOrWhiteSpace(unresolvedText.FontResourceId) &&
@@ -1324,6 +1327,7 @@ public sealed class OfdReader : IOfdReader
                         Alpha = (int)Math.Max(0, Math.Min(255, ParseDouble(node.Attribute("Alpha")?.Value, 255))),
                         ClipsXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken),
                         MediaType = mediaKey is not null && mediaTypeMap.TryGetValue(mediaKey, out var mediaType) ? mediaType : "image/png",
+                        SourceMediaAmbiguous = mediaKey is not null && ambiguousMedia?.Contains(mediaKey) == true,
                         SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken)
                     };
 
