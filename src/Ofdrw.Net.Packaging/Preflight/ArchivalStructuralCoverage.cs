@@ -21,12 +21,13 @@ internal sealed class ArchivalStructuralCoverage
     private readonly Observation[] observations = Enumerable.Range(3, 9).Select(i => new Observation(i)).ToArray();
     private readonly Dictionary<string, XElement?> xml = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, XElement> bookmarks = new(StringComparer.Ordinal);
-    private readonly HashSet<string> pageIds = new(StringComparer.Ordinal);
+    private readonly HashSet<long> pageIds = new();
     private long xmlBytes;
     private int xmlNodes;
     private int references;
     private bool targetInventoryUnknown;
     private string documentEntry = "<document>";
+    private XNamespace documentNamespace = XNamespace.None;
 
     internal ArchivalStructuralCoverage(OfdPackageArchive archive, XElement root, ArchivalPreflightOptions options,
         CancellationToken token)
@@ -42,6 +43,8 @@ internal sealed class ArchivalStructuralCoverage
         }
         observations[6].Unknown("SourceActionProvenanceUnavailable", documentEntry);
         var ns = document.Name.Namespace;
+        documentNamespace = ns;
+        if (ns != root.Name.Namespace) UnknownAll("MixedOfdNamespaces", documentEntry);
         if (root.Elements().Any(x => x.Name.LocalName == "DocBody" && x.Name.Namespace != root.Name.Namespace) ||
             root.Elements(root.Name.Namespace + "DocBody").Single().Elements().Any(x =>
                 x.Name.LocalName == "DocRoot" && x.Name.Namespace != root.Name.Namespace))
@@ -81,7 +84,7 @@ internal sealed class ArchivalStructuralCoverage
             {
                 token.ThrowIfCancellationRequested();
                 var id = (string?)page.Attribute("ID");
-                if (string.IsNullOrWhiteSpace(id) || !pageIds.Add(id!) || ForeignAttribute(page, "ID"))
+                if (!Id(id, out var number) || !pageIds.Add(number) || ForeignAttribute(page, "ID"))
                     targetInventoryUnknown = true;
                 ReadPage(page, documentEntry, false);
             }
@@ -117,6 +120,8 @@ internal sealed class ArchivalStructuralCoverage
             if (!template) targetInventoryUnknown = true;
             return;
         }
+        if (page.Name.Namespace != documentNamespace)
+            UnknownPageScope("MixedPageNamespace", entry);
         InspectActions(page, page.Name.Namespace, observations[0], null, entry);
         if (page.Elements(page.Name.Namespace + "Content").Count() != 1 ||
             Foreign(page, "Content", page.Name.Namespace))
@@ -182,13 +187,16 @@ internal sealed class ArchivalStructuralCoverage
             var index = Read(indexEntry, "Annotations");
             if (index is null)
             { UnknownAnnotationScope("AnnotationIndexUnavailable", indexEntry); continue; }
+            if (index.Name.Namespace != documentNamespace)
+                UnknownAnnotationScope("MixedAnnotationNamespace", indexEntry);
             if (index.Elements().Any(x => x.Name != index.Name.Namespace + "Page"))
                 UnknownAnnotationScope("OpaqueAnnotationIndex", indexEntry);
             if (Foreign(index, "Page", index.Name.Namespace))
             { UnknownAnnotationScope("ForeignAnnotationPage", indexEntry); }
             foreach (var page in index.Elements(index.Name.Namespace + "Page"))
             {
-                if (ForeignAttribute(page, "PageID") || !pageIds.Contains((string?)page.Attribute("PageID") ?? ""))
+                if (ForeignAttribute(page, "PageID") ||
+                    !Id((string?)page.Attribute("PageID"), out var pageNumber) || !pageIds.Contains(pageNumber))
                     UnknownAnnotationScope("AnnotationPageOwnerAmbiguous", indexEntry);
                 var files = page.Elements(index.Name.Namespace + "FileLoc").ToArray();
                 if (files.Length != 1 || Foreign(page, "FileLoc", index.Name.Namespace) ||
@@ -197,6 +205,8 @@ internal sealed class ArchivalStructuralCoverage
                 var content = Read(entry, "PageAnnot");
                 if (content is null)
                 { UnknownAnnotationScope("AnnotationPageUnavailable", entry); continue; }
+                if (content.Name.Namespace != documentNamespace)
+                    UnknownAnnotationScope("MixedAnnotationNamespace", entry);
                 if (content.Elements().Any(x => x.Name != content.Name.Namespace + "Annot"))
                     UnknownAnnotationScope("OpaqueAnnotationContent", entry);
                 if (Foreign(content, "Annot", content.Name.Namespace))
@@ -362,9 +372,9 @@ internal sealed class ArchivalStructuralCoverage
         if (dest.HasElements || dest.Attributes().Any(x => !x.IsNamespaceDeclaration &&
                 x.Name.Namespace != XNamespace.None))
         { target.Unknown("PageTargetAmbiguous", entry, location); return; }
-        if (string.IsNullOrWhiteSpace(pageId) || ForeignAttribute(dest, "PageID"))
+        if (!Id(pageId, out var number) || ForeignAttribute(dest, "PageID"))
         { target.Unknown("PageTargetAmbiguous", entry, location); return; }
-        if (!pageIds.Contains(pageId!))
+        if (!pageIds.Contains(number))
         {
             if (targetInventoryUnknown) target.Unknown("PageInventoryAmbiguous", entry, location);
             else target.Fail("PageTargetMissing", entry, location);
@@ -416,6 +426,8 @@ internal sealed class ArchivalStructuralCoverage
     { observations[5].Unknown(reason, entry); observations[8].Unknown(reason, entry); UnknownGraphics(reason, entry); }
     private IReadOnlyList<ArchivalCoverageRuleResult> Finish() => Array.AsReadOnly(observations.Select(x => x.Finish()).ToArray());
     private static bool Supported(string ns) => ns is "http://www.ofdspec.org" or "http://www.ofdspec.org/2016";
+    private static bool Id(string? value, out long number) =>
+        long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out number) && number > 0;
     private static bool Foreign(XElement parent, string local, XNamespace ns) =>
         parent.Elements().Any(x => x.Name.LocalName == local && x.Name.Namespace != ns);
     private static bool ForeignAttribute(XElement parent, string local) =>

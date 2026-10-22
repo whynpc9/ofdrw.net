@@ -72,6 +72,16 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
     }
 
+    [Fact]
+    public async Task MixedPageNamespaceKeepsKnownFailureButPreventsPass()
+    {
+        var entries = Seed();
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8("<Page xmlns='http://www.ofdspec.org/2016'><Actions><Action><URI URI='https://example.invalid'/></Action></Actions><Content><Layer/></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-004").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-007").Outcome);
+    }
+
     [Theory]
     [InlineData("<URI URI='https://example.invalid'/>", PreflightOutcome.Fail)]
     [InlineData("<Goto><Dest Type='Fit' PageID='1'/></Goto>", PreflightOutcome.Pass)]
@@ -86,6 +96,7 @@ public class ArchivalStructuralCoverageTests
 
     [Theory]
     [InlineData("<Goto><Dest Type='Fit' PageID='1'/></Goto>", "", PreflightOutcome.Pass)]
+    [InlineData("<Goto><Dest Type='Fit' PageID='01'/></Goto>", "", PreflightOutcome.Pass)]
     [InlineData("<Goto><Dest Type='Fit' PageID='99'/></Goto>", "", PreflightOutcome.Fail)]
     [InlineData("<Goto><Bookmark Name='missing'/></Goto>", "", PreflightOutcome.Fail)]
     [InlineData("<Goto><Bookmark Name='kept'/></Goto>", "<Bookmarks><Bookmark Name='kept'><Dest Type='Fit' PageID='1'/></Bookmark></Bookmarks>", PreflightOutcome.Pass)]
