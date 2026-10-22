@@ -1066,9 +1066,11 @@ public sealed class OfdReader : IOfdReader
                 files.Length + (fileAttribute is null ? 0 : 1) == 1 &&
                 files.All(child => child.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
                     child.Nodes().All(node => node is XText or XComment));
+            var declaredFormat = media.Attribute("Format")?.Value;
+            var validFormat = declaredFormat is null || declaredFormat.Trim().ToUpperInvariant() is "PNG" or "JPG" or "JPEG" or "BMP" or "TIFF";
             // Preserve legacy top-level/annotation imports with opaque media metadata;
             // PageBlock admission uses the separate ambiguity set to fail closed.
-            if (validDeclaration) ambiguousMedia.Remove(key);
+            if (validDeclaration && validFormat) ambiguousMedia.Remove(key);
             else ambiguousMedia.Add(key);
             var file = fileAttribute?.Value ?? ReadValue(files.FirstOrDefault(), material, cancellationToken);
             if (string.IsNullOrWhiteSpace(file))
@@ -1200,7 +1202,8 @@ public sealed class OfdReader : IOfdReader
 
         foreach (var layer in layers)
         {
-            if (!SupportedGraphicNamespace(layer.Name.Namespace))
+            if (!SupportedGraphicNamespace(layer.Name.Namespace) ||
+                OfdPageXmlContract.HasPageBlock(layer) && !OfdPageXmlContract.IsPlainLayerEnvelope(layer))
             {
                 yield return new OfdRawElement
                 {

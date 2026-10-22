@@ -322,7 +322,9 @@ internal sealed class OfdSourceIdentity
                 content is null ? [] :
                 !Supported(content.Name.Namespace) ? new List<XElement> { content } :
                 content.Elements().Where(node => node.Name.LocalName == "Layer")
-                    .SelectMany(layer => Supported(layer.Name.Namespace) ? layer.Elements() : new[] { layer }).ToList();
+                    .SelectMany(layer => Supported(layer.Name.Namespace) &&
+                        (!OfdPageXmlContract.HasPageBlock(layer) || OfdPageXmlContract.IsPlainLayerEnvelope(layer))
+                        ? layer.Elements() : new[] { layer }).ToList();
             if (originals.Count != elements.Count) throw new InvalidDataException("Source graphic slots cannot be authenticated.");
             for (var i = 0; i < originals.Count; i++)
             {

@@ -11,6 +11,14 @@ namespace Ofdrw.Net.Core.Models;
 // top-level page children and raw drawing objects remain archive-owned XML.
 internal static class OfdPageXmlContract
 {
+    internal static bool IsPlainLayerEnvelope(XElement layer) =>
+        layer.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
+            attribute.Name.Namespace == XNamespace.None && attribute.Name.LocalName is ("ID" or "Type")) &&
+        layer.Nodes().All(node => node is XElement or XComment || node is XText text && string.IsNullOrWhiteSpace(text.Value));
+
+    internal static bool HasPageBlock(XElement layer) =>
+        layer.Elements().Any(child => child.Name.LocalName == "PageBlock");
+
     internal static bool IsRepresentedArea(XElement area, XNamespace ns) =>
         area.Name.Namespace == ns && area.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
         area.Nodes().All(node => node is XElement or XComment || node is XText text && string.IsNullOrWhiteSpace(text.Value)) &&
@@ -61,7 +69,7 @@ internal static class OfdPageXmlContract
                 if (child.Name == ns + "Content")
                 {
                     valid &= Plain(child);
-                    foreach (var layer in child.Elements()) valid &= layer.Name == ns + "Layer" && Plain(layer, "ID", "Type");
+                    foreach (var layer in child.Elements()) valid &= layer.Name == ns + "Layer" && IsPlainLayerEnvelope(layer);
                 }
             }
         }

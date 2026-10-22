@@ -1568,6 +1568,41 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task ExplicitUnknownMediaFormatCannotResolvePageBlockImage(bool composite, bool template)
+    {
+        const string media = "<MultiMedias><MultiMedia ID='20' Type='Image' Format='GIF'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
+        var resources = media + (composite
+            ? "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='20' Height='20'>" +
+              "<ImageObject ID='552' Boundary='0 0 20 20' ResourceID='20'/></CompositeGraphicUnit></CompositeGraphicUnits>"
+            : "");
+        var body = composite ? "<CompositeObject ID='553' Boundary='10 10 20 20' ResourceID='551'/>"
+            : "<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>";
+        var ofd = await Source(body, template: template, resources: resources, image: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        var graphic = Assert.Single(block.PageBlockChildren!);
+        var image = composite ? Assert.IsType<OfdImageElement>(Assert.Single(Assert.IsType<OfdCompositeElement>(graphic).Resource.Elements))
+            : Assert.IsType<OfdImageElement>(graphic);
+        Assert.True(image.SourceMediaAmbiguous);
+        Assert.Contains("Format=\"GIF\"", Encoding.UTF8.GetString(read.PreservedEntries["Doc_0/DocumentRes.xml"]));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("duplicate-file", false)]
     [InlineData("duplicate-file", true)]
     [InlineData("both-selectors", false)]
@@ -2915,6 +2950,65 @@ public sealed class R01PageBlockTests
         using var written = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, written));
         Assert.Equal(0, written.Length);
+    }
+
+    [Theory]
+    [InlineData("extension-attribute", false)]
+    [InlineData("extension-attribute", true)]
+    [InlineData("draw-param", false)]
+    [InlineData("processing-instruction", false)]
+    [InlineData("nonwhitespace-text", false)]
+    public async Task ExtendedSupportedLayerKeepsPageBlockOpaque(string change, bool template)
+    {
+        var seed = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>layer text</TextCode></TextObject>", template: template, font: true);
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var contentPath = template ? "Doc_0/Tpl_0/Content.xml" : "Doc_0/Pages/Page_0/Content.xml";
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName == contentPath)
+                {
+                    var xml = XDocument.Load(new MemoryStream(bytes));
+                    var layer = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "Layer");
+                    switch (change)
+                    {
+                        case "extension-attribute": layer.SetAttributeValue(XName.Get("opacity", "urn:vendor"), "0.5"); break;
+                        case "draw-param": layer.SetAttributeValue("DrawParam", "30"); break;
+                        case "processing-instruction": layer.Add(new XProcessingInstruction("vendor", "opaque")); break;
+                        case "nonwhitespace-text": layer.Add(new XText("opaque")); break;
+                    }
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        var ofd = rewritten.ToArray();
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.IsType<OfdRawElement>(Assert.Single(template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        Assert.Equal("Layer", raw.LocalName);
+        Assert.Contains("layer text", raw.Xml);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+        if (!template)
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, sink));
+            Assert.Equal(0, sink.Length);
+        }
     }
 
     [Theory]
