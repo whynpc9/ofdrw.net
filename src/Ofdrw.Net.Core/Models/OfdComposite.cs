@@ -24,6 +24,7 @@ public sealed class OfdCompositeResource
     public string? SourceXml { get; internal set; }
     internal string? SourceEntryPath { get; set; }
     internal int SourceSlot { get; set; } = -1;
+    internal bool SourceContainerSupported { get; set; } = true;
 }
 
 /// <summary>A placement of a shared vector. Scaling is explicit in Transform.</summary>

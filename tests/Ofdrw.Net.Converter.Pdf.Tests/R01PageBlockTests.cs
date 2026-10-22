@@ -1137,6 +1137,51 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("foreign-attribute")]
+    [InlineData("processing-instruction")]
+    [InlineData("unexpected-sibling")]
+    [InlineData("nonwhitespace-text")]
+    [InlineData("second-container")]
+    public async Task ExtendedCompositeContainerDoesNotRenderFromPageBlock(string change)
+    {
+        XNamespace ns = Ns;
+        var container = new XElement(ns + "CompositeGraphicUnits", new XElement(ns + "CompositeGraphicUnit",
+            new XAttribute("ID", "551"), new XAttribute("Width", "50"), new XAttribute("Height", "20"),
+            new XElement(ns + "TextObject", new XAttribute("ID", "552"), new XAttribute("Boundary", "0 0 50 10"),
+                new XAttribute("Font", "10"), new XAttribute("Size", "4"),
+                new XElement(ns + "TextCode", new XAttribute("X", "0"), new XAttribute("Y", "4"), "中文资源文字"))));
+        switch (change)
+        {
+            case "foreign-attribute": container.SetAttributeValue(XName.Get("opaque", "urn:vendor"), "value"); break;
+            case "processing-instruction": container.Add(new XProcessingInstruction("vendor", "opaque")); break;
+            case "unexpected-sibling": container.Add(new XElement(ns + "Vendor")); break;
+            case "nonwhitespace-text": container.Add(new XText("opaque")); break;
+        }
+        var resources = container.ToString(SaveOptions.DisableFormatting) +
+            (change == "second-container" ? new XElement(ns + "CompositeGraphicUnits").ToString(SaveOptions.DisableFormatting) : "");
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Contains("中文资源文字", new OfdTextExtractor().Extract(read));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var composite = Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.False(composite.Resource.SourceContainerSupported);
+        Assert.Contains("CompositeGraphicUnits", Encoding.UTF8.GetString(read.PreservedEntries["Doc_0/DocumentRes.xml"]));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Contains("container", error.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]

@@ -216,6 +216,7 @@ internal static class OfdSerializedInventory
                 Own("compositeDefinition", resource); S("compositeId", resource.Id);
                 V("vectorWidth", resource.WidthMillimeters); V("vectorHeight", resource.HeightMillimeters);
                 Source(resource.SourceXml); S("compositeEntry", resource.SourceEntryPath); V("compositeSlot", resource.SourceSlot);
+                V("compositeContainerSupported", resource.SourceContainerSupported);
                 Graphics("compositeGraphics", resource.Elements);
             }
         }

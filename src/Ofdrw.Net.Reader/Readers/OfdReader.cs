@@ -1108,7 +1108,10 @@ public sealed class OfdReader : IOfdReader
             if (!archive.Contains(path)) continue;
             var xml = material.ReadXml(path, archive.GetBytes(path), token); var root = xml.Root!;
             if (root.Name != ns + "Res") continue;
-            foreach (var container in root.Elements(ns + "CompositeGraphicUnits"))
+            var containers = root.Elements(ns + "CompositeGraphicUnits").ToArray();
+            var supportedContainers = containers.Length == 1 && PlainContainer(containers[0]) &&
+                containers[0].Elements().All(child => child.Name == ns + "CompositeGraphicUnit");
+            foreach (var container in containers)
             foreach (var pair in container.Elements().Select((node, slot) => (node, slot)))
             {
                 token.ThrowIfCancellationRequested(); material.ReserveReadModel(2048, token);
@@ -1118,7 +1121,7 @@ public sealed class OfdReader : IOfdReader
                 if (key is null || map.ContainsKey(key)) throw new InvalidDataException("Composite resource ID is missing or duplicated.");
                 var resource = new OfdCompositeResource { Id = id, WidthMillimeters = ParseDouble(node.Attribute("Width")?.Value, 0),
                     HeightMillimeters = ParseDouble(node.Attribute("Height")?.Value, 0), SourceEntryPath = path, SourceSlot = pair.slot,
-                    SourceXml = OfdXmlEnvelope.Capture(node, material, token) };
+                    SourceXml = OfdXmlEnvelope.Capture(node, material, token), SourceContainerSupported = supportedContainers };
                 map.Add(key, resource); definitions.Add((resource, node, path));
             }
         }

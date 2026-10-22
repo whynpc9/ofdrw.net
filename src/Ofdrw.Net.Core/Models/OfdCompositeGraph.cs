@@ -92,7 +92,8 @@ internal static class OfdCompositeGraph
         {
             token.ThrowIfCancellationRequested(); material.ChargeCopy(512L + 32L * resource.Elements.Count, token);
             var clone = new OfdCompositeResource { Id = resource.Id, WidthMillimeters = resource.WidthMillimeters,
-                HeightMillimeters = resource.HeightMillimeters, SourceXml = resource.SourceXml, SourceEntryPath = resource.SourceEntryPath, SourceSlot = resource.SourceSlot };
+                HeightMillimeters = resource.HeightMillimeters, SourceXml = resource.SourceXml, SourceEntryPath = resource.SourceEntryPath,
+                SourceSlot = resource.SourceSlot, SourceContainerSupported = resource.SourceContainerSupported };
             map.Add(resource, clone); map.Add(resource.Elements, clone.Elements); copiedCollection.Items.Add(clone);
         }
         foreach (var resource in collection.Items)

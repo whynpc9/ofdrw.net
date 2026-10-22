@@ -153,6 +153,8 @@ internal static class OfdCompositeProjection
     {
         string? placementError = pageBlockChild && composite.SourceXml is null
             ? "PageBlock composite placement has no original drawing attributes." : null;
+        if (pageBlockChild && !composite.Resource.SourceContainerSupported)
+            placementError ??= "PageBlock composite resource container cannot be rendered.";
         if (composite.SourceXml is { } source)
         {
             material.GuardFragmentXml(source, token); var node = OfdXmlEnvelope.Parse(source);
