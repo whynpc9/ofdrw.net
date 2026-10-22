@@ -24,6 +24,7 @@ internal sealed class ArchivalStructuralCoverage
     private readonly Dictionary<string, XElement?> xml = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<XElement, int> siblingOrdinals = new();
     private readonly Dictionary<string, XElement> bookmarks = new(StringComparer.Ordinal);
+    private readonly HashSet<string> ambiguousBookmarkNames = new(StringComparer.Ordinal);
     private readonly HashSet<long> pageIds = new();
     private readonly HashSet<long> templateIds = new();
     private readonly HashSet<string> inspectedPageEntries = new(StringComparer.OrdinalIgnoreCase);
@@ -271,9 +272,16 @@ internal sealed class ArchivalStructuralCoverage
                 if (bookmark.Elements(ns + "Dest").Any(x => x.HasElements || OpaqueNodes(x)))
                 { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkDestination", documentEntry); }
                 var name = (string?)bookmark.Attribute("Name");
-                if (string.IsNullOrWhiteSpace(name) || ForeignAttribute(bookmark, "Name") ||
-                    bookmarks.ContainsKey(name!)) targetInventoryUnknown = true;
-                else bookmarks.Add(name!, bookmark);
+                if (string.IsNullOrWhiteSpace(name))
+                { targetInventoryUnknown = true; continue; }
+                if (ForeignAttribute(bookmark, "Name") || ambiguousBookmarkNames.Contains(name) ||
+                    bookmarks.ContainsKey(name))
+                {
+                    targetInventoryUnknown = true;
+                    ambiguousBookmarkNames.Add(name);
+                    bookmarks.Remove(name);
+                }
+                else bookmarks.Add(name, bookmark);
             }
         }
     }
@@ -293,7 +301,6 @@ internal sealed class ArchivalStructuralCoverage
                 UnknownOutline("OpaqueOutlineContent", documentEntry);
             foreach (var node in container.Elements(ns + "OutlineElem")) ReadOutlineTree(node, ns);
         }
-        if (targetInventoryUnknown) observations[2].Unknown("TargetInventoryAmbiguous", documentEntry);
     }
 
     private void ReadOutlineTree(XElement first, XNamespace ns)
@@ -859,6 +866,7 @@ internal sealed class ArchivalStructuralCoverage
 
     private void CheckTarget(XElement gotoElement, XNamespace ns, Observation target, string entry, XElement action)
     {
+        if (targetInventoryUnknown) target.Unknown("TargetInventoryAmbiguous", entry, action, this);
         var dest = gotoElement.Element(ns + "Dest");
         if (dest is null)
         {

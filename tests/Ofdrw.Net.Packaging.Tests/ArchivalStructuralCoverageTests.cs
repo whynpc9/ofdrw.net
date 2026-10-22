@@ -515,6 +515,35 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicateBookmarkNameCannotSelectAnArbitraryDestination(bool reverse)
+    {
+        var declarations = new[]
+        {
+            "<Bookmark Name='same'><Dest Type='Fit' PageID='99'/></Bookmark>",
+            "<Bookmark Name='same'><Dest Type='Fit' PageID='1'/></Bookmark>"
+        };
+        if (reverse) Array.Reverse(declarations);
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Bookmark Name='same'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var report = await Check(Seed(documentExtra: outline + $"<Bookmarks>{string.Concat(declarations)}</Bookmarks>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("<Outlines><OutlineElem Title='A'/></Outlines>")]
+    public async Task AmbiguousTargetInventoryWithoutGotoIsNotApplicable(string outlines)
+    {
+        var entries = Seed(documentExtra: outlines + "<Bookmarks><Bookmark Name='same'/><Bookmark Name='same'/></Bookmarks>");
+        var document = Encoding.UTF8.GetString(entries["Doc_0/Document.xml"]);
+        entries["Doc_0/Document.xml"] = Utf8(document.Replace("</Pages>",
+            "<Page ID='01' BaseLoc='Pages/P0/Content.xml'/></Pages>", StringComparison.Ordinal));
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.NotApplicable, Rule(report, "AC-006").Outcome);
+    }
+
     [Fact]
     public async Task LexicallyDifferentDuplicatePageIdsMakeTargetAmbiguous()
     {
