@@ -982,7 +982,10 @@ public sealed class OfdReader : IOfdReader
             return;
         var ns = root.Name.Namespace;
         var baseLocation = root.Attribute("BaseLoc")?.Value;
-        foreach (var font in root.Elements(ns + "Fonts").SelectMany(fonts => fonts.Elements(ns + "Font")))
+        var containers = root.Elements(ns + "Fonts").ToArray();
+        var validContainer = containers.Length == 1 && PlainContainer(containers[0]) &&
+            containers[0].Elements().All(child => child.Name == ns + "Font");
+        foreach (var font in containers.SelectMany(fonts => fonts.Elements(ns + "Font")))
         {
             var id = font.Attribute("ID")?.Value;
             var name = font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value;
@@ -991,7 +994,13 @@ public sealed class OfdReader : IOfdReader
             if (key is null) continue;
             var validBold = TryParseFontFlag(font.Attribute("Bold")?.Value, out var bold);
             var validItalic = TryParseFontFlag(font.Attribute("Italic")?.Value, out var italic);
-            var fontFile = font.Element(ns + "FontFile");
+            var files = font.Elements(ns + "FontFile").ToArray();
+            var validDeclaration = validContainer &&
+                PlainContainer(font, "ID", "FontName", "FamilyName", "Charset", "Bold", "Italic", "Serif", "FixedWidth") &&
+                font.Elements().All(child => child.Name == ns + "FontFile") && files.Length <= 1 &&
+                files.All(child => child.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
+                    child.Nodes().All(node => node is XText or XComment));
+            var fontFile = files.FirstOrDefault();
             var file = ReadValue(fontFile, material, cancellationToken);
             material.ReserveReadModel(512, cancellationToken);
             var resource = new OfdFontResource
@@ -1011,7 +1020,7 @@ public sealed class OfdReader : IOfdReader
             }
             // A name-only font deliberately permits host fallback. An explicit
             // FontFile must resolve before it can satisfy PageBlock admission.
-            if (validBold && validItalic && resolvedFile) fontMap[key] = name!;
+            if (validDeclaration && validBold && validItalic && resolvedFile) fontMap[key] = name!;
             else fontMap.Remove(key);
             if (package.Fonts.Any(existing => existing.Id == id)) continue;
             package.Fonts.Add(resource);

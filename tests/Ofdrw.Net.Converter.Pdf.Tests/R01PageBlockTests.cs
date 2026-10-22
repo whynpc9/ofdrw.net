@@ -791,6 +791,67 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("duplicate-file")]
+    [InlineData("font-attribute")]
+    [InlineData("font-child")]
+    [InlineData("container-attribute")]
+    [InlineData("container-child")]
+    [InlineData("file-attribute")]
+    [InlineData("file-child")]
+    public async Task AmbiguousFontDeclarationCannotResolvePageBlockText(string change)
+    {
+        var seed = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>recoverable text</TextCode></TextObject>", font: true);
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName == "Doc_0/PublicRes.xml")
+                {
+                    var xml = XDocument.Load(new MemoryStream(bytes));
+                    var fonts = xml.Descendants().Single(node => node.Name.LocalName == "Fonts");
+                    var font = fonts.Elements().Single(node => node.Name.LocalName == "Font");
+                    var file = font.Elements().Single(node => node.Name.LocalName == "FontFile");
+                    switch (change)
+                    {
+                        case "duplicate-file": font.Add(new XElement(file)); break;
+                        case "font-attribute": font.SetAttributeValue("Vendor", "opaque"); break;
+                        case "font-child": font.Add(new XElement(font.Name.Namespace + "Vendor")); break;
+                        case "container-attribute": fonts.SetAttributeValue("Vendor", "opaque"); break;
+                        case "container-child": fonts.Add(new XElement(fonts.Name.Namespace + "Vendor")); break;
+                        case "file-attribute": file.SetAttributeValue("Vendor", "opaque"); break;
+                        case "file-child": file.Add(new XElement(file.Name.Namespace + "Vendor")); break;
+                    }
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        var ofd = rewritten.ToArray();
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Contains("recoverable text", new OfdTextExtractor().Extract(read));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Contains("unresolved Font", text.RenderPaintError);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Contains("Font", error.Message);
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("Bold")]
     [InlineData("Italic")]
     public async Task MalformedCompositeFontFlagPreservesTextButFailsAllRenderers(string flag)
