@@ -35,7 +35,7 @@ internal static class OfdClipGeometry
     {
         var regions = new List<OfdClipRegion>();
         var ns = root.Name.Namespace;
-        if (root.Name.LocalName != "Clips" || (ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.Namespace && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) ||
+        if (root.Name.LocalName != "Clips" || (ns != XNamespace.None && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.Namespace && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) ||
             requireClosedProfile && (!OfdGraphicXmlContract.HasKnownChildren(root) || OfdGraphicXmlContract.HasUnsupportedReferences(root) || root.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a))))
             throw new NotSupportedException("Clip extensions or references are outside the render profile.");
         foreach (var clip in root.Elements(ns + "Clip"))

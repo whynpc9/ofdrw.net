@@ -64,12 +64,17 @@ internal static class OfdTextRenderProjection
         var raw = codes.Select(code => string.Concat(code.Nodes().OfType<XText>().Select(value => value.Value))).ToArray();
         var originalSize = RawNumber(node.Attribute("Size")?.Value, 4);
         var sameRuns = codes.Length == text.Runs.Count;
+        double? previousX = null, previousY = null;
         for (var i = 0; sameRuns && i < codes.Length; i++)
         {
             token.ThrowIfCancellationRequested(); var run = text.Runs[i]; var code = codes[i];
-            sameRuns = run.Text == raw[i] && run.XMillimeters == RawNumber(code.Attribute("X")?.Value, 0) &&
-                run.YMillimeters == RawNumber(code.Attribute("Y")?.Value, originalSize) &&
+            var x = RawNumber(code.Attribute("X")?.Value, previousX ?? 0);
+            var y = RawNumber(code.Attribute("Y")?.Value, previousY ?? originalSize);
+            sameRuns = run.Text == raw[i] &&
+                run.XMillimeters == (text.SourceInheritedTextCodeAxes ? x : RawNumber(code.Attribute("X")?.Value, 0)) &&
+                run.YMillimeters == (text.SourceInheritedTextCodeAxes ? y : RawNumber(code.Attribute("Y")?.Value, originalSize)) &&
                 run.DeltaX == code.Attribute("DeltaX")?.Value && run.DeltaY == code.Attribute("DeltaY")?.Value;
+            previousX = x; previousY = y;
         }
         if (!sameRuns) return null; // Explicit typed run edits take precedence over the old envelope.
         if (text.Text != string.Concat(raw))

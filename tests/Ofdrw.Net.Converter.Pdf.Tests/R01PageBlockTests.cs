@@ -2305,6 +2305,103 @@ public sealed class R01PageBlockTests
         Retain("textcode-inherited-start", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Fact]
+    public async Task InheritedPageBlockAxesStillDecodeSourceEscapes()
+    {
+        const string drawing = "<TextObject ID='501' Boundary='10 10 70 20' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='5'>lead</TextCode><TextCode X='20'>escaped\\0020text</TextCode>" +
+            "<TextCode Y='12'>next\\0020line</TextCode></TextObject>";
+        var ofd = await Source(drawing, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(Assert.IsType<OfdRawElement>(
+            Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.Equal(new[] { (0d, 5d), (20d, 5d), (20d, 12d) },
+            text.Runs.Select(run => (run.XMillimeters, run.YMillimeters)));
+        Assert.Contains("\\0020", text.Text);
+        var logical = new OfdTextExtractor().Extract(read);
+        Assert.Contains("leadescaped textnext line", logical);
+        Assert.DoesNotContain("\\0020", logical);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("escaped text", parsed.GetPage(1).Text);
+        Assert.Contains("escaped text", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("escaped text", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("textcode-inherited-escape", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+        text.Runs[1].XMillimeters = 0;
+        Assert.Same(text, OfdTextRenderProjection.Create(text, new OfdModelMaterialization(new OfdModelLimits()), default));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnqualifiedPageBlockClipUsesSameNamespaceContract(bool vendorClip)
+    {
+        const string drawing = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<Clips><Clip><Area><Path Stroke='false' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 0 20 C</AbbreviatedData>" +
+            "</Path></Area></Clip></Clips><FillColor Value='0 0 255'/>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var seed = await Source(drawing);
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    var block = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "PageBlock");
+                    var unqualified = Strip(block);
+                    if (vendorClip)
+                    {
+                        var clips = Assert.Single(unqualified.Descendants(), node => node.Name.LocalName == "Clips");
+                        clips.Name = XNamespace.Get("urn:vendor") + "Clips";
+                    }
+                    block.ReplaceWith(unqualified);
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        var ofd = rewritten.ToArray();
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var path = Assert.IsType<OfdPathElement>(Assert.Single(Assert.IsType<OfdRawElement>(
+            Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        if (vendorClip)
+        {
+            Assert.Null(path.Clips);
+            foreach (var convert in new Func<Stream, Stream, Task>[]
+            {
+                (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+                (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+                (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+            })
+            {
+                using var sink = new MemoryStream();
+                await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+                Assert.Equal(0, sink.Length);
+            }
+            return;
+        }
+        Assert.NotNull(path.Clips);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("clipPath", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("clipPath", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("unqualified-pageblock-clip", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+
+        static XElement Strip(XElement node) => new(node.Name.LocalName,
+            node.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration),
+            node.Nodes().Select(child => child is XElement element ? Strip(element) : child));
+    }
+
     [Theory]
     [InlineData("<TextCode Y='5'>missing X</TextCode>")]
     [InlineData("<TextCode X='3'>missing Y</TextCode>")]

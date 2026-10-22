@@ -1226,6 +1226,7 @@ public sealed class OfdReader : IOfdReader
                         WidthMillimeters = boundary.w,
                         HeightMillimeters = boundary.h,
                         Text = ReadJoinText(textParts, material, cancellationToken),
+                        SourceInheritedTextCodeAxes = blockDepth > 0,
                         FontResourceId = node.Attribute("Font")?.Value,
                         FontName = ResolveFontName(node.Attribute("Font")?.Value, fontMap),
                         FontSizeMillimeters = ParseDouble(node.Attribute("Size")?.Value, 4d),
