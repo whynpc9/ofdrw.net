@@ -1837,6 +1837,10 @@ public sealed class R01PageBlockTests
     [InlineData("<AbbreviatedData>M 0 0 L 20 0 C</AbbreviatedData><AbbreviatedData>M 0 0 L 20 20</AbbreviatedData>")]
     [InlineData("<AbbreviatedData>M 0 0 L 10 0 L 10 10 C,</AbbreviatedData>")]
     [InlineData("<AbbreviatedData>M 0 0 L 10 0 L 10 10, </AbbreviatedData>")]
+    [InlineData("<AbbreviatedData>,M 0 0 L 10 0 L 10 10 C</AbbreviatedData>")]
+    [InlineData("<AbbreviatedData>M 0 0 L 10,,10 L 10 10 C</AbbreviatedData>")]
+    [InlineData("<AbbreviatedData>M 0 0 L 10, ,10 L 10 10 C</AbbreviatedData>")]
+    [InlineData("<AbbreviatedData>M 0 0, L 10 10 C</AbbreviatedData>")]
     public async Task PageBlockPathDataFailsBeforeAnyRenderer(string pathData)
     {
         var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
@@ -3035,7 +3039,8 @@ public sealed class R01PageBlockTests
     [Theory]
     [InlineData("M 0 0")]
     [InlineData("M 0 0 C")]
-    public async Task MoveOnlyPageBlockClipFailsEveryRenderer(string clipData)
+    [InlineData("M 0 0 L 10,,10 C")]
+    public async Task NonDrawableOrMalformedPageBlockClipFailsEveryRenderer(string clipData)
     {
         var ofd = await Source("<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
             "<Clips><Clip><Area><Path Stroke='false' Fill='true'>" +

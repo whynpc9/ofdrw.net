@@ -22,17 +22,26 @@ internal static class OfdPathDataSyntax
         var operands = 0;
         var sawMove = false;
         var sawSegment = false;
+        var previousNumber = false;
         while (index < value.Length)
         {
             token.ThrowIfCancellationRequested();
-            var trailingComma = false;
+            var comma = false;
             while (index < value.Length && (char.IsWhiteSpace(value[index]) || value[index] == ','))
-            { if (value[index] == ',') trailingComma = true; index++; }
+            {
+                if (value[index] == ',')
+                {
+                    if (comma || !previousNumber) return false;
+                    comma = true;
+                }
+                index++;
+            }
             if (index == value.Length)
-            { if (trailingComma) return false; break; }
+            { if (comma) return false; break; }
             var current = value[index];
             if (char.IsLetter(current))
             {
+                if (comma) return false;
                 if (!Complete(command, operands)) return false;
                 if (command == 'M' && operands > 2 ||
                     (command is 'L' or 'B' or 'Q' or 'A') && operands > 0)
@@ -41,7 +50,7 @@ internal static class OfdPathDataSyntax
                 if (command is not ('M' or 'L' or 'B' or 'Q' or 'A' or 'C') ||
                     !sawMove && command != 'M') return false;
                 if (command == 'M') sawMove = true;
-                operands = 0; index++;
+                operands = 0; previousNumber = false; index++;
                 continue;
             }
             if (command is '\0' or 'C') return false;
@@ -74,6 +83,7 @@ internal static class OfdPathDataSyntax
                     (slot is 3 or 4) && literal is not ("0" or "1")) return false;
             }
             operands++;
+            previousNumber = true;
         }
         if (command == 'M' && operands > 2 ||
             (command is 'L' or 'B' or 'Q' or 'A') && operands > 0)
