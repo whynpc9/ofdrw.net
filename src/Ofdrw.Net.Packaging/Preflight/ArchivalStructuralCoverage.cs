@@ -78,6 +78,8 @@ internal sealed class ArchivalStructuralCoverage
         }
         foreach (var pageTree in pages)
         {
+            if (pageTree.Elements().Any(x => x.Name != ns + "Page"))
+            { UnknownPageScope("OpaquePageTree", documentEntry); targetInventoryUnknown = true; }
             if (Foreign(pageTree, "Page", ns))
             { UnknownPageScope("ForeignPageDeclaration", documentEntry); targetInventoryUnknown = true; }
             foreach (var page in pageTree.Elements(ns + "Page"))
@@ -136,6 +138,7 @@ internal sealed class ArchivalStructuralCoverage
         if (containers.Length > 1 || Foreign(document, "Bookmarks", ns)) targetInventoryUnknown = true;
         foreach (var container in containers)
         {
+            if (container.Elements().Any(x => x.Name != ns + "Bookmark")) targetInventoryUnknown = true;
             if (Foreign(container, "Bookmark", ns)) targetInventoryUnknown = true;
             foreach (var bookmark in container.Elements(ns + "Bookmark"))
             {
@@ -310,10 +313,14 @@ internal sealed class ArchivalStructuralCoverage
     private void InspectActions(XElement owner, XNamespace ns, Observation type, Observation? target, string entry)
     {
         var containers = owner.Elements(ns + "Actions").ToArray();
+        if (owner.Elements().Any(x => x.Name.LocalName == "Action"))
+        { type.Unknown("ActionOutsideContainer", entry); target?.Unknown("ActionOutsideContainer", entry); }
         if (containers.Length > 1 || Foreign(owner, "Actions", ns))
         { type.Unknown("ActionsAmbiguous", entry); target?.Unknown("ActionsAmbiguous", entry); }
         foreach (var container in containers)
         {
+            if (container.Elements().Any(x => x.Name != ns + "Action"))
+            { type.Unknown("OpaqueActionsContent", entry); target?.Unknown("OpaqueActionsContent", entry); }
             if (container.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
                 container.Nodes().Any(x => x is XText text && !string.IsNullOrWhiteSpace(text.Value) ||
                     x is not XElement && x is not XText))

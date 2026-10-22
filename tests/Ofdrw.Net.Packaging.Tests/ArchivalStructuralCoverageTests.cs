@@ -122,6 +122,40 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
     }
 
+    [Theory]
+    [InlineData("<FutureAction/>", PreflightOutcome.Unknown)]
+    [InlineData("<FutureAction/><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action>", PreflightOutcome.Unknown)]
+    [InlineData("<FutureAction/><Action><URI URI='https://example.invalid'/></Action>", PreflightOutcome.Fail)]
+    public async Task OpaqueActionsChildPreventsFalseTypeOrTargetClaim(string children, PreflightOutcome expectedType)
+    {
+        var actions = $"<Actions>{children}</Actions>";
+        var outline = $"<Outlines><OutlineElem Title='A'>{actions}</OutlineElem></Outlines>";
+        var report = await Check(Seed(documentExtra: outline, pageExtra: actions));
+        Assert.Equal(expectedType, Rule(report, "AC-004").Outcome);
+        Assert.Equal(expectedType, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Fact]
+    public async Task OpaquePageInventoryPreventsFalseMissingTargetFailure()
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Dest Type='Fit' PageID='99'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var entries = Seed(documentExtra: outline);
+        var document = Encoding.UTF8.GetString(entries["Doc_0/Document.xml"]);
+        entries["Doc_0/Document.xml"] = Utf8(document.Replace("</Pages>", "<FuturePage/></Pages>", StringComparison.Ordinal));
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+    }
+
+    [Fact]
+    public async Task OpaqueBookmarkInventoryPreventsFalseMissingTargetFailure()
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Bookmark Name='future'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var report = await Check(Seed(documentExtra: outline + "<Bookmarks><FutureBookmark/></Bookmarks>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
     [Fact]
     public async Task LexicallyDifferentDuplicatePageIdsMakeTargetAmbiguous()
     {
