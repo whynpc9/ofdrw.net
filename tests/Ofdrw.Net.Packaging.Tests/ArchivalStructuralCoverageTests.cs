@@ -24,11 +24,12 @@ public class ArchivalStructuralCoverageTests
                 using (var stream = zip.CreateEntry(entry.Key).Open()) stream.Write(entry.Value);
         return output.ToArray();
     }
-    private static async Task<ArchivalCoverageReport> Check(Dictionary<string, byte[]> entries)
+    private static async Task<ArchivalCoverageReport> Check(Dictionary<string, byte[]> entries,
+        ArchivalPreflightOptions? options = null)
     {
         using var input = new MemoryStream(Zip(entries), false);
         var original = SHA256.HashData(input.ToArray());
-        var report = await new ArchivalCoverageService().CheckAsync(input, new());
+        var report = await new ArchivalCoverageService().CheckAsync(input, options ?? new());
         Assert.Equal(0, input.Position);
         Assert.Equal(original, SHA256.HashData(input.ToArray()));
         Assert.Equal(12, report.RuleResults.Count);
@@ -175,6 +176,32 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
     }
 
+    [Theory]
+    [InlineData("vendor='x'", "")]
+    [InlineData("", "opaque")]
+    [InlineData("", "<?vendor opaque?>")]
+    public async Task OpaquePageTreePayloadPreventsFalseMissingTargetFailure(string attributes, string payload)
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Dest Type='Fit' PageID='99'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var entries = Seed(documentExtra: outline);
+        var document = Encoding.UTF8.GetString(entries["Doc_0/Document.xml"]);
+        entries["Doc_0/Document.xml"] = Utf8(document.Replace("<Pages>", $"<Pages {attributes}>{payload}", StringComparison.Ordinal));
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
+    [InlineData("vendor='x'", "")]
+    [InlineData("", "opaque")]
+    [InlineData("", "<?vendor opaque?>")]
+    public async Task OpaqueOutlineContainerPreventsPass(string attributes, string payload)
+    {
+        var actions = "<OutlineElem Title='A'><Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions></OutlineElem>";
+        var report = await Check(Seed(documentExtra: $"<Outlines {attributes}>{payload}{actions}</Outlines>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
     [Fact]
     public async Task OpaqueBookmarkInventoryPreventsFalseMissingTargetFailure()
     {
@@ -275,6 +302,37 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-012").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-007").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-008").Outcome);
+    }
+
+    [Theory]
+    [InlineData("vendor='x'", "")]
+    [InlineData("", "<!--opaque-->")]
+    [InlineData("", "<?vendor opaque?>")]
+    public async Task OpaqueAnnotationLocatorPreventsFalsePass(string attributes, string payload)
+    {
+        var entries = Seed(documentExtra: $"<Annotations {attributes}>{payload}Annots/Annotations.xml</Annotations>");
+        entries["Doc_0/Annots/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'><Page PageID='1'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        entries["Doc_0/Annots/Page.xml"] = Utf8($"<PageAnnot xmlns='{Ns}'><Annot ID='2' ReadOnly='true' NoZoom='true' NoRotate='true'><Appearance><PathObject/></Appearance></Annot></PageAnnot>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-009").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-012").Outcome);
+    }
+
+    [Fact]
+    public async Task XmlNodeBudgetRejectsDensePageBeforeItCanBeClaimedClean()
+    {
+        var entries = Seed(objects: string.Concat(Enumerable.Repeat("<PathObject/>", 200)));
+        var report = await Check(entries, new ArchivalPreflightOptions { MaxXmlNodes = 30 });
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+    }
+
+    [Fact]
+    public async Task XmlDepthBudgetRejectsDeepPageBeforeItCanBeClaimedClean()
+    {
+        var nested = string.Concat(Enumerable.Repeat("<Wrapper>", 20)) + "<PathObject/>" +
+            string.Concat(Enumerable.Repeat("</Wrapper>", 20));
+        var report = await Check(Seed(objects: nested), new ArchivalPreflightOptions { MaxXmlDepth = 8 });
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
     }
 
     [Fact]

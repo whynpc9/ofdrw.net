@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Xml;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Packaging.Archive;
@@ -78,7 +79,8 @@ internal sealed class ArchivalStructuralCoverage
         }
         foreach (var pageTree in pages)
         {
-            if (pageTree.Elements().Any(x => x.Name != ns + "Page"))
+            if (pageTree.Elements().Any(x => x.Name != ns + "Page") ||
+                pageTree.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(pageTree))
             { UnknownPageScope("OpaquePageTree", documentEntry); targetInventoryUnknown = true; }
             if (Foreign(pageTree, "Page", ns))
             { UnknownPageScope("ForeignPageDeclaration", documentEntry); targetInventoryUnknown = true; }
@@ -161,6 +163,8 @@ internal sealed class ArchivalStructuralCoverage
             UnknownOutline("OutlineScopeAmbiguous", documentEntry);
         foreach (var container in containers)
         {
+            if (container.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(container))
+                UnknownOutline("OpaqueOutlineContainer", documentEntry);
             if (Foreign(container, "OutlineElem", ns))
                 UnknownOutline("ForeignOutline", documentEntry);
             if (container.Elements().Any(x => x.Name != ns + "OutlineElem"))
@@ -189,7 +193,9 @@ internal sealed class ArchivalStructuralCoverage
             UnknownAnnotationScope("AnnotationScopeAmbiguous", documentEntry);
         foreach (var declaration in declarations)
         {
-            if (declaration.HasElements || !TryEntry(documentEntry, declaration.Value, out var indexEntry))
+            if (declaration.HasElements || declaration.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+                declaration.Nodes().Any(x => x is not XText) ||
+                !TryEntry(documentEntry, declaration.Value, out var indexEntry))
             { UnknownAnnotationScope("AnnotationIndexUnavailable", documentEntry); continue; }
             var index = Read(indexEntry, "Annotations");
             if (index is null)
@@ -468,18 +474,27 @@ internal sealed class ArchivalStructuralCoverage
         if (!archive.TryGetBytes(entry, out var bytes) || bytes.Length > options.MaxSingleXmlBytes ||
             xmlBytes > options.MaxXmlBytes - bytes.Length) return null;
         xmlBytes += bytes.Length;
-        var value = ArchivalRuleService.Read(archive, entry, options)?.Root;
+        XElement? value;
+        var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
+            MaxCharactersInDocument = options.MaxSingleXmlBytes, MaxCharactersFromEntities = 1 };
+        try
+        {
+            // Charge nodes and depth while streaming, before an untrusted tree is allocated.
+            using (var source = new MemoryStream(bytes, false))
+            using (var reader = XmlReader.Create(source, settings))
+                while (reader.Read())
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (++xmlNodes > options.MaxXmlNodes || reader.Depth > options.MaxXmlDepth)
+                    { xml[entry] = null; return null; }
+                }
+            using var materialization = new MemoryStream(bytes, false);
+            using var treeReader = XmlReader.Create(materialization, settings);
+            value = XDocument.Load(treeReader, LoadOptions.PreserveWhitespace).Root;
+        }
+        catch (XmlException) { xml[entry] = null; return null; }
         if (value?.Name.LocalName != rootName || !Supported(value.Name.NamespaceName))
         { xml[entry] = null; return null; }
-        var stack = new Stack<(XElement Node, int Depth)>();
-        stack.Push((value, 1));
-        while (stack.Count != 0)
-        {
-            token.ThrowIfCancellationRequested();
-            var current = stack.Pop();
-            if (++xmlNodes > options.MaxXmlNodes || current.Depth > options.MaxXmlDepth) return null;
-            foreach (var child in current.Node.Elements()) stack.Push((child, current.Depth + 1));
-        }
         xml[entry] = value;
         return value;
     }
