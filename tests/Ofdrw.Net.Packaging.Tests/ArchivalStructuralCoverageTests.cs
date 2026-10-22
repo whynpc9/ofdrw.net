@@ -725,6 +725,18 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-010").Outcome);
     }
 
+    [Theory]
+    [InlineData("<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>", PreflightOutcome.Pass)]
+    [InlineData("<Actions><FutureAction/></Actions>", PreflightOutcome.Unknown)]
+    public async Task ObjectActionsKeepIndependentGraphicChecksDecidableWhenSupported(string actions,
+        PreflightOutcome expectedGraphics)
+    {
+        var objects = $"<PathObject>{actions}</PathObject><ImageObject Interpolate='false'/><TextObject Size='3'/>";
+        var report = await Check(Seed(objects: objects));
+        Assert.Equal(expectedGraphics, Rule(report, "AC-007").Outcome);
+        Assert.Equal(expectedGraphics, Rule(report, "AC-008").Outcome);
+    }
+
     [Fact]
     public async Task UnsupportedPageGraphicsPreventAnAbsenceClaim()
     {

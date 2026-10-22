@@ -551,6 +551,11 @@ internal sealed class ArchivalStructuralCoverage
 
     private static bool OpaqueGraphicChild(XElement node, XNamespace ns)
     {
+        var objectActions = node.AncestorsAndSelf(ns + "Actions").FirstOrDefault(x =>
+            x.Parent?.Name.Namespace == ns && x.Parent.Name.LocalName is
+                ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject"));
+        if (objectActions is not null)
+            return ReferenceEquals(node, objectActions) && OpaqueActionContainer(objectActions, ns);
         var parent = node.Name.LocalName;
         if (node.Name.Namespace != ns || !node.AncestorsAndSelf().Any(x => x.Name.Namespace == ns &&
             x.Name.LocalName is ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject"))) return false;
@@ -565,9 +570,10 @@ internal sealed class ArchivalStructuralCoverage
         if (OpaqueNodes(node)) return true;
         return node.Elements().Any(child => child.Name.Namespace != ns || !(parent switch
         {
-            "TextObject" => child.Name.LocalName is "Clips" or "FillColor" or "StrokeColor" or "CGTransform" or "TextCode",
-            "PathObject" => child.Name.LocalName is "Clips" or "FillColor" or "StrokeColor" or "AbbreviatedData",
-            "ImageObject" => child.Name.LocalName is "Clips",
+            "TextObject" => child.Name.LocalName is "Clips" or "FillColor" or "StrokeColor" or "CGTransform" or "TextCode" or "Actions",
+            "PathObject" => child.Name.LocalName is "Clips" or "FillColor" or "StrokeColor" or "AbbreviatedData" or "Actions",
+            "ImageObject" => child.Name.LocalName is "Clips" or "Actions",
+            "CompositeObject" => child.Name.LocalName is "Actions",
             "Clips" => child.Name.LocalName is "Clip",
             "Clip" => child.Name.LocalName is "Area",
             "Area" => child.Name.LocalName is "Path",
@@ -638,7 +644,11 @@ internal sealed class ArchivalStructuralCoverage
                     })));
             });
         }
-        if (child.Name != ns + "Actions") return false;
+        return child.Name == ns + "Actions" && OpaqueActionContainer(child, ns);
+    }
+
+    private static bool OpaqueActionContainer(XElement child, XNamespace ns)
+    {
         if (child.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(child)) return true;
         return child.Elements().Any(action => action.Name != ns + "Action" ||
             action.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Event") ||
