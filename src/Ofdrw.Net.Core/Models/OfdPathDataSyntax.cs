@@ -12,10 +12,10 @@ internal static class OfdPathDataSyntax
     internal static bool HasSingleValidDrawing(XElement path, CancellationToken token)
     {
         var data = path.Elements(path.Name.Namespace + "AbbreviatedData").ToArray();
-        return data.Length == 1 && !data[0].HasElements && IsValid(data[0].Value, token);
+        return data.Length == 1 && !data[0].HasElements && IsValidLiteral(data[0].Value, token);
     }
 
-    private static bool IsValid(string value, CancellationToken token)
+    internal static bool IsValidLiteral(string value, CancellationToken token)
     {
         var index = 0;
         var command = '\0';

@@ -21,7 +21,7 @@ internal static class OfdClipGeometry
         element.ClipOwnership.Validate(element.ClippingXml, material, token);
         material.ChargeCopy(8192L + 64L * (element.ClippingXml?.Length ?? 0), token);
         var xml = OfdClipXml.Write(element, Ofdrw.Net.Core.Constants.OfdConstants.Namespace, material, token);
-        return xml is null ? Array.Empty<OfdClipRegion>() : Read(xml, material, token, requireClosedProfile: true);
+        return xml is null ? Array.Empty<OfdClipRegion>() : Read(xml, material, token, requireClosedProfile: element.Clips is not null);
     }
     internal static IReadOnlyList<OfdClipRegion> Read(string? xml)
     {
@@ -64,7 +64,8 @@ internal static class OfdClipGeometry
                         throw new NotSupportedException("Stroked clip geometry is outside the render profile.");
                     var literal = string.Concat(shape.Element(shape.Name.Namespace + "AbbreviatedData")?.Nodes().OfType<XText>().Select(text => text.Value) ?? Enumerable.Empty<string>());
                     if (string.IsNullOrWhiteSpace(literal)) throw new NotSupportedException("OFD clip path has no supported literal geometry.");
-                    if (requireClosedProfile && !OfdPathDataSyntax.HasSingleValidDrawing(shape, token))
+                    if (!OfdPathDataSyntax.IsValidLiteral(literal, token) ||
+                        requireClosedProfile && !OfdPathDataSyntax.HasSingleValidDrawing(shape, token))
                         throw new NotSupportedException("Malformed OFD clip path data cannot be exported.");
                     var boundary = Numbers(shape.Attribute("Boundary")?.Value);
                     var transform = Matrix(shape.Attribute("CTM")?.Value);
