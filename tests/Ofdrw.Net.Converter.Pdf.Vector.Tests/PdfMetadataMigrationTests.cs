@@ -16,7 +16,7 @@ public sealed class PdfMetadataMigrationTests
 
     private static byte[] Source(PdfFixture fixture, string destination = "11 0 R /Fit", bool embeddedPageFile = true,
         string? rootAction = null, string firstPageExtra = "", bool embeddedGlobalFile = true, bool mixedAnnotations = false,
-        int extraLinkAnnotations = 0, string? globalStreamObject = null)
+        int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null")
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var page = embeddedPageFile
@@ -30,7 +30,7 @@ public sealed class PdfMetadataMigrationTests
                 "<< /Type /Outlines /First 14 0 R /Last 14 0 R /Count 2 >>",
                 "<< /Title (Chapter A) /Parent 13 0 R /First 15 0 R /Last 15 0 R /Count 1 " +
                     (rootAction ?? "/Dest [" + destination + "]") + " >>",
-                "<< /Title (Child) /Parent 14 0 R /Dest [9 0 R /XYZ 30 500 null] >>",
+                "<< /Title (Child) /Parent 14 0 R /Dest [9 0 R /XYZ 30 500 " + childZoom + "] >>",
                 "<< /Names [(same.bin) 17 0 R] >>",
                 embeddedGlobalFile ? "<< /Type /Filespec /F (same.bin) /EF << /F 18 0 R >> >>" :
                     "<< /Type /Filespec /F (same.bin) >>",
@@ -79,6 +79,38 @@ public sealed class PdfMetadataMigrationTests
         Assert.Equal(vector, pin.Fill);
         Assert.Null(package.Pages[2].Annotations);
         Assert.Equal(package.Attachments[2].Id, Assert.Single(package.Pages[3].Annotations!.Items).AttachmentId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BothPdfImportersRetainExplicitXyzZoom(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, destination: "11 0 R /XYZ 30 500 1.5", childZoom: "2"));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector) await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions { Compatibility = options }).ConvertAsync(input, output);
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output);
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        var root = Assert.Single(package.Outlines!.Items);
+        Assert.Equal(1.5, Assert.IsType<OfdGoToAction>(Assert.Single(root.Actions!.Items)).Destination!.Zoom);
+        var child = Assert.Single(root.Children);
+        var xyz = Assert.IsType<OfdGoToAction>(Assert.Single(child.Actions!.Items)).Destination!;
+        Assert.Equal(OfdDestinationType.XYZ, xyz.Type);
+        Assert.Equal(2, xyz.Zoom);
+    }
+
+    [Fact]
+    public async Task UnrepresentableXyzZoomFailsBeforeOutput()
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, childZoom: "100"));
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new PdfToOfdConverter(new PdfToOfdOptions
+            { CopyBookmarks = true, PreferExternalPdfToPpm = true }).ConvertAsync(input, output));
+        Assert.Equal(0, output.Length);
     }
 
     [Fact]

@@ -95,8 +95,8 @@ internal static class PdfImportMetadataMigrator
     private static void CopyBookmarks(PdfDocument source, OfdDocumentPackage output,
         IReadOnlyDictionary<int, List<OfdPage>> pages, PdfToOfdOptions options, CancellationToken token)
     {
-        var rawCount = ValidateRawOutlines(source, options, token);
-        if (rawCount == 0) return;
+        var rawZooms = ValidateRawOutlines(source, options, token);
+        if (rawZooms.Count == 0) return;
         if (!source.TryGetBookmarks(out var bookmarks, true))
             throw new InvalidDataException("PDF outline contains a destination the parser could not resolve.");
         var collection = new OfdOutlineCollection();
@@ -116,27 +116,28 @@ internal static class PdfImportMetadataMigrator
                     throw new InvalidDataException("PDF outline targets an invalid or excluded page.");
                 outline.Actions = new OfdActionCollection();
                 outline.Actions.Items.Add(new OfdGoToAction { Event = "CLICK",
-                    Destination = Destination(source.GetPage(local.PageNumber), retained[0], local.Destination) });
+                    Destination = Destination(source.GetPage(local.PageNumber), retained[0], local.Destination, rawZooms[count - 1]) });
             }
             else if (node is not ContainerBookmarkNode)
                 throw new NotSupportedException("PDF outline has an external or unsupported action.");
             target.Add(outline);
             foreach (var child in node.Children.Reverse()) work.Push((child, outline.Children, depth + 1));
         }
-        if (count != rawCount) throw new InvalidDataException("PDF outline contains an omitted or unsupported node.");
+        if (count != rawZooms.Count) throw new InvalidDataException("PDF outline contains an omitted or unsupported node.");
         if (collection.Items.Count != 0) output.Outlines = collection;
     }
 
-    private static int ValidateRawOutlines(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
+    private static List<double?> ValidateRawOutlines(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
     {
+        var zooms = new List<double?>();
         var catalog = source.Structure.Catalog.CatalogDictionary;
-        if (!catalog.Data.TryGetValue("Outlines", out var outlineToken)) return 0;
+        if (!catalog.Data.TryGetValue("Outlines", out var outlineToken)) return zooms;
         var root = Resolve<DictionaryToken>(outlineToken, source)
             ?? throw new InvalidDataException("PDF outline root cannot be resolved.");
         if (!root.Data.TryGetValue("First", out var first))
         {
             if (root.Data.ContainsKey("Last")) throw new InvalidDataException("PDF outline root has a last node but no first node.");
-            return 0;
+            return zooms;
         }
         var pageReferences = new HashSet<string>(StringComparer.Ordinal);
         var pendingPages = new Stack<IToken>();
@@ -167,6 +168,7 @@ internal static class PdfImportMetadataMigrator
             var (link, depth) = pending.Pop();
             if (depth > options.MaxBookmarkDepth || ++count > options.MaxBookmarkCount)
                 throw new InvalidDataException("PDF outline exceeds the configured node or depth limit.");
+            zooms.Add(null);
             var item = Resolve<DictionaryToken>(link, source) ?? throw new InvalidDataException("PDF outline node cannot be resolved.");
             if (item.Data.TryGetValue("Next", out var next)) pending.Push((next, depth));
             if (item.Data.TryGetValue("First", out var child)) pending.Push((child, depth + 1));
@@ -184,14 +186,27 @@ internal static class PdfImportMetadataMigrator
             }
             else item.Data.TryGetValue("Dest", out destination);
             if (destination is null) continue;
-            if (Resolve<ArrayToken>(destination, source) is not { } target || target.Data.Count == 0 ||
+            if (Resolve<ArrayToken>(destination, source) is not { } target || target.Data.Count < 2 ||
                 target.Data[0] is not IndirectReferenceToken pageRef || !pageReferences.Contains(pageRef.Data.ToString()))
                 throw new InvalidDataException("PDF outline targets an invalid or nonlocal page.");
+            if (target.Data[1] is NameToken { Data: "XYZ" })
+            {
+                // PdfPig's parsed destination coordinates omit the fifth (zoom) operand.
+                if (target.Data.Count != 5) throw new InvalidDataException("PDF XYZ destination has invalid coordinates.");
+                if (target.Data[4] is not NullToken)
+                {
+                    var zoom = Resolve<NumericToken>(target.Data[4], source)?.Double
+                        ?? throw new InvalidDataException("PDF XYZ destination zoom is not numeric.");
+                    if (double.IsNaN(zoom) || double.IsInfinity(zoom) || zoom != 0 && (zoom < .1 || zoom > 64))
+                        throw new NotSupportedException("PDF XYZ destination zoom cannot be represented in OFD.");
+                    zooms[count - 1] = zoom;
+                }
+            }
         }
-        return count;
+        return zooms;
     }
 
-    private static OfdDestination Destination(Page source, OfdPage page, ExplicitDestination pdf)
+    private static OfdDestination Destination(Page source, OfdPage page, ExplicitDestination pdf, double? rawZoom)
     {
         var result = new OfdDestination { Page = page, Type = OfdDestinationType.Fit };
         var coordinates = pdf.Coordinates;
@@ -201,6 +216,7 @@ internal static class PdfImportMetadataMigrator
             case ExplicitDestinationType.FitBoundingBox: return result;
             case ExplicitDestinationType.XyzCoordinates:
                 result.Type = OfdDestinationType.XYZ;
+                result.Zoom = rawZoom;
                 if (coordinates.Left is double x && coordinates.Top is double y)
                 {
                     var point = Point(source, x, y); result.Left = point.X; result.Top = point.Y;
