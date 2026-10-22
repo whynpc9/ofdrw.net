@@ -7,12 +7,14 @@ using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Readers;
 
-if (args.Length != 2) throw new ArgumentException("Usage: output-directory licensed-full-static-Noto.ttf");
+if (args.Length is not (2 or 3) || args.Length == 3 && args[2] != "--r06-only")
+    throw new ArgumentException("Usage: output-directory licensed-full-static-Noto.ttf [--r06-only]");
 var output = Path.GetFullPath(args[0]); Directory.CreateDirectory(output);
 var font = File.ReadAllBytes(args[1]); using var fixture = new PdfFixture(font);
 // The legacy dual-layer reader retains the PDF's face name rather than its bytes.
 // Bind that fixture name explicitly so re-export does not depend on host fonts.
 PdfFontRegistry.RegisterFont("FixtureFace", font);
+if (args.Length == 3) { await R06ProfileProbe.Run(output, font); return; }
 var p1 = "0.91 0.945 0.976 rg 28 490 364 70 re f 0.12 0.365 0.65 rg\n" + fixture.Text("矢量转换票面 / VECTOR TICKET", 42, 532, 17) +
     "0.12 0.17 0.23 rg\n" + fixture.Text("原文与绘制顺序 / Unicode and paint order", 42, 507, 10) +
     fixture.Text("No. 2026-021", 34, 465, 11) + fixture.Text("日期 Date: 2026-10-08", 215, 465, 11) +
@@ -51,7 +53,7 @@ foreach (var mode in new[] { "dual", "vector" })
     if (mode == "dual" && package.Pages.Any(page => page.Elements.OfType<OfdImageElement>().Count() != 1 || page.Elements.OfType<OfdPathElement>().Any() || page.Elements.OfType<OfdTextElement>().Any(element => element.FillColor.Alpha != 0))) throw new Exception("Default dual-layer changed.");
     reports.Add(new { mode, pages = package.Pages.Select(page => new { page.Index, page.WidthMillimeters, page.HeightMillimeters, paths = page.Elements.OfType<OfdPathElement>().Count(), texts = page.Elements.OfType<OfdTextElement>().Count(), images = page.Elements.OfType<OfdImageElement>().Count() }), result, text, fontBytes = package.Fonts.Sum(resource => resource.Data?.Length ?? 0) });
 }
-var unsupportedBodies = new[] { "q 20 20 160 160 re W n " + p1 + " Q", "/GS1 gs " + p1, "q 420 0 0 595 0 0 cm /Im1 Do Q", "", fixture.Text("Pure text / 中文", 34, 520, 15) };
+var unsupportedBodies = new[] { "q 20 20 m W n " + p1 + " Q", "/GS1 gs " + p1, "q 420 0 0 595 0 0 cm /Im1 Do Q", "", fixture.Text("Pure text / 中文", 34, 520, 15) };
 var mixed = fixture.Create(unsupportedBodies); File.WriteAllBytes(Path.Combine(output, "fallback-source.pdf"), mixed);
 using (var input = new MemoryStream(mixed))
 using (var ofd = new MemoryStream())
@@ -72,6 +74,7 @@ await FontUsageProbe.Run(output, font);
 await XmlCharacterProbe.Run(output);
 await BudgetOrderingProbe.Run(output, font);
 await WriterAccuracyProbe.Run(output, font);
+await R06ProfileProbe.Run(output, font);
 Console.WriteLine("Actual native/dual same-PDF and explicit fallback fixtures passed; Preview remains separate.");
 async Task Export(string name, MemoryStream ofd)
 {

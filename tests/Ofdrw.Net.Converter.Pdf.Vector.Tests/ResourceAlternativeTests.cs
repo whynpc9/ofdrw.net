@@ -12,24 +12,41 @@ public sealed class ResourceAlternativeTests
     internal static byte[] EncodingCMap() => Encoding.ASCII.GetBytes("/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> def /CMapName /ProbeIdentityH def /CMapType 1 def /WMode 0 def 1 begincodespacerange <0000> <FFFF> endcodespacerange 1 begincidrange <0000> <FFFF> 0 endcidrange endcmap CMapName currentdict /CMap defineresource pop end end");
     internal static byte[] IdentityCidMap() => Enumerable.Range(0, 65536).SelectMany(value => new[] { (byte)(value >> 8), (byte)value }).ToArray();
     private static PdfVectorToOfdOptions Raster() => new() { UnsupportedPagePolicy = PdfVectorUnsupportedPagePolicy.RasterizePage, Compatibility = new PdfToOfdOptions { PreferExternalPdfToPpm = true } };
-    [Theory]
-    [InlineData("encoding", "FONT_PROFILE")][InlineData("cid", "CID_MAPPING")]
-    public async Task LegalFontStreamAlternativesUsePagePolicyBeforeLoadingFonts(string kind, string code)
+    [Fact]
+    public async Task UnrecognizedEncodingStreamUsesPagePolicyBeforeLoadingFonts()
     {
         using var fixture = Fixture(); var text = fixture.Text("A  B中文", 20, 85);
         var pdf = fixture.Create(new[] { "10 10 20 20 re f", text, "10 10 20 20 re f" },
-            encodingStream: kind == "encoding" ? EncodingCMap() : null, cidMapStream: kind == "cid" ? IdentityCidMap() : null);
+            encodingStream: EncodingCMap());
         using var failInput = new MemoryStream(pdf); using var failOutput = new MemoryStream(); failOutput.Write(new byte[] { 1, 2 });
         var error = await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter().ConvertAsync(failInput, failOutput));
-        Assert.Contains(code, error.Message); Assert.Equal(new byte[] { 1, 2 }, failOutput.ToArray());
+        Assert.Contains("FONT_PROFILE", error.Message); Assert.Equal(new byte[] { 1, 2 }, failOutput.ToArray());
         using var input = new MemoryStream(pdf); using var output = new MemoryStream();
         var result = await new PdfVectorToOfdConverter(Raster()).ConvertWithResultAsync(input, output);
         Assert.Equal(new[] { true, false, true }, result.Pages.Select(page => page.IsNative));
-        Assert.Equal(1, result.Pages[1].ImageObjects); Assert.Equal(0, result.Pages[1].PathObjects); Assert.Contains(code, result.Pages[1].Diagnostic);
+        Assert.Equal(1, result.Pages[1].ImageObjects); Assert.Equal(0, result.Pages[1].PathObjects); Assert.Contains("FONT_PROFILE", result.Pages[1].Diagnostic);
         output.Position = 0; var package = await new OfdReader().ReadAsync(output);
         Assert.DoesNotContain(package.Fonts, font => font.Data.Length > 0);
         Assert.All(package.Pages[1].Elements.OfType<OfdTextElement>(), text => Assert.Equal(0, text.FillColor.Alpha));
         Assert.Contains("中文", string.Concat(package.Pages[1].Elements.OfType<OfdTextElement>().Select(text => text.Text)));
+    }
+    [Fact]
+    public async Task ExactCidToGidMapStreamKeepsUnicodeTextNative()
+    {
+        using var fixture = Fixture(); using var input = new MemoryStream(fixture.Create(new[] { fixture.Text("A  B中文", 20, 85) }, cidMapStream: IdentityCidMap()));
+        using var output = new MemoryStream();
+        var result = await new PdfVectorToOfdConverter().ConvertWithResultAsync(input, output);
+        Assert.True(Assert.Single(result.Pages).IsNative);
+        output.Position = 0; var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal("A  B中文", Assert.Single(package.Pages[0].Elements.OfType<OfdTextElement>()).Text);
+    }
+    [Fact]
+    public async Task MissingCidToGidEntryRejectsInsteadOfGuessingGlyph()
+    {
+        using var fixture = Fixture(); using var input = new MemoryStream(fixture.Create(new[] { fixture.Text("A", 20, 85) }, cidMapStream: new byte[] { 0, 0 }));
+        using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter().ConvertAsync(input, output));
+        Assert.Contains("SOURCE_GLYPH_CMAP_MISMATCH", error.Message); Assert.Empty(output.ToArray());
     }
     [Theory]
     [InlineData(false)][InlineData(true)]

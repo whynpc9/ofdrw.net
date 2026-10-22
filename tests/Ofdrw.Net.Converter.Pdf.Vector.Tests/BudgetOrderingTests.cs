@@ -20,7 +20,7 @@ public sealed class BudgetOrderingTests
         yield return new object[] { "q 1 0 0 1 -16777216 0 cm 16777216 100 1 40 re f Q", "PATH_FLOAT_PRECISION", 1 };
         yield return new object[] { "q 1 0 0 1 -16777216 0 cm 16777216 100 1 40 re B Q", "PATH_FLOAT_PRECISION", 2 };
         yield return new object[] { "q 1 2 2 4 0 0 cm 20 20 m 40 40 l S Q", "SINGULAR_SERIALIZED_MATRIX", 1 };
-        yield return new object[] { "1 J 20 20 m 40 40 l S", "STROKE_PROFILE", 1 };
+        yield return new object[] { "1 J 5 M 20 20 m 40 40 l S", "STROKE_PROFILE", 1 };
         yield return new object[] { "0 w 20 20 m 40 40 l S", "STROKE_PROFILE", 1 };
         yield return new object[] { ".0004 w 20 20 m 40 40 l S", "STROKE_WRITER_PRECISION", 1 };
         yield return new object[] { ".0004 w 20 20 30 30 re B", "STROKE_WRITER_PRECISION", 2 };
