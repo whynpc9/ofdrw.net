@@ -1319,7 +1319,10 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
 
-                if (knownGraphicNamespace && SupportedGraphicNamespace(structuralNamespace) && localName == "CompositeObject")
+                // PageBlock admits mixed supported drawing namespaces; ordinary
+                // composite placements retain their enclosing namespace contract.
+                if (knownGraphicNamespace && SupportedGraphicNamespace(structuralNamespace) && localName == "CompositeObject" &&
+                    (blockDepth > 0 || node.Name == structuralNamespace + "CompositeObject"))
                 {
                     var resourceId = node.Attribute("ResourceID")?.Value;
                     var compositeKey = CanonicalResourceId(resourceId);
