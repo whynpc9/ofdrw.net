@@ -280,7 +280,7 @@ internal sealed class OfdSourceIdentity
                 var definitionRole = Accepted(node.Name.Namespace, sourceNs) && IsDefinition(node, xml.Root);
                 if (definitionRole && id is not null && ParseId(id) == 0) throw new InvalidDataException("Unsupported non-positive or non-numeric source document-unit ID.");
                 var activeDefinition = definitionRole && ParseId(id) != 0;
-                var opaqueLayer = node.Name.LocalName == "Layer" && node.Parent?.Name.LocalName == "Content" &&
+                var opaqueLayer = !definitionRole && node.Name.LocalName == "Layer" && node.Parent?.Name.LocalName == "Content" &&
                     node.Parent.Parent == xml.Root;
                 var opaqueRoot = node.Parent?.Name.LocalName == "Layer" && node.Parent.Parent?.Name.LocalName == "Content" && node.Parent.Parent.Parent == xml.Root ||
                     xml.Root.Name.LocalName == "Res" && node.Parent?.Name == sourceNs + "CompositeGraphicUnit" && node.Parent.Parent?.Name == sourceNs + "CompositeGraphicUnits" && node.Parent.Parent.Parent == xml.Root;
@@ -318,7 +318,7 @@ internal sealed class OfdSourceIdentity
             var xml = Read(path); var nodes = Register(path, xml, "Page"); var sourceNs = xml.Root!.Name.Namespace;
             budget.ReserveReadModel(512L + elements.Count * 128L, token);
             var content = xml.Root.Elements().FirstOrDefault(node => node.Name.LocalName == "Content");
-            var originals = !Supported(xml.Root.Name.Namespace) ? new List<XElement> { xml.Root } :
+            var originals = !Supported(xml.Root.Name.Namespace) || xml.Root.Name.LocalName != "Page" ? new List<XElement> { xml.Root } :
                 content is null ? [] :
                 !Supported(content.Name.Namespace) ? new List<XElement> { content } :
                 content.Elements().Where(node => node.Name.LocalName == "Layer")
