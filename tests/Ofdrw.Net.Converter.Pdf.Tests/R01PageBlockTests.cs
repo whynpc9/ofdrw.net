@@ -830,6 +830,113 @@ public sealed class R01PageBlockTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task SharedTemplateUsesOnlyDocumentAndTemplateFonts(bool templateOwnFont)
+    {
+        var templateFontId = templateOwnFont ? "40" : "30";
+        var package = new OfdDocumentPackage();
+        for (var index = 0; index < 2; index++)
+        {
+            var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+            page.Elements.Add(new OfdRawElement { LocalName = "PageBlock",
+                Xml = $"<PageBlock xmlns='{Ns}' ID='{500 + index * 100}'>" +
+                    $"<PathObject ID='{501 + index * 100}' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+                    "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject></PageBlock>" });
+            package.Pages.Add(page);
+        }
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed.ToArray()), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            XNamespace ns = Ns;
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName == "Doc_0/Document.xml")
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    xml.Root!.Element(ns + "CommonData")!.Add(new XElement(ns + "TemplatePage",
+                        new XAttribute("ID", "750"), new XAttribute("BaseLoc", "Tpl_0/Content.xml")));
+                    xml.Root.Element(ns + "CommonData")!.Element(ns + "MaxUnitID")!.Value = "800";
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                if (entry.FullName.EndsWith("/Content.xml", StringComparison.Ordinal) &&
+                    entry.FullName.Contains("/Pages/Page_", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    xml.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "750")));
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+            for (var index = 0; index < 2; index++)
+            {
+                var pageRes = new XElement(ns + "Res", new XElement(ns + "Fonts",
+                    new XElement(ns + "Font", new XAttribute("ID", index == 0 ? "30" : "31"),
+                        new XAttribute("FontName", "Noto Sans"))));
+                using var stream = output.CreateEntry($"Doc_0/Pages/Page_{index}/PageRes.xml").Open();
+                await stream.WriteAsync(Encoding.UTF8.GetBytes(pageRes.ToString(SaveOptions.DisableFormatting)));
+            }
+            var templateText = XElement.Parse($"<PageBlock xmlns='{Ns}' ID='761'>" +
+                $"<TextObject ID='762' Boundary='10 10 50 10' Font='{templateFontId}' Size='4'>" +
+                "<TextCode X='0' Y='4'>shared template text</TextCode></TextObject></PageBlock>");
+            var templatePage = new XElement(ns + "Page", new XElement(ns + "Content",
+                new XElement(ns + "Layer", new XAttribute("ID", "760"), templateText)));
+            using (var stream = output.CreateEntry("Doc_0/Tpl_0/Content.xml").Open())
+                await stream.WriteAsync(Encoding.UTF8.GetBytes(templatePage.ToString(SaveOptions.DisableFormatting)));
+            if (templateOwnFont)
+            {
+                var templateRes = new XElement(ns + "Res", new XElement(ns + "Fonts",
+                    new XElement(ns + "Font", new XAttribute("ID", "40"), new XAttribute("FontName", "Noto Sans"),
+                        new XElement(ns + "FontFile", "NotoSans.ttf"))));
+                using (var stream = output.CreateEntry("Doc_0/Tpl_0/PageRes.xml").Open())
+                    await stream.WriteAsync(Encoding.UTF8.GetBytes(templateRes.ToString(SaveOptions.DisableFormatting)));
+                var directory = new DirectoryInfo(AppContext.BaseDirectory);
+                while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln")))
+                    directory = directory.Parent;
+                var fontBytes = File.ReadAllBytes(Path.Combine(directory!.FullName,
+                    "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf"));
+                using var templateFontStream = output.CreateEntry("Doc_0/Tpl_0/NotoSans.ttf").Open();
+                await templateFontStream.WriteAsync(fontBytes);
+            }
+        }
+        var ofd = rewritten.ToArray();
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Equal(2, read.Pages.Count);
+        foreach (var page in read.Pages)
+        {
+            var block = Assert.IsType<OfdRawElement>(Assert.Single(Assert.Single(page.Templates).Elements));
+            var text = Assert.IsType<OfdTextElement>(Assert.Single(block.PageBlockChildren!));
+            if (templateOwnFont) Assert.Null(text.RenderPaintError);
+            else Assert.Contains("unresolved Font", text.RenderPaintError);
+        }
+        Assert.Contains("shared template text", new OfdTextExtractor().Extract(read, includeTemplates: true));
+        using var pdf = new MemoryStream();
+        using var svg = new MemoryStream();
+        using var html = new MemoryStream();
+        if (templateOwnFont)
+        {
+            await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+            await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg, pageIndex: 0);
+            await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html, pageIndexes: new[] { 0, 1 });
+            Assert.True(pdf.Length > 0);
+            Assert.Contains("shared template text", Encoding.UTF8.GetString(svg.ToArray()));
+            Assert.Contains("shared template text", Encoding.UTF8.GetString(html.ToArray()));
+            Retain("template-own-font", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+        }
+        else
+        {
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf));
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg, pageIndex: 0));
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html, pageIndexes: new[] { 0, 1 }));
+            Assert.Equal(0, pdf.Length); Assert.Equal(0, svg.Length); Assert.Equal(0, html.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task DuplicateFontIdsAreRejectedBeforeAnyRenderer(bool acrossResourceFiles)
     {
         var id = acrossResourceFiles ? "10" : "20";

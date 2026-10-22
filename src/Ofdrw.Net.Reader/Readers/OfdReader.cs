@@ -379,8 +379,8 @@ public sealed class OfdReader : IOfdReader
                 var templateMediaTypeMap = new Dictionary<string, string>(documentMediaTypeMap, StringComparer.OrdinalIgnoreCase);
                 var templatePaint = new OfdPaintResources(documentPaint);
                 ReadMediaResources(archive, templateResPath, templateMediaMap, templateMediaTypeMap, material, cancellationToken);
-                material.ReserveReadModel(256L + fontMap.Count * 160L, cancellationToken);
-                var templateFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
+                material.ReserveReadModel(256L + documentFonts.Count * 160L, cancellationToken);
+                var templateFonts = new Dictionary<string, string>(documentFonts, StringComparer.OrdinalIgnoreCase);
                 ReadFonts(archive, templateResPath, package, templateFonts, material, cancellationToken);
                 templatePaint.Read(archive, templateResPath, material, cancellationToken);
 
