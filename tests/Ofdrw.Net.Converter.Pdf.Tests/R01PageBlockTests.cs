@@ -725,6 +725,50 @@ public sealed class R01PageBlockTests
         Retain("unique-font-resources", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ExplicitGlyphMappingInPageBlockFailsClosedWithoutLosingText(bool composite, bool mapped)
+    {
+        var glyphs = mapped
+            ? "<CGTransform CodePosition='0' CodeCount='1' GlyphCount='1'><Glyphs>2</Glyphs></CGTransform>"
+            : "";
+        var text = "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>logical text</TextCode>" + glyphs + "</TextObject>";
+        var resources = composite
+            ? "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+              text + "</CompositeGraphicUnit></CompositeGraphicUnits>"
+            : null;
+        var body = composite
+            ? "<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>"
+            : text;
+        var ofd = await Source(body, resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Contains("logical text", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            if (mapped)
+            {
+                var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+                Assert.Contains("glyph", error.Message, StringComparison.OrdinalIgnoreCase);
+                Assert.Equal(0, output.Length);
+            }
+            else
+            {
+                await convert(new MemoryStream(ofd), output);
+                Assert.True(output.Length > 0);
+            }
+        }
+    }
+
     [Fact]
     public async Task NumericCompositeIdsResolveEquivalentSpellingsInPageBlock()
     {
