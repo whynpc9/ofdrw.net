@@ -138,6 +138,37 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
     }
 
+    [Theory]
+    [InlineData("<MaxUnitID><v:TemplatePage xmlns:v='urn:vendor' BaseLoc='hidden.xml'/></MaxUnitID>")]
+    [InlineData("<PageArea><Future><TemplatePage ID='9' BaseLoc='hidden.xml'/></Future></PageArea>")]
+    public async Task OpaqueCommonDataChildTaintsPageContentRules(string child)
+    {
+        var entries = Seed(documentExtra: $"<CommonData>{child}</CommonData>",
+            pageExtra: "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>",
+            objects: "<ImageObject Interpolate='false'/><TextObject Size='3'/>");
+        var report = await Check(entries);
+        foreach (var id in new[] { "AC-004", "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(PreflightOutcome.Unknown, Rule(report, id).Outcome);
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer Name='body'><ImageObject Interpolate='true'/></Layer></Content></Page>");
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-007").Outcome);
+    }
+
+    [Fact]
+    public async Task TemplateIdsUsePositiveNumericIdentity()
+    {
+        var entries = Seed(documentExtra: "<CommonData><TemplatePage ID='01' BaseLoc='Templates/Content.xml'/></CommonData>");
+        entries["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer/></Content></Page>");
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Template TemplateID='1'/><Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions><Content><Layer/></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-004").Outcome);
+        var document = Encoding.UTF8.GetString(entries["Doc_0/Document.xml"]);
+        entries["Doc_0/Document.xml"] = Utf8(document.Replace("</CommonData>",
+            "<TemplatePage ID='1' BaseLoc='Templates/Content.xml'/></CommonData>", StringComparison.Ordinal));
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+    }
+
     [Fact]
     public async Task MixedPageNamespaceKeepsKnownFailureButPreventsPass()
     {
@@ -354,6 +385,19 @@ public class ArchivalStructuralCoverageTests
         var report = await Check(Seed(documentExtra: $"<Outlines {attributes}>{payload}{actions}</Outlines>"));
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-005").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Fact]
+    public async Task DeepOutlinesUseBoundedIterativeTraversal()
+    {
+        const int depth = 1500;
+        var opens = string.Concat(Enumerable.Repeat("<OutlineElem Title='A'>", depth));
+        var closes = string.Concat(Enumerable.Repeat("</OutlineElem>", depth));
+        var outline = "<Outlines>" + opens +
+            "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>" + closes + "</Outlines>";
+        var report = await Check(Seed(documentExtra: outline), new ArchivalPreflightOptions { MaxXmlDepth = 4096 });
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-006").Outcome);
     }
 
     [Fact]

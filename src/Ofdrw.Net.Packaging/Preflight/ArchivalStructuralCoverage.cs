@@ -24,7 +24,7 @@ internal sealed class ArchivalStructuralCoverage
     private readonly Dictionary<XElement, int> siblingOrdinals = new();
     private readonly Dictionary<string, XElement> bookmarks = new(StringComparer.Ordinal);
     private readonly HashSet<long> pageIds = new();
-    private readonly HashSet<string> templateIds = new(StringComparer.Ordinal);
+    private readonly HashSet<long> templateIds = new();
     private long xmlBytes;
     private int xmlNodes;
     private int references;
@@ -91,7 +91,7 @@ internal sealed class ArchivalStructuralCoverage
         foreach (var template in common.SelectMany(x => x.Elements(ns + "TemplatePage")))
         {
             var id = (string?)template.Attribute("ID");
-            if (string.IsNullOrWhiteSpace(id) || ForeignAttribute(template, "ID") || !templateIds.Add(id!))
+            if (!Id(id, out var number) || ForeignAttribute(template, "ID") || !templateIds.Add(number))
                 UnknownPageScope("TemplateIdAmbiguous", documentEntry);
         }
         var pages = document.Elements(ns + "Pages").ToArray();
@@ -122,7 +122,8 @@ internal sealed class ArchivalStructuralCoverage
             UnknownPageScope("CommonDataAmbiguous", documentEntry);
         if (common.Any(x => x.Attributes().Any(a => !a.IsNamespaceDeclaration) || OpaqueNodes(x) ||
             x.Elements().Any(y => y.Name.Namespace != ns || y.Name.LocalName is not
-                ("MaxUnitID" or "PageArea" or "PublicRes" or "DocumentRes" or "TemplatePage" or "DefaultCS"))))
+                ("MaxUnitID" or "PageArea" or "PublicRes" or "DocumentRes" or "TemplatePage" or "DefaultCS") ||
+                OpaqueCommonChild(y, ns))))
             UnknownPageScope("OpaqueCommonData", documentEntry);
         if (common.Any(x => x.Descendants(ns + "TemplatePage").Any(y => y.Parent != x)))
             UnknownPageScope("NestedTemplatePage", documentEntry);
@@ -168,7 +169,7 @@ internal sealed class ArchivalStructuralCoverage
                 OpaquePageChild(x, page.Name.Namespace)))
             UnknownPageScope("OpaquePageRoot", entry);
         if (!template && page.Elements(page.Name.Namespace + "Template").Any(x =>
-                !templateIds.Contains((string?)x.Attribute("TemplateID") ?? string.Empty)))
+                !Id((string?)x.Attribute("TemplateID"), out var number) || !templateIds.Contains(number)))
             UnknownPageScope("TemplateReferenceUnavailable", entry);
         InspectActions(page, page.Name.Namespace, observations[0], null, entry);
         if (page.Elements(page.Name.Namespace + "Content").Count() != 1 ||
@@ -214,30 +215,37 @@ internal sealed class ArchivalStructuralCoverage
                 UnknownOutline("ForeignOutline", documentEntry);
             if (container.Elements().Any(x => x.Name != ns + "OutlineElem"))
                 UnknownOutline("OpaqueOutlineContent", documentEntry);
-            foreach (var node in container.Elements(ns + "OutlineElem")) ReadOutlineNode(node, ns, 0);
+            foreach (var node in container.Elements(ns + "OutlineElem")) ReadOutlineTree(node, ns);
         }
         if (targetInventoryUnknown) observations[2].Unknown("TargetInventoryAmbiguous", documentEntry);
     }
 
-    private void ReadOutlineNode(XElement node, XNamespace ns, int depth)
+    private void ReadOutlineTree(XElement first, XNamespace ns)
     {
-        token.ThrowIfCancellationRequested();
-        if (depth > options.MaxXmlDepth)
-        { UnknownOutline("OutlineDepthExceeded", documentEntry); return; }
-        var expanded = (string?)node.Attribute("Expanded");
-        var count = (string?)node.Attribute("Count");
-        if (node.Attribute("Title") is null ||
-            node.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name.LocalName is not ("Title" or "Expanded" or "Count")) ||
-            node.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name.Namespace != XNamespace.None) ||
-            expanded is not (null or "true" or "false" or "1" or "0") ||
-            count is not null && (!int.TryParse(count, NumberStyles.None, CultureInfo.InvariantCulture, out var value) || value < 0) ||
-            OpaqueNodes(node))
-            UnknownOutline("OpaqueOutlineNode", documentEntry);
-        InspectActions(node, ns, observations[1], observations[2], documentEntry);
-        if (Foreign(node, "OutlineElem", ns)) UnknownOutline("ForeignOutline", documentEntry);
-        if (node.Elements().Any(x => x.Name != ns + "OutlineElem" && x.Name != ns + "Actions"))
-            UnknownOutline("OpaqueOutlineContent", documentEntry);
-        foreach (var child in node.Elements(ns + "OutlineElem")) ReadOutlineNode(child, ns, depth + 1);
+        var pending = new Stack<(XElement Node, int Depth)>();
+        pending.Push((first, 0));
+        while (pending.Count != 0)
+        {
+            token.ThrowIfCancellationRequested();
+            var (node, depth) = pending.Pop();
+            if (depth > options.MaxXmlDepth)
+            { UnknownOutline("OutlineDepthExceeded", documentEntry); continue; }
+            var expanded = (string?)node.Attribute("Expanded");
+            var count = (string?)node.Attribute("Count");
+            if (node.Attribute("Title") is null ||
+                node.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name.LocalName is not ("Title" or "Expanded" or "Count")) ||
+                node.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name.Namespace != XNamespace.None) ||
+                expanded is not (null or "true" or "false" or "1" or "0") ||
+                count is not null && (!int.TryParse(count, NumberStyles.None, CultureInfo.InvariantCulture, out var value) || value < 0) ||
+                OpaqueNodes(node))
+                UnknownOutline("OpaqueOutlineNode", documentEntry);
+            InspectActions(node, ns, observations[1], observations[2], documentEntry);
+            if (Foreign(node, "OutlineElem", ns)) UnknownOutline("ForeignOutline", documentEntry);
+            if (node.Elements().Any(x => x.Name != ns + "OutlineElem" && x.Name != ns + "Actions"))
+                UnknownOutline("OpaqueOutlineContent", documentEntry);
+            foreach (var child in node.Elements(ns + "OutlineElem").Reverse())
+                pending.Push((child, depth + 1));
+        }
     }
 
     private void ReadAnnotations(XElement document, XNamespace ns)
@@ -427,6 +435,22 @@ internal sealed class ArchivalStructuralCoverage
             return child.HasElements || child.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
                    child.Nodes().Any(x => x is not XText);
         return false;
+    }
+
+    private static bool OpaqueCommonChild(XElement child, XNamespace ns)
+    {
+        if (child.Name == ns + "PageArea")
+            return child.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(child) ||
+                   child.Elements().Any(box => box.Name.Namespace != ns || box.Name.LocalName is not
+                       ("PhysicalBox" or "ApplicationBox" or "ContentBox" or "BleedBox") ||
+                       box.HasElements || box.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+                       box.Nodes().Any(x => x is not XText));
+        if (child.Name == ns + "TemplatePage")
+            return child.HasElements || OpaqueNodes(child) ||
+                   child.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                       (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("ID" or "BaseLoc" or "ZOrder")));
+        return child.HasElements || child.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+               child.Nodes().Any(x => x is not XText);
     }
 
     private static bool OpaqueAppearance(XElement appearance)
