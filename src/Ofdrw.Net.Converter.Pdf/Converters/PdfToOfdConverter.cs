@@ -252,7 +252,8 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             try
             {
                 var image = await external.TryRasterizePageAsync(pdfPath, pageIndex, cancellationToken,
-                    _options.Dpi, _options.ExternalRasterizationTimeout, _options.CopyAttachments || _options.RasterizeCropBox).ConfigureAwait(false);
+                    _options.Dpi, _options.ExternalRasterizationTimeout,
+                    _options.CopyBookmarks || _options.CopyAttachments || _options.RasterizeCropBox).ConfigureAwait(false);
                 if (image is null) AddDiagnostic(diagnostics, $"Page {pageIndex + 1}: pdftoppm failed: {external.LastFailure}");
                 return image;
             }

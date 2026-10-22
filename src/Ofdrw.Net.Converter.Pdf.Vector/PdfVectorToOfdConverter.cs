@@ -113,7 +113,7 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                         // The final package imports metadata once, after all selected pages are known.
                         fallbackOptions.CopyBookmarks = false;
                         fallbackOptions.CopyAttachments = false;
-                        fallbackOptions.RasterizeCropBox = limits.Compatibility.CopyAttachments;
+                        fallbackOptions.RasterizeCropBox = limits.Compatibility.CopyBookmarks || limits.Compatibility.CopyAttachments;
                         fallbackOptions.MaxTotalImageBytes = limits.Compatibility.MaxTotalImageBytes - imageBytes;
                         if (fallbackOptions.MaxTotalImageBytes <= 0) throw new InvalidDataException("PDF accumulated image byte limit exceeded.");
                         using var input = File.OpenRead(path); using var output = new MemoryStream();

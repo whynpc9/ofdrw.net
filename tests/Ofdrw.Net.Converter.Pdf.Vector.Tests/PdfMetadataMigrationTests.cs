@@ -113,6 +113,51 @@ public sealed class PdfMetadataMigrationTests
         Assert.Equal(0, output.Length);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BookmarkOnlyCropBoxRasterAlignsWithOutputPage(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, firstPageExtra: "/CropBox [10 20 410 570] /Rotate 90"));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, PreferExternalPdfToPpm = true };
+        if (vector)
+        {
+            var result = await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options, UnsupportedPagePolicy = PdfVectorUnsupportedPagePolicy.RasterizePage })
+                .ConvertWithResultAsync(input, output, new[] { 0, 1 });
+            Assert.False(result.Pages[0].IsNative);
+        }
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output, new[] { 0, 1 });
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Null(package.Pages[0].Annotations);
+        Assert.Empty(package.Attachments);
+        var image = Assert.Single(package.Pages[0].Elements.OfType<OfdImageElement>());
+        Assert.Equal(1100, System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(image.Data.AsSpan(16, 4)));
+        Assert.Equal(800, System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(image.Data.AsSpan(20, 4)));
+        var child = Assert.Single(Assert.Single(package.Outlines!.Items).Children);
+        var destination = Assert.IsType<OfdGoToAction>(Assert.Single(child.Actions!.Items)).Destination!;
+        Assert.Same(package.Pages[0], destination.Page);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnknownExplicitOutlineDestinationFailsBeforeOutput(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, destination: "11 0 R /UnsupportedDestination"));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options }).ConvertAsync(input, output));
+        else await Assert.ThrowsAsync<NotSupportedException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
+        Assert.Equal(0, output.Length);
+    }
+
     [Fact]
     public async Task DisabledSwitchesLeaveNoNavigationOrAttachmentReferences()
     {
