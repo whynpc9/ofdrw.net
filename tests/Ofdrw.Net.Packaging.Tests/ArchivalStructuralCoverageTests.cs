@@ -60,6 +60,18 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
     }
 
+    [Fact]
+    public async Task TemplatePageActionIsPartOfPageActionScope()
+    {
+        var entries = Seed(documentExtra: "<CommonData><TemplatePage ID='8' BaseLoc='Templates/Content.xml'/></CommonData>");
+        entries["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Actions><Action><URI URI='https://example.invalid'/></Action></Actions><Content><Layer/></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-004").Outcome);
+        entries.Remove("Doc_0/Templates/Content.xml");
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+    }
+
     [Theory]
     [InlineData("<URI URI='https://example.invalid'/>", PreflightOutcome.Fail)]
     [InlineData("<Goto><Dest Type='Fit' PageID='1'/></Goto>", PreflightOutcome.Pass)]

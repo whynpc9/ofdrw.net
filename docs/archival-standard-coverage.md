@@ -36,7 +36,7 @@ Sections 1, 3 and 4 define scope, terms and abbreviations rather than per-packag
 | 6.2.2(e) | Remove `Extensions`, preserving any visual effect | External: source-aware appearance comparison and page transformation. A node-absence check alone cannot pass this clause. |
 | 6.2.3(a) | Promote most used page area to document default | Open: count page areas, preserve appearance and verify output. |
 | 6.2.3(b) | Prefer omitting redundant page area | Open: optional optimization, requires page/default comparison. |
-| 6.2.3(c) | Remove non-Goto page actions | **Exact read-only type check:** `AC-004` traverses recognized page descriptions; unresolved page entries and opaque action forms are Unknown. Goto target validity is separate. No removal handler. |
+| 6.2.3(c) | Remove non-Goto page actions | **Exact read-only type check:** `AC-004` traverses recognized page and template descriptions; unresolved page entries and opaque action forms are Unknown. Goto target validity is separate. No removal handler. |
 | 6.2.3(d) | Distinguish same-named layers | **Exact read-only name check:** `AC-011` detects duplicate unqualified Layer names within each recognized page/template content; unresolved page or foreign layer names are Unknown. No rename handler or source naming provenance. |
 | 6.2.3(e) | Remove PageBlock nesting or bound unavoidable nesting | Open: full page/template traversal and rendering equivalence. |
 | 6.2.4(a) | Prefer original layer order and body/background organization | External: generation intent and visual comparison. |

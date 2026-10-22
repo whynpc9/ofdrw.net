@@ -102,7 +102,7 @@ internal sealed class ArchivalStructuralCoverage
         if (ForeignAttribute(declaration, "BaseLoc") ||
             !TryEntry(containing, (string?)declaration.Attribute("BaseLoc"), out var entry))
         {
-            if (!template) observations[0].Unknown("PageReferenceUnavailable", containing);
+            observations[0].Unknown("PageReferenceUnavailable", containing);
             UnknownGraphics("PageReferenceUnavailable", containing);
             observations[7].Unknown("PageReferenceUnavailable", containing);
             if (!template) targetInventoryUnknown = true;
@@ -111,13 +111,13 @@ internal sealed class ArchivalStructuralCoverage
         var page = Read(entry, "Page");
         if (page is null)
         {
-            if (!template) observations[0].Unknown("PageContentUnavailable", entry);
+            observations[0].Unknown("PageContentUnavailable", entry);
             UnknownGraphics("PageContentUnavailable", entry);
             observations[7].Unknown("PageContentUnavailable", entry);
             if (!template) targetInventoryUnknown = true;
             return;
         }
-        if (!template) InspectActions(page, page.Name.Namespace, observations[0], null, entry);
+        InspectActions(page, page.Name.Namespace, observations[0], null, entry);
         if (page.Elements(page.Name.Namespace + "Content").Count() != 1 ||
             Foreign(page, "Content", page.Name.Namespace))
         { UnknownGraphics("PageContentAmbiguous", entry); observations[7].Unknown("PageContentAmbiguous", entry); }
