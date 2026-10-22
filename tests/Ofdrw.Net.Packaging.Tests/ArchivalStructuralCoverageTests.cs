@@ -540,15 +540,19 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-006").Outcome);
     }
 
-    [Fact]
-    public async Task BookmarkTargetIgnoresOpaqueDeclarationWithDifferentKnownName()
+    [Theory]
+    [InlineData("vendor='x'")]
+    [InlineData("xmlns:v='urn:vendor' v:Name='vendor'")]
+    public async Task BookmarkTargetIgnoresOpaqueDeclarationWithDifferentKnownName(string attributes)
     {
         var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Bookmark Name='good'/></Goto></Action></Actions></OutlineElem></Outlines>";
-        var bookmarks = "<Bookmarks><Bookmark Name='other' vendor='x'><Dest Type='Fit' PageID='1'/></Bookmark><Bookmark Name='good'><Dest Type='Fit' PageID='1'/></Bookmark></Bookmarks>";
+        var bookmarks = $"<Bookmarks><Bookmark Name='other' {attributes}><Dest Type='Fit' PageID='1'/></Bookmark><Bookmark Name='good'><Dest Type='Fit' PageID='1'/></Bookmark></Bookmarks>";
         var report = await Check(Seed(documentExtra: outline + bookmarks));
         Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-006").Outcome);
         report = await Check(Seed(documentExtra: outline.Replace("good", "other", StringComparison.Ordinal) + bookmarks));
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+        report = await Check(Seed(documentExtra: outline.Replace("good", "missing", StringComparison.Ordinal) + bookmarks));
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-006").Outcome);
     }
 
     [Theory]

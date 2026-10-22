@@ -276,7 +276,7 @@ internal sealed class ArchivalStructuralCoverage
             foreach (var bookmark in container.Elements(ns + "Bookmark"))
             {
                 var name = (string?)bookmark.Attribute("Name");
-                if (string.IsNullOrWhiteSpace(name) || ForeignAttribute(bookmark, "Name"))
+                if (string.IsNullOrWhiteSpace(name))
                 { bookmarkInventoryUnknown = true; continue; }
                 var opaqueChildren = bookmark.Elements().Any(x => x.Name != ns + "Dest") ||
                     bookmark.Elements(ns + "Dest").Any(x => x.HasElements);
