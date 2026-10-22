@@ -3,32 +3,34 @@
 ## Source and scope
 
 - Base: `62887ad6af62605411e1968da662be48ce1c091c` (`origin/main`, R06 merged).
-- Implementation: `29433b54716c92eb417a3f90c9365db095311738`.
-- The opt-in PDF bookmark and attachment migration is exercised through both dual-layer and vector importers. The switches remain off by default. The supported profile and fail-closed boundaries are in [PDF import: navigation and embedded attachments](../pdf-import-navigation-attachments.md).
-- Sample: a deterministic two-page PDF with Chinese and English, styled text, a table, affine graphics, a nested outline, one catalog embedded file, and a page `FileAttachment`. The selected source page order is `[2, 1]`.
+- Final implementation and review fixes: `8343bae489fcf220f84d9e774ef4f54f33b46008`. The following evidence commit changes only the retained report and archive.
+- Both dual-layer and vector importers were exercised with `CopyBookmarks` and `CopyAttachments` enabled. They remain off by default. See [PDF import: navigation and embedded attachments](../pdf-import-navigation-attachments.md) for the supported profile and fail-closed limits.
+- The standard deterministic two-page PDF contains Chinese/English text, local styles, a table, affine graphics, a nested outline, a catalog embedded file and a page `FileAttachment`. The selected source page order is `[2, 1]`. Separate cropped single-page PDFs at 90° and 270° exercise annotation and bookmark coordinates with external `pdftoppm`, default PDFium, and native vector rendering.
 
 ## Functional and package checks
 
 | Check | Result |
 | --- | --- |
-| 9 focused R07 regression tests (Debug) | Passed |
-| Full Release solution tests | 3,343 passed; 13 skipped |
-| Source E2E `--r07-only` | Passed; both importers' OFD readback checked outline targets, attachment names/payload hashes and `GotoA` attachment binding |
-| Default converter package consumer | Passed with 12 local packages |
-| PDF vector package consumer | Passed with 14 local packages from a fresh package cache; R07 probe and readback included |
+| 19 focused R07 regression tests (Release) | Passed |
+| Full Release solution tests | 3,353 passed; 13 skipped across 11 assemblies |
+| Source E2E `--r07-only` | Passed; OFD readback checked outline hierarchy/targets, attachment names and payload hashes, and `GotoA` binding; both rotations and both rasterizers covered |
+| Default converter package consumer | Passed with 12 local `0.1.0-r07.4` packages |
+| PDF vector package consumer | Passed with 14 local `0.1.0-r07.4` packages from a fresh cache and package references only; R07 probe/readback included |
 
-No real-world PDF corpus or independent OFD reader interaction was part of this acceptance.
+The additional regressions cover outline grouping nodes, attachment count and decoded-size limits, dangling/duplicate/external `GotoA` targets, and 90°/270° displayed CropBox coordinates. The package consumer checks the same behavior through built packages.
 
 ## Rendering and visual checks
 
-- Chain: generated source PDF → dual-layer OFD → exported PDF → macOS Preview; and generated source PDF → vector OFD → exported PDF → macOS Preview. These are the package consumer's generated artifacts.
-- Automated rendering: source PDF and both exported PDFs have two pages. The package output PDFs were rendered at 144 DPI. The four package output PNGs match the individually reviewed current-source E2E PNGs byte for byte.
-- PNG visual review: source pages 1–2, dual output pages 1–2, vector output pages 1–2. The outputs follow `[2, 1]`; Chinese and English text, local style, table fills/borders, affine graphics, footer and page boundaries are legible. No new missing glyph, overlap, clipping, ghost text or blank page was observed.
-- macOS Preview: all six pages were opened and inspected on 2026-10-22, with each file closed before opening the next and Preview quit afterward. The gray generic PushPin appears at the selected page attachment position on both outputs. No new visual defect was observed. This conclusion applies to this sample and these six pages.
-- The PDF annotation's custom appearance is outside the profile; the output deliberately uses the generic PushPin. An independent OFD reader's `GotoA` click behavior remains unverified; local OFD readback verifies the target and payload binding.
+- Chain: generated source PDF → dual-layer OFD → exported PDF → macOS Preview; and generated source PDF → vector OFD → exported PDF → macOS Preview. The inspected PDFs came from the final `0.1.0-r07.4` package consumer.
+- Automated rendering: all 11 PDFs rendered at 144 DPI. The standard source, dual and vector PDFs each have two pages; each rotated variant has one. The final package's 14 PNGs matched, byte for byte, individually inspected current-source E2E PNGs. Both default PDFium rotation pages were also inspected directly after the final fix.
+- PNG visual review: all 14 pages. The standard outputs follow `[2, 1]`; Chinese/English text, local style, table fills/borders, affine graphics, footers and page boundaries are legible. On both cropped rotations, the blue source annotation rectangle, `PIN`/`TARGET` text and one output icon align. No new missing glyph, overlap, clipping, ghost text or blank page was observed.
+- macOS Preview: all 14 pages across the 11 final package PDFs were opened and checked individually on 2026-10-22. Each PDF window was closed before the next, and Preview was quit afterward. Standard source/dual/vector pages 1–2 and 90°/270° source/external-dual/default-PDFium-dual/vector page 1 were inspected. The output icon appears once within the blue rectangle: upper-left at 90°, lower-right at 270°. No new output visual defect was observed for these pages.
+- Preview does not paint the *source PDF* `FileAttachment` icon, leaving its blue rectangle empty. The source `pdftoppm -cropbox` PNG paints it. External-dual output retains that rasterized source icon; default PDFium-dual and native vector output draw a generic PushPin. This viewer difference was recorded separately from output acceptance.
+
+Custom PDF annotation appearances are outside this profile. An independent OFD reader's `GotoA` click behavior and a real-world PDF corpus remain unverified; local OFD readback verifies the target and payload binding. These results apply only to the listed sample pages and conversion modes.
 
 ## Retained evidence
 
-[R07 evidence archive](../evidence/pdf-import-navigation-attachments/r07-pdf-navigation-attachments-evidence.zip) contains the source PDF, two OFDs, their exported PDFs, six page PNGs, the R07 readback report and an internal size/SHA-256 manifest. The [manifest](../evidence/pdf-import-navigation-attachments/manifest.json) is also available without extracting the archive. Archive size: 23,957,574 bytes; SHA-256: `420c2eefc048c532310eebeededa693622353cb5fe8e000d558cfb2e01a684ba`.
+[R07 solid-compressed LFS archive](../evidence/pdf-import-navigation-attachments/r07-pdf-navigation-attachments-evidence.tar.zst) contains the three source PDFs, eight output OFDs, eleven PDFs, fourteen page PNGs, the readback report and an internal size/SHA-256 manifest. The [manifest](../evidence/pdf-import-navigation-attachments/manifest.json) is also available without extracting the archive. Archive size: 21,686,361 bytes; SHA-256: `811334eaaa9527e7bae9b1084894af22dd5c9d84f337e81342ea4e3d663892c3`.
 
-The two output OFDs contain the embedded fixture font; the archive does not duplicate the package cache, build output, complete test logs, historical evidence or source checkout. Local detailed logs and generation files remain in ignored `artifacts/roadmap-v12/R07/`.
+The solid archive compresses repeated embedded fixture font data across the necessary output files. It excludes package caches, build output, full test logs, historical evidence and source checkout. Local detailed logs and generated files remain in ignored `artifacts/roadmap-v12/R07/`. The desktop inspection receipt is `artifacts/roadmap-v12/R07/visual-acceptance-r4.md` and GUI release generation `20261022T0318Z`.
