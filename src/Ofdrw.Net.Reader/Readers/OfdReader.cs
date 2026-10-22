@@ -1129,6 +1129,9 @@ public sealed class OfdReader : IOfdReader
         OfdCompositeGraph.Validate(package, material, token); return map;
     }
 
+    private static bool SupportedGraphicNamespace(XNamespace ns) => ns == XNamespace.None ||
+        ns.NamespaceName is OfdConstants.Namespace or OfdConstants.StandardNamespace;
+
     private static IEnumerable<OfdElement> ParsePageObjects(
         OfdPackageArchive archive,
         XDocument pageXml,
@@ -1147,8 +1150,22 @@ public sealed class OfdReader : IOfdReader
             .ToList() ?? [];
 
         foreach (var layer in layers)
+        {
+            if (!SupportedGraphicNamespace(layer.Name.Namespace))
+            {
+                yield return new OfdRawElement
+                {
+                    ObjectId = layer.Attribute("ID")?.Value,
+                    LayerId = layer.Attribute("ID")?.Value,
+                    LayerType = layer.Attribute("Type")?.Value ?? "Body",
+                    LocalName = "Layer",
+                    Xml = OfdXmlEnvelope.Capture(layer, material, cancellationToken)
+                };
+                continue;
+            }
             foreach (var element in ParseGraphicNodes(archive, layer.Elements(), layer.Attribute("ID")?.Value, layer.Attribute("Type")?.Value ?? "Body",
                 fontMap, mediaMap, mediaTypeMap, pageResPath, material, cancellationToken, compositeMap, layer.Name.Namespace, paint)) yield return element;
+        }
     }
 
     private static IEnumerable<OfdElement> ParseGraphicNodes(OfdPackageArchive archive, IEnumerable<XElement> nodes, string? layerId, string layerType,
@@ -1161,9 +1178,8 @@ public sealed class OfdReader : IOfdReader
                 var localName = node.Name.LocalName;
                 // Existing vector imports can mix the two OFD namespaces or use
                 // unqualified graphic names. Extension namespaces remain opaque.
-                var knownGraphicNamespace = node.Name.Namespace == XNamespace.None ||
-                    node.Name.NamespaceName is OfdConstants.Namespace or OfdConstants.StandardNamespace;
-                if (knownGraphicNamespace && localName == "PageBlock")
+                var knownGraphicNamespace = SupportedGraphicNamespace(node.Name.Namespace);
+                if (knownGraphicNamespace && SupportedGraphicNamespace(structuralNamespace) && localName == "PageBlock")
                 {
                     material.Structure.Depth(blockDepth + 1);
                     var xml = OfdXmlEnvelope.Capture(node, material, cancellationToken);
@@ -1303,7 +1319,7 @@ public sealed class OfdReader : IOfdReader
                     continue;
                 }
 
-                if (node.Name == structuralNamespace + "CompositeObject" && (structuralNamespace.NamespaceName == OfdConstants.Namespace || structuralNamespace.NamespaceName == OfdConstants.StandardNamespace))
+                if (knownGraphicNamespace && SupportedGraphicNamespace(structuralNamespace) && localName == "CompositeObject")
                 {
                     var resourceId = node.Attribute("ResourceID")?.Value;
                     var compositeKey = CanonicalResourceId(resourceId);

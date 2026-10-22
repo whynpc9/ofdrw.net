@@ -99,7 +99,8 @@ public sealed class R01PageBlockTests
         return revised.ToArray();
     }
 
-    private static async Task<byte[]> ReNamespacePageBlock(byte[] seed, string layerNamespace, string blockNamespace)
+    private static async Task<byte[]> ReNamespacePageBlock(byte[] seed, string layerNamespace, string blockNamespace,
+        string? compositeNamespace = null)
     {
         using var rewritten = new MemoryStream();
         using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
@@ -114,8 +115,13 @@ public sealed class R01PageBlockTests
                     var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
                     var layer = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "Layer");
                     var block = Assert.Single(layer.Elements(), node => node.Name.LocalName == "PageBlock");
+                    var children = block.Nodes().Select(node => node is XElement child &&
+                        child.Name.LocalName == "CompositeObject" && compositeNamespace is not null
+                        ? new XElement(XNamespace.Get(compositeNamespace) + "CompositeObject",
+                            child.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), child.Nodes())
+                        : node).ToArray();
                     var changedBlock = new XElement(XNamespace.Get(blockNamespace) + "PageBlock",
-                        block.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), block.Nodes());
+                        block.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), children);
                     layer.ReplaceWith(new XElement(XNamespace.Get(layerNamespace) + "Layer",
                         layer.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), changedBlock));
                     bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
@@ -2097,16 +2103,18 @@ public sealed class R01PageBlockTests
         Assert.Equal(0, html.Length);
     }
 
-    [Fact]
-    public async Task ForeignNamespacePageBlockContainerRemainsOpaque()
+    [Theory]
+    [InlineData("urn:vendor")]
+    [InlineData("http://www.ofdspec.org")]
+    public async Task ForeignNamespacePageBlockContainerRemainsOpaque(string blockNamespace)
     {
         const string drawing = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
             "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
         var seed = await Source(drawing);
-        var ofd = await ReNamespacePageBlock(seed, "urn:vendor", "urn:vendor");
+        var ofd = await ReNamespacePageBlock(seed, "urn:vendor", blockNamespace);
         var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
         var raw = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
-        Assert.Equal("PageBlock", raw.LocalName);
+        Assert.Equal("Layer", raw.LocalName);
         Assert.Null(raw.PageBlockChildren);
         Assert.Contains("urn:vendor", raw.Xml);
         foreach (var convert in new Func<Stream, Stream, Task>[]
@@ -2142,6 +2150,31 @@ public sealed class R01PageBlockTests
         Assert.True(pdf.Length > 0);
         Assert.Contains("mixed block text", Encoding.UTF8.GetString(svg.ToArray()));
         Assert.Contains("mixed block text", Encoding.UTF8.GetString(html.ToArray()));
+        Retain(label, ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData("http://www.ofdspec.org", "block16-composite09")]
+    [InlineData("", "block16-composite-unqualified")]
+    public async Task SupportedMixedCompositeNamespaceStillResolves(string compositeNamespace, string label)
+    {
+        const string resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>mixed composite text</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var seed = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources, font: true);
+        var ofd = await ReNamespacePageBlock(seed, Ns, "http://www.ofdspec.org/2016", compositeNamespace);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Contains("mixed composite text", new OfdTextExtractor().Extract(read));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("mixed composite text", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("mixed composite text", Encoding.UTF8.GetString(html.ToArray()));
         Retain(label, ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
