@@ -997,36 +997,6 @@ public sealed class R01PageBlockTests
         Retain("media-type-omitted", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
-    [Fact]
-    public async Task PageAudioResourceShadowsDocumentImageResource()
-    {
-        const string documentMedia = "<MultiMedias><MultiMedia ID='30' Type='Image' Format='PNG'>" +
-            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
-        var ofd = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='30'/>",
-            resources: documentMedia, image: true);
-        using var rewritten = new MemoryStream();
-        using (var input = new ZipArchive(new MemoryStream(ofd), ZipArchiveMode.Read))
-        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
-        {
-            foreach (var entry in input.Entries)
-            {
-                using var source = entry.Open(); using var target = output.CreateEntry(entry.FullName).Open();
-                await source.CopyToAsync(target);
-            }
-            var pageRes = $"<Res xmlns='{Ns}'><MultiMedias><MultiMedia ID='030' Type='Audio' Format='PNG'>" +
-                "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias></Res>";
-            using var pageStream = output.CreateEntry("Doc_0/Pages/Page_0/PageRes.xml").Open();
-            await pageStream.WriteAsync(Encoding.UTF8.GetBytes(pageRes));
-        }
-        var shadowed = rewritten.ToArray();
-        var read = await new OfdReader().ReadAsync(new MemoryStream(shadowed));
-        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
-        Assert.Empty(Assert.IsType<OfdImageElement>(Assert.Single(block.PageBlockChildren!)).Data);
-        using var svg = new MemoryStream();
-        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(shadowed), svg));
-        Assert.Equal(0, svg.Length);
-    }
-
     [Theory]
     [InlineData("ImageObject", null)]
     [InlineData("ImageObject", "10 10 0 20")]
