@@ -26,6 +26,7 @@ internal sealed class ArchivalStructuralCoverage
     private readonly Dictionary<string, XElement> bookmarks = new(StringComparer.Ordinal);
     private readonly HashSet<string> ambiguousBookmarkNames = new(StringComparer.Ordinal);
     private readonly HashSet<long> pageIds = new();
+    private readonly HashSet<long> ambiguousPageIds = new();
     private readonly HashSet<long> templateIds = new();
     private readonly HashSet<string> inspectedPageEntries = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<XElement> ordinaryPageTrees = new();
@@ -36,7 +37,8 @@ internal sealed class ArchivalStructuralCoverage
     private long xmlBytes;
     private int xmlNodes;
     private int references;
-    private bool targetInventoryUnknown;
+    private bool pageInventoryUnknown;
+    private bool bookmarkInventoryUnknown;
     private string documentEntry = "<document>";
     private XNamespace documentNamespace = XNamespace.None;
 
@@ -114,26 +116,27 @@ internal sealed class ArchivalStructuralCoverage
         if (pages.Length != 1 || Foreign(document, "Pages", ns))
         {
             UnknownPageScope("PageTreeAmbiguous", documentEntry);
-            targetInventoryUnknown = true;
+            pageInventoryUnknown = true;
         }
         foreach (var pageTree in pages)
         {
             if (pageTree.Elements().Any(x => x.Name != ns + "Page") ||
                 pageTree.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(pageTree))
-            { UnknownPageScope("OpaquePageTree", documentEntry); targetInventoryUnknown = true; }
+            { UnknownPageScope("OpaquePageTree", documentEntry); pageInventoryUnknown = true; }
             if (Foreign(pageTree, "Page", ns))
-            { UnknownPageScope("ForeignPageDeclaration", documentEntry); targetInventoryUnknown = true; }
+            { UnknownPageScope("ForeignPageDeclaration", documentEntry); pageInventoryUnknown = true; }
             foreach (var page in pageTree.Elements(ns + "Page"))
             {
                 token.ThrowIfCancellationRequested();
                 var id = (string?)page.Attribute("ID");
-                if (!Id(id, out var number) || !pageIds.Add(number) || ForeignAttribute(page, "ID"))
-                    targetInventoryUnknown = true;
+                if (!Id(id, out var number)) pageInventoryUnknown = true;
+                else if (!pageIds.Add(number) || ForeignAttribute(page, "ID"))
+                    ambiguousPageIds.Add(number);
                 ReadPage(page, documentEntry, false);
             }
         }
         if (pageIds.Count == 0)
-        { targetInventoryUnknown = true; UnknownPageScope("PageTreeEmpty", documentEntry); }
+        { pageInventoryUnknown = true; UnknownPageScope("PageTreeEmpty", documentEntry); }
         if (common.Length > 1 || Foreign(document, "CommonData", ns))
             UnknownPageScope("CommonDataAmbiguous", documentEntry);
         if (common.Any(x => x.Attributes().Any(a => !a.IsNamespaceDeclaration) || OpaqueNodes(x) ||
@@ -158,7 +161,7 @@ internal sealed class ArchivalStructuralCoverage
                  !template && x.Name.LocalName is ("Name" or "ZOrder"))))
         {
             UnknownPageScope("OpaquePageDeclaration", containing);
-            if (!template) targetInventoryUnknown = true;
+            if (!template) pageInventoryUnknown = true;
         }
         if (ForeignAttribute(declaration, "BaseLoc") ||
             !TryEntry(containing, (string?)declaration.Attribute("BaseLoc"), out var entry))
@@ -166,7 +169,7 @@ internal sealed class ArchivalStructuralCoverage
             observations[0].Unknown("PageReferenceUnavailable", containing);
             UnknownGraphics("PageReferenceUnavailable", containing);
             observations[7].Unknown("PageReferenceUnavailable", containing);
-            if (!template) targetInventoryUnknown = true;
+            if (!template) MarkPageAmbiguous(declaration);
             return;
         }
         var page = Read(entry, "Page");
@@ -175,7 +178,7 @@ internal sealed class ArchivalStructuralCoverage
             observations[0].Unknown("PageContentUnavailable", entry);
             UnknownGraphics("PageContentUnavailable", entry);
             observations[7].Unknown("PageContentUnavailable", entry);
-            if (!template) targetInventoryUnknown = true;
+            if (!template) MarkPageAmbiguous(declaration);
             return;
         }
         if (!pageTreeEntries.ContainsKey(page)) pageTreeEntries.Add(page, entry);
@@ -204,6 +207,12 @@ internal sealed class ArchivalStructuralCoverage
         { UnknownGraphics("PageContentAmbiguous", entry); observations[7].Unknown("PageContentAmbiguous", entry); }
         InspectLayers(page, entry);
         InspectGraphics(page, entry);
+    }
+
+    private void MarkPageAmbiguous(XElement declaration)
+    {
+        if (Id((string?)declaration.Attribute("ID"), out var number)) ambiguousPageIds.Add(number);
+        else pageInventoryUnknown = true;
     }
 
     private void CheckEffectiveLayerNames()
@@ -255,29 +264,28 @@ internal sealed class ArchivalStructuralCoverage
     private void ReadBookmarkInventory(XElement document, XNamespace ns)
     {
         var containers = document.Elements(ns + "Bookmarks").ToArray();
-        if (containers.Length > 1 || Foreign(document, "Bookmarks", ns)) targetInventoryUnknown = true;
+        if (containers.Length > 1 || Foreign(document, "Bookmarks", ns)) bookmarkInventoryUnknown = true;
         foreach (var container in containers)
         {
             if (container.Elements().Any(x => x.Name != ns + "Bookmark"))
-            { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkInventory", documentEntry); }
+            { bookmarkInventoryUnknown = true; }
             if (Foreign(container, "Bookmark", ns))
-            { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkInventory", documentEntry); }
+            { bookmarkInventoryUnknown = true; }
             if (container.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(container))
-            { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkInventory", documentEntry); }
+            { bookmarkInventoryUnknown = true; }
             foreach (var bookmark in container.Elements(ns + "Bookmark"))
             {
                 if (bookmark.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name") ||
                     OpaqueNodes(bookmark) || bookmark.Elements().Any(x => x.Name != ns + "Dest"))
-                { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkInventory", documentEntry); }
+                { bookmarkInventoryUnknown = true; }
                 if (bookmark.Elements(ns + "Dest").Any(x => x.HasElements || OpaqueNodes(x)))
-                { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkDestination", documentEntry); }
+                { bookmarkInventoryUnknown = true; }
                 var name = (string?)bookmark.Attribute("Name");
                 if (string.IsNullOrWhiteSpace(name))
-                { targetInventoryUnknown = true; continue; }
+                { bookmarkInventoryUnknown = true; continue; }
                 if (ForeignAttribute(bookmark, "Name") || ambiguousBookmarkNames.Contains(name) ||
                     bookmarks.ContainsKey(name))
                 {
-                    targetInventoryUnknown = true;
                     ambiguousBookmarkNames.Add(name);
                     bookmarks.Remove(name);
                 }
@@ -553,7 +561,8 @@ internal sealed class ArchivalStructuralCoverage
         node.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
             (attribute.Name.Namespace != XNamespace.None || (node.Name.LocalName switch
             {
-                "Layer" => attribute.Name.LocalName is not ("ID" or "Type" or "Name"),
+                "Layer" => attribute.Name.LocalName is not ("ID" or "Type" or "Name" or "DrawParam") ||
+                           attribute.Name.LocalName == "DrawParam" && !Id(attribute.Value, out _),
                 "PageBlock" => attribute.Name.LocalName is not ("ID" or "Boundary" or "CTM"),
                 _ => false
             })));
@@ -866,7 +875,6 @@ internal sealed class ArchivalStructuralCoverage
 
     private void CheckTarget(XElement gotoElement, XNamespace ns, Observation target, string entry, XElement action)
     {
-        if (targetInventoryUnknown) target.Unknown("TargetInventoryAmbiguous", entry, action, this);
         var dest = gotoElement.Element(ns + "Dest");
         if (dest is null)
         {
@@ -874,12 +882,10 @@ internal sealed class ArchivalStructuralCoverage
             var name = (string?)bookmark?.Attribute("Name");
             if (string.IsNullOrWhiteSpace(name) || bookmark is null || ForeignAttribute(bookmark, "Name"))
             { target.Unknown("BookmarkTargetAmbiguous", entry, action, this); return; }
+            if (ambiguousBookmarkNames.Contains(name!) || bookmarkInventoryUnknown)
+            { target.Unknown("BookmarkInventoryAmbiguous", entry, action, this); return; }
             if (!bookmarks.TryGetValue(name!, out var declared))
-            {
-                if (targetInventoryUnknown) target.Unknown("BookmarkInventoryAmbiguous", entry, action, this);
-                else target.Fail("BookmarkTargetMissing", entry, action, this);
-                return;
-            }
+            { target.Fail("BookmarkTargetMissing", entry, action, this); return; }
             var destinations = declared.Elements(ns + "Dest").ToArray();
             if (destinations.Length != 1 || Foreign(declared, "Dest", ns) || OpaqueNodes(declared) ||
                 declared.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name") ||
@@ -892,9 +898,12 @@ internal sealed class ArchivalStructuralCoverage
         { target.Unknown("PageTargetAmbiguous", entry, action, this); return; }
         if (!Id(pageId, out var number) || ForeignAttribute(dest, "PageID"))
         { target.Unknown("PageTargetAmbiguous", entry, action, this); return; }
+        if (ambiguousPageIds.Contains(number))
+        { target.Unknown("PageInventoryAmbiguous", entry, action, this); return; }
         if (!pageIds.Contains(number))
         {
-            if (targetInventoryUnknown) target.Unknown("PageInventoryAmbiguous", entry, action, this);
+            if (pageInventoryUnknown)
+                target.Unknown("PageInventoryAmbiguous", entry, action, this);
             else target.Fail("PageTargetMissing", entry, action, this);
         }
     }

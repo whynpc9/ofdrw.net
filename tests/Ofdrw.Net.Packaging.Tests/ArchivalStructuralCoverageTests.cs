@@ -531,6 +531,28 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
     }
 
+    [Fact]
+    public async Task DirectPageTargetIgnoresUnrelatedDuplicateBookmarks()
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var bookmarks = "<Bookmarks><Bookmark Name='other'><Dest Type='Fit' PageID='1'/></Bookmark><Bookmark Name='other'><Dest Type='Fit' PageID='99'/></Bookmark></Bookmarks>";
+        var report = await Check(Seed(documentExtra: outline + bookmarks));
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
+    [InlineData("<Page ID='2' BaseLoc='Pages/P0/Content.xml'/><Page ID='02' BaseLoc='Pages/P0/Content.xml'/>")]
+    [InlineData("<Page ID='2' BaseLoc='Pages/P0/missing.xml'/>")]
+    public async Task DirectPageTargetIgnoresUnrelatedPageAmbiguity(string extraPages)
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var entries = Seed(documentExtra: outline);
+        var document = Encoding.UTF8.GetString(entries["Doc_0/Document.xml"]);
+        entries["Doc_0/Document.xml"] = Utf8(document.Replace("</Pages>", extraPages + "</Pages>", StringComparison.Ordinal));
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-006").Outcome);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("<Outlines><OutlineElem Title='A'/></Outlines>")]
@@ -872,6 +894,20 @@ public class ArchivalStructuralCoverageTests
     {
         var entries = Seed();
         entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer {attributes}><ImageObject Interpolate='false'/><TextObject Size='3'/></Layer></Content></Page>");
+        var report = await Check(entries);
+        foreach (var id in new[] { "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(expected, Rule(report, id).Outcome);
+    }
+
+    [Theory]
+    [InlineData("DrawParam='9'", PreflightOutcome.Pass)]
+    [InlineData("DrawParam='0'", PreflightOutcome.Unknown)]
+    [InlineData("DrawParam='invalid'", PreflightOutcome.Unknown)]
+    [InlineData("xmlns:v='urn:vendor' v:DrawParam='9'", PreflightOutcome.Unknown)]
+    public async Task StandardLayerDrawParamHasNumericReferenceShape(string attributes, PreflightOutcome expected)
+    {
+        var entries = Seed();
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer Name='body' {attributes}><ImageObject Interpolate='false'/><TextObject Size='3'/></Layer></Content></Page>");
         var report = await Check(entries);
         foreach (var id in new[] { "AC-007", "AC-008", "AC-011" })
             Assert.Equal(expected, Rule(report, id).Outcome);
