@@ -1,44 +1,26 @@
 # R01 PageBlock、文字与颜色验收
 
-日期：2026-10-22（Asia/Shanghai）；分支 `codex/r01-pageblock-text-color`，[PR #29](https://github.com/whynpc9/ofdrw.net/pull/29)。R01 初版产品源码提交 `7abeb3163fc713ea9574b9f13cd0db81dc4263d9`，R18 组合提交 `b4a557b35364b116ed9953d6281d51923f041203` 已合入主线 `66ce3908828342de4a08583a6620540b2ae8717b`，后续修复源码提交为 `c43a5a4c54019135423af006288a0a49e3417bec` 与 `f7ecc69a32f1e523365939e2611eec3767b522d3`、`f515a981205d0d85cf84f78b6bfe7542eb2c5c05`。测试环境为 macOS Arm64、.NET SDK 10.0.401。输入、日志和输出在已忽略的 `artifacts/roadmap-v12/R01/`；[hashes.txt](hashes.txt) 记录本轮必要文件的 SHA-256。
+日期：2026-10-22（Asia/Shanghai）；分支 `codex/r01-pageblock-text-color`；[PR #29](https://github.com/whynpc9/ofdrw.net/pull/29)。本轮产品源码为 `e9a7390b5efc3ccdcbde6d93919325608172dcb4`，已合入主线 `62887ad6af62605411e1968da662be48ce1c091c`（R20、R06）。macOS Arm64、.NET SDK 10.0.401。复查文件保存在已忽略的 `artifacts/roadmap-v12/R01/`；[hashes.txt](hashes.txt) 仅列最终输入、输出及验收记录。
 
-## 范围与行为
+## 行为边界
 
-- Reader 对普通页和模板中的 `PageBlock` 建立只读子元素投影；保存仍以原始 XML 为准，Split 后维持投影与文字提取。PDF、SVG、HTML 对未解析绘图、外来资源命名空间、非法原始标量及不支持的绘制参数明确拒绝。
-- 有界颜色解析覆盖 DrawParam 相对继承、8-bit GRAY/RGB、无 ICC 的简单 CMYK 与调色板；文字填充、描边、横向缩放和支持的字体轮廓分别呈现。缺失或歧义引用、渐变/图案及不支持的文字语义继续拒绝。
-- `PageBlock` 内的 `CompositeObject` 使用**原始**放置 XML 验证正宽高 `Boundary` 与包括 `CTM` 的标量词元。无效放置仍投影资源文字及同页、后续页文字，但 PDF/SVG/HTML 的预检均拒绝渲染；有效放置正常呈现。四种测试分别覆盖有效、缺失边界、零宽边界与非法矩阵。
-- 字体资源中无效的 Bold/Italic 标志不会误满足 PageBlock 的字体解析；资源和文本仍可读取，三个渲染器拒绝输出。调色板 `CV` 内及条目之间的 XML 注释不改变颜色。方向和 Alpha 属性的等值整数写法按数值解析，仍只接受原有的 0/255 值。
-- 支持的文字 Fill/Stroke 布尔词元允许首尾空白；`Visible=" false "` 的 PageBlock 子文字和路径保持隐藏，不会泄漏到文字提取、PDF、SVG 或 HTML；复合对象内隐藏裁切路径也按规范化值拒绝。
-- 复合资源文本引用的字体声明存在但 Bold/Italic 标志异常时，Reader 保留该文本与同页兄弟文本用于逻辑提取，并标记渲染失败；PDF/SVG/HTML 均在写出前拒绝，不将异常字体当作可用资源。
-- 数字布尔值 `Fill=" 1 "`、`Stroke=" 0 "` 和 `Visible=" 0 "` 在标量预检与 Reader 中统一按首尾空白规范化；普通 PageBlock 与复合路径保留蓝色填充、取消描边并隐藏红色路径。Reader 原先对无空白 `Stroke="0"` 的默认真值也已修正。
-- 重复字体资源 ID（同一资源文件或 PublicRes/DocumentRes 跨文件）在 `OfdSourceIdentity.Capture` 中已按全局活动文档单元 ID 拒绝，Reader 不返回可供错误字体选择的包；正反回归固定这一既有边界。唯一字体 ID 的 PageBlock 内复合文字与同页文字继续可提取，PDF/SVG/HTML 可输出，未知资源扩展 XML 仍保存在原始条目。
-- 当前源码进一步拒绝 PageBlock 可见路径缺失、空白、重复或语法不完整的 `AbbreviatedData`，避免 SVG 静默丢失绘图；Reader 保留原始内容，三个渲染器在写出前失败。引用颜色空间中只要存在 Palette，就校验其结构及每个 CV 的分量，包括颜色以直接 `Value` 绘制时；合法 Palette 的 `Value` 优先于 `Index` 行为保持不变。
-- 绘制资源的 ColorSpace、DrawParam 与 Relative 引用按正整数 ID 识别，`020` 与 `20` 等等值写法可解析；重复数字 ID 仍由源码身份跟踪拒绝。PageBlock 路径的 `A` 弧命令同时验证正半径及字面 `0`/`1` 标志位，避免 PDF 将非法值强制转义而 SVG/HTML 接收无效路径。Reader 保留 `AbbreviatedData` 中 XML 注释分隔的纯空白文本，使实际绘制的路径与预检的字面值一致；有效路径三种输出成功，无效拼接仍在写出前拒绝。
-- R17 归档规则及副本 Handler 经原始 ZIP loader 处理 `Document.xml`，不调用 R01 的 Reader、Writer 或 PageBlock 投影；合并没有同文件冲突。R18 附件物理清理在 Packaging/Core 的原始归档与所有权路径上工作；以下组合测试与包消费验证了这些改动集同时存在时的行为，不能推断任意归档文件可渲染或符合完整标准。
+- Reader 将普通页和模板页的 `PageBlock` 绘图投影为只读子元素，保留原始 XML 和文字提取；PDF、SVG、HTML 按原顺序呈现支持的路径、图片、文字、DrawParam 和有限颜色空间。未知绘图、资源歧义、非法词元或不支持的样式在输出前拒绝。
+- 字体、颜色空间、DrawParam 及其引用按正整数 ID 解析；`030` 与 `30` 等值。重复字体 ID 仍在源码身份捕获阶段拒绝。PageBlock 与复合资源中的有效文字及兄弟文字可提取、可渲染；异常字体声明保留逻辑文字，但阻止三个渲染器写出。
+- 普通绘图及裁切路径的弧线要求正半径和字面 `0`/`1` 标志位。裁切路径的非法 `2 2`、`1.0 0` 在 PDF、SVG、HTML 写出前统一拒绝；合法弧线的蓝色裁切区域完整呈现。空白、重复或语法不完整的路径数据也拒绝。XML 注释之间的路径空白按实际绘制文本保留。
+- 颜色调色板的每个条目均经过校验，直接 `Value` 绘制不绕过资源结构检查；合法 `Value` 优先于 `Index`。隐藏元素、布尔空白、复合对象放置与裁切、局部文字样式均由针对性测试覆盖。
 
-## 功能测试与包消费
+## 功能与包消费
 
-- 当前修复后的完整 Release 解决方案 11 个测试项目 **3501 passed、0 skipped、0 failed**；R01 PageBlock **163/163**，R17 `ArchivalCopyTests` **19/19**。Core `netstandard2.0` 包含在完整构建内。单节点构建使用仓库规定的 CLI 环境与共享独占锁。
-- 当前源码本地版本 `0.1.0-r01.p2c` 的 **12 个基础 SDK 包和 1 个可选 SES 包**通过来源验证及独立消费者 E2E；显式 native 和默认 DOCX→OFD 各生成 V1/V4 测试签章，再从各自 OFD 导出 PDF。原始文本完整，四份签章 PDF 与签章前基线逐页 PNG 一致。另以精确本地 Core、Packaging、Reader 包独立运行 R18 附件清理消费者，逻辑保留与物理删除/回读结果通过；R17 四例消费者在前轮 R17 合并后亦通过。默认密码学验证为 `Unsupported`；本地包未发布。
+- 当前源码的完整 Release 解决方案：**3560 passed、0 failed、0 skipped**，11 个测试项目；R01 PageBlock **167/167**。包含 Core `netstandard2.0` 构建和 R20 新增归档覆盖测试。使用单节点构建与仓库独占锁。
+- 本地版本 `0.1.0-r01.p4` 的 **12 个基础 SDK 包和 1 个可选 SES 包**通过来源验证及独立消费者 E2E。显式 `native` 与默认 DOCX→OFD→PDF 各生成 V1/V4 测试签章，原文完整保留；签章前后逐页 PNG 一致。本地 Core、Packaging、Reader 精确包的 R18 附件清理消费者也通过，物理删除后回读为空。包未发布；默认密码学验证结果仍为 `Unsupported`。
 
-## 自动渲染、PNG 与 Preview 视觉验收
+## 页面验收
 
-| 本轮产物与实际查看链路 | 实查范围 | 结果 |
-| --- | --- | --- |
-| `pageblock-composite-valid.ofd` → PDF → 144 DPI PNG；前轮 PDF → macOS Preview | 1/1 页，当前 PNG 与前轮一致 | 黑色方块位置与大小符合样例；无裁切、重影或空白页 |
-| 普通/模板 PageBlock、图片、三种合法媒体资源与相对 DrawParam OFD → PDF → 144 DPI PNG | 七个样例各 1/1 页，逐页 PNG | 蓝色路径/文字、红色图片、黄底蓝框及局部洋红文字可见；普通/模板和三种媒体页面各自一致 |
-| 两种调色板注释与三种等值整数写法 OFD → PDF → 144 DPI PNG；前轮各选一份 PDF → Preview | 五个样例各 1/1 页，当前 PNG 与前轮逐页检视结果哈希相同；前轮 Preview 两份各 1/1 页 | 注释位置不改变蓝色三角形；三种整数写法均显示相同 `numeric text`，没有重复文本 |
-| 文字布尔空白、隐藏文字和隐藏路径 OFD → PDF → 144 DPI PNG；前轮 PDF → Preview | 三个样例各 1/1 页，当前 PNG 与前轮一致 | 文字正常绘出；隐藏样例仅显示 `visible sibling`，未见隐藏文字或蓝色路径 |
-| 数字布尔空白文字、普通 PageBlock 路径及复合路径 OFD → PDF → 144 DPI PNG → macOS Preview | 三个合并后样例各 1/1 页，PNG 与前轮相同；当前 PDF 各在 Preview 查看 1/1 页 | 文字完整；两个路径样例均只显示蓝色实心方块与兄弟文字，未见红色隐藏路径或额外描边 |
-| 唯一字体 ID 的 PageBlock 内复合文字与同页文字 OFD → PDF → 144 DPI PNG → macOS Preview | R18 合并后样例 1/1 页，PNG 和当前 PDF 均已查看 | `composite text` 与 `sibling text` 均清晰可见，无裁切、重叠或重影；重复 ID 两种样例在 Reader 阶段拒绝，未生成页面 |
-| `generated-layout.docx` → 本地许可字体替换样本 → 显式 native OFD → PDF → macOS Preview；默认模式单独重复 | R18 合并后 `native-v1.pdf` 和 `default-v4.pdf` 各在 Preview 查看 1–2 页；四种 V1/V4 模式各两页 PNG 与前轮相同 | 中英文、英文斜体、蓝色表格底色/边框、第二页局部红色粗体与分页符合样例；前轮 Preview 未见缺字、裁切、重叠、重影或异常空白页 |
-| 前轮普通 PageBlock 与 Palette `Value` 优先样例 OFD → PDF → 144 DPI PNG → macOS Preview | `c43a5a4` 的两个样例各 1/1 页 PNG 和 PDF 均逐页查看 | 普通页的蓝色方块与 `nested text` 完整；合法 Palette 的直接 `Value` 呈红色方块，无裁切、重叠或重影；无效路径及 Palette 样例均在输出前拒绝 |
-| `f515a98` 数字资源 ID、合法弧线和 XML 注释分隔空白三个样例 OFD → PDF → 144 DPI PNG → macOS Preview | 三个当前源码样例各 1/1 页 PNG 和 PDF，均逐页查看 | 红色方块、蓝色半圆和蓝色三角形完整；未见裁切、重叠、重影或异常空白页。非字面 `0`/`1` 弧标志和非法拼接路径在输出前拒绝 |
-| 前轮 `generated-layout.docx` → 本地许可字体替换样本 → 显式 native OFD → PDF → macOS Preview；默认模式单独重复 | `p2-ses/files/native-v1.pdf` 与 `default-v4.pdf` 各在 Preview 查看 1–2 页；该轮四组 V1/V4 各两页 PNG 与 R18 前轮哈希相同 | 中文与英文、英文斜体、蓝色表格底色和边框、第二页局部红色粗体、日期与分页符合样例；未见缺字、裁切、重叠、重影或异常空白页 |
-| 当前 `generated-layout.docx` → 本地许可字体替换样本 → 显式 native OFD → PDF → macOS Preview；默认模式单独重复 | `p2c-ses/files/native-v1.pdf` 与 `default-v4.pdf` 各在 Preview 查看 1–2 页；四组 V1/V4 各两页 96 DPI PNG 与前轮逐张 SHA-256 相同 | 中英文、英文斜体、蓝色表格底色与边框、第二页局部红色粗体、日期及分页符合样例；未见缺字、裁切、重叠、重影或异常空白页 |
+| 本轮生成链路 | 范围与结果 |
+| --- | --- |
+| `numeric-font-ids.ofd` → PDF → 144 DPI PNG | 1/1 页，`pageblock font` 与 `composite font` 两处文字完整、间距正常；SVG/HTML 同样含两段文字。 |
+| `pageblock-clip-arc.ofd` → PDF → 144 DPI PNG | 1/1 页，蓝色半圆顶部及直边完整，无异常裁切或重影；合法路径在 SVG/HTML 中保留相同弧线。 |
+| 数字绘制资源、普通弧线、XML 注释空白三个 OFD → PDF → 144 DPI PNG | 各 1/1 页，本轮 PNG 与前轮逐页 SHA-256 相同；红色方块、蓝色上半圆、蓝色三角形的前轮 Preview 结果仍可复查。 |
+| `generated-layout.docx` → 本地许可字体样本 → 显式 native OFD → PDF；默认模式单独重复 | V1/V4 各两页，四组八张 96 DPI PNG 与前轮逐张 SHA-256 相同。本轮逐页 PNG 复查：中文及英文、英文斜体、蓝色表格底色和边框、第二页局部红色粗体与分页符合样例；未见缺字、裁切、重叠、重影或异常空白页。 |
 
-R17 合并后重新生成 19 个 PageBlock 样例各 1/1 页 PNG，与前轮逐页检视过的 PNG 哈希全部相同；当前四组 DOCX→OFD→PDF 的八张页图仍与 R18 前轮相同。当前五份 PDF 的 Preview 实查路径、页码、文件与页面哈希记录在 `gui-release-R01-20261021T2202Z.json`，其中包含先行 R06 GUI 释放标记；验收后已关闭所有 Preview 窗口及进程。上一轮记录为 `gui-release-R01-20261021T2123Z.json`，R18 合并后为 `gui-release-R01-20261021T2102Z.json`。`rendered-pages.json` 的 `previewAccepted: false` 是自动化阶段的状态，独立 Preview 验收以 GUI 记录为准。签章前后 PNG 等同性属于自动渲染证据，不代表逐份签章 PDF 均已在 Preview 查看。`native-v1.ofd` 约 11.6 MB，对应 PDF 约 119 KB，未见明显体积变化。
-
-重复字体 ID 的验证基于既有源码拒绝点；该反证没有修改 Reader/渲染产品实现。后续 PageBlock 路径、调色板、数值资源 ID、弧线及注释空白的审查意见分别在 `c43a5a4`、`f7ecc69`、`f515a98` 修复并回归；全量回归、精确包消费、当前三张 PNG 和上述五份 PDF 的 Preview 实查均已完成。
-
-结论仅覆盖上述样本与实际检查的页面。原始上游 `999.ofd` 的无效章内颜色空间引用仍明确拒绝；另制签名失效呈现副本的先前结果不作为原件互操作证明。外部 OFD 阅读器、V5/GBT 端到端互操作、签名法律效力及任意复杂 DOCX 的保真性均未验收。
+macOS Preview 本轮验收待 GUI 租约；自动渲染和 PNG 检查不代替 Preview。最终查看链路、页码及文件哈希将在完成后记录。结论仅覆盖上述样例和实查页面；外部 OFD 阅读器、V5/GBT 端到端互操作、签名法律效力及任意复杂 DOCX 的保真性未验收。
