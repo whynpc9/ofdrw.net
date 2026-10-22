@@ -2285,6 +2285,114 @@ public sealed class R01PageBlockTests
         Retain(label, ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Fact]
+    public async Task LaterPageBlockTextCodesInheritPreviousStartCoordinates()
+    {
+        const string drawing = "<TextObject ID='501' Boundary='10 10 50 20' Font='10' Size='4'>" +
+            "<TextCode X='3' Y='5'>first</TextCode><TextCode>second</TextCode>" +
+            "<TextCode X='9'>third</TextCode><TextCode Y='12'>fourth</TextCode></TextObject>";
+        var ofd = await Source(drawing, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Equal(new[] { (3d, 5d), (3d, 5d), (9d, 5d), (9d, 12d) },
+            text.Runs.Select(run => (run.XMillimeters, run.YMillimeters)));
+        Assert.Contains("firstsecondthirdfourth", new OfdTextExtractor().Extract(read));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Retain("textcode-inherited-start", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData("<TextCode Y='5'>missing X</TextCode>")]
+    [InlineData("<TextCode X='3'>missing Y</TextCode>")]
+    public async Task FirstPageBlockTextCodeRequiresBothAxes(string code)
+    {
+        var ofd = await Source($"<TextObject ID='501' Boundary='10 10 50 20' Font='10' Size='4'>{code}</TextObject>", font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Contains("missing", new OfdTextExtractor().Extract(read));
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(Assert.IsType<OfdRawElement>(
+            Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.Contains("requires X and Y", text.RenderPaintError);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Fact]
+    public async Task ForeignContentCannotExposeSupportedLayerOrPageBlock()
+    {
+        const string drawing = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var seed = await Source(drawing);
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    var content = Assert.Single(xml.Root!.Elements(), node => node.Name.LocalName == "Content");
+                    content.ReplaceWith(new XElement(XNamespace.Get("urn:vendor") + "Content", content.Attributes(), content.Nodes()));
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        var ofd = rewritten.ToArray();
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.Equal("Content", raw.LocalName);
+        Assert.Null(raw.PageBlockChildren);
+        Assert.Contains("urn:vendor", raw.Xml);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("M 0 0")]
+    [InlineData("M 0 0 C")]
+    [InlineData("M 0 0 M 5 5")]
+    public async Task MoveOnlyPageBlockPathFailsEveryRenderer(string data)
+    {
+        var ofd = await Source($"<PathObject ID='501' Boundary='10 10 20 20' Stroke='true'>" +
+            $"<AbbreviatedData>{data}</AbbreviatedData></PathObject>");
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

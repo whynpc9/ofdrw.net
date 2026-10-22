@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Xml.Linq;
 
 namespace Ofdrw.Net.Core.Models;
@@ -43,6 +44,10 @@ internal static class OfdRenderPreflight
                 throw new NotSupportedException("Unknown OFD drawing cannot be rendered.");
             if (element is OfdImageElement unresolvedImage && unresolvedImage.Data is not { Length: > 0 })
                 throw PaintFailure("OFD image resource has no resolved payload.");
+            if (element is OfdPathElement drawingPath &&
+                OfdPathDataSyntax.IsValidLiteral(drawingPath.AbbreviatedData, CancellationToken.None) &&
+                !OfdPathDataSyntax.IsValidLiteral(drawingPath.AbbreviatedData, CancellationToken.None, requireDrawableSegment: true))
+                throw PaintFailure("OFD path has no valid drawable segment.");
             var source = element switch
             {
                 OfdTextElement sourceText => sourceText.SourceXml,

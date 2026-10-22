@@ -15,12 +15,13 @@ internal static class OfdPathDataSyntax
         return data.Length == 1 && !data[0].HasElements && IsValidLiteral(data[0].Value, token);
     }
 
-    internal static bool IsValidLiteral(string value, CancellationToken token)
+    internal static bool IsValidLiteral(string value, CancellationToken token, bool requireDrawableSegment = false)
     {
         var index = 0;
         var command = '\0';
         var operands = 0;
         var sawMove = false;
+        var sawSegment = false;
         while (index < value.Length)
         {
             token.ThrowIfCancellationRequested();
@@ -30,6 +31,9 @@ internal static class OfdPathDataSyntax
             if (char.IsLetter(current))
             {
                 if (!Complete(command, operands)) return false;
+                if (command == 'M' && operands > 2 ||
+                    (command is 'L' or 'B' or 'Q' or 'A') && operands > 0)
+                    sawSegment = true;
                 command = char.ToUpperInvariant(current);
                 if (command is not ('M' or 'L' or 'B' or 'Q' or 'A' or 'C') ||
                     !sawMove && command != 'M') return false;
@@ -68,7 +72,10 @@ internal static class OfdPathDataSyntax
             }
             operands++;
         }
-        return sawMove && Complete(command, operands);
+        if (command == 'M' && operands > 2 ||
+            (command is 'L' or 'B' or 'Q' or 'A') && operands > 0)
+            sawSegment = true;
+        return sawMove && (!requireDrawableSegment || sawSegment) && Complete(command, operands);
     }
 
     private static bool Complete(char command, int operands)

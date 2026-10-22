@@ -1142,9 +1142,21 @@ public sealed class OfdReader : IOfdReader
         IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap = null, OfdPaintResources? paint = null)
     {
         material.ReserveReadModel(256L + (pageXml.Root?.Descendants().Count() ?? 0) * 32L, cancellationToken);
-        var layers = pageXml.Root?
-            .Elements()
-            .FirstOrDefault(x => x.Name.LocalName == "Content")?
+        var root = pageXml.Root;
+        if (root is not null && (!SupportedGraphicNamespace(root.Name.Namespace) || root.Name.LocalName != "Page"))
+        {
+            yield return new OfdRawElement { LocalName = root.Name.LocalName,
+                Xml = OfdXmlEnvelope.Capture(root, material, cancellationToken) };
+            yield break;
+        }
+        var content = root?.Elements().FirstOrDefault(x => x.Name.LocalName == "Content");
+        if (content is not null && !SupportedGraphicNamespace(content.Name.Namespace))
+        {
+            yield return new OfdRawElement { LocalName = "Content",
+                Xml = OfdXmlEnvelope.Capture(content, material, cancellationToken) };
+            yield break;
+        }
+        var layers = content?
             .Elements()
             .Where(x => x.Name.LocalName == "Layer")
             .ToList() ?? [];
@@ -1228,17 +1240,27 @@ public sealed class OfdReader : IOfdReader
                     AttachPaint(text, node, renderNode, paintError, material, cancellationToken);
                     if (blockDepth > 0 && !HasFont(fontMap, text.FontResourceId))
                         text.RenderPaintError ??= "PageBlock text has an unresolved Font resource.";
+                    double? previousX = null, previousY = null;
                     foreach (var textCode in textCodes)
                     {
                         material.ReserveReadModel(256, cancellationToken);
+                        if (blockDepth > 0 &&
+                            (previousX is null && textCode.Attribute("X") is null ||
+                             previousY is null && textCode.Attribute("Y") is null))
+                            text.RenderPaintError ??= "The first PageBlock TextCode requires X and Y.";
+                        var x = ParseDouble(textCode.Attribute("X")?.Value, blockDepth > 0 ? previousX ?? 0d : 0d);
+                        var y = ParseDouble(textCode.Attribute("Y")?.Value,
+                            blockDepth > 0 ? previousY ?? text.FontSizeMillimeters : text.FontSizeMillimeters);
                         text.Runs.Add(new OfdTextRun
                         {
                             Text = ReadDirectText(textCode, material, cancellationToken),
-                            XMillimeters = ParseDouble(textCode.Attribute("X")?.Value, 0d),
-                            YMillimeters = ParseDouble(textCode.Attribute("Y")?.Value, text.FontSizeMillimeters),
+                            XMillimeters = x,
+                            YMillimeters = y,
                             DeltaX = textCode.Attribute("DeltaX")?.Value,
                             DeltaY = textCode.Attribute("DeltaY")?.Value
                         });
+                        previousX = x;
+                        previousY = y;
                     }
 
                     OfdClipXml.Load(text, material, cancellationToken);
