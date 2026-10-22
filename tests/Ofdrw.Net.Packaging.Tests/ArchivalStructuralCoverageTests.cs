@@ -778,6 +778,17 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(clean, "AC-010").Outcome);
     }
 
+    [Fact]
+    public async Task AnnotationObjectActionMatchesPublishedRuleScope()
+    {
+        var entries = Seed(documentExtra: "<Annotations>Annots/Annotations.xml</Annotations>");
+        entries["Doc_0/Annots/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'><Page PageID='1'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        entries["Doc_0/Annots/Page.xml"] = Utf8($"<PageAnnot xmlns='{Ns}'><Annot ID='2' ReadOnly='true' NoZoom='true' NoRotate='true'><Appearance><PathObject><Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions></PathObject></Appearance></Annot></PageAnnot>");
+        var result = Rule(await Check(entries), "AC-010");
+        Assert.Equal(PreflightOutcome.Fail, result.Outcome);
+        Assert.Contains("annotation appearances", result.Rule.Condition, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("<Actions/>")]
     [InlineData("<Actions><FutureAction/></Actions>")]

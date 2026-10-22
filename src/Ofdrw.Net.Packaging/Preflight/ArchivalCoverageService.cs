@@ -49,7 +49,7 @@ public static class ArchivalCoverageRuleCatalog
         new ArchivalCoverageRuleDefinition("AC-007", "6.5(b)", "Used ImageObject Interpolate attributes are false"),
         new ArchivalCoverageRuleDefinition("AC-008", "6.6(c)", "TextObject size is identified by a valid Size attribute"),
         new ArchivalCoverageRuleDefinition("AC-009", "6.10.1(a)(3)", "Retained annotations declare ReadOnly, NoZoom and NoRotate true"),
-        new ArchivalCoverageRuleDefinition("AC-010", "6.3.3(b)", "Page graphic objects retain no Action declarations; migration needs source evidence"),
+        new ArchivalCoverageRuleDefinition("AC-010", "6.3.3(b)", "Graphic objects in pages, templates and annotation appearances retain no Action declarations; migration needs source evidence"),
         new ArchivalCoverageRuleDefinition("AC-011", "6.2.3(d)", "Named page layers are distinguishable within each page"),
         new ArchivalCoverageRuleDefinition("AC-012", "6.10.1(a)(2)", "Retained annotation appearances have no nested PageBlock")
     });
