@@ -744,6 +744,86 @@ public sealed class R01PageBlockTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task PageLocalFontCannotResolveLaterPageBlockOrTemplate(bool template)
+    {
+        static OfdRawElement Block(string id, string child) => new()
+        {
+            LocalName = "PageBlock",
+            Xml = $"<PageBlock xmlns='{Ns}' ID='{id}'>{child}</PageBlock>"
+        };
+        const string path = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        const string text = "<TextObject ID='711' Boundary='10 10 50 10' Font='30' Size='4'>" +
+            "<TextCode X='0' Y='4'>later page text</TextCode></TextObject>";
+        var package = new OfdDocumentPackage();
+        var first = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        first.Elements.Add(Block("500", path)); package.Pages.Add(first);
+        var second = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        second.Elements.Add(Block("700", template ? path.Replace("501", "701", StringComparison.Ordinal) : text));
+        package.Pages.Add(second);
+        using var seed = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, seed);
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed.ToArray()), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            XNamespace ns = Ns;
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (template && entry.FullName == "Doc_0/Document.xml")
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    xml.Root!.Element(ns + "CommonData")!.Add(new XElement(ns + "TemplatePage",
+                        new XAttribute("ID", "750"), new XAttribute("BaseLoc", "Tpl_0/Content.xml")));
+                    xml.Root.Element(ns + "CommonData")!.Element(ns + "MaxUnitID")!.Value = "800";
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                if (template && entry.FullName.EndsWith("/Pages/Page_1/Content.xml", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    xml.Root!.Add(new XElement(ns + "Template", new XAttribute("TemplateID", "750")));
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+            var pageRes = new XElement(ns + "Res", new XElement(ns + "Fonts",
+                new XElement(ns + "Font", new XAttribute("ID", "30"), new XAttribute("FontName", "Noto Sans"))));
+            using (var pageResStream = output.CreateEntry("Doc_0/Pages/Page_0/PageRes.xml").Open())
+                await pageResStream.WriteAsync(Encoding.UTF8.GetBytes(pageRes.ToString(SaveOptions.DisableFormatting)));
+            if (template)
+            {
+                var templatePage = new XElement(ns + "Page", new XElement(ns + "Content",
+                    new XElement(ns + "Layer", new XAttribute("ID", "760"),
+                        XElement.Parse($"<PageBlock xmlns='{Ns}' ID='761'>{text.Replace("711", "762", StringComparison.Ordinal)}</PageBlock>"))));
+                using var templateStream = output.CreateEntry("Doc_0/Tpl_0/Content.xml").Open();
+                await templateStream.WriteAsync(Encoding.UTF8.GetBytes(templatePage.ToString(SaveOptions.DisableFormatting)));
+            }
+        }
+        var ofd = rewritten.ToArray();
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var laterBlock = Assert.IsType<OfdRawElement>(Assert.Single(template
+            ? read.Pages[1].Templates[0].Elements : read.Pages[1].Elements));
+        var laterText = Assert.IsType<OfdTextElement>(Assert.Single(laterBlock.PageBlockChildren!));
+        Assert.Contains("unresolved Font", laterText.RenderPaintError);
+        Assert.Contains("later page text", new OfdTextExtractor().Extract(read, includeTemplates: template));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output, pageIndex: 1),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output, pageIndexes: new[] { 1 })
+        })
+        {
+            using var output = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+            Assert.Contains("Font", error.Message);
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task DuplicateFontIdsAreRejectedBeforeAnyRenderer(bool acrossResourceFiles)
     {
         var id = acrossResourceFiles ? "10" : "20";
