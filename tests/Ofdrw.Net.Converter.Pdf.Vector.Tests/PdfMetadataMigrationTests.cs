@@ -102,6 +102,30 @@ public sealed class PdfMetadataMigrationTests
         Assert.Equal(2, xyz.Zoom);
     }
 
+    [Theory]
+    [InlineData(false, "11 0 R /XYZ 30 500", true)]
+    [InlineData(true, "11 0 R /XYZ 30 500", true)]
+    [InlineData(false, "11 0 R /XYZ null null", false)]
+    [InlineData(true, "11 0 R /XYZ null null", false)]
+    [InlineData(false, "11 0 R /XYZ", false)]
+    [InlineData(true, "11 0 R /XYZ", false)]
+    public async Task MissingTrailingXyzOperandsRetainReaderValues(bool vector, string rawDestination, bool positioned)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, destination: rawDestination));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions { Compatibility = options }).ConvertAsync(input, output);
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output);
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        var target = Assert.IsType<OfdGoToAction>(Assert.Single(Assert.Single(package.Outlines!.Items).Actions!.Items)).Destination!;
+        Assert.Equal(OfdDestinationType.XYZ, target.Type);
+        Assert.Equal(positioned, target.Left.HasValue && target.Top.HasValue);
+        Assert.Null(target.Zoom);
+    }
+
     [Fact]
     public async Task UnrepresentableXyzZoomFailsBeforeOutput()
     {

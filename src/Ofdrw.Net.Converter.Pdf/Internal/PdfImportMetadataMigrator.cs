@@ -205,9 +205,9 @@ internal static class PdfImportMetadataMigrator
             destinations[count - 1] = (true, null);
             if (destinationType.Data == "XYZ")
             {
-                // PdfPig's parsed destination coordinates omit the fifth (zoom) operand.
-                if (target.Data.Count != 5) throw new InvalidDataException("PDF XYZ destination has invalid coordinates.");
-                if (target.Data[4] is not NullToken)
+                // PdfPig's parsed destination coordinates omit zoom; a missing trailing operand retains the reader's value.
+                if (target.Data.Count > 5) throw new InvalidDataException("PDF XYZ destination has invalid coordinates.");
+                if (target.Data.Count == 5 && target.Data[4] is not NullToken)
                 {
                     var zoom = Resolve<NumericToken>(target.Data[4], source)?.Double
                         ?? throw new InvalidDataException("PDF XYZ destination zoom is not numeric.");
