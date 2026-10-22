@@ -1170,6 +1170,7 @@ public sealed class OfdReader : IOfdReader
             foreach (var placement in resource.Elements.OfType<OfdCompositeElement>()) pending.Push(placement.Resource);
         }
         OfdCompositeGraph.Validate(validation, material, token);
+        foreach (var resource in definitions) package.ScopedCompositeResources.Add(resource);
         return map;
     }
 

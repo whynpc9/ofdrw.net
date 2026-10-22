@@ -3038,7 +3038,7 @@ public sealed class R01PageBlockTests
         var ofd = rewritten.ToArray();
         var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
         var raw = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
-        Assert.Equal("Content", raw.LocalName);
+        Assert.Equal("Page", raw.LocalName);
         Assert.Null(raw.PageBlockChildren);
         Assert.Contains("urn:vendor", raw.Xml);
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, new MemoryStream()));
@@ -3297,6 +3297,57 @@ public sealed class R01PageBlockTests
         Assert.Contains("rgb(0,0,255)", Encoding.UTF8.GetString(svg.ToArray()));
         Assert.Contains("rgb(0,0,255)", Encoding.UTF8.GetString(html.ToArray()));
         Retain(template ? "template-local-composite" : "page-local-composite", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+
+        // Split clones the PageBlock projection before Writer preserves its
+        // reader-owned PageRes XML. Its resource graph must remain closed.
+        var split = OfdDocumentSplitter.Split(read, [0]);
+        var clonedBlock = Assert.IsType<OfdRawElement>(Assert.Single(template ? split.Pages[0].Templates[0].Elements : split.Pages[0].Elements));
+        var clonedPlacement = Assert.IsType<OfdCompositeElement>(Assert.Single(clonedBlock.PageBlockChildren!));
+        Assert.NotSame(composite.Resource, clonedPlacement.Resource);
+        Assert.Null(split.CompositeResources);
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(split, output);
+        var reread = await new OfdReader().ReadAsync(new MemoryStream(output.ToArray()));
+        var savedBlock = Assert.IsType<OfdRawElement>(Assert.Single(template ? reread.Pages[0].Templates[0].Elements : reread.Pages[0].Elements));
+        Assert.IsType<OfdCompositeElement>(Assert.Single(savedBlock.PageBlockChildren!));
+        Assert.Equal(read.PreservedEntries[path], reread.PreservedEntries[path]);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task AdditionalContentSiblingKeepsWholePageOpaque(bool foreign, bool before)
+    {
+        const string drawing = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var seed = await Source(drawing);
+        var ofd = await RewriteXml(seed, "Doc_0/Pages/Page_0/Content.xml", xml =>
+        {
+            var root = xml.Root!;
+            var sibling = new XElement((foreign ? XNamespace.Get("urn:vendor") : root.Name.Namespace) + "Content",
+                new XElement(XNamespace.Get("urn:vendor") + "Opaque", "preserve me"));
+            if (before) root.AddFirst(sibling); else root.Add(sibling);
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.Equal("Page", raw.LocalName);
+        Assert.Null(raw.PageBlockChildren);
+        Assert.Contains("preserve me", raw.Xml);
+        using var roundTrip = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, roundTrip));
+        Assert.Equal(0, roundTrip.Length);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
     }
 
     [Fact]

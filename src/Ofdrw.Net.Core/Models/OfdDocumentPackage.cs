@@ -22,6 +22,9 @@ internal sealed class OfdAttachmentPhysicalRemoval(int ordinal, string payloadPa
 public sealed class OfdDocumentPackage
 {
     internal OfdCompositeResourceCollection? CompositeValue, OriginalCompositeResources;
+    // Reader-only PageRes definitions used by PageBlock projections. The writer
+    // retains their original XML; these never confer typed resource ownership.
+    internal List<OfdCompositeResource> ScopedCompositeResources { get; } = [];
     internal OfdModelSnapshot? CompositeBaseline;
     internal OfdCompositeResource[] OriginalCompositeOrder = Array.Empty<OfdCompositeResource>();
     /// <summary>Shared vector definitions. Null preserves imported content; imported definitions require proven closure before removal or reorder.</summary>
