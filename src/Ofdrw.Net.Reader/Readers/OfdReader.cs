@@ -991,12 +991,8 @@ public sealed class OfdReader : IOfdReader
             if (key is null) continue;
             var validBold = TryParseFontFlag(font.Attribute("Bold")?.Value, out var bold);
             var validItalic = TryParseFontFlag(font.Attribute("Italic")?.Value, out var italic);
-            // Keep the resource readable, but never let a malformed declaration
-            // satisfy PageBlock text's resolved-font admission.
-            if (validBold && validItalic) fontMap[key] = name!;
-            else fontMap.Remove(key);
-            if (package.Fonts.Any(existing => existing.Id == id)) continue;
-            var file = ReadValue(font.Element(ns + "FontFile"), material, cancellationToken);
+            var fontFile = font.Element(ns + "FontFile");
+            var file = ReadValue(fontFile, material, cancellationToken);
             material.ReserveReadModel(512, cancellationToken);
             var resource = new OfdFontResource
             {
@@ -1004,13 +1000,20 @@ public sealed class OfdReader : IOfdReader
                 Charset = font.Attribute("Charset")?.Value,
                 Bold = bold, Italic = italic, FileName = file
             };
-            if (!string.IsNullOrWhiteSpace(file))
+            var resolvedFile = fontFile is null;
+            if (fontFile is not null && !string.IsNullOrWhiteSpace(file))
             {
                 material.ReserveReadModel(256L + 16L * ((baseLocation?.Length ?? 0) + file!.Length), cancellationToken);
                 var reference = string.IsNullOrWhiteSpace(baseLocation) || file!.StartsWith("/", StringComparison.Ordinal)
                     ? file! : baseLocation!.TrimEnd('/') + "/" + file;
-                if (archive.TryGetBytes(material.ResolvePath(resourcePath, reference, cancellationToken), out var bytes)) resource.Data = bytes;
+                if (archive.TryGetBytes(material.ResolvePath(resourcePath, reference, cancellationToken), out var bytes) && bytes.Length > 0)
+                { resource.Data = bytes; resolvedFile = true; }
             }
+            // A name-only font deliberately permits host fallback. An explicit
+            // FontFile must resolve before it can satisfy PageBlock admission.
+            if (validBold && validItalic && resolvedFile) fontMap[key] = name!;
+            else fontMap.Remove(key);
+            if (package.Fonts.Any(existing => existing.Id == id)) continue;
             package.Fonts.Add(resource);
         }
     }

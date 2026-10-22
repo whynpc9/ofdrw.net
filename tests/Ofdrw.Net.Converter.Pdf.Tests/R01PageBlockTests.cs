@@ -716,6 +716,81 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("public", false)]
+    [InlineData("document", false)]
+    [InlineData("page", false)]
+    [InlineData("template", false)]
+    [InlineData("public", true)]
+    [InlineData("document", true)]
+    [InlineData("page", true)]
+    [InlineData("template", true)]
+    public async Task ExplicitMissingFontPayloadIsNotNameOnlyFallback(string scope, bool nameOnly)
+    {
+        const string drawing = "<TextObject ID='501' Boundary='10 10 50 10' Font='30' Size='4'>" +
+            "<TextCode X='0' Y='4'>font declaration</TextCode></TextObject>";
+        var seed = await Source(drawing, template: scope == "template");
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            XNamespace ns = Ns;
+            var resource = new XElement(ns + "Res", new XAttribute("BaseLoc", "Res"),
+                new XElement(ns + "Fonts", new XElement(ns + "Font", new XAttribute("ID", "30"),
+                    new XAttribute("FontName", "Noto Sans"), nameOnly ? null : new XElement(ns + "FontFile", "missing.ttf"))));
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (scope == "public" && entry.FullName == "Doc_0/PublicRes.xml")
+                    bytes = Encoding.UTF8.GetBytes(resource.ToString(SaveOptions.DisableFormatting));
+                if (scope == "document" && entry.FullName == "Doc_0/Document.xml")
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    xml.Root!.Element(ns + "CommonData")!.Add(new XElement(ns + "DocumentRes", "DocumentRes.xml"));
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+            if (scope != "public")
+            {
+                var path = scope switch
+                {
+                    "document" => "Doc_0/DocumentRes.xml",
+                    "page" => "Doc_0/Pages/Page_0/PageRes.xml",
+                    _ => "Doc_0/Tpl_0/PageRes.xml"
+                };
+                using var target = output.CreateEntry(path).Open();
+                await target.WriteAsync(Encoding.UTF8.GetBytes(resource.ToString(SaveOptions.DisableFormatting)));
+            }
+        }
+        var ofd = rewritten.ToArray();
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var declaredFont = Assert.Single(read.Fonts);
+        Assert.Equal(nameOnly ? null : "missing.ttf", declaredFont.FileName);
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(Assert.IsType<OfdRawElement>(
+            Assert.Single(scope == "template" ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.Contains("font declaration", new OfdTextExtractor().Extract(read, includeTemplates: true));
+        if (nameOnly) Assert.Null(text.RenderPaintError);
+        else Assert.Contains("unresolved Font", text.RenderPaintError);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            if (nameOnly) { await convert(new MemoryStream(ofd), sink); Assert.True(sink.Length > 0); }
+            else
+            {
+                var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+                Assert.Contains("Font", error.Message);
+                Assert.Equal(0, sink.Length);
+            }
+        }
+    }
+
+    [Theory]
     [InlineData("Bold")]
     [InlineData("Italic")]
     public async Task MalformedCompositeFontFlagPreservesTextButFailsAllRenderers(string flag)
