@@ -29,7 +29,9 @@ internal sealed class ArchivalStructuralCoverage
     private readonly HashSet<string> inspectedPageEntries = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<XElement> ordinaryPageTrees = new();
     private readonly Dictionary<long, XElement> templatePageTrees = new();
+    private readonly HashSet<long> ambiguousTemplateIds = new();
     private readonly Dictionary<XElement, string> pageTreeEntries = new();
+    private readonly Dictionary<XElement, bool> graphicPositions = new();
     private long xmlBytes;
     private int xmlNodes;
     private int references;
@@ -100,8 +102,12 @@ internal sealed class ArchivalStructuralCoverage
         foreach (var template in common.SelectMany(x => x.Elements(ns + "TemplatePage")))
         {
             var id = (string?)template.Attribute("ID");
-            if (!Id(id, out var number) || ForeignAttribute(template, "ID") || !templateIds.Add(number))
+            if (!Id(id, out var number))
+            { UnknownPageScope("TemplateIdAmbiguous", documentEntry); continue; }
+            if (!templateIds.Add(number) || ForeignAttribute(template, "ID"))
+            { ambiguousTemplateIds.Add(number);
                 UnknownPageScope("TemplateIdAmbiguous", documentEntry);
+            }
         }
         var pages = document.Elements(ns + "Pages").ToArray();
         if (pages.Length != 1 || Foreign(document, "Pages", ns))
@@ -174,7 +180,8 @@ internal sealed class ArchivalStructuralCoverage
         if (!pageTreeEntries.ContainsKey(page)) pageTreeEntries.Add(page, entry);
         if (template)
         {
-            if (Id((string?)declaration.Attribute("ID"), out var templateId))
+            if (Id((string?)declaration.Attribute("ID"), out var templateId) &&
+                !ambiguousTemplateIds.Contains(templateId))
                 if (!templatePageTrees.ContainsKey(templateId)) templatePageTrees.Add(templateId, page);
         }
         else ordinaryPageTrees.Add(page);
@@ -420,12 +427,17 @@ internal sealed class ArchivalStructuralCoverage
         var ns = appearance.Name.Namespace;
         if (OpaqueAppearance(appearance))
             observations[8].Unknown("OpaqueAnnotationAppearance", entry, appearance, this);
-        foreach (var block in appearance.Descendants(ns + "PageBlock").Where(x =>
-                     RecognizedGraphicPosition(x, appearance, ns)))
+        var pending = new Stack<(XElement Block, int Depth)>();
+        foreach (var block in appearance.Elements(ns + "PageBlock").Reverse()) pending.Push((block, 0));
+        while (pending.Count != 0)
         {
+            token.ThrowIfCancellationRequested();
+            var (block, depth) = pending.Pop();
             observations[8].Seen(entry, block, this);
-            if (block.Ancestors().TakeWhile(x => x != appearance).Any(x => x.Name == ns + "PageBlock"))
+            if (depth > 0)
                 observations[8].Fail("NestedAnnotationPageBlock", entry, block, this);
+            foreach (var child in block.Elements(ns + "PageBlock").Reverse())
+                pending.Push((child, depth + 1));
         }
     }
 
@@ -468,21 +480,31 @@ internal sealed class ArchivalStructuralCoverage
                       x.Name.LocalName == "ImageObject" || x.Name.LocalName == "CompositeObject") &&
                       RecognizedGraphicPosition(x, source, ns)))
         {
-            if (graphic.Elements().Any(x => x.Name == ns + "Actions" || x.Name == ns + "Action"))
+            if (graphic.Elements(ns + "Actions").Any(x => x.Elements(ns + "Action").Any()))
                 observations[6].Fail("ObjectActionRetained", entry, graphic, this);
-            else if (graphic.Elements().Any(x =>
-                         (x.Name.LocalName == "Actions" || x.Name.LocalName == "Action") && x.Name.Namespace != ns))
-                observations[6].Unknown("ForeignObjectAction", entry, graphic, this);
+            else if (graphic.Elements().Any(x => x.Name.LocalName is ("Actions" or "Action") &&
+                         (x.Name != ns + "Actions" || x.Attributes().Any(a => !a.IsNamespaceDeclaration) ||
+                          OpaqueNodes(x) || x.Elements().Any(a => a.Name != ns + "Action"))))
+                observations[6].Unknown("ObjectActionAmbiguous", entry, graphic, this);
         }
     }
 
-    private static bool RecognizedGraphicPosition(XElement node, XElement source, XNamespace ns)
+    private bool RecognizedGraphicPosition(XElement node, XElement source, XNamespace ns)
     {
-        for (var current = node; !ReferenceEquals(current, source);)
+        var pending = new Stack<XElement>();
+        var current = node;
+        while (!ReferenceEquals(current, source) && !graphicPositions.ContainsKey(current))
         {
-            var parent = current.Parent;
-            if (parent is null || current.Name.Namespace != ns) return false;
-            var allowed = current.Name.LocalName switch
+            pending.Push(current);
+            if (current.Parent is null) return false;
+            current = current.Parent;
+        }
+        var recognized = ReferenceEquals(current, source) || graphicPositions[current];
+        while (pending.Count != 0)
+        {
+            var child = pending.Pop();
+            var parent = child.Parent!;
+            recognized &= child.Name.Namespace == ns && (child.Name.LocalName switch
             {
                 "TextObject" or "PathObject" or "ImageObject" or "CompositeObject" =>
                     parent.Name == ns + "Layer" || parent.Name == ns + "PageBlock" || parent.Name == ns + "Appearance",
@@ -491,11 +513,10 @@ internal sealed class ArchivalStructuralCoverage
                 "Layer" => parent.Name == ns + "Content",
                 "Content" => parent.Name == ns + "Page",
                 _ => false
-            };
-            if (!allowed) return false;
-            current = parent;
+            });
+            graphicPositions[child] = recognized;
         }
-        return true;
+        return recognized;
     }
 
     private static bool OpaqueGraphicContainers(XElement source, XNamespace ns)

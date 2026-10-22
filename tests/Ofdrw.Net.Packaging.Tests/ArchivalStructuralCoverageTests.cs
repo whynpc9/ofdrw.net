@@ -716,6 +716,15 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(clean, "AC-010").Outcome);
     }
 
+    [Theory]
+    [InlineData("<Actions/>")]
+    [InlineData("<Actions><FutureAction/></Actions>")]
+    public async Task ObjectWithoutRecognizedActionDoesNotBecomeKnownFailure(string payload)
+    {
+        var report = await Check(Seed(objects: $"<PathObject>{payload}</PathObject>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-010").Outcome);
+    }
+
     [Fact]
     public async Task UnsupportedPageGraphicsPreventAnAbsenceClaim()
     {
@@ -825,6 +834,25 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicateTemplateIdCannotSelectAnArbitraryEffectiveLayerName(bool reverse)
+    {
+        var declarations = new[]
+        {
+            "<TemplatePage ID='8' BaseLoc='Templates/Colliding.xml'/>",
+            "<TemplatePage ID='08' BaseLoc='Templates/Distinct.xml'/>"
+        };
+        if (reverse) Array.Reverse(declarations);
+        var entries = Seed(documentExtra: $"<CommonData>{string.Concat(declarations)}</CommonData>");
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Template TemplateID='8'/><Content><Layer Name='body'/></Content></Page>");
+        entries["Doc_0/Templates/Colliding.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer Name='body'/></Content></Page>");
+        entries["Doc_0/Templates/Distinct.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer Name='other'/></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-011").Outcome);
+    }
+
+    [Theory]
     [InlineData("<PageBlock ID='3'><PageBlock ID='4'><PathObject/></PageBlock></PageBlock>", PreflightOutcome.Fail)]
     [InlineData("<PageBlock ID='3'><PathObject/></PageBlock>", PreflightOutcome.Pass)]
     [InlineData("<PageBlock ID='3' vendor='x'><PathObject/></PageBlock>", PreflightOutcome.Unknown)]
@@ -838,6 +866,18 @@ public class ArchivalStructuralCoverageTests
         var report = await Check(entries);
         Assert.Equal(expected, Rule(report, "AC-012").Outcome);
         Assert.Equal("6.10.1(a)(2)", Rule(report, "AC-012").Rule.Clause);
+    }
+
+    [Fact]
+    public async Task DeepNestedAnnotationBlocksUseBoundedIterativeTraversal()
+    {
+        var entries = Seed(documentExtra: "<Annotations>Annots/Annotations.xml</Annotations>");
+        entries["Doc_0/Annots/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'><Page PageID='1'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        var opens = string.Concat(Enumerable.Repeat("<PageBlock>", 1500));
+        var closes = string.Concat(Enumerable.Repeat("</PageBlock>", 1500));
+        entries["Doc_0/Annots/Page.xml"] = Utf8($"<PageAnnot xmlns='{Ns}'><Annot ID='2' ReadOnly='true' NoZoom='true' NoRotate='true'><Appearance>{opens}{closes}</Appearance></Annot></PageAnnot>");
+        var report = await Check(entries, new ArchivalPreflightOptions { MaxXmlDepth = 4096 });
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-012").Outcome);
     }
 
     [Theory]
