@@ -171,11 +171,11 @@ internal sealed class ArchivalStructuralCoverage
             if (!template) targetInventoryUnknown = true;
             return;
         }
-        pageTreeEntries.TryAdd(page, entry);
+        if (!pageTreeEntries.ContainsKey(page)) pageTreeEntries.Add(page, entry);
         if (template)
         {
             if (Id((string?)declaration.Attribute("ID"), out var templateId))
-                templatePageTrees.TryAdd(templateId, page);
+                if (!templatePageTrees.ContainsKey(templateId)) templatePageTrees.Add(templateId, page);
         }
         else ordinaryPageTrees.Add(page);
         // Declaration and reference checks still run for each use, but a cached page tree is inspected once.
