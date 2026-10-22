@@ -579,8 +579,7 @@ internal sealed class ArchivalStructuralCoverage
             x.Name.LocalName is ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject"))) return false;
         if (node.Attributes().Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute) &&
             !(parent == "ImageObject" && attribute.Name == "Interpolate") &&
-            !(parent is ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject") &&
-              attribute.Name == "DrawParam" && Id(attribute.Value, out _)))) return true;
+            !KnownGraphicReferenceAttribute(parent, attribute))) return true;
         if (parent is "TextCode" or "AbbreviatedData" or "Glyphs")
             return node.Nodes().Any(x => x is not XText);
         if (parent is "FillColor" or "StrokeColor")
@@ -602,6 +601,16 @@ internal sealed class ArchivalStructuralCoverage
             _ => false
         }));
     }
+
+    private static bool KnownGraphicReferenceAttribute(string parent, XAttribute attribute) =>
+        attribute.Name.Namespace == XNamespace.None && Id(attribute.Value, out _) &&
+        (attribute.Name.LocalName switch
+        {
+            "DrawParam" => parent is "TextObject" or "PathObject" or "ImageObject" or "CompositeObject",
+            "ImageMask" => parent == "ImageObject",
+            "ColorSpace" => parent is "FillColor" or "StrokeColor",
+            _ => false
+        });
 
     private static bool OpaquePageChild(XElement child, XNamespace ns)
     {

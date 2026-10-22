@@ -868,6 +868,30 @@ public class ArchivalStructuralCoverageTests
             Assert.Equal(expected, Rule(report, id).Outcome);
     }
 
+    [Theory]
+    [InlineData("ImageMask='123'", PreflightOutcome.Pass)]
+    [InlineData("ImageMask='0'", PreflightOutcome.Unknown)]
+    [InlineData("ImageMask='invalid'", PreflightOutcome.Unknown)]
+    [InlineData("xmlns:v='urn:vendor' v:ImageMask='123'", PreflightOutcome.Unknown)]
+    public async Task ImageMaskHasNumericReferenceShape(string attributes, PreflightOutcome expected)
+    {
+        var objects = $"<ImageObject {attributes} Interpolate='false'/><TextObject Size='3'/>";
+        var report = await Check(Seed(objects: objects));
+        foreach (var id in new[] { "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(expected, Rule(report, id).Outcome);
+    }
+
+    [Theory]
+    [InlineData("ColorSpace='9'", PreflightOutcome.Pass)]
+    [InlineData("ColorSpace='0'", PreflightOutcome.Unknown)]
+    public async Task ColorSpaceHasNumericReferenceShape(string attributes, PreflightOutcome expected)
+    {
+        var objects = $"<PathObject><FillColor {attributes} Value='0 0 0'/></PathObject><ImageObject Interpolate='false'/><TextObject Size='3'/>";
+        var report = await Check(Seed(objects: objects));
+        foreach (var id in new[] { "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(expected, Rule(report, id).Outcome);
+    }
+
     [Fact]
     public async Task DenseGraphicSiblingEvidenceKeepsTheCorrectOrdinal()
     {
