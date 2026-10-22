@@ -121,6 +121,23 @@ public sealed class R01PageBlockTests
         return rewritten.ToArray();
     }
 
+    private static async Task<byte[]> WithEntry(byte[] seed, string path, byte[] bytes)
+    {
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                if (entry.FullName == path) continue;
+                using var source = entry.Open(); using var target = output.CreateEntry(entry.FullName).Open();
+                await source.CopyToAsync(target);
+            }
+            using var replacement = output.CreateEntry(path).Open(); await replacement.WriteAsync(bytes);
+        }
+        return rewritten.ToArray();
+    }
+
     private static async Task<byte[]> ReNamespacePageBlock(byte[] seed, string layerNamespace, string blockNamespace,
         string? compositeNamespace = null)
     {
@@ -1622,6 +1639,69 @@ public sealed class R01PageBlockTests
             await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
             Assert.Equal(0, sink.Length);
         }
+    }
+
+    [Theory]
+    [InlineData("PNG", true, false)]
+    [InlineData("PNG", true, true)]
+    [InlineData("JPEG", false, false)]
+    public async Task ExplicitImageFormatMustMatchPageBlockPayload(string format, bool jpegPayload, bool composite)
+    {
+        var resources = $"<MultiMedias><MultiMedia ID='20' Type='Image' Format='{format}'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>" +
+            (composite ? "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='20' Height='20'>" +
+                "<ImageObject ID='552' Boundary='0 0 20 20' ResourceID='20'/></CompositeGraphicUnit></CompositeGraphicUnits>" : "");
+        var body = composite ? "<CompositeObject ID='553' Boundary='10 10 20 20' ResourceID='551'/>" :
+            "<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>";
+        var seed = await Source(body, resources: resources, image: true);
+        byte[] ofd;
+        if (jpegPayload)
+        {
+            using var pixels = new Image<Rgba32>(1, 1, Color.Red);
+            using var jpeg = new MemoryStream(); await pixels.SaveAsJpegAsync(jpeg);
+            ofd = await WithEntry(seed, "Doc_0/image.png", jpeg.ToArray());
+        }
+        else ofd = seed;
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var graphic = Assert.Single(block.PageBlockChildren!);
+        var image = composite ? Assert.IsType<OfdImageElement>(Assert.Single(Assert.IsType<OfdCompositeElement>(graphic).Resource.Elements)) :
+            Assert.IsType<OfdImageElement>(graphic);
+        Assert.True(image.SourceMediaAmbiguous);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Fact]
+    public async Task MatchingJpegPageBlockMediaRendersInAllOutputs()
+    {
+        const string resources = "<MultiMedias><MultiMedia ID='20' Type='Image' Format='JPEG'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
+        var seed = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>",
+            resources: resources, image: true);
+        using var pixels = new Image<Rgba32>(1, 1, Color.Red);
+        using var jpeg = new MemoryStream(); await pixels.SaveAsJpegAsync(jpeg);
+        var ofd = await WithEntry(seed, "Doc_0/image.png", jpeg.ToArray());
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var image = Assert.IsType<OfdImageElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.False(image.SourceMediaAmbiguous);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("data:image/jpeg", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("data:image/jpeg", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("jpeg-media-pageblock", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]
@@ -3152,6 +3232,123 @@ public sealed class R01PageBlockTests
             await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
             Assert.Equal(0, sink.Length);
         }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PageOrTemplateResCompositeRendersInItsOwnScope(bool template)
+    {
+        const string body = "<CompositeObject ID='501' Boundary='10 10 20 20' ResourceID='550'/>";
+        const string resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='550' Width='20' Height='20'>" +
+            "<PathObject ID='551' Boundary='0 0 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor Value='0 0 255'/><AbbreviatedData>M 0 0 L 20 0 L 0 20 C</AbbreviatedData>" +
+            "</PathObject></CompositeGraphicUnit></CompositeGraphicUnits>";
+        var path = template ? "Doc_0/Tpl_0/PageRes.xml" : "Doc_0/Pages/Page_0/PageRes.xml";
+        var seed = await Source(body, template: template);
+        var ofd = await WithEntry(seed, path, Encoding.UTF8.GetBytes($"<Res xmlns='{Ns}'>{resources}</Res>"));
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        var composite = Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Equal(path, composite.Resource.SourceEntryPath);
+        Assert.IsType<OfdPathElement>(Assert.Single(composite.Resource.Elements));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("rgb(0,0,255)", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("rgb(0,0,255)", Encoding.UTF8.GetString(html.ToArray()));
+        Retain(template ? "template-local-composite" : "page-local-composite", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Fact]
+    public async Task TemplatePageBlockCannotBorrowCallingPageComposite()
+    {
+        const string body = "<CompositeObject ID='501' Boundary='10 10 20 20' ResourceID='550'/>";
+        const string resources = "<Res xmlns='http://www.ofdspec.org'><CompositeGraphicUnits>" +
+            "<CompositeGraphicUnit ID='550' Width='20' Height='20'><PathObject ID='551' Boundary='0 0 20 20' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 0 20 C</AbbreviatedData></PathObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits></Res>";
+        var seed = await Source(body, template: true);
+        var ofd = await WithEntry(seed, "Doc_0/Pages/Page_0/PageRes.xml", Encoding.UTF8.GetBytes(resources));
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Templates[0].Elements));
+        Assert.IsType<OfdRawElement>(Assert.Single(block.PageBlockChildren!));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Fact]
+    public async Task PageResCompositeDoesNotLeakToAnotherPage()
+    {
+        const string body = "<CompositeObject ID='501' Boundary='10 10 20 20' ResourceID='550'/>";
+        const string resources = "<Res xmlns='http://www.ofdspec.org'><CompositeGraphicUnits>" +
+            "<CompositeGraphicUnit ID='550' Width='20' Height='20'><PathObject ID='551' Boundary='0 0 20 20' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 0 20 C</AbbreviatedData></PathObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits></Res>";
+        var seed = await Source(body);
+        var document = await RewriteXml(seed, "Doc_0/Document.xml", xml =>
+        {
+            XNamespace ns = Ns;
+            xml.Root!.Element(ns + "Pages")!.Add(new XElement(ns + "Page", new XAttribute("ID", "1700"),
+                new XAttribute("BaseLoc", "Pages/Page_1/Content.xml")));
+            xml.Root.Element(ns + "CommonData")!.Element(ns + "MaxUnitID")!.Value = "1701";
+        });
+        byte[] secondPage;
+        using (var zip = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var content = zip.GetEntry("Doc_0/Pages/Page_0/Content.xml")!.Open())
+        {
+            var xml = XDocument.Load(content);
+            foreach (var id in xml.Descendants().Attributes("ID")) id.Value = (int.Parse(id.Value) + 1000).ToString();
+            secondPage = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+        }
+        var withPage = await WithEntry(document, "Doc_0/Pages/Page_1/Content.xml", secondPage);
+        var ofd = await WithEntry(withPage, "Doc_0/Pages/Page_0/PageRes.xml", Encoding.UTF8.GetBytes(resources));
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Equal(2, read.Pages.Count);
+        var first = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var second = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[1].Elements));
+        Assert.IsType<OfdCompositeElement>(Assert.Single(first.PageBlockChildren!));
+        Assert.IsType<OfdRawElement>(Assert.Single(second.PageBlockChildren!));
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf));
+        Assert.Equal(0, pdf.Length);
+        using var svg = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg, pageIndex: 1));
+        Assert.Equal(0, svg.Length);
+        using var html = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html, pageIndexes: new[] { 1 }));
+        Assert.Equal(0, html.Length);
+    }
+
+    [Fact]
+    public async Task PageResCompositeDoesNotChangeOrdinaryCompositeImport()
+    {
+        const string body = "<CompositeObject ID='501' Boundary='10 10 20 20' ResourceID='550'/>";
+        const string resources = "<Res xmlns='http://www.ofdspec.org'><CompositeGraphicUnits>" +
+            "<CompositeGraphicUnit ID='550' Width='20' Height='20'><PathObject ID='551' Boundary='0 0 20 20' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 0 20 C</AbbreviatedData></PathObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits></Res>";
+        var seed = await Source(body);
+        var withOrdinary = await RewriteXml(seed, "Doc_0/Pages/Page_0/Content.xml", xml =>
+        {
+            var layer = Assert.Single(xml.Descendants(), child => child.Name.LocalName == "Layer");
+            layer.Add(new XElement(layer.Name.Namespace + "CompositeObject", new XAttribute("ID", "559"),
+                new XAttribute("Boundary", "40 10 20 20"), new XAttribute("ResourceID", "550")));
+        });
+        var ofd = await WithEntry(withOrdinary, "Doc_0/Pages/Page_0/PageRes.xml", Encoding.UTF8.GetBytes(resources));
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.IsType<OfdCompositeElement>(Assert.Single(Assert.IsType<OfdRawElement>(read.Pages[0].Elements[0]).PageBlockChildren!));
+        Assert.Equal("CompositeObject", Assert.IsType<OfdRawElement>(read.Pages[0].Elements[1]).LocalName);
     }
 
     [Theory]
