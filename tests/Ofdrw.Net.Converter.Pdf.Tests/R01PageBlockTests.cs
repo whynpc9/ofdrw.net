@@ -2533,6 +2533,28 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("M 0 0")]
+    [InlineData("M 0 0 C")]
+    public async Task MoveOnlyPageBlockClipFailsEveryRenderer(string clipData)
+    {
+        var ofd = await Source("<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<Clips><Clip><Area><Path Stroke='false' Fill='true'>" +
+            $"<AbbreviatedData>{clipData}</AbbreviatedData></Path></Area></Clip></Clips>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>");
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task PageDrawingCannotImpersonateAnnotationMetadata(bool pageBlock)
