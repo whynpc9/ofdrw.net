@@ -64,6 +64,8 @@ internal static class OfdClipGeometry
                         throw new NotSupportedException("Stroked clip geometry is outside the render profile.");
                     var literal = string.Concat(shape.Element(shape.Name.Namespace + "AbbreviatedData")?.Nodes().OfType<XText>().Select(text => text.Value) ?? Enumerable.Empty<string>());
                     if (string.IsNullOrWhiteSpace(literal)) throw new NotSupportedException("OFD clip path has no supported literal geometry.");
+                    if (requireClosedProfile && !OfdPathDataSyntax.HasSingleValidDrawing(shape, token))
+                        throw new NotSupportedException("Malformed OFD clip path data cannot be exported.");
                     var boundary = Numbers(shape.Attribute("Boundary")?.Value);
                     var transform = Matrix(shape.Attribute("CTM")?.Value);
                     if (boundary.Length >= 2)

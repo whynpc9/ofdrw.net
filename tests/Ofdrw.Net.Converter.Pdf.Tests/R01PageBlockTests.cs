@@ -967,6 +967,44 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("0 1", true)]
+    [InlineData("2 2", false)]
+    [InlineData("1.0 0", false)]
+    public async Task PageBlockClipArcUsesTheSameFlagAdmission(string flags, bool supported)
+    {
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<Clips><Clip><Area><Path Stroke='false' Fill='true'>" +
+            $"<AbbreviatedData>M 0 10 A 10 10 0 {flags} 20 10 L 20 20 L 0 20 C</AbbreviatedData>" +
+            "</Path></Area></Clip></Clips>" +
+            "<FillColor Value='0 0 255'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body);
+        var converters = new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        };
+        if (!supported)
+        {
+            foreach (var convert in converters)
+            {
+                using var output = new MemoryStream();
+                var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+                Assert.Contains("clip path data", error.Message);
+                Assert.Equal(0, output.Length);
+            }
+            return;
+        }
+        using var pdf = new MemoryStream(); await converters[0](new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await converters[1](new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await converters[2](new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("A 10 10 0 0 1 20 10", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("A 10 10 0 0 1 20 10", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("pageblock-clip-arc", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
     [InlineData("<VendorDrawing ID='501'/>")]
     [InlineData("<PathObject ID='501' Boundary='10 10 20 20' Fill='true'><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData><VendorChild/></PathObject>")]
     public async Task UnsupportedPageBlockDrawingInSealFailsInsteadOfDroppingAppearance(string body)
