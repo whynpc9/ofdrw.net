@@ -821,6 +821,22 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("<Future><Layer Name='body'/></Future>")]
+    [InlineData("<PageBlock><Future><Layer Name='body'/></Future></PageBlock>")]
+    [InlineData("<PathObject><Future><Layer Name='body'/></Future></PathObject>")]
+    [InlineData("<!--opaque-->")]
+    public async Task OpaqueLayerPayloadPreventsFalseUniqueNameClaim(string payload)
+    {
+        var entries = Seed();
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer Name='body'>{payload}</Layer></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-011").Outcome);
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer Name='body'>{payload}</Layer><Layer Name='body'/></Content></Page>");
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-011").Outcome);
+    }
+
+    [Theory]
     [InlineData("vendor='x'", PreflightOutcome.Unknown)]
     [InlineData("ID='2' Type='Body' Name='body'", PreflightOutcome.Pass)]
     public async Task LayerAttributesControlGraphicAndNameClaims(string attributes, PreflightOutcome expected)

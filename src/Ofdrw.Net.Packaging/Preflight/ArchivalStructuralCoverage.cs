@@ -414,6 +414,8 @@ internal sealed class ArchivalStructuralCoverage
                 observations[7].Seen(entry, layer, this);
                 if (OpaqueGraphicContainerAttributes(layer))
                     observations[7].Unknown("OpaqueLayerAttributes", entry, layer, this);
+                if (OpaqueGraphicContainers(layer, ns))
+                    observations[7].Unknown("OpaqueLayerPayload", entry, layer, this);
                 var name = (string?)layer.Attribute("Name");
                 if (ForeignAttribute(layer, "Name")) observations[7].Unknown("LayerNameAmbiguous", entry, layer, this);
                 if (name is not null && !names.Add(name))
