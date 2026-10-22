@@ -37,3 +37,4 @@ e6e492e0d8ada5798d71faa6e3814ce4c46db48f2d9da2dd5169988f9645a3ba  artifacts/road
 183b78e2b1bbf8d2cff1ae2db8a00e63b52debb9dbb932d87bb8274ee2766c11  artifacts/roadmap-v12/R01/p4-ses/files/pages/default-v4/page-2.png
 9fa3c086aa62cd06dc91c58218c296e233954783dca01382b03fafd79765ba0a  artifacts/roadmap-v12/R01/p4-attachment/manifest.json
 7e68ac62c7f1f9d63d505645d63545dc7459dd822770c555608eb9913f54d771  artifacts/roadmap-v12/R01/p4-attachment/output/receipt.json
+2ec8a814dddb2ab55e077311724dd3310e24453ca36bda619df1367b3b636f8b  artifacts/roadmap-v12/R01/p4-preview-release.json

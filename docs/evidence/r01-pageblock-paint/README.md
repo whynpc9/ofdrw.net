@@ -23,4 +23,4 @@
 | 数字绘制资源、普通弧线、XML 注释空白三个 OFD → PDF → 144 DPI PNG | 各 1/1 页，本轮 PNG 与前轮逐页 SHA-256 相同；红色方块、蓝色上半圆、蓝色三角形的前轮 Preview 结果仍可复查。 |
 | `generated-layout.docx` → 本地许可字体样本 → 显式 native OFD → PDF；默认模式单独重复 | V1/V4 各两页，四组八张 96 DPI PNG 与前轮逐张 SHA-256 相同。本轮逐页 PNG 复查：中文及英文、英文斜体、蓝色表格底色和边框、第二页局部红色粗体与分页符合样例；未见缺字、裁切、重叠、重影或异常空白页。 |
 
-macOS Preview 本轮验收待 GUI 租约；自动渲染和 PNG 检查不代替 Preview。最终查看链路、页码及文件哈希将在完成后记录。结论仅覆盖上述样例和实查页面；外部 OFD 阅读器、V5/GBT 端到端互操作、签名法律效力及任意复杂 DOCX 的保真性未验收。
+macOS Preview 本轮逐页实查上述五份 PageBlock PDF 各 1/1 页，以及 `native-v1.pdf`、`default-v4.pdf` 各 1–2 页，共七份 PDF、九页。五个图元和字体样例清晰完整；DOCX 的中文、英文斜体、蓝色表格底色与边框、第二页红色粗体及日期符合样例，未见缺字、裁切、重叠、重影或异常空白页。查看链路、PDF 与逐页 PNG 哈希、源码和当前 head 的仅文档差异，记于 `artifacts/roadmap-v12/R01/p4-preview-release.json` 及中央 `gui-release-R01-20261022T0128Z.json`；已关闭全部窗口并退出 Preview。结论仅覆盖上述样例和实查页面；外部 OFD 阅读器、V5/GBT 端到端互操作、签名法律效力及任意复杂 DOCX 的保真性未验收。
