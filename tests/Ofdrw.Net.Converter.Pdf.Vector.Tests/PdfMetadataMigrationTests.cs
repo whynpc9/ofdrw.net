@@ -18,7 +18,8 @@ public sealed class PdfMetadataMigrationTests
         string? rootAction = null, string firstPageExtra = "", bool embeddedGlobalFile = true, bool mixedAnnotations = false,
         int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null", string? outlineRoot = null,
         string attachmentName = "same.bin", int? attachmentFlags = 4, string? rootOutlineItem = null,
-        string annotationRect = "20 30 40 50", string[]? extraObjects = null, string? globalFileSpec = null)
+        string annotationRect = "20 30 40 50", string[]? extraObjects = null, string? globalFileSpec = null,
+        string? nameTreeKeyToken = null, string? pageFileSpec = null)
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var flags = attachmentFlags is int value ? " /F " + value : string.Empty;
@@ -34,12 +35,12 @@ public sealed class PdfMetadataMigrationTests
                 rootOutlineItem ?? "<< /Title (Chapter A) /Parent 13 0 R /First 15 0 R /Last 15 0 R /Count 1 " +
                     (rootAction ?? "/Dest [" + destination + "]") + " >>",
                 "<< /Title (Child) /Parent 14 0 R /Dest [9 0 R /XYZ 30 500 " + childZoom + "] >>",
-                "<< /Names [(" + attachmentName + ") 17 0 R] >>",
+                "<< /Names [" + (nameTreeKeyToken ?? "(" + attachmentName + ")") + " 17 0 R] >>",
                 embeddedGlobalFile ? globalFileSpec ?? "<< /Type /Filespec /F (" + attachmentName + ") /EF << /F 18 0 R >> >>" :
                     "<< /Type /Filespec /F (" + attachmentName + ") >>",
                 globalStreamObject ?? "<< /Type /EmbeddedFile /Length 6 >>\nstream\nGLOBAL\nendstream",
                 page,
-                "<< /Type /Filespec /F (" + attachmentName + ") /EF << /F 21 0 R >> >>",
+                pageFileSpec ?? "<< /Type /Filespec /F (" + attachmentName + ") /EF << /F 21 0 R >> >>",
                 "<< /Type /EmbeddedFile /Length 4 >>\nstream\nPAGE\nendstream"
             }.Concat(Enumerable.Repeat("<< /Type /Annot /Subtype /Link /Rect [60 60 80 80] /A << /S /URI /URI (https://example.invalid) >> >>", linkCount))
             .Concat(extraObjects ?? Array.Empty<string>()).ToArray());
@@ -636,6 +637,75 @@ public sealed class PdfMetadataMigrationTests
         var package = await new OfdReader().ReadAsync(output);
         Assert.Equal("GLOBAL"u8.ToArray(), package.Attachments[0].Data);
         Assert.Equal("same.bin", package.Attachments[0].Name);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task HexUnicodeNamesWorkForGlobalAndPageAttachments(bool vector, bool indirect)
+    {
+        const string encodedName = "<FEFF4E2D6587002E00620069006E>"; // 中文.bin
+        using var fixture = new PdfFixture(Font());
+        var nameToken = indirect ? "22 0 R" : encodedName;
+        var pageNameToken = indirect ? "23 0 R" : encodedName;
+        using var input = new MemoryStream(Source(fixture, nameTreeKeyToken: nameToken,
+            pageFileSpec: $"<< /Type /Filespec /UF {pageNameToken} /EF << /F 21 0 R >> >>",
+            extraObjects: indirect ? new[] { encodedName, encodedName } : null));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions { Compatibility = options })
+                .ConvertAsync(input, output, new[] { 0 });
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output, new[] { 0 });
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal(new[] { "中文.bin", "中文.bin (2)" }, package.Attachments.Select(item => item.Name));
+        Assert.Equal(package.Attachments[1].Id, Assert.Single(package.Pages[0].Annotations!.Items).AttachmentId);
+    }
+
+    [Theory]
+    [InlineData(false, 3, true)]
+    [InlineData(true, 3, true)]
+    [InlineData(false, 2, false)]
+    [InlineData(true, 2, false)]
+    public async Task AliasedCompressedStreamCountsEachOutputOccurrence(bool vector, int totalBytes, bool accepted)
+    {
+        using var compressed = new MemoryStream();
+        using (var deflater = new ZLibStream(compressed, CompressionLevel.Optimal, leaveOpen: true))
+            deflater.WriteByte((byte)'A');
+        var encoded = compressed.ToArray();
+        var placeholder = new string('X', encoded.Length);
+        using var fixture = new PdfFixture(Font());
+        var pdf = Source(fixture, globalStreamObject:
+            $"<< /Type /EmbeddedFile /Filter /FlateDecode /Length {encoded.Length} >>\nstream\n{placeholder}\nendstream",
+            pageFileSpec: "<< /Type /Filespec /F (page.bin) /EF << /F 18 0 R >> >>");
+        var marker = Encoding.ASCII.GetBytes("stream\n" + placeholder + "\nendstream");
+        var position = pdf.AsSpan().IndexOf(marker);
+        Assert.True(position >= 0);
+        encoded.AsSpan().CopyTo(pdf.AsSpan(position + "stream\n".Length));
+        using var input = new MemoryStream(pdf); using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyAttachments = true, MaxAttachmentBytes = 1,
+            MaxTotalAttachmentBytes = totalBytes, PreferExternalPdfToPpm = true };
+        if (!accepted)
+        {
+            if (vector)
+                await Assert.ThrowsAsync<InvalidDataException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                    { Compatibility = options }).ConvertAsync(input, output, new[] { 0, 0 }));
+            else await Assert.ThrowsAsync<InvalidDataException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output, new[] { 0, 0 }));
+            Assert.Equal(0, output.Length);
+            return;
+        }
+        if (vector)
+            await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions { Compatibility = options })
+                .ConvertAsync(input, output, new[] { 0, 0 });
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output, new[] { 0, 0 });
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal(3, package.Attachments.Count);
+        Assert.All(package.Attachments, item => Assert.Equal("A"u8.ToArray(), item.Data));
+        Assert.Equal(2, package.Pages.Count);
     }
 
     [Theory]

@@ -356,13 +356,36 @@ internal static class PdfImportMetadataMigrator
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var count = 0; long total = 0;
         var globalFiles = ReadEmbeddedFileNameTree(source, options, token);
-        OfdAttachment Add(string name, StreamToken stream)
+        var indirectPayloads = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        var directPayloads = new List<(StreamToken Stream, byte[] Bytes)>();
+        OfdAttachment Add(string name, IToken streamLink, StreamToken stream)
         {
             token.ThrowIfCancellationRequested();
             if (++count > options.MaxAttachmentCount) throw new InvalidDataException("PDF attachment count exceeds the configured limit.");
             var remaining = Math.Min(options.MaxAttachmentBytes, options.MaxTotalAttachmentBytes - total);
             if (remaining < 0) throw new InvalidDataException("PDF attachment byte limit exceeded.");
-            var bytes = Decode(stream, remaining, options.MaxInputBytes, token);
+            byte[] bytes;
+            if (streamLink is IndirectReferenceToken reference)
+            {
+                var key = reference.Data.ToString();
+                if (indirectPayloads.TryGetValue(key, out var cached)) bytes = cached;
+                else
+                {
+                    bytes = Decode(stream, remaining, options.MaxInputBytes, token);
+                    indirectPayloads.Add(key, bytes);
+                }
+            }
+            else
+            {
+                var existing = directPayloads.FindIndex(item => ReferenceEquals(item.Stream, stream));
+                if (existing >= 0) bytes = directPayloads[existing].Bytes;
+                else
+                {
+                    bytes = Decode(stream, remaining, options.MaxInputBytes, token);
+                    directPayloads.Add((stream, bytes));
+                }
+            }
+            if (bytes.LongLength > remaining) throw new InvalidDataException("PDF attachment decoded byte limit exceeded.");
             total = checked(total + bytes.LongLength);
             var display = Name(name, names);
             var attachment = new OfdAttachment { Id = "800000" + count, Name = display, Data = bytes,
@@ -371,7 +394,7 @@ internal static class PdfImportMetadataMigrator
             return attachment;
         }
 
-        foreach (var file in globalFiles) Add(file.Name, file.Stream);
+        foreach (var file in globalFiles) Add(file.Name, file.Link, file.Stream);
 
         for (var index = 0; index < selected.Count; index++)
         {
@@ -393,9 +416,10 @@ internal static class PdfImportMetadataMigrator
                     ?? throw new InvalidDataException("PDF FileAttachment has no file name.");
                 var ef = Resolve<DictionaryToken>(spec.Data.TryGetValue("EF", out var efToken) ? efToken : null, source);
                 if (ef is null) throw new NotSupportedException("PDF external FileAttachment has no embedded payload.");
-                var payload = Resolve<StreamToken>(ef.Data.TryGetValue("UF", out var data) ? data : ef.Data.TryGetValue("F", out var other) ? other : null, source)
+                var streamLink = ef.Data.TryGetValue("UF", out var data) ? data : ef.Data.TryGetValue("F", out var other) ? other : null;
+                var payload = Resolve<StreamToken>(streamLink, source)
                     ?? throw new InvalidDataException("PDF FileAttachment has no embedded stream.");
-                var attachment = Add(name, payload);
+                var attachment = Add(name, streamLink!, payload);
                 // PdfPig may expose Annotation.Rectangle in displayed coordinates
                 // for rotated pages. The source /Rect is always PDF user space.
                 if (!annotation.AnnotationDictionary.Data.TryGetValue("Rect", out var rectToken) ||
@@ -428,9 +452,9 @@ internal static class PdfImportMetadataMigrator
         }
     }
 
-    private static List<(string Name, StreamToken Stream)> ReadEmbeddedFileNameTree(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
+    private static List<(string Name, IToken Link, StreamToken Stream)> ReadEmbeddedFileNameTree(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
     {
-        var result = new List<(string Name, StreamToken Stream)>();
+        var result = new List<(string Name, IToken Link, StreamToken Stream)>();
         var catalog = source.Structure.Catalog.CatalogDictionary;
         if (!catalog.Data.TryGetValue("Names", out var namesToken)) return result;
         var names = Resolve<DictionaryToken>(namesToken, source) ?? throw new InvalidDataException("PDF names catalog cannot be resolved.");
@@ -463,7 +487,7 @@ internal static class PdfImportMetadataMigrator
                         !payload.Data.TryGetValue("UF", out var streamToken) && !payload.Data.TryGetValue("F", out streamToken) ||
                         Resolve<StreamToken>(streamToken, source) is not { } stream)
                         throw new InvalidDataException("PDF embedded-file name tree has an invalid local payload.");
-                    result.Add((treeName, stream));
+                    result.Add((treeName, streamToken, stream));
                 }
             }
         }
@@ -502,8 +526,18 @@ internal static class PdfImportMetadataMigrator
     private static string? Text(IToken? token, PdfDocument source)
     {
         if (token is null) return null;
-        return DirectObjectFinder.Get<StringToken>(token, source.Structure.TokenScanner)?.Data ??
-            DirectObjectFinder.Get<HexToken>(token, source.Structure.TokenScanner)?.Data;
+        if (token is StringToken literal) return literal.Data;
+        if (token is HexToken hex) return hex.Data;
+        try
+        {
+            return Resolve<StringToken>(token, source)?.Data;
+        }
+        catch (PdfDocumentFormatException) { }
+        try
+        {
+            return Resolve<HexToken>(token, source)?.Data;
+        }
+        catch (PdfDocumentFormatException) { return null; }
     }
 
     private static byte[] Decode(StreamToken stream, long decodedLimit, long encodedLimit, CancellationToken token)
