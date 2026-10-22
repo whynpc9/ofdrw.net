@@ -1103,7 +1103,7 @@ public sealed class OfdReader : IOfdReader
             // Preserve permissive legacy top-level imports. PageBlock admission
             // separately requires an explicit format to match the actual bytes.
             var validPayload = format is null ||
-                archive.TryGetBytes(mediaPath, out var payload) && MatchesMediaFormat(payload, format);
+                archive.TryGetBytes(mediaPath, out var payload) && MatchesMediaFormat(payload, format, cancellationToken);
             if (validDeclaration && validFormat && validPayload) ambiguousMedia.Remove(key);
             else ambiguousMedia.Add(key);
             mediaMap[key] = mediaPath;
@@ -1111,19 +1111,18 @@ public sealed class OfdReader : IOfdReader
         }
     }
 
-    private static bool MatchesMediaFormat(byte[] payload, string format)
+    private static bool MatchesMediaFormat(byte[] payload, string format, CancellationToken token)
     {
-        return format switch
+        var mime = format switch
         {
-            "PNG" => payload.Length >= 8 && payload[0] == 137 && payload[1] == 80 && payload[2] == 78 && payload[3] == 71 &&
-                payload[4] == 13 && payload[5] == 10 && payload[6] == 26 && payload[7] == 10,
-            "JPG" or "JPEG" => payload.Length >= 3 && payload[0] == 255 && payload[1] == 216 && payload[2] == 255,
-            "BMP" => payload.Length >= 2 && payload[0] == 66 && payload[1] == 77,
-            "TIFF" => payload.Length >= 4 &&
-                (payload[0] == 73 && payload[1] == 73 && payload[2] == 42 && payload[3] == 0 ||
-                 payload[0] == 77 && payload[1] == 77 && payload[2] == 0 && payload[3] == 42),
-            _ => false
+            "PNG" => "image/png",
+            "JPG" or "JPEG" => "image/jpeg",
+            _ => null
         };
+        if (mime is null) return false;
+        try { EncodedImageAdmission.Validate(payload, mime, token); return true; }
+        catch (Exception error) when (error is InvalidDataException or IOException or NotSupportedException or OverflowException or IndexOutOfRangeException)
+        { return false; }
     }
 
     private static Dictionary<string, OfdCompositeResource> ReadCompositeResources(OfdPackageArchive archive, OfdDocumentPackage package,

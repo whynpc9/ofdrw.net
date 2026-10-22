@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 
-namespace Ofdrw.Net.Converter.Svg.Internal;
+namespace Ofdrw.Net.Core.IO;
 
 // A deliberately narrow baseline JPEG syntax verifier: single interleaved scan,
 // 8-bit Huffman DCT, <=4 components, bounded dimensions. Entropy is walked (not

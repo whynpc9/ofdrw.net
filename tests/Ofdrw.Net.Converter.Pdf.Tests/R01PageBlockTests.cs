@@ -1705,6 +1705,44 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("png-signature")]
+    [InlineData("png-crc")]
+    [InlineData("jpeg-truncated")]
+    public async Task MalformedSameFormatPageBlockMediaFailsBeforeEveryExport(string corruption)
+    {
+        var format = corruption == "jpeg-truncated" ? "JPEG" : "PNG";
+        var resources = $"<MultiMedias><MultiMedia ID='20' Type='Image' Format='{format}'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
+        var seed = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>",
+            resources: resources, image: true);
+        byte[] payload;
+        if (corruption == "png-signature") payload = new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
+        else if (corruption == "jpeg-truncated") payload = new byte[] { 255, 216, 255, 217 };
+        else
+        {
+            using var zip = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read);
+            using var file = zip.GetEntry("Doc_0/image.png")!.Open();
+            using var buffer = new MemoryStream(); await file.CopyToAsync(buffer);
+            payload = buffer.ToArray(); payload[40] ^= 1;
+        }
+        var ofd = await WithEntry(seed, "Doc_0/image.png", payload);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.True(Assert.IsType<OfdImageElement>(Assert.Single(block.PageBlockChildren!)).SourceMediaAmbiguous);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("duplicate-file", false)]
     [InlineData("duplicate-file", true)]
     [InlineData("both-selectors", false)]
