@@ -1163,7 +1163,7 @@ public sealed class OfdReader : IOfdReader
                 // unqualified graphic names. Extension namespaces remain opaque.
                 var knownGraphicNamespace = node.Name.Namespace == XNamespace.None ||
                     node.Name.NamespaceName is OfdConstants.Namespace or OfdConstants.StandardNamespace;
-                if (node.Name == structuralNamespace + "PageBlock")
+                if (knownGraphicNamespace && node.Name == structuralNamespace + "PageBlock")
                 {
                     material.Structure.Depth(blockDepth + 1);
                     var xml = OfdXmlEnvelope.Capture(node, material, cancellationToken);

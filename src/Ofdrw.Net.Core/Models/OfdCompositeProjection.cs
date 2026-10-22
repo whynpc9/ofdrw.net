@@ -28,6 +28,7 @@ internal static class OfdCompositeProjection
                 material.GuardFragmentXml(block.Xml, token);
                 var node = OfdXmlEnvelope.Parse(block.Xml);
                 if (node.Name.LocalName != "PageBlock" ||
+                    node.Name.NamespaceName is not ("" or Ofdrw.Net.Core.Constants.OfdConstants.Namespace or Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) ||
                     node.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                         (a.Name.Namespace != XNamespace.None || a.Name.LocalName != "ID")) ||
                     node.Nodes().Any(n => n is XProcessingInstruction || n is XText t && !string.IsNullOrWhiteSpace(t.Value)))

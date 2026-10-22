@@ -769,6 +769,56 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Theory]
+    [InlineData("50", "20", true)]
+    [InlineData(null, "20", false)]
+    [InlineData("0", "20", false)]
+    [InlineData("bogus", "20", false)]
+    [InlineData("NaN", "20", false)]
+    [InlineData("50", null, false)]
+    public async Task CompositeResourceDimensionsMustBeExplicitAndPositive(string? width, string? height, bool valid)
+    {
+        var widthAttribute = width is null ? "" : $" Width='{width}'";
+        var heightAttribute = height is null ? "" : $" Height='{height}'";
+        var resources = $"<CompositeGraphicUnits><CompositeGraphicUnit ID='551'{widthAttribute}{heightAttribute}>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>resource text</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources, font: true);
+        if (valid)
+        {
+            var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+            Assert.Contains("resource text", new OfdTextExtractor().Extract(read));
+        }
+        else
+        {
+            var readError = await Assert.ThrowsAsync<InvalidDataException>(() =>
+                new OfdReader().ReadAsync(new MemoryStream(ofd)));
+            Assert.Contains("Composite dimensions", readError.Message);
+        }
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            if (valid)
+            {
+                await convert(new MemoryStream(ofd), output);
+                Assert.True(output.Length > 0);
+            }
+            else
+            {
+                var error = await Assert.ThrowsAsync<InvalidDataException>(() => convert(new MemoryStream(ofd), output));
+                Assert.Contains("Composite dimensions", error.Message);
+                Assert.Equal(0, output.Length);
+            }
+        }
+    }
+
     [Fact]
     public async Task NumericCompositeIdsResolveEquivalentSpellingsInPageBlock()
     {
@@ -1883,6 +1933,54 @@ public sealed class R01PageBlockTests
         using var html = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
         Assert.Equal(0, html.Length);
+    }
+
+    [Fact]
+    public async Task ForeignNamespacePageBlockContainerRemainsOpaque()
+    {
+        const string drawing = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var seed = await Source(drawing);
+        using var rewritten = new MemoryStream();
+        using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
+        using (var output = new ZipArchive(rewritten, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in input.Entries)
+            {
+                using var source = entry.Open(); using var buffer = new MemoryStream(); await source.CopyToAsync(buffer);
+                var bytes = buffer.ToArray();
+                if (entry.FullName.EndsWith("/Pages/Page_0/Content.xml", StringComparison.Ordinal))
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    var layer = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "Layer");
+                    var block = Assert.Single(layer.Elements(), node => node.Name.LocalName == "PageBlock");
+                    XNamespace vendor = "urn:vendor";
+                    var vendorBlock = new XElement(vendor + "PageBlock",
+                        block.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), block.Nodes());
+                    layer.ReplaceWith(new XElement(vendor + "Layer",
+                        layer.Attributes().Where(attribute => !attribute.IsNamespaceDeclaration), vendorBlock));
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+        }
+        var ofd = rewritten.ToArray();
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.Equal("PageBlock", raw.LocalName);
+        Assert.Null(raw.PageBlockChildren);
+        Assert.Contains("urn:vendor", raw.Xml);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
     }
 
     [Theory]
