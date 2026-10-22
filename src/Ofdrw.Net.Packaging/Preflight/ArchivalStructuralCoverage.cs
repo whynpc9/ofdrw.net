@@ -21,6 +21,7 @@ internal sealed class ArchivalStructuralCoverage
     private readonly CancellationToken token;
     private readonly Observation[] observations = Enumerable.Range(3, 9).Select(i => new Observation(i)).ToArray();
     private readonly Dictionary<string, XElement?> xml = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<XElement, int> siblingOrdinals = new();
     private readonly Dictionary<string, XElement> bookmarks = new(StringComparer.Ordinal);
     private readonly HashSet<long> pageIds = new();
     private readonly HashSet<string> templateIds = new(StringComparer.Ordinal);
@@ -46,6 +47,19 @@ internal sealed class ArchivalStructuralCoverage
         observations[6].Unknown("SourceActionProvenanceUnavailable", documentEntry);
         var ns = document.Name.Namespace;
         documentNamespace = ns;
+        var body = root.Elements(root.Name.Namespace + "DocBody").Single();
+        if (root.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("DocType" or "Version"))) ||
+            OpaqueNodes(root) || root.Elements().Any(x => x.Name != root.Name.Namespace + "DocBody") ||
+            body.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(body) ||
+            body.Elements().Any(x => x.Name.Namespace != root.Name.Namespace || x.Name.LocalName is not
+                ("DocInfo" or "DocRoot" or "Versions" or "Signatures")))
+            UnknownAll("OpaqueOfdEnvelope", documentEntry);
+        if (document.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(document) ||
+            document.Elements().Any(x => x.Name.Namespace != ns || x.Name.LocalName is not
+                ("CommonData" or "Pages" or "Outlines" or "Permissions" or "Actions" or "VPreferences" or
+                 "Bookmarks" or "Annotations" or "CustomTags" or "Attachments")))
+            UnknownAll("OpaqueDocumentEnvelope", documentEntry);
         if (ns != root.Name.Namespace) UnknownAll("MixedOfdNamespaces", documentEntry);
         if (root.Elements().Any(x => x.Name.LocalName == "DocBody" && x.Name.Namespace != root.Name.Namespace) ||
             root.Elements(root.Name.Namespace + "DocBody").Single().Elements().Any(x =>
@@ -65,6 +79,7 @@ internal sealed class ArchivalStructuralCoverage
         if (bodies.Length != 1) return null;
         var roots = bodies[0].Elements(root.Name.Namespace + "DocRoot").ToArray();
         if (roots.Length != 1 || roots[0].HasElements || roots[0].Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+            roots[0].Nodes().Any(x => x is not XText) ||
             !TryEntry("OFD.xml", roots[0].Value, out documentEntry)) return null;
         var document = Read(documentEntry, "Document");
         return document;
@@ -154,7 +169,7 @@ internal sealed class ArchivalStructuralCoverage
             UnknownPageScope("OpaquePageRoot", entry);
         if (!template && page.Elements(page.Name.Namespace + "Template").Any(x =>
                 !templateIds.Contains((string?)x.Attribute("TemplateID") ?? string.Empty)))
-            observations[0].Unknown("TemplateReferenceUnavailable", entry);
+            UnknownPageScope("TemplateReferenceUnavailable", entry);
         InspectActions(page, page.Name.Namespace, observations[0], null, entry);
         if (page.Elements(page.Name.Namespace + "Content").Count() != 1 ||
             Foreign(page, "Content", page.Name.Namespace))
@@ -275,14 +290,14 @@ internal sealed class ArchivalStructuralCoverage
                 {
                     if (OpaqueAnnotationWrapper(annot))
                         UnknownAnnotationScope("OpaqueAnnotationWrapper", entry);
-                    observations[5].Seen(entry, Selector(annot));
+                    observations[5].Seen(entry, annot, this);
                     foreach (var flag in new[] { "ReadOnly", "NoZoom", "NoRotate" })
                     {
                         var value = (string?)annot.Attribute(flag);
                         if (value is null || value is "false" or "0")
-                            observations[5].Fail("RetainedAnnotationFlagNotTrue", entry, Selector(annot));
+                            observations[5].Fail("RetainedAnnotationFlagNotTrue", entry, annot, this);
                         else if (value is not ("true" or "1") || ForeignAttribute(annot, flag))
-                            observations[5].Unknown("AnnotationFlagAmbiguous", entry, Selector(annot));
+                            observations[5].Unknown("AnnotationFlagAmbiguous", entry, annot, this);
                     }
                     foreach (var appearance in annot.Elements(content.Name.Namespace + "Appearance"))
                     {
@@ -309,11 +324,11 @@ internal sealed class ArchivalStructuralCoverage
             if (Foreign(content, "Layer", ns)) observations[7].Unknown("ForeignLayer", entry);
             foreach (var layer in content.Elements(ns + "Layer"))
             {
-                observations[7].Seen(entry, Selector(layer));
+                observations[7].Seen(entry, layer, this);
                 var name = (string?)layer.Attribute("Name");
-                if (ForeignAttribute(layer, "Name")) observations[7].Unknown("LayerNameAmbiguous", entry, Selector(layer));
+                if (ForeignAttribute(layer, "Name")) observations[7].Unknown("LayerNameAmbiguous", entry, layer, this);
                 if (name is not null && !names.Add(name))
-                    observations[7].Fail("DuplicateLayerName", entry, Selector(layer));
+                    observations[7].Fail("DuplicateLayerName", entry, layer, this);
             }
         }
     }
@@ -322,12 +337,12 @@ internal sealed class ArchivalStructuralCoverage
     {
         var ns = appearance.Name.Namespace;
         if (OpaqueAppearance(appearance))
-            observations[8].Unknown("OpaqueAnnotationAppearance", entry, Selector(appearance));
+            observations[8].Unknown("OpaqueAnnotationAppearance", entry, appearance, this);
         foreach (var block in appearance.Descendants(ns + "PageBlock"))
         {
-            observations[8].Seen(entry, Selector(block));
+            observations[8].Seen(entry, block, this);
             if (block.Ancestors().TakeWhile(x => x != appearance).Any(x => x.Name == ns + "PageBlock"))
-                observations[8].Fail("NestedAnnotationPageBlock", entry, Selector(block));
+                observations[8].Fail("NestedAnnotationPageBlock", entry, block, this);
         }
     }
 
@@ -347,31 +362,31 @@ internal sealed class ArchivalStructuralCoverage
         foreach (var image in source.Descendants(ns + "ImageObject"))
         {
             var value = (string?)image.Attribute("Interpolate");
-            if (value is null) { if (ForeignAttribute(image, "Interpolate")) observations[3].Unknown("InterpolateAmbiguous", entry, Selector(image)); continue; }
-            observations[3].Seen(entry, Selector(image));
-            if (value is "true" or "1") observations[3].Fail("InterpolateEnabled", entry, Selector(image));
+            if (value is null) { if (ForeignAttribute(image, "Interpolate")) observations[3].Unknown("InterpolateAmbiguous", entry, image, this); continue; }
+            observations[3].Seen(entry, image, this);
+            if (value is "true" or "1") observations[3].Fail("InterpolateEnabled", entry, image, this);
             else if (value is not ("false" or "0") || ForeignAttribute(image, "Interpolate"))
-                observations[3].Unknown("InterpolateAmbiguous", entry, Selector(image));
+                observations[3].Unknown("InterpolateAmbiguous", entry, image, this);
         }
         foreach (var text in source.Descendants(ns + "TextObject"))
         {
-            observations[4].Seen(entry, Selector(text));
+            observations[4].Seen(entry, text, this);
             var value = (string?)text.Attribute("Size");
             if (value is null || !double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var size) ||
                 double.IsNaN(size) || double.IsInfinity(size) || size <= 0)
-                observations[4].Fail("TextSizeUnavailable", entry, Selector(text));
+                observations[4].Fail("TextSizeUnavailable", entry, text, this);
             else if (ForeignAttribute(text, "Size"))
-                observations[4].Unknown("TextSizeAmbiguous", entry, Selector(text));
+                observations[4].Unknown("TextSizeAmbiguous", entry, text, this);
         }
         foreach (var graphic in source.Descendants().Where(x => x.Name.Namespace == ns &&
                      (x.Name.LocalName == "TextObject" || x.Name.LocalName == "PathObject" ||
                       x.Name.LocalName == "ImageObject" || x.Name.LocalName == "CompositeObject")))
         {
             if (graphic.Elements().Any(x => x.Name == ns + "Actions" || x.Name == ns + "Action"))
-                observations[6].Fail("ObjectActionRetained", entry, Selector(graphic));
+                observations[6].Fail("ObjectActionRetained", entry, graphic, this);
             else if (graphic.Elements().Any(x =>
                          (x.Name.LocalName == "Actions" || x.Name.LocalName == "Action") && x.Name.Namespace != ns))
-                observations[6].Unknown("ForeignObjectAction", entry, Selector(graphic));
+                observations[6].Unknown("ForeignObjectAction", entry, graphic, this);
         }
     }
 
@@ -469,8 +484,7 @@ internal sealed class ArchivalStructuralCoverage
             foreach (var action in container.Elements(ns + "Action"))
             {
                 token.ThrowIfCancellationRequested();
-                var location = Selector(action);
-                type.Seen(entry, location);
+                type.Seen(entry, action, this);
                 var kinds = action.Elements().Where(x => x.Name != ns + "Region").ToArray();
                 var actionOpaque = action.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Event") ||
                     (string?)action.Attribute("Event") is not (null or "DO" or "PO" or "CLICK") ||
@@ -478,20 +492,20 @@ internal sealed class ArchivalStructuralCoverage
                 if (target is not null)
                     foreach (var go in kinds.Where(x => x.Name == ns + "Goto"))
                     {
-                        target.Seen(entry, location);
+                        target.Seen(entry, action, this);
                         if (!actionOpaque && !GotoOpaque(go, ns) &&
                             go.Elements().Count(x => x.Name == ns + "Dest" || x.Name == ns + "Bookmark") == 1)
-                            CheckTarget(go, ns, target, entry, location);
-                        else target.Unknown("GotoTargetAmbiguous", entry, location);
+                            CheckTarget(go, ns, target, entry, action);
+                        else target.Unknown("GotoTargetAmbiguous", entry, action, this);
                     }
                 if (kinds.Any(x => x.Name.Namespace == ns && x.Name.LocalName is "URI" or "GotoA" or "Sound" or "Movie"))
-                    type.Fail("NonGotoAction", entry, location);
+                    type.Fail("NonGotoAction", entry, action, this);
                 else if (kinds.Length != 1 || kinds[0].Name != ns + "Goto" ||
                     action.Elements(ns + "Region").Count() > 1 ||
                     kinds[0].Elements().Count(x => x.Name == ns + "Dest" || x.Name == ns + "Bookmark") != 1 ||
                     kinds[0].Elements().Any(x => x.Name != ns + "Dest" && x.Name != ns + "Bookmark") ||
                     actionOpaque || GotoOpaque(kinds[0], ns))
-                { type.Unknown("UnsupportedAction", entry, location); target?.Unknown("UnsupportedAction", entry, location); }
+                { type.Unknown("UnsupportedAction", entry, action, this); target?.Unknown("UnsupportedAction", entry, action, this); }
             }
         }
     }
@@ -570,7 +584,7 @@ internal sealed class ArchivalStructuralCoverage
         return false;
     }
 
-    private void CheckTarget(XElement gotoElement, XNamespace ns, Observation target, string entry, string location)
+    private void CheckTarget(XElement gotoElement, XNamespace ns, Observation target, string entry, XElement action)
     {
         var dest = gotoElement.Element(ns + "Dest");
         if (dest is null)
@@ -578,29 +592,29 @@ internal sealed class ArchivalStructuralCoverage
             var bookmark = gotoElement.Element(ns + "Bookmark");
             var name = (string?)bookmark?.Attribute("Name");
             if (string.IsNullOrWhiteSpace(name) || bookmark is null || ForeignAttribute(bookmark, "Name"))
-            { target.Unknown("BookmarkTargetAmbiguous", entry, location); return; }
+            { target.Unknown("BookmarkTargetAmbiguous", entry, action, this); return; }
             if (!bookmarks.TryGetValue(name!, out var declared))
             {
-                if (targetInventoryUnknown) target.Unknown("BookmarkInventoryAmbiguous", entry, location);
-                else target.Fail("BookmarkTargetMissing", entry, location);
+                if (targetInventoryUnknown) target.Unknown("BookmarkInventoryAmbiguous", entry, action, this);
+                else target.Fail("BookmarkTargetMissing", entry, action, this);
                 return;
             }
             var destinations = declared.Elements(ns + "Dest").ToArray();
             if (destinations.Length != 1 || Foreign(declared, "Dest", ns) || OpaqueNodes(declared) ||
                 declared.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name") ||
                 declared.Elements().Any(x => x.Name != ns + "Dest"))
-            { target.Unknown("BookmarkDestinationAmbiguous", entry, location); return; }
+            { target.Unknown("BookmarkDestinationAmbiguous", entry, action, this); return; }
             dest = destinations[0];
         }
         var pageId = (string?)dest.Attribute("PageID");
         if (DestinationOpaque(dest))
-        { target.Unknown("PageTargetAmbiguous", entry, location); return; }
+        { target.Unknown("PageTargetAmbiguous", entry, action, this); return; }
         if (!Id(pageId, out var number) || ForeignAttribute(dest, "PageID"))
-        { target.Unknown("PageTargetAmbiguous", entry, location); return; }
+        { target.Unknown("PageTargetAmbiguous", entry, action, this); return; }
         if (!pageIds.Contains(number))
         {
-            if (targetInventoryUnknown) target.Unknown("PageInventoryAmbiguous", entry, location);
-            else target.Fail("PageTargetMissing", entry, location);
+            if (targetInventoryUnknown) target.Unknown("PageInventoryAmbiguous", entry, action, this);
+            else target.Fail("PageTargetMissing", entry, action, this);
         }
     }
 
@@ -636,8 +650,28 @@ internal sealed class ArchivalStructuralCoverage
         catch (XmlException) { xml[entry] = null; return null; }
         if (value?.Name.LocalName != rootName || !Supported(value.Name.NamespaceName))
         { xml[entry] = null; return null; }
+        IndexOrdinals(value);
         xml[entry] = value;
         return value;
+    }
+
+    private void IndexOrdinals(XElement value)
+    {
+        siblingOrdinals[value] = 1;
+        var pending = new Stack<XElement>();
+        pending.Push(value);
+        while (pending.Count != 0)
+        {
+            token.ThrowIfCancellationRequested();
+            var parent = pending.Pop();
+            var counts = new Dictionary<XName, int>();
+            foreach (var child in parent.Elements())
+            {
+                counts.TryGetValue(child.Name, out var ordinal);
+                siblingOrdinals[child] = counts[child.Name] = ordinal + 1;
+                pending.Push(child);
+            }
+        }
     }
 
     private bool TryEntry(string containing, string? path, out string entry)
@@ -667,11 +701,11 @@ internal sealed class ArchivalStructuralCoverage
         parent.Elements().Any(x => x.Name.LocalName == local && x.Name.Namespace != ns);
     private static bool ForeignAttribute(XElement parent, string local) =>
         parent.Attributes().Any(x => x.Name.LocalName == local && x.Name.Namespace != XNamespace.None);
-    private static string Selector(XElement node)
+    private string Selector(XElement node)
     {
         var value = "/" + string.Join("/", node.AncestorsAndSelf().Reverse().Select(x =>
             "{" + (Supported(x.Name.NamespaceName) ? x.Name.NamespaceName : "<unsupported-namespace>") + "}" +
-            x.Name.LocalName + "[" + (x.ElementsBeforeSelf(x.Name).Count() + 1) + "]"));
+            x.Name.LocalName + "[" + (siblingOrdinals.TryGetValue(x, out var ordinal) ? ordinal : 1) + "]"));
         return value.Length <= 8192 ? value : "<selector exceeds metadata limit>";
     }
 
@@ -685,11 +719,14 @@ internal sealed class ArchivalStructuralCoverage
         private string entry = "<document>";
         private string selector = "<scope>";
         internal Observation(int index) { this.index = index; }
-        internal void Seen(string at, string where) { seen++; if (!failed && !uncertain) { entry = at; selector = where; } }
+        internal void Seen(string at, XElement node, ArchivalStructuralCoverage owner)
+        { if (++seen == 1 && !failed && !uncertain) { entry = at; selector = owner.Selector(node); } }
         internal void Unknown(string why, string at, string where = "<scope>")
         { if (failed) return; if (!uncertain) { reason = why; entry = at; selector = where; } uncertain = true; }
-        internal void Fail(string why, string at, string where)
-        { if (failed) return; failed = true; reason = why; entry = at; selector = where; }
+        internal void Unknown(string why, string at, XElement node, ArchivalStructuralCoverage owner)
+        { if (failed) return; if (!uncertain) { reason = why; entry = at; selector = owner.Selector(node); } uncertain = true; }
+        internal void Fail(string why, string at, XElement node, ArchivalStructuralCoverage owner)
+        { if (failed) return; failed = true; reason = why; entry = at; selector = owner.Selector(node); }
         internal ArchivalCoverageRuleResult Finish()
         {
             var rule = ArchivalCoverageRuleCatalog.Rules[index];

@@ -38,6 +38,47 @@ public class ArchivalStructuralCoverageTests
     private static ArchivalCoverageRuleResult Rule(ArchivalCoverageReport report, string id) =>
         Assert.Single(report.RuleResults, x => x.Rule.RuleId == id);
 
+    [Fact]
+    public async Task OpaqueDocumentChildTaintsStructuralScopeButKnownFailureWins()
+    {
+        var entries = Seed(documentExtra: "<Future><Outlines><OutlineElem Title='hidden'/></Outlines></Future>",
+            pageExtra: "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>",
+            objects: "<ImageObject Interpolate='false'/><TextObject Size='3'/>");
+        var report = await Check(entries);
+        foreach (var id in new[] { "AC-004", "AC-005", "AC-006", "AC-007", "AC-008", "AC-009", "AC-011", "AC-012" })
+            Assert.Equal(PreflightOutcome.Unknown, Rule(report, id).Outcome);
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Actions><Action><URI URI='https://example.invalid'/></Action></Actions><Content><Layer><ImageObject Interpolate='true'/></Layer></Content></Page>");
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-004").Outcome);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-007").Outcome);
+    }
+
+    [Theory]
+    [InlineData("<!--opaque-->")]
+    [InlineData("<?vendor opaque?>")]
+    public async Task OpaqueDocRootLocatorPreventsStructuralPass(string payload)
+    {
+        var entries = Seed(pageExtra: "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>");
+        var root = Encoding.UTF8.GetString(entries["OFD.xml"]);
+        entries["OFD.xml"] = Utf8(root.Replace("<DocRoot>Doc_0/Document.xml</DocRoot>",
+            $"<DocRoot>{payload}Doc_0/Document.xml</DocRoot>", StringComparison.Ordinal));
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+        Assert.Equal("DocumentScopeUnavailable", Rule(report, "AC-004").ReasonCode);
+    }
+
+    [Theory]
+    [InlineData("</DocBody>", "<FutureDocBody/>")]
+    [InlineData("</DocRoot>", "<FutureRoot/>")]
+    public async Task OpaqueOfdEnvelopePreventsStructuralPass(string anchor, string payload)
+    {
+        var entries = Seed(pageExtra: "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>");
+        var root = Encoding.UTF8.GetString(entries["OFD.xml"]);
+        entries["OFD.xml"] = Utf8(root.Replace(anchor, anchor + payload, StringComparison.Ordinal));
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+    }
+
     [Theory]
     [InlineData("<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", PreflightOutcome.Fail)]
     [InlineData("<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>", PreflightOutcome.Pass)]
@@ -149,6 +190,20 @@ public class ArchivalStructuralCoverageTests
         entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Template TemplateID='missing'/><Content><Layer/></Content></Page>");
         report = await Check(entries);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+    }
+
+    [Fact]
+    public async Task MissingTemplateTaintsAllPageContentClaims()
+    {
+        var entries = Seed();
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Template TemplateID='missing'/><Content><Layer Name='body'><ImageObject Interpolate='false'/><TextObject Size='3'/></Layer></Content></Page>");
+        var report = await Check(entries);
+        foreach (var id in new[] { "AC-004", "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(PreflightOutcome.Unknown, Rule(report, id).Outcome);
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Template TemplateID='missing'/><Content><Layer Name='body'><ImageObject Interpolate='true'/><TextObject Size='0'/></Layer><Layer Name='body'/></Content></Page>");
+        report = await Check(entries);
+        foreach (var id in new[] { "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(PreflightOutcome.Fail, Rule(report, id).Outcome);
     }
 
     [Theory]
@@ -521,6 +576,18 @@ public class ArchivalStructuralCoverageTests
         var report = await Check(Seed(objects: objects));
         Assert.Equal(expected, Rule(report, "AC-007").Outcome);
         Assert.Equal(expected, Rule(report, "AC-008").Outcome);
+    }
+
+    [Fact]
+    public async Task DenseGraphicSiblingEvidenceKeepsTheCorrectOrdinal()
+    {
+        const int count = 3000;
+        var objects = string.Concat(Enumerable.Repeat("<ImageObject Interpolate='false'/>", count)) +
+            "<ImageObject Interpolate='true'/>";
+        var report = await Check(Seed(objects: objects));
+        var result = Rule(report, "AC-007");
+        Assert.Equal(PreflightOutcome.Fail, result.Outcome);
+        Assert.EndsWith($"ImageObject[{count + 1}]", result.Evidence.Selector, StringComparison.Ordinal);
     }
 
     [Theory]
