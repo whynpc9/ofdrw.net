@@ -987,7 +987,7 @@ public sealed class OfdReader : IOfdReader
             var id = font.Attribute("ID")?.Value;
             var name = font.Attribute("FontName")?.Value ?? font.Attribute("FamilyName")?.Value;
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name)) continue;
-            var key = CanonicalFontId(id);
+            var key = CanonicalResourceId(id);
             if (key is null) continue;
             var validBold = TryParseFontFlag(font.Attribute("Bold")?.Value, out var bold);
             var validItalic = TryParseFontFlag(font.Attribute("Italic")?.Value, out var italic);
@@ -1042,14 +1042,16 @@ public sealed class OfdReader : IOfdReader
             {
                 continue;
             }
+            var key = CanonicalResourceId(id);
+            if (key is null) continue;
 
             material.ReserveReadModel(512L + 16L * ((baseLoc?.Length ?? 0) + file!.Length + (media.Attribute("Format")?.Value.Length ?? 0)), cancellationToken);
             var mediaLoc = string.IsNullOrWhiteSpace(baseLoc) || file!.StartsWith("/", StringComparison.Ordinal)
                 ? file!
                 : $"{baseLoc!.TrimEnd('/')}/{file.TrimStart('/')}";
 
-            mediaMap[id!] = material.ResolvePath(resPath, mediaLoc, cancellationToken);
-            mediaTypeMap[id!] = ToMediaType(media.Attribute("Format")?.Value);
+            mediaMap[key] = material.ResolvePath(resPath, mediaLoc, cancellationToken);
+            mediaTypeMap[key] = ToMediaType(media.Attribute("Format")?.Value);
         }
     }
 
@@ -1072,11 +1074,12 @@ public sealed class OfdReader : IOfdReader
                 token.ThrowIfCancellationRequested(); material.ReserveReadModel(2048, token);
                 var node = pair.node; if (node.Name != ns + "CompositeGraphicUnit") continue;
                 var id = node.Attribute("ID")?.Value;
-                if (OfdSourceIdentity.ParseId(id) == 0 || map.ContainsKey(id!)) throw new InvalidDataException("Composite resource ID is missing or duplicated.");
+                var key = CanonicalResourceId(id);
+                if (key is null || map.ContainsKey(key)) throw new InvalidDataException("Composite resource ID is missing or duplicated.");
                 var resource = new OfdCompositeResource { Id = id, WidthMillimeters = ParseDouble(node.Attribute("Width")?.Value, 0),
                     HeightMillimeters = ParseDouble(node.Attribute("Height")?.Value, 0), SourceEntryPath = path, SourceSlot = pair.slot,
                     SourceXml = OfdXmlEnvelope.Capture(node, material, token) };
-                map.Add(id!, resource); definitions.Add((resource, node, path));
+                map.Add(key, resource); definitions.Add((resource, node, path));
             }
         }
         if (map.Count == 0) return map;
@@ -1221,6 +1224,7 @@ public sealed class OfdReader : IOfdReader
                 {
                     var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                     var resourceId = node.Attribute("ResourceID")?.Value ?? string.Empty;
+                    var mediaKey = CanonicalResourceId(resourceId);
                     var image = new OfdImageElement
                     {
                         ObjectId = node.Attribute("ID")?.Value,
@@ -1234,11 +1238,11 @@ public sealed class OfdReader : IOfdReader
                         Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
                         Alpha = (int)Math.Max(0, Math.Min(255, ParseDouble(node.Attribute("Alpha")?.Value, 255))),
                         ClipsXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken),
-                        MediaType = mediaTypeMap.TryGetValue(resourceId, out var mediaType) ? mediaType : "image/png",
+                        MediaType = mediaKey is not null && mediaTypeMap.TryGetValue(mediaKey, out var mediaType) ? mediaType : "image/png",
                         SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken)
                     };
 
-                    if (mediaMap.TryGetValue(resourceId, out var mediaPath))
+                    if (mediaKey is not null && mediaMap.TryGetValue(mediaKey, out var mediaPath))
                     {
                         if (archive.TryGetBytes(mediaPath, out var bytes))
                         {
@@ -1292,7 +1296,8 @@ public sealed class OfdReader : IOfdReader
                 if (node.Name == structuralNamespace + "CompositeObject" && (structuralNamespace.NamespaceName == OfdConstants.Namespace || structuralNamespace.NamespaceName == OfdConstants.StandardNamespace))
                 {
                     var resourceId = node.Attribute("ResourceID")?.Value;
-                    if (resourceId is not null && compositeMap?.TryGetValue(resourceId, out var resource) == true)
+                    var compositeKey = CanonicalResourceId(resourceId);
+                    if (compositeKey is not null && compositeMap?.TryGetValue(compositeKey, out var resource) == true)
                     {
                         var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                         var placement = new OfdCompositeElement { ObjectId = node.Attribute("ID")?.Value, LayerId = layerId, LayerType = layerType,
@@ -1382,18 +1387,18 @@ public sealed class OfdReader : IOfdReader
         return true;
     }
 
-    private static string? CanonicalFontId(string? id)
+    private static string? CanonicalResourceId(string? id)
     {
         var numericId = OfdSourceIdentity.ParseId(id);
         return numericId == 0 ? null : numericId.ToString(CultureInfo.InvariantCulture);
     }
 
     private static bool HasFont(IReadOnlyDictionary<string, string> fontMap, string? fontRef)
-        => CanonicalFontId(fontRef) is { } key && fontMap.ContainsKey(key);
+        => CanonicalResourceId(fontRef) is { } key && fontMap.ContainsKey(key);
 
     private static string ResolveFontName(string? fontRef, IReadOnlyDictionary<string, string> fontMap)
     {
-        if (CanonicalFontId(fontRef) is { } key && fontMap.TryGetValue(key, out var fontName))
+        if (CanonicalResourceId(fontRef) is { } key && fontMap.TryGetValue(key, out var fontName))
         {
             return fontName;
         }

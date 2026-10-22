@@ -694,6 +694,30 @@ public sealed class R01PageBlockTests
         Retain("unique-font-resources", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Fact]
+    public async Task NumericCompositeIdsResolveEquivalentSpellingsInPageBlock()
+    {
+        const string resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='0551' Width='50' Height='20'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>numeric composite</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        const string body = "<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>";
+        var ofd = await Source(body, resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Contains(read.CompositeResources!.Items, resource => resource.Id == "0551");
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var composite = Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Equal("0551", composite.Resource.Id);
+        Assert.Contains("numeric composite", new OfdTextExtractor().Extract(read));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("numeric composite", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("numeric composite", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("numeric-composite-ids", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
     [Theory]
     [InlineData("root")]
     [InlineData("container")]
@@ -837,6 +861,29 @@ public sealed class R01PageBlockTests
         Retain(resourceNamespace.Length == 0 ? "media-resource-unqualified" :
             resourceNamespace == Ns ? "media-resource-2009" : "media-resource-2016",
             bytes, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NumericMediaIdsResolveEquivalentSpellingsInPageBlock(bool template)
+    {
+        const string media = "<MultiMedias><MultiMedia ID='030' Type='Image' Format='PNG'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
+        var ofd = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='30'/>",
+            template: template, resources: media, image: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        var image = Assert.IsType<OfdImageElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Equal("30", image.ResourceId);
+        Assert.NotEmpty(image.Data);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("data:image/png;base64,", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("data:image/png;base64,", Encoding.UTF8.GetString(html.ToArray()));
+        Retain(template ? "numeric-media-ids-template" : "numeric-media-ids", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]
