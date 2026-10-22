@@ -540,6 +540,17 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-006").Outcome);
     }
 
+    [Fact]
+    public async Task BookmarkTargetIgnoresOpaqueDeclarationWithDifferentKnownName()
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Bookmark Name='good'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var bookmarks = "<Bookmarks><Bookmark Name='other' vendor='x'><Dest Type='Fit' PageID='1'/></Bookmark><Bookmark Name='good'><Dest Type='Fit' PageID='1'/></Bookmark></Bookmarks>";
+        var report = await Check(Seed(documentExtra: outline + bookmarks));
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-006").Outcome);
+        report = await Check(Seed(documentExtra: outline.Replace("good", "other", StringComparison.Ordinal) + bookmarks));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
     [Theory]
     [InlineData("<Page ID='2' BaseLoc='Pages/P0/Content.xml'/><Page ID='02' BaseLoc='Pages/P0/Content.xml'/>")]
     [InlineData("<Page ID='2' BaseLoc='Pages/P0/missing.xml'/>")]
@@ -831,6 +842,19 @@ public class ArchivalStructuralCoverageTests
         var report = await Check(Seed(objects: objects));
         Assert.Equal(expected, Rule(report, "AC-007").Outcome);
         Assert.Equal(expected, Rule(report, "AC-008").Outcome);
+    }
+
+    [Theory]
+    [InlineData("DrawParam='9'", PreflightOutcome.Pass)]
+    [InlineData("DrawParam='0'", PreflightOutcome.Unknown)]
+    [InlineData("DrawParam='invalid'", PreflightOutcome.Unknown)]
+    [InlineData("xmlns:v='urn:vendor' v:DrawParam='9'", PreflightOutcome.Unknown)]
+    public async Task GraphicDrawParamHasNumericReferenceShape(string attributes, PreflightOutcome expected)
+    {
+        var objects = $"<PathObject {attributes}/><ImageObject {attributes} Interpolate='false'/><TextObject {attributes} Size='3'/>";
+        var report = await Check(Seed(objects: objects));
+        foreach (var id in new[] { "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(expected, Rule(report, id).Outcome);
     }
 
     [Fact]

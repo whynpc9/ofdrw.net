@@ -275,16 +275,16 @@ internal sealed class ArchivalStructuralCoverage
             { bookmarkInventoryUnknown = true; }
             foreach (var bookmark in container.Elements(ns + "Bookmark"))
             {
-                if (bookmark.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name") ||
-                    OpaqueNodes(bookmark) || bookmark.Elements().Any(x => x.Name != ns + "Dest"))
-                { bookmarkInventoryUnknown = true; }
-                if (bookmark.Elements(ns + "Dest").Any(x => x.HasElements || OpaqueNodes(x)))
-                { bookmarkInventoryUnknown = true; }
                 var name = (string?)bookmark.Attribute("Name");
-                if (string.IsNullOrWhiteSpace(name))
+                if (string.IsNullOrWhiteSpace(name) || ForeignAttribute(bookmark, "Name"))
                 { bookmarkInventoryUnknown = true; continue; }
-                if (ForeignAttribute(bookmark, "Name") || ambiguousBookmarkNames.Contains(name) ||
-                    bookmarks.ContainsKey(name))
+                var opaqueChildren = bookmark.Elements().Any(x => x.Name != ns + "Dest") ||
+                    bookmark.Elements(ns + "Dest").Any(x => x.HasElements);
+                var opaque = bookmark.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name") ||
+                    OpaqueNodes(bookmark) || opaqueChildren ||
+                    bookmark.Elements(ns + "Dest").Any(OpaqueNodes);
+                if (opaqueChildren) bookmarkInventoryUnknown = true;
+                if (opaque || ambiguousBookmarkNames.Contains(name) || bookmarks.ContainsKey(name))
                 {
                     ambiguousBookmarkNames.Add(name);
                     bookmarks.Remove(name);
@@ -578,7 +578,9 @@ internal sealed class ArchivalStructuralCoverage
         if (node.Name.Namespace != ns || !node.AncestorsAndSelf().Any(x => x.Name.Namespace == ns &&
             x.Name.LocalName is ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject"))) return false;
         if (node.Attributes().Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute) &&
-            !(parent == "ImageObject" && attribute.Name == "Interpolate"))) return true;
+            !(parent == "ImageObject" && attribute.Name == "Interpolate") &&
+            !(parent is ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject") &&
+              attribute.Name == "DrawParam" && Id(attribute.Value, out _)))) return true;
         if (parent is "TextCode" or "AbbreviatedData" or "Glyphs")
             return node.Nodes().Any(x => x is not XText);
         if (parent is "FillColor" or "StrokeColor")
