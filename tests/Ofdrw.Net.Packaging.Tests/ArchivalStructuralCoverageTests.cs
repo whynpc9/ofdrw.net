@@ -170,6 +170,18 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Fact]
+    public async Task StandardTemplateNameKeepsPageChecksDecidable()
+    {
+        var entries = Seed(documentExtra: "<CommonData><TemplatePage ID='8' Name='cover' BaseLoc='Templates/Content.xml'/></CommonData>",
+            pageExtra: "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>",
+            objects: "<ImageObject Interpolate='false'/><TextObject Size='3'/>");
+        entries["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer/></Content></Page>");
+        var report = await Check(entries);
+        foreach (var id in new[] { "AC-004", "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(PreflightOutcome.Pass, Rule(report, id).Outcome);
+    }
+
+    [Fact]
     public async Task SharedPageTreeIsInspectedOnceAcrossPageAndTemplateDeclarations()
     {
         var entries = Seed();
@@ -656,6 +668,18 @@ public class ArchivalStructuralCoverageTests
     [InlineData("<FutureObject/><ImageObject Interpolate='false'/><TextObject Size='3'/>", PreflightOutcome.Unknown)]
     [InlineData("<FutureObject/><ImageObject Interpolate='true'/><TextObject Size='0'/>", PreflightOutcome.Fail)]
     public async Task SameNamespaceUnknownGraphicKeepsFailDominance(string objects, PreflightOutcome expected)
+    {
+        var report = await Check(Seed(objects: objects));
+        Assert.Equal(expected, Rule(report, "AC-007").Outcome);
+        Assert.Equal(expected, Rule(report, "AC-008").Outcome);
+    }
+
+    [Theory]
+    [InlineData("<PathObject><FutureObject/></PathObject><ImageObject Interpolate='false'/><TextObject Size='3'/>", PreflightOutcome.Unknown)]
+    [InlineData("<PathObject><AbbreviatedData><FutureObject/></AbbreviatedData></PathObject><ImageObject Interpolate='false'/><TextObject Size='3'/>", PreflightOutcome.Unknown)]
+    [InlineData("<PathObject><FutureObject/></PathObject><ImageObject Interpolate='true'/><TextObject Size='0'/>", PreflightOutcome.Fail)]
+    [InlineData("<PathObject><AbbreviatedData>M 0 0 L 1 1</AbbreviatedData></PathObject><ImageObject Interpolate='false'/><TextObject Size='3'><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Pass)]
+    public async Task GraphicObjectChildrenAreShapeChecked(string objects, PreflightOutcome expected)
     {
         var report = await Check(Seed(objects: objects));
         Assert.Equal(expected, Rule(report, "AC-007").Outcome);

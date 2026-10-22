@@ -138,8 +138,8 @@ internal sealed class ArchivalStructuralCoverage
     {
         if (declaration.HasElements || OpaqueNodes(declaration) ||
             declaration.Attributes().Any(x => !x.IsNamespaceDeclaration &&
-                (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("ID" or "BaseLoc" or "ZOrder") ||
-                 !template && x.Name.LocalName == "ZOrder")))
+                (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("ID" or "BaseLoc" or "Name" or "ZOrder") ||
+                 !template && x.Name.LocalName is ("Name" or "ZOrder"))))
         {
             UnknownPageScope("OpaquePageDeclaration", containing);
             if (!template) targetInventoryUnknown = true;
@@ -419,8 +419,35 @@ internal sealed class ArchivalStructuralCoverage
                 if (OpaqueNodes(container) || container.Elements().Any(x => x.Name.Namespace != ns || x.Name.LocalName is not
                     ("PageBlock" or "TextObject" or "PathObject" or "ImageObject" or "CompositeObject"))) return true;
             }
+            else if (OpaqueGraphicChild(container, ns)) return true;
         }
         return false;
+    }
+
+    private static bool OpaqueGraphicChild(XElement node, XNamespace ns)
+    {
+        var parent = node.Name.LocalName;
+        if (node.Name.Namespace != ns || !node.AncestorsAndSelf().Any(x => x.Name.Namespace == ns &&
+            x.Name.LocalName is ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject"))) return false;
+        if (parent is "TextCode" or "AbbreviatedData" or "Glyphs")
+            return node.Nodes().Any(x => x is not XText);
+        if (parent is "FillColor" or "StrokeColor")
+            return node.HasElements || OpaqueNodes(node);
+        if (parent is not ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject" or
+            "Clips" or "Clip" or "Area" or "Path" or "CGTransform")) return false;
+        if (OpaqueNodes(node)) return true;
+        return node.Elements().Any(child => child.Name.Namespace != ns || !(parent switch
+        {
+            "TextObject" => child.Name.LocalName is "Clips" or "FillColor" or "StrokeColor" or "CGTransform" or "TextCode",
+            "PathObject" => child.Name.LocalName is "Clips" or "FillColor" or "StrokeColor" or "AbbreviatedData",
+            "ImageObject" => child.Name.LocalName is "Clips",
+            "Clips" => child.Name.LocalName is "Clip",
+            "Clip" => child.Name.LocalName is "Area",
+            "Area" => child.Name.LocalName is "Path",
+            "Path" => child.Name.LocalName is "AbbreviatedData",
+            "CGTransform" => child.Name.LocalName is "Glyphs",
+            _ => false
+        }));
     }
 
     private static bool OpaquePageChild(XElement child, XNamespace ns)
@@ -454,7 +481,7 @@ internal sealed class ArchivalStructuralCoverage
         if (child.Name == ns + "TemplatePage")
             return child.HasElements || OpaqueNodes(child) ||
                    child.Attributes().Any(x => !x.IsNamespaceDeclaration &&
-                       (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("ID" or "BaseLoc" or "ZOrder")));
+                       (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("ID" or "BaseLoc" or "Name" or "ZOrder")));
         return child.HasElements || child.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
                child.Nodes().Any(x => x is not XText);
     }
