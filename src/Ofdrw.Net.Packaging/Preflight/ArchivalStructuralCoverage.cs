@@ -59,8 +59,11 @@ internal sealed class ArchivalStructuralCoverage
         if (document.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(document) ||
             document.Elements().Any(x => x.Name.Namespace != ns || x.Name.LocalName is not
                 ("CommonData" or "Pages" or "Outlines" or "Permissions" or "Actions" or "VPreferences" or
-                 "Bookmarks" or "Annotations" or "CustomTags" or "Attachments")))
+                 "Bookmarks" or "Annotations" or "CustomTags" or "Attachments") ||
+                OpaqueDocumentAuxiliary(x, ns)))
             UnknownAll("OpaqueDocumentEnvelope", documentEntry);
+        if (MisplacedDocumentScope(document, ns))
+            UnknownAll("MisplacedDocumentScope", documentEntry);
         if (ns != root.Name.Namespace) UnknownAll("MixedOfdNamespaces", documentEntry);
         if (root.Elements().Any(x => x.Name.LocalName == "DocBody" && x.Name.Namespace != root.Name.Namespace) ||
             root.Elements(root.Name.Namespace + "DocBody").Single().Elements().Any(x =>
@@ -171,7 +174,7 @@ internal sealed class ArchivalStructuralCoverage
                 ("Area" or "Template" or "PageRes" or "Content" or "Actions") ||
                 OpaquePageChild(x, page.Name.Namespace)))
             UnknownPageScope("OpaquePageRoot", entry);
-        if (!template && page.Elements(page.Name.Namespace + "Template").Any(x =>
+        if (page.Elements(page.Name.Namespace + "Template").Any(x =>
                 !Id((string?)x.Attribute("TemplateID"), out var number) || !templateIds.Contains(number)))
             UnknownPageScope("TemplateReferenceUnavailable", entry);
         InspectActions(page, page.Name.Namespace, observations[0], null, entry);
@@ -188,15 +191,19 @@ internal sealed class ArchivalStructuralCoverage
         if (containers.Length > 1 || Foreign(document, "Bookmarks", ns)) targetInventoryUnknown = true;
         foreach (var container in containers)
         {
-            if (container.Elements().Any(x => x.Name != ns + "Bookmark")) targetInventoryUnknown = true;
-            if (Foreign(container, "Bookmark", ns)) targetInventoryUnknown = true;
+            if (container.Elements().Any(x => x.Name != ns + "Bookmark"))
+            { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkInventory", documentEntry); }
+            if (Foreign(container, "Bookmark", ns))
+            { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkInventory", documentEntry); }
             if (container.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(container))
-                targetInventoryUnknown = true;
+            { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkInventory", documentEntry); }
             foreach (var bookmark in container.Elements(ns + "Bookmark"))
             {
                 if (bookmark.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name") ||
                     OpaqueNodes(bookmark) || bookmark.Elements().Any(x => x.Name != ns + "Dest"))
-                    targetInventoryUnknown = true;
+                { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkInventory", documentEntry); }
+                if (bookmark.Elements(ns + "Dest").Any(x => x.HasElements || OpaqueNodes(x)))
+                { targetInventoryUnknown = true; UnknownAll("OpaqueBookmarkDestination", documentEntry); }
                 var name = (string?)bookmark.Attribute("Name");
                 if (string.IsNullOrWhiteSpace(name) || ForeignAttribute(bookmark, "Name") ||
                     bookmarks.ContainsKey(name!)) targetInventoryUnknown = true;
@@ -485,6 +492,55 @@ internal sealed class ArchivalStructuralCoverage
         return child.HasElements || child.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
                child.Nodes().Any(x => x is not XText);
     }
+
+    private static bool OpaqueDocumentAuxiliary(XElement child, XNamespace ns)
+    {
+        if (child.Name == ns + "CustomTags" || child.Name == ns + "Attachments")
+            return child.HasElements || child.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+                   child.Nodes().Any(x => x is not XText);
+        if (child.Name == ns + "Permissions" || child.Name == ns + "VPreferences")
+        {
+            if (child.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(child)) return true;
+            return child.Elements().Any(field =>
+            {
+                var name = field.Name.LocalName;
+                var recognized = child.Name == ns + "Permissions"
+                    ? name is "Edit" or "Annot" or "Export" or "Signature" or "Watermark" or "PrintScreen" or "Print" or "ValidPeriod"
+                    : name is "PageMode" or "PageLayout" or "TabDisplay" or "HideToolbar" or "HideMenubar" or "HideWindowUI" or "ZoomMode" or "Zoom";
+                if (field.Name.Namespace != ns || !recognized || field.HasElements ||
+                    field.Nodes().Any(x => x is not XText)) return true;
+                return field.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
+                    (attribute.Name.Namespace != XNamespace.None || !(name switch
+                    {
+                        "Print" => attribute.Name.LocalName is "Printable" or "Copies",
+                        "ValidPeriod" => attribute.Name.LocalName is "StartDate" or "EndDate",
+                        _ => false
+                    })));
+            });
+        }
+        if (child.Name != ns + "Actions") return false;
+        if (child.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(child)) return true;
+        return child.Elements().Any(action => action.Name != ns + "Action" ||
+            action.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Event") ||
+            OpaqueNodes(action) || action.Elements().Any(kind =>
+                kind.Name == ns + "Region" ? !StandardActionRegion(kind, ns) :
+                kind.Name == ns + "Goto" ? GotoOpaque(kind, ns) :
+                kind.Name.Namespace != ns || kind.Name.LocalName is not ("URI" or "GotoA" or "Sound" or "Movie") ||
+                kind.HasElements || OpaqueNodes(kind)));
+    }
+
+    private static bool MisplacedDocumentScope(XElement document, XNamespace ns) =>
+        document.Descendants().Any(node => node.Name.LocalName switch
+        {
+            "CommonData" or "Pages" or "Outlines" or "Permissions" or "VPreferences" or
+                "Bookmarks" or "Annotations" or "CustomTags" or "Attachments" =>
+                node.Parent != document || node.Name.Namespace != ns,
+            "TemplatePage" => node.Parent?.Name != ns + "CommonData" || node.Parent.Parent != document,
+            "Page" => node.Parent?.Name != ns + "Pages" || node.Parent.Parent != document,
+            "OutlineElem" => node.Parent?.Name != ns + "Outlines" && node.Parent?.Name != ns + "OutlineElem",
+            "Layer" or "ImageObject" or "TextObject" or "PathObject" or "CompositeObject" => true,
+            _ => false
+        });
 
     private static bool OpaqueAppearance(XElement appearance)
     {

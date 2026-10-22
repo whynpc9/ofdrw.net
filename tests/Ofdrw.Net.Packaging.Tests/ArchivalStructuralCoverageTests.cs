@@ -182,6 +182,44 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Fact]
+    public async Task MissingNestedTemplateTaintsTemplatePageContentClaims()
+    {
+        var entries = Seed(documentExtra: "<CommonData><TemplatePage ID='8' BaseLoc='Templates/Content.xml'/></CommonData>",
+            pageExtra: "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>",
+            objects: "<ImageObject Interpolate='false'/><TextObject Size='3'/>");
+        entries["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Template TemplateID='999'/><Content><Layer Name='template'><ImageObject Interpolate='false'/><TextObject Size='3'/></Layer></Content></Page>");
+        var report = await Check(entries);
+        foreach (var id in new[] { "AC-004", "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(PreflightOutcome.Unknown, Rule(report, id).Outcome);
+        entries["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Template TemplateID='999'/><Content><Layer><ImageObject Interpolate='true'/></Layer></Content></Page>");
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-007").Outcome);
+    }
+
+    [Theory]
+    [InlineData("<Permissions><Outlines><OutlineElem Title='hidden'/></Outlines></Permissions>")]
+    [InlineData("<VPreferences><Outlines><OutlineElem Title='hidden'/></Outlines></VPreferences>")]
+    [InlineData("<Attachments><Outlines><OutlineElem Title='hidden'/></Outlines></Attachments>")]
+    [InlineData("<Actions><Action><Goto><Outlines><OutlineElem Title='hidden'/></Outlines></Goto></Action></Actions>")]
+    [InlineData("<Bookmarks><Bookmark Name='x'><Dest Type='Fit' PageID='1'><Outlines><OutlineElem Title='hidden'/></Outlines></Dest></Bookmark></Bookmarks>")]
+    public async Task OpaqueDocumentChildCannotHideOutlineScope(string child)
+    {
+        var report = await Check(Seed(documentExtra: child));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Fact]
+    public async Task RecognizedDocumentPolicyFieldsDoNotTaintOutlineAbsence()
+    {
+        var report = await Check(Seed(documentExtra:
+            "<Permissions><Edit>false</Edit><Print Printable='true' Copies='2'/></Permissions>" +
+            "<VPreferences><PageMode>UseOutlines</PageMode></VPreferences>"));
+        Assert.Equal(PreflightOutcome.NotApplicable, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.NotApplicable, Rule(report, "AC-006").Outcome);
+    }
+
+    [Fact]
     public async Task SharedPageTreeIsInspectedOnceAcrossPageAndTemplateDeclarations()
     {
         var entries = Seed();
