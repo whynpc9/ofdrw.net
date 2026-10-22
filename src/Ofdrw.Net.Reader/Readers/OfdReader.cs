@@ -1278,6 +1278,8 @@ public sealed class OfdReader : IOfdReader
                         ClippingXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken)
                     };
                     AttachPaint(text, node, renderNode, paintError, material, cancellationToken);
+                    if (blockDepth > 0 && textCodes.Count == 0)
+                        text.RenderPaintError ??= "PageBlock text requires at least one TextCode.";
                     if (blockDepth > 0 && !HasFont(fontMap, text.FontResourceId))
                         text.RenderPaintError ??= "PageBlock text has an unresolved Font resource.";
                     double? previousX = null, previousY = null;

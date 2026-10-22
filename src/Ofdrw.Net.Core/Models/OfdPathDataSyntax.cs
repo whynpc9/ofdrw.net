@@ -25,8 +25,11 @@ internal static class OfdPathDataSyntax
         while (index < value.Length)
         {
             token.ThrowIfCancellationRequested();
-            while (index < value.Length && (char.IsWhiteSpace(value[index]) || value[index] == ',')) index++;
-            if (index == value.Length) break;
+            var trailingComma = false;
+            while (index < value.Length && (char.IsWhiteSpace(value[index]) || value[index] == ','))
+            { if (value[index] == ',') trailingComma = true; index++; }
+            if (index == value.Length)
+            { if (trailingComma) return false; break; }
             var current = value[index];
             if (char.IsLetter(current))
             {

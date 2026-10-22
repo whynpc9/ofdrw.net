@@ -845,6 +845,33 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PageBlockTextWithoutTextCodeFailsAllRenderers(bool template)
+    {
+        var ofd = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'/>",
+            template: template, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Empty(text.Runs);
+        Assert.Contains("TextCode", text.RenderPaintError);
+        Assert.Contains("TextObject", text.SourceXml);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Contains("TextCode", error.Message);
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("duplicate-file")]
     [InlineData("font-attribute")]
     [InlineData("font-child")]
@@ -1745,6 +1772,8 @@ public sealed class R01PageBlockTests
     [InlineData("<AbbreviatedData>M 0 0 L 20</AbbreviatedData>")]
     [InlineData("<AbbreviatedData>M 1<!--a--><!--b-->0 2 3</AbbreviatedData>")]
     [InlineData("<AbbreviatedData>M 0 0 L 20 0 C</AbbreviatedData><AbbreviatedData>M 0 0 L 20 20</AbbreviatedData>")]
+    [InlineData("<AbbreviatedData>M 0 0 L 10 0 L 10 10 C,</AbbreviatedData>")]
+    [InlineData("<AbbreviatedData>M 0 0 L 10 0 L 10 10, </AbbreviatedData>")]
     public async Task PageBlockPathDataFailsBeforeAnyRenderer(string pathData)
     {
         var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
@@ -1761,6 +1790,24 @@ public sealed class R01PageBlockTests
             var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
             Assert.Contains("path data", error.Message);
             Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Fact]
+    public async Task CommaSeparatedPageBlockPathStillRenders()
+    {
+        var ofd = await Source("<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<FillColor Value='0 0 255'/><AbbreviatedData>M 0,0 L 10,0 L 10,10 C</AbbreviatedData></PathObject>");
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await convert(new MemoryStream(ofd), sink);
+            Assert.True(sink.Length > 0);
         }
     }
 
