@@ -27,6 +27,9 @@ internal sealed class ArchivalStructuralCoverage
     private readonly HashSet<long> pageIds = new();
     private readonly HashSet<long> templateIds = new();
     private readonly HashSet<string> inspectedPageEntries = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<XElement> ordinaryPageTrees = new();
+    private readonly Dictionary<long, XElement> templatePageTrees = new();
+    private readonly Dictionary<XElement, string> pageTreeEntries = new();
     private long xmlBytes;
     private int xmlNodes;
     private int references;
@@ -137,6 +140,7 @@ internal sealed class ArchivalStructuralCoverage
             ReadPage(template, documentEntry, true);
         if (common.Any(x => Foreign(x, "TemplatePage", ns)))
             UnknownPageScope("ForeignTemplatePage", documentEntry);
+        CheckEffectiveLayerNames();
     }
 
     private void ReadPage(XElement declaration, string containing, bool template)
@@ -158,8 +162,6 @@ internal sealed class ArchivalStructuralCoverage
             if (!template) targetInventoryUnknown = true;
             return;
         }
-        // Declaration and reference checks still run for each use, but a cached page tree is inspected once.
-        if (!inspectedPageEntries.Add(entry)) return;
         var page = Read(entry, "Page");
         if (page is null)
         {
@@ -169,6 +171,15 @@ internal sealed class ArchivalStructuralCoverage
             if (!template) targetInventoryUnknown = true;
             return;
         }
+        pageTreeEntries.TryAdd(page, entry);
+        if (template)
+        {
+            if (Id((string?)declaration.Attribute("ID"), out var templateId))
+                templatePageTrees.TryAdd(templateId, page);
+        }
+        else ordinaryPageTrees.Add(page);
+        // Declaration and reference checks still run for each use, but a cached page tree is inspected once.
+        if (!inspectedPageEntries.Add(entry)) return;
         if (page.Name.Namespace != documentNamespace)
             UnknownPageScope("MixedPageNamespace", entry);
         if (page.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(page) ||
@@ -185,6 +196,52 @@ internal sealed class ArchivalStructuralCoverage
         { UnknownGraphics("PageContentAmbiguous", entry); observations[7].Unknown("PageContentAmbiguous", entry); }
         InspectLayers(page, entry);
         InspectGraphics(page, entry);
+    }
+
+    private void CheckEffectiveLayerNames()
+    {
+        var work = 0;
+        foreach (var page in ordinaryPageTrees)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            var active = new HashSet<long>();
+            var pending = new Stack<(XElement Page, long? TemplateId, bool Exit)>();
+            pending.Push((page, null, false));
+            while (pending.Count != 0)
+            {
+                token.ThrowIfCancellationRequested();
+                if (work >= options.MaxXmlNodes)
+                { observations[7].Unknown("LayerCompositionBudgetExceeded", documentEntry); return; }
+                work++;
+                var (tree, templateId, exit) = pending.Pop();
+                if (exit)
+                { if (templateId.HasValue) active.Remove(templateId.Value); continue; }
+                if (templateId.HasValue && !active.Add(templateId.Value))
+                { UnknownPageScope("TemplateCycle", documentEntry); continue; }
+                var ns = tree.Name.Namespace;
+                var entry = pageTreeEntries.TryGetValue(tree, out var path) ? path : documentEntry;
+                foreach (var layer in tree.Elements(ns + "Content").SelectMany(x => x.Elements(ns + "Layer")))
+                {
+                    if (work >= options.MaxXmlNodes)
+                    { observations[7].Unknown("LayerCompositionBudgetExceeded", entry); return; }
+                    work++;
+                    var name = (string?)layer.Attribute("Name");
+                    if (name is not null && !names.Add(name))
+                        observations[7].Fail("DuplicateEffectiveLayerName", entry, layer, this);
+                }
+                pending.Push((tree, templateId, true));
+                foreach (var reference in tree.Elements(ns + "Template").Reverse())
+                {
+                    if (work >= options.MaxXmlNodes)
+                    { observations[7].Unknown("LayerCompositionBudgetExceeded", entry); return; }
+                    work++;
+                    if (!Id((string?)reference.Attribute("TemplateID"), out var number) ||
+                        !templatePageTrees.TryGetValue(number, out var nested))
+                    { UnknownPageScope("TemplateReferenceUnavailable", entry); continue; }
+                    pending.Push((nested, number, false));
+                }
+            }
+        }
     }
 
     private void ReadBookmarkInventory(XElement document, XNamespace ns)
@@ -363,7 +420,8 @@ internal sealed class ArchivalStructuralCoverage
         var ns = appearance.Name.Namespace;
         if (OpaqueAppearance(appearance))
             observations[8].Unknown("OpaqueAnnotationAppearance", entry, appearance, this);
-        foreach (var block in appearance.Descendants(ns + "PageBlock"))
+        foreach (var block in appearance.Descendants(ns + "PageBlock").Where(x =>
+                     RecognizedGraphicPosition(x, appearance, ns)))
         {
             observations[8].Seen(entry, block, this);
             if (block.Ancestors().TakeWhile(x => x != appearance).Any(x => x.Name == ns + "PageBlock"))
@@ -384,7 +442,8 @@ internal sealed class ArchivalStructuralCoverage
                 (x.Name.LocalName == "ImageObject" || x.Name.LocalName == "TextObject") && x.Name.Namespace != ns) ||
             source.DescendantsAndSelf().Any(x => x.Name == ns + "CompositeObject"))
             UnknownGraphics("OpaqueGraphicScope", entry);
-        foreach (var image in source.Descendants(ns + "ImageObject"))
+        foreach (var image in source.Descendants(ns + "ImageObject").Where(x =>
+                     RecognizedGraphicPosition(x, source, ns)))
         {
             var value = (string?)image.Attribute("Interpolate");
             if (value is null) { if (ForeignAttribute(image, "Interpolate")) observations[3].Unknown("InterpolateAmbiguous", entry, image, this); continue; }
@@ -393,7 +452,8 @@ internal sealed class ArchivalStructuralCoverage
             else if (value is not ("false" or "0") || ForeignAttribute(image, "Interpolate"))
                 observations[3].Unknown("InterpolateAmbiguous", entry, image, this);
         }
-        foreach (var text in source.Descendants(ns + "TextObject"))
+        foreach (var text in source.Descendants(ns + "TextObject").Where(x =>
+                     RecognizedGraphicPosition(x, source, ns)))
         {
             observations[4].Seen(entry, text, this);
             var value = (string?)text.Attribute("Size");
@@ -405,7 +465,8 @@ internal sealed class ArchivalStructuralCoverage
         }
         foreach (var graphic in source.Descendants().Where(x => x.Name.Namespace == ns &&
                      (x.Name.LocalName == "TextObject" || x.Name.LocalName == "PathObject" ||
-                      x.Name.LocalName == "ImageObject" || x.Name.LocalName == "CompositeObject")))
+                      x.Name.LocalName == "ImageObject" || x.Name.LocalName == "CompositeObject") &&
+                      RecognizedGraphicPosition(x, source, ns)))
         {
             if (graphic.Elements().Any(x => x.Name == ns + "Actions" || x.Name == ns + "Action"))
                 observations[6].Fail("ObjectActionRetained", entry, graphic, this);
@@ -413,6 +474,28 @@ internal sealed class ArchivalStructuralCoverage
                          (x.Name.LocalName == "Actions" || x.Name.LocalName == "Action") && x.Name.Namespace != ns))
                 observations[6].Unknown("ForeignObjectAction", entry, graphic, this);
         }
+    }
+
+    private static bool RecognizedGraphicPosition(XElement node, XElement source, XNamespace ns)
+    {
+        for (var current = node; !ReferenceEquals(current, source);)
+        {
+            var parent = current.Parent;
+            if (parent is null || current.Name.Namespace != ns) return false;
+            var allowed = current.Name.LocalName switch
+            {
+                "TextObject" or "PathObject" or "ImageObject" or "CompositeObject" =>
+                    parent.Name == ns + "Layer" || parent.Name == ns + "PageBlock" || parent.Name == ns + "Appearance",
+                "PageBlock" => parent.Name == ns + "Layer" || parent.Name == ns + "PageBlock" ||
+                               parent.Name == ns + "Appearance",
+                "Layer" => parent.Name == ns + "Content",
+                "Content" => parent.Name == ns + "Page",
+                _ => false
+            };
+            if (!allowed) return false;
+            current = parent;
+        }
+        return true;
     }
 
     private static bool OpaqueGraphicContainers(XElement source, XNamespace ns)

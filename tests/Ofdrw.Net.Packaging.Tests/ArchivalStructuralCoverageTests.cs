@@ -728,6 +728,8 @@ public class ArchivalStructuralCoverageTests
     [InlineData("<FutureObject/>", PreflightOutcome.Unknown)]
     [InlineData("<FutureObject/><ImageObject Interpolate='false'/><TextObject Size='3'/>", PreflightOutcome.Unknown)]
     [InlineData("<FutureObject/><ImageObject Interpolate='true'/><TextObject Size='0'/>", PreflightOutcome.Fail)]
+    [InlineData("<FutureObject><ImageObject Interpolate='true'/><TextObject Size='0'/></FutureObject>", PreflightOutcome.Unknown)]
+    [InlineData("<FutureObject><ImageObject Interpolate='true'/><TextObject Size='0'/></FutureObject><ImageObject Interpolate='true'/><TextObject Size='0'/>", PreflightOutcome.Fail)]
     public async Task SameNamespaceUnknownGraphicKeepsFailDominance(string objects, PreflightOutcome expected)
     {
         var report = await Check(Seed(objects: objects));
@@ -809,6 +811,19 @@ public class ArchivalStructuralCoverageTests
             Assert.Equal(expected, Rule(report, id).Outcome);
     }
 
+    [Fact]
+    public async Task AppliedTemplateLayerNamesShareTheEffectivePageScope()
+    {
+        var entries = Seed(documentExtra: "<CommonData><TemplatePage ID='8' BaseLoc='Templates/Content.xml'/></CommonData>");
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Template TemplateID='8'/><Content><Layer Name='body'><PathObject/></Layer></Content></Page>");
+        entries["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer Name='body'><PathObject/></Layer></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-011").Outcome);
+        entries["Doc_0/Templates/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer Name='template'><PathObject/></Layer></Content></Page>");
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-011").Outcome);
+    }
+
     [Theory]
     [InlineData("<PageBlock ID='3'><PageBlock ID='4'><PathObject/></PageBlock></PageBlock>", PreflightOutcome.Fail)]
     [InlineData("<PageBlock ID='3'><PathObject/></PageBlock>", PreflightOutcome.Pass)]
@@ -847,15 +862,14 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Fact]
-    public async Task OpaqueWrapperBlocksLayerClaimAndSelectorRedactsItsNamespace()
+    public async Task OpaqueWrapperBlocksLayerAndTextClaimsWithoutLeakingItsNamespace()
     {
         var entries = Seed();
         entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><v:Wrapper xmlns:v='https://user:secret@example.invalid/scope'><Layer Name='hidden'><TextObject><TextCode>missing size</TextCode></TextObject></Layer></v:Wrapper></Content></Page>");
         var report = await Check(entries);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-011").Outcome);
         var text = Rule(report, "AC-008");
-        Assert.Equal(PreflightOutcome.Fail, text.Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, text.Outcome);
         Assert.DoesNotContain("secret", text.Evidence.Selector, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("unsupported-namespace", text.Evidence.Selector, StringComparison.Ordinal);
     }
 }
