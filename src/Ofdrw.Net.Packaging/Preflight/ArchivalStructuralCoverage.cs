@@ -161,7 +161,12 @@ internal sealed class ArchivalStructuralCoverage
                  !template && x.Name.LocalName is ("Name" or "ZOrder"))))
         {
             UnknownPageScope("OpaquePageDeclaration", containing);
-            if (!template) pageInventoryUnknown = true;
+            if (!template)
+            {
+                if (declaration.HasElements || !Id((string?)declaration.Attribute("ID"), out var number))
+                    pageInventoryUnknown = true;
+                else ambiguousPageIds.Add(number);
+            }
         }
         if (ForeignAttribute(declaration, "BaseLoc") ||
             !TryEntry(containing, (string?)declaration.Attribute("BaseLoc"), out var entry))

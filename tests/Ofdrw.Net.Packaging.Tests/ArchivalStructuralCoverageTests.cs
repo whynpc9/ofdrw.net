@@ -446,10 +446,10 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
-    [InlineData("<Page ID='99' BaseLoc='hidden.xml'/>", "")]
-    [InlineData("", "vendor='x'")]
-    [InlineData("opaque", "")]
-    public async Task OpaquePageDeclarationPreventsFalseMissingTargetFailure(string payload, string attributes)
+    [InlineData("<Page ID='99' BaseLoc='hidden.xml'/>", "", PreflightOutcome.Unknown)]
+    [InlineData("", "vendor='x'", PreflightOutcome.Fail)]
+    [InlineData("opaque", "", PreflightOutcome.Fail)]
+    public async Task OpaquePageDeclarationScopesMissingTargetUncertainty(string payload, string attributes, PreflightOutcome expected)
     {
         var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Dest Type='Fit' PageID='99'/></Goto></Action></Actions></OutlineElem></Outlines>";
         var entries = Seed(documentExtra: outline);
@@ -457,11 +457,29 @@ public class ArchivalStructuralCoverageTests
         entries["Doc_0/Document.xml"] = Utf8(document.Replace("<Page ID='1' BaseLoc='Pages/P0/Content.xml'/>",
             $"<Page ID='1' BaseLoc='Pages/P0/Content.xml' {attributes}>{payload}</Page>", StringComparison.Ordinal));
         var report = await Check(entries);
-        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+        Assert.Equal(expected, Rule(report, "AC-006").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
         entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Actions><Action><URI URI='https://example.invalid'/></Action></Actions><Content><Layer/></Content></Page>");
         report = await Check(entries);
         Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-004").Outcome);
+    }
+
+    [Theory]
+    [InlineData("1", "vendor='x'", PreflightOutcome.Pass)]
+    [InlineData("2", "vendor='x'", PreflightOutcome.Unknown)]
+    [InlineData("99", "vendor='x'", PreflightOutcome.Fail)]
+    [InlineData("1", "xmlns:v='urn:vendor' v:ID='99'", PreflightOutcome.Pass)]
+    [InlineData("2", "xmlns:v='urn:vendor' v:ID='99'", PreflightOutcome.Unknown)]
+    [InlineData("99", "xmlns:v='urn:vendor' v:ID='99'", PreflightOutcome.Fail)]
+    public async Task OpaquePageAttributesTaintOnlyTheDeclaredId(string target, string attributes, PreflightOutcome expected)
+    {
+        var outline = $"<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Dest Type='Fit' PageID='{target}'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var entries = Seed(documentExtra: outline);
+        var document = Encoding.UTF8.GetString(entries["Doc_0/Document.xml"]);
+        entries["Doc_0/Document.xml"] = Utf8(document.Replace("</Pages>",
+            $"<Page ID='2' BaseLoc='Pages/P0/Content.xml' {attributes}/></Pages>", StringComparison.Ordinal));
+        var report = await Check(entries);
+        Assert.Equal(expected, Rule(report, "AC-006").Outcome);
     }
 
     [Theory]
