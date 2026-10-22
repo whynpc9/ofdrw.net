@@ -42,7 +42,16 @@ public static class ArchivalCoverageRuleCatalog
     {
         new ArchivalCoverageRuleDefinition("AC-001", "6.2.1(a)", "Recognized OFD root declares DocType=OFD-A"),
         new ArchivalCoverageRuleDefinition("AC-002", "6.2.1(c)", "Recognized OFD root contains exactly one DocBody"),
-        new ArchivalCoverageRuleDefinition("AC-003", "6.2.2(c)", "Document actions are intra-document Goto only")
+        new ArchivalCoverageRuleDefinition("AC-003", "6.2.2(c)", "Document actions are intra-document Goto only"),
+        new ArchivalCoverageRuleDefinition("AC-004", "6.2.3(c)", "Page actions are intra-document Goto only"),
+        new ArchivalCoverageRuleDefinition("AC-005", "6.2.5(a)", "Outline actions are intra-document Goto only"),
+        new ArchivalCoverageRuleDefinition("AC-006", "6.2.5(b)", "Outline Goto targets exist in the selected document"),
+        new ArchivalCoverageRuleDefinition("AC-007", "6.5(b)", "Used ImageObject Interpolate attributes are false"),
+        new ArchivalCoverageRuleDefinition("AC-008", "6.6(c)", "TextObject size is identified by a valid Size attribute"),
+        new ArchivalCoverageRuleDefinition("AC-009", "6.10.1(a)(3)", "Retained annotations declare ReadOnly, NoZoom and NoRotate true"),
+        new ArchivalCoverageRuleDefinition("AC-010", "6.3.3(b)", "Page graphic objects retain no Action declarations; migration needs source evidence"),
+        new ArchivalCoverageRuleDefinition("AC-011", "6.2.3(d)", "Named page layers are distinguishable within each page"),
+        new ArchivalCoverageRuleDefinition("AC-012", "6.10.1(a)(2)", "Retained annotation appearances have no nested PageBlock")
     });
     /// <summary>Immutable ordered list of supported coverage checks.</summary>
     public static IReadOnlyList<ArchivalCoverageRuleDefinition> Rules => RulesValue;
@@ -85,21 +94,21 @@ public sealed class ArchivalCoverageReport
     /// <summary>Archival certification has not been assessed.</summary>
     public string Certification => "NotAssessed";
     /// <summary>Mapped clause subset and explicit remainder boundary.</summary>
-    public string Scope => "GB/T 42133-2022 6.2.1(a),(c), 6.2.2(c) plus R17 6.2.2(a)-(b); remaining clauses are unassessed by this API.";
+    public string Scope => "GB/T 42133-2022 6.2.1(a),(c), 6.2.2(c), 6.2.3(c)-(d), 6.2.5(a)-(b), 6.3.3(b), 6.5(b), 6.6(c), 6.10.1(a)(2)-(3) plus R17 6.2.2(a)-(b); remaining clauses are unassessed by this API.";
     /// <summary>A known failure is reported; otherwise complete-standard status stays Unknown.</summary>
     public PreflightOutcome StandardOutcome => RuleResults.Any(x => x.Outcome == PreflightOutcome.Fail) ||
         FoundationalRules.RuleResults.Any(x => x.Outcome == PreflightOutcome.Fail)
         ? PreflightOutcome.Fail : PreflightOutcome.Unknown;
 }
 
-/// <summary>Read-only checks for three additional conditions, preserving R17 default behavior.</summary>
+/// <summary>Read-only standard-mapped checks, preserving R17 default behavior.</summary>
 public sealed class ArchivalCoverageService
 {
     /// <summary>Checks a borrowed, seekable OFD package at position zero and restores its position.</summary>
     /// <param name="input">Stable package stream, left open.</param>
     /// <param name="options">Local policy and resource budgets, snapshotted before inspection.</param>
     /// <param name="cancellationToken">Cancellation propagates to the package loader.</param>
-    /// <returns>R17 observations and three additional checks; never a full-standard Pass.</returns>
+    /// <returns>R17 observations and additional checks; never a full-standard Pass.</returns>
     public async Task<ArchivalCoverageReport> CheckAsync(Stream input, ArchivalPreflightOptions options,
         CancellationToken cancellationToken = default)
     {
@@ -119,10 +128,12 @@ public sealed class ArchivalCoverageService
             var root = ArchivalRuleService.Read(archive, "OFD.xml", snapshot)?.Root;
             if (root == null || root.Name.LocalName != "OFD" || !Supported(root.Name.NamespaceName))
                 return Unknown(foundational, "RootScopeUnavailable");
-            return new ArchivalCoverageReport(foundational, Array.AsReadOnly(new[]
+            var results = new List<ArchivalCoverageRuleResult>
             {
                 DocType(root), DocumentCount(root), DocumentActions(archive, root, snapshot)
-            }));
+            };
+            results.AddRange(new ArchivalStructuralCoverage(archive, root, snapshot, cancellationToken).Check());
+            return new ArchivalCoverageReport(foundational, results.AsReadOnly());
         }
         finally { input.Position = 0; }
     }
