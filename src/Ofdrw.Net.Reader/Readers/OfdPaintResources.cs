@@ -49,12 +49,17 @@ internal sealed class OfdPaintResources
                 _ => null
             };
             if (table is null) continue;
+            var definitionName = ns + (ReferenceEquals(table, spaces) ? "ColorSpace" : "DrawParam");
+            var validContainer = container.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
+                !HasUnsupportedNodeContent(container) && container.Elements().All(node => node.Name == definitionName);
             foreach (var node in container.Elements())
             {
                 token.ThrowIfCancellationRequested(); material.ReserveReadModel(256, token);
-                if (node.Name != ns + (ReferenceEquals(table, spaces) ? "ColorSpace" : "DrawParam")) continue;
+                if (node.Name != definitionName) continue;
                 var id = OfdSourceIdentity.ParseId(node.Attribute("ID")?.Value);
                 if (id == 0) continue;
+                if (!validContainer)
+                { ambiguous.Add(id); table.Remove(id); continue; }
                 if (ambiguous.Contains(id) || table.ContainsKey(id))
                 { ambiguous.Add(id); table.Remove(id); }
                 else table.Add(id, node);

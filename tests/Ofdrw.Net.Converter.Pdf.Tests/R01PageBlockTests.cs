@@ -283,6 +283,61 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false, "valid")]
+    [InlineData(true, "valid")]
+    [InlineData(false, "attribute")]
+    [InlineData(true, "attribute")]
+    [InlineData(false, "instruction")]
+    [InlineData(true, "instruction")]
+    [InlineData(false, "text")]
+    [InlineData(true, "text")]
+    [InlineData(false, "child")]
+    [InlineData(true, "child")]
+    public async Task ReferencedPaintContainerExtensionsFailClosed(bool drawParam, string extension)
+    {
+        var containerName = drawParam ? "DrawParams" : "ColorSpaces";
+        var definition = drawParam
+            ? "<DrawParam ID='30'><FillColor Value='255 0 0'/></DrawParam>"
+            : "<ColorSpace ID='20' Type='RGB'/>";
+        var attr = extension == "attribute" ? " xmlns:ext='urn:vendor' ext:keep='1'" : "";
+        var content = extension switch
+        {
+            "instruction" => "<?vendor keep?>",
+            "text" => "vendor content",
+            "child" => "<ext:State xmlns:ext='urn:vendor'/>",
+            _ => " \n<!-- harmless comment -->"
+        };
+        var resources = $"<{containerName}{attr}>{content}{definition}</{containerName}>";
+        var paint = drawParam ? "DrawParam='30'" : "";
+        var color = drawParam ? "" : "<FillColor ColorSpace='20' Value='255 0 0'/>";
+        var drawing = $"<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false' {paint}>" +
+            color + "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(drawing, resources: resources);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Contains(containerName, Encoding.UTF8.GetString(read.PreservedEntries["Doc_0/DocumentRes.xml"]));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var output = new MemoryStream();
+            if (extension == "valid")
+            {
+                await convert(new MemoryStream(ofd), output);
+                Assert.True(output.Length > 0);
+            }
+            else
+            {
+                var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+                Assert.Contains("paint", error.Message, StringComparison.OrdinalIgnoreCase);
+                Assert.Equal(0, output.Length);
+            }
+        }
+    }
+
+    [Theory]
     [InlineData("<CV Extra='x'>0 0 255</CV>")]
     [InlineData("<CV><VendorChild>0 0 255</VendorChild></CV>")]
     [InlineData("<CV><?vendor key?>0 0 255</CV>")]
