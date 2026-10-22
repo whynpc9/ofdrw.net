@@ -15,7 +15,7 @@ using UglyToad.PdfPig;
 namespace Ofdrw.Net.Converter.Pdf.Vector;
 
 /// <summary>Explicit optional PDF vector mode with whole-page dual-layer fallback.</summary>
-/// <remarks>Only the documented fixed-font, opaque path/text profile is supported. No canvas calls are intercepted.</remarks>
+/// <remarks>Only the documented bounded opaque path/text/image profile is supported. No canvas calls are intercepted.</remarks>
 public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
 {
     private readonly PdfVectorToOfdOptions _options;
@@ -64,8 +64,12 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                     if (!PlainCatalog(document)) throw new NotSupportedException("PDFV_UNSUPPORTED: catalog color/optional-content/rendering extensions.");
                     document.AddPageFactory<VectorPageContext, VectorContextFactory>();
                     var context = document.GetPage<VectorPageContext>(index + 1);
-                    var staged = context.Convert(limits, cancellationToken);
+                    var staged = context.Convert(limits, cancellationToken, limits.Compatibility.MaxTotalImageBytes - imageBytes);
                     page = staged.Pages.Single();
+                    var nativeImages = page.Elements.OfType<OfdImageElement>().Sum(image => (long)image.Data.Length);
+                    if (nativeImages > limits.Compatibility.MaxTotalImageBytes - imageBytes)
+                        throw new InvalidDataException("PDF accumulated native image byte limit exceeded.");
+                    imageBytes += nativeImages;
                     var bytes = staged.Fonts.Sum(font => (long)font.Data!.Length);
                     if (bytes > limits.MaxTotalFontBytes - fontBytes) throw new InvalidDataException("PDF accumulated font byte limit exceeded.");
                     fontBytes += bytes;
@@ -76,7 +80,7 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                         foreach (var text in page.Elements.OfType<OfdTextElement>().Where(text => text.FontResourceId == old)) text.FontResourceId = font.Id;
                         package.Fonts.Add(font);
                     }
-                    native = true; diagnostic = "PDFV_NATIVE: bounded opaque paths and exact-font Unicode text.";
+                    native = true; diagnostic = "PDFV_NATIVE: bounded opaque paths, exact-font Unicode text and raw image XObjects.";
                 }
                 catch (NotSupportedException exception) when (limits.UnsupportedPagePolicy == PdfVectorUnsupportedPagePolicy.RasterizePage &&
                     exception is not UnrepresentablePageException)
@@ -124,7 +128,7 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                 foreach (var element in page.Elements)
                 {
                     element.ObjectId = null; element.LayerId = null;
-                    if (element is OfdImageElement freshImage) freshImage.ResourceId = null;
+                    if (element is OfdImageElement freshImage) freshImage.ResourceId = string.Empty;
                     switch (element)
                     {
                         case OfdPathElement pathElement: pathElement.SourceXml = WithoutRootId(pathElement.SourceXml); break;

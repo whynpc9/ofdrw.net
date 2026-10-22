@@ -20,7 +20,7 @@ public sealed class FontLifecycleTests
         document.AddPageFactory<VectorPageContext, VectorContextFactory>(); var context = document.GetPage<VectorPageContext>(1);
         var parser = new PageContentParser(ReflectionGraphicsStateOperationFactory.Instance, new StackDepthGuard(64), false);
         var metadataReads = 0;
-        using var processor = new VectorStreamProcessor(context, parser, 420, 595, new(), new(), CancellationToken.None, 1,
+        using var processor = new VectorStreamProcessor(context, parser, new VectorPageFrame(new[] { 0d, 0d, 420d, 595d }, new[] { 0d, 0d, 420d, 595d }, 0), DictionaryToken.Empty, new(), new(), CancellationToken.None, 1, long.MaxValue,
             _ => throw new Exception("Numeric TJ unexpectedly loaded a font program."), _ => metadataReads++);
         processor.BeginText(); processor.SetFontAndSize(NameToken.Create("F1"), 12); processor.SetHorizontalScaling(80);
         processor.TextMatrices.TextMatrix = TransformationMatrix.GetTranslationMatrix(60, 90);

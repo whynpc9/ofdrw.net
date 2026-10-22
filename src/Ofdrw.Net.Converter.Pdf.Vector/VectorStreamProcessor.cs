@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Xml;
+using System.Xml.Linq;
 using Ofdrw.Net.Graphics.SkiaSharp;
 using Ofdrw.Net.Core.Models;
 using UglyToad.PdfPig.Content;
@@ -14,6 +16,7 @@ using UglyToad.PdfPig.Graphics;
 using UglyToad.PdfPig.Graphics.Core;
 using UglyToad.PdfPig.Graphics.Operations;
 using UglyToad.PdfPig.Graphics.Operations.TextShowing;
+using UglyToad.PdfPig.Graphics.Operations.SpecialGraphicsState;
 using UglyToad.PdfPig.Parser;
 using UglyToad.PdfPig.PdfFonts;
 using UglyToad.PdfPig.Tokens;
@@ -23,10 +26,18 @@ namespace Ofdrw.Net.Converter.Pdf.Vector;
 
 internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawEvent>>, IDisposable
 {
-    private readonly VectorPageContext _context; private readonly double _height;
+    private readonly VectorPageContext _context; private readonly double _height; private readonly VectorPageFrame _frame;
     private readonly Dictionary<string, VectorFont> _fonts; private readonly PdfVectorToOfdOptions _limits;
+    private readonly DictionaryToken _pageResources; private readonly long _remainingImageBytes; private long _imageBytes;
     private readonly CancellationToken _token; private readonly SKPath _path = new(); private readonly List<SkiaDrawEvent> _events = new();
     private readonly Action<string> _ensureFont, _ensureHorizontalFont;
+    private readonly List<ClipShape> _activeClips = new();
+    private readonly Stack<int> _clipDepths = new();
+    private readonly List<ClipShape[]> _eventClips = new();
+    private readonly List<StrokeShape?> _eventStrokes = new();
+    private readonly List<OfdImageElement?> _paintOrder = new();
+    private readonly List<ClipShape[]?> _imageClips = new();
+    private FillingRule? _pendingClipRule;
     internal readonly HashSet<VectorFont> OutputFonts = new();
     private readonly StringBuilder _text = new(); private readonly List<float> _advances = new();
     private TextFloatPrecision? _textPrecision, _writerTextPrecision; private bool _writerTextFailed;
@@ -38,16 +49,20 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private SKPoint _currentCandidate, _startCandidate;
     private SKColor _textColor; private bool _inText; private int _commands, _characters; private PdfPoint? _subpathStart;
 
-    internal VectorStreamProcessor(VectorPageContext context, IPageContentParser parser, double width, double height,
-        Dictionary<string, VectorFont> fonts, PdfVectorToOfdOptions limits, CancellationToken token, int number,
-        Action<string> ensureFont, Action<string> ensureHorizontalFont)
-        : base(number, context.Resources, context.Scanner, parser, context.Filters, new CropBox(new PdfRectangle(0, 0, width, height)),
+    internal VectorStreamProcessor(VectorPageContext context, IPageContentParser parser, VectorPageFrame frame,
+        DictionaryToken pageResources, Dictionary<string, VectorFont> fonts, PdfVectorToOfdOptions limits, CancellationToken token, int number,
+        long remainingImageBytes, Action<string> ensureFont, Action<string> ensureHorizontalFont)
+        : base(number, context.Resources, context.Scanner, parser, context.Filters, new CropBox(new PdfRectangle(0, 0, frame.Width, frame.Height)),
             UserSpaceUnit.Default, new PageRotationDegrees(0), TransformationMatrix.Identity, context.Parsing)
-    { _context = context; _height = height; _fonts = fonts; _limits = limits; _token = token;
+    { _context = context; _height = frame.Height; _frame = frame; _pageResources = pageResources; _fonts = fonts; _limits = limits; _token = token;
+        _remainingImageBytes = remainingImageBytes;
         _ensureFont = ensureFont; _ensureHorizontalFont = ensureHorizontalFont; }
+
+    internal int PaintCount => _paintOrder.Count;
 
     public override List<SkiaDrawEvent> Process(int number, IReadOnlyList<IGraphicsStateOperation> operations)
     {
+        if (!_frame.IsLegacyFrame) new ModifyCurrentTransformationMatrix(_frame.InitialTransform).Run(this);
         foreach (var operation in operations)
         {
             _token.ThrowIfCancellationRequested();
@@ -58,6 +73,14 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
                 // its bytes. An empty show only advances its sequence counter.
                 if (show.Text is null ? show.Bytes.IsEmpty : show.Text.Length == 0) TextSequence++;
                 else { _ensureFont(SelectedFontName()); operation.Run(this); }
+            }
+            else if (operation is InvokeNamedXObject invoke)
+            {
+                var image = _context.RequireImageXObject(_pageResources, invoke.Name);
+                _context.Resources.LoadResourceDictionary(new DictionaryToken(new Dictionary<NameToken, IToken> {
+                    [NameToken.Create("XObject")] = new DictionaryToken(new Dictionary<NameToken, IToken> { [invoke.Name] = image }) }));
+                try { operation.Run(this); }
+                finally { _context.Resources.UnloadResourceDictionary(); }
             }
             else operation.Run(this);
             if (operation.Operator is "Tj" or "TJ") FlushText();
@@ -99,9 +122,13 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private string SelectedFontName() => GetCurrentState().FontState.FontName?.Data
         ?? throw new InvalidDataException("PDF text show requires a selected font.");
     public override void PushState()
-    { if (StackSize >= _limits.MaxStackDepth) throw new InvalidDataException("PDF graphics stack limit exceeded."); base.PushState(); }
+    { if (StackSize >= _limits.MaxStackDepth) throw new InvalidDataException("PDF graphics stack limit exceeded."); base.PushState(); _clipDepths.Push(_activeClips.Count); }
     public override void PopState()
-    { if (StackSize <= 1) throw new InvalidDataException("PDF graphics stack underflow."); base.PopState(); }
+    {
+        if (StackSize <= 1) throw new InvalidDataException("PDF graphics stack underflow.");
+        base.PopState(); var count = _clipDepths.Pop();
+        if (_activeClips.Count > count) _activeClips.RemoveRange(count, _activeClips.Count - count);
+    }
     public override void BeginText()
     { if (_inText) throw Unsupported("NESTED_TEXT"); _inText = true; base.BeginText(); }
     public override void EndText()
@@ -110,10 +137,120 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private void RequireEvents(int required)
     {
         _token.ThrowIfCancellationRequested();
-        if (required > _limits.MaxEventsPerPage - _events.Count) throw new InvalidDataException("PDF draw event limit exceeded.");
+        if (required > _limits.MaxEventsPerPage - _paintOrder.Count) throw new InvalidDataException("PDF draw event limit exceeded.");
     }
-    private void Add(SkiaDrawEvent value)
-    { if (_events.Count >= _limits.MaxEventsPerPage) throw new InvalidDataException("PDF draw event limit exceeded."); _events.Add(value); }
+    private void Add(SkiaDrawEvent value, StrokeShape? stroke = null)
+    {
+        RequireEvents(1);
+        _events.Add(value); _eventClips.Add(_activeClips.ToArray()); _eventStrokes.Add(stroke);
+        _paintOrder.Add(null); _imageClips.Add(null);
+    }
+
+    internal void ApplyAnnotations(OfdPage page, string ns)
+    {
+        if (page.Elements.Count != _eventClips.Count) throw new InvalidDataException("PDF vector event/object ordering mismatch.");
+        var xmlBytes = 0L; var name = XNamespace.Get(ns);
+        for (var index = 0; index < _eventClips.Count; index++)
+        {
+            _token.ThrowIfCancellationRequested();
+            var element = page.Elements[index];
+            if (_eventStrokes[index] is { } style)
+            {
+                if (element is not OfdPathElement path || !path.Stroke || path.SourceXml is null)
+                    throw new InvalidDataException("PDF stroke event/object ordering mismatch.");
+                var source = XElement.Parse(path.SourceXml);
+                source.SetAttributeValue("Cap", style.Cap);
+                source.SetAttributeValue("Join", style.Join);
+                source.SetAttributeValue("MiterLimit", OfdNumericFormat.Plain(style.Miter));
+                source.SetAttributeValue("DashPattern", style.Dashes.Length == 0 ? null : string.Join(" ", style.Dashes.Select(OfdNumericFormat.Plain)));
+                source.SetAttributeValue("DashOffset", style.Dashes.Length == 0 ? null : OfdNumericFormat.Plain(style.Phase));
+                path.SourceXml = source.ToString(SaveOptions.DisableFormatting);
+            }
+            element.ClippingXml = ClipXml(_eventClips[index], element, name, ref xmlBytes);
+        }
+        var native = page.Elements.ToArray(); var nativeIndex = 0;
+        page.Elements.Clear();
+        for (var index = 0; index < _paintOrder.Count; index++)
+        {
+            _token.ThrowIfCancellationRequested();
+            var image = _paintOrder[index];
+            if (image is null) page.Elements.Add(native[nativeIndex++]);
+            else
+            {
+                image.ClippingXml = ClipXml(_imageClips[index]!, image, name, ref xmlBytes);
+                page.Elements.Add(image);
+            }
+        }
+        if (nativeIndex != native.Length) throw new InvalidDataException("PDF vector event/object ordering mismatch.");
+    }
+
+    private string? ClipXml(ClipShape[] clips, OfdElement element, XNamespace name, ref long xmlBytes)
+    {
+            if (clips.Length == 0) return null;
+            var x = OfdNumericFormat.WriterValue(element.XMillimeters);
+            var y = OfdNumericFormat.WriterValue(element.YMillimeters);
+            var root = new XElement(name + "Clips");
+            foreach (var clip in clips)
+            {
+                _token.ThrowIfCancellationRequested();
+                var path = new XElement(name + "Path", new XAttribute("Stroke", "false"), new XAttribute("Fill", "true"),
+                    new XAttribute("Rule", clip.EvenOdd ? "Even-Odd" : "NonZero"),
+                    new XAttribute("CTM", "1 0 0 1 " + OfdNumericFormat.Plain(-x) + " " + OfdNumericFormat.Plain(-y)),
+                    new XElement(name + "AbbreviatedData", clip.Data));
+                root.Add(new XElement(name + "Clip", new XElement(name + "Area", path)));
+            }
+            var output = root.ToString(SaveOptions.DisableFormatting);
+            if (output.Length > _limits.MaxContentBytesPerPage - xmlBytes)
+                throw new InvalidDataException("PDF emitted clipping geometry limit exceeded.");
+            xmlBytes += output.Length;
+            return output;
+    }
+
+    private readonly struct ClipShape
+    {
+        internal readonly string Data; internal readonly bool EvenOdd;
+        internal ClipShape(string data, bool evenOdd) { Data = data; EvenOdd = evenOdd; }
+    }
+
+    private readonly struct StrokeShape
+    {
+        internal readonly string Cap, Join; internal readonly double Miter, Phase; internal readonly double[] Dashes;
+        internal StrokeShape(string cap, string join, double miter, double phase, double[] dashes)
+        { Cap = cap; Join = join; Miter = miter; Phase = phase; Dashes = dashes; }
+    }
+
+    private StrokeShape CaptureStroke()
+    {
+        var state = GetCurrentState();
+        if (!(state.LineWidth > 0) || double.IsNaN(state.LineWidth) || double.IsInfinity(state.LineWidth) ||
+            !(state.MiterLimit >= 1 && state.MiterLimit <= 10) || state.MiterLimit != Math.Truncate(state.MiterLimit))
+            throw Unsupported("STROKE_PROFILE: positive width and integral miter limit 1..10 required.");
+        var cap = state.CapStyle switch
+        {
+            LineCapStyle.Butt => "Butt", LineCapStyle.Round => "Round", LineCapStyle.ProjectingSquare => "Square",
+            _ => throw Unsupported("STROKE_PROFILE: unknown cap.")
+        };
+        var join = state.JoinStyle switch
+        {
+            LineJoinStyle.Miter => "Miter", LineJoinStyle.Round => "Round", LineJoinStyle.Bevel => "Bevel",
+            _ => throw Unsupported("STROKE_PROFILE: unknown join.")
+        };
+        if (cap != "Butt" && state.MiterLimit != 10)
+            throw Unsupported("STROKE_PROFILE: PDF export requires miter limit 10 with round/square cap.");
+        var dash = state.LineDashPattern;
+        var values = dash.Array?.ToArray() ?? Array.Empty<double>();
+        // PdfSharpCore does not retain PDF's repeated-array meaning for odd
+        // dash patterns, so this profile only admits directly representable pairs.
+        if (values.Length > 32 || values.Length % 2 != 0 ||
+            values.Any(value => !(value > 0) || double.IsNaN(value) || double.IsInfinity(value)) ||
+            dash.Phase < 0 || (values.Length == 0 && dash.Phase != 0) ||
+            values.Length != 0 && (double.IsInfinity(values.Sum()) || double.IsInfinity(dash.Phase / state.LineWidth)))
+            throw Unsupported("STROKE_PROFILE: dash must be bounded, positive and representable by PDF export.");
+        // The adapter keeps the path and pen in source user units and applies
+        // the pt-to-mm factor in the object's CTM. Dash values share those
+        // local units, so scaling them here would shorten the pattern twice.
+        return new StrokeShape(cap, join, state.MiterLimit, dash.Phase, values);
+    }
     private void Command(int count = 1)
     {
         _token.ThrowIfCancellationRequested();
@@ -151,8 +288,7 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
     private SKPaint Paint(bool stroke)
     {
         var state = GetCurrentState();
-        if (stroke && (state.LineWidth <= 0 || state.CapStyle != LineCapStyle.Butt || state.JoinStyle != LineJoinStyle.Miter || state.MiterLimit != 10))
-            throw Unsupported("STROKE_PROFILE: positive width, butt cap, miter join and miter limit 10 required.");
+        if (stroke) _ = CaptureStroke();
         return new SKPaint { Color = Color(stroke), Style = stroke ? SKPaintStyle.Stroke : SKPaintStyle.Fill,
             StrokeWidth = Float(state.LineWidth), StrokeMiter = 10 };
     }
@@ -170,7 +306,12 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         {
             // Validate the supported paint profile before treating a source no-op as such.
             if (fill) { using var paint = Paint(false); }
-            if (stroke) { using var paint = Paint(true); }
+            if (stroke)
+            {
+                using var paint = Paint(true);
+                if (GetCurrentState().CapStyle != LineCapStyle.Butt)
+                    throw Unsupported("STROKE_PROFILE: a round or square cap can paint an otherwise empty path.");
+            }
             EndPath(); return;
         }
         if (fill) RememberImplicitClosure();
@@ -187,7 +328,7 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
             throw Unsupported("STROKE_WRITER_PRECISION: total written stroke-map error exceeds bounded profile.");
         _path.FillType = rule == FillingRule.EvenOdd ? SKPathFillType.EvenOdd : SKPathFillType.Winding;
         if (fill) Add(SkiaDrawEvent.Path(_path, fillPaint!, matrix, _limits.MaxPathCommandsPerPage));
-        if (stroke) Add(SkiaDrawEvent.Path(_path, strokePaint!, matrix, _limits.MaxPathCommandsPerPage));
+        if (stroke) Add(SkiaDrawEvent.Path(_path, strokePaint!, matrix, _limits.MaxPathCommandsPerPage), CaptureStroke());
         EndPath();
     }
     public override void RenderGlyph(IFont font, CurrentGraphicsState state, double fontSize, double pointSize, int code, string unicode,
@@ -205,7 +346,8 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         if (!(fontSize > 0) || state.FontState.HorizontalScaling != 100 || state.FontState.Rise != 0) throw Unsupported("TEXT_STATE");
         if (!_fonts.TryGetValue(state.FontState.FontName.Data, out var binding)) throw Unsupported("FONT_RESOURCE");
         var glyph = binding.Binding.GetGlyph(original[0]);
-        if (glyph == 0 || glyph != code) throw Unsupported("SOURCE_GLYPH_CMAP_MISMATCH: font=" + state.FontState.FontName.Data + " code=" + code);
+        if (glyph == 0 || (binding.WinAnsi ? VectorFont.WinAnsiCharacter(code) != original[0] : glyph != binding.GlyphForCid(code)))
+            throw Unsupported("SOURCE_GLYPH_CMAP_MISMATCH: font=" + state.FontState.FontName.Data + " code=" + code);
         _characters++;
         var matrix = text.Multiply(ctm); var color = Color(false);
         var first = _text.Length == 0; var advance = 0f;
@@ -305,7 +447,50 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
             new PathFloatPrecision.Point(right, top, new SKPoint(Float(x + width), Float(y + height))),
             new PathFloatPrecision.Point(bx, top, new SKPoint(Float(x), Float(y + height))));
     }
-    public override void EndPath() { _path.Reset(); _subpathStart = null; _precision = null; _hasSegments = _subpathHasSegments = _hasClosedSingleton = false; }
+    public override void EndPath()
+    {
+        if (_pendingClipRule is { } rule)
+        {
+            if (_activeClips.Count >= _limits.MaxStackDepth) throw new InvalidDataException("PDF clip stack limit exceeded.");
+            if (!_hasSegments || _hasClosedSingleton) throw Unsupported("CLIP_PROFILE: drawable nondegenerate path required.");
+            RememberImplicitClosure();
+            if (!_precision!.Accept(true, false, 0, 0)) throw Unsupported("CLIP_FLOAT_PRECISION");
+            _activeClips.Add(CaptureClip(rule)); _pendingClipRule = null;
+        }
+        _path.Reset(); _subpathStart = null; _precision = null; _hasSegments = _subpathHasSegments = _hasClosedSingleton = false;
+    }
+
+    private ClipShape CaptureClip(FillingRule rule)
+    {
+        const double units = 25.4 / 72;
+        var matrix = Matrix(CurrentTransformationMatrix);
+        using var iterator = _path.CreateRawIterator(); var points = new SKPoint[4]; var data = new StringBuilder();
+        void Add(string command, params SKPoint[] values)
+        {
+            if (data.Length != 0) data.Append(' ');
+            data.Append(command);
+            foreach (var value in values)
+            {
+                var page = matrix.MapPoint(value);
+                data.Append(' ').Append(OfdNumericFormat.Plain(page.X * units));
+                data.Append(' ').Append(OfdNumericFormat.Plain(page.Y * units));
+            }
+            if (data.Length > _limits.MaxContentBytesPerPage) throw new InvalidDataException("PDF clip geometry limit exceeded.");
+        }
+        for (var verb = iterator.Next(points); verb != SKPathVerb.Done; verb = iterator.Next(points))
+        {
+            _token.ThrowIfCancellationRequested();
+            switch (verb)
+            {
+                case SKPathVerb.Move: Add("M", points[0]); break;
+                case SKPathVerb.Line: Add("L", points[1]); break;
+                case SKPathVerb.Cubic: Add("B", points[1], points[2], points[3]); break;
+                case SKPathVerb.Close: Add("C"); break;
+                default: throw Unsupported("CLIP_PROFILE: path verb outside bounded profile.");
+            }
+        }
+        return new ClipShape(data.ToString(), rule == FillingRule.EvenOdd);
+    }
     public override void ClosePath()
     {
         if (_path.VerbCount == 0) return; Command();
@@ -314,9 +499,48 @@ internal sealed class VectorStreamProcessor : BaseStreamProcessor<List<SkiaDrawE
         _path.Close(); if (!_subpathHasSegments) _hasClosedSingleton = true;
         if (_subpathStart.HasValue) { CurrentPosition = _subpathStart.Value; _currentCandidate = _startCandidate; }
     }
-    public override void ModifyClippingIntersect(FillingRule rule) => throw Unsupported("CLIP");
+    public override void ModifyClippingIntersect(FillingRule rule)
+    {
+        if (_pendingClipRule is not null) throw Unsupported("CLIP_PROFILE: repeated clip before path completion.");
+        _pendingClipRule = rule;
+    }
     protected override void ClipToRectangle(PdfRectangle bounds, FillingRule rule) => throw Unsupported("CLIP");
-    protected override void RenderXObjectImage(XObjectContentRecord image) => throw Unsupported("IMAGE");
+    protected override void RenderXObjectImage(XObjectContentRecord image)
+    {
+        RequireEvents(1);
+        var remaining = _remainingImageBytes - _imageBytes;
+        if (remaining <= 0) throw new InvalidDataException("PDF native image byte limit exceeded.");
+        var element = _context.DecodeImageXObject(image.Stream, _limits, remaining, _token);
+        var original = CurrentTransformationMatrix;
+        var matrix = Matrix(original);
+        const double units = 25.4 / 72;
+        var points = new[] { new SKPoint(0, 0), new SKPoint(0, 1), new SKPoint(1, 0), new SKPoint(1, 1) }.Select(matrix.MapPoint).ToArray();
+        var left = points.Min(point => (double)point.X) * units;
+        var right = points.Max(point => (double)point.X) * units;
+        var top = points.Min(point => (double)point.Y) * units;
+        var bottom = points.Max(point => (double)point.Y) * units;
+        if (!OfdNumericFormat.WriterPositive(right - left) || !OfdNumericFormat.WriterPositive(bottom - top))
+            throw Unsupported("IMAGE_GEOMETRY: mapped image has no writable area.");
+        element.XMillimeters = left; element.YMillimeters = top;
+        element.WidthMillimeters = right - left; element.HeightMillimeters = bottom - top;
+        element.Transform = new[] { (double)matrix.ScaleX * units, (double)matrix.SkewY * units,
+            -(double)matrix.SkewX * units, -(double)matrix.ScaleY * units,
+            ((double)matrix.SkewX + matrix.TransX) * units - left,
+            ((double)matrix.ScaleY + matrix.TransY) * units - top };
+        foreach (var u in new[] { 0d, 1d }) foreach (var v in new[] { 0d, 1d })
+        {
+            // PDF image samples run top-to-bottom; compare all four actual
+            // emitted corners with the original double PDF CTM.
+            var expectedX = (original.A * u + original.C * (1 - v) + original.E) * units;
+            var expectedY = (_height - original.B * u - original.D * (1 - v) - original.F) * units;
+            var writtenX = OfdNumericFormat.WriterValue(left) + element.Transform[0] * u + element.Transform[2] * v + element.Transform[4];
+            var writtenY = OfdNumericFormat.WriterValue(top) + element.Transform[1] * u + element.Transform[3] * v + element.Transform[5];
+            if (Math.Abs(expectedX - writtenX) > 0.01 * units || Math.Abs(expectedY - writtenY) > 0.01 * units)
+                throw Unsupported("IMAGE_WRITER_PRECISION: mapped image corners exceed bounded profile.");
+        }
+        _imageBytes = checked(_imageBytes + element.Data.Length);
+        _paintOrder.Add(element); _imageClips.Add(_activeClips.ToArray());
+    }
     protected override void RenderInlineImage(InlineImage image) => throw Unsupported("INLINE_IMAGE");
     public override void BeginMarkedContent(NameToken name, NameToken? propertyDictionaryName, DictionaryToken? properties) => throw Unsupported("MARKED_CONTENT");
     public override void EndMarkedContent() => throw Unsupported("MARKED_CONTENT");

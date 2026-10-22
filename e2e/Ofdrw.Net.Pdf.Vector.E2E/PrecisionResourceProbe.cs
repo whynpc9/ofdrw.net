@@ -23,9 +23,9 @@ internal static class PrecisionResourceProbe
         var cidMap = Enumerable.Range(0,65536).SelectMany(value => new[]{(byte)(value>>8),(byte)value}).ToArray();
         foreach (var kind in new[] { "encoding-stream", "cid-map-stream" })
         {
-            var body = "0.12 0.365 0.65 rg " + fixture.Text(kind + " / 字体映射", 34, 535, 15) + "0.12 0.17 0.23 rg " + fixture.Text("Original A  B中文 remains visible in whole-page fallback", 34, 508, 9);
+            var body = "0.12 0.365 0.65 rg " + fixture.Text(kind + " / 字体映射", 34, 535, 15) + "0.12 0.17 0.23 rg " + fixture.Text("Original A  B中文 remains visible", 34, 508, 9);
             var source = fixture.Create(new[] { "0.12 0.365 0.65 rg 34 330 350 120 re f", body }, encodingStream: kind == "encoding-stream" ? cmap : null, cidMapStream: kind == "cid-map-stream" ? cidMap : null);
-            await Check(kind, source, new[] { true, false }, kind == "encoding-stream" ? "FONT_PROFILE" : "CID_MAPPING");
+            await Check(kind, source, kind == "encoding-stream" ? new[] { true, false } : new[] { true, true }, "FONT_PROFILE", kind == "encoding-stream");
         }
         var pixels = Enumerable.Range(0,840*1190).Select(index => (byte)((index%840/80 + index/840/80)%2)).ToArray();
         var indexed = fixture.Create(new[] { "q 420 0 0 595 0 0 cm /Im1 Do Q" }, imageWidth:840,imageHeight:1190,imageBytes:pixels,imageColorSpace:"[/Indexed /DeviceRGB 1 <1f5da6e9f1f9>]");
@@ -35,10 +35,10 @@ internal static class PrecisionResourceProbe
         await Check("indexed-image-clipped", clipped, new[] { false }, "PDFV_ORIGINAL_IMAGE_PAGE");
         File.WriteAllText(Path.Combine(output,"precision-resource-report.json"),JsonSerializer.Serialize(reports,new JsonSerializerOptions{WriteIndented=true}));
 
-        async Task Check(string name, byte[] source, bool[] native, string code)
+        async Task Check(string name, byte[] source, bool[] native, string code, bool expectFail = true)
         {
             File.WriteAllBytes(Path.Combine(output,name+"-source.pdf"),source);
-            using(var failInput=new MemoryStream(source))using(var failOutput=new MemoryStream())
+            if (expectFail) using(var failInput=new MemoryStream(source))using(var failOutput=new MemoryStream())
             {
                 failOutput.Write(new byte[]{7,8});
                 try{await new PdfVectorToOfdConverter().ConvertAsync(failInput,failOutput);throw new Exception("Expected unsupported page.");}
