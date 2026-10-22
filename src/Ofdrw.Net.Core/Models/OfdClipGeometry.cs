@@ -60,7 +60,11 @@ internal static class OfdClipGeometry
                     material?.ChargeCopy(1024L + 16L * (shape.Attribute("CTM")?.Value.Length ?? 0) + 16L * (shape.Attribute("Boundary")?.Value.Length ?? 0), token);
                     if (shape.Name.LocalName != "Path") throw new NotSupportedException("Only path-based OFD clipping areas are supported.");
                     if (shape.Attribute("DrawParam") is not null || shape.Element(ns + "Clips") is not null) throw new NotSupportedException("Nested clip styling is unsupported.");
-                    if (shape.Attribute("Stroke")?.Value is "true" or "1" || shape.Attribute("Fill")?.Value is "false" or "0")
+                    // Retained raw clips can carry XML whitespace around boolean values.
+                    // Admit only the same filled, unstroked values as typed clip paths.
+                    var stroke = shape.Attribute("Stroke")?.Value.Trim();
+                    var fill = shape.Attribute("Fill")?.Value.Trim();
+                    if (stroke is not (null or "false" or "0") || fill is not (null or "true" or "1"))
                         throw new NotSupportedException("Stroked clip geometry is outside the render profile.");
                     var literal = string.Concat(shape.Element(shape.Name.Namespace + "AbbreviatedData")?.Nodes().OfType<XText>().Select(text => text.Value) ?? Enumerable.Empty<string>());
                     if (string.IsNullOrWhiteSpace(literal)) throw new NotSupportedException("OFD clip path has no supported literal geometry.");

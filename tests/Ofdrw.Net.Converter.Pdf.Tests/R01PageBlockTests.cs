@@ -1163,6 +1163,51 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(" false ", " true ", true)]
+    [InlineData(" 0 ", " 1 ", true)]
+    [InlineData(" true ", " true ", false)]
+    [InlineData(" false ", " false ", false)]
+    [InlineData("invalid", "true", false)]
+    public async Task RetainedClipBooleanWhitespaceMatchesRenderedGeometry(string stroke, string fill, bool supported)
+    {
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            $"<Clips><Clip><Area><Path Stroke='{stroke}' Fill='{fill}'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 0 20 C</AbbreviatedData>" +
+            "</Path></Area></Clip></Clips>" +
+            "<FillColor Value='0 0 255'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var path = Assert.IsType<OfdPathElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Null(path.Clips);
+        Assert.Contains(stroke, path.ClippingXml);
+        Assert.Contains(fill, path.ClippingXml);
+        var converters = new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        };
+        if (!supported)
+        {
+            foreach (var convert in converters)
+            {
+                using var output = new MemoryStream();
+                await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+                Assert.Equal(0, output.Length);
+            }
+            return;
+        }
+        using var pdf = new MemoryStream(); await converters[0](new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await converters[1](new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await converters[2](new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("clipPath", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("clipPath", Encoding.UTF8.GetString(html.ToArray()));
+        if (stroke == " false ") Retain("clip-whitespace-flags", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
     [InlineData("0 1", true)]
     [InlineData("2 2", false)]
     [InlineData("1.0 0", false)]
