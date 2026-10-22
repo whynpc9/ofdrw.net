@@ -483,6 +483,25 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("ID='bad'")]
+    [InlineData("ID='0'")]
+    [InlineData("")]
+    public async Task DefiniteInvalidPageIdDoesNotHideAnotherTarget(string idAttribute)
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Dest Type='Fit' PageID='99'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var entries = Seed(documentExtra: outline);
+        var document = Encoding.UTF8.GetString(entries["Doc_0/Document.xml"]);
+        entries["Doc_0/Document.xml"] = Utf8(document.Replace("</Pages>",
+            $"<Page {idAttribute} BaseLoc='Pages/P0/Content.xml'/></Pages>", StringComparison.Ordinal));
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-006").Outcome);
+        entries["Doc_0/Document.xml"] = Utf8(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+            .Replace("PageID='99'", "PageID='1'", StringComparison.Ordinal));
+        report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
     [InlineData("vendor='x'", "")]
     [InlineData("", "opaque")]
     [InlineData("", "<?vendor opaque?>")]
@@ -531,6 +550,21 @@ public class ArchivalStructuralCoverageTests
         var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Bookmark Name='hidden'/></Goto></Action></Actions></OutlineElem></Outlines>";
         var report = await Check(Seed(documentExtra: outline + "<Bookmarks><Bookmark Name='known'><Bookmark Name='hidden'/></Bookmark></Bookmarks>"));
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+        report = await Check(Seed(documentExtra: outline + "<Bookmarks><Bookmark><Bookmark Name='hidden'/></Bookmark></Bookmarks>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Name=''")]
+    public async Task DefiniteEmptyBookmarkNameDoesNotHideAnotherTarget(string attributes)
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Bookmark Name='missing'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var bookmarks = $"<Bookmarks><Bookmark {attributes}/><Bookmark Name='good'><Dest Type='Fit' PageID='1'/></Bookmark></Bookmarks>";
+        var report = await Check(Seed(documentExtra: outline + bookmarks));
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-006").Outcome);
+        report = await Check(Seed(documentExtra: outline.Replace("missing", "good", StringComparison.Ordinal) + bookmarks));
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-006").Outcome);
     }
 
     [Theory]

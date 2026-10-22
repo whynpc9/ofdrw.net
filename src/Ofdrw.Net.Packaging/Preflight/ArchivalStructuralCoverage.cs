@@ -129,14 +129,13 @@ internal sealed class ArchivalStructuralCoverage
             {
                 token.ThrowIfCancellationRequested();
                 var id = (string?)page.Attribute("ID");
-                if (!Id(id, out var number)) pageInventoryUnknown = true;
-                else if (!pageIds.Add(number) || ForeignAttribute(page, "ID"))
+                if (Id(id, out var number) && (!pageIds.Add(number) || ForeignAttribute(page, "ID")))
                     ambiguousPageIds.Add(number);
                 ReadPage(page, documentEntry, false);
             }
         }
         if (pageIds.Count == 0)
-        { pageInventoryUnknown = true; UnknownPageScope("PageTreeEmpty", documentEntry); }
+            UnknownPageScope("PageTreeEmpty", documentEntry);
         if (common.Length > 1 || Foreign(document, "CommonData", ns))
             UnknownPageScope("CommonDataAmbiguous", documentEntry);
         if (common.Any(x => x.Attributes().Any(a => !a.IsNamespaceDeclaration) || OpaqueNodes(x) ||
@@ -163,9 +162,10 @@ internal sealed class ArchivalStructuralCoverage
             UnknownPageScope("OpaquePageDeclaration", containing);
             if (!template)
             {
-                if (declaration.HasElements || !Id((string?)declaration.Attribute("ID"), out var number))
+                if (declaration.HasElements)
                     pageInventoryUnknown = true;
-                else ambiguousPageIds.Add(number);
+                else if (Id((string?)declaration.Attribute("ID"), out var number))
+                    ambiguousPageIds.Add(number);
             }
         }
         if (ForeignAttribute(declaration, "BaseLoc") ||
@@ -217,7 +217,6 @@ internal sealed class ArchivalStructuralCoverage
     private void MarkPageAmbiguous(XElement declaration)
     {
         if (Id((string?)declaration.Attribute("ID"), out var number)) ambiguousPageIds.Add(number);
-        else pageInventoryUnknown = true;
     }
 
     private void CheckEffectiveLayerNames()
@@ -281,14 +280,14 @@ internal sealed class ArchivalStructuralCoverage
             foreach (var bookmark in container.Elements(ns + "Bookmark"))
             {
                 var name = (string?)bookmark.Attribute("Name");
-                if (string.IsNullOrWhiteSpace(name))
-                { bookmarkInventoryUnknown = true; continue; }
                 var opaqueChildren = bookmark.Elements().Any(x => x.Name != ns + "Dest") ||
                     bookmark.Elements(ns + "Dest").Any(x => x.HasElements);
+                if (opaqueChildren) bookmarkInventoryUnknown = true;
+                if (string.IsNullOrWhiteSpace(name))
+                    continue;
                 var opaque = bookmark.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name") ||
                     OpaqueNodes(bookmark) || opaqueChildren ||
                     bookmark.Elements(ns + "Dest").Any(OpaqueNodes);
-                if (opaqueChildren) bookmarkInventoryUnknown = true;
                 if (opaque || ambiguousBookmarkNames.Contains(name) || bookmarks.ContainsKey(name))
                 {
                     ambiguousBookmarkNames.Add(name);
