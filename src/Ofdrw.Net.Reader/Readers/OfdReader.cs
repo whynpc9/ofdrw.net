@@ -1045,17 +1045,31 @@ public sealed class OfdReader : IOfdReader
             return;
         var resNs = root.Name.Namespace;
         var baseLoc = root.Attribute("BaseLoc")?.Value;
-
-        foreach (var media in root.Elements(resNs + "MultiMedias").SelectMany(medias => medias.Elements(resNs + "MultiMedia")))
+        var containers = root.Elements(resNs + "MultiMedias").ToArray();
+        var validContainer = containers.Length == 1 && PlainContainer(containers[0]) &&
+            containers[0].Elements().All(child => child.Name == resNs + "MultiMedia");
+        foreach (var media in containers.SelectMany(group => group.Elements(resNs + "MultiMedia")))
         {
             var id = media.Attribute("ID")?.Value;
-            var file = media.Attribute("MediaFile")?.Value ?? ReadValue(media.Element(resNs + "MediaFile"), material, cancellationToken);
-            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(file))
-            {
-                continue;
-            }
             var key = CanonicalResourceId(id);
             if (key is null) continue;
+            var fileAttribute = media.Attribute("MediaFile");
+            var files = media.Elements(resNs + "MediaFile").ToArray();
+            var validDeclaration = validContainer &&
+                PlainContainer(media, "ID", "Type", "Format", "MediaFile") &&
+                media.Elements().All(child => child.Name == resNs + "MediaFile") &&
+                files.Length + (fileAttribute is null ? 0 : 1) == 1 &&
+                files.All(child => child.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
+                    child.Nodes().All(node => node is XText or XComment));
+            if (!validDeclaration)
+            {
+                mediaMap.Remove(key); mediaTypeMap.Remove(key); continue;
+            }
+            var file = fileAttribute?.Value ?? ReadValue(files.SingleOrDefault(), material, cancellationToken);
+            if (string.IsNullOrWhiteSpace(file))
+            {
+                mediaMap.Remove(key); mediaTypeMap.Remove(key); continue;
+            }
 
             var declaredType = media.Attribute("Type")?.Value;
             if (declaredType is not null && !string.Equals(declaredType, "Image", StringComparison.Ordinal))

@@ -1414,6 +1414,60 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("duplicate-file", false)]
+    [InlineData("duplicate-file", true)]
+    [InlineData("both-selectors", false)]
+    [InlineData("media-attribute", false)]
+    [InlineData("media-child", false)]
+    [InlineData("media-pi", false)]
+    [InlineData("container-attribute", false)]
+    [InlineData("container-pi", false)]
+    [InlineData("container-text", false)]
+    [InlineData("file-attribute", false)]
+    [InlineData("file-pi", false)]
+    public async Task AmbiguousMediaDeclarationCannotResolvePageBlockImage(string change, bool template)
+    {
+        XNamespace ns = Ns;
+        var container = new XElement(ns + "MultiMedias", new XElement(ns + "MultiMedia",
+            new XAttribute("ID", "20"), new XAttribute("Type", "Image"), new XAttribute("Format", "PNG"),
+            new XElement(ns + "MediaFile", "image.png")));
+        var media = container.Element(ns + "MultiMedia")!;
+        var file = media.Element(ns + "MediaFile")!;
+        switch (change)
+        {
+            case "duplicate-file": media.Add(new XElement(file)); break;
+            case "both-selectors": media.SetAttributeValue("MediaFile", "image.png"); break;
+            case "media-attribute": media.SetAttributeValue("Vendor", "opaque"); break;
+            case "media-child": media.Add(new XElement(ns + "Vendor")); break;
+            case "media-pi": media.Add(new XProcessingInstruction("vendor", "opaque")); break;
+            case "container-attribute": container.SetAttributeValue("Vendor", "opaque"); break;
+            case "container-pi": container.Add(new XProcessingInstruction("vendor", "opaque")); break;
+            case "container-text": container.Add(new XText("opaque")); break;
+            case "file-attribute": file.SetAttributeValue("Vendor", "opaque"); break;
+            case "file-pi": file.Add(new XProcessingInstruction("vendor", "opaque")); break;
+        }
+        var body = "<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>" +
+            "<TextObject ID='502' Boundary='10 40 50 10' Size='4'><TextCode X='0' Y='4'>中文资源文字</TextCode></TextObject>";
+        var ofd = await Source(body, template: template, resources: container.ToString(SaveOptions.DisableFormatting), image: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        var image = Assert.IsType<OfdImageElement>(block.PageBlockChildren![0]);
+        Assert.Empty(image.Data);
+        Assert.Contains("中文资源文字", new OfdTextExtractor().Extract(read, includeTemplates: true));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData(Ns)]
     [InlineData("http://www.ofdspec.org/2016")]
