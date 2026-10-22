@@ -17,12 +17,13 @@ public sealed class PdfMetadataMigrationTests
     private static byte[] Source(PdfFixture fixture, string destination = "11 0 R /Fit", bool embeddedPageFile = true,
         string? rootAction = null, string firstPageExtra = "", bool embeddedGlobalFile = true, bool mixedAnnotations = false,
         int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null", string? outlineRoot = null,
-        string attachmentName = "same.bin")
+        string attachmentName = "same.bin", int? attachmentFlags = 4)
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
+        var flags = attachmentFlags is int value ? " /F " + value : string.Empty;
         var page = embeddedPageFile
-            ? "<< /Type /Annot /Subtype /FileAttachment /Rect [20 30 40 50] /Contents (page note) /FS 20 0 R >>"
-            : "<< /Type /Annot /Subtype /FileAttachment /Rect [20 30 40 50] /FS << /F (missing.bin) >> >>";
+            ? "<< /Type /Annot /Subtype /FileAttachment /Rect [20 30 40 50] /Contents (page note) /FS 20 0 R" + flags + " >>"
+            : "<< /Type /Annot /Subtype /FileAttachment /Rect [20 30 40 50] /FS << /F (missing.bin) >>" + flags + " >>";
         return fixture.Create(new[] { fixture.Text("A中文", 30, 500), fixture.Text("B中文", 30, 500) },
             catalogEntries: "/Outlines 13 0 R /Names << /EmbeddedFiles 16 0 R >>",
             pageEntriesByIndex: new[] { "/Annots [19 0 R" + string.Concat(Enumerable.Range(0, linkCount).Select(index => $" {22 + index} 0 R")) + "] " + firstPageExtra, "" },
@@ -73,6 +74,8 @@ public sealed class PdfMetadataMigrationTests
         Assert.Null(package.Pages[0].Annotations);
         var annotation = Assert.Single(package.Pages[1].Annotations!.Items);
         Assert.Equal(OfdAnnotationType.Link, annotation.Type);
+        Assert.True(annotation.Visible);
+        Assert.True(annotation.Print);
         Assert.Equal("page note", annotation.Remark);
         Assert.Equal(package.Attachments[1].Id, annotation.AttachmentId);
         var pin = Assert.IsType<OfdPathElement>(annotation.Appearance.Elements.Single());
@@ -320,6 +323,30 @@ public sealed class PdfMetadataMigrationTests
     }
 
     [Theory]
+    [InlineData(false, null)]
+    [InlineData(true, null)]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    [InlineData(false, 32)]
+    [InlineData(true, 32)]
+    [InlineData(false, 36)]
+    [InlineData(true, 36)]
+    public async Task NonprintableOrHiddenAttachmentFailsBeforeOutput(bool vector, int? flags)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, attachmentFlags: flags));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options }).ConvertAsync(input, output));
+        else await Assert.ThrowsAsync<NotSupportedException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task GroupingOutlineRetainsItsChildAndSelectedPageTarget(bool vector)
@@ -459,6 +486,7 @@ public sealed class PdfMetadataMigrationTests
     [Theory]
     [InlineData("missing")]
     [InlineData("duplicate")]
+    [InlineData("duplicate-external")]
     [InlineData("external")]
     public async Task ReaderLeavesUnclosedAttachmentActionsUntyped(string defect)
     {
@@ -486,6 +514,13 @@ public sealed class PdfMetadataMigrationTests
                 var attachments = ReadXml(attachmentPath);
                 var item = attachments.Descendants().Single(node => node.Name.LocalName == "Attachment" && node.Attribute("ID")?.Value == target);
                 if (defect == "duplicate") item.AddAfterSelf(new XElement(item));
+                else if (defect == "duplicate-external")
+                {
+                    var other = new XElement(item);
+                    other.SetAttributeValue("External", "true");
+                    other.Elements().Single(node => node.Name.LocalName == "FileLoc").Value = "external.bin";
+                    item.AddAfterSelf(other);
+                }
                 else item.SetAttributeValue("External", "true");
                 ReplaceXml(attachmentPath, attachments);
             }

@@ -336,6 +336,12 @@ internal static class PdfImportMetadataMigrator
             {
                 token.ThrowIfCancellationRequested();
                 if (annotation.Type != AnnotationType.FileAttachment) continue;
+                // A rasterized PDF icon cannot be separated from the page image later. Only the
+                // visible, printable form can be preserved across all importer/rasterizer paths.
+                var flags = annotation.AnnotationDictionary.Data.TryGetValue("F", out var flagsToken)
+                    ? Resolve<NumericToken>(flagsToken, source)?.Double ?? throw new InvalidDataException("PDF FileAttachment flags are not numeric.")
+                    : 0;
+                if (flags != 4) throw new NotSupportedException("PDF FileAttachment visibility or print flags are unsupported.");
                 var spec = Resolve<DictionaryToken>(annotation.AnnotationDictionary.Data.TryGetValue("FS", out var fs) ? fs : null, source);
                 if (spec is null) throw new InvalidDataException("PDF FileAttachment has no embedded file specification.");
                 var name = Text(spec.Data.TryGetValue("UF", out var unicode) ? unicode : spec.Data.TryGetValue("F", out var fallback) ? fallback : null, source)

@@ -45,6 +45,30 @@ public sealed class ControlledEditWriterTests
     }
 
     [Fact]
+    public async Task LocalAndExternalDuplicateAttachmentIdRejectsPrepareAndWrite()
+    {
+        var source = new OfdDocumentPackage();
+        source.Attachments.Add(new OfdAttachment { Id = "51", Name = "local.bin", Data = new byte[] { 1 } });
+        var external = new OfdAttachment { Id = "51", Name = "remote.bin", IsExternal = true, ExternalPath = "remote.bin" };
+        source.Attachments.Add(external);
+        var page = new OfdPage { WidthMillimeters = 210, HeightMillimeters = 297 };
+        var annotation = new OfdAnnotation { Type = OfdAnnotationType.Link, AttachmentId = "51", Creator = "test",
+            LastModifiedDate = new DateTime(2026, 10, 22), Appearance = new OfdAnnotationAppearance
+                { XMillimeters = 1, YMillimeters = 1, WidthMillimeters = 10, HeightMillimeters = 10 } };
+        annotation.Appearance.Elements.Add(new OfdPathElement { XMillimeters = 0, YMillimeters = 0,
+            WidthMillimeters = 10, HeightMillimeters = 10, AbbreviatedData = "M 0 0 L 1 1" });
+        page.Annotations = new OfdAnnotationCollection(); page.Annotations.Items.Add(annotation); source.Pages.Add(page);
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(source, output));
+        Assert.Equal(0, output.Length);
+        source.Attachments.Remove(external);
+        using var context = new OfdControlledEditContext(new OfdModelLimits());
+        using var owned = OfdOwnedEditCandidate.CloneForControlledEdit(source, context.CaptureSource(source), context);
+        owned.Package.Attachments.Add(external);
+        Assert.Throws<NotSupportedException>(() => OfdPackageWriter.PrepareOwnedWrite(owned));
+    }
+
+    [Fact]
     public async Task OneContextCannotIssueTwoCandidatesSharingMutableCounters()
     {
         var source = await Source(); using var context = new OfdControlledEditContext(new OfdModelLimits()); var guard = context.CaptureSource(source);

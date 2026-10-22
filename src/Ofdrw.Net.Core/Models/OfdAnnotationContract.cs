@@ -40,9 +40,10 @@ internal static class OfdAnnotationContract
                     throw new NotSupportedException("Imported page attachment action cannot be removed without source-slot reconciliation.");
                 if (annotation.AttachmentId is string attachmentId)
                 {
+                    var targets = package.Attachments.Where(item => item.Id == attachmentId).Take(2).ToArray();
                     if (annotation.Type != OfdAnnotationType.Link || annotation.Appearance.Elements.Count != 1 ||
                         annotation.Appearance.Elements[0] is not OfdPathElement ||
-                        package.Attachments.Count(item => item.Id == attachmentId && !item.IsExternal) != 1)
+                        targets.Length != 1 || targets[0].IsExternal)
                         throw new NotSupportedException("Page attachment action requires one local path and one retained embedded attachment.");
                     if (annotation.SourceXml is string sourceXml &&
                         System.Xml.Linq.XElement.Parse(sourceXml).Descendants().Count(node =>

@@ -21,7 +21,7 @@ internal static class PdfMetadataProbe
                 "<< /Names [(same.bin) 17 0 R] >>",
                 "<< /Type /Filespec /F (same.bin) /EF << /F 18 0 R >> >>",
                 "<< /Type /EmbeddedFile /Length 6 >>\nstream\nGLOBAL\nendstream",
-                "<< /Type /Annot /Subtype /FileAttachment /Rect [340 205 365 230] /Contents (page note) /FS 20 0 R >>",
+                "<< /Type /Annot /Subtype /FileAttachment /Rect [340 205 365 230] /Contents (page note) /FS 20 0 R /F 4 >>",
                 "<< /Type /Filespec /F (same.bin) /EF << /F 21 0 R >> >>",
                 "<< /Type /EmbeddedFile /Length 4 >>\nstream\nPAGE\nendstream"
             });
@@ -76,7 +76,7 @@ internal static class PdfMetadataProbe
                 "<< /Names [(global.bin) 15 0 R] >>",
                 "<< /Type /Filespec /F (global.bin) /EF << /F 16 0 R >> >>",
                 "<< /Type /EmbeddedFile /Length 6 >>\nstream\nGLOBAL\nendstream",
-                "<< /Type /Annot /Subtype /FileAttachment /Rect [20 30 40 50] /FS 18 0 R >>",
+                "<< /Type /Annot /Subtype /FileAttachment /Rect [20 30 40 50] /FS 18 0 R /F 4 >>",
                 "<< /Type /Filespec /F (page.bin) /EF << /F 19 0 R >> >>",
                 "<< /Type /EmbeddedFile /Length 4 >>\nstream\nPAGE\nendstream"
             });
