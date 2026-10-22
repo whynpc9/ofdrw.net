@@ -215,6 +215,7 @@ public sealed class OfdReader : IOfdReader
         var fontMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var documentMediaMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var documentMediaTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var documentAmbiguousMedia = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var documentPaint = new OfdPaintResources();
 
         var publicResLoc = ReadValue(commonData?.Element(docNs + "PublicRes"), material, cancellationToken);
@@ -225,7 +226,7 @@ public sealed class OfdReader : IOfdReader
             if (archive.Contains(publicResPath))
             {
                 ReadFonts(archive, publicResPath, package, fontMap, material, cancellationToken);
-                ReadMediaResources(archive, publicResPath, documentMediaMap, documentMediaTypeMap, material, cancellationToken);
+                ReadMediaResources(archive, publicResPath, documentMediaMap, documentMediaTypeMap, documentAmbiguousMedia, material, cancellationToken);
                 documentPaint.Read(archive, publicResPath, material, cancellationToken);
             }
         }
@@ -235,7 +236,7 @@ public sealed class OfdReader : IOfdReader
         if (!string.IsNullOrWhiteSpace(documentResLoc))
         {
             var documentResPath = material.ResolvePath(docRoot, documentResLoc!, cancellationToken);
-            ReadMediaResources(archive, documentResPath, documentMediaMap, documentMediaTypeMap, material, cancellationToken);
+            ReadMediaResources(archive, documentResPath, documentMediaMap, documentMediaTypeMap, documentAmbiguousMedia, material, cancellationToken);
             ReadFonts(archive, documentResPath, package, fontMap, material, cancellationToken);
             documentPaint.Read(archive, documentResPath, material, cancellationToken);
         }
@@ -335,11 +336,12 @@ public sealed class OfdReader : IOfdReader
             var pageResPath = $"{pageDir}/PageRes.xml";
             var mediaMap = new Dictionary<string, string>(documentMediaMap, StringComparer.OrdinalIgnoreCase);
             var mediaTypeMap = new Dictionary<string, string>(documentMediaTypeMap, StringComparer.OrdinalIgnoreCase);
+            var ambiguousMedia = new HashSet<string>(documentAmbiguousMedia, StringComparer.OrdinalIgnoreCase);
             var pagePaint = new OfdPaintResources(documentPaint);
 
             if (archive.Contains(pageResPath))
             {
-                ReadMediaResources(archive, pageResPath, mediaMap, mediaTypeMap, material, cancellationToken);
+                ReadMediaResources(archive, pageResPath, mediaMap, mediaTypeMap, ambiguousMedia, material, cancellationToken);
                 ReadFonts(archive, pageResPath, package, fontMap, material, cancellationToken);
                 pagePaint.Read(archive, pageResPath, material, cancellationToken);
             }
@@ -350,7 +352,7 @@ public sealed class OfdReader : IOfdReader
                 fontMap,
                 mediaMap,
                 mediaTypeMap,
-                pageResPath, material, cancellationToken, compositeMap, pagePaint))
+                pageResPath, material, cancellationToken, compositeMap, pagePaint, ambiguousMedia))
             {
                 page.Elements.Add(element);
             }
@@ -377,8 +379,9 @@ public sealed class OfdReader : IOfdReader
                 var templateResPath = $"{GetDirectory(templatePath)}/PageRes.xml";
                 var templateMediaMap = new Dictionary<string, string>(documentMediaMap, StringComparer.OrdinalIgnoreCase);
                 var templateMediaTypeMap = new Dictionary<string, string>(documentMediaTypeMap, StringComparer.OrdinalIgnoreCase);
+                var templateAmbiguousMedia = new HashSet<string>(documentAmbiguousMedia, StringComparer.OrdinalIgnoreCase);
                 var templatePaint = new OfdPaintResources(documentPaint);
-                ReadMediaResources(archive, templateResPath, templateMediaMap, templateMediaTypeMap, material, cancellationToken);
+                ReadMediaResources(archive, templateResPath, templateMediaMap, templateMediaTypeMap, templateAmbiguousMedia, material, cancellationToken);
                 material.ReserveReadModel(256L + documentFonts.Count * 160L, cancellationToken);
                 var templateFonts = new Dictionary<string, string>(documentFonts, StringComparer.OrdinalIgnoreCase);
                 ReadFonts(archive, templateResPath, package, templateFonts, material, cancellationToken);
@@ -398,7 +401,7 @@ public sealed class OfdReader : IOfdReader
                     templateFonts,
                     templateMediaMap,
                     templateMediaTypeMap,
-                    templateResPath, material, cancellationToken, compositeMap, templatePaint))
+                    templateResPath, material, cancellationToken, compositeMap, templatePaint, templateAmbiguousMedia))
                 {
                     template.Elements.Add(element);
                 }
@@ -1031,7 +1034,8 @@ public sealed class OfdReader : IOfdReader
         OfdPackageArchive archive,
         string resPath,
         IDictionary<string, string> mediaMap,
-        IDictionary<string, string> mediaTypeMap, OfdModelMaterialization material, CancellationToken cancellationToken)
+        IDictionary<string, string> mediaTypeMap, ISet<string> ambiguousMedia,
+        OfdModelMaterialization material, CancellationToken cancellationToken)
     {
         if (!archive.Contains(resPath))
         {
@@ -1061,14 +1065,14 @@ public sealed class OfdReader : IOfdReader
                 files.Length + (fileAttribute is null ? 0 : 1) == 1 &&
                 files.All(child => child.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
                     child.Nodes().All(node => node is XText or XComment));
-            if (!validDeclaration)
-            {
-                mediaMap.Remove(key); mediaTypeMap.Remove(key); continue;
-            }
-            var file = fileAttribute?.Value ?? ReadValue(files.SingleOrDefault(), material, cancellationToken);
+            // Preserve legacy top-level/annotation imports with opaque media metadata;
+            // PageBlock admission uses the separate ambiguity set to fail closed.
+            if (validDeclaration) ambiguousMedia.Remove(key);
+            else ambiguousMedia.Add(key);
+            var file = fileAttribute?.Value ?? ReadValue(files.FirstOrDefault(), material, cancellationToken);
             if (string.IsNullOrWhiteSpace(file))
             {
-                mediaMap.Remove(key); mediaTypeMap.Remove(key); continue;
+                ambiguousMedia.Add(key); continue;
             }
 
             var declaredType = media.Attribute("Type")?.Value;
@@ -1165,7 +1169,8 @@ public sealed class OfdReader : IOfdReader
         IReadOnlyDictionary<string, string> mediaMap,
         IReadOnlyDictionary<string, string> mediaTypeMap,
         string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken,
-        IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap = null, OfdPaintResources? paint = null)
+        IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap = null, OfdPaintResources? paint = null,
+        ISet<string>? ambiguousMedia = null)
     {
         material.ReserveReadModel(256L + (pageXml.Root?.Descendants().Count() ?? 0) * 32L, cancellationToken);
         var root = pageXml.Root;
@@ -1202,13 +1207,15 @@ public sealed class OfdReader : IOfdReader
                 continue;
             }
             foreach (var element in ParseGraphicNodes(archive, layer.Elements(), layer.Attribute("ID")?.Value, layer.Attribute("Type")?.Value ?? "Body",
-                fontMap, mediaMap, mediaTypeMap, pageResPath, material, cancellationToken, compositeMap, layer.Name.Namespace, paint)) yield return element;
+                fontMap, mediaMap, mediaTypeMap, pageResPath, material, cancellationToken, compositeMap, layer.Name.Namespace, paint,
+                ambiguousMedia: ambiguousMedia)) yield return element;
         }
     }
 
     private static IEnumerable<OfdElement> ParseGraphicNodes(OfdPackageArchive archive, IEnumerable<XElement> nodes, string? layerId, string layerType,
         IReadOnlyDictionary<string, string> fontMap, IReadOnlyDictionary<string, string> mediaMap, IReadOnlyDictionary<string, string> mediaTypeMap,
-        string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap, XNamespace structuralNamespace, OfdPaintResources? paint = null, int blockDepth = 0)
+        string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap, XNamespace structuralNamespace, OfdPaintResources? paint = null, int blockDepth = 0,
+        ISet<string>? ambiguousMedia = null)
     {
             foreach (var node in nodes)
             {
@@ -1229,7 +1236,7 @@ public sealed class OfdReader : IOfdReader
                     };
                     foreach (var child in ParseGraphicNodes(archive, node.Elements(), layerId, layerType,
                         fontMap, mediaMap, mediaTypeMap, pageResPath, material, cancellationToken,
-                        compositeMap, node.Name.Namespace, paint, blockDepth + 1))
+                        compositeMap, node.Name.Namespace, paint, blockDepth + 1, ambiguousMedia))
                         block.PageBlockChildren.Add(child);
                     yield return block;
                     continue;
@@ -1317,7 +1324,8 @@ public sealed class OfdReader : IOfdReader
                         SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken)
                     };
 
-                    if (mediaKey is not null && mediaMap.TryGetValue(mediaKey, out var mediaPath))
+                    if (mediaKey is not null && (blockDepth == 0 || ambiguousMedia?.Contains(mediaKey) != true) &&
+                        mediaMap.TryGetValue(mediaKey, out var mediaPath))
                     {
                         if (archive.TryGetBytes(mediaPath, out var bytes))
                         {
