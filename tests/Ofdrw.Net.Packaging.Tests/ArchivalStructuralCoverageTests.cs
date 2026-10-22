@@ -922,6 +922,8 @@ public class ArchivalStructuralCoverageTests
     [InlineData("", "<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", PreflightOutcome.Unknown)]
     [InlineData("<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>", "<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", PreflightOutcome.Unknown)]
     [InlineData("<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>", "<Future/>", PreflightOutcome.Unknown)]
+    [InlineData("<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>", "<Layer><Actions><Action><URI URI='https://example.invalid'/></Action></Actions></Layer>", PreflightOutcome.Unknown)]
+    [InlineData("", "<Layer><PageBlock><Actions><Action><URI URI='https://example.invalid'/></Action></Actions></PageBlock></Layer>", PreflightOutcome.Unknown)]
     [InlineData("<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", "<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>", PreflightOutcome.Fail)]
     public async Task OpaqueContentPayloadTaintsPageActionInventory(string pageActions, string payload, PreflightOutcome expected)
     {
@@ -929,6 +931,16 @@ public class ArchivalStructuralCoverageTests
         entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'>{pageActions}<Content>{payload}<Layer/></Content></Page>");
         var report = await Check(entries);
         Assert.Equal(expected, Rule(report, "AC-004").Outcome);
+    }
+
+    [Fact]
+    public async Task RecognizedObjectActionsKeepPageActionInventoryIndependent()
+    {
+        var pageActions = "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>";
+        var objects = "<PathObject><Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions></PathObject>";
+        var report = await Check(Seed(pageExtra: pageActions, objects: objects));
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-004").Outcome);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-010").Outcome);
     }
 
     [Theory]

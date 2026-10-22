@@ -630,8 +630,7 @@ internal sealed class ArchivalStructuralCoverage
             return child.HasElements || child.Attributes().Any(x => !x.IsNamespaceDeclaration) ||
                    child.Nodes().Any(x => x is not XText);
         if (child.Name == ns + "Content")
-            return child.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(child) ||
-                   child.Elements().Any(x => x.Name != ns + "Layer");
+            return OpaqueGraphicContainers(child, ns);
         return false;
     }
 
