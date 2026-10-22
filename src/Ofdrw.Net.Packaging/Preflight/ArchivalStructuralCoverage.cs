@@ -179,6 +179,15 @@ internal sealed class ArchivalStructuralCoverage
         token.ThrowIfCancellationRequested();
         if (depth > options.MaxXmlDepth)
         { UnknownOutline("OutlineDepthExceeded", documentEntry); return; }
+        var expanded = (string?)node.Attribute("Expanded");
+        var count = (string?)node.Attribute("Count");
+        if (node.Attribute("Title") is null ||
+            node.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name.LocalName is not ("Title" or "Expanded" or "Count")) ||
+            node.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name.Namespace != XNamespace.None) ||
+            expanded is not (null or "true" or "false" or "1" or "0") ||
+            count is not null && (!int.TryParse(count, NumberStyles.None, CultureInfo.InvariantCulture, out var value) || value < 0) ||
+            OpaqueNodes(node))
+            UnknownOutline("OpaqueOutlineNode", documentEntry);
         InspectActions(node, ns, observations[1], observations[2], documentEntry);
         if (Foreign(node, "OutlineElem", ns)) UnknownOutline("ForeignOutline", documentEntry);
         if (node.Elements().Any(x => x.Name != ns + "OutlineElem" && x.Name != ns + "Actions"))
@@ -227,7 +236,8 @@ internal sealed class ArchivalStructuralCoverage
                 { UnknownAnnotationScope("AnnotationPageUnavailable", entry); continue; }
                 if (content.Name.Namespace != documentNamespace)
                     UnknownAnnotationScope("MixedAnnotationNamespace", entry);
-                if (content.Elements().Any(x => x.Name != content.Name.Namespace + "Annot"))
+                if (content.Elements().Any(x => x.Name != content.Name.Namespace + "Annot") ||
+                    content.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(content))
                     UnknownAnnotationScope("OpaqueAnnotationContent", entry);
                 if (Foreign(content, "Annot", content.Name.Namespace))
                 { UnknownAnnotationScope("ForeignAnnotation", entry); }
@@ -413,13 +423,12 @@ internal sealed class ArchivalStructuralCoverage
         {
             if (child.Name == ns + "Dest")
             {
-                if (child.HasElements || OpaqueNodes(child) || child.Attributes().Any(x => !x.IsNamespaceDeclaration &&
-                    (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not
-                        ("Type" or "PageID" or "Left" or "Top" or "Right" or "Bottom" or "Zoom")))) return true;
+                if (DestinationOpaque(child)) return true;
             }
             else if (child.Name == ns + "Bookmark")
             {
-                if (child.HasElements || OpaqueNodes(child) || child.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name"))
+                if (child.HasElements || OpaqueNodes(child) || string.IsNullOrWhiteSpace((string?)child.Attribute("Name")) ||
+                    child.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Name"))
                     return true;
             }
             else return true;
@@ -429,6 +438,25 @@ internal sealed class ArchivalStructuralCoverage
 
     private static bool OpaqueNodes(XElement element) => element.Nodes().Any(x =>
         x is XText text && !string.IsNullOrWhiteSpace(text.Value) || x is not XElement && x is not XText);
+
+    private static bool DestinationOpaque(XElement dest)
+    {
+        if (dest.HasElements || OpaqueNodes(dest) ||
+            (string?)dest.Attribute("Type") is not ("XYZ" or "Fit" or "FitH" or "FitV" or "FitR") ||
+            !Id((string?)dest.Attribute("PageID"), out _) ||
+            dest.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not
+                    ("Type" or "PageID" or "Left" or "Top" or "Right" or "Bottom" or "Zoom")))) return true;
+        foreach (var name in new[] { "Left", "Top", "Right", "Bottom", "Zoom" })
+        {
+            var attribute = dest.Attribute(name);
+            if (attribute is null) continue;
+            if (!double.TryParse(attribute.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ||
+                double.IsNaN(number) || double.IsInfinity(number) ||
+                name == "Zoom" && number != 0 && (number < .1 || number > 64)) return true;
+        }
+        return false;
+    }
 
     private void CheckTarget(XElement gotoElement, XNamespace ns, Observation target, string entry, string location)
     {
@@ -453,9 +481,7 @@ internal sealed class ArchivalStructuralCoverage
             dest = destinations[0];
         }
         var pageId = (string?)dest.Attribute("PageID");
-        if (dest.HasElements || OpaqueNodes(dest) || dest.Attributes().Any(x => !x.IsNamespaceDeclaration &&
-                (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not
-                    ("Type" or "PageID" or "Left" or "Top" or "Right" or "Bottom" or "Zoom"))))
+        if (DestinationOpaque(dest))
         { target.Unknown("PageTargetAmbiguous", entry, location); return; }
         if (!Id(pageId, out var number) || ForeignAttribute(dest, "PageID"))
         { target.Unknown("PageTargetAmbiguous", entry, location); return; }

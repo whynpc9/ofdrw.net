@@ -110,6 +110,19 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("vendor='x'", "")]
+    [InlineData("", "opaque")]
+    [InlineData("", "<?vendor opaque?>")]
+    [InlineData("Expanded='maybe'", "")]
+    public async Task OpaqueOutlineNodePreventsPass(string attributes, string payload)
+    {
+        var outline = $"<Outlines><OutlineElem Title='A' {attributes}>{payload}<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var report = await Check(Seed(documentExtra: outline));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
     [InlineData("<Goto><Dest Type='Fit' PageID='1'/></Goto>", "", PreflightOutcome.Pass)]
     [InlineData("<Goto><Dest Type='Fit' PageID='01'/></Goto>", "", PreflightOutcome.Pass)]
     [InlineData("<Goto><Dest Type='Fit' PageID='99'/></Goto>", "", PreflightOutcome.Fail)]
@@ -131,6 +144,19 @@ public class ArchivalStructuralCoverageTests
     public async Task OpaqueActionOrGotoCannotPassPageOrOutlineChecks(string actionBody)
     {
         var action = $"<Actions><Action>{actionBody}</Action></Actions>";
+        var report = await Check(Seed(documentExtra: $"<Outlines><OutlineElem Title='A'>{action}</OutlineElem></Outlines>", pageExtra: action));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-005").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
+    [InlineData("<Dest PageID='1'/>")]
+    [InlineData("<Dest Type='Future' PageID='1'/>")]
+    [InlineData("<Dest Type='Fit' PageID='1' Zoom='not-a-number'/>")]
+    public async Task MalformedGotoDestinationPreventsPass(string destination)
+    {
+        var action = $"<Actions><Action><Goto>{destination}</Goto></Action></Actions>";
         var report = await Check(Seed(documentExtra: $"<Outlines><OutlineElem Title='A'>{action}</OutlineElem></Outlines>", pageExtra: action));
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-005").Outcome);
@@ -313,6 +339,20 @@ public class ArchivalStructuralCoverageTests
         var entries = Seed(documentExtra: $"<Annotations {attributes}>{payload}Annots/Annotations.xml</Annotations>");
         entries["Doc_0/Annots/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'><Page PageID='1'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
         entries["Doc_0/Annots/Page.xml"] = Utf8($"<PageAnnot xmlns='{Ns}'><Annot ID='2' ReadOnly='true' NoZoom='true' NoRotate='true'><Appearance><PathObject/></Appearance></Annot></PageAnnot>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-009").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-012").Outcome);
+    }
+
+    [Theory]
+    [InlineData("vendor='x'", "")]
+    [InlineData("", "opaque")]
+    [InlineData("", "<?vendor opaque?>")]
+    public async Task OpaquePageAnnotContainerPreventsFalsePass(string attributes, string payload)
+    {
+        var entries = Seed(documentExtra: "<Annotations>Annots/Annotations.xml</Annotations>");
+        entries["Doc_0/Annots/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'><Page PageID='1'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        entries["Doc_0/Annots/Page.xml"] = Utf8($"<PageAnnot xmlns='{Ns}' {attributes}>{payload}<Annot ID='2' ReadOnly='true' NoZoom='true' NoRotate='true'><Appearance><PageBlock ID='3'><PathObject/></PageBlock></Appearance></Annot></PageAnnot>");
         var report = await Check(entries);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-009").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-012").Outcome);
