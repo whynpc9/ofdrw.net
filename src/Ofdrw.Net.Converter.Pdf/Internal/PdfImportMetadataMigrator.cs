@@ -193,6 +193,8 @@ internal static class PdfImportMetadataMigrator
                 if (action is null || !action.Data.TryGetValue("S", out var kind) || kind is not NameToken { Data: "GoTo" } ||
                     !action.Data.TryGetValue("D", out destination))
                     throw new NotSupportedException("PDF outline action is not a local GoTo.");
+                if (action.Data.ContainsKey("Next"))
+                    throw new NotSupportedException("PDF outline action chain is unsupported.");
             }
             else item.Data.TryGetValue("Dest", out destination);
             if (destination is null) continue;
@@ -200,7 +202,7 @@ internal static class PdfImportMetadataMigrator
                 target.Data[0] is not IndirectReferenceToken pageRef || !pageReferences.Contains(pageRef.Data.ToString()))
                 throw new InvalidDataException("PDF outline targets an invalid or nonlocal page.");
             if (target.Data[1] is not NameToken destinationType || destinationType.Data is not
-                ("Fit" or "FitB" or "XYZ" or "FitH" or "FitBH" or "FitV" or "FitBV" or "FitR"))
+                ("Fit" or "XYZ" or "FitH" or "FitV" or "FitR"))
                 throw new NotSupportedException("PDF outline destination type is unsupported.");
             destinations[count - 1] = (true, null);
             if (destinationType.Data == "XYZ")
@@ -227,7 +229,7 @@ internal static class PdfImportMetadataMigrator
         switch (pdf.Type)
         {
             case ExplicitDestinationType.FitPage:
-            case ExplicitDestinationType.FitBoundingBox: return result;
+                return result;
             case ExplicitDestinationType.XyzCoordinates:
                 result.Type = OfdDestinationType.XYZ;
                 result.Zoom = rawZoom;
@@ -239,7 +241,6 @@ internal static class PdfImportMetadataMigrator
                     throw new NotSupportedException("PDF partial XYZ destination cannot be represented without changing its position.");
                 return result;
             case ExplicitDestinationType.FitHorizontally:
-            case ExplicitDestinationType.FitBoundingBoxHorizontally:
                 result.Type = source.Rotation.Value is 90 or 270 ? OfdDestinationType.FitV : OfdDestinationType.FitH;
                 if (coordinates.Top is double top)
                 {
@@ -248,7 +249,6 @@ internal static class PdfImportMetadataMigrator
                 }
                 return result;
             case ExplicitDestinationType.FitVertically:
-            case ExplicitDestinationType.FitBoundingBoxVertically:
                 result.Type = source.Rotation.Value is 90 or 270 ? OfdDestinationType.FitH : OfdDestinationType.FitV;
                 if (coordinates.Left is double left)
                 {
@@ -424,10 +424,21 @@ internal static class PdfImportMetadataMigrator
         if (normalized.Length == 0 || normalized.Length > 255 || normalized.Any(char.IsControl))
             throw new InvalidDataException("PDF attachment name is empty, excessive or contains control characters.");
         if (used.Add(normalized)) return normalized;
-        for (var index = 2; index < 100_000; index++)
+        var existing = used.Count;
+        for (var index = 2; index <= existing + 2; index++)
         {
-            var candidate = normalized + " (" + index + ")";
-            if (candidate.Length <= 255 && used.Add(candidate)) return candidate;
+            var suffix = " (" + index + ")";
+            var candidate = normalized + suffix;
+            if (candidate.Length > 255)
+            {
+                var dot = normalized.LastIndexOf('.');
+                var extension = dot > 0 && normalized.Length - dot <= 32 ? normalized.Substring(dot) : string.Empty;
+                var stem = normalized.Substring(0, normalized.Length - extension.Length);
+                var available = 255 - suffix.Length - extension.Length;
+                if (available <= 0) throw new InvalidDataException("PDF attachment name cannot fit a collision suffix.");
+                candidate = stem.Substring(0, Math.Min(stem.Length, available)) + suffix + extension;
+            }
+            if (used.Add(candidate)) return candidate;
         }
         throw new InvalidDataException("PDF attachment names cannot be made unique within the configured limit.");
     }

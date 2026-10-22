@@ -16,7 +16,8 @@ public sealed class PdfMetadataMigrationTests
 
     private static byte[] Source(PdfFixture fixture, string destination = "11 0 R /Fit", bool embeddedPageFile = true,
         string? rootAction = null, string firstPageExtra = "", bool embeddedGlobalFile = true, bool mixedAnnotations = false,
-        int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null", string? outlineRoot = null)
+        int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null", string? outlineRoot = null,
+        string attachmentName = "same.bin")
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var page = embeddedPageFile
@@ -31,12 +32,12 @@ public sealed class PdfMetadataMigrationTests
                 "<< /Title (Chapter A) /Parent 13 0 R /First 15 0 R /Last 15 0 R /Count 1 " +
                     (rootAction ?? "/Dest [" + destination + "]") + " >>",
                 "<< /Title (Child) /Parent 14 0 R /Dest [9 0 R /XYZ 30 500 " + childZoom + "] >>",
-                "<< /Names [(same.bin) 17 0 R] >>",
-                embeddedGlobalFile ? "<< /Type /Filespec /F (same.bin) /EF << /F 18 0 R >> >>" :
-                    "<< /Type /Filespec /F (same.bin) >>",
+                "<< /Names [(" + attachmentName + ") 17 0 R] >>",
+                embeddedGlobalFile ? "<< /Type /Filespec /F (" + attachmentName + ") /EF << /F 18 0 R >> >>" :
+                    "<< /Type /Filespec /F (" + attachmentName + ") >>",
                 globalStreamObject ?? "<< /Type /EmbeddedFile /Length 6 >>\nstream\nGLOBAL\nendstream",
                 page,
-                "<< /Type /Filespec /F (same.bin) /EF << /F 21 0 R >> >>",
+                "<< /Type /Filespec /F (" + attachmentName + ") /EF << /F 21 0 R >> >>",
                 "<< /Type /EmbeddedFile /Length 4 >>\nstream\nPAGE\nendstream"
             }.Concat(Enumerable.Repeat("<< /Type /Annot /Subtype /Link /Rect [60 60 80 80] /A << /S /URI /URI (https://example.invalid) >> >>", linkCount)).ToArray());
     }
@@ -185,12 +186,8 @@ public sealed class PdfMetadataMigrationTests
     [Theory]
     [InlineData(false, "/FitH", OfdDestinationType.FitV)]
     [InlineData(true, "/FitH", OfdDestinationType.FitV)]
-    [InlineData(false, "/FitBH", OfdDestinationType.FitV)]
-    [InlineData(true, "/FitBH", OfdDestinationType.FitV)]
     [InlineData(false, "/FitV", OfdDestinationType.FitH)]
     [InlineData(true, "/FitV", OfdDestinationType.FitH)]
-    [InlineData(false, "/FitBV", OfdDestinationType.FitH)]
-    [InlineData(true, "/FitBV", OfdDestinationType.FitH)]
     public async Task NullFitCoordinateRetainsReaderPositionAfterRotation(bool vector, string fit, OfdDestinationType expected)
     {
         using var fixture = new PdfFixture(Font());
@@ -230,6 +227,26 @@ public sealed class PdfMetadataMigrationTests
         Assert.Equal(0, output.Length);
     }
 
+    [Theory]
+    [InlineData(false, "11 0 R /FitB")]
+    [InlineData(true, "11 0 R /FitB")]
+    [InlineData(false, "11 0 R /FitBH 500")]
+    [InlineData(true, "11 0 R /FitBH 500")]
+    [InlineData(false, "11 0 R /FitBV 30")]
+    [InlineData(true, "11 0 R /FitBV 30")]
+    public async Task BoundingBoxFitFailsBeforeOutput(bool vector, string destination)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, destination: destination));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options }).ConvertAsync(input, output));
+        else await Assert.ThrowsAsync<NotSupportedException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
+        Assert.Equal(0, output.Length);
+    }
+
     [Fact]
     public async Task DisabledSwitchesLeaveNoNavigationOrAttachmentReferences()
     {
@@ -262,6 +279,44 @@ public sealed class PdfMetadataMigrationTests
         await Assert.ThrowsAsync<NotSupportedException>(() => new PdfToOfdConverter(new PdfToOfdOptions
             { CopyBookmarks = true, PreferExternalPdfToPpm = true }).ConvertAsync(input, output));
         Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChainedLocalGoToFailsBeforeOutput(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture,
+            rootAction: "/A << /S /GoTo /D [11 0 R /Fit] /Next << /S /URI /URI (https://example.invalid) >> >>"));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await Assert.ThrowsAsync<NotSupportedException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options }).ConvertAsync(input, output));
+        else await Assert.ThrowsAsync<NotSupportedException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LongDuplicateAttachmentNamesFitWithSuffixAndExtension(bool vector)
+    {
+        var name = new string('a', 251) + ".bin";
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, attachmentName: name));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions { Compatibility = options }).ConvertAsync(input, output);
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output);
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal(2, package.Attachments.Count);
+        Assert.Equal(name, package.Attachments[0].Name);
+        Assert.Equal(new string('a', 247) + " (2).bin", package.Attachments[1].Name);
+        Assert.All(package.Attachments, attachment => Assert.True(attachment.Name.Length <= 255));
     }
 
     [Theory]
