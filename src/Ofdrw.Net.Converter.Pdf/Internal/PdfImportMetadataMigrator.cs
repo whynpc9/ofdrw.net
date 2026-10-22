@@ -135,9 +135,9 @@ internal static class PdfImportMetadataMigrator
         if (collection.Items.Count != 0) output.Outlines = collection;
     }
 
-    private static List<(bool HasDestination, double? Zoom, double? Left, double? Top)> ValidateRawOutlines(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
+    private static List<(bool HasDestination, double? Zoom, double? Left, double? Top, double[]? Rect)> ValidateRawOutlines(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
     {
-        var destinations = new List<(bool HasDestination, double? Zoom, double? Left, double? Top)>();
+        var destinations = new List<(bool HasDestination, double? Zoom, double? Left, double? Top, double[]? Rect)>();
         var catalog = source.Structure.Catalog.CatalogDictionary;
         if (!catalog.Data.TryGetValue("Outlines", out var outlineToken)) return destinations;
         var root = Resolve<DictionaryToken>(outlineToken, source)
@@ -181,7 +181,7 @@ internal static class PdfImportMetadataMigrator
             var (link, expectedLast, depth) = pending.Pop();
             if (depth > options.MaxBookmarkDepth || ++count > options.MaxBookmarkCount)
                 throw new InvalidDataException("PDF outline exceeds the configured node or depth limit.");
-            destinations.Add((false, null, null, null));
+            destinations.Add((false, null, null, null, null));
             var item = Resolve<DictionaryToken>(link, source) ?? throw new InvalidDataException("PDF outline node cannot be resolved.");
             if (item.Data.TryGetValue("Next", out var next)) pending.Push((next, expectedLast, depth));
             else if (!SameOutlineLink(link, expectedLast))
@@ -216,7 +216,7 @@ internal static class PdfImportMetadataMigrator
             if (target.Data[1] is not NameToken destinationType || destinationType.Data is not
                 ("Fit" or "XYZ" or "FitH" or "FitV" or "FitR"))
                 throw new NotSupportedException("PDF outline destination type is unsupported.");
-            destinations[count - 1] = (true, null, null, null);
+            destinations[count - 1] = (true, null, null, null, null);
             if (destinationType.Data == "XYZ")
             {
                 // PdfPig's parsed destination coordinates omit zoom; a missing trailing operand retains the reader's value.
@@ -232,14 +232,23 @@ internal static class PdfImportMetadataMigrator
                     if (zoom.HasValue && (zoom.Value != 0 && (zoom.Value < .1 || zoom.Value > 64)))
                         throw new NotSupportedException("PDF XYZ destination zoom cannot be represented in OFD.");
                 }
-                destinations[count - 1] = (true, zoom, left, top);
+                destinations[count - 1] = (true, zoom, left, top, null);
             }
             else if (destinationType.Data is "FitH" or "FitV")
             {
                 if (target.Data.Count > 3) throw new InvalidDataException("PDF fit destination has invalid coordinates.");
                 var coordinate = CoordinateOperand(target, 2, source);
                 destinations[count - 1] = destinationType.Data == "FitH"
-                    ? (true, null, null, coordinate) : (true, null, coordinate, null);
+                    ? (true, null, null, coordinate, null) : (true, null, coordinate, null, null);
+            }
+            else if (destinationType.Data == "FitR")
+            {
+                if (target.Data.Count != 6) throw new InvalidDataException("PDF rectangle destination is incomplete.");
+                var rectangle = new double[4];
+                for (var index = 0; index < rectangle.Length; index++)
+                    rectangle[index] = CoordinateOperand(target, index + 2, source)
+                        ?? throw new InvalidDataException("PDF rectangle destination is incomplete.");
+                destinations[count - 1] = (true, null, null, null, rectangle);
             }
         }
         return destinations;
@@ -270,10 +279,9 @@ internal static class PdfImportMetadataMigrator
     }
 
     private static OfdDestination Destination(Page source, OfdPage page, ExplicitDestination pdf,
-        (bool HasDestination, double? Zoom, double? Left, double? Top) raw)
+        (bool HasDestination, double? Zoom, double? Left, double? Top, double[]? Rect) raw)
     {
         var result = new OfdDestination { Page = page, Type = OfdDestinationType.Fit };
-        var coordinates = pdf.Coordinates;
         switch (pdf.Type)
         {
             case ExplicitDestinationType.FitPage:
@@ -305,10 +313,9 @@ internal static class PdfImportMetadataMigrator
                 }
                 return result;
             case ExplicitDestinationType.FitRectangle:
-                if (coordinates.Left is not double l || coordinates.Right is not double r ||
-                    coordinates.Top is not double t || coordinates.Bottom is not double b)
+                if (raw.Rect is not { Length: 4 } rectangle)
                     throw new InvalidDataException("PDF rectangle destination is incomplete.");
-                var rect = Rectangle(source, l, b, r, t);
+                var rect = Rectangle(source, rectangle[0], rectangle[1], rectangle[2], rectangle[3]);
                 result.Type = OfdDestinationType.FitR; result.Left = rect.X; result.Top = rect.Y;
                 result.Right = rect.X + rect.Width; result.Bottom = rect.Y + rect.Height;
                 return result;
@@ -348,7 +355,7 @@ internal static class PdfImportMetadataMigrator
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var count = 0; long total = 0;
-        var globalCount = ValidateEmbeddedFileNameTree(source, options, token);
+        var globalFiles = ReadEmbeddedFileNameTree(source, options, token);
         OfdAttachment Add(string name, StreamToken stream)
         {
             token.ThrowIfCancellationRequested();
@@ -364,17 +371,7 @@ internal static class PdfImportMetadataMigrator
             return attachment;
         }
 
-        if (source.Advanced.TryGetEmbeddedFiles(out var embedded))
-        {
-            var files = embedded.ToArray();
-            if (files.Length != globalCount) throw new InvalidDataException("PDF embedded-file name tree contains an omitted file.");
-            foreach (var file in files)
-            {
-                token.ThrowIfCancellationRequested();
-                Add(file.Name ?? file.FileSpecification ?? "attachment", file.Stream);
-            }
-        }
-        else if (globalCount != 0) throw new InvalidDataException("PDF embedded-file name tree could not be read.");
+        foreach (var file in globalFiles) Add(file.Name, file.Stream);
 
         for (var index = 0; index < selected.Count; index++)
         {
@@ -431,14 +428,15 @@ internal static class PdfImportMetadataMigrator
         }
     }
 
-    private static int ValidateEmbeddedFileNameTree(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
+    private static List<(string Name, StreamToken Stream)> ReadEmbeddedFileNameTree(PdfDocument source, PdfToOfdOptions options, CancellationToken token)
     {
+        var result = new List<(string Name, StreamToken Stream)>();
         var catalog = source.Structure.Catalog.CatalogDictionary;
-        if (!catalog.Data.TryGetValue("Names", out var namesToken)) return 0;
+        if (!catalog.Data.TryGetValue("Names", out var namesToken)) return result;
         var names = Resolve<DictionaryToken>(namesToken, source) ?? throw new InvalidDataException("PDF names catalog cannot be resolved.");
-        if (!names.Data.TryGetValue("EmbeddedFiles", out var treeToken)) return 0;
+        if (!names.Data.TryGetValue("EmbeddedFiles", out var treeToken)) return result;
         var pending = new Stack<IToken>(); pending.Push(treeToken);
-        var nodes = 0; var count = 0;
+        var nodes = 0;
         while (pending.Count != 0)
         {
             token.ThrowIfCancellationRequested();
@@ -448,7 +446,7 @@ internal static class PdfImportMetadataMigrator
             {
                 if (node.Data.ContainsKey("Names") || Resolve<ArrayToken>(kidsToken, source) is not { } kids || kids.Data.Count == 0)
                     throw new InvalidDataException("PDF embedded-file name tree mixes child and file entries.");
-                foreach (var child in kids.Data) pending.Push(child);
+                foreach (var child in kids.Data.Reverse()) pending.Push(child);
             }
             else
             {
@@ -458,17 +456,18 @@ internal static class PdfImportMetadataMigrator
                 for (var index = 0; index < files.Data.Count; index += 2)
                 {
                     token.ThrowIfCancellationRequested();
-                    if (++count > options.MaxAttachmentCount || Text(files.Data[index], source) is null ||
+                    if (result.Count >= options.MaxAttachmentCount || Text(files.Data[index], source) is not { } treeName ||
                         Resolve<DictionaryToken>(files.Data[index + 1], source) is not { } specification ||
                         !specification.Data.TryGetValue("EF", out var payloadToken) ||
                         Resolve<DictionaryToken>(payloadToken, source) is not { } payload ||
                         !payload.Data.TryGetValue("UF", out var streamToken) && !payload.Data.TryGetValue("F", out streamToken) ||
-                        Resolve<StreamToken>(streamToken, source) is null)
+                        Resolve<StreamToken>(streamToken, source) is not { } stream)
                         throw new InvalidDataException("PDF embedded-file name tree has an invalid local payload.");
+                    result.Add((treeName, stream));
                 }
             }
         }
-        return count;
+        return result;
     }
 
     private static string Name(string raw, HashSet<string> used)
@@ -519,6 +518,7 @@ internal static class PdfImportMetadataMigrator
             if (source.LongLength > decodedLimit) throw new InvalidDataException("PDF attachment decoded byte limit exceeded.");
             return source;
         }
+        if (filter is ArrayToken { Data.Count: 1 } singleFilter) filter = singleFilter.Data[0];
         if (filter is not NameToken { Data: "FlateDecode" } && filter is not NameToken { Data: "Fl" })
             throw new NotSupportedException("PDF embedded-file filter is unsupported.");
         if (source.Length < 6 || (source[0] & 15) != 8 || ((source[0] << 8) + source[1]) % 31 != 0 || (source[1] & 32) != 0)
