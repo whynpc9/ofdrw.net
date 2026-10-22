@@ -348,6 +348,8 @@ internal sealed class ArchivalStructuralCoverage
             foreach (var layer in content.Elements(ns + "Layer"))
             {
                 observations[7].Seen(entry, layer, this);
+                if (OpaqueGraphicContainerAttributes(layer))
+                    observations[7].Unknown("OpaqueLayerAttributes", entry, layer, this);
                 var name = (string?)layer.Attribute("Name");
                 if (ForeignAttribute(layer, "Name")) observations[7].Unknown("LayerNameAmbiguous", entry, layer, this);
                 if (name is not null && !names.Add(name))
@@ -425,13 +427,23 @@ internal sealed class ArchivalStructuralCoverage
             else if (container.Name == ns + "Layer" || container.Name == ns + "PageBlock" ||
                      container.Name == ns + "Appearance")
             {
-                if (OpaqueNodes(container) || container.Elements().Any(x => x.Name.Namespace != ns || x.Name.LocalName is not
+                if (OpaqueGraphicContainerAttributes(container) || OpaqueNodes(container) ||
+                    container.Elements().Any(x => x.Name.Namespace != ns || x.Name.LocalName is not
                     ("PageBlock" or "TextObject" or "PathObject" or "ImageObject" or "CompositeObject"))) return true;
             }
             else if (OpaqueGraphicChild(container, ns)) return true;
         }
         return false;
     }
+
+    private static bool OpaqueGraphicContainerAttributes(XElement node) =>
+        node.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
+            (attribute.Name.Namespace != XNamespace.None || (node.Name.LocalName switch
+            {
+                "Layer" => attribute.Name.LocalName is not ("ID" or "Type" or "Name"),
+                "PageBlock" => attribute.Name.LocalName is not ("ID" or "Boundary" or "CTM"),
+                _ => false
+            })));
 
     private static bool OpaqueGraphicChild(XElement node, XNamespace ns)
     {

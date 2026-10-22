@@ -798,8 +798,21 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("vendor='x'", PreflightOutcome.Unknown)]
+    [InlineData("ID='2' Type='Body' Name='body'", PreflightOutcome.Pass)]
+    public async Task LayerAttributesControlGraphicAndNameClaims(string attributes, PreflightOutcome expected)
+    {
+        var entries = Seed();
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer {attributes}><ImageObject Interpolate='false'/><TextObject Size='3'/></Layer></Content></Page>");
+        var report = await Check(entries);
+        foreach (var id in new[] { "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(expected, Rule(report, id).Outcome);
+    }
+
+    [Theory]
     [InlineData("<PageBlock ID='3'><PageBlock ID='4'><PathObject/></PageBlock></PageBlock>", PreflightOutcome.Fail)]
     [InlineData("<PageBlock ID='3'><PathObject/></PageBlock>", PreflightOutcome.Pass)]
+    [InlineData("<PageBlock ID='3' vendor='x'><PathObject/></PageBlock>", PreflightOutcome.Unknown)]
     [InlineData("<v:PageBlock xmlns:v='urn:vendor'/>", PreflightOutcome.Unknown)]
     public async Task RetainedAnnotationAppearanceHasNoNestedPageBlocks(string appearance,
         PreflightOutcome expected)
