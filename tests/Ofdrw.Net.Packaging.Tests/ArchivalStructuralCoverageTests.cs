@@ -72,6 +72,20 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
     }
 
+    [Theory]
+    [InlineData("<v:CommonData xmlns:v='urn:vendor'><v:TemplatePage BaseLoc='hidden.xml'/></v:CommonData>")]
+    [InlineData("<CommonData><v:TemplatePage xmlns:v='urn:vendor' BaseLoc='hidden.xml'/></CommonData>")]
+    [InlineData("<CommonData><Wrapper><TemplatePage BaseLoc='hidden.xml'/></Wrapper></CommonData>")]
+    public async Task UnreadTemplateDeclarationsPreventPageActionPass(string commonData)
+    {
+        var report = await Check(Seed(documentExtra: commonData,
+            pageExtra: "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-004").Outcome);
+        report = await Check(Seed(documentExtra: commonData,
+            pageExtra: "<Actions><Action><URI URI='https://example.invalid'/></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-004").Outcome);
+    }
+
     [Fact]
     public async Task MixedPageNamespaceKeepsKnownFailureButPreventsPass()
     {
@@ -123,6 +137,19 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Theory]
+    [InlineData("<Region><URI URI='https://example.invalid'/></Region>", PreflightOutcome.Unknown)]
+    [InlineData("<Region vendor='x'><Area Start='0 0'><Move Point1='0 0'/></Area></Region>", PreflightOutcome.Unknown)]
+    [InlineData("<Region><Area Start='0 0'><Move Point1='0 0'/><Line Point1='1 1'/><Close/></Area></Region>", PreflightOutcome.Pass)]
+    public async Task ActionRegionMustHaveSupportedShape(string region, PreflightOutcome expected)
+    {
+        var action = $"<Actions><Action>{region}<Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>";
+        var report = await Check(Seed(documentExtra: $"<Outlines><OutlineElem Title='A'>{action}</OutlineElem></Outlines>", pageExtra: action));
+        Assert.Equal(expected, Rule(report, "AC-004").Outcome);
+        Assert.Equal(expected, Rule(report, "AC-005").Outcome);
+        Assert.Equal(expected, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
     [InlineData("<FutureAction/>", PreflightOutcome.Unknown)]
     [InlineData("<FutureAction/><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action>", PreflightOutcome.Unknown)]
     [InlineData("<FutureAction/><Action><URI URI='https://example.invalid'/></Action>", PreflightOutcome.Fail)]
@@ -153,6 +180,16 @@ public class ArchivalStructuralCoverageTests
     {
         var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Bookmark Name='future'/></Goto></Action></Actions></OutlineElem></Outlines>";
         var report = await Check(Seed(documentExtra: outline + "<Bookmarks><FutureBookmark/></Bookmarks>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
+    }
+
+    [Theory]
+    [InlineData("vendor='x'", "")]
+    [InlineData("", "opaque")]
+    public async Task OpaqueBookmarkContainerPreventsFalseMissingTargetFailure(string attributes, string payload)
+    {
+        var outline = "<Outlines><OutlineElem Title='A'><Actions><Action><Goto><Bookmark Name='future'/></Goto></Action></Actions></OutlineElem></Outlines>";
+        var report = await Check(Seed(documentExtra: outline + $"<Bookmarks {attributes}>{payload}</Bookmarks>"));
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-006").Outcome);
     }
 
@@ -221,6 +258,21 @@ public class ArchivalStructuralCoverageTests
         var entries = Seed(documentExtra: "<Annotations>Annots/missing.xml</Annotations>");
         var report = await Check(entries);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-009").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-007").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-008").Outcome);
+    }
+
+    [Theory]
+    [InlineData("<FutureFileLoc>hidden.xml</FutureFileLoc>")]
+    [InlineData("opaque")]
+    public async Task OpaqueAnnotationIndexPagePreventsFalsePass(string extra)
+    {
+        var entries = Seed(documentExtra: "<Annotations>Annots/Annotations.xml</Annotations>");
+        entries["Doc_0/Annots/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'><Page PageID='1'><FileLoc>Page.xml</FileLoc>{extra}</Page></Annotations>");
+        entries["Doc_0/Annots/Page.xml"] = Utf8($"<PageAnnot xmlns='{Ns}'><Annot ID='2' ReadOnly='true' NoZoom='true' NoRotate='true'><Appearance><PathObject/></Appearance></Annot></PageAnnot>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-009").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-012").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-007").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(report, "AC-008").Outcome);
     }

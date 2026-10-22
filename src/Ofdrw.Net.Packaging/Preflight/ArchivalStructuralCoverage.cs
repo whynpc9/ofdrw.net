@@ -95,11 +95,13 @@ internal sealed class ArchivalStructuralCoverage
         { targetInventoryUnknown = true; UnknownPageScope("PageTreeEmpty", documentEntry); }
         var common = document.Elements(ns + "CommonData").ToArray();
         if (common.Length > 1 || Foreign(document, "CommonData", ns))
-        { UnknownGraphics("CommonDataAmbiguous", documentEntry); observations[7].Unknown("CommonDataAmbiguous", documentEntry); }
+            UnknownPageScope("CommonDataAmbiguous", documentEntry);
+        if (common.Any(x => x.Descendants(ns + "TemplatePage").Any(y => y.Parent != x)))
+            UnknownPageScope("NestedTemplatePage", documentEntry);
         foreach (var template in common.SelectMany(x => x.Elements(ns + "TemplatePage")))
             ReadPage(template, documentEntry, true);
         if (common.Any(x => Foreign(x, "TemplatePage", ns)))
-        { UnknownGraphics("ForeignTemplatePage", documentEntry); observations[7].Unknown("ForeignTemplatePage", documentEntry); }
+            UnknownPageScope("ForeignTemplatePage", documentEntry);
     }
 
     private void ReadPage(XElement declaration, string containing, bool template)
@@ -140,6 +142,8 @@ internal sealed class ArchivalStructuralCoverage
         {
             if (container.Elements().Any(x => x.Name != ns + "Bookmark")) targetInventoryUnknown = true;
             if (Foreign(container, "Bookmark", ns)) targetInventoryUnknown = true;
+            if (container.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(container))
+                targetInventoryUnknown = true;
             foreach (var bookmark in container.Elements(ns + "Bookmark"))
             {
                 var name = (string?)bookmark.Attribute("Name");
@@ -192,18 +196,25 @@ internal sealed class ArchivalStructuralCoverage
             { UnknownAnnotationScope("AnnotationIndexUnavailable", indexEntry); continue; }
             if (index.Name.Namespace != documentNamespace)
                 UnknownAnnotationScope("MixedAnnotationNamespace", indexEntry);
-            if (index.Elements().Any(x => x.Name != index.Name.Namespace + "Page"))
+            if (index.Elements().Any(x => x.Name != index.Name.Namespace + "Page") ||
+                index.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(index))
                 UnknownAnnotationScope("OpaqueAnnotationIndex", indexEntry);
             if (Foreign(index, "Page", index.Name.Namespace))
             { UnknownAnnotationScope("ForeignAnnotationPage", indexEntry); }
             foreach (var page in index.Elements(index.Name.Namespace + "Page"))
             {
+                if (page.Elements().Any(x => x.Name != index.Name.Namespace + "FileLoc") ||
+                    page.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "PageID") ||
+                    OpaqueNodes(page))
+                    UnknownAnnotationScope("OpaqueAnnotationPage", indexEntry);
                 if (ForeignAttribute(page, "PageID") ||
                     !Id((string?)page.Attribute("PageID"), out var pageNumber) || !pageIds.Contains(pageNumber))
                     UnknownAnnotationScope("AnnotationPageOwnerAmbiguous", indexEntry);
                 var files = page.Elements(index.Name.Namespace + "FileLoc").ToArray();
                 if (files.Length != 1 || Foreign(page, "FileLoc", index.Name.Namespace) ||
-                    files[0].HasElements || !TryEntry(indexEntry, files[0].Value, out var entry))
+                    files[0].HasElements || files[0].Attributes().Any(x => !x.IsNamespaceDeclaration) ||
+                    files[0].Nodes().Any(x => x is not XText) ||
+                    !TryEntry(indexEntry, files[0].Value, out var entry))
                 { UnknownAnnotationScope("AnnotationPageUnavailable", indexEntry); continue; }
                 var content = Read(entry, "PageAnnot");
                 if (content is null)
@@ -335,9 +346,7 @@ internal sealed class ArchivalStructuralCoverage
                 var kinds = action.Elements().Where(x => x.Name != ns + "Region").ToArray();
                 var actionOpaque = action.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Event") ||
                     (string?)action.Attribute("Event") is not (null or "DO" or "PO" or "CLICK") ||
-                    OpaqueNodes(action) || action.Elements(ns + "Region").Any(x =>
-                        x.DescendantsAndSelf().Any(y => y.Name.Namespace != ns || OpaqueNodes(y) ||
-                            y.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name.Namespace != XNamespace.None)));
+                    OpaqueNodes(action) || action.Elements(ns + "Region").Any(x => !StandardActionRegion(x, ns));
                 if (target is not null)
                     foreach (var go in kinds.Where(x => x.Name == ns + "Goto"))
                     {
@@ -357,6 +366,38 @@ internal sealed class ArchivalStructuralCoverage
                 { type.Unknown("UnsupportedAction", entry, location); target?.Unknown("UnsupportedAction", entry, location); }
             }
         }
+    }
+
+    private static bool StandardActionRegion(XElement region, XNamespace ns)
+    {
+        if (region.Parent?.Name != ns + "Action" ||
+            !ReferenceEquals(region.Parent.Elements().FirstOrDefault(), region) ||
+            region.Attributes().Any(x => !x.IsNamespaceDeclaration) || OpaqueNodes(region)) return false;
+        var areas = region.Elements().ToArray();
+        if (areas.Length == 0) return false;
+        foreach (var area in areas)
+        {
+            if (area.Name != ns + "Area" || string.IsNullOrWhiteSpace((string?)area.Attribute("Start")) ||
+                area.Attributes().Any(x => !x.IsNamespaceDeclaration && x.Name != "Start") ||
+                OpaqueNodes(area)) return false;
+            var commands = area.Elements().ToArray();
+            if (commands.Length == 0) return false;
+            foreach (var command in commands)
+            {
+                if (command.HasElements || OpaqueNodes(command)) return false;
+                string[]? names = command.Name == ns + "Move" || command.Name == ns + "Line" ? new[] { "Point1" } :
+                    command.Name == ns + "QuadraticBezier" ? new[] { "Point1", "Point2" } :
+                    command.Name == ns + "CubicBezier" ? new[] { "Point1", "Point2", "Point3" } :
+                    command.Name == ns + "Arc" ? new[] { "SweepDirection", "LargeArc", "RotationAngle", "EllipseSize", "EndPoint" } :
+                    command.Name == ns + "Close" ? Array.Empty<string>() : null;
+                if (names is null || command.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+                    (x.Name.Namespace != XNamespace.None || !names.Contains(x.Name.LocalName))))
+                    return false;
+                if (command.Name != ns + "Close" && names.Any(name => string.IsNullOrWhiteSpace((string?)command.Attribute(name))))
+                    return false;
+            }
+        }
+        return true;
     }
 
     private static bool GotoOpaque(XElement go, XNamespace ns)
