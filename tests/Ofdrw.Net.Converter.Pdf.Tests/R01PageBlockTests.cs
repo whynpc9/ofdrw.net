@@ -839,7 +839,7 @@ public sealed class R01PageBlockTests
             var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
             page.Elements.Add(new OfdRawElement { LocalName = "PageBlock",
                 Xml = $"<PageBlock xmlns='{Ns}' ID='{500 + index * 100}'>" +
-                    $"<PathObject ID='{501 + index * 100}' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+                    $"<PathObject ID='{501 + index * 100}' Boundary='60 60 20 20' Fill='true' Stroke='false'>" +
                     "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject></PageBlock>" });
             package.Pages.Add(page);
         }
