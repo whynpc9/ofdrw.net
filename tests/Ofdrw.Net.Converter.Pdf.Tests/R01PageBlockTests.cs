@@ -813,6 +813,40 @@ public sealed class R01PageBlockTests
         Retain("numeric-font-ids", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Fact]
+    public async Task NumericFontReferenceSelectsItsFaceBeforeSameNamedFallback()
+    {
+        const string resources = "<Fonts><Font ID='20' FontName='Noto Sans' Bold='false'/>" +
+            "<Font ID='030' FontName='Noto Sans' Bold='true'/></Fonts>" +
+            "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='10'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='30' Size='4'>" +
+            "<TextCode X='0' Y='4'>nested face</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        const string body = "<TextObject ID='501' Boundary='10 10 50 10' Font='30' Size='4'>" +
+            "<TextCode X='0' Y='4'>direct face</TextCode></TextObject>" +
+            "<CompositeObject ID='553' Boundary='10 30 50 10' ResourceID='551'/>";
+        var ofd = await Source(body, resources: resources);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var direct = Assert.IsType<OfdTextElement>(block.PageBlockChildren![0]);
+        var composite = Assert.IsType<OfdCompositeElement>(block.PageBlockChildren[1]);
+        var nested = Assert.IsType<OfdTextElement>(Assert.Single(composite.Resource.Elements));
+        foreach (var text in new[] { direct, nested })
+        {
+            Assert.Equal("30", text.FontResourceId);
+            var selected = Assert.IsType<OfdFontResource>(OfdFontSelection.Resolve(read.Fonts, text));
+            Assert.Equal("030", selected.Id);
+            Assert.True(selected.Bold);
+        }
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("direct face", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("nested face", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("numeric-font-face-ids", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
     [Theory]
     [InlineData("root", false)]
     [InlineData("container", false)]
@@ -1049,6 +1083,49 @@ public sealed class R01PageBlockTests
         Assert.Contains("A 10 10 0 0 1 20 10", Encoding.UTF8.GetString(svg.ToArray()));
         Assert.Contains("A 10 10 0 0 1 20 10", Encoding.UTF8.GetString(html.ToArray()));
         Retain("pageblock-clip-arc", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData("0 1", true)]
+    [InlineData("2 2", false)]
+    [InlineData("1.0 0", false)]
+    public async Task DefaultPageBlockClipArcUsesTheSameFlagAdmission(string flags, bool supported)
+    {
+        var body = "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+            "<Clips><Clip><Area><Path>" +
+            $"<AbbreviatedData>M 0 10 A 10 10 0 {flags} 20 10 L 20 20 L 0 20 C</AbbreviatedData>" +
+            "</Path></Area></Clip></Clips>" +
+            "<FillColor Value='0 0 255'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var path = Assert.IsType<OfdPathElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Null(path.Clips);
+        Assert.NotNull(path.ClippingXml);
+        var converters = new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        };
+        if (!supported)
+        {
+            foreach (var convert in converters)
+            {
+                using var output = new MemoryStream();
+                var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), output));
+                Assert.Contains("clip path data", error.Message);
+                Assert.Equal(0, output.Length);
+            }
+            return;
+        }
+        using var pdf = new MemoryStream(); await converters[0](new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await converters[1](new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await converters[2](new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("A 10 10 0 0 1 20 10", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("A 10 10 0 0 1 20 10", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("pageblock-clip-arc-default", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
     [Theory]
