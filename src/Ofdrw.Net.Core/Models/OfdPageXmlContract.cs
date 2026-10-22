@@ -19,7 +19,7 @@ internal static class OfdPageXmlContract
         xml.Nodes().All(node => node is XElement or XComment || node is XText text && string.IsNullOrWhiteSpace(text.Value)) &&
         root.Elements(root.Name.Namespace + "Area").Count() <= 1 &&
         root.Elements(root.Name.Namespace + "Content").Count() <= 1 &&
-        root.Elements().Where(child => child.Name.LocalName is "Area" or "Content")
+        root.Elements().Where(child => child.Name.LocalName == "Area")
             .All(child => child.Name.Namespace == root.Name.Namespace) &&
         root.Elements(root.Name.Namespace + "Area").All(area => IsRepresentedArea(area, root.Name.Namespace));
 
