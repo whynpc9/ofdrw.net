@@ -869,10 +869,15 @@ public sealed class OfdReader : IOfdReader
             flags[name] = literal is null ? null : literal is "true" or "1";
         }
         var appearance = annotation.Element(ns + "Appearance")!;
+        var attachmentActions = appearance.Descendants(ns + "GotoA").ToArray();
+        if (attachmentActions.Length > 1 || attachmentActions.Any(action => string.IsNullOrWhiteSpace(action.Attribute("AttachID")?.Value) ||
+            action.Parent?.Name != ns + "Action" || action.Parent.Attribute("Event")?.Value != "CLICK")) return null;
+        if (attachmentActions.Length == 1 && (type != OfdAnnotationType.Link || appearance.Elements().Count() != 1 ||
+            appearance.Elements().Single().Name != ns + "PathObject")) return null;
         if (!TryParseBox(appearance.Attribute("Boundary")?.Value, material, token, out _) ||
             appearance.Nodes().Any(n => n is XText t && !string.IsNullOrWhiteSpace(t.Value)) ||
             appearance.Elements().Any(n => n.Name.Namespace != ns || n.Name.LocalName is not ("TextObject" or "ImageObject" or "PathObject") ||
-                !Unique(n.Attribute("ID")?.Value) || !IsSupportedAnnotationPrimitive(n, ns))) return null;
+                !Unique(n.Attribute("ID")?.Value) || !IsSupportedAnnotationPrimitive(n, ns, attachmentActions.Length == 1))) return null;
         foreach (var primitive in appearance.Elements())
         {
             token.ThrowIfCancellationRequested();
@@ -894,7 +899,8 @@ public sealed class OfdReader : IOfdReader
             Id = annotation.Attribute("ID")!.Value, Type = type, Creator = annotation.Attribute("Creator")!.Value,
             LastModifiedDate = DateTime.SpecifyKind(date, DateTimeKind.Unspecified), Subtype = annotation.Attribute("Subtype")?.Value,
             Visible = flags["Visible"], Print = flags["Print"], NoZoom = flags["NoZoom"], NoRotate = flags["NoRotate"], ReadOnly = flags["ReadOnly"],
-            Remark = ReadValue(remark, material, token), SourceXml = OfdXmlEnvelope.Capture(annotation, material, token),
+            Remark = ReadValue(remark, material, token), AttachmentId = attachmentActions.SingleOrDefault()?.Attribute("AttachID")?.Value,
+            SourceXml = OfdXmlEnvelope.Capture(annotation, material, token),
             Appearance = new OfdAnnotationAppearance { XMillimeters = box.x, YMillimeters = box.y, WidthMillimeters = box.w,
                 HeightMillimeters = box.h, Transform = matrix, SourceXml = OfdXmlEnvelope.Capture(appearance, material, token) }
         };
@@ -949,10 +955,10 @@ public sealed class OfdReader : IOfdReader
         return Append(nodes, 0) ? result : null;
     }
 
-    private static bool IsSupportedAnnotationPrimitive(XElement root, XNamespace ns)
+    private static bool IsSupportedAnnotationPrimitive(XElement root, XNamespace ns, bool allowAttachmentAction = false)
     {
         if (root.Name == ns + "TextObject" && !root.Elements(ns + "TextCode").Any()) return false;
-        return OfdGraphicXmlContract.HasKnownChildren(root) && !OfdGraphicXmlContract.HasUnsupportedReferences(root);
+        return OfdGraphicXmlContract.HasKnownChildren(root) && !OfdGraphicXmlContract.HasUnsupportedReferences(root, allowAttachmentAction);
     }
 
     private static void ReadFonts(

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Abstractions.Interfaces;
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Converter.Pdf.Internal;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging;
@@ -63,8 +64,9 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                     using var document = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth });
                     if (!PlainCatalog(document)) throw new NotSupportedException("PDFV_UNSUPPORTED: catalog color/optional-content/rendering extensions.");
                     document.AddPageFactory<VectorPageContext, VectorContextFactory>();
+                    var allowFileAnnotations = PdfImportMetadataMigrator.HasOnlyFileAttachments(document, index, limits.Compatibility, cancellationToken);
                     var context = document.GetPage<VectorPageContext>(index + 1);
-                    var staged = context.Convert(limits, cancellationToken, limits.Compatibility.MaxTotalImageBytes - imageBytes);
+                    var staged = context.Convert(limits, cancellationToken, limits.Compatibility.MaxTotalImageBytes - imageBytes, allowFileAnnotations);
                     page = staged.Pages.Single();
                     var nativeImages = page.Elements.OfType<OfdImageElement>().Sum(image => (long)image.Data.Length);
                     if (nativeImages > limits.Compatibility.MaxTotalImageBytes - imageBytes)
@@ -107,6 +109,9 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                         // A rejected page contributes no staged vector content or fonts.
                         var fallbackOptions = VectorLimits.CopyCompatibility(limits.Compatibility);
                         fallbackOptions.RequireRasterization = true;
+                        // The final package imports metadata once, after all selected pages are known.
+                        fallbackOptions.CopyBookmarks = false;
+                        fallbackOptions.CopyAttachments = false;
                         fallbackOptions.MaxTotalImageBytes = limits.Compatibility.MaxTotalImageBytes - imageBytes;
                         if (fallbackOptions.MaxTotalImageBytes <= 0) throw new InvalidDataException("PDF accumulated image byte limit exceeded.");
                         using var input = File.OpenRead(path); using var output = new MemoryStream();
@@ -141,6 +146,11 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                     page.Elements.OfType<OfdTextElement>().Count(), page.Elements.OfType<OfdImageElement>().Count(), diagnostic));
             }
             cancellationToken.ThrowIfCancellationRequested();
+            if (limits.Compatibility.CopyBookmarks || limits.Compatibility.CopyAttachments)
+            {
+                using var metadataSource = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth });
+                PdfImportMetadataMigrator.Apply(metadataSource, package, selection, limits.Compatibility, cancellationToken);
+            }
             await new OfdPackageWriter().WriteAsync(package, ofdOutput, cancellationToken).ConfigureAwait(false);
             return new PdfVectorConversionResult(count, results.ToArray());
         }
@@ -185,5 +195,9 @@ internal static class VectorLimits
     { MaxInputBytes = value.MaxInputBytes, MaxPageCount = value.MaxPageCount, MaxRasterizedPixelsPerPage = value.MaxRasterizedPixelsPerPage,
         MaxTotalImageBytes = value.MaxTotalImageBytes, ExternalRasterizationTimeout = value.ExternalRasterizationTimeout, Dpi = value.Dpi,
         RequireRasterization = value.RequireRasterization, PreferExternalPdfToPpm = value.PreferExternalPdfToPpm,
-        TextLayerMode = value.TextLayerMode, MaxTextObjectsPerPage = value.MaxTextObjectsPerPage, Namespace = value.Namespace };
+        TextLayerMode = value.TextLayerMode, MaxTextObjectsPerPage = value.MaxTextObjectsPerPage, Namespace = value.Namespace,
+        CopyBookmarks = value.CopyBookmarks, CopyAttachments = value.CopyAttachments,
+        MaxBookmarkCount = value.MaxBookmarkCount, MaxBookmarkDepth = value.MaxBookmarkDepth,
+        MaxAttachmentCount = value.MaxAttachmentCount, MaxAttachmentBytes = value.MaxAttachmentBytes,
+        MaxTotalAttachmentBytes = value.MaxTotalAttachmentBytes };
 }

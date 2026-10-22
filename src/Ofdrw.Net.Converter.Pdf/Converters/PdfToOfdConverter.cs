@@ -39,7 +39,9 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
         _options = options ?? throw new ArgumentNullException(nameof(options));
         if (_options.MaxTextObjectsPerPage <= 0 || _options.MaxInputBytes <= 0 ||
             _options.MaxPageCount <= 0 || _options.MaxRasterizedPixelsPerPage <= 0 ||
-            _options.MaxTotalImageBytes <= 0 || _options.ExternalRasterizationTimeout <= TimeSpan.Zero)
+            _options.MaxTotalImageBytes <= 0 || _options.ExternalRasterizationTimeout <= TimeSpan.Zero ||
+            _options.MaxBookmarkCount <= 0 || _options.MaxBookmarkDepth <= 0 || _options.MaxAttachmentCount <= 0 ||
+            _options.MaxAttachmentBytes <= 0 || _options.MaxTotalAttachmentBytes <= 0)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(options),
@@ -152,6 +154,7 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             }
             package.Pages.Add(page);
         }
+        PdfImportMetadataMigrator.Apply(document, package, selected, _options, cancellationToken);
         return new PdfToOfdPackageResult(package, new PdfConversionResult(document.NumberOfPages, selected, diagnostics));
     }
 
