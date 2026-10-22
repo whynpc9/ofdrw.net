@@ -251,6 +251,7 @@ internal sealed class ArchivalStructuralCoverage
     private void ReadAnnotations(XElement document, XNamespace ns)
     {
         var declarations = document.Elements(ns + "Annotations").ToArray();
+        var inspectedEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (declarations.Length > 1 || Foreign(document, "Annotations", ns))
             UnknownAnnotationScope("AnnotationScopeAmbiguous", documentEntry);
         foreach (var declaration in declarations)
@@ -284,6 +285,8 @@ internal sealed class ArchivalStructuralCoverage
                     files[0].Nodes().Any(x => x is not XText) ||
                     !TryEntry(indexEntry, files[0].Value, out var entry))
                 { UnknownAnnotationScope("AnnotationPageUnavailable", indexEntry); continue; }
+                // The same PageAnnot can be referenced by many index records; inspect its objects once.
+                if (!inspectedEntries.Add(entry)) continue;
                 var content = Read(entry, "PageAnnot");
                 if (content is null)
                 { UnknownAnnotationScope("AnnotationPageUnavailable", entry); continue; }
@@ -724,7 +727,8 @@ internal sealed class ArchivalStructuralCoverage
     private static bool Foreign(XElement parent, string local, XNamespace ns) =>
         parent.Elements().Any(x => x.Name.LocalName == local && x.Name.Namespace != ns);
     private static bool ForeignAttribute(XElement parent, string local) =>
-        parent.Attributes().Any(x => x.Name.LocalName == local && x.Name.Namespace != XNamespace.None);
+        parent.Attributes().Any(x => !x.IsNamespaceDeclaration &&
+            x.Name.LocalName == local && x.Name.Namespace != XNamespace.None);
     private string Selector(XElement node)
     {
         var value = "/" + string.Join("/", node.AncestorsAndSelf().Reverse().Select(x =>

@@ -449,6 +449,16 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal("6.5(b)", Rule(report, "AC-007").Rule.Clause);
     }
 
+    [Fact]
+    public async Task NamespaceDeclarationsDoNotImpersonateForeignAttributes()
+    {
+        var entries = Seed();
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Actions><Action><Goto><Dest xmlns:PageID='urn:x' Type='Fit' PageID='1'/></Goto></Action></Actions><Content><Layer xmlns:Name='urn:x' Name='body'><ImageObject xmlns:Interpolate='urn:x' Interpolate='false'/><TextObject xmlns:Size='urn:x' Size='3'/></Layer></Content></Page>");
+        var report = await Check(entries);
+        foreach (var id in new[] { "AC-004", "AC-007", "AC-008", "AC-011" })
+            Assert.Equal(PreflightOutcome.Pass, Rule(report, id).Outcome);
+    }
+
     [Theory]
     [InlineData("<TextObject Size='3'><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Pass)]
     [InlineData("<TextObject Size='100000000000000000000000000000'><TextCode>OK</TextCode></TextObject>", PreflightOutcome.Pass)]
@@ -486,6 +496,20 @@ public class ArchivalStructuralCoverageTests
         var report = await Check(entries);
         Assert.Equal(expected, Rule(report, "AC-009").Outcome);
         Assert.Equal("6.10.1(a)(3)", Rule(report, "AC-009").Rule.Clause);
+    }
+
+    [Fact]
+    public async Task SharedAnnotationTreeIsInspectedOnce()
+    {
+        var entries = Seed(documentExtra: "<Annotations>Annots/Annotations.xml</Annotations>");
+        var pages = string.Concat(Enumerable.Repeat("<Page PageID='1'><FileLoc>Page.xml</FileLoc></Page>", 100));
+        var annots = string.Concat(Enumerable.Range(2, 10).Select(id =>
+            $"<Annot ID='{id}' ReadOnly='true' NoZoom='true' NoRotate='true'><Appearance><PathObject/></Appearance></Annot>"));
+        entries["Doc_0/Annots/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'>{pages}</Annotations>");
+        entries["Doc_0/Annots/Page.xml"] = Utf8($"<PageAnnot xmlns='{Ns}'>{annots}</PageAnnot>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-009").Outcome);
+        Assert.StartsWith("Recognized objects=10;", Rule(report, "AC-009").Evidence.Observed, StringComparison.Ordinal);
     }
 
     [Fact]
