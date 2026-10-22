@@ -871,6 +871,34 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Fact]
+    public async Task PageBlockCompositeTextWithoutTextCodeFailsAllRenderers()
+    {
+        const string resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'/>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var composite = Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!));
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(composite.Resource.Elements));
+        Assert.Empty(text.Runs);
+        Assert.Contains("TextObject", text.SourceXml);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Contains("TextCode", error.Message);
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
     [Theory]
     [InlineData("duplicate-file")]
     [InlineData("font-attribute")]

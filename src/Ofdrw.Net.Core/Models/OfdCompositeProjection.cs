@@ -70,6 +70,8 @@ internal static class OfdCompositeProjection
                 if (pageBlockChild || compositeChild) source = resolvedSource;
             }
             string? scalarError = null;
+            if (pageBlockChild && element is OfdTextElement { Runs.Count: 0 })
+                scalarError = "PageBlock text requires at least one TextCode.";
             if (pageBlockChild && element is OfdImageElement { SourceMediaAmbiguous: true })
                 scalarError = "PageBlock image has an ambiguous media declaration.";
             // This admission is for rendering. Keep a Reader paint failure on
