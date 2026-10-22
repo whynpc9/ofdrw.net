@@ -1045,6 +1045,16 @@ public sealed class OfdReader : IOfdReader
             var key = CanonicalResourceId(id);
             if (key is null) continue;
 
+            var declaredType = media.Attribute("Type")?.Value;
+            if (declaredType is not null && !string.Equals(declaredType, "Image", StringComparison.Ordinal))
+            {
+                // A page-level resource can shadow a document-level image ID.
+                // Keep an explicit non-image declaration unresolved for ImageObject.
+                mediaMap.Remove(key);
+                mediaTypeMap.Remove(key);
+                continue;
+            }
+
             material.ReserveReadModel(512L + 16L * ((baseLoc?.Length ?? 0) + file!.Length + (media.Attribute("Format")?.Value.Length ?? 0)), cancellationToken);
             var mediaLoc = string.IsNullOrWhiteSpace(baseLoc) || file!.StartsWith("/", StringComparison.Ordinal)
                 ? file!
