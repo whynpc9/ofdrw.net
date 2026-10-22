@@ -170,6 +170,22 @@ public class ArchivalStructuralCoverageTests
     }
 
     [Fact]
+    public async Task SharedPageTreeIsInspectedOnceAcrossPageAndTemplateDeclarations()
+    {
+        var entries = Seed();
+        var pageDeclarations = string.Concat(Enumerable.Range(1, 100).Select(id =>
+            $"<Page ID='{id}' BaseLoc='Pages/P0/Content.xml'/>"));
+        var templateDeclarations = string.Concat(Enumerable.Range(200, 100).Select(id =>
+            $"<TemplatePage ID='{id}' BaseLoc='Pages/P0/Content.xml'/>"));
+        entries["Doc_0/Document.xml"] = Utf8($"<Document xmlns='{Ns}'><Pages>{pageDeclarations}</Pages><CommonData>{templateDeclarations}</CommonData></Document>");
+        var images = string.Concat(Enumerable.Repeat("<ImageObject Interpolate='false'/>", 10));
+        entries["Doc_0/Pages/P0/Content.xml"] = Utf8($"<Page xmlns='{Ns}'><Content><Layer>{images}</Layer></Content></Page>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Pass, Rule(report, "AC-007").Outcome);
+        Assert.StartsWith("Recognized objects=10;", Rule(report, "AC-007").Evidence.Observed, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task MixedPageNamespaceKeepsKnownFailureButPreventsPass()
     {
         var entries = Seed();

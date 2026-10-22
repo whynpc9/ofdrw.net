@@ -25,6 +25,7 @@ internal sealed class ArchivalStructuralCoverage
     private readonly Dictionary<string, XElement> bookmarks = new(StringComparer.Ordinal);
     private readonly HashSet<long> pageIds = new();
     private readonly HashSet<long> templateIds = new();
+    private readonly HashSet<string> inspectedPageEntries = new(StringComparer.OrdinalIgnoreCase);
     private long xmlBytes;
     private int xmlNodes;
     private int references;
@@ -152,6 +153,8 @@ internal sealed class ArchivalStructuralCoverage
             if (!template) targetInventoryUnknown = true;
             return;
         }
+        // Declaration and reference checks still run for each use, but a cached page tree is inspected once.
+        if (!inspectedPageEntries.Add(entry)) return;
         var page = Read(entry, "Page");
         if (page is null)
         {
