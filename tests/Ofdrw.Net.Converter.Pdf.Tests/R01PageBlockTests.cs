@@ -3205,6 +3205,61 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Fact]
+    public async Task NestedPageBlockInCompositeResourceKeepsTextAndUniqueIds()
+    {
+        const string resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<PageBlock xmlns='http://www.ofdspec.org/2016' ID='701'>" +
+            "<TextObject ID='702' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>nested resource text</TextCode></TextObject></PageBlock>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Equal("nested resource text", new OfdTextExtractor().Extract(read));
+        var composite = Assert.IsType<OfdCompositeElement>(Assert.Single(
+            Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        var nested = Assert.IsType<OfdRawElement>(Assert.Single(composite.Resource.Elements));
+        Assert.IsType<OfdTextElement>(Assert.Single(nested.PageBlockChildren!));
+        using var rewritten = new MemoryStream(); await new OfdPackageWriter().WriteAsync(read, rewritten);
+        var reread = await new OfdReader().ReadAsync(new MemoryStream(rewritten.ToArray()));
+        Assert.Equal("nested resource text", new OfdTextExtractor().Extract(reread));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("nested resource text", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("nested resource text", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("nested-composite-pageblock", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData("500", "702")]
+    [InlineData("701", "10")]
+    public async Task NestedCompositePageBlockIdsRejectActiveCollisions(string blockId, string textId)
+    {
+        var resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            $"<PageBlock xmlns='http://www.ofdspec.org/2016' ID='{blockId}'>" +
+            $"<TextObject ID='{textId}' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>duplicate nested ID</TextCode></TextObject></PageBlock>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources, font: true);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(new MemoryStream(ofd)));
+        Assert.Contains("Duplicate active document-unit ID", error.Message);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<InvalidDataException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
     [Theory]
     [InlineData("single")]
     [InlineData("duplicate")]

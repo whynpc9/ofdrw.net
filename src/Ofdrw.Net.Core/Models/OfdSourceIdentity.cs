@@ -359,8 +359,11 @@ internal sealed class OfdSourceIdentity
             var container = node.Name.LocalName switch
             { "Font" => "Fonts", "MultiMedia" => "MultiMedias", "DrawParam" => "DrawParams", "ColorSpace" => "ColorSpaces", "CompositeGraphicUnit" => "CompositeGraphicUnits", _ => null };
             if (container is not null) return node.Parent?.Name == ns + container && node.Parent.Parent == root;
-            if (node.Name.Namespace != ns || node.Name.LocalName is not ("TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;
-            return node.Parent?.Name == ns + "CompositeGraphicUnit" && node.Parent.Parent?.Name == ns + "CompositeGraphicUnits" && node.Parent.Parent.Parent == root;
+            if (!Accepted(node.Name.Namespace, ns) || node.Name.LocalName is not ("PageBlock" or "TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;
+            var parent = node.Parent;
+            while (parent is not null && parent.Name.LocalName == "PageBlock" && Accepted(parent.Name.Namespace, ns))
+                parent = parent.Parent;
+            return parent?.Name == ns + "CompositeGraphicUnit" && parent.Parent?.Name == ns + "CompositeGraphicUnits" && parent.Parent.Parent == root;
         }
         if (node.Name.LocalName == "Layer" && node.Parent?.Name != ns + "Content") return false;
         if (root.Name.LocalName != "Page" || node.Name.LocalName is not ("Layer" or "PageBlock" or "TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;
