@@ -179,7 +179,11 @@ internal static class OfdCompositeProjection
                     !HasWellFormedScalars(node, material, token)))
                 placementError = "Malformed PageBlock composite placement cannot be exported.";
             if (node.Attributes().Any(a => !a.IsNamespaceDeclaration && (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("ID" or "Boundary" or "CTM" or "ResourceID" or "Visible"))) || node.Elements().Any(n => n.Name != node.Name.Namespace + "Clips") || node.Nodes().Any(n => n is XProcessingInstruction || n is XText text && !string.IsNullOrWhiteSpace(text.Value)))
-                throw new NotSupportedException("Composite opacity, drawing parameters and extensions are outside the render profile.");
+                placementError ??= "Composite opacity, drawing parameters and extensions are outside the render profile.";
+            // Reader retains only the first Clips container on the model. Admit
+            // the original placement only when that container is a singleton.
+            if (node.Elements(node.Name.Namespace + "Clips").Skip(1).Any())
+                placementError ??= "Composite placement has multiple Clips containers.";
         }
         if (composite.Resource.SourceXml is { } resourceSource)
         {

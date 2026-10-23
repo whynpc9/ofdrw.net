@@ -3109,6 +3109,60 @@ public sealed class R01PageBlockTests
         Retain(label, ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Theory]
+    [InlineData("single")]
+    [InlineData("duplicate")]
+    [InlineData("extension")]
+    public async Task CompositePlacementClipsRequireOneStandardContainer(string variant)
+    {
+        const string clip = "<Clips><Clip><Area><Path Stroke='false' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 25 0 L 25 20 L 0 20 C</AbbreviatedData>" +
+            "</Path></Area></Clip></Clips>";
+        const string resource = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<PathObject ID='570' Boundary='0 0 50 20' Fill='true' Stroke='false'>" +
+            "<FillColor Value='0 0 255'/><AbbreviatedData>M 0 0 L 50 0 L 50 20 L 0 20 C</AbbreviatedData>" +
+            "</PathObject>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>clip sentinel</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var extra = variant switch
+        {
+            "single" => "",
+            "duplicate" => clip,
+            _ => "<ext:Clips xmlns:ext='urn:vendor'/>",
+        };
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'>" +
+            clip + extra + "</CompositeObject>", resources: resource, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var placement = Assert.IsType<OfdCompositeElement>(Assert.Single(
+            Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.Equal(variant == "duplicate" ? 2 : 1,
+            XElement.Parse(placement.SourceXml!).Elements(XNamespace.Get(Ns) + "Clips").Count());
+        Assert.Equal("clip sentinel", new OfdTextExtractor().Extract(read));
+        if (variant == "single")
+        {
+            using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+            using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+            using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+            Assert.True(pdf.Length > 0);
+            Assert.Contains("clip sentinel", Encoding.UTF8.GetString(svg.ToArray()));
+            Assert.Contains("clip sentinel", Encoding.UTF8.GetString(html.ToArray()));
+            Retain("composite-single-clips", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+            return;
+        }
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
     [Fact]
     public async Task LaterPageBlockTextCodesInheritPreviousStartCoordinates()
     {
