@@ -32,7 +32,7 @@ public class ArchivalStructuralCoverageTests
         var report = await new ArchivalCoverageService().CheckAsync(input, options ?? new());
         Assert.Equal(0, input.Position);
         Assert.Equal(original, SHA256.HashData(input.ToArray()));
-        Assert.Equal(12, report.RuleResults.Count);
+        Assert.Equal(15, report.RuleResults.Count);
         return report;
     }
     private static ArchivalCoverageRuleResult Rule(ArchivalCoverageReport report, string id) =>
@@ -832,6 +832,79 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
         var clean = await Check(Seed());
         Assert.Equal(PreflightOutcome.Unknown, Rule(clean, "AC-010").Outcome);
+    }
+
+    [Theory]
+    [InlineData("document")]
+    [InlineData("page")]
+    [InlineData("outline")]
+    [InlineData("graphic")]
+    public async Task RecognizedExternalUriActionIsDefiniteClause69Failure(string owner)
+    {
+        const string actions = "<Actions><Action><URI URI='https://example.invalid/resource'/></Action></Actions>";
+        var entries = owner switch
+        {
+            "document" => Seed(documentExtra: actions),
+            "page" => Seed(pageExtra: actions),
+            "outline" => Seed(documentExtra: $"<Outlines><OutlineElem Title='link'>{actions}</OutlineElem></Outlines>"),
+            _ => Seed(objects: $"<PathObject>{actions}</PathObject>")
+        };
+        var result = Rule(await Check(entries), "AC-013");
+        Assert.Equal(PreflightOutcome.Fail, result.Outcome);
+        Assert.Equal("6.9(a)", result.Rule.Clause);
+        Assert.Contains("Action[1]", result.Evidence.Selector, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UnresolvedExternalActionDependenciesRemainUnknown()
+    {
+        var clean = await Check(Seed(pageExtra: "<Actions><Action><Goto><Dest Type='Fit' PageID='1'/></Goto></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(clean, "AC-013").Outcome);
+        var attachmentAction = await Check(Seed(pageExtra: "<Actions><Action><GotoA AttachID='9'/></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(attachmentAction, "AC-013").Outcome);
+        var relativeUri = await Check(Seed(pageExtra: "<Actions><Action><URI URI='relative/resource'/></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(relativeUri, "AC-013").Outcome);
+        var foreignUri = await Check(Seed(pageExtra: "<Actions><Action><v:URI xmlns:v='urn:vendor' URI='https://example.invalid/resource'/></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(foreignUri, "AC-013").Outcome);
+    }
+
+    [Fact]
+    public async Task AnnotationGraphicExternalUriActionIsObserved()
+    {
+        var entries = Seed(documentExtra: "<Annotations>Annots/Annotations.xml</Annotations>");
+        entries["Doc_0/Annots/Annotations.xml"] = Utf8($"<Annotations xmlns='{Ns}'><Page PageID='1'><FileLoc>Page.xml</FileLoc></Page></Annotations>");
+        entries["Doc_0/Annots/Page.xml"] = Utf8($"<PageAnnot xmlns='{Ns}'><Annot ID='2' ReadOnly='true' NoZoom='true' NoRotate='true'><Appearance><PathObject><Actions><Action><URI URI='https://example.invalid/resource'/></Action></Actions></PathObject></Appearance></Annot></PageAnnot>");
+        Assert.Equal(PreflightOutcome.Fail, Rule(await Check(entries), "AC-013").Outcome);
+    }
+
+    [Fact]
+    public async Task RetainedDocumentExtensionsDeclarationIsDefiniteClause612Failure()
+    {
+        var report = await Check(Seed(documentExtra: "<Extensions>Extensions/Extensions.xml</Extensions>"));
+        var result = Rule(report, "AC-014");
+        Assert.Equal(PreflightOutcome.Fail, result.Outcome);
+        Assert.Equal("6.12(a)", result.Rule.Clause);
+        Assert.Contains("Extensions[1]", result.Evidence.Selector, StringComparison.Ordinal);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(Seed()), "AC-014").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(Seed(documentExtra: "<Extensions/>")), "AC-014").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(Seed(documentExtra: "<v:Extensions xmlns:v='urn:vendor'>Extensions/Extensions.xml</v:Extensions>")), "AC-014").Outcome);
+    }
+
+    [Fact]
+    public async Task RootEncryptionMarkerFailsClause616RegardlessOfLocalPolicy()
+    {
+        var entries = Seed();
+        entries["Encryptions.xml"] = Utf8("<Encryptions/>");
+        var report = await Check(entries, new ArchivalPreflightOptions { RequireNoEncryption = false });
+        var result = Rule(report, "AC-015");
+        Assert.Equal(PreflightOutcome.Fail, result.Outcome);
+        Assert.Equal("6.16", result.Rule.Clause);
+        Assert.Equal("Encryptions.xml", result.Evidence.Entry);
+        Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(Seed()), "AC-015").Outcome);
+        entries.Remove("Encryptions.xml");
+        entries["PasswordCrypto/entriesmap.dat"] = new byte[] { 1 };
+        Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(entries), "AC-015").Outcome);
     }
 
     [Fact]

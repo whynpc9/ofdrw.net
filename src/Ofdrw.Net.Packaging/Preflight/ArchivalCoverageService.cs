@@ -51,7 +51,10 @@ public static class ArchivalCoverageRuleCatalog
         new ArchivalCoverageRuleDefinition("AC-009", "6.10.1(a)(3)", "Retained annotations declare ReadOnly, NoZoom and NoRotate true"),
         new ArchivalCoverageRuleDefinition("AC-010", "6.3.3(b)", "Graphic objects in pages, templates and annotation appearances retain no Action declarations; migration needs source evidence"),
         new ArchivalCoverageRuleDefinition("AC-011", "6.2.3(d)", "Named page layers are distinguishable within each page"),
-        new ArchivalCoverageRuleDefinition("AC-012", "6.10.1(a)(2)", "Retained annotation appearances have no nested PageBlock")
+        new ArchivalCoverageRuleDefinition("AC-012", "6.10.1(a)(2)", "Retained annotation appearances have no nested PageBlock"),
+        new ArchivalCoverageRuleDefinition("AC-013", "6.9(a)", "Recognized Action/URI declarations with external network or file targets are not retained; other external dependencies remain unverified"),
+        new ArchivalCoverageRuleDefinition("AC-014", "6.12(a)", "Recognized Document/Extensions declarations with a target are not retained; other extension locations remain unverified"),
+        new ArchivalCoverageRuleDefinition("AC-015", "6.16", "The package retains no root Encryptions.xml marker; complete plaintext and decryption provenance remain unverified")
     });
     /// <summary>Immutable ordered list of supported coverage checks.</summary>
     public static IReadOnlyList<ArchivalCoverageRuleDefinition> Rules => RulesValue;
@@ -94,7 +97,7 @@ public sealed class ArchivalCoverageReport
     /// <summary>Archival certification has not been assessed.</summary>
     public string Certification => "NotAssessed";
     /// <summary>Mapped clause subset and explicit remainder boundary.</summary>
-    public string Scope => "GB/T 42133-2022 6.2.1(a),(c), 6.2.2(c), 6.2.3(c)-(d), 6.2.5(a)-(b), 6.3.3(b), 6.5(b), 6.6(c), 6.10.1(a)(2)-(3) plus R17 6.2.2(a)-(b); remaining clauses are unassessed by this API.";
+    public string Scope => "GB/T 42133-2022 6.2.1(a),(c), 6.2.2(c), 6.2.3(c)-(d), 6.2.5(a)-(b), 6.3.3(b), 6.5(b), 6.6(c), 6.9(a), 6.10.1(a)(2)-(3), 6.12(a), 6.16 plus R17 6.2.2(a)-(b); 6.9(a), 6.12(a) and 6.16 are violation-only subsets and remaining obligations are unassessed by this API.";
     /// <summary>A known failure is reported; otherwise complete-standard status stays Unknown.</summary>
     public PreflightOutcome StandardOutcome => RuleResults.Any(x => x.Outcome == PreflightOutcome.Fail) ||
         FoundationalRules.RuleResults.Any(x => x.Outcome == PreflightOutcome.Fail)
@@ -133,6 +136,7 @@ public sealed class ArchivalCoverageService
                 DocType(root), DocumentCount(root), DocumentActions(archive, root, snapshot)
             };
             results.AddRange(new ArchivalStructuralCoverage(archive, root, snapshot, cancellationToken).Check());
+            results.Add(KnownEncryptionMarker(archive));
             return new ArchivalCoverageReport(foundational, results.AsReadOnly());
         }
         finally { input.Position = 0; }
@@ -255,6 +259,14 @@ public sealed class ArchivalCoverageService
     private static ArchivalCoverageRuleResult Result(ArchivalCoverageRuleDefinition rule, PreflightOutcome outcome,
         string reason, string selector, string observed, string entry = "OFD.xml") =>
         new ArchivalCoverageRuleResult(rule, outcome, reason, entry, selector, observed);
+
+    private static ArchivalCoverageRuleResult KnownEncryptionMarker(OfdPackageArchive archive)
+    {
+        var rule = ArchivalCoverageRuleCatalog.Rules[14];
+        return archive.Contains("Encryptions.xml")
+            ? Result(rule, PreflightOutcome.Fail, "EncryptionMarkerRetained", "/Encryptions.xml", "Known encryption marker present", "Encryptions.xml")
+            : Result(rule, PreflightOutcome.Unknown, "PlaintextUnverified", "<package>", "No known root encryption marker; complete plaintext unverified", "<input>");
+    }
 
     private static string Selector(XElement root) => "/{" + root.Name.NamespaceName + "}OFD[1]";
     private static bool Supported(string ns) => ns == "http://www.ofdspec.org" || ns == "http://www.ofdspec.org/2016";
