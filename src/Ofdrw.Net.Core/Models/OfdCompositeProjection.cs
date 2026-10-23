@@ -97,6 +97,10 @@ internal static class OfdCompositeProjection
                     if (scalarError is null && element is OfdTextElement &&
                         originalNode.DescendantsAndSelf().Any(node => node.Name.LocalName == "CGTransform"))
                         scalarError = "PageBlock or composite text with explicit glyph substitutions cannot be exported.";
+                    if (scalarError is null && element is OfdTextElement &&
+                        originalNode.Element(originalNode.Name.Namespace + "TextCode") is { } firstCode &&
+                        (firstCode.Attribute("X") is null || firstCode.Attribute("Y") is null))
+                        scalarError = "The first PageBlock or composite TextCode requires X and Y.";
                     if (scalarError is null && originalNode.Name.LocalName == "PathObject" &&
                         !OfdPathDataSyntax.HasSingleValidDrawing(originalNode, token))
                         scalarError = "Malformed PageBlock or composite path data cannot be exported.";
@@ -123,8 +127,11 @@ internal static class OfdCompositeProjection
                 }
                 return;
             }
-            var renderSource = scalarError is null && element is OfdTextElement sourceText
-                ? OfdTextRenderProjection.Create(sourceText, material, token) : element;
+            var renderSource = element is OfdTextElement sourceText
+                ? scalarError is null && element.RenderPaintError is not { Length: > 0 }
+                    ? OfdTextRenderProjection.Create(sourceText, material, token)
+                    : OfdTextRenderProjection.CreateLogical(sourceText, material, token)
+                : element;
             var projected = OfdModelCloner.CloneElement(renderSource, clonePayloads: false, material: material, cancellationToken: token);
             if (scalarError is not null) projected.RenderPaintError = scalarError;
             var inner = element switch { OfdTextElement t => t.Transform, OfdImageElement i => i.Transform ?? new[] { i.WidthMillimeters, 0, 0, i.HeightMillimeters, 0, 0 }, OfdPathElement p => p.Transform, _ => null } ?? Identity();

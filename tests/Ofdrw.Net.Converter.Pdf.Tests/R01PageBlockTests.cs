@@ -3150,16 +3150,21 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
-    [InlineData("<TextCode Y='5'>missing X</TextCode>")]
-    [InlineData("<TextCode X='3'>missing Y</TextCode>")]
-    public async Task FirstPageBlockTextCodeRequiresBothAxes(string code)
+    [InlineData("<TextCode Y='5'>missing X</TextCode>", false)]
+    [InlineData("<TextCode X='3'>missing Y</TextCode>", false)]
+    [InlineData("<TextCode Y='5'>missing X</TextCode>", true)]
+    [InlineData("<TextCode X='3'>missing Y</TextCode>", true)]
+    public async Task FirstPageBlockTextCodeRequiresBothAxes(string code, bool template)
     {
-        var ofd = await Source($"<TextObject ID='501' Boundary='10 10 50 20' Font='10' Size='4'>{code}</TextObject>", font: true);
+        var ofd = await Source($"<TextObject ID='501' Boundary='10 10 50 20' Font='10' Size='4'>{code}</TextObject>",
+            template: template, font: true);
         var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
-        Assert.Contains("missing", new OfdTextExtractor().Extract(read));
+        Assert.Contains("missing", new OfdTextExtractor().Extract(read, includeTemplates: template));
         var text = Assert.IsType<OfdTextElement>(Assert.Single(Assert.IsType<OfdRawElement>(
-            Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+            Assert.Single(template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements)).PageBlockChildren!));
         Assert.Contains("requires X and Y", text.RenderPaintError);
+        var originalCode = Assert.Single(XElement.Parse(text.SourceXml!).Elements(), node => node.Name.LocalName == "TextCode");
+        Assert.Null(originalCode.Attribute(code.Contains("Y='5'", StringComparison.Ordinal) ? "X" : "Y"));
         foreach (var convert in new Func<Stream, Stream, Task>[]
         {
             (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
@@ -3169,6 +3174,55 @@ public sealed class R01PageBlockTests
         {
             using var sink = new MemoryStream();
             await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    public async Task FirstCompositeTextCodeMissingAxisPreservesLogicalTextAndRejectsRender(
+        bool nested, bool template, bool missingX)
+    {
+        var code = missingX ? "Y='5'" : "X='3'";
+        var textXml = $"<TextObject ID='452' Boundary='0 0 50 20' Font='10' Size='4'>" +
+            $"<TextCode {code}>recoverable\\0020text</TextCode></TextObject>";
+        var inner = nested ? "<CompositeObject ID='454' Boundary='0 0 50 20' ResourceID='451'/>" : textXml;
+        var resources = "<CompositeGraphicUnits>" +
+            (nested ? $"<CompositeGraphicUnit ID='451' Width='50' Height='20'>{textXml}</CompositeGraphicUnit>" : "") +
+            $"<CompositeGraphicUnit ID='450' Width='50' Height='20'>{inner}</CompositeGraphicUnit>" +
+            "</CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='453' Boundary='10 10 50 20' ResourceID='450'/>",
+            template: template, resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(
+            template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        var outer = Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!));
+        var child = Assert.Single(outer.Resource.Elements);
+        var text = nested
+            ? Assert.IsType<OfdTextElement>(Assert.Single(Assert.IsType<OfdCompositeElement>(child).Resource.Elements))
+            : Assert.IsType<OfdTextElement>(child);
+        var originalCode = Assert.Single(XElement.Parse(text.SourceXml!).Elements(), node => node.Name.LocalName == "TextCode");
+        Assert.Null(originalCode.Attribute(missingX ? "X" : "Y"));
+        Assert.NotNull(originalCode.Attribute(missingX ? "Y" : "X"));
+        Assert.Null(text.RenderPaintError); // Resource definitions are parsed outside PageBlock depth.
+        Assert.Equal("recoverable text", new OfdTextExtractor().Extract(read, includeTemplates: template));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Contains("requires X and Y", error.Message);
             Assert.Equal(0, sink.Length);
         }
     }
