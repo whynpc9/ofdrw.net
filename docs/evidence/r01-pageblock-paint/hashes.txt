@@ -8,7 +8,7 @@ c84d8b04b1345ad67d27a144d57345eadfa9d384ffbc17cd55ce897fb03ab221  artifacts/road
 2cbb89739cdb2a3a779ce9a94ed433d8b9e8bbdf81b2c0ffac26dda021d932f5  artifacts/roadmap-v12/R01/p100-ses.log
 5c0d79daf8670fd3bda2dc48ba1dda01766d0688756f6f46f13d6c005d6e560f  artifacts/roadmap-v12/R01/p100-attachment.log
 285579fba98186ff2d9d5065d69ff914b9100564d2e8e874182117f4a54bcb2f  artifacts/roadmap-v12/R01/p100-environment.txt
-246218d1d48a05f1869af26ccbcbcd309525777c219b8b9e439ec15b4da1deb0  artifacts/roadmap-v12/R01/p100-png-qa.json
+34f7caaf5e015f593214a62f058c52e45506e389cf59e90fa51ef0e9592b7539  artifacts/roadmap-v12/R01/p100-png-qa.json
 5efcb5feab01dc9920bf207f0b57464152f85fe1742e5ba4b7c7a0b51220e25f  artifacts/roadmap-v12/R01/p100-pages/numeric-font-ids.ofd
 b3047fa05663009ab4fe852dc76745bf9a650786b5881521f022ef3eb1a715fa  artifacts/roadmap-v12/R01/p100-pages/numeric-font-ids.pdf
 63c5af79d47b84261cf8979325be2a0a860a18040752bb377aad705a06d69c45  artifacts/roadmap-v12/R01/p100-pages/numeric-font-ids.svg
