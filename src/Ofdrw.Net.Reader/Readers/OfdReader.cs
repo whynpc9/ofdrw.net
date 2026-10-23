@@ -1408,7 +1408,8 @@ public sealed class OfdReader : IOfdReader
                     {
                         if (archive.TryGetBytes(mediaPath, out var bytes))
                         {
-                            if (blockDepth > 0 && !resourceDefinition && material.AdmitPageBlockImage(bytes, cancellationToken) != image.MediaType)
+                            if (blockDepth > 0 && !resourceDefinition && OfdGraphicXmlContract.IsVisible(image) &&
+                                material.AdmitPageBlockImage(bytes, cancellationToken) != image.MediaType)
                                 image.SourceMediaAmbiguous = true;
                             else
                             {

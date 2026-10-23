@@ -1991,6 +1991,41 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Fact]
+    public async Task HiddenDirectPageBlockImageDoesNotConsumeDecodedPixelBudget()
+    {
+        const string resources = "<MultiMedias><MultiMedia ID='21' Type='Image' Format='PNG'>" +
+            "<MediaFile>large.png</MediaFile></MultiMedia></MultiMedias>";
+        using var pixels = new Image<L8>(6000, 6000);
+        using var encoded = new MemoryStream(); await pixels.SaveAsPngAsync(encoded);
+        var body = "<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='21' Visible='false'/>" +
+            "<TextObject ID='502' Boundary='10 40 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>visible text</TextCode></TextObject>";
+        var seed = await Source(body, resources: resources, font: true);
+        var ofd = await WithEntry(seed, "Doc_0/large.png", encoded.ToArray());
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var image = Assert.IsType<OfdImageElement>(block.PageBlockChildren![0]);
+        Assert.False(image.SourceMediaAmbiguous);
+        Assert.Equal(encoded.ToArray(), image.Data);
+        Assert.Equal("visible text", new OfdTextExtractor().Extract(read));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("visible text", parsed.GetPage(1).Text);
+        Assert.Contains("visible text", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("visible text", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("hidden-large-pageblock-image", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+
+        var visible = await RewriteXml(ofd, "Doc_0/Pages/Page_0/Content.xml", xml =>
+            Assert.Single(xml.Descendants(), node => node.Name.LocalName == "ImageObject")
+                .SetAttributeValue("Visible", null));
+        var limit = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdReader().ReadAsync(new MemoryStream(visible)));
+        Assert.True(OfdTraversalBudget.IsLimit(limit));
+    }
+
     [Theory]
     [InlineData("duplicate-file", false)]
     [InlineData("duplicate-file", true)]
