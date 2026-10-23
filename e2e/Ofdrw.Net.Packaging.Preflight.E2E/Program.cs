@@ -104,7 +104,7 @@ async Task CheckArchiveCopy()
             report.Certification != "NotAssessed")
             throw new InvalidOperationException("Archival subset preflight did not report the two verified clauses.");
         var coverage = await new ArchivalCoverageService().CheckAsync(input, new());
-        if (coverage.RuleResults.Count != 12 || coverage.RuleResults[0].Outcome != PreflightOutcome.Pass ||
+        if (coverage.RuleResults.Count != 15 || coverage.RuleResults[0].Outcome != PreflightOutcome.Pass ||
             coverage.RuleResults[1].Outcome != PreflightOutcome.Pass ||
             coverage.RuleResults[2].Outcome != PreflightOutcome.NotApplicable ||
             coverage.RuleResults[9].Outcome != PreflightOutcome.Unknown ||
@@ -169,9 +169,12 @@ async Task CheckStructuralCoverage()
         ["AC-004"] = PreflightOutcome.Fail, ["AC-005"] = PreflightOutcome.Pass,
         ["AC-006"] = PreflightOutcome.Fail, ["AC-007"] = PreflightOutcome.Fail,
         ["AC-008"] = PreflightOutcome.Pass, ["AC-009"] = PreflightOutcome.Fail,
-        ["AC-010"] = PreflightOutcome.Unknown
+        ["AC-010"] = PreflightOutcome.Unknown,
+        ["AC-013"] = PreflightOutcome.Fail,
+        ["AC-014"] = PreflightOutcome.Unknown,
+        ["AC-015"] = PreflightOutcome.Unknown
     };
-    if (coverage.RuleResults.Count != 12 || expected.Any(pair =>
+    if (coverage.RuleResults.Count != 15 || expected.Any(pair =>
             coverage.RuleResults.Single(x => x.Rule.RuleId == pair.Key).Outcome != pair.Value) ||
         coverage.StandardOutcome != PreflightOutcome.Fail || input.Position != 0 ||
         before != Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(file))))

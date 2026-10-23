@@ -20,7 +20,7 @@ internal sealed class ArchivalStructuralCoverage
     private readonly XElement root;
     private readonly ArchivalPreflightOptions options;
     private readonly CancellationToken token;
-    private readonly Observation[] observations = Enumerable.Range(3, 9).Select(i => new Observation(i)).ToArray();
+    private readonly Observation[] observations = Enumerable.Range(3, 11).Select(i => new Observation(i)).ToArray();
     private readonly Dictionary<string, XElement?> xml = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<XElement, int> siblingOrdinals = new();
     private readonly Dictionary<string, XElement> bookmarks = new(StringComparer.Ordinal);
@@ -55,8 +55,14 @@ internal sealed class ArchivalStructuralCoverage
             return Finish();
         }
         observations[6].Unknown("SourceActionProvenanceUnavailable", documentEntry);
+        observations[9].Unknown("ExternalActionDependenciesUnverified", documentEntry);
+        observations[10].Unknown("ExtensionScopeUnverified", documentEntry);
         var ns = document.Name.Namespace;
         documentNamespace = ns;
+        InspectExternalUriActions(document, ns, documentEntry);
+        foreach (var extension in document.Elements(ns + "Extensions"))
+            if (!extension.HasElements && !string.IsNullOrWhiteSpace(extension.Value))
+                observations[10].Fail("RetainedExtensionsDeclaration", documentEntry, extension, this);
         var body = root.Elements(root.Name.Namespace + "DocBody").Single();
         if (root.Attributes().Any(x => !x.IsNamespaceDeclaration &&
                 (x.Name.Namespace != XNamespace.None || x.Name.LocalName is not ("DocType" or "Version"))) ||
@@ -207,6 +213,7 @@ internal sealed class ArchivalStructuralCoverage
                 !Id((string?)x.Attribute("TemplateID"), out var number) || !templateIds.Contains(number)))
             UnknownPageScope("TemplateReferenceUnavailable", entry);
         InspectActions(page, page.Name.Namespace, observations[0], null, entry);
+        InspectExternalUriActions(page, page.Name.Namespace, entry);
         if (page.Elements(page.Name.Namespace + "Content").Count() != 1 ||
             Foreign(page, "Content", page.Name.Namespace))
         { UnknownGraphics("PageContentAmbiguous", entry); observations[7].Unknown("PageContentAmbiguous", entry); }
@@ -335,6 +342,7 @@ internal sealed class ArchivalStructuralCoverage
                 OpaqueNodes(node))
                 UnknownOutline("OpaqueOutlineNode", documentEntry);
             InspectActions(node, ns, observations[1], observations[2], documentEntry);
+            InspectExternalUriActions(node, ns, documentEntry);
             if (Foreign(node, "OutlineElem", ns)) UnknownOutline("ForeignOutline", documentEntry);
             if (node.Elements().Any(x => x.Name != ns + "OutlineElem" && x.Name != ns + "Actions"))
                 UnknownOutline("OpaqueOutlineContent", documentEntry);
@@ -501,6 +509,7 @@ internal sealed class ArchivalStructuralCoverage
                       x.Name.LocalName == "ImageObject" || x.Name.LocalName == "CompositeObject") &&
                       RecognizedGraphicPosition(x, source, ns)))
         {
+            InspectExternalUriActions(graphic, ns, entry);
             if (graphic.Elements(ns + "Actions").Any(x => x.Elements(ns + "Action").Any()))
                 observations[6].Fail("ObjectActionRetained", entry, graphic, this);
             else if (graphic.Elements().Any(x => x.Name.LocalName is ("Actions" or "Action") &&
@@ -509,6 +518,35 @@ internal sealed class ArchivalStructuralCoverage
                 observations[6].Unknown("ObjectActionAmbiguous", entry, graphic, this);
         }
     }
+
+    private void InspectExternalUriActions(XElement owner, XNamespace ns, string entry)
+    {
+        foreach (var action in owner.Elements(ns + "Actions").SelectMany(x => x.Elements(ns + "Action")))
+            if (action.Elements(ns + "URI").Any(IsExternalUri))
+                observations[9].Fail("RetainedExternalUriAction", entry, action, this);
+    }
+
+    private static bool IsExternalUri(XElement declaration)
+    {
+        var target = (string?)declaration.Attribute("URI");
+        if (TryExplicitAbsoluteUri(target, out var absolute)) return IsExternalScheme(absolute);
+        var baseValue = (string?)declaration.Attribute("Base");
+        return !string.IsNullOrWhiteSpace(target) && !target.Contains('\\') &&
+            TryExplicitAbsoluteUri(baseValue, out var baseUri) && IsExternalScheme(baseUri) &&
+            Uri.TryCreate(baseUri, target, out var resolved) && IsExternalScheme(resolved);
+    }
+
+    private static bool TryExplicitAbsoluteUri(string? value, out Uri uri)
+    {
+        if (value != null && Uri.TryCreate(value, UriKind.Absolute, out var parsed) &&
+            value.StartsWith(parsed.Scheme + ":", StringComparison.OrdinalIgnoreCase))
+        { uri = parsed; return true; }
+        uri = null!;
+        return false;
+    }
+
+    private static bool IsExternalScheme(Uri uri) =>
+        uri.Scheme is "http" or "https" or "ftp" or "file";
 
     private bool RecognizedGraphicPosition(XElement node, XElement source, XNamespace ns)
     {
