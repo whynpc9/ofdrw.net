@@ -2617,11 +2617,52 @@ public sealed class R01PageBlockTests
             ? "<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'><TextCode X='0' Y='4'>text</TextCode><VendorChild/></TextObject>"
             : "<PathObject ID='501' Boundary='10 10 20 20' Fill='true'><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData><VendorChild/></PathObject>";
         var bytes = await Source(body, template, font: text);
+        if (text)
+        {
+            var read = await new OfdReader().ReadAsync(new MemoryStream(bytes));
+            Assert.Equal("text", new OfdTextExtractor().Extract(read, includeTemplates: true));
+            var block = Assert.IsType<OfdRawElement>(Assert.Single(template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+            Assert.Contains("VendorChild", Assert.IsType<OfdTextElement>(Assert.Single(block.PageBlockChildren!)).SourceXml);
+        }
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToPdfConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToSvgConverter().ConvertAsync(new MemoryStream(bytes), new MemoryStream()));
         using var html = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(bytes), html));
         Assert.Equal(0, html.Length);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task UnsupportedPageBlockTextAttributeKeepsExtractionButBlocksExport(bool composite, bool qualified)
+    {
+        var attribute = qualified ? "xmlns:ext='urn:vendor' ext:Hint='opaque'" : "VendorHint='opaque'";
+        var textXml = $"<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4' {attribute}>" +
+            "<TextCode X='0' Y='4'>recoverable styled text</TextCode></TextObject>";
+        var resources = composite ? "<CompositeGraphicUnits><CompositeGraphicUnit ID='550' Width='50' Height='20'>" +
+            textXml + "</CompositeGraphicUnit></CompositeGraphicUnits>" : null;
+        var body = composite ? "<CompositeObject ID='551' Boundary='10 10 50 20' ResourceID='550'/>" : textXml;
+        var ofd = await Source(body, resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var graphic = Assert.Single(block.PageBlockChildren!);
+        var text = composite ? Assert.IsType<OfdTextElement>(Assert.Single(Assert.IsType<OfdCompositeElement>(graphic).Resource.Elements)) :
+            Assert.IsType<OfdTextElement>(graphic);
+        Assert.Contains("Hint", text.SourceXml);
+        Assert.Equal("recoverable styled text", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
     }
 
     [Theory]

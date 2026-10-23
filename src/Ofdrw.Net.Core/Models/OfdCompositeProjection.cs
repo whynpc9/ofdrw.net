@@ -105,7 +105,12 @@ internal static class OfdCompositeProjection
                 {
                     material.GuardFragmentXml(source, token); var node = OfdXmlEnvelope.Parse(source);
                     if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node) || node.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a)))
-                        throw new NotSupportedException("Unsupported PageBlock or composite child style cannot be exported.");
+                    {
+                        if (element is OfdTextElement)
+                            scalarError = "Unsupported PageBlock or composite child style cannot be exported.";
+                        else
+                            throw new NotSupportedException("Unsupported PageBlock or composite child style cannot be exported.");
+                    }
                 }
             }
             if (!compositeChild)
