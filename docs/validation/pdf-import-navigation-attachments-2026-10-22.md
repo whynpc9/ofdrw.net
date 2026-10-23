@@ -4,12 +4,15 @@
 
 - Base: `62887ad6af62605411e1968da662be48ce1c091c` (`origin/main`, R06 merged).
 - On 2026-10-23, merged current `origin/main` at `d1b09f63210cf7a2e417b952257eff10e8b36d44` (PR #39) into this branch at `952226d1596e656d37939e395c5a47d005679cf4`. That integration changes archival preflight and its tests, not the PDF importers or OFD package writing API. The post-integration checks below include the later R07 numeric-ID closure fix.
+- Later on 2026-10-23, merged `origin/main` at `aac53f2875b3bdbe190364fbacdec5e0f0f59888` (PR #41) at `65c3f5655dca8f4412f22d8595a3bc7faa9428ec`. The checkpoint below separates the already completed r17 R07 validation from the tests and package consumption repeated for this dependency change.
 - The retained visual archive was generated from source `eddc0a6576f3b08ca07d7e41123fa5c2bda38c54` (full SHA in its manifest). Later review fixes in this PR add indirect FitR coordinates, bounded name-tree stream decoding, UF-only embedded streams, singleton Flate filter arrays, caching for aliased streams, and literal/hexadecimal file names. The r15 source and package runs below exercise those fixes plus indirect annotation subtypes and Unicode-safe attachment collision suffixes; their standard-profile page PNGs are byte-identical to the Preview-inspected r11 pages.
 - The r17 generated source and package artifacts use product-source commit `5edeab7dc924dbac3965fd0144693db6f503912e`. The only subsequent local change before the r17 validation run corrected a test fixture's nonnumeric attachment ID; it did not change production code. The ignored `artifacts/roadmap-v12/R07/validation-r17.json` records sizes and SHA-256 hashes for the generated artifacts.
 - Both dual-layer and vector importers were exercised with `CopyBookmarks` and `CopyAttachments` enabled. They remain off by default. See [PDF import: navigation and embedded attachments](../pdf-import-navigation-attachments.md) for the supported profile and fail-closed limits.
 - The standard deterministic two-page PDF contains Chinese/English text, local styles, a table, affine graphics, a nested outline, a catalog embedded file and a printable visible page `FileAttachment` (`/F 4`). The selected source page order is `[2, 1]`. Separate cropped sources at 90° and 270° exercise annotation/bookmark coordinates with external `pdftoppm`, default PDFium and native vector rendering.
 
 ## Functional and package checks
+
+This table records the r17 R07 product-source gate before PR #41; the dependency checkpoint below gives the post-merge checks.
 
 | Check | Result |
 | --- | --- |
@@ -38,6 +41,12 @@ Post-main integration and numeric-ID closure fix: all 1,610 Packaging tests, 107
 - Preview may suppress a source PDF `FileAttachment` icon that Poppler paints. External-dual output retains a rasterized source icon; default PDFium-dual and native vector output draw a generic PushPin. This viewer difference is recorded separately from output acceptance.
 
 Custom PDF annotation appearances, unsupported flag combinations and FitB/FitBH/FitBV navigation are outside this profile. An independent OFD reader's `GotoA` click behavior and a real-world PDF corpus remain unverified; local OFD readback verifies target and payload binding. Conclusions apply only to the listed sample pages and modes.
+
+## 2026-10-23 PR #41 dependency checkpoint
+
+- Diff from `d1b09f6` to `aac53f2`: two archival preflight source files, `ArchivalStructuralCoverageTests`, `StandardEncryptionTests`, the preflight package E2E program, and two archival documents. None overlaps an R07 changed path. New `AC-013`–`AC-015` rules and the encryption-marker observation remain inside archival preflight; the PDF importers, OFD Reader, vector E2E, and package writing interfaces used by R07 did not change.
+- After merge `65c3f56`, Release targeted tests passed: 211 `ArchivalStructuralCoverageTests` and nine `StandardEncryptionTests`. The `0.1.0-r07.18` local feed passed the 12-package default consumer and 14-package vector consumer. The preflight E2E consumed the exact local Packaging package and passed its four public-API cases. A direct build of that E2E using its default older preview package lacked the new preflight API; the exact-package run is the applicable result. The earlier 3,645-pass full solution result predates PR #41; no post-PR41 full-suite claim is made here.
+- The r18 vector package consumer regenerated 11 PDF containers / 14 pages from merged source `65c3f56`. All 14 page PNGs rendered at 144 DPI with displayed CropBox are byte-identical to both r17 and the Preview-inspected r11 pages. Local ignored `artifacts/roadmap-v12/R07/validation-r18.json` records each r18 PDF/PNG size and SHA-256. The r18 containers still require individual macOS Preview inspection; the new GUI request is pending because the desktop ownership remains unknown. This checkpoint does not mark the visual gate or merge complete.
 
 ## Retained evidence
 
