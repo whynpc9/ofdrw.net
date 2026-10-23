@@ -270,7 +270,9 @@ internal sealed class OfdSourceIdentity
             if (!known)
             {
                 result.entries.Add(path, slots = new Dictionary<int, Owner>()); result.rootNames.Add(path, xml.Root.Name);
-                if (xml.Root.Name.LocalName == expectedRoot && (sourceNs == ns || sourceNs.NamespaceName == OfdConstants.Namespace || sourceNs.NamespaceName == OfdConstants.StandardNamespace)) result.trustedEntries.Add(path);
+                if (xml.Root.Name.LocalName == expectedRoot && (sourceNs == ns ||
+                    sourceNs.NamespaceName == OfdConstants.Namespace || sourceNs.NamespaceName == OfdConstants.StandardNamespace ||
+                    expectedRoot == "Res" && sourceNs == XNamespace.None)) result.trustedEntries.Add(path);
             }
             if (!result.trustedEntries.Contains(path)) return nodes;
             foreach (var node in xml.Root.DescendantsAndSelf())

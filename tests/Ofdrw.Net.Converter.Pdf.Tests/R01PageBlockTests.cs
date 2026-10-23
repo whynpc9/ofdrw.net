@@ -3180,6 +3180,32 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("500", "552")]
+    [InlineData("551", "10")]
+    public async Task UnqualifiedCompositeResourceIdsStillRejectActiveCollisions(string definitionId, string childId)
+    {
+        var resources = $"<CompositeGraphicUnits xmlns=''><CompositeGraphicUnit ID='{definitionId}' Width='50' Height='20'>" +
+            $"<TextObject ID='{childId}' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>duplicate resource ID</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source($"<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='{definitionId}'/>",
+            resources: resources, resourceNamespace: "", font: true);
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() => new OfdReader().ReadAsync(new MemoryStream(ofd)));
+        Assert.Contains("Duplicate active document-unit ID", error.Message);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<InvalidDataException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("single")]
     [InlineData("duplicate")]
     [InlineData("extension")]
