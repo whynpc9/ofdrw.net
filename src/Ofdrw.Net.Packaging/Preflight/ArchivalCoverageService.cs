@@ -52,7 +52,7 @@ public static class ArchivalCoverageRuleCatalog
         new ArchivalCoverageRuleDefinition("AC-010", "6.3.3(b)", "Graphic objects in pages, templates and annotation appearances retain no Action declarations; migration needs source evidence"),
         new ArchivalCoverageRuleDefinition("AC-011", "6.2.3(d)", "Named page layers are distinguishable within each page"),
         new ArchivalCoverageRuleDefinition("AC-012", "6.10.1(a)(2)", "Retained annotation appearances have no nested PageBlock"),
-        new ArchivalCoverageRuleDefinition("AC-013", "6.9(a)", "Recognized Action/URI declarations with external network or file targets are not retained; other external dependencies remain unverified"),
+        new ArchivalCoverageRuleDefinition("AC-013", "6.9(a)", "Recognized Action/URI declarations with explicit external targets or targets resolved against an explicit external Base are not retained; other dependencies remain unverified"),
         new ArchivalCoverageRuleDefinition("AC-014", "6.12(a)", "Recognized Document/Extensions declarations with a direct text target are not retained; nested content and other extension locations remain unverified"),
         new ArchivalCoverageRuleDefinition("AC-015", "6.16", "The package retains no root Encryptions.xml marker; complete plaintext and decryption provenance remain unverified")
     });
@@ -123,27 +123,30 @@ public sealed class ArchivalCoverageService
         try
         {
             var foundational = await new ArchivalRuleService().CheckAsync(input, snapshot, cancellationToken).ConfigureAwait(false);
-            if (foundational.LocalPreflight.RunState != PreflightRunState.Complete)
-                return Unknown(foundational, "LocalInspectionIncomplete");
             OfdPackageArchive archive;
             try { archive = await new OfdPackageLoader().LoadAsync(input, snapshot.LoadOptions, cancellationToken).ConfigureAwait(false); }
             catch (InvalidDataException) { return Unknown(foundational, "InputRejected"); }
+            var marker = KnownEncryptionMarker(archive);
+            if (foundational.LocalPreflight.RunState != PreflightRunState.Complete)
+                return Unknown(foundational, "LocalInspectionIncomplete", marker);
             var root = ArchivalRuleService.Read(archive, "OFD.xml", snapshot)?.Root;
             if (root == null || root.Name.LocalName != "OFD" || !Supported(root.Name.NamespaceName))
-                return Unknown(foundational, "RootScopeUnavailable");
+                return Unknown(foundational, "RootScopeUnavailable", marker);
             var results = new List<ArchivalCoverageRuleResult>
             {
                 DocType(root), DocumentCount(root), DocumentActions(archive, root, snapshot)
             };
             results.AddRange(new ArchivalStructuralCoverage(archive, root, snapshot, cancellationToken).Check());
-            results.Add(KnownEncryptionMarker(archive));
+            results.Add(marker);
             return new ArchivalCoverageReport(foundational, results.AsReadOnly());
         }
         finally { input.Position = 0; }
     }
 
-    private static ArchivalCoverageReport Unknown(ArchivalRuleReport foundational, string reason) =>
+    private static ArchivalCoverageReport Unknown(ArchivalRuleReport foundational, string reason,
+        ArchivalCoverageRuleResult? marker = null) =>
         new ArchivalCoverageReport(foundational, Array.AsReadOnly(ArchivalCoverageRuleCatalog.Rules.Select(rule =>
+            rule.RuleId == "AC-015" && marker?.Outcome == PreflightOutcome.Fail ? marker :
             Result(rule, PreflightOutcome.Unknown, reason, "<package>", reason, "<input>")).ToArray()));
 
     private static ArchivalCoverageRuleResult DocType(XElement root)

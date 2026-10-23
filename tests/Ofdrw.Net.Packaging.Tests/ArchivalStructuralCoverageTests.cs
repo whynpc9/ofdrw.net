@@ -866,6 +866,14 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(relativeUri, "AC-013").Outcome);
         var rootRelativeUri = await Check(Seed(pageExtra: "<Actions><Action><URI URI='/resource'/></Action></Actions>"));
         Assert.Equal(PreflightOutcome.Unknown, Rule(rootRelativeUri, "AC-013").Outcome);
+        var absoluteBase = await Check(Seed(pageExtra: "<Actions><Action><URI URI='relative/resource' Base='https://example.invalid/'/></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Fail, Rule(absoluteBase, "AC-013").Outcome);
+        var rootRelativeWithBase = await Check(Seed(pageExtra: "<Actions><Action><URI URI='/resource' Base='https://example.invalid/'/></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Fail, Rule(rootRelativeWithBase, "AC-013").Outcome);
+        var relativeBase = await Check(Seed(pageExtra: "<Actions><Action><URI URI='relative/resource' Base='relative/base'/></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(relativeBase, "AC-013").Outcome);
+        var otherAbsoluteScheme = await Check(Seed(pageExtra: "<Actions><Action><URI URI='mailto:user@example.invalid' Base='https://example.invalid/'/></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(otherAbsoluteScheme, "AC-013").Outcome);
         var foreignUri = await Check(Seed(pageExtra: "<Actions><Action><v:URI xmlns:v='urn:vendor' URI='https://example.invalid/resource'/></Action></Actions>"));
         Assert.Equal(PreflightOutcome.Unknown, Rule(foreignUri, "AC-013").Outcome);
     }
@@ -909,6 +917,21 @@ public class ArchivalStructuralCoverageTests
         entries.Remove("Encryptions.xml");
         entries["PasswordCrypto/entriesmap.dat"] = new byte[] { 1 };
         Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(entries), "AC-015").Outcome);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("malformed")]
+    [InlineData("unsupported")]
+    public async Task EncryptionMarkerSurvivesUnavailableRootScope(string rootState)
+    {
+        var entries = Seed();
+        entries["Encryptions.xml"] = Utf8("<Encryptions/>");
+        if (rootState == "missing") entries.Remove("OFD.xml");
+        else entries["OFD.xml"] = Utf8(rootState == "malformed" ? "<OFD" : "<OFD xmlns='urn:vendor'/>");
+        var report = await Check(entries);
+        Assert.Equal(PreflightOutcome.Fail, Rule(report, "AC-015").Outcome);
+        Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
     }
 
     [Fact]

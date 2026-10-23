@@ -75,7 +75,7 @@ Sections 1, 3 and 4 define scope, terms and abbreviations rather than per-packag
 | 6.6(e) | Prefer shared DrawParam for repeated text colors | Open: optional resource deduplication. |
 | 6.7 | Treat video as image with video action | Open: media/action handling and rendering. |
 | 6.8 | Prefer vector resource table suited to reuse scope | Open: cross-page and page-local composite inventory. |
-| 6.9(a) | No external-resource action on objects/outline/page/document | **Partial:** `AC-013` fails retained, recognized Action/URI declarations with absolute HTTP(S), FTP or file targets at document, page/template, outline and recognized graphic-object locations, including retained annotation appearances. Unknown covers URI schemes or resource-backed actions not proved external, opaque locations and full action/resource closure. No removal handler. |
+| 6.9(a) | No external-resource action on objects/outline/page/document | **Partial:** `AC-013` fails retained, recognized Action/URI declarations with explicit absolute HTTP(S), FTP or file targets, or relative targets resolved against an explicit absolute external `Base`, at document, page/template, outline and recognized graphic-object locations, including retained annotation appearances. Unknown covers URI schemes or resource-backed actions not proved external, opaque locations and full action/resource closure. No removal handler. |
 | 6.9(b) | Prefer keeping removed-action summaries | External: before/after action provenance. |
 | 6.10.1(a)(1) | Freeze appearance-affecting annotation parameters | External: original/final appearance comparison. |
 | 6.10.1(a)(2) | Remove annotation appearance PageBlock nesting | **Exact read-only structure check:** `AC-012` follows retained annotation appearances and fails nested recognized PageBlocks; opaque appearances are Unknown. No flattening handler. |
@@ -104,7 +104,7 @@ Sections 1, 3 and 4 define scope, terms and abbreviations rather than per-packag
 | 6.15.2(b)(2) | Prefer externalizing oversized non-viewing images with summary | External: size/use policy, digest and description. |
 | 6.15.2(b)(3) | Prefer externalizing data spreadsheets with summary | External: semantic classification and information loss. |
 | 6.15.2(b)(4) | Prefer externalizing animation/3D-heavy web/slides with summary | External: content inspection and preservation decision. |
-| 6.16 | Long-term OFD unencrypted; decrypt before archiving | **Partial:** `AC-015` fails a retained root `Encryptions.xml` marker regardless of local APF policy. Absence remains Unknown without general encryption discovery, source decryption provenance and plaintext proof. APF-004 remains a separate local-policy check. |
+| 6.16 | Long-term OFD unencrypted; decrypt before archiving | **Partial:** `AC-015` fails a retained root `Encryptions.xml` marker regardless of local APF policy or root XML availability when the package loads. Absence remains Unknown without general encryption discovery, source decryption provenance and plaintext proof. APF-004 remains a separate local-policy check. |
 | 7.1(1) | Writer supports relevant generation/conversion and archival processing | External: product capability and conversion E2E, not package-only. |
 | 7.1(2) | Writer follows the prescribed treatment | External: full clause-level end-to-end evidence still missing. |
 | 7.2(1) | Reader fully outputs OFD, checks format and reports untreated items | External: independent reader and GUI/log behavior. |

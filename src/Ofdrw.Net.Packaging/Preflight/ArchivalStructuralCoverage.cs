@@ -522,13 +522,30 @@ internal sealed class ArchivalStructuralCoverage
     private void InspectExternalUriActions(XElement owner, XNamespace ns, string entry)
     {
         foreach (var action in owner.Elements(ns + "Actions").SelectMany(x => x.Elements(ns + "Action")))
-            if (action.Elements(ns + "URI").Any(x => IsExternalUri((string?)x.Attribute("URI"))))
+            if (action.Elements(ns + "URI").Any(IsExternalUri))
                 observations[9].Fail("RetainedExternalUriAction", entry, action, this);
     }
 
-    private static bool IsExternalUri(string? value) =>
-        value != null && Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
-        value.StartsWith(uri.Scheme + ":", StringComparison.OrdinalIgnoreCase) &&
+    private static bool IsExternalUri(XElement declaration)
+    {
+        var target = (string?)declaration.Attribute("URI");
+        if (TryExplicitAbsoluteUri(target, out var absolute)) return IsExternalScheme(absolute);
+        var baseValue = (string?)declaration.Attribute("Base");
+        return !string.IsNullOrWhiteSpace(target) && !target.Contains('\\') &&
+            TryExplicitAbsoluteUri(baseValue, out var baseUri) && IsExternalScheme(baseUri) &&
+            Uri.TryCreate(baseUri, target, out var resolved) && IsExternalScheme(resolved);
+    }
+
+    private static bool TryExplicitAbsoluteUri(string? value, out Uri uri)
+    {
+        if (value != null && Uri.TryCreate(value, UriKind.Absolute, out var parsed) &&
+            value.StartsWith(parsed.Scheme + ":", StringComparison.OrdinalIgnoreCase))
+        { uri = parsed; return true; }
+        uri = null!;
+        return false;
+    }
+
+    private static bool IsExternalScheme(Uri uri) =>
         uri.Scheme is "http" or "https" or "ftp" or "file";
 
     private bool RecognizedGraphicPosition(XElement node, XElement source, XNamespace ns)
