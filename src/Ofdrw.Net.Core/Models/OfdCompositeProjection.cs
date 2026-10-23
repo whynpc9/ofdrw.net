@@ -31,7 +31,10 @@ internal static class OfdCompositeProjection
                     node.Name.NamespaceName is not ("" or Ofdrw.Net.Core.Constants.OfdConstants.Namespace or Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) ||
                     node.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                         (a.Name.Namespace != XNamespace.None || a.Name.LocalName != "ID")) ||
-                    node.Nodes().Any(n => n is XProcessingInstruction || n is XText t && !string.IsNullOrWhiteSpace(t.Value)))
+                    node.Nodes().Any(n => n is XProcessingInstruction || n is XText t && !string.IsNullOrWhiteSpace(t.Value)) ||
+                    node.Elements().Any(child => child.Name.LocalName == "PageBlock"
+                        ? child.Name.NamespaceName is not ("" or Ofdrw.Net.Core.Constants.OfdConstants.Namespace or Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace)
+                        : OfdPageXmlContract.ContainsPageBlock(child)))
                     RejectRender("PageBlock has unsupported drawing attributes or content.");
                 foreach (var child in block.PageBlockChildren) Visit(child, parent, inherited, depth + 1, compositeChild, true);
                 return;

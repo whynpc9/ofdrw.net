@@ -4283,6 +4283,57 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    public async Task HiddenForeignPageBlockChildCannotSuppressNestedPageBlock(bool template, bool composite, bool foreignBlock)
+    {
+        const string nested = "<PageBlock ID='702'><TextObject ID='703' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>hidden nested text</TextCode></TextObject></PageBlock>";
+        var wrapped = foreignBlock
+            ? "<ext:PageBlock xmlns:ext='urn:vendor' Visible='false'>" + nested + "</ext:PageBlock>"
+            : "<ext:Wrapper xmlns:ext='urn:vendor' Visible='false'>" + nested + "</ext:Wrapper>";
+        var resources = composite
+            ? "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+              "<PageBlock ID='701'>" + wrapped + "</PageBlock></CompositeGraphicUnit></CompositeGraphicUnits>"
+            : null;
+        var body = composite
+            ? "<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>"
+            : wrapped;
+        var ofd = await Source(body, template: template, resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var root = Assert.IsType<OfdRawElement>(Assert.Single(
+            template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        Assert.Equal("PageBlock", root.LocalName);
+        if (composite)
+        {
+            var placement = Assert.IsType<OfdCompositeElement>(Assert.Single(root.PageBlockChildren!));
+            var resourceBlock = Assert.IsType<OfdRawElement>(Assert.Single(placement.Resource.Elements));
+            Assert.Contains("hidden nested text", resourceBlock.Xml);
+        }
+        else
+            Assert.Contains("hidden nested text", root.Xml);
+        using var written = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(read, written);
+        var rewritten = await new OfdReader().ReadAsync(new MemoryStream(written.ToArray()));
+        Assert.IsType<OfdRawElement>(Assert.Single(
+            template ? rewritten.Pages[0].Templates[0].Elements : rewritten.Pages[0].Elements));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("attribute", false)]
     [InlineData("instruction", false)]
     [InlineData("text", false)]
