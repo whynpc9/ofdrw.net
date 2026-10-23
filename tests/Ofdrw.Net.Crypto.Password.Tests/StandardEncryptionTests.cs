@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
+using Ofdrw.Net.Packaging.Preflight;
 using Org.BouncyCastle.Asn1.GM;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
@@ -19,6 +20,28 @@ namespace Ofdrw.Net.Crypto.Password.Tests;
 
 public sealed class StandardEncryptionTests
 {
+    [Fact]
+    public async Task RealEncryptedPackageFailsArchivalClauseEvenWhenLocalPolicyAllowsEncryption()
+    {
+        var identity = TestIdentity.Create();
+        var options = new OfdStandardEncryptionOptions { ManifestSigner = identity.Signer() };
+        options.Recipients.Add(OfdStandardRecipient.ForPassword("archive-test", "test password"));
+        var encrypted = await OfdStandardEncryption.EncryptAsync(new MemoryStream(Zip(Fixture())), options);
+        var entries = Unzip(encrypted);
+        Assert.Contains("Encryptions.xml", entries.Keys);
+        Assert.DoesNotContain("OFD.xml", entries.Keys);
+
+        using var input = new MemoryStream(encrypted);
+        var report = await new ArchivalCoverageService().CheckAsync(input,
+            new ArchivalPreflightOptions { RequireNoEncryption = false });
+        Assert.Equal(0, input.Position);
+        Assert.Equal(PreflightOutcome.NotApplicable, Assert.Single(report.FoundationalRules.LocalPreflight.RuleResults,
+            x => x.RuleId == "APF-004").Outcome);
+        Assert.Equal(PreflightOutcome.Fail, Assert.Single(report.RuleResults,
+            x => x.Rule.RuleId == "AC-015").Outcome);
+        Assert.Equal(PreflightOutcome.Fail, report.StandardOutcome);
+    }
+
     [Fact]
     public async Task JavaPasswordFixtureRestoresExactOriginalEntriesWhenExplicitlyAllowingUnverifiedContents()
     {
