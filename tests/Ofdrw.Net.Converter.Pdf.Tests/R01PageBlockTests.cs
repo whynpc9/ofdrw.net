@@ -1962,6 +1962,7 @@ public sealed class R01PageBlockTests
         using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(unused), svg);
         using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(unused), html);
         Assert.True(pdf.Length > 0 && svg.Length > 0 && html.Length > 0);
+        Retain("unreferenced-resource-pageblock-image", unused, pdf.ToArray(), svg.ToArray(), html.ToArray());
 
         var usedSeed = await Source("<CompositeObject ID='553' Boundary='10 10 30 30' ResourceID='551'/>",
             resources: resources, font: true);
