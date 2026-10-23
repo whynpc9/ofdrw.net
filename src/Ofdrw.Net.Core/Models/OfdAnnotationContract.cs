@@ -36,7 +36,7 @@ internal static class OfdAnnotationContract
                 material.ChargeCopy(128, token);
                 if (!owning.Add(annotation) || !owning.Add(annotation.Appearance)) throw new InvalidDataException("Repeated annotation/Appearance ownership.");
                 if (annotation.AttachmentId is null && annotation.SourceXml is string retainedActionXml &&
-                    System.Xml.Linq.XElement.Parse(retainedActionXml).Descendants().Any(node => node.Name.LocalName == "GotoA"))
+                    RetainedAttachmentActions(retainedActionXml).Any())
                     throw new NotSupportedException("Imported page attachment action cannot be removed without source-slot reconciliation.");
                 if (annotation.AttachmentId is string attachmentId)
                 {
@@ -48,8 +48,7 @@ internal static class OfdAnnotationContract
                         targets.Length != 1 || targets[0].IsExternal || targets[0].Id != attachmentId)
                         throw new NotSupportedException("Page attachment action requires one local path and one retained embedded attachment.");
                     if (annotation.SourceXml is string sourceXml &&
-                        System.Xml.Linq.XElement.Parse(sourceXml).Descendants().Count(node =>
-                            node.Name.LocalName == "GotoA" && node.Attribute("AttachID")?.Value == attachmentId) != 1)
+                        RetainedAttachmentActions(sourceXml).Count(node => node.Attribute("AttachID")?.Value == attachmentId) != 1)
                         throw new NotSupportedException("Imported page attachment action cannot be retargeted without source-slot reconciliation.");
                 }
                 foreach (var element in annotation.Appearance.Elements)
@@ -67,6 +66,14 @@ internal static class OfdAnnotationContract
                 }
             }
         }
+    }
+
+    private static IEnumerable<XElement> RetainedAttachmentActions(string sourceXml)
+    {
+        var annotation = XElement.Parse(sourceXml);
+        var ns = annotation.Name.Namespace;
+        return annotation.Elements(ns + "Appearance").Elements(ns + "PathObject")
+            .Elements(ns + "Actions").Elements(ns + "Action").Elements(ns + "GotoA");
     }
     internal static void ValidatePageSelection(OfdDocumentPackage package, IReadOnlyCollection<OfdPage> retained,
         OfdModelMaterialization material, CancellationToken token)
