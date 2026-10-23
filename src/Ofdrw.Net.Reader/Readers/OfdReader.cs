@@ -245,7 +245,7 @@ public sealed class OfdReader : IOfdReader
             }
         }
 
-        var compositeMap = ReadCompositeResources(archive, package, docRoot, docNs, fontMap, documentMediaMap,
+        var compositeMap = ReadCompositeResources(archive, package, docRoot, fontMap, documentMediaMap,
             documentMediaTypeMap, documentAmbiguousMedia, documentPaint, material, cancellationToken);
         material.ReserveReadModel(256L + fontMap.Count * 160L, cancellationToken);
         var documentFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
@@ -351,7 +351,7 @@ public sealed class OfdReader : IOfdReader
                 pagePaint.Read(archive, pageResPath, material, cancellationToken);
             }
             var pageCompositeMap = pageXml.Root is { } pageRoot && OfdPageXmlContract.ContainsPageBlock(pageRoot)
-                ? ReadScopedCompositeResources(archive, package, pageResPath, docNs, compositeMap,
+                ? ReadScopedCompositeResources(archive, package, pageResPath, compositeMap,
                     fontMap, mediaMap, mediaTypeMap, ambiguousMedia, pagePaint, material, cancellationToken)
                 : compositeMap;
 
@@ -396,7 +396,7 @@ public sealed class OfdReader : IOfdReader
                 ReadFonts(archive, templateResPath, package, templateFonts, material, cancellationToken);
                 templatePaint.Read(archive, templateResPath, material, cancellationToken);
                 var templateCompositeMap = templateXml.Root is { } templateRoot && OfdPageXmlContract.ContainsPageBlock(templateRoot)
-                    ? ReadScopedCompositeResources(archive, package, templateResPath, docNs, compositeMap,
+                    ? ReadScopedCompositeResources(archive, package, templateResPath, compositeMap,
                         templateFonts, templateMediaMap, templateMediaTypeMap, templateAmbiguousMedia, templatePaint, material, cancellationToken)
                     : compositeMap;
 
@@ -1118,7 +1118,7 @@ public sealed class OfdReader : IOfdReader
     }
 
     private static Dictionary<string, OfdCompositeResource> ReadCompositeResources(OfdPackageArchive archive, OfdDocumentPackage package,
-        string documentPath, XNamespace ns, IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
+        string documentPath, IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
         IReadOnlyDictionary<string, string> mediaTypes, ISet<string> ambiguousMedia,
         OfdPaintResources paint, OfdModelMaterialization material, CancellationToken token)
     {
@@ -1126,7 +1126,7 @@ public sealed class OfdReader : IOfdReader
             .Where(location => !string.IsNullOrWhiteSpace(location))
             .Select(location => material.ResolvePath(documentPath, location!, token))
             .Distinct(StringComparer.OrdinalIgnoreCase);
-        var (map, definitions) = ReadCompositeResourceScope(archive, package, paths, ns, null,
+        var (map, definitions) = ReadCompositeResourceScope(archive, package, paths, null,
             fonts, media, mediaTypes, ambiguousMedia, paint, material, token);
         if (definitions.Count == 0) return map;
         package.CompositeResources = new();
@@ -1139,14 +1139,14 @@ public sealed class OfdReader : IOfdReader
     }
 
     private static IReadOnlyDictionary<string, OfdCompositeResource> ReadScopedCompositeResources(
-        OfdPackageArchive archive, OfdDocumentPackage package, string path, XNamespace ns,
+        OfdPackageArchive archive, OfdDocumentPackage package, string path,
         IReadOnlyDictionary<string, OfdCompositeResource> inherited,
         IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
         IReadOnlyDictionary<string, string> mediaTypes, ISet<string> ambiguousMedia,
         OfdPaintResources paint, OfdModelMaterialization material, CancellationToken token)
     {
         if (!archive.Contains(path)) return inherited;
-        var (map, definitions) = ReadCompositeResourceScope(archive, package, new[] { path }, ns, inherited,
+        var (map, definitions) = ReadCompositeResourceScope(archive, package, new[] { path }, inherited,
             fonts, media, mediaTypes, ambiguousMedia, paint, material, token);
         if (definitions.Count == 0) return map;
         // Page and template definitions are read-only PageBlock dependencies.
@@ -1168,7 +1168,7 @@ public sealed class OfdReader : IOfdReader
     }
 
     private static (Dictionary<string, OfdCompositeResource> Map, List<OfdCompositeResource> Definitions) ReadCompositeResourceScope(
-        OfdPackageArchive archive, OfdDocumentPackage package, IEnumerable<string> paths, XNamespace documentNs,
+        OfdPackageArchive archive, OfdDocumentPackage package, IEnumerable<string> paths,
         IReadOnlyDictionary<string, OfdCompositeResource>? inherited,
         IReadOnlyDictionary<string, string> fonts, IReadOnlyDictionary<string, string> media,
         IReadOnlyDictionary<string, string> mediaTypes, ISet<string> ambiguousMedia,
@@ -1183,8 +1183,7 @@ public sealed class OfdReader : IOfdReader
         {
             if (!archive.Contains(path)) continue;
             var xml = material.ReadXml(path, archive.GetBytes(path), token); var root = xml.Root!;
-            if (root.Name.LocalName != "Res" ||
-                (inherited is null ? root.Name.Namespace != documentNs : !SupportedGraphicNamespace(root.Name.Namespace))) continue;
+            if (root.Name.LocalName != "Res" || !SupportedGraphicNamespace(root.Name.Namespace)) continue;
             var ns = root.Name.Namespace;
             var containers = root.Elements(ns + "CompositeGraphicUnits").ToArray();
             var supportedContainers = OfdResourceXmlContract.IsPlainRoot(xml) && containers.Length == 1 && PlainContainer(containers[0]) &&

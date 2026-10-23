@@ -111,7 +111,7 @@ public sealed class R01PageBlockTests
                 var bytes = buffer.ToArray();
                 if (entry.FullName == path)
                 {
-                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF'));
                     change(xml);
                     bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
                 }
@@ -3107,6 +3107,76 @@ public sealed class R01PageBlockTests
         Assert.Contains("mixed composite text", Encoding.UTF8.GetString(svg.ToArray()));
         Assert.Contains("mixed composite text", Encoding.UTF8.GetString(html.ToArray()));
         Retain(label, ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData("http://www.ofdspec.org/2016", false)]
+    [InlineData("", false)]
+    [InlineData("http://www.ofdspec.org/2016", true)]
+    [InlineData("", true)]
+    public async Task DocumentCompositeResourceAcceptsSupportedResNamespaces(string resourceNamespace, bool publicRes)
+    {
+        var resource = $"<CompositeGraphicUnits xmlns='{resourceNamespace}'>" +
+            "<CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>resource namespace text</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resource, resourceNamespace: resourceNamespace, font: true);
+        if (publicRes)
+        {
+            ofd = await RewriteXml(ofd, "Doc_0/PublicRes.xml", xml =>
+            {
+                var root = xml.Root!;
+                root.Add(XElement.Parse(resource));
+                var ns = XNamespace.Get(resourceNamespace);
+                foreach (var node in root.DescendantsAndSelf().ToList()) node.Name = ns + node.Name.LocalName;
+            });
+            ofd = await RewriteXml(ofd, "Doc_0/Document.xml", xml =>
+                xml.Root!.Element(XNamespace.Get(Ns) + "CommonData")!
+                    .Element(XNamespace.Get(Ns) + "DocumentRes")!.Remove());
+        }
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var placement = Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.IsType<OfdTextElement>(Assert.Single(placement.Resource.Elements));
+        Assert.Equal("resource namespace text", new OfdTextExtractor().Extract(read));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("resource namespace text", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("resource namespace text", Encoding.UTF8.GetString(html.ToArray()));
+        if (resourceNamespace.Length == 0 && publicRes || resourceNamespace.Length != 0 && !publicRes)
+            Retain(publicRes ? "public-composite-unqualified-res" : "document-composite-2016-res",
+                ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Fact]
+    public async Task ForeignDocumentCompositeResourceDoesNotResolvePageBlockPlacement()
+    {
+        const string resources = "<CompositeGraphicUnits xmlns='urn:vendor'>" +
+            "<CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>foreign resource text</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources, resourceNamespace: "urn:vendor", font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.Equal("CompositeObject", Assert.IsType<OfdRawElement>(Assert.Single(block.PageBlockChildren!)).LocalName);
+        Assert.Equal(string.Empty, new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
     }
 
     [Theory]
