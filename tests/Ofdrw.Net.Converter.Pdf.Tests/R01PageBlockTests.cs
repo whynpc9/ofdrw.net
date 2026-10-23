@@ -3273,6 +3273,134 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Theory]
+    [InlineData("direct", "path")]
+    [InlineData("direct", "image")]
+    [InlineData("composite", "path")]
+    [InlineData("composite", "image")]
+    [InlineData("template", "path")]
+    [InlineData("template", "image")]
+    public async Task UnsupportedNonTextDrawingKeepsNeighborTextExtractable(string context, string kind)
+    {
+        const string text = "<TextObject ID='501' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>surviving text</TextCode></TextObject>";
+        var drawing = kind == "path"
+            ? "<PathObject xmlns:ext='urn:vendor' ext:opacity='0.5' ID='570' Boundary='0 10 20 20' Fill='true'>" +
+                "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>"
+            : "<ImageObject xmlns:ext='urn:vendor' ext:opacity='0.5' ID='570' Boundary='0 10 20 20' ResourceID='20'/>";
+        var imageResources = kind == "image" ? "<MultiMedias><MultiMedia ID='20' Type='Image' Format='PNG'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>" : "";
+        var composite = context == "composite";
+        var resources = imageResources + (composite
+            ? "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='40'>" +
+                text + drawing + "</CompositeGraphicUnit></CompositeGraphicUnits>"
+            : "");
+        var body = composite
+            ? "<CompositeObject ID='553' Boundary='10 10 50 40' ResourceID='551'/>"
+            : text + drawing;
+        var template = context == "template";
+        var ofd = await Source(body, template: template, resources: resources, font: true, image: kind == "image");
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(
+            template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        var elements = composite
+            ? Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!)).Resource.Elements
+            : block.PageBlockChildren!;
+        Assert.Contains(elements, element => element is OfdTextElement);
+        Assert.Contains(elements, element => kind == "path" ? element is OfdPathElement : element is OfdImageElement);
+        Assert.Equal("surviving text", new OfdTextExtractor().Extract(read, includeTemplates: template));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("attribute", false)]
+    [InlineData("instruction", false)]
+    [InlineData("text", false)]
+    [InlineData("attribute", true)]
+    public async Task UnsupportedCompositeResourceEnvelopeKeepsTextExtractable(string change, bool template)
+    {
+        const string resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>resource envelope text</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var seed = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            template: template, resources: resources, font: true);
+        var ofd = await RewriteXml(seed, "Doc_0/DocumentRes.xml", xml =>
+        {
+            var unit = Assert.Single(xml.Root!.Descendants(), node => node.Name.LocalName == "CompositeGraphicUnit");
+            switch (change)
+            {
+                case "attribute": unit.SetAttributeValue(XName.Get("opacity", "urn:vendor"), "0.5"); break;
+                case "instruction": unit.Add(new XProcessingInstruction("vendor", "opaque")); break;
+                case "text": unit.Add(new XText("opaque")); break;
+            }
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(
+            template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        var placement = Assert.IsType<OfdCompositeElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.IsType<OfdTextElement>(Assert.Single(placement.Resource.Elements));
+        Assert.Equal("resource envelope text", new OfdTextExtractor().Extract(read, includeTemplates: template));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("opaque-child")]
+    [InlineData("unresolved-composite")]
+    [InlineData("invalid-path-style")]
+    public async Task UnsupportedCompositeSiblingKeepsTextExtractable(string sibling)
+    {
+        var unknown = sibling switch
+        {
+            "opaque-child" => "<VendorObject ID='570'/>",
+            "unresolved-composite" => "<CompositeObject ID='570' Boundary='0 10 20 20' ResourceID='999'/>",
+            _ => "<PathObject ID='570' Boundary='0 10 20 20' Stroke='true' DashPattern='0 0'>" +
+                "<AbbreviatedData>M 0 0 L 20 20</AbbreviatedData></PathObject>",
+        };
+        var resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='40'>" +
+            "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>sibling text</TextCode></TextObject>" + unknown +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 40' ResourceID='551'/>",
+            resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var placement = Assert.IsType<OfdCompositeElement>(Assert.Single(
+            Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.Equal(2, placement.Resource.Elements.Count);
+        Assert.Equal("sibling text", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
     [Fact]
     public async Task LaterPageBlockTextCodesInheritPreviousStartCoordinates()
     {

@@ -51,17 +51,22 @@ internal static class OfdCompositeProjection
                     // Extraction shares this projection but does not run render
                     // preflight. Keep the resource's TextCode reachable while
                     // every renderer rejects the placement before writing.
-                    material.Structure.Result(true);
-                    material.ChargeCopy(256, token);
-                    result.Add(new OfdPathElement { RenderPaintError = placementError });
+                    RejectRender(placementError);
                 }
                 foreach (var child in composite.Resource.Elements) Visit(child, local, clips, depth + 1, true, pageBlockChild);
                 active.Remove(composite.Resource); return;
             }
             if (ReferenceEquals(parent, null)) throw new InvalidDataException("Missing parent transform.");
-            if (element is OfdRawElement { LocalName: "CompositeObject" }) throw new NotSupportedException("Unresolved or opaque composite placement cannot be exported.");
+            if (element is OfdRawElement { LocalName: "CompositeObject" })
+            {
+                RejectRender("Unresolved or opaque composite placement cannot be exported.");
+                return;
+            }
             if (compositeChild && element is not (OfdTextElement or OfdImageElement or OfdPathElement))
-                throw new NotSupportedException("Opaque composite children cannot be exported.");
+            {
+                RejectRender("Opaque composite children cannot be exported.");
+                return;
+            }
             var source = element switch { OfdTextElement t => t.SourceXml, OfdImageElement i => i.SourceXml, OfdPathElement p => p.SourceXml, _ => null };
             if (element.RenderSourceXml is { } resolvedSource)
             {
@@ -111,12 +116,7 @@ internal static class OfdCompositeProjection
                 {
                     material.GuardFragmentXml(source, token); var node = OfdXmlEnvelope.Parse(source);
                     if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node) || node.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a)))
-                    {
-                        if (element is OfdTextElement)
-                            scalarError = "Unsupported PageBlock or composite child style cannot be exported.";
-                        else
-                            throw new NotSupportedException("Unsupported PageBlock or composite child style cannot be exported.");
-                    }
+                        scalarError = "Unsupported PageBlock or composite child style cannot be exported.";
                 }
             }
             if (!compositeChild)
@@ -151,7 +151,16 @@ internal static class OfdCompositeProjection
             projected.HeightMillimeters = Math.Abs(origin[1]) * element.WidthMillimeters + Math.Abs(origin[3]) * element.HeightMillimeters;
             material.StoreMatrix(transformed);
             if (projected is OfdTextElement text) { text.Transform = transformed; text.SourceXml = null; }
-            if (projected is OfdPathElement path) { if (scalarError is null) OfdPathStyle.CaptureProjection((OfdPathElement)element, path); path.Transform = transformed; path.SourceXml = null; }
+            if (projected is OfdPathElement path)
+            {
+                if (scalarError is null && projected.RenderPaintError is not { Length: > 0 })
+                {
+                    try { OfdPathStyle.CaptureProjection((OfdPathElement)element, path); }
+                    catch (Exception error) when (error is NotSupportedException or InvalidDataException)
+                    { projected.RenderPaintError = "Composite path style cannot be rendered: " + error.Message; }
+                }
+                path.Transform = transformed; path.SourceXml = null;
+            }
             if (projected is OfdImageElement image) { image.Transform = transformed; image.SourceXml = null; }
             // Projection consumes the original drawing envelope. Its resolved
             // paint now belongs to this transient leaf, whose SourceXml is null.
@@ -175,6 +184,12 @@ internal static class OfdCompositeProjection
             { return "Composite clip cannot be rendered: " + error.Message; }
             clips.AddRange(additions);
             return null;
+        }
+        void RejectRender(string error)
+        {
+            material.Structure.Result(true);
+            material.ChargeCopy(256, token);
+            result.Add(new OfdPathElement { RenderPaintError = error });
         }
     }
     private static string? AdmitComposite(OfdCompositeElement composite, bool pageBlockChild, OfdModelMaterialization material, CancellationToken token)
@@ -201,7 +216,7 @@ internal static class OfdCompositeProjection
         {
             material.GuardFragmentXml(resourceSource, token); var node = OfdXmlEnvelope.Parse(resourceSource);
             if (node.Attributes().Any(a => !a.IsNamespaceDeclaration && (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("ID" or "Width" or "Height"))) || node.Nodes().Any(n => n is XProcessingInstruction || n is XText text && !string.IsNullOrWhiteSpace(text.Value)))
-                throw new NotSupportedException("Composite resource parameters are outside the render profile.");
+                placementError ??= "Composite resource parameters are outside the render profile.";
         }
         return placementError;
     }
