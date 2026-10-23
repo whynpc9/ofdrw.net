@@ -44,12 +44,14 @@ public sealed class ControlledEditWriterTests
         Assert.Equal(0, output.Length);
     }
 
-    [Fact]
-    public async Task LocalAndExternalDuplicateAttachmentIdRejectsPrepareAndWrite()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LocalAndExternalDuplicateAttachmentIdRejectsPrepareAndWrite(bool numericAlias)
     {
         var source = new OfdDocumentPackage();
         source.Attachments.Add(new OfdAttachment { Id = "51", Name = "local.bin", Data = new byte[] { 1 } });
-        var external = new OfdAttachment { Id = "51", Name = "remote.bin", IsExternal = true, ExternalPath = "remote.bin" };
+        var external = new OfdAttachment { Id = numericAlias ? "051" : "51", Name = "remote.bin", IsExternal = true, ExternalPath = "remote.bin" };
         source.Attachments.Add(external);
         var page = new OfdPage { WidthMillimeters = 210, HeightMillimeters = 297 };
         var annotation = new OfdAnnotation { Type = OfdAnnotationType.Link, AttachmentId = "51", Creator = "test",

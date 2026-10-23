@@ -800,9 +800,13 @@ public sealed class PdfMetadataMigrationTests
 
     [Theory]
     [InlineData("missing")]
+    [InlineData("invalid-action-id")]
     [InlineData("duplicate")]
+    [InlineData("duplicate-numeric")]
     [InlineData("duplicate-external")]
+    [InlineData("duplicate-numeric-external")]
     [InlineData("external")]
+    [InlineData("invalid-attachment-id")]
     public async Task ReaderLeavesUnclosedAttachmentActionsUntyped(string defect)
     {
         using var fixture = new PdfFixture(Font());
@@ -823,12 +827,23 @@ public sealed class PdfMetadataMigrationTests
                 action.SetAttributeValue("AttachID", "9999999");
                 ReplaceXml(annotationPath, annotation);
             }
+            else if (defect == "invalid-action-id")
+            {
+                action.SetAttributeValue("AttachID", "0");
+                ReplaceXml(annotationPath, annotation);
+            }
             else
             {
                 var attachmentPath = archive.Entries.Single(entry => entry.FullName.EndsWith("/Attachments.xml")).FullName;
                 var attachments = ReadXml(attachmentPath);
                 var item = attachments.Descendants().Single(node => node.Name.LocalName == "Attachment" && node.Attribute("ID")?.Value == target);
                 if (defect == "duplicate") item.AddAfterSelf(new XElement(item));
+                else if (defect == "duplicate-numeric")
+                {
+                    var other = new XElement(item);
+                    other.SetAttributeValue("ID", "0" + target);
+                    item.AddAfterSelf(other);
+                }
                 else if (defect == "duplicate-external")
                 {
                     var other = new XElement(item);
@@ -836,6 +851,15 @@ public sealed class PdfMetadataMigrationTests
                     other.Elements().Single(node => node.Name.LocalName == "FileLoc").Value = "external.bin";
                     item.AddAfterSelf(other);
                 }
+                else if (defect == "duplicate-numeric-external")
+                {
+                    var other = new XElement(item);
+                    other.SetAttributeValue("ID", "0" + target);
+                    other.SetAttributeValue("External", "true");
+                    other.Elements().Single(node => node.Name.LocalName == "FileLoc").Value = "external.bin";
+                    item.AddAfterSelf(other);
+                }
+                else if (defect == "invalid-attachment-id") item.SetAttributeValue("ID", "0");
                 else item.SetAttributeValue("External", "true");
                 ReplaceXml(attachmentPath, attachments);
             }

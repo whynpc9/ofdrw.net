@@ -338,10 +338,10 @@ public sealed class OfdReader : IOfdReader
 
         material.ReserveReadModel(256L + package.Attachments.Count * 160L, cancellationToken);
         var localAttachmentTargets = new HashSet<string>(package.Attachments
-            .Where(item => !string.IsNullOrWhiteSpace(item.Id))
-            .GroupBy(item => item.Id!, StringComparer.Ordinal)
+            .Where(item => OfdSourceIdentity.ParseId(item.Id) != 0)
+            .GroupBy(item => OfdSourceIdentity.ParseId(item.Id))
             .Where(group => group.Count() == 1 && !group.Single().IsExternal)
-            .Select(group => group.Key), StringComparer.Ordinal);
+            .Select(group => group.Single().Id!), StringComparer.Ordinal);
         package.AnnotationIndexSource = annotationIndex.Source; annotationIndex.Source.DocumentOwner = package;
         var annotationDocuments = new Dictionary<string, XDocument?>(StringComparer.OrdinalIgnoreCase);
         var annotationBudget = new AnnotationReadBudget(options);
@@ -882,6 +882,7 @@ public sealed class OfdReader : IOfdReader
             action.Parent?.Name != ns + "Action" || action.Parent.Attribute("Event")?.Value != "CLICK")) return null;
         if (attachmentActions.Length == 1 && (type != OfdAnnotationType.Link || appearance.Elements().Count() != 1 ||
             appearance.Elements().Single().Name != ns + "PathObject" ||
+            OfdSourceIdentity.ParseId(attachmentActions[0].Attribute("AttachID")!.Value) == 0 ||
             !localAttachmentTargets.Contains(attachmentActions[0].Attribute("AttachID")!.Value))) return null;
         if (!TryParseBox(appearance.Attribute("Boundary")?.Value, material, token, out _) ||
             appearance.Nodes().Any(n => n is XText t && !string.IsNullOrWhiteSpace(t.Value)) ||
