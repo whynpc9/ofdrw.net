@@ -4019,6 +4019,47 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("attribute", false)]
+    [InlineData("instruction", false)]
+    [InlineData("text", false)]
+    [InlineData("attribute", true)]
+    [InlineData("instruction", true)]
+    [InlineData("text", true)]
+    public async Task UnsupportedPageBlockEnvelopeKeepsChildTextExtractable(string change, bool template)
+    {
+        var seed = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>block envelope text</TextCode></TextObject>",
+            template: template, font: true);
+        var path = template ? "Doc_0/Tpl_0/Content.xml" : "Doc_0/Pages/Page_0/Content.xml";
+        var ofd = await RewriteXml(seed, path, xml =>
+        {
+            var block = Assert.Single(xml.Root!.Descendants(), node => node.Name.LocalName == "PageBlock");
+            switch (change)
+            {
+                case "attribute": block.SetAttributeValue(XName.Get("opacity", "urn:vendor"), "0.5"); break;
+                case "instruction": block.Add(new XProcessingInstruction("vendor", "opaque")); break;
+                case "text": block.Add(new XText("opaque")); break;
+            }
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(
+            template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        Assert.IsType<OfdTextElement>(Assert.Single(block.PageBlockChildren!));
+        Assert.Equal("block envelope text", new OfdTextExtractor().Extract(read, includeTemplates: template));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("Page", "false")]
     [InlineData("Page", "0")]
     [InlineData("Content", "false")]

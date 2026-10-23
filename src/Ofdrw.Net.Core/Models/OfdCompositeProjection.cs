@@ -32,7 +32,7 @@ internal static class OfdCompositeProjection
                     node.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                         (a.Name.Namespace != XNamespace.None || a.Name.LocalName != "ID")) ||
                     node.Nodes().Any(n => n is XProcessingInstruction || n is XText t && !string.IsNullOrWhiteSpace(t.Value)))
-                    throw new NotSupportedException("PageBlock has unsupported drawing attributes or content.");
+                    RejectRender("PageBlock has unsupported drawing attributes or content.");
                 foreach (var child in block.PageBlockChildren) Visit(child, parent, inherited, depth + 1, compositeChild, true);
                 return;
             }
