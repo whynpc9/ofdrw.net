@@ -32,10 +32,11 @@ internal static class OfdPageXmlContract
         PlainEnvelope(content) && content.Elements().All(child => child.Name.LocalName == "Layer");
 
     internal static bool IsPlainLayerEnvelope(XElement layer) =>
-        PlainEnvelope(layer, "ID", "Type");
+        PlainEnvelope(layer, "ID", "Type") &&
+        layer.Elements().All(child => child.Name.LocalName == "PageBlock" || !ContainsPageBlock(child));
 
     internal static bool HasPageBlock(XElement layer) =>
-        layer.Elements().Any(child => child.Name.LocalName == "PageBlock");
+        ContainsPageBlock(layer);
 
     private static bool PlainEnvelope(XElement node, params string[] attributes) =>
         node.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||

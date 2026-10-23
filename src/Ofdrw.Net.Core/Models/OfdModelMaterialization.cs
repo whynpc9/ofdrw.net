@@ -24,7 +24,7 @@ internal sealed partial class OfdModelMaterialization
     internal long ValidationWorkBytes { get; private set; }
     private readonly Dictionary<byte[], XmlWork> xmlEntries = new();
     private readonly Dictionary<byte[], string?> pageBlockImageAdmissions = new();
-    internal HashSet<OfdCompositeResource> PageBlockAdmittedComposites { get; } = new();
+    internal HashSet<(OfdCompositeResource Resource, bool InPageBlock)> PageBlockAdmittedComposites { get; } = new();
     private sealed class XmlWork
     {
         internal byte[] Digest = Array.Empty<byte>();

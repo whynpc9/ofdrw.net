@@ -1206,7 +1206,8 @@ public sealed class OfdReader : IOfdReader
         {
             material.ReserveReadModel(2048L + definition.Node.Elements().Count() * 128L, token);
             foreach (var element in ParseGraphicNodes(archive, definition.Node.Elements(), null, "Body", fonts, media, mediaTypes,
-                definition.Path, material, token, map, definition.Node.Name.Namespace, paint, ambiguousMedia: ambiguousMedia))
+                definition.Path, material, token, map, definition.Node.Name.Namespace, paint, ambiguousMedia: ambiguousMedia,
+                resourceDefinition: true))
             {
                 if (element is OfdTextElement unresolvedText && !HasFont(fonts, unresolvedText.FontResourceId))
                 {
@@ -1288,7 +1289,8 @@ public sealed class OfdReader : IOfdReader
     private static IEnumerable<OfdElement> ParseGraphicNodes(OfdPackageArchive archive, IEnumerable<XElement> nodes, string? layerId, string layerType,
         IReadOnlyDictionary<string, string> fontMap, IReadOnlyDictionary<string, string> mediaMap, IReadOnlyDictionary<string, string> mediaTypeMap,
         string pageResPath, OfdModelMaterialization material, CancellationToken cancellationToken, IReadOnlyDictionary<string, OfdCompositeResource>? compositeMap, XNamespace structuralNamespace, OfdPaintResources? paint = null, int blockDepth = 0,
-        ISet<string>? ambiguousMedia = null, IReadOnlyDictionary<string, OfdCompositeResource>? pageBlockCompositeMap = null)
+        ISet<string>? ambiguousMedia = null, IReadOnlyDictionary<string, OfdCompositeResource>? pageBlockCompositeMap = null,
+        bool resourceDefinition = false)
     {
             foreach (var node in nodes)
             {
@@ -1310,7 +1312,7 @@ public sealed class OfdReader : IOfdReader
                     foreach (var child in ParseGraphicNodes(archive, node.Elements(), layerId, layerType,
                         fontMap, mediaMap, mediaTypeMap, pageResPath, material, cancellationToken,
                         pageBlockCompositeMap ?? compositeMap, node.Name.Namespace, paint, blockDepth + 1,
-                        ambiguousMedia, pageBlockCompositeMap))
+                        ambiguousMedia, pageBlockCompositeMap, resourceDefinition))
                         block.PageBlockChildren.Add(child);
                     yield return block;
                     continue;
@@ -1406,7 +1408,7 @@ public sealed class OfdReader : IOfdReader
                     {
                         if (archive.TryGetBytes(mediaPath, out var bytes))
                         {
-                            if (blockDepth > 0 && material.AdmitPageBlockImage(bytes, cancellationToken) != image.MediaType)
+                            if (blockDepth > 0 && !resourceDefinition && material.AdmitPageBlockImage(bytes, cancellationToken) != image.MediaType)
                                 image.SourceMediaAmbiguous = true;
                             else
                             {
@@ -1467,14 +1469,16 @@ public sealed class OfdReader : IOfdReader
                     var compositeKey = CanonicalResourceId(resourceId);
                     if (compositeKey is not null && compositeMap?.TryGetValue(compositeKey, out var resource) == true)
                     {
-                        if (blockDepth > 0) AdmitPageBlockCompositeImages(resource, material, cancellationToken);
                         var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                         var placement = new OfdCompositeElement { ObjectId = node.Attribute("ID")?.Value, LayerId = layerId, LayerType = layerType,
                             XMillimeters = boundary.x, YMillimeters = boundary.y, WidthMillimeters = boundary.w, HeightMillimeters = boundary.h,
                             Resource = resource, Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
                             SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken),
                             ClippingXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken) };
-                        OfdClipXml.Load(placement, material, cancellationToken); yield return placement; continue;
+                        OfdClipXml.Load(placement, material, cancellationToken);
+                        if (!resourceDefinition && OfdGraphicXmlContract.IsVisible(placement))
+                            AdmitPageBlockCompositeImages(resource, blockDepth > 0, material, cancellationToken);
+                        yield return placement; continue;
                     }
                 }
                 var rawBoundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
@@ -1575,23 +1579,28 @@ public sealed class OfdReader : IOfdReader
         return string.IsNullOrWhiteSpace(fontRef) ? "SimSun" : fontRef!;
     }
 
-    private static void AdmitPageBlockCompositeImages(OfdCompositeResource root,
+    private static void AdmitPageBlockCompositeImages(OfdCompositeResource root, bool inPageBlock,
         OfdModelMaterialization material, CancellationToken token)
     {
-        var pending = new Stack<OfdCompositeResource>(); pending.Push(root);
+        if (!material.PageBlockAdmittedComposites.Add((root, inPageBlock))) return;
+        var pending = new Stack<(OfdElement Element, bool InPageBlock)>();
+        foreach (var element in root.Elements) pending.Push((element, inPageBlock));
         while (pending.Count > 0)
         {
             token.ThrowIfCancellationRequested(); material.Structure.Reference();
-            var resource = pending.Pop();
-            if (!material.PageBlockAdmittedComposites.Add(resource)) continue;
-            foreach (var element in resource.Elements)
+            var (element, withinBlock) = pending.Pop();
+            if (!OfdGraphicXmlContract.IsVisible(element)) continue;
+            if (element is OfdRawElement { LocalName: "PageBlock", PageBlockChildren: { } children })
             {
-                token.ThrowIfCancellationRequested(); material.Structure.Reference();
-                if (element is OfdCompositeElement nested) pending.Push(nested.Resource);
-                if (element is OfdImageElement image &&
-                    (image.Data.Length == 0 || material.AdmitPageBlockImage(image.Data, token) != image.MediaType))
-                    image.SourceMediaAmbiguous = true;
+                foreach (var child in children) pending.Push((child, true));
+                continue;
             }
+            if (element is OfdCompositeElement nested &&
+                material.PageBlockAdmittedComposites.Add((nested.Resource, withinBlock)))
+                foreach (var child in nested.Resource.Elements) pending.Push((child, withinBlock));
+            if (withinBlock && element is OfdImageElement image &&
+                (image.Data.Length == 0 || material.AdmitPageBlockImage(image.Data, token) != image.MediaType))
+                image.SourceMediaAmbiguous = true;
         }
     }
 

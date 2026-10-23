@@ -1940,6 +1940,56 @@ public sealed class R01PageBlockTests
         Assert.True(pdf.Length > 0); Assert.True(svg.Length > 0); Assert.True(html.Length > 0);
     }
 
+    [Fact]
+    public async Task ResourceOwnedPageBlockImageIsAdmittedOnlyAfterCompositePlacement()
+    {
+        const string resources = "<MultiMedias><MultiMedia ID='21' Type='Image' Format='PNG'>" +
+            "<MediaFile>unused.png</MediaFile></MultiMedia></MultiMedias>" +
+            "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='30' Height='30'>" +
+            "<PageBlock ID='701'><ImageObject ID='702' Boundary='0 0 20 20' ResourceID='21'/></PageBlock>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var invalidPng = new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
+        var unusedSeed = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>visible text</TextCode></TextObject>", resources: resources, font: true);
+        var unused = await WithEntry(unusedSeed, "Doc_0/unused.png", invalidPng);
+        var unread = await new OfdReader().ReadAsync(new MemoryStream(unused));
+        var unusedBlock = Assert.IsType<OfdRawElement>(Assert.Single(Assert.Single(unread.CompositeResources!.Items).Elements));
+        var unusedImage = Assert.IsType<OfdImageElement>(Assert.Single(unusedBlock.PageBlockChildren!));
+        Assert.Equal(invalidPng, unusedImage.Data);
+        Assert.False(unusedImage.SourceMediaAmbiguous);
+        Assert.Equal("visible text", new OfdTextExtractor().Extract(unread));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(unused), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(unused), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(unused), html);
+        Assert.True(pdf.Length > 0 && svg.Length > 0 && html.Length > 0);
+
+        var usedSeed = await Source("<CompositeObject ID='553' Boundary='10 10 30 30' ResourceID='551'/>",
+            resources: resources, font: true);
+        foreach (var pageBlockPlacement in new[] { true, false })
+        {
+            var placement = pageBlockPlacement ? usedSeed : await RewriteXml(usedSeed, "Doc_0/Pages/Page_0/Content.xml", xml =>
+            {
+                var block = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "PageBlock");
+                block.ReplaceWith(new XElement(Assert.Single(block.Elements())));
+            });
+            var used = await WithEntry(placement, "Doc_0/unused.png", invalidPng);
+            var read = await new OfdReader().ReadAsync(new MemoryStream(used));
+            var usedBlock = Assert.IsType<OfdRawElement>(Assert.Single(Assert.Single(read.CompositeResources!.Items).Elements));
+            Assert.True(Assert.IsType<OfdImageElement>(Assert.Single(usedBlock.PageBlockChildren!)).SourceMediaAmbiguous);
+            foreach (var convert in new Func<Stream, Stream, Task>[]
+            {
+                (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+                (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+                (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+            })
+            {
+                using var sink = new MemoryStream();
+                await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(used), sink));
+                Assert.Equal(0, sink.Length);
+            }
+        }
+    }
+
     [Theory]
     [InlineData("duplicate-file", false)]
     [InlineData("duplicate-file", true)]
@@ -4164,6 +4214,53 @@ public sealed class R01PageBlockTests
             using var templateStream = archive.GetEntry(path)!.Open();
             using var copy = new MemoryStream();
             await templateStream.CopyToAsync(copy);
+            Assert.Equal(read.PreservedEntries[path], copy.ToArray());
+        }
+        else
+        {
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, written));
+            Assert.Equal(0, written.Length);
+        }
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HiddenForeignLayerWrapperCannotSuppressNestedPageBlock(bool template)
+    {
+        var seed = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>wrapped layer text</TextCode></TextObject>", template: template, font: true);
+        var path = template ? "Doc_0/Tpl_0/Content.xml" : "Doc_0/Pages/Page_0/Content.xml";
+        var ofd = await RewriteXml(seed, path, xml =>
+        {
+            var block = Assert.Single(xml.Root!.Descendants(), node => node.Name.LocalName == "PageBlock");
+            block.ReplaceWith(new XElement(XNamespace.Get("urn:vendor") + "Wrapper",
+                new XAttribute("Visible", "false"), new XElement(block)));
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.IsType<OfdRawElement>(Assert.Single(
+            template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        Assert.Equal("Layer", raw.LocalName);
+        Assert.Contains("wrapped layer text", raw.Xml);
+        Assert.Contains("Visible=\"false\"", raw.Xml);
+        using var written = new MemoryStream();
+        if (template)
+        {
+            await new OfdPackageWriter().WriteAsync(read, written);
+            using var archive = new ZipArchive(new MemoryStream(written.ToArray()), ZipArchiveMode.Read);
+            using var templateStream = archive.GetEntry(path)!.Open();
+            using var copy = new MemoryStream(); await templateStream.CopyToAsync(copy);
             Assert.Equal(read.PreservedEntries[path], copy.ToArray());
         }
         else
