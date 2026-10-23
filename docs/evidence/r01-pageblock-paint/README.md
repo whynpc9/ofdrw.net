@@ -1,6 +1,6 @@
 # R01 PageBlock、文字与颜色验收
 
-日期：2026-10-24（Asia/Shanghai）；分支 `codex/r01-pageblock-text-color`；[PR #29](https://github.com/whynpc9/ofdrw.net/pull/29)。**产品源码** `2841199de5d95798ddc433e8220844910bee1479`，已整合主线 `aac53f2875b3bdbe190364fbacdec5e0f0f59888`。环境：macOS Arm64、.NET SDK 10.0.401。本轮输入、输出、日志与 PNG 位于已忽略的 `artifacts/roadmap-v12/R01/`，文件 SHA-256 见 [hashes.txt](hashes.txt)。
+日期：2026-10-24（Asia/Shanghai）；分支 `codex/r01-pageblock-text-color`；[PR #29](https://github.com/whynpc9/ofdrw.net/pull/29)。**产品源码** `baeae53ddc0a24a35c7e909e973c8079ccc86bcc`，已整合主线 `aac53f2875b3bdbe190364fbacdec5e0f0f59888`。环境：macOS Arm64、.NET SDK 10.0.401。本轮输入、输出、日志与 PNG 位于已忽略的 `artifacts/roadmap-v12/R01/`，文件 SHA-256 见 [hashes.txt](hashes.txt)。
 
 ## 已验证的行为边界
 
@@ -16,15 +16,15 @@
 
 ## 功能测试与本地包消费
 
-- 源码 `2841199` 的完整 Release 解决方案：**4051 passed、0 failed、0 skipped**，11 个测试项目；R01 PageBlock **441/441**。单节点构建并使用仓库独占锁；日志为 `p104-full-release.log`、`p104-focused.log`。
-- 本地版本 `0.1.0-r01.p104` 的 **12 个基础 SDK 包和 1 个可选 SES 包**通过来源核对及独立消费者 E2E。`generated-layout.docx` 的显式 native 与默认 DOCX→OFD→PDF 各生成 V1/V4 测试签章，原文完整保留；签章前后逐页 PNG 一致。`p104-ses/files/functional.json` 与 `rendered-pages.json` 保存机器检查。Core、Packaging、Reader 三个精确本地包的 R18 附件清理消费者也通过，物理删除后回读为空。包未发布；默认密码学验证状态为 `Unsupported`，测试专用自签路径通过。
-- 整合已实际合并的 R20 主线 `aac53f2` 后，精确本地 Core/Packaging 包的归档预检消费者完成 4 个公开 API 样例；`p104-preflight.log`、`p104-preflight/output/manifest.json` 与 `archival-structural.json` 保存运行及规则结果。R20 新增的 `AC-013`–`AC-015` 是只读、有界的违规检测；未发现违规不等于标准通过，缺乏完整来源、资源闭包与明文证明时保持 `Unknown`。本次验证不宣称档案合规认证。
+- 源码 `baeae53` 的完整 Release 解决方案：**4051 passed、0 failed、0 skipped**，11 个测试项目；R01 PageBlock **441/441**。单节点构建并使用仓库独占锁；公开 API 文档检查也通过。日志为 `p105-full-release.log`、`p105-focused.log`。
+- 本地版本 `0.1.0-r01.p105` 的 **12 个基础 SDK 包和 1 个可选 SES 包**通过来源核对及独立消费者 E2E。`generated-layout.docx` 的显式 native 与默认 DOCX→OFD→PDF 各生成 V1/V4 测试签章，原文完整保留；签章前后逐页 PNG 一致。`p105-ses/files/functional.json` 与 `rendered-pages.json` 保存机器检查。Core、Packaging、Reader 三个精确本地包的 R18 附件清理消费者也通过，物理删除后回读为空。包未发布；默认密码学验证状态为 `Unsupported`，测试专用自签路径通过。
+- 整合已实际合并的 R20 主线 `aac53f2` 后，精确本地 Core/Packaging 包的归档预检消费者完成 4 个公开 API 样例；`p105-preflight.log`、`p105-preflight/output/manifest.json` 与 `archival-structural.json` 保存运行及规则结果。R20 新增的 `AC-013`–`AC-015` 是只读、有界的违规检测；未发现违规不等于标准通过，缺乏完整来源、资源闭包与明文证明时保持 `Unknown`。本次验证不宣称档案合规认证。
 
 ## 自动渲染与 PNG 视觉复查
 
 本轮从产品源码生成 **36 份 PageBlock PDF、37 页**，逐页导出 144 DPI PNG。24 张沿用样例与先前逐页目视检查的对应当前分支图像逐字节相同；另 4 张与 `p80` 对应 PNG 逐字节相同，`p80` 记录了与 `p77` 目视复查页的比对；两张同物理 Res 与规范化别名路径的红色方块和上轮直接目视页逐字节相同；复合对象单例裁切页与上一轮直接目视页逐字节相同，左半蓝色矩形和完整黑色文字的预期不变；DocumentRes 2016、PublicRes 无命名空间页与上一轮直接目视页逐字节相同，`resource namespace text` 完整可见；复合资源嵌套 PageBlock 页也与上一轮直接目视页逐字节相同，`nested resource text` 完整可见；未引用复合资源内损坏图片与隐藏大图的两个正例页直接目视检查，`visible text` 清晰可见，没有意外图像；普通复合放置的资源内 PageBlock 正例页直接目视检查，`ordinary resource text` 完整；省略 Format 的 JPEG 页与本轮显式 JPEG 页逐字节相同，符合样例预期，未见异常裁切、重叠、重影或空白页。实际检查范围如下：
 
-逐页比对文件、页码、SHA-256、先前目视检查的对照路径、后四页的 `p80` 对照、四张与上轮目视页逐字节相同的记录及三张本轮直接目视 PageBlock 页、一张 typed 编辑页的记录与省略 Format 页的同轮对照见 `p104-png-qa.json`；[hashes.txt](hashes.txt) 所列的 221 个关键文件已由 `shasum -a 256 -c` 全部核对。
+逐页比对文件、页码、SHA-256、先前目视检查的对照路径、后四页的 `p80` 对照、四张与上轮目视页逐字节相同的记录及三张本轮直接目视 PageBlock 页、一张 typed 编辑页的记录与省略 Format 页的同轮对照见 `p105-png-qa.json`；[hashes.txt](hashes.txt) 所列的 221 个关键文件已由 `shasum -a 256 -c` 全部核对。
 
 | 样例 | 页数与检查要点 |
 | --- | --- |
@@ -49,4 +49,4 @@
 
 ## macOS Preview 验收
 
-已以产品源码 `2841199` 的 39 份 PDF、42 页及其 SHA-256 提交 `gui-request-R01-20261023T1912Z.json` 独占 GUI 申请；**Preview 逐页验收尚未完成**，目前等待桌面租约安全释放。完成后记录实际查看链路、页面范围、结论与关窗结果。本报告只覆盖上述确定性样例；不推断任意复杂 DOCX 的完整保真、外部 OFD 阅读器互操作、V5/GBT 端到端互操作或签名法律效力。
+已以产品源码 `baeae53` 的 39 份 PDF、42 页及其 SHA-256 提交 `gui-request-R01-20261023T1925Z.json` 独占 GUI 申请；**Preview 逐页验收尚未完成**，目前等待桌面租约安全释放。完成后记录实际查看链路、页面范围、结论与关窗结果。本报告只覆盖上述确定性样例；不推断任意复杂 DOCX 的完整保真、外部 OFD 阅读器互操作、V5/GBT 端到端互操作或签名法律效力。
