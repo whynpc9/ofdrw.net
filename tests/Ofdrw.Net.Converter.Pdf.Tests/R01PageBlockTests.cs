@@ -3319,6 +3319,80 @@ public sealed class R01PageBlockTests
         Retain("nested-composite-pageblock", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
     }
 
+    [Fact]
+    public async Task OrdinaryCompositeWithResourceOwnedPageBlockRendersFromPlainContainer()
+    {
+        const string resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            "<PageBlock ID='701'><TextObject ID='702' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>ordinary resource text</TextCode></TextObject></PageBlock>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var seed = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources, font: true);
+        var ofd = await RewriteXml(seed, "Doc_0/Pages/Page_0/Content.xml", xml =>
+        {
+            var block = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "PageBlock");
+            block.ReplaceWith(new XElement(Assert.Single(block.Elements())));
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Equal("ordinary resource text", new OfdTextExtractor().Extract(read));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("ordinary resource text", parsed.GetPage(1).Text);
+        Assert.Contains("ordinary resource text", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("ordinary resource text", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("ordinary-resource-pageblock", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task OrdinaryCompositeResourceOwnedPageBlockRejectsUnsupportedContainer(
+        bool nestedResource, bool rootEnvelope)
+    {
+        const string block = "<PageBlock ID='701'><TextObject ID='702' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>resource container text</TextCode></TextObject></PageBlock>";
+        var resources = nestedResource
+            ? "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+              "<CompositeObject ID='704' Boundary='0 0 50 20' ResourceID='552'/></CompositeGraphicUnit>" +
+              "<CompositeGraphicUnit ID='552' Width='50' Height='20'>" + block +
+              "</CompositeGraphicUnit></CompositeGraphicUnits>"
+            : "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+              block + "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var seed = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources, font: true);
+        var ordinary = await RewriteXml(seed, "Doc_0/Pages/Page_0/Content.xml", xml =>
+        {
+            var pageBlock = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "PageBlock");
+            pageBlock.ReplaceWith(new XElement(Assert.Single(pageBlock.Elements())));
+        });
+        var ofd = await RewriteXml(ordinary, "Doc_0/DocumentRes.xml", xml =>
+        {
+            var target = rootEnvelope ? xml.Root! : Assert.Single(xml.Root!.Elements(),
+                node => node.Name.LocalName == "CompositeGraphicUnits");
+            target.SetAttributeValue(XName.Get("opaque", "urn:vendor"), "true");
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var composite = Assert.IsType<OfdCompositeElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.False(composite.Resource.SourceContainerSupported);
+        Assert.Contains("resource container text", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Contains("container", error.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
     [Theory]
     [InlineData("500", "702")]
     [InlineData("701", "10")]

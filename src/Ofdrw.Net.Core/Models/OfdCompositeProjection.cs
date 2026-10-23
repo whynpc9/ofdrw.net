@@ -197,7 +197,8 @@ internal static class OfdCompositeProjection
     {
         string? placementError = pageBlockChild && composite.SourceXml is null
             ? "PageBlock composite placement has no original drawing attributes." : null;
-        if (pageBlockChild && !composite.Resource.SourceContainerSupported)
+        if (!composite.Resource.SourceContainerSupported &&
+            (pageBlockChild || ContainsReachablePageBlock(composite.Resource, material, token)))
             placementError ??= "PageBlock composite resource container cannot be rendered.";
         if (composite.SourceXml is { } source)
         {
@@ -227,6 +228,26 @@ internal static class OfdCompositeProjection
         child.Name.LocalName == "PageBlock"
             ? child.Name.NamespaceName is not ("" or Ofdrw.Net.Core.Constants.OfdConstants.Namespace or Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace)
             : OfdPageXmlContract.ContainsPageBlock(child));
+    private static bool ContainsReachablePageBlock(OfdCompositeResource root,
+        OfdModelMaterialization material, CancellationToken token)
+    {
+        var pending = new Stack<OfdCompositeResource>(); pending.Push(root);
+        var visited = new HashSet<OfdCompositeResource>();
+        while (pending.Count > 0)
+        {
+            token.ThrowIfCancellationRequested(); material.Structure.Reference();
+            var resource = pending.Pop();
+            if (!visited.Add(resource)) continue;
+            foreach (var child in resource.Elements)
+            {
+                token.ThrowIfCancellationRequested(); material.Structure.Reference();
+                if (child is OfdRawElement { LocalName: "PageBlock" }) return true;
+                if (child is OfdCompositeElement nested && nested.Resource is not null)
+                    pending.Push(nested.Resource);
+            }
+        }
+        return false;
+    }
     private static OfdPathElement Rectangle(double w, double h, double[] matrix) => new() { Stroke = false, Fill = true,
         AbbreviatedData = $"M 0 0 L {Number(w)} 0 L {Number(w)} {Number(h)} L 0 {Number(h)} C", Transform = matrix };
     private static string Encode(IReadOnlyList<OfdPathElement> paths, OfdModelMaterialization material, CancellationToken token)
