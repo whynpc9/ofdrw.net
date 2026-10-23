@@ -41,6 +41,11 @@ internal static class OfdCompositeProjection
             {
                 if (composite.Resource is null || !active.Add(composite.Resource)) throw new InvalidDataException("Cyclic or missing composite resource.");
                 var placementError = AdmitComposite(composite, pageBlockChild, material, token);
+                var local = Multiply(origin, composite.Transform ?? Identity());
+                var clips = new List<OfdPathElement>(inherited);
+                clips.Add(Rectangle(composite.WidthMillimeters, composite.HeightMillimeters, origin));
+                clips.Add(Rectangle(composite.Resource.WidthMillimeters, composite.Resource.HeightMillimeters, local));
+                placementError ??= TryAddClips(composite, origin, clips);
                 if (placementError is not null)
                 {
                     // Extraction shares this projection but does not run render
@@ -50,11 +55,6 @@ internal static class OfdCompositeProjection
                     material.ChargeCopy(256, token);
                     result.Add(new OfdPathElement { RenderPaintError = placementError });
                 }
-                var local = Multiply(origin, composite.Transform ?? Identity());
-                var clips = new List<OfdPathElement>(inherited);
-                clips.Add(Rectangle(composite.WidthMillimeters, composite.HeightMillimeters, origin));
-                clips.Add(Rectangle(composite.Resource.WidthMillimeters, composite.Resource.HeightMillimeters, local));
-                AddClips(composite, origin, clips);
                 foreach (var child in composite.Resource.Elements) Visit(child, local, clips, depth + 1, true, pageBlockChild);
                 active.Remove(composite.Resource); return;
             }
@@ -138,7 +138,8 @@ internal static class OfdCompositeProjection
             if (scalarError is not null) projected.RenderPaintError = scalarError;
             var inner = element switch { OfdTextElement t => t.Transform, OfdImageElement i => i.Transform ?? new[] { i.WidthMillimeters, 0, 0, i.HeightMillimeters, 0, 0 }, OfdPathElement p => p.Transform, _ => null } ?? Identity();
             var transformed = Multiply(origin, inner);
-            var clipsForLeaf = inherited.Select(p => new OfdPathElement { AbbreviatedData = p.AbbreviatedData, Transform = p.Transform, FillRule = p.FillRule, Fill = true, Stroke = false }).ToList(); AddClips(element, origin, clipsForLeaf);
+            var clipsForLeaf = inherited.Select(p => new OfdPathElement { AbbreviatedData = p.AbbreviatedData, Transform = p.Transform, FillRule = p.FillRule, Fill = true, Stroke = false }).ToList();
+            projected.RenderPaintError ??= TryAddClips(element, origin, clipsForLeaf);
             if (element is OfdImageElement) clipsForLeaf.Add(Rectangle(element.WidthMillimeters, element.HeightMillimeters, origin));
             var x0 = origin[4] + Math.Min(0, origin[0] * element.WidthMillimeters) + Math.Min(0, origin[2] * element.HeightMillimeters);
             var y0 = origin[5] + Math.Min(0, origin[1] * element.WidthMillimeters) + Math.Min(0, origin[3] * element.HeightMillimeters);
@@ -165,6 +166,15 @@ internal static class OfdCompositeProjection
             foreach (var region in OfdClipGeometry.Read(xml, material, token, requireClosedProfile: true))
                 foreach (var path in region.Paths)
                 { path.Transform = Multiply(origin, path.Transform ?? Identity()); path.FillRule = region.EvenOdd ? OfdFillRule.EvenOdd : OfdFillRule.NonZero; clips.Add(path); }
+        }
+        string? TryAddClips(OfdElement owner, double[] origin, List<OfdPathElement> clips)
+        {
+            var additions = new List<OfdPathElement>();
+            try { AddClips(owner, origin, additions); }
+            catch (Exception error) when (error is NotSupportedException or InvalidDataException)
+            { return "Composite clip cannot be rendered: " + error.Message; }
+            clips.AddRange(additions);
+            return null;
         }
     }
     private static string? AdmitComposite(OfdCompositeElement composite, bool pageBlockChild, OfdModelMaterialization material, CancellationToken token)

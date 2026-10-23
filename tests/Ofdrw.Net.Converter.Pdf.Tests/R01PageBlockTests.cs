@@ -3241,6 +3241,38 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MalformedCompositeClipKeepsResourceTextExtractable(bool onPlacement)
+    {
+        const string clip = "<Clips><Clip><Area><Path Stroke='false' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 C</AbbreviatedData></Path></Area></Clip></Clips>";
+        var child = "<TextObject ID='552' Boundary='0 0 50 10' Font='10' Size='4'>" +
+            (onPlacement ? "" : clip) + "<TextCode X='0' Y='4'>clip resource text</TextCode></TextObject>";
+        var resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            child + "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'>" +
+            (onPlacement ? clip : "") + "</CompositeObject>", resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var placement = Assert.IsType<OfdCompositeElement>(Assert.Single(
+            Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.IsType<OfdTextElement>(Assert.Single(placement.Resource.Elements));
+        Assert.Equal("clip resource text", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Contains("clip", error.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
     [Fact]
     public async Task LaterPageBlockTextCodesInheritPreviousStartCoordinates()
     {
@@ -3816,6 +3848,40 @@ public sealed class R01PageBlockTests
             (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
             (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
             (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ForeignPageWrapperContainingPageBlockStaysOpaque(bool template)
+    {
+        var seed = await Source("<TextObject ID='501' Boundary='10 10 50 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>wrapped text</TextCode></TextObject>", template: template, font: true);
+        var path = template ? "Doc_0/Tpl_0/Content.xml" : "Doc_0/Pages/Page_0/Content.xml";
+        var ofd = await RewriteXml(seed, path, xml =>
+        {
+            var root = xml.Root!;
+            var content = Assert.Single(root.Elements(), node => node.Name.LocalName == "Content");
+            var block = Assert.Single(content.Descendants(), node => node.Name.LocalName == "PageBlock");
+            content.Remove();
+            root.Add(new XElement(XNamespace.Get("urn:vendor") + "Wrapper", new XElement(block)));
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.IsType<OfdRawElement>(Assert.Single(
+            template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
+        Assert.Equal("Page", raw.LocalName);
+        Assert.Contains("wrapped text", raw.Xml);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
         })
         {
             using var sink = new MemoryStream();

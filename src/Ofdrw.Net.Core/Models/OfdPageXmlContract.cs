@@ -23,6 +23,9 @@ internal static class OfdPageXmlContract
             .All(child => child.Name.Namespace == root.Name.Namespace) &&
         root.Elements().Where(child => child.Name.LocalName == "Content")
             .All(child => child.Name.Namespace == root.Name.Namespace) &&
+        root.Elements().Where(child => child.Name != root.Name.Namespace + "Area" &&
+                child.Name != root.Name.Namespace + "Content")
+            .All(child => child.Name.LocalName != "PageBlock" && !ContainsPageBlock(child)) &&
         root.Elements(root.Name.Namespace + "Area").All(area => IsRepresentedArea(area, root.Name.Namespace));
 
     internal static bool IsPlainContentEnvelope(XElement content) =>
