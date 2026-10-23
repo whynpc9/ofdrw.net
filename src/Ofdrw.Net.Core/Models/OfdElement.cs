@@ -17,8 +17,7 @@ public abstract class OfdElement
     internal string? RenderSourceXml { get; set; }
     internal string? RenderSourceAuthority { get; set; }
     internal string? RenderPaintError { get; set; }
-    // A public SourceXml clear hands authority back to the typed model. Keep
-    // nonempty replacements guarded by RenderSourceAuthority until re-read.
+    /// <summary>Invalidates Reader-resolved paint when a public source envelope is cleared.</summary>
     protected void InvalidateResolvedSourceIfCleared(string? sourceXml)
     {
         if (!string.IsNullOrWhiteSpace(sourceXml)) return;
@@ -90,11 +89,11 @@ public sealed class OfdTextElement : OfdElement
 
     public List<OfdTextRun> Runs { get; } = [];
 
+    private string? sourceXml;
     /// <summary>
     /// Complete source XML retained to preserve glyph positioning, transforms,
     /// colors and vendor attributes that are not strongly typed yet.
     /// </summary>
-    private string? sourceXml;
     public string? SourceXml
     {
         get => sourceXml;
@@ -142,11 +141,11 @@ public sealed class OfdImageElement : OfdElement
     /// <summary>Optional OFD Clips XML in object coordinates.</summary>
     public string? ClipsXml { get => ClippingXml; set => ClippingXml = value; }
 
+    private string? sourceXml;
     /// <summary>
     /// Complete source XML retained to preserve transforms, clipping, alpha and
     /// vendor attributes that are not strongly typed yet.
     /// </summary>
-    private string? sourceXml;
     public string? SourceXml
     {
         get => sourceXml;
@@ -188,11 +187,11 @@ public sealed class OfdPathElement : OfdElement
 
     public OfdColor? FillColor { get; set; }
 
+    private string? sourceXml;
     /// <summary>
     /// Retains the complete source element so unsupported style attributes and
     /// extension children survive a read-write round trip.
     /// </summary>
-    private string? sourceXml;
     public string? SourceXml
     {
         get => sourceXml;
