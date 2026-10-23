@@ -1735,6 +1735,46 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("BMP")]
+    [InlineData("TIFF")]
+    public async Task LegacyBitmapFormatRemainsTopLevelPdfOnlyOutsidePageBlockProfile(string format)
+    {
+        var resources = $"<MultiMedias><MultiMedia ID='20' Type='Image' Format='{format}'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
+        var seed = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>",
+            resources: resources, image: true);
+        using var pixels = new Image<Rgba32>(1, 1, Color.Red);
+        using var encoded = new MemoryStream();
+        if (format == "BMP") await pixels.SaveAsBmpAsync(encoded);
+        else await pixels.SaveAsTiffAsync(encoded);
+        var ofd = await WithEntry(seed, "Doc_0/image.png", encoded.ToArray());
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var image = Assert.IsType<OfdImageElement>(Assert.Single(Assert.IsType<OfdRawElement>(
+            Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.True(image.SourceMediaAmbiguous);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+
+        var topLevel = await RewriteXml(ofd, "Doc_0/Pages/Page_0/Content.xml", xml =>
+        {
+            var block = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "PageBlock");
+            block.ReplaceWith(block.Elements().ToArray());
+        });
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(topLevel), pdf);
+        Assert.True(pdf.Length > 0);
+    }
+
+    [Theory]
     [InlineData("png-signature")]
     [InlineData("png-crc")]
     [InlineData("jpeg-truncated")]
