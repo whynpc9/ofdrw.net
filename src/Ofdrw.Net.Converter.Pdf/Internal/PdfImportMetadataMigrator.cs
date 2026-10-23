@@ -38,7 +38,9 @@ internal static class PdfImportMetadataMigrator
         {
             token.ThrowIfCancellationRequested();
             var annotation = Resolve<DictionaryToken>(entry, source) ?? throw new InvalidDataException("PDF page annotation cannot be resolved.");
-            if (annotation.Data.TryGetValue("Subtype", out var subtype) && subtype is NameToken { Data: "FileAttachment" })
+            if (!annotation.Data.TryGetValue("Subtype", out var subtype))
+                throw new InvalidDataException("PDF annotation subtype is missing.");
+            if (AnnotationSubtype(subtype, source).Data == "FileAttachment")
             {
                 if (++rawFileCount > options.MaxAttachmentCount)
                     throw new InvalidDataException("PDF page attachment count exceeds the configured limit.");
@@ -50,6 +52,22 @@ internal static class PdfImportMetadataMigrator
             onlyFileAttachments && parsed.Length != annots.Data.Count)
             throw new InvalidDataException("PDF page attachment parser omitted an annotation.");
         return parsed;
+    }
+
+    private static NameToken AnnotationSubtype(IToken token, PdfDocument source)
+    {
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        IToken? current = token;
+        while (current is IndirectReferenceToken reference && visited.Count < 32)
+        {
+            if (!visited.Add(reference.Data.ToString())) break;
+            try { current = source.Structure.TokenScanner.Get(reference.Data)?.Data; }
+            catch (PdfDocumentFormatException error)
+            {
+                throw new InvalidDataException("PDF annotation subtype reference is invalid.", error);
+            }
+        }
+        return current as NameToken ?? throw new InvalidDataException("PDF annotation subtype is not a local name.");
     }
 
     private static DictionaryToken RawPage(PdfDocument source, int zeroBasedPage, PdfToOfdOptions options, CancellationToken token)
@@ -513,7 +531,10 @@ internal static class PdfImportMetadataMigrator
                 var stem = normalized.Substring(0, normalized.Length - extension.Length);
                 var available = 255 - suffix.Length - extension.Length;
                 if (available <= 0) throw new InvalidDataException("PDF attachment name cannot fit a collision suffix.");
-                candidate = stem.Substring(0, Math.Min(stem.Length, available)) + suffix + extension;
+                var length = Math.Min(stem.Length, available);
+                if (length < stem.Length && char.IsHighSurrogate(stem[length - 1]) && char.IsLowSurrogate(stem[length]))
+                    length--;
+                candidate = stem.Substring(0, length) + suffix + extension;
             }
             if (used.Add(candidate)) return candidate;
         }

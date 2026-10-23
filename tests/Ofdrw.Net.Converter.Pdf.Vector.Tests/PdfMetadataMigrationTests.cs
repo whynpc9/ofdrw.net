@@ -19,12 +19,12 @@ public sealed class PdfMetadataMigrationTests
         int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null", string? outlineRoot = null,
         string attachmentName = "same.bin", int? attachmentFlags = 4, string? rootOutlineItem = null,
         string annotationRect = "20 30 40 50", string[]? extraObjects = null, string? globalFileSpec = null,
-        string? nameTreeKeyToken = null, string? pageFileSpec = null)
+        string? nameTreeKeyToken = null, string? pageFileSpec = null, string pageSubtype = "/FileAttachment")
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var flags = attachmentFlags is int value ? " /F " + value : string.Empty;
         var page = embeddedPageFile
-            ? "<< /Type /Annot /Subtype /FileAttachment /Rect [" + annotationRect + "] /Contents (page note) /FS 20 0 R" + flags + " >>"
+            ? "<< /Type /Annot /Subtype " + pageSubtype + " /Rect [" + annotationRect + "] /Contents (page note) /FS 20 0 R" + flags + " >>"
             : "<< /Type /Annot /Subtype /FileAttachment /Rect [" + annotationRect + "] /FS << /F (missing.bin) >>" + flags + " >>";
         return fixture.Create(new[] { fixture.Text("A中文", 30, 500), fixture.Text("B中文", 30, 500) },
             catalogEntries: "/Outlines 13 0 R /Names << /EmbeddedFiles 16 0 R >>",
@@ -409,6 +409,69 @@ public sealed class PdfMetadataMigrationTests
         Assert.Equal(name, package.Attachments[0].Name);
         Assert.Equal(new string('a', 247) + " (2).bin", package.Attachments[1].Name);
         Assert.All(package.Attachments, attachment => Assert.True(attachment.Name.Length <= 255));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CollisionTruncationKeepsSurrogatePairWhole(bool vector)
+    {
+        var name = new string('a', 246) + "😀bbb.bin";
+        Assert.Equal(255, name.Length);
+        var hexName = "<" + Convert.ToHexString(Encoding.BigEndianUnicode.GetBytes("\uFEFF" + name)) + ">";
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, nameTreeKeyToken: hexName,
+            pageFileSpec: $"<< /Type /Filespec /UF {hexName} /EF << /F 21 0 R >> >>"));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions { Compatibility = options })
+                .ConvertAsync(input, output, new[] { 0 });
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output, new[] { 0 });
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal(name, package.Attachments[0].Name);
+        Assert.Equal(new string('a', 246) + " (2).bin", package.Attachments[1].Name);
+        Assert.All(package.Attachments, attachment => Assert.True(attachment.Name.Length <= 255));
+        Assert.Equal(SHA256.HashData("GLOBAL"u8.ToArray()), SHA256.HashData(package.Attachments[0].Data));
+        Assert.Equal(SHA256.HashData("PAGE"u8.ToArray()), SHA256.HashData(package.Attachments[1].Data));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task IndirectFileAttachmentSubtypeIsCopied(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, pageSubtype: "22 0 R", extraObjects: new[] { "/FileAttachment" }));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions { Compatibility = options })
+                .ConvertAsync(input, output, new[] { 0 });
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output, new[] { 0 });
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal("PAGE"u8.ToArray(), package.Attachments[1].Data);
+        Assert.Equal(package.Attachments[1].Id, Assert.Single(package.Pages[0].Annotations!.Items).AttachmentId);
+    }
+
+    [Theory]
+    [InlineData(false, "(invalid)")]
+    [InlineData(true, "(invalid)")]
+    [InlineData(false, "22 0 R")]
+    [InlineData(true, "22 0 R")]
+    public async Task InvalidOrCyclicAnnotationSubtypeFailsBeforeOutput(bool vector, string target)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture, pageSubtype: "22 0 R", extraObjects: new[] { target }));
+        using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await Assert.ThrowsAsync<InvalidDataException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options }).ConvertAsync(input, output, new[] { 0 }));
+        else await Assert.ThrowsAsync<InvalidDataException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output, new[] { 0 }));
+        Assert.Equal(0, output.Length);
     }
 
     [Theory]
