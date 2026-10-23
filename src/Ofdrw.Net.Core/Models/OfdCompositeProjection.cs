@@ -32,9 +32,7 @@ internal static class OfdCompositeProjection
                     node.Attributes().Any(a => !a.IsNamespaceDeclaration &&
                         (a.Name.Namespace != XNamespace.None || a.Name.LocalName != "ID")) ||
                     node.Nodes().Any(n => n is XProcessingInstruction || n is XText t && !string.IsNullOrWhiteSpace(t.Value)) ||
-                    node.Elements().Any(child => child.Name.LocalName == "PageBlock"
-                        ? child.Name.NamespaceName is not ("" or Ofdrw.Net.Core.Constants.OfdConstants.Namespace or Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace)
-                        : OfdPageXmlContract.ContainsPageBlock(child)))
+                    HasUnmodeledPageBlockChild(node))
                     RejectRender("PageBlock has unsupported drawing attributes or content.");
                 foreach (var child in block.PageBlockChildren) Visit(child, parent, inherited, depth + 1, compositeChild, true);
                 return;
@@ -220,9 +218,15 @@ internal static class OfdCompositeProjection
             material.GuardFragmentXml(resourceSource, token); var node = OfdXmlEnvelope.Parse(resourceSource);
             if (node.Attributes().Any(a => !a.IsNamespaceDeclaration && (a.Name.Namespace != XNamespace.None || a.Name.LocalName is not ("ID" or "Width" or "Height"))) || node.Nodes().Any(n => n is XProcessingInstruction || n is XText text && !string.IsNullOrWhiteSpace(text.Value)))
                 placementError ??= "Composite resource parameters are outside the render profile.";
+            if (HasUnmodeledPageBlockChild(node))
+                placementError ??= "Composite resource contains a wrapped or foreign PageBlock.";
         }
         return placementError;
     }
+    private static bool HasUnmodeledPageBlockChild(XElement parent) => parent.Elements().Any(child =>
+        child.Name.LocalName == "PageBlock"
+            ? child.Name.NamespaceName is not ("" or Ofdrw.Net.Core.Constants.OfdConstants.Namespace or Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace)
+            : OfdPageXmlContract.ContainsPageBlock(child));
     private static OfdPathElement Rectangle(double w, double h, double[] matrix) => new() { Stroke = false, Fill = true,
         AbbreviatedData = $"M 0 0 L {Number(w)} 0 L {Number(w)} {Number(h)} L 0 {Number(h)} C", Transform = matrix };
     private static string Encode(IReadOnlyList<OfdPathElement> paths, OfdModelMaterialization material, CancellationToken token)
