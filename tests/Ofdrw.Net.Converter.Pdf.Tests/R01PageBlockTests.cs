@@ -2729,6 +2729,49 @@ public sealed class R01PageBlockTests
         Assert.Contains("ID=\"503\"", preserved.Xml);
     }
 
+    [Fact]
+    public async Task ClearingImportedTextSourceAllowsTypedEditButRetainedSourceCannotChangeUnderResolvedPaint()
+    {
+        var seed = await Source("<TextObject ID='501' Boundary='10 10 60 10' Font='10' Size='4'>" +
+            "<TextCode X='0' Y='4'>original text</TextCode></TextObject>", font: true);
+        var ofd = await RewriteXml(seed, "Doc_0/Pages/Page_0/Content.xml", xml =>
+        {
+            var block = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "PageBlock");
+            block.ReplaceWith(new XElement(Assert.Single(block.Elements())));
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.NotNull(text.RenderSourceXml);
+        text.SourceXml = null;
+        text.Text = "typed edit text";
+        text.Runs.Clear();
+        text.Runs.Add(new OfdTextRun { Text = text.Text, XMillimeters = 0, YMillimeters = 4 });
+        text.FillColor = new OfdColor(0, 0, 255);
+        Assert.Null(text.RenderSourceXml);
+        Assert.Null(text.RenderSourceAuthority);
+        Assert.Equal("typed edit text", new OfdTextExtractor().Extract(read));
+        OfdRenderPreflight.Validate(read.Pages[0].Elements);
+        using var written = new MemoryStream(); await new OfdPackageWriter().WriteAsync(read, written);
+        var edited = written.ToArray();
+        Assert.Equal("typed edit text", new OfdTextExtractor().Extract(
+            await new OfdReader().ReadAsync(new MemoryStream(edited))));
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(edited), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(edited), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(edited), html);
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Contains("typed edit text", parsed.GetPage(1).Text);
+        Assert.Contains("typed edit text", Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("typed edit text", Encoding.UTF8.GetString(html.ToArray()));
+        Retain("typed-source-clear", edited, pdf.ToArray(), svg.ToArray(), html.ToArray());
+
+        var retained = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var changed = Assert.IsType<OfdTextElement>(Assert.Single(retained.Pages[0].Elements));
+        changed.SourceXml = changed.SourceXml!.Replace("original text", "tampered text", StringComparison.Ordinal);
+        Assert.NotNull(changed.RenderSourceXml);
+        Assert.Throws<NotSupportedException>(() => new OfdTextExtractor().Extract(retained));
+        Assert.Throws<NotSupportedException>(() => OfdRenderPreflight.Validate(retained.Pages[0].Elements));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

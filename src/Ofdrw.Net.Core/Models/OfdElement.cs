@@ -17,6 +17,14 @@ public abstract class OfdElement
     internal string? RenderSourceXml { get; set; }
     internal string? RenderSourceAuthority { get; set; }
     internal string? RenderPaintError { get; set; }
+    // A public SourceXml clear hands authority back to the typed model. Keep
+    // nonempty replacements guarded by RenderSourceAuthority until re-read.
+    protected void InvalidateResolvedSourceIfCleared(string? sourceXml)
+    {
+        if (!string.IsNullOrWhiteSpace(sourceXml)) return;
+        RenderSourceXml = null;
+        RenderSourceAuthority = null;
+    }
     internal OfdClipOwnership ClipOwnership { get; } = new();
     /// <summary>Typed path clips. Null preserves an unclaimed source; an empty collection clears known clips.</summary>
     public OfdClipCollection? Clips { get => ClipOwnership.Value; set => ClipOwnership.Set(value); }
@@ -86,7 +94,13 @@ public sealed class OfdTextElement : OfdElement
     /// Complete source XML retained to preserve glyph positioning, transforms,
     /// colors and vendor attributes that are not strongly typed yet.
     /// </summary>
-    public string? SourceXml { get; set; }
+    private string? sourceXml;
+    public string? SourceXml
+    {
+        get => sourceXml;
+        set { InvalidateResolvedSourceIfCleared(value); sourceXml = value; }
+    }
+    internal void ClearSourceXmlForProjection() => sourceXml = null;
 }
 
 public sealed class OfdTextRun
@@ -132,7 +146,13 @@ public sealed class OfdImageElement : OfdElement
     /// Complete source XML retained to preserve transforms, clipping, alpha and
     /// vendor attributes that are not strongly typed yet.
     /// </summary>
-    public string? SourceXml { get; set; }
+    private string? sourceXml;
+    public string? SourceXml
+    {
+        get => sourceXml;
+        set { InvalidateResolvedSourceIfCleared(value); sourceXml = value; }
+    }
+    internal void ClearSourceXmlForProjection() => sourceXml = null;
 }
 
 /// <summary>
@@ -172,7 +192,13 @@ public sealed class OfdPathElement : OfdElement
     /// Retains the complete source element so unsupported style attributes and
     /// extension children survive a read-write round trip.
     /// </summary>
-    public string? SourceXml { get; set; }
+    private string? sourceXml;
+    public string? SourceXml
+    {
+        get => sourceXml;
+        set { InvalidateResolvedSourceIfCleared(value); sourceXml = value; }
+    }
+    internal void ClearSourceXmlForProjection() => sourceXml = null;
 }
 
 public sealed class OfdColor

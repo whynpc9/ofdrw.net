@@ -151,7 +151,7 @@ internal static class OfdCompositeProjection
             projected.WidthMillimeters = Math.Abs(origin[0]) * element.WidthMillimeters + Math.Abs(origin[2]) * element.HeightMillimeters;
             projected.HeightMillimeters = Math.Abs(origin[1]) * element.WidthMillimeters + Math.Abs(origin[3]) * element.HeightMillimeters;
             material.StoreMatrix(transformed);
-            if (projected is OfdTextElement text) { text.Transform = transformed; text.SourceXml = null; }
+            if (projected is OfdTextElement text) { text.Transform = transformed; text.ClearSourceXmlForProjection(); }
             if (projected is OfdPathElement path)
             {
                 if (scalarError is null && projected.RenderPaintError is not { Length: > 0 })
@@ -160,9 +160,9 @@ internal static class OfdCompositeProjection
                     catch (Exception error) when (error is NotSupportedException or InvalidDataException)
                     { projected.RenderPaintError = "Composite path style cannot be rendered: " + error.Message; }
                 }
-                path.Transform = transformed; path.SourceXml = null;
+                path.Transform = transformed; path.ClearSourceXmlForProjection();
             }
-            if (projected is OfdImageElement image) { image.Transform = transformed; image.SourceXml = null; }
+            if (projected is OfdImageElement image) { image.Transform = transformed; image.ClearSourceXmlForProjection(); }
             // Projection consumes the original drawing envelope. Its resolved
             // paint now belongs to this transient leaf, whose SourceXml is null.
             projected.RenderSourceAuthority = null;
