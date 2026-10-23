@@ -217,13 +217,14 @@ public sealed class OfdReader : IOfdReader
         var documentMediaTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var documentAmbiguousMedia = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var documentPaint = new OfdPaintResources();
+        var indexedDocumentResourcePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         var publicResLoc = ReadValue(commonData?.Element(docNs + "PublicRes"), material, cancellationToken);
         package.PublicResourceLocation = publicResLoc;
         if (!string.IsNullOrWhiteSpace(publicResLoc))
         {
             var publicResPath = material.ResolvePath(docRoot, publicResLoc!, cancellationToken);
-            if (archive.Contains(publicResPath))
+            if (archive.Contains(publicResPath) && indexedDocumentResourcePaths.Add(publicResPath))
             {
                 ReadFonts(archive, publicResPath, package, fontMap, material, cancellationToken);
                 ReadMediaResources(archive, publicResPath, documentMediaMap, documentMediaTypeMap, documentAmbiguousMedia, material, cancellationToken);
@@ -236,9 +237,12 @@ public sealed class OfdReader : IOfdReader
         if (!string.IsNullOrWhiteSpace(documentResLoc))
         {
             var documentResPath = material.ResolvePath(docRoot, documentResLoc!, cancellationToken);
-            ReadMediaResources(archive, documentResPath, documentMediaMap, documentMediaTypeMap, documentAmbiguousMedia, material, cancellationToken);
-            ReadFonts(archive, documentResPath, package, fontMap, material, cancellationToken);
-            documentPaint.Read(archive, documentResPath, material, cancellationToken);
+            if (indexedDocumentResourcePaths.Add(documentResPath))
+            {
+                ReadMediaResources(archive, documentResPath, documentMediaMap, documentMediaTypeMap, documentAmbiguousMedia, material, cancellationToken);
+                ReadFonts(archive, documentResPath, package, fontMap, material, cancellationToken);
+                documentPaint.Read(archive, documentResPath, material, cancellationToken);
+            }
         }
 
         var compositeMap = ReadCompositeResources(archive, package, docRoot, docNs, fontMap, documentMediaMap,
@@ -1119,8 +1123,9 @@ public sealed class OfdReader : IOfdReader
         OfdPaintResources paint, OfdModelMaterialization material, CancellationToken token)
     {
         var paths = new[] { package.PublicResourceLocation, package.DocumentResourceLocation }
-            .Where(location => !string.IsNullOrWhiteSpace(location)).Distinct()
-            .Select(location => material.ResolvePath(documentPath, location!, token));
+            .Where(location => !string.IsNullOrWhiteSpace(location))
+            .Select(location => material.ResolvePath(documentPath, location!, token))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
         var (map, definitions) = ReadCompositeResourceScope(archive, package, paths, ns, null,
             fonts, media, mediaTypes, ambiguousMedia, paint, material, token);
         if (definitions.Count == 0) return map;

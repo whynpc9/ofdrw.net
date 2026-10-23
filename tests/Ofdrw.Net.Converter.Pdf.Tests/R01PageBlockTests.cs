@@ -523,6 +523,83 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public async Task SharedPublicAndDocumentResIndexesPaintOnce(bool drawParam, bool alias)
+    {
+        var resources = drawParam
+            ? "<DrawParams><DrawParam ID='30'><FillColor Value='255 0 0'/></DrawParam></DrawParams>"
+            : "<ColorSpaces><ColorSpace ID='20' Type='RGB'/></ColorSpaces>";
+        resources += "<CompositeGraphicUnits><CompositeGraphicUnit ID='40' Width='10' Height='10'>" +
+            "<PathObject ID='41' Boundary='0 0 10 10' Fill='true'><AbbreviatedData>M 0 0 L 10 0 L 10 10 C</AbbreviatedData></PathObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var paint = drawParam ? " DrawParam='30'" : "";
+        var color = drawParam ? "" : "<FillColor ColorSpace='20' Value='255 0 0'/>";
+        var body = $"<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'{paint}>" +
+            color + "<AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        var publicLocation = alias ? "./DocumentRes.xml" : "DocumentRes.xml";
+        ofd = await RewriteXml(ofd, "Doc_0/Document.xml", xml =>
+            xml.Root!.Element(XNamespace.Get(Ns) + "CommonData")!
+                .Element(XNamespace.Get(Ns) + "PublicRes")!.Value = publicLocation);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Equal(publicLocation, read.PublicResourceLocation);
+        Assert.Equal("DocumentRes.xml", read.DocumentResourceLocation);
+        Assert.Contains(drawParam ? "DrawParam" : "ColorSpace",
+            Encoding.UTF8.GetString(read.PreservedEntries["Doc_0/DocumentRes.xml"]));
+        Assert.Single(read.CompositeResources!.Items);
+        var path = Assert.IsType<OfdPathElement>(Assert.Single(Assert.IsType<OfdRawElement>(
+            Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.Null(path.RenderPaintError);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.True(svg.Length > 0);
+        Assert.True(html.Length > 0);
+        if (drawParam != alias)
+            Retain(drawParam ? "shared-res-drawparam" : "alias-res-colorspace",
+                ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DistinctResourceEntriesWithSamePaintIdRemainAmbiguous(bool drawParam)
+    {
+        var resources = drawParam
+            ? "<DrawParams><DrawParam ID='30'><FillColor Value='255 0 0'/></DrawParam></DrawParams>"
+            : "<ColorSpaces><ColorSpace ID='20' Type='RGB'/></ColorSpaces>";
+        var body = drawParam
+            ? "<PathObject ID='501' Boundary='10 10 20 20' DrawParam='30' Fill='true'><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>"
+            : "<PathObject ID='501' Boundary='10 10 20 20' Fill='true'><FillColor ColorSpace='20' Value='255 0 0'/><AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>";
+        var ofd = await Source(body, resources: resources);
+        ofd = await WithEntry(ofd, "Doc_0/PublicRes.xml",
+            Encoding.UTF8.GetBytes($"<Res xmlns='{Ns}'>{resources}</Res>"));
+        using (var archive = new ZipArchive(new MemoryStream(ofd), ZipArchiveMode.Read))
+        {
+            Assert.NotNull(archive.GetEntry("Doc_0/PublicRes.xml"));
+            Assert.NotNull(archive.GetEntry("Doc_0/DocumentRes.xml"));
+        }
+        var readError = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdReader().ReadAsync(new MemoryStream(ofd)));
+        Assert.Contains("Duplicate active document-unit ID", readError.Message);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<InvalidDataException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
     [InlineData("TextObject", "FillColor")]
     [InlineData("TextObject", "StrokeColor")]
     [InlineData("PathObject", "FillColor")]

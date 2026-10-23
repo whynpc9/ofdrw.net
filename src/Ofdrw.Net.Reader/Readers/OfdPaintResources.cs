@@ -18,11 +18,13 @@ internal sealed class OfdPaintResources
     private readonly Dictionary<long, XElement> spaces;
     private readonly Dictionary<long, XElement> parameters;
     private readonly HashSet<long> ambiguous;
+    private readonly HashSet<string> loadedEntries;
 
     internal OfdPaintResources()
     {
         spaces = new(); parameters = new();
         ambiguous = new();
+        loadedEntries = new(StringComparer.OrdinalIgnoreCase);
     }
 
     internal OfdPaintResources(OfdPaintResources parent)
@@ -30,11 +32,18 @@ internal sealed class OfdPaintResources
         spaces = new(parent.spaces);
         parameters = new(parent.parameters);
         ambiguous = new(parent.ambiguous);
+        loadedEntries = new(parent.loadedEntries, StringComparer.OrdinalIgnoreCase);
     }
 
     internal void Read(OfdPackageArchive archive, string path, OfdModelMaterialization material, CancellationToken token)
     {
         if (!archive.Contains(path)) return;
+        // Callers pass ResolvePath results. The archive uses case-insensitive
+        // entry identity, so aliases to one physical Res must be indexed once.
+        token.ThrowIfCancellationRequested();
+        if (loadedEntries.Contains(path)) return;
+        material.ReserveReadModel(128L + 2L * path.Length, token);
+        loadedEntries.Add(path);
         var xml = material.ReadXml(path, archive.GetBytes(path), token);
         var ns = xml.Root?.Name.Namespace;
         if (ns is null || ns != XNamespace.None && ns != OfdConstants.Namespace && ns != OfdConstants.StandardNamespace ||
