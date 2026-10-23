@@ -69,6 +69,11 @@ internal static class OfdGraphicXmlContract
 
     internal static bool IsVisible(OfdElement element)
     {
+        // Structural raw envelopes must reach the opaque-drawing preflight.
+        // Visible on Page/Content/Layer/PageBlock is not a supported way to
+        // suppress unknown content; only raw drawing leaves may be hidden.
+        if (element is OfdRawElement rawEnvelope &&
+            rawEnvelope.LocalName is "Page" or "Content" or "Layer" or "PageBlock") return true;
         var xml = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdCompositeElement composite => composite.SourceXml, OfdRawElement raw => raw.Xml, _ => null };
         if (string.IsNullOrWhiteSpace(xml)) return true;
         return XElement.Parse(xml!).Attribute("Visible")?.Value.Trim().ToLowerInvariant() is not ("false" or "0");

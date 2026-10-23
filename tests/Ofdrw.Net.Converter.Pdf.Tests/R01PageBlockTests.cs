@@ -1705,6 +1705,36 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OmittedImageFormatUsesAdmittedPayloadType(bool jpegPayload)
+    {
+        const string resources = "<MultiMedias><MultiMedia ID='20' Type='Image'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
+        var seed = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>",
+            resources: resources, image: true);
+        byte[] ofd = seed;
+        if (jpegPayload)
+        {
+            using var pixels = new Image<Rgba32>(1, 1, Color.Red);
+            using var jpeg = new MemoryStream(); await pixels.SaveAsJpegAsync(jpeg);
+            ofd = await WithEntry(seed, "Doc_0/image.png", jpeg.ToArray());
+        }
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var image = Assert.IsType<OfdImageElement>(Assert.Single(Assert.IsType<OfdRawElement>(
+            Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.False(image.SourceMediaAmbiguous);
+        Assert.Equal(jpegPayload ? "image/jpeg" : "image/png", image.MediaType);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0);
+        Assert.Contains("data:" + image.MediaType, Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Contains("data:" + image.MediaType, Encoding.UTF8.GetString(html.ToArray()));
+        if (jpegPayload) Retain("omitted-format-jpeg-pageblock", ofd, pdf.ToArray(), svg.ToArray(), html.ToArray());
+    }
+
+    [Theory]
     [InlineData("png-signature")]
     [InlineData("png-crc")]
     [InlineData("jpeg-truncated")]
@@ -3337,6 +3367,39 @@ public sealed class R01PageBlockTests
         using var roundTrip = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, roundTrip));
         Assert.Equal(0, roundTrip.Length);
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToSvgConverter().ConvertAsync(source, sink),
+            (source, sink) => new OfdToHtmlConverter().ConvertAsync(source, sink)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData("Page", "false")]
+    [InlineData("Page", "0")]
+    [InlineData("Content", "false")]
+    [InlineData("Content", "0")]
+    [InlineData("Layer", "false")]
+    [InlineData("Layer", "0")]
+    public async Task HiddenStructuralEnvelopeCannotSuppressOpaquePageBlock(string container, string visible)
+    {
+        var seed = await Source("<PathObject ID='501' Boundary='10 10 20 20' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 20 0 L 20 20 C</AbbreviatedData></PathObject>");
+        var ofd = await RewriteXml(seed, "Doc_0/Pages/Page_0/Content.xml", xml =>
+        {
+            var target = Assert.Single(xml.Root!.DescendantsAndSelf(), node => node.Name.LocalName == container);
+            target.SetAttributeValue("Visible", visible);
+        });
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        Assert.Equal(container, raw.LocalName);
+        Assert.Null(raw.PageBlockChildren);
         foreach (var convert in new Func<Stream, Stream, Task>[]
         {
             (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),

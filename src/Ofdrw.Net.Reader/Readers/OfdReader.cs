@@ -1100,29 +1100,29 @@ public sealed class OfdReader : IOfdReader
                 : $"{baseLoc!.TrimEnd('/')}/{file.TrimStart('/')}";
 
             var mediaPath = material.ResolvePath(resPath, mediaLoc, cancellationToken);
-            // Preserve permissive legacy top-level imports. PageBlock admission
-            // separately requires an explicit format to match the actual bytes.
-            var validPayload = format is null ||
-                archive.TryGetBytes(mediaPath, out var payload) && MatchesMediaFormat(payload, format, cancellationToken);
+            // Preserve the legacy top-level media path. PageBlock projection
+            // needs a decodable shared image profile even without Format.
+            var admittedType = archive.TryGetBytes(mediaPath, out var payload)
+                ? AdmittedImageType(payload, cancellationToken) : null;
+            var validPayload = admittedType is not null &&
+                (format is null || ToMediaType(format) == admittedType);
             if (validDeclaration && validFormat && validPayload) ambiguousMedia.Remove(key);
             else ambiguousMedia.Add(key);
             mediaMap[key] = mediaPath;
-            mediaTypeMap[key] = ToMediaType(media.Attribute("Format")?.Value);
+            mediaTypeMap[key] = format is null ? admittedType ?? "image/png" : ToMediaType(format);
         }
     }
 
-    private static bool MatchesMediaFormat(byte[] payload, string format, CancellationToken token)
+    private static string? AdmittedImageType(byte[] payload, CancellationToken token)
     {
-        var mime = format switch
-        {
-            "PNG" => "image/png",
-            "JPG" or "JPEG" => "image/jpeg",
-            _ => null
-        };
-        if (mime is null) return false;
-        try { EncodedImageAdmission.Validate(payload, mime, token); return true; }
+        var mime = payload.Length >= 8 && payload[0] == 137 && payload[1] == 80 &&
+            payload[2] == 78 && payload[3] == 71 && payload[4] == 13 &&
+            payload[5] == 10 && payload[6] == 26 && payload[7] == 10 ? "image/png" :
+            payload.Length >= 3 && payload[0] == 255 && payload[1] == 216 && payload[2] == 255 ? "image/jpeg" : null;
+        if (mime is null) return null;
+        try { EncodedImageAdmission.Validate(payload, mime, token); return mime; }
         catch (Exception error) when (error is InvalidDataException or IOException or NotSupportedException or OverflowException or IndexOutOfRangeException)
-        { return false; }
+        { return null; }
     }
 
     private static Dictionary<string, OfdCompositeResource> ReadCompositeResources(OfdPackageArchive archive, OfdDocumentPackage package,
