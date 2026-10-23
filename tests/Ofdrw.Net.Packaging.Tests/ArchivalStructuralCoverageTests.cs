@@ -864,6 +864,8 @@ public class ArchivalStructuralCoverageTests
         Assert.Equal(PreflightOutcome.Unknown, Rule(attachmentAction, "AC-013").Outcome);
         var relativeUri = await Check(Seed(pageExtra: "<Actions><Action><URI URI='relative/resource'/></Action></Actions>"));
         Assert.Equal(PreflightOutcome.Unknown, Rule(relativeUri, "AC-013").Outcome);
+        var rootRelativeUri = await Check(Seed(pageExtra: "<Actions><Action><URI URI='/resource'/></Action></Actions>"));
+        Assert.Equal(PreflightOutcome.Unknown, Rule(rootRelativeUri, "AC-013").Outcome);
         var foreignUri = await Check(Seed(pageExtra: "<Actions><Action><v:URI xmlns:v='urn:vendor' URI='https://example.invalid/resource'/></Action></Actions>"));
         Assert.Equal(PreflightOutcome.Unknown, Rule(foreignUri, "AC-013").Outcome);
     }
@@ -887,6 +889,8 @@ public class ArchivalStructuralCoverageTests
         Assert.Contains("Extensions[1]", result.Evidence.Selector, StringComparison.Ordinal);
         Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(Seed()), "AC-014").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(Seed(documentExtra: "<Extensions/>")), "AC-014").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(Seed(documentExtra: "<Extensions><Extension/></Extensions>")), "AC-014").Outcome);
+        Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(Seed(documentExtra: "<Extensions><Extension>Extensions/data.xml</Extension></Extensions>")), "AC-014").Outcome);
         Assert.Equal(PreflightOutcome.Unknown, Rule(await Check(Seed(documentExtra: "<v:Extensions xmlns:v='urn:vendor'>Extensions/Extensions.xml</v:Extensions>")), "AC-014").Outcome);
     }
 

@@ -61,7 +61,7 @@ internal sealed class ArchivalStructuralCoverage
         documentNamespace = ns;
         InspectExternalUriActions(document, ns, documentEntry);
         foreach (var extension in document.Elements(ns + "Extensions"))
-            if (!string.IsNullOrWhiteSpace(extension.Value) || extension.HasElements)
+            if (!extension.HasElements && !string.IsNullOrWhiteSpace(extension.Value))
                 observations[10].Fail("RetainedExtensionsDeclaration", documentEntry, extension, this);
         var body = root.Elements(root.Name.Namespace + "DocBody").Single();
         if (root.Attributes().Any(x => !x.IsNamespaceDeclaration &&
@@ -527,7 +527,8 @@ internal sealed class ArchivalStructuralCoverage
     }
 
     private static bool IsExternalUri(string? value) =>
-        Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+        value != null && Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+        value.StartsWith(uri.Scheme + ":", StringComparison.OrdinalIgnoreCase) &&
         uri.Scheme is "http" or "https" or "ftp" or "file";
 
     private bool RecognizedGraphicPosition(XElement node, XElement source, XNamespace ns)

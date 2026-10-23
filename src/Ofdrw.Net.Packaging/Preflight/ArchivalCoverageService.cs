@@ -53,7 +53,7 @@ public static class ArchivalCoverageRuleCatalog
         new ArchivalCoverageRuleDefinition("AC-011", "6.2.3(d)", "Named page layers are distinguishable within each page"),
         new ArchivalCoverageRuleDefinition("AC-012", "6.10.1(a)(2)", "Retained annotation appearances have no nested PageBlock"),
         new ArchivalCoverageRuleDefinition("AC-013", "6.9(a)", "Recognized Action/URI declarations with external network or file targets are not retained; other external dependencies remain unverified"),
-        new ArchivalCoverageRuleDefinition("AC-014", "6.12(a)", "Recognized Document/Extensions declarations with a target are not retained; other extension locations remain unverified"),
+        new ArchivalCoverageRuleDefinition("AC-014", "6.12(a)", "Recognized Document/Extensions declarations with a direct text target are not retained; nested content and other extension locations remain unverified"),
         new ArchivalCoverageRuleDefinition("AC-015", "6.16", "The package retains no root Encryptions.xml marker; complete plaintext and decryption provenance remain unverified")
     });
     /// <summary>Immutable ordered list of supported coverage checks.</summary>

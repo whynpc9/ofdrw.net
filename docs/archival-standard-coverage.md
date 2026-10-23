@@ -83,7 +83,7 @@ Sections 1, 3 and 4 define scope, terms and abbreviations rather than per-packag
 | 6.10.1(b) | Alternative: flatten annotation appearance into page | External: source ownership, visual equivalence and information-loss record. |
 | 6.10.2 | Store post-archive management annotations separately | External: archive lifecycle and separate-file evidence. |
 | 6.11 | Prefer retaining tags and closing their referenced content | Partial: known package edges only; full tag content closure and provenance Open. |
-| 6.12(a) | Remove extension information | **Partial:** `AC-014` fails a recognized `Document/Extensions` declaration with a target; empty or foreign declarations and other extension locations remain Unknown. No removal handler. |
+| 6.12(a) | Remove extension information | **Partial:** `AC-014` fails a recognized `Document/Extensions` declaration with a direct text target; empty, nested or foreign declarations and other extension locations remain Unknown. No removal handler. |
 | 6.12(b) | Freeze extension appearance/print effects | External: source-specific interpretation and visual/print comparison. |
 | 6.13.1(a) | Signature format and qualified CA for non-de-technicalized signature | External: GB/T 35275, CA qualification, chain/revocation and trusted time. APF-006 is inventory only. |
 | 6.13.1(b) | Seal format, registration and qualified certificates | External: GB/T 38540, registration and qualified CA evidence. |
