@@ -71,8 +71,8 @@ internal static class OfdTextRenderProjection
             var x = RawNumber(code.Attribute("X")?.Value, previousX ?? 0);
             var y = RawNumber(code.Attribute("Y")?.Value, previousY ?? originalSize);
             sameRuns = run.Text == raw[i] &&
-                run.XMillimeters == (text.SourceInheritedTextCodeAxes ? x : RawNumber(code.Attribute("X")?.Value, 0)) &&
-                run.YMillimeters == (text.SourceInheritedTextCodeAxes ? y : RawNumber(code.Attribute("Y")?.Value, originalSize)) &&
+                SameSourceAxis(run.XMillimeters, text.SourceInheritedTextCodeAxes ? x : RawNumber(code.Attribute("X")?.Value, 0)) &&
+                SameSourceAxis(run.YMillimeters, text.SourceInheritedTextCodeAxes ? y : RawNumber(code.Attribute("Y")?.Value, originalSize)) &&
                 run.DeltaX == code.Attribute("DeltaX")?.Value && run.DeltaY == code.Attribute("DeltaY")?.Value;
             previousX = x; previousY = y;
         }
@@ -105,6 +105,11 @@ internal static class OfdTextRenderProjection
 
     private static double RawNumber(string? value, double fallback) =>
         double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ? number : fallback;
+
+    // Reader can retain NaN from an invalid source axis. It is still the same
+    // source run for logical decoding; render admission rejects the axis later.
+    private static bool SameSourceAxis(double actual, double source) =>
+        actual == source || double.IsNaN(actual) && double.IsNaN(source);
 
     private static double Axis(XElement code, string name, double? previous)
     {

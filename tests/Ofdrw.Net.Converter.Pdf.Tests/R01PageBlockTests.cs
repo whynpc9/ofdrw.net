@@ -3227,6 +3227,55 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false, true)]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, true)]
+    [InlineData(true, true, false)]
+    public async Task NonFinitePageBlockTextCodeAxisKeepsDecodedLogicalTextButRejectsRender(
+        bool composite, bool inherited, bool nonFiniteX)
+    {
+        var first = nonFiniteX ? "X='NaN' Y='4'" : "X='0' Y='NaN'";
+        var second = nonFiniteX ? "Y='8'" : "X='20'";
+        var codes = $"<TextCode {first}>lead\\0020</TextCode>" +
+            (inherited ? $"<TextCode {second}>tail</TextCode>" : "");
+        var textXml = $"<TextObject ID='452' Boundary='0 0 50 20' Font='10' Size='4'>{codes}</TextObject>";
+        var resources = composite
+            ? $"<CompositeGraphicUnits><CompositeGraphicUnit ID='450' Width='50' Height='20'>{textXml}</CompositeGraphicUnit></CompositeGraphicUnits>"
+            : null;
+        var body = composite
+            ? "<CompositeObject ID='453' Boundary='10 10 50 20' ResourceID='450'/>"
+            : textXml;
+        var ofd = await Source(body, resources: resources, font: true);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
+        var graphic = Assert.Single(block.PageBlockChildren!);
+        var text = composite
+            ? Assert.IsType<OfdTextElement>(Assert.Single(Assert.IsType<OfdCompositeElement>(graphic).Resource.Elements))
+            : Assert.IsType<OfdTextElement>(graphic);
+        Assert.Contains("NaN", text.SourceXml);
+        Assert.Equal(inherited ? 2 : 1, text.Runs.Count);
+        Assert.True(double.IsNaN(nonFiniteX ? text.Runs[0].XMillimeters : text.Runs[0].YMillimeters));
+        if (inherited && !composite)
+            Assert.True(double.IsNaN(nonFiniteX ? text.Runs[1].XMillimeters : text.Runs[1].YMillimeters));
+        Assert.Equal(inherited ? "lead tail" : "lead ", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
     [Fact]
     public async Task ForeignContentCannotExposeSupportedLayerOrPageBlock()
     {
