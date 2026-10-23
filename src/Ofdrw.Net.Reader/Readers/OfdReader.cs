@@ -1100,29 +1100,17 @@ public sealed class OfdReader : IOfdReader
                 : $"{baseLoc!.TrimEnd('/')}/{file.TrimStart('/')}";
 
             var mediaPath = material.ResolvePath(resPath, mediaLoc, cancellationToken);
-            // Preserve the legacy top-level media path. PageBlock projection
-            // needs a decodable shared image profile even without Format.
-            var admittedType = archive.TryGetBytes(mediaPath, out var payload)
-                ? AdmittedImageType(payload, cancellationToken) : null;
-            var validPayload = admittedType is not null &&
-                (format is null || ToMediaType(format) == admittedType);
+            // Resource indexing only sniffs a declaration. Structural image
+            // work is charged later, and only for reachable PageBlock images.
+            var detectedType = archive.TryGetBytes(mediaPath, out var payload)
+                ? EncodedImageAdmission.IdentifyFormat(payload) : null;
+            var validPayload = detectedType is not null &&
+                (format is null || ToMediaType(format) == detectedType);
             if (validDeclaration && validFormat && validPayload) ambiguousMedia.Remove(key);
             else ambiguousMedia.Add(key);
             mediaMap[key] = mediaPath;
-            mediaTypeMap[key] = format is null ? admittedType ?? "image/png" : ToMediaType(format);
+            mediaTypeMap[key] = format is null ? detectedType ?? "image/png" : ToMediaType(format);
         }
-    }
-
-    private static string? AdmittedImageType(byte[] payload, CancellationToken token)
-    {
-        var mime = payload.Length >= 8 && payload[0] == 137 && payload[1] == 80 &&
-            payload[2] == 78 && payload[3] == 71 && payload[4] == 13 &&
-            payload[5] == 10 && payload[6] == 26 && payload[7] == 10 ? "image/png" :
-            payload.Length >= 3 && payload[0] == 255 && payload[1] == 216 && payload[2] == 255 ? "image/jpeg" : null;
-        if (mime is null) return null;
-        try { EncodedImageAdmission.Validate(payload, mime, token); return mime; }
-        catch (Exception error) when (error is InvalidDataException or IOException or NotSupportedException or OverflowException or IndexOutOfRangeException)
-        { return null; }
     }
 
     private static Dictionary<string, OfdCompositeResource> ReadCompositeResources(OfdPackageArchive archive, OfdDocumentPackage package,
@@ -1418,8 +1406,13 @@ public sealed class OfdReader : IOfdReader
                     {
                         if (archive.TryGetBytes(mediaPath, out var bytes))
                         {
-                            image.Data = bytes;
-                            image.FileName = Path.GetFileName(mediaPath);
+                            if (blockDepth > 0 && material.AdmitPageBlockImage(bytes, cancellationToken) != image.MediaType)
+                                image.SourceMediaAmbiguous = true;
+                            else
+                            {
+                                image.Data = bytes;
+                                image.FileName = Path.GetFileName(mediaPath);
+                            }
                         }
                     }
 
@@ -1474,6 +1467,7 @@ public sealed class OfdReader : IOfdReader
                     var compositeKey = CanonicalResourceId(resourceId);
                     if (compositeKey is not null && compositeMap?.TryGetValue(compositeKey, out var resource) == true)
                     {
+                        if (blockDepth > 0) AdmitPageBlockCompositeImages(resource, material, cancellationToken);
                         var boundary = ParseBox(node.Attribute("Boundary")?.Value, material, cancellationToken);
                         var placement = new OfdCompositeElement { ObjectId = node.Attribute("ID")?.Value, LayerId = layerId, LayerType = layerType,
                             XMillimeters = boundary.x, YMillimeters = boundary.y, WidthMillimeters = boundary.w, HeightMillimeters = boundary.h,
@@ -1579,6 +1573,26 @@ public sealed class OfdReader : IOfdReader
         }
 
         return string.IsNullOrWhiteSpace(fontRef) ? "SimSun" : fontRef!;
+    }
+
+    private static void AdmitPageBlockCompositeImages(OfdCompositeResource root,
+        OfdModelMaterialization material, CancellationToken token)
+    {
+        var pending = new Stack<OfdCompositeResource>(); pending.Push(root);
+        while (pending.Count > 0)
+        {
+            token.ThrowIfCancellationRequested(); material.Structure.Reference();
+            var resource = pending.Pop();
+            if (!material.PageBlockAdmittedComposites.Add(resource)) continue;
+            foreach (var element in resource.Elements)
+            {
+                token.ThrowIfCancellationRequested(); material.Structure.Reference();
+                if (element is OfdCompositeElement nested) pending.Push(nested.Resource);
+                if (element is OfdImageElement image &&
+                    (image.Data.Length == 0 || material.AdmitPageBlockImage(image.Data, token) != image.MediaType))
+                    image.SourceMediaAmbiguous = true;
+            }
+        }
     }
 
     private static string ToMediaType(string? format)

@@ -10,6 +10,16 @@ namespace Ofdrw.Net.Core.IO;
 // Browser decoding remains fallible; other formats never reach it.
 internal static class EncodedImageAdmission
 {
+    internal static string? IdentifyFormat(byte[] data)
+    {
+        if (data.Length >= 8 && data[0] == 137 && data[1] == 80 && data[2] == 78 && data[3] == 71 &&
+            data[4] == 13 && data[5] == 10 && data[6] == 26 && data[7] == 10) return "image/png";
+        if (data.Length >= 3 && data[0] == 255 && data[1] == 216 && data[2] == 255) return "image/jpeg";
+        if (data.Length >= 2 && data[0] == 66 && data[1] == 77) return "image/bmp";
+        if (data.Length >= 4 && (data[0] == 73 && data[1] == 73 && data[2] == 42 && data[3] == 0 ||
+            data[0] == 77 && data[1] == 77 && data[2] == 0 && data[3] == 42)) return "image/tiff";
+        return null;
+    }
     internal static void Validate(byte[] data, string mime, CancellationToken token, Action<long>? reservePixels = null)
     {
         if (mime == "image/png") Png(data, token, reservePixels);

@@ -1775,15 +1775,23 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
-    [InlineData("png-signature")]
-    [InlineData("png-crc")]
-    [InlineData("jpeg-truncated")]
-    public async Task MalformedSameFormatPageBlockMediaFailsBeforeEveryExport(string corruption)
+    [InlineData("png-signature", false)]
+    [InlineData("png-crc", false)]
+    [InlineData("jpeg-truncated", false)]
+    [InlineData("png-signature", true)]
+    [InlineData("png-crc", true)]
+    [InlineData("jpeg-truncated", true)]
+    public async Task MalformedSameFormatPageBlockMediaFailsBeforeEveryExport(string corruption, bool composite)
     {
         var format = corruption == "jpeg-truncated" ? "JPEG" : "PNG";
         var resources = $"<MultiMedias><MultiMedia ID='20' Type='Image' Format='{format}'>" +
-            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>";
-        var seed = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>",
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>" +
+            (composite ? "<CompositeGraphicUnits><CompositeGraphicUnit ID='550' Width='20' Height='20'>" +
+                "<ImageObject ID='551' Boundary='0 0 20 20' ResourceID='20'/>" +
+                "</CompositeGraphicUnit></CompositeGraphicUnits>" : "");
+        var body = composite ? "<CompositeObject ID='501' Boundary='10 10 20 20' ResourceID='550'/>" :
+            "<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>";
+        var seed = await Source(body,
             resources: resources, image: true);
         byte[] payload;
         if (corruption == "png-signature") payload = new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
@@ -1798,7 +1806,10 @@ public sealed class R01PageBlockTests
         var ofd = await WithEntry(seed, "Doc_0/image.png", payload);
         var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
         var block = Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements));
-        Assert.True(Assert.IsType<OfdImageElement>(Assert.Single(block.PageBlockChildren!)).SourceMediaAmbiguous);
+        var graphic = Assert.Single(block.PageBlockChildren!);
+        var image = composite ? Assert.IsType<OfdImageElement>(Assert.Single(Assert.IsType<OfdCompositeElement>(graphic).Resource.Elements)) :
+            Assert.IsType<OfdImageElement>(graphic);
+        Assert.True(image.SourceMediaAmbiguous);
         foreach (var convert in new Func<Stream, Stream, Task>[]
         {
             (source, sink) => new OfdToPdfConverter().ConvertAsync(source, sink),
@@ -1810,6 +1821,46 @@ public sealed class R01PageBlockTests
             await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
             Assert.Equal(0, sink.Length);
         }
+    }
+
+    [Fact]
+    public async Task PageBlockImageAdmissionCountsDistinctDecodedPixelsButCachesRepeatedPayload()
+    {
+        var material = new OfdModelMaterialization(new OfdModelLimits { MaxMaterializedBytes = 100_000 });
+        using var pixels = new Image<Rgba32>(50, 50, Color.Red);
+        using var encoded = new MemoryStream(); await pixels.SaveAsPngAsync(encoded);
+        var first = encoded.ToArray(); var second = encoded.ToArray(); var third = encoded.ToArray();
+        Assert.Equal("image/png", material.AdmitPageBlockImage(first, CancellationToken.None));
+        var charged = material.ValidationWorkBytes;
+        Assert.Equal("image/png", material.AdmitPageBlockImage(first, CancellationToken.None));
+        Assert.Equal(charged, material.ValidationWorkBytes);
+        Assert.Equal("image/png", material.AdmitPageBlockImage(second, CancellationToken.None));
+        var limit = Assert.Throws<InvalidDataException>(() => material.AdmitPageBlockImage(third, CancellationToken.None));
+        Assert.True(OfdTraversalBudget.IsLimit(limit));
+        using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() => material.AdmitPageBlockImage(first, cancelled.Token));
+    }
+
+    [Fact]
+    public async Task UnreferencedMalformedImageDoesNotBlockPageBlockOrChangePreservedPayload()
+    {
+        const string resources = "<MultiMedias>" +
+            "<MultiMedia ID='20' Type='Image' Format='PNG'><MediaFile>image.png</MediaFile></MultiMedia>" +
+            "<MultiMedia ID='21' Type='Image' Format='PNG'><MediaFile>unused.png</MediaFile></MultiMedia>" +
+            "</MultiMedias>";
+        var seed = await Source("<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'/>",
+            resources: resources, image: true);
+        var unused = new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
+        var ofd = await WithEntry(seed, "Doc_0/unused.png", unused);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        Assert.Equal(unused, read.PreservedEntries["Doc_0/unused.png"]);
+        var image = Assert.IsType<OfdImageElement>(Assert.Single(Assert.IsType<OfdRawElement>(
+            Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        Assert.False(image.SourceMediaAmbiguous);
+        using var pdf = new MemoryStream(); await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using var svg = new MemoryStream(); await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        using var html = new MemoryStream(); await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd), html);
+        Assert.True(pdf.Length > 0); Assert.True(svg.Length > 0); Assert.True(html.Length > 0);
     }
 
     [Theory]

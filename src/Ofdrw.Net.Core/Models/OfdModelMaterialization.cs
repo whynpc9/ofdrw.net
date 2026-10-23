@@ -23,6 +23,8 @@ internal sealed partial class OfdModelMaterialization
     // Cumulative hashing/comparison work; not allocation, CPU time or RSS.
     internal long ValidationWorkBytes { get; private set; }
     private readonly Dictionary<byte[], XmlWork> xmlEntries = new();
+    private readonly Dictionary<byte[], string?> pageBlockImageAdmissions = new();
+    internal HashSet<OfdCompositeResource> PageBlockAdmittedComposites { get; } = new();
     private sealed class XmlWork
     {
         internal byte[] Digest = Array.Empty<byte>();
@@ -140,6 +142,28 @@ internal sealed partial class OfdModelMaterialization
     {
         token.ThrowIfCancellationRequested(); controlledContext?.AssertActive(); Structure.Reference();
         ValidationWorkBytes = Add(ValidationWorkBytes, bytes, "validation work");
+    }
+
+    // Only PageBlock references use this shared three-export profile. Charge
+    // compressed-byte and decoded-pixel work once per archive payload, including
+    // repeated placements, before doing the costly structural walk.
+    internal string? AdmitPageBlockImage(byte[] payload, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        if (pageBlockImageAdmissions.TryGetValue(payload, out var cached)) return cached;
+        var mime = EncodedImageAdmission.IdentifyFormat(payload);
+        if (mime is not ("image/png" or "image/jpeg"))
+        { pageBlockImageAdmissions.Add(payload, null); return null; }
+        ChargeWork(checked(payload.LongLength * 16), token);
+        try
+        {
+            EncodedImageAdmission.Validate(payload, mime, token,
+                pixels => ChargeWork(checked(pixels * 16), token));
+            pageBlockImageAdmissions.Add(payload, mime); return mime;
+        }
+        catch (Exception error) when (!OfdTraversalBudget.IsLimit(error) &&
+            error is InvalidDataException or IOException or NotSupportedException or OverflowException or IndexOutOfRangeException)
+        { pageBlockImageAdmissions.Add(payload, null); return null; }
     }
 
     internal byte[] HashBytes(byte[] bytes, CancellationToken token)
