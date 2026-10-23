@@ -33,6 +33,9 @@ internal static class PdfImportMetadataMigrator
         if (!ReferenceEquals(source, pages.Source)) throw new InvalidOperationException("PDF raw page lookup belongs to another document.");
         onlyFileAttachments = true;
         var page = pages.Get(zeroBasedPage, token);
+        var acceptedPage = source.GetPage(zeroBasedPage + 1);
+        if (!page.Equals(acceptedPage.Dictionary))
+            throw new InvalidDataException("PDF raw page tree disagrees with the parser's accepted page.");
         if (!page.Data.TryGetValue("Annots", out var annotsToken)) return Array.Empty<Annotation>();
         var annots = Resolve<ArrayToken>(annotsToken, source) ?? throw new InvalidDataException("PDF annotation array cannot be resolved.");
         var rawFileCount = 0;
@@ -49,7 +52,7 @@ internal static class PdfImportMetadataMigrator
             }
             else onlyFileAttachments = false;
         }
-        var parsed = source.GetPage(zeroBasedPage + 1).GetAnnotations().ToArray();
+        var parsed = acceptedPage.GetAnnotations().ToArray();
         if (parsed.Count(annotation => annotation.Type == AnnotationType.FileAttachment) != rawFileCount ||
             onlyFileAttachments && parsed.Length != annots.Data.Count)
             throw new InvalidDataException("PDF page attachment parser omitted an annotation.");
@@ -103,7 +106,7 @@ internal static class PdfImportMetadataMigrator
                 if (++VisitedNodes > options.MaxPageCount * 2L)
                     throw new InvalidDataException("PDF page tree exceeds the configured limit.");
                 var page = Resolve<DictionaryToken>(pending.Pop(), source) ?? throw new InvalidDataException("PDF page tree node cannot be resolved.");
-                if (page.Data.TryGetValue("Type", out var type) && type is NameToken { Data: "Page" })
+                if (IsRawPageLeaf(page, source))
                 {
                     indexed.Add(page);
                     continue;
@@ -115,6 +118,31 @@ internal static class PdfImportMetadataMigrator
             if (zeroBasedPage >= indexed.Count) throw new InvalidDataException("PDF selected page was not found in the page tree.");
             return indexed[zeroBasedPage];
         }
+    }
+
+    private static bool IsRawPageLeaf(DictionaryToken node, PdfDocument source)
+    {
+        var hasKids = node.Data.ContainsKey("Kids");
+        if (!node.Data.TryGetValue("Type", out var rawType))
+        {
+            // PdfPig's lenient page tree admits a leaf with neither key. A
+            // typeless node with Kids is a container only if the caller can
+            // resolve a real children array; both walkers check that below.
+            return !hasKids;
+        }
+        var type = Resolve<NameToken>(rawType, source)
+            ?? throw new InvalidDataException("PDF page tree type is not a local name.");
+        if (type.Data == "Page")
+        {
+            if (hasKids) throw new InvalidDataException("PDF page leaf also declares children.");
+            return true;
+        }
+        if (type.Data == "Pages")
+        {
+            if (!hasKids) throw new InvalidDataException("PDF page tree container has no children.");
+            return false;
+        }
+        throw new InvalidDataException("PDF page tree node has an unsupported type.");
     }
 
     internal static void Apply(PdfDocument source, OfdDocumentPackage output, IReadOnlyList<int> selected,
@@ -205,7 +233,7 @@ internal static class PdfImportMetadataMigrator
             if (++pageNodes > options.MaxPageCount * 2L) throw new InvalidDataException("PDF page tree exceeds the configured limit.");
             var current = pendingPages.Pop();
             var node = Resolve<DictionaryToken>(current, source) ?? throw new InvalidDataException("PDF page tree node cannot be resolved.");
-            if (node.Data.TryGetValue("Type", out var type) && type is NameToken { Data: "Page" })
+            if (IsRawPageLeaf(node, source))
             {
                 if (current is not IndirectReferenceToken reference || !pageReferences.Add(reference.Data.ToString()))
                     throw new InvalidDataException("PDF page reference is missing or repeated.");

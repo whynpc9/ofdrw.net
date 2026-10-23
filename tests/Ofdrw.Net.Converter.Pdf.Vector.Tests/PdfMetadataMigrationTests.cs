@@ -15,6 +15,88 @@ public sealed class PdfMetadataMigrationTests
 {
     private static byte[] Font() => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fonts", "regular.ttf"));
 
+    [Theory]
+    [InlineData(false, false, true, false)]
+    [InlineData(false, false, false, true)]
+    [InlineData(false, false, true, true)]
+    [InlineData(true, false, true, false)]
+    [InlineData(true, false, false, true)]
+    [InlineData(true, false, true, true)]
+    [InlineData(false, true, true, false)]
+    [InlineData(false, true, false, true)]
+    [InlineData(false, true, true, true)]
+    public async Task AcceptedIndirectOrTypelessPageKeepsMetadata(bool vector, bool typeless,
+        bool copyBookmarks, bool copyAttachments)
+    {
+        using var fixture = new PdfFixture(Font());
+        var pdf = typeless
+            ? Source(fixture, pageTypeByIndex: new[] { "", "/Page" })
+            : Source(fixture, extraObjects: new[] { "/Page" }, pageTypeByIndex: new[] { "22 0 R", "/Page" });
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf,
+            new UglyToad.PdfPig.ParsingOptions { UseLenientParsing = !vector }))
+        {
+            Assert.Equal(2, parsed.NumberOfPages);
+            var rawPages = new PdfImportMetadataMigrator.RawPageLookup(parsed, new PdfToOfdOptions());
+            Assert.Equal(parsed.GetPage(1).Dictionary, rawPages.Get(0, CancellationToken.None));
+        }
+        using var input = new MemoryStream(pdf); using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = copyBookmarks, CopyAttachments = copyAttachments,
+            PreferExternalPdfToPpm = true };
+        if (vector)
+            await new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options, UnsupportedPagePolicy = PdfVectorUnsupportedPagePolicy.RasterizePage })
+                .ConvertAsync(input, output, new[] { 1, 0, 0 });
+        else await new PdfToOfdConverter(options).ConvertAsync(input, output, new[] { 1, 0, 0 });
+        output.Position = 0;
+        var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal(3, package.Pages.Count);
+        Assert.Equal(copyAttachments ? 3 : 0, package.Attachments.Count);
+        if (copyAttachments)
+        {
+            Assert.Null(package.Pages[0].Annotations);
+            Assert.Equal(package.Attachments[1].Id, Assert.Single(package.Pages[1].Annotations!.Items).AttachmentId);
+            Assert.Equal(package.Attachments[2].Id, Assert.Single(package.Pages[2].Annotations!.Items).AttachmentId);
+        }
+        else Assert.All(package.Pages, page => Assert.Null(page.Annotations));
+        if (copyBookmarks)
+        {
+            var root = Assert.Single(package.Outlines!.Items);
+            Assert.Same(package.Pages[0], Assert.IsType<OfdGoToAction>(Assert.Single(root.Actions!.Items)).Destination!.Page);
+            Assert.Same(package.Pages[1], Assert.IsType<OfdGoToAction>(Assert.Single(Assert.Single(root.Children).Actions!.Items)).Destination!.Page);
+        }
+        else Assert.Null(package.Outlines);
+    }
+
+    [Fact]
+    public void StrictPdfPigRejectsTypelessPageBeforeVectorMetadata()
+    {
+        using var fixture = new PdfFixture(Font());
+        var pdf = Source(fixture, pageTypeByIndex: new[] { "", "/Page" });
+        Assert.Throws<UglyToad.PdfPig.Core.PdfDocumentFormatException>(() =>
+            UglyToad.PdfPig.PdfDocument.Open(pdf,
+                new UglyToad.PdfPig.ParsingOptions { UseLenientParsing = false }));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MetadataRejectsPageLeafWithContradictoryKids(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        var pdf = Source(fixture, firstPageExtra: "/Kids []");
+        using (var parsed = UglyToad.PdfPig.PdfDocument.Open(pdf,
+            new UglyToad.PdfPig.ParsingOptions { UseLenientParsing = !vector }))
+            Assert.Equal(2, parsed.NumberOfPages);
+        using var input = new MemoryStream(pdf); using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyBookmarks = true, CopyAttachments = true, PreferExternalPdfToPpm = true };
+        if (vector)
+            await Assert.ThrowsAsync<InvalidDataException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options }).ConvertAsync(input, output, new[] { 1, 0 }));
+        else await Assert.ThrowsAsync<InvalidDataException>(() => new PdfToOfdConverter(options)
+            .ConvertAsync(input, output, new[] { 1, 0 }));
+        Assert.Equal(0, output.Length);
+    }
+
     [Fact]
     public void RepeatedLatePageLookupVisitsRawPageTreeOnce()
     {
@@ -59,7 +141,8 @@ public sealed class PdfMetadataMigrationTests
         int extraLinkAnnotations = 0, string? globalStreamObject = null, string childZoom = "null", string? outlineRoot = null,
         string attachmentName = "same.bin", int? attachmentFlags = 4, string? rootOutlineItem = null,
         string annotationRect = "20 30 40 50", string[]? extraObjects = null, string? globalFileSpec = null,
-        string? nameTreeKeyToken = null, string? pageFileSpec = null, string pageSubtype = "/FileAttachment")
+        string? nameTreeKeyToken = null, string? pageFileSpec = null, string pageSubtype = "/FileAttachment",
+        IReadOnlyList<string>? pageTypeByIndex = null)
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var flags = attachmentFlags is int value ? " /F " + value : string.Empty;
@@ -83,7 +166,7 @@ public sealed class PdfMetadataMigrationTests
                 pageFileSpec ?? "<< /Type /Filespec /F (" + attachmentName + ") /EF << /F 21 0 R >> >>",
                 "<< /Type /EmbeddedFile /Length 4 >>\nstream\nPAGE\nendstream"
             }.Concat(Enumerable.Repeat("<< /Type /Annot /Subtype /Link /Rect [60 60 80 80] /A << /S /URI /URI (https://example.invalid) >> >>", linkCount))
-            .Concat(extraObjects ?? Array.Empty<string>()).ToArray());
+            .Concat(extraObjects ?? Array.Empty<string>()).ToArray(), pageTypeByIndex: pageTypeByIndex);
     }
 
     [Theory]
