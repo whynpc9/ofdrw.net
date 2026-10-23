@@ -19,18 +19,20 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 /// <summary>Copies only closed local PDF navigation and embedded-file references into a fresh OFD package.</summary>
 internal static class PdfImportMetadataMigrator
 {
-    internal static bool HasOnlyFileAttachments(PdfDocument source, int zeroBasedPage, PdfToOfdOptions options, CancellationToken token)
+    internal static bool HasOnlyFileAttachments(PdfDocument source, int zeroBasedPage, PdfToOfdOptions options,
+        RawPageLookup pages, CancellationToken token)
     {
         if (!options.CopyAttachments) return false;
-        _ = ReadPageAnnotations(source, zeroBasedPage, options, token, out var onlyFileAttachments);
+        _ = ReadPageAnnotations(source, zeroBasedPage, options, pages, token, out var onlyFileAttachments);
         return onlyFileAttachments;
     }
 
     private static Annotation[] ReadPageAnnotations(PdfDocument source, int zeroBasedPage, PdfToOfdOptions options,
-        CancellationToken token, out bool onlyFileAttachments)
+        RawPageLookup pages, CancellationToken token, out bool onlyFileAttachments)
     {
+        if (!ReferenceEquals(source, pages.Source)) throw new InvalidOperationException("PDF raw page lookup belongs to another document.");
         onlyFileAttachments = true;
-        var page = RawPage(source, zeroBasedPage, options, token);
+        var page = pages.Get(zeroBasedPage, token);
         if (!page.Data.TryGetValue("Annots", out var annotsToken)) return Array.Empty<Annotation>();
         var annots = Resolve<ArrayToken>(annotsToken, source) ?? throw new InvalidDataException("PDF annotation array cannot be resolved.");
         var rawFileCount = 0;
@@ -70,27 +72,49 @@ internal static class PdfImportMetadataMigrator
         return current as NameToken ?? throw new InvalidDataException("PDF annotation subtype is not a local name.");
     }
 
-    private static DictionaryToken RawPage(PdfDocument source, int zeroBasedPage, PdfToOfdOptions options, CancellationToken token)
+    // The lookup belongs to one PdfDocument. It walks monotonically to the highest
+    // requested ordinal, so duplicate and out-of-order selections reuse the same
+    // raw page without weakening the per-occurrence attachment output budget.
+    internal sealed class RawPageLookup
     {
-        if (!source.Structure.Catalog.CatalogDictionary.Data.TryGetValue("Pages", out var root))
-            throw new InvalidDataException("PDF page tree is missing.");
-        var pending = new Stack<IToken>(); pending.Push(root);
-        var visits = 0; var ordinal = 0;
-        while (pending.Count != 0)
+        private readonly PdfDocument source;
+        private readonly PdfToOfdOptions options;
+        private readonly Stack<IToken> pending = new();
+        private readonly List<DictionaryToken> indexed = new();
+        internal PdfDocument Source => source;
+        internal long VisitedNodes { get; private set; }
+
+        internal RawPageLookup(PdfDocument source, PdfToOfdOptions options)
+        {
+            this.source = source;
+            this.options = options;
+            if (!source.Structure.Catalog.CatalogDictionary.Data.TryGetValue("Pages", out var root))
+                throw new InvalidDataException("PDF page tree is missing.");
+            pending.Push(root);
+        }
+
+        internal DictionaryToken Get(int zeroBasedPage, CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
-            if (++visits > options.MaxPageCount * 2L) throw new InvalidDataException("PDF page tree exceeds the configured limit.");
-            var page = Resolve<DictionaryToken>(pending.Pop(), source) ?? throw new InvalidDataException("PDF page tree node cannot be resolved.");
-            if (page.Data.TryGetValue("Type", out var type) && type is NameToken { Data: "Page" })
+            if (zeroBasedPage < 0) throw new ArgumentOutOfRangeException(nameof(zeroBasedPage));
+            while (indexed.Count <= zeroBasedPage && pending.Count != 0)
             {
-                if (ordinal++ == zeroBasedPage) return page;
-                continue;
+                token.ThrowIfCancellationRequested();
+                if (++VisitedNodes > options.MaxPageCount * 2L)
+                    throw new InvalidDataException("PDF page tree exceeds the configured limit.");
+                var page = Resolve<DictionaryToken>(pending.Pop(), source) ?? throw new InvalidDataException("PDF page tree node cannot be resolved.");
+                if (page.Data.TryGetValue("Type", out var type) && type is NameToken { Data: "Page" })
+                {
+                    indexed.Add(page);
+                    continue;
+                }
+                if (!page.Data.TryGetValue("Kids", out var children) || Resolve<ArrayToken>(children, source) is not { } kids)
+                    throw new InvalidDataException("PDF page tree has no children.");
+                foreach (var child in kids.Data.Reverse()) pending.Push(child);
             }
-            if (!page.Data.TryGetValue("Kids", out var children) || Resolve<ArrayToken>(children, source) is not { } kids)
-                throw new InvalidDataException("PDF page tree has no children.");
-            foreach (var child in kids.Data.Reverse()) pending.Push(child);
+            if (zeroBasedPage >= indexed.Count) throw new InvalidDataException("PDF selected page was not found in the page tree.");
+            return indexed[zeroBasedPage];
         }
-        throw new InvalidDataException("PDF selected page was not found in the page tree.");
     }
 
     internal static void Apply(PdfDocument source, OfdDocumentPackage output, IReadOnlyList<int> selected,
@@ -374,6 +398,9 @@ internal static class PdfImportMetadataMigrator
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var count = 0; long total = 0;
         var globalFiles = ReadEmbeddedFileNameTree(source, options, token);
+        var rawPages = new RawPageLookup(source, options);
+        var annotations = new Dictionary<int, Annotation[]>();
+        var parsedPages = new Dictionary<int, Page>();
         var indirectPayloads = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         var directPayloads = new List<(StreamToken Stream, byte[] Bytes)>();
         OfdAttachment Add(string name, IToken streamLink, StreamToken stream)
@@ -417,11 +444,20 @@ internal static class PdfImportMetadataMigrator
         for (var index = 0; index < selected.Count; index++)
         {
             token.ThrowIfCancellationRequested();
-            var pdfPage = source.GetPage(selected[index] + 1);
-            foreach (var annotation in ReadPageAnnotations(source, selected[index], options, token, out _))
+            if (!annotations.TryGetValue(selected[index], out var pageAnnotations))
+            {
+                pageAnnotations = ReadPageAnnotations(source, selected[index], options, rawPages, token, out _);
+                annotations.Add(selected[index], pageAnnotations);
+            }
+            foreach (var annotation in pageAnnotations)
             {
                 token.ThrowIfCancellationRequested();
                 if (annotation.Type != AnnotationType.FileAttachment) continue;
+                if (!parsedPages.TryGetValue(selected[index], out var pdfPage))
+                {
+                    pdfPage = source.GetPage(selected[index] + 1);
+                    parsedPages.Add(selected[index], pdfPage);
+                }
                 // A rasterized PDF icon cannot be separated from the page image later. Only the
                 // visible, printable form can be preserved across all importer/rasterizer paths.
                 var flags = annotation.AnnotationDictionary.Data.TryGetValue("F", out var flagsToken)

@@ -45,6 +45,20 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
             if (count <= 0 || count > limits.Compatibility.MaxPageCount) throw new InvalidDataException("PDF source page limit exceeded or document has no pages.");
             var selection = OfdPageSelection.Normalize(count, pages);
             if (selection.Count > limits.Compatibility.MaxPageCount) throw new InvalidDataException("PDF output page limit exceeded.");
+            var fileAnnotationEligibility = new Dictionary<int, bool>();
+            if (limits.Compatibility.CopyAttachments)
+            {
+                // Validate raw page annotations once per source page, then release the
+                // probe parser before the per-page vector resource stores are created.
+                using var probe = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth });
+                var rawPages = new PdfImportMetadataMigrator.RawPageLookup(probe, limits.Compatibility);
+                foreach (var index in selection.Distinct())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    fileAnnotationEligibility.Add(index, PdfImportMetadataMigrator.HasOnlyFileAttachments(
+                        probe, index, limits.Compatibility, rawPages, cancellationToken));
+                }
+            }
             var package = new OfdDocumentPackage();
             // This converter validates exact original PDF font bytes and bindings.
             // Preserve them rather than applying generation-time subsetting.
@@ -65,7 +79,7 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                     using var document = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth });
                     if (!PlainCatalog(document)) throw new NotSupportedException("PDFV_UNSUPPORTED: catalog color/optional-content/rendering extensions.");
                     document.AddPageFactory<VectorPageContext, VectorContextFactory>();
-                    var allowFileAnnotations = PdfImportMetadataMigrator.HasOnlyFileAttachments(document, index, limits.Compatibility, cancellationToken);
+                    var allowFileAnnotations = fileAnnotationEligibility.TryGetValue(index, out var allowed) && allowed;
                     var context = document.GetPage<VectorPageContext>(index + 1);
                     var staged = context.Convert(limits, cancellationToken, limits.Compatibility.MaxTotalImageBytes - imageBytes, allowFileAnnotations);
                     page = staged.Pages.Single();

@@ -4,6 +4,7 @@ using System.Text;
 using System.Xml.Linq;
 using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Converter.Pdf.Internal;
 using Ofdrw.Net.Converter.Pdf.Vector;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Readers;
@@ -13,6 +14,45 @@ namespace Ofdrw.Net.Converter.Pdf.Vector.Tests;
 public sealed class PdfMetadataMigrationTests
 {
     private static byte[] Font() => File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fonts", "regular.ttf"));
+
+    [Fact]
+    public void RepeatedLatePageLookupVisitsRawPageTreeOnce()
+    {
+        using var fixture = new PdfFixture(Font());
+        var pdf = fixture.Create(Enumerable.Repeat(string.Empty, 32).ToArray());
+        using var source = UglyToad.PdfPig.PdfDocument.Open(pdf);
+        var options = new PdfToOfdOptions { CopyAttachments = true };
+        var pages = new PdfImportMetadataMigrator.RawPageLookup(source, options);
+        foreach (var index in new[] { 31, 0, 31, 12, 31, 12 })
+            Assert.True(PdfImportMetadataMigrator.HasOnlyFileAttachments(source, index, options, pages, CancellationToken.None));
+        var last = pages.Get(31, CancellationToken.None);
+        Assert.Equal(33, pages.VisitedNodes); // one Pages node and 32 Page nodes
+        Assert.Same(last, pages.Get(31, CancellationToken.None));
+        Assert.Same(last, pages.Get(31, CancellationToken.None));
+        Assert.NotSame(last, pages.Get(0, CancellationToken.None));
+        Assert.Equal(33, pages.VisitedNodes);
+        using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() => pages.Get(31, cancelled.Token));
+        using var otherDocument = UglyToad.PdfPig.PdfDocument.Open(pdf);
+        Assert.Throws<InvalidOperationException>(() => PdfImportMetadataMigrator.HasOnlyFileAttachments(
+            otherDocument, 31, options, pages, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DuplicatePageAttachmentsStillChargeEachOutputOccurrence(bool vector)
+    {
+        using var fixture = new PdfFixture(Font());
+        using var input = new MemoryStream(Source(fixture)); using var output = new MemoryStream();
+        var options = new PdfToOfdOptions { CopyAttachments = true, MaxAttachmentCount = 2, PreferExternalPdfToPpm = true };
+        if (vector)
+            await Assert.ThrowsAsync<InvalidDataException>(() => new PdfVectorToOfdConverter(new PdfVectorToOfdOptions
+                { Compatibility = options }).ConvertAsync(input, output, new[] { 0, 0 }));
+        else
+            await Assert.ThrowsAsync<InvalidDataException>(() => new PdfToOfdConverter(options).ConvertAsync(input, output,
+                new[] { 0, 0 }));
+    }
 
     private static byte[] Source(PdfFixture fixture, string destination = "11 0 R /Fit", bool embeddedPageFile = true,
         string? rootAction = null, string firstPageExtra = "", bool embeddedGlobalFile = true, bool mixedAnnotations = false,
