@@ -1,10 +1,10 @@
 # R01 PageBlock、文字与颜色验收
 
-日期：2026-10-24（Asia/Shanghai）；分支 `codex/r01-pageblock-text-color`；[PR #29](https://github.com/whynpc9/ofdrw.net/pull/29)。**产品源码** `142d0a9946e8d3f356a6a0e62cf61e1665ee91c9`，已整合主线 `aac53f2875b3bdbe190364fbacdec5e0f0f59888`。环境：macOS Arm64、.NET SDK 10.0.401。本轮输入、输出、日志与 PNG 位于已忽略的 `artifacts/roadmap-v12/R01/`，文件 SHA-256 见 [hashes.txt](hashes.txt)。
+日期：2026-10-24（Asia/Shanghai）；分支 `codex/r01-pageblock-text-color`；[PR #29](https://github.com/whynpc9/ofdrw.net/pull/29)。**产品源码** `0777f08be6fb0ef7f299afa3c1043fa91069a232`，已整合主线 `aac53f2875b3bdbe190364fbacdec5e0f0f59888`。环境：macOS Arm64、.NET SDK 10.0.401。本轮输入、输出、日志与 PNG 位于已忽略的 `artifacts/roadmap-v12/R01/`，文件 SHA-256 见 [hashes.txt](hashes.txt)。
 
 ## 已验证的行为边界
 
-- Reader 在普通页及模板页按绘制顺序投影 PageBlock 的路径、图片、文字与复合资源，保留原始 XML 与逻辑文字；PDF、SVG、HTML 使用同一预检拒绝不支持的绘图，而不静默漏绘。官方 2009/2016 和无命名空间的受支持绘图可以在 PageBlock 内混用；普通顶层复合对象仍遵循原有命名空间契约。DocumentRes 与 PublicRes 的复合资源定义可使用 2009、2016 或无命名空间的 Res；外来资源命名空间不解析，避免误将扩展资源当作 PageBlock 绘图。外来命名空间的 Page、Content、Layer、绘图与 Clips 均保持不透明或拒绝渲染。外来 Layer 的 0、1、多子元素在 Reader 中按整层 XML 与来源槽读取；带扩展属性、处理指令或非空文本的 Page/Content/Area/Layer 包络，以及 Content 中未建模的直接子项，在 PageBlock 入口按原始槽保留并拒绝渲染。无普通 Content、仅在外来 Page 包裹层中包含 PageBlock 的普通页和模板页也保留整页原始 XML，三个出口拒绝空白漏绘。Reader 已认证子项的 PageBlock 若只在包络上带外来属性、处理指令或非空文本，仍可提取子文字，三个出口凭绘制错误标记拒绝；来源被修改或不透明的 PageBlock 保持直接拒绝。Writer 对普通页外来包裹层中的 PageBlock 在重写前拒绝，模板路径则逐字节保留原模板 XML；Writer 继续拒绝无法安全重写的未知结构，包括 PageBlock 所在页面的额外或外来 Content 同名容器。
+- Reader 在普通页及模板页按绘制顺序投影 PageBlock 的路径、图片、文字与复合资源，保留原始 XML 与逻辑文字；PDF、SVG、HTML 使用同一预检拒绝不支持的绘图，而不静默漏绘。官方 2009/2016 和无命名空间的受支持绘图可以在 PageBlock 内混用；普通顶层复合对象仍遵循原有命名空间契约。DocumentRes 与 PublicRes 的复合资源定义可使用 2009、2016 或无命名空间的 Res；外来资源命名空间不解析，避免误将扩展资源当作 PageBlock 绘图。被准入的无命名空间 Res 及其复合资源子图元也纳入全局 ID 身份表；与 PageBlock 或字体 ID 冲突时回读和三个导出在写出前拒绝。外来命名空间的 Page、Content、Layer、绘图与 Clips 均保持不透明或拒绝渲染。外来 Layer 的 0、1、多子元素在 Reader 中按整层 XML 与来源槽读取；带扩展属性、处理指令或非空文本的 Page/Content/Area/Layer 包络，以及 Content 中未建模的直接子项，在 PageBlock 入口按原始槽保留并拒绝渲染。无普通 Content、仅在外来 Page 包裹层中包含 PageBlock 的普通页和模板页也保留整页原始 XML，三个出口拒绝空白漏绘。Reader 已认证子项的 PageBlock 若只在包络上带外来属性、处理指令或非空文本，仍可提取子文字，三个出口凭绘制错误标记拒绝；来源被修改或不透明的 PageBlock 保持直接拒绝。Writer 对普通页外来包裹层中的 PageBlock 在重写前拒绝，模板路径则逐字节保留原模板 XML；Writer 继续拒绝无法安全重写的未知结构，包括 PageBlock 所在页面的额外或外来 Content 同名容器。
 - 字体、媒体、复合资源、DrawParam 和颜色资源按正整数 ID 解析；`030` 与 `30` 数值等价，原 XML 拼写不变。模板字体和复合资源只从文档与模板自己的资源解析，不借用调用页 PageRes；本页 PageBlock 可解析本页 PageRes 的复合资源，另一页和普通顶层复合对象不借用这张只读映射；Split 克隆 PageBlock 时保留本页/模板只读复合资源闭包，Writer 保留原 PageRes XML。明确非 Image 的媒体不能供 ImageObject 使用，省略 Type/Format 的旧图片仍可用；显式未知 Format、与实际载荷不符的声明或结构损坏的 PNG/JPEG 在直接、复合 PageBlock 图片写出前统一拒绝。重复或歧义 ID、未知绘图、资源闭包无法证明及显式 CGTransform 字形替换在输出前拒绝。
 - PageBlock 引用的字体若显式声明 `FontFile`，必须实际读到非空载荷；无 `FontFile` 的名称字体维持原有回退。`Fonts/Font/FontFile`、`MultiMedias/MultiMedia/MediaFile`、`CompositeGraphicUnits` 及 `DrawParams/ColorSpaces` 的容器和定义按完整结构验收；Res 根节点上的外来属性/子项、处理指令或非空文本同样不能被丢弃后继续解析 PageBlock 资源。同命名空间的既有 VendorExtension 保持回读兼容。媒体的严格来源判定覆盖直接与复合资源中的 PageBlock 图片；普通复合对象和批注的既有外来媒体属性回读行为仍由独立回归确认。
 - PageBlock 图片的三出口共同准入范围是有界静态 PNG 与单扫描基线 JPEG；BMP/TIFF、交错或索引 PNG、带未准入元数据块的 PNG，以及渐进式 JPEG 不进入该共同范围。有效 BMP/TIFF 的定向正反例确认：PageBlock 的 PDF/SVG/HTML 在写出前拒绝，而普通顶层 PDF 仍成功解码；PDF 对普通顶层图元的既有图片解码路径不由此改变。声明中的 BMP/TIFF 仍被识别为既有资源格式，但 PageBlock 会在渲染前标为未准入；HTML 的静态预览本来也不接受这些格式。此处记录有限功能边界，不把某个出口能独自解码提升为三出口支持。
@@ -15,15 +15,15 @@
 
 ## 功能测试与本地包消费
 
-- 源码 `142d0a9` 的完整 Release 解决方案：**4027 passed、0 failed、0 skipped**，11 个测试项目；R01 PageBlock **417/417**。单节点构建并使用仓库独占锁；日志为 `p97-full-release.log`、`p97-focused.log`。
-- 本地版本 `0.1.0-r01.p97` 的 **12 个基础 SDK 包和 1 个可选 SES 包**通过来源核对及独立消费者 E2E。`generated-layout.docx` 的显式 native 与默认 DOCX→OFD→PDF 各生成 V1/V4 测试签章，原文完整保留；签章前后逐页 PNG 一致。`p97-ses/files/functional.json` 与 `rendered-pages.json` 保存机器检查。Core、Packaging、Reader 三个精确本地包的 R18 附件清理消费者也通过，物理删除后回读为空。包未发布；默认密码学验证状态为 `Unsupported`，测试专用自签路径通过。
-- 整合已实际合并的 R20 主线 `aac53f2` 后，精确本地 Core/Packaging 包的归档预检消费者完成 4 个公开 API 样例；`p97-preflight.log`、`p97-preflight/output/manifest.json` 与 `archival-structural.json` 保存运行及规则结果。R20 新增的 `AC-013`–`AC-015` 是只读、有界的违规检测；未发现违规不等于标准通过，缺乏完整来源、资源闭包与明文证明时保持 `Unknown`。本次验证不宣称档案合规认证。
+- 源码 `0777f08` 的完整 Release 解决方案：**4029 passed、0 failed、0 skipped**，11 个测试项目；R01 PageBlock **419/419**。单节点构建并使用仓库独占锁；日志为 `p98-full-release.log`、`p98-focused.log`。
+- 本地版本 `0.1.0-r01.p98` 的 **12 个基础 SDK 包和 1 个可选 SES 包**通过来源核对及独立消费者 E2E。`generated-layout.docx` 的显式 native 与默认 DOCX→OFD→PDF 各生成 V1/V4 测试签章，原文完整保留；签章前后逐页 PNG 一致。`p98-ses/files/functional.json` 与 `rendered-pages.json` 保存机器检查。Core、Packaging、Reader 三个精确本地包的 R18 附件清理消费者也通过，物理删除后回读为空。包未发布；默认密码学验证状态为 `Unsupported`，测试专用自签路径通过。
+- 整合已实际合并的 R20 主线 `aac53f2` 后，精确本地 Core/Packaging 包的归档预检消费者完成 4 个公开 API 样例；`p98-preflight.log`、`p98-preflight/output/manifest.json` 与 `archival-structural.json` 保存运行及规则结果。R20 新增的 `AC-013`–`AC-015` 是只读、有界的违规检测；未发现违规不等于标准通过，缺乏完整来源、资源闭包与明文证明时保持 `Unknown`。本次验证不宣称档案合规认证。
 
 ## 自动渲染与 PNG 视觉复查
 
 本轮从产品源码生成 **32 份 PageBlock PDF、33 页**，逐页导出 144 DPI PNG。24 张沿用样例与先前逐页目视检查的对应当前分支图像逐字节相同；另 4 张与 `p80` 对应 PNG 逐字节相同，`p80` 记录了与 `p77` 目视复查页的比对；两张同物理 Res 与规范化别名路径的红色方块和上轮直接目视页逐字节相同；本轮复合对象单例裁切页直接目视检查为左半蓝色矩形、完整可见的黑色文字；新增的 DocumentRes 2016 与 PublicRes 无命名空间页均直接目视检查，`resource namespace text` 完整可见；省略 Format 的 JPEG 页与本轮显式 JPEG 页逐字节相同，符合样例预期，未见异常裁切、重叠、重影或空白页。实际检查范围如下：
 
-逐页比对文件、页码、SHA-256、先前目视检查的对照路径、后四页的 `p80` 对照、三张直接目视页的记录与省略 Format 页的同轮对照见 `p97-png-qa.json`；[hashes.txt](hashes.txt) 所列的 196 个关键文件已由 `shasum -a 256 -c` 全部核对。
+逐页比对文件、页码、SHA-256、先前目视检查的对照路径、后四页的 `p80` 对照、三张直接目视页的记录与省略 Format 页的同轮对照见 `p98-png-qa.json`；[hashes.txt](hashes.txt) 所列的 196 个关键文件已由 `shasum -a 256 -c` 全部核对。
 
 | 样例 | 页数与检查要点 |
 | --- | --- |
@@ -42,4 +42,4 @@
 
 ## macOS Preview 验收
 
-已以产品源码 `142d0a9` 的 34 份 PDF、37 页及其 SHA-256 提交 `gui-request-R01-20261023T1605Z.json` 独占 GUI 申请；**Preview 逐页验收尚未完成**，目前等待桌面租约安全释放。完成后记录实际查看链路、页面范围、结论与关窗结果。本报告只覆盖上述确定性样例；不推断任意复杂 DOCX 的完整保真、外部 OFD 阅读器互操作、V5/GBT 端到端互操作或签名法律效力。
+已以产品源码 `0777f08` 的 34 份 PDF、37 页及其 SHA-256 提交 `gui-request-R01-20261023T1629Z.json` 独占 GUI 申请；**Preview 逐页验收尚未完成**，目前等待桌面租约安全释放。完成后记录实际查看链路、页面范围、结论与关窗结果。本报告只覆盖上述确定性样例；不推断任意复杂 DOCX 的完整保真、外部 OFD 阅读器互操作、V5/GBT 端到端互操作或签名法律效力。
