@@ -85,6 +85,8 @@ internal static class OfdPageXmlContract
                 token.ThrowIfCancellationRequested();
                 // Reader consumes these by local name instead of preserving them.
                 if (child.Name.LocalName is "Area" or "Content" && child.Name.Namespace != ns) valid = false;
+                if (child.Name != ns + "Area" && child.Name != ns + "Content" &&
+                    (child.Name.LocalName == "PageBlock" || ContainsPageBlock(child))) valid = false;
                 if (child.Name == ns + "Area")
                 {
                     valid &= IsRepresentedArea(child, ns);

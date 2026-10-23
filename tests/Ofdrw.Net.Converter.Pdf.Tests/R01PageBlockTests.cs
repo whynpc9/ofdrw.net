@@ -4005,6 +4005,21 @@ public sealed class R01PageBlockTests
             template ? read.Pages[0].Templates[0].Elements : read.Pages[0].Elements));
         Assert.Equal("Page", raw.LocalName);
         Assert.Contains("wrapped text", raw.Xml);
+        using var written = new MemoryStream();
+        if (template)
+        {
+            await new OfdPackageWriter().WriteAsync(read, written);
+            using var archive = new ZipArchive(new MemoryStream(written.ToArray()), ZipArchiveMode.Read);
+            using var templateStream = archive.GetEntry(path)!.Open();
+            using var copy = new MemoryStream();
+            await templateStream.CopyToAsync(copy);
+            Assert.Equal(read.PreservedEntries[path], copy.ToArray());
+        }
+        else
+        {
+            await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(read, written));
+            Assert.Equal(0, written.Length);
+        }
         foreach (var convert in new Func<Stream, Stream, Task>[]
         {
             (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
