@@ -26,9 +26,9 @@ public sealed class ControlledEditWriterTests
     public async Task PreparedWriteRejectsRetargetedAttachmentActionBeforeDestination()
     {
         var source = new OfdDocumentPackage();
-        source.Attachments.Add(new OfdAttachment { Id = "attachment-1", Name = "note.bin", Data = new byte[] { 1 } });
+        source.Attachments.Add(new OfdAttachment { Id = "51", Name = "note.bin", Data = new byte[] { 1 } });
         var page = new OfdPage { WidthMillimeters = 210, HeightMillimeters = 297 };
-        var annotation = new OfdAnnotation { Type = OfdAnnotationType.Link, AttachmentId = "attachment-1",
+        var annotation = new OfdAnnotation { Type = OfdAnnotationType.Link, AttachmentId = "51",
             Creator = "test", LastModifiedDate = new DateTime(2026, 10, 22),
             Appearance = new OfdAnnotationAppearance { XMillimeters = 1, YMillimeters = 1,
                 WidthMillimeters = 10, HeightMillimeters = 10 } };
