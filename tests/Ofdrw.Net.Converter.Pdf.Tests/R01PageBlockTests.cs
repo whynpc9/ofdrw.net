@@ -3163,6 +3163,84 @@ public sealed class R01PageBlockTests
         }
     }
 
+    [Theory]
+    [InlineData("text")]
+    [InlineData("path")]
+    [InlineData("image")]
+    public async Task PageBlockDrawingLeavesRejectDuplicateClipsBeforeOutput(string kind)
+    {
+        const string clip = "<Clips><Clip><Area><Path Stroke='false' Fill='true'>" +
+            "<AbbreviatedData>M 0 0 L 10 0 L 10 10 L 0 10 C</AbbreviatedData>" +
+            "</Path></Area></Clip></Clips>";
+        var drawing = kind switch
+        {
+            "text" => "<TextObject ID='501' Boundary='10 10 20 10' Font='10' Size='4'>" +
+                clip + clip + "<TextCode X='0' Y='4'>leaf text</TextCode></TextObject>",
+            "path" => "<PathObject ID='501' Boundary='10 10 20 20' Fill='true' Stroke='false'>" +
+                clip + clip + "<FillColor Value='0 0 255'/>" +
+                "<AbbreviatedData>M 0 0 L 20 0 L 20 20 L 0 20 C</AbbreviatedData></PathObject>",
+            _ => "<ImageObject ID='501' Boundary='10 10 20 20' ResourceID='20'>" +
+                clip + clip + "</ImageObject>",
+        };
+        var resources = kind == "image" ? "<MultiMedias><MultiMedia ID='20' Type='Image' Format='PNG'>" +
+            "<MediaFile>image.png</MediaFile></MultiMedia></MultiMedias>" : null;
+        var ofd = await Source(drawing, resources: resources, font: kind == "text", image: kind == "image");
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var leaf = Assert.Single(Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements)).PageBlockChildren!);
+        Assert.Equal(2, XElement.Parse(kind switch
+        {
+            "text" => Assert.IsType<OfdTextElement>(leaf).SourceXml!,
+            "path" => Assert.IsType<OfdPathElement>(leaf).SourceXml!,
+            _ => Assert.IsType<OfdImageElement>(leaf).SourceXml!,
+        }).Elements(XNamespace.Get(Ns) + "Clips").Count());
+        if (kind == "text") Assert.Equal("leaf text", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Contains("multiple Clips", error.Message);
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompositeTextWithoutResolvableFontKeepsLogicalText(bool undeclaredFont)
+    {
+        var font = undeclaredFont ? " Font='999'" : "";
+        var resources = "<CompositeGraphicUnits><CompositeGraphicUnit ID='551' Width='50' Height='20'>" +
+            $"<TextObject ID='552' Boundary='0 0 50 10'{font} Size='4'>" +
+            "<TextCode X='0' Y='4'>missing\\0020font</TextCode></TextObject>" +
+            "</CompositeGraphicUnit></CompositeGraphicUnits>";
+        var ofd = await Source("<CompositeObject ID='553' Boundary='10 10 50 20' ResourceID='551'/>",
+            resources: resources);
+        var read = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var placement = Assert.IsType<OfdCompositeElement>(Assert.Single(
+            Assert.IsType<OfdRawElement>(Assert.Single(read.Pages[0].Elements)).PageBlockChildren!));
+        var text = Assert.IsType<OfdTextElement>(Assert.Single(placement.Resource.Elements));
+        Assert.Equal(undeclaredFont ? "999" : null, text.FontResourceId);
+        Assert.Contains("unresolved Font", text.RenderPaintError);
+        Assert.Equal("missing font", new OfdTextExtractor().Extract(read));
+        foreach (var convert in new Func<Stream, Stream, Task>[]
+        {
+            (input, output) => new OfdToPdfConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToSvgConverter().ConvertAsync(input, output),
+            (input, output) => new OfdToHtmlConverter().ConvertAsync(input, output)
+        })
+        {
+            using var sink = new MemoryStream();
+            var error = await Assert.ThrowsAsync<NotSupportedException>(() => convert(new MemoryStream(ofd), sink));
+            Assert.Contains("Font", error.Message);
+            Assert.Equal(0, sink.Length);
+        }
+    }
+
     [Fact]
     public async Task LaterPageBlockTextCodesInheritPreviousStartCoordinates()
     {

@@ -94,6 +94,8 @@ internal static class OfdCompositeProjection
                         scalarError = "Malformed PageBlock drawing boundary cannot be exported.";
                     if (scalarError is null && !HasWellFormedScalars(originalNode, material, token))
                         scalarError = "Malformed PageBlock or composite child attribute cannot be exported.";
+                    if (scalarError is null && originalNode.Elements(originalNode.Name.Namespace + "Clips").Skip(1).Any())
+                        scalarError = "PageBlock or composite drawing has multiple Clips containers.";
                     if (scalarError is null && element is OfdTextElement &&
                         originalNode.DescendantsAndSelf().Any(node => node.Name.LocalName == "CGTransform"))
                         scalarError = "PageBlock or composite text with explicit glyph substitutions cannot be exported.";

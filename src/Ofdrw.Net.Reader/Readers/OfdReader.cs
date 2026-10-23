@@ -1209,21 +1209,17 @@ public sealed class OfdReader : IOfdReader
             foreach (var element in ParseGraphicNodes(archive, definition.Node.Elements(), null, "Body", fonts, media, mediaTypes,
                 definition.Path, material, token, map, definition.Node.Name.Namespace, paint, ambiguousMedia: ambiguousMedia))
             {
-                if (element is OfdTextElement unresolvedText &&
-                    !string.IsNullOrWhiteSpace(unresolvedText.FontResourceId) &&
-                    !HasFont(fonts, unresolvedText.FontResourceId) &&
-                    package.Fonts.Any(font => OfdSourceIdentity.ParseId(font.Id) == OfdSourceIdentity.ParseId(unresolvedText.FontResourceId)))
+                if (element is OfdTextElement unresolvedText && !HasFont(fonts, unresolvedText.FontResourceId))
                 {
-                    // The font exists but its declaration was rejected for
-                    // rendering. Preserve TextCode for logical extraction.
+                    // Even an absent or undeclared font leaves TextCode usable
+                    // for logical extraction; rendering still requires it.
                     unresolvedText.RenderPaintError ??= "Composite text has an unresolved Font resource.";
                     definition.Resource.Elements.Add(unresolvedText);
                     continue;
                 }
-                if (element is OfdTextElement text && !HasFont(fonts, text.FontResourceId) ||
-                    element is OfdImageElement { Data.Length: 0 })
+                if (element is OfdImageElement { Data.Length: 0 })
                 {
-                    var source = element is OfdTextElement t ? t.SourceXml! : ((OfdImageElement)element).SourceXml!;
+                    var source = ((OfdImageElement)element).SourceXml!;
                     definition.Resource.Elements.Add(new OfdRawElement { LocalName = OfdXmlEnvelope.Parse(source).Name.LocalName, Xml = source,
                         ObjectId = element.ObjectId, XMillimeters = element.XMillimeters, YMillimeters = element.YMillimeters,
                         WidthMillimeters = element.WidthMillimeters, HeightMillimeters = element.HeightMillimeters });
