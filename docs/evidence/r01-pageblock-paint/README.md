@@ -49,4 +49,8 @@
 
 ## macOS Preview 验收
 
-已以产品源码 `baeae53` 的 39 份 PDF、42 页及其 SHA-256 提交 `gui-request-R01-20261023T1925Z.json` 独占 GUI 申请；**Preview 逐页验收尚未完成**，目前等待桌面租约安全释放。完成后记录实际查看链路、页面范围、结论与关窗结果。本报告只覆盖上述确定性样例；不推断任意复杂 DOCX 的完整保真、外部 OFD 阅读器互操作、V5/GBT 端到端互操作或签名法律效力。
+2026-10-24 在 macOS Preview 中按 `gui-request-R01-20261023T1925Z.json` 的绝对路径逐一打开本轮产品源码 `baeae53` 生成的 **39 份 PDF、42 页**；打开时核对文件 URL 与页数，逐页目视检查。每份 PDF 的 SHA-256 在 GUI 检查前与申请清单核对，**39/39 一致**。查看链路为 **PageBlock OFD→PDF→Preview**，以及 `generated-layout.docx` 的 **显式 native/default OFD→PDF→Preview**，没有用直接 DOCX→PDF 代替 native 产物。逐页预期和实际观察见 [preview-acceptance.md](preview-acceptance.md)。
+
+37 个 PageBlock 页、1 个 typed 编辑页与 4 个 DOCX 转换页均与各自确定性样例的预期相符。包括两页模板文字与图形、裁切及弧线、资源文字和红蓝图片；显式 native 与默认转换的各两页都显示完整中文与英文、灰色斜体副标题、蓝色标题、表格底色和边框、第二页局部红色粗体和日期。未见新发现的缺字、样式扩散、意外裁切、重影、重复文字或异常空白页。`textcode-inherited-start` 的三词共起点重叠是样例预期。Preview 个别首次打开或截图出现短暂空白、缩小画面；重新打开或重新截图后看到了预期内容才计入通过，详见逐页记录。
+
+验收后逐个关闭本任务的 PDF 窗口；Preview 的 Window 菜单已无文档窗口。`gui-release-R01-20261024T1507Z.json` 记录 GUI 租约释放。结论只覆盖这 39 份确定性 PDF/42 页；不推断任意复杂 DOCX 的完整保真、外部 OFD 阅读器互操作、V5/GBT 端到端互操作或签名法律效力。
