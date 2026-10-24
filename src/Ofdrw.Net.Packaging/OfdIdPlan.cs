@@ -235,7 +235,12 @@ internal sealed class OfdIdPlan
     }
     internal string ClaimImage(OfdImageElement image)
     {
-        if (TryImageOwner(image, out var owner)) return ClaimImported(owner, owner, image.ResourceId);
+        if (TryImageOwner(image, out var owner))
+        {
+            if (OfdSourceIdentity.ParseId(image.ResourceId) != owner.Number)
+                throw new InvalidDataException("Imported media resource ID was changed.");
+            return ClaimImported(owner, owner, owner.Id);
+        }
         return ClaimNew(new object(), image.ResourceId);
     }
     private string ClaimImported(OfdSourceIdentity.Owner owner, object outputOwner, string? requested)

@@ -270,7 +270,9 @@ internal sealed class OfdSourceIdentity
             if (!known)
             {
                 result.entries.Add(path, slots = new Dictionary<int, Owner>()); result.rootNames.Add(path, xml.Root.Name);
-                if (xml.Root.Name.LocalName == expectedRoot && (sourceNs == ns || sourceNs.NamespaceName == OfdConstants.Namespace || sourceNs.NamespaceName == OfdConstants.StandardNamespace)) result.trustedEntries.Add(path);
+                if (xml.Root.Name.LocalName == expectedRoot && (sourceNs == ns ||
+                    sourceNs.NamespaceName == OfdConstants.Namespace || sourceNs.NamespaceName == OfdConstants.StandardNamespace ||
+                    expectedRoot == "Res" && sourceNs == XNamespace.None)) result.trustedEntries.Add(path);
             }
             if (!result.trustedEntries.Contains(path)) return nodes;
             foreach (var node in xml.Root.DescendantsAndSelf())
@@ -280,9 +282,11 @@ internal sealed class OfdSourceIdentity
                 var definitionRole = Accepted(node.Name.Namespace, sourceNs) && IsDefinition(node, xml.Root);
                 if (definitionRole && id is not null && ParseId(id) == 0) throw new InvalidDataException("Unsupported non-positive or non-numeric source document-unit ID.");
                 var activeDefinition = definitionRole && ParseId(id) != 0;
+                var opaqueLayer = !definitionRole && node.Name.LocalName == "Layer" && node.Parent?.Name.LocalName == "Content" &&
+                    node.Parent.Parent == xml.Root;
                 var opaqueRoot = node.Parent?.Name.LocalName == "Layer" && node.Parent.Parent?.Name.LocalName == "Content" && node.Parent.Parent.Parent == xml.Root ||
                     xml.Root.Name.LocalName == "Res" && node.Parent?.Name == sourceNs + "CompositeGraphicUnit" && node.Parent.Parent?.Name == sourceNs + "CompositeGraphicUnits" && node.Parent.Parent.Parent == xml.Root;
-                if (!activeDefinition && !opaqueRoot) continue;
+                if (!activeDefinition && !opaqueRoot && !opaqueLayer) continue;
                 id ??= string.Empty;
                 budget.ReserveReadModel(2048, token);
                 Owner owner;
@@ -315,7 +319,16 @@ internal sealed class OfdSourceIdentity
         {
             var xml = Read(path); var nodes = Register(path, xml, "Page"); var sourceNs = xml.Root!.Name.Namespace;
             budget.ReserveReadModel(512L + elements.Count * 128L, token);
-            var originals = xml.Root.Elements().FirstOrDefault(node => node.Name.LocalName == "Content")?.Elements().Where(node => node.Name.LocalName == "Layer").SelectMany(layer => layer.Elements()).ToList() ?? [];
+            var content = xml.Root.Elements().FirstOrDefault(node => node.Name.LocalName == "Content");
+            var originals = !Supported(xml.Root.Name.Namespace) || xml.Root.Name.LocalName != "Page" ||
+                OfdPageXmlContract.ContainsPageBlock(xml.Root) && !OfdPageXmlContract.IsPlainPageEnvelope(xml) ? new List<XElement> { xml.Root } :
+                content is null ? [] :
+                !Supported(content.Name.Namespace) ||
+                OfdPageXmlContract.ContainsPageBlock(content) && !OfdPageXmlContract.IsPlainContentEnvelope(content) ? new List<XElement> { content } :
+                content.Elements().Where(node => node.Name.LocalName == "Layer")
+                    .SelectMany(layer => Supported(layer.Name.Namespace) &&
+                        (!OfdPageXmlContract.HasPageBlock(layer) || OfdPageXmlContract.IsPlainLayerEnvelope(layer))
+                        ? layer.Elements() : new[] { layer }).ToList();
             if (originals.Count != elements.Count) throw new InvalidDataException("Source graphic slots cannot be authenticated.");
             for (var i = 0; i < originals.Count; i++)
             {
@@ -328,6 +341,8 @@ internal sealed class OfdSourceIdentity
                 if (node.Parent is XElement layer && nodes.TryGetValue(layer, out var owner)) { budget.Structure.Reference(); result.layers.Add(element, owner); }
             }
         }
+        static bool Supported(XNamespace value) => value == XNamespace.None ||
+            value.NamespaceName is OfdConstants.Namespace or OfdConstants.StandardNamespace;
     }
 
     private static bool Accepted(XNamespace value, XNamespace source) => value == source || value == XNamespace.None ||
@@ -344,8 +359,11 @@ internal sealed class OfdSourceIdentity
             var container = node.Name.LocalName switch
             { "Font" => "Fonts", "MultiMedia" => "MultiMedias", "DrawParam" => "DrawParams", "ColorSpace" => "ColorSpaces", "CompositeGraphicUnit" => "CompositeGraphicUnits", _ => null };
             if (container is not null) return node.Parent?.Name == ns + container && node.Parent.Parent == root;
-            if (node.Name.Namespace != ns || node.Name.LocalName is not ("TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;
-            return node.Parent?.Name == ns + "CompositeGraphicUnit" && node.Parent.Parent?.Name == ns + "CompositeGraphicUnits" && node.Parent.Parent.Parent == root;
+            if (!Accepted(node.Name.Namespace, ns) || node.Name.LocalName is not ("PageBlock" or "TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;
+            var parent = node.Parent;
+            while (parent is not null && parent.Name.LocalName == "PageBlock" && Accepted(parent.Name.Namespace, ns))
+                parent = parent.Parent;
+            return parent?.Name == ns + "CompositeGraphicUnit" && parent.Parent?.Name == ns + "CompositeGraphicUnits" && parent.Parent.Parent == root;
         }
         if (node.Name.LocalName == "Layer" && node.Parent?.Name != ns + "Content") return false;
         if (root.Name.LocalName != "Page" || node.Name.LocalName is not ("Layer" or "PageBlock" or "TextObject" or "ImageObject" or "PathObject" or "CompositeObject")) return false;

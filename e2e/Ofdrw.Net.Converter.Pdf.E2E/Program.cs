@@ -19,6 +19,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text;
+using System.Xml.Linq;
 using PdfSharpCore.Drawing;
 
 var repoRoot = ResolveRepoRoot();
@@ -635,8 +636,26 @@ static async Task ValidateComplexSampleArtifactsAsync(
         }
     }
 
-    var pdfPath = Path.Combine(outputDir, "upstream-999.pdf");
-    await using (var pdfInput = File.OpenRead(samplePath))
+    await using (var invalidInput = File.OpenRead(samplePath))
+    await using (var discarded = new MemoryStream())
+    {
+        try
+        {
+            await new OfdToPdfConverter().ConvertAsync(invalidInput, discarded);
+            throw new InvalidOperationException("Unresolved signed-seal ColorSpace was silently accepted.");
+        }
+        catch (NotSupportedException error) when (error.Message.Contains("ColorSpace '4'", StringComparison.Ordinal))
+        {
+            // Reference integrity was checked on the original bytes above.
+        }
+    }
+
+    // Make a render-only copy with the seal's two mistyped color references
+    // corrected. This copy is not a valid signed document.
+    var renderCopy = Path.Combine(outputDir, "upstream-999-render-only.ofd");
+    await CreateRenderableUpstreamCopyAsync(samplePath, renderCopy);
+    var pdfPath = Path.Combine(outputDir, "upstream-999-render-only.pdf");
+    await using (var pdfInput = File.OpenRead(renderCopy))
     await using (var pdfOutput = File.Create(pdfPath))
     {
         await new OfdToPdfConverter().ConvertAsync(pdfInput, pdfOutput);
@@ -667,7 +686,70 @@ static async Task ValidateComplexSampleArtifactsAsync(
 
     await AssertImageHasContentAsync(pngPath);
     Console.WriteLine(
-        "[E2E] Upstream PDF seal, SVG visual, and SM3 reference verification passed.");
+        "[E2E] Original SM3 references and invalid seal-color rejection passed; repaired render-only seal PDF and original SVG passed visual checks.");
+}
+
+static async Task CreateRenderableUpstreamCopyAsync(string sourcePath, string destinationPath)
+{
+    const string signaturePath = "Doc_0/Signs/Sign_0/Signature.xml";
+    const string signedValuePath = "Doc_0/Signs/Sign_0/SignedValue.dat";
+    using var source = ZipFile.OpenRead(sourcePath);
+    byte[] signedValue;
+    using (var input = source.GetEntry(signedValuePath)!.Open())
+    using (var buffer = new MemoryStream()) { await input.CopyToAsync(buffer); signedValue = buffer.ToArray(); }
+    var start = -1; var end = -1;
+    for (var i = 0; i <= signedValue.Length - 4; i++)
+    {
+        if (start < 0 && signedValue.AsSpan(i, 4).SequenceEqual(new byte[] { 0x50, 0x4b, 0x03, 0x04 })) start = i;
+        if (signedValue.AsSpan(i, 4).SequenceEqual(new byte[] { 0x50, 0x4b, 0x05, 0x06 })) end = i;
+    }
+    if (start < 0 || end < start || end + 22 > signedValue.Length)
+        throw new InvalidDataException("Expected an embedded OFD seal ZIP.");
+    var sealLength = checked(end + 22 + BitConverter.ToUInt16(signedValue, end + 20) - start);
+    if (start + sealLength > signedValue.Length) throw new InvalidDataException("Embedded seal ZIP is truncated.");
+    byte[] repairedSeal;
+    using (var sealInput = new ZipArchive(new MemoryStream(signedValue, start, sealLength), ZipArchiveMode.Read))
+    using (var sealOutput = new MemoryStream())
+    {
+        using (var copy = new ZipArchive(sealOutput, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var changed = 0;
+            foreach (var entry in sealInput.Entries)
+            {
+                byte[] bytes;
+                using (var input = entry.Open())
+                using (var buffer = new MemoryStream()) { await input.CopyToAsync(buffer); bytes = buffer.ToArray(); }
+                if (entry.FullName == "Doc_0/Pages/Page_0/Content.xml")
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    foreach (var color in xml.Descendants().Where(node => node.Name.LocalName == "StrokeColor" && node.Attribute("ColorSpace")?.Value == "4"))
+                    { color.SetAttributeValue("ColorSpace", "5"); changed++; }
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = copy.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+            }
+            if (changed != 2) throw new InvalidDataException($"Expected two invalid seal color references, found {changed}.");
+        }
+        repairedSeal = sealOutput.ToArray();
+    }
+    await using var destination = File.Create(destinationPath);
+    using var output = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
+    foreach (var entry in source.Entries)
+    {
+        byte[] bytes;
+        using (var input = entry.Open())
+        using (var buffer = new MemoryStream()) { await input.CopyToAsync(buffer); bytes = buffer.ToArray(); }
+        if (entry.FullName == signaturePath)
+        {
+            var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+            var signedInfo = xml.Descendants().Single(node => node.Name.LocalName == "SignedInfo");
+            signedInfo.AddFirst(new XElement(signedInfo.Name.Namespace + "Seal", new XAttribute("BaseLoc", "Seal.ofd")));
+            bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+        }
+        using var target = output.CreateEntry(entry.FullName).Open(); await target.WriteAsync(bytes);
+    }
+    using var sealTarget = output.CreateEntry("Doc_0/Signs/Sign_0/Seal.ofd").Open();
+    await sealTarget.WriteAsync(repairedSeal);
 }
 
 static string ResolveRepoRoot()

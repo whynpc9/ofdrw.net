@@ -196,7 +196,8 @@ internal static class OfdSerializedInventory
                         break;
                     case OfdImageElement image:
                         S("resourceId", image.ResourceId); S("fileName", image.FileName); S("mediaType", image.MediaType);
-                        sink.Bytes("imageBytes", image.Data, image); sink.Matrix(image.Transform); V("alpha", image.Alpha); Source(image.SourceXml); break;
+                        sink.Bytes("imageBytes", image.Data, image); sink.Matrix(image.Transform); V("alpha", image.Alpha);
+                        V("sourceMediaAmbiguous", image.SourceMediaAmbiguous); Source(image.SourceXml); break;
                     case OfdPathElement path:
                         if (path.FillRule is { } rule && !Enum.IsDefined(typeof(OfdFillRule), rule)) throw new InvalidDataException("Unknown typed fill rule.");
                         S("data", path.AbbreviatedData); sink.Matrix(path.Transform); V("lineWidth", path.LineWidthMillimeters);
@@ -216,6 +217,7 @@ internal static class OfdSerializedInventory
                 Own("compositeDefinition", resource); S("compositeId", resource.Id);
                 V("vectorWidth", resource.WidthMillimeters); V("vectorHeight", resource.HeightMillimeters);
                 Source(resource.SourceXml); S("compositeEntry", resource.SourceEntryPath); V("compositeSlot", resource.SourceSlot);
+                V("compositeContainerSupported", resource.SourceContainerSupported);
                 Graphics("compositeGraphics", resource.Elements);
             }
         }

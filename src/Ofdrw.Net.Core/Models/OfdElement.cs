@@ -12,6 +12,18 @@ public enum OfdElementType
 
 public abstract class OfdElement
 {
+    // Reader-resolved render view of an imported source fragment. The original
+    // SourceXml/Raw XML remains authoritative for editing and package writing.
+    internal string? RenderSourceXml { get; set; }
+    internal string? RenderSourceAuthority { get; set; }
+    internal string? RenderPaintError { get; set; }
+    /// <summary>Invalidates Reader-resolved paint when a public source envelope is cleared.</summary>
+    protected void InvalidateResolvedSourceIfCleared(string? sourceXml)
+    {
+        if (!string.IsNullOrWhiteSpace(sourceXml)) return;
+        RenderSourceXml = null;
+        RenderSourceAuthority = null;
+    }
     internal OfdClipOwnership ClipOwnership { get; } = new();
     /// <summary>Typed path clips. Null preserves an unclaimed source; an empty collection clears known clips.</summary>
     public OfdClipCollection? Clips { get => ClipOwnership.Value; set => ClipOwnership.Set(value); }
@@ -40,6 +52,9 @@ public sealed class OfdTextElement : OfdElement
     // Opt-in from freshly laid out native DOCX text only. Imported source XML
     // owns its painting attributes and never acquires this request implicitly.
     internal bool EmitSyntheticBoldStroke { get; set; }
+    // Reader's PageBlock projection materializes Table 46 inherited starts;
+    // ordinary imported typed runs retain their historical default values.
+    internal bool SourceInheritedTextCodeAxes { get; set; }
 
     public OfdTextElement()
     {
@@ -74,11 +89,17 @@ public sealed class OfdTextElement : OfdElement
 
     public List<OfdTextRun> Runs { get; } = [];
 
+    private string? sourceXml;
     /// <summary>
     /// Complete source XML retained to preserve glyph positioning, transforms,
     /// colors and vendor attributes that are not strongly typed yet.
     /// </summary>
-    public string? SourceXml { get; set; }
+    public string? SourceXml
+    {
+        get => sourceXml;
+        set { InvalidateResolvedSourceIfCleared(value); sourceXml = value; }
+    }
+    internal void ClearSourceXmlForProjection() => sourceXml = null;
 }
 
 public sealed class OfdTextRun
@@ -109,6 +130,8 @@ public sealed class OfdImageElement : OfdElement
 
     public byte[] Data { get; set; } = [];
 
+    internal bool SourceMediaAmbiguous { get; set; }
+
     /// <summary>Maps the image's unit square into object coordinates. Null uses the boundary width/height.</summary>
     public double[]? Transform { get; set; }
 
@@ -118,11 +141,17 @@ public sealed class OfdImageElement : OfdElement
     /// <summary>Optional OFD Clips XML in object coordinates.</summary>
     public string? ClipsXml { get => ClippingXml; set => ClippingXml = value; }
 
+    private string? sourceXml;
     /// <summary>
     /// Complete source XML retained to preserve transforms, clipping, alpha and
     /// vendor attributes that are not strongly typed yet.
     /// </summary>
-    public string? SourceXml { get; set; }
+    public string? SourceXml
+    {
+        get => sourceXml;
+        set { InvalidateResolvedSourceIfCleared(value); sourceXml = value; }
+    }
+    internal void ClearSourceXmlForProjection() => sourceXml = null;
 }
 
 /// <summary>
@@ -158,11 +187,17 @@ public sealed class OfdPathElement : OfdElement
 
     public OfdColor? FillColor { get; set; }
 
+    private string? sourceXml;
     /// <summary>
     /// Retains the complete source element so unsupported style attributes and
     /// extension children survive a read-write round trip.
     /// </summary>
-    public string? SourceXml { get; set; }
+    public string? SourceXml
+    {
+        get => sourceXml;
+        set { InvalidateResolvedSourceIfCleared(value); sourceXml = value; }
+    }
+    internal void ClearSourceXmlForProjection() => sourceXml = null;
 }
 
 public sealed class OfdColor
@@ -198,6 +233,13 @@ public sealed class OfdColor
 /// </summary>
 public sealed class OfdRawElement : OfdElement
 {
+    // Reader-owned, read-only rendering view. Xml remains the authenticated
+    // page root for package writeback; these children are never serialized.
+    internal List<OfdElement>? PageBlockChildren { get; set; }
+    internal string? PageBlockSourceXml { get; set; }
+    // Set only by the Reader for annotation metadata and index envelopes outside the page drawing tree.
+    // A caller changing Xml invalidates this render-only provenance.
+    internal string? ReaderAnnotationMetadataXml { get; set; }
     public OfdRawElement()
     {
         Type = OfdElementType.Raw;

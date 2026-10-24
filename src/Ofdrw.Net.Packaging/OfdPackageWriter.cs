@@ -772,7 +772,8 @@ public sealed partial class OfdPackageWriter
             ImageResource? resource;
             if (idAllocator.TryImageOwner(image, out var owner))
             {
-                if (image.ResourceId != owner.Id) throw new InvalidDataException("Imported media resource ID was changed.");
+                if (OfdSourceIdentity.ParseId(image.ResourceId) != owner.Number)
+                    throw new InvalidDataException("Imported media resource ID was changed.");
                 if (imported.TryGetValue(owner, out var existing))
                 {
                     if (existing.Key != key) throw new InvalidDataException("Placements of one imported resource have conflicting payloads.");
@@ -975,7 +976,9 @@ public sealed partial class OfdPackageWriter
             {
                 imageObject = XElement.Parse(image.SourceXml!, LoadOptions.PreserveWhitespace);
                 imageObject.SetAttributeValue("ID", objectId);
-                imageObject.SetAttributeValue("ResourceID", resource.Id);
+                // Retain the source reference spelling when it still names the authenticated owner.
+                imageObject.SetAttributeValue("ResourceID", idAllocator.TryImageOwner(image, out var owner) &&
+                    OfdSourceIdentity.ParseId(image.ResourceId) == owner.Number ? image.ResourceId : resource.Id);
             }
             else
             {
@@ -1178,6 +1181,10 @@ public sealed partial class OfdPackageWriter
         }
 
         colorElement.SetAttributeValue("Value", $"{color.Red} {color.Green} {color.Blue}");
+        // The model color is resolved RGB. A preserved source ColorSpace or
+        // palette index would reinterpret these three components on reread.
+        colorElement.SetAttributeValue("ColorSpace", null);
+        colorElement.SetAttributeValue("Index", null);
         colorElement.SetAttributeValue("Alpha", color.Alpha == 255 ? null : color.Alpha.ToString(CultureInfo.InvariantCulture));
     }
 

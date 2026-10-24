@@ -11,13 +11,15 @@ internal sealed class PdfGlyphOutlineRenderer : IGlyphRenderer
 {
     private readonly XGraphics _graphics;
     private readonly XPen _pen;
+    private readonly bool _fill;
     private XGraphicsPath _path = new();
     private Vector2 _position;
 
-    internal PdfGlyphOutlineRenderer(XGraphics graphics, XColor color, double strokeWidth)
+    internal PdfGlyphOutlineRenderer(XGraphics graphics, XColor color, double strokeWidth, bool fill = true)
     {
         _graphics = graphics;
         _pen = new XPen(color, strokeWidth);
+        _fill = fill;
     }
 
     public void BeginText(in FontRectangle bounds) { }
@@ -31,7 +33,11 @@ internal sealed class PdfGlyphOutlineRenderer : IGlyphRenderer
     public TextDecorations EnabledDecorations() => TextDecorations.None;
     public void SetDecoration(TextDecorations textDecorations, Vector2 start, Vector2 end, float thickness) { }
 
-    public void EndGlyph() => _graphics.DrawPath(_pen, new XSolidBrush(_pen.Color), _path);
+    public void EndGlyph()
+    {
+        if (_fill) _graphics.DrawPath(_pen, new XSolidBrush(_pen.Color), _path);
+        else _graphics.DrawPath(_pen, _path);
+    }
     public void BeginFigure() => _path.StartFigure();
     public void EndFigure() => _path.CloseFigure();
     public void MoveTo(Vector2 point) => _position = point;

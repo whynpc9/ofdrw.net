@@ -76,6 +76,7 @@ internal static class OfdModelCloner
                     Text = text.Text, FontName = text.FontName, FontResourceId = text.FontResourceId,
                     FontSizeMillimeters = text.FontSizeMillimeters, Transform = Matrix(text.Transform),
                     EmitSyntheticBoldStroke = text.EmitSyntheticBoldStroke,
+                    SourceInheritedTextCodeAxes = text.SourceInheritedTextCodeAxes,
                     Weight = text.Weight, Italic = text.Italic,
                     FillColor = text.FillColor, SourceXml = CloneXml(text.SourceXml, targetNamespace, material, cancellationToken)
                 };
@@ -97,7 +98,8 @@ internal static class OfdModelCloner
                 {
                     ResourceId = image.ResourceId, FileName = image.FileName, MediaType = image.MediaType,
                     Data = clonePayloads ? Payload(image.Data) : image.Data, Transform = Matrix(image.Transform), Alpha = image.Alpha,
-                    ClipsXml = CloneXml(image.ClipsXml, targetNamespace, material, cancellationToken), SourceXml = CloneXml(image.SourceXml, targetNamespace, material, cancellationToken)
+                    ClipsXml = CloneXml(image.ClipsXml, targetNamespace, material, cancellationToken), SourceXml = CloneXml(image.SourceXml, targetNamespace, material, cancellationToken),
+                    SourceMediaAmbiguous = image.SourceMediaAmbiguous
                 };
                 break;
             case OfdPathElement path:
@@ -116,11 +118,31 @@ internal static class OfdModelCloner
                 break;
             case OfdRawElement raw:
                 result = new OfdRawElement { LocalName = raw.LocalName, Xml = CloneXml(raw.Xml, targetNamespace, material, cancellationToken) ?? string.Empty };
+                if (raw.ReaderAnnotationMetadataXml is not null && raw.ReaderAnnotationMetadataXml == raw.Xml)
+                    ((OfdRawElement)result).ReaderAnnotationMetadataXml = ((OfdRawElement)result).Xml;
                 break;
             default:
                 throw new NotSupportedException($"Cannot clone OFD element '{source.GetType().Name}'.");
         }
         result.ClippingXml = CloneXml(source.ClippingXml, targetNamespace, material, cancellationToken);
+        result.RenderSourceXml = CloneXml(source.RenderSourceXml, targetNamespace, material, cancellationToken);
+        var originalSource = source switch
+        {
+            OfdTextElement text => text.SourceXml,
+            OfdImageElement image => image.SourceXml,
+            OfdPathElement path => path.SourceXml,
+            _ => null
+        };
+        var clonedSource = result switch
+        {
+            OfdTextElement text => text.SourceXml,
+            OfdImageElement image => image.SourceXml,
+            OfdPathElement path => path.SourceXml,
+            _ => null
+        };
+        result.RenderSourceAuthority = targetNamespace is not null && source.RenderSourceAuthority is not null &&
+            source.RenderSourceAuthority == originalSource ? clonedSource : source.RenderSourceAuthority;
+        result.RenderPaintError = source.RenderPaintError;
         result.ObjectId = source.ObjectId;
         result.LayerId = source.LayerId;
         result.LayerType = source.LayerType;
@@ -129,6 +151,18 @@ internal static class OfdModelCloner
         result.WidthMillimeters = source.WidthMillimeters;
         result.HeightMillimeters = source.HeightMillimeters;
         mapping?.Add(source, result);
+        if (source is OfdRawElement { LocalName: "PageBlock" } sourceBlock &&
+            result is OfdRawElement clonedBlock && sourceBlock.PageBlockChildren is { } children &&
+            sourceBlock.PageBlockSourceXml == sourceBlock.Xml)
+        {
+            material.ChargeCopy(256L + (long)children.Count * IntPtr.Size * 2, cancellationToken);
+            clonedBlock.PageBlockSourceXml = clonedBlock.Xml;
+            clonedBlock.PageBlockChildren = new List<OfdElement>(children.Count);
+            mapping?.Add(children, clonedBlock.PageBlockChildren);
+            foreach (var child in children)
+                clonedBlock.PageBlockChildren.Add(CloneElement(child, targetNamespace, clonePayloads, material,
+                    cancellationToken, mapping, payloads));
+        }
         OfdClipCloner.Clone(source, result, mapping, material, cancellationToken, clonePayloads, payloads);
         return result;
         double[]? Matrix(double[]? value)

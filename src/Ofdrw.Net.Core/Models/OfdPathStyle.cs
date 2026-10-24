@@ -22,7 +22,8 @@ internal sealed class OfdPathStyle
 
     private OfdPathStyle(OfdPathElement path)
     {
-        var source = string.IsNullOrWhiteSpace(path.SourceXml) ? null : XElement.Parse(path.SourceXml!);
+        var styleXml = path.RenderSourceXml ?? path.SourceXml;
+        var source = string.IsNullOrWhiteSpace(styleXml) ? null : XElement.Parse(styleXml!);
         string? Attribute(string name) => source?.Attribute(name)?.Value;
         var alpha = Read(Attribute("Alpha"), "Alpha", 255, 0);
         if (alpha > 255 || alpha != Math.Truncate(alpha)) throw Invalid("Alpha");

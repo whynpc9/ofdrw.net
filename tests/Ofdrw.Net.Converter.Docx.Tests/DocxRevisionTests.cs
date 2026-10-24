@@ -185,7 +185,12 @@ public sealed partial class DocxConversionTests
         var bold = await Export();
         font.Bold = false;
         foreach (var text in package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>())
+        {
             text.Weight = OfdTextElement.DefaultWeight;
+            // The imported source still explicitly requests Stroke; regenerate
+            // the regular control so it no longer carries the bold paint.
+            text.SourceXml = null;
+        }
         var regular = await Export();
         using var semantic = PdfPigDocument.Open(bold);
         Assert.Equal("中文字体", semantic.GetPage(1).Text);
