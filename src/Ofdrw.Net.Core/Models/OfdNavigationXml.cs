@@ -437,8 +437,10 @@ internal static class OfdNavigationXml
     private static bool ValidEvent(string? value) => value is null or "DO" or "PO" or "CLICK";
     private static bool RetainedLocalAttachment(OfdDocumentPackage package, string id)
     {
-        var matches = package.Attachments.Where(item => item.Id == id).Take(2).ToArray();
-        return matches.Length == 1 && !matches[0].IsExternal;
+        var number = OfdSourceIdentity.ParseId(id);
+        var matches = package.Attachments.Where(item => number != 0 &&
+            OfdSourceIdentity.ParseId(item.Id) == number).Take(2).ToArray();
+        return matches.Length == 1 && matches[0].Id == id && !matches[0].IsExternal;
     }
     private static bool MediaResource(OfdDocumentPackage package, string id, string type, OfdModelMaterialization material, CancellationToken token)
     {

@@ -160,7 +160,7 @@ internal static class OfdSerializedInventory
                 S("creator", annotation.Creator); V("lastModifiedDate", annotation.LastModifiedDate);
                 S("subtype", annotation.Subtype); V("visible", annotation.Visible); V("print", annotation.Print);
                 V("noZoom", annotation.NoZoom); V("noRotate", annotation.NoRotate); V("readOnly", annotation.ReadOnly);
-                S("remark", annotation.Remark); Source(annotation.SourceXml);
+                S("remark", annotation.Remark); S("attachmentId", annotation.AttachmentId); Source(annotation.SourceXml);
                 var appearance = annotation.Appearance;
                 Own("appearance", appearance); V("x", appearance.XMillimeters); V("y", appearance.YMillimeters);
                 V("width", appearance.WidthMillimeters); V("height", appearance.HeightMillimeters);

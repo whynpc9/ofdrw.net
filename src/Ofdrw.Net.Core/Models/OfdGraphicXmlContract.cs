@@ -21,7 +21,9 @@ internal static class OfdGraphicXmlContract
             var allowed = node.Parent!.Name.LocalName switch
             {
                 "TextObject" => child is "Clips" or "FillColor" or "StrokeColor" or "CGTransform" or "TextCode",
-                "PathObject" => child is "Clips" or "FillColor" or "StrokeColor" or "AbbreviatedData",
+                "PathObject" => child is "Clips" or "FillColor" or "StrokeColor" or "AbbreviatedData" or "Actions",
+                "Actions" => child == "Action",
+                "Action" => child == "GotoA",
                 "ImageObject" => child is "Clips",
                 "Clips" => child == "Clip",
                 "Clip" => child == "Area",
@@ -55,13 +57,16 @@ internal static class OfdGraphicXmlContract
             "CGTransform" => name is "CodePosition" or "CodeCount" or "GlyphCount",
             "Path" => name is "Stroke" or "Fill" or "Rule",
             "Area" => name is "CTM" or "Start",
+            "Action" => name == "Event",
+            "GotoA" => name is "AttachID" or "NewWindow",
             _ => false
         };
     }
 
-    internal static bool HasUnsupportedReferences(XElement root) => root.DescendantsAndSelf().Attributes().Any(attribute =>
+    internal static bool HasUnsupportedReferences(XElement root, bool allowAttachmentAction = false) => root.DescendantsAndSelf().Attributes().Any(attribute =>
         !attribute.IsNamespaceDeclaration && attribute.Name.Namespace == XNamespace.None &&
         (attribute.Name.LocalName is "DrawParam" or "ColorSpace" or "RefID" or "ObjectRef" or "TemplateID" or "PageID" or "Substitution" or "ImageMask" ||
+         attribute.Name.LocalName == "AttachID" && !allowAttachmentAction ||
          attribute.Name.LocalName == "Font" && attribute.Parent != root ||
          attribute.Name.LocalName == "ResourceID" && attribute.Parent != root));
 

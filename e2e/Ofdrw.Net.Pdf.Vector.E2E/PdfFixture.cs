@@ -45,7 +45,8 @@ internal sealed class PdfFixture : IDisposable
         byte[]? encodingStream = null, byte[]? cidMapStream = null, string? encodingOverride = null, string? cidMapOverride = null,
         string? imageColorSpace = null, string? interpolateOverride = null, string[]? trailingObjects = null, string resourceEntries = "",
         string fontResources = "/F1 3 0 R", string? aUnicodeHex = null, string mediaBox = "0 0 420 595", bool simpleWinAnsi = false,
-        int fontDescriptorFlags = 32)
+        int fontDescriptorFlags = 32, string catalogEntries = "", IReadOnlyList<string>? pageEntriesByIndex = null,
+        IReadOnlyList<string>? pageTypeByIndex = null)
     {
         var next = 9 + 2 * contents.Length;
         var encoding = encodingOverride ?? (encodingStream is null ? "/Identity-H" : next++ + " 0 R");
@@ -57,7 +58,7 @@ internal sealed class PdfFixture : IDisposable
         var simpleWidths = string.Join(" ", Enumerable.Range(32, 224).Select(code => GlyphWidth(((char)code).ToString())));
         var resources = "/Resources << /Font << " + fontResources + " >> /XObject << /Im1 8 0 R >> /ExtGState << /GS1 << /ca .4 /BM /Multiply >> >> " + resourceEntries + ">>";
         var objects = new List<byte[]> {
-            Ascii("<< /Type /Catalog /Pages 2 0 R >>"),
+            Ascii("<< /Type /Catalog /Pages 2 0 R " + catalogEntries + " >>"),
             Ascii("<< /Type /Pages /Count " + contents.Length + " /Kids [" + string.Join(" ", Enumerable.Range(0, contents.Length).Select(i => (9 + 2 * i) + " 0 R")) + "] " + (inheritedResources ? resources : "") + " >>"),
             Ascii(simpleWinAnsi
                 ? "<< /Type /Font /Subtype /TrueType /BaseFont /FixtureFace /Encoding " + (encodingOverride ?? "/WinAnsiEncoding") +
@@ -71,7 +72,9 @@ internal sealed class PdfFixture : IDisposable
         };
         for (var index = 0; index < contents.Length; index++)
         {
-            objects.Add(Ascii("<< /Type /Page /Parent 2 0 R /MediaBox [" + mediaBox + "] " + (inheritedResources ? "" : resources) + " /Contents " + (10 + 2 * index) + " 0 R " + pageEntries + " >>"));
+            var pageType = pageTypeByIndex is null ? "/Page" : pageTypeByIndex[index];
+            objects.Add(Ascii("<< " + (string.IsNullOrEmpty(pageType) ? "" : "/Type " + pageType + " ") + "/Parent 2 0 R /MediaBox [" + mediaBox + "] " + (inheritedResources ? "" : resources) + " /Contents " + (10 + 2 * index) + " 0 R " +
+                (pageEntriesByIndex is null ? pageEntries : pageEntriesByIndex[index]) + " >>"));
             objects.Add(Stream(Ascii(contents[index])));
         }
         if (encodingStream is not null) objects.Add(Stream(encodingStream));

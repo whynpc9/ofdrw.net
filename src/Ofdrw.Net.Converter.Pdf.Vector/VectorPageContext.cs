@@ -43,9 +43,10 @@ internal sealed class VectorPageContext
     internal readonly ILookupFilterProvider Filters; internal readonly ParsingOptions Parsing;
     internal VectorPageContext(int number, DictionaryToken page, IPdfTokenScanner scanner, IResourceStore resources, ILookupFilterProvider filters, ParsingOptions parsing)
     { _number = number; _page = page; Scanner = scanner; Resources = resources; Filters = filters; Parsing = parsing; }
-    internal OfdDocumentPackage Convert(PdfVectorToOfdOptions options, CancellationToken token, long remainingImageBytes = long.MaxValue)
+    internal OfdDocumentPackage Convert(PdfVectorToOfdOptions options, CancellationToken token, long remainingImageBytes = long.MaxValue,
+        bool allowFileAnnotations = false)
     {
-        var frame = ReadFrame(options, token);
+        var frame = ReadFrame(options, token, allowFileAnnotations);
         var pageFrame = frame.Frame; var resource = frame.Resources;
         var lexical = new CoreTokenScanner(new MemoryInputBytes(frame.Content), false, new StackDepthGuard(options.MaxStackDepth), useLenientParsing: false);
         var pendingOperands = 0;
@@ -61,7 +62,8 @@ internal sealed class VectorPageContext
         var operations = parser.Parse(_number, new MemoryInputBytes(frame.Content), Parsing.Logger);
         return ConvertEvents(options, token, pageFrame, resource, parser, operations, remainingImageBytes);
     }
-    private (VectorPageFrame Frame, DictionaryToken Resources, byte[] Content, bool SingleStream) ReadFrame(PdfVectorToOfdOptions options, CancellationToken token)
+    private (VectorPageFrame Frame, DictionaryToken Resources, byte[] Content, bool SingleStream) ReadFrame(PdfVectorToOfdOptions options,
+        CancellationToken token, bool allowFileAnnotations = false)
     {
         token.ThrowIfCancellationRequested();
         var ancestry = new List<DictionaryToken>(); var node = _page;
@@ -92,7 +94,8 @@ internal sealed class VectorPageContext
         var rotation = (int)((angle % 360 + 360) % 360);
         var frame = new VectorPageFrame(numbers, crop, rotation);
         if (_page.Data.TryGetValue("UserUnit", out var units) && Resolve<NumericToken>(units).Double != 1) throw Unsupported("USER_UNIT");
-        if (_page.ContainsKey(NameToken.Create("Annots")) || _page.ContainsKey(NameToken.Create("Group"))) throw Unsupported("ANNOTATIONS_OR_GROUP");
+        if ((_page.ContainsKey(NameToken.Create("Annots")) && !allowFileAnnotations) || _page.ContainsKey(NameToken.Create("Group")))
+            throw Unsupported("ANNOTATIONS_OR_GROUP");
         var resourceToken = Inherited("Resources");
         var resource = resourceToken is null ? DictionaryToken.Empty : Resolve<DictionaryToken>(resourceToken);
         if (resource.ContainsKey(NameToken.ColorSpace)) throw Unsupported("RESOURCE_COLOR_SPACE: device substitutions not supported.");

@@ -53,6 +53,8 @@ public sealed class OfdAnnotation
     public bool? ReadOnly { get; set; }
     /// <summary>Optional human-readable annotation remark.</summary>
     public string? Remark { get; set; }
+    /// <summary>Local attachment ID activated by this link annotation; the SDK never opens it.</summary>
+    public string? AttachmentId { get; set; }
     /// <summary>Local primitive definitions and their placement on the page.</summary>
     public OfdAnnotationAppearance Appearance { get; set; } = new();
     /// <summary>Original Reader-owned XML, retained for extension and ownership checks.</summary>

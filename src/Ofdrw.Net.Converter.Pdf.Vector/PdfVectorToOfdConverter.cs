@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ofdrw.Net.Converter.Abstractions.Interfaces;
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Converter.Pdf.Internal;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging;
@@ -44,6 +45,20 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
             if (count <= 0 || count > limits.Compatibility.MaxPageCount) throw new InvalidDataException("PDF source page limit exceeded or document has no pages.");
             var selection = OfdPageSelection.Normalize(count, pages);
             if (selection.Count > limits.Compatibility.MaxPageCount) throw new InvalidDataException("PDF output page limit exceeded.");
+            var fileAnnotationEligibility = new Dictionary<int, bool>();
+            if (limits.Compatibility.CopyAttachments)
+            {
+                // Validate raw page annotations once per source page, then release the
+                // probe parser before the per-page vector resource stores are created.
+                using var probe = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth });
+                var rawPages = new PdfImportMetadataMigrator.RawPageLookup(probe, limits.Compatibility);
+                foreach (var index in selection.Distinct())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    fileAnnotationEligibility.Add(index, PdfImportMetadataMigrator.HasOnlyFileAttachments(
+                        probe, index, limits.Compatibility, rawPages, cancellationToken));
+                }
+            }
             var package = new OfdDocumentPackage();
             // This converter validates exact original PDF font bytes and bindings.
             // Preserve them rather than applying generation-time subsetting.
@@ -52,19 +67,21 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
             package.Options.Metadata.Title = "PDF vector document";
             package.Options.Metadata.Creator = "Ofdrw.Net PdfVectorToOfdConverter";
             var results = new List<PdfVectorPageResult>();
+            var drawAttachmentPins = new List<bool>();
             long imageBytes = 0, fontBytes = 0;
             foreach (var index in selection)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                OfdPage page; string diagnostic; bool native;
+                OfdPage page; string diagnostic; bool native; bool drawAttachmentPin = true;
                 try
                 {
                     // Discard each parser/resource store after the page, including every rejection path.
                     using var document = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth });
                     if (!PlainCatalog(document)) throw new NotSupportedException("PDFV_UNSUPPORTED: catalog color/optional-content/rendering extensions.");
                     document.AddPageFactory<VectorPageContext, VectorContextFactory>();
+                    var allowFileAnnotations = fileAnnotationEligibility.TryGetValue(index, out var allowed) && allowed;
                     var context = document.GetPage<VectorPageContext>(index + 1);
-                    var staged = context.Convert(limits, cancellationToken, limits.Compatibility.MaxTotalImageBytes - imageBytes);
+                    var staged = context.Convert(limits, cancellationToken, limits.Compatibility.MaxTotalImageBytes - imageBytes, allowFileAnnotations);
                     page = staged.Pages.Single();
                     var nativeImages = page.Elements.OfType<OfdImageElement>().Sum(image => (long)image.Data.Length);
                     if (nativeImages > limits.Compatibility.MaxTotalImageBytes - imageBytes)
@@ -107,10 +124,15 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                         // A rejected page contributes no staged vector content or fonts.
                         var fallbackOptions = VectorLimits.CopyCompatibility(limits.Compatibility);
                         fallbackOptions.RequireRasterization = true;
+                        // The final package imports metadata once, after all selected pages are known.
+                        fallbackOptions.CopyBookmarks = false;
+                        fallbackOptions.CopyAttachments = false;
+                        fallbackOptions.RasterizeCropBox = limits.Compatibility.CopyBookmarks || limits.Compatibility.CopyAttachments;
                         fallbackOptions.MaxTotalImageBytes = limits.Compatibility.MaxTotalImageBytes - imageBytes;
                         if (fallbackOptions.MaxTotalImageBytes <= 0) throw new InvalidDataException("PDF accumulated image byte limit exceeded.");
                         using var input = File.OpenRead(path); using var output = new MemoryStream();
                         var fallback = await new PdfToOfdConverter(fallbackOptions).ConvertWithResultAsync(input, output, new[] { index }, cancellationToken).ConfigureAwait(false);
+                        drawAttachmentPin = !fallback.RasterizedAnnotationAppearances.Single();
                         output.Position = 0;
                         var rasterPackage = await new OfdReader().ReadAsync(output, cancellationToken).ConfigureAwait(false);
                         page = OfdModelCloner.ClonePage(rasterPackage.Pages.Single(), keepSourcePath: false, clonePayloads: false);
@@ -122,6 +144,7 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                         native = false; diagnostic = "PDFV_RASTER_PAGE: " + exception.Message + "; " + string.Join("; ", fallback.Diagnostics);
                     }
                 }
+                drawAttachmentPins.Add(drawAttachmentPin);
                 // Staged pages have independent local IDs. Their trusted producer
                 // fragments keep rendering attributes but must not claim shared IDs
                 // when native and raster pages enter the final package together.
@@ -141,6 +164,12 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
                     page.Elements.OfType<OfdTextElement>().Count(), page.Elements.OfType<OfdImageElement>().Count(), diagnostic));
             }
             cancellationToken.ThrowIfCancellationRequested();
+            if (limits.Compatibility.CopyBookmarks || limits.Compatibility.CopyAttachments)
+            {
+                using var metadataSource = PdfDocument.Open(path, new ParsingOptions { UseLenientParsing = false, MaxStackDepth = limits.MaxStackDepth });
+                PdfImportMetadataMigrator.Apply(metadataSource, package, selection, limits.Compatibility, cancellationToken,
+                    drawAttachmentPins);
+            }
             await new OfdPackageWriter().WriteAsync(package, ofdOutput, cancellationToken).ConfigureAwait(false);
             return new PdfVectorConversionResult(count, results.ToArray());
         }
@@ -185,5 +214,9 @@ internal static class VectorLimits
     { MaxInputBytes = value.MaxInputBytes, MaxPageCount = value.MaxPageCount, MaxRasterizedPixelsPerPage = value.MaxRasterizedPixelsPerPage,
         MaxTotalImageBytes = value.MaxTotalImageBytes, ExternalRasterizationTimeout = value.ExternalRasterizationTimeout, Dpi = value.Dpi,
         RequireRasterization = value.RequireRasterization, PreferExternalPdfToPpm = value.PreferExternalPdfToPpm,
-        TextLayerMode = value.TextLayerMode, MaxTextObjectsPerPage = value.MaxTextObjectsPerPage, Namespace = value.Namespace };
+        TextLayerMode = value.TextLayerMode, MaxTextObjectsPerPage = value.MaxTextObjectsPerPage, Namespace = value.Namespace,
+        CopyBookmarks = value.CopyBookmarks, CopyAttachments = value.CopyAttachments,
+        MaxBookmarkCount = value.MaxBookmarkCount, MaxBookmarkDepth = value.MaxBookmarkDepth,
+        MaxAttachmentCount = value.MaxAttachmentCount, MaxAttachmentBytes = value.MaxAttachmentBytes,
+        MaxTotalAttachmentBytes = value.MaxTotalAttachmentBytes };
 }
