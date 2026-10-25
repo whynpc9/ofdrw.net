@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Text;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
@@ -101,6 +102,48 @@ public sealed class StampAppearanceTests
             new OfdSignatureService().SignAsync(unsigned, output, provider, options));
         Assert.Equal(new byte[] { 0x7b }, output.ToArray());
         Assert.Equal(0, provider.SignCalls);
+    }
+
+    [Theory]
+    [InlineData("./", true)]
+    [InlineData("Pages/../", true)]
+    [InlineData("../../", false)]
+    public async Task PageBaseLoc_ResolvesDotSegmentsWithinPackage(string prefix, bool valid)
+    {
+        using var source = await Source();
+        using var changed = new MemoryStream();
+        changed.Write(source.ToArray());
+        changed.Position = 0;
+        using (var zip = new ZipArchive(changed, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            var entry = zip.GetEntry("Doc_0/Document.xml")!;
+            XDocument xml;
+            using (var input = entry.Open()) xml = XDocument.Load(input);
+            var page = xml.Descendants().First(node => node.Name.LocalName == "Page" && node.Attribute("BaseLoc") is not null);
+            page.SetAttributeValue("BaseLoc", prefix + page.Attribute("BaseLoc")!.Value);
+            entry.Delete();
+            using var output = zip.CreateEntry("Doc_0/Document.xml").Open();
+            xml.Save(output);
+        }
+        changed.Position = 0;
+        var provider = new PictureProvider(Picture);
+        var options = new OfdSignatureOptions();
+        options.StampAppearances.Add(new OfdNormalStampPlacement(1, 1, 1, 10, 10));
+        using var signed = new MemoryStream();
+        if (valid)
+        {
+            await new OfdSignatureService().SignAsync(changed, signed, provider, options);
+            Assert.Equal(1, provider.SignCalls);
+            signed.Position = 0;
+            Assert.True((await new OfdSignatureVerifier().VerifyAsync(signed)).ReferenceIntegrityValid);
+        }
+        else
+        {
+            await Assert.ThrowsAnyAsync<Exception>(() =>
+                new OfdSignatureService().SignAsync(changed, signed, provider, options));
+            Assert.Equal(0, provider.SignCalls);
+            Assert.Empty(signed.ToArray());
+        }
     }
 
     private static async Task<MemoryStream> Source()

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
+using Ofdrw.Net.Core.IO;
 
 namespace Ofdrw.Net.Signatures.Signing;
 
@@ -59,7 +60,7 @@ public sealed partial class OfdSignatureService
         var roots = documentBody.Elements().Where(node => node.Name.LocalName == "DocRoot").ToArray();
         if (roots.Length != 1 || string.IsNullOrWhiteSpace(roots[0].Value))
             throw new InvalidDataException("Stamp appearance requires exactly one DocRoot.");
-        var documentPath = NormalizePath(roots[0].Value.Trim());
+        var documentPath = OfdPackagePath.Resolve("OFD.xml", roots[0].Value.Trim());
         if (!entries.TryGetValue(documentPath, out var documentBytes))
             throw new InvalidDataException("Stamp appearance Document.xml is missing.");
         var document = ParseStampXml(documentBytes, documentPath);
@@ -84,9 +85,7 @@ public sealed partial class OfdSignatureService
             var baseLoc = node.Attribute("BaseLoc")?.Value?.Trim();
             if (string.IsNullOrWhiteSpace(id) || !ids.Add(id!) || string.IsNullOrWhiteSpace(baseLoc))
                 throw new InvalidDataException("Stamp appearance page has a missing or duplicate ID/BaseLoc.");
-            var pagePath = baseLoc!.StartsWith("/", StringComparison.Ordinal)
-                ? NormalizePath(baseLoc)
-                : NormalizePath(GetDirectory(documentPath) + baseLoc);
+            var pagePath = OfdPackagePath.Resolve(documentPath, baseLoc!);
             if (!entries.TryGetValue(pagePath, out var pageBytes))
                 throw new InvalidDataException("Stamp appearance page entry is missing: /" + pagePath);
             var page = ParseStampXml(pageBytes, pagePath);
