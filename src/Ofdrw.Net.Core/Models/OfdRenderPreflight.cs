@@ -64,14 +64,18 @@ internal static class OfdRenderPreflight
                 source = element.RenderSourceXml;
             }
             if (string.IsNullOrWhiteSpace(source)) continue;
-            if (element is OfdPathElement)
+            if (element is OfdPathElement pathElement)
             {
                 try
                 {
                     var root = OfdXmlEnvelope.Parse(source!);
                     // Annotation artwork can retain unrelated extension metadata,
                     // while its source paint must be resolved and well formed.
-                    if (OfdGraphicXmlContract.HasUnsupportedReferences(root))
+                    var attachmentAction = pathElement.ReaderAttachmentActionId is { } attachmentId &&
+                        HasClosedAttachmentAction(root, attachmentId);
+                    var hasActionNodes = root.Descendants().Any(node => node.Name.LocalName is "Actions" or "Action" or "GotoA");
+                    if (((hasActionNodes || pathElement.ReaderAttachmentActionId is not null) && !attachmentAction) ||
+                        OfdGraphicXmlContract.HasUnsupportedReferences(root, attachmentAction))
                         throw new NotSupportedException("OFD path paint has an unresolved resource reference.");
                     foreach (var color in root.Elements().Where(node => node.Name.LocalName is "FillColor" or "StrokeColor"))
                         _ = OfdTextPaint.Color(color, OfdColor.Black);
@@ -99,4 +103,27 @@ internal static class OfdRenderPreflight
     internal static bool MatchesInteger(XAttribute? attribute, int expected) =>
         attribute is null || int.TryParse(attribute.Value, NumberStyles.Integer,
             CultureInfo.InvariantCulture, out var value) && value == expected;
+
+    private static bool HasClosedAttachmentAction(XElement root, string attachmentId)
+    {
+        var ns = root.Name.Namespace;
+        if (root.Name != ns + "PathObject" ||
+            ns.NamespaceName is not (Ofdrw.Net.Core.Constants.OfdConstants.Namespace or Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) ||
+            !OfdGraphicXmlContract.HasKnownChildren(root) ||
+            OfdSourceIdentity.ParseId(attachmentId) == 0) return false;
+        var actions = root.Elements(ns + "Actions").ToArray();
+        if (actions.Length != 1 || actions[0].Attributes().Any(a => !a.IsNamespaceDeclaration) ||
+            actions[0].Elements().Count() != 1) return false;
+        var action = actions[0].Element(ns + "Action");
+        if (action?.Attribute("Event")?.Value != "CLICK" ||
+            action.Attributes().Any(a => !a.IsNamespaceDeclaration && a.Name != "Event") ||
+            action.Elements().Count() != 1) return false;
+        var gotoAction = action.Element(ns + "GotoA");
+        var newWindow = gotoAction?.Attribute("NewWindow")?.Value;
+        return gotoAction?.Attribute("AttachID")?.Value == attachmentId &&
+            !gotoAction.HasElements && !gotoAction.Nodes().OfType<XText>().Any(t => !string.IsNullOrWhiteSpace(t.Value)) &&
+            (newWindow is null or "true" or "false" or "1" or "0") &&
+            gotoAction.Attributes().All(a => a.IsNamespaceDeclaration || a.Name == "AttachID" || a.Name == "NewWindow") &&
+            root.DescendantsAndSelf().Attributes().Count(a => a.Name == "AttachID") == 1;
+    }
 }
