@@ -143,14 +143,15 @@ public sealed class PdfMetadataMigrationTests
         string attachmentName = "same.bin", int? attachmentFlags = 4, string? rootOutlineItem = null,
         string annotationRect = "20 30 40 50", string[]? extraObjects = null, string? globalFileSpec = null,
         string? nameTreeKeyToken = null, string? pageFileSpec = null, string pageSubtype = "/FileAttachment",
-        IReadOnlyList<string>? pageTypeByIndex = null)
+        IReadOnlyList<string>? pageTypeByIndex = null, IReadOnlyList<string>? pageTexts = null)
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var flags = attachmentFlags is int value ? " /F " + value : string.Empty;
         var page = embeddedPageFile
             ? "<< /Type /Annot /Subtype " + pageSubtype + " /Rect [" + annotationRect + "] /Contents (page note) /FS 20 0 R" + flags + " >>"
             : "<< /Type /Annot /Subtype /FileAttachment /Rect [" + annotationRect + "] /FS << /F (missing.bin) >>" + flags + " >>";
-        return fixture.Create(new[] { fixture.Text("A中文", 30, 500), fixture.Text("B中文", 30, 500) },
+        pageTexts ??= new[] { "A中文", "B中文" };
+        return fixture.Create(pageTexts.Select(text => fixture.Text(text, 30, 500)).ToArray(),
             catalogEntries: "/Outlines 13 0 R /Names << /EmbeddedFiles 16 0 R >>",
             pageEntriesByIndex: new[] { "/Annots [19 0 R" + string.Concat(Enumerable.Range(0, linkCount).Select(index => $" {22 + index} 0 R")) + "] " + firstPageExtra, "" },
             trailingObjects: new[]
@@ -175,7 +176,9 @@ public sealed class PdfMetadataMigrationTests
     [InlineData(true)]
     public async Task BothPdfImportersCopyClosedOutlineAndEmbeddedFiles(bool vector)
     {
-        using var fixture = new PdfFixture(Font()); var pdf = Source(fixture);
+        // The renderer assertion concerns the annotation action, so use text
+        // covered by this fixture font on every CI platform.
+        using var fixture = new PdfFixture(Font()); var pdf = Source(fixture, pageTexts: new[] { "A", "B" });
         var options = new PdfToOfdOptions { CopyBookmarks = true, CopyAttachments = true, PreferExternalPdfToPpm = true };
         using var input = new MemoryStream(pdf); using var output = new MemoryStream();
         if (vector)
