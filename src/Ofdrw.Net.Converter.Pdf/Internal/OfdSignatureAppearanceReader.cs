@@ -154,13 +154,31 @@ internal static class OfdSignatureAppearanceReader
                 continue;
             }
 
+            OfdSignatureClip? clip = null;
+            var clipText = stamp.Attribute("Clip")?.Value;
+            if (clipText is not null)
+            {
+                if (!TryParseBox(clipText, out var clipBox) ||
+                    !PdfOperandGeometry.Box(clipBox.X, clipBox.Y, clipBox.Width, clipBox.Height) ||
+                    clipBox.X < 0 || clipBox.Y < 0 ||
+                    clipBox.X + clipBox.Width > box.Width + 1e-7 ||
+                    clipBox.Y + clipBox.Height > box.Height + 1e-7)
+                {
+                    if (maximumAppearances.HasValue)
+                        throw new InvalidDataException("Selected signature stamp Clip must be a valid rectangle within Boundary.");
+                    continue;
+                }
+                clip = new OfdSignatureClip(clipBox.X, clipBox.Y, clipBox.Width, clipBox.Height);
+            }
+
             destination.Add(new OfdSignatureAppearance(
                 pageId!,
                 box.X,
                 box.Y,
                 box.Width,
                 box.Height,
-                appearanceData));
+                appearanceData,
+                clip));
         }
     }
 
@@ -526,7 +544,8 @@ internal sealed class OfdSignatureAppearance
         double yMillimeters,
         double widthMillimeters,
         double heightMillimeters,
-        byte[] data)
+        byte[] data,
+        OfdSignatureClip? clip = null)
     {
         PageId = pageId;
         XMillimeters = xMillimeters;
@@ -534,6 +553,7 @@ internal sealed class OfdSignatureAppearance
         WidthMillimeters = widthMillimeters;
         HeightMillimeters = heightMillimeters;
         Data = data;
+        Clip = clip;
     }
 
     public string PageId { get; }
@@ -547,4 +567,16 @@ internal sealed class OfdSignatureAppearance
     public double HeightMillimeters { get; }
 
     public byte[] Data { get; }
+
+    public OfdSignatureClip? Clip { get; }
+}
+
+internal readonly struct OfdSignatureClip
+{
+    internal OfdSignatureClip(double x, double y, double width, double height)
+    { X = x; Y = y; Width = width; Height = height; }
+    internal double X { get; }
+    internal double Y { get; }
+    internal double Width { get; }
+    internal double Height { get; }
 }

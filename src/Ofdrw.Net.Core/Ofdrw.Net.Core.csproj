@@ -11,6 +11,7 @@
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx.Tests" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Tests" />
     <InternalsVisibleTo Include="Ofdrw.Net.Packaging" />
+    <InternalsVisibleTo Include="Ofdrw.Net.Signatures" />
     <InternalsVisibleTo Include="Ofdrw.Net.Reader" />
     <InternalsVisibleTo Include="Ofdrw.Net.Layout" />
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx" />

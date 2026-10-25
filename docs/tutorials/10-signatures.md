@@ -105,6 +105,23 @@ dotnet run --project src/Ofdrw.Net.Cli -- verify-signatures --input signed.ofd
 
 创建签名需要实现 `IOfdSignatureProvider`：接收序列化后的 `Signature.xml` 字节，返回厂商签名值。编排由 `OfdSignatureService` 写入列表和保护引用。算法细节不在本教程展开。
 
+需要可见签章时，可在签署前设置普通章和骑缝章位置。页码从 1 开始，位置和整章尺寸均为毫米。下面的骑缝章每三页重复一枚，前三片宽度比例为 1:2:1；不足三页的尾组使用前几项比例重新分配整章。左、上边的第一页使用印章最右、最下的切片。
+
+```csharp
+var options = new OfdSignatureOptions();
+options.StampAppearances.Add(new OfdNormalStampPlacement(1, 150, 240, 30, 20));
+var riding = new OfdRidingStampPlacement(OfdStampEdge.Right, 1, 6, 40, 20)
+{
+    GroupSize = 3,
+    MarginMillimeters = 2
+};
+foreach (var weight in new[] { 1d, 2d, 1d }) riding.SliceWeights.Add(weight);
+options.StampAppearances.Add(riding);
+await new OfdSignatureService().SignAsync(unsignedOfd, signedOfd, provider, options);
+```
+
+`StampAnnot` 的 `PageRef`、整章 `Boundary` 和局部 `Clip` 在调用 provider 前写入待签的 `Signature.xml`。provider 必须提供带可绘制印章图片的非空 `SealData`；该载荷仍按原保护范围策略纳入引用。无外观选项时仍只生成原有签名结构。无效页码、越界可见区域、非有限尺寸或比例在调用 provider、写出目标流前拒绝。可见外观不证明证书信任、TSA 或法律效力；独立阅读器能否识别仍需用实际载荷验收。
+
 新签名的受保护文件选择、OFD 2.0 `Relative`/`Parameters` 扩展及其验收边界见[签名保护范围与关系](../signature-scope-v12.md)。调用方应查看逐条范围结果；摘要通过只说明列出的文件没有变化。
 
 ## 常见坑
