@@ -578,7 +578,7 @@ public sealed class FontIsolationTests
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
         var font = File.ReadAllBytes(Path.Combine(directory!.FullName,
             "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/LXGWWenKai-Regular.ttf"));
-        const string original = "A\U00020003B";
+        const string original = "A\U00020003\U00020BB7B";
         var source = new OfdDocumentPackage();
         source.Fonts.Add(new OfdFontResource { Id = "10", FontName = "LXGW WenKai", Data = font });
         source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
@@ -599,9 +599,51 @@ public sealed class FontIsolationTests
             .Where(item => item?.Stream is not null)
             .Select(item => System.Text.Encoding.ASCII.GetString(item!.Stream!.Value)).ToArray();
         Assert.Contains(maps, map => map.Contains("D840DC03"));
+        Assert.Contains(maps, map => map.Contains("D842DFB7"));
         var descendants = pdfsharp.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
             .Where(item => item.Elements.GetName("/Subtype") == "/CIDFontType2").ToArray();
         Assert.NotEmpty(descendants);
+    }
+
+    [Fact]
+    public void SupplementaryPdfAliasRetainsOnlyAdmittedOutlines()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var font = File.ReadAllBytes(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/LXGWWenKai-Regular.ttf"));
+        var resource = new OfdFontResource { Id = "10", FontName = "LXGW WenKai", Data = font };
+        var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([resource]);
+        var family = context.Resolve(new OfdTextElement { FontResourceId = "10", Text = "A\U00020003B" }, out _);
+        var selected = PdfSharpCore.Fonts.GlobalFontSettings.FontResolver.ResolveTypeface(family, false, false);
+        var payload = PdfFontRegistry.GetOriginalFont(selected.FaceName);
+        Assert.True(payload.Length < font.Length / 2, $"Supplementary PDF alias retained {payload.Length} of {font.Length} font bytes.");
+        Assert.Equal(new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(font)).Glyph(0x20003),
+            new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(payload)).Glyph(0xE000));
+    }
+
+    [Fact]
+    public async Task SeparateSupplementaryObjectsSharingOneGlyphRejectConflictingUnicode()
+    {
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        var glyph = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face).Glyph('A');
+        face.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int, int>
+        {
+            [0x20003] = glyph, [0x20004] = glyph
+        });
+        var source = new OfdDocumentPackage();
+        source.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Ofdrw Test Face", Data = face.Build() });
+        source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements =
+            {
+                new OfdTextElement { FontResourceId = "10", Text = "\U00020003" },
+                new OfdTextElement { FontResourceId = "10", Text = "\U00020004" }
+            } });
+        using var pdf = new MemoryStream();
+        var failure = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertPackageAsync(source, pdf, null, default));
+        Assert.Contains("conflicting Unicode", failure.Message);
+        Assert.Equal(0, pdf.Length);
     }
 
     [Fact]

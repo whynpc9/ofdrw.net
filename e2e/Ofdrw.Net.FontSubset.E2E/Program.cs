@@ -57,10 +57,11 @@ foreach (var full in new[] { true, false })
         uniquePayloads = payloads.Length, report.FontEmbedding, report.Diagnostics });
     await Export(ofdPath, name, loaded.Pages.Count);
 }
-// The supplementary glyph is present in the pinned OFL LXGW face. Keep this
+// The supplementary glyphs are present in the pinned OFL LXGW face. Keep this
 // independent from the broad layout sample so the PDF's CID/ToUnicode and SVG
 // appearance can be inspected against the exact same newly written OFD.
-const string supplementary = "医院姓名示例 A\U00020003B";
+// U+20003 resembles a box in this font; U+20BB7 adds a distinct visual check.
+const string supplementary = "医院姓名示例 A\U00020003\U00020BB7B";
 var supplementaryPackage = new OfdDocumentPackage();
 supplementaryPackage.Options.Metadata.CreationDate = DateTimeOffset.UnixEpoch;
 supplementaryPackage.Fonts.Add(new OfdFontResource { Id = "20", FontName = "LXGW WenKai", Data = chinese });

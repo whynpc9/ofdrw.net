@@ -41,6 +41,10 @@ internal sealed class PdfSupplementaryFontBinding
     internal string Identity { get; }
     internal byte[] OriginalFont { get; }
 
+    internal bool HasSameUnicodeMap(PdfSupplementaryFontBinding other) =>
+        _unicodeByGlyph.Count == other._unicodeByGlyph.Count &&
+        _unicodeByGlyph.All(item => other._unicodeByGlyph.TryGetValue(item.Key, out var scalar) && scalar == item.Value);
+
     internal static PdfSupplementaryFontBinding Create(byte[] originalFont, OpenTypeCmap coverage,
         OfdTextElement text, bool bold, bool italic, FontParseBudget budget, CancellationToken cancellationToken)
     {
@@ -124,7 +128,13 @@ internal sealed class PdfSupplementaryFontBinding
             glyphByPdfCode.Add(pdfCode, glyph);
         }
 
-        var aliasedFace = new OpenTypeFace(originalFont);
+        // Keep original GIDs while removing outlines that this text object
+        // cannot draw. The registry is process-wide, so retaining a full face
+        // for each distinct PDF cmap would quickly exhaust its byte budget.
+        var subsetFace = new OpenTypeFace(originalFont);
+        var subsetBytes = TrueTypeSubset.Create(subsetFace, scalars, cancellationToken, 2_000_000,
+            budget, out _, out _, coverage);
+        var aliasedFace = new OpenTypeFace(subsetBytes);
         aliasedFace.Tables["cmap"] = OpenTypeCmap.Build(glyphByPdfCode);
         var aliasedBytes = aliasedFace.Build();
         var identity = BinaryIdentity.Hash(aliasedBytes);
@@ -147,7 +157,13 @@ internal sealed class PdfSupplementaryFontBinding
     internal static void InstallToUnicodeMaps(PdfDocument document, IEnumerable<PdfSupplementaryFontBinding> bindings)
     {
         var unique = bindings.GroupBy(binding => binding.Identity, StringComparer.Ordinal)
-            .Select(group => group.First()).ToArray();
+            .Select(group =>
+            {
+                var first = group.First();
+                if (group.Skip(1).Any(binding => !first.HasSameUnicodeMap(binding)))
+                    throw new NotSupportedException("Supplementary PDF text has conflicting Unicode for one registered font identity.");
+                return first;
+            }).ToArray();
         if (unique.Length == 0) return;
         var pending = unique.ToDictionary(binding => binding.Identity, _ => 0, StringComparer.Ordinal);
         foreach (var font in document.Internals.GetAllObjects().OfType<PdfDictionary>())

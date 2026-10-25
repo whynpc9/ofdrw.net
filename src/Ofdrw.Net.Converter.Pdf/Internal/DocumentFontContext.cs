@@ -180,6 +180,8 @@ internal sealed class DocumentFontContext
                 throw new NotSupportedException("Supplementary PDF text requires a verified embedded Unicode font.");
             var binding = PdfSupplementaryFontBinding.Create(originalBytes, sourceCoverage, text,
                 resource.Bold || text.Weight >= 600, resource.Italic || text.Italic, _parseBudget, _cancellationToken);
+            if (_supplementary.TryGetValue(binding.Family, out var prior) && !prior.HasSameUnicodeMap(binding))
+                throw new NotSupportedException("Supplementary PDF text has conflicting Unicode for one registered font identity.");
             _supplementary[binding.Family] = binding;
             _fallbackCoverage[binding.Family] = sourceCoverage;
             return binding.Family;
