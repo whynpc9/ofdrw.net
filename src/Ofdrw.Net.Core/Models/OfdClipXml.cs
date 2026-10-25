@@ -14,7 +14,7 @@ internal static class OfdClipXml
         if (string.IsNullOrWhiteSpace(element.ClippingXml)) return;
         material.GuardFragmentXml(element.ClippingXml!, token);
         var root = OfdXmlEnvelope.Parse(element.ClippingXml!); var ns = root.Name.Namespace;
-        if ((ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.Namespace && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) || root.Name != ns + "Clips" || root.Attribute("TransFlag") is not null) return;
+        if ((ns != XNamespace.None && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.Namespace && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) || root.Name != ns + "Clips" || root.Attribute("TransFlag") is not null) return;
         var result = new OfdClipCollection { SourceXml = element.ClippingXml };
         var slot = 0;
         foreach (var node in root.Elements())

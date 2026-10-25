@@ -36,7 +36,16 @@ public sealed class Audit024ProtocolTests
         peer.Write(new byte[] { 0x4f, 0x46, 0x53, 1, 0, 0, 0, 1 });
         Assert.False(peer.HasExited());
         peer.ClosePeer();
-        Assert.Throws<IOException>(() => peer.HasExited());
+        IOException? failure = null;
+        var elapsed = Stopwatch.StartNew();
+        while (elapsed.Elapsed < TimeSpan.FromSeconds(2))
+        {
+            try { Assert.False(peer.HasExited()); }
+            catch (IOException error) { failure = error; break; }
+            Thread.Sleep(5);
+        }
+        Assert.NotNull(failure);
+        Assert.Contains("closed its protocol unexpectedly", failure.Message);
     }
 
     // Construct only the protocol receiver, with test-owned socket endpoints.

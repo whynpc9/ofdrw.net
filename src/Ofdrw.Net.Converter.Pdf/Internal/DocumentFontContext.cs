@@ -23,7 +23,7 @@ internal sealed class DocumentFontContext
     private readonly Dictionary<string, byte[]> _snapshots = new();
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _styleAliases = new();
     private readonly Dictionary<(string Family, bool Bold, bool Italic), OfdFontResource> _unbound = new();
-    internal Dictionary<string, SixLabors.Fonts.FontFamily> OutlineFonts { get; } = new();
+    internal Dictionary<string, (SixLabors.Fonts.FontFamily Family, SixLabors.Fonts.FontStyle Style)> OutlineFonts { get; } = new();
 
     internal DocumentFontContext(IReadOnlyList<OfdFontResource> fonts, IFontResolver? fallbackResolver = null,
         FontParseBudget? parseBudget = null, CancellationToken cancellationToken = default)

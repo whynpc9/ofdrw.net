@@ -96,7 +96,7 @@ public sealed class Audit025RendererRegressionTests
         var text = Text(new string('\u3164', 4096), 10);
         using var document = new PdfSharpCore.Pdf.PdfDocument(); using var graphics = XGraphics.FromPdfPage(document.AddPage());
         var method = typeof(OfdToPdfConverter).GetMethod("DrawTextRuns", BindingFlags.NonPublic | BindingFlags.Static)!;
-        object?[] args = { graphics, text, null, XBrushes.Black, 0d, 0d, null, false, coverage, CancellationToken.None };
+        object?[] args = { graphics, text, null, XBrushes.Black, 0d, 0d, null, false, false, coverage, CancellationToken.None };
         method.Invoke(null, args);
         var before = GC.GetAllocatedBytesForCurrentThread(); method.Invoke(null, args);
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;

@@ -241,6 +241,47 @@ public sealed class ControlledEditWriterTests
     }
 
     [Fact]
+    public async Task NonPageContentRootReadsAsOneOpaqueGraphic()
+    {
+        var source = await Source(); var path = source.Pages[0].SourceEntryPath!;
+        var xml = XDocument.Parse(Encoding.UTF8.GetString(source.PreservedEntries[path]));
+        xml.Root!.Name = xml.Root.Name.Namespace + "OtherRoot";
+        source.PreservedEntries[path] = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+        var readback = await ReadEntries(source);
+        var opaque = Assert.IsType<OfdRawElement>(Assert.Single(readback.Pages[0].Elements));
+        Assert.Equal("OtherRoot", opaque.LocalName);
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(readback, output));
+    }
+
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task MissingLayerIdDoesNotClaimAnEmptySourceDefinition(bool twoLayers)
+    {
+        var source = await Source(); var path = source.Pages[0].SourceEntryPath!;
+        var xml = XDocument.Parse(Encoding.UTF8.GetString(source.PreservedEntries[path]));
+        var layer = xml.Descendants().Single(node => node.Name.LocalName == "Layer");
+        layer.Attribute("ID")!.Remove();
+        if (twoLayers)
+        {
+            var other = new XElement(layer);
+            var text = other.Descendants().Single(node => node.Name.LocalName == "TextObject");
+            text.SetAttributeValue("ID", "9001");
+            text.Descendants().First(node => node.Name.LocalName == "TextCode").Value = "SECOND";
+            layer.AddAfterSelf(other);
+        }
+        source.PreservedEntries[path] = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+        var readback = await ReadEntries(source);
+        Assert.Equal(twoLayers ? 2 : 1, readback.Pages[0].Elements.Count);
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(readback, output);
+        output.Position = 0; var saved = await new OfdReader().ReadAsync(output);
+        Assert.Equal(twoLayers ? 2 : 1, saved.Pages[0].Elements.Count);
+        var savedXml = XDocument.Parse(Encoding.UTF8.GetString(saved.PreservedEntries[path]));
+        Assert.All(savedXml.Descendants().Where(node => node.Name.LocalName == "Layer"),
+            node => Assert.True(int.TryParse(node.Attribute("ID")?.Value, out var id) && id > 0));
+    }
+
+    [Fact]
     public async Task AllExistingSlotsMayBecomeEmptyWithExplicitAnchors()
     {
         var source = await Source(); using var context = new OfdControlledEditContext(new OfdModelLimits());

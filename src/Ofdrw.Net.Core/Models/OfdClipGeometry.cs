@@ -35,7 +35,7 @@ internal static class OfdClipGeometry
     {
         var regions = new List<OfdClipRegion>();
         var ns = root.Name.Namespace;
-        if (root.Name.LocalName != "Clips" || (ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.Namespace && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) ||
+        if (root.Name.LocalName != "Clips" || (ns != XNamespace.None && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.Namespace && ns.NamespaceName != Ofdrw.Net.Core.Constants.OfdConstants.StandardNamespace) ||
             requireClosedProfile && (!OfdGraphicXmlContract.HasKnownChildren(root) || OfdGraphicXmlContract.HasUnsupportedReferences(root) || root.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a))))
             throw new NotSupportedException("Clip extensions or references are outside the render profile.");
         foreach (var clip in root.Elements(ns + "Clip"))
@@ -60,10 +60,17 @@ internal static class OfdClipGeometry
                     material?.ChargeCopy(1024L + 16L * (shape.Attribute("CTM")?.Value.Length ?? 0) + 16L * (shape.Attribute("Boundary")?.Value.Length ?? 0), token);
                     if (shape.Name.LocalName != "Path") throw new NotSupportedException("Only path-based OFD clipping areas are supported.");
                     if (shape.Attribute("DrawParam") is not null || shape.Element(ns + "Clips") is not null) throw new NotSupportedException("Nested clip styling is unsupported.");
-                    if (shape.Attribute("Stroke")?.Value is "true" or "1" || shape.Attribute("Fill")?.Value is "false" or "0")
+                    // Retained raw clips can carry XML whitespace around boolean values.
+                    // Admit only the same filled, unstroked values as typed clip paths.
+                    var stroke = shape.Attribute("Stroke")?.Value.Trim();
+                    var fill = shape.Attribute("Fill")?.Value.Trim();
+                    if (stroke is not (null or "false" or "0") || fill is not (null or "true" or "1"))
                         throw new NotSupportedException("Stroked clip geometry is outside the render profile.");
                     var literal = string.Concat(shape.Element(shape.Name.Namespace + "AbbreviatedData")?.Nodes().OfType<XText>().Select(text => text.Value) ?? Enumerable.Empty<string>());
                     if (string.IsNullOrWhiteSpace(literal)) throw new NotSupportedException("OFD clip path has no supported literal geometry.");
+                    if (!OfdPathDataSyntax.IsValidLiteral(literal, token, requireDrawableSegment: true) ||
+                        requireClosedProfile && !OfdPathDataSyntax.HasSingleValidDrawing(shape, token))
+                        throw new NotSupportedException("Malformed OFD clip path data cannot be exported.");
                     var boundary = Numbers(shape.Attribute("Boundary")?.Value);
                     var transform = Matrix(shape.Attribute("CTM")?.Value);
                     if (boundary.Length >= 2)

@@ -44,6 +44,8 @@ internal static class OfdGraphicXmlContract
         if (parent == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor) return true;
         if (parent == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfInterpolateV1)
             return OfdImageRenderingHints.IsCanonicalValue(attribute.Value);
+        if (parent == "TextCode" && attribute.Name == XNamespace.Xml + "space")
+            return attribute.Value == "preserve";
         if (attribute.Name.Namespace != XNamespace.None) return false;
         var name = attribute.Name.LocalName;
         if (parent is "TextObject" or "ImageObject" or "PathObject" or "Path" && name is "ID" or "Name" or "Visible" or "Boundary" or "CTM" or "Alpha" or "LineWidth" or "Cap" or "Join" or "MiterLimit" or "DashOffset" or "DashPattern") return true;
@@ -72,8 +74,13 @@ internal static class OfdGraphicXmlContract
 
     internal static bool IsVisible(OfdElement element)
     {
-        var xml = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdCompositeElement composite => composite.SourceXml, _ => null };
+        // Structural raw envelopes must reach the opaque-drawing preflight.
+        // Visible on Page/Content/Layer/PageBlock is not a supported way to
+        // suppress unknown content; only raw drawing leaves may be hidden.
+        if (element is OfdRawElement rawEnvelope &&
+            rawEnvelope.LocalName is "Page" or "Content" or "Layer" or "PageBlock") return true;
+        var xml = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdCompositeElement composite => composite.SourceXml, OfdRawElement raw => raw.Xml, _ => null };
         if (string.IsNullOrWhiteSpace(xml)) return true;
-        return XElement.Parse(xml!).Attribute("Visible")?.Value.ToLowerInvariant() is not ("false" or "0");
+        return XElement.Parse(xml!).Attribute("Visible")?.Value.Trim().ToLowerInvariant() is not ("false" or "0");
     }
 }

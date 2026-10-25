@@ -66,6 +66,12 @@ internal sealed class HtmlRenderContext
         Finite(element.WidthMillimeters); Finite(element.HeightMillimeters);
         string? source = element switch
         { OfdTextElement t => t.SourceXml, OfdPathElement p => p.SourceXml, OfdImageElement i => i.SourceXml, _ => null };
+        if (element.RenderSourceXml is not null)
+        {
+            if (element.RenderSourceAuthority != source)
+                throw new NotSupportedException("Imported drawing changed after paint resolution.");
+            source = element.RenderSourceXml;
+        }
         // Raw visible drawing is never silently omitted by this new API.
         if (element is not (OfdTextElement or OfdPathElement or OfdImageElement))
             throw new NotSupportedException("HTML preview cannot render an opaque drawing element.");
@@ -98,10 +104,10 @@ internal sealed class HtmlRenderContext
             if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node))
                 throw new NotSupportedException("HTML preview does not support unknown drawing children or references.");
             if (element is OfdTextElement &&
-                (((OfdTextElement)element).Weight < 600 && node.Attribute("Stroke")?.Value is "true" or "1" || node.Attribute("Fill")?.Value is "false" or "0" ||
-                 node.Attribute("HScale") is { Value: not "1" } || node.Attribute("ReadDirection") is { Value: not "0" } ||
-                 node.Attribute("CharDirection") is { Value: not "0" } || node.Attribute("Alpha") is { Value: not "255" }))
-                throw new NotSupportedException("Text stroke, scale, direction or object alpha is outside the HTML render profile.");
+                (!OfdRenderPreflight.MatchesInteger(node.Attribute("ReadDirection"), 0) ||
+                 !OfdRenderPreflight.MatchesInteger(node.Attribute("CharDirection"), 0) ||
+                 !OfdRenderPreflight.MatchesInteger(node.Attribute("Alpha"), 255)))
+                throw new NotSupportedException("Text direction or object alpha is outside the HTML render profile.");
             if (node.DescendantsAndSelf().Attributes().Any(a => !OfdGraphicXmlContract.IsKnownAttribute(a) &&
                 !(a.Name == XNamespace.Xml + "space" && a.Parent!.Name.LocalName == "TextCode" && a.Value == "preserve")))
                 throw new NotSupportedException("HTML preview does not support unknown drawing attributes.");

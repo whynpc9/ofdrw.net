@@ -217,7 +217,28 @@ public sealed class PdfConversionTests
             "upstream-ofdrw",
             "999.ofd");
 
-        await using var ofdInput = File.OpenRead(samplePath);
+        // The embedded signed seal has an unresolved ColorSpace reference.
+        // Remove its signature link to inspect the five-page document body.
+        await using var ofdInput = new MemoryStream();
+        using (var source = ZipFile.OpenRead(samplePath))
+        using (var copy = new ZipArchive(ofdInput, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var entry in source.Entries)
+            {
+                byte[] bytes;
+                using (var data = entry.Open())
+                using (var buffer = new MemoryStream()) { await data.CopyToAsync(buffer); bytes = buffer.ToArray(); }
+                if (entry.FullName == "OFD.xml")
+                {
+                    var xml = XDocument.Parse(Encoding.UTF8.GetString(bytes));
+                    xml.Descendants().Where(node => node.Name.LocalName == "Signatures").Remove();
+                    bytes = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+                }
+                using var target = copy.CreateEntry(entry.FullName).Open();
+                await target.WriteAsync(bytes);
+            }
+        }
+        ofdInput.Position = 0;
         await using var pdfOutput = new MemoryStream();
         await new OfdToPdfConverter().ConvertAsync(ofdInput, pdfOutput);
 
@@ -226,15 +247,24 @@ public sealed class PdfConversionTests
         Assert.Equal(5, pdf.NumberOfPages);
         Assert.True(
             pdf.GetPage(1).Operations.Count(operation =>
-                operation.Operator == "Do") >= 2,
-            "The first page should draw both its QR code and the signed seal form.");
+                operation.Operator == "Do") >= 1,
+            "The first page should draw its QR code.");
         Assert.All(Enumerable.Range(1, pdf.NumberOfPages), pageNumber =>
             Assert.Contains(
                 pdf.GetPage(pageNumber).Operations,
                 operation => operation.Operator is "m" or "l" or "c"));
-        Assert.Contains(
-            "/Subtype /Form",
-            Encoding.ASCII.GetString(pdfOutput.ToArray()));
+    }
+
+    [Fact]
+    public async Task OfdToPdf_RejectsUnresolvedColorInEmbeddedSeal()
+    {
+        var samplePath = Path.Combine(ResolveRepositoryRoot(), "e2e", "Ofdrw.Net.Converter.Pdf.E2E",
+            "testdata", "upstream-ofdrw", "999.ofd");
+        await using var input = File.OpenRead(samplePath);
+        await using var output = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(input, output));
+        Assert.Contains("ColorSpace '4'", error.Message);
     }
 
     [Fact]
