@@ -119,6 +119,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+        PdfSupplementaryFontBinding.InstallToUnicodeMaps(document,
+            fonts.SupplementaryBindings.Concat(signatureAppearances
+                .Where(appearance => appearance.Fonts is not null)
+                .SelectMany(appearance => appearance.Fonts!.SupplementaryBindings)));
         document.Save(pdfOutput, false);
         await pdfOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -378,6 +382,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         var familyName = fonts.Resolve(text, out var resource);
                         if ((text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text)).All(string.IsNullOrEmpty)) continue;
                         var coverage = fonts.Coverage(resource, familyName);
+                        Func<string, string> mapPdfText = value => fonts.PdfText(familyName, value);
                         // CT_Text Weight/Italic is the per-object style viewers apply;
                         // the resource flags describe the bound font file.
                         var bold = resource?.Bold == true || text.Weight >= 600;
@@ -402,7 +407,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         {
                             if (!outlineFonts.TryGetValue(face.FaceName, out var outlineFace))
                             {
-                                var fontBytes = GlobalFontSettings.FontResolver.GetFont(face.FaceName);
+                                var fontBytes = fonts.OutlineFontBytes(familyName, GlobalFontSettings.FontResolver.GetFont(face.FaceName));
                                 using var fontStream = new MemoryStream(fontBytes);
                                 var family = new SixLabors.Fonts.FontCollection().Add(fontStream);
                                 var physical = new OpenTypeFace(fontBytes).Style;
@@ -420,7 +425,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             paint.FillColor.Blue));
                         if (text.Runs.Count > 0)
                         {
-                            DrawTextRuns(
+                            DrawTextRunsMapped(
                                 graphics,
                                 text,
                                 font,
@@ -428,14 +433,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 page.XMillimeters,
                                 page.YMillimeters,
                                 outlineFont,
-                                simulateBold, simulateItalic, coverage, cancellationToken);
+                                simulateBold, simulateItalic, coverage, mapPdfText, cancellationToken);
                         }
                         else
                         {
                             DrawTextWithMatrix(graphics, text, page.XMillimeters, page.YMillimeters, factor =>
                             {
                                 var anchor = OfdTextEmphasis.Anchor(0, 0, factor);
-                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, XStringFormats.TopLeft, coverage, paint);
+                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, XStringFormats.TopLeft, coverage, paint, mapPdfText);
                             });
                         }
                     }
@@ -519,7 +524,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
     private static void DrawStyledString(XGraphics graphics, string text, XFont font, XBrush brush,
         XPoint point, SixLabors.Fonts.Font? outlineFont, bool simulateBold, bool italic, XStringFormat? format = null, OpenTypeCmap? coverage = null,
-        OfdTextPaint? paint = null)
+        OfdTextPaint? paint = null, Func<string, string>? mapPdfText = null)
     {
         // PDFsharp does not compose Latin mark sequences (notably dotted i).
         // Match the supported composite used for measurement when drawing one
@@ -532,6 +537,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
         text = PdfTextControlPolicy.VisibleText(text, coverage);
         if (text.Length == 0) return;
+        var pdfText = mapPdfText is null ? text : mapPdfText(text);
         // PDFsharp Core 1.3.67 drops resolver style simulations when creating
         // XGlyphTypeface. Apply the missing fallback appearance at draw time.
         var state = graphics.Save();
@@ -555,11 +561,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 try
                 {
                     graphics.IntersectClip(new XRect(0, 0, 0, 0));
-                    graphics.DrawString(text, font, brush, new XRect(0, 0, 0, 0), format ?? XStringFormats.Default);
+                    graphics.DrawString(pdfText, font, brush, new XRect(0, 0, 0, 0), format ?? XStringFormats.Default);
                 }
                 finally { graphics.Restore(semanticState); }
             }
-            else graphics.DrawString(text, font, brush, new XRect(0, 0, 0, 0), format ?? XStringFormats.Default);
+            else graphics.DrawString(pdfText, font, brush, new XRect(0, 0, 0, 0), format ?? XStringFormats.Default);
             var explicitStroke = paint?.Stroke == true && paint.StrokeColor.Alpha > 0;
             var simulatedStroke = simulateBold && paint?.Fill == true;
             if (!text.All(char.IsWhiteSpace) && outlineFont is not null && brush is XSolidBrush solid && (explicitStroke || simulatedStroke))
@@ -624,7 +630,19 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         double pageOriginX,
         double pageOriginY,
         SixLabors.Fonts.Font? outlineFont,
-        bool simulateBold, bool simulateItalic, OpenTypeCmap? coverage, CancellationToken cancellationToken)
+        bool simulateBold, bool simulateItalic, OpenTypeCmap? coverage, CancellationToken cancellationToken) =>
+        DrawTextRunsMapped(graphics, text, font, brush, pageOriginX, pageOriginY, outlineFont,
+            simulateBold, simulateItalic, coverage, static value => value, cancellationToken);
+
+    private static void DrawTextRunsMapped(
+        XGraphics graphics,
+        OfdTextElement text,
+        XFont font,
+        XBrush brush,
+        double pageOriginX,
+        double pageOriginY,
+        SixLabors.Fonts.Font? outlineFont,
+        bool simulateBold, bool simulateItalic, OpenTypeCmap? coverage, Func<string, string> mapPdfText, CancellationToken cancellationToken)
     {
         var paint = OfdTextPaint.Read(text);
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
@@ -637,7 +655,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
                     DrawStyledString(graphics, run.Text, font, brush,
-                        new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint);
+                        new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText);
                     continue;
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
@@ -646,7 +664,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     var anchor = OfdTextEmphasis.Anchor(x, y, factor);
                     DrawStyledString(graphics, glyph, font, brush,
-                        new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint);
+                        new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText);
                     if (i < deltaX.Count) x += deltaX[i];
                     if (i < deltaY.Count) y += deltaY[i];
                     i++;
