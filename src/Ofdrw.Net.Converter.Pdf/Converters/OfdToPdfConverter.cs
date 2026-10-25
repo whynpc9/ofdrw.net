@@ -126,7 +126,27 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             fonts.SupplementaryBindings.Concat(signatureAppearances
                 .Where(appearance => appearance.Fonts is not null)
                 .SelectMany(appearance => appearance.Fonts!.SupplementaryBindings)));
-        document.Save(pdfOutput, false);
+        var selectedNameOnlyFaces = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        foreach (var context in new[] { fonts }.Concat(signatureAppearances
+                     .Where(appearance => appearance.Fonts is not null)
+                     .Select(appearance => appearance.Fonts!)))
+        {
+            foreach (var face in context.SelectedNameOnlyFaces)
+                selectedNameOnlyFaces[face.Key] = face.Value;
+        }
+        if (selectedNameOnlyFaces.Count == 0)
+        {
+            document.Save(pdfOutput, false);
+        }
+        else
+        {
+            // Keep the caller's output untouched until PDFsharp has saved and
+            // each selected FontFile2 contains its complete composite closure.
+            using var staged = new MemoryStream();
+            document.Save(staged, false);
+            var repaired = PdfBoundFontRestorer.Restore(staged.ToArray(), selectedNameOnlyFaces);
+            await pdfOutput.WriteAsync(repaired, 0, repaired.Length, cancellationToken).ConfigureAwait(false);
+        }
         await pdfOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 

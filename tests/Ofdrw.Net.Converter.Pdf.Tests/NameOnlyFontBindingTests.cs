@@ -10,6 +10,8 @@ using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Reader.Readers;
 using PdfSharpCore.Fonts;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
 using PdfPigDocument = UglyToad.PdfPig.PdfDocument;
 
 namespace Ofdrw.Net.Converter.Pdf.Tests;
@@ -61,6 +63,14 @@ public sealed class NameOnlyFontBindingTests
         Assert.Contains("Ofdrw-" + identity, System.Text.Encoding.ASCII.GetString(pdf.ToArray()));
         using var parsed = PdfPigDocument.Open(pdf.ToArray());
         Assert.Equal(Latin, parsed.GetPage(1).Text);
+        using var fontInspection = PdfReader.Open(new MemoryStream(pdf.ToArray()), PdfDocumentOpenMode.Import);
+        var descriptor = Assert.Single(fontInspection.Internals.GetAllObjects().OfType<PdfDictionary>()
+            .Where(value => value.Elements.ContainsKey("/FontFile2") &&
+                value.Elements.GetName("/FontName").Contains("Ofdrw-" + identity, StringComparison.OrdinalIgnoreCase)));
+        // U+00E9 uses a nested composite in this source face. PDFsharpCore's
+        // subset omits the nested accent outline while retaining text mapping.
+        Assert.Equal(OpenTypeFontIdentity.WithUniqueNames(expected, identity),
+            descriptor.Elements.GetDictionary("/FontFile2").Stream.UnfilteredValue);
     }
 
     [Fact]

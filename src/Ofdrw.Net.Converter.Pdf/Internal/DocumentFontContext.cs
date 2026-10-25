@@ -23,6 +23,7 @@ internal sealed class DocumentFontContext
     private readonly Dictionary<OfdFontResource, string> _families = new();
     private readonly Dictionary<OfdFontResource, byte[]> _physicalBytes = new();
     private readonly Dictionary<string, byte[]> _snapshots = new();
+    private readonly Dictionary<string, byte[]> _selectedNameOnlyFaces = new(StringComparer.Ordinal);
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _styleAliases = new();
     private readonly Dictionary<(string Family, bool Bold, bool Italic), OfdFontResource> _unbound = new();
     internal Dictionary<string, (SixLabors.Fonts.FontFamily Family, SixLabors.Fonts.FontStyle Style)> OutlineFonts { get; } = new();
@@ -108,6 +109,8 @@ internal sealed class DocumentFontContext
 
     internal IEnumerable<PdfSupplementaryFontBinding> SupplementaryBindings => _supplementary.Values;
 
+    internal IReadOnlyDictionary<string, byte[]> SelectedNameOnlyFaces => _selectedNameOnlyFaces;
+
     internal string PdfText(string family, string logicalText) =>
         _supplementary.TryGetValue(family, out var binding) ? binding.MapText(logicalText) : logicalText;
 
@@ -146,6 +149,8 @@ internal sealed class DocumentFontContext
             var bound = _nameOnlyBindings.Resolve(resource, _parseBudget);
             _families[resource] = PdfFontRegistry.RegisterFontFace(bound.Data);
             StorePhysical(resource, bound.Data);
+            var identity = BinaryIdentity.Hash(bound.Data);
+            _selectedNameOnlyFaces[identity] = _physicalBytes[resource];
             _coverage[resource] = bound.Coverage;
         }
         if (resource is not null && resource.Data.Length == 0 && hasText &&
