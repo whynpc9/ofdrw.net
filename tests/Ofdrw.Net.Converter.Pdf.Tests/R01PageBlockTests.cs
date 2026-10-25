@@ -4786,6 +4786,26 @@ public sealed class R01PageBlockTests
     }
 
     [Theory]
+    [InlineData("<Actions><Action Event='CLICK'><GotoA AttachID='42'/></Action></Actions>", false)]
+    [InlineData("<Actions><Action Event='CLICK'><GotoA/></Action></Actions>", false)]
+    [InlineData("<Actions><Action Event='CLICK'><GotoA AttachID='42'/></Action></Actions><Actions><Action Event='CLICK'><GotoA AttachID='42'/></Action></Actions>", true)]
+    [InlineData("<Actions><Action Event='CLICK'><GotoA AttachID='42' ResourceID='7'/></Action></Actions>", true)]
+    [InlineData("<Actions><Action Event='CLICK'><Other:Foreign xmlns:Other='urn:other' AttachID='42'/></Action></Actions>", true)]
+    [InlineData("<Actions><Action Event='HOVER'><GotoA AttachID='42'/></Action></Actions>", true)]
+    [InlineData("<Actions><Action Event='CLICK'><GotoA AttachID='43'/></Action></Actions>", true)]
+    public void AttachmentActionAdmissionRequiresReaderProjectionAndExactClosedAction(string actions, bool projected)
+    {
+        var path = new OfdPathElement
+        {
+            AbbreviatedData = "M 0 0 L 1 0 L 1 1 C",
+            SourceXml = $"<PathObject xmlns='{Ns}' ID='11' Boundary='0 0 2 2'>{actions}<AbbreviatedData>M 0 0 L 1 0 L 1 1 C</AbbreviatedData></PathObject>",
+            ReaderAttachmentActionId = projected ? "42" : null
+        };
+        var failure = Assert.Throws<NotSupportedException>(() => OfdRenderPreflight.Validate(new[] { path }));
+        Assert.Contains("unresolved resource reference", failure.Message);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task HiddenUnknownNestedDrawingDoesNotBlockVisibleContent(bool template)

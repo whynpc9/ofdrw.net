@@ -6,6 +6,7 @@ using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Pdf.Internal;
 using Ofdrw.Net.Converter.Pdf.Vector;
+using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Readers;
 
@@ -209,6 +210,15 @@ public sealed class PdfMetadataMigrationTests
         Assert.Equal(vector, pin.Fill);
         Assert.Null(package.Pages[2].Annotations);
         Assert.Equal(package.Attachments[2].Id, Assert.Single(package.Pages[3].Annotations!.Items).AttachmentId);
+
+        // The reader-owned attachment action is metadata on a visible pin, not
+        // an unresolved drawing resource in either renderer's shared preflight.
+        using var renderedPdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(output.ToArray()), renderedPdf);
+        Assert.True(renderedPdf.Length > 0);
+        using var renderedSvg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(output.ToArray()), renderedSvg, pageIndex: 1);
+        Assert.Contains("<path", Encoding.UTF8.GetString(renderedSvg.ToArray()));
     }
 
     [Theory]

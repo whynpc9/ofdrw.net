@@ -70,7 +70,12 @@ internal static class OfdAnnotationProjection
             for (var index = 0; index < appearance.Elements.Count; index++)
             {
                 var element = appearance.Elements[index];
-                Add(new Occurrence(element, Project(element, appearance, ns, material, token), parent, annotation.Source?.Entry, ordinal, index, annotation.Visible != false));
+                var projected = Project(element, appearance, ns, material, token);
+                if (projected is OfdPathElement path && annotation.Source is not null &&
+                    annotation.Type == OfdAnnotationType.Link && annotation.AttachmentId is { } attachmentId &&
+                    appearance.Elements.Count == 1)
+                    path.ReaderAttachmentActionId = attachmentId;
+                Add(new Occurrence(element, projected, parent, annotation.Source?.Entry, ordinal, index, annotation.Visible != false));
             }
         }
     }
