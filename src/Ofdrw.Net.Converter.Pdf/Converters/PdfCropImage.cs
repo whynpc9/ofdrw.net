@@ -33,6 +33,32 @@ internal static class PdfCropImage
             factor--;
         } while (factor >= 1);
         if (outputPixels > maximumPixels)
+        {
+            // A full-size admitted source can leave no room for the two edge
+            // samples. Reduce only this PDF copy; the original crop and image
+            // transform still determine the destination mapping.
+            if (maximumPixels < 9)
+                throw new InvalidDataException("PDF source crop exceeds the raster pixel budget after edge padding.");
+            width = height = 1;
+            var lower = 0d;
+            var upper = 1d;
+            for (var attempt = 0; attempt < 64; attempt++)
+            {
+                var scale = (lower + upper) / 2;
+                var candidateWidth = Math.Max(1, checked((int)Math.Ceiling(crop.Width * scale)));
+                var candidateHeight = Math.Max(1, checked((int)Math.Ceiling(crop.Height * scale)));
+                var candidatePixels = checked(((long)candidateWidth + 2) * ((long)candidateHeight + 2));
+                if (candidatePixels <= maximumPixels)
+                {
+                    lower = scale;
+                    width = candidateWidth;
+                    height = candidateHeight;
+                }
+                else upper = scale;
+            }
+        }
+        outputPixels = checked(((long)width + 2) * ((long)height + 2));
+        if (outputPixels > maximumPixels)
             throw new InvalidDataException("PDF source crop exceeds the raster pixel budget after edge padding.");
         var stepX = crop.Width / width;
         var stepY = crop.Height / height;
