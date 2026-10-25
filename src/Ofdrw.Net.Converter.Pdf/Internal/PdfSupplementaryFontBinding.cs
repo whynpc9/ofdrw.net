@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Threading;
 using Ofdrw.Net.Core.Fonts;
 using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Layout.Internal.Flow;
 using PdfSharpCore.Pdf;
 
 namespace Ofdrw.Net.Converter.Pdf.Internal;
@@ -78,9 +80,19 @@ internal sealed class PdfSupplementaryFontBinding
                     throw new NotSupportedException("Supplementary PDF text exceeds the bounded scalar profile.");
                 scalars.Add(scalar);
             }
-            // DrawStyledString may compose a single Latin grapheme. Include the
-            // same face's composed glyph so drawing cannot escape this mapping.
-            foreach (var scalar in OpenTypeFace.Scalars(visible.Normalize(NormalizationForm.FormC))) scalars.Add(scalar);
+        }
+        // Match the actual DrawStyledString calls: unpositioned runs are drawn
+        // whole, while positioned runs are drawn one grapheme at a time. Only a
+        // single Latin grapheme may be composed before visible-text filtering.
+        foreach (var drawText in DrawingUnits(text, cancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (drawText.Length <= 1 || drawText[0] > 0xFF || !char.IsLetter(drawText[0])) continue;
+            var elements = StringInfo.GetTextElementEnumerator(drawText);
+            if (!elements.MoveNext() || elements.MoveNext()) continue;
+            var normalized = FlowTextMetrics.NormalizeLatinForMeasurement(drawText);
+            foreach (var scalar in OpenTypeFace.Scalars(PdfTextControlPolicy.VisibleText(normalized, coverage)))
+                scalars.Add(scalar);
             if (scalars.Count > MaximumScalars)
                 throw new NotSupportedException("Supplementary PDF text exceeds the bounded scalar profile.");
         }
@@ -152,6 +164,23 @@ internal sealed class PdfSupplementaryFontBinding
             result.Append((char)pdfCode);
         }
         return result.ToString();
+    }
+
+    private static IEnumerable<string> DrawingUnits(OfdTextElement text, CancellationToken cancellationToken)
+    {
+        if (text.Runs.Count == 0)
+        {
+            yield return text.Text;
+            yield break;
+        }
+        foreach (var run in text.Runs)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var deltas = OfdTextGeometry.PositioningDeltas(run, cancellationToken);
+            if (deltas.X.Count == 0 && deltas.Y.Count == 0) yield return run.Text;
+            else foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
+                yield return glyph;
+        }
     }
 
     internal static void InstallToUnicodeMaps(PdfDocument document, IEnumerable<PdfSupplementaryFontBinding> bindings)

@@ -647,6 +647,24 @@ public sealed class FontIsolationTests
     }
 
     [Fact]
+    public async Task MultiGraphemeSupplementaryTextDoesNotRequireUnusedLatinComposite()
+    {
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        var cmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face);
+        face.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int, int>
+        {
+            [0x20003] = cmap.Glyph('A'), ['e'] = cmap.Glyph('e'), [0x0301] = cmap.Glyph('B')
+        });
+        var source = new OfdDocumentPackage();
+        source.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Ofdrw Test Face", Data = face.Build() });
+        source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { new OfdTextElement { FontResourceId = "10", Text = "\U00020003e\u0301" } } });
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertPackageAsync(source, pdf, null, default);
+        Assert.True(pdf.Length > 0);
+    }
+
+    [Fact]
     public async Task SupplementaryScalarBudgetRejectsRepeatedTextBeforeWritingPdf()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
