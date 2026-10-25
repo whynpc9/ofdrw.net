@@ -125,16 +125,9 @@ public sealed class OfdGraphics
         if (crop.Item1 < 0 || crop.Item2 < 0 || crop.Item1 + crop.Item3 > identified.Width ||
             crop.Item2 + crop.Item4 > identified.Height)
             throw new ArgumentOutOfRangeException(nameof(source), "Source rectangle must be inside the encoded pixel axes.");
-        // Preview filters the image at a crop clip even when the PDF image has
-        // /Interpolate false. Put the visible clip edge on the center of its
-        // first/last selected pixel for pixel-aligned crops, avoiding the
-        // adjacent-color band. Keep the original image bytes (and thus
-        // writer resource sharing) for every placement.
-        var sampleX = GuardedSourceAxis(crop.Item1, crop.Item3, identified.Width);
-        var sampleY = GuardedSourceAxis(crop.Item2, crop.Item4, identified.Height);
         var imageMatrix = PageTransform
-            .Multiply(OfdMatrix.Translation(x - width * sampleX.Start / sampleX.Length, y - height * sampleY.Start / sampleY.Length))
-            .Multiply(OfdMatrix.Scale(width * identified.Width / sampleX.Length, height * identified.Height / sampleY.Length));
+            .Multiply(OfdMatrix.Translation(x - width * crop.Item1 / crop.Item3, y - height * crop.Item2 / crop.Item4))
+            .Multiply(OfdMatrix.Scale(width * identified.Width / crop.Item3, height * identified.Height / crop.Item4));
         if (!OfdNumericFormat.Nonsingular(imageMatrix.A, imageMatrix.B, imageMatrix.C, imageMatrix.D))
             throw new ArgumentException("Image transform is singular at OFD writer precision.");
         var corners = new[] { PageTransform.TransformPoint(x, y), PageTransform.TransformPoint(x + width, y),
@@ -152,21 +145,15 @@ public sealed class OfdGraphics
             XMillimeters = boundaryX, YMillimeters = boundaryY,
             WidthMillimeters = boundaryWidth, HeightMillimeters = boundaryHeight,
             Transform = Rebase(imageMatrix, boundaryX, boundaryY).ToArray(), Alpha = alpha,
-            // Bilinear filtering can sample just outside a cropped pixel
-            // rectangle and reveal neighboring colors through the clip.
+            // Preserve exact source geometry and original resource bytes. PDF
+            // export can use the crop hint to add its own clamped edge pixels.
             SourceXml = source is null ? null : new XElement(Ns + "ImageObject",
-                new XAttribute(OfdImageRenderingHints.PdfInterpolateV1, false)).ToString(SaveOptions.DisableFormatting)
+                new XAttribute(OfdImageRenderingHints.PdfInterpolateV1, false),
+                new XAttribute(OfdImageRenderingHints.PdfSourceCropV1,
+                    OfdImageRenderingHints.FormatSourceCrop(crop.Item1, crop.Item2, crop.Item3, crop.Item4)))
+                .ToString(SaveOptions.DisableFormatting)
         };
         Commit(element, 0, 0, token, new[] { (target, PageTransform) });
-    }
-    private static (double Start, double Length) GuardedSourceAxis(double start, double length, int imagePixels)
-    {
-        // A subpixel or single-pixel selection still needs a nonsingular CTM.
-        // Its center is retained and the residual 0.2% span stays finite.
-        var guard = Math.Min(0.5, length * 0.499);
-        var first = start > 0 ? guard : 0;
-        var last = start + length < imagePixels ? guard : 0;
-        return (start + first, length - first - last);
     }
     /// <summary>Fills a rectangle using an explicit PNG raster fallback for a two-stop horizontal or vertical linear gradient. Sampling is finite and endpoints are exact.</summary>
     public void FillLinearGradientRectangle(OfdColor start, OfdColor end,

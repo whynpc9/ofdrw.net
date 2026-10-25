@@ -27,6 +27,7 @@ images.Translate(61, 87); images.Rotate(24); images.Scale(-1.2, 0.85);
 images.DrawImage(quadrants, -35, -20, 50, 40, 0, 0, 8, 8, 220);
 images.Restore();
 images.DrawRectangle(new OfdPen(new OfdColor(45, 52, 62), 0.4), 15, 66, 100, 49);
+images.DrawImage(quadrants, 10, 116, 40, 10, 7.75, 0, 1, 8);
 images.FillImagePatternRectangle(quadrants, 10, 130, 55, 35, 11, 11);
 images.FillLinearGradientRectangle(new OfdColor(220, 26, 35), new OfdColor(30, 72, 229), 74, 130, 62, 35);
 images.FillLinearGradientRectangle(new OfdColor(20, 147, 85, 220), new OfdColor(255, 225, 50, 80), 10, 176, 126, 24,

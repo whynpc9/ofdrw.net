@@ -44,6 +44,8 @@ internal static class OfdGraphicXmlContract
         if (parent == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor) return true;
         if (parent == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfInterpolateV1)
             return OfdImageRenderingHints.IsCanonicalValue(attribute.Value);
+        if (parent == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfSourceCropV1)
+            return OfdImageRenderingHints.IsCanonicalSourceCrop(attribute.Value);
         if (parent == "TextCode" && attribute.Name == XNamespace.Xml + "space")
             return attribute.Value == "preserve";
         if (attribute.Name.Namespace != XNamespace.None) return false;
