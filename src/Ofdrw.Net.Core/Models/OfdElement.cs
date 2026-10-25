@@ -160,6 +160,10 @@ public sealed class OfdImageElement : OfdElement
 /// </summary>
 public sealed class OfdPathElement : OfdElement
 {
+    // Set only on a transient projection of a reader-owned link annotation.
+    // Ordinary page paths and public model construction cannot authorize AttachID.
+    internal string? ReaderAttachmentActionId { get; set; }
+
     /// <summary>Null preserves a source Rule; newly constructed paths default to NonZero.</summary>
     public OfdFillRule? FillRule { get; set; }
     public OfdPathElement()

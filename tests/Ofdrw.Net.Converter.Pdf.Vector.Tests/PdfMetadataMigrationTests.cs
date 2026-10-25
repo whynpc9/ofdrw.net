@@ -6,6 +6,7 @@ using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Converter.Pdf.Converters;
 using Ofdrw.Net.Converter.Pdf.Internal;
 using Ofdrw.Net.Converter.Pdf.Vector;
+using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Readers;
 
@@ -142,14 +143,15 @@ public sealed class PdfMetadataMigrationTests
         string attachmentName = "same.bin", int? attachmentFlags = 4, string? rootOutlineItem = null,
         string annotationRect = "20 30 40 50", string[]? extraObjects = null, string? globalFileSpec = null,
         string? nameTreeKeyToken = null, string? pageFileSpec = null, string pageSubtype = "/FileAttachment",
-        IReadOnlyList<string>? pageTypeByIndex = null)
+        IReadOnlyList<string>? pageTypeByIndex = null, IReadOnlyList<string>? pageTexts = null)
     {
         var linkCount = extraLinkAnnotations + (mixedAnnotations ? 1 : 0);
         var flags = attachmentFlags is int value ? " /F " + value : string.Empty;
         var page = embeddedPageFile
             ? "<< /Type /Annot /Subtype " + pageSubtype + " /Rect [" + annotationRect + "] /Contents (page note) /FS 20 0 R" + flags + " >>"
             : "<< /Type /Annot /Subtype /FileAttachment /Rect [" + annotationRect + "] /FS << /F (missing.bin) >>" + flags + " >>";
-        return fixture.Create(new[] { fixture.Text("A中文", 30, 500), fixture.Text("B中文", 30, 500) },
+        pageTexts ??= new[] { "A中文", "B中文" };
+        return fixture.Create(pageTexts.Select(text => fixture.Text(text, 30, 500)).ToArray(),
             catalogEntries: "/Outlines 13 0 R /Names << /EmbeddedFiles 16 0 R >>",
             pageEntriesByIndex: new[] { "/Annots [19 0 R" + string.Concat(Enumerable.Range(0, linkCount).Select(index => $" {22 + index} 0 R")) + "] " + firstPageExtra, "" },
             trailingObjects: new[]
@@ -174,7 +176,9 @@ public sealed class PdfMetadataMigrationTests
     [InlineData(true)]
     public async Task BothPdfImportersCopyClosedOutlineAndEmbeddedFiles(bool vector)
     {
-        using var fixture = new PdfFixture(Font()); var pdf = Source(fixture);
+        // The renderer assertion concerns the annotation action, so use text
+        // covered by this fixture font on every CI platform.
+        using var fixture = new PdfFixture(Font()); var pdf = Source(fixture, pageTexts: new[] { "A", "B" });
         var options = new PdfToOfdOptions { CopyBookmarks = true, CopyAttachments = true, PreferExternalPdfToPpm = true };
         using var input = new MemoryStream(pdf); using var output = new MemoryStream();
         if (vector)
@@ -209,6 +213,15 @@ public sealed class PdfMetadataMigrationTests
         Assert.Equal(vector, pin.Fill);
         Assert.Null(package.Pages[2].Annotations);
         Assert.Equal(package.Attachments[2].Id, Assert.Single(package.Pages[3].Annotations!.Items).AttachmentId);
+
+        // The reader-owned attachment action is metadata on a visible pin, not
+        // an unresolved drawing resource in either renderer's shared preflight.
+        using var renderedPdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(output.ToArray()), renderedPdf);
+        Assert.True(renderedPdf.Length > 0);
+        using var renderedSvg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(output.ToArray()), renderedSvg, pageIndex: 1);
+        Assert.Contains("<path", Encoding.UTF8.GetString(renderedSvg.ToArray()));
     }
 
     [Theory]
