@@ -235,6 +235,30 @@ public sealed class StandardObjectEditingTests
         Assert.Equal(0, rejected.Length);
     }
 
+    [Fact]
+    public async Task AttachmentAction_RejectsNumericallyDuplicateAttachmentIds()
+    {
+        var package = new OfdDocumentPackage(); package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 80 });
+        package.Attachments.Add(new OfdAttachment { Id = "51", Name = "memo.txt", Data = Encoding.UTF8.GetBytes("memo") });
+        package.Actions = new OfdActionCollection();
+        package.Actions.Items.Add(new OfdAttachmentAction { Event = "CLICK", AttachId = "51" });
+        using var valid = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, valid);
+        var entries = MultiDocumentFixture.Unzip(valid);
+        var path = entries.Keys.Single(key => key.EndsWith("/Attachments.xml", StringComparison.Ordinal));
+        var attachments = Xml(entries[path]);
+        var item = attachments.Descendants().Single(node => node.Name.LocalName == "Attachment");
+        var duplicate = new XElement(item); duplicate.SetAttributeValue("ID", "051"); item.AddAfterSelf(duplicate);
+        entries[path] = Bytes(attachments);
+        using var input = MultiDocumentFixture.Zip(entries);
+        var loaded = await new OfdReader().ReadAsync(input);
+        Assert.IsType<OfdRawAction>(Assert.Single(loaded.Actions!.Items));
+
+        package.Attachments.Add(new OfdAttachment { Id = "051", Name = "copy.txt", Data = [1] });
+        using var rejected = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() => new OfdPackageWriter().WriteAsync(package, rejected));
+        Assert.Equal(0, rejected.Length);
+    }
+
     [Theory]
     [InlineData(false, "51")]
     [InlineData(true, "51")]

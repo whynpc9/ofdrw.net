@@ -56,6 +56,30 @@ public sealed class PdfToOfdOptions
     /// </summary>
     public int MaxTextObjectsPerPage { get; set; } = 50_000;
 
+    /// <summary>Copy local PDF outline destinations into OFD Outlines. Off by default for compatibility.</summary>
+    public bool CopyBookmarks { get; set; }
+
+    /// <summary>Copy embedded document files and page FileAttachment annotations. Off by default for compatibility.</summary>
+    public bool CopyAttachments { get; set; }
+
+    // Vector raster fallback retains PDF annotation pixels but imports metadata only in its final package.
+    internal bool RasterizeCropBox { get; set; }
+
+    /// <summary>Maximum number of copied outline nodes.</summary>
+    public int MaxBookmarkCount { get; set; } = 10_000;
+
+    /// <summary>Maximum outline nesting depth.</summary>
+    public int MaxBookmarkDepth { get; set; } = 64;
+
+    /// <summary>Maximum number of copied attachment occurrences.</summary>
+    public int MaxAttachmentCount { get; set; } = 1_000;
+
+    /// <summary>Maximum decoded bytes in one embedded attachment.</summary>
+    public long MaxAttachmentBytes { get; set; } = 32L * 1024 * 1024;
+
+    /// <summary>Maximum decoded attachment bytes across the output document.</summary>
+    public long MaxTotalAttachmentBytes { get; set; } = 128L * 1024 * 1024;
+
     /// <summary>
     /// Gets or sets the XML namespace written into the OFD parts. The default is the
     /// GB/T 33190-2016 URI <see cref="OfdConstants.StandardNamespace"/>. Readers built

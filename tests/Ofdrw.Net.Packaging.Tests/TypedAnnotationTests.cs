@@ -90,6 +90,32 @@ public sealed class TypedAnnotationTests
     }
 
     [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public async Task ForeignGotoANameDoesNotBecomeAttachmentAction(bool withAttachmentAction)
+    {
+        var source = Fresh();
+        if (withAttachmentAction)
+        {
+            source.Attachments.Add(new OfdAttachment { Id = "51", Name = "note.bin", Data = [1] });
+            var link = source.Pages[0].Annotations!.Items[0]; link.Type = OfdAnnotationType.Link; link.AttachmentId = "51";
+            link.Appearance.Elements.Clear();
+            link.Appearance.Elements.Add(new OfdPathElement { WidthMillimeters = 10, HeightMillimeters = 10,
+                AbbreviatedData = "M 0 0 L 10 10" });
+        }
+        source = await RoundTrip(source);
+        var path = source.Pages[0].Annotations!.Items[0].Source!.Entry;
+        var xml = XDocument.Parse(Encoding.UTF8.GetString(source.PreservedEntries[path]));
+        var vendor = XNamespace.Get("urn:vendor");
+        xml.Root!.Elements().Single(node => node.Name.LocalName == "Annot")
+            .Add(new XElement(vendor + "GotoA", new XAttribute("AttachID", "51")));
+        source.PreservedEntries[path] = Encoding.UTF8.GetBytes(xml.ToString(SaveOptions.DisableFormatting));
+        source = await ReadEntries(source);
+        Assert.Equal(withAttachmentAction ? "51" : null, Assert.Single(source.Pages[0].Annotations!.Items).AttachmentId);
+        var saved = await RoundTrip(source);
+        Assert.Single(XDocument.Parse(Encoding.UTF8.GetString(saved.PreservedEntries[path])).Descendants(vendor + "GotoA"));
+    }
+
+    [Theory]
     [InlineData("attribute")] [InlineData("pi")] [InlineData("comment")]
     public async Task PageRemovalCannotDestroyUnknownFileOwner(string kind)
     {

@@ -37,7 +37,8 @@ internal static class OfdAnnotationCloner
                 {
                     Id = annotation.Id, Type = annotation.Type, Creator = annotation.Creator, LastModifiedDate = annotation.LastModifiedDate,
                     Subtype = annotation.Subtype, Visible = annotation.Visible, Print = annotation.Print, NoZoom = annotation.NoZoom,
-                    NoRotate = annotation.NoRotate, ReadOnly = annotation.ReadOnly, Remark = annotation.Remark, SourceXml = annotation.SourceXml,
+                    NoRotate = annotation.NoRotate, ReadOnly = annotation.ReadOnly, Remark = annotation.Remark,
+                    AttachmentId = annotation.AttachmentId, SourceXml = annotation.SourceXml,
                     Appearance = new OfdAnnotationAppearance { XMillimeters = appearance.XMillimeters, YMillimeters = appearance.YMillimeters,
                         WidthMillimeters = appearance.WidthMillimeters, HeightMillimeters = appearance.HeightMillimeters, SourceXml = appearance.SourceXml }
                 };

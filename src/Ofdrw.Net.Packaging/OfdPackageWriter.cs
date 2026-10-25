@@ -616,6 +616,12 @@ public sealed partial class OfdPackageWriter
             local.SetAttributeValue("CTM", appearance.Transform is null ? null : string.Join(" ", appearance.Transform.Select(Number)));
             if (annotation.Source is null) foreach (var element in appearance.Elements)
                 local.Add(BuildPrimitive(element, ns, plan.ElementIds, plan.Fonts.TextBindings, plan.Images, plan.Ids) ?? throw new NotSupportedException("Unsupported local primitive."));
+            if (annotation.AttachmentId is string attachmentId && annotation.Source is null)
+            {
+                var primitive = local.Elements().Single();
+                primitive.AddFirst(new XElement(ns + "Actions", new XElement(ns + "Action", new XAttribute("Event", "CLICK"),
+                    new XElement(ns + "GotoA", new XAttribute("AttachID", attachmentId)))));
+            }
             var original = node.Element(ns + "Appearance"); if (original is null) node.Add(local); else original.ReplaceWith(local);
             return node;
             void Flag(string name, bool? value)
