@@ -179,6 +179,14 @@ public sealed class OfdGraphics
         var tileBytes = (byte[])encodedTile.Clone();
         var tile = OfdGraphicsImage.Validate(tileBytes, _limits.MaxImagePixels, cancellationToken);
         var columns = Math.Ceiling(width / tileWidth); var rows = Math.Ceiling(height / tileHeight);
+        // Decimal multiples can divide just above an integer. Remove only an
+        // endpoint tile whose local remainder is rounding noise, before the
+        // placement and page-element budgets are evaluated.
+        const double roundingTolerance = 8 * 2.2204460492503131e-16;
+        if (columns > 65 || rows > 65)
+            throw new InvalidOperationException("Pattern placement or snapshot budget exceeded.");
+        if (columns > 1 && width - (columns - 1) * tileWidth <= roundingTolerance * Math.Max(width, tileWidth)) columns--;
+        if (rows > 1 && height - (rows - 1) * tileHeight <= roundingTolerance * Math.Max(height, tileHeight)) rows--;
         if (columns < 1 || rows < 1 || columns > 64 || rows > 64 || columns * rows > 64 ||
             columns * rows * encodedTile.LongLength > 64L * 1024 * 1024)
             throw new InvalidOperationException("Pattern placement or snapshot budget exceeded.");
@@ -194,8 +202,8 @@ public sealed class OfdGraphics
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var left = x + column * tileWidth; var top = y + row * tileHeight;
-                    var visibleWidth = Math.Min(tileWidth, x + width - left);
-                    var visibleHeight = Math.Min(tileHeight, y + height - top);
+                    var visibleWidth = Math.Min(tileWidth, width - column * tileWidth);
+                    var visibleHeight = Math.Min(tileHeight, height - row * tileHeight);
                     var pixelWidth = Math.Min(tile.Width, tile.Width * visibleWidth / tileWidth);
                     var pixelHeight = Math.Min(tile.Height, tile.Height * visibleHeight / tileHeight);
                     DrawImageCore(tileBytes, left, top, visibleWidth, visibleHeight,
