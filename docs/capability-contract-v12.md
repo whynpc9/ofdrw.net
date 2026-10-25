@@ -40,7 +40,7 @@
 | R05 复杂 Merge/Mix | 常见图元 `limited`；共享/嵌套资源、Clip/Composite/批注 ID 与 ownership | 未闭合引用默认拒绝，跳过只可显式选择并报告 |
 | R06 PDF 矢量 | 有限 profile `limited`；Rotation/CropBox、clip、画笔、XObject、字体逐特性正反样本 | 默认 Fail；显式回退整页，不能保留该页半成品矢量 |
 | R07 PDF 导航/附件 | 导入迁移 `new`；层级页映射、全局/页附件名与哈希 | 关闭迁移无残留；非法目标/冲突明确诊断 |
-| R08 字体后端 | TTF 子集、字体身份 `limited`；按保存/SVG/PDF/轮廓四出口核查非 BMP、symbol、Type1/CFF | 后端未验前不删现有拒绝；PR #25 已在基线 |
+| R08 字体后端 | TTF 子集、字体身份 `limited`；显式嵌入静态 TrueType 的补充平面 PDF 有界适配，逐出口记录 OFD 原文、SVG、PDF ToUnicode 与真实轮廓；PR #25 已在基线 | name-only、symbol、Type1/CFF、变量/彩色字体与未建模 GID 保持明确拒绝；各出口视觉和包消费须独立验收 |
 | R09 绘图上下文 | Path/Text/状态栈 `limited`；DrawImage、源裁切、dash/cap/join、渐变逐子集 | 不支持 brush/effect 拒绝或明确回退 |
 | R10 专用图像/区域提取 | JBIG2/ImageMask `new`；字符级 CTM/Delta 矩形筛选 `candidate` | 超预算/未知解码或几何语义显式失败/Unknown |
 | R11 签章外观 | 外来外观显示 `limited`；新生成普通章/骑缝章各页和签后重读 | 视觉外观不等于签名值或信任结论 |
