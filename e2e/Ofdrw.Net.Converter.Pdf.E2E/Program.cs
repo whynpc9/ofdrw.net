@@ -131,6 +131,38 @@ using (var encoded = new MemoryStream())
 }
 Console.WriteLine("[E2E] Installed Layout native graphics, exact CTM and name-only italic package consumption passed.");
 
+// Keep R09's public entrypoints in the isolated NuGet consumer as well as the
+// project-reference visual E2E. The two-color gradient is explicitly rasterized.
+var r09Pixels = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAIUlEQVR4nGP4z8DwHx8mAo4aMAwMIKAfCBjw4lEDhoUBAFfoPd+1WG54AAAAAElFTkSuQmCC");
+var r09Package = new OfdDocumentPackage();
+var r09Page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 70 };
+r09Package.Pages.Add(r09Page);
+var r09 = new OfdGraphics(r09Package, r09Page);
+r09.DrawImage(r09Pixels, 5, 5, 20, 20, 8, 0, 8, 8, alpha: 180);
+r09.FillLinearGradientRectangle(new OfdColor(255, 0, 0), new OfdColor(0, 0, 255), 30, 5, 30, 20);
+r09.FillImagePatternRectangle(r09Pixels, 5, 30, 25, 15, 10, 10);
+r09.DrawLine(new OfdPen(OfdColor.Black, 1, OfdLineCap.Round, OfdLineJoin.Bevel,
+    dashPattern: new[] { 4d, 2d }, dashOffset: 1), 35, 40, 85, 40);
+var r09Path = Path.Combine(outputDir, "r09-package-graphics.ofd");
+await using (var stream = File.Create(r09Path)) await new OfdPackageWriter().WriteAsync(r09Package, stream);
+await using (var stream = File.OpenRead(r09Path))
+{
+    var parsed = await new OfdReader().ReadAsync(stream);
+    if (parsed.Pages[0].Elements.OfType<OfdImageElement>().Count() != 8 ||
+        parsed.Pages[0].Elements.OfType<OfdPathElement>().Count() != 1)
+        throw new InvalidOperationException("Installed R09 graphics lost raster fills, tile placements or pen.");
+}
+await using (var input = File.OpenRead(r09Path))
+await using (var pdf = File.Create(Path.Combine(outputDir, "r09-package-graphics.pdf")))
+    await new OfdToPdfConverter().ConvertAsync(input, pdf);
+await using (var input = File.OpenRead(r09Path))
+await using (var svg = File.Create(Path.Combine(outputDir, "r09-package-graphics.svg")))
+    await new OfdToSvgConverter().ConvertAsync(input, svg);
+await using (var input = File.OpenRead(r09Path))
+await using (var html = File.Create(Path.Combine(outputDir, "r09-package-graphics.html")))
+    await new OfdToHtmlConverter().ConvertAsync(input, html);
+Console.WriteLine("[E2E] Installed R09 DrawImage, raster fills, pen and three exports passed.");
+
 // Used and unused name-only resources must survive unavailable/unsupported host
 // fonts. Each used text must obtain a registered physical face with verified
 // coverage, including default/Arial candidates after optional host failures.
