@@ -13,7 +13,8 @@ using Ofdrw.Net.Signatures.Crypto;
 
 namespace Ofdrw.Net.Signatures.Signing;
 
-public sealed class OfdSignatureService
+/// <summary>Signs OFD packages while preserving the existing protected-file policy.</summary>
+public sealed partial class OfdSignatureService
 {
     public async Task SignAsync(
         Stream ofdInput,
@@ -173,6 +174,9 @@ public sealed class OfdSignatureService
                 (byte[])sealData!.Clone();
         }
 
+        var stamps = BuildStampAppearances(entries, ofd, documentBody, options,
+            sealPath, nextId, cancellationToken);
+
         var selection = OfdSignatureFileSelection.Select(
             entries, ofd, signaturesPath, signaturePath, sealPath, options, cancellationToken);
         var protectedEntries = selection.Protected.ToDictionary(
@@ -183,7 +187,8 @@ public sealed class OfdSignatureService
             signedValuePath,
             provider,
             sealPath,
-            options);
+            options,
+            stamps);
         var signatureBytes = SerializeXml(signature);
         var propertyInformation = "/" + signaturePath;
         var signedValue = await provider
@@ -210,7 +215,8 @@ public sealed class OfdSignatureService
         string signedValuePath,
         IOfdSignatureProvider provider,
         string? sealPath,
-        OfdSignatureOptions options)
+        OfdSignatureOptions options,
+        IReadOnlyList<XElement> stamps)
     {
         var ns = XNamespace.Get("http://www.ofdspec.org/2016");
         var references = new XElement(
@@ -263,6 +269,7 @@ public sealed class OfdSignatureService
         }
 
         signedInfo.Add(references);
+        foreach (var stamp in stamps) signedInfo.Add(stamp);
         return new XDocument(
             new XDeclaration("1.0", "utf-8", null),
             new XElement(
@@ -298,6 +305,9 @@ public sealed class OfdSignatureService
             RelativeSignatureId = source.RelativeSignatureId
         };
         foreach (var parameter in source.Parameters) copy.Parameters.Add(parameter);
+        foreach (var stamp in source.StampAppearances)
+            copy.StampAppearances.Add(stamp?.Snapshot()
+                ?? throw new InvalidDataException("Stamp appearance placement cannot be null."));
         return copy;
     }
 

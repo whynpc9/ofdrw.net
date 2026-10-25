@@ -28,6 +28,54 @@ public sealed class SesTests
     [Theory]
     [InlineData(SesVersion.V1)]
     [InlineData(SesVersion.V4)]
+    public async Task RidingAppearanceIsBoundIntoSesSignedXml(SesVersion version)
+    {
+        var identity = SesTestIdentity.Generate();
+        var package = new OfdDocumentPackage();
+        for (var index = 0; index < 2; index++) package.Pages.Add(new OfdPage
+        { Index = index, WidthMillimeters = 100, HeightMillimeters = 80 });
+        using var source = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, source);
+        source.Position = 0;
+        var options = new OfdSignatureOptions();
+        options.StampAppearances.Add(new OfdRidingStampPlacement(OfdStampEdge.Right, 1, 2, 20, 20));
+        using var signed = new MemoryStream();
+        await new OfdSignatureService().SignAsync(source, signed,
+            new SesTestSignatureProvider(identity, version), options);
+        signed.Position = 0;
+        var verifier = new OfdSignatureVerifier(new[] { new SesTestSignedValueVerifier(identity.CertificateDer) });
+        Assert.True((await verifier.VerifyAsync(signed)).FullyValid);
+        signed.Position = 0;
+        using var changed = new MemoryStream();
+        using (var sourceZip = new ZipArchive(signed, ZipArchiveMode.Read, true))
+        using (var targetZip = new ZipArchive(changed, ZipArchiveMode.Create, true))
+        {
+            foreach (var entry in sourceZip.Entries)
+            {
+                using var original = entry.Open();
+                using var bytes = new MemoryStream();
+                await original.CopyToAsync(bytes);
+                var content = bytes.ToArray();
+                if (entry.FullName.EndsWith("/Signature.xml", StringComparison.Ordinal))
+                {
+                    var xml = Encoding.UTF8.GetString(content);
+                    Assert.Contains("Clip=\"0 0 10 20\"", xml);
+                    content = Encoding.UTF8.GetBytes(xml.Replace("Clip=\"0 0 10 20\"",
+                        "Clip=\"10 0 10 20\"", StringComparison.Ordinal));
+                }
+                using var target = targetZip.CreateEntry(entry.FullName).Open();
+                await target.WriteAsync(content);
+            }
+        }
+        changed.Position = 0;
+        var tampered = await verifier.VerifyAsync(changed);
+        Assert.True(tampered.ReferenceIntegrityValid);
+        Assert.False(tampered.FullyValid);
+    }
+
+    [Theory]
+    [InlineData(SesVersion.V1)]
+    [InlineData(SesVersion.V4)]
     public async Task ExplicitRegistrationVerifiesWhileDefaultOnlyVerifiesReferences(SesVersion version)
     {
         var identity = SesTestIdentity.Generate();

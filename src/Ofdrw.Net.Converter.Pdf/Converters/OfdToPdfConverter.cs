@@ -252,8 +252,22 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 var target = new XRect(MillimetersToPoints(appearance.XMillimeters - page.XMillimeters),
                     MillimetersToPoints(appearance.YMillimeters - page.YMillimeters),
                     MillimetersToPoints(appearance.WidthMillimeters), MillimetersToPoints(appearance.HeightMillimeters));
+                var state = graphics.Save();
                 try
                 {
+                    if (appearance.Clip is { } clip)
+                    {
+                        var clipX = appearance.XMillimeters + clip.X - page.XMillimeters;
+                        var clipY = appearance.YMillimeters + clip.Y - page.YMillimeters;
+                        if (!PdfOperandGeometry.Box(clipX, clipY, clip.Width, clip.Height))
+                        {
+                            if (reusePayloads) throw new InvalidDataException("Selected signature stamp Clip is not representable in PDF coordinates.");
+                            continue;
+                        }
+                        graphics.IntersectClip(new XRect(MillimetersToPoints(clipX),
+                            MillimetersToPoints(clipY), MillimetersToPoints(clip.Width),
+                            MillimetersToPoints(clip.Height)));
+                    }
                     if (appearance.OfdPage is not null)
                     {
                         var formWidth = XUnit.FromMillimeter(appearance.OfdPage.WidthMillimeters).Point;
@@ -297,6 +311,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     throw new InvalidDataException("Cannot render selected signature appearance.", exception);
                 }
                 catch { /* Unsupported vendor payloads retain the existing tolerant PDF fallback. */ }
+                finally { graphics.Restore(state); }
             }
         }
         finally
@@ -698,6 +713,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             YMillimeters = source.YMillimeters;
             WidthMillimeters = source.WidthMillimeters;
             HeightMillimeters = source.HeightMillimeters;
+            Clip = source.Clip;
             Data = Array.Empty<byte>();
             OfdPage = package.Pages.OrderBy(page => page.Index).First();
             Fonts = fonts;
@@ -712,6 +728,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             YMillimeters = source.YMillimeters;
             WidthMillimeters = source.WidthMillimeters;
             HeightMillimeters = source.HeightMillimeters;
+            Clip = source.Clip;
             Data = data;
         }
 
@@ -724,6 +741,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         public double WidthMillimeters { get; }
 
         public double HeightMillimeters { get; }
+
+        public OfdSignatureClip? Clip { get; }
 
         public byte[] Data { get; }
 

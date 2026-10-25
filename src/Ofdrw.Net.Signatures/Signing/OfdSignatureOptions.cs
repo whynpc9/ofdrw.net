@@ -21,4 +21,10 @@ public sealed class OfdSignatureOptions
 
     /// <summary>OFD 2.0 signed extension properties, serialized under SignedInfo.</summary>
     public IList<OfdSignatureParameter> Parameters { get; } = new List<OfdSignatureParameter>();
+
+    /// <summary>
+    /// Optional ordinary and riding seal appearances. Each is signed as a StampAnnot;
+    /// the provider must supply a seal payload with a renderable picture.
+    /// </summary>
+    public IList<OfdStampPlacement> StampAppearances { get; } = new List<OfdStampPlacement>();
 }
