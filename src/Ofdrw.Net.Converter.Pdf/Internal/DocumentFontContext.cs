@@ -13,6 +13,7 @@ internal sealed class DocumentFontContext
 {
     private readonly FontParseBudget _parseBudget;
     private readonly CancellationToken _cancellationToken;
+    private readonly OfdNameOnlyFontBindings? _nameOnlyBindings;
     private readonly IReadOnlyList<OfdFontResource> _fonts;
     private readonly IFontResolver _fallbackResolver;
     private readonly Dictionary<string, OpenTypeCmap> _fallbackCoverage = new();
@@ -27,10 +28,12 @@ internal sealed class DocumentFontContext
     internal Dictionary<string, (SixLabors.Fonts.FontFamily Family, SixLabors.Fonts.FontStyle Style)> OutlineFonts { get; } = new();
 
     internal DocumentFontContext(IReadOnlyList<OfdFontResource> fonts, IFontResolver? fallbackResolver = null,
-        FontParseBudget? parseBudget = null, CancellationToken cancellationToken = default)
+        FontParseBudget? parseBudget = null, CancellationToken cancellationToken = default,
+        OfdNameOnlyFontBindings? nameOnlyBindings = null)
     {
         _parseBudget = parseBudget ?? new FontParseBudget(cancellationToken: cancellationToken);
         _cancellationToken = cancellationToken;
+        _nameOnlyBindings = nameOnlyBindings;
         _parseBudget.Spend(0);
         _fonts = fonts;
         PdfFontRegistry.EnsureInstalled();
@@ -53,6 +56,8 @@ internal sealed class DocumentFontContext
                 catch (NotSupportedException exception) { _unsupportedCoverage[font] = exception; }
                 continue;
             }
+
+            if (_nameOnlyBindings is not null) continue;
 
             // Name-only discovery is optional. Unusable host fonts must not make
             // an otherwise renderable document fail before per-element fallback.
@@ -126,11 +131,22 @@ internal sealed class DocumentFontContext
         var hasText = (text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text)).Any(value => !string.IsNullOrEmpty(value));
         if (!hasText) return resource is not null && _families.TryGetValue(resource, out var emptyFamily)
             ? emptyFamily : string.IsNullOrWhiteSpace(text.FontName) ? "Arial" : text.FontName;
+        if (_nameOnlyBindings is not null && resource is null)
+            throw new NotSupportedException($"Selected name-only font '{text.FontName}' has no OFD font resource to bind.");
         if (resource is null && hasText)
         {
             var key = (string.IsNullOrWhiteSpace(text.FontName) ? "Arial" : text.FontName, text.Weight >= 600, text.Italic);
             if (!_unbound.TryGetValue(key, out resource))
                 _unbound.Add(key, resource = new OfdFontResource { FontName = key.Item1, Bold = key.Item2, Italic = key.Item3 });
+        }
+        if (resource is not null && resource.Data.Length == 0 && hasText && _nameOnlyBindings is not null &&
+            !_families.ContainsKey(resource))
+        {
+            OfdNameOnlyFontBindings.ValidateBmpText(text);
+            var bound = _nameOnlyBindings.Resolve(resource, _parseBudget);
+            _families[resource] = PdfFontRegistry.RegisterFontFace(bound.Data);
+            StorePhysical(resource, bound.Data);
+            _coverage[resource] = bound.Coverage;
         }
         if (resource is not null && resource.Data.Length == 0 && hasText &&
             !_families.ContainsKey(resource) && !_unsupportedCoverage.ContainsKey(resource))
@@ -169,7 +185,7 @@ internal sealed class DocumentFontContext
             {
                 EmbeddedFontCoverage.Validate(text, coverage, resource.FontName, _cancellationToken);
             }
-            catch (System.IO.InvalidDataException) when (resource.Data.Length == 0 && !_parseBudget.IsExhausted)
+            catch (System.IO.InvalidDataException) when (resource.Data.Length == 0 && _nameOnlyBindings is null && !_parseBudget.IsExhausted)
             {
                 return ResolveCoveringFallback(text, resource);
             }

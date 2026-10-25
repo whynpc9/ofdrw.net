@@ -28,6 +28,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 {
     private readonly OfdToPdfOptions _options;
     private readonly long _maximumFontParseWork;
+    private readonly OfdNameOnlyFontBindings? _nameOnlyBindings;
 
     public OfdToPdfConverter() : this(new OfdToPdfOptions()) { }
 
@@ -41,6 +42,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         if (maximumCmapParseWork <= 0) throw new ArgumentOutOfRangeException(nameof(maximumCmapParseWork));
         _maximumFontParseWork = maximumCmapParseWork;
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _nameOnlyBindings = options.NameOnlyFontBindings;
         if (options.PackageLoadOptions is null || options.MaxDecodedImagePixels <= 0)
             throw new ArgumentException("OFD load options and a positive image pixel budget are required.", nameof(options));
         PdfFontRegistry.EnsureInstalled();
@@ -88,7 +90,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             }
         }
         var parseBudget = new FontParseBudget(_maximumFontParseWork, cancellationToken);
-        var fonts = new DocumentFontContext(package.Fonts, parseBudget: parseBudget, cancellationToken: cancellationToken);
+        var fonts = new DocumentFontContext(package.Fonts, parseBudget: parseBudget, cancellationToken: cancellationToken,
+            nameOnlyBindings: _nameOnlyBindings);
         var signatureAppearances = await PrepareSignatureAppearancesAsync(
                 package, selectedIds, strictAppearanceBudgets, maximumSignatureAppearances,
                 annotationMaterial, parseBudget, cancellationToken)
@@ -155,7 +158,9 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         ? RemainingAppearanceBudget(usedBytes, usedEntries, usedPages)
                         : null;
                     var nested = await ReadAppearanceOfdPackageAsync(appearance.Data, remaining, annotationMaterial, cancellationToken).ConfigureAwait(false);
-                    cached = (nested, nested is null ? null : new DocumentFontContext(nested.Fonts, parseBudget: parseBudget, cancellationToken: cancellationToken));
+                    cached = (nested, nested is null ? null : new DocumentFontContext(nested.Fonts,
+                        parseBudget: parseBudget, cancellationToken: cancellationToken,
+                        nameOnlyBindings: _nameOnlyBindings));
                     if (strictAppearanceBudgets)
                     {
                         nestedCache.Add(key, cached);
