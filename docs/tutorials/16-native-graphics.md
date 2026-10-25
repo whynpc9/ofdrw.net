@@ -41,7 +41,7 @@ var font = new OfdFont("Noto Sans CJK SC", 4, weight: 700,
 
 路径支持直线、quadratic、cubic 与闭合，OFD 的 cubic 命令是 B，close 是 C。填充默认 NonZero，`new OfdGraphicsPath(OfdFillRule.EvenOdd)` 可画镂空。纯色含 alpha；复杂混合与设备 hairline 未建模。
 
-R09 的图片入口接受现有静态预览 profile 可验证的 PNG 或灰度/RGB baseline JPEG；它会拒绝索引/交错 PNG、未知附加块、带 EXIF/ICC/Adobe 元数据的 JPEG 或无界载荷。目标矩形单位为毫米，可选源矩形单位为原始像素；嵌入 DPI 不改坐标。图片字节在调用时快照，同一内容多次放置由 Writer 复用媒体资源。每次图片有自身的目标裁剪，并与当前裁剪栈相交；源裁切使用非插值采样，避免邻近像素混入边缘。`alpha` 为 0–255。
+R09 的图片入口接受现有静态预览 profile 可验证的 PNG 或灰度/RGB baseline JPEG；它会拒绝索引/交错 PNG、未知附加块、带 EXIF/ICC/Adobe 元数据的 JPEG 或无界载荷。目标矩形单位为毫米，可选源矩形单位为原始像素；嵌入 DPI 不改坐标。图片字节在调用时快照，同一内容多次放置由 Writer 复用媒体资源。每次图片有自身的目标裁剪，并与当前裁剪栈相交；源裁切带非插值提示，并将内部裁剪边界向所选像素中心收进，以处理部分 PDF 阅读器的边缘串色。`alpha` 为 0–255。
 
 ```csharp
 var pixels = File.ReadAllBytes("quadrants.png");
