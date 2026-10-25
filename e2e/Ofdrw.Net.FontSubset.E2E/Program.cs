@@ -57,6 +57,29 @@ foreach (var full in new[] { true, false })
         uniquePayloads = payloads.Length, report.FontEmbedding, report.Diagnostics });
     await Export(ofdPath, name, loaded.Pages.Count);
 }
+// The supplementary glyph is present in the pinned OFL LXGW face. Keep this
+// independent from the broad layout sample so the PDF's CID/ToUnicode and SVG
+// appearance can be inspected against the exact same newly written OFD.
+const string supplementary = "医院姓名示例 A\U00020003B";
+var supplementaryPackage = new OfdDocumentPackage();
+supplementaryPackage.Options.Metadata.CreationDate = DateTimeOffset.UnixEpoch;
+supplementaryPackage.Fonts.Add(new OfdFontResource { Id = "20", FontName = "LXGW WenKai", Data = chinese });
+supplementaryPackage.Pages.Add(new OfdPage { WidthMillimeters = 210, HeightMillimeters = 100,
+    Elements = { new OfdTextElement { FontResourceId = "20", FontName = "LXGW WenKai", Text = supplementary,
+        XMillimeters = 20, YMillimeters = 30, WidthMillimeters = 170, HeightMillimeters = 20,
+        FontSizeMillimeters = 8, FillColor = OfdColor.Black } } });
+var supplementaryOfd = Path.Combine(output, "supplementary.ofd");
+await using (var destination = File.Create(supplementaryOfd))
+    await new OfdPackageWriter().WriteAsync(supplementaryPackage, destination);
+await using (var input = File.OpenRead(supplementaryOfd))
+{
+    var reopened = await new OfdReader().ReadAsync(input);
+    if (!new OfdTextExtractor().Extract(reopened).Contains(supplementary))
+        throw new Exception("Supplementary OFD source text lost.");
+}
+await Export(supplementaryOfd, "supplementary", 1);
+results.Add(new { name = "supplementary", ofdBytes = new FileInfo(supplementaryOfd).Length,
+    ofdSha256 = Hash(supplementaryOfd), originalText = supplementary });
 // Use the deterministic DOCX layout fixture, with only its font family changed
 // to the exact redistributable source above. Never export direct DOCX->PDF.
 var fixture = Path.Combine(root, "e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx");

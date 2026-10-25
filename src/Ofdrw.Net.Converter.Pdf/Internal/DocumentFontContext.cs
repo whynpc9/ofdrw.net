@@ -18,6 +18,7 @@ internal sealed class DocumentFontContext
     private readonly Dictionary<string, OpenTypeCmap> _fallbackCoverage = new();
     private readonly Dictionary<OfdFontResource, OpenTypeCmap> _coverage = new();
     private readonly Dictionary<OfdFontResource, NotSupportedException> _unsupportedCoverage = new();
+    private readonly Dictionary<string, PdfSupplementaryFontBinding> _supplementary = new(StringComparer.Ordinal);
     private readonly Dictionary<OfdFontResource, string> _families = new();
     private readonly Dictionary<OfdFontResource, byte[]> _physicalBytes = new();
     private readonly Dictionary<string, byte[]> _snapshots = new();
@@ -100,18 +101,28 @@ internal sealed class DocumentFontContext
         family is not null && _fallbackCoverage.TryGetValue(family, out var fallback) ? fallback :
         resource is not null && _coverage.TryGetValue(resource, out var value) ? value : null;
 
+    internal IEnumerable<PdfSupplementaryFontBinding> SupplementaryBindings => _supplementary.Values;
+
+    internal string PdfText(string family, string logicalText) =>
+        _supplementary.TryGetValue(family, out var binding) ? binding.MapText(logicalText) : logicalText;
+
+    internal byte[] OutlineFontBytes(string family, byte[] pdfFontBytes) =>
+        _supplementary.TryGetValue(family, out var binding) ? binding.OriginalFont : pdfFontBytes;
+
     internal string Resolve(OfdTextElement text, out OfdFontResource? resource)
     {
         _parseBudget.Spend(0);
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
             throw new NotSupportedException("PDF export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
+        var hasSupplementary = false;
         foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
         {
             PdfTextControlPolicy.Validate(value);
-            if (OpenTypeFace.Scalars(value).Any(scalar => scalar > 0xFFFF))
-                throw new NotSupportedException("PDFsharp cannot preserve supplementary Unicode text; use OFD/SVG or a PDF renderer with full scalar support.");
+            if (OpenTypeFace.Scalars(value).Any(scalar => scalar > 0xFFFF)) hasSupplementary = true;
         }
         resource = OfdFontSelection.Resolve(_fonts, text);
+        if (hasSupplementary && resource?.Data.Length is not > 0)
+            throw new NotSupportedException("Supplementary PDF text requires an explicitly embedded static TrueType font with verified Unicode coverage.");
         var hasText = (text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text)).Any(value => !string.IsNullOrEmpty(value));
         if (!hasText) return resource is not null && _families.TryGetValue(resource, out var emptyFamily)
             ? emptyFamily : string.IsNullOrWhiteSpace(text.FontName) ? "Arial" : text.FontName;
@@ -162,6 +173,16 @@ internal sealed class DocumentFontContext
             {
                 return ResolveCoveringFallback(text, resource);
             }
+        }
+        if (hasSupplementary)
+        {
+            if (resource is null || !_coverage.TryGetValue(resource, out var sourceCoverage) || !_physicalBytes.TryGetValue(resource, out var originalBytes))
+                throw new NotSupportedException("Supplementary PDF text requires a verified embedded Unicode font.");
+            var binding = PdfSupplementaryFontBinding.Create(originalBytes, sourceCoverage, text,
+                resource.Bold || text.Weight >= 600, resource.Italic || text.Italic, _parseBudget, _cancellationToken);
+            _supplementary[binding.Family] = binding;
+            _fallbackCoverage[binding.Family] = sourceCoverage;
+            return binding.Family;
         }
         if (resource is not null && _families.TryGetValue(resource, out var family))
         {

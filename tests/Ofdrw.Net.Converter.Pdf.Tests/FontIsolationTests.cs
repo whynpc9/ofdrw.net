@@ -561,14 +561,86 @@ public sealed class FontIsolationTests
     }
 
     [Fact]
-    public void SupplementaryUnicodeAndExplicitGlyphSourceFailRatherThanCorruptPdfText()
+    public void NameOnlySupplementaryUnicodeAndExplicitGlyphSourceFailRatherThanCorruptPdfText()
     {
         var context = new Ofdrw.Net.Converter.Pdf.Internal.DocumentFontContext([]);
         var exception = Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { Text = "A\U000107A5B" }, out _));
-        Assert.Contains("supplementary Unicode", exception.Message);
+        Assert.Contains("Supplementary PDF text requires an explicitly embedded", exception.Message);
         foreach (var xml in new[] { "<CGTransform><Glyphs>1</Glyphs></CGTransform>", "<CGTransform" })
             Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { Text = "中文", SourceXml = xml }, out _));
         Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement { Text = "A", SourceXml = "<TextObject><CGTransform><Glyphs>1</Glyphs></CGTransform></TextObject>" }, out _));
+    }
+
+    [Fact]
+    public async Task EmbeddedSupplementaryGlyphUsesOriginalOutlineAndExactPdfToUnicode()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var font = File.ReadAllBytes(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/LXGWWenKai-Regular.ttf"));
+        const string original = "A\U00020003B";
+        var source = new OfdDocumentPackage();
+        source.Fonts.Add(new OfdFontResource { Id = "10", FontName = "LXGW WenKai", Data = font });
+        source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { new OfdTextElement { FontResourceId = "10", FontName = "LXGW WenKai",
+                Text = original, XMillimeters = 10, YMillimeters = 15, FontSizeMillimeters = 6 } } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(source, ofd);
+        ofd.Position = 0;
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(original, parsed.GetPage(1).Text);
+        using var pdfsharp = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var maps = pdfsharp.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.GetName("/Subtype") == "/Type0")
+            .Select(item => item.Elements.GetDictionary("/ToUnicode"))
+            .Where(item => item?.Stream is not null)
+            .Select(item => System.Text.Encoding.ASCII.GetString(item!.Stream!.Value)).ToArray();
+        Assert.Contains(maps, map => map.Contains("D840DC03"));
+        var descendants = pdfsharp.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.GetName("/Subtype") == "/CIDFontType2").ToArray();
+        Assert.NotEmpty(descendants);
+    }
+
+    [Fact]
+    public async Task SupplementaryScalarBudgetRejectsRepeatedTextBeforeWritingPdf()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var font = File.ReadAllBytes(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/LXGWWenKai-Regular.ttf"));
+        var source = new OfdDocumentPackage();
+        source.Fonts.Add(new OfdFontResource { Id = "10", FontName = "LXGW WenKai", Data = font });
+        source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { new OfdTextElement { FontResourceId = "10", FontName = "LXGW WenKai",
+                Text = new string('A', 1024) + "\U00020003" } } });
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertPackageAsync(source, pdf, null, default));
+        Assert.Equal(0, pdf.Length);
+    }
+
+    [Fact]
+    public async Task SupplementaryCmapToEmptyGlyphRefusesBeforeWritingPdf()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/LXGWWenKai-Regular.ttf")));
+        var emptyGlyph = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face).Glyph(' ');
+        Assert.True(emptyGlyph > 0);
+        face.Tables["cmap"] = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int, int> { [0x20003] = emptyGlyph });
+        var source = new OfdDocumentPackage();
+        source.Fonts.Add(new OfdFontResource { Id = "10", FontName = "LXGW WenKai", Data = face.Build() });
+        source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { new OfdTextElement { FontResourceId = "10", FontName = "LXGW WenKai",
+                Text = "\U00020003" } } });
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertPackageAsync(source, pdf, null, default));
+        Assert.Equal(0, pdf.Length);
     }
 
     [Fact]
