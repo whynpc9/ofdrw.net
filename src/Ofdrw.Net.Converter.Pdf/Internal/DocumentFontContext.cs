@@ -23,6 +23,7 @@ internal sealed class DocumentFontContext
     private readonly Dictionary<OfdFontResource, string> _families = new();
     private readonly Dictionary<OfdFontResource, byte[]> _physicalBytes = new();
     private readonly Dictionary<string, byte[]> _snapshots = new();
+    private readonly Dictionary<OfdFontResource, string> _nameOnlyFaceIdentities = new();
     private readonly Dictionary<string, byte[]> _selectedNameOnlyFaces = new(StringComparer.Ordinal);
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _styleAliases = new();
     private readonly Dictionary<(string Family, bool Bold, bool Italic), OfdFontResource> _unbound = new();
@@ -111,6 +112,14 @@ internal sealed class DocumentFontContext
 
     internal IReadOnlyDictionary<string, byte[]> SelectedNameOnlyFaces => _selectedNameOnlyFaces;
 
+    internal void MarkNameOnlyFaceDrawn(OfdFontResource? resource)
+    {
+        // Resolve validates every selected face, including text later omitted by
+        // the control policy. Only a PDF DrawString needs a FontFile2 descriptor.
+        if (resource is not null && _nameOnlyFaceIdentities.TryGetValue(resource, out var identity))
+            _selectedNameOnlyFaces[identity] = _physicalBytes[resource];
+    }
+
     internal string PdfText(string family, string logicalText) =>
         _supplementary.TryGetValue(family, out var binding) ? binding.MapText(logicalText) : logicalText;
 
@@ -150,7 +159,7 @@ internal sealed class DocumentFontContext
             _families[resource] = PdfFontRegistry.RegisterFontFace(bound.Data);
             StorePhysical(resource, bound.Data);
             var identity = BinaryIdentity.Hash(bound.Data);
-            _selectedNameOnlyFaces[identity] = _physicalBytes[resource];
+            _nameOnlyFaceIdentities[resource] = identity;
             _coverage[resource] = bound.Coverage;
         }
         if (resource is not null && resource.Data.Length == 0 && hasText &&
