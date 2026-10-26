@@ -28,6 +28,7 @@ public sealed class OfdToSvgConverter
 
     private readonly OfdPackageLoadOptions _loadOptions;
     private readonly long _maximumFontParseWork;
+    private readonly OfdNameOnlyFontBindings? _nameOnlyBindings;
 
     public OfdToSvgConverter() : this(new OfdPackageLoadOptions()) { }
 
@@ -37,10 +38,21 @@ public sealed class OfdToSvgConverter
     /// <param name="loadOptions">OFD loading limits.</param>
     /// <param name="maximumCmapParseWork">Positive cumulative limit for cmap bytes, parsed records and entries inspected by variation coverage queries.</param>
     public OfdToSvgConverter(OfdPackageLoadOptions loadOptions, long maximumCmapParseWork)
+        : this(loadOptions, maximumCmapParseWork, null) { }
+
+    /// <summary>Creates an SVG exporter with strict conversion-local bindings for name-only fonts.</summary>
+    public OfdToSvgConverter(OfdPackageLoadOptions loadOptions, OfdNameOnlyFontBindings nameOnlyBindings)
+        : this(loadOptions, FontParseBudget.DefaultMaximumWork,
+            nameOnlyBindings ?? throw new ArgumentNullException(nameof(nameOnlyBindings))) { }
+
+    /// <summary>Creates an SVG exporter with explicit name-only face bindings and a finite parse budget.</summary>
+    public OfdToSvgConverter(OfdPackageLoadOptions loadOptions, long maximumCmapParseWork,
+        OfdNameOnlyFontBindings? nameOnlyBindings)
     {
         if (maximumCmapParseWork <= 0) throw new ArgumentOutOfRangeException(nameof(maximumCmapParseWork));
         _maximumFontParseWork = maximumCmapParseWork;
         _loadOptions = loadOptions ?? throw new ArgumentNullException(nameof(loadOptions));
+        _nameOnlyBindings = nameOnlyBindings;
     }
 
     public async Task ConvertAsync(
@@ -71,7 +83,8 @@ public sealed class OfdToSvgConverter
         var material = new OfdModelMaterialization(new OfdModelLimits());
         OfdCompositeGraph.Validate(package, material, cancellationToken);
         OfdAnnotationContract.Validate(package, material, cancellationToken);
-        var svg = BuildSvg(package, pages[pageIndex], material, new FontParseBudget(_maximumFontParseWork, cancellationToken), cancellationToken);
+        var svg = BuildSvg(package, pages[pageIndex], material, new FontParseBudget(_maximumFontParseWork, cancellationToken),
+            cancellationToken, nameOnlyBindings: _nameOnlyBindings);
         var bytes = Encoding.UTF8.GetBytes(
             new XDocument(new XDeclaration("1.0", "utf-8", null), svg)
                 .ToString(SaveOptions.DisableFormatting));
@@ -80,7 +93,8 @@ public sealed class OfdToSvgConverter
         await svgOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    internal static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, FontParseBudget parseBudget, CancellationToken cancellationToken, HtmlRenderContext? preview = null)
+    internal static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, FontParseBudget parseBudget,
+        CancellationToken cancellationToken, HtmlRenderContext? preview = null, OfdNameOnlyFontBindings? nameOnlyBindings = null)
     {
         preview?.StartPage(page);
         var svgNs = XNamespace.Get("http://www.w3.org/2000/svg");
@@ -93,11 +107,13 @@ public sealed class OfdToSvgConverter
                 "viewBox",
                 $"0 0 {Invariant(page.WidthMillimeters)} {Invariant(page.HeightMillimeters)}"));
 
-        var families = AddEmbeddedFonts(root, svgNs, package.Fonts, parseBudget, preview);
         var imageIndex = 0;
         var objectIndex = 0;
-        var elements = OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken);
+        var elements = OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken).ToList();
         OfdRenderPreflight.Validate(elements);
+        var families = AddEmbeddedFonts(root, svgNs, package.Fonts,
+            elements.OfType<OfdTextElement>().Where(OfdGraphicXmlContract.IsVisible).ToList(),
+            parseBudget, preview, nameOnlyBindings);
         foreach (var element in elements)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -127,7 +143,8 @@ public sealed class OfdToSvgConverter
             objectIndex++;
             if (element is OfdTextElement text)
             {
-                AddText(target, svgNs, page, OfdTextRenderProjection.Create(text, material, cancellationToken), package.Fonts, families, cancellationToken);
+                AddText(target, svgNs, page, OfdTextRenderProjection.Create(text, material, cancellationToken), package.Fonts,
+                    families, cancellationToken, nameOnlyBindings);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
@@ -180,22 +197,35 @@ public sealed class OfdToSvgConverter
     }
 
     private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> AddEmbeddedFonts(
-        XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, FontParseBudget parseBudget, HtmlRenderContext? preview)
+        XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, IReadOnlyList<OfdTextElement> texts,
+        FontParseBudget parseBudget, HtmlRenderContext? preview, OfdNameOnlyFontBindings? nameOnlyBindings)
     {
         var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
         var css = new StringBuilder();
-        foreach (var font in fonts.Where(font => font.Data.Length > 0))
+        var selected = new HashSet<OfdFontResource>();
+        if (nameOnlyBindings is not null)
+            foreach (var text in texts.Where(text => text.Runs.Count == 0 ? !string.IsNullOrEmpty(text.Text) : text.Runs.Any(run => !string.IsNullOrEmpty(run.Text))))
+                if (OfdFontSelection.Resolve(fonts, text) is { } font && font.Data.Length == 0) selected.Add(font);
+        foreach (var font in fonts.Where(font => font.Data.Length > 0 || selected.Contains(font)))
         {
             parseBudget.Spend(0);
-            var cached = preview?.Font(font, parseBudget);
-            var data = cached?.Data ?? OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
+            var cached = font.Data.Length > 0 ? preview?.Font(font, parseBudget) : null;
+            byte[] data;
+            OpenTypeCmap? coverage = null;
+            if (font.Data.Length == 0)
+            {
+                var bound = nameOnlyBindings!.Resolve(font, parseBudget);
+                data = bound.Data;
+                coverage = bound.Coverage;
+            }
+            else data = cached?.Data ?? OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
             var family = (preview?.FontPrefix ?? "ofd-font-") + (cached?.Hash ?? BinaryIdentity.Hash(data));
             if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known); continue; }
             preview?.BeforeFontEmission(data);
-            OpenTypeCmap? coverage = cached?.Coverage;
             (bool Bold, bool Italic) style;
-            if (cached.HasValue) style = (cached.Value.Bold, cached.Value.Italic);
+            if (font.Data.Length == 0) style = (false, false);
+            else if (cached.HasValue) { style = (cached.Value.Bold, cached.Value.Italic); coverage = cached.Value.Coverage; }
             else
             {
                 var face = new OpenTypeFace(data); style = face.Style;
@@ -254,11 +284,18 @@ public sealed class OfdToSvgConverter
         OfdPage page,
         OfdTextElement text,
         IReadOnlyList<OfdFontResource> fonts,
-        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families, CancellationToken cancellationToken)
+        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families,
+        CancellationToken cancellationToken, OfdNameOnlyFontBindings? nameOnlyBindings)
     {
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
             throw new NotSupportedException("SVG export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
         var resource = OfdFontSelection.Resolve(fonts, text);
+        if (nameOnlyBindings is not null &&
+            (text.Runs.Count == 0 ? !string.IsNullOrEmpty(text.Text) : text.Runs.Any(run => !string.IsNullOrEmpty(run.Text))) &&
+            (resource is null || resource.Data.Length == 0 && !families.ContainsKey(resource)))
+            throw new NotSupportedException($"Selected name-only font '{text.FontName}' has no explicit face binding.");
+        if (nameOnlyBindings is not null && resource?.Data.Length == 0)
+            OfdNameOnlyFontBindings.ValidateBmpText(text);
         var family = text.FontName;
         if (resource is not null && families.TryGetValue(resource, out var embedded))
         {
