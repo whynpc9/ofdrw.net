@@ -138,20 +138,32 @@ public sealed class R05TransferTests
         var source = AnnotationSource();
         var annotation = source.Pages[0].Annotations!.Items[0];
         annotation.Appearance.Elements.Clear();
-        annotation.Appearance.Elements.Add(new OfdTextElement { Text = "批注 R05", FontSizeMillimeters = 4,
+        const string logicalText = "批注 \\ R05";
+        annotation.Appearance.Elements.Add(new OfdTextElement { Text = logicalText, FontSizeMillimeters = 4,
             XMillimeters = 2, YMillimeters = 2, WidthMillimeters = 32, HeightMillimeters = 8 });
         using var input = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(source, input);
         input.Position = 0;
         var imported = await new OfdReader().ReadAsync(input);
+        Assert.Contains("\\005C", Assert.IsType<OfdTextElement>(
+            imported.Pages[0].Annotations!.Items[0].Appearance.Elements[0]).Text);
+        Assert.Equal(logicalText, new OfdTextExtractor().Extract(imported).Trim());
         var merged = OfdDocumentMerger.Merge([imported]);
+        var mixed = OfdDocumentMixer.Mix([new OfdMixSource(imported, 0)]);
         Assert.Empty(merged.Pages[0].AnnotationAppearances);
-        Assert.Null(Assert.IsType<OfdTextElement>(merged.Pages[0].Annotations!.Items[0].Appearance.Elements[0]).SourceXml);
+        var transferred = Assert.IsType<OfdTextElement>(merged.Pages[0].Annotations!.Items[0].Appearance.Elements[0]);
+        Assert.Null(transferred.SourceXml);
+        Assert.Equal(logicalText, transferred.Text);
+        Assert.Equal(logicalText, Assert.IsType<OfdTextElement>(Assert.Single(mixed.Pages[0].Elements)).Text);
         using var output = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(merged, output);
         output.Position = 0;
         var readback = await new OfdReader().ReadAsync(output);
-        Assert.Equal("批注 R05", new OfdTextExtractor().Extract(readback).Trim());
+        Assert.Equal(logicalText, new OfdTextExtractor().Extract(readback).Trim());
+        using var mixedOutput = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(mixed, mixedOutput);
+        mixedOutput.Position = 0;
+        Assert.Equal(logicalText, new OfdTextExtractor().Extract(await new OfdReader().ReadAsync(mixedOutput)).Trim());
     }
 
     private static OfdDocumentPackage AnnotationSource()

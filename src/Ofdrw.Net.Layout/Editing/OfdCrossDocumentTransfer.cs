@@ -170,7 +170,14 @@ internal sealed class OfdCrossDocumentTransfer
                 ValidateFreshAnnotationPrimitive(element);
                 var primitive = CopyElement(element, true);
                 // A new PageAnnot owns typed local definitions, never imported XML.
-                if (primitive is OfdTextElement text) text.SourceXml = null;
+                if (primitive is OfdTextElement text)
+                {
+                    // Reader runs retain OFD TextCode escapes. Resolve them while the
+                    // source envelope still identifies the raw runs, then write the
+                    // decoded text as a fresh typed annotation.
+                    primitive = OfdTextRenderProjection.CreateLogical(text, material, token);
+                    ((OfdTextElement)primitive).SourceXml = null;
+                }
                 if (primitive is OfdImageElement image) image.SourceXml = null;
                 if (primitive is OfdPathElement path) path.SourceXml = null;
                 copy.Appearance.Elements.Add(primitive);
