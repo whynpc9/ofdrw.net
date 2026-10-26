@@ -59,6 +59,25 @@ annotation.Appearance.Elements.Add(Text("局部批注 / local annotation once", 
 var notePath = Shape(3, 14, 110, 12, "M 0 0 L 110 0 L 110 12 L 0 12 C", new(170, 220, 170)); notePath.Clips = Clips("M 0 0 L 75 0 L 75 12 L 0 12 C");
 annotation.Appearance.Elements.Add(notePath); page2.Annotations.Items.Add(annotation);
 page2.Elements.Add(Text("Page 2 / 第二页", 80, 278, 80, "Noto Sans CJK SC", new(80, 80, 80))); package.Pages.Add(page2);
+// The same rich deterministic source exercises cross-document ownership before
+// navigation is added below (navigation migration remains a separate feature).
+await Save(package, "r05-source");
+var r05Merged = OfdDocumentMerger.Merge(new[] { package, package });
+Require(r05Merged.Pages.Count == 4 && r05Merged.CompositeResources!.Items.Count == 4,
+    "R05 Merge lost per-occurrence composite closure");
+Require(r05Merged.Pages.Sum(page => page.Annotations?.Items.Count ?? 0) == 2,
+    "R05 Merge lost typed annotations");
+Require(Count(new OfdTextExtractor().Extract(r05Merged), "共享组合 / shared vector") == 4 &&
+    Count(new OfdTextExtractor().Extract(r05Merged), "局部批注 / local annotation once") == 2,
+    "R05 Merge duplicated or lost visible text");
+await Save(r05Merged, "r05-merged");
+var r05Mixed = OfdDocumentMixer.Mix(new[] { new OfdMixSource(package, 0), new OfdMixSource(package, 1) });
+Require(r05Mixed.Pages.Count == 1 && r05Mixed.CompositeResources!.Items.Count == 2 &&
+    r05Mixed.Pages[0].Annotations is null, "R05 Mix lost paint-order flattening");
+Require(Count(new OfdTextExtractor().Extract(r05Mixed), "共享组合 / shared vector") == 2 &&
+    Count(new OfdTextExtractor().Extract(r05Mixed), "局部批注 / local annotation once") == 1,
+    "R05 Mix duplicated or lost visible text");
+await Save(r05Mixed, "r05-mixed");
 package.Bookmarks = new(); var bookmark = new OfdBookmark { Name = "第二页", Destination = new OfdDestination { Page = page2, Type = OfdDestinationType.Fit } }; package.Bookmarks.Items.Add(bookmark);
 package.Outlines = new(); var outline = new OfdOutline { Title = "图形样例 / graphics", Expanded = true, Actions = new() };
 outline.Actions.Items.Add(new OfdGoToAction { Destination = new OfdDestination { Page = page1, Type = OfdDestinationType.Fit } });
@@ -82,6 +101,7 @@ var extracted = new OfdTextExtractor().Extract(readback); Require(Count(extracte
 Require(Count(extracted, "局部批注 / local annotation once") == 1, "Annotation projection painted twice");
 File.WriteAllText(Path.Combine(output, "extracted.txt"), extracted);
 foreach (var stem in new[] { "before", "after" }) await Export(stem);
+await Export("r05-source"); await Export("r05-merged", 4); await Export("r05-mixed", 1);
 if (args.Length > 3) { File.Copy(args[3], Path.Combine(output, "original-v1.ofd"), true); await Export("original-v1"); }
 var files = Directory.GetFiles(output).Where(p => Path.GetExtension(p) is ".ofd" or ".pdf" or ".svg").Select(p => new { Name = Path.GetFileName(p), Bytes = new FileInfo(p).Length, Sha256 = Hash(File.ReadAllBytes(p)) });
 File.WriteAllText(Path.Combine(output, "results.json"), JsonSerializer.Serialize(new { Runtime = Environment.Version.ToString(), Source = typeof(OfdPage).Assembly.GetCustomAttributes(false).OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion,
@@ -89,10 +109,10 @@ File.WriteAllText(Path.Combine(output, "results.json"), JsonSerializer.Serialize
     Fonts = readback.Fonts.Select(f => new { f.FontName, Bytes = f.Data.Length, Sha256 = Hash(f.Data) }), Files = files }, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine(File.ReadAllText(Path.Combine(output, "results.json")));
 async Task Save(OfdDocumentPackage value, string stem) { using var stream = File.Create(Path.Combine(output, stem + ".ofd")); await new OfdPackageWriter().WriteAsync(value, stream); }
-async Task Export(string stem)
+async Task Export(string stem, int pageCount = 2)
 {
     using (var input = File.OpenRead(Path.Combine(output, stem + ".ofd"))) using (var pdf = File.Create(Path.Combine(output, stem + ".pdf"))) await new OfdToPdfConverter().ConvertAsync(input, pdf);
-    for (var page = 0; page < 2; page++)
+    for (var page = 0; page < pageCount; page++)
         using (var input = File.OpenRead(Path.Combine(output, stem + ".ofd"))) using (var svg = File.Create(Path.Combine(output, stem + $"-{page + 1}.svg")))
             await new OfdToSvgConverter().ConvertAsync(input, svg, page);
 }

@@ -58,12 +58,13 @@ public static class OfdDocumentMerger
     internal static OfdDocumentPackage MergeForSplit(OfdDocumentPackage source, OfdModelMaterialization material, CancellationToken token)
         => MergeCore(new[] { source }, null, token, material, preserveAttachmentIdsForSplit: true).Package;
 
-    internal static OfdDocumentPackage MergeForMix(IEnumerable<OfdDocumentPackage> sources, OfdDocumentMergeOptions options, OfdModelMaterialization material, CancellationToken token)
-        => MergeCore(sources, options, token, material).Package;
+    internal static OfdDocumentPackage MergeForMix(IReadOnlyList<OfdMixSource> sources, OfdDocumentMergeOptions options, OfdModelMaterialization material, CancellationToken token)
+        => MergeCore(sources.Select(source => source.Package), options, token, material,
+            selectedPages: sources.Select(source => source.Package.Pages[source.PageIndex]).ToArray()).Package;
 
     private static OfdDocumentMergeResult MergeCore(IEnumerable<OfdDocumentPackage> sources,
         OfdDocumentMergeOptions? options, CancellationToken cancellationToken, OfdModelMaterialization? material = null,
-        bool preserveAttachmentIdsForSplit = false)
+        bool preserveAttachmentIdsForSplit = false, IReadOnlyList<OfdPage>? selectedPages = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (sources is null)
@@ -86,10 +87,9 @@ public static class OfdDocumentMerger
                 cancellationToken.ThrowIfCancellationRequested(); material.Structure.Node(1); material.Structure.Reference();
                 if (source is null) throw new ArgumentException("Source documents cannot contain null.", nameof(sources));
                 material.InspectStorage(source, cancellationToken); material.GuardPreservedXml(source, cancellationToken);
-                if (source.CompositeResources is not null || OfdCompositeGraph.Definitions(source).Any(e => e.Clips is not null))
-                    throw new NotSupportedException("Merge cannot remap typed composites or clips.");
                 OfdAnnotationContract.Validate(source, material, cancellationToken);
-                if (OfdAnnotationContract.HasTyped(source)) throw new NotSupportedException("Merger cannot remap typed annotation ownership.");
+                OfdCompositeGraph.Validate(source, material, cancellationToken, rejectRepeatedOwners: true);
+                source.ValidateCompositeOwnership(material, cancellationToken);
                 if (OfdNavigationXml.HasTypedNavigation(source, material, cancellationToken)) throw new NotSupportedException("Merge cannot remap navigation source ownership.");
                 sourceList.Add(source);
             }
@@ -100,6 +100,8 @@ public static class OfdDocumentMerger
         }
 
         if (sourceList.Any(source => source is null)) throw new ArgumentException("Source documents cannot contain null.", nameof(sources));
+        if (selectedPages is not null && selectedPages.Count != sourceList.Count)
+            throw new ArgumentException("A selected page is required for each source occurrence.", nameof(selectedPages));
         var diagnostics = new List<string>();
         var knownFonts = new Dictionary<string, OfdFontResource>(StringComparer.Ordinal);
         var first = sourceList[0];
@@ -119,8 +121,9 @@ public static class OfdDocumentMerger
             destination.PreservedEntries.Add(path, bytes.ToArray());
         }
 
-        foreach (var source in sourceList)
+        for (var sourceIndex = 0; sourceIndex < sourceList.Count; sourceIndex++)
         {
+            var source = sourceList[sourceIndex];
             cancellationToken.ThrowIfCancellationRequested();
             var fonts = CopyFonts(source, destination, knownFonts, cancellationToken, material);
             if (options.IncludeAttachments)
@@ -128,7 +131,12 @@ public static class OfdDocumentMerger
                 CopyAttachments(source, destination, cancellationToken, material, preserveIds: preserveAttachmentIdsForSplit);
             }
 
-            foreach (var sourcePage in source.Pages.OrderBy(page => page.Index))
+            IEnumerable<OfdPage> pageSequence = selectedPages is null
+                ? source.Pages.OrderBy(page => page.Index) : new[] { selectedPages[sourceIndex] };
+            var pages = pageSequence.ToArray();
+            var transfer = new OfdCrossDocumentTransfer(source, destination, fonts, pages, options.IncludeTemplates, material, cancellationToken);
+            transfer.CopyResources();
+            foreach (var sourcePage in pages)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var page = new OfdPage
@@ -142,46 +150,26 @@ public static class OfdDocumentMerger
 
                 string? lastLayer = null;
                 var layerSequence = 0;
-                foreach (var element in EnumerateElements(sourcePage, options.IncludeTemplates))
+                foreach (var element in EnumerateElements(sourcePage, options.IncludeTemplates, sourcePage.Annotations is null))
                 {
                     try
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        ValidateStandaloneElement(element, options.RequireKnownAttributes);
-                        var clone = OfdModelCloner.CloneElement(element, destination.Options.Namespace, material: material, cancellationToken: cancellationToken);
-                        clone.ObjectId = null;
-                        // Standalone validation proved the owned primitive root;
-                        // its old document-unit ID is explicitly reconstructed.
-                        var sourceXml = clone switch { OfdTextElement sourceText => sourceText.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, _ => null };
-                        if (sourceXml is not null)
-                        {
-                            var root = OfdXmlEnvelope.Parse(sourceXml); root.SetAttributeValue("ID", null);
-                            var rebuilt = OfdXmlEnvelope.Capture(root, material, cancellationToken);
-                            if (clone is OfdTextElement t) t.SourceXml = rebuilt;
-                            if (clone is OfdImageElement image) image.SourceXml = rebuilt;
-                            if (clone is OfdPathElement path) path.SourceXml = rebuilt;
-                        }
+                        var clone = transfer.CopyElement(element, options.RequireKnownAttributes);
                         var layerKey = element.LayerId + "\u001f" + element.LayerType;
                         if (layerKey != lastLayer) layerSequence++;
                         lastLayer = layerKey;
                         clone.LayerId = $"merged-layer-{layerSequence}";
-                        if (clone is OfdTextElement text)
-                        {
-                            var originalFont = OfdFontSelection.Resolve(source.Fonts, text);
-                            if (originalFont is not null)
-                            {
-                                text.FontResourceId = fonts[originalFont].Id;
-                                text.FontName = fonts[originalFont].FontName;
-                            }
-                            else text.FontResourceId = null;
-                        }
                         page.Elements.Add(clone);
                     }
-                    catch (NotSupportedException exception) when (options.SkipUnsupportedRawElements)
+                    catch (NotSupportedException exception) when (options.SkipUnsupportedRawElements &&
+                        element is not OfdCompositeElement && element.Clips is null)
                     {
                         diagnostics.Add($"Page {sourcePage.Index + 1}, object {element.ObjectId}: {exception.Message}");
                     }
                 }
+
+                transfer.CopyAnnotations(sourcePage, page);
 
                 destination.Pages.Add(page);
             }
@@ -190,7 +178,7 @@ public static class OfdDocumentMerger
         return new OfdDocumentMergeResult(destination, diagnostics.AsReadOnly());
     }
 
-    private static IEnumerable<OfdElement> EnumerateElements(OfdPage page, bool includeTemplates)
+    private static IEnumerable<OfdElement> EnumerateElements(OfdPage page, bool includeTemplates, bool includeLegacyAnnotations)
     {
         if (includeTemplates)
         {
@@ -224,10 +212,10 @@ public static class OfdDocumentMerger
                 }
             }
         }
-        foreach (var element in page.AnnotationAppearances) yield return element;
+        if (includeLegacyAnnotations) foreach (var element in page.AnnotationAppearances) yield return element;
     }
 
-    private static void ValidateStandaloneElement(OfdElement element, bool requireKnownAttributes)
+    internal static void ValidateStandaloneElement(OfdElement element, bool requireKnownAttributes)
     {
         if (element is OfdRawElement)
             throw new NotSupportedException("Unsupported raw page objects cannot be safely remapped during merge.");
