@@ -55,27 +55,29 @@ for (var i = 0; i < 2; i++)
 }
 var annotation = new OfdAnnotation { Type = OfdAnnotationType.Stamp, Creator = "OFL typed fixture", LastModifiedDate = new DateTime(2026, 10, 15), Appearance = new()
     { XMillimeters = 25, YMillimeters = 215, WidthMillimeters = 140, HeightMillimeters = 35, Transform = new double[] { 1, .08, 0, 1, 0, 0 } } };
-annotation.Appearance.Elements.Add(Text("局部批注 / local annotation once", 3, 2, 125, "Noto Sans CJK SC", new(30, 110, 60), true));
+annotation.Appearance.Elements.Add(Text("局部批注 \\ local annotation once", 3, 2, 125, "Noto Sans CJK SC", new(30, 110, 60), true));
 var notePath = Shape(3, 14, 110, 12, "M 0 0 L 110 0 L 110 12 L 0 12 C", new(170, 220, 170)); notePath.Clips = Clips("M 0 0 L 75 0 L 75 12 L 0 12 C");
 annotation.Appearance.Elements.Add(notePath); page2.Annotations.Items.Add(annotation);
 page2.Elements.Add(Text("Page 2 / 第二页", 80, 278, 80, "Noto Sans CJK SC", new(80, 80, 80))); package.Pages.Add(page2);
 // The same rich deterministic source exercises cross-document ownership before
 // navigation is added below (navigation migration remains a separate feature).
 await Save(package, "r05-source");
-var r05Merged = OfdDocumentMerger.Merge(new[] { package, package });
+using var r05SourceInput = File.OpenRead(Path.Combine(output, "r05-source.ofd"));
+var importedR05 = await new OfdReader().ReadAsync(r05SourceInput);
+var r05Merged = OfdDocumentMerger.Merge(new[] { importedR05, importedR05 });
 Require(r05Merged.Pages.Count == 4 && r05Merged.CompositeResources!.Items.Count == 4,
     "R05 Merge lost per-occurrence composite closure");
 Require(r05Merged.Pages.Sum(page => page.Annotations?.Items.Count ?? 0) == 2,
     "R05 Merge lost typed annotations");
 Require(Count(new OfdTextExtractor().Extract(r05Merged), "共享组合 / shared vector") == 4 &&
-    Count(new OfdTextExtractor().Extract(r05Merged), "局部批注 / local annotation once") == 2,
+    Count(new OfdTextExtractor().Extract(r05Merged), "局部批注 \\ local annotation once") == 2,
     "R05 Merge duplicated or lost visible text");
 await Save(r05Merged, "r05-merged");
-var r05Mixed = OfdDocumentMixer.Mix(new[] { new OfdMixSource(package, 0), new OfdMixSource(package, 1) });
+var r05Mixed = OfdDocumentMixer.Mix(new[] { new OfdMixSource(importedR05, 0), new OfdMixSource(importedR05, 1) });
 Require(r05Mixed.Pages.Count == 1 && r05Mixed.CompositeResources!.Items.Count == 2 &&
     r05Mixed.Pages[0].Annotations is null, "R05 Mix lost paint-order flattening");
 Require(Count(new OfdTextExtractor().Extract(r05Mixed), "共享组合 / shared vector") == 2 &&
-    Count(new OfdTextExtractor().Extract(r05Mixed), "局部批注 / local annotation once") == 1,
+    Count(new OfdTextExtractor().Extract(r05Mixed), "局部批注 \\ local annotation once") == 1,
     "R05 Mix duplicated or lost visible text");
 await Save(r05Mixed, "r05-mixed");
 package.Bookmarks = new(); var bookmark = new OfdBookmark { Name = "第二页", Destination = new OfdDestination { Page = page2, Type = OfdDestinationType.Fit } }; package.Bookmarks.Items.Add(bookmark);
@@ -98,7 +100,7 @@ Require(original.Pages[0].Elements.OfType<OfdCompositeElement>().First().XMillim
 Require(readback.Fonts.Select(f => Hash(f.Data)).Order().SequenceEqual(original.Fonts.Select(f => Hash(f.Data)).Order()), "Font payload changed");
 Require(readback.Pages[1].Elements.OfType<OfdImageElement>().Single().Data.SequenceEqual(imageData), "Image payload changed");
 var extracted = new OfdTextExtractor().Extract(readback); Require(Count(extracted, "共享组合 / shared vector") == 2, "Definition plus occurrence text duplication");
-Require(Count(extracted, "局部批注 / local annotation once") == 1, "Annotation projection painted twice");
+Require(Count(extracted, "局部批注 \\ local annotation once") == 1, "Annotation projection painted twice");
 File.WriteAllText(Path.Combine(output, "extracted.txt"), extracted);
 foreach (var stem in new[] { "before", "after" }) await Export(stem);
 await Export("r05-source"); await Export("r05-merged", 4); await Export("r05-mixed", 1);
