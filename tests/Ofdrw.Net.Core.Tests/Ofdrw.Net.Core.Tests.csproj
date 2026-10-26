@@ -14,6 +14,12 @@
     <ProjectReference Include="../Ofdrw.Net.ProcessFixture/Ofdrw.Net.ProcessFixture.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="../../e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf"
+          Link="testdata/NotoSans-Regular.ttf" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/style-collection.ttc"
+          Link="testdata/style-collection.ttc" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 </Project>
