@@ -12,6 +12,16 @@ CI keeps the existing test filters, operating-system matrix, package-consumer is
 - Linux caches downloaded apt packages, but still refreshes repository metadata and installs dependencies normally. Windows caches micromamba package downloads, not a relocated installation prefix. These caches reduce downloads; they do not eliminate all solver, repository, or network latency.
 - New PR commits cancel older runs of the same workflow and PR. Main and release runs are not cancelled by this policy.
 
+## One candidate, parallel consumers
+
+`build-test` stamps its API-documentation rebuild with `0.1.0-preview.8`, tests it, and invokes `run-converter-package-e2e.sh 0.1.0-preview.8 --pack-only --no-build`. Pack-only requires an empty feed. The twelve default packages are validated and uploaded once, together with their SHA-256 manifest.
+
+Linux and native Windows package jobs depend directly on `build-test` and download that artifact in parallel. Linux restores source metadata for license validation but does not rebuild the full source solution or repack the candidate. Each consumer verifies the existing manifest before and after use and retains a fresh dependency cache with package source mapping. Optional Skia/vector gates still consume the same defaults and separately build their optional adapters. The source-based document and graphics probes retain their own required builds.
+
+The platform matrix runs independently. `CI complete` succeeds only when every source, platform, Linux/Windows consumer, and password-crypto job succeeds; failures, cancellation, and skipped dependencies fail this aggregate gate. The separate SES interoperability workflow remains required for task acceptance.
+
+The shell script's default build-and-consume behavior remains available for standalone and SES runs. `--consume-only` supports existing release feeds, while `--pack-only --no-build` requires a caller-provided Release build stamped with the requested version. The package validator checks package metadata, dependency versions, payload requirements, and manifest hashes.
+
 ## Evidence retention
 
 Ordinary PR artifacts retain 14 days, main CI artifacts 30 days. The release workflow keeps its existing retention and candidate-bound Preview acceptance requirement. Before ordinary artifacts expire, promote any evidence required for long-term acceptance according to `docs/repository-storage.md`.

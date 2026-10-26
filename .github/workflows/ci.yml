@@ -7,7 +7,7 @@ on:
     branches: ["main", "master", "codex/**"]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Fetch fixtures explicitly; historical evidence is optional.
@@ -75,7 +75,7 @@ jobs:
           python3 scripts/verify-public-table-evidence.py
 
       - name: Build and reject new undocumented public API
-        run: python3 scripts/check-public-api-docs.py
+        run: python3 scripts/check-public-api-docs.py --package-version 0.1.0-preview.8
 
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity minimal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
@@ -94,6 +94,17 @@ jobs:
 
       - name: Run mandatory original-font geometry and replacement tests without skips
         run: python3 scripts/run-trusted-font-tests.py --no-build --results-directory artifacts/trusted-font-tests
+
+      - name: Pack candidate from the tested Release build
+        run: ./scripts/run-converter-package-e2e.sh 0.1.0-preview.8 --pack-only --no-build
+
+      - name: Upload exact candidate packages
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: ${{ github.event_name == 'pull_request' && 14 || 30 }}
+          name: candidate-packages
+          path: artifacts/package-e2e/0.1.0-preview.8/packages
+          if-no-files-found: error
 
       - name: Upload test results
         if: always()
@@ -197,7 +208,7 @@ jobs:
       NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
       DOTNET_CLI_TELEMETRY_OPTOUT: "1"
-    needs: [build-test, builtin-docx]
+    needs: build-test
 
     steps:
       - name: Checkout
@@ -226,16 +237,18 @@ jobs:
       - name: Install deterministic CJK font
         uses: ./.github/actions/ci-font
 
-      - name: Run package E2E
-        run: ./scripts/run-converter-package-e2e.sh
-
-      - name: Upload exact candidate packages
-        uses: actions/upload-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          retention-days: ${{ github.event_name == 'pull_request' && 14 || 30 }}
           name: candidate-packages
-          path: artifacts/package-e2e/0.1.0-preview.8/packages
-          if-no-files-found: error
+          path: artifacts/candidate-packages
+
+      # Restore license metadata and third-party dependencies, without rebuilding
+      # the source solution or repacking the candidate on the consumer runner.
+      - name: Restore package validation metadata
+        run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Consume the exact candidate packages on Linux
+        run: ./scripts/run-converter-package-e2e.sh 0.1.0-preview.8 --consume-only --packages-dir artifacts/candidate-packages
 
       - name: Run document tool API and CLI matrix
         run: |
@@ -250,10 +263,10 @@ jobs:
           ./scripts/run-graphics-e2e.sh artifacts/graphics/current
 
       - name: Consume optional Skia event adapter from exact local packages
-        run: ./scripts/run-skia-package-e2e.sh 0.1.0-preview.8 artifacts/package-e2e/0.1.0-preview.8/packages artifacts/skia/package-e2e
+        run: ./scripts/run-skia-package-e2e.sh 0.1.0-preview.8 artifacts/candidate-packages artifacts/skia/package-e2e
 
       - name: Consume optional PDF vector converter from exact local packages
-        run: ./scripts/run-pdf-vector-package-e2e.sh 0.1.0-preview.8 artifacts/package-e2e/0.1.0-preview.8/packages artifacts/pdf-vectors/package-e2e
+        run: ./scripts/run-pdf-vector-package-e2e.sh 0.1.0-preview.8 artifacts/candidate-packages artifacts/pdf-vectors/package-e2e
 
       - name: Upload PDF vector same-source and fallback comparisons
         if: always()
@@ -294,7 +307,7 @@ jobs:
   windows-package-e2e:
     name: Windows package and visual regression
     runs-on: windows-latest
-    needs: package-e2e
+    needs: build-test
     env:
       DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
       NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
@@ -400,3 +413,22 @@ jobs:
           retention-days: ${{ github.event_name == 'pull_request' && 14 || 30 }}
           name: standard-crypto-package-evidence
           path: artifacts/standard-crypto/package-e2e/package-manifest.json
+
+  ci-complete:
+    name: CI complete
+    if: always()
+    needs: [build-test, builtin-docx, package-e2e, windows-package-e2e, password-crypto]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every CI branch to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          results = json.loads(os.environ['RESULTS'])
+          failed = {name: job['result'] for name, job in results.items() if job['result'] != 'success'}
+          if failed:
+              raise SystemExit(f'Incomplete CI jobs: {failed}')
+          print('All source, platform, package and crypto gates passed.')
+          PY
