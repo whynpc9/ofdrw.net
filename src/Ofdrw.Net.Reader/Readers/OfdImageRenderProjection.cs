@@ -31,7 +31,8 @@ public static class OfdImageRenderProjection
         // Preserve the established admission and exception contracts of ordinary
         // image exports. The stricter XML/resource preflight belongs to this
         // restricted JBIG2 and ImageMask projection only.
-        if (image.MaskResourceId is null && image.MediaType != "image/jbig2")
+        if (image.MaskResourceId is null && image.MediaType != "image/jbig2" &&
+            !RestrictedJbig2Admission.HasSignature(image.Data))
             return (image.Data, image.MediaType);
         if (source is not null && (!OfdGraphicXmlContract.HasKnownChildren(source) ||
                 OfdGraphicXmlContract.HasUnsupportedReferences(source, allowImageMask: sourceMask is not null) ||
