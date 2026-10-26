@@ -33,18 +33,19 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+      - uses: ./.github/actions/nuget-cache
 
       - name: Install document conversion dependencies
-        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer poppler-utils imagemagick librsvg2-bin
+        uses: ./.github/actions/linux-tools
+        with:
+          packages: libreoffice-writer poppler-utils imagemagick librsvg2-bin zstd
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install deterministic CJK font
-        run: |
-          python -m pip install fonttools==4.59.2
-          python scripts/install-ci-fonts.py
+        uses: ./.github/actions/ci-font
 
       - name: Resolve version from tag
         shell: bash
@@ -64,14 +65,11 @@ jobs:
       - name: Verify release license and resolved dependency inventory
         run: python3 scripts/verify-package-artifacts.py --notices-only
 
-      - name: Run mandatory original-font geometry and replacement tests without skips
-        run: python3 scripts/run-trusted-font-tests.py --results-directory artifacts/release-trusted-font-tests
-
-      - name: Build
-        run: dotnet build Ofdrw.Net.sln -c Release --no-restore -p:Version=${{ env.PACKAGE_VERSION }} -p:PackageVersion=${{ env.PACKAGE_VERSION }} --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
-
-      - name: Reject new undocumented public API
+      - name: Build and reject new undocumented public API
         run: python3 scripts/check-public-api-docs.py --package-version "${{ env.PACKAGE_VERSION }}"
+
+      - name: Run mandatory original-font geometry and replacement tests without skips
+        run: python3 scripts/run-trusted-font-tests.py --no-build --results-directory artifacts/release-trusted-font-tests
 
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity minimal --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
