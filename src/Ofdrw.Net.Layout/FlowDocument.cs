@@ -291,7 +291,10 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
     }
 
     private void RecordPlacement(FlowBlock block, FlowBoundary boundary, Action<OfdGraphics>? draw = null)
-    { _placements.Add((_page!, _page!.Elements.Count, new FlowElementPlacement(block, boundary), draw)); }
+    {
+        if (draw is null && _onElement is null) return;
+        _placements.Add((_page!, _page!.Elements.Count, new FlowElementPlacement(block, boundary), draw));
+    }
 
     private void CompleteCallbacks()
     {
@@ -343,9 +346,10 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
             _options.MarginLeftMillimeters,
             _options.PageWidthMillimeters - _options.MarginLeftMillimeters - _options.MarginRightMillimeters,
             holder.HeightMillimeters));
-        RecordPlacement(holder, new FlowBoundary(_page!.Index, _options.MarginLeftMillimeters, _y,
-            _options.PageWidthMillimeters - _options.MarginLeftMillimeters - _options.MarginRightMillimeters,
-            holder.HeightMillimeters));
+        if (_onElement is not null)
+            RecordPlacement(holder, new FlowBoundary(_page!.Index, _options.MarginLeftMillimeters, _y,
+                _options.PageWidthMillimeters - _options.MarginLeftMillimeters - _options.MarginRightMillimeters,
+                holder.HeightMillimeters));
         _y += holder.HeightMillimeters;
         _hasBodyContent = true;
     }
@@ -399,12 +403,12 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
                 firstLine = false;
             }
             else Place(line.Height);
-            var lineX = FlowParagraphLayout.Align(
-                _options.MarginLeftMillimeters + paragraph.LeftIndentMillimeters + line.Indent,
-                width - line.Indent, line.AlignmentWidth, line.Alignment);
             DrawLine(line, _options.MarginLeftMillimeters + paragraph.LeftIndentMillimeters, width);
-            RecordPlacement(paragraph, new FlowBoundary(_page!.Index, lineX, _y,
-                line.AlignmentWidth, line.Height));
+            if (_onElement is not null)
+                RecordPlacement(paragraph, new FlowBoundary(_page!.Index,
+                    FlowParagraphLayout.Align(_options.MarginLeftMillimeters + paragraph.LeftIndentMillimeters + line.Indent,
+                        width - line.Indent, line.AlignmentWidth, line.Alignment),
+                    _y, line.AlignmentWidth, line.Height));
             _y += line.Height;
             _hasBodyContent = true;
         }

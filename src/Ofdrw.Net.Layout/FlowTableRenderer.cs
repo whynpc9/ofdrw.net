@@ -95,7 +95,8 @@ internal sealed partial class FlowDocumentRenderer
                 x += cell.Width;
             }
             DrawGridRow(table, measured, left, rowTop, tableWidth, height, rowIndex == 0 || Math.Abs(rowTop - ContentTop) < 0.000001d);
-            RecordPlacement(table, new FlowBoundary(_page!.Index, left, rowTop, tableWidth, height));
+            if (_onElement is not null)
+                RecordPlacement(table, new FlowBoundary(_page!.Index, left, rowTop, tableWidth, height));
             _y += height;
             _hasBodyContent = true;
         }
