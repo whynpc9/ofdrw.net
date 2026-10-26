@@ -132,6 +132,7 @@ public sealed class CffSvgProfileTests
         var face = new OpenTypeFace(Fixture());
         var glyphCount = OpenTypeFace.U16(face.Table("maxp", 6), 4);
         var ofd = await Source(WithUvsGid(glyphCount), "A\uFE0F");
+        SaveArtifact("cff-uvs-out-of-range.ofd", ofd);
         using var svg = new MemoryStream();
         var refusal = await Assert.ThrowsAsync<InvalidDataException>(() =>
             new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg));
@@ -171,6 +172,7 @@ public sealed class CffSvgProfileTests
         var face = new OpenTypeFace(Fixture());
         var count = OpenTypeFace.U16(face.Table("maxp", 6), 4);
         var ofd = await EscapedSource(WithEscapedCmap(count));
+        SaveArtifact("cff-decoded-out-of-range.ofd", ofd);
         using var svg = new MemoryStream();
         var refusal = await Assert.ThrowsAsync<InvalidDataException>(() =>
             new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg));
@@ -248,6 +250,14 @@ public sealed class CffSvgProfileTests
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
         return File.ReadAllBytes(Path.Combine(directory!.FullName,
             "tests/Ofdrw.Net.Graphics.SkiaSharp.Tests/testdata/cff/SourceCodePro-Regular.otf"));
+    }
+
+    private static void SaveArtifact(string name, byte[] bytes)
+    {
+        var directory = Environment.GetEnvironmentVariable("OFDRW_R08_CFF_SVG_ARTIFACT_DIR");
+        if (string.IsNullOrWhiteSpace(directory)) return;
+        Directory.CreateDirectory(directory);
+        File.WriteAllBytes(Path.Combine(directory, name), bytes);
     }
 
     private static async Task<byte[]> Source(byte[] font, string text = Text)
