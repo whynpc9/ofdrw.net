@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Xml;
 using System.Xml.Linq;
+using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Layout.Graphics;
@@ -30,11 +31,13 @@ public sealed class OfdGraphics
         GraphicsValidation.Positive(page.WidthMillimeters); GraphicsValidation.Positive(page.HeightMillimeters);
         options ??= new OfdGraphicsOptions();
         if (options.MaxPageElements <= 0 || options.MaxPathCommands <= 0 || options.MaxTextCharacters <= 0 ||
-            options.MaxGeometryCharacters <= 0 || options.MaxSavedStates <= 0 || options.MaxClipRegions <= 0)
+            options.MaxGeometryCharacters <= 0 || options.MaxSavedStates <= 0 || options.MaxClipRegions <= 0 ||
+            options.MaxEncodedImageBytes <= 0 || options.MaxImagePixels <= 0)
             throw new ArgumentException("Graphics limits must be positive.", nameof(options));
         _limits = new OfdGraphicsOptions { MaxPageElements = options.MaxPageElements, MaxPathCommands = options.MaxPathCommands,
             MaxTextCharacters = options.MaxTextCharacters, MaxGeometryCharacters = options.MaxGeometryCharacters,
-            MaxSavedStates = options.MaxSavedStates, MaxClipRegions = options.MaxClipRegions };
+            MaxSavedStates = options.MaxSavedStates, MaxClipRegions = options.MaxClipRegions,
+            MaxEncodedImageBytes = options.MaxEncodedImageBytes, MaxImagePixels = options.MaxImagePixels };
     }
     /// <summary>Current immutable user-to-page matrix.</summary>
     public OfdMatrix Transform { get; private set; } = OfdMatrix.Identity;
@@ -91,7 +94,130 @@ public sealed class OfdGraphics
     }
     /// <summary>Clears current clips, without changing any saved state.</summary>
     public void ResetClip() => _clips = new();
-    /// <summary>Draws a line with a solid pen.</summary>
+    /// <summary>Draws an entire static-profile PNG or gray/RGB baseline JPEG in a positive user-space millimeter rectangle.</summary>
+    public void DrawImage(byte[] encodedImage, double x, double y, double width, double height,
+        int alpha = 255, CancellationToken cancellationToken = default)
+        => DrawImageCore(encodedImage, x, y, width, height, null, alpha, cancellationToken);
+    /// <summary>Draws a source pixel rectangle of a static-profile PNG or gray/RGB baseline JPEG into a positive user-space millimeter rectangle. Source axes ignore EXIF orientation and DPI.</summary>
+    public void DrawImage(byte[] encodedImage, double x, double y, double width, double height,
+        double sourceX, double sourceY, double sourceWidth, double sourceHeight,
+        int alpha = 255, CancellationToken cancellationToken = default)
+        => DrawImageCore(encodedImage, x, y, width, height,
+            (sourceX, sourceY, sourceWidth, sourceHeight), alpha, cancellationToken);
+    private void DrawImageCore(byte[] encodedImage, double x, double y, double width, double height,
+        (double X, double Y, double Width, double Height)? source, int alpha, CancellationToken token,
+        (string MediaType, int Width, int Height)? validated = null)
+    {
+        CheckPage(token);
+        if (encodedImage is null) throw new ArgumentNullException(nameof(encodedImage));
+        GraphicsValidation.Finite(x, y);
+        GraphicsValidation.Positive(width); GraphicsValidation.Positive(height);
+        if (alpha < 0 || alpha > 255) throw new ArgumentOutOfRangeException(nameof(alpha));
+        if (encodedImage.Length == 0 || encodedImage.Length > _limits.MaxEncodedImageBytes)
+            throw new ArgumentException("Encoded image exceeds the graphics image byte budget or is empty.", nameof(encodedImage));
+        // Validate and commit the same snapshot: a mutable caller buffer must
+        // not change between image admission and resource creation.
+        var imageBytes = (byte[])encodedImage.Clone();
+        var identified = validated ?? OfdGraphicsImage.Validate(imageBytes, _limits.MaxImagePixels, token);
+        var crop = source ?? (0d, 0d, (double)identified.Width, (double)identified.Height);
+        GraphicsValidation.Finite(crop.Item1, crop.Item2, crop.Item3, crop.Item4);
+        GraphicsValidation.Positive(crop.Item3); GraphicsValidation.Positive(crop.Item4);
+        if (crop.Item1 < 0 || crop.Item2 < 0 || crop.Item1 + crop.Item3 > identified.Width ||
+            crop.Item2 + crop.Item4 > identified.Height)
+            throw new ArgumentOutOfRangeException(nameof(source), "Source rectangle must be inside the encoded pixel axes.");
+        var imageMatrix = PageTransform
+            .Multiply(OfdMatrix.Translation(x - width * crop.Item1 / crop.Item3, y - height * crop.Item2 / crop.Item4))
+            .Multiply(OfdMatrix.Scale(width * identified.Width / crop.Item3, height * identified.Height / crop.Item4));
+        if (!OfdNumericFormat.Nonsingular(imageMatrix.A, imageMatrix.B, imageMatrix.C, imageMatrix.D))
+            throw new ArgumentException("Image transform is singular at OFD writer precision.");
+        var corners = new[] { PageTransform.TransformPoint(x, y), PageTransform.TransformPoint(x + width, y),
+            PageTransform.TransformPoint(x, y + height), PageTransform.TransformPoint(x + width, y + height) };
+        var boundaryX = corners.Min(point => point.X); var boundaryY = corners.Min(point => point.Y);
+        var boundaryWidth = corners.Max(point => point.X) - boundaryX;
+        var boundaryHeight = corners.Max(point => point.Y) - boundaryY;
+        GraphicsValidation.Positive(boundaryWidth); GraphicsValidation.Positive(boundaryHeight);
+        if (_clips.Count >= _limits.MaxClipRegions) throw new InvalidOperationException("Graphics image clip budget exceeded.");
+        var target = new OfdGraphicsPath().AddRectangle(x, y, width, height).Snapshot(_limits.MaxPathCommands, token);
+        target.Serialize(RemainingGeometry, token);
+        var element = new OfdImageElement
+        {
+            Data = imageBytes, MediaType = identified.MediaType,
+            XMillimeters = boundaryX, YMillimeters = boundaryY,
+            WidthMillimeters = boundaryWidth, HeightMillimeters = boundaryHeight,
+            Transform = Rebase(imageMatrix, boundaryX, boundaryY).ToArray(), Alpha = alpha,
+            // Preserve exact source geometry and original resource bytes. PDF
+            // export can use the crop hint to add its own clamped edge pixels.
+            SourceXml = source is null ? null : new XElement(Ns + "ImageObject",
+                new XAttribute(OfdImageRenderingHints.PdfInterpolateV1, false),
+                new XAttribute(OfdImageRenderingHints.PdfSourceCropV1,
+                    OfdImageRenderingHints.FormatSourceCrop(crop.Item1, crop.Item2, crop.Item3, crop.Item4)))
+                .ToString(SaveOptions.DisableFormatting)
+        };
+        Commit(element, 0, 0, token, new[] { (target, PageTransform) });
+    }
+    /// <summary>Fills a rectangle using an explicit PNG raster fallback for a two-stop horizontal or vertical linear gradient. Sampling is finite and endpoints are exact.</summary>
+    public void FillLinearGradientRectangle(OfdColor start, OfdColor end,
+        double x, double y, double width, double height, bool horizontal = true,
+        int samples = 512, CancellationToken cancellationToken = default)
+    {
+        CheckPage(cancellationToken);
+        if (start is null) throw new ArgumentNullException(nameof(start));
+        if (end is null) throw new ArgumentNullException(nameof(end));
+        GraphicsValidation.Positive(width); GraphicsValidation.Positive(height);
+        var encoded = OfdGraphicsRaster.LinearGradient(start, end, samples, horizontal, cancellationToken);
+        DrawImage(encoded, x, y, width, height, cancellationToken: cancellationToken);
+    }
+    /// <summary>Fills a rectangle by repeating a PNG or baseline JPEG tile in user space. At most 64 placements and 64 MiB of snapshots are admitted; failures append no objects.</summary>
+    public void FillImagePatternRectangle(byte[] encodedTile, double x, double y, double width, double height,
+        double tileWidth, double tileHeight, int alpha = 255, CancellationToken cancellationToken = default)
+    {
+        CheckPage(cancellationToken);
+        if (encodedTile is null) throw new ArgumentNullException(nameof(encodedTile));
+        GraphicsValidation.Finite(x, y); GraphicsValidation.Positive(width); GraphicsValidation.Positive(height);
+        GraphicsValidation.Positive(tileWidth); GraphicsValidation.Positive(tileHeight);
+        if (encodedTile.Length > _limits.MaxEncodedImageBytes) throw new ArgumentException("Pattern tile exceeds image byte budget.", nameof(encodedTile));
+        var tileBytes = (byte[])encodedTile.Clone();
+        var tile = OfdGraphicsImage.Validate(tileBytes, _limits.MaxImagePixels, cancellationToken);
+        var columns = Math.Ceiling(width / tileWidth); var rows = Math.Ceiling(height / tileHeight);
+        // Decimal multiples can divide just above an integer. Remove only an
+        // endpoint tile whose local remainder is rounding noise, before the
+        // placement and page-element budgets are evaluated.
+        const double roundingTolerance = 8 * 2.2204460492503131e-16;
+        if (columns > 65 || rows > 65)
+            throw new InvalidOperationException("Pattern placement or snapshot budget exceeded.");
+        if (columns > 1 && width - (columns - 1) * tileWidth <= roundingTolerance * Math.Max(width, tileWidth)) columns--;
+        if (rows > 1 && height - (rows - 1) * tileHeight <= roundingTolerance * Math.Max(height, tileHeight)) rows--;
+        if (columns < 1 || rows < 1 || columns > 64 || rows > 64 || columns * rows > 64 ||
+            columns * rows * encodedTile.LongLength > 64L * 1024 * 1024)
+            throw new InvalidOperationException("Pattern placement or snapshot budget exceeded.");
+        var count = checked((int)(columns * rows));
+        if (count > _limits.MaxPageElements - _page.Elements.Count)
+            throw new InvalidOperationException("Graphics page element budget exceeded.");
+        var originalCount = _page.Elements.Count;
+        var originalGeometry = _geometryCharacters;
+        try
+        {
+            for (var row = 0; row < (int)rows; row++)
+                for (var column = 0; column < (int)columns; column++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var left = x + column * tileWidth; var top = y + row * tileHeight;
+                    var visibleWidth = Math.Min(tileWidth, width - column * tileWidth);
+                    var visibleHeight = Math.Min(tileHeight, height - row * tileHeight);
+                    var pixelWidth = Math.Min(tile.Width, tile.Width * visibleWidth / tileWidth);
+                    var pixelHeight = Math.Min(tile.Height, tile.Height * visibleHeight / tileHeight);
+                    DrawImageCore(tileBytes, left, top, visibleWidth, visibleHeight,
+                        (0, 0, pixelWidth, pixelHeight), alpha, cancellationToken, tile);
+                }
+        }
+        catch
+        {
+            _page.Elements.RemoveRange(originalCount, _page.Elements.Count - originalCount);
+            _geometryCharacters = originalGeometry;
+            throw;
+        }
+    }
+    /// <summary>Draws a line with the supplied pen.</summary>
     public void DrawLine(OfdPen pen, double x1, double y1, double x2, double y2, CancellationToken cancellationToken = default)
         => DrawPath(new OfdGraphicsPath().MoveTo(x1, y1).LineTo(x2, y2), pen ?? throw new ArgumentNullException(nameof(pen)), null, cancellationToken);
     /// <summary>Strokes a positive-size rectangle.</summary>
@@ -108,9 +234,10 @@ public sealed class OfdGraphics
         if (pen is null && brush is null) throw new ArgumentException("A pen or brush is required.");
         var snapshot = path.Snapshot(_limits.MaxPathCommands, cancellationToken);
         var points = snapshot.Points.Select(point => PageTransform.TransformPoint(point.X, point.Y)).ToArray();
-        // Control polygon bounds cover Bezier curves. Miter limit 10 bounds stroke overhang under the full affine transform.
+        // Control polygon bounds cover Bezier curves. The miter limit bounds
+        // stroke overhang under the full affine transform.
         var writtenWidth = pen is null ? 0 : GraphicsValidation.WriterValue(pen.WidthMillimeters);
-        var halfWidth = writtenWidth * 5;
+        var halfWidth = writtenWidth * (pen?.MiterLimit ?? 10) / 2;
         var dx = halfWidth * (Math.Abs(Transform.A) + Math.Abs(Transform.C));
         var dy = halfWidth * (Math.Abs(Transform.B) + Math.Abs(Transform.D));
         var x = points.Min(point => point.X) - dx; var y = points.Min(point => point.Y) - dy;
@@ -123,7 +250,12 @@ public sealed class OfdGraphics
             Stroke = pen is not null, Fill = brush is not null, LineWidthMillimeters = pen is null ? 0.353 : writtenWidth,
             StrokeColor = pen?.Color ?? OfdColor.Black, FillColor = brush?.Color,
             SourceXml = new XElement(Ns + "PathObject", new XAttribute("Rule", Rule(snapshot.Rule)),
-                new XAttribute("Cap", "Butt"), new XAttribute("Join", "Miter"), new XAttribute("MiterLimit", "10")).ToString(SaveOptions.DisableFormatting) };
+                new XAttribute("Cap", pen?.Cap.ToString() ?? "Butt"),
+                new XAttribute("Join", pen?.Join.ToString() ?? "Miter"),
+                new XAttribute("MiterLimit", GraphicsValidation.Number(pen?.MiterLimit ?? 10)),
+                pen?.DashPattern is { } dash ? new XAttribute("DashPattern", string.Join(" ", dash.Select(GraphicsValidation.Number))) : null,
+                pen?.DashPattern is not null ? new XAttribute("DashOffset", GraphicsValidation.Number(pen.DashOffset)) : null)
+                .ToString(SaveOptions.DisableFormatting) };
         Commit(element, data.Length, 0, cancellationToken);
     }
     /// <summary>Fills a path snapshot according to its fill rule.</summary>
@@ -196,12 +328,13 @@ public sealed class OfdGraphics
     private void CheckGeometry(long length)
     { if (length > _limits.MaxGeometryCharacters - _geometryCharacters) throw new InvalidOperationException("Graphics geometry budget exceeded."); }
     private long RemainingGeometry => _limits.MaxGeometryCharacters - _geometryCharacters;
-    private void Commit(OfdElement element, long geometryLength, long textLength, CancellationToken token)
+    private void Commit(OfdElement element, long geometryLength, long textLength, CancellationToken token,
+        IReadOnlyList<(PathSnapshot Path, OfdMatrix Matrix)>? extraClips = null)
     {
-        if (_clips.Count > 0)
+        if (_clips.Count > 0 || extraClips is { Count: > 0 })
         {
             var xml = new XElement(Ns + "Clips");
-            foreach (var clip in _clips)
+            foreach (var clip in _clips.Concat(extraClips ?? Array.Empty<(PathSnapshot Path, OfdMatrix Matrix)>()))
             {
                 token.ThrowIfCancellationRequested();
                 xml.Add(new XElement(Ns + "Clip", new XElement(Ns + "Area", new XElement(Ns + "Path",
