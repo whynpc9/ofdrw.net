@@ -220,9 +220,6 @@ public sealed class OfdToSvgConverter
                 coverage = bound.Coverage;
             }
             else data = cached?.Data ?? OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex);
-            var family = (preview?.FontPrefix ?? "ofd-font-") + (cached?.Hash ?? BinaryIdentity.Hash(data));
-            if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known); continue; }
-            preview?.BeforeFontEmission(data);
             (bool Bold, bool Italic) style;
             if (font.Data.Length == 0) style = (false, false);
             else if (cached.HasValue) { style = (cached.Value.Bold, cached.Value.Italic); coverage = cached.Value.Coverage; }
@@ -232,6 +229,11 @@ public sealed class OfdToSvgConverter
                 try { coverage = new OpenTypeCmap(face, parseBudget); }
                 catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
             }
+            if (coverage?.IsSymbol == true && texts.Any(text => ReferenceEquals(OfdFontSelection.Resolve(fonts, text), font)))
+                data = SymbolCmapProfile.CreateUnicodeAlias(data, coverage, parseBudget);
+            var family = (preview?.FontPrefix ?? "ofd-font-") + BinaryIdentity.Hash(data);
+            if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known); continue; }
+            preview?.BeforeFontEmission(data);
             families[font] = (family, coverage); emitted.Add(family, coverage);
             var openType = data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O';
             css.Append("@font-face{font-family:'").Append(family).Append("';src:url(data:font/")
@@ -300,8 +302,9 @@ public sealed class OfdToSvgConverter
         if (resource is not null && families.TryGetValue(resource, out var embedded))
         {
             family = embedded.Family;
-            if (embedded.Coverage is null || embedded.Coverage.IsSymbol) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
-            EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName, cancellationToken);
+            if (embedded.Coverage is null) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
+            if (embedded.Coverage.IsSymbol) SymbolCmapProfile.ValidateText(text, embedded.Coverage, cancellationToken);
+            else EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName, cancellationToken);
         }
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";

@@ -146,6 +146,13 @@ internal sealed class OpenTypeCmap
         var glyph = GlyphCore(scalar);
         return IsSymbol && glyph == 0 && scalar <= 0xFF ? GlyphCore(scalar + 0xF000) : glyph;
     }
+    // Symbol-font byte fallback is useful for inspecting legacy files, but it
+    // must not be mistaken for a direct Unicode mapping by an export outlet.
+    internal int DirectGlyph(int scalar)
+    {
+        budget.Spend(0);
+        return GlyphCore(scalar);
+    }
     private int GlyphCore(int scalar)
     {
         if (format12 >= 0)
