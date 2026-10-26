@@ -31,7 +31,7 @@ foreach (var face in result.FontEmbedding)
 
 保持 GID 的代价是 `maxp` 数量和 `loca`/宽度表仍覆盖原编号；被移除的 glyph 是空 loca 区间，真实轮廓减少。共享样式解析按 `OS/2.fsSelection` 优先、缺省时 `head.macStyle` 回退，与 DOCX catalog 一致，PDF/SVG 不重复合成已存在的粗斜体。字体名称改成内容身份名称，版权、许可等 name 记录保留，以遵守 RFN 字体改名条件。OFD 仍保存 Unicode `TextCode`；不会以图片或轮廓替换文本实现减小。
 
-已有 CFF PDF 路径的 Poppler 探针报告字体类型不匹配，05 未修复该旧边界，不能把可保存/可抽取视为 CFF PDF 规范兼容通过。支持表只描述实际后端能力，不承诺任意字体/Word 文档保真。
+历史 CFF PDF 的 Poppler 探针报告字体类型不匹配；当前 R08 对实际选中的 CFF 字体在写出前明确拒绝，不把旧产物的可保存/可抽取视为规范兼容。受限 OpenType/CFF1 的 SVG 文字与原 GID 轮廓分别见[R08 四出口能力表](validation/r08-four-outlet-ledger.md)；它们不启用 CFF PDF。支持表只描述实际后端能力，不承诺任意字体/Word 文档保真。
 
 ## 缺字、预算及旧行为
 
@@ -61,7 +61,7 @@ foreach (var face in result.FontEmbedding)
 
 宿主 TTC 的主名称探测按返回 face 名唯一匹配 name IDs4/6（完整名/PostScript 名），未命中时 IDs1/16（family）也必须唯一；不凭 index0、模糊名称或请求粗斜体猜选。多面默认/Arial 集合同样必须唯一匹配，只有配置默认的单面集合可采用唯一 face。不明或歧义按探测失败处理。名称目录在完整 face 展开前有界扫描：输入256MiB、累计名称解码1MiB、所选 face64MiB；严格拒绝畸形编码/边界。公开 Data.CollectionFaceIndex 的显式选面路径不变。字段定义见 [OpenType name 规范](https://learn.microsoft.com/en-us/typography/opentype/spec/name)。
 
-Windows symbol-only cmap 的字符语义未建模。OFD 写包/读取编辑保全量并标识 coverage 未验证；PDF/SVG 实际选中时统一明确拒绝，包含偶然映射成功的 A。名称探测的拒绝标记在可选 catch 之外保留，symbol 回退候选跳过，不能冒充 Unicode 覆盖。未使用 symbol 或其它合法未建模 cmap 不阻断资源处理；实际选中的未建模编码仍明确拒绝。
+Windows symbol-only cmap 的一般字符语义仍未建模。OFD 写包/读取编辑保全量并标识 coverage 未验证。仅当选中文字全是具有直接、唯一且有效 GID 的 BMP 私用区码点，且字体满足静态单色 TrueType 嵌入约束时，R08 才按[直接 PUA profile](validation/r08-symbol-cmap-profile.md)为 PDF/SVG 创建 Unicode cmap 副本；偶然命中低字节回退的普通字母（如 A）和其它未建模编码仍明确拒绝。名称探测的拒绝标记在可选 catch 之外保留，symbol 回退候选跳过，不能冒充 Unicode 覆盖。未使用 symbol 资源不阻断处理。
 
 PDF 明确拒绝语义无法保留的 default-ignorable，包括 ZWJ/ZWNJ、LRM/RLM/ALM、方向格式控制、variation selectors、WORD JOINER、不可见数学运算符、软连字符、零宽断词、CGJ、蒙古文分隔、旧方向控制和 FEFF。弃用不等于没有语义，OFD 内容里的 FEFF 首字符也不能自动认作编码流 BOM。原始 Unicode 仍保留在 OFD/SVG；不把删除后的像素一致当作语义保真。字符用途依据 [Unicode 17 第23章](https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-23/) 与 [BOM FAQ](https://www.unicode.org/faq/utf_bom.html)。
 
