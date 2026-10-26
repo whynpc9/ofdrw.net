@@ -1,6 +1,6 @@
 # 公开流式表格
 
-`Ofdrw.Net.Layout` 的 `Table`、`Row`、`Cell` 可与 `Paragraph` 混排。描述可反复渲染，每次创建独立包；渲染期间不得并发修改描述。所有几何量以毫米计。首版提供固定列网格、水平合并、段落水平对齐、整格垂直对齐、底色和统一实线边框。
+`Ofdrw.Net.Layout` 的 `Table`、`Row`、`Cell` 可与 `Paragraph` 混排。描述可反复渲染，每次创建独立包；渲染期间不得并发修改描述。所有几何量以毫米计。提供固定列网格、水平/纵向合并、段落水平对齐、整格垂直对齐、底色和统一实线边框。拆行和重复表头为显式选项；旧表默认仍整行换页。
 
 ```csharp
 var document = new FlowDocument();
@@ -31,16 +31,20 @@ await new OfdPackageWriter().WriteAsync(package, outputStream);
 ## 网格、样式与容量
 
 - 列宽为空时，根据第一行 `ColumnSpan` 总和等分正文宽；显式列宽必须为正有限值，总宽不能超过正文宽，保持给定毫米值，不自动缩放。较窄的表按 `Table.Alignment` 左/中/右对齐。
-- 每行必须准确覆盖全部列。空表、空行、非正/越界跨度、缺格、多格及没有可用文字宽度的 padding/缩进会抛参数异常。空 `Cell.Paragraphs` 合法，仍占 padding 与行最小高度。
+- 每个逻辑网格位置必须恰好由一个格占据。`ColumnSpan` 和 `RowSpan` 都须为正且不能越界、重叠或留空；被纵向合并覆盖的后续行可以没有新格。空表、无可用文字宽度的 padding/缩进会抛参数异常。空 `Cell.Paragraphs` 合法，仍占 padding 与行最小高度。
 - `Cell.Paragraphs` 保留段落缩进、段前/后间距、换行、混合字号和局部 Span 粗体/斜体/颜色。各段 `Paragraph.Alignment` 控制水平对齐；`Cell.VerticalAlignment` 对齐整组段落。没有字号缩小或裁切来满足行高。
 - `BackgroundColor` 只作用于该格。`Table.BorderColor`/`BorderWidthMillimeters` 是整表统一边框，宽度 0 关闭。合并格内不画竖线，公开表的相邻共享边只写一次，跨页片段各自封闭。外边向内偏移半笔宽，极薄行小于笔宽会失败。首版不提供逐边/逐格边框覆盖、虚线或冲突消解。
-- 格内文本使用 `MaxCharacters`/`MaxTextElements`，空单元格也计入 `MaxTableCells`（默认 100000）；页数使用 `MaxPageCount`，支持取消。字符预算保留 UTF-16 计数语义，空格字符计入字符预算。
+- 格内文本使用 `MaxCharacters`/`MaxTextElements`，空单元格也计入 `MaxTableCells`（默认 100000）；页数使用 `MaxPageCount`，支持取消。新复杂表格另外限制累计 `MaxTableGridSlots`（默认 1000000）、物理行片段 `MaxTableFragments`（默认 100000）及实际绘制的图片编码字节 `MaxTableImageBytes`（默认 64 MiB，重复表头图片也计入）。字符预算保留 UTF-16 计数语义，空格字符计入字符预算。
 
 ## 分页与明确失败
 
-完整测量一行后再落页。当剩余高度不足时，整行移至下一页，文字、底色和边框一起移动。新页仍不能放下时，公开 API 抛 `InvalidOperationException`，消息包含行号、行高与可用高度。`MinimumHeightMillimeters` 是最小高度，不是强制裁切高度。首行消费前段延期空行与段后间距；`Table.PageBreakBefore` 与段落采用相同的首块保护及清除延期空行规则。表后间距延至下一块，表末不会因尾间距产生空白页。
+默认整行分页先完整测量一行；剩余高度不足时，整行连同文字、底色和边框移至下一页。默认路径中新页仍放不下时抛 `InvalidOperationException`，消息包含行号、行高与可用高度。复杂表路径也拒绝新页放不下的行组或表头加正文片段。`MinimumHeightMillimeters` 是最小高度，不是强制裁切高度。首行消费前段延期空行与段后间距；`Table.PageBreakBefore` 与段落采用相同的首块保护及清除延期空行规则。表后间距延至下一块，表末不会因尾间距产生空白页。
 
-`RowSpan > 1` 抛 `NotSupportedException`；`RowSpan < 1` 是参数错误。格内 `Paragraph.PageBreakBefore` 和文字 `\f` 同样明确拒绝。首版不拆行、不重复表头，不支持跨页纵向合并、嵌套表和图片格。CJK 仍按 1 em 测量，公开 Flow 不嵌入字体，跨机器效果取决于阅读器字体；不承诺任意 Word 表格保真。
+`RowSpan > 1` 合并所覆盖的行；关联行组保持同页，若连新页也放不下则拒绝，不切开纵向合并格。`SplitRowsAcrossPages=true` 允许未合并的正文行按已测文字行的安全边界拆分；跨页片段重画底色、外框和内部竖线，文字行和图片不裁切。实际拆分时每格须为 Top 垂直对齐；否则可整行移到新页，仍放不下则明确拒绝。`RepeatHeaderRowCount` 指定表首连续完整行，在续页物理重画；表头与至少一个正文片段必须同页，表头格不能纵向跨入正文。提取 OFD/PDF 文本时可见表头副本会重复，扣除这些副本后正文源文字仍须各出现一次。格内 `Paragraph.PageBreakBefore` 和文字 `\f` 仍明确拒绝。
+
+图片格使用 `Cell.Image = new ImageBlock(encodedPngOrJpeg, widthMm, heightMm)`。图片保持构造时拷贝的字节、R04 静态 PNG/基线 JPEG 准入及固定尺寸；首版图片格不与同格 `Paragraphs` 混排，不自动缩小/裁切图片。图片自己的块级段间距与换页属性在格内不适用，设置时拒绝。图片水平使用 `ImageBlock.Alignment`，垂直使用 `Cell.VerticalAlignment`，过宽、超页或无安全拆分位置明确拒绝。嵌套表仍不支持。
+
+公开 Flow 的旧文字测量仍采用固定的 Latin 比例字宽和 CJK 1 em 策略，未自动接入 R21 的有界单一 face 预布局。复杂表格复用已测得的 `FlowLine` 结果绘制每个片段，不把该能力描述为 HarfBuzz 复杂文字整表保真；跨机器显示取决于实际字体，任意 Word 表格保真也不在承诺内。
 
 ## DOCX Native 兼容边界
 
@@ -49,6 +53,8 @@ await new OfdPackageWriter().WriteAsync(package, outputStream);
 Native 新增严格网格校验：非正 `gridSpan`、越界/不满网格的行或无可用格宽会抛 `InvalidDataException`，通过既有临时输出提交机制保持目标流不被部分写入。这会拒绝过去可能丢格或忽略余列的输入；包含 `gridBefore`/`gridAfter` 的省略网格表格不在首版适配范围。
 
 DOCX `vMerge`（restart/continue/空元素）首版未实现：`UnsupportedFeatureBehavior.Throw` 拒绝，其余模式返回 `DOCX_VERTICAL_MERGE_DEGRADED`，带行/格位置，说明降为独立单元格。格内显式或继承样式的分页控制同样按策略拒绝或返回 `DOCX_CELL_PAGE_BREAK_DEGRADED` 后忽略。请用 `ConvertWithResultAsync` 读取诊断。`tblHeader` 仍不重复。DualLayer/直接 DOCX→PDF 的表格引擎没有迁移，不用于替代 Native 验收。
+
+R19 的增强只适用于公开 `Table`。Native 继续上述 `vMerge` 和 `tblHeader` 策略，未隐式启用公开表的拆行或重复表头。
 
 ## 复现与验收
 

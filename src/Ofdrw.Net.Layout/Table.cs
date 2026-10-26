@@ -3,13 +3,17 @@ using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Layout;
 
-/// <summary>A flowing table. Rows move intact to the next page; an oversized row fails.</summary>
+/// <summary>A flowing table with optional bounded row splitting and repeated headers.</summary>
 public sealed class Table : FlowBlock
 {
     /// <summary>Absolute column widths in millimeters. Empty means equal columns inferred from the first row.</summary>
     public IList<double> ColumnWidthsMillimeters { get; } = new List<double>();
     /// <summary>Rows in reading order. Each row must cover every column exactly once.</summary>
     public IList<Row> Rows { get; } = new List<Row>();
+    /// <summary>Number of leading rows redrawn on each continuation page; zero disables repetition.</summary>
+    public int RepeatHeaderRowCount { get; set; }
+    /// <summary>Allows unmerged body rows to continue at measured line boundaries. Defaults to intact rows.</summary>
+    public bool SplitRowsAcrossPages { get; set; }
     /// <summary>Horizontal alignment of a table narrower than the body.</summary>
     public ParagraphAlignment Alignment { get; set; }
     /// <summary>Space before the table in millimeters.</summary>
@@ -24,7 +28,7 @@ public sealed class Table : FlowBlock
     public OfdColor BorderColor { get; set; } = OfdColor.Black;
 }
 
-/// <summary>An indivisible table row; height is the larger of the minimum and measured cells.</summary>
+/// <summary>A table row with a minimum height; merged row groups remain indivisible.</summary>
 public sealed class Row
 {
     /// <summary>Cells in left-to-right order.</summary>
@@ -33,7 +37,7 @@ public sealed class Row
     public double MinimumHeightMillimeters { get; set; }
 }
 
-/// <summary>A cell with independently styled paragraphs. Paragraph alignment controls horizontal text alignment.</summary>
+/// <summary>A cell with styled paragraphs or one fixed-size image. Paragraph alignment controls text.</summary>
 public sealed class Cell
 {
     /// <summary>Creates an empty cell.</summary>
@@ -44,8 +48,10 @@ public sealed class Cell
     public IList<Paragraph> Paragraphs { get; } = new List<Paragraph>();
     /// <summary>Number of consecutive columns covered by this cell.</summary>
     public int ColumnSpan { get; set; } = 1;
-    /// <summary>Only 1 is supported. Vertical merging throws NotSupportedException.</summary>
+    /// <summary>Number of consecutive rows occupied by this cell. A merged group remains on one page.</summary>
     public int RowSpan { get; set; } = 1;
+    /// <summary>An optional fixed-size image in an otherwise paragraph-free cell.</summary>
+    public ImageBlock? Image { get; set; }
     /// <summary>Padding on each side in millimeters.</summary>
     public double PaddingMillimeters { get; set; } = 0.8;
     /// <summary>Optional cell fill, drawn before text and borders.</summary>

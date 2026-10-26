@@ -147,6 +147,12 @@ public sealed class FlowDocumentOptions
     public int MaxTextElements { get; set; } = 1_000_000;
     /// <summary>Maximum table cells across all blocks, including empty cells.</summary>
     public int MaxTableCells { get; set; } = 100_000;
+    /// <summary>Maximum logical row-column slots admitted by complex tables.</summary>
+    public int MaxTableGridSlots { get; set; } = 1_000_000;
+    /// <summary>Maximum physical row fragments, including repeated headers.</summary>
+    public int MaxTableFragments { get; set; } = 100_000;
+    /// <summary>Maximum cumulative encoded image bytes drawn by table cells, including repeated headers.</summary>
+    public long MaxTableImageBytes { get; set; } = 64L * 1024 * 1024;
 }
 
 internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
@@ -164,6 +170,9 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
     private double _y;
     private bool _hasBodyContent;
     private int _textElements;
+    private int _tableFragments;
+    private long _tableImageBytes;
+    private long _tableGridSlots;
     private int _pendingPageBreaks;
     private double _pendingSpaceAfter;
     private readonly List<double> _pendingLineBreakHeights = new();
@@ -570,7 +579,9 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
             throw new ArgumentException("Margins leave no usable page area.");
         if (string.IsNullOrWhiteSpace(_options.DefaultFontFamily)) throw new ArgumentException("Default font family is required.");
         if (_options.DefaultColor is null) throw new ArgumentException("Default color is required.");
-        if (_options.MaxPageCount < 1 || _options.MaxCharacters < 1 || _options.MaxTextElements < 1 || _options.MaxTableCells < 1)
+        if (_options.MaxPageCount < 1 || _options.MaxCharacters < 1 || _options.MaxTextElements < 1 ||
+            _options.MaxTableCells < 1 || _options.MaxTableGridSlots < 1 || _options.MaxTableFragments < 1 ||
+            _options.MaxTableImageBytes < 1)
             throw new ArgumentOutOfRangeException(nameof(_options.MaxPageCount));
     }
 
