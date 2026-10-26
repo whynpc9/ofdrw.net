@@ -40,7 +40,7 @@
 | R05 复杂 Merge/Mix | 常见图元 `limited`；共享/嵌套资源、Clip/Composite/批注 ID 与 ownership | 未闭合引用默认拒绝，跳过只可显式选择并报告 |
 | R06 PDF 矢量 | 有限 profile `limited`；Rotation/CropBox、clip、画笔、XObject、字体逐特性正反样本 | 默认 Fail；显式回退整页，不能保留该页半成品矢量 |
 | R07 PDF 导航/附件 | 导入迁移 `new`；层级页映射、全局/页附件名与哈希 | 关闭迁移无残留；非法目标/冲突明确诊断 |
-| R08 字体后端 | TTF 子集、字体身份 `limited`；显式嵌入静态 TrueType 的补充平面 PDF 有界适配；已合并的 name-only、直接 PUA symbol cmap 和 TrueType 原 GID 轮廓各按其受限 profile 验收。可选 Skia CFF1 原 GID 轮廓为独立受限能力；选中的静态常规 CFF1 Unicode 字体已有 [OFD→SVG 文字 profile](validation/r08-cff-svg-text-profile.md) | 裸 Type1、CFF 的 PDF 嵌入、任意 CFF/SVG 字体、变量/彩色字体与未建模 GID 仍明确拒绝；OFD 原文、ToUnicode、实际轮廓、视觉和包消费按出口独立验收，见 [CFF 轮廓能力](validation/r08-cff-outline-profile.md) |
+| R08 字体后端 | [四出口能力表](validation/r08-four-outlet-ledger.md)逐输入列出 OFD 保存、SVG、PDF 和原 GID 轮廓：TTF 子集与字体身份；显式嵌入静态 TrueType 的补充平面 PDF；受限 name-only BMP、直接 PUA symbol cmap；TrueType 原 GID、可选 Skia CFF1 原 GID；选中静态常规 CFF1 Unicode 的 SVG 文字。每格只按固定样例及其源码/包、文本、实际页面证据验收 | 裸 Type1/裸 CFF 无正向样例；CFF PDF 嵌入、任意 CFF/SVG 字体、变量/彩色字体、普通字母的 symbol 低字节回退和未建模 `CGTransform` GID 输出仍拒绝或未验证。可信离线渲染的实际 SVG 逐页目视可作为所选 profile 的视觉证据；不由此推断浏览器内嵌字体加载 |
 | R09 绘图上下文 | Path/Text/状态栈 `limited`；当前源码新增 PNG/baseline-JPEG DrawImage/源裁切、不可变 dash/cap/join 与显式栅格矩形渐变/图片 tile；完整功能、逐出口视觉和包消费仍须以本项验收记录关闭 | 外来原生渐变/图案及任意路径渐变 brush 仍拒绝；栅格矩形由 API 显式命名与限定预算，见[设计](r09-graphics-design.md) |
 | R10 专用图像/区域提取 | JBIG2/ImageMask `new`；字符级 CTM/Delta 矩形筛选 `candidate` | 超预算/未知解码或几何语义显式失败/Unknown |
 | R11 签章外观 | 外来外观显示 `limited`；新生成普通章/骑缝章各页和签后重读 | 视觉外观不等于签名值或信任结论 |
