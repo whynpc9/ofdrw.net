@@ -16,7 +16,7 @@ internal static class SymbolCmapProfile
     private const int LastPrivateUse = 0xF8FF;
     private const int MaximumMappedGlyphs = 4096;
 
-    internal static void ValidateText(OfdTextElement text, OpenTypeCmap symbol,
+    internal static void ValidateText(OfdTextElement text, OpenTypeCmap symbol, FontParseBudget budget,
         CancellationToken cancellationToken = default)
     {
         if (!symbol.IsSymbol) throw new ArgumentException("Expected a Windows symbol cmap.", nameof(symbol));
@@ -25,6 +25,7 @@ internal static class SymbolCmapProfile
             foreach (var scalar in OpenTypeFace.Scalars(value))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                budget.Spend(symbol.GlyphLookupWorkUpperBound);
                 if (scalar < FirstPrivateUse || scalar > LastPrivateUse || symbol.DirectGlyph(scalar) == 0)
                     throw new NotSupportedException($"Windows symbol cmap text U+{scalar:X4} has unmodeled character semantics without a direct private-use mapping; the original OFD font remains preserved.");
             }
@@ -49,7 +50,7 @@ internal static class SymbolCmapProfile
         var scalarByGlyph = new Dictionary<int, int>();
         for (var scalar = FirstPrivateUse; scalar <= LastPrivateUse; scalar++)
         {
-            budget.Spend(1);
+            budget.Spend(symbol.GlyphLookupWorkUpperBound);
             var glyph = symbol.DirectGlyph(scalar);
             if (glyph == 0) continue;
             if (glyph >= glyphCount) throw new InvalidDataException("Symbol cmap references an absent glyph.");

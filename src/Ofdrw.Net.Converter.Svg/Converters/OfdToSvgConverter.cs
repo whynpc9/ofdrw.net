@@ -144,7 +144,7 @@ public sealed class OfdToSvgConverter
             if (element is OfdTextElement text)
             {
                 AddText(target, svgNs, page, OfdTextRenderProjection.Create(text, material, cancellationToken), package.Fonts,
-                    families, cancellationToken, nameOnlyBindings);
+                    families, parseBudget, cancellationToken, nameOnlyBindings);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
@@ -287,7 +287,7 @@ public sealed class OfdToSvgConverter
         OfdTextElement text,
         IReadOnlyList<OfdFontResource> fonts,
         IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families,
-        CancellationToken cancellationToken, OfdNameOnlyFontBindings? nameOnlyBindings)
+        FontParseBudget parseBudget, CancellationToken cancellationToken, OfdNameOnlyFontBindings? nameOnlyBindings)
     {
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
             throw new NotSupportedException("SVG export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
@@ -303,7 +303,7 @@ public sealed class OfdToSvgConverter
         {
             family = embedded.Family;
             if (embedded.Coverage is null) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
-            if (embedded.Coverage.IsSymbol) SymbolCmapProfile.ValidateText(text, embedded.Coverage, cancellationToken);
+            if (embedded.Coverage.IsSymbol) SymbolCmapProfile.ValidateText(text, embedded.Coverage, parseBudget, cancellationToken);
             else EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName, cancellationToken);
         }
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";

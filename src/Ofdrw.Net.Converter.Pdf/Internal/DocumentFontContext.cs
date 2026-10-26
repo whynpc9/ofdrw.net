@@ -201,7 +201,7 @@ internal sealed class DocumentFontContext
         if (resource is not null && _symbolFonts.TryGetValue(resource, out var symbolBytes))
         {
             var symbolCoverage = _coverage[resource];
-            SymbolCmapProfile.ValidateText(text, symbolCoverage, _cancellationToken);
+            SymbolCmapProfile.ValidateText(text, symbolCoverage, _parseBudget, _cancellationToken);
             var key = (resource, resource.Bold || text.Weight >= 600, resource.Italic || text.Italic);
             if (!_symbolAliases.TryGetValue(key, out var symbolFamily))
             {

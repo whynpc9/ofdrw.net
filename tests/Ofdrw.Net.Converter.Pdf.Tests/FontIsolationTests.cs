@@ -291,6 +291,49 @@ public sealed class FontIsolationTests
             await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "direct-pua-nested.pdf"), pdf.ToArray());
         }
     }
+
+    [Fact]
+    public void SymbolAliasScanChargesFormat4SegmentLookupsBeforeExpansion()
+    {
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        var glyph = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face).Glyph('A');
+        var mappings = Enumerable.Range(0, 256).ToDictionary(index => index * 2, _ => glyph);
+        mappings[0xF041] = glyph;
+        var rebuilt = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(mappings);
+        var offset = (int)Ofdrw.Net.Core.Fonts.OpenTypeFace.U32(rebuilt, 8);
+        var length = Ofdrw.Net.Core.Fonts.OpenTypeFace.U16(rebuilt, offset + 2);
+        var symbolTable = new byte[12 + length];
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbolTable, 2, 1);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbolTable, 4, 3);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(symbolTable, 8, 12);
+        Buffer.BlockCopy(rebuilt, offset, symbolTable, 12, length);
+        face.Tables["cmap"] = symbolTable;
+        var selectedFace = face.Build();
+        var symbol = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(selectedFace));
+        Assert.True(symbol.IsSymbol);
+        Assert.True(symbol.GlyphLookupWorkUpperBound >= 256);
+
+        var budget = new Ofdrw.Net.Core.Fonts.FontParseBudget(maximum: 100_000);
+        var failure = Assert.Throws<InvalidDataException>(() =>
+            Ofdrw.Net.Core.Fonts.SymbolCmapProfile.CreateUnicodeAlias(selectedFace, symbol, budget));
+        Assert.Contains("MaximumCmapParseWork", failure.Message);
+        Assert.True(budget.IsExhausted);
+    }
+
+    [Fact]
+    public void SymbolTextValidationChargesRepeatedDirectLookups()
+    {
+        var selectedFace = SymbolFace(File.ReadAllBytes(FontPath("narrow")));
+        var symbol = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(selectedFace));
+        var budget = new Ofdrw.Net.Core.Fonts.FontParseBudget(maximum: symbol.GlyphLookupWorkUpperBound);
+        var text = new OfdTextElement { Text = "\uF041\uF041" };
+
+        var failure = Assert.Throws<InvalidDataException>(() =>
+            Ofdrw.Net.Core.Fonts.SymbolCmapProfile.ValidateText(text, symbol, budget));
+        Assert.Contains("MaximumCmapParseWork", failure.Message);
+        Assert.True(budget.IsExhausted);
+    }
+
     [Theory]
     [InlineData("null")][InlineData("resolve")][InlineData("read")][InlineData("cmap")][InlineData("ttc")][InlineData("default-name")]
     public void NameOnlyFallbackProbesFailedDefaultsAndCollectionFaces(string kind)
