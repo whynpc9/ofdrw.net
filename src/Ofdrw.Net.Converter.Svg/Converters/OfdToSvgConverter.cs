@@ -287,6 +287,9 @@ public sealed class OfdToSvgConverter
 
     private static void AddImage(XElement root, XNamespace ns, OfdPage page, OfdImageElement image, int index, OfdModelMaterialization material, CancellationToken cancellationToken, HtmlRenderContext? preview)
     {
+        var projected = preview is null
+            ? OfdImageRenderProjection.Prepare(image, 16_000_000, cancellationToken)
+            : preview.PreparedImage(image);
         var group = new XElement(ns + "g", new XAttribute("transform", BuildTransform(
             image.XMillimeters - page.XMillimeters, image.YMillimeters - page.YMillimeters, null)),
             new XAttribute("opacity", Invariant(Math.Max(0, Math.Min(255, image.Alpha)) / 255d)));
@@ -312,7 +315,7 @@ public sealed class OfdToSvgConverter
         var imageNode = new XElement(ns + "image", new XAttribute("width", "1"), new XAttribute("height", "1"),
             new XAttribute("preserveAspectRatio", "none"),
             new XAttribute("transform", BuildTransform(0, 0, image.Transform ?? new double[] { image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0 })),
-            new XAttribute("href", $"data:{image.MediaType};base64,{Convert.ToBase64String(image.Data)}"));
+            new XAttribute("href", $"data:{projected.MediaType};base64,{Convert.ToBase64String(projected.Data)}"));
         var interpolate = OfdImageRenderingHints.ReadPdfInterpolate(image);
         if (interpolate.HasValue) imageNode.SetAttributeValue("image-rendering", interpolate.Value ? "smooth" : "crisp-edges");
         content.Add(imageNode);

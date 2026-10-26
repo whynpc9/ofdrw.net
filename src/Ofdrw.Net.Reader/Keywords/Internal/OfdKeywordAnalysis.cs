@@ -78,6 +78,12 @@ internal sealed class OfdKeywordAnalysis
         OfdKeywordSearchOptions? options = null, CancellationToken cancellationToken = default)
         => FindCore(source, pageIndexes, keyword, options, cancellationToken, Finalization.Independent);
 
+    // Region extraction uses the same closed source admission, CTM/Delta positioning,
+    // exact provider and callback lifetime without performing a keyword match.
+    internal OfdKeywordSearchResult CapturePositions(OfdDocumentPackage source, IReadOnlyList<int> pageIndexes,
+        OfdKeywordSearchOptions? options, CancellationToken cancellationToken)
+        => FindCore(source, pageIndexes, string.Empty, options, cancellationToken, Finalization.Independent, geometryOnly: true);
+
     // Only the private file job uses this entry and immediately enters the
     // shared synchronous clone/patch/Writer factory. It is not a freshness
     // credential and cannot be carried across a callback, await or return.
@@ -90,7 +96,7 @@ internal sealed class OfdKeywordAnalysis
     }
 
     private OfdKeywordSearchResult FindCore(OfdDocumentPackage source, IReadOnlyList<int> pageIndexes, string keyword,
-        OfdKeywordSearchOptions? options, CancellationToken cancellationToken, Finalization finalization)
+        OfdKeywordSearchOptions? options, CancellationToken cancellationToken, Finalization finalization, bool geometryOnly = false)
     {
         if (source is null) throw new ArgumentNullException(nameof(source));
         if (pageIndexes is null) throw new ArgumentNullException(nameof(pageIndexes));
@@ -114,7 +120,7 @@ internal sealed class OfdKeywordAnalysis
         var budget = new OfdKeywordLocatorBudget(limits, operation);
         if (keyword is null) throw new ArgumentNullException(nameof(keyword));
         budget.Copy(512L + 32L * keyword.Length);
-        var matcher = new OfdOrdinalMatcher(keyword, operation);
+        var matcher = geometryOnly ? null : new OfdOrdinalMatcher(keyword, operation);
         // The existing A0 pass has its own finite structure budget. Reserve its
         // bounded temporary positions in the caller ledger before that pass.
         if (material is not null)
@@ -123,7 +129,7 @@ internal sealed class OfdKeywordAnalysis
         // Exactly one shared graphics traversal. It provides ownership, not glyph exactness.
         var traversal = OfdModelTraversal.ReadGraphics(source, pages, new OfdTraversalOptions
         {
-            IncludeTemplates = false, IncludeAnnotations = false, VisibleOnly = false, RequireSupportedSource = false,
+            IncludeTemplates = geometryOnly, IncludeAnnotations = false, VisibleOnly = false, RequireSupportedSource = false,
             Limits = new OfdModelLimits { MaxNodeCount = limits.MaxNodes, MaxReferenceCount = limits.MaxReferences,
                 MaxExpandedOccurrenceCount = limits.MaxOccurrences, MaxDepth = limits.MaxDepth, MaxSourceXmlBytes = limits.MaxXmlBytes }
         }, cancellationToken);
@@ -155,17 +161,26 @@ internal sealed class OfdKeywordAnalysis
                     diagnostic.OccurrencePath[0], path, true);
             }
         var certificates = new Dictionary<int, Dictionary<int, (int Layer, string Path)>>();
+        var templateCertificates = new Dictionary<(int Page, int Template), Dictionary<int, (int Layer, string Path)>>();
         var documentSupported = true;
         try { admission.PrepareDocument(); }
         catch (NotSupportedException exception) { documentSupported = false; Notice(exception.Message, null, null, true); }
         foreach (var index in selection)
         {
             var page = source.Pages[index];
-            if (page.Templates.Count > 0) Notice("ExcludedTemplateScope", index, null, false);
-            if (page.AnnotationAppearances.Count > 0) Notice("ExcludedAnnotationScope", index, null, false);
+            if (!geometryOnly && page.Templates.Count > 0) Notice("ExcludedTemplateScope", index, null, false);
+            if (page.AnnotationAppearances.Count > 0 || geometryOnly && page.Annotations?.Items.Count > 0)
+                Notice("ExcludedAnnotationScope", index, null, false);
             if (!documentSupported) continue;
             try { certificates.Add(index, admission.Page(page, index)); }
             catch (NotSupportedException exception) { Notice(exception.Message, index, page.SourceEntryPath, true); }
+            if (geometryOnly)
+                for (var templateIndex = 0; templateIndex < page.Templates.Count; templateIndex++)
+                {
+                    budget.Check();
+                    try { templateCertificates.Add((index, templateIndex), admission.Template(page, index, templateIndex)); }
+                    catch (NotSupportedException exception) { Notice(exception.Message, index, page.Templates[templateIndex].BaseLocation, true); }
+                }
         }
         var candidates = new Dictionary<OfdGraphicOccurrence, OfdKeywordTextSource>();
         var positionedSources = new Dictionary<OfdKeywordTextSource, List<OfdPositionedCluster>>();
@@ -173,8 +188,13 @@ internal sealed class OfdKeywordAnalysis
         foreach (var occurrence in traversal.Occurrences)
         {
             budget.Check();
-            if (occurrence.Element is not OfdTextElement || rejected.Contains(Key(occurrence.OccurrencePath)) ||
-                !certificates.TryGetValue(occurrence.OccurrencePath[0], out var certificate)) continue;
+            if (occurrence.Element is not OfdTextElement || rejected.Contains(Key(occurrence.OccurrencePath))) continue;
+            Dictionary<int, (int Layer, string Path)>? certificate;
+            if (occurrence.RootScope == OfdContentScope.Template)
+            {
+                if (!templateCertificates.TryGetValue((occurrence.OccurrencePath[0], occurrence.OccurrencePath[2]), out certificate)) continue;
+            }
+            else if (!certificates.TryGetValue(occurrence.OccurrencePath[0], out certificate)) continue;
             try
             {
                 if (!certificate.TryGetValue(occurrence.OccurrencePath[3], out var locator)) throw new NotSupportedException("UnprovedSourceLocator");
@@ -301,6 +321,7 @@ internal sealed class OfdKeywordAnalysis
         void Flush()
         {
             if (segment.Count == 0) return;
+            if (geometryOnly) { segment.Clear(); segmentText.Clear(); return; }
             budget.Copy(512L * segment.Count + 8L * segmentText.Length + 256);
             var mappings = new OfdGlyphClusterGeometry[segment.Count]; var offset = 0;
             for (var i = 0; i < segment.Count; i++)
@@ -310,7 +331,7 @@ internal sealed class OfdKeywordAnalysis
                     original.FontBoundsMillimeters, original.AdvanceXMillimeters, original.AdvanceYMillimeters);
                 offset += original.Utf16Length;
             }
-            foreach (var match in matcher.Find(segmentText.ToString(), mappings))
+            foreach (var match in matcher!.Find(segmentText.ToString(), mappings))
             {
                 budget.Fragment(match.ClusterCount);
                 budget.Copy(1024L * match.ClusterCount + 256);

@@ -19,6 +19,7 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     private readonly Dictionary<string, XElement> xml = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FontDefinition> fonts = new(StringComparer.Ordinal);
     private readonly Dictionary<int, string> pageEntries = new();
+    private readonly Dictionary<string, (string Entry, string? ZOrder)> templateEntries = new(StringComparer.Ordinal);
     private readonly HashSet<string> resourceEntries = new(StringComparer.Ordinal);
     private readonly Dictionary<string, OfdFontResource?> modelFonts = new(StringComparer.Ordinal);
     private double[]? documentBox;
@@ -101,8 +102,88 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
         foreach (var template in common.Elements(ns + "TemplatePage"))
         {
             OfdStrictTextGeometry.Attributes(template, "ID", "BaseLoc", "ZOrder");
-            ReadOptionalFixedResource(Resolve(package.DocumentEntryPath!, OfdStrictTextGeometry.Required(template, "BaseLoc")));
+            var id = OfdStrictTextGeometry.Required(template, "ID");
+            var entry = Resolve(package.DocumentEntryPath!, OfdStrictTextGeometry.Required(template, "BaseLoc"));
+            if (templateEntries.ContainsKey(id)) throw new NotSupportedException("AmbiguousTemplateIdentity");
+            templateEntries.Add(id, (entry, template.Attribute("ZOrder")?.Value));
+            ReadOptionalFixedResource(entry);
         }
+    }
+
+    // Region extraction's template certificate is deliberately separate from
+    // keyword editing's body certificate. It proves the template reference,
+    // source page and ordered direct graphic children before measuring glyphs.
+    internal Dictionary<int, (int Layer, string Path)> Template(OfdPage page, int pagePosition, int templateIndex)
+    {
+        budget.Check();
+        if (templateIndex < 0 || templateIndex >= page.Templates.Count) throw new ArgumentOutOfRangeException(nameof(templateIndex));
+        var template = page.Templates[templateIndex];
+        var paths = new Dictionary<int, (int, string)>();
+        if (generated)
+        {
+            if (template.BaseLocation is not null || template.Elements.Any(element => element is null ||
+                    element is OfdTextElement text && text.SourceXml is not null))
+                throw new NotSupportedException("UnprovedGeneratedTemplateEnvelope");
+            for (var i = 0; i < template.Elements.Count; i++)
+            {
+                budget.Check(); budget.Copy(256);
+                paths.Add(i, (i, "model:Pages[" + pagePosition + "]/model:Templates[" + templateIndex + "]/model:Elements[" + i + "]"));
+            }
+            return paths;
+        }
+        if (!pageEntries.TryGetValue(pagePosition, out var pageEntry) ||
+            !templateEntries.TryGetValue(template.TemplateId, out var declaration) ||
+            template.BaseLocation is null || Resolve(package.DocumentEntryPath!, template.BaseLocation) != declaration.Entry)
+            throw new NotSupportedException("UnprovedTemplateSourceBinding");
+        var pageRoot = Control(pageEntry);
+        var references = pageRoot.Elements(ns + "Template").Where(node => node.Attribute("TemplateID")?.Value == template.TemplateId).ToArray();
+        if (references.Length != 1 ||
+            !string.Equals(references[0].Attribute("ZOrder")?.Value ?? declaration.ZOrder ?? "Background",
+                template.ZOrder, StringComparison.OrdinalIgnoreCase))
+            throw new NotSupportedException("UnprovedTemplateReference");
+        var root = Control(declaration.Entry);
+        if (root.Name != ns + "Page") throw new NotSupportedException("UnknownTemplateEnvelope");
+        OfdStrictTextGeometry.Attributes(root); OfdStrictTextGeometry.PlainTextNodes(root, false);
+        if (root.Elements().Any(child => child.Name.Namespace != ns || child.Name.LocalName is not ("Area" or "Content")))
+            throw new NotSupportedException("UnknownTemplateEnvelope");
+        var templateBox = One(root, "Area", false) is { } area
+            ? Box(area) : documentBox ?? throw new NotSupportedException("MissingTemplatePhysicalBox");
+        if (!templateBox.SequenceEqual(new[] { page.XMillimeters, page.YMillimeters, page.WidthMillimeters, page.HeightMillimeters }))
+            throw new NotSupportedException("TemplatePhysicalBoxMismatch");
+        var content = One(root, "Content", false);
+        if (content is null)
+        {
+            if (template.Elements.Count != 0) throw new NotSupportedException("TemplateElementOrderMismatch");
+            return paths;
+        }
+        OfdStrictTextGeometry.Attributes(content); OfdStrictTextGeometry.PlainTextNodes(content, false);
+        var index = 0; var layerOrdinal = 0;
+        foreach (var layer in content.Elements())
+        {
+            budget.Check();
+            if (layer.Name != ns + "Layer") throw new NotSupportedException("UnknownTemplateContainer");
+            OfdStrictTextGeometry.Attributes(layer, "ID", "Type"); OfdStrictTextGeometry.PlainTextNodes(layer, false);
+            var layerType = layer.Attribute("Type")?.Value ?? "Body";
+            if (layerType is not ("Body" or "Background" or "Foreground")) throw new NotSupportedException("UnsupportedTemplateLayerType");
+            var objectOrdinal = 0;
+            foreach (var child in layer.Elements())
+            {
+                budget.Check();
+                if (index >= template.Elements.Count) throw new NotSupportedException("TemplateElementOrderMismatch");
+                var model = template.Elements[index];
+                var expected = model switch { OfdTextElement t => t.SourceXml, OfdPathElement p => p.SourceXml,
+                    OfdImageElement image => image.SourceXml, OfdRawElement raw => raw.Xml, _ => null };
+                if (expected is null || !MatchesOriginalElement(child, expected) ||
+                    model.LayerId != layer.Attribute("ID")?.Value || model.LayerType != layerType || child.Name.Namespace != ns)
+                    throw new NotSupportedException("TemplateElementOrderMismatch");
+                budget.Copy(256L + 4L * (ExpandedLength(root.Name) + ExpandedLength(content.Name) + ExpandedLength(layer.Name) + ExpandedLength(child.Name)));
+                var path = "/" + root.Name + "[0]/" + content.Name + "[0]/" + layer.Name + "[" + layerOrdinal + "]/" + child.Name + "[" + objectOrdinal + "]";
+                paths.Add(index++, (layerOrdinal, path)); objectOrdinal++;
+            }
+            layerOrdinal++;
+        }
+        if (index != template.Elements.Count) throw new NotSupportedException("TemplateElementOrderMismatch");
+        return paths;
     }
 
     internal Dictionary<int, (int Layer, string Path)> Page(OfdPage page, int position)

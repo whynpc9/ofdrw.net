@@ -20,6 +20,11 @@ license for Ofdrw.Net itself.
 | SkiaSharp.NativeAssets.Linux.NoDependencies (19 tests/sample only) | 3.119.1 | MIT, bundled native notices | https://github.com/mono/SkiaSharp/tree/v3.119.1 |
 | SixLabors.Fonts | 1.0.1 | Apache-2.0 | https://github.com/SixLabors/Fonts |
 | SixLabors.ImageSharp | 2.1.13 | Apache-2.0 | https://github.com/SixLabors/ImageSharp |
+| JBig2Decoder.NETStandard | 1.5.2 | BSD-3-Clause original JPedal decoder and MIT port | https://github.com/nicholsab/JBig2Decoder.NETStandard |
+
+The JBIG2 decoder source retains both the original IDRsolutions BSD-3-Clause
+notice and the port's MIT notice. The complete text is shipped with the Reader
+package in `docs/licenses/JBIG2DECODER-NETSTANDARD-LICENSE.txt`.
 
 The ImageSharp row describes **the pinned 2.1.13 package**: its nuspec declares
 `Apache-2.0`, and the [v2.1.13 source LICENSE](https://github.com/SixLabors/ImageSharp/blob/v2.1.13/LICENSE)

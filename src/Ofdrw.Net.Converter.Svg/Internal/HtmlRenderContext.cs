@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Reader.Readers;
 
 namespace Ofdrw.Net.Converter.Svg.Internal;
 
@@ -25,6 +26,8 @@ internal sealed class HtmlRenderContext
     private long _nodes, _characters, _resources, _pixels;
     private readonly Dictionary<OfdFontResource, (byte[] Data, string Hash, OpenTypeCmap? Coverage, bool Bold, bool Italic)> _fontCache = new();
     private readonly Dictionary<string, (byte[] Data, string Hash, OpenTypeCmap? Coverage, bool Bold, bool Italic)> _faceCache = new(StringComparer.Ordinal);
+    private readonly Dictionary<OfdImageElement, (byte[] Data, string MediaType)> _preparedImages = new();
+    internal (byte[] Data, string MediaType) PreparedImage(OfdImageElement image) => _preparedImages[image];
     internal (byte[] Data, string Hash, OpenTypeCmap? Coverage, bool Bold, bool Italic) Font(OfdFontResource font, FontParseBudget budget)
     {
         if (_fontCache.TryGetValue(font, out var cached)) return cached;
@@ -101,7 +104,8 @@ internal sealed class HtmlRenderContext
         if (source is { Length: > 0 })
         {
             var node = OfdXmlEnvelope.Parse(source);
-            if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node))
+            if (!OfdGraphicXmlContract.HasKnownChildren(node) || OfdGraphicXmlContract.HasUnsupportedReferences(node,
+                    allowImageMask: element is OfdImageElement { MaskResourceId: not null }))
                 throw new NotSupportedException("HTML preview does not support unknown drawing children or references.");
             if (element is OfdTextElement &&
                 (!OfdRenderPreflight.MatchesInteger(node.Attribute("ReadDirection"), 0) ||
@@ -117,8 +121,18 @@ internal sealed class HtmlRenderContext
             foreach (var clip in typedClips.Items) foreach (var area in clip.Areas) ValidatePath(area.Path.AbbreviatedData);
         if (element.ClippingXml is { Length: > 0 } clipXml)
             foreach (var clipPath in OfdXmlEnvelope.Parse(clipXml).Descendants().Where(n => n.Name.LocalName == "AbbreviatedData")) ValidatePath(clipPath.Value);
-        if (element is OfdImageElement media) HtmlImageAdmission.Validate(media.Data, media.MediaType, _token, pixels =>
-        { _token.ThrowIfCancellationRequested(); Spend(ref _pixels, pixels, _options.MaxDecodedImagePixels, "decoded image pixels"); });
+        if (element is OfdImageElement media)
+        {
+            var prepared = OfdImageRenderProjection.Prepare(media, _options.MaxDecodedImagePixels, _token);
+            if (!ReferenceEquals(prepared.Data, media.Data))
+            {
+                Resource(prepared.Data.LongLength);
+                Reserve(4, checked(16L * prepared.Data.LongLength + 1024));
+            }
+            HtmlImageAdmission.Validate(prepared.Data, prepared.MediaType, _token, pixels =>
+            { _token.ThrowIfCancellationRequested(); Spend(ref _pixels, pixels, _options.MaxDecodedImagePixels, "decoded image pixels"); });
+            _preparedImages[media] = prepared;
+        }
     }
     private void ValidatePath(string data)
     {

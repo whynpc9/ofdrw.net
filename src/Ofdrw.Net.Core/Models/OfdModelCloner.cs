@@ -99,7 +99,10 @@ internal static class OfdModelCloner
                     ResourceId = image.ResourceId, FileName = image.FileName, MediaType = image.MediaType,
                     Data = clonePayloads ? Payload(image.Data) : image.Data, Transform = Matrix(image.Transform), Alpha = image.Alpha,
                     ClipsXml = CloneXml(image.ClipsXml, targetNamespace, material, cancellationToken), SourceXml = CloneXml(image.SourceXml, targetNamespace, material, cancellationToken),
-                    SourceMediaAmbiguous = image.SourceMediaAmbiguous
+                    SourceMediaAmbiguous = image.SourceMediaAmbiguous,
+                    MaskResourceId = image.MaskResourceId, MaskMediaType = image.MaskMediaType,
+                    MaskData = image.MaskData is null ? null : clonePayloads ? Payload(image.MaskData) : image.MaskData,
+                    MaskSourceAmbiguous = image.MaskSourceAmbiguous
                 };
                 break;
             case OfdPathElement path:

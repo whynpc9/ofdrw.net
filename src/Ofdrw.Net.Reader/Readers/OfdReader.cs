@@ -1096,7 +1096,7 @@ public sealed class OfdReader : IOfdReader
                     child.Nodes().All(node => node is XText or XComment));
             var declaredFormat = media.Attribute("Format")?.Value;
             var format = declaredFormat?.Trim().ToUpperInvariant();
-            var validFormat = format is null or "PNG" or "JPG" or "JPEG" or "BMP" or "TIFF";
+            var validFormat = format is null or "PNG" or "JPG" or "JPEG" or "BMP" or "TIFF" or "JBIG2";
             var file = fileAttribute?.Value ?? ReadValue(files.FirstOrDefault(), material, cancellationToken);
             if (string.IsNullOrWhiteSpace(file))
             {
@@ -1125,7 +1125,8 @@ public sealed class OfdReader : IOfdReader
             var detectedType = archive.TryGetBytes(mediaPath, out var payload)
                 ? EncodedImageAdmission.IdentifyFormat(payload) : null;
             var validPayload = detectedType is not null &&
-                (format is null || ToMediaType(format) == detectedType);
+                (format is null || ToMediaType(format) == detectedType) &&
+                (detectedType != "image/jbig2" || format == "JBIG2");
             if (validDeclaration && validFormat && validPayload) ambiguousMedia.Remove(key);
             else ambiguousMedia.Add(key);
             mediaMap[key] = mediaPath;
@@ -1416,8 +1417,26 @@ public sealed class OfdReader : IOfdReader
                         ClipsXml = ReadXmlString(node.Element(node.Name.Namespace + "Clips"), material, cancellationToken),
                         MediaType = mediaKey is not null && mediaTypeMap.TryGetValue(mediaKey, out var mediaType) ? mediaType : "image/png",
                         SourceMediaAmbiguous = mediaKey is not null && ambiguousMedia?.Contains(mediaKey) == true,
+                        MaskResourceId = node.Attribute("ImageMask")?.Value,
                         SourceXml = OfdXmlEnvelope.Capture(node, material, cancellationToken)
                     };
+
+                    if (image.MaskResourceId is not null)
+                    {
+                        var maskKey = CanonicalResourceId(image.MaskResourceId);
+                        string? maskType = null;
+                        byte[]? maskBytes = null;
+                        image.MaskSourceAmbiguous = maskKey is null || maskKey == mediaKey ||
+                            ambiguousMedia?.Contains(maskKey) == true ||
+                            !mediaMap.TryGetValue(maskKey, out var maskPath) ||
+                            !mediaTypeMap.TryGetValue(maskKey, out maskType) ||
+                            !archive.TryGetBytes(maskPath, out maskBytes);
+                        if (!image.MaskSourceAmbiguous)
+                        {
+                            image.MaskData = maskBytes;
+                            image.MaskMediaType = maskType;
+                        }
+                    }
 
                     if (mediaKey is not null && (blockDepth == 0 || ambiguousMedia?.Contains(mediaKey) != true) &&
                         mediaMap.TryGetValue(mediaKey, out var mediaPath))
@@ -1629,6 +1648,7 @@ public sealed class OfdReader : IOfdReader
             "JPEG" => "image/jpeg",
             "BMP" => "image/bmp",
             "TIFF" => "image/tiff",
+            "JBIG2" => "image/jbig2",
             _ => "image/png"
         };
     }
