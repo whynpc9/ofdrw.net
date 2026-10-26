@@ -28,5 +28,6 @@
     <Compile Include="../TestSupport/NonSeekableInput.cs" Link="NonSeekableInput.cs" />
     <None Include="../../e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/*.ttf;../../e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/*.ttc" Link="fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../fixtures/trusted-fonts/sha256-40c6444465a1149b2ef8b7a47c5bae3f9d3d47b701e9a5b60bcfadcae4df6f59.zip" Link="fonts/trusted-fonts.zip" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures/R10/*.jb2;Fixtures/R10/*.pbm" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

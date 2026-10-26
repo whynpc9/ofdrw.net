@@ -152,12 +152,17 @@ internal sealed partial class OfdModelMaterialization
         token.ThrowIfCancellationRequested();
         if (pageBlockImageAdmissions.TryGetValue(payload, out var cached)) return cached;
         var mime = EncodedImageAdmission.IdentifyFormat(payload);
-        if (mime is not ("image/png" or "image/jpeg"))
+        if (mime is not ("image/png" or "image/jpeg" or "image/jbig2"))
         { pageBlockImageAdmissions.Add(payload, null); return null; }
         ChargeWork(checked(payload.LongLength * 16), token);
         try
         {
-            EncodedImageAdmission.Validate(payload, mime, token,
+            if (mime == "image/jbig2")
+            {
+                var size = RestrictedJbig2Admission.Validate(payload, token);
+                ChargeWork(checked((long)size.Width * size.Height * 16), token);
+            }
+            else EncodedImageAdmission.Validate(payload, mime, token,
                 pixels => ChargeWork(checked(pixels * 16), token));
             pageBlockImageAdmissions.Add(payload, mime); return mime;
         }

@@ -132,6 +132,13 @@ public sealed class OfdImageElement : OfdElement
 
     internal bool SourceMediaAmbiguous { get; set; }
 
+    // Reader-resolved rendering view. The original resource reference and bytes
+    // remain in the imported package; this data is never written in their place.
+    internal string? MaskResourceId { get; set; }
+    internal string? MaskMediaType { get; set; }
+    internal byte[]? MaskData { get; set; }
+    internal bool MaskSourceAmbiguous { get; set; }
+
     /// <summary>Maps the image's unit square into object coordinates. Null uses the boundary width/height.</summary>
     public double[]? Transform { get; set; }
 

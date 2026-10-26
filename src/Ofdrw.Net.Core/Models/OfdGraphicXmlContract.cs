@@ -54,7 +54,7 @@ internal static class OfdGraphicXmlContract
         return parent switch
         {
             "TextObject" => name is "Font" or "Size" or "Stroke" or "Fill" or "HScale" or "ReadDirection" or "CharDirection" or "Weight" or "Italic",
-            "ImageObject" => name is "ResourceID" or "Substitution",
+            "ImageObject" => name is "ResourceID" or "Substitution" or "ImageMask",
             "PathObject" => name is "Stroke" or "Fill" or "Rule" or "LineWidth" or "Cap" or "Join" or "MiterLimit" or "DashOffset" or "DashPattern",
             "FillColor" or "StrokeColor" => name is "Value" or "Alpha",
             "TextCode" => name is "X" or "Y" or "DeltaX" or "DeltaY",
@@ -67,9 +67,10 @@ internal static class OfdGraphicXmlContract
         };
     }
 
-    internal static bool HasUnsupportedReferences(XElement root, bool allowAttachmentAction = false) => root.DescendantsAndSelf().Attributes().Any(attribute =>
+    internal static bool HasUnsupportedReferences(XElement root, bool allowAttachmentAction = false, bool allowImageMask = false) => root.DescendantsAndSelf().Attributes().Any(attribute =>
         !attribute.IsNamespaceDeclaration && attribute.Name.Namespace == XNamespace.None &&
-        (attribute.Name.LocalName is "DrawParam" or "ColorSpace" or "RefID" or "ObjectRef" or "TemplateID" or "PageID" or "Substitution" or "ImageMask" ||
+        (attribute.Name.LocalName is "DrawParam" or "ColorSpace" or "RefID" or "ObjectRef" or "TemplateID" or "PageID" or "Substitution" ||
+         attribute.Name.LocalName == "ImageMask" && !(allowImageMask && attribute.Parent == root && root.Name.LocalName == "ImageObject") ||
          attribute.Name.LocalName == "AttachID" && !allowAttachmentAction ||
          attribute.Name.LocalName == "Font" && attribute.Parent != root ||
          attribute.Name.LocalName == "ResourceID" && attribute.Parent != root));

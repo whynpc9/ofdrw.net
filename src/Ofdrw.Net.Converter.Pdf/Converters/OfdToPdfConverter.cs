@@ -498,7 +498,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         Func<byte[], Image<Rgba32>>? decode = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ValidateImage(image.Data, maximumPixels);
+        var projected = OfdImageRenderProjection.Prepare(image, maximumPixels, cancellationToken);
+        ValidateImage(projected.Data, maximumPixels);
         var state = graphics.Save();
         try
         {
@@ -511,7 +512,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             if (matrix.Length != 6 || matrix.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
                 throw new InvalidDataException("Invalid OFD image transform.");
             var crop = OfdImageRenderingHints.ReadPdfSourceCrop(image);
-            var data = image.Data;
+            var data = projected.Data;
             if (crop is { } sourceCrop)
             {
                 var prepared = PdfCropImage.Create(data, sourceCrop, image.Alpha, maximumPixels, cancellationToken, decode);

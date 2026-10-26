@@ -56,6 +56,13 @@
     "source": "https://go.microsoft.com/fwlink/?linkid=868515"
   },
   {
+    "id": "JBig2Decoder.NETStandard",
+    "version": "1.5.2",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://github.com/nicholsab/JBig2Decoder.NETStandard"
+  },
+  {
     "id": "Microsoft.Bcl.HashCode",
     "version": "6.0.0",
     "license_type": "expression",
@@ -198,6 +205,13 @@
   },
   {
     "id": "System.Memory",
+    "version": "4.5.4",
+    "license_type": "legacy-url",
+    "license": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
+    "source": "https://dot.net/"
+  },
+  {
+    "id": "System.Memory",
     "version": "4.5.5",
     "license_type": "legacy-url",
     "license": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
@@ -219,7 +233,7 @@
   },
   {
     "id": "System.Numerics.Vectors",
-    "version": "4.4.0",
+    "version": "4.5.0",
     "license_type": "legacy-url",
     "license": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
     "source": "https://dot.net/"
@@ -240,10 +254,10 @@
   },
   {
     "id": "System.Runtime.CompilerServices.Unsafe",
-    "version": "4.5.3",
-    "license_type": "legacy-url",
-    "license": "https://github.com/dotnet/corefx/blob/master/LICENSE.TXT",
-    "source": "https://dot.net/"
+    "version": "5.0.0",
+    "license_type": "expression",
+    "license": "MIT",
+    "source": "https://github.com/dotnet/runtime"
   },
   {
     "id": "System.Runtime.CompilerServices.Unsafe",

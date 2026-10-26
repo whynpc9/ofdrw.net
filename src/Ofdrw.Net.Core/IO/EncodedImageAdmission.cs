@@ -12,6 +12,7 @@ internal static class EncodedImageAdmission
 {
     internal static string? IdentifyFormat(byte[] data)
     {
+        if (RestrictedJbig2Admission.HasSignature(data)) return "image/jbig2";
         if (data.Length >= 8 && data[0] == 137 && data[1] == 80 && data[2] == 78 && data[3] == 71 &&
             data[4] == 13 && data[5] == 10 && data[6] == 26 && data[7] == 10) return "image/png";
         if (data.Length >= 3 && data[0] == 255 && data[1] == 216 && data[2] == 255) return "image/jpeg";

@@ -5,6 +5,7 @@ using System.Text.Json;
 using Ofdrw.Net.Converter.Pdf.Geometry;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Reader.Keywords;
+using Ofdrw.Net.Reader.Extraction;
 using Ofdrw.Net.Reader.Readers;
 
 namespace Ofdrw.Net.Converter.Pdf.Tests;
@@ -12,6 +13,76 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 [Collection("Trusted font geometry")]
 public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHelper output)
 {
+    [RealTrustedFontsTheory]
+    [InlineData("identity", 17, 28.132, 19.55, 31.1)]
+    [InlineData("rotation", 27, 25, 29.9, 27.55)]
+    public async Task RegionExtractionSelectsOneActualCtmDeltaGlyphByPositiveArea(string matrix,
+        double left, double top, double right, double bottom)
+    {
+        var bytes = Font("latin");
+        var source = await Read(bytes, "latin", matrix, 1);
+        var original = ((OfdTextElement)source.Pages[0].Elements[0]).SourceXml;
+        var extractor = new OfdRegionTextExtractor(new ObservedProvider(bytes));
+        var selected = extractor.Extract(source, 0, new OfdGlyphBox(left, top, right, bottom));
+        Assert.Equal("A", selected.Text);
+        var fragment = Assert.Single(selected.Fragments);
+        Assert.Equal(0, fragment.LogicalUtf16Start);
+        Assert.NotNull(fragment.InkQuadrilateralMillimeters);
+        Assert.Equal(original, ((OfdTextElement)source.Pages[0].Elements[0]).SourceXml);
+        var full = extractor.Extract(source, 0, new OfdGlyphBox(0, 0, 200, 200));
+        Assert.Equal("AiW ", full.Text);
+        Assert.Equal(4, full.Fragments.Count);
+    }
+
+    [RealTrustedFontsTheory]
+    [InlineData("latin")]
+    public async Task RegionExtractionUsesWhitespaceOriginAndExcludesBoundaryOnlyContact(string face)
+    {
+        var bytes = Font(face); var source = await Read(bytes, face, "identity", 1);
+        var extractor = new OfdRegionTextExtractor(new ObservedProvider(bytes));
+        Assert.Equal("", extractor.Extract(source, 0, new OfdGlyphBox(0, 0, 17, 200)).Text);
+        var space = extractor.Extract(source, 0, new OfdGlyphBox(24.3, 31, 24.4, 31.1));
+        Assert.Equal(" ", space.Text);
+        Assert.Null(Assert.Single(space.Fragments).InkQuadrilateralMillimeters);
+    }
+
+    [RealTrustedFontsTheory]
+    [InlineData("latin")]
+    public async Task RegionExtractionIncludesBackgroundBodyAndForegroundTemplatesInPaintOrder(string face)
+    {
+        var bytes = Font(face); var source = await Read(bytes, face, "identity", 1, withTemplates: true);
+        var result = new OfdRegionTextExtractor(new ObservedProvider(bytes))
+            .Extract(source, 0, new OfdGlyphBox(0, 0, 200, 200));
+        Assert.Equal("BAiW F", result.Text);
+        Assert.Equal(6, result.Fragments.Count);
+        Assert.Equal(1, result.Fragments[0].OccurrencePath[1]); // Template scope.
+        Assert.Equal(0, result.Fragments[1].OccurrencePath[1]); // Body scope.
+        Assert.Equal(1, result.Fragments[5].OccurrencePath[1]); // Foreground template scope.
+        source.Pages[0].Templates[0].ZOrder = "Foreground";
+        Assert.Throws<NotSupportedException>(() => new OfdRegionTextExtractor(new ObservedProvider(bytes))
+            .Extract(source, 0, new OfdGlyphBox(0, 0, 200, 200)));
+        source.Pages[0].Templates[0].ZOrder = "Background";
+        var templateText = (OfdTextElement)source.Pages[0].Templates[0].Elements[0];
+        var original = templateText.SourceXml!;
+        templateText.SourceXml = original.Replace("Size=\"4\"", "Size=\"5\"", StringComparison.Ordinal);
+        Assert.NotEqual(original, templateText.SourceXml);
+        Assert.Throws<NotSupportedException>(() => new OfdRegionTextExtractor(new ObservedProvider(bytes))
+            .Extract(source, 0, new OfdGlyphBox(0, 0, 200, 200)));
+    }
+
+    [RealTrustedFontsTheory]
+    [InlineData("undeclared")]
+    [InlineData("missing-file")]
+    public async Task RegionExtractionRejectsReaderOmittedTemplate(string missing)
+    {
+        var bytes = Font("latin");
+        var source = await Read(bytes, "latin", "identity", 1, withTemplates: true, missingTemplate: missing);
+        Assert.Single(source.Pages[0].Templates);
+        var exception = Assert.Throws<NotSupportedException>(() => new OfdRegionTextExtractor(new ObservedProvider(bytes))
+            .Extract(source, 0, new OfdGlyphBox(0, 0, 200, 200)));
+        Assert.Contains("IncompleteTemplateProjection", exception.Message);
+    }
+
     [RealTrustedFontsTheory]
     [InlineData("latin", "identity", 17, 28.132, 19.552, 31)]
     [InlineData("latin", "rotation", 27, 25, 29.868, 27.552)]
@@ -234,7 +305,7 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
         { owner.Requests.Add(request.Text); return inner.Measure(request, token); }
         public void Dispose() => inner.Dispose();
     }
-    private static async Task<OfdDocumentPackage> Read(byte[] font, string face, string matrix, int objects, string? overrideText = null, string? overrideCodes = null)
+    private static async Task<OfdDocumentPackage> Read(byte[] font, string face, string matrix, int objects, string? overrideText = null, string? overrideCodes = null, bool withTemplates = false, string? missingTemplate = null)
     {
         const string ns = "http://www.ofdspec.org/2016";
         var ctm = matrix == "rotation" ? "0 1 -1 0 20 0" : matrix == "shear" ? "1 0 0.5 1 0 0" : "1 0 0 1 0 0";
@@ -250,11 +321,23 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
         var entries = new Dictionary<string, byte[]>
         {
             ["OFD.xml"] = Encoding.UTF8.GetBytes($"<o:OFD xmlns:o=\"{ns}\" Version=\"1.0\" DocType=\"OFD-H\"><o:DocBody><o:DocInfo/><o:DocRoot>Doc_0/Document.xml</o:DocRoot></o:DocBody></o:OFD>"),
-            ["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes($"<o:Document xmlns:o=\"{ns}\"><o:CommonData><o:MaxUnitID>1000</o:MaxUnitID><o:PageArea><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:PageArea><o:DocumentRes>DocumentRes.xml</o:DocumentRes></o:CommonData><o:Pages><o:Page ID=\"1\" BaseLoc=\"Pages/Page_0/Content.xml\"/></o:Pages></o:Document>"),
+            ["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes($"<o:Document xmlns:o=\"{ns}\"><o:CommonData><o:MaxUnitID>1000</o:MaxUnitID><o:PageArea><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:PageArea><o:DocumentRes>DocumentRes.xml</o:DocumentRes>" +
+                (withTemplates ? "<o:TemplatePage ID=\"81\" BaseLoc=\"Pages/Template_Back/Content.xml\" ZOrder=\"Background\"/><o:TemplatePage ID=\"82\" BaseLoc=\"Pages/Template_Front/Content.xml\" ZOrder=\"Foreground\"/>" : "") +
+                "</o:CommonData><o:Pages><o:Page ID=\"1\" BaseLoc=\"Pages/Page_0/Content.xml\"/></o:Pages></o:Document>"),
             ["Doc_0/DocumentRes.xml"] = Encoding.UTF8.GetBytes($"<o:Res xmlns:o=\"{ns}\"><o:Fonts><o:Font ID=\"10\" FontName=\"OriginalOFL\"><o:FontFile>Res/font.ttf</o:FontFile></o:Font></o:Fonts></o:Res>"),
-            ["Doc_0/Pages/Page_0/Content.xml"] = Encoding.UTF8.GetBytes($"<o:Page xmlns:o=\"{ns}\"><o:Area><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:Area><o:Content><o:Layer ID=\"20\">{body}</o:Layer></o:Content></o:Page>"),
+            ["Doc_0/Pages/Page_0/Content.xml"] = Encoding.UTF8.GetBytes($"<o:Page xmlns:o=\"{ns}\"><o:Area><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:Area>" +
+                (withTemplates ? "<o:Template TemplateID=\"81\" ZOrder=\"Background\"/><o:Template TemplateID=\"82\" ZOrder=\"Foreground\"/>" : "") +
+                $"<o:Content><o:Layer ID=\"20\">{body}</o:Layer></o:Content></o:Page>"),
             ["Doc_0/Res/font.ttf"] = font
         };
+        if (withTemplates)
+            foreach (var (name, letter, layerId, objectId) in new[] { ("Back", "B", 30, 90), ("Front", "F", 31, 91) })
+                entries[$"Doc_0/Pages/Template_{name}/Content.xml"] = Encoding.UTF8.GetBytes($"<o:Page xmlns:o=\"{ns}\"><o:Area><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:Area><o:Content><o:Layer ID=\"{layerId}\"><o:TextObject ID=\"{objectId}\" Boundary=\"20 30 100 50\" Font=\"10\" Size=\"4\"><o:TextCode X=\"3\" Y=\"15\">{letter}</o:TextCode></o:TextObject></o:Layer></o:Content></o:Page>");
+        if (missingTemplate == "undeclared")
+            entries["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+                .Replace("<o:TemplatePage ID=\"82\" BaseLoc=\"Pages/Template_Front/Content.xml\" ZOrder=\"Foreground\"/>", "", StringComparison.Ordinal));
+        else if (missingTemplate == "missing-file")
+            entries.Remove("Doc_0/Pages/Template_Front/Content.xml");
         using var input = new MemoryStream();
         using (var zip = new ZipArchive(input, ZipArchiveMode.Create, true))
             foreach (var pair in entries) { using var entry = zip.CreateEntry(pair.Key, CompressionLevel.NoCompression).Open(); entry.Write(pair.Value); }

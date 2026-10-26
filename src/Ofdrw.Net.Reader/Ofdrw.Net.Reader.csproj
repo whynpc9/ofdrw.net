@@ -10,5 +10,8 @@
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf" />
     <ProjectReference Include="../Ofdrw.Net.Core/Ofdrw.Net.Core.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Packaging/Ofdrw.Net.Packaging.csproj" />
+    <PackageReference Include="JBig2Decoder.NETStandard" Version="1.5.2" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
+    <None Include="../../docs/licenses/JBIG2DECODER-NETSTANDARD-LICENSE.txt" Pack="true" PackagePath="docs/licenses/" Link="docs/licenses/JBIG2DECODER-NETSTANDARD-LICENSE.txt" />
   </ItemGroup>
 <ItemGroup><InternalsVisibleTo Include="Ofdrw.Net.Converter.Pdf.Tests" /></ItemGroup></Project>
