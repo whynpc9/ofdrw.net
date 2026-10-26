@@ -106,5 +106,39 @@ internal static class FlowFixedSamples
         await File.WriteAllTextAsync(Path.Combine(directory, "flow-fixed.json"),
             JsonSerializer.Serialize(evidence, new JsonSerializerOptions { WriteIndented = true }));
         Console.WriteLine($"flow-fixed: pages={evidence.pages}, ofd={evidence.ofdSha256}, pdf={evidence.pdfSha256}");
+        await RunLetterSpacingWrap(directory);
+    }
+
+    private static async Task RunLetterSpacingWrap(string directory)
+    {
+        var flow = new FlowDocument();
+        flow.Options.PageWidthMillimeters = 19;
+        flow.Options.PageHeightMillimeters = 50;
+        flow.Options.MarginLeftMillimeters = flow.Options.MarginRightMillimeters = 5;
+        flow.Options.MarginTopMillimeters = flow.Options.MarginBottomMillimeters = 5;
+        var paragraph = new Paragraph();
+        paragraph.Spans.Add(new Span("X A\u00A0B")
+        { FontSizeMillimeters = 4, LetterSpacingMillimeters = 1, Underline = true });
+        flow.Blocks.Add(paragraph);
+        var package = flow.Render();
+        var text = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().ToArray();
+        if (package.Pages.Count != 1 || text.Length != 2 || text[0].Text != "X " ||
+            text[1].Text != "A\u00A0B" || text[1].YMillimeters <= text[0].YMillimeters)
+            throw new InvalidOperationException("Letter-spaced nonbreaking unit did not wrap onto a fresh line.");
+        var ofd = Path.Combine(directory, "flow-letterspacing-wrap.ofd");
+        var pdf = Path.Combine(directory, "flow-letterspacing-wrap.pdf");
+        await using (var output = File.Create(ofd)) await new OfdPackageWriter().WriteAsync(package, output);
+        await using (var input = File.OpenRead(ofd))
+        await using (var output = File.Create(pdf))
+            await new OfdToPdfConverter().ConvertAsync(input, output);
+        await File.WriteAllTextAsync(Path.Combine(directory, "flow-letterspacing-wrap.json"),
+            JsonSerializer.Serialize(new
+            {
+                sourceSha = Environment.GetEnvironmentVariable("R04_SOURCE_SHA"),
+                chain = "FlowDocument -> native OFD -> PDF",
+                pages = 1,
+                ofdSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(ofd))),
+                pdfSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(pdf)))
+            }, new JsonSerializerOptions { WriteIndented = true }));
     }
 }

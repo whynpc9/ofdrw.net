@@ -253,4 +253,43 @@ public sealed class FlowFixedBlockTests
         Assert.All(text, element => Assert.Null(element.Runs[0].DeltaX));
         Assert.Equal(FlowLatinMetrics.AdvanceMillimeters("A", style), text[0].WidthMillimeters, 5);
     }
+
+    [Fact]
+    public void LetterSpacedNonbreakingUnit_FitsAfterWrappingWithoutPreviousLineGap()
+    {
+        var flow = SmallPage();
+        flow.Options.PageWidthMillimeters = 19; // 9 mm usable width.
+        var paragraph = new Paragraph();
+        paragraph.Spans.Add(new Span("X A\u00A0B")
+        { FontSizeMillimeters = 4, LetterSpacingMillimeters = 1 });
+        flow.Blocks.Add(paragraph);
+
+        var text = Assert.Single(flow.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "X ", "A\u00A0B" }, text.Select(element => element.Text));
+        Assert.True(text[1].YMillimeters > text[0].YMillimeters);
+        Assert.Equal(5, text[1].XMillimeters, 5);
+        Assert.InRange(text[1].WidthMillimeters, 8, 9);
+        Assert.Equal(2, text[1].Runs[0].DeltaX!.Split(' ').Length);
+
+        var tableFlow = SmallPage();
+        tableFlow.Options.PageWidthMillimeters = 21;
+        var table = new Table();
+        table.ColumnWidthsMillimeters.Add(11);
+        var row = new Row();
+        var cell = new Cell { PaddingMillimeters = 1 };
+        var cellParagraph = new Paragraph();
+        cellParagraph.Spans.Add(new Span("X A\u00A0B")
+        { FontSizeMillimeters = 4, LetterSpacingMillimeters = 1 });
+        cell.Paragraphs.Add(cellParagraph);
+        row.Cells.Add(cell);
+        table.Rows.Add(row);
+        tableFlow.Blocks.Add(table);
+        var tableText = Assert.Single(tableFlow.Render().Pages).Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "X ", "A\u00A0B" }, tableText.Select(element => element.Text));
+        Assert.Equal(text[1].WidthMillimeters, tableText[1].WidthMillimeters, 5);
+        Assert.Equal(text[1].Runs[0].DeltaX, tableText[1].Runs[0].DeltaX);
+
+        flow.Options.PageWidthMillimeters = 18; // An 8 mm usable width cannot fit the unit itself.
+        Assert.Throws<InvalidOperationException>(() => flow.Render());
+    }
 }

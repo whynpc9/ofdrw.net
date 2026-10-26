@@ -222,8 +222,9 @@ internal static class FlowParagraphLayout
                     unitWidth += Spacing(glyphs[end - 1], glyphs[end]) + glyphs[end].Width;
                     nonbreaking |= IsNonbreakingSpace(glyphs[end++]);
                 }
-                if (current.Count > 0) unitWidth += Spacing(current[current.Count - 1], glyph);
-                if (current.Count > 0 && (unitWidth <= width || nonbreaking) && currentWidth + unitWidth > width - indent)
+                var incomingSpacing = current.Count > 0 ? Spacing(current[current.Count - 1], glyph) : 0;
+                if (current.Count > 0 && (unitWidth <= width || nonbreaking) &&
+                    currentWidth + incomingSpacing + unitWidth > width - indent)
                     Flush(automaticWrap: true);
                 if (nonbreaking)
                 {
