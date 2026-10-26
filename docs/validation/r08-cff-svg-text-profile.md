@@ -18,6 +18,9 @@ font parsing budget before each lookup, including repeated format-4 lookups.
 For imported escaped TextCode, CFF1 admission uses the same transient decoded
 render projection as SVG drawing; the original SourceXml and raw TextCode stay
 unchanged.
+When the same SVG is generated for HTML preview, each selected element's
+preview capacity is reserved before this decoded projection is allocated and
+is charged once for that page occurrence.
 Normal Unicode coverage and existing `CGTransform` refusals remain active.
 This is structural admission; it is not a general Type 2 CharString validator
 or a promise of arbitrary CFF font compatibility.

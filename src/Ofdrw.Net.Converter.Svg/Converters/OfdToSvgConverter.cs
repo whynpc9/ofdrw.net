@@ -112,9 +112,16 @@ public sealed class OfdToSvgConverter
         var elements = OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken).ToList();
         OfdRenderPreflight.Validate(elements);
         var renderTexts = new Dictionary<OfdTextElement, OfdTextElement>();
+        var previewReserved = new HashSet<OfdElement>();
+        void BeforePreviewElement(OfdElement element)
+        {
+            if (preview is not null && previewReserved.Add(element))
+                preview.BeforeElement(element);
+        }
         OfdTextElement RenderText(OfdTextElement source)
         {
             if (renderTexts.TryGetValue(source, out var projected)) return projected;
+            BeforePreviewElement(source);
             projected = OfdTextRenderProjection.Create(source, material, cancellationToken);
             renderTexts.Add(source, projected);
             return projected;
@@ -126,7 +133,7 @@ public sealed class OfdToSvgConverter
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
-            preview?.BeforeElement(element);
+            BeforePreviewElement(element);
             if (element is OfdRawElement glyphXml && EmbeddedFontCoverage.HasExplicitGlyphReferences(glyphXml.Xml))
                 throw new NotSupportedException("SVG export does not model raw CGTransform glyph substitutions.");
             if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })

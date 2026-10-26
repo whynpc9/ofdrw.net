@@ -4,6 +4,7 @@ using System.Text;
 using System.Xml.Linq;
 using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Converter.Svg;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Fonts;
 using Ofdrw.Net.Core.Models;
@@ -197,6 +198,29 @@ public sealed class CffSvgProfileTests
         Assert.Equal(before, SHA256.HashData(ofd));
     }
 
+    [Fact]
+    public async Task CffHtmlPreviewReservesBeforeInvalidSourceProjection()
+    {
+        var ofd = await EscapedSource(Fixture(), "\\GGGG" + new string('A', 1000));
+        using var html = new MemoryStream();
+        var refusal = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdToHtmlConverter(new OfdHtmlOptions { MaxGeneratedCharacters = 300_000 })
+                .ConvertAsync(new MemoryStream(ofd), html));
+        Assert.Contains("HTML preview capacity exceeded: characters", refusal.Message);
+        Assert.Equal(0, html.Length);
+    }
+
+    [Fact]
+    public async Task CffHtmlPreviewKeepsTextWithBoundedCapacity()
+    {
+        var ofd = await Source(Fixture());
+        using var html = new MemoryStream();
+        await new OfdToHtmlConverter(new OfdHtmlOptions { MaxGeneratedCharacters = 2_000_000 })
+            .ConvertAsync(new MemoryStream(ofd), html);
+        var document = XDocument.Parse(Encoding.UTF8.GetString(html.ToArray()));
+        Assert.Equal(Text, Assert.Single(document.Descendants(), node => node.Name.LocalName == "text").Value);
+    }
+
     private static byte[] WithUvsGid(int gid)
     {
         var face = new OpenTypeFace(Fixture());
@@ -224,7 +248,7 @@ public sealed class CffSvgProfileTests
         return face.Build();
     }
 
-    private static async Task<byte[]> EscapedSource(byte[] font)
+    private static async Task<byte[]> EscapedSource(byte[] font, string encoded = "\\0041")
     {
         using var output = new MemoryStream();
         output.Write(await Source(font, "A"));
@@ -235,7 +259,7 @@ public sealed class CffSvgProfileTests
             XDocument xml;
             using (var input = entry.Open()) xml = XDocument.Load(input);
             var code = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "TextCode");
-            code.Value = "\\0041";
+            code.Value = encoded;
             var name = entry.FullName;
             entry.Delete();
             using var replacement = archive.CreateEntry(name).Open();
