@@ -49,7 +49,7 @@ foreach (var face in result.FontEmbedding)
 
 执行 `e2e/Ofdrw.Net.FontSubset.E2E` 可生成同文档的 full/subset OFD、各页 SVG、经本次 OFD 导出的 PDF、固定字体的 generated-layout native/default DOCX，以及字节/身份对照 JSON。11 包实际消费脚本也运行此样例。功能、自动渲染、PNG 和 macOS Preview 的证据分列在[验收目录](evidence/font-subset/README.md)。
 
-补充平面（非 BMP）字形在 OFD 中仍保留原始 Unicode、cmap 与 GID。R08 的 PDF 出口仅接纳显式嵌入、授权允许嵌入与子集化、具有 Unicode 覆盖的静态单色 TrueType `glyf` face：每个文字对象最多 1024 个可见 scalar、face 最多 64 MiB，且用字不能共享有歧义的 GID。导出时只在实际裁剪过轮廓的 PDF 私有字体中将补充平面字符暂映射至空闲 BMP 私用码位，保持原轮廓 GID，再为 Type0 字体写入指向原 UTF-16 代理对的 ToUnicode；跨文字对象或签名外观若同一 PDF 字体身份对应不同 Unicode 映射，则拒绝导出。OFD 字节与文字语义不变。PDFsharp 仍逐 UTF-16 code unit 绘制，因此这是受限的适配路径，不是任意非 BMP 字体支持。name-only、symbol cmap、Type1/CFF、变量/彩色字体和超出预算的补充平面 PDF 仍明确拒绝；SVG 的视觉验收与 PDF 分开记录。含 CGTransform 的旧包保持原字体和 XML，未建模的显式 GID 不用普通 Unicode coverage 错误拒绝；PDF/SVG 导出也明确拒绝未建模的 CGTransform，避免忽略其真实字形。
+补充平面（非 BMP）字形在 OFD 中仍保留原始 Unicode、cmap 与 GID。R08 的 PDF 出口仅接纳显式嵌入、授权允许嵌入与子集化、具有 Unicode 覆盖的静态单色 TrueType `glyf` face：每个文字对象最多 1024 个可见 scalar、face 最多 64 MiB，且用字不能共享有歧义的 GID。导出时只在实际裁剪过轮廓的 PDF 私有字体中将补充平面字符暂映射至空闲 BMP 私用码位，保持原轮廓 GID，再为 Type0 字体写入指向原 UTF-16 代理对的 ToUnicode；跨文字对象或签名外观若同一 PDF 字体身份对应不同 Unicode 映射，则拒绝导出。OFD 字节与文字语义不变。PDFsharp 仍逐 UTF-16 code unit 绘制，因此这是受限的适配路径，不是任意非 BMP 字体支持。未绑定的 name-only、Type1/CFF、变量/彩色字体和超出预算的补充平面 PDF 仍明确拒绝。Windows symbol cmap 仅在文字本身全部使用直接映射、无歧义的 BMP 私用区码点，字体为允许嵌入的静态单色 TrueType 时，才为 PDF/SVG 导出制作 Unicode cmap 副本；PDF 最终 FontFile2 恢复完整字体以保留嵌套复合组件并遵守禁止子集化位。低字节回退命中的普通字母仍拒绝，OFD 原字体与 TextCode 不变；SVG 与 PDF 的视觉验收分别记录。含 CGTransform 的旧包保持原字体和 XML，未建模的显式 GID 不用普通 Unicode coverage 错误拒绝；PDF/SVG 导出也明确拒绝未建模的 CGTransform，避免忽略其真实字形。
 
 05 是 issue #3 的字体部分，04 的绘图 API 仍是另一半；本票不关闭或修改 issue #3 正文。与未合并 01/16 只核对现有资源绑定，不修改其他分支；集成时必须继续遵守同源字节及坐标不重算的契约。
 

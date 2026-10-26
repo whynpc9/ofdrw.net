@@ -177,6 +177,163 @@ public sealed class FontIsolationTests
             else await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
         }
     }
+
+    [Fact]
+    public async Task DirectPrivateUseSymbolTextKeepsOfdFontAndExportsUnicodeAliases()
+    {
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        var sourceCmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face);
+        var rebuilt = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int, int>
+        {
+            [0xF041] = sourceCmap.Glyph('A'), [0xF042] = sourceCmap.Glyph('B')
+        });
+        var offset = (int)Ofdrw.Net.Core.Fonts.OpenTypeFace.U32(rebuilt, 8);
+        var length = Ofdrw.Net.Core.Fonts.OpenTypeFace.U16(rebuilt, offset + 2);
+        var symbol = new byte[12 + length];
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbol, 2, 1);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbol, 4, 3);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(symbol, 8, 12);
+        Buffer.BlockCopy(rebuilt, offset, symbol, 12, length);
+        face.Tables["cmap"] = symbol;
+        var original = face.Build();
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "symbol-pua", Data = original });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { new OfdTextElement { FontResourceId = "10", Text = "\uF041\uF042",
+                XMillimeters = 10, YMillimeters = 15, FontSizeMillimeters = 6 } } });
+        using var ofd = new MemoryStream();
+        var result = await new OfdPackageWriter().WriteWithResultAsync(package, ofd);
+        Assert.False(result.FontEmbedding[0].IsSubset);
+        Assert.Contains(result.Diagnostics, item => item.Contains("FONT_COVERAGE_UNVERIFIED"));
+        ofd.Position = 0;
+        var reread = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(ofd);
+        Assert.Equal(original, reread.Fonts.Single().Data);
+        Assert.Equal("\uF041\uF042", ((OfdTextElement)reread.Pages.Single().Elements.Single()).Text);
+
+        ofd.Position = 0;
+        using var svg = new MemoryStream();
+        await new Ofdrw.Net.Converter.Svg.Converters.OfdToSvgConverter().ConvertAsync(ofd, svg);
+        var svgText = System.Text.Encoding.UTF8.GetString(svg.ToArray());
+        Assert.Contains("\uF041\uF042", svgText);
+        var encoded = System.Text.RegularExpressions.Regex.Match(svgText, @"data:font/ttf;base64,([A-Za-z0-9+/=]+)");
+        Assert.True(encoded.Success);
+        var svgFace = Convert.FromBase64String(encoded.Groups[1].Value);
+        var svgCmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(svgFace));
+        Assert.False(svgCmap.IsSymbol);
+        Assert.Equal(0, svgCmap.Glyph('A'));
+        Assert.Equal(sourceCmap.Glyph('A'), svgCmap.Glyph(0xF041));
+        Assert.Equal(sourceCmap.Glyph('B'), svgCmap.Glyph(0xF042));
+
+        ofd.Position = 0;
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("\uF041\uF042", parsed.GetPage(1).Text);
+    }
+
+    [Fact]
+    public async Task DirectPrivateUseNestedCompositeRestoresCompletePdfFaceWhenSubsettingIsForbidden()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Ofdrw.Net.sln"))) directory = directory.Parent;
+        var noto = File.ReadAllBytes(Path.Combine(directory!.FullName,
+            "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf"));
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(SymbolFace(noto, 171));
+        var os2 = face.Table("OS/2");
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(os2, 8, Ofdrw.Net.Core.Fonts.OpenTypeFace.U16(os2, 8) | 0x0100);
+        var original = face.Build();
+        var symbol = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(original));
+        Assert.True(symbol.IsSymbol);
+        Assert.Equal(171, symbol.DirectGlyph(0xF041));
+        var source = new OfdDocumentPackage();
+        source.Fonts.Add(new OfdFontResource { Id = "10", FontName = "nested-symbol", Data = original });
+        source.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { new OfdTextElement { FontResourceId = "10", Text = "\uF041",
+                XMillimeters = 10, YMillimeters = 15, FontSizeMillimeters = 6 } } });
+        using var ofd = new MemoryStream();
+        var report = await new OfdPackageWriter().WriteWithResultAsync(source, ofd);
+        Assert.False(report.FontEmbedding.Single().IsSubset);
+        ofd.Position = 0;
+        var reread = await new Ofdrw.Net.Reader.Readers.OfdReader().ReadAsync(ofd);
+        Assert.Equal(original, reread.Fonts.Single().Data);
+        var alias = Ofdrw.Net.Core.Fonts.SymbolCmapProfile.CreateUnicodeAlias(original, symbol,
+            new Ofdrw.Net.Core.Fonts.FontParseBudget());
+        var identity = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(alias)).ToLowerInvariant();
+        var expected = Ofdrw.Net.Core.Fonts.OpenTypeFontIdentity.WithUniqueNames(alias, identity);
+        var expectedOutline = new Ofdrw.Net.Core.Fonts.TrueTypeGlyphOutlines(expected).Read(171);
+        Assert.True(expectedOutline.Contours.Count >= 2);
+
+        ofd.Position = 0;
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("\uF041", parsed.GetPage(1).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var descriptor = Assert.Single(inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>(),
+            item => item.Elements.ContainsKey("/FontFile2") &&
+                item.Elements.GetName("/FontName").Contains("Ofdrw-" + identity, StringComparison.OrdinalIgnoreCase));
+        var fontFile2 = descriptor.Elements.GetDictionary("/FontFile2").Stream.UnfilteredValue;
+        Assert.Equal(expected, fontFile2);
+        var actualOutline = new Ofdrw.Net.Core.Fonts.TrueTypeGlyphOutlines(fontFile2).Read(171);
+        Assert.Equal(expectedOutline.Contours.Count, actualOutline.Contours.Count);
+
+        var artifactDirectory = Environment.GetEnvironmentVariable("R08_SYMBOL_ARTIFACT_DIR");
+        if (!string.IsNullOrWhiteSpace(artifactDirectory))
+        {
+            Directory.CreateDirectory(artifactDirectory);
+            ofd.Position = 0;
+            using var svg = new MemoryStream();
+            await new Ofdrw.Net.Converter.Svg.Converters.OfdToSvgConverter().ConvertAsync(ofd, svg);
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "direct-pua-nested-font.ttf"), original);
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "direct-pua-nested.ofd"), ofd.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "direct-pua-nested.svg"), svg.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "direct-pua-nested.pdf"), pdf.ToArray());
+        }
+    }
+
+    [Fact]
+    public void SymbolAliasScanChargesFormat4SegmentLookupsBeforeExpansion()
+    {
+        var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(File.ReadAllBytes(FontPath("narrow")));
+        var glyph = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face).Glyph('A');
+        var mappings = Enumerable.Range(0, 256).ToDictionary(index => index * 2, _ => glyph);
+        mappings[0xF041] = glyph;
+        var rebuilt = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(mappings);
+        var offset = (int)Ofdrw.Net.Core.Fonts.OpenTypeFace.U32(rebuilt, 8);
+        var length = Ofdrw.Net.Core.Fonts.OpenTypeFace.U16(rebuilt, offset + 2);
+        var symbolTable = new byte[12 + length];
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbolTable, 2, 1);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbolTable, 4, 3);
+        Ofdrw.Net.Core.Fonts.OpenTypeFace.Put32(symbolTable, 8, 12);
+        Buffer.BlockCopy(rebuilt, offset, symbolTable, 12, length);
+        face.Tables["cmap"] = symbolTable;
+        var selectedFace = face.Build();
+        var symbol = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(selectedFace));
+        Assert.True(symbol.IsSymbol);
+        Assert.True(symbol.GlyphLookupWorkUpperBound >= 256);
+
+        var budget = new Ofdrw.Net.Core.Fonts.FontParseBudget(maximum: 100_000);
+        var failure = Assert.Throws<InvalidDataException>(() =>
+            Ofdrw.Net.Core.Fonts.SymbolCmapProfile.CreateUnicodeAlias(selectedFace, symbol, budget));
+        Assert.Contains("MaximumCmapParseWork", failure.Message);
+        Assert.True(budget.IsExhausted);
+    }
+
+    [Fact]
+    public void SymbolTextValidationChargesRepeatedDirectLookups()
+    {
+        var selectedFace = SymbolFace(File.ReadAllBytes(FontPath("narrow")));
+        var symbol = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(new Ofdrw.Net.Core.Fonts.OpenTypeFace(selectedFace));
+        var budget = new Ofdrw.Net.Core.Fonts.FontParseBudget(maximum: symbol.GlyphLookupWorkUpperBound);
+        var text = new OfdTextElement { Text = "\uF041\uF041" };
+
+        var failure = Assert.Throws<InvalidDataException>(() =>
+            Ofdrw.Net.Core.Fonts.SymbolCmapProfile.ValidateText(text, symbol, budget));
+        Assert.Contains("MaximumCmapParseWork", failure.Message);
+        Assert.True(budget.IsExhausted);
+    }
+
     [Theory]
     [InlineData("null")][InlineData("resolve")][InlineData("read")][InlineData("cmap")][InlineData("ttc")][InlineData("default-name")]
     public void NameOnlyFallbackProbesFailedDefaultsAndCollectionFaces(string kind)
@@ -331,11 +488,11 @@ public sealed class FontIsolationTests
         }
     }
 
-    private static byte[] SymbolFace(byte[] source)
+    private static byte[] SymbolFace(byte[] source, int glyphOverride = 0)
     {
         var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(source);
         var cmap = new Ofdrw.Net.Core.Fonts.OpenTypeCmap(face);
-        var rebuilt = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int> { [0xF041] = cmap.Glyph('A') });
+        var rebuilt = Ofdrw.Net.Core.Fonts.OpenTypeCmap.Build(new Dictionary<int,int> { [0xF041] = glyphOverride == 0 ? cmap.Glyph('A') : glyphOverride });
         var offset = (int)Ofdrw.Net.Core.Fonts.OpenTypeFace.U32(rebuilt, 8);
         var length = Ofdrw.Net.Core.Fonts.OpenTypeFace.U16(rebuilt, offset + 2);
         var symbol = new byte[12 + length]; Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(symbol, 2, 1);

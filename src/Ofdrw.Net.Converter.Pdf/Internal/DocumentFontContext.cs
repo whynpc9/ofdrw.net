@@ -18,13 +18,16 @@ internal sealed class DocumentFontContext
     private readonly IFontResolver _fallbackResolver;
     private readonly Dictionary<string, OpenTypeCmap> _fallbackCoverage = new();
     private readonly Dictionary<OfdFontResource, OpenTypeCmap> _coverage = new();
+    private readonly Dictionary<OfdFontResource, byte[]> _symbolFonts = new();
+    private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _symbolAliases = new();
     private readonly Dictionary<OfdFontResource, NotSupportedException> _unsupportedCoverage = new();
     private readonly Dictionary<string, PdfSupplementaryFontBinding> _supplementary = new(StringComparer.Ordinal);
     private readonly Dictionary<OfdFontResource, string> _families = new();
     private readonly Dictionary<OfdFontResource, byte[]> _physicalBytes = new();
     private readonly Dictionary<string, byte[]> _snapshots = new();
     private readonly Dictionary<OfdFontResource, string> _nameOnlyFaceIdentities = new();
-    private readonly Dictionary<string, byte[]> _selectedNameOnlyFaces = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, byte[]> _selectedVerifiedFaces = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, byte[]> _symbolAliasFaces = new(StringComparer.Ordinal);
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _styleAliases = new();
     private readonly Dictionary<(string Family, bool Bold, bool Italic), OfdFontResource> _unbound = new();
     internal Dictionary<string, (SixLabors.Fonts.FontFamily Family, SixLabors.Fonts.FontStyle Style)> OutlineFonts { get; } = new();
@@ -47,13 +50,13 @@ internal sealed class DocumentFontContext
             if (font.Data.Length > 0)
             {
                 var data = (byte[])OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex).Clone();
-                _families[font] = PdfFontRegistry.RegisterFontFace(data, font.Bold, font.Italic);
                 StorePhysical(font, data);
                 try
                 {
                     var coverage = new OpenTypeCmap(new OpenTypeFace(data), _parseBudget);
-                    if (coverage.IsSymbol) throw new NotSupportedException("Windows symbol cmap character semantics are unmodeled; the original OFD font remains preserved.");
                     _coverage[font] = coverage;
+                    if (coverage.IsSymbol) _symbolFonts[font] = data;
+                    else _families[font] = PdfFontRegistry.RegisterFontFace(data, font.Bold, font.Italic);
                 }
                 catch (NotSupportedException exception) { _unsupportedCoverage[font] = exception; }
                 continue;
@@ -110,14 +113,16 @@ internal sealed class DocumentFontContext
 
     internal IEnumerable<PdfSupplementaryFontBinding> SupplementaryBindings => _supplementary.Values;
 
-    internal IReadOnlyDictionary<string, byte[]> SelectedNameOnlyFaces => _selectedNameOnlyFaces;
+    internal IReadOnlyDictionary<string, byte[]> SelectedVerifiedFaces => _selectedVerifiedFaces;
 
-    internal void MarkNameOnlyFaceDrawn(OfdFontResource? resource)
+    internal void MarkFontFaceDrawn(OfdFontResource? resource, string? family)
     {
         // Resolve validates every selected face, including text later omitted by
         // the control policy. Only a PDF DrawString needs a FontFile2 descriptor.
         if (resource is not null && _nameOnlyFaceIdentities.TryGetValue(resource, out var identity))
-            _selectedNameOnlyFaces[identity] = _physicalBytes[resource];
+            _selectedVerifiedFaces[identity] = _physicalBytes[resource];
+        if (family is not null && _symbolAliasFaces.TryGetValue(family, out var alias))
+            _selectedVerifiedFaces[BinaryIdentity.Hash(alias)] = alias;
     }
 
     internal string PdfText(string family, string logicalText) =>
@@ -193,6 +198,21 @@ internal sealed class DocumentFontContext
         }
         if (resource is not null && _unsupportedCoverage.TryGetValue(resource, out var unsupported))
             throw new NotSupportedException($"Selected font '{resource.FontName}' has unmodeled cmap coverage.", unsupported);
+        if (resource is not null && _symbolFonts.TryGetValue(resource, out var symbolBytes))
+        {
+            var symbolCoverage = _coverage[resource];
+            SymbolCmapProfile.ValidateText(text, symbolCoverage, _parseBudget, _cancellationToken);
+            var key = (resource, resource.Bold || text.Weight >= 600, resource.Italic || text.Italic);
+            if (!_symbolAliases.TryGetValue(key, out var symbolFamily))
+            {
+                var alias = SymbolCmapProfile.CreateUnicodeAlias(symbolBytes, symbolCoverage, _parseBudget);
+                symbolFamily = PdfFontRegistry.RegisterFontFace(alias, key.Item2, key.Item3);
+                _symbolAliases.Add(key, symbolFamily);
+                _symbolAliasFaces[symbolFamily] = alias;
+                _fallbackCoverage[symbolFamily] = new OpenTypeCmap(new OpenTypeFace(alias), _parseBudget);
+            }
+            return symbolFamily;
+        }
         if (resource is not null && _coverage.TryGetValue(resource, out var coverage))
         {
             try
