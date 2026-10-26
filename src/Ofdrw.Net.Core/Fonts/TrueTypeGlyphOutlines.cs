@@ -105,6 +105,11 @@ internal sealed class TrueTypeGlyphOutlines
 
     private List<List<TrueTypeOutlinePoint>> ReadSimple(int start, int end, int contourCount, ReadState state)
     {
+        // A zero-contour glyph may consist solely of its ten-byte header.
+        // If more bytes follow, they must contain a complete instruction
+        // length and the advertised instruction payload.
+        if (contourCount == 0 && end == start + 10)
+            return new List<List<TrueTypeOutlinePoint>>();
         var cursor = start + 10;
         RequireGlyph(start, end, cursor, checked(contourCount * 2 + 2));
         var ends = new int[contourCount];

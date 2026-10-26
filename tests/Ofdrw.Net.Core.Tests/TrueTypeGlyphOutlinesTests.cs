@@ -116,6 +116,28 @@ public sealed class TrueTypeGlyphOutlinesTests
     }
 
     [Fact]
+    public void HeaderOnlyZeroContourGlyphIsEmptyAndUsableAsAComponent()
+    {
+        var font = new OpenTypeFace(Fixture());
+        var loca = font.Table("loca");
+        var start = checked((int)OpenTypeFace.U32(loca, 72 * 4));
+        OpenTypeFace.Put16(font.Table("glyf"), start, 0);
+        OpenTypeFace.Put32(loca, 73 * 4, checked((uint)(start + 10)));
+        var reader = new TrueTypeGlyphOutlines(font.Build());
+        var empty = reader.Read(72);
+        Assert.Empty(empty.Contours);
+        Assert.Equal(564, empty.AdvanceWidth);
+        var composite = reader.Read(171);
+        Assert.Single(composite.Contours); // Only the accent component remains.
+        Assert.Equal(564, composite.AdvanceWidth);
+
+        // One trailing byte is not enough to encode instructionLength.
+        OpenTypeFace.Put32(loca, 73 * 4, checked((uint)(start + 11)));
+        var truncated = new TrueTypeGlyphOutlines(font.Build());
+        Assert.Throws<InvalidDataException>(() => truncated.Read(72));
+    }
+
+    [Fact]
     public void MissingOrCancelledGidDoesNotReturnAnOutline()
     {
         var reader = new TrueTypeGlyphOutlines(Fixture());
