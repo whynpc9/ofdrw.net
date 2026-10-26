@@ -40,7 +40,7 @@
 | R05 复杂 Merge/Mix | 常见图元 `limited`；共享/嵌套资源、Clip/Composite/批注 ID 与 ownership | 未闭合引用默认拒绝，跳过只可显式选择并报告 |
 | R06 PDF 矢量 | 有限 profile `limited`；Rotation/CropBox、clip、画笔、XObject、字体逐特性正反样本 | 默认 Fail；显式回退整页，不能保留该页半成品矢量 |
 | R07 PDF 导航/附件 | 导入迁移 `new`；层级页映射、全局/页附件名与哈希 | 关闭迁移无残留；非法目标/冲突明确诊断 |
-| R08 字体后端 | TTF 子集、字体身份 `limited`；显式嵌入静态 TrueType 的补充平面 PDF 有界适配，逐出口记录 OFD 原文、SVG、PDF ToUnicode 与真实轮廓；PR #25 已在基线 | name-only、symbol、Type1/CFF、变量/彩色字体与未建模 GID 保持明确拒绝；各出口视觉和包消费须独立验收 |
+| R08 字体后端 | TTF 子集、字体身份 `limited`；显式嵌入静态 TrueType 的补充平面 PDF 有界适配；已合并的 name-only、直接 PUA symbol cmap 和 TrueType 原 GID 轮廓各按其受限 profile 验收。可选 Skia CFF1 原 GID 轮廓为独立候选，仅证明固定字体的轮廓提取 | 裸 Type1、CFF 的 PDF/SVG 字体出口、变量/彩色字体与未建模 GID 仍明确拒绝；OFD 原文、ToUnicode、实际轮廓、视觉和包消费按出口独立验收，见 [CFF 轮廓候选](validation/r08-cff-outline-profile.md) |
 | R09 绘图上下文 | Path/Text/状态栈 `limited`；当前源码新增 PNG/baseline-JPEG DrawImage/源裁切、不可变 dash/cap/join 与显式栅格矩形渐变/图片 tile；完整功能、逐出口视觉和包消费仍须以本项验收记录关闭 | 外来原生渐变/图案及任意路径渐变 brush 仍拒绝；栅格矩形由 API 显式命名与限定预算，见[设计](r09-graphics-design.md) |
 | R10 专用图像/区域提取 | JBIG2/ImageMask `new`；字符级 CTM/Delta 矩形筛选 `candidate` | 超预算/未知解码或几何语义显式失败/Unknown |
 | R11 签章外观 | 外来外观显示 `limited`；新生成普通章/骑缝章各页和签后重读 | 视觉外观不等于签名值或信任结论 |
