@@ -71,6 +71,19 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
     }
 
     [RealTrustedFontsTheory]
+    [InlineData("undeclared")]
+    [InlineData("missing-file")]
+    public async Task RegionExtractionRejectsReaderOmittedTemplate(string missing)
+    {
+        var bytes = Font("latin");
+        var source = await Read(bytes, "latin", "identity", 1, withTemplates: true, missingTemplate: missing);
+        Assert.Single(source.Pages[0].Templates);
+        var exception = Assert.Throws<NotSupportedException>(() => new OfdRegionTextExtractor(new ObservedProvider(bytes))
+            .Extract(source, 0, new OfdGlyphBox(0, 0, 200, 200)));
+        Assert.Contains("IncompleteTemplateProjection", exception.Message);
+    }
+
+    [RealTrustedFontsTheory]
     [InlineData("latin", "identity", 17, 28.132, 19.552, 31)]
     [InlineData("latin", "rotation", 27, 25, 29.868, 27.552)]
     [InlineData("latin", "shear", 19.566, 28.132, 23.552, 31)]
@@ -292,7 +305,7 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
         { owner.Requests.Add(request.Text); return inner.Measure(request, token); }
         public void Dispose() => inner.Dispose();
     }
-    private static async Task<OfdDocumentPackage> Read(byte[] font, string face, string matrix, int objects, string? overrideText = null, string? overrideCodes = null, bool withTemplates = false)
+    private static async Task<OfdDocumentPackage> Read(byte[] font, string face, string matrix, int objects, string? overrideText = null, string? overrideCodes = null, bool withTemplates = false, string? missingTemplate = null)
     {
         const string ns = "http://www.ofdspec.org/2016";
         var ctm = matrix == "rotation" ? "0 1 -1 0 20 0" : matrix == "shear" ? "1 0 0.5 1 0 0" : "1 0 0 1 0 0";
@@ -320,6 +333,11 @@ public sealed class KeywordLocatorRealFontTests(Xunit.Abstractions.ITestOutputHe
         if (withTemplates)
             foreach (var (name, letter, layerId, objectId) in new[] { ("Back", "B", 30, 90), ("Front", "F", 31, 91) })
                 entries[$"Doc_0/Pages/Template_{name}/Content.xml"] = Encoding.UTF8.GetBytes($"<o:Page xmlns:o=\"{ns}\"><o:Area><o:PhysicalBox>5 7 200 200</o:PhysicalBox></o:Area><o:Content><o:Layer ID=\"{layerId}\"><o:TextObject ID=\"{objectId}\" Boundary=\"20 30 100 50\" Font=\"10\" Size=\"4\"><o:TextCode X=\"3\" Y=\"15\">{letter}</o:TextCode></o:TextObject></o:Layer></o:Content></o:Page>");
+        if (missingTemplate == "undeclared")
+            entries["Doc_0/Document.xml"] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(entries["Doc_0/Document.xml"])
+                .Replace("<o:TemplatePage ID=\"82\" BaseLoc=\"Pages/Template_Front/Content.xml\" ZOrder=\"Foreground\"/>", "", StringComparison.Ordinal));
+        else if (missingTemplate == "missing-file")
+            entries.Remove("Doc_0/Pages/Template_Front/Content.xml");
         using var input = new MemoryStream();
         using (var zip = new ZipArchive(input, ZipArchiveMode.Create, true))
             foreach (var pair in entries) { using var entry = zip.CreateEntry(pair.Key, CompressionLevel.NoCompression).Open(); entry.Write(pair.Value); }

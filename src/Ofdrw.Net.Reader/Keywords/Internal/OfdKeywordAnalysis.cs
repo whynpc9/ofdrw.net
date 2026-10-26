@@ -172,7 +172,11 @@ internal sealed class OfdKeywordAnalysis
             if (page.AnnotationAppearances.Count > 0 || geometryOnly && page.Annotations?.Items.Count > 0)
                 Notice("ExcludedAnnotationScope", index, null, false);
             if (!documentSupported) continue;
-            try { certificates.Add(index, admission.Page(page, index)); }
+            try
+            {
+                certificates.Add(index, admission.Page(page, index));
+                if (geometryOnly) admission.RequireCompleteTemplateProjection(page, index);
+            }
             catch (NotSupportedException exception) { Notice(exception.Message, index, page.SourceEntryPath, true); }
             if (geometryOnly)
                 for (var templateIndex = 0; templateIndex < page.Templates.Count; templateIndex++)

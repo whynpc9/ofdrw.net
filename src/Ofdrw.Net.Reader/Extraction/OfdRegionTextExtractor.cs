@@ -20,9 +20,18 @@ public sealed class OfdRegionTextExtractor
     private readonly IOfdGlyphGeometryProvider provider;
     private readonly OfdKeywordLocatorLimits limits;
 
+    /// <summary>Creates an extractor using exact glyph geometry from the supplied provider.</summary>
+    /// <param name="geometryProvider">Provider for the document's embedded fonts.</param>
+    /// <param name="locatorLimits">Optional finite source admission limits.</param>
     public OfdRegionTextExtractor(IOfdGlyphGeometryProvider geometryProvider, OfdKeywordLocatorLimits? locatorLimits = null)
     { provider = geometryProvider ?? throw new ArgumentNullException(nameof(geometryProvider)); limits = locatorLimits ?? new(); }
 
+    /// <summary>Returns visible text whose glyph boxes intersect the selected page rectangle.</summary>
+    /// <param name="package">Source document package.</param>
+    /// <param name="pageIndex">Zero-based page position.</param>
+    /// <param name="region">Rectangle in page millimeters.</param>
+    /// <param name="cancellationToken">Cancellation token for the query.</param>
+    /// <returns>Text and fragments in page paint order.</returns>
     public OfdRegionTextResult Extract(OfdDocumentPackage package, int pageIndex, OfdGlyphBox region,
         CancellationToken cancellationToken = default)
     {
@@ -96,15 +105,20 @@ public sealed class OfdRegionTextExtractor
     }
 }
 
+/// <summary>Text and source fragments selected from one page rectangle.</summary>
 public sealed class OfdRegionTextResult
 {
     internal OfdRegionTextResult(int pageIndex, OfdGlyphBox region, string text, List<OfdKeywordFragment> fragments,
         IReadOnlyList<OfdKeywordDiagnostic> diagnostics)
     { PageIndex = pageIndex; RegionMillimeters = region; Text = text; Fragments = new ReadOnlyCollection<OfdKeywordFragment>(fragments);
         Diagnostics = diagnostics; }
+    /// <summary>Zero-based source page position.</summary>
     public int PageIndex { get; }
+    /// <summary>Queried rectangle in page millimeters.</summary>
     public OfdGlyphBox RegionMillimeters { get; }
+    /// <summary>Selected Unicode text in page paint order.</summary>
     public string Text { get; }
+    /// <summary>Source-backed glyph fragments contributing to <see cref="Text"/>.</summary>
     public IReadOnlyList<OfdKeywordFragment> Fragments { get; }
     /// <summary>Named excluded scopes, including annotation appearances when present.</summary>
     public IReadOnlyList<OfdKeywordDiagnostic> Diagnostics { get; }

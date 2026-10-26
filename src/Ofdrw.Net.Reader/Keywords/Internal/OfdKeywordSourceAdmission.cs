@@ -113,6 +113,26 @@ internal sealed class OfdKeywordSourceAdmission(OfdDocumentPackage package, OfdK
     // Region extraction's template certificate is deliberately separate from
     // keyword editing's body certificate. It proves the template reference,
     // source page and ordered direct graphic children before measuring glyphs.
+    internal void RequireCompleteTemplateProjection(OfdPage page, int pagePosition)
+    {
+        budget.Check();
+        if (generated) return;
+        if (!pageEntries.TryGetValue(pagePosition, out var pageEntry))
+            throw new NotSupportedException("MissingPageSourceEnvelope");
+        var references = Control(pageEntry).Elements(ns + "Template").ToArray();
+        if (references.Length != page.Templates.Count)
+            throw new NotSupportedException("IncompleteTemplateProjection");
+        for (var i = 0; i < references.Length; i++)
+        {
+            budget.Check();
+            var id = references[i].Attribute("TemplateID")?.Value;
+            if (id is null || !templateEntries.TryGetValue(id, out var declaration) ||
+                id != page.Templates[i].TemplateId || page.Templates[i].BaseLocation is null ||
+                Resolve(package.DocumentEntryPath!, page.Templates[i].BaseLocation) != declaration.Entry)
+                throw new NotSupportedException("IncompleteTemplateProjection");
+        }
+    }
+
     internal Dictionary<int, (int Layer, string Path)> Template(OfdPage page, int pagePosition, int templateIndex)
     {
         budget.Check();
