@@ -4,9 +4,14 @@ on:
     branches: ["main", "master", "codex/document-tools"]
   push:
     branches: ["main", "master"]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # Fetch fixtures explicitly; historical evidence is optional.
 env:
   GIT_LFS_SKIP_SMUDGE: "1"
+  NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
 
 jobs:
   ses-interop:
@@ -25,21 +30,24 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+      - uses: ./.github/actions/nuget-cache
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install rendering tools and pinned licensed font
+      - name: Install rendering tools
+        uses: ./.github/actions/linux-tools
+        with:
+          packages: poppler-utils imagemagick librsvg2-bin zstd
+      - uses: ./.github/actions/ci-font
+      - name: Copy licensed font into evidence
         run: |
-          sudo apt-get update && sudo apt-get install -y poppler-utils imagemagick librsvg2-bin
-          python -m pip install fonttools==4.59.2
-          python scripts/install-ci-fonts.py
           mkdir -p artifacts/ses-interop/fonts
           cp "$HOME/.fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf" "$HOME/.fonts/Ofdrw-CI-Noto-OFL.txt" artifacts/ses-interop/fonts/
       - name: Test SES inspection and self-signing boundaries
         run: dotnet test tests/Ofdrw.Net.Signatures.SesInterop.Tests -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false --logger trx --results-directory artifacts/ses-interop/tests
       - name: Consume local optional package, verify default CLI and render exact OFD samples
         run: bash scripts/run-ses-interop-e2e.sh artifacts/ses-interop/e2e
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/upload-evidence
         if: always()
         with:
           name: ses-interop-evidence

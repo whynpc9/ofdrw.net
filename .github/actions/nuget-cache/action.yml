@@ -1,0 +1,9 @@
+name: Cache build dependencies
+description: Reuse build dependencies; package consumers still use fresh isolated caches.
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v4
+      with:
+        path: ${{ env.NUGET_PACKAGES }}
+        key: nuget-v1-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('global.json', '**/*.csproj', '**/*.props', '**/*.targets', '**/NuGet.config', '**/NuGet.Config', '**/packages.lock.json') }}

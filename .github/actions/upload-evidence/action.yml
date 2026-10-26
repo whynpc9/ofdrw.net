@@ -1,0 +1,28 @@
+name: Archive and upload complete evidence
+description: Retain every file, compress repeated payloads, and attach a SHA-256 inventory.
+inputs:
+  name:
+    description: Artifact name
+    required: true
+  path:
+    description: Evidence directory
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        EVIDENCE_NAME: ${{ inputs.name }}
+        EVIDENCE_PATH: ${{ inputs.path }}
+      run: |
+        if [[ ! -d "$EVIDENCE_PATH" ]] || [[ -z "$(ls -A "$EVIDENCE_PATH")" ]]; then
+          echo "No evidence was produced: $EVIDENCE_PATH"
+          exit 0
+        fi
+        python scripts/archive-ci-evidence.py "$EVIDENCE_PATH" "artifacts/ci-archives/$EVIDENCE_NAME.tar.zst"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.name }}
+        path: artifacts/ci-archives/${{ inputs.name }}.tar.zst*
+        compression-level: 0
+        retention-days: ${{ github.event_name == 'pull_request' && 14 || 30 }}

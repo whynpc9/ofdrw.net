@@ -1,0 +1,13 @@
+{
+  "solution": {
+    "path": "Ofdrw.Net.sln",
+    "projects": [
+      "tests/Ofdrw.Net.Core.Tests/Ofdrw.Net.Core.Tests.csproj",
+      "tests/Ofdrw.Net.Packaging.Tests/Ofdrw.Net.Packaging.Tests.csproj",
+      "tests/Ofdrw.Net.Layout.Tests/Ofdrw.Net.Layout.Tests.csproj",
+      "tests/Ofdrw.Net.Converter.Docx.Tests/Ofdrw.Net.Converter.Docx.Tests.csproj",
+      "tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj",
+      "tests/Ofdrw.Net.Cli.Tests/Ofdrw.Net.Cli.Tests.csproj"
+    ]
+  }
+}

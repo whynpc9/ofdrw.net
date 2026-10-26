@@ -15,6 +15,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--font-output-dir', type=Path, default=root / 'artifacts/trusted-fonts')
     parser.add_argument('--results-directory', type=Path, required=True)
+    parser.add_argument('--no-build', action='store_true', help='Use the already built Release test assembly')
     args = parser.parse_args()
     results = args.results_directory.resolve()
     results.mkdir(parents=True, exist_ok=True)
@@ -35,6 +36,8 @@ def main():
                '-c', 'Release', '--disable-build-servers', '-m:1', '/nodeReuse:false', '/p:UseSharedCompilation=false',
                '--filter', 'FullyQualifiedName~TrustedFontGeometryTests|FullyQualifiedName~KeywordLocatorRealFontTests|FullyQualifiedName~TextReplacementRealFontTests|FullyQualifiedName~DocxFontIdentityTests',
                '--results-directory', str(results), '--logger', 'trx;LogFileName=trusted-fonts.trx']
+    if args.no_build:
+        command.extend(['--no-build', '--no-restore'])
     (results / 'command.json').write_text(json.dumps({'command': command, 'prepared': prepared}, indent=2))
     code = subprocess.call(command, cwd=root, env=env)
     if code:

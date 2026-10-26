@@ -7,10 +7,10 @@ export DOTNET_CLI_HOME="${DOTNET_CLI_HOME:-$(mktemp -d "${TMPDIR:-/tmp}/ofd-tool
 export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_CLI_TELEMETRY_OPTOUT=1
 export DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1
 FLAGS=(--disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false)
-dotnet build "$ROOT_DIR/e2e/Ofdrw.Net.DocumentTools.E2E" "${FLAGS[@]}"
-dotnet build "$ROOT_DIR/src/Ofdrw.Net.Cli" "${FLAGS[@]}"
+dotnet build "$ROOT_DIR/e2e/Ofdrw.Net.DocumentTools.E2E" -c Release "${FLAGS[@]}"
+dotnet build "$ROOT_DIR/src/Ofdrw.Net.Cli" -c Release "${FLAGS[@]}"
 FONT_DIR="${OFDRW_DOCUMENT_TOOLS_FONTS:-$ROOT_DIR/artifacts/document-tools-fonts}"
-dotnet "$ROOT_DIR/e2e/Ofdrw.Net.DocumentTools.E2E/bin/Debug/net10.0/Ofdrw.Net.DocumentTools.E2E.dll" "$ROOT_DIR" "$OUTPUT_DIR" "$FONT_DIR"
+dotnet "$ROOT_DIR/e2e/Ofdrw.Net.DocumentTools.E2E/bin/Release/net10.0/Ofdrw.Net.DocumentTools.E2E.dll" "$ROOT_DIR" "$OUTPUT_DIR" "$FONT_DIR"
 SAMPLE_FONT="$(python3 - "$OUTPUT_DIR/signed.ofd" <<'PYFONT'
 import sys,zipfile,xml.etree.ElementTree as E
 with zipfile.ZipFile(sys.argv[1]) as z:
@@ -18,7 +18,7 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  print(next(n for n in root.iter() if n.tag.rsplit('}',1)[-1]=='Font').attrib['FontName'])
 PYFONT
 )"
-CLI="$ROOT_DIR/src/Ofdrw.Net.Cli/bin/Debug/net10.0/Ofdrw.Net.Cli.dll"
+CLI="$ROOT_DIR/src/Ofdrw.Net.Cli/bin/Release/net10.0/Ofdrw.Net.Cli.dll"
 printf 'existing-output' > "$OUTPUT_DIR/cli-custom-tags-protected-output.bin"
 if dotnet "$CLI" mix "$OUTPUT_DIR/cli-custom-tags-protected-output.bin" "$OUTPUT_DIR/custom-tags-input.ofd" 1 "$OUTPUT_DIR/custom-tags-conflict.ofd" 1 > "$OUTPUT_DIR/cli-custom-tags.rejection.txt" 2>&1; then
   echo "Expected CustomTags conflict rejection." >&2

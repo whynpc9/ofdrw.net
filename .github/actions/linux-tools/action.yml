@@ -1,0 +1,22 @@
+name: Install Linux conversion tools
+description: Cache downloaded apt packages without caching or bypassing repository metadata.
+inputs:
+  packages:
+    description: Space-separated apt package names
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v4
+      with:
+        path: artifacts/apt-cache
+        key: apt-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageVersion }}-${{ inputs.packages }}
+    - shell: bash
+      env:
+        TOOL_PACKAGES: ${{ inputs.packages }}
+      run: |
+        mkdir -p artifacts/apt-cache/partial
+        sudo apt-get -o Acquire::Retries=3 update
+        read -r -a packages <<< "$TOOL_PACKAGES"
+        sudo apt-get -o Acquire::Retries=3 -o Dir::Cache::archives="$PWD/artifacts/apt-cache" -o Binary::apt-get::APT::Keep-Downloaded-Packages=true install -y "${packages[@]}"
+        sudo chown -R "$(id -u):$(id -g)" artifacts/apt-cache

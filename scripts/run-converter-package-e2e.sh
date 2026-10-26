@@ -11,14 +11,26 @@ fi
 OUT_DIR="$ROOT_DIR/artifacts/package-e2e/$VERSION/packages"
 RESULT_DIR="$ROOT_DIR/artifacts/package-e2e/$VERSION/output"
 CONSUME_ONLY=false
+PACK_ONLY=false
+NO_BUILD=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --consume-only) CONSUME_ONLY=true; shift ;;
+    --pack-only) PACK_ONLY=true; shift ;;
+    --no-build) NO_BUILD=true; shift ;;
     --packages-dir) OUT_DIR="$2"; shift 2 ;;
     --output-dir) RESULT_DIR="$2"; shift 2 ;;
     *) echo "Unknown package E2E option: $1" >&2; exit 1 ;;
   esac
 done
+if [[ "$PACK_ONLY" == true && "$CONSUME_ONLY" == true ]] || [[ "$NO_BUILD" == true && "$PACK_ONLY" != true ]]; then
+  echo "--pack-only and --consume-only are exclusive; --no-build requires --pack-only." >&2
+  exit 1
+fi
+if [[ "$PACK_ONLY" == true && -d "$OUT_DIR" ]] && [[ -n "$(find "$OUT_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+  echo "Pack-only requires an empty candidate directory: $OUT_DIR" >&2
+  exit 1
+fi
 mkdir -p "$OUT_DIR" "$RESULT_DIR"
 OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 RESULT_DIR="$(cd "$RESULT_DIR" && pwd)"
@@ -37,9 +49,11 @@ export NUGET_PACKAGES="$SOURCE_CACHE"
 BUILD_FLAGS=(--disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false --nologo)
 
 if [[ "$CONSUME_ONLY" == false ]]; then
-  dotnet restore "$ROOT_DIR/Ofdrw.Net.sln" "${BUILD_FLAGS[@]}"
-  dotnet build "$ROOT_DIR/Ofdrw.Net.sln" -c Release --no-restore \
-    -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+  if [[ "$NO_BUILD" == false ]]; then
+    dotnet restore "$ROOT_DIR/Ofdrw.Net.sln" "${BUILD_FLAGS[@]}"
+    dotnet build "$ROOT_DIR/Ofdrw.Net.sln" -c Release --no-restore \
+      -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
+  fi
   # The default converter/tool feed follows the validator's current product
   # set, including the optional HarfBuzz text adapter. Other optional
   # extensions have independent consumption gates.
@@ -54,7 +68,15 @@ PY_PACKAGES
       -p:Version="$VERSION" -p:PackageVersion="$VERSION" "${BUILD_FLAGS[@]}"
   done < "$TASK_DIR/default-products.txt"
 fi
-python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION"
+VALIDATION=(python3 "$ROOT_DIR/scripts/verify-package-artifacts.py" "$OUT_DIR" "$VERSION")
+if [[ "$CONSUME_ONLY" == true && -f "$OUT_DIR/package-manifest.json" ]]; then
+  VALIDATION+=(--verify-manifest)
+fi
+"${VALIDATION[@]}"
+if [[ "$PACK_ONLY" == true ]]; then
+  echo "[E2E] Produced validated candidate packages: $OUT_DIR"
+  exit 0
+fi
 
 # A clean consumer directory and package cache prevent old same-version DLLs or
 # project references from satisfying the test. Only this artifact feed may supply
