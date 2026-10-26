@@ -18,6 +18,7 @@
   </ItemGroup>
   <ItemGroup><None Include="../../e2e/Ofdrw.Net.Converter.Pdf.E2E/testdata/fonts/*.ttf" Link="fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><None Include="../../e2e/Ofdrw.Net.SkiaSharp.E2E/testdata/fonts/*.ttf" Link="style-fonts/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><None Include="testdata/cff/SourceCodePro-Regular.otf" Link="cff/SourceCodePro-Regular.otf" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
