@@ -50,8 +50,12 @@ public sealed class R05TransferTests
             output.Position = 0;
             var readback = await new OfdReader().ReadAsync(output);
             Assert.Equal(2, readback.CompositeResources!.Items.Count);
+            Assert.Equal(2, readback.CompositeResources.Items.Select(resource => resource.Id).Distinct().Count());
             Assert.Equal(ReferenceEquals(result, merged) ? 2 : 0,
                 readback.Pages.Sum(page => page.Annotations?.Items.Count ?? 0));
+            if (ReferenceEquals(result, merged))
+                Assert.Equal(2, readback.Pages.SelectMany(page => page.Annotations!.Items)
+                    .Select(annotation => annotation.Id).Distinct().Count());
             Assert.Equal(4, readback.Pages.SelectMany(page => page.Elements).OfType<OfdCompositeElement>().Count());
         }
         Assert.Equal(2, merged.Pages.Sum(page => page.Annotations!.Items.Count));
@@ -85,10 +89,26 @@ public sealed class R05TransferTests
     }
 
     [Fact]
+    public void UnusedOpaqueDefinitionIsOutsideSelectedResourceClosure()
+    {
+        var source = TypedClipCompositeTests.Create();
+        source.CompositeResources!.Items.Add(new OfdCompositeResource { WidthMillimeters = 1,
+            HeightMillimeters = 1, SourceXml = "<CompositeGraphicUnit ID='99' Width='1' Height='1'><Vendor/></CompositeGraphicUnit>" });
+        Assert.Single(OfdDocumentMerger.Merge([source]).CompositeResources!.Items);
+        Assert.Single(OfdDocumentMixer.Mix([new OfdMixSource(source, 0)]).CompositeResources!.Items);
+    }
+
+    [Fact]
     public async Task NestedDefinitionsKeepSharingWithinAnOccurrenceAndSeparateAcrossOccurrences()
     {
         var source = TypedClipCompositeTests.Create();
         var child = source.CompositeResources!.Items[0];
+        var clippedChild = Assert.Single(child.Elements.OfType<OfdPathElement>());
+        clippedChild.Clips = new OfdClipCollection();
+        var childClip = new OfdClip();
+        childClip.Areas.Add(new OfdClipArea { Path = new OfdPathElement { Stroke = false, Fill = true,
+            AbbreviatedData = "M 0 0 L 15 0 L 15 10 C" } });
+        clippedChild.Clips.Items.Add(childClip);
         var parent = new OfdCompositeResource { WidthMillimeters = 40, HeightMillimeters = 20 };
         parent.Elements.Add(new OfdCompositeElement { Resource = child, WidthMillimeters = 40, HeightMillimeters = 20 });
         source.CompositeResources.Items.Add(parent);
@@ -100,6 +120,7 @@ public sealed class R05TransferTests
         {
             var leaf = merged.CompositeResources.Items[index * 2];
             var root = merged.CompositeResources.Items[index * 2 + 1];
+            Assert.Single(Assert.Single(leaf.Elements.OfType<OfdPathElement>()).Clips!.Items);
             Assert.Same(leaf, Assert.IsType<OfdCompositeElement>(Assert.Single(root.Elements)).Resource);
             Assert.Same(root, Assert.IsType<OfdCompositeElement>(merged.Pages[index].Elements.Last()).Resource);
         }
@@ -108,6 +129,7 @@ public sealed class R05TransferTests
         output.Position = 0;
         var readback = await new OfdReader().ReadAsync(output);
         Assert.Equal(4, readback.CompositeResources!.Items.Count);
+        Assert.Single(Assert.Single(readback.CompositeResources.Items[0].Elements.OfType<OfdPathElement>()).Clips!.Items);
     }
 
     [Fact]

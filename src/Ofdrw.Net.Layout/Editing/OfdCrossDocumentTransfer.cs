@@ -235,7 +235,7 @@ internal sealed class OfdCrossDocumentTransfer
     }
 
     private static bool ValidClipPath(XElement path) => path.Name.LocalName == "Path" &&
-        OnlyAttributes(path, "Boundary", "CTM", "Stroke", "Fill", "Rule") &&
+        OnlyAttributes(path, "ID", "Boundary", "CTM", "Stroke", "Fill", "Rule") &&
         path.Elements().Count() <= 1 && path.Elements().All(node => node.Name == path.Name.Namespace + "AbbreviatedData" &&
             node.Attributes().All(attribute => attribute.IsNamespaceDeclaration) && !node.HasElements);
 
