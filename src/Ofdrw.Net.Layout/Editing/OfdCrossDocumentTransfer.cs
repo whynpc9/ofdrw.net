@@ -133,7 +133,9 @@ internal sealed class OfdCrossDocumentTransfer
             throw new NotSupportedException("Unclaimed annotation source slots cannot be transferred.");
         material.ChargeCopy(from.AnnotationAppearances.Count, token);
         var projected = new bool[from.AnnotationAppearances.Count];
-        foreach (var annotation in collection.Items)
+        // Reader projections belong to the original slots. A deleted typed
+        // annotation still owns its old projection, although it is not copied.
+        foreach (var annotation in from.AnnotationOwnership.Original?.Items ?? collection.Items)
         {
             if (annotation.Source is not { } owner) continue;
             if (owner.ProjectionStart < 0 || owner.ProjectionCount < 0 ||

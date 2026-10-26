@@ -166,6 +166,54 @@ public sealed class R05TransferTests
         Assert.Equal(logicalText, new OfdTextExtractor().Extract(await new OfdReader().ReadAsync(mixedOutput)).Trim());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeletedImportedAnnotationDoesNotBlockTransferOrReappear(bool deleteAll)
+    {
+        var source = AnnotationSource();
+        var retained = new OfdAnnotation
+        {
+            Type = OfdAnnotationType.Stamp,
+            Creator = "retained",
+            LastModifiedDate = new DateTime(2026, 10, 26),
+            Appearance = new() { XMillimeters = 60, YMillimeters = 30,
+                WidthMillimeters = 30, HeightMillimeters = 20 }
+        };
+        retained.Appearance.Elements.Add(new OfdPathElement
+        {
+            AbbreviatedData = "M 0 0 L 20 0 L 20 10 C",
+            WidthMillimeters = 20, HeightMillimeters = 10, Fill = true, Stroke = false
+        });
+        source.Pages[0].Annotations!.Items.Add(retained);
+        using var input = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(source, input);
+        input.Position = 0;
+        var imported = await new OfdReader().ReadAsync(input);
+        Assert.Equal(2, imported.Pages[0].AnnotationAppearances.Count);
+        imported.Pages[0].Annotations!.Items.RemoveAt(0);
+        if (deleteAll) imported.Pages[0].Annotations.Items.Clear();
+
+        var merged = OfdDocumentMerger.Merge([imported]);
+        var mixed = OfdDocumentMixer.Mix([new OfdMixSource(imported, 0)]);
+        var expected = deleteAll ? 0 : 1;
+        Assert.Equal(expected, merged.Pages[0].Annotations!.Items.Count);
+        Assert.Empty(merged.Pages[0].AnnotationAppearances);
+        if (!deleteAll) Assert.Equal("retained", merged.Pages[0].Annotations.Items[0].Creator);
+        Assert.Null(mixed.Pages[0].Annotations);
+        Assert.Equal(expected, mixed.Pages[0].Elements.OfType<OfdPathElement>().Count());
+        foreach (var result in new[] { merged, mixed })
+        {
+            using var output = new MemoryStream();
+            await new OfdPackageWriter().WriteAsync(result, output);
+            output.Position = 0;
+            var readback = await new OfdReader().ReadAsync(output);
+            Assert.Equal(expected, result == merged
+                ? readback.Pages[0].Annotations?.Items.Count ?? 0
+                : readback.Pages[0].Elements.OfType<OfdPathElement>().Count());
+        }
+    }
+
     private static OfdDocumentPackage AnnotationSource()
     {
         var package = new OfdDocumentPackage();
