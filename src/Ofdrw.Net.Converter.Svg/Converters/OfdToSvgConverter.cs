@@ -204,6 +204,14 @@ public sealed class OfdToSvgConverter
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
         var css = new StringBuilder();
         var selected = new HashSet<OfdFontResource>();
+        var selectedTexts = new Dictionary<OfdFontResource, List<OfdTextElement>>();
+        foreach (var text in texts)
+        {
+            var selectedFont = OfdFontSelection.Resolve(fonts, text);
+            if (selectedFont is null) continue;
+            if (!selectedTexts.TryGetValue(selectedFont, out var uses)) selectedTexts.Add(selectedFont, uses = new());
+            uses.Add(text);
+        }
         if (nameOnlyBindings is not null)
             foreach (var text in texts.Where(text => text.Runs.Count == 0 ? !string.IsNullOrEmpty(text.Text) : text.Runs.Any(run => !string.IsNullOrEmpty(run.Text))))
                 if (OfdFontSelection.Resolve(fonts, text) is { } font && font.Data.Length == 0) selected.Add(font);
@@ -228,6 +236,20 @@ public sealed class OfdToSvgConverter
                 var face = new OpenTypeFace(data); style = face.Style;
                 try { coverage = new OpenTypeCmap(face, parseBudget); }
                 catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
+            }
+            if (selectedTexts.TryGetValue(font, out var cffUses) &&
+                data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O')
+            {
+                var cffFace = new OpenTypeFace(data);
+                if (Cff1SvgProfile.IsCffOpenType(cffFace))
+                {
+                    var count = Cff1SvgProfile.Validate(data, cffFace);
+                    coverage ??= new OpenTypeCmap(cffFace, parseBudget);
+                    if (coverage.IsSymbol)
+                        throw new NotSupportedException("SVG CFF1 text requires a direct Unicode cmap.");
+                    foreach (var use in cffUses)
+                        Cff1SvgProfile.ValidateSelectedText(use, font, coverage, count, parseBudget);
+                }
             }
             if (coverage?.IsSymbol == true && texts.Any(text => ReferenceEquals(OfdFontSelection.Resolve(fonts, text), font)))
                 data = SymbolCmapProfile.CreateUnicodeAlias(data, coverage, parseBudget);

@@ -84,7 +84,7 @@ seven focused cases on macOS and Linux arm64; exact-head CI remains required.
 | Outlet | Current boundary |
 | --- | --- |
 | OFD save | Existing original font and logical text preservation; this increment does not add typed `CGTransform` writing. |
-| SVG | The diagnostic page proves only the new outline snapshot. OFD CFF text and direct GID SVG export are not accepted by this result. |
+| SVG | The diagnostic page proves only the outline snapshot. A separate [embedded CFF1 Unicode text profile](r08-cff-svg-text-profile.md) covers the fixed OFD-derived SVG sample; direct GID SVG export is not accepted by this result. |
 | PDF | CFF font embedding and direct GID PDF export remain outside the proven profile. A diagnostic SVG converted to PDF does not establish OFD→PDF compatibility. |
 | Outline | The optional Skia backend reads the four fixed CFF1 original GIDs with independent cubic command agreement. Arbitrary CFF, bare Type1, and other fonts are not covered. |
 

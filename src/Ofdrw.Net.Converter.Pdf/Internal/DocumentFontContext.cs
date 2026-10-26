@@ -53,7 +53,15 @@ internal sealed class DocumentFontContext
                 StorePhysical(font, data);
                 try
                 {
-                    var coverage = new OpenTypeCmap(new OpenTypeFace(data), _parseBudget);
+                    var parsed = new OpenTypeFace(data);
+                    if (parsed.Version == 0x4F54544F &&
+                        (parsed.Tables.ContainsKey("CFF ") || parsed.Tables.ContainsKey("CFF2")))
+                    {
+                        _unsupportedCoverage[font] = new NotSupportedException(
+                            "PDF export does not embed CFF font programs in the verified FontFile2 profile.");
+                        continue;
+                    }
+                    var coverage = new OpenTypeCmap(parsed, _parseBudget);
                     _coverage[font] = coverage;
                     if (coverage.IsSymbol) _symbolFonts[font] = data;
                     else _families[font] = PdfFontRegistry.RegisterFontFace(data, font.Bold, font.Italic);
@@ -197,7 +205,7 @@ internal sealed class DocumentFontContext
                 return ResolveCoveringFallback(text, resource);
         }
         if (resource is not null && _unsupportedCoverage.TryGetValue(resource, out var unsupported))
-            throw new NotSupportedException($"Selected font '{resource.FontName}' has unmodeled cmap coverage.", unsupported);
+            throw new NotSupportedException($"Selected font '{resource.FontName}' has unmodeled font semantics: {unsupported.Message}", unsupported);
         if (resource is not null && _symbolFonts.TryGetValue(resource, out var symbolBytes))
         {
             var symbolCoverage = _coverage[resource];
