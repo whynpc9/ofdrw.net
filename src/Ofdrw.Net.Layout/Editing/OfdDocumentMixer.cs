@@ -32,7 +32,7 @@ public static class OfdDocumentMixer
         if (sources is null) throw new ArgumentNullException(nameof(sources));
         if (maxSourceCount <= 0 || maxExpandedBytes <= 0 || maxObjectCount <= 0) throw new ArgumentOutOfRangeException(nameof(maxSourceCount));
         var material = new OfdModelMaterialization(new OfdModelLimits());
-        var selected = new List<OfdDocumentPackage>();
+        var selected = new List<OfdMixSource>();
         var customTags = new Dictionary<string, string>(StringComparer.Ordinal);
         long bytes = 0;
         int objects = 0;
@@ -42,9 +42,6 @@ public static class OfdDocumentMixer
             if (item is null || selected.Count >= maxSourceCount) throw new ArgumentException("Mix source limit exceeded or null source.");
             material.InspectStorage(item.Package, cancellationToken); material.GuardPreservedXml(item.Package, cancellationToken);
             OfdAnnotationContract.Validate(item.Package, material, cancellationToken);
-            if (item.Package.CompositeResources is not null || OfdCompositeGraph.Definitions(item.Package).Any(e => e.Clips is not null))
-                throw new NotSupportedException("Mix cannot remap typed composites or clips.");
-            if (OfdAnnotationContract.HasTyped(item.Package)) throw new NotSupportedException("Mixer cannot remap typed annotation ownership.");
             if (OfdNavigationXml.HasTypedNavigation(item.Package, material, cancellationToken)) throw new NotSupportedException("Mix cannot remap typed navigation source ownership.");
             OfdDocumentSplitter.ValidateSingleDocument(item.Package, material, cancellationToken);
             OfdDocumentSplitter.ValidatePages(item.Package, new[] { item.PageIndex }, material, cancellationToken);
@@ -85,27 +82,21 @@ public static class OfdDocumentMixer
                 if (!page.Templates.Any(template => template.TemplateId == reference.Attribute("TemplateID")?.Value))
                     throw new NotSupportedException("Mix cannot flatten an unresolved template reference.");
             }
-            objects = checked(objects + page.Elements.Count + page.Templates.Sum(template => template.Elements.Count) + page.AnnotationAppearances.Count);
+            objects = checked(objects + page.Elements.Count + page.Templates.Sum(template => template.Elements.Count) +
+                (page.Annotations is null ? page.AnnotationAppearances.Count : page.Annotations.Items.Sum(annotation => annotation.Appearance.Elements.Count)) +
+                (item.Package.CompositeResources?.Items.Sum(resource => 1 + resource.Elements.Count) ?? 0));
             bytes = checked(bytes + item.Package.PreservedEntries.Values.Sum(data => (long)data.Length) + item.Package.Fonts.Sum(font => (long)font.Data.Length) + item.Package.Attachments.Sum(attachment => (long)attachment.Data.Length)
                 + item.Package.CustomTags.Sum(tag => 2L * (tag.Key.Length + tag.Value.Length))
                 + page.Elements.Concat(page.Templates.SelectMany(template => template.Elements)).Concat(page.AnnotationAppearances)
                     .OfType<OfdImageElement>().Sum(image => (long)image.Data.Length));
+            bytes = checked(bytes + (item.Package.CompositeResources?.Items.SelectMany(resource => resource.Elements)
+                .OfType<OfdImageElement>().Sum(image => (long)image.Data.Length) ?? 0) +
+                (page.Annotations?.Items.SelectMany(annotation => annotation.Appearance.Elements)
+                .OfType<OfdImageElement>().Sum(image => (long)image.Data.Length) ?? 0));
             if (bytes > maxExpandedBytes || objects > maxObjectCount) throw new ArgumentException("Mix expanded-byte/object budget exceeded.");
             if (page.PreservedPageElements.Any(xml => XElement.Parse(xml).Name != pageNamespace + "Template"))
                 throw new NotSupportedException("Mix cannot safely remap page extensions/actions.");
-            var package = new OfdDocumentPackage { Options = item.Package.Options };
-            if (selected.Count == 0 && item.Package.Options.Metadata.Cover is string cover)
-            {
-                var coverPath = material.ResolvePath("OFD.xml", cover, cancellationToken);
-                if (!item.Package.PreservedEntries.TryGetValue(coverPath, out var coverBytes))
-                    throw new NotSupportedException("Mix cannot retain a Cover without its package entry.");
-                material.ChargeCopy(coverBytes.LongLength, cancellationToken);
-                package.PreservedEntries.Add(coverPath, coverBytes.ToArray());
-            }
-            var legacyPage = OfdModelCloner.ClonePage(page, material: material, cancellationToken: cancellationToken);
-            package.Pages.Add(legacyPage); package.Fonts.AddRange(item.Package.Fonts);
-            OfdDocumentMerger.CopyAttachments(item.Package, package, cancellationToken, material);
-            selected.Add(package);
+            selected.Add(item);
         }
         if (selected.Count == 0) throw new ArgumentException("At least one source page is required.", nameof(sources));
         var merged = OfdDocumentMerger.MergeForMix(selected, new OfdDocumentMergeOptions { RequireKnownAttributes = true }, material, cancellationToken);
@@ -122,6 +113,20 @@ public static class OfdDocumentMixer
                 element.LayerId = $"mix-{page.Index}-{element.LayerId}";
                 element.LayerType = "Body";
                 target.Elements.Add(element);
+            }
+            if (page.Annotations is not null)
+            {
+                // Mix is a paint-order flattening: each source's annotations
+                // follow its body but precede the next source's body.
+                foreach (var occurrence in OfdAnnotationProjection.Resolve(page, material, cancellationToken,
+                    documentNamespace: merged.Options.Namespace))
+                {
+                    var element = occurrence.RenderElement;
+                    element.ObjectId = null;
+                    element.LayerId = $"mix-{page.Index}-annotations";
+                    element.LayerType = "Body";
+                    target.Elements.Add(element);
+                }
             }
         }
         merged.Pages.Clear(); merged.Pages.Add(target);
@@ -177,7 +182,7 @@ public static class OfdDocumentMixer
                         supported &= layer.Name == ns + "Layer" && Plain(layer, "ID", "Type") &&
                             (layer.Attribute("Type") is null || layer.Attribute("Type")!.Value is "Background" or "Body" or "Foreground");
                         foreach (var drawing in layer.Elements()) supported &= drawing.Name.Namespace == ns &&
-                            drawing.Name.LocalName is "TextObject" or "PathObject" or "ImageObject";
+                            drawing.Name.LocalName is "TextObject" or "PathObject" or "ImageObject" or "CompositeObject";
                     }
                     continue;
                 }

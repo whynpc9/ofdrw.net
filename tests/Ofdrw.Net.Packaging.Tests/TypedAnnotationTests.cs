@@ -60,14 +60,17 @@ public sealed class TypedAnnotationTests
     }
 
     [Fact]
-    public async Task FreshSplitRetainsLocalMetadataAndTypedMergeRefuses()
+    public async Task FreshSplitAndMergeRetainLocalMetadata()
     {
         var source = Fresh(); source.Pages.Add(new OfdPage { Index = 1, WidthMillimeters = 210, HeightMillimeters = 297 });
         var split = OfdDocumentSplitter.Split(source, [0]);
         Assert.NotSame(source.Pages[0].Annotations, split.Pages[0].Annotations);
         Assert.Equal("author", split.Pages[0].Annotations!.Items[0].Creator);
         Assert.Empty(split.Pages[0].Elements);
-        Assert.Throws<NotSupportedException>(() => OfdDocumentMerger.Merge([source]));
+        var merged = OfdDocumentMerger.Merge([source]);
+        Assert.NotSame(source.Pages[0].Annotations, merged.Pages[0].Annotations);
+        Assert.Equal("author", merged.Pages[0].Annotations!.Items[0].Creator);
+        Assert.Null(merged.Pages[1].Annotations);
         var saved = await RoundTrip(split); Assert.Equal("LOCAL", new OfdTextExtractor().Extract(saved));
     }
 

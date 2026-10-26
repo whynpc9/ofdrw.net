@@ -110,4 +110,4 @@ Split、普通保存和水印先检查 Writer 实际重建的 Page/Area/Content/
 
 显式清理删除签名声明时，返回的 `SignaturesInvalidated` 为 `true`，即使对应清单缺失或载荷因引用仍保留；无声明或再次清理为 `false`。合并会清除复制附件的源ID，并由Writer按目标集合顺序生成唯一ID；重复选择同一包的页面仍按来源复制附件，不做内容去重。
 
-typed Composite/Clip 的 Split 保留独立资源闭包和同一目标包内的共享关系。删除最后一个已知 placement 后，Writer 对可证明无引用的组合定义进行有界固定点修剪，再处理字体/图片；未知引用语义保守保留。Merge/Mix 对 typed composite 或 clip 明确预检拒绝，暂不宣称完整引用重映射。普通 Reader→编辑→Writer 使用现有累计预算、取消和源变更 guard；严格文字保存权限没有扩为任意图形改写权限。
+typed Composite/Clip 的 Split 保留独立资源闭包和同一目标包内的共享关系。删除最后一个已知 placement 后，Writer 对可证明无引用的组合定义进行有界固定点修剪，再处理字体/图片；未知引用语义保守保留。Merge/Mix 对已证明闭合的文档级 Composite/Clip 按每次来源重新建立资源所有权：一次来源内部的多个 placement 共享同一新定义，多次使用同一来源则各自拥有定义。Merge 将普通 typed Annotation 构造成新页面的可编辑批注；Mix 按来源绘制顺序展平可见批注外观。批注动作、导航、PageBlock、未接管的投影槽位和不能从 typed 字段重建的来源绘制 XML 明确拒绝。普通 Reader→编辑→Writer 使用现有累计预算、取消和源变更 guard；严格文字保存权限没有扩为任意图形改写权限。
