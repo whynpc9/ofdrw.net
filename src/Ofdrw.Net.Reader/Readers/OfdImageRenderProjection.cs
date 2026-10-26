@@ -28,6 +28,11 @@ public static class OfdImageRenderProjection
         var sourceMask = source?.Attribute("ImageMask")?.Value;
         if (sourceMask != image.MaskResourceId)
             throw new NotSupportedException("OFD ImageMask reference changed after resource resolution.");
+        // Preserve the established admission and exception contracts of ordinary
+        // image exports. The stricter XML/resource preflight belongs to this
+        // restricted JBIG2 and ImageMask projection only.
+        if (image.MaskResourceId is null && image.MediaType != "image/jbig2")
+            return (image.Data, image.MediaType);
         if (source is not null && (!OfdGraphicXmlContract.HasKnownChildren(source) ||
                 OfdGraphicXmlContract.HasUnsupportedReferences(source, allowImageMask: sourceMask is not null) ||
                 source.DescendantsAndSelf().Attributes().Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute))))
@@ -36,9 +41,6 @@ public static class OfdImageRenderProjection
             throw new NotSupportedException("OFD image resource is unresolved or ambiguous.");
         if (source is not null && EncodedImageAdmission.IdentifyFormat(image.Data) != image.MediaType)
             throw new NotSupportedException("OFD image media declaration differs from its encoded payload.");
-        if (image.MaskResourceId is null && image.MediaType != "image/jbig2")
-            return (image.Data, image.MediaType);
-
         var limit = Math.Min(maximumPixels, image.MaskResourceId is null ? RestrictedJbig2Admission.MaxPixels : MaxMaskedPixels);
         var baseBytes = image.MediaType == "image/jbig2" ? DecodeJbig2(image.Data, limit, cancellationToken) : image.Data;
         if (image.MaskResourceId is null) return (baseBytes, "image/png");

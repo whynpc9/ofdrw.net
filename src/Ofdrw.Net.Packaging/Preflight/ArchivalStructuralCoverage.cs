@@ -619,7 +619,9 @@ internal sealed class ArchivalStructuralCoverage
         var parent = node.Name.LocalName;
         if (node.Name.Namespace != ns || !node.AncestorsAndSelf().Any(x => x.Name.Namespace == ns &&
             x.Name.LocalName is ("TextObject" or "PathObject" or "ImageObject" or "CompositeObject"))) return false;
-        if (node.Attributes().Any(attribute => !OfdGraphicXmlContract.IsKnownAttribute(attribute) &&
+        if (node.Attributes().Any(attribute =>
+            attribute.Name == "ImageMask" && !KnownGraphicReferenceAttribute(parent, attribute) ||
+            !OfdGraphicXmlContract.IsKnownAttribute(attribute) &&
             !(parent == "ImageObject" && attribute.Name == "Interpolate") &&
             !KnownGraphicReferenceAttribute(parent, attribute))) return true;
         if (parent is "TextCode" or "AbbreviatedData" or "Glyphs")
