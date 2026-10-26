@@ -15,4 +15,8 @@ public sealed class OfdGraphicsOptions
     public int MaxSavedStates { get; set; } = 64;
     /// <summary>Maximum simultaneous clip intersections.</summary>
     public int MaxClipRegions { get; set; } = 32;
+    /// <summary>Maximum bytes in one encoded image passed to DrawImage.</summary>
+    public int MaxEncodedImageBytes { get; set; } = 32 * 1024 * 1024;
+    /// <summary>Maximum pixels in one image passed to DrawImage.</summary>
+    public long MaxImagePixels { get; set; } = 40_000_000;
 }

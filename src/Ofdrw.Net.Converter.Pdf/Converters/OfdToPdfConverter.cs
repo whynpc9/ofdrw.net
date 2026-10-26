@@ -510,10 +510,24 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             var matrix = image.Transform ?? new double[] { image.WidthMillimeters, 0, 0, image.HeightMillimeters, 0, 0 };
             if (matrix.Length != 6 || matrix.Any(value => double.IsNaN(value) || double.IsInfinity(value)))
                 throw new InvalidDataException("Invalid OFD image transform.");
+            var crop = OfdImageRenderingHints.ReadPdfSourceCrop(image);
+            var data = image.Data;
+            if (crop is { } sourceCrop)
+            {
+                var prepared = PdfCropImage.Create(data, sourceCrop, image.Alpha, maximumPixels, cancellationToken, decode);
+                data = prepared.Data;
+                var sourceMatrix = matrix;
+                matrix = new[]
+                {
+                    sourceMatrix[0] * prepared.Width, sourceMatrix[1] * prepared.Width,
+                    sourceMatrix[2] * prepared.Height, sourceMatrix[3] * prepared.Height,
+                    sourceMatrix[0] * prepared.U + sourceMatrix[2] * prepared.V + sourceMatrix[4],
+                    sourceMatrix[1] * prepared.U + sourceMatrix[3] * prepared.V + sourceMatrix[5]
+                };
+            }
             graphics.MultiplyTransform(new XMatrix(MillimetersToPoints(matrix[0]), MillimetersToPoints(matrix[1]),
                 MillimetersToPoints(matrix[2]), MillimetersToPoints(matrix[3]), MillimetersToPoints(matrix[4]), MillimetersToPoints(matrix[5])));
-            var data = image.Data;
-            if (image.Alpha < 255)
+            if (crop is null && image.Alpha < 255)
             {
                 using var pixels = decode is null ? Image.Load<Rgba32>(data) : decode(data);
                 cancellationToken.ThrowIfCancellationRequested();
@@ -523,7 +537,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 pixels.Save(png, new PngEncoder { ColorType = PngColorType.RgbWithAlpha });
                 data = png.ToArray();
             }
-            var interpolate = OfdImageRenderingHints.ReadPdfInterpolate(image) ?? true;
+            var interpolate = crop is null && (OfdImageRenderingHints.ReadPdfInterpolate(image) ?? true);
             using var xImage = XImage.FromImageSource(new EncodedBitmapImageSource(data, maximumPixels, cancellationToken, decode, interpolate));
             xImage.Interpolate = interpolate;
             graphics.DrawImage(xImage, 0, 0, 1, 1);

@@ -238,8 +238,11 @@ internal static class OfdAttachmentPhysicalCleaner
 
     private static bool IsWriterOwnedHint(XElement element, XAttribute attribute) =>
         element.Name.LocalName == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor ||
-        element.Name.LocalName == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfInterpolateV1 &&
-        OfdImageRenderingHints.IsCanonicalValue(attribute.Value);
+        element.Name.LocalName == "ImageObject" &&
+        (attribute.Name == OfdImageRenderingHints.PdfInterpolateV1 &&
+         OfdImageRenderingHints.IsCanonicalValue(attribute.Value) ||
+         attribute.Name == OfdImageRenderingHints.PdfSourceCropV1 &&
+         OfdImageRenderingHints.IsCanonicalSourceCrop(attribute.Value));
 
     private static bool IsStandardActionRegion(XElement region)
     {

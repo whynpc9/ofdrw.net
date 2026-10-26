@@ -39,7 +39,7 @@
 | SES dev/interop 测试容器 | 固定上游 SES V1/V4 测试容器 | 可选 `Ofdrw.Net.Signatures.SesInterop`：常见字段解析、SM2 测试自签/双层验签、完整测试证书固定 | **测试扩展**；仅显式注册，默认 verifier/CLI 不给自签 FullyValid；核心能力标志仍 false。无阅读器互认、法律效力或合格 TSA，范围见[教程](tutorials/16-ses-dev-interop.md)与[证据](evidence/ses-interop/README.md) |
 | GM/T 0099 密码应用 / 可选加密扩展 | `ofdrw-crypto` | 核心能力标志仍 false；独立 `Crypto.Password` 保留私有 password v2，新增显式 Java 2.4.0 兼容的口令/SM2 证书同类多接收人及签名 `OFDEntries` 有限子集 | **核心未支持 / 可选有限扩展**；v2 有 scrypt/HMAC；标准子集的 Java 原生清单只证明路径，逐文件内容仅在本包的签名摘要扩展存在时可验；非通用 GM/T/厂商互认或生产 PKI，见[契约](password-crypto.md)及[R14 证据](evidence/r14-standard-encryption/README.md) |
 | CLI/工具分发 | `ofdrw-tool` 及各模块工具 | 转换、SVG、PNG/JPEG图片进出、文本提取、重排、合并、签名验证的 .NET tool | **已支持** |
-| Graphics2D 兼容层 | `ofdrw-graphics2d` | Layout 公开 OfdGraphics/OfdPen/OfdBrush/OfdFont/OfdGraphicsPath/OfdMatrix，输出原生 PathObject/TextObject | **部分支持**；04 原语绘图已实现，无 Skia 必需依赖；19 已实现受限合作 producer 事件适配（不透明捕捉 SKCanvas，验收见独立证据）；05 已有有限 TrueType 子集实现，其他字体格式继续遵循[契约](font-subset-and-reuse.md) |
+| Graphics2D 兼容层 | `ofdrw-graphics2d` | Layout 公开 OfdGraphics/OfdPen/OfdBrush/OfdFont/OfdGraphicsPath/OfdMatrix，输出原生 PathObject/TextObject/ImageObject；R09 新增图片裁切和可配置线型、显式栅格矩形渐变/图片 tile | **部分支持**；04 原语绘图已实现，无 Skia 必需依赖；R09 的源与出口边界见[设计](r09-graphics-design.md)，外来原生渐变/图案仍不支持；19 已实现受限合作 producer 事件适配（不透明捕捉 SKCanvas，验收见独立证据）；05 已有有限 TrueType 子集实现，其他字体格式继续遵循[契约](font-subset-and-reuse.md) |
 | 兼容性与发布 | Maven 多模块、长期演进 | `netstandard2.0/2.1` SDK + `net10.0` CLI，NuGet 包消费 E2E | **部分支持**；仓库采用 MIT 并附第三方声明；发布候选需通过同一批 NuGet 包的消费验证 |
 
 ## 本轮补强结果
