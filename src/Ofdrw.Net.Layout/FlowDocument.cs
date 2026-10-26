@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Editing;
+using Ofdrw.Net.Layout.Graphics;
 using Ofdrw.Net.Layout.Internal.Flow;
 
 namespace Ofdrw.Net.Layout;
@@ -15,12 +16,18 @@ public sealed class FlowDocument
     /// <summary>Page, margin, font and resource limits for this document.</summary>
     public FlowDocumentOptions Options { get; } = new();
 
-    /// <summary>Ordered Paragraph, Table and AreaHolderBlock blocks. Do not mutate the description during rendering.</summary>
+    /// <summary>Ordered paragraph, table, named-area, image and canvas blocks. Do not mutate the description during rendering.</summary>
     public IList<FlowBlock> Blocks { get; } = new List<FlowBlock>();
+
+    /// <summary>Called once per final page, in page order, after all layout succeeds. Drawn objects are behind flow content. Throwing fails Render.</summary>
+    public Action<OfdGraphics, FlowBoundary>? OnPage { get; set; }
+
+    /// <summary>Called once per final flow fragment, in document order, after all layout succeeds. Drawn objects follow that fragment. Throwing fails Render.</summary>
+    public Action<OfdGraphics, FlowElementPlacement>? OnElement { get; set; }
 
     /// <summary>Measures and paginates the blocks into native OFD content and named blank regions.</summary>
     public OfdDocumentPackage Render(CancellationToken cancellationToken = default) =>
-        new FlowDocumentRenderer(Options, Blocks, cancellationToken).Render();
+        new FlowDocumentRenderer(Options, Blocks, OnPage, OnElement, cancellationToken).Render();
 }
 
 /// <summary>Base of the built-in flow blocks.</summary>
@@ -99,6 +106,16 @@ public sealed class Span
     public bool Italic { get; set; }
     /// <summary>Optional span text color; null uses the document default.</summary>
     public OfdColor? Color { get; set; }
+    /// <summary>Optional numeric font weight from 100 to 900 in steps of 100. Conflicts with Bold unless it is 700.</summary>
+    public int? FontWeight { get; set; }
+    /// <summary>Additional nonnegative millimeters between adjacent graphemes of this span on the same line.</summary>
+    public double LetterSpacingMillimeters { get; set; }
+    /// <summary>Draw a line below this span's final text fragments.</summary>
+    public bool Underline { get; set; }
+    /// <summary>Optional baseline-to-underline offset in millimeters; null uses 10% of the font size.</summary>
+    public double? UnderlineOffsetMillimeters { get; set; }
+    /// <summary>Optional underline stroke width in millimeters; null uses 6% of the font size.</summary>
+    public double? UnderlineWidthMillimeters { get; set; }
 }
 
 /// <summary>Geometry in millimeters and per-render resource limits.</summary>
@@ -136,6 +153,8 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
 {
     private readonly FlowDocumentOptions _options;
     private readonly IList<FlowBlock> _blocks;
+    private readonly Action<OfdGraphics, FlowBoundary>? _onPage;
+    private readonly Action<OfdGraphics, FlowElementPlacement>? _onElement;
     private readonly CancellationToken _cancellationToken;
     private readonly Dictionary<string, OfdFontResource> _fonts = new(StringComparer.Ordinal);
     private readonly OfdDocumentPackage _package = new();
@@ -148,9 +167,12 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
     private int _pendingPageBreaks;
     private double _pendingSpaceAfter;
     private readonly List<double> _pendingLineBreakHeights = new();
+    private readonly List<(OfdPage Page, int InsertIndex, FlowElementPlacement Placement, Action<OfdGraphics>? Draw)> _placements = new();
 
-    internal FlowDocumentRenderer(FlowDocumentOptions options, IList<FlowBlock> blocks, CancellationToken cancellationToken)
-    { _options = options; _blocks = blocks; _cancellationToken = cancellationToken; }
+    internal FlowDocumentRenderer(FlowDocumentOptions options, IList<FlowBlock> blocks,
+        Action<OfdGraphics, FlowBoundary>? onPage, Action<OfdGraphics, FlowElementPlacement>? onElement,
+        CancellationToken cancellationToken)
+    { _options = options; _blocks = blocks; _onPage = onPage; _onElement = onElement; _cancellationToken = cancellationToken; }
 
     internal OfdDocumentPackage Render()
     {
@@ -181,7 +203,7 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
                 }
                 paragraphs = list;
             }
-            else if (block is AreaHolderBlock)
+            else if (block is AreaHolderBlock or FlowFixedBlock)
                 paragraphs = Array.Empty<Paragraph>();
             else throw new NotSupportedException("Unsupported flow block.");
             foreach (var paragraph in paragraphs)
@@ -197,6 +219,7 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
             }
             if (block is Paragraph paragraphBlock) RenderParagraph(paragraphBlock, paragraphBlock.Spans.ToArray());
             else if (block is AreaHolderBlock holder) RenderArea(holder);
+            else if (block is FlowFixedBlock fixedBlock) RenderFixedBlock(fixedBlock);
             else RenderTable((Table)block);
         }
         if (_page is null) StartPage();
@@ -206,7 +229,106 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
                 _package.Pages[i].Id = (i + 1).ToString(CultureInfo.InvariantCulture);
             OfdNamedAreaIndex.Save(_package, _areas);
         }
+        CompleteCallbacks();
         return _package;
+    }
+
+    private void RenderFixedBlock(FlowFixedBlock block)
+    {
+        GraphicsValidation.Positive(block.WidthMillimeters);
+        GraphicsValidation.Positive(block.HeightMillimeters);
+        ValidateLength(block.SpaceBeforeMillimeters, nameof(block.SpaceBeforeMillimeters));
+        ValidateLength(block.SpaceAfterMillimeters, nameof(block.SpaceAfterMillimeters));
+        if (!Enum.IsDefined(typeof(ParagraphAlignment), block.Alignment))
+            throw new ArgumentOutOfRangeException(nameof(block.Alignment));
+        var bodyWidth = _options.PageWidthMillimeters - _options.MarginLeftMillimeters - _options.MarginRightMillimeters;
+        if (block.WidthMillimeters > bodyWidth + 0.000001d)
+            throw new InvalidOperationException("A fixed flow block is wider than the usable page area.");
+        byte[]? imageBytes = null;
+        var imageAlpha = 255;
+        if (block is ImageBlock image)
+        {
+            if (image.Alpha is < 0 or > 255) throw new ArgumentOutOfRangeException(nameof(image.Alpha));
+            imageAlpha = image.Alpha;
+            imageBytes = image.SnapshotImage();
+            var limits = new OfdGraphicsOptions();
+            if (imageBytes.Length == 0 || imageBytes.Length > limits.MaxEncodedImageBytes)
+                throw new ArgumentException("Image block exceeds the graphics image byte budget or is empty.");
+            OfdGraphicsImage.Validate(imageBytes, limits.MaxImagePixels, _cancellationToken);
+        }
+        if (_page is null) StartPage();
+        var hadPendingBreaks = _pendingPageBreaks > 0;
+        ApplyPendingPageBreaks();
+        if (block.PageBreakBefore && (_hasBodyContent || hadPendingBreaks || _pendingLineBreakHeights.Count > 0))
+        {
+            StartPage();
+            _pendingSpaceAfter = 0;
+            _pendingLineBreakHeights.Clear();
+        }
+        ApplyPendingLineBreaks();
+        PlaceFirstLine(block.HeightMillimeters, _pendingSpaceAfter + block.SpaceBeforeMillimeters);
+        _pendingSpaceAfter = 0;
+        var x = FlowParagraphLayout.Align(_options.MarginLeftMillimeters, bodyWidth, block.WidthMillimeters,
+            (FlowAlignment)block.Alignment);
+        var boundary = new FlowBoundary(_page!.Index, x, _y, block.WidthMillimeters, block.HeightMillimeters);
+        Action<OfdGraphics>? draw = block switch
+        {
+            ImageBlock => graphics => graphics.DrawImage(imageBytes!, boundary.XMillimeters, boundary.YMillimeters,
+                boundary.WidthMillimeters, boundary.HeightMillimeters, imageAlpha, _cancellationToken),
+            CanvasBlock canvas => graphics =>
+            {
+                graphics.Translate(boundary.XMillimeters, boundary.YMillimeters);
+                graphics.IntersectClip(new OfdGraphicsPath().AddRectangle(0, 0,
+                    boundary.WidthMillimeters, boundary.HeightMillimeters), _cancellationToken);
+                canvas.Draw(graphics, boundary);
+            },
+            _ => throw new NotSupportedException("Unsupported fixed flow block.")
+        };
+        RecordPlacement(block, boundary, draw);
+        _y += block.HeightMillimeters;
+        _hasBodyContent = true;
+        _pendingSpaceAfter = block.SpaceAfterMillimeters;
+    }
+
+    private void RecordPlacement(FlowBlock block, FlowBoundary boundary, Action<OfdGraphics>? draw = null)
+    {
+        if (draw is null && _onElement is null) return;
+        _placements.Add((_page!, _page!.Elements.Count, new FlowElementPlacement(block, boundary), draw));
+    }
+
+    private void CompleteCallbacks()
+    {
+        _cancellationToken.ThrowIfCancellationRequested();
+        var insertedByPage = new Dictionary<OfdPage, int>();
+        foreach (var page in _package.Pages)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            if (_onPage is null) continue;
+            var before = page.Elements.Count;
+            _onPage(new OfdGraphics(_package, page), new FlowBoundary(page.Index,
+                page.XMillimeters, page.YMillimeters, page.WidthMillimeters, page.HeightMillimeters));
+            var background = page.Elements.Skip(before).ToArray();
+            if (background.Length == 0) continue;
+            page.Elements.RemoveRange(before, background.Length);
+            page.Elements.InsertRange(0, background);
+            insertedByPage[page] = background.Length;
+        }
+        foreach (var pending in _placements)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            if (pending.Draw is null && _onElement is null) continue;
+            var graphics = new OfdGraphics(_package, pending.Page);
+            var before = pending.Page.Elements.Count;
+            pending.Draw?.Invoke(graphics);
+            if (_onElement is not null)
+                _onElement(new OfdGraphics(_package, pending.Page), pending.Placement);
+            var added = pending.Page.Elements.Skip(before).ToArray();
+            if (added.Length == 0) continue;
+            pending.Page.Elements.RemoveRange(before, added.Length);
+            insertedByPage.TryGetValue(pending.Page, out var inserted);
+            pending.Page.Elements.InsertRange(pending.InsertIndex + inserted, added);
+            insertedByPage[pending.Page] = inserted + added.Length;
+        }
     }
 
     private void RenderArea(AreaHolderBlock holder)
@@ -224,6 +346,10 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
             _options.MarginLeftMillimeters,
             _options.PageWidthMillimeters - _options.MarginLeftMillimeters - _options.MarginRightMillimeters,
             holder.HeightMillimeters));
+        if (_onElement is not null)
+            RecordPlacement(holder, new FlowBoundary(_page!.Index, _options.MarginLeftMillimeters, _y,
+                _options.PageWidthMillimeters - _options.MarginLeftMillimeters - _options.MarginRightMillimeters,
+                holder.HeightMillimeters));
         _y += holder.HeightMillimeters;
         _hasBodyContent = true;
     }
@@ -254,19 +380,7 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
         }
         var inlines = new List<FlowInline>();
         foreach (var span in spans)
-        {
-            var size = span.FontSizeMillimeters ?? _options.DefaultFontSizeMillimeters;
-            if (double.IsNaN(size) || double.IsInfinity(size) || size <= 0)
-                throw new ArgumentOutOfRangeException(nameof(span.FontSizeMillimeters));
-            var family = span.FontFamily ?? _options.DefaultFontFamily;
-            if (string.IsNullOrWhiteSpace(family)) throw new ArgumentException("Font family cannot be empty.");
-            inlines.Add(new FlowInline
-            {
-                Text = span.Text,
-                Style = new FlowTextStyle { FontFamily = family.Trim(), FontSizeMillimeters = size,
-                    Bold = span.Bold, Italic = span.Italic, Source = span.Color ?? _options.DefaultColor }
-            });
-        }
+            inlines.Add(new FlowInline { Text = span.Text, Style = CreateStyle(span) });
         var fallback = new FlowTextStyle { FontFamily = _options.DefaultFontFamily,
             FontSizeMillimeters = _options.DefaultFontSizeMillimeters, Source = _options.DefaultColor };
         var format = new FlowParagraphFormat
@@ -290,11 +404,45 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
             }
             else Place(line.Height);
             DrawLine(line, _options.MarginLeftMillimeters + paragraph.LeftIndentMillimeters, width);
+            if (_onElement is not null)
+                RecordPlacement(paragraph, new FlowBoundary(_page!.Index,
+                    FlowParagraphLayout.Align(_options.MarginLeftMillimeters + paragraph.LeftIndentMillimeters + line.Indent,
+                        width - line.Indent, line.AlignmentWidth, line.Alignment),
+                    _y, line.AlignmentWidth, line.Height));
             _y += line.Height;
             _hasBodyContent = true;
         }
         // Carry the gap to the next block, without materializing a trailing empty page.
         _pendingSpaceAfter += paragraph.SpaceAfterMillimeters;
+    }
+
+    private FlowTextStyle CreateStyle(Span span)
+    {
+        var size = span.FontSizeMillimeters ?? _options.DefaultFontSizeMillimeters;
+        ValidatePositive(size, nameof(span.FontSizeMillimeters));
+        var family = span.FontFamily ?? _options.DefaultFontFamily;
+        if (string.IsNullOrWhiteSpace(family)) throw new ArgumentException("Font family cannot be empty.");
+        var weight = span.FontWeight ?? (span.Bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight);
+        if (weight < 100 || weight > 900 || weight % 100 != 0 || span.Bold && weight != OfdTextElement.BoldWeight)
+            throw new ArgumentOutOfRangeException(nameof(span.FontWeight));
+        ValidateLength(span.LetterSpacingMillimeters, nameof(span.LetterSpacingMillimeters));
+        var underlineOffset = span.UnderlineOffsetMillimeters ?? size * 0.1d;
+        var underlineWidth = span.UnderlineWidthMillimeters ?? size * 0.06d;
+        if (span.Underline)
+        {
+            ValidatePositive(underlineOffset, nameof(span.UnderlineOffsetMillimeters));
+            GraphicsValidation.Positive(underlineWidth);
+            if (underlineOffset + underlineWidth / 2 > size * 0.3d)
+                throw new ArgumentOutOfRangeException(nameof(span.UnderlineOffsetMillimeters),
+                    "Underline must fit below the baseline within the normal line height.");
+        }
+        else if (span.UnderlineOffsetMillimeters.HasValue || span.UnderlineWidthMillimeters.HasValue)
+            throw new ArgumentException("Underline geometry requires Underline to be enabled.");
+        return new FlowTextStyle { FontFamily = family.Trim(), FontSizeMillimeters = size,
+            Bold = weight >= 600, Italic = span.Italic, Source = span.Color ?? _options.DefaultColor,
+            Weight = weight, LetterSpacingMillimeters = span.LetterSpacingMillimeters,
+            Underline = span.Underline, UnderlineOffsetMillimeters = underlineOffset,
+            UnderlineWidthMillimeters = underlineWidth };
     }
 
     private void DrawLine(FlowLine line, double left, double width, double? top = null)
@@ -319,13 +467,25 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
                 YMillimeters = top ?? _y, WidthMillimeters = elementWidth, HeightMillimeters = line.Height,
                 FontName = font.FontName, FontResourceId = font.Id,
                 FontSizeMillimeters = style.FontSizeMillimeters,
-                Weight = style.Bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight,
+                Weight = style.Weight,
                 Italic = style.Italic, FillColor = (OfdColor)style.Source!, Text = text
             };
             element.Runs.Add(new OfdTextRun { Text = text, YMillimeters = line.BaselineMillimeters,
                 DeltaX = group.Count > 1 ? string.Join(" ", group.Take(group.Count - 1)
                     .Select(g => g.Width.ToString("0.######", CultureInfo.InvariantCulture))) : null });
             _page!.Elements.Add(element);
+            if (style.Underline && groupWidth > 0)
+            {
+                var underlineY = line.BaselineMillimeters + style.UnderlineOffsetMillimeters;
+                _page.Elements.Add(new OfdPathElement
+                {
+                    LayerType = "Body", XMillimeters = x, YMillimeters = top ?? _y,
+                    WidthMillimeters = groupWidth, HeightMillimeters = line.Height,
+                    Stroke = true, Fill = false, LineWidthMillimeters = style.UnderlineWidthMillimeters,
+                    StrokeColor = (OfdColor)style.Source!,
+                    AbbreviatedData = FormattableString.Invariant($"M 0 {underlineY:0.######} L {groupWidth:0.######} {underlineY:0.######}")
+                });
+            }
             x += groupWidth;
         }
     }

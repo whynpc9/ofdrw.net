@@ -95,6 +95,8 @@ internal sealed partial class FlowDocumentRenderer
                 x += cell.Width;
             }
             DrawGridRow(table, measured, left, rowTop, tableWidth, height, rowIndex == 0 || Math.Abs(rowTop - ContentTop) < 0.000001d);
+            if (_onElement is not null)
+                RecordPlacement(table, new FlowBoundary(_page!.Index, left, rowTop, tableWidth, height));
             _y += height;
             _hasBodyContent = true;
         }
@@ -120,14 +122,7 @@ internal sealed partial class FlowDocumentRenderer
             if (textWidth <= 0 || paragraph.FirstLineIndentMillimeters >= textWidth) throw new ArgumentException("Cell paragraph indents leave no usable width.");
             var inlines = new List<FlowInline>();
             foreach (var span in paragraph.Spans)
-            {
-                var size = span.FontSizeMillimeters ?? _options.DefaultFontSizeMillimeters;
-                ValidatePositive(size, nameof(span.FontSizeMillimeters));
-                var family = span.FontFamily ?? _options.DefaultFontFamily;
-                if (string.IsNullOrWhiteSpace(family)) throw new ArgumentException("Font family cannot be empty.");
-                inlines.Add(new FlowInline { Text = span.Text, Style = new FlowTextStyle { FontFamily = family.Trim(),
-                    FontSizeMillimeters = size, Bold = span.Bold, Italic = span.Italic, Source = span.Color ?? _options.DefaultColor } });
-            }
+                inlines.Add(new FlowInline { Text = span.Text, Style = CreateStyle(span) });
             var fallback = new FlowTextStyle { FontFamily = _options.DefaultFontFamily,
                 FontSizeMillimeters = _options.DefaultFontSizeMillimeters, Source = _options.DefaultColor };
             content.Height += paragraph.SpaceBeforeMillimeters;
