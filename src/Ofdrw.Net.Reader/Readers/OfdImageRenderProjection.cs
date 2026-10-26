@@ -40,7 +40,7 @@ public static class OfdImageRenderProjection
             throw new NotSupportedException("OFD image has unsupported drawing attributes or references.");
         if (image.SourceMediaAmbiguous || image.Data is not { Length: > 0 })
             throw new NotSupportedException("OFD image resource is unresolved or ambiguous.");
-        if (source is not null && EncodedImageAdmission.IdentifyFormat(image.Data) != image.MediaType)
+        if (EncodedImageAdmission.IdentifyFormat(image.Data) != image.MediaType)
             throw new NotSupportedException("OFD image media declaration differs from its encoded payload.");
         var limit = Math.Min(maximumPixels, image.MaskResourceId is null ? RestrictedJbig2Admission.MaxPixels : MaxMaskedPixels);
         var baseBytes = image.MediaType == "image/jbig2" ? DecodeJbig2(image.Data, limit, cancellationToken) : image.Data;

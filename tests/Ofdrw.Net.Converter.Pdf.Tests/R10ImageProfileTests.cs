@@ -130,6 +130,26 @@ public sealed class R10ImageProfileTests
     }
 
     [Fact]
+    public void FreshTypedImageChecksDeclarationAgainstJbig2SignatureWithoutChangingOrdinaryImagePassThrough()
+    {
+        // SourceXml and Reader ambiguity flags are absent in a caller-created image.
+        // The signature still enters the restricted branch and must never emerge as a PNG label.
+        var mislabeled = new OfdImageElement { Data = Jbig2, MediaType = "image/png" };
+        Assert.Throws<NotSupportedException>(() => OfdImageRenderProjection.Prepare(mislabeled, 4096));
+        var reversed = new OfdImageElement { Data = Red, MediaType = "image/jbig2" };
+        Assert.Throws<NotSupportedException>(() => OfdImageRenderProjection.Prepare(reversed, 4096));
+        var admitted = new OfdImageElement { Data = Jbig2, MediaType = "image/jbig2" };
+        var projected = OfdImageRenderProjection.Prepare(admitted, 4096);
+        Assert.Equal("image/png", projected.MediaType);
+        using (var pixels = Image.Load<Rgb24>(projected.Data))
+        { Assert.Equal(64, pixels.Width); Assert.Equal(56, pixels.Height); }
+        var ordinary = new OfdImageElement { Data = Red, MediaType = "image/png" };
+        var unchanged = OfdImageRenderProjection.Prepare(ordinary, 1);
+        Assert.Same(Red, unchanged.Data);
+        Assert.Equal("image/png", unchanged.MediaType);
+    }
+
+    [Fact]
     public async Task ImageMaskRejectsSelfReferenceAndDifferentDimensions()
     {
         var cycle = await new OfdReader().ReadAsync(new MemoryStream(Package(Red, "PNG", maskReference: true, maskId: "20")));
