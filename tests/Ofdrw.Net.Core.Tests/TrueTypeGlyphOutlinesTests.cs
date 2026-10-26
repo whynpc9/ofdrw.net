@@ -87,6 +87,35 @@ public sealed class TrueTypeGlyphOutlinesTests
     }
 
     [Fact]
+    public void CompositeUseMyMetricsOverridesTheParentHmtxAdvance()
+    {
+        var font = new OpenTypeFace(Fixture());
+        // GID 171 (é) sets USE_MY_METRICS on its GID 72 (e) component.
+        // Deliberately disagree with the parent hmtx entry to prove that
+        // the component, rather than the parent's nominal entry, wins.
+        OpenTypeFace.Put16(font.Table("hmtx"), 171 * 4, 321);
+        var reader = new TrueTypeGlyphOutlines(font.Build());
+        var outline = reader.Read(171);
+        Assert.Equal(564, outline.AdvanceWidth);
+        Assert.Equal(171, outline.GlyphId);
+        Assert.Equal("55ce309c6236a9598dff429b59668ec927fc9f5c9b1f22af06426e6e98dbfe60", OracleHash(outline));
+    }
+
+    [Fact]
+    public void CompositeInstructionsFlagOnAnEarlierComponentMustBeValidated()
+    {
+        var font = new OpenTypeFace(Fixture());
+        var loca = font.Table("loca");
+        var glyf = font.Table("glyf");
+        var start = checked((int)OpenTypeFace.U32(loca, 171 * 4));
+        var flags = OpenTypeFace.U16(glyf, start + 10);
+        Assert.NotEqual(0, flags & 0x0020); // another component follows
+        OpenTypeFace.Put16(glyf, start + 10, flags | 0x0100);
+        var reader = new TrueTypeGlyphOutlines(font.Build());
+        Assert.Throws<InvalidDataException>(() => reader.Read(171));
+    }
+
+    [Fact]
     public void MissingOrCancelledGidDoesNotReturnAnOutline()
     {
         var reader = new TrueTypeGlyphOutlines(Fixture());

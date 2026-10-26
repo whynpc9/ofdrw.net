@@ -77,15 +77,15 @@ internal sealed class TrueTypeGlyphOutlines
         if (glyphId <= 0 || glyphId >= GlyphCount)
             throw new NotSupportedException("The requested original GID is outside the admitted font.");
         var state = new ReadState(cancellationToken);
-        var contours = ReadGlyph(glyphId, state, new HashSet<int>(), 0);
-        var frozen = new ReadOnlyCollection<TrueTypeGlyphContour>(contours.Select(points =>
+        var geometry = ReadGlyph(glyphId, state, new HashSet<int>(), 0);
+        var frozen = new ReadOnlyCollection<TrueTypeGlyphContour>(geometry.Contours.Select(points =>
             new TrueTypeGlyphContour(new ReadOnlyCollection<TrueTypeOutlinePoint>(points.ToArray()))).ToArray());
-        var advance = OpenTypeFace.U16(hmtx, Math.Min(glyphId, metricCount - 1) * 4);
+        var advance = OpenTypeFace.U16(hmtx, Math.Min(geometry.MetricsGlyphId, metricCount - 1) * 4);
         return new TrueTypeGlyphOutline(SourceSha256, SelectedFaceSha256, FaceIndex,
             glyphId, UnitsPerEm, advance, frozen);
     }
 
-    private List<List<TrueTypeOutlinePoint>> ReadGlyph(int glyphId, ReadState state, HashSet<int> visiting, int depth)
+    private GlyphGeometry ReadGlyph(int glyphId, ReadState state, HashSet<int> visiting, int depth)
     {
         state.Visit();
         if (depth > MaximumDepth || !visiting.Add(glyphId))
@@ -93,19 +93,18 @@ internal sealed class TrueTypeGlyphOutlines
         try
         {
             var start = offsets[glyphId]; var end = offsets[glyphId + 1];
-            if (start == end) return new List<List<TrueTypeOutlinePoint>>();
+            if (start == end) return new GlyphGeometry(new List<List<TrueTypeOutlinePoint>>(), glyphId);
             RequireGlyph(start, end, start, 10);
             var contours = Signed16(glyf, start);
-            if (contours >= 0) return ReadSimple(start, end, contours, state);
+            if (contours >= 0) return new GlyphGeometry(ReadSimple(start, end, contours, state), glyphId);
             if (contours != -1) throw new NotSupportedException("Unknown TrueType composite glyph header.");
-            return ReadComposite(start, end, state, visiting, depth);
+            return ReadComposite(glyphId, start, end, state, visiting, depth);
         }
         finally { visiting.Remove(glyphId); }
     }
 
     private List<List<TrueTypeOutlinePoint>> ReadSimple(int start, int end, int contourCount, ReadState state)
     {
-        if (contourCount == 0) return new List<List<TrueTypeOutlinePoint>>();
         var cursor = start + 10;
         RequireGlyph(start, end, cursor, checked(contourCount * 2 + 2));
         var ends = new int[contourCount];
@@ -114,7 +113,7 @@ internal sealed class TrueTypeGlyphOutlines
             ends[i] = OpenTypeFace.U16(glyf, cursor); cursor += 2;
             if (i > 0 && ends[i] <= ends[i - 1]) throw new InvalidDataException("Invalid TrueType contour endpoints.");
         }
-        var count = checked(ends[contourCount - 1] + 1);
+        var count = contourCount == 0 ? 0 : checked(ends[contourCount - 1] + 1);
         state.AddPoints(count);
         var instructionLength = OpenTypeFace.U16(glyf, cursor); cursor += 2;
         RequireGlyph(start, end, cursor, instructionLength); cursor += instructionLength;
@@ -170,11 +169,13 @@ internal sealed class TrueTypeGlyphOutlines
         }
     }
 
-    private List<List<TrueTypeOutlinePoint>> ReadComposite(int start, int end, ReadState state,
+    private GlyphGeometry ReadComposite(int glyphId, int start, int end, ReadState state,
         HashSet<int> visiting, int depth)
     {
         var result = new List<List<TrueTypeOutlinePoint>>();
         var cursor = start + 10; int flags;
+        int? metricsGlyphId = null;
+        var hasInstructions = false;
         do
         {
             state.Visit(); RequireGlyph(start, end, cursor, 4);
@@ -195,7 +196,15 @@ internal sealed class TrueTypeGlyphOutlines
                 throw new NotSupportedException("Transformed TrueType composite placement is outside the GID outline profile.");
             if ((flags & 0x1800) == 0x1800)
                 throw new InvalidDataException("Conflicting TrueType composite offset flags.");
-            foreach (var contour in ReadGlyph(child, state, visiting, depth + 1))
+            var component = ReadGlyph(child, state, visiting, depth + 1);
+            if ((flags & 0x0200) != 0)
+            {
+                if (metricsGlyphId is not null)
+                    throw new NotSupportedException("Multiple USE_MY_METRICS components are outside the GID outline profile.");
+                metricsGlyphId = component.MetricsGlyphId;
+            }
+            hasInstructions |= (flags & 0x0100) != 0;
+            foreach (var contour in component.Contours)
             {
                 var points = new List<TrueTypeOutlinePoint>(contour.Count);
                 foreach (var point in contour)
@@ -209,13 +218,19 @@ internal sealed class TrueTypeGlyphOutlines
                 result.Add(points);
             }
         } while ((flags & 0x0020) != 0);
-        if ((flags & 0x0100) != 0)
+        if (hasInstructions)
         {
             RequireGlyph(start, end, cursor, 2);
             var length = OpenTypeFace.U16(glyf, cursor); cursor += 2;
             RequireGlyph(start, end, cursor, length);
         }
-        return result;
+        return new GlyphGeometry(result, metricsGlyphId ?? glyphId);
+    }
+
+    private sealed class GlyphGeometry(List<List<TrueTypeOutlinePoint>> contours, int metricsGlyphId)
+    {
+        internal List<List<TrueTypeOutlinePoint>> Contours { get; } = contours;
+        internal int MetricsGlyphId { get; } = metricsGlyphId;
     }
 
     private static int Signed16(byte[] bytes, int offset) => unchecked((short)OpenTypeFace.U16(bytes, offset));
