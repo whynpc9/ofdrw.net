@@ -62,7 +62,7 @@ public sealed class TrueTypeGlyphOutlinesTests
         Assert.Equal(Convert.ToHexString(SHA256.HashData(source)).ToLowerInvariant(), outline.SourceSha256);
         Assert.NotEqual(outline.SourceSha256, outline.SelectedFaceSha256);
         Assert.Equal(500, outline.AdvanceWidth);
-        Assert.Equal(1, outline.Contours.Count);
+        Assert.Single(outline.Contours);
         Assert.Equal("ccb1267561e0ca4aa464c3c056ec7f2d6c2a5e62917c18bd50db393d8bdc1660", OracleHash(outline));
         Assert.Throws<InvalidDataException>(() => new TrueTypeGlyphOutlines(source, faceIndex: 1));
     }
