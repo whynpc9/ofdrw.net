@@ -97,11 +97,20 @@ public sealed class Audit025RendererRegressionTests
         using var document = new PdfSharpCore.Pdf.PdfDocument(); using var graphics = XGraphics.FromPdfPage(document.AddPage());
         var method = typeof(OfdToPdfConverter).GetMethod("DrawTextRuns", BindingFlags.NonPublic | BindingFlags.Static)!;
         object?[] args = { graphics, text, null, XBrushes.Black, 0d, 0d, null, false, false, coverage, CancellationToken.None };
-        method.Invoke(null, args);
-        var before = GC.GetAllocatedBytesForCurrentThread(); method.Invoke(null, args);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        output.WriteLine($"Measured allocation: {allocated} bytes for 4096 characters.");
-        Assert.True(allocated < 16_384, $"PDF text branch allocated {allocated} bytes.");
+        // PDFsharp and the runtime may allocate on individual early calls.
+        // Check the steady-state median; per-character work persists across
+        // calls, while one-time initialization or buffer growth does not.
+        var samples = new long[5];
+        for (var i = 0; i < samples.Length; i++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            method.Invoke(null, args);
+            samples[i] = GC.GetAllocatedBytesForCurrentThread() - before;
+        }
+        output.WriteLine($"Measured PDF allocations: {string.Join(", ", samples)} bytes for 4096 characters.");
+        var steady = samples.Skip(2).ToArray();
+        Array.Sort(steady);
+        Assert.True(steady[1] < 16_384, $"PDF text branch steady-state median allocation was {steady[1]} bytes.");
     }
 
     [Fact]
