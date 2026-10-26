@@ -157,7 +157,7 @@ public sealed class TableTests
             case "pagebreak": cell.Paragraphs[0].Spans[0].Text = "A\fB"; break;
         }
         var error = Record.Exception(() => document.Render()); Assert.NotNull(error);
-        if (kind is "rowspan" or "pagebreak") Assert.IsType<NotSupportedException>(error);
+        if (kind is "pagebreak") Assert.IsType<NotSupportedException>(error);
         else Assert.IsAssignableFrom<ArgumentException>(error);
     }
 

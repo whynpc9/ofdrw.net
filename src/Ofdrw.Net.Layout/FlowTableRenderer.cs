@@ -10,6 +10,12 @@ internal sealed partial class FlowDocumentRenderer
 {
     private void RenderTable(Table table)
     {
+        if (table.SplitRowsAcrossPages || table.RepeatHeaderRowCount != 0 ||
+            table.Rows.Any(row => row?.Cells.Any(cell => cell is { RowSpan: > 1 } or { Image: not null }) == true))
+        {
+            RenderComplexTable(table);
+            return;
+        }
         ValidateLength(table.SpaceBeforeMillimeters, nameof(table.SpaceBeforeMillimeters));
         ValidateLength(table.SpaceAfterMillimeters, nameof(table.SpaceAfterMillimeters));
         ValidateLength(table.BorderWidthMillimeters, nameof(table.BorderWidthMillimeters));

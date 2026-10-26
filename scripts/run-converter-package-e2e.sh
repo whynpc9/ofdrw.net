@@ -166,6 +166,32 @@ assert receipt['han']['ofdText'] == '中\n文\nA\n中'
 assert 'TEXT_FACE_FALLBACK' in receipt['han']['fallback']
 assert all(output['bytes'] > 0 for output in receipt['outputs'])
 PY_TEXT_CONSUMER
+# Exercise public complex-table pagination from the exact candidate packages.
+# The source E2E producer is copied into a fresh PackageReference-only project;
+# package-source mapping and the private cache above prevent project-reference reuse.
+mkdir -p "$TASK_DIR/table-consumer"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Layout.E2E/ComplexTableSamples.cs" "$TASK_DIR/table-consumer/ComplexTableSamples.cs"
+cat > "$TASK_DIR/table-consumer/Program.cs" <<'EOF_TABLE_PROGRAM'
+await ComplexTableSamples.Run(args[0]);
+EOF_TABLE_PROGRAM
+cat > "$TASK_DIR/table-consumer/Consumer.csproj" <<EOF_TABLE_CONSUMER
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Ofdrw.Net.Layout" Version="$VERSION" />
+    <PackageReference Include="Ofdrw.Net.Packaging" Version="$VERSION" />
+    <PackageReference Include="Ofdrw.Net.Reader" Version="$VERSION" />
+    <PackageReference Include="Ofdrw.Net.Converter.Pdf" Version="$VERSION" />
+  </ItemGroup>
+</Project>
+EOF_TABLE_CONSUMER
+TABLE_CONSUMER="$TASK_DIR/table-consumer/Consumer.csproj"
+TABLE_OUTPUT="$RESULT_DIR/complex-table"
+mkdir -p "$TABLE_OUTPUT"
+dotnet restore "$TABLE_CONSUMER" --configfile "$TASK_DIR/NuGet.Config" "${BUILD_FLAGS[@]}"
+dotnet build "$TABLE_CONSUMER" -c Release --no-restore "${BUILD_FLAGS[@]}"
+R19_SOURCE_SHA="$(git -C "$ROOT_DIR" rev-parse HEAD)" dotnet run \
+  --project "$TABLE_CONSUMER" -c Release --no-build --no-restore -- "$TABLE_OUTPUT"
 # Verify the public attachment-removal API through the same exact local feed.
 mkdir -p "$TASK_DIR/attachment-consumer"
 cp "$ROOT_DIR/e2e/Ofdrw.Net.AttachmentCleanup.E2E/Program.cs" "$TASK_DIR/attachment-consumer/Program.cs"
