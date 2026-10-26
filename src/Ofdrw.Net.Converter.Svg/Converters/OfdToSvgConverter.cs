@@ -111,14 +111,29 @@ public sealed class OfdToSvgConverter
         var objectIndex = 0;
         var elements = OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken).ToList();
         OfdRenderPreflight.Validate(elements);
+        var renderTexts = new Dictionary<OfdTextElement, OfdTextElement>();
+        var previewReserved = new HashSet<OfdElement>();
+        void BeforePreviewElement(OfdElement element)
+        {
+            if (preview is not null && previewReserved.Add(element))
+                preview.BeforeElement(element);
+        }
+        OfdTextElement RenderText(OfdTextElement source)
+        {
+            if (renderTexts.TryGetValue(source, out var projected)) return projected;
+            BeforePreviewElement(source);
+            projected = OfdTextRenderProjection.Create(source, material, cancellationToken);
+            renderTexts.Add(source, projected);
+            return projected;
+        }
         var families = AddEmbeddedFonts(root, svgNs, package.Fonts,
             elements.OfType<OfdTextElement>().Where(OfdGraphicXmlContract.IsVisible).ToList(),
-            parseBudget, preview, nameOnlyBindings);
+            parseBudget, preview, nameOnlyBindings, RenderText);
         foreach (var element in elements)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!OfdGraphicXmlContract.IsVisible(element)) continue;
-            preview?.BeforeElement(element);
+            BeforePreviewElement(element);
             if (element is OfdRawElement glyphXml && EmbeddedFontCoverage.HasExplicitGlyphReferences(glyphXml.Xml))
                 throw new NotSupportedException("SVG export does not model raw CGTransform glyph substitutions.");
             if (element is OfdRawElement { LocalName: "UnsupportedAnnotationAppearance" })
@@ -143,7 +158,7 @@ public sealed class OfdToSvgConverter
             objectIndex++;
             if (element is OfdTextElement text)
             {
-                AddText(target, svgNs, page, OfdTextRenderProjection.Create(text, material, cancellationToken), package.Fonts,
+                AddText(target, svgNs, page, RenderText(text), package.Fonts,
                     families, parseBudget, cancellationToken, nameOnlyBindings);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
@@ -198,12 +213,21 @@ public sealed class OfdToSvgConverter
 
     private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> AddEmbeddedFonts(
         XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, IReadOnlyList<OfdTextElement> texts,
-        FontParseBudget parseBudget, HtmlRenderContext? preview, OfdNameOnlyFontBindings? nameOnlyBindings)
+        FontParseBudget parseBudget, HtmlRenderContext? preview, OfdNameOnlyFontBindings? nameOnlyBindings,
+        Func<OfdTextElement, OfdTextElement> renderText)
     {
         var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
         var css = new StringBuilder();
         var selected = new HashSet<OfdFontResource>();
+        var selectedTexts = new Dictionary<OfdFontResource, List<OfdTextElement>>();
+        foreach (var text in texts)
+        {
+            var selectedFont = OfdFontSelection.Resolve(fonts, text);
+            if (selectedFont is null) continue;
+            if (!selectedTexts.TryGetValue(selectedFont, out var uses)) selectedTexts.Add(selectedFont, uses = new());
+            uses.Add(text);
+        }
         if (nameOnlyBindings is not null)
             foreach (var text in texts.Where(text => text.Runs.Count == 0 ? !string.IsNullOrEmpty(text.Text) : text.Runs.Any(run => !string.IsNullOrEmpty(run.Text))))
                 if (OfdFontSelection.Resolve(fonts, text) is { } font && font.Data.Length == 0) selected.Add(font);
@@ -228,6 +252,21 @@ public sealed class OfdToSvgConverter
                 var face = new OpenTypeFace(data); style = face.Style;
                 try { coverage = new OpenTypeCmap(face, parseBudget); }
                 catch (NotSupportedException) { /* Unused valid encodings may still be emitted for the browser. */ }
+            }
+            if (selectedTexts.TryGetValue(font, out var cffUses) &&
+                data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O')
+            {
+                var cffFace = new OpenTypeFace(data);
+                if (Cff1SvgProfile.IsCffOpenType(cffFace))
+                {
+                    var count = Cff1SvgProfile.Validate(data, cffFace);
+                    coverage ??= new OpenTypeCmap(cffFace, parseBudget);
+                    if (coverage.IsSymbol)
+                        throw new NotSupportedException("SVG CFF1 text requires a direct Unicode cmap.");
+                    Cff1SvgProfile.ValidateVariationGlyphs(coverage, count, parseBudget);
+                    foreach (var use in cffUses)
+                        Cff1SvgProfile.ValidateSelectedText(renderText(use), font, coverage, count, parseBudget);
+                }
             }
             if (coverage?.IsSymbol == true && texts.Any(text => ReferenceEquals(OfdFontSelection.Resolve(fonts, text), font)))
                 data = SymbolCmapProfile.CreateUnicodeAlias(data, coverage, parseBudget);
