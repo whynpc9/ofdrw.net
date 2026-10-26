@@ -1,6 +1,6 @@
 # 公开流式布局 API
 
-`Ofdrw.Net.Layout` 的 `FlowDocument` 让调用方用段落和 Span 生成多页 OFD。页面尺寸、边距、缩进和字号都以毫米计；调用方不用设置 TextObject 坐标。首版支持文本段落、左/中/右对齐、局部粗体、斜体、颜色、折行、显式换页和自动分页。公开表格见 [Table/Row/Cell 教程](public-tables.md)；Canvas、图片块与两端对齐仍属于后续票。
+`Ofdrw.Net.Layout` 的 `FlowDocument` 让调用方用段落和 Span 生成多页 OFD。页面尺寸、边距、缩进和字号都以毫米计；调用方不用设置 TextObject 坐标。支持文本段落、局部样式、表格、固定大小的图片和 Canvas 块、折行与分页。公开表格见 [Table/Row/Cell 教程](public-tables.md)；两端对齐和浮动盒仍未实现。
 
 ```csharp
 using Ofdrw.Net.Core.Models;
@@ -18,6 +18,28 @@ var package = document.Render();
 await using var output = File.Create("report.ofd");
 await new OfdPackageWriter().WriteAsync(package, output);
 ```
+
+图片块和 Canvas 块占据明确的宽高，作为不可拆分页单元；宽度超过正文区或高度超过新页正文高度会失败，不会自动缩小。图片接受 R09 绘图入口支持的静态 PNG 或基线 JPEG，构造时复制输入字节。Canvas 回调在排版完成后调用，接收以最终块左上角为原点、初始裁剪到块矩形的 `OfdGraphics`。回调可以使用同一绘图入口画路径、文字或图片。示例：
+
+```csharp
+using Ofdrw.Net.Layout.Graphics;
+
+var pngBytes = File.ReadAllBytes("chart.png");
+document.Blocks.Add(new ImageBlock(pngBytes, 60, 40)
+{ Alignment = ParagraphAlignment.Center, SpaceAfterMillimeters = 4 });
+document.Blocks.Add(new CanvasBlock(100, 28, (graphics, box) =>
+{
+    graphics.FillRectangle(new OfdBrush(new OfdColor(225, 240, 225)),
+        0, 0, box.WidthMillimeters, box.HeightMillimeters);
+}) { Alignment = ParagraphAlignment.Center });
+document.OnPage = (graphics, page) => { /* 使用整页毫米坐标画页背景 */ };
+document.OnElement = (graphics, placement) =>
+{ /* placement.Block 和 placement.Boundary 是最终块片段与页坐标 */ };
+```
+
+`OnPage` 按页序各调用一次，绘制对象位于正文下方；`OnElement` 按文档顺序对每个最终片段调用一次，绘制对象紧随该片段。段落按行、表格按行、固定块与命名区域按整体提供片段。`FlowBoundary.PageIndex` 从零开始，X/Y/Width/Height 是物理页上的毫米坐标。测量失败时不运行回调；回调抛错或取消则 `Render` 失败，不返回包。回调运行时不要修改 `Blocks` 或其内容；Canvas 绘图上下文的公开变换和裁剪操作仍由调用方负责正确使用。
+
+`Span.FontWeight` 可选 100–900、步长 100；与 `Bold=true` 同时设置时只接受 700。`LetterSpacingMillimeters` 在同一 Span 的相邻字素之间增加非负间距，自动折行末尾不增加尾间距。`Underline` 可选偏移与线宽，沿最终文字游程绘制原生路径。段落与表格单元格共用这些样式规则。上述间距仍沿用本页下述的传统字宽估算，不代表真实字体预排版或复杂文字 shaping。
 
 默认 A4、四边 25.4 mm、10.5 pt 等值字号（3.704 mm）、`SimSun` 字体名。每个 Span 的粗斜体是独立的，不会传播到相邻 Span。相邻 Span 合并为逻辑文本后，`CRLF`/`CR` 归一为 `LF`；显式 `\n` 换行、`\f` 换页，过长英文单词按 Unicode 文本元素拆分。段末 `\n` 的空行在后续内容出现时计入高度，不单独创建文末空白页。一个字素跨 Span 时采用起始字符的样式。首版用固定的 Arial 兼容比例字宽表测量 Basic Latin 与 Latin-1，CJK（含 Hangul 和增补汉字）使用 1 em；其他脚本暂按固定 0.6 em 近似。字宽不依赖运行机器安装的字体，写出的 OFD `DeltaX` 与分页测量一致；`FontFamily` 指定 OFD 声明字体，但若目标字体实际字形宽度差异很大，视觉仍需单独检查。默认字体仅声明名称，不嵌入字节；跨机器展示需确保目标阅读器有合适 CJK 字体，字体子集和嵌入复用留给 05 票。
 
@@ -38,3 +60,5 @@ dotnet run --project e2e/Ofdrw.Net.Layout.E2E -c Release -- artifacts/flow-layou
 ```
 
 样例同时生成公开 Flow、显式 Native DOCX 和默认 DOCX 的 OFD/PDF。视觉验收必须打开本次 OFD 导出的 PDF；测试和 `pdftoppm` 页面图不代替 macOS Preview。实际检查记录见[2026-09-29 验收](validation/flow-layout-2026-09-29.md)。
+
+只运行图片/Canvas/Span 样例：`dotnet run --project e2e/Ofdrw.Net.Layout.E2E -c Release -- artifacts/flow-fixed e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx --flow-fixed-only`。样例生成 `flow-fixed.ofd`、由该 OFD 导出的 `flow-fixed.pdf` 和边界/哈希记录。

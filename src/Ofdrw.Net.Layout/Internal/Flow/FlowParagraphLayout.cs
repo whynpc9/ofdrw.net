@@ -17,6 +17,11 @@ internal sealed class FlowTextStyle
     internal bool Bold { get; set; }
     internal bool Italic { get; set; }
     internal object? Source { get; set; }
+    internal int Weight { get; set; } = 400;
+    internal double LetterSpacingMillimeters { get; set; }
+    internal bool Underline { get; set; }
+    internal double UnderlineOffsetMillimeters { get; set; }
+    internal double UnderlineWidthMillimeters { get; set; }
 }
 
 internal sealed class FlowInline
@@ -67,6 +72,14 @@ internal sealed class FlowLine
             {
                 var separator = glyphs[--visibleCount];
                 glyphs[visibleCount] = new FlowGlyph(separator.Text, separator.Style, 0);
+                if (visibleCount > 0 && glyphs[visibleCount - 1].Image is null &&
+                    ReferenceEquals(glyphs[visibleCount - 1].Style, separator.Style))
+                {
+                    var previous = glyphs[visibleCount - 1];
+                    glyphs[visibleCount - 1] = new FlowGlyph(previous.Text, previous.Style,
+                        previous.Width - previous.Style.LetterSpacingMillimeters,
+                        previous.Image, previous.ImageHeight);
+                }
             }
         AlignmentWidth = glyphs.Sum(g => g.Width); }
     internal List<FlowGlyph> Glyphs { get; }
@@ -172,6 +185,11 @@ internal static class FlowParagraphLayout
         static bool Connected(FlowGlyph left, FlowGlyph right) => left.Image is null && right.Image is null &&
             left.Text != "\n" && left.Text != "\f" && right.Text != "\n" && right.Text != "\f" &&
             (Word(left) && Word(right) || IsNonbreakingSpace(left) || IsNonbreakingSpace(right));
+        static double Spacing(FlowGlyph left, FlowGlyph right) =>
+            left.Image is null && right.Image is null &&
+            ReferenceEquals(left.Style, right.Style) &&
+            left.Text != "\n" && left.Text != "\f" && right.Text != "\n" && right.Text != "\f"
+                ? left.Style.LetterSpacingMillimeters : 0;
         var protectedUntil = 0;
         var lastContent = glyphs.FindLastIndex(glyph => glyph.Text != "\n" && glyph.Text != "\f");
         for (var i = 0; i < glyphs.Count; i++)
@@ -201,10 +219,12 @@ internal static class FlowParagraphLayout
                 while (end < glyphs.Count && Connected(glyphs[end - 1], glyphs[end]))
                 {
                     if ((end & 1023) == 0) cancellationToken.ThrowIfCancellationRequested();
-                    unitWidth += glyphs[end].Width;
+                    unitWidth += Spacing(glyphs[end - 1], glyphs[end]) + glyphs[end].Width;
                     nonbreaking |= IsNonbreakingSpace(glyphs[end++]);
                 }
-                if (current.Count > 0 && (unitWidth <= width || nonbreaking) && currentWidth + unitWidth > width - indent)
+                var incomingSpacing = current.Count > 0 ? Spacing(current[current.Count - 1], glyph) : 0;
+                if (current.Count > 0 && (unitWidth <= width || nonbreaking) &&
+                    currentWidth + incomingSpacing + unitWidth > width - indent)
                     Flush(automaticWrap: true);
                 if (nonbreaking)
                 {
@@ -213,8 +233,13 @@ internal static class FlowParagraphLayout
                     protectedUntil = end;
                 }
             }
-            if (i >= protectedUntil && current.Count > 0 && currentWidth + glyph.Width > width - indent)
+            var letterSpacing = current.Count > 0 ? Spacing(current[current.Count - 1], glyph) : 0;
+            if (i >= protectedUntil && current.Count > 0 &&
+                currentWidth + letterSpacing + glyph.Width > width - indent)
+            {
                 Flush(automaticWrap: true);
+                letterSpacing = 0;
+            }
             if (glyph.Image is not null && width > indent && glyph.Width > width - indent && current.Count == 0)
             {
                 var scale = (width - indent) / glyph.Width;
@@ -223,6 +248,13 @@ internal static class FlowParagraphLayout
             }
             if (glyph.Width > width - indent && current.Count == 0 && !allowOversizeGlyph)
                 throw new InvalidOperationException("A flow glyph is wider than the usable line width.");
+            if (letterSpacing > 0)
+            {
+                var previous = current[current.Count - 1];
+                current[current.Count - 1] = new FlowGlyph(previous.Text, previous.Style,
+                    previous.Width + letterSpacing, previous.Image, previous.ImageHeight);
+                currentWidth += letterSpacing;
+            }
             current.Add(glyph);
             currentWidth += glyph.Width;
         }

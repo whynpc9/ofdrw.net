@@ -24,6 +24,11 @@ if (args.Contains("--named-areas-only"))
     await NamedAreaSamples.Run(outputDirectory);
     return;
 }
+if (args.Contains("--flow-fixed-only"))
+{
+    await FlowFixedSamples.Run(outputDirectory);
+    return;
+}
 
 var flow = new FlowDocument();
 flow.Options.MarginLeftMillimeters = 22;
