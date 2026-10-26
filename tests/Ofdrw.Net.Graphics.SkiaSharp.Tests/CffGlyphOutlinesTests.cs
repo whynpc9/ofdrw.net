@@ -14,7 +14,9 @@ public sealed class CffGlyphOutlinesTests
         "cff", "SourceCodePro-Regular.otf"));
 
     // Independent fontTools 4.60.1 RecordingPen of the pinned Adobe CFF1
-    // charstrings. Each digest covers every unhinted design-unit path command.
+    // charstrings. Each digest covers every design-unit path command in the
+    // adjacent .path fixture. Skia's native backends may quantize coordinates
+    // and make a closing line explicit, so compare the complete geometry.
     [Theory]
     [InlineData(2, 16, "246cf95385f4ca91e6048151b21fce9f907b5afd2fc3d9af0cd23212e7df41a3")]
     [InlineData(34, 36, "69931ee0a24a958361e221c911c3da6768046f405bf69da791267754c7e97a1a")]
@@ -30,8 +32,13 @@ public sealed class CffGlyphOutlinesTests
         Assert.Equal(gid, outline.GlyphId);
         Assert.Equal(1000, outline.UnitsPerEm);
         Assert.Equal(600, outline.AdvanceWidth);
-        Assert.Equal(count, outline.Commands.Count);
-        Assert.Equal(expectedHash, Hash(outline));
+        var oraclePath = Path.Combine(AppContext.BaseDirectory, "cff", $"gid-{gid}.path");
+        var oracleText = File.ReadAllText(oraclePath);
+        Assert.Equal(expectedHash, Hash(oracleText));
+        var expected = oracleText.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(ParseOracleCommand).ToArray();
+        Assert.Equal(count, expected.Length);
+        AssertMatchesOracle(gid, outline.Commands, expected);
     }
 
     [Fact]
@@ -124,37 +131,65 @@ public sealed class CffGlyphOutlinesTests
     private static string SvgPoint(double x, double y) =>
         x.ToString("0.###", CultureInfo.InvariantCulture) + " " + y.ToString("0.###", CultureInfo.InvariantCulture);
 
-    private static string Hash(CffGlyphOutline outline)
+    private const double CoordinateTolerance = 0.125;
+
+    private static (CffPathVerb Verb, double[] Values) ParseOracleCommand(string line)
     {
-        var text = new StringBuilder();
-        foreach (var command in outline.Commands)
+        var parts = line.Split(':');
+        var verb = parts[0] switch
         {
-            switch (command.Verb)
-            {
-                case CffPathVerb.Move:
-                    text.Append("M:").Append(Point(command.X, command.Y)); break;
-                case CffPathVerb.Line:
-                    text.Append("L:").Append(Point(command.X, command.Y)); break;
-                case CffPathVerb.Cubic:
-                    text.Append("C:").Append(Point(command.ControlX1, command.ControlY1))
-                        .Append(':').Append(Point(command.ControlX2, command.ControlY2))
-                        .Append(':').Append(Point(command.X, command.Y)); break;
-                case CffPathVerb.Close:
-                    text.Append('Z'); break;
-                default: throw new InvalidOperationException("Unexpected CFF command.");
-            }
-            text.Append('\n');
-        }
-        using var sha = SHA256.Create();
-        return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text.ToString())))
-            .Replace("-", "").ToLowerInvariant();
+            "M" => CffPathVerb.Move,
+            "L" => CffPathVerb.Line,
+            "C" => CffPathVerb.Cubic,
+            "Z" => CffPathVerb.Close,
+            _ => throw new InvalidDataException("Unexpected independent CFF oracle verb.")
+        };
+        var values = parts.Skip(1).SelectMany(point => point.Split(','))
+            .Select(value => double.Parse(value, CultureInfo.InvariantCulture)).ToArray();
+        Assert.Equal(verb == CffPathVerb.Cubic ? 6 : verb == CffPathVerb.Close ? 0 : 2, values.Length);
+        return (verb, values);
     }
 
-    private static string Point(double x, double y) =>
-        Canonical(x) + "," + Canonical(y);
+    private static void AssertMatchesOracle(int gid, IReadOnlyList<CffPathCommand> actual,
+        IReadOnlyList<(CffPathVerb Verb, double[] Values)> expected)
+    {
+        var actualIndex = 0;
+        var contourX = 0d;
+        var contourY = 0d;
+        for (var expectedIndex = 0; expectedIndex < expected.Count; expectedIndex++)
+        {
+            var (verb, values) = expected[expectedIndex];
+            // FreeType can materialize the implicit closing edge before Z.
+            // Only that exact edge is skipped; every oracle segment still
+            // has to match its native counterpart in order and coordinates.
+            if (verb == CffPathVerb.Close && actualIndex + 1 < actual.Count &&
+                actual[actualIndex].Verb == CffPathVerb.Line &&
+                actual[actualIndex + 1].Verb == CffPathVerb.Close)
+            {
+                Compare(gid, expectedIndex, "closing X", contourX, actual[actualIndex].X);
+                Compare(gid, expectedIndex, "closing Y", contourY, actual[actualIndex].Y);
+                actualIndex++;
+            }
+            Assert.True(actualIndex < actual.Count, $"CFF GID {gid} ended before oracle command {expectedIndex}.");
+            var command = actual[actualIndex++];
+            Assert.Equal(verb, command.Verb);
+            if (verb == CffPathVerb.Close) continue;
+            var native = verb == CffPathVerb.Cubic
+                ? new[] { command.ControlX1, command.ControlY1, command.ControlX2, command.ControlY2, command.X, command.Y }
+                : new[] { command.X, command.Y };
+            for (var i = 0; i < values.Length; i++)
+                Compare(gid, expectedIndex, $"coordinate {i}", values[i], native[i]);
+            if (verb == CffPathVerb.Move) (contourX, contourY) = (command.X, command.Y);
+        }
+        Assert.Equal(actual.Count, actualIndex);
+    }
 
-    private static string Canonical(double value) =>
-        (Math.Abs(value) < 0.0005 ? 0 : value).ToString("F3", CultureInfo.InvariantCulture);
+    private static void Compare(int gid, int index, string coordinate, double expected, double actual) =>
+        Assert.True(Math.Abs(expected - actual) <= CoordinateTolerance,
+            $"CFF GID {gid} command {index} {coordinate}: expected {expected}, actual {actual}, tolerance {CoordinateTolerance}.");
+
+    private static string Hash(string text) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
 
     private static int Record(byte[] bytes, string tag)
     {

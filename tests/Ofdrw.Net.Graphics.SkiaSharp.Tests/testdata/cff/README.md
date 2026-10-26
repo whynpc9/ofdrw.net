@@ -12,5 +12,7 @@ Adobe's `source-code-pro` `release` branch at commit
 The adjacent upstream license is SIL OFL 1.1 and names `Source` as a Reserved
 Font Name. The face remains unmodified; its `OS/2.fsType` is zero. The OTF is
 tracked through Git LFS. Development-only fontTools 4.60.1 generated the
-independent CFF charstring path digests recorded in the focused tests; neither
-fontTools nor Python is a product runtime dependency.
+independent CFF charstring commands in `gid-*.path` for original GIDs 2, 34,
+298, and 998. Each line is a `RecordingPen` move, line, cubic, or close in
+design units, formatted to three decimals; the focused tests pin each full
+file's SHA-256. Neither fontTools nor Python is a product runtime dependency.

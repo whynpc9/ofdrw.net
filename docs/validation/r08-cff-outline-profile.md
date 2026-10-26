@@ -32,10 +32,11 @@ Its `OS/2.fsType` is zero. The original OTF is Git LFS tracked; see the
 No modified font using the reserved name is created.
 
 Development-only fontTools 4.60.1 `RecordingPen` independently read the
-original CFF charstrings. Each digest is SHA-256 of all path commands as one
-line per command: `M:x,y`, `L:x,y`, `C:c1x,c1y:c2x,c2y:x,y`, or `Z`, with
-coordinates formatted to three decimals and a final newline. The focused
-regressions compare every command from Skia, not just glyph bounds:
+original CFF charstrings. The checked-in `gid-*.path` fixtures preserve every
+command as one line: `M:x,y`, `L:x,y`, `C:c1x,c1y:c2x,c2y:x,y`, or `Z`, with
+coordinates formatted to three decimals and a final newline. Their SHA-256
+digests are pinned below. The focused regressions compare every native command
+in order against these independent commands, not just glyph bounds:
 
 | Glyph | Original GID | Commands | Advance | Oracle SHA-256 |
 | --- | ---: | ---: | ---: | --- |
@@ -44,11 +45,23 @@ regressions compare every command from Skia, not just glyph bounds:
 | `é` | 298 | 21 | 600 | `3a69a6e9deda4131fd49479b389f30942c3ddad14bbf8a56cc20fc768cdd30ea` |
 | `@` | 998 | 25 | 600 | `b8c5eb3e26740cc366973e0e86120ac2db1f1f759e150d7aa43d437ebe666292` |
 
+Skia's Linux FreeType path has the same contour order and cubic/line segments
+as the fontTools oracle, but it materializes an implicit closing edge for two
+`A` contours and one `é` contour, and quantizes coordinates. On the pinned
+Linux arm64 run, the largest coordinate deviation across all four glyphs was
+0.121 design unit (1,000 units/em). The test accepts only a closing line that
+returns to its contour start and compares every other coordinate within 0.125
+design unit. The macOS CoreText path matches the oracle exactly. Both focused
+native runs passed 7/7; the Linux x64 CI head remains a separate gate.
+
 The focused test can write its actual outline page when
 `OFDRW_R08_CFF_ARTIFACT_DIR` is set. Rendering that SVG and the independent
 fontTools `SVGPathPen` page through `rsvg-convert` produced byte-identical
-600 × 220 PNGs (ImageMagick absolute error 0). The actual PNG was inspected
-page 1/1 for complete shapes, accent, descender, overlap, and clipping. The
+600 × 220 PNGs on macOS (ImageMagick absolute error 0). A Linux arm64 native
+outline page was also rendered at 600 × 220; its normalized mean absolute
+pixel error against the independent page was 0.000140622. Both actual PNGs
+were inspected page 1/1 for complete shapes, accent, descender, overlap, and
+clipping. The
 source baseline, input/output hashes, and distinct visual gates are in the
 ignored R08 acceptance record. The final `0.1.0-r08.cff.1` local feed has 12
 validated default packages and the optional Skia package. The existing
@@ -60,9 +73,11 @@ views, then its task window was closed. This visual result applies to the
 diagnostic outline page, not to CFF text export from OFD.
 
 The count-mismatch regression reproduced a previously accepted nonexistent
-GID; the admission guard now rejects it. The exact final source passed the
-Release solution test run across 11 projects: 4,210 passed, 13 known skips,
-zero failures. The Skia test project contributed 51/51 passes.
+GID; the admission guard now rejects it. Before the cross-platform oracle
+test adjustment, the unchanged product source passed a macOS Release solution
+run across 11 projects: 4,210 passed, 13 known skips, zero failures. The
+Skia test project contributed 51/51 passes. The adjusted test has passed its
+seven focused cases on macOS and Linux arm64; exact-head CI remains required.
 
 ## Four outlets
 
