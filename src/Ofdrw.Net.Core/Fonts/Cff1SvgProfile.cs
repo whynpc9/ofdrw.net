@@ -72,6 +72,16 @@ internal static class Cff1SvgProfile
             }
     }
 
+    internal static void ValidateVariationGlyphs(OpenTypeCmap coverage, int glyphCount, FontParseBudget budget)
+    {
+        foreach (var gid in coverage.VariationGlyphs)
+        {
+            budget.Spend(1);
+            if (gid == 0 || gid >= glyphCount)
+                throw new InvalidDataException("CFF1 non-default UVS cmap GID is outside the CharStrings INDEX.");
+        }
+    }
+
     private static int ReadCharStringsOffset(byte[] cff, int start, int end)
     {
         var operands = new List<long?>();

@@ -125,6 +125,62 @@ public sealed class CffSvgProfileTests
         Assert.True(repeatedBudget.IsExhausted);
     }
 
+    [Fact]
+    public async Task CffNonDefaultUvsOutsideCharStringsFailsBeforeSvgOutput()
+    {
+        var face = new OpenTypeFace(Fixture());
+        var glyphCount = OpenTypeFace.U16(face.Table("maxp", 6), 4);
+        var ofd = await Source(WithUvsGid(glyphCount), "A\uFE0F");
+        using var svg = new MemoryStream();
+        var refusal = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg));
+        Assert.Contains("UVS cmap GID", refusal.Message);
+        Assert.Equal(0, svg.Length);
+    }
+
+    [Fact]
+    public void CffNonDefaultUvsZeroGidFailsAdmission()
+    {
+        var face = new OpenTypeFace(WithUvsGid(0));
+        var budget = new FontParseBudget();
+        var coverage = new OpenTypeCmap(face, budget);
+        var count = OpenTypeFace.U16(face.Table("maxp", 6), 4);
+        var refusal = Assert.Throws<InvalidDataException>(() =>
+            Cff1SvgProfile.ValidateVariationGlyphs(coverage, count, budget));
+        Assert.Contains("UVS cmap GID", refusal.Message);
+    }
+
+    [Fact]
+    public async Task ValidCffNonDefaultUvsAndPlainAKeepUnicodeSvgText()
+    {
+        var font = WithUvsGid(34);
+        foreach (var text in new[] { "A", "A\uFE0F" })
+        {
+            var ofd = await Source(font, text);
+            using var svg = new MemoryStream();
+            await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+            var xml = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()));
+            Assert.Equal(text, Assert.Single(xml.Descendants(), node => node.Name.LocalName == "text").Value);
+        }
+    }
+
+    private static byte[] WithUvsGid(int gid)
+    {
+        var face = new OpenTypeFace(Fixture());
+        var primary = new OpenTypeCmap(face).Glyph('A');
+        var variation = new byte[30];
+        OpenTypeFace.Put16(variation, 0, 14);
+        OpenTypeFace.Put32(variation, 2, (uint)variation.Length);
+        OpenTypeFace.Put32(variation, 6, 1);
+        variation[10] = 0; variation[11] = 0xFE; variation[12] = 0x0F;
+        OpenTypeFace.Put32(variation, 17, 21);
+        OpenTypeFace.Put32(variation, 21, 1);
+        variation[25] = 0; variation[26] = 0; variation[27] = 0x41;
+        OpenTypeFace.Put16(variation, 28, gid);
+        face.Tables["cmap"] = OpenTypeCmap.Build(new Dictionary<int, int> { ['A'] = primary }, variation);
+        return face.Build();
+    }
+
     private static byte[] Fixture()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -133,7 +189,7 @@ public sealed class CffSvgProfileTests
             "tests/Ofdrw.Net.Graphics.SkiaSharp.Tests/testdata/cff/SourceCodePro-Regular.otf"));
     }
 
-    private static async Task<byte[]> Source(byte[] font)
+    private static async Task<byte[]> Source(byte[] font, string text = Text)
     {
         var package = new OfdDocumentPackage();
         package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Source Code Pro", Data = font });
@@ -141,7 +197,7 @@ public sealed class CffSvgProfileTests
         page.Elements.Add(new OfdTextElement
         {
             ObjectId = "11", FontResourceId = "10", FontName = "Source Code Pro",
-            Text = Text, FontSizeMillimeters = 10, XMillimeters = 8, YMillimeters = 8,
+            Text = text, FontSizeMillimeters = 10, XMillimeters = 8, YMillimeters = 8,
             WidthMillimeters = 84, HeightMillimeters = 20
         });
         package.Pages.Add(page);

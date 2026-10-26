@@ -10,7 +10,9 @@ Admission bounds the font at 16 MiB, rejects variable/color/CFF2/TrueType
 tables, CID-keyed CFF, non-Type-2 CharStrings, synthetic emphasis, symbol cmap,
 restricted embedding flags, invalid CFF1 header/INDEX/Top DICT offsets, an
 empty CharString, and disagreement between `maxp.numGlyphs` and the CFF1
-CharStrings INDEX count. Selected Unicode cmap GIDs must be within that count.
+CharStrings INDEX count. Selected Unicode cmap GIDs and all non-default
+format-14 UVS GIDs must be valid CharStrings IDs; zero non-default IDs refuse
+admission.
 The selected-text GID scan charges worst-case cmap lookup work to the shared
 font parsing budget before each lookup, including repeated format-4 lookups.
 Normal Unicode coverage and existing `CGTransform` refusals remain active.

@@ -247,6 +247,7 @@ public sealed class OfdToSvgConverter
                     coverage ??= new OpenTypeCmap(cffFace, parseBudget);
                     if (coverage.IsSymbol)
                         throw new NotSupportedException("SVG CFF1 text requires a direct Unicode cmap.");
+                    Cff1SvgProfile.ValidateVariationGlyphs(coverage, count, parseBudget);
                     foreach (var use in cffUses)
                         Cff1SvgProfile.ValidateSelectedText(use, font, coverage, count, parseBudget);
                 }
