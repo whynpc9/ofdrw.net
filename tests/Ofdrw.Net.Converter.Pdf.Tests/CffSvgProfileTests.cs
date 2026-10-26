@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
@@ -164,6 +165,36 @@ public sealed class CffSvgProfileTests
         }
     }
 
+    [Fact]
+    public async Task EscapedCffTextChecksDecodedGlyphCountBeforeSvgOutput()
+    {
+        var face = new OpenTypeFace(Fixture());
+        var count = OpenTypeFace.U16(face.Table("maxp", 6), 4);
+        var ofd = await EscapedSource(WithEscapedCmap(count));
+        using var svg = new MemoryStream();
+        var refusal = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg));
+        Assert.Contains("CFF1 cmap GID", refusal.Message);
+        Assert.Equal(0, svg.Length);
+    }
+
+    [Fact]
+    public async Task EscapedCffTextKeepsSourceXmlAndDrawsDecodedA()
+    {
+        var ofd = await EscapedSource(WithEscapedCmap(2));
+        var before = SHA256.HashData(ofd);
+        var reopened = await new OfdReader().ReadAsync(new MemoryStream(ofd));
+        var raw = Assert.Single(reopened.Pages[0].Elements.OfType<OfdTextElement>());
+        Assert.Equal("11", raw.ObjectId);
+        Assert.Equal("\\0041", raw.Text);
+        Assert.Contains("\\0041", raw.SourceXml);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd), svg);
+        var xml = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()));
+        Assert.Equal("A", Assert.Single(xml.Descendants(), node => node.Name.LocalName == "text").Value);
+        Assert.Equal(before, SHA256.HashData(ofd));
+    }
+
     private static byte[] WithUvsGid(int gid)
     {
         var face = new OpenTypeFace(Fixture());
@@ -179,6 +210,36 @@ public sealed class CffSvgProfileTests
         OpenTypeFace.Put16(variation, 28, gid);
         face.Tables["cmap"] = OpenTypeCmap.Build(new Dictionary<int, int> { ['A'] = primary }, variation);
         return face.Build();
+    }
+
+    private static byte[] WithEscapedCmap(int renderedGid)
+    {
+        var face = new OpenTypeFace(Fixture());
+        face.Tables["cmap"] = OpenTypeCmap.Build(new Dictionary<int, int>
+        {
+            ['A'] = renderedGid, ['\\'] = 2, ['0'] = 2, ['4'] = 2, ['1'] = 2
+        });
+        return face.Build();
+    }
+
+    private static async Task<byte[]> EscapedSource(byte[] font)
+    {
+        using var output = new MemoryStream();
+        output.Write(await Source(font, "A"));
+        output.Position = 0;
+        using (var archive = new ZipArchive(output, ZipArchiveMode.Update, true))
+        {
+            var entry = archive.Entries.Single(item => item.FullName.EndsWith("Content.xml", StringComparison.Ordinal));
+            XDocument xml;
+            using (var input = entry.Open()) xml = XDocument.Load(input);
+            var code = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "TextCode");
+            code.Value = "\\0041";
+            var name = entry.FullName;
+            entry.Delete();
+            using var replacement = archive.CreateEntry(name).Open();
+            xml.Save(replacement);
+        }
+        return output.ToArray();
     }
 
     private static byte[] Fixture()

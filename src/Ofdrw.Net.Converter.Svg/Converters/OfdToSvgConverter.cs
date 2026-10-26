@@ -111,9 +111,17 @@ public sealed class OfdToSvgConverter
         var objectIndex = 0;
         var elements = OfdCompositeProjection.Expand(EnumerateElements(page, material, cancellationToken, package.Options.Namespace), material, cancellationToken).ToList();
         OfdRenderPreflight.Validate(elements);
+        var renderTexts = new Dictionary<OfdTextElement, OfdTextElement>();
+        OfdTextElement RenderText(OfdTextElement source)
+        {
+            if (renderTexts.TryGetValue(source, out var projected)) return projected;
+            projected = OfdTextRenderProjection.Create(source, material, cancellationToken);
+            renderTexts.Add(source, projected);
+            return projected;
+        }
         var families = AddEmbeddedFonts(root, svgNs, package.Fonts,
             elements.OfType<OfdTextElement>().Where(OfdGraphicXmlContract.IsVisible).ToList(),
-            parseBudget, preview, nameOnlyBindings);
+            parseBudget, preview, nameOnlyBindings, RenderText);
         foreach (var element in elements)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -143,7 +151,7 @@ public sealed class OfdToSvgConverter
             objectIndex++;
             if (element is OfdTextElement text)
             {
-                AddText(target, svgNs, page, OfdTextRenderProjection.Create(text, material, cancellationToken), package.Fonts,
+                AddText(target, svgNs, page, RenderText(text), package.Fonts,
                     families, parseBudget, cancellationToken, nameOnlyBindings);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
@@ -198,7 +206,8 @@ public sealed class OfdToSvgConverter
 
     private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> AddEmbeddedFonts(
         XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, IReadOnlyList<OfdTextElement> texts,
-        FontParseBudget parseBudget, HtmlRenderContext? preview, OfdNameOnlyFontBindings? nameOnlyBindings)
+        FontParseBudget parseBudget, HtmlRenderContext? preview, OfdNameOnlyFontBindings? nameOnlyBindings,
+        Func<OfdTextElement, OfdTextElement> renderText)
     {
         var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
@@ -249,7 +258,7 @@ public sealed class OfdToSvgConverter
                         throw new NotSupportedException("SVG CFF1 text requires a direct Unicode cmap.");
                     Cff1SvgProfile.ValidateVariationGlyphs(coverage, count, parseBudget);
                     foreach (var use in cffUses)
-                        Cff1SvgProfile.ValidateSelectedText(use, font, coverage, count, parseBudget);
+                        Cff1SvgProfile.ValidateSelectedText(renderText(use), font, coverage, count, parseBudget);
                 }
             }
             if (coverage?.IsSymbol == true && texts.Any(text => ReferenceEquals(OfdFontSelection.Resolve(fonts, text), font)))
