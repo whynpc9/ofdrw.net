@@ -153,6 +153,40 @@ internal sealed class OpenTypeCmap
         budget.Spend(0);
         return GlyphCore(scalar);
     }
+    // PDFsharp may give two Unicode scalars that share one font GID the same
+    // PDF code. A path-painted CGTransform span uses this face only for its
+    // invisible semantic text, so that GID must have one Unicode meaning in
+    // the selected cmap even if the other scalar is used by another TextObject.
+    internal bool HasDistinctUnicodeScalarForGlyph(int gid, int sourceScalar)
+    {
+        budget.Spend(0);
+        if (gid <= 0) return false;
+        if (format12 >= 0)
+        {
+            var count = Size(U32(table, format12 + 12));
+            for (var index = 0; index < count; index++)
+            {
+                budget.Spend(1);
+                var group = format12 + 16 + index * 12;
+                var firstScalar = U32(table, group);
+                var lastScalar = U32(table, group + 4);
+                var firstGlyph = U32(table, group + 8);
+                if ((ulong)gid < firstGlyph || (ulong)gid > firstGlyph + lastScalar - firstScalar) continue;
+                var scalar = firstScalar + (uint)((ulong)gid - firstGlyph);
+                if (scalar != sourceScalar) return true;
+            }
+            return false;
+        }
+        // A format-4 Unicode cmap has at most 65,536 scalar positions. Keep
+        // this bounded scan on the same font-parse budget as other cmap work.
+        for (var scalar = 0; scalar <= 0xFFFF; scalar++)
+        {
+            budget.Spend(1);
+            if (scalar != sourceScalar && !char.IsSurrogate((char)scalar) && GlyphCore(scalar) == gid)
+                return true;
+        }
+        return false;
+    }
     private int GlyphCore(int scalar)
     {
         if (format12 >= 0)

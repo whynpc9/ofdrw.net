@@ -19,6 +19,7 @@ internal sealed class DocumentFontContext
     private readonly IFontResolver _fallbackResolver;
     private readonly Dictionary<string, OpenTypeCmap> _fallbackCoverage = new();
     private readonly Dictionary<OfdFontResource, OpenTypeCmap> _coverage = new();
+    private readonly Dictionary<OfdFontResource, HashSet<char>> _uniqueSemanticSourceCharacters = new();
     private readonly Dictionary<OfdFontResource, byte[]> _symbolFonts = new();
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _symbolAliases = new();
     private readonly Dictionary<OfdFontResource, NotSupportedException> _unsupportedCoverage = new();
@@ -201,9 +202,20 @@ internal sealed class DocumentFontContext
             {
                 _ = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);
                 if (resource is null || !_families.TryGetValue(resource, out var semanticFamily) ||
-                    !_coverage.TryGetValue(resource, out var semanticCoverage) ||
-                    pathSourceSpan.Any(character => semanticCoverage.Glyph(character) <= 0))
+                    !_coverage.TryGetValue(resource, out var semanticCoverage))
                     throw new NotSupportedException("Multi-glyph PDF text needs complete source-character coverage in the embedded font.");
+                if (!_uniqueSemanticSourceCharacters.TryGetValue(resource, out var uniqueSources))
+                    _uniqueSemanticSourceCharacters.Add(resource, uniqueSources = new HashSet<char>());
+                foreach (var character in pathSourceSpan)
+                {
+                    var gid = semanticCoverage.Glyph(character);
+                    if (gid <= 0)
+                        throw new NotSupportedException("Multi-glyph PDF text needs complete source-character coverage in the embedded font.");
+                    if (!uniqueSources.Contains(character) &&
+                        semanticCoverage.HasDistinctUnicodeScalarForGlyph(gid, character))
+                        throw new NotSupportedException("Multi-glyph PDF text cannot distinguish source characters that share a semantic-font GID.");
+                    uniqueSources.Add(character);
+                }
                 return semanticFamily;
             }
             if (explicitRun.SingleGlyphSourceSpan is not null && OfdTextPaint.Read(text).Stroke)

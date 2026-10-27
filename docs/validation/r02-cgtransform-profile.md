@@ -280,7 +280,11 @@ follow the first base inside the complete span), 2–8 distinct nonempty
 original GIDs, differing source/glyph counts, and a finite explicit `DeltaX`
 for every glyph gap. Optional `DeltaY` must also cover every glyph gap.
 Source cmap coverage and permission to embed the static TrueType face remain
-required for PDF. The SVG/HTML output paints the original outlines at those
+required for PDF. Each source character's semantic cmap GID must be unique
+among the face's Unicode scalars; a different scalar sharing that GID refuses
+before PDF output, including when it could appear in another text object.
+SVG can still paint the original paths because it does not use that PDF
+semantic encoding. The SVG/HTML output paints the original outlines at those
 draw points under one logical label. PDF paints the same outlines and writes
 one invisible semantic text string, without repainting ordinary Unicode
 glyphs. Old one-to-one, unpositioned M:1 and unpositioned 1:2 behavior is
@@ -290,8 +294,10 @@ supplementary or ambiguous source positions refuse before output.
 
 On merged main `2e0a60e7b43cd8f414360f5c1ae8bd5d45b6337e`, the dirty
 candidate's focused Release `ExplicitGlyphTransformTests` passed 46/46.
-The full Release solution then passed 4,298 tests across 11 assemblies, with
-17 skips and no failures.
+The initial full Release solution passed 4,298 tests across 11 assemblies,
+with 17 skips and no failures. A subsequent PR review found the cmap collision
+boundary above; its regression and new exact-head acceptance are recorded
+separately, so those initial totals do not prove the repair.
 The authentic Tamil 2:3 case, synthetic 1:3 with both X/Y deltas, and
 synthetic 2:4 case prove the generic positioned route. Negative cases check
 missing/short/extra/NaN/overflowing deltas and empty outputs; a separate

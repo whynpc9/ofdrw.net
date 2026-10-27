@@ -290,6 +290,78 @@ public sealed class ExplicitGlyphTransformTests
     }
 
     [Fact]
+    public async Task PositionedSpanWithDistinctSourceCharactersSharingSemanticGidRefusesPdf()
+    {
+        var face = new OpenTypeFace(Font());
+        var shared = new OpenTypeCmap(face).Glyph('A');
+        Assert.True(shared > 0);
+        face.Tables["cmap"] = OpenTypeCmap.Build(new System.Collections.Generic.Dictionary<int, int>
+        {
+            ['A'] = shared, ['B'] = shared
+        });
+        var text = PositionedSequenceText("AB", "37 38 39", "8 8");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = face.Build() });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var input = ofd.ToArray();
+        var saved = await new OfdReader().ReadAsync(new MemoryStream(input));
+        Assert.Equal("AB", saved.Pages[0].Elements.OfType<OfdTextElement>().Single().Text);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg);
+        Assert.Equal(new[] { 37, 38, 39 }, XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()))
+            .Descendants().Where(node => node.Attribute("data-original-gid") is not null)
+            .Select(node => (int)node.Attribute("data-original-gid")!).ToArray());
+        using var pdf = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), pdf));
+        Assert.Contains("share a semantic-font GID", error.Message);
+        Assert.Equal(0, pdf.Length);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PositionedSpanRejectsCmapAliasUsedByAnotherTextObject(bool secondExplicit)
+    {
+        var face = new OpenTypeFace(Font());
+        var shared = new OpenTypeCmap(face).Glyph('A');
+        face.Tables["cmap"] = OpenTypeCmap.Build(new System.Collections.Generic.Dictionary<int, int>
+        {
+            ['A'] = shared, ['B'] = shared
+        });
+        var second = secondExplicit ? PositionedSequenceText("B", "37 38 39", "8 8") :
+            new OfdTextElement
+            {
+                FontResourceId = "10", FontName = "Noto Sans", Text = "B", FontSizeMillimeters = 6,
+                XMillimeters = 10, YMillimeters = 25, WidthMillimeters = 50, HeightMillimeters = 12,
+                Runs = { new OfdTextRun { Text = "B", XMillimeters = 0, YMillimeters = 6 } }
+            };
+        if (secondExplicit) second.SourceXml = second.SourceXml!.Replace("ID='2'", "ID='3'");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = face.Build() });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { PositionedSequenceText("A", "37 38 39", "8 8"), second } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var input = ofd.ToArray();
+        using var pdf = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), pdf));
+        Assert.Contains("share a semantic-font GID", error.Message);
+        Assert.Equal(0, pdf.Length);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg);
+        var sourceGroup = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants()
+            .Single(node => node.Attribute("data-ofd-text")?.Value == "A");
+        Assert.Equal(new[] { 37, 38, 39 }, sourceGroup.Elements()
+            .Where(node => node.Attribute("data-original-gid") is not null)
+            .Select(node => (int)node.Attribute("data-original-gid")!).ToArray());
+    }
+
+    [Fact]
     public async Task TwoGlyphProfileUsesSourceGidsEvenWhenFirstGlyphHasNaturalAdvance()
     {
         var bytes = Font();
