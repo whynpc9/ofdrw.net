@@ -44,7 +44,7 @@ internal sealed class OfdExplicitGlyphRun
                 char.IsControl(value) || char.IsWhiteSpace(value) ||
                 CharUnicodeInfo.GetUnicodeCategory(value) is UnicodeCategory.Format or
                     UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark))
-            throw new NotSupportedException("CGTransform one-to-one rendering requires independent, nonblank BMP characters.");
+            throw new NotSupportedException("CGTransform glyph rendering requires independent, nonblank BMP characters and a one-to-one mapping.");
         var glyphIds = new int[logical.Length];
         var assigned = new bool[logical.Length];
         var unicodeByGlyph = new Dictionary<int, char>();
