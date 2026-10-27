@@ -162,6 +162,7 @@ internal sealed class DocumentFontContext
             _cancellationToken.ThrowIfCancellationRequested();
             var run = OfdExplicitGlyphRun.Read(text);
             if (run is null) continue;
+            if (run.TwoGlyphSourceCharacter is not null) continue;
             var resource = OfdFontSelection.Resolve(_fonts, text) ??
                 throw new NotSupportedException("CGTransform rendering requires an explicitly embedded font.");
             var key = (resource, resource.Bold || text.Weight >= 600, resource.Italic || text.Italic);
@@ -196,6 +197,15 @@ internal sealed class DocumentFontContext
         {
             resource = OfdFontSelection.Resolve(_fonts, text);
             foreach (var run in explicitRun.Runs) PdfTextControlPolicy.Validate(run.Text);
+            if (explicitRun.TwoGlyphSourceCharacter is { } sourceCharacter)
+            {
+                _ = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);
+                if (resource is null || !_families.TryGetValue(resource, out var semanticFamily) ||
+                    !_coverage.TryGetValue(resource, out var semanticCoverage) ||
+                    semanticCoverage.Glyph(sourceCharacter[0]) <= 0)
+                    throw new NotSupportedException("Two-glyph PDF text needs source-character coverage in the embedded font.");
+                return semanticFamily;
+            }
             if (explicitRun.SingleGlyphSourceSpan is not null && OfdTextPaint.Read(text).Stroke)
                 throw new NotSupportedException("CGTransform multi-code stroke needs an original-GID outline paint route.");
             var source = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);

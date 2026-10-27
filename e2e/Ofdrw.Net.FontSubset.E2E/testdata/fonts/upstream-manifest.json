@@ -14,6 +14,21 @@
     "license": "OFL-1.1"
   },
   {
+    "file": "NotoSansThai-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/googlefonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansThai/NotoSansThai-Regular.ttf",
+    "bytes": 37752,
+    "sha256": "404ddfb5ed0aaa6b6ec8a85700d682978992062d67da93903967b56cbd9a4acc",
+    "license": "OFL-1.1",
+    "licenseFile": "NotoSansThai-OFL.txt"
+  },
+  {
+    "file": "NotoSansThai-OFL.txt",
+    "url": "https://raw.githubusercontent.com/googlefonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/LICENSE",
+    "bytes": 4377,
+    "sha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb",
+    "license": "OFL-1.1"
+  },
+  {
     "file": "NotoSerif-Regular.ttf",
     "url": "https://raw.githubusercontent.com/googlefonts/noto-fonts/bf20559450ec75aec7a646b208343540a4496262/phaseIII_only/hinted/ttf/NotoSerif/NotoSerif-Regular.ttf",
     "bytes": 588856,

@@ -52,6 +52,160 @@ public sealed class ExplicitGlyphTransformTests
         return text;
     }
 
+    private static OfdTextElement ThaiSequenceText(string glyphs = "59 86", string? deltaX = null)
+    {
+        const string source = "\u0E33";
+        var text = Text(59, 86, deltas: deltaX, logicalText: source);
+        text.FontName = "Noto Sans Thai";
+        var delta = deltaX is null ? "" : $" DeltaX='{deltaX}'";
+        text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='1' GlyphCount='2'><Glyphs>{glyphs}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6'{delta}>{source}</TextCode></TextObject>";
+        return text;
+    }
+
+    [Fact]
+    public async Task ThaiOneCharacterTwoOriginalGlyphOutlinesKeepOneLogicalCharacter()
+    {
+        var bytes = Font("NotoSansThai-Regular.ttf");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans Thai", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { ThaiSequenceText() } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var source = ofd.ToArray();
+        var reread = await new OfdReader().ReadAsync(new MemoryStream(source));
+        Assert.Equal("\u0E33", Assert.Single(reread.Pages[0].Elements.OfType<OfdTextElement>()).Text);
+
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(source), svg);
+        var svgDocument = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()));
+        var group = Assert.Single(svgDocument.Descendants(), node => node.Attribute("data-ofd-text")?.Value == "\u0E33");
+        var paths = group.Elements().Where(node => node.Name.LocalName == "path").ToArray();
+        Assert.Equal(new[] { 59, 86 }, paths.Select(path => (int)path.Attribute("data-original-gid")!).ToArray());
+        var outlines = new TrueTypeGlyphOutlines(bytes);
+        for (var index = 0; index < paths.Length; index++)
+        {
+            var first = outlines.Read(new[] { 59, 86 }[index]).ToPathCommands().First();
+            var expectedStart = "M " + (first.X * 6d / outlines.UnitsPerEm).ToString("0.###", CultureInfo.InvariantCulture) +
+                " " + (6 - first.Y * 6d / outlines.UnitsPerEm).ToString("0.###", CultureInfo.InvariantCulture);
+            Assert.StartsWith(expectedStart, paths[index].Attribute("d")!.Value);
+        }
+
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(source), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("\u0E33", parsed.GetPage(1).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var content = Encoding.ASCII.GetString(inspection.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+        Assert.DoesNotContain("003B0056", content);
+        Assert.Contains(" Tj", content);
+        Assert.Contains(" c\n", content);
+        if (Environment.GetEnvironmentVariable("R02_ARTIFACT_DIR") is { Length: > 0 } output)
+        {
+            Directory.CreateDirectory(output);
+            await File.WriteAllBytesAsync(Path.Combine(output, "thai-sequence.ofd"), source);
+            await File.WriteAllBytesAsync(Path.Combine(output, "thai-sequence.svg"), svg.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(output, "thai-sequence.pdf"), pdf.ToArray());
+        }
+    }
+
+    [Theory]
+    [InlineData("59", null)]
+    [InlineData("59 59", null)]
+    [InlineData("59 99999", null)]
+    [InlineData("59 86", "3")]
+    public async Task InvalidOrPositionedThaiSequenceRefusesBothExportsWithoutOutput(string glyphs, string? deltaX)
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans Thai",
+            Data = Font("NotoSansThai-Regular.ttf") });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { ThaiSequenceText(glyphs, deltaX) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf));
+        Assert.Equal(0, pdf.Length);
+        using var svg = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), svg));
+        Assert.Equal(0, svg.Length);
+    }
+
+    [Fact]
+    public async Task TwoGlyphProfileUsesSourceGidsEvenWhenFirstGlyphHasNaturalAdvance()
+    {
+        var bytes = Font();
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var first = cmap.Glyph('B'); var second = cmap.Glyph('C');
+        var outlines = new TrueTypeGlyphOutlines(bytes);
+        Assert.True(outlines.Read(first).AdvanceWidth > 0);
+        var text = Text(first, second, deltas: null, logicalText: "A");
+        text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='1' GlyphCount='2'><Glyphs>{first} {second}</Glyphs></CGTransform>" +
+            "<TextCode X='0' Y='6'>A</TextCode></TextObject>";
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), svg);
+        var document = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()));
+        var group = Assert.Single(document.Descendants(), node => node.Attribute("data-ofd-text")?.Value == "A");
+        var paths = group.Elements().Where(node => node.Name.LocalName == "path").ToArray();
+        Assert.Equal(new[] { first, second }, paths
+            .Select(node => (int)node.Attribute("data-original-gid")!).ToArray());
+        for (var index = 0; index < paths.Length; index++)
+        {
+            var point = outlines.Read(new[] { first, second }[index]).ToPathCommands().First();
+            Assert.StartsWith("M " + (point.X * 6d / outlines.UnitsPerEm).ToString("0.###", CultureInfo.InvariantCulture) +
+                " " + (6 - point.Y * 6d / outlines.UnitsPerEm).ToString("0.###", CultureInfo.InvariantCulture),
+                paths[index].Attribute("d")!.Value);
+        }
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("A", parsed.GetPage(1).Text);
+        if (Environment.GetEnvironmentVariable("R02_ARTIFACT_DIR") is { Length: > 0 } output)
+        {
+            Directory.CreateDirectory(output);
+            await File.WriteAllBytesAsync(Path.Combine(output, "nonzero-first-sequence.ofd"), ofd.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(output, "nonzero-first-sequence.svg"), svg.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(output, "nonzero-first-sequence.pdf"), pdf.ToArray());
+        }
+    }
+
+    [Fact]
+    public async Task TwoGlyphPdfWithoutSourceUnicodeCoverageRefusesWhileSvgKeepsOriginalOutlines()
+    {
+        var text = ThaiSequenceText();
+        text.Text = "A";
+        text.Runs[0].Text = "A";
+        text.SourceXml = text.SourceXml!.Replace("\u0E33", "A");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans Thai",
+            Data = Font("NotoSansThai-Regular.ttf") });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), svg);
+        var paths = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()))
+            .Descendants().Where(node => node.Attribute("data-original-gid") is not null).ToArray();
+        Assert.Equal(new[] { 59, 86 }, paths.Select(path => (int)path.Attribute("data-original-gid")!).ToArray());
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf));
+        Assert.Equal(0, pdf.Length);
+    }
+
     [Fact]
     public async Task TwoTextCodesKeepGlobalGlyphPositionsAndIndependentStarts()
     {
