@@ -137,6 +137,119 @@ public sealed class ExplicitGlyphTransformTests
         return text;
     }
 
+    private static string MapSpan(int position, int codeCount, params int[] gids) =>
+        $"<CGTransform CodePosition='{position}' CodeCount='{codeCount}' GlyphCount='{gids.Length}'>" +
+        $"<Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>";
+
+    [Theory]
+    [InlineData("partial-thai-one-to-two", "กำข", "8 0 8", "29 59 86 23", "0 8 8 16")]
+    [InlineData("two-unequal-spans", "AflBffiC", "8 11 8 11", "36 1653 37 1654 38", "0 8 19 27 38")]
+    [InlineData("one-to-one-plus-unequal", "AflB", "8 11", "40 1653 37", "0 8 19")]
+    public async Task ComposedSingleTextCodeUsesOriginalDrawSlotsAndLogicalText(
+        string stem, string logical, string deltas, string gids, string positions)
+    {
+        var thai = stem == "partial-thai-one-to-two";
+        var transforms = stem switch
+        {
+            "partial-thai-one-to-two" => MapSpan(1, 1, 59, 86),
+            "two-unequal-spans" => MapSpan(1, 2, 1653) + MapSpan(4, 3, 1654),
+            _ => MapSpan(0, 1, 40) + MapSpan(1, 2, 1653)
+        };
+        var text = MixedOneToOneText(logical, transforms, deltas);
+        if (thai) text.FontName = "Noto Sans Thai";
+        var bytes = Font(thai ? "NotoSansThai-Regular.ttf" : "NotoSans-Regular.ttf");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = text.FontName, Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 120, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var input = ofd.ToArray();
+        var readback = await new OfdReader().ReadAsync(new MemoryStream(input));
+        var original = Assert.Single(readback.Pages[0].Elements.OfType<OfdTextElement>());
+        Assert.Equal(logical, original.Text);
+        Assert.Equal("2", XDocument.Parse(original.SourceXml!).Root!.Attribute("ID")!.Value);
+        Assert.Equal(thai ? 1 : 2,
+            XDocument.Parse(original.SourceXml!).Descendants().Count(node => node.Name.LocalName == "CGTransform"));
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg);
+        var group = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants()
+            .Single(node => node.Attribute("data-ofd-text")?.Value == logical);
+        var paths = group.Elements().Where(node => node.Name.LocalName == "path").ToArray();
+        var expectedGids = gids.Split(' ').Select(int.Parse).ToArray();
+        var expectedPositions = positions.Split(' ').Select(value =>
+            double.Parse(value, CultureInfo.InvariantCulture)).ToArray();
+        Assert.Equal(expectedGids, paths.Select(path => (int)path.Attribute("data-original-gid")!).ToArray());
+        var outlines = new TrueTypeGlyphOutlines(bytes);
+        for (var i = 0; i < paths.Length; i++)
+        {
+            var command = outlines.Read(expectedGids[i]).ToPathCommands().First();
+            var x = expectedPositions[i] + command.X * 6d / outlines.UnitsPerEm;
+            var y = 6 - command.Y * 6d / outlines.UnitsPerEm;
+            Assert.StartsWith("M " + x.ToString("0.###", CultureInfo.InvariantCulture) + " " +
+                y.ToString("0.###", CultureInfo.InvariantCulture), paths[i].Attribute("d")!.Value);
+        }
+        using var html = new MemoryStream();
+        await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(input), html);
+        Assert.Equal(expectedGids.Length, XDocument.Parse(Encoding.UTF8.GetString(html.ToArray()))
+            .Descendants().Count(node => node.Attribute("data-original-gid") is not null));
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(logical, parsed.GetPage(1).Text);
+        if (Environment.GetEnvironmentVariable("R02_ARTIFACT_DIR") is { Length: > 0 } output)
+        {
+            Directory.CreateDirectory(output);
+            await File.WriteAllBytesAsync(Path.Combine(output, stem + ".ofd"), input);
+            await File.WriteAllBytesAsync(Path.Combine(output, stem + ".svg"), svg.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(output, stem + ".pdf"), pdf.ToArray());
+        }
+    }
+
+    [Theory]
+    [InlineData("overlap")]
+    [InlineData("descending")]
+    [InlineData("source-count-deltas")]
+    [InlineData("missing-glyph-delta")]
+    [InlineData("duplicate-ordinary-gid")]
+    [InlineData("invalid-glyph-count")]
+    [InlineData("missing-direct-cmap")]
+    public async Task UnprovedComposedSpansRefuseBeforeOutput(string caseName)
+    {
+        var maps = caseName switch
+        {
+            "overlap" => MapSpan(1, 2, 1653) + MapSpan(2, 3, 1654),
+            "descending" => MapSpan(4, 3, 1654) + MapSpan(1, 2, 1653),
+            "duplicate-ordinary-gid" => MapSpan(1, 2, 36) + MapSpan(4, 3, 1654),
+            "invalid-glyph-count" => MapSpan(1, 2, 1653, 1654) + MapSpan(4, 3, 1654),
+            _ => MapSpan(1, 2, 1653) + MapSpan(4, 3, 1654)
+        };
+        var deltas = caseName switch
+        {
+            "source-count-deltas" => "8 0 11 8 0 0 11",
+            "missing-glyph-delta" => "8 11 8",
+            _ => "8 11 8 11"
+        };
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = Font() });
+        var logical = caseName == "missing-direct-cmap" ? "AflBffi\u0378" : "AflBffiC";
+        package.Pages.Add(new OfdPage { WidthMillimeters = 120, HeightMillimeters = 50,
+            Elements = { MixedOneToOneText(logical, maps, deltas) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        foreach (var outlet in new[] { "PDF", "SVG", "HTML" })
+        {
+            using var output = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() => outlet switch
+            {
+                "PDF" => new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), output),
+                "SVG" => new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), output),
+                _ => new OfdToHtmlConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), output)
+            });
+            Assert.Equal(0, output.Length);
+        }
+    }
+
     [Theory]
     [InlineData("AflB", 2, 1653, null)]
     [InlineData("AflB", 2, 1653, "0 2")]
