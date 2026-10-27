@@ -458,7 +458,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 page.XMillimeters,
                                 page.YMillimeters,
                                 outlineFont,
-                                simulateBold, simulateItalic, coverage, mapPdfText, cancellationToken, fonts, resource, familyName);
+                                simulateBold, simulateItalic, coverage, mapPdfText, cancellationToken, fonts, resource, familyName,
+                                explicitGlyphs: EmbeddedFontCoverage.HasExplicitGlyphReferences(text));
                         }
                         else
                         {
@@ -685,7 +686,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         double pageOriginY,
         SixLabors.Fonts.Font? outlineFont,
         bool simulateBold, bool simulateItalic, OpenTypeCmap? coverage, Func<string, string> mapPdfText, CancellationToken cancellationToken,
-        DocumentFontContext? fontContext = null, OfdFontResource? fontResource = null, string? fontFamily = null)
+        DocumentFontContext? fontContext = null, OfdFontResource? fontResource = null, string? fontFamily = null,
+        bool explicitGlyphs = false)
     {
         var paint = OfdTextPaint.Read(text);
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
@@ -697,6 +699,22 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 if (deltaX.Count == 0 && deltaY.Count == 0)
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
+                    if (explicitGlyphs && run.Text.Length > 1)
+                    {
+                        // The standard says absent DeltaX/DeltaY leaves every
+                        // subsequent glyph at the same origin. A whole PDF
+                        // DrawString would add font advances.
+                        foreach (var code in run.Text)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            DrawStyledString(graphics, code.ToString(), font, brush,
+                                new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
+                                outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
+                                mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
+                                fontFamily: fontFamily);
+                        }
+                        continue;
+                    }
                     DrawStyledString(graphics, run.Text, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,
                         fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily);

@@ -67,6 +67,14 @@ internal sealed class DocumentFontContext
                     else _families[font] = PdfFontRegistry.RegisterFontFace(data, font.Bold, font.Italic);
                 }
                 catch (NotSupportedException exception) { _unsupportedCoverage[font] = exception; }
+                catch (System.IO.InvalidDataException exception)
+                {
+                    // A CGTransform source may supply a valid original-GID glyf
+                    // face without any Unicode cmap. Ordinary Unicode text must
+                    // still fail closed if it selects the same resource.
+                    _unsupportedCoverage[font] = new NotSupportedException(
+                        "Embedded font cannot supply ordinary Unicode text.", exception);
+                }
                 continue;
             }
 
@@ -142,8 +150,29 @@ internal sealed class DocumentFontContext
     internal string Resolve(OfdTextElement text, out OfdFontResource? resource)
     {
         _parseBudget.Spend(0);
+        if (OfdExplicitGlyphRun.Read(text) is { } explicitRun)
+        {
+            resource = OfdFontSelection.Resolve(_fonts, text);
+            PdfTextControlPolicy.Validate(explicitRun.Run.Text);
+            var source = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);
+            var glyphByUnicode = new Dictionary<int, int>();
+            for (var index = 0; index < explicitRun.GlyphIds.Count; index++)
+            {
+                var code = explicitRun.Run.Text[index];
+                var glyph = explicitRun.GlyphIds[index];
+                if (glyphByUnicode.TryGetValue(code, out var prior) && prior != glyph)
+                    throw new NotSupportedException("One logical character has conflicting original GIDs in a PDF font alias.");
+                glyphByUnicode[code] = glyph;
+            }
+            var alias = new OpenTypeFace(source.FaceBytes);
+            alias.Tables["cmap"] = OpenTypeCmap.Build(glyphByUnicode);
+            var explicitFamily = PdfFontRegistry.RegisterFontFace(alias.Build(),
+                resource!.Bold || text.Weight >= 600, resource.Italic || text.Italic);
+            _fallbackCoverage[explicitFamily] = new OpenTypeCmap(alias, _parseBudget);
+            return explicitFamily;
+        }
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
-            throw new NotSupportedException("PDF export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
+            throw new NotSupportedException("PDF export cannot render this CGTransform source.");
         var hasSupplementary = false;
         foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
         {
