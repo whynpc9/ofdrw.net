@@ -32,18 +32,20 @@ internal sealed class OfdExplicitGlyphSpan
 internal sealed class OfdExplicitGlyphRun
 {
     private OfdExplicitGlyphRun(IReadOnlyList<OfdTextRun> runs, int[] glyphIds,
-        IReadOnlyList<OfdExplicitGlyphSpan> spans)
-    { Runs = runs; GlyphIds = glyphIds; Spans = spans; }
+        IReadOnlyList<OfdExplicitGlyphSpan> spans, bool composedPath = false)
+    { Runs = runs; GlyphIds = glyphIds; Spans = spans; ComposedPath = composedPath; }
 
     internal IReadOnlyList<OfdTextRun> Runs { get; }
     internal string LogicalText => string.Concat(Runs.Select(run => run.Text));
     internal IReadOnlyList<int> GlyphIds { get; }
     internal IReadOnlyList<OfdExplicitGlyphSpan> Spans { get; }
+    private bool ComposedPath { get; }
     internal string? SingleGlyphSourceSpan => GlyphIds.Count == 1 && Spans.Count == 1 &&
         Spans[0].CodePosition == 0 && Spans[0].CodeCount == LogicalText.Length &&
         Spans[0].GlyphCount == 1 && LogicalText.Length > 1 ? LogicalText : null;
-    internal string? PathGlyphSourceSpan => Spans.Count == 1 && GlyphIds.Count > 1 &&
-        GlyphIds.Count != LogicalText.Length ? LogicalText : null;
+    internal string? PathGlyphSourceSpan => ComposedPath ||
+        Spans.Count == 1 && GlyphIds.Count > 1 && GlyphIds.Count != LogicalText.Length
+        ? LogicalText : null;
 
     internal IReadOnlyList<(double X, double Y)> PathGlyphOrigins(CancellationToken token)
     {
@@ -146,6 +148,94 @@ internal sealed class OfdExplicitGlyphRun
         }
         if (logical.Any(IsCombiningMark))
             throw new NotSupportedException("CGTransform glyph rendering requires independent, nonblank BMP characters.");
+        // One TextCode can compose finite, ordered source spans into drawn
+        // glyph slots. Table 46 deltas then describe those slots, including
+        // ordinary direct-cmap characters between mapped spans. The public
+        // Go writer/reader agrees for partial 1:2, two M:1 spans, and a
+        // 1:1 plus M:1 span; no cross-TextCode reset is inferred here.
+        if (logical.Length is >= 2 and <= 8 && codes.Length == 1 &&
+            transforms.Length is >= 1 and <= 2 &&
+            !string.IsNullOrWhiteSpace(text.Runs[0].DeltaX) &&
+            (transforms.Length > 1 && transforms.Any(transform =>
+                 Number(transform.Attribute("CodeCount"), 1) !=
+                 Number(transform.Attribute("GlyphCount"), 1)) ||
+             Number(transforms[0].Attribute("CodeCount"), 1) == 1 &&
+             Number(transforms[0].Attribute("GlyphCount"), 1) == 2))
+        {
+            if (resource?.Data is not { Length: > 0 })
+                throw new NotSupportedException("Composed CGTransform requires an explicitly embedded font.");
+            parseBudget ??= new FontParseBudget();
+            parseBudget.Spend(0);
+            if (cmapCache is null || !cmapCache.TryGetValue(resource, out var cmap))
+            {
+                parseBudget.Spend(resource.Data.LongLength);
+                var face = new OpenTypeFace(OpenTypeCollection.SelectFace(resource.Data,
+                    resource.CollectionFaceIndex));
+                cmap = new OpenTypeCmap(face, parseBudget);
+                cmapCache?.Add(resource, cmap);
+            }
+            if (cmap.IsSymbol)
+                throw new NotSupportedException("Composed CGTransform requires a direct Unicode cmap.");
+            var ids = new List<int>();
+            var composedSpans = new List<OfdExplicitGlyphSpan>();
+            var seen = new HashSet<int>();
+            var sourceIndex = 0;
+            var unequal = false;
+            foreach (var transform in transforms)
+            {
+                parseBudget.Spend(0);
+                if (transform.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
+                        attribute.Name.LocalName is not ("CodePosition" or "CodeCount" or "GlyphCount")) ||
+                    transform.Elements().Count() != 1 ||
+                    transform.Element(root.Name.Namespace + "Glyphs") is not { } glyphs ||
+                    glyphs.HasElements || glyphs.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
+                    glyphs.Nodes().Any(node => node is not XText))
+                    throw new NotSupportedException("Composed CGTransform has unsupported source XML.");
+                var position = Number(transform.Attribute("CodePosition"), -1);
+                var codeCount = Number(transform.Attribute("CodeCount"), 1);
+                var glyphCount = Number(transform.Attribute("GlyphCount"), 1);
+                if (position < sourceIndex || codeCount < 1 || position > logical.Length - codeCount ||
+                    !((codeCount == 1 && glyphCount is 1 or 2) ||
+                      (codeCount is 2 or 3 && glyphCount == 1)))
+                    throw new NotSupportedException("Composed CGTransform needs ascending, nonoverlapping supported spans.");
+                while (sourceIndex < position)
+                {
+                    var gid = cmap.DirectGlyph(logical[sourceIndex++]);
+                    if (gid <= 0 || gid > ushort.MaxValue || !seen.Add(gid))
+                        throw new NotSupportedException("Composed CGTransform ordinary GID is missing or ambiguous.");
+                    ids.Add(gid);
+                }
+                var tokens = glyphs.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+                if (tokens.Length != glyphCount)
+                    throw new NotSupportedException("Composed CGTransform Glyphs count does not match GlyphCount.");
+                composedSpans.Add(new OfdExplicitGlyphSpan(position, codeCount, ids.Count, glyphCount,
+                    logical.Substring(position, codeCount)));
+                unequal |= codeCount != glyphCount;
+                foreach (var token in tokens)
+                {
+                    if (!int.TryParse(token, NumberStyles.None, CultureInfo.InvariantCulture, out var gid) ||
+                        gid is <= 0 or > ushort.MaxValue || !seen.Add(gid))
+                        throw new NotSupportedException("Composed CGTransform has invalid or ambiguous original GIDs.");
+                    ids.Add(gid);
+                }
+                sourceIndex = position + codeCount;
+            }
+            while (sourceIndex < logical.Length)
+            {
+                parseBudget.Spend(0);
+                var gid = cmap.DirectGlyph(logical[sourceIndex++]);
+                if (gid <= 0 || gid > ushort.MaxValue || !seen.Add(gid))
+                    throw new NotSupportedException("Composed CGTransform ordinary GID is missing or ambiguous.");
+                ids.Add(gid);
+            }
+            if (!unequal || ids.Count is < 2 or > 8)
+                throw new NotSupportedException("Composed CGTransform requires a bounded unequal source span.");
+            CountDeltas(text.Runs[0].DeltaX, ids.Count - 1);
+            CountDeltas(text.Runs[0].DeltaY, ids.Count - 1);
+            var composed = new OfdExplicitGlyphRun(text.Runs, ids.ToArray(), composedSpans, composedPath: true);
+            _ = composed.PathGlyphOrigins(CancellationToken.None);
+            return composed;
+        }
         // A single interior M:1 span composes with direct-cmap ordinary glyphs
         // only when every drawn glyph has an explicit origin. Source-character
         // deltas have a different cardinality and remain outside this profile.

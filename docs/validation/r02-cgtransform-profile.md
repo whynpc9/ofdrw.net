@@ -443,19 +443,52 @@ outside this candidate. Full Release, package-consumer, exact-head CI/review,
 and macOS Preview acceptance are recorded separately when complete. This
 candidate does not close R02 or unlock R22.
 
+## Single-`TextCode` composed draw slots
+
+The next bounded projection composes one or two ascending, nonoverlapping
+`CGTransform` source spans with ordinary direct-cmap glyphs in a single
+`TextCode`. At least one span has unequal source and glyph counts. The
+admitted shapes are 1:1, 1:2, 2:1, and 3:1, with at most eight BMP source
+characters and eight drawn GIDs. Every drawn-glyph gap needs an explicit
+finite `DeltaX`; `DeltaY`, when present, describes every gap too. Every GID
+must have an original outline and be distinct within the text object. The
+same embedded static Unicode TrueType face supplies unmapped characters,
+the PDF semantic text, and the SVG/PDF outlines. Source XML, object IDs,
+logical text, and source offsets are unchanged.
+
+Three unmodified OFDs from the public `github.com/zc310/ofd@v0.1.5` writer
+use the pinned full OFL Noto Sans or Noto Sans Thai face: `กำข` with a
+partial 1:2 U+0E33 mapping to original GIDs 59/86; `AflBffiC` with two
+separated 2:1/3:1 mappings to GIDs 1653/1654; and `AflB` with a 1:1
+replacement followed by a 2:1 mapping. The independent Go Reader's TXT
+preserves each logical string. Its PDF paints five mapped original-GID paths
+at the specified glyph-slot origins; fontTools comparison found coordinate
+errors below 0.00001 mm. Its three page PNGs were visually inspected.
+Inputs and oracle are in ignored
+`artifacts/r02-cgtransform/single-textcode-composition-20261028/`.
+
+The source candidate also converts those original OFDs to PDF/SVG; the
+actual SVG labels and GID sequence, page images, and output text are checked
+separately. Negative regression cases cover overlap, descending spans,
+wrong cardinality, duplicate GIDs, and incomplete glyph deltas with empty
+caller output. Complete source, package-consumer, Preview, CI, and review
+receipts are separate acceptance gates. Cross-`TextCode` index resets,
+supplementary counting, absent-delta interpretation, and arbitrary N:M
+composition remain outside this profile. It does not close R02 or unlock R22.
+
 ### Remaining R02 boundary
 
 | Input/semantics | Current result | Next implementation work | External evidence blocker |
 | --- | --- | --- | --- |
 | Complete positioned 1:N and N:M source span in one `TextCode` | Accepted only under the finite, complete-delta, static-`glyf` and embedding rules above | No further change needed for this subset | Any new shape or font class needs separate OFD readback, original-GID PDF/SVG paths, logical text, package and page evidence |
-| Positioned M:1 and mixed cardinalities | One interior 2:1 or 3:1 span with explicit drawn-glyph deltas has the bounded candidate above; other combinations remain refused | Specify any further composition shape independently without losing raw `TextCode`, IDs or unknown XML | A source-backed expected draw point and text oracle is needed for each new shape |
+| Positioned M:1 and mixed cardinalities | One interior 2:1 or 3:1 span, plus the bounded two-span/partial 1:2 composition above, have explicit drawn-glyph-delta candidates; other combinations remain refused | Specify any further composition shape independently without losing raw `TextCode`, IDs or unknown XML | A source-backed expected draw point and text oracle is needed for each new shape |
 | New N:M without explicit deltas | Refused; natural advance differs between the standard's absent-delta wording and the inspected independent reader | Resolve whether glyphs share the origin or advance, then model that rule explicitly | A source-backed case and independent visual/text oracle are needed to choose semantics |
 | Cross-`TextCode` clusters or local position resets | Refused; PR #58 admits only global BMP positions for separate complete runs | Specify indexing and run-origin behavior before extending the projection | The cited standard does not expressly settle sibling-run counting; obtain an unmodified representative OFD and expected output |
 | Supplementary source positions | Refused in this route | Specify whether `CodePosition`/`CodeCount` count UTF-16 units or Unicode scalars, then add bounded decoding and tests | The cited clause does not expressly settle supplementary counting; seek a source-backed interoperable case |
 | Optional R08 font-backend expansion: CFF, color or variable source faces | Refused or unverified in this `CGTransform` route; this is not a prerequisite for closing core R02 | Build a separate original-GID paint and PDF embedding policy only if an input requires that face class | Licensed matching fixtures and independent reader/output evidence are missing |
 | Unmodified foreign OFD across all outlets | Not established: the older Java sample required local layer-ID normalization for the SVG diagnostic and lacks PDF-admissible OS/2 data | Keep the current fail-closed resource and identity checks | A legally usable, unmodified input with matching font and a trustworthy independent visual/text oracle is needed |
 
-The remaining positioned M:1 and mixed cardinalities, unpositioned N:M, run indexing, supplementary
+The remaining unbounded mixed cardinalities, unpositioned N:M, run indexing, supplementary
 counting, and unmodified foreign-input rows are the remaining core R02
 questions. The R08 face-class row is optional expansion. The table is a work
 boundary, not a claim that every listed profile should be implemented. Full
