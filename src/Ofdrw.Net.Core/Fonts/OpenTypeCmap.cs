@@ -153,6 +153,62 @@ internal sealed class OpenTypeCmap
         budget.Spend(0);
         return GlyphCore(scalar);
     }
+    // PDFsharp may give two Unicode scalars that share one font GID the same
+    // PDF code. A path-painted CGTransform span uses this face only for its
+    // invisible semantic text, so that GID must have one Unicode meaning in
+    // the selected cmap even if the other scalar is used by another TextObject.
+    internal bool HasDistinctUnicodeScalarForGlyph(int gid, int sourceScalar)
+    {
+        budget.Spend(0);
+        if (gid <= 0) return false;
+        if (format12 >= 0)
+        {
+            var count = Size(U32(table, format12 + 12));
+            for (var index = 0; index < count; index++)
+            {
+                budget.Spend(1);
+                var group = format12 + 16 + index * 12;
+                var firstScalar = U32(table, group);
+                var lastScalar = U32(table, group + 4);
+                var firstGlyph = U32(table, group + 8);
+                if ((ulong)gid < firstGlyph || (ulong)gid > firstGlyph + lastScalar - firstScalar) continue;
+                var scalar = firstScalar + (uint)((ulong)gid - firstGlyph);
+                if (scalar != sourceScalar) return true;
+            }
+            return false;
+        }
+        // A delta segment has at most one scalar for this GID. Only explicit
+        // glyph-array segments need a per-position scan; their disjoint spans
+        // contain at most 65,536 positions in total.
+        var count4 = U16(table, format4 + 6) / 2;
+        for (var index = 0; index < count4; index++)
+        {
+            budget.Spend(1);
+            var start = U16(table, format4 + 16 + count4 * 2 + index * 2);
+            var end = U16(table, format4 + 14 + index * 2);
+            var delta = U16(table, format4 + 16 + count4 * 4 + index * 2);
+            var address = format4 + 16 + count4 * 6 + index * 2;
+            var range = U16(table, address);
+            if (range == 0)
+            {
+                var scalar = (gid - delta) & 0xFFFF;
+                if (scalar >= start && scalar <= end && scalar != sourceScalar &&
+                    !char.IsSurrogate((char)scalar)) return true;
+                continue;
+            }
+            for (var scalar = start; scalar <= end; scalar++)
+            {
+                budget.Spend(1);
+                var target = address + range + (scalar - start) * 2;
+                if (target + 2 > format4 + U16(table, format4 + 2))
+                    throw new InvalidDataException("cmap glyph reference escapes subtable.");
+                var raw = U16(table, target);
+                if (raw != 0 && ((raw + delta) & 0xFFFF) == gid && scalar != sourceScalar &&
+                    !char.IsSurrogate((char)scalar)) return true;
+            }
+        }
+        return false;
+    }
     private int GlyphCore(int scalar)
     {
         if (format12 >= 0)

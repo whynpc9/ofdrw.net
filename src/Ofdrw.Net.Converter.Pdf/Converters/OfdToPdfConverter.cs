@@ -740,11 +740,12 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         {
             foreach (var run in text.Runs)
             {
-                if (explicitRun?.TwoGlyphSourceCharacter is { Length: 1 } sourceCharacter)
+                if (explicitRun?.PathGlyphSourceSpan is { } sourceSpan)
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
-                    DrawTwoGlyphOutlines(graphics, text, explicitRun, fontResource, anchor, paint);
-                    DrawStyledString(graphics, sourceCharacter, font,
+                    DrawPathGlyphOutlines(graphics, text, explicitRun, fontResource, factor, paint,
+                        cancellationToken);
+                    DrawStyledString(graphics, sourceSpan, font,
                         new XSolidBrush(XColor.FromArgb(0, 0, 0, 0)),
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
                         // This glyph supplies semantics only. Passing the
@@ -816,15 +817,20 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         });
     }
 
-    private static void DrawTwoGlyphOutlines(XGraphics graphics, OfdTextElement text,
-        OfdExplicitGlyphRun run, OfdFontResource? resource, (double X, double Y) anchor,
-        OfdTextPaint paint)
+    private static void DrawPathGlyphOutlines(XGraphics graphics, OfdTextElement text,
+        OfdExplicitGlyphRun run, OfdFontResource? resource, double[]? factor,
+        OfdTextPaint paint, CancellationToken token)
     {
         var font = OfdExplicitGlyphFont.Read(resource, text, run, embedFont: false);
-        foreach (var outline in font.Outlines)
+        var origins = run.PathGlyphOrigins(token);
+        for (var index = 0; index < font.Outlines.Count; index++)
         {
-            // An absent DeltaX/DeltaY places both original GIDs at the same
-            // OFD origin, independently of the font's natural advance.
+            token.ThrowIfCancellationRequested();
+            var outline = font.Outlines[index];
+            var origin = origins[index];
+            var anchor = OfdTextEmphasis.Anchor(origin.X, origin.Y, factor);
+            // Every source GID uses its explicit OFD draw point. Absent
+            // deltas in the previously accepted 1:2 profile share one origin.
             var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
             var path = new XGraphicsPath { FillMode = XFillMode.Winding };
             double x = 0, y = 0;

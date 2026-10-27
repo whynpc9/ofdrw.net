@@ -19,6 +19,7 @@ internal sealed class DocumentFontContext
     private readonly IFontResolver _fallbackResolver;
     private readonly Dictionary<string, OpenTypeCmap> _fallbackCoverage = new();
     private readonly Dictionary<OfdFontResource, OpenTypeCmap> _coverage = new();
+    private readonly Dictionary<OfdFontResource, HashSet<char>> _uniqueSemanticSourceCharacters = new();
     private readonly Dictionary<OfdFontResource, byte[]> _symbolFonts = new();
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _symbolAliases = new();
     private readonly Dictionary<OfdFontResource, NotSupportedException> _unsupportedCoverage = new();
@@ -162,7 +163,7 @@ internal sealed class DocumentFontContext
             _cancellationToken.ThrowIfCancellationRequested();
             var run = OfdExplicitGlyphRun.Read(text);
             if (run is null) continue;
-            if (run.TwoGlyphSourceCharacter is not null) continue;
+            if (run.PathGlyphSourceSpan is not null) continue;
             var resource = OfdFontSelection.Resolve(_fonts, text) ??
                 throw new NotSupportedException("CGTransform rendering requires an explicitly embedded font.");
             var key = (resource, resource.Bold || text.Weight >= 600, resource.Italic || text.Italic);
@@ -197,13 +198,24 @@ internal sealed class DocumentFontContext
         {
             resource = OfdFontSelection.Resolve(_fonts, text);
             foreach (var run in explicitRun.Runs) PdfTextControlPolicy.Validate(run.Text);
-            if (explicitRun.TwoGlyphSourceCharacter is { } sourceCharacter)
+            if (explicitRun.PathGlyphSourceSpan is { } pathSourceSpan)
             {
                 _ = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);
                 if (resource is null || !_families.TryGetValue(resource, out var semanticFamily) ||
-                    !_coverage.TryGetValue(resource, out var semanticCoverage) ||
-                    semanticCoverage.Glyph(sourceCharacter[0]) <= 0)
-                    throw new NotSupportedException("Two-glyph PDF text needs source-character coverage in the embedded font.");
+                    !_coverage.TryGetValue(resource, out var semanticCoverage))
+                    throw new NotSupportedException("Multi-glyph PDF text needs complete source-character coverage in the embedded font.");
+                if (!_uniqueSemanticSourceCharacters.TryGetValue(resource, out var uniqueSources))
+                    _uniqueSemanticSourceCharacters.Add(resource, uniqueSources = new HashSet<char>());
+                foreach (var character in pathSourceSpan)
+                {
+                    var gid = semanticCoverage.Glyph(character);
+                    if (gid <= 0)
+                        throw new NotSupportedException("Multi-glyph PDF text needs complete source-character coverage in the embedded font.");
+                    if (!uniqueSources.Contains(character) &&
+                        semanticCoverage.HasDistinctUnicodeScalarForGlyph(gid, character))
+                        throw new NotSupportedException("Multi-glyph PDF text cannot distinguish source characters that share a semantic-font GID.");
+                    uniqueSources.Add(character);
+                }
                 return semanticFamily;
             }
             if (explicitRun.SingleGlyphSourceSpan is not null && OfdTextPaint.Read(text).Stroke)

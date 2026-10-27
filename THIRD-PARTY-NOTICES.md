@@ -74,6 +74,8 @@ including the HarfBuzz Old MIT notice. This does not grant font embedding rights
 The R02 one-to-many development fixture adds unmodified Noto Sans Thai under
 the same OFL 1.1, with its pinned source and hash in that manifest and the
 accompanying `NotoSansThai-OFL.txt`; it is not packed in production NuGet files.
+The shared source-span fixture also uses unmodified Noto Sans Tamil from the
+same pinned upstream revision and OFL license bytes, recorded in that manifest.
 
 The compiled font subset bidi profile derives factual scalar ranges from the
 Unicode 17.0.0 Character Database (DerivedBidiClass.txt), licensed under

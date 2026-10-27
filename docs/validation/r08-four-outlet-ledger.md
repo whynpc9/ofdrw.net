@@ -13,6 +13,12 @@ This ledger describes the selected input profiles merged through [PR #51](https:
 | Bare Type1 PFA/PFB or bare CFF font program | `unverified`: explicit full/opaque preservation can keep bytes, but typed coverage and a positive bare-program write/read profile are unproven | `unsupported`: no admitted bare-program text route | `unsupported`: no verified bare Type1/CFF embedding route | `unsupported`: no bare-program original-GID reader |
 | Explicit `CGTransform` | Source XML, original font, IDs and logical text preserved | `limited`: independent BMP one-to-one original-GID mapping, complete unpositioned 2–8-to-1 source span, and complete unpositioned 1-to-2 GID sequence in static monochrome TrueType `glyf`; paths expose one logical label. PRs #58–#60 passed separate package and Preview gates for their admitted subsets | `limited`: original-GID font alias for one-to-one and 2–8-to-1; original-GID paths plus one invisible semantic glyph for 1-to-2. OS/2 embedding policy and Unicode cmap coverage apply as specified in the [R02 profile](r02-cgtransform-profile.md). PRs #58–#60 passed separate extraction, package and Preview gates | Original GIDs are verified in the admitted static TrueType profiles. Foreign page-one SVG was compared to an independent reader only after local source-ID normalization; unmodified foreign-file acceptance and broader cardinalities remain open |
 
+The next complete positioned source-span candidate is tracked separately in
+the [R02 profile](r02-cgtransform-profile.md). Its Tamil 2:3 fixture has OFD
+readback, source SVG/HTML/PDF outlines, exact PDF text, a same-input independent
+reader comparison, and viewed one-page PNGs. These are source-level cells;
+package consumption, current-head review and macOS Preview remain pending.
+
 ## Evidence by outlet
 
 - **OFD and PDF text:** [font subset evidence](../evidence/font-subset/README.md) and `FontIsolationTests.EmbeddedSupplementaryGlyphUsesOriginalOutlineAndExactPdfToUnicode` check original supplementary text, CID outline, surrogate-pair `ToUnicode`, and extraction. [NameOnlyFontBindingTests](../../tests/Ofdrw.Net.Converter.Pdf.Tests/NameOnlyFontBindingTests.cs) cover exact face snapshots and zero-output refusals. The [symbol profile](r08-symbol-cmap-profile.md) checks original bytes, direct PUA, PDF `FontFile2`, and extraction. No CFF PDF success is claimed.

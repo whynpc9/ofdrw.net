@@ -4,8 +4,9 @@ This source candidate renders **one or more `TextCode` runs with a complete
 one-to-one `CGTransform` mapping** of independent, nonblank BMP characters to
 original glyph IDs in an embedded, static monochrome TrueType `glyf` face.
 Later bounded candidates add a complete, unpositioned 2–8-to-1 source span
-and a complete, unpositioned 1-to-2 original-GID sequence. Each has separate
-validation gates.
+and a complete, unpositioned 1-to-2 original-GID sequence. A further candidate
+admits one complete, explicitly positioned 1–8-character source span to 2–8
+original GIDs when the counts differ. Each has separate validation gates.
 Within this candidate, `CodePosition` is a zero-based index in the concatenated
 decoded runs; each run keeps its own starting point and deltas. `CodeCount` and
 `GlyphCount` default to one. Each mapped glyph
@@ -21,7 +22,8 @@ requires an OS/2 table with an admitted embedding policy; SVG paths do not
 embed the font. Missing glyphs, ambiguous GID-to-Unicode mapping, unsupported
 positioning, and unsupported face types fail explicitly. The two additional
 cardinalities below have their own narrow admission rules. Other many-to-one,
-one-to-many, mixed and many-to-many mappings, non-BMP, combining, CFF,
+one-to-many, mixed and many-to-many mappings, non-BMP, combining outside a
+complete positioned source span, CFF,
 color/variable, and synthetic emphasis remain outside the admitted profiles.
 
 OFD hexadecimal escapes in the source `TextCode` are decoded for rendering and
@@ -253,6 +255,67 @@ fill+stroke but was empty for stroke-only; all three Go-exported PDFs extracted
 U+0E33. The exact source, binary, input/output hashes and repeat commands are
 recorded in ignored `artifacts/r02-cgtransform/next-glyph-sequence/final/`.
 
-The broader 1:N, many-to-many, mixed, positioned and unmodified foreign-file
-cases remain outside this profile; this accepted 1:2 subset does not close
-full R02.
+At the PR #60 head, broader 1:N, many-to-many, mixed, positioned and
+unmodified foreign-file cases remained outside the accepted profile; the 1:2
+subset did not close full R02.
+
+## Complete positioned source-span candidate
+
+GB/T 33190—2016 §11.3 Table 46 (printed page 65) locates the first glyph at
+`TextCode X/Y` and subsequent glyph draw points through `DeltaX/Y`; an absent
+axis delta does not move that draw point. Section 11.4 (printed pages 68–70)
+defines 1:1, M:1, 1:N and M:N and illustrates Tamil U+0BAA U+0BCB as two
+source characters that produce three glyphs. The printed GID values are tied
+to its example font. This candidate uses a pinned, unmodified OFL Noto Sans
+Tamil face instead: HarfBuzz 14.4.0 shapes that exact text to GIDs 47, 28, 41
+with zero offsets and advances 720, 778, 640 design units. At 6 mm, complete
+glyph-slot `DeltaX="4.32 4.668"` places the three original outlines. The
+fixture face is SHA-256
+`6532db33b8b264abe3a098a40619feb489b5ddf5ab1d2b46e72b51eeb548001b`;
+the pinned source and OFL license are in the font manifest.
+
+The shared admission rule requires exactly one unedited `TextCode` and one
+complete `CGTransform`: 1–8 nonblank BMP code units (a combining mark may
+follow the first base inside the complete span), 2–8 distinct nonempty
+original GIDs, differing source/glyph counts, and a finite explicit `DeltaX`
+for every glyph gap. Optional `DeltaY` must also cover every glyph gap.
+Source cmap coverage and permission to embed the static TrueType face remain
+required for PDF. Each source character's semantic cmap GID must be unique
+among the face's Unicode scalars; a different scalar sharing that GID refuses
+before PDF output, including when it could appear in another text object.
+SVG can still paint the original paths because it does not use that PDF
+semantic encoding. The SVG/HTML output paints the original outlines at those
+draw points under one logical label. PDF paints the same outlines and writes
+one invisible semantic text string, without repainting ordinary Unicode
+glyphs. Old one-to-one, unpositioned M:1 and unpositioned 1:2 behavior is
+unchanged. Missing, extra, invalid, or nonfinite cumulative deltas; incomplete
+or overlapping mappings; unsupported font/GID; cross-`TextCode` spans; and
+supplementary or ambiguous source positions refuse before output.
+
+On merged main `2e0a60e7b43cd8f414360f5c1ae8bd5d45b6337e`, the dirty
+candidate's focused Release `ExplicitGlyphTransformTests` passed 46/46.
+The initial full Release solution passed 4,298 tests across 11 assemblies,
+with 17 skips and no failures. A subsequent PR review found the cmap collision
+boundary above; its regression and new exact-head acceptance are recorded
+separately, so those initial totals do not prove the repair.
+The authentic Tamil 2:3 case, synthetic 1:3 with both X/Y deltas, and
+synthetic 2:4 case prove the generic positioned route. Negative cases check
+missing/short/extra/NaN/overflowing deltas and empty outputs; a separate
+stroke-only Tamil page checks that the invisible PDF semantic layer does not
+repaint ordinary Unicode glyphs. Source OFD
+readback retains the exact logical text and mapping. Tamil PDF extraction by
+PdfPig and Poppler gives exactly U+0BAA U+0BCB; the independent
+`github.com/zc310/ofd@v0.1.5` reader gives the same standalone TXT and PDF
+extraction on this same generated OFD. The source PDF and SVG and independent
+PDF one-page 144 dpi PNGs were individually viewed and show the same three
+sign/base/sign outlines without clipping or visible duplicate text. Ignored
+recheckable inputs, outputs, hashes, focused/full logs and receipt are in
+`artifacts/r02-cgtransform/next-shared-span-test/`.
+
+This source result is not yet a package-consumer, macOS Preview or exact-head
+CI/review receipt. Unpositioned new N:M remains
+refused because natural-advance behavior diverges between the standard's
+absent-delta wording and the independent reader. Mixed spans, local position
+resets, cross-`TextCode` clusters, supplementary positions, arbitrary shaping,
+and unmodified foreign-document interoperability still need separate evidence.
+Full R02 remains open.

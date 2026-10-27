@@ -147,9 +147,14 @@ public sealed class Audit011RegressionTests
         {
             var budget = new FontParseBudget();
             var cmap = new OpenTypeCmap(new OpenTypeFace(File.ReadAllBytes(path)), budget);
-            // The R02 Thai fixture has no Latin cmap. Probe a character the
-            // particular corpus face is expected to support.
-            var representative = Path.GetFileName(path) == "NotoSansThai-Regular.ttf" ? '\u0E33' : 'A';
+            // The R02 Thai and Tamil fixtures have no Latin cmap. Probe a
+            // source character their original-GID profiles actually use.
+            var representative = Path.GetFileName(path) switch
+            {
+                "NotoSansThai-Regular.ttf" => '\u0E33',
+                "NotoSansTamil-Regular.ttf" => '\u0BAA',
+                _ => 'A'
+            };
             Assert.NotEqual(0, cmap.Glyph(representative));
             Assert.True(budget.Consumed < FontParseBudget.DefaultMaximumWork / 8);
             costs.Add(Path.GetRelativePath(Root, path) + " " + budget.Consumed);
