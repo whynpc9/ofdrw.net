@@ -523,7 +523,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             foreach (var element in elements)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (element is OfdTextElement { SourceXml: { } source } text &&
+                if (OfdGraphicXmlContract.IsVisible(element) &&
+                    element is OfdTextElement { SourceXml: { } source } text &&
                     source.Contains("CGTransform", StringComparison.Ordinal))
                     yield return OfdTextRenderProjection.Create(text, material, cancellationToken);
             }

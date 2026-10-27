@@ -326,6 +326,55 @@ public sealed class ExplicitGlyphTransformTests
         Assert.Equal(0, svg.Length);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HiddenUnsupportedOriginalGidDoesNotBlockVisibleText(bool hidden)
+    {
+        var invalid = Text(ushort.MaxValue, 36);
+        if (hidden)
+            invalid.SourceXml = invalid.SourceXml!.Replace("ID='2'", "ID='2' Visible=' false '");
+        var visible = new OfdTextElement
+        {
+            FontResourceId = "10", FontName = "Noto Sans", Text = "OK", FontSizeMillimeters = 6,
+            XMillimeters = 10, YMillimeters = 25, WidthMillimeters = 50, HeightMillimeters = 12,
+            Runs = { new OfdTextRun { Text = "OK", XMillimeters = 0, YMillimeters = 6 } }
+        };
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = Font() });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { invalid, visible } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var input = ofd.ToArray();
+        var readback = await new OfdReader().ReadAsync(new MemoryStream(input));
+        var original = readback.Pages[0].Elements.OfType<OfdTextElement>().Single(text => text.Text == "AB");
+        Assert.Contains("<Glyphs>65535 36</Glyphs>", original.SourceXml);
+        Assert.Equal(hidden, XElement.Parse(original.SourceXml!).Attribute("Visible")?.Value.Trim() == "false");
+
+        using var pdf = new MemoryStream();
+        using var svg = new MemoryStream();
+        if (hidden)
+        {
+            await new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), pdf);
+            await new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg);
+            using var parsed = PdfPigDocument.Open(pdf.ToArray());
+            Assert.Equal("OK", parsed.GetPage(1).Text);
+            var markup = Encoding.UTF8.GetString(svg.ToArray());
+            Assert.Contains("OK", markup);
+            Assert.DoesNotContain("data-ofd-text=\"AB\"", markup);
+        }
+        else
+        {
+            await Assert.ThrowsAsync<NotSupportedException>(() =>
+                new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), pdf));
+            await Assert.ThrowsAsync<NotSupportedException>(() =>
+                new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg));
+            Assert.Equal(0, pdf.Length);
+            Assert.Equal(0, svg.Length);
+        }
+    }
+
     [Fact]
     public async Task GidSourceDoesNotNeedAnOriginalUnicodeCmap()
     {
