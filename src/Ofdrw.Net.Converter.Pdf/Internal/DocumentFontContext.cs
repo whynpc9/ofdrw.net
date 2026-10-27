@@ -2,6 +2,7 @@ using Ofdrw.Net.Core.Fonts;
 using Ofdrw.Net.Core.IO;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using Ofdrw.Net.Core.Models;
@@ -27,7 +28,9 @@ internal sealed class DocumentFontContext
     private readonly Dictionary<string, byte[]> _snapshots = new();
     private readonly Dictionary<OfdFontResource, string> _nameOnlyFaceIdentities = new();
     private readonly Dictionary<string, byte[]> _selectedVerifiedFaces = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, byte[]> _symbolAliasFaces = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, byte[]> _restorableAliasFaces = new(StringComparer.Ordinal);
+    private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), List<ExplicitGlyphAlias>> _explicitAliases = new();
+    private bool _explicitAliasesPrepared;
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _styleAliases = new();
     private readonly Dictionary<(string Family, bool Bold, bool Italic), OfdFontResource> _unbound = new();
     internal Dictionary<string, (SixLabors.Fonts.FontFamily Family, SixLabors.Fonts.FontStyle Style)> OutlineFonts { get; } = new();
@@ -51,9 +54,12 @@ internal sealed class DocumentFontContext
             {
                 var data = (byte[])OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex).Clone();
                 StorePhysical(font, data);
+                // Structural corruption must still reject the document at
+                // construction. Only a valid glyf face lacking a cmap may
+                // wait for the per-element explicit-GID route.
+                var parsed = new OpenTypeFace(data);
                 try
                 {
-                    var parsed = new OpenTypeFace(data);
                     if (parsed.Version == 0x4F54544F &&
                         (parsed.Tables.ContainsKey("CFF ") || parsed.Tables.ContainsKey("CFF2")))
                     {
@@ -67,6 +73,15 @@ internal sealed class DocumentFontContext
                     else _families[font] = PdfFontRegistry.RegisterFontFace(data, font.Bold, font.Italic);
                 }
                 catch (NotSupportedException exception) { _unsupportedCoverage[font] = exception; }
+                catch (System.IO.InvalidDataException exception) when (!parsed.Tables.ContainsKey("cmap"))
+                {
+                    _ = new TrueTypeGlyphOutlines(data);
+                    // A CGTransform source may supply a valid original-GID glyf
+                    // face without any Unicode cmap. Ordinary Unicode text must
+                    // still fail closed if it selects the same resource.
+                    _unsupportedCoverage[font] = new NotSupportedException(
+                        "Embedded font cannot supply ordinary Unicode text.", exception);
+                }
                 continue;
             }
 
@@ -129,8 +144,33 @@ internal sealed class DocumentFontContext
         // the control policy. Only a PDF DrawString needs a FontFile2 descriptor.
         if (resource is not null && _nameOnlyFaceIdentities.TryGetValue(resource, out var identity))
             _selectedVerifiedFaces[identity] = _physicalBytes[resource];
-        if (family is not null && _symbolAliasFaces.TryGetValue(family, out var alias))
+        if (family is not null && _restorableAliasFaces.TryGetValue(family, out var alias))
             _selectedVerifiedFaces[BinaryIdentity.Hash(alias)] = alias;
+    }
+
+    // Collect all compatible character-to-original-GID mappings before the
+    // first PDF DrawString. A registered PDFsharp face is immutable and retained
+    // process-wide; registering one full-font cmap alias per TextObject can
+    // exhaust that registry even when all mappings can share one face.
+    internal void PrepareExplicitGlyphAliases(IEnumerable<OfdTextElement> texts)
+    {
+        if (_explicitAliasesPrepared) throw new InvalidOperationException("Explicit glyph aliases were already prepared.");
+        foreach (var text in texts)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            var run = OfdExplicitGlyphRun.Read(text);
+            if (run is null) continue;
+            var resource = OfdFontSelection.Resolve(_fonts, text) ??
+                throw new NotSupportedException("CGTransform rendering requires an explicitly embedded font.");
+            var key = (resource, resource.Bold || text.Weight >= 600, resource.Italic || text.Italic);
+            if (!_explicitAliases.TryGetValue(key, out var aliases))
+                _explicitAliases.Add(key, aliases = new List<ExplicitGlyphAlias>());
+            var mapping = ExplicitGlyphMapping(run);
+            var compatible = aliases.FirstOrDefault(alias => alias.CanMerge(mapping));
+            if (compatible is null) aliases.Add(new ExplicitGlyphAlias(mapping));
+            else compatible.Merge(mapping);
+        }
+        _explicitAliasesPrepared = true;
     }
 
     internal string PdfText(string family, string logicalText) =>
@@ -142,8 +182,35 @@ internal sealed class DocumentFontContext
     internal string Resolve(OfdTextElement text, out OfdFontResource? resource)
     {
         _parseBudget.Spend(0);
+        if (OfdExplicitGlyphRun.Read(text) is { } explicitRun)
+        {
+            resource = OfdFontSelection.Resolve(_fonts, text);
+            PdfTextControlPolicy.Validate(explicitRun.Run.Text);
+            var source = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);
+            var key = (resource!, resource!.Bold || text.Weight >= 600, resource.Italic || text.Italic);
+            var mapping = ExplicitGlyphMapping(explicitRun);
+            if (!_explicitAliases.TryGetValue(key, out var aliases))
+                _explicitAliases.Add(key, aliases = new List<ExplicitGlyphAlias>());
+            var selected = aliases.FirstOrDefault(alias => alias.Covers(mapping));
+            if (selected is null)
+            {
+                if (_explicitAliasesPrepared)
+                    throw new InvalidDataException("CGTransform mapping was not present in PDF font preflight.");
+                aliases.Add(selected = new ExplicitGlyphAlias(mapping));
+            }
+            if (selected.Family is null)
+            {
+                var alias = new OpenTypeFace(source.FaceBytes);
+                alias.Tables["cmap"] = OpenTypeCmap.Build(selected.GlyphByUnicode);
+                var bytes = alias.Build();
+                selected.Family = PdfFontRegistry.RegisterFontFace(bytes, key.Item2, key.Item3);
+                _restorableAliasFaces[selected.Family] = bytes;
+                _fallbackCoverage[selected.Family] = new OpenTypeCmap(alias, _parseBudget);
+            }
+            return selected.Family!;
+        }
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
-            throw new NotSupportedException("PDF export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
+            throw new NotSupportedException("PDF export cannot render this CGTransform source.");
         var hasSupplementary = false;
         foreach (var value in text.Runs.Count == 0 ? new[] { text.Text } : text.Runs.Select(run => run.Text))
         {
@@ -216,7 +283,7 @@ internal sealed class DocumentFontContext
                 var alias = SymbolCmapProfile.CreateUnicodeAlias(symbolBytes, symbolCoverage, _parseBudget);
                 symbolFamily = PdfFontRegistry.RegisterFontFace(alias, key.Item2, key.Item3);
                 _symbolAliases.Add(key, symbolFamily);
-                _symbolAliasFaces[symbolFamily] = alias;
+                _restorableAliasFaces[symbolFamily] = alias;
                 _fallbackCoverage[symbolFamily] = new OpenTypeCmap(new OpenTypeFace(alias), _parseBudget);
             }
             return symbolFamily;
@@ -260,6 +327,52 @@ internal sealed class DocumentFontContext
         }
         throw new System.IO.InvalidDataException("No verified font identity was resolved for nonempty text.");
     }
+
+    private static Dictionary<int, int> ExplicitGlyphMapping(OfdExplicitGlyphRun run)
+    {
+        var mapping = new Dictionary<int, int>();
+        for (var index = 0; index < run.GlyphIds.Count; index++)
+        {
+            var code = run.Run.Text[index];
+            var glyph = run.GlyphIds[index];
+            if (mapping.TryGetValue(code, out var prior) && prior != glyph)
+                throw new NotSupportedException("One logical character has conflicting original GIDs in a PDF font alias.");
+            mapping[code] = glyph;
+        }
+        return mapping;
+    }
+
+    private sealed class ExplicitGlyphAlias
+    {
+        internal ExplicitGlyphAlias(Dictionary<int, int> mapping)
+        {
+            GlyphByUnicode = new Dictionary<int, int>(mapping);
+            UnicodeByGlyph = mapping.ToDictionary(pair => pair.Value, pair => pair.Key);
+        }
+
+        internal Dictionary<int, int> GlyphByUnicode { get; }
+        private Dictionary<int, int> UnicodeByGlyph { get; }
+        internal string? Family { get; set; }
+
+        internal bool CanMerge(Dictionary<int, int> mapping) => mapping.All(pair =>
+            (!GlyphByUnicode.TryGetValue(pair.Key, out var glyph) || glyph == pair.Value) &&
+            (!UnicodeByGlyph.TryGetValue(pair.Value, out var code) || code == pair.Key));
+
+        internal bool Covers(Dictionary<int, int> mapping) => mapping.All(pair =>
+            GlyphByUnicode.TryGetValue(pair.Key, out var glyph) && glyph == pair.Value);
+
+        internal void Merge(Dictionary<int, int> mapping)
+        {
+            if (Family is not null || !CanMerge(mapping))
+                throw new InvalidOperationException("A registered explicit glyph alias cannot be changed.");
+            foreach (var pair in mapping)
+            {
+                GlyphByUnicode[pair.Key] = pair.Value;
+                UnicodeByGlyph[pair.Value] = pair.Key;
+            }
+        }
+    }
+
     private void StorePhysical(OfdFontResource resource, byte[] snapshot)
     {
         var identity = BinaryIdentity.Hash(snapshot);

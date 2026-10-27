@@ -97,6 +97,23 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 annotationMaterial, parseBudget, cancellationToken)
             .ConfigureAwait(false);
 
+        // PDFsharp font registrations are immutable and process-wide. Gather
+        // compatible original-GID mappings before drawing the first page so
+        // one embedded face can serve distinct TextObjects using that face.
+        var aliasMaterial = new OfdModelMaterialization(new OfdModelLimits());
+        fonts.PrepareExplicitGlyphAliases(ExplicitGlyphTexts(
+            selected.Select(index => orderedPages[index]), aliasMaterial, cancellationToken));
+        var preparedAppearanceFonts = new HashSet<DocumentFontContext>();
+        foreach (var appearance in signatureAppearances)
+        {
+            if (appearance.OfdPage is null || appearance.Fonts is null ||
+                !selected.Any(index => string.Equals(orderedPages[index].Id, appearance.PageId,
+                    StringComparison.OrdinalIgnoreCase)) ||
+                !preparedAppearanceFonts.Add(appearance.Fonts)) continue;
+            appearance.Fonts.PrepareExplicitGlyphAliases(ExplicitGlyphTexts(
+                new[] { appearance.OfdPage }, aliasMaterial, cancellationToken));
+        }
+
         using var document = new PdfDocument();
         foreach (var selectedIndex in selected)
         {
@@ -458,7 +475,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 page.XMillimeters,
                                 page.YMillimeters,
                                 outlineFont,
-                                simulateBold, simulateItalic, coverage, mapPdfText, cancellationToken, fonts, resource, familyName);
+                                simulateBold, simulateItalic, coverage, mapPdfText, cancellationToken, fonts, resource, familyName,
+                                explicitGlyphs: EmbeddedFontCoverage.HasExplicitGlyphReferences(text));
                         }
                         else
                         {
@@ -491,6 +509,25 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             throw new InvalidDataException($"OFD page {page.Index + 1} could not be rendered without content loss.", exception);
+        }
+    }
+
+    private static IEnumerable<OfdTextElement> ExplicitGlyphTexts(IEnumerable<OfdPage> pages,
+        OfdModelMaterialization material, CancellationToken cancellationToken)
+    {
+        foreach (var page in pages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var elements = OfdCompositeProjection.Expand(
+                EnumerateRenderableElements(page, material, cancellationToken), material, cancellationToken);
+            foreach (var element in elements)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (OfdGraphicXmlContract.IsVisible(element) &&
+                    element is OfdTextElement { SourceXml: { } source } text &&
+                    source.Contains("CGTransform", StringComparison.Ordinal))
+                    yield return OfdTextRenderProjection.Create(text, material, cancellationToken);
+            }
         }
     }
 
@@ -685,18 +722,41 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         double pageOriginY,
         SixLabors.Fonts.Font? outlineFont,
         bool simulateBold, bool simulateItalic, OpenTypeCmap? coverage, Func<string, string> mapPdfText, CancellationToken cancellationToken,
-        DocumentFontContext? fontContext = null, OfdFontResource? fontResource = null, string? fontFamily = null)
+        DocumentFontContext? fontContext = null, OfdFontResource? fontResource = null, string? fontFamily = null,
+        bool explicitGlyphs = false)
     {
         var paint = OfdTextPaint.Read(text);
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
             foreach (var run in text.Runs)
             {
-                var deltas = OfdTextGeometry.PositioningDeltas(run, cancellationToken);
+                // CGTransform maps each validated BMP character to one original
+                // GID. Grapheme segmentation can combine adjacent characters
+                // (for example Hangul Jamo) and lose a glyph-slot advance.
+                var deltas = explicitGlyphs
+                    ? (X: OfdTextGeometry.ExpandDeltas(run.DeltaX, run.Text.Length - 1, cancellationToken),
+                        Y: OfdTextGeometry.ExpandDeltas(run.DeltaY, run.Text.Length - 1, cancellationToken))
+                    : OfdTextGeometry.PositioningDeltas(run, cancellationToken);
                 var deltaX = deltas.X; var deltaY = deltas.Y;
                 if (deltaX.Count == 0 && deltaY.Count == 0)
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
+                    if (explicitGlyphs && run.Text.Length > 1)
+                    {
+                        // The standard says absent DeltaX/DeltaY leaves every
+                        // subsequent glyph at the same origin. A whole PDF
+                        // DrawString would add font advances.
+                        foreach (var code in run.Text)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            DrawStyledString(graphics, code.ToString(), font, brush,
+                                new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
+                                outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
+                                mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
+                                fontFamily: fontFamily);
+                        }
+                        continue;
+                    }
                     DrawStyledString(graphics, run.Text, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,
                         fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily);
@@ -704,8 +764,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
                 var i = 0;
-                foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
+                foreach (var glyph in explicitGlyphs
+                    ? run.Text.Select(character => character.ToString())
+                    : OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var anchor = OfdTextEmphasis.Anchor(x, y, factor);
                     DrawStyledString(graphics, glyph, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,

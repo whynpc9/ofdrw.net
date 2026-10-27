@@ -78,7 +78,7 @@ public sealed class Audit025RendererRegressionTests
         var method = typeof(OfdToSvgConverter).GetMethod("AddText", BindingFlags.NonPublic | BindingFlags.Static)!;
         var text = Text(new string('A', 4096), 10); var root = new XElement(ns + "svg");
         object[] args = { root, ns, new OfdPage(), text, Array.Empty<OfdFontResource>(),
-            new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>(), new FontParseBudget(), CancellationToken.None, null! };
+            new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>(), new FontParseBudget(), CancellationToken.None, null!, null! };
         method.Invoke(null, args); root.RemoveNodes();
         var before = GC.GetAllocatedBytesForCurrentThread(); method.Invoke(null, args);
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;

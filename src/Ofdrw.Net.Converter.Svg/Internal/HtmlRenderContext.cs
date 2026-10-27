@@ -62,6 +62,19 @@ internal sealed class HtmlRenderContext
         // and UTF-8 escaping. Collection source is the safe upper bound of a face.
         Reserve(4, checked(4096L + 8L * data.LongLength));
     }
+    internal void BeforeExplicitGlyphOutline(TrueTypeGlyphOutline outline)
+    {
+        long points = 0;
+        foreach (var contour in outline.Contours)
+        {
+            _token.ThrowIfCancellationRequested();
+            points = checked(points + contour.Points.Count);
+        }
+        // Reserve before ToPathCommands, its StringBuilder, and XML attributes.
+        // A quadratic command can format four finite doubles; the bound also
+        // covers large decimal coordinates and intermediate UTF-16 copies.
+        Reserve(8, checked(4096L + 8192L * points));
+    }
     internal void BeforeElement(OfdElement element)
     {
         _token.ThrowIfCancellationRequested();

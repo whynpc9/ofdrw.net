@@ -159,7 +159,7 @@ public sealed class OfdToSvgConverter
             if (element is OfdTextElement text)
             {
                 AddText(target, svgNs, page, RenderText(text), package.Fonts,
-                    families, parseBudget, cancellationToken, nameOnlyBindings);
+                    families, parseBudget, cancellationToken, preview, nameOnlyBindings);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
@@ -220,11 +220,14 @@ public sealed class OfdToSvgConverter
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
         var css = new StringBuilder();
         var selected = new HashSet<OfdFontResource>();
+        var explicitOnly = new HashSet<OfdFontResource>();
         var selectedTexts = new Dictionary<OfdFontResource, List<OfdTextElement>>();
         foreach (var text in texts)
         {
             var selectedFont = OfdFontSelection.Resolve(fonts, text);
             if (selectedFont is null) continue;
+            if (OfdExplicitGlyphRun.Read(renderText(text)) is not null)
+            { explicitOnly.Add(selectedFont); continue; }
             if (!selectedTexts.TryGetValue(selectedFont, out var uses)) selectedTexts.Add(selectedFont, uses = new());
             uses.Add(text);
         }
@@ -233,6 +236,9 @@ public sealed class OfdToSvgConverter
                 if (OfdFontSelection.Resolve(fonts, text) is { } font && font.Data.Length == 0) selected.Add(font);
         foreach (var font in fonts.Where(font => font.Data.Length > 0 || selected.Contains(font)))
         {
+            // GID paths carry their own geometry and do not need a browser
+            // font face or Unicode cmap. A mixed-use face is still emitted.
+            if (explicitOnly.Contains(font) && !selectedTexts.ContainsKey(font)) continue;
             parseBudget.Spend(0);
             var cached = font.Data.Length > 0 ? preview?.Font(font, parseBudget) : null;
             byte[] data;
@@ -329,11 +335,18 @@ public sealed class OfdToSvgConverter
         OfdTextElement text,
         IReadOnlyList<OfdFontResource> fonts,
         IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families,
-        FontParseBudget parseBudget, CancellationToken cancellationToken, OfdNameOnlyFontBindings? nameOnlyBindings)
+        FontParseBudget parseBudget, CancellationToken cancellationToken, HtmlRenderContext? preview,
+        OfdNameOnlyFontBindings? nameOnlyBindings)
     {
-        if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
-            throw new NotSupportedException("SVG export does not model CGTransform glyph substitutions; the OFD font and XML remain preserved.");
         var resource = OfdFontSelection.Resolve(fonts, text);
+        if (OfdExplicitGlyphRun.Read(text) is { } explicitRun)
+        {
+            AddExplicitGlyphs(root, svgNs, page, text, explicitRun,
+                OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: false), cancellationToken, preview);
+            return;
+        }
+        if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
+            throw new NotSupportedException("SVG export cannot render this CGTransform source.");
         if (nameOnlyBindings is not null &&
             (text.Runs.Count == 0 ? !string.IsNullOrEmpty(text.Text) : text.Runs.Any(run => !string.IsNullOrEmpty(run.Text))) &&
             (resource is null || resource.Data.Length == 0 && !families.ContainsKey(resource)))
@@ -432,6 +445,70 @@ public sealed class OfdToSvgConverter
             ApplyPaint(node, run.Text);
             root.Add(node);
         }
+    }
+
+    private static void AddExplicitGlyphs(XElement root, XNamespace ns, OfdPage page,
+        OfdTextElement text, OfdExplicitGlyphRun run, OfdExplicitGlyphFont font, CancellationToken token,
+        HtmlRenderContext? preview)
+    {
+        var paint = OfdTextPaint.Read(text);
+        var drawing = OfdTextEmphasis.DrawingTransform(text);
+        var transform = BuildTransform(text.XMillimeters - page.XMillimeters,
+            text.YMillimeters - page.YMillimeters,
+            paint.HScale == 1 ? drawing.Matrix : OfdCompositeProjection.Multiply(
+                drawing.Matrix ?? OfdCompositeProjection.Identity(),
+                new[] { paint.HScale, 0d, 0d, 1d, 0d, 0d }));
+        var group = new XElement(ns + "g", new XAttribute("transform", transform),
+            new XAttribute("role", "img"), new XAttribute("aria-label", run.Run.Text),
+            new XAttribute("data-ofd-text", run.Run.Text),
+            new XElement(ns + "title", run.Run.Text));
+        var glyphCount = run.GlyphIds.Count;
+        var hasX = !string.IsNullOrWhiteSpace(run.Run.DeltaX);
+        var hasY = !string.IsNullOrWhiteSpace(run.Run.DeltaY);
+        if (hasY && !hasX)
+            throw new NotSupportedException("CGTransform DeltaY without DeltaX is outside the render profile.");
+        var deltaX = hasX ? OfdTextGeometry.ExpandDeltas(run.Run.DeltaX, glyphCount - 1, token) : [];
+        var deltaY = hasY ? OfdTextGeometry.ExpandDeltas(run.Run.DeltaY, glyphCount - 1, token) : [];
+        if (hasX && deltaX.Count != glyphCount - 1 || hasY && deltaY.Count != glyphCount - 1)
+            throw new NotSupportedException("CGTransform requires complete glyph-slot positioning deltas.");
+        var x = run.Run.XMillimeters; var y = run.Run.YMillimeters;
+        for (var index = 0; index < glyphCount; index++)
+        {
+            token.ThrowIfCancellationRequested();
+            var outline = font.Outlines[index];
+            preview?.BeforeExplicitGlyphOutline(outline);
+            var anchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
+            var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
+            var path = new StringBuilder();
+            foreach (var command in outline.ToPathCommands())
+            {
+                double px = anchor.X / paint.HScale + command.X * scale;
+                double py = anchor.Y - command.Y * scale;
+                switch (command.Verb)
+                {
+                    case TrueTypePathVerb.Move: path.Append("M ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
+                    case TrueTypePathVerb.Line: path.Append("L ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
+                    case TrueTypePathVerb.Quadratic:
+                        path.Append("Q ").Append(Invariant(anchor.X / paint.HScale + command.ControlX * scale)).Append(' ')
+                            .Append(Invariant(anchor.Y - command.ControlY * scale)).Append(' ')
+                            .Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' ');
+                        break;
+                    case TrueTypePathVerb.Close: path.Append("Z "); break;
+                }
+            }
+            var node = new XElement(ns + "path", new XAttribute("d", path.ToString().TrimEnd()),
+                new XAttribute("data-original-gid", run.GlyphIds[index]),
+                new XAttribute("fill", paint.Fill ? ToCssColor(paint.FillColor) : "none"),
+                new XAttribute("stroke", paint.Stroke && paint.StrokeColor.Alpha > 0 ? ToCssColor(paint.StrokeColor) : "none"));
+            if (paint.Stroke) node.SetAttributeValue("stroke-width", Invariant(paint.LineWidthMillimeters));
+            if (paint.FillColor.Alpha != 255) node.SetAttributeValue("fill-opacity", Invariant(paint.FillColor.Alpha / 255d));
+            if (paint.StrokeColor.Alpha != 255) node.SetAttributeValue("stroke-opacity", Invariant(paint.StrokeColor.Alpha / 255d));
+            group.Add(node);
+            if (index + 1 == glyphCount) continue;
+            if (hasX) x += deltaX[index];
+            if (hasY) y += deltaY[index];
+        }
+        root.Add(group);
     }
 
     private static string NormalizePathData(string data)
