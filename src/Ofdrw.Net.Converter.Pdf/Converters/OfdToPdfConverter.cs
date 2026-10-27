@@ -747,7 +747,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     DrawStyledString(graphics, sourceCharacter, font,
                         new XSolidBrush(XColor.FromArgb(0, 0, 0, 0)),
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
-                        outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
+                        // This glyph supplies semantics only. Passing the
+                        // source paint/outline font would redraw its ordinary
+                        // Unicode outline when Stroke is enabled.
+                        null, false, false, coverage: coverage,
                         mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
                         fontFamily: fontFamily, preserveExplicitSourceSpan: true);
                     continue;

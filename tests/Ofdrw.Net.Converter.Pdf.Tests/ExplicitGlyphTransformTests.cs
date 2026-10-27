@@ -206,6 +206,49 @@ public sealed class ExplicitGlyphTransformTests
         Assert.Equal(0, pdf.Length);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TwoGlyphStrokeDrawsOnlySourceGidOutlinesAndOneInvisibleSemanticGlyph(bool fill)
+    {
+        var text = ThaiSequenceText();
+        text.SourceXml = text.SourceXml!.Replace("<TextObject ID='2'",
+            $"<TextObject Fill='{fill.ToString().ToLowerInvariant()}' Stroke='true' LineWidth='0.2' ID='2'")
+            .Replace("<CGTransform", "<StrokeColor Value='220 20 30'/><CGTransform");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans Thai",
+            Data = Font("NotoSansThai-Regular.ttf") });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), svg);
+        var paths = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()))
+            .Descendants().Where(node => node.Attribute("data-original-gid") is not null).ToArray();
+        Assert.Equal(new[] { 59, 86 }, paths.Select(node => (int)node.Attribute("data-original-gid")!).ToArray());
+        Assert.All(paths, node => Assert.NotEqual("none", node.Attribute("stroke")!.Value));
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("\u0E33", parsed.GetPage(1).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var content = Encoding.ASCII.GetString(inspection.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+        var semantic = content.LastIndexOf(" Tj", StringComparison.Ordinal);
+        Assert.True(semantic > 0);
+        Assert.DoesNotContain(" c\n", content.Substring(semantic));
+        Assert.DoesNotContain(" m\n", content.Substring(semantic));
+        if (Environment.GetEnvironmentVariable("R02_ARTIFACT_DIR") is { Length: > 0 } output)
+        {
+            Directory.CreateDirectory(output);
+            var stem = fill ? "thai-fill-stroke" : "thai-stroke-only";
+            await File.WriteAllBytesAsync(Path.Combine(output, stem + ".ofd"), ofd.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(output, stem + ".svg"), svg.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(output, stem + ".pdf"), pdf.ToArray());
+        }
+    }
+
     [Fact]
     public async Task TwoTextCodesKeepGlobalGlyphPositionsAndIndependentStarts()
     {

@@ -206,12 +206,23 @@ from the embedded font for selection/search. This leaves exactly one extracted
 source character without a visible private-use fallback. A trial with two
 visible text CIDs and `/ActualText` was rejected because PdfPig extracted an
 additional U+E001 from the second CID. The path-plus-semantic route passed
-focused Release 35/35 `ExplicitGlyphTransformTests`; both PdfPig and Poppler
+focused Release 37/37 `ExplicitGlyphTransformTests`; both PdfPig and Poppler
 `pdftotext` extract only U+0E33 for the Thai page and only `A` for the
 nonzero-advance page. Their PDF and SVG pages rendered at 144 dpi and were
 visually inspected; pixel differences were limited to roughly 10 and 21
 antialias-edge pixels, respectively. The exact focused outputs are in ignored
 `artifacts/r02-cgtransform/next-glyph-sequence/focused/`.
+
+A stroke follow-up removed the source paint and outline renderer from the
+invisible PDF semantic glyph; otherwise `Stroke=true` could draw the ordinary
+Unicode glyph over the two original-GID outlines. Focused `Fill+Stroke` and
+stroke-only cases extract one U+0E33, and each PDF/SVG 144 dpi page has only
+small edge-antialias differences. The independent zc310/ofd reader extracts
+the same character and paints the same shape for the fill fixture; its PDF
+matches ours pixel-for-pixel at 144 dpi. Its two stroke PDFs differ only by
+roughly 32 and 39 antialias-edge pixels from ours. A corpus-cost test now
+probes U+0E33 for this Thai-only font instead of assuming all fixture fonts
+cover Latin `A`.
 
 This remains a local candidate. Independent OFD reader comparison, full
 Release regression, package consumer evidence, current-head CI/review, and
