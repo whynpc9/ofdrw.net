@@ -399,19 +399,63 @@ package-consumer, exact-head CI/review, and fresh macOS Preview acceptance are
 recorded separately when completed; this source candidate alone does not
 complete R02.
 
+## Positioned interior many-to-one source candidate
+
+Table 48 permits a `CGTransform` to map multiple source characters to one
+original GID within a `TextCode`; Figure 67 shows `fl` alongside ordinary
+characters. Table 46 defines `X`, `Y`, `DeltaX` and `DeltaY` as the drawn
+glyph origins. This candidate admits one interior two- or three-character
+span mapped to one GID in a single `TextCode`, with ordinary nonblank BMP
+characters on both sides. The same embedded Unicode `cmap` supplies their
+GIDs. There must be exactly one mapping, distinct valid original GIDs, a
+complete finite `DeltaX` for every **drawn glyph gap**, and an optional
+complete `DeltaY`. It preserves source text and XML. PDF uses the original
+GID outlines plus one invisible logical text span; SVG and HTML paint the
+same original GIDs and retain the full logical label. The existing embedded
+face, source-character coverage, and output preflight checks still apply.
+
+Seven untouched OFDs were generated with the public
+`github.com/zc310/ofd@v0.1.5` writer and the pinned full Noto Sans Regular
+face (SHA-256 `b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5`).
+For `AflB` and `AffiB`, the independent reader places the three drawn GIDs
+at relative X origins `0, 8, 19` mm when `DeltaX` has two values. The `fl`
+two-axis case places `B` 2 mm lower. A fontTools oracle compared the reader's
+visible PDF paths with the original Noto GIDs 1653 (`fl`) and 1654 (`ffi`),
+with maximum coordinate difference below `0.000006` mm. The source-based
+.NET candidate reads all seven logical strings, accepts the three explicit
+glyph-slot cases in PDF/SVG/HTML, and rejects the four source-character or
+absent-delta cases with empty caller output. Its three PDF pages were
+rasterized at 144 dpi and visually compared with the corresponding Go pages;
+`pdftotext` returns `AflB`, `AflB`, and `AffiB`, each once. The independent
+Go PDFs put ordinary letters into PDF text and the mapped ligature into a
+visible path plus semantic text, so their extraction line breaks differ.
+The two renderers show the same positions and outlines, with small
+antialiasing differences. Inputs, writer manifest, per-page PNGs, source
+probe and oracle are in ignored
+`artifacts/r02-cgtransform/mixed-cardinality-20261028/`.
+
+Source-character delta arrays with three values and absent deltas remain
+refused: the former give a different indexing interpretation, while the
+independent reader advances naturally in the latter even though Table 46
+states that absent deltas leave the draw point unmoved. Multi-mapping,
+cross-`TextCode`, supplementary, and unpositioned combinations remain
+outside this candidate. Full Release, package-consumer, exact-head CI/review,
+and macOS Preview acceptance are recorded separately when complete. This
+candidate does not close R02 or unlock R22.
+
 ### Remaining R02 boundary
 
 | Input/semantics | Current result | Next implementation work | External evidence blocker |
 | --- | --- | --- | --- |
 | Complete positioned 1:N and N:M source span in one `TextCode` | Accepted only under the finite, complete-delta, static-`glyf` and embedding rules above | No further change needed for this subset | Any new shape or font class needs separate OFD readback, original-GID PDF/SVG paths, logical text, package and page evidence |
-| Positioned M:1 and mixed cardinalities | Refused by the complete-span rules; partial one-to-one has the bounded candidate above | Define bounded source-span composition and preflight without losing raw `TextCode`, IDs or unknown XML | Obtain a representative input and independent expected draw points/text before admission |
+| Positioned M:1 and mixed cardinalities | One interior 2:1 or 3:1 span with explicit drawn-glyph deltas has the bounded candidate above; other combinations remain refused | Specify any further composition shape independently without losing raw `TextCode`, IDs or unknown XML | A source-backed expected draw point and text oracle is needed for each new shape |
 | New N:M without explicit deltas | Refused; natural advance differs between the standard's absent-delta wording and the inspected independent reader | Resolve whether glyphs share the origin or advance, then model that rule explicitly | A source-backed case and independent visual/text oracle are needed to choose semantics |
 | Cross-`TextCode` clusters or local position resets | Refused; PR #58 admits only global BMP positions for separate complete runs | Specify indexing and run-origin behavior before extending the projection | The cited standard does not expressly settle sibling-run counting; obtain an unmodified representative OFD and expected output |
 | Supplementary source positions | Refused in this route | Specify whether `CodePosition`/`CodeCount` count UTF-16 units or Unicode scalars, then add bounded decoding and tests | The cited clause does not expressly settle supplementary counting; seek a source-backed interoperable case |
 | Optional R08 font-backend expansion: CFF, color or variable source faces | Refused or unverified in this `CGTransform` route; this is not a prerequisite for closing core R02 | Build a separate original-GID paint and PDF embedding policy only if an input requires that face class | Licensed matching fixtures and independent reader/output evidence are missing |
 | Unmodified foreign OFD across all outlets | Not established: the older Java sample required local layer-ID normalization for the SVG diagnostic and lacks PDF-admissible OS/2 data | Keep the current fail-closed resource and identity checks | A legally usable, unmodified input with matching font and a trustworthy independent visual/text oracle is needed |
 
-The positioned M:1, mixed cardinalities, unpositioned N:M, run indexing, supplementary
+The remaining positioned M:1 and mixed cardinalities, unpositioned N:M, run indexing, supplementary
 counting, and unmodified foreign-input rows are the remaining core R02
 questions. The R08 face-class row is optional expansion. The table is a work
 boundary, not a claim that every listed profile should be implemented. Full
