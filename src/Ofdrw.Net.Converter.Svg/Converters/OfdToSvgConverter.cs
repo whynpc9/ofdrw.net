@@ -459,54 +459,54 @@ public sealed class OfdToSvgConverter
                 drawing.Matrix ?? OfdCompositeProjection.Identity(),
                 new[] { paint.HScale, 0d, 0d, 1d, 0d, 0d }));
         var group = new XElement(ns + "g", new XAttribute("transform", transform),
-            new XAttribute("role", "img"), new XAttribute("aria-label", run.Run.Text),
-            new XAttribute("data-ofd-text", run.Run.Text),
-            new XElement(ns + "title", run.Run.Text));
-        var glyphCount = run.GlyphIds.Count;
-        var hasX = !string.IsNullOrWhiteSpace(run.Run.DeltaX);
-        var hasY = !string.IsNullOrWhiteSpace(run.Run.DeltaY);
-        if (hasY && !hasX)
-            throw new NotSupportedException("CGTransform DeltaY without DeltaX is outside the render profile.");
-        var deltaX = hasX ? OfdTextGeometry.ExpandDeltas(run.Run.DeltaX, glyphCount - 1, token) : [];
-        var deltaY = hasY ? OfdTextGeometry.ExpandDeltas(run.Run.DeltaY, glyphCount - 1, token) : [];
-        if (hasX && deltaX.Count != glyphCount - 1 || hasY && deltaY.Count != glyphCount - 1)
-            throw new NotSupportedException("CGTransform requires complete glyph-slot positioning deltas.");
-        var x = run.Run.XMillimeters; var y = run.Run.YMillimeters;
-        for (var index = 0; index < glyphCount; index++)
+            new XAttribute("role", "img"), new XAttribute("aria-label", run.LogicalText),
+            new XAttribute("data-ofd-text", run.LogicalText),
+            new XElement(ns + "title", run.LogicalText));
+        var globalIndex = 0;
+        foreach (var textRun in run.Runs)
         {
-            token.ThrowIfCancellationRequested();
-            var outline = font.Outlines[index];
-            preview?.BeforeExplicitGlyphOutline(outline);
-            var anchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
-            var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
-            var path = new StringBuilder();
-            foreach (var command in outline.ToPathCommands())
+            var glyphCount = textRun.Text.Length;
+            var hasX = !string.IsNullOrWhiteSpace(textRun.DeltaX);
+            var hasY = !string.IsNullOrWhiteSpace(textRun.DeltaY);
+            var deltaX = hasX ? OfdTextGeometry.ExpandDeltas(textRun.DeltaX, glyphCount - 1, token) : [];
+            var deltaY = hasY ? OfdTextGeometry.ExpandDeltas(textRun.DeltaY, glyphCount - 1, token) : [];
+            var x = textRun.XMillimeters; var y = textRun.YMillimeters;
+            for (var index = 0; index < glyphCount; index++, globalIndex++)
             {
-                double px = anchor.X / paint.HScale + command.X * scale;
-                double py = anchor.Y - command.Y * scale;
-                switch (command.Verb)
+                token.ThrowIfCancellationRequested();
+                var outline = font.Outlines[globalIndex];
+                preview?.BeforeExplicitGlyphOutline(outline);
+                var anchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
+                var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
+                var path = new StringBuilder();
+                foreach (var command in outline.ToPathCommands())
                 {
-                    case TrueTypePathVerb.Move: path.Append("M ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
-                    case TrueTypePathVerb.Line: path.Append("L ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
-                    case TrueTypePathVerb.Quadratic:
-                        path.Append("Q ").Append(Invariant(anchor.X / paint.HScale + command.ControlX * scale)).Append(' ')
-                            .Append(Invariant(anchor.Y - command.ControlY * scale)).Append(' ')
-                            .Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' ');
-                        break;
-                    case TrueTypePathVerb.Close: path.Append("Z "); break;
+                    double px = anchor.X / paint.HScale + command.X * scale;
+                    double py = anchor.Y - command.Y * scale;
+                    switch (command.Verb)
+                    {
+                        case TrueTypePathVerb.Move: path.Append("M ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
+                        case TrueTypePathVerb.Line: path.Append("L ").Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' '); break;
+                        case TrueTypePathVerb.Quadratic:
+                            path.Append("Q ").Append(Invariant(anchor.X / paint.HScale + command.ControlX * scale)).Append(' ')
+                                .Append(Invariant(anchor.Y - command.ControlY * scale)).Append(' ')
+                                .Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' ');
+                            break;
+                        case TrueTypePathVerb.Close: path.Append("Z "); break;
+                    }
                 }
+                var node = new XElement(ns + "path", new XAttribute("d", path.ToString().TrimEnd()),
+                    new XAttribute("data-original-gid", run.GlyphIds[globalIndex]),
+                    new XAttribute("fill", paint.Fill ? ToCssColor(paint.FillColor) : "none"),
+                    new XAttribute("stroke", paint.Stroke && paint.StrokeColor.Alpha > 0 ? ToCssColor(paint.StrokeColor) : "none"));
+                if (paint.Stroke) node.SetAttributeValue("stroke-width", Invariant(paint.LineWidthMillimeters));
+                if (paint.FillColor.Alpha != 255) node.SetAttributeValue("fill-opacity", Invariant(paint.FillColor.Alpha / 255d));
+                if (paint.StrokeColor.Alpha != 255) node.SetAttributeValue("stroke-opacity", Invariant(paint.StrokeColor.Alpha / 255d));
+                group.Add(node);
+                if (index + 1 == glyphCount) continue;
+                if (hasX) x += deltaX[index];
+                if (hasY) y += deltaY[index];
             }
-            var node = new XElement(ns + "path", new XAttribute("d", path.ToString().TrimEnd()),
-                new XAttribute("data-original-gid", run.GlyphIds[index]),
-                new XAttribute("fill", paint.Fill ? ToCssColor(paint.FillColor) : "none"),
-                new XAttribute("stroke", paint.Stroke && paint.StrokeColor.Alpha > 0 ? ToCssColor(paint.StrokeColor) : "none"));
-            if (paint.Stroke) node.SetAttributeValue("stroke-width", Invariant(paint.LineWidthMillimeters));
-            if (paint.FillColor.Alpha != 255) node.SetAttributeValue("fill-opacity", Invariant(paint.FillColor.Alpha / 255d));
-            if (paint.StrokeColor.Alpha != 255) node.SetAttributeValue("stroke-opacity", Invariant(paint.StrokeColor.Alpha / 255d));
-            group.Add(node);
-            if (index + 1 == glyphCount) continue;
-            if (hasX) x += deltaX[index];
-            if (hasY) y += deltaY[index];
         }
         root.Add(group);
     }

@@ -185,7 +185,7 @@ internal sealed class DocumentFontContext
         if (OfdExplicitGlyphRun.Read(text) is { } explicitRun)
         {
             resource = OfdFontSelection.Resolve(_fonts, text);
-            PdfTextControlPolicy.Validate(explicitRun.Run.Text);
+            foreach (var run in explicitRun.Runs) PdfTextControlPolicy.Validate(run.Text);
             var source = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);
             var key = (resource!, resource!.Bold || text.Weight >= 600, resource.Italic || text.Italic);
             var mapping = ExplicitGlyphMapping(explicitRun);
@@ -331,9 +331,10 @@ internal sealed class DocumentFontContext
     private static Dictionary<int, int> ExplicitGlyphMapping(OfdExplicitGlyphRun run)
     {
         var mapping = new Dictionary<int, int>();
+        var logical = run.LogicalText;
         for (var index = 0; index < run.GlyphIds.Count; index++)
         {
-            var code = run.Run.Text[index];
+            var code = logical[index];
             var glyph = run.GlyphIds[index];
             if (mapping.TryGetValue(code, out var prior) && prior != glyph)
                 throw new NotSupportedException("One logical character has conflicting original GIDs in a PDF font alias.");
