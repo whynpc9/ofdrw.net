@@ -216,7 +216,11 @@ internal sealed class PdfSupplementaryFontBinding
             throw new InvalidDataException("PDF supplementary font was not realized with its verified ToUnicode map.");
     }
 
-    private static byte[] BuildToUnicode(IReadOnlyDictionary<int, int> unicodeByGlyph)
+    private static byte[] BuildToUnicode(IReadOnlyDictionary<int, int> unicodeByGlyph) =>
+        BuildToUnicode(unicodeByGlyph.ToDictionary(item => item.Key,
+            item => char.ConvertFromUtf32(item.Value)));
+
+    internal static byte[] BuildToUnicode(IReadOnlyDictionary<int, string> unicodeByGlyph)
     {
         var builder = new StringBuilder();
         builder.Append("/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n")
@@ -231,7 +235,7 @@ internal sealed class PdfSupplementaryFontBinding
             for (var index = start; index < start + count; index++)
             {
                 var item = ordered[index];
-                var unicode = Encoding.BigEndianUnicode.GetBytes(char.ConvertFromUtf32(item.Value));
+                var unicode = Encoding.BigEndianUnicode.GetBytes(item.Value);
                 builder.Append('<').Append(item.Key.ToString("X4")).Append("><")
                     .Append(BitConverter.ToString(unicode).Replace("-", string.Empty)).Append(">\n");
             }

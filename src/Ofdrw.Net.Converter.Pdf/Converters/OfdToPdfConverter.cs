@@ -143,6 +143,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             fonts.SupplementaryBindings.Concat(signatureAppearances
                 .Where(appearance => appearance.Fonts is not null)
                 .SelectMany(appearance => appearance.Fonts!.SupplementaryBindings)));
+        PdfExplicitGlyphUnicodeMap.Install(document,
+            new[] { fonts }.Concat(signatureAppearances
+                    .Where(appearance => appearance.Fonts is not null)
+                    .Select(appearance => appearance.Fonts!))
+                .SelectMany(context => context.ExplicitUnicodeBindings));
         var selectedVerifiedFaces = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         foreach (var context in new[] { fonts }.Concat(signatureAppearances
                      .Where(appearance => appearance.Fonts is not null)
@@ -726,10 +731,21 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         bool explicitGlyphs = false)
     {
         var paint = OfdTextPaint.Read(text);
+        var explicitRun = explicitGlyphs ? OfdExplicitGlyphRun.Read(text) : null;
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
             foreach (var run in text.Runs)
             {
+                if (explicitRun?.SingleGlyphSourceSpan is not null)
+                {
+                    var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
+                    DrawStyledString(graphics, run.Text, font, brush,
+                        new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
+                        outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
+                        mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
+                        fontFamily: fontFamily);
+                    continue;
+                }
                 // CGTransform maps each validated BMP character to one original
                 // GID. Grapheme segmentation can combine adjacent characters
                 // (for example Hangul Jamo) and lose a glyph-slot advance.

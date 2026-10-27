@@ -30,6 +30,8 @@ internal sealed class DocumentFontContext
     private readonly Dictionary<string, byte[]> _selectedVerifiedFaces = new(StringComparer.Ordinal);
     private readonly Dictionary<string, byte[]> _restorableAliasFaces = new(StringComparer.Ordinal);
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), List<ExplicitGlyphAlias>> _explicitAliases = new();
+    private readonly Dictionary<string, string> _explicitSpanFamilies = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, IReadOnlyDictionary<int, string>> _explicitFamilySemantics = new(StringComparer.Ordinal);
     private bool _explicitAliasesPrepared;
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _styleAliases = new();
     private readonly Dictionary<(string Family, bool Bold, bool Italic), OfdFontResource> _unbound = new();
@@ -148,7 +150,7 @@ internal sealed class DocumentFontContext
             _selectedVerifiedFaces[BinaryIdentity.Hash(alias)] = alias;
     }
 
-    // Collect all compatible character-to-original-GID mappings before the
+    // Collect compatible source-span-to-original-GID mappings before the
     // first PDF DrawString. A registered PDFsharp face is immutable and retained
     // process-wide; registering one full-font cmap alias per TextObject can
     // exhaust that registry even when all mappings can share one face.
@@ -166,15 +168,23 @@ internal sealed class DocumentFontContext
             if (!_explicitAliases.TryGetValue(key, out var aliases))
                 _explicitAliases.Add(key, aliases = new List<ExplicitGlyphAlias>());
             var mapping = ExplicitGlyphMapping(run);
-            var compatible = aliases.FirstOrDefault(alias => alias.CanMerge(mapping));
-            if (compatible is null) aliases.Add(new ExplicitGlyphAlias(mapping));
+            var sourceSpan = run.SingleGlyphSourceSpan;
+            var compatible = aliases.FirstOrDefault(alias => alias.CanMerge(mapping, sourceSpan));
+            if (compatible is null) aliases.Add(new ExplicitGlyphAlias(mapping, sourceSpan));
             else compatible.Merge(mapping);
         }
         _explicitAliasesPrepared = true;
     }
 
     internal string PdfText(string family, string logicalText) =>
-        _supplementary.TryGetValue(family, out var binding) ? binding.MapText(logicalText) : logicalText;
+        _explicitSpanFamilies.TryGetValue(family, out var sourceSpan) && logicalText == sourceSpan
+            ? "\uE000"
+            : _supplementary.TryGetValue(family, out var binding) ? binding.MapText(logicalText) : logicalText;
+
+    internal IEnumerable<(string Identity, IReadOnlyDictionary<int, string> UnicodeByGlyph, bool NeedsOverride)>
+        ExplicitUnicodeBindings => _explicitAliases.Values.SelectMany(aliases => aliases)
+            .Where(alias => alias.Family is not null)
+            .Select(alias => (alias.Identity!, alias.UnicodeSequences, alias.SourceSpan is not null));
 
     internal byte[] OutlineFontBytes(string family, byte[] pdfFontBytes) =>
         _supplementary.TryGetValue(family, out var binding) ? binding.OriginalFont : pdfFontBytes;
@@ -186,27 +196,39 @@ internal sealed class DocumentFontContext
         {
             resource = OfdFontSelection.Resolve(_fonts, text);
             foreach (var run in explicitRun.Runs) PdfTextControlPolicy.Validate(run.Text);
+            if (explicitRun.SingleGlyphSourceSpan is not null && OfdTextPaint.Read(text).Stroke)
+                throw new NotSupportedException("CGTransform multi-code stroke needs an original-GID outline paint route.");
             var source = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);
             var key = (resource!, resource!.Bold || text.Weight >= 600, resource.Italic || text.Italic);
             var mapping = ExplicitGlyphMapping(explicitRun);
             if (!_explicitAliases.TryGetValue(key, out var aliases))
                 _explicitAliases.Add(key, aliases = new List<ExplicitGlyphAlias>());
-            var selected = aliases.FirstOrDefault(alias => alias.Covers(mapping));
+            var sourceSpan = explicitRun.SingleGlyphSourceSpan;
+            var selected = aliases.FirstOrDefault(alias => alias.Covers(mapping, sourceSpan));
             if (selected is null)
             {
                 if (_explicitAliasesPrepared)
                     throw new InvalidDataException("CGTransform mapping was not present in PDF font preflight.");
-                aliases.Add(selected = new ExplicitGlyphAlias(mapping));
+                aliases.Add(selected = new ExplicitGlyphAlias(mapping, sourceSpan));
             }
             if (selected.Family is null)
             {
                 var alias = new OpenTypeFace(source.FaceBytes);
                 alias.Tables["cmap"] = OpenTypeCmap.Build(selected.GlyphByUnicode);
                 var bytes = alias.Build();
+                selected.Identity = BinaryIdentity.Hash(bytes);
                 selected.Family = PdfFontRegistry.RegisterFontFace(bytes, key.Item2, key.Item3);
                 _restorableAliasFaces[selected.Family] = bytes;
                 _fallbackCoverage[selected.Family] = new OpenTypeCmap(alias, _parseBudget);
             }
+            var semantics = selected.UnicodeSequences;
+            if (_explicitFamilySemantics.TryGetValue(selected.Family!, out var previous) &&
+                (previous.Count != semantics.Count || previous.Any(item =>
+                    !semantics.TryGetValue(item.Key, out var value) || value != item.Value)))
+                throw new NotSupportedException("One registered PDF font alias has conflicting CGTransform Unicode semantics.");
+            _explicitFamilySemantics[selected.Family!] = semantics;
+            if (sourceSpan is not null)
+                _explicitSpanFamilies[selected.Family!] = sourceSpan;
             return selected.Family!;
         }
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
@@ -330,6 +352,8 @@ internal sealed class DocumentFontContext
 
     private static Dictionary<int, int> ExplicitGlyphMapping(OfdExplicitGlyphRun run)
     {
+        if (run.SingleGlyphSourceSpan is not null)
+            return new Dictionary<int, int> { [0xE000] = run.GlyphIds[0] };
         var mapping = new Dictionary<int, int>();
         var logical = run.LogicalText;
         for (var index = 0; index < run.GlyphIds.Count; index++)
@@ -345,26 +369,33 @@ internal sealed class DocumentFontContext
 
     private sealed class ExplicitGlyphAlias
     {
-        internal ExplicitGlyphAlias(Dictionary<int, int> mapping)
+        internal ExplicitGlyphAlias(Dictionary<int, int> mapping, string? sourceSpan)
         {
             GlyphByUnicode = new Dictionary<int, int>(mapping);
             UnicodeByGlyph = mapping.ToDictionary(pair => pair.Value, pair => pair.Key);
+            SourceSpan = sourceSpan;
         }
 
         internal Dictionary<int, int> GlyphByUnicode { get; }
         private Dictionary<int, int> UnicodeByGlyph { get; }
         internal string? Family { get; set; }
+        internal string? Identity { get; set; }
+        internal string? SourceSpan { get; }
+        internal IReadOnlyDictionary<int, string> UnicodeSequences => UnicodeByGlyph.ToDictionary(
+            pair => pair.Key, pair => SourceSpan ?? char.ConvertFromUtf32(pair.Value));
 
-        internal bool CanMerge(Dictionary<int, int> mapping) => mapping.All(pair =>
+        internal bool CanMerge(Dictionary<int, int> mapping, string? sourceSpan) =>
+            string.Equals(SourceSpan, sourceSpan, StringComparison.Ordinal) && mapping.All(pair =>
             (!GlyphByUnicode.TryGetValue(pair.Key, out var glyph) || glyph == pair.Value) &&
             (!UnicodeByGlyph.TryGetValue(pair.Value, out var code) || code == pair.Key));
 
-        internal bool Covers(Dictionary<int, int> mapping) => mapping.All(pair =>
+        internal bool Covers(Dictionary<int, int> mapping, string? sourceSpan) =>
+            string.Equals(SourceSpan, sourceSpan, StringComparison.Ordinal) && mapping.All(pair =>
             GlyphByUnicode.TryGetValue(pair.Key, out var glyph) && glyph == pair.Value);
 
         internal void Merge(Dictionary<int, int> mapping)
         {
-            if (Family is not null || !CanMerge(mapping))
+            if (Family is not null || !CanMerge(mapping, SourceSpan))
                 throw new InvalidOperationException("A registered explicit glyph alias cannot be changed.");
             foreach (var pair in mapping)
             {

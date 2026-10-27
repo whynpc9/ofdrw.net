@@ -465,7 +465,7 @@ public sealed class OfdToSvgConverter
         var globalIndex = 0;
         foreach (var textRun in run.Runs)
         {
-            var glyphCount = textRun.Text.Length;
+            var glyphCount = run.SingleGlyphSourceSpan is not null ? 1 : textRun.Text.Length;
             var hasX = !string.IsNullOrWhiteSpace(textRun.DeltaX);
             var hasY = !string.IsNullOrWhiteSpace(textRun.DeltaY);
             var deltaX = hasX ? OfdTextGeometry.ExpandDeltas(textRun.DeltaX, glyphCount - 1, token) : [];
