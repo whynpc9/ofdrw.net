@@ -40,8 +40,31 @@ internal sealed class OfdExplicitGlyphRun
     internal IReadOnlyList<OfdExplicitGlyphSpan> Spans { get; }
     internal string? SingleGlyphSourceSpan => Spans.Count == 1 &&
         Spans[0].CodeCount > 1 && Spans[0].GlyphCount == 1 ? Spans[0].LogicalText : null;
-    internal string? TwoGlyphSourceCharacter => Spans.Count == 1 &&
-        Spans[0].CodeCount == 1 && Spans[0].GlyphCount == 2 ? Spans[0].LogicalText : null;
+    internal string? PathGlyphSourceSpan => Spans.Count == 1 &&
+        Spans[0].GlyphCount > 1 && Spans[0].CodeCount != Spans[0].GlyphCount
+            ? Spans[0].LogicalText : null;
+
+    internal IReadOnlyList<(double X, double Y)> PathGlyphOrigins(CancellationToken token)
+    {
+        if (PathGlyphSourceSpan is null || Runs.Count != 1)
+            throw new InvalidOperationException("A complete source span is required for original-GID path placement.");
+        var source = Runs[0];
+        var deltaX = OfdTextGeometry.ExpandDeltas(source.DeltaX, GlyphIds.Count - 1, token);
+        var deltaY = OfdTextGeometry.ExpandDeltas(source.DeltaY, GlyphIds.Count - 1, token);
+        var origins = new (double X, double Y)[GlyphIds.Count];
+        var x = source.XMillimeters; var y = source.YMillimeters;
+        for (var index = 0; index < origins.Length; index++)
+        {
+            token.ThrowIfCancellationRequested();
+            origins[index] = (x, y);
+            if (index < deltaX.Count) x += deltaX[index];
+            if (index < deltaY.Count) y += deltaY[index];
+            if (double.IsNaN(x) || double.IsInfinity(x) ||
+                double.IsNaN(y) || double.IsInfinity(y))
+                throw new NotSupportedException("CGTransform glyph-slot positions must remain finite.");
+        }
+        return origins;
+    }
 
     internal static OfdExplicitGlyphRun? Read(OfdTextElement text)
     {
@@ -76,8 +99,50 @@ internal sealed class OfdExplicitGlyphRun
         // concatenated runs. Per-TextCode position resets need separate evidence.
         if (logical.Length is < 1 or > 1024 || logical.Any(value => char.IsSurrogate(value) ||
                 char.IsControl(value) || char.IsWhiteSpace(value) ||
-                CharUnicodeInfo.GetUnicodeCategory(value) is UnicodeCategory.Format or
-                    UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark))
+                CharUnicodeInfo.GetUnicodeCategory(value) == UnicodeCategory.Format))
+            throw new NotSupportedException("CGTransform glyph rendering requires independent, nonblank BMP characters.");
+        // Table 46 positions the drawn glyphs. For a complete multi-glyph
+        // source span, an explicit delta for every glyph gap removes any need
+        // to infer advances or how source-code deltas map to glyph positions.
+        // A combining mark is allowed after a base within this complete span;
+        // the older independent-character profiles retain their rejection.
+        if (logical.Length <= 8 && codes.Length == 1 && transforms.Length == 1 &&
+            !IsCombiningMark(logical[0]) &&
+            !string.IsNullOrWhiteSpace(text.Runs[0].DeltaX))
+        {
+            var transform = transforms[0];
+            var codeCount = Number(transform.Attribute("CodeCount"), 1);
+            var glyphCount = Number(transform.Attribute("GlyphCount"), 1);
+            if (glyphCount is >= 2 and <= 8 && glyphCount != codeCount &&
+                transform.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
+                    attribute.Name.LocalName is "CodePosition" or "CodeCount" or "GlyphCount") &&
+                Number(transform.Attribute("CodePosition"), -1) == 0 &&
+                codeCount == logical.Length && transform.Elements().Count() == 1 &&
+                transform.Element(root.Name.Namespace + "Glyphs") is { } glyphs &&
+                !glyphs.HasElements &&
+                glyphs.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
+                glyphs.Nodes().All(node => node is XText) &&
+                glyphs.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries) is { } tokens &&
+                tokens.Length == glyphCount)
+            {
+                var ids = new int[glyphCount];
+                var seen = new HashSet<int>();
+                for (var index = 0; index < glyphCount; index++)
+                {
+                    if (!int.TryParse(tokens[index], NumberStyles.None, CultureInfo.InvariantCulture,
+                            out var gid) || gid is <= 0 or > ushort.MaxValue || !seen.Add(gid))
+                        throw new NotSupportedException("CGTransform contains overlapping or invalid original GIDs.");
+                    ids[index] = gid;
+                }
+                CountDeltas(text.Runs[0].DeltaX, glyphCount - 1);
+                CountDeltas(text.Runs[0].DeltaY, glyphCount - 1);
+                var positioned = new OfdExplicitGlyphRun(text.Runs, ids,
+                    [new OfdExplicitGlyphSpan(0, codeCount, 0, glyphCount, logical)]);
+                _ = positioned.PathGlyphOrigins(CancellationToken.None);
+                return positioned;
+            }
+        }
+        if (logical.Any(IsCombiningMark))
             throw new NotSupportedException("CGTransform glyph rendering requires independent, nonblank BMP characters.");
         // A whole, unpositioned source span can map to one original GID. A
         // private PDF code is then given the exact source span in ToUnicode.
@@ -202,6 +267,10 @@ internal sealed class OfdExplicitGlyphRun
 
     private static int Number(XAttribute? attribute, int fallback) => attribute is null ? fallback :
         int.TryParse(attribute.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : -1;
+
+    private static bool IsCombiningMark(char value) =>
+        CharUnicodeInfo.GetUnicodeCategory(value) is UnicodeCategory.NonSpacingMark or
+            UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark;
 
     private static bool SameAxis(XAttribute? attribute, double? previous, double actual) =>
         (attribute is not null || previous is not null) &&

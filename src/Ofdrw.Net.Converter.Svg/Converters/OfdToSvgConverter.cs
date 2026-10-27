@@ -462,11 +462,12 @@ public sealed class OfdToSvgConverter
             new XAttribute("role", "img"), new XAttribute("aria-label", run.LogicalText),
             new XAttribute("data-ofd-text", run.LogicalText),
             new XElement(ns + "title", run.LogicalText));
+        var pathOrigins = run.PathGlyphSourceSpan is null ? null : run.PathGlyphOrigins(token);
         var globalIndex = 0;
         foreach (var textRun in run.Runs)
         {
             var glyphCount = run.SingleGlyphSourceSpan is not null ? 1 :
-                run.TwoGlyphSourceCharacter is not null ? 2 : textRun.Text.Length;
+                pathOrigins is not null ? pathOrigins.Count : textRun.Text.Length;
             var hasX = !string.IsNullOrWhiteSpace(textRun.DeltaX);
             var hasY = !string.IsNullOrWhiteSpace(textRun.DeltaY);
             var deltaX = hasX ? OfdTextGeometry.ExpandDeltas(textRun.DeltaX, glyphCount - 1, token) : [];
@@ -475,6 +476,11 @@ public sealed class OfdToSvgConverter
             for (var index = 0; index < glyphCount; index++, globalIndex++)
             {
                 token.ThrowIfCancellationRequested();
+                if (pathOrigins is not null)
+                {
+                    x = pathOrigins[index].X;
+                    y = pathOrigins[index].Y;
+                }
                 var outline = font.Outlines[globalIndex];
                 preview?.BeforeExplicitGlyphOutline(outline);
                 var anchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
@@ -504,7 +510,7 @@ public sealed class OfdToSvgConverter
                 if (paint.FillColor.Alpha != 255) node.SetAttributeValue("fill-opacity", Invariant(paint.FillColor.Alpha / 255d));
                 if (paint.StrokeColor.Alpha != 255) node.SetAttributeValue("stroke-opacity", Invariant(paint.StrokeColor.Alpha / 255d));
                 group.Add(node);
-                if (index + 1 == glyphCount) continue;
+                if (index + 1 == glyphCount || pathOrigins is not null) continue;
                 if (hasX) x += deltaX[index];
                 if (hasY) y += deltaY[index];
             }

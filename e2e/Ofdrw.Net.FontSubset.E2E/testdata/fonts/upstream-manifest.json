@@ -29,6 +29,14 @@
     "license": "OFL-1.1"
   },
   {
+    "file": "NotoSansTamil-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansTamil/NotoSansTamil-Regular.ttf",
+    "bytes": 74248,
+    "sha256": "6532db33b8b264abe3a098a40619feb489b5ddf5ab1d2b46e72b51eeb548001b",
+    "license": "OFL-1.1",
+    "licenseFile": "NotoSansThai-OFL.txt"
+  },
+  {
     "file": "NotoSerif-Regular.ttf",
     "url": "https://raw.githubusercontent.com/googlefonts/noto-fonts/bf20559450ec75aec7a646b208343540a4496262/phaseIII_only/hinted/ttf/NotoSerif/NotoSerif-Regular.ttf",
     "bytes": 588856,

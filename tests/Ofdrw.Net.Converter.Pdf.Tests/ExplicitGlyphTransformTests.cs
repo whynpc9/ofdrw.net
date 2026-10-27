@@ -64,6 +64,132 @@ public sealed class ExplicitGlyphTransformTests
         return text;
     }
 
+    private static OfdTextElement PositionedSequenceText(string source, string glyphs,
+        string? deltaX, string? deltaY = null)
+    {
+        var text = Text(1, 2, deltaX, source);
+        text.FontName = source == "போ" ? "Noto Sans Tamil" : "Noto Sans";
+        text.Runs[0].DeltaY = deltaY;
+        var count = glyphs.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        var x = deltaX is null ? "" : $" DeltaX='{deltaX}'";
+        var y = deltaY is null ? "" : $" DeltaY='{deltaY}'";
+        text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='{source.Length}' GlyphCount='{count}'><Glyphs>{glyphs}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6'{x}{y}>{source}</TextCode></TextObject>";
+        return text;
+    }
+
+    [Theory]
+    [InlineData("போ", "47 28 41", "4.32 4.668", null, "NotoSansTamil-Regular.ttf", "Noto Sans Tamil")]
+    [InlineData("A", "37 38 39", "2 3", "1 -2", "NotoSans-Regular.ttf", "Noto Sans")]
+    [InlineData("AB", "37 38 39 40", "2 3 4", null, "NotoSans-Regular.ttf", "Noto Sans")]
+    public async Task CompletePositionedSourceSpanKeepsOriginalGidsAndOneLogicalText(
+        string sourceText, string glyphs, string deltas, string? deltaY, string fontFile, string fontName)
+    {
+        var ids = glyphs.Split(' ').Select(int.Parse).ToArray();
+        var bytes = Font(fontFile);
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = fontName, Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { PositionedSequenceText(sourceText, glyphs, deltas, deltaY) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var input = ofd.ToArray();
+        var readback = await new OfdReader().ReadAsync(new MemoryStream(input));
+        var original = Assert.Single(readback.Pages[0].Elements.OfType<OfdTextElement>());
+        Assert.Equal(sourceText, original.Text);
+        Assert.Contains($"GlyphCount=\"{ids.Length}\"", original.SourceXml);
+
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg);
+        var svgDocument = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()));
+        var group = Assert.Single(svgDocument.Descendants(), node =>
+            node.Attribute("data-ofd-text")?.Value == sourceText);
+        var paths = group.Elements().Where(node => node.Name.LocalName == "path").ToArray();
+        Assert.Equal(ids, paths.Select(path => (int)path.Attribute("data-original-gid")!).ToArray());
+        var outlines = new TrueTypeGlyphOutlines(bytes);
+        var positions = new double[ids.Length];
+        var increments = deltas.Split(' ').Select(value => double.Parse(value, CultureInfo.InvariantCulture)).ToArray();
+        var heights = new double[ids.Length];
+        var vertical = deltaY?.Split(' ').Select(value => double.Parse(value, CultureInfo.InvariantCulture)).ToArray();
+        for (var i = 1; i < ids.Length; i++) positions[i] = positions[i - 1] + increments[i - 1];
+        if (vertical is not null)
+            for (var i = 1; i < ids.Length; i++) heights[i] = heights[i - 1] + vertical[i - 1];
+        for (var i = 0; i < ids.Length; i++)
+        {
+            var command = outlines.Read(ids[i]).ToPathCommands().First();
+            Assert.StartsWith("M " + (positions[i] + command.X * 6d / outlines.UnitsPerEm)
+                    .ToString("0.###", CultureInfo.InvariantCulture) + " " +
+                (6 + heights[i] - command.Y * 6d / outlines.UnitsPerEm)
+                    .ToString("0.###", CultureInfo.InvariantCulture),
+                paths[i].Attribute("d")!.Value);
+        }
+        using var html = new MemoryStream();
+        await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(input), html);
+        Assert.Equal(ids.Length, XDocument.Parse(Encoding.UTF8.GetString(html.ToArray())).Descendants()
+            .Count(node => node.Attribute("data-original-gid") is not null));
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(sourceText, parsed.GetPage(1).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var content = Encoding.ASCII.GetString(inspection.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+        Assert.Equal(1, content.Split(" Tj", StringSplitOptions.None).Length - 1);
+        if (Environment.GetEnvironmentVariable("R02_ARTIFACT_DIR") is { Length: > 0 } output)
+        {
+            Directory.CreateDirectory(output);
+            var stem = sourceText == "போ" ? "tamil-two-to-three" : $"synthetic-{sourceText.Length}-to-{ids.Length}";
+            await File.WriteAllBytesAsync(Path.Combine(output, stem + ".ofd"), input);
+            await File.WriteAllBytesAsync(Path.Combine(output, stem + ".svg"), svg.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(output, stem + ".pdf"), pdf.ToArray());
+        }
+    }
+
+    [Fact]
+    public async Task PositionedTamilStrokePaintsOnlyOriginalOutlinesAndRetainsOneSemanticSpan()
+    {
+        var sourceText = "போ";
+        var text = PositionedSequenceText(sourceText, "47 28 41", "4.32 4.668");
+        text.SourceXml = text.SourceXml!.Replace("<TextObject ID='2'",
+            "<TextObject Fill='false' Stroke='true' LineWidth='0.2' ID='2'")
+            .Replace("<CGTransform", "<StrokeColor Value='220 20 30'/><CGTransform");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans Tamil",
+            Data = Font("NotoSansTamil-Regular.ttf") });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var input = ofd.ToArray();
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg);
+        var paths = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants()
+            .Where(node => node.Attribute("data-original-gid") is not null).ToArray();
+        Assert.Equal(new[] { 47, 28, 41 }, paths
+            .Select(node => (int)node.Attribute("data-original-gid")!).ToArray());
+        Assert.All(paths, node => Assert.Equal("none", node.Attribute("fill")!.Value));
+        Assert.All(paths, node => Assert.NotEqual("none", node.Attribute("stroke")!.Value));
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(sourceText, parsed.GetPage(1).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var content = Encoding.ASCII.GetString(inspection.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+        var semantic = content.LastIndexOf(" Tj", StringComparison.Ordinal);
+        Assert.True(semantic > 0);
+        Assert.DoesNotContain(" c\n", content.Substring(semantic));
+        Assert.DoesNotContain(" m\n", content.Substring(semantic));
+        if (Environment.GetEnvironmentVariable("R02_ARTIFACT_DIR") is { Length: > 0 } output)
+        {
+            Directory.CreateDirectory(output);
+            await File.WriteAllBytesAsync(Path.Combine(output, "tamil-two-to-three-stroke.ofd"), input);
+            await File.WriteAllBytesAsync(Path.Combine(output, "tamil-two-to-three-stroke.svg"), svg.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(output, "tamil-two-to-three-stroke.pdf"), pdf.ToArray());
+        }
+    }
+
     [Fact]
     public async Task ThaiOneCharacterTwoOriginalGlyphOutlinesKeepOneLogicalCharacter()
     {
@@ -116,7 +242,6 @@ public sealed class ExplicitGlyphTransformTests
     [InlineData("59", null)]
     [InlineData("59 59", null)]
     [InlineData("59 99999", null)]
-    [InlineData("59 86", "3")]
     public async Task InvalidOrPositionedThaiSequenceRefusesBothExportsWithoutOutput(string glyphs, string? deltaX)
     {
         var package = new OfdDocumentPackage();
@@ -133,6 +258,34 @@ public sealed class ExplicitGlyphTransformTests
         using var svg = new MemoryStream();
         await Assert.ThrowsAsync<NotSupportedException>(() =>
             new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), svg));
+        Assert.Equal(0, svg.Length);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("4.32", null)]
+    [InlineData("4.32 4.668 1", null)]
+    [InlineData("4.32 4.668", "1")]
+    [InlineData("NaN 4.668", null)]
+    [InlineData("1e308 1e308", null)]
+    public async Task IncompletePositionedSequenceRefusesBothExportsWithoutOutput(
+        string? deltaX, string? deltaY)
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans Tamil",
+            Data = Font("NotoSansTamil-Regular.ttf") });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { PositionedSequenceText("போ", "47 28 41", deltaX, deltaY) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var input = ofd.ToArray();
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), pdf));
+        Assert.Equal(0, pdf.Length);
+        using var svg = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg));
         Assert.Equal(0, svg.Length);
     }
 

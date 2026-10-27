@@ -23,7 +23,7 @@
 | PNG/JPEG → OFD；一图一页 | `supported` 仅白名单输入；尺寸/像素预算与居中几何有约束，非通用图片格式导入 | 非白名单或超限拒绝；不默默转空白页 | [`ImageToOfdConverter`](../src/Ofdrw.Net.Converter.Pdf/ImageIO/ImageToOfdConverter.cs) |
 | UTF-8 纯文本 → OFD；公开 Flow | `supported` 首版严格 UTF-8、有限预算与分页；没有通用字体嵌入或复杂脚本 shaping 承诺 | 不合法输入、溢出或超限拒绝；CLI 原子提交。已有 Flow 度量不等于真实 face 测量 | [`PlainTextOfdConverter`](../src/Ofdrw.Net.Layout/PlainTextOfdConverter.cs)、[`PlainTextOfdTests`](../tests/Ofdrw.Net.Layout.Tests/PlainTextOfdTests.cs) |
 | 已有 OFD → 保存/编辑/合并；未知源对象 | `supported` 仅各 API 约定的对象/资源闭包；未知 XML 保留不等于可导出或可迁移 | 合并默认拒绝未能安全映射的 raw；仅显式 `SkipUnsupportedRawElements` 可跳过，必须读取结果诊断。签名改写失效另行报告 | [`转换约定`](conversion-contracts.md)、[`功能对照`](feature-parity.md) |
-| 外来 OFD 显式 `CGTransform` → PDF/SVG/HTML | 保存源 XML：`supported`。[R02 有界能力](validation/r02-cgtransform-profile.md)覆盖独立 BMP 字符的一对一原 GID、多个全局递增 `TextCode`、单个完整无 Delta 源片段到一个原 GID；单字符到两个原 GID 的 PR #60 子集已完成本地、包消费、PDF/SVG 页面及 Preview 证据。未经修改的外来文件与更广映射仍须分别验收 | 范围外明确拒绝；无自动文字代换/光栅 fallback。局部 SVG 外来页面核对不等于全部出口放行 | [`PDF`](../src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs)、[`SVG`](../src/Ofdrw.Net.Converter.Svg/Converters/OfdToSvgConverter.cs) |
+| 外来 OFD 显式 `CGTransform` → PDF/SVG/HTML | 保存源 XML：`supported`。[R02 有界能力](validation/r02-cgtransform-profile.md)覆盖独立 BMP 字符的一对一原 GID、多个全局递增 `TextCode`、单个完整无 Delta 源片段到一个原 GID；单字符到两个原 GID 的 PR #60 子集已完成本地、包消费、PDF/SVG 页面及 Preview 证据。完整源跨度到多个带显式字形槽定位的 GID 已有 Tamil 2:3 等源码候选和独立读者局部核对，包、Preview、CI 门禁待完成；未经修改的外来文件与更广映射仍须分别验收 | 范围外明确拒绝；无自动文字代换/光栅 fallback。局部 SVG 外来页面核对不等于全部出口放行 | [`PDF`](../src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs)、[`SVG`](../src/Ofdrw.Net.Converter.Svg/Converters/OfdToSvgConverter.cs) |
 | SES/SM2、GM/T 0099、归档 | 摘要引用完整性与可插拔 provider 已有；SES 测试容器和 password v2 是显式可选包；通用标准加密/生产 PKI/档案认证 `unsupported` 或 `unverified` | 自签、摘要匹配、外观可见均不自动升级为生产 `FullyValid` 或认证 | [`功能对照`](feature-parity.md)、[`能力路线`](capability-roadmap.md) |
 
 ### 本轮 23 项的交付及验收矩阵
@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | R00 契约 | 本页与旧文档状态对齐；核对基线 SHA、源码入口、历史视觉记录 | 记录流与 CLI 差异，不把旧验收当本次产物 |
 | R01 PageBlock/文字/颜色 | 普通页及模板中的嵌套 Path/Text/Image、DrawParam/颜色空间与 Stroke/HScale 有确定性样本；最终功能、包消费和逐出口视觉结果见 R01 证据 | 未建模图元/颜色须拒绝；签章内嵌 OFD 的已识别无效颜色不得被容错层静默漏绘 |
-| R02 CGTransform | [有界源码候选](validation/r02-cgtransform-profile.md)：原 GID、原文与定位已在合成样例核对；外来样本第 1 页经本地源 ID 规范化后作 SVG/独立阅读器比较。多个 `TextCode` 的全局递增位置按 PR #58 闭环，完整源片段多对一按 PR #59 闭环；单字符到两个原 GID 的有限子集按 PR #60 完成包消费、PDF/SVG PNG、Preview 选择及精确 head CI/审查 | 更广一对多、多对多、混合或带定位的多对一、局部位置重置、非 BMP、复杂字体和不满足 PDF 嵌入政策的输入继续拒绝；不把局部候选当整票完成 |
+| R02 CGTransform | [有界源码候选](validation/r02-cgtransform-profile.md)：原 GID、原文与定位已在合成样例核对；外来样本第 1 页经本地源 ID 规范化后作 SVG/独立阅读器比较。多个 `TextCode` 的全局递增位置按 PR #58 闭环，完整源片段多对一按 PR #59 闭环；单字符到两个原 GID 的有限子集按 PR #60 完成包消费、PDF/SVG PNG、Preview 选择及精确 head CI/审查；新的完整带定位 1:N/N:M 跨度候选已做源码聚焦、Tamil 2:3 独立读者与页面核对，后续门禁待完成 | 未定位的新 N:M、混合或带定位的多对一、局部位置重置、非 BMP、复杂字体和不满足 PDF 嵌入政策的输入继续拒绝；不把局部候选当整票完成 |
 | R03 命名区域 | `new`；持久区域名、页引用，重开后文字/图片回填及区域外几何 | 重名、丢失、溢出明确失败 |
 | R04 流式块/回调/Span | Flow/Graphics 前置 `limited`；图片/Canvas 测量分页、最终回调、下划线/字距/字重 | 异常不提交假成功，旧 Flow 兼容模式保留 |
 | R05 复杂 Merge/Mix | 常见图元 `limited`；共享/嵌套资源、Clip/Composite/批注 ID 与 ownership | 未闭合引用默认拒绝，跳过只可显式选择并报告 |
