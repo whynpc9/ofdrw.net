@@ -319,3 +319,55 @@ absent-delta wording and the independent reader. Mixed spans, local position
 resets, cross-`TextCode` clusters, supplementary positions, arbitrary shaping,
 and unmodified foreign-document interoperability still need separate evidence.
 Full R02 remains open.
+
+## Positioned source-span acceptance after PR #62
+
+[PR #62](https://github.com/whynpc9/ofdrw.net/pull/62) merged as
+`c2202376235e25ec5693b6a7916acd9171b5584d` from exact head
+`c767dfd6b94cd206166df6352c5a62c6568628bd`. The final Release run
+passed 4,301 tests across 11 assemblies, with 17 skips and no failures. The
+fresh `0.1.0-r02.20261027.11` candidate validated 12 packages and passed
+the broad package E2E. A separate PackageReference consumer used seven runtime
+DLLs whose bytes matched this candidate; it checked Tamil 2:3, synthetic 1:3
+and 2:4, the earlier Thai 1:2, and outputless refusals. All five package PDF
+and SVG single pages were rasterized at 144 dpi and visually inspected.
+The independent zc310/ofd reader extracted exactly U+0BAA U+0BCB from the
+same package Tamil OFD and its PDF, and its rendered page was inspected.
+
+The new PDF preflight rejects a source Unicode scalar when another scalar in
+the same face's Unicode cmap uses its semantic GID. Regression fixtures cover
+same-span and cross-object collisions in format 4 and 12 cmaps; PDF output is
+empty while SVG keeps the original-GID path route. This resolved the valid P2
+review finding. The current-head Codex review completed without further
+findings, its prior inline thread was replied to and resolved, and exact-head
+`CI complete` and SES passed. The quota-blocked Cursor status was neutral and
+was not counted as a successful review.
+
+The five exact package PDFs were also opened one page at a time in macOS
+Preview. The Tamil normal/stroke pages showed the mapped outlines without
+clipping or ordinary-Unicode repaint; the deliberately short-delta synthetic
+pages overlapped as expected. Preview copy returned exact Tamil `போ`, `A`,
+`AB`, and Thai U+0E33 for their respective pages. Its search UI showed both
+“Found on 1 page” and “Not found” with disabled navigation on all five, so
+search is **ambiguous**, not a clean pass. The opened windows were closed.
+Inputs, hashes, logs, page PNGs, Preview screenshots, and the separate visual
+receipts remain in ignored `artifacts/r02-cgtransform/next-shared-span-test/pr62-cmap/`.
+These results accept only the admitted positioned subset at this merge head.
+
+### Remaining R02 boundary
+
+| Input/semantics | Current result | Next implementation work | External evidence blocker |
+| --- | --- | --- | --- |
+| Complete positioned 1:N and N:M source span in one `TextCode` | Accepted only under the finite, complete-delta, static-`glyf` and embedding rules above | No further change needed for this subset | Any new shape or font class needs separate OFD readback, original-GID PDF/SVG paths, logical text, package and page evidence |
+| Positioned M:1 and mixed mapped/unmapped runs | Refused by the complete-span rules | Define bounded source-span composition and preflight without losing raw `TextCode`, IDs or unknown XML | Obtain a representative input and independent expected draw points/text before admission |
+| New N:M without explicit deltas | Refused; natural advance differs between the standard's absent-delta wording and the inspected independent reader | Resolve whether glyphs share the origin or advance, then model that rule explicitly | A source-backed case and independent visual/text oracle are needed to choose semantics |
+| Cross-`TextCode` clusters or local position resets | Refused; PR #58 admits only global BMP positions for separate complete runs | Specify indexing and run-origin behavior before extending the projection | The cited standard does not expressly settle sibling-run counting; obtain an unmodified representative OFD and expected output |
+| Supplementary source positions | Refused in this route | Specify whether `CodePosition`/`CodeCount` count UTF-16 units or Unicode scalars, then add bounded decoding and tests | The cited clause does not expressly settle supplementary counting; seek a source-backed interoperable case |
+| Optional R08 font-backend expansion: CFF, color or variable source faces | Refused or unverified in this `CGTransform` route; this is not a prerequisite for closing core R02 | Build a separate original-GID paint and PDF embedding policy only if an input requires that face class | Licensed matching fixtures and independent reader/output evidence are missing |
+| Unmodified foreign OFD across all outlets | Not established: the older Java sample required local layer-ID normalization for the SVG diagnostic and lacks PDF-admissible OS/2 data | Keep the current fail-closed resource and identity checks | A legally usable, unmodified input with matching font and a trustworthy independent visual/text oracle is needed |
+
+The positioned M:1, mixed, unpositioned N:M, run indexing, supplementary
+counting, and unmodified foreign-input rows are the remaining core R02
+questions. The R08 face-class row is optional expansion. The table is a work
+boundary, not a claim that every listed profile should be implemented. Full
+R02 remains open, and this merge does not unlock R22.
