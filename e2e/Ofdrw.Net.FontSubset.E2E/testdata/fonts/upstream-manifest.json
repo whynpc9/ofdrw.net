@@ -14,6 +14,14 @@
     "license": "OFL-1.1"
   },
   {
+    "file": "NotoSerif-Regular.ttf",
+    "url": "https://raw.githubusercontent.com/googlefonts/noto-fonts/bf20559450ec75aec7a646b208343540a4496262/phaseIII_only/hinted/ttf/NotoSerif/NotoSerif-Regular.ttf",
+    "bytes": 588856,
+    "sha256": "e3988751dcc51ecfb57bdce19579edfbb9fcf71e541c32528086cc4d3bda3cce",
+    "license": "OFL-1.1",
+    "licenseFile": "NotoSans-LICENSE"
+  },
+  {
     "file": "LXGWWenKai-Regular.ttf",
     "url": "https://raw.githubusercontent.com/lxgw/LxgwWenKai/8bd6319350fb3ae1904c1cb1a41595ab15d21140/fonts/TTF/LXGWWenKai-Regular.ttf",
     "bytes": 25575676,

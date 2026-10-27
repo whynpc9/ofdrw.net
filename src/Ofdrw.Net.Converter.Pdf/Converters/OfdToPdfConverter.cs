@@ -143,6 +143,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             fonts.SupplementaryBindings.Concat(signatureAppearances
                 .Where(appearance => appearance.Fonts is not null)
                 .SelectMany(appearance => appearance.Fonts!.SupplementaryBindings)));
+        PdfExplicitGlyphUnicodeMap.Install(document,
+            new[] { fonts }.Concat(signatureAppearances
+                    .Where(appearance => appearance.Fonts is not null)
+                    .Select(appearance => appearance.Fonts!))
+                .SelectMany(context => context.ExplicitUnicodeBindings));
         var selectedVerifiedFaces = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         foreach (var context in new[] { fonts }.Concat(signatureAppearances
                      .Where(appearance => appearance.Fonts is not null)
@@ -602,18 +607,22 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     private static void DrawStyledString(XGraphics graphics, string text, XFont font, XBrush brush,
         XPoint point, SixLabors.Fonts.Font? outlineFont, bool simulateBold, bool italic, XStringFormat? format = null, OpenTypeCmap? coverage = null,
         OfdTextPaint? paint = null, Func<string, string>? mapPdfText = null,
-        DocumentFontContext? fontContext = null, OfdFontResource? fontResource = null, string? fontFamily = null)
+        DocumentFontContext? fontContext = null, OfdFontResource? fontResource = null, string? fontFamily = null,
+        bool preserveExplicitSourceSpan = false)
     {
         // PDFsharp does not compose Latin mark sequences (notably dotted i).
         // Match the supported composite used for measurement when drawing one
         // grapheme. OFD source text stays unchanged; PDF text is canonically equivalent.
-        if (text.Length > 1 && text[0] <= 0xFF && char.IsLetter(text[0]))
+        // An explicit complete source span must reach its private cmap alias
+        // unchanged, including a Hangul filler absent from the ordinary cmap.
+        if (!preserveExplicitSourceSpan && text.Length > 1 && text[0] <= 0xFF && char.IsLetter(text[0]))
         {
             var elements = StringInfo.GetTextElementEnumerator(text);
             if (elements.MoveNext() && !elements.MoveNext())
                 text = FlowTextMetrics.NormalizeLatinForMeasurement(text);
         }
-        text = PdfTextControlPolicy.VisibleText(text, coverage);
+        if (preserveExplicitSourceSpan) PdfTextControlPolicy.Validate(text);
+        else text = PdfTextControlPolicy.VisibleText(text, coverage);
         if (text.Length == 0) return;
         var pdfText = mapPdfText is null ? text : mapPdfText(text);
         // PDFsharp Core 1.3.67 drops resolver style simulations when creating
@@ -726,10 +735,21 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         bool explicitGlyphs = false)
     {
         var paint = OfdTextPaint.Read(text);
+        var explicitRun = explicitGlyphs ? OfdExplicitGlyphRun.Read(text) : null;
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
             foreach (var run in text.Runs)
             {
+                if (explicitRun?.SingleGlyphSourceSpan is not null)
+                {
+                    var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
+                    DrawStyledString(graphics, run.Text, font, brush,
+                        new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
+                        outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
+                        mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
+                        fontFamily: fontFamily, preserveExplicitSourceSpan: true);
+                    continue;
+                }
                 // CGTransform maps each validated BMP character to one original
                 // GID. Grapheme segmentation can combine adjacent characters
                 // (for example Hangul Jamo) and lose a glyph-slot advance.

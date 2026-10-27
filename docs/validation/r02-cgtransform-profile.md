@@ -3,6 +3,8 @@
 This source candidate renders **one or more `TextCode` runs with a complete
 one-to-one `CGTransform` mapping** of independent, nonblank BMP characters to
 original glyph IDs in an embedded, static monochrome TrueType `glyf` face.
+The later source-span candidate below adds a separate complete, unpositioned
+many-to-one relationship. Its validation gates remain independent.
 Within this candidate, `CodePosition` is a zero-based index in the concatenated
 decoded runs; each run keeps its own starting point and deltas. `CodeCount` and
 `GlyphCount` default to one. Each mapped glyph
@@ -108,7 +110,18 @@ single-page PNG check only; macOS Preview, an independent reader for this
 sample, an unmodified foreign file across all outlets, full regression, and
 package-consumer verification have not been completed for this new source head.
 
-For the remaining 2:1, 1:2, and 2:3 relationships illustrated in section
+The later exact PR #58 gate completed those bounded checks: 11 Release test
+assemblies passed 4,267 tests with 17 skips and no failures; one fresh 12-package
+feed passed package validation and converter E2E; a private PackageReference
+consumer retained the source text and original GIDs. The same OFD's package
+PDF matched the independent reader's PDF at 144 dpi with zero changed pixels.
+That reader's SVG ignored the transform and was excluded as a visual oracle.
+The package PDF was fresh-opened and checked in macOS Preview on its one page.
+The Codex bot remained `running/null` after more than 15 minutes; the merge
+used an independently recorded coordinator review, not a clean bot receipt.
+PR #58 merged as `564e9cbe29100b904125d576cfc6ed74d91848ad`.
+
+At the PR #58 stage, the remaining 2:1, 1:2, and 2:3 relationships illustrated in section
 11.4, the standard's numbers are examples of GIDs in unspecified font files;
 they are not reusable outlines. The current projection stores one GID per BMP
 character, and the PDF path builds a one-Unicode-character-to-one-GID `cmap`
@@ -121,3 +134,47 @@ with those cardinalities and a redistributable matching embedded font has yet
 been identified. The existing Java sample has only equal `CodeCount` and
 `GlyphCount`, invalid zero layer IDs, and a font without OS/2; neither identity
 nor embedding checks are weakened to make it pass.
+
+## Complete source span to one original GID: next candidate
+
+On merged base `564e9cbe29100b904125d576cfc6ed74d91848ad`, the next
+candidate models a `CGTransform` source-character span and its original-GID
+sequence explicitly. Its admitted many-to-one subset has **one `TextCode`, one
+`CGTransform`, two to eight independent nonblank BMP characters, `CodePosition=0`,
+`CodeCount` equal to the complete decoded source span, `GlyphCount=1`, one
+nonzero original GID, and no `DeltaX`/`DeltaY`**. The unchanged one-to-one
+profile still admits multiple globally indexed `TextCode` runs. Mixed clusters,
+extra glyph slots, positioned many-to-one clusters, supplementary scalars, and
+unknown font formats still refuse. Neither source IDs nor the PDF OS/2
+embedding policy are relaxed.
+
+The OFD keeps its original source XML and logical Unicode sequence. SVG and
+HTML preview paint one original-GID outline path and expose the whole source
+span as accessibility text. PDF draws one visible CID selecting the original
+GID through a private cmap alias, then installs a `ToUnicode` mapping from
+that CID to the exact UTF-16 source sequence. Aliases with incompatible
+Unicode meanings for the same registered font identity refuse before output;
+the PDF stroke overlay also refuses until it has a source-GID paint route.
+
+The focused Release tests on the dirty implementation passed 20/20 using the
+pinned OFL Noto Sans `fl` (GID 1653) and `ffi` (GID 1654), and a second pinned
+OFL Noto Serif `fl` (GID 2135). They checked OFD readback, one SVG/HTML path,
+PDF visible CID, exact `ToUnicode`, extracted source text, and embedded
+original-GID outline. `fl` with a positional delta and a same-alias GID with
+two different source sequences refused with zero caller output. Generated PDF
+and SVG pages were rasterized and visually inspected for these small samples;
+the actual viewer and final package gates remain separate.
+
+The independent zc310/ofd v0.1.5 converter is useful only as a limited
+semantic comparison for the derived synthetic `fl` OFD: its PDF embeds a
+remapped Noto Sans ligature glyph and maps an invisible CID to `fl`, while its
+visible page paints separate `f` and `l` paths. Its SVG also paints separate
+characters. Neither output is an original-GID visual oracle for this
+many-to-one case. The exact input, font and decoded PDF-stream findings are
+recorded in ignored `artifacts/r02-cgtransform/next-cardinality/`.
+
+This is not full R02 acceptance. One-to-many, many-to-many, local position
+resets, non-BMP counting, general foreign OFD input, and complete reader
+interoperability remain open. Full Release regression, candidate package
+consumption, exact-head CI/review, and final macOS Preview are separately
+required for this new source head.
