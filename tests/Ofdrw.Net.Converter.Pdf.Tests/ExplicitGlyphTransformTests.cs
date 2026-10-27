@@ -107,6 +107,14 @@ public sealed class ExplicitGlyphTransformTests
     [Theory]
     [InlineData("fl", 1653, "NotoSans-Regular.ttf", "Noto Sans")]
     [InlineData("ffi", 1654, "NotoSans-Regular.ttf", "Noto Sans")]
+    [InlineData("f\u115Fl", 1653, "NotoSans-Regular.ttf", "Noto Sans")]
+    [InlineData("f\u1160l", 1653, "NotoSans-Regular.ttf", "Noto Sans")]
+    [InlineData("f\u3164l", 1653, "NotoSans-Regular.ttf", "Noto Sans")]
+    [InlineData("f\uFFA0l", 1653, "NotoSans-Regular.ttf", "Noto Sans")]
+    [InlineData("\u115F\u115F", 1653, "NotoSans-Regular.ttf", "Noto Sans")]
+    [InlineData("\u1160\u1160", 1653, "NotoSans-Regular.ttf", "Noto Sans")]
+    [InlineData("\u3164\u3164", 1653, "NotoSans-Regular.ttf", "Noto Sans")]
+    [InlineData("\uFFA0\uFFA0", 1653, "NotoSans-Regular.ttf", "Noto Sans")]
     [InlineData("fl", 2135, "NotoSerif-Regular.ttf", "Noto Serif")]
     public async Task SourceSpanUsesOneOriginalGidAndExtractsAllSourceCharacters(
         string sourceSpan, int ligatureGid, string fontFile, string fontName)
