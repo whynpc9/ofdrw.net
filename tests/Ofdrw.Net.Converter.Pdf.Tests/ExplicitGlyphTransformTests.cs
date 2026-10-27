@@ -28,6 +28,20 @@ public sealed class ExplicitGlyphTransformTests
             "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts", fileName));
     }
 
+    private static byte[] Format4OnlyCmap(System.Collections.Generic.IReadOnlyDictionary<int, int> mapping)
+    {
+        var built = OpenTypeCmap.Build(mapping);
+        const int sourceOffset = 28; // Build emits three records before its first format-4 table.
+        var length = (built[sourceOffset + 2] << 8) | built[sourceOffset + 3];
+        var table = new byte[12 + length];
+        table[3] = 1; // one encoding record
+        table[5] = 3; // Windows
+        table[7] = 1; // Unicode BMP
+        table[11] = 12; // first subtable offset
+        Buffer.BlockCopy(built, sourceOffset, table, 12, length);
+        return table;
+    }
+
     private static OfdTextElement Text(int firstGid, int secondGid, string? deltas = "8", string logicalText = "AB")
     {
         var deltaAttribute = deltas is null ? "" : $" DeltaX='{deltas}'";
@@ -295,7 +309,7 @@ public sealed class ExplicitGlyphTransformTests
         var face = new OpenTypeFace(Font());
         var shared = new OpenTypeCmap(face).Glyph('A');
         Assert.True(shared > 0);
-        face.Tables["cmap"] = OpenTypeCmap.Build(new System.Collections.Generic.Dictionary<int, int>
+        face.Tables["cmap"] = Format4OnlyCmap(new System.Collections.Generic.Dictionary<int, int>
         {
             ['A'] = shared, ['B'] = shared
         });

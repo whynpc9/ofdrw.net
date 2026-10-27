@@ -177,13 +177,35 @@ internal sealed class OpenTypeCmap
             }
             return false;
         }
-        // A format-4 Unicode cmap has at most 65,536 scalar positions. Keep
-        // this bounded scan on the same font-parse budget as other cmap work.
-        for (var scalar = 0; scalar <= 0xFFFF; scalar++)
+        // A delta segment has at most one scalar for this GID. Only explicit
+        // glyph-array segments need a per-position scan; their disjoint spans
+        // contain at most 65,536 positions in total.
+        var count4 = U16(table, format4 + 6) / 2;
+        for (var index = 0; index < count4; index++)
         {
             budget.Spend(1);
-            if (scalar != sourceScalar && !char.IsSurrogate((char)scalar) && GlyphCore(scalar) == gid)
-                return true;
+            var start = U16(table, format4 + 16 + count4 * 2 + index * 2);
+            var end = U16(table, format4 + 14 + index * 2);
+            var delta = U16(table, format4 + 16 + count4 * 4 + index * 2);
+            var address = format4 + 16 + count4 * 6 + index * 2;
+            var range = U16(table, address);
+            if (range == 0)
+            {
+                var scalar = (gid - delta) & 0xFFFF;
+                if (scalar >= start && scalar <= end && scalar != sourceScalar &&
+                    !char.IsSurrogate((char)scalar)) return true;
+                continue;
+            }
+            for (var scalar = start; scalar <= end; scalar++)
+            {
+                budget.Spend(1);
+                var target = address + range + (scalar - start) * 2;
+                if (target + 2 > format4 + U16(table, format4 + 2))
+                    throw new InvalidDataException("cmap glyph reference escapes subtable.");
+                var raw = U16(table, target);
+                if (raw != 0 && ((raw + delta) & 0xFFFF) == gid && scalar != sourceScalar &&
+                    !char.IsSurrogate((char)scalar)) return true;
+            }
         }
         return false;
     }
