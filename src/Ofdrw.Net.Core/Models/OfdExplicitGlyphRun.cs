@@ -39,11 +39,11 @@ internal sealed class OfdExplicitGlyphRun
     internal string LogicalText => string.Concat(Runs.Select(run => run.Text));
     internal IReadOnlyList<int> GlyphIds { get; }
     internal IReadOnlyList<OfdExplicitGlyphSpan> Spans { get; }
-    internal string? SingleGlyphSourceSpan => Spans.Count == 1 &&
-        Spans[0].CodeCount > 1 && Spans[0].GlyphCount == 1 ? Spans[0].LogicalText : null;
-    internal string? PathGlyphSourceSpan => Spans.Count == 1 &&
-        Spans[0].GlyphCount > 1 && Spans[0].CodeCount != Spans[0].GlyphCount
-            ? Spans[0].LogicalText : null;
+    internal string? SingleGlyphSourceSpan => GlyphIds.Count == 1 && Spans.Count == 1 &&
+        Spans[0].CodePosition == 0 && Spans[0].CodeCount == LogicalText.Length &&
+        Spans[0].GlyphCount == 1 && LogicalText.Length > 1 ? LogicalText : null;
+    internal string? PathGlyphSourceSpan => Spans.Count == 1 && GlyphIds.Count > 1 &&
+        GlyphIds.Count != LogicalText.Length ? LogicalText : null;
 
     internal IReadOnlyList<(double X, double Y)> PathGlyphOrigins(CancellationToken token)
     {
@@ -146,6 +146,71 @@ internal sealed class OfdExplicitGlyphRun
         }
         if (logical.Any(IsCombiningMark))
             throw new NotSupportedException("CGTransform glyph rendering requires independent, nonblank BMP characters.");
+        // A single interior M:1 span composes with direct-cmap ordinary glyphs
+        // only when every drawn glyph has an explicit origin. Source-character
+        // deltas have a different cardinality and remain outside this profile.
+        if (logical.Length is >= 4 and <= 8 && codes.Length == 1 && transforms.Length == 1 &&
+            !string.IsNullOrWhiteSpace(text.Runs[0].DeltaX))
+        {
+            var transform = transforms[0];
+            var position = Number(transform.Attribute("CodePosition"), -1);
+            var codeCount = Number(transform.Attribute("CodeCount"), 1);
+            var glyphCount = Number(transform.Attribute("GlyphCount"), 1);
+            if (position > 0 && codeCount is >= 2 and <= 3 &&
+                position < logical.Length - codeCount && glyphCount == 1 &&
+                transform.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
+                    attribute.Name.LocalName is "CodePosition" or "CodeCount" or "GlyphCount") &&
+                transform.Elements().Count() == 1 &&
+                transform.Element(root.Name.Namespace + "Glyphs") is { } glyphs &&
+                !glyphs.HasElements &&
+                glyphs.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
+                glyphs.Nodes().All(node => node is XText) &&
+                glyphs.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries) is { Length: 1 } tokens &&
+                int.TryParse(tokens[0], NumberStyles.None, CultureInfo.InvariantCulture, out var mappedGid) &&
+                mappedGid is > 0 and <= ushort.MaxValue)
+            {
+                var drawnCount = logical.Length - codeCount + 1;
+                CountDeltas(text.Runs[0].DeltaX, drawnCount - 1);
+                CountDeltas(text.Runs[0].DeltaY, drawnCount - 1);
+                if (resource?.Data is not { Length: > 0 })
+                    throw new NotSupportedException("Mixed CGTransform requires an explicitly embedded font.");
+                parseBudget ??= new FontParseBudget();
+                parseBudget.Spend(0);
+                if (cmapCache is null || !cmapCache.TryGetValue(resource, out var cmap))
+                {
+                    parseBudget.Spend(resource.Data.LongLength);
+                    var face = new OpenTypeFace(OpenTypeCollection.SelectFace(resource.Data,
+                        resource.CollectionFaceIndex));
+                    cmap = new OpenTypeCmap(face, parseBudget);
+                    cmapCache?.Add(resource, cmap);
+                }
+                if (cmap.IsSymbol)
+                    throw new NotSupportedException("Mixed CGTransform requires a direct Unicode cmap.");
+                var ids = new int[drawnCount];
+                var seen = new HashSet<int> { mappedGid };
+                for (int sourceIndex = 0, slot = 0; sourceIndex < logical.Length; sourceIndex++)
+                {
+                    parseBudget.Spend(0);
+                    if (sourceIndex == position)
+                    {
+                        ids[slot++] = mappedGid;
+                        sourceIndex += codeCount - 1;
+                        continue;
+                    }
+                    var gid = cmap.DirectGlyph(logical[sourceIndex]);
+                    if (gid <= 0 || gid > ushort.MaxValue)
+                        throw new NotSupportedException("Mixed CGTransform ordinary character has no direct embedded-font glyph.");
+                    if (!seen.Add(gid))
+                        throw new NotSupportedException("Mixed CGTransform has ambiguous original-GID semantics.");
+                    ids[slot++] = gid;
+                }
+                var positioned = new OfdExplicitGlyphRun(text.Runs, ids,
+                    [new OfdExplicitGlyphSpan(position, codeCount, position, 1,
+                        logical.Substring(position, codeCount))]);
+                _ = positioned.PathGlyphOrigins(CancellationToken.None);
+                return positioned;
+            }
+        }
         // A whole, unpositioned source span can map to one original GID. A
         // private PDF code is then given the exact source span in ToUnicode.
         // Mixed clusters and per-glyph deltas need a separate placement model.
