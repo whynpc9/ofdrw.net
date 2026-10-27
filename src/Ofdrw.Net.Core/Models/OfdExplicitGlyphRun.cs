@@ -40,6 +40,8 @@ internal sealed class OfdExplicitGlyphRun
     internal IReadOnlyList<OfdExplicitGlyphSpan> Spans { get; }
     internal string? SingleGlyphSourceSpan => Spans.Count == 1 &&
         Spans[0].CodeCount > 1 && Spans[0].GlyphCount == 1 ? Spans[0].LogicalText : null;
+    internal string? TwoGlyphSourceCharacter => Spans.Count == 1 &&
+        Spans[0].CodeCount == 1 && Spans[0].GlyphCount == 2 ? Spans[0].LogicalText : null;
 
     internal static OfdExplicitGlyphRun? Read(OfdTextElement text)
     {
@@ -100,6 +102,31 @@ internal sealed class OfdExplicitGlyphRun
                 gid is > 0 and <= ushort.MaxValue)
                 return new OfdExplicitGlyphRun(text.Runs, [gid],
                     [new OfdExplicitGlyphSpan(0, logical.Length, 0, 1, logical)]);
+        }
+        // One source character and two original glyph slots can share one
+        // origin. Require a complete unpositioned TextCode so no adjacent
+        // cluster or character/glyph delta interpretation is inferred.
+        if (logical.Length == 1 && codes.Length == 1 && transforms.Length == 1 &&
+            string.IsNullOrWhiteSpace(text.Runs[0].DeltaX) &&
+            string.IsNullOrWhiteSpace(text.Runs[0].DeltaY))
+        {
+            var transform = transforms[0];
+            if (transform.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
+                    attribute.Name.LocalName is "CodePosition" or "CodeCount" or "GlyphCount") &&
+                Number(transform.Attribute("CodePosition"), -1) == 0 &&
+                Number(transform.Attribute("CodeCount"), 1) == 1 &&
+                Number(transform.Attribute("GlyphCount"), 1) == 2 &&
+                transform.Elements().Count() == 1 &&
+                transform.Element(root.Name.Namespace + "Glyphs") is { } glyphs &&
+                !glyphs.HasElements &&
+                glyphs.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
+                glyphs.Nodes().All(node => node is XText) &&
+                glyphs.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries) is { Length: 2 } tokens &&
+                int.TryParse(tokens[0], NumberStyles.None, CultureInfo.InvariantCulture, out var first) &&
+                int.TryParse(tokens[1], NumberStyles.None, CultureInfo.InvariantCulture, out var second) &&
+                first is > 0 and <= ushort.MaxValue && second is > 0 and <= ushort.MaxValue && first != second)
+                return new OfdExplicitGlyphRun(text.Runs, [first, second],
+                    [new OfdExplicitGlyphSpan(0, 1, 0, 2, logical)]);
         }
         var glyphIds = new int[logical.Length];
         var assigned = new bool[logical.Length];

@@ -71,6 +71,10 @@ It pins the managed package and macOS, Win32 and Linux native asset packages
 to the same version. The native packages carry `THIRD-PARTY-NOTICES.txt`,
 including the HarfBuzz Old MIT notice. This does not grant font embedding rights.
 
+The R02 one-to-many development fixture adds unmodified Noto Sans Thai under
+the same OFL 1.1, with its pinned source and hash in that manifest and the
+accompanying `NotoSansThai-OFL.txt`; it is not packed in production NuGet files.
+
 The compiled font subset bidi profile derives factual scalar ranges from the
 Unicode 17.0.0 Character Database (DerivedBidiClass.txt), licensed under
 Unicode-3.0. The source URL/SHA-256 are recorded in UnicodeFontSubsetProfile.cs;

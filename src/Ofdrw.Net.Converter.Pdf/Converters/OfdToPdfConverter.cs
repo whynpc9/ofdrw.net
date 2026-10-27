@@ -740,6 +740,21 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         {
             foreach (var run in text.Runs)
             {
+                if (explicitRun?.TwoGlyphSourceCharacter is { Length: 1 } sourceCharacter)
+                {
+                    var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
+                    DrawTwoGlyphOutlines(graphics, text, explicitRun, fontResource, anchor, paint);
+                    DrawStyledString(graphics, sourceCharacter, font,
+                        new XSolidBrush(XColor.FromArgb(0, 0, 0, 0)),
+                        new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
+                        // This glyph supplies semantics only. Passing the
+                        // source paint/outline font would redraw its ordinary
+                        // Unicode outline when Stroke is enabled.
+                        null, false, false, coverage: coverage,
+                        mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
+                        fontFamily: fontFamily, preserveExplicitSourceSpan: true);
+                    continue;
+                }
                 if (explicitRun?.SingleGlyphSourceSpan is not null)
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
@@ -799,6 +814,58 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 }
             }
         });
+    }
+
+    private static void DrawTwoGlyphOutlines(XGraphics graphics, OfdTextElement text,
+        OfdExplicitGlyphRun run, OfdFontResource? resource, (double X, double Y) anchor,
+        OfdTextPaint paint)
+    {
+        var font = OfdExplicitGlyphFont.Read(resource, text, run, embedFont: false);
+        foreach (var outline in font.Outlines)
+        {
+            // An absent DeltaX/DeltaY places both original GIDs at the same
+            // OFD origin, independently of the font's natural advance.
+            var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
+            var path = new XGraphicsPath { FillMode = XFillMode.Winding };
+            double x = 0, y = 0;
+            foreach (var command in outline.ToPathCommands())
+            {
+                var nextX = MillimetersToPoints(anchor.X / paint.HScale + command.X * scale);
+                var nextY = MillimetersToPoints(anchor.Y - command.Y * scale);
+                switch (command.Verb)
+                {
+                    case TrueTypePathVerb.Move:
+                        path.StartFigure(); x = nextX; y = nextY;
+                        break;
+                    case TrueTypePathVerb.Line:
+                        path.AddLine(x, y, nextX, nextY); x = nextX; y = nextY;
+                        break;
+                    case TrueTypePathVerb.Quadratic:
+                        var controlX = MillimetersToPoints(anchor.X / paint.HScale + command.ControlX * scale);
+                        var controlY = MillimetersToPoints(anchor.Y - command.ControlY * scale);
+                        var cubic1X = x + (controlX - x) * 2d / 3d;
+                        var cubic1Y = y + (controlY - y) * 2d / 3d;
+                        var cubic2X = nextX + (controlX - nextX) * 2d / 3d;
+                        var cubic2Y = nextY + (controlY - nextY) * 2d / 3d;
+                        path.AddBezier(x, y, cubic1X, cubic1Y, cubic2X, cubic2Y, nextX, nextY);
+                        x = nextX; y = nextY;
+                        break;
+                    case TrueTypePathVerb.Close:
+                        path.CloseFigure();
+                        break;
+                }
+            }
+            XBrush? fill = paint.Fill && paint.FillColor.Alpha > 0 ?
+                new XSolidBrush(XColor.FromArgb(paint.FillColor.Alpha,
+                    paint.FillColor.Red, paint.FillColor.Green, paint.FillColor.Blue)) : null;
+            XPen? stroke = paint.Stroke && paint.StrokeColor.Alpha > 0 ?
+                new XPen(XColor.FromArgb(paint.StrokeColor.Alpha,
+                    paint.StrokeColor.Red, paint.StrokeColor.Green, paint.StrokeColor.Blue),
+                    MillimetersToPoints(paint.LineWidthMillimeters)) : null;
+            if (fill is not null && stroke is not null) graphics.DrawPath(stroke, fill, path);
+            else if (fill is not null) graphics.DrawPath(fill, path);
+            else if (stroke is not null) graphics.DrawPath(stroke, path);
+        }
     }
 
     private static void DrawTextWithMatrix(XGraphics graphics, OfdTextElement text,

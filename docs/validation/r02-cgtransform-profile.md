@@ -178,3 +178,54 @@ resets, non-BMP counting, general foreign OFD input, and complete reader
 interoperability remain open. Full Release regression, candidate package
 consumption, exact-head CI/review, and final macOS Preview are separately
 required for this new source head.
+
+## One source character to two original GIDs: bounded next candidate
+
+After PR #59 merged as `4a6a7a4e0eca1b921f17f51d7bcd31c4ae1f81e1`,
+this candidate admits one independent, nonblank BMP character in one
+unpositioned `TextCode`, with one complete `CGTransform` at `CodePosition=0`,
+`CodeCount=1`, `GlyphCount=2`, and two distinct nonempty original GIDs. The
+embedded static TrueType must permit PDF embedding and cover the source
+character for the PDF semantic layer. The admission rule is based on the OFD
+mapping and font properties; it does not select Thai or fixed GID numbers.
+Additional characters/clusters, sibling `TextCode` nodes, positioning deltas,
+and unsupported font formats still refuse before output.
+
+The primary fixture is an unmodified SIL OFL Noto Sans Thai static face pinned
+by `e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/upstream-manifest.json`:
+U+0E33 maps in its OFD source to original GIDs 59 and 86. Independent
+HarfBuzz shaping produces that pair at a shared origin; the font's direct
+Unicode cmap for U+0E33 instead points at GID 90. A second Noto Sans synthetic
+fixture maps `A` to `B` and `C` original outlines; its first GID has a nonzero
+natural advance, yet both exported outlines use the OFD origin. The second
+case checks that glyph positioning does not silently follow font advances.
+
+SVG/HTML paint two source-GID paths under one logical label. PDF paints those
+same source outlines as paths, plus one clipped, invisible Unicode text glyph
+from the embedded font for selection/search. This leaves exactly one extracted
+source character without a visible private-use fallback. A trial with two
+visible text CIDs and `/ActualText` was rejected because PdfPig extracted an
+additional U+E001 from the second CID. The path-plus-semantic route passed
+focused Release 37/37 `ExplicitGlyphTransformTests`; both PdfPig and Poppler
+`pdftotext` extract only U+0E33 for the Thai page and only `A` for the
+nonzero-advance page. Their PDF and SVG pages rendered at 144 dpi and were
+visually inspected; pixel differences were limited to roughly 10 and 21
+antialias-edge pixels, respectively. The exact focused outputs are in ignored
+`artifacts/r02-cgtransform/next-glyph-sequence/focused/`.
+
+A stroke follow-up removed the source paint and outline renderer from the
+invisible PDF semantic glyph; otherwise `Stroke=true` could draw the ordinary
+Unicode glyph over the two original-GID outlines. Focused `Fill+Stroke` and
+stroke-only cases extract one U+0E33, and each PDF/SVG 144 dpi page has only
+small edge-antialias differences. The independent zc310/ofd reader extracts
+the same character and paints the same shape for the fill fixture; its PDF
+matches ours pixel-for-pixel at 144 dpi. Its two stroke PDFs differ only by
+roughly 32 and 39 antialias-edge pixels from ours. A corpus-cost test now
+probes U+0E33 for this Thai-only font instead of assuming all fixture fonts
+cover Latin `A`.
+
+This remains a local candidate. Independent OFD reader comparison, full
+Release regression, package consumer evidence, current-head CI/review, and
+fresh macOS Preview selection/visual inspection are separate gates. The
+broader 1:N, many-to-many, mixed, positioned and foreign-file cases remain
+outside this profile; one bounded 1:2 case does not close full R02.
