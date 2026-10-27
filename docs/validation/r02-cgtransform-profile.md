@@ -28,6 +28,10 @@ PDF positioning for this profile uses the validated character/GID slots. Two
 characters that form one Unicode grapheme, such as a Hangul Jamo pair, retain
 their separate original GIDs and the supplied inter-slot `DeltaX`/`DeltaY`.
 Ordinary text without `CGTransform` keeps its grapheme-based positioning.
+Compatible character-to-GID mappings using the same source face and style are
+gathered across selected pages before PDF drawing and share one font alias.
+Conflicting mappings use separate aliases. Selected aliases pass through the
+complete-face FontFile2 restoration path, preserving nested composite outlines.
 
 ## Candidate evidence on base `889a31c61ca9ba5d07f19456b362a419e10d8434`
 

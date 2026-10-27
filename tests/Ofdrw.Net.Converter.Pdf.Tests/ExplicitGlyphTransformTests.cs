@@ -69,6 +69,94 @@ public sealed class ExplicitGlyphTransformTests
     }
 
     [Fact]
+    public async Task CompositeOriginalGidKeepsItsCompletePdfOutline()
+    {
+        const int compositeGid = 171;
+        var bytes = Font();
+        var originalOutline = new TrueTypeGlyphOutlines(bytes).Read(compositeGid).ToPathCommands()
+            .Select(command => (command.Verb, command.X, command.Y, command.ControlX, command.ControlY)).ToArray();
+        Assert.NotEmpty(originalOutline);
+        var a = new OpenTypeCmap(new OpenTypeFace(bytes)).Glyph('A');
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Text(compositeGid, a) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("AB", parsed.GetPage(1).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var embedded = Assert.Single(inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.ContainsKey("/FontFile2")))
+            .Elements.GetDictionary("/FontFile2").Stream.UnfilteredValue;
+        var embeddedOutline = new TrueTypeGlyphOutlines(embedded).Read(compositeGid).ToPathCommands()
+            .Select(command => (command.Verb, command.X, command.Y, command.ControlX, command.ControlY)).ToArray();
+        Assert.Equal(originalOutline, embeddedOutline);
+    }
+
+    [Fact]
+    public async Task CompatibleExplicitMappingsShareOnePdfFontAcrossPages()
+    {
+        var bytes = Font();
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = bytes });
+        var second = Text(cmap.Glyph('D'), cmap.Glyph('C'), logicalText: "CD");
+        second.SourceXml = second.SourceXml!.Replace("ID='2'", "ID='3'");
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Text(cmap.Glyph('B'), cmap.Glyph('A')) } });
+        package.Pages.Add(new OfdPage { Index = 1, WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { second } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("AB", parsed.GetPage(1).Text);
+        Assert.Equal("CD", parsed.GetPage(2).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        Assert.Single(inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.ContainsKey("/FontFile2")));
+    }
+
+    [Fact]
+    public async Task ConflictingExplicitMappingsUseSeparatePdfAliases()
+    {
+        var bytes = Font();
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var a = cmap.Glyph('A'); var b = cmap.Glyph('B');
+        var second = Text(a, b);
+        second.SourceXml = second.SourceXml!.Replace("ID='2'", "ID='3'");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Text(b, a) } });
+        package.Pages.Add(new OfdPage { Index = 1, WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { second } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("AB", parsed.GetPage(1).Text);
+        Assert.Equal("AB", parsed.GetPage(2).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var mappings = inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.ContainsKey("/FontFile2"))
+            .Select(item => new OpenTypeCmap(new OpenTypeFace(
+                item.Elements.GetDictionary("/FontFile2").Stream.UnfilteredValue)))
+            .Select(face => (face.Glyph('A'), face.Glyph('B'))).ToArray();
+        Assert.Equal(2, mappings.Length);
+        Assert.Contains((b, a), mappings);
+        Assert.Contains((a, b), mappings);
+    }
+
+    [Fact]
     public async Task OneToOneOriginalGidsPaintDifferentOutlinesWhilePdfKeepsLogicalText()
     {
         var bytes = Font();

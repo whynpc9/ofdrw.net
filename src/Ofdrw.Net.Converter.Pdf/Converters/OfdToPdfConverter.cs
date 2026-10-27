@@ -97,6 +97,23 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 annotationMaterial, parseBudget, cancellationToken)
             .ConfigureAwait(false);
 
+        // PDFsharp font registrations are immutable and process-wide. Gather
+        // compatible original-GID mappings before drawing the first page so
+        // one embedded face can serve distinct TextObjects using that face.
+        var aliasMaterial = new OfdModelMaterialization(new OfdModelLimits());
+        fonts.PrepareExplicitGlyphAliases(ExplicitGlyphTexts(
+            selected.Select(index => orderedPages[index]), aliasMaterial, cancellationToken));
+        var preparedAppearanceFonts = new HashSet<DocumentFontContext>();
+        foreach (var appearance in signatureAppearances)
+        {
+            if (appearance.OfdPage is null || appearance.Fonts is null ||
+                !selected.Any(index => string.Equals(orderedPages[index].Id, appearance.PageId,
+                    StringComparison.OrdinalIgnoreCase)) ||
+                !preparedAppearanceFonts.Add(appearance.Fonts)) continue;
+            appearance.Fonts.PrepareExplicitGlyphAliases(ExplicitGlyphTexts(
+                new[] { appearance.OfdPage }, aliasMaterial, cancellationToken));
+        }
+
         using var document = new PdfDocument();
         foreach (var selectedIndex in selected)
         {
@@ -492,6 +509,24 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             throw new InvalidDataException($"OFD page {page.Index + 1} could not be rendered without content loss.", exception);
+        }
+    }
+
+    private static IEnumerable<OfdTextElement> ExplicitGlyphTexts(IEnumerable<OfdPage> pages,
+        OfdModelMaterialization material, CancellationToken cancellationToken)
+    {
+        foreach (var page in pages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var elements = OfdCompositeProjection.Expand(
+                EnumerateRenderableElements(page, material, cancellationToken), material, cancellationToken);
+            foreach (var element in elements)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (element is OfdTextElement { SourceXml: { } source } text &&
+                    source.Contains("CGTransform", StringComparison.Ordinal))
+                    yield return OfdTextRenderProjection.Create(text, material, cancellationToken);
+            }
         }
     }
 
