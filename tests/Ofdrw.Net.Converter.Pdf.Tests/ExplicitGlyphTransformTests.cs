@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -137,7 +138,7 @@ public sealed class ExplicitGlyphTransformTests
     }
 
     [Fact]
-    public void GidSourceDoesNotNeedAnOriginalUnicodeCmap()
+    public async Task GidSourceDoesNotNeedAnOriginalUnicodeCmap()
     {
         var face = new OpenTypeFace(Font());
         var originalCmap = new OpenTypeCmap(face);
@@ -154,6 +155,40 @@ public sealed class ExplicitGlyphTransformTests
         Assert.Equal(a, mapped.Glyph('B'));
         Assert.Throws<NotSupportedException>(() => context.Resolve(new OfdTextElement
             { FontResourceId = "10", Text = "AB" }, out _));
+
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = Font() });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Text(b, a) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        // The writer's ordinary embedding plan requires a cmap. Replace the
+        // persisted font bytes to model an external cmap-free GID source.
+        using var foreign = new MemoryStream();
+        using (var sourceZip = new ZipArchive(new MemoryStream(ofd.ToArray()), ZipArchiveMode.Read))
+        using (var targetZip = new ZipArchive(foreign, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var replaced = 0;
+            foreach (var sourceEntry in sourceZip.Entries)
+            {
+                var targetEntry = targetZip.CreateEntry(sourceEntry.FullName, CompressionLevel.Optimal);
+                using var output = targetEntry.Open();
+                if (sourceEntry.FullName.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase))
+                { output.Write(resource.Data); replaced++; }
+                else
+                { using var input = sourceEntry.Open(); input.CopyTo(output); }
+            }
+            Assert.Equal(1, replaced);
+        }
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(foreign.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("AB", parsed.GetPage(1).Text);
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(foreign.ToArray()), svg);
+        var paths = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()))
+            .Descendants().Where(node => node.Name.LocalName == "path").ToArray();
+        Assert.Equal(new[] { b, a }, paths.Select(path => (int)path.Attribute("data-original-gid")!).ToArray());
     }
 
     [Fact]

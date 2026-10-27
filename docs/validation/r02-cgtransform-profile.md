@@ -24,7 +24,8 @@ synthetic emphasis remain outside this profile.
   source swaps the GIDs for logical `AB`; PDF extraction remains `AB`, its
   embedded outlines match the original GIDs, and SVG paths name and draw the
   original GIDs. Negative tests cover missing and ambiguous GIDs, incomplete
-  spans/deltas, and output-empty refusal. A cmap-free face still maps by GID.
+  spans/deltas, and output-empty refusal. An externally shaped cmap-free OFD
+  also converts to PDF and SVG by original GID.
 - Existing PDF/PageBlock focused tests: 6/6. R08 original-GID outline tests:
   10/10. These runs precede the full regression and package-consumer gates.
 - Synthetic source `artifacts/r02-cgtransform/first-candidate/explicit-gid-synthetic.ofd`
@@ -44,11 +45,15 @@ synthetic emphasis remain outside this profile.
   c42ac5a091fc1cff29d81eb9c2cc03cb281e5ac985349e0d21cc49254901df3d`).
   Our page-one SVG (`SHA-256
   c9f731f5c56663628510a4b1dfd0c7d76e2df1a66a93840ce26c71e2c9e17de4`)
-  and zc310/ofd v0.1.5's PDF from the **unaltered** original (`SHA-256
-  d8297fc72689d21c6d1eb4f9840f399c93b339ac2094336f4d4e630c5094a382`)
+  and zc310/ofd v0.1.5's PDF from the **same normalized input** (`SHA-256
+  2188c76924aae0c40114807f49f84e56125b27c13b34a71a683e2fcafe8e8e1e`)
   were rasterized and visually compared on page one. Both show the same 22
-  Chinese lines without apparent missing glyphs or clipping. This comparison
-  covers SVG only; the external sample's embedded font has no OS/2 table, so
+  Chinese lines without apparent missing glyphs or clipping. The independent
+  reader's PDF from the unaltered original (`SHA-256
+  d8297fc72689d21c6d1eb4f9840f399c93b339ac2094336f4d4e630c5094a382`)
+  has identical page-one pixels (144 dpi PNG, absolute-error count zero) and
+  identical extracted text to its normalized-input PDF. This comparison covers
+  our SVG only; the external sample's embedded font has no OS/2 table, so
   this PDF profile does not admit it. The sample and font remain ignored because
   redistribution rights for the font have not been established.
 

@@ -51,9 +51,12 @@ internal sealed class DocumentFontContext
             {
                 var data = (byte[])OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex).Clone();
                 StorePhysical(font, data);
+                // Structural corruption must still reject the document at
+                // construction. Only a valid glyf face lacking a cmap may
+                // wait for the per-element explicit-GID route.
+                var parsed = new OpenTypeFace(data);
                 try
                 {
-                    var parsed = new OpenTypeFace(data);
                     if (parsed.Version == 0x4F54544F &&
                         (parsed.Tables.ContainsKey("CFF ") || parsed.Tables.ContainsKey("CFF2")))
                     {
@@ -67,8 +70,9 @@ internal sealed class DocumentFontContext
                     else _families[font] = PdfFontRegistry.RegisterFontFace(data, font.Bold, font.Italic);
                 }
                 catch (NotSupportedException exception) { _unsupportedCoverage[font] = exception; }
-                catch (System.IO.InvalidDataException exception)
+                catch (System.IO.InvalidDataException exception) when (!parsed.Tables.ContainsKey("cmap"))
                 {
+                    _ = new TrueTypeGlyphOutlines(data);
                     // A CGTransform source may supply a valid original-GID glyf
                     // face without any Unicode cmap. Ordinary Unicode text must
                     // still fail closed if it selects the same resource.
