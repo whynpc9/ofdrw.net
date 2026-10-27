@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -91,6 +92,176 @@ public sealed class ExplicitGlyphTransformTests
             $"<CGTransform CodePosition='0' CodeCount='{source.Length}' GlyphCount='{count}'><Glyphs>{glyphs}</Glyphs></CGTransform>" +
             $"<TextCode X='0' Y='6'{x}{y}>{source}</TextCode></TextObject>";
         return text;
+    }
+
+    private static OfdTextElement MixedOneToOneText(string logical, string transforms,
+        string? deltaX, bool twoRuns = false)
+    {
+        var codes = twoRuns
+            ? $"<TextCode X='0' Y='6' DeltaX='8'>{logical[..2]}</TextCode>" +
+              $"<TextCode X='0' Y='18' DeltaX='8'>{logical[2..]}</TextCode>"
+            : $"<TextCode X='0' Y='6'{(deltaX is null ? "" : $" DeltaX='{deltaX}'")}>{logical}</TextCode>";
+        var text = new OfdTextElement
+        {
+            FontResourceId = "10", FontName = "Noto Sans", Text = logical,
+            FontSizeMillimeters = 6, XMillimeters = 10, YMillimeters = 10,
+            WidthMillimeters = 70, HeightMillimeters = 30,
+            SourceXml = "<TextObject ID='2' Boundary='10 10 70 30' Font='10' Size='6'>" +
+                transforms + codes + "</TextObject>"
+        };
+        if (twoRuns)
+        {
+            text.Runs.Add(new OfdTextRun { Text = logical[..2], XMillimeters = 0,
+                YMillimeters = 6, DeltaX = "8" });
+            text.Runs.Add(new OfdTextRun { Text = logical[2..], XMillimeters = 0,
+                YMillimeters = 18, DeltaX = "8" });
+        }
+        else text.Runs.Add(new OfdTextRun { Text = logical, XMillimeters = 0,
+            YMillimeters = 6, DeltaX = deltaX });
+        return text;
+    }
+
+    private static string MapAt(int position, int gid) =>
+        $"<CGTransform CodePosition='{position}' CodeCount='1' GlyphCount='1'><Glyphs>{gid}</Glyphs></CGTransform>";
+
+    [Theory]
+    [InlineData("partial-interior", "ABCD", 1, 40, -1, 0, false, "36 40 38 39")]
+    [InlineData("separated-maps", "ABCD", 0, 38, 2, 40, false, "38 37 40 39")]
+    [InlineData("global-two-runs-mixed", "ABCD", 1, 40, 3, 41, true, "36 40 38 41")]
+    public async Task MixedOneToOneKeepsUnmappedCmapGlyphsAndExplicitGids(
+        string stem, string logical, int firstPosition, int firstGid,
+        int secondPosition, int secondGid, bool twoRuns, string expectedGids)
+    {
+        var transforms = MapAt(firstPosition, firstGid) +
+            (secondPosition < 0 ? "" : MapAt(secondPosition, secondGid));
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = Font() });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { MixedOneToOneText(logical, transforms, "8 8 8", twoRuns) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var source = ofd.ToArray();
+        var readback = await new OfdReader().ReadAsync(new MemoryStream(source));
+        var original = Assert.Single(readback.Pages[0].Elements.OfType<OfdTextElement>());
+        Assert.Equal(logical, original.Text);
+        var sourceXml = XDocument.Parse(original.SourceXml!);
+        Assert.Equal("2", sourceXml.Root!.Attribute("ID")!.Value);
+        Assert.Equal(secondPosition < 0 ? 1 : 2, sourceXml.Descendants()
+            .Count(node => node.Name.LocalName == "CGTransform"));
+
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(source), svg);
+        using var html = new MemoryStream();
+        await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(source), html);
+        var expected = expectedGids.Split(' ').Select(int.Parse).ToArray();
+        foreach (var bytes in new[] { svg.ToArray(), html.ToArray() })
+        {
+            var group = XDocument.Parse(Encoding.UTF8.GetString(bytes)).Descendants()
+                .Single(node => node.Attribute("data-ofd-text")?.Value == logical);
+            Assert.Equal(expected, group.Descendants()
+                .Where(node => node.Attribute("data-original-gid") is not null)
+                .Select(node => (int)node.Attribute("data-original-gid")!).ToArray());
+        }
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(source), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(logical, parsed.GetPage(1).Text);
+        if (Environment.GetEnvironmentVariable("R02_ARTIFACT_DIR") is { Length: > 0 } artifactDirectory)
+        {
+            Directory.CreateDirectory(artifactDirectory);
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, stem + ".ofd"), source);
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, stem + ".pdf"), pdf.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, stem + ".svg"), svg.ToArray());
+        }
+    }
+
+    [Theory]
+    [InlineData("AB", "<CGTransform CodePosition='1'><Glyphs>40</Glyphs></CGTransform>", null)]
+    [InlineData("ABC", "<CGTransform CodePosition='1'><Glyphs>38</Glyphs></CGTransform>", "8 8")]
+    [InlineData("A\u0378B", "<CGTransform CodePosition='2'><Glyphs>40</Glyphs></CGTransform>", "8 8")]
+    public async Task MixedOneToOneUnprovedPositionCollisionOrMissingOrdinaryGlyphRefusesOutput(
+        string logical, string transform, string? deltaX)
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = Font() });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { MixedOneToOneText(logical, transform, deltaX) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        foreach (var converter in new[] { "PDF", "SVG" })
+        {
+            using var output = new MemoryStream();
+            if (converter == "PDF")
+                await Assert.ThrowsAsync<NotSupportedException>(() =>
+                    new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), output));
+            else
+                await Assert.ThrowsAsync<NotSupportedException>(() =>
+                    new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), output));
+            Assert.Equal(0, output.Length);
+        }
+    }
+
+    [Fact]
+    public async Task MixedOneToOneAcrossRunsRequiresAscendingGlobalTransforms()
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = Font() });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { MixedOneToOneText("ABCD", MapAt(3, 41) + MapAt(1, 40), "8", twoRuns: true) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf));
+        Assert.Equal(0, pdf.Length);
+        using var svg = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), svg));
+        Assert.Equal(0, svg.Length);
+    }
+
+    [Fact]
+    public async Task MixedOneToOneSharedGidWithDifferentUnicodeAcrossObjectsUsesSeparatePdfAliases()
+    {
+        var second = MixedOneToOneText("EF", MapAt(1, 42), "8");
+        second.SourceXml = second.SourceXml!.Replace("ID='2'", "ID='3'");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = Font() });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { MixedOneToOneText("AB", MapAt(1, 40), "8") } });
+        package.Pages.Add(new OfdPage { Index = 1, WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { second } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("AB", parsed.GetPage(1).Text);
+        Assert.Equal("EF", parsed.GetPage(2).Text);
+        using var inspect = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        Assert.Equal(2, inspect.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Count(item => item.Elements.ContainsKey("/FontFile2")));
+    }
+
+    [Fact]
+    public void MixedOneToOneMultipleTextObjectsReuseOneBoundedCmapParse()
+    {
+        var font = new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = Font() };
+        var first = MixedOneToOneText("AB", MapAt(1, 40), "8");
+        var second = MixedOneToOneText("CD", MapAt(1, 41), "8");
+        var measuredBudget = new FontParseBudget();
+        Assert.NotNull(OfdExplicitGlyphRun.Read(first, font,
+            new Dictionary<OfdFontResource, OpenTypeCmap>(), measuredBudget));
+
+        var lowBudget = new FontParseBudget(measuredBudget.Consumed);
+        var cache = new Dictionary<OfdFontResource, OpenTypeCmap>();
+        Assert.NotNull(OfdExplicitGlyphRun.Read(first, font, cache, lowBudget));
+        Assert.NotNull(OfdExplicitGlyphRun.Read(second, font, cache, lowBudget));
+        Assert.Single(cache);
+        Assert.Equal(measuredBudget.Consumed, lowBudget.Consumed);
+        Assert.Throws<InvalidDataException>(() => OfdExplicitGlyphRun.Read(second, font,
+            new Dictionary<OfdFontResource, OpenTypeCmap>(), lowBudget));
     }
 
     [Theory]

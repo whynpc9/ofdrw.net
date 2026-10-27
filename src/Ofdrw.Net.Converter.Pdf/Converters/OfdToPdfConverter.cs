@@ -735,7 +735,10 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         bool explicitGlyphs = false)
     {
         var paint = OfdTextPaint.Read(text);
-        var explicitRun = explicitGlyphs ? OfdExplicitGlyphRun.Read(text) : null;
+        var explicitRun = explicitGlyphs
+            ? (fontContext ?? throw new InvalidOperationException("Explicit glyph rendering requires a document font context."))
+                .ReadExplicitRun(text, fontResource)
+            : null;
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
             foreach (var run in text.Runs)

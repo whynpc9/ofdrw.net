@@ -3,6 +3,9 @@
 This source candidate renders **one or more `TextCode` runs with a complete
 one-to-one `CGTransform` mapping** of independent, nonblank BMP characters to
 original glyph IDs in an embedded, static monochrome TrueType `glyf` face.
+A later bounded candidate also admits partial one-to-one mappings when every
+unmapped character has a direct GID in that same embedded face and the glyph
+positions are explicit.
 Later bounded candidates add a complete, unpositioned 2–8-to-1 source span
 and a complete, unpositioned 1-to-2 original-GID sequence. A further candidate
 admits one complete, explicitly positioned 1–8-character source span to 2–8
@@ -22,7 +25,7 @@ requires an OS/2 table with an admitted embedding policy; SVG paths do not
 embed the font. Missing glyphs, ambiguous GID-to-Unicode mapping, unsupported
 positioning, and unsupported face types fail explicitly. The two additional
 cardinalities below have their own narrow admission rules. Other many-to-one,
-one-to-many, mixed and many-to-many mappings, non-BMP, combining outside a
+one-to-many, mixed cardinalities and many-to-many mappings, non-BMP, combining outside a
 complete positioned source span, CFF,
 color/variable, and synthetic emphasis remain outside the admitted profiles.
 
@@ -354,19 +357,61 @@ Inputs, hashes, logs, page PNGs, Preview screenshots, and the separate visual
 receipts remain in ignored `artifacts/r02-cgtransform/next-shared-span-test/pr62-cmap/`.
 These results accept only the admitted positioned subset at this merge head.
 
+## Partial one-to-one BMP source candidate
+
+The next candidate fills unmapped character slots from the **direct Unicode
+`cmap` of the same embedded static TrueType face** while keeping mapped slots
+at their source `CGTransform` GIDs. It admits only independent nonblank BMP
+characters and global, ascending one-to-one positions over the concatenated
+`TextCode` runs. Each run with more than one character must supply a finite,
+complete `DeltaX`; an optional `DeltaY` must also be complete. Missing direct
+glyphs, symbol cmaps, a GID shared by different Unicode characters in one
+object, ambiguous positions, and unproved positioning refuse before output.
+The source `TextCode`, IDs, font and XML stay intact. PDF registers separate
+aliases when different objects give one GID different Unicode meanings. PDF
+reuses its document font coverage; SVG/HTML reuse a page-local cmap across
+preflight and drawing. A shared parse budget charges any new font parse before
+copying its tables and checks cancellation during slot resolution.
+
+Six untouched OFDs came from `github.com/zc310/ofd@v0.1.5` public
+`MarshalWithOptions`, with one unmodified, pinned SIL OFL Noto Sans face
+(SHA-256 `b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5`).
+Three positive inputs cover an interior mapping, separated mappings, and two
+globally indexed runs. Their source logical text is `ABCD`, while the mapped
+outlines read visually as `AECD`, `CBED`, and two rows `AE`/`CF`. Independent
+Go TXT returns `ABCD` for each; its three PDFs and this source candidate's
+three PDFs are pixel identical at 144 dpi. The source SVGs and PDFs were
+viewed page by page. A fontTools oracle matched all 12 actual SVG original-GID
+paths and positions to the pinned face. Source PDF extraction by PdfPig is
+`ABCD`; SVG and HTML retain one logical label and the expected GID sequence.
+These are controlled, unmodified writer outputs, not naturally collected
+third-party documents. Inputs, outputs, per-page PNGs, hashes, writer options,
+and oracle records are in ignored `artifacts/r02-cgtransform/mixed-bmp-20261027/`.
+
+The other three Go outputs delimit refusal: absent deltas render with natural
+advance in that independent reader, which conflicts with the standard's
+absent-delta draw-point rule; one case assigns a single GID two Unicode
+meanings; another contains an unmapped character absent from the embedded
+`cmap`. This candidate refuses all three without PDF/SVG/HTML caller output.
+Focused tests also check cross-object PDF aliases and that two mixed objects
+can reuse one cmap within a budget permitting only one parse. Release,
+package-consumer, exact-head CI/review, and fresh macOS Preview acceptance are
+recorded separately when completed; this source candidate alone does not
+complete R02.
+
 ### Remaining R02 boundary
 
 | Input/semantics | Current result | Next implementation work | External evidence blocker |
 | --- | --- | --- | --- |
 | Complete positioned 1:N and N:M source span in one `TextCode` | Accepted only under the finite, complete-delta, static-`glyf` and embedding rules above | No further change needed for this subset | Any new shape or font class needs separate OFD readback, original-GID PDF/SVG paths, logical text, package and page evidence |
-| Positioned M:1 and mixed mapped/unmapped runs | Refused by the complete-span rules | Define bounded source-span composition and preflight without losing raw `TextCode`, IDs or unknown XML | Obtain a representative input and independent expected draw points/text before admission |
+| Positioned M:1 and mixed cardinalities | Refused by the complete-span rules; partial one-to-one has the bounded candidate above | Define bounded source-span composition and preflight without losing raw `TextCode`, IDs or unknown XML | Obtain a representative input and independent expected draw points/text before admission |
 | New N:M without explicit deltas | Refused; natural advance differs between the standard's absent-delta wording and the inspected independent reader | Resolve whether glyphs share the origin or advance, then model that rule explicitly | A source-backed case and independent visual/text oracle are needed to choose semantics |
 | Cross-`TextCode` clusters or local position resets | Refused; PR #58 admits only global BMP positions for separate complete runs | Specify indexing and run-origin behavior before extending the projection | The cited standard does not expressly settle sibling-run counting; obtain an unmodified representative OFD and expected output |
 | Supplementary source positions | Refused in this route | Specify whether `CodePosition`/`CodeCount` count UTF-16 units or Unicode scalars, then add bounded decoding and tests | The cited clause does not expressly settle supplementary counting; seek a source-backed interoperable case |
 | Optional R08 font-backend expansion: CFF, color or variable source faces | Refused or unverified in this `CGTransform` route; this is not a prerequisite for closing core R02 | Build a separate original-GID paint and PDF embedding policy only if an input requires that face class | Licensed matching fixtures and independent reader/output evidence are missing |
 | Unmodified foreign OFD across all outlets | Not established: the older Java sample required local layer-ID normalization for the SVG diagnostic and lacks PDF-admissible OS/2 data | Keep the current fail-closed resource and identity checks | A legally usable, unmodified input with matching font and a trustworthy independent visual/text oracle is needed |
 
-The positioned M:1, mixed, unpositioned N:M, run indexing, supplementary
+The positioned M:1, mixed cardinalities, unpositioned N:M, run indexing, supplementary
 counting, and unmodified foreign-input rows are the remaining core R02
 questions. The R08 face-class row is optional expansion. The table is a work
 boundary, not a claim that every listed profile should be implemented. Full
