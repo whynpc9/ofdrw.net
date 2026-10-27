@@ -43,6 +43,58 @@ public sealed class ExplicitGlyphTransformTests
     }
 
     [Fact]
+    public async Task TwoTextCodesKeepGlobalGlyphPositionsAndIndependentStarts()
+    {
+        var bytes = Font();
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var gids = new[] { 'B', 'A', 'D', 'C' }.Select(value => cmap.Glyph(value)).ToArray();
+        var text = Text(gids[0], gids[1]);
+        text.Text = "ABCD";
+        text.HeightMillimeters = 30;
+        text.SourceXml = $"<TextObject ID='2' Boundary='10 10 50 30' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='2' GlyphCount='2'><Glyphs>{gids[0]} {gids[1]}</Glyphs></CGTransform>" +
+            $"<CGTransform CodePosition='2' CodeCount='2' GlyphCount='2'><Glyphs>{gids[2]} {gids[3]}</Glyphs></CGTransform>" +
+            "<TextCode X='0' Y='6' DeltaX='8'>AB</TextCode>" +
+            "<TextCode X='0' Y='14' DeltaX='8'>CD</TextCode></TextObject>";
+        text.Runs.Add(new OfdTextRun { Text = "CD", XMillimeters = 0, YMillimeters = 14, DeltaX = "8" });
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var source = ofd.ToArray();
+        var reread = await new OfdReader().ReadAsync(new MemoryStream(source));
+        var actual = Assert.Single(reread.Pages[0].Elements.OfType<OfdTextElement>());
+        Assert.Equal("ABCD", actual.Text);
+        Assert.Equal(2, actual.Runs.Count);
+        Assert.Contains("CodePosition=\"2\"", actual.SourceXml);
+
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(source), svg);
+        var document = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray()));
+        var group = Assert.Single(document.Descendants(), node => node.Attribute("data-ofd-text")?.Value == "ABCD");
+        var paths = group.Elements().Where(node => node.Name.LocalName == "path").ToArray();
+        Assert.Equal(gids, paths.Select(path => (int)path.Attribute("data-original-gid")!).ToArray());
+        Assert.NotEqual(paths[0].Attribute("d")!.Value, paths[2].Attribute("d")!.Value);
+
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(source), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        var letters = parsed.GetPage(1).Letters.ToArray();
+        Assert.Equal("ABCD", string.Concat(letters.Select(letter => letter.Value)));
+        Assert.Equal(8 * 72d / 25.4, letters[1].StartBaseLine.X - letters[0].StartBaseLine.X, 1);
+        Assert.True(letters[2].StartBaseLine.Y < letters[0].StartBaseLine.Y);
+        if (Environment.GetEnvironmentVariable("R02_ARTIFACT_DIR") is { Length: > 0 } artifactDirectory)
+        {
+            Directory.CreateDirectory(artifactDirectory);
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "multicode-global.ofd"), source);
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "multicode-global.svg"), svg.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "multicode-global.pdf"), pdf.ToArray());
+        }
+    }
+
+    [Fact]
     public async Task ExplicitJamoGlyphSlotsKeepTheirSpecifiedPdfAdvance()
     {
         const string logical = "\u1100\u1161";

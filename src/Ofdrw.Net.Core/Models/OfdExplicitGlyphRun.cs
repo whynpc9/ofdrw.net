@@ -7,15 +7,16 @@ using System.Xml.Linq;
 
 namespace Ofdrw.Net.Core.Models;
 
-// First CGTransform render profile: one source TextCode, independent BMP
-// characters and a complete one-to-one mapping to original font GIDs. Keep
+// Explicit glyph render profile: independent BMP characters and a complete
+// one-to-one mapping to original font GIDs across source TextCode runs. Keep
 // the source XML as the owner of this transient projection.
 internal sealed class OfdExplicitGlyphRun
 {
-    private OfdExplicitGlyphRun(OfdTextRun run, int[] glyphIds)
-    { Run = run; GlyphIds = glyphIds; }
+    private OfdExplicitGlyphRun(IReadOnlyList<OfdTextRun> runs, int[] glyphIds)
+    { Runs = runs; GlyphIds = glyphIds; }
 
-    internal OfdTextRun Run { get; }
+    internal IReadOnlyList<OfdTextRun> Runs { get; }
+    internal string LogicalText => string.Concat(Runs.Select(run => run.Text));
     internal IReadOnlyList<int> GlyphIds { get; }
 
     internal static OfdExplicitGlyphRun? Read(OfdTextElement text)
@@ -27,19 +28,28 @@ internal sealed class OfdExplicitGlyphRun
         { throw new NotSupportedException("Malformed CGTransform source XML cannot be rendered.", error); }
         var transforms = root.DescendantsAndSelf().Where(node => node.Name.LocalName == "CGTransform").ToArray();
         if (transforms.Length == 0) return null;
+        var codes = root.Elements(root.Name.Namespace + "TextCode").ToArray();
         if (root.Name.LocalName != "TextObject" || transforms.Any(node => node.Parent != root) ||
-            text.Runs.Count != 1 || root.Elements(root.Name.Namespace + "TextCode").Count() != 1)
-            throw new NotSupportedException("CGTransform rendering requires one source TextObject and one TextCode.");
-        var code = root.Element(root.Name.Namespace + "TextCode")!;
-        if (code.HasElements || code.Nodes().Any(node => node is not XText) ||
-            OfdTextRenderProjection.Decode(code.Value, CancellationToken.None) != text.Runs[0].Text ||
-            text.Text != text.Runs[0].Text ||
-            code.Attribute("DeltaX")?.Value != text.Runs[0].DeltaX ||
-            code.Attribute("DeltaY")?.Value != text.Runs[0].DeltaY ||
-            !SameAxis(code.Attribute("X"), text.Runs[0].XMillimeters) ||
-            !SameAxis(code.Attribute("Y"), text.Runs[0].YMillimeters))
-            throw new NotSupportedException("CGTransform TextCode must match the unedited source run.");
-        var logical = text.Runs[0].Text;
+            codes.Length == 0 || codes.Length != text.Runs.Count)
+            throw new NotSupportedException("CGTransform rendering requires matching source TextCode runs.");
+        double? priorX = null, priorY = null;
+        for (var index = 0; index < codes.Length; index++)
+        {
+            var code = codes[index]; var run = text.Runs[index];
+            if (code.HasElements || code.Nodes().Any(node => node is not XText) ||
+                OfdTextRenderProjection.Decode(code.Value, CancellationToken.None) != run.Text ||
+                code.Attribute("DeltaX")?.Value != run.DeltaX ||
+                code.Attribute("DeltaY")?.Value != run.DeltaY ||
+                !SameAxis(code.Attribute("X"), priorX, run.XMillimeters) ||
+                !SameAxis(code.Attribute("Y"), priorY, run.YMillimeters))
+                throw new NotSupportedException("CGTransform TextCode must match the unedited source runs.");
+            priorX = run.XMillimeters; priorY = run.YMillimeters;
+        }
+        var logical = string.Concat(text.Runs.Select(run => run.Text));
+        if (text.Text != logical || text.Runs.Any(run => run.Text.Length == 0))
+            throw new NotSupportedException("CGTransform requires nonempty matching source runs.");
+        // Admit only global, unambiguous BMP positions over the
+        // concatenated runs. Per-TextCode position resets need separate evidence.
         if (logical.Length is < 1 or > 1024 || logical.Any(value => char.IsSurrogate(value) ||
                 char.IsControl(value) || char.IsWhiteSpace(value) ||
                 CharUnicodeInfo.GetUnicodeCategory(value) is UnicodeCategory.Format or
@@ -80,12 +90,14 @@ internal sealed class OfdExplicitGlyphRun
         }
         if (assigned.Any(value => !value))
             throw new NotSupportedException("CGTransform must map every TextCode character before rendering.");
-        if (!string.IsNullOrWhiteSpace(text.Runs[0].DeltaY) &&
-            string.IsNullOrWhiteSpace(text.Runs[0].DeltaX))
-            throw new NotSupportedException("CGTransform DeltaY without DeltaX is outside the render profile.");
-        CountDeltas(text.Runs[0].DeltaX, logical.Length - 1);
-        CountDeltas(text.Runs[0].DeltaY, logical.Length - 1);
-        return new OfdExplicitGlyphRun(text.Runs[0], glyphIds);
+        foreach (var run in text.Runs)
+        {
+            if (!string.IsNullOrWhiteSpace(run.DeltaY) && string.IsNullOrWhiteSpace(run.DeltaX))
+                throw new NotSupportedException("CGTransform DeltaY without DeltaX is outside the render profile.");
+            CountDeltas(run.DeltaX, run.Text.Length - 1);
+            CountDeltas(run.DeltaY, run.Text.Length - 1);
+        }
+        return new OfdExplicitGlyphRun(text.Runs, glyphIds);
     }
 
     private static void CountDeltas(string? expression, int expected)
@@ -115,7 +127,9 @@ internal sealed class OfdExplicitGlyphRun
     private static int Number(XAttribute? attribute, int fallback) => attribute is null ? fallback :
         int.TryParse(attribute.Value, NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : -1;
 
-    private static bool SameAxis(XAttribute? attribute, double actual) => attribute is not null &&
-        double.TryParse(attribute.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) &&
+    private static bool SameAxis(XAttribute? attribute, double? previous, double actual) =>
+        (attribute is not null || previous is not null) &&
+        double.TryParse(attribute?.Value ?? previous?.ToString("R", CultureInfo.InvariantCulture),
+            NumberStyles.Float, CultureInfo.InvariantCulture, out var value) &&
         !double.IsNaN(value) && !double.IsInfinity(value) && value == actual;
 }
