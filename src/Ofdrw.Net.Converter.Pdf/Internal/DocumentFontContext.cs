@@ -137,6 +137,9 @@ internal sealed class DocumentFontContext
         family is not null && _fallbackCoverage.TryGetValue(family, out var fallback) ? fallback :
         resource is not null && _coverage.TryGetValue(resource, out var value) ? value : null;
 
+    internal OfdExplicitGlyphRun? ReadExplicitRun(OfdTextElement text, OfdFontResource? resource) =>
+        OfdExplicitGlyphRun.Read(text, resource, _coverage, _parseBudget);
+
     internal IEnumerable<PdfSupplementaryFontBinding> SupplementaryBindings => _supplementary.Values;
 
     internal IReadOnlyDictionary<string, byte[]> SelectedVerifiedFaces => _selectedVerifiedFaces;
@@ -161,7 +164,7 @@ internal sealed class DocumentFontContext
         foreach (var text in texts)
         {
             _cancellationToken.ThrowIfCancellationRequested();
-            var run = OfdExplicitGlyphRun.Read(text);
+            var run = ReadExplicitRun(text, OfdFontSelection.Resolve(_fonts, text));
             if (run is null) continue;
             if (run.PathGlyphSourceSpan is not null) continue;
             var resource = OfdFontSelection.Resolve(_fonts, text) ??
@@ -194,9 +197,10 @@ internal sealed class DocumentFontContext
     internal string Resolve(OfdTextElement text, out OfdFontResource? resource)
     {
         _parseBudget.Spend(0);
-        if (OfdExplicitGlyphRun.Read(text) is { } explicitRun)
+        var selectedResource = OfdFontSelection.Resolve(_fonts, text);
+        if (ReadExplicitRun(text, selectedResource) is { } explicitRun)
         {
-            resource = OfdFontSelection.Resolve(_fonts, text);
+            resource = selectedResource;
             foreach (var run in explicitRun.Runs) PdfTextControlPolicy.Validate(run.Text);
             if (explicitRun.PathGlyphSourceSpan is { } pathSourceSpan)
             {

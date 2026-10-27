@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Xml.Linq;
+using Ofdrw.Net.Core.Fonts;
 
 namespace Ofdrw.Net.Core.Models;
 
@@ -66,7 +67,8 @@ internal sealed class OfdExplicitGlyphRun
         return origins;
     }
 
-    internal static OfdExplicitGlyphRun? Read(OfdTextElement text)
+    internal static OfdExplicitGlyphRun? Read(OfdTextElement text, OfdFontResource? resource = null,
+        IDictionary<OfdFontResource, OpenTypeCmap>? cmapCache = null, FontParseBudget? parseBudget = null)
     {
         if (string.IsNullOrWhiteSpace(text.SourceXml)) return null;
         XElement root;
@@ -229,10 +231,55 @@ internal sealed class OfdExplicitGlyphRun
                 assigned[slot] = true;
             }
         }
-        if (assigned.Any(value => !value))
-            throw new NotSupportedException("CGTransform must map every TextCode character before rendering.");
+        var mixed = assigned.Any(value => !value);
+        if (mixed)
+        {
+            if (text.Runs.Count > 1)
+            {
+                var priorEnd = 0;
+                foreach (var span in spans)
+                {
+                    if (span.CodePosition < priorEnd)
+                        throw new NotSupportedException("Mixed CGTransform across TextCode runs requires ascending global positions.");
+                    priorEnd = span.CodePosition + span.CodeCount;
+                }
+            }
+            // An unmapped character keeps the embedded face's direct Unicode
+            // cmap GID. Never substitute a host font or .notdef for it.
+            if (resource?.Data is not { Length: > 0 })
+                throw new NotSupportedException("Mixed CGTransform requires an explicitly embedded font.");
+            parseBudget ??= new FontParseBudget();
+            parseBudget.Spend(0);
+            if (cmapCache is null || !cmapCache.TryGetValue(resource, out var cmap))
+            {
+                // Selecting and parsing a face copies font tables. Charge the
+                // conversion-wide budget before that work and reuse the cmap
+                // for every mixed TextObject selecting this resource.
+                parseBudget.Spend(resource.Data.LongLength);
+                var face = new OpenTypeFace(OpenTypeCollection.SelectFace(resource.Data,
+                    resource.CollectionFaceIndex));
+                cmap = new OpenTypeCmap(face, parseBudget);
+                cmapCache?.Add(resource, cmap);
+            }
+            if (cmap.IsSymbol)
+                throw new NotSupportedException("Mixed CGTransform requires a direct Unicode cmap.");
+            for (var index = 0; index < assigned.Length; index++)
+            {
+                parseBudget.Spend(0);
+                if (assigned[index]) continue;
+                var gid = cmap.DirectGlyph(logical[index]);
+                if (gid <= 0 || gid > ushort.MaxValue)
+                    throw new NotSupportedException("Mixed CGTransform ordinary character has no direct embedded-font glyph.");
+                if (unicodeByGlyph.TryGetValue(gid, out var prior) && prior != logical[index])
+                    throw new NotSupportedException("One original GID has ambiguous PDF Unicode semantics.");
+                unicodeByGlyph[gid] = logical[index];
+                glyphIds[index] = gid;
+            }
+        }
         foreach (var run in text.Runs)
         {
+            if (mixed && run.Text.Length > 1 && string.IsNullOrWhiteSpace(run.DeltaX))
+                throw new NotSupportedException("Mixed CGTransform requires explicit inter-glyph positioning deltas.");
             if (!string.IsNullOrWhiteSpace(run.DeltaY) && string.IsNullOrWhiteSpace(run.DeltaX))
                 throw new NotSupportedException("CGTransform DeltaY without DeltaX is outside the render profile.");
             CountDeltas(run.DeltaX, run.Text.Length - 1);
