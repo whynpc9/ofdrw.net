@@ -3,8 +3,9 @@
 This source candidate renders **one or more `TextCode` runs with a complete
 one-to-one `CGTransform` mapping** of independent, nonblank BMP characters to
 original glyph IDs in an embedded, static monochrome TrueType `glyf` face.
-The later source-span candidate below adds a separate complete, unpositioned
-many-to-one relationship. Its validation gates remain independent.
+Later bounded candidates add a complete, unpositioned 2–8-to-1 source span
+and a complete, unpositioned 1-to-2 original-GID sequence. Each has separate
+validation gates.
 Within this candidate, `CodePosition` is a zero-based index in the concatenated
 decoded runs; each run keeps its own starting point and deltas. `CodeCount` and
 `GlyphCount` default to one. Each mapped glyph
@@ -18,9 +19,10 @@ Unicode text. PDF embeds a face with a narrow Unicode-to-original-GID alias,
 paints the mapped glyphs, and keeps extractable logical text. PDF embedding
 requires an OS/2 table with an admitted embedding policy; SVG paths do not
 embed the font. Missing glyphs, ambiguous GID-to-Unicode mapping, unsupported
-positioning, and unsupported face types fail explicitly. Many-to-one or
-one-to-many, non-BMP, combining, CFF, color/variable, and
-synthetic emphasis remain outside this profile.
+positioning, and unsupported face types fail explicitly. The two additional
+cardinalities below have their own narrow admission rules. Other many-to-one,
+one-to-many, mixed and many-to-many mappings, non-BMP, combining, CFF,
+color/variable, and synthetic emphasis remain outside the admitted profiles.
 
 OFD hexadecimal escapes in the source `TextCode` are decoded for rendering and
 logical extraction; the raw `SourceXml` is retained. HTML preview admits the
@@ -173,11 +175,17 @@ characters. Neither output is an original-GID visual oracle for this
 many-to-one case. The exact input, font and decoded PDF-stream findings are
 recorded in ignored `artifacts/r02-cgtransform/next-cardinality/`.
 
-This is not full R02 acceptance. One-to-many, many-to-many, local position
-resets, non-BMP counting, general foreign OFD input, and complete reader
-interoperability remain open. Full Release regression, candidate package
-consumption, exact-head CI/review, and final macOS Preview are separately
-required for this new source head.
+The bounded 2–8-to-1 subset completed those gates in
+[PR #59](https://github.com/whynpc9/ofdrw.net/pull/59), merged as
+`4a6a7a4e0eca1b921f17f51d7bcd31c4ae1f81e1` from exact head
+`0c3b0dc7e400eac902b180327a88234645411e93`: 11 Release assemblies
+passed 4,280 tests with 17 skips and no failures; a fresh candidate package
+consumer used seven exact package DLLs, and the final PDF was checked in
+macOS Preview. Exact-head CI and SES passed; Codex review completed after one
+valid finding was fixed, replied to, and resolved. This is not full R02
+acceptance. One-to-many, many-to-many, local position resets, non-BMP
+counting, general foreign OFD input, and complete reader interoperability
+remain open.
 
 ## One source character to two original GIDs: bounded next candidate
 
@@ -224,8 +232,27 @@ roughly 32 and 39 antialias-edge pixels from ours. A corpus-cost test now
 probes U+0E33 for this Thai-only font instead of assuming all fixture fonts
 cover Latin `A`.
 
-This remains a local candidate. Independent OFD reader comparison, full
-Release regression, package consumer evidence, current-head CI/review, and
-fresh macOS Preview selection/visual inspection are separate gates. The
-broader 1:N, many-to-many, mixed, positioned and foreign-file cases remain
-outside this profile; one bounded 1:2 case does not close full R02.
+The bounded candidate completed its separate acceptance gates in
+[PR #60](https://github.com/whynpc9/ofdrw.net/pull/60), merged as
+`01fabd9f65ec6815841f79d0af666a829d54afdb` from exact head
+`10cad90a97c76dbd20a58b6e3f3021f2c51d5d81`: 11 Release assemblies
+passed 4,289 tests with 17 skips and no failures; a fresh 12-package feed,
+broad converter package E2E, and an isolated PackageReference consumer passed.
+The consumer checked two positive mappings and three outputless refusals; its
+seven actual Ofdrw.Net DLLs matched candidate package bytes. All six current-head
+one-page PDFs were opened in macOS Preview and inspected; selection and paste
+from package PDFs yielded exactly U+0E33 and `A`, without visible duplicate
+ordinary Unicode outlines or private-use text. Exact-head CI and SES jobs
+passed; Codex review completed without findings and no review threads remained.
+
+The independent `github.com/zc310/ofd@v0.1.5` comparison used module archive
+sum `h1:829BScQvk6F808maCavU1tp36ftHYJFEf3pnSSlPP/4=` and tag commit
+`ad938357f54b35748f141952800a017d802583e9`. Its normal Thai PDF raster
+matched ours at 144 dpi. Its standalone TXT retained U+0E33 for normal and
+fill+stroke but was empty for stroke-only; all three Go-exported PDFs extracted
+U+0E33. The exact source, binary, input/output hashes and repeat commands are
+recorded in ignored `artifacts/r02-cgtransform/next-glyph-sequence/final/`.
+
+The broader 1:N, many-to-many, mixed, positioned and unmodified foreign-file
+cases remain outside this profile; this accepted 1:2 subset does not close
+full R02.
