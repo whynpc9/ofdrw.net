@@ -120,7 +120,7 @@ internal static class OfdTextRenderProjection
         return value;
     }
 
-    private static string Decode(string raw, CancellationToken token)
+    internal static string Decode(string raw, CancellationToken token)
     {
         var decoded = new StringBuilder(raw.Length);
         for (var index = 0; index < raw.Length; index++)

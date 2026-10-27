@@ -18,14 +18,23 @@ positioning, and unsupported face types fail explicitly. Cross-`TextCode`,
 many-to-one or one-to-many, non-BMP, combining, CFF, color/variable, and
 synthetic emphasis remain outside this profile.
 
+OFD hexadecimal escapes in the source `TextCode` are decoded for rendering and
+logical extraction; the raw `SourceXml` is retained. HTML preview admits the
+generated original-GID paths and their literal accessibility text. It reserves
+outline generation capacity before creating paths, and refuses output when its
+configured character budget is exceeded.
+
 ## Candidate evidence on base `889a31c61ca9ba5d07f19456b362a419e10d8434`
 
-- Focused `ExplicitGlyphTransformTests`: 5/5. The deterministic OFL Noto Sans
+- Focused `ExplicitGlyphTransformTests`: 8/8 after review remediation. The deterministic OFL Noto Sans
   source swaps the GIDs for logical `AB`; PDF extraction remains `AB`, its
   embedded outlines match the original GIDs, and SVG paths name and draw the
   original GIDs. Negative tests cover missing and ambiguous GIDs, incomplete
   spans/deltas, and output-empty refusal. An externally shaped cmap-free OFD
-  also converts to PDF and SVG by original GID.
+  also converts to PDF and SVG by original GID. Escaped source characters and
+  literal backslashes retain their decoded logical text through PDF/SVG;
+  normal HTML preview renders the paths while an exceeded outline budget
+  refuses output before writing to the caller.
 - Existing PDF/PageBlock focused tests: 6/6. R08 original-GID outline tests:
   10/10. These runs precede the full regression and package-consumer gates.
 - Synthetic source `artifacts/r02-cgtransform/first-candidate/explicit-gid-synthetic.ofd`
@@ -58,6 +67,6 @@ synthetic emphasis remain outside this profile.
   redistribution rights for the font have not been established.
 
 Full regression, local package consumption, exact-head CI/review, and final
-package Preview are still separate gates. The external diagnostic is one page
+package Preview are separate gates for each new source head. The external diagnostic is one page
 of a locally normalized input; it does not establish unmodified foreign-file
 acceptance or general CGTransform interoperability.

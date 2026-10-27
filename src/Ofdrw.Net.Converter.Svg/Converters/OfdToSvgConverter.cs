@@ -159,7 +159,7 @@ public sealed class OfdToSvgConverter
             if (element is OfdTextElement text)
             {
                 AddText(target, svgNs, page, RenderText(text), package.Fonts,
-                    families, parseBudget, cancellationToken, nameOnlyBindings);
+                    families, parseBudget, cancellationToken, preview, nameOnlyBindings);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
@@ -335,13 +335,14 @@ public sealed class OfdToSvgConverter
         OfdTextElement text,
         IReadOnlyList<OfdFontResource> fonts,
         IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families,
-        FontParseBudget parseBudget, CancellationToken cancellationToken, OfdNameOnlyFontBindings? nameOnlyBindings)
+        FontParseBudget parseBudget, CancellationToken cancellationToken, HtmlRenderContext? preview,
+        OfdNameOnlyFontBindings? nameOnlyBindings)
     {
         var resource = OfdFontSelection.Resolve(fonts, text);
         if (OfdExplicitGlyphRun.Read(text) is { } explicitRun)
         {
             AddExplicitGlyphs(root, svgNs, page, text, explicitRun,
-                OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: false), cancellationToken);
+                OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: false), cancellationToken, preview);
             return;
         }
         if (EmbeddedFontCoverage.HasExplicitGlyphReferences(text))
@@ -447,7 +448,8 @@ public sealed class OfdToSvgConverter
     }
 
     private static void AddExplicitGlyphs(XElement root, XNamespace ns, OfdPage page,
-        OfdTextElement text, OfdExplicitGlyphRun run, OfdExplicitGlyphFont font, CancellationToken token)
+        OfdTextElement text, OfdExplicitGlyphRun run, OfdExplicitGlyphFont font, CancellationToken token,
+        HtmlRenderContext? preview)
     {
         var paint = OfdTextPaint.Read(text);
         var drawing = OfdTextEmphasis.DrawingTransform(text);
@@ -474,6 +476,7 @@ public sealed class OfdToSvgConverter
         {
             token.ThrowIfCancellationRequested();
             var outline = font.Outlines[index];
+            preview?.BeforeExplicitGlyphOutline(outline);
             var anchor = OfdTextEmphasis.Anchor(x, y, drawing.Factor);
             var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
             var path = new StringBuilder();

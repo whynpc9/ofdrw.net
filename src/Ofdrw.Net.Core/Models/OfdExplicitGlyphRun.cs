@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Xml.Linq;
 
 namespace Ofdrw.Net.Core.Models;
@@ -31,7 +32,8 @@ internal sealed class OfdExplicitGlyphRun
             throw new NotSupportedException("CGTransform rendering requires one source TextObject and one TextCode.");
         var code = root.Element(root.Name.Namespace + "TextCode")!;
         if (code.HasElements || code.Nodes().Any(node => node is not XText) ||
-            code.Value != text.Runs[0].Text || text.Text != text.Runs[0].Text ||
+            OfdTextRenderProjection.Decode(code.Value, CancellationToken.None) != text.Runs[0].Text ||
+            text.Text != text.Runs[0].Text ||
             code.Attribute("DeltaX")?.Value != text.Runs[0].DeltaX ||
             code.Attribute("DeltaY")?.Value != text.Runs[0].DeltaY ||
             !SameAxis(code.Attribute("X"), text.Runs[0].XMillimeters) ||

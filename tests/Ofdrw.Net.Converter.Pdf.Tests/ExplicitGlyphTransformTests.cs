@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Converter.Svg;
 using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Fonts;
 using Ofdrw.Net.Core.Models;
@@ -100,6 +101,80 @@ public sealed class ExplicitGlyphTransformTests
             await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "explicit-gid-synthetic.svg"), svg.ToArray());
             await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, "explicit-gid-synthetic.pdf"), pdf.ToArray());
         }
+    }
+
+    [Theory]
+    [InlineData(@"\0041B", "AB")]
+    [InlineData(@"A\005C", "A\\")]
+    public async Task EscapedSourceTextKeepsOriginalGidsAndDecodedLogicalText(string sourceText, string logicalText)
+    {
+        var bytes = Font();
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var firstGid = cmap.Glyph('B');
+        var secondGid = cmap.Glyph('A');
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Text(firstGid, secondGid) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using (var archive = new ZipArchive(ofd, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            var entry = archive.Entries.Where(item => item.FullName.EndsWith(".xml", StringComparison.Ordinal))
+                .Single(item => { using var stream = item.Open(); return XDocument.Load(stream).Descendants()
+                    .Any(node => node.Name.LocalName == "TextObject"); });
+            XDocument xml;
+            using (var stream = entry.Open()) xml = XDocument.Load(stream);
+            xml.Descendants().Single(node => node.Name.LocalName == "TextCode").Value = sourceText;
+            var name = entry.FullName;
+            entry.Delete();
+            using var replacement = archive.CreateEntry(name).Open();
+            xml.Save(replacement);
+        }
+        var input = ofd.ToArray();
+        var readback = await new OfdReader().ReadAsync(new MemoryStream(input));
+        var original = Assert.IsType<OfdTextElement>(Assert.Single(readback.Pages[0].Elements));
+        Assert.Equal(sourceText, original.Text);
+        Assert.Contains(sourceText, original.SourceXml);
+
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(input), svg);
+        var group = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants()
+            .Single(node => node.Attribute("data-ofd-text")?.Value == logicalText);
+        Assert.Equal(new[] { firstGid, secondGid }, group.Elements()
+            .Where(node => node.Name.LocalName == "path")
+            .Select(node => (int)node.Attribute("data-original-gid")!).ToArray());
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(input), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(logicalText, parsed.GetPage(1).Text);
+    }
+
+    [Fact]
+    public async Task HtmlPreviewReservesOriginalGidOutlinesBeforeBuildingPaths()
+    {
+        var bytes = Font();
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Text(cmap.Glyph('B'), cmap.Glyph('A')) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var input = ofd.ToArray();
+
+        using var accepted = new MemoryStream();
+        await new OfdToHtmlConverter().ConvertAsync(new MemoryStream(input), accepted);
+        var paths = XDocument.Parse(Encoding.UTF8.GetString(accepted.ToArray())).Descendants()
+            .Where(node => node.Name.LocalName == "path").ToArray();
+        Assert.Equal(2, paths.Length);
+
+        using var rejected = new MemoryStream();
+        var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new OfdToHtmlConverter(new OfdHtmlOptions { MaxGeneratedCharacters = 200_000 })
+                .ConvertAsync(new MemoryStream(input), rejected));
+        Assert.Contains("characters", error.Message);
+        Assert.Equal(0, rejected.Length);
     }
 
     [Fact]

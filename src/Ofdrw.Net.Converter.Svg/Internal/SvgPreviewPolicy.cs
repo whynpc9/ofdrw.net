@@ -16,12 +16,13 @@ internal static class SvgPreviewPolicy
     private static readonly IReadOnlyDictionary<string, string[]> Attributes = new Dictionary<string, string[]>
     {
         ["svg"] = new[] { "version", "width", "height", "viewBox" }, ["defs"] = Array.Empty<string>(),
-        ["g"] = new[] { "transform", "opacity", "clip-path" }, ["clipPath"] = new[] { "id", "clipPathUnits" },
-        ["path"] = new[] { "d", "transform", "clip-rule", "fill-rule", "stroke", "fill", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray", "stroke-dashoffset", "stroke-opacity", "fill-opacity" },
+        ["g"] = new[] { "transform", "opacity", "clip-path", "role", "aria-label", "data-ofd-text" }, ["clipPath"] = new[] { "id", "clipPathUnits" },
+        ["path"] = new[] { "d", "transform", "clip-rule", "fill-rule", "stroke", "fill", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray", "stroke-dashoffset", "stroke-opacity", "fill-opacity", "data-original-gid" },
         ["rect"] = new[] { "width", "height" },
         ["image"] = new[] { "width", "height", "preserveAspectRatio", "transform", "href", "image-rendering" },
         ["text"] = new[] { "x", "y", "font-family", "font-size", "font-weight", "font-style", "space", "style", "fill", "fill-opacity", "stroke", "stroke-width", "stroke-opacity", "transform" },
-        ["tspan"] = new[] { "x", "y", "fill-opacity", "stroke-opacity" }, ["style"] = new[] { "type" }
+        ["tspan"] = new[] { "x", "y", "fill-opacity", "stroke-opacity" }, ["style"] = new[] { "type" },
+        ["title"] = Array.Empty<string>()
     };
     private static readonly Regex FontCss = new(@"\G@font-face\{font-family:'(?<family>[a-z0-9-]+)';src:url\(data:font/(?:ttf|otf);base64,[A-Za-z0-9+/]+={0,2}\) format\('(?:truetype|opentype)'\);font-weight:(?:normal|bold);font-style:(?:normal|italic);\}\n", RegexOptions.CultureInvariant);
     private static readonly Regex Color = new(@"\Argb\((?:[0-9]{1,3},){2}[0-9]{1,3}\)\z", RegexOptions.CultureInvariant);
@@ -61,6 +62,11 @@ internal static class SvgPreviewPolicy
                     case "font-weight": if (value != "bold" && value != "normal") Fail(); break;
                     case "font-style": if (value != "italic" && value != "normal") Fail(); break;
                     case "font-family": break; // presentation attribute, never a CSS source or URI
+                    case "role": if (value != "img") Fail(); break;
+                    case "aria-label": case "data-ofd-text": break; // literal XML attribute, never CSS or a URI
+                    case "data-original-gid":
+                        if (!ushort.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var gid) || gid == 0) Fail();
+                        break;
                     case "fill": case "stroke": if (value != "none" && !Color.IsMatch(value)) Fail(); break;
                     case "fill-rule": case "clip-rule": if (value != "nonzero" && value != "evenodd") Fail(); break;
                     case "stroke-linecap": if (value != "butt" && value != "round" && value != "square") Fail(); break;
@@ -82,7 +88,7 @@ internal static class SvgPreviewPolicy
             foreach (var child in node.Nodes())
             {
                 if (child is XElement) continue;
-                if (child is not XText text || node.Name.LocalName is not ("text" or "tspan" or "style")) Fail();
+                if (child is not XText text || node.Name.LocalName is not ("text" or "tspan" or "style" or "title")) Fail();
                 else HtmlRenderContext.Characters(text.Value);
             }
             if (node.Name.LocalName == "style")
