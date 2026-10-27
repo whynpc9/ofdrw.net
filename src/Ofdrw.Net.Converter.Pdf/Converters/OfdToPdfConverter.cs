@@ -694,7 +694,13 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         {
             foreach (var run in text.Runs)
             {
-                var deltas = OfdTextGeometry.PositioningDeltas(run, cancellationToken);
+                // CGTransform maps each validated BMP character to one original
+                // GID. Grapheme segmentation can combine adjacent characters
+                // (for example Hangul Jamo) and lose a glyph-slot advance.
+                var deltas = explicitGlyphs
+                    ? (X: OfdTextGeometry.ExpandDeltas(run.DeltaX, run.Text.Length - 1, cancellationToken),
+                        Y: OfdTextGeometry.ExpandDeltas(run.DeltaY, run.Text.Length - 1, cancellationToken))
+                    : OfdTextGeometry.PositioningDeltas(run, cancellationToken);
                 var deltaX = deltas.X; var deltaY = deltas.Y;
                 if (deltaX.Count == 0 && deltaY.Count == 0)
                 {
@@ -722,8 +728,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
                 var i = 0;
-                foreach (var glyph in OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
+                foreach (var glyph in explicitGlyphs
+                    ? run.Text.Select(character => character.ToString())
+                    : OfdTextGeometry.EnumerateGlyphs(run.Text, cancellationToken))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var anchor = OfdTextEmphasis.Anchor(x, y, factor);
                     DrawStyledString(graphics, glyph, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,

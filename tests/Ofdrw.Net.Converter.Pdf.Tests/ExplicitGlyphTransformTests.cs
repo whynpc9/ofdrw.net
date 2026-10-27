@@ -28,18 +28,44 @@ public sealed class ExplicitGlyphTransformTests
             "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf"));
     }
 
-    private static OfdTextElement Text(int firstGid, int secondGid, string? deltas = "8")
+    private static OfdTextElement Text(int firstGid, int secondGid, string? deltas = "8", string logicalText = "AB")
     {
         var deltaAttribute = deltas is null ? "" : $" DeltaX='{deltas}'";
         return new OfdTextElement
         {
-            FontResourceId = "10", FontName = "Noto Sans", Text = "AB", FontSizeMillimeters = 6,
+            FontResourceId = "10", FontName = "Noto Sans", Text = logicalText, FontSizeMillimeters = 6,
             XMillimeters = 10, YMillimeters = 10, WidthMillimeters = 50, HeightMillimeters = 12,
             SourceXml = $"<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
                 $"<CGTransform CodePosition='0' CodeCount='2' GlyphCount='2'><Glyphs>{firstGid} {secondGid}</Glyphs></CGTransform>" +
-                $"<TextCode X='0' Y='6'{deltaAttribute}>AB</TextCode></TextObject>",
-            Runs = { new OfdTextRun { Text = "AB", XMillimeters = 0, YMillimeters = 6, DeltaX = deltas } }
+                $"<TextCode X='0' Y='6'{deltaAttribute}>{logicalText}</TextCode></TextObject>",
+            Runs = { new OfdTextRun { Text = logicalText, XMillimeters = 0, YMillimeters = 6, DeltaX = deltas } }
         };
+    }
+
+    [Fact]
+    public async Task ExplicitJamoGlyphSlotsKeepTheirSpecifiedPdfAdvance()
+    {
+        const string logical = "\u1100\u1161";
+        Assert.Single(OfdTextGeometry.Glyphs(logical));
+        var bytes = Font();
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        // The logical Jamo map to independent original outlines, even when
+        // the source font has no Unicode cmap entries for the Jamo themselves.
+        var firstGid = cmap.Glyph('B');
+        var secondGid = cmap.Glyph('A');
+        Assert.True(firstGid > 0 && secondGid > 0 && firstGid != secondGid);
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Text(firstGid, secondGid, logicalText: logical) } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        var letters = parsed.GetPage(1).Letters;
+        Assert.Equal(2, letters.Count);
+        Assert.Equal(8 * 72d / 25.4, letters[1].StartBaseLine.X - letters[0].StartBaseLine.X, 1);
     }
 
     [Fact]

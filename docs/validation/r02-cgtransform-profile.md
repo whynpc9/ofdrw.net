@@ -24,6 +24,11 @@ generated original-GID paths and their literal accessibility text. It reserves
 outline generation capacity before creating paths, and refuses output when its
 configured character budget is exceeded.
 
+PDF positioning for this profile uses the validated character/GID slots. Two
+characters that form one Unicode grapheme, such as a Hangul Jamo pair, retain
+their separate original GIDs and the supplied inter-slot `DeltaX`/`DeltaY`.
+Ordinary text without `CGTransform` keeps its grapheme-based positioning.
+
 ## Candidate evidence on base `889a31c61ca9ba5d07f19456b362a419e10d8434`
 
 - Focused `ExplicitGlyphTransformTests`: 8/8 after review remediation. The deterministic OFL Noto Sans
