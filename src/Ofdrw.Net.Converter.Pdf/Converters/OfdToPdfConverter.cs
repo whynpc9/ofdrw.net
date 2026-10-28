@@ -667,7 +667,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 paint.FillColor.Green == paint.StrokeColor.Green &&
                 paint.FillColor.Blue == paint.StrokeColor.Blue &&
                 paint.FillColor.Alpha == paint.StrokeColor.Alpha &&
-                Math.Abs(MillimetersToPoints(paint.LineWidthMillimeters) - FontEmphasisMetrics.BoldStrokeWidth(font.Size)) <= 0.01;
+                Math.Abs(MillimetersToPoints(paint.LineWidthMillimeters) - FontEmphasisMetrics.BoldStrokeWidth(font.Size, text)) <= 0.01;
             var simulatedStroke = simulateBold && paint?.Fill == true && !ownBoldStroke;
             if (!text.All(char.IsWhiteSpace) && outlineFont is not null && brush is XSolidBrush solid && (explicitStroke || simulatedStroke))
             {
@@ -705,13 +705,13 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             KerningMode = SixLabors.Fonts.KerningMode.None
                         });
                 if (simulatedStroke)
-                    RenderOutline(solid.Color, FontEmphasisMetrics.BoldStrokeWidth(font.Size), true);
+                    RenderOutline(solid.Color, FontEmphasisMetrics.BoldStrokeWidth(font.Size, text), true);
                 if (explicitStroke)
                 {
                     // Outline-only text has no fill for the usual bold overlay.
                     // Thicken its existing stroke while keeping the counters open.
                     var strokeWidth = MillimetersToPoints(paint!.LineWidthMillimeters) +
-                        (simulateBold && !paint.Fill ? FontEmphasisMetrics.BoldStrokeWidth(font.Size) : 0);
+                        (simulateBold && !paint.Fill ? FontEmphasisMetrics.BoldStrokeWidth(font.Size, text) : 0);
                     RenderOutline(XColor.FromArgb(paint!.StrokeColor.Alpha, paint.StrokeColor.Red,
                         paint.StrokeColor.Green, paint.StrokeColor.Blue), strokeWidth, false);
                 }

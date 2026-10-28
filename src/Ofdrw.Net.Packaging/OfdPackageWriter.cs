@@ -1168,7 +1168,7 @@ public sealed partial class OfdPackageWriter
         {
             textObject.SetAttributeValue("Stroke", "true");
             textObject.SetAttributeValue("Fill", "true");
-            textObject.SetAttributeValue("LineWidth", ToInvariant(embedded ? FontEmphasisMetrics.BoldStrokeWidth(size) : Math.Max(0.08, size * 0.045)));
+            textObject.SetAttributeValue("LineWidth", ToInvariant(embedded ? FontEmphasisMetrics.BoldStrokeWidth(size, text.Text) : Math.Max(0.08, size * 0.045)));
             if (!textObject.Elements().Any(node => node.Name.LocalName == "StrokeColor"))
             {
                 var stroke = new XElement(ns + "StrokeColor",
