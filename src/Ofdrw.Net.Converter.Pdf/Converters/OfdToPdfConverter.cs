@@ -611,7 +611,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         XPoint point, SixLabors.Fonts.Font? outlineFont, bool simulateBold, bool italic, XStringFormat? format = null, OpenTypeCmap? coverage = null,
         OfdTextPaint? paint = null, Func<string, string>? mapPdfText = null,
         DocumentFontContext? fontContext = null, OfdFontResource? fontResource = null, string? fontFamily = null,
-        bool preserveExplicitSourceSpan = false)
+        bool preserveExplicitSourceSpan = false, string? ownBoldSourceText = null)
     {
         // PDFsharp does not compose Latin mark sequences (notably dotted i).
         // Match the supported composite used for measurement when drawing one
@@ -659,15 +659,19 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             fontContext?.MarkFontFaceDrawn(fontResource, fontFamily);
             var explicitStroke = paint?.Stroke == true && paint.StrokeColor.Alpha > 0;
             // Native DOCX writes its simulated bold stroke into the OFD itself.
-            // Recognize that exact same-color, 2.5%-em stroke so PDF export does
-            // not paint it twice. Keep an independent OFD outline alongside the
-            // font's simulated weight when its color or width is different.
+            // Recognize the same-color stroke emitted for the whole TextObject,
+            // even when positioned runs are drawn one glyph at a time. Older
+            // documents used a 2.5%-em stroke for Han text; retain that contract.
+            // A different color or width remains an independent OFD outline.
+            var ownStrokeText = ownBoldSourceText ?? text;
+            var strokeWidthPoints = explicitStroke ? MillimetersToPoints(paint!.LineWidthMillimeters) : 0;
             var ownBoldStroke = explicitStroke && paint!.Fill &&
                 paint.FillColor.Red == paint.StrokeColor.Red &&
                 paint.FillColor.Green == paint.StrokeColor.Green &&
                 paint.FillColor.Blue == paint.StrokeColor.Blue &&
                 paint.FillColor.Alpha == paint.StrokeColor.Alpha &&
-                Math.Abs(MillimetersToPoints(paint.LineWidthMillimeters) - FontEmphasisMetrics.BoldStrokeWidth(font.Size, text)) <= 0.01;
+                (Math.Abs(strokeWidthPoints - FontEmphasisMetrics.BoldStrokeWidth(font.Size, ownStrokeText)) <= 0.01 ||
+                 Math.Abs(strokeWidthPoints - FontEmphasisMetrics.BoldStrokeWidth(font.Size)) <= 0.01);
             var simulatedStroke = simulateBold && paint?.Fill == true && !ownBoldStroke;
             if (!text.All(char.IsWhiteSpace) && outlineFont is not null && brush is XSolidBrush solid && (explicitStroke || simulatedStroke))
             {
@@ -784,7 +788,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
                         outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
                         mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
-                        fontFamily: fontFamily, preserveExplicitSourceSpan: true);
+                        fontFamily: fontFamily, preserveExplicitSourceSpan: true,
+                        ownBoldSourceText: text.Text);
                     continue;
                 }
                 // CGTransform maps each validated BMP character to one original
@@ -810,13 +815,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
                                 outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
                                 mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
-                                fontFamily: fontFamily);
+                                fontFamily: fontFamily, ownBoldSourceText: text.Text);
                         }
                         continue;
                     }
                     DrawStyledString(graphics, run.Text, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,
-                        fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily);
+                        fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily,
+                        ownBoldSourceText: text.Text);
                     continue;
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
@@ -829,7 +835,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     var anchor = OfdTextEmphasis.Anchor(x, y, factor);
                     DrawStyledString(graphics, glyph, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,
-                        fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily);
+                        fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily,
+                        ownBoldSourceText: text.Text);
                     if (i < deltaX.Count) x += deltaX[i];
                     if (i < deltaY.Count) y += deltaY[i];
                     i++;
