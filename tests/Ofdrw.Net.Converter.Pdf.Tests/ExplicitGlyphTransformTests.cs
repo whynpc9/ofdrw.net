@@ -1344,6 +1344,7 @@ public sealed class ExplicitGlyphTransformTests
             $"<TextCode X='0' Y='6' DeltaX='5 5 5'>{source}</TextCode></TextObject>";
         var admitted = Assert.IsType<OfdExplicitGlyphRun>(OfdExplicitGlyphRun.Read(text, resource));
         Assert.Equal(source, admitted.PathGlyphSourceSpan);
+        Assert.Equal(source, admitted.VisualHebrewSourceSpan);
         Assert.Equal(gids, admitted.GlyphIds);
 
         var partial = Text(gids[0], gids[1], "5 5 5", source);
@@ -1363,6 +1364,41 @@ public sealed class ExplicitGlyphTransformTests
         repeated.SourceXml = text.SourceXml.Replace(source, repeatedSource)
             .Replace(string.Join(' ', gids), string.Join(' ', repeatedGids));
         Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(repeated, resource));
+    }
+
+    [Fact]
+    public async Task HebrewVisualWordPdfUsesOneLogicalSourceCid()
+    {
+        const string source = "שלום";
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        var text = Text(gids[0], gids[1], "5 5 5", source);
+        text.FontName = "DejaVu Sans";
+        text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='4'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6' DeltaX='5 5 5'>{source}</TextCode></TextObject>";
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(source, parsed.GetPage(1).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var pageContent = Encoding.ASCII.GetString(inspection.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+        Assert.Contains($"<{gids[0]:X4}> Tj", pageContent);
+        var sourceHex = BitConverter.ToString(Encoding.BigEndianUnicode.GetBytes(source)).Replace("-", string.Empty);
+        var unicodeMaps = inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.GetName("/Subtype") == "/Type0")
+            .Select(item => item.Elements.GetDictionary("/ToUnicode"))
+            .Where(item => item?.Stream is not null)
+            .Select(item => Encoding.ASCII.GetString(item!.Stream!.Value));
+        Assert.Contains(unicodeMaps, map => map.Contains($"<{gids[0]:X4}><{sourceHex}>"));
     }
 
     [Fact]

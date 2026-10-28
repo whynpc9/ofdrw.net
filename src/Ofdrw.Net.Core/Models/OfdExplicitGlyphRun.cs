@@ -46,6 +46,12 @@ internal sealed class OfdExplicitGlyphRun
     internal string? PathGlyphSourceSpan => ComposedPath ||
         Spans.Count == 1 && GlyphIds.Count > 1 && GlyphIds.Count != LogicalText.Length
         ? LogicalText : null;
+    // A verified visual-order Hebrew word is painted from original-GID paths.
+    // PDF may carry its whole logical source as one semantic CID, avoiding
+    // reader-specific reordering of four independently positioned text codes.
+    internal string? VisualHebrewSourceSpan => ComposedPath &&
+        OfdPositionedGlyphProfile.IsHebrewWord(LogicalText) &&
+        GlyphIds.Count == LogicalText.Length ? LogicalText : null;
 
     internal IReadOnlyList<(double X, double Y)> PathGlyphOrigins(CancellationToken token)
     {

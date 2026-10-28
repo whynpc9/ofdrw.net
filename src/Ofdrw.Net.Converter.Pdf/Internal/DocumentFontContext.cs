@@ -166,14 +166,14 @@ internal sealed class DocumentFontContext
             _cancellationToken.ThrowIfCancellationRequested();
             var run = ReadExplicitRun(text, OfdFontSelection.Resolve(_fonts, text));
             if (run is null) continue;
-            if (run.PathGlyphSourceSpan is not null) continue;
+            if (run.PathGlyphSourceSpan is not null && run.VisualHebrewSourceSpan is null) continue;
             var resource = OfdFontSelection.Resolve(_fonts, text) ??
                 throw new NotSupportedException("CGTransform rendering requires an explicitly embedded font.");
             var key = (resource, resource.Bold || text.Weight >= 600, resource.Italic || text.Italic);
             if (!_explicitAliases.TryGetValue(key, out var aliases))
                 _explicitAliases.Add(key, aliases = new List<ExplicitGlyphAlias>());
             var mapping = ExplicitGlyphMapping(run);
-            var sourceSpan = run.SingleGlyphSourceSpan;
+            var sourceSpan = run.SingleGlyphSourceSpan ?? run.VisualHebrewSourceSpan;
             var compatible = aliases.FirstOrDefault(alias => alias.CanMerge(mapping, sourceSpan));
             if (compatible is null) aliases.Add(new ExplicitGlyphAlias(mapping, sourceSpan));
             else compatible.Merge(mapping);
@@ -202,7 +202,8 @@ internal sealed class DocumentFontContext
         {
             resource = selectedResource;
             foreach (var run in explicitRun.Runs) PdfTextControlPolicy.Validate(run.Text);
-            if (explicitRun.PathGlyphSourceSpan is { } pathSourceSpan)
+            if (explicitRun.PathGlyphSourceSpan is { } pathSourceSpan &&
+                explicitRun.VisualHebrewSourceSpan is null)
             {
                 _ = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);
                 if (resource is null || !_families.TryGetValue(resource, out var semanticFamily) ||
@@ -229,7 +230,7 @@ internal sealed class DocumentFontContext
             var mapping = ExplicitGlyphMapping(explicitRun);
             if (!_explicitAliases.TryGetValue(key, out var aliases))
                 _explicitAliases.Add(key, aliases = new List<ExplicitGlyphAlias>());
-            var sourceSpan = explicitRun.SingleGlyphSourceSpan;
+            var sourceSpan = explicitRun.SingleGlyphSourceSpan ?? explicitRun.VisualHebrewSourceSpan;
             var selected = aliases.FirstOrDefault(alias => alias.Covers(mapping, sourceSpan));
             if (selected is null)
             {
@@ -378,7 +379,7 @@ internal sealed class DocumentFontContext
 
     private static Dictionary<int, int> ExplicitGlyphMapping(OfdExplicitGlyphRun run)
     {
-        if (run.SingleGlyphSourceSpan is not null)
+        if (run.SingleGlyphSourceSpan is not null || run.VisualHebrewSourceSpan is not null)
             return new Dictionary<int, int> { [0xE000] = run.GlyphIds[0] };
         var mapping = new Dictionary<int, int>();
         var logical = run.LogicalText;
