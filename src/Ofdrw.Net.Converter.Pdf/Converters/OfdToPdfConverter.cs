@@ -658,7 +658,17 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             else graphics.DrawString(pdfText, font, brush, new XRect(0, 0, 0, 0), format ?? XStringFormats.Default);
             fontContext?.MarkFontFaceDrawn(fontResource, fontFamily);
             var explicitStroke = paint?.Stroke == true && paint.StrokeColor.Alpha > 0;
-            var simulatedStroke = simulateBold && paint?.Fill == true;
+            // Native DOCX writes its simulated bold stroke into the OFD itself.
+            // Recognize that exact same-color, 2.5%-em stroke so PDF export does
+            // not paint it twice. Keep an independent OFD outline alongside the
+            // font's simulated weight when its color or width is different.
+            var ownBoldStroke = explicitStroke && paint!.Fill &&
+                paint.FillColor.Red == paint.StrokeColor.Red &&
+                paint.FillColor.Green == paint.StrokeColor.Green &&
+                paint.FillColor.Blue == paint.StrokeColor.Blue &&
+                paint.FillColor.Alpha == paint.StrokeColor.Alpha &&
+                Math.Abs(MillimetersToPoints(paint.LineWidthMillimeters) - FontEmphasisMetrics.BoldStrokeWidth(font.Size)) <= 0.01;
+            var simulatedStroke = simulateBold && paint?.Fill == true && !ownBoldStroke;
             if (!text.All(char.IsWhiteSpace) && outlineFont is not null && brush is XSolidBrush solid && (explicitStroke || simulatedStroke))
             {
                 var topBearing = 0;

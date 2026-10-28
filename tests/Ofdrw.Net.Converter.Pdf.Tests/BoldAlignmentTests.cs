@@ -128,6 +128,53 @@ public sealed class BoldAlignmentTests
         Assert.InRange(Math.Abs(actual.Right - expected.Right), 0, 3);
     }
 
+    [Theory]
+    [InlineData("0.2", "0 0 0", true)]
+    [InlineData("0.1", "0 0 0", false)]
+    [InlineData("0.2", "180 0 0", false)]
+    public async Task ExplicitFilledStrokeOnRegularFaceDoesNotPaintASecondBoldOutline(
+        string lineWidth, string strokeColor, bool isOwnBoldStroke)
+    {
+        async Task<byte[]> Convert(int weight)
+        {
+            var root = new DirectoryInfo(AppContext.BaseDirectory);
+            while (root is not null && !File.Exists(Path.Combine(root.FullName, "Ofdrw.Net.sln"))) root = root.Parent;
+            var fontPath = Path.Combine(root!.FullName,
+                "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf");
+            var package = new OfdDocumentPackage();
+            package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans",
+                Data = File.ReadAllBytes(fontPath) });
+            package.Pages.Add(new OfdPage { WidthMillimeters = 80, HeightMillimeters = 60,
+                Elements = { new OfdTextElement
+                {
+                    Text = "OO", FontName = "Noto Sans", FontResourceId = "10",
+                    Weight = weight, FontSizeMillimeters = 8,
+                    XMillimeters = 15, YMillimeters = 20, WidthMillimeters = 30, HeightMillimeters = 15,
+                    SourceXml = $"<TextObject xmlns='http://www.ofdspec.org' Boundary='15 20 30 15' " +
+                        $"Font='10' Size='8' Weight='{weight}' Stroke='true' Fill='true' LineWidth='{lineWidth}'>" +
+                        $"<StrokeColor Value='{strokeColor}'/><TextCode X='2' Y='10'>OO</TextCode></TextObject>"
+                } } });
+            using var ofd = new MemoryStream();
+            await new OfdPackageWriter().WriteAsync(package, ofd);
+            ofd.Position = 0;
+            using var pdf = new MemoryStream();
+            await new OfdToPdfConverter().ConvertAsync(ofd, pdf);
+            return pdf.ToArray();
+        }
+
+        var explicitStroke = await Convert(OfdTextElement.DefaultWeight);
+        var explicitStrokeWithBoldWeight = await Convert(OfdTextElement.BoldWeight);
+        using var regularReader = DocLib.Instance.GetDocReader(explicitStroke, new PageDimensions(4d));
+        using var boldReader = DocLib.Instance.GetDocReader(explicitStrokeWithBoldWeight, new PageDimensions(4d));
+        using var regularPage = regularReader.GetPageReader(0);
+        using var boldPage = boldReader.GetPageReader(0);
+        if (isOwnBoldStroke) Assert.Equal(regularPage.GetImage(), boldPage.GetImage());
+        else Assert.NotEqual(regularPage.GetImage(), boldPage.GetImage());
+        using var semantic = UglyToad.PdfPig.PdfDocument.Open(explicitStrokeWithBoldWeight);
+        Assert.Equal("OO", semantic.GetPage(1).Text);
+        Assert.Equal(2, semantic.GetPage(1).Letters.Count);
+    }
+
     [Fact]
     public async Task OutlineOnlyTextKeepsOpenCounterWhenBoldIsSimulated()
     {
