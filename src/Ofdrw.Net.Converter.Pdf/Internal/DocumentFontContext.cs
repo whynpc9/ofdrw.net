@@ -423,8 +423,8 @@ internal sealed class DocumentFontContext
         if (run.VisualHebrewSourceSpan is null) return null;
         var font = OfdExplicitGlyphFont.Read(resource, text, run, embedFont: false);
         var origins = run.PathGlyphOrigins(_cancellationToken);
-        var last = font.Outlines[^1];
-        var width = 1000d * ((origins[^1].X - origins[0].X) / text.FontSizeMillimeters +
+        var last = font.Outlines[font.Outlines.Count - 1];
+        var width = 1000d * ((origins[origins.Count - 1].X - origins[0].X) / text.FontSizeMillimeters +
                              (double)last.AdvanceWidth / last.UnitsPerEm);
         if (double.IsNaN(width) || double.IsInfinity(width) || width < 1 || width > 32767)
             throw new NotSupportedException("Hebrew PDF source-span width is outside the bounded profile.");
