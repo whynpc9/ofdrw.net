@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Xml.Linq;
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Converter.Svg.Converters;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Layout.Text;
 using Ofdrw.Net.Packaging;
@@ -136,3 +138,76 @@ var receipt = new
 await File.WriteAllTextAsync(Path.Combine(output, "r21-receipt.json"),
     JsonSerializer.Serialize(receipt, new JsonSerializerOptions { WriteIndented = true }) + "\n");
 Console.WriteLine("R21 ASCII and Han fixed-font OFD/PDF/PNG and query receipt: " + output);
+
+var positionedOutputs = new List<string>();
+var positionedCases = new List<object>();
+double? defaultAvSecondOrigin = null;
+foreach (var (name, source, features) in new[]
+{
+    ("av", "AV", (IReadOnlyList<TextFeature>?)null),
+    ("av-kern-off", "AV", (IReadOnlyList<TextFeature>?)new[] { new TextFeature("kern", 0, 0, 2) }),
+    ("ffi-on", "ffi", (IReadOnlyList<TextFeature>?)null),
+    ("ffi-off", "ffi", (IReadOnlyList<TextFeature>?)new[] { new TextFeature("liga", 0, 0, 3) }),
+})
+{
+    var shaped = engine.Layout(new TextPrelayoutRequest(source, new[] { noto }, 4, 50,
+        features: features));
+    var glyphs = shaped.Lines.Single().ShapedRun.Glyphs;
+    var package = TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(shaped, 100, 75, 10, 10);
+    if (name is "av" or "av-kern-off")
+    {
+        var second = package.Pages[0].Elements.OfType<OfdTextElement>().Single().Runs.Single()
+            .PositionedGlyphs!.Glyphs[1].OriginXMillimeters;
+        if (name == "av") defaultAvSecondOrigin = second;
+        else if (defaultAvSecondOrigin == second)
+            throw new InvalidDataException("The fixed AV sample did not expose a kerning position change.");
+    }
+    var ofd = Path.Combine(output, "r22-" + name + ".ofd");
+    var pdf = Path.Combine(output, "r22-" + name + ".pdf");
+    var svg = Path.Combine(output, "r22-" + name + ".svg");
+    var png = Path.Combine(output, "r22-" + name + ".png");
+    await using (var target = File.Create(ofd))
+    {
+        var result = await new OfdPackageWriter().WriteWithResultAsync(package, target);
+        if (!result.FontEmbedding.Single().IsSubset)
+            throw new InvalidDataException("R22 output did not preserve a bounded subset.");
+    }
+    await using (var input = File.OpenRead(ofd)) await using (var target = File.Create(pdf))
+        await new OfdToPdfConverter().ConvertAsync(input, target);
+    await using (var input = File.OpenRead(ofd)) await using (var target = File.Create(svg))
+        await new OfdToSvgConverter().ConvertAsync(input, target);
+    await using (var input = File.OpenRead(ofd)) await using (var target = File.Create(png))
+        await new OfdToImageConverter().ConvertAsync(input, target);
+    await using var readInput = File.OpenRead(ofd);
+    var read = await new OfdReader().ReadAsync(readInput);
+    var readback = read.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>()
+        .Single().Text;
+    var svgRoot = XDocument.Load(svg);
+    var svgGids = svgRoot.Descendants().Where(node => node.Name.LocalName == "path")
+        .Select(node => (int?)node.Attribute("data-original-gid"))
+        .Where(id => id is not null).Select(id => (uint)id!.Value).ToArray();
+    var shapedGids = glyphs.Select(glyph => glyph.GlyphId).ToArray();
+    if (readback != source || !svgGids.SequenceEqual(shapedGids) ||
+        !svgRoot.Descendants().Any(node => node.Name.LocalName == "g" &&
+            (string?)node.Attribute("data-ofd-text") == source))
+        throw new InvalidDataException("R22 original GIDs or logical text changed in OFD/SVG.");
+    positionedCases.Add(new { name, source, feature = name.EndsWith("off", StringComparison.Ordinal) ? "off" : "on",
+        readback, shapedGids, svgGids,
+        origins = package.Pages[0].Elements.OfType<OfdTextElement>().Single().Runs.Single()
+            .PositionedGlyphs!.Glyphs.Select(glyph => new { glyph.OriginXMillimeters,
+                glyph.OriginYMillimeters, glyph.XAdvanceMillimeters }).ToArray() });
+    positionedOutputs.AddRange(new[] { ofd, pdf, svg, png });
+}
+var positionedReceipt = new
+{
+    sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
+    engine = layout.Lines[0].ShapedRun.EngineVersion,
+    face = noto.FaceSha256,
+    cases = positionedCases,
+    outputs = positionedOutputs.Select(path => new { name = Path.GetFileName(path),
+        bytes = new FileInfo(path).Length,
+        sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant() }).ToArray(),
+};
+await File.WriteAllTextAsync(Path.Combine(output, "r22-receipt.json"),
+    JsonSerializer.Serialize(positionedReceipt, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+Console.WriteLine("R22 positioned AV and ffi OFD/PDF/SVG/PNG receipt: " + output);

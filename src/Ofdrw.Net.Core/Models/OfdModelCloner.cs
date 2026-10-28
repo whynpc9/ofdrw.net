@@ -86,7 +86,8 @@ internal static class OfdModelCloner
                     var clonedRun = new OfdTextRun
                     {
                         Text = run.Text, XMillimeters = run.XMillimeters, YMillimeters = run.YMillimeters,
-                        DeltaX = run.DeltaX, DeltaY = run.DeltaY
+                        DeltaX = run.DeltaX, DeltaY = run.DeltaY,
+                        PositionedGlyphs = run.PositionedGlyphs // immutable producer result
                     };
                     clone.Runs.Add(clonedRun); mapping?.Add(run, clonedRun);
                 }

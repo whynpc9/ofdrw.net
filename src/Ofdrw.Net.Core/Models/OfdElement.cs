@@ -113,6 +113,9 @@ public sealed class OfdTextRun
     public string? DeltaX { get; set; }
 
     public string? DeltaY { get; set; }
+
+    /// <summary>Optional producer-owned glyph IDs, logical clusters and exact origins for this run.</summary>
+    public OfdPositionedGlyphRun? PositionedGlyphs { get; set; }
 }
 
 public sealed class OfdImageElement : OfdElement

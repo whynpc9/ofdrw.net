@@ -908,6 +908,8 @@ public sealed partial class OfdPackageWriter
             XElement textObject;
             if (!string.IsNullOrWhiteSpace(text.SourceXml))
             {
+                if (text.Runs.Any(run => run.PositionedGlyphs is not null))
+                    throw new NotSupportedException("Imported SourceXml owns its glyph mapping; clear it before creating typed glyph output.");
                 textObject = XElement.Parse(text.SourceXml!, LoadOptions.PreserveWhitespace);
                 textObject.SetAttributeValue("ID", objectId);
                 textObject.SetAttributeValue("Font", fontId);
@@ -969,6 +971,9 @@ public sealed partial class OfdPackageWriter
                         });
                 ApplyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
             }
+
+            if (text.Runs.Any(run => run.PositionedGlyphs is not null))
+                AddPositionedGlyphs(textObject, text, ns, idAllocator);
 
             ApplyClipping(textObject, text, idAllocator);
             AssertNestedIds(text, textObject, idAllocator);
@@ -1060,6 +1065,71 @@ public sealed partial class OfdPackageWriter
             AssertNestedIds(raw, rawElement, idAllocator);
             return rawElement;
         }        return null;
+    }
+
+    private static void AddPositionedGlyphs(XElement textObject, OfdTextElement text, XNamespace ns, OfdIdPlan ids)
+    {
+        if (text.SourceXml is not null || text.Runs.Count != 1 || text.Runs[0].PositionedGlyphs is not { } positioned)
+            throw new NotSupportedException("Typed positioned glyph output requires one newly owned TextCode.");
+        var run = text.Runs[0];
+        if (text.Text != run.Text || run.Text != positioned.LogicalText ||
+            run.Text.Length is < 1 or > 8 || positioned.Glyphs.Count is < 1 or > 8 ||
+            text.Transform is not null || text.Weight != OfdTextElement.DefaultWeight || text.Italic)
+            throw new NotSupportedException("Typed glyph output exceeds the bounded horizontal source profile.");
+        foreach (var code in run.Text)
+            if (code < 0x21 || code > 0x7e)
+                throw new NotSupportedException("Typed glyph output requires printable nonblank ASCII source characters.");
+        var glyphs = positioned.Glyphs;
+        if (glyphs.Count == run.Text.Length)
+        {
+            var sourceByGid = new Dictionary<uint, char>();
+            var gidBySource = new Dictionary<char, uint>();
+            for (var index = 0; index < glyphs.Count; index++)
+            {
+                if (glyphs[index].ClusterStart != positioned.SourceStart + index || glyphs[index].ClusterLength != 1)
+                    throw new NotSupportedException("One-to-one glyph output needs one source character per glyph.");
+                if (sourceByGid.TryGetValue(glyphs[index].GlyphId, out var prior) && prior != run.Text[index])
+                    throw new NotSupportedException("One original GID has ambiguous PDF Unicode semantics.");
+                if (gidBySource.TryGetValue(run.Text[index], out var priorGid) && priorGid != glyphs[index].GlyphId)
+                    throw new NotSupportedException("One source character has conflicting original GIDs in a PDF font alias.");
+                sourceByGid[glyphs[index].GlyphId] = run.Text[index];
+                gidBySource[run.Text[index]] = glyphs[index].GlyphId;
+            }
+        }
+        else if (glyphs.Count != 1 || run.Text.Length is not (2 or 3) ||
+                 glyphs[0].ClusterStart != positioned.SourceStart || glyphs[0].ClusterLength != run.Text.Length)
+            throw new NotSupportedException("Only a complete two/three-character ligature is in this output profile.");
+        foreach (var glyph in glyphs)
+        {
+            if (Math.Abs(glyph.OriginXMillimeters) > 1_000_000 ||
+                Math.Abs(glyph.OriginYMillimeters) > 1_000_000 ||
+                Math.Abs(glyph.XAdvanceMillimeters) > 1_000_000 || glyph.YAdvanceMillimeters != 0)
+                throw new NotSupportedException("Typed glyph IDs or positions exceed the verified outline profile.");
+        }
+        var first = glyphs[0];
+        var deltasX = new List<string>(); var deltasY = new List<string>();
+        for (var index = 1; index < glyphs.Count; index++)
+        {
+            var dx = glyphs[index].OriginXMillimeters - glyphs[index - 1].OriginXMillimeters;
+            var dy = glyphs[index].OriginYMillimeters - glyphs[index - 1].OriginYMillimeters;
+            if (Math.Abs(dx) > 1_000_000 || Math.Abs(dy) > 1_000_000)
+                throw new NotSupportedException("Typed glyph origin delta exceeds the verified profile.");
+            deltasX.Add(ToInvariant(dx)); deltasY.Add(ToInvariant(dy));
+        }
+        var sourceCode = textObject.Elements(ns + "TextCode").Single();
+        sourceCode.SetAttributeValue("X", ToInvariant(first.OriginXMillimeters));
+        sourceCode.SetAttributeValue("Y", ToInvariant(first.OriginYMillimeters));
+        sourceCode.SetAttributeValue("DeltaX", deltasX.Count == 0 ? null : string.Join(" ", deltasX));
+        sourceCode.SetAttributeValue("DeltaY", deltasY.Any(value => value != "0") ? string.Join(" ", deltasY) : null);
+        sourceCode.Value = OfdTextRenderProjection.EncodeLiteral(run.Text, ids.Material, ids.Token);
+        sourceCode.AddBeforeSelf(new XElement(ns + "CGTransform",
+            new XAttribute("CodePosition", "0"),
+            // This first producer profile is BMP and one TextCode: source-code
+            // positions are one per character, independently of HB clusters.
+            new XAttribute("CodeCount", run.Text.Length),
+            new XAttribute("GlyphCount", glyphs.Count),
+            new XElement(ns + "Glyphs", string.Join(" ", glyphs.Select(glyph =>
+                glyph.GlyphId.ToString(CultureInfo.InvariantCulture))))));
     }
 
     /// <summary>
