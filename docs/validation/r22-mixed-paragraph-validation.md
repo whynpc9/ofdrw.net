@@ -182,6 +182,35 @@ tag-aware consumer; the [PDF Association RTL discussion](https://github.com/pdf-
 distinguishes structure order, glyph order and reader heuristics. It does not
 establish Apple PDFKit/Preview compatibility or waive their direct checks.
 
+## Logical tag-tree checkpoint (2026-10-28)
+
+The version-correct first matrix was followed by a seven-case T-L/T-V
+diagnostic. Both variants preserve each product PDF's positioned word/space
+groups and PDF 1.7; T-L keeps logical page stream order, while T-V writes the
+groups in visual order. Both attach a logical Document/P/Span tree with each
+word and space's own MCID, matching page `StructParents` and ParentTree links,
+`en-US` LTR paragraph attributes and `he-IL` Hebrew spans. The generator
+verified all links, font bytes and pixel identity. It does not claim PDF/UA.
+
+Independent Poppler `pdfinfo -struct-text` recovered the exact logical source
+in all 14 PDFs, including T-V's visual page stream order. Yet PDFKit's raw
+document text, full selection and every Find count/rectangle were byte-for-byte
+unchanged from the corresponding untagged A/C control. PdfPig 0.1.15 with
+`UseActualText=false` and `true` likewise returned the same text, words and
+rectangles as those controls. Three individual API cells met the combined
+diagnostic criteria; no tag variant covers the seven-case set. The structure
+tree establishes an independent logical reading order, but these target APIs
+did not use it to repair copy/search. Preview remains unmeasured for the new
+diagnostics because the existing GUI connection and window-ownership block
+has not cleared.
+
+The preserved source and receipts are in ignored
+`artifacts/r22-harfbuzz/tagged-reading-order-20261028/`: original Poppler
+`*.structure.txt`, parsed `poppler-structure-receipt.json`, MCID/ParentTree
+checks in `matrix.json`, `tag-effect.json`, pinned PdfPig and native PDFKit
+outputs. The observation narrows this tagged approach. It does not rule out
+other standards-compliant PDF encodings or imply a product fix.
+
 ## Completion gates
 
 Each result is PASS, FAIL or BLOCKED with file hashes and tool versions. Current
