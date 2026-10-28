@@ -64,6 +64,24 @@ public sealed partial class ExplicitGlyphTransformTests
             .ConvertAsync(new MemoryStream(source), output)
     };
 
+    [Fact]
+    public void GroupedHebrewTextCodesCannotShareOneWholeWordSemanticCid()
+    {
+        var face = Font("DejaVuSans-R22.ttf");
+        var cmap = new OpenTypeCmap(new OpenTypeFace(face));
+        string Mapping(string source) => MapSpan(0, source.Length,
+            source.Reverse().Select(value => cmap.Glyph(value)).ToArray());
+        var text = GroupedText("של", Mapping("של"), "5", "ום", Mapping("ום"), "5");
+        text.FontName = "DejaVu Sans";
+        var resource = new OfdFontResource { Id = "10", FontName = text.FontName, Data = face };
+        var projected = Assert.IsType<OfdExplicitGlyphRun>(OfdExplicitGlyphRun.Read(
+            text, resource, strategy: Grouped));
+        Assert.Equal("שלום", projected.LogicalText);
+        Assert.Null(projected.VisualHebrewSourceSpan);
+        Assert.Equal(new[] { "של", "ום" }, projected.Groups!.Select(group =>
+            group.Projection.VisualHebrewSourceSpan));
+    }
+
     [Theory]
     [InlineData("second-only", "AB", "CD", "36 37 40 39", "3 11 3 11", "6 6 22 22")]
     [InlineData("both-local-zero", "AB", "CD", "40 37 41 39", "3 11 3 11", "6 6 22 22")]

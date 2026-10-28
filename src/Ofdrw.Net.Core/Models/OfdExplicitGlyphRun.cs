@@ -66,6 +66,7 @@ internal sealed class OfdExplicitGlyphRun
     // PDF may carry its whole logical source as one semantic CID, avoiding
     // reader-specific reordering of four independently positioned text codes.
     internal string? VisualHebrewSourceSpan => ComposedPath &&
+        (Groups is null || Groups.Count == 1) &&
         OfdPositionedGlyphProfile.IsHebrewWord(LogicalText) &&
         GlyphIds.Count == LogicalText.Length ? LogicalText : null;
 
