@@ -1446,6 +1446,98 @@ public sealed partial class ExplicitGlyphTransformTests
             .Where(item => item?.Stream is not null)
             .Select(item => Encoding.ASCII.GetString(item!.Stream!.Value));
         Assert.Contains(unicodeMaps, map => map.Contains($"<{gids[0]:X4}><{sourceHex}>"));
+        var semanticFont = Assert.Single(inspection.Internals.GetAllObjects()
+            .OfType<PdfSharpCore.Pdf.PdfDictionary>(),
+            item => item.Elements.GetName("/Subtype") == "/CIDFontType2" &&
+                           item.Elements.GetName("/BaseFont").Contains("Ofdrw-") &&
+                           item.Elements["/W"] is PdfSharpCore.Pdf.PdfArray widths &&
+                           widths.Elements.Count == 2 &&
+                           widths.Elements[0] is PdfSharpCore.Pdf.PdfInteger code && code.Value == gids[0]);
+        var widthEntries = Assert.IsType<PdfSharpCore.Pdf.PdfArray>(
+            Assert.IsType<PdfSharpCore.Pdf.PdfArray>(semanticFont.Elements["/W"]).Elements[1]);
+        Assert.True(widthEntries.Elements.Count == 1);
+        var actualWidth = Assert.IsType<PdfSharpCore.Pdf.PdfInteger>(widthEntries.Elements[0]).Value;
+        var lastOutline = new TrueTypeGlyphOutlines(bytes).Read(gids[^1]);
+        var expectedWidth = (int)Math.Round(1000d * (15d / text.FontSizeMillimeters +
+            (double)lastOutline.AdvanceWidth / lastOutline.UnitsPerEm), MidpointRounding.AwayFromZero);
+        Assert.Equal(expectedWidth, actualWidth);
+    }
+
+    [Fact]
+    public async Task DifferentHebrewWordsSharingFirstVisualGidKeepSeparatePdfSemantics()
+    {
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        OfdTextElement Word(string source)
+        {
+            var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+            var delta = string.Join(" ", Enumerable.Repeat("5", source.Length - 1));
+            var text = Text(gids[0], gids[1], delta, source);
+            text.FontName = "DejaVu Sans";
+            text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+                $"<CGTransform CodePosition='0' CodeCount='{source.Length}' GlyphCount='{gids.Length}'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+                $"<TextCode X='0' Y='6' DeltaX='{delta}'>{source}</TextCode></TextObject>";
+            return text;
+        }
+
+        const string first = "שלום";
+        const string second = "מקום";
+        Assert.Equal(cmap.Glyph(first[^1]), cmap.Glyph(second[^1]));
+        var secondText = Word(second);
+        secondText.SourceXml = secondText.SourceXml!.Replace("ID='2'", "ID='3'");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Word(first) } });
+        package.Pages.Add(new OfdPage { Index = 1, WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { secondText } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(first, parsed.GetPage(1).Text);
+        Assert.Equal(second, parsed.GetPage(2).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var maps = inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.GetName("/Subtype") == "/Type0")
+            .Select(item => item.Elements.GetDictionary("/ToUnicode"))
+            .Where(item => item?.Stream is not null)
+            .Select(item => Encoding.ASCII.GetString(item!.Stream!.Value)).ToArray();
+        var firstHex = BitConverter.ToString(Encoding.BigEndianUnicode.GetBytes(first)).Replace("-", string.Empty);
+        var secondHex = BitConverter.ToString(Encoding.BigEndianUnicode.GetBytes(second)).Replace("-", string.Empty);
+        Assert.Contains(maps, map => map.Contains($"><{firstHex}>"));
+        Assert.Contains(maps, map => map.Contains($"><{secondHex}>"));
+    }
+
+    [Fact]
+    public async Task SameHebrewWordWithDifferentPositionedWidthsRejectsPdfAlias()
+    {
+        const string source = "שלום";
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        OfdTextElement Word(string delta, string id)
+        {
+            var text = Text(gids[0], gids[1], delta, source);
+            text.FontName = "DejaVu Sans";
+            text.SourceXml = $"<TextObject ID='{id}' Boundary='10 10 50 12' Font='10' Size='6'>" +
+                $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='4'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+                $"<TextCode X='0' Y='6' DeltaX='{delta}'>{source}</TextCode></TextObject>";
+            return text;
+        }
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Word("5 5 5", "2"), Word("6 6 6", "3") } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf));
+        Assert.Contains("conflicting positioned widths", error.Message);
+        Assert.Equal(0, pdf.Length);
     }
 
     [Fact]
