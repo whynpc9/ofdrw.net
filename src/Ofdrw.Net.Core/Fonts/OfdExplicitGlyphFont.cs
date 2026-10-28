@@ -11,6 +11,9 @@ internal sealed class OfdExplicitGlyphFont
     private OfdExplicitGlyphFont(byte[] faceBytes, TrueTypeGlyphOutline[] outlines)
     { FaceBytes = faceBytes; Outlines = outlines; }
 
+    internal OfdExplicitGlyphFont Slice(int offset, int count) =>
+        new(FaceBytes, Outlines.Skip(offset).Take(count).ToArray());
+
     internal byte[] FaceBytes { get; }
     internal IReadOnlyList<TrueTypeGlyphOutline> Outlines { get; }
 

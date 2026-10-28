@@ -19,7 +19,7 @@ using PdfPigDocument = UglyToad.PdfPig.PdfDocument;
 namespace Ofdrw.Net.Converter.Pdf.Tests;
 
 [Collection("Font registry")]
-public sealed class ExplicitGlyphTransformTests
+public sealed partial class ExplicitGlyphTransformTests
 {
     private static byte[] Font(string fileName = "NotoSans-Regular.ttf")
     {
@@ -384,6 +384,50 @@ public sealed class ExplicitGlyphTransformTests
             await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, stem + ".ofd"), source);
             await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, stem + ".pdf"), pdf.ToArray());
             await File.WriteAllBytesAsync(Path.Combine(artifactDirectory, stem + ".svg"), svg.ToArray());
+        }
+    }
+
+    [Fact]
+    public async Task LegacyGlobalMappingIgnoresSecondTextCodeGroupPlacement()
+    {
+        // Characterize the old interpretation before introducing an explicit grouped strategy.
+        // Annex A.13 groups the map with CD; the legacy profile instead maps global A to E.
+        var text = MixedOneToOneText("ABCD", MapAt(0, 40), "8", twoRuns: true);
+        var xml = XElement.Parse(text.SourceXml!);
+        var map = xml.Element("CGTransform")!;
+        map.Remove();
+        xml.Elements("TextCode").First().AddAfterSelf(map);
+        text.SourceXml = xml.ToString(SaveOptions.DisableFormatting);
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = Font() });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        var source = ofd.ToArray();
+        var readback = await new OfdReader().ReadAsync(new MemoryStream(source));
+        var loaded = Assert.Single(readback.Pages[0].Elements.OfType<OfdTextElement>());
+        Assert.Equal(new[] { "TextCode", "CGTransform", "TextCode" },
+            XElement.Parse(loaded.SourceXml!).Elements().Select(node => node.Name.LocalName));
+        var run = OfdExplicitGlyphRun.Read(loaded, readback.Fonts.Single())!;
+        Assert.Equal(new[] { 40, 37, 38, 39 }, run.GlyphIds);
+        Assert.Equal("A", Assert.Single(run.Spans).LogicalText);
+
+        using var svg = new MemoryStream();
+        await new OfdToSvgConverter().ConvertAsync(new MemoryStream(source), svg);
+        var paths = XDocument.Parse(Encoding.UTF8.GetString(svg.ToArray())).Descendants()
+            .Where(node => node.Attribute("data-original-gid") is not null).ToArray();
+        Assert.Equal(new[] { 40, 37, 38, 39 }, paths.Select(node => (int)node.Attribute("data-original-gid")!));
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(source), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("ABCD", parsed.GetPage(1).Text);
+        if (Environment.GetEnvironmentVariable("R02_ARTIFACT_DIR") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "legacy-second-group.ofd"), source);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "legacy-second-group.pdf"), pdf.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(directory, "legacy-second-group.svg"), svg.ToArray());
         }
     }
 

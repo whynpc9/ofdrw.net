@@ -86,7 +86,7 @@ public sealed class OfdToHtmlConverter
             for (var occurrence = 0; occurrence < selected.Length; occurrence++)
             {
                 cancellationToken.ThrowIfCancellationRequested(); context.Occurrence(occurrence);
-                var svg = OfdToSvgConverter.BuildSvg(package, pages[selected[occurrence]], material, fontBudget, cancellationToken, context);
+                var svg = OfdToSvgConverter.BuildSvg(package, pages[selected[occurrence]], material, fontBudget, cancellationToken, context, glyphMappingStrategy: options.GlyphMappingStrategy);
                 SvgPreviewPolicy.Validate(svg, context.Prefix, context.FontPrefix, cancellationToken);
                 spool.BeginPage();
                 writer.WriteStartElement("section"); writer.WriteAttributeString("id", "ofd-preview-page-" + occurrence);
@@ -104,7 +104,8 @@ public sealed class OfdToHtmlConverter
     private static OfdHtmlOptions Snapshot(OfdHtmlOptions value)
     {
         if (value is null) throw new ArgumentNullException(nameof(value));
-        var copy = new OfdHtmlOptions { Title = value.Title, MaxTitleCharacters = value.MaxTitleCharacters, MaxPages = value.MaxPages,
+        OfdGlyphMappingStrategyGuard.Validate(value.GlyphMappingStrategy);
+        var copy = new OfdHtmlOptions { GlyphMappingStrategy = value.GlyphMappingStrategy, Title = value.Title, MaxTitleCharacters = value.MaxTitleCharacters, MaxPages = value.MaxPages,
             MaxOutputBytes = value.MaxOutputBytes, MaxPageBytes = value.MaxPageBytes, MaxGeneratedNodes = value.MaxGeneratedNodes,
             MaxGeneratedCharacters = value.MaxGeneratedCharacters, MaxEmbeddedResourceBytes = value.MaxEmbeddedResourceBytes, MaxDecodedImagePixels = value.MaxDecodedImagePixels };
         if (copy.Title is null || copy.MaxTitleCharacters <= 0 || copy.Title.Length > copy.MaxTitleCharacters || copy.MaxPages <= 0 ||

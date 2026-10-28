@@ -1,5 +1,9 @@
 # R02 explicit CGTransform glyphs: bounded candidate
 
+The following records describe the historical `LegacyConcatenatedGlobal` profile.
+The opt-in [GroupedLocal profile](r02-grouped-textcode.md) binds each mapping
+to the following `TextCode` and records its own validation scope.
+
 This source candidate renders **one or more `TextCode` runs with a complete
 one-to-one `CGTransform` mapping** of independent, nonblank BMP characters to
 original glyph IDs in an embedded, static monochrome TrueType `glyf` face.

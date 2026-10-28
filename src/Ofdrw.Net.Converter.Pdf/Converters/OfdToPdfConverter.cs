@@ -27,6 +27,7 @@ namespace Ofdrw.Net.Converter.Pdf.Converters;
 public sealed class OfdToPdfConverter : IOfdToPdfConverter
 {
     private readonly OfdToPdfOptions _options;
+    private readonly OfdGlyphMappingStrategy _glyphMappingStrategy;
     private readonly long _maximumFontParseWork;
     private readonly OfdNameOnlyFontBindings? _nameOnlyBindings;
 
@@ -43,6 +44,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         _maximumFontParseWork = maximumCmapParseWork;
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _nameOnlyBindings = options.NameOnlyFontBindings;
+        OfdGlyphMappingStrategyGuard.Validate(options.GlyphMappingStrategy);
+        _glyphMappingStrategy = options.GlyphMappingStrategy;
         if (options.PackageLoadOptions is null || options.MaxDecodedImagePixels <= 0)
             throw new ArgumentException("OFD load options and a positive image pixel budget are required.", nameof(options));
         PdfFontRegistry.EnsureInstalled();
@@ -91,7 +94,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
         var parseBudget = new FontParseBudget(_maximumFontParseWork, cancellationToken);
         var fonts = new DocumentFontContext(package.Fonts, parseBudget: parseBudget, cancellationToken: cancellationToken,
-            nameOnlyBindings: _nameOnlyBindings);
+            nameOnlyBindings: _nameOnlyBindings, glyphMappingStrategy: _glyphMappingStrategy);
         var signatureAppearances = await PrepareSignatureAppearancesAsync(
                 package, selectedIds, strictAppearanceBudgets, maximumSignatureAppearances,
                 annotationMaterial, parseBudget, cancellationToken)
@@ -202,7 +205,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     var nested = await ReadAppearanceOfdPackageAsync(appearance.Data, remaining, annotationMaterial, cancellationToken).ConfigureAwait(false);
                     cached = (nested, nested is null ? null : new DocumentFontContext(nested.Fonts,
                         parseBudget: parseBudget, cancellationToken: cancellationToken,
-                        nameOnlyBindings: _nameOnlyBindings));
+                        nameOnlyBindings: _nameOnlyBindings, glyphMappingStrategy: _glyphMappingStrategy));
                     if (strictAppearanceBudgets)
                     {
                         nestedCache.Add(key, cached);
@@ -739,15 +742,20 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             ? (fontContext ?? throw new InvalidOperationException("Explicit glyph rendering requires a document font context."))
                 .ReadExplicitRun(text, fontResource)
             : null;
+        var groupedFont = explicitRun?.Groups is not null
+            ? OfdExplicitGlyphFont.Read(fontResource, text, explicitRun, embedFont: false) : null;
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
-            foreach (var run in text.Runs)
+            for (var runIndex = 0; runIndex < text.Runs.Count; runIndex++)
             {
-                if (explicitRun?.PathGlyphSourceSpan is { } sourceSpan)
+                var run = text.Runs[runIndex];
+                var plannedRun = explicitRun?.Groups is { } groups ? groups[runIndex].Projection : explicitRun;
+                if (plannedRun?.PathGlyphSourceSpan is { } sourceSpan)
                 {
                     var anchor = OfdTextEmphasis.Anchor(run.XMillimeters, run.YMillimeters, factor);
-                    DrawPathGlyphOutlines(graphics, text, explicitRun, fontResource, factor, paint,
-                        cancellationToken);
+                    DrawPathGlyphOutlines(graphics, text, plannedRun, fontResource, factor, paint,
+                        cancellationToken, groupedFont?.Slice(explicitRun!.Groups![runIndex].GlyphOffset,
+                            plannedRun.GlyphIds.Count));
                     DrawStyledString(graphics, sourceSpan, font,
                         new XSolidBrush(XColor.FromArgb(0, 0, 0, 0)),
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
@@ -822,9 +830,9 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 
     private static void DrawPathGlyphOutlines(XGraphics graphics, OfdTextElement text,
         OfdExplicitGlyphRun run, OfdFontResource? resource, double[]? factor,
-        OfdTextPaint paint, CancellationToken token)
+        OfdTextPaint paint, CancellationToken token, OfdExplicitGlyphFont? plannedFont = null)
     {
-        var font = OfdExplicitGlyphFont.Read(resource, text, run, embedFont: false);
+        var font = plannedFont ?? OfdExplicitGlyphFont.Read(resource, text, run, embedFont: false);
         var origins = run.PathGlyphOrigins(token);
         for (var index = 0; index < font.Outlines.Count; index++)
         {

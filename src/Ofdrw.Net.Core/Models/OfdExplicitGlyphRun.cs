@@ -29,11 +29,27 @@ internal sealed class OfdExplicitGlyphSpan
     internal string LogicalText { get; }
 }
 
+internal sealed class OfdExplicitGlyphGroup
+{
+    internal OfdExplicitGlyphGroup(int textCodeIndex, int sourceOffset, int glyphOffset,
+        int[] transformOrdinals, OfdExplicitGlyphRun projection)
+    { TextCodeIndex = textCodeIndex; SourceOffset = sourceOffset; GlyphOffset = glyphOffset;
+      TransformOrdinals = transformOrdinals; Projection = projection; }
+    internal int TextCodeIndex { get; }
+    internal int SourceOffset { get; }
+    internal int GlyphOffset { get; }
+    internal IReadOnlyList<int> TransformOrdinals { get; }
+    internal OfdExplicitGlyphRun Projection { get; }
+}
+
 internal sealed class OfdExplicitGlyphRun
 {
     private OfdExplicitGlyphRun(IReadOnlyList<OfdTextRun> runs, int[] glyphIds,
-        IReadOnlyList<OfdExplicitGlyphSpan> spans, bool composedPath = false)
-    { Runs = runs; GlyphIds = glyphIds; Spans = spans; ComposedPath = composedPath; }
+        IReadOnlyList<OfdExplicitGlyphSpan> spans, bool composedPath = false,
+        IReadOnlyList<OfdExplicitGlyphGroup>? groups = null)
+    { Runs = runs; GlyphIds = glyphIds; Spans = spans; ComposedPath = composedPath; Groups = groups; }
+
+    internal IReadOnlyList<OfdExplicitGlyphGroup>? Groups { get; }
 
     internal IReadOnlyList<OfdTextRun> Runs { get; }
     internal string LogicalText => string.Concat(Runs.Select(run => run.Text));
@@ -49,6 +65,8 @@ internal sealed class OfdExplicitGlyphRun
 
     internal IReadOnlyList<(double X, double Y)> PathGlyphOrigins(CancellationToken token)
     {
+        if (Groups is not null)
+            return Groups.SelectMany(group => group.Projection.PathGlyphOrigins(token)).ToArray();
         if (PathGlyphSourceSpan is null || Runs.Count != 1)
             throw new InvalidOperationException("A complete source span is required for original-GID path placement.");
         var source = Runs[0];
@@ -70,8 +88,10 @@ internal sealed class OfdExplicitGlyphRun
     }
 
     internal static OfdExplicitGlyphRun? Read(OfdTextElement text, OfdFontResource? resource = null,
-        IDictionary<OfdFontResource, OpenTypeCmap>? cmapCache = null, FontParseBudget? parseBudget = null)
+        IDictionary<OfdFontResource, OpenTypeCmap>? cmapCache = null, FontParseBudget? parseBudget = null,
+        OfdGlyphMappingStrategy strategy = OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)
     {
+        OfdGlyphMappingStrategyGuard.Validate(strategy);
         if (string.IsNullOrWhiteSpace(text.SourceXml)) return null;
         XElement root;
         try { root = OfdXmlEnvelope.Parse(text.SourceXml!); }
@@ -99,20 +119,90 @@ internal sealed class OfdExplicitGlyphRun
         var logical = string.Concat(text.Runs.Select(run => run.Text));
         if (text.Text != logical || text.Runs.Any(run => run.Text.Length == 0))
             throw new NotSupportedException("CGTransform requires nonempty matching source runs.");
-        // Admit only global, unambiguous BMP positions over the
-        // concatenated runs. Per-TextCode position resets need separate evidence.
+        // Both strategies keep the existing bounded BMP source repertoire.
         if (logical.Length is < 1 or > 1024 || logical.Any(value => char.IsSurrogate(value) ||
                 char.IsControl(value) || char.IsWhiteSpace(value) ||
                 CharUnicodeInfo.GetUnicodeCategory(value) == UnicodeCategory.Format))
             throw new NotSupportedException("CGTransform glyph rendering requires independent, nonblank BMP characters.");
+        if (strategy == OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)
+            return Project(text.Runs, transforms, root.Name.Namespace, resource, cmapCache, parseBudget);
+
+        var groups = new List<OfdExplicitGlyphGroup>();
+        var pending = new List<XElement>();
+        var ordinals = new List<int>();
+        var transformOrdinal = 0;
+        var sourceOffset = 0;
+        var glyphOffset = 0;
+        foreach (var child in root.Elements())
+        {
+            parseBudget?.Spend(0);
+            if (child.Name.LocalName == "CGTransform")
+            {
+                pending.Add(child); ordinals.Add(transformOrdinal++);
+                continue;
+            }
+            if (child.Name != root.Name.Namespace + "TextCode") continue;
+            var index = groups.Count;
+            var run = text.Runs[index];
+            try
+            {
+                foreach (var mapping in pending)
+                {
+                    var position = Number(mapping.Attribute("CodePosition"), -1);
+                    var count = Number(mapping.Attribute("CodeCount"), 1);
+                    if (mapping.Name.Namespace != root.Name.Namespace || position < 0 || count < 1 ||
+                        position > run.Text.Length - count)
+                        throw new NotSupportedException("Mapping range must lie entirely within its owning TextCode.");
+                }
+                var projected = Project(new[] { run }, pending.ToArray(), root.Name.Namespace,
+                    resource, cmapCache, parseBudget);
+                if (codes.Length > 1 && projected.GlyphIds.Count != run.Text.Length &&
+                    projected.GlyphIds.Count > 1 && string.IsNullOrWhiteSpace(run.DeltaX))
+                    throw new NotSupportedException("Multi-TextCode unequal mappings require complete explicit glyph-slot DeltaX.");
+                // Grouped rendering uses the existing original-GID path route;
+                // semantic text belongs to this group exactly once.
+                projected = new OfdExplicitGlyphRun(projected.Runs, projected.GlyphIds.ToArray(),
+                    projected.Spans, composedPath: true);
+                _ = projected.PathGlyphOrigins(CancellationToken.None);
+                groups.Add(new OfdExplicitGlyphGroup(index, sourceOffset, glyphOffset, ordinals.ToArray(), projected));
+                sourceOffset += run.Text.Length;
+                glyphOffset += projected.GlyphIds.Count;
+                if (glyphOffset > 1024)
+                    throw new NotSupportedException("Grouped CGTransform exceeds 1024 output glyph slots.");
+                pending.Clear(); ordinals.Clear();
+            }
+            catch (NotSupportedException error)
+            {
+                throw new NotSupportedException($"GroupedLocal TextObject {root.Attribute("ID")?.Value ?? "(unknown)"}, " +
+                    $"TextCode {index}, CGTransform ordinals [{string.Join(",", ordinals)}], " +
+                    $"local ranges [{string.Join(",", pending.Select(mapping =>
+                        $"{Number(mapping.Attribute("CodePosition"), -1)}+{Number(mapping.Attribute("CodeCount"), 1)}"))}]: {error.Message}", error);
+            }
+        }
+        if (pending.Count != 0)
+            throw new NotSupportedException($"GroupedLocal TextObject {root.Attribute("ID")?.Value ?? "(unknown)"}: " +
+                $"dangling CGTransform ordinals [{string.Join(",", ordinals)}] have no following TextCode.");
+        return new OfdExplicitGlyphRun(text.Runs,
+            groups.SelectMany(group => group.Projection.GlyphIds).ToArray(),
+            groups.SelectMany(group => group.Projection.Spans.Select(span => new OfdExplicitGlyphSpan(
+                group.SourceOffset + span.CodePosition, span.CodeCount,
+                group.GlyphOffset + span.GlyphPosition, span.GlyphCount, span.LogicalText))).ToArray(),
+            composedPath: true, groups: groups);
+    }
+
+    private static OfdExplicitGlyphRun Project(IReadOnlyList<OfdTextRun> runs, XElement[] transforms,
+        XNamespace ns, OfdFontResource? resource, IDictionary<OfdFontResource, OpenTypeCmap>? cmapCache,
+        FontParseBudget? parseBudget)
+    {
+        var logical = string.Concat(runs.Select(run => run.Text));
         // Table 46 positions the drawn glyphs. For a complete multi-glyph
         // source span, an explicit delta for every glyph gap removes any need
         // to infer advances or how source-code deltas map to glyph positions.
         // A combining mark is allowed after a base within this complete span;
         // the older independent-character profiles retain their rejection.
-        if (logical.Length <= 8 && codes.Length == 1 && transforms.Length == 1 &&
+        if (logical.Length <= 8 && runs.Count == 1 && transforms.Length == 1 &&
             !IsCombiningMark(logical[0]) &&
-            !string.IsNullOrWhiteSpace(text.Runs[0].DeltaX))
+            !string.IsNullOrWhiteSpace(runs[0].DeltaX))
         {
             var transform = transforms[0];
             var codeCount = Number(transform.Attribute("CodeCount"), 1);
@@ -122,7 +212,7 @@ internal sealed class OfdExplicitGlyphRun
                     attribute.Name.LocalName is "CodePosition" or "CodeCount" or "GlyphCount") &&
                 Number(transform.Attribute("CodePosition"), -1) == 0 &&
                 codeCount == logical.Length && transform.Elements().Count() == 1 &&
-                transform.Element(root.Name.Namespace + "Glyphs") is { } glyphs &&
+                transform.Element(ns + "Glyphs") is { } glyphs &&
                 !glyphs.HasElements &&
                 glyphs.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
                 glyphs.Nodes().All(node => node is XText) &&
@@ -138,9 +228,9 @@ internal sealed class OfdExplicitGlyphRun
                         throw new NotSupportedException("CGTransform contains overlapping or invalid original GIDs.");
                     ids[index] = gid;
                 }
-                CountDeltas(text.Runs[0].DeltaX, glyphCount - 1);
-                CountDeltas(text.Runs[0].DeltaY, glyphCount - 1);
-                var positioned = new OfdExplicitGlyphRun(text.Runs, ids,
+                CountDeltas(runs[0].DeltaX, glyphCount - 1);
+                CountDeltas(runs[0].DeltaY, glyphCount - 1);
+                var positioned = new OfdExplicitGlyphRun(runs, ids,
                     [new OfdExplicitGlyphSpan(0, codeCount, 0, glyphCount, logical)]);
                 _ = positioned.PathGlyphOrigins(CancellationToken.None);
                 return positioned;
@@ -152,7 +242,7 @@ internal sealed class OfdExplicitGlyphRun
             // interpretation. Foreign partial mappings and separate mark glyphs
             // still need their own OFD counting and reader evidence.
             if (!OfdPositionedGlyphProfile.IsLatinCombiningPair(logical) ||
-                ReadSingleGlyphSourceSpan(text.Runs, logical, root, codes, transforms) is not { } combined)
+                ReadSingleGlyphSourceSpan(runs, logical, ns, transforms) is not { } combined)
                 throw new NotSupportedException("Combining-mark CGTransform exceeds the verified complete-span profile.");
             return combined;
         }
@@ -161,9 +251,9 @@ internal sealed class OfdExplicitGlyphRun
         // ordinary direct-cmap characters between mapped spans. The public
         // Go writer/reader agrees for partial 1:2, two M:1 spans, and a
         // 1:1 plus M:1 span; no cross-TextCode reset is inferred here.
-        if (logical.Length is >= 2 and <= 8 && codes.Length == 1 &&
+        if (logical.Length is >= 2 and <= 8 && runs.Count == 1 &&
             transforms.Length is >= 1 and <= 2 &&
-            !string.IsNullOrWhiteSpace(text.Runs[0].DeltaX) &&
+            !string.IsNullOrWhiteSpace(runs[0].DeltaX) &&
             (transforms.Length > 1 && transforms.Any(transform =>
                  Number(transform.Attribute("CodeCount"), 1) !=
                  Number(transform.Attribute("GlyphCount"), 1)) ||
@@ -195,7 +285,7 @@ internal sealed class OfdExplicitGlyphRun
                 if (transform.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
                         attribute.Name.LocalName is not ("CodePosition" or "CodeCount" or "GlyphCount")) ||
                     transform.Elements().Count() != 1 ||
-                    transform.Element(root.Name.Namespace + "Glyphs") is not { } glyphs ||
+                    transform.Element(ns + "Glyphs") is not { } glyphs ||
                     glyphs.HasElements || glyphs.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
                     glyphs.Nodes().Any(node => node is not XText))
                     throw new NotSupportedException("Composed CGTransform has unsupported source XML.");
@@ -238,17 +328,17 @@ internal sealed class OfdExplicitGlyphRun
             }
             if (!unequal || ids.Count is < 2 or > 8)
                 throw new NotSupportedException("Composed CGTransform requires a bounded unequal source span.");
-            CountDeltas(text.Runs[0].DeltaX, ids.Count - 1);
-            CountDeltas(text.Runs[0].DeltaY, ids.Count - 1);
-            var composed = new OfdExplicitGlyphRun(text.Runs, ids.ToArray(), composedSpans, composedPath: true);
+            CountDeltas(runs[0].DeltaX, ids.Count - 1);
+            CountDeltas(runs[0].DeltaY, ids.Count - 1);
+            var composed = new OfdExplicitGlyphRun(runs, ids.ToArray(), composedSpans, composedPath: true);
             _ = composed.PathGlyphOrigins(CancellationToken.None);
             return composed;
         }
         // A single interior M:1 span composes with direct-cmap ordinary glyphs
         // only when every drawn glyph has an explicit origin. Source-character
         // deltas have a different cardinality and remain outside this profile.
-        if (logical.Length is >= 4 and <= 8 && codes.Length == 1 && transforms.Length == 1 &&
-            !string.IsNullOrWhiteSpace(text.Runs[0].DeltaX))
+        if (logical.Length is >= 4 and <= 8 && runs.Count == 1 && transforms.Length == 1 &&
+            !string.IsNullOrWhiteSpace(runs[0].DeltaX))
         {
             var transform = transforms[0];
             var position = Number(transform.Attribute("CodePosition"), -1);
@@ -259,7 +349,7 @@ internal sealed class OfdExplicitGlyphRun
                 transform.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
                     attribute.Name.LocalName is "CodePosition" or "CodeCount" or "GlyphCount") &&
                 transform.Elements().Count() == 1 &&
-                transform.Element(root.Name.Namespace + "Glyphs") is { } glyphs &&
+                transform.Element(ns + "Glyphs") is { } glyphs &&
                 !glyphs.HasElements &&
                 glyphs.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
                 glyphs.Nodes().All(node => node is XText) &&
@@ -268,8 +358,8 @@ internal sealed class OfdExplicitGlyphRun
                 mappedGid is > 0 and <= ushort.MaxValue)
             {
                 var drawnCount = logical.Length - codeCount + 1;
-                CountDeltas(text.Runs[0].DeltaX, drawnCount - 1);
-                CountDeltas(text.Runs[0].DeltaY, drawnCount - 1);
+                CountDeltas(runs[0].DeltaX, drawnCount - 1);
+                CountDeltas(runs[0].DeltaY, drawnCount - 1);
                 if (resource?.Data is not { Length: > 0 })
                     throw new NotSupportedException("Mixed CGTransform requires an explicitly embedded font.");
                 parseBudget ??= new FontParseBudget();
@@ -302,7 +392,7 @@ internal sealed class OfdExplicitGlyphRun
                         throw new NotSupportedException("Mixed CGTransform has ambiguous original-GID semantics.");
                     ids[slot++] = gid;
                 }
-                var positioned = new OfdExplicitGlyphRun(text.Runs, ids,
+                var positioned = new OfdExplicitGlyphRun(runs, ids,
                     [new OfdExplicitGlyphSpan(position, codeCount, position, 1,
                         logical.Substring(position, codeCount))]);
                 _ = positioned.PathGlyphOrigins(CancellationToken.None);
@@ -312,14 +402,14 @@ internal sealed class OfdExplicitGlyphRun
         // A whole, unpositioned source span can map to one original GID. A
         // private PDF code is then given the exact source span in ToUnicode.
         // Mixed clusters and per-glyph deltas need a separate placement model.
-        if (ReadSingleGlyphSourceSpan(text.Runs, logical, root, codes, transforms) is { } completeSpan)
+        if (ReadSingleGlyphSourceSpan(runs, logical, ns, transforms) is { } completeSpan)
             return completeSpan;
         // One source character and two original glyph slots can share one
         // origin. Require a complete unpositioned TextCode so no adjacent
         // cluster or character/glyph delta interpretation is inferred.
-        if (logical.Length == 1 && codes.Length == 1 && transforms.Length == 1 &&
-            string.IsNullOrWhiteSpace(text.Runs[0].DeltaX) &&
-            string.IsNullOrWhiteSpace(text.Runs[0].DeltaY))
+        if (logical.Length == 1 && runs.Count == 1 && transforms.Length == 1 &&
+            string.IsNullOrWhiteSpace(runs[0].DeltaX) &&
+            string.IsNullOrWhiteSpace(runs[0].DeltaY))
         {
             var transform = transforms[0];
             if (transform.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
@@ -328,7 +418,7 @@ internal sealed class OfdExplicitGlyphRun
                 Number(transform.Attribute("CodeCount"), 1) == 1 &&
                 Number(transform.Attribute("GlyphCount"), 1) == 2 &&
                 transform.Elements().Count() == 1 &&
-                transform.Element(root.Name.Namespace + "Glyphs") is { } glyphs &&
+                transform.Element(ns + "Glyphs") is { } glyphs &&
                 !glyphs.HasElements &&
                 glyphs.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
                 glyphs.Nodes().All(node => node is XText) &&
@@ -336,7 +426,7 @@ internal sealed class OfdExplicitGlyphRun
                 int.TryParse(tokens[0], NumberStyles.None, CultureInfo.InvariantCulture, out var first) &&
                 int.TryParse(tokens[1], NumberStyles.None, CultureInfo.InvariantCulture, out var second) &&
                 first is > 0 and <= ushort.MaxValue && second is > 0 and <= ushort.MaxValue && first != second)
-                return new OfdExplicitGlyphRun(text.Runs, [first, second],
+                return new OfdExplicitGlyphRun(runs, [first, second],
                     [new OfdExplicitGlyphSpan(0, 1, 0, 2, logical)]);
         }
         var glyphIds = new int[logical.Length];
@@ -354,7 +444,7 @@ internal sealed class OfdExplicitGlyphRun
             if (position < 0 || codeCount <= 0 || glyphCount != codeCount ||
                 position > logical.Length - codeCount ||
                 transform.Elements().Count() != 1 ||
-                transform.Element(root.Name.Namespace + "Glyphs") is not { } glyphs || glyphs.HasElements ||
+                transform.Element(ns + "Glyphs") is not { } glyphs || glyphs.HasElements ||
                 glyphs.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
                 glyphs.Nodes().Any(node => node is not XText))
                 throw new NotSupportedException("CGTransform span or glyph count is outside the one-to-one profile.");
@@ -378,7 +468,7 @@ internal sealed class OfdExplicitGlyphRun
         var mixed = assigned.Any(value => !value);
         if (mixed)
         {
-            if (text.Runs.Count > 1)
+            if (runs.Count > 1)
             {
                 var priorEnd = 0;
                 foreach (var span in spans)
@@ -420,7 +510,7 @@ internal sealed class OfdExplicitGlyphRun
                 glyphIds[index] = gid;
             }
         }
-        foreach (var run in text.Runs)
+        foreach (var run in runs)
         {
             if (mixed && run.Text.Length > 1 && string.IsNullOrWhiteSpace(run.DeltaX))
                 throw new NotSupportedException("Mixed CGTransform requires explicit inter-glyph positioning deltas.");
@@ -429,7 +519,7 @@ internal sealed class OfdExplicitGlyphRun
             CountDeltas(run.DeltaX, run.Text.Length - 1);
             CountDeltas(run.DeltaY, run.Text.Length - 1);
         }
-        return new OfdExplicitGlyphRun(text.Runs, glyphIds, spans);
+        return new OfdExplicitGlyphRun(runs, glyphIds, spans);
     }
 
     private static void CountDeltas(string? expression, int expected)
@@ -457,9 +547,9 @@ internal sealed class OfdExplicitGlyphRun
     }
 
     private static OfdExplicitGlyphRun? ReadSingleGlyphSourceSpan(IReadOnlyList<OfdTextRun> runs,
-        string logical, XElement root, XElement[] codes, XElement[] transforms)
+        string logical, XNamespace ns, XElement[] transforms)
     {
-        if (logical.Length is < 2 or > 8 || codes.Length != 1 || transforms.Length != 1 ||
+        if (logical.Length is < 2 or > 8 || runs.Count != 1 || transforms.Length != 1 ||
             !string.IsNullOrWhiteSpace(runs[0].DeltaX) || !string.IsNullOrWhiteSpace(runs[0].DeltaY))
             return null;
         var transform = transforms[0];
@@ -469,7 +559,7 @@ internal sealed class OfdExplicitGlyphRun
             Number(transform.Attribute("CodeCount"), 1) != logical.Length ||
             Number(transform.Attribute("GlyphCount"), 1) != 1 ||
             transform.Elements().Count() != 1 ||
-            transform.Element(root.Name.Namespace + "Glyphs") is not { } glyphs ||
+            transform.Element(ns + "Glyphs") is not { } glyphs ||
             glyphs.HasElements || glyphs.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
             glyphs.Nodes().Any(node => node is not XText))
             return null;

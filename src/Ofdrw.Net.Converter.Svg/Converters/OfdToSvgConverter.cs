@@ -27,6 +27,7 @@ public sealed class OfdToSvgConverter
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private readonly OfdPackageLoadOptions _loadOptions;
+    private readonly OfdGlyphMappingStrategy _glyphMappingStrategy;
     private readonly long _maximumFontParseWork;
     private readonly OfdNameOnlyFontBindings? _nameOnlyBindings;
 
@@ -48,7 +49,18 @@ public sealed class OfdToSvgConverter
     /// <summary>Creates an SVG exporter with explicit name-only face bindings and a finite parse budget.</summary>
     public OfdToSvgConverter(OfdPackageLoadOptions loadOptions, long maximumCmapParseWork,
         OfdNameOnlyFontBindings? nameOnlyBindings)
+        : this(loadOptions, maximumCmapParseWork, nameOnlyBindings, OfdGlyphMappingStrategy.LegacyConcatenatedGlobal) { }
+
+    /// <summary>Creates an SVG exporter with an explicit CGTransform interpretation.</summary>
+    public OfdToSvgConverter(OfdGlyphMappingStrategy glyphMappingStrategy)
+        : this(new OfdPackageLoadOptions(), FontParseBudget.DefaultMaximumWork, null, glyphMappingStrategy) { }
+
+    /// <summary>Creates an SVG exporter with explicit resource limits, face bindings and mapping strategy.</summary>
+    public OfdToSvgConverter(OfdPackageLoadOptions loadOptions, long maximumCmapParseWork,
+        OfdNameOnlyFontBindings? nameOnlyBindings, OfdGlyphMappingStrategy glyphMappingStrategy)
     {
+        OfdGlyphMappingStrategyGuard.Validate(glyphMappingStrategy);
+        _glyphMappingStrategy = glyphMappingStrategy;
         if (maximumCmapParseWork <= 0) throw new ArgumentOutOfRangeException(nameof(maximumCmapParseWork));
         _maximumFontParseWork = maximumCmapParseWork;
         _loadOptions = loadOptions ?? throw new ArgumentNullException(nameof(loadOptions));
@@ -84,7 +96,7 @@ public sealed class OfdToSvgConverter
         OfdCompositeGraph.Validate(package, material, cancellationToken);
         OfdAnnotationContract.Validate(package, material, cancellationToken);
         var svg = BuildSvg(package, pages[pageIndex], material, new FontParseBudget(_maximumFontParseWork, cancellationToken),
-            cancellationToken, nameOnlyBindings: _nameOnlyBindings);
+            cancellationToken, nameOnlyBindings: _nameOnlyBindings, glyphMappingStrategy: _glyphMappingStrategy);
         var bytes = Encoding.UTF8.GetBytes(
             new XDocument(new XDeclaration("1.0", "utf-8", null), svg)
                 .ToString(SaveOptions.DisableFormatting));
@@ -94,7 +106,8 @@ public sealed class OfdToSvgConverter
     }
 
     internal static XElement BuildSvg(OfdDocumentPackage package, OfdPage page, OfdModelMaterialization material, FontParseBudget parseBudget,
-        CancellationToken cancellationToken, HtmlRenderContext? preview = null, OfdNameOnlyFontBindings? nameOnlyBindings = null)
+        CancellationToken cancellationToken, HtmlRenderContext? preview = null, OfdNameOnlyFontBindings? nameOnlyBindings = null,
+        OfdGlyphMappingStrategy glyphMappingStrategy = OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)
     {
         preview?.StartPage(page);
         var svgNs = XNamespace.Get("http://www.w3.org/2000/svg");
@@ -129,7 +142,7 @@ public sealed class OfdToSvgConverter
         var explicitCmaps = new Dictionary<OfdFontResource, OpenTypeCmap>();
         var families = AddEmbeddedFonts(root, svgNs, package.Fonts,
             elements.OfType<OfdTextElement>().Where(OfdGraphicXmlContract.IsVisible).ToList(),
-            parseBudget, explicitCmaps, preview, nameOnlyBindings, RenderText);
+            parseBudget, explicitCmaps, preview, nameOnlyBindings, RenderText, glyphMappingStrategy);
         foreach (var element in elements)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -160,7 +173,7 @@ public sealed class OfdToSvgConverter
             if (element is OfdTextElement text)
             {
                 AddText(target, svgNs, page, RenderText(text), package.Fonts,
-                    families, parseBudget, explicitCmaps, cancellationToken, preview, nameOnlyBindings);
+                    families, parseBudget, explicitCmaps, cancellationToken, preview, nameOnlyBindings, glyphMappingStrategy);
             }
             else if (element is OfdImageElement image && image.Data.Length > 0)
             {
@@ -216,7 +229,7 @@ public sealed class OfdToSvgConverter
         XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, IReadOnlyList<OfdTextElement> texts,
         FontParseBudget parseBudget, IDictionary<OfdFontResource, OpenTypeCmap> explicitCmaps,
         HtmlRenderContext? preview, OfdNameOnlyFontBindings? nameOnlyBindings,
-        Func<OfdTextElement, OfdTextElement> renderText)
+        Func<OfdTextElement, OfdTextElement> renderText, OfdGlyphMappingStrategy glyphMappingStrategy)
     {
         var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
@@ -228,7 +241,7 @@ public sealed class OfdToSvgConverter
         {
             var selectedFont = OfdFontSelection.Resolve(fonts, text);
             if (selectedFont is null) continue;
-            if (OfdExplicitGlyphRun.Read(renderText(text), selectedFont, explicitCmaps, parseBudget) is not null)
+            if (OfdExplicitGlyphRun.Read(renderText(text), selectedFont, explicitCmaps, parseBudget, glyphMappingStrategy) is not null)
             { explicitOnly.Add(selectedFont); continue; }
             if (!selectedTexts.TryGetValue(selectedFont, out var uses)) selectedTexts.Add(selectedFont, uses = new());
             uses.Add(text);
@@ -339,10 +352,10 @@ public sealed class OfdToSvgConverter
         IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families,
         FontParseBudget parseBudget, IDictionary<OfdFontResource, OpenTypeCmap> explicitCmaps,
         CancellationToken cancellationToken, HtmlRenderContext? preview,
-        OfdNameOnlyFontBindings? nameOnlyBindings)
+        OfdNameOnlyFontBindings? nameOnlyBindings, OfdGlyphMappingStrategy glyphMappingStrategy)
     {
         var resource = OfdFontSelection.Resolve(fonts, text);
-        if (OfdExplicitGlyphRun.Read(text, resource, explicitCmaps, parseBudget) is { } explicitRun)
+        if (OfdExplicitGlyphRun.Read(text, resource, explicitCmaps, parseBudget, glyphMappingStrategy) is { } explicitRun)
         {
             AddExplicitGlyphs(root, svgNs, page, text, explicitRun,
                 OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: false), cancellationToken, preview);
@@ -454,6 +467,13 @@ public sealed class OfdToSvgConverter
         OfdTextElement text, OfdExplicitGlyphRun run, OfdExplicitGlyphFont font, CancellationToken token,
         HtmlRenderContext? preview)
     {
+        if (run.Groups is { } groups)
+        {
+            foreach (var plannedGroup in groups)
+                AddExplicitGlyphs(root, ns, page, text, plannedGroup.Projection,
+                    font.Slice(plannedGroup.GlyphOffset, plannedGroup.Projection.GlyphIds.Count), token, preview);
+            return;
+        }
         var paint = OfdTextPaint.Read(text);
         var drawing = OfdTextEmphasis.DrawingTransform(text);
         var transform = BuildTransform(text.XMillimeters - page.XMillimeters,
