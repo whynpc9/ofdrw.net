@@ -174,7 +174,9 @@ internal sealed class OfdExplicitGlyphRun
             catch (NotSupportedException error)
             {
                 throw new NotSupportedException($"GroupedLocal TextObject {root.Attribute("ID")?.Value ?? "(unknown)"}, " +
-                    $"TextCode {index}, CGTransform ordinals [{string.Join(",", ordinals)}]: {error.Message}", error);
+                    $"TextCode {index}, CGTransform ordinals [{string.Join(",", ordinals)}], " +
+                    $"local ranges [{string.Join(",", pending.Select(mapping =>
+                        $"{Number(mapping.Attribute("CodePosition"), -1)}+{Number(mapping.Attribute("CodeCount"), 1)}"))}]: {error.Message}", error);
             }
         }
         if (pending.Count != 0)
@@ -235,7 +237,15 @@ internal sealed class OfdExplicitGlyphRun
             }
         }
         if (logical.Any(IsCombiningMark))
-            throw new NotSupportedException("CGTransform glyph rendering requires independent, nonblank BMP characters.");
+        {
+            // Only this fixed complete source span has an admitted combining-mark
+            // interpretation. Foreign partial mappings and separate mark glyphs
+            // still need their own OFD counting and reader evidence.
+            if (!OfdPositionedGlyphProfile.IsLatinCombiningPair(logical) ||
+                ReadSingleGlyphSourceSpan(runs, logical, ns, transforms) is not { } combined)
+                throw new NotSupportedException("Combining-mark CGTransform exceeds the verified complete-span profile.");
+            return combined;
+        }
         // One TextCode can compose finite, ordered source spans into drawn
         // glyph slots. Table 46 deltas then describe those slots, including
         // ordinary direct-cmap characters between mapped spans. The public
@@ -392,27 +402,8 @@ internal sealed class OfdExplicitGlyphRun
         // A whole, unpositioned source span can map to one original GID. A
         // private PDF code is then given the exact source span in ToUnicode.
         // Mixed clusters and per-glyph deltas need a separate placement model.
-        if (logical.Length is >= 2 and <= 8 && runs.Count == 1 && transforms.Length == 1 &&
-            string.IsNullOrWhiteSpace(runs[0].DeltaX) &&
-            string.IsNullOrWhiteSpace(runs[0].DeltaY))
-        {
-            var transform = transforms[0];
-            if (transform.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
-                    attribute.Name.LocalName is "CodePosition" or "CodeCount" or "GlyphCount") &&
-                Number(transform.Attribute("CodePosition"), -1) == 0 &&
-                Number(transform.Attribute("CodeCount"), 1) == logical.Length &&
-                Number(transform.Attribute("GlyphCount"), 1) == 1 &&
-                transform.Elements().Count() == 1 &&
-                transform.Element(ns + "Glyphs") is { } glyphs &&
-                !glyphs.HasElements &&
-                glyphs.Attributes().All(attribute => attribute.IsNamespaceDeclaration) &&
-                glyphs.Nodes().All(node => node is XText) &&
-                glyphs.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries) is { Length: 1 } tokens &&
-                int.TryParse(tokens[0], NumberStyles.None, CultureInfo.InvariantCulture, out var gid) &&
-                gid is > 0 and <= ushort.MaxValue)
-                return new OfdExplicitGlyphRun(runs, [gid],
-                    [new OfdExplicitGlyphSpan(0, logical.Length, 0, 1, logical)]);
-        }
+        if (ReadSingleGlyphSourceSpan(runs, logical, ns, transforms) is { } completeSpan)
+            return completeSpan;
         // One source character and two original glyph slots can share one
         // origin. Require a complete unpositioned TextCode so no adjacent
         // cluster or character/glyph delta interpretation is inferred.
@@ -553,6 +544,32 @@ internal sealed class OfdExplicitGlyphRun
         }
         if (count != expected)
             throw new NotSupportedException("CGTransform requires complete glyph-slot positioning deltas.");
+    }
+
+    private static OfdExplicitGlyphRun? ReadSingleGlyphSourceSpan(IReadOnlyList<OfdTextRun> runs,
+        string logical, XNamespace ns, XElement[] transforms)
+    {
+        if (logical.Length is < 2 or > 8 || runs.Count != 1 || transforms.Length != 1 ||
+            !string.IsNullOrWhiteSpace(runs[0].DeltaX) || !string.IsNullOrWhiteSpace(runs[0].DeltaY))
+            return null;
+        var transform = transforms[0];
+        if (!transform.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
+                attribute.Name.LocalName is "CodePosition" or "CodeCount" or "GlyphCount") ||
+            Number(transform.Attribute("CodePosition"), -1) != 0 ||
+            Number(transform.Attribute("CodeCount"), 1) != logical.Length ||
+            Number(transform.Attribute("GlyphCount"), 1) != 1 ||
+            transform.Elements().Count() != 1 ||
+            transform.Element(ns + "Glyphs") is not { } glyphs ||
+            glyphs.HasElements || glyphs.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
+            glyphs.Nodes().Any(node => node is not XText))
+            return null;
+        var tokens = glyphs.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length != 1 ||
+            !int.TryParse(tokens[0], NumberStyles.None, CultureInfo.InvariantCulture, out var gid) ||
+            gid is <= 0 or > ushort.MaxValue)
+            return null;
+        return new OfdExplicitGlyphRun(runs, [gid],
+            [new OfdExplicitGlyphSpan(0, logical.Length, 0, 1, logical)]);
     }
 
     private static int Number(XAttribute? attribute, int fallback) => attribute is null ? fallback :

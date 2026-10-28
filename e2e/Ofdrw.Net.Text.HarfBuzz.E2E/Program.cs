@@ -148,11 +148,16 @@ foreach (var (name, source, features) in new[]
     ("av-kern-off", "AV", (IReadOnlyList<TextFeature>?)new[] { new TextFeature("kern", 0, 0, 2) }),
     ("ffi-on", "ffi", (IReadOnlyList<TextFeature>?)null),
     ("ffi-off", "ffi", (IReadOnlyList<TextFeature>?)new[] { new TextFeature("liga", 0, 0, 3) }),
+    ("e-acute", "e\u0301", (IReadOnlyList<TextFeature>?)null),
+    ("a-diaeresis", "a\u0308", (IReadOnlyList<TextFeature>?)null),
 })
 {
     var shaped = engine.Layout(new TextPrelayoutRequest(source, new[] { noto }, 4, 50,
         features: features));
     var glyphs = shaped.Lines.Single().ShapedRun.Glyphs;
+    if ((name is "e-acute" or "a-diaeresis") && (glyphs.Count != 1 || glyphs[0].ClusterStart != 0 ||
+        glyphs[0].ClusterLength != source.Length))
+        throw new InvalidDataException("The Latin combining sample did not shape as one complete source cluster.");
     var package = TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(shaped, 100, 75, 10, 10);
     if (name is "av" or "av-kern-off")
     {
@@ -210,4 +215,4 @@ var positionedReceipt = new
 };
 await File.WriteAllTextAsync(Path.Combine(output, "r22-receipt.json"),
     JsonSerializer.Serialize(positionedReceipt, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-Console.WriteLine("R22 positioned AV and ffi OFD/PDF/SVG/PNG receipt: " + output);
+Console.WriteLine("R22 positioned AV, ffi and Latin combining OFD/PDF/SVG/PNG receipt: " + output);

@@ -1076,10 +1076,12 @@ public sealed partial class OfdPackageWriter
             run.Text.Length is < 1 or > 8 || positioned.Glyphs.Count is < 1 or > 8 ||
             text.Transform is not null || text.Weight != OfdTextElement.DefaultWeight || text.Italic)
             throw new NotSupportedException("Typed glyph output exceeds the bounded horizontal source profile.");
-        foreach (var code in run.Text)
-            if (code < 0x21 || code > 0x7e)
-                throw new NotSupportedException("Typed glyph output requires printable nonblank ASCII source characters.");
+        var latinCombiningPair = OfdPositionedGlyphProfile.IsLatinCombiningPair(run.Text);
+        if (!latinCombiningPair && run.Text.Any(code => code < 0x21 || code > 0x7e))
+            throw new NotSupportedException("Typed glyph output requires printable ASCII or one bounded Latin combining pair.");
         var glyphs = positioned.Glyphs;
+        if (latinCombiningPair && glyphs.Count != 1)
+            throw new NotSupportedException("The Latin combining profile requires one complete original-GID cluster.");
         if (glyphs.Count == run.Text.Length)
         {
             var sourceByGid = new Dictionary<uint, char>();

@@ -69,14 +69,15 @@ public sealed partial class ExplicitGlyphTransformTests
     [InlineData("both-local-zero", "AB", "CD", "40 37 41 39", "3 11 3 11", "6 6 22 22")]
     [InlineData("unequal-both", "fl", "A", "1653 36 37", "3 3 12", "6 22 22")]
     [InlineData("mixed-second", "AB", "CflD", "36 37 38 1653 39", "3 11 3 12 22", "6 6 22 22 22")]
+    [InlineData("combining-second", "AB", "e\u0301", "36 37 171", "3 11 3", "6 6 22")]
     public async Task GroupedLocalPreservesOwnershipSlotsAndTextInAllOutlets(
         string stem, string first, string second, string gids, string xs, string ys)
     {
         var firstMaps = stem == "both-local-zero" ? MapAt(0, 40) : stem == "unequal-both" ? MapSpan(0, 2, 1653) : "";
         var secondMaps = stem switch { "both-local-zero" => MapAt(0, 41), "unequal-both" => MapSpan(0, 1, 36, 37),
-            "mixed-second" => MapSpan(1, 2, 1653), _ => MapAt(0, 40) };
+            "mixed-second" => MapSpan(1, 2, 1653), "combining-second" => MapSpan(0, 2, 171), _ => MapAt(0, 40) };
         var text = GroupedText(first, firstMaps, stem == "unequal-both" ? null : "8",
-            second, secondMaps, stem == "unequal-both" ? "9" : stem == "mixed-second" ? "9 10" : "8", inheritedX: true);
+            second, secondMaps, stem == "combining-second" ? null : stem == "unequal-both" ? "9" : stem == "mixed-second" ? "9 10" : "8", inheritedX: true);
         var input = await GroupedPackage(text);
         var loaded = await new OfdReader().ReadAsync(new MemoryStream(input));
         var original = Assert.Single(loaded.Pages[0].Elements.OfType<OfdTextElement>());
@@ -86,7 +87,7 @@ public sealed partial class ExplicitGlyphTransformTests
         Assert.Equal(2, projection.Groups!.Count);
         Assert.Equal(first.Length, projection.Groups[1].SourceOffset);
         Assert.Equal(stem == "unequal-both" ? 1 : 2, projection.Groups[1].GlyphOffset);
-        Assert.Equal(stem is "mixed-second" ? "fl" : second[..1], projection.Groups[1].Projection.Spans.Single().LogicalText);
+        Assert.Equal(stem == "mixed-second" ? "fl" : stem == "combining-second" ? second : second[..1], projection.Groups[1].Projection.Spans.Single().LogicalText);
         Assert.Equal(sourceXml, original.SourceXml);
         if (stem == "second-only")
         {
