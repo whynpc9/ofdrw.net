@@ -1,8 +1,12 @@
+using Ofdrw.Net.Core.Models;
+
 namespace Ofdrw.Net.Converter.Svg;
 
 /// <summary>Finite limits for static HTML previews. Reader/model limits remain independent.</summary>
 public sealed class OfdHtmlOptions
 {
+    /// <summary>CGTransform position interpretation; defaults to the historical global profile.</summary>
+    public OfdGlyphMappingStrategy GlyphMappingStrategy { get; set; } = OfdGlyphMappingStrategy.LegacyConcatenatedGlobal;
     /// <summary>Plain text document title; never interpreted as markup.</summary>
     public string Title { get; set; } = "OFD preview";
     /// <summary>Maximum title length in UTF-16 code units.</summary>

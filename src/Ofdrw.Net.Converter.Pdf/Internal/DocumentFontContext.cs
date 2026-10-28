@@ -13,6 +13,7 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 internal sealed class DocumentFontContext
 {
     private readonly FontParseBudget _parseBudget;
+    private readonly OfdGlyphMappingStrategy _glyphMappingStrategy;
     private readonly CancellationToken _cancellationToken;
     private readonly OfdNameOnlyFontBindings? _nameOnlyBindings;
     private readonly IReadOnlyList<OfdFontResource> _fonts;
@@ -40,8 +41,11 @@ internal sealed class DocumentFontContext
 
     internal DocumentFontContext(IReadOnlyList<OfdFontResource> fonts, IFontResolver? fallbackResolver = null,
         FontParseBudget? parseBudget = null, CancellationToken cancellationToken = default,
-        OfdNameOnlyFontBindings? nameOnlyBindings = null)
+        OfdNameOnlyFontBindings? nameOnlyBindings = null,
+        OfdGlyphMappingStrategy glyphMappingStrategy = OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)
     {
+        OfdGlyphMappingStrategyGuard.Validate(glyphMappingStrategy);
+        _glyphMappingStrategy = glyphMappingStrategy;
         _parseBudget = parseBudget ?? new FontParseBudget(cancellationToken: cancellationToken);
         _cancellationToken = cancellationToken;
         _nameOnlyBindings = nameOnlyBindings;
@@ -138,7 +142,7 @@ internal sealed class DocumentFontContext
         resource is not null && _coverage.TryGetValue(resource, out var value) ? value : null;
 
     internal OfdExplicitGlyphRun? ReadExplicitRun(OfdTextElement text, OfdFontResource? resource) =>
-        OfdExplicitGlyphRun.Read(text, resource, _coverage, _parseBudget);
+        OfdExplicitGlyphRun.Read(text, resource, _coverage, _parseBudget, _glyphMappingStrategy);
 
     internal IEnumerable<PdfSupplementaryFontBinding> SupplementaryBindings => _supplementary.Values;
 

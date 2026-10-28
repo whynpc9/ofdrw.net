@@ -1,0 +1,13 @@
+# R02 grouped mapping validation tools
+
+Run from a clean, recorded source commit. Reuse the existing OFL Noto Sans fixture. All generated files and caches belong under ignored `artifacts/`; the tools themselves are the reproducible recipe.
+
+1. Run `ExplicitGlyphTransformTests` with `R02_ARTIFACT_DIR` set to an absolute temporary input directory. The four `grouped-*.ofd` files use ofdrw.net's writer and directed group expectations; they are synthetic regression inputs.
+2. From a copy of `producer/` under `artifacts/`, run `go run . <absolute NotoSans-Regular.ttf> <test-input-directory> <independent-output-directory>`. `go.mod` and `go.sum` pin `xiaoqidun/ofdgo` and dependencies. The driver uses its public editor/writer to create four `go-*.ofd` originals, then uses its reader to convert both producers' inputs to PDF/SVG. Do not alter the generated originals before comparison. The Go producer subsets its embedded font while retaining original GIDs; record the actual embedded font hash per file.
+3. Place the four `grouped-*.ofd` and four `go-*.ofd` in one input directory. Build/stamp one candidate version, then use `scripts/run-converter-package-e2e.sh <version> --pack-only --no-build` and its manifest. Run the broad `--consume-only` gate using that same feed.
+4. Run `scripts/validation/r02-grouped/run-consumer.sh <version> <feed> <input-directory> <fresh-output-directory>`. It restores into an isolated cache, binds all `Ofdrw.Net.*` to the candidate feed, checks the manifest before/after, validates all three outlets and compares loaded DLL hashes with package payloads. No project references are used.
+5. Separately check whole original-GID outlines and origins with an independent font parser, rasterize actual PDF/SVG output, and inspect each page. Native Preview, copy/find and other readers remain separate evidence. Save concise reports and necessary pages in an optional LFS evidence bundle with an inventory.
+
+The `go-unequal-both` case is an expected outputless refusal: ofdgo's editor adds `DeltaX="0"` for the two source characters mapping to one glyph. The candidate requires output-glyph-slot deltas and does not accept that extra entry. The other three public-writer cases exercise accepted multi-group inputs. This is targeted interoperability, not a naturally collected unknown-business-file corpus.
+
+Heavy builds/Go compilation must use the task's shared build grant and exclusive launcher. GUI validation requires its own resource handoff. Environment, SDK/Go versions, source SHA, candidate manifest, actual executed commands and remaining gates belong in the acceptance receipt.
