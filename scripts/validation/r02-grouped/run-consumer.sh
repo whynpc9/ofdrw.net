@@ -2,10 +2,11 @@
 set -euo pipefail
 if [[ $# != 4 ]]; then echo "usage: $0 version candidate-feed input-directory fresh-output-directory" >&2; exit 2; fi
 root="$(cd "$(dirname "$0")/../../.." && pwd)"
+dependency_cache="${NUGET_PACKAGES:-$HOME/.nuget/packages}"
 version="$1"; feed="$(cd "$2" && pwd)"; inputs="$(cd "$3" && pwd)"; output="$4"
 if [[ -e "$output" ]]; then echo "Output must be a new isolated directory: $output" >&2; exit 2; fi
 mkdir -p "$output"; output="$(cd "$output" && pwd)"
-python3 "$root/scripts/verify-package-artifacts.py" "$feed" "$version" --verify-manifest
+NUGET_PACKAGES="$dependency_cache" python3 "$root/scripts/verify-package-artifacts.py" "$feed" "$version" --verify-manifest
 cp -R "$root/scripts/validation/r02-grouped/consumer" "$output/consumer"
 export DOTNET_CLI_HOME="$output/dotnet-home" DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 DOTNET_CLI_TELEMETRY_OPTOUT=1
 export NUGET_PACKAGES="$output/cache" DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER=1
@@ -38,5 +39,5 @@ receipt['resolvedDllsEqualCandidate']=True
 Path(sys.argv[2]).write_text(json.dumps(receipt,indent=2)+'\n')
 print('All loaded Ofdrw.Net assemblies match the candidate feed.')
 PY
-python3 "$root/scripts/verify-package-artifacts.py" "$feed" "$version" --verify-manifest
+NUGET_PACKAGES="$dependency_cache" python3 "$root/scripts/verify-package-artifacts.py" "$feed" "$version" --verify-manifest
 cat "$output/run.log"
