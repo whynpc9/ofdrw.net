@@ -93,12 +93,20 @@ if required. Neither option is selected without evidence.
 
 The expanded E2E produced ten product cases and passed all seven new boundary
 assertions. Six focused converter tests matching `Hebrew` passed with no skips.
-**Version correction pending:** this first A/B/C/D round inherited PDF 1.4
+**Version correction completed:** the first A/B/C/D round inherited PDF 1.4
 without a catalog version override. Marked-content ActualText requires PDF 1.5
 ([ISO 32000-2 clause 14.9.4 errata](https://pdf-issues.pdfa.org/32000-2-2020/clause14.html)).
-The raw observations below remain valid for those exact files, but do not
-exclude the version-correct ActualText route. The generator now declares PDF
-1.7 for all four variants; its controlled follow-up must be recorded separately.
+The raw observations below remain valid for those exact files. The generator
+now declares PDF 1.7 for all four variants. A controlled follow-up used the
+same ten immutable product inputs and regenerated 40 probes in
+`artifacts/r22-harfbuzz/actualtext-version-20261028/`. Each old/new pair has
+the same page content stream, embedded font bytes and raster; none has a lower
+catalog `/Version` override. Pinned PdfPig 0.1.15 and native PDFKit returned
+identical raw text, word rectangles and Find results across both versions.
+Version correction therefore did not resolve these readers' observed order
+conflict. There is still no A/B/C/D variant that passes all ten cases; the
+14 of 40 individually passing automated cells are unchanged. Actual Preview
+remains a separate blocked check on any proposed product candidate.
 The matrix produced 40 diagnostic PDFs with unchanged baseline pixels and
 verified that every producer output retained its recorded hash. All 40 had
 the expected separate word rectangles in PdfPig and PDFKit, including two
