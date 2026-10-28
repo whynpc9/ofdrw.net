@@ -175,8 +175,8 @@ target reader merges its Find rectangles. Actual Preview remains unverified.
 
 Artifacts: `artifacts/r22-harfbuzz/character-matrix-20261028/` holds source
 identity, 48 immutable outputs, PdfPig/PDFKit receipts and summary. No production
-semantic change is selected. Correct the first matrix's version declaration
-before expanding the experiment. A later tagged-reading-order investigation
+semantic change is selected. The first matrix's version declaration was
+corrected and rerun above. A tagged-reading-order investigation
 must validate the logical tree, MCIDs and ParentTree with an independent
 tag-aware consumer; the [PDF Association RTL discussion](https://github.com/pdf-association/pdf-issues/issues/718)
 distinguishes structure order, glyph order and reader heuristics. It does not
@@ -210,6 +210,27 @@ The preserved source and receipts are in ignored
 checks in `matrix.json`, `tag-effect.json`, pinned PdfPig and native PDFKit
 outputs. The observation narrows this tagged approach. It does not rule out
 other standards-compliant PDF encodings or imply a product fix.
+
+## Delivery decision after the controlled experiments
+
+No tested PDF encoding meets the full mixed-paragraph corpus across pinned
+PdfPig and PDFKit, and the required direct Preview copy/Find acceptance remains
+blocked. PR #71 therefore stays Draft with its current writer/PDF promise.
+The next bounded delivery candidate is the query and line-layout API alone:
+`TextMixedParagraph.cs`, the `HarfBuzzTextPrelayout.CreateMixedParagraph()`
+factory, its licensed font fixture and query-only checks. This would preserve
+the validated logical source spans, final shaping, RTL phrase coordinates,
+word breaks and refusal budget without advertising an OFD/PDF output path.
+
+Preparing that split requires extracting the query checks from the combined
+E2E program and reviewing the resulting diff from the current PR base. It must
+exclude `TextMixedParagraphOfdWriter`, the mixed output cases and shared
+packaging/converter changes; otherwise the known reader failure remains in the
+proposed deliverable. A clean query-only candidate needs its own final-SHA
+tests, package consumer, cross-platform checks and valid review. The writer,
+generic explicit-glyph converter regression and PDF semantics remain in the
+Draft integration path until their reader and visual gates close. No split has
+yet been built or accepted by this diagnostic checkpoint.
 
 ## Completion gates
 
