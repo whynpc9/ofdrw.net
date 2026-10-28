@@ -61,10 +61,11 @@ Delta and baseline, expands each TextObject boundary to measured ink without
 moving its pen, and embeds the exact selected full face. A ligature,
 combining sequence, unsupported style or overflowing page is rejected before
 creating a package; page preflight checks both final advance and translated ink
-extents, including negative side bearings. Arbitrary GID/cluster output,
-glyph-aware subsetting, mixed-direction paragraphs and PDF/SVG semantic
-consumption remain the separate
-R22 stages; a successful R21 query does not imply those output profiles work.
+extents, including negative side bearings. The first bounded typed GID/cluster
+producer, glyph-aware subset, and PDF/SVG sample consumer are documented in
+[R22 shaped output](text-shaped-output.md). Mixed-direction paragraphs and
+broader shaping remain separate R22 stages; a successful R21 query does not
+imply those output profiles work.
 The E2E also renders a fixed Han sample through a sample-only, preflighted
 one-glyph-per-BMP-Han OFD probe to inspect fallback, measured wrapping and baseline
 geometry. That probe does not extend the public writer's ASCII output contract.

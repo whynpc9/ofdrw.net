@@ -192,7 +192,20 @@ internal static class OfdSerializedInventory
                         V("fontSize", text.FontSizeMillimeters); V("weight", text.Weight); V("italic", text.Italic); Color(text.FillColor);
                         sink.Matrix(text.Transform); Source(text.SourceXml); Container("runs", text.Runs, text.Runs.Count);
                         foreach (var run in text.Runs)
-                        { Own("run", run); S("text", run.Text); V("x", run.XMillimeters); V("y", run.YMillimeters); S("deltaX", run.DeltaX); S("deltaY", run.DeltaY); }
+                        {
+                            Own("run", run); S("text", run.Text); V("x", run.XMillimeters); V("y", run.YMillimeters);
+                            S("deltaX", run.DeltaX); S("deltaY", run.DeltaY);
+                            if (run.PositionedGlyphs is not { } positioned) continue;
+                            S("positionedText", positioned.LogicalText); V("sourceStart", positioned.SourceStart);
+                            S("positionedFace", positioned.FaceSha256); V("glyphCount", positioned.Glyphs.Count);
+                            foreach (var glyph in positioned.Glyphs)
+                            {
+                                V("gid", glyph.GlyphId); V("clusterStart", glyph.ClusterStart);
+                                V("clusterLength", glyph.ClusterLength); V("originX", glyph.OriginXMillimeters);
+                                V("originY", glyph.OriginYMillimeters); V("advanceX", glyph.XAdvanceMillimeters);
+                                V("advanceY", glyph.YAdvanceMillimeters);
+                            }
+                        }
                         break;
                     case OfdImageElement image:
                         S("resourceId", image.ResourceId); S("fileName", image.FileName); S("mediaType", image.MediaType);
