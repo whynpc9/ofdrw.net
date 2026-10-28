@@ -19,7 +19,8 @@ internal static class TrueTypeSubset
         => Create(face, scalars, cancellationToken, maximumOperations, new FontParseBudget(cancellationToken: cancellationToken), out keptGlyphs, out originalGlyphs);
 
     internal static byte[] Create(OpenTypeFace face, IEnumerable<int> scalars, CancellationToken cancellationToken, long maximumOperations,
-        FontParseBudget parseBudget, out int keptGlyphs, out int originalGlyphs, OpenTypeCmap? parsedCmap = null)
+        FontParseBudget parseBudget, out int keptGlyphs, out int originalGlyphs, OpenTypeCmap? parsedCmap = null,
+        IEnumerable<int>? actualGlyphIds = null)
     {
         parseBudget.Spend(0);
         foreach (var tag in face.Tables.Keys)
@@ -46,6 +47,13 @@ internal static class TrueTypeSubset
             cancellationToken.ThrowIfCancellationRequested(); var gid = cmap.Glyph(scalar);
             if (gid >= originalGlyphs) throw new InvalidDataException("cmap references a nonexistent glyph.");
             if (gid != 0) { keep.Add(gid); mapping[scalar] = gid; }
+        }
+        if (actualGlyphIds is not null) foreach (var gid in actualGlyphIds.Distinct())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (gid <= 0 || gid >= originalGlyphs)
+                throw new InvalidDataException("Shaped glyph reference is outside the original font.");
+            keep.Add(gid); // This backend preserves original GID slots; no remap is needed.
         }
         foreach (var gid in cmap.VariationGlyphs)
         {

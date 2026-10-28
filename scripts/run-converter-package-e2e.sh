@@ -142,6 +142,7 @@ cat > "$TASK_DIR/text-consumer/Consumer.csproj" <<EOF_TEXT_CONSUMER
     <PackageReference Include="Ofdrw.Net.Packaging" Version="$VERSION" />
     <PackageReference Include="Ofdrw.Net.Reader" Version="$VERSION" />
     <PackageReference Include="Ofdrw.Net.Converter.Pdf" Version="$VERSION" />
+    <PackageReference Include="Ofdrw.Net.Converter.Svg" Version="$VERSION" />
   </ItemGroup>
 </Project>
 EOF_TEXT_CONSUMER
@@ -149,6 +150,41 @@ TEXT_CONSUMER="$TASK_DIR/text-consumer/Consumer.csproj"
 TEXT_OUTPUT="$RESULT_DIR/text-prelayout"
 dotnet restore "$TEXT_CONSUMER" --configfile "$TASK_DIR/NuGet.Config" "${BUILD_FLAGS[@]}"
 dotnet build "$TEXT_CONSUMER" -c Release --no-restore "${BUILD_FLAGS[@]}"
+mkdir -p "$TEXT_OUTPUT"
+python3 - "$TEXT_CONSUMER" "$TASK_DIR/packages" "$OUT_DIR" "$VERSION" "$TEXT_OUTPUT/text-consumer-identities.json" "$ROOT_DIR" <<'PY_TEXT_IDENTITY'
+import hashlib, json, pathlib, sys, zipfile, subprocess
+project, cache, feed, version, receipt, root = map(pathlib.Path, sys.argv[1:])
+version = str(version)
+bin_dir = project.parent / 'bin/Release/net10.0'
+deps = json.loads((bin_dir / 'Consumer.deps.json').read_text())
+target = deps['targets'][deps['runtimeTarget']['name']]
+manifest = {item['id']: item for item in json.loads((feed / 'package-manifest.json').read_text())['packages']}
+sha = lambda data: hashlib.sha256(data).hexdigest()
+items = []
+for key, node in sorted(target.items()):
+    if not key.startswith('Ofdrw.Net.'):
+        continue
+    package_id, resolved_version = key.split('/', 1)
+    assert resolved_version == version and package_id in manifest, key
+    assets = [path for path in node.get('runtime', {}) if path.endswith('.dll')]
+    assert len(assets) == 1, (key, assets)
+    asset = assets[0]
+    nupkg = feed / manifest[package_id]['file']
+    assert sha(nupkg.read_bytes()) == manifest[package_id]['sha256'], key
+    with zipfile.ZipFile(nupkg) as archive:
+        payload = archive.read(asset)
+    extracted = cache / package_id.lower() / version / asset
+    copied = bin_dir / pathlib.Path(asset).name
+    assert sha(payload) == sha(extracted.read_bytes()) == sha(copied.read_bytes()), key
+    items.append({'id': package_id, 'version': version, 'asset': asset,
+        'nupkgSha256': manifest[package_id]['sha256'], 'dllSha256': sha(payload)})
+assert {'Ofdrw.Net.Core', 'Ofdrw.Net.Layout', 'Ofdrw.Net.Text.HarfBuzz',
+    'Ofdrw.Net.Packaging', 'Ofdrw.Net.Reader', 'Ofdrw.Net.Converter.Pdf',
+    'Ofdrw.Net.Converter.Svg'} <= {item['id'] for item in items}
+receipt.write_text(json.dumps({'sourceSha': subprocess.check_output(
+    ['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip(),
+    'runtimeTarget': deps['runtimeTarget']['name'], 'packages': items}, indent=2) + '\n')
+PY_TEXT_IDENTITY
 (cd "$ROOT_DIR" && R21_SOURCE_SHA="$(git rev-parse HEAD)" dotnet run \
   --project "$TEXT_CONSUMER" -c Release --no-build --no-restore -- "$TEXT_OUTPUT")
 for sample in ascii han; do
@@ -166,6 +202,33 @@ assert receipt['han']['ofdText'] == '中\n文\nA\n中'
 assert 'TEXT_FACE_FALLBACK' in receipt['han']['fallback']
 assert all(output['bytes'] > 0 for output in receipt['outputs'])
 PY_TEXT_CONSUMER
+python3 - "$TEXT_OUTPUT/r22-receipt.json" <<'PY_R22_TEXT_CONSUMER'
+import json, sys
+receipt = json.load(open(sys.argv[1]))
+assert {item['source'] for item in receipt['cases']} == {'AV', 'ffi'}
+assert {item['feature'] for item in receipt['cases'] if item['source'] == 'AV'} == {'on', 'off'}
+assert {item['feature'] for item in receipt['cases'] if item['source'] == 'ffi'} == {'on', 'off'}
+av = {item['feature']: item for item in receipt['cases'] if item['source'] == 'AV'}
+assert av['on']['origins'][1]['OriginXMillimeters'] != av['off']['origins'][1]['OriginXMillimeters']
+assert all(item['readback'] == item['source'] for item in receipt['cases'])
+assert all(item['svgGids'] == item['shapedGids'] for item in receipt['cases'])
+assert all(output['bytes'] > 0 for output in receipt['outputs'])
+PY_R22_TEXT_CONSUMER
+for sample in av av-kern-off ffi-on ffi-off; do
+  pdftoppm -f 1 -l 1 -png -singlefile -r 144 \
+    "$TEXT_OUTPUT/r22-$sample.pdf" "$TEXT_OUTPUT/r22-$sample-pdf-page"
+  test -s "$TEXT_OUTPUT/r22-$sample-pdf-page.png"
+done
+python3 - "$TEXT_OUTPUT" <<'PY_R22_PDF_TEXT'
+import json, pathlib, subprocess, sys
+root = pathlib.Path(sys.argv[1])
+for case in json.loads((root / 'r22-receipt.json').read_text())['cases']:
+    pdf = str(root / ('r22-' + case['name'] + '.pdf'))
+    extracted = subprocess.check_output(['pdftotext', '-enc', 'UTF-8', pdf, '-']).decode().strip()
+    assert extracted == case['source'], (case['name'], extracted)
+    fonts = subprocess.check_output(['pdffonts', pdf], text=True).splitlines()[2:]
+    assert len(fonts) == 1 and 'CID TrueType' in fonts[0] and 'yes yes yes' in fonts[0], case['name']
+PY_R22_PDF_TEXT
 # Exercise public complex-table pagination from the exact candidate packages.
 # The source E2E producer is copied into a fresh PackageReference-only project;
 # package-source mapping and the private cache above prevent project-reference reuse.

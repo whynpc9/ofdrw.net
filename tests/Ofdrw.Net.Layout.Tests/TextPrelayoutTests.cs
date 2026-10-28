@@ -1,8 +1,10 @@
 using System;
 using System.Buffers.Binary;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Xml.Linq;
 using Ofdrw.Net.Layout;
 using Ofdrw.Net.Layout.Text;
 using Ofdrw.Net.Text.HarfBuzz;
@@ -550,6 +552,116 @@ public sealed class TextPrelayoutTests
         var ligature = HarfBuzzTextPrelayout.Create().Layout(new TextPrelayoutRequest("ffi", new[] { face }, 4, 50));
         Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
             TextPrelayoutOfdWriter.CreateSinglePage(ligature, 100, 100, 10, 15)).Error);
+    }
+
+    [Fact]
+    public async Task PositionedWriterPreservesFfiLigatureAndActualGidInSubset()
+    {
+        var face = Noto();
+        var engine = HarfBuzzTextPrelayout.Create();
+        var enabled = engine.Layout(new TextPrelayoutRequest("ffi", new[] { face }, 4, 50));
+        var disabled = engine.Layout(new TextPrelayoutRequest("ffi", new[] { face }, 4, 50,
+            features: new[] { new TextFeature("liga", 0, 0, 3) }));
+        Assert.Single(enabled.Lines[0].ShapedRun.Glyphs);
+        Assert.Equal(3, disabled.Lines[0].ShapedRun.Glyphs.Count);
+
+        foreach (var layout in new[] { enabled, disabled })
+        {
+            var package = TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(layout,
+                100, 100, 10, 15);
+            var original = Assert.Single(package.Pages[0].Elements.OfType<OfdTextElement>());
+            Assert.Equal("ffi", original.Runs[0].PositionedGlyphs!.LogicalText);
+            Assert.Equal(face.FaceSha256, original.Runs[0].PositionedGlyphs!.FaceSha256);
+            Assert.Equal(layout.Lines[0].ShapedRun.Glyphs.Select(glyph => glyph.GlyphId),
+                original.Runs[0].PositionedGlyphs!.Glyphs.Select(glyph => glyph.GlyphId));
+            using var stream = new MemoryStream();
+            var write = await new OfdPackageWriter().WriteWithResultAsync(package, stream);
+            Assert.True(Assert.Single(write.FontEmbedding).IsSubset);
+            stream.Position = 0;
+            using (var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true))
+            {
+                var page = zip.Entries.Single(entry => entry.FullName.EndsWith("Content.xml", StringComparison.Ordinal));
+                using var pageStream = page.Open();
+                var xml = XDocument.Load(pageStream);
+                var mapping = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "CGTransform");
+                Assert.Equal("0", mapping.Attribute("CodePosition")?.Value);
+                Assert.Equal("3", mapping.Attribute("CodeCount")?.Value);
+                Assert.Equal(layout.Lines[0].ShapedRun.Glyphs.Count.ToString(), mapping.Attribute("GlyphCount")?.Value);
+                Assert.Equal(string.Join(" ", layout.Lines[0].ShapedRun.Glyphs.Select(glyph => glyph.GlyphId)),
+                    Assert.Single(mapping.Elements()).Value);
+            }
+            stream.Position = 0;
+            var read = await new OfdReader().ReadAsync(stream);
+            Assert.Equal("ffi", Assert.Single(read.Pages[0].Elements.OfType<OfdTextElement>()).Text);
+            Assert.True(Assert.Single(read.Fonts).Data.Length < face.GetFaceBytes().Length);
+        }
+    }
+
+    [Fact]
+    public async Task PositionedWriterRejectsFaceMismatchAndImportedSourceBeforeZip()
+    {
+        var face = Noto();
+        var layout = HarfBuzzTextPrelayout.Create().Layout(new TextPrelayoutRequest("AV", new[] { face }, 4, 50));
+        var package = TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(layout,
+            100, 100, 10, 15);
+        var text = Assert.Single(package.Pages[0].Elements.OfType<OfdTextElement>());
+        var run = Assert.Single(text.Runs);
+        run.PositionedGlyphs = new OfdPositionedGlyphRun(run.Text, 0, new string('0', 64),
+            run.PositionedGlyphs!.Glyphs);
+        using var mismatch = new MemoryStream();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdPackageWriter().WriteAsync(package, mismatch));
+        Assert.Equal(0, mismatch.Length);
+
+        run.PositionedGlyphs = new OfdPositionedGlyphRun(run.Text, 0, face.FaceSha256,
+            run.PositionedGlyphs.Glyphs);
+        text.SourceXml = "<TextObject><TextCode X='0' Y='0'>AV</TextCode></TextObject>";
+        using var imported = new MemoryStream();
+        await Assert.ThrowsAsync<InvalidDataException>(() => new OfdPackageWriter().WriteAsync(package, imported));
+        Assert.Equal(0, imported.Length);
+
+        var nonAscii = HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest("é", new[] { face }, 4, 50));
+        Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
+            TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(nonAscii,
+                100, 100, 10, 15)).Error);
+    }
+
+    [Fact]
+    public async Task PositionedWriterValidatesOriginalOutlineEvenWhenFontIsPreserved()
+    {
+        var face = Noto();
+        var layout = HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest("AV", new[] { face }, 4, 50));
+        var valid = TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(layout,
+            100, 100, 10, 15);
+        valid.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
+        using (var stream = new MemoryStream())
+        {
+            var write = await new OfdPackageWriter().WriteWithResultAsync(valid, stream);
+            Assert.False(Assert.Single(write.FontEmbedding).IsSubset);
+            Assert.True(stream.Length > 0);
+        }
+
+        foreach (var preserved in new[] { false, true })
+        {
+            var package = TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(layout,
+                100, 100, 10, 15);
+            if (preserved) package.Pages[0].PreservedPageElements.Add("<Unknown/>");
+            else package.Options.FontEmbedding.Mode = OfdFontEmbeddingMode.Full;
+            var run = package.Pages[0].Elements.OfType<OfdTextElement>().Single().Runs.Single();
+            var current = run.PositionedGlyphs!;
+            var first = current.Glyphs[0];
+            var missing = new OfdPositionedGlyph((uint)face.GlyphCount, first.ClusterStart,
+                first.ClusterLength, first.OriginXMillimeters, first.OriginYMillimeters,
+                first.XAdvanceMillimeters, first.YAdvanceMillimeters);
+            run.PositionedGlyphs = new OfdPositionedGlyphRun(current.LogicalText,
+                current.SourceStart, current.FaceSha256,
+                new[] { missing }.Concat(current.Glyphs.Skip(1)).ToArray());
+            using var output = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() =>
+                new OfdPackageWriter().WriteAsync(package, output));
+            Assert.Equal(0, output.Length);
+        }
     }
 
     [Fact]
