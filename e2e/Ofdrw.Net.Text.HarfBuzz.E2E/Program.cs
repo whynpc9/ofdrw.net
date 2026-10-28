@@ -250,6 +250,68 @@ if (!mixedWrapped.Lines.Select(line => mixedSource.Substring(line.SourceStart, l
         run.Shaped.Request.SourceStart != run.SourceStart ||
         !ReferenceEquals(run.Shaped.Request.Face, dejavu)))
     throw new InvalidDataException("Mixed paragraph wrapped outside word boundaries or reused a different shaping face.");
+
+// Explicit source-offset orders distinguish repeated words and line-end spaces.
+// These expectations are independent of the PDF reader's text-order heuristics.
+var mixedBoundaryCases = new List<(string Name, TextMixedParagraphResult Result)>();
+void AddBoundaryCase(string name, string source, double width, int[][] visualSourceStarts,
+    string[] lineSources)
+{
+    var result = mixedEngine.Layout(new TextMixedParagraphRequest(source, dejavu, 4, width));
+    if (result.Lines.Count != lineSources.Length || result.Lines.Count != visualSourceStarts.Length ||
+        string.Concat(result.Lines.SelectMany(line => line.Runs).Select(run => run.Text)) != source)
+        throw new InvalidDataException("Mixed boundary source/line mismatch: " + name);
+    var nextSource = 0;
+    for (var index = 0; index < result.Lines.Count; index++)
+    {
+        var line = result.Lines[index];
+        if (line.SourceStart != nextSource ||
+            source.Substring(line.SourceStart, line.SourceLength) != lineSources[index] ||
+            !line.Runs.OrderBy(run => run.XMillimeters).Select(run => run.SourceStart)
+                .SequenceEqual(visualSourceStarts[index]))
+            throw new InvalidDataException("Mixed boundary visual/source order mismatch: " + name);
+        foreach (var run in line.Runs)
+        {
+            if (run.SourceStart != nextSource ||
+                source.Substring(run.SourceStart, run.Text.Length) != run.Text)
+                throw new InvalidDataException("Mixed boundary source gap or duplicate: " + name);
+            if (run.Direction == TextDirection.RightToLeft &&
+                !run.Shaped.Glyphs.Select(glyph => glyph.ClusterStart).SequenceEqual(
+                    Enumerable.Range(run.SourceStart, run.Text.Length).Reverse()))
+                throw new InvalidDataException("Mixed boundary reversed a shaped word twice: " + name);
+            nextSource += run.Text.Length;
+        }
+        var ordered = line.Runs.OrderBy(run => run.XMillimeters).ToArray();
+        var right = 0d;
+        foreach (var run in ordered)
+        {
+            if (Math.Abs(run.XMillimeters - right) > 1e-8)
+                throw new InvalidDataException("Mixed boundary run gap/overlap: " + name);
+            right += run.Shaped.XAdvance * 4d / dejavu.UnitsPerEm;
+        }
+        if (line.VisibleWidthMillimeters > width + 1e-8 ||
+            index < result.Lines.Count - 1 && (line.Runs.Last().Text != " " ||
+                Math.Abs(line.Runs.Last().XMillimeters - line.VisibleWidthMillimeters) > 1e-8))
+            throw new InvalidDataException("Mixed boundary trailing-space/fit mismatch: " + name);
+    }
+    mixedBoundaryCases.Add((name, result));
+}
+AddBoundaryCase("repeated-word", "abc שלום שלום def", 50,
+    new[] { new[] { 0, 3, 9, 8, 4, 13, 14 } }, new[] { "abc שלום שלום def" });
+AddBoundaryCase("separated-rtl", "abc שלום def מקום ghi", 60,
+    new[] { new[] { 0, 3, 4, 8, 9, 12, 13, 17, 18 } }, new[] { "abc שלום def מקום ghi" });
+AddBoundaryCase("leading-rtl", "שלום abc", 50,
+    new[] { new[] { 0, 4, 5 } }, new[] { "שלום abc" });
+AddBoundaryCase("trailing-rtl", "abc שלום", 50,
+    new[] { new[] { 0, 3, 4 } }, new[] { "abc שלום" });
+AddBoundaryCase("two-word-exact-fit", twoWordMixedSource, twoWordMixed.Lines[0].VisibleWidthMillimeters,
+    new[] { new[] { 0, 3, 9, 8, 4, 13, 14 } }, new[] { twoWordMixedSource });
+var beforeSecondHebrew = twoWordRuns.Take(3).Sum(run => run.Shaped.XAdvance) * 4d / dejavu.UnitsPerEm;
+AddBoundaryCase("between-rtl-wrap", twoWordMixedSource, beforeSecondHebrew,
+    new[] { new[] { 0, 3, 4, 8 }, new[] { 9, 13, 14 } }, new[] { "abc שלום ", "מקום def" });
+var throughHebrewPhrase = twoWordRuns.Take(5).Sum(run => run.Shaped.XAdvance) * 4d / dejavu.UnitsPerEm;
+AddBoundaryCase("after-rtl-wrap", twoWordMixedSource, throughHebrewPhrase,
+    new[] { new[] { 0, 3, 9, 8, 4, 13 }, new[] { 14 } }, new[] { "abc שלום מקום ", "def" });
 try
 {
     mixedEngine.Layout(new TextMixedParagraphRequest("abc ש-לום def", dejavu, 4, 50));
@@ -339,8 +401,10 @@ using (var rejectedOutput = new MemoryStream())
         throw new InvalidDataException("Rejected Hebrew output left a partial OFD stream."); }
 }
 var mixedOutputs = new List<string>();
-foreach (var (name, result) in new[] { ("wide", mixedWide), ("wrapped", mixedWrapped),
-    ("two-word", twoWordMixed) })
+var mixedCases = new List<(string Name, TextMixedParagraphResult Result)>
+    { ("wide", mixedWide), ("wrapped", mixedWrapped), ("two-word", twoWordMixed) };
+mixedCases.AddRange(mixedBoundaryCases);
+foreach (var (name, result) in mixedCases)
 {
     var mixedPackage = TextMixedParagraphOfdWriter.CreateSinglePage(result, 100, 75, 10, 10);
     var ofd = Path.Combine(output, "r22-mixed-" + name + ".ofd");
@@ -367,13 +431,18 @@ foreach (var (name, result) in new[] { ("wide", mixedWide), ("wrapped", mixedWra
     if (readback != result.Request.Text)
         throw new InvalidDataException("The mixed paragraph lost logical OFD text order.");
     var svgRoot = XDocument.Load(svg);
-    foreach (var hebrewRun in result.Lines.SelectMany(line => line.Runs)
-        .Where(run => run.Direction == TextDirection.RightToLeft))
+    var hebrewRuns = result.Lines.SelectMany(line => line.Runs)
+        .Where(run => run.Direction == TextDirection.RightToLeft).ToArray();
+    var hebrewGroups = svgRoot.Descendants().Where(node => node.Name.LocalName == "g" &&
+        ((string?)node.Attribute("data-ofd-text"))?.Any(value => value is >= '\u05D0' and <= '\u05EA') == true)
+        .ToArray();
+    if (hebrewGroups.Length != hebrewRuns.Length)
+        throw new InvalidDataException("The mixed paragraph SVG lost or duplicated a Hebrew occurrence.");
+    for (var index = 0; index < hebrewRuns.Length; index++)
     {
-        var svgHebrew = svgRoot.Descendants().Where(node => node.Name.LocalName == "g" &&
-            (string?)node.Attribute("data-ofd-text") == hebrewRun.Text).ToArray();
-        if (svgHebrew.Length != 1 ||
-            !svgHebrew[0].Descendants().Where(node => node.Name.LocalName == "path")
+        var hebrewRun = hebrewRuns[index];
+        if ((string?)hebrewGroups[index].Attribute("data-ofd-text") != hebrewRun.Text ||
+            !hebrewGroups[index].Descendants().Where(node => node.Name.LocalName == "path")
                 .Select(node => (int?)node.Attribute("data-original-gid"))
                 .Where(value => value.HasValue).Select(value => (uint)value!.Value)
                 .SequenceEqual(hebrewRun.Shaped.Glyphs.Select(glyph => glyph.GlyphId)))
@@ -387,6 +456,13 @@ await File.WriteAllTextAsync(Path.Combine(output, "r22-mixed-output-receipt.json
         sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
         source = mixedSource,
         face = dejavu.FaceSha256,
+        cases = mixedCases.Select(item => new { name = "r22-mixed-" + item.Name,
+            source = item.Result.Request.Text,
+            codepoints = item.Result.Request.Text.Select(value => $"U+{(int)value:X4}"),
+            lines = item.Result.Lines.Select(line => new { line.SourceStart, line.SourceLength,
+                line.VisibleWidthMillimeters, line.TotalAdvanceMillimeters,
+                runs = line.Runs.Select(run => new { run.SourceStart, run.Text, run.XMillimeters,
+                    widthMillimeters = run.Shaped.XAdvance * 4d / dejavu.UnitsPerEm }) }) }),
         outputs = mixedOutputs.Select(path => new { name = Path.GetFileName(path),
             bytes = new FileInfo(path).Length,
             sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant() }).ToArray(),
