@@ -229,6 +229,17 @@ if (mixedRuns.Count != 5 ||
     mixedRuns[2].Direction != TextDirection.RightToLeft ||
     !mixedRuns[2].Shaped.Glyphs.Select(glyph => glyph.ClusterStart).SequenceEqual(new[] { 7, 6, 5, 4 }))
     throw new InvalidDataException("The mixed Hebrew/Latin query lost logical spans or RTL visual glyph order.");
+const string twoWordMixedSource = "abc שלום מקום def";
+var twoWordMixed = mixedEngine.Layout(new TextMixedParagraphRequest(twoWordMixedSource, dejavu, 4, 50));
+var twoWordRuns = twoWordMixed.Lines.Single().Runs;
+if (!twoWordRuns.Select(run => run.Text).SequenceEqual(
+        new[] { "abc", " ", "שלום", " ", "מקום", " ", "def" }) ||
+    !twoWordRuns.Select(run => run.SourceStart).SequenceEqual(new[] { 0, 3, 4, 8, 9, 13, 14 }) ||
+    !(twoWordRuns[1].XMillimeters < twoWordRuns[4].XMillimeters &&
+      twoWordRuns[4].XMillimeters < twoWordRuns[3].XMillimeters &&
+      twoWordRuns[3].XMillimeters < twoWordRuns[2].XMillimeters &&
+      twoWordRuns[2].XMillimeters < twoWordRuns[5].XMillimeters))
+    throw new InvalidDataException("Adjacent Hebrew words lost source order or RTL phrase placement.");
 var maxWordWidth = new[] { mixedRuns[0], mixedRuns[2], mixedRuns[4] }
     .Max(run => run.Shaped.XAdvance * 4d / dejavu.UnitsPerEm);
 var mixedWrapped = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4,
@@ -283,6 +294,9 @@ var mixedReceipt = new
     wrapped = mixedWrapped.Lines.Select(line => new { line.SourceStart, line.SourceLength,
         source = mixedSource.Substring(line.SourceStart, line.SourceLength),
         line.VisibleWidthMillimeters }).ToArray(),
+    twoWord = new { source = twoWordMixedSource,
+        runs = twoWordRuns.Select(run => new { run.SourceStart, run.Text,
+            run.XMillimeters }).ToArray() },
 };
 await File.WriteAllTextAsync(Path.Combine(output, "r22-mixed-query-receipt.json"),
     JsonSerializer.Serialize(mixedReceipt, new JsonSerializerOptions { WriteIndented = true }) + "\n");
@@ -325,7 +339,8 @@ using (var rejectedOutput = new MemoryStream())
         throw new InvalidDataException("Rejected Hebrew output left a partial OFD stream."); }
 }
 var mixedOutputs = new List<string>();
-foreach (var (name, result) in new[] { ("wide", mixedWide), ("wrapped", mixedWrapped) })
+foreach (var (name, result) in new[] { ("wide", mixedWide), ("wrapped", mixedWrapped),
+    ("two-word", twoWordMixed) })
 {
     var mixedPackage = TextMixedParagraphOfdWriter.CreateSinglePage(result, 100, 75, 10, 10);
     var ofd = Path.Combine(output, "r22-mixed-" + name + ".ofd");
@@ -349,19 +364,21 @@ foreach (var (name, result) in new[] { ("wide", mixedWide), ("wrapped", mixedWra
     var read = await new OfdReader().ReadAsync(readStream);
     var readback = string.Concat(read.Pages.SelectMany(page => page.Elements)
         .OfType<OfdTextElement>().Select(element => element.Text));
-    if (readback != mixedSource)
+    if (readback != result.Request.Text)
         throw new InvalidDataException("The mixed paragraph lost logical OFD text order.");
     var svgRoot = XDocument.Load(svg);
-    var hebrewGids = result.Lines.SelectMany(line => line.Runs)
-        .Where(run => run.Direction == TextDirection.RightToLeft)
-        .SelectMany(run => run.Shaped.Glyphs).Select(glyph => glyph.GlyphId).ToArray();
-    var svgHebrew = svgRoot.Descendants().Where(node => node.Name.LocalName == "g" &&
-        (string?)node.Attribute("data-ofd-text") == "שלום").ToArray();
-    if (svgHebrew.Length != 1 ||
-        !svgHebrew[0].Descendants().Where(node => node.Name.LocalName == "path")
-            .Select(node => (int?)node.Attribute("data-original-gid"))
-            .Where(value => value.HasValue).Select(value => (uint)value!.Value).SequenceEqual(hebrewGids))
-        throw new InvalidDataException("The mixed paragraph SVG lost visual-order original Hebrew GIDs.");
+    foreach (var hebrewRun in result.Lines.SelectMany(line => line.Runs)
+        .Where(run => run.Direction == TextDirection.RightToLeft))
+    {
+        var svgHebrew = svgRoot.Descendants().Where(node => node.Name.LocalName == "g" &&
+            (string?)node.Attribute("data-ofd-text") == hebrewRun.Text).ToArray();
+        if (svgHebrew.Length != 1 ||
+            !svgHebrew[0].Descendants().Where(node => node.Name.LocalName == "path")
+                .Select(node => (int?)node.Attribute("data-original-gid"))
+                .Where(value => value.HasValue).Select(value => (uint)value!.Value)
+                .SequenceEqual(hebrewRun.Shaped.Glyphs.Select(glyph => glyph.GlyphId)))
+            throw new InvalidDataException("The mixed paragraph SVG lost visual-order original Hebrew GIDs.");
+    }
     mixedOutputs.AddRange(new[] { ofd, pdf, svg, png });
 }
 await File.WriteAllTextAsync(Path.Combine(output, "r22-mixed-output-receipt.json"),

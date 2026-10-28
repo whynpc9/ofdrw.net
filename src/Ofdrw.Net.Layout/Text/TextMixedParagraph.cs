@@ -251,6 +251,7 @@ public sealed class TextMixedParagraphEngine
                     x += space.XAdvance * scale;
                 }
             }
+            ReorderHebrewPhrases(runList, scale);
             var sourceStart = words[first].Start;
             var sourceEnd = last == words.Count - 1 ? text.Length : words[last].Start + words[last].Length + 1;
             var visibleAdvance = last == words.Count - 1 ? x : x - runList[runList.Count - 1].Shaped.XAdvance * scale;
@@ -263,5 +264,38 @@ public sealed class TextMixedParagraphEngine
             first = last + 1;
         }
         return new TextMixedParagraphResult(request, lines);
+    }
+
+    // In an LTR paragraph, adjacent Hebrew words and their internal spaces
+    // form one RTL sequence. Keep runs in source order for OFD/PDF semantics,
+    // but assign their page positions in the sequence's visual order.
+    private static void ReorderHebrewPhrases(List<TextMixedParagraphRun> runs, double scale)
+    {
+        for (var first = 0; first < runs.Count;)
+        {
+            if (runs[first].Direction != TextDirection.RightToLeft)
+            {
+                first++;
+                continue;
+            }
+            var last = first;
+            while (last + 2 < runs.Count && runs[last + 1].Text == " " &&
+                   runs[last + 2].Direction == TextDirection.RightToLeft)
+                last += 2;
+            if (last > first)
+            {
+                var positions = new double[last - first + 1];
+                var visualX = runs[first].XMillimeters;
+                for (var index = last; index >= first; index--)
+                {
+                    positions[index - first] = visualX;
+                    visualX += runs[index].Shaped.XAdvance * scale;
+                }
+                for (var index = first; index <= last; index++)
+                    runs[index] = new TextMixedParagraphRun(runs[index].Shaped,
+                        positions[index - first]);
+            }
+            first = last + 1;
+        }
     }
 }

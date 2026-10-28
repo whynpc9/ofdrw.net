@@ -12,8 +12,10 @@ scripts fail explicitly. It makes no general Unicode bidi claim.
 
 The query identifies word and space source spans, shapes Latin words LTR and
 Hebrew words RTL with absolute UTF-16 source clusters, and places the resulting
-visual glyph sequences in an LTR paragraph. It chooses breaks only after whole
-words and reshapes every final word/space for the final line result. A soft
+visual glyph sequences in an LTR paragraph. Adjacent Hebrew words and their
+internal spaces form one visual RTL phrase: word positions reverse within that
+phrase while OFD TextObjects remain in logical source order. It chooses breaks
+only after whole words and reshapes every final word/space for the final line result. A soft
 break retains its trailing space in the source interval and total advance;
 visible fit excludes that space. The final result owns the exact shaped runs
 used by a later typed writer, including the selected face, engine version,

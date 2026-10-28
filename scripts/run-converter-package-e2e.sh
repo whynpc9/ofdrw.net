@@ -230,9 +230,14 @@ wide = query['wide'][0]['runs']
 assert [run['Text'] for run in wide] == ['abc', ' ', '\u05e9\u05dc\u05d5\u05dd', ' ', 'def']
 assert [glyph['ClusterStart'] for glyph in wide[2]['glyphs']] == [7, 6, 5, 4]
 assert [line['source'] for line in query['wrapped']] == ['abc ', '\u05e9\u05dc\u05d5\u05dd ', 'def']
+two = query['twoWord']
+assert two['source'] == 'abc \u05e9\u05dc\u05d5\u05dd \u05de\u05e7\u05d5\u05dd def'
+assert [run['Text'] for run in two['runs']] == ['abc', ' ', '\u05e9\u05dc\u05d5\u05dd', ' ',
+    '\u05de\u05e7\u05d5\u05dd', ' ', 'def']
+assert two['runs'][4]['XMillimeters'] < two['runs'][2]['XMillimeters']
 assert {item['name'] for item in output['outputs']} == {
     f'r22-mixed-{kind}.{extension}'
-    for kind in ('wide', 'wrapped') for extension in ('ofd', 'pdf', 'svg', 'png')}
+    for kind in ('wide', 'wrapped', 'two-word') for extension in ('ofd', 'pdf', 'svg', 'png')}
 assert all(item['bytes'] > 0 for item in output['outputs'])
 PY_R22_MIXED_CONSUMER
 for sample in av av-kern-off ffi-on ffi-off e-acute a-diaeresis; do
@@ -240,7 +245,7 @@ for sample in av av-kern-off ffi-on ffi-off e-acute a-diaeresis; do
     "$TEXT_OUTPUT/r22-$sample.pdf" "$TEXT_OUTPUT/r22-$sample-pdf-page"
   test -s "$TEXT_OUTPUT/r22-$sample-pdf-page.png"
 done
-for sample in wide wrapped; do
+for sample in wide wrapped two-word; do
   pdftoppm -f 1 -l 1 -png -singlefile -r 144 \
     "$TEXT_OUTPUT/r22-mixed-$sample.pdf" "$TEXT_OUTPUT/r22-mixed-$sample-pdf-page"
   test -s "$TEXT_OUTPUT/r22-mixed-$sample-pdf-page.png"
