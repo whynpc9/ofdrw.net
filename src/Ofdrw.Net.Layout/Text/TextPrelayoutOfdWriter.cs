@@ -46,7 +46,7 @@ public static class TextPrelayoutOfdWriter
         }
         if (result.Request.Script != "Latn" || result.Face.Bold || result.Face.Italic)
             throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
-                "The first OFD output profile is regular, horizontal Latin ASCII only.");
+                "Positioned OFD output requires the bounded regular, horizontal Latin profile.");
         try { XmlConvert.VerifyXmlChars(result.Face.Name); }
         catch (XmlException exception)
         {
@@ -65,11 +65,15 @@ public static class TextPrelayoutOfdWriter
             if (positionedGlyphs)
             {
                 if (text.Length == 0) continue;
+                var latinCombiningPair = OfdPositionedGlyphProfile.IsLatinCombiningPair(text);
                 if (text.Length > 8 || line.ShapedRun.Glyphs.Count is < 1 or > 8 ||
-                    text.Any(value => value < 0x21 || value > 0x7e))
+                    (!latinCombiningPair && text.Any(value => value < 0x21 || value > 0x7e)))
                     throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
-                        "The positioned output requires a short, nonblank BMP source line.");
+                        "The positioned output requires a short ASCII line or one bounded Latin combining pair.");
                 var glyphs = line.ShapedRun.Glyphs;
+                if (latinCombiningPair && glyphs.Count != 1)
+                    throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
+                        "The Latin combining profile requires one complete shaped glyph cluster.");
                 if (glyphs.Count != text.Length && !(glyphs.Count == 1 && text.Length is 2 or 3))
                     throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
                         "The positioned output needs one-to-one glyphs or a complete short ligature.");

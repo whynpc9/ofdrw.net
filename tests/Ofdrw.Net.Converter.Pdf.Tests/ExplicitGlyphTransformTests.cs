@@ -1309,6 +1309,26 @@ public sealed class ExplicitGlyphTransformTests
         Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(unsupported));
     }
 
+    [Theory]
+    [InlineData("e\u0301", '\u00E9')]
+    [InlineData("a\u0308", '\u00E4')]
+    public void LatinCombiningAdmissionNeedsOneCompleteUnpositionedSourceSpan(string source, char composed)
+    {
+        var composedGid = new OpenTypeCmap(new OpenTypeFace(Font())).Glyph(composed);
+        var complete = SourceSpanText(source, composedGid);
+        var mapped = Assert.IsType<OfdExplicitGlyphRun>(OfdExplicitGlyphRun.Read(complete));
+        Assert.Equal(source, mapped.SingleGlyphSourceSpan);
+        Assert.Equal(composedGid, Assert.Single(mapped.GlyphIds));
+
+        var partial = SourceSpanText(source, composedGid);
+        partial.SourceXml = partial.SourceXml!.Replace("CodeCount='2'", "CodeCount='1'");
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(partial));
+        var separateMark = Text(composedGid, composedGid + 1, logicalText: source);
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(separateMark));
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(
+            SourceSpanText("a\u20DD", composedGid)));
+    }
+
     [Fact]
     public async Task MissingOriginalGidLeavesBothOutputsEmpty()
     {

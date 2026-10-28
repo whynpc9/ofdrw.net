@@ -597,6 +597,58 @@ public sealed class TextPrelayoutTests
         }
     }
 
+    [Theory]
+    [InlineData("e\u0301")]
+    [InlineData("a\u0308")]
+    public async Task PositionedWriterPreservesLatinCombiningSourceAndOneOriginalGid(string source)
+    {
+        var face = Noto();
+        var layout = HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest(source, new[] { face }, 4, 50));
+        var glyph = Assert.Single(Assert.Single(layout.Lines).ShapedRun.Glyphs);
+        Assert.Equal(0, glyph.ClusterStart);
+        Assert.Equal(source.Length, glyph.ClusterLength);
+        var package = TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(layout,
+            100, 75, 10, 10);
+        var typed = Assert.Single(Assert.Single(package.Pages).Elements.OfType<OfdTextElement>())
+            .Runs.Single().PositionedGlyphs!;
+        Assert.Equal(source, typed.LogicalText);
+        Assert.Equal(glyph.GlyphId, Assert.Single(typed.Glyphs).GlyphId);
+        using var stream = new MemoryStream();
+        var write = await new OfdPackageWriter().WriteWithResultAsync(package, stream);
+        Assert.True(Assert.Single(write.FontEmbedding).IsSubset);
+        stream.Position = 0;
+        using (var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true))
+        {
+            using var page = zip.Entries.Single(entry => entry.FullName.EndsWith("Content.xml", StringComparison.Ordinal)).Open();
+            var xml = XDocument.Load(page);
+            var mapping = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "CGTransform");
+            Assert.Equal("2", mapping.Attribute("CodeCount")?.Value);
+            Assert.Equal("1", mapping.Attribute("GlyphCount")?.Value);
+            Assert.Equal(glyph.GlyphId.ToString(), Assert.Single(mapping.Elements()).Value);
+        }
+        stream.Position = 0;
+        var read = await new OfdReader().ReadAsync(stream);
+        Assert.Equal(source, Assert.Single(read.Pages[0].Elements.OfType<OfdTextElement>()).Text);
+
+        var split = new TextPrelayoutEngine(new SplitCombiningShaper()).Layout(
+            new TextPrelayoutRequest(source, new[] { face }, 4, 50));
+        Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
+            TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(split,
+                100, 75, 10, 10)).Error);
+        var run = Assert.Single(package.Pages[0].Elements.OfType<OfdTextElement>()).Runs.Single();
+        var first = typed.Glyphs[0];
+        run.PositionedGlyphs = new OfdPositionedGlyphRun(source, 0, face.FaceSha256,
+            new[] { new OfdPositionedGlyph(first.GlyphId, 0, 1, first.OriginXMillimeters,
+                first.OriginYMillimeters, first.XAdvanceMillimeters, 0),
+                new OfdPositionedGlyph(first.GlyphId, 1, 1, first.OriginXMillimeters,
+                    first.OriginYMillimeters, 0, 0) });
+        using var rejected = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdPackageWriter().WriteAsync(package, rejected));
+        Assert.Equal(0, rejected.Length);
+    }
+
     [Fact]
     public async Task PositionedWriterRejectsFaceMismatchAndImportedSourceBeforeZip()
     {
@@ -789,6 +841,16 @@ public sealed class TextPrelayoutTests
             => new(request, request.Text.Select((_, index) => new TextShapedGlyph(
                 index == 0 ? 36u : 57u, request.SourceStart + index, 1, 600, 0, 0, 0,
                 null, false)).ToArray(), "conflicting-test");
+    }
+
+    private sealed class SplitCombiningShaper : ITextShaper
+    {
+        public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default)
+            => new(request, new[]
+            {
+                new TextShapedGlyph(36, request.SourceStart, 1, 500, 0, 0, 0, null, false),
+                new TextShapedGlyph(57, request.SourceStart + 1, 1, 0, 0, 0, 0, null, false),
+            }, "split-combining-test");
     }
 
     private sealed class CountingShaper : ITextShaper
