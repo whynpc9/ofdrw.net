@@ -118,6 +118,9 @@ def main():
                                           ('C', True, False), ('D', True, True)]:
             writer = PdfWriter()
             writer.append_pages_from_reader(reader)
+            # Marked-content ActualText is a PDF 1.5 feature. Use one declared
+            # version across A/B/C/D instead of inheriting the product's 1.4.
+            writer.pdf_header = '%PDF-1.7'
             target_page = writer.pages[0]
             rewritten = list(operations[:2])
             spans = []
@@ -141,6 +144,7 @@ def main():
             with target.open('wb') as handle:
                 writer.write(handle)
             reopened = PdfReader(target)
+            assert reopened.pdf_header == '%PDF-1.7'
             reread = ContentStream(reopened.pages[0].get_contents(), reopened).operations
             # Check balanced replacement scopes on the actual serialized file.
             depth, found = 0, []
@@ -161,6 +165,7 @@ def main():
             rows.append({'name': case['name'] + '-' + label, 'variant': label,
                          'sourcePath': str(original), 'sourceSha256': sha(original_bytes),
                          'path': str(target), 'sha256': sha(target.read_bytes()), 'expected': expected,
+                         'pdfHeader': reopened.pdf_header,
                          'expectedSelection': expected_selection,
                          'expectedWords': [{'text': word, 'count': sum(run['Text'] == word for run in runs)} for word in hebrew_words],
                          'expectedGeometry': [{'text': run['Text'], 'sourceStart': run['SourceStart'],

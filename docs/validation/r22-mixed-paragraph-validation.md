@@ -93,6 +93,12 @@ if required. Neither option is selected without evidence.
 
 The expanded E2E produced ten product cases and passed all seven new boundary
 assertions. Six focused converter tests matching `Hebrew` passed with no skips.
+**Version correction pending:** this first A/B/C/D round inherited PDF 1.4
+without a catalog version override. Marked-content ActualText requires PDF 1.5
+([ISO 32000-2 clause 14.9.4 errata](https://pdf-issues.pdfa.org/32000-2-2020/clause14.html)).
+The raw observations below remain valid for those exact files, but do not
+exclude the version-correct ActualText route. The generator now declares PDF
+1.7 for all four variants; its controlled follow-up must be recorded separately.
 The matrix produced 40 diagnostic PDFs with unchanged baseline pixels and
 verified that every producer output retained its recorded hash. All 40 had
 the expected separate word rectangles in PdfPig and PDFKit, including two
@@ -121,6 +127,52 @@ round was superseded because its baseline renderer overwrote producer PNG
 filenames. Its disposition is retained. The corrected script writes baseline
 rasters only beneath the diagnostic directory and checks all producer hashes
 before and after; the second round uses fresh separate directories.
+
+## Character-granularity checkpoint (2026-10-28)
+
+`make-character-matrix.py` reads the same ten product cases plus both pages of
+the existing isolated-word OFD/PDF. It replaces only the single hidden semantic
+CID with explicitly positioned character CIDs. E/F retain logical word-group
+order, G/H use visual word-group order; E/G show characters in logical order,
+F/H in visual order. The existing clip/opacity and visible paths remain.
+
+All 48 diagnostics preserved original embedded font bytes, used-GID outlines,
+`hmtx`, source PDF/OFD bytes and baseline pixels. The original ten product
+rasters and independent renders of both isolated source pages also match.
+No variant passed the combined API criteria. E keeps exact PdfPig page text,
+but PDFKit fragments/reorders Hebrew characters and fails whole-word Find.
+F/H improve PDFKit on selected cases and both isolated pages, while PdfPig
+page text is in visual character order. Leading/trailing RTL and mixed-line
+wrap cases still fail PDFKit selection. These files use no ActualText, so the
+first matrix's version caveat does not explain these results.
+
+| Character variant (12 cases) | pypdf exact raw source | PdfPig exact page text | PDFKit declared selection | PDFKit word geometry |
+|---|---:|---:|---:|---:|
+| E | 0 | 12 | 0 | 0 |
+| F | 6 | 0 | 5 | 12 |
+| G | 0 | 9 | 0 | 0 |
+| H | 7 | 0 | 8 | 12 |
+
+The pypdf column is raw exact equality, including its line breaks; it is not a
+normalised reading-order score. These are consumer-specific measurements, not
+a rule that every extractor's raw stream API is the sole semantic oracle.
+
+PdfPig `GetWords()` returned visual-character tokens such as `םולש` even when
+`page.Text` returned logical `שלום`; the expected-token geometry check therefore
+fails. This is a measured consumer limitation, not proof that every rectangle
+is physically misplaced. Keep raw text, token strings and rectangles separate.
+Likewise the earlier phrase ActualText probe's merged PdfPig token remains a
+failed consumer observation; it must not be confused with proving that every
+target reader merges its Find rectangles. Actual Preview remains unverified.
+
+Artifacts: `artifacts/r22-harfbuzz/character-matrix-20261028/` holds source
+identity, 48 immutable outputs, PdfPig/PDFKit receipts and summary. No production
+semantic change is selected. Correct the first matrix's version declaration
+before expanding the experiment. A later tagged-reading-order investigation
+must validate the logical tree, MCIDs and ParentTree with an independent
+tag-aware consumer; the [PDF Association RTL discussion](https://github.com/pdf-association/pdf-issues/issues/718)
+distinguishes structure order, glyph order and reader heuristics. It does not
+establish Apple PDFKit/Preview compatibility or waive their direct checks.
 
 ## Completion gates
 
