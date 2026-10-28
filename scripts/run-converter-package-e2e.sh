@@ -205,16 +205,20 @@ PY_TEXT_CONSUMER
 python3 - "$TEXT_OUTPUT/r22-receipt.json" <<'PY_R22_TEXT_CONSUMER'
 import json, sys
 receipt = json.load(open(sys.argv[1]))
-assert {item['source'] for item in receipt['cases']} == {'AV', 'ffi'}
+assert {item['source'] for item in receipt['cases']} == {'AV', 'ffi', 'e\u0301', 'a\u0308'}
 assert {item['feature'] for item in receipt['cases'] if item['source'] == 'AV'} == {'on', 'off'}
 assert {item['feature'] for item in receipt['cases'] if item['source'] == 'ffi'} == {'on', 'off'}
 av = {item['feature']: item for item in receipt['cases'] if item['source'] == 'AV'}
 assert av['on']['origins'][1]['OriginXMillimeters'] != av['off']['origins'][1]['OriginXMillimeters']
+acute = next(item for item in receipt['cases'] if item['name'] == 'e-acute')
+assert acute['source'] == 'e\u0301' and len(acute['shapedGids']) == 1
+diaeresis = next(item for item in receipt['cases'] if item['name'] == 'a-diaeresis')
+assert diaeresis['source'] == 'a\u0308' and len(diaeresis['shapedGids']) == 1
 assert all(item['readback'] == item['source'] for item in receipt['cases'])
 assert all(item['svgGids'] == item['shapedGids'] for item in receipt['cases'])
 assert all(output['bytes'] > 0 for output in receipt['outputs'])
 PY_R22_TEXT_CONSUMER
-for sample in av av-kern-off ffi-on ffi-off; do
+for sample in av av-kern-off ffi-on ffi-off e-acute a-diaeresis; do
   pdftoppm -f 1 -l 1 -png -singlefile -r 144 \
     "$TEXT_OUTPUT/r22-$sample.pdf" "$TEXT_OUTPUT/r22-$sample-pdf-page"
   test -s "$TEXT_OUTPUT/r22-$sample-pdf-page.png"
