@@ -665,6 +665,33 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public async Task PositionedWriterRejectsOneGidForDistinctSourceCharactersBeforeZip()
+    {
+        var face = Noto();
+        var ambiguous = new TextPrelayoutEngine(new AmbiguousGidShaper()).Layout(
+            new TextPrelayoutRequest("AV", new[] { face }, 4, 50));
+        Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
+            TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(ambiguous,
+                100, 100, 10, 15)).Error);
+        var layout = HarfBuzzTextPrelayout.Create().Layout(
+            new TextPrelayoutRequest("AV", new[] { face }, 4, 50));
+        var package = TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(layout,
+            100, 100, 10, 15);
+        var run = package.Pages[0].Elements.OfType<OfdTextElement>().Single().Runs.Single();
+        var original = run.PositionedGlyphs!;
+        var first = original.Glyphs[0];
+        var second = original.Glyphs[1];
+        run.PositionedGlyphs = new OfdPositionedGlyphRun(original.LogicalText, original.SourceStart,
+            original.FaceSha256, new[] { first, new OfdPositionedGlyph(first.GlyphId,
+                second.ClusterStart, second.ClusterLength, second.OriginXMillimeters,
+                second.OriginYMillimeters, second.XAdvanceMillimeters, second.YAdvanceMillimeters) });
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdPackageWriter().WriteAsync(package, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
     public async Task WriterRejectsXmlInvalidFaceNameBeforeCreatingOutput()
     {
         var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));
@@ -716,6 +743,14 @@ public sealed class TextPrelayoutTests
     }
 
     private static TextFontFace Noto() => new("Noto Sans", File.ReadAllBytes(Font("NotoSans-Regular.ttf")));
+
+    private sealed class AmbiguousGidShaper : ITextShaper
+    {
+        public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default)
+            => new(request, request.Text.Select((_, index) => new TextShapedGlyph(36,
+                request.SourceStart + index, 1, 600, 0, 0, 0, null, false)).ToArray(),
+                "ambiguous-test");
+    }
 
     private sealed class CountingShaper : ITextShaper
     {

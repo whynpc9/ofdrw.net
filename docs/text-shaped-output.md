@@ -15,6 +15,8 @@ have one glyph. The selected face is embedded and the TrueType subset retains
 the actual shaped GIDs in their original slots. The writer rejects a face hash
 that does not match the selected embedded resource, imported `SourceXml`, and
 unsupported source/cluster/position shapes before writing the output stream.
+When a GID repeats in one-to-one output, every occurrence must represent the
+same source character so PDF ToUnicode and SVG outline semantics stay unambiguous.
 The older `CreateSinglePage` contract stays strict about nominal one-to-one
 ASCII glyphs and full embedding.
 

@@ -1082,9 +1082,15 @@ public sealed partial class OfdPackageWriter
         var glyphs = positioned.Glyphs;
         if (glyphs.Count == run.Text.Length)
         {
+            var sourceByGid = new Dictionary<uint, char>();
             for (var index = 0; index < glyphs.Count; index++)
+            {
                 if (glyphs[index].ClusterStart != positioned.SourceStart + index || glyphs[index].ClusterLength != 1)
                     throw new NotSupportedException("One-to-one glyph output needs one source character per glyph.");
+                if (sourceByGid.TryGetValue(glyphs[index].GlyphId, out var prior) && prior != run.Text[index])
+                    throw new NotSupportedException("One original GID has ambiguous PDF Unicode semantics.");
+                sourceByGid[glyphs[index].GlyphId] = run.Text[index];
+            }
         }
         else if (glyphs.Count != 1 || run.Text.Length is not (2 or 3) ||
                  glyphs[0].ClusterStart != positioned.SourceStart || glyphs[0].ClusterLength != run.Text.Length)

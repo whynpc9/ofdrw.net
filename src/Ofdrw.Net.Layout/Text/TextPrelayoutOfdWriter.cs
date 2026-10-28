@@ -73,6 +73,17 @@ public static class TextPrelayoutOfdWriter
                 if (glyphs.Count != text.Length && !(glyphs.Count == 1 && text.Length is 2 or 3))
                     throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
                         "The positioned output needs one-to-one glyphs or a complete short ligature.");
+                if (glyphs.Count == text.Length)
+                {
+                    var sourceByGid = new System.Collections.Generic.Dictionary<uint, char>();
+                    for (var index = 0; index < glyphs.Count; index++)
+                    {
+                        if (sourceByGid.TryGetValue(glyphs[index].GlyphId, out var prior) && prior != text[index])
+                            throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
+                                "One shaped GID cannot represent distinct source characters in PDF/SVG output.");
+                        sourceByGid[glyphs[index].GlyphId] = text[index];
+                    }
+                }
                 for (var i = 0; i < glyphs.Count; i++)
                     if (glyphs[i].YAdvance != 0 ||
                         (glyphs.Count == text.Length
