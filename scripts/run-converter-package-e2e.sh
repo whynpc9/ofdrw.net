@@ -218,10 +218,32 @@ assert all(item['readback'] == item['source'] for item in receipt['cases'])
 assert all(item['svgGids'] == item['shapedGids'] for item in receipt['cases'])
 assert all(output['bytes'] > 0 for output in receipt['outputs'])
 PY_R22_TEXT_CONSUMER
+python3 - "$TEXT_OUTPUT/r22-mixed-query-receipt.json" "$TEXT_OUTPUT/r22-mixed-output-receipt.json" <<'PY_R22_MIXED_CONSUMER'
+import json, sys
+query, output = (json.load(open(path)) for path in sys.argv[1:])
+source = 'abc \u05e9\u05dc\u05d5\u05dd def'
+assert query['source'] == output['source'] == source
+assert query['sourceSha'] == output['sourceSha']
+assert isinstance(query['sourceSha'], str) and len(query['sourceSha']) == 40
+assert query['face']['FaceSha256'] == output['face']
+wide = query['wide'][0]['runs']
+assert [run['Text'] for run in wide] == ['abc', ' ', '\u05e9\u05dc\u05d5\u05dd', ' ', 'def']
+assert [glyph['ClusterStart'] for glyph in wide[2]['glyphs']] == [7, 6, 5, 4]
+assert [line['source'] for line in query['wrapped']] == ['abc ', '\u05e9\u05dc\u05d5\u05dd ', 'def']
+assert {item['name'] for item in output['outputs']} == {
+    f'r22-mixed-{kind}.{extension}'
+    for kind in ('wide', 'wrapped') for extension in ('ofd', 'pdf', 'svg', 'png')}
+assert all(item['bytes'] > 0 for item in output['outputs'])
+PY_R22_MIXED_CONSUMER
 for sample in av av-kern-off ffi-on ffi-off e-acute a-diaeresis; do
   pdftoppm -f 1 -l 1 -png -singlefile -r 144 \
     "$TEXT_OUTPUT/r22-$sample.pdf" "$TEXT_OUTPUT/r22-$sample-pdf-page"
   test -s "$TEXT_OUTPUT/r22-$sample-pdf-page.png"
+done
+for sample in wide wrapped; do
+  pdftoppm -f 1 -l 1 -png -singlefile -r 144 \
+    "$TEXT_OUTPUT/r22-mixed-$sample.pdf" "$TEXT_OUTPUT/r22-mixed-$sample-pdf-page"
+  test -s "$TEXT_OUTPUT/r22-mixed-$sample-pdf-page.png"
 done
 python3 - "$TEXT_OUTPUT" <<'PY_R22_PDF_TEXT'
 import json, pathlib, subprocess, sys

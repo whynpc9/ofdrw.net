@@ -9,6 +9,7 @@ public sealed class FontSubsetTests
 {
     private static readonly Lazy<byte[]> Latin = new(() => File.ReadAllBytes(Font("NotoSans-Regular.ttf")));
     private static readonly Lazy<byte[]> Chinese = new(() => File.ReadAllBytes(Font("LXGWWenKai-Regular.ttf")));
+    private static readonly Lazy<byte[]> Mixed = new(() => File.ReadAllBytes(Font("DejaVuSans-R22.ttf")));
     private static string Font(string name)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -50,6 +51,16 @@ public sealed class FontSubsetTests
         Assert.Equal(original.Table("name").Length > 0, subset.Table("name").Length > 0);
         Assert.NotEqual(original.Table("name"), subset.Table("name"));
     }
+    [Fact]
+    public async Task RawHebrewStillRetainsFullFontWithoutExplicitGlyphPlacement()
+    {
+        var saved = await Save(Package(Mixed.Value, "שלום"));
+        var result = Assert.Single(saved.Report.FontEmbedding);
+        Assert.False(result.IsSubset);
+        Assert.Equal(result.SourceIdentity, result.PayloadIdentity);
+        Assert.Contains("mirror closure", result.PreservationReason);
+    }
+
     [Fact]
     public async Task RealChineseSubsetIncludesAllPagesCanonicalAndVariationGlyphClosure()
     {

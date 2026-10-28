@@ -157,6 +157,13 @@ internal sealed class OfdFontEmbeddingPlan
                         continue;
                     }
                     var effective = OfdTextRenderProjection.CreateLogical(text, material, cancellationToken);
+                    // The narrow newly owned Hebrew-word profile draws original
+                    // GIDs. Its separate writer preflight verifies the complete
+                    // source-to-visual mapping. Keep the full-font guard for raw,
+                    // imported or other RTL text.
+                    var explicitPositioned = text.SourceXml is null && text.Runs.Count > 0 &&
+                        text.Runs.All(run => run.PositionedGlyphs is not null &&
+                            OfdPositionedGlyphProfile.IsHebrewWord(run.Text));
                     if (cmap is not null) EmbeddedFontCoverage.Validate(effective, cmap, aliases[0].FontName, cancellationToken);
                     var strings = effective.Runs.Count == 0 ? new[] { effective.Text } : effective.Runs.Select(run => run.Text);
                     foreach (var value in strings)
@@ -165,7 +172,7 @@ internal sealed class OfdFontEmbeddingPlan
                             foreach (var scalar in OpenTypeFace.Scalars(normalized))
                             {
                                 cancellationToken.ThrowIfCancellationRequested();
-                                if (UnicodeFontSubsetProfile.RequiresBidiMirroring(scalar))
+                                if (UnicodeFontSubsetProfile.RequiresBidiMirroring(scalar) && !explicitPositioned)
                                     reason ??= "RTL/bidi shaping requires a Unicode mirror closure; full font retained.";
                                 if (OpenTypeCmap.IsVariationSelector(scalar)) continue;
                                 used.Add(scalar);

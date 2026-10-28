@@ -1330,6 +1330,42 @@ public sealed class ExplicitGlyphTransformTests
     }
 
     [Fact]
+    public void CompleteHebrewVisualWordKeepsLogicalSourceAndRejectsPartialMapping()
+    {
+        const string source = "שלום";
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var resource = new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes };
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        var text = Text(gids[0], gids[1], "5 5 5", source);
+        text.FontName = "DejaVu Sans";
+        text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='4'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6' DeltaX='5 5 5'>{source}</TextCode></TextObject>";
+        var admitted = Assert.IsType<OfdExplicitGlyphRun>(OfdExplicitGlyphRun.Read(text, resource));
+        Assert.Equal(source, admitted.PathGlyphSourceSpan);
+        Assert.Equal(gids, admitted.GlyphIds);
+
+        var partial = Text(gids[0], gids[1], "5 5 5", source);
+        partial.SourceXml = text.SourceXml.Replace("CodeCount='4'", "CodeCount='3'");
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(partial, resource));
+        var ambiguous = Text(gids[0], gids[1], "5 5 5", source);
+        ambiguous.SourceXml = text.SourceXml.Replace($"{gids[0]} {gids[1]}", $"{gids[0]} {gids[0]}");
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(ambiguous, resource));
+        var foreign = Text(gids[0], gids[1], "5 5 5", source);
+        foreign.SourceXml = text.SourceXml.Replace($"{gids[0]} {gids[1]}",
+            $"{gids[1]} {gids[0]}");
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(foreign, resource));
+
+        const string repeatedSource = "אבבא";
+        var repeatedGids = repeatedSource.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        var repeated = Text(gids[0], gids[1], "5 5 5", repeatedSource);
+        repeated.SourceXml = text.SourceXml.Replace(source, repeatedSource)
+            .Replace(string.Join(' ', gids), string.Join(' ', repeatedGids));
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(repeated, resource));
+    }
+
+    [Fact]
     public async Task MissingOriginalGidLeavesBothOutputsEmpty()
     {
         var package = new OfdDocumentPackage();

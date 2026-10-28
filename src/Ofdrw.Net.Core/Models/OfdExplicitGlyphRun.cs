@@ -117,7 +117,8 @@ internal sealed class OfdExplicitGlyphRun
             var transform = transforms[0];
             var codeCount = Number(transform.Attribute("CodeCount"), 1);
             var glyphCount = Number(transform.Attribute("GlyphCount"), 1);
-            if (glyphCount is >= 2 and <= 8 && glyphCount != codeCount &&
+            if (glyphCount is >= 2 and <= 8 &&
+                (glyphCount != codeCount || OfdPositionedGlyphProfile.IsHebrewWord(logical)) &&
                 transform.Attributes().All(attribute => attribute.IsNamespaceDeclaration ||
                     attribute.Name.LocalName is "CodePosition" or "CodeCount" or "GlyphCount") &&
                 Number(transform.Attribute("CodePosition"), -1) == 0 &&
@@ -138,14 +139,41 @@ internal sealed class OfdExplicitGlyphRun
                         throw new NotSupportedException("CGTransform contains overlapping or invalid original GIDs.");
                     ids[index] = gid;
                 }
+                if (OfdPositionedGlyphProfile.IsHebrewWord(logical))
+                {
+                    // A foreign same-count span has no trusted cluster record.
+                    // Admit only the exact reversed direct-cmap GIDs of this
+                    // bounded unmarked Hebrew word, using its embedded face.
+                    if (resource?.Data is not { Length: > 0 })
+                        throw new NotSupportedException("Hebrew CGTransform needs an embedded direct-cmap font.");
+                    parseBudget ??= new FontParseBudget();
+                    parseBudget.Spend(0);
+                    if (cmapCache is null || !cmapCache.TryGetValue(resource, out var hebrewCmap))
+                    {
+                        parseBudget.Spend(resource.Data.LongLength);
+                        var face = new OpenTypeFace(OpenTypeCollection.SelectFace(resource.Data,
+                            resource.CollectionFaceIndex));
+                        hebrewCmap = new OpenTypeCmap(face, parseBudget);
+                        cmapCache?.Add(resource, hebrewCmap);
+                    }
+                    if (hebrewCmap.IsSymbol)
+                        throw new NotSupportedException("Hebrew CGTransform needs a direct Unicode cmap.");
+                    for (var index = 0; index < ids.Length; index++)
+                        if (ids[index] != hebrewCmap.DirectGlyph(logical[logical.Length - 1 - index]))
+                            throw new NotSupportedException("Hebrew CGTransform GIDs do not match the embedded face and visual order.");
+                }
                 CountDeltas(text.Runs[0].DeltaX, glyphCount - 1);
                 CountDeltas(text.Runs[0].DeltaY, glyphCount - 1);
                 var positioned = new OfdExplicitGlyphRun(text.Runs, ids,
-                    [new OfdExplicitGlyphSpan(0, codeCount, 0, glyphCount, logical)]);
+                    [new OfdExplicitGlyphSpan(0, codeCount, 0, glyphCount, logical)],
+                    composedPath: OfdPositionedGlyphProfile.IsHebrewWord(logical));
                 _ = positioned.PathGlyphOrigins(CancellationToken.None);
                 return positioned;
             }
         }
+        if (logical.Any(value => value is >= '\u05d0' and <= '\u05ea'))
+            throw new NotSupportedException(
+                "Hebrew CGTransform requires the complete verified visual-order word profile.");
         if (logical.Any(IsCombiningMark))
         {
             // Only this fixed complete source span has an admitted combining-mark

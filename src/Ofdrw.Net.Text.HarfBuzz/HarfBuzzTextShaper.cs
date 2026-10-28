@@ -129,4 +129,7 @@ public static class HarfBuzzTextPrelayout
 {
     /// <summary>Creates the new prelayout query with HarfBuzz as its default run shaper.</summary>
     public static TextPrelayoutEngine Create() => new TextPrelayoutEngine(new HarfBuzzTextShaper());
+
+    /// <summary>Creates the bounded mixed Latin/Hebrew paragraph query with the pinned run shaper.</summary>
+    public static TextMixedParagraphEngine CreateMixedParagraph() => new TextMixedParagraphEngine(new HarfBuzzTextShaper());
 }

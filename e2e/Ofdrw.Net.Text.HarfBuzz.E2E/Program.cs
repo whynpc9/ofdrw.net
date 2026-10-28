@@ -216,3 +216,162 @@ var positionedReceipt = new
 await File.WriteAllTextAsync(Path.Combine(output, "r22-receipt.json"),
     JsonSerializer.Serialize(positionedReceipt, new JsonSerializerOptions { WriteIndented = true }) + "\n");
 Console.WriteLine("R22 positioned AV, ffi and Latin combining OFD/PDF/SVG/PNG receipt: " + output);
+
+// R22 C-stage query probe: one bounded LTR paragraph with a true RTL Hebrew run.
+// This receipt is query evidence only; it is not an OFD/PDF/SVG acceptance claim.
+var dejavu = new TextFontFace("R22 DejaVu Sans", File.ReadAllBytes(Path.Combine(fixture, "DejaVuSans-R22.ttf")));
+const string mixedSource = "abc שלום def";
+var mixedEngine = HarfBuzzTextPrelayout.CreateMixedParagraph();
+var mixedWide = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4, 50));
+var mixedRuns = mixedWide.Lines.Single().Runs;
+if (mixedRuns.Count != 5 ||
+    !mixedRuns.Select(run => run.Text).SequenceEqual(new[] { "abc", " ", "שלום", " ", "def" }) ||
+    mixedRuns[2].Direction != TextDirection.RightToLeft ||
+    !mixedRuns[2].Shaped.Glyphs.Select(glyph => glyph.ClusterStart).SequenceEqual(new[] { 7, 6, 5, 4 }))
+    throw new InvalidDataException("The mixed Hebrew/Latin query lost logical spans or RTL visual glyph order.");
+var maxWordWidth = new[] { mixedRuns[0], mixedRuns[2], mixedRuns[4] }
+    .Max(run => run.Shaped.XAdvance * 4d / dejavu.UnitsPerEm);
+var mixedWrapped = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4,
+    maxWordWidth + 0.1));
+if (!mixedWrapped.Lines.Select(line => mixedSource.Substring(line.SourceStart, line.SourceLength))
+        .SequenceEqual(new[] { "abc ", "שלום ", "def" }) ||
+    mixedWrapped.Lines.SelectMany(line => line.Runs).Any(run =>
+        run.Shaped.Request.SourceStart != run.SourceStart ||
+        !ReferenceEquals(run.Shaped.Request.Face, dejavu)))
+    throw new InvalidDataException("Mixed paragraph wrapped outside word boundaries or reused a different shaping face.");
+try
+{
+    mixedEngine.Layout(new TextMixedParagraphRequest("abc ש-לום def", dejavu, 4, 50));
+    throw new InvalidDataException("Unsupported mixed punctuation was admitted.");
+}
+catch (TextLayoutException error) when (error.Error == TextLayoutError.UnsupportedFontProfile) { }
+try
+{
+    mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4, 50,
+        maximumShapeCalls: 1));
+    throw new InvalidDataException("Mixed paragraph shaping budget was bypassed.");
+}
+catch (TextLayoutException error) when (error.Error == TextLayoutError.BudgetExceeded) { }
+try
+{
+    mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, noto, 4, 50));
+    throw new InvalidDataException("Mixed paragraph silently substituted a font without Hebrew coverage.");
+}
+catch (TextLayoutException error) when (error.Error == TextLayoutError.MissingGlyph && error.SourceStart == 4) { }
+using (var cancelled = new CancellationTokenSource())
+{
+    cancelled.Cancel();
+    try
+    {
+        mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4, 50), cancelled.Token);
+        throw new InvalidDataException("Mixed paragraph ignored cancellation before shaping.");
+    }
+    catch (OperationCanceledException) { }
+}
+var mixedReceipt = new
+{
+    sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
+    source = mixedSource,
+    face = new { dejavu.SourceSha256, dejavu.FaceSha256, dejavu.UnitsPerEm },
+    wide = mixedWide.Lines.Select(line => new { line.SourceStart, line.SourceLength,
+        line.VisibleWidthMillimeters, line.TotalAdvanceMillimeters,
+        runs = line.Runs.Select(run => new { run.SourceStart, run.Text, run.Direction,
+            run.XMillimeters, run.Shaped.Request.Script,
+            glyphs = run.Shaped.Glyphs.Select(glyph => new { glyph.GlyphId,
+                glyph.ClusterStart, glyph.ClusterLength, glyph.XAdvance,
+                glyph.XOffset, glyph.YOffset }).ToArray() }).ToArray() }).ToArray(),
+    wrapped = mixedWrapped.Lines.Select(line => new { line.SourceStart, line.SourceLength,
+        source = mixedSource.Substring(line.SourceStart, line.SourceLength),
+        line.VisibleWidthMillimeters }).ToArray(),
+};
+await File.WriteAllTextAsync(Path.Combine(output, "r22-mixed-query-receipt.json"),
+    JsonSerializer.Serialize(mixedReceipt, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+Console.WriteLine("R22 bounded mixed Hebrew/Latin paragraph query receipt: " + output);
+
+try
+{
+    var repeatedHebrew = mixedEngine.Layout(new TextMixedParagraphRequest("abc אבבא def", dejavu, 4, 50));
+    TextMixedParagraphOfdWriter.CreateSinglePage(repeatedHebrew, 100, 75, 10, 10);
+    throw new InvalidDataException("An unverified repeated-Hebrew-GID output was admitted.");
+}
+catch (TextLayoutException error) when (error.Error == TextLayoutError.UnsupportedOutput) { }
+try
+{
+    TextMixedParagraphOfdWriter.CreateSinglePage(mixedWide, 5, 5, 0, 0);
+    throw new InvalidDataException("An overflowing mixed paragraph page was admitted.");
+}
+catch (TextLayoutException error) when (error.Error == TextLayoutError.UnsupportedOutput) { }
+var badMixedPackage = TextMixedParagraphOfdWriter.CreateSinglePage(mixedWide, 100, 75, 10, 10);
+var badHebrew = badMixedPackage.Pages[0].Elements.OfType<OfdTextElement>()
+    .Single(element => element.Text == "שלום");
+var badRun = badHebrew.Runs.Single();
+var originalHebrew = badRun.PositionedGlyphs!;
+var changedGlyphs = originalHebrew.Glyphs.ToArray();
+var firstGlyph = changedGlyphs[0];
+changedGlyphs[0] = new OfdPositionedGlyph(firstGlyph.GlyphId + 1,
+    firstGlyph.ClusterStart, firstGlyph.ClusterLength,
+    firstGlyph.OriginXMillimeters, firstGlyph.OriginYMillimeters,
+    firstGlyph.XAdvanceMillimeters, firstGlyph.YAdvanceMillimeters);
+badRun.PositionedGlyphs = new OfdPositionedGlyphRun(originalHebrew.LogicalText,
+    originalHebrew.SourceStart, originalHebrew.FaceSha256, changedGlyphs);
+using (var rejectedOutput = new MemoryStream())
+{
+    try
+    {
+        await new OfdPackageWriter().WriteAsync(badMixedPackage, rejectedOutput);
+        throw new InvalidDataException("A foreign Hebrew original GID was written as successful output.");
+    }
+    catch (NotSupportedException) { if (rejectedOutput.Length != 0)
+        throw new InvalidDataException("Rejected Hebrew output left a partial OFD stream."); }
+}
+var mixedOutputs = new List<string>();
+foreach (var (name, result) in new[] { ("wide", mixedWide), ("wrapped", mixedWrapped) })
+{
+    var mixedPackage = TextMixedParagraphOfdWriter.CreateSinglePage(result, 100, 75, 10, 10);
+    var ofd = Path.Combine(output, "r22-mixed-" + name + ".ofd");
+    var pdf = Path.Combine(output, "r22-mixed-" + name + ".pdf");
+    var svg = Path.Combine(output, "r22-mixed-" + name + ".svg");
+    var png = Path.Combine(output, "r22-mixed-" + name + ".png");
+    await using (var target = File.Create(ofd))
+    {
+        var written = await new OfdPackageWriter().WriteWithResultAsync(mixedPackage, target);
+        if (!written.FontEmbedding.Single().IsSubset)
+            throw new InvalidDataException("The mixed paragraph did not retain a bounded original-GID font subset: " +
+                written.FontEmbedding.Single().PreservationReason);
+    }
+    await using (var input = File.OpenRead(ofd)) await using (var target = File.Create(pdf))
+        await new OfdToPdfConverter().ConvertAsync(input, target);
+    await using (var input = File.OpenRead(ofd)) await using (var target = File.Create(svg))
+        await new OfdToSvgConverter().ConvertAsync(input, target);
+    await using (var input = File.OpenRead(ofd)) await using (var target = File.Create(png))
+        await new OfdToImageConverter().ConvertAsync(input, target);
+    await using var readStream = File.OpenRead(ofd);
+    var read = await new OfdReader().ReadAsync(readStream);
+    var readback = string.Concat(read.Pages.SelectMany(page => page.Elements)
+        .OfType<OfdTextElement>().Select(element => element.Text));
+    if (readback != mixedSource)
+        throw new InvalidDataException("The mixed paragraph lost logical OFD text order.");
+    var svgRoot = XDocument.Load(svg);
+    var hebrewGids = result.Lines.SelectMany(line => line.Runs)
+        .Where(run => run.Direction == TextDirection.RightToLeft)
+        .SelectMany(run => run.Shaped.Glyphs).Select(glyph => glyph.GlyphId).ToArray();
+    var svgHebrew = svgRoot.Descendants().Where(node => node.Name.LocalName == "g" &&
+        (string?)node.Attribute("data-ofd-text") == "שלום").ToArray();
+    if (svgHebrew.Length != 1 ||
+        !svgHebrew[0].Descendants().Where(node => node.Name.LocalName == "path")
+            .Select(node => (int?)node.Attribute("data-original-gid"))
+            .Where(value => value.HasValue).Select(value => (uint)value!.Value).SequenceEqual(hebrewGids))
+        throw new InvalidDataException("The mixed paragraph SVG lost visual-order original Hebrew GIDs.");
+    mixedOutputs.AddRange(new[] { ofd, pdf, svg, png });
+}
+await File.WriteAllTextAsync(Path.Combine(output, "r22-mixed-output-receipt.json"),
+    JsonSerializer.Serialize(new
+    {
+        sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
+        source = mixedSource,
+        face = dejavu.FaceSha256,
+        outputs = mixedOutputs.Select(path => new { name = Path.GetFileName(path),
+            bytes = new FileInfo(path).Length,
+            sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant() }).ToArray(),
+    }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+Console.WriteLine("R22 mixed Hebrew/Latin OFD/PDF/SVG/PNG candidates: " + output);
