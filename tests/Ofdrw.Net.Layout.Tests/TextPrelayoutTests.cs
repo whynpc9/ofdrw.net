@@ -692,6 +692,37 @@ public sealed class TextPrelayoutTests
     }
 
     [Fact]
+    public async Task PositionedWriterRejectsDistinctGidsForOneSourceCharacterBeforeZip()
+    {
+        var face = Noto();
+        var ambiguous = new TextPrelayoutEngine(new ConflictingGidShaper()).Layout(
+            new TextPrelayoutRequest("AA", new[] { face }, 4, 50));
+        Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
+            TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(ambiguous,
+                100, 100, 10, 15)).Error);
+
+        var engine = HarfBuzzTextPrelayout.Create();
+        var layout = engine.Layout(new TextPrelayoutRequest("AA", new[] { face }, 4, 50));
+        var otherGid = engine.Layout(new TextPrelayoutRequest("V", new[] { face }, 4, 50))
+            .Lines[0].ShapedRun.Glyphs[0].GlyphId;
+        var package = TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(layout,
+            100, 100, 10, 15);
+        var run = package.Pages[0].Elements.OfType<OfdTextElement>().Single().Runs.Single();
+        var original = run.PositionedGlyphs!;
+        var first = original.Glyphs[0];
+        var second = original.Glyphs[1];
+        Assert.NotEqual(first.GlyphId, otherGid);
+        run.PositionedGlyphs = new OfdPositionedGlyphRun(original.LogicalText, original.SourceStart,
+            original.FaceSha256, new[] { first, new OfdPositionedGlyph(otherGid,
+                second.ClusterStart, second.ClusterLength, second.OriginXMillimeters,
+                second.OriginYMillimeters, second.XAdvanceMillimeters, second.YAdvanceMillimeters) });
+        using var output = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdPackageWriter().WriteAsync(package, output));
+        Assert.Equal(0, output.Length);
+    }
+
+    [Fact]
     public async Task WriterRejectsXmlInvalidFaceNameBeforeCreatingOutput()
     {
         var bytes = File.ReadAllBytes(Font("NotoSans-Regular.ttf"));
@@ -750,6 +781,14 @@ public sealed class TextPrelayoutTests
             => new(request, request.Text.Select((_, index) => new TextShapedGlyph(36,
                 request.SourceStart + index, 1, 600, 0, 0, 0, null, false)).ToArray(),
                 "ambiguous-test");
+    }
+
+    private sealed class ConflictingGidShaper : ITextShaper
+    {
+        public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default)
+            => new(request, request.Text.Select((_, index) => new TextShapedGlyph(
+                index == 0 ? 36u : 57u, request.SourceStart + index, 1, 600, 0, 0, 0,
+                null, false)).ToArray(), "conflicting-test");
     }
 
     private sealed class CountingShaper : ITextShaper

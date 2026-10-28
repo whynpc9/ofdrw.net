@@ -1083,13 +1083,17 @@ public sealed partial class OfdPackageWriter
         if (glyphs.Count == run.Text.Length)
         {
             var sourceByGid = new Dictionary<uint, char>();
+            var gidBySource = new Dictionary<char, uint>();
             for (var index = 0; index < glyphs.Count; index++)
             {
                 if (glyphs[index].ClusterStart != positioned.SourceStart + index || glyphs[index].ClusterLength != 1)
                     throw new NotSupportedException("One-to-one glyph output needs one source character per glyph.");
                 if (sourceByGid.TryGetValue(glyphs[index].GlyphId, out var prior) && prior != run.Text[index])
                     throw new NotSupportedException("One original GID has ambiguous PDF Unicode semantics.");
+                if (gidBySource.TryGetValue(run.Text[index], out var priorGid) && priorGid != glyphs[index].GlyphId)
+                    throw new NotSupportedException("One source character has conflicting original GIDs in a PDF font alias.");
                 sourceByGid[glyphs[index].GlyphId] = run.Text[index];
+                gidBySource[run.Text[index]] = glyphs[index].GlyphId;
             }
         }
         else if (glyphs.Count != 1 || run.Text.Length is not (2 or 3) ||

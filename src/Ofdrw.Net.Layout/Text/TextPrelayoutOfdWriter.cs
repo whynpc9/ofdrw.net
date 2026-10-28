@@ -76,12 +76,17 @@ public static class TextPrelayoutOfdWriter
                 if (glyphs.Count == text.Length)
                 {
                     var sourceByGid = new System.Collections.Generic.Dictionary<uint, char>();
+                    var gidBySource = new System.Collections.Generic.Dictionary<char, uint>();
                     for (var index = 0; index < glyphs.Count; index++)
                     {
                         if (sourceByGid.TryGetValue(glyphs[index].GlyphId, out var prior) && prior != text[index])
                             throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
                                 "One shaped GID cannot represent distinct source characters in PDF/SVG output.");
+                        if (gidBySource.TryGetValue(text[index], out var priorGid) && priorGid != glyphs[index].GlyphId)
+                            throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
+                                "One source character cannot use distinct GIDs in the bounded PDF font alias.");
                         sourceByGid[glyphs[index].GlyphId] = text[index];
+                        gidBySource[text[index]] = glyphs[index].GlyphId;
                     }
                 }
                 for (var i = 0; i < glyphs.Count; i++)
