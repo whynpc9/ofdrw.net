@@ -1071,7 +1071,7 @@ public sealed partial class ExplicitGlyphTransformTests
     }
 
     [Fact]
-    public async Task OnePdfAliasCannotExtractTwoDifferentSourceSpansFromTheSameGid()
+    public async Task DifferentSourceSpansSharingOneOriginalGidUseSeparatePdfAliases()
     {
         var second = SourceSpanText("fi", 1653);
         second.SourceXml = second.SourceXml!.Replace("ID='2'", "ID='3'");
@@ -1084,9 +1084,19 @@ public sealed partial class ExplicitGlyphTransformTests
         using var ofd = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(package, ofd);
         using var pdf = new MemoryStream();
-        await Assert.ThrowsAsync<NotSupportedException>(() =>
-            new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf));
-        Assert.Equal(0, pdf.Length);
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("fl", parsed.GetPage(1).Text);
+        Assert.Equal("fi", parsed.GetPage(2).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var maps = inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.GetName("/Subtype") == "/Type0")
+            .Select(item => item.Elements.GetDictionary("/ToUnicode"))
+            .Where(item => item?.Stream is not null)
+            .Select(item => Encoding.ASCII.GetString(item!.Stream!.Value)).ToArray();
+        Assert.Contains(maps, map => map.Contains("0066006C"));
+        Assert.Contains(maps, map => map.Contains("00660069"));
     }
 
     [Fact]
