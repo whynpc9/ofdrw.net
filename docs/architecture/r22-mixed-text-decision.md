@@ -118,7 +118,8 @@ encoding hypothesis are recorded in
 [`r22-pdfpig-reader-root-cause.md`](../validation/r22-pdfpig-reader-root-cause.md).
 That Type 3 PDF-only diagnostic has now been run and falsified by PDFKit whole
 selection; its structure, one-page PNG, reader results and source hashes are
-in ignored `type3-word-diagnostic-receipt.json`. The repeated-word variant,
+in the [curated LFS evidence archive](../evidence/r22-next-phase/README.md)
+and ignored `type3-word-diagnostic-receipt.json`. The repeated-word variant,
 candidate Preview and product writer path were not run after the first
 decisive API failure.
 The nine-file exact-hash Preview manifest is in ignored
