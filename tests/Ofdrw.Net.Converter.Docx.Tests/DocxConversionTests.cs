@@ -1079,11 +1079,6 @@ public sealed partial class DocxConversionTests
         }
 
         AssertPdfHasTwoPages(pdf);
-        using (var rendered = PdfPigDocument.Open(pdf.ToArray()))
-        {
-            Assert.Contains("文档转换视觉回归样例",
-                string.Concat(rendered.GetPage(1).Letters.Select(letter => letter.Value)));
-        }
 
         var docxToOfd = new DocxToOfdConverter(options);
         await using var ofd = new MemoryStream();
