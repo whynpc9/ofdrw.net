@@ -258,10 +258,14 @@ width. Six cases passed source/E2E output checks, pypdf standard extraction
 word geometry 12/12 across its two extraction modes. Their generated PNG
 pages and independently rendered SVG pages were visually reviewed. The exact
 matrix and reader outputs are retained in
-`artifacts/r22-harfbuzz/admitted-profile-matrix-aea9272e/`. This is sampled
-evidence within the admitted structure, not proof for arbitrary Latin/Hebrew
-word pairs; direct Preview of these added variants and the full package/CI
-gates are still pending.
+`artifacts/r22-harfbuzz/admitted-profile-matrix-aea9272e/`. Direct Preview
+also checked the five new one-page PDFs: each exact hash/path matched, raw
+clipboard characters equaled the source, and the specified Hebrew word had
+one Find hit at the correct visible location. See that directory's
+`preview-review/receipt.json`. These PDFs came from `aea9272e` plus the test
+patch later committed as `3a977cf6`; they are sampled evidence, not a clean
+final-head package or proof for arbitrary Latin/Hebrew word pairs. The full
+source, package, CI and review gates remain pending.
 
 The bounded query and line-layout API was split into PR #72 and merged as
 `187aa78ffca9ab4e81bdb0abb7d95b52d1e10337` on 2026-10-29. Its final
