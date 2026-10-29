@@ -214,9 +214,32 @@ other standards-compliant PDF encodings or imply a product fix.
 ## Delivery decision after the controlled experiments
 
 No tested PDF encoding meets the full mixed-paragraph corpus across pinned
-PdfPig and PDFKit, and the required direct Preview copy/Find acceptance remains
-unverified for the diagnostic variants. PR #71 therefore stays Draft with its
-writer/PDF promise.
+PdfPig and PDFKit. Direct macOS Preview checks of the two-word A–D diagnostic
+PDFs from `7c67057e` confirmed the tradeoff: A/B copied
+`שלום abc\ndef מקום` and could not Find `מקום`; C/D copied the exact logical
+sentence and independently highlighted both words, while their pinned PdfPig
+text remained in visual word order. The exact paths, hashes, clipboard code
+points and screenshots are in
+`artifacts/r22-harfbuzz/preview-abcd-retry-20261029/receipt.md`.
+
+After absorbing PR #72, `9f81fccf` regenerated ten product mixed cases.
+Focused E2E and 125 PDF tests passed, all ten OFD/PNG and SVG pages were
+visually checked, and source-order content-stream decoding and PdfPig text
+were exact. PDFKit whole-document selection was exact in only two of ten cases.
+Direct Preview of four hash-verified product PDFs reproduced the actual defect:
+the single-word wide case copied and searched correctly, but adjacent distinct
+words, repeated words and a line break between RTL words copied in the wrong
+order; the distinct second word was not found, and the repeated word yielded
+only one Find result. See
+`artifacts/r22-harfbuzz/pr71-after-pr72-9f81fccf/preview-recovery/receipt.json`.
+
+A separate PDF-only, single-`TJ` diagnostic preserved the source raster and
+let pypdf extract the logical sentence, but PDFKit omitted `מקום` from both
+selection and Find; PdfPig also attached a source space to `שלום` in its word
+geometry. The pinned reader outputs are in
+`artifacts/r22-harfbuzz/pr71-after-pr72-9f81fccf/one-tj-result.json`. This
+variant is rejected as a product repair. PR #71 stays Draft with its writer/PDF
+promise.
 
 The bounded query and line-layout API was split into PR #72 and merged as
 `187aa78ffca9ab4e81bdb0abb7d95b52d1e10337` on 2026-10-29. Its final
