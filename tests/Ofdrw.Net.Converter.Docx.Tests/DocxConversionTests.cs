@@ -1062,12 +1062,15 @@ public sealed partial class DocxConversionTests
     public async Task GeneratedDocx_ShouldConvertToPdfAndOfd()
     {
         var samplePath = ResolveGeneratedSample();
+        using var fonts = new PinnedCjkFontDirectory();
 
         var options = new DocxConversionOptions
         {
             Engine = DocxConversionEngine.LibreOffice,
-            OfdMode = DocxToOfdMode.DualLayer
+            OfdMode = DocxToOfdMode.DualLayer,
+            UseInstalledMicrosoftOfficeFonts = false
         };
+        options.FontDirectories.Add(fonts.Path);
         var docxToPdf = new DocxToPdfConverter(options);
         await using var pdf = new MemoryStream();
         await using (var docx = File.OpenRead(samplePath))
@@ -1076,6 +1079,11 @@ public sealed partial class DocxConversionTests
         }
 
         AssertPdfHasTwoPages(pdf);
+        using (var rendered = PdfPigDocument.Open(pdf.ToArray()))
+        {
+            Assert.Contains("文档转换视觉回归样例",
+                string.Concat(rendered.GetPage(1).Letters.Select(letter => letter.Value)));
+        }
 
         var docxToOfd = new DocxToOfdConverter(options);
         await using var ofd = new MemoryStream();
