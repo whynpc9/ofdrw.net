@@ -117,16 +117,28 @@ encoding hypothesis are recorded in
 [`r22-pdfpig-reader-root-cause.md`](../validation/r22-pdfpig-reader-root-cause.md).
 The nine-file exact-hash Preview manifest is in ignored
 `artifacts/r22-next-phase/reference-20261029/preview-input-manifest.json`.
-Under an exclusive GUI grant, Terra High inspected three PDFs and recorded
-`preview-partial-receipt-20261030.json`. The shaped fpdf2 two-word and
-repeated-word cases had the expected visual phrase and logical Find highlights
-in Preview, including two distinct repeated-word highlights. In the
-between-word wrap, Preview's `מקום` Find showed “Found on 1 page” while its
-result row said “Not found,” navigation was disabled, and no target highlight
-appeared. The GUI state tool then failed after closing an ancillary image, so
-six PDFs and the final window state remain unverified. The permitted GUI API
-did not expose raw clipboard Unicode; page accessibility text is not copy
-evidence. None of these partial observations admits the product writer.
+Terra High inspected all nine one-page PDFs under three exclusive GUI grants.
+The immutable receipts are `preview-partial-receipt-20261030.json`,
+`preview-continuation-partial-receipt-20261030.json` and
+`preview-remaining-six-receipt-20261030.json`. The first two grants stopped
+after native state reads returned `noWindowsAvailable` immediately after the
+last task window was closed; the final grant kept an owned PDF open while
+checking the other six, then closed it and observed the normal Open chooser.
+
+| Actual Preview finding | Scope |
+| --- | --- |
+| Shaped fpdf2 two-word and repeated-word | Correct visible phrase; logical `שלום`/`מקום` Find highlighted the expected words. Repeated `שלום` had two distinct highlights. Reversed queries had no results. |
+| Shaped fpdf2 between-word wrap | The `מקום` query twice showed “Found on 1 page” but the result row said “Not found,” navigation was disabled and no target highlight appeared. PDFKit had reported one positive match. |
+| Shaped fpdf2 after-phrase wrap | Both logical Hebrew words had one visible highlight; reversed queries had none. |
+| Pango two-word, repeated and both wraps | Logical Hebrew queries returned no results. Reversed-word queries sometimes found only a partial glyph highlight; repeated `םולש` showed one result rather than PDFKit's two. Reversed `םוקמ` in the two-word and between-wrap cases showed a found-page banner without an actionable result or highlight. |
+| Unshaped fpdf2 `.text()` control | Hebrew appearance was reversed; logical queries failed and reversed queries found the visible words. |
+
+Preview accessibility page text and screenshot-space highlight estimates are
+recorded separately from PDFKit API results. The permitted GUI API did not
+expose raw clipboard Unicode, and the exact PNGs were not independently
+compared inside Preview. Thus actual copy-codepoint and PNG-comparison gates
+remain unverified. These reference results neither admit the product writer
+nor demonstrate full R22 visual acceptance.
 
 ## Decision
 
