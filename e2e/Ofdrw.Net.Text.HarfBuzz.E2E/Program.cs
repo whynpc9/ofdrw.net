@@ -402,8 +402,32 @@ using (var rejectedOutput = new MemoryStream())
 }
 var mixedOutputs = new List<string>();
 var mixedCases = new List<(string Name, TextMixedParagraphResult Result)>
-    { ("wide", mixedWide), ("wrapped", mixedWrapped), ("two-word", twoWordMixed) };
-mixedCases.AddRange(mixedBoundaryCases);
+    { ("wide", mixedWide) };
+var rejectedMixedCases = new List<(string Name, TextMixedParagraphResult Result, int SourceStart)>
+    { ("wrapped", mixedWrapped, mixedWrapped.Lines[1].SourceStart),
+      ("two-word", twoWordMixed, 9) };
+rejectedMixedCases.AddRange(mixedBoundaryCases.Select(item =>
+    (item.Name, item.Result, item.Name switch
+    {
+        "repeated-word" => 9,
+        "separated-rtl" => 13,
+        "leading-rtl" => 0,
+        "trailing-rtl" => 4,
+        "two-word-exact-fit" => 9,
+        "between-rtl-wrap" => item.Result.Lines[1].SourceStart,
+        "after-rtl-wrap" => item.Result.Lines[1].SourceStart,
+        _ => throw new InvalidDataException("Unknown mixed rejection case: " + item.Name),
+    })));
+foreach (var (name, result, sourceStart) in rejectedMixedCases)
+{
+    try
+    {
+        TextMixedParagraphOfdWriter.CreateSinglePage(result, 100, 75, 10, 10);
+        throw new InvalidDataException("Known reader-unsafe mixed output was admitted: " + name);
+    }
+    catch (TextLayoutException error) when (error.Error == TextLayoutError.UnsupportedOutput &&
+        error.SourceStart == sourceStart && error.SourceLength > 0) { }
+}
 foreach (var (name, result) in mixedCases)
 {
     var mixedPackage = TextMixedParagraphOfdWriter.CreateSinglePage(result, 100, 75, 10, 10);

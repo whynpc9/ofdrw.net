@@ -46,10 +46,15 @@ Latin and distinct-letter Hebrew words carry complete original-GID
 visual-order GIDs use an explicit outline route in PDF/SVG with logical Unicode
 semantics carried separately; no imported multi-TextCode mapping is inferred.
 The writer rejects unsupported runs and page ink before returning a package.
-Its output profile is narrower than the query: each run has at most eight
-characters; Hebrew words have two to eight letters with one distinct nominal
-glyph per letter. Repeating the same valid word in separate runs is supported
-by the profile, while repeated glyphs inside one Hebrew word are refused.
+The provisional reader-safe output profile is one unwrapped line with exactly
+five runs: Latin word, space, one Hebrew word, space, Latin word. It uses the
+fixed R22 DejaVu face and 4 mm size. Each run has at most eight characters;
+the Hebrew word has two to eight letters with one distinct nominal glyph per
+letter. Adjacent or repeated Hebrew words, a Hebrew word at either paragraph
+edge, and line wraps return `UnsupportedOutput` with a source interval before
+any package is created. The query API still accepts its broader bounded
+layout profile. Even the provisional writer pattern needs fresh exact-head
+Preview and package evidence before release.
 See [the validation matrix](validation/r22-mixed-paragraph-validation.md) for
 the separate source, layout, PDF extraction, word-position and Preview gates.
 These statements describe the source contract; actual output behavior, PDF

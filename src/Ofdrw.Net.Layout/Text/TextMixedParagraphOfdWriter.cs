@@ -28,6 +28,33 @@ public static class TextMixedParagraphOfdWriter
                 "The mixed paragraph does not fit the regular horizontal page profile.");
         var request = result.Request;
         var face = request.Face;
+        // Reader copy/Find is currently verified only for one fixed-face,
+        // unwrapped Hebrew word between two Latin words. Refuse broader query
+        // results before creating any package elements or output stream.
+        if (result.Lines.Count != 1)
+            throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
+                "Mixed output with a line break has not passed the PDF reader profile.",
+                sourceStart: result.Lines.Count > 1 ? result.Lines[1].SourceStart : 0,
+                sourceLength: result.Lines.Count > 1 ? result.Lines[1].SourceLength : request.Text.Length);
+        var profileRuns = result.Lines[0].Runs;
+        var hebrewRuns = profileRuns.Where(run => OfdPositionedGlyphProfile.IsHebrewWord(run.Text)).ToArray();
+        if (hebrewRuns.Length != 1)
+        {
+            var offending = hebrewRuns.Length > 1 ? hebrewRuns[1] : profileRuns.FirstOrDefault();
+            throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
+                "Mixed output requires one Hebrew word between two Latin words.",
+                sourceStart: offending?.SourceStart ?? 0, sourceLength: offending?.Text.Length ?? request.Text.Length);
+        }
+        if (face.FaceSha256 != "d7441d42a24882db09640ea4bb768b17a106cdb31ee9749a52cb34a075b8fbcc" ||
+            request.FontSizeMillimeters != 4 || profileRuns.Count != 5 ||
+            !profileRuns[0].Text.All(value => value is >= 'A' and <= 'Z' or >= 'a' and <= 'z') ||
+            profileRuns[0].Text.Length == 0 || profileRuns[1].Text != " " ||
+            profileRuns[2] != hebrewRuns[0] || profileRuns[3].Text != " " ||
+            !profileRuns[4].Text.All(value => value is >= 'A' and <= 'Z' or >= 'a' and <= 'z') ||
+            profileRuns[4].Text.Length == 0)
+            throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
+                "The mixed output reader profile has not been verified for this word sequence or font.",
+                sourceStart: hebrewRuns[0].SourceStart, sourceLength: hebrewRuns[0].Text.Length);
         try { XmlConvert.VerifyXmlChars(face.Name); }
         catch (XmlException error)
         {

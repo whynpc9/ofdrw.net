@@ -241,6 +241,16 @@ geometry. The pinned reader outputs are in
 variant is rejected as a product repair. PR #71 stays Draft with its writer/PDF
 promise.
 
+The draft writer now refuses the known failing and unverified output structures
+before constructing a package. Its provisional admitted structure is one line
+with a Latin word, space, one Hebrew word, space and a Latin word, using the
+fixed R22 face at 4 mm. This limits exposure to the observed single-word
+control while the PDF semantic problem remains open. Focused E2E rejection
+checks cover adjacent distinct/repeated words, separated RTL spans, leading
+and trailing RTL, and wrap boundaries with source positions. This mitigation
+does not establish full R22 writer/PDF acceptance or transfer the old Preview
+result to a new head.
+
 The bounded query and line-layout API was split into PR #72 and merged as
 `187aa78ffca9ab4e81bdb0abb7d95b52d1e10337` on 2026-10-29. Its final
 `325f1bce` head passed separate source, package, CI, review and four-page
