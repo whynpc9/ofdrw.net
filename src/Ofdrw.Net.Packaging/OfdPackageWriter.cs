@@ -955,6 +955,9 @@ public sealed partial class OfdPackageWriter
                         ? text.Runs.Select(run => new XElement(ns + "TextCode",
                             new XAttribute("X", ToInvariant(run.XMillimeters)),
                             new XAttribute("Y", ToInvariant(run.YMillimeters)),
+                            !string.IsNullOrEmpty(run.Text) && string.IsNullOrWhiteSpace(run.Text)
+                                ? new XAttribute(XNamespace.Xml + "space", "preserve")
+                                : null,
                             !string.IsNullOrWhiteSpace(run.DeltaX)
                                 ? new XAttribute("DeltaX", run.DeltaX)
                                 : null,
@@ -973,7 +976,7 @@ public sealed partial class OfdPackageWriter
             }
 
             if (text.Runs.Any(run => run.PositionedGlyphs is not null))
-                AddPositionedGlyphs(textObject, text, ns, idAllocator);
+                AddPositionedGlyphs(textObject, text, binding?.Resource, ns, idAllocator);
 
             ApplyClipping(textObject, text, idAllocator);
             AssertNestedIds(text, textObject, idAllocator);
@@ -1067,7 +1070,8 @@ public sealed partial class OfdPackageWriter
         }        return null;
     }
 
-    private static void AddPositionedGlyphs(XElement textObject, OfdTextElement text, XNamespace ns, OfdIdPlan ids)
+    private static void AddPositionedGlyphs(XElement textObject, OfdTextElement text,
+        OfdFontResource? resource, XNamespace ns, OfdIdPlan ids)
     {
         if (text.SourceXml is not null || text.Runs.Count != 1 || text.Runs[0].PositionedGlyphs is not { } positioned)
             throw new NotSupportedException("Typed positioned glyph output requires one newly owned TextCode.");
@@ -1077,25 +1081,46 @@ public sealed partial class OfdPackageWriter
             text.Transform is not null || text.Weight != OfdTextElement.DefaultWeight || text.Italic)
             throw new NotSupportedException("Typed glyph output exceeds the bounded horizontal source profile.");
         var latinCombiningPair = OfdPositionedGlyphProfile.IsLatinCombiningPair(run.Text);
-        if (!latinCombiningPair && run.Text.Any(code => code < 0x21 || code > 0x7e))
-            throw new NotSupportedException("Typed glyph output requires printable ASCII or one bounded Latin combining pair.");
+        var hebrewWord = OfdPositionedGlyphProfile.IsHebrewWord(run.Text);
+        if (!latinCombiningPair && !hebrewWord && run.Text.Any(code => code < 0x21 || code > 0x7e))
+            throw new NotSupportedException("Typed glyph output exceeds the bounded Latin/Hebrew source profiles.");
         var glyphs = positioned.Glyphs;
         if (latinCombiningPair && glyphs.Count != 1)
             throw new NotSupportedException("The Latin combining profile requires one complete original-GID cluster.");
+        if (hebrewWord && (glyphs.Count != run.Text.Length ||
+            glyphs.Select(glyph => glyph.GlyphId).Distinct().Count() != glyphs.Count))
+            throw new NotSupportedException("The Hebrew word profile needs one distinct original GID per letter.");
+        if (hebrewWord)
+        {
+            if (resource?.Data is not { Length: > 0 })
+                throw new NotSupportedException("The Hebrew word profile needs an explicitly embedded font.");
+            var budget = new FontParseBudget();
+            budget.Spend(resource.Data.LongLength);
+            var face = new OpenTypeFace(OpenTypeCollection.SelectFace(resource.Data,
+                resource.CollectionFaceIndex));
+            var cmap = new OpenTypeCmap(face, budget);
+            if (cmap.IsSymbol)
+                throw new NotSupportedException("The Hebrew word profile needs a direct Unicode cmap.");
+            for (var index = 0; index < glyphs.Count; index++)
+                if (glyphs[index].GlyphId != cmap.DirectGlyph(run.Text[run.Text.Length - 1 - index]))
+                    throw new NotSupportedException("The Hebrew word GIDs do not match the embedded face and visual order.");
+        }
         if (glyphs.Count == run.Text.Length)
         {
             var sourceByGid = new Dictionary<uint, char>();
             var gidBySource = new Dictionary<char, uint>();
             for (var index = 0; index < glyphs.Count; index++)
             {
-                if (glyphs[index].ClusterStart != positioned.SourceStart + index || glyphs[index].ClusterLength != 1)
-                    throw new NotSupportedException("One-to-one glyph output needs one source character per glyph.");
-                if (sourceByGid.TryGetValue(glyphs[index].GlyphId, out var prior) && prior != run.Text[index])
+                var sourceIndex = hebrewWord ? run.Text.Length - 1 - index : index;
+                if (glyphs[index].ClusterStart != positioned.SourceStart + sourceIndex ||
+                    glyphs[index].ClusterLength != 1)
+                    throw new NotSupportedException("One-to-one glyph output needs the verified visual/source order.");
+                if (sourceByGid.TryGetValue(glyphs[index].GlyphId, out var prior) && prior != run.Text[sourceIndex])
                     throw new NotSupportedException("One original GID has ambiguous PDF Unicode semantics.");
-                if (gidBySource.TryGetValue(run.Text[index], out var priorGid) && priorGid != glyphs[index].GlyphId)
+                if (gidBySource.TryGetValue(run.Text[sourceIndex], out var priorGid) && priorGid != glyphs[index].GlyphId)
                     throw new NotSupportedException("One source character has conflicting original GIDs in a PDF font alias.");
-                sourceByGid[glyphs[index].GlyphId] = run.Text[index];
-                gidBySource[run.Text[index]] = glyphs[index].GlyphId;
+                sourceByGid[glyphs[index].GlyphId] = run.Text[sourceIndex];
+                gidBySource[run.Text[sourceIndex]] = glyphs[index].GlyphId;
             }
         }
         else if (glyphs.Count != 1 || run.Text.Length is not (2 or 3) ||

@@ -17,7 +17,8 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 /// </summary>
 internal static class PdfBoundFontRestorer
 {
-    internal static byte[] Restore(byte[] pdf, IReadOnlyDictionary<string, byte[]> faces)
+    internal static byte[] Restore(byte[] pdf, IReadOnlyDictionary<string, byte[]> faces,
+        IEnumerable<(string Identity, IReadOnlyDictionary<int, int> WidthByGlyph)> widthBindings)
     {
         if (faces.Count == 0) return pdf;
 
@@ -47,6 +48,8 @@ internal static class PdfBoundFontRestorer
         }
         if (restored.Count != fullFaces.Count)
             throw new InvalidDataException("Selected verified PDF face was not found among the embedded font descriptors.");
+
+        PdfExplicitGlyphUnicodeMap.InstallWidths(parsed, widthBindings);
 
         using var output = new MemoryStream();
         parsed.Save(output, false);

@@ -1071,7 +1071,7 @@ public sealed partial class ExplicitGlyphTransformTests
     }
 
     [Fact]
-    public async Task OnePdfAliasCannotExtractTwoDifferentSourceSpansFromTheSameGid()
+    public async Task DifferentSourceSpansSharingOneOriginalGidUseSeparatePdfAliases()
     {
         var second = SourceSpanText("fi", 1653);
         second.SourceXml = second.SourceXml!.Replace("ID='2'", "ID='3'");
@@ -1084,9 +1084,19 @@ public sealed partial class ExplicitGlyphTransformTests
         using var ofd = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(package, ofd);
         using var pdf = new MemoryStream();
-        await Assert.ThrowsAsync<NotSupportedException>(() =>
-            new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf));
-        Assert.Equal(0, pdf.Length);
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal("fl", parsed.GetPage(1).Text);
+        Assert.Equal("fi", parsed.GetPage(2).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var maps = inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.GetName("/Subtype") == "/Type0")
+            .Select(item => item.Elements.GetDictionary("/ToUnicode"))
+            .Where(item => item?.Stream is not null)
+            .Select(item => Encoding.ASCII.GetString(item!.Stream!.Value)).ToArray();
+        Assert.Contains(maps, map => map.Contains("0066006C"));
+        Assert.Contains(maps, map => map.Contains("00660069"));
     }
 
     [Fact]
@@ -1371,6 +1381,236 @@ public sealed partial class ExplicitGlyphTransformTests
         Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(separateMark));
         Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(
             SourceSpanText("a\u20DD", composedGid)));
+    }
+
+    [Fact]
+    public void CompleteHebrewVisualWordKeepsLogicalSourceAndRejectsPartialMapping()
+    {
+        const string source = "שלום";
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var resource = new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes };
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        var text = Text(gids[0], gids[1], "5 5 5", source);
+        text.FontName = "DejaVu Sans";
+        text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='4'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6' DeltaX='5 5 5'>{source}</TextCode></TextObject>";
+        var admitted = Assert.IsType<OfdExplicitGlyphRun>(OfdExplicitGlyphRun.Read(text, resource));
+        Assert.Equal(source, admitted.PathGlyphSourceSpan);
+        Assert.Equal(source, admitted.VisualHebrewSourceSpan);
+        Assert.Equal(gids, admitted.GlyphIds);
+
+        var partial = Text(gids[0], gids[1], "5 5 5", source);
+        partial.SourceXml = text.SourceXml.Replace("CodeCount='4'", "CodeCount='3'");
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(partial, resource));
+        var ambiguous = Text(gids[0], gids[1], "5 5 5", source);
+        ambiguous.SourceXml = text.SourceXml.Replace($"{gids[0]} {gids[1]}", $"{gids[0]} {gids[0]}");
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(ambiguous, resource));
+        var foreign = Text(gids[0], gids[1], "5 5 5", source);
+        foreign.SourceXml = text.SourceXml.Replace($"{gids[0]} {gids[1]}",
+            $"{gids[1]} {gids[0]}");
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(foreign, resource));
+
+        const string repeatedSource = "אבבא";
+        var repeatedGids = repeatedSource.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        var repeated = Text(gids[0], gids[1], "5 5 5", repeatedSource);
+        repeated.SourceXml = text.SourceXml.Replace(source, repeatedSource)
+            .Replace(string.Join(' ', gids), string.Join(' ', repeatedGids));
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(repeated, resource));
+    }
+
+    [Theory]
+    [InlineData(3, OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData(5, OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData(3, OfdGlyphMappingStrategy.GroupedLocal)]
+    [InlineData(5, OfdGlyphMappingStrategy.GroupedLocal)]
+    public async Task HebrewVisualWordRejectsMissingOrExtraGlyphsBeforePdfOutput(
+        int glyphCount, OfdGlyphMappingStrategy strategy)
+    {
+        const string source = "שלום";
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var resource = new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes };
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var validGids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        var valid = Text(validGids[0], validGids[1], "5 5 5", source);
+        valid.FontName = "DejaVu Sans";
+        valid.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='4'><Glyphs>{string.Join(' ', validGids)}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6' DeltaX='5 5 5'>{source}</TextCode></TextObject>";
+        var gids = glyphCount == 3 ? validGids[..3] : validGids.Append(cmap.Glyph('א')).ToArray();
+        var deltas = string.Join(' ', Enumerable.Repeat("5", glyphCount - 1));
+        var malformed = Text(gids[0], gids[1], deltas, source);
+        malformed.FontName = "DejaVu Sans";
+        malformed.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='{glyphCount}'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6' DeltaX='{deltas}'>{source}</TextCode></TextObject>";
+        Assert.Throws<NotSupportedException>(() =>
+            OfdExplicitGlyphRun.Read(malformed, resource, strategy: strategy));
+
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(resource);
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { valid } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using (var archive = new ZipArchive(ofd, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            var entry = archive.Entries.Single(item => item.FullName.EndsWith("/Content.xml", StringComparison.Ordinal));
+            XDocument xml;
+            using (var stream = entry.Open()) xml = XDocument.Load(stream);
+            var transform = xml.Descendants().Single(node => node.Name.LocalName == "CGTransform");
+            transform.SetAttributeValue("GlyphCount", glyphCount);
+            transform.Elements().Single(node => node.Name.LocalName == "Glyphs").Value = string.Join(' ', gids);
+            xml.Descendants().Single(node => node.Name.LocalName == "TextCode")
+                .SetAttributeValue("DeltaX", deltas);
+            var name = entry.FullName;
+            entry.Delete();
+            using var replacement = archive.CreateEntry(name).Open();
+            xml.Save(replacement);
+        }
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter(new OfdToPdfOptions { GlyphMappingStrategy = strategy })
+                .ConvertAsync(new MemoryStream(ofd.ToArray()), pdf));
+        Assert.Equal(0, pdf.Length);
+        if (strategy == OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)
+        {
+            using var svg = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() =>
+                new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), svg));
+            Assert.Equal(0, svg.Length);
+        }
+    }
+
+    [Theory]
+    [InlineData(OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData(OfdGlyphMappingStrategy.GroupedLocal)]
+    public async Task HebrewVisualWordPdfUsesOneLogicalSourceCid(OfdGlyphMappingStrategy strategy)
+    {
+        const string source = "שלום";
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        var text = Text(gids[0], gids[1], "5 5 5", source);
+        text.FontName = "DejaVu Sans";
+        text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='4'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6' DeltaX='5 5 5'>{source}</TextCode></TextObject>";
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { text } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter(new OfdToPdfOptions { GlyphMappingStrategy = strategy })
+            .ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(source, parsed.GetPage(1).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var pageContent = Encoding.ASCII.GetString(inspection.Pages[0].Contents.CreateSingleContent().Stream.UnfilteredValue);
+        Assert.Contains($"<{gids[0]:X4}> Tj", pageContent);
+        var sourceHex = BitConverter.ToString(Encoding.BigEndianUnicode.GetBytes(source)).Replace("-", string.Empty);
+        var unicodeMaps = inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.GetName("/Subtype") == "/Type0")
+            .Select(item => item.Elements.GetDictionary("/ToUnicode"))
+            .Where(item => item?.Stream is not null)
+            .Select(item => Encoding.ASCII.GetString(item!.Stream!.Value));
+        Assert.Contains(unicodeMaps, map => map.Contains($"<{gids[0]:X4}><{sourceHex}>"));
+        var semanticFont = Assert.Single(inspection.Internals.GetAllObjects()
+            .OfType<PdfSharpCore.Pdf.PdfDictionary>(),
+            item => item.Elements.GetName("/Subtype") == "/CIDFontType2" &&
+                           item.Elements.GetName("/BaseFont").Contains("Ofdrw-") &&
+                           item.Elements["/W"] is PdfSharpCore.Pdf.PdfArray widths &&
+                           widths.Elements.Count == 2 &&
+                           widths.Elements[0] is PdfSharpCore.Pdf.PdfInteger code && code.Value == gids[0]);
+        var widthEntries = Assert.IsType<PdfSharpCore.Pdf.PdfArray>(
+            Assert.IsType<PdfSharpCore.Pdf.PdfArray>(semanticFont.Elements["/W"]).Elements[1]);
+        Assert.True(widthEntries.Elements.Count == 1);
+        var actualWidth = Assert.IsType<PdfSharpCore.Pdf.PdfInteger>(widthEntries.Elements[0]).Value;
+        var lastOutline = new TrueTypeGlyphOutlines(bytes).Read(gids[^1]);
+        var expectedWidth = (int)Math.Round(1000d * (15d / text.FontSizeMillimeters +
+            (double)lastOutline.AdvanceWidth / lastOutline.UnitsPerEm), MidpointRounding.AwayFromZero);
+        Assert.Equal(expectedWidth, actualWidth);
+    }
+
+    [Fact]
+    public async Task DifferentHebrewWordsSharingFirstVisualGidKeepSeparatePdfSemantics()
+    {
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        OfdTextElement Word(string source)
+        {
+            var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+            var delta = string.Join(" ", Enumerable.Repeat("5", source.Length - 1));
+            var text = Text(gids[0], gids[1], delta, source);
+            text.FontName = "DejaVu Sans";
+            text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+                $"<CGTransform CodePosition='0' CodeCount='{source.Length}' GlyphCount='{gids.Length}'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+                $"<TextCode X='0' Y='6' DeltaX='{delta}'>{source}</TextCode></TextObject>";
+            return text;
+        }
+
+        const string first = "שלום";
+        const string second = "מקום";
+        Assert.Equal(cmap.Glyph(first[^1]), cmap.Glyph(second[^1]));
+        var secondText = Word(second);
+        secondText.SourceXml = secondText.SourceXml!.Replace("ID='2'", "ID='3'");
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Word(first) } });
+        package.Pages.Add(new OfdPage { Index = 1, WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { secondText } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf);
+        using var parsed = PdfPigDocument.Open(pdf.ToArray());
+        Assert.Equal(first, parsed.GetPage(1).Text);
+        Assert.Equal(second, parsed.GetPage(2).Text);
+        using var inspection = PdfSharpCore.Pdf.IO.PdfReader.Open(new MemoryStream(pdf.ToArray()),
+            PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.Import);
+        var maps = inspection.Internals.GetAllObjects().OfType<PdfSharpCore.Pdf.PdfDictionary>()
+            .Where(item => item.Elements.GetName("/Subtype") == "/Type0")
+            .Select(item => item.Elements.GetDictionary("/ToUnicode"))
+            .Where(item => item?.Stream is not null)
+            .Select(item => Encoding.ASCII.GetString(item!.Stream!.Value)).ToArray();
+        var firstHex = BitConverter.ToString(Encoding.BigEndianUnicode.GetBytes(first)).Replace("-", string.Empty);
+        var secondHex = BitConverter.ToString(Encoding.BigEndianUnicode.GetBytes(second)).Replace("-", string.Empty);
+        Assert.Contains(maps, map => map.Contains($"><{firstHex}>"));
+        Assert.Contains(maps, map => map.Contains($"><{secondHex}>"));
+    }
+
+    [Fact]
+    public async Task SameHebrewWordWithDifferentPositionedWidthsRejectsPdfAlias()
+    {
+        const string source = "שלום";
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        OfdTextElement Word(string delta, string id)
+        {
+            var text = Text(gids[0], gids[1], delta, source);
+            text.FontName = "DejaVu Sans";
+            text.SourceXml = $"<TextObject ID='{id}' Boundary='10 10 50 12' Font='10' Size='6'>" +
+                $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='4'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+                $"<TextCode X='0' Y='6' DeltaX='{delta}'>{source}</TextCode></TextObject>";
+            return text;
+        }
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { Word("5 5 5", "2"), Word("6 6 6", "3") } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using var pdf = new MemoryStream();
+        var error = await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), pdf));
+        Assert.Contains("conflicting positioned widths", error.Message);
+        Assert.Equal(0, pdf.Length);
     }
 
     [Fact]

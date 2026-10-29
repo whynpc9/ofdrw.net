@@ -146,11 +146,12 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             fonts.SupplementaryBindings.Concat(signatureAppearances
                 .Where(appearance => appearance.Fonts is not null)
                 .SelectMany(appearance => appearance.Fonts!.SupplementaryBindings)));
-        PdfExplicitGlyphUnicodeMap.Install(document,
+        var explicitUnicodeBindings =
             new[] { fonts }.Concat(signatureAppearances
                     .Where(appearance => appearance.Fonts is not null)
                     .Select(appearance => appearance.Fonts!))
-                .SelectMany(context => context.ExplicitUnicodeBindings));
+                .SelectMany(context => context.ExplicitUnicodeBindings).ToArray();
+        PdfExplicitGlyphUnicodeMap.Install(document, explicitUnicodeBindings);
         var selectedVerifiedFaces = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         foreach (var context in new[] { fonts }.Concat(signatureAppearances
                      .Where(appearance => appearance.Fonts is not null)
@@ -161,6 +162,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
         if (selectedVerifiedFaces.Count == 0)
         {
+            if (explicitUnicodeBindings.Any(binding => binding.WidthByGlyph.Count > 0))
+                throw new InvalidDataException("Hebrew PDF source-span width has no selected embedded font.");
             document.Save(pdfOutput, false);
         }
         else
@@ -169,7 +172,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             // each selected FontFile2 contains its complete composite closure.
             using var staged = new MemoryStream();
             document.Save(staged, false);
-            var repaired = PdfBoundFontRestorer.Restore(staged.ToArray(), selectedVerifiedFaces);
+            var repaired = PdfBoundFontRestorer.Restore(staged.ToArray(), selectedVerifiedFaces,
+                explicitUnicodeBindings.Select(binding => (binding.Identity, binding.WidthByGlyph)));
             await pdfOutput.WriteAsync(repaired, 0, repaired.Length, cancellationToken).ConfigureAwait(false);
         }
         await pdfOutput.FlushAsync(cancellationToken).ConfigureAwait(false);

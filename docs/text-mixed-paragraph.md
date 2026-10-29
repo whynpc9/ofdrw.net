@@ -30,9 +30,39 @@ hash in `e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/upstream-manifest.json`.
 The E2E checks source spans, descending Hebrew HarfBuzz clusters, legal soft
 wraps, coverage failure, unsupported punctuation, budget and cancellation.
 
-The public API in this delivery is query-only. It returns source-addressed shaped
-runs and query-relative coordinates; it does not create an OFD, PDF, SVG or PNG.
-Output support and reader compatibility remain in draft PR #71. In particular,
-a successful query must not be treated as permission to serialize the result
-through an unrelated writer. The [query validation record](validation/r22-mixed-query.md)
-tracks this candidate's source and package gates.
+The query API merged through PR #72 returns source-addressed shaped runs and
+query-relative coordinates without creating an OFD, PDF, SVG or PNG. This Draft
+PR #71 integrates a separate typed writer candidate. A successful query alone
+does not authorize serialization through an unrelated writer. The
+[query validation record](validation/r22-mixed-query.md) tracks the already
+merged query profile.
+
+## Draft mixed output integration
+
+`TextMixedParagraphOfdWriter.CreateSinglePage` is the bounded B/D output
+candidate. It writes a separate logical TextObject for each final word/space:
+Latin and distinct-letter Hebrew words carry complete original-GID
+`CGTransform` mappings, while nominal spaces remain source text. Hebrew
+visual-order GIDs use an explicit outline route in PDF/SVG with logical Unicode
+semantics carried separately; no imported multi-TextCode mapping is inferred.
+The writer rejects unsupported runs and page ink before returning a package.
+The provisional reader-safe output profile is one unwrapped line with exactly
+five runs: Latin word, space, one Hebrew word, space, Latin word. It uses the
+fixed R22 DejaVu face and 4 mm size. Each run has at most eight characters;
+the Hebrew word has two to eight letters with one distinct nominal glyph per
+letter. Adjacent or repeated Hebrew words, a Hebrew word at either paragraph
+edge, and line wraps return `UnsupportedOutput` with a source interval before
+any package is created. The query API still accepts its broader bounded
+layout profile. Even the provisional writer pattern needs fresh exact-head
+Preview and package evidence before release.
+Imported Hebrew `CGTransform` spans must also declare exactly one original GID
+per logical letter; a shorter or longer glyph list is rejected before PDF/SVG
+output. Legitimate non-Hebrew composed spans retain their separate rules.
+See [the validation matrix](validation/r22-mixed-paragraph-validation.md) for
+the separate source, layout, PDF extraction, word-position and Preview gates.
+These statements describe the source contract; actual output behavior, PDF
+extraction, independent readers and visual acceptance require separate exact
+candidate evidence. Arabic digits/punctuation, Indic
+multi-glyph clusters, paragraph RTL, general Unicode line breaking and mixed
+face fallback remain separate R22 gates. Legacy Flow and the R21 Latin/Han
+query keep their existing behavior.

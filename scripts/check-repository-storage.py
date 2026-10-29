@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 
 
 POINTER = re.compile(rb"version https://git-lfs.github.com/spec/v1\noid sha256:([0-9a-f]{64})\nsize ([0-9]+)\n")
@@ -14,7 +15,14 @@ MAX_GIT_BYTES = 5 * 1024 * 1024
 
 
 def git(*args, data=None):
-    return subprocess.check_output(["git", *args], input=data)
+    if data is None:
+        return subprocess.check_output(["git", *args])
+    # On macOS, a large stdin payload plus large stdout from check-attr can
+    # block both sides of subprocess.communicate at pipe capacity.
+    with tempfile.TemporaryFile() as source:
+        source.write(data)
+        source.seek(0)
+        return subprocess.check_output(["git", *args], stdin=source)
 
 
 def check(materialized=()):

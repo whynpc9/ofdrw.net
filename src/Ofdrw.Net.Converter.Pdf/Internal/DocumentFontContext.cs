@@ -33,6 +33,7 @@ internal sealed class DocumentFontContext
     private readonly Dictionary<string, byte[]> _restorableAliasFaces = new(StringComparer.Ordinal);
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), List<ExplicitGlyphAlias>> _explicitAliases = new();
     private readonly Dictionary<string, string> _explicitSpanFamilies = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _privateSourceCodes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, IReadOnlyDictionary<int, string>> _explicitFamilySemantics = new(StringComparer.Ordinal);
     private bool _explicitAliasesPrepared;
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _styleAliases = new();
@@ -170,30 +171,37 @@ internal sealed class DocumentFontContext
             _cancellationToken.ThrowIfCancellationRequested();
             var run = ReadExplicitRun(text, OfdFontSelection.Resolve(_fonts, text));
             if (run is null) continue;
-            if (run.PathGlyphSourceSpan is not null) continue;
+            if (run.PathGlyphSourceSpan is not null && run.VisualHebrewSourceSpan is null) continue;
             var resource = OfdFontSelection.Resolve(_fonts, text) ??
                 throw new NotSupportedException("CGTransform rendering requires an explicitly embedded font.");
             var key = (resource, resource.Bold || text.Weight >= 600, resource.Italic || text.Italic);
             if (!_explicitAliases.TryGetValue(key, out var aliases))
                 _explicitAliases.Add(key, aliases = new List<ExplicitGlyphAlias>());
             var mapping = ExplicitGlyphMapping(run);
-            var sourceSpan = run.SingleGlyphSourceSpan;
+            var sourceSpan = run.SingleGlyphSourceSpan ?? run.VisualHebrewSourceSpan;
+            var semanticWidth = VisualHebrewWidth(text, resource, run);
             var compatible = aliases.FirstOrDefault(alias => alias.CanMerge(mapping, sourceSpan));
-            if (compatible is null) aliases.Add(new ExplicitGlyphAlias(mapping, sourceSpan));
-            else compatible.Merge(mapping);
+            if (compatible is null) aliases.Add(new ExplicitGlyphAlias(mapping, sourceSpan, semanticWidth));
+            else
+            {
+                compatible.RequireSemanticWidth(semanticWidth);
+                compatible.Merge(mapping);
+            }
         }
         _explicitAliasesPrepared = true;
     }
 
     internal string PdfText(string family, string logicalText) =>
         _explicitSpanFamilies.TryGetValue(family, out var sourceSpan) && logicalText == sourceSpan
-            ? "\uE000"
+            ? ((char)_privateSourceCodes[sourceSpan]).ToString()
             : _supplementary.TryGetValue(family, out var binding) ? binding.MapText(logicalText) : logicalText;
 
-    internal IEnumerable<(string Identity, IReadOnlyDictionary<int, string> UnicodeByGlyph, bool NeedsOverride)>
+    internal IEnumerable<(string Identity, IReadOnlyDictionary<int, string> UnicodeByGlyph, bool NeedsOverride,
+        IReadOnlyDictionary<int, int> WidthByGlyph)>
         ExplicitUnicodeBindings => _explicitAliases.Values.SelectMany(aliases => aliases)
             .Where(alias => alias.Family is not null)
-            .Select(alias => (alias.Identity!, alias.UnicodeSequences, alias.SourceSpan is not null));
+            .Select(alias => (alias.Identity!, alias.UnicodeSequences, alias.SourceSpan is not null,
+                alias.SemanticWidths));
 
     internal byte[] OutlineFontBytes(string family, byte[] pdfFontBytes) =>
         _supplementary.TryGetValue(family, out var binding) ? binding.OriginalFont : pdfFontBytes;
@@ -206,7 +214,8 @@ internal sealed class DocumentFontContext
         {
             resource = selectedResource;
             foreach (var run in explicitRun.Runs) PdfTextControlPolicy.Validate(run.Text);
-            if (explicitRun.PathGlyphSourceSpan is { } pathSourceSpan)
+            if (explicitRun.PathGlyphSourceSpan is { } pathSourceSpan &&
+                explicitRun.VisualHebrewSourceSpan is null)
             {
                 _ = OfdExplicitGlyphFont.Read(resource, text, explicitRun, embedFont: true);
                 if (resource is null || !_families.TryGetValue(resource, out var semanticFamily) ||
@@ -233,14 +242,16 @@ internal sealed class DocumentFontContext
             var mapping = ExplicitGlyphMapping(explicitRun);
             if (!_explicitAliases.TryGetValue(key, out var aliases))
                 _explicitAliases.Add(key, aliases = new List<ExplicitGlyphAlias>());
-            var sourceSpan = explicitRun.SingleGlyphSourceSpan;
+            var sourceSpan = explicitRun.SingleGlyphSourceSpan ?? explicitRun.VisualHebrewSourceSpan;
+            var semanticWidth = VisualHebrewWidth(text, resource, explicitRun);
             var selected = aliases.FirstOrDefault(alias => alias.Covers(mapping, sourceSpan));
             if (selected is null)
             {
                 if (_explicitAliasesPrepared)
                     throw new InvalidDataException("CGTransform mapping was not present in PDF font preflight.");
-                aliases.Add(selected = new ExplicitGlyphAlias(mapping, sourceSpan));
+                aliases.Add(selected = new ExplicitGlyphAlias(mapping, sourceSpan, semanticWidth));
             }
+            selected.RequireSemanticWidth(semanticWidth);
             if (selected.Family is null)
             {
                 var alias = new OpenTypeFace(source.FaceBytes);
@@ -380,10 +391,19 @@ internal sealed class DocumentFontContext
         throw new System.IO.InvalidDataException("No verified font identity was resolved for nonempty text.");
     }
 
-    private static Dictionary<int, int> ExplicitGlyphMapping(OfdExplicitGlyphRun run)
+    private Dictionary<int, int> ExplicitGlyphMapping(OfdExplicitGlyphRun run)
     {
-        if (run.SingleGlyphSourceSpan is not null)
-            return new Dictionary<int, int> { [0xE000] = run.GlyphIds[0] };
+        if ((run.SingleGlyphSourceSpan ?? run.VisualHebrewSourceSpan) is { } sourceSpan)
+        {
+            if (!_privateSourceCodes.TryGetValue(sourceSpan, out var code))
+            {
+                if (_privateSourceCodes.Count > 0xF8FF - 0xE000)
+                    throw new NotSupportedException("PDF source-span alias capacity exceeded the private-use BMP range.");
+                code = 0xE000 + _privateSourceCodes.Count;
+                _privateSourceCodes.Add(sourceSpan, code);
+            }
+            return new Dictionary<int, int> { [code] = run.GlyphIds[0] };
+        }
         var mapping = new Dictionary<int, int>();
         var logical = run.LogicalText;
         for (var index = 0; index < run.GlyphIds.Count; index++)
@@ -397,13 +417,28 @@ internal sealed class DocumentFontContext
         return mapping;
     }
 
+    private int? VisualHebrewWidth(OfdTextElement text, OfdFontResource resource,
+        OfdExplicitGlyphRun run)
+    {
+        if (run.VisualHebrewSourceSpan is null) return null;
+        var font = OfdExplicitGlyphFont.Read(resource, text, run, embedFont: false);
+        var origins = run.PathGlyphOrigins(_cancellationToken);
+        var last = font.Outlines[font.Outlines.Count - 1];
+        var width = 1000d * ((origins[origins.Count - 1].X - origins[0].X) / text.FontSizeMillimeters +
+                             (double)last.AdvanceWidth / last.UnitsPerEm);
+        if (double.IsNaN(width) || double.IsInfinity(width) || width < 1 || width > 32767)
+            throw new NotSupportedException("Hebrew PDF source-span width is outside the bounded profile.");
+        return (int)Math.Round(width, MidpointRounding.AwayFromZero);
+    }
+
     private sealed class ExplicitGlyphAlias
     {
-        internal ExplicitGlyphAlias(Dictionary<int, int> mapping, string? sourceSpan)
+        internal ExplicitGlyphAlias(Dictionary<int, int> mapping, string? sourceSpan, int? semanticWidth)
         {
             GlyphByUnicode = new Dictionary<int, int>(mapping);
             UnicodeByGlyph = mapping.ToDictionary(pair => pair.Value, pair => pair.Key);
             SourceSpan = sourceSpan;
+            SemanticWidth = semanticWidth;
         }
 
         internal Dictionary<int, int> GlyphByUnicode { get; }
@@ -411,8 +446,18 @@ internal sealed class DocumentFontContext
         internal string? Family { get; set; }
         internal string? Identity { get; set; }
         internal string? SourceSpan { get; }
+        private int? SemanticWidth { get; }
         internal IReadOnlyDictionary<int, string> UnicodeSequences => UnicodeByGlyph.ToDictionary(
             pair => pair.Key, pair => SourceSpan ?? char.ConvertFromUtf32(pair.Value));
+        internal IReadOnlyDictionary<int, int> SemanticWidths => SemanticWidth is { } width
+            ? new Dictionary<int, int> { [UnicodeByGlyph.Single().Key] = width }
+            : new Dictionary<int, int>();
+
+        internal void RequireSemanticWidth(int? width)
+        {
+            if (SemanticWidth != width)
+                throw new NotSupportedException("One PDF source-span alias has conflicting positioned widths.");
+        }
 
         internal bool CanMerge(Dictionary<int, int> mapping, string? sourceSpan) =>
             string.Equals(SourceSpan, sourceSpan, StringComparison.Ordinal) && mapping.All(pair =>
