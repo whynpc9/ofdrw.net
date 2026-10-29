@@ -160,6 +160,44 @@ jobs:
       - name: Install deterministic CJK font
         uses: ./.github/actions/ci-font
 
+      - name: Install full-suite conversion tools on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install poppler
+          brew install --cask libreoffice
+          pdftoppm -v
+          soffice --version
+
+      - name: Cache Windows Poppler downloads
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ofdrw-mamba/pkgs
+          key: windows-poppler-v1-${{ runner.arch }}-${{ hashFiles('.github/workflows/ci.yml') }}
+
+      - name: Install full-suite conversion tools on Windows
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install libreoffice-fresh -y --no-progress
+          if ($LASTEXITCODE) { throw 'LibreOffice installation failed' }
+          $soffice = Join-Path $env:ProgramFiles 'LibreOffice/program/soffice.com'
+          if (-not (Test-Path $soffice)) { throw 'LibreOffice soffice.com was not installed' }
+          "OFDRW_LIBREOFFICE_PATH=$soffice" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          & $soffice --version
+          $bootstrap = Join-Path $env:RUNNER_TEMP 'micromamba.exe'
+          Invoke-WebRequest 'https://github.com/mamba-org/micromamba-releases/releases/download/2.9.0-0/micromamba-win-64.exe' -OutFile $bootstrap
+          if ((Get-FileHash $bootstrap -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'a6d804394b2418991c4e29562853eaace2f2ce9d9da661a98e74e02e8dbb44b0') { throw 'micromamba hash mismatch' }
+          $env:MAMBA_ROOT_PREFIX = Join-Path $env:RUNNER_TEMP 'ofdrw-mamba'
+          $prefix = Join-Path $env:RUNNER_TEMP 'ofdrw-poppler'
+          & $bootstrap create -y --no-rc --prefix $prefix -c conda-forge 'poppler=26.09.0'
+          if ($LASTEXITCODE) { throw 'Poppler installation failed' }
+          $bin = Join-Path $prefix 'Library/bin'
+          $bin | Out-File $env:GITHUB_PATH -Append -Encoding utf8
+          "OFDRW_PDFTOPPM=$(Join-Path $bin 'pdftoppm.exe')" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          & (Join-Path $bin 'pdftoppm.exe') -v
+
       - name: Run full solution tests on Windows and macOS
         if: matrix.os != 'ubuntu-latest'
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --no-restore --logger trx --results-directory artifacts/full-platform-tests --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false

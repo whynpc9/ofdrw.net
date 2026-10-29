@@ -10,6 +10,8 @@ CI keeps the existing test filters, operating-system matrix, package-consumer is
 - Only third-party build dependencies are cached. Consumers retain a fresh NuGet directory and source mapping that binds `Ofdrw.Net.*` to the exact candidate feed.
 - CI fonts are cached after static instancing. Both the generated font and license must match source-controlled SHA-256 values on every hit. Invalid cache entries regenerate from the pinned source; source or generated-byte mismatches fail.
 - Linux caches downloaded apt packages, but still refreshes repository metadata and installs dependencies normally. Windows caches micromamba package downloads, not a relocated installation prefix. These caches reduce downloads; they do not eliminate all solver, repository, or network latency.
+- Full Windows/macOS solution tests install LibreOffice and Poppler before running; the PDF import and DOCX conversion tests require those external tools. The pinned Windows Poppler bootstrap is hash-checked. The package visual jobs install their own renderer tools on separate runners.
+- The package visual corpus embeds the same verified Noto CJK font bytes on all three platforms. Its four macOS golden pages were aligned with the already reviewed Linux/Windows bytes after the CI runner and a separate local macOS capture produced identical page hashes; earlier host-font pages remain recoverable from Git history.
 - New PR commits cancel older runs of the same workflow and PR. Main and release runs are not cancelled by this policy.
 
 ## One candidate, parallel consumers

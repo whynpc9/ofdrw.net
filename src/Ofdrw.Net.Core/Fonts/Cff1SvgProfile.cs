@@ -37,6 +37,16 @@ internal static class Cff1SvgProfile
         var glyphCount = OpenTypeFace.U16(face.Table("maxp", 6), 4);
         if (glyphCount == 0 || OpenTypeFace.U16(face.Table("head", 54), 18) is < 16 or > 16384)
             throw new InvalidDataException("Invalid CFF1 face metrics.");
+        if (ReadCharStringsCount(face) != glyphCount)
+            throw new InvalidDataException("CFF1 CharStrings count differs from maxp glyph count.");
+        return glyphCount;
+    }
+
+    // Read the CFF INDEX independently of native font backends. Some Skia
+    // backends report maxp.numGlyphs even when the CFF CharStrings INDEX is
+    // shorter, so their glyph count alone cannot admit an original GID.
+    internal static int ReadCharStringsCount(OpenTypeFace face)
+    {
         var cff = face.Table("CFF ", 4);
         if (cff[0] != 1 || cff[2] < 4 || cff[2] > cff.Length || cff[3] is < 1 or > 4)
             throw new NotSupportedException("SVG text requires a valid CFF1 header.");
@@ -50,12 +60,10 @@ internal static class Cff1SvgProfile
         if (charStringsOffset < globalSubrs.End)
             throw new InvalidDataException("CFF1 CharStrings INDEX overlaps the header indexes.");
         var charStrings = ReadIndex(cff, charStringsOffset);
-        if (charStrings.Count != glyphCount)
-            throw new InvalidDataException("CFF1 CharStrings count differs from maxp glyph count.");
         for (var gid = 0; gid < charStrings.Count; gid++)
             if (charStrings.ItemStart(gid) == charStrings.ItemEnd(gid))
                 throw new InvalidDataException("CFF1 CharStrings INDEX contains an empty glyph program.");
-        return glyphCount;
+        return charStrings.Count;
     }
 
     internal static void ValidateSelectedText(OfdTextElement text, OfdFontResource font,

@@ -341,10 +341,10 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir, b
     var goldenDir = Path.Combine(repoRoot, "e2e", "visual-corpus", "golden", platform);
     var actualDir = Path.Combine(outputDir, "visual-corpus");
     Directory.CreateDirectory(actualDir);
-    // Bind Windows fixtures to the real reviewed font, rather than a host fallback.
-    // Preserve the historical Linux/macOS fixture configuration and baselines.
-    var windowsFont = OperatingSystem.IsWindows() ? ReadVisualCorpusFont(repoRoot) : null;
-    var windowsFamily = windowsFont is null ? null : Ofdrw.Net.Converter.Pdf.PdfFontRegistry.RegisterFontFace(windowsFont);
+    // Bind every platform to the same reviewed font bytes. A host fallback
+    // changed macOS CI antialiasing while leaving the geometric page intact.
+    var visualFont = ReadVisualCorpusFont(repoRoot);
+    var visualFamily = Ofdrw.Net.Converter.Pdf.PdfFontRegistry.RegisterFontFace(visualFont);
     var captures = new List<object>();
     var missingGoldens = new List<string>();
     var comparisonFailures = new List<string>();
@@ -415,15 +415,15 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir, b
                 break;
         }
 
-        if (windowsFont is not null)
+        if (visualFont is not null)
         {
             package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans CJK SC",
-                FamilyName = "Noto Sans CJK SC", Data = windowsFont });
+                FamilyName = "Noto Sans CJK SC", Data = visualFont });
             using var measure = XGraphics.CreateMeasureContext(new XSize(1000, 1000), XGraphicsUnit.Point, XPageDirection.Downwards);
             foreach (var text in page.Elements.OfType<OfdTextElement>())
             {
                 text.FontResourceId = "10";
-                var font = new XFont(windowsFamily!, text.FontSizeMillimeters * 72 / 25.4, XFontStyle.Regular);
+                var font = new XFont(visualFamily, text.FontSizeMillimeters * 72 / 25.4, XFontStyle.Regular);
                 // Real glyph advances make the fixture's placement explicit in
                 // direct OFD readers, including readers that omit implicit advances.
                 text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = text.FontSizeMillimeters,
@@ -483,7 +483,7 @@ static async Task ValidateVisualCorpusAsync(string repoRoot, string outputDir, b
             missingGoldens.Count == 0 && comparisonFailures.Count == 0 ? "PASS" : "FAIL",
         platform, dpi = 144, threshold = 0.035,
         sourceSha = Environment.GetEnvironmentVariable("OFDRW_SOURCE_SHA"),
-        fontSha256 = windowsFont is null ? null : Convert.ToHexString(SHA256.HashData(windowsFont)).ToLowerInvariant(),
+        fontSha256 = Convert.ToHexString(SHA256.HashData(visualFont)).ToLowerInvariant(),
         captures, missingGoldens, comparisonFailures
     }, new JsonSerializerOptions { WriteIndented = true }));
     File.WriteAllLines(Path.Combine(actualDir, "visual-metrics.csv"), metrics);

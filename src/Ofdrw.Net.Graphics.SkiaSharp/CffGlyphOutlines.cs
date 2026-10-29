@@ -46,6 +46,8 @@ internal sealed class CffGlyphOutlines : IDisposable
         GlyphCount = OpenTypeFace.U16(font.Table("maxp", 6), 4);
         if (UnitsPerEm is < 16 or > 16384 || GlyphCount == 0)
             throw new InvalidDataException("Invalid CFF face metrics.");
+        if (Cff1SvgProfile.ReadCharStringsCount(font) != GlyphCount)
+            throw new InvalidDataException("CFF charstring count differs from sfnt metrics.");
         metricCount = OpenTypeFace.U16(font.Table("hhea", 36), 34);
         if (metricCount == 0 || metricCount > GlyphCount)
             throw new InvalidDataException("Invalid CFF horizontal metric count.");
