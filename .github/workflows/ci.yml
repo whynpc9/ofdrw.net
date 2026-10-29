@@ -146,7 +146,12 @@ jobs:
       - uses: ./.github/actions/nuget-cache
 
       - name: Build platform test projects once
+        if: matrix.os == 'ubuntu-latest'
         run: dotnet build Ofdrw.Net.PlatformTests.slnf -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Build full solution on Windows and macOS
+        if: matrix.os != 'ubuntu-latest'
+        run: dotnet build Ofdrw.Net.sln -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - uses: actions/setup-python@v5
         with:
@@ -154,6 +159,24 @@ jobs:
 
       - name: Install deterministic CJK font
         uses: ./.github/actions/ci-font
+
+      - name: Run full solution tests on Windows and macOS
+        if: matrix.os != 'ubuntu-latest'
+        run: dotnet test Ofdrw.Net.sln -c Release --no-build --no-restore --logger trx --results-directory artifacts/full-platform-tests --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+
+      - name: Run mandatory original-font tests on Windows and macOS
+        if: matrix.os != 'ubuntu-latest'
+        run: python scripts/run-trusted-font-tests.py --no-build --results-directory artifacts/full-platform-trusted-font-tests
+
+      - name: Upload full platform test results
+        if: always() && matrix.os != 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: ${{ github.event_name == 'pull_request' && 14 || 30 }}
+          name: full-platform-tests-${{ matrix.os }}
+          path: |
+            artifacts/full-platform-tests
+            artifacts/full-platform-trusted-font-tests
 
       - name: Test pinned HarfBuzz native loading and prelayout
         run: dotnet test tests/Ofdrw.Net.Layout.Tests/Ofdrw.Net.Layout.Tests.csproj -c Release --no-build --no-restore --filter "FullyQualifiedName~TextPrelayoutTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
@@ -365,6 +388,52 @@ jobs:
           name: windows-package-e2e-pages
           path: artifacts/windows-package-e2e
 
+  macos-package-e2e:
+    name: macOS package and visual regression
+    runs-on: macos-latest
+    needs: build-test
+    env:
+      DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
+      NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Fetch visual and font fixtures
+        shell: bash
+        run: git lfs pull --include="e2e/**,tests/**" --exclude=""
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: ./.github/actions/nuget-cache
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install macOS rendering tools
+        run: |
+          brew install poppler imagemagick librsvg
+          pdftoppm -v
+          rsvg-convert --version
+          magick -version
+      - name: Install deterministic CJK font
+        uses: ./.github/actions/ci-font
+      - uses: actions/download-artifact@v4
+        with:
+          name: candidate-packages
+          path: artifacts/linux-package-candidate
+      - name: Consume the exact Linux candidate packages on native macOS
+        run: python scripts/run-converter-package-e2e.py 0.1.0-preview.8 --consume-only --packages-dir artifacts/linux-package-candidate --output-dir artifacts/macos-package-e2e
+      - name: Upload package identity, logs and page comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: ${{ github.event_name == 'pull_request' && 14 || 30 }}
+          name: macos-package-e2e-pages
+          path: artifacts/macos-package-e2e
+
   password-crypto:
     name: Optional password crypto (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -417,7 +486,7 @@ jobs:
   ci-complete:
     name: CI complete
     if: always()
-    needs: [build-test, builtin-docx, package-e2e, windows-package-e2e, password-crypto]
+    needs: [build-test, builtin-docx, package-e2e, windows-package-e2e, macos-package-e2e, password-crypto]
     runs-on: ubuntu-latest
     steps:
       - name: Require every CI branch to pass

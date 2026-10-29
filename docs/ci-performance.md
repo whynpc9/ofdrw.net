@@ -5,7 +5,7 @@ CI keeps the existing test filters, operating-system matrix, package-consumer is
 ## Build and caches
 
 - The public API documentation checker owns the full Release rebuild. A preceding ordinary build is unnecessary. Its CS1591 baseline and failure handling remain unchanged.
-- `Ofdrw.Net.PlatformTests.slnf` builds the six platform test projects and their dependencies once. All existing platform test filters subsequently use `--no-build --no-restore`.
+- Linux `build-test` runs the full Release solution and mandatory trusted-font suite. The platform matrix builds the full solution and runs those same suites on Windows and macOS; Linux retains the smaller `Ofdrw.Net.PlatformTests.slnf` build for its additional platform filters. All existing platform test filters subsequently use `--no-build --no-restore`.
 - Document-tools E2E and its CLI use Release consistently.
 - Only third-party build dependencies are cached. Consumers retain a fresh NuGet directory and source mapping that binds `Ofdrw.Net.*` to the exact candidate feed.
 - CI fonts are cached after static instancing. Both the generated font and license must match source-controlled SHA-256 values on every hit. Invalid cache entries regenerate from the pinned source; source or generated-byte mismatches fail.
@@ -16,9 +16,9 @@ CI keeps the existing test filters, operating-system matrix, package-consumer is
 
 `build-test` stamps its API-documentation rebuild with `0.1.0-preview.8`, tests it, and invokes `run-converter-package-e2e.sh 0.1.0-preview.8 --pack-only --no-build`. Pack-only requires an empty feed. The twelve default packages are validated and uploaded once, together with their SHA-256 manifest.
 
-Linux and native Windows package jobs depend directly on `build-test` and download that artifact in parallel. Linux restores source metadata for license validation but does not rebuild the full source solution or repack the candidate. Each consumer verifies the existing manifest before and after use and retains a fresh dependency cache with package source mapping. Optional Skia/vector gates still consume the same defaults and separately build their optional adapters. The source-based document and graphics probes retain their own required builds.
+Linux, native Windows, and native macOS package jobs depend directly on `build-test` and download that one artifact in parallel. Linux restores source metadata for license validation but does not rebuild the full source solution or repack the candidate. Each consumer verifies the existing manifest before and after use and retains a fresh dependency cache with package source mapping. The Windows and macOS consumers also compare each selected runtime DLL against its nupkg payload, isolated cache, and copied output. Optional Skia/vector gates still consume the same defaults and separately build their optional adapters. The source-based document and graphics probes retain their own required builds.
 
-The platform matrix runs independently. `CI complete` succeeds only when every source, platform, Linux/Windows consumer, and password-crypto job succeeds; failures, cancellation, and skipped dependencies fail this aggregate gate. The separate SES interoperability workflow remains required for task acceptance.
+The platform matrix runs independently. `CI complete` succeeds only when every source, platform, Linux/Windows/macOS consumer, and password-crypto job succeeds; failures, cancellation, and skipped dependencies fail this aggregate gate. The separate SES interoperability workflow remains required for task acceptance.
 
 The shell script's default build-and-consume behavior remains available for standalone and SES runs. `--consume-only` supports existing release feeds, while `--pack-only --no-build` requires a caller-provided Release build stamped with the requested version. The package validator checks package metadata, dependency versions, payload requirements, and manifest hashes.
 
