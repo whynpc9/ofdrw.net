@@ -1,4 +1,4 @@
-# Bounded mixed Latin/Hebrew paragraph query (R22 C-stage candidate)
+# Bounded mixed Latin/Hebrew paragraph query
 
 `HarfBuzzTextPrelayout.CreateMixedParagraph()` supplies the pinned HarfBuzz run
 shaper to `TextMixedParagraphEngine`. The separate `TextMixedParagraphRequest`
@@ -14,11 +14,11 @@ The query identifies word and space source spans, shapes Latin words LTR and
 Hebrew words RTL with absolute UTF-16 source clusters, and places the resulting
 visual glyph sequences in an LTR paragraph. Adjacent Hebrew words and their
 internal spaces form one visual RTL phrase: word positions reverse within that
-phrase while OFD TextObjects remain in logical source order. It chooses breaks
-only after whole words and reshapes every final word/space for the final line result. A soft
+phrase while the result's run list remains in logical source order. It chooses
+breaks only after whole words and reshapes every final word/space. A soft
 break retains its trailing space in the source interval and total advance;
 visible fit excludes that space. The final result owns the exact shaped runs
-used by a later typed writer, including the selected face, engine version,
+returned to the caller, including the selected face, engine version,
 script, direction, GIDs, offsets and advances. It never substitutes a host
 font or falls back to approximate character widths.
 
@@ -29,6 +29,15 @@ exhaustion and cancellation fail without a partial result. The fixed R22 DejaVu 
 hash in `e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/upstream-manifest.json`.
 The E2E checks source spans, descending Hebrew HarfBuzz clusters, legal soft
 wraps, coverage failure, unsupported punctuation, budget and cancellation.
+
+The query API merged through PR #72 returns source-addressed shaped runs and
+query-relative coordinates without creating an OFD, PDF, SVG or PNG. This Draft
+PR #71 integrates a separate typed writer candidate. A successful query alone
+does not authorize serialization through an unrelated writer. The
+[query validation record](validation/r22-mixed-query.md) tracks the already
+merged query profile.
+
+## Draft mixed output integration
 
 `TextMixedParagraphOfdWriter.CreateSinglePage` is the bounded B/D output
 candidate. It writes a separate logical TextObject for each final word/space:
