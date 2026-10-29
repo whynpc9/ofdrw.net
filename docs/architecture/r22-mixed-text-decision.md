@@ -115,9 +115,18 @@ No conclusion transfers from PDFKit API to actual Preview copy or Find.
 The pinned PdfPig source trace and a separate, falsifiable visible-word-glyph
 encoding hypothesis are recorded in
 [`r22-pdfpig-reader-root-cause.md`](../validation/r22-pdfpig-reader-root-cause.md).
-The nine-file exact-hash Preview request is prepared in ignored
-`artifacts/r22-next-phase/reference-20261029/preview-input-manifest.json`;
-it has not been run without an exclusive GUI grant.
+The nine-file exact-hash Preview manifest is in ignored
+`artifacts/r22-next-phase/reference-20261029/preview-input-manifest.json`.
+Under an exclusive GUI grant, Terra High inspected three PDFs and recorded
+`preview-partial-receipt-20261030.json`. The shaped fpdf2 two-word and
+repeated-word cases had the expected visual phrase and logical Find highlights
+in Preview, including two distinct repeated-word highlights. In the
+between-word wrap, Preview's `מקום` Find showed “Found on 1 page” while its
+result row said “Not found,” navigation was disabled, and no target highlight
+appeared. The GUI state tool then failed after closing an ancillary image, so
+six PDFs and the final window state remain unverified. The permitted GUI API
+did not expose raw clipboard Unicode; page accessibility text is not copy
+evidence. None of these partial observations admits the product writer.
 
 ## Decision
 

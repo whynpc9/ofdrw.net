@@ -74,6 +74,11 @@ word outlines at the existing word origin and advance. This is distinct from
 the earlier hidden semantic CID plus visible outline, character-split
 variants, marked-content tags, single `TJ`, or reordering the existing
 operators: the visible glyph and Unicode mapping are one character unit.
+The [Adobe PDF Reference 1.7](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.7old.pdf)
+defines Type 3 `CharProcs` as glyph descriptions keyed by names and selected
+through the font's required `Encoding` entry. The proposed whole-word
+`/ToUnicode` mapping still needs structural and reader validation; the
+reference does not establish that the target readers will handle it as a word.
 
 The predicted mechanism is narrow: PdfPig would receive one `Letter` whose
 value is `שלום` or `מקום`, so its left-to-right letter sort cannot reverse
