@@ -215,22 +215,23 @@ other standards-compliant PDF encodings or imply a product fix.
 
 No tested PDF encoding meets the full mixed-paragraph corpus across pinned
 PdfPig and PDFKit, and the required direct Preview copy/Find acceptance remains
-blocked. PR #71 therefore stays Draft with its current writer/PDF promise.
-The next bounded delivery candidate is the query and line-layout API alone:
-`TextMixedParagraph.cs`, the `HarfBuzzTextPrelayout.CreateMixedParagraph()`
-factory, its licensed font fixture and query-only checks. This would preserve
-the validated logical source spans, final shaping, RTL phrase coordinates,
-word breaks and refusal budget without advertising an OFD/PDF output path.
+unverified for the diagnostic variants. PR #71 therefore stays Draft with its
+writer/PDF promise.
 
-Preparing that split requires extracting the query checks from the combined
-E2E program and reviewing the resulting diff from the current PR base. It must
-exclude `TextMixedParagraphOfdWriter`, the mixed output cases and shared
-packaging/converter changes; otherwise the known reader failure remains in the
-proposed deliverable. A clean query-only candidate needs its own final-SHA
-tests, package consumer, cross-platform checks and valid review. The writer,
-generic explicit-glyph converter regression and PDF semantics remain in the
-Draft integration path until their reader and visual gates close. No split has
-yet been built or accepted by this diagnostic checkpoint.
+The bounded query and line-layout API was split into PR #72 and merged as
+`187aa78ffca9ab4e81bdb0abb7d95b52d1e10337` on 2026-10-29. Its final
+`325f1bce` head passed separate source, package, CI, review and four-page
+Preview gates for the generated DOCX regression sample. Those checks establish
+the query profile and the inherited shared converter regression only; they do
+not validate the mixed writer or Hebrew PDF copy/Find behavior in this Draft PR.
+The shared PDF bold repair PR #73 was also merged before PR #72 and does not
+resolve the Hebrew reading-order tradeoff.
+
+This branch has absorbed that main baseline. Its writer, explicit-glyph PDF
+semantics and diagnostics remain here until one product-generated candidate
+passes the reader and visual gates on the same final head. The previous
+`210f696f` CI and package results and the unpushed diagnostic candidates do
+not transfer to the new merged head.
 
 ## Completion gates
 
