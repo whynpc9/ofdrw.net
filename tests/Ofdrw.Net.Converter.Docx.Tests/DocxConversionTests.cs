@@ -1062,12 +1062,15 @@ public sealed partial class DocxConversionTests
     public async Task GeneratedDocx_ShouldConvertToPdfAndOfd()
     {
         var samplePath = ResolveGeneratedSample();
+        using var fonts = new PinnedCjkFontDirectory();
 
         var options = new DocxConversionOptions
         {
             Engine = DocxConversionEngine.LibreOffice,
-            OfdMode = DocxToOfdMode.DualLayer
+            OfdMode = DocxToOfdMode.DualLayer,
+            UseInstalledMicrosoftOfficeFonts = false
         };
+        options.FontDirectories.Add(fonts.Path);
         var docxToPdf = new DocxToPdfConverter(options);
         await using var pdf = new MemoryStream();
         await using (var docx = File.OpenRead(samplePath))
@@ -1081,7 +1084,19 @@ public sealed partial class DocxConversionTests
         await using var ofd = new MemoryStream();
         await using (var docx = File.OpenRead(samplePath))
         {
-            await docxToOfd.ConvertAsync(docx, ofd);
+            try
+            {
+                await docxToOfd.ConvertAsync(docx, ofd);
+            }
+            catch (InvalidDataException exception) when (exception.Message.Contains("DOCX_TEXT_PAGE_MAPPING_FAILED", StringComparison.Ordinal))
+            {
+                // Keep the exact LibreOffice output that caused the fail-closed
+                // source-text guard to reject this deterministic fixture.
+                var evidence = Path.Combine(ResolveRepositoryRoot(), "artifacts", "full-platform-tests");
+                Directory.CreateDirectory(evidence);
+                await File.WriteAllBytesAsync(Path.Combine(evidence, "generated-layout-mapping-failure.pdf"), pdf.ToArray());
+                throw;
+            }
         }
 
         ofd.Position = 0;

@@ -87,10 +87,56 @@ def main():
             directory.mkdir()
             shutil.copyfile(ROOT / f'e2e/{source}/Program.cs', directory / 'Program.cs')
             project = directory / 'Consumer.csproj'
-            shutil.copyfile(ROOT / 'e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj', project)
+            if source == 'Ofdrw.Net.Text.HarfBuzz.E2E':
+                items = ('Text.HarfBuzz', 'Packaging', 'Reader', 'Converter.Pdf', 'Converter.Svg')
+                references = '\n'.join(f'    <PackageReference Include="Ofdrw.Net.{item}" Version="{options.version}" />'
+                                       for item in items)
+                project.write_text('<Project Sdk="Microsoft.NET.Sdk">\n'
+                                   '  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>'
+                                   '<ImplicitUsings>enable</ImplicitUsings></PropertyGroup>\n'
+                                   f'  <ItemGroup>\n{references}\n  </ItemGroup>\n</Project>\n', encoding='utf-8')
+            else:
+                shutil.copyfile(ROOT / 'e2e/Ofdrw.Net.Converter.Pdf.E2E/Ofdrw.Net.Converter.Pdf.E2E.csproj', project)
             dn('restore', project, '--configfile', config, f'-p:OfdrwPackageVersion={options.version}', *FLAGS)
             dn('build', project, '-c', 'Release', '--no-restore', f'-p:OfdrwPackageVersion={options.version}', *FLAGS)
             return project
+
+        def verify_runtime_identity(project, receipt_name, required):
+            bin_dir = project.parent / 'bin/Release/net10.0'
+            deps = json.loads((bin_dir / 'Consumer.deps.json').read_text(encoding='utf-8'))
+            target = deps['targets'][deps['runtimeTarget']['name']]
+            manifest = {item['id']: item for item in
+                        json.loads((feed / 'package-manifest.json').read_text(encoding='utf-8'))['packages']}
+            items = []
+            for key, node in sorted(target.items()):
+                if not key.startswith('Ofdrw.Net.'):
+                    continue
+                package_id, resolved_version = key.split('/', 1)
+                if resolved_version != options.version or package_id not in manifest:
+                    raise RuntimeError(f'Unexpected resolved Ofdrw package: {key}')
+                assets = [path for path in node.get('runtime', {}) if path.endswith('.dll')]
+                if not assets:
+                    continue  # Meta-packages have no selected runtime assembly.
+                if len(assets) != 1:
+                    raise RuntimeError(f'Expected one selected runtime DLL for {key}: {assets}')
+                asset = assets[0]
+                nupkg = feed / manifest[package_id]['file']
+                if hashlib.sha256(nupkg.read_bytes()).hexdigest() != manifest[package_id]['sha256']:
+                    raise RuntimeError(f'Candidate package changed: {nupkg}')
+                with zipfile.ZipFile(nupkg) as archive:
+                    payload = archive.read(asset)
+                expected = hashlib.sha256(payload).hexdigest()
+                extracted = task / 'packages' / package_id.lower() / options.version / asset
+                copied = bin_dir / Path(asset).name
+                if any(hashlib.sha256(path.read_bytes()).hexdigest() != expected for path in (extracted, copied)):
+                    raise RuntimeError(f'Selected runtime DLL differs from candidate: {key} {asset}')
+                items.append({'id': package_id, 'version': options.version, 'asset': asset,
+                              'nupkgSha256': manifest[package_id]['sha256'], 'dllSha256': expected})
+            if not required <= {item['id'] for item in items}:
+                raise RuntimeError('Candidate runtime DLL identity set is incomplete')
+            (output / receipt_name).write_text(json.dumps({
+                'sourceSha': summary['sourceSha'], 'runtimeTarget': deps['runtimeTarget']['name'],
+                'packages': items}, indent=2) + '\n', encoding='utf-8')
 
         try:
             dn('--info')
@@ -124,6 +170,8 @@ def main():
             ET.ElementTree(configuration).write(config, encoding='utf-8', xml_declaration=True)
             env['NUGET_PACKAGES'] = str(task / 'packages')
             project = consumer('Ofdrw.Net.Converter.Pdf.E2E', 'consumer')
+            verify_runtime_identity(project, 'runtime-identities-main.json',
+                                    {'Ofdrw.Net.Core', 'Ofdrw.Net.Layout', 'Ofdrw.Net.Converter.Pdf'})
             if not options.visual_corpus_only:
                 dn('tool', 'install', 'Ofdrw.Net.Cli', '--tool-path', task / 'tools', '--version',
                    options.version, '--configfile', config)
@@ -159,6 +207,14 @@ def main():
             if not options.visual_corpus_only:
                 font_project = consumer('Ofdrw.Net.FontSubset.E2E', 'font-consumer')
                 dn('run', '--project', font_project, '-c', 'Release', '--no-build', '--no-restore', '--', ROOT, output / 'font-subset')
+                text_project = consumer('Ofdrw.Net.Text.HarfBuzz.E2E', 'text-consumer')
+                verify_runtime_identity(text_project, 'runtime-identities-text.json',
+                                        {'Ofdrw.Net.Core', 'Ofdrw.Net.Layout', 'Ofdrw.Net.Text.HarfBuzz',
+                                         'Ofdrw.Net.Packaging', 'Ofdrw.Net.Reader', 'Ofdrw.Net.Converter.Pdf',
+                                         'Ofdrw.Net.Converter.Svg'})
+                env['R21_SOURCE_SHA'] = summary['sourceSha']
+                dn('run', '--project', text_project, '-c', 'Release', '--no-build', '--no-restore', '--',
+                   output / 'text-prelayout')
             env['NUGET_PACKAGES'] = str(cache)
             run(validation + ['--verify-manifest'])
             shutil.copyfile(feed / 'package-manifest.json', output / 'package-manifest.json')

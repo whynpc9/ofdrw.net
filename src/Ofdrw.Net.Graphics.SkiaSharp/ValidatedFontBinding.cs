@@ -38,6 +38,73 @@ public sealed partial class SkiaDrawEvent
         return (bold, italic);
     }
 
+    // Native font backends may repair a short table before GetTableSize reads it.
+    // Check the original sfnt directory and style bytes independently.
+    private static (bool Bold, bool Italic) RawStyle(int length, Func<int, int, byte[]> read)
+    {
+        if (length < 12) throw new NotSupportedException("Original font directory is truncated.");
+        var header = read(0, 12);
+        uint version = U32(header, 0);
+        if (version is not (0x00010000 or 0x4f54544f or 0x74727565))
+            throw new NotSupportedException("Original font must be a standalone TrueType/OpenType face.");
+        var count = U16(header, 4);
+        if (count == 0 || count > 4095 || 12L + count * 16L > length)
+            throw new NotSupportedException("Original font directory is invalid.");
+        var directory = read(12, count * 16);
+        var os2Offset = -1; var headOffset = -1;
+        for (var index = 0; index < count; index++)
+        {
+            var record = index * 16;
+            var tag = U32(directory, record);
+            if (tag is not (0x4f532f32 or 0x68656164)) continue;
+            var offset = U32(directory, record + 8);
+            var size = U32(directory, record + 12);
+            var minimum = tag == 0x4f532f32 ? 64 : 46;
+            if (size < minimum || size > 1024 || offset > length || size > length - offset)
+                throw new NotSupportedException("Original font style table is missing or truncated.");
+            if (tag == 0x4f532f32)
+            {
+                if (os2Offset >= 0) throw new NotSupportedException("Duplicate original font style table.");
+                os2Offset = checked((int)offset);
+            }
+            else
+            {
+                if (headOffset >= 0) throw new NotSupportedException("Duplicate original font style table.");
+                headOffset = checked((int)offset);
+            }
+        }
+        if (os2Offset < 0 || headOffset < 0)
+            throw new NotSupportedException("Original font style table is missing.");
+        var selection = U16(read(os2Offset + 62, 2), 0);
+        var macStyle = U16(read(headOffset + 44, 2), 0);
+        var bold = (selection & 0x20) != 0; var italic = (selection & 1) != 0;
+        if (((macStyle & 1) != 0) != bold || ((macStyle & 2) != 0) != italic)
+            throw new NotSupportedException("Original OS/2 and head style flags disagree.");
+        return (bold, italic);
+    }
+
+    private static ushort U16(byte[] bytes, int offset) =>
+        (ushort)((bytes[offset] << 8) | bytes[offset + 1]);
+
+    private static uint U32(byte[] bytes, int offset) =>
+        ((uint)bytes[offset] << 24) | ((uint)bytes[offset + 1] << 16) |
+        ((uint)bytes[offset + 2] << 8) | bytes[offset + 3];
+
+    private static byte[] ReadRaw(SKStream stream, int offset, int count)
+    {
+        if (!stream.Seek(offset)) throw new NotSupportedException("Original font stream is not seekable.");
+        var bytes = new byte[count]; var read = 0;
+        while (read < count)
+        {
+            var chunk = new byte[count - read];
+            var n = stream.Read(chunk, chunk.Length);
+            if (n <= 0) throw new NotSupportedException("Original font stream is truncated.");
+            Buffer.BlockCopy(chunk, 0, bytes, read, n);
+            read += n;
+        }
+        return bytes;
+    }
+
     private static FontIdentity ReadIdentity(SKTypeface face, int maxFontBytes, byte[]? original, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -72,6 +139,9 @@ public sealed partial class SkiaDrawEvent
         }
         token.ThrowIfCancellationRequested();
         hash.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        var rawStyle = RawStyle(stream.Length, (offset, count) => ReadRaw(stream, offset, count));
+        if (rawStyle != style)
+            throw new NotSupportedException("Native and original font style flags disagree.");
         return new FontIdentity(hash.Hash!, style.Bold, style.Italic);
     }
 
@@ -104,7 +174,14 @@ public sealed partial class SkiaDrawEvent
                 // Preserve the producer's early bounded style-table admission.
                 if (_face.GetTableSize(0x4f532f32u) > 1024 || _face.GetTableSize(0x68656164u) > 1024)
                     throw new NotSupportedException("PDFV_FONT_STYLE_TABLE");
-                var style = FaceStyle(_face); Bold = style.Bold; Italic = style.Italic; FamilyName = _face.FamilyName;
+                var style = FaceStyle(_face);
+                var rawStyle = RawStyle(_original.Length, (offset, count) =>
+                {
+                    var bytes = new byte[count]; Buffer.BlockCopy(_original, offset, bytes, 0, count); return bytes;
+                });
+                if (rawStyle != style)
+                    throw new NotSupportedException("Native and original font style flags disagree.");
+                Bold = style.Bold; Italic = style.Italic; FamilyName = _face.FamilyName;
             }
             catch { _face.Dispose(); throw; }
         }

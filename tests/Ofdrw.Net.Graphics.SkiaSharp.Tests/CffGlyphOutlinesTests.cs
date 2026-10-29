@@ -78,10 +78,8 @@ public sealed class CffGlyphOutlinesTests
             Write32(bytes, record + 4, Checksum(bytes, Read32(bytes, record + 8), Read32(bytes, record + 12)));
         }
         Write32(bytes, Read32(bytes, head + 8) + 8, unchecked(0xB1B0AFBAu - Checksum(bytes, 0, bytes.Length)));
-        using var data = SKData.CreateCopy(bytes);
-        using var native = SKTypeface.FromData(data);
-        Assert.NotNull(native);
-        Assert.Equal(count, native.GlyphCount); // Skia sees 1568 CFF charstrings, not mutated maxp 1569.
+        // Native Skia reports either maxp or the CFF INDEX count depending on
+        // platform; the admission check must read the original CFF INDEX.
         Assert.Throws<InvalidDataException>(() => new CffGlyphOutlines(bytes));
     }
 
