@@ -1081,7 +1081,19 @@ public sealed partial class DocxConversionTests
         await using var ofd = new MemoryStream();
         await using (var docx = File.OpenRead(samplePath))
         {
-            await docxToOfd.ConvertAsync(docx, ofd);
+            try
+            {
+                await docxToOfd.ConvertAsync(docx, ofd);
+            }
+            catch (InvalidDataException exception) when (exception.Message.Contains("DOCX_TEXT_PAGE_MAPPING_FAILED", StringComparison.Ordinal))
+            {
+                // Keep the exact LibreOffice output that caused the fail-closed
+                // source-text guard to reject this deterministic fixture.
+                var evidence = Path.Combine(ResolveRepositoryRoot(), "artifacts", "full-platform-tests");
+                Directory.CreateDirectory(evidence);
+                await File.WriteAllBytesAsync(Path.Combine(evidence, "generated-layout-mapping-failure.pdf"), pdf.ToArray());
+                throw;
+            }
         }
 
         ofd.Position = 0;
