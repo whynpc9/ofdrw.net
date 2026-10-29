@@ -251,6 +251,18 @@ and trailing RTL, and wrap boundaries with source positions. This mitigation
 does not establish full R22 writer/PDF acceptance or transfer the old Preview
 result to a new head.
 
+A focused admitted-profile matrix varied Latin length/case, two- and
+eight-letter distinct Hebrew words, unequal Latin margins and exact-fit
+width. Six cases passed source/E2E output checks, pypdf standard extraction
+6/6, PDFKit selection and Find geometry 6/6, and PdfPig text plus distinct
+word geometry 12/12 across its two extraction modes. Their generated PNG
+pages and independently rendered SVG pages were visually reviewed. The exact
+matrix and reader outputs are retained in
+`artifacts/r22-harfbuzz/admitted-profile-matrix-aea9272e/`. This is sampled
+evidence within the admitted structure, not proof for arbitrary Latin/Hebrew
+word pairs; direct Preview of these added variants and the full package/CI
+gates are still pending.
+
 The bounded query and line-layout API was split into PR #72 and merged as
 `187aa78ffca9ab4e81bdb0abb7d95b52d1e10337` on 2026-10-29. Its final
 `325f1bce` head passed separate source, package, CI, review and four-page

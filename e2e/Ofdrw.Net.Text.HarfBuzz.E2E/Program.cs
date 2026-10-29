@@ -403,6 +403,23 @@ using (var rejectedOutput = new MemoryStream())
 var mixedOutputs = new List<string>();
 var mixedCases = new List<(string Name, TextMixedParagraphResult Result)>
     { ("wide", mixedWide) };
+TextMixedParagraphResult Admitted(string source, double width) =>
+    mixedEngine.Layout(new TextMixedParagraphRequest(source, dejavu, 4, width));
+mixedCases.Add(("short-words", Admitted("a אב b", 50)));
+mixedCases.Add(("long-upper", Admitted("ABCDEFGH אבגדהוזח XYZABCDE", 100)));
+mixedCases.Add(("unequal-latin", Admitted("ab שלום XYZ", 50)));
+mixedCases.Add(("upper-leading", Admitted("ABC אב def", 50)));
+var exactFitSource = "abc שלום def";
+mixedCases.Add(("exact-fit", Admitted(exactFitSource,
+    Admitted(exactFitSource, 50).Lines.Single().VisibleWidthMillimeters)));
+try
+{
+    var wrongSize = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 5, 50));
+    TextMixedParagraphOfdWriter.CreateSinglePage(wrongSize, 100, 75, 10, 10);
+    throw new InvalidDataException("An unverified mixed output size was admitted.");
+}
+catch (TextLayoutException error) when (error.Error == TextLayoutError.UnsupportedOutput &&
+    error.SourceStart == 4 && error.SourceLength == 4) { }
 var rejectedMixedCases = new List<(string Name, TextMixedParagraphResult Result, int SourceStart)>
     { ("wrapped", mixedWrapped, mixedWrapped.Lines[1].SourceStart),
       ("two-word", twoWordMixed, 9) };
