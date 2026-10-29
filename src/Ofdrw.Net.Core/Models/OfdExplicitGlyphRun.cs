@@ -227,6 +227,13 @@ internal sealed class OfdExplicitGlyphRun
                 glyphs.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries) is { } tokens &&
                 tokens.Length == glyphCount)
             {
+                // This Hebrew profile has one original glyph per source letter.
+                // An unequal count can omit an outline or index past the source
+                // during the reversed direct-cmap check below.
+                if (OfdPositionedGlyphProfile.IsHebrewWord(logical) &&
+                    glyphCount != logical.Length)
+                    throw new NotSupportedException(
+                        "Hebrew CGTransform requires one original GID per logical letter.");
                 var ids = new int[glyphCount];
                 var seen = new HashSet<int>();
                 for (var index = 0; index < glyphCount; index++)

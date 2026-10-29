@@ -1421,6 +1421,69 @@ public sealed partial class ExplicitGlyphTransformTests
     }
 
     [Theory]
+    [InlineData(3, OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData(5, OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData(3, OfdGlyphMappingStrategy.GroupedLocal)]
+    [InlineData(5, OfdGlyphMappingStrategy.GroupedLocal)]
+    public async Task HebrewVisualWordRejectsMissingOrExtraGlyphsBeforePdfOutput(
+        int glyphCount, OfdGlyphMappingStrategy strategy)
+    {
+        const string source = "שלום";
+        var bytes = Font("DejaVuSans-R22.ttf");
+        var resource = new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes };
+        var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
+        var validGids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
+        var valid = Text(validGids[0], validGids[1], "5 5 5", source);
+        valid.FontName = "DejaVu Sans";
+        valid.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='4'><Glyphs>{string.Join(' ', validGids)}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6' DeltaX='5 5 5'>{source}</TextCode></TextObject>";
+        var gids = glyphCount == 3 ? validGids[..3] : validGids.Append(cmap.Glyph('א')).ToArray();
+        var deltas = string.Join(' ', Enumerable.Repeat("5", glyphCount - 1));
+        var malformed = Text(gids[0], gids[1], deltas, source);
+        malformed.FontName = "DejaVu Sans";
+        malformed.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='4' GlyphCount='{glyphCount}'><Glyphs>{string.Join(' ', gids)}</Glyphs></CGTransform>" +
+            $"<TextCode X='0' Y='6' DeltaX='{deltas}'>{source}</TextCode></TextObject>";
+        Assert.Throws<NotSupportedException>(() =>
+            OfdExplicitGlyphRun.Read(malformed, resource, strategy: strategy));
+
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(resource);
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50,
+            Elements = { valid } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        using (var archive = new ZipArchive(ofd, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            var entry = archive.Entries.Single(item => item.FullName.EndsWith("/Content.xml", StringComparison.Ordinal));
+            XDocument xml;
+            using (var stream = entry.Open()) xml = XDocument.Load(stream);
+            var transform = xml.Descendants().Single(node => node.Name.LocalName == "CGTransform");
+            transform.SetAttributeValue("GlyphCount", glyphCount);
+            transform.Elements().Single(node => node.Name.LocalName == "Glyphs").Value = string.Join(' ', gids);
+            xml.Descendants().Single(node => node.Name.LocalName == "TextCode")
+                .SetAttributeValue("DeltaX", deltas);
+            var name = entry.FullName;
+            entry.Delete();
+            using var replacement = archive.CreateEntry(name).Open();
+            xml.Save(replacement);
+        }
+        using var pdf = new MemoryStream();
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            new OfdToPdfConverter(new OfdToPdfOptions { GlyphMappingStrategy = strategy })
+                .ConvertAsync(new MemoryStream(ofd.ToArray()), pdf));
+        Assert.Equal(0, pdf.Length);
+        if (strategy == OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)
+        {
+            using var svg = new MemoryStream();
+            await Assert.ThrowsAsync<NotSupportedException>(() =>
+                new OfdToSvgConverter().ConvertAsync(new MemoryStream(ofd.ToArray()), svg));
+            Assert.Equal(0, svg.Length);
+        }
+    }
+
+    [Theory]
     [InlineData(OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
     [InlineData(OfdGlyphMappingStrategy.GroupedLocal)]
     public async Task HebrewVisualWordPdfUsesOneLogicalSourceCid(OfdGlyphMappingStrategy strategy)

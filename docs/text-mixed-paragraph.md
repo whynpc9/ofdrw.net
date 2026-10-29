@@ -55,6 +55,9 @@ edge, and line wraps return `UnsupportedOutput` with a source interval before
 any package is created. The query API still accepts its broader bounded
 layout profile. Even the provisional writer pattern needs fresh exact-head
 Preview and package evidence before release.
+Imported Hebrew `CGTransform` spans must also declare exactly one original GID
+per logical letter; a shorter or longer glyph list is rejected before PDF/SVG
+output. Legitimate non-Hebrew composed spans retain their separate rules.
 See [the validation matrix](validation/r22-mixed-paragraph-validation.md) for
 the separate source, layout, PDF extraction, word-position and Preview gates.
 These statements describe the source contract; actual output behavior, PDF
