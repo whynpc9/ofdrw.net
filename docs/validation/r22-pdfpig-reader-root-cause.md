@@ -65,7 +65,7 @@ still requires the exact PdfPig outputs; changing PdfPig versions, using a
 different extractor, normalizing/reversing returned text, or weakening its
 word rectangles would change the gate and needs an explicit scope decision.
 
-## Different, falsifiable encoding hypothesis
+## Different, falsifiable encoding hypothesis and result
 
 Try **one visible word glyph per shaped RTL word**, whose own character code
 maps through `/ToUnicode` to the complete logical word. In a PDF-only
@@ -98,6 +98,31 @@ wrong raw string/token, or missing Find/rectangle falsifies the candidate.
 Only a passing API diagnostic merits a separately granted native Preview
 copy/Find check and then a general product-path design. No generator or
 reader gate should be changed to score it.
+
+### Result of the bounded Type 3 diagnostic
+
+The two-word PDF was generated under a separate exclusive build grant; its
+SHA-256 is `65e1b4aba679d163a4e44473023167fa5885fa040f3c91902bf43204f1df2df1`.
+It is one page with two visible Type 3 word character programs, each mapped
+by `/ToUnicode` to its complete logical Hebrew word. The outlines came from
+the original fpdf2 PDF's embedded shaped TrueType subset. No hidden duplicate
+text or `/ActualText` was added. The 144 dpi page kept the visible arrangement,
+but differed in 645 pixels confined to the Hebrew outline region; Type 3
+rendering did not prove pixel or original-font identity.
+
+Pinned PdfPig 0.1.15 returned the exact source `abc שלום מקום def` from
+`Page.Text` in both ActualText settings and found each logical Hebrew word
+once in `GetWords()` at distinct positive bounds. PDFKit 1451.5.3 also found
+each logical Hebrew word once with positive distinct bounds and neither
+reversed query. Its whole-page selection, however, was
+`שלום abc\ndef מקום`, **not** the exact source. This is the first decisive
+combined-gate failure, recorded in ignored
+`artifacts/r22-next-phase/reference-20261029/type3-word-diagnostic-receipt.json`.
+The repeated-word variant and native Preview of this candidate were not run.
+One PDF character now represents each whole Hebrew word, so individual
+character geometry and selection granularity are also lost. This result
+rejects this diagnostic encoding for the current contract and does not
+establish that every possible PDF encoding must fail.
 
 If no encoding passes the fixed APIs, the next scope decision is whether
 PdfPig 0.1.15 default `GetWords()` must remain a supported Hebrew word-search

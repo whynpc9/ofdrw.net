@@ -101,6 +101,7 @@ Preview or clipboard access occurred.
 | fpdf2 shaped cells at product run X positions in logical source order | Both words found at the recorded positions; whole selection becomes `שלום abc\ndef מקום` | Both Hebrew word tokens reversed; raw text is not the source | Positions and glyphs visually match the reference |
 | fpdf2 unshaped `.text()` control | Logical words not found | Some raw strings happen to equal source | Hebrew glyph order is wrong; invalid as a candidate |
 | Three PDF-only operator-order diagnostics from the shaped fpdf2 PDF | None has exact selection and both logical Finds | Logical character order recovers page text in one variant, but its word tokens remain reversed | All three rasters are byte-identical to the visually reviewed shaped fpdf2 page |
+| PDF-only Type 3 visible word-glyph diagnostic, PDF SHA-256 `65e1b4aba679d163a4e44473023167fa5885fa040f3c91902bf43204f1df2df1` | Both logical Finds once at positive distinct rectangles; whole selection `שלום abc\ndef מקום` is not source | Exact source in `Page.Text` for default/ActualText modes, each logical word once in default `GetWords()` | Same visible arrangement at page scale; 144 dpi raster is not pixel-identical (645 changed pixels confined to Hebrew outline region). One PDF character per word loses individual character geometry. |
 
 All 23 PDF hashes, exact extracted strings, Find rectangles, PDF structures,
 embedded subset hashes and 23 PNG hashes
@@ -115,6 +116,11 @@ No conclusion transfers from PDFKit API to actual Preview copy or Find.
 The pinned PdfPig source trace and a separate, falsifiable visible-word-glyph
 encoding hypothesis are recorded in
 [`r22-pdfpig-reader-root-cause.md`](../validation/r22-pdfpig-reader-root-cause.md).
+That Type 3 PDF-only diagnostic has now been run and falsified by PDFKit whole
+selection; its structure, one-page PNG, reader results and source hashes are
+in ignored `type3-word-diagnostic-receipt.json`. The repeated-word variant,
+candidate Preview and product writer path were not run after the first
+decisive API failure.
 The nine-file exact-hash Preview manifest is in ignored
 `artifacts/r22-next-phase/reference-20261029/preview-input-manifest.json`.
 Terra High inspected all nine one-page PDFs under three exclusive GUI grants.
