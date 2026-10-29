@@ -112,6 +112,12 @@ byte-for-byte. These results show that another mature generator can move the
 tradeoff between readers; neither tested output passes the combined
 text/word/geometry criteria.
 No conclusion transfers from PDFKit API to actual Preview copy or Find.
+The pinned PdfPig source trace and a separate, falsifiable visible-word-glyph
+encoding hypothesis are recorded in
+[`r22-pdfpig-reader-root-cause.md`](../validation/r22-pdfpig-reader-root-cause.md).
+The nine-file exact-hash Preview request is prepared in ignored
+`artifacts/r22-next-phase/reference-20261029/preview-input-manifest.json`;
+it has not been run without an exclusive GUI grant.
 
 ## Decision
 
