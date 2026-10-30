@@ -13,6 +13,55 @@ public sealed class EmbeddedBoldCompatibilityTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task TableBoldStrokeIsCoherentWithinOneRowAndDoesNotChangeOtherRowsOrParagraphs(bool explicitNative)
+    {
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = TableStrokeSample(); using var output = new MemoryStream();
+        await new DocxToOfdConverter(Options(fonts, explicitNative)).ConvertAsync(source, output);
+        output.Position = 0; var package = await new OfdReader().ReadAsync(output);
+        Assert.Equal(2, package.Pages.Count);
+        var texts = package.Pages.SelectMany(p => p.Elements).OfType<OfdTextElement>().ToArray();
+        Assert.Equal(new[] { "项目", "项目", "数量", "状态", "项目", "状态", "项目",
+            "项目", "数量", "状态", "项目", "数量", "状态", "项目", "数量", "AB",
+            "项目", "状态", "项目" }, texts.Take(19).Select(t => t.Text));
+        Assert.Equal(new[] { "项目", "数量", "状态", "项目" }, texts.Skip(19).Take(4).Select(t => t.Text));
+        Assert.Equal("数量", texts[^1].Text);
+        var wrapped = texts.Skip(23).Take(texts.Length - 24).ToArray();
+        Assert.True(wrapped.Length > 3); // first cell really wraps, without explicit breaks
+        Assert.Equal("项目项目项目数量状态项目", string.Concat(wrapped.Select(t => t.Text)));
+        Assert.All(texts, text => Assert.Equal(700, text.Weight));
+        var widths = texts.Select(text => double.Parse(XElement.Parse(text.SourceXml!)
+            .Attribute("LineWidth")!.Value, CultureInfo.InvariantCulture)).ToArray();
+        // The first paragraph and second row have no narrow quantity counter.
+        // A later row/page must not retrospectively change their emphasis.
+        foreach (var index in new[] { 0, 4, 5, 6, 16, 18, 19, 21, 22 })
+            Assert.InRange(widths[index] / texts[index].FontSizeMillimeters, .034, .0351);
+        foreach (var index in new[] { 1, 2, 3, 7, 8, 11, 13, 14, 17, 20 })
+            Assert.InRange(widths[index] / texts[index].FontSizeMillimeters, .0095, .012);
+        Assert.InRange(widths[^1] / texts[^1].FontSizeMillimeters, .0095, .012);
+        foreach (var text in wrapped)
+            Assert.InRange(double.Parse(XElement.Parse(text.SourceXml!).Attribute("LineWidth")!.Value,
+                CultureInfo.InvariantCulture) / text.FontSizeMillimeters, .0095, .012);
+        Assert.Equal(widths[1], widths[2]); Assert.Equal(widths[2], widths[3]);
+        Assert.Equal(widths[7], widths[8]);
+        // A different local color or size is its own emphasis group.
+        foreach (var index in new[] { 9, 10, 12 })
+            Assert.InRange(widths[index] / texts[index].FontSizeMillimeters, .034, .0351);
+        Assert.Equal(255, texts[9].FillColor.Red);
+        Assert.True(texts[10].FontSizeMillimeters > texts[11].FontSizeMillimeters);
+        Assert.InRange(widths[15] / texts[15].FontSizeMillimeters, .024, .026);
+        Assert.True(texts[17].Italic); // italic keeps its own legacy route
+        if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+        {
+            Directory.CreateDirectory(artifacts);
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"table-bold-row-{explicitNative}.docx"), source.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"table-bold-row-{explicitNative}.ofd"), output.ToArray());
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task MixedNativeSpanKeepsItsPlannedStrokeForEveryPositionedGlyph(bool explicitNative)
     {
         using var fonts = new PinnedCjkFontDirectory();
@@ -93,7 +142,8 @@ public sealed class EmbeddedBoldCompatibilityTests
                 Assert.Equal("true", xml.Attribute("Stroke")?.Value);
                 Assert.Equal("true", xml.Attribute("Fill")?.Value);
                 var width = double.Parse(xml.Attribute("LineWidth")!.Value, CultureInfo.InvariantCulture);
-                if (text.Text == "数量") Assert.InRange(width / text.FontSizeMillimeters, .0095, .012);
+                if (text.Text is "项目" or "数量" or "状态")
+                    Assert.InRange(width / text.FontSizeMillimeters, .0095, .012);
                 else Assert.InRange(width / text.FontSizeMillimeters, .034, .0351);
                 var color = Assert.Single(xml.Elements(), e => e.Name.LocalName == "StrokeColor");
                 Assert.Equal($"{text.FillColor.Red} {text.FillColor.Green} {text.FillColor.Blue}", color.Attribute("Value")?.Value);
@@ -104,6 +154,7 @@ public sealed class EmbeddedBoldCompatibilityTests
         using var png = new MemoryStream();
         await new Ofdrw.Net.Converter.Pdf.Converters.OfdToImageConverter().ConvertAsync(output, png);
         AssertDenseCounterOpen(png.ToArray());
+        await AssertTableHeaderContrast(output.ToArray(), png.ToArray(), explicitNative);
         if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } imageArtifacts)
             await File.WriteAllBytesAsync(Path.Combine(imageArtifacts, $"native-bold-{explicitNative}-public144.png"), png.ToArray());
         // Rewriting imported XML keeps its single text object/stroke; no second application.
@@ -111,6 +162,59 @@ public sealed class EmbeddedBoldCompatibilityTests
         await new OfdPackageWriter().WriteAsync(package, rewritten);
         rewritten.Position = 0; var reread = await new OfdReader().ReadAsync(rewritten);
         Assert.Equal(texts.Select(text => text.SourceXml), reread.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().Select(text => text.SourceXml));
+    }
+
+    private static async Task AssertTableHeaderContrast(byte[] ofd, byte[] boldPng, bool explicitNative)
+    {
+        using var input = new MemoryStream(ofd);
+        var control = await new OfdReader().ReadAsync(input);
+        var headers = control.Pages[0].Elements.OfType<OfdTextElement>()
+            .Where(text => text.Text is "项目" or "数量" or "状态").ToArray();
+        Assert.Equal(3, headers.Length);
+        foreach (var text in headers)
+        {
+            // Same original face, text and positions; remove only the requested
+            // header emphasis for an actual regular-weight image reference.
+            var xml = XElement.Parse(text.SourceXml!);
+            text.Weight = 400; xml.SetAttributeValue("Weight", "400");
+            xml.SetAttributeValue("Stroke", "false"); xml.Attribute("LineWidth")?.Remove();
+            xml.Elements().Where(e => e.Name.LocalName == "StrokeColor").Remove();
+            text.SourceXml = xml.ToString(SaveOptions.DisableFormatting);
+        }
+        using var controlOfd = new MemoryStream(); await new OfdPackageWriter().WriteAsync(control, controlOfd);
+        controlOfd.Position = 0; using var regularPng = new MemoryStream();
+        await new Ofdrw.Net.Converter.Pdf.Converters.OfdToImageConverter().ConvertAsync(controlOfd, regularPng);
+        using var bold = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(boldPng);
+        using var regular = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(regularPng.ToArray());
+        Assert.Equal((bold.Width, bold.Height), (regular.Width, regular.Height));
+        const double ppm = 144d / 25.4;
+        foreach (var text in headers)
+        {
+            var left = (int)Math.Floor(text.XMillimeters * ppm);
+            var top = (int)Math.Floor(text.YMillimeters * ppm);
+            var right = (int)Math.Ceiling((text.XMillimeters + text.WidthMillimeters) * ppm);
+            var bottom = (int)Math.Ceiling((text.YMillimeters + text.HeightMillimeters) * ppm);
+            double Ink(SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24> image)
+            {
+                var ink = 0d;
+                for (var y = top; y < bottom; y++)
+                for (var x = left; x < right; x++)
+                {
+                    var pixel = image[x, y];
+                    // D9EAF7 is this deterministic fixture's header background.
+                    ink += (Math.Max(0, 217 - pixel.R) + Math.Max(0, 234 - pixel.G) +
+                        Math.Max(0, 247 - pixel.B)) / 698d;
+                }
+                return ink;
+            }
+            Assert.True(Ink(bold) > Ink(regular) * 1.025,
+                $"{text.Text} must retain visible emphasis over its same-glyph regular reference.");
+        }
+        if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+        {
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"native-bold-{explicitNative}-row-regular-control.ofd"), controlOfd.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"native-bold-{explicitNative}-row-regular-control.png"), regularPng.ToArray());
+        }
     }
 
     private static void AssertDenseCounterOpen(byte[] png)
@@ -304,6 +408,48 @@ public sealed class EmbeddedBoldCompatibilityTests
         var xml = XElement.Parse(text.SourceXml!);
         Assert.Equal(semanticSelection ? null : "true", xml.Attribute("Stroke")?.Value);
         if (!semanticSelection) Assert.Equal("0.18", xml.Attribute("LineWidth")?.Value);
+    }
+
+    private static MemoryStream TableStrokeSample()
+    {
+        var source = new MemoryStream(); source.Write(File.ReadAllBytes(Sample()));
+        using (var zip = new ZipArchive(source, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            var entry = zip.GetEntry("word/document.xml")!;
+            XDocument document;
+            using (var input = entry.Open()) document = XDocument.Load(input);
+            XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+            XElement Paragraph(string text, int halfPoints = 21, string color = "000000", bool italic = false) =>
+                new(w + "p", new XElement(w + "r", new XElement(w + "rPr",
+                    new XElement(w + "rFonts", new XAttribute(w + "ascii", "Noto Sans CJK SC"),
+                        new XAttribute(w + "eastAsia", "Noto Sans CJK SC")),
+                    new XElement(w + "b"), italic ? new XElement(w + "i") : null,
+                    new XElement(w + "sz", new XAttribute(w + "val", halfPoints)),
+                    new XElement(w + "color", new XAttribute(w + "val", color))), new XElement(w + "t", text)));
+            XElement Row(params XElement[] paragraphs) => new(w + "tr", paragraphs.Select(p =>
+                new XElement(w + "tc", new XElement(w + "tcPr", new XElement(w + "tcW",
+                    new XAttribute(w + "w", 2880), new XAttribute(w + "type", "dxa"))), p)));
+            var table = new XElement(w + "tbl", new XElement(w + "tblGrid",
+                Enumerable.Range(0, 3).Select(_ => new XElement(w + "gridCol", new XAttribute(w + "w", 2880)))),
+                Row(Paragraph("项目"), Paragraph("数量"), Paragraph("状态")),
+                Row(Paragraph("项目"), Paragraph("状态"), Paragraph("项目")),
+                Row(Paragraph("项目"), Paragraph("数量"), Paragraph("状态", color: "FF0000")),
+                Row(Paragraph("项目", 24), Paragraph("数量"), Paragraph("状态", 24)),
+                Row(Paragraph("项目"), Paragraph("数量"), Paragraph("AB")),
+                Row(Paragraph("项目"), Paragraph("状态", italic: true), Paragraph("项目")));
+            var multipleParagraphs = Row(Paragraph("项目"), Paragraph("状态"), Paragraph("项目"));
+            multipleParagraphs.Element(w + "tc")!.Add(Paragraph("数量"));
+            table.Add(multipleParagraphs);
+            var wrappedTable = new XElement(w + "tbl", new XElement(w + "tblGrid",
+                new[] { 500, 2880, 2880 }.Select(width => new XElement(w + "gridCol", new XAttribute(w + "w", width)))),
+                Row(Paragraph("项目项目项目数量"), Paragraph("状态"), Paragraph("项目")));
+            var last = Paragraph("数量"); last.AddFirst(new XElement(w + "pPr", new XElement(w + "pageBreakBefore")));
+            var body = document.Root!.Element(w + "body")!; var section = body.Element(w + "sectPr"); section?.Remove();
+            body.ReplaceNodes(Paragraph("项目"), table, wrappedTable, last);
+            if (section is not null) body.Add(section);
+            entry.Delete(); using var output = zip.CreateEntry("word/document.xml").Open(); document.Save(output);
+        }
+        source.Position = 0; return source;
     }
 
     private static MemoryStream BoldSample(string family, string value, int halfPoints)

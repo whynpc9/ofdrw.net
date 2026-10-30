@@ -84,6 +84,18 @@ to meet the increased-width clearance requirement. The increase is rounded
 down to the writer's0.001mm grid. A generated rectangular-counter fixture
 checks6/12/18pt behavior analytically without adding a font payload.
 
+Within one native table row whose cells each contain exactly one paragraph,
+upright synthetic CJK text with the same embedded
+font resource, serialized size and RGBA color uses the smallest already planned
+width in that group. This only reduces wider siblings; it never increases the
+counter-constrained cell. All automatically wrapped lines of each sole
+paragraph participate. A row with multiple paragraphs in any cell retains the
+per-object policy; separate rows, outside paragraphs and pages never combine.
+Pure Latin, italic, physical-bold, name-only and imported-paint routes
+retain their existing contracts. The shared layout fixture checks that each
+header still has more ink than its same-font/same-glyph regular reference;
+ordinary-scale emphasis and counter readability remain separate visual gates.
+
 This is an optical fallback, not a physical700 face or a guarantee about every
 open gap, neck, counter component, font or raster scale. Italic, variable,
 color, non-TrueType or unavailable analysis retains the existing policy.

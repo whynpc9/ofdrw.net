@@ -321,6 +321,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             var rowTop = state.Y;
             var x = state.ContentLeft;
             var columnIndex = 0;
+            var rowElementStart = state.Page!.Elements.Count;
 
             foreach (var cellLayout in cellLayouts)
             {
@@ -340,7 +341,42 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 columnIndex += cellLayout.ColumnSpan;
             }
 
+            // A cell's later paragraph is independent content, even when its
+            // formatting matches. Keep the existing per-object policy for any
+            // multi-paragraph row rather than flattening those identities.
+            if (row.Cells.All(cell => cell.Paragraphs.Count == 1))
+                HarmonizeRowBoldStroke(state.Page!, rowElementStart);
             state.Y = rowTop + rowHeight;
+        }
+    }
+
+    private void HarmonizeRowBoldStroke(OfdPage page, int firstElement)
+    {
+        // These are freshly emitted native objects in this one measured row,
+        // with exactly one paragraph per cell. Automatic wrapping keeps that
+        // paragraph's lines together; a separate paragraph never participates.
+        // Equal formatting should not become visibly different weights merely
+        // because a sibling cell contains a narrow counter. Lower other cells
+        // to the already checked minimum; never thicken the constrained glyph.
+        // Pure Latin keeps its separate legacy emphasis contract.
+        var candidates = page.Elements.Skip(firstElement).OfType<OfdTextElement>()
+            .Where(text =>
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                return text.EmitSyntheticBoldStroke && !text.Italic &&
+                    string.IsNullOrEmpty(text.SourceXml) &&
+                    text.SyntheticBoldStrokeWidthMillimeters is > 0 &&
+                    FontEmphasisMetrics.BoldStrokeWidth(text.FontSizeMillimeters, text.Text) <
+                    FontEmphasisMetrics.BoldStrokeWidth(text.FontSizeMillimeters);
+            })
+            .GroupBy(text => (text.FontResourceId,
+                Size: text.FontSizeMillimeters.ToString("0.###", CultureInfo.InvariantCulture),
+                text.FillColor.Red, text.FillColor.Green, text.FillColor.Blue, text.FillColor.Alpha));
+        foreach (var group in candidates)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            var width = group.Min(text => text.SyntheticBoldStrokeWidthMillimeters!.Value);
+            foreach (var text in group) text.SyntheticBoldStrokeWidthMillimeters = width;
         }
     }
 
