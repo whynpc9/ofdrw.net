@@ -1,5 +1,10 @@
 # R22 bounded two-word export checkpoint
 
+This is the historical checkpoint leading to PR #76. For the source-baseline
+reconciliation and the subsequent repeated-letter candidate, see
+[remaining scope](r22-remaining-scope.md). The dated samples and hashes below
+are not reassigned to later output.
+
 Status: candidate implementation; final source, isolated-package, Preview and
 CI acceptance are in progress. This does not close the full R22 roadmap item.
 

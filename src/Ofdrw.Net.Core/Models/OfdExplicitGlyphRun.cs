@@ -239,7 +239,8 @@ internal sealed class OfdExplicitGlyphRun
                 for (var index = 0; index < glyphCount; index++)
                 {
                     if (!int.TryParse(tokens[index], NumberStyles.None, CultureInfo.InvariantCulture,
-                            out var gid) || gid is <= 0 or > ushort.MaxValue || !seen.Add(gid))
+                            out var gid) || gid is <= 0 or > ushort.MaxValue ||
+                        !seen.Add(gid) && !OfdPositionedGlyphProfile.IsHebrewWord(logical))
                         throw new NotSupportedException("CGTransform contains overlapping or invalid original GIDs.");
                     ids[index] = gid;
                 }
@@ -262,9 +263,16 @@ internal sealed class OfdExplicitGlyphRun
                     }
                     if (hebrewCmap.IsSymbol)
                         throw new NotSupportedException("Hebrew CGTransform needs a direct Unicode cmap.");
+                    var sourceByGid = new Dictionary<int, char>();
                     for (var index = 0; index < ids.Length; index++)
-                        if (ids[index] != hebrewCmap.DirectGlyph(logical[logical.Length - 1 - index]))
+                    {
+                        var source = logical[logical.Length - 1 - index];
+                        if (ids[index] != hebrewCmap.DirectGlyph(source))
                             throw new NotSupportedException("Hebrew CGTransform GIDs do not match the embedded face and visual order.");
+                        if (sourceByGid.TryGetValue(ids[index], out var prior) && prior != source)
+                            throw new NotSupportedException("Different Hebrew letters cannot share one original GID.");
+                        sourceByGid[ids[index]] = source;
+                    }
                 }
                 CountDeltas(runs[0].DeltaX, glyphCount - 1);
                 CountDeltas(runs[0].DeltaY, glyphCount - 1);

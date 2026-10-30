@@ -41,7 +41,8 @@ The inventory lists relative paths, byte counts and SHA-256 for the original fil
 
 Tests that depend on restored NuGet metadata must run after solution restore, as in CI. Local conversion validation must still follow the repository's PNG and macOS Preview requirements; archive integrity alone is not visual acceptance.
 
-The mixed-text consumer now keeps twelve bounded one-line samples. After
+The mixed-text consumer keeps seventeen bounded one-line samples, including
+repeated-letter/GID occurrences and palindromic words. After
 package consumption, Linux/Windows/macOS independently decode scalar-to-CID/GID
 mappings and original outlines, compare every visible PDF contour to the actual
 OFD positions, and associate independently parsed physical word boxes. Native

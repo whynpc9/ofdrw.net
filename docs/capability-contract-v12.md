@@ -54,7 +54,7 @@
 | R19 跨页复杂表格 | 整行分页 `limited`；RowSpan、拆行、重复表头、图片单元格 | 超出有限规则明确失败，逐页视觉验收 |
 | R20 完整归档规则 | `new`；逐条标准版本、条款、fixture 与独立核准 | 缺规范保持 Unknown/阻断，不声称认证 |
 | R21 真实字体测量 | 新查询 `limited`：固定静态 TrueType face、HarfBuzz 单 run GID/cluster/advance/ink、有限 Latin/Han 预排版及严格 ASCII OFD 出口；旧 Flow 仍用原度量 | 缺 native/字体或超出已验 profile 明确失败；混合字体、段落 bidi 和通用 GID 输出留待 R22，详见 [R21 profile](text-prelayout.md) |
-| R22 HarfBuzz 闭环 | 首段 `limited`：有界 Latin 单 run → OFD 原始 GID/原文及 typed 定位 → PDF/SVG 样例消费；详见 [typed 输出 profile](text-shaped-output.md) 与 [双词候选及独立门禁](validation/r22-two-word-export-validation.md) | 段落 bidi、复杂脚本、多 TextCode、独立阅读器与实际 Preview 仍各自待验；不能据首段关闭整项 R22 |
+| R22 HarfBuzz 闭环 | 首段 `limited`：有界 Latin 单 run → OFD 原始 GID/原文及 typed 定位 → PDF/SVG 样例消费；详见 [typed 输出 profile](text-shaped-output.md) 与 [双词候选及独立门禁](validation/r22-two-word-export-validation.md)、[剩余范围与重复字母候选](validation/r22-remaining-scope.md) | 段落 bidi、复杂脚本、多 TextCode、独立阅读器与实际 Preview 仍各自待验；不能据首段关闭整项 R22 |
 
 ## 证据与门禁
 

@@ -1417,7 +1417,28 @@ public sealed partial class ExplicitGlyphTransformTests
         var repeated = Text(gids[0], gids[1], "5 5 5", repeatedSource);
         repeated.SourceXml = text.SourceXml.Replace(source, repeatedSource)
             .Replace(string.Join(' ', gids), string.Join(' ', repeatedGids));
-        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(repeated, resource));
+        var repeatedRun = Assert.IsType<OfdExplicitGlyphRun>(OfdExplicitGlyphRun.Read(repeated, resource));
+        Assert.Equal(repeatedSource, repeatedRun.VisualHebrewSourceSpan);
+        Assert.Equal(repeatedGids, repeatedRun.GlyphIds);
+    }
+
+    [Theory]
+    [InlineData(OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData(OfdGlyphMappingStrategy.GroupedLocal)]
+    public void HebrewSourceAliasesCannotUseOneOriginalGidForDifferentLetters(OfdGlyphMappingStrategy strategy)
+    {
+        var face = new OpenTypeFace(Font("DejaVuSans-R22.ttf"));
+        var shared = new OpenTypeCmap(face).Glyph('א');
+        face.Tables["cmap"] = Format4OnlyCmap(new System.Collections.Generic.Dictionary<int, int>
+        {
+            ['א'] = shared, ['ב'] = shared
+        });
+        var text = Text(shared, shared, "5", "אב");
+        text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='2' GlyphCount='2'><Glyphs>{shared} {shared}</Glyphs></CGTransform>" +
+            "<TextCode X='0' Y='6' DeltaX='5'>אב</TextCode></TextObject>";
+        var resource = new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = face.Build() };
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(text, resource, strategy: strategy));
     }
 
     [Theory]
@@ -1484,11 +1505,16 @@ public sealed partial class ExplicitGlyphTransformTests
     }
 
     [Theory]
-    [InlineData(OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
-    [InlineData(OfdGlyphMappingStrategy.GroupedLocal)]
-    public async Task HebrewVisualWordPdfKeepsEachScalarAtItsOriginalGlyphOrigin(OfdGlyphMappingStrategy strategy)
+    [InlineData("שלום", OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData("שלום", OfdGlyphMappingStrategy.GroupedLocal)]
+    [InlineData("אבבג", OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData("אבבג", OfdGlyphMappingStrategy.GroupedLocal)]
+    [InlineData("אבבא", OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData("אבבא", OfdGlyphMappingStrategy.GroupedLocal)]
+    [InlineData("ממממ", OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData("ממממ", OfdGlyphMappingStrategy.GroupedLocal)]
+    public async Task HebrewVisualWordPdfKeepsEachScalarAtItsOriginalGlyphOrigin(string source, OfdGlyphMappingStrategy strategy)
     {
-        const string source = "שלום";
         var bytes = Font("DejaVuSans-R22.ttf");
         var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
         var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();

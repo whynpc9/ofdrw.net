@@ -18,9 +18,16 @@ for item in cases {
     let expected = item["expected"] as! String
     let acceptedSelection = item["expectedSelection"] as! [String]
     var finds = [[String: Any]]()
-    for word in item["expectedWords"] as! [[String: Any]] {
+    let words = item["expectedWords"] as! [[String: Any]]
+    var queried = Set<String>()
+    for word in words {
         let logical = word["text"] as! String
         for query in [logical, String(logical.reversed())] {
+            // A palindrome's reverse is the same logical query; a reverse can
+            // also be another declared source word. Keep one physical query
+            // and derive its expectation from the source, never the PDF result.
+            guard queried.insert(query).inserted else { continue }
+            let sourceWord = words.first { ($0["text"] as! String) == query }
             let matches = document.findString(query, withOptions: [])
             let selections: [[String: Any]] = matches.map { match in
                 let bounds: [[String: Any]] = match.pages.map { page in
@@ -31,8 +38,9 @@ for item in cases {
                 }
                 return ["text": match.string ?? "", "bounds": bounds]
             }
-            finds.append(["query": query, "logical": query == logical,
-                          "expectedCount": query == logical ? word["count"] as! Int : 0,
+            finds.append(["query": query, "logical": sourceWord != nil,
+                          "reverseAliasesLogical": logical == String(logical.reversed()),
+                          "expectedCount": sourceWord?["count"] as? Int ?? 0,
                           "count": matches.count, "matches": selections])
         }
     }
