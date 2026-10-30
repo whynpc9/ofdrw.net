@@ -67,9 +67,9 @@ public sealed class SvgGeometryTests
         var text = Assert.Single(svg.Descendants(), node => node.Name.LocalName == "text");
         Assert.Equal(expectedWeight, text.Attribute("font-weight")?.Value);
         Assert.Equal(value, text.Value);
-        // Fresh name-only bold retains the writer's4.5%-em compatibility
-        // stroke. SVG must not reinterpret that unknown physical face.
-        if (stroke) Assert.Equal(kind == "name-only" ? size * .045 : width,
+        // This source envelope owns its paint, including for unknown name-only
+        // faces. The writer/exporter must preserve its explicit stroke width.
+        if (stroke) Assert.Equal(width,
             double.Parse(text.Attribute("stroke-width")!.Value, CultureInfo.InvariantCulture));
         else Assert.Null(text.Attribute("stroke-width"));
     }

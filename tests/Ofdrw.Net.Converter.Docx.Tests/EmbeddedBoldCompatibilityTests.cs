@@ -16,24 +16,7 @@ public sealed class EmbeddedBoldCompatibilityTests
     public async Task MixedNativeSpanKeepsItsPlannedStrokeForEveryPositionedGlyph(bool explicitNative)
     {
         using var fonts = new PinnedCjkFontDirectory();
-        using var source = new MemoryStream();
-        source.Write(await File.ReadAllBytesAsync(Sample()));
-        using (var zip = new ZipArchive(source, ZipArchiveMode.Update, leaveOpen: true))
-        {
-            var entry = zip.GetEntry("word/document.xml")!;
-            XDocument document;
-            using (var input = entry.Open()) document = XDocument.Load(input);
-            XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-            var body = document.Root!.Element(w + "body")!;
-            var section = body.Element(w + "sectPr"); section?.Remove();
-            body.ReplaceNodes(XElement.Parse("<w:p xmlns:w='" + w + "'><w:r><w:rPr>" +
-                "<w:rFonts w:ascii='Noto Sans CJK SC' w:eastAsia='Noto Sans CJK SC' w:hAnsi='Noto Sans CJK SC'/>" +
-                "<w:b/><w:sz w:val='48'/></w:rPr><w:t>量A</w:t></w:r></w:p>"));
-            if (section is not null) body.Add(section);
-            entry.Delete();
-            using var output = zip.CreateEntry("word/document.xml").Open(); document.Save(output);
-        }
-        source.Position = 0;
+        using var source = BoldSample("Noto Sans CJK SC", "量A", 48);
         using var ofd = new MemoryStream();
         await new DocxToOfdConverter(Options(fonts, explicitNative)).ConvertAsync(source, ofd);
         ofd.Position = 0; var package = await new OfdReader().ReadAsync(ofd);
@@ -182,9 +165,11 @@ public sealed class EmbeddedBoldCompatibilityTests
         Assert.False(plainClone.EmitSyntheticBoldStroke);
         text.EmitSyntheticBoldStroke = true;
         text.SyntheticBoldStrokeWidthMillimeters = .061;
+        text.UseNameOnlyBoldSelection = true;
         var emphasizedClone = Assert.IsType<OfdTextElement>(OfdModelCloner.CloneElement(text));
         Assert.True(emphasizedClone.EmitSyntheticBoldStroke);
         Assert.Equal(.061, emphasizedClone.SyntheticBoldStrokeWidthMillimeters);
+        Assert.True(emphasizedClone.UseNameOnlyBoldSelection);
         package.Pages[0].Elements[0] = emphasizedClone;
         using var clonedOutput = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, clonedOutput);
         clonedOutput.Position = 0; var clonedRead = await new OfdReader().ReadAsync(clonedOutput);
@@ -200,6 +185,148 @@ public sealed class EmbeddedBoldCompatibilityTests
         var actual = XElement.Parse(Assert.Single(read.Pages[0].Elements.OfType<OfdTextElement>()).SourceXml!);
         Assert.Equal("false", actual.Attribute("Stroke")?.Value);
         Assert.Equal("0.123", actual.Attribute("LineWidth")?.Value);
+    }
+
+    [Theory]
+    [InlineData("Noto Sans CJK SC", false, false)]
+    [InlineData("Noto Sans CJK SC", true, false)]
+    [InlineData("SimSun", false, true)]
+    [InlineData("SimSun", true, true)]
+    [InlineData("SimHei", false, true)]
+    [InlineData("SimHei", true, true)]
+    public async Task FreshMissingNotoUsesSemanticBoldWhileViewerLocalFamiliesKeepCompatibilityStroke(
+        string family, bool explicitNative, bool compatibilityStroke)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-name-only-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var options = new DocxConversionOptions { UseInstalledMicrosoftOfficeFonts = false };
+            options.FontDirectories.Add(directory);
+            if (explicitNative) options.OfdMode = DocxToOfdMode.Native;
+            using var source = BoldSample(family, "回A", 36); using var output = new MemoryStream();
+            await new DocxToOfdConverter(options).ConvertAsync(source, output);
+            output.Position = 0; var package = await new OfdReader().ReadAsync(output);
+            var font = Assert.Single(package.Fonts); Assert.Empty(font.Data); Assert.Equal(family, font.FamilyName);
+            var text = Assert.Single(package.Pages.Single().Elements.OfType<OfdTextElement>());
+            Assert.Equal("回A", text.Text); Assert.Equal(700, text.Weight);
+            var original = XElement.Parse(text.SourceXml!);
+            Assert.Equal(compatibilityStroke ? "true" : null, original.Attribute("Stroke")?.Value);
+            if (compatibilityStroke)
+                Assert.Equal(Math.Max(.08, text.FontSizeMillimeters * .045),
+                    double.Parse(original.Attribute("LineWidth")!.Value, CultureInfo.InvariantCulture), 3);
+            // A memory-only producer choice must survive reader/writer cycles
+            // through the generated standard OFD paint, not a guessed width.
+            for (var pass = 0; pass < 2; pass++)
+            {
+                using var rewritten = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, rewritten);
+                rewritten.Position = 0; package = await new OfdReader().ReadAsync(rewritten);
+                Assert.Equal(family, Assert.Single(package.Fonts).FamilyName);
+                var again = Assert.Single(package.Pages.Single().Elements.OfType<OfdTextElement>());
+                Assert.Equal(700, again.Weight); Assert.Equal("回A", again.Text);
+                Assert.True(XNode.DeepEquals(original, XElement.Parse(again.SourceXml!)));
+            }
+            if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+            {
+                Directory.CreateDirectory(artifacts);
+                await File.WriteAllBytesAsync(Path.Combine(artifacts, $"name-only-{family.Replace(' ', '-')}-{explicitNative}.ofd"), output.ToArray());
+            }
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Theory]
+    [InlineData("thin")]
+    [InlineData("different-color")]
+    [InlineData("alpha")]
+    [InlineData("outline-only")]
+    [InlineData("no-stroke")]
+    [InlineData("italic-ctm")]
+    [InlineData("sim-sun-explicit")]
+    [InlineData("omitted-paint")]
+    [InlineData("italic-no-ctm")]
+    public async Task ImportedNameOnlyPaintIsPreservedThroughRepeatedWrites(string kind)
+    {
+        var family = kind == "sim-sun-explicit" ? "SimSun" : "Noto Sans CJK SC";
+        var alpha = kind == "alpha" ? 128 : 255; var italic = kind.StartsWith("italic", StringComparison.Ordinal);
+        var defaultPaint = kind is "omitted-paint" or "italic-no-ctm";
+        var xml = XElement.Parse("<TextObject xmlns='http://www.ofdspec.org' ID='3' Font='10' Boundary='10 10 40 15' " +
+            "Size='4' Weight='700' Stroke='" + (kind == "no-stroke" ? "false" : "true") + "' Fill='" +
+            (kind == "outline-only" ? "false" : "true") + "' LineWidth='0.023' CTM='1 0.1 0.2 1 2 3' " +
+            (italic ? "Italic='true' " : "") + ">" +
+            $"<FillColor Value='10 20 30' Alpha='{alpha}'/><StrokeColor Value='" +
+            (kind == "different-color" ? "190 20 30" : "10 20 30") + $"' Alpha='{alpha}'/>" +
+            "<TextCode X='0' Y='4' DeltaX='4'>回A</TextCode></TextObject>");
+        if (defaultPaint)
+        {
+            foreach (var attribute in new[] { "Stroke", "Fill", "LineWidth", "CTM" }) xml.Attribute(attribute)?.Remove();
+            xml.Elements().Where(element => element.Name.LocalName is "FillColor" or "StrokeColor").Remove();
+        }
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = family, FamilyName = family, Bold = true });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100, Elements = { new OfdTextElement
+        {
+            FontName = family, FontResourceId = "10", Text = "回A", Weight = 700, Italic = italic,
+            FontSizeMillimeters = 4, FillColor = defaultPaint ? OfdColor.Black : new OfdColor(10, 20, 30, (byte)alpha), SourceXml = xml.ToString()
+        } } });
+        for (var pass = 0; pass < 2; pass++)
+        {
+            using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, output);
+            output.Position = 0; package = await new OfdReader().ReadAsync(output);
+            var actual = XElement.Parse(Assert.Single(package.Pages.Single().Elements.OfType<OfdTextElement>()).SourceXml!);
+            actual.SetAttributeValue("ID", "3"); actual.SetAttributeValue("Font", "10");
+            foreach (var node in xml.DescendantsAndSelf().Concat(actual.DescendantsAndSelf()))
+                node.Attributes().Where(attribute => attribute.IsNamespaceDeclaration).Remove();
+            Assert.True(XNode.DeepEquals(xml, actual), actual.ToString());
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FreshNameOnlyBoldSelectionSurvivesCloneWithoutChangingGenericWriterCompatibility(bool semanticSelection)
+    {
+        var family = semanticSelection ? "Noto Sans CJK SC" : "Unbound Fixture Family";
+        var original = new OfdTextElement
+        {
+            FontName = family, FontResourceId = "10", Text = "回A", Weight = 700,
+            FontSizeMillimeters = 4, UseNameOnlyBoldSelection = semanticSelection
+        };
+        var clone = Assert.IsType<OfdTextElement>(OfdModelCloner.CloneElement(original));
+        Assert.Equal(semanticSelection, clone.UseNameOnlyBoldSelection);
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = family, FamilyName = family, Bold = true });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100, Elements = { clone } });
+        using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, output);
+        output.Position = 0; var read = await new OfdReader().ReadAsync(output);
+        var text = Assert.Single(read.Pages.Single().Elements.OfType<OfdTextElement>());
+        Assert.Equal(700, text.Weight); Assert.Equal("回A", text.Text);
+        var xml = XElement.Parse(text.SourceXml!);
+        Assert.Equal(semanticSelection ? null : "true", xml.Attribute("Stroke")?.Value);
+        if (!semanticSelection) Assert.Equal("0.18", xml.Attribute("LineWidth")?.Value);
+    }
+
+    private static MemoryStream BoldSample(string family, string value, int halfPoints)
+    {
+        var source = new MemoryStream(); source.Write(File.ReadAllBytes(Sample()));
+        using (var zip = new ZipArchive(source, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            var entry = zip.GetEntry("word/document.xml")!;
+            XDocument document;
+            using (var input = entry.Open()) document = XDocument.Load(input);
+            XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+            var body = document.Root!.Element(w + "body")!;
+            var section = body.Element(w + "sectPr"); section?.Remove();
+            body.ReplaceNodes(new XElement(w + "p", new XElement(w + "r",
+                new XElement(w + "rPr", new XElement(w + "rFonts",
+                    new XAttribute(w + "ascii", family), new XAttribute(w + "eastAsia", family), new XAttribute(w + "hAnsi", family)),
+                    new XElement(w + "b"), new XElement(w + "sz", new XAttribute(w + "val", halfPoints))),
+                new XElement(w + "t", value))));
+            if (section is not null) body.Add(section);
+            entry.Delete();
+            using var output = zip.CreateEntry("word/document.xml").Open(); document.Save(output);
+        }
+        source.Position = 0; return source;
     }
 
     private static DocxConversionOptions Options(PinnedCjkFontDirectory fonts, bool explicitNative)

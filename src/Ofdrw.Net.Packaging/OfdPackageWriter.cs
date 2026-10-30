@@ -1178,17 +1178,21 @@ public sealed partial class OfdPackageWriter
     /// <c>Weight</c>/<c>Italic</c> are ignored by several OFD-H viewers, so also
     /// stroke the glyphs (faux bold) and shear the CTM (faux italic). Fresh native
     /// DOCX may explicitly request a bold text stroke for an embedded regular
-    /// face. Imported embedded text and invisible DualLayer text stay untouched.
+    /// face. Fresh missing-Noto text can retain name-only bold face selection.
+    /// Imported source paint/CTM and invisible DualLayer text stay untouched.
     /// </summary>
     private static void ApplyEmphasis(
         XElement textObject, OfdTextElement text, OfdFontResource? resource, int weight, bool italic, XNamespace ns)
     {
-        if (text.FillColor.Alpha == 0) return;
+        // Retained source paint and CTM are authoritative for every face,
+        // including name-only fonts. Do not inject compatibility paint on a
+        // read/write cycle or overwrite an arbitrary imported explicit stroke.
+        if (text.FillColor.Alpha == 0 || !string.IsNullOrWhiteSpace(text.SourceXml)) return;
         var embedded = resource is { Data.Length: > 0 };
-        if (embedded && (!text.EmitSyntheticBoldStroke || !string.IsNullOrWhiteSpace(text.SourceXml))) return;
+        if (embedded && !text.EmitSyntheticBoldStroke) return;
 
         var size = text.FontSizeMillimeters > 0 ? text.FontSizeMillimeters : 4d;
-        if (weight >= 600)
+        if (weight >= 600 && (embedded || !text.UseNameOnlyBoldSelection))
         {
             textObject.SetAttributeValue("Stroke", "true");
             textObject.SetAttributeValue("Fill", "true");

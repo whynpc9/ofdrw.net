@@ -77,6 +77,7 @@ internal static class OfdModelCloner
                     FontSizeMillimeters = text.FontSizeMillimeters, Transform = Matrix(text.Transform),
                     EmitSyntheticBoldStroke = text.EmitSyntheticBoldStroke,
                     SyntheticBoldStrokeWidthMillimeters = text.SyntheticBoldStrokeWidthMillimeters,
+                    UseNameOnlyBoldSelection = text.UseNameOnlyBoldSelection,
                     SourceInheritedTextCodeAxes = text.SourceInheritedTextCodeAxes,
                     Weight = text.Weight, Italic = text.Italic,
                     FillColor = text.FillColor, SourceXml = CloneXml(text.SourceXml, targetNamespace, material, cancellationToken)

@@ -138,3 +138,22 @@ Thin/hairline, different-color, partial-alpha, physical-bold and unknown name-on
 cases retain their existing paths. Plain SVG text and original font bytes remain;
 this does not establish native SVG selection or clipboard behavior. Actual
 embedded-font visual review needs a renderer that proves it used those bytes.
+
+
+Name-only missing-Noto titles previously received the same4.5%-em compatibility
+stroke as viewer-local fonts. With matching Noto700 available, actual source
+SVGs therefore combined a physical bold face and that compatibility outline;
+this is separate from embedded-regular quantity/red-text synthesis. Fresh Native
+DOCX now explicitly retains the name and requested Weight for face selection
+without injecting this extra stroke for missing Noto CJK. It does not infer a
+physical face from the name or promise identical host fallback. Fresh
+SimSun/SimHei and the general typed writer's existing compatibility remain.
+
+Imported SourceXml painting and CTM are authoritative for name-only as well as
+embedded fonts. Packaging no longer injects or overwrites compatibility paint
+on those envelopes, including omitted Stroke/Fill/LineWidth or an italic request
+without CTM. This intentionally corrects the former imported name-only behavior;
+it is not a heuristic that discards arbitrary explicit strokes. Tests cover
+missing-Noto native/default production, two reader/writer cycles, fresh legacy
+controls, clone-to-writer behavior, explicit color/alpha/outline/CTM paint and
+omitted defaults. Actual host and matching-Noto output review remain separate.

@@ -615,6 +615,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 FontName = declaredName, FontResourceId = resource.Id,
                 // Keep requested text style separate from the physical font face.
                 EmitSyntheticBoldStroke = format.Bold && resource.Data.Length > 0 && !resource.Bold,
+                UseNameOnlyBoldSelection = resource.Data.Length == 0 &&
+                    DocxFontCatalog.IsNotoCjkFamily(NormalizeFontFamily(format.FontFamily)),
                 Weight = format.Bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight,
                 Italic = format.Italic,
                 FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
