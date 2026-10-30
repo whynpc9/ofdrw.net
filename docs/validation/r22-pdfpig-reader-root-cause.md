@@ -60,10 +60,12 @@ right Unicode scalar, and PDFKit obtains the logical words from the same
 PDF. The two PdfPig APIs make different ordering decisions. This is evidence
 of a pinned extractor capability limit for per-character positioned RTL words
 and an API-specific oracle conflict, rather than proof that the product's
-semantic mapping is correct in every other PDF. The current acceptance gate
-still requires the exact PdfPig outputs; changing PdfPig versions, using a
-different extractor, normalizing/reversing returned text, or weakening its
-word rectangles would change the gate and needs an explicit scope decision.
+semantic mapping is correct in every other PDF. The 2026-10-30 explicit
+[reader-contract decision](r22-mixed-paragraph-validation.md#reader-contract-update-2026-10-30)
+supersedes the earlier use of PdfPig 0.1.15 default `GetWords()` and
+`Page.Text` as RTL logical-order pass gates. Their unmodified results remain
+versioned compatibility evidence; independent character mapping and geometry
+checks remain required. This does not alter any recorded diagnostic result.
 
 ## Different, falsifiable encoding hypothesis and result
 
@@ -124,8 +126,27 @@ character geometry and selection granularity are also lost. This result
 rejects this diagnostic encoding for the current contract and does not
 establish that every possible PDF encoding must fail.
 
-If no encoding passes the fixed APIs, the next scope decision is whether
-PdfPig 0.1.15 default `GetWords()` must remain a supported Hebrew word-search
-oracle, or whether a separately specified reader/geometry API defines that
-claim. That choice requires user direction backed by the failed matrices;
-the present evidence does not prove a compatible product encoding impossible.
+The user has made that scope decision: validate and freeze a replacement
+reader and independent character/word geometry method before judging a new
+product candidate. The bounded [candidate protocol](r22-reader-replacement-candidate.md)
+records the initial controls. Keep the writer fail-closed until the public API → OFD
+write/read → PDF path has new evidence, including native Preview raw clipboard
+and Find. The PDF→OFD converter still calls PdfPig's default `GetWords()` in
+its semantic text layer and text fallback; treat resulting RTL import behavior
+as a separate production defect, not as repaired by this export decision.
+The present evidence does not prove every possible PDF encoding impossible.
+
+## Separate PDF→OFD production defect and coverage boundary
+
+`PdfToOfdConverter.AddSemanticTextLayer` calls `pdfPage.GetWords()` and writes
+each returned token plus a space into an invisible OFD text element when a
+page is rasterized and the text layer is enabled. `PdfToOfdOptions` enables the
+invisible layer by default. The non-rasterized text fallback also joins
+`pdfPage.GetWords()` tokens. Thus both production paths inherit this pinned
+extractor's left-to-right position ordering for RTL words. The fixed shaped
+fpdf2 reference shows reversed Hebrew tokens from that API, but this record
+does not claim an end-to-end PDF→OFD import result for that reference or for
+arbitrary imported PDFs. A dedicated import regression must check the exact
+PDF hash, selected options, produced OFD text and geometry, and a positive LTR
+control before a repair is claimed. No import input class is newly admitted by
+the export reader-contract decision.

@@ -5,6 +5,24 @@ PR #71. It does not accept general bidi or expand the public input contract.
 The local layout baseline is `27abdf5779eb8768d3d6d96f9dac7c9e66bb5a79`;
 record the actual HEAD and dirty patch SHA-256 for every subsequent run.
 
+## Reader contract update (2026-10-30)
+
+R22 不再要求 PdfPig 0.1.15 默认 `GetWords()` 和 `Page.Text` 充当 RTL 逻辑阅读顺序的必过判据；保留其原始结果作为版本化兼容性记录，保留独立的字符映射及几何检查。
+
+双词输出仍须通过原文、字体、原 GID、实际位置、逻辑词搜索、独立几何验证以及真实 Preview 原始复制和 Find 门禁。替代读者及检查方式先验证、后冻结；在产品链路取得新证据之前，writer 不扩大支持范围。
+
+PDF→OFD 对默认词提取的生产依赖作为独立缺陷处理，不将导出契约调整解释为反向导入已获支持。旧包、参考文件和诊断文件的验收范围保持不变。
+
+The A–H, tag-tree, `TJ`, reference-generator, and Type 3 matrices below are
+immutable observations under their original criteria. Do not rescore them as
+passing output or relabel the `4d9f003a` final package manifest. A replacement
+reader and independent geometry method must first pass frozen positive and
+negative controls with raw results, exact versions/APIs, hashes and stop rules.
+This export decision does not change the PDF→OFD production use of PdfPig's
+default `GetWords()` in both the semantic text layer and text fallback. The
+[replacement candidate protocol](r22-reader-replacement-candidate.md) is not
+yet frozen or a product acceptance result.
+
 ## Separate contracts and evidence
 
 The query accepts 3–128 BMP characters, ASCII Latin words, Hebrew letters and
@@ -19,9 +37,10 @@ from repeating a GID inside one word. Query success is not output acceptance.
 | Layout | Logical source intervals survive; expected per-line visual run coordinates, shaped glyph order, trailing spaces and fit are correct. |
 | OFD | Readback retains the exact logical source, original GIDs and font association. |
 | PDF structure | Record content-order ToUnicode decoding, scoped ActualText bytes/nesting, and any tag structure. Do not call stream order the sole reading-order oracle. |
-| Fixed extractors | Save exact unmodified Unicode and versions; run PdfPig 0.1.15 with UseActualText false and true. Save word rectangles separately. |
+| Fixed extractors | Save exact unmodified Unicode and versions; run PdfPig 0.1.15 with UseActualText false and true as versioned compatibility observations. Save word rectangles separately. Do not score default RTL logical order as an output pass gate. |
 | PDFKit API | Save whole-selection text, normal/reversed word searches, counts, pages and every rectangle. |
 | Preview UI | On the exact candidate, inspect appearance, copy raw Unicode and check each Find result/highlight. API results and screenshots cannot replace clipboard codepoints. |
+| Character and geometry | Independently verify Unicode-to-CID/GID mapping, original font identity, source-cluster positions, character and word bounds; validate the replacement methods against positive and negative references before freezing them. |
 | Visuals | Compare each diagnostic with its own correctly laid-out product baseline; inspect PDF/SVG renders and font/GID evidence separately. |
 
 Only soft line breaks recorded by the producer may replace their original
@@ -286,8 +305,11 @@ not transfer to the new merged head.
 
 Each result is PASS, FAIL or BLOCKED with file hashes and tool versions. Current
 Preview copy/Find failures remain FAIL; a computer-use timeout is BLOCKED.
-Keep PR #71 draft until one product-generated candidate passes the required
-logical-text, word-position and Preview checks. Then regenerate full regression,
+Keep the writer's current admission rule until a replacement reader/geometry
+contract is validated and frozen, then one product-generated candidate passes
+the required logical-text, word-position and Preview checks. Preserve the raw
+PdfPig results as compatibility records and separately track the PDF→OFD
+default-word-extraction defect. Then regenerate full regression,
 isolated package, independent OFD-reader, font/GID and visual evidence from the
 same final commit; verify latest-main/PR48 ancestry, storage, CI and valid review
 findings before the existing push/merge gates. Diagnostic files do not satisfy
