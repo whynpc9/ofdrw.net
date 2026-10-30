@@ -717,8 +717,20 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     // Thicken its existing stroke while keeping the counters open.
                     var strokeWidth = MillimetersToPoints(paint!.LineWidthMillimeters) +
                         (simulateBold && !paint.Fill ? FontEmphasisMetrics.BoldStrokeWidth(font.Size, text) : 0);
-                    RenderOutline(XColor.FromArgb(paint!.StrokeColor.Alpha, paint.StrokeColor.Red,
-                        paint.StrokeColor.Green, paint.StrokeColor.Blue), strokeWidth, false);
+                    // A font fill plus a separately rasterized contour boundary
+                    // can leave light seams inside thin glyph strokes. Repaint
+                    // the original contour only when both paints are opaque and
+                    // identical; repeating that fill cannot change compositing.
+                    // Different colors, translucent paints and outline-only text
+                    // retain their independent boundary-stroke semantics.
+                    var opaqueSameColorFill = paint!.Fill && solid.Color.A == XColors.Black.A &&
+                        paint.FillColor.Alpha == 255 &&
+                        paint.StrokeColor.Alpha == 255 &&
+                        solid.Color.R == paint.StrokeColor.Red &&
+                        solid.Color.G == paint.StrokeColor.Green &&
+                        solid.Color.B == paint.StrokeColor.Blue;
+                    RenderOutline(XColor.FromArgb(paint.StrokeColor.Alpha, paint.StrokeColor.Red,
+                        paint.StrokeColor.Green, paint.StrokeColor.Blue), strokeWidth, opaqueSameColorFill);
                 }
             }
         }
