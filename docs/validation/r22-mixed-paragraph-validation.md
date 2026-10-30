@@ -1,5 +1,9 @@
 # R22 bounded mixed paragraph validation
 
+Current implementation progress: [bounded two-word export checkpoint](r22-two-word-export-validation.md).
+The sections below preserve their dated decision/diagnostic outcomes; the new
+candidate does not rewrite those failures or transfer their acceptance.
+
 This checkpoint covers the existing regular-font Latin/Hebrew LTR profile in
 PR #71. It does not accept general bidi or expand the public input contract.
 The local layout baseline is `27abdf5779eb8768d3d6d96f9dac7c9e66bb5a79`;

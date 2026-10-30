@@ -1,5 +1,9 @@
 # R22 mixed text: paragraph and PDF architecture decision
 
+Current implementation progress: [bounded two-word export checkpoint](../validation/r22-two-word-export-validation.md).
+The sections below preserve their dated decision/diagnostic outcomes; the new
+candidate does not rewrite those failures or transfer their acceptance.
+
 Status: **reference comparison complete; two-word product encoding unresolved**
 on `4d9f003a43d0bfc8a1be0ccce298b40080329d75` (2026-10-30).
 This record does not widen the accepted writer profile or select a replacement

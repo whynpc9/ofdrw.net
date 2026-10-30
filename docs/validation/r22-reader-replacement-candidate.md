@@ -1,5 +1,9 @@
 # R22 replacement reader and geometry candidate
 
+Current implementation progress: [bounded two-word export checkpoint](r22-two-word-export-validation.md).
+The sections below preserve their dated decision/diagnostic outcomes; the new
+candidate does not rewrite those failures or transfer their acceptance.
+
 Status: **candidate validation protocol, not a frozen acceptance contract**.
 The 2026-10-30 [reader decision](r22-mixed-paragraph-validation.md#reader-contract-update-2026-10-30)
 removes pinned PdfPig 0.1.15 default `Page.Text` and `GetWords()` as RTL

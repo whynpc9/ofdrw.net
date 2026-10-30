@@ -28,9 +28,9 @@ public static class TextMixedParagraphOfdWriter
                 "The mixed paragraph does not fit the regular horizontal page profile.");
         var request = result.Request;
         var face = request.Face;
-        // Reader copy/Find is currently verified only for one fixed-face,
-        // unwrapped Hebrew word between two Latin words. Refuse broader query
-        // results before creating any package elements or output stream.
+        // The bounded output profile keeps one or two adjacent unmarked Hebrew
+        // words between Latin words, with the exact verified face and size.
+        // Broader paragraph query results fail before creating any package.
         if (result.Lines.Count != 1)
             throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
                 "Mixed output with a line break has not passed the PDF reader profile.",
@@ -38,23 +38,23 @@ public static class TextMixedParagraphOfdWriter
                 sourceLength: result.Lines.Count > 1 ? result.Lines[1].SourceLength : request.Text.Length);
         var profileRuns = result.Lines[0].Runs;
         var hebrewRuns = profileRuns.Where(run => OfdPositionedGlyphProfile.IsHebrewWord(run.Text)).ToArray();
-        if (hebrewRuns.Length != 1)
+        if (hebrewRuns.Length is < 1 or > 2)
         {
-            var offending = hebrewRuns.Length > 1 ? hebrewRuns[1] : profileRuns.FirstOrDefault();
+            var offending = hebrewRuns.Length > 2 ? hebrewRuns[2] : profileRuns.FirstOrDefault();
             throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
-                "Mixed output requires one Hebrew word between two Latin words.",
+                "Mixed output requires one or two adjacent Hebrew words between Latin words.",
                 sourceStart: offending?.SourceStart ?? 0, sourceLength: offending?.Text.Length ?? request.Text.Length);
         }
         if (face.FaceSha256 != "d7441d42a24882db09640ea4bb768b17a106cdb31ee9749a52cb34a075b8fbcc" ||
-            request.FontSizeMillimeters != 4 || profileRuns.Count != 5 ||
-            !profileRuns[0].Text.All(value => value is >= 'A' and <= 'Z' or >= 'a' and <= 'z') ||
-            profileRuns[0].Text.Length == 0 || profileRuns[1].Text != " " ||
-            profileRuns[2] != hebrewRuns[0] || profileRuns[3].Text != " " ||
-            !profileRuns[4].Text.All(value => value is >= 'A' and <= 'Z' or >= 'a' and <= 'z') ||
-            profileRuns[4].Text.Length == 0)
+            request.FontSizeMillimeters != 4 || profileRuns.Count != 2 * hebrewRuns.Length + 3 ||
+            !Latin(profileRuns[0].Text) || !Latin(profileRuns[profileRuns.Count - 1].Text) ||
+            Enumerable.Range(1, profileRuns.Count - 2).Any(index => index % 2 == 1
+                ? profileRuns[index].Text != " "
+                : !OfdPositionedGlyphProfile.IsHebrewWord(profileRuns[index].Text)))
             throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
                 "The mixed output reader profile has not been verified for this word sequence or font.",
-                sourceStart: hebrewRuns[0].SourceStart, sourceLength: hebrewRuns[0].Text.Length);
+                sourceStart: hebrewRuns[hebrewRuns.Length - 1].SourceStart,
+                sourceLength: hebrewRuns[hebrewRuns.Length - 1].Text.Length);
         try { XmlConvert.VerifyXmlChars(face.Name); }
         catch (XmlException error)
         {
@@ -228,6 +228,9 @@ public static class TextMixedParagraphOfdWriter
         package.Pages.Add(page);
         return package;
     }
+
+    private static bool Latin(string text) => text.Length > 0 &&
+        text.All(value => value is >= 'A' and <= 'Z' or >= 'a' and <= 'z');
 
     private static bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
     private static string Invariant(double value) => value.ToString("0.###############", CultureInfo.InvariantCulture);
