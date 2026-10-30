@@ -1423,6 +1423,25 @@ public sealed partial class ExplicitGlyphTransformTests
     }
 
     [Theory]
+    [InlineData(OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData(OfdGlyphMappingStrategy.GroupedLocal)]
+    public void HebrewSourceAliasesCannotUseOneOriginalGidForDifferentLetters(OfdGlyphMappingStrategy strategy)
+    {
+        var face = new OpenTypeFace(Font("DejaVuSans-R22.ttf"));
+        var shared = new OpenTypeCmap(face).Glyph('א');
+        face.Tables["cmap"] = Format4OnlyCmap(new System.Collections.Generic.Dictionary<int, int>
+        {
+            ['א'] = shared, ['ב'] = shared
+        });
+        var text = Text(shared, shared, "5", "אב");
+        text.SourceXml = "<TextObject ID='2' Boundary='10 10 50 12' Font='10' Size='6'>" +
+            $"<CGTransform CodePosition='0' CodeCount='2' GlyphCount='2'><Glyphs>{shared} {shared}</Glyphs></CGTransform>" +
+            "<TextCode X='0' Y='6' DeltaX='5'>אב</TextCode></TextObject>";
+        var resource = new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = face.Build() };
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(text, resource, strategy: strategy));
+    }
+
+    [Theory]
     [InlineData(3, OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
     [InlineData(5, OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
     [InlineData(3, OfdGlyphMappingStrategy.GroupedLocal)]

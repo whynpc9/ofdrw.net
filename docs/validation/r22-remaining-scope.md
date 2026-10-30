@@ -57,3 +57,10 @@ scalar/GID/baseline/visible-path checks. Missing, duplicate and changed-outline
 occurrence controls reject. The changed query probe separately preserves all
 twelve frozen baseline selections and Find expectations. These are preliminary
 functional/API results, not exact-package, GUI or final-main acceptance.
+
+A later pre-merge negative control found that a font cmap alias could map two
+different Hebrew scalars to the same GID and pass the low-level projection.
+The repair keeps a per-span GID-to-source-scalar map in both Legacy and
+GroupedLocal projection, rejecting that conflict while admitting repeated
+occurrences of the same scalar. The initial candidate results remain historical;
+the repaired head needs its own regression, package and visual acceptance.
