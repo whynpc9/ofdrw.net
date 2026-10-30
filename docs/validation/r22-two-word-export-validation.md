@@ -63,6 +63,19 @@ The initial geometry tolerances were fixed before inspecting product PDFs:
 center, 95%/60% word overlap. Shifted, missing and duplicated visible-glyph
 controls were rejected. No product outline is proved by a hidden carrier.
 
+At source `6ac2cb74a78a79313a6c7d5f0434016ecac93b13`, the full local
+macOS Release suite passed 4,424 tests with zero failures/skips; the separate
+mandatory trusted-font gate passed 74/74. The API documentation rebuild passed.
+One twelve-package candidate, version `0.1.0-r22twoword.1`, was built once and
+consumed through fresh package caches. Its immutable package-manifest SHA-256
+is `069c0d6a511a7053c882e2c4f8370ea5e232b158f6712058ad5ade739f9ffb30`.
+The selected eight runtime DLLs were checked against their nupkg payloads and
+isolated cache, including `lib/netstandard2.1` and the actual HarfBuzz load.
+The exact package outputs separately passed all twelve PDFKit logical-reader
+and physical-word tests and all 77 scalar/GID/baseline/visible-contour checks.
+Those are local functional and headless results, not final package Preview
+acceptance or the later final-main cross-platform matrix.
+
 PDF→OFD still depends on PdfPig default word extraction in its semantic-layer
 and text-fallback paths. The export reader decision does not fix or accept RTL
 reverse import. Unknown imported mappings/R02, R20, general bidi and other

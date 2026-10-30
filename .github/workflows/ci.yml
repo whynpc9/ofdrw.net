@@ -310,6 +310,9 @@ jobs:
 
       - name: Consume the exact candidate packages on Linux
         run: ./scripts/run-converter-package-e2e.sh 0.1.0-preview.8 --consume-only --packages-dir artifacts/candidate-packages
+      - uses: ./.github/actions/r22-readers
+      - name: Verify R22 original glyphs and independent physical word bounds on Linux
+        run: '"$OFDRW_R22_PYTHON" scripts/validation/r22-mixed/check-export-batch.py artifacts/package-e2e/0.1.0-preview.8/output/text-prelayout --output artifacts/package-e2e/0.1.0-preview.8/output/r22-independent'
 
       - name: Run document tool API and CLI matrix
         run: |
@@ -418,6 +421,9 @@ jobs:
           path: artifacts/linux-package-candidate
       - name: Consume the exact Linux candidate packages on native Windows
         run: python scripts/run-converter-package-e2e.py 0.1.0-preview.8 --consume-only --packages-dir artifacts/linux-package-candidate --output-dir artifacts/windows-package-e2e
+      - uses: ./.github/actions/r22-readers
+      - name: Verify original R22 glyphs and independent physical word bounds on Windows
+        run: '& $env:OFDRW_R22_PYTHON scripts/validation/r22-mixed/check-export-batch.py artifacts/windows-package-e2e/text-prelayout --output artifacts/windows-package-e2e/r22-independent'
       - name: Upload package identity, logs and page comparisons
         if: always()
         uses: actions/upload-artifact@v4
@@ -464,6 +470,9 @@ jobs:
           path: artifacts/linux-package-candidate
       - name: Consume the exact Linux candidate packages on native macOS
         run: python scripts/run-converter-package-e2e.py 0.1.0-preview.8 --consume-only --packages-dir artifacts/linux-package-candidate --output-dir artifacts/macos-package-e2e
+      - uses: ./.github/actions/r22-readers
+      - name: Verify R22 original glyphs and native PDFKit logical reading on macOS
+        run: '"$OFDRW_R22_PYTHON" scripts/validation/r22-mixed/check-export-batch.py artifacts/macos-package-e2e/text-prelayout --output artifacts/macos-package-e2e/r22-independent --pdfkit'
       - name: Upload package identity, logs and page comparisons
         if: always()
         uses: actions/upload-artifact@v4

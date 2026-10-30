@@ -131,6 +131,16 @@ def inspect(item, pig):
                         and outline(tt, name) == outline(original, nominal),
                         "advanceEqual": bool(nominal)
                         and tt["hmtx"][name][0] == original["hmtx"][nominal][0],
+                        "pdfWidth": width(f, cid),
+                        "nominalPdfWidth": 1000
+                        * tt["hmtx"][name][0]
+                        / tt["head"].unitsPerEm,
+                        # PDF integer widths may round or truncate 1000-em metrics.
+                        "pdfWidthNominal": abs(
+                            width(f, cid)
+                            - 1000 * tt["hmtx"][name][0] / tt["head"].unitsPerEm
+                        )
+                        < 1,
                         "pdfpigMatchCount": len(same),
                         "embeddedFontSha256": fontsha,
                     }
@@ -177,7 +187,10 @@ def inspect(item, pig):
         "expectedCount": expected,
         "pass": len(draws) == expected
         and all(
-            x["outlineEqual"] and x["advanceEqual"] and x["pdfpigMatchCount"] == 1
+            x["outlineEqual"]
+            and x["advanceEqual"]
+            and x["pdfWidthNominal"]
+            and x["pdfpigMatchCount"] == 1
             for x in draws
         ),
         "draws": draws,
