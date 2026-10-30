@@ -18,14 +18,8 @@ public sealed class FilledStrokeCoverageTests
     [InlineData(700)]
     public async Task OpaqueSameColorStrokeCoversTheOriginalCjkFilledContour(int weight)
     {
-        // Reuse the pinned shared fixture; do not depend on installed OS fonts.
-        using var archive = ZipFile.OpenRead(Path.Combine(AppContext.BaseDirectory, "fonts", "trusted-fonts.zip"));
-        using var entry = archive.GetEntry("fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf")!.Open();
-        using var bytes = new MemoryStream();
-        await entry.CopyToAsync(bytes);
         const string value = "文档转换视觉回归样例";
-        var font = TrueTypeSubset.Create(new OpenTypeFace(bytes.ToArray()), value.Select(c => (int)c),
-            CancellationToken.None, 1_000_000, out _, out _);
+        var font = await CjkFont(value);
         const double size = 6.35, width = 0.0635;
         var actual = new OfdDocumentPackage();
         actual.Fonts.Add(new OfdFontResource { Id = "10", FontName = "pinned CJK", Data = font });
@@ -102,6 +96,66 @@ public sealed class FilledStrokeCoverageTests
             await File.WriteAllBytesAsync(Path.Combine(artifacts, "cjk-filled-stroke-reference.pdf"), expectedPdf);
         }
         Assert.True(missing == 0, $"{missing} opaque original-contour pixels became light gaps.");
+    }
+
+    [Fact]
+    public async Task DenseCjkCountersRemainReadableInTheDefaultPublicImageExport()
+    {
+        const string value = "数量";
+        const double size = 3.704, x = 79.117, y = 71.091, advance = 3.704167;
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "pinned CJK", Data = await CjkFont(value) });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 210, HeightMillimeters = 297,
+            Elements = { new OfdTextElement
+            {
+                Text = value, FontName = "pinned CJK", FontResourceId = "10", FontSizeMillimeters = size,
+                Weight = 700, XMillimeters = x, YMillimeters = y, WidthMillimeters = 7.408, HeightMillimeters = 4.815,
+                SourceXml = "<TextObject xmlns='http://www.ofdspec.org' Boundary='79.117 71.091 7.408 4.815' " +
+                    "Font='10' Size='3.704' Weight='700' Stroke='true' Fill='true' LineWidth='0.037'>" +
+                    "<StrokeColor Value='0 0 0'/><TextCode X='0' Y='3.704' DeltaX='3.704167'>数量</TextCode></TextObject>"
+            } } });
+        using var ofd = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, ofd);
+        ofd.Position = 0;
+        using var png = new MemoryStream();
+        await new OfdToImageConverter().ConvertAsync(ofd, png);
+        using var image = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(png.ToArray());
+        const double ppm = 144d / 25.4;
+        var left = (int)Math.Ceiling((x + advance + size * .300) * ppm);
+        var right = (int)Math.Floor((x + advance + size * .700) * ppm);
+        double BrightestCounterRow(double bottom, double top)
+        {
+            var first = (int)Math.Floor((y + size - size * top / 1000) * ppm);
+            var last = (int)Math.Ceiling((y + size - size * bottom / 1000) * ppm);
+            var brightest = 0d;
+            for (var row = first; row < last; row++)
+            {
+                var total = 0d;
+                for (var column = left; column <= right; column++) total += image[column, row].R;
+                brightest = Math.Max(brightest, total / (right - left + 1));
+            }
+            return brightest;
+        }
+        // Independent original-fixture geometry: the two upper apertures in 量
+        // span x=250..747, y=610..665 and709..763 at1000 UPM. Require a visibly
+        // light row across their interior, not merely a mathematically open path.
+        var lowerCounter = BrightestCounterRow(610, 665);
+        var upperCounter = BrightestCounterRow(709, 763);
+        var inkRows = new[] { 780d, 790d, 800d }.Select(designY =>
+            (int)Math.Round((y + size - size * designY / 1000) * ppm)).Distinct();
+        Assert.True(inkRows.Any(row => Enumerable.Range(left, right - left + 1).Count(column => image[column, row].R < 150) >= 4),
+            "The original upper bar must still paint; blank output cannot satisfy counter clearance.");
+        if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+        {
+            Directory.CreateDirectory(artifacts);
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, "dense-cjk-default-image.png"), png.ToArray());
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, "dense-cjk-default-image.ofd"), ofd.ToArray());
+        }
+        Assert.True(lowerCounter > 100 && upperCounter > 100,
+            $"Dense CJK apertures became dark at default144 DPI: lower={lowerCounter:F1}, upper={upperCounter:F1}.");
+        using var semantic = UglyToad.PdfPig.PdfDocument.Open(await Export(package));
+        Assert.Equal(value, semantic.GetPage(1).Text);
+        Assert.Equal(2, semantic.GetPage(1).Letters.Count);
     }
 
     [Theory]
@@ -182,6 +236,16 @@ public sealed class FilledStrokeCoverageTests
         entry.Delete();
         using var output = archive.CreateEntry(name).Open();
         document.Save(output);
+    }
+
+    private static async Task<byte[]> CjkFont(string value)
+    {
+        using var archive = ZipFile.OpenRead(Path.Combine(AppContext.BaseDirectory, "fonts", "trusted-fonts.zip"));
+        using var entry = archive.GetEntry("fonts/Ofdrw-CI-NotoSansCJKsc-Regular.ttf")!.Open();
+        using var bytes = new MemoryStream();
+        await entry.CopyToAsync(bytes);
+        return TrueTypeSubset.Create(new OpenTypeFace(bytes.ToArray()), value.Select(c => (int)c),
+            CancellationToken.None, 1_000_000, out _, out _);
     }
 
     private static async Task<byte[]> Export(OfdDocumentPackage package, Action<ZipArchive>? change = null)
