@@ -599,6 +599,18 @@ static async Task ValidateDocxSampleAsync(string samplePath, string outputDir)
         var images = Directory.EnumerateFiles(outputDir, Path.GetFileNameWithoutExtension(path) + "-*.png").OrderBy(value => value, StringComparer.Ordinal).ToArray();
         if (images.Length != 2) throw new InvalidOperationException($"Expected two freshly rendered native pages: {path}");
         foreach (var image in images) await AssertImageHasContentAsync(image);
+        // Keep the public default-resolution renderer in the actual package
+        // consumer evidence as well as the independent PDF rasterization.
+        // Prefix names so the existing two-page Poppler glob stays unambiguous.
+        for (var pageIndex = 0; pageIndex < images.Length; pageIndex++)
+        {
+            var publicImage = Path.Combine(outputDir,
+                $"public-image-{Path.GetFileNameWithoutExtension(path)}-{pageIndex + 1}.png");
+            await using (var imageInput = File.OpenRead(path))
+            await using (var imageOutput = File.Create(publicImage))
+                await new OfdToImageConverter().ConvertAsync(imageInput, imageOutput, pageIndex);
+            await AssertImageHasContentAsync(publicImage);
+        }
         if (path != nativeOfdPath)
         {
             var expectedImages = Directory.EnumerateFiles(outputDir, "generated-docx-native-*.png").OrderBy(value => value, StringComparer.Ordinal).ToArray();
