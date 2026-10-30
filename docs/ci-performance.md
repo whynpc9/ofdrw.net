@@ -40,3 +40,14 @@ tar -xf evidence.tar
 The inventory lists relative paths, byte counts and SHA-256 for the original files. It also records original and archived byte counts for comparisons. The archive root is the original evidence directory name. Package candidates are uploaded separately for native Windows consumption, so consumers need not download Linux page evidence.
 
 Tests that depend on restored NuGet metadata must run after solution restore, as in CI. Local conversion validation must still follow the repository's PNG and macOS Preview requirements; archive integrity alone is not visual acceptance.
+
+The mixed-text consumer now keeps twelve bounded one-line samples. After
+package consumption, Linux/Windows/macOS independently decode scalar-to-CID/GID
+mappings and original outlines, compare every visible PDF contour to the actual
+OFD positions, and associate independently parsed physical word boxes. Native
+macOS also checks PDFKit whole selection and logical/reversed Find. These
+headless checks do not replace final Preview inspection/copy/Find. Reader
+Python dependencies use a separate pinned virtual environment, leaving the CI
+font generator's pinned fontTools version and byte checks unchanged. Each
+platform uploads its raw compatibility strings, tool/reader identities,
+geometry receipt and input hashes alongside the existing package evidence.

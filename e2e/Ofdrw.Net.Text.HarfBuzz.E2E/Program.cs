@@ -402,10 +402,16 @@ using (var rejectedOutput = new MemoryStream())
 }
 var mixedOutputs = new List<string>();
 var mixedCases = new List<(string Name, TextMixedParagraphResult Result)>
-    { ("wide", mixedWide) };
+    { ("wide", mixedWide), ("two-word", twoWordMixed) };
 TextMixedParagraphResult Admitted(string source, double width) =>
     mixedEngine.Layout(new TextMixedParagraphRequest(source, dejavu, 4, width));
 mixedCases.Add(("short-words", Admitted("a אב b", 50)));
+mixedCases.Add(("repeated-word", Admitted("abc שלום שלום def", 50)));
+mixedCases.Add(("two-word-short", Admitted("W אב גדה iii", 50)));
+mixedCases.Add(("two-word-swapped", Admitted("ab מקום שלום XYZ", 50)));
+mixedCases.Add(("two-word-long", Admitted("ABCDEFGH אבגדהוזח טיכלמנסע XYZABCDE", 100)));
+mixedCases.Add(("two-word-exact-fit", Admitted(twoWordMixedSource,
+    twoWordMixed.Lines.Single().VisibleWidthMillimeters)));
 mixedCases.Add(("long-upper", Admitted("ABCDEFGH אבגדהוזח XYZABCDE", 100)));
 mixedCases.Add(("unequal-latin", Admitted("ab שלום XYZ", 50)));
 mixedCases.Add(("upper-leading", Admitted("ABC אב def", 50)));
@@ -422,8 +428,10 @@ catch (TextLayoutException error) when (error.Error == TextLayoutError.Unsupport
     error.SourceStart == 4 && error.SourceLength == 4) { }
 var rejectedMixedCases = new List<(string Name, TextMixedParagraphResult Result, int SourceStart)>
     { ("wrapped", mixedWrapped, mixedWrapped.Lines[1].SourceStart),
-      ("two-word", twoWordMixed, 9) };
-rejectedMixedCases.AddRange(mixedBoundaryCases.Select(item =>
+      ("three-word", Admitted("abc שלום מקום אב def", 80), 14) };
+rejectedMixedCases.AddRange(mixedBoundaryCases
+    .Where(item => item.Name is not ("repeated-word" or "two-word-exact-fit"))
+    .Select(item =>
     (item.Name, item.Result, item.Name switch
     {
         "repeated-word" => 9,

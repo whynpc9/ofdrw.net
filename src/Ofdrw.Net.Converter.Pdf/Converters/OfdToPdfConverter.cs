@@ -162,8 +162,6 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         }
         if (selectedVerifiedFaces.Count == 0)
         {
-            if (explicitUnicodeBindings.Any(binding => binding.WidthByGlyph.Count > 0))
-                throw new InvalidDataException("Hebrew PDF source-span width has no selected embedded font.");
             document.Save(pdfOutput, false);
         }
         else
@@ -172,8 +170,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             // each selected FontFile2 contains its complete composite closure.
             using var staged = new MemoryStream();
             document.Save(staged, false);
-            var repaired = PdfBoundFontRestorer.Restore(staged.ToArray(), selectedVerifiedFaces,
-                explicitUnicodeBindings.Select(binding => (binding.Identity, binding.WidthByGlyph)));
+            var repaired = PdfBoundFontRestorer.Restore(staged.ToArray(), selectedVerifiedFaces);
             await pdfOutput.WriteAsync(repaired, 0, repaired.Length, cancellationToken).ConfigureAwait(false);
         }
         await pdfOutput.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -409,6 +406,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             var outlineFonts = fonts.OutlineFonts;
             var elements = OfdCompositeProjection.Expand(EnumerateRenderableElements(page, annotationMaterial, cancellationToken), annotationMaterial, cancellationToken);
             OfdRenderPreflight.Validate(elements);
+            elements = PdfRtlPaintOrder.Arrange(elements, fonts, cancellationToken);
             foreach (var element in elements)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -778,6 +776,22 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     DrawPathGlyphOutlines(graphics, text, plannedRun, fontResource, factor, paint,
                         cancellationToken, groupedFont?.Slice(explicitRun!.Groups![runIndex].GlyphOffset,
                             plannedRun.GlyphIds.Count));
+                    if (plannedRun.VisualHebrewSourceSpan is not null)
+                    {
+                        // Keep character semantics at each independently verified original-GID
+                        // origin. A whole-word CID cannot expose per-character geometry.
+                        var origins = plannedRun.PathGlyphOrigins(cancellationToken);
+                        for (var index = 0; index < origins.Count; index++)
+                        {
+                            var point = OfdTextEmphasis.Anchor(origins[index].X, origins[index].Y, factor);
+                            DrawStyledString(graphics, sourceSpan[sourceSpan.Length - 1 - index].ToString(), font,
+                                new XSolidBrush(XColor.FromArgb(0, 0, 0, 0)),
+                                new XPoint(MillimetersToPoints(point.X / paint.HScale), MillimetersToPoints(point.Y)),
+                                null, false, false, coverage: coverage, mapPdfText: mapPdfText,
+                                fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily);
+                        }
+                        continue;
+                    }
                     DrawStyledString(graphics, sourceSpan, font,
                         new XSolidBrush(XColor.FromArgb(0, 0, 0, 0)),
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),

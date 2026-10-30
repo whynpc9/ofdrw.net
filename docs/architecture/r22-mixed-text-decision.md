@@ -1,9 +1,29 @@
 # R22 mixed text: paragraph and PDF architecture decision
 
+Current implementation progress: [bounded two-word export checkpoint](../validation/r22-two-word-export-validation.md).
+The sections below preserve their dated decision/diagnostic outcomes; the new
+candidate does not rewrite those failures or transfer their acceptance.
+
 Status: **reference comparison complete; two-word product encoding unresolved**
 on `4d9f003a43d0bfc8a1be0ccce298b40080329d75` (2026-10-30).
 This record does not widen the accepted writer profile or select a replacement
 PDF backend.
+
+## 2026-10-30 reader acceptance decision
+
+R22 不再要求 PdfPig 0.1.15 默认 `GetWords()` 和 `Page.Text` 充当 RTL 逻辑阅读顺序的必过判据；保留其原始结果作为版本化兼容性记录，保留独立的字符映射及几何检查。
+
+双词输出仍须通过原文、字体、原 GID、实际位置、逻辑词搜索、独立几何验证以及真实 Preview 原始复制和 Find 门禁。替代读者及检查方式先验证、后冻结；在产品链路取得新证据之前，writer 不扩大支持范围。
+
+PDF→OFD 对默认词提取的生产依赖作为独立缺陷处理，不将导出契约调整解释为反向导入已获支持。旧包、参考文件和诊断文件的验收范围保持不变。
+
+This decision separates output correctness, versioned reader compatibility,
+and the reverse-import defect. It changes no historical matrix result and does
+not make the fpdf2 reference a product candidate. The proposed replacement
+checks must be validated on the frozen positive and negative reference files
+before their exact versions, APIs, inputs, and failure rules are frozen. The
+[candidate validation protocol](../validation/r22-reader-replacement-candidate.md)
+specifies the first bounded controls; it is not yet an accepted reader contract.
 
 ## Problem and fixed evidence
 
@@ -166,12 +186,15 @@ nor demonstrate full R22 visual acceptance.
    with two independently checked representations. Compare cluster-aware text
    operators, ToUnicode, word-scoped ActualText and structured reading order
    through normal production encoding paths. The existing A–D, E–H, tags and
-   single-`TJ` failures remain negative controls. A product PDF must satisfy
-   the declared logical text, independent word search and distinct positioned
-   rectangles in PdfPig, PDFKit and Preview, alongside appearance. The present
-   reference comparison does not identify such an encoding. Do not admit a
-   two-word writer output or select Pango/Cairo/fpdf2 as the product backend
-   from this evidence.
+   single-`TJ` failures remain negative controls. The replacement reader and
+   independent character/word geometry checks must be demonstrated and frozen
+   before they can judge a product PDF. Preserve raw PdfPig 0.1.15 `Page.Text`
+   and default `GetWords()` as compatibility observations, not RTL logical-order
+   acceptance gates. A product PDF still needs exact source text, logical word
+   search, distinct positioned rectangles, original font/GID and visual proof,
+   including raw Preview clipboard and Find. Do not admit a two-word writer
+   output or select Pango/Cairo/fpdf2 as the product backend from reference
+   evidence alone.
 5. Keep font subsetting as a separate bounded decision. A PDF encoding
    prototype may use the complete fixture font for diagnosis, but production
    OFD/package acceptance still requires original-GID preservation, embedded
@@ -188,10 +211,12 @@ nor demonstrate full R22 visual acceptance.
    reference comparisons under the exclusive generator/build grant. Preserve
    failures, versions and hashes. The operator-order diagnostic remains
    diagnostic-only and supplies no passing product hypothesis.
-2. Find a PDF encoding that passes the fixed two-word source, both logical
-   word Finds, distinct word rectangles and unchanged visual page in the
-   pinned readers. Then implement one generalizable two-word path from public
-   API through OFD write/read to PDF. Reject other unverified structures before writing.
+2. Validate and freeze replacement reader and independent character/word
+   geometry checks against the frozen positive and negative reference files.
+   Then find a PDF encoding that passes the fixed two-word source, both logical
+   word Finds, distinct word rectangles and unchanged visual page under that
+   contract. Implement one generalizable two-word path from public API through
+   OFD write/read to PDF. Reject other unverified structures before writing.
    Measure source continuity, GID/cluster identity, OFD readback, PDF
    structure, exact unmodified text, word rectangles and visual pages.
 3. Run focused tests, then shared full regression and exact isolated package
