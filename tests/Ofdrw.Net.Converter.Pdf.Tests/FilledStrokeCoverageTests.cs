@@ -14,13 +14,17 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 public sealed class FilledStrokeCoverageTests
 {
     [Theory]
-    [InlineData(400)]
-    [InlineData(700)]
-    public async Task OpaqueSameColorStrokeCoversTheOriginalCjkFilledContour(int weight)
+    [InlineData(400, false)]
+    [InlineData(700, false)]
+    [InlineData(700, true)]
+    public async Task OpaqueSameColorStrokeCoversTheOriginalCjkFilledContour(int weight, bool transformed)
     {
         const string value = "文档转换视觉回归样例";
         var font = await CjkFont(value);
         const double size = 6.35, width = 0.0635;
+        var transform = transformed ? new[] { 1.15, .2, .15, .9, 1d, 0d } : null;
+        var clip = transformed ? "<Clips xmlns='http://www.ofdspec.org'><Clip><Area><Path><AbbreviatedData>" +
+            "M 0 0 L 45 0 L 45 20 L 0 20 C</AbbreviatedData></Path></Area></Clip></Clips>" : null;
         var actual = new OfdDocumentPackage();
         actual.Fonts.Add(new OfdFontResource { Id = "10", FontName = "pinned CJK", Data = font });
         var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 50 };
@@ -28,7 +32,9 @@ public sealed class FilledStrokeCoverageTests
         {
             Text = value, FontName = "pinned CJK", FontResourceId = "10", FontSizeMillimeters = size,
             Weight = weight, XMillimeters = 10, YMillimeters = 10, WidthMillimeters = 80, HeightMillimeters = 20,
+            Transform = transform, ClippingXml = clip,
             SourceXml = $"<TextObject xmlns='http://www.ofdspec.org' Boundary='10 10 80 20' Font='10' Size='6.35' " +
+                (transformed ? "CTM='1.15 0.2 0.15 0.9 1 0' " : "") +
                 $"Weight='{weight}' Stroke='true' Fill='true' LineWidth='0.0635'>" +
                 "<FillColor Value='31 78 120'/><StrokeColor Value='31 78 120'/>" +
                 "<TextCode X='0' Y='10' DeltaX='6.35 6.35 6.35 6.35 6.35 6.35 6.35 6.35 6.35'>" + value + "</TextCode></TextObject>"
@@ -63,17 +69,19 @@ public sealed class FilledStrokeCoverageTests
                 XMillimeters = 10, YMillimeters = 10, WidthMillimeters = 80, HeightMillimeters = 20,
                 AbbreviatedData = data.ToString(), Fill = true, Stroke = true,
                 FillColor = new OfdColor(31, 78, 120), StrokeColor = new OfdColor(31, 78, 120),
-                LineWidthMillimeters = width
+                LineWidthMillimeters = width, Transform = transform, ClippingXml = clip
             });
         }
         reference.Pages.Add(referencePage);
         var actualPdf = await Export(actual);
         var expectedPdf = await Export(reference);
+        foreach (var element in referencePage.Elements.OfType<OfdPathElement>()) element.Stroke = false;
+        var fillOnlyPdf = await Export(reference);
         using var semantic = UglyToad.PdfPig.PdfDocument.Open(actualPdf);
         Assert.Equal(value, semantic.GetPage(1).Text);
         Assert.Equal(value.Length, semantic.GetPage(1).Letters.Count);
         using var actualReader = DocLib.Instance.GetDocReader(actualPdf, new PageDimensions(2d));
-        using var expectedReader = DocLib.Instance.GetDocReader(expectedPdf, new PageDimensions(2d));
+        using var expectedReader = DocLib.Instance.GetDocReader(fillOnlyPdf, new PageDimensions(2d));
         using var actualPage = actualReader.GetPageReader(0);
         using var expectedPage = expectedReader.GetPageReader(0);
         var actualPixels = actualPage.GetImage();
@@ -82,8 +90,10 @@ public sealed class FilledStrokeCoverageTests
         var missing = 0;
         for (var offset = 0; offset < expectedPixels.Length; offset += 4)
         {
-            // Interior reference pixels must not turn into light seams. Ignore
-            // anti-aliased boundary pixels and any extra hinted text coverage.
+            // Use the original fill for the interior mask: a low-resolution
+            // native reference stroke can expand to a pixel and mark exterior
+            // boundary pixels as opaque interior. Check the stroke separately
+            // at a resolution where its true width exceeds one pixel.
             if (expectedPixels[offset + 3] >= 250 && expectedPixels[offset] <= 125 &&
                 expectedPixels[offset + 1] <= 85 && expectedPixels[offset + 2] <= 38 &&
                 (actualPixels[offset + 3] < 230 || actualPixels[offset] > 160 ||
@@ -92,10 +102,61 @@ public sealed class FilledStrokeCoverageTests
         if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
         {
             Directory.CreateDirectory(artifacts);
-            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-filled-stroke-{weight}.pdf"), actualPdf);
-            await File.WriteAllBytesAsync(Path.Combine(artifacts, "cjk-filled-stroke-reference.pdf"), expectedPdf);
+            var suffix = weight.ToString(CultureInfo.InvariantCulture) + (transformed ? "-affine-clip" : "");
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-filled-stroke-{suffix}.pdf"), actualPdf);
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-stroke-reference-{suffix}.pdf"), expectedPdf);
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-fill-reference-{suffix}.pdf"), fillOnlyPdf);
         }
         Assert.True(missing == 0, $"{missing} opaque original-contour pixels became light gaps.");
+        using var actualDetailReader = DocLib.Instance.GetDocReader(actualPdf, new PageDimensions(8d));
+        using var expectedDetailReader = DocLib.Instance.GetDocReader(expectedPdf, new PageDimensions(8d));
+        using var actualDetail = actualDetailReader.GetPageReader(0);
+        using var expectedDetail = expectedDetailReader.GetPageReader(0);
+        var expectedInk = AssertStrokeCoverageWithinOnePixel(expectedDetail.GetImage(), actualDetail.GetImage(),
+            expectedDetail.GetPageWidth());
+        var actualInk = 0d;
+        for (var offset = 3; offset < actualPixels.Length; offset += 4) actualInk += actualPixels[offset];
+        actualInk /= actualPixels.Length / 4;
+        // A renderer can turn a subpixel outline into a full dark pixel. The
+        // integrated area must still agree with the independently rendered true
+        // stroke above; this rejects the old light-track/double-boundary output.
+        Assert.InRange(actualInk / expectedInk, .98, 1.02);
+    }
+
+    private static double AssertStrokeCoverageWithinOnePixel(byte[] expected, byte[] actual, int width)
+    {
+        Assert.Equal(expected.Length, actual.Length);
+        var height = expected.Length / 4 / width;
+        bool Neighbor(byte[] pixels, int x, int y)
+        {
+            for (var dy = -1; dy <= 1; dy++)
+                for (var dx = -1; dx <= 1; dx++)
+                {
+                    var column = x + dx; var row = y + dy;
+                    if (column >= 0 && column < width && row >= 0 && row < height &&
+                        pixels[(row * width + column) * 4 + 3] >= 230) return true;
+                }
+            return false;
+        }
+        var missing = 0; var extra = 0; var expectedForeground = 0; var actualForeground = 0;
+        var expectedInk = 0d;
+        for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++)
+            {
+                var offset = (y * width + x) * 4;
+                var before = expected[offset + 3] >= 230;
+                var after = actual[offset + 3] >= 230;
+                expectedInk += expected[offset + 3];
+                if (before) expectedForeground++;
+                if (after) actualForeground++;
+                if (before && !after && !Neighbor(actual, x, y)) missing++;
+                if (after && !before && !Neighbor(expected, x, y)) extra++;
+            }
+        Assert.True(missing == 0 && extra == 0,
+            $"Original stroke coverage differs beyond one raster boundary pixel: missing={missing}, extra={extra}.");
+        Assert.True(expectedForeground > 1000 && actualForeground > 1000,
+            $"Expected a nonempty glyph foreground: reference={expectedForeground}, actual={actualForeground}.");
+        return expectedInk / (width * height);
     }
 
     [Fact]

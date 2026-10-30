@@ -630,6 +630,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         else text = PdfTextControlPolicy.VisibleText(text, coverage);
         if (text.Length == 0) return;
         var pdfText = mapPdfText is null ? text : mapPdfText(text);
+        var explicitStroke = paint?.Stroke == true && paint.StrokeColor.Alpha > 0;
+        var strokeWidthPoints = explicitStroke ? MillimetersToPoints(paint!.LineWidthMillimeters) : 0;
+        var opaqueSameColorFill = paint is { Stroke: true, Fill: true } &&
+            paint.FillColor.Alpha == 255 && paint.StrokeColor.Alpha == 255 &&
+            brush is XSolidBrush opaque && opaque.Color.A == XColors.Black.A &&
+            opaque.Color.R == paint.StrokeColor.Red && opaque.Color.G == paint.StrokeColor.Green &&
+            opaque.Color.B == paint.StrokeColor.Blue;
+        var geometricStroke = opaqueSameColorFill && strokeWidthPoints > 0 && outlineFont is not null;
         // PDFsharp Core 1.3.67 drops resolver style simulations when creating
         // XGlyphTypeface. Apply the missing fallback appearance at draw time.
         var state = graphics.Save();
@@ -647,8 +655,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             {
                 graphics.MultiplyTransform(new XMatrix(1, 0, -0.21256, 1, 0, 0));
             }
-            if (invisibleFill)
+            if (invisibleFill || geometricStroke)
             {
+                // Keep one semantic font string. The opaque outline route paints
+                // the original glyph once; mixing hinted text and raw contours
+                // can close small counters even when their design bounds agree.
                 var semanticState = graphics.Save();
                 try
                 {
@@ -659,13 +670,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             }
             else graphics.DrawString(pdfText, font, brush, new XRect(0, 0, 0, 0), format ?? XStringFormats.Default);
             fontContext?.MarkFontFaceDrawn(fontResource, fontFamily);
-            var explicitStroke = paint?.Stroke == true && paint.StrokeColor.Alpha > 0;
             // Native DOCX writes its simulated bold stroke into the OFD itself.
             // Recognize the same-color stroke emitted for the whole TextObject,
             // even when positioned runs are drawn one glyph at a time. Older
             // documents used a 2.5%-em stroke for Han text; retain that contract.
             // A different color or width remains an independent OFD outline.
-            var strokeWidthPoints = explicitStroke ? MillimetersToPoints(paint!.LineWidthMillimeters) : 0;
             var ownBoldStroke = simulateBold && explicitStroke && paint!.Fill &&
                 paint.FillColor.Red == paint.StrokeColor.Red &&
                 paint.FillColor.Green == paint.StrokeColor.Green &&
@@ -700,9 +709,9 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     // Use the same top-to-baseline distance as PDFsharp DrawString.
                     baselineOffset += (float)(font.GetHeight() * font.CellAscent / font.CellSpace);
                 }
-                void RenderOutline(XColor color, double width, bool fill) =>
+                void RenderOutline(XColor color, double width, bool fill, bool strokeAsFill = false) =>
                     SixLabors.Fonts.TextRenderer.RenderTextTo(
-                        new PdfGlyphOutlineRenderer(graphics, color, width, fill), text,
+                        new PdfGlyphOutlineRenderer(graphics, color, width, fill, strokeAsFill), text,
                         new SixLabors.Fonts.TextOptions(outlineFont)
                         {
                             Dpi = 72,
@@ -723,14 +732,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     // identical; repeating that fill cannot change compositing.
                     // Different colors, translucent paints and outline-only text
                     // retain their independent boundary-stroke semantics.
-                    var opaqueSameColorFill = paint!.Fill && solid.Color.A == XColors.Black.A &&
-                        paint.FillColor.Alpha == 255 &&
-                        paint.StrokeColor.Alpha == 255 &&
-                        solid.Color.R == paint.StrokeColor.Red &&
-                        solid.Color.G == paint.StrokeColor.Green &&
-                        solid.Color.B == paint.StrokeColor.Blue;
                     RenderOutline(XColor.FromArgb(paint.StrokeColor.Alpha, paint.StrokeColor.Red,
-                        paint.StrokeColor.Green, paint.StrokeColor.Blue), strokeWidth, opaqueSameColorFill);
+                        paint.StrokeColor.Green, paint.StrokeColor.Blue), strokeWidth, opaqueSameColorFill, geometricStroke);
                 }
             }
         }
