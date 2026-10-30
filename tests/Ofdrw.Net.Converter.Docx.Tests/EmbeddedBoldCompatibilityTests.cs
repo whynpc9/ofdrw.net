@@ -18,6 +18,11 @@ public sealed class EmbeddedBoldCompatibilityTests
         var options = Options(fonts, explicitNative);
         using var source = File.OpenRead(Sample()); using var output = new MemoryStream();
         var result = await new DocxToOfdConverter(options).ConvertWithResultAsync(source, output);
+        if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+        {
+            Directory.CreateDirectory(artifacts);
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"native-bold-{explicitNative}.ofd"), output.ToArray());
+        }
         Assert.Single(result.Diagnostics, diagnostic => diagnostic.Code == "DOCX_EMBEDDED_BOLD_SIMULATED");
         output.Position = 0; var package = await new OfdReader().ReadAsync(output);
         Assert.Equal(2, package.Pages.Count);
@@ -34,17 +39,48 @@ public sealed class EmbeddedBoldCompatibilityTests
             {
                 Assert.Equal("true", xml.Attribute("Stroke")?.Value);
                 Assert.Equal("true", xml.Attribute("Fill")?.Value);
-                Assert.Equal(text.FontSizeMillimeters * .01, double.Parse(xml.Attribute("LineWidth")!.Value, CultureInfo.InvariantCulture), precision: 3);
+                var width = double.Parse(xml.Attribute("LineWidth")!.Value, CultureInfo.InvariantCulture);
+                if (text.Text == "数量") Assert.InRange(width / text.FontSizeMillimeters, .0095, .012);
+                else Assert.InRange(width / text.FontSizeMillimeters, .017, .0251);
                 var color = Assert.Single(xml.Elements(), e => e.Name.LocalName == "StrokeColor");
                 Assert.Equal($"{text.FillColor.Red} {text.FillColor.Green} {text.FillColor.Blue}", color.Attribute("Value")?.Value);
             }
             else Assert.Null(xml.Attribute("Stroke"));
         }
+        output.Position = 0;
+        using var png = new MemoryStream();
+        await new Ofdrw.Net.Converter.Pdf.Converters.OfdToImageConverter().ConvertAsync(output, png);
+        AssertDenseCounterOpen(png.ToArray());
+        if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } imageArtifacts)
+            await File.WriteAllBytesAsync(Path.Combine(imageArtifacts, $"native-bold-{explicitNative}-public144.png"), png.ToArray());
         // Rewriting imported XML keeps its single text object/stroke; no second application.
         using var rewritten = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(package, rewritten);
         rewritten.Position = 0; var reread = await new OfdReader().ReadAsync(rewritten);
         Assert.Equal(texts.Select(text => text.SourceXml), reread.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().Select(text => text.SourceXml));
+    }
+
+    private static void AssertDenseCounterOpen(byte[] png)
+    {
+        using var image = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(png);
+        const double x = 79.117, y = 71.091, size = 3.704, advance = 3.704167, ppm = 144d / 25.4;
+        var left = (int)Math.Ceiling((x + advance + size * .3) * ppm);
+        var right = (int)Math.Floor((x + advance + size * .7) * ppm);
+        double Brightest(double bottom, double top)
+        {
+            var first = (int)Math.Floor((y + size - size * top / 1000) * ppm);
+            var last = (int)Math.Ceiling((y + size - size * bottom / 1000) * ppm);
+            return Enumerable.Range(first, last - first).Max(row =>
+                Enumerable.Range(left, right - left + 1).Average(column => image[column, row].R));
+        }
+        // Original pinned-font 量 apertures, same public144-DPI threshold as
+        // the renderer regression. This exercises the actual DOCX producer.
+        Assert.True(Brightest(610, 665) > 100 && Brightest(709, 763) > 100);
+        Assert.Contains(new[] { 780d, 790d, 800d }, designY =>
+        {
+            var row = (int)Math.Round((y + size - size * designY / 1000) * ppm);
+            return Enumerable.Range(left, right - left + 1).Count(column => image[column, row].R < 150) >= 4;
+        });
     }
 
     [Theory]
@@ -75,13 +111,16 @@ public sealed class EmbeddedBoldCompatibilityTests
         var plainClone = Assert.IsType<OfdTextElement>(OfdModelCloner.CloneElement(text));
         Assert.False(plainClone.EmitSyntheticBoldStroke);
         text.EmitSyntheticBoldStroke = true;
+        text.SyntheticBoldStrokeWidthMillimeters = .061;
         var emphasizedClone = Assert.IsType<OfdTextElement>(OfdModelCloner.CloneElement(text));
         Assert.True(emphasizedClone.EmitSyntheticBoldStroke);
+        Assert.Equal(.061, emphasizedClone.SyntheticBoldStrokeWidthMillimeters);
         package.Pages[0].Elements[0] = emphasizedClone;
         using var clonedOutput = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, clonedOutput);
         clonedOutput.Position = 0; var clonedRead = await new OfdReader().ReadAsync(clonedOutput);
         var clonedXml = XElement.Parse(Assert.Single(clonedRead.Pages[0].Elements.OfType<OfdTextElement>()).SourceXml!);
         Assert.Equal("true", clonedXml.Attribute("Stroke")?.Value);
+        Assert.Equal("0.061", clonedXml.Attribute("LineWidth")?.Value);
         xml.SetAttributeValue("Stroke", "false"); xml.SetAttributeValue("LineWidth", "0.123");
         text.SourceXml = xml.ToString(SaveOptions.DisableFormatting);
         text.EmitSyntheticBoldStroke = true; // Even a stale native hint cannot override a source envelope.

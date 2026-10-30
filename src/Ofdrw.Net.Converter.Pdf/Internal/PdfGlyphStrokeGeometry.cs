@@ -68,6 +68,39 @@ internal sealed class PdfGlyphStrokeGeometry
     internal XGraphicsPath Build(double width)
     {
         var result = new XGraphicsPath { FillMode = XFillMode.Winding };
+        Polygons(width, points =>
+        {
+            var vertices = new XPoint[points.Length];
+            for (var i = 0; i < points.Length; i++) vertices[i] = new XPoint(points[i].X, points[i].Y);
+            result.AddPolygon(vertices);
+        });
+        return result;
+    }
+
+    // Distance to the actual filled stroke, including its miter/bevel joins.
+    // Native DOCX uses this same geometry to constrain optional emphasis.
+    internal double Clearance(XPoint center, double width, Action visit)
+    {
+        var point = new Point(center.X, center.Y);
+        var clearance = double.PositiveInfinity;
+        Polygons(width, polygon =>
+        {
+            var winding = 0;
+            for (var i = 0; i < polygon.Length; i++)
+            {
+                visit(); var a = polygon[i]; var b = polygon[(i + 1) % polygon.Length];
+                clearance = Math.Min(clearance, Distance(point, a, b));
+                var turn = Cross(b - a, point - a);
+                if (a.Y <= point.Y && point.Y < b.Y && turn > 0) winding++;
+                else if (b.Y <= point.Y && point.Y < a.Y && turn < 0) winding--;
+            }
+            if (winding != 0) clearance = 0;
+        });
+        return clearance;
+    }
+
+    private void Polygons(double width, Action<Point[]> emit)
+    {
         var radius = width * .5;
         // The old XPen uses the PDF default miter join/limit10 and closed contours.
         // All component polygons have the same orientation: nonzero fill unions
@@ -78,9 +111,7 @@ internal sealed class PdfGlyphStrokeGeometry
             for (var i = 0; i < points.Length; i++) area += Cross(points[i], points[(i + 1) % points.Length]);
             if (Math.Abs(area) < 1e-14) return;
             if (area < 0) Array.Reverse(points);
-            var vertices = new XPoint[points.Length];
-            for (var i = 0; i < points.Length; i++) vertices[i] = new XPoint(points[i].X, points[i].Y);
-            result.AddPolygon(vertices);
+            emit(points);
         }
 
         foreach (var contour in _contours)
@@ -123,7 +154,6 @@ internal sealed class PdfGlyphStrokeGeometry
                 Polygon(points[i], a, b);
             }
         }
-        return result;
     }
 
     private static double Dot(Point a, Point b) => a.X * b.X + a.Y * b.Y;

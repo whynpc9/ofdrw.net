@@ -1192,7 +1192,11 @@ public sealed partial class OfdPackageWriter
         {
             textObject.SetAttributeValue("Stroke", "true");
             textObject.SetAttributeValue("Fill", "true");
-            textObject.SetAttributeValue("LineWidth", ToInvariant(embedded ? FontEmphasisMetrics.BoldStrokeWidth(size, text.Text) : Math.Max(0.08, size * 0.045)));
+            var lineWidth = embedded ? text.SyntheticBoldStrokeWidthMillimeters ?? FontEmphasisMetrics.BoldStrokeWidth(size, text.Text)
+                : Math.Max(0.08, size * 0.045);
+            if (!(lineWidth > 0) || double.IsInfinity(lineWidth))
+                throw new InvalidDataException("Synthetic bold stroke must have a positive finite width.");
+            textObject.SetAttributeValue("LineWidth", ToInvariant(lineWidth));
             if (!textObject.Elements().Any(node => node.Name.LocalName == "StrokeColor"))
             {
                 var stroke = new XElement(ns + "StrokeColor",

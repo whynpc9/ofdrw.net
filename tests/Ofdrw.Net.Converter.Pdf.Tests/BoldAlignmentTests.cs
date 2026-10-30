@@ -134,9 +134,9 @@ public sealed class BoldAlignmentTests
     [InlineData("OO", "NotoSans-Regular.ttf", "0.2", "180 0 0", false)]
     [InlineData("O中", "LXGWWenKai-Regular.ttf", "0.08", "0 0 0", true)]
     [InlineData("数量", "LXGWWenKai-Regular.ttf", "0.2", "0 0 0", true)]
-    [InlineData("数量", "LXGWWenKai-Regular.ttf", "0.16", "0 0 0", false)]
+    [InlineData("数量", "LXGWWenKai-Regular.ttf", "0.16", "0 0 0", true)]
     public async Task ExplicitFilledStrokeOnRegularFaceDoesNotPaintASecondBoldOutline(
-        string value, string fontFile, string lineWidth, string strokeColor, bool isOwnBoldStroke)
+        string value, string fontFile, string lineWidth, string strokeColor, bool sameVisibleStroke)
     {
         async Task<byte[]> Convert(int weight)
         {
@@ -173,7 +173,9 @@ public sealed class BoldAlignmentTests
         using var boldReader = DocLib.Instance.GetDocReader(explicitStrokeWithBoldWeight, new PageDimensions(4d));
         using var regularPage = regularReader.GetPageReader(0);
         using var boldPage = boldReader.GetPageReader(0);
-        if (isOwnBoldStroke) Assert.Equal(regularPage.GetImage(), boldPage.GetImage());
+        // A same-color explicit stroke wider than synthetic emphasis already
+        // covers it, even when its width is neither historical 1% nor 2.5% em.
+        if (sameVisibleStroke) Assert.Equal(regularPage.GetImage(), boldPage.GetImage());
         else Assert.NotEqual(regularPage.GetImage(), boldPage.GetImage());
         using var semantic = UglyToad.PdfPig.PdfDocument.Open(explicitStrokeWithBoldWeight);
         Assert.Equal(value, semantic.GetPage(1).Text);

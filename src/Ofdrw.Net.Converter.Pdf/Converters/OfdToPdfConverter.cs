@@ -718,7 +718,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             Origin = new Vector2(0, baselineOffset),
                             KerningMode = SixLabors.Fonts.KerningMode.None
                         });
-                if (simulatedStroke)
+                if (simulatedStroke && !geometricStroke)
                     RenderOutline(solid.Color, FontEmphasisMetrics.BoldStrokeWidth(font.Size, text), true);
                 if (explicitStroke)
                 {
@@ -726,6 +726,13 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     // Thicken its existing stroke while keeping the counters open.
                     var strokeWidth = MillimetersToPoints(paint!.LineWidthMillimeters) +
                         (simulateBold && !paint.Fill ? FontEmphasisMetrics.BoldStrokeWidth(font.Size, text) : 0);
+                    // Two opaque same-color centered strokes cover the wider
+                    // region. Emit their union once, including explicit widths
+                    // other than the native writer's historical 1% and 2.5%.
+                    // Mixing an additional subpixel XPen stroke with geometry
+                    // would reintroduce renderer-dependent boundary expansion.
+                    if (geometricStroke && simulatedStroke)
+                        strokeWidth = Math.Max(strokeWidth, FontEmphasisMetrics.BoldStrokeWidth(font.Size, text));
                     // A font fill plus a separately rasterized contour boundary
                     // can leave light seams inside thin glyph strokes. Repaint
                     // the original contour only when both paints are opaque and

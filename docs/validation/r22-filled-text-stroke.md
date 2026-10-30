@@ -36,6 +36,46 @@ rasterization error. Subdivision depth is limited to 20 and recorded points to
 65,536 per glyph; invalid or exhausted geometry fails before PDF publication.
 There is no new package, native dependency or replacement font.
 
+An explicit same-color stroke at a nonhistorical width must also avoid the old
+native-pen overlay. With a 1.25%-em stroke and requested weight700, unchanged
+`38b464f2` paints about25.22% more integrated opacity than the independent
+original-path reference; its weight400 control passes. The two same-color
+opaque centered strokes cover their wider region, so the exporter emits that
+union once through geometry. The reference retains its0.98–1.02 interval.
+Additional cases cover nonhistorical width under affine transform/clip and a
+0.5%-em explicit stroke contained by a predetermined1%-em reference stroke.
+
+Fresh native DOCX with an embedded regular face can now increase synthetic
+emphasis towards the existing general2.5%-em width, rather than limiting every
+Han-containing span to1%. The original face, GIDs, text, advances and requested
+weight remain unchanged. The planner inspects original upright static TrueType
+outlines at the serialized font size. For each closed counter, it looks for an
+empty witness point in that counter, excluding smaller containing counters;
+an outer ring cannot borrow the inner white hole in a nested glyph such as回.
+It measures a conservative original empty disk, then checks candidate widths
+against the actual renderer's segment, miter10 and bevel polygons. Distance to
+the original centerline alone is insufficient at a pointed join. An increase
+must retain80% of each witnessed disk radius; failure retains the legacy1%
+Han stroke. The increase is rounded down to the writer's0.001mm grid.
+
+This is an optical fallback, not a physical700 face or a guarantee about every
+open gap, neck, counter component, font or raster scale. Italic, variable,
+color, non-TrueType or unavailable analysis retains the existing policy.
+Analysis is local to one DOCX render: at most8 faces,32MiB per face/64MiB total,
+512 glyph/size measurements,131,072 flattened points and50million bounded
+geometry visits; each glyph admits64 contours/4096 analysis points with curve
+depth20. Exhaustion retains the legacy width; cancellation still propagates.
+Font parsing already in progress is synchronous. Real selected bold faces,
+strict missing-bold refusal, imported paint and name-only compatibility retain
+their contracts. The runtime counter fixture is constructed from the existing
+original test font; no new font payload is added.
+
+The earlier Python counter-clearance probe only modeled circular dilation and
+could borrow a nested hole. Its actual PNG observations remain diagnostic;
+its80% deduction is not a miter-stroke proof. The production planner instead
+uses the actual polygon-clearance test. Direct acute-triangle tests distinguish
+a miter that reaches beyond half the line width from the limit10 bevel cutoff.
+
 `FilledStrokeCoverageTests` reuses the pinned shared CJK bundle. At test-only
 commit `80432418743d6b975c942e333fa531c32d23a80d`, unchanged e84 product code
 fails the new default-image counter check: its two aperture row means are 22.3

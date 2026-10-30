@@ -35,6 +35,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private readonly Dictionary<string, XFont> _fonts = new();
     private readonly Dictionary<string, (byte[] Data, string FileName, bool Bold, bool Italic)> _fontFiles = new();
     private readonly HashSet<string> _simulatedBoldFamilies = new(StringComparer.OrdinalIgnoreCase);
+    private readonly NativeBoldStrokePlanner _boldStrokes;
     private int _pendingPageBreaks;
     private double _pendingSpaceAfter;
     private readonly List<double> _pendingLineBreakHeights = new();
@@ -49,6 +50,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         _options = options;
         _diagnostics = diagnostics;
         _cancellationToken = cancellationToken;
+        _boldStrokes = new NativeBoldStrokePlanner(cancellationToken);
     }
 
     internal OfdDocumentPackage Render(BuiltInDocumentModel model)
@@ -618,6 +620,9 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
                 FillColor = ParseColor(format.ColorHex), Text = string.Concat(group.Select(g => g.Text))
             };
+            if (text.EmitSyntheticBoldStroke && !text.Italic)
+                text.SyntheticBoldStrokeWidthMillimeters = _boldStrokes.Width(resource.Data, resource.Italic,
+                    text.FontSizeMillimeters, text.Text);
             text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = baseline,
                 DeltaX = group.Count > 1 ? string.Join(" ", group.Take(group.Count - 1).Select(g => g.Width.ToString("0.######", CultureInfo.InvariantCulture))) : null });
             page.Elements.Add(text);

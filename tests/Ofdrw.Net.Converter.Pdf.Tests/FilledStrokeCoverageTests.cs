@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using Docnet.Core;
 using Docnet.Core.Models;
 using Ofdrw.Net.Converter.Pdf.Converters;
+using Ofdrw.Net.Converter.Pdf.Internal;
 using Ofdrw.Net.Core.Fonts;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging;
@@ -14,14 +15,38 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 public sealed class FilledStrokeCoverageTests
 {
     [Theory]
-    [InlineData(400, false)]
-    [InlineData(700, false)]
-    [InlineData(700, true)]
-    public async Task OpaqueSameColorStrokeCoversTheOriginalCjkFilledContour(int weight, bool transformed)
+    [InlineData(2, true)]
+    [InlineData(.2, false)]
+    public void StrokeClearanceIncludesTheActualMiterAndItsBevelCutoff(double halfHeight, bool miterReachesPoint)
+    {
+        var geometry = new PdfGlyphStrokeGeometry(.001);
+        geometry.BeginFigure();
+        geometry.MoveTo(new System.Numerics.Vector2(10, 0));
+        geometry.LineTo(new System.Numerics.Vector2(0, (float)halfHeight));
+        geometry.LineTo(new System.Numerics.Vector2(0, (float)-halfHeight));
+        geometry.EndFigure();
+        // (12,0) is two points beyond the original tip, well beyond half the
+        // 1pt stroke width. The first triangle's miter still paints it; the
+        // sharper second triangle exceeds limit10 and is bevelled instead.
+        var clearance = geometry.Clearance(new PdfSharpCore.Drawing.XPoint(12, 0), 1, () => { });
+        if (miterReachesPoint) Assert.Equal(0, clearance);
+        else Assert.True(clearance > 1.9);
+    }
+
+    [Theory]
+    [InlineData(400, false, .0635, .0635)]
+    [InlineData(700, false, .0635, .0635)]
+    [InlineData(700, true, .0635, .0635)]
+    [InlineData(400, false, .079375, .079375)]
+    [InlineData(700, false, .079375, .079375)]
+    [InlineData(700, true, .079375, .079375)]
+    [InlineData(700, false, .03175, .0635)]
+    public async Task OpaqueSameColorStrokeCoversTheOriginalCjkFilledContour(
+        int weight, bool transformed, double width, double expectedWidth)
     {
         const string value = "文档转换视觉回归样例";
         var font = await CjkFont(value);
-        const double size = 6.35, width = 0.0635;
+        const double size = 6.35;
         var transform = transformed ? new[] { 1.15, .2, .15, .9, 1d, 0d } : null;
         var clip = transformed ? "<Clips xmlns='http://www.ofdspec.org'><Clip><Area><Path><AbbreviatedData>" +
             "M 0 0 L 45 0 L 45 20 L 0 20 C</AbbreviatedData></Path></Area></Clip></Clips>" : null;
@@ -35,7 +60,7 @@ public sealed class FilledStrokeCoverageTests
             Transform = transform, ClippingXml = clip,
             SourceXml = $"<TextObject xmlns='http://www.ofdspec.org' Boundary='10 10 80 20' Font='10' Size='6.35' " +
                 (transformed ? "CTM='1.15 0.2 0.15 0.9 1 0' " : "") +
-                $"Weight='{weight}' Stroke='true' Fill='true' LineWidth='0.0635'>" +
+                $"Weight='{weight}' Stroke='true' Fill='true' LineWidth='{width.ToString("R", CultureInfo.InvariantCulture)}'>" +
                 "<FillColor Value='31 78 120'/><StrokeColor Value='31 78 120'/>" +
                 "<TextCode X='0' Y='10' DeltaX='6.35 6.35 6.35 6.35 6.35 6.35 6.35 6.35 6.35'>" + value + "</TextCode></TextObject>"
         });
@@ -69,7 +94,9 @@ public sealed class FilledStrokeCoverageTests
                 XMillimeters = 10, YMillimeters = 10, WidthMillimeters = 80, HeightMillimeters = 20,
                 AbbreviatedData = data.ToString(), Fill = true, Stroke = true,
                 FillColor = new OfdColor(31, 78, 120), StrokeColor = new OfdColor(31, 78, 120),
-                LineWidthMillimeters = width, Transform = transform, ClippingXml = clip
+                // Predetermined independent reference: the 0.5%-em explicit
+                // stroke is contained by the requested 1%-em Han emphasis.
+                LineWidthMillimeters = expectedWidth, Transform = transform, ClippingXml = clip
             });
         }
         reference.Pages.Add(referencePage);
@@ -102,7 +129,8 @@ public sealed class FilledStrokeCoverageTests
         if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
         {
             Directory.CreateDirectory(artifacts);
-            var suffix = weight.ToString(CultureInfo.InvariantCulture) + (transformed ? "-affine-clip" : "");
+            var suffix = weight.ToString(CultureInfo.InvariantCulture) + "-width-" +
+                width.ToString("R", CultureInfo.InvariantCulture) + (transformed ? "-affine-clip" : "");
             await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-filled-stroke-{suffix}.pdf"), actualPdf);
             await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-stroke-reference-{suffix}.pdf"), expectedPdf);
             await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-fill-reference-{suffix}.pdf"), fillOnlyPdf);
