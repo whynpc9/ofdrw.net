@@ -219,8 +219,8 @@ if __name__ == "__main__":
     )
     original = TTFont(args.font)
     original_cmap = original.getBestCmap()
-    inputs = json.loads(args.inputs.read_text())["inputs"]
-    pig = json.loads(args.pdfpig.read_text())
+    inputs = json.loads(args.inputs.read_text(encoding="utf-8"))["inputs"]
+    pig = json.loads(args.pdfpig.read_text(encoding="utf-8"))
     rows = []
     for item in inputs:
         raw = next(
@@ -235,7 +235,8 @@ if __name__ == "__main__":
             row = {"role": item["role"], "unsupported": str(error), "pass": False}
         rows.append(row)
     args.output.write_text(
-        json.dumps({"rows": rows}, ensure_ascii=False, indent=2) + "\n"
+        json.dumps({"rows": rows}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
     )
     print(
         json.dumps(

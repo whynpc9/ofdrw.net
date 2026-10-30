@@ -87,7 +87,9 @@ def main():
     pages, out = args.pages.resolve(), args.output.resolve()
     out.mkdir(parents=True, exist_ok=True)
     assert pypdf.__version__ == "6.21.2" and fontTools.__version__ == "4.68.0"
-    receipt = json.loads((pages / "r22-mixed-output-receipt.json").read_text())
+    receipt = json.loads(
+        (pages / "r22-mixed-output-receipt.json").read_text(encoding="utf-8")
+    )
     assert {r["name"].removeprefix("r22-mixed-") for r in receipt["cases"]} == REQUIRED
     for item in receipt["outputs"]:
         assert sha(pages / item["name"]) == item["sha256"], item["name"]
@@ -114,10 +116,12 @@ def main():
             dict(role=item["name"], path=str(pdf), sha256=sha(pdf), source=source)
         )
     (out / "inputs.json").write_text(
-        json.dumps({"inputs": inputs}, ensure_ascii=False, indent=2) + "\n"
+        json.dumps({"inputs": inputs}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
     )
     (out / "matrix.json").write_text(
-        json.dumps({"cases": cases}, ensure_ascii=False, indent=2) + "\n"
+        json.dumps({"cases": cases}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
     )
     env = os.environ.copy()
     env.update(
@@ -156,7 +160,7 @@ def main():
         env=env,
         check=True,
     )
-    pig = json.loads((out / "pdfpig.json").read_text())
+    pig = json.loads((out / "pdfpig.json").read_text(encoding="utf-8"))
     characters = module("r22_characters", HERE / "verify-character-gids.py")
     characters.original = TTFont(FONT)
     characters.original_cmap = characters.original.getBestCmap()
@@ -267,7 +271,7 @@ def main():
             [str(binary), str(out / "matrix.json"), str(out / "pdfkit.json")],
             check=True,
         )
-        kit = json.loads((out / "pdfkit.json").read_text())
+        kit = json.loads((out / "pdfkit.json").read_text(encoding="utf-8"))
         kit_checks = []
         for row in kit["rows"]:
             word_boxes = next(
@@ -300,7 +304,7 @@ def main():
         )
     result["status"] = "PASS" if ok else "FAIL"
     (out / "receipt.json").write_text(
-        json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     print(
         f"{result['status']}: {len(cases)} mixed pages, {sum(r['expectedGlyphs'] for r in visible_rows)} original glyphs"

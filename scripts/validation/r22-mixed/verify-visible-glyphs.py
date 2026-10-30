@@ -219,6 +219,8 @@ def verify(ofd, pdf, fixture):
 
 if __name__ == "__main__":
     r = verify(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]))
-    Path(sys.argv[4]).write_text(json.dumps(r, ensure_ascii=False, indent=2) + "\n")
+    Path(sys.argv[4]).write_text(
+        json.dumps(r, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     print(json.dumps({k: v for k, v in r.items() if k != "checks"}))
     sys.exit(0 if r["allGlyphsMatched"] else 1)
