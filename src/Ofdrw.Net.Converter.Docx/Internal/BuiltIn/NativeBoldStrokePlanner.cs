@@ -13,10 +13,14 @@ using SixLabors.Fonts;
 namespace Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 
 // A bounded optical fallback, not a physical weight700 face. Only fresh native
-// DOCX opts in. Preserve the old Han stroke unless original counter geometry
-// permits an increase towards the existing general 2.5%-em emphasis.
+// DOCX opts in. Increases require both relative counter clearance and an
+// absolute opening at the serialized point size. Legacy fallback does not
+// claim to meet that optical minimum.
 internal sealed class NativeBoldStrokePlanner
 {
+    private const double MaximumStrokeFraction = .035;
+    private const double MinimumRetainedWitnessFraction = .6;
+    private const double MinimumRetainedWitnessRadiusPoints = .4;
     private readonly CancellationToken token;
     private readonly Dictionary<byte[], Profile?> profiles = new();
     private readonly WorkBudget budget;
@@ -36,7 +40,7 @@ internal sealed class NativeBoldStrokePlanner
         {
             profile = null;
             if (profiles.Count < 8 && bytes.Length <= 32 * 1024 * 1024 &&
-                faceBytes + bytes.Length <= 64L * 1024 * 1024 && StaticTrueType(bytes))
+                faceBytes + bytes.Length <= 64L * 1024 * 1024 && OpenTypeFace.HasStaticTrueTypeOutlines(bytes))
             {
                 faceBytes += bytes.Length;
                 try { profile = new Profile(bytes, budget); }
@@ -47,7 +51,7 @@ internal sealed class NativeBoldStrokePlanner
             if (profiles.Count < 8) profiles.Add(bytes, profile);
         }
         if (profile is null) return legacy;
-        var fraction = .025;
+        var fraction = MaximumStrokeFraction;
         for (var i = 0; i < text.Length; i++)
         {
             token.ThrowIfCancellationRequested();
@@ -63,21 +67,6 @@ internal sealed class NativeBoldStrokePlanner
         // Match the writer's serialized font size and round an increase down
         // to its 0.001mm grid, so formatting cannot exceed the checked width.
         return Math.Max(legacy, Math.Floor(writtenSize * fraction * 1000) / 1000);
-    }
-
-    private static bool StaticTrueType(byte[] bytes)
-    {
-        if (bytes.Length < 12 || bytes[0] != 0 || bytes[1] != 1 || bytes[2] != 0 || bytes[3] != 0) return false;
-        var count = bytes[4] * 256 + bytes[5];
-        if (count > 256 || 12 + count * 16 > bytes.Length) return false;
-        var glyf = false;
-        for (var i = 0; i < count; i++)
-        {
-            var tag = System.Text.Encoding.ASCII.GetString(bytes, 12 + i * 16, 4);
-            if (tag == "glyf") glyf = true;
-            if (tag is "fvar" or "gvar" or "CFF " or "CFF2" or "COLR" or "SVG " or "CBDT" or "EBDT" or "sbix") return false;
-        }
-        return glyf;
     }
 
     private sealed class WorkBudget(CancellationToken token)
@@ -214,9 +203,10 @@ internal sealed class NativeBoldStrokePlanner
                 witnesses.Add((center, best));
             }
             bool Preserves(double width) => witnesses.All(w =>
-                stroke.Clearance(new XPoint(w.Center.X, w.Center.Y), width, budget.Tick) >= w.Radius * .8 + .0005);
-            var lower = size * .01; var upper = size * .025;
-            if (witnesses.Count == 0 || Preserves(upper)) return .025;
+                stroke.Clearance(new XPoint(w.Center.X, w.Center.Y), width, budget.Tick) >=
+                Math.Max(w.Radius * MinimumRetainedWitnessFraction, MinimumRetainedWitnessRadiusPoints) + .0005);
+            var lower = size * .01; var upper = size * MaximumStrokeFraction;
+            if (witnesses.Count == 0 || Preserves(upper)) return MaximumStrokeFraction;
             if (!Preserves(lower)) return .01;
             // Validate the actual miter10/bevel polygons at every candidate;
             // distance to original centerlines alone is insufficient at joins.

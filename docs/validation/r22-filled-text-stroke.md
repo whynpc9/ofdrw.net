@@ -45,9 +45,11 @@ union once through geometry. The reference retains its0.98–1.02 interval.
 Additional cases cover nonhistorical width under affine transform/clip and a
 0.5%-em explicit stroke contained by a predetermined1%-em reference stroke.
 
-Fresh native DOCX with an embedded regular face can now increase synthetic
-emphasis towards the existing general2.5%-em width, rather than limiting every
-Han-containing span to1%. The original face, GIDs, text, advances and requested
+Fresh native DOCX with an embedded regular face can increase synthetic
+emphasis towards3.5%-em, rather than limiting every Han-containing span to1%.
+The earlier0f36cc3b policy used a2.5% cap and80% relative witness retention;
+its fresh visual review still reported weak emphasis. The current optical
+policy adds an absolute opening constraint instead of only a relative one. The original face, GIDs, text, advances and requested
 weight remain unchanged. The planner inspects original upright static TrueType
 outlines at the serialized font size. For each closed counter, it looks for an
 empty witness point in that counter, excluding smaller containing counters;
@@ -55,8 +57,13 @@ an outer ring cannot borrow the inner white hole in a nested glyph such as回.
 It measures a conservative original empty disk, then checks candidate widths
 against the actual renderer's segment, miter10 and bevel polygons. Distance to
 the original centerline alone is insufficient at a pointed join. An increase
-must retain80% of each witnessed disk radius; failure retains the legacy1%
-Han stroke. The increase is rounded down to the writer's0.001mm grid.
+must leave clearance of at least60% of each conservative witnessed radius
+and at least0.4pt, plus the existing numerical allowance. That absolute floor
+can refuse an increase for a small counter even when a relative rule permits
+one. Failure retains the legacy1% Han stroke; that fallback does not promise
+to meet the increased-width clearance requirement. The increase is rounded
+down to the writer's0.001mm grid. A generated rectangular-counter fixture
+checks6/12/18pt behavior analytically without adding a font payload.
 
 This is an optical fallback, not a physical700 face or a guarantee about every
 open gap, neck, counter component, font or raster scale. Italic, variable,
@@ -100,3 +107,15 @@ their own feed, outputs, public images and GUI receipts. Small-font fixture
 results do not prove general Word fidelity, general bidi, R02, the remaining
 R22 ledger or R20. The recurring native Skia availability risk is separate and
 unresolved. No tag, Release or public NuGet publication is authorized here.
+
+
+The SVG outlet applies the same single-emphasis principle only when the selected
+embedded or explicitly bound face is a known non-bold static TrueType outline.
+An opaque same-RGB filled stroke that already reaches the shared script-aware
+emphasis width uses the original face with its declared stroke, without another
+host font-weight synthesis. The comparison uses the existing writer grid: Han
+spans use1%, other spans2.5%. The exporter does not increase the declared stroke.
+Thin/hairline, different-color, partial-alpha, physical-bold and unknown name-only
+cases retain their existing paths. Plain SVG text and original font bytes remain;
+this does not establish native SVG selection or clipboard behavior. Actual
+embedded-font visual review needs a renderer that proves it used those bytes.

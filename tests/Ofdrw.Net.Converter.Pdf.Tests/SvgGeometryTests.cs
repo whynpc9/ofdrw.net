@@ -13,6 +13,97 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 public sealed class SvgGeometryTests
 {
     [Theory]
+    [InlineData("cjk", "中", 4, .04, "normal")]
+    [InlineData("latin", "A", 4, .1, "normal")]
+    [InlineData("rounded-cjk", "中", 3.704, .037, "normal")]
+    [InlineData("thin-cjk", "中", 4, .02, "bold")]
+    [InlineData("thin-latin", "A", 4, .04, "bold")]
+    [InlineData("hairline", "中", 4, 0, "bold")]
+    [InlineData("no-stroke", "中", 4, .04, "bold")]
+    [InlineData("different-color", "中", 4, .04, "bold")]
+    [InlineData("fill-alpha", "中", 4, .04, "bold")]
+    [InlineData("stroke-alpha", "中", 4, .04, "bold")]
+    [InlineData("outline-only", "中", 4, .04, "bold")]
+    [InlineData("name-only", "中", 4, .04, "bold")]
+    [InlineData("physical-bold", "中", 4, .04, "bold")]
+    public async Task DeclaredOpaqueStrokeOnlyReplacesAdditionalSyntheticBoldForAKnownUnboldFace(
+        string kind, string value, double size, double width, string expectedWeight)
+    {
+        var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fonts", "narrow.ttf"));
+        if (kind == "physical-bold")
+        {
+            var face = new Ofdrw.Net.Core.Fonts.OpenTypeFace(bytes);
+            Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(face.Table("OS/2"), 62, 0x20);
+            Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(face.Table("OS/2"), 4, 700);
+            Ofdrw.Net.Core.Fonts.OpenTypeFace.Put16(face.Table("head"), 44, 1);
+            bytes = face.Build(); // physical style metadata, not a visual700 fixture
+        }
+        var fill = kind != "outline-only"; var stroke = kind != "no-stroke";
+        var fillAlpha = kind == "fill-alpha" ? 128 : 255;
+        var strokeAlpha = kind == "stroke-alpha" ? 128 : 255;
+        var strokeColor = kind == "different-color" ? "190 20 30" : "0 0 0";
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource
+        {
+            Id = "10", FontName = "fixture", Data = kind == "name-only" ? [] : bytes
+        });
+        package.Pages.Add(new OfdPage
+        {
+            WidthMillimeters = 100, HeightMillimeters = 100,
+            Elements = { new OfdTextElement
+            {
+                FontName = "fixture", FontResourceId = "10", Text = value, Weight = 700,
+                FontSizeMillimeters = size, XMillimeters = 10, YMillimeters = 10,
+                WidthMillimeters = 40, HeightMillimeters = 15,
+                FillColor = new OfdColor(0, 0, 0, (byte)fillAlpha),
+                SourceXml = $"<TextObject xmlns='http://www.ofdspec.org' Boundary='10 10 40 15' Font='10' " +
+                    $"Size='{size.ToString(CultureInfo.InvariantCulture)}' Weight='700' Fill='{fill.ToString().ToLowerInvariant()}' " +
+                    $"Stroke='{stroke.ToString().ToLowerInvariant()}' LineWidth='{width.ToString(CultureInfo.InvariantCulture)}'>" +
+                    $"<FillColor Value='0 0 0' Alpha='{fillAlpha}'/><StrokeColor Value='{strokeColor}' Alpha='{strokeAlpha}'/>" +
+                    $"<TextCode X='0' Y='{size.ToString(CultureInfo.InvariantCulture)}'>{value}</TextCode></TextObject>"
+            } }
+        });
+        var svg = await ConvertAsync(package);
+        var text = Assert.Single(svg.Descendants(), node => node.Name.LocalName == "text");
+        Assert.Equal(expectedWeight, text.Attribute("font-weight")?.Value);
+        Assert.Equal(value, text.Value);
+        // Fresh name-only bold retains the writer's4.5%-em compatibility
+        // stroke. SVG must not reinterpret that unknown physical face.
+        if (stroke) Assert.Equal(kind == "name-only" ? size * .045 : width,
+            double.Parse(text.Attribute("stroke-width")!.Value, CultureInfo.InvariantCulture));
+        else Assert.Null(text.Attribute("stroke-width"));
+    }
+
+    [Theory]
+    [InlineData("Fixture Family", "Fixture Family")]
+    [InlineData(null, "Fixture Resource|bold|italic")]
+    public async Task NameOnlyText_ShouldUseDeclaredFamilyWithoutLeakingStyleResourceKey(string? family, string expected)
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource
+        {
+            Id = "10", FontName = "Fixture Resource|bold|italic", FamilyName = family,
+            Bold = true, Italic = true
+        });
+        package.Pages.Add(new OfdPage
+        {
+            WidthMillimeters = 100, HeightMillimeters = 100,
+            Elements = { new OfdTextElement
+            {
+                FontResourceId = "10", FontName = "Fixture Resource|bold|italic", Text = "Ab",
+                XMillimeters = 10, YMillimeters = 10
+            } }
+        });
+
+        var svg = await ConvertAsync(package);
+        var text = Assert.Single(svg.Descendants(), node => node.Name.LocalName == "text");
+        Assert.Equal(expected, text.Attribute("font-family")?.Value);
+        Assert.Equal("bold", text.Attribute("font-weight")?.Value);
+        Assert.Equal("italic", text.Attribute("font-style")?.Value);
+        Assert.Equal("Ab", text.Value);
+    }
+
+    [Theory]
     [InlineData(1, false)]
     [InlineData(128, false)]
     [InlineData(254, false)]

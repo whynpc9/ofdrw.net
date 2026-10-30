@@ -41,7 +41,7 @@ public sealed class EmbeddedBoldCompatibilityTests
                 Assert.Equal("true", xml.Attribute("Fill")?.Value);
                 var width = double.Parse(xml.Attribute("LineWidth")!.Value, CultureInfo.InvariantCulture);
                 if (text.Text == "数量") Assert.InRange(width / text.FontSizeMillimeters, .0095, .012);
-                else Assert.InRange(width / text.FontSizeMillimeters, .017, .0251);
+                else Assert.InRange(width / text.FontSizeMillimeters, .034, .0351);
                 var color = Assert.Single(xml.Elements(), e => e.Name.LocalName == "StrokeColor");
                 Assert.Equal($"{text.FillColor.Red} {text.FillColor.Green} {text.FillColor.Blue}", color.Attribute("Value")?.Value);
             }
