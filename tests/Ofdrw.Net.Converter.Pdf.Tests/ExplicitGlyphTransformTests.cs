@@ -1417,7 +1417,9 @@ public sealed partial class ExplicitGlyphTransformTests
         var repeated = Text(gids[0], gids[1], "5 5 5", repeatedSource);
         repeated.SourceXml = text.SourceXml.Replace(source, repeatedSource)
             .Replace(string.Join(' ', gids), string.Join(' ', repeatedGids));
-        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRun.Read(repeated, resource));
+        var repeatedRun = Assert.IsType<OfdExplicitGlyphRun>(OfdExplicitGlyphRun.Read(repeated, resource));
+        Assert.Equal(repeatedSource, repeatedRun.VisualHebrewSourceSpan);
+        Assert.Equal(repeatedGids, repeatedRun.GlyphIds);
     }
 
     [Theory]
@@ -1484,11 +1486,16 @@ public sealed partial class ExplicitGlyphTransformTests
     }
 
     [Theory]
-    [InlineData(OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
-    [InlineData(OfdGlyphMappingStrategy.GroupedLocal)]
-    public async Task HebrewVisualWordPdfKeepsEachScalarAtItsOriginalGlyphOrigin(OfdGlyphMappingStrategy strategy)
+    [InlineData("שלום", OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData("שלום", OfdGlyphMappingStrategy.GroupedLocal)]
+    [InlineData("אבבג", OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData("אבבג", OfdGlyphMappingStrategy.GroupedLocal)]
+    [InlineData("אבבא", OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData("אבבא", OfdGlyphMappingStrategy.GroupedLocal)]
+    [InlineData("ממממ", OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)]
+    [InlineData("ממממ", OfdGlyphMappingStrategy.GroupedLocal)]
+    public async Task HebrewVisualWordPdfKeepsEachScalarAtItsOriginalGlyphOrigin(string source, OfdGlyphMappingStrategy strategy)
     {
-        const string source = "שלום";
         var bytes = Font("DejaVuSans-R22.ttf");
         var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
         var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();

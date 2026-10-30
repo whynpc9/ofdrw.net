@@ -39,6 +39,11 @@ REQUIRED = {
     "two-word-swapped",
     "two-word-long",
     "two-word-exact-fit",
+    "repeated-letter",
+    "repeated-letter-two-word",
+    "repeated-letter-repeated-word",
+    "palindrome",
+    "repeated-letter-long",
 }
 
 

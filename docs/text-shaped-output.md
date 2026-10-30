@@ -38,3 +38,7 @@ content retains its own source-preservation and R02 acceptance boundaries.
 
 Generated PNG or SVG output is not a macOS Preview or independent-reader
 acceptance result. Each visual outlet needs its own evidence before release.
+
+The separate mixed writer and its repeated-letter candidate are reconciled in
+[the R22 remaining-scope ledger](validation/r22-remaining-scope.md). The Latin
+producer contract above does not imply general paragraph or SVG text semantics.

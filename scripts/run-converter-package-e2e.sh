@@ -238,12 +238,14 @@ assert two['runs'][4]['XMillimeters'] < two['runs'][2]['XMillimeters']
 assert {item['name'] for item in output['outputs']} == {
     f'r22-mixed-{kind}.{extension}'
     for kind in ('wide', 'short-words', 'long-upper', 'unequal-latin', 'upper-leading', 'exact-fit',
-     'two-word', 'repeated-word', 'two-word-short', 'two-word-swapped', 'two-word-long', 'two-word-exact-fit')
+     'two-word', 'repeated-word', 'two-word-short', 'two-word-swapped', 'two-word-long', 'two-word-exact-fit', 'repeated-letter', 'repeated-letter-two-word',
+     'repeated-letter-repeated-word', 'palindrome', 'repeated-letter-long')
     for extension in ('ofd', 'pdf', 'svg', 'png')}
 assert {item['name'] for item in output['cases']} == {
     f'r22-mixed-{kind}' for kind in
     ('wide', 'short-words', 'long-upper', 'unequal-latin', 'upper-leading', 'exact-fit',
-     'two-word', 'repeated-word', 'two-word-short', 'two-word-swapped', 'two-word-long', 'two-word-exact-fit')}
+     'two-word', 'repeated-word', 'two-word-short', 'two-word-swapped', 'two-word-long', 'two-word-exact-fit', 'repeated-letter', 'repeated-letter-two-word',
+     'repeated-letter-repeated-word', 'palindrome', 'repeated-letter-long')}
 assert all(item['bytes'] > 0 for item in output['outputs'])
 PY_R22_MIXED_CONSUMER
 for sample in av av-kern-off ffi-on ffi-off e-acute a-diaeresis; do
@@ -252,7 +254,7 @@ for sample in av av-kern-off ffi-on ffi-off e-acute a-diaeresis; do
   test -s "$TEXT_OUTPUT/r22-$sample-pdf-page.png"
 done
 for sample in wide short-words long-upper unequal-latin upper-leading exact-fit \
-  two-word repeated-word two-word-short two-word-swapped two-word-long two-word-exact-fit; do
+  two-word repeated-word two-word-short two-word-swapped two-word-long two-word-exact-fit repeated-letter repeated-letter-two-word repeated-letter-repeated-word palindrome repeated-letter-long; do
   pdftoppm -f 1 -l 1 -png -singlefile -r 144 \
     "$TEXT_OUTPUT/r22-mixed-$sample.pdf" "$TEXT_OUTPUT/r22-mixed-$sample-pdf-page"
   test -s "$TEXT_OUTPUT/r22-mixed-$sample-pdf-page.png"

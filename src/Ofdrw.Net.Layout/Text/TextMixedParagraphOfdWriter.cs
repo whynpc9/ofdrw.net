@@ -106,10 +106,9 @@ public static class TextMixedParagraphOfdWriter
                 }
                 else if (hebrew)
                 {
-                    if (glyphs.Count != text.Length ||
-                        glyphs.Select(value => value.GlyphId).Distinct().Count() != glyphs.Count)
+                    if (glyphs.Count != text.Length)
                         throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
-                            "A Hebrew word needs one distinct drawn glyph per letter.");
+                            "A Hebrew word needs one drawn glyph occurrence per letter.");
                     for (var index = 0; index < glyphs.Count; index++)
                     {
                         var sourceIndex = text.Length - 1 - index;

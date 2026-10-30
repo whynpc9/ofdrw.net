@@ -16,6 +16,42 @@ namespace Ofdrw.Net.Layout.Tests;
 
 public sealed class TextPrelayoutTests
 {
+    [Theory]
+    [InlineData("abc אבבג def")]
+    [InlineData("abc אבבג דדהו def")]
+    [InlineData("abc אבבג אבבג def")]
+    [InlineData("abc אבבא def")]
+    public async Task RepeatedHebrewLettersRetainEveryOriginalGlyphOccurrenceInTypedOfd(string source)
+    {
+        var face = new TextFontFace("R22 DejaVu Sans", File.ReadAllBytes(Font("DejaVuSans-R22.ttf")));
+        var result = new TextMixedParagraphEngine(new HarfBuzzTextShaper()).Layout(
+            new TextMixedParagraphRequest(source, face, 4, 100));
+        var expected = result.Lines.Single().Runs.Where(run =>
+            run.Text.All(value => value is >= '\u05d0' and <= '\u05ea')).ToArray();
+        Assert.All(expected, run => Assert.True(run.Shaped.Glyphs.Select(g => g.GlyphId).Distinct().Count()
+            < run.Shaped.Glyphs.Count));
+        var package = TextMixedParagraphOfdWriter.CreateSinglePage(result, 130, 75, 10, 10);
+        using var output = new MemoryStream();
+        await new OfdPackageWriter().WriteAsync(package, output);
+        output.Position = 0;
+        var read = await new OfdReader().ReadAsync(output);
+        var elements = read.Pages.Single().Elements.OfType<OfdTextElement>().ToArray();
+        Assert.Equal(source, string.Concat(elements.Select(element => element.Text)));
+        var hebrew = elements.Where(element => element.Text.All(value =>
+            value is >= '\u05d0' and <= '\u05ea')).ToArray();
+        Assert.Equal(expected.Length, hebrew.Length);
+        for (var index = 0; index < hebrew.Length; index++)
+        {
+            var xml = XElement.Parse(hebrew[index].SourceXml!);
+            var ids = Assert.Single(xml.Descendants(), node => node.Name.LocalName == "Glyphs")
+                .Value.Split(' ').Select(uint.Parse).ToArray();
+            Assert.Equal(expected[index].Shaped.Glyphs.Select(glyph => glyph.GlyphId), ids);
+            Assert.Equal(expected[index].Text.Length, ids.Length);
+            Assert.Equal(expected[index].Text.Length - 1,
+                hebrew[index].Runs.Single().DeltaX!.Split(' ').Length);
+        }
+    }
+
     [Fact]
     public void FixedFaceSnapshotAndNativeShapeUseDesignUnitsAndUtf16Clusters()
     {

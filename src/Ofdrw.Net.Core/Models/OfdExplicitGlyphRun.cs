@@ -239,7 +239,8 @@ internal sealed class OfdExplicitGlyphRun
                 for (var index = 0; index < glyphCount; index++)
                 {
                     if (!int.TryParse(tokens[index], NumberStyles.None, CultureInfo.InvariantCulture,
-                            out var gid) || gid is <= 0 or > ushort.MaxValue || !seen.Add(gid))
+                            out var gid) || gid is <= 0 or > ushort.MaxValue ||
+                        !seen.Add(gid) && !OfdPositionedGlyphProfile.IsHebrewWord(logical))
                         throw new NotSupportedException("CGTransform contains overlapping or invalid original GIDs.");
                     ids[index] = gid;
                 }

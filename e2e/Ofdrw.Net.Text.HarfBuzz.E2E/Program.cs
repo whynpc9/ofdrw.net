@@ -366,13 +366,6 @@ Console.WriteLine("R22 bounded mixed Hebrew/Latin paragraph query receipt: " + o
 
 try
 {
-    var repeatedHebrew = mixedEngine.Layout(new TextMixedParagraphRequest("abc אבבא def", dejavu, 4, 50));
-    TextMixedParagraphOfdWriter.CreateSinglePage(repeatedHebrew, 100, 75, 10, 10);
-    throw new InvalidDataException("An unverified repeated-Hebrew-GID output was admitted.");
-}
-catch (TextLayoutException error) when (error.Error == TextLayoutError.UnsupportedOutput) { }
-try
-{
     TextMixedParagraphOfdWriter.CreateSinglePage(mixedWide, 5, 5, 0, 0);
     throw new InvalidDataException("An overflowing mixed paragraph page was admitted.");
 }
@@ -407,6 +400,11 @@ TextMixedParagraphResult Admitted(string source, double width) =>
     mixedEngine.Layout(new TextMixedParagraphRequest(source, dejavu, 4, width));
 mixedCases.Add(("short-words", Admitted("a אב b", 50)));
 mixedCases.Add(("repeated-word", Admitted("abc שלום שלום def", 50)));
+mixedCases.Add(("repeated-letter", Admitted("abc אבבג def", 50)));
+mixedCases.Add(("repeated-letter-two-word", Admitted("abc אבבג דדהו def", 50)));
+mixedCases.Add(("repeated-letter-repeated-word", Admitted("abc אבבג אבבג def", 50)));
+mixedCases.Add(("palindrome", Admitted("abc אבבא def", 50)));
+mixedCases.Add(("repeated-letter-long", Admitted("abc ממממממממ def", 100)));
 mixedCases.Add(("two-word-short", Admitted("W אב גדה iii", 50)));
 mixedCases.Add(("two-word-swapped", Admitted("ab מקום שלום XYZ", 50)));
 mixedCases.Add(("two-word-long", Admitted("ABCDEFGH אבגדהוזח טיכלמנסע XYZABCDE", 100)));

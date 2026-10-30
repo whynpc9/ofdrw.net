@@ -1087,9 +1087,8 @@ public sealed partial class OfdPackageWriter
         var glyphs = positioned.Glyphs;
         if (latinCombiningPair && glyphs.Count != 1)
             throw new NotSupportedException("The Latin combining profile requires one complete original-GID cluster.");
-        if (hebrewWord && (glyphs.Count != run.Text.Length ||
-            glyphs.Select(glyph => glyph.GlyphId).Distinct().Count() != glyphs.Count))
-            throw new NotSupportedException("The Hebrew word profile needs one distinct original GID per letter.");
+        if (hebrewWord && glyphs.Count != run.Text.Length)
+            throw new NotSupportedException("The Hebrew word profile needs one original GID occurrence per letter.");
         if (hebrewWord)
         {
             if (resource?.Data is not { Length: > 0 })
