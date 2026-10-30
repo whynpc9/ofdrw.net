@@ -731,8 +731,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     // other than the native writer's historical 1% and 2.5%.
                     // Mixing an additional subpixel XPen stroke with geometry
                     // would reintroduce renderer-dependent boundary expansion.
+                    // A positioned Latin glyph inside a Han span must retain
+                    // the whole TextObject's script policy. Recomputing2.5%
+                    // from that glyph would override a constrained native width.
                     if (geometricStroke && simulatedStroke)
-                        strokeWidth = Math.Max(strokeWidth, FontEmphasisMetrics.BoldStrokeWidth(font.Size, text));
+                        strokeWidth = Math.Max(strokeWidth, sourceBoldStrokeWidth ?? FontEmphasisMetrics.BoldStrokeWidth(font.Size, text));
                     // A font fill plus a separately rasterized contour boundary
                     // can leave light seams inside thin glyph strokes. Repaint
                     // the original contour only when both paints are opaque and

@@ -34,17 +34,19 @@ public sealed class FilledStrokeCoverageTests
     }
 
     [Theory]
-    [InlineData(400, false, .0635, .0635)]
-    [InlineData(700, false, .0635, .0635)]
-    [InlineData(700, true, .0635, .0635)]
-    [InlineData(400, false, .079375, .079375)]
-    [InlineData(700, false, .079375, .079375)]
-    [InlineData(700, true, .079375, .079375)]
-    [InlineData(700, false, .03175, .0635)]
+    [InlineData(400, false, .0635, .0635, "文档转换视觉回归样例")]
+    [InlineData(700, false, .0635, .0635, "文档转换视觉回归样例")]
+    [InlineData(700, true, .0635, .0635, "文档转换视觉回归样例")]
+    [InlineData(400, false, .079375, .079375, "文档转换视觉回归样例")]
+    [InlineData(700, false, .079375, .079375, "文档转换视觉回归样例")]
+    [InlineData(700, true, .079375, .079375, "文档转换视觉回归样例")]
+    [InlineData(700, false, .03175, .0635, "文档转换视觉回归样例")]
+    [InlineData(700, false, .079375, .15875, "A")]
+    [InlineData(700, false, .079375, .079375, "中A")]
+    [InlineData(700, false, .03175, .0635, "中A")]
     public async Task OpaqueSameColorStrokeCoversTheOriginalCjkFilledContour(
-        int weight, bool transformed, double width, double expectedWidth)
+        int weight, bool transformed, double width, double expectedWidth, string value)
     {
-        const string value = "文档转换视觉回归样例";
         var font = await CjkFont(value);
         const double size = 6.35;
         var transform = transformed ? new[] { 1.15, .2, .15, .9, 1d, 0d } : null;
@@ -130,7 +132,8 @@ public sealed class FilledStrokeCoverageTests
         {
             Directory.CreateDirectory(artifacts);
             var suffix = weight.ToString(CultureInfo.InvariantCulture) + "-width-" +
-                width.ToString("R", CultureInfo.InvariantCulture) + (transformed ? "-affine-clip" : "");
+                width.ToString("R", CultureInfo.InvariantCulture) + (transformed ? "-affine-clip" : "") +
+                (value.Length <= 2 ? "-short-" + string.Join("-", value.Select(c => ((int)c).ToString("X4", CultureInfo.InvariantCulture))) : "");
             await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-filled-stroke-{suffix}.pdf"), actualPdf);
             await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-stroke-reference-{suffix}.pdf"), expectedPdf);
             await File.WriteAllBytesAsync(Path.Combine(artifacts, $"cjk-fill-reference-{suffix}.pdf"), fillOnlyPdf);
@@ -142,9 +145,13 @@ public sealed class FilledStrokeCoverageTests
         using var expectedDetail = expectedDetailReader.GetPageReader(0);
         var expectedInk = AssertStrokeCoverageWithinOnePixel(expectedDetail.GetImage(), actualDetail.GetImage(),
             expectedDetail.GetPageWidth());
+        // Keep the original title's cross-resolution area oracle unchanged.
+        // Short mixed/Latin controls use the same8x sampling as their path
+        // reference: one glyph's subpixel boundary dominates its2x area.
+        var areaPixels = value.Length <= 2 ? actualDetail.GetImage() : actualPixels;
         var actualInk = 0d;
-        for (var offset = 3; offset < actualPixels.Length; offset += 4) actualInk += actualPixels[offset];
-        actualInk /= actualPixels.Length / 4;
+        for (var offset = 3; offset < areaPixels.Length; offset += 4) actualInk += areaPixels[offset];
+        actualInk /= areaPixels.Length / 4;
         // A renderer can turn a subpixel outline into a full dark pixel. The
         // integrated area must still agree with the independently rendered true
         // stroke above; this rejects the old light-track/double-boundary output.

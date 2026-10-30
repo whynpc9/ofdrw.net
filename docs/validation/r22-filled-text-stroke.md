@@ -45,6 +45,25 @@ union once through geometry. The reference retains its0.98–1.02 interval.
 Additional cases cover nonhistorical width under affine transform/clip and a
 0.5%-em explicit stroke contained by a predetermined1%-em reference stroke.
 
+For positioned mixed Han/Latin text, the PDF contour union uses the whole
+TextObject's script-aware supplementary emphasis width. Recomputing from an
+individual Latin glyph could raise a counter-constrained native width back to
+2.5%. A public native/default DOCX fixture with24pt `量A` preserves its planned
+approximately2.04% stroke for both characters; its PDF must match the same
+original face, positions and declared stroke with only requested weight cleared.
+This does not make arbitrary imported widths authoritative: pure Latin still
+requires the2.5% supplementary width, and a mixed span's explicit stroke below
+1% remains supplemented to1%.
+
+The original seven title coverage cases retain their2x-versus8x area oracle and
+0.98–1.02 interval. New short Latin/mixed path controls use both operands at8x
+with the same interval and one-pixel boundary check. Their original2x-versus8x
+ratios near0.979 and same2x comparisons remain diagnostic evidence; a passing
+8x comparison does not establish low-resolution pixel equality. The short
+controls reject the old per-glyph2.5% expression, while the public native fixture
+also requires exact pixel equality at4x. Actual-page visual review remains a
+separate requirement.
+
 Fresh native DOCX with an embedded regular face can increase synthetic
 emphasis towards3.5%-em, rather than limiting every Han-containing span to1%.
 The earlier0f36cc3b policy used a2.5% cap and80% relative witness retention;
