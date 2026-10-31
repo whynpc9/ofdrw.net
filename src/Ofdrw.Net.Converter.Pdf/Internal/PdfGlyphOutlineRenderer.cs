@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Threading;
 using PdfSharpCore.Drawing;
 using SixLabors.Fonts;
 
@@ -14,17 +15,19 @@ internal sealed class PdfGlyphOutlineRenderer : IGlyphRenderer
     private readonly XPen _pen;
     private readonly bool _fill;
     private readonly bool _geometricStroke;
+    private readonly CancellationToken _cancellationToken;
     private PdfGlyphStrokeGeometry? _strokeGeometry;
     private XGraphicsPath _path = new();
     private Vector2 _position;
 
     internal PdfGlyphOutlineRenderer(XGraphics graphics, XColor color, double strokeWidth, bool fill = true,
-        bool geometricStroke = false)
+        bool geometricStroke = false, CancellationToken cancellationToken = default)
     {
         _graphics = graphics;
         _pen = new XPen(color, strokeWidth);
         _fill = fill;
         _geometricStroke = geometricStroke;
+        _cancellationToken = cancellationToken;
     }
 
     public void BeginText(in FontRectangle bounds) { }
@@ -63,6 +66,13 @@ internal sealed class PdfGlyphOutlineRenderer : IGlyphRenderer
         if (_strokeGeometry is not null)
         {
             var brush = new XSolidBrush(_pen.Color);
+            // Overlapping nonzero subpaths can amplify edge coverage even in
+            // one fill. Admitted rectilinear glyphs use only the union boundary.
+            if (_strokeGeometry.TryBuildFillUnion(_pen.Width, _cancellationToken, out var combined))
+            {
+                _graphics.DrawPath(brush, combined!);
+                return;
+            }
             _graphics.DrawPath(brush, _path);
             _graphics.DrawPath(brush, _strokeGeometry.Build(_pen.Width));
             return;

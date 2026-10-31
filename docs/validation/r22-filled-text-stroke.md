@@ -25,6 +25,35 @@ hinted visible font with its unhinted supplementary contour is avoided in this
 route. Other colors, partial alpha, outline-only text and zero-width hairlines
 retain their existing paint behavior.
 
+Admitted rectilinear glyphs paint the boundary of the original fill and centered
+stroke union once. Merely appending overlapping stroke polygons to the original
+nonzero path is insufficient: winding multiplicity can amplify antialiased edge
+coverage. Coordinate-compressed cells classify the two original nonzero regions
+independently and emit only their union boundary. Output uses existing input
+coordinates, without snapping or merging nearby axes. Curves, oblique segments,
+touching boundary branches and exhausted budgets retain the separate glyph-fill
+and geometric-stroke paints. Independent supplementary emphasis paths and their
+clips remain separate.
+
+Preflight admits at most113 recorded original points; each original edge can
+produce at most two four-point stroke polygons, keeping combined input below1024
+edges. Further limits are64 axes per dimension,4096 cells,4 million work steps,
+2048 boundary edges and128 loops. Cancellation is checked during classification
+and before returning a completed path. Rejection returns no partial path and
+retains the existing route; cancellation propagates. These bounds restrict new
+allocations and work independently of the larger original stroke budget.
+
+The pinned Noto regression retains its two specified aperture windows with
+R-channel row means above100 and its nonblank upper-bar check. The separate72
+regular-bright raster samples are diagnostics, not a requirement that every
+original-fill white point stay bright after legitimate centered stroke. Original
+fill membership, poststroke white-region membership, finite native-pixel coverage
+and signed Bicubic support are distinct. A valid stroke can occupy an original
+white point, and a remaining white center can still have a dark filtered pixel.
+Keep raw threshold observations and attribute them using the full paint path;
+neither geometric explanations nor these samples replace actual-page readability
+and Preview/copy/Find acceptance.
+
 The geometric region unions positively oriented segment rectangles and corner
 regions using nonzero fill. Closed contours retain the previous centered width,
 miter join and PDF default miter limit 10 with bevel cutoff. Original glyph fill

@@ -493,7 +493,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                             DrawTextWithMatrix(graphics, text, page.XMillimeters, page.YMillimeters, factor =>
                             {
                                 var anchor = OfdTextEmphasis.Anchor(0, 0, factor);
-                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, XStringFormats.TopLeft, coverage, paint, mapPdfText, fonts, resource, familyName);
+                                DrawStyledString(graphics, text.Text, font, brush, new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, XStringFormats.TopLeft, coverage, paint, mapPdfText, fonts, resource, familyName, cancellationToken: cancellationToken);
                             });
                         }
                     }
@@ -613,7 +613,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         XPoint point, SixLabors.Fonts.Font? outlineFont, bool simulateBold, bool italic, XStringFormat? format = null, OpenTypeCmap? coverage = null,
         OfdTextPaint? paint = null, Func<string, string>? mapPdfText = null,
         DocumentFontContext? fontContext = null, OfdFontResource? fontResource = null, string? fontFamily = null,
-        bool preserveExplicitSourceSpan = false, double? sourceBoldStrokeWidth = null)
+        bool preserveExplicitSourceSpan = false, double? sourceBoldStrokeWidth = null,
+        CancellationToken cancellationToken = default)
     {
         // PDFsharp does not compose Latin mark sequences (notably dotted i).
         // Match the supported composite used for measurement when drawing one
@@ -711,7 +712,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 }
                 void RenderOutline(XColor color, double width, bool fill, bool strokeAsFill = false) =>
                     SixLabors.Fonts.TextRenderer.RenderTextTo(
-                        new PdfGlyphOutlineRenderer(graphics, color, width, fill, strokeAsFill), text,
+                        new PdfGlyphOutlineRenderer(graphics, color, width, fill, strokeAsFill, cancellationToken), text,
                         new SixLabors.Fonts.TextOptions(outlineFont)
                         {
                             Dpi = 72,
@@ -813,7 +814,8 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 new XSolidBrush(XColor.FromArgb(0, 0, 0, 0)),
                                 new XPoint(MillimetersToPoints(point.X / paint.HScale), MillimetersToPoints(point.Y)),
                                 null, false, false, coverage: coverage, mapPdfText: mapPdfText,
-                                fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily);
+                                fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily,
+                                cancellationToken: cancellationToken);
                         }
                         continue;
                     }
@@ -825,7 +827,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         // Unicode outline when Stroke is enabled.
                         null, false, false, coverage: coverage,
                         mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
-                        fontFamily: fontFamily, preserveExplicitSourceSpan: true);
+                        fontFamily: fontFamily, preserveExplicitSourceSpan: true, cancellationToken: cancellationToken);
                     continue;
                 }
                 if (explicitRun?.SingleGlyphSourceSpan is not null)
@@ -836,7 +838,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
                         mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
                         fontFamily: fontFamily, preserveExplicitSourceSpan: true,
-                        sourceBoldStrokeWidth: sourceBoldStrokeWidth);
+                        sourceBoldStrokeWidth: sourceBoldStrokeWidth, cancellationToken: cancellationToken);
                     continue;
                 }
                 // CGTransform maps each validated BMP character to one original
@@ -862,14 +864,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
                                 outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
                                 mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
-                                fontFamily: fontFamily, sourceBoldStrokeWidth: sourceBoldStrokeWidth);
+                                fontFamily: fontFamily, sourceBoldStrokeWidth: sourceBoldStrokeWidth, cancellationToken: cancellationToken);
                         }
                         continue;
                     }
                     DrawStyledString(graphics, run.Text, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,
                         fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily,
-                        sourceBoldStrokeWidth: sourceBoldStrokeWidth);
+                        sourceBoldStrokeWidth: sourceBoldStrokeWidth, cancellationToken: cancellationToken);
                     continue;
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
@@ -883,7 +885,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     DrawStyledString(graphics, glyph, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,
                         fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily,
-                        sourceBoldStrokeWidth: sourceBoldStrokeWidth);
+                        sourceBoldStrokeWidth: sourceBoldStrokeWidth, cancellationToken: cancellationToken);
                     if (i < deltaX.Count) x += deltaX[i];
                     if (i < deltaY.Count) y += deltaY[i];
                     i++;

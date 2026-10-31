@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
 using PdfSharpCore.Drawing;
 
 namespace Ofdrw.Net.Converter.Pdf.Internal;
@@ -13,6 +14,7 @@ internal sealed class PdfGlyphStrokeGeometry
     private readonly List<List<Point>> _contours = new();
     private List<Point>? _current;
     private int _points;
+    private bool _hasCurves;
 
     internal PdfGlyphStrokeGeometry(double flatnessPoints)
     {
@@ -35,9 +37,12 @@ internal sealed class PdfGlyphStrokeGeometry
 
     internal void LineTo(Vector2 point) => Add(new Point(point.X, point.Y));
 
-    internal void CubicBezierTo(Vector2 from, Vector2 control1, Vector2 control2, Vector2 to) =>
+    internal void CubicBezierTo(Vector2 from, Vector2 control1, Vector2 control2, Vector2 to)
+    {
+        _hasCurves = true;
         Flatten(new Point(from.X, from.Y), new Point(control1.X, control1.Y),
             new Point(control2.X, control2.Y), new Point(to.X, to.Y), 0);
+    }
 
     internal void EndFigure() => _current = null;
 
@@ -75,6 +80,44 @@ internal sealed class PdfGlyphStrokeGeometry
             result.AddPolygon(vertices);
         });
         return result;
+    }
+
+    internal bool TryBuildFillUnion(double width, CancellationToken cancellationToken, out XGraphicsPath? path)
+    {
+        path = null;
+        cancellationToken.ThrowIfCancellationRequested();
+        // Each original edge emits at most one four-point segment polygon and
+        // one four-point join polygon. Preflight bounds all new allocations.
+        if (_hasCurves || _points > RectilinearGlyphUnion.MaximumInputEdges / 9 ||
+            _contours.Count > _points || !(width > 0) || double.IsInfinity(width)) return false;
+        var fill = new List<XPoint[]>();
+        foreach (var contour in _contours)
+        {
+            if (contour.Count < 3) return false;
+            var vertices = new XPoint[contour.Count];
+            for (var i = 0; i < contour.Count; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var a = contour[i]; var b = contour[(i + 1) % contour.Count];
+                if (a.X != b.X && a.Y != b.Y) return false;
+                vertices[i] = new XPoint(a.X, a.Y);
+            }
+            fill.Add(vertices);
+        }
+        var stroke = new List<XPoint[]>();
+        Polygons(width, points =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var vertices = new XPoint[points.Length];
+            for (var i = 0; i < points.Length; i++) vertices[i] = new XPoint(points[i].X, points[i].Y);
+            stroke.Add(vertices);
+        });
+        if (!RectilinearGlyphUnion.TryBuild(fill, stroke, cancellationToken, out var loops)) return false;
+        var result = new XGraphicsPath { FillMode = XFillMode.Winding };
+        foreach (var loop in loops) { cancellationToken.ThrowIfCancellationRequested(); result.AddPolygon(loop); }
+        cancellationToken.ThrowIfCancellationRequested();
+        path = result;
+        return true;
     }
 
     // Distance to the actual filled stroke, including its miter/bevel joins.
