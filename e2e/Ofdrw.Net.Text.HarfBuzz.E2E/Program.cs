@@ -220,6 +220,41 @@ Console.WriteLine("R22 positioned AV, ffi and Latin combining OFD/PDF/SVG/PNG re
 // R22 C-stage query probe: one bounded LTR paragraph with a true RTL Hebrew run.
 // This receipt is query evidence only; it is not an OFD/PDF/SVG acceptance claim.
 var dejavu = new TextFontFace("R22 DejaVu Sans", File.ReadAllBytes(Path.Combine(fixture, "DejaVuSans-R22.ttf")));
+var spanQueryRows = new List<object>();
+foreach (var (role, text, start, lengths, direction, script, language, disableLiga) in new[] {
+    ("ffi-cross-span", "ffi", 20, new[] { 1, 2 }, TextDirection.LeftToRight, "Latn", "en", false),
+    ("ffi-feature-off", "ffi", 20, new[] { 1, 2 }, TextDirection.LeftToRight, "Latn", "en", true),
+    ("arabic-context", "ببب", 10, new[] { 1, 1, 1 }, TextDirection.RightToLeft, "Arab", "ar", false),
+    ("combining-shared-cluster", "a\u0323\u0301", 30, new[] { 1, 1, 1 }, TextDirection.LeftToRight, "Latn", "en", false) })
+{
+    var next = start;
+    var spans = lengths.Select(length => { var span = new TextSourceSpan(next, length); next += length; return span; }).ToArray();
+    var run = new TextShapeRequest(text, start, dejavu, direction, script, language,
+        disableLiga ? new[] { new TextFeature("liga", 0, 0, text.Length) } : null);
+    var result = HarfBuzzTextPrelayout.CreateSpanShaping().Shape(new TextSpanShapingRequest(run, spans));
+    if (!ReferenceEquals(result.ShapedRun.Request, run) || result.GlyphCoverage.Count != result.ShapedRun.Glyphs.Count)
+        throw new InvalidDataException("Source-span query changed its complete input or glyph occurrences.");
+    if (role == "ffi-cross-span" && (result.ShapedRun.Glyphs.Single().GlyphId != 5044 ||
+        !result.GlyphCoverage.Single().CrossesSpanBoundary || result.GlyphCoverage.Single().Slices.Count != 2) ||
+        role == "ffi-feature-off" && !result.ShapedRun.Glyphs.Select(g => g.GlyphId).SequenceEqual(new uint[] { 73, 73, 76 }) ||
+        role == "arabic-context" && (!result.ShapedRun.Glyphs.Select(g => g.GlyphId).SequenceEqual(new uint[] { 5258, 5260, 5259 }) ||
+            !result.GlyphCoverage.Select(g => g.Slices.Single().SpanIndex).SequenceEqual(new[] { 2, 1, 0 })) ||
+        role == "combining-shared-cluster" && (!result.ShapedRun.Glyphs.Any(g => g.XAdvance == 0) ||
+            result.GlyphCoverage.Any(g => g.ClusterGlyphCount != result.ShapedRun.Glyphs.Count || g.Slices.Count != 3)))
+        throw new InvalidDataException("Fixed original font context/feature/cluster expectations changed.");
+    spanQueryRows.Add(new { role, text, sourceStart = start, direction = direction.ToString(), script, language,
+        runFeatures = run.Features, sourceSpans = spans,
+        result.ShapedRun.EngineVersion, result.ShapedRun.XAdvance, result.ShapedRun.YAdvance,
+        glyphs = result.ShapedRun.Glyphs.Select(g => new { g.GlyphId, g.ClusterStart, g.ClusterLength,
+            g.XAdvance, g.YAdvance, g.XOffset, g.YOffset, g.UnsafeToBreak }).ToArray(),
+        coverage = result.GlyphCoverage });
+}
+await File.WriteAllTextAsync(Path.Combine(output, "r22-source-span-query.json"), JsonSerializer.Serialize(new {
+    sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
+    faceSha256 = dejavu.FaceSha256, dejavu.UnitsPerEm, cases = spanQueryRows,
+    scope = "Single-face whole-run query and source associations only; no style resolution, bidi analysis, legacy Flow or output-profile expansion."
+}, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+Console.WriteLine("R22 source-span whole-run query and fixed original-GID context checks passed from candidate packages.");
 const string mixedSource = "abc שלום def";
 var mixedEngine = HarfBuzzTextPrelayout.CreateMixedParagraph();
 var mixedWide = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4, 50));
