@@ -103,6 +103,31 @@ class PackageArtifactsTests(unittest.TestCase):
         self._check_required_license_rejection(('Ofdrw.Net.Converter.Docx',), packages.CLIPPER_LICENSE_ENTRY,
                                                b'truncated or altered license', 'Clipper2 license differs')
 
+    def test_clipper_license_keeps_lf_in_autocrlf_checkout(self):
+        # The Linux feed is consumed unchanged on Windows. Git checkout must
+        # preserve the reviewed license bytes before byte-exact validation.
+        repo = self.root / 'autocrlf-checkout'
+        repo.mkdir()
+        env = dict(os.environ, GIT_ATTR_NOSYSTEM='1')
+        def git(*args):
+            subprocess.run(['git', *args], cwd=repo, env=env, check=True, capture_output=True)
+        git('init', '-q')
+        empty = self.root / 'empty-attributes'
+        empty.write_bytes(b'')
+        git('config', 'core.attributesFile', str(empty))
+        git('config', 'core.autocrlf', 'true')
+        git('config', 'core.safecrlf', 'false')
+        shutil.copyfile(packages.ROOT / '.gitattributes', repo / '.gitattributes')
+        expected = (packages.ROOT / packages.CLIPPER_LICENSE_ENTRY).read_bytes()
+        target = repo / packages.CLIPPER_LICENSE_ENTRY
+        target.parent.mkdir(parents=True)
+        target.write_bytes(expected)
+        git('add', '.gitattributes', packages.CLIPPER_LICENSE_ENTRY)
+        target.unlink()
+        git('checkout-index', '-f', '--', packages.CLIPPER_LICENSE_ENTRY)
+        self.assertEqual(expected, target.read_bytes())
+        self.assertNotIn(b'\r\n', target.read_bytes())
+
     def _check_musl_copyright_rejection(self, replacement, message):
         self._check_required_license_rejection(('Ofdrw.Net.Core', 'Ofdrw.Net.Cli'),
                                                'docs/licenses/MUSL-COPYRIGHT.txt', replacement, message)
