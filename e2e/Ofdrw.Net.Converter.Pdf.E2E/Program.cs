@@ -242,6 +242,53 @@ await using (var pdfOutput = File.Create(convertedPdfPath))
 }
 
 var pdfToOfd = new PdfToOfdConverter();
+var d3Rows = new List<object>();
+foreach (var (variant, expectedHash) in new[] {
+    ("cell", "7040cf0315281ffe97853b7ac9b8373135312400ba9ea7fd7b69a8966e5c5ea8"),
+    ("fixed", "7b69e87771891ba440bde051af33284f3e008b376744751bc27064391c366ea5") })
+{
+    var fixture = Path.Combine(repoRoot, "tests/Ofdrw.Net.Converter.Pdf.Tests/Fixtures/D3", $"fpdf2-two-word-{variant}.pdf");
+    var bytes = File.ReadAllBytes(fixture);
+    string Hash(byte[] data) => Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
+    if (Hash(bytes) != expectedHash) throw new InvalidDataException("D3 input identity changed.");
+    using var rejected = new MemoryStream();
+    string rejection;
+    try
+    {
+        await pdfToOfd.ConvertAsync(new MemoryStream(bytes), rejected);
+        throw new InvalidOperationException("D3 semantic import accepted unverified reading order.");
+    }
+    catch (NotSupportedException error) when (error.Message.Contains("PDF_TEXT_READING_ORDER_UNVERIFIED"))
+    {
+        rejection = error.Message;
+        if (rejected.Length != 0) throw new InvalidOperationException("D3 rejection wrote output bytes.");
+    }
+    var imageOfd = Path.Combine(outputDir, $"d3-{variant}-image-only.ofd");
+    using (var target = File.Create(imageOfd))
+        await new PdfToOfdConverter(new Ofdrw.Net.Converter.Pdf.PdfToOfdOptions {
+            TextLayerMode = Ofdrw.Net.Converter.Pdf.PdfTextLayerMode.None, RequireRasterization = true
+        }).ConvertAsync(new MemoryStream(bytes), target);
+    using (var input = File.OpenRead(imageOfd))
+    {
+        var imported = await new OfdReader().ReadAsync(input);
+        if (imported.Pages.Count != 1 || imported.Pages[0].Elements.OfType<OfdImageElement>().Count() != 1 ||
+            imported.Pages[0].Elements.OfType<OfdTextElement>().Any())
+            throw new InvalidOperationException("D3 raster-only output claims text or loses its image.");
+    }
+    var imagePdf = Path.Combine(outputDir, $"d3-{variant}-image-only.pdf");
+    using (var input = File.OpenRead(imageOfd))
+    using (var target = File.Create(imagePdf)) await ofdToPdf.ConvertAsync(input, target);
+    d3Rows.Add(new { variant, fixture, inputSha256 = expectedHash, rejection,
+        rejectedOutputBytes = rejected.Length, imageOfd, ofdSha256 = Hash(File.ReadAllBytes(imageOfd)),
+        imagePdf, pdfSha256 = Hash(File.ReadAllBytes(imagePdf)) });
+}
+var d3Assembly = typeof(PdfToOfdConverter).Assembly;
+File.WriteAllText(Path.Combine(outputDir, "d3-import-receipt.json"), JsonSerializer.Serialize(new {
+    assemblyPath = d3Assembly.Location,
+    assemblySha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(d3Assembly.Location))).ToLowerInvariant(),
+    rows = d3Rows
+}, new JsonSerializerOptions { WriteIndented = true }));
+Console.WriteLine("[E2E] D3 unverified RTL rejection and explicit raster-only import passed from installed packages.");
 await using (var pdfInput = File.OpenRead(convertedPdfPath))
 await using (var ofdOutput = File.Create(roundtripOfdPath))
 {

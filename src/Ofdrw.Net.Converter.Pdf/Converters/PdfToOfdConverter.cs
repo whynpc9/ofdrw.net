@@ -183,6 +183,7 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             return;
         }
 
+        PdfImportReadingOrder.Validate(pdfPage);
         var words = pdfPage.GetWords()
             .Where(word => !string.IsNullOrWhiteSpace(word.Text))
             .ToList();
@@ -294,6 +295,8 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
         double heightMm,
         int index)
     {
+        // Outside the best-effort catch: rejection must not become a placeholder.
+        PdfImportReadingOrder.Validate(pdfPage);
         var words = string.Empty;
         try
         {

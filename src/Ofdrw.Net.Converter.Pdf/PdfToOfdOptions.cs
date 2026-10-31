@@ -47,6 +47,9 @@ public sealed class PdfToOfdOptions
     /// Gets or sets how extractable PDF text is retained in the OFD output.
     /// The default creates a dual-layer document: a rendered page image for visual
     /// fidelity and transparent, positioned OFD text objects for machine use.
+    /// Semantic extraction rejects unverified right-to-left/bidi text. Use
+    /// <see cref="PdfTextLayerMode.None"/> with <see cref="RequireRasterization"/>
+    /// enabled for an explicit image-only conversion of such input.
     /// </summary>
     public PdfTextLayerMode TextLayerMode { get; set; } = PdfTextLayerMode.Invisible;
 
