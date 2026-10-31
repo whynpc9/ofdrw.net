@@ -132,4 +132,7 @@ public static class HarfBuzzTextPrelayout
 
     /// <summary>Creates the bounded mixed Latin/Hebrew paragraph query with the pinned run shaper.</summary>
     public static TextMixedParagraphEngine CreateMixedParagraph() => new TextMixedParagraphEngine(new HarfBuzzTextShaper());
+
+    /// <summary>Creates a whole-run query retaining source-span ownership with the pinned shaper.</summary>
+    public static TextSpanShapingEngine CreateSpanShaping() => new TextSpanShapingEngine(new HarfBuzzTextShaper());
 }
