@@ -8,6 +8,89 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 public sealed class NativeBoldStrokePlannerTests
 {
     [Fact]
+    public void CompletedProofsSurviveLaterBudgetExhaustionWithoutStartingMoreAnalysis()
+    {
+        var face = CounterFont(Font(), nested: false);
+        using var cancellation = new CancellationTokenSource();
+        var planner = new NativeBoldStrokePlanner(cancellation.Token);
+        var width = planner.Width(face, false, 4, "中");
+        var outline = Assert.IsType<NativeProtectedGlyph>(planner.ProtectedGlyph(face, 4, '中'));
+        var budget = typeof(NativeBoldStrokePlanner).GetField("budget",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(planner)!;
+        var work = budget.GetType().GetField("work",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        // Reach the real shared cap on the next uncached glyph. The fixture
+        // stays small; no production limit or separate analysis budget changes.
+        work.SetValue(budget, 50_000_000);
+        Assert.Equal(.04, planner.Width(face, false, 4, "国"));
+        Assert.Equal(50_000_001, work.GetValue(budget));
+        Assert.Equal(width, planner.Width(face, false, 4, "中"));
+        Assert.Same(outline, planner.ProtectedGlyph(face, 4, '中'));
+        Assert.Null(planner.ProtectedGlyph(face, 4, '国'));
+        Assert.Null(planner.ProtectedGlyph(face, 5, '中'));
+        Assert.Null(planner.ProtectedGlyph(face.ToArray(), 4, '中'));
+        Assert.Equal(.04, planner.Width(face, false, 4, "中国"));
+        Assert.Equal(50_000_001, work.GetValue(budget));
+        cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() => planner.Width(face, false, 4, "中"));
+        Assert.Throws<OperationCanceledException>(() => planner.ProtectedGlyph(face, 4, '中'));
+    }
+
+    [Theory]
+    [InlineData(false, 3.701)]
+    [InlineData(true, 3.701)]
+    [InlineData(false, 3.702)]
+    [InlineData(true, 3.702)]
+    [InlineData(false, 3.7041666667)]
+    [InlineData(true, 3.7041666667)]
+    public void ProtectedCurvesAndCounterBoxesUseDeclaredSizeWithForceIntegerPpem(bool force, double requested)
+    {
+        var source = new OpenTypeFace(CounterFont(Font(), nested: false));
+        var head = source.Table("head");
+        OpenTypeFace.Put16(head, 16, force ? OpenTypeFace.U16(head, 16) | 8 : OpenTypeFace.U16(head, 16) & ~8);
+        var face = source.Build(); var snapshot = face.ToArray();
+        var written = double.Parse(requested.ToString("0.###", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+        var baseline = 2.346 + written;
+        var planner = new NativeBoldStrokePlanner(default);
+        var text = new OfdTextElement
+        {
+            EmitSyntheticBoldStroke = true,
+            SyntheticBoldStrokeWidthMillimeters = planner.Width(face, false, requested, "中"),
+            Text = "中", FontSizeMillimeters = requested, Weight = 700,
+            XMillimeters = 1.23456, YMillimeters = 2.34567,
+            Runs = { new OfdTextRun { Text = "中", XMillimeters = .12345, YMillimeters = requested } }
+        };
+        Assert.True(new NativeProtectedRowStrokeBuilder(planner, default).TryCreate(new[] { text }, face,
+            new OfdPage { WidthMillimeters = 60, HeightMillimeters = 80 }, out var paths));
+        var path = Assert.Single(paths);
+        var tokens = path.AbbreviatedData.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var points = new List<(double X, double Y)>();
+        for (var index = 0; index < tokens.Length;)
+        {
+            if (tokens[index] == "C") { index++; continue; }
+            Assert.Contains(tokens[index], new[] { "M", "L" });
+            points.Add((double.Parse(tokens[index + 1], CultureInfo.InvariantCulture),
+                double.Parse(tokens[index + 2], CultureInfo.InvariantCulture))); index += 3;
+        }
+        // Original design-unit rectangles at the separately serialized
+        // boundary/run origins. ForcePPEMToInt must not enlarge the vector
+        // outlines from3.704mm to3.7041667mm (10.5pt at72dpi).
+        Assert.InRange(Math.Abs(points.Min(p => p.X) - 1.358), 0, .0000015);
+        Assert.InRange(Math.Abs(points.Max(p => p.X) - (1.358 + written)), 0, .0000015);
+        Assert.InRange(Math.Abs(points.Min(p => p.Y) - 2.346), 0, .0000015);
+        Assert.InRange(Math.Abs(points.Max(p => p.Y) - baseline), 0, .0000015);
+        var clip = Assert.Single(path.Clips!.Items).Areas.Single().Path;
+        var clipTokens = clip.AbbreviatedData.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var hole = Enumerable.Range(0, clipTokens.Length).Where(i => clipTokens[i] == "M").Skip(1).Single();
+        const double pad = .5005 * 25.4 / 72;
+        Assert.InRange(Math.Abs(double.Parse(clipTokens[hole + 1], CultureInfo.InvariantCulture) -
+            Math.Floor((1.358 + written * .1 - pad) * 1e6) / 1e6), 0, .000002);
+        Assert.InRange(Math.Abs(double.Parse(clipTokens[hole + 2], CultureInfo.InvariantCulture) -
+            Math.Floor((baseline - written * .55 - pad) * 1e6) / 1e6), 0, .000002);
+        Assert.Equal(snapshot, face);
+    }
+
+    [Fact]
     public void HighlyCoincidentContoursRetainLegacyWithinTheIntersectionAdmissionBudget()
     {
         // Small, finite construction:64 identical filled rectangles produce

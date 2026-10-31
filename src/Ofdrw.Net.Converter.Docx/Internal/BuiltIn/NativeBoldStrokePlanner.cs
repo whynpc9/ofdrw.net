@@ -36,7 +36,7 @@ internal sealed class NativeBoldStrokePlanner
         var legacy = FontEmphasisMetrics.BoldStrokeWidth(size, text);
         var writtenSize = double.Parse(size.ToString("0.###", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
         if (physicalItalic || writtenSize * 72 / 25.4 is < .1 or > 1000 ||
-            legacy == FontEmphasisMetrics.BoldStrokeWidth(size) || budget.Exhausted) return legacy;
+            legacy == FontEmphasisMetrics.BoldStrokeWidth(size)) return legacy;
         var profile = GetProfile(bytes);
         if (profile is null) return legacy;
         var fraction = MaximumStrokeFraction;
@@ -61,7 +61,7 @@ internal sealed class NativeBoldStrokePlanner
     {
         token.ThrowIfCancellationRequested();
         var writtenSize = double.Parse(size.ToString("0.###", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
-        if (budget.Exhausted || writtenSize * 72 / 25.4 is < .1 or > 1000) return null;
+        if (writtenSize * 72 / 25.4 is < .1 or > 1000) return null;
         return GetProfile(bytes)?.ProtectedGlyph(scalar, writtenSize * 72 / 25.4);
     }
 
@@ -69,6 +69,7 @@ internal sealed class NativeBoldStrokePlanner
     {
         if (!profiles.TryGetValue(bytes, out var profile))
         {
+            if (budget.Exhausted) return null;
             profile = null;
             if (profiles.Count < 8 && bytes.Length <= 32 * 1024 * 1024 &&
                 faceBytes + bytes.Length <= 64L * 1024 * 1024 && OpenTypeFace.HasStaticTrueTypeOutlines(bytes))
@@ -105,6 +106,7 @@ internal sealed class NativeBoldStrokePlanner
         private readonly FontFamily family;
         private readonly OpenTypeCmap cmap;
         private readonly WorkBudget budget;
+        private readonly bool forceIntegerPpem;
         private readonly Dictionary<(int Scalar, double Size), double?> fractions = new();
         private readonly Dictionary<(int Scalar, double Size), NativeProtectedGlyph?> protectedGlyphs = new();
         internal Profile(byte[] bytes, WorkBudget budget)
@@ -114,11 +116,17 @@ internal sealed class NativeBoldStrokePlanner
             family = new FontCollection().Add(stream);
             if (!family.GetAvailableStyles().Contains(FontStyle.Regular))
                 throw new NotSupportedException("No physical regular outline for native bold analysis.");
-            cmap = new OpenTypeCmap(new OpenTypeFace(bytes), budget.Cmap);
+            var face = new OpenTypeFace(bytes);
+            forceIntegerPpem = (OpenTypeFace.U16(face.Table("head"), 16) & 8) != 0;
+            cmap = new OpenTypeCmap(face, budget.Cmap);
         }
         internal double? Fraction(int scalar, double size)
         {
+            // Final pagination reuses the same planner. Later text can exhaust
+            // its shared budget, but must not discard earlier completed proof.
+            // Reading a cached result performs no new font/outline analysis.
             if (fractions.TryGetValue((scalar, size), out var cached)) return cached;
+            if (budget.Exhausted) return null;
             double? result = null;
             NativeProtectedGlyph? outline = null;
             try
@@ -133,7 +141,7 @@ internal sealed class NativeBoldStrokePlanner
                 result = renderer.Fraction(font.Size);
                 // The optional path must not change the uniform planner's result.
                 // Failure to place an original curve only refuses extra paint.
-                try { outline = renderer.ProtectedGlyph(font, scalar); }
+                try { outline = renderer.ProtectedGlyph(font, scalar, forceIntegerPpem); }
                 catch (NotSupportedException) { }
                 catch (FontException) { }
                 catch (InvalidDataException) { }
@@ -258,7 +266,7 @@ internal sealed class NativeBoldStrokePlanner
             }
             return lower / size;
         }
-        internal NativeProtectedGlyph ProtectedGlyph(Font font, int scalar)
+        internal NativeProtectedGlyph ProtectedGlyph(Font font, int scalar, bool forceIntegerPpem)
         {
             if (filledCounters is null || glyphs != 1 || curves.Count == 0 || curves.Count > 4352)
                 throw new NotSupportedException("No complete original glyph for protected emphasis.");
@@ -287,14 +295,30 @@ internal sealed class NativeBoldStrokePlanner
             var layoutAscender = metrics.HorizontalMetrics.Ascender - topBearing -
                 (metrics.HorizontalMetrics.LineHeight - metrics.UnitsPerEm) * .5f;
             var offset = -layoutAscender * font.Size / metrics.UnitsPerEm;
+            // Fonts1.0.1 rounds dpi*pointSize for head.ForcePPEMToInt even
+            // without hinting. Preserve the font flag and uniform witness
+            // analysis; only restore the optional vector replay and its
+            // counter bounds to the declared size around the glyph baseline.
+            var scaledSize = 72f * font.Size;
+            var roundedSize = forceIntegerPpem ? MathF.Round(scaledSize) : scaledSize;
+            if (roundedSize <= 0) throw new NotSupportedException("No finite protected glyph scale.");
+            var correction = forceIntegerPpem ? (double)scaledSize / roundedSize : 1d;
+            NativeGlyphCurve Restore(NativeGlyphCurve curve) => curve.Command == 'C' || correction == 1
+                ? curve : new NativeGlyphCurve(curve.Command, curve.X * correction,
+                    (curve.Y + offset) * correction - offset,
+                    curve.Command == 'Q' ? curve.ControlX * correction : 0,
+                    curve.Command == 'Q' ? (curve.ControlY + offset) * correction - offset : 0);
+            var originalCurves = curves.Select(Restore).ToArray();
             var bounds = new List<NativeCounterBounds>();
             foreach (var hole in filledCounters)
             {
                 budget.Tick();
-                bounds.Add(new NativeCounterBounds(hole.Min(p => p.X), hole.Min(p => p.Y),
-                    hole.Max(p => p.X), hole.Max(p => p.Y)));
+                bounds.Add(new NativeCounterBounds(hole.Min(p => p.X) * correction,
+                    (hole.Min(p => p.Y) + offset) * correction - offset,
+                    hole.Max(p => p.X) * correction,
+                    (hole.Max(p => p.Y) + offset) * correction - offset));
             }
-            return new NativeProtectedGlyph(originalGid, curves.ToArray(), bounds.ToArray(), offset);
+            return new NativeProtectedGlyph(originalGid, originalCurves, bounds.ToArray(), offset);
         }
 
         private List<Point>[] FilledCounterContours(List<Point>[] input)

@@ -148,7 +148,15 @@ The added paths retain original closed line/quadratic contours and their joins;
 polygon union output is used only for counter enumeration. Original callback
 GIDs must match the face's direct cmap. Placement uses the serialized font size,
 boundary/run X/Y and producer DeltaX, with the same horizontal-metric baseline
-correction as the PDF outline route. The group is constructed completely before
+correction as the PDF outline route. SixLabors.Fonts1.0.1 also rounds
+DPI-times-point-size when the original head table sets ForcePPEMToInt, even
+without hinting. The optional curves and counter boxes undo that scale around
+the same original baseline, restoring the declared serialized size. Original
+font bytes/flags, text origins, producer advances and uniform witness analysis
+remain unchanged. Generated flag-on/off controls cover both sides of a rounding
+boundary and compare the replay and exclusions with design-unit rectangles;
+the original2e-6mm source-curve comparison remains required for actual fonts.
+The group is constructed completely before
 any path reaches the page. Each path follows its own text immediately, preserving
 later cell backgrounds/borders and other paint order. Separate formatting groups,
 rows, paragraphs and pages remain independent. Mixed Han/Latin, italic, physical
@@ -181,7 +189,14 @@ color, non-TrueType or unavailable analysis retains the existing policy.
 Analysis is local to one DOCX render: at most8 faces,32MiB per face/64MiB total,
 512 glyph/size measurements,131,072 original/returned-hole points and50million bounded
 geometry visits; each glyph admits64 contours/4096 analysis points with curve
-depth20. Exhaustion retains the legacy width; cancellation still propagates.
+depth20. Exhaustion refuses new faces and glyph/size analyses. Completed cached
+fractions and optional outlines remain available to subsequent pagination passes:
+later document content must not discard earlier proof. An uncached or failed
+measurement retains the legacy width, and no extra analysis budget is created.
+Cancellation is checked before cached lookups too. A deterministic cap-exhaustion
+regression checks reuse, refusal of new faces/sizes/glyphs and cancellation; the
+full native/default WenKai producer checks the three actual shared-fixture
+headers, including all11 group-wide counter complements.
 Polygon input uses quadratic flattening at0.00025pt and a1e-6pt integer grid;
 these approximations can affect tiny topology and are not an exact-curve proof.
 Before the union call, absolute coordinates are limited to10,000pt and each

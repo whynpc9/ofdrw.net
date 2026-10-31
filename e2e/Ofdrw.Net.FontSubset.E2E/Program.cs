@@ -115,6 +115,20 @@ foreach (var mode in new[] { "native", "default" })
     using (var read = File.OpenRead(source)) using (var write = File.Create(ofd)) await new DocxToOfdConverter(options).ConvertAsync(read, write);
     using var input = File.OpenRead(ofd); var package = await new OfdReader().ReadAsync(input);
     var text = new OfdTextExtractor().Extract(package); if (!text.Contains("中文") || !text.Contains("Alpha")) throw new Exception("DOCX text missing.");
+    // Later text previously exhausted the shared analysis budget, causing
+    // final pagination to discard this row's already completed proofs. Check
+    // the real full-document/embedding path, not a locally fresh planner.
+    var headers = package.Pages[0].Elements.OfType<OfdTextElement>()
+        .Where(element => element.Text is "项目" or "数量" or "状态").ToArray();
+    if (headers.Length != 3) throw new Exception("WenKai shared fixture headers missing.");
+    foreach (var header in headers)
+    {
+        var index = package.Pages[0].Elements.IndexOf(header);
+        if (package.Pages[0].Elements[index + 1] is not OfdPathElement supplement ||
+            !supplement.Stroke || supplement.Fill || supplement.LineWidthMillimeters != .129 ||
+            supplement.Clips?.Items.Count != 11)
+            throw new Exception("Full-document WenKai header lost its complete protected emphasis: " + header.Text);
+    }
     var originalText = new StringBuilder(); using (var original = ZipFile.OpenRead(source))
     using (var document = original.GetEntry("word/document.xml")!.Open())
     {
