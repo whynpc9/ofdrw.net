@@ -37,21 +37,7 @@ internal sealed class NativeBoldStrokePlanner
         var writtenSize = double.Parse(size.ToString("0.###", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
         if (physicalItalic || writtenSize * 72 / 25.4 is < .1 or > 1000 ||
             legacy == FontEmphasisMetrics.BoldStrokeWidth(size) || budget.Exhausted) return legacy;
-        if (!profiles.TryGetValue(bytes, out var profile))
-        {
-            profile = null;
-            if (profiles.Count < 8 && bytes.Length <= 32 * 1024 * 1024 &&
-                faceBytes + bytes.Length <= 64L * 1024 * 1024 && OpenTypeFace.HasStaticTrueTypeOutlines(bytes))
-            {
-                faceBytes += bytes.Length;
-                try { profile = new Profile(bytes, budget); }
-                catch (FontException) { }
-                catch (NotSupportedException) { }
-                catch (InvalidDataException) { }
-            }
-            // Keep the cache itself bounded when many distinct faces are used.
-            if (profiles.Count < 8) profiles.Add(bytes, profile);
-        }
+        var profile = GetProfile(bytes);
         if (profile is null) return legacy;
         var fraction = MaximumStrokeFraction;
         for (var i = 0; i < text.Length; i++)
@@ -69,6 +55,34 @@ internal sealed class NativeBoldStrokePlanner
         // Match the writer's serialized font size and round an increase down
         // to its 0.001mm grid, so formatting cannot exceed the checked width.
         return Math.Max(legacy, Math.Floor(writtenSize * fraction * 1000) / 1000);
+    }
+
+    internal NativeProtectedGlyph? ProtectedGlyph(byte[] bytes, double size, int scalar)
+    {
+        token.ThrowIfCancellationRequested();
+        var writtenSize = double.Parse(size.ToString("0.###", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+        if (budget.Exhausted || writtenSize * 72 / 25.4 is < .1 or > 1000) return null;
+        return GetProfile(bytes)?.ProtectedGlyph(scalar, writtenSize * 72 / 25.4);
+    }
+
+    private Profile? GetProfile(byte[] bytes)
+    {
+        if (!profiles.TryGetValue(bytes, out var profile))
+        {
+            profile = null;
+            if (profiles.Count < 8 && bytes.Length <= 32 * 1024 * 1024 &&
+                faceBytes + bytes.Length <= 64L * 1024 * 1024 && OpenTypeFace.HasStaticTrueTypeOutlines(bytes))
+            {
+                faceBytes += bytes.Length;
+                try { profile = new Profile(bytes, budget); }
+                catch (FontException) { }
+                catch (NotSupportedException) { }
+                catch (InvalidDataException) { }
+            }
+            // Keep the cache itself bounded when many distinct faces are used.
+            if (profiles.Count < 8) profiles.Add(bytes, profile);
+        }
+        return profile;
     }
 
     private sealed class WorkBudget(CancellationToken token)
@@ -92,6 +106,7 @@ internal sealed class NativeBoldStrokePlanner
         private readonly OpenTypeCmap cmap;
         private readonly WorkBudget budget;
         private readonly Dictionary<(int Scalar, double Size), double?> fractions = new();
+        private readonly Dictionary<(int Scalar, double Size), NativeProtectedGlyph?> protectedGlyphs = new();
         internal Profile(byte[] bytes, WorkBudget budget)
         {
             this.budget = budget;
@@ -105,6 +120,7 @@ internal sealed class NativeBoldStrokePlanner
         {
             if (fractions.TryGetValue((scalar, size), out var cached)) return cached;
             double? result = null;
+            NativeProtectedGlyph? outline = null;
             try
             {
                 budget.Glyph();
@@ -115,18 +131,35 @@ internal sealed class NativeBoldStrokePlanner
                 TextRenderer.RenderTextTo(renderer, char.ConvertFromUtf32(scalar),
                     new TextOptions(font) { Dpi = 72, KerningMode = KerningMode.None });
                 result = renderer.Fraction(font.Size);
+                // The optional path must not change the uniform planner's result.
+                // Failure to place an original curve only refuses extra paint.
+                try { outline = renderer.ProtectedGlyph(font, scalar); }
+                catch (NotSupportedException) { }
+                catch (FontException) { }
+                catch (InvalidDataException) { }
             }
             catch (NotSupportedException) { }
             catch (FontException) { }
             catch (InvalidDataException) { }
-            if (fractions.Count < 512) fractions.Add((scalar, size), result);
+            if (fractions.Count < 512)
+            {
+                fractions.Add((scalar, size), result);
+                protectedGlyphs.Add((scalar, size), outline);
+            }
             return result;
+        }
+        internal NativeProtectedGlyph? ProtectedGlyph(int scalar, double size)
+        {
+            _ = Fraction(scalar, size);
+            return protectedGlyphs.TryGetValue((scalar, size), out var outline) ? outline : null;
         }
     }
 
     private sealed class CounterRenderer(WorkBudget budget, int originalGid) : IGlyphRenderer
     {
         private readonly List<List<Point>> contours = new();
+        private readonly List<NativeGlyphCurve> curves = new();
+        private List<Point>[]? filledCounters;
         private readonly PdfGlyphStrokeGeometry stroke = new(.001);
         private List<Point>? current;
         private Point position;
@@ -148,13 +181,14 @@ internal sealed class NativeBoldStrokePlanner
             if (contours.Count >= 64) throw new NotSupportedException("Too many bold-analysis contours.");
             current = new List<Point>(); contours.Add(current); stroke.BeginFigure();
         }
-        public void EndFigure() { current = null; stroke.EndFigure(); }
-        public void MoveTo(Vector2 p) { position = new Point(p.X, p.Y); Add(position); stroke.MoveTo(p); }
-        public void LineTo(Vector2 p) { position = new Point(p.X, p.Y); Add(position); stroke.LineTo(p); }
+        public void EndFigure() { curves.Add(new NativeGlyphCurve('C')); current = null; stroke.EndFigure(); }
+        public void MoveTo(Vector2 p) { curves.Add(new NativeGlyphCurve('M', p.X, p.Y)); position = new Point(p.X, p.Y); Add(position); stroke.MoveTo(p); }
+        public void LineTo(Vector2 p) { curves.Add(new NativeGlyphCurve('L', p.X, p.Y)); position = new Point(p.X, p.Y); Add(position); stroke.LineTo(p); }
         public void CubicBezierTo(Vector2 a, Vector2 b, Vector2 c) =>
             throw new NotSupportedException("Native bold analysis requires quadratic TrueType outlines.");
         public void QuadraticBezierTo(Vector2 control, Vector2 target)
         {
+            curves.Add(new NativeGlyphCurve('Q', target.X, target.Y, control.X, control.Y));
             var end = new Point(target.X, target.Y);
             var start = new Vector2((float)position.X, (float)position.Y);
             stroke.CubicBezierTo(start, start + (control - start) * (2f / 3f),
@@ -182,6 +216,7 @@ internal sealed class NativeBoldStrokePlanner
             var valid = contours.Where(c => c.Count > 2).ToArray();
             if (valid.Length == 0) throw new NotSupportedException("No closed original contour to analyze.");
             var holes = FilledCounterContours(valid);
+            filledCounters = holes;
             var areas = holes.ToDictionary(c => c, c => Math.Abs(Area(c)));
             var witnesses = new List<(Point Center, double Radius)>();
             foreach (var contour in holes)
@@ -223,6 +258,45 @@ internal sealed class NativeBoldStrokePlanner
             }
             return lower / size;
         }
+        internal NativeProtectedGlyph ProtectedGlyph(Font font, int scalar)
+        {
+            if (filledCounters is null || glyphs != 1 || curves.Count == 0 || curves.Count > 4352)
+                throw new NotSupportedException("No complete original glyph for protected emphasis.");
+            foreach (var command in curves)
+            {
+                budget.Tick();
+                if (!command.Finite || Math.Abs(command.X) > 10_000 || Math.Abs(command.Y) > 10_000 ||
+                    Math.Abs(command.ControlX) > 10_000 || Math.Abs(command.ControlY) > 10_000)
+                    throw new NotSupportedException("Original protected curve exceeds its coordinate budget.");
+            }
+            // Undo Fonts1.0.1's line ascender/em centering and negative top
+            // bearing exactly as the owning PDF outline route does. Analysis
+            // remains translation invariant in its original callback coordinates.
+            if (!font.TryGetGlyphs(new SixLabors.Fonts.Unicode.CodePoint(scalar),
+                ColorFontSupport.None, out var metricsGlyphs))
+                throw new NotSupportedException("No original glyph metrics for protected emphasis.");
+            var count = 0; var topBearing = 0;
+            foreach (var glyph in metricsGlyphs)
+            {
+                budget.Tick();
+                if (++count != 1) throw new NotSupportedException("Multiple original glyph metrics.");
+                topBearing = Math.Min(topBearing, glyph.GlyphMetrics.TopSideBearing);
+            }
+            if (count != 1) throw new NotSupportedException("Missing original glyph metrics.");
+            var metrics = font.FontMetrics;
+            var layoutAscender = metrics.HorizontalMetrics.Ascender - topBearing -
+                (metrics.HorizontalMetrics.LineHeight - metrics.UnitsPerEm) * .5f;
+            var offset = -layoutAscender * font.Size / metrics.UnitsPerEm;
+            var bounds = new List<NativeCounterBounds>();
+            foreach (var hole in filledCounters)
+            {
+                budget.Tick();
+                bounds.Add(new NativeCounterBounds(hole.Min(p => p.X), hole.Min(p => p.Y),
+                    hole.Max(p => p.X), hole.Max(p => p.Y)));
+            }
+            return new NativeProtectedGlyph(originalGid, curves.ToArray(), bounds.ToArray(), offset);
+        }
+
         private List<Point>[] FilledCounterContours(List<Point>[] input)
         {
             // Font contours describe nonzero fill, not a list of holes. For

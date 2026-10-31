@@ -196,7 +196,7 @@ public sealed class EmbeddedBoldCompatibilityTests
         using var png = new MemoryStream();
         await new Ofdrw.Net.Converter.Pdf.Converters.OfdToImageConverter().ConvertAsync(output, png);
         AssertDenseCounterOpen(png.ToArray());
-        await AssertTableHeaderContrast(output.ToArray(), png.ToArray(), explicitNative);
+        await AssertTableHeaderContrast(output.ToArray(), png.ToArray(), explicitNative, fonts);
         if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } imageArtifacts)
             await File.WriteAllBytesAsync(Path.Combine(imageArtifacts, $"native-bold-{explicitNative}-public144.png"), png.ToArray());
         // Rewriting imported XML keeps its single text object/stroke; no second application.
@@ -206,24 +206,65 @@ public sealed class EmbeddedBoldCompatibilityTests
         Assert.Equal(texts.Select(text => text.SourceXml), reread.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().Select(text => text.SourceXml));
     }
 
-    private static async Task AssertTableHeaderContrast(byte[] ofd, byte[] boldPng, bool explicitNative)
+    private static async Task AssertTableHeaderContrast(byte[] ofd, byte[] boldPng, bool explicitNative,
+        PinnedCjkFontDirectory fonts)
     {
         using var input = new MemoryStream(ofd);
-        var control = await new OfdReader().ReadAsync(input);
-        var headers = control.Pages[0].Elements.OfType<OfdTextElement>()
+        var original = await new OfdReader().ReadAsync(input);
+        var headers = original.Pages[0].Elements.OfType<OfdTextElement>()
             .Where(text => text.Text is "项目" or "数量" or "状态").ToArray();
         Assert.Equal(3, headers.Length);
-        foreach (var text in headers)
+        // Independently produce a genuinely regular DOCX table row. Clearing
+        // Weight/Stroke on the output would leave nonsemantic emphasis paths.
+        using var regularSource = new MemoryStream();
+        regularSource.Write(File.ReadAllBytes(Sample()));
+        using (var zip = new ZipArchive(regularSource, ZipArchiveMode.Update, leaveOpen: true))
         {
-            // Same original face, text and positions; remove only the requested
-            // header emphasis for an actual regular-weight image reference.
-            var xml = XElement.Parse(text.SourceXml!);
-            text.Weight = 400; xml.SetAttributeValue("Weight", "400");
-            xml.SetAttributeValue("Stroke", "false"); xml.Attribute("LineWidth")?.Remove();
-            xml.Elements().Where(e => e.Name.LocalName == "StrokeColor").Remove();
-            text.SourceXml = xml.ToString(SaveOptions.DisableFormatting);
+            var entry = zip.GetEntry("word/document.xml")!;
+            XDocument document;
+            using (var source = entry.Open()) document = XDocument.Load(source);
+            XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+            var row = document.Descendants(w + "tbl").First().Elements(w + "tr").First();
+            foreach (var run in row.Descendants(w + "r"))
+            {
+                var properties = run.Element(w + "rPr");
+                if (properties is null) { properties = new XElement(w + "rPr"); run.AddFirst(properties); }
+                properties.Elements(w + "b").Remove(); properties.Elements(w + "bCs").Remove();
+                properties.Add(new XElement(w + "b", new XAttribute(w + "val", "0")),
+                    new XElement(w + "bCs", new XAttribute(w + "val", "0")));
+            }
+            entry.Delete(); using var sourceOutput = zip.CreateEntry("word/document.xml").Open(); document.Save(sourceOutput);
         }
-        using var controlOfd = new MemoryStream(); await new OfdPackageWriter().WriteAsync(control, controlOfd);
+        regularSource.Position = 0;
+        using var controlOfd = new MemoryStream();
+        await new DocxToOfdConverter(Options(fonts, explicitNative)).ConvertAsync(regularSource, controlOfd);
+        controlOfd.Position = 0;
+        var control = await new OfdReader().ReadAsync(controlOfd);
+        var regularHeaders = control.Pages[0].Elements.OfType<OfdTextElement>()
+            .Where(text => text.Text is "项目" or "数量" or "状态").ToArray();
+        Assert.Equal(3, regularHeaders.Length);
+        for (var i = 0; i < headers.Length; i++)
+        {
+            var before = headers[i]; var after = regularHeaders[i];
+            Assert.Equal(400, after.Weight);
+            Assert.Equal((before.Text, before.FontSizeMillimeters, before.XMillimeters, before.YMillimeters,
+                before.WidthMillimeters, before.HeightMillimeters),
+                (after.Text, after.FontSizeMillimeters, after.XMillimeters, after.YMillimeters,
+                after.WidthMillimeters, after.HeightMillimeters));
+            Assert.Equal(original.Fonts.Single(f => f.Id == before.FontResourceId).Data,
+                control.Fonts.Single(f => f.Id == after.FontResourceId).Data);
+            Assert.Equal(before.Runs.Select(r => (r.Text, r.XMillimeters, r.YMillimeters, r.DeltaX, r.DeltaY)),
+                after.Runs.Select(r => (r.Text, r.XMillimeters, r.YMillimeters, r.DeltaX, r.DeltaY)));
+            var position = original.Pages[0].Elements.IndexOf(before);
+            var supplement = Assert.IsType<OfdPathElement>(original.Pages[0].Elements[position + 1]);
+            Assert.Equal(.129, supplement.LineWidthMillimeters);
+            Assert.True(supplement.Stroke); Assert.False(supplement.Fill);
+            // Protect every counter in the equal-format group, including
+            // other TextObjects:项目3 + 数量8 + 状态0.
+            Assert.Equal(11, supplement.Clips?.Items.Count ?? 0);
+        }
+        Assert.DoesNotContain(control.Pages[0].Elements.OfType<OfdPathElement>(),
+            path => path.LineWidthMillimeters == .129);
         controlOfd.Position = 0; using var regularPng = new MemoryStream();
         await new Ofdrw.Net.Converter.Pdf.Converters.OfdToImageConverter().ConvertAsync(controlOfd, regularPng);
         using var bold = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(boldPng);
@@ -254,6 +295,7 @@ public sealed class EmbeddedBoldCompatibilityTests
         }
         if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
         {
+            await File.WriteAllBytesAsync(Path.Combine(artifacts, $"native-bold-{explicitNative}-row-regular-control.docx"), regularSource.ToArray());
             await File.WriteAllBytesAsync(Path.Combine(artifacts, $"native-bold-{explicitNative}-row-regular-control.ofd"), controlOfd.ToArray());
             await File.WriteAllBytesAsync(Path.Combine(artifacts, $"native-bold-{explicitNative}-row-regular-control.png"), regularPng.ToArray());
         }

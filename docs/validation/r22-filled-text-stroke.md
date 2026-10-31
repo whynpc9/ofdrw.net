@@ -131,6 +131,50 @@ retain their existing contracts. The shared layout fixture checks that each
 header still has more ink than its same-font/same-glyph regular reference;
 ordinary-scale emphasis and counter readability remain separate visual gates.
 
+Fresh upright, opaque, pure-BMP-Han members of such a group can also receive
+an optional nonsemantic original-curve stroke towards3.5%-em. The original
+TextObjects, requested Weight, font/GIDs, advances and already constrained base
+LineWidth remain. Every additional path is clipped outside all enumerated
+counter bounding rectangles in the complete equal-format group, including
+counters belonging to other TextObjects or automatically wrapped lines. Each
+rectangle expands by0.5pt plus0.0005pt numerical allowance, with its millimeter
+coordinates rounded outwards to six decimals. Separate even-odd complements
+intersect; overlapping boxes cannot XOR a protected region back into the paint.
+This group-wide exclusion matters when adjacent formatted runs are emitted as
+separate objects. Protecting only each path's own glyphs would leave a sibling's
+counter exposed to the extra stroke.
+
+The added paths retain original closed line/quadratic contours and their joins;
+polygon union output is used only for counter enumeration. Original callback
+GIDs must match the face's direct cmap. Placement uses the serialized font size,
+boundary/run X/Y and producer DeltaX, with the same horizontal-metric baseline
+correction as the PDF outline route. The group is constructed completely before
+any path reaches the page. Each path follows its own text immediately, preserving
+later cell backgrounds/borders and other paint order. Separate formatting groups,
+rows, paragraphs and pages remain independent. Mixed Han/Latin, italic, physical
+bold, name-only, imported, partial-alpha or unsupported/exhausted groups keep their
+base policy. The optional path does not alter the uniform planner's0.4pt/60%
+witness guard or make that guard a new guarantee for additional paint.
+
+Per pagination pass, optional placement admits at most64 text objects and256
+BMP Han characters per group,2048 glyph placements,131072 original-curve replay
+commands,4096 combined counter visits/clip emissions and4MiB of formatted path
+text, with512KiB per path stream. Repeated group-mask copies consume the clip
+budget. Failure keeps the whole group's base stroke, and cancellation propagates.
+Discarded pagination passes get fresh placement budgets; the existing document-wide
+font/topology budgets and at-most-eight-pass pagination limit remain. These are
+producer limits, not a bound on Clipper internals or arbitrary viewer performance.
+
+The regular contrast reference now comes from independently reconverting a DOCX
+whose header runs request regular weight. It must retain the same original font
+payloads and text positions. Clearing Weight/Stroke on an OFD that still contains
+supplementary paths is not a regular reference. Counter/coverage oracles remain;
+more ink than regular is not sufficient visual acceptance. Flattening/quantization
+can still affect tiny topology. Exclusion rectangles protect enumerated regions,
+not a formal exact-curve arrangement completeness proof. Raw raster changes,
+zero-sample holes, ordinary-scale readability and actual reader behavior remain
+separate evidence, and failures cannot be erased by the geometric checks.
+
 This is an optical fallback, not a physical700 face or a guarantee about every
 open gap, neck, counter component, font or raster scale. Italic, variable,
 color, non-TrueType or unavailable analysis retains the existing policy.
