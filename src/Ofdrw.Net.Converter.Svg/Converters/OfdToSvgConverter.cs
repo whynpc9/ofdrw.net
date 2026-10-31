@@ -225,13 +225,13 @@ public sealed class OfdToSvgConverter
         return root;
     }
 
-    private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> AddEmbeddedFonts(
+    private static IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage, bool UnboldOutline)> AddEmbeddedFonts(
         XElement root, XNamespace ns, IReadOnlyList<OfdFontResource> fonts, IReadOnlyList<OfdTextElement> texts,
         FontParseBudget parseBudget, IDictionary<OfdFontResource, OpenTypeCmap> explicitCmaps,
         HtmlRenderContext? preview, OfdNameOnlyFontBindings? nameOnlyBindings,
         Func<OfdTextElement, OfdTextElement> renderText, OfdGlyphMappingStrategy glyphMappingStrategy)
     {
-        var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)>();
+        var families = new Dictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage, bool UnboldOutline)>();
         var emitted = new Dictionary<string, OpenTypeCmap?>(StringComparer.Ordinal);
         var css = new StringBuilder();
         var selected = new HashSet<OfdFontResource>();
@@ -292,9 +292,10 @@ public sealed class OfdToSvgConverter
             if (coverage?.IsSymbol == true && texts.Any(text => ReferenceEquals(OfdFontSelection.Resolve(fonts, text), font)))
                 data = SymbolCmapProfile.CreateUnicodeAlias(data, coverage, parseBudget);
             var family = (preview?.FontPrefix ?? "ofd-font-") + BinaryIdentity.Hash(data);
-            if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known); continue; }
+            var unboldOutline = !style.Bold && OpenTypeFace.HasStaticTrueTypeOutlines(data);
+            if (emitted.TryGetValue(family, out var known)) { families[font] = (family, known, unboldOutline); continue; }
             preview?.BeforeFontEmission(data);
-            families[font] = (family, coverage); emitted.Add(family, coverage);
+            families[font] = (family, coverage, unboldOutline); emitted.Add(family, coverage);
             var openType = data.Length >= 4 && data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O';
             css.Append("@font-face{font-family:'").Append(family).Append("';src:url(data:font/")
                 .Append(openType ? "otf" : "ttf").Append(";base64,").Append(Convert.ToBase64String(data))
@@ -349,7 +350,7 @@ public sealed class OfdToSvgConverter
         OfdPage page,
         OfdTextElement text,
         IReadOnlyList<OfdFontResource> fonts,
-        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage)> families,
+        IReadOnlyDictionary<OfdFontResource, (string Family, OpenTypeCmap? Coverage, bool UnboldOutline)> families,
         FontParseBudget parseBudget, IDictionary<OfdFontResource, OpenTypeCmap> explicitCmaps,
         CancellationToken cancellationToken, HtmlRenderContext? preview,
         OfdNameOnlyFontBindings? nameOnlyBindings, OfdGlyphMappingStrategy glyphMappingStrategy)
@@ -369,10 +370,15 @@ public sealed class OfdToSvgConverter
             throw new NotSupportedException($"Selected name-only font '{text.FontName}' has no explicit face binding.");
         if (nameOnlyBindings is not null && resource?.Data.Length == 0)
             OfdNameOnlyFontBindings.ValidateBmpText(text);
-        var family = text.FontName;
+        // Resource names can distinguish styles (e.g. native DOCX's "|bold"
+        // identity). CSS needs the declared family, with style carried below.
+        var family = !string.IsNullOrWhiteSpace(resource?.FamilyName)
+            ? resource!.FamilyName! : text.FontName;
+        var knownUnboldOutline = false;
         if (resource is not null && families.TryGetValue(resource, out var embedded))
         {
             family = embedded.Family;
+            knownUnboldOutline = embedded.UnboldOutline;
             if (embedded.Coverage is null) throw new NotSupportedException("Selected embedded font has unmodeled cmap character semantics; the original OFD font remains preserved.");
             if (embedded.Coverage.IsSymbol) SymbolCmapProfile.ValidateText(text, embedded.Coverage, parseBudget, cancellationToken);
             else EmbeddedFontCoverage.Validate(text, embedded.Coverage, resource.FontName, cancellationToken);
@@ -380,6 +386,19 @@ public sealed class OfdToSvgConverter
         var fontWeight = resource?.Bold == true || text.Weight >= 600 ? "bold" : "normal";
         var fontStyle = resource?.Italic == true || text.Italic ? "italic" : "normal";
         var paint = OfdTextPaint.Read(text);
+        if (fontWeight == "bold" && knownUnboldOutline && paint.Fill && paint.Stroke &&
+            paint.FillColor.Alpha == 255 && paint.StrokeColor.Alpha == 255 &&
+            paint.FillColor.Red == paint.StrokeColor.Red && paint.FillColor.Green == paint.StrokeColor.Green &&
+            paint.FillColor.Blue == paint.StrokeColor.Blue)
+        {
+            var value = text.Runs.Count == 0 ? text.Text : string.Concat(text.Runs.Select(run => run.Text));
+            // The declared contour already supplies the existing script-aware
+            // emphasis. Avoid a second host synthesis; retain thin/hairline
+            // strokes and unknown faces on their original route. Compare on
+            // the writer's serialized grid without changing the stroke itself.
+            var emphasis = double.Parse(Invariant(FontEmphasisMetrics.BoldStrokeWidth(text.FontSizeMillimeters, value)), CultureInfo.InvariantCulture);
+            if (emphasis > 0 && paint.LineWidthMillimeters >= emphasis) fontWeight = "normal";
+        }
         var drawing = OfdTextEmphasis.DrawingTransform(text);
         var transform = BuildTransform(
             text.XMillimeters - page.XMillimeters,

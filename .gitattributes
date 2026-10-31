@@ -7,6 +7,8 @@ native/Ofdrw.ProcessSupervisor/assets/*/ofdrw-supervisor -text
 native/Ofdrw.ProcessSupervisor/assets/*/link.map text eol=lf
 native/Ofdrw.ProcessSupervisor/assets/*/readelf.txt text eol=lf
 docs/licenses/MUSL-COPYRIGHT.txt text eol=lf
+# Preserve reviewed license bytes for cross-platform package validation.
+docs/licenses/CLIPPER2-LICENSE.txt text eol=lf
 # Preserve exact upstream DejaVu license bytes, including its original whitespace.
 e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-LICENSE -text -diff
 THIRD-PARTY-NOTICES.md text eol=lf

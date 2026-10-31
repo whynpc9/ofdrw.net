@@ -14,6 +14,23 @@ internal sealed class OpenTypeFace
     internal uint Version { get; }
     internal Dictionary<string, byte[]> Tables { get; } = new(StringComparer.Ordinal);
 
+    // Bounded directory-profile probe; callers still validate the selected
+    // face and Unicode coverage before rendering.
+    internal static bool HasStaticTrueTypeOutlines(byte[] bytes)
+    {
+        if (bytes.Length < 12 || bytes[0] != 0 || bytes[1] != 1 || bytes[2] != 0 || bytes[3] != 0) return false;
+        var count = bytes[4] * 256 + bytes[5];
+        if (count > 256 || 12 + count * 16 > bytes.Length) return false;
+        var glyf = false;
+        for (var i = 0; i < count; i++)
+        {
+            var tag = Encoding.ASCII.GetString(bytes, 12 + i * 16, 4);
+            if (tag == "glyf") glyf = true;
+            if (tag is "fvar" or "gvar" or "CFF " or "CFF2" or "COLR" or "SVG " or "CBDT" or "EBDT" or "sbix") return false;
+        }
+        return glyf;
+    }
+
     internal OpenTypeFace(byte[] data, int faceOffset = 0)
     {
         Require(data, faceOffset, 12);

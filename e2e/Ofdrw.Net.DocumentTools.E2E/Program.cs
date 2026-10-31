@@ -273,7 +273,16 @@ File.Copy(PathFor("rich.ofd"), PathFor("page-wrapper-metadata.ofd"), true);
 Mutate("page-wrapper-metadata", entries =>
 {
     var document = Xml(entries["Doc_0/Document.xml"]); var first = document.Root!.Element(ns + "Pages")!.Elements().First(); var path = "Doc_0/" + first.Attribute("BaseLoc")!.Value; var page = Xml(entries[path]);
-    foreach (var node in page.Root!.DescendantsAndSelf().Where(node => node.Name.LocalName is "Page" or "Area" or "Content" or "Layer")) node.SetAttributeValue(XNamespace.Get("urn:vendor:wrapper") + "Payload", "public.bin");
+    // CT_Page.Area is a wrapper; CT_Clip.Area is drawing geometry. Native
+    // counter-protected strokes introduce the latter into this shared fixture.
+    // Keep this wrapper-only rejection case from also corrupting its clips.
+    var originalClips = page.Descendants(ns + "Clips").Select(node => node.ToString(SaveOptions.DisableFormatting)).ToArray();
+    var wrappers = new[] { page.Root! }.Concat(page.Root!.Elements(ns + "Area"))
+        .Concat(page.Root.Elements(ns + "Content"))
+        .Concat(page.Root.Elements(ns + "Content").Elements(ns + "Layer"));
+    foreach (var node in wrappers) node.SetAttributeValue(XNamespace.Get("urn:vendor:wrapper") + "Payload", "public.bin");
+    if (!originalClips.SequenceEqual(page.Descendants(ns + "Clips").Select(node => node.ToString(SaveOptions.DisableFormatting))))
+        throw new Exception("Wrapper metadata fixture must not alter clip geometry or attributes.");
     entries[path] = Bytes(page); entries["Doc_0/public.bin"] = Encoding.UTF8.GetBytes("public synthetic wrapper payload");
 });
 var wrapper = await Read("page-wrapper-metadata");

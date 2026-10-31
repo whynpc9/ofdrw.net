@@ -35,6 +35,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private readonly Dictionary<string, XFont> _fonts = new();
     private readonly Dictionary<string, (byte[] Data, string FileName, bool Bold, bool Italic)> _fontFiles = new();
     private readonly HashSet<string> _simulatedBoldFamilies = new(StringComparer.OrdinalIgnoreCase);
+    private readonly NativeBoldStrokePlanner _boldStrokes;
+    private NativeProtectedRowStrokeBuilder _protectedRows;
     private int _pendingPageBreaks;
     private double _pendingSpaceAfter;
     private readonly List<double> _pendingLineBreakHeights = new();
@@ -49,6 +51,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         _options = options;
         _diagnostics = diagnostics;
         _cancellationToken = cancellationToken;
+        _boldStrokes = new NativeBoldStrokePlanner(cancellationToken);
+        _protectedRows = new NativeProtectedRowStrokeBuilder(_boldStrokes, cancellationToken);
     }
 
     internal OfdDocumentPackage Render(BuiltInDocumentModel model)
@@ -91,6 +95,9 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
 
     private OfdDocumentPackage RenderPass(BuiltInDocumentModel model)
     {
+        // A discarded pagination pass must not consume the final pass's optional
+        // placement budget. Font/topology analysis remains shared and bounded.
+        _protectedRows = new NativeProtectedRowStrokeBuilder(_boldStrokes, _cancellationToken);
         _cancellationToken.ThrowIfCancellationRequested();
         var package = new OfdDocumentPackage
         {
@@ -319,6 +326,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             var rowTop = state.Y;
             var x = state.ContentLeft;
             var columnIndex = 0;
+            var rowElementStart = state.Page!.Elements.Count;
 
             foreach (var cellLayout in cellLayouts)
             {
@@ -338,7 +346,56 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 columnIndex += cellLayout.ColumnSpan;
             }
 
+            // A cell's later paragraph is independent content, even when its
+            // formatting matches. Keep the existing per-object policy for any
+            // multi-paragraph row rather than flattening those identities.
+            if (row.Cells.All(cell => cell.Paragraphs.Count == 1))
+                HarmonizeRowBoldStroke(package, state.Page!, rowElementStart);
             state.Y = rowTop + rowHeight;
+        }
+    }
+
+    private void HarmonizeRowBoldStroke(OfdDocumentPackage package, OfdPage page, int firstElement)
+    {
+        // These are freshly emitted native objects in this one measured row,
+        // with exactly one paragraph per cell. Automatic wrapping keeps that
+        // paragraph's lines together; a separate paragraph never participates.
+        // Equal formatting should not become visibly different weights merely
+        // because a sibling cell contains a narrow counter. Lower other cells
+        // to the already checked minimum; never thicken the constrained glyph.
+        // Pure Latin keeps its separate legacy emphasis contract.
+        var candidates = page.Elements.Skip(firstElement).OfType<OfdTextElement>()
+            .Where(text =>
+            {
+                _cancellationToken.ThrowIfCancellationRequested();
+                return text.EmitSyntheticBoldStroke && !text.Italic &&
+                    string.IsNullOrEmpty(text.SourceXml) &&
+                    text.SyntheticBoldStrokeWidthMillimeters is > 0 &&
+                    FontEmphasisMetrics.BoldStrokeWidth(text.FontSizeMillimeters, text.Text) <
+                    FontEmphasisMetrics.BoldStrokeWidth(text.FontSizeMillimeters);
+            })
+            .GroupBy(text => (text.FontResourceId,
+                Size: text.FontSizeMillimeters.ToString("0.###", CultureInfo.InvariantCulture),
+                text.FillColor.Red, text.FillColor.Green, text.FillColor.Blue, text.FillColor.Alpha)).ToArray();
+        var supplements = new Dictionary<OfdTextElement, OfdPathElement>();
+        foreach (var group in candidates)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            var width = group.Min(text => text.SyntheticBoldStrokeWidthMillimeters!.Value);
+            var members = group.ToArray();
+            foreach (var text in members) text.SyntheticBoldStrokeWidthMillimeters = width;
+            var font = package.Fonts.FirstOrDefault(f => f.Id == group.Key.FontResourceId);
+            if (font is { Bold: false, Italic: false } && font.Data.Length > 0 &&
+                _protectedRows.TryCreate(members, font.Data, page, out var paths))
+                for (var i = 0; i < members.Length; i++) supplements.Add(members[i], paths[i]);
+        }
+        // Keep each supplement immediately after its original text. Moving all
+        // strokes after the row could paint over later cell backgrounds/borders.
+        for (var index = page.Elements.Count - 1; index >= firstElement; index--)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            if (page.Elements[index] is OfdTextElement text && supplements.TryGetValue(text, out var path))
+                page.Elements.Insert(index + 1, path);
         }
     }
 
@@ -613,11 +670,16 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 FontName = declaredName, FontResourceId = resource.Id,
                 // Keep requested text style separate from the physical font face.
                 EmitSyntheticBoldStroke = format.Bold && resource.Data.Length > 0 && !resource.Bold,
+                UseNameOnlyBoldSelection = resource.Data.Length == 0 &&
+                    DocxFontCatalog.IsNotoCjkFamily(NormalizeFontFamily(format.FontFamily)),
                 Weight = format.Bold ? OfdTextElement.BoldWeight : OfdTextElement.DefaultWeight,
                 Italic = format.Italic,
                 FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
                 FillColor = ParseColor(format.ColorHex), Text = string.Concat(group.Select(g => g.Text))
             };
+            if (text.EmitSyntheticBoldStroke && !text.Italic)
+                text.SyntheticBoldStrokeWidthMillimeters = _boldStrokes.Width(resource.Data, resource.Italic,
+                    text.FontSizeMillimeters, text.Text);
             text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = baseline,
                 DeltaX = group.Count > 1 ? string.Join(" ", group.Take(group.Count - 1).Select(g => g.Width.ToString("0.######", CultureInfo.InvariantCulture))) : null });
             page.Elements.Add(text);

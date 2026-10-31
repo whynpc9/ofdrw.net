@@ -26,6 +26,9 @@ class PackageArtifactsTests(unittest.TestCase):
                     archive.writestr(file, (packages.ROOT / file).read_bytes() if file == 'THIRD-PARTY-NOTICES.md' else 'fixture')
                 if name in ('Ofdrw.Net.Core', 'Ofdrw.Net.Cli'):
                     archive.writestr('docs/licenses/MUSL-COPYRIGHT.txt', (packages.ROOT / 'docs/licenses/MUSL-COPYRIGHT.txt').read_bytes())
+                if name == 'Ofdrw.Net.Converter.Docx':
+                    archive.writestr(packages.CLIPPER_LICENSE_ENTRY,
+                                     (packages.ROOT / packages.CLIPPER_LICENSE_ENTRY).read_bytes())
                 if name == 'Ofdrw.Net.Cli':
                     archive.writestr('tools/net10.0/any/Ofdrw.Net.Cli.dll', b'fixture')
                 elif name != 'Ofdrw.Net.Converter':
@@ -92,17 +95,54 @@ class PackageArtifactsTests(unittest.TestCase):
     def test_changed_musl_copyright_is_rejected_for_core_and_cli(self):
         self._check_musl_copyright_rejection(b'truncated or altered copyright', 'musl copyright differs')
 
+    def test_missing_clipper_license_is_rejected_for_docx(self):
+        self._check_required_license_rejection(('Ofdrw.Net.Converter.Docx',), packages.CLIPPER_LICENSE_ENTRY,
+                                               None, 'Missing docs/licenses/CLIPPER2-LICENSE.txt')
+
+    def test_changed_clipper_license_is_rejected_for_docx(self):
+        self._check_required_license_rejection(('Ofdrw.Net.Converter.Docx',), packages.CLIPPER_LICENSE_ENTRY,
+                                               b'truncated or altered license', 'Clipper2 license differs')
+
+    def test_clipper_license_keeps_lf_in_autocrlf_checkout(self):
+        # The Linux feed is consumed unchanged on Windows. Git checkout must
+        # preserve the reviewed license bytes before byte-exact validation.
+        repo = self.root / 'autocrlf-checkout'
+        repo.mkdir()
+        env = dict(os.environ, GIT_ATTR_NOSYSTEM='1')
+        def git(*args):
+            subprocess.run(['git', *args], cwd=repo, env=env, check=True, capture_output=True)
+        git('init', '-q')
+        empty = self.root / 'empty-attributes'
+        empty.write_bytes(b'')
+        git('config', 'core.attributesFile', str(empty))
+        git('config', 'core.autocrlf', 'true')
+        git('config', 'core.safecrlf', 'false')
+        shutil.copyfile(packages.ROOT / '.gitattributes', repo / '.gitattributes')
+        expected = (packages.ROOT / packages.CLIPPER_LICENSE_ENTRY).read_bytes()
+        target = repo / packages.CLIPPER_LICENSE_ENTRY
+        target.parent.mkdir(parents=True)
+        target.write_bytes(expected)
+        git('add', '.gitattributes', packages.CLIPPER_LICENSE_ENTRY)
+        target.unlink()
+        git('checkout-index', '-f', '--', packages.CLIPPER_LICENSE_ENTRY)
+        self.assertEqual(expected, target.read_bytes())
+        self.assertNotIn(b'\r\n', target.read_bytes())
+
     def _check_musl_copyright_rejection(self, replacement, message):
-        for package in ('Ofdrw.Net.Core', 'Ofdrw.Net.Cli'):
+        self._check_required_license_rejection(('Ofdrw.Net.Core', 'Ofdrw.Net.Cli'),
+                                               'docs/licenses/MUSL-COPYRIGHT.txt', replacement, message)
+
+    def _check_required_license_rejection(self, products, entry, replacement, message):
+        for package in products:
             with self.subTest(package=package):
                 path = self.root / f'{package}.{self.version}.nupkg'
                 original = path.read_bytes()
                 with zipfile.ZipFile(path) as archive:
                     contents = {name: archive.read(name) for name in archive.namelist()}
                 if replacement is None:
-                    del contents['docs/licenses/MUSL-COPYRIGHT.txt']
+                    del contents[entry]
                 else:
-                    contents['docs/licenses/MUSL-COPYRIGHT.txt'] = replacement
+                    contents[entry] = replacement
                 try:
                     with zipfile.ZipFile(path, 'w') as archive:
                         for name, data in contents.items(): archive.writestr(name, data)
