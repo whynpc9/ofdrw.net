@@ -4,6 +4,8 @@ using System.Diagnostics;
 
 switch (args[0])
 {
+    case "owned-launch-window-probe":
+        return await UnixLaunchOwnershipProbe.RunAsync(args[1]);
     case "owned-signal-probe":
     {
         var expected = int.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture);

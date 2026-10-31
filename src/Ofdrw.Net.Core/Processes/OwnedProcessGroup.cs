@@ -196,14 +196,17 @@ internal abstract class OwnedProcessGroup : IDisposable
                 CheckStartBudget();
                 var executable = ResolveExecutable(info.FileName);
                 resolving = false;
-                _extraction = NativeSupervisorAssets.Extract();
-                attributes = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 336);
-                actions = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 80);
-                using var argv = new NativeStrings(new[] { _extraction.ExecutablePath, executable, info.FileName }.Concat(arguments));
-                using var environment = new NativeStrings(info.Environment.Where(pair => pair.Value != null)
-                    .Select(pair => pair.Key + "=" + pair.Value));
-                lock (LaunchLock)
+                EnterLaunchLock(cancellationToken);
+                try
                 {
+                    // No owned spawn may overlap another launch's
+                    // temporary executable writer.
+                    _extraction = NativeSupervisorAssets.Extract();
+                    attributes = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 336);
+                    actions = Marshal.AllocHGlobal(Darwin ? IntPtr.Size : 80);
+                    using var argv = new NativeStrings(new[] { _extraction.ExecutablePath, executable, info.FileName }.Concat(arguments));
+                    using var environment = new NativeStrings(info.Environment.Where(pair => pair.Value != null)
+                        .Select(pair => pair.Key + "=" + pair.Value));
                     Check(posix_spawnattr_init(attributes), "posix_spawnattr_init"); attributesReady = true;
                     Check(posix_spawn_file_actions_init(actions), "posix_spawn_file_actions_init"); actionsReady = true;
                     Check(posix_spawnattr_setpgroup(attributes, 0), "posix_spawnattr_setpgroup");
@@ -226,9 +229,24 @@ internal abstract class OwnedProcessGroup : IDisposable
                         Check(posix_spawn_file_actions_addclose(actions, descriptor), "posix_spawn close");
                     cancellationToken.ThrowIfCancellationRequested();
                     CheckStartBudget();
-                    var spawnError = posix_spawn(out var pid, _extraction.ExecutablePath, actions, attributes, argv.Pointer, environment.Pointer);
+                    var pid = 0;
+                    int Spawn() => posix_spawn(out pid, _extraction.ExecutablePath, actions, attributes, argv.Pointer, environment.Pointer);
+                    SupervisorSpawnAdmission? admission = null;
+                    int spawnError;
+                    if (Darwin) spawnError = Spawn();
+                    else
+                    {
+                        var result = SupervisorExecutableBusyRetry.Start(Spawn, CheckStartBudget,
+                            () => _startTimeout - _startElapsed.Elapsed, cancellationToken);
+                        admission = result;
+                        spawnError = result.Error;
+                    }
                     if (spawnError != 0)
-                        throw new IOException("Cannot start the owned-process supervisor (the temporary filesystem must permit execution).", new Win32Exception(spawnError));
+                    {
+                        var spawnFailure = new IOException("Cannot start the owned-process supervisor (the temporary filesystem must permit execution).", new Win32Exception(spawnError));
+                        admission?.AttachTo(spawnFailure);
+                        throw spawnFailure;
+                    }
                     _pid = pid;
                     descriptors.Remove(control[0]); _protocol = control[0];
                     SetNonblocking(_protocol);
@@ -237,6 +255,7 @@ internal abstract class OwnedProcessGroup : IDisposable
                     descriptors.Remove(output[0]); StandardOutput = Reader((IntPtr)output[0], info.StandardOutputEncoding);
                     descriptors.Remove(error[0]); StandardError = Reader((IntPtr)error[0], info.StandardErrorEncoding);
                 }
+                finally { Monitor.Exit(LaunchLock); }
                 var protocolElapsed = Stopwatch.StartNew();
                 while (!_started) ReceiveFrame(protocolElapsed, ProtocolTimeout, cancellationToken, true);
                 cancellationToken.ThrowIfCancellationRequested();
@@ -374,6 +393,24 @@ internal abstract class OwnedProcessGroup : IDisposable
                 if (result == 0) { if (!blocking) return false; continue; }
                 var error = Marshal.GetLastWin32Error();
                 if (error != 4) throw ProtocolError("Cannot poll owned-process supervisor.", error);
+            }
+        }
+        private void EnterLaunchLock(CancellationToken cancellationToken)
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                CheckStartBudget();
+                var remaining = _startTimeout - _startElapsed.Elapsed;
+                var wait = (int)Math.Max(1, Math.Min(25, Math.Ceiling(remaining.TotalMilliseconds)));
+                if (!Monitor.TryEnter(LaunchLock, wait)) continue;
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    CheckStartBudget();
+                    return;
+                }
+                catch { Monitor.Exit(LaunchLock); throw; }
             }
         }
         private void CheckStartBudget()
