@@ -152,7 +152,17 @@ public sealed class TextSpanShapingEngine
     {
         if (request is null) throw new ArgumentNullException(nameof(request));
         cancellationToken.ThrowIfCancellationRequested();
-        var shaped = _shaper.Shape(request.Run, cancellationToken);
+        TextShapedRun shaped;
+        if (request.Run.Context is not null)
+        {
+            // An existing replacement shaper may legitimately implement only
+            // whole-run shaping. Never silently upgrade it to external context.
+            if (_shaper is not IContextualTextShaper contextual)
+                throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                    "The selected shaper has not opted into contextual item queries.");
+            shaped = contextual.ShapeContextualItem(request.Run, cancellationToken);
+        }
+        else shaped = _shaper.Shape(request.Run, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (shaped is null || !ReferenceEquals(shaped.Request, request.Run))
             throw new TextLayoutException(TextLayoutError.InvalidRequest,

@@ -10,7 +10,7 @@ using Ofdrw.Net.Layout.Text;
 namespace Ofdrw.Net.Text.HarfBuzz;
 
 /// <summary>The pinned HarfBuzzSharp implementation of the single-run shaping contract.</summary>
-public sealed class HarfBuzzTextShaper : ITextShaper
+public sealed class HarfBuzzTextShaper : IContextualTextShaper
 {
     /// <summary>Managed and native assets are pinned together in the adapter package.</summary>
     public const string PackageVersion = "14.2.1.301";
@@ -21,6 +21,26 @@ public sealed class HarfBuzzTextShaper : ITextShaper
 
     /// <summary>Shapes one run with the pinned native engine and returns GIDs, positions, and source clusters.</summary>
     public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request is null) throw new ArgumentNullException(nameof(request));
+        if (request.Context is not null)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                "Use ShapeContextualItem for an explicitly contextual query.");
+        return ShapeCore(request, cancellationToken);
+    }
+
+    /// <summary>Shapes only the selected item while retaining its complete original source
+    /// as external context. The request must be created by CreateContextualItem.</summary>
+    public TextShapedRun ShapeContextualItem(TextShapeRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request is null) throw new ArgumentNullException(nameof(request));
+        if (request.Context is null)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                "A contextual item query requires its complete source request.");
+        return ShapeCore(request, cancellationToken);
+    }
+
+    private static TextShapedRun ShapeCore(TextShapeRequest request, CancellationToken cancellationToken)
     {
         if (request is null) throw new ArgumentNullException(nameof(request));
         cancellationToken.ThrowIfCancellationRequested();
@@ -46,11 +66,18 @@ public sealed class HarfBuzzTextShaper : ITextShaper
                 Script = Script.Parse(request.Script),
                 Language = new Language(request.Language),
                 ClusterLevel = ClusterLevel.MonotoneGraphemes,
+                Flags = BufferFlags.Default,
             };
-            buffer.AddUtf16(request.Text);
+            // Add only the item, retaining the surrounding original UTF-16
+            // text as native pre/post context. Native clusters and features
+            // use offsets into that full string, not item-relative indices.
+            var context = request.Context ?? request;
+            var itemOffset = request.SourceStart - context.SourceStart;
+            var itemEnd = itemOffset + request.Text.Length;
+            buffer.AddUtf16(context.Text, itemOffset, request.Text.Length);
             var features = request.Features.Select(value => new Feature(
                 new Tag(value.Tag[0], value.Tag[1], value.Tag[2], value.Tag[3]), value.Value,
-                (uint)value.Start, (uint)(value.Start + value.Length))).ToArray();
+                (uint)(itemOffset + value.Start), (uint)(itemOffset + value.Start + value.Length))).ToArray();
             cancellationToken.ThrowIfCancellationRequested();
             font.Shape(buffer, features);
             cancellationToken.ThrowIfCancellationRequested();
@@ -58,18 +85,18 @@ public sealed class HarfBuzzTextShaper : ITextShaper
             var positions = buffer.GlyphPositions;
             if (infos.Length != positions.Length || infos.Length > request.Text.Length * 4L + 16)
                 throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Native shaping exceeded the glyph expansion budget.");
-            var boundaries = new SortedSet<int> { request.Text.Length };
+            var boundaries = new SortedSet<int> { itemEnd };
             foreach (var info in infos)
             {
-                if (info.Cluster >= (uint)request.Text.Length ||
-                    info.Cluster > 0 && char.IsLowSurrogate(request.Text[(int)info.Cluster]))
+                if (info.Cluster < (uint)itemOffset || info.Cluster >= (uint)itemEnd ||
+                    info.Cluster > 0 && char.IsLowSurrogate(context.Text[(int)info.Cluster]))
                     throw new TextLayoutException(TextLayoutError.InvalidText, "Native shaping returned an invalid UTF-16 cluster.");
                 boundaries.Add((int)info.Cluster);
                 if (info.Codepoint == 0)
                     throw new TextLayoutException(TextLayoutError.MissingGlyph,
-                        "Selected face has an unmapped glyph at source UTF-16 offset " + (request.SourceStart + info.Cluster) + ".",
-                        sourceStart: request.SourceStart + (int)info.Cluster,
-                        sourceLength: char.IsHighSurrogate(request.Text[(int)info.Cluster]) ? 2 : 1);
+                        "Selected face has an unmapped glyph at source UTF-16 offset " + (context.SourceStart + info.Cluster) + ".",
+                        sourceStart: context.SourceStart + (int)info.Cluster,
+                        sourceLength: char.IsHighSurrogate(context.Text[(int)info.Cluster]) ? 2 : 1);
             }
             var next = new Dictionary<int, int>();
             var previous = -1;
@@ -89,7 +116,7 @@ public sealed class HarfBuzzTextShaper : ITextShaper
                     extents.Width > 0 && extents.Height < 0)
                     ink = new TextInkBounds(extents.XBearing, extents.YBearing + extents.Height,
                         extents.Width, -extents.Height);
-                glyphs.Add(new TextShapedGlyph(info.Codepoint, request.SourceStart + cluster,
+                glyphs.Add(new TextShapedGlyph(info.Codepoint, context.SourceStart + cluster,
                     next[cluster] - cluster, position.XAdvance, position.YAdvance,
                     position.XOffset, position.YOffset, ink,
                     (info.GlyphFlags & GlyphFlags.UnsafeToBreak) != 0));

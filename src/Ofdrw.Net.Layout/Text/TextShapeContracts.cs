@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Threading;
 
 namespace Ofdrw.Net.Layout.Text;
@@ -130,6 +131,57 @@ public sealed class TextShapeRequest
         SourceStart = sourceStart; Direction = direction; Script = script; Language = language;
         Features = new ReadOnlyCollection<TextFeature>(featureCopy);
     }
+
+    private TextShapeRequest(TextShapeRequest context, TextSourceSpan item, string text,
+        IReadOnlyList<TextFeature> features)
+        : this(text, item.SourceStart, context.Face, context.Direction, context.Script, context.Language, features)
+        => Context = context;
+
+    /// <summary>Creates a query for one nonempty item while retaining the exact complete
+    /// source request as shaping context. The item's endpoints must be text-element boundaries.</summary>
+    /// <remarks>Features are intersected with the item and rebased to its UTF-16 coordinates.
+    /// Context affects shaping but contributes no output glyphs. This does not slice an already
+    /// shaped run, assign styles, or admit contextual output to an OFD/PDF writer.
+    /// Use an explicitly opted-in IContextualTextShaper or the span-query engine;
+    /// ordinary ITextShaper implementations are not implicitly upgraded.</remarks>
+    public static TextShapeRequest CreateContextualItem(TextShapeRequest context, TextSourceSpan item)
+    {
+        if (context is null) throw new ArgumentNullException(nameof(context));
+        if (item is null) throw new ArgumentNullException(nameof(item));
+        if (context.Context is not null)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                "Select a contextual item from the original complete request, not another item.");
+        if (item.SourceStart < context.SourceStart ||
+            (long)item.SourceStart + item.SourceLength > (long)context.SourceStart + context.Text.Length)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                "The contextual item is outside its complete source request.",
+                sourceStart: item.SourceStart, sourceLength: item.SourceLength);
+        var start = item.SourceStart - context.SourceStart;
+        var end = start + item.SourceLength;
+        // Whole text is already validated and bounded to 4096 UTF-16 units.
+        // Never let a style/run selection separate a base from its marks or
+        // split a surrogate pair. These are .NET text elements, not glyph clusters.
+        var boundaries = StringInfo.ParseCombiningCharacters(context.Text);
+        if (Array.BinarySearch(boundaries, start) < 0 ||
+            end != context.Text.Length && Array.BinarySearch(boundaries, end) < 0)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                "A contextual item boundary splits a source text element.",
+                sourceStart: item.SourceStart, sourceLength: item.SourceLength);
+        var features = new List<TextFeature>();
+        foreach (var feature in context.Features)
+        {
+            var intersectionStart = Math.Max(start, feature.Start);
+            var intersectionEnd = Math.Min(end, feature.Start + feature.Length);
+            if (intersectionStart < intersectionEnd)
+                features.Add(new TextFeature(feature.Tag, feature.Value,
+                    intersectionStart - start, intersectionEnd - intersectionStart));
+        }
+        return new TextShapeRequest(context, item, context.Text.Substring(start, item.SourceLength), features);
+    }
+
+    /// <summary>The original complete request for a contextual item, or null for an ordinary
+    /// whole run. Only an explicitly opted-in contextual shaper can honor its surrounding text.</summary>
+    public TextShapeRequest? Context { get; }
     internal static bool IsUnsupportedLineSeparator(char value) =>
         value is '\u000b' or '\u000c' or '\u0085' or '\u2028' or '\u2029';
     /// <summary>Unmodified logical Unicode source for this run.</summary>
@@ -265,4 +317,14 @@ public interface ITextShaper
 {
     /// <summary>Shapes one preselected logical run; cancellation is checked around the native call.</summary>
     TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Explicitly opts a shaper into retaining external source context while shaping only an item.</summary>
+/// <remarks>Existing ITextShaper implementations do not acquire this capability implicitly.
+/// A contextual result must retain the exact item request and emit only its source interval.</remarks>
+public interface IContextualTextShaper : ITextShaper
+{
+    /// <summary>Shapes a request created by CreateContextualItem, retaining its original
+    /// surrounding text, selected face and coordinates. Ordinary requests must be rejected.</summary>
+    TextShapedRun ShapeContextualItem(TextShapeRequest request, CancellationToken cancellationToken = default);
 }

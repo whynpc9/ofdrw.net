@@ -53,6 +53,10 @@ bidi analysis, font fallback, cross-face shaping, line-level reshaping,
 pagination, legacy Flow behavior, writer admission or PDF/SVG semantics.
 Broader C3 and the Arabic/Indic end-to-end corpus remain open.
 
+The separate [contextual item query](r22-contextual-item-query.md) retains
+surrounding text outside an explicitly selected item. Its independent shaping
+is not equivalent to slicing these whole-run glyphs or assigning their styles.
+
 Focused tests cover actual ffi/feature-off, Arabic and combining behavior,
 generic many-to-many/zero-advance occurrences, source snapshots, invalid UTF-16
 partitions, integer endpoints, association/span budgets, cancellation and
