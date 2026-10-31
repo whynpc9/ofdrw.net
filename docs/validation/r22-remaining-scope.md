@@ -5,6 +5,10 @@ adds whole-run shaping with per-occurrence UTF-16 span associations. It does
 not close general C3/style itemization, C4 script output, Flow or writer scope.
 The dated delivery/candidate records below retain their original identities.
 
+The separate [contextual item query candidate](../architecture/r22-contextual-item-query.md)
+retains external source context for one explicitly selected item through an
+opted-in shaper. It does not resolve style conflicts or admit new output profiles.
+
 Reconciled against research v1.2 §§12.4–12.6 on 2026-10-30, source
 `84a74b48a27a138bf16b85903408a62f0bde7a6a`. The accepted PR #76 matrix is an
 immutable bounded delivery, not completion of stages B–E. Its twelve mixed

@@ -255,6 +255,42 @@ await File.WriteAllTextAsync(Path.Combine(output, "r22-source-span-query.json"),
     scope = "Single-face whole-run query and source associations only; no style resolution, bidi analysis, legacy Flow or output-profile expansion."
 }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
 Console.WriteLine("R22 source-span whole-run query and fixed original-GID context checks passed from candidate packages.");
+// Contextual items remain queries. Full source and item coordinates are both
+// recorded; these glyphs are never passed to an OFD/PDF writer in this probe.
+var contextualRows = new List<object>();
+foreach (var (role, text, sourceStart, offset, length, rtl, featureStart, featureLength, expected) in new[] {
+    ("arabic-both", "ببب", 100, 1, 1, true, 0, 0, new uint[] { 5260 }),
+    ("arabic-no-pre", " بب", 100, 1, 1, true, 0, 0, new uint[] { 5259 }),
+    ("arabic-no-post", "بب ", 100, 1, 1, true, 0, 0, new uint[] { 5258 }),
+    ("arabic-no-context", " ب ", 100, 1, 1, true, 0, 0, new uint[] { 1366 }),
+    ("arabic-last", "ببب", 100, 2, 1, true, 0, 0, new uint[] { 5258 }),
+    ("arabic-nonbmp-prefix", "\U00010400ببب", 200, 3, 1, true, 0, 0, new uint[] { 5260 }),
+    ("fi-item", "ffi", 20, 1, 2, false, 0, 0, new uint[] { 5042 }),
+    ("fi-feature-outside", "ffi", 20, 1, 2, false, 0, 1, new uint[] { 5042 }),
+    ("fi-feature-inside", "ffi", 20, 1, 2, false, 1, 2, new uint[] { 73, 76 }) })
+{
+    var context = new TextShapeRequest(text, sourceStart, dejavu,
+        rtl ? TextDirection.RightToLeft : TextDirection.LeftToRight, rtl ? "Arab" : "Latn", rtl ? "ar" : "en",
+        featureLength > 0 ? new[] { new TextFeature("liga", 0, featureStart, featureLength) } : null);
+    var item = TextShapeRequest.CreateContextualItem(context, new TextSourceSpan(sourceStart + offset, length));
+    var shaped = new HarfBuzzTextShaper().ShapeContextualItem(item);
+    if (!ReferenceEquals(item.Context, context) || !ReferenceEquals(item.Face, dejavu) ||
+        !ReferenceEquals(shaped.Request, item) || item.Text != text.Substring(offset, length) ||
+        !shaped.Glyphs.Select(g => g.GlyphId).SequenceEqual(expected) ||
+        shaped.Glyphs.Any(g => g.ClusterStart < item.SourceStart ||
+            g.ClusterStart + g.ClusterLength > item.SourceStart + item.Text.Length))
+        throw new InvalidDataException("Contextual item lost source/font identity, native context or cluster bounds.");
+    contextualRows.Add(new { role, contextText = text, contextSourceStart = sourceStart,
+        contextFeatures = context.Features, itemText = item.Text, itemSourceStart = item.SourceStart,
+        itemLength = length, itemFeatures = item.Features, direction = item.Direction.ToString(), item.Script, item.Language,
+        shaped.EngineVersion, shaped.XAdvance, shaped.YAdvance, glyphs = shaped.Glyphs });
+}
+await File.WriteAllTextAsync(Path.Combine(output, "r22-contextual-item-query.json"), JsonSerializer.Serialize(new {
+    sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
+    faceSha256 = dejavu.FaceSha256, dejavu.UnitsPerEm, cases = contextualRows,
+    scope = "Single-face contextual item queries only. Not style assignment, whole-run glyph cropping, Flow or writer/reader acceptance."
+}, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+Console.WriteLine("R22 contextual-item native joining, UTF-16 and feature-coordinate queries passed from candidate packages.");
 const string mixedSource = "abc שלום def";
 var mixedEngine = HarfBuzzTextPrelayout.CreateMixedParagraph();
 var mixedWide = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4, 50));
