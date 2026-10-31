@@ -24,6 +24,12 @@ foreach (var diagnostic in result.Diagnostics)
 
 Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域、复杂跨页表格或全部 Word 版式的保真。
 
+## PDF 导入的文字顺序边界
+
+独立 PDF→OFD 的默认透明文字层，以及栅格化失败后显式允许的文本后备，均无法从 PdfPig 默认几何排序恢复经过验证的双向逻辑原文。解析字符含固定 Unicode 17 R/AL 或相关 bidi 控制范围时，转换以 `NotSupportedException` 和 `PDF_TEXT_READING_ORDER_UNVERIFIED` 明确拒绝，不再把倒序词写成成功的语义结果。即使某个未整形输入碰巧抽出预期字串，也不据此准入。
+
+调用方可明确选择 `TextLayerMode = PdfTextLayerMode.None` 且 `RequireRasterization = true`，仅保留页面图；这条路径不声明 RTL 原文、字形映射或阅读顺序支持。现有 LTR 抽取也不保证任意多栏/复杂 PDF 的逻辑顺序。
+
 ## 字体与宿主程序
 
 BuiltIn 按 `FontFallbackFamilies` 的配置顺序选择 `FontDirectories` 中的真实 TTF/OTF 字体，也支持从 TTC 中抽取独立面。未配置目录时扫描平台字体目录。Native 排版和嵌入使用同一物理字体面：配置了真实 Noto CJK 字体时会嵌入，拉丁字符也使用该字体的度量，不再以宿主西文字体度量替代。等价的 Noto 家族名称可以匹配真实字体，但不会把其他中文字体伪装成 Noto。 未从目录加载的 `Noto Sans CJK*` 家族（含 JP/TC/KR 等变体）保留名称字体，不嵌入宿主解析器的替代字节；这一路径的拉丁字符仍沿用 Arial 兼容度量。
