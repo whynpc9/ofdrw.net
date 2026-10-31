@@ -300,7 +300,7 @@ internal sealed class NativeBoldStrokePlanner
             // analysis; only restore the optional vector replay and its
             // counter bounds to the declared size around the glyph baseline.
             var scaledSize = 72f * font.Size;
-            var roundedSize = forceIntegerPpem ? MathF.Round(scaledSize) : scaledSize;
+            var roundedSize = forceIntegerPpem ? (float)Math.Round(scaledSize) : scaledSize;
             if (roundedSize <= 0) throw new NotSupportedException("No finite protected glyph scale.");
             var correction = forceIntegerPpem ? (double)scaledSize / roundedSize : 1d;
             NativeGlyphCurve Restore(NativeGlyphCurve curve) => curve.Command == 'C' || correction == 1
