@@ -66,6 +66,18 @@ for name, count in expected.items():
         assert not any('/Signs/' in path for path in data), 'owned binary signature payload retained'
     if name == 'page-wrapper-metadata':
         assert texts(data, selected[0]) == texts(source, source_pages[0])
+        page = ET.fromstring(data['Doc_0/' + selected[0].attrib['BaseLoc']])
+        ns = page.tag.removesuffix('Page')
+        payload = '{urn:vendor:wrapper}Payload'
+        wrappers = [page] + page.findall(ns + 'Area') + page.findall(ns + 'Content')
+        wrappers += [layer for content in page.findall(ns + 'Content') for layer in content.findall(ns + 'Layer')]
+        assert all(node.attrib.get(payload) == 'public.bin' for node in wrappers)
+        assert all(payload not in node.attrib for node in page.iter() if node not in wrappers)
+        original = contents('rich')
+        original_page = ET.fromstring(original['Doc_0/' + pages(original)[0].attrib['BaseLoc']])
+        original_clips = [ET.tostring(node) for node in original_page.iter(ns + 'Clips')]
+        assert original_clips, 'shared native fixture must exercise protected-stroke clips'
+        assert original_clips == [ET.tostring(node) for node in page.iter(ns + 'Clips')], 'wrapper metadata changed clip geometry'
         for operation in ('split','save','watermark'):
             assert 'unmodeled' in (directory/f'page-wrapper-metadata-{operation}.rejection.txt').read_text()
     if name == 'split-template-liveness':
