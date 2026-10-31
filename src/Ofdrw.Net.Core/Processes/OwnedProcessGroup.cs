@@ -229,9 +229,24 @@ internal abstract class OwnedProcessGroup : IDisposable
                         Check(posix_spawn_file_actions_addclose(actions, descriptor), "posix_spawn close");
                     cancellationToken.ThrowIfCancellationRequested();
                     CheckStartBudget();
-                    var spawnError = posix_spawn(out var pid, _extraction.ExecutablePath, actions, attributes, argv.Pointer, environment.Pointer);
+                    var pid = 0;
+                    int Spawn() => posix_spawn(out pid, _extraction.ExecutablePath, actions, attributes, argv.Pointer, environment.Pointer);
+                    SupervisorSpawnAdmission? admission = null;
+                    int spawnError;
+                    if (Darwin) spawnError = Spawn();
+                    else
+                    {
+                        var result = SupervisorExecutableBusyRetry.Start(Spawn, CheckStartBudget,
+                            () => _startTimeout - _startElapsed.Elapsed, cancellationToken);
+                        admission = result;
+                        spawnError = result.Error;
+                    }
                     if (spawnError != 0)
-                        throw new IOException("Cannot start the owned-process supervisor (the temporary filesystem must permit execution).", new Win32Exception(spawnError));
+                    {
+                        var spawnFailure = new IOException("Cannot start the owned-process supervisor (the temporary filesystem must permit execution).", new Win32Exception(spawnError));
+                        admission?.AttachTo(spawnFailure);
+                        throw spawnFailure;
+                    }
                     _pid = pid;
                     descriptors.Remove(control[0]); _protocol = control[0];
                     SetNonblocking(_protocol);
