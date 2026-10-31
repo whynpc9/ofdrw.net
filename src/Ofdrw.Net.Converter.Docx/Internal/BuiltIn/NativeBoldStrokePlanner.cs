@@ -9,6 +9,7 @@ using Ofdrw.Net.Core.Fonts;
 using Ofdrw.Net.Converter.Pdf.Internal;
 using PdfSharpCore.Drawing;
 using SixLabors.Fonts;
+using Clipper2Lib;
 
 namespace Ofdrw.Net.Converter.Docx.Internal.BuiltIn;
 
@@ -46,6 +47,7 @@ internal sealed class NativeBoldStrokePlanner
                 try { profile = new Profile(bytes, budget); }
                 catch (FontException) { }
                 catch (NotSupportedException) { }
+                catch (InvalidDataException) { }
             }
             // Keep the cache itself bounded when many distinct faces are used.
             if (profiles.Count < 8) profiles.Add(bytes, profile);
@@ -71,6 +73,7 @@ internal sealed class NativeBoldStrokePlanner
 
     private sealed class WorkBudget(CancellationToken token)
     {
+        internal FontParseBudget Cmap { get; } = new(cancellationToken: token);
         private int work, points, glyphs;
         internal bool Exhausted { get; private set; }
         internal void Tick()
@@ -86,6 +89,7 @@ internal sealed class NativeBoldStrokePlanner
     private sealed class Profile
     {
         private readonly FontFamily family;
+        private readonly OpenTypeCmap cmap;
         private readonly WorkBudget budget;
         private readonly Dictionary<(int Scalar, double Size), double?> fractions = new();
         internal Profile(byte[] bytes, WorkBudget budget)
@@ -95,6 +99,7 @@ internal sealed class NativeBoldStrokePlanner
             family = new FontCollection().Add(stream);
             if (!family.GetAvailableStyles().Contains(FontStyle.Regular))
                 throw new NotSupportedException("No physical regular outline for native bold analysis.");
+            cmap = new OpenTypeCmap(new OpenTypeFace(bytes), budget.Cmap);
         }
         internal double? Fraction(int scalar, double size)
         {
@@ -103,7 +108,9 @@ internal sealed class NativeBoldStrokePlanner
             try
             {
                 budget.Glyph();
-                var renderer = new CounterRenderer(budget);
+                var originalGid = cmap.DirectGlyph(scalar);
+                if (originalGid == 0) throw new NotSupportedException("No original cmap glyph for native bold analysis.");
+                var renderer = new CounterRenderer(budget, originalGid);
                 var font = family.CreateFont((float)size, FontStyle.Regular);
                 TextRenderer.RenderTextTo(renderer, char.ConvertFromUtf32(scalar),
                     new TextOptions(font) { Dpi = 72, KerningMode = KerningMode.None });
@@ -111,12 +118,13 @@ internal sealed class NativeBoldStrokePlanner
             }
             catch (NotSupportedException) { }
             catch (FontException) { }
+            catch (InvalidDataException) { }
             if (fractions.Count < 512) fractions.Add((scalar, size), result);
             return result;
         }
     }
 
-    private sealed class CounterRenderer(WorkBudget budget) : IGlyphRenderer
+    private sealed class CounterRenderer(WorkBudget budget, int originalGid) : IGlyphRenderer
     {
         private readonly List<List<Point>> contours = new();
         private readonly PdfGlyphStrokeGeometry stroke = new(.001);
@@ -127,7 +135,8 @@ internal sealed class NativeBoldStrokePlanner
         public void EndText() { }
         public bool BeginGlyph(in FontRectangle bounds, in GlyphRendererParameters parameters)
         {
-            if (++glyphs != 1 || parameters.GlyphId == 0 || parameters.GlyphType != GlyphType.Standard)
+            if (++glyphs != 1 || parameters.GlyphId == 0 || parameters.GlyphId != originalGid ||
+                parameters.GlyphType != GlyphType.Standard)
                 throw new NotSupportedException("Only one original monochrome glyph is analyzed.");
             return true;
         }
@@ -172,10 +181,7 @@ internal sealed class NativeBoldStrokePlanner
             if (glyphs != 1 || contours.Count == 0) throw new NotSupportedException("No original outline to analyze.");
             var valid = contours.Where(c => c.Count > 2).ToArray();
             if (valid.Length == 0) throw new NotSupportedException("No closed original contour to analyze.");
-            var largest = valid.OrderByDescending(c => Math.Abs(Area(c))).First();
-            var sign = Math.Sign(Area(largest));
-            if (sign == 0) throw new NotSupportedException("Ambiguous original contour orientation.");
-            var holes = valid.Where(c => Math.Sign(Area(c)) == -sign).ToArray();
+            var holes = FilledCounterContours(valid);
             var areas = holes.ToDictionary(c => c, c => Math.Abs(Area(c)));
             var witnesses = new List<(Point Center, double Radius)>();
             foreach (var contour in holes)
@@ -216,6 +222,88 @@ internal sealed class NativeBoldStrokePlanner
                 if (Preserves(middle)) lower = middle; else upper = middle;
             }
             return lower / size;
+        }
+        private List<Point>[] FilledCounterContours(List<Point>[] input)
+        {
+            // Font contours describe nonzero fill, not a list of holes. For
+            // example, overlapping clockwise bars can enclose a white region.
+            // Use the polygon union only to enumerate counter candidates; all
+            // witnesses and miter clearances still use the original contours.
+            const double scale = 1_000_000;
+            var paths = new Paths64();
+            var edges = new List<(Point64 A, Point64 B)>();
+            foreach (var contour in input)
+            {
+                var path = new Path64();
+                foreach (var point in contour)
+                {
+                    budget.Tick();
+                    // Keep integer magnitudes far below Clipper's precision
+                    // degradation range. Invalid geometry retains legacy width.
+                    if (Math.Abs(point.X) > 10_000 || Math.Abs(point.Y) > 10_000)
+                        throw new NotSupportedException("Bold-analysis coordinate budget exceeded.");
+                    var p = new Point64((long)Math.Round(point.X * scale), (long)Math.Round(point.Y * scale));
+                    if (path.Count == 0 || p != path[path.Count - 1]) path.Add(p);
+                }
+                if (path.Count > 1 && path[0] == path[path.Count - 1]) path.RemoveAt(path.Count - 1);
+                if (path.Count < 3) throw new NotSupportedException("Degenerate bold-analysis contour.");
+                paths.Add(path);
+                for (var i = 0; i < path.Count; i++) edges.Add((path[i], path[(i + 1) % path.Count]));
+            }
+            // Bound admitted intersection complexity before the synchronous
+            // library call. Count touching/adjacent boxes too, conservatively.
+            // These checks consume the existing document-wide visit budget.
+            var potentialPairs = 0;
+            for (var i = 0; i < edges.Count; i++)
+            for (var j = i + 1; j < edges.Count; j++)
+            {
+                budget.Tick();
+                var a = edges[i].A; var b = edges[i].B;
+                var c = edges[j].A; var d = edges[j].B;
+                if (Math.Max(Math.Min(a.X, b.X), Math.Min(c.X, d.X)) <= Math.Min(Math.Max(a.X, b.X), Math.Max(c.X, d.X)) &&
+                    Math.Max(Math.Min(a.Y, b.Y), Math.Min(c.Y, d.Y)) <= Math.Min(Math.Max(a.Y, b.Y), Math.Max(c.Y, d.Y)) &&
+                    ++potentialPairs > 8192)
+                    throw new NotSupportedException("Bold-analysis intersection budget exceeded.");
+            }
+            var clipper = new Clipper64();
+            var tree = new PolyTree64();
+            budget.Tick();
+            clipper.AddSubject(paths);
+            var success = clipper.Execute(ClipType.Union, FillRule.NonZero, tree);
+            // Execute has no cancellation hook. Always propagate a cancellation
+            // observed after this bounded-input synchronous call, even on false.
+            budget.Tick();
+            if (!success || tree.Count == 0)
+                throw new NotSupportedException("No valid filled bold-analysis topology.");
+            var holes = new List<List<Point>>();
+            var nodes = 0; var outputPoints = 0;
+            void Visit(PolyPath64 parent, int depth)
+            {
+                if (depth > 64) throw new NotSupportedException("Bold-analysis nesting budget exceeded.");
+                for (var i = 0; i < parent.Count; i++)
+                {
+                    budget.Tick();
+                    var child = parent[i];
+                    var polygon = child.Polygon!;
+                    outputPoints += polygon.Count;
+                    if (++nodes > 8192 || outputPoints > 65536)
+                        throw new NotSupportedException("Bold-analysis output budget exceeded.");
+                    if (child.IsHole)
+                    {
+                        if (holes.Count == 64) throw new NotSupportedException("Too many bold-analysis counters.");
+                        var hole = new List<Point>(polygon.Count);
+                        foreach (var p in polygon)
+                        {
+                            budget.Point();
+                            hole.Add(new Point(p.X / scale, p.Y / scale));
+                        }
+                        holes.Add(hole);
+                    }
+                    Visit(child, depth + 1);
+                }
+            }
+            Visit(tree, 0);
+            return holes.ToArray();
         }
         private int Winding(Point p, List<Point> contour)
         {

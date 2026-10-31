@@ -13,6 +13,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 DEPENDENCY_BASELINE = ROOT / 'docs' / 'third-party-dependency-baseline.json'
 MUSL_COPYRIGHT_ENTRY = 'docs/licenses/MUSL-COPYRIGHT.txt'
+CLIPPER_LICENSE_ENTRY = 'docs/licenses/CLIPPER2-LICENSE.txt'
 NATIVE_SUPERVISOR_PACKAGES = {'Ofdrw.Net.Core', 'Ofdrw.Net.Cli'}
 
 PACKAGES = (
@@ -58,6 +59,8 @@ def inspect(directory: Path, version: str):
             required += ['README.md', 'THIRD-PARTY-NOTICES.md', 'docs/feature-parity.md', 'docs/conversion-contracts.md']
             if name in NATIVE_SUPERVISOR_PACKAGES:
                 required.append(MUSL_COPYRIGHT_ENTRY)
+            if name == 'Ofdrw.Net.Converter.Docx':
+                required.append(CLIPPER_LICENSE_ENTRY)
             for entry in required:
                 if entry not in package.namelist():
                     raise ValueError(f'Missing {entry} in {path.name}')
@@ -65,6 +68,8 @@ def inspect(directory: Path, version: str):
                 raise ValueError(f'Third-party notices differ from the reviewed source: {path.name}')
             if name in NATIVE_SUPERVISOR_PACKAGES and package.read(MUSL_COPYRIGHT_ENTRY) != (ROOT / MUSL_COPYRIGHT_ENTRY).read_bytes():
                 raise ValueError(f'musl copyright differs from the reviewed source: {path.name}')
+            if name == 'Ofdrw.Net.Converter.Docx' and package.read(CLIPPER_LICENSE_ENTRY) != (ROOT / CLIPPER_LICENSE_ENTRY).read_bytes():
+                raise ValueError(f'Clipper2 license differs from the reviewed source: {path.name}')
         packages.append({'id': name, 'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
     return {'version': version, 'packages': packages}
 
@@ -98,7 +103,11 @@ def verify_release_notices():
         if item['license_type'] == 'expression':
             matches = item['license'] == declared_license
         elif item['license_type'] == 'file':
-            matches = declared_license == 'MIT' and item['license_file_heading'] == 'MIT License'
+            headings = {
+                'MIT': 'MIT License',
+                'BSL-1.0': 'Boost Software License - Version 1.0 - August 17th, 2003',
+            }
+            matches = headings.get(declared_license) == item['license_file_heading']
         else:
             matches = False
         if not matches:

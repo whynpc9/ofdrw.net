@@ -34,7 +34,8 @@ current transform's largest singular value, bounding that curve approximation
 to 0.001 PDF points in page coordinates. This is not a bound on every font or
 rasterization error. Subdivision depth is limited to 20 and recorded points to
 65,536 per glyph; invalid or exhausted geometry fails before PDF publication.
-There is no new package, native dependency or replacement font.
+This PDF paint route adds no native dependency or replacement font. The separate
+native DOCX counter analyzer uses managed Clipper2 as described below.
 
 An explicit same-color stroke at a nonhistorical width must also avoid the old
 native-pen overlay. With a 1.25%-em stroke and requested weight700, unchanged
@@ -84,6 +85,40 @@ to meet the increased-width clearance requirement. The increase is rounded
 down to the writer's0.001mm grid. A generated rectangular-counter fixture
 checks6/12/18pt behavior analytically without adding a font payload.
 
+Counter candidates now come from the whole original nonzero filled outline's
+polygon union, using Clipper2 2.0.0. Classifying only opposite-oriented input
+contours misses white regions enclosed by overlapping clockwise pieces. A
+generated four-bar control has the same filled opening as the existing explicit
+rectangular counter:6pt retains legacy width, while12/18pt must still increase
+and match that positive control. The original runtime font/GID and input bytes
+remain unchanged. Topology output never replaces the original glyph painting;
+witness membership, empty-disk distances and actual miter/bevel clearance still
+use original analyzed contours.
+The single standard glyph callback must match the bound font's original direct
+cmap GID; a substituted/multiple/missing glyph retains legacy width. Cmap
+parsing/lookups share the existing64MiB work budget within one DOCX render and
+propagate cancellation. Package subsetting may remove unused outlines, but the
+selected original glyph bytes/GID must remain, apart from zero alignment padding.
+
+The original pinned 目 has three overlap-built rectangular openings with minimum
+height162/1000em. Native and default6pt DOCX now retain0.060mm (about2.83%-em),
+rather than the unsafe former0.074mm. The next writer-grid width0.061mm would
+already miss the fixed opening allowance. Original cmap/GID/glyph bytes are
+checked through packaging, allowing only zero alignment padding; read/write and
+PDF export must preserve the declared constrained stroke. The generated100-unit
+counter's6pt fallback above is a different geometry and is not used to demand
+fallback for every real glyph.
+
+The shared fixture's first section heading includes 格, whose overlapping pieces
+enclose counters despite all input contours winding alike. At its selected white
+witness, an original straight border bounds clearance below0.4pt for0.168mm,
+the smallest writer-grid width satisfying the old3.4%-em lower expectation.
+The corrected0.167mm retains0.400679pt at that witness, including the fixed
+allowance. That derived fixture expectation changes; the original title pixel
+coverage interval, quantity brightness100/upper-bar oracle and0.4pt/60% guards
+do not. This is a witness-specific constraint, not proof that every possible
+witness would forbid a wider stroke.
+
 Within one native table row whose cells each contain exactly one paragraph,
 upright synthetic CJK text with the same embedded
 font resource, serialized size and RGBA color uses the smallest already planned
@@ -100,10 +135,24 @@ This is an optical fallback, not a physical700 face or a guarantee about every
 open gap, neck, counter component, font or raster scale. Italic, variable,
 color, non-TrueType or unavailable analysis retains the existing policy.
 Analysis is local to one DOCX render: at most8 faces,32MiB per face/64MiB total,
-512 glyph/size measurements,131,072 flattened points and50million bounded
+512 glyph/size measurements,131,072 original/returned-hole points and50million bounded
 geometry visits; each glyph admits64 contours/4096 analysis points with curve
 depth20. Exhaustion retains the legacy width; cancellation still propagates.
-Font parsing already in progress is synchronous. Real selected bold faces,
+Polygon input uses quadratic flattening at0.00025pt and a1e-6pt integer grid;
+these approximations can affect tiny topology and are not an exact-curve proof.
+Before the union call, absolute coordinates are limited to10,000pt and each
+glyph to8192 potentially intersecting closed edge-box pairs, including adjacent
+and touching pairs. These checks consume the existing visit budget. The
+subsequent traversal rejects more than8192 nodes,65,536 output points,64 holes
+or nesting depth64; those are post-allocation checks, not bounds on library
+internal allocation. Input limits restrict admitted complexity but do not
+establish a hard worst-case library work or memory bound. Clipper's synchronous
+call has no token hook; cancellation is checked before and after it, including
+a false result. Font parsing already in progress is also synchronous.
+Unsupported/failed topology retains legacy width. The pinned managed package
+has no native assets/transitive dependencies; its Boost1.0 notice and C#
+maintenance-transition limitation are recorded in `THIRD-PARTY-NOTICES.md`.
+Real selected bold faces,
 strict missing-bold refusal, imported paint and name-only compatibility retain
 their contracts. The runtime counter fixture is constructed from the existing
 original test font; no new font payload is added.

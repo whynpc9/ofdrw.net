@@ -6,6 +6,7 @@ license for Ofdrw.Net itself.
 
 | Package | Version | License | Source |
 | --- | ---: | --- | --- |
+| Clipper2 | 2.0.0 | BSL-1.0 | https://www.angusj.com/clipper2/Docs/Overview.htm |
 | Docnet.Core | 2.6.0 | MIT | https://github.com/GowenGit/docnet |
 | DocumentFormat.OpenXml | 3.5.1 | MIT | https://github.com/dotnet/Open-XML-SDK |
 | MigraDocCore.Rendering | 1.3.67 | MIT | https://github.com/ststeiger/PdfSharpCore |
@@ -25,6 +26,15 @@ license for Ofdrw.Net itself.
 The JBIG2 decoder source retains both the original IDRsolutions BSD-3-Clause
 notice and the port's MIT notice. The complete text is shipped with the Reader
 package in `docs/licenses/JBIG2DECODER-NETSTANDARD-LICENSE.txt`.
+
+Native DOCX optical analysis uses the managed Clipper2 2.0.0 package to enumerate
+nonzero polygon fill topology. It adds no native asset or transitive package.
+The complete package-declared Boost Software License 1.0 accompanies the DOCX
+package in `docs/licenses/CLIPPER2-LICENSE.txt`. The original repository's
+[maintenance transition](https://github.com/AngusJohnson/Clipper2/blob/4be4655694d7e15e76ac6bfe9024fa534eed3428/README.md)
+moves future upstream development to C++ only; this pinned C# package does not
+inherit a promise of continued official managed updates. A later package or
+native replacement requires fresh compatibility and license review.
 
 The ImageSharp row describes **the pinned 2.1.13 package**: its nuspec declares
 `Apache-2.0`, and the [v2.1.13 source LICENSE](https://github.com/SixLabors/ImageSharp/blob/v2.1.13/LICENSE)

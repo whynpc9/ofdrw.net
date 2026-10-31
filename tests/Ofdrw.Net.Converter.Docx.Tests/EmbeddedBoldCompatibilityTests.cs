@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO.Compression;
 using Ofdrw.Net.Converter.Docx.Converters;
 using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Core.Fonts;
 using Ofdrw.Net.Packaging;
 using Ofdrw.Net.Reader.Readers;
 
@@ -60,21 +61,46 @@ public sealed class EmbeddedBoldCompatibilityTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task MixedNativeSpanKeepsItsPlannedStrokeForEveryPositionedGlyph(bool explicitNative)
+    [InlineData(false, "量A", 48, .019, .022)]
+    [InlineData(true, "量A", 48, .019, .022)]
+    [InlineData(false, "目", 12, .0282, .0285)]
+    [InlineData(true, "目", 12, .0282, .0285)]
+    public async Task NativeCounterSpanKeepsItsPlannedStrokeForEveryPositionedGlyph(
+        bool explicitNative, string value, int halfPoints, double minimum, double maximum)
     {
         using var fonts = new PinnedCjkFontDirectory();
-        using var source = BoldSample("Noto Sans CJK SC", "量A", 48);
+        using var source = BoldSample("Noto Sans CJK SC", value, halfPoints);
         using var ofd = new MemoryStream();
         await new DocxToOfdConverter(Options(fonts, explicitNative)).ConvertAsync(source, ofd);
         ofd.Position = 0; var package = await new OfdReader().ReadAsync(ofd);
         var text = Assert.Single(package.Pages.Single().Elements.OfType<OfdTextElement>());
-        Assert.Equal("量A", text.Text);
-        Assert.NotEmpty(Assert.Single(package.Fonts).Data);
+        Assert.Equal(value, text.Text);
+        var embedded = Assert.Single(package.Fonts).Data;
+        Assert.NotEmpty(embedded);
+        if (value == "目")
+        {
+            var original = File.ReadAllBytes(Path.Combine(fonts.Path, "noto.ttf"));
+            var gid = new OpenTypeCmap(new OpenTypeFace(original)).DirectGlyph('目');
+            Assert.Equal(27864, gid);
+            Assert.Equal(gid, new OpenTypeCmap(new OpenTypeFace(embedded)).DirectGlyph('目'));
+            var expectedGlyph = GlyphBytes(original, gid); var actualGlyph = GlyphBytes(embedded, gid);
+            Assert.True(actualGlyph.Length >= expectedGlyph.Length);
+            Assert.Equal(expectedGlyph, actualGlyph.Take(expectedGlyph.Length));
+            Assert.All(actualGlyph.Skip(expectedGlyph.Length), padding => Assert.Equal(0, padding));
+        }
         var xml = XElement.Parse(text.SourceXml!);
         var width = double.Parse(xml.Attribute("LineWidth")!.Value, CultureInfo.InvariantCulture);
-        Assert.InRange(width / text.FontSizeMillimeters, .019, .022);
+        Assert.InRange(width / text.FontSizeMillimeters, minimum, maximum);
+        if (value == "目")
+        {
+            // Original three rectangular openings have heights162/165/166
+            // design units at1000upem.0.060mm retains>0.4005pt in the narrowest;
+            // the next writer-grid width0.061mm would violate the fixed floor.
+            var radius = text.FontSizeMillimeters * 72 / 25.4 * .162 / 2;
+            Assert.Equal(.060, width);
+            Assert.True(radius - width * 72 / 25.4 / 2 >= .4005);
+            Assert.True(radius - .061 * 72 / 25.4 / 2 < .4005);
+        }
         Assert.Equal(700, text.Weight);
         var originalRuns = text.Runs.Select(run => (run.Text, run.XMillimeters, run.YMillimeters,
             run.DeltaX, run.DeltaY)).ToArray();
@@ -96,7 +122,7 @@ public sealed class EmbeddedBoldCompatibilityTests
         if (Environment.GetEnvironmentVariable("OFDRW_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
         {
             Directory.CreateDirectory(artifacts);
-            var prefix = Path.Combine(artifacts, $"mixed-planned-{explicitNative}");
+            var prefix = Path.Combine(artifacts, $"{(value == "量A" ? "mixed-planned" : "small-overlap")}-{explicitNative}");
             await File.WriteAllBytesAsync(prefix + ".docx", source.ToArray());
             await File.WriteAllBytesAsync(prefix + ".ofd", ofd.ToArray());
             await File.WriteAllBytesAsync(prefix + ".pdf", actual.ToArray());
@@ -104,11 +130,20 @@ public sealed class EmbeddedBoldCompatibilityTests
             await File.WriteAllBytesAsync(prefix + "-reference.pdf", expected.ToArray());
         }
         using var semantic = UglyToad.PdfPig.PdfDocument.Open(actual.ToArray());
-        Assert.Equal("量A", semantic.GetPage(1).Text);
+        Assert.Equal(value, semantic.GetPage(1).Text);
         using var actualReader = Docnet.Core.DocLib.Instance.GetDocReader(actual.ToArray(), new Docnet.Core.Models.PageDimensions(4d));
         using var expectedReader = Docnet.Core.DocLib.Instance.GetDocReader(expected.ToArray(), new Docnet.Core.Models.PageDimensions(4d));
         using var actualPage = actualReader.GetPageReader(0); using var expectedPage = expectedReader.GetPageReader(0);
         Assert.Equal(expectedPage.GetImage(), actualPage.GetImage());
+    }
+
+    private static byte[] GlyphBytes(byte[] font, int gid)
+    {
+        var face = new OpenTypeFace(font); var loca = face.Table("loca");
+        var shortLoca = OpenTypeFace.U16(face.Table("head"), 50) == 0;
+        int Offset(int i) => shortLoca ? OpenTypeFace.U16(loca, i * 2) * 2 : (int)OpenTypeFace.U32(loca, i * 4);
+        var start = Offset(gid); var end = Offset(gid + 1);
+        return face.Table("glyf").Skip(start).Take(end - start).ToArray();
     }
 
     [Theory]
@@ -144,6 +179,13 @@ public sealed class EmbeddedBoldCompatibilityTests
                 var width = double.Parse(xml.Attribute("LineWidth")!.Value, CultureInfo.InvariantCulture);
                 if (text.Text is "项目" or "数量" or "状态")
                     Assert.InRange(width / text.FontSizeMillimeters, .0095, .012);
+                else if (text.Text == "1. 表格与中英文排版")
+                    // 格 has overlap-created white regions although all input
+                    // contours wind alike. At its selected white witness the
+                    // original straight border leaves<0.4pt for0.168mm;0.167mm
+                    // meets the fixed guard at this selected witness, including
+                    // the unchanged complete-stroke clearance measurement.
+                    Assert.Equal(.167, width);
                 else Assert.InRange(width / text.FontSizeMillimeters, .034, .0351);
                 var color = Assert.Single(xml.Elements(), e => e.Name.LocalName == "StrokeColor");
                 Assert.Equal($"{text.FillColor.Red} {text.FillColor.Green} {text.FillColor.Blue}", color.Attribute("Value")?.Value);

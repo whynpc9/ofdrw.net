@@ -6,6 +6,64 @@ namespace Ofdrw.Net.Converter.Docx.Tests;
 public sealed class NativeBoldStrokePlannerTests
 {
     [Fact]
+    public void HighlyCoincidentContoursRetainLegacyWithinTheIntersectionAdmissionBudget()
+    {
+        // Small, finite construction:64 identical filled rectangles produce
+        // many coincident/touching edge pairs despite their simple final union.
+        // Refuse that analysis workload before calling the clipping engine.
+        (int X, int Y)[] rectangle = [(0,0),(0,1000),(1000,1000),(1000,0)];
+        var face = BuildCounterFont(Font(), Enumerable.Repeat(rectangle, 64).ToArray());
+        var snapshot = face.ToArray();
+        Assert.Equal(.04, new NativeBoldStrokePlanner(default).Width(face, false, 4, "中"));
+        Assert.Equal(snapshot, face);
+    }
+
+    [Theory]
+    [InlineData(6d)]
+    [InlineData(12d)]
+    [InlineData(18d)]
+    public void OverlappingSameDirectionPiecesCannotBypassTheAbsoluteCounterFloor(double points)
+    {
+        var original = Font();
+        // Four overlapping clockwise rectangles have exactly the same filled
+        // region as the explicit rectangular-counter control below. No input
+        // contour is itself a hole; their union encloses the100-unit opening.
+        var face = BuildCounterFont(original, new (int X, int Y)[][]
+        {
+            [(0,0),(0,1000),(100,1000),(100,0)],
+            [(900,0),(900,1000),(1000,1000),(1000,0)],
+            [(0,550),(0,1000),(1000,1000),(1000,550)],
+            [(0,0),(0,450),(1000,450),(1000,0)]
+        });
+        var snapshot = face.ToArray();
+        var originalGid = new OpenTypeCmap(new OpenTypeFace(original)).DirectGlyph('中');
+        Assert.Equal(originalGid, new OpenTypeCmap(new OpenTypeFace(face)).DirectGlyph('中'));
+        var size = points * 25.4 / 72;
+        var written = double.Parse(size.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
+            System.Globalization.CultureInfo.InvariantCulture);
+        var width = new NativeBoldStrokePlanner(default).Width(face, false, size, "中");
+        var legacy = size * .01;
+        if (points == 6) Assert.Equal(legacy, width); // even unstroked radius is below0.4pt
+        else
+        {
+            // Equal filled regions must retain the positive12/18pt controls;
+            // always falling back for every overlap is not this correction.
+            var explicitCounter = CounterFont(original, nested: false);
+            var control = new NativeBoldStrokePlanner(default).Width(explicitCounter, false, size, "中");
+            Assert.True(width > legacy);
+            Assert.Equal(control, width);
+        }
+        if (width > legacy + 1e-9)
+        {
+            var radius = written * 72 / 25.4 * .05;
+            var remaining = radius - width * 72 / 25.4 / 2;
+            Assert.True(remaining >= Math.Max(.4, radius * .6) + .0005,
+                $"{points}pt overlap-built counter retains only{remaining}pt after an increase.");
+        }
+        Assert.Equal(snapshot, face);
+    }
+
+    [Fact]
     public void NestedCounterCannotBorrowTheLargeInnerWhiteRegion()
     {
         var original = Font();
@@ -70,7 +128,6 @@ public sealed class NativeBoldStrokePlannerTests
 
     private static byte[] CounterFont(byte[] original, bool nested)
     {
-        var face = new OpenTypeFace(original); var gid = new OpenTypeCmap(face).DirectGlyph('中');
         (int X, int Y)[] points = nested ? new (int, int)[]
         {
             (0,0),(0,1000),(1000,1000),(1000,0),
@@ -82,13 +139,25 @@ public sealed class NativeBoldStrokePlannerTests
             (0,0),(0,1000),(1000,1000),(1000,0),
             (100,450),(900,450),(900,550),(100,550)
         };
-        var contours = points.Length / 4;
+        return BuildCounterFont(original, points.Chunk(4).ToArray());
+    }
+
+    private static byte[] BuildCounterFont(byte[] original, (int X, int Y)[][] shapes)
+    {
+        var face = new OpenTypeFace(original); var gid = new OpenTypeCmap(face).DirectGlyph('中');
+        var points = shapes.SelectMany(shape => shape).ToArray();
+        var contours = shapes.Length;
         var flags = 12 + contours * 2;
         var xCoordinates = flags + points.Length;
         var yCoordinates = xCoordinates + points.Length * 2;
         var glyph = new byte[yCoordinates + points.Length * 2];
         OpenTypeFace.Put16(glyph, 0, contours); OpenTypeFace.Put16(glyph, 6, 1000); OpenTypeFace.Put16(glyph, 8, 1000);
-        for (var i = 0; i < contours; i++) OpenTypeFace.Put16(glyph, 10 + i * 2, i * 4 + 3);
+        var endPoint = -1;
+        for (var i = 0; i < contours; i++)
+        {
+            endPoint += shapes[i].Length;
+            OpenTypeFace.Put16(glyph, 10 + i * 2, endPoint);
+        }
         for (var i = 0; i < points.Length; i++)
         {
             glyph[flags + i] = 1;

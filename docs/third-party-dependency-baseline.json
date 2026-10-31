@@ -7,6 +7,15 @@
     "source": "https://www.bouncycastle.org/stable/nuget/csharp/website"
   },
   {
+    "id": "Clipper2",
+    "version": "2.0.0",
+    "license_type": "file",
+    "license": "License.txt",
+    "source": "https://www.angusj.com/clipper2/Docs/Overview.htm",
+    "license_file_sha256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951",
+    "license_file_heading": "Boost Software License - Version 1.0 - August 17th, 2003"
+  },
+  {
     "id": "Docnet.Core",
     "version": "2.6.0",
     "license_type": "expression",

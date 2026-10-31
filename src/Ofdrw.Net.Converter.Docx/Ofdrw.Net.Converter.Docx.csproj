@@ -10,11 +10,15 @@
     <ProjectReference Include="../Ofdrw.Net.Layout/Ofdrw.Net.Layout.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Clipper2" Version="[2.0.0]" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
     <PackageReference Include="MigraDocCore.Rendering" Version="1.3.67" />
     <PackageReference Include="SixLabors.ImageSharp" Version="2.1.13" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Ofdrw.Net.Converter.Docx.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../docs/licenses/CLIPPER2-LICENSE.txt" Pack="true" PackagePath="docs/licenses/" Link="docs/licenses/CLIPPER2-LICENSE.txt" />
   </ItemGroup>
 </Project>
