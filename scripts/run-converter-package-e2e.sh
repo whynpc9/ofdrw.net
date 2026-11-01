@@ -134,6 +134,7 @@ dotnet run --project "$FONT_CONSUMER" -c Release --no-build --no-restore -- "$RO
 # adapter dependency cannot pass the candidate gate on project references.
 mkdir -p "$TASK_DIR/text-consumer"
 cp "$ROOT_DIR/e2e/Ofdrw.Net.Text.HarfBuzz.E2E/Program.cs" "$TASK_DIR/text-consumer/Program.cs"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Text.HarfBuzz.E2E/PositionedRunProbe.cs" "$TASK_DIR/text-consumer/PositionedRunProbe.cs"
 cat > "$TASK_DIR/text-consumer/Consumer.csproj" <<EOF_TEXT_CONSUMER
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>

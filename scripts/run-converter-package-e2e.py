@@ -88,6 +88,7 @@ def main():
             shutil.copyfile(ROOT / f'e2e/{source}/Program.cs', directory / 'Program.cs')
             project = directory / 'Consumer.csproj'
             if source == 'Ofdrw.Net.Text.HarfBuzz.E2E':
+                shutil.copyfile(ROOT / f'e2e/{source}/PositionedRunProbe.cs', directory / 'PositionedRunProbe.cs')
                 items = ('Text.HarfBuzz', 'Packaging', 'Reader', 'Converter.Pdf', 'Converter.Svg')
                 references = '\n'.join(f'    <PackageReference Include="Ofdrw.Net.{item}" Version="{options.version}" />'
                                        for item in items)

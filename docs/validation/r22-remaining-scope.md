@@ -1,5 +1,13 @@
 # R22 remaining scope after PR #76
 
+The [exact shaped-run positioning candidate](../architecture/r22-positioned-run-query.md)
+adds a managed per-run millimeter projection at an explicit size, retaining
+original glyph/context identity and separating origins, advances and ink.
+It does not resolve actual styles, join runs into a final visual line, migrate
+existing layout/writers to shared geometry, paginate or add script output.
+Its own package, geometry, visual and final-main gates remain separate from
+the accepted font-range increment at `f5536601aecb821a72b4d57cfa23d26f08897c50`.
+
 The bounded [source-span query candidate](../architecture/r22-span-context-query.md)
 adds whole-run shaping with per-occurrence UTF-16 span associations. It does
 not close general C3/style itemization, C4 script output, Flow or writer scope.
