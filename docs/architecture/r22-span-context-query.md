@@ -61,6 +61,9 @@ caller-selected face grouping and refuses conflicting style-key ownership.
 It does not interpret actual paint/size properties or change compatibility Flow.
 The separate [positioned-run query](r22-positioned-run-query.md) projects an
 exact shaped result at an explicit size without reshaping or writer admission.
+The [caller-selected face/size query](r22-sized-font-span-query.md) explicitly
+groups compatible sizes before shaping and projects each exact item separately.
+It retains original context without resolving paint or composing a visual line.
 
 Focused tests cover actual ffi/feature-off, Arabic and combining behavior,
 generic many-to-many/zero-advance occurrences, source snapshots, invalid UTF-16
