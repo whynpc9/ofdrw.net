@@ -67,3 +67,13 @@ dotnet run --project e2e/Ofdrw.Net.Layout.E2E -c Release --no-build --no-restore
 SDK 10.0.401 的 focused Release E2E 构建成功（0 错误，1 条原有 Reader CS8604 警告）；共享生成器相关 DOCX 回归 3/3 通过、0 失败／跳过，包含 JPEG、五页节页码及重复／无效页选择。记录在 ignored `artifacts/cn-en-release-n13/`：`e2e-build-local-cache.log`、`shared-fixtures-tests-local-cache.log`、`tests/shared-fixtures.trx`。首次临时 DOTNET_CLI_HOME 导致新 NuGet 默认缓存和慢还原，已停止本任务还原并改为显式 `NUGET_PACKAGES=/Users/wanghongyi/.nuget/packages`、本地层次缓存源后完成；未清缓存或修改许可门。新增入口最终运行结果另在交接补充。完整回归、自动页面渲染、PNG 目视、macOS Preview 和 Copy/Find 均未完成。最终全套回归及精确包消费由合并后的候选 N12 执行，不在多个工作树重复全套构建。
 
 N00 已提供独立物理粗体制品 manifest：SHA-256 `23da8dc97db7c6b73c2f71fc9da15ed1e18fe0701eb498ea5152eab26ad8a3b8`；同源静态 Bold 为 21,638,668 字节、SHA-256 `647a6e375c5a0d8958111173d7b7cec5237e0784cc4490663e43834dfff491be`，weight 700、glyf、无 fvar，工具链 fontTools 4.59.2 / Python 3.14.7。其具体生成脚本、字体及许可在 N00 ignored artifacts 下保留，未重复提交载荷；它们的运行选择和页面外观仍需本次实际验证。
+
+## 2026-11-02：首次实际运行暴露的验收断言修正
+
+集成 `61120ae` 的首次 release-only 运行在 `layout-original-native` 失败：`Core local bold/italic/color intent differs or leaked into ordinary text`。这是本验收入口的错误：`OfdColor` 是未重载 `==`/`!=` 的 class，先前断言比较了对象身份，导致新建的红色和表头底色对象必然不相等。修正仅将三个颜色判断改为 Red/Green/Blue/Alpha 分量比较（黑色 `0/0/0/255`、强调 `192/0/0/255`、表头 `217/234/247/255`）；粗体数量 7、字重 400/700、斜体和底色数量 3 的预期均未变，未改产品实现或放宽阈值。
+
+实际失败 OFD SHA-256 `ec54355d787ebf8153eabfffceedefdb2f0ccd77b2845347cb43353f47c71158` 中，普通正文为 Weight 400／不斜体／黑色，强调为 Weight 700／红色，英文副标题为斜体，粗体对象恰好 7 个，表头填充恰好 3 个。修正后重生 OFD 的这些 source object 值与失败产物逐项相同，说明之前的拒绝来自断言而非该样例样式发生变化；没有由此推断其页面或搜索通过。
+
+提交修正前已实际构建并运行全部 10 份／26 页 release-only 产物（包括原 Regular、真实物理 Bold、页眉页脚、图片和重复页选择），每份的 OFD 原文、样式、页选择／图片与 OFD→PDF 文字断言全部通过。物理粗体两模式严格 `Throw`、真实 Bold face、无合成粗体诊断的断言也通过。此为开发 smoke，源码身份是基线 `4c7cab02423fac47541bcbcc5fe05a4da0cc0a77` 加验收源码 diff SHA-256 `52a41728197ed67a00c03a17b1b3ac5c43438d0c35942ad2bc39e47f6c0d5d26`，不是已冻结的集成候选；最终 main 仍需重新生成和验收。
+
+本次可复查记录在本 N13 worktree 的 ignored `artifacts/cn-en-release-n13/`：`e2e-value-color-build.log`（构建 0 错误，原有 Reader CS8604 警告 1 条）、`value-color-smoke.log`、`value-color-before-after.json`、`value-color-fix.patch`；完整产物在 `value-color-smoke/`，manifest SHA-256 `7a9b4879cc3daf7e5453464fa356c1ea290318932afec5bc73564403e0fe4425`。该记录保留失败前后 OFD 身份、实际控制对象和值、源码差异身份、10 份产物及物理 face 诊断。没有重跑全套回归；PNG 渲染、PNG 目视、Preview 和 Copy/Find 仍未执行。N02 和原 Regular 量字历史 FAIL 均未关闭，候选仍不能据此宣称整体通过。
