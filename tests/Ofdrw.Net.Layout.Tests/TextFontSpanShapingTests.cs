@@ -305,6 +305,196 @@ public sealed class TextFontSpanShapingTests
         Assert.Equal(22, Assert.Single(result.Runs[1].Shaping.ShapedRun.Glyphs).ClusterStart);
     }
 
+    [Fact]
+    public void SelectedArabicRangeKeepsOriginalNeighborsInsteadOfTheCroppedIsolatedForm()
+    {
+        var original = new TextFontSpanShapingRequest("ببب", 100,
+            new[] { Span(100, 1, DejaVu.Value, 10), Span(101, 1, DejaVu.Value, 20), Span(102, 1, DejaVu.Value, 30) },
+            TextDirection.RightToLeft, "Arab", "ar");
+        var item = TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(101, 1));
+        var recorder = NativeRecorder();
+        var result = new TextFontSpanShapingEngine(recorder).Shape(item);
+        var run = Assert.Single(result.Runs);
+        Assert.Same(item, result.Request); Assert.Same(original, item.Context);
+        Assert.Equal("ب", item.Text); Assert.Equal(101, item.SourceStart);
+        Assert.Same(original.Spans[1], Assert.Single(item.Spans));
+        Assert.Equal(5260u, Assert.Single(run.Shaping.ShapedRun.Glyphs).GlyphId);
+        Assert.Equal(new[] { 20 }, run.GlyphStyleKeys);
+        Assert.Equal("ببب", Assert.Single(recorder.Requests).Context!.Text);
+        var cropped = Engine().Shape(new TextFontSpanShapingRequest(item.Text, item.SourceStart, item.Spans,
+            item.Direction, item.Script, item.Language));
+        Assert.Equal(1366u, Assert.Single(cropped.Runs[0].Shaping.ShapedRun.Glyphs).GlyphId);
+    }
+
+    [Fact]
+    public void SelectedPartitionClipsFacesAndUsesItemLocalStyleIndicesAcrossFontGroups()
+    {
+        var alias = Load("DejaVuSans-R22.ttf", "original alias");
+        var original = new TextFontSpanShapingRequest("بببAV", 100,
+            new[] { Span(100, 2, DejaVu.Value, 20), Span(102, 1, alias, 30), Span(103, 2, Noto.Value, 40) },
+            TextDirection.RightToLeft, "Arab", "ar");
+        var item = TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(101, 3));
+        Assert.NotSame(original.Spans[0], item.Spans[0]);
+        Assert.Same(DejaVu.Value, item.Spans[0].Face);
+        Assert.Same(original.Spans[1], item.Spans[1]);
+        Assert.Same(alias, item.Spans[1].Face);
+        Assert.NotSame(original.Spans[2], item.Spans[2]); Assert.Same(Noto.Value, item.Spans[2].Face);
+        Assert.Equal(new[] { 101, 102, 103 }, item.Spans.Select(s => s.SourceStart));
+        Assert.All(item.Spans, s => Assert.Equal(1, s.SourceLength));
+        var result = Engine().Shape(item);
+        Assert.Equal(2, result.Runs.Count);
+        Assert.Equal(new[] { 0, 2 }, result.Runs.Select(r => r.FirstSpanIndex));
+        Assert.Equal(new uint[] { 5258, 5260 }, result.Runs[0].Shaping.ShapedRun.Glyphs.Select(g => g.GlyphId));
+        Assert.Equal(new[] { 102, 101 }, result.Runs[0].Shaping.ShapedRun.Glyphs.Select(g => g.ClusterStart));
+        Assert.Equal(new[] { 30, 20 }, result.Runs[0].GlyphStyleKeys);
+        Assert.Equal(36u, Assert.Single(result.Runs[1].Shaping.ShapedRun.Glyphs).GlyphId);
+        Assert.Equal(new[] { 40 }, result.Runs[1].GlyphStyleKeys);
+        Assert.Equal(new[] { 2048, 1000 }, result.Runs.Select(r => r.Shaping.ShapedRun.Request.Face.UnitsPerEm));
+        Assert.All(result.Runs, r => Assert.Equal(original.Text, r.Shaping.ShapedRun.Request.Context!.Text));
+        Assert.All(result.Runs.SelectMany(r => r.Shaping.ShapedRun.Glyphs), g => Assert.InRange(g.ClusterStart, 101, 103));
+        Assert.Throws<NotSupportedException>(() => ((IList<TextFontSpan>)item.Spans).Clear());
+        Assert.Equal(2, original.Spans[0].SourceLength); Assert.Equal(2, original.Spans[2].SourceLength);
+    }
+
+    [Fact]
+    public void SelectedFiReshapesRatherThanCroppingTheWholeConflictingFfiGlyph()
+    {
+        var original = new TextFontSpanShapingRequest("ffi", 20,
+            new[] { Span(20, 1, DejaVu.Value, 7), Span(21, 2, DejaVu.Value, 9) });
+        Assert.Throws<TextLayoutException>(() => Engine().Shape(original));
+        var item = TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(21, 2));
+        var run = Assert.Single(Engine().Shape(item).Runs);
+        Assert.Equal(5042u, Assert.Single(run.Shaping.ShapedRun.Glyphs).GlyphId);
+        Assert.Equal(21, run.Shaping.ShapedRun.Glyphs[0].ClusterStart);
+        Assert.Equal(2, run.Shaping.ShapedRun.Glyphs[0].ClusterLength);
+        Assert.Equal(new[] { 9 }, run.GlyphStyleKeys);
+        Assert.Equal("ffi", run.Shaping.ShapedRun.Request.Context!.Text);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OriginalItemAndLaterFontOffsetsKeepFeatureCoordinatesAndOverrideOrder(bool lastDisables)
+    {
+        var features = new List<TextFeature> { new("kern", 0, 0, 7) };
+        if (lastDisables) { features.Add(new("liga", 1, 2, 3)); features.Add(new("liga", 0, 0, 7)); }
+        else { features.Add(new("liga", 0, 0, 7)); features.Add(new("liga", 1, 2, 3)); }
+        features.Add(new("kern", 1, 0, 1)); // outside the selected item
+        features.Add(new("kern", 0, 3, 0)); // no positive intersection
+        var original = new TextFontSpanShapingRequest("AXffiVZ", 70,
+            new[] { Span(70, 2, Noto.Value, 1), Span(72, 3, DejaVu.Value, 2), Span(75, 2, Noto.Value, 3) },
+            features: features);
+        var item = TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(71, 5));
+        features.Clear();
+        Assert.Equal(3, item.Features.Count); Assert.Equal(5, original.Features.Count);
+        Assert.Equal(lastDisables ? new[] { (0, 5), (1, 3), (0, 5) } : new[] { (0, 5), (0, 5), (1, 3) },
+            item.Features.Select(f => (f.Start, f.Length)));
+        var recorder = NativeRecorder();
+        var result = new TextFontSpanShapingEngine(recorder).Shape(item);
+        Assert.Equal(3, recorder.Calls);
+        var nativeItem = recorder.Requests[1];
+        Assert.Equal(72, nativeItem.SourceStart); Assert.Equal("ffi", nativeItem.Text);
+        Assert.Equal(70, nativeItem.Context!.SourceStart); Assert.Equal(original.Text, nativeItem.Context.Text);
+        Assert.Equal(original.Features.Select(FeatureIdentity), nativeItem.Context.Features.Select(FeatureIdentity));
+        Assert.Equal(new[] { (0, 3), (0, 3), (0, 3) }, nativeItem.Features.Select(f => (f.Start, f.Length)));
+        Assert.Equal(lastDisables ? new uint[] { 73, 73, 76 } : new uint[] { 5044 },
+            result.Runs[1].Shaping.ShapedRun.Glyphs.Select(g => g.GlyphId));
+        if (!lastDisables)
+        {
+            // The tempting bug: feed item-relative ranges back into the original context.
+            var wrongContext = new TextShapeRequest(original.Text, original.SourceStart, DejaVu.Value,
+                features: item.Features);
+            var wrong = new HarfBuzzTextShaper().ShapeContextualItem(TextShapeRequest.CreateContextualItem(
+                wrongContext, new TextSourceSpan(72, 3)));
+            Assert.NotEqual(new uint[] { 5044 }, wrong.Glyphs.Select(g => g.GlyphId).ToArray());
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectedNonBmpContextAndMarkKeepAbsoluteIntervalsAtMaximumEndpoint(bool maximum)
+    {
+        var start = maximum ? int.MaxValue - 5 : 20;
+        var original = new TextFontSpanShapingRequest("\U00010300a\u0323A", start,
+            new[] { Span(start, 2, DejaVu.Value), Span(start + 2, 2, DejaVu.Value, 1), Span(start + 4, 1, Noto.Value, 2) });
+        var item = TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(start + 2, 3));
+        var result = Engine().Shape(item);
+        Assert.Equal(new[] { start + 2, start + 4 }, result.Runs.Select(r => r.Shaping.ShapedRun.Glyphs[0].ClusterStart));
+        Assert.Equal(2, Assert.Single(result.Runs[0].Shaping.ShapedRun.Glyphs).ClusterLength);
+        Assert.Equal(start, result.Runs[1].Shaping.ShapedRun.Request.Context!.SourceStart);
+        Assert.Equal(original.Text, result.Runs[1].Shaping.ShapedRun.Request.Context!.Text);
+    }
+
+    [Theory]
+    [InlineData("Aa\u0323V", 1, 1)]
+    [InlineData("Aa\u0323V", 2, 1)]
+    [InlineData("\U00010300A", 1, 1)]
+    [InlineData("AV", 1, 2)]
+    public void SelectedRangeRefusesOriginalTextElementSplitsAndOutsideIntervals(string text, int offset, int length)
+    {
+        var original = new TextFontSpanShapingRequest(text, 20, new[] { Span(20, text.Length, DejaVu.Value) });
+        Assert.Equal(TextLayoutError.InvalidRequest, Assert.Throws<TextLayoutException>(() =>
+            TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(20 + offset, length))).Error);
+    }
+
+    [Fact]
+    public void NestedFontPartitionItemsCannotReplaceTheOriginalContext()
+    {
+        var original = new TextFontSpanShapingRequest("AV", 0, new[] { Span(0, 2, Noto.Value) });
+        var item = TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(0, 2));
+        Assert.Same(original.Spans[0], item.Spans[0]);
+        Assert.Equal(TextLayoutError.InvalidRequest, Assert.Throws<TextLayoutException>(() =>
+            TextFontSpanShapingRequest.CreateContextualItem(item, new TextSourceSpan(0, 1))).Error);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    public void InvalidOriginalFontBoundaryOutsideTheItemRejectsBeforeAnyShaperCall(int selectedStart)
+    {
+        var original = new TextFontSpanShapingRequest("Xa\u0323V", 0,
+            new[] { Span(0, 1, Noto.Value), Span(1, 1, DejaVu.Value), Span(2, 1, Noto.Value), Span(3, 1, DejaVu.Value) });
+        var item = TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(selectedStart, 1));
+        var recorder = NativeRecorder();
+        Assert.Equal(TextLayoutError.InvalidRequest, Assert.Throws<TextLayoutException>(() =>
+            new TextFontSpanShapingEngine(recorder).Shape(item)).Error);
+        Assert.Equal(0, recorder.Calls);
+    }
+
+    [Fact]
+    public void SelectedGroupsUseTheInheritedCallBudgetWithoutShapingOutsideGroups()
+    {
+        var original = new TextFontSpanShapingRequest("AVA", 0,
+            new[] { Span(0, 1, Noto.Value), Span(1, 1, DejaVu.Value), Span(2, 1, Noto.Value) }, maximumShapeCalls: 1);
+        var recorder = NativeRecorder(); var engine = new TextFontSpanShapingEngine(recorder);
+        Assert.Equal(TextLayoutError.BudgetExceeded, Assert.Throws<TextLayoutException>(() => engine.Shape(original)).Error);
+        Assert.Equal(0, recorder.Calls);
+        var item = TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(1, 1));
+        Assert.Single(engine.Shape(item).Runs); Assert.Equal(1, recorder.Calls);
+        Assert.Equal(original.Text, recorder.Requests[0].Context!.Text);
+        Assert.Equal(1, item.MaximumShapeCalls);
+    }
+
+    [Fact]
+    public void NarrowItemCannotChargeOnlyCroppedTextToBypassFullContextWorkBudget()
+    {
+        // 64 groups cost 504 MiB of modeled face copies. The short standalone
+        // input fits; the retained 4096-unit context adds 16 MiB and must refuse.
+        var smallLength = (int)new FileInfo(Font("DejaVuSans-R22.ttf")).Length;
+        var large = PaddedFace(504 * 1024 * 1024 / 64 - smallLength);
+        var spans = Enumerable.Range(0, 64).Select(i => Span(i, i == 63 ? 4033 : 1,
+            i % 2 == 0 ? large : DejaVu.Value)).ToArray();
+        var original = new TextFontSpanShapingRequest(new string('A', 4096), 0, spans);
+        var item = TextFontSpanShapingRequest.CreateContextualItem(original, new TextSourceSpan(0, 64));
+        var recorder = new Recorder((r, _) => Many(r, 1)); var engine = new TextFontSpanShapingEngine(recorder);
+        Assert.Equal(TextLayoutError.BudgetExceeded, Assert.Throws<TextLayoutException>(() => engine.Shape(item)).Error);
+        Assert.Equal(0, recorder.Calls);
+        var standalone = new TextFontSpanShapingRequest(item.Text, item.SourceStart, item.Spans);
+        Assert.Equal(64, engine.Shape(standalone).Runs.Count); Assert.Equal(64, recorder.Calls);
+    }
+
+    private static object FeatureIdentity(TextFeature f) => (f.Tag, f.Value, f.Start, f.Length);
     private static TextFontSpan Span(int start, int length, TextFontFace face, int key = 0) => new(start, length, face, key);
     private static TextFontSpanShapingEngine Engine() => HarfBuzzTextPrelayout.CreateFontSpanShaping();
     private static Recorder NativeRecorder() => new((r, token) => new HarfBuzzTextShaper().ShapeContextualItem(r, token));
@@ -322,10 +512,11 @@ public sealed class TextFontSpanShapingTests
     private sealed class Recorder(Func<TextShapeRequest, CancellationToken, TextShapedRun> shape) : IContextualTextShaper
     {
         internal int Calls { get; private set; }
+        internal List<TextShapeRequest> Requests { get; } = new();
         public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("Font partition query must use explicit contextual entry point.");
         public TextShapedRun ShapeContextualItem(TextShapeRequest request, CancellationToken cancellationToken = default)
-        { Calls++; return shape(request, cancellationToken); }
+        { Calls++; Requests.Add(request); return shape(request, cancellationToken); }
     }
     private static string Font(string name)
     {

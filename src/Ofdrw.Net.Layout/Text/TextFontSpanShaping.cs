@@ -83,9 +83,45 @@ public sealed class TextFontSpanShapingRequest
         MaximumShapeCalls = maximumShapeCalls;
     }
 
-    /// <summary>The complete unmodified logical source.</summary>
+    private TextFontSpanShapingRequest(TextFontSpanShapingRequest context, TextShapeRequest item,
+        IReadOnlyList<TextFontSpan> spans)
+        : this(item.Text, item.SourceStart, spans, item.Direction, item.Script, item.Language,
+            item.Features, context.MaximumShapeCalls) => Context = context;
+
+    /// <summary>Selects a nonempty source range while retaining the exact original font-partition request as context.</summary>
+    /// <remarks>Endpoints must be complete-source text-element boundaries. Intersected spans retain their
+    /// selected face objects and style keys; features are intersected and rebased to the item.
+    /// This reshapes the selected range, not a slice of previously shaped glyphs. It does not select
+    /// legal line breaks, change joining at line boundaries, assign sizes or admit a writer profile.</remarks>
+    public static TextFontSpanShapingRequest CreateContextualItem(TextFontSpanShapingRequest context,
+        TextSourceSpan item)
+    {
+        if (context is null) throw new ArgumentNullException(nameof(context));
+        if (item is null) throw new ArgumentNullException(nameof(item));
+        if (context.Context is not null)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                "Select a font-partition item from the original complete request, not another item.");
+        var template = new TextShapeRequest(context.Text, context.SourceStart, context.Spans[0].Face,
+            context.Direction, context.Script, context.Language, context.Features);
+        var selected = TextShapeRequest.CreateContextualItem(template, item);
+        var end = item.SourceStart + item.SourceLength;
+        var spans = new List<TextFontSpan>();
+        foreach (var span in context.Spans)
+        {
+            var start = Math.Max(item.SourceStart, span.SourceStart);
+            var spanEnd = Math.Min(end, span.SourceStart + span.SourceLength);
+            if (start >= spanEnd) continue;
+            spans.Add(start == span.SourceStart && spanEnd == span.SourceStart + span.SourceLength
+                ? span : new TextFontSpan(start, spanEnd - start, span.Face, span.StyleKey));
+        }
+        return new TextFontSpanShapingRequest(context, selected, spans);
+    }
+
+    /// <summary>The exact complete request retained by a selected item, or null for an ordinary whole partition.</summary>
+    public TextFontSpanShapingRequest? Context { get; }
+    /// <summary>Unmodified logical source for this whole partition or selected item.</summary>
     public string Text { get; }
-    /// <summary>Absolute UTF-16 start of the complete source.</summary>
+    /// <summary>Absolute UTF-16 start of this partition or selected item.</summary>
     public int SourceStart { get; }
     /// <summary>Immutable logical source partition retaining every caller face and style key.</summary>
     public IReadOnlyList<TextFontSpan> Spans { get; }
@@ -95,7 +131,7 @@ public sealed class TextFontSpanShapingRequest
     public string Script { get; }
     /// <summary>Uniform caller-selected language tag.</summary>
     public string Language { get; }
-    /// <summary>Immutable feature ranges relative to the complete source.</summary>
+    /// <summary>Immutable feature ranges relative to this partition's Text; selected items retain the original ranges in Context.</summary>
     public IReadOnlyList<TextFeature> Features { get; }
     /// <summary>Maximum native/contextual shaping calls, checked before the first call.</summary>
     public int MaximumShapeCalls { get; }
@@ -150,6 +186,23 @@ public sealed class TextFontSpanShapingEngine
     {
         if (request is null) throw new ArgumentNullException(nameof(request));
         cancellationToken.ThrowIfCancellationRequested();
+        var original = request.Context ?? request;
+        if (request.Context is not null)
+        {
+            // Selecting a small range must not launder an invalid declared font
+            // switch elsewhere in the retained source. No outside item is shaped.
+            var template = new TextShapeRequest(original.Text, original.SourceStart, original.Spans[0].Face,
+                original.Direction, original.Script, original.Language, original.Features);
+            for (var index = 1; index < original.Spans.Count; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (string.Equals(original.Spans[index - 1].Face.FaceSha256,
+                    original.Spans[index].Face.FaceSha256, StringComparison.Ordinal)) continue;
+                var start = original.Spans[index].SourceStart;
+                _ = TextShapeRequest.CreateContextualItem(template,
+                    new TextSourceSpan(start, original.SourceStart + original.Text.Length - start));
+            }
+        }
         var plans = new List<Plan>();
         long work = 0;
         for (var first = 0; first < request.Spans.Count;)
@@ -164,12 +217,12 @@ public sealed class TextFontSpanShapingEngine
                 throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Font items exceed the shaping-call budget.");
             // Charge both face copies used by the pinned adapter and weighted
             // complete-context text work before entering any replacement shaper.
-            var cost = 2L * face.FaceByteLength + 64L * request.Text.Length;
+            var cost = 2L * face.FaceByteLength + 64L * original.Text.Length;
             if (work > MaximumShapeWork - cost)
                 throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Font items exceed the cumulative shaping-work budget.");
             work += cost;
-            var context = new TextShapeRequest(request.Text, request.SourceStart, face,
-                request.Direction, request.Script, request.Language, request.Features);
+            var context = new TextShapeRequest(original.Text, original.SourceStart, face,
+                original.Direction, original.Script, original.Language, original.Features);
             var start = request.Spans[first].SourceStart;
             var last = request.Spans[end - 1];
             var item = TextShapeRequest.CreateContextualItem(context,

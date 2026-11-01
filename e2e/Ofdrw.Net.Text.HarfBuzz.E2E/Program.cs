@@ -366,6 +366,119 @@ await File.WriteAllTextAsync(Path.Combine(output, "r22-font-span-query.json"), J
     scope = "Explicit preselected font partition and opaque style-key ownership query only; no actual paint/size resolution, font fallback, bidi analysis, Flow or writer/reader admission."
 }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
 Console.WriteLine("R22 font partition original identity, shared-style refusal and per-item context queries passed from candidate packages.");
+var fontRangeRows = new List<object>();
+object FontSpanIdentity(TextFontSpan span) => new { span.SourceStart, span.SourceLength, span.StyleKey,
+    span.Face.Name, span.Face.SourceSha256, span.Face.FaceSha256, span.Face.UnitsPerEm };
+void ProbeFontRange(string role, TextFontSpanShapingRequest original, TextSourceSpan range,
+    uint[][] expected, int[][] keys, int? rejectedCalls = null)
+{
+    var meter = new FontSpanProbeShaper();
+    TextFontSpanShapingRequest? item = null;
+    TextFontSpanShapingResult? result = null;
+    TextLayoutException? failure = null;
+    try
+    {
+        item = TextFontSpanShapingRequest.CreateContextualItem(original, range);
+        result = new TextFontSpanShapingEngine(meter).Shape(item);
+    }
+    catch (TextLayoutException error) { failure = error; }
+    if (rejectedCalls.HasValue)
+    {
+        if (result is not null || failure?.Error != TextLayoutError.InvalidRequest || meter.Calls != rejectedCalls.Value)
+            throw new InvalidDataException("Selected font range did not refuse atomically: " + role);
+    }
+    else
+    {
+        if (failure is not null || result is null || item is null || !ReferenceEquals(item.Context, original) ||
+            !ReferenceEquals(result.Request, item) || result.Runs.Count != expected.Length || expected.Length != keys.Length)
+            throw new InvalidDataException("Selected font range lost its original request: " + role, failure);
+        foreach (var span in item.Spans)
+        {
+            var owner = original.Spans.Single(s => s.SourceStart <= span.SourceStart &&
+                s.SourceStart + s.SourceLength >= span.SourceStart + span.SourceLength);
+            if (!ReferenceEquals(owner.Face, span.Face) || owner.StyleKey != span.StyleKey ||
+                owner.SourceStart == span.SourceStart && owner.SourceLength == span.SourceLength && !ReferenceEquals(owner, span))
+                throw new InvalidDataException("Selected span lost original face/style/whole-span identity: " + role);
+        }
+        for (var index = 0; index < result.Runs.Count; index++)
+        {
+            var run = result.Runs[index]; var shaped = run.Shaping.ShapedRun; var context = shaped.Request.Context;
+            if (!shaped.Glyphs.Select(g => g.GlyphId).SequenceEqual(expected[index]) ||
+                !run.GlyphStyleKeys.SequenceEqual(keys[index]) ||
+                !ReferenceEquals(shaped.Request.Face, item.Spans[run.FirstSpanIndex].Face) ||
+                context is null || context.Text != original.Text || context.SourceStart != original.SourceStart ||
+                !context.Features.Select(f => (f.Tag, f.Value, f.Start, f.Length)).SequenceEqual(
+                    original.Features.Select(f => (f.Tag, f.Value, f.Start, f.Length))) ||
+                shaped.Glyphs.Any(g => g.ClusterStart < range.SourceStart ||
+                    g.ClusterStart + g.ClusterLength > range.SourceStart + range.SourceLength))
+                throw new InvalidDataException("Selected font range changed original context/feature/GID/style ownership: " + role);
+        }
+    }
+    fontRangeRows.Add(new { role, contextText = original.Text, contextSourceStart = original.SourceStart,
+        direction = original.Direction.ToString(), script = original.Script, language = original.Language,
+        contextFeatures = original.Features, contextSpans = original.Spans.Select(FontSpanIdentity).ToArray(),
+        requestedRange = range, maximumShapeCalls = original.MaximumShapeCalls,
+        itemText = item?.Text, itemSourceStart = item?.SourceStart, itemFeatures = item?.Features,
+        itemSpans = item?.Spans.Select(FontSpanIdentity).ToArray() ?? Array.Empty<object>(),
+        outcome = failure is null ? "accepted" : "rejected", nativeCalls = meter.Calls,
+        failure = failure is null ? null : new { error = failure.Error.ToString(), failure.SourceStart, failure.SourceLength },
+        runs = result?.Runs.Select(run => (object)new { run.FirstSpanIndex, run.SpanCount,
+            faceSha256 = run.Shaping.ShapedRun.Request.Face.FaceSha256, run.Shaping.ShapedRun.Request.Face.UnitsPerEm,
+            itemText = run.Shaping.ShapedRun.Request.Text, itemSourceStart = run.Shaping.ShapedRun.Request.SourceStart,
+            itemFeatures = run.Shaping.ShapedRun.Request.Features,
+            contextText = run.Shaping.ShapedRun.Request.Context!.Text,
+            contextSourceStart = run.Shaping.ShapedRun.Request.Context!.SourceStart,
+            contextFeatures = run.Shaping.ShapedRun.Request.Context!.Features,
+            run.Shaping.ShapedRun.EngineVersion, run.Shaping.ShapedRun.XAdvance, run.Shaping.ShapedRun.YAdvance,
+            glyphs = run.Shaping.ShapedRun.Glyphs, coverage = run.Shaping.GlyphCoverage, run.GlyphStyleKeys }).ToArray() ?? Array.Empty<object>() });
+}
+var rangeArabic = new TextFontSpanShapingRequest("ببب", 100,
+    new[] { new TextFontSpan(100, 1, dejavu, 10), new TextFontSpan(101, 1, dejavu, 20), new TextFontSpan(102, 1, dejavu, 30) },
+    TextDirection.RightToLeft, "Arab", "ar");
+ProbeFontRange("arabic-middle-original-context", rangeArabic, new TextSourceSpan(101, 1),
+    new[] { new uint[] { 5260 } }, new[] { new[] { 20 } });
+var rangeMixed = new TextFontSpanShapingRequest("بببAV", 100,
+    new[] { new TextFontSpan(100, 2, dejavu, 20), new TextFontSpan(102, 1, dejavuAlias, 30), new TextFontSpan(103, 2, noto, 40) },
+    TextDirection.RightToLeft, "Arab", "ar");
+ProbeFontRange("partial-spans-fonts-and-local-keys", rangeMixed, new TextSourceSpan(101, 3),
+    new[] { new uint[] { 5258, 5260 }, new uint[] { 36 } }, new[] { new[] { 30, 20 }, new[] { 40 } });
+var rangeFfi = new TextFontSpanShapingRequest("ffi", 20,
+    new[] { new TextFontSpan(20, 1, dejavu, 7), new TextFontSpan(21, 2, dejavu, 9) });
+ProbeFontRange("fi-reshaped-not-whole-ffi-crop", rangeFfi, new TextSourceSpan(21, 2),
+    new[] { new uint[] { 5042 } }, new[] { new[] { 9 } });
+foreach (var lastDisables in new[] { false, true })
+{
+    var features = new List<TextFeature> { new("kern", 0, 0, 7) };
+    if (lastDisables) { features.Add(new("liga", 1, 2, 3)); features.Add(new("liga", 0, 0, 7)); }
+    else { features.Add(new("liga", 0, 0, 7)); features.Add(new("liga", 1, 2, 3)); }
+    features.Add(new("kern", 1, 0, 1)); features.Add(new("kern", 0, 3, 0));
+    var original = new TextFontSpanShapingRequest("AXffiVZ", 70,
+        new[] { new TextFontSpan(70, 2, noto, 1), new TextFontSpan(72, 3, dejavu, 2), new TextFontSpan(75, 2, noto, 3) },
+        features: features);
+    ProbeFontRange(lastDisables ? "overlap-last-disables" : "three-offsets-last-enables", original, new TextSourceSpan(71, 5),
+        new[] { new uint[] { 59 }, lastDisables ? new uint[] { 73, 73, 76 } : new uint[] { 5044 }, new uint[] { 57 } },
+        new[] { new[] { 1 }, lastDisables ? new[] { 2, 2, 2 } : new[] { 2 }, new[] { 3 } });
+}
+var maximumRangeStart = int.MaxValue - 5;
+var rangeNonBmp = new TextFontSpanShapingRequest("\U00010300a\u0323A", maximumRangeStart,
+    new[] { new TextFontSpan(maximumRangeStart, 2, dejavu), new TextFontSpan(maximumRangeStart + 2, 2, dejavu, 1),
+        new TextFontSpan(maximumRangeStart + 4, 1, noto, 2) });
+ProbeFontRange("nonbmp-context-maximum-endpoint", rangeNonBmp, new TextSourceSpan(maximumRangeStart + 2, 3),
+    new[] { new uint[] { 2463 }, new uint[] { 36 } }, new[] { new[] { 1 }, new[] { 2 } });
+ProbeFontRange("refused-selected-style-conflict", rangeFfi, new TextSourceSpan(20, 3),
+    Array.Empty<uint[]>(), Array.Empty<int[]>(), rejectedCalls: 1);
+var rangeBadBoundary = new TextFontSpanShapingRequest("Xa\u0323V", 0,
+    new[] { new TextFontSpan(0, 1, noto), new TextFontSpan(1, 1, dejavu), new TextFontSpan(2, 1, noto), new TextFontSpan(3, 1, dejavu) });
+ProbeFontRange("refused-outside-font-mark-cut", rangeBadBoundary, new TextSourceSpan(0, 1),
+    Array.Empty<uint[]>(), Array.Empty<int[]>(), rejectedCalls: 0);
+var rangeMark = new TextFontSpanShapingRequest("Aa\u0323V", 0, new[] { new TextFontSpan(0, 4, dejavu) });
+ProbeFontRange("refused-range-mark-cut", rangeMark, new TextSourceSpan(1, 1),
+    Array.Empty<uint[]>(), Array.Empty<int[]>(), rejectedCalls: 0);
+await File.WriteAllTextAsync(Path.Combine(output, "r22-font-span-range-query.json"), JsonSerializer.Serialize(new {
+    sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"), cases = fontRangeRows,
+    scope = "Caller-selected source range with original font-partition context; not a legal/final line-break decision, size/paint resolver, global visual line, Flow or writer/reader admission."
+}, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+Console.WriteLine("R22 selected font-range original context, clipped ownership and feature-coordinate queries passed from candidate packages.");
 const string mixedSource = "abc שלום def";
 var mixedEngine = HarfBuzzTextPrelayout.CreateMixedParagraph();
 var mixedWide = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4, 50));
