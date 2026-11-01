@@ -480,6 +480,7 @@ await File.WriteAllTextAsync(Path.Combine(output, "r22-font-span-range-query.jso
 }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
 Console.WriteLine("R22 selected font-range original context, clipped ownership and feature-coordinate queries passed from candidate packages.");
 await PositionedRunProbe.Run(output, dejavu, noto);
+await SizedFontSpanProbe.Run(output, dejavu, noto);
 const string mixedSource = "abc שלום def";
 var mixedEngine = HarfBuzzTextPrelayout.CreateMixedParagraph();
 var mixedWide = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4, 50));

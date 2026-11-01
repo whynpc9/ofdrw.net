@@ -1,5 +1,12 @@
 # R22 remaining scope after PR #76
 
+The [explicit face/size query candidate](../architecture/r22-sized-font-span-query.md)
+adds caller-selected size boundaries to original-context font grouping and
+projects each exact shaped item separately. Equal face/size spans coalesce;
+opaque keys do not supply paint. This remains a query candidate requiring its
+own functional, package, visual, CI and final-main evidence. It does not complete
+C3, final-line composition, Flow migration or Arabic/Indic output.
+
 The [exact shaped-run positioning candidate](../architecture/r22-positioned-run-query.md)
 adds a managed per-run millimeter projection at an explicit size, retaining
 original glyph/context identity and separating origins, advances and ink.

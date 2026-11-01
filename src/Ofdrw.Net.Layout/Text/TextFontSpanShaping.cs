@@ -183,21 +183,33 @@ public sealed class TextFontSpanShapingEngine
     /// Returns at most 16384 glyph occurrences and 32768 source slices, or fails without a partial result.</summary>
     public TextFontSpanShapingResult Shape(TextFontSpanShapingRequest request,
         CancellationToken cancellationToken = default)
+        => ShapeCore(request, null, null, cancellationToken);
+
+    internal TextFontSpanShapingResult ShapeSized(TextFontSpanShapingRequest request,
+        IReadOnlyList<double> sizes, IReadOnlyList<double> originalSizes, CancellationToken cancellationToken)
+        => ShapeCore(request, sizes, originalSizes, cancellationToken);
+
+    private TextFontSpanShapingResult ShapeCore(TextFontSpanShapingRequest request,
+        IReadOnlyList<double>? sizes, IReadOnlyList<double>? originalSizes, CancellationToken cancellationToken)
     {
         if (request is null) throw new ArgumentNullException(nameof(request));
         cancellationToken.ThrowIfCancellationRequested();
         var original = request.Context ?? request;
-        if (request.Context is not null)
+        if (sizes is not null && (originalSizes is null || sizes.Count != request.Spans.Count ||
+            originalSizes.Count != original.Spans.Count))
+            throw new TextLayoutException(TextLayoutError.InvalidRequest, "Font sizes do not match their source partitions.");
+        if (request.Context is not null || sizes is not null)
         {
             // Selecting a small range must not launder an invalid declared font
-            // switch elsewhere in the retained source. No outside item is shaped.
+            // or explicit-size switch elsewhere in the retained source. No outside item is shaped.
             var template = new TextShapeRequest(original.Text, original.SourceStart, original.Spans[0].Face,
                 original.Direction, original.Script, original.Language, original.Features);
             for (var index = 1; index < original.Spans.Count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (string.Equals(original.Spans[index - 1].Face.FaceSha256,
-                    original.Spans[index].Face.FaceSha256, StringComparison.Ordinal)) continue;
+                    original.Spans[index].Face.FaceSha256, StringComparison.Ordinal) &&
+                    (originalSizes is null || originalSizes[index - 1] == originalSizes[index])) continue;
                 var start = original.Spans[index].SourceStart;
                 _ = TextShapeRequest.CreateContextualItem(template,
                     new TextSourceSpan(start, original.SourceStart + original.Text.Length - start));
@@ -211,7 +223,8 @@ public sealed class TextFontSpanShapingEngine
             var face = request.Spans[first].Face;
             var end = first + 1;
             while (end < request.Spans.Count && string.Equals(face.FaceSha256,
-                request.Spans[end].Face.FaceSha256, StringComparison.Ordinal))
+                request.Spans[end].Face.FaceSha256, StringComparison.Ordinal) &&
+                (sizes is null || sizes[first] == sizes[end]))
             { cancellationToken.ThrowIfCancellationRequested(); end++; }
             if (plans.Count >= request.MaximumShapeCalls)
                 throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Font items exceed the shaping-call budget.");

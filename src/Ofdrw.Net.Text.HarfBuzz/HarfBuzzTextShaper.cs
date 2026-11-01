@@ -165,4 +165,7 @@ public static class HarfBuzzTextPrelayout
 
     /// <summary>Creates a bounded query over a caller-selected font partition with explicit style-key ownership.</summary>
     public static TextFontSpanShapingEngine CreateFontSpanShaping() => new TextFontSpanShapingEngine(new HarfBuzzTextShaper());
+
+    /// <summary>Creates a bounded explicit face/size partition query with original source context and millimeter positioning.</summary>
+    public static TextSizedFontSpanShapingEngine CreateSizedFontSpanShaping() => new TextSizedFontSpanShapingEngine(new HarfBuzzTextShaper());
 }
