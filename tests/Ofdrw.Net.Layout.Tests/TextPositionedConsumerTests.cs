@@ -12,6 +12,55 @@ namespace Ofdrw.Net.Layout.Tests;
 public sealed class TextPositionedConsumerTests
 {
     [Theory]
+    [InlineData("DejaVuSans-R22.ttf", 2048, 0.0004)]
+    [InlineData("NotoSans-Regular.ttf", 1000, 0.0004)]
+    [InlineData("DejaVuSans-R22.ttf", 2048, 0.0004999999)]
+    [InlineData("NotoSans-Regular.ttf", 1000, 0.0004999999)]
+    public void BothWriterEntrancesRejectUnwritableSizeWhileQueryRemainsAvailable(string font, int upem, double size)
+    {
+        var face = Load(font);
+        Assert.Equal(upem, face.UnitsPerEm);
+        Assert.True(size / face.UnitsPerEm > 0);
+        var layout = HarfBuzzTextPrelayout.Create().Layout(new("A", new[] { face }, size, 100));
+        Assert.Single(layout.Lines);
+        Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
+            TextPrelayoutOfdWriter.CreateSinglePage(layout, 210, 297, 10, 10)).Error);
+        Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
+            TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(layout, 210, 297, 10, 10)).Error);
+    }
+
+    [Theory]
+    [InlineData("DejaVuSans-R22.ttf", 0.0005, "0.001")]
+    [InlineData("NotoSans-Regular.ttf", 0.0005, "0.001")]
+    [InlineData("DejaVuSans-R22.ttf", 0.001, "0.001")]
+    [InlineData("NotoSans-Regular.ttf", 0.001, "0.001")]
+    [InlineData("DejaVuSans-R22.ttf", 4, "4")]
+    [InlineData("NotoSans-Regular.ttf", 4, "4")]
+    public async Task BothWriterEntrancesKeepWritableSizeAndSourceAfterSerialization(string font, double size, string literal)
+    {
+        var layout = HarfBuzzTextPrelayout.Create().Layout(new("A", new[] { Load(font) }, size, 100));
+        foreach (var positioned in new[] { false, true })
+        {
+            var package = positioned
+                ? TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs(layout, 210, 297, 10, 10)
+                : TextPrelayoutOfdWriter.CreateSinglePage(layout, 210, 297, 10, 10);
+            using var stream = new MemoryStream();
+            await new OfdPackageWriter().WriteAsync(package, stream);
+            stream.Position = 0;
+            using (var zip = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true))
+            using (var page = zip.Entries.Single(entry => entry.FullName.EndsWith("Content.xml", StringComparison.Ordinal)).Open())
+                Assert.Equal(literal, XDocument.Load(page).Descendants()
+                    .Single(node => node.Name.LocalName == "TextObject").Attribute("Size")!.Value);
+            stream.Position = 0;
+            var read = await new OfdReader().ReadAsync(stream);
+            var text = Assert.IsType<OfdTextElement>(Assert.Single(Assert.Single(read.Pages).Elements));
+            Assert.Equal("A", text.Text);
+            Assert.Equal(double.Parse(literal, CultureInfo.InvariantCulture), text.FontSizeMillimeters);
+            Assert.True(text.FontSizeMillimeters > 0);
+        }
+    }
+
+    [Theory]
     [InlineData("AV", "DejaVuSans-R22.ttf", 4)]
     [InlineData("ffi", "DejaVuSans-R22.ttf", 4)]
     [InlineData("fi", "DejaVuSans-R22.ttf", 6)]

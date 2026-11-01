@@ -9,13 +9,13 @@ namespace Ofdrw.Net.Layout.Text;
 /// <summary>Consumes a completed query result for bounded legacy or typed original-GID OFD output.</summary>
 public static class TextPrelayoutOfdWriter
 {
-    /// <summary>Creates one page from the exact result used for measurement. The caller must have font embedding rights.</summary>
+    /// <summary>Creates one page from the exact result used for measurement. The caller must have font embedding rights. Sizes that round to zero at OFD writer precision are rejected.</summary>
     public static OfdDocumentPackage CreateSinglePage(TextPrelayoutResult result, double pageWidthMillimeters,
         double pageHeightMillimeters, double leftMillimeters, double topMillimeters)
         => CreateSinglePageCore(result, pageWidthMillimeters, pageHeightMillimeters,
             leftMillimeters, topMillimeters, positionedGlyphs: false);
 
-    /// <summary>Creates a bounded single-TextCode page with actual original GIDs and a GID-preserving font subset.</summary>
+    /// <summary>Creates a bounded single-TextCode page with actual original GIDs and a GID-preserving font subset. Sizes that round to zero at OFD writer precision are rejected.</summary>
     public static OfdDocumentPackage CreateSinglePageWithPositionedGlyphs(TextPrelayoutResult result,
         double pageWidthMillimeters, double pageHeightMillimeters, double leftMillimeters, double topMillimeters)
         => CreateSinglePageCore(result, pageWidthMillimeters, pageHeightMillimeters,
@@ -25,6 +25,9 @@ public static class TextPrelayoutOfdWriter
         double pageHeightMillimeters, double leftMillimeters, double topMillimeters, bool positionedGlyphs)
     {
         if (result is null) throw new ArgumentNullException(nameof(result));
+        if (!OfdNumericFormat.WriterPositive(result.Request.FontSizeMillimeters))
+            throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
+                "Text size must remain finite and positive at OFD writer precision.");
         if (!Finite(pageWidthMillimeters) || !Finite(pageHeightMillimeters) ||
             !Finite(leftMillimeters) || !Finite(topMillimeters) ||
             pageWidthMillimeters <= 0 || pageHeightMillimeters <= 0 ||
