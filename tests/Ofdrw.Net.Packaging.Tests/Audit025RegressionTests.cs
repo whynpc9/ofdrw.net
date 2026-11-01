@@ -15,18 +15,36 @@ public sealed class Audit025RegressionTests
     public void Audit025_NormalControl()
         => EmbeddedFontCoverage.Validate(Element("AV e\u0301"), Coverage.Value, "control");
 
-    [Theory]
-    [InlineData(null)] [InlineData("")] [InlineData(" \t\r\n")]
-    public void Audit025_ElementOverloadNoDelta(string? delta)
+    [Fact]
+    public async Task Audit025_ElementOverloadNoDelta()
     {
-        var text = Element(new string('A', 4096), delta); var cmap = Coverage.Value;
-        EmbeddedFontCoverage.Validate(text, cmap, "warmup");
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        EmbeddedFontCoverage.Validate(text, cmap, "measured");
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-        output.WriteLine($"Measured allocation: {allocated} bytes for 4096 characters.");
-        // 4096 text-element strings alone cost over 96 KiB. Allow fixed iterator overhead.
-        Assert.True(allocated < 4096, $"Coverage allocated {allocated} bytes for a no-delta run.");
+        // A separate process prevents other tests from invalidating the bounded
+        // no-GC intervals. Every sample must meet the original 4096-byte budget;
+        // the probe never retries an interval or selects a minimum sample.
+        var receipt = await AllocationProbe.RunBudgetChild(FontPath(), output);
+        Assert.True(receipt.Passed);
+        Assert.Equal(16, receipt.Cases.Count);
+        Assert.All(receipt.Cases, item =>
+        {
+            Assert.True(item.ValidNoGcInterval, item.Error);
+            Assert.Equal(9, item.Samples.Length);
+            Assert.All(item.Samples.Skip(1), sample =>
+            {
+                if (item.Operation == "target") Assert.True(sample.Allocated < 4096,
+                    $"{item.DeltaRole}/{item.Length}/{sample.Ordinal}: {sample.Allocated} bytes.");
+                else if (item.Operation == "empty") Assert.Equal(0, sample.Allocated);
+                else Assert.True(sample.Allocated >= item.MinimumExpectedAllocation);
+            });
+        });
+        // Restore the former per-grapheme work only in a separate negative
+        // control process. The same budget evaluator must reject every long run.
+        var regression = await AllocationProbe.RunRegressionChild(FontPath(), output);
+        Assert.False(regression.Passed);
+        Assert.Null(regression.Error);
+        Assert.Equal(16, regression.Cases.Count);
+        Assert.All(regression.Cases, item => Assert.True(item.ValidNoGcInterval, item.Error));
+        Assert.All(regression.Cases.Where(item => item.Operation == "target" && item.Length >= 4096), item =>
+            Assert.All(item.Samples.Skip(1), sample => Assert.True(sample.Allocated >= 4096)));
     }
 
     [Theory]
