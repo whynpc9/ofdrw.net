@@ -140,10 +140,10 @@ internal static class CnEnReleaseSamples
             var normal = texts.Single(text => text.Text == "第二页用于确认分页保持稳定。");
             var emphasis = texts.Single(text => text.Text.Contains("这段文字应为红色粗体。"));
             var subtitle = texts.Single(text => text.Text.Contains("Generated DOCX"));
-            if (texts.Count(text => text.Weight == 700) != 7 || normal.Weight != 400 || normal.FillColor != OfdColor.Black ||
-                emphasis.Weight != 700 || emphasis.FillColor != new OfdColor(192, 0, 0) || !subtitle.Italic)
+            if (texts.Count(text => text.Weight == 700) != 7 || normal.Weight != 400 || !ColorIs(normal.FillColor, 0, 0, 0) ||
+                emphasis.Weight != 700 || !ColorIs(emphasis.FillColor, 192, 0, 0) || !subtitle.Italic)
                 throw new InvalidDataException("Core local bold/italic/color intent differs or leaked into ordinary text.");
-            if (pages[0].Elements.OfType<OfdPathElement>().Count(path => path.Fill && path.FillColor == new OfdColor(217, 234, 247)) != 3)
+            if (pages[0].Elements.OfType<OfdPathElement>().Count(path => path.Fill && ColorIs(path.FillColor, 217, 234, 247)) != 3)
                 throw new InvalidDataException("Core table header fills differ.");
         }
         var images = pages.SelectMany(page => page.Elements).OfType<OfdImageElement>().ToArray();
@@ -175,6 +175,8 @@ internal static class CnEnReleaseSamples
         }
         return target;
     }
+    private static bool ColorIs(OfdColor? color, int red, int green, int blue) =>
+        color is not null && color.Red == red && color.Green == green && color.Blue == blue && color.Alpha == 255;
     private static string Compact(string value) => new(value.Where(character => !char.IsWhiteSpace(character)).ToArray());
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
     private static object Identity(string path) => new { path = Path.GetFullPath(path), bytes = new FileInfo(path).Length, sha256 = Hash(File.ReadAllBytes(path)) };
