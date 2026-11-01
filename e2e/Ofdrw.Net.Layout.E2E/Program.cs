@@ -14,6 +14,14 @@ var outputDirectory = args.Length > 0 ? Path.GetFullPath(args[0]) :
 var docxPath = args.Length > 1 ? Path.GetFullPath(args[1]) :
     Path.GetFullPath("e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx");
 Directory.CreateDirectory(outputDirectory);
+if (args.Contains("--cn-en-release-only"))
+{
+    var fontOption = Array.IndexOf(args, "--release-font-directory");
+    if (fontOption >= 0 && fontOption + 1 >= args.Length)
+        throw new ArgumentException("--release-font-directory requires a directory.");
+    await CnEnReleaseSamples.Run(outputDirectory, docxPath, fontOption < 0 ? null : Path.GetFullPath(args[fontOption + 1]));
+    return;
+}
 if (args.Contains("--complex-tables-only"))
 {
     await ComplexTableSamples.Run(outputDirectory);

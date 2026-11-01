@@ -18,4 +18,7 @@
     <Using Include="Xunit" />
     <Compile Include="../TestSupport/NonSeekableInput.cs" Link="NonSeekableInput.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../tests/TestSupport/DocxReleaseFixtures.cs" Link="DocxReleaseFixtures.cs" />
+  </ItemGroup>
 </Project>

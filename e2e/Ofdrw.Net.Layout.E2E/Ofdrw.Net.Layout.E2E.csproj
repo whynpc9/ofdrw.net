@@ -11,4 +11,7 @@
     <ProjectReference Include="../../src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj" />
     <ProjectReference Include="../../src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../tests/TestSupport/DocxReleaseFixtures.cs" Link="DocxReleaseFixtures.cs" />
+  </ItemGroup>
 </Project>
