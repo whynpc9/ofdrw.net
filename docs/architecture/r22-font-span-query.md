@@ -93,3 +93,53 @@ No new writer accepts this result type. This candidate does not admit a
 general styled line, Flow integration, font discovery, Arabic/Indic output,
 native reader semantics or arbitrary imported OFD mappings. PR #78's original
 font quantity-counter readability and complete terminal-date Find remain open.
+
+## Selecting a range with the original partition as context
+
+`TextFontSpanShapingRequest.CreateContextualItem(original, range)` selects a
+positive absolute UTF-16 interval and retains that exact original request in
+`Context`. An ordinary request's `Context` remains null. The item snapshots the
+intersections of the original font spans, keeping their exact immutable face
+objects and opaque style keys. A completely retained span keeps its object
+identity; a clipped span has a new interval. Result `FirstSpanIndex` and coverage
+slice indices still address the item's partition, not the original partition.
+The original spans remain available through `Context` and absolute intervals.
+
+The single-face contextual API already supplied neighboring Unicode, but
+rebuilding a font-partition query from a substring lost it. In the fixed DejaVu
+`ببب` sample, a substring query for the middle character produces isolated GID
+1366; selecting that same interval with the original partition retains medial
+GID 5260. Each selected font item uses the entire original source as context
+and emits only its own selected characters. Different items retain their own
+UPEM and native order; the result still makes no combined visual-line promise.
+
+This is fresh shaping, not cropping an earlier glyph array. For original
+`f|fi` with conflicting style keys, whole-source ffi ownership still refuses.
+Selecting only `fi` reshapes original GID 5042 and has the selected key alone.
+It does not prove the original complete partition can be painted consistently.
+
+Public item features are intersected and rebased relative to the selected
+`Text`. Native font-group contexts are instead built from the original full
+feature ranges, preserving their order, including overlapping overrides. Each
+group's contextual factory then intersects those ranges exactly once. Nonzero
+original offsets, selected-item offsets and later font-group offsets are
+distinct coordinates; item-relative features must not be fed back into the
+original context.
+
+Selection endpoints use the complete source's .NET text-element boundaries.
+Nested selection refuses. Before any shaper call, all original font-switch
+boundaries are checked, including switches outside the item. Outside source
+is not shaped or charged as additional calls. The inherited call limit applies
+to selected groups, while each group's work charge uses the full original
+context length and selected face bytes. A narrow item cannot bypass the
+existing source, face or cumulative work limits. Glyph/source-slice limits,
+cancellation and exact replacement-shaper request identity remain in force.
+
+The package consumer records six accepted and three refused cases separately
+in `r22-font-span-range-query.json`. Earlier whole-partition and single-face
+receipts retain their original case sets. No new writer accepts these results.
+This is a foundation for caller-selected candidate or final ranges: it does
+not select a legal break or change joining at an actual line edge. A text-element
+boundary is not a legal line break, and the medial Arabic control is not proof
+of final-line Arabic layout. Width search, actual style/size resolution, line
+geometry, paragraph bidi, Flow, pagination and reader acceptance remain open.

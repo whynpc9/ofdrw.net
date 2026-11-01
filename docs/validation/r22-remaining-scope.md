@@ -15,6 +15,13 @@ all associated source slices agree. Keys are opaque caller declarations;
 automatic font/style analysis, actual paint/size resolution and general Flow
 or writer/reader acceptance remain open.
 
+The selected-range foundation extends that query with a retained original
+partition, clipped font/style spans and full-source native context. It does
+not select legal line breaks, reset joining at line edges, assign visual-line
+geometry or supply actual style/size resolution. Its candidate evidence must
+bind its own source, packages and diagnostic pages; it is not final-line or
+Arabic/Indic output acceptance.
+
 Reconciled against research v1.2 §§12.4–12.6 on 2026-10-30, source
 `84a74b48a27a138bf16b85903408a62f0bde7a6a`. The accepted PR #76 matrix is an
 immutable bounded delivery, not completion of stages B–E. Its twelve mixed
