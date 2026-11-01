@@ -9,18 +9,84 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 RECORD = ROOT / 'docs' / 'release-preview-acceptance.json'
+LFS_POINTER = re.compile(rb'version https://git-lfs.github.com/spec/v1\noid sha256:([0-9a-f]{64})\nsize ([0-9]+)\n?')
+
+
+def git(*args, data=None):
+    return subprocess.check_output(['git', *args], cwd=ROOT, input=data)
+
+
+def indexed_lfs_pointers(entries):
+    """Read only small, valid repository-standard pointers from the current index."""
+    attributes = git('check-attr', '--cached', '-z', '--stdin', 'filter',
+                     data=b''.join(path + b'\0' for path in entries)).split(b'\0')
+    paths = [attributes[i] for i in range(0, len(attributes) - 1, 3)
+             if attributes[i + 2] == b'lfs']
+    if not paths:
+        return {}
+    object_ids = b''.join(entries[path] + b'\n' for path in paths)
+    sizes = git('cat-file', '--batch-check=%(objectsize)', data=object_ids).splitlines()
+    if len(sizes) != len(paths) or any(not size.isdigit() or int(size) >= 1024 for size in sizes):
+        raise ValueError('Stage valid Git LFS pointers before computing the source fingerprint.')
+    blobs = git('cat-file', '--batch', data=object_ids)
+    offset, pointers = 0, {}
+    for path, size in zip(paths, sizes):
+        end = blobs.index(b'\n', offset)
+        header = blobs[offset:end].split()
+        if header != [entries[path], b'blob', size]:
+            raise ValueError('Unexpected Git LFS index object response.')
+        offset = end + 1
+        pointer = LFS_POINTER.fullmatch(blobs[offset:offset + int(size)])
+        if pointer is None:
+            raise ValueError(f'Stage a valid Git LFS pointer before fingerprinting: {path.decode()}')
+        pointers[path] = (pointer[1], int(pointer[2]))
+        offset += int(size) + 1
+    return pointers
+
+
+def lfs_content_hash(path, identity):
+    """Bind both pointer and hydrated forms to the verified oid/size identity."""
+    oid, size = identity
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(f'Git LFS working path must be a regular file: {path}')
+    length = path.stat().st_size
+    pointer = LFS_POINTER.fullmatch(path.read_bytes()) if length < 1024 else None
+    if pointer is not None:
+        if (pointer[1], int(pointer[2])) != identity:
+            raise ValueError(f'Git LFS working pointer differs from the index: {path}')
+    else:
+        if length != size:
+            raise ValueError(f'Git LFS payload size differs from the index: {path}')
+        digest = hashlib.sha256()
+        with path.open('rb') as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b''):
+                digest.update(chunk)
+        if digest.hexdigest().encode() != oid:
+            raise ValueError(f'Git LFS payload hash differs from the index: {path}')
+    canonical = b'version https://git-lfs.github.com/spec/v1\noid sha256:' + oid + b'\nsize ' + str(size).encode() + b'\n'
+    return hashlib.sha256(canonical).digest()
 
 
 def source_fingerprint():
-    paths = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).split(b'\0')
+    entries = {}
+    for row in git('ls-files', '--stage', '-z').split(b'\0'):
+        if not row:
+            continue
+        metadata, path = row.split(b'\t', 1)
+        _, oid, stage = metadata.split()
+        if stage != b'0':
+            raise ValueError(f'Resolve the unmerged path before fingerprinting: {path.decode()}')
+        entries[path] = oid
+    pointers = indexed_lfs_pointers(entries)
     digest = hashlib.sha256()
-    for raw in sorted(path for path in paths if path):
+    for raw in sorted(entries):
         name = raw.decode()
         if name == 'docs/release-preview-acceptance.json':
             continue
         path = ROOT / name
         digest.update(raw + b'\0')
-        digest.update(hashlib.sha256(path.read_bytes()).digest())
+        digest.update(lfs_content_hash(path, pointers[raw]) if raw in pointers
+                      else hashlib.sha256(path.read_bytes()).digest())
     return digest.hexdigest()
 
 
