@@ -291,6 +291,81 @@ await File.WriteAllTextAsync(Path.Combine(output, "r22-contextual-item-query.jso
     scope = "Single-face contextual item queries only. Not style assignment, whole-run glyph cropping, Flow or writer/reader acceptance."
 }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
 Console.WriteLine("R22 contextual-item native joining, UTF-16 and feature-coordinate queries passed from candidate packages.");
+var fontSpanRows = new List<object>();
+var dejavuAlias = new TextFontFace("separate caller alias", dejavu.GetFaceBytes());
+void ProbeFontSpans(string role, string text, int start, TextFontSpan[] spans, uint[][] expected,
+    TextDirection direction = TextDirection.LeftToRight, string script = "Latn", string language = "en",
+    bool ligaOff = false, int? rejectedCalls = null)
+{
+    var request = new TextFontSpanShapingRequest(text, start, spans, direction, script, language,
+        ligaOff ? new[] { new TextFeature("liga", 0, 0, text.Length) } : null);
+    var meter = new FontSpanProbeShaper();
+    TextFontSpanShapingResult? result = null;
+    TextLayoutException? failure = null;
+    try { result = new TextFontSpanShapingEngine(meter).Shape(request); }
+    catch (TextLayoutException error) { failure = error; }
+    if (rejectedCalls.HasValue)
+    {
+        if (result is not null || failure?.Error != TextLayoutError.InvalidRequest || meter.Calls != rejectedCalls.Value)
+            throw new InvalidDataException("Font/style conflict did not refuse atomically: " + role);
+    }
+    else
+    {
+        if (failure is not null || result is null || !ReferenceEquals(request, result.Request) ||
+            result.Runs.Count != expected.Length)
+            throw new InvalidDataException("Font partition query did not complete its declared groups: " + role, failure);
+        for (var index = 0; index < result.Runs.Count; index++)
+        {
+            var run = result.Runs[index];
+            var item = run.Shaping.ShapedRun.Request;
+            var context = item.Context;
+            if (!run.Shaping.ShapedRun.Glyphs.Select(g => g.GlyphId).SequenceEqual(expected[index]) ||
+                !ReferenceEquals(item.Face, spans[run.FirstSpanIndex].Face) ||
+                context is null || context.Text != text || context.SourceStart != start ||
+                run.GlyphStyleKeys.Count != run.Shaping.ShapedRun.Glyphs.Count)
+                throw new InvalidDataException("Original font/GID/context ownership changed: " + role);
+            foreach (var coverage in run.Shaping.GlyphCoverage)
+                if (coverage.Slices.Any(slice => spans[run.FirstSpanIndex + slice.SpanIndex].StyleKey != run.GlyphStyleKeys[coverage.GlyphIndex]))
+                    throw new InvalidDataException("A glyph was assigned a conflicting source style: " + role);
+        }
+    }
+    fontSpanRows.Add(new { role, text, sourceStart = start, direction = direction.ToString(), script, language,
+        features = request.Features, sourceSpans = spans.Select(s => new { s.SourceStart, s.SourceLength, s.StyleKey,
+            s.Face.Name, s.Face.SourceSha256, s.Face.FaceSha256, s.Face.UnitsPerEm }).ToArray(),
+        outcome = failure is null ? "accepted" : "rejected", nativeCalls = meter.Calls,
+        failure = failure is null ? null : new { error = failure.Error.ToString(), failure.SourceStart, failure.SourceLength },
+        runs = result?.Runs.Select(run => (object)new { run.FirstSpanIndex, run.SpanCount,
+            faceSha256 = run.Shaping.ShapedRun.Request.Face.FaceSha256, run.Shaping.ShapedRun.Request.Face.UnitsPerEm,
+            itemText = run.Shaping.ShapedRun.Request.Text, itemSourceStart = run.Shaping.ShapedRun.Request.SourceStart,
+            itemFeatures = run.Shaping.ShapedRun.Request.Features, run.Shaping.ShapedRun.EngineVersion,
+            run.Shaping.ShapedRun.XAdvance, run.Shaping.ShapedRun.YAdvance,
+            glyphs = run.Shaping.ShapedRun.Glyphs, coverage = run.Shaping.GlyphCoverage, run.GlyphStyleKeys }).ToArray() ?? Array.Empty<object>() });
+}
+ProbeFontSpans("compatible-ffi", "ffi", 20,
+    new[] { new TextFontSpan(20, 1, dejavu, 7), new TextFontSpan(21, 2, dejavu, 7) }, new[] { new uint[] { 5044 } });
+ProbeFontSpans("equal-program-alias", "ffi", 20,
+    new[] { new TextFontSpan(20, 1, dejavu, 7), new TextFontSpan(21, 2, dejavuAlias, 7) }, new[] { new uint[] { 5044 } });
+ProbeFontSpans("explicit-liga-off-styles", "ffi", 20,
+    new[] { new TextFontSpan(20, 1, dejavu, 7), new TextFontSpan(21, 2, dejavu, 9) }, new[] { new uint[] { 73, 73, 76 } }, ligaOff: true);
+ProbeFontSpans("mixed-font-units", "AV", 50,
+    new[] { new TextFontSpan(50, 1, noto, 1), new TextFontSpan(51, 1, dejavu, 2) }, new[] { new uint[] { 36 }, new uint[] { 57 } });
+ProbeFontSpans("external-context-not-covered", "中A", 10,
+    new[] { new TextFontSpan(10, 1, wenkai, 1), new TextFontSpan(11, 1, noto, 2) }, new[] { new uint[] { 4523 }, new uint[] { 36 } }, script: "Hani", language: "zh");
+ProbeFontSpans("arabic-source-styles", "ببب", 100,
+    new[] { new TextFontSpan(100, 1, dejavu, 10), new TextFontSpan(101, 1, dejavu, 20), new TextFontSpan(102, 1, dejavu, 30) },
+    new[] { new uint[] { 5258, 5260, 5259 } }, TextDirection.RightToLeft, "Arab", "ar");
+var originalMarks = new HarfBuzzTextShaper().Shape(new TextShapeRequest("a\u0323\u0301", 30, dejavu));
+ProbeFontSpans("shared-mark-occurrences", "a\u0323\u0301", 30,
+    new[] { new TextFontSpan(30, 1, dejavu, 7), new TextFontSpan(31, 2, dejavu, 7) }, new[] { originalMarks.Glyphs.Select(g => g.GlyphId).ToArray() });
+ProbeFontSpans("refused-ffi-style-conflict", "ffi", 20,
+    new[] { new TextFontSpan(20, 1, dejavu, 7), new TextFontSpan(21, 2, dejavu, 9) }, Array.Empty<uint[]>(), rejectedCalls: 1);
+ProbeFontSpans("refused-late-font-mark-cut", "Xa\u0323", 0,
+    new[] { new TextFontSpan(0, 1, noto), new TextFontSpan(1, 1, dejavu), new TextFontSpan(2, 1, noto) }, Array.Empty<uint[]>(), rejectedCalls: 0);
+await File.WriteAllTextAsync(Path.Combine(output, "r22-font-span-query.json"), JsonSerializer.Serialize(new {
+    sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"), cases = fontSpanRows,
+    scope = "Explicit preselected font partition and opaque style-key ownership query only; no actual paint/size resolution, font fallback, bidi analysis, Flow or writer/reader admission."
+}, new JsonSerializerOptions { WriteIndented = true }) + "\n");
+Console.WriteLine("R22 font partition original identity, shared-style refusal and per-item context queries passed from candidate packages.");
 const string mixedSource = "abc שלום def";
 var mixedEngine = HarfBuzzTextPrelayout.CreateMixedParagraph();
 var mixedWide = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4, 50));
@@ -586,3 +661,12 @@ await File.WriteAllTextAsync(Path.Combine(output, "r22-mixed-output-receipt.json
             sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant() }).ToArray(),
     }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
 Console.WriteLine("R22 mixed Hebrew/Latin OFD/PDF/SVG/PNG candidates: " + output);
+
+internal sealed class FontSpanProbeShaper : IContextualTextShaper
+{
+    internal int Calls { get; private set; }
+    public TextShapedRun Shape(TextShapeRequest request, CancellationToken cancellationToken = default)
+        => throw new InvalidOperationException("Font partition probe requires the explicit contextual entry point.");
+    public TextShapedRun ShapeContextualItem(TextShapeRequest request, CancellationToken cancellationToken = default)
+    { Calls++; return new HarfBuzzTextShaper().ShapeContextualItem(request, cancellationToken); }
+}

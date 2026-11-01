@@ -162,4 +162,7 @@ public static class HarfBuzzTextPrelayout
 
     /// <summary>Creates a whole-run query retaining source-span ownership with the pinned shaper.</summary>
     public static TextSpanShapingEngine CreateSpanShaping() => new TextSpanShapingEngine(new HarfBuzzTextShaper());
+
+    /// <summary>Creates a bounded query over a caller-selected font partition with explicit style-key ownership.</summary>
+    public static TextFontSpanShapingEngine CreateFontSpanShaping() => new TextFontSpanShapingEngine(new HarfBuzzTextShaper());
 }

@@ -9,6 +9,12 @@ The separate [contextual item query candidate](../architecture/r22-contextual-it
 retains external source context for one explicitly selected item through an
 opted-in shaper. It does not resolve style conflicts or admit new output profiles.
 
+The [preselected font partition candidate](../architecture/r22-font-span-query.md)
+coalesces compatible selected programs and admits a glyph style key only when
+all associated source slices agree. Keys are opaque caller declarations;
+automatic font/style analysis, actual paint/size resolution and general Flow
+or writer/reader acceptance remain open.
+
 Reconciled against research v1.2 §§12.4–12.6 on 2026-10-30, source
 `84a74b48a27a138bf16b85903408a62f0bde7a6a`. The accepted PR #76 matrix is an
 immutable bounded delivery, not completion of stages B–E. Its twelve mixed
