@@ -56,7 +56,7 @@ PR78 合并不是前置；N01 可独立限时处置。完整 R22、新通用文�
 | C04 对齐与 Latin | 同 Program 的 `alignment-public/native/default`，各 1 页 | 参考 Alpha 与折行 Alpha 的可见位置分别居中/右对齐一致；NBSP/U+202F/U+2007 保持空白推进量、不画方框；café、mínimo 预组/分解形式整体折行且无重音重影。OFD 原始序列保留，PDF 允许规范等价；既有坐标断言不放宽。 |
 | C05 SDK 固定图片与表格 | [FlowFixedSamples](../../e2e/Ofdrw.Net.Layout.E2E/FlowFixedSamples.cs) `--flow-fixed-only`；`flow-fixed` 固定 2 页 | 页 1 双语标题、红色加字距/下划线和 italic、蓝/黄底表格及蓝黄双色图片；图片只在页 1。页 2 绿色 Canvas、蓝斜线、`Canvas 画布`、保留区与画布后文字；Canvas 只在页 2。既有回调、边界、唯一图片、named area 断言保持。额外 `letter-spacing-wrap` 是既有负控，单独记录。 |
 | C06 DOCX 页眉页脚与页码 | [DocxRevisionTests](../../tests/Ofdrw.Net.Converter.Docx.Tests/DocxRevisionTests.cs) `CreateMultiSectionDocx` / `Native_ShouldRepeatHeadersFootersAndHonorSectionNumbering`；复用生成器经 native/default，各 5 页 | 页 1–5 正文依次 Body one/two/three/four/five；页眉 First/Even/Odd/Even/Odd Header；居中页脚 Page 1/5、2/5、3/5、10/5、11/5。页眉在正文上方，页脚 y>260 mm 且在页面内。现有 default Native 单测已覆盖结构；本轮须补双模式持久产物/PNG/Preview，不把它立为缺失实现。 |
-| C07 DOCX 内嵌图片 | 复用 [DocxConversionTests](../../tests/Ofdrw.Net.Converter.Docx.Tests/DocxConversionTests.cs) `BuiltIn_ShouldRenderEmbeddedImage` 的 inline PNG 结构；native/default 各 1 页 | 现有测试只证明 BuiltIn 直接 PDF 图片。N13 将同结构保存为清晰可辨的确定性双色图样例，冻结尺寸/颜色和生成器哈希，再验证 OFD 图片资源及 PDF/PNG/Preview；不以原测试的透明 2×3 像素存在性代替可见性。不得扩大为浮动图片。 |
+| C07 DOCX 内嵌图片 | 复用 [DocxConversionTests](../../tests/Ofdrw.Net.Converter.Docx.Tests/DocxConversionTests.cs) `Native_ShouldKeepInlineJpegContentDimensionsAndMediaType` 的 40×20 mm inline JPEG 生成器；native/default 各 1 页 | 2026-11-01 执行校正：N13 共享已有 Native JPEG 生成器，保存左红右蓝、宽高比 2:1 的清晰图样，核验原图字节/尺寸与 OFD 资源，再验实际 PDF/PNG/Preview。BuiltIn 直接 PDF 的透明 2×3 PNG 测试不是此项证据，不扩大为浮动图片。 |
 | C08 分页选择 | C06 同源，选择 `[2,0,2,-1,99]`，native/default 各 3 页 | `SourcePages=[2,0,2]`，正文顺序 three/one/three，重复页完整相同；仅无效 `[-1,999]` 按既有兼容规则回退全部 5 页。覆盖 `Native_ShouldPreservePageOrderDuplicatesAndInvalidSelectionCompatibility` 现行断言。 |
 
 C06/C07 的功能基础已经存在；待补的是核心链路证据与可复用产物。常用表格样式由 C02/C05 覆盖；[PublicTableSamples](../../e2e/Ofdrw.Net.Layout.E2E/PublicTableSamples.cs) 的合并表头、11 行、填色/对齐、表后正文，以及 [ComplexTableSamples](../../e2e/Ofdrw.Net.Layout.E2E/ComplexTableSamples.cs) 的重复表头、跨页拆行、28 个唯一段号和唯一图片，继续按既有 E2E/全套回归执行，不重新设计表格，也不把“至少三页”的现行断言编造为固定页数。
@@ -71,7 +71,7 @@ N00/N13 共用最多 8 小时主动盘点，以下是可执行有限表；N00 �
 | --- | --- | --- |
 | G01 量字 / P0 判定 | F01 表头“数量”；原 main `b02162be` 最终交接 `quantityCounter=FAIL`、`overallVisualPass=false`。C02 是必验页面 | N13 先冻结真实物理 Bold 部署配置；Terra 对 C02/C03 独立看页，不追加光学算法。初盘纳入 8 小时共享预算；原 Regular 失败保留。若现行必验仍 FAIL，N12 不得 accepted；新配置通过不自动解决旧配置失败的发布取舍。 |
 | G02 字体部署资料 / P0 | F02 仅 Regular；合成 Latin physical-bold 单测不是中文实际字重证据 | N13 固定真实中文 Bold、Latin 比例 face 与配置/许可/哈希，复用同源资产；仅补样例/配置/文档，有实际失败才就地修复。纳入共享初盘预算。 |
-| G03 图片/页眉页脚的双模式链路证据 / P0 | C06 已有 Native 结构断言；C07 已有 BuiltIn 直接 PDF 测试；都不能替代本次两模式页面证据 | N13 复用生成器、有限 E2E 持久化与断言；Terra 看 C06/C07 全部页面。属于验收覆盖缺口，不是已证明的产品缺失；不得新建通用 DOCX 功能项目。 |
+| G03 图片/页眉页脚的双模式链路证据 / P0 | C06 已有 Native 结构断言；C07 已有 Native JPEG 资源断言及 BuiltIn 直接 PDF 测试；都不能替代本次两模式页面证据 | N13 复用生成器、有限 E2E 持久化与断言；Terra 看 C06/C07 全部页面。属于验收覆盖缺口，不是已证明的产品缺失；不得新建通用 DOCX 功能项目。 |
 | G04 极小正 Size / N03 P1 | [OfdNumericFormat](../../src/Ofdrw.Net.Core/Models/OfdNumericFormat.cs) 使用 `0.###`；计划与封存交接保留正数被写成零的问题 | N03 独立最小修复/回归：合法正 Size 或输出提交前明确拒绝；常规字号与多 UPEM 不回归。不全局改变坐标精度。N00 没有新动态复现。 |
 | G05 页末 Find / N02 P1 待判别 | 历史问题未关闭，PR90 七页复查明确没有重做完整 Copy/Find | Terra 在 C01/C02/C03 的实际 PDF 分别复制完整普通中英文，查询首/中/末文本；保留 UI 原始命中/选择/剪贴板证据。N02 上限 4 小时、2 个单因素假设；若核心普通中文/英文尾字确实找不到，升级发布阻断，不能改用 AX/PDFKit 结果冒充 UI 成功。 |
 | G06 发布记录/说明漂移 / N12 P0 | `release-preview-acceptance.json` 是旧 preview.9 accepted；工程门文档仍写 not-reviewed，依赖数 38/22 与当前 baseline 40 条不同；文字教程仍写“当前不做子集化” | N12 按准确候选实际清单同步说明和本次记录；不能先把 JSON 改 accepted 或重生成许可 baseline 过门。纯文档校正不等于候选通过。 |
@@ -94,7 +94,7 @@ N00/N13 共用最多 8 小时主动盘点，以下是可执行有限表；N00 �
 
 ## 6. 精确交接与本次核对结果
 
-- **N13**：从 §1 执行 main 基线复核/整合最新差异，只做 G02/G03 的有限 harness/配置/文档与实证缺陷修复。先固定 C03 的实际字体哈希和 C07 的清晰图样；复用 C06 五页及 C08 选择规则。C02 原始 fixture/Regular 失败样例保持独立。生成器输入/输出放本次 artifacts，有长期必要才 LFS，不复制整套历史证据。N00/N13 初盘总上限仍为 8 小时。
+- **N13**：从 §1 执行 main 基线复核/整合最新差异，只做 G02/G03 的有限 harness/配置/文档与实证缺陷修复。先固定 C03 的实际字体哈希和 C07 的清晰图样（N13 已共享原 Native JPEG 生成器）；复用 C06 五页及 C08 选择规则。C02 原始 fixture/Regular 失败样例保持独立。生成器输入/输出放本次 artifacts，有长期必要才 LFS，不复制整套历史证据。N00/N13 初盘总上限仍为 8 小时。
 - **Terra High 本地验证**：由协调者明确交付本次 SHA、唯一 artifacts 根、包 manifest、C01–C08 文件/字体哈希和预期后领取 GUI；不得提前沿用旧 PDF。逐页 PNG + Preview：C01 3 页、C02/C03 各双模式 2+2 页、C04 三路径各 1 页、C05 2 页、C06 双模式各 5 页、C07 双模式各 1 页、C08 双模式各 3 页；这是本轮冻结最小清单 34 页，实际生成不符预期时先查明，不跳页。普通 Copy/Find 与页末判别独立记录，验后关闭任务窗口并释放 GUI。原 Regular 量字、物理 Bold 量字分别结论。
 - **N12**：可提前做许可/依赖/版本/打包/文档检查，最后在修复合并的准确 main 上完成 §5。若 G01 或其它必验页面仍失败，输出不可发布及明确阻断，不填 accepted；当前授权不包含自动公开发布。
 
