@@ -17,6 +17,7 @@ env:
   NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  OFDRW_AUDIT025_DIAGNOSTICS_DIRECTORY: ${{ github.workspace }}/artifacts/audit025-diagnostics
   OFDRW_SKIA_DIAGNOSTICS_DIRECTORY: ${{ github.workspace }}/artifacts/skia-font-diagnostics
 
 jobs:
@@ -78,6 +79,9 @@ jobs:
       - name: Build and reject new undocumented public API
         run: python3 scripts/check-public-api-docs.py --package-version 0.1.0-preview.8
 
+      - name: Retain bounded allocation-counter diagnostics
+        run: python3 scripts/run-audit025-diagnostic.py
+
       - name: Test
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --verbosity minimal --logger trx --results-directory artifacts/test-results --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
@@ -117,6 +121,7 @@ jobs:
             artifacts/test-results
             artifacts/trusted-font-tests
             artifacts/r21-fixed-font
+            artifacts/audit025-diagnostics
             artifacts/skia-font-diagnostics
 
   builtin-docx:
@@ -200,6 +205,10 @@ jobs:
           "OFDRW_PDFTOPPM=$(Join-Path $bin 'pdftoppm.exe')" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           & (Join-Path $bin 'pdftoppm.exe') -v
 
+      - name: Retain bounded allocation-counter diagnostics on Windows and macOS
+        if: matrix.os != 'ubuntu-latest'
+        run: python scripts/run-audit025-diagnostic.py
+
       - name: Run full solution tests on Windows and macOS
         if: matrix.os != 'ubuntu-latest'
         run: dotnet test Ofdrw.Net.sln -c Release --no-build --no-restore --logger trx --results-directory artifacts/full-platform-tests --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
@@ -217,6 +226,7 @@ jobs:
           path: |
             artifacts/full-platform-tests
             artifacts/full-platform-trusted-font-tests
+            artifacts/audit025-diagnostics
             artifacts/skia-font-diagnostics
 
       - name: Test pinned HarfBuzz native loading and prelayout
