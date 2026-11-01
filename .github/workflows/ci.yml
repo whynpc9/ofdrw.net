@@ -18,6 +18,7 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
   OFDRW_AUDIT025_DIAGNOSTICS_DIRECTORY: ${{ github.workspace }}/artifacts/audit025-diagnostics
+  OFDRW_SKIA_DIAGNOSTICS_DIRECTORY: ${{ github.workspace }}/artifacts/skia-font-diagnostics
 
 jobs:
   build-test:
@@ -121,6 +122,7 @@ jobs:
             artifacts/trusted-font-tests
             artifacts/r21-fixed-font
             artifacts/audit025-diagnostics
+            artifacts/skia-font-diagnostics
 
   builtin-docx:
     name: BuiltIn DOCX (${{ matrix.os }})
@@ -225,6 +227,7 @@ jobs:
             artifacts/full-platform-tests
             artifacts/full-platform-trusted-font-tests
             artifacts/audit025-diagnostics
+            artifacts/skia-font-diagnostics
 
       - name: Test pinned HarfBuzz native loading and prelayout
         run: dotnet test tests/Ofdrw.Net.Layout.Tests/Ofdrw.Net.Layout.Tests.csproj -c Release --no-build --no-restore --filter "FullyQualifiedName~TextPrelayoutTests" --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false

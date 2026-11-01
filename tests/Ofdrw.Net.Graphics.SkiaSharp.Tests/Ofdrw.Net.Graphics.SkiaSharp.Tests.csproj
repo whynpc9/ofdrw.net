@@ -22,5 +22,6 @@
   <ItemGroup><None Include="testdata/cff/SourceCodePro-Regular.otf" Link="cff/SourceCodePro-Regular.otf" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="../TestSupport/SkiaFontDiagnosticHost.cs" Link="SkiaFontDiagnosticHost.cs" />
   </ItemGroup>
 </Project>
