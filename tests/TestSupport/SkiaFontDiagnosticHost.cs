@@ -37,7 +37,9 @@ internal static class SkiaFontDiagnosticHost
             if (!classification.StartsWith("native-", StringComparison.Ordinal)) return null;
             var generation = detail.GetProperty("generation").GetInt64();
             var injected = detail.GetProperty("injected").GetBoolean();
-            var identity = directory + ":" + generation + ":" + classification;
+            // Preserve the first record for this binding and sink. A later
+            // classification must not replace its first returned values.
+            var identity = directory + ":" + generation;
             if (!Budget.TryReserve(identity, injected)) return null;
             var modules = LoadedModules();
             var host = new
@@ -59,7 +61,11 @@ internal static class SkiaFontDiagnosticHost
             };
             Directory.CreateDirectory(directory);
             var path = Path.Combine(directory, $"font-read-{Environment.ProcessId}-{generation}-{(injected ? "controlled" : "observed")}.json");
-            File.WriteAllText(path, JsonSerializer.Serialize(host, Options) + "\n");
+            // Atomic non-overwrite also protects records left by an earlier
+            // process generation or a pre-existing sink. Failure stays best-effort.
+            using (var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read))
+            using (var writer = new StreamWriter(stream))
+                writer.Write(JsonSerializer.Serialize(host, Options) + "\n");
             return path;
         }
         catch (Exception captureError)

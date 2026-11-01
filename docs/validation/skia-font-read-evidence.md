@@ -59,6 +59,14 @@ most32 deduplication entries. Capture failures never mask the source exception.
 CI retains these files with the original TRX. Without optional collection, there
 is no file/module inspection or process-history recording on the normal path.
 
+The collector retains only the first report for each binding generation and
+sink directory, even if later failures have a different classification. It
+creates the file atomically without overwriting an existing record. A reserved
+or failed sink still consumes its finite budget; capture failure cannot replace
+the source exception. Regression controls preserve both the first JSON and a
+pre-existing sink's bytes. These collector guarantees do not repair the native
+font failure.
+
 A successful run or controlled injection does not establish that recurrence was
 remediated. Actual failures remain visible and retain their first values. Fresh
 immutable source/package/native-platform and actual-page visual gates remain

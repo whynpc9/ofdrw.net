@@ -215,6 +215,61 @@ public sealed class FontReadDiagnosticsTests
         var error = new BrokenDataException();
         Assert.Null(SkiaFontDiagnosticHost.Capture(error, Path.GetTempPath()));
     }
+    [Fact]
+    public void CollectorPreservesFirstGenerationEvidenceAcrossLaterClassifications()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-skia-first-" + Guid.NewGuid().ToString("N"));
+        var first = SyntheticCollectorFailure(1000001, "native-collector-first", 1);
+        var later = SyntheticCollectorFailure(1000001, "native-collector-later", 2);
+        var firstEvidence = first.Data[SkiaDrawEvent.FontReadFailureKey];
+        var laterEvidence = later.Data[SkiaDrawEvent.FontReadFailureKey];
+        try
+        {
+            var path = SkiaFontDiagnosticHost.Capture(first, directory);
+            Assert.NotNull(path); var original = File.ReadAllText(path);
+            Assert.Null(SkiaFontDiagnosticHost.Capture(later, directory));
+            Assert.Equal(original, File.ReadAllText(path));
+            Assert.Single(Directory.GetFiles(directory));
+            using var saved = JsonDocument.Parse(original);
+            Assert.Equal("native-collector-first", saved.RootElement.GetProperty("failure").GetProperty("classification").GetString());
+            Assert.Same(firstEvidence, first.Data[SkiaDrawEvent.FontReadFailureKey]);
+            Assert.Same(laterEvidence, later.Data[SkiaDrawEvent.FontReadFailureKey]);
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public void CollectorNeverOverwritesAnExistingSinkFile()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-skia-existing-" + Guid.NewGuid().ToString("N"));
+        const long generation = 1000002;
+        var error = SyntheticCollectorFailure(generation, "native-collector-existing", 3);
+        var evidence = error.Data[SkiaDrawEvent.FontReadFailureKey];
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, $"font-read-{Environment.ProcessId}-{generation}-controlled.json");
+        File.WriteAllText(path, "first-sink-record");
+        try
+        {
+            Assert.Null(SkiaFontDiagnosticHost.Capture(error, directory));
+            Assert.Equal("first-sink-record", File.ReadAllText(path));
+            Assert.Same(evidence, error.Data[SkiaDrawEvent.FontReadFailureKey]);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    private static Exception SyntheticCollectorFailure(long generation, string classification, int marker)
+    {
+        var error = new InvalidOperationException("Synthetic collector-only sample; no native font failure is asserted.");
+        error.Data[SkiaDrawEvent.FontReadFailureKey] = new
+        {
+            schemaVersion = 1, generation, classification, injected = true,
+            rawStylePreflightPassed = false, decoratedAfterOriginalThrow = false,
+            recordingFailed = false, originalLength = (int?)null, originalSha256 = (string?)null,
+            rawStyle = (object?)null, steps = Array.Empty<object>(), processHistory = Array.Empty<object>(), marker
+        };
+        return error;
+    }
+
     private sealed class BrokenDataException : Exception
     { public override System.Collections.IDictionary Data => throw new IOException("controlled Data accessor failure"); }
 }
