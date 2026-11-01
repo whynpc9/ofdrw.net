@@ -68,7 +68,9 @@ public sealed class TextPositionedConsumerTests
                 .Select((x, index) => (x - expectedOrigins[index]).ToString("0.###############", CultureInfo.InvariantCulture))) : null;
             Assert.Equal(delta, output.DeltaX);
             Assert.Null(output.DeltaY);
-            expectedDeltas.Add(delta);
+            // Typed packaging reconstructs the Delta values with its existing three-decimal formatter.
+            expectedDeltas.Add(expectedOrigins.Count > 1 ? string.Join(" ", expectedOrigins.Skip(1)
+                .Select((x, index) => (x - expectedOrigins[index]).ToString("0.###", CultureInfo.InvariantCulture))) : null);
         }
         using var stream = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(package, stream);
@@ -121,10 +123,13 @@ public sealed class TextPositionedConsumerTests
     [Fact]
     public void StrictVerticalIntMinimumIsNegatedAfterConversionToDouble()
     {
-        var shape = new TextShapedRun(new("A", 0, Load("DejaVuSans-R22.ttf")),
-            new[] { new TextShapedGlyph(36, 0, 1, 0, int.MinValue, 0, 0, null, false) }, "controlled-vertical-min");
+        var shape = new TextShapedRun(new("AV", 0, Load("DejaVuSans-R22.ttf")), new[]
+        {
+            new TextShapedGlyph(36, 0, 1, 0, int.MinValue, 0, 0, null, false),
+            new TextShapedGlyph(57, 1, 1, 0, int.MaxValue, 0, 0, null, false),
+        }, "controlled-vertical-min");
         var result = TextPositionedRun.Create(shape, 0.0001);
-        SameBits(-((double)int.MinValue) * (0.0001 / 2048), result.Glyphs.Single().YAdvanceMillimeters);
+        SameBits(-((double)int.MinValue) * (0.0001 / 2048), result.Glyphs[0].YAdvanceMillimeters);
         Assert.True(result.YAdvanceMillimeters > 0);
     }
 
