@@ -4,10 +4,11 @@ using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using Ofdrw.Net.Core.Processes;
+using Xunit.Abstractions;
 
 namespace Ofdrw.Net.Core.Tests;
 
-public sealed class Audit024ProtocolTests
+public sealed class Audit024ProtocolTests(ITestOutputHelper output)
 {
     [UnixProtocolFact]
     public void Audit024_StartupProtocolHonorsShortUserDeadline()
@@ -23,10 +24,49 @@ public sealed class Audit024ProtocolTests
     public void Audit024_StartupProtocolCancellationIsBounded()
     {
         using var peer = new ProtocolPeer(TimeSpan.FromSeconds(10));
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
-        var elapsed = Stopwatch.StartNew();
-        Assert.ThrowsAny<OperationCanceledException>(() => peer.Receive(cancellation.Token));
-        Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(1));
+        using var cancellation = new CancellationTokenSource();
+        using var entered = new ManualResetEventSlim();
+        long requested = 0;
+        Exception? senderFailure = null;
+        var sender = new Thread(() =>
+        {
+            try
+            {
+                entered.Wait();
+                Thread.Sleep(150);
+                Interlocked.Exchange(ref requested, Stopwatch.GetTimestamp());
+                cancellation.Cancel();
+            }
+            catch (Exception error) { senderFailure = error; }
+        }) { IsBackground = true, Name = "audit024-cancel-sender" };
+        sender.Start();
+        var entry = Stopwatch.GetTimestamp();
+        long returned;
+        Exception? failure;
+        try
+        {
+            // This announces the call boundary, not entry into the production poll.
+            entered.Set();
+            failure = Record.Exception(() => peer.Receive(cancellation.Token));
+            returned = Stopwatch.GetTimestamp();
+        }
+        finally
+        {
+            entered.Set();
+            Assert.True(sender.Join(TimeSpan.FromSeconds(5)), "The cancellation sender did not finish.");
+        }
+        var request = Volatile.Read(ref requested);
+        output.WriteLine($"invocationEntry={entry}; cancellationRequest={request}; invocationReturn={returned}; frequency={Stopwatch.Frequency}; error={failure?.GetType().FullName}");
+        Assert.Null(senderFailure);
+        Assert.True(request > 0 && request >= entry, "Cancellation must follow the invocation entry announcement.");
+        Assert.True(returned >= request, "Receiver exit must follow the cancellation request.");
+        var cancelled = Assert.IsAssignableFrom<OperationCanceledException>(failure);
+        Assert.Equal(cancellation.Token, cancelled.CancellationToken);
+        // Measure the receiver's response to an actual cancellation request.
+        // A CTS timer also measures ThreadPool scheduling before the request.
+        // The separate short-deadline test still checks the startup wall clock.
+        Assert.True(Stopwatch.GetElapsedTime(request, returned) < TimeSpan.FromSeconds(1),
+            "The receiver did not observe the cancellation request within one second.");
     }
 
     [UnixProtocolFact]
