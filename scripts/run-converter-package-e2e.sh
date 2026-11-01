@@ -136,6 +136,7 @@ mkdir -p "$TASK_DIR/text-consumer"
 cp "$ROOT_DIR/e2e/Ofdrw.Net.Text.HarfBuzz.E2E/Program.cs" "$TASK_DIR/text-consumer/Program.cs"
 cp "$ROOT_DIR/e2e/Ofdrw.Net.Text.HarfBuzz.E2E/PositionedRunProbe.cs" "$TASK_DIR/text-consumer/PositionedRunProbe.cs"
 cp "$ROOT_DIR/e2e/Ofdrw.Net.Text.HarfBuzz.E2E/SizedFontSpanProbe.cs" "$TASK_DIR/text-consumer/SizedFontSpanProbe.cs"
+cp "$ROOT_DIR/e2e/Ofdrw.Net.Text.HarfBuzz.E2E/PositionedConsumerProbe.cs" "$TASK_DIR/text-consumer/PositionedConsumerProbe.cs"
 cat > "$TASK_DIR/text-consumer/Consumer.csproj" <<EOF_TEXT_CONSUMER
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
