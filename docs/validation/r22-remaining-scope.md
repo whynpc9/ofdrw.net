@@ -1,5 +1,23 @@
 # R22 remaining scope after PR #76
 
+> Status correction — 2026-11-01: [PR #67](https://github.com/whynpc9/ofdrw.net/pull/67)
+> was merged on 2026-10-28 as `8b0e1ff372458cffc00e97b9cdda5065e0d7cade`.
+> The retained statement “PR #67 stays stopped” below is stale coordination
+> history, not a current pending task. See the [current next-step plan](../next-steps-2026-11-01.md)
+> for the reconciled baseline and queue. Historical candidate, failure and
+> acceptance records below retain their original scope; this correction does
+> not complete R02 or R22.
+> Further scope decision — 2026-11-01: the user has abandoned N09 (the full
+> unknown imported-OFD mapping extension) because the required real inputs are
+> unavailable. It is canceled, not waiting for automatic resumption. Existing
+> bounded R02 behavior and historical evidence remain; full R02 is not accepted.
+> Release priority decision — 2026-11-01: the current release targets primarily
+> Chinese/English documents using existing bounded layout/conversion paths.
+> General R22 composition, additional RTL/Arabic/Indic output, advanced font
+> profiles and full archival coverage are future work, not release prerequisites.
+> Concrete defects in the core Chinese/English scenarios and existing release
+> gates remain in scope. The historical “next” tasks below do not set today's queue.
+
 The [explicit face/size query candidate](../architecture/r22-sized-font-span-query.md)
 adds caller-selected size boundaries to original-context font grouping and
 projects each exact shaped item separately. Equal face/size spans coalesce;
