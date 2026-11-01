@@ -49,7 +49,8 @@ public sealed partial class SkiaDrawEvent
         (_, _brush) = Paint(paint, false);
         var face = font.Typeface;
         if (face is null || face.Handle == IntPtr.Zero) throw new ArgumentException("An explicit live typeface is required.", nameof(font));
-        if (identityFactory is null) ValidateFixedFace(face);
+        var readTrace = identityFactory is null ? FontReadTrace.Create(null) : null;
+        if (readTrace is not null) { readTrace.Bind(face); ValidateFixedFace(face, readTrace); }
         if (font.ScaleX != 1 || font.SkewX != 0 || font.Embolden)
             throw new NotSupportedException("Synthetic SKFont scale, skew or emboldening is not supported.");
         Positive(font.Size); Point(baseline);
@@ -64,7 +65,7 @@ public sealed partial class SkiaDrawEvent
         _x = baseline.X; _y = baseline.Y;
         // Public Text authenticates every caller-supplied face. Only the owned
         // producer binding can reuse a privately authenticated identity.
-        var identity = identityFactory is null ? ReadIdentity(face, maxFontBytes, null, token) : identityFactory();
+        var identity = identityFactory is null ? ReadIdentity(face, maxFontBytes, null, token, readTrace!) : identityFactory();
         _bold = identity.Bold; _italic = identity.Italic;
         _fontHash = (byte[])identity.Hash.Clone();
     }
@@ -185,21 +186,39 @@ public sealed partial class SkiaDrawEvent
         var package = new OfdDocumentPackage(); var page = new OfdPage { WidthMillimeters = 1, HeightMillimeters = 1 }; package.Pages.Add(page);
         new OfdGraphics(package, page).SetTransform(result); return result;
     }
-    private static ushort FontWord(SKTypeface face, uint tag, int offset)
+    private static ushort FontWord(SKTypeface face, uint tag, int offset, FontReadTrace trace, string phase, NativeFontTableAccess? access = null)
     {
-        if (face.GetTableSize(tag) < offset + 2)
-            throw new NotSupportedException("Font style table is missing or truncated.");
+        var size = NativeTableSize(face, tag, phase, trace, access);
+        if (size < offset + 2)
+            throw trace.Failure("native-style-table-missing-or-truncated", "Font style table is missing or truncated.");
         var buffer = new byte[1]; var pinned = GCHandle.Alloc(buffer, GCHandleType.Pinned);
         try
         {
             // SDK TryGetTableData only promises a nonzero read. A one-byte
             // request makes success unambiguous and never allocates a whole table.
-            if (!face.TryGetTableData(tag, offset, 1, pinned.AddrOfPinnedObject()))
-                throw new NotSupportedException("Font style flags could not be read.");
+            if (!ReadByte(offset))
+                throw trace.Failure("native-style-byte-unavailable", "Font style flags could not be read.");
             var high = buffer[0];
-            if (!face.TryGetTableData(tag, offset + 1, 1, pinned.AddrOfPinnedObject()))
-                throw new NotSupportedException("Font style flags could not be read.");
+            if (!ReadByte(offset + 1))
+                throw trace.Failure("native-style-byte-unavailable", "Font style flags could not be read.");
             return (ushort)((high << 8) | buffer[0]);
+            bool ReadByte(int position)
+            {
+                bool success;
+                var started = FontReadTrace.StartTimestamp();
+                try
+                {
+                    success = access?.Byte is { } read ? read(face, tag, position, pinned.AddrOfPinnedObject(), phase) :
+                        face.TryGetTableData(tag, position, 1, pinned.AddrOfPinnedObject());
+                }
+                catch (Exception error)
+                {
+                    trace.Record(phase, "byte-threw", tag, offset: position, startedTimestamp: started);
+                    trace.Attach(error, "native-table-call-threw"); throw;
+                }
+                trace.Record(phase, "byte", tag, offset: position, size: 1, success: success, value: success ? buffer[0] : null, startedTimestamp: started);
+                return success;
+            }
         }
         finally { pinned.Free(); }
     }

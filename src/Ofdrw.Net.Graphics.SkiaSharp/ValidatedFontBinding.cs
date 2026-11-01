@@ -19,28 +19,30 @@ public sealed partial class SkiaDrawEvent
         { Hash = hash; Bold = bold; Italic = italic; }
     }
 
-    private static void ValidateFixedFace(SKTypeface face)
+    private static void ValidateFixedFace(SKTypeface face, FontReadTrace trace, NativeFontTableAccess? access = null)
     {
-        if (face.GetTableSize(0x66766172u) != 0)
+        if (NativeTableSize(face, 0x66766172u, "fixed-face", trace, access) != 0)
             throw new NotSupportedException("Variable font faces are not supported by this fixed-face profile.");
         using var style = face.FontStyle;
         if (style.Width != (int)SKFontStyleWidth.Normal)
             throw new NotSupportedException("Condensed/expanded font faces are not supported.");
     }
 
-    private static (bool Bold, bool Italic) FaceStyle(SKTypeface face)
+    private static (bool Bold, bool Italic) FaceStyle(SKTypeface face, FontReadTrace trace, string phase, NativeFontTableAccess? access = null)
     {
-        var selection = FontWord(face, 0x4f532f32u, 62);
-        var macStyle = FontWord(face, 0x68656164u, 44);
+        var selection = FontWord(face, 0x4f532f32u, 62, trace,
+            phase == "constructor.style" ? "constructor.style.os2" : "identity.style.os2", access);
+        var macStyle = FontWord(face, 0x68656164u, 44, trace,
+            phase == "constructor.style" ? "constructor.style.head" : "identity.style.head", access);
         var bold = (selection & 0x20) != 0; var italic = (selection & 1) != 0;
         if (((macStyle & 1) != 0) != bold || ((macStyle & 2) != 0) != italic)
-            throw new NotSupportedException("OS/2 and head font style flags must agree; ambiguous faces require a different font profile.");
+            throw trace.Failure("native-style-flags-disagree", "OS/2 and head font style flags must agree; ambiguous faces require a different font profile.");
         return (bold, italic);
     }
 
     // Native font backends may repair a short table before GetTableSize reads it.
     // Check the original sfnt directory and style bytes independently.
-    private static (bool Bold, bool Italic) RawStyle(int length, Func<int, int, byte[]> read)
+    private static RawFontStyle RawStyle(int length, Func<int, int, byte[]> read)
     {
         if (length < 12) throw new NotSupportedException("Original font directory is truncated.");
         var header = read(0, 12);
@@ -51,7 +53,7 @@ public sealed partial class SkiaDrawEvent
         if (count == 0 || count > 4095 || 12L + count * 16L > length)
             throw new NotSupportedException("Original font directory is invalid.");
         var directory = read(12, count * 16);
-        var os2Offset = -1; var headOffset = -1;
+        var os2Offset = -1; var headOffset = -1; var os2Length = 0; var headLength = 0;
         for (var index = 0; index < count; index++)
         {
             var record = index * 16;
@@ -65,12 +67,12 @@ public sealed partial class SkiaDrawEvent
             if (tag == 0x4f532f32)
             {
                 if (os2Offset >= 0) throw new NotSupportedException("Duplicate original font style table.");
-                os2Offset = checked((int)offset);
+                os2Offset = checked((int)offset); os2Length = (int)size;
             }
             else
             {
                 if (headOffset >= 0) throw new NotSupportedException("Duplicate original font style table.");
-                headOffset = checked((int)offset);
+                headOffset = checked((int)offset); headLength = (int)size;
             }
         }
         if (os2Offset < 0 || headOffset < 0)
@@ -80,7 +82,7 @@ public sealed partial class SkiaDrawEvent
         var bold = (selection & 0x20) != 0; var italic = (selection & 1) != 0;
         if (((macStyle & 1) != 0) != bold || ((macStyle & 2) != 0) != italic)
             throw new NotSupportedException("Original OS/2 and head style flags disagree.");
-        return (bold, italic);
+        return new RawFontStyle(os2Offset, os2Length, headOffset, headLength, selection, macStyle);
     }
 
     private static ushort U16(byte[] bytes, int offset) =>
@@ -105,10 +107,10 @@ public sealed partial class SkiaDrawEvent
         return bytes;
     }
 
-    private static FontIdentity ReadIdentity(SKTypeface face, int maxFontBytes, byte[]? original, CancellationToken token)
+    private static FontIdentity ReadIdentity(SKTypeface face, int maxFontBytes, byte[]? original, CancellationToken token, FontReadTrace trace, NativeFontTableAccess? access = null)
     {
         token.ThrowIfCancellationRequested();
-        var style = FaceStyle(face);
+        var style = FaceStyle(face, trace, "identity.style", access);
         using var stream = face.OpenStream(out var faceIndex);
         if (stream is null || !stream.HasLength || stream.Length <= 0 || stream.Length > maxFontBytes)
             throw new NotSupportedException("Typeface must expose a bounded original font stream.");
@@ -140,8 +142,8 @@ public sealed partial class SkiaDrawEvent
         token.ThrowIfCancellationRequested();
         hash.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
         var rawStyle = RawStyle(stream.Length, (offset, count) => ReadRaw(stream, offset, count));
-        if (rawStyle != style)
-            throw new NotSupportedException("Native and original font style flags disagree.");
+        if (rawStyle.Bold != style.Bold || rawStyle.Italic != style.Italic)
+            throw trace.Failure("native-original-stream-style-disagree", "Native and original font style flags disagree.");
         return new FontIdentity(hash.Hash!, style.Bold, style.Italic);
     }
 
@@ -153,13 +155,15 @@ public sealed partial class SkiaDrawEvent
         private readonly SKTypeface _face;
         private readonly string _resourceId;
         private readonly int _maxFontBytes;
+        private readonly FontReadTrace _trace;
+        private readonly NativeFontTableAccess? _access;
         private FontIdentity? _identity;
         private bool _disposed;
         internal string FamilyName { get; }
         internal bool Bold { get; }
         internal bool Italic { get; }
 
-        private FixedFontBinding(byte[] original, string resourceId, int maxFontBytes)
+        private FixedFontBinding(byte[] original, string resourceId, int maxFontBytes, NativeFontTableAccess? access = null)
         {
             if (original is null) throw new ArgumentNullException(nameof(original));
             if (maxFontBytes <= 0) throw new ArgumentOutOfRangeException(nameof(maxFontBytes));
@@ -167,27 +171,52 @@ public sealed partial class SkiaDrawEvent
                 throw new InvalidDataException("Bounded original font payload is required.");
             if (string.IsNullOrWhiteSpace(resourceId)) throw new ArgumentException("A destination font resource ID is required.", nameof(resourceId));
             _original = (byte[])original.Clone(); _resourceId = resourceId; _maxFontBytes = maxFontBytes;
-            using var data = SKData.CreateCopy(_original);
-            _face = SKTypeface.FromData(data) ?? throw new NotSupportedException("PDFV_FONT_FACE");
+            _access = access; _trace = FontReadTrace.Create(_original, access);
+            RawFontStyle rawStyle;
             try
             {
-                // Preserve the producer's early bounded style-table admission.
-                if (_face.GetTableSize(0x4f532f32u) > 1024 || _face.GetTableSize(0x68656164u) > 1024)
-                    throw new NotSupportedException("PDFV_FONT_STYLE_TABLE");
-                var style = FaceStyle(_face);
-                var rawStyle = RawStyle(_original.Length, (offset, count) =>
+                rawStyle = RawStyle(_original.Length, (offset, count) =>
                 {
                     var bytes = new byte[count]; Buffer.BlockCopy(_original, offset, bytes, 0, count); return bytes;
                 });
-                if (rawStyle != style)
-                    throw new NotSupportedException("Native and original font style flags disagree.");
+                _trace.SetRaw(rawStyle); _trace.Record("raw-preflight", "passed");
+            }
+            catch (NotSupportedException error) { _trace.Attach(error, "raw-style-preflight-rejected"); throw; }
+            access?.BeforeCreate?.Invoke();
+            _trace.Record("create", "native-create-begin");
+            // Preserve the original SKData lifetime: it stays live through all
+            // constructor admission/style checks and failure cleanup.
+            using var data = SKData.CreateCopy(_original);
+            try
+            {
+                _face = SKTypeface.FromData(data) ?? throw _trace.Failure("native-face-unavailable", "PDFV_FONT_FACE");
+            }
+            catch (Exception error) { _trace.Attach(error, "native-create-threw"); throw; }
+            _trace.Bind(_face);
+            try
+            {
+                // Keep both original native upper-bound admission checks. The
+                // raw descriptor classifies a failure; it never replaces them.
+                if (NativeTableSize(_face, 0x4f532f32u, "constructor.upper.os2", _trace, _access) > 1024 ||
+                    NativeTableSize(_face, 0x68656164u, "constructor.upper.head", _trace, _access) > 1024)
+                    throw _trace.Failure("native-style-table-oversized", "PDFV_FONT_STYLE_TABLE");
+                var style = FaceStyle(_face, _trace, "constructor.style", _access);
+                if (rawStyle.Bold != style.Bold || rawStyle.Italic != style.Italic)
+                    throw _trace.Failure("native-original-style-disagree", "Native and original font style flags disagree.");
                 Bold = style.Bold; Italic = style.Italic; FamilyName = _face.FamilyName;
             }
-            catch { _face.Dispose(); throw; }
+            catch
+            {
+                _trace.Record("constructor-cleanup", "dispose-begin"); _face.Dispose();
+                _trace.Record("constructor-cleanup", "dispose-end"); throw;
+            }
         }
 
         internal static FixedFontBinding FromOriginalBytes(byte[] original, string resourceId, int maxFontBytes)
             => new(original, resourceId, maxFontBytes);
+
+        internal static FixedFontBinding FromOriginalBytes(byte[] original, string resourceId, int maxFontBytes, NativeFontTableAccess access)
+            => new(original, resourceId, maxFontBytes, access);
 
         internal ushort GetGlyph(int originalUnicode)
         {
@@ -217,9 +246,10 @@ public sealed partial class SkiaDrawEvent
             token.ThrowIfCancellationRequested();
             if (_identity is null)
             {
-                ValidateFixedFace(_face);
-                var identity = ReadIdentity(_face, _maxFontBytes, _original, token);
-                token.ThrowIfCancellationRequested(); _identity = identity;
+                _trace.Record("identity", "uncached");
+                ValidateFixedFace(_face, _trace, _access);
+                var identity = ReadIdentity(_face, _maxFontBytes, _original, token, _trace, _access);
+                token.ThrowIfCancellationRequested(); _identity = identity; _trace.Record("identity", "authenticated");
             }
             return _identity;
         }
@@ -232,7 +262,7 @@ public sealed partial class SkiaDrawEvent
             lock (_gate)
             {
                 if (_disposed) return;
-                _disposed = true; _face.Dispose();
+                _trace.Record("dispose", "begin"); _disposed = true; _face.Dispose(); _trace.Record("dispose", "end");
             }
         }
     }
