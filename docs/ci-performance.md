@@ -52,3 +52,21 @@ Python dependencies use a separate pinned virtual environment, leaving the CI
 font generator's pinned fontTools version and byte checks unchanged. Each
 platform uploads its raw compatibility strings, tool/reader identities,
 geometry receipt and input hashes alongside the existing package evidence.
+
+## Startup cancellation measurements
+
+The Unix socket protocol test measures receiver exit from the actual cancellation
+request, keeping its one-second response limit and checking the exact caller token.
+A dedicated sender waits for the test's invocation announcement, then requests
+cancellation; this announcement is not an observation inside the production poll.
+The TRX output retains invocation, request and exit ticks plus stopwatch frequency.
+The separate 350 ms startup-deadline test still measures the startup wall clock.
+Production polling, test parallelism and ThreadPool settings are unchanged.
+
+The first main run at `b73e3ab9` failed the former total-time assertion, after
+throwing the expected cancellation exception. That record did not separate timer
+trigger time from receiver response, so its original delay remains unattributed.
+An isolated child scheduling control demonstrated that a late timer can fail that
+assertion while the unchanged receiver reacts promptly; it does not establish the
+original runner's scheduling history. An ignore-cancellation mutation must still
+fail with the wrong exception type/protocol deadline, rather than pass this test.
