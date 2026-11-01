@@ -59,6 +59,8 @@ is not equivalent to slicing these whole-run glyphs or assigning their styles.
 The separate [font partition query candidate](r22-font-span-query.md) adds
 caller-selected face grouping and refuses conflicting style-key ownership.
 It does not interpret actual paint/size properties or change compatibility Flow.
+The separate [positioned-run query](r22-positioned-run-query.md) projects an
+exact shaped result at an explicit size without reshaping or writer admission.
 
 Focused tests cover actual ffi/feature-off, Arabic and combining behavior,
 generic many-to-many/zero-advance occurrences, source snapshots, invalid UTF-16

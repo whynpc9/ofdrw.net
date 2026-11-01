@@ -98,7 +98,7 @@ public sealed class TextLayoutBounds
             throw new TextLayoutException(TextLayoutError.InvalidRequest, "Invalid page ink bounds.");
         X = x; Y = y; Width = width; Height = height;
     }
-    /// <summary>Left edge relative to the laid-out line.</summary>
+    /// <summary>Left edge in the coordinate system chosen by the producing query.</summary>
     public double X { get; }
     /// <summary>Top edge with Y increasing down the page.</summary>
     public double Y { get; }
