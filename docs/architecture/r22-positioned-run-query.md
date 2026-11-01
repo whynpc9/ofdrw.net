@@ -37,8 +37,10 @@ published. This is bounded managed work, with no native interruption claim.
 Each face/size is projected separately. The query does not resolve a font or
 paint style, split a ligature across sizes, choose legal breaks, reset joining
 at final line boundaries, combine bidi runs, paginate or change legacy Flow.
-Existing prelayout/mixed writers still own their current arithmetic and
-restricted admission rules; migrating them to a common result is future work.
+The [typed prelayout consumer](r22-shared-position-consumer.md) shares the pure
+scalar arithmetic while retaining its separate restricted admission and
+validation. It does not consume or construct this strict query result. Mixed
+output and other writer integrations remain separate work.
 In particular, accepting Arabic shaping input here does not admit Arabic
 OFD/PDF/SVG output or complete C3 or the Arabic/Indic end-to-end corpus.
 

@@ -155,15 +155,17 @@ public static class TextPrelayoutOfdWriter
             if (positionedGlyphs)
             {
                 var glyphs = new OfdPositionedGlyph[line.ShapedRun.Glyphs.Count];
-                double penX = 0, penY = 0;
+                long penX = 0, penY = 0;
                 for (var index = 0; index < glyphs.Length; index++)
                 {
                     var glyph = line.ShapedRun.Glyphs[index];
+                    var projection = TextGlyphProjection.Create(glyph, penX, penY, scale,
+                        -boundaryLeft, line.BaselineMillimeters - line.TopMillimeters - boundaryTop);
                     glyphs[index] = new OfdPositionedGlyph(glyph.GlyphId, glyph.ClusterStart, glyph.ClusterLength,
-                        -boundaryLeft + (penX + glyph.XOffset) * scale,
-                        line.BaselineMillimeters - line.TopMillimeters - boundaryTop - (penY + glyph.YOffset) * scale,
-                        glyph.XAdvance * scale, glyph.YAdvance * scale);
-                    penX += glyph.XAdvance; penY += glyph.YAdvance;
+                        projection.X, projection.Y, projection.AdvanceX,
+                        // Preflight admits only YAdvance == 0; retain the legacy positive zero.
+                        glyph.YAdvance * scale);
+                    penX = projection.NextPenX; penY = projection.NextPenY;
                 }
                 outputRun.XMillimeters = glyphs[0].OriginXMillimeters;
                 outputRun.YMillimeters = glyphs[0].OriginYMillimeters;

@@ -44,10 +44,12 @@ public sealed class TextPositionedRun
         foreach (var glyph in shapedRun.Glyphs)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var x = Check(originXMillimeters + (penX + glyph.XOffset) * scale);
-            var y = Check(baselineYMillimeters - (penY + glyph.YOffset) * scale);
-            var advanceX = Check(glyph.XAdvance * scale);
-            var advanceY = Check(-((double)glyph.YAdvance) * scale);
+            var projection = TextGlyphProjection.Create(glyph, penX, penY, scale,
+                originXMillimeters, baselineYMillimeters);
+            var x = Check(projection.X);
+            var y = Check(projection.Y);
+            var advanceX = Check(projection.AdvanceX);
+            var advanceY = Check(projection.AdvanceY);
             glyphs.Add(new OfdPositionedGlyph(glyph.GlyphId, glyph.ClusterStart, glyph.ClusterLength,
                 x, y, advanceX, advanceY));
             if (glyph.Ink is { } ink)
@@ -60,7 +62,7 @@ public sealed class TextPositionedRun
                 else { left = Math.Min(left.Value, inkLeft); top = Math.Min(top, inkTop);
                     right = Math.Max(right, inkRight); bottom = Math.Max(bottom, inkBottom); }
             }
-            penX += glyph.XAdvance; penY += glyph.YAdvance;
+            penX = projection.NextPenX; penY = projection.NextPenY;
             Check(originXMillimeters + penX * scale);
             Check(baselineYMillimeters - penY * scale);
         }
