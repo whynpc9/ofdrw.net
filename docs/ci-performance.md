@@ -1,15 +1,16 @@
 # CI performance and evidence
 
-CI keeps the existing test filters, operating-system matrix, package-consumer isolation, rendering comparisons, and release Preview gate. There is no path-based test selection.
+CI keeps three-platform full-solution coverage, Linux no-Office test filters, package-consumer isolation, rendering comparisons, and the release Preview gate. There is no path-based test selection.
 
 ## Build and caches
 
 - The public API documentation checker owns the full Release rebuild. A preceding ordinary build is unnecessary. Its CS1591 baseline and failure handling remain unchanged.
-- Linux `build-test` runs the full Release solution and mandatory trusted-font suite. The platform matrix builds the full solution and runs those same suites on Windows and macOS; Linux retains the smaller `Ofdrw.Net.PlatformTests.slnf` build for its additional platform filters. All existing platform test filters subsequently use `--no-build --no-restore`.
+- Linux `build-test` runs the full Release solution and mandatory trusted-font suite. The platform matrix builds the full solution and runs those same suites on Windows and macOS; Linux retains the smaller `Ofdrw.Net.PlatformTests.slnf` build for its additional no-Office filters. Only Linux reruns the filtered tests with `--no-build --no-restore`; Windows/macOS retain their results and native-path skip reasons in the full-suite TRX artifacts.
 - Document-tools E2E and its CLI use Release consistently.
 - Only third-party build dependencies are cached. Consumers retain a fresh NuGet directory and source mapping that binds `Ofdrw.Net.*` to the exact candidate feed.
 - CI fonts are cached after static instancing. Both the generated font and license must match source-controlled SHA-256 values on every hit. Invalid cache entries regenerate from the pinned source; source or generated-byte mismatches fail.
 - Linux caches downloaded apt packages, but still refreshes repository metadata and installs dependencies normally. Windows caches micromamba package downloads, not a relocated installation prefix. These caches reduce downloads; they do not eliminate all solver, repository, or network latency.
+- Windows download cache keys include architecture and pinned bootstrap/tool versions. Bump the matching key when changing those versions; unrelated edits to `ci.yml` no longer invalidate the downloads. Candidate nupkg/snupkg files use artifact compression level zero because their payloads are already compressed.
 - Full Windows/macOS solution tests install LibreOffice and Poppler before running; the PDF import and DOCX conversion tests require those external tools. The pinned Windows Poppler bootstrap is hash-checked. The package visual jobs install their own renderer tools on separate runners.
 - The package visual corpus embeds the same verified Noto CJK font bytes on all three platforms. Its four macOS golden pages were aligned with the already reviewed Linux/Windows bytes after the CI runner and a separate local macOS capture produced identical page hashes; earlier host-font pages remain recoverable from Git history.
 - New PR commits cancel older runs of the same workflow and PR. Main and release runs are not cancelled by this policy.
@@ -23,6 +24,26 @@ Linux, native Windows, and native macOS package jobs depend directly on `build-t
 The platform matrix runs independently. `CI complete` succeeds only when every source, platform, Linux/Windows/macOS consumer, and password-crypto job succeeds; failures, cancellation, and skipped dependencies fail this aggregate gate. The separate SES interoperability workflow remains required for task acceptance.
 
 The shell script's default build-and-consume behavior remains available for standalone and SES runs. `--consume-only` supports existing release feeds, while `--pack-only --no-build` requires a caller-provided Release build stamped with the requested version. The package validator checks package metadata, dependency versions, payload requirements, and manifest hashes.
+
+## 2026-11-01 duplicate-work reduction
+
+Baseline: `b02162bef61abc17761349d891237fc2518d3989`. The latest 100 workflow records span 2026-10-30 01:11 to 2026-11-01 20:33 Asia/Shanghai: CI has 39 successes, 8 failures and 3 cancellations; SES has 49 successes and 1 cancellation. Step timings were collected for the latest 15 CI runs (2026-11-01 09:54–20:33), with medians below computed from the 14 successful runs. Failed/cancelled runs are not counted as performance wins.
+
+The [latest successful run](https://github.com/whynpc9/ofdrw.net/actions/runs/41307050234) confirms that the full solution already runs all 107 password tests on Linux, Windows and macOS, with zero password-test skips. Each platform also passes the separate 74-case mandatory trusted-font gate. Windows/macOS then redundantly reran ten filtered test commands against the same build and environment; those commands now run only in the separate Linux no-Office job. The password job now runs only Linux fixture generation and both isolated package consumers. Its unit tests remain in all three full-solution runs.
+
+| Historical work removed | Median elapsed seconds |
+| --- | ---: |
+| Dedicated Windows password test job | 117 |
+| Dedicated macOS password test job | 87.5 |
+| Linux password unit-test/build step | 66.5 |
+| Windows filtered reruns and redundant native-path upload | 91.5 |
+| macOS filtered reruns and redundant native-path upload | 60.5 |
+
+The per-run sum of the removed jobs, steps and redundant native-path uploads has a median of **414.5 seconds (6.9 runner minutes)**, range 368–474 seconds, approximately **15.8%** of summed job time. CI expands to **9 jobs instead of 11**. These are historical gross-work measurements, not measured post-change savings: the retained crypto E2E build may now do work previously warmed by the deleted unit-test step, and runner/cache/network variance remains. The historical median workflow wall time is 768 seconds; the `build-test` → Linux `package-e2e` chain remains the main critical path, so wall-time improvement will be smaller than runner-time reduction.
+
+The sampled [failed run](https://github.com/whynpc9/ofdrw.net/actions/runs/41278534258) failed the full-solution `Test` step and the aggregate gate; both gates remain. No test cases, rendering pages, visual comparisons, candidate checks, SES acceptance, release Preview requirements, workflow triggers or artifact retention windows were removed. Windows/macOS native-path records now live in `full-platform-tests-<os>` instead of a second filtered artifact. Job IDs used by `CI complete` are unchanged; that gate still rejects any failed, cancelled or skipped dependency.
+
+Local validation passed: `actionlint` 1.7.12 over all workflows, `git diff --check`, the repository storage checker, and all 15 existing evidence/font-cache/package-artifact Python tests (zero skips, after solution restore). A parsed before/after comparison also verified effective environments, Linux no-Office commands, full-solution gates, consumer commands, triggers and the aggregate gate. Validation records and the raw API timing snapshots live under the ignored `artifacts/ci-slimming-20261101/`. GitHub-hosted post-change timing still needs a new CI run. This configuration-only change does not regenerate documents or claim new PNG/Preview visual acceptance.
 
 ## Evidence retention
 
