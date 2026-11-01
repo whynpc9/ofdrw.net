@@ -76,6 +76,9 @@ internal static class AllocationProbe
         Assert.Equal(Hash(File.ReadAllBytes(typeof(OfdTextElement).Assembly.Location)), receipt.Core.Sha256);
         Assert.Equal(typeof(OfdTextElement).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,
             receipt.Core.InformationalVersion);
+        Assert.All(receipt.Cases, item => Assert.All(item.Samples, sample =>
+            Assert.True(sample.Before >= 0 && sample.After >= sample.Before,
+                $"Invalid raw allocation counters: before={sample.Before}, after={sample.After}.")));
         return receipt;
     }
 
@@ -167,10 +170,11 @@ internal static class AllocationProbe
         return result;
     }
 
-    private static bool Accept(AllocationCase item) => item.ValidNoGcInterval && item.Error is null &&
-        item.SamplesRecorded == 9 && item.Samples.Skip(1).All(sample => item.Operation switch
+    internal static bool Accept(AllocationCase item) => item.ValidNoGcInterval && item.Error is null &&
+        item.SamplesRecorded == 9 && item.Samples.All(sample => sample.Before >= 0 && sample.After >= sample.Before) &&
+        item.Samples.Skip(1).All(sample => item.Operation switch
         {
-            "target" => sample.Allocated < 4096,
+            "target" => sample.Allocated >= 0 && sample.Allocated < 4096,
             "empty" => sample.Allocated == 0,
             _ => sample.Allocated >= item.MinimumExpectedAllocation
         });

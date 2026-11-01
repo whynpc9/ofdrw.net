@@ -28,6 +28,8 @@ or skipped assertion is used. Parent processes have a 20-second limit and kill
 their owned child tree on timeout. Every receipt uses non-overwriting creation
 and records the actual Core path/hash/target framework/version, fixture hash,
 runtime, architecture, GC configuration, interval status, and raw counters.
+Negative or decreasing raw counters invalidate a budget observation, including
+warmup samples. The invalid values remain in the receipt without clamping.
 
 CI also runs one separately named, bounded background-GC pressure diagnostic
 and retains all 128 intervals, including empty, actual target, positive, and
