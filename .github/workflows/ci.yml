@@ -13,6 +13,7 @@ concurrency:
 # Fetch fixtures explicitly; historical evidence is optional.
 env:
   GIT_LFS_SKIP_SMUDGE: "1"
+  OFDRW_CI_PACKAGE_VERSION: "0.1.0-preview.10"
   DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
   NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
@@ -29,6 +30,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: false
+      - name: Verify CI candidate version matches source defaults
+        shell: bash
+        run: |
+          python3 - <<'PY_VERSION'
+          import os
+          import xml.etree.ElementTree as ET
+          props = ET.parse('Directory.Build.props').getroot()
+          prefix = props.findtext('PropertyGroup/VersionPrefix')
+          suffix = props.findtext('PropertyGroup/VersionSuffix')
+          source_version = f'{prefix}-{suffix}' if suffix else prefix
+          candidate_version = os.environ['OFDRW_CI_PACKAGE_VERSION']
+          if candidate_version != source_version:
+              raise SystemExit(f'CI candidate version {candidate_version} does not match source defaults {source_version}')
+          print(f'CI candidate version matches source defaults: {source_version}')
+          PY_VERSION
       - name: Fetch test fixtures from LFS
         shell: bash
         run: git lfs pull --include="e2e/**,tests/**" --exclude=""
@@ -72,7 +88,7 @@ jobs:
           python3 scripts/verify-public-table-evidence.py
 
       - name: Build and reject new undocumented public API
-        run: python3 scripts/check-public-api-docs.py --package-version 0.1.0-preview.8
+        run: python3 scripts/check-public-api-docs.py --package-version ${{ env.OFDRW_CI_PACKAGE_VERSION }}
 
       - name: Retain bounded allocation-counter diagnostics
         run: python3 scripts/run-audit025-diagnostic.py
@@ -96,7 +112,7 @@ jobs:
         run: python3 scripts/run-trusted-font-tests.py --no-build --results-directory artifacts/trusted-font-tests
 
       - name: Pack candidate from the tested Release build
-        run: ./scripts/run-converter-package-e2e.sh 0.1.0-preview.8 --pack-only --no-build
+        run: ./scripts/run-converter-package-e2e.sh ${{ env.OFDRW_CI_PACKAGE_VERSION }} --pack-only --no-build
 
       - name: Upload exact candidate packages
         uses: actions/upload-artifact@v4
@@ -104,7 +120,7 @@ jobs:
           retention-days: ${{ github.event_name == 'pull_request' && 14 || 30 }}
           name: candidate-packages
           compression-level: 0 # nupkg/snupkg payloads are already compressed.
-          path: artifacts/package-e2e/0.1.0-preview.8/packages
+          path: artifacts/package-e2e/${{ env.OFDRW_CI_PACKAGE_VERSION }}/packages
           if-no-files-found: error
 
       - name: Upload test results
@@ -321,10 +337,10 @@ jobs:
         run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
 
       - name: Consume the exact candidate packages on Linux
-        run: ./scripts/run-converter-package-e2e.sh 0.1.0-preview.8 --consume-only --packages-dir artifacts/candidate-packages
+        run: ./scripts/run-converter-package-e2e.sh ${{ env.OFDRW_CI_PACKAGE_VERSION }} --consume-only --packages-dir artifacts/candidate-packages
       - uses: ./.github/actions/r22-readers
       - name: Verify R22 original glyphs and independent physical word bounds on Linux
-        run: '"$OFDRW_R22_PYTHON" scripts/validation/r22-mixed/check-export-batch.py artifacts/package-e2e/0.1.0-preview.8/output/text-prelayout --output artifacts/package-e2e/0.1.0-preview.8/output/r22-independent'
+        run: '"$OFDRW_R22_PYTHON" scripts/validation/r22-mixed/check-export-batch.py artifacts/package-e2e/${{ env.OFDRW_CI_PACKAGE_VERSION }}/output/text-prelayout --output artifacts/package-e2e/${{ env.OFDRW_CI_PACKAGE_VERSION }}/output/r22-independent'
 
       - name: Run document tool API and CLI matrix
         run: |
@@ -339,10 +355,10 @@ jobs:
           ./scripts/run-graphics-e2e.sh artifacts/graphics/current
 
       - name: Consume optional Skia event adapter from exact local packages
-        run: ./scripts/run-skia-package-e2e.sh 0.1.0-preview.8 artifacts/candidate-packages artifacts/skia/package-e2e
+        run: ./scripts/run-skia-package-e2e.sh ${{ env.OFDRW_CI_PACKAGE_VERSION }} artifacts/candidate-packages artifacts/skia/package-e2e
 
       - name: Consume optional PDF vector converter from exact local packages
-        run: ./scripts/run-pdf-vector-package-e2e.sh 0.1.0-preview.8 artifacts/candidate-packages artifacts/pdf-vectors/package-e2e
+        run: ./scripts/run-pdf-vector-package-e2e.sh ${{ env.OFDRW_CI_PACKAGE_VERSION }} artifacts/candidate-packages artifacts/pdf-vectors/package-e2e
 
       - name: Upload PDF vector same-source and fallback comparisons
         if: always()
@@ -378,7 +394,7 @@ jobs:
         with:
           retention-days: ${{ github.event_name == 'pull_request' && 14 || 30 }}
           name: package-e2e-pages
-          path: artifacts/package-e2e/0.1.0-preview.8/output
+          path: artifacts/package-e2e/${{ env.OFDRW_CI_PACKAGE_VERSION }}/output
 
   windows-package-e2e:
     name: Windows package and visual regression
@@ -427,7 +443,7 @@ jobs:
           name: candidate-packages
           path: artifacts/linux-package-candidate
       - name: Consume the exact Linux candidate packages on native Windows
-        run: python scripts/run-converter-package-e2e.py 0.1.0-preview.8 --consume-only --packages-dir artifacts/linux-package-candidate --output-dir artifacts/windows-package-e2e
+        run: python scripts/run-converter-package-e2e.py ${{ env.OFDRW_CI_PACKAGE_VERSION }} --consume-only --packages-dir artifacts/linux-package-candidate --output-dir artifacts/windows-package-e2e
       - uses: ./.github/actions/r22-readers
       - name: Verify original R22 glyphs and independent physical word bounds on Windows
         run: '& $env:OFDRW_R22_PYTHON scripts/validation/r22-mixed/check-export-batch.py artifacts/windows-package-e2e/text-prelayout --output artifacts/windows-package-e2e/r22-independent'
@@ -472,7 +488,7 @@ jobs:
           name: candidate-packages
           path: artifacts/linux-package-candidate
       - name: Consume the exact Linux candidate packages on native macOS
-        run: python scripts/run-converter-package-e2e.py 0.1.0-preview.8 --consume-only --packages-dir artifacts/linux-package-candidate --output-dir artifacts/macos-package-e2e
+        run: python scripts/run-converter-package-e2e.py ${{ env.OFDRW_CI_PACKAGE_VERSION }} --consume-only --packages-dir artifacts/linux-package-candidate --output-dir artifacts/macos-package-e2e
       - uses: ./.github/actions/r22-readers
       - name: Verify R22 original glyphs and native PDFKit logical reading on macOS
         run: '"$OFDRW_R22_PYTHON" scripts/validation/r22-mixed/check-export-batch.py artifacts/macos-package-e2e/text-prelayout --output artifacts/macos-package-e2e/r22-independent --pdfkit'
