@@ -61,9 +61,10 @@ is no file/module inspection or process-history recording on the normal path.
 
 The collector retains only the first report for each binding generation and
 sink directory, even if later failures have a different classification. It
-creates the file atomically without overwriting an existing record. A reserved
-or failed sink still consumes its finite budget; capture failure cannot replace
-the source exception. Regression controls preserve both the first JSON and a
+creates the file exclusively without overwriting an existing record. This is
+not atomic publication of complete JSON: a failed write can leave a partial
+file. A reserved or failed sink still consumes its finite budget; capture failure
+cannot replace the source exception. Regression controls preserve both the first JSON and a
 pre-existing sink's bytes. These collector guarantees do not repair the native
 font failure.
 
