@@ -17,7 +17,9 @@ CI keeps three-platform full-solution coverage, Linux no-Office test filters, pa
 
 ## One candidate, parallel consumers
 
-`build-test` stamps its API-documentation rebuild with `0.1.0-preview.8`, tests it, and invokes `run-converter-package-e2e.sh 0.1.0-preview.8 --pack-only --no-build`. Pack-only requires an empty feed. The twelve default packages are validated and uploaded once, together with their SHA-256 manifest.
+`ci.yml` declares one `OFDRW_CI_PACKAGE_VERSION` (currently `0.1.0-preview.10`). Immediately after checkout, `build-test` verifies that it matches the default `VersionPrefix` and `VersionSuffix` in `Directory.Build.props`; a source-version change without a matching CI update fails before the build. The same variable stamps the API-documentation rebuild and drives pack-only, candidate artifact paths, all three platform consumers, optional Skia/vector consumers, and the Linux R22 evidence paths.
+
+`build-test` tests that Release build and invokes `run-converter-package-e2e.sh` with the candidate version and `--pack-only --no-build`. Pack-only requires an empty feed. The twelve default packages are validated and uploaded once, together with their SHA-256 manifest.
 
 Linux, native Windows, and native macOS package jobs depend directly on `build-test` and download that one artifact in parallel. Linux restores source metadata for license validation but does not rebuild the full source solution or repack the candidate. Each consumer verifies the existing manifest before and after use and retains a fresh dependency cache with package source mapping. The Windows and macOS consumers also compare each selected runtime DLL against its nupkg payload, isolated cache, and copied output. Optional Skia/vector gates still consume the same defaults and separately build their optional adapters. The source-based document and graphics probes retain their own required builds.
 
