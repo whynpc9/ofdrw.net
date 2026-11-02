@@ -2,6 +2,8 @@
 
 更新时间：2026-10-21（R00 契约核对）
 
+2026-11-01 后续梳理见[下一阶段工作与验收计划](next-steps-2026-11-01.md)：以 PR90 合并后的 `b02162be` 为规划基线，当前目标是中英文文档可发布版本：先补常用链路的重要缺失并完成发布门禁；通用 R22、RTL/复杂脚本、扩展字体与完整归档移到未来议题，稳定性只被动观察，N09 取消。下文保留原时间点快照，不作为当前重新派工顺序。
+
 本文件保留 2026-10-15 旧票的 **能力状态与剩余 TODO 快照**。v1.2 的 23 项新工作及其依赖、出口验收以[能力契约](capability-contract-v12.md)为新基线；旧票编号仍可用于追溯历史证据。它把与
 [ofdrw/ofdrw](https://github.com/ofdrw/ofdrw) 的能力差距、
 [issue #3](https://github.com/whynpc9/ofdrw.net/issues/3)、
@@ -9,7 +11,7 @@
 
 已实现能力仍以 [功能对照](feature-parity.md) 为准。对照表描述现状；本文件保留目标范围并标明源码已具备项与剩余工作。
 
-当前状态的唯一领票入口是 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)，其中逐项列出源码、测试及历史验收证据。票文件内的旧 `Status`/`Blocked by` 保留为历史快照；与索引冲突时先以索引复核源码，不重复派发已实现项。
+历史领票入口 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)逐项列出源码、测试及历史验收证据；票文件内的旧 `Status`/`Blocked by` 保留为历史快照。当前执行顺序以顶部 2026-11-01 计划为准，再核对实际源码，不重复派发已实现项。
 
 [开发计划](capability-roadmap-development-plan.md) 是 2026-09-28/29 的历史设计，不再作为当前开工顺序。
 

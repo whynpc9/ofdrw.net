@@ -923,6 +923,11 @@ public sealed partial class OfdPackageWriter
             }
             else
             {
+                // New text uses the existing scalar precision. Refuse an
+                // unwritable size before BuildEntries can reach destination I/O;
+                // imported SourceXml above retains its original numeric literals.
+                if (!OfdNumericFormat.WriterPositive(text.FontSizeMillimeters))
+                    throw new NotSupportedException("Text size must remain finite and positive at OFD writer precision.");
                 var width = text.WidthMillimeters <= 0 ? Math.Max(text.Text.Length * text.FontSizeMillimeters * 0.5, text.FontSizeMillimeters) : text.WidthMillimeters;
                 var height = text.HeightMillimeters <= 0 ? text.FontSizeMillimeters * 1.5 : text.HeightMillimeters;
                 textObject = new XElement(ns + "TextObject",

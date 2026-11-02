@@ -1407,71 +1407,9 @@ public sealed partial class DocxConversionTests
             "generated-layout.docx");
     }
 
-    private static MemoryStream CreateMinimalDocx(
-        string bodyContent,
-        string? documentRelationships = null,
-        IReadOnlyDictionary<string, byte[]>? binaryParts = null)
-    {
-        var stream = new MemoryStream();
-        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
-        {
-            WriteZipEntry(archive, "[Content_Types].xml", """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-                  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />
-                  <Default Extension="xml" ContentType="application/xml" />
-                  <Default Extension="png" ContentType="image/png" />
-                  <Override PartName="/word/document.xml"
-                    ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml" />
-                </Types>
-                """);
-            WriteZipEntry(archive, "_rels/.rels", """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-                  <Relationship Id="rId1"
-                    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
-                    Target="word/document.xml" />
-                </Relationships>
-                """);
-            WriteZipEntry(archive, "word/document.xml", $$"""
-                <?xml version="1.0" encoding="UTF-8"?>
-                <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-                  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-                  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
-                  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
-                  xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
-                  <w:body>{{bodyContent}}<w:sectPr /></w:body>
-                </w:document>
-                """);
-            if (documentRelationships is not null)
-            {
-                WriteZipEntry(
-                    archive,
-                    "word/_rels/document.xml.rels",
-                    documentRelationships);
-            }
-
-            if (binaryParts is not null)
-            {
-                foreach (var part in binaryParts)
-                {
-                    var entry = archive.CreateEntry(part.Key);
-                    using var entryStream = entry.Open();
-                    entryStream.Write(part.Value);
-                }
-            }
-        }
-
-        stream.Position = 0;
-        return stream;
-    }
-
-    private static void WriteZipEntry(ZipArchive archive, string path, string content)
-    {
-        var entry = archive.CreateEntry(path);
-        using var writer = new StreamWriter(entry.Open());
-        writer.Write(content);
-    }
+    private static MemoryStream CreateMinimalDocx(string bodyContent, string? documentRelationships = null,
+        IReadOnlyDictionary<string, byte[]>? binaryParts = null) =>
+        Ofdrw.Net.TestSupport.DocxReleaseFixtures.CreateMinimalDocx(bodyContent, documentRelationships, binaryParts);
 
     private static MemoryStream CreateDocxWithHeaderAndFooter()
     {

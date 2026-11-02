@@ -242,29 +242,14 @@ public sealed partial class DocxConversionTests
     [Fact]
     public async Task Native_ShouldKeepInlineJpegContentDimensionsAndMediaType()
     {
-        const string body = """
-            <w:p><w:r><w:t>Native JPEG image fixture</w:t></w:r></w:p>
-            <w:p><w:r><w:drawing><wp:inline><wp:extent cx="1440000" cy="720000"/><wp:docPr id="1" name="image"/>
-            <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
-            <pic:pic><pic:nvPicPr><pic:cNvPr id="1" name="image.jpg"/><pic:cNvPicPr/></pic:nvPicPr>
-            <pic:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
-            <pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1440000" cy="720000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
-            </pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>
-            """;
-        using var pixels = new Image<Rgba32>(80, 40);
-        for (var y = 0; y < 40; y++)
-        for (var x = 0; x < 80; x++) pixels[x, y] = x < 40 ? new Rgba32(255, 0, 0) : new Rgba32(0, 0, 255);
-        using var jpeg = new MemoryStream(); pixels.SaveAsJpeg(jpeg); jpeg.Position = 0;
-        using var input = CreateMinimalDocx(body);
-        using (var document = WordprocessingDocument.Open(input, true))
-            document.MainDocumentPart!.AddImagePart(ImagePartType.Jpeg, "rId2").FeedData(jpeg);
-        input.Position = 0;
+        var fixture = Ofdrw.Net.TestSupport.DocxReleaseFixtures.CreateInlineJpegDocx();
+        using var input = fixture.Docx;
         using var output = new MemoryStream();
         await new DocxToOfdConverter().ConvertAsync(input, output); output.Position = 0;
         var package = await new OfdReader().ReadAsync(output);
         var image = Assert.Single(package.Pages.SelectMany(page => page.Elements).OfType<OfdImageElement>());
         Assert.Equal("image/jpeg", image.MediaType);
-        Assert.Equal(jpeg.ToArray(), image.Data);
+        Assert.Equal(fixture.Jpeg, image.Data);
         Assert.Equal(40, image.WidthMillimeters, 3);
         Assert.Equal(20, image.HeightMillimeters, 3);
         SaveFixtureArtifact("image-native", input, output);
@@ -614,44 +599,8 @@ public sealed partial class DocxConversionTests
         return stream;
     }
 
-    private static MemoryStream CreateMultiSectionDocx()
-    {
-        var stream = new MemoryStream();
-        using (var document = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document, true))
-        {
-            var main = document.AddMainDocumentPart();
-            main.AddNewPart<DocumentSettingsPart>().Settings = new W.Settings(new W.EvenAndOddHeaders());
-            var odd = main.AddNewPart<HeaderPart>(); odd.Header = new W.Header(new W.Paragraph(new W.Run(new W.Text("Odd Header"))));
-            var even = main.AddNewPart<HeaderPart>(); even.Header = new W.Header(new W.Paragraph(new W.Run(new W.Text("Even Header"))));
-            var first = main.AddNewPart<HeaderPart>(); first.Header = new W.Header(new W.Paragraph(new W.Run(new W.Text("First Header"))));
-            var footer = main.AddNewPart<FooterPart>();
-            footer.Footer = new W.Footer(new W.Paragraph(new W.ParagraphProperties(new W.Justification { Val = W.JustificationValues.Center }),
-                new W.Run(new W.Text("Page ")), new W.SimpleField(new W.Run(new W.Text("0"))) { Instruction = "PAGE" },
-                new W.Run(new W.Text("/")), new W.SimpleField(new W.Run(new W.Text("0"))) { Instruction = "NUMPAGES" }));
-            var firstSection = new W.SectionProperties(
-                new W.HeaderReference { Type = W.HeaderFooterValues.Default, Id = main.GetIdOfPart(odd) },
-                new W.HeaderReference { Type = W.HeaderFooterValues.Even, Id = main.GetIdOfPart(even) },
-                new W.HeaderReference { Type = W.HeaderFooterValues.First, Id = main.GetIdOfPart(first) },
-                new W.FooterReference { Type = W.HeaderFooterValues.Default, Id = main.GetIdOfPart(footer) },
-                new W.FooterReference { Type = W.HeaderFooterValues.Even, Id = main.GetIdOfPart(footer) },
-                new W.FooterReference { Type = W.HeaderFooterValues.First, Id = main.GetIdOfPart(footer) },
-                new W.PageNumberType { Start = 1 }, new W.TitlePage());
-            var body = new W.Body();
-            foreach (var (label, index) in new[] { ("one", 0), ("two", 1), ("three", 2) })
-            {
-                var properties = new W.ParagraphProperties();
-                if (index > 0) properties.Append(new W.PageBreakBefore());
-                if (index == 2) properties.Append(firstSection);
-                body.Append(new W.Paragraph(properties, new W.Run(new W.Text("Body " + label))));
-            }
-            body.Append(new W.Paragraph(new W.Run(new W.Text("Body four"))),
-                new W.Paragraph(new W.ParagraphProperties(new W.PageBreakBefore()), new W.Run(new W.Text("Body five"))),
-                new W.SectionProperties(new W.PageNumberType { Start = 10 }));
-            main.Document = new W.Document(body);
-        }
-        stream.Position = 0;
-        return stream;
-    }
+    private static MemoryStream CreateMultiSectionDocx() =>
+        Ofdrw.Net.TestSupport.DocxReleaseFixtures.CreateMultiSectionDocx();
 
     private static string? TryFindCjkMetricFont()
     {
