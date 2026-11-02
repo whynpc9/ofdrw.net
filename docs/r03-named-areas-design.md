@@ -1,6 +1,6 @@
 # R03 命名区域设计与验收矩阵
 
-基线：R00 merge `35976dbee1f58eef5fe19f2750746a97d523cfec`。本页在实现前记录首版契约；研究报告 v1.2 是静态候选，不是验收。
+基线：R00 merge `35976dbee1f58eef5fe19f2750746a97d523cfec`。本页保留命名区域的有界契约；设计基线或研究报告本身不构成实际页面验收。
 
 `AreaHolderBlock` 是占据内容区全宽、指定高度的不可拆分页块。它进入 `FlowDocument.Render` 的排版流程，最终页面与 Boundary 才写入区域索引。仅包含命名区域的 Flow 输出为各页指定稳定数字 ID。索引放在 `CustomTags` 的保留键 `ofdrw.net.named-areas.v1`，值为有界、版本化 XML；这是 SDK 私有持久格式，**不宣称与 Java 的 AreaHolderBlocks.xml 或其它阅读器的编辑接口互通**。选此载体是因为现有 Writer/Reader 已对 CustomTags 做保存重开、未知槽保留和路径冲突防护，避免此票另造未受验的 OFD 扩展文件写入路径。保留键已占用、重复索引、页序号/ID 不匹配、无效/越界框一律拒绝。页重排、合并、拆分后若索引失效，回填拒绝；不猜测新位置。
 

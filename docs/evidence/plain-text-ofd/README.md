@@ -1,6 +1,6 @@
 # Plain text OFD implementation evidence
 
-2026-10-16 local acceptance for Plan 028. Implementation/source identity: [source.json](source.json). Complete scope, commands, results and boundaries: [implementation report](../../../plans/028-followup-implementation.md). Usage: [plain-text-ofd.md](../../plain-text-ofd.md).
+2026-10-16 local acceptance for Plan 028. Implementation/source identity: [source.json](source.json). Complete scope, commands, results and boundaries: [implementation report](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/plans/028-followup-implementation.md). Usage: [plain-text-ofd.md](../../plain-text-ofd.md).
 
 - Functional: full suite 2868/2868, trusted fonts 65/65, zero skips; [full-test-summary.json](full-test-summary.json), TRX in full-tests/, layout-tests/, cli-tests/, trusted-font-tests/.
 - Dual netstandard targets and XML API: [compiled-targets.json](compiled-targets.json), [API gate](api-docs.log).

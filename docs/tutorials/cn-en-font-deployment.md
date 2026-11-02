@@ -1,6 +1,6 @@
 # 中英文 DOCX 字体部署 / CN/EN font deployment
 
-本教程用调用方提供的真实 Regular 与 Bold 字体，运行 **DOCX → native/default OFD → PDF**。目标是固定可复现的字体选择、保留原文，并避免把 Regular 描边当成物理 Bold。以下 API/CLI 已随 `0.1.0-preview.10` 公开；本教程不改变 SDK 默认值。受限发布 profile 为 `cn-en-physical-cjk-400-700-v1`，范围见[2026-11-02 计划](../next-steps-2026-11-02.md)，公开包与实际页面结果见[最终发布记录](../validation/preview10-publication-2026-11-02.md)。
+本教程用调用方提供的真实 Regular 与 Bold 字体，运行 **DOCX → native/default OFD → PDF**。目标是固定可复现的字体选择、保留原文，并避免把 Regular 描边当成物理 Bold。以下 API/CLI 已随 `0.1.0-preview.10` 公开；本教程不改变 SDK 默认值。受限发布 profile 为 `cn-en-physical-cjk-400-700-v1`，范围见[受限发布配置](../release-profile-cn-en.md)，公开包与实际页面结果见[最终发布记录](../validation/preview10-publication-2026-11-02.md)。
 
 This recipe supplies physical Regular/Bold faces to native DOCX conversion. It covers the current source API and CLI; a successful conversion is separate from visual, Copy/Find, and release acceptance.
 

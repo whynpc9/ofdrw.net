@@ -12,7 +12,7 @@
 
 ## 受限字体配置与兼容性
 
-发布 profile **`cn-en-physical-cjk-400-700-v1`**：显式目录提供固定 `Noto Sans CJK SC` 静态 Regular 400 / Bold 700，以及 `Noto Sans` Regular；Native API 设置严格 `NativeEmbeddedBoldBehavior=Throw`、显式 fallback 和 `UseInstalledMicrosoftOfficeFonts=false`（只关闭特定 Office 字体暂存，不代表禁用全部系统字体解析）。源字体哈希、OFL 来源/许可证及两模式完整示例见[范围计划](next-steps-2026-11-02.md)与教程。源字体不随 NuGet 分发；fontTools 仅用于离线资料准备，不是应用运行时依赖。
+发布 profile **`cn-en-physical-cjk-400-700-v1`**：显式目录提供固定 `Noto Sans CJK SC` 静态 Regular 400 / Bold 700，以及 `Noto Sans` Regular；Native API 设置严格 `NativeEmbeddedBoldBehavior=Throw`、显式 fallback 和 `UseInstalledMicrosoftOfficeFonts=false`（只关闭特定 Office 字体暂存，不代表禁用全部系统字体解析）。源字体哈希、OFL 来源/许可证及两模式完整示例见[受限发布配置](release-profile-cn-en.md)与教程。源字体不随 NuGet 分发；fontTools 仅用于离线资料准备，不是应用运行时依赖。
 
 不承诺 Noto Sans 真实 Bold、物理 Italic、任意字体面、任意系统字体、复杂 Word 版式或跨机像素一致。CLI 仍使用默认 TextStroke 策略，没有严格粗体开关；严格 profile 使用 API。F01 `generated-layout.docx` 经公开包独立消费，在显式 native 与默认模式各生成两页；189 个非空白源字符保持，PDF 无重复文本，四页 PNG 和真实 macOS Preview 检查通过。Preview 检查由用户授权的 `gpt-6.1-terra` High AI reviewer 完成，不称人工签收；仅覆盖这些配置、样例及四页。
 

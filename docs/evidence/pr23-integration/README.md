@@ -4,7 +4,7 @@ The original 2026-10-16 evidence from `artifacts/followup-integration/`,
 `artifacts/plan-003-followup/`, and `artifacts/pr23-review-fixes/` is retained
 byte for byte in one optional LFS archive. This replaces individual tracked
 runtime files, source snapshots, test logs and duplicate viewing products in
-the default checkout. The existing acceptance reports in `plans/` remain the
+the default checkout. The [historical acceptance reports](https://github.com/whynpc9/ofdrw.net/tree/8f27f92b51b70a9b01082da35ff1cfe989d46123/plans) remain the
 entry points; their historical `artifacts/` paths are paths after extraction.
 This storage change does not repeat or extend any functional or visual acceptance.
 

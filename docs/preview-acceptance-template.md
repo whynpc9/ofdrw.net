@@ -4,7 +4,7 @@
 
 ## 受限 profile 与独立限制
 
-preview.10 采用用户 2026-11-02 选择的 `cn-en-physical-cjk-400-700-v1`；详见[当前计划](next-steps-2026-11-02.md)及 [Q05 说明](release-engineering-gates.md)。本模板不预填通过结果。
+preview.10 采用用户 2026-11-02 选择的 `cn-en-physical-cjk-400-700-v1`；详见[受限发布配置](release-profile-cn-en.md)及 [Q05 说明](release-engineering-gates.md)。本模板不预填通过结果。
 
 | 项目 | 实际值 |
 | --- | --- |

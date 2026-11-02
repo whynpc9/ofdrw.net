@@ -1,6 +1,6 @@
 # R09 graphics image and pen design checkpoint
 
-Source baseline: `58c488f52bfeffab965292de8dd7a65f439597e1` (merged R01). This document defines the new public drawing contract before implementation. The current [capability contract](capability-contract-v12.md) rejects imported gradients and patterns; that rejection remains authoritative until each export has its own tested support.
+Source baseline: `58c488f52bfeffab965292de8dd7a65f439597e1` (merged R01). This document defines the bounded public drawing contract; the design baseline alone is not runtime or page acceptance. The current [capability contract](capability-contract-v12.md) rejects imported gradients and patterns; that rejection remains authoritative until each export has its own tested support.
 
 ## Image placement
 

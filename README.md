@@ -18,10 +18,12 @@ Ofdrw.Net is a preview-stage .NET SDK and CLI for OFD document packaging, readin
 
 ## Capabilities
 
+See the [documentation index](docs/README.md) for usage, contracts, validation evidence, and the current roadmap.
+
 See [docs/feature-parity.md](docs/feature-parity.md) for the maintained
 OFDRW comparison, completed hardening work, and remaining production gaps.
-See [docs/capability-roadmap.md](docs/capability-roadmap.md) for the TODO list,
-implementation batches, and the encryption/signature boundary without a crypto vendor.
+See [docs/capability-roadmap.md](docs/capability-roadmap.md) for remaining issues,
+future scope, and the encryption/signature boundary without a crypto vendor.
 See [conversion contracts](docs/conversion-contracts.md) for page selection, original-text diagnostics, font initialization, resource budgets, and editing behavior.
 See [CN/EN font deployment](docs/tutorials/cn-en-font-deployment.md) for pinned Regular/Bold preparation, complete native/default API examples, CLI options, and current visual/Copy/Find limits.
 See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk through GB/T 33190 package structure, pages, text, paths, images, templates, and signatures, plus OFD-H medical-record profile notes, mapped to both ofdrw and this repository.

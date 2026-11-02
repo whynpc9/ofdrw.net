@@ -145,7 +145,7 @@ scripts/run-pdf-vector-package-e2e.sh 0.1.0-pdfvector.20261008.r2 \
 scripts/run-graphics-e2e.sh artifacts/pdf-vectors/graphics-regression-r3
 ```
 
-设计和 API 范围见 [探针](../../pdf-vector-probe-design.md)、[契约](../../pdf-vector-design-contract.md)、[图片修复设计](../../pdf-image-fallback-repair-design.md)、[教程](../../tutorials/18-pdf-vector-mode.md)。输入/工作预算不等于硬进程内存、时间或最终 ZIP 大小上限。所有失败证据保留；`production_release_accepted=false`。
+设计和 API 范围见 [探针](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/docs/pdf-vector-probe-design.md)、[契约](../../pdf-vector-design-contract.md)、[图片修复设计](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/docs/pdf-image-fallback-repair-design.md)、[教程](../../tutorials/18-pdf-vector-mode.md)。输入/工作预算不等于硬进程内存、时间或最终 ZIP 大小上限。所有失败证据保留；`production_release_accepted=false`。
 
 ## 首轮审查修复 R3
 

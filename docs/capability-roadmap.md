@@ -1,174 +1,42 @@
-# Ofdrw.Net 能力路线图
+# 后续范围与现行路线图
 
-**2026-11-02 发布范围说明：**preview.10 已公开；[受限物理字体 profile](next-steps-2026-11-02.md)的 F01 native/default 各两页通过 PNG/Preview 检查，公开包/签名/独立消费见[最终发布记录](validation/preview10-publication-2026-11-02.md)。Regular-only 合成粗体 FAIL、macOS Preview Find 兼容性及原始 Copy 未验证继续披露。下文通用能力/历史状态不构成已发布版本的全范围承诺；R02/R20/R22 边界继续保留。
+更新：2026-11-02。`0.1.0-preview.10` 已完成发布及公开源回读，详见[最终发布记录](validation/preview10-publication-2026-11-02.md)。本页列出保留的问题与候选方向；不自动启动实施、实验或发布。能力使用范围见[功能对照](feature-parity.md)和[分出口契约](capability-contract-v12.md)。
 
-更新时间：2026-10-21（R00 契约核对）
+## 已有能力
 
-2026-11-01 后续梳理见[下一阶段工作与验收计划](next-steps-2026-11-01.md)：以 PR90 合并后的 `b02162be` 为规划基线，当前目标是中英文文档可发布版本：先补常用链路的重要缺失并完成发布门禁；通用 R22、RTL/复杂脚本、扩展字体与完整归档移到未来议题，稳定性只被动观察，N09 取消。下文保留原时间点快照，不作为当前重新派工顺序。
+Flow 段落/表格、命名区域、图片/Canvas/回调、文档工具、多 DocBody 显式选择、类型化对象、有限归档规则、签名保护范围、受限标准加密及固定字体查询已有有界交付，不再列为从零实施的待办。R02 的分组策略、R08 的各字体出口和 R22 的多个查询/输出增量各有独立边界；有源码不代表全部标准、脚本、阅读器或页面通过。
 
-本文件保留 2026-10-15 旧票的 **能力状态与剩余 TODO 快照**。v1.2 的 23 项新工作及其依赖、出口验收以[能力契约](capability-contract-v12.md)为新基线；旧票编号仍可用于追溯历史证据。它把与
-[ofdrw/ofdrw](https://github.com/ofdrw/ofdrw) 的能力差距、
-[issue #3](https://github.com/whynpc9/ofdrw.net/issues/3)、
-以及无密码厂商前提下的加密/签章边界收成一份可执行计划。
-
-已实现能力仍以 [功能对照](feature-parity.md) 为准。对照表描述现状；本文件保留目标范围并标明源码已具备项与剩余工作。
-
-历史领票入口 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)逐项列出源码、测试及历史验收证据；票文件内的旧 `Status`/`Blocked by` 保留为历史快照。当前执行顺序以顶部 2026-11-01 计划为准，再核对实际源码，不重复派发已实现项。
-
-[开发计划](capability-roadmap-development-plan.md) 是 2026-09-28/29 的历史设计，不再作为当前开工顺序。
-
-原状态核对固定在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0`（2026-10-15）。R00 在 `6aa8183ea31e193f500fb9d9717677b15e86c5d3` 核对现有入口与证据；新增 23 项矩阵、各出口的输入语义和 fallback 见 [v1.2 能力契约](capability-contract-v12.md)。R00 运行纯文本/HTML 定向功能测试，并对一个新生成的 PageBlock 缺陷样本作 PNG/Preview 负面复查，不把历史证据提升为当前发布或任意输入的验收。
-
-状态：
-
-- **源码已实现**：固定基线有实现及测试入口；历史页面验收仅限原记录范围。
-- **待办 / ready-for-agent**：基线未实现，源码前置已具备；仍需设计和验收。
-- **进行中 / 部分支持**：已有有限实现或门禁，剩余范围明确。
-- **未核实**：本次没有相应远端或新产物证据；合并、视觉与发布分别报告。
-- **不做（核心 SDK）**：不放进默认包，也不对外宣称。
-- **可选扩展**：独立包或显式开关，默认关闭，且不得自动提升 `FullyValid`。
-
-优先级：
-
-- **P0**：不碰国密就能覆盖上游日常用法。
-- **P1**：缩小与 ofdrw 的核心差距（含 issue #3）。
-- **P2**：无厂商可做的密码/档案上限；明确不是生产签章。
-
-## 1. 密码与签章：务实边界
-
-没有密码厂商时，天花板是 **结构正确的自签包 + 口令密文包 + 防篡改报告**，不是可归档、可诉讼、可过税局阅读器的电子签章。
-
-| 层 | 含义 | 决策 |
-| --- | --- | --- |
-| 引用完整性 | 保护文件的 SM3 / SHA 是否被改 | **核心 SDK 已具备，保持** |
-| 开源自签 / SES 解析 | 用开源 SM2 写出并验自己的 `SignedValue.dat` | **可选包源码已实现**，标注 *dev/interop* |
-| GM/T 0099 口令加解密 | SM4 加密包内文件，口令包装文件密钥 | **可选私有 password profile v2 已实现**；不等于通用 GM/T 0099 互操作 |
-| 生产电子签章 | 持证设备、制章系统、可信证书链、合格 TSA | **不内置**；继续 `IOfdSignatureProvider` / `IOfdSignedValueVerifier` |
-| `FullyValid` | 密码学签名完全有效 | **仅在调用方注册了验证器且验证成功时为真**；自签测试容器默认不得把它变绿 |
-
-对外只承诺三句：
-
-1. **防篡改**：SM3 / SHA-1 / SHA-256 引用完整性，已具备。
-2. **自签/口令**：已有独立可选 SES dev/interop 与私有 password profile v2；保持显式启用及非生产/互认边界。
-3. **生产签章**：由调用方接密码机、云签或 CA。核心 SDK 不内置「看起来能验章」的 SES。
-
-`OfdCryptographicCapabilities` 保持：
-
-- `SupportsSm3ReferenceDigests = true`
-- `SupportsPluggableSignedValueVerification = true`
-- `SupportsBuiltInSesSm2Verification = false`（可选包另暴露自己的能力标志，不得改这个核心标志）
-- `SupportsGmT0099EncryptionEnvelope = false`（已有可选私有口令包使用独立类型声明，不表示核心已支持）
-
-上游 ofdrw 的 SES 容器同样是测试实现，其文档要求有法律效力的签章使用获认证密码设备。本仓库对齐这一分层，而不是把测试容器升格成默认验章。
-
-## 2. 不列入 TODO 的已具备项
-
-这些已有源码，不再从零开任务；质量/安全修复和新范围另按证据立项：
-
-- OFD ZIP 打包与有界加载（路径穿越、条目数、解压炸弹）
-- 常用读写闭环：页面、图层、模板、文字游程、路径、图片、字体嵌入、附件、未知 XML 保留
-- 文本抽取；页重排 / 删除 / 物理裁剪；自包含合并
-- DOCX → OFD/PDF（Native 与 DualLayer）
-- PDF → OFD 双层（页面图 + 透明文字）；OFD → PDF / SVG（预览）
-- 签名目录编排、保护引用、可插拔签名值、引用完整性与完全有效的区分
-- 公开 FlowDocument/Paragraph/Span、Table/Row/Cell；OfdGraphics 原语；TrueType 字体子集与内容复用
-- 图片进出；水印、拆分、Mix、清签；受限定位替换与强类型对象最小闭环
-- 可选 Skia 合作 producer 适配、受限 PDF 矢量；私有 password profile v2 与 SES dev/interop
-- CLI：转换、图片进出、抽取、合并、重排、文档工具、受限替换、验签
-
-## 3. 明确不做
-
-| 项 | 原因 |
+| 使用方向 | 维护入口 |
 | --- | --- |
-| 核心 SDK 内置 SES/SM2 并让 `FullyValid` 对自签为真 | 会被理解成生产验章 |
-| 伪造或仿制数科/福昕/税控 `Seal.esl` 与厂商印章 ID | 无互认，且超出库的职责 |
-| 宣称满足《电子签名法》或商用密码产品认证 | 需要持证设备与检测，不是算法齐了就成立 |
-| 合格时间戳（TSA）内置服务 | 无厂商/TSA 合同就只有自写时间字段 |
-| 加密 OFD 作为长期保存件 | OFD-H / 档案方向要求入库前解密 |
-| 用直接 DOCX→PDF 结果代替 Native OFD 的视觉验收 | 见仓库 `AGENTS.md` |
+| DOCX/普通中英文与字体部署 | [转换契约](conversion-contracts.md)、[受限发布配置](release-profile-cn-en.md)、[字体教程](tutorials/cn-en-font-deployment.md) |
+| 排版、表格、图片与 Canvas | [Flow](flow-layout.md)、[公共表格](public-tables.md)、[原生绘图](tutorials/16-native-graphics.md) |
+| 文档、附件和多文档操作 | [文档工具](tutorials/15-document-tools.md)、[附件](tutorials/09-templates-attachments-tags.md)、[多 DocBody](multi-docbody.md) |
+| 字体与塑形增量 | [字体出口表](validation/r08-four-outlet-ledger.md)、[预排版](text-prelayout.md)、[typed 输出](text-shaped-output.md)、[混排查询](text-mixed-paragraph.md) |
+| 签名、加密与归档 | [签名保护范围](signature-scope-v12.md)、[可选加密](password-crypto.md)、[归档预检](archival-preflight.md)、[标准覆盖账本](archival-standard-coverage.md) |
 
-## 4. P0：日常生成与文档工具
+## 遗留问题与独立候选
 
-下表保留原目标/完成标准作为范围说明；仅“待办”行属于新增实现队列，“源码已实现”行继续按证据限定能力和验收。
-
-| ID | 项 | 来源 | 落地 | 完成标准 | 基线状态（证据见 ticket 索引） |
-| --- | --- | --- | --- | --- | --- |
-| P0-01 | 公开流式布局：`Paragraph` / `Span`、折行、分页 | ofdrw-layout | 把 DOCX BuiltIn 的折行/分页抽到 `Ofdrw.Net.Layout` 公开 API | 不用手写坐标即可生成多页中英文段落；有样例与视觉验收 | 源码已实现：01 |
-| P0-02 | 公开表格 / 单元格 | ofdrw `Cell` | 同样从 BuiltIn 表格提升为 Layout 元素 | 可生成带边框/底色/对齐的表；跨页策略有文档 | 源码已实现：16 |
-| P0-03 | 区域占位（类表单回填） | ofdrw `AreaHolderBlock` | 命名区域 + 事后填文字/图片 | 先占位再回填，不打乱已分页版面 | 待办：17；01 源码前置具备 |
-| P0-04 | OFD → PNG / JPEG | ofdrw `ImageExporter`；预览刚需 | 栅格化现有 SVG 或 PDF 页；CLI `ofd-to-image` | 指定页、指定 ppm；默认 PNG | 源码已实现：02 |
-| P0-05 | 图片 → OFD | ofdrw `ImageConverter` | 一图一页居中 `ImageObject`；CLI `image-to-ofd` | PNG/JPEG；可设页尺寸与 ppm | 源码已实现：02 |
-| P0-06 | 水印 | ofdrw-layout watermark | 文字/图片水印写入指定图层 | 合并与导出保留水印；有样例 | 源码已实现：03 |
-| P0-07 | 按页拆分 | ofdrw `OFDMerger.add(pages)` | `split`：选出页生成新包 | CLI + API；资源与失效签名按现有合并约定处理 | 源码已实现：03 |
-| P0-08 | 多文档页混合 Mix | ofdrw `addMix` | 多页叠成一页（模板、注释一并叠） | 页尺寸以第一页为准；图层顺序有文档 | 源码已实现：03 |
-| P0-09 | 签名清理 | ofdrw `SignCleaner` | 独立 API/CLI：删除签名列表、签名值与外观 | 清完后 `verify-signatures` 报告无签名声明，而不是带着残章 | 源码已实现：03 |
-
-原生成/图片/工具批次已有源码，不再重复派发；P0 剩余新增项是 P0-03 区域占位。
-
-## 5. P1：缩小与 ofdrw 的核心差距
-
-含 [issue #3](https://github.com/whynpc9/ofdrw.net/issues/3) 点名的绘图 API 与字体体积。
-
-| ID | 项 | 来源 | 落地 | 完成标准 | 基线状态（证据见 ticket 索引） |
-| --- | --- | --- | --- | --- | --- |
-| P1-01 | 类 Graphics2D 绘图 API | issue #3；ofdrw-graphics2d / canvas | 公开 `OfdGraphics`、`OfdPen`、`OfdBrush`、`OfdFont`、`OfdGraphicsPath`、`OfdMatrix`（名称可微调，语义对齐 issue） | 能画线、矩形、路径、文字、变换，并落到 OFD `PathObject` / `TextObject`；有教程样例 | 源码已实现：04 |
-| P1-02 | 字体子集化与复用 | issue #3；ofdrw-font | 按用字子集化嵌入；相同字体文件按内容身份复用，禁止无差别整份嵌入 | 中英多样例下 OFD 体积明显下降；缺字有回退策略；许可处理有说明 | 源码已实现（有限字体 profile）：05 |
-| P1-03 | Canvas `DrawContext` | ofdrw-layout canvas | 可在 P1-01 之上提供布局层画布，供页眉/票面框线使用 | 与流式布局可同页混用 | 待办：20；01/04 源码前置具备 |
-| P1-04 | PDF → OFD 保留矢量 | ofdrw PDFConverter（Graphics2D 桥接） | PdfPig 文本/路径写入 OFD；页面图可继续当稳定视觉层 | 可选模式；默认可仍为双层。矢量模式有样例对比 | 源码已实现（受限可选模式）：21 |
-| P1-05 | 关键字定位 | ofdrw reader keyword | 从 `TextObject` 重建字形框 | 返回页码与毫米坐标；供盖章和替换使用 | 源码已实现（严格几何范围）：06 |
-| P1-06 | 文档内容替换 | ofdrw `DocContentReplace` | 依赖 P1-05 | 替换后版面不塌、摘要约定有说明 | 源码已实现（受限替换）：06 |
-| P1-07 | 附件增删 | ofdrw-layout attachment | 已有新增及逻辑移除；显式物理清理只对来源身份、独占载荷与引用闭包可证明的现包附件生效 | 与合并选项 `IncludeAttachments` 和保存读回分别验收；未知引用拒绝 | R18 受限实现；[附件教程](tutorials/09-templates-attachments-tags.md)与[能力契约](capability-contract-v12.md) |
-| P1-08 | 纯文本 → OFD | ofdrw `TextConverter` | 调用 P0-01 布局引擎 | 可设字号与页尺寸 | 已实现首版：Layout `PlainTextOfdConverter` 与显式 `text-to-ofd` CLI；严格 UTF-8/Unicode、额度、取消和原子提交；[契约](plain-text-ofd.md)、[本地测试/包消费/10页验收](../plans/028-followup-implementation.md) |
-| P1-09 | OFD → HTML | ofdrw `HTMLExporter` | 多页 SVG 包进单 HTML | 有界静态预览；不承诺可选中全部文字或复杂图元通用保真 | 已有首版 `OfdToHtmlConverter`/`ofd-to-html` 源码及测试入口；外来复杂语义另验，见[能力契约](capability-contract-v12.md) |
-| P1-10 | 强类型对象补齐 | ofdrw-core | 最小强类型闭环已实现：大纲/书签、局部注释、GoTo、Path 裁剪、共享嵌套组合；其余继续 `Raw` / `Preserved*` | 历史记录包含最小范围读写往返、未知 XML、纯包消费及 8 页 Preview；[记录与边界](evidence/issue09-typed-objects/README.md) | 源码已实现（最小范围）：09 |
-| P1-11 | 多 `DocBody` | ofdrw-reader | 读包不再只取第一个文档 | 有多样本；写入策略有文档 | 待办：10 |
-| P1-12 | SkiaSharp 绘图层 | ofdrw-graphics2d | 可选适配，主要服务 P1-04 | 不替代 P1-01 的 OFD 原语 API | 源码已实现（合作 producer）：19 |
-
-issue #3 的完成定义就是 **P1-01 + P1-02**。API 形状以 issue 中的类型名为准，实现可以架在 Skia 或自绘路径上，但调用方应能只依赖 OFD 原语，而不必引用 Skia。
-
-## 6. P2：无厂商可做的密码 / 档案上限
-
-全部为 **可选扩展**，默认不进入 `Ofdrw.Net.Converter` 元包，也不改变核心能力标志。
-
-| ID | 项 | 落地 | 完成标准 | 禁止 | 基线状态（证据见 ticket 索引） |
-| --- | --- | --- | --- | --- | --- |
-| P2-01 | GM/T 0099 口令方向 / 私有 profile v2 | `Encryptions.xml`、`decryptseed.dat`、`entriesmap.dat`；SM4-CBC 加密选定条目；口令派生包装文件密钥 | 自加密自解密闭环；可只加密部分页；文档写明无厂商、非商用密码产品 | 当长期保存格式；当核心 SDK 已支持加密 | 私有 profile v2 源码已实现：11 |
-| P2-02 | SES 结构解析 + 自签测试容器 | 独立 *dev/interop* 包：解析 SES V1/V4 常见字段；用开源 SM2 自签/自验 | 测试可生成带 `SignedValue.dat` 的包，并能用同一测试密钥验过；CLI 对自签包仍不得报 `FullyValid`，除非调用方显式注册该测试验证器 | 默认注册进 `OfdSignatureVerifier`；宣称阅读器互认或法律效力 | 可选 dev/interop 源码已实现：12 |
-| P2-03 | 骑缝 / 对开外观定位 | 依赖 P1-05；把印章图画到页边 | 几何正确；外观仍不是签名值 | 当作已盖具有效力的骑缝章 | 待办：22；06 源码前置具备 |
-| P2-04 | 锁定签名 / 继续签的保护范围 | 引用列表排除 `Annots` / `Signs` | 签完可加注释而不必拆原摘要 | 无签名值提供者时假装已锁定 | 待办：13 |
-| P2-05 | OFD-A 检查器 | 对标 ofdrw-archive 的规则引擎（GB/T 42133） | 先做只读检查与违规报告；转换管道另议 | 宣称档案合规认证 | 未来方向：14；未实现 |
-| P2-06 | GM/T 0099 证书加密、完整性协议、多重加密 | 仅当 P2-01 稳定且有明确调用方 | 有互操作样本 | 无证书来源时用自签冒充 PKI | 未来方向；未建票、未实现 |
-
-生产验章、证书链、OCSP、合格时间戳、制章系统 **不设 TODO ID**。需要时通过已有扩展点由调用方接入，不在本仓库排期。
-
-## 7. 工程债（与功能并行）
-
-来自对照表里「进入生产评估前」仍有效的项，不挡 P0 开发，但发布前要过：
-
-| ID | 项 | 完成标准 |
+| 项目 | 当前决策与边界 | 依据 |
 | --- | --- | --- |
-| Q-01 | 发布许可与第三方声明 | 每次发 NuGet 核对 license 与 `THIRD-PARTY-NOTICES.md`；同批包消费 E2E |
-| Q-02 | 视觉回归语料 | 票据/发票/模板/异常包；像素差阈值，而不是只查非空 |
-| Q-03 | loader/reader 模糊测试与结构检查 | 坏包、路径穿越、超限 ZIP 有稳定拒绝 |
-| Q-04 | 公开 API XML 文档 | 消除新增 API 的 `CS1591`；旧债按模块清 |
-| Q-05 | 转换与布局变更的 Preview 视觉验收 | 遵循 `AGENTS.md`：Native OFD 产物，不得用 DOCX→PDF 代替 |
+| Regular-only 合成粗体 | 默认 TextStroke 下“量”字字腔视觉 FAIL 未修复；限定物理 Regular/Bold 配置的通过不改变旧结果；不恢复整条光学增强研究 | [原失败与独立验收](validation/cn-en-release-local-validation.md) |
+| Preview Find / 原始 Copy | 页末日期/部分整词 Find 异常根因未定；原始 Unicode 剪贴板 Copy 未完成；不以文本提取或 API 查询替代实际 UI | [N02 有界调查](validation/cn-en-release-n02.md)、[系统对照](validation/cn-en-preview-control-2026-11-02.md) |
+| PR78 / C1、C2 | PR78 已关闭未合并，保留分支与证据；C1 导入 paint/CTM 保持、C2 SVG 使用声明字体族仅为独立候选，未开工，不作为 preview.10 前置 | [N01 处置与精确候选](validation/cn-en-release-n01.md) |
+| N04 Skia / N05 Windows Audit025 | 被动观察；保留现有诊断、测试和预算，新自然失败有判别证据再限定范围，不追加循环压力实验，不称根治 | [Skia](validation/skia-font-read-evidence.md)、[分配边界](validation/audit025-allocation-boundary.md) |
+| N09 完整未知外来映射 | 已取消，不等待自动续接；现有受限 R02 能力与失败证据保留，完整 R02 未验收 | [CGTransform](validation/r02-cgtransform-profile.md)、[GroupedLocal](validation/r02-grouped-textcode.md) |
+| ImageSharp 告警 | 现有 NU1902/NU1903 仍披露；准入限制、测试通过或限定发布不等于依赖问题修复 | [发布说明](release-notes-0.1.0-preview.10.md)、[依赖声明](../THIRD-PARTY-NOTICES.md) |
 
-## 8. 当前剩余工作入口
+## 未来议题
 
-1. **已有能力的验收/修复**：按各证据中的范围与未完成门逐项复核，涉及页面变更时重新生成并走 Native OFD → PDF → Preview；不得用本次文档核对关闭这些门。
-2. **有源码前置的新增薄层**：17 区域占位、20 布局 Canvas、22 骑缝外观仍未实现。18 纯文本与 08 HTML 已有首版 API/CLI 和测试入口；输入及出口边界分别见[纯文本契约](plain-text-ofd.md)与[v1.2 能力契约](capability-contract-v12.md)。
-3. **其余按需求**：07 附件编辑、10 多 DocBody、13 锁定/继续签；14 已有有限 archive preflight，完整标准 Rule/Handler 与条款覆盖仍需分票核准。P2-06 未建旧票，不默认开工。
-4. **工程发布门**：15 有检查代码/模板，但候选人工验收与实时发布状态须另行核对，不能视为全绿。
+以下不属于已发布版本的前置，也没有默认排期：
 
-上述状态及源码/测试入口统一见 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)。是否领取仍由调用方需求与设计范围决定，源码前置可用不表示上游票所有历史验收和发布门均已关闭。跨票触及同一文件时串行整合；可选 SES 不进入默认验签路径。
+- **通用 R22 / 新文字链路**：段落 bidi、自动断行与重塑形、样式/多字体最终行、分页、paint/writer/Flow 全链路。已有 run/span/字号/定位查询不等于该链路完成。保留[查询设计](architecture/r22-mixed-text-decision.md)、[共享定位消费者](architecture/r22-shared-position-consumer.md)与[剩余范围](validation/r22-remaining-scope.md)；Unicode 算法版本、字体/原生资产与许可须在具体选型时冻结。
+- **RTL、Arabic、Indic 与复杂字体**：只按各有界 profile 验收，默认拒绝范围不放宽。既有 reader 反例、字符映射方法失败及独立几何/语义门继续保留，见[reader 方法验证](validation/r22-reader-replacement-candidate.md)和[双词检查点](validation/r22-two-word-export-validation.md)。
+- **完整 R02、R20、扩展字体和部署组合**：非 BMP 索引、真正越段映射、自然外来互操作、全部归档条款、任意 CFF/变量/彩色字体、musl/AOT/trimming 等均不能由局部通过推定。新范围须有明确消费者、固定反例、最小契约和独立验收。
 
-## 9. 文档同步
+生产 SES/SM2 验章、可信证书链、合格 TSA 与法律效力继续由调用方接入合规提供方。核心 `SupportsBuiltInSesSm2Verification=false` 与 `SupportsGmT0099EncryptionEnvelope=false` 不因可选包而提升；`FullyValid` 仍要求显式注册的签名值验证器实际成功。
 
-做完对应项时：
+## 开工与验收
 
-- 更新 [功能对照](feature-parity.md) 的状态列，而不是只改本文件的表格勾选
-- 布局/绘图补 [教程](tutorials/README.md) 的实现对照
-- 签章/加密只允许改「可选包做了什么」和能力标志，不得删除两层验证的区分
-- 涉及页面生成或转换时按 `AGENTS.md` 做视觉验收，并留下可复查产物说明
+新增工作先核对准确源码与已有实现，只为确定缺陷或明确新范围建立任务；功能测试、包消费、自动渲染、PNG、实际 Preview、Copy/Find 和公开发布分别判定。涉及页面变更遵守根 `AGENTS.md` 与[发布门禁](release-engineering-gates.md)，不能靠旧页面、删样例或改阈值完成验收。
 
-本文件不承诺任意复杂 Word / OFD 都能完整保真，也不构成对 GB/T 33190、GB/T 38540、GM/T 0099 或商用密码的合规认证。
+旧批次、工时、代理分工和已完成计划已从当前树移除；历史追溯见[文档索引](README.md#历史资料)。

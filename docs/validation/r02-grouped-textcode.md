@@ -2,7 +2,7 @@
 
 `OfdGlyphMappingStrategy.GroupedLocal` 是显式选择的输入解释策略。每批 `CGTransform` 绑定 XML 顺序中随后出现的 `TextCode`，`CodePosition` 在该段解码后的 BMP 文本内计数。旧调用继续采用 `LegacyConcatenatedGlobal`，将位置解释为拼接文本的索引；本候选不迁移默认值，也不提供失败后自动换策略。
 
-规范依据、历史问题和实施计划见[调整方案](r02-grouped-textcode-plan.md)。依据是 GB/T 33190—2016 规范性附录 A.13 中 `CT_Text` 的 `(CGTransform*, TextCode)+` 结构与表 48 的位置定义。分组解释不能推出补充平面索引单位，也不能推出一个映射允许跨出所属段。
+规范依据为 GB/T 33190—2016 附录 A.13 `Page.xsd` 的 `(CGTransform*, TextCode)+` 结构（印刷第 119–120 页 / PDF 第 124–125 页）与表 48 的位置定义。历史核对使用的[标准 PDF](https://tsgdag.jhun.edu.cn/_upload/article/files/71/fc/4ed26d5841caab5bc999e19f8f14/02a71fcf-7b6e-4661-9991-eb309c7614c6.pdf) SHA-256 为 `d0232b4d75340b885a5e068df477ad2b9f77e4fd23ee3c7e6ddc51b147b27ae8`。这是结构与属性的联合解释，不证明所有阅读器已按此互操作，也不推定非 BMP 索引或越段语义。[原调整方案](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/docs/validation/r02-grouped-textcode-plan.md)仅供历史追溯。
 
 ## 调用方式
 

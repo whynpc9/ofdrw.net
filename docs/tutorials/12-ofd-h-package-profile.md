@@ -50,7 +50,7 @@ http://www.ofdspec.org
 - 必须有且仅有 `OFD.xml`
 - 文档目录固定 `Doc_0/`
 - 启用防夹带时才出现 `OFDEntries.xml`（源项目 `OFDDir` 已为该文件名留常量）
-- 启用加密时才出现 `Encryptions.xml`、明密文对照与解密提示文件（GM/T 0099 路径；本仓库未实现）
+- 启用加密时才出现 `Encryptions.xml`、明密文对照与解密提示文件（GM/T 0099 路径；本仓库核心不内置通用实现，可选包的有限范围见[加密契约](../password-crypto.md)）
 
 **文档目录内**
 

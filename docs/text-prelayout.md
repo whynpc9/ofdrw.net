@@ -1,6 +1,6 @@
 # Real-font shaping and prelayout query (R21)
 
-This source branch adds a **new** query path. Existing `FlowDocument.Render` and
+This API provides a separate fixed-font query path. Existing `FlowDocument.Render` and
 `OfdGraphics.DrawString` retain their approximate or caller-positioned behavior.
 The query does not locate text in an imported OFD.
 

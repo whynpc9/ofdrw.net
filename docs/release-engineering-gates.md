@@ -2,7 +2,7 @@
 
 本文件描述可重复执行的检查及其边界。**2026-11-02 发布状态：**`0.1.0-preview.10` 已公开，成功发布、签名与公开消费证据见[最终发布记录](validation/preview10-publication-2026-11-02.md)。现有 [Q05 accepted 记录](release-preview-acceptance.json)已更新为 preview.10 的 `cn-en-physical-cjk-400-700-v1`，由用户授权的 `gpt-6.1-terra` High AI reviewer 检查，不称人工签收；只覆盖 F01 显式 native/default 各两页。其生产者为 `cb6e71df`，产品标签源码为 `8f27f92`，控制器为 `3568c00`，详见发布记录中的身份区分。
 
-2026-11-01 复核时该 JSON 尚为 preview.9 历史 accepted；[N12 发布工程预检](validation/cn-en-release-n12-preflight.md)保留该时间点及其待办，不再表示当前发布状态。旧版本/旧产物或预检不能放行新候选。本次发布后的文档收尾不更新 accepted JSON 或重绑指纹，后续 main 文档树不能声称与已发布标签指纹相同；新产品/新版本仍须按准确源码与实际产物重新完成门禁。
+2026-11-01 复核时该 JSON 尚为 preview.9 历史 accepted；[N12 发布工程预检](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/docs/validation/cn-en-release-n12-preflight.md)保留该时间点及其待办，不再表示当前发布状态。旧版本/旧产物或预检不能放行新候选。本次发布后的文档收尾不更新 accepted JSON 或重绑指纹，后续 main 文档树不能声称与已发布标签指纹相同；新产品/新版本仍须按准确源码与实际产物重新完成门禁。
 
 源码指纹按路径绑定普通跟踪文件的当前字节；LFS 路径按已暂存的合法 pointer 的 oid/size 规范化，并严格核对工作树 pointer 身份或已下载载荷的大小/SHA-256。同一 LFS 身份的指针/载荷状态不改变指纹；篡改载荷、未暂存的新 LFS 身份、非法 pointer 和冲突路径都会失败。新增 LFS 文件或属性变更先暂存，再生成最终指纹；普通源码的未暂存变动仍改变指纹。
 
@@ -16,7 +16,7 @@
 
 ## preview.10 的 profile-qualified Q-05
 
-用户 2026-11-02 选择限定真实 Regular/Bold，并明列 Preview 搜索兼容性与原始 Copy 未完成。新候选 `cn-en-physical-cjk-400-700-v1` 的准确字体/参数见[当前计划](next-steps-2026-11-02.md)。固定原 DOCX 不变；Q05 的实际验收 OFD/PDF 必须来自该 profile 的本次精确候选包，两模式各两页均逐页 PNG/Preview 通过。不得用旧物理配置 PDF、直接 DOCX→PDF 或 Regular-only 输出充当该记录。现有 Q02 golden、RMSE 阈值、完整回归及其它发布门保持原样。
+用户 2026-11-02 选择限定真实 Regular/Bold，并明列 Preview 搜索兼容性与原始 Copy 未完成。新候选 `cn-en-physical-cjk-400-700-v1` 的准确字体/参数见[受限发布配置](release-profile-cn-en.md)。固定原 DOCX 不变；Q05 的实际验收 OFD/PDF 必须来自该 profile 的本次精确候选包，两模式各两页均逐页 PNG/Preview 通过。不得用旧物理配置 PDF、直接 DOCX→PDF 或 Regular-only 输出充当该记录。现有 Q02 golden、RMSE 阈值、完整回归及其它发布门保持原样。
 
 在原核心 JSON 字段之外，preview.10 记录须包含以下声明（现存记录已填写；核心 validator 不变；附加字段由协调者/Astra 复核，脚本不证明其内容或查看行为）：
 

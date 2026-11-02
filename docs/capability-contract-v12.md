@@ -1,8 +1,8 @@
-# Ofdrw.Net v1.2 能力契约与路线基线（R01 更新）
+# Ofdrw.Net 能力契约与范围索引
 
-**2026-11-02 发布范围说明：**preview.10 已公开；[受限物理字体 profile](next-steps-2026-11-02.md)的 F01 native/default 各两页通过 PNG/Preview 检查，公开包/签名/独立消费见[最终发布记录](validation/preview10-publication-2026-11-02.md)。Regular-only 合成粗体 FAIL、macOS Preview Find 兼容性及原始 Copy 未验证继续披露。下文通用能力/历史状态不构成已发布版本的全范围承诺；R02/R20/R22 边界继续保留。
+**2026-11-02 发布范围说明：**preview.10 已公开；[受限物理字体 profile](release-profile-cn-en.md)的 F01 native/default 各两页通过 PNG/Preview 检查，公开包/签名/独立消费见[最终发布记录](validation/preview10-publication-2026-11-02.md)。Regular-only 合成粗体 FAIL、macOS Preview Find 兼容性及原始 Copy 未验证继续披露。下文通用能力/历史状态不构成已发布版本的全范围承诺；R02/R20/R22 边界继续保留。
 
-日期：2026-10-21。R00 核对源码基线：`6aa8183ea31e193f500fb9d9717677b15e86c5d3`；R01 实现从已合并的 `35976dbee1f58eef5fe19f2750746a97d523cfec` 开始。研究报告 v1.2 的 .NET 基线是较早的 `e9b237bc85e4dee06c1f690bea48553a1f5a22e2`；报告中的候选缺陷和建议不视为已复现或已验收。此契约面向**当前源码**，不是已发布 NuGet 的能力声明。后续票合并时按新 head、实际出口和样本更新对应行。
+维护基线为公开产品源码 `8f27f92b51b70a9b01082da35ff1cfe989d46123`，整理日期 2026-11-02。R00–R22 是原工作单元编号，不是 SDK 版本或待派发清单；本页保留已交付能力的输入/出口契约，候选和未验证范围继续显式标注。新工作从[现行路线图](capability-roadmap.md)进入。
 
 ## 设计与判定
 
@@ -28,38 +28,34 @@
 | 外来 OFD 显式 `CGTransform` → PDF/SVG/HTML | 保存源 XML：`supported`。[R02 有界能力](validation/r02-cgtransform-profile.md)覆盖独立 BMP 字符的一对一原 GID、多个全局递增 `TextCode`、单个完整无 Delta 源片段到一个原 GID；单字符到两个原 GID 的 PR #60 子集已完成本地、包消费、PDF/SVG 页面及 Preview 证据。PR #62 另验收单个完整带显式字形槽定位的 1:N/N:M 源跨度，包括 Tamil 2:3、包消费、独立读者文本、PDF/SVG 页面、Preview 显示和复制以及精确 head CI/审查；Preview 搜索仍有歧义。未经修改的外来文件与更广映射仍须分别验收 | 范围外明确拒绝；无自动文字代换/光栅 fallback。局部 SVG 外来页面核对不等于全部出口放行 | [`PDF`](../src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs)、[`SVG`](../src/Ofdrw.Net.Converter.Svg/Converters/OfdToSvgConverter.cs) |
 | SES/SM2、GM/T 0099、归档 | 摘要引用完整性与可插拔 provider 已有；SES 测试容器和 password v2 是显式可选包；通用标准加密/生产 PKI/档案认证 `unsupported` 或 `unverified` | 自签、摘要匹配、外观可见均不自动升级为生产 `FullyValid` 或认证 | [`功能对照`](feature-parity.md)、[`能力路线`](capability-roadmap.md) |
 
-### 本轮 23 项的交付及验收矩阵
+### 有界能力索引
 
-下表是**开工基线**，不是进度勾选。`limited` 表示有相关前置或局部实现；`candidate` 表示报告提出的静态候选，等待最小 fixture；`new` 表示目标能力尚未验收。每票要在自己的源码 head 上记录输入哈希、输出哈希、正反样本、功能测试、PNG/Preview、包消费及外部互操作中实际适用的门。R00 的文档核对不会替其它票关闭这些门。
+下表合并旧开工矩阵；只列可复用入口与仍有效的限制，不把已经交付的单元继续标为 `new`。源码、功能测试、实际页面和外部互操作分别以链接内具名记录为准，文档整理不新增验收结论。
 
-| 票 | 当前判定及后续验收焦点 | 放行前失败/fallback 边界 |
+| 原单元 | 现有范围与维护入口 | 保留边界 |
 | --- | --- | --- |
-| R00 契约 | 本页与旧文档状态对齐；核对基线 SHA、源码入口、历史视觉记录 | 记录流与 CLI 差异，不把旧验收当本次产物 |
-| R01 PageBlock/文字/颜色 | 普通页及模板中的嵌套 Path/Text/Image、DrawParam/颜色空间与 Stroke/HScale 有确定性样本；最终功能、包消费和逐出口视觉结果见 R01 证据 | 未建模图元/颜色须拒绝；签章内嵌 OFD 的已识别无效颜色不得被容错层静默漏绘 |
-| R02 CGTransform | [有界能力与剩余矩阵](validation/r02-cgtransform-profile.md)：多个 `TextCode` 的全局递增位置按 PR #58 闭环，完整源片段多对一按 PR #59 闭环，单字符到两个原 GID 按 PR #60 闭环；完整带定位 1:N/N:M 源跨度按 PR #62 完成包、PDF/SVG 页面、Preview 显示和复制、独立读者文本及精确 head CI/审查。Preview 搜索有歧义；外来样本第 1 页仍仅是本地源 ID 规范化后的 SVG/独立阅读器诊断 | 未定位的新 N:M、混合或带定位的多对一、局部位置重置、非 BMP、复杂字体和不满足 PDF 嵌入政策的输入继续拒绝；不把局部子集当整票完成 |
-| R03 命名区域 | `new`；持久区域名、页引用，重开后文字/图片回填及区域外几何 | 重名、丢失、溢出明确失败 |
-| R04 流式块/回调/Span | Flow/Graphics 前置 `limited`；图片/Canvas 测量分页、最终回调、下划线/字距/字重 | 异常不提交假成功，旧 Flow 兼容模式保留 |
-| R05 复杂 Merge/Mix | 常见图元 `limited`；共享/嵌套资源、Clip/Composite/批注 ID 与 ownership | 未闭合引用默认拒绝，跳过只可显式选择并报告 |
-| R06 PDF 矢量 | 有限 profile `limited`；Rotation/CropBox、clip、画笔、XObject、字体逐特性正反样本 | 默认 Fail；显式回退整页，不能保留该页半成品矢量 |
-| R07 PDF 导航/附件 | 导入迁移 `new`；层级页映射、全局/页附件名与哈希 | 关闭迁移无残留；非法目标/冲突明确诊断 |
-| R08 字体后端 | [四出口能力表](validation/r08-four-outlet-ledger.md)逐输入列出 OFD 保存、SVG、PDF 和原 GID 轮廓：TTF 子集与字体身份；显式嵌入静态 TrueType 的补充平面 PDF；受限 name-only BMP、直接 PUA symbol cmap；TrueType 原 GID、可选 Skia CFF1 原 GID；选中静态常规 CFF1 Unicode 的 SVG 文字。每格只按固定样例及其源码/包、文本、实际页面证据验收 | 裸 Type1/裸 CFF 无正向样例；CFF PDF 嵌入、任意 CFF/SVG 字体、变量/彩色字体、普通字母的 symbol 低字节回退和未建模 `CGTransform` GID 输出仍拒绝或未验证。可信离线渲染的实际 SVG 逐页目视可作为所选 profile 的视觉证据；不由此推断浏览器内嵌字体加载 |
-| R09 绘图上下文 | Path/Text/状态栈 `limited`；当前源码新增 PNG/baseline-JPEG DrawImage/源裁切、不可变 dash/cap/join 与显式栅格矩形渐变/图片 tile；完整功能、逐出口视觉和包消费仍须以本项验收记录关闭 | 外来原生渐变/图案及任意路径渐变 brush 仍拒绝；栅格矩形由 API 显式命名与限定预算，见[设计](r09-graphics-design.md) |
-| R10 专用图像/区域提取 | JBIG2/ImageMask `new`；字符级 CTM/Delta 矩形筛选 `candidate` | 超预算/未知解码或几何语义显式失败/Unknown |
-| R11 签章外观 | 外来外观显示 `limited`；新生成普通章/骑缝章各页和签后重读 | 视觉外观不等于签名值或信任结论 |
-| R12 SES V5/外部签名 | provider 与 V1/V4 测试容器 `limited`；显式 V5 与 GB/T 35275 单签名者 profile 已与固定版本 Java OFDRW 双向验证，仍为 `limited` | 错证书/容器拒绝；PKI/TSA/法律效力不推定，默认验签仍 `Unsupported`；完整标准符合性和真实设备互操作未验证 |
-| R13 签名范围 | 默认引用策略 `limited`；Relative/Parameters、续签与漏保护文件 | 默认保守，显式策略不得无签名值假锁定 |
-| R14 标准加密 | 私有 password v2 `limited`；标准 profile、多 UserInfo、OFDEntries 与交叉样本 | v2 保留原义；错误口令/额外条目拒绝 |
-| R15 多 DocBody | Reader 枚举和显式选择、PDF/SVG/HTML/图像导出；隔离无签名目录下的选中文档编辑 `limited`，详见[多文档契约](multi-docbody.md) | 默认仍首文档；未选条目与 DocBody 保留；签名、共享资源和跨文档引用的编辑拒绝，不猜映射或自动清签 |
-| R16 强类型对象 | 少量 typed `limited`；DocInfo/权限/版本/动作读改写 | 未知节点保留；权限声明不等于执行策略 |
-| R17 归档 Rule/Handler | 结构预检 `limited`；具名条款、Pass/Fail/Unknown、独立副本 | Unknown 不升格 Pass，修复后重检 |
-| R18 附件清理 | 现有 List 移除保持逻辑语义；新增显式 `RemoveAttachment(..., Physical)` 仅对 Reader 来源的独占内部载荷、可证明的 XML/二进制所有权闭包执行物理删除，仍为 `limited` | 外部/共享、未知 XML 或二进制、编码路径、别名及多 DocBody 不能证明安全时，写流前拒绝；不自动降级为逻辑移除 |
-| R19 跨页复杂表格 | 整行分页 `limited`；RowSpan、拆行、重复表头、图片单元格 | 超出有限规则明确失败，逐页视觉验收 |
-| R20 完整归档规则 | `new`；逐条标准版本、条款、fixture 与独立核准 | 缺规范保持 Unknown/阻断，不声称认证 |
-| R21 真实字体测量 | 新查询 `limited`：固定静态 TrueType face、HarfBuzz 单 run GID/cluster/advance/ink、有限 Latin/Han 预排版及严格 ASCII OFD 出口；旧 Flow 仍用原度量 | 缺 native/字体或超出已验 profile 明确失败；混合字体、段落 bidi 和通用 GID 输出留待 R22，详见 [R21 profile](text-prelayout.md) |
-| R22 HarfBuzz 闭环 | 首段 `limited`：有界 Latin 单 run → OFD 原始 GID/原文及 typed 定位 → PDF/SVG 样例消费；详见 [typed 输出 profile](text-shaped-output.md) 与 [双词候选及独立门禁](validation/r22-two-word-export-validation.md)、[剩余范围与重复字母候选](validation/r22-remaining-scope.md) | 段落 bidi、复杂脚本、多 TextCode、独立阅读器与实际 Preview 仍各自待验；不能据首段关闭整项 R22 |
+| R00/R01 容器与绘图投影 | 普通页/模板嵌套 PageBlock、文字/颜色、附件动作；[修复记录](evidence/r01-pageblock-paint/README.md) | 未建模图元和无效颜色拒绝；未知 XML 保留不代表可呈现 |
+| R02 显式 GID 映射 | [全局受限映射](validation/r02-cgtransform-profile.md)与显式 [GroupedLocal](validation/r02-grouped-textcode.md)，共享 PDF/SVG/HTML 投影 | 默认保持 LegacyConcatenatedGlobal；非 BMP、越段、广泛自然外来互操作未解锁，完整 R02 未验收 |
+| R03 命名区域 | [持久命名、页引用及回填](r03-named-areas-design.md) | 重名、丢失和溢出明确失败，不自动重新分页 |
+| R04/R19 Flow 与表格 | [图片/Canvas/回调/Span](flow-layout.md)、[有限复杂表格分页](public-tables.md) | 固定块/合并行组及拆行/重复表头遵守各自规则；不等于 DOCX 任意表格保真 |
+| R05 Merge/Mix | [文档工具](tutorials/15-document-tools.md)的共享/嵌套资源、裁剪/组合与批注闭包 | 未闭合引用默认拒绝，跳过必须显式且报告 |
+| R06 PDF 矢量 | [受限路径/字体/画笔/裁切/raw RGB](tutorials/18-pdf-vector-mode.md) | 默认 Fail；显式整页回退不保留半成品矢量，不承诺任意 PDF |
+| R07 导航与附件导入 | [PDF 书签、附件迁移](pdf-import-navigation-attachments.md) | 默认关闭；页映射、冲突与失败诊断独立判定 |
+| R08 字体后端 | [四出口能力表](validation/r08-four-outlet-ledger.md)与各固定 profile | TrueType、CFF、symbol、非 BMP 各出口分别验收；变量/彩色/任意字体不推定支持 |
+| R09 绘图上下文 | [图片裁切、画笔和显式栅格矩形填充](r09-graphics-design.md) | 外来原生渐变/图案和任意路径渐变仍拒绝，栅格填充不是矢量渐变 |
+| R10 图像与区域 | [JBIG2/ImageMask 与受限区域提取](r10-restricted-image-region-profile.md) | 超预算、未知解码/几何拒绝或 Unknown，不作任意区域定位保证 |
+| R11 签章外观 | [普通章/骑缝外观](tutorials/10-signatures.md) | 可见外观不证明密码学有效、信任或 SVG 签章投影支持 |
+| R12 SES | [V5 与固定 Java 双向互操作子集](tutorials/19-ses-v5-35275-interop.md) | 默认 verifier 不注册测试容器；真实设备、PKI/TSA/法律效力未验证 |
+| R13 签名范围 | [References、续签与可变目录](signature-scope-v12.md) | 无签名值 provider 不得假锁定；摘要匹配不等于生产信任 |
+| R14 加密 | [私有 v2 与显式标准交换子集](password-crypto.md) | 核心标志不变；混合接收人/多层及完整 GM/T/厂商互认未支持 |
+| R15 多 DocBody | [枚举、选择、导出与隔离编辑](multi-docbody.md) | 默认首文档；签名、共享资源和跨文档引用的编辑受限 |
+| R16 标准对象 | [DocInfo/权限/版本/动作编辑](standard-object-editing.md) | 未知节点保留；声明权限不等于执行策略 |
+| R17/R20 归档 | [有限 Rule/Handler](archival-preflight.md)、[条款覆盖账本](archival-standard-coverage.md) | Unknown 不升格 Pass；完整 R20 未验收，不宣称认证 |
+| R18 附件清理 | [逻辑移除与显式物理清理](r18-attachment-cleanup-design.md) | 只删除来源/独占载荷与引用闭包可证明的对象，不能证明时拒绝 |
+| R21/R22 文字查询与输出 | [固定字体测量](text-prelayout.md)、[typed 输出](text-shaped-output.md)、[混排查询](text-mixed-paragraph.md)、[查询设计](architecture/r22-mixed-text-decision.md) | 已有 run/span/字号/定位增量不等于一般 bidi、断行、Flow/writer 闭环；[reader 反例与独立门](validation/r22-reader-replacement-candidate.md)继续有效 |
 
 ## 证据与门禁
 
-本次 R00 不修改产品代码；生成的页面仅用于下述缺陷复现。定向功能测试：`PlainTextOfdTests` 35/35、`HtmlPreviewTests` 29/29（.NET 10.0.401、Release、单节点、禁用 build servers，共同源码基线如页首）。HTML 首次 28/29：LFS 未物化的 `style-metrics.ttf` 被当成字体输入；仅获取该文件后复跑为 29/29。这是测试前置条件，不记录成产品缺陷已修复。NuGet restore 对现有 ImageSharp 2.1.13 输出 `NU1902/NU1903` 依赖告警，本票未升级依赖。文档链接检查和 `git diff --check` 通过。普通 `PageBlock` 最小路径样本复现 PDF/SVG 漏绘、HTML 明确拒绝；新 PDF 第 1 页的 PNG 与 macOS Preview 均确认蓝色矩形缺失，已关窗，见[复现与哈希](evidence/r00-pageblock/README.md)。这是**视觉缺陷证据**，不是视觉通过。**本次仅对上述缺陷样本完成自动渲染、PNG 与 Preview 复查；没有完成其它功能的视觉或包消费验收**。已有 [`preview.9 接受记录`](release-preview-acceptance.json) 仅证明其列出的 `generated-layout.docx`、源码指纹、两种 OFD/PDF 哈希及各 1–2 页在 2026-10-18 的实际 Preview 查看；不得泛化到所有 DOCX 或当前未生成的 OFD。[`Issue 02 历史记录`](validation/issue02/README.md) 中早期斜体失败及后续修复/复验仍按各自基线保留，不能删除失败来“改善”总状态。
+[原 R00 PageBlock 漏绘](evidence/r00-pageblock/README.md)是历史负面证据；[R01 修复记录](evidence/r01-pageblock-paint/README.md)不回写它的原结论。`validation/` 与 `evidence/` 中各次测试、包消费、PNG/Preview 和 Copy/Find 仅绑定原源码及产物，不能移作新候选凭证；[文档索引](README.md#历史资料)提供旧开工/调度记录的固定提交入口。
 
-每个后续视觉票按仓库 `AGENTS.md` 留存：源码 SHA、fixture 及 SHA-256、模式、OFD/PDF/PNG 哈希、功能和包消费结果、全部受影响页 PNG 检查范围，以及实际 `DOCX → native/default OFD → PDF → macOS Preview` 或其它准确链路、页码、发现与关窗记录。独立阅读器未检查时标 `unverified`。任何新产物重生成后重开 Preview；视觉缺陷未解决时不得标整体通过。R00 不改调度文件，不授权 tag、NuGet 或 Release。
+每个影响页面的变更仍按根 `AGENTS.md` 和[发布门禁](release-engineering-gates.md)保存源码 SHA、输入/输出哈希、真实模式、功能/包消费及全部受影响页的 PNG/Preview 结果。未检查的互操作标为 unverified；重新生成后重新打开产物；视觉缺陷未解决不得标整体通过。发布记录和 Q05 JSON 中的身份保持原意，不自动绑定到后续 main 文档树。

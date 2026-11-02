@@ -70,4 +70,4 @@ DOCX 查看链路为 `generated-layout.docx → native/default OFD → PDF → P
 
 ## 复取材料
 
-关键输入、实际输出、页面图、独立几何/包身份记录和视觉验收记录按仓库存储规则保存至[可按需下载的 LFS 证据包](../evidence/r02-grouped-textcode-20261028/README.md)；不归档构建目录、包缓存、第三方源码副本或全量包。公开规范引用及标准 PDF 哈希保存在[方案文档](r02-grouped-textcode-plan.md)。
+关键输入、实际输出、页面图、独立几何/包身份记录和视觉验收记录按仓库存储规则保存至[可按需下载的 LFS 证据包](../evidence/r02-grouped-textcode-20261028/README.md)；不归档构建目录、包缓存、第三方源码副本或全量包。公开规范引用及标准 PDF 哈希保存在[方案文档](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/docs/validation/r02-grouped-textcode-plan.md)。

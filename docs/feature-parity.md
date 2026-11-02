@@ -1,17 +1,8 @@
 # Ofdrw.Net 与 OFDRW 功能对照
 
-**2026-11-02 发布范围说明：**preview.10 已公开；[受限物理字体 profile](next-steps-2026-11-02.md)的 F01 native/default 各两页通过 PNG/Preview 检查，公开包/签名/独立消费见[最终发布记录](validation/preview10-publication-2026-11-02.md)。Regular-only 合成粗体 FAIL、macOS Preview Find 兼容性及原始 Copy 未验证继续披露。下文通用能力/历史状态不构成已发布版本的全范围承诺；R02/R20/R22 边界继续保留。
+维护基线：公开产品源码 `8f27f92b51b70a9b01082da35ff1cfe989d46123`（`0.1.0-preview.10`）；整理日期 2026-11-02。发布、签名、消费与限定页面结果见[最终发布记录](validation/preview10-publication-2026-11-02.md)。DOCX 的页面通过范围仅为[固定物理字体配置](release-profile-cn-en.md)和 F01 四页；Regular-only 视觉 FAIL、Preview Find 异常与原始 Copy 未验证继续保留。
 
-更新时间：2026-10-21（R00 契约核对）
-
-本表沿用[历史开发计划](capability-roadmap-development-plan.md)固定的 OFDRW 比较快照；原状态核对固定在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0`。R00 在 `6aa8183ea31e193f500fb9d9717677b15e86c5d3` 重核源码入口与仓库文件，逐出口、输入和 fallback 边界见 [v1.2 能力契约](capability-contract-v12.md)。历史 ticket 状态和验收记录见 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)。R00 除定向功能测试外，重生成并用 PNG/Preview 复查了一个 PageBlock 缺陷样本；该样本视觉未通过；源码、测试入口、合并、视觉和发布状态不能互相替代。本表不代表 GB/T 33190 或密码应用规范的合规认证。
-
-状态说明：
-
-- **已支持**：存在公开 API/CLI，且有自动化测试或真实样本验证。
-- **部分支持**：主流程可用，但数据模型、保真度或算法覆盖仍有限。
-- **扩展点**：协议编排已实现，关键算法需要调用方或厂商实现。
-- **未支持**：当前没有可用实现。
+本表描述有限实现；逐入口/出口、输入语义与失败策略见[能力契约](capability-contract-v12.md)。功能已实现、实际视觉通过、互操作和公开发布是不同结论；不构成 GB/T 33190 或密码应用规范认证。状态中的“已支持”仅限所列 API/输入，“部分支持”保留明确拒绝和未验证范围，“扩展点”需要调用方提供实现。
 
 ## 能力矩阵
 
@@ -28,10 +19,10 @@
 | PDF → OFD | `ofdrw-converter` 转换能力 | 默认双层；可选 Pdf.Vector 包经 19/04 输出受限 native PathObject/TextObject，校验原文与嵌入字体字形 | **部分支持**；[矢量模式](tutorials/18-pdf-vector-mode.md) 支持明确页框/路径/TrueType profile；压缩流、clip/图像/effects/复杂字体等明确整页回退或失败；默认 CLI 仍双层，扫描件无 OCR，不承诺任意 PDF 保真/阅读顺序标记 |
 | DOCX → PDF / OFD | 上游不提供 Office 文档渲染 | 默认直接将 DOCX/OpenXML 原文写为原生 OFD `TextObject`，完全跳过 PDF；可选 `DualLayer` 使用 Word/LibreOffice/BuiltIn 页面图像，并继续以 OpenXML 原文作为语义层 | **已支持（预览）**；原文可直接抽取，Native 支持常见段落、表格、内嵌图片与按页页眉页脚；附属正文带标签追加，DualLayer 按实际页定位原文，不承诺复杂 Word 版式和浮动对象保真 |
 | OFD → SVG | 上游推荐/生态具备 SVG 预览方案 | 自包含单页 SVG，支持模板、路径、文本、颜色、变换和内嵌图片 | **部分支持（预览）**；CGTransform 仅接纳[原 GID 有界候选](validation/r02-cgtransform-profile.md)，其它明确拒绝；其它语义不从 PDF/HTML 结果推定 |
-| OFD ↔ PNG/JPEG | 图片导出与一图一页导入 | `Converter.Pdf` 的 `OfdToImageConverter` / `ImageToOfdConverter` 及 CLI；指定零基页/ppm导出、PNG默认/JPEG、自然或固定页等比居中导入、有界暂存 | **已实现（本票源码）**；PDF/PDFium 预览保真边界，视觉门状态见 [Issue 02 验证记录](validation/issue02/README.md) |
+| OFD ↔ PNG/JPEG | 图片导出与一图一页导入 | `Converter.Pdf` 的 `OfdToImageConverter` / `ImageToOfdConverter` 及 CLI；指定零基页/ppm导出、PNG默认/JPEG、自然或固定页等比居中导入、有界暂存 | **有限实现**；PDF/PDFium 预览保真边界，视觉门状态见 [Issue 02 验证记录](validation/issue02/README.md) |
 | 纯文本 → OFD | `TextConverter` | `PlainTextOfdConverter` 与 `text-to-ofd` CLI：严格 UTF-8、有限预算、Flow 分页 | **部分支持**；首版源码及测试入口已存在，复杂 shaping/字体嵌入不由此推定；见[契约](plain-text-ofd.md) |
 | HTML 导出 | 转换模块覆盖 HTML 方向 | `OfdToHtmlConverter` 与 `ofd-to-html` CLI：有界、自包含静态 SVG 页面、严格预检 | **部分支持**；首版源码及测试入口已存在；外来复杂图元及各出口分别验收，见[教程](html-preview.md)与[契约](capability-contract-v12.md) |
-| OFD-A 归档检查 | `ofdrw-archive` | 有限只读 archive preflight；完整标准 Rule/Handler 与条款覆盖尚无可确认实现 | **部分支持**；结构/有限预检不代表档案合规或认证，见[预检契约](archival-preflight.md)与[本轮契约](capability-contract-v12.md) |
+| OFD-A 归档检查 | `ofdrw-archive` | 有限只读 archive preflight；已有有限标准 Rule/Handler，完整条款覆盖尚未完成 | **部分支持**；结构/有限预检不代表档案合规或认证，见[预检契约](archival-preflight.md)与[能力契约](capability-contract-v12.md) |
 | 文本提取 | 上游提供文字抽取 | 页面和模板文本提取，API 与 CLI | **已支持** |
 | 关键词定位与替换 | 文本位置查询及文档工具 | 正文字面匹配、原嵌入字体字形/基线/advance/字形框证据；受限替换 API 与原子文件 CLI | **部分支持**；Regular 原字体、简单 scalar、水平正向与仅平移替换；模板/批注、复杂 shaping 和超出原区域的替换明确拒绝。见[教程](tutorials/16-keyword-replacement.md)和[验收证据](evidence/issue06-owned-save/README.md) |
 | 文档工具 | `ofdrw-tool` 提供合并、裁剪、重组、混合等 | 页重排、删除、裁剪、自包含合并；指定层文字/图片水印、按列表 Split、带模板/可见注释的 Mix、全部 DocBody 清签，API 与 CLI | **部分支持**；03 实现范围见[工具教程](tutorials/15-document-tools.md)，复杂未知引用明确失败、共享资源保守保留；附件已有逻辑移除与受限显式物理清理，见[附件教程](tutorials/09-templates-attachments-tags.md)；视觉/review 状态见[03 证据](evidence/document-tools/README.md) |
@@ -44,61 +35,12 @@
 | Graphics2D 兼容层 | `ofdrw-graphics2d` | Layout 公开 OfdGraphics/OfdPen/OfdBrush/OfdFont/OfdGraphicsPath/OfdMatrix，输出原生 PathObject/TextObject/ImageObject；R09 新增图片裁切和可配置线型、显式栅格矩形渐变/图片 tile | **部分支持**；04 原语绘图已实现，无 Skia 必需依赖；R09 的源与出口边界见[设计](r09-graphics-design.md)，外来原生渐变/图案仍不支持；19 已实现受限合作 producer 事件适配（不透明捕捉 SKCanvas，验收见独立证据）；05 已有有限 TrueType 子集实现，其他字体格式继续遵循[契约](font-subset-and-reuse.md) |
 | 兼容性与发布 | Maven 多模块、长期演进 | `netstandard2.0/2.1` SDK + `net10.0` CLI，NuGet 包消费 E2E | **部分支持**；仓库采用 MIT 并附第三方声明；发布候选需通过同一批 NuGet 包的消费验证 |
 
-## 本轮补强结果
+## 后续范围与验证
 
-本轮优先关闭了影响真实 OFD 使用的高杠杆缺口：
+剩余问题、被动观察、取消项与未来候选统一见[现行路线图](capability-roadmap.md)。已实现的命名区域、Canvas、多 DocBody、有限签名/加密/归档能力不再重复列为新任务。Graphics 原语与字体子集分别见[绘图契约](graphics-design-contract.md)、[字体契约](font-subset-and-reuse.md)及各自验收记录，不从单一接口推定整个上游 issue 已关闭。
 
-1. 从“只认识少量对象”提升为图层、模板、文字游程、路径、字体、图片、
-   附件和未知扩展的损失可控读写。
-2. 增加资源引用、全局对象 ID、结构检查和有界 ZIP 加载，降低错误包、
-   路径穿越和解压炸弹风险。
-3. 提升 OFD → PDF 保真度，并新增自包含 SVG 导出。
-4. 增加文本提取、页编辑和文档合并 API/CLI。
-5. 增加 DOCX → PDF/OFD 的公开 API、CLI、隔离外部进程和无 Office 的 BuiltIn 兜底，并以无隐私样例覆盖自动回退、资源限制与 NuGet 消费链路。
-6. 增加签名生成编排、SM3/摘要校验和可插拔签名值验证，且明确区分
-   “引用完整性有效”与“密码学签名完全有效”。
-7. 将 PDF 解析依赖迁移到官方 `PdfPig` 包，移除无用包引用，并补齐
-   NuGet 消费端 E2E、第三方许可清单和发布许可闸门。
+实际结果按各 `validation/`、`evidence/` 报告中的原源码、输入和页范围解释；旧失败不重标通过。R00 PageBlock 的[原漏绘样本](evidence/r00-pageblock/README.md)仍保留，后续 R01 的[修复记录](evidence/r01-pageblock-paint/README.md)另证其有限结果。新生成产物须按[发布门禁](release-engineering-gates.md)与根 `AGENTS.md` 重新验收。
 
-## 后续工作
+依赖健康（2026-10-15 原记录）：[PDF 项目](../src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj)与[DOCX 项目](../src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj)仍固定 `SixLabors.ImageSharp 2.1.13`；维护者 [GHSA-wmxv-xphr-5c9g](https://github.com/SixLabors/ImageSharp/security/advisories/GHSA-wmxv-xphr-5c9g)（2026-09-15 发布，Moderate，CVSS 5.3）列出的受影响区间包含该版本。图片导入在 Identify 前只准入 PNG/JPEG；DOCX、OFD 与签章位图在 Identify/解码前拒绝 BigTIFF 的两种字节序，保留经典 TIFF 等既有格式。此边界修复不代表全部 ImageSharp 风险已消除；未做全量传递依赖/deprecated 审计，版本、目标框架与许可未变。
 
-可执行 TODO、批次顺序和无密码厂商前提下的加密/签章边界见
-[能力路线图](capability-roadmap.md)。
-
-本对照表只记录现状。路线图已取代下面这类「愿望清单」写法，避免把生产 SES
-内置或 GM/T 0099 核心支持写成默认承诺。
-
-## 历史验证记录与本次核对
-
-下列构建、样本和 11 包数字保留原验证快照，不能推定为 R00 的 `6aa8183` 上重新执行。各能力后续测试/页面的提交、产物和检查范围以 ticket 索引所链接的原证据为准；失败和未完成记录保持不变。
-
-- Release 构建：解决方案全部项目成功。
-- 单元/集成测试：以两页非隐私样例逐字核对 OpenXML 原文与 Native/DualLayer OFD 抽取结果；另覆盖真实 LibreOffice、BuiltIn、自动兜底和外部资源拒绝。
-- NuGet：11 个本地包成功生成，并由独立消费项目在不安装 Word/LibreOffice 的环境覆盖 BuiltIn DOCX、PDF、SVG 和签名转换。
-- 上游样本：`999.ofd` 的 5 页、图层、模板、路径、文字对象、注释保留、
-  SVG 视觉输出和 20/20 个 SM3 保护引用通过验证。
-- PDF 互操作：3 个上游 PDF 样本完成 PDF → OFD → PDF 视觉冒烟。
-- 依赖健康（2026-10-15 核对）：[PDF 项目](../src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj)与[DOCX 项目](../src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj)仍固定 `SixLabors.ImageSharp 2.1.13`；维护者 [GHSA-wmxv-xphr-5c9g](https://github.com/SixLabors/ImageSharp/security/advisories/GHSA-wmxv-xphr-5c9g)（2026-09-15 发布，Moderate，CVSS 5.3）列出的受影响区间包含该版本。图片导入在 Identify 前只准入 PNG/JPEG；DOCX、OFD 与签章位图在 Identify/解码前拒绝 BigTIFF 的两种字节序，保留经典 TIFF 等既有格式。此边界修复不代表全部 ImageSharp 风险已消除；未做全量传递依赖/deprecated 审计，版本、目标框架与许可未变。
-
-详细行为与兼容边界见 [转换、编辑与资源约定](conversion-contracts.md)。
-
-issue #3 的逐项状态见 [实现对照](issue-3-implementation.md)，不因 04 单票而宣称整个 issue 完成。
-
-## 合并、视觉和发布边界
-
-| 状态层 | 本次可以确认的内容 | 未执行的门 |
-| --- | --- | --- |
-| 本地源码 | `6aa8183` 的公开实现；R00 定向运行纯文本 35/35、HTML 29/29，见[本轮契约](capability-contract-v12.md) | 未重跑全套回归，不扩大有限 profile |
-| 已合并 | R00 起始时 `origin/main=6aa8183`；旧能力按已有历史记录和本轮源码判定 | R00 分支在本表编写时尚未合并；后续票不凭旧 open/unmerged 文案推断状态 |
-| 实际视觉 | 历史记录只证明当时具名产物与页码；R00 [缺陷样本](evidence/r00-pageblock/README.md) 新 PDF 第 1 页已用 PNG/Preview 确认漏绘 | 此次检查是负面证据，不是其它文档的视觉通过 |
-| 已发布版本（R00 历史观察） | 本地消费包只证明该次包消费；[preview.9 页面接受记录](https://github.com/whynpc9/ofdrw.net/blob/v0.1.0-preview.9/docs/release-preview-acceptance.json)在其固定源码指纹及具名页面上为 `accepted` | R00 未查询新的 NuGet 版本、未打包/发布；历史接受记录不延伸到新产物；preview.10 当前结果见页首发布记录 |
-
-## 11 票：独立口令扩展
-
-`Ofdrw.Net.Crypto.Password`（net8.0）提供本包 profile v2 的随机盐/有界 scrypt、
-独立 IV 的 SM4-CBC/PKCS#7 与先验 HMAC、显式部分页/条目加密及精确恢复；拒绝v1。
-核心 `SupportsGmT0099EncryptionEnvelope=false` 保持不变，不进入默认 Converter。
-私有 v2 仍仅自闭环；显式 R14 入口支持固定 Java 2.4.0 的口令或 SM2 证书同类多接收人、
-签名清单及本包逐文件摘要扩展，仍不支持混合接收人或多层加密。无厂商互认、非商用密码认证、非长期保存格式。
-契约与限制见[可选加密扩展](password-crypto.md)，
-功能/页面/review 状态见[本票证据](evidence/password-crypto/README.md)。
+生产签章与可选加密的边界见[签名保护范围](signature-scope-v12.md)、[SES 教程](tutorials/19-ses-v5-35275-interop.md)与[可选加密](password-crypto.md)。核心能力标志不因可选包或测试容器而提升。

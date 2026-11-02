@@ -35,4 +35,4 @@ Use two positional paths or both named paths, without mixing. `--font-family` ch
 
 The command validates and renders before staging, writes beside the destination, and atomically replaces it only after completion. Failures or cancellation before commit retain an existing destination and remove staging. Cancellation after replacement cannot undo the commit. Existing conversion path identity protection rejects the same path and symbolic aliases. Exit codes are 0 (success), 1 (error), and 130 (canceled).
 
-Implementation evidence and inspected sample scope: [Plan 028 follow-up](../plans/028-followup-implementation.md).
+Implementation evidence and inspected sample scope: [Plan 028 follow-up](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/plans/028-followup-implementation.md).

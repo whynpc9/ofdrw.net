@@ -1,6 +1,6 @@
 # N03：极小正字号输出契约
 
-源码基线：`ba7682cfceafd6e28d526941e0eb039addfe400f`，分支 `codex/cn-en-release-n03`。本项仅处理 [N03](../next-steps-2026-11-01.md#n03极小正字号的序列化契约)，不扩展 R22、字体或坐标精度。
+源码基线：`ba7682cfceafd6e28d526941e0eb039addfe400f`，分支 `codex/cn-en-release-n03`。本项仅处理 [N03](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/docs/next-steps-2026-11-01.md#n03极小正字号的序列化契约)，不扩展 R22、字体或坐标精度。
 
 ## 决策与兼容性
 
