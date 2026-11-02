@@ -89,6 +89,7 @@ ofdrw 把规范对象几乎全部代理成 DOM 类型；Ofdrw.Net 用更小的�
 ## 转换 API 实操
 
 - [OFD 与 PNG/JPEG 图片转换](15-image-conversion.md)：指定页/ppm、居中导入、预算与原子输出。
+- [中英文 DOCX 字体部署](cn-en-font-deployment.md)：固定真实 Regular/Bold、Native/default 完整 API、CLI 与实际验收边界。
 
 ## 相关文档
 

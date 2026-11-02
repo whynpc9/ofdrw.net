@@ -23,6 +23,7 @@ OFDRW comparison, completed hardening work, and remaining production gaps.
 See [docs/capability-roadmap.md](docs/capability-roadmap.md) for the TODO list,
 implementation batches, and the encryption/signature boundary without a crypto vendor.
 See [conversion contracts](docs/conversion-contracts.md) for page selection, original-text diagnostics, font initialization, resource budgets, and editing behavior.
+See [CN/EN font deployment](docs/tutorials/cn-en-font-deployment.md) for pinned Regular/Bold preparation, complete native/default API examples, CLI options, and current visual/Copy/Find limits.
 See the [OFD format tutorials](docs/tutorials/README.md) for a progressive walk through GB/T 33190 package structure, pages, text, paths, images, templates, and signatures, plus OFD-H medical-record profile notes, mapped to both ofdrw and this repository.
 See the [archival preflight API](docs/archival-preflight.md) and [GB/T 42133-2022 coverage ledger](docs/archival-standard-coverage.md) for the verified rule subset and remaining archival requirements.
 
