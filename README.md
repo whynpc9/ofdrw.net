@@ -79,6 +79,8 @@ LFS payloads, ordinary Git blobs above 5 MiB and tracked `artifacts/` files.
 
 Published packages are available on [NuGet](https://www.nuget.org/profiles/whynpc). The release version is `0.1.0-preview.9`. See the [release notes](docs/release-notes-0.1.0-preview.9.md).
 
+The source tree is preparing **unpublished** `0.1.0-preview.10`; its [candidate notes and bounded font profile](docs/release-notes-0.1.0-preview.10.md) do not change the published installation version above.
+
 ### Which package should I install?
 
 - For most format-conversion applications, install [`Ofdrw.Net.Converter`](https://www.nuget.org/packages/Ofdrw.Net.Converter). It brings in the DOCX, PDF, and SVG converters.

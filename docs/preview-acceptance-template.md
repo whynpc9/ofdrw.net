@@ -2,6 +2,22 @@
 
 > 复制到 `artifacts/<candidate>/preview-acceptance.md` 并填写真值。空白、`未检查`、自动化绿测均不表示 Preview 已验收。每次重新生成 OFD/PDF 后，关闭并重新打开 Preview 文档，再逐页复查。
 
+## 受限 profile 与独立限制
+
+preview.10 采用用户 2026-11-02 选择的 `cn-en-physical-cjk-400-700-v1`；详见[当前计划](next-steps-2026-11-02.md)及 [Q05 说明](release-engineering-gates.md)。本模板不预填通过结果。
+
+| 项目 | 实际值 |
+| --- | --- |
+| release profile ID、承诺范围 | 未填写 |
+| 显式 FontDirectories、源字体 manifest/三字体哈希与实际选中 face/子集证据 | 未填写 |
+| 严格 Throw、Office 开关、固定 fallback 与两模式实际参数 | 未填写 |
+| 旧 Regular-only 对照/量字 FAIL 的独立证据与边界 | 未填写 |
+| Preview Find 的实际 OS/build、UI 观察、已知兼容性限制 | 未填写 |
+| 原始 Unicode Copy 的实际验证状态/工具限制 | 未填写 |
+| 用户 2026-11-02 范围决定与 known limitations 披露位置 | 未填写 |
+
+最终 JSON 保留全部核心字段，并另附 `release_profile` 对象和 `known_limitations` 列表。`open_findings=[]` 只可表示该明确 profile 的本次必验页面无开放视觉缺陷；不能宣称范围外旧 FAIL、Preview Find 或未完成原始 Copy 已通过。脚本不验证附加字段语义，须由协调者/Astra 对原证据复核。禁止提前改旧 accepted JSON，禁止将新的 profile 内失败改列限制来放行。
+
 ## 候选与产物
 
 | 项目 | 实际值 |
@@ -40,4 +56,4 @@
 - 遗留缺陷、未检查页面和原因：未填写。
 - 回滚依据（上个已验证标签/包）、候选放行人：未填写。
 
-只有上述链路中的本次页面被 Preview 逐页查看，且缺陷关闭后，才能把视觉验收记为完成。CI 可以验证产物和像素差，无法代替这项人工记录。
+只有上述链路中的本次页面被 Preview 逐页查看，且明确 release profile 内视觉缺陷关闭后，才能把该 profile 的视觉验收记为完成；Find/Copy 限制及范围外旧 FAIL 继续单独披露。CI 可以验证产物和像素差，无法代替这项人工记录。
