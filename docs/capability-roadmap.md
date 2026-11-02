@@ -18,9 +18,9 @@ Flow 段落/表格、命名区域、图片/Canvas/回调、文档工具、多 Do
 
 | 项目 | 当前决策与边界 | 依据 |
 | --- | --- | --- |
-| Regular-only 合成粗体 | 默认 TextStroke 下“量”字字腔视觉 FAIL 未修复；限定物理 Regular/Bold 配置的通过不改变旧结果；不恢复整条光学增强研究 | [原失败与独立验收](validation/cn-en-release-local-validation.md) |
+| Regular-only 合成粗体 | D07 有界审查关闭，无新候选；默认 TextStroke 下“量”字字腔视觉 FAIL 未修复；继续推荐显式物理 Regular/Bold 与 D04 严格策略，不恢复整条光学增强研究 | [原失败与独立验收](validation/cn-en-release-local-validation.md)、[D07 处置与重开条件](validation/d07-regular-textstroke-disposition.md) |
 | Preview Find / 原始 Copy | 页末日期/部分整词 Find 异常根因未定；D06 复用旧证据关闭本轮调查，保留 Find 失败；原始 Unicode 剪贴板 Copy 未完成；不以文本提取或 API 查询替代实际 UI | [N02 有界调查](validation/cn-en-release-n02.md)、[系统对照](validation/cn-en-preview-control-2026-11-02.md)、[D05 Copy 未完成](validation/d05-raw-copy-capability.md)、[D06 有界处置](validation/d06-preview-find-disposition.md) |
-| PR78 / C1、C2 | PR78 已关闭未合并，保留分支与证据；C1 导入 paint/CTM 保持、C2 SVG 使用声明字体族仅为独立候选，未开工，不作为 preview.10 前置 | [N01 处置与精确候选](validation/cn-en-release-n01.md) |
+| PR78 / C1、C2 | PR78 已关闭未合并，保留分支与证据；C1/C2 已独立完成 D02/PR98、D03/PR99，不包含光学增强、不关闭 Regular-only 失败，不改写 preview.10 发布内容 | [N01 历史处置](validation/cn-en-release-n01.md)、[D02](validation/d02-imported-paint.md)、[D03](validation/d03-svg-declared-family.md) |
 | N04 Skia / N05 Windows Audit025 | 被动观察；保留现有诊断、测试和预算，新自然失败有判别证据再限定范围，不追加循环压力实验，不称根治 | [Skia](validation/skia-font-read-evidence.md)、[分配边界](validation/audit025-allocation-boundary.md) |
 | N09 完整未知外来映射 | 已取消，不等待自动续接；现有受限 R02 能力与失败证据保留，完整 R02 未验收 | [CGTransform](validation/r02-cgtransform-profile.md)、[GroupedLocal](validation/r02-grouped-textcode.md) |
 | ImageSharp 告警 | 现有 NU1902/NU1903 仍披露；准入限制、测试通过或限定发布不等于依赖问题修复 | [发布说明](release-notes-0.1.0-preview.10.md)、[依赖声明](../THIRD-PARTY-NOTICES.md) |
