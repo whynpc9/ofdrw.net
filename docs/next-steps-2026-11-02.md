@@ -1,6 +1,8 @@
-# 中英文受限预览候选计划（2026-11-02）
+# 中英文受限预览版范围与发布收尾（2026-11-02）
 
-用户本日选择：**“限定已验证真实 Regular/Bold 配置，将 Preview 搜索兼容性与未完成原始 Copy 明列为预览版限制（便于尽快发布）。”** 本文取代 [2026-11-01 计划](next-steps-2026-11-01.md)中新候选的范围/阻断解释，不改写历史运行结论。目标为 `0.1.0-preview.10` 的可审查、可发布准备候选；当前未发布，不创建 tag、GitHub Release 或推 NuGet。新候选完成下列门禁前也不宣称 release-ready。
+**2026-11-02 发布状态：**`0.1.0-preview.10` 已公开，[GitHub Release](https://github.com/whynpc9/ofdrw.net/releases/tag/v0.1.0-preview.10) 于 05:27:19 UTC 发布，12 个主 NuGet 包的公开回读、仓库签名及全新公开源 API/HarfBuzz/CLI 消费已完成。产品源码/标签为 `8f27f92b51b70a9b01082da35ff1cfe989d46123`，发布控制器为 `3568c00bb52408f1151095823a1337cb97cb25dc`。成功工作流及限定页面结果见[最终发布记录](validation/preview10-publication-2026-11-02.md)和[发布说明](release-notes-0.1.0-preview.10.md)。D01 为本次发布状态与证据文档收尾；不启动 D02 或未来议题。
+
+用户本日选择：**“限定已验证真实 Regular/Bold 配置，将 Preview 搜索兼容性与未完成原始 Copy 明列为预览版限制（便于尽快发布）。”** 本文取代 [2026-11-01 计划](next-steps-2026-11-01.md)中新候选的范围/阻断解释，不改写历史运行结论。以下保留配置、发布前观察与当时的冻结/验证顺序；其中“候选”“发布前须”等描述对应发布准备阶段，完成结果以上述最终发布记录为准，不重复发布同版本。
 
 ## 1. 新候选固定配置
 
@@ -18,7 +20,7 @@ Profile ID：`cn-en-physical-cjk-400-700-v1`。DOCX → 显式 native/default OF
 
 CJK 来源 revision `f8d157532fbfaeda587e826d4cd5b21a49186f7c`、源 VF SHA-256 `990c807e79c25662a5a9ecf7f971baeb2bf2eab9a559e5ecf15cdfdb8561d21f`；fontTools `4.59.2` 离线实例化 400/700，运行时不是变量字体。来源、固定参数和 OFL 许可证详见教程。字体不加入 NuGet，不增加字体载荷。实际输出的嵌入子集身份另验，不能要求其哈希等于源字体。
 
-此配置没有 Noto Sans Bold 或物理 Italic，不承诺任意家族/face、系统字体、缺字 fallback、合成字重的视觉质量。需要其他真实样式须提供对应合法字体并另验；既有斜体路径可模拟，不能称为物理 Italic。`Throw` 只约束选中的 Native 嵌入粗体；Office 开关只关闭特定暂存行为，两者均不是全局字体隔离。CLI 未提供严格粗体策略开关，故严格 profile 使用 API；CLI 默认行为仍保留并回归。
+此配置没有 Noto Sans Bold 或物理 Italic，不承诺任意家族/face、系统字体、缺字 fallback、合成字重的视觉质量。需要其他真实样式须提供对应合法字体并另验；既有斜体路径可模拟，不能称为物理 Italic。`Throw` 只约束选中的 Native 嵌入粗体；Office 开关只关闭特定暂存行为，不代表禁用全部系统字体解析，两者均不是全局字体隔离。CLI 未提供严格粗体策略开关，故严格 profile 使用 API；CLI 默认行为仍保留并回归。
 
 ## 2. 原证据与新候选分别判定
 
@@ -38,7 +40,7 @@ CJK 来源 revision `f8d157532fbfaeda587e826d4cd5b21a49186f7c`、源 VF SHA-256 
 
 用户决定使以上已披露限制不再单独阻断这个新预览 profile；不豁免原文完整性、PDF 重复文本检查、逐页视觉或工程门。保留实际失败/缺证据，不以“限制”字样改写测量结果。
 
-## 4. 版本与发布集合冻结
+## 4. 版本与发布集合冻结（发布前历史快照）
 
 于 **2026-11-02 01:13:57 UTC** 逐 ID 请求官方 NuGet V3 flat-container 索引，并执行 `git ls-remote --tags origin`：默认 12 个产品中 11 个既有 ID 均为 HTTP 200、最新 `0.1.0-preview.9`、无 preview.10；`Ofdrw.Net.Text.HarfBuzz` 为 HTTP 404。远端 tag 最新 `v0.1.0-preview.9`，没有 `v0.1.0-preview.10`。本轮固定候选版本为 **`0.1.0-preview.10`**，不是版本预留或公开发布。
 
@@ -57,9 +59,9 @@ CJK 来源 revision `f8d157532fbfaeda587e826d4cd5b21a49186f7c`、源 VF SHA-256 
 | [Converter](https://api.nuget.org/v3-flatcontainer/ofdrw.net.converter/index.json) | 200 / preview.9 |
 | [Cli](https://api.nuget.org/v3-flatcontainer/ofdrw.net.cli/index.json) | 200 / preview.9 |
 
-表中简称均加 `Ofdrw.Net.` 前缀。原始响应/标签记录保存在 ignored `artifacts/cn-en-release/preview10-version-check.json`。实际 tag 推送前还须重新检查版本占用，并核实新 HarfBuzz ID 的发布权限；不读取或披露密钥明文。`Directory.Build.props` 候选默认版本和随包说明改为 preview.10；README 的已发布版本/安装命令保留 preview.9，直到真实公开源发布与安装回读。可选 Skia/vector/SES/password 扩展不加入默认 12 包发布集合。
+表中简称均加 `Ofdrw.Net.` 前缀。原始响应/标签记录保存在 ignored `artifacts/cn-en-release/preview10-version-check.json`。当时要求实际 tag 推送前重查版本占用与新 ID 发布权限，README 保持 preview.9 直至公开源安装回读。**后续结果：12 个 ID 均已公开 preview.10，HarfBuzz 新 ID 发布成功，README 安装命令已同步 preview.10；上表保留当时 HTTP/版本，不改写为事后观察。** 可选 Skia/vector/SES/password 扩展不加入默认 12 包发布集合。
 
-## 5. 冻结、验证与交接顺序
+## 5. 冻结、验证与交接顺序（原执行计划）
 
 1. 完成全部非验收 JSON 的跟踪内容：范围/教程/能力索引、候选 release notes、版本及打包路径。先提交并通过仓库存储检查，再冻结准确 SHA/tree；不要在候选构建和收据之后补文档导致指纹漂移。
 2. 协调者从该准确源码生产一次全新不可变 12 包 feed/manifest，完整回归、mandatory trusted-font、适用三平台完整源码测试/原包消费、Q01–Q04、CI complete 和独立 SES 按[门禁](release-engineering-gates.md)/[实际 tag workflow](../.github/workflows/publish-nuget.yml)执行。旧绿测不转移。保留任何自然失败，不删门、不改 baseline 来过关。
@@ -67,3 +69,10 @@ CJK 来源 revision `f8d157532fbfaeda587e826d4cd5b21a49186f7c`、源 VF SHA-256 
 4. Astra 独立复核准确源码/包、profile 实际选面、证据及已知限制，协调者审核原始页面记录与结果。实际 native 资产身份/平台适用性按收据记录，不由包文件存在推断已加载。
 5. 只有 profile 内必验页面无开放视觉问题且其余门已通过，才以真实产物填写 `release-preview-acceptance.json`，附 `release_profile`、`known_limitations`，保留核心字段与 `open_findings=[]` 的原含义。用最终树生成/校验 fingerprint；仅该 JSON 自身的更新不改指纹。不得提前改旧 accepted 记录。缺页/未检查/新增 profile 内缺陷一律不能 accepted。
 6. 最终报告分别给功能、自动渲染、PNG、实际 SVG、Preview、Copy/Find、CI/审阅及公开发布结果。此阶段无 tag/push NuGet；可发布候选、发布工作流成功、公开包/签名/独立消费回读是不同结论。完整 R02/R20/R22、PR78 光学优化及新部署范围仍非前置。
+
+## 6. 已完成结果与保留事项
+
+- 候选 Q05 的 [accepted 记录](release-preview-acceptance.json)绑定其原生产者 `cb6e71df50cac46bfb3f40abee4df6b091d0d7ee`；产品标签 `8f27f92` 的发布和公开消费另由最终发布记录关联，不能混用包身份。本次文档收尾不改验收 JSON，也不将其指纹套到后续文档提交。
+- 公开包消费的 F01 显式 native/default 各两页，189 个非空白源字符保持、PDF 无重复文本；自动渲染、四页 PNG 与真实 macOS Preview 检查通过。严格 API 配置及页范围见最终发布记录；Find 本轮未重测、原始 Unicode Copy 未完成，均不称 PASS。
+- [PR78](https://github.com/whynpc9/ofdrw.net/pull/78) 已于 2026-11-02 关闭、未合并，保留原分支/证据与原 FAIL；[N01](validation/cn-en-release-n01.md) 的 C1/C2 仍只是独立候选，未开工。
+- N04/N05 维持被动观察，N09 取消；完整 R02/R20/R22、RTL/复杂文字/高级字体等仍为未来议题，现有 ImageSharp 告警保留。本次 D01 不扩大支持范围或改变验收规则。

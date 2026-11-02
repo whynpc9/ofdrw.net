@@ -77,9 +77,7 @@ LFS payloads, ordinary Git blobs above 5 MiB and tracked `artifacts/` files.
 
 ## For Developers
 
-Published packages are available on [NuGet](https://www.nuget.org/profiles/whynpc). The release version is `0.1.0-preview.9`. See the [release notes](docs/release-notes-0.1.0-preview.9.md).
-
-The source tree is preparing **unpublished** `0.1.0-preview.10`; its [candidate notes and bounded font profile](docs/release-notes-0.1.0-preview.10.md) do not change the published installation version above.
+Published packages are available on [NuGet](https://www.nuget.org/profiles/whynpc). The current public preview is `0.1.0-preview.10`, published on 2026-11-02. See the [release notes and bounded font profile](docs/release-notes-0.1.0-preview.10.md), [GitHub Release](https://github.com/whynpc9/ofdrw.net/releases/tag/v0.1.0-preview.10), and [final publication record](docs/validation/preview10-publication-2026-11-02.md) for package, signature, consumption, and page-validation evidence and retained limitations.
 
 ### Which package should I install?
 
@@ -100,6 +98,7 @@ Published packages:
 | [`Ofdrw.Net.Converter.Svg`](https://www.nuget.org/packages/Ofdrw.Net.Converter.Svg) | OFD page to self-contained SVG conversion. |
 | [`Ofdrw.Net.Signatures`](https://www.nuget.org/packages/Ofdrw.Net.Signatures) | Signature generation, protected-entry digest checks, and custom signed-value verification. |
 | [`Ofdrw.Net.Layout`](https://www.nuget.org/packages/Ofdrw.Net.Layout) | Building and editing typed OFD documents. |
+| [`Ofdrw.Net.Text.HarfBuzz`](https://www.nuget.org/packages/Ofdrw.Net.Text.HarfBuzz) | Optional fixed-font HarfBuzz shaping and bounded text-layout queries; general paragraph layout remains incomplete. |
 | [`Ofdrw.Net.Packaging`](https://www.nuget.org/packages/Ofdrw.Net.Packaging) | Writing OFD packages and working with the ZIP container layer. |
 | [`Ofdrw.Net.Reader`](https://www.nuget.org/packages/Ofdrw.Net.Reader) | Reading OFD packages and extracting document content. |
 | [`Ofdrw.Net.Core`](https://www.nuget.org/packages/Ofdrw.Net.Core) | Shared OFD models, constants, options, and validation types. |
@@ -109,26 +108,26 @@ Published packages:
 Install the high-level conversion package:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.9
+dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.10
 ```
 
 For a narrower dependency surface, install the PDF converter package directly:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.9
+dotnet add package Ofdrw.Net.Converter.Pdf --version 0.1.0-preview.10
 ```
 
 Install DOCX conversion independently:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Docx --version 0.1.0-preview.9
+dotnet add package Ofdrw.Net.Converter.Docx --version 0.1.0-preview.10
 ```
 
 Install SVG or signature support independently:
 
 ```bash
-dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.9
-dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.9
+dotnet add package Ofdrw.Net.Converter.Svg --version 0.1.0-preview.10
+dotnet add package Ofdrw.Net.Signatures --version 0.1.0-preview.10
 ```
 
 Convert PDF to OFD:
@@ -264,7 +263,7 @@ Create a signature by implementing `IOfdSignatureProvider`. The provider receive
 Install the CLI as a .NET tool:
 
 ```bash
-dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.9
+dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.10
 ```
 
 Convert by file extension:

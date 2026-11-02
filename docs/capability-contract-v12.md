@@ -1,6 +1,6 @@
 # Ofdrw.Net v1.2 能力契约与路线基线（R01 更新）
 
-**2026-11-02 发布范围说明：**未发布 preview.10 仅按[受限物理字体 profile](next-steps-2026-11-02.md)验收；Regular-only 合成粗体失败、macOS Preview Find 兼容性及原始 Copy 未验证须明示。下文通用能力/历史状态不构成该候选或已发布 preview.9 的全范围承诺；R02/R20/R22 边界继续保留。
+**2026-11-02 发布范围说明：**preview.10 已公开；[受限物理字体 profile](next-steps-2026-11-02.md)的 F01 native/default 各两页通过 PNG/Preview 检查，公开包/签名/独立消费见[最终发布记录](validation/preview10-publication-2026-11-02.md)。Regular-only 合成粗体 FAIL、macOS Preview Find 兼容性及原始 Copy 未验证继续披露。下文通用能力/历史状态不构成已发布版本的全范围承诺；R02/R20/R22 边界继续保留。
 
 日期：2026-10-21。R00 核对源码基线：`6aa8183ea31e193f500fb9d9717677b15e86c5d3`；R01 实现从已合并的 `35976dbee1f58eef5fe19f2750746a97d523cfec` 开始。研究报告 v1.2 的 .NET 基线是较早的 `e9b237bc85e4dee06c1f690bea48553a1f5a22e2`；报告中的候选缺陷和建议不视为已复现或已验收。此契约面向**当前源码**，不是已发布 NuGet 的能力声明。后续票合并时按新 head、实际出口和样本更新对应行。
 

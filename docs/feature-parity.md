@@ -1,6 +1,6 @@
 # Ofdrw.Net 与 OFDRW 功能对照
 
-**2026-11-02 发布范围说明：**未发布 preview.10 仅按[受限物理字体 profile](next-steps-2026-11-02.md)验收；Regular-only 合成粗体失败、macOS Preview Find 兼容性及原始 Copy 未验证须明示。下文通用能力/历史状态不构成该候选或已发布 preview.9 的全范围承诺；R02/R20/R22 边界继续保留。
+**2026-11-02 发布范围说明：**preview.10 已公开；[受限物理字体 profile](next-steps-2026-11-02.md)的 F01 native/default 各两页通过 PNG/Preview 检查，公开包/签名/独立消费见[最终发布记录](validation/preview10-publication-2026-11-02.md)。Regular-only 合成粗体 FAIL、macOS Preview Find 兼容性及原始 Copy 未验证继续披露。下文通用能力/历史状态不构成已发布版本的全范围承诺；R02/R20/R22 边界继续保留。
 
 更新时间：2026-10-21（R00 契约核对）
 
@@ -91,7 +91,7 @@ issue #3 的逐项状态见 [实现对照](issue-3-implementation.md)，不因 0
 | 本地源码 | `6aa8183` 的公开实现；R00 定向运行纯文本 35/35、HTML 29/29，见[本轮契约](capability-contract-v12.md) | 未重跑全套回归，不扩大有限 profile |
 | 已合并 | R00 起始时 `origin/main=6aa8183`；旧能力按已有历史记录和本轮源码判定 | R00 分支在本表编写时尚未合并；后续票不凭旧 open/unmerged 文案推断状态 |
 | 实际视觉 | 历史记录只证明当时具名产物与页码；R00 [缺陷样本](evidence/r00-pageblock/README.md) 新 PDF 第 1 页已用 PNG/Preview 确认漏绘 | 此次检查是负面证据，不是其它文档的视觉通过 |
-| 已发布版本 | 本地消费包只证明该次包消费；[preview.9 页面接受记录](release-preview-acceptance.json)在其固定源码指纹及具名页面上为 `accepted` | R00 未查询新的 NuGet 版本、未打包/发布；历史接受记录不延伸到新产物 |
+| 已发布版本（R00 历史观察） | 本地消费包只证明该次包消费；[preview.9 页面接受记录](https://github.com/whynpc9/ofdrw.net/blob/v0.1.0-preview.9/docs/release-preview-acceptance.json)在其固定源码指纹及具名页面上为 `accepted` | R00 未查询新的 NuGet 版本、未打包/发布；历史接受记录不延伸到新产物；preview.10 当前结果见页首发布记录 |
 
 ## 11 票：独立口令扩展
 
