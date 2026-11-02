@@ -5,6 +5,13 @@ on:
     tags:
       - "v*"
 
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to publish (for example v0.1.0-preview.10)"
+        required: true
+        type: string
+
 # Fetch fixtures explicitly; historical evidence is optional.
 env:
   GIT_LFS_SKIP_SMUDGE: "1"
@@ -22,10 +29,69 @@ jobs:
       id-token: write
 
     steps:
+      - name: Resolve existing release tag
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+              echo "Manual release recovery must run from main."
+              exit 1
+            fi
+            TAG_NAME="$REQUESTED_TAG"
+          elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          else
+            echo "Release requires a tag push or a manual dispatch from main."
+            exit 1
+          fi
+          if [[ ! "$TAG_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?)$ ]]; then
+            echo "Release tag must use v<SemVer>, for example v0.1.0-preview.10."
+            exit 1
+          fi
+          PACKAGE_VERSION="${BASH_REMATCH[1]}"
+          # Require an existing tag; resolve annotated tags to their immutable commit.
+          TARGET="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG_NAME" --jq '[.object.type, .object.sha] | @tsv')"
+          IFS=$'\t' read -r OBJECT_TYPE COMMIT_SHA <<< "$TARGET"
+          while [[ "$OBJECT_TYPE" == "tag" ]]; do
+            TARGET="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$COMMIT_SHA" --jq '[.object.type, .object.sha] | @tsv')"
+            IFS=$'\t' read -r OBJECT_TYPE COMMIT_SHA <<< "$TARGET"
+          done
+          if [[ "$OBJECT_TYPE" != "commit" || ! "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Release tag must resolve to a commit."
+            exit 1
+          fi
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "commit=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
+          echo "Resolved $TAG_NAME to $COMMIT_SHA (package $PACKAGE_VERSION)."
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ steps.release.outputs.commit }}
           lfs: false
+
+      - name: Record release run provenance
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.release.outputs.commit }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          mkdir -p artifacts/release-validation
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          keys = ("GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA", "GITHUB_WORKFLOW_SHA", "RELEASE_TAG", "RELEASE_COMMIT")
+          Path("artifacts/release-validation/release-run-provenance.json").write_text(
+              json.dumps({key: os.environ[key] for key in keys}, indent=2) + "\n")
+          PY
+
       - name: Fetch test fixtures from LFS
         shell: bash
         run: git lfs pull --include="e2e/**,tests/**" --exclude=""
@@ -47,18 +113,6 @@ jobs:
 
       - name: Install deterministic CJK font
         uses: ./.github/actions/ci-font
-
-      - name: Resolve version from tag
-        shell: bash
-        run: |
-          TAG_NAME="${GITHUB_REF_NAME}"
-          if [[ ! "$TAG_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?)$ ]]; then
-            echo "Release tag must use v<SemVer>, for example v0.1.0-preview.8: $TAG_NAME"
-            exit 1
-          fi
-          PACKAGE_VERSION="${BASH_REMATCH[1]}"
-          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
-          echo "Resolved package version: $PACKAGE_VERSION"
 
       - name: Restore
         run: dotnet restore Ofdrw.Net.sln --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
