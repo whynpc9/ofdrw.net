@@ -1,6 +1,6 @@
 # 中英文 DOCX 字体部署 / CN/EN font deployment
 
-本教程用调用方提供的真实 Regular 与 Bold 字体，运行 **DOCX → native/default OFD → PDF**。目标是固定可复现的字体选择、保留原文，并避免把 Regular 描边当成物理 Bold。以下 API/CLI 已随 `0.1.0-preview.10` 公开；本教程不改变 SDK 默认值。受限发布 profile 为 `cn-en-physical-cjk-400-700-v1`，范围见[受限发布配置](../release-profile-cn-en.md)，公开包与实际页面结果见[最终发布记录](../validation/preview10-publication-2026-11-02.md)。
+本教程用调用方提供的真实 Regular 与 Bold 字体，运行 **DOCX → native/default OFD → PDF**。目标是固定可复现的字体选择、保留原文，并避免把 Regular 描边当成物理 Bold。API 与基础 CLI 已随 `0.1.0-preview.10` 公开；本节严格粗体 CLI 开关是后续源码新增，**不包含在已发布的 preview.10 中**。本教程不改变 SDK 默认值。受限发布 profile 为 `cn-en-physical-cjk-400-700-v1`，范围见[受限发布配置](../release-profile-cn-en.md)，公开包与实际页面结果见[最终发布记录](../validation/preview10-publication-2026-11-02.md)。
 
 This recipe supplies physical Regular/Bold faces to native DOCX conversion. It covers the current source API and CLI; a successful conversion is separate from visual, Copy/Find, and release acceptance.
 
@@ -183,20 +183,22 @@ dotnet artifacts/font-deployment-app/bin/Release/net10.0/FontDeployment.dll e2e/
 
 `Throw` 会在遇到没有真实 Bold 的已嵌入粗体文字时、写包前拒绝；API 示例自身会创建输出文件，失败时应清理/隔离未完成文件。`OriginalTextPreserved` 和诊断是功能结果，不能证明实际阅读器显示、复制或搜索成功。启用默认描边对照时，用独立 Regular-only 目录和输出目录，显式改为 `TextStroke`；保留 `DOCX_EMBEDDED_BOLD_SIMULATED`，不要把该对照标成物理粗体。
 
-## 4. CLI：目录选项与 API 的差别
+## 4. CLI：严格嵌入粗体与目录选项
 
-已安装 CLI 的对应源码选项如下，`--font-directory` 可以重复。`--docx-ofd-mode` 省略时当前同样走 Native：
+使用包含本次源码改动的 CLI 构建（不是已发布的 preview.10）。`--font-directory` 可以重复，目录按第 2 节准备真实 Regular/Bold；DOCX 应显式声明对应字体族。`--docx-ofd-mode` 省略时当前同样走 Native：
 
 ```sh
-ofdrw docx-to-ofd input.docx artifacts/font-native.ofd --docx-ofd-mode native --font-directory /absolute/path/to/fonts
-ofdrw docx-to-ofd input.docx artifacts/font-default.ofd --font-directory /absolute/path/to/fonts
+ofdrw docx-to-ofd input.docx artifacts/font-native.ofd --docx-ofd-mode native --font-directory /absolute/path/to/fonts --native-embedded-bold-behavior throw
+ofdrw docx-to-ofd input.docx artifacts/font-default.ofd --font-directory /absolute/path/to/fonts --native-embedded-bold-behavior throw
 ofdrw ofd-to-pdf artifacts/font-native.ofd artifacts/font-native.pdf
 ofdrw ofd-to-pdf artifacts/font-default.ofd artifacts/font-default.pdf
 ```
 
-CLI **没有** `NativeEmbeddedBoldBehavior`、`FontFallbackFamilies` 或 `UseInstalledMicrosoftOfficeFonts` 的对应开关；其嵌入粗体策略保持 `TextStroke`。需要上述严格配置时使用 API 示例。`--docx-engine` 选择的是直接 PDF/双层渲染器，不能借此把 Native 改成 Word 排版。CLI 与 API 选项以 [Program.cs](../../src/Ofdrw.Net.Cli/Program.cs) 和 [DocxConversionOptions](../../src/Ofdrw.Net.Converter.Docx/DocxConversionOptions.cs) 为准。
+`--native-embedded-bold-behavior` 映射到 API 的 `NativeEmbeddedBoldBehavior`：合法值为 `text-stroke`（默认，保持兼容）与 `throw`（严格），不区分大小写；缺值或其他值返回非零退出码。`docx-to-ofd` 和推断 DOCX→OFD 的 `convert` 均传递此选项。它只检查 Native 中实际使用的嵌入粗体；不约束直接 DOCX→PDF 或 dual-layer，不是全局缺字体检查，也不禁用系统字体解析。CLI **没有** `FontFallbackFamilies` 或 `UseInstalledMicrosoftOfficeFonts` 的对应开关，需要这些配置时仍使用 API 示例。`--docx-engine` 选择的是直接 PDF/双层渲染器，不能借此把 Native 改成 Word 排版。CLI 与 API 选项以 [Program.cs](../../src/Ofdrw.Net.Cli/Program.cs) 和 [DocxConversionOptions](../../src/Ofdrw.Net.Converter.Docx/DocxConversionOptions.cs) 为准。
 
-For strict physical bold and an explicit fallback list, use the API. The CLI accepts repeated `--font-directory` arguments but retains its default embedded-bold policy.
+严格负例：复制第 2 节字体目录为独立 `regular-only` 目录并移除其中的 CJK Bold 文件；使用同一含 CJK 粗体的 DOCX 和 `--native-embedded-bold-behavior throw` 应返回退出码 1，报告需要 `actual bold face`，且不会发布部分 OFD 或覆盖已有目标。改用 `text-stroke` 或省略策略可恢复默认合成粗体，同时应检查 `DOCX_EMBEDDED_BOLD_SIMULATED`。没有解析成嵌入字体的 name-only 文本不属于此严格检查范围。
+
+The current-source CLI accepts `--native-embedded-bold-behavior text-stroke|throw` (default: `text-stroke`) and repeated `--font-directory` arguments. This switch was added after preview.10; it rejects missing physical bold only for selected embedded native text. Use the API for an explicit fallback list. It does not disable all system font resolution.
 
 ## 5. 检查实际输出及当前限制
 

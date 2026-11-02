@@ -132,6 +132,7 @@ internal static partial class Cli
                 pages,
                 options.DocxEngine,
                 options.DocxOfdMode,
+                options.NativeEmbeddedBoldBehavior,
                 options.LibreOfficePath,
                 options.FontDirectories, options.DocumentIndex ?? 0, cancellationToken).ConfigureAwait(false);
             WriteSuccessNotification($"Converted {options.InputPath} -> {options.OutputPath}");
@@ -156,6 +157,7 @@ internal static partial class Cli
         IReadOnlyList<int>? pages,
         DocxConversionEngine docxEngine,
         DocxToOfdMode docxOfdMode,
+        DocxEmbeddedBoldBehavior nativeEmbeddedBoldBehavior,
         string? libreOfficePath,
         IReadOnlyList<string> fontDirectories,
         int documentIndex,
@@ -180,6 +182,7 @@ internal static partial class Cli
             var converter = new DocxToPdfConverter(CreateDocxOptions(
                 docxEngine,
                 docxOfdMode,
+                nativeEmbeddedBoldBehavior,
                 libreOfficePath,
                 fontDirectories));
             var result = await converter.ConvertWithResultAsync(input, output.Stream, cancellationToken).ConfigureAwait(false);
@@ -190,6 +193,7 @@ internal static partial class Cli
             var converter = new DocxToOfdConverter(CreateDocxOptions(
                 docxEngine,
                 docxOfdMode,
+                nativeEmbeddedBoldBehavior,
                 libreOfficePath,
                 fontDirectories));
             var result = await converter.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
@@ -214,6 +218,7 @@ internal static partial class Cli
     private static DocxConversionOptions CreateDocxOptions(
         DocxConversionEngine engine,
         DocxToOfdMode ofdMode,
+        DocxEmbeddedBoldBehavior nativeEmbeddedBoldBehavior,
         string? libreOfficePath,
         IEnumerable<string> fontDirectories)
     {
@@ -221,6 +226,7 @@ internal static partial class Cli
         {
             Engine = engine,
             OfdMode = ofdMode,
+            NativeEmbeddedBoldBehavior = nativeEmbeddedBoldBehavior,
             LibreOfficePath = libreOfficePath
         };
         foreach (var directory in fontDirectories)
@@ -508,6 +514,9 @@ internal static partial class Cli
                 case "--docx-ofd-mode":
                     options.DocxOfdMode = ParseDocxToOfdMode(ReadValue(args, ref i, arg));
                     break;
+                case "--native-embedded-bold-behavior":
+                    options.NativeEmbeddedBoldBehavior = ParseNativeEmbeddedBoldBehavior(ReadValue(args, ref i, arg));
+                    break;
                 case "--font-directory":
                     options.FontDirectories.Add(ReadValue(args, ref i, arg));
                     break;
@@ -639,6 +648,17 @@ internal static partial class Cli
         };
     }
 
+    private static DocxEmbeddedBoldBehavior ParseNativeEmbeddedBoldBehavior(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "text-stroke" => DocxEmbeddedBoldBehavior.TextStroke,
+            "throw" => DocxEmbeddedBoldBehavior.Throw,
+            _ => throw new ArgumentException(
+                "Invalid --native-embedded-bold-behavior value. Use text-stroke or throw.")
+        };
+    }
+
     private static bool IsHelp(string arg)
     {
         return arg is "-h" or "--help" or "help";
@@ -719,6 +739,8 @@ internal static partial class Cli
           --skip-unsupported  Drop unsupported raw objects during merge.
           --docx-engine      DOCX renderer: auto, word (macOS), libreoffice, or built-in.
           --docx-ofd-mode    DOCX to OFD mode: native (default, no PDF) or dual-layer.
+          --native-embedded-bold-behavior Native embedded bold: text-stroke (default) or throw.
+                             throw requires a physical bold face for selected embedded text, not name-only text.
           --libreoffice       Path to the LibreOffice soffice executable for DOCX conversion.
           --font-directory    Additional font directory for DOCX rendering; may be repeated.
           -h, --help    Show help.
@@ -741,6 +763,8 @@ internal static partial class Cli
         public DocxConversionEngine DocxEngine { get; set; } = DocxConversionEngine.Auto;
 
         public DocxToOfdMode DocxOfdMode { get; set; } = DocxToOfdMode.Native;
+
+        public DocxEmbeddedBoldBehavior NativeEmbeddedBoldBehavior { get; set; } = DocxEmbeddedBoldBehavior.TextStroke;
 
         public List<string> FontDirectories { get; } = new();
 
