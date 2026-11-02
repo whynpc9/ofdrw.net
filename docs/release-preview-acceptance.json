@@ -1,18 +1,18 @@
 {
   "status": "accepted",
-  "package_version": "0.1.0-preview.9",
-  "source_fingerprint": "95cc1514b0ed6691d03ba92ee468656fdc642009230c7b0c903a7a0938fabd61",
+  "package_version": "0.1.0-preview.10",
+  "source_fingerprint": "fe37bd7d6e957209c959bd912063c3ee1310cfd8030ee86e870d57b8a3f84e22",
   "sample_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
-  "native_ofd_sha256": "8818e41c7eb84a184bdb14185bc3710493bf5b1d4d4cc3c98fb6c9614935fb04",
-  "preview_pdf_sha256": "df601d4325e909d74e1f8d84f14d8c7fd032a5934652f2480221443e5723656e",
-  "default_ofd_sha256": "fee16b673c6a8cdd31be0a38db50fcbdaffcafb7e909686cec5bd2f11d476978",
-  "default_preview_pdf_sha256": "85047b5bc03493b5925398eea48959f4c2c4bd0a1729010e4164af9edd7cad03",
+  "native_ofd_sha256": "f4c962f05e900a013bb7d89c27e0bf9d24c4f0ee7722955d5e6b950498c28fa4",
+  "preview_pdf_sha256": "6de9ad2474a7ff54071e88c1ff121297023a311f2cda83076fd02949700e5bce",
+  "default_ofd_sha256": "eb594962d342a1dc22a27cbd099d7095299d9cb5aea58ff451c73c9f6f006e73",
+  "default_preview_pdf_sha256": "6d060666c1a08891479d640e91c9e9f512ec81542c0c49bd283060ee55372c0a",
   "conversion_mode": "native",
   "view_chain": "DOCX -> native OFD -> PDF -> macOS Preview",
   "default_conversion_mode": "default",
   "default_view_chain": "DOCX -> default OFD -> PDF -> macOS Preview",
-  "reviewer": "Codex (AI reviewer; explicitly authorized by user for this release)",
-  "reviewed_at": "2026-10-18T01:38:09.928074+00:00",
+  "reviewer": "gpt-6.1-terra (High reasoning; AI reviewer explicitly authorized by user)",
+  "reviewed_at": "2026-11-02T02:22:55.663320+00:00",
   "checked_pages": [
     1,
     2
@@ -22,5 +22,166 @@
     2
   ],
   "open_findings": [],
-  "review_exception": "User explicitly authorized Codex actual macOS Preview review instead of human sign-off on 2026-10-18; this does not assert a human reviewed the pages."
+  "review_exception": "User authorized Terra High actual macOS Preview review for this candidate; this is AI review, not human sign-off.",
+  "acceptance_scope": "Q05 accepted only for the selected profile and F01 pages listed here; open_findings covers its visual defects. Historical failures, general DOCX fidelity, Find/Copy success and public publication are not accepted.",
+  "release_profile": {
+    "id": "cn-en-physical-cjk-400-700-v1",
+    "scope": "Unmodified F01 generated-layout.docx; independent explicit native and unset/default Native conversions using official candidate packages, two pages per mode. Physical CJK Regular/Bold and proportional English Regular only.",
+    "decision": "User selected restricted scope on 2026-11-02; docs/next-steps-2026-11-02.md and docs/release-engineering-gates.md.",
+    "sample": "e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx",
+    "recipe": "docs/tutorials/cn-en-font-deployment.md",
+    "font_directory": "fonts/ (relative to evidence_root)",
+    "font_manifest": "validation-receipt.json artifacts bind all three fonts and both OFL licenses; identities match the pinned recipe.",
+    "fonts": [
+      {
+        "file": "Ofdrw-CI-NotoSansCJKsc-Regular.ttf",
+        "family": "Noto Sans CJK SC",
+        "face_index": 0,
+        "weight": 400,
+        "bytes": 21659544,
+        "sha256": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+      },
+      {
+        "file": "Ofdrw-CI-NotoSansCJKsc-Bold.ttf",
+        "family": "Noto Sans CJK SC",
+        "face_index": 0,
+        "weight": 700,
+        "bytes": 21638668,
+        "sha256": "647a6e375c5a0d8958111173d7b7cec5237e0784cc4490663e43834dfff491be"
+      },
+      {
+        "file": "NotoSans-Regular.ttf",
+        "family": "Noto Sans",
+        "face_index": 0,
+        "weight": 400,
+        "bytes": 569208,
+        "sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5"
+      }
+    ],
+    "options": {
+      "NativeEmbeddedBoldBehavior": "Throw",
+      "UseInstalledMicrosoftOfficeFonts": false,
+      "FontDirectories": [
+        "fonts/"
+      ],
+      "FontFallbackFamilies": [
+        "Noto Sans CJK SC",
+        "Noto Sans"
+      ],
+      "native_OfdMode": "Native",
+      "default_OfdMode": "unset (current default Native)"
+    },
+    "configuration_boundary": "Throw constrains selected Native embedded bold; the Office switch is not global isolation. No Noto Sans Bold, physical Italic, arbitrary family/style, fallback or synthetic-weight quality promise. Italic may be simulated.",
+    "outputs": {
+      "native": {
+        "ofd": "profile-output/font-native.ofd",
+        "pdf": "profile-output/font-native.pdf",
+        "png": [
+          "png/native-1.png",
+          "png/native-2.png"
+        ]
+      },
+      "default": {
+        "ofd": "profile-output/font-default.ofd",
+        "pdf": "profile-output/font-default.pdf",
+        "png": [
+          "png/default-1.png",
+          "png/default-2.png"
+        ]
+      }
+    },
+    "output_resource_identity": "profile-check.json authenticates subsets against pinned outlines: resource 62, weight 700, glyph 量; resources 63/64, weight 400, glyph 文. Subset hashes there differ from source-font hashes.",
+    "functional_result": "Both modes: exact OFD text and PDF text without duplicates (189 non-whitespace source characters); seven bold objects and three blue fills. Raw Copy/Preview Find remain separate.",
+    "visual_result": {
+      "png": "PASS: pages 1 and 2 in each mode, four pages total.",
+      "macos_preview": "PASS: actual macOS Preview pages 1 and 2 in each mode, four pages total; task document windows closed.",
+      "environment": "26.6.2 (25G83)",
+      "observation": "Physical bold quantity clear; Chinese/English, italic, table fill/borders, localized red bold and date visible without obvious clipping/style leakage; only F01 sample."
+    },
+    "native_harfbuzz_boundary": "Not exercised by this DOCX Q05 consumer. Separate CI pinned-runtime/version-call tests are engineering evidence, not a native-module load/path identity claim for this process."
+  },
+  "known_limitations": [
+    {
+      "id": "legacy-regular-synthetic-bold",
+      "original_result": "Historical Regular-only native/default first-page 量 at 144 DPI had a blocked counter: visual FAIL remains unchanged.",
+      "evidence": "docs/validation/cn-en-release-local-validation.md; docs/next-steps-2026-11-02.md",
+      "boundary": "Default TextStroke optical quality is not claimed repaired. Use the selected physical Regular/Bold profile.",
+      "scope_decision": "User 2026-11-02 excluded this historical failure from the new profile; new in-profile defects remain blocking."
+    },
+    {
+      "id": "macos-preview-find",
+      "original_result": "On macOS 26.6.2 (25G83), prior PDF UI showed Found on 1 page and Not found for terminal-date/some whole-word queries, with disabled navigation/no highlight. Observed FAIL; cause unresolved.",
+      "evidence": "docs/validation/cn-en-release-local-validation.md; fresh validation-receipt.json retains the limitation and states not retested.",
+      "boundary": "Preview search compatibility remains uncertain and unpromised; API/AX/PDFKit cannot substitute for actual UI behavior.",
+      "scope_decision": "User 2026-11-02 accepted this named limit for the restricted preview; not Find PASS."
+    },
+    {
+      "id": "raw-unicode-copy-unverified",
+      "original_result": "Raw clipboard Unicode bytes remain unverified; prior search-box pasting can alter spacing. Fresh consumer did not test Copy.",
+      "evidence": "docs/validation/cn-en-release-local-validation.md; validation-receipt.json",
+      "boundary": "No raw-copy fidelity guarantee; Copy/Find in other readers is also unverified.",
+      "scope_decision": "User 2026-11-02 accepted this explicit incomplete semantic check; not Copy PASS."
+    }
+  ],
+  "producer_identity": {
+    "source_sha": "cb6e71df50cac46bfb3f40abee4df6b091d0d7ee",
+    "source_tree": "f49f650efb093107f4dff56f97b2ccbefe1bb755",
+    "branch": "main",
+    "package_count": 12,
+    "nuspec_repository_commit": "All 12 equal source_sha.",
+    "consumer": "Fresh PackageReference-only net10.0 consumer: seven actually loaded Ofdrw DLLs match package/cache/bin hashes. See consumer-identities.json and validation-receipt.json.",
+    "assembly_informational_version": "0.1.0-preview.10+cb6e71df50cac46bfb3f40abee4df6b091d0d7ee"
+  },
+  "evidence_root": "artifacts/cn-en-release/preview10-official-main-cb6e71df/",
+  "evidence": {
+    "validation-receipt.json": {
+      "sha256": "4803c28d733960bdc72a1ee912d8b64e3521aecc1b16ccd4aa62a0250f7678fb"
+    },
+    "profile-check.json": {
+      "sha256": "71f86e55404729d0f772dd801acb2c7299decfa326e13a4f92143519fc48e07d"
+    },
+    "consumer-identities.json": {
+      "sha256": "1240240109547c006a9fa1aae9a24135c84f6b7bdcd36866da1a7d0df724e2b9"
+    },
+    "official-artifact-source.json": {
+      "sha256": "4447b62b6c509fa9ab8aed5b094d9831af58ee686e4a1ef2a4318207198a94f6"
+    },
+    "cross-platform-ci-evidence.json": {
+      "sha256": "c0ac2447bd0e8a49c5834543ff69170d5c8fc65eaa6eb4eed3d23afb81977702"
+    },
+    "ci-results.json": {
+      "sha256": "a253c5ebe1344ff9745a3101b6e1801feb113d1e77e9b5c2e0d459c246bb7f63"
+    }
+  },
+  "candidate_archive": {
+    "file": "ofdrw-net-0.1.0-preview.10-candidate.tar.zst",
+    "bytes": 28818797,
+    "sha256": "74ec65ef5a3900766cef8493f1cc381ef52e35c3257eda0bc0797eb877c65f19",
+    "files": 45,
+    "inventory": "candidate-inventory.json",
+    "inventory_sha256": "cf8f929a81334c02495e67eda7c16cb814074811faf56248b61d800f64357f17",
+    "boundary": "Fresh official packages, input, outputs, PNGs and receipts; source fonts use pinned recipe. This record stays outside the archive to avoid circular hashing."
+  },
+  "ci_evidence": {
+    "source_sha": "cb6e71df50cac46bfb3f40abee4df6b091d0d7ee",
+    "ci_run_id": 41376054001,
+    "ci_url": "https://github.com/whynpc9/ofdrw.net/actions/runs/41376054001",
+    "ci_conclusion": "success",
+    "ci_jobs_completed_successfully": 9,
+    "ses_run_id": 41376053806,
+    "ses_url": "https://github.com/whynpc9/ofdrw.net/actions/runs/41376053806",
+    "ses_conclusion": "success",
+    "official_artifact_id": 13111064019,
+    "official_artifact_archive_sha256": "27e27cb76811faa4defff268bca3d5c3851a4e5419b20098bfd4500679a64efa",
+    "shared_package_manifest": "feed/package-manifest.json",
+    "shared_package_manifest_sha256": "97a7239fe20bfa6f0e7cd27ba4bc62c488c8ed06da0b7bf5b0ebaffc980bc139",
+    "platforms": [
+      "linux",
+      "windows",
+      "macos"
+    ],
+    "shared_artifact_result": "All three platform package jobs downloaded this exact artifact ID/digest; download lines and job IDs are in cross-platform-ci-evidence.json.",
+    "boundary": "Binds producer source_sha. This JSON is excluded from source_fingerprint; later-commit hosted checks and public package/signature/independent-consumer evidence remain distinct."
+  },
+  "publication_status": "No tag, GitHub Release or NuGet push is asserted by this acceptance record."
 }
