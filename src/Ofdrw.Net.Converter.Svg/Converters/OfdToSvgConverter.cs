@@ -369,7 +369,7 @@ public sealed class OfdToSvgConverter
             throw new NotSupportedException($"Selected name-only font '{text.FontName}' has no explicit face binding.");
         if (nameOnlyBindings is not null && resource?.Data.Length == 0)
             OfdNameOnlyFontBindings.ValidateBmpText(text);
-        var family = text.FontName;
+        var family = !string.IsNullOrWhiteSpace(resource?.FamilyName) ? resource!.FamilyName! : text.FontName;
         if (resource is not null && families.TryGetValue(resource, out var embedded))
         {
             family = embedded.Family;

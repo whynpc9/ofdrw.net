@@ -13,6 +13,30 @@ namespace Ofdrw.Net.Converter.Pdf.Tests;
 public sealed class SvgGeometryTests
 {
     [Theory]
+    [InlineData("Fixture Family")]
+    [InlineData("")]
+    public async Task NameOnlyText_ShouldUseDeclaredFamilyWithoutLeakingStyleResourceKey(string familyName)
+    {
+        const string resourceKey = "Fixture Resource|bold|italic";
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource
+        {
+            Id = "10", FontName = resourceKey, FamilyName = familyName, Bold = true, Italic = true
+        });
+        var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
+        var text = new OfdTextElement { FontResourceId = "10", FontName = resourceKey, Text = "Ab" };
+        page.Elements.Add(text);
+        package.Pages.Add(page);
+
+        var svg = await ConvertAsync(package);
+        var node = Assert.Single(svg.Descendants(), element => element.Name.LocalName == "text");
+        Assert.Equal(string.IsNullOrWhiteSpace(familyName) ? resourceKey : familyName, node.Attribute("font-family")?.Value);
+        Assert.Equal("Ab", node.Value);
+        Assert.Equal("bold", node.Attribute("font-weight")?.Value);
+        Assert.Equal("italic", node.Attribute("font-style")?.Value);
+    }
+
+    [Theory]
     [InlineData(1, false)]
     [InlineData(128, false)]
     [InlineData(254, false)]
@@ -96,7 +120,7 @@ public sealed class SvgGeometryTests
         var package = new OfdDocumentPackage();
         package.Fonts.Add(new OfdFontResource
         {
-            Id = "10", FontName = "Ofdrw Test Face", Bold = true, Italic = true,
+            Id = "10", FontName = "Ofdrw Test Face", FamilyName = "Fixture Declared Family", Bold = true, Italic = true,
             Data = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fonts", "narrow.ttf"))
         });
         var page = new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100 };
@@ -115,6 +139,8 @@ public sealed class SvgGeometryTests
         var text = svg.Descendants().Single(element => element.Name.LocalName == "text");
         var css = svg.Descendants().Single(element => element.Name.LocalName == "style").Value;
         Assert.Contains("data:font/ttf;base64,", css);
+        Assert.StartsWith("ofd-font-", text.Attribute("font-family")?.Value);
+        Assert.Contains(text.Attribute("font-family")!.Value, css);
         Assert.Contains("font-weight:normal", css); // real file is regular; requested bold is synthesized
         Assert.Equal("bold", text.Attribute("font-weight")?.Value);
         Assert.Equal("italic", text.Attribute("font-style")?.Value);
