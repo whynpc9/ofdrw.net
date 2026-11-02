@@ -93,6 +93,86 @@ public sealed class EmbeddedBoldCompatibilityTests
         Assert.Equal("0.123", actual.Attribute("LineWidth")?.Value);
     }
 
+    [Theory]
+    [InlineData("thin")]
+    [InlineData("different-color")]
+    [InlineData("alpha")]
+    [InlineData("outline-only")]
+    [InlineData("no-stroke")]
+    [InlineData("italic-ctm")]
+    [InlineData("sim-sun-explicit")]
+    [InlineData("omitted-paint")]
+    [InlineData("italic-no-ctm")]
+    public async Task ImportedNameOnlyPaintIsPreservedThroughRepeatedWrites(string kind)
+    {
+        var family = kind == "sim-sun-explicit" ? "SimSun" : "Noto Sans CJK SC";
+        var alpha = kind == "alpha" ? 128 : 255; var italic = kind.StartsWith("italic", StringComparison.Ordinal);
+        var defaultPaint = kind is "omitted-paint" or "italic-no-ctm";
+        var xml = XElement.Parse("<TextObject xmlns='http://www.ofdspec.org' ID='3' Font='10' Boundary='10 10 40 15' " +
+            "Size='4' Weight='700' Stroke='" + (kind == "no-stroke" ? "false" : "true") + "' Fill='" +
+            (kind == "outline-only" ? "false" : "true") + "' LineWidth='0.023' CTM='1 0.1 0.2 1 2 3' " +
+            (italic ? "Italic='true' " : "") + ">" +
+            $"<FillColor Value='10 20 30' Alpha='{alpha}'/><StrokeColor Value='" +
+            (kind == "different-color" ? "190 20 30" : "10 20 30") + $"' Alpha='{alpha}'/>" +
+            "<TextCode X='0' Y='4' DeltaX='4'>回A</TextCode></TextObject>");
+        if (defaultPaint)
+        {
+            foreach (var attribute in new[] { "Stroke", "Fill", "LineWidth", "CTM" }) xml.Attribute(attribute)?.Remove();
+            xml.Elements().Where(element => element.Name.LocalName is "FillColor" or "StrokeColor").Remove();
+        }
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = family, FamilyName = family, Bold = true });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100, Elements = { new OfdTextElement
+        {
+            FontName = family, FontResourceId = "10", Text = "回A", Weight = 700, Italic = italic,
+            FontSizeMillimeters = 4, FillColor = defaultPaint ? OfdColor.Black : new OfdColor(10, 20, 30, (byte)alpha), SourceXml = xml.ToString()
+        } } });
+        for (var pass = 0; pass < 2; pass++)
+        {
+            using var output = new MemoryStream(); await new OfdPackageWriter().WriteAsync(package, output);
+            output.Position = 0; package = await new OfdReader().ReadAsync(output);
+            var actual = XElement.Parse(Assert.Single(package.Pages.Single().Elements.OfType<OfdTextElement>()).SourceXml!);
+            actual.SetAttributeValue("ID", "3"); actual.SetAttributeValue("Font", "10");
+            foreach (var node in xml.DescendantsAndSelf().Concat(actual.DescendantsAndSelf()))
+                node.Attributes().Where(attribute => attribute.IsNamespaceDeclaration).Remove();
+            Assert.True(XNode.DeepEquals(xml, actual), actual.ToString());
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FreshNameOnlyTextKeepsDefaultEmphasisAndIsStableOnImport(bool italic)
+    {
+        var package = new OfdDocumentPackage();
+        package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "SimSun" });
+        package.Pages.Add(new OfdPage { WidthMillimeters = 100, HeightMillimeters = 100, Elements = { new OfdTextElement
+        {
+            FontName = "SimSun", FontResourceId = "10", Text = "回A", Weight = 700,
+            Italic = italic, FontSizeMillimeters = 4, FillColor = new OfdColor(10, 20, 30, 128)
+        } } });
+        string? first = null;
+        for (var pass = 0; pass < 2; pass++)
+        {
+            using var output = new MemoryStream();
+            await new OfdPackageWriter().WriteAsync(package, output);
+            output.Position = 0;
+            package = await new OfdReader().ReadAsync(output);
+            var text = Assert.Single(package.Pages.Single().Elements.OfType<OfdTextElement>());
+            Assert.Equal("回A", text.Text);
+            var xml = XElement.Parse(text.SourceXml!);
+            Assert.Equal("true", xml.Attribute("Stroke")?.Value);
+            Assert.Equal("true", xml.Attribute("Fill")?.Value);
+            Assert.Equal("0.18", xml.Attribute("LineWidth")?.Value);
+            var stroke = Assert.Single(xml.Elements(), node => node.Name.LocalName == "StrokeColor");
+            Assert.Equal("10 20 30", stroke.Attribute("Value")?.Value);
+            Assert.Equal("128", stroke.Attribute("Alpha")?.Value);
+            Assert.Equal(italic, xml.Attribute("CTM") is not null);
+            if (pass == 0) first = text.SourceXml;
+            else Assert.Equal(first, text.SourceXml);
+        }
+    }
+
     private static DocxConversionOptions Options(PinnedCjkFontDirectory fonts, bool explicitNative)
     {
         var options = new DocxConversionOptions { UseInstalledMicrosoftOfficeFonts = false };
