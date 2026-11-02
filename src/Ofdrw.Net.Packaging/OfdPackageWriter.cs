@@ -1183,14 +1183,16 @@ public sealed partial class OfdPackageWriter
     /// <c>Weight</c>/<c>Italic</c> are ignored by several OFD-H viewers, so also
     /// stroke the glyphs (faux bold) and shear the CTM (faux italic). Fresh native
     /// DOCX may explicitly request a bold text stroke for an embedded regular
-    /// face. Imported embedded text and invisible DualLayer text stay untouched.
+    /// face. Imported XML owns its paint/CTM, including omitted defaults;
+    /// it and invisible DualLayer text stay untouched.
     /// </summary>
     private static void ApplyEmphasis(
         XElement textObject, OfdTextElement text, OfdFontResource? resource, int weight, bool italic, XNamespace ns)
     {
+        if (!string.IsNullOrWhiteSpace(text.SourceXml)) return;
         if (text.FillColor.Alpha == 0) return;
         var embedded = resource is { Data.Length: > 0 };
-        if (embedded && (!text.EmitSyntheticBoldStroke || !string.IsNullOrWhiteSpace(text.SourceXml))) return;
+        if (embedded && !text.EmitSyntheticBoldStroke) return;
 
         var size = text.FontSizeMillimeters > 0 ? text.FontSizeMillimeters : 4d;
         if (weight >= 600)
@@ -1215,9 +1217,9 @@ public sealed partial class OfdPackageWriter
         const double shear = 0.2;
         if (textObject.Attribute("CTM")?.Value is string existingMatrix)
         {
-            // Only fresh baseline-normalized runs opt into composition. Preserved
-            // XML and arbitrary legacy run baselines retain their current CTM.
-            if (!string.IsNullOrWhiteSpace(text.SourceXml) || text.Runs.Count == 0 ||
+            // Only fresh baseline-normalized runs opt into composition.
+            // Arbitrary legacy run baselines retain their current CTM.
+            if (text.Runs.Count == 0 ||
                 text.Runs.Any(run => !string.IsNullOrWhiteSpace(run.DeltaY) || ToInvariant(run.YMillimeters) != ToInvariant(size))) return;
             var matrix = existingMatrix.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
                 .Select(value => double.Parse(value, CultureInfo.InvariantCulture)).ToArray();
