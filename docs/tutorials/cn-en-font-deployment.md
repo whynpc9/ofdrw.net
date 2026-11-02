@@ -1,6 +1,6 @@
 # 中英文 DOCX 字体部署 / CN/EN font deployment
 
-本教程用调用方提供的真实 Regular 与 Bold 字体，运行 **DOCX → native/default OFD → PDF**。目标是固定可复现的字体选择、保留原文，并避免把 Regular 描边当成物理 Bold。以下 API/CLI 对应当前仓库源码；使用 NuGet 时须先确认所装版本包含这些接口。本教程不改变 SDK 默认值。
+本教程用调用方提供的真实 Regular 与 Bold 字体，运行 **DOCX → native/default OFD → PDF**。目标是固定可复现的字体选择、保留原文，并避免把 Regular 描边当成物理 Bold。以下 API/CLI 对应当前仓库源码；使用 NuGet 时须先确认所装版本包含这些接口。本教程不改变 SDK 默认值。未发布 `0.1.0-preview.10` 的受限候选 profile 为 `cn-en-physical-cjk-400-700-v1`，范围及当前验收状态见[2026-11-02 计划](../next-steps-2026-11-02.md)。
 
 This recipe supplies physical Regular/Bold faces to native DOCX conversion. It covers the current source API and CLI; a successful conversion is separate from visual, Copy/Find, and release acceptance.
 
@@ -212,6 +212,6 @@ For strict physical bold and an explicit fallback list, use the API. The CLI acc
 | 原 Regular-only 默认合成粗体 | 同一未修改样例 native/default 第 1 页“量”字在 144 DPI 下仍有字腔堵塞，**FAIL 保留**；物理 Bold 的结果不覆盖它。 |
 | Preview Find | 新生成 original native/default 的完整页末日期仍无可操作命中，**FAIL，根因未确定**；字体配方不宣称修复搜索。 |
 | 原始 Unicode Copy | 原始剪贴板字节验收**未完成**；粘贴到搜索字段的结果不能替代该项。 |
-| 发布 | 原 Regular FAIL、Find FAIL 与 Copy 未完成继续按[冻结矩阵](../validation/cn-en-release-n00.md)/[计划](../next-steps-2026-11-01.md)判定；本教程不改 accepted 标准、不表示新版本已经发布。 |
+| 发布 | 旧运行的原 Regular FAIL、Find FAIL 与 Copy 未完成保留。2026-11-02 用户将新候选限定到本教程的真实 CJK Regular/Bold 配置，后两项明列预览版限制；按[当前计划](../next-steps-2026-11-02.md)完成新候选验证后才可评估 profile-qualified accepted。教程不是新验收记录，也不表示已发布。 |
 
-Physical-bold deployment is a separately named configuration. It does not erase the Regular-only failure or complete Preview Find/Copy acceptance. For Flow-generated OFD, see [Flow API](../flow-layout.md) and [font resources/subsetting](../font-subset-and-reuse.md): this DOCX option does not automatically embed fonts into arbitrary Flow documents.
+The unpublished preview.10 candidate is limited to this named physical-font configuration. Regular-only failure remains recorded. Preview Find compatibility and unverified raw Unicode Copy are disclosed limitations, not passed checks. For Flow-generated OFD, see [Flow API](../flow-layout.md) and [font resources/subsetting](../font-subset-and-reuse.md): this DOCX option does not automatically embed fonts into arbitrary Flow documents.

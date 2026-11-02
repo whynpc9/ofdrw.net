@@ -1,5 +1,7 @@
 # Ofdrw.Net 与 OFDRW 功能对照
 
+**2026-11-02 发布范围说明：**未发布 preview.10 仅按[受限物理字体 profile](next-steps-2026-11-02.md)验收；Regular-only 合成粗体失败、macOS Preview Find 兼容性及原始 Copy 未验证须明示。下文通用能力/历史状态不构成该候选或已发布 preview.9 的全范围承诺；R02/R20/R22 边界继续保留。
+
 更新时间：2026-10-21（R00 契约核对）
 
 本表沿用[历史开发计划](capability-roadmap-development-plan.md)固定的 OFDRW 比较快照；原状态核对固定在 `d0f88c7321a57443a4cb0ec92631664f66ed8cc0`。R00 在 `6aa8183ea31e193f500fb9d9717677b15e86c5d3` 重核源码入口与仓库文件，逐出口、输入和 fallback 边界见 [v1.2 能力契约](capability-contract-v12.md)。历史 ticket 状态和验收记录见 [ticket 索引](../.scratch/capability-roadmap/issues/README.md)。R00 除定向功能测试外，重生成并用 PNG/Preview 复查了一个 PageBlock 缺陷样本；该样本视觉未通过；源码、测试入口、合并、视觉和发布状态不能互相替代。本表不代表 GB/T 33190 或密码应用规范的合规认证。

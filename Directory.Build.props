@@ -22,7 +22,7 @@
          malformed cref/param tags, remain enabled. -->
     <NoWarn Condition="'$(EnforcePublicApiDocs)' != 'true'">$(NoWarn);CS1591</NoWarn>
     <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
-    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.9</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview.10</VersionSuffix>
     <PackageVersion Condition="'$(PackageVersion)' == ''">$(VersionPrefix)-$(VersionSuffix)</PackageVersion>
     <Version Condition="'$(Version)' == ''">$(PackageVersion)</Version>
   </PropertyGroup>
@@ -32,7 +32,7 @@
     <None Include="$(MSBuildThisFileDirectory)docs/licenses/UNICODE-LICENSE.txt" Pack="true" PackagePath="docs/licenses/" Link="docs/licenses/UNICODE-LICENSE.txt" />
     <None Include="$(MSBuildThisFileDirectory)THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" Link="THIRD-PARTY-NOTICES.md" />
     <None Include="$(MSBuildThisFileDirectory)docs/conversion-contracts.md" Pack="true" PackagePath="docs/" Link="docs/conversion-contracts.md" />
-    <None Include="$(MSBuildThisFileDirectory)docs/release-notes-0.1.0-preview.9.md" Pack="true" PackagePath="docs/" Link="docs/release-notes-0.1.0-preview.9.md" />
+    <None Include="$(MSBuildThisFileDirectory)docs/release-notes-0.1.0-preview.10.md" Pack="true" PackagePath="docs/" Link="docs/release-notes-0.1.0-preview.10.md" />
     <None Include="$(MSBuildThisFileDirectory)docs/feature-parity.md" Pack="true" PackagePath="docs/" Link="docs/feature-parity.md" />
   </ItemGroup>
 </Project>

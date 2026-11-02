@@ -1,5 +1,15 @@
 # N00：中英文发布范围与最小验收矩阵（2026-11-01）
 
+## 2026-11-02：preview.10 新候选范围决定
+
+用户选择“限定已验证真实 Regular/Bold 配置，将 Preview 搜索兼容性与未完成原始 Copy 明列为预览版限制”。新候选采用 `cn-en-physical-cjk-400-700-v1`，准确配置、版本核对与交接见 [2026-11-02 执行计划](../next-steps-2026-11-02.md)。此决定只变更新候选的承诺范围；下文 2026-11-01 的源码身份、C01–C08 历史矩阵、34 页清单、原 Regular-only 失败及原阻断判断保留为历史记录，不改为 PASS。
+
+新候选 DOCX 核心配置仅为显式字体目录中的 `Noto Sans CJK SC` 静态 Regular（400）/Bold（700）与 `Noto Sans` Regular，API 使用 `NativeEmbeddedBoldBehavior=Throw`、`UseInstalledMicrosoftOfficeFonts=false`、固定 fallback 列表，并分别执行显式 native 与未设置模式的 default。具体源字体 SHA-256、配方及限制见[字体教程](../tutorials/cn-en-font-deployment.md)。不承诺 Noto Sans 真实 Bold、物理 Italic、任意 face/系统字体或 Regular-only 合成粗体的视觉质量；`Throw` 只约束实际选中的 Native 嵌入粗体，不是全局字体沙箱。
+
+新候选仍验 C01、C03–C08 的完整功能、原文、逐页 PNG 与真实 Preview，并保留 C02 原 Regular-only 作为独立回归/已知限制对照；原 34 页清单不删页、不改 fixture/golden/阈值。C01/Flow 仍按本次实际 face 单独记录，不把 DOCX 配置外推为任意 Flow 自动嵌字。C02 的旧 FAIL 不抹去；它在新 profile 范围外，不再单独阻断这个受限预览候选。任何 profile 内原文丢重、不可读、样式串染、裁切重叠/分页错误、无效输出、包不可消费或强制测试/工程门失败仍阻断。
+
+macOS 26.6.2 (25G83) Preview 的完整页末日期/部分整词 Find 无可操作命中是已观察失败；原始 Unicode 剪贴板字节 Copy 为未验证。它们作为新候选具名已知限制披露，不冒称已修复或通过，也不以 PDFKit/AX/文本提取代替。新候选不得承诺通用 Preview 搜索或原始 Copy 正确性；其他阅读器的 Copy/Find 仍未验证。新候选的 Q05 只可在实际物理配置两模式各两页视觉检查通过后填写，并附 `release_profile` 与 `known_limitations`；核心校验器、测试和 tag workflow 不变。
+
 本报告执行 [2026-11-01 计划](../next-steps-2026-11-01.md)的 N00，只冻结当前源码、可判定场景、输入身份和交接。**本次未构建、测试、转换、查看页面或发布；所有新候选的功能、PNG、Preview、Copy/Find 结论仍待执行。** 静态源码表明已有常用 Flow、DOCX Native、表格、图片、页眉页脚和页码入口，不能因完整 R22 未完成就判定这些能力缺失。
 
 ## 1. 本次身份与范围
