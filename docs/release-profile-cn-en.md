@@ -6,7 +6,7 @@
 
 固定输入为未修改的 F01 `e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`，SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`。独立运行显式 `OfdMode=Native` 与不设置 `OfdMode` 的默认 Native，两模式各两页；查看链路为 DOCX → OFD → PDF → macOS Preview。
 
-API 使用显式 `FontDirectories`、`NativeEmbeddedBoldBehavior=Throw`、`UseInstalledMicrosoftOfficeFonts=false`；清空 fallback 后依次指定 `Noto Sans CJK SC`、`Noto Sans`。Office 开关不禁用全部系统字体解析，`Throw` 只约束选中的 Native 嵌入粗体；不能把配置称为全局字体隔离。CLI 没有同等严格粗体开关。
+API 使用显式 `FontDirectories`、`NativeEmbeddedBoldBehavior=Throw`、`UseInstalledMicrosoftOfficeFonts=false`；清空 fallback 后依次指定 `Noto Sans CJK SC`、`Noto Sans`。Office 开关不禁用全部系统字体解析，`Throw` 只约束选中的 Native 嵌入粗体；不能把配置称为全局字体隔离。已发布的 preview.10 CLI 没有同等严格粗体开关；后续源码新增的 `--native-embedded-bold-behavior throw` 及其限定范围见[字体教程](tutorials/cn-en-font-deployment.md#4-cli严格嵌入粗体与目录选项)，不改变本次发布记录。
 
 | 字体 / face index | 源字节 / SHA-256 | 限定用途 |
 | --- | --- | --- |
