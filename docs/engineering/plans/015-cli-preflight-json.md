@@ -59,13 +59,17 @@ ofdrw preflight <input.ofd> [--json] [--output <report.json>] [--allow-multiple-
 - JSON (UTF-8, indented, camelCase property names, enums as strings via `JsonStringEnumConverter`):
   ```json
   { "schema": "ofdrw-cli-preflight/1",
-    "input": { "fileName": "<file name only>", "bytes": 1234, "sha256": "<lowercase hex>" },
+    "input": { "fileName": "<file name only>", "bytes": 1234, "sha256": "<lowercase hex> | null when the input exceeds MaxInputBytes" },
     "ruleOutcomes": { "APF-001": "Pass", ... },
     "report": { ...System.Text.Json serialization of ArchivalPreflightReport... } }
   ```
   `ruleOutcomes` is built from the distinct `RuleId`s in `RuleResults` via `report.GetRuleOutcome`. Use the file **name**, not the full path: the report must not leak directory structure.
 - Exit codes (this command): `0` = `RunState == Complete` and `SummaryOutcome` is `Pass` or `NotApplicable`; `2` = `SummaryOutcome == Fail`; `3` = `Unknown`, or `RunState == Incomplete`; `1` = argument/IO error; `130` = cancelled.
 - Input: open with `File.OpenRead` (seekable, position 0). If the file is missing, throw `FileNotFoundException` ("Input file does not exist.", as other commands do).
+- Hashing is bounded and cancellable:
+  - Read the length first. If `length > options.LoadOptions.MaxInputBytes` (default 512 MiB, `src/Ofdrw.Net.Packaging/Archive/OfdPackageLoadOptions.cs:9`), **do not hash**. Emit `"sha256": null`, still call `CheckAsync`, which rejects by length without reading the content and reports `RunState=Incomplete` → exit 3.
+  - Otherwise hash with `await SHA256.HashDataAsync(stream, cancellationToken)` (cancellation-aware; available on net10), then set `stream.Position = 0` before `CheckAsync`.
+  - Never call the synchronous `SHA256.HashData(stream)`.
 
 ## Commands you will need
 
@@ -110,12 +114,14 @@ Build fixtures with the same approach as `ArchivalPreflightTests`: a minimal val
 5. `Preflight_OutputWithoutJson_IsError`: exit 1.
 6. `Preflight_MissingInput_IsError`: exit 1.
 7. `Preflight_Garbage_IsIncomplete`: a non-ZIP input file → exit 3 (the SDK returns `RunState=Incomplete` rather than throwing, per the guide). If the SDK throws instead, assert exit 1 and note it.
+8. `Preflight_OversizedInput_SkipsHashAndIsIncomplete`: call the internal entry point with an injected `ArchivalPreflightOptions { LoadOptions = { MaxInputBytes = 1024 } }` on a 4 KiB file (the CLI test project has `InternalsVisibleTo`). Expect exit 3, `input.sha256` JSON `null`, and `input.bytes == 4096`. Keep the options injectable for this test by making the parser call `internal static Task<int> PreflightAsync(string[] args, ArchivalPreflightOptions options, CancellationToken token)`, with the public command passing `new ArchivalPreflightOptions()` after flag adjustments.
+9. `Preflight_Cancelled_Returns130AndWritesNothing`: an already-cancelled token with `--json --output r.json` → exit 130 via `Cli.RunAsync`. `r.json` does not exist, and there are no `.ofdrw-*.tmp` leftovers.
 
 **Verify**: tests fail (unknown command).
 
 ### Step 2: Implement `PreflightCommand.cs`
 
-Contents: an argument parser for the contract, plus `CheckAsync`, the human/JSON renderers and the exit-code mapping. Unknown options throw `ArgumentException("Unknown preflight option: ...")`. Compute SHA-256 with `System.Security.Cryptography.SHA256.HashData(stream)`, then rewind before calling `CheckAsync` (it requires position 0). Add `"preflight"` to the allowlist and the early dispatch in `Program.cs`. Add the usage line and `Commands:` entry to `PrintHelp`: `preflight    Run local archival preflight rules APF-001..006 (not certification).`
+Contents: an argument parser for the contract, plus `CheckAsync`, the human/JSON renderers and the exit-code mapping. Unknown options throw `ArgumentException("Unknown preflight option: ...")`. Compute SHA-256 exactly as the "Hashing is bounded and cancellable" contract item says: length check against `MaxInputBytes` first, then `SHA256.HashDataAsync(stream, cancellationToken)`, then rewind to 0 before `CheckAsync`. Add `"preflight"` to the allowlist and the early dispatch in `Program.cs`. Add the usage line and `Commands:` entry to `PrintHelp`: `preflight    Run local archival preflight rules APF-001..006 (not certification).`
 
 **Verify**: new tests pass; the CLI suite passes.
 
@@ -128,7 +134,8 @@ Contents: an argument parser for the contract, plus `CheckAsync`, the human/JSON
 
 ## Done criteria
 
-- [ ] Build exits 0; `PreflightCliTests` (7) pass; CLI suite passes
+- [ ] Build exits 0; `PreflightCliTests` (9) pass; CLI suite passes
+- [ ] `grep -n "SHA256.HashData(" src/Ofdrw.Net.Cli/PreflightCommand.cs` returns nothing (only `HashDataAsync` is used)
 - [ ] `git diff --stat -- src/Ofdrw.Net.Packaging` is empty
 - [ ] `dotnet run --project src/Ofdrw.Net.Cli -c Release -- --help` lists `preflight`
 - [ ] Docs updated; storage gate exits 0; `docs/engineering/plans/README.md` updated
