@@ -8,7 +8,13 @@ internal static class FontEmphasisMetrics
     // This is simulated weight, not a substitute for a physical bold face.
     internal static double BoldStrokeWidth(double fontSize) => fontSize * 0.025;
 
-    internal static double BoldStrokeWidth(double fontSize, string text)
+    /// <summary>The OFD stroke width declared for synthetic bold text containing Han.</summary>
+    internal static double HanBoldStrokeWidth(double fontSize) => fontSize * 0.01;
+
+    internal static double BoldStrokeWidth(double fontSize, string text) =>
+        ContainsHan(text) ? HanBoldStrokeWidth(fontSize) : BoldStrokeWidth(fontSize);
+
+    internal static bool ContainsHan(string text)
     {
         for (var index = 0; index < text.Length; index++)
         {
@@ -19,8 +25,8 @@ internal static class FontEmphasisMetrics
                 index++;
             }
             if (codePoint is >= 0x3400 and <= 0x9FFF or >= 0xF900 and <= 0xFAFF or >= 0x20000 and <= 0x323AF)
-                return fontSize * 0.01;
+                return true;
         }
-        return BoldStrokeWidth(fontSize);
+        return false;
     }
 }

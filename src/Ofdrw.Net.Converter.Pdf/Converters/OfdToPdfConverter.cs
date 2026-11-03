@@ -700,15 +700,27 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     // Use the same top-to-baseline distance as PDFsharp DrawString.
                     baselineOffset += (float)(font.GetHeight() * font.CellAscent / font.CellSpace);
                 }
-                void RenderOutline(XColor color, double width, bool fill) =>
-                    SixLabors.Fonts.TextRenderer.RenderTextTo(
-                        new PdfGlyphOutlineRenderer(graphics, color, width, fill), text,
+                void Render(PdfGlyphOutlineRenderer renderer) =>
+                    SixLabors.Fonts.TextRenderer.RenderTextTo(renderer, text,
                         new SixLabors.Fonts.TextOptions(outlineFont)
                         {
                             Dpi = 72,
                             Origin = new Vector2(0, baselineOffset),
                             KerningMode = SixLabors.Fonts.KerningMode.None
                         });
+                void RenderOutline(XColor color, double width, bool fill) =>
+                    Render(new PdfGlyphOutlineRenderer(graphics, color, width, fill));
+                // The writer's 1%-em Han emphasis is a fraction of a device pixel
+                // at ordinary sizes. Viewers widen such a stroke to their hairline
+                // minimum, which closes dense counters such as those of 量
+                // (issue #107). Keep the text paint and add a filled,
+                // horizontal-only emphasis that never enters the gaps between
+                // stacked strokes. The OFD itself keeps its declared stroke.
+                if (ownBoldStroke && IsHanBoldStroke(strokeWidthPoints, font.Size, text, sourceBoldStrokeWidth))
+                {
+                    Render(new PdfGlyphOutlineRenderer(graphics, solid.Color, HanBoldHalfWidth(font.Size)));
+                    return;
+                }
                 if (simulatedStroke)
                     RenderOutline(solid.Color, FontEmphasisMetrics.BoldStrokeWidth(font.Size, text), true);
                 if (explicitStroke)
@@ -727,6 +739,19 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             graphics.Restore(state);
         }
     }
+
+    private static bool IsHanBoldStroke(double strokeWidthPoints, double emPoints, string text, double? sourceBoldStrokeWidth)
+    {
+        var han = FontEmphasisMetrics.HanBoldStrokeWidth(emPoints);
+        // Positioned runs pass the width chosen once for the whole TextObject.
+        return Math.Abs(strokeWidthPoints - han) <= 0.01 &&
+            (sourceBoldStrokeWidth is { } source ? Math.Abs(source - han) <= 1e-9 : FontEmphasisMetrics.ContainsHan(text));
+    }
+
+    // Each side gains 1/48 em, so stems widen by 1/24 em in total: the
+    // conventional synthetic-bold strength (FreeType FT_GlyphSlot_Embolden),
+    // applied only horizontally because Han density is mostly vertical.
+    private static double HanBoldHalfWidth(double emPoints) => emPoints / 48d;
 
     private static void DrawTextRuns(
         XGraphics graphics,
