@@ -50,7 +50,7 @@ D07 列出的重开条件是“定位到可达、独立且确定的产品绘制�
 - `BoldAlignmentTests` 中 `O中`／0.08 mm 一行改为预期“不同于普通描边”，因为 Han 合成粗体现以填充覆盖层绘制；其余行不变。
 - 按 CI 方式提供固定 CJK 字体（隔离 `HOME/.fonts`）与可信字体 fixture 后：`Ofdrw.Net.Converter.Pdf.Tests` 1212/1212 通过、0 跳过；`Ofdrw.Net.Converter.Docx.Tests` 308/309，唯一失败 `DifferentPageSizesKeepHeadersFieldsTablesAndImagesThroughDrawingSeam` 属于未改动的直接 DOCX→PDF 渲染器（0.0001 pt 舍入），在未修改的 main 上同样失败。
 - 全解决方案（未提供宿主 CJK 字体）：Core、Packaging、Signatures、Cli、Layout、SesInterop、SkiaSharp、Pdf.Vector、Crypto.Password 全部通过；Pdf/Docx 的失败均为缺少宿主 CJK 字体（`Arial lacks U+91CD` 等），已在 main 上复现相同失败。
-- 未运行本地包消费 E2E（`run-converter-package-e2e.sh`）；交由 PR 的 CI 执行。
+- 本地包消费 E2E：`HOME` 提供固定 CJK 字体后运行 `scripts/run-converter-package-e2e.sh 0.1.0-preview.10`（从本分支源码打包并在隔离消费者中安装），退出码 0，`Validated 12 packages at 0.1.0-preview.10`；其中包含 native/dual-layer DOCX→OFD、OFD→PDF、PNG 导出与上游样例栅格往返步骤。
 
 ### DOCX 链路（DOCX → native/default OFD → PDF → PNG）
 
