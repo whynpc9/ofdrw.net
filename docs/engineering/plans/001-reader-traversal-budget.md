@@ -113,12 +113,12 @@ Create `tests/Ofdrw.Net.Packaging.Tests/LargeDocumentReadTests.cs`:
 - Helper `static async Task<MemoryStream> WriteFlow(int paragraphs)`: build a `FlowDocument`, add `paragraphs` paragraphs of the form `$"Paragraph {i}: The quick brown fox jumps over the lazy dog, 中文段落测试内容第{i}段。"`, render, write with `OfdPackageWriter`, rewind, return. Also return or record `document.Render().Pages.Count` for comparison (render once and reuse the package).
 - `[Theory] [InlineData(1200)] [InlineData(4000)] [InlineData(20000)] Reader_ShouldReadLargeFlowDocument(int paragraphs)`: read with `new OfdReader().ReadAsync(stream)`. Assert the page count equals the rendered package's page count, and that the total `OfdTextElement` count across pages equals the rendered total.
 - `[Fact] TextExtractor_ShouldExtractLargeDocument`: 4,000 paragraphs. `new OfdTextExtractor().ExtractPages(read, includeTemplates: true)` (namespace `Ofdrw.Net.Reader.Extraction`) returns one string per page, and the last page contains `"Paragraph 3999:"`.
-- `[Fact] ListDocuments_ShouldListLargeDocument`: 4,000 paragraphs. `ListDocumentsAsync` returns 1 descriptor.
+- `[Fact] ListDocuments_ShouldListLargeDocument`: 4,000 paragraphs. `ListDocumentsAsync` returns 1 descriptor. This is a **guard regression, expected to pass both before and after the fix**. `ListDocumentsAsync` (`OfdReader.cs:31-40`) materializes only `OFD.xml` and checks that the document entries exist; it never reads the page XML that exhausts the counters. It protects against a future change that makes listing materialize pages.
 
 Create `tests/Ofdrw.Net.Converter.Pdf.Tests/LargeDocumentPdfTests.cs`:
 - `[Fact] OfdToPdf_ShouldConvertLargeFlowDocument`: 2,000 paragraphs → OFD → `new OfdToPdfConverter().ConvertAsync(ofd, pdf)` (namespace `Ofdrw.Net.Converter.Pdf.Converters`). Open the PDF with PdfPig (`UglyToad.PdfPig.PdfDocument.Open(bytes)`, already referenced by this test project) and assert `NumberOfPages` equals the OFD page count. If the test project's fonts make this slow (> 60 s), reduce to 1,500 paragraphs, which is still above the old limit.
 
-**Verify**: `dotnet test tests/Ofdrw.Net.Packaging.Tests -c Release $F --filter "FullyQualifiedName~LargeDocumentReadTests"` → the 1200/4000/20000 cases and the extractor/list facts **fail** with `OFD traversal exceeds its reference budget.` (or `node budget`). If they pass already, STOP (the bug was fixed independently).
+**Verify**: `dotnet test tests/Ofdrw.Net.Packaging.Tests -c Release $F --filter "FullyQualifiedName~LargeDocumentReadTests"` → the 1200/4000/20000 cases and the extractor fact **fail** with `OFD traversal exceeds its reference budget.` (or `node budget`). These are the tests that read page content. `ListDocuments_ShouldListLargeDocument` **passes**, as expected (see above); do not treat that as a STOP signal. If the page-reading cases pass already, STOP (the bug was fixed independently). If the listing fact fails, STOP and report: listing would then be materializing page content, contrary to the excerpt.
 
 ### Step 2: Raise the two counter defaults
 
@@ -178,14 +178,14 @@ rm -rf artifacts/001/packages   # pack-only requires an empty candidate director
 
 ## Test plan
 
-- New: `LargeDocumentReadTests` (3 theory cases + 2 facts) and `LargeDocumentPdfTests` (1 fact), all failing before Step 2 and passing after.
+- New: `LargeDocumentReadTests` (3 theory cases + 2 facts) and `LargeDocumentPdfTests` (1 fact), all passing after Step 2. All except `ListDocuments_ShouldListLargeDocument` fail before Step 2; the listing fact is a guard regression that passes both before and after.
 - Existing explicit-limit tests in `OfdModelTraversalTests` must still pass unchanged, because they set their own limits.
 
 ## Done criteria
 
 - [ ] Full `dotnet test Ofdrw.Net.sln`, `run-trusted-font-tests.py` and the local package-consumption E2E (pack + consume) were run per the Final step; TRX totals and environment-only failures are recorded
 - [ ] `dotnet build Ofdrw.Net.sln -c Release $F` exits 0
-- [ ] New tests exist and pass; they failed before Step 2 (record the failure message)
+- [ ] New tests exist and pass; the page-reading tests failed before Step 2 (record the failure message) and the listing guard passed before and after
 - [ ] Core, Packaging, Layout, Converter.Pdf, Cli test suites pass (environment-only failures listed and shown to also fail on base)
 - [ ] `grep -n "MaxNodeCount\|MaxReferenceCount" src/Ofdrw.Net.Core/Models/OfdModelLimits.cs` shows the new defaults
 - [ ] Docs bullet and known-issues row added
