@@ -132,7 +132,9 @@ public sealed class BoldAlignmentTests
     [InlineData("OO", "NotoSans-Regular.ttf", "0.2", "0 0 0", true)]
     [InlineData("OO", "NotoSans-Regular.ttf", "0.1", "0 0 0", false)]
     [InlineData("OO", "NotoSans-Regular.ttf", "0.2", "180 0 0", false)]
-    [InlineData("O中", "LXGWWenKai-Regular.ttf", "0.08", "0 0 0", true)]
+    // The 1%-em Han emphasis is repainted as a horizontal fill overlay
+    // (issue #107, DenseCjkSyntheticBoldTests), so it differs from a plain stroke.
+    [InlineData("O中", "LXGWWenKai-Regular.ttf", "0.08", "0 0 0", false)]
     [InlineData("数量", "LXGWWenKai-Regular.ttf", "0.2", "0 0 0", true)]
     [InlineData("数量", "LXGWWenKai-Regular.ttf", "0.16", "0 0 0", false)]
     public async Task ExplicitFilledStrokeOnRegularFaceDoesNotPaintASecondBoldOutline(
