@@ -13,6 +13,21 @@
 - 测试优先复用确定性样例和共享 fixture；新增测试须对应明确缺陷或独立行为，避免同一行为的重复测试及重复大文件副本。
 - 暂存后、提交前运行 `python3 scripts/check-repository-storage.py`；涉及 fixture 时加 `--require-materialized e2e --require-materialized tests`。检查不得跳过：禁止已跟踪的 `artifacts/`、超过 5 MiB 的普通 Git blob，以及 LFS 路径中的原始载荷或无效指针。详见 `docs/engineering/repository-storage.md`。
 
+# 文档组织与维护
+
+- 新建、修改或整理文档时，遵循现有 `docs/` 分类；`docs/` 根目录只放分类目录，不新增散放文。
+- 面向使用者的网站正文统一维护在 `docs/content/`：入门与安装放 `getting-started/`，任务指南放 `guides/`，API/CLI 和行为约定放 `reference/`，排障与已知问题放 `troubleshooting/`，版本发布说明放 `releases/`。每篇正文填写 `title` frontmatter，不在站点工程中维护重复正文。
+- 设计决策放 `docs/architecture/`；开发、CI、存储、发布与维护说明放 `docs/engineering/`，工程基线和模板分别放其 `baselines/`、`templates/`；验收报告和发布验收记录放 `docs/validation/`；必要证据及 LFS 归档放 `docs/evidence/`；许可原文放 `docs/licenses/`。Nimbus 配置、组件与样式放 `docs/site/`，修改时遵循其中的 `AGENT.md`。
+- 移动或删除文档时，同步更新导航、链接、项目打包引用和检查脚本；历史验收 JSON、manifest、哈希及原始证据不得因整理而重新签收或改写。具体维护流程见 `docs/engineering/documentation.md`。
+
+# 新版本发布后的文档与 Pages 更新
+
+- 新版本成功发布后，必须在 `docs/content/releases/` 新增或更新对应版本的 release note，记录实际发布状态、主要变更、兼容性、依赖及已知限制，并同步 GitHub Release 的说明。
+- 同步网站首页、安装命令、相关指南、能力说明及版本差异；将已随本版交付的内容从“main / 尚未发布”更新为实际可用版本。历史版本的发布范围及验收结论保持其原版本含义，不用新版本结果覆盖旧结论。
+- 文档更新后，在 `docs/site/` 执行 `npm ci`、`npm run build`、`npm run typecheck` 和 `npm run check`；检查实际生成的页面、链接、搜索和版本信息。Nimbus 未覆盖的检查项须如实说明，不能把部分检查表述为完整通过。
+- 将文档更新提交并推送至 `main`，通过 `.github/workflows/docs-pages.yml` 更新部署的 GitHub Pages；必要时使用该工作流的手动触发入口。必须确认对应提交的构建和部署均成功，并检查线上首页、新版本 release note 及安装说明已更新；工作流已触发或排队不代表部署完成。
+- 发布收尾报告须包含版本、文档提交、Pages 部署结果和站点地址 `https://whynpc9.github.io/ofdrw.net/`。部署失败或线上仍为旧内容时，继续处理并明确报告未完成项，不宣称发布收尾已完成。
+
 # 转换与渲染的视觉验证
 
 - 测试或修改 DOCX/OFD/PDF 转换、排版、字体、表格或渲染功能时，必须验证实际生成的页面。自动化测试通过、文件生成成功、页数正确或文本可提取，均不能代替视觉验收。
