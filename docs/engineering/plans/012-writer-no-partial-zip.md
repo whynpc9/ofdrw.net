@@ -97,11 +97,13 @@ Branch `advisor/012-writer-no-partial-zip`; commit e.g. `fix(packaging): fail cl
 
 ### Step 1: Failing tests (`WriterFailClosedTests.cs`)
 
-Test helper `ThrowAfterBytesStream : MemoryStream` that throws `IOException` from `Write`/`WriteAsync` once `Length` exceeds N bytes.
-1. `Write_FailureMidway_LeavesNoReadableZip`: a package with 3 pages, each with a 200 KB `OfdImageElement`, or anything that yields several entries. With N = 50% of a successful write's size, `WriteAsync` throws `IOException`. Then `new ZipArchive(new MemoryStream(stream.ToArray()), ZipArchiveMode.Read)` must throw `InvalidDataException`. Before the fix it opens with fewer entries.
+Test helper `FailOnceAfterBytesStream : MemoryStream`. It throws `IOException` from `Write`/`WriteAsync` **exactly once**: on the first write that would push `Length` past N bytes. Every later write and flush succeeds normally. The failure must be one-shot. A stream that keeps throwing also blocks the old writer's central-directory write during `ZipArchive.Dispose`, so the defect would not reproduce and the test would pass before the fix. Keep a `public bool Failed` flag so tests can assert that the injected failure actually fired.
+1. `Write_FailureMidway_LeavesNoReadableZip`: a package with 3 pages, each with a 200 KB `OfdImageElement`, or anything that yields several entries. With N = 50% of a successful write's size, `WriteAsync` throws `IOException`, and `stream.Failed` is true. Then `new ZipArchive(new MemoryStream(stream.ToArray()), ZipArchiveMode.Read)` must throw `InvalidDataException`.
+   - **Before the fix** this test must fail: the old writer's disposal writes a central directory after the one-shot failure, so the archive opens with fewer entries than a successful write. Record that red result, entry count included, in the report.
+   - If it does not fail before the fix, the helper is not one-shot; fix the helper, not the assertion.
 2. `Write_Cancelled_LeavesNoReadableZip`: a destination that cancels a `CancellationTokenSource` on its first `WriteAsync`. `WriteAsync` throws `OperationCanceledException`, and the bytes are not a readable ZIP.
 3. `Write_Success_IsByteIdentical`: build the same package twice; write once through the normal API. Compute the expected bytes by writing through a plain `MemoryStream` **before** making the change, saving the SHA-256 in the test as a constant, or regenerate with the base commit (`git worktree add ../base 09a2e7e`). Assert the hash is unchanged after the change. If the writer output contains timestamps, compare entry names and contents instead of raw hashes, and say so.
-4. `SignatureCleaner_FailureMidway_LeavesNoReadableZip`: same as 1, through `OfdSignatureCleaner.CleanAsync`. The CLI exemplar is in `src/Ofdrw.Net.Cli/DocumentTools.cs:39-46`.
+4. `SignatureCleaner_FailureMidway_LeavesNoReadableZip`: same as 1, using the same one-shot `FailOnceAfterBytesStream`, through `OfdSignatureCleaner.CleanAsync`. The CLI exemplar is in `src/Ofdrw.Net.Cli/DocumentTools.cs:39-46`.
 
 **Verify**: tests 1, 2 and 4 fail before Step 2; test 3 passes.
 
@@ -113,8 +115,23 @@ Test helper `ThrowAfterBytesStream : MemoryStream` that throws `IOException` fro
 
 Add a bullet to `conversion-contracts.md` "## 资源预算与失败行为": when `OfdPackageWriter`/`OfdSignatureCleaner` fail or are cancelled while writing to a caller stream, the bytes already written are deliberately not a valid ZIP. Callers must still discard the partial output. Use a temp-file-then-rename pattern for files.
 
+### Final step: Full regression and local package-consumption E2E (AGENTS.md)
+
+This plan changes the shared read/layout/font/conversion chain. AGENTS.md therefore requires, in addition to the targeted suites above, the **full regression** and a **local package-consumption E2E**. Converting through the source CLI does not exercise the packaged libraries. Run from the repo root, after all other steps:
+```sh
+dotnet build Ofdrw.Net.sln -c Release $F
+dotnet test Ofdrw.Net.sln -c Release --no-build $F --logger trx --results-directory artifacts/012/full-tests
+python3 scripts/run-trusted-font-tests.py --no-build --results-directory artifacts/012/trusted-font-tests
+rm -rf artifacts/012/packages   # pack-only requires an empty candidate directory
+./scripts/run-converter-package-e2e.sh 0.1.0-preview.10 --pack-only --no-build --packages-dir artifacts/012/packages
+./scripts/run-converter-package-e2e.sh 0.1.0-preview.10 --consume-only --packages-dir artifacts/012/packages --output-dir artifacts/012/package-e2e
+```
+
+**Verify**: every command exits 0. A failure caused only by a missing external tool (LibreOffice, Poppler, fonts) must be shown to fail identically on the base commit (`git worktree add ../ofdrw-base 09a2e7e`), and recorded in the report as an environment limitation; it does not count as a pass. Open the rendered pages under `artifacts/012/package-e2e` for the samples this plan affects, and record which pages you reviewed. Report the TRX totals (total/passed/skipped/failed) for both test runs.
+
 ## Done criteria
 
+- [ ] Full `dotnet test Ofdrw.Net.sln`, `run-trusted-font-tests.py` and the local package-consumption E2E (pack + consume) were run per the Final step; TRX totals and environment-only failures are recorded
 - [ ] Build exits 0; new tests pass; Packaging/Cli/Pdf suites pass
 - [ ] `grep -n "new ZipArchive(destination, ZipArchiveMode.Create" src/Ofdrw.Net.Packaging/OfdPackageWriter.cs` shows only the `WriteZipTerminalAsync` occurrence
 - [ ] Storage gate exits 0; `docs/engineering/plans/README.md` updated

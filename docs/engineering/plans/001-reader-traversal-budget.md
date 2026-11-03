@@ -162,6 +162,20 @@ Record the review coverage as an explicit list: pages reviewed (e.g. `1-40 of 40
 
 **Verify**: `git diff --stat` shows only in-scope files. Docs commands exit 0, or are recorded as not run with the reason.
 
+### Final step: Full regression and local package-consumption E2E (AGENTS.md)
+
+This plan changes the shared read/layout/font/conversion chain. AGENTS.md therefore requires, in addition to the targeted suites above, the **full regression** and a **local package-consumption E2E**. Converting through the source CLI does not exercise the packaged libraries. Run from the repo root, after all other steps:
+```sh
+dotnet build Ofdrw.Net.sln -c Release $F
+dotnet test Ofdrw.Net.sln -c Release --no-build $F --logger trx --results-directory artifacts/001/full-tests
+python3 scripts/run-trusted-font-tests.py --no-build --results-directory artifacts/001/trusted-font-tests
+rm -rf artifacts/001/packages   # pack-only requires an empty candidate directory
+./scripts/run-converter-package-e2e.sh 0.1.0-preview.10 --pack-only --no-build --packages-dir artifacts/001/packages
+./scripts/run-converter-package-e2e.sh 0.1.0-preview.10 --consume-only --packages-dir artifacts/001/packages --output-dir artifacts/001/package-e2e
+```
+
+**Verify**: every command exits 0. A failure caused only by a missing external tool (LibreOffice, Poppler, fonts) must be shown to fail identically on the base commit (`git worktree add ../ofdrw-base 09a2e7e`), and recorded in the report as an environment limitation; it does not count as a pass. Open the rendered pages under `artifacts/001/package-e2e` for the samples this plan affects, and record which pages you reviewed. Report the TRX totals (total/passed/skipped/failed) for both test runs.
+
 ## Test plan
 
 - New: `LargeDocumentReadTests` (3 theory cases + 2 facts) and `LargeDocumentPdfTests` (1 fact), all failing before Step 2 and passing after.
@@ -169,6 +183,7 @@ Record the review coverage as an explicit list: pages reviewed (e.g. `1-40 of 40
 
 ## Done criteria
 
+- [ ] Full `dotnet test Ofdrw.Net.sln`, `run-trusted-font-tests.py` and the local package-consumption E2E (pack + consume) were run per the Final step; TRX totals and environment-only failures are recorded
 - [ ] `dotnet build Ofdrw.Net.sln -c Release $F` exits 0
 - [ ] New tests exist and pass; they failed before Step 2 (record the failure message)
 - [ ] Core, Packaging, Layout, Converter.Pdf, Cli test suites pass (environment-only failures listed and shown to also fail on base)

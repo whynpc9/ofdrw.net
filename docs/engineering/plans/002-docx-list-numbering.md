@@ -222,12 +222,27 @@ Add one bullet to `docs/content/reference/conversion-contracts.md` under "## 原
 
 **Verify**: `git diff --stat` shows only in-scope files.
 
+### Final step: Full regression and local package-consumption E2E (AGENTS.md)
+
+This plan changes the shared read/layout/font/conversion chain. AGENTS.md therefore requires, in addition to the targeted suites above, the **full regression** and a **local package-consumption E2E**. Converting through the source CLI does not exercise the packaged libraries. Run from the repo root, after all other steps:
+```sh
+dotnet build Ofdrw.Net.sln -c Release $F
+dotnet test Ofdrw.Net.sln -c Release --no-build $F --logger trx --results-directory artifacts/002/full-tests
+python3 scripts/run-trusted-font-tests.py --no-build --results-directory artifacts/002/trusted-font-tests
+rm -rf artifacts/002/packages   # pack-only requires an empty candidate directory
+./scripts/run-converter-package-e2e.sh 0.1.0-preview.10 --pack-only --no-build --packages-dir artifacts/002/packages
+./scripts/run-converter-package-e2e.sh 0.1.0-preview.10 --consume-only --packages-dir artifacts/002/packages --output-dir artifacts/002/package-e2e
+```
+
+**Verify**: every command exits 0. A failure caused only by a missing external tool (LibreOffice, Poppler, fonts) must be shown to fail identically on the base commit (`git worktree add ../ofdrw-base 09a2e7e`), and recorded in the report as an environment limitation; it does not count as a pass. Open the rendered pages under `artifacts/002/package-e2e` for the samples this plan affects, and record which pages you reviewed. Report the TRX totals (total/passed/skipped/failed) for both test runs.
+
 ## Test plan
 
 Covered in Step 1: 6 conversion cases × 2 modes, plus formatter unit tests. Use `DocxConversionTests.Native_WrappedSeparatorSpaces_ShouldNotShiftVisibleAlignment` as the structural pattern.
 
 ## Done criteria
 
+- [ ] Full `dotnet test Ofdrw.Net.sln`, `run-trusted-font-tests.py` and the local package-consumption E2E (pack + consume) were run per the Final step; TRX totals and environment-only failures are recorded
 - [ ] Build exits 0; `DocxListNumberingTests` pass; full `Ofdrw.Net.Converter.Docx.Tests` passes (environment-only failures listed)
 - [ ] `grep -n "_numberingCounters\[key\]" src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/DocxModelReader.cs` returns nothing (old keying removed)
 - [ ] Visual record in `artifacts/visual/002/` (not committed) with PNG review notes for both explicit native and default modes. macOS Preview acceptance reported as **not done** unless actually performed on macOS.

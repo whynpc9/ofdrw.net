@@ -99,22 +99,31 @@ Using the copied `Seed(external: true)`:
 8. `Remove_PhysicalExternal_Fails`: `--id 8 --physical` → exit 1; a pre-existing output file is unchanged.
 9. `Remove_InPlace`: input == output works, with no `.ofdrw-*.tmp` leftovers.
 10. `UnknownSubcommand_Fails`: `attachments frob` → exit 1.
+11. `MultiDocument_ListAndExtractSecondDocument`: start from `MultiDocumentFixture.CreateEntriesAsync()` (`tests/TestSupport/MultiDocumentFixture.cs`, already compiled into the CLI test project and used by `MultiDocumentCliTests.cs:19-20`). It builds two DocBodies, `Doc_0` and `Doc_1`.
+    - Add an attachment to **`Doc_1` only**: append `<Attachments>Attachs/List.xml</Attachments>` (in the namespace of `Doc_1/Document.xml`'s root, after its `Pages` element) to `Doc_1/Document.xml`. Add `Doc_1/Attachs/List.xml`, declaring `<Attachment ID="21" Name="second.bin"><FileLoc>second.bin</FileLoc></Attachment>` in the same namespace, and the payload entry `Doc_1/Attachs/second.bin` = `{9,8,7}`. Zip it with `MultiDocumentFixture.Zip`.
+    - `attachments list <file> --document 2 --json` → exit 0, exactly one attachment with id `21`.
+    - `attachments list <file> --document 1 --json` → exit 0, zero attachments.
+    - `attachments extract <file> --document 2 --id 21 --output x.bin` → bytes `{9,8,7}`.
+    - `attachments remove <file> out.ofd --document 2 --id 21` → exit 1 (multi-DocBody write is rejected), and `out.ofd` is not created.
+    - If the reader does not resolve `FileLoc` relative to the list file as assumed, adjust the fixture paths. Do not touch the reader. Confirm against `OfdReader.cs:328-350`.
 
 **Verify**: tests fail (unknown command).
 
 ### Step 2: Implement `AttachmentsCommand.cs`
 
-Use `internal static partial class Cli`. Parse the subcommand from `args[0]`, then flags in pairs as `DocumentToolsAsync` does (literal values; reject unknown or duplicate options). Use `ReadToolInputAsync(path, token, documentIndex)` and `WriteToolOutputAsync`. Use `System.Text.Json` for `--json`. Add `"attachments"` to the allowlist and the early dispatch; add help usage lines and a `Commands:` entry.
+Use `internal static partial class Cli`. Parse the subcommand from `args[0]`, then flags in pairs as `DocumentToolsAsync` does (literal values; reject unknown or duplicate options).
+- For the **read-only** `list` and `extract`, call `ReadToolInputAsync(path, token, documentIndex, allowMultiple: true)`. The default `allowMultiple: false` rejects any OFD with more than one DocBody, even after `--document` selects one, so `--document N` would be unusable.
+- For `remove`, call `ReadToolInputAsync(path, token, documentIndex)` (single-DocBody only, the same write-safety restriction as the other page-editing tools) and `WriteToolOutputAsync`. On multi-DocBody input it fails with the helper's existing message; document that in Step 3. Use `System.Text.Json` for `--json`. Add `"attachments"` to the allowlist and the early dispatch; add help usage lines and a `Commands:` entry.
 
 **Verify**: new tests and the CLI suite pass.
 
 ### Step 3: Docs
 
-In `cli.md`, add the three usages to the command table and usage block, marked "main, not yet released" in the file's existing style. Note that extraction never uses the stored attachment name as a path, and explain the difference between logical and physical removal in one sentence each, consistent with the `OfdAttachmentRemovalMode` doc comments.
+In `cli.md`, add the three usages to the command table and usage block, marked "main, not yet released" in the file's existing style. Note that extraction never uses the stored attachment name as a path, and explain the difference between logical and physical removal in one sentence each, consistent with the `OfdAttachmentRemovalMode` doc comments. State that `list` and `extract` accept multi-DocBody input with `--document N`, while `remove` requires a single-DocBody document.
 
 ## Done criteria
 
-- [ ] Build exits 0; 10 new tests pass; CLI suite passes
+- [ ] Build exits 0; 11 new tests pass (including the multi-DocBody case); CLI suite passes
 - [ ] `git diff --stat -- src/Ofdrw.Net.Core src/Ofdrw.Net.Packaging` is empty
 - [ ] Docs updated; storage gate exits 0; `docs/engineering/plans/README.md` updated
 
