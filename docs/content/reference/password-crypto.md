@@ -1,5 +1,9 @@
 ---
 title: "可选口令加密包"
+description: "独立 Password 扩展的私有 v2 与 Java OFDRW 交换子集、预算、认证和清理边界。"
+sidebar:
+  order: 90
+  label: "口令加密扩展"
 ---
 
 `Ofdrw.Net.Crypto.Password` 是显式引用的独立 `net8.0` 扩展。原有 `OfdPasswordEnvelope` 继续只处理本包私有 profile v2；新增 `OfdStandardEncryption` 是独立、显式的 Java OFDRW 2.4.0 交换子集。它不进入 `Ofdrw.Net.Converter` 默认依赖，不修改核心 `SupportsGmT0099EncryptionEnvelope=false`。本票未发布 NuGet；本地 feed 消费与交叉样本只证明具名实现/样本。不是商用密码产品或密码认证，没有厂商互认证据，不能当作长期保存格式；OFD-H/档案入库前应解密。

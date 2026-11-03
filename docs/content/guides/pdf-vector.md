@@ -1,5 +1,9 @@
 ---
 title: "可选 PDF 矢量扩展"
+description: "了解独立 PDF Vector 源码扩展的原生 OFD 输出、页级失败与整页回退策略。"
+sidebar:
+  order: 180
+  label: "PDF Vector 扩展"
 ---
 
 源码扩展 `Ofdrw.Net.Converter.Pdf.Vector` 提供受限的 PDF→原生 OFD 路径和文字输出，依赖合作式 Skia 事件链路，不属于默认转换包发布集合。

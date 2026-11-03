@@ -1,5 +1,9 @@
 ---
 title: "SES 测试互操作扩展"
+description: "显式注册 SES 测试容器和固定证书 verifier，区分测试互操作与生产签名信任。"
+sidebar:
+  order: 200
+  label: "SES 测试扩展"
 ---
 
 `Ofdrw.Net.Signatures.SesInterop` 是独立测试扩展，需要调用方显式注册。它覆盖具名 SES 测试容器、固定测试证书、SM2 自签和限定交叉检查。

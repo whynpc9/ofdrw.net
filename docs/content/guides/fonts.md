@@ -1,5 +1,9 @@
 ---
 title: "中文、英文与字体部署"
+description: "为 DOCX Native 和 PDF 导出配置真实 Regular/Bold 字体、fallback 与严格粗体策略。"
+sidebar:
+  order: 25
+  label: "字体部署"
 ---
 
 中文转换需要调用方提供许可明确的字体文件。`FontFamily` 名称、实际 face 与 Bold/Italic 载荷是不同信息；Regular 加样式标记不能替代真实 Bold 文件。

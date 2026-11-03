@@ -1,5 +1,9 @@
 ---
 title: "转换、编辑与资源约定"
+description: "DOCX/PDF 原文与分页、字体、页面编辑、资源预算、取消及输出失败的精确约定。"
+sidebar:
+  order: 40
+  label: "转换与资源约定"
 ---
 
 本页描述 `0.1.0-preview.10` 产品源码的转换、编辑与资源行为。公开包与实际验收范围见[最终发布记录](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/preview10-publication-2026-11-02.md)；后续源码或本地验证不自动代表新版本已发布。

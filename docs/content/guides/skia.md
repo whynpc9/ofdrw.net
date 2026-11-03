@@ -1,5 +1,9 @@
 ---
 title: "可选 Skia 事件适配"
+description: "将合作 producer 的受支持 Skia 绘图事件显式适配为 OFD 图元。"
+sidebar:
+  order: 190
+  label: "Skia 扩展"
 ---
 
 Skia 适配用于显式接入的合作 producer，将受支持的绘图事件转为 OFD 图元。它不会捕获任意现有 SKCanvas，也不等价于完整 Graphics2D。

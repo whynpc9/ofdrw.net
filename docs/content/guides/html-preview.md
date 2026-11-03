@@ -1,32 +1,71 @@
 ---
-title: "Static HTML previews"
+title: "静态 HTML 预览"
+description: "将选定的 OFD 页面导出为有界、自包含、无 JavaScript 的静态 HTML，并配置页选择与资源预算。"
+sidebar:
+  order: 100
+  label: "HTML 预览"
 ---
 
-`Ofdrw.Net.Converter.Svg` also exports bounded multi-page HTML. No additional package or JavaScript is needed. The Reader selects the first OFD document; page indexes are positions in its sorted pages. The output is a static drawing projection, with no OFD actions, navigation or signature trust UI.
+`Ofdrw.Net.Converter.Svg` 的 `OfdToHtmlConverter` 将多页 OFD 导出为静态 HTML。页面使用内嵌 SVG，不需要额外包或 JavaScript。输出是绘图层投影，不执行 OFD 动作、导航或签名信任 UI。
+
+## 导出选定页面
 
 ```csharp
 using Ofdrw.Net.Converter.Svg;
 using Ofdrw.Net.Converter.Svg.Converters;
 
 var exporter = new OfdToHtmlConverter(new OfdHtmlOptions { Title = "Report" });
-await exporter.ConvertAsync(input, output, new[] { 2, 0, 2 }, cancellationToken);
+
+await using var input = File.OpenRead("input.ofd");
+await using var output = File.Create("preview.html");
+await exporter.ConvertAsync(input, output, new[] { 2, 0, 2 });
 ```
 
-The input is loaded once. Null selects all pages; an explicit empty selection fails. Selection order and duplicate occurrences are preserved. Each occurrence has independent clip IDs and embedded font families. The same embedded font is included again on each page, so large fonts and repeated selections can exhaust limits quickly. Successful font parsing is cached only within the current call. The existing single-page SVG API and `ofd-to-svg` command retain their behavior.
+第三个参数使用零基页索引；上例按“第 3 页、第 1 页、第 3 页”输出。传 `null` 选择全部页面，显式空列表会失败。顺序和重复页保留，每个页面出现次数都有独立的裁剪 ID 和嵌入字体族。
 
-```text
+输入只加载一次。相同嵌入字体仍会按页面重复写入，因此大字体和重复选页可能很快耗尽预算；字体解析缓存仅在当前调用内复用。默认选择第一个 OFD 文档，多文档选择见 [Multi-DocBody](https://whynpc9.github.io/ofdrw.net/guides/multi-docbody/)。
+
+## CLI
+
+```sh
 ofdrw ofd-to-html input.ofd preview.html --pages 3,1,3 --title "Report"
-ofdrw ofd-to-html --input input.ofd --output preview.html --max-pages 200 --max-output-bytes 67108864 --max-page-bytes 16777216
+ofdrw ofd-to-html --input input.ofd --output preview.html \
+  --max-pages 200 --max-output-bytes 67108864 --max-page-bytes 16777216
 ```
 
-CLI pages are one-based; ascending ranges such as `1-3,2` are supported. Empty pieces, descending ranges, zero, overflow, more than 8192 selection characters and over-budget expansions fail before the input is opened. HTML is explicitly selected with `ofd-to-html`; the generic `convert` command does not route `.html` automatically. CLI output uses the existing same-directory atomic staging/commit mechanism; only completed commits report success. Exit codes are 0 for success, 1 for failure, and 130 for cancellation.
+CLI 页号从 **1** 开始，支持 `1-3,2` 这样的升序范围。空片段、倒序范围、零、溢出、超长选择表达式和超预算展开会在打开输入前失败。
 
-All limits are positive: 200 page occurrences, 64 MiB UTF-8 output, 16 MiB per section, 100,000 reserved generated nodes, 32 Mi UTF-16 generation capacity, 32 MiB original embedded resources and 1024 title code units by default. Node/character limits reserve conservative upper bounds before renderer allocations, including glyph expansion, XML projection, path normalization, Base64, CSS and intermediate copies; they may reject an output whose serialized size would fit. Resource and generation costs are charged again for duplicate pages. Reader input and model materialization limits remain independent. These limits are not process-wide memory, CPU or wall-clock limits.
+HTML 必须显式使用 `ofd-to-html`，通用 `convert` 不会根据 `.html` 自动路由。CLI 在目标目录暂存并原子提交；退出码为 `0`（成功）、`1`（失败）和 `130`（取消）。
 
-The complete result is serialized without a BOM into a bounded private memory spool, then copied to the caller's stream. This intentionally avoids sensitive plaintext temporary files. Streams are left open and used at their current positions. Generation/selection/policy/limit failures leave public output unchanged. A failure or cancellation during final copying or flushing can leave a prefix in an arbitrary output stream; the caller must discard it. Different stream wrappers around the same underlying storage cannot be reliably detected and must not alias.
+## 默认预算
 
-The exporter generates its own restricted SVG DOM and validates allowed elements, attributes, numeric values and page-local clip references. It does not sanitize arbitrary SVG. Titles and text are escaped in context. CSS contains only fixed templates and controlled font names/Base64. No scripts, event attributes, external URI loading, arbitrary CSS, embedded SVG images or foreign namespaces are emitted. A defensive CSP is included. Unknown visible drawings, unsupported font/glyph/annotation semantics and unknown drawing extensions are rejected. Unknown document metadata is not inserted into HTML.
+所有限制必须为正数：
 
-Embedded media has a deliberately narrow profile without adding a decoder dependency: non-interlaced grayscale/RGB(A) PNG with bounded dimensions, known static chunks, complete chunk framing/CRC, valid zlib row lengths/filter bytes and Adler checksum; or 8-bit baseline Huffman JPEG with a single scan, checked segment framing, tables and entropy block traversal. Progressive/multiscan/arithmetic JPEG, indexed/interlaced/animated PNG, private or text PNG chunks, trailing payload, BMP/TIFF/GIF and other formats are rejected explicitly. Admission verifies this syntax; it does not certify browser decoders or color-management fidelity. Browsers can still have independent decoding/rendering limits. Image dimensions and the cumulative decoded pixel work (`MaxDecodedImagePixels`) are limited to 100 million pixels by default. Each image occurrence, including duplicate pages, is charged before PNG inflation or JPEG entropy traversal; over-budget work fails before expansion. The inner chunk/scanline/MCU loops check cancellation. Embedded fonts use existing OpenType/cmap admission and finite parse work.
+| 限制 | 默认值 |
+| --- | --- |
+| 页面出现次数 | 200 |
+| UTF-8 输出 | 64 MiB |
+| 单个页面部分 | 16 MiB |
+| 预留生成节点 | 100,000 |
+| UTF-16 生成容量 | 32 Mi code unit |
+| 原始嵌入资源 | 32 MiB |
+| 标题 | 1024 个 UTF-16 code unit |
+| 累计解码图片像素 | 100,000,000 |
 
-SVG root font inheritance is reset so the preview shell does not replace the standalone SVG fallback font. Unembedded or unavailable font names still depend on the browser/host and are not a font identity guarantee. Inline SVG retains page mm dimensions and viewBox; narrow windows scale pages proportionally. Screen labels sit outside source coordinates. Print CSS gives each occurrence a separate page break; mixed physical paper sizes depend on the browser/print settings. Browser acceptance and PDF/Preview control results are recorded in [the historical implementation report](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/plans/029-followup-implementation.md), and apply only to the inspected artifacts and pages.
+节点、字符和资源预算会在渲染分配前按保守上界预留，因此可能拒绝理论上能够序列化到限制内的输出。重复页面会重复计入资源和生成成本。它们是操作预算，不是整个进程的内存、CPU 或运行时间保证。
+
+## 安全与媒体边界
+
+导出器生成自己的受限 SVG DOM，并校验允许的元素、属性、数值和页内裁剪引用；它不是任意 SVG 清理器。标题和文字按上下文转义，CSS 只来自固定模板及受控字体名/Base64。
+
+输出不包含脚本、事件属性、外部 URI 加载、任意 CSS、嵌入式 SVG 图片或外来命名空间，并带防御性 CSP。未知可见绘图、不支持的字体/字形/批注语义和未知绘图扩展会明确拒绝。
+
+内嵌图片仅接受受限的静态 PNG 或 8-bit baseline Huffman JPEG。渐进/多扫描/算术 JPEG、索引/交错/动画 PNG、私有或文本 PNG chunk、尾随数据、BMP/TIFF/GIF 等会拒绝。准入检查证明的是受支持语法，不保证浏览器解码器或色彩管理一致。
+
+## 流写入与查看
+
+完整结果先序列化为无 BOM 的有界私有内存暂存，再复制到调用方流。生成、选择、策略或预算失败不会改变公共输出；最终复制或 flush 失败可能留下前缀，调用方必须丢弃该输出。流保持打开并从当前位置使用，不要通过不同包装流同时读写同一底层存储。
+
+窄屏会按比例缩放页面；打印 CSS 将每次页面出现放在独立分页中，混合纸张尺寸仍取决于浏览器和打印设置。未嵌入或不可用的字体名依赖浏览器/宿主，不构成字体身份保证。
+
+历史浏览器与 PDF/Preview 对照只适用于其记录的实际产物和页面，见[实现验收记录](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/plans/029-followup-implementation.md)。

@@ -1,5 +1,9 @@
 ---
 title: "签名保护范围、关系与扩展参数（R13）"
+description: "签名引用保护范围、Relative 关系、Parameters 和摘要完整性验证的精确边界。"
+sidebar:
+  order: 80
+  label: "签名保护范围"
 ---
 
 `OfdSignatureService.SignWithResultAsync` 返回本次签名的包条目清单：`ProtectedFiles` 的原始字节进入 `References`，`UnprotectedFiles` 未进入。新生成的 `Signature.xml` 和 `SignedValue.dat` 必然列为本次未保护；它们由签名值本身的校验关系覆盖。若 provider 提供印章，新生成且由 `Signature.xml` 引用的 `Seal.esl` 必须进入 `ProtectedFiles`，即使签名目录位于文档目录之外。旧 `SignAsync` 仍可用，默认保护所有签署前存在的条目，仅排除可变的 `Signatures.xml`。显式 `ProtectSignatureList=true` 后，后续追加签名会被拒绝。

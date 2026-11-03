@@ -1,5 +1,9 @@
 ---
 title: "Ofdrw.Net 与 OFDRW 功能对照"
+description: "按能力域比较 Ofdrw.Net 与 Java OFDRW，标明已支持、部分支持、扩展点和验证边界。"
+sidebar:
+  order: 50
+  label: "功能对照"
 ---
 
 维护基线：公开产品源码 `8f27f92b51b70a9b01082da35ff1cfe989d46123`（`0.1.0-preview.10`）；整理日期 2026-11-02。发布、签名、消费与限定页面结果见[最终发布记录](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/preview10-publication-2026-11-02.md)。DOCX 的页面通过范围仅为[固定物理字体配置](https://whynpc9.github.io/ofdrw.net/reference/release-profile-cn-en/)和 F01 四页；Regular-only 视觉 FAIL、Preview Find 异常与原始 Copy 未验证继续保留。

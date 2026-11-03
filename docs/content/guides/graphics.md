@@ -1,5 +1,8 @@
 ---
 title: "原生绘图"
+description: "使用 OfdGraphics、画笔、路径和矩阵绘制原生 OFD 图元，无需 SkiaSharp。"
+sidebar:
+  order: 50
 ---
 
 `Ofdrw.Net.Layout.Graphics` 提供 OfdGraphics、OfdPen、OfdBrush、OfdFont、OfdGraphicsPath 和 OfdMatrix，输出原生 OFD 图元，无需 SkiaSharp 或 System.Drawing。

@@ -1,5 +1,9 @@
 ---
 title: "GB/T 42133-2022 archival coverage ledger"
+description: "GB/T 42133-2022 条款级覆盖、证据缺口、转换边界与完整符合性所需材料。"
+sidebar:
+  order: 150
+  label: "归档标准覆盖账本"
 ---
 
 This ledger inventories the treatment and software provisions of **GB/T 42133-2022, 信息技术 OFD档案应用指南**. It is an engineering traceability record, not a conformance certificate. The [public standard copy](https://tsgdag.jhun.edu.cn/_upload/article/files/93/cc/4d8bf26643f49ee8a76ee25d4ef6/82cca584-f57d-47db-9363-a1497f03326a.pdf) is 14 PDF pages, SHA-256 `7d76c086e1384ff200c0df8f5a40bf67660e841340c5e2630e582c81c22f1b82`. Clause labels below were checked against the rendered pages because this PDF's extractable text is garbled. The [national-standard catalog](https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=CF545613ABF25B011116F79DCCD3C45B) lists this edition as current. No PDF copy is committed here.

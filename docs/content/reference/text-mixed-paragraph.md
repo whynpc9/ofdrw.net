@@ -1,5 +1,9 @@
 ---
 title: "Bounded mixed Latin/Hebrew paragraph query"
+description: "受限 Latin/Hebrew 混排查询与候选 writer 的方向、源区间和输出边界。"
+sidebar:
+  order: 120
+  label: "Latin/Hebrew 混排"
 ---
 
 `HarfBuzzTextPrelayout.CreateMixedParagraph()` supplies the pinned HarfBuzz run

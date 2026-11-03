@@ -1,5 +1,9 @@
 ---
 title: "字体子集与复用（05 / issue #3）"
+description: "静态 TrueType 子集、字体内容身份复用、缺字检查、嵌入许可与全量保留策略。"
+sidebar:
+  order: 70
+  label: "字体子集与复用"
 ---
 
 新建包默认 `SubsetWhenSafe`：`OfdFontResource.Data` 是字节来源，`Id` / `OfdTextElement.FontResourceId` 绑定字体，`Bold` / `Italic` 保留样式。05 不增加另一套公开字体描述，04 的 `OfdFont` / `OfdGraphics` 可以继续绑定这些 Core 资源。不同名称或样式但相同字节的资源保留各自 ID，共用全包用字集合和一份 `FontFile`。同名不同内容始终分开。

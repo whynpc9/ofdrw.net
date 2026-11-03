@@ -1,43 +1,70 @@
 ---
-title: "Strongly typed standard object editing"
+title: "强类型标准对象编辑"
+description: "通过 OfdReader 读取并编辑 DocInfo、自定义元数据、权限、视图偏好、版本和动作，同时保留未知 XML。"
+sidebar:
+  order: 130
+  label: "标准对象编辑"
 ---
 
-`OfdReader.ReadAsync` exposes the selected document's additional standard objects through `OfdDocumentPackage.Options.Metadata`, `Permissions`, `ViewingPreferences`, `Versions`, and `Actions`. `OfdPackageLoadOptions.DocumentIndex` selects a DocBody by zero-based index. The default remains the first document. The [multi-DocBody edit boundary](https://whynpc9.github.io/ofdrw.net/guides/multi-docbody/) applies to every write.
+`OfdReader.ReadAsync` 通过 `OfdDocumentPackage.Options` 暴露所选文档的 `Metadata`、`Permissions`、`ViewingPreferences`、`Versions` 和 `Actions`。`OfdPackageLoadOptions.DocumentIndex` 使用零基索引选择 `DocBody`，默认第一个文档；所有写出都受 [Multi-DocBody 编辑边界](https://whynpc9.github.io/ofdrw.net/guides/multi-docbody/)约束。
 
-## DocInfo
+## DocInfo 与自定义元数据
 
-`OfdMetadata.DocUsage` is an optional `OfdDocUsage` value (`Normal`, `EBook`, `ENewsPaper`, `EMagzine`). `Cover` is a package-relative image location, `CreatorVersion` is text, and `CustomDatas` contains ordered `CustomData` entries with `Name` and text value. An omitted `DocUsage` retains the standard default. A newly assigned or changed `Cover` must resolve to an existing package entry that is not XML control content; this library neither fetches nor creates the image.
+`OfdMetadata.DocUsage` 是可选的 `OfdDocUsage`（`Normal`、`EBook`、`ENewsPaper`、`EMagzine`）。`Cover` 是包内相对图片路径，`CreatorVersion` 是文本，`CustomDatas` 保存有序的 `Name` / 文本值条目。
 
 ```csharp
+using Ofdrw.Net.Core.Models;
+using Ofdrw.Net.Packaging;
+using Ofdrw.Net.Packaging.Archive;
+using Ofdrw.Net.Reader.Readers;
+
 var reader = new OfdReader();
-var document = await reader.ReadAsync(input, new OfdPackageLoadOptions { DocumentIndex = 1 });
+await using var input = File.OpenRead("input.ofd");
+var document = await reader.ReadAsync(
+    input,
+    new OfdPackageLoadOptions { DocumentIndex = 1 });
+
 document.Options.Metadata.DocUsage = OfdDocUsage.EBook;
 document.Options.Metadata.CustomDatas ??= new OfdCustomDatas();
 document.Options.Metadata.CustomDatas.Add("case", "001");
+
+await using var output = File.Create("output.ofd");
 await new OfdPackageWriter().WriteAsync(document, output);
 ```
 
-`OfdCustomDatas.Items` and `OfdVersions.Items` are ordered views. Editing an item changes its parent; `Add`, `RemoveAt` and `Clear` manage modeled entries. An empty wrapper with no extension content is omitted at write time. Unknown attributes and children remain in their original positions. A malformed or ambiguous source node stays as preserved XML and cannot be replaced through a new typed instance without an explicit failure.
+新设置或修改的 `Cover` 必须指向包中现有且不是 XML 控制内容的条目；库不会下载或创建封面图片。省略 `DocUsage` 时保留标准默认语义。
 
-`RemoveAt` rejects an entry with unknown source content. `Clear` checks every entry before removing any, so a rejected clear leaves the collection unchanged.
+`OfdCustomDatas.Items` 和 `OfdVersions.Items` 是有序视图。编辑条目会更新其父对象；`Add`、`RemoveAt` 和 `Clear` 管理已建模条目。没有扩展内容的空 wrapper 在写出时省略，未知属性和子元素保留原位置。
 
-## Permissions, preferences and versions
+`RemoveAt` 会拒绝含未知源内容的条目；`Clear` 先检查所有条目再执行，因此拒绝时集合保持不变。畸形或有歧义的源节点继续作为保留 XML，不能通过直接安装新 typed 实例静默覆盖。
 
-`OfdPermissions` models the six optional Boolean declarations plus `Print` (`Printable`, `Copies`) and `ValidPeriod` (`StartDate`, `EndDate` XML dateTime strings). Nullable Boolean properties preserve omission separately from the standard's defaults. `OfdViewingPreferences` models page mode, layout, tab display, hide flags, and the exclusive `ZoomMode` or numeric `Zoom` choice. `OfdVersions` models the selected DocBody's ordered `Version` descriptors (`Id`, `Index`, optional `Current`, `BaseLocation`). Changed or new version locations must resolve to existing package entries. Version files themselves are preserved, not generated.
+## 权限、视图偏好与版本
 
-Replacing or removing an imported `Print` or `ValidPeriod` node fails when it would discard unknown attributes or child content. Edit its typed properties through the existing child object to retain that content.
+- `OfdPermissions` 表示六个可选 Boolean 声明、`Print`（`Printable`、`Copies`）和 `ValidPeriod`（`StartDate`、`EndDate` XML dateTime 字符串）。可空 Boolean 将“省略”与标准默认值分开保存。
+- `OfdViewingPreferences` 表示页面模式、布局、标签显示、隐藏标志，以及互斥的 `ZoomMode` 或数值 `Zoom`。
+- `OfdVersions` 表示所选 `DocBody` 的有序 `Version` 描述（`Id`、`Index`、可选 `Current`、`BaseLocation`）。修改或新增的位置必须指向包内现有条目；版本文件本身只保留，不生成。
 
-Permissions are **declarations only**. The Reader, Writer and editing APIs do not enforce them as access control. Viewer preferences likewise do not control a UI.
+替换或删除导入的 `Print` / `ValidPeriod` 节点时，如果会丢失未知属性或子内容，操作会失败。应通过现有子对象修改 typed 属性，以保留未知内容。
 
-## Actions and source preservation
+> 权限只是声明。Reader、Writer 和编辑 API 不把它们执行为访问控制；视图偏好也不会自动控制应用 UI。
 
-Existing local `OfdGoToAction` remains available. `OfdUriAction`, `OfdAttachmentAction` (`GotoA`), `OfdSoundAction`, and `OfdMovieAction` model the other standard action forms. URI, attachment and media actions are serialized only; the library does not request a URI, open an attachment or play media. Attachment and media targets must be retained local resources for new or edited typed actions. A `GotoA` targeting an external attachment or an attachment with a missing payload remains opaque. Unsupported, ambiguous or unprovable source actions remain `OfdRawAction` with their full XML.
+## 动作
 
-Deleting an unrelated page keeps a modeled attachment or media action when its target remains in the package. An action carrying unknown XML, or one whose target is removed, still blocks the deletion.
+除已有的本地 `OfdGoToAction` 外，模型还包括：
 
-Imported wrappers preserve unknown XML, namespaces and unmodeled siblings. Assigning null to a pristine imported typed wrapper preserves its source. Withdrawing a modified imported wrapper fails. A typed node from another document cannot be installed into the selected document. Page deletion or cross-document migration still fails when reference closure cannot be proven. This API provides targeted editing of the named objects, not whole-document XSD validation or archival certification.
+- `OfdUriAction`
+- `OfdAttachmentAction`（`GotoA`）
+- `OfdSoundAction`
+- `OfdMovieAction`
 
-`OfdDocumentSplitter.Split` carries edited custom metadata, permissions, viewer preferences, and version descriptors into the selected package with new document ownership. `OfdDocumentMerger.Merge` carries the first source's `DocUsage`, `Cover`, and `CreatorVersion`; a cover image must be an existing, distinct package entry so its bytes can be copied into the merged package.
-`OfdDocumentMixer.Mix` likewise carries the first source's existing cover file into the mixed package.
+URI、附件和媒体动作只负责序列化；库不会请求 URI、打开附件或播放媒体。新建或编辑的 typed 动作必须指向保留的包内本地附件或媒体资源。指向外部附件或缺失载荷的 `GotoA` 保持为不透明内容。
 
-The field shapes and order were checked against the public OFD [OFD.xsd](https://github.com/zc310/ofd/blob/main/internal/schema/xsd/OFD.xsd), [Document.xsd](https://github.com/zc310/ofd/blob/main/internal/schema/xsd/Document.xsd), and [Definitions.xsd](https://github.com/zc310/ofd/blob/main/internal/schema/xsd/Definitions.xsd), with the [upstream Java object model](https://github.com/ofdrw/ofdrw/tree/84e9eb260ba6fd351ecccf08a01a40305d4af635/ofdrw-core/src/main/java/org/ofdrw/core) as an interoperability cross-check.
+不支持、有歧义或无法证明来源的动作保留为带完整 XML 的 `OfdRawAction`。删除无关页面时，如果附件或媒体目标仍存在，已建模动作可以保留；动作包含未知 XML 或其目标被删除时，页面删除仍会被阻止。
+
+## 来源保留、拆分与合并
+
+导入的 wrapper 保留未知 XML、命名空间和未建模兄弟节点。给未修改的导入 typed wrapper 赋 `null` 会保留来源；撤销已经修改的 wrapper 会失败。不能把属于另一个文档的 typed 节点安装到当前文档。
+
+`OfdDocumentSplitter.Split` 会将编辑后的自定义元数据、权限、视图偏好和版本描述带入所选的新包，并转移所有权。`OfdDocumentMerger.Merge` 采用第一个来源的 `DocUsage`、`Cover` 和 `CreatorVersion`；封面必须是现有且独立的包条目，才能复制其字节。`OfdDocumentMixer.Mix` 同样保留第一个来源的现有封面文件。
+
+这些 API 只编辑具名对象，不提供全文档 XSD 验证、任意跨文档迁移或归档认证。字段形状与顺序核对使用公开 OFD [OFD.xsd](https://github.com/zc310/ofd/blob/main/internal/schema/xsd/OFD.xsd)、[Document.xsd](https://github.com/zc310/ofd/blob/main/internal/schema/xsd/Document.xsd)、[Definitions.xsd](https://github.com/zc310/ofd/blob/main/internal/schema/xsd/Definitions.xsd)，并以[上游 Java 对象模型](https://github.com/ofdrw/ofdrw/tree/84e9eb260ba6fd351ecccf08a01a40305d4af635/ofdrw-core/src/main/java/org/ofdrw/core)作互操作交叉检查。

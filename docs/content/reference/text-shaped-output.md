@@ -1,5 +1,9 @@
 ---
 title: "Typed shaped text output (R22, first profile)"
+description: "首个 typed shaped text 输出 profile 的 GID、cluster、字体子集和页面写出限制。"
+sidebar:
+  order: 110
+  label: "Typed 文字输出"
 ---
 
 `TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs` consumes the

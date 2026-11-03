@@ -1,5 +1,9 @@
 ---
 title: "Local archival preflight"
+description: "六项本地归档预检规则、有限标准映射、只读覆盖检查和独立副本转换边界。"
+sidebar:
+  order: 170
+  label: "归档预检"
 ---
 
 `Ofdrw.Net.Packaging.Preflight.ArchivalPreflightChecker` inspects an existing OFD ZIP using six finite local rules. Its profile is `ofdrw-local-preflight/0.1-draft`, rule revision 1. It is not OFD-H, OFD, GB/T 42133 or archival certification. Standard mappings are unverified and every `Clause` is empty.

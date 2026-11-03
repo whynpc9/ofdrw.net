@@ -1,5 +1,9 @@
 ---
 title: "R10 restricted image and region profile"
+description: "导入 OFD 的受限 JBIG2、ImageMask 和基于原字体几何的区域文字提取。"
+sidebar:
+  order: 130
+  label: "图像与区域文字"
 ---
 
 This profile is for imported OFD content. The Reader retains the original

@@ -1,8 +1,12 @@
 ---
 title: "Ofdrw.Net 能力契约与范围索引"
+description: "按入口、出口和输入语义查阅支持状态、回退、失败输出与各工作单元的能力边界。"
+sidebar:
+  order: 60
+  label: "能力契约"
 ---
 
-**2026-11-02 发布范围说明：**preview.10 已公开；[受限物理字体 profile](https://whynpc9.github.io/ofdrw.net/reference/release-profile-cn-en/)的 F01 native/default 各两页通过 PNG/Preview 检查，公开包/签名/独立消费见[最终发布记录](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/preview10-publication-2026-11-02.md)。Regular-only 合成粗体 FAIL、macOS Preview Find 兼容性及原始 Copy 未验证继续披露。下文通用能力/历史状态不构成已发布版本的全范围承诺；R02/R20/R22 边界继续保留。
+**2026-11-02 发布范围说明：** preview.10 已公开；[受限物理字体 profile](https://whynpc9.github.io/ofdrw.net/reference/release-profile-cn-en/)的 F01 native/default 各两页通过 PNG/Preview 检查，公开包/签名/独立消费见[最终发布记录](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/preview10-publication-2026-11-02.md)。Regular-only 合成粗体 FAIL、macOS Preview Find 兼容性及原始 Copy 未验证继续披露。下文通用能力/历史状态不构成已发布版本的全范围承诺；R02/R20/R22 边界继续保留。
 
 维护基线为公开产品源码 `8f27f92b51b70a9b01082da35ff1cfe989d46123`，整理日期 2026-11-02。R00–R22 是原工作单元编号，不是 SDK 版本或待派发清单；本页保留已交付能力的输入/出口契约，候选和未验证范围继续显式标注。新工作从[现行路线图](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/roadmap.md)进入。
 

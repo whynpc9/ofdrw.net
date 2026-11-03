@@ -1,40 +1,85 @@
 ---
-title: "Plain text to native OFD"
+title: "纯文本生成原生 OFD"
+description: "使用 PlainTextOfdConverter 或 text-to-ofd 将字符串和严格 UTF-8 文本分页生成 OFD。"
+sidebar:
+  order: 80
+  label: "纯文本生成 OFD"
 ---
 
-`Ofdrw.Net.Layout` provides a thin adapter over `FlowDocument`. Both APIs return a new in-memory package; use `OfdPackageWriter` to save it.
+`Ofdrw.Net.Layout` 的 `PlainTextOfdConverter` 是 `FlowDocument` 的轻量适配器，适合通知、日志和简单纯文本。它返回新的内存 OFD 包，再交给 `OfdPackageWriter` 保存。
+
+## 从字符串生成
+
+安装 `Ofdrw.Net.Layout` 和 `Ofdrw.Net.Packaging`：
+
+```csharp
+using Ofdrw.Net.Layout;
+using Ofdrw.Net.Packaging;
+
+var options = new PlainTextOfdOptions();
+options.Layout.DefaultFontSizeMillimeters = 4;
+options.Layout.MaxPageCount = 100;
+
+var converter = new PlainTextOfdConverter(options);
+var package = converter.Render("通知 Alpha iii WWW\r\n\r\n尾行");
+
+await using var output = File.Create("notice.ofd");
+await new OfdPackageWriter().WriteAsync(package, output);
+```
+
+构造函数会验证并快照配置，之后修改 `options` 不影响该转换器。每次调用使用独立的 Flow 状态。
+
+## 从严格 UTF-8 流生成
 
 ```csharp
 var options = new PlainTextOfdOptions { MaxInputBytes = 100_000 };
-options.Layout.DefaultFontSizeMillimeters = 4;
-options.Layout.MaxPageCount = 100;
 var converter = new PlainTextOfdConverter(options);
-var package = converter.Render("通知 Alpha iii WWW\r\n\r\n尾行");
-// Or read strict UTF-8 from the current position of a borrowed stream:
-var fromUtf8 = await converter.RenderUtf8Async(input, cancellationToken);
-await new OfdPackageWriter().WriteAsync(fromUtf8, output, cancellationToken);
+
+await using var input = File.OpenRead("notice.txt");
+await using var output = File.Create("notice.ofd");
+var package = await converter.RenderUtf8Async(input);
+await new OfdPackageWriter().WriteAsync(package, output);
 ```
 
-The constructor validates and snapshots all settings. Calls use independent Flow state. Layout defaults are A4, 25.4 mm margins, SimSun, black and 10.5 pt expressed in millimeters. Budgets default to 4,000,000 input bytes (UTF-8 API only), 1,000,000 UTF-16 code units, 10,000 pages and 1,000,000 text elements. Exceeding a budget or admitting text that cannot fit throws `InvalidDataException`. Cancellation propagates as `OperationCanceledException`; I/O failures propagate. Streams remain open, may be non-seekable, and may have advanced on failure.
+输入从流的当前位置读取，可以不可 seek；转换器不会关闭输入或输出流。失败或取消后输入位置可能已经前进。
 
-UTF-8 decoding is strict and chunked. Only one initial byte BOM is removed; subsequent U+FEFF and a string's initial U+FEFF remain content. Invalid UTF-8, unpaired UTF-16 surrogates and XML-invalid scalars are rejected. CRLF, CR and LF are logical line breaks; interior empty lines remain, and terminal breaks do not create empty tail pages. Form feed is a page control with the same deferred tail behavior. Empty text/BOM-only input produces one blank page. Tabs retain their character and use Flow's four-space advance, without tab stops. U+2028/U+2029 remain ordinary text.
+## 文本与分页规则
 
-Native text objects preserve the admitted string after CRLF/CR normalization and removal of LF/form-feed layout controls, including spaces, tabs, NBSP and combining characters. Reading extraction reconstructs lines from coordinates; automatic wrapping and blank lines prevent byte-for-byte or original-newline recovery. No hidden source-text layer is added.
+- UTF-8 解码严格且分块进行，不使用替代字符吞掉错误；只移除输入开头的一个字节 BOM。字符串开头的 U+FEFF 和后续 U+FEFF 都作为内容。
+- 拒绝无效 UTF-8、未配对 UTF-16 代理项和 XML 1.0 不允许的标量。
+- `CRLF`、`CR`、`LF` 是逻辑换行，`\f` 是换页；中间空行保留，末尾控制符不会额外产生空白尾页。
+- 空文本或仅 BOM 的输入生成一张空白页。
+- Tab 保留字符并使用 Flow 的四空格推进量，不设置制表位；U+2028/U+2029 作为普通文字。
+- 原生文字对象保留准入文字，包括空格、Tab、NBSP 和组合字符；不会添加隐藏原文层。
 
-Font-family names request Flow's existing portable metrics. This adapter does not measure arbitrary installed font files, embed fonts, validate glyph coverage or guarantee identical appearance on different devices. OFD-to-PDF export may resolve a physical fallback font; inspect actual output for the deployment's text and fonts. Markdown, rich styling, tables, images, headers/footers and syntax highlighting are outside this entrypoint.
+自动折行和坐标化文本提取意味着读回文本不能保证与原输入逐字节一致，也不能保证恢复原始换行。
+
+## 字体、默认值与预算
+
+默认页面为 A4、四边距 25.4 mm、`SimSun`、黑色、10.5 pt 等值字号。字号和几何配置以毫米表示。
+
+字体族名称只选择 Flow 的既有可移植度量，本入口**不会**测量任意系统字体、嵌入字体、验证字形覆盖或保证跨设备一致外观。需要富文本、表格、图片、页眉页脚、Markdown 或语法高亮时，请使用 [FlowDocument](https://whynpc9.github.io/ofdrw.net/guides/flow-layout/) 等入口。
+
+| 预算 | 默认值 |
+| --- | --- |
+| `MaxInputBytes`（仅 UTF-8 API） | 4,000,000 字节 |
+| `MaxCharacters` | 1,000,000 个 UTF-16 code unit |
+| `MaxPageCount` | 10,000 页 |
+| `MaxTextElements` | 1,000,000 个文字元素 |
+
+超预算或文字无法放入页面时抛 `InvalidDataException`；取消传播为 `OperationCanceledException`，I/O 错误保持原异常。
 
 ## CLI
 
-```text
+```sh
 ofdrw text-to-ofd notice.txt notice.ofd --font-size-mm 4
 ofdrw text-to-ofd --input notice.txt --output notice.ofd \
   --page-width 210 --page-height 297 \
   --margin-left 15 --margin-right 15 --margin-top 15 --margin-bottom 15 \
-  --max-input-bytes 100000 --max-characters 50000 --max-pages 100 --max-text-elements 50000
+  --max-input-bytes 100000 --max-characters 50000 \
+  --max-pages 100 --max-text-elements 50000
 ```
 
-Use two positional paths or both named paths, without mixing. `--font-family` changes the name request. Page width/height must be paired; dimensions and font size must be finite positive numbers, margins finite nonnegative numbers. Numbers use invariant decimal notation. Duplicate/unknown options are rejected before opening the input. The output must end in `.ofd`; the input extension is unrestricted but content must be UTF-8. `convert` inference is unchanged. stdin/stdout, `--pages`, DOCX options and `--font-directory` are unsupported.
+使用两个位置路径，或同时使用 `--input` / `--output`，不要混用。`--font-family` 只改变字体名称请求；页面宽高必须成对提供，尺寸和字号必须为正，边距必须非负。输入内容必须是 UTF-8，输出扩展名必须为 `.ofd`。
 
-The command validates and renders before staging, writes beside the destination, and atomically replaces it only after completion. Failures or cancellation before commit retain an existing destination and remove staging. Cancellation after replacement cannot undo the commit. Existing conversion path identity protection rejects the same path and symbolic aliases. Exit codes are 0 (success), 1 (error), and 130 (canceled).
-
-Implementation evidence and inspected sample scope: [Plan 028 follow-up](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/plans/028-followup-implementation.md).
+该命令不支持 stdin/stdout、`--pages`、DOCX 参数或 `--font-directory`。文件在目标目录暂存并原子提交；退出码为 `0`（成功）、`1`（失败）和 `130`（取消）。

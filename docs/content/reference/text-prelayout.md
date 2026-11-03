@@ -1,5 +1,9 @@
 ---
 title: "Real-font shaping and prelayout query (R21)"
+description: "固定真实字体的 HarfBuzz 塑形、预排版查询、断行、预算及原生运行依赖。"
+sidebar:
+  order: 100
+  label: "真实字体预排版"
 ---
 
 This API provides a separate fixed-font query path. Existing `FlowDocument.Render` and

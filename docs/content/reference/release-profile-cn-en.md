@@ -1,5 +1,9 @@
 ---
 title: "中英文受限发布配置"
+description: "preview.10 固定输入、真实 Regular/Bold 字体、哈希和四页视觉验收范围。"
+sidebar:
+  order: 140
+  label: "中英文发布配置"
 ---
 
 `0.1.0-preview.10` 的 DOCX 页面验收配置为 **`cn-en-physical-cjk-400-700-v1`**。发布状态、产品源码/控制器、公开包及签名、独立消费与实际页面哈希见[最终发布记录](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/preview10-publication-2026-11-02.md)。本文保存配置与承诺边界；安装及完整代码见[字体教程](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
