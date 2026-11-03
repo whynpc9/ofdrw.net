@@ -16,7 +16,7 @@
 
 官方发布的 [PdfSharpCore 1.3.67](https://www.nuget.org/packages/PdfSharpCore/1.3.67) nuspec 声明 `SixLabors.ImageSharp >=1.0.4`，不是锁定 1.0.4；本仓库直接引用选择 2.1.13。[MigraDocCore.Rendering 1.3.67](https://www.nuget.org/packages/MigraDocCore.Rendering/1.3.67) 经 PdfSharpCore、PdfSharpCore.Charting 和 MigraDocCore.DocumentObjectModel 传递到该图。Layout→Reader，Converter.Svg→Reader，Converter 元包、可选 Vector 和 CLI 等消费者也会继承相关依赖；只改一处引用或删直接引用不能移除该图，降到 1.0.4 也不是安全修复。
 
-依赖来源以当前 csproj 和官方 nupkg/nuspec 为准；现行发布盘点见 [40 项依赖基线](../third-party-dependency-baseline.json)，许可见 [THIRD-PARTY-NOTICES](../../THIRD-PARTY-NOTICES.md)。外部版本索引与公告可随时间变化，后续实施前须重查。
+依赖来源以当前 csproj 和官方 nupkg/nuspec 为准；现行发布盘点见 [40 项依赖基线](../engineering/baselines/third-party-dependencies.json)，许可见 [THIRD-PARTY-NOTICES](../../THIRD-PARTY-NOTICES.md)。外部版本索引与公告可随时间变化，后续实施前须重查。
 
 ## 2. 官方版本、修复与许可对照
 

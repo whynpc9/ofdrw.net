@@ -3,7 +3,7 @@
 > Status correction — 2026-11-01: [PR #67](https://github.com/whynpc9/ofdrw.net/pull/67)
 > was merged on 2026-10-28 as `8b0e1ff372458cffc00e97b9cdda5065e0d7cade`.
 > The retained statement “PR #67 stays stopped” below is stale coordination
-> history, not a current pending task. See the [current roadmap](../capability-roadmap.md)
+> history, not a current pending task. See the [current roadmap](../engineering/roadmap.md)
 > for the reconciled baseline and queue. Historical candidate, failure and
 > acceptance records below retain their original scope; this correction does
 > not complete R02 or R22.

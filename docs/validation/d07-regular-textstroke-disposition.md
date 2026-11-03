@@ -24,7 +24,7 @@
 - [D02](d02-imported-paint.md)默认宿主配置的 PingFang SC 多种样式使用同一 regular 内嵌子集，普通字号“量”仍拥挤；[D03](d03-svg-declared-family.md)的 SVG/HTML 控制也保留 FAIL。这些配置与固定真实 Bold profile 不同。
 - [D04](d04-cli-strict-bold.md)真实 Regular/Bold 的显式 native/default OFD→PDF 共四页，原文、导出和 PNG／Preview 已按该轮记录验收；七个粗体对象含“数量”，使用真实 weight 700 子集、无 Stroke 文本对象。该历史成功仅支持具名配置建议，不关闭 Regular-only 失败。
 
-实际部署继续使用[受限物理字体 profile](../release-profile-cn-en.md)与[字体教程](../tutorials/cn-en-font-deployment.md)：API 显式配置 `NativeEmbeddedBoldBehavior=Throw`；D04 后续源码 CLI 可用 `--native-embedded-bold-behavior throw` 配合明确字体目录。严格策略只约束 Native 实际选中的嵌入粗体，不是全局字体隔离或 name-only 缺字体检测；直接 DOCX→PDF／dual-layer 不受该策略约束。已发布 preview.10 CLI 不含此开关，不宣称新修复已包含在该版本中。
+实际部署继续使用[受限物理字体 profile](../content/reference/release-profile-cn-en.md)与[字体教程](../content/guides/fonts.md)：API 显式配置 `NativeEmbeddedBoldBehavior=Throw`；D04 后续源码 CLI 可用 `--native-embedded-bold-behavior throw` 配合明确字体目录。严格策略只约束 Native 实际选中的嵌入粗体，不是全局字体隔离或 name-only 缺字体检测；直接 DOCX→PDF／dual-layer 不受该策略约束。已发布 preview.10 CLI 不含此开关，不宣称新修复已包含在该版本中。
 
 ## 本轮核验范围
 

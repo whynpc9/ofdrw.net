@@ -6,7 +6,7 @@
 
 CLI 新增 `--native-embedded-bold-behavior text-stroke|throw`，对应公开 API 的 `DocxConversionOptions.NativeEmbeddedBoldBehavior`。省略时保留 `TextStroke` 默认值；`throw` 在 Native 实际使用的嵌入粗体缺少真实 Bold 时拒绝。`docx-to-ofd` 与推断 DOCX→OFD 的 `convert` 共用路由；不改变直接 DOCX→PDF、dual-layer 或 name-only 字体行为，不新增字体引擎或关闭所有系统字体解析。
 
-帮助和[字体教程](../tutorials/cn-en-font-deployment.md#4-cli严格嵌入粗体与目录选项)说明合法值、默认值、严格正负例与限定范围。新开关属于后续源码，不包含在已发布的 preview.10 包中；本次不改原标签或重复发布。
+帮助和[字体教程](../content/guides/fonts.md)说明合法值、默认值、严格正负例与限定范围。新开关属于后续源码，不包含在已发布的 preview.10 包中；本次不改原标签或重复发布。
 
 ## 复现、回归与审阅
 
@@ -34,7 +34,7 @@ CLI 新增 `--native-embedded-bold-behavior text-stroke|throw`，对应公开 AP
 | PNG 视觉复查 | Terra 逐页检查四张 PNG；主线程另行逐页复核同四张。中英文、比例英文、局部粗斜体/颜色、表格底色边框、对齐和分页未见新问题；常规字号“数量”可辨，无缺字、裁切、重影或异常空白页。 |
 | macOS Preview | Terra 实际打开本次 `strict/native.pdf` 与 `strict/default.pdf`，核对文件身份并逐页查看共四页正文，验收后关闭本次窗口。链路为 DOCX→native/default OFD→PDF→Preview。 |
 
-输入复用未修改 F01 `e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`，SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`。字体为[既有固定 profile](../release-profile-cn-en.md)的真实 CJK 400/700 加 Latin Regular，先验证源文件哈希再复用，不安装系统字体、不新增字体载荷。实际三个 OFD 字体资源均为 Noto Sans CJK SC：Bold、Regular、Regular/italic 请求；后两者使用相同 Regular 子集，本轮不声称物理 Italic。
+输入复用未修改 F01 `e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`，SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`。字体为[既有固定 profile](../content/reference/release-profile-cn-en.md)的真实 CJK 400/700 加 Latin Regular，先验证源文件哈希再复用，不安装系统字体、不新增字体载荷。实际三个 OFD 字体资源均为 Noto Sans CJK SC：Bold、Regular、Regular/italic 请求；后两者使用相同 Regular 子集，本轮不声称物理 Italic。
 
 本机 macOS 26.6.2 arm64、.NET 10.0.401。结构/字体/文本/包身份原始记录为 `artifacts/d04/terra/inspection.json`；CLI 命令与退出码为 `terra/strict/results.json`；API 为 `terra/api-output/results.json`；包清单及 32 步记录为 `terra/package-output/package-e2e-run.json`。Preview 截图未单独保存；保留的视觉记录是四张 PNG，不把它们称为 Preview 截图。详细独立验收记录及文件大小/哈希清单保存在 `artifacts/d04/terra-validation.md`、`.json` 与 `terra/hashes.json`。
 

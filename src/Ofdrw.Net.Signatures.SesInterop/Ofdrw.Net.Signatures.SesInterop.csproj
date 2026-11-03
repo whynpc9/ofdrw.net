@@ -11,8 +11,7 @@
     <PackageReference Include="BouncyCastle.Cryptography" Version="[2.6.2]" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="../../docs/tutorials/16-ses-dev-interop.md" Pack="true" PackagePath="docs/" />
-    <None Include="../../docs/tutorials/19-ses-v5-35275-interop.md" Pack="true" PackagePath="docs/" />
+    <None Include="../../docs/content/guides/ses-interop.md" Pack="true" PackagePath="docs/" />
     <None Include="../../docs/evidence/ses-interop/BouncyCastle-LICENSE.md" Pack="true" PackagePath="licenses/" />
   </ItemGroup>
 </Project>

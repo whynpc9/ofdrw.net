@@ -7,7 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="../Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
     <ProjectReference Include="../Ofdrw.Net.Graphics.SkiaSharp/Ofdrw.Net.Graphics.SkiaSharp.csproj" />
-    <None Include="../../docs/tutorials/18-pdf-vector-mode.md" Pack="true" PackagePath="docs/tutorials/" />
-    <None Include="../../docs/pdf-vector-design-contract.md" Pack="true" PackagePath="docs/" />
+    <None Include="../../docs/content/guides/pdf-vector.md" Pack="true" PackagePath="docs/" />
+    <None Include="../../docs/architecture/pdf-vector-design-contract.md" Pack="true" PackagePath="docs/" />
   </ItemGroup>
 </Project>

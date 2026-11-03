@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-RECORD = ROOT / 'docs' / 'release-preview-acceptance.json'
+RECORD = ROOT / 'docs' / 'validation' / 'releases' / 'preview10-acceptance.json'
 LFS_POINTER = re.compile(rb'version https://git-lfs.github.com/spec/v1\noid sha256:([0-9a-f]{64})\nsize ([0-9]+)\n?')
 
 
@@ -81,7 +81,7 @@ def source_fingerprint():
     digest = hashlib.sha256()
     for raw in sorted(entries):
         name = raw.decode()
-        if name == 'docs/release-preview-acceptance.json':
+        if name == 'docs/validation/releases/preview10-acceptance.json':
             continue
         path = ROOT / name
         digest.update(raw + b'\0')

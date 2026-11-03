@@ -8,7 +8,7 @@
 - 依赖 PR #9 保持开放未合并，起点准确为 `5d71dc9e4fb3ccfa4dd028386436e58cd261bc39`。本会话读取 GitHub 核对 head、六项绿色检查和 22/22 resolved review 线程；依赖视觉证据在该提交的 `flow-layout-2026-09-29.md`。
 - 用户授权 stacked PR base=`codex/public-flow-layout`；不合并、不发布、不推进下一票。
 - Astra High 先做源码设计与修复复核；Sol Low 独立功能与包消费验证；主任务实现及本次页面验收。
-- 首版有限范围：[公开契约](../public-tables.md)。RowSpan 明确拒绝，DOCX vMerge 诊断或 Throw。Native 对不完整网格行（含未适配的 gridBefore/gridAfter）严格失败，不扩大任意 Word 表格保真。
+- 首版有限范围：[公开契约](../content/guides/public-tables.md)。RowSpan 明确拒绝，DOCX vMerge 诊断或 Throw。Native 对不完整网格行（含未适配的 gridBefore/gridAfter）严格失败，不扩大任意 Word 表格保真。
 
 ## 功能与自动渲染
 

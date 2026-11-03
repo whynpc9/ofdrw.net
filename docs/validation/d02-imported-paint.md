@@ -33,7 +33,7 @@
 
 导入九例使用独立名称资源（含 SimSun），通过显式 name-only binding 绑定仓库 `LXGWWenKai-Regular.ttf` 的 ASCII/回字 regular TrueType 子集；不代表实际 SimSun 选脸或真实粗体。源字体 SHA-256 `39ad71264b588165b469e35e6afb162a378dacd1f95348160240ba9038ac3009`，探针子集 `fbae2215b10bb98d5911fd509697d8d4cc43fef1c330327bde68a2ac0d38acd7`。只对指定九例、所用绑定及上述页面作结论。
 
-DOCX 两模式采用 macOS 默认字体解析，PublicRes 的 PingFang SC regular/italic/bold 资源指向同一 regular 内嵌子集（SHA-256 `a7245b7b10db0d13ea023768e24ad3703481e374a1814f8b5d8ae402fa62a337`），另有 name-only `Noto Sans CJK SC|bold`。这不是 [preview.10 的真实 Bold 配置](../release-profile-cn-en.md)。本次仍观察到普通字号表头“量”拥挤，保留视觉 **FAIL**；不能将此轮控制页称为全部视觉通过。该限制已属于 preview.10 接受的边界，D02 不关闭它，也不据此展开光学算法；九例导入原始与两次写回的页面一致性独立成立。
+DOCX 两模式采用 macOS 默认字体解析，PublicRes 的 PingFang SC regular/italic/bold 资源指向同一 regular 内嵌子集（SHA-256 `a7245b7b10db0d13ea023768e24ad3703481e374a1814f8b5d8ae402fa62a337`），另有 name-only `Noto Sans CJK SC|bold`。这不是 [preview.10 的真实 Bold 配置](../content/reference/release-profile-cn-en.md)。本次仍观察到普通字号表头“量”拥挤，保留视觉 **FAIL**；不能将此轮控制页称为全部视觉通过。该限制已属于 preview.10 接受的边界，D02 不关闭它，也不据此展开光学算法；九例导入原始与两次写回的页面一致性独立成立。
 
 本机为 macOS 26.6.2、.NET SDK 10.0.401。完整路径、产物字节数和 SHA-256 见 `artifacts/d02/terra-validation.json`，测试/页面/Preview 范围另见同目录 `terra-validation.md`。未进行任意复杂文档、原生 OFD 阅读器或 Copy/Find 的新验收。
 

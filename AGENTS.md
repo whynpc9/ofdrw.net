@@ -11,7 +11,7 @@
 - 字体、文档/图片样例、验收压缩包及其分卷必须按 `.gitattributes` 使用 Git LFS；不得绕过 LFS 直接提交二进制载荷。历史验收资料按需下载，默认开发和 CI 只获取实际需要的样例，不自动拉取所有历史证据。
 - 验收保留简短报告，以及支撑结论必需的输入、输出和视觉记录；大型资料合成命名明确的 LFS 归档并附大小/SHA-256 清单。复用已有资料，不因新增一轮验证重复归档整个源码树、全量包和历史产物；失败记录仅在证明回归或解释遗留限制时保留。不得通过删掉必要视觉证据或回归覆盖来缩小仓库。
 - 测试优先复用确定性样例和共享 fixture；新增测试须对应明确缺陷或独立行为，避免同一行为的重复测试及重复大文件副本。
-- 暂存后、提交前运行 `python3 scripts/check-repository-storage.py`；涉及 fixture 时加 `--require-materialized e2e --require-materialized tests`。检查不得跳过：禁止已跟踪的 `artifacts/`、超过 5 MiB 的普通 Git blob，以及 LFS 路径中的原始载荷或无效指针。详见 `docs/repository-storage.md`。
+- 暂存后、提交前运行 `python3 scripts/check-repository-storage.py`；涉及 fixture 时加 `--require-materialized e2e --require-materialized tests`。检查不得跳过：禁止已跟踪的 `artifacts/`、超过 5 MiB 的普通 Git blob，以及 LFS 路径中的原始载荷或无效指针。详见 `docs/engineering/repository-storage.md`。
 
 # 转换与渲染的视觉验证
 

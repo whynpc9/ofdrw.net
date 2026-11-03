@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-DEPENDENCY_BASELINE = ROOT / 'docs' / 'third-party-dependency-baseline.json'
+DEPENDENCY_BASELINE = ROOT / 'docs' / 'engineering' / 'baselines' / 'third-party-dependencies.json'
 MUSL_COPYRIGHT_ENTRY = 'docs/licenses/MUSL-COPYRIGHT.txt'
 NATIVE_SUPERVISOR_PACKAGES = {'Ofdrw.Net.Core', 'Ofdrw.Net.Cli'}
 

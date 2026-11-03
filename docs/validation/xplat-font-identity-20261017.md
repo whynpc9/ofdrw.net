@@ -6,7 +6,7 @@
 
 - Native/default DOCX 使用配置的真实 Noto CJK 字体嵌入 OFD，并以同一物理字体面的度量计算拉丁字符间距。不会把其他中文字体伪装成 Noto；宋体/黑体的名称字体兼容路径保留。
 - 第一轮的 PDF 正常，但 Suwell 直接打开 OFD 时，常规嵌入字体上的粗体强调过细。第二轮保留真实字体和语义文字，以 0.025em 的标准文字描边补充强调；字体资源标志描述实际字体面，文本 Weight 描述请求的样式。
-- 默认策略返回 `DOCX_EMBEDDED_BOLD_SIMULATED`。需要真实粗体时设置 `NativeEmbeddedBoldBehavior = DocxEmbeddedBoldBehavior.Throw` 并提供粗体文件；缺少实际粗体面时在写出前失败。真实粗体面不额外描边，导入文字的原有绘制属性不被补绘覆盖。用法见[转换约定](../conversion-contracts.md#字体与宿主程序)。
+- 默认策略返回 `DOCX_EMBEDDED_BOLD_SIMULATED`。需要真实粗体时设置 `NativeEmbeddedBoldBehavior = DocxEmbeddedBoldBehavior.Throw` 并提供粗体文件；缺少实际粗体面时在写出前失败。真实粗体面不额外描边，导入文字的原有绘制属性不被补绘覆盖。用法见[转换约定](../content/reference/conversion-contracts.md#字体与宿主程序)。
 
 ## 固定提交复测
 

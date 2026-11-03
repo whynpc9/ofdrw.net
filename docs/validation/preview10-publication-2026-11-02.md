@@ -1,6 +1,6 @@
 # preview.10 最终发布记录（2026-11-02，D01）
 
-`0.1.0-preview.10` **已发布并完成公开回读**。[GitHub Release](https://github.com/whynpc9/ofdrw.net/releases/tag/v0.1.0-preview.10) 为非草稿预览版（`draft=false`、`prerelease=true`），发布时间 **2026-11-02 05:27:19 UTC / 北京时间 13:27:19**。12 个主 NuGet 包已公开，新增 `Ofdrw.Net.Text.HarfBuzz`；11 个符号包成功推送，`Ofdrw.Net.Converter` 元包无 snupkg。安装与支持边界见 [README](../../README.md)、[发布说明](../release-notes-0.1.0-preview.10.md)及[字体教程](../tutorials/cn-en-font-deployment.md)。
+`0.1.0-preview.10` **已发布并完成公开回读**。[GitHub Release](https://github.com/whynpc9/ofdrw.net/releases/tag/v0.1.0-preview.10) 为非草稿预览版（`draft=false`、`prerelease=true`），发布时间 **2026-11-02 05:27:19 UTC / 北京时间 13:27:19**。12 个主 NuGet 包已公开，新增 `Ofdrw.Net.Text.HarfBuzz`；11 个符号包成功推送，`Ofdrw.Net.Converter` 元包无 snupkg。安装与支持边界见 [README](../../README.md)、[发布说明](../content/releases/0.1.0-preview.10.md)及[字体教程](../content/guides/fonts.md)。
 
 ## 1. 身份与发布路径
 
@@ -37,7 +37,7 @@
 | API | 独立消费已运行，7 个实际加载的 SDK DLL 与公开 nupkg/cache/bin 哈希匹配 |
 | HarfBuzz | 独立消费的 8 个 SDK DLL 匹配，版本/塑形调用运行，报告 `HarfBuzzSharp/14.2.1.301;libHarfBuzzSharp/14.2.1`；原生库实际加载路径未独立观察 |
 | CLI | 从公开源安装，67 个安装资产匹配，help 与文本往返完成；提取丢终端 LF，不能称字节完全一致；CLI 无严格粗体开关 |
-| 固定输入 / 配置 | F01 `e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`，SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`；`cn-en-physical-cjk-400-700-v1`，字体身份见[受限发布配置](../release-profile-cn-en.md#固定字体配置) |
+| 固定输入 / 配置 | F01 `e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`，SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`；`cn-en-physical-cjk-400-700-v1`，字体身份见[受限发布配置](../content/reference/release-profile-cn-en.md#固定字体配置) |
 | 严格 API 参数 | 固定 Noto Sans CJK SC 静态 Regular 400/Bold 700 + Noto Sans Regular；`NativeEmbeddedBoldBehavior=Throw`、显式 fallback、`UseInstalledMicrosoftOfficeFonts=false`；该 Office 开关不代表禁用全部系统字体解析 |
 | 功能 / 原文 | 显式 native 与 unset/default Native 各两页；两模式 OFD/PDF 保持 189 个非空白源字符序列，PDF 无重复文本；7 个粗体对象、3 个蓝色填充；抽查嵌入子集的“量”700 / “文”400 轮廓匹配固定源字体 |
 | 自动渲染 | 两模式 OFD→PDF→PNG 完成，各两页，共四页 |

@@ -27,3 +27,8 @@ artifacts/
 # Python tooling cache
 __pycache__/
 *.py[cod]
+
+# Documentation site
+node_modules/
+docs/site/dist/
+docs/site/.astro/

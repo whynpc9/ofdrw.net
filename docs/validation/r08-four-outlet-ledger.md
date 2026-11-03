@@ -2,7 +2,7 @@
 
 This ledger describes the selected input profiles merged through [PR #51](https://github.com/whynpc9/ofdrw.net/pull/51) at `319b4b67`. The v1.2 research input (`artifacts/roadmap-v12-20261021/research-v1.2.txt`) calls for choosing non-BMP, symbol cmap, bare Type1/CFF, and glyph-outline routes **from actual inputs**. It asks for separate OFD save, SVG display, PDF embedding/text, and outline conclusions. A working font name, a saved OFD, or a rendered PNG establishes only its own cell.
 
-`limited` below means the named input and outlet have a bounded, tested route. `unsupported` means the outlet rejects or lacks the route. `unverified` means bytes or a model can be retained without evidence of that outlet's semantics. The source identity, logical Unicode, `SourceXml`, resource IDs, embedding permission, parse budget, and zero-output preflight rules remain part of each profile. The [font subset contract](../font-subset-and-reuse.md) covers full/subset preservation separately.
+`limited` below means the named input and outlet have a bounded, tested route. `unsupported` means the outlet rejects or lacks the route. `unverified` means bytes or a model can be retained without evidence of that outlet's semantics. The source identity, logical Unicode, `SourceXml`, resource IDs, embedding permission, parse budget, and zero-output preflight rules remain part of each profile. The [font subset contract](../content/reference/font-subset-and-reuse.md) covers full/subset preservation separately.
 
 | Selected input | OFD save/readback | SVG display | PDF embedding and text | Original-GID outline |
 | --- | --- | --- | --- | --- |

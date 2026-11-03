@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-BASELINE = ROOT / 'docs' / 'public-api-cs1591-baseline.json'
+BASELINE = ROOT / 'docs' / 'engineering' / 'baselines' / 'public-api-cs1591.json'
 DIAGNOSTIC = re.compile(r'^(.*?\.cs)\(\d+,\d+\): warning CS1591: Missing XML comment for publicly visible (?:type or member) [\'\"](.+?)[\'\"]')
 
 
