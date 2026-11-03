@@ -1,6 +1,6 @@
 # D11：Regular-only TextStroke 横向填充强调（issue #107）
 
-日期：2026-11-03（Asia/Shanghai）。基线 main `cf3f11a7719cb55d5088698e64304f73b5d3e5bf`。结论：**源码修复已提交；Linux 功能测试、自动渲染与逐页 PNG 复查通过；真实 macOS Preview 验收未完成**。按仓库规则，issue #107 在 Preview 补验前保持打开。
+日期：2026-11-03（Asia/Shanghai）。基线 main `cf3f11a7719cb55d5088698e64304f73b5d3e5bf`。初次 Linux 验证时 Preview 尚未完成；随后 PR #108 已合并，**三平台功能测试、自动渲染、PNG 复查及真实 macOS Preview 补验均通过**，固定样例达到 issue #107 的本轮关闭条件。完整结果见 [PR108 跨平台验证](pr108-cross-platform-20261103.md)。
 
 ## 新增因果证据
 
@@ -67,7 +67,7 @@ D07 列出的重开条件是“定位到可达、独立且确定的产品绘制�
 
 ### macOS Preview
 
-**未完成**：本环境为无 GUI 的 Linux。macOS 不做竖向 hinting，原 Regular 字腔本身的观感取决于 Core Graphics；覆盖层不进入字腔，因此预期“量”与同字体 Regular 同样可辨，但这只是推断，不能替代 Preview 验收。补验时请用 `DOCX → native OFD → PDF → Preview` 与默认模式各查看 2 页，普通尺寸检查第 1 页表头与第 2 页红色粗体。
+初次 Linux 验证无 GUI，未作 Preview 判断。2026-11-03 在合并提交 `8b38024152bf207717a0fc15cf3a0316626fe011` 上重新生成原固定字体样例，通过 `DOCX → native/default OFD → PDF → macOS Preview` 补验：两模式各 2 页均通过，实际尺寸“量”上下字腔可辨，表头仍明显重于正文；第 2 页红色粗体与蓝色标题局部样式正常。附加页眉页脚、图片、选页样例也逐页通过。主代理复核了独立 Terra High 子代理的逐页记录及关键截图，相关窗口已关闭。详见[跨平台报告](pr108-cross-platform-20261103.md)与[可选 LFS 验收归档](pr108-cross-platform-evidence/pr108-20261103-acceptance.zip)。
 
 ## 本次产物
 

@@ -1,0 +1,166 @@
+{
+  "sourceSha": "8b38024152bf207717a0fc15cf3a0316626fe011",
+  "prHeadSha": "846dc639d9f4a698ebf79dc32f3910196611673e",
+  "sourceDocx": "e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx",
+  "sourceDocxSha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+  "archive": "pr108-20261103-acceptance.zip",
+  "bytes": 6128468,
+  "sha256": "163a93af088f7962454fd77e8f0658aef5b227232f91acdf5bdff2fef5df9ddc",
+  "members": [
+    {
+      "path": "ci-provenance.json",
+      "bytes": 6292,
+      "sha256": "61e6fab151b4a4e6e87989eaa00f8c8727292f35e667dd93e92d0ed12b01ea2f"
+    },
+    {
+      "path": "ci-trx-summary.json",
+      "bytes": 43805,
+      "sha256": "61477cd8d0c9281f15aa2d7bad7f7cfda0ba23742c92fea004edc572b14cf290"
+    },
+    {
+      "path": "dotnet-info.txt",
+      "bytes": 2884,
+      "sha256": "749c309fdaec5dfc5d208189ebe87f07c5b8510708537c7f94ae9d3426b5649b"
+    },
+    {
+      "path": "local-pages/cn-en-release-manifest.json",
+      "bytes": 20100,
+      "sha256": "7db5864dba788a17c5deaf4a150da29e2a9df9ef5292e65903306c4bdb2e48a8"
+    },
+    {
+      "path": "local-pages/headers-original-default.ofd",
+      "bytes": 264103,
+      "sha256": "6cdf5e4d0878af8da3b08dda1816e508acde60969c7772996f84a402378bde68"
+    },
+    {
+      "path": "local-pages/headers-original-default.pdf",
+      "bytes": 66972,
+      "sha256": "2395a8ef8b9d6d7b4f1eb4dd28270f0d27ecb889cbdc300f93e669b9a080d9c9"
+    },
+    {
+      "path": "local-pages/headers-original-native.ofd",
+      "bytes": 264103,
+      "sha256": "6ae0d92f8139cc3cf06a3448d524e7e7ef343ecde4248b471b91eae39d657578"
+    },
+    {
+      "path": "local-pages/headers-original-native.pdf",
+      "bytes": 66972,
+      "sha256": "e8d5d014b6aaf09e027d9ead591b8c5d32c03a9c01ba6bfec738e62d5c93f793"
+    },
+    {
+      "path": "local-pages/image-original-default.ofd",
+      "bytes": 259908,
+      "sha256": "2032c9fd279a68d95f2480758e505f35d4e9689e6c6b895183186e82d15b412e"
+    },
+    {
+      "path": "local-pages/image-original-default.pdf",
+      "bytes": 64828,
+      "sha256": "ddaae606b858e0621826c1ee1ed8343065bc17420477b18bf0898a38cf8e916a"
+    },
+    {
+      "path": "local-pages/image-original-native.ofd",
+      "bytes": 259908,
+      "sha256": "28b6c1ace7c96be15010b01b65c6445ebb393e01cdb0532e81586ac3c6a6182a"
+    },
+    {
+      "path": "local-pages/image-original-native.pdf",
+      "bytes": 64828,
+      "sha256": "d9829e100b024e88b1be22b8cdef74a3e48a48bfe949d0c5d058495d12fa14fc"
+    },
+    {
+      "path": "local-pages/layout-original-default.ofd",
+      "bytes": 290726,
+      "sha256": "49a94f96b5b0b40b4facd65742b66430630a708cc83cd548b1bdd7d2a91d1020"
+    },
+    {
+      "path": "local-pages/layout-original-default.pdf",
+      "bytes": 1649045,
+      "sha256": "8493c1e85b10f520ec1d561593ffd641e1acfea97e0bdcc1dc24fcfdc2bbf0e8"
+    },
+    {
+      "path": "local-pages/layout-original-native.ofd",
+      "bytes": 290726,
+      "sha256": "a8ee4b82502675cc28803cab6960bc6c586f121800ccdf560fad647f6369f94f"
+    },
+    {
+      "path": "local-pages/layout-original-native.pdf",
+      "bytes": 1649045,
+      "sha256": "99e2d7b0cb5644bccbbdb5a77c155efbe5e4c03aacc202ad4cd0a9de426777f4"
+    },
+    {
+      "path": "local-pages/selected-original-default.ofd",
+      "bytes": 260845,
+      "sha256": "61a79b9ccc8bae381556f6fe4b946746731a389893372f04c8cac4e0ec043934"
+    },
+    {
+      "path": "local-pages/selected-original-default.pdf",
+      "bytes": 64817,
+      "sha256": "76c5fbc4197ab13cbf007c8fcb09712c6a8a11cfa7eda9f68f8e19070e46a783"
+    },
+    {
+      "path": "local-pages/selected-original-native.ofd",
+      "bytes": 260845,
+      "sha256": "1bebad01284072379c7e535f788ebaa802dbad2eb19a0ba08d648c38011b7d6f"
+    },
+    {
+      "path": "local-pages/selected-original-native.pdf",
+      "bytes": 64817,
+      "sha256": "34a3fc48a791581f10807712d5cf7e0084462ee910c94bf3d54a2ca24530abae"
+    },
+    {
+      "path": "macos-info.txt",
+      "bytes": 65,
+      "sha256": "cd5d6399b3785b04ceaae75045a9ca9f80f0bbc3526eff9d0c36b170ed1ec348"
+    },
+    {
+      "path": "page-identities.json",
+      "bytes": 5991,
+      "sha256": "012e2072c6c6bcaf783162045f144717f7f62cb3135668c87b83290c9504830d"
+    },
+    {
+      "path": "png/native-1.png",
+      "bytes": 65033,
+      "sha256": "c8a4cb56b165b670e55cecd3fa14d36d13c1ff03616efbdac3381709239310da"
+    },
+    {
+      "path": "png/native-2.png",
+      "bytes": 33903,
+      "sha256": "9c521fed7d1fb9201fa186762d82af6300f4dedbc21755bca797a1799065b2bc"
+    },
+    {
+      "path": "png/native-pdfium-1.png",
+      "bytes": 87887,
+      "sha256": "56e4e3cba74b158a16f64209c74125c87471a90ddbf3b848094d708832223bff"
+    },
+    {
+      "path": "png/native-pdfium-2.png",
+      "bytes": 42253,
+      "sha256": "f28520a917136c14708aa0850143e101ab573c5d25f1cf097a3bf4a8be67f835"
+    },
+    {
+      "path": "poppler-info.txt",
+      "bytes": 144,
+      "sha256": "54e9f0f4509563a73b6a32642853b4e4c6e0b3ec5d28d0309b20539731ca0caa"
+    },
+    {
+      "path": "preview/layout-native-header-zoom.png",
+      "bytes": 296969,
+      "sha256": "d2a7109b20f65aa6783c2d37589f94095a5328cbb5203990fd5ddd7af1c6a829"
+    },
+    {
+      "path": "preview/layout-native-page1-actual.png",
+      "bytes": 241354,
+      "sha256": "8c79bc28e41e70529109832e889bba6beb2f9eb7b9c8c4df9ca751bad5b8e056"
+    },
+    {
+      "path": "preview/layout-native-page2.png",
+      "bytes": 155134,
+      "sha256": "a65b66831d6d870f7ec210b1db6007123c3df9c49fb06086c3e2bf3c34dda3b9"
+    },
+    {
+      "path": "preview/report.md",
+      "bytes": 2728,
+      "sha256": "d648d6f1f780ea73ad20abe0a8a1df0d5d3cd3ec661f61e6e3bbe01f9b4a97dc"
+    }
+  ]
+}
