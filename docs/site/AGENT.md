@@ -157,3 +157,7 @@ End with `Summary: N errors, N warnings.`
 ## Project home
 
 [nimbus-docs.com](https://nimbus-docs.com)
+
+## Ofdrw.Net repository layout
+
+The only public page source is `../content/**/*.md`, loaded by `src/content.config.ts`. `src/content/partials/` is registered for typed Render support. The production URL is https://whynpc9.github.io/ofdrw.net/ with Astro base `/ofdrw.net`. `npm run build` also checks emitted links and search output. The copied Nimbus starter source is MIT-licensed; retain `LICENSE-NIMBUS`.
