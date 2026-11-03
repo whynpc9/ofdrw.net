@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- tests/Ofdrw.Net.Converter.Docx.Tests/DocxRevisionTests.cs tests/Ofdrw.Net.Converter.Docx.Tests/LibreOfficeFontStagingTests.cs .github/workflows/ci.yml`
@@ -157,7 +157,7 @@ Confirm the font path by running "With font" locally and checking the file exist
 - [ ] `LibreOfficeFontStagingTests.cs` has no `return;` in the split test
 - [ ] Both local runs behave as in the table; the CI step is added and YAML parses
 - [ ] Report lists any other silent-return tests found in Step 4
-- [ ] Storage gate exits 0; `plans/README.md` updated
+- [ ] Storage gate exits 0; `docs/engineering/plans/README.md` updated
 
 ## STOP conditions
 

@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Reader/Readers/OfdReader.cs`
@@ -17,7 +17,7 @@
 - **Priority**: P3
 - **Effort**: S
 - **Risk**: LOW
-- **Depends on**: plans/001-reader-traversal-budget.md (land first; that plan's tests share the reader)
+- **Depends on**: docs/engineering/plans/001-reader-traversal-budget.md (land first; that plan's tests share the reader)
 - **Category**: bug
 - **Planned at**: commit `09a2e7e`, 2026-11-03
 
@@ -124,7 +124,7 @@ Helper: write a one-page package with one `OfdTextElement` (copy the `PackageRou
 
 - [ ] Build exits 0; `ReaderInputHygieneTests` pass; the Packaging, Pdf and Core suites pass
 - [ ] `grep -n "ToDictionary(x => x.Id!" src/Ofdrw.Net.Reader/Readers/OfdReader.cs` returns nothing
-- [ ] Storage gate exits 0; `plans/README.md` updated
+- [ ] Storage gate exits 0; `docs/engineering/plans/README.md` updated
 
 ## STOP conditions
 

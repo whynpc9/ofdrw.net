@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Cli src/Ofdrw.Net.Reader/Keywords src/Ofdrw.Net.Converter.Pdf/Geometry docs/content/reference/cli.md docs/content/guides/keyword-replacement.md`
@@ -15,7 +15,7 @@
 - **Priority**: P3
 - **Effort**: M
 - **Risk**: LOW (read-only; no output OFD)
-- **Depends on**: plans/017-cli-attachments.md (serialize `Program.cs` edits)
+- **Depends on**: docs/engineering/plans/017-cli-attachments.md (serialize `Program.cs` edits)
 - **Category**: direction (requested by the maintainer)
 - **Planned at**: commit `09a2e7e`, 2026-11-03
 
@@ -129,7 +129,7 @@ Use a dedicated argument parser (pairs, literal values, reject unknown or duplic
 
 - [ ] Build exits 0; `LocateCliTests` pass (case 5 passes in the real-font run); CLI suite passes
 - [ ] `git diff --stat -- src/Ofdrw.Net.Reader src/Ofdrw.Net.Converter.Pdf` is empty
-- [ ] Docs updated; storage gate exits 0; `plans/README.md` updated
+- [ ] Docs updated; storage gate exits 0; `docs/engineering/plans/README.md` updated
 
 ## STOP conditions
 

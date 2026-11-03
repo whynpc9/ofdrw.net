@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/BuiltInOfdRenderer.cs src/Ofdrw.Net.Layout/Internal/Flow/FlowParagraphLayout.cs`
@@ -15,7 +15,7 @@
 - **Priority**: P2
 - **Effort**: M
 - **Risk**: MED (changes line geometry of every justified paragraph; visual re-acceptance needed)
-- **Depends on**: plans/003-native-docx-underline.md (same function, `DrawLine`)
+- **Depends on**: docs/engineering/plans/003-native-docx-underline.md (same function, `DrawLine`)
 - **Category**: bug
 - **Planned at**: commit `09a2e7e`, 2026-11-03
 
@@ -142,7 +142,7 @@ Add one bullet to `docs/content/reference/conversion-contracts.md`: Native distr
 - [ ] Build exits 0; `DocxJustifyTests` pass; Docx, Layout and Pdf suites pass
 - [ ] `grep -n "Justify" src/Ofdrw.Net.Layout/Internal/Flow/FlowParagraphLayout.cs src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/BuiltInOfdRenderer.cs` shows the enum member and the mapping
 - [ ] Visual record for the sample and `generated-layout.docx`, both modes. macOS Preview reported as **not done** unless performed.
-- [ ] Storage gate exits 0; `plans/README.md` updated
+- [ ] Storage gate exits 0; `docs/engineering/plans/README.md` updated
 
 ## STOP conditions
 

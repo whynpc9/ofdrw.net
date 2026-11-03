@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Core/Models/OfdModelLimits.cs src/Ofdrw.Net.Core/Models/OfdModelMaterialization.cs src/Ofdrw.Net.Reader/Readers/OfdReader.cs docs/content/reference/conversion-contracts.md docs/content/troubleshooting/known-issues.md`
@@ -142,11 +142,17 @@ Run the "Regression" commands from the table.
 
 ### Step 4: Visual sanity of the large PDF (AGENTS.md conversion rule)
 
-Write the 2,000-paragraph PDF to `artifacts/visual/001/large.pdf`. A temporary console app outside the repo, or an env-gated line in the test, is fine; do not commit generated files. Render pages 1 and last:
-`pdftoppm -f 1 -l 1 -r 144 -png artifacts/visual/001/large.pdf artifacts/visual/001/first` and the same for the last page number.
-Open both PNGs (image viewer or your image-reading tool). Check: text present, no overlap, no blank page, Chinese characters not shown as boxes **if** a CJK font is installed. Missing CJK glyphs with no CJK font installed is an environment limitation; record it, it is not a failure of this plan.
+Write the 2,000-paragraph OFD and its PDF to `artifacts/visual/001/large.ofd` and `artifacts/visual/001/large.pdf`. A temporary console app outside the repo, or an env-gated line in the test, is fine; do not commit generated files. Render **every** page:
+```sh
+pdftoppm -r 144 -png artifacts/visual/001/large.pdf artifacts/visual/001/page
+ls artifacts/visual/001/page-*.png | wc -l      # must equal the OFD page count
+sha256sum artifacts/visual/001/large.ofd artifacts/visual/001/large.pdf artifacts/visual/001/page-*.png > artifacts/visual/001/SHA256SUMS
+```
+Open **each** page PNG with an image viewer or your image-reading tool. For every page, check that text is present, nothing overlaps or is clipped, there are no blank or ghosted pages, and paragraph numbering continues from the previous page (no lost or duplicated paragraphs at page breaks). Chinese characters must not render as boxes **if** a CJK font is installed. Missing CJK glyphs with no CJK font installed is an environment limitation; record it, it is not a failure of this plan.
 
-**Verify**: both PNG files exist and are non-empty (`test -s ...`). Record what you saw in the report.
+Record the review coverage as an explicit list: pages reviewed (e.g. `1-40 of 40`) and observations per page or page range. Any page not opened must be listed as **unreviewed**; it keeps the PNG review item incomplete. Do not describe a partial review as complete.
+
+**Verify**: PNG count equals the page count; every PNG is non-empty (`for f in artifacts/visual/001/page-*.png; do test -s "$f" || echo EMPTY $f; done` prints nothing); the coverage list is in the report.
 
 ### Step 5: Document the behavior change
 
@@ -168,9 +174,9 @@ Open both PNGs (image viewer or your image-reading tool). Check: text present, n
 - [ ] Core, Packaging, Layout, Converter.Pdf, Cli test suites pass (environment-only failures listed and shown to also fail on base)
 - [ ] `grep -n "MaxNodeCount\|MaxReferenceCount" src/Ofdrw.Net.Core/Models/OfdModelLimits.cs` shows the new defaults
 - [ ] Docs bullet and known-issues row added
-- [ ] PNG check of first/last page recorded; macOS Preview acceptance marked **not done (Linux/CLI environment)** in the report
+- [ ] Every page rendered to PNG; per-page review coverage recorded (unreviewed pages listed as incomplete); macOS Preview acceptance marked **not done (Linux/CLI environment)** in the report
 - [ ] `python3 scripts/check-repository-storage.py` exits 0 after staging
-- [ ] `plans/README.md` status row updated
+- [ ] `docs/engineering/plans/README.md` status row updated
 
 ## STOP conditions
 

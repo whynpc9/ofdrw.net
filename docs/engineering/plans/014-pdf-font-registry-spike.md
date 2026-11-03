@@ -1,6 +1,6 @@
 # Plan 014 (spike): Decide how long-running services avoid exhausting the process-wide PDF font registry
 
-> **Executor instructions**: This is an **investigation/design spike**, not a feature build. Produce the measurements and the design note described below. Do not change product behavior unless a step explicitly says so. If anything in the "STOP conditions" section occurs, stop and report. When done, update the status row for this plan in `plans/README.md` — unless a reviewer dispatched you and told you they maintain the index.
+> **Executor instructions**: This is an **investigation/design spike**, not a feature build. Produce the measurements and the design note described below. Do not change product behavior unless a step explicitly says so. If anything in the "STOP conditions" section occurs, stop and report. When done, update the status row for this plan in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Converter.Pdf/Internal/OfdEmbeddedFontResolver.cs src/Ofdrw.Net.Converter.Pdf/PdfFontRegistry.cs src/Ofdrw.Net.Converter.Pdf/Internal/DocumentFontContext.cs`
 
@@ -9,7 +9,7 @@
 - **Priority**: P2
 - **Effort**: M (spike); the follow-up implementation is likely L
 - **Risk**: LOW for the spike (no product change)
-- **Depends on**: plans/005-ofd-to-pdf-result-and-seal-diagnostics.md (Option C below uses its diagnostics channel)
+- **Depends on**: docs/engineering/plans/005-ofd-to-pdf-result-and-seal-diagnostics.md (Option C below uses its diagnostics channel)
 - **Category**: perf / direction
 - **Planned at**: commit `09a2e7e`, 2026-11-03
 
@@ -77,7 +77,7 @@ Branch `advisor/014-pdf-font-registry-spike`; commit e.g. `docs: record PDF font
 - [ ] The design note exists with the four sections answered, or explicitly marked unanswerable with the reason
 - [ ] `git diff --stat -- src` is empty
 - [ ] Docs paragraph added; `python3 scripts/check-repository-storage.py` exits 0 after staging
-- [ ] `plans/README.md` updated; the report states the recommended option
+- [ ] `docs/engineering/plans/README.md` updated; the report states the recommended option
 
 ## STOP conditions
 

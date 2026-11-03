@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Packaging/OfdPackageWriter.cs src/Ofdrw.Net.Packaging/OfdPackageSignatureCleaner.cs`
@@ -117,7 +117,7 @@ Add a bullet to `conversion-contracts.md` "## 资源预算与失败行为": when
 
 - [ ] Build exits 0; new tests pass; Packaging/Cli/Pdf suites pass
 - [ ] `grep -n "new ZipArchive(destination, ZipArchiveMode.Create" src/Ofdrw.Net.Packaging/OfdPackageWriter.cs` shows only the `WriteZipTerminalAsync` occurrence
-- [ ] Storage gate exits 0; `plans/README.md` updated
+- [ ] Storage gate exits 0; `docs/engineering/plans/README.md` updated
 
 ## STOP conditions
 

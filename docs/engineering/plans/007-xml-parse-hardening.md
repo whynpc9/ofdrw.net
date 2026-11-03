@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Core/Models/OfdXmlEnvelope.cs src/Ofdrw.Net.Core/Models/OfdGraphicXmlContract.cs src/Ofdrw.Net.Core/Models/OfdPathStyle.cs src/Ofdrw.Net.Core/Models/OfdTextEmphasis.cs src/Ofdrw.Net.Core/Fonts/EmbeddedFontCoverage.cs src/Ofdrw.Net.Core/Models/OfdAnnotationContract.cs src/Ofdrw.Net.Packaging/Validation/OfdPackageStructureChecker.cs src/Ofdrw.Net.Signatures/Verification/OfdSignatureVerifier.cs src/Ofdrw.Net.Signatures/Signing/OfdSignatureService.cs src/Ofdrw.Net.Converter.Pdf/Internal/OfdSignatureAppearanceReader.cs`
@@ -15,7 +15,7 @@
 - **Priority**: P2
 - **Effort**: S
 - **Risk**: LOW
-- **Depends on**: plans/005-ofd-to-pdf-result-and-seal-diagnostics.md (both edit `OfdSignatureAppearanceReader.cs`)
+- **Depends on**: docs/engineering/plans/005-ofd-to-pdf-result-and-seal-diagnostics.md (both edit `OfdSignatureAppearanceReader.cs`)
 - **Category**: security (+ small perf)
 - **Planned at**: commit `09a2e7e`, 2026-11-03
 
@@ -120,7 +120,7 @@ Replace `XElement.Parse(x)` with `OfdXmlEnvelope.Parse(x)`. For site 6 (`IsVisib
 - [ ] Build exits 0; `XmlHardeningTests` pass; Core/Packaging/Signatures/Pdf suites pass
 - [ ] The Step 5 grep returns no default-settings parse in the 10 files
 - [ ] `git diff --stat` touches only in-scope files
-- [ ] Storage gate exits 0; `plans/README.md` updated
+- [ ] Storage gate exits 0; `docs/engineering/plans/README.md` updated
 
 ## STOP conditions
 

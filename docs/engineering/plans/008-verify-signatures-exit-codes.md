@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Cli/Program.cs docs/content/reference/cli.md docs/content/guides/signatures.md tests/Ofdrw.Net.Cli.Tests/DocumentToolsCliTests.cs`
@@ -15,7 +15,7 @@
 - **Priority**: P2
 - **Effort**: S
 - **Risk**: LOW (opt-in flag; default exit codes unchanged)
-- **Depends on**: plans/005 (both edit `Program.cs`; land 005 first to avoid conflicts)
+- **Depends on**: docs/engineering/plans/005 (both edit `Program.cs`; land 005 first to avoid conflicts)
 - **Category**: dx / security
 - **Planned at**: commit `09a2e7e`, 2026-11-03
 
@@ -133,7 +133,7 @@ In `DocumentToolsCliTests.cs` add:
 - [ ] Build exits 0; CLI tests pass (2 new)
 - [ ] `grep -n "require-signatures" src/Ofdrw.Net.Cli/Program.cs docs/content/reference/cli.md` matches in both
 - [ ] The existing `Assert.Equal(0, ... "verify-signatures", output)` at `DocumentToolsCliTests.cs:93` is unchanged and passes
-- [ ] Storage gate exits 0; `plans/README.md` updated
+- [ ] Storage gate exits 0; `docs/engineering/plans/README.md` updated
 
 ## STOP conditions
 

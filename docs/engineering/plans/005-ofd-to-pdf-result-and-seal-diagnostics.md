@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs src/Ofdrw.Net.Converter.Pdf/Internal/OfdSignatureAppearanceReader.cs src/Ofdrw.Net.Converter.Pdf/OfdToPdfOptions.cs src/Ofdrw.Net.Cli/Program.cs`
@@ -17,7 +17,7 @@
 - **Priority**: P1
 - **Effort**: M
 - **Risk**: LOW (additive public API; rendering of successful seals unchanged)
-- **Depends on**: plans/001 (large-document reads) is recommended first but not required
+- **Depends on**: docs/engineering/plans/001 (large-document reads) is recommended first but not required
 - **Category**: bug + direction (the maintainer explicitly requested the result channel)
 - **Planned at**: commit `09a2e7e`, 2026-11-03
 
@@ -54,6 +54,22 @@ The maintainer asked for an OFD→PDF result/diagnostics channel, mirroring `Doc
   - Line 254: `.ReadAsync(input, appearanceBudget ?? new OfdPackageLoadOptions(), cancellationToken)`. The default path ignores caller limits.
   - Lines 280-283: `catch { return null; }`. A nested seal that fails to parse is dropped silently in the default path.
   - Lines 361-368, `DrawSignatureAppearances`: `catch { /* Unsupported vendor payloads retain the existing tolerant PDF fallback. */ }`. Draw failures are dropped silently in the default path.
+  - The same method also skips appearances **without** an exception, through three guard exits. Each throws only when `reusePayloads` (strict/image mode) is true, and otherwise `continue`s silently:
+    ```csharp
+    // lines 301-305: placement
+    if (!PdfOperandGeometry.Box(appearance.XMillimeters - page.XMillimeters, ...))
+    {   if (reusePayloads) throw new InvalidDataException("Selected signature stamp placement is not representable in PDF coordinates.");
+        continue; }
+    // lines 313-320: clip
+    if (!PdfOperandGeometry.Box(clipX, clipY, clip.Width, clip.Height))
+    {   if (reusePayloads) throw new InvalidDataException("Selected signature stamp Clip is not representable in PDF coordinates.");
+        continue; }
+    // lines 330-334: nested-form scale
+    if (!PdfOperandGeometry.PositiveExtent(target.Width / formWidth) || !PdfOperandGeometry.PositiveExtent(target.Height / formHeight))
+    {   if (reusePayloads) throw new InvalidDataException("Selected signature form scale is not representable by the PDF writer.");
+        continue; }
+    ```
+    (The braces are condensed here.) The clip and scale exits sit inside the `try` whose `finally` calls `graphics.Restore(state)`, so `continue` still restores graphics state.
 - `src/Ofdrw.Net.Converter.Pdf/Internal/OfdSignatureAppearanceReader.cs:15-17`: `public static IReadOnlyList<OfdSignatureAppearance> Read(OfdDocumentPackage package, HashSet<string>? selectedPageIds = null, int? maximumAppearances = null, CancellationToken cancellationToken = default)`. Lines 65-70 return an empty list on any exception when `maximumAppearances` is null (the default path):
   ```csharp
   catch
@@ -121,7 +137,7 @@ public async Task<OfdToPdfConversionResult> ConvertWithResultAsync(Stream ofdInp
 Diagnostic codes, all `Warning`:
 - `PDF_SIGNATURE_METADATA_UNREADABLE`: `OfdSignatureAppearanceReader.Read` fell into its tolerant catch. The message includes the exception type name, not the exception message (avoid echoing untrusted content verbatim).
 - `PDF_SIGNATURE_APPEARANCE_UNREADABLE`: a nested OFD seal package could not be read (the tolerant `return null` path). Include `SignatureId` if available on the appearance.
-- `PDF_SIGNATURE_APPEARANCE_SKIPPED`: drawing an appearance failed in the tolerant catch. Include `PageIndex` and `SignatureId`.
+- `PDF_SIGNATURE_APPEARANCE_SKIPPED`: an appearance was not drawn in the default path. This covers both the tolerant catch **and** the three non-exception guard exits (unrepresentable placement, clip, or nested-form scale). Include `PageIndex` and `SignatureId`, and state the reason in `Message` (`placement`, `clip`, `form scale`, or the exception type name).
 
 ## Commands you will need
 
@@ -181,9 +197,13 @@ Cases:
    - Expected after the fix: the main package reads, but the nested seal OFD is rejected, because its entry count must fit within the caller's limit. Pick a nested package with more entries than that value, e.g. add 1 attachment and 2 pages.
    - The result then contains `PDF_SIGNATURE_APPEARANCE_UNREADABLE`. Before the fix it rendered silently with default budgets.
    - If building such a seal through `OfdSignatureService` is impossible, mark this case `Skip` with the reason and cover budget propagation with an internal-visible unit test instead (`InternalsVisibleTo` exists for this test project if `OfdToPdfConverter` internals are reachable; check `src/Ofdrw.Net.Converter.Pdf/*.csproj`).
+2b. `UnrepresentablePlacement_ReportsSkippedAppearance`: take the valid signed package from case 1 and rewrite the stamp annotation's `Boundary` in the entry ending with `/Signature.xml` (find the `StampAnnot` element) to `1e300 1e300 40 20`, so the placement `PdfOperandGeometry.Box` check fails. The default conversion succeeds; `Diagnostics` contains `PDF_SIGNATURE_APPEARANCE_SKIPPED` whose message mentions `placement`; `RenderedSignatureAppearances` drops accordingly.
+   - If the reader or appearance reader rejects such a Boundary earlier (e.g. as non-finite input), try `-1e15 -1e15 40 20` instead.
+   - If no tolerated value reaches the guard, cover the guard with an internal-visible unit test that calls `DrawSignatureAppearances` directly with a crafted `PreparedSignatureAppearance`, or document in the report why it can't be reached from public input.
+   - Also assert that the strict image-export path (`OfdToImageConverter`, used in `StampClipRenderingTests`) still **throws** `InvalidDataException` for the same input.
 5. `ConvertAsync_StillReturnsTask`: compile-level: `await new OfdToPdfConverter().ConvertAsync(...)` still works and produces bytes.
 
-**Verify**: build fails (the API does not exist yet). After adding empty stubs, cases 2-4 fail.
+**Verify**: build fails (the API does not exist yet). After adding empty stubs, cases 2, 2b, 3 and 4 fail.
 
 ### Step 2: Add the public types (exact shape above) and `ConvertWithResultAsync`
 
@@ -196,10 +216,11 @@ Thread a `List<OfdToPdfDiagnostic>` and a rendered counter through `ConvertPacka
 - `OfdSignatureAppearanceReader.Read`: add an optional `Action<string>? onTolerantFailure = null` parameter, called from the bare `catch` with the exception type name before returning empty. The converter turns it into `PDF_SIGNATURE_METADATA_UNREADABLE`. To capture the type name, change the bare `catch` to `catch (Exception exception)`.
 - `ReadAppearanceOfdPackageAsync`'s final `catch { return null; }` → `PDF_SIGNATURE_APPEARANCE_UNREADABLE`, recorded at the call site when the result is null. Also do this when the page-geometry check returns null (line 275).
 - `DrawSignatureAppearances`' final `catch { }` → change to `catch (Exception)` and add `PDF_SIGNATURE_APPEARANCE_SKIPPED` with the page index and signature ID. Count successful draws for `RenderedSignatureAppearances`; increment after `DrawImage` returns.
+- `DrawSignatureAppearances`' three guard exits (placement, lines 301-305; clip, 313-320; form scale, 330-334): immediately before each `continue`, record `PDF_SIGNATURE_APPEARANCE_SKIPPED` with the page index, signature ID, and reason `placement` / `clip` / `form scale`. Leave the `if (reusePayloads) throw ...` line before it unchanged, so strict mode still throws and records nothing.
 
 Keep every existing `catch (X) { throw; }` clause and its order exactly as it is.
 
-**Verify**: cases 1-3 pass.
+**Verify**: cases 1-3 and 2b pass. Every `continue` inside `DrawSignatureAppearances` is now preceded by a diagnostic: `grep -n -B1 "continue;" src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs` shows the diagnostic call on the line before each `continue` in that method.
 
 ### Step 4: Caller budgets and caching in the default path
 
@@ -240,7 +261,7 @@ The output for valid seals must be unchanged.
 - [ ] `grep -n "new OfdPackageLoadOptions()" src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs` no longer matches the nested-read line
 - [ ] `IOfdToPdfConverter.cs` unchanged (`git diff --quiet -- src/Ofdrw.Net.Converter.Abstractions`)
 - [ ] Visual non-regression recorded
-- [ ] Docs updated; storage gate exits 0; `plans/README.md` updated
+- [ ] Docs updated; storage gate exits 0; `docs/engineering/plans/README.md` updated
 
 ## STOP conditions
 

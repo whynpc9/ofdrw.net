@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- .github/workflows/ci.yml e2e scripts`
@@ -146,7 +146,7 @@ In `docs/engineering/ci.md`, add a short paragraph listing the two new steps, ex
 - [ ] `scripts/build-e2e-harnesses.sh` builds the package-only orphans whose packages exist in the candidate and skips the others with a message
 - [ ] `git diff --stat -- e2e` is empty
 - [ ] YAML lint and script unit tests pass; storage gate exits 0
-- [ ] `plans/README.md` updated. In the report, include the list of skipped projects and why.
+- [ ] `docs/engineering/plans/README.md` updated. In the report, include the list of skipped projects and why.
 
 ## STOP conditions
 

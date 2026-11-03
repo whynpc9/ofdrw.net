@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Cli src/Ofdrw.Net.Packaging/Preflight docs/content/reference/cli.md docs/content/guides/archival-preflight.md`
@@ -15,7 +15,7 @@
 - **Priority**: P2
 - **Effort**: M
 - **Risk**: LOW (additive command; JSON becomes a public contract)
-- **Depends on**: plans/008-verify-signatures-exit-codes.md (serialize `Program.cs` edits)
+- **Depends on**: docs/engineering/plans/008-verify-signatures-exit-codes.md (serialize `Program.cs` edits)
 - **Category**: direction (requested by the maintainer)
 - **Planned at**: commit `09a2e7e`, 2026-11-03
 
@@ -131,7 +131,7 @@ Contents: an argument parser for the contract, plus `CheckAsync`, the human/JSON
 - [ ] Build exits 0; `PreflightCliTests` (7) pass; CLI suite passes
 - [ ] `git diff --stat -- src/Ofdrw.Net.Packaging` is empty
 - [ ] `dotnet run --project src/Ofdrw.Net.Cli -c Release -- --help` lists `preflight`
-- [ ] Docs updated; storage gate exits 0; `plans/README.md` updated
+- [ ] Docs updated; storage gate exits 0; `docs/engineering/plans/README.md` updated
 
 ## STOP conditions
 

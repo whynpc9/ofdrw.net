@@ -4,7 +4,7 @@
 > verification command and confirm the expected result before moving to the
 > next step. If anything in the "STOP conditions" section occurs, stop and
 > report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
+> in `docs/engineering/plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat 09a2e7e..HEAD -- src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/DocxModelReader.cs tests/Ofdrw.Net.Converter.Docx.Tests`
@@ -232,7 +232,7 @@ Covered in Step 1: 6 conversion cases × 2 modes, plus formatter unit tests. Use
 - [ ] `grep -n "_numberingCounters\[key\]" src/Ofdrw.Net.Converter.Docx/Internal/BuiltIn/DocxModelReader.cs` returns nothing (old keying removed)
 - [ ] Visual record in `artifacts/visual/002/` (not committed) with PNG review notes for both explicit native and default modes. macOS Preview acceptance reported as **not done** unless actually performed on macOS.
 - [ ] Storage gate exits 0
-- [ ] `plans/README.md` row updated
+- [ ] `docs/engineering/plans/README.md` row updated
 
 ## STOP conditions
 
