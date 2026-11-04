@@ -671,38 +671,36 @@ public sealed class ParagraphLayoutEngine
 
         private double Justify(DraftLine line, Paragraph paragraph, double extra, int trimOffset)
         {
+            // Opportunities: word spaces, plus gaps between graphemes next to scripts set without
+            // word spaces (Han, kana, Hangul, Bopomofo), except before closing punctuation.
+            var expandAfter = new HashSet<int>(); // paragraph code point index of a grapheme start
+            for (var index = line.Start; index < line.TrimEnd;)
+            {
+                var next = NextCluster(paragraph, index);
+                if (next >= line.TrimEnd) break;
+                var space = IsJustificationSpace(paragraph.CodePoints[index]);
+                var nextSpace = IsJustificationSpace(paragraph.CodePoints[next]);
+                var closing = UnicodeProperties.LineBreak(paragraph.CodePoints[next], out _) is LineBreakClass.CL or
+                    LineBreakClass.CP or LineBreakClass.EX or LineBreakClass.IS or LineBreakClass.NS;
+                if (space || !nextSpace && !closing && (IsInterCharacterScript(paragraph.ScriptOf[index]) ||
+                        IsInterCharacterScript(paragraph.ScriptOf[next])))
+                    expandAfter.Add(index);
+                index = next;
+            }
             var opportunities = new List<(DraftRun Run, int Glyph)>();
             foreach (var run in line.Visual)
+            {
+                // The last glyph (in shaper order) of each selected grapheme receives the expansion.
+                var last = new Dictionary<int, int>();
                 for (var index = 0; index < run.Shaped.Glyphs.Count; index++)
                 {
                     var glyph = run.Shaped.Glyphs[index];
                     if (glyph.ClusterStart >= trimOffset) continue;
-                    var cluster = _request.Text.Substring(glyph.ClusterStart, glyph.ClusterLength);
-                    if (cluster.Length == 1 && IsJustificationSpace(cluster[0])) opportunities.Add((run, index));
+                    var grapheme = _text.IndexOfOffset(glyph.ClusterStart) - paragraph.Start;
+                    while (grapheme > 0 && !paragraph.GraphemeStart[grapheme]) grapheme--;
+                    if (expandAfter.Contains(grapheme)) last[grapheme] = index;
                 }
-            if (opportunities.Count == 0)
-            {
-                // Inter-character expansion only for scripts set without word spaces.
-                for (var index = line.Start; index < line.TrimEnd; index++)
-                    if (!IsInterCharacterScript(paragraph.ScriptOf[index])) return 0;
-                foreach (var run in line.Visual)
-                {
-                    var last = new Dictionary<int, int>();
-                    for (var index = 0; index < run.Shaped.Glyphs.Count; index++)
-                    {
-                        var glyph = run.Shaped.Glyphs[index];
-                        var point = _text.IndexOfOffset(glyph.ClusterStart) - paragraph.Start;
-                        var grapheme = point;
-                        while (grapheme > 0 && !paragraph.GraphemeStart[grapheme]) grapheme--;
-                        last[grapheme] = index;
-                    }
-                    foreach (var pair in last)
-                    {
-                        // No expansion after the logically last grapheme of the line.
-                        if (NextCluster(paragraph, pair.Key) >= line.TrimEnd) continue;
-                        opportunities.Add((run, pair.Value));
-                    }
-                }
+                foreach (var pair in last) opportunities.Add((run, pair.Value));
             }
             if (opportunities.Count == 0) return 0;
             var each = extra / opportunities.Count;

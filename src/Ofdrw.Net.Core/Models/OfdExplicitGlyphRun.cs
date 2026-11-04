@@ -94,11 +94,109 @@ internal sealed class OfdExplicitGlyphRun
         return origins;
     }
 
+    // Set for a complete cluster map: every source cluster has its own CGTransform.
+    internal bool ClusterMapped { get; private set; }
+
+    // Whether glyph slot `index` belongs to a source cluster made only of whitespace, so an
+    // empty outline is the expected drawing rather than a lost visible character.
+    internal bool IsWhitespaceSlot(int index) => ClusterMapped && Spans.Any(span =>
+        index >= span.GlyphPosition && index < span.GlyphPosition + span.GlyphCount &&
+        span.LogicalText.All(char.IsWhiteSpace));
+
     internal static OfdExplicitGlyphRun? Read(OfdTextElement text, OfdFontResource? resource = null,
         IDictionary<OfdFontResource, OpenTypeCmap>? cmapCache = null, FontParseBudget? parseBudget = null,
         OfdGlyphMappingStrategy strategy = OfdGlyphMappingStrategy.LegacyConcatenatedGlobal)
     {
         OfdGlyphMappingStrategyGuard.Validate(strategy);
+        try
+        {
+            return ReadProfiles(text, resource, cmapCache, parseBudget, strategy);
+        }
+        // Historical profiles stay authoritative for everything they accept. Only an input they
+        // reject is reconsidered, and only as a complete, explicit cluster map that needs no
+        // cmap inference (one TextCode, every code unit in exactly one ascending CGTransform,
+        // an explicit origin for every glyph slot).
+        catch (NotSupportedException) when (ReadClusterMap(text, parseBudget) is { } mapped)
+        {
+            return mapped;
+        }
+    }
+
+    private static OfdExplicitGlyphRun? ReadClusterMap(OfdTextElement text, FontParseBudget? parseBudget)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(text.SourceXml) || text.Runs.Count != 1) return null;
+            var root = OfdXmlEnvelope.Parse(text.SourceXml!);
+            var ns = root.Name.Namespace;
+            if (root.Name.LocalName != "TextObject") return null;
+            var children = root.Elements().Where(node => node.Name.LocalName is "CGTransform" or "TextCode").ToArray();
+            if (children.Length < 2 || children[children.Length - 1].Name != ns + "TextCode" ||
+                children.Take(children.Length - 1).Any(node => node.Name != ns + "CGTransform") ||
+                root.Descendants().Any(node => node.Name.LocalName == "CGTransform" && node.Parent != root))
+                return null;
+            var code = children[children.Length - 1];
+            var run = text.Runs[0];
+            if (code.HasElements || code.Nodes().Any(node => node is not XText) ||
+                OfdTextRenderProjection.Decode(code.Value, CancellationToken.None) != run.Text ||
+                code.Attribute("DeltaX")?.Value != run.DeltaX || code.Attribute("DeltaY")?.Value != run.DeltaY ||
+                text.Text != run.Text)
+                return null;
+            var logical = run.Text;
+            if (logical.Length is < 1 or > 4096 || logical.Any(value => char.IsSurrogate(value) ||
+                    char.IsControl(value) || CharUnicodeInfo.GetUnicodeCategory(value) == UnicodeCategory.Format))
+                return null;
+            var ids = new List<int>();
+            var spans = new List<OfdExplicitGlyphSpan>();
+            var position = 0;
+            foreach (var transform in children.Take(children.Length - 1))
+            {
+                parseBudget?.Spend(0);
+                if (transform.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration &&
+                        attribute.Name.LocalName is not ("CodePosition" or "CodeCount" or "GlyphCount")) ||
+                    transform.Elements().Count() != 1 || transform.Element(ns + "Glyphs") is not { } glyphs ||
+                    glyphs.HasElements || glyphs.Attributes().Any(attribute => !attribute.IsNamespaceDeclaration) ||
+                    glyphs.Nodes().Any(node => node is not XText))
+                    return null;
+                var codePosition = Number(transform.Attribute("CodePosition"), -1);
+                var codeCount = Number(transform.Attribute("CodeCount"), 1);
+                var glyphCount = Number(transform.Attribute("GlyphCount"), 1);
+                if (codePosition != position || codeCount < 1 || codeCount > logical.Length - position || glyphCount < 1)
+                    return null;
+                var tokens = glyphs.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+                if (tokens.Length != glyphCount) return null;
+                spans.Add(new OfdExplicitGlyphSpan(position, codeCount, ids.Count, glyphCount,
+                    logical.Substring(position, codeCount)));
+                foreach (var token in tokens)
+                {
+                    if (!int.TryParse(token, NumberStyles.None, CultureInfo.InvariantCulture, out var gid) ||
+                        gid is <= 0 or > ushort.MaxValue)
+                        return null;
+                    ids.Add(gid);
+                }
+                if (ids.Count > 16384) return null;
+                position += codeCount;
+            }
+            if (position != logical.Length) return null;
+            if (ids.Count > 1 && string.IsNullOrWhiteSpace(run.DeltaX) ||
+                !string.IsNullOrWhiteSpace(run.DeltaY) && string.IsNullOrWhiteSpace(run.DeltaX))
+                return null;
+            CountDeltas(run.DeltaX, ids.Count - 1);
+            CountDeltas(run.DeltaY, ids.Count - 1);
+            var mapped = new OfdExplicitGlyphRun(text.Runs, ids.ToArray(), spans, composedPath: true) { ClusterMapped = true };
+            _ = mapped.PathGlyphOrigins(CancellationToken.None);
+            return mapped;
+        }
+        catch (Exception error) when (error is NotSupportedException or System.Xml.XmlException or FormatException)
+        {
+            return null;
+        }
+    }
+
+    private static OfdExplicitGlyphRun? ReadProfiles(OfdTextElement text, OfdFontResource? resource,
+        IDictionary<OfdFontResource, OpenTypeCmap>? cmapCache, FontParseBudget? parseBudget,
+        OfdGlyphMappingStrategy strategy)
+    {
         if (string.IsNullOrWhiteSpace(text.SourceXml)) return null;
         XElement root;
         try { root = OfdXmlEnvelope.Parse(text.SourceXml!); }

@@ -92,13 +92,17 @@ internal sealed class OfdFontEmbeddingPlan
                     typedGlyphs.Add(identity, new Dictionary<int, TrueTypeGlyphOutline>());
                 }
                 long points = 0;
-                foreach (var glyph in text.Runs[0].PositionedGlyphs!.Glyphs)
+                var positionedRun = text.Runs[0].PositionedGlyphs!;
+                foreach (var glyph in positionedRun.Glyphs)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var gid = checked((int)glyph.GlyphId);
                     if (!typedGlyphs[identity].TryGetValue(gid, out var outline))
                         typedGlyphs[identity].Add(gid, outline = outlines.Read(gid, cancellationToken));
-                    if (outline.Contours.Count == 0)
+                    // A cluster-mapped space has an advance but no outline; visible source never does.
+                    if (outline.Contours.Count == 0 && !(positionedRun.Mapping == OfdPositionedGlyphMapping.ClusterMap &&
+                        positionedRun.LogicalText.Substring(glyph.ClusterStart - positionedRun.SourceStart,
+                            glyph.ClusterLength).All(char.IsWhiteSpace)))
                         throw new NotSupportedException("Typed GID output mapped visible source to an empty outline.");
                     points += outline.Contours.Sum(contour => (long)contour.Points.Count);
                     if (points > 131072)
@@ -162,8 +166,9 @@ internal sealed class OfdFontEmbeddingPlan
                     // source-to-visual mapping. Keep the full-font guard for raw,
                     // imported or other RTL text.
                     var explicitPositioned = text.SourceXml is null && text.Runs.Count > 0 &&
-                        text.Runs.All(run => run.PositionedGlyphs is not null &&
-                            OfdPositionedGlyphProfile.IsHebrewWord(run.Text));
+                        text.Runs.All(run => run.PositionedGlyphs is { } glyphs &&
+                            (glyphs.Mapping == OfdPositionedGlyphMapping.ClusterMap ||
+                             OfdPositionedGlyphProfile.IsHebrewWord(run.Text)));
                     if (cmap is not null) EmbeddedFontCoverage.Validate(effective, cmap, aliases[0].FontName, cancellationToken);
                     var strings = effective.Runs.Count == 0 ? new[] { effective.Text } : effective.Runs.Select(run => run.Text);
                     foreach (var value in strings)
