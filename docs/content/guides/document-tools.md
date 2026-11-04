@@ -31,9 +31,15 @@ ofdrw watermark input.ofd marked.ofd --image mark.png --layer-type Foreground
 
 # 显式移除签名声明及可证明无引用的签名载荷
 ofdrw clean-signatures signed.ofd unsigned.ofd
+
+# 删除第 2、4、5 页（至少保留一页；main，尚未发布）
+ofdrw delete-pages input.ofd trimmed.ofd --pages 2,4-5
+
+# 把第 1、3 页的页面框设为 X,Y,宽,高（毫米）；省略 --pages 时作用于全部页面（main，尚未发布）
+ofdrw crop input.ofd cropped.ofd --box 10,20,180,250 --pages 1,3
 ```
 
-`reorder` 需要完整页列表，`split` 选择不同页面；`mix` 的参数是输出路径后的一组“输入文件 + 一基页号”。写入新路径后，应重新读取输出并核对页序、模板、资源和原文。
+`delete-pages` 与 `crop` 分别对应 `OfdDocumentEditor.RemovePages`、`CropPage`；`crop` 只改变页面框，不移动或裁剪内容对象。三者与 `reorder` 一样支持原位更新。`reorder` 需要完整页列表，`split` 选择不同页面；`mix` 的参数是输出路径后的一组“输入文件 + 一基页号”。写入新路径后，应重新读取输出并核对页序、模板、资源和原文。
 
 使用 `--skip-unsupported` 合并时，未知 raw 对象可能被跳过，必须检查警告；默认行为是拒绝无法安全重映射的内容，而不是静默丢失。
 
@@ -43,7 +49,7 @@ ofdrw clean-signatures signed.ofd unsigned.ofd
 
 | 类型 | 用途 |
 | --- | --- |
-| `OfdDocumentEditor` | 删除或重排内存包中的页面 |
+| `OfdDocumentEditor` | 删除、重排或裁剪（`CropPage`）内存包中的页面 |
 | `OfdDocumentSplitter` | 按零基页索引列表生成独立包 |
 | `OfdDocumentMerger` / `MergeWithResult` | 合并文档，并在显式跳过不支持对象时返回诊断 |
 | `OfdDocumentMixer` | 将多个来源页叠加 |

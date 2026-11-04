@@ -8,7 +8,8 @@ using System.Threading;
 
 namespace Ofdrw.Net.Layout.Internal.Flow;
 
-internal enum FlowAlignment { Left, Center, Right }
+// Justify is produced only by DOCX Native; FlowDocument never emits it.
+internal enum FlowAlignment { Left, Center, Right, Justify }
 
 internal sealed class FlowTextStyle
 {
@@ -61,7 +62,7 @@ internal sealed class FlowLine
     internal FlowLine(List<FlowGlyph> glyphs, double height, double indent, FlowAlignment alignment,
         bool pageBreak = false, bool terminalNewline = false, bool automaticWrap = false)
     { Glyphs = glyphs; Height = height; Indent = indent; Alignment = alignment;
-        PageBreak = pageBreak; TerminalNewline = terminalNewline;
+        PageBreak = pageBreak; TerminalNewline = terminalNewline; AutomaticWrap = automaticWrap;
         var visibleCount = glyphs.Count;
         // Keep separators in logical text without advancing beyond an automatic wrap.
         // Explicit breaks and final lines retain their whitespace advances.
@@ -88,6 +89,7 @@ internal sealed class FlowLine
     internal FlowAlignment Alignment { get; }
     internal bool PageBreak { get; }
     internal bool TerminalNewline { get; }
+    internal bool AutomaticWrap { get; }
     internal double AlignmentWidth { get; }
     internal double BaselineMillimeters => Glyphs.Count == 0 ? 0 : Glyphs.Max(g => g.Style.FontSizeMillimeters);
 }

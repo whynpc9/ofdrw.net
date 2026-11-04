@@ -14,24 +14,24 @@ Repository rules every plan inherits (from `AGENTS.md`):
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| [001](001-reader-traversal-budget.md) | Let OfdReader read normal-size documents | P1 | M | — | TODO |
-| [002](002-docx-list-numbering.md) | Correct DOCX list markers (levels, formats, numId=0) | P1 | M | — | TODO |
-| [003](003-native-docx-underline.md) | Draw DOCX underlines in Native OFD | P1 | S | (after 002) | TODO |
-| [004](004-native-docx-justify.md) | Justify wrapped lines in Native OFD | P2 | M | 003 | TODO |
-| [005](005-ofd-to-pdf-result-and-seal-diagnostics.md) | OFD→PDF result/diagnostics channel; no silent seal loss | P1 | M | (after 001) | TODO |
-| [006](006-private-temp-files.md) | Owner-only temp directories for document copies | P2 | M | — | TODO |
-| [007](007-xml-parse-hardening.md) | Hardened XML parsing everywhere package content is parsed | P2 | S | 005 | TODO |
-| [008](008-verify-signatures-exit-codes.md) | `verify-signatures --require-signatures` + documented exit codes | P2 | S | 005 | TODO |
-| [009](009-reader-input-hygiene.md) | Reject non-finite numbers; normalize reader exceptions | P3 | S | 001 | TODO |
-| [010](010-e2e-harness-build-gate.md) | Compile every e2e harness in CI | P2 | M | — | TODO |
-| [011](011-no-silent-test-returns.md) | Visible skips instead of empty-passing tests | P3 | S | — | TODO |
-| [012](012-writer-no-partial-zip.md) | Fail closed on interrupted OFD writes | P3 | S | — | TODO |
-| [013](013-nuget-vulnerability-gate.md) | CI gate for new NuGet advisories (D10 allowlisted) | P2 | S | — | TODO |
-| [014](014-pdf-font-registry-spike.md) | Spike: process-wide PDF font registry lifetime | P2 | M | 005 | TODO |
-| [015](015-cli-preflight-json.md) | `ofdrw preflight [--json]` | P2 | M | 008 | TODO |
-| [016](016-cli-delete-pages-and-crop.md) | `ofdrw delete-pages` / `ofdrw crop` | P2 | S–M | 015 | TODO |
-| [017](017-cli-attachments.md) | `ofdrw attachments list/extract/remove` | P2 | M | 016 | TODO |
-| [018](018-cli-locate.md) | Read-only `ofdrw locate` | P3 | M | 017 | TODO |
+| [001](001-reader-traversal-budget.md) | Let OfdReader read normal-size documents | P1 | M | — | DONE (20k-paragraph case replaced by 10k: the writer preflight estimate rejects it, see report) |
+| [002](002-docx-list-numbering.md) | Correct DOCX list markers (levels, formats, numId=0) | P1 | M | — | DONE |
+| [003](003-native-docx-underline.md) | Draw DOCX underlines in Native OFD | P1 | S | (after 002) | DONE |
+| [004](004-native-docx-justify.md) | Justify wrapped lines in Native OFD | P2 | M | 003 | DONE (gap rule refined: spaces + after CJK chars; leading whitespace and single-word lines not stretched) |
+| [005](005-ofd-to-pdf-result-and-seal-diagnostics.md) | OFD→PDF result/diagnostics channel; no silent seal loss | P1 | M | (after 001) | DONE |
+| [006](006-private-temp-files.md) | Owner-only temp directories for document copies | P2 | M | — | DONE |
+| [007](007-xml-parse-hardening.md) | Hardened XML parsing everywhere package content is parsed | P2 | S | 005 | DONE (also hardened OfdSignatureVerifier list/signature parses) |
+| [008](008-verify-signatures-exit-codes.md) | `verify-signatures --require-signatures` + documented exit codes | P2 | S | 005 | DONE |
+| [009](009-reader-input-hygiene.md) | Reject non-finite numbers; normalize reader exceptions | P3 | S | 001 | DONE (TextCode X/Y keep non-finite values per the existing R01 render-rejection contract) |
+| [010](010-e2e-harness-build-gate.md) | Compile every e2e harness in CI | P2 | M | — | DONE (AttachmentCleanup.E2E is already built by run-converter-package-e2e.sh; Signatures.Appearance.E2E skips without SesInterop) |
+| [011](011-no-silent-test-returns.md) | Visible skips instead of empty-passing tests | P3 | S | — | DONE (CI filter uses ~ViewerLocalCjk: the class in DocxRevisionTests.cs is DocxConversionTests; remaining silent returns: PlainTextCommandTests.SymbolicFileAndParentAliasesAreRejected on Windows, Audit014_VisualSample without OFDRW_TEST_ARTIFACTS) |
+| [012](012-writer-no-partial-zip.md) | Fail closed on interrupted OFD writes | P3 | S | — | DONE (success compared by entry manifest: ZIP timestamps vary) |
+| [013](013-nuget-vulnerability-gate.md) | CI gate for new NuGet advisories (D10 allowlisted) | P2 | S | — | DONE (no schedule trigger added; a separate scheduled workflow is recommended) |
+| [014](014-pdf-font-registry-spike.md) | Spike: process-wide PDF font registry lifetime | P2 | M | 005 | DONE (recommends option C: pressure diagnostic + process recycling; eviction needs a backend change) |
+| [015](015-cli-preflight-json.md) | `ofdrw preflight [--json]` | P2 | M | 008 | DONE |
+| [016](016-cli-delete-pages-and-crop.md) | `ofdrw delete-pages` / `ofdrw crop` | P2 | S–M | 015 | DONE |
+| [017](017-cli-attachments.md) | `ofdrw attachments list/extract/remove` | P2 | M | 016 | DONE |
+| [018](018-cli-locate.md) | Read-only `ofdrw locate` | P3 | M | 017 | DONE (SDK throws for unmeasurable sources, e.g. untrusted or name-only fonts, so locate exits 1 there instead of 3) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

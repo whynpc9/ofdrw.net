@@ -55,14 +55,15 @@ public sealed partial class OfdPackageWriter
         result.Warnings.AddRange(fontPlan.Diagnostics);
         material.ValidateActualEntries(entries, cancellationToken, plan.OutputReservation);
         FreezeEntryBuffers(entries, material, cancellationToken);
-        using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
-
-        foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+        await FailClosedOutputStream.WriteZipAsync(destination, async zip =>
         {
-            var zipEntry = zip.CreateEntry(entry.Key, plan.Compression ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
-            using var stream = zipEntry.Open();
-            await stream.WriteAsync(entry.Value, 0, entry.Value.Length, cancellationToken).ConfigureAwait(false);
-        }
+            foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                var zipEntry = zip.CreateEntry(entry.Key, plan.Compression ? CompressionLevel.Optimal : CompressionLevel.NoCompression);
+                using var stream = zipEntry.Open();
+                await stream.WriteAsync(entry.Value, 0, entry.Value.Length, cancellationToken).ConfigureAwait(false);
+            }
+        }).ConfigureAwait(false);
         return result;
     }
 
@@ -255,7 +256,7 @@ public sealed partial class OfdPackageWriter
             material.ValidateActualEntries(entries, token, plan.OutputReservation);
             FreezeEntryBuffers(entries, material, token);
             guard.AssertUnchanged(candidate.Package, context, token);
-            using (var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true))
+            await FailClosedOutputStream.WriteZipAsync(destination, async zip =>
             {
                 foreach (var entry in entries.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
                 {
@@ -264,7 +265,7 @@ public sealed partial class OfdPackageWriter
                     using var stream = zipEntry.Open();
                     await stream.WriteAsync(entry.Value, 0, entry.Value.Length, token).ConfigureAwait(false);
                 }
-            }
+            }).ConfigureAwait(false);
             // Including destination/Dispose callbacks. Failure here cannot
             // roll back an arbitrary caller stream; no verified save is returned.
             candidate.AssertClaimedActive(); guard.AssertUnchanged(candidate.Package, context, token); candidate.AssertSourceUnchanged(token);

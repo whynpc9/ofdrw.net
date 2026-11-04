@@ -536,12 +536,18 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private IReadOnlyList<FlowLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber, int totalPages, int sectionPages)
     {
         var inlines = new List<FlowInline>();
-        FlowTextStyle Style(BuiltInTextFormat format) => new()
+        FlowTextStyle Style(BuiltInTextFormat format)
         {
-            FontFamily = NormalizeFontFamily(format.FontFamily),
-            FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
-            Bold = format.Bold, Italic = format.Italic, Source = format
-        };
+            var size = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints);
+            return new()
+            {
+                FontFamily = NormalizeFontFamily(format.FontFamily),
+                FontSizeMillimeters = size,
+                Bold = format.Bold, Italic = format.Italic, Source = format,
+                // Same geometry as FlowDocument underlines.
+                Underline = format.Underline, UnderlineOffsetMillimeters = size * 0.1d, UnderlineWidthMillimeters = size * 0.06d
+            };
+        }
         var fallbackFormat = paragraph.Inlines.OfType<BuiltInTextModel>().FirstOrDefault()?.Format ?? new BuiltInTextFormat();
         var fallback = Style(fallbackFormat);
         void Add(string value, BuiltInTextFormat format) =>
@@ -571,6 +577,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         {
             BuiltInParagraphAlignment.Center => FlowAlignment.Center,
             BuiltInParagraphAlignment.Right => FlowAlignment.Right,
+            BuiltInParagraphAlignment.Justify => FlowAlignment.Justify,
             _ => FlowAlignment.Left
         };
         return FlowParagraphLayout.Layout(inlines, new FlowParagraphFormat
@@ -585,12 +592,15 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     {
         var x = FlowParagraphLayout.Align(left + line.Indent, width - line.Indent, line.AlignmentWidth, line.Alignment);
         var baseline = line.BaselineMillimeters;
-        for (var i = 0; i < line.Glyphs.Count;)
+        var glyphs = line.Alignment == FlowAlignment.Justify && line.AutomaticWrap
+            ? Justify(line.Glyphs, width - line.Indent - line.AlignmentWidth)
+            : line.Glyphs;
+        for (var i = 0; i < glyphs.Count;)
         {
             var start = i;
-            if (line.Glyphs[i].Image is BuiltInImageModel image)
+            if (glyphs[i].Image is BuiltInImageModel image)
             {
-                var glyph = line.Glyphs[i++];
+                var glyph = glyphs[i++];
                 page.Elements.Add(new OfdImageElement
                 {
                     XMillimeters = x, YMillimeters = top, WidthMillimeters = glyph.Width, HeightMillimeters = glyph.ImageHeight,
@@ -599,9 +609,9 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 x += glyph.Width;
                 continue;
             }
-            var format = (BuiltInTextFormat)line.Glyphs[i].Style.Source!;
-            while (i < line.Glyphs.Count && line.Glyphs[i].Image is null && ReferenceEquals(line.Glyphs[i].Style.Source, format)) i++;
-            var group = line.Glyphs.GetRange(start, i - start);
+            var format = (BuiltInTextFormat)glyphs[i].Style.Source!;
+            while (i < glyphs.Count && glyphs[i].Image is null && ReferenceEquals(glyphs[i].Style.Source, format)) i++;
+            var group = glyphs.GetRange(start, i - start);
             var groupWidth = group.Sum(g => g.Width);
             var elementWidth = Math.Max(groupWidth, 0.1);
             var declaredName = DeclaredFontName(format);
@@ -621,8 +631,60 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = baseline,
                 DeltaX = group.Count > 1 ? string.Join(" ", group.Take(group.Count - 1).Select(g => g.Width.ToString("0.######", CultureInfo.InvariantCulture))) : null });
             page.Elements.Add(text);
+            // Zero-width separators at automatic wraps are already excluded from groupWidth.
+            if (format.Underline && groupWidth > 0)
+            {
+                var style = glyphs[start].Style;
+                var underlineY = baseline + style.UnderlineOffsetMillimeters;
+                page.Elements.Add(new OfdPathElement
+                {
+                    LayerType = "Body", XMillimeters = x, YMillimeters = top,
+                    WidthMillimeters = groupWidth, HeightMillimeters = line.Height,
+                    Stroke = true, Fill = false, LineWidthMillimeters = style.UnderlineWidthMillimeters,
+                    StrokeColor = ParseColor(format.ColorHex),
+                    AbbreviatedData = FormattableString.Invariant($"M 0 {underlineY:0.######} L {groupWidth:0.######} {underlineY:0.######}")
+                });
+            }
             x += groupWidth;
         }
+    }
+
+    // Word "both": spread an automatically wrapped line's slack across its word spaces and after
+    // CJK characters; a line with neither (one long Latin word) is left as is. Whitespace before
+    // the first visible character is never widened. Final lines and explicit breaks stay left.
+    private static List<FlowGlyph> Justify(List<FlowGlyph> glyphs, double slack)
+    {
+        if (slack <= 0.001) return glyphs;
+        var visible = new List<int>();
+        for (var index = 0; index < glyphs.Count; index++)
+            if (glyphs[index].Image is null && glyphs[index].Width > 0) visible.Add(index);
+        var first = visible.FindIndex(index => !IsStretchableSpace(glyphs[index]));
+        if (first < 0) return glyphs;
+        visible.RemoveRange(0, first);
+        if (visible.Count < 2) return glyphs;
+        visible.RemoveAt(visible.Count - 1);
+        var gaps = visible.Where(index => IsStretchableSpace(glyphs[index]) || IsCjk(glyphs[index])).ToList();
+        if (gaps.Count == 0) return glyphs;
+        var extra = slack / gaps.Count;
+        var justified = new List<FlowGlyph>(glyphs);
+        foreach (var index in gaps)
+        {
+            var glyph = glyphs[index];
+            justified[index] = new FlowGlyph(glyph.Text, glyph.Style, glyph.Width + extra, glyph.Image, glyph.ImageHeight);
+        }
+        return justified;
+    }
+
+    private static bool IsStretchableSpace(FlowGlyph glyph) =>
+        glyph.Text.Length > 0 && glyph.Text.All(char.IsWhiteSpace) && !FlowParagraphLayout.IsNonbreakingSpace(glyph);
+
+    // CJK ideographs, kana, CJK punctuation and fullwidth forms (including supplementary ideographs).
+    private static bool IsCjk(FlowGlyph glyph)
+    {
+        if (glyph.Text.Length == 0) return false;
+        var value = char.IsSurrogatePair(glyph.Text, 0) ? char.ConvertToUtf32(glyph.Text, 0) : glyph.Text[0];
+        return value is >= 0x2E80 and <= 0x9FFF or >= 0xF900 and <= 0xFAFF or >= 0xFE30 and <= 0xFE4F
+            or >= 0xFF00 and <= 0xFFEF or >= 0x20000 and <= 0x3FFFF;
     }
 
     private static void DrawCell(OfdPage page, BuiltInTableModel table, BuiltInTableCellModel cell,

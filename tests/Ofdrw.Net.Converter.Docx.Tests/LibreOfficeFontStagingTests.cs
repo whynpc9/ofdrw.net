@@ -84,13 +84,31 @@ public sealed class LibreOfficeFontStagingTests
     {
         var custom = Path.Combine(Path.GetTempPath(), "ofdrw-corporate-fonts");
         Assert.False(LibreOfficeFontStager.ShouldRestrictToPreferredCjk(custom, 80));
-        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        if (string.IsNullOrEmpty(windows))
-            return;
-        var fonts = Path.Combine(windows, "Fonts");
-        if (!Directory.Exists(fonts))
-            return;
+    }
+
+    [WindowsFontsFact]
+    public void ShouldRestrictPreferredCjkForWindowsFontsDirectory()
+    {
+        var fonts = WindowsFontsFactAttribute.Directory!;
         Assert.False(LibreOfficeFontStager.ShouldRestrictToPreferredCjk(fonts, 32));
         Assert.True(LibreOfficeFontStager.ShouldRestrictToPreferredCjk(fonts, 33));
+    }
+
+    private sealed class WindowsFontsFactAttribute : FactAttribute
+    {
+        internal static string? Directory
+        {
+            get
+            {
+                var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+                return string.IsNullOrEmpty(windows) ? null : Path.Combine(windows, "Fonts");
+            }
+        }
+
+        public WindowsFontsFactAttribute()
+        {
+            if (!OperatingSystem.IsWindows() || Directory is not { } fonts || !System.IO.Directory.Exists(fonts))
+                Skip = "Requires the Windows Fonts directory.";
+        }
     }
 }

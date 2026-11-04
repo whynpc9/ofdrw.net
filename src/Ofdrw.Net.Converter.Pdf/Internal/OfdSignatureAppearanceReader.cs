@@ -12,13 +12,20 @@ namespace Ofdrw.Net.Converter.Pdf.Internal;
 
 internal static class OfdSignatureAppearanceReader
 {
+    internal const string MetadataUnreadable = "PDF_SIGNATURE_METADATA_UNREADABLE";
+    internal const string AppearanceUnreadable = "PDF_SIGNATURE_APPEARANCE_UNREADABLE";
+    internal const string AppearanceSkipped = "PDF_SIGNATURE_APPEARANCE_SKIPPED";
+
+    // onTolerantSkip(code, reason, pageRef, signatureId) observes every tolerant exit; strict mode throws instead.
     public static IReadOnlyList<OfdSignatureAppearance> Read(
         OfdDocumentPackage package, HashSet<string>? selectedPageIds = null,
-        int? maximumAppearances = null, CancellationToken cancellationToken = default)
+        int? maximumAppearances = null, CancellationToken cancellationToken = default,
+        Action<string, string, string?, string?>? onTolerantSkip = null)
     {
         if (!package.PreservedEntries.TryGetValue("OFD.xml", out var ofdBytes))
         {
             if (maximumAppearances.HasValue) throw new InvalidDataException("Missing OFD signature metadata root.");
+            onTolerantSkip?.Invoke(MetadataUnreadable, "metadata root", null, null);
             return Array.Empty<OfdSignatureAppearance>();
         }
 
@@ -34,6 +41,7 @@ internal static class OfdSignatureAppearanceReader
             {
                 if (maximumAppearances.HasValue && ofd.Root?.Elements().Any(element => element.Name.LocalName == "DocBody") == true)
                     throw new InvalidDataException("Selected DocBody is missing from signature metadata root.");
+                onTolerantSkip?.Invoke(MetadataUnreadable, "document body", null, null);
                 return Array.Empty<OfdSignatureAppearance>();
             }
             var signatureLists = selectedBody
@@ -50,7 +58,7 @@ internal static class OfdSignatureAppearanceReader
             foreach (var listPath in signatureLists.Where(path => path.Length > 0))
             {
                 ReadSignatureList(package.PreservedEntries, listPath, result, selectedPageIds,
-                    maximumAppearances, ref candidates, payloadCache, cancellationToken);
+                    maximumAppearances, ref candidates, payloadCache, cancellationToken, onTolerantSkip);
             }
 
             return result;
@@ -62,10 +70,11 @@ internal static class OfdSignatureAppearanceReader
         {
             throw new InvalidDataException("Cannot parse selected signature appearance metadata.", exception);
         }
-        catch
+        catch (Exception exception)
         {
             // A malformed or unsupported signature must not prevent the document
-            // body from being converted.
+            // body from being converted; report the type only, never untrusted content.
+            onTolerantSkip?.Invoke(MetadataUnreadable, exception.GetType().Name, null, null);
             return Array.Empty<OfdSignatureAppearance>();
         }
     }
@@ -74,11 +83,13 @@ internal static class OfdSignatureAppearanceReader
         IReadOnlyDictionary<string, byte[]> entries,
         string listPath,
         ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds,
-        int? maximumAppearances, ref int candidates, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token)
+        int? maximumAppearances, ref int candidates, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token,
+        Action<string, string, string?, string?>? onTolerantSkip)
     {
         if (!entries.TryGetValue(listPath, out var listBytes))
         {
             if (maximumAppearances.HasValue) throw new InvalidDataException("Referenced signature metadata list is missing.");
+            onTolerantSkip?.Invoke(MetadataUnreadable, "signature list missing", null, null);
             return;
         }
 
@@ -90,15 +101,18 @@ internal static class OfdSignatureAppearanceReader
             .Where(element => element.Name.LocalName == "Signature"))
         {
             var baseLocation = record.Attribute("BaseLoc")?.Value;
+            var signatureId = record.Attribute("ID")?.Value;
             if (string.IsNullOrWhiteSpace(baseLocation))
             {
                 if (maximumAppearances.HasValue) throw new InvalidDataException("Signature metadata entry reference is missing or empty.");
+                onTolerantSkip?.Invoke(MetadataUnreadable, "signature reference", null, signatureId);
                 continue;
             }
 
             var signaturePath = ResolvePath(listPath, baseLocation!);
             token.ThrowIfCancellationRequested();
-            ReadSignature(entries, signaturePath, destination, selectedPageIds, maximumAppearances, ref candidates, payloadCache, token);
+            ReadSignature(entries, signaturePath, destination, selectedPageIds, maximumAppearances, ref candidates, payloadCache, token,
+                signatureId, onTolerantSkip);
         }
     }
 
@@ -106,11 +120,13 @@ internal static class OfdSignatureAppearanceReader
         IReadOnlyDictionary<string, byte[]> entries,
         string signaturePath,
         ICollection<OfdSignatureAppearance> destination, HashSet<string>? selectedPageIds,
-        int? maximumAppearances, ref int candidates, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token)
+        int? maximumAppearances, ref int candidates, Dictionary<byte[], byte[]>? payloadCache, CancellationToken token,
+        string? signatureId, Action<string, string, string?, string?>? onTolerantSkip)
     {
         if (!entries.TryGetValue(signaturePath, out var signatureBytes))
         {
             if (maximumAppearances.HasValue) throw new InvalidDataException("Referenced signature metadata entry is missing.");
+            onTolerantSkip?.Invoke(MetadataUnreadable, "signature entry missing", null, signatureId);
             return;
         }
 
@@ -139,6 +155,8 @@ internal static class OfdSignatureAppearanceReader
         {
             if (maximumAppearances.HasValue)
                 throw new InvalidDataException("Selected signature stamp has no supported appearance payload.");
+            foreach (var stamp in stamps)
+                onTolerantSkip?.Invoke(AppearanceUnreadable, "no supported payload", stamp.Attribute("PageRef")?.Value, signatureId);
             return;
         }
 
@@ -151,6 +169,7 @@ internal static class OfdSignatureAppearanceReader
             {
                 if (maximumAppearances.HasValue)
                     throw new InvalidDataException("Selected signature stamp Boundary must have finite PDF coordinates and positive dimensions representable by the PDF writer.");
+                onTolerantSkip?.Invoke(AppearanceSkipped, "boundary", pageId, signatureId);
                 continue;
             }
 
@@ -166,6 +185,7 @@ internal static class OfdSignatureAppearanceReader
                 {
                     if (maximumAppearances.HasValue)
                         throw new InvalidDataException("Selected signature stamp Clip must be a valid rectangle within Boundary.");
+                    onTolerantSkip?.Invoke(AppearanceSkipped, "clip", pageId, signatureId);
                     continue;
                 }
                 clip = new OfdSignatureClip(clipBox.X, clipBox.Y, clipBox.Width, clipBox.Height);
@@ -178,7 +198,8 @@ internal static class OfdSignatureAppearanceReader
                 box.Width,
                 box.Height,
                 appearanceData,
-                clip));
+                clip,
+                signatureId));
         }
     }
 
@@ -439,7 +460,7 @@ internal static class OfdSignatureAppearanceReader
 
     private static XDocument ParseXml(byte[] data)
     {
-        return XDocument.Parse(
+        return OfdXmlEnvelope.ParseDocument(
             Encoding.UTF8.GetString(data).TrimStart('\uFEFF'),
             LoadOptions.PreserveWhitespace);
     }
@@ -545,9 +566,11 @@ internal sealed class OfdSignatureAppearance
         double widthMillimeters,
         double heightMillimeters,
         byte[] data,
-        OfdSignatureClip? clip = null)
+        OfdSignatureClip? clip = null,
+        string? signatureId = null)
     {
         PageId = pageId;
+        SignatureId = signatureId;
         XMillimeters = xMillimeters;
         YMillimeters = yMillimeters;
         WidthMillimeters = widthMillimeters;
@@ -569,6 +592,8 @@ internal sealed class OfdSignatureAppearance
     public byte[] Data { get; }
 
     public OfdSignatureClip? Clip { get; }
+
+    public string? SignatureId { get; }
 }
 
 internal readonly struct OfdSignatureClip

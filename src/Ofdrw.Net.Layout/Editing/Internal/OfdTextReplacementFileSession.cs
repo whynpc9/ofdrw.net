@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Packaging;
@@ -25,6 +26,11 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
     private readonly CancellationToken preparationToken;
     private readonly string inputPath;
     private readonly string snapshotPath;
+    private const string SnapshotPrefix = "ofdrw-input-";
+    private const string SnapshotName = "input.ofd.tmp";
+    // mkdtemp adds 6 characters on Unix, a GUID adds 32 on Windows; charge the larger.
+    private static int SnapshotPathUpperBound() =>
+        Path.Combine(Path.GetTempPath(), SnapshotPrefix + new string('X', 32), SnapshotName).Length;
     private readonly FileStream input;
     private readonly byte[] buffer;
     private readonly byte[] inputDigest;
@@ -92,6 +98,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
         var context = new OfdControlledEditContext(new OfdModelLimits { MaxMaterializedBytes = policies.Limits.MaxMaterializedBytes });
         FileStream? stream = null;
         string? snapshot = null;
+        string? snapshotDirectory = null;
         var created = false;
         var diagnosticsReserved = false;
         var phase = "InitialInputReservation";
@@ -99,7 +106,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
         {
             // Session state, path normalization, owned buffer, FileStream buffer
             // and bounded hash state are all reserved before allocation/open.
-            context.Material.ChargeCopy(checked(BufferSize + 32_768L + 8L * inputPath.Length + 8L * Path.GetTempPath().Length), token);
+            context.Material.ChargeCopy(checked(BufferSize + 32_768L + 8L * inputPath.Length + 8L * SnapshotPathUpperBound()), token);
             diagnosticsReserved = true;
             var path = Path.GetFullPath(inputPath);
             var buffer = new byte[BufferSize];
@@ -110,7 +117,9 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             // describes exactly the bytes copied, even if the external file
             // changes A->B->A during acquisition. No caller gets this handle.
             context.Material.ChargeOutput(length);
-            snapshot = Path.Combine(Path.GetTempPath(), "ofdrw-input-" + Guid.NewGuid().ToString("N") + ".tmp");
+            // Owner-only directory: the snapshot is a plaintext copy of the caller's document.
+            snapshotDirectory = PrivateTemporaryDirectory.Create(SnapshotPrefix);
+            snapshot = Path.Combine(snapshotDirectory, SnapshotName);
             stream = new FileStream(snapshot, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.Asynchronous);
             created = true; phase = "CopyAndHashInputSnapshot";
             var first = await HashAsync(sourceInput, buffer, length, context, token, stream).ConfigureAwait(false);
@@ -139,7 +148,8 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             // A cleanup failure must not replace the actual quota/cancellation/
             // parse error. These are exclusively owned exact temporary paths.
             try { stream?.Dispose(); } catch { }
-            try { if (created) File.Delete(snapshot!); } catch { }
+            // Remove the private directory only once the snapshot itself is gone.
+            try { if (created) File.Delete(snapshot!); PrivateTemporaryDirectory.TryDelete(snapshotDirectory); } catch { }
             context.Dispose();
             throw;
         }
@@ -493,6 +503,7 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
             // Cleanup that can still fail precedes the final rename. Keep the
             // context/source guard alive through final raw validation/commit.
             context.Material.ChargeWork(32, token); input.Dispose(); File.Delete(snapshotPath); inputSnapshotReleased = true;
+            PrivateTemporaryDirectory.TryDelete(Path.GetDirectoryName(snapshotPath));
             await ValidateInputAsync(token).ConfigureAwait(false);
             ownedOperation.Validate(token); preparationToken.ThrowIfCancellationRequested(); context.AssertActive();
             ownedCommitClaimed = true;
@@ -735,7 +746,8 @@ internal sealed class OfdTextReplacementFileSession : IDisposable
                 if (!inputSnapshotReleased)
                 {
                     try { input.Dispose(); } catch (Exception error) { cleanup = error; }
-                    try { File.Delete(snapshotPath); } catch (Exception error) { if (cleanup is null) cleanup = error; }
+                    try { File.Delete(snapshotPath); PrivateTemporaryDirectory.TryDelete(Path.GetDirectoryName(snapshotPath)); }
+                    catch (Exception error) { if (cleanup is null) cleanup = error; }
                 }
                 context.Dispose();
                 if (cleanup is not null && !faulted) ExceptionDispatchInfo.Capture(cleanup).Throw();

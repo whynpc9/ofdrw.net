@@ -35,7 +35,9 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
         if (pdfInput is null) throw new ArgumentNullException(nameof(pdfInput));
         if (ofdOutput is null) throw new ArgumentNullException(nameof(ofdOutput));
         var limits = VectorLimits.Snapshot(_options);
-        var path = Path.Combine(Path.GetTempPath(), "ofdrw-vector-" + Guid.NewGuid().ToString("N") + ".pdf");
+        // Owner-only directory: the staged file is a plaintext copy of the caller's PDF.
+        var directory = PrivateTemporaryDirectory.Create("ofdrw-vector-");
+        var path = Path.Combine(directory, "input.pdf");
         try
         {
             using (var staged = File.Create(path))
@@ -173,7 +175,11 @@ public sealed class PdfVectorToOfdConverter : IPdfToOfdConverter
             await new OfdPackageWriter().WriteAsync(package, ofdOutput, cancellationToken).ConfigureAwait(false);
             return new PdfVectorConversionResult(count, results.ToArray());
         }
-        finally { try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { } }
+        finally
+        {
+            try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            PrivateTemporaryDirectory.TryDelete(directory);
+        }
     }
     private static string? WithoutRootId(string? source)
     {

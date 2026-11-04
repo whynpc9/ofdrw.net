@@ -3,6 +3,7 @@ using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Packaging;
@@ -18,6 +19,7 @@ internal sealed class OfdAccountedTemporaryFile : Stream
     private readonly OfdOwnedIoObservation? observation;
     private readonly FileStream file;
     private readonly string path;
+    private readonly string? directory;
     private readonly long capacity;
     private readonly object sync = new();
     private readonly CancellationToken operationToken;
@@ -42,14 +44,15 @@ internal sealed class OfdAccountedTemporaryFile : Stream
         try
         {
             context.AssertActive(); context.Material.ChargeCopy(16_384, token);
-            var directory = Path.GetTempPath();
-            context.Material.ChargeCopy(8L * directory.Length, token);
-            path = Path.Combine(directory, "ofdrw-replacement-" + Guid.NewGuid().ToString("N") + ".tmp");
+            // Owner-only directory: the spool holds plaintext document bytes.
+            directory = PrivateTemporaryDirectory.Create("ofdrw-replacement-");
+            path = Path.Combine(directory, "spool.tmp");
+            context.Material.ChargeCopy(8L * path.Length, token);
             if (observation is not null) context.Material.ChargeWork(16, token);
             file = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.Asynchronous);
             observation?.RecordOpened();
         }
-        catch { Fail(); throw; }
+        catch { PrivateTemporaryDirectory.TryDelete(directory); Fail(); throw; }
     }
     public override bool CanRead => disposed == 0;
     public override bool CanSeek => disposed == 0;
@@ -403,7 +406,8 @@ internal sealed class OfdAccountedTemporaryFile : Stream
         catch (InvalidOperationException) { primaryFailure = true; }
         Exception? cleanup = null;
         try { file.Dispose(); } catch (Exception error) { cleanup = error; }
-        try { File.Delete(path); if (cleanup is null) observation?.RecordRemoved(); } catch (Exception error) { if (cleanup is null) cleanup = error; }
+        try { File.Delete(path); PrivateTemporaryDirectory.TryDelete(directory); if (cleanup is null) observation?.RecordRemoved(); }
+        catch (Exception error) { if (cleanup is null) cleanup = error; }
         base.Dispose(disposing);
         if (cleanup is not null && !primaryFailure) ExceptionDispatchInfo.Capture(cleanup).Throw();
     }

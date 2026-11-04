@@ -7,8 +7,11 @@ namespace Ofdrw.Net.Core.Models;
 internal sealed class OfdModelLimits
 {
     internal int MaxDepth { get; set; } = 64;
-    internal int MaxNodeCount { get; set; } = 100_000;
-    internal int MaxReferenceCount { get; set; } = 200_000;
+    // Whole-read work counters; every DOM materialization re-charges them (ReadXml), so they must
+    // scale with real documents. Memory stays bounded by MaxSourceXmlBytes/MaxMaterializedBytes.
+    // ~180 references per simple text object were measured: 20M ≈ 100k text objects.
+    internal int MaxNodeCount { get; set; } = 10_000_000;
+    internal int MaxReferenceCount { get; set; } = 20_000_000;
     internal int MaxExpandedOccurrenceCount { get; set; } = 100_000;
     internal long MaxSourceXmlBytes { get; set; } = 128L * 1024 * 1024;
     internal long MaxMaterializedBytes { get; set; } = 512L * 1024 * 1024;

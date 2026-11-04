@@ -29,13 +29,24 @@ ofdrw --help
 | UTF-8 文本 → OFD | `ofdrw text-to-ofd notice.txt notice.ofd --font-size-mm 4` |
 | 提取文本 | `ofdrw extract-text input.ofd output.txt --include-templates` |
 | 检查签名完整性 | `ofdrw verify-signatures -i input.ofd` |
+| 本地归档预检（main，尚未发布） | `ofdrw preflight input.ofd --json --output report.json` |
 | 重排全部页面 | `ofdrw reorder input.ofd reordered.ofd --pages 3,1,2` |
+| 删除页面（main，尚未发布） | `ofdrw delete-pages input.ofd trimmed.ofd --pages 2,4-5` |
+| 设置页面框（main，尚未发布） | `ofdrw crop input.ofd cropped.ofd --box 10,20,180,250 --pages 1` |
+| 列出附件（main，尚未发布） | `ofdrw attachments list input.ofd --json` |
+| 按 ID 导出附件（main，尚未发布） | `ofdrw attachments extract input.ofd --id 7 --output invoice.xml` |
+| 只读定位关键字（main，尚未发布） | `ofdrw locate input.ofd --find 旧文本 --trusted-font SHA256:BYTECOUNT --json` |
+| 按 ID 移除附件（main，尚未发布） | `ofdrw attachments remove input.ofd output.ofd --id 7 --physical` |
 | 拆分选页 | `ofdrw split input.ofd selected.ofd --pages 3,1` |
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
 | 叠加水印 | `ofdrw watermark input.ofd marked.ofd --pages 1,2 --text DRAFT` |
 | 清理签名 | `ofdrw clean-signatures input.ofd unsigned.ofd` |
 
 文档操作的更多示例见[页面重组、水印与附件](https://whynpc9.github.io/ofdrw.net/guides/document-tools/)。文字替换需要显式可信原字体身份，见[文字定位与替换](https://whynpc9.github.io/ofdrw.net/guides/keyword-replacement/)。
+
+## 附件
+
+`attachments list` 每行输出 `ID、名称、媒体类型、字节数、internal|external`（制表符分隔），`--json` 时标准输出只有 `ofdrw-cli-attachments/1` JSON；没有附件时也返回 `0`。`attachments extract` 只按 ID 精确匹配，必须用 `--output` 指定目标路径，**从不**用附件内存储的名称作为路径；外部附件没有内嵌载荷，导出会失败。`attachments remove` 默认逻辑移除：从当前附件列表删除引用，保留历史 ZIP 条目；`--physical` 物理移除：在证明来源独占和引用闭合后才删除内部载荷，否则失败且不写输出。`list` 与 `extract` 可配合 `--document N` 读取多 `DocBody` 文档，`remove` 要求单 `DocBody` 文档。以上命令为 main，尚未发布。
 
 ## 页号和文档号
 
@@ -71,6 +82,31 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 | `0` | 成功 |
 | `1` | 参数、输入、转换或输出失败 |
 | `130` | 用户取消，例如 Ctrl-C |
+
+`verify-signatures` 另有专用退出码：
+
+| 退出码 | 含义 |
+| --- | --- |
+| `0` | 完整验证通过；或未声明签名且未指定 `--require-signatures` |
+| `2` | 受保护条目摘要完整，但签名值算法没有已注册的 verifier |
+| `3` | 签名无效或验证不完整 |
+| `4` | 指定 `--require-signatures` 时文档未声明任何签名 |
+| `1` / `130` | 同上表 |
+
+`preflight` 的退出码（main，尚未发布）：
+
+| 退出码 | 含义 |
+| --- | --- |
+| `0` | 运行完整，汇总结果为 `Pass` 或 `NotApplicable` |
+| `2` | 至少一条规则为 `Fail` |
+| `3` | 汇总为 `Unknown`，或运行未完成（例如输入超出预算或不是 ZIP） |
+| `1` / `130` | 同上表 |
+
+`preflight` 只执行 APF-001..006 本地规则，不是认证。`--json` 时标准输出只有 `ofdrw-cli-preflight/1` JSON（`schema`、`input` 的文件名/字节数/SHA-256、`ruleOutcomes` 和完整 `report`）；`--output` 需配合 `--json` 并原子写入文件。输入超过加载预算时不计算哈希（`sha256` 为 `null`）。`--allow-multiple-documents`、`--allow-encryption` 分别放宽单文档与无加密要求。
+
+`locate` 的退出码（main，尚未发布）：`0` 结果完整且至少一处命中；`2` 结果完整但无命中；`3` 结果不完整；`1` 参数错误或 SDK 无法度量来源（如未信任/未嵌入字体）；`130` 取消。`--json` 时标准输出只有 `ofdrw-cli-locate/1` JSON（`complete`、一基页号的 `hits` 及其 `bounds`/`canReplace`、`diagnostics`）。`locate` 从不写文件，可作为 `replace-text` 的预览。
+
+用于自动接收文档时，应加 `--require-signatures` 并只把 `0` 视为通过，否则被移除签名的文档也会返回 `0`。当前 `main` 的 `--require-signatures` 与退出码 `4` **尚未进入 preview.10 CLI**。
 
 文件型命令先验证参数，再在目标目录写临时文件，成功关闭后提交；提交前失败或取消会保留原输出。格式转换的输入与输出必须是不同路径，页重排支持原位更新。
 

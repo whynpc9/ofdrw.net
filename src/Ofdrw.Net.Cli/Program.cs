@@ -32,7 +32,7 @@ internal static partial class Cli
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
             "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-html" or "ofd-to-image" or "image-to-ofd" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text"))
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop" or "attachments" or "locate"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -52,6 +52,12 @@ internal static partial class Cli
 
             if (command == "replace-text")
                 return await ReplaceTextAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "preflight")
+                return await PreflightAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "attachments")
+                return await AttachmentsAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "locate")
+                return await LocateAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "watermark" or "split" or "mix" or "clean-signatures")
                 return await DocumentToolsAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "merge")
@@ -65,6 +71,11 @@ internal static partial class Cli
                 PrintHelp();
                 return 0;
             }
+
+            if (options.RequireSignatures && command != "verify-signatures")
+                throw new ArgumentException("--require-signatures applies only to verify-signatures.");
+            if (options.Box is not null && command != "crop")
+                throw new ArgumentException("--box applies only to crop.");
 
             if (command == "extract-text")
             {
@@ -88,7 +99,7 @@ internal static partial class Cli
                     throw new ArgumentException("An input OFD path is required.");
                 }
 
-                return await VerifySignaturesAsync(options.InputPath, cancellationToken)
+                return await VerifySignaturesAsync(options.InputPath, options.RequireSignatures, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -96,6 +107,9 @@ internal static partial class Cli
             {
                 throw new ArgumentException("Input and output paths are required.");
             }
+
+            if (command == "delete-pages") return await DeletePagesAsync(options, cancellationToken).ConfigureAwait(false);
+            if (command == "crop") return await CropAsync(options, cancellationToken).ConfigureAwait(false);
 
             if (command == "reorder")
             {
@@ -209,7 +223,9 @@ internal static partial class Cli
         {
             var ofdToPdf = new OfdToPdfConverter(new Ofdrw.Net.Converter.Pdf.OfdToPdfOptions
             { PackageLoadOptions = new OfdPackageLoadOptions { DocumentIndex = documentIndex } });
-            await ofdToPdf.ConvertAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
+            var result = await ofdToPdf.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
+            foreach (var diagnostic in result.Diagnostics)
+                Console.Error.WriteLine($"{diagnostic.Severity}: {diagnostic.Code}: {diagnostic.Message}");
         }
 
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -293,7 +309,7 @@ internal static partial class Cli
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<int> VerifySignaturesAsync(string inputPath, CancellationToken cancellationToken)
+    private static async Task<int> VerifySignaturesAsync(string inputPath, bool requireSignatures, CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
         {
@@ -328,6 +344,11 @@ internal static partial class Cli
 
         if (!report.HasSignatureDeclarations && report.Issues.All(issue => issue == "The document does not declare a signatures list."))
         {
+            if (requireSignatures)
+            {
+                Console.WriteLine("Signature verification: no signature declarations (required).");
+                return 4;
+            }
             Console.WriteLine("Signature verification: no signature declarations.");
             return 0;
         }
@@ -498,12 +519,19 @@ internal static partial class Cli
                 case "--pages":
                     options.Pages = ReadValue(args, ref i, arg);
                     break;
+                case "--box":
+                    if (options.Box is not null) throw new ArgumentException("Duplicate --box.");
+                    options.Box = ReadValue(args, ref i, arg);
+                    break;
                 case "--document":
                     if (options.DocumentIndex.HasValue) throw new ArgumentException("Duplicate --document.");
                     options.DocumentIndex = ParseOneBasedPage(ReadValue(args, ref i, arg));
                     break;
                 case "--include-templates":
                     options.IncludeTemplates = true;
+                    break;
+                case "--require-signatures":
+                    options.RequireSignatures = true;
                     break;
                 case "--libreoffice":
                     options.LibreOfficePath = ReadValue(args, ref i, arg);
@@ -685,7 +713,8 @@ internal static partial class Cli
           ofdrw ofd-to-html --input <input.ofd> --output <output.html> [--document 2] [--pages 3,1,3] [--title text] [--max-pages 200] [--max-output-bytes N] [--max-page-bytes N]
           ofdrw ofd-to-image <input.ofd> <output.png> [--document 2] [--pages 1] [--ppm 5.669291] [--format png|jpeg]
           ofdrw image-to-ofd <input.png> [input2.jpg ...] --output <output.ofd> [--ppm 5.669291] [--page-width 210 --page-height 297]
-          ofdrw verify-signatures --input <input.ofd>
+          ofdrw verify-signatures --input <input.ofd> [--require-signatures]
+          ofdrw preflight <input.ofd> [--json] [--output <report.json>] [--allow-multiple-documents] [--allow-encryption]
           ofdrw extract-text <input.ofd> [output.txt] [--include-templates]
           ofdrw watermark <input.ofd> <output.ofd> [--document 2] --pages 1,2 --text DRAFT
           ofdrw watermark <input.ofd> <output.ofd> --image mark.png --layer-type Foreground
@@ -693,7 +722,13 @@ internal static partial class Cli
           ofdrw mix <output.ofd> <input1.ofd> 1 <input2.ofd> 2
           ofdrw clean-signatures <input.ofd> <output.ofd>
           ofdrw replace-text <input.ofd> <output.ofd> --find TEXT --replace TEXT --trusted-font SHA256:BYTECOUNT [--pages 1,3-5]
+          ofdrw locate <input.ofd> --find TEXT [--trusted-font SHA256:BYTECOUNT ...] [--pages 1,3-5] [--document 2] [--json]
           ofdrw reorder <input.ofd> <output.ofd> [--document 2] --pages 3,1,2
+          ofdrw delete-pages <input.ofd> <output.ofd> --pages 2,4-5 [--document 2]
+          ofdrw crop <input.ofd> <output.ofd> --box X,Y,W,H [--pages 1,3] [--document 2]
+          ofdrw attachments list <input.ofd> [--document 2] [--json]
+          ofdrw attachments extract <input.ofd> --id ID --output <file> [--document 2]
+          ofdrw attachments remove <input.ofd> <output.ofd> --id ID [--physical] [--document 2]
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
 
         Commands:
@@ -708,9 +743,14 @@ internal static partial class Cli
           ofd-to-image Export one OFD page to white-background PNG (default) or JPEG.
           image-to-ofd Import PNG/JPEG, one image per page; centered, shrink to fit, no enlargement.
           verify-signatures Verify protected-entry digests and registered signed-value algorithms.
+          preflight    Run local archival preflight rules APF-001..006 (not certification).
           extract-text Extract page text, optionally including template text.
           replace-text Replace literal simple text using vetted original Regular fonts and translation-only geometry.
+          locate       Read-only keyword search with page and glyph bounds; preview for replace-text.
           reorder      Reorder every page using a complete 1-based page list.
+          delete-pages Remove the listed 1-based pages; at least one page must remain.
+          crop         Set the page box (millimeters) of the listed pages, default all; content is not moved.
+          attachments  List, extract (by ID, to an explicit path) or remove (logical or --physical) attachments.
           watermark    Add ordinary text/image objects to selected layers (millimeters).
           split        Select distinct pages in 1-based list order into a new OFD.
           mix          Overlay source/page pairs in input order, first page dimensions.
@@ -736,6 +776,7 @@ internal static partial class Cli
           --max-pdf-bytes, --max-signature-appearances ofd-to-image: PDF bytes / selected stamp count budgets.
           --max-total-input-bytes, --max-pages, --max-entries image-to-ofd: cumulative input/page/entry budgets.
           --include-templates Include template text during extraction.
+          --require-signatures verify-signatures: treat a document without signature declarations as a failure (exit 4).
           --skip-unsupported  Drop unsupported raw objects during merge.
           --docx-engine      DOCX renderer: auto, word (macOS), libreoffice, or built-in.
           --docx-ofd-mode    DOCX to OFD mode: native (default, no PDF) or dual-layer.
@@ -754,9 +795,11 @@ internal static partial class Cli
         public string? OutputPath { get; set; }
 
         public string? Pages { get; set; }
+        public string? Box { get; set; }
         public int? DocumentIndex { get; set; }
 
         public bool IncludeTemplates { get; set; }
+        public bool RequireSignatures { get; set; }
 
         public string? LibreOfficePath { get; set; }
 

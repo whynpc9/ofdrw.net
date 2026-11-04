@@ -29,7 +29,7 @@ internal static class OfdTextEmphasis
     internal static (double[]? Matrix, double[]? Factor) DrawingTransform(OfdTextElement text)
     {
         if (text.Transform is not { Length: 6 } matrix || string.IsNullOrWhiteSpace(text.SourceXml)) return (text.Transform, null);
-        var value = XElement.Parse(text.SourceXml!).Attribute(FauxItalicFactor)?.Value;
+        var value = OfdXmlEnvelope.Parse(text.SourceXml!).Attribute(FauxItalicFactor)?.Value;
         if (string.IsNullOrWhiteSpace(value)) return (matrix, null);
         var values = value!.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         var factor = values.Select(token => double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) ? number : double.NaN).ToArray();

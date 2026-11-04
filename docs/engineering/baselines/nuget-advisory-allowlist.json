@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "advisories": [
+    {
+      "package": "SixLabors.ImageSharp",
+      "version": "2.1.13",
+      "id": "GHSA-gwg2-r3hj-4w44",
+      "decision": "D10",
+      "reference": "docs/validation/d10-imagesharp-security-assessment.md"
+    },
+    {
+      "package": "SixLabors.ImageSharp",
+      "version": "2.1.13",
+      "id": "GHSA-j3p4-wp97-rph4",
+      "decision": "D10",
+      "reference": "docs/validation/d10-imagesharp-security-assessment.md"
+    },
+    {
+      "package": "SixLabors.ImageSharp",
+      "version": "2.1.13",
+      "id": "GHSA-j9gm-c75j-xc9q",
+      "decision": "D10",
+      "reference": "docs/validation/d10-imagesharp-security-assessment.md"
+    },
+    {
+      "package": "SixLabors.ImageSharp",
+      "version": "2.1.13",
+      "id": "GHSA-jjfr-hcj7-qf5w",
+      "decision": "D10",
+      "reference": "docs/validation/d10-imagesharp-security-assessment.md"
+    },
+    {
+      "package": "SixLabors.ImageSharp",
+      "version": "2.1.13",
+      "id": "GHSA-wmxv-xphr-5c9g",
+      "decision": "D10",
+      "reference": "docs/validation/d10-imagesharp-security-assessment.md"
+    }
+  ]
+}

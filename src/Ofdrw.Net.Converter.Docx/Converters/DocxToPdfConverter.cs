@@ -110,7 +110,8 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
             throw new ArgumentException("The PDF output stream must be writable.", nameof(pdfOutput));
         }
 
-        var stagingDirectory = Path.Combine(Path.GetTempPath(), $"ofdrw-docx-stage-{Guid.NewGuid():N}");
+        // Owner-only directory: the staged file is a plaintext copy of the caller's DOCX.
+        var stagingDirectory = PrivateTemporaryDirectory.Create("ofdrw-docx-stage-");
         var stagingInputPath = Path.Combine(stagingDirectory, "input.docx");
         var diagnostics = new List<DocxConversionDiagnostic>();
         var attempted = new List<DocxConversionEngine>();
@@ -402,10 +403,10 @@ public sealed class DocxToPdfConverter : IDocxToPdfConverter
 
     private static string CreateWorkDirectory(DocxConversionEngine engine)
     {
-        var root = engine == DocxConversionEngine.MicrosoftWord
-            ? GetMicrosoftWordTempRoot()
-            : Path.GetTempPath();
-        return Path.Combine(root, $"ofdrw-docx-{Guid.NewGuid():N}");
+        // Word must work inside its sandbox container; every other engine gets an owner-only directory.
+        return engine == DocxConversionEngine.MicrosoftWord
+            ? Path.Combine(GetMicrosoftWordTempRoot(), $"ofdrw-docx-{Guid.NewGuid():N}")
+            : PrivateTemporaryDirectory.Create("ofdrw-docx-");
     }
 
     private static string GetMicrosoftWordTempRoot()

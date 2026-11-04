@@ -26,7 +26,11 @@ CLI 对应命令：
 
 ```sh
 ofdrw verify-signatures -i signed.ofd
+# 未声明任何签名时返回 4 而不是 0（main，尚未发布）
+ofdrw verify-signatures -i signed.ofd --require-signatures
 ```
+
+自动化流程接收文档时应使用 `--require-signatures`：默认情况下没有签名的文档也返回 `0`。各退出码见 [CLI 参考](https://whynpc9.github.io/ofdrw.net/reference/cli/)。
 
 默认 verifier 没有厂商签名值实现时，仍可以检查受保护条目的摘要，但通常不会据此给出 `FullyValid=true`。
 

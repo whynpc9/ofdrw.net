@@ -148,6 +148,19 @@ public sealed class DocumentToolsCliTests : IDisposable
     public async Task Audit001_CliIncompleteReport(string kind, int expectedExitCode)
     {
         var input = PathFor("declarations.ofd");
+        WriteDeclarationsFixture(input, kind);
+
+        await using (var stream = File.OpenRead(input))
+        {
+            var report = await new OfdSignatureVerifier().VerifyAsync(stream);
+            Assert.True(Assert.Single(report.Signatures).ReferenceIntegrityValid);
+            Assert.Equal(OfdCryptographicVerificationStatus.Unsupported, report.Signatures[0].CryptographicStatus);
+        }
+        Assert.Equal(expectedExitCode, await global::Cli.RunAsync(["verify-signatures", input]));
+    }
+
+    private static void WriteDeclarationsFixture(string input, string kind)
+    {
         XNamespace ns = "http://www.ofdspec.org/2016";
         using (var zip = ZipFile.Open(input, ZipArchiveMode.Create))
         {
@@ -172,14 +185,34 @@ public sealed class DocumentToolsCliTests : IDisposable
             if (kind == "malformed") WriteVerificationEntry(zip, "broken.xml", "<Signatures>");
             if (kind == "empty") WriteVerificationEntry(zip, "broken.xml", new XElement(ns + "Signatures").ToString());
         }
+    }
 
-        await using (var stream = File.OpenRead(input))
-        {
-            var report = await new OfdSignatureVerifier().VerifyAsync(stream);
-            Assert.True(Assert.Single(report.Signatures).ReferenceIntegrityValid);
-            Assert.Equal(OfdCryptographicVerificationStatus.Unsupported, report.Signatures[0].CryptographicStatus);
-        }
-        Assert.Equal(expectedExitCode, await global::Cli.RunAsync(["verify-signatures", input]));
+    [Fact]
+    public async Task Verify_RequireSignatures_UnsignedReturns4()
+    {
+        var path = PathFor("unsigned.ofd");
+        await using (var output = File.Create(path)) await new OfdPackageWriter().WriteAsync(new OfdDocumentPackage(), output);
+
+        Assert.Equal(0, await global::Cli.RunAsync(["verify-signatures", path]));
+        Assert.Equal(4, await global::Cli.RunAsync(["verify-signatures", path, "--require-signatures"]));
+    }
+
+    [Fact]
+    public async Task Verify_RequireSignatures_DoesNotChangeOtherCodes()
+    {
+        var input = PathFor("declarations.ofd");
+        WriteDeclarationsFixture(input, "complete");
+
+        Assert.Equal(2, await global::Cli.RunAsync(["verify-signatures", input, "--require-signatures"]));
+    }
+
+    [Fact]
+    public async Task RequireSignatures_IsRejectedForOtherCommands()
+    {
+        var path = PathFor("unsigned.ofd");
+        await using (var output = File.Create(path)) await new OfdPackageWriter().WriteAsync(new OfdDocumentPackage(), output);
+
+        Assert.Equal(1, await global::Cli.RunAsync(["extract-text", path, "--require-signatures"]));
     }
 
     private static void WriteVerificationEntry(ZipArchive zip, string path, string text)

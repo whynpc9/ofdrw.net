@@ -22,6 +22,9 @@ foreach (var diagnostic in result.Diagnostics)
 - 页选择保留顺序和重复页，忽略混入的越界索引。未指定、空列表或全部越界时选择所有页。这与既有 PDF 转换行为一致。
 - Native 的页眉页脚按页生成，支持首页、奇偶页、节继承、页码起始值及 PAGE / NUMPAGES / SECTIONPAGES 的十进制计数。分页前预留页眉页脚区域。
 - BuiltIn/Native 将脚注、尾注和批注正文以带类型和编号的内容追加到正文后，返回 `DOCX_SUPPLEMENTAL_TEXT_APPENDED`；这保证附属原文可用，不等同于 Word 原位脚注排版。
+- Native/BuiltIn 列表编号（main，尚未发布）：支持按 numId 的多级计数器（上级前进时下级重置）、`%1`–`%9` 级别模式、`start`/`startOverride`，以及 decimal、decimalZero、大小写罗马数字、大小写字母、chineseCounting/chineseCountingThousand（1–99）、ideographDigital 和项目符号。`numId=0` 关闭编号；编号定义无法解析时省略编号并返回 `DOCX_NUMBERING_UNRESOLVED`，不支持的格式退化为十进制并返回 `DOCX_NUMBERING_FORMAT_DEGRADED`。编号为纯文本加一个空格，不渲染缩进和制表符后缀。
+- Native 对 `w:u` 不为 `none` 的文字运行绘制一条实线下划线路径（与 FlowDocument 几何相同，颜色跟随文字），覆盖正文、表格和页眉页脚；不区分双线、点线、波浪线等样式，也不使用 `w:u w:color`（main，尚未发布）。
+- Native 对 `both`/`distribute` 段落中自动换行的行做两端对齐：剩余宽度平均分配到词间空格和中日韩字符之后，行首空白不拉伸，只含一个拉丁单词的行保持左对齐；末行和显式换行不拉伸，`distribute` 的末行拉伸及中文标点挤压未实现（main，尚未发布）。
 - 已知不支持内容按 `UnsupportedFeatureBehavior` 处理；使用 Placeholder 时应检查结果的 `OriginalTextPreserved` 和 `Diagnostics`，不能只根据 Task 正常完成判断原文完整。
 - DualLayer 的视觉层始终要求栅格化。即使传入的 PDF 选项允许文本后备，该 DOCX 视觉阶段也不会以 PDF 抽取文字作为替代。
 - DualLayer 根据实际渲染 PDF 的字符位置定位 OpenXML 原文，再进行选页。PDF 文字只用于定位；发出的文本仍来自 OpenXML，页码字段由原字段定义计算。无法可靠定位正文时明确失败，不提交部分语义层。
@@ -70,6 +73,8 @@ OFD 保留原始字体字节。供 PDFsharp 使用的副本具有内容唯一的
 
 注册表默认上限为 256 MiB 字体载荷和 4096 个族/样式别名，可在启动时通过 `MaximumRegisteredFontBytes`、`MaximumRegisteredFaces` 调整。达到限额会明确失败，不驱逐仍可能被 PDFsharp 使用的字体。此限额约束 SDK 注册表，不能作为整个进程工作集的保证。
 
+长期运行的转换服务（main 指南）：实测每个文档嵌入一个不同子集字体时，单进程约在第 261 个 CJK 文档（每个子集约 1 MB）或第 1,603 个拉丁文档（约 167 KB）达到字节上限，此时托管内存已达 1–2 GiB，因为 PDFsharp 自身也缓存字体且无法清除。建议在 `PdfFontRegistry.RegisteredFontBytes` 超过上限一半或处理数百个含不同嵌入字体的文档后回收工作进程，并按每进程数 GiB 规划内存。测量方法与选项评估见[PDF 字体注册表生命周期](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/pdf-font-registry-lifetime.md)。
+
 ## 页面编辑与合并
 
 读取后保存会保留未知扩展及资源。删除页面后保存会清理被删除页面的原始条目、页批注以及可确认只被其使用的字体/图片载荷。其他页面、模板、附件或扩展引用的共享内容会保留；无法检查的扩展 XML 会触发资源保留诊断。
@@ -90,7 +95,11 @@ var saved = await new OfdPackageWriter().WriteWithResultAsync(package, output);
 - OFD 默认压缩输入上限 512 MiB、单条目展开上限 128 MiB、总展开上限 512 MiB、条目/读取页数上限各 10000。`OfdReader.ReadAsync` 可接收 `OfdPackageLoadOptions`。
 - DOCX 默认压缩输入上限 64 MiB、展开上限 256 MiB，并限制 XML 元素、图片、配置字体和页数。输入限制在复制过程中执行。
 - PDF→OFD 默认输入上限 128 MiB、源/输出页数上限 10000、单页解码像素上限 4000 万、累计页图像字节上限 512 MiB。DPI 统一限制在 72–300，外部渲染也使用所选 DPI。
+- OFD 读取使用内部的整文档 XML 节点/引用工作计数（默认 10,000,000 / 20,000,000），内存仍由源 XML 与物化字节预算约束。preview.10 默认 100,000 / 200,000，约 1,000 个以上文本对象的文档会被拒绝；调用方暂不能配置这两个计数。写入端另有按最坏情况估算的输出预算（`MaxMaterializedBytes` 512 MiB），约 2 万段以上的单个 FlowDocument 仍会在写入时被拒绝。
 - `OfdToPdfOptions` 控制 OFD 加载和图片解码预算。渲染失败不会以丢失正文的空白后备页冒充成功。
+- 默认 OFD→PDF 仍容忍无法解析或绘制的签章外观，但会通过 `ConvertWithResultAsync().Diagnostics` 报告：`PDF_SIGNATURE_METADATA_UNREADABLE`（签名元数据不可读）、`PDF_SIGNATURE_APPEARANCE_UNREADABLE`（外观载荷或嵌套 OFD 不可读）和 `PDF_SIGNATURE_APPEARANCE_SKIPPED`（外观未绘制，含页索引和签名 ID）；指定页选择时只报告所选页面上的签章；CLI `ofd-to-pdf` 将其输出到 stderr，退出码仍为 0。诊断消息不回显文档原始内容（main，尚未发布）。
+- 嵌套签章 OFD 按调用方 `OfdToPdfOptions.PackageLoadOptions` 的限制读取，同一嵌套签章载荷在一次转换中只解析一次（main，尚未发布）。
+- `OfdPackageWriter` 与 `OfdPackageSignatureCleaner` 向调用方流写入时如中途失败或被取消，已写出的字节刻意不构成可读 ZIP（不写中央目录），避免下游把缺页的部分包当成 OFD；调用方仍应丢弃部分输出，写文件时采用先写临时文件再重命名的方式（main，尚未发布）。
 - 外部进程并发消费有界诊断输出，支持超时、取消与进程树清理。原生库内的同步渲染在调用前后检查取消，不能把外部进程超时等同于强制终止任意原生调用。
 - CLI 先验证参数，再写目标目录下的临时文件；成功关闭后才替换目标。失败或取消保留原输出。Ctrl-C 返回 130。格式转换输入输出需使用不同路径；页重排支持原位更新。
 
