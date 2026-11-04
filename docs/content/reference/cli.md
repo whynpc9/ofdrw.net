@@ -29,6 +29,7 @@ ofdrw --help
 | UTF-8 文本 → OFD | `ofdrw text-to-ofd notice.txt notice.ofd --font-size-mm 4` |
 | 提取文本 | `ofdrw extract-text input.ofd output.txt --include-templates` |
 | 检查签名完整性 | `ofdrw verify-signatures -i input.ofd` |
+| 本地归档预检（main，尚未发布） | `ofdrw preflight input.ofd --json --output report.json` |
 | 重排全部页面 | `ofdrw reorder input.ofd reordered.ofd --pages 3,1,2` |
 | 拆分选页 | `ofdrw split input.ofd selected.ofd --pages 3,1` |
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
@@ -81,6 +82,17 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 | `3` | 签名无效或验证不完整 |
 | `4` | 指定 `--require-signatures` 时文档未声明任何签名 |
 | `1` / `130` | 同上表 |
+
+`preflight` 的退出码（main，尚未发布）：
+
+| 退出码 | 含义 |
+| --- | --- |
+| `0` | 运行完整，汇总结果为 `Pass` 或 `NotApplicable` |
+| `2` | 至少一条规则为 `Fail` |
+| `3` | 汇总为 `Unknown`，或运行未完成（例如输入超出预算或不是 ZIP） |
+| `1` / `130` | 同上表 |
+
+`preflight` 只执行 APF-001..006 本地规则，不是认证。`--json` 时标准输出只有 `ofdrw-cli-preflight/1` JSON（`schema`、`input` 的文件名/字节数/SHA-256、`ruleOutcomes` 和完整 `report`）；`--output` 需配合 `--json` 并原子写入文件。输入超过加载预算时不计算哈希（`sha256` 为 `null`）。`--allow-multiple-documents`、`--allow-encryption` 分别放宽单文档与无加密要求。
 
 用于自动接收文档时，应加 `--require-signatures` 并只把 `0` 视为通过，否则被移除签名的文档也会返回 `0`。当前 `main` 的 `--require-signatures` 与退出码 `4` **尚未进入 preview.10 CLI**。
 

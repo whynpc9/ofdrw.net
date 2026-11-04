@@ -32,7 +32,7 @@ internal static partial class Cli
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
             "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-html" or "ofd-to-image" or "image-to-ofd" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text"))
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -52,6 +52,8 @@ internal static partial class Cli
 
             if (command == "replace-text")
                 return await ReplaceTextAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "preflight")
+                return await PreflightAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "watermark" or "split" or "mix" or "clean-signatures")
                 return await DocumentToolsAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "merge")
@@ -699,6 +701,7 @@ internal static partial class Cli
           ofdrw ofd-to-image <input.ofd> <output.png> [--document 2] [--pages 1] [--ppm 5.669291] [--format png|jpeg]
           ofdrw image-to-ofd <input.png> [input2.jpg ...] --output <output.ofd> [--ppm 5.669291] [--page-width 210 --page-height 297]
           ofdrw verify-signatures --input <input.ofd> [--require-signatures]
+          ofdrw preflight <input.ofd> [--json] [--output <report.json>] [--allow-multiple-documents] [--allow-encryption]
           ofdrw extract-text <input.ofd> [output.txt] [--include-templates]
           ofdrw watermark <input.ofd> <output.ofd> [--document 2] --pages 1,2 --text DRAFT
           ofdrw watermark <input.ofd> <output.ofd> --image mark.png --layer-type Foreground
@@ -721,6 +724,7 @@ internal static partial class Cli
           ofd-to-image Export one OFD page to white-background PNG (default) or JPEG.
           image-to-ofd Import PNG/JPEG, one image per page; centered, shrink to fit, no enlargement.
           verify-signatures Verify protected-entry digests and registered signed-value algorithms.
+          preflight    Run local archival preflight rules APF-001..006 (not certification).
           extract-text Extract page text, optionally including template text.
           replace-text Replace literal simple text using vetted original Regular fonts and translation-only geometry.
           reorder      Reorder every page using a complete 1-based page list.

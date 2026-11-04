@@ -28,7 +28,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [012](012-writer-no-partial-zip.md) | Fail closed on interrupted OFD writes | P3 | S | — | DONE (success compared by entry manifest: ZIP timestamps vary) |
 | [013](013-nuget-vulnerability-gate.md) | CI gate for new NuGet advisories (D10 allowlisted) | P2 | S | — | DONE (no schedule trigger added; a separate scheduled workflow is recommended) |
 | [014](014-pdf-font-registry-spike.md) | Spike: process-wide PDF font registry lifetime | P2 | M | 005 | DONE (recommends option C: pressure diagnostic + process recycling; eviction needs a backend change) |
-| [015](015-cli-preflight-json.md) | `ofdrw preflight [--json]` | P2 | M | 008 | TODO |
+| [015](015-cli-preflight-json.md) | `ofdrw preflight [--json]` | P2 | M | 008 | DONE |
 | [016](016-cli-delete-pages-and-crop.md) | `ofdrw delete-pages` / `ofdrw crop` | P2 | S–M | 015 | TODO |
 | [017](017-cli-attachments.md) | `ofdrw attachments list/extract/remove` | P2 | M | 016 | TODO |
 | [018](018-cli-locate.md) | Read-only `ofdrw locate` | P3 | M | 017 | TODO |
