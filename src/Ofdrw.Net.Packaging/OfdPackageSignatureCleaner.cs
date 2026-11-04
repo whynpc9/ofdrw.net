@@ -42,13 +42,15 @@ public static class OfdPackageSignatureCleaner
         OfdPackagePruner.CleanSignatures(original, entries, result, cancellationToken, material: material);
         material.ValidateActualEntries(entries, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        using var zip = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
-        foreach (var entry in entries.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+        await FailClosedOutputStream.WriteZipAsync(destination, async zip =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            using var output = zip.CreateEntry(entry.Key, CompressionLevel.Optimal).Open();
-            await output.WriteAsync(entry.Value, 0, entry.Value.Length, cancellationToken).ConfigureAwait(false);
-        }
+            foreach (var entry in entries.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using var output = zip.CreateEntry(entry.Key, CompressionLevel.Optimal).Open();
+                await output.WriteAsync(entry.Value, 0, entry.Value.Length, cancellationToken).ConfigureAwait(false);
+            }
+        }).ConfigureAwait(false);
         return result;
     }
 }
