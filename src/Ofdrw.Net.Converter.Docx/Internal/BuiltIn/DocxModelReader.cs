@@ -27,7 +27,10 @@ internal sealed class DocxModelReader
     private readonly Action<string>? _imagePayloadObserver;
     private readonly Dictionary<Uri, ImagePayload> _imagePayloads = new();
     private readonly Dictionary<string, Style> _styles = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, int> _numberingCounters = new(StringComparer.Ordinal);
+    private readonly Dictionary<int, int?[]> _numberingCounters = new();
+    private Dictionary<int, NumberingInstance>? _numberingInstances;
+    private Dictionary<int, AbstractNum>? _abstractNumberings;
+    private readonly HashSet<string> _numberingDiagnosticKeys = new(StringComparer.Ordinal);
     private MainDocumentPart _mainPart = null!;
     private int _elementCount;
     private BuiltInSectionModel? _previousSection;
@@ -770,33 +773,140 @@ internal sealed class DocxModelReader
         }
 
         var numberingId = numbering?.NumberingId?.Val?.Value;
-        var level = numbering?.NumberingLevelReference?.Val?.Value ?? 0;
-        if (numberingId is null)
+        if (numberingId is null || numberingId.Value == 0)
         {
             return null;
         }
 
-        var key = numberingId.Value.ToString(CultureInfo.InvariantCulture) + ":" + level;
-        _numberingCounters.TryGetValue(key, out var count);
-        count++;
-        _numberingCounters[key] = count;
-
-        var numberingPart = _mainPart.NumberingDefinitionsPart?.Numbering;
-        var instance = numberingPart?.Elements<NumberingInstance>()
-            .FirstOrDefault(x => x.NumberID?.Value == numberingId.Value);
-        var abstractId = instance?.AbstractNumId?.Val?.Value;
-        var abstractNumbering = numberingPart?.Elements<AbstractNum>()
-            .FirstOrDefault(x => x.AbstractNumberId?.Value == abstractId);
-        var levelDefinition = abstractNumbering?.Elements<Level>()
-            .FirstOrDefault(x => x.LevelIndex?.Value == level);
-        var format = levelDefinition?.NumberingFormat?.Val?.Value;
-        if (format == NumberFormatValues.Bullet)
+        var numId = numberingId.Value;
+        var level = numbering?.NumberingLevelReference?.Val?.Value ?? 0;
+        if (level is < 0 or > 8)
         {
-            return levelDefinition?.LevelText?.Val?.Value ?? "•";
+            WarnNumbering("unresolved:" + numId, "DOCX_NUMBERING_UNRESOLVED",
+                $"List numbering {numId} references level {level}, outside 0-8; the marker is omitted.");
+            return null;
         }
 
-        var pattern = levelDefinition?.LevelText?.Val?.Value ?? "%1.";
-        return pattern.Replace("%" + (level + 1), count.ToString(CultureInfo.InvariantCulture));
+        EnsureNumberingLookups();
+        if (!_numberingInstances!.TryGetValue(numId, out var instance) ||
+            instance.AbstractNumId?.Val?.Value is not int abstractId ||
+            !_abstractNumberings!.TryGetValue(abstractId, out var abstractNumbering))
+        {
+            WarnNumbering("unresolved:" + numId, "DOCX_NUMBERING_UNRESOLVED",
+                $"List numbering {numId} has no resolvable definition; its markers are omitted.");
+            return null;
+        }
+
+        var levels = new Level?[9];
+        var starts = new int[9];
+        for (var index = 0; index < levels.Length; index++)
+        {
+            var levelOverride = instance.Elements<LevelOverride>()
+                .FirstOrDefault(x => x.LevelIndex?.Value == index);
+            levels[index] = levelOverride?.GetFirstChild<Level>()
+                ?? abstractNumbering.Elements<Level>().FirstOrDefault(x => x.LevelIndex?.Value == index);
+            starts[index] = levelOverride?.StartOverrideNumberingValue?.Val?.Value
+                ?? levels[index]?.StartNumberingValue?.Val?.Value ?? 1;
+        }
+
+        var definition = levels[level];
+        if (definition is null)
+        {
+            WarnNumbering("unresolved:" + numId + ":" + level, "DOCX_NUMBERING_UNRESOLVED",
+                $"List numbering {numId} defines no level {level}; the marker is omitted.");
+            return null;
+        }
+
+        if (!_numberingCounters.TryGetValue(numId, out var counters))
+        {
+            counters = new int?[9];
+            _numberingCounters[numId] = counters;
+        }
+
+        counters[level] = counters[level] is int current ? current + 1 : starts[level];
+        for (var index = level + 1; index < counters.Length; index++)
+        {
+            counters[index] = null;
+        }
+
+        var format = definition.NumberingFormat?.Val?.Value;
+        if (format == NumberFormatValues.Bullet)
+        {
+            return definition.LevelText?.Val?.Value ?? "•";
+        }
+
+        var pattern = definition.LevelText?.Val?.Value
+            ?? "%" + (level + 1).ToString(CultureInfo.InvariantCulture) + ".";
+        for (var k = 9; k >= 1; k--)
+        {
+            var placeholder = "%" + k.ToString(CultureInfo.InvariantCulture);
+            if (pattern.IndexOf(placeholder, StringComparison.Ordinal) < 0)
+            {
+                continue;
+            }
+
+            var index = k - 1;
+            var levelFormat = levels[index]?.NumberingFormat?.Val?.Value;
+            string value;
+            if (format == NumberFormatValues.None || levelFormat == NumberFormatValues.None)
+            {
+                value = string.Empty;
+            }
+            else
+            {
+                value = DocxNumberFormatter.Format(counters[index] ?? starts[index], levelFormat, out var degraded);
+                if (degraded)
+                {
+                    var formatName = levelFormat?.ToString() ?? "decimal";
+                    WarnNumbering("degraded:" + numId + ":" + index + ":" + formatName, "DOCX_NUMBERING_FORMAT_DEGRADED",
+                        $"List numbering {numId} level {index} format '{formatName}' is rendered as decimal for this value.");
+                }
+            }
+
+            pattern = pattern.Replace(placeholder, value);
+        }
+
+        return pattern;
+    }
+
+    private void EnsureNumberingLookups()
+    {
+        if (_numberingInstances is not null)
+        {
+            return;
+        }
+
+        _numberingInstances = new Dictionary<int, NumberingInstance>();
+        _abstractNumberings = new Dictionary<int, AbstractNum>();
+        var numberingPart = _mainPart.NumberingDefinitionsPart?.Numbering;
+        if (numberingPart is null)
+        {
+            return;
+        }
+
+        foreach (var abstractNumbering in numberingPart.Elements<AbstractNum>())
+        {
+            if (abstractNumbering.AbstractNumberId?.Value is int id && !_abstractNumberings.ContainsKey(id))
+            {
+                _abstractNumberings[id] = abstractNumbering;
+            }
+        }
+
+        foreach (var instance in numberingPart.Elements<NumberingInstance>())
+        {
+            if (instance.NumberID?.Value is int id && !_numberingInstances.ContainsKey(id))
+            {
+                _numberingInstances[id] = instance;
+            }
+        }
+    }
+
+    private void WarnNumbering(string key, string code, string message)
+    {
+        if (_numberingDiagnosticKeys.Add(key))
+        {
+            _diagnostics.Add(new DocxConversionDiagnostic(code, message, DocxConversionDiagnosticSeverity.Warning));
+        }
     }
 
     private void ApplySectionProperties(BuiltInSectionModel target, SectionProperties properties)

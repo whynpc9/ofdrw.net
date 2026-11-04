@@ -22,6 +22,7 @@ foreach (var diagnostic in result.Diagnostics)
 - 页选择保留顺序和重复页，忽略混入的越界索引。未指定、空列表或全部越界时选择所有页。这与既有 PDF 转换行为一致。
 - Native 的页眉页脚按页生成，支持首页、奇偶页、节继承、页码起始值及 PAGE / NUMPAGES / SECTIONPAGES 的十进制计数。分页前预留页眉页脚区域。
 - BuiltIn/Native 将脚注、尾注和批注正文以带类型和编号的内容追加到正文后，返回 `DOCX_SUPPLEMENTAL_TEXT_APPENDED`；这保证附属原文可用，不等同于 Word 原位脚注排版。
+- Native/BuiltIn 列表编号（main，尚未发布）：支持按 numId 的多级计数器（上级前进时下级重置）、`%1`–`%9` 级别模式、`start`/`startOverride`，以及 decimal、decimalZero、大小写罗马数字、大小写字母、chineseCounting/chineseCountingThousand（1–99）、ideographDigital 和项目符号。`numId=0` 关闭编号；编号定义无法解析时省略编号并返回 `DOCX_NUMBERING_UNRESOLVED`，不支持的格式退化为十进制并返回 `DOCX_NUMBERING_FORMAT_DEGRADED`。编号为纯文本加一个空格，不渲染缩进和制表符后缀。
 - 已知不支持内容按 `UnsupportedFeatureBehavior` 处理；使用 Placeholder 时应检查结果的 `OriginalTextPreserved` 和 `Diagnostics`，不能只根据 Task 正常完成判断原文完整。
 - DualLayer 的视觉层始终要求栅格化。即使传入的 PDF 选项允许文本后备，该 DOCX 视觉阶段也不会以 PDF 抽取文字作为替代。
 - DualLayer 根据实际渲染 PDF 的字符位置定位 OpenXML 原文，再进行选页。PDF 文字只用于定位；发出的文本仍来自 OpenXML，页码字段由原字段定义计算。无法可靠定位正文时明确失败，不提交部分语义层。
