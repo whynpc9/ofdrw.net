@@ -14,7 +14,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| [001](001-reader-traversal-budget.md) | Let OfdReader read normal-size documents | P1 | M | — | TODO |
+| [001](001-reader-traversal-budget.md) | Let OfdReader read normal-size documents | P1 | M | — | DONE (20k-paragraph case replaced by 10k: the writer preflight estimate rejects it, see report) |
 | [002](002-docx-list-numbering.md) | Correct DOCX list markers (levels, formats, numId=0) | P1 | M | — | TODO |
 | [003](003-native-docx-underline.md) | Draw DOCX underlines in Native OFD | P1 | S | (after 002) | TODO |
 | [004](004-native-docx-justify.md) | Justify wrapped lines in Native OFD | P2 | M | 003 | TODO |
