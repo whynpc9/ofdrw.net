@@ -49,12 +49,10 @@ public sealed partial class DocxConversionTests
         finally { Directory.Delete(directory, recursive: true); }
     }
 
-    [Fact]
+    [CjkMetricFontFact]
     public async Task Native_ShouldDeclareViewerLocalCjkNamesWithoutEmbeddingASubstituteFace()
     {
-        var metricFont = TryFindCjkMetricFont();
-        if (metricFont is null)
-            return;
+        var metricFont = TryFindCjkMetricFont() ?? throw new InvalidOperationException("CJK metric font disappeared after discovery.");
 
         var directory = Path.Combine(Path.GetTempPath(), "ofdrw-cjk-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -98,12 +96,10 @@ public sealed partial class DocxConversionTests
         finally { Directory.Delete(directory, recursive: true); }
     }
 
-    [Fact]
+    [CjkMetricFontFact]
     public async Task Native_ShouldKeepDistinctViewerLocalCjkStyleResources()
     {
-        var metricFont = TryFindCjkMetricFont();
-        if (metricFont is null)
-            return;
+        var metricFont = TryFindCjkMetricFont() ?? throw new InvalidOperationException("CJK metric font disappeared after discovery.");
 
         var directory = Path.Combine(Path.GetTempPath(), "ofdrw-cjk-style-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -601,6 +597,24 @@ public sealed partial class DocxConversionTests
 
     private static MemoryStream CreateMultiSectionDocx() =>
         Ofdrw.Net.TestSupport.DocxReleaseFixtures.CreateMultiSectionDocx();
+
+    // Visible skip instead of an empty pass; a required gate or a throwing lookup still runs and fails.
+    private sealed class CjkMetricFontFactAttribute : FactAttribute
+    {
+        public CjkMetricFontFactAttribute()
+        {
+            if (Environment.GetEnvironmentVariable("OFDRW_REQUIRE_TRUSTED_FONTS") == "1") return;
+            try
+            {
+                if (TryFindCjkMetricFont() is null)
+                    Skip = "No CJK metric font found; set OFDRW_TEST_TRUSTED_CJK_FONT (scripts/prepare-trusted-fonts.py) or OFDRW_REQUIRE_TRUSTED_FONTS=1 to fail instead.";
+            }
+            catch
+            {
+                // Let the test run so the helper reports its own failure.
+            }
+        }
+    }
 
     private static string? TryFindCjkMetricFont()
     {
