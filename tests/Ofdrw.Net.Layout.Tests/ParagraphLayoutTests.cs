@@ -247,6 +247,46 @@ public sealed class ParagraphLayoutTests
         Assert.Equal(TextLayoutError.BudgetExceeded, budget.Error);
     }
 
+    [Fact]
+    public void PaintOnlyStyleChangeInsideAWordKeepsShapingContext()
+    {
+        const string word = "ببب";
+        var plain = Layout(word, 100).Lines.Single().Runs.SelectMany(run => run.Glyphs).Select(glyph => glyph.GlyphId).ToArray();
+        var red = Style(4, new TextPaint(new TextColor(200, 0, 0)));
+        var split = HarfBuzzTextPrelayout.CreateParagraphLayout().Layout(new ParagraphLayoutRequest(word,
+            new[] { new TextStyleSpan(0, 1, Style()), new TextStyleSpan(1, 1, red), new TextStyleSpan(2, 1, Style()) },
+            new ParagraphLayoutOptions(100)));
+        var runs = split.Lines.Single().Runs;
+        Assert.Equal(3, runs.Count);
+        // Visual order is reversed for RTL; joined initial/medial/final forms stay identical.
+        Assert.Equal(plain, runs.SelectMany(run => run.Glyphs).Select(glyph => glyph.GlyphId).ToArray());
+        Assert.Equal(3, plain.Distinct().Count());
+        Assert.Equal(new TextColor(200, 0, 0), runs[1].Style.Paint.FillColor);
+    }
+
+    [Fact]
+    public void EmergencyBreakRebuildsCutsInsideALigature()
+    {
+        var dejavuOnly = new TextStyle(new TextFontFamily("DejaVu Sans", DejaVuFace.Value), 4);
+        var whole = Layout("ffi", 100, style: dejavuOnly).Lines.Single();
+        Assert.Single(whole.Runs.Single().Glyphs);
+        Assert.True(whole.ContentWidthMillimeters > 2);
+        var broken = Layout("ffi", 2, overflow: TextOverflowPolicy.BreakGraphemes, style: dejavuOnly);
+        Assert.Equal(new[] { "f", "f", "i" }, broken.Lines.Select(line => line.Runs.Single().Text));
+        Assert.All(broken.Lines, line => Assert.True(line.ContentWidthMillimeters <= 2));
+    }
+
+    [Fact]
+    public void EmptyTextHasOneStyledEmptyLine()
+    {
+        var result = Layout("", 50);
+        var line = Assert.Single(result.Lines);
+        Assert.Empty(line.Runs);
+        Assert.Equal(0, line.SourceLength);
+        Assert.True(line.HeightMillimeters > 0);
+        Assert.True(line.BaselineMillimeters > 0);
+    }
+
     internal static void AssertCoverage(ParagraphLayoutResult result)
     {
         var covered = new int[result.Text.Length];

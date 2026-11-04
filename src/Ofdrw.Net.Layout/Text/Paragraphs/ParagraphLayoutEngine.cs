@@ -100,6 +100,7 @@ public sealed class ParagraphLayoutEngine
         internal TextStyle Style = null!;
         internal TextResolvedStyle Resolved = null!;
         internal TextShapedRun? Shaped;
+        internal int ContextStart, ContextEnd; // shaping context of Shaped
     }
 
     private sealed class Paragraph
@@ -204,7 +205,8 @@ public sealed class ParagraphLayoutEngine
                 }
                 index++;
             }
-            if (start < points.Length) yield return Create(paragraphIndex, start, points.Length, 0);
+            // An empty request still has one empty, styled line.
+            if (start < points.Length || points.Length == 0) yield return Create(paragraphIndex, start, points.Length, 0);
         }
 
         private Paragraph Create(int index, int start, int end, int terminatorCodePoints)
@@ -384,18 +386,75 @@ public sealed class ParagraphLayoutEngine
                 sourceStart: offset, sourceLength: length);
         }
 
-        private TextShapedRun Shape(Paragraph paragraph, Item item, int start, int end, byte level)
+        // Adjacent text shaped the same way (face, script, language, features) at the same level and
+        // inside [limitStart, limitEnd) is shaping context, so a paint- or size-only style change
+        // inside a word keeps joining/kerning. Line edges and level changes end the context.
+        private (int Start, int End) ShapingContext(Paragraph paragraph, Item item, int start, int end, byte level,
+            int limitStart, int limitEnd, Func<int, byte> levelAt)
+        {
+            if (_engine._shaper is not IContextualTextShaper) return (start, end);
+            bool Compatible(int index)
+            {
+                var other = paragraph.ItemOf[index];
+                if (other < 0 || levelAt(index) != level) return false;
+                var candidate = paragraph.Items[other];
+                return ReferenceEquals(candidate, item) || ReferenceEquals(candidate.Face, item.Face) &&
+                    candidate.Script == item.Script && candidate.Style.Language == item.Style.Language &&
+                    candidate.Style.Features.SequenceEqual(item.Style.Features);
+            }
+            var contextStart = start;
+            var contextEnd = end;
+            while (contextStart > limitStart && Compatible(contextStart - 1) &&
+                   Offset(paragraph, contextEnd) - Offset(paragraph, contextStart - 1) <= 4096) contextStart--;
+            while (contextEnd < limitEnd && Compatible(contextEnd) &&
+                   Offset(paragraph, contextEnd + 1) - Offset(paragraph, contextStart) <= 4096) contextEnd++;
+            return (contextStart, contextEnd);
+        }
+
+        private TextShapedRun Shape(Paragraph paragraph, Item item, int start, int end, byte level,
+            (int Start, int End) context)
         {
             _token.ThrowIfCancellationRequested();
             if (++_shapeCalls > _options.MaximumShapeCalls)
                 throw new TextLayoutException(TextLayoutError.BudgetExceeded, "Paragraph layout exceeded MaximumShapeCalls.");
             var offset = Offset(paragraph, start);
             var text = _request.Text.Substring(offset, Offset(paragraph, end) - offset);
-            var features = item.Style.Features.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
-            var shapeRequest = new TextShapeRequest(text, offset, item.Face,
-                level % 2 == 1 ? TextDirection.RightToLeft : TextDirection.LeftToRight,
-                item.Script, item.Style.Language, features);
-            var shaped = _engine._shaper.Shape(shapeRequest, _token);
+            var direction = level % 2 == 1 ? TextDirection.RightToLeft : TextDirection.LeftToRight;
+            TextShapeRequest shapeRequest;
+            TextShapedRun shaped;
+            if ((context.Start < start || context.End > end) && _engine._shaper is IContextualTextShaper contextual)
+            {
+                var contextOffset = Offset(paragraph, context.Start);
+                var contextText = _request.Text.Substring(contextOffset, Offset(paragraph, context.End) - contextOffset);
+                var contextFeatures = item.Style.Features.Select(feature =>
+                    new TextFeature(feature.Tag, feature.Value, 0, contextText.Length)).ToArray();
+                var whole = new TextShapeRequest(contextText, contextOffset, item.Face, direction, item.Script,
+                    item.Style.Language, contextFeatures);
+                TextShapeRequest? contextItem = null;
+                // CreateContextualItem checks .NET text-element boundaries; if the runtime disagrees
+                // with a UAX #29 item boundary, shape without context rather than fail.
+                try { contextItem = TextShapeRequest.CreateContextualItem(whole, new TextSourceSpan(offset, text.Length)); }
+                catch (TextLayoutException error) when (error.Error == TextLayoutError.InvalidRequest) { }
+                if (contextItem is not null)
+                {
+                    shapeRequest = contextItem;
+                    shaped = contextual.ShapeContextualItem(shapeRequest, _token);
+                }
+                else
+                {
+                    var features = item.Style.Features.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
+                    shapeRequest = new TextShapeRequest(text, offset, item.Face, direction,
+                        item.Script, item.Style.Language, features);
+                    shaped = _engine._shaper.Shape(shapeRequest, _token);
+                }
+            }
+            else
+            {
+                var features = item.Style.Features.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
+                shapeRequest = new TextShapeRequest(text, offset, item.Face, direction,
+                    item.Script, item.Style.Language, features);
+                shaped = _engine._shaper.Shape(shapeRequest, _token);
+            }
             if (!ReferenceEquals(shaped.Request, shapeRequest))
                 throw new TextLayoutException(TextLayoutError.InvalidRequest, "The shaper returned a result for another request.");
             if (_engineVersion.Length == 0) _engineVersion = shaped.EngineVersion;
@@ -408,7 +467,10 @@ public sealed class ParagraphLayoutEngine
             var advance = new double[count];
             foreach (var item in paragraph.Items)
             {
-                item.Shaped = Shape(paragraph, item, item.Start, item.End, item.Level);
+                var context = ShapingContext(paragraph, item, item.Start, item.End, item.Level, 0, count,
+                    index => paragraph.ClusterLevel[index]);
+                item.Shaped = Shape(paragraph, item, item.Start, item.End, item.Level, context);
+                (item.ContextStart, item.ContextEnd) = context;
                 var scale = item.Style.FontSizeMillimeters / item.Face.UnitsPerEm;
                 foreach (var glyph in item.Shaped.Glyphs)
                 {
@@ -491,21 +553,25 @@ public sealed class ParagraphLayoutEngine
             var boundaries = new List<int>();
             for (var index = start + 1; index <= limit; index++)
                 if (paragraph.GraphemeStart[index]) boundaries.Add(index);
-            // Largest grapheme boundary whose rebuilt line fits; binary search on the estimate first.
+            // Largest grapheme boundary whose rebuilt (reshaped) line fits. The measured prefix is only a
+            // heuristic: a ligature's whole advance sits on its first code point, so the real width of a
+            // cut inside it can be far smaller. Binary search on rebuilt widths, which grow with the cut.
             var low = 0;
             var high = boundaries.Count - 1;
-            var best = -1;
+            DraftLine? best = null;
+            var builds = 0;
             while (low <= high)
             {
+                if (++builds > MaximumFitAttempts)
+                    throw new TextLayoutException(TextLayoutError.BudgetExceeded,
+                        "Emergency grapheme breaking did not converge.", sourceStart: Offset(paragraph, start),
+                        sourceLength: Offset(paragraph, limit) - Offset(paragraph, start));
                 var middle = (low + high) / 2;
-                if (Estimate(paragraph, start, boundaries[middle]) <= available + Epsilon) { best = middle; low = middle + 1; }
+                var draft = BuildLine(paragraph, start, boundaries[middle], first, boundaries[middle] == paragraph.Length);
+                if (draft.ContentWidth <= available + 1e-7) { best = draft; low = middle + 1; }
                 else high = middle - 1;
             }
-            for (var attempt = best; attempt >= 0 && best - attempt < MaximumFitAttempts; attempt--)
-            {
-                var draft = BuildLine(paragraph, start, boundaries[attempt], first, boundaries[attempt] == paragraph.Length);
-                if (draft.ContentWidth <= available + 1e-7) return draft;
-            }
+            if (best is not null) return best;
             throw new TextLayoutException(TextLayoutError.LayoutOverflow,
                 "A single extended grapheme cluster exceeds the line width.",
                 sourceStart: Offset(paragraph, start),
@@ -554,8 +620,11 @@ public sealed class ParagraphLayoutEngine
                 var runEnd = index + 1;
                 while (runEnd < contentEnd && paragraph.ItemOf[runEnd] == itemIndex && levels[runEnd - start] == level) runEnd++;
                 var item = paragraph.Items[itemIndex];
-                var shaped = index == item.Start && runEnd == item.End && level == item.Level
-                    ? item.Shaped! : Shape(paragraph, item, index, runEnd, level);
+                var context = ShapingContext(paragraph, item, index, runEnd, level, start, contentEnd,
+                    position => levels[position - start]);
+                var shaped = index == item.Start && runEnd == item.End && level == item.Level &&
+                    context.Start == item.ContextStart && context.End == item.ContextEnd
+                    ? item.Shaped! : Shape(paragraph, item, index, runEnd, level, context);
                 logical.Add(new DraftRun
                 {
                     Start = index, End = runEnd, Level = level, Item = item, Shaped = shaped,

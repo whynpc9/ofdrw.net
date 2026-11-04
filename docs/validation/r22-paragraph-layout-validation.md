@@ -47,7 +47,7 @@ control showing the same map without the writer marker stays fail-closed; PDF an
 outline path per visible glyph and the logical text present; rejection of stroke paint and of a frame
 wider than the page.
 
-Regression suites run on this branch: Layout 384/384, Core 119/119, Packaging 1,683/1,683,
+Regression suites run on this branch: Layout 387/387, Core 119/119, Packaging 1,683/1,683,
 Converter.Pdf 1,176 passed + 17 skipped, Converter.Pdf.Vector 474/474, Graphics.SkiaSharp 68/68,
 Cli 272 + 1 skipped, Signatures 112/112, Crypto.Password 107/107, Converter.Docx 360 passed,
 1 skipped, 1 failed.
@@ -55,6 +55,13 @@ Cli 272 + 1 skipped, Signatures 112/112, Crypto.Password 107/107, Converter.Docx
 The DOCX failure is `BuiltInPdfItalicRendererTests.DifferentPageSizesKeepHeadersFieldsTablesAndImagesThroughDrawingSeam`
 (`98.5816` expected vs `98.5815` at 3-decimal rounding). It fails identically on the unmodified base
 commit `b1cef96` in this environment, so it is pre-existing and unrelated; it is not fixed here.
+
+Review follow-up (Codex on PR #112): adjacent text with the same face, script, language and features
+at the same level is now passed as HarfBuzz context, so a paint-only span inside an Arabic word keeps
+its joined forms (regression test with `ببب`); grapheme emergency breaks binary-search rebuilt widths
+instead of trusting the per-cluster estimate (regression test: DejaVu `ffi` ligature in a 2 mm frame);
+an empty text yields one styled empty line. Layout tests 387/387 and PDF tests pass after the change;
+the pages above were regenerated and re-reviewed with no visual change.
 
 A first reader design (structural fallback for any complete CGTransform cover) failed 10 existing
 fail-closed PDF tests (ambiguous/miscounted Hebrew visual GIDs, partial combining spans). It was
@@ -72,16 +79,16 @@ Sample: Chinese, English, Hebrew, Arabic (with digits and an English word), Tami
 
 | Output | Bytes | SHA-256 |
 | --- | ---: | --- |
-| r22-paragraph-justify.ofd | 498,988 | `9af8926a5e199b8ccac2b7722f1ee8aee139e3a276e3dcfda9e6c71cc3c51e7f` |
-| r22-paragraph-justify.pdf | 653,818 | `1cd1b3dd75fabda22340cfe8fb58db9baa8fd4e0f9285affb3db12c2ba192f2d` |
-| r22-paragraph-justify.svg | | `904a8180c5e60c3c79e8883ba7f082d6c8317691237c34ba23ac4929a0826d37` |
-| r22-paragraph-justify-page-1.png | | `b9e068f7c2cfa9b963d15a4bc48c6f1a98f1c2bcf8ed5fddb4c2ce269a9d5f37` |
-| r22-paragraph-justify-page-2.png | | `8c44759490957d50189301a328c8045f9f22d0c75c333637b22dce442e226f7f` |
-| r22-paragraph-rtl-center.ofd | 498,747 | `b3648cfd33b97273d02011c00c5cf770d3b6c948c89433c12e079acb928834df` |
-| r22-paragraph-rtl-center.pdf | 674,675 | `4aaef0fd7f8bde25691ce2b73b92263d6abe62bc5395fc770ef2e03bd27600b3` |
-| r22-paragraph-rtl-center.svg | | `efc4fa7acce9d7305deda80f6aa8287c2545d73d39fbf0d3cbeccc5efe1790c4` |
-| r22-paragraph-rtl-center-page-1.png | | `7781708419aea006a19878a8e4ab8ff5ea9b2e23060adcfbadb40b7a7d6d512e` |
-| r22-paragraph-receipt.json | | `43e33a7fbf786862c55b9c70837c0e608421812477fe848ecf90ad94ceba5d3f` |
+| r22-paragraph-justify.ofd | 498,988 | `e6e653e7852def647c912d2a6ca6ca12738abe3d0c8d6c1e38b7351aee0fcb2c` |
+| r22-paragraph-justify.pdf | 653,818 | `7bb0456e2ee9c1ad1ddd4b78e7429be6a5a831b18be8b697e30b9c6782ac3f97` |
+| r22-paragraph-justify.svg |  | `904a8180c5e60c3c79e8883ba7f082d6c8317691237c34ba23ac4929a0826d37` |
+| r22-paragraph-justify-page-1.png |  | `b9e068f7c2cfa9b963d15a4bc48c6f1a98f1c2bcf8ed5fddb4c2ce269a9d5f37` |
+| r22-paragraph-justify-page-2.png |  | `8c44759490957d50189301a328c8045f9f22d0c75c333637b22dce442e226f7f` |
+| r22-paragraph-rtl-center.ofd | 498,747 | `b973e5586a1566e2cc37f8b94c85616cd7ebb482545026fb6c1444d20d8ca8a9` |
+| r22-paragraph-rtl-center.pdf | 674,675 | `f949d2add4ca24650eaab9a0f7b1e1e6876de454a8028042fab5fd331e32e685` |
+| r22-paragraph-rtl-center.svg |  | `efc4fa7acce9d7305deda80f6aa8287c2545d73d39fbf0d3cbeccc5efe1790c4` |
+| r22-paragraph-rtl-center-page-1.png |  | `7781708419aea006a19878a8e4ab8ff5ea9b2e23060adcfbadb40b7a7d6d512e` |
+| r22-paragraph-receipt.json |  | `6236fc964471b4c193324845fc5a71b35865bceb67bdcd60419b0091185aa4b6` |
 
 Hashes identify this local run; outputs stay in ignored `artifacts/` and CI artifacts and are not
 committed. Embedded fonts are GID-preserving subsets (WenKai 25.6 MB source → about 0.95 MB).
