@@ -674,10 +674,12 @@ public sealed class ParagraphLayoutEngine
             if (line.Visual.Count == 0)
             {
                 // An empty line takes the metrics of its style's first available face.
-                var style = paragraph.Length == 0
-                    ? _styleByCodePoint.Length == 0 ? _request.Spans[0].Style
-                        : _styleByCodePoint[Math.Min(Math.Max(paragraph.Start - 1, 0), _styleByCodePoint.Length - 1)]
-                    : paragraph.StyleOf[Math.Min(start, paragraph.Length - 1)];
+                // An empty paragraph uses the style of its own terminator (at paragraph.Start); only a
+                // completely empty request falls back to its single empty span.
+                var style = paragraph.Length > 0 ? paragraph.StyleOf[Math.Min(start, paragraph.Length - 1)]
+                    : paragraph.Start < _styleByCodePoint.Length ? _styleByCodePoint[paragraph.Start]
+                    : _styleByCodePoint.Length > 0 ? _styleByCodePoint[_styleByCodePoint.Length - 1]
+                    : _request.Spans[0].Style;
                 var face = style.FontFallback.Select(family => family.Select(style.Bold, style.Italic))
                     .FirstOrDefault(value => value is not null) ?? style.FontFallback[0].Faces[0];
                 Add(face, style.FontSizeMillimeters);

@@ -47,7 +47,7 @@ control showing the same map without the writer marker stays fail-closed; PDF an
 outline path per visible glyph and the logical text present; rejection of stroke paint and of a frame
 wider than the page.
 
-Regression suites run on this branch: Layout 387/387, Core 119/119, Packaging 1,683/1,683,
+Regression suites run on this branch: Layout 388/388, Core 119/119, Packaging 1,683/1,683,
 Converter.Pdf 1,176 passed + 17 skipped, Converter.Pdf.Vector 474/474, Graphics.SkiaSharp 68/68,
 Cli 272 + 1 skipped, Signatures 112/112, Crypto.Password 107/107, Converter.Docx 360 passed,
 1 skipped, 1 failed.
@@ -60,7 +60,7 @@ Review follow-up (Codex on PR #112): adjacent text with the same face, script, l
 at the same level is now passed as HarfBuzz context, so a paint-only span inside an Arabic word keeps
 its joined forms (regression test with `ببب`); grapheme emergency breaks binary-search rebuilt widths
 instead of trusting the per-cluster estimate (regression test: DejaVu `ffi` ligature in a 2 mm frame);
-an empty text yields one styled empty line. Layout tests 387/387 and PDF tests pass after the change;
+an empty text yields one styled empty line, and an empty paragraph takes its own terminator's style. Layout tests 388/388 and PDF tests pass after the change;
 the pages above were regenerated and re-reviewed with no visual change.
 
 A first reader design (structural fallback for any complete CGTransform cover) failed 10 existing

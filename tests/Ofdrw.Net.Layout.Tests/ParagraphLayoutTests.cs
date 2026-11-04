@@ -287,6 +287,17 @@ public sealed class ParagraphLayoutTests
         Assert.True(line.BaselineMillimeters > 0);
     }
 
+    [Fact]
+    public void EmptyParagraphsUseTheirOwnTerminatorStyle()
+    {
+        var result = HarfBuzzTextPrelayout.CreateParagraphLayout().Layout(new ParagraphLayoutRequest("\n\n",
+            new[] { new TextStyleSpan(0, 1, Style(4)), new TextStyleSpan(1, 1, Style(10)) },
+            new ParagraphLayoutOptions(50)));
+        Assert.Equal(2, result.Lines.Count);
+        Assert.Equal(2.5, result.Lines[1].HeightMillimeters / result.Lines[0].HeightMillimeters, 9);
+        Assert.Equal(result.Lines[0].HeightMillimeters, result.Lines[1].TopMillimeters, 9);
+    }
+
     internal static void AssertCoverage(ParagraphLayoutResult result)
     {
         var covered = new int[result.Text.Length];
