@@ -26,7 +26,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [010](010-e2e-harness-build-gate.md) | Compile every e2e harness in CI | P2 | M | — | DONE (AttachmentCleanup.E2E is already built by run-converter-package-e2e.sh; Signatures.Appearance.E2E skips without SesInterop) |
 | [011](011-no-silent-test-returns.md) | Visible skips instead of empty-passing tests | P3 | S | — | DONE (CI filter uses ~ViewerLocalCjk: the class in DocxRevisionTests.cs is DocxConversionTests; remaining silent returns: PlainTextCommandTests.SymbolicFileAndParentAliasesAreRejected on Windows, Audit014_VisualSample without OFDRW_TEST_ARTIFACTS) |
 | [012](012-writer-no-partial-zip.md) | Fail closed on interrupted OFD writes | P3 | S | — | DONE (success compared by entry manifest: ZIP timestamps vary) |
-| [013](013-nuget-vulnerability-gate.md) | CI gate for new NuGet advisories (D10 allowlisted) | P2 | S | — | TODO |
+| [013](013-nuget-vulnerability-gate.md) | CI gate for new NuGet advisories (D10 allowlisted) | P2 | S | — | DONE (no schedule trigger added; a separate scheduled workflow is recommended) |
 | [014](014-pdf-font-registry-spike.md) | Spike: process-wide PDF font registry lifetime | P2 | M | 005 | TODO |
 | [015](015-cli-preflight-json.md) | `ofdrw preflight [--json]` | P2 | M | 008 | TODO |
 | [016](016-cli-delete-pages-and-crop.md) | `ofdrw delete-pages` / `ofdrw crop` | P2 | S–M | 015 | TODO |
