@@ -168,4 +168,9 @@ public static class HarfBuzzTextPrelayout
 
     /// <summary>Creates a bounded explicit face/size partition query with original source context and millimeter positioning.</summary>
     public static TextSizedFontSpanShapingEngine CreateSizedFontSpanShaping() => new TextSizedFontSpanShapingEngine(new HarfBuzzTextShaper());
+
+    /// <summary>Creates the general paragraph layout engine (Unicode 17.0.0 bidi, line breaking and
+    /// grapheme clusters, font fallback, pagination) with the pinned run shaper.</summary>
+    public static Ofdrw.Net.Layout.Text.Paragraphs.ParagraphLayoutEngine CreateParagraphLayout() =>
+        new Ofdrw.Net.Layout.Text.Paragraphs.ParagraphLayoutEngine(new HarfBuzzTextShaper());
 }
