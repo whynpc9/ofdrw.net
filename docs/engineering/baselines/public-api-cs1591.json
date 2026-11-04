@@ -8,7 +8,6 @@
   "src/Ofdrw.Net.Converter.Docx/DocxToOfdConversionResult.cs|DocxToOfdConversionResult.Mode",
   "src/Ofdrw.Net.Converter.Docx/DocxToOfdConversionResult.cs|DocxToOfdConversionResult.SourcePageCount",
   "src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs|OfdToPdfConverter",
-  "src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs|OfdToPdfConverter.ConvertAsync(Stream, Stream, IReadOnlyList<int>?, CancellationToken)",
   "src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs|OfdToPdfConverter.OfdToPdfConverter()",
   "src/Ofdrw.Net.Converter.Pdf/Converters/OfdToPdfConverter.cs|OfdToPdfConverter.OfdToPdfConverter(OfdToPdfOptions)",
   "src/Ofdrw.Net.Converter.Pdf/OfdToPdfOptions.cs|OfdToPdfOptions.MaxDecodedImagePixels",

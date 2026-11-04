@@ -12,6 +12,7 @@ sidebar:
 | 项目 | preview.10 | 当前 main |
 | --- | --- | --- |
 | 较大 OFD 读取（约 1,000+ 文本对象） | 读取/转换报 "OFD traversal exceeds its reference budget" | 默认工作计数上限已提高，尚未发布 |
+| OFD→PDF 签章外观失败 | 静默跳过 | 通过诊断报告，尚未发布 |
 | Regular-only 汉字合成粗体 | 固定表头“量”存在历史视觉失败；发布验收限定真实 Regular/Bold | D11 / PR108 修复及固定样例验收通过，尚未发布 |
 | CLI 严格嵌入粗体 | 无对应开关，严格配置使用 API | 已增加限定开关，尚未发布 |
 | macOS Preview Find | 部分完整词 / 日期查找异常，根因未定 | 保留独立限制 |

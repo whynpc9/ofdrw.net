@@ -209,7 +209,9 @@ internal static partial class Cli
         {
             var ofdToPdf = new OfdToPdfConverter(new Ofdrw.Net.Converter.Pdf.OfdToPdfOptions
             { PackageLoadOptions = new OfdPackageLoadOptions { DocumentIndex = documentIndex } });
-            await ofdToPdf.ConvertAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
+            var result = await ofdToPdf.ConvertWithResultAsync(input, output.Stream, pages, cancellationToken).ConfigureAwait(false);
+            foreach (var diagnostic in result.Diagnostics)
+                Console.Error.WriteLine($"{diagnostic.Severity}: {diagnostic.Code}: {diagnostic.Message}");
         }
 
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);

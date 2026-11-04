@@ -18,7 +18,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [002](002-docx-list-numbering.md) | Correct DOCX list markers (levels, formats, numId=0) | P1 | M | — | DONE |
 | [003](003-native-docx-underline.md) | Draw DOCX underlines in Native OFD | P1 | S | (after 002) | DONE |
 | [004](004-native-docx-justify.md) | Justify wrapped lines in Native OFD | P2 | M | 003 | DONE (gap rule refined: spaces + after CJK chars; leading whitespace and single-word lines not stretched) |
-| [005](005-ofd-to-pdf-result-and-seal-diagnostics.md) | OFD→PDF result/diagnostics channel; no silent seal loss | P1 | M | (after 001) | TODO |
+| [005](005-ofd-to-pdf-result-and-seal-diagnostics.md) | OFD→PDF result/diagnostics channel; no silent seal loss | P1 | M | (after 001) | DONE |
 | [006](006-private-temp-files.md) | Owner-only temp directories for document copies | P2 | M | — | TODO |
 | [007](007-xml-parse-hardening.md) | Hardened XML parsing everywhere package content is parsed | P2 | S | 005 | TODO |
 | [008](008-verify-signatures-exit-codes.md) | `verify-signatures --require-signatures` + documented exit codes | P2 | S | 005 | TODO |

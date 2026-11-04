@@ -95,6 +95,8 @@ var saved = await new OfdPackageWriter().WriteWithResultAsync(package, output);
 - PDF→OFD 默认输入上限 128 MiB、源/输出页数上限 10000、单页解码像素上限 4000 万、累计页图像字节上限 512 MiB。DPI 统一限制在 72–300，外部渲染也使用所选 DPI。
 - OFD 读取使用内部的整文档 XML 节点/引用工作计数（默认 10,000,000 / 20,000,000），内存仍由源 XML 与物化字节预算约束。preview.10 默认 100,000 / 200,000，约 1,000 个以上文本对象的文档会被拒绝；调用方暂不能配置这两个计数。写入端另有按最坏情况估算的输出预算（`MaxMaterializedBytes` 512 MiB），约 2 万段以上的单个 FlowDocument 仍会在写入时被拒绝。
 - `OfdToPdfOptions` 控制 OFD 加载和图片解码预算。渲染失败不会以丢失正文的空白后备页冒充成功。
+- 默认 OFD→PDF 仍容忍无法解析或绘制的签章外观，但会通过 `ConvertWithResultAsync().Diagnostics` 报告：`PDF_SIGNATURE_METADATA_UNREADABLE`（签名元数据不可读）、`PDF_SIGNATURE_APPEARANCE_UNREADABLE`（外观载荷或嵌套 OFD 不可读）和 `PDF_SIGNATURE_APPEARANCE_SKIPPED`（外观未绘制，含页索引和签名 ID）；CLI `ofd-to-pdf` 将其输出到 stderr，退出码仍为 0。诊断消息不回显文档原始内容（main，尚未发布）。
+- 嵌套签章 OFD 按调用方 `OfdToPdfOptions.PackageLoadOptions` 的限制读取，同一嵌套签章载荷在一次转换中只解析一次（main，尚未发布）。
 - 外部进程并发消费有界诊断输出，支持超时、取消与进程树清理。原生库内的同步渲染在调用前后检查取消，不能把外部进程超时等同于强制终止任意原生调用。
 - CLI 先验证参数，再写目标目录下的临时文件；成功关闭后才替换目标。失败或取消保留原输出。Ctrl-C 返回 130。格式转换输入输出需使用不同路径；页重排支持原位更新。
 
