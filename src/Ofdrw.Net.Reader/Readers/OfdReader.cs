@@ -31,13 +31,24 @@ public sealed class OfdReader : IOfdReader
     public async Task<IReadOnlyList<OfdDocumentDescriptor>> ListDocumentsAsync(Stream ofdStream,
         OfdPackageLoadOptions? options = null, CancellationToken cancellationToken = default)
     {
-        var archive = await _loader.LoadAsync(ofdStream, options ?? new OfdPackageLoadOptions(), cancellationToken).ConfigureAwait(false);
-        var material = new OfdModelMaterialization(new OfdModelLimits());
-        var xml = material.ReadXml("OFD.xml", archive.GetBytes("OFD.xml"), cancellationToken);
-        var documents = DocumentBodies(xml, material, cancellationToken).Select(body => body.Descriptor).ToArray();
-        if (documents.Any(document => !archive.Contains(document.DocumentEntryPath)))
-            throw new InvalidDataException("A DocBody references a missing document entry.");
-        return documents;
+        try
+        {
+            var archive = await _loader.LoadAsync(ofdStream, options ?? new OfdPackageLoadOptions(), cancellationToken).ConfigureAwait(false);
+            var material = new OfdModelMaterialization(new OfdModelLimits());
+            var xml = material.ReadXml("OFD.xml", archive.GetBytes("OFD.xml"), cancellationToken);
+            var documents = DocumentBodies(xml, material, cancellationToken).Select(body => body.Descriptor).ToArray();
+            if (documents.Any(document => !archive.Contains(document.DocumentEntryPath)))
+                throw new InvalidDataException("A DocBody references a missing document entry.");
+            return documents;
+        }
+        catch (XmlException error)
+        {
+            throw new InvalidDataException("OFD package contains malformed XML.", error);
+        }
+        catch (KeyNotFoundException error)
+        {
+            throw new InvalidDataException("OFD package references a missing entry.", error);
+        }
     }
 
     public async Task<OfdDocumentPackage> ReadAsync(Stream ofdStream, CancellationToken cancellationToken = default)
@@ -250,16 +261,16 @@ public sealed class OfdReader : IOfdReader
         material.ReserveReadModel(256L + fontMap.Count * 160L, cancellationToken);
         var documentFonts = new Dictionary<string, string>(fontMap, StringComparer.OrdinalIgnoreCase);
         material.ReserveReadModel(256L + (commonData?.Elements().Count() ?? 0) * 160L, cancellationToken);
-        var templateLocations = commonData?.Elements(docNs + "TemplatePage")
-            .Select(x => new
-            {
-                Id = x.Attribute("ID")?.Value,
-                BaseLoc = x.Attribute("BaseLoc")?.Value,
-                ZOrder = x.Attribute("ZOrder")?.Value
-            })
-            .Where(x => !string.IsNullOrWhiteSpace(x.Id) && !string.IsNullOrWhiteSpace(x.BaseLoc))
-            .ToDictionary(x => x.Id!, x => (BaseLoc: x.BaseLoc!, ZOrder: x.ZOrder), StringComparer.OrdinalIgnoreCase)
-            ?? new Dictionary<string, (string BaseLoc, string? ZOrder)>(StringComparer.OrdinalIgnoreCase);
+        var templateLocations = new Dictionary<string, (string BaseLoc, string? ZOrder)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var template in commonData?.Elements(docNs + "TemplatePage") ?? Enumerable.Empty<XElement>())
+        {
+            var id = template.Attribute("ID")?.Value;
+            var baseLoc = template.Attribute("BaseLoc")?.Value;
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(baseLoc)) continue;
+            if (templateLocations.ContainsKey(id!))
+                throw new InvalidDataException($"OFD document declares duplicate TemplatePage ID '{id}'.");
+            templateLocations.Add(id!, (baseLoc!, template.Attribute("ZOrder")?.Value));
+        }
 
         if (material.IsControlledRead && (documentXml.Root?.Element(docNs + "Pages")?.Elements(docNs + "Page").Count(node => !string.IsNullOrWhiteSpace(node.Attribute("BaseLoc")?.Value)) ?? 0) > options.MaxPageCount)
             throw new InvalidDataException("OFD document exceeds the configured page count limit.");
@@ -1356,7 +1367,7 @@ public sealed class OfdReader : IOfdReader
                         FontResourceId = node.Attribute("Font")?.Value,
                         FontName = ResolveFontName(node.Attribute("Font")?.Value, fontMap),
                         FontSizeMillimeters = ParseDouble(node.Attribute("Size")?.Value, 4d),
-                        Weight = (int)ParseDouble(node.Attribute("Weight")?.Value, OfdTextElement.DefaultWeight),
+                        Weight = ParseWeight(node.Attribute("Weight")?.Value),
                         Italic = ParseBoolean(node.Attribute("Italic")?.Value, false),
                         Transform = ParseMatrix(node.Attribute("CTM")?.Value, material, cancellationToken),
                         FillColor = ParseColor(renderNode.Elements()
@@ -1377,8 +1388,8 @@ public sealed class OfdReader : IOfdReader
                             (previousX is null && textCode.Attribute("X") is null ||
                              previousY is null && textCode.Attribute("Y") is null))
                             text.RenderPaintError ??= "The first PageBlock TextCode requires X and Y.";
-                        var x = ParseDouble(textCode.Attribute("X")?.Value, blockDepth > 0 ? previousX ?? 0d : 0d);
-                        var y = ParseDouble(textCode.Attribute("Y")?.Value,
+                        var x = ParseTextCodeAxis(textCode.Attribute("X")?.Value, blockDepth > 0 ? previousX ?? 0d : 0d);
+                        var y = ParseTextCodeAxis(textCode.Attribute("Y")?.Value,
                             blockDepth > 0 ? previousY ?? text.FontSizeMillimeters : text.FontSizeMillimeters);
                         text.Runs.Add(new OfdTextRun
                         {
@@ -1678,18 +1689,37 @@ public sealed class OfdReader : IOfdReader
         throw new InvalidDataException("OFD box must start with four finite numbers.");
     }
 
+    // Non-finite values (NaN, Infinity, overflow such as 1e999) fall back like unparsable text,
+    // matching the box/matrix parsers' finite-number rule.
     private static double ParseDouble(string? value, double fallback)
     {
-        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) &&
+            !double.IsNaN(parsed) && !double.IsInfinity(parsed)
             ? parsed
             : fallback;
     }
 
     private static double? ParseNullableDouble(string? value)
     {
-        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) &&
+            !double.IsNaN(parsed) && !double.IsInfinity(parsed)
             ? parsed
             : null;
+    }
+
+    // TextCode axes keep non-finite values: the logical text stays extractable while
+    // renderers reject the run (R01PageBlockTests.NonFinitePageBlockTextCodeAxis...).
+    private static double ParseTextCodeAxis(string? value, double fallback)
+    {
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : fallback;
+    }
+
+    private static int ParseWeight(string? value)
+    {
+        var weight = ParseDouble(value, OfdTextElement.DefaultWeight);
+        return weight >= 1 && weight <= 1000 ? (int)weight : OfdTextElement.DefaultWeight;
     }
 
     private static bool? ParseNullableBoolean(string? value)
