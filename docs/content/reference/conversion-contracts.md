@@ -24,6 +24,7 @@ foreach (var diagnostic in result.Diagnostics)
 - BuiltIn/Native 将脚注、尾注和批注正文以带类型和编号的内容追加到正文后，返回 `DOCX_SUPPLEMENTAL_TEXT_APPENDED`；这保证附属原文可用，不等同于 Word 原位脚注排版。
 - Native/BuiltIn 列表编号（main，尚未发布）：支持按 numId 的多级计数器（上级前进时下级重置）、`%1`–`%9` 级别模式、`start`/`startOverride`，以及 decimal、decimalZero、大小写罗马数字、大小写字母、chineseCounting/chineseCountingThousand（1–99）、ideographDigital 和项目符号。`numId=0` 关闭编号；编号定义无法解析时省略编号并返回 `DOCX_NUMBERING_UNRESOLVED`，不支持的格式退化为十进制并返回 `DOCX_NUMBERING_FORMAT_DEGRADED`。编号为纯文本加一个空格，不渲染缩进和制表符后缀。
 - Native 对 `w:u` 不为 `none` 的文字运行绘制一条实线下划线路径（与 FlowDocument 几何相同，颜色跟随文字），覆盖正文、表格和页眉页脚；不区分双线、点线、波浪线等样式，也不使用 `w:u w:color`（main，尚未发布）。
+- Native 对 `both`/`distribute` 段落中自动换行的行做两端对齐：剩余宽度平均分配到词间空格和中日韩字符之后，行首空白不拉伸，只含一个拉丁单词的行保持左对齐；末行和显式换行不拉伸，`distribute` 的末行拉伸及中文标点挤压未实现（main，尚未发布）。
 - 已知不支持内容按 `UnsupportedFeatureBehavior` 处理；使用 Placeholder 时应检查结果的 `OriginalTextPreserved` 和 `Diagnostics`，不能只根据 Task 正常完成判断原文完整。
 - DualLayer 的视觉层始终要求栅格化。即使传入的 PDF 选项允许文本后备，该 DOCX 视觉阶段也不会以 PDF 抽取文字作为替代。
 - DualLayer 根据实际渲染 PDF 的字符位置定位 OpenXML 原文，再进行选页。PDF 文字只用于定位；发出的文本仍来自 OpenXML，页码字段由原字段定义计算。无法可靠定位正文时明确失败，不提交部分语义层。
