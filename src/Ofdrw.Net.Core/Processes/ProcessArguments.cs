@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Ofdrw.Net.Converter.Docx.Internal;
+namespace Ofdrw.Net.Core.Processes;
 
 internal static class ProcessArguments
 {

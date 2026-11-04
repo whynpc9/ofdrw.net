@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Ofdrw.Net.Core.IO;
 
 namespace Ofdrw.Net.Converter.Pdf.Internal;
 
@@ -59,12 +60,16 @@ internal sealed class ImageIoStagingStream : Stream
 {
     private readonly FileStream _file;
     private readonly string _path;
+    private readonly string _directory;
     private readonly long _limit;
     internal ImageIoStagingStream(long limit)
     {
         _limit = limit;
-        _path = Path.Combine(Path.GetTempPath(), "ofdrw-image-" + Guid.NewGuid().ToString("N") + ".tmp");
-        _file = new FileStream(_path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.Asynchronous);
+        // Owner-only directory: the staged bytes are a rendering of the caller's document.
+        _directory = PrivateTemporaryDirectory.Create("ofdrw-image-");
+        _path = Path.Combine(_directory, "stage.tmp");
+        try { _file = new FileStream(_path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.Asynchronous); }
+        catch { PrivateTemporaryDirectory.TryDelete(_directory); throw; }
     }
     internal string PathOnDisk => _path;
     internal async Task CloseWriterAsync(CancellationToken token)
@@ -102,7 +107,12 @@ internal sealed class ImageIoStagingStream : Stream
     }
     protected override void Dispose(bool disposing)
     {
-        if (disposing) { _file.Dispose(); File.Delete(_path); }
+        if (disposing)
+        {
+            _file.Dispose();
+            File.Delete(_path);
+            PrivateTemporaryDirectory.TryDelete(_directory);
+        }
         base.Dispose(disposing);
     }
 }

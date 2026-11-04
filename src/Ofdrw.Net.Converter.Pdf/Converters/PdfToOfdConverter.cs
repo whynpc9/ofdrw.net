@@ -64,7 +64,9 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
     {
         if (pdfInput is null) throw new ArgumentNullException(nameof(pdfInput));
         if (ofdOutput is null) throw new ArgumentNullException(nameof(ofdOutput));
-        var tempPdfPath = Path.Combine(Path.GetTempPath(), $"ofdrw-net-{Guid.NewGuid():N}.pdf");
+        // Owner-only directory: the staged file is a plaintext copy of the caller's PDF.
+        var tempDirectory = PrivateTemporaryDirectory.Create("ofdrw-net-");
+        var tempPdfPath = Path.Combine(tempDirectory, "input.pdf");
         try
         {
             using (var staged = File.Create(tempPdfPath))
@@ -78,6 +80,7 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
             try { File.Delete(tempPdfPath); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
+            PrivateTemporaryDirectory.TryDelete(tempDirectory);
         }
     }
 

@@ -278,6 +278,9 @@ public sealed class TextReplacementFileSessionTests
         {
             session.Dispose();
             if (moved) Directory.Delete(path);
+            // The snapshot lives in its own private directory, kept because its deletion was made to fail.
+            var parent = System.IO.Path.GetDirectoryName(path)!;
+            if (moved && Directory.Exists(parent) && !Directory.EnumerateFileSystemEntries(parent).Any()) Directory.Delete(parent);
         }
     }
 

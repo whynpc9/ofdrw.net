@@ -4,6 +4,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.ComponentModel;
+using System.Globalization;
+using Ofdrw.Net.Core.IO;
 using Ofdrw.Net.Core.Processes;
 
 namespace Ofdrw.Net.Converter.Pdf.Internal;
@@ -16,14 +18,17 @@ internal sealed class PdfToPpmRasterizer
         int dpi = 144, TimeSpan? timeout = null, bool cropBox = false)
     {
         var pageNumber = zeroBasedPageIndex + 1;
-        var tempDir = Path.Combine(Path.GetTempPath(), "ofdrw-net-raster", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(tempDir);
+        // Owner-only, unpredictable directory; no shared parent another user could pre-create.
+        var tempDir = PrivateTemporaryDirectory.Create("ofdrw-net-raster-");
 
         try
         {
             var outputPrefix = Path.Combine(tempDir, $"page_{pageNumber}");
-            var args = $"-f {pageNumber} -l {pageNumber} -r {Math.Max(72, Math.Min(dpi, 300))} -png -singlefile " +
-                (cropBox ? "-cropbox " : "") + $"\"{pdfPath}\" \"{outputPrefix}\"";
+            var page = pageNumber.ToString(CultureInfo.InvariantCulture);
+            var resolution = Math.Max(72, Math.Min(dpi, 300)).ToString(CultureInfo.InvariantCulture);
+            var args = cropBox
+                ? ProcessArguments.Join("-f", page, "-l", page, "-r", resolution, "-png", "-singlefile", "-cropbox", pdfPath, outputPrefix)
+                : ProcessArguments.Join("-f", page, "-l", page, "-r", resolution, "-png", "-singlefile", pdfPath, outputPrefix);
             ExternalProcessResult result;
             try
             {
@@ -57,17 +62,7 @@ internal sealed class PdfToPpmRasterizer
         }
         finally
         {
-            try
-            {
-                if (Directory.Exists(tempDir))
-                {
-                    Directory.Delete(tempDir, true);
-                }
-            }
-            catch
-            {
-                // ignored
-            }
+            PrivateTemporaryDirectory.TryDelete(tempDir);
         }
     }
 }

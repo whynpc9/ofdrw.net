@@ -89,8 +89,8 @@ public sealed class DocxToOfdConverter : IDocxToOfdConverter
     {
         if (docxInput is null) throw new ArgumentNullException(nameof(docxInput));
         if (ofdOutput is null) throw new ArgumentNullException(nameof(ofdOutput));
-        var directory = Path.Combine(Path.GetTempPath(), "ofdrw-docx-ofd-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
+        // Owner-only directory: it holds a plaintext copy of the caller's DOCX and its rendering.
+        var directory = PrivateTemporaryDirectory.Create("ofdrw-docx-ofd-");
         var inputPath = Path.Combine(directory, "input.docx");
         var pdfPath = Path.Combine(directory, "visual.pdf");
         try
