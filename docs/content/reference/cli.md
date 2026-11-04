@@ -33,12 +33,19 @@ ofdrw --help
 | 重排全部页面 | `ofdrw reorder input.ofd reordered.ofd --pages 3,1,2` |
 | 删除页面（main，尚未发布） | `ofdrw delete-pages input.ofd trimmed.ofd --pages 2,4-5` |
 | 设置页面框（main，尚未发布） | `ofdrw crop input.ofd cropped.ofd --box 10,20,180,250 --pages 1` |
+| 列出附件（main，尚未发布） | `ofdrw attachments list input.ofd --json` |
+| 按 ID 导出附件（main，尚未发布） | `ofdrw attachments extract input.ofd --id 7 --output invoice.xml` |
+| 按 ID 移除附件（main，尚未发布） | `ofdrw attachments remove input.ofd output.ofd --id 7 --physical` |
 | 拆分选页 | `ofdrw split input.ofd selected.ofd --pages 3,1` |
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
 | 叠加水印 | `ofdrw watermark input.ofd marked.ofd --pages 1,2 --text DRAFT` |
 | 清理签名 | `ofdrw clean-signatures input.ofd unsigned.ofd` |
 
 文档操作的更多示例见[页面重组、水印与附件](https://whynpc9.github.io/ofdrw.net/guides/document-tools/)。文字替换需要显式可信原字体身份，见[文字定位与替换](https://whynpc9.github.io/ofdrw.net/guides/keyword-replacement/)。
+
+## 附件
+
+`attachments list` 每行输出 `ID、名称、媒体类型、字节数、internal|external`（制表符分隔），`--json` 时标准输出只有 `ofdrw-cli-attachments/1` JSON；没有附件时也返回 `0`。`attachments extract` 只按 ID 精确匹配，必须用 `--output` 指定目标路径，**从不**用附件内存储的名称作为路径；外部附件没有内嵌载荷，导出会失败。`attachments remove` 默认逻辑移除：从当前附件列表删除引用，保留历史 ZIP 条目；`--physical` 物理移除：在证明来源独占和引用闭合后才删除内部载荷，否则失败且不写输出。`list` 与 `extract` 可配合 `--document N` 读取多 `DocBody` 文档，`remove` 要求单 `DocBody` 文档。以上命令为 main，尚未发布。
 
 ## 页号和文档号
 

@@ -32,7 +32,7 @@ internal static partial class Cli
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
             "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-html" or "ofd-to-image" or "image-to-ofd" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop"))
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop" or "attachments"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -54,6 +54,8 @@ internal static partial class Cli
                 return await ReplaceTextAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "preflight")
                 return await PreflightAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "attachments")
+                return await AttachmentsAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "watermark" or "split" or "mix" or "clean-signatures")
                 return await DocumentToolsAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "merge")
@@ -721,6 +723,9 @@ internal static partial class Cli
           ofdrw reorder <input.ofd> <output.ofd> [--document 2] --pages 3,1,2
           ofdrw delete-pages <input.ofd> <output.ofd> --pages 2,4-5 [--document 2]
           ofdrw crop <input.ofd> <output.ofd> --box X,Y,W,H [--pages 1,3] [--document 2]
+          ofdrw attachments list <input.ofd> [--document 2] [--json]
+          ofdrw attachments extract <input.ofd> --id ID --output <file> [--document 2]
+          ofdrw attachments remove <input.ofd> <output.ofd> --id ID [--physical] [--document 2]
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
 
         Commands:
@@ -741,6 +746,7 @@ internal static partial class Cli
           reorder      Reorder every page using a complete 1-based page list.
           delete-pages Remove the listed 1-based pages; at least one page must remain.
           crop         Set the page box (millimeters) of the listed pages, default all; content is not moved.
+          attachments  List, extract (by ID, to an explicit path) or remove (logical or --physical) attachments.
           watermark    Add ordinary text/image objects to selected layers (millimeters).
           split        Select distinct pages in 1-based list order into a new OFD.
           mix          Overlay source/page pairs in input order, first page dimensions.

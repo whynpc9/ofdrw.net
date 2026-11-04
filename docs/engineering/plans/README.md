@@ -30,7 +30,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [014](014-pdf-font-registry-spike.md) | Spike: process-wide PDF font registry lifetime | P2 | M | 005 | DONE (recommends option C: pressure diagnostic + process recycling; eviction needs a backend change) |
 | [015](015-cli-preflight-json.md) | `ofdrw preflight [--json]` | P2 | M | 008 | DONE |
 | [016](016-cli-delete-pages-and-crop.md) | `ofdrw delete-pages` / `ofdrw crop` | P2 | S–M | 015 | DONE |
-| [017](017-cli-attachments.md) | `ofdrw attachments list/extract/remove` | P2 | M | 016 | TODO |
+| [017](017-cli-attachments.md) | `ofdrw attachments list/extract/remove` | P2 | M | 016 | DONE |
 | [018](018-cli-locate.md) | Read-only `ofdrw locate` | P3 | M | 017 | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
