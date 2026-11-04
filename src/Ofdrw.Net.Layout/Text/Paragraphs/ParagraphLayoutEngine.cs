@@ -21,6 +21,7 @@ public sealed class ParagraphLayoutEngine
     private const double Epsilon = 1e-9;
     private const int MaximumItemUtf16 = 4000;
     private const int MaximumFitAttempts = 32;
+    private const int MaximumEmergencyMisses = 4;
     private readonly ITextShaper _shaper;
 
     /// <summary>Creates an engine around a run shaper (for example HarfBuzz).</summary>
@@ -554,22 +555,31 @@ public sealed class ParagraphLayoutEngine
             for (var index = start + 1; index <= limit; index++)
                 if (paragraph.GraphemeStart[index]) boundaries.Add(index);
             // Largest grapheme boundary whose rebuilt (reshaped) line fits. The measured prefix is only a
-            // heuristic: a ligature's whole advance sits on its first code point, so the real width of a
-            // cut inside it can be far smaller. Binary search on rebuilt widths, which grow with the cut.
+            // heuristic (a ligature's whole advance sits on its first code point), and rebuilt widths are
+            // not monotonic either: an Arabic lam-alef ligature makes "لا" narrower than "ل". So a binary
+            // search on rebuilt widths only proposes a start; a bounded upward scan then tests later cuts
+            // and stops after MaximumEmergencyMisses consecutive overflows (or the build budget).
             var low = 0;
             var high = boundaries.Count - 1;
             DraftLine? best = null;
+            var bestIndex = -1;
             var builds = 0;
-            while (low <= high)
+            while (low <= high && builds < MaximumFitAttempts)
             {
-                if (++builds > MaximumFitAttempts)
-                    throw new TextLayoutException(TextLayoutError.BudgetExceeded,
-                        "Emergency grapheme breaking did not converge.", sourceStart: Offset(paragraph, start),
-                        sourceLength: Offset(paragraph, limit) - Offset(paragraph, start));
+                builds++;
                 var middle = (low + high) / 2;
                 var draft = BuildLine(paragraph, start, boundaries[middle], first, boundaries[middle] == paragraph.Length);
-                if (draft.ContentWidth <= available + 1e-7) { best = draft; low = middle + 1; }
+                if (draft.ContentWidth <= available + 1e-7) { best = draft; bestIndex = middle; low = middle + 1; }
                 else high = middle - 1;
+            }
+            var misses = 0;
+            for (var index = bestIndex + 1; index < boundaries.Count && misses < MaximumEmergencyMisses &&
+                     builds < 2 * MaximumFitAttempts; index++)
+            {
+                builds++;
+                var draft = BuildLine(paragraph, start, boundaries[index], first, boundaries[index] == paragraph.Length);
+                if (draft.ContentWidth <= available + 1e-7) { best = draft; misses = 0; }
+                else misses++;
             }
             if (best is not null) return best;
             throw new TextLayoutException(TextLayoutError.LayoutOverflow,

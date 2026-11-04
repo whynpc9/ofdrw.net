@@ -274,6 +274,13 @@ public sealed class ParagraphLayoutTests
         var broken = Layout("ffi", 2, overflow: TextOverflowPolicy.BreakGraphemes, style: dejavuOnly);
         Assert.Equal(new[] { "f", "f", "i" }, broken.Lines.Select(line => line.Runs.Single().Text));
         Assert.All(broken.Lines, line => Assert.True(line.ContentWidthMillimeters <= 2));
+
+        // Rebuilt widths are not monotonic: lam-alef "لا" is narrower than lam "ل" alone.
+        var lamAlef = Layout("لا", 100, style: dejavuOnly).Lines.Single().ContentWidthMillimeters;
+        var lam = Layout("ل", 100, style: dejavuOnly).Lines.Single().ContentWidthMillimeters;
+        Assert.True(lamAlef < 2.4 && lam > 2.4, $"lam-alef {lamAlef}, lam {lam}");
+        var arabic = Layout("لالالا", 2.4, overflow: TextOverflowPolicy.BreakGraphemes, style: dejavuOnly);
+        Assert.Equal(new[] { "لا", "لا", "لا" }, arabic.Lines.Select(line => string.Concat(line.Runs.Select(run => run.Text))));
     }
 
     [Fact]

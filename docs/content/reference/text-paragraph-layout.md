@@ -57,7 +57,10 @@ await new OfdPackageWriter().WriteAsync(package, output);
    by L1 level changes are **reshaped** and the real width is checked; on overflow the previous
    opportunity is tried (bounded to 32 attempts, then `BudgetExceeded`). A segment without an
    opportunity fails with `LayoutOverflow` (`TextOverflowPolicy.Reject`, default) or is broken at
-   the largest fitting grapheme boundary (`BreakGraphemes`); never inside a cluster.
+   grapheme boundaries (`BreakGraphemes`); never inside a cluster. Candidate cuts are rebuilt and
+   reshaped. Rebuilt widths are not monotonic (an Arabic lam-alef ligature is narrower than lam alone),
+   so a binary search is followed by a bounded upward scan that stops after four consecutive
+   overflowing cuts. The chosen cut is the largest fitting one found, not proven globally largest.
 7. **Reordering.** L1 per line, then L2 over runs. Within a run the shaper's visual glyph order is
    kept.
 8. **Metrics and alignment.** All runs share one baseline. Normal line height uses each face's
