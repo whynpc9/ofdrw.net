@@ -23,6 +23,7 @@ Flow 段落/表格、命名区域、图片/Canvas/回调、文档工具、多 Do
 | PR78 / C1、C2 | PR78 已关闭未合并，保留分支与证据；C1/C2 已独立完成 D02/PR98、D03/PR99，不包含光学增强、不关闭 Regular-only 失败，不改写 preview.10 发布内容 | [N01 历史处置](../validation/cn-en-release-n01.md)、[D02](../validation/d02-imported-paint.md)、[D03](../validation/d03-svg-declared-family.md) |
 | N04 Skia / N05 Windows Audit025 | D08、D09 已分别关闭本轮主动取证，两项历史根因均 INCONCLUSIVE／未修复；继续被动观察，保留现有诊断、测试和原预算，新自然失败有可比较判别证据再限定范围，不追加循环压力实验 | [D08 处置](../validation/d08-skia-passive-disposition.md)、[D09 处置](../validation/d09-audit025-passive-disposition.md)、[Skia](../validation/skia-font-read-evidence.md)、[分配边界](../validation/audit025-allocation-boundary.md) |
 | N09 完整未知外来映射 | 已取消，不等待自动续接；现有受限 R02 能力与失败证据保留，完整 R02 未验收 | [CGTransform](../validation/r02-cgtransform-profile.md)、[GroupedLocal](../validation/r02-grouped-textcode.md) |
+| PDF 字体注册表不驱逐 | 进程级注册表达到 256 MiB 后后续转换失败；实测约 261 个 CJK／1,603 个拉丁不同子集文档即触顶，托管内存为注册字节的 4–8 倍。PdfSharpCore 1.3.67 的字体缓存无清除 API，安全驱逐需随 PDF 后端决策（D10）处理；在此之前采用压力诊断与工作进程回收 | [spike 014 设计记录](../architecture/pdf-font-registry-lifetime.md) |
 | ImageSharp 告警 | D10 评估关闭：无保留双 netstandard 目标的官方安全升级，2.1.13 五条告警仍披露／未修复；TFM、许可或图像后端的重大调整另行决策，准入限制不等于依赖修复 | [D10 评估与方案](../validation/d10-imagesharp-security-assessment.md)、[发布说明](../content/releases/0.1.0-preview.10.md)、[依赖声明](../../THIRD-PARTY-NOTICES.md) |
 
 ## 未来议题
