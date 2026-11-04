@@ -31,7 +31,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [015](015-cli-preflight-json.md) | `ofdrw preflight [--json]` | P2 | M | 008 | DONE |
 | [016](016-cli-delete-pages-and-crop.md) | `ofdrw delete-pages` / `ofdrw crop` | P2 | S–M | 015 | DONE |
 | [017](017-cli-attachments.md) | `ofdrw attachments list/extract/remove` | P2 | M | 016 | DONE |
-| [018](018-cli-locate.md) | Read-only `ofdrw locate` | P3 | M | 017 | TODO |
+| [018](018-cli-locate.md) | Read-only `ofdrw locate` | P3 | M | 017 | DONE (SDK throws for unmeasurable sources, e.g. untrusted or name-only fonts, so locate exits 1 there instead of 3) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 

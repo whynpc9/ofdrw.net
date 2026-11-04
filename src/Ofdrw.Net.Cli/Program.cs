@@ -32,7 +32,7 @@ internal static partial class Cli
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
             "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-html" or "ofd-to-image" or "image-to-ofd" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop" or "attachments"))
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop" or "attachments" or "locate"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -56,6 +56,8 @@ internal static partial class Cli
                 return await PreflightAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "attachments")
                 return await AttachmentsAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
+            if (command == "locate")
+                return await LocateAsync(args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command is "watermark" or "split" or "mix" or "clean-signatures")
                 return await DocumentToolsAsync(command, args.Skip(1).ToArray(), cancellationToken).ConfigureAwait(false);
             if (command == "merge")
@@ -720,6 +722,7 @@ internal static partial class Cli
           ofdrw mix <output.ofd> <input1.ofd> 1 <input2.ofd> 2
           ofdrw clean-signatures <input.ofd> <output.ofd>
           ofdrw replace-text <input.ofd> <output.ofd> --find TEXT --replace TEXT --trusted-font SHA256:BYTECOUNT [--pages 1,3-5]
+          ofdrw locate <input.ofd> --find TEXT [--trusted-font SHA256:BYTECOUNT ...] [--pages 1,3-5] [--document 2] [--json]
           ofdrw reorder <input.ofd> <output.ofd> [--document 2] --pages 3,1,2
           ofdrw delete-pages <input.ofd> <output.ofd> --pages 2,4-5 [--document 2]
           ofdrw crop <input.ofd> <output.ofd> --box X,Y,W,H [--pages 1,3] [--document 2]
@@ -743,6 +746,7 @@ internal static partial class Cli
           preflight    Run local archival preflight rules APF-001..006 (not certification).
           extract-text Extract page text, optionally including template text.
           replace-text Replace literal simple text using vetted original Regular fonts and translation-only geometry.
+          locate       Read-only keyword search with page and glyph bounds; preview for replace-text.
           reorder      Reorder every page using a complete 1-based page list.
           delete-pages Remove the listed 1-based pages; at least one page must remain.
           crop         Set the page box (millimeters) of the listed pages, default all; content is not moved.

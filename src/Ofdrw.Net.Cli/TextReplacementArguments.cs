@@ -29,13 +29,7 @@ internal sealed class TextReplacementArguments
                 case "--find": keyword = value; break;
                 case "--replace": replacement = value; break;
                 case "--pages": pages = value; break;
-                case "--trusted-font":
-                    if (trusted.Count == OfdTrustedEmbeddedFontGeometryProvider.MaximumTrustedIdentities)
-                        throw new ArgumentException("Too many trusted original-font identities.");
-                    var colon = value.IndexOf(':');
-                    if (colon != 64 || value.Length > 76 || !int.TryParse(value.AsSpan(colon + 1), NumberStyles.None, CultureInfo.InvariantCulture, out var length))
-                        throw new ArgumentException("Trusted font must be SHA256:BYTECOUNT.");
-                    trusted.Add(new OfdTrustedEmbeddedFontIdentity(value[..colon], length)); break;
+                case "--trusted-font": trusted.Add(ParseTrustedFont(value, trusted.Count)); break;
                 default: throw new ArgumentException("Unknown replacement option: " + option);
             }
         }
@@ -58,7 +52,18 @@ internal sealed class TextReplacementArguments
         return new() { InputPath = input, OutputPath = output, Keyword = keyword, Replacement = replacement,
             Pages = pages is null ? null : ParsePages(pages), TrustedFonts = Array.AsReadOnly(trusted.ToArray()) };
     }
-    private static IReadOnlyList<int> ParsePages(string value)
+    // Shared by replace-text and locate.
+    internal static OfdTrustedEmbeddedFontIdentity ParseTrustedFont(string value, int currentCount)
+    {
+        if (currentCount == OfdTrustedEmbeddedFontGeometryProvider.MaximumTrustedIdentities)
+            throw new ArgumentException("Too many trusted original-font identities.");
+        var colon = value.IndexOf(':');
+        if (colon != 64 || value.Length > 76 || !int.TryParse(value.AsSpan(colon + 1), NumberStyles.None, CultureInfo.InvariantCulture, out var length))
+            throw new ArgumentException("Trusted font must be SHA256:BYTECOUNT.");
+        return new OfdTrustedEmbeddedFontIdentity(value[..colon], length);
+    }
+
+    internal static IReadOnlyList<int> ParsePages(string value)
     {
         if (value.Length == 0 || value.Length > 32 * MaxSelectedPages) throw new ArgumentException("Invalid replacement page selection.");
         var positions = new List<int>(); var seen = new HashSet<int>();

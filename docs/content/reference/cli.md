@@ -35,6 +35,7 @@ ofdrw --help
 | 设置页面框（main，尚未发布） | `ofdrw crop input.ofd cropped.ofd --box 10,20,180,250 --pages 1` |
 | 列出附件（main，尚未发布） | `ofdrw attachments list input.ofd --json` |
 | 按 ID 导出附件（main，尚未发布） | `ofdrw attachments extract input.ofd --id 7 --output invoice.xml` |
+| 只读定位关键字（main，尚未发布） | `ofdrw locate input.ofd --find 旧文本 --trusted-font SHA256:BYTECOUNT --json` |
 | 按 ID 移除附件（main，尚未发布） | `ofdrw attachments remove input.ofd output.ofd --id 7 --physical` |
 | 拆分选页 | `ofdrw split input.ofd selected.ofd --pages 3,1` |
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
@@ -102,6 +103,8 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 | `1` / `130` | 同上表 |
 
 `preflight` 只执行 APF-001..006 本地规则，不是认证。`--json` 时标准输出只有 `ofdrw-cli-preflight/1` JSON（`schema`、`input` 的文件名/字节数/SHA-256、`ruleOutcomes` 和完整 `report`）；`--output` 需配合 `--json` 并原子写入文件。输入超过加载预算时不计算哈希（`sha256` 为 `null`）。`--allow-multiple-documents`、`--allow-encryption` 分别放宽单文档与无加密要求。
+
+`locate` 的退出码（main，尚未发布）：`0` 结果完整且至少一处命中；`2` 结果完整但无命中；`3` 结果不完整；`1` 参数错误或 SDK 无法度量来源（如未信任/未嵌入字体）；`130` 取消。`--json` 时标准输出只有 `ofdrw-cli-locate/1` JSON（`complete`、一基页号的 `hits` 及其 `bounds`/`canReplace`、`diagnostics`）。`locate` 从不写文件，可作为 `replace-text` 的预览。
 
 用于自动接收文档时，应加 `--require-signatures` 并只把 `0` 视为通过，否则被移除签名的文档也会返回 `0`。当前 `main` 的 `--require-signatures` 与退出码 `4` **尚未进入 preview.10 CLI**。
 

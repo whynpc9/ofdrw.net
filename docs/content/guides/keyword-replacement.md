@@ -34,6 +34,16 @@ ofdrw replace-text input.ofd output.ofd \
 
 CLI 不会根据本机同名字体猜测信任身份。调用方应先从来源包和业务字体清单确认实际原字体，再提供哈希与字节数。
 
+### CLI 预览（main，尚未发布）
+
+替换前可用只读的 `locate` 查看会匹配哪些位置，参数与上面的 `--find`、`--trusted-font`、`--pages` 含义相同，且从不写文件：
+
+```sh
+ofdrw locate input.ofd --find "旧文本" --trusted-font SHA256:BYTECOUNT --pages 1,3-5 --json
+```
+
+每个命中给出一基页号、匹配文本、毫米字形边界和 `canReplace`；SDK 无法度量的来源（例如未信任或未嵌入字体）直接报错，而不是返回不完整结果。退出码见 [CLI 参考](https://whynpc9.github.io/ofdrw.net/reference/cli/)。
+
 ## 验证与限制
 
 替换后分别检查：
