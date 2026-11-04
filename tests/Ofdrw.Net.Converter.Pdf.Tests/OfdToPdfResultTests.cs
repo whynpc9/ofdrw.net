@@ -66,6 +66,21 @@ public sealed class OfdToPdfResultTests
     }
 
     [Fact]
+    public async Task SkippedAppearance_OnUnselectedPage_IsNotReported()
+    {
+        var damaged = MutateStamp(await SignedTwoPageSeal(Picture()), stamp => stamp.SetAttributeValue("Boundary", "1e308 1e308 40 20"));
+        var damagedPage = Assert.Single((await Convert(damaged)).Diagnostics).PageIndex!.Value;
+        var otherPage = 1 - damagedPage;
+
+        var other = await Convert(damaged, pages: new[] { otherPage });
+        Assert.Empty(other.Diagnostics);
+        Assert.Equal(1, other.RenderedSignatureAppearances);
+
+        var selected = await Convert(damaged, pages: new[] { damagedPage });
+        Assert.Equal(damagedPage, Assert.Single(selected.Diagnostics).PageIndex);
+    }
+
+    [Fact]
     public async Task InvalidClip_ReportsSkippedAppearance()
     {
         var damaged = MutateStamp(await SignedTwoPageSeal(Picture()), stamp => stamp.SetAttributeValue("Clip", "0 0 999 999"));
@@ -180,12 +195,12 @@ public sealed class OfdToPdfResultTests
     private static string Describe(OfdToPdfConversionResult result) =>
         $"rendered={result.RenderedSignatureAppearances}; " + string.Join(" | ", result.Diagnostics.Select(item => $"{item} page={item.PageIndex}"));
 
-    internal static async Task<OfdToPdfConversionResult> Convert(byte[] ofd, OfdToPdfOptions? options = null)
+    internal static async Task<OfdToPdfConversionResult> Convert(byte[] ofd, OfdToPdfOptions? options = null, IReadOnlyList<int>? pages = null)
     {
         using var input = new MemoryStream(ofd);
         using var pdf = new MemoryStream();
         var converter = options is null ? new OfdToPdfConverter() : new OfdToPdfConverter(options);
-        var result = await converter.ConvertWithResultAsync(input, pdf);
+        var result = await converter.ConvertWithResultAsync(input, pdf, pages);
         Assert.True(pdf.Length > 100);
         return result;
     }

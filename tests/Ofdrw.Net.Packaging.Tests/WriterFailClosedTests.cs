@@ -74,7 +74,11 @@ public sealed class WriterFailClosedTests
             using var stream = entry.Open();
             using var copy = new MemoryStream();
             stream.CopyTo(copy);
-            text.Append(entry.FullName).Append(':').Append(Convert.ToHexString(SHA256.HashData(copy.ToArray()))).Append('\n');
+            // The writer indents XML with Environment.NewLine; compare content independent of the OS.
+            var content = copy.ToArray();
+            if (entry.FullName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                content = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(content).Replace("\r\n", "\n"));
+            text.Append(entry.FullName).Append(':').Append(Convert.ToHexString(SHA256.HashData(content))).Append('\n');
         }
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString())));
     }

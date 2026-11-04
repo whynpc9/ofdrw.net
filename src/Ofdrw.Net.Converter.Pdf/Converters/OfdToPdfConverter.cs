@@ -1095,6 +1095,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
 internal sealed class OfdToPdfRun
 {
     private readonly Dictionary<string, int> _pageIndexes = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _selectedPageIds = new(StringComparer.OrdinalIgnoreCase);
 
     internal List<OfdToPdfDiagnostic> Diagnostics { get; } = new();
     internal IReadOnlyList<int> SourcePages { get; private set; } = Array.Empty<int>();
@@ -1106,12 +1107,16 @@ internal sealed class OfdToPdfRun
         for (var index = 0; index < orderedPages.Count; index++)
             if (!string.IsNullOrWhiteSpace(orderedPages[index].Id) && !_pageIndexes.ContainsKey(orderedPages[index].Id!))
                 _pageIndexes.Add(orderedPages[index].Id!, index);
+        foreach (var index in selected)
+            if (!string.IsNullOrWhiteSpace(orderedPages[index].Id)) _selectedPageIds.Add(orderedPages[index].Id!);
     }
 
     internal void Rendered() => RenderedSignatureAppearances++;
 
     internal void Add(string code, string reason, string? pageRef, string? signatureId)
     {
+        // A stamp on a page that is not being exported is not lost from this output.
+        if (pageRef is not null && _pageIndexes.ContainsKey(pageRef) && !_selectedPageIds.Contains(pageRef)) return;
         int? pageIndex = pageRef is not null && _pageIndexes.TryGetValue(pageRef, out var index) ? index : null;
         var message = code switch
         {
