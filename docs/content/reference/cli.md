@@ -31,6 +31,8 @@ ofdrw --help
 | 检查签名完整性 | `ofdrw verify-signatures -i input.ofd` |
 | 本地归档预检（main，尚未发布） | `ofdrw preflight input.ofd --json --output report.json` |
 | 重排全部页面 | `ofdrw reorder input.ofd reordered.ofd --pages 3,1,2` |
+| 删除页面（main，尚未发布） | `ofdrw delete-pages input.ofd trimmed.ofd --pages 2,4-5` |
+| 设置页面框（main，尚未发布） | `ofdrw crop input.ofd cropped.ofd --box 10,20,180,250 --pages 1` |
 | 拆分选页 | `ofdrw split input.ofd selected.ofd --pages 3,1` |
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
 | 叠加水印 | `ofdrw watermark input.ofd marked.ofd --pages 1,2 --text DRAFT` |

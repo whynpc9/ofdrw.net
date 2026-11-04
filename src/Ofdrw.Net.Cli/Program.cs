@@ -32,7 +32,7 @@ internal static partial class Cli
         var command = args[0].Trim().ToLowerInvariant();
         if (command is not ("convert" or "docx-to-pdf" or "docx-to-ofd" or
             "text-to-ofd" or "pdf-to-ofd" or "ofd-to-pdf" or "ofd-to-svg" or "ofd-to-html" or "ofd-to-image" or "image-to-ofd" or
-            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight"))
+            "extract-text" or "merge" or "reorder" or "verify-signatures" or "watermark" or "split" or "mix" or "clean-signatures" or "replace-text" or "preflight" or "delete-pages" or "crop"))
         {
             Console.Error.WriteLine($"Unknown command: {args[0]}");
             PrintHelp();
@@ -70,6 +70,8 @@ internal static partial class Cli
 
             if (options.RequireSignatures && command != "verify-signatures")
                 throw new ArgumentException("--require-signatures applies only to verify-signatures.");
+            if (options.Box is not null && command != "crop")
+                throw new ArgumentException("--box applies only to crop.");
 
             if (command == "extract-text")
             {
@@ -101,6 +103,9 @@ internal static partial class Cli
             {
                 throw new ArgumentException("Input and output paths are required.");
             }
+
+            if (command == "delete-pages") return await DeletePagesAsync(options, cancellationToken).ConfigureAwait(false);
+            if (command == "crop") return await CropAsync(options, cancellationToken).ConfigureAwait(false);
 
             if (command == "reorder")
             {
@@ -510,6 +515,10 @@ internal static partial class Cli
                 case "--pages":
                     options.Pages = ReadValue(args, ref i, arg);
                     break;
+                case "--box":
+                    if (options.Box is not null) throw new ArgumentException("Duplicate --box.");
+                    options.Box = ReadValue(args, ref i, arg);
+                    break;
                 case "--document":
                     if (options.DocumentIndex.HasValue) throw new ArgumentException("Duplicate --document.");
                     options.DocumentIndex = ParseOneBasedPage(ReadValue(args, ref i, arg));
@@ -710,6 +719,8 @@ internal static partial class Cli
           ofdrw clean-signatures <input.ofd> <output.ofd>
           ofdrw replace-text <input.ofd> <output.ofd> --find TEXT --replace TEXT --trusted-font SHA256:BYTECOUNT [--pages 1,3-5]
           ofdrw reorder <input.ofd> <output.ofd> [--document 2] --pages 3,1,2
+          ofdrw delete-pages <input.ofd> <output.ofd> --pages 2,4-5 [--document 2]
+          ofdrw crop <input.ofd> <output.ofd> --box X,Y,W,H [--pages 1,3] [--document 2]
           ofdrw merge <output.ofd> <input1.ofd> <input2.ofd> [...] [--skip-unsupported]
 
         Commands:
@@ -728,6 +739,8 @@ internal static partial class Cli
           extract-text Extract page text, optionally including template text.
           replace-text Replace literal simple text using vetted original Regular fonts and translation-only geometry.
           reorder      Reorder every page using a complete 1-based page list.
+          delete-pages Remove the listed 1-based pages; at least one page must remain.
+          crop         Set the page box (millimeters) of the listed pages, default all; content is not moved.
           watermark    Add ordinary text/image objects to selected layers (millimeters).
           split        Select distinct pages in 1-based list order into a new OFD.
           mix          Overlay source/page pairs in input order, first page dimensions.
@@ -772,6 +785,7 @@ internal static partial class Cli
         public string? OutputPath { get; set; }
 
         public string? Pages { get; set; }
+        public string? Box { get; set; }
         public int? DocumentIndex { get; set; }
 
         public bool IncludeTemplates { get; set; }
