@@ -75,9 +75,21 @@ internal static class LineBreaker
         for (var index = 1; index < count; index++) result[index] = LineBreakKind.Prohibited;
         result[0] = LineBreakKind.Prohibited; // LB2
         result[count] = LineBreakKind.Mandatory; // LB3
+        // Linear-time lookbehind: for each element, the last element at or before it that is not SP,
+        // not SY/IS, and the length of the regional-indicator run ending there. Every rule that
+        // scans back over SP*, (SY|IS)* or RI runs reads these instead of rescanning the prefix.
+        var count2 = elements.Count;
+        var context = new Lookbehind(new int[count2], new int[count2], new int[count2]);
+        for (var k = 0; k < count2; k++)
+        {
+            var value = elements[k].Class;
+            context.NotSpace[k] = value == LineBreakClass.SP ? k > 0 ? context.NotSpace[k - 1] : -1 : k;
+            context.NotSyIs[k] = value is LineBreakClass.SY or LineBreakClass.IS ? k > 0 ? context.NotSyIs[k - 1] : -1 : k;
+            context.RegionalRun[k] = value == LineBreakClass.RI ? (k > 0 ? context.RegionalRun[k - 1] : 0) + 1 : 0;
+        }
         for (var k = 1; k < elements.Count; k++)
         {
-            var kind = Decide(elements, k, raw);
+            var kind = Decide(elements, k, raw, context);
             result[elements[k].Index] = kind;
         }
         // Absorbed positions remain Prohibited (LB9), except that LB4/LB5 may still
@@ -91,7 +103,16 @@ internal static class LineBreaker
     private static bool IsAksara(Element element) =>
         element.Class is LineBreakClass.AK or LineBreakClass.AS || element.CodePoint == 0x25CC;
 
-    private static LineBreakKind Decide(List<Element> e, int k, LineBreakClass[] raw)
+    private sealed class Lookbehind
+    {
+        internal Lookbehind(int[] notSpace, int[] notSyIs, int[] regionalRun)
+        { NotSpace = notSpace; NotSyIs = notSyIs; RegionalRun = regionalRun; }
+        internal int[] NotSpace { get; }
+        internal int[] NotSyIs { get; }
+        internal int[] RegionalRun { get; }
+    }
+
+    private static LineBreakKind Decide(List<Element> e, int k, LineBreakClass[] raw, Lookbehind context)
     {
         var left = e[k - 1];
         var right = e[k];
@@ -109,8 +130,7 @@ internal static class LineBreaker
         if (r is LineBreakClass.SP or LineBreakClass.ZW) return no; // LB7
         // LB8: ZW SP* ÷
         {
-            var j = k - 1;
-            while (j >= 0 && e[j].Class == LineBreakClass.SP) j--;
+            var j = context.NotSpace[k - 1];
             if (j >= 0 && e[j].Class == LineBreakClass.ZW) return yes;
         }
         if (raw[right.Index - 1] == LineBreakClass.ZWJ) return no; // LB8a
@@ -121,8 +141,7 @@ internal static class LineBreaker
                 LineBreakClass.HH)) return no; // LB12a
         if (r is LineBreakClass.CL or LineBreakClass.CP or LineBreakClass.EX or LineBreakClass.SY) return no; // LB13
         // LB14: OP SP* ×
-        var beforeSpaces = k - 1;
-        while (beforeSpaces >= 0 && e[beforeSpaces].Class == LineBreakClass.SP) beforeSpaces--;
+        var beforeSpaces = context.NotSpace[k - 1];
         if (beforeSpaces >= 0 && e[beforeSpaces].Class == LineBreakClass.OP) return no;
         // LB15a: (sot | BK | CR | LF | NL | OP | QU | GL | SP | ZW) [\p{Pi}&QU] SP* ×
         if (beforeSpaces >= 0 && e[beforeSpaces].Class == LineBreakClass.QU &&
@@ -193,7 +212,7 @@ internal static class LineBreaker
         {
             var j = k - 1;
             if (j >= 0 && e[j].Class is LineBreakClass.CL or LineBreakClass.CP) j--;
-            while (j >= 0 && e[j].Class is LineBreakClass.SY or LineBreakClass.IS) j--;
+            if (j >= 0) j = context.NotSyIs[j];
             if (j >= 0 && e[j].Class == LineBreakClass.NU) return no;
         }
         if (l is LineBreakClass.PO or LineBreakClass.PR)
@@ -206,7 +225,7 @@ internal static class LineBreaker
         if (r == LineBreakClass.NU)
         {
             var j = k - 1;
-            while (j >= 0 && e[j].Class is LineBreakClass.SY or LineBreakClass.IS) j--;
+            j = context.NotSyIs[j];
             if (j >= 0 && e[j].Class == LineBreakClass.NU) return no;
         }
         // LB26
@@ -236,9 +255,7 @@ internal static class LineBreaker
         // LB30a
         if (l == LineBreakClass.RI && r == LineBreakClass.RI)
         {
-            var regional = 0;
-            for (var j = k - 1; j >= 0 && e[j].Class == LineBreakClass.RI; j--) regional++;
-            if (regional % 2 == 1) return no;
+            if (context.RegionalRun[k - 1] % 2 == 1) return no;
         }
         // LB30b
         if (r == LineBreakClass.EM && (l == LineBreakClass.EB ||

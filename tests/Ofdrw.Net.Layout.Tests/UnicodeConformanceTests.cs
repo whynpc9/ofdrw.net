@@ -107,6 +107,22 @@ public sealed class UnicodeConformanceTests(ITestOutputHelper output)
         Report("BidiCharacterTest", cases, failures, messages);
     }
 
+    [Fact]
+    public void LongRegionalIndicatorAndSpaceRunsAreAnalyzedInLinearTime()
+    {
+        // 100,000 regional indicators: a quadratic rescan would take tens of billions of steps.
+        var flags = string.Concat(Enumerable.Repeat("\U0001F1E8", 100_000));
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var breaks = UnicodeTextAnalysis.LineBreakOpportunities(flags);
+        // Pairs never split: a break only before every even-numbered indicator, plus the end.
+        Assert.Equal(50_000, breaks.Count);
+        Assert.All(breaks, value => Assert.Equal(0, value.Offset % 4));
+        var spaces = "(" + new string(' ', 200_000) + "x";
+        var spaceBreaks = UnicodeTextAnalysis.LineBreakOpportunities(spaces);
+        Assert.Equal(spaces.Length, Assert.Single(spaceBreaks).Offset); // LB14: OP SP* ×
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10), watch.Elapsed.ToString());
+    }
+
     private static (int[] CodePoints, int[] Boundaries) ParseBoundaryLine(string line)
     {
         var content = line.Split('#')[0];

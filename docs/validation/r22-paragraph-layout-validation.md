@@ -47,7 +47,7 @@ control showing the same map without the writer marker stays fail-closed; PDF an
 outline path per visible glyph and the logical text present; rejection of stroke paint and of a frame
 wider than the page.
 
-Regression suites run on this branch: Layout 388/388, Core 119/119, Packaging 1,683/1,683,
+Regression suites run on this branch: Layout 389/389, Core 119/119, Packaging 1,683/1,683,
 Converter.Pdf 1,176 passed + 17 skipped, Converter.Pdf.Vector 474/474, Graphics.SkiaSharp 68/68,
 Cli 272 + 1 skipped, Signatures 112/112, Crypto.Password 107/107, Converter.Docx 360 passed,
 1 skipped, 1 failed.
