@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Signatures.Crypto;
+using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Signatures.Verification;
 
@@ -65,7 +66,7 @@ public sealed class OfdSignatureVerifier
         XDocument ofd;
         try
         {
-            ofd = XDocument.Parse(
+            ofd = OfdXmlEnvelope.ParseDocument(
                 archive.ReadUtf8Text("OFD.xml"),
                 LoadOptions.PreserveWhitespace);
         }
@@ -146,7 +147,7 @@ public sealed class OfdSignatureVerifier
         XDocument list;
         try
         {
-            list = XDocument.Parse(
+            list = OfdXmlEnvelope.ParseDocument(
                 System.Text.Encoding.UTF8.GetString(listBytes).TrimStart('\uFEFF'),
                 LoadOptions.PreserveWhitespace);
         }
@@ -251,7 +252,7 @@ public sealed class OfdSignatureVerifier
         XDocument signature;
         try
         {
-            signature = XDocument.Parse(
+            signature = OfdXmlEnvelope.ParseDocument(
                 System.Text.Encoding.UTF8.GetString(signatureBytes).TrimStart('\uFEFF'),
                 LoadOptions.PreserveWhitespace);
         }

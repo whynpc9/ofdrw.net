@@ -10,7 +10,7 @@ internal static class EmbeddedFontCoverage
     internal static bool HasExplicitGlyphReferences(string? sourceXml)
     {
         if (string.IsNullOrWhiteSpace(sourceXml)) return false;
-        try { return XElement.Parse(sourceXml!).DescendantsAndSelf().Any(node => node.Name.LocalName == "CGTransform"); }
+        try { return OfdXmlEnvelope.Parse(sourceXml!).DescendantsAndSelf().Any(node => node.Name.LocalName == "CGTransform"); }
         catch (System.Xml.XmlException exception)
         {
             throw new System.NotSupportedException("Malformed SourceXml cannot safely preserve glyph references.", exception);

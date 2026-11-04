@@ -10,6 +10,7 @@ using System.Xml;
 using System.Xml.Linq;
 using Ofdrw.Net.Packaging.Archive;
 using Ofdrw.Net.Signatures.Crypto;
+using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Signatures.Signing;
 
@@ -438,7 +439,7 @@ public sealed partial class OfdSignatureService
     {
         try
         {
-            return XDocument.Parse(
+            return OfdXmlEnvelope.ParseDocument(
                 Encoding.UTF8.GetString(bytes).TrimStart('\uFEFF'),
                 LoadOptions.PreserveWhitespace);
         }

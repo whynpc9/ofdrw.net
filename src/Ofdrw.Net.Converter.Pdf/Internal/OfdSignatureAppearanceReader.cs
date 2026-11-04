@@ -460,7 +460,7 @@ internal static class OfdSignatureAppearanceReader
 
     private static XDocument ParseXml(byte[] data)
     {
-        return XDocument.Parse(
+        return OfdXmlEnvelope.ParseDocument(
             Encoding.UTF8.GetString(data).TrimStart('\uFEFF'),
             LoadOptions.PreserveWhitespace);
     }

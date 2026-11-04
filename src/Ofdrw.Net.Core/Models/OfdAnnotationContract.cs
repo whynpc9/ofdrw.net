@@ -70,7 +70,7 @@ internal static class OfdAnnotationContract
 
     private static IEnumerable<XElement> RetainedAttachmentActions(string sourceXml)
     {
-        var annotation = XElement.Parse(sourceXml);
+        var annotation = OfdXmlEnvelope.Parse(sourceXml);
         var ns = annotation.Name.Namespace;
         return annotation.Elements(ns + "Appearance").Elements(ns + "PathObject")
             .Elements(ns + "Actions").Elements(ns + "Action").Elements(ns + "GotoA");

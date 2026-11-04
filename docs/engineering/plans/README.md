@@ -20,7 +20,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [004](004-native-docx-justify.md) | Justify wrapped lines in Native OFD | P2 | M | 003 | DONE (gap rule refined: spaces + after CJK chars; leading whitespace and single-word lines not stretched) |
 | [005](005-ofd-to-pdf-result-and-seal-diagnostics.md) | OFD→PDF result/diagnostics channel; no silent seal loss | P1 | M | (after 001) | DONE |
 | [006](006-private-temp-files.md) | Owner-only temp directories for document copies | P2 | M | — | DONE |
-| [007](007-xml-parse-hardening.md) | Hardened XML parsing everywhere package content is parsed | P2 | S | 005 | TODO |
+| [007](007-xml-parse-hardening.md) | Hardened XML parsing everywhere package content is parsed | P2 | S | 005 | DONE (also hardened OfdSignatureVerifier list/signature parses) |
 | [008](008-verify-signatures-exit-codes.md) | `verify-signatures --require-signatures` + documented exit codes | P2 | S | 005 | TODO |
 | [009](009-reader-input-hygiene.md) | Reject non-finite numbers; normalize reader exceptions | P3 | S | 001 | TODO |
 | [010](010-e2e-harness-build-gate.md) | Compile every e2e harness in CI | P2 | M | — | TODO |

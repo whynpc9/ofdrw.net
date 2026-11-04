@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Linq;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Constants;
@@ -84,6 +85,10 @@ internal static class OfdGraphicXmlContract
             rawEnvelope.LocalName is "Page" or "Content" or "Layer" or "PageBlock") return true;
         var xml = element switch { OfdTextElement text => text.SourceXml, OfdImageElement image => image.SourceXml, OfdPathElement path => path.SourceXml, OfdCompositeElement composite => composite.SourceXml, OfdRawElement raw => raw.Xml, _ => null };
         if (string.IsNullOrWhiteSpace(xml)) return true;
-        return XElement.Parse(xml!).Attribute("Visible")?.Value.Trim().ToLowerInvariant() is not ("false" or "0");
+        // Called per element per render pass; source strings are immutable, so cache by instance.
+        return (bool)VisibleCache.GetValue(xml!, static source =>
+            OfdXmlEnvelope.Parse(source).Attribute("Visible")?.Value.Trim().ToLowerInvariant() is not ("false" or "0"));
     }
+
+    private static readonly ConditionalWeakTable<string, object> VisibleCache = new();
 }

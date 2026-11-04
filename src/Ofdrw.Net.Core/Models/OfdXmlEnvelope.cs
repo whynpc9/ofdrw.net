@@ -96,6 +96,19 @@ internal static class OfdXmlEnvelope
         return XElement.Load(reader, LoadOptions.PreserveWhitespace);
     }
 
+    // Document-level twin of Parse for untrusted package parts. Whitespace follows
+    // XDocument.Parse(string, options) so call sites keep their current trees.
+    internal static XDocument ParseDocument(string xml, LoadOptions options = LoadOptions.None)
+    {
+        using var reader = XmlReader.Create(new StringReader(xml), new XmlReaderSettings
+        {
+            DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null,
+            MaxCharactersInDocument = new OfdModelLimits().MaxSourceXmlBytes,
+            IgnoreWhitespace = (options & LoadOptions.PreserveWhitespace) == 0
+        });
+        return XDocument.Load(reader, options);
+    }
+
     internal static XElement Template(OfdNavigationSource? source, string localName, XNamespace ns)
     {
         if (source?.Xml is null) return new XElement(ns + localName);

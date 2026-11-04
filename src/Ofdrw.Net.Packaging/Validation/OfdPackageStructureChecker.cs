@@ -4,6 +4,7 @@ using System.Linq;
 using System.Xml.Linq;
 using Ofdrw.Net.Core.Constants;
 using Ofdrw.Net.Packaging.Archive;
+using Ofdrw.Net.Core.Models;
 
 namespace Ofdrw.Net.Packaging.Validation;
 
@@ -32,7 +33,7 @@ public static class OfdPackageStructureChecker
         XDocument ofdXml;
         try
         {
-            ofdXml = XDocument.Parse(archive.ReadUtf8Text(OfdConstants.OfdRootFile));
+            ofdXml = OfdXmlEnvelope.ParseDocument(archive.ReadUtf8Text(OfdConstants.OfdRootFile));
         }
         catch (Exception ex)
         {
@@ -49,6 +50,8 @@ public static class OfdPackageStructureChecker
             .Where(x => x.Name.LocalName == "DocRoot")
             .Select(x => Normalize(x.Value))
             .Where(x => !string.IsNullOrWhiteSpace(x))
+            // The archive resolves names case-insensitively; validate each document once.
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         if (docRoots.Count == 0)
@@ -89,7 +92,7 @@ public static class OfdPackageStructureChecker
         XDocument documentXml;
         try
         {
-            documentXml = XDocument.Parse(archive.ReadUtf8Text(docRoot));
+            documentXml = OfdXmlEnvelope.ParseDocument(archive.ReadUtf8Text(docRoot));
         }
         catch (Exception ex)
         {
