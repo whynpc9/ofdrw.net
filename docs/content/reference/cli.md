@@ -72,6 +72,18 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 | `1` | 参数、输入、转换或输出失败 |
 | `130` | 用户取消，例如 Ctrl-C |
 
+`verify-signatures` 另有专用退出码：
+
+| 退出码 | 含义 |
+| --- | --- |
+| `0` | 完整验证通过；或未声明签名且未指定 `--require-signatures` |
+| `2` | 受保护条目摘要完整，但签名值算法没有已注册的 verifier |
+| `3` | 签名无效或验证不完整 |
+| `4` | 指定 `--require-signatures` 时文档未声明任何签名 |
+| `1` / `130` | 同上表 |
+
+用于自动接收文档时，应加 `--require-signatures` 并只把 `0` 视为通过，否则被移除签名的文档也会返回 `0`。当前 `main` 的 `--require-signatures` 与退出码 `4` **尚未进入 preview.10 CLI**。
+
 文件型命令先验证参数，再在目标目录写临时文件，成功关闭后提交；提交前失败或取消会保留原输出。格式转换的输入与输出必须是不同路径，页重排支持原位更新。
 
 失败时保留完整命令、退出码和标准错误诊断。各格式的流写入、临时文件和资源预算边界见[转换约定](https://whynpc9.github.io/ofdrw.net/reference/conversion-contracts/)。

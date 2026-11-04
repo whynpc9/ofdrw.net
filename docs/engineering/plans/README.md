@@ -21,7 +21,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [005](005-ofd-to-pdf-result-and-seal-diagnostics.md) | OFD→PDF result/diagnostics channel; no silent seal loss | P1 | M | (after 001) | DONE |
 | [006](006-private-temp-files.md) | Owner-only temp directories for document copies | P2 | M | — | DONE |
 | [007](007-xml-parse-hardening.md) | Hardened XML parsing everywhere package content is parsed | P2 | S | 005 | DONE (also hardened OfdSignatureVerifier list/signature parses) |
-| [008](008-verify-signatures-exit-codes.md) | `verify-signatures --require-signatures` + documented exit codes | P2 | S | 005 | TODO |
+| [008](008-verify-signatures-exit-codes.md) | `verify-signatures --require-signatures` + documented exit codes | P2 | S | 005 | DONE |
 | [009](009-reader-input-hygiene.md) | Reject non-finite numbers; normalize reader exceptions | P3 | S | 001 | TODO |
 | [010](010-e2e-harness-build-gate.md) | Compile every e2e harness in CI | P2 | M | — | TODO |
 | [011](011-no-silent-test-returns.md) | Visible skips instead of empty-passing tests | P3 | S | — | TODO |

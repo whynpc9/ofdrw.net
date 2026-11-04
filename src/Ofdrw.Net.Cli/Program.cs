@@ -66,6 +66,9 @@ internal static partial class Cli
                 return 0;
             }
 
+            if (options.RequireSignatures && command != "verify-signatures")
+                throw new ArgumentException("--require-signatures applies only to verify-signatures.");
+
             if (command == "extract-text")
             {
                 if (string.IsNullOrWhiteSpace(options.InputPath))
@@ -88,7 +91,7 @@ internal static partial class Cli
                     throw new ArgumentException("An input OFD path is required.");
                 }
 
-                return await VerifySignaturesAsync(options.InputPath, cancellationToken)
+                return await VerifySignaturesAsync(options.InputPath, options.RequireSignatures, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -295,7 +298,7 @@ internal static partial class Cli
         await output.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<int> VerifySignaturesAsync(string inputPath, CancellationToken cancellationToken)
+    private static async Task<int> VerifySignaturesAsync(string inputPath, bool requireSignatures, CancellationToken cancellationToken)
     {
         if (!File.Exists(inputPath))
         {
@@ -330,6 +333,11 @@ internal static partial class Cli
 
         if (!report.HasSignatureDeclarations && report.Issues.All(issue => issue == "The document does not declare a signatures list."))
         {
+            if (requireSignatures)
+            {
+                Console.WriteLine("Signature verification: no signature declarations (required).");
+                return 4;
+            }
             Console.WriteLine("Signature verification: no signature declarations.");
             return 0;
         }
@@ -506,6 +514,9 @@ internal static partial class Cli
                     break;
                 case "--include-templates":
                     options.IncludeTemplates = true;
+                    break;
+                case "--require-signatures":
+                    options.RequireSignatures = true;
                     break;
                 case "--libreoffice":
                     options.LibreOfficePath = ReadValue(args, ref i, arg);
@@ -687,7 +698,7 @@ internal static partial class Cli
           ofdrw ofd-to-html --input <input.ofd> --output <output.html> [--document 2] [--pages 3,1,3] [--title text] [--max-pages 200] [--max-output-bytes N] [--max-page-bytes N]
           ofdrw ofd-to-image <input.ofd> <output.png> [--document 2] [--pages 1] [--ppm 5.669291] [--format png|jpeg]
           ofdrw image-to-ofd <input.png> [input2.jpg ...] --output <output.ofd> [--ppm 5.669291] [--page-width 210 --page-height 297]
-          ofdrw verify-signatures --input <input.ofd>
+          ofdrw verify-signatures --input <input.ofd> [--require-signatures]
           ofdrw extract-text <input.ofd> [output.txt] [--include-templates]
           ofdrw watermark <input.ofd> <output.ofd> [--document 2] --pages 1,2 --text DRAFT
           ofdrw watermark <input.ofd> <output.ofd> --image mark.png --layer-type Foreground
@@ -738,6 +749,7 @@ internal static partial class Cli
           --max-pdf-bytes, --max-signature-appearances ofd-to-image: PDF bytes / selected stamp count budgets.
           --max-total-input-bytes, --max-pages, --max-entries image-to-ofd: cumulative input/page/entry budgets.
           --include-templates Include template text during extraction.
+          --require-signatures verify-signatures: treat a document without signature declarations as a failure (exit 4).
           --skip-unsupported  Drop unsupported raw objects during merge.
           --docx-engine      DOCX renderer: auto, word (macOS), libreoffice, or built-in.
           --docx-ofd-mode    DOCX to OFD mode: native (default, no PDF) or dual-layer.
@@ -759,6 +771,7 @@ internal static partial class Cli
         public int? DocumentIndex { get; set; }
 
         public bool IncludeTemplates { get; set; }
+        public bool RequireSignatures { get; set; }
 
         public string? LibreOfficePath { get; set; }
 
