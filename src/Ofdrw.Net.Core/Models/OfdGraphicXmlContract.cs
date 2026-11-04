@@ -43,6 +43,7 @@ internal static class OfdGraphicXmlContract
         if (attribute.IsNamespaceDeclaration) return true;
         var parent = attribute.Parent!.Name.LocalName;
         if (parent == "TextObject" && attribute.Name == OfdTextEmphasis.FauxItalicFactor) return true;
+        if (parent == "TextObject" && attribute.Name == OfdTextEmphasis.ClusterMapV1) return attribute.Value == "true";
         if (parent == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfInterpolateV1)
             return OfdImageRenderingHints.IsCanonicalValue(attribute.Value);
         if (parent == "ImageObject" && attribute.Name == OfdImageRenderingHints.PdfSourceCropV1)

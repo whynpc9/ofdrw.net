@@ -112,10 +112,10 @@ internal sealed class OfdExplicitGlyphRun
         {
             return ReadProfiles(text, resource, cmapCache, parseBudget, strategy);
         }
-        // Historical profiles stay authoritative for everything they accept. Only an input they
-        // reject is reconsidered, and only as a complete, explicit cluster map that needs no
-        // cmap inference (one TextCode, every code unit in exactly one ascending CGTransform,
-        // an explicit origin for every glyph slot).
+        // Historical profiles stay authoritative for everything they accept. Only a TextObject
+        // carrying the writer-owned ClusterMapV1 marker that they reject is reconsidered, and only
+        // as a complete, explicit cluster map needing no cmap inference (one TextCode, every code
+        // unit in exactly one ascending CGTransform, an explicit origin for every glyph slot).
         catch (NotSupportedException) when (ReadClusterMap(text, parseBudget) is { } mapped)
         {
             return mapped;
@@ -129,7 +129,8 @@ internal sealed class OfdExplicitGlyphRun
             if (string.IsNullOrWhiteSpace(text.SourceXml) || text.Runs.Count != 1) return null;
             var root = OfdXmlEnvelope.Parse(text.SourceXml!);
             var ns = root.Name.Namespace;
-            if (root.Name.LocalName != "TextObject") return null;
+            if (root.Name.LocalName != "TextObject" || root.Attribute(OfdTextEmphasis.ClusterMapV1)?.Value != "true")
+                return null;
             var children = root.Elements().Where(node => node.Name.LocalName is "CGTransform" or "TextCode").ToArray();
             if (children.Length < 2 || children[children.Length - 1].Name != ns + "TextCode" ||
                 children.Take(children.Length - 1).Any(node => node.Name != ns + "CGTransform") ||

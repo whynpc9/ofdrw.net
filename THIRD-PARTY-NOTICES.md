@@ -89,6 +89,10 @@ font must be accompanied by this license if redistributed.
 The compiled font subset bidi profile derives factual scalar ranges from the
 Unicode 17.0.0 Character Database (DerivedBidiClass.txt), licensed under
 Unicode-3.0. The source URL/SHA-256 are recorded in UnicodeFontSubsetProfile.cs;
+the paragraph layout tables in `Ofdrw.Net.Layout` (`UnicodeData.g.cs`) are also
+derived from UCD 17.0.0 files listed with SHA-256 in
+`scripts/unicode/ucd-17.0.0-manifest.json`, and the conformance tests use the
+unmodified UCD test files;
 `docs/licenses/UNICODE-LICENSE.txt` accompanies every NuGet artifact.
 
 

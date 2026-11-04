@@ -93,6 +93,15 @@ public sealed class ParagraphLayoutOfdTests
                 .SelectMany(group => group).Select(glyph => (int)glyph.GlyphId);
             Assert.Equal(expected, projected);
         }
+        // Negative control: the same complete map without the writer-owned marker is a foreign
+        // CGTransform and stays on the historical fail-closed profiles.
+        var arabic = texts.First(text => text.Text.Contains(' ') && text.Text.Any(value => value is >= '\u0600' and <= '\u06ff'));
+        var foreign = new OfdTextElement { Text = arabic.Text, FontResourceId = arabic.FontResourceId,
+            SourceXml = arabic.SourceXml!.Replace("ClusterMapV1=\"true\"", "ClusterMapV1=\"false\"") };
+        foreach (var run in arabic.Runs) foreign.Runs.Add(run);
+        Assert.NotEqual(arabic.SourceXml, foreign.SourceXml);
+        Assert.Throws<NotSupportedException>(() => OfdExplicitGlyphRunProbe.GlyphIds(foreign,
+            fonts.Single(font => font.Id == arabic.FontResourceId)));
         // Subset embedding keeps the original GIDs.
         Assert.All(fonts, font => Assert.True(font.Data!.Length > 0));
     }

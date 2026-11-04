@@ -1211,6 +1211,7 @@ public sealed partial class OfdPackageWriter
             sourceCode.SetAttributeValue(XNamespace.Xml + "space", "preserve");
         sourceCode.Value = OfdTextRenderProjection.EncodeLiteral(run.Text, ids.Material, ids.Token);
         foreach (var transform in transforms) sourceCode.AddBeforeSelf(transform);
+        textObject.SetAttributeValue(OfdTextEmphasis.ClusterMapV1, "true");
     }
 
     /// <summary>

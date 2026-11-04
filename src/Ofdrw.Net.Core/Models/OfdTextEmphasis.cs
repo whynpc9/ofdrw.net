@@ -9,6 +9,10 @@ namespace Ofdrw.Net.Core.Models;
 internal static class OfdTextEmphasis
 {
     internal static readonly XName FauxItalicFactor = XName.Get("FauxItalicMatrixV1", "https://ofdrw.net/style-hints");
+    // Writer-owned marker of a final-layout TextObject whose CGTransforms are a complete, logical-order
+    // map of shaper clusters with explicit glyph-slot origins. Foreign CGTransforms without it keep
+    // the historical fail-closed profiles.
+    internal static readonly XName ClusterMapV1 = XName.Get("ClusterMapV1", "https://ofdrw.net/layout-hints");
 
     internal static (double[] Matrix, double[] Factor) ComposeNameOnlyItalic(double[] matrix, double writtenSize)
     {
