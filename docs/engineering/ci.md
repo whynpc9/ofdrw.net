@@ -27,6 +27,10 @@ The platform matrix runs independently. `CI complete` succeeds only when every s
 
 The shell script's default build-and-consume behavior remains available for standalone and SES runs. `--consume-only` supports existing release feeds, while `--pack-only --no-build` requires a caller-provided Release build stamped with the requested version. The package validator checks package metadata, dependency versions, payload requirements, and manifest hashes.
 
+## Build-only e2e harness gate
+
+Harnesses that back recorded acceptance evidence but are not built by any other CI step are compiled on every run; they are not executed. `build-test` builds the source-referenced harnesses (`Graphics.R09.E2E`, `Signatures.Appearance.Visual.E2E`, `TypedObjects.E2E`, `Signatures.Scope.E2E`) right after the API-documentation build. The Linux package job runs `scripts/build-e2e-harnesses.sh VERSION PACKAGES_DIR` after the candidate consumer: it restores the package-referenced harnesses (`Benchmarks`, `Packaging.Preflight.E2E`, `Converter.Svg.Html.E2E`, `Signatures.Appearance.E2E`) against the exact candidate with an isolated package cache and source mapping, building copies under the ignored `artifacts/` directory so `e2e/` and its evidence-pinned default versions stay untouched. A harness whose `Ofdrw.Net.*` packages are absent from the candidate is reported as `SKIP` (currently `Signatures.Appearance.E2E`, which needs `Signatures.SesInterop`). To gate a new harness, add it to the source loop in `ci.yml` if it uses ProjectReference, or to `HARNESSES` in the script if it only consumes packages.
+
 ## 2026-11-01 duplicate-work reduction
 
 Baseline: `b02162bef61abc17761349d891237fc2518d3989`. The latest 100 workflow records span 2026-10-30 01:11 to 2026-11-01 20:33 Asia/Shanghai: CI has 39 successes, 8 failures and 3 cancellations; SES has 49 successes and 1 cancellation. Step timings were collected for the latest 15 CI runs (2026-11-01 09:54–20:33), with medians below computed from the 14 successful runs. Failed/cancelled runs are not counted as performance wins.

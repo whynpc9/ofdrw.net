@@ -90,6 +90,12 @@ jobs:
       - name: Build and reject new undocumented public API
         run: python3 scripts/check-public-api-docs.py --package-version ${{ env.OFDRW_CI_PACKAGE_VERSION }}
 
+      - name: Compile source-referenced e2e harnesses
+        run: |
+          for p in Graphics.R09.E2E Signatures.Appearance.Visual.E2E TypedObjects.E2E Signatures.Scope.E2E; do
+            dotnet build "e2e/Ofdrw.Net.$p/Ofdrw.Net.$p.csproj" -c Release --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+          done
+
       - name: Retain bounded allocation-counter diagnostics
         run: python3 scripts/run-audit025-diagnostic.py
 
@@ -338,6 +344,8 @@ jobs:
 
       - name: Consume the exact candidate packages on Linux
         run: ./scripts/run-converter-package-e2e.sh ${{ env.OFDRW_CI_PACKAGE_VERSION }} --consume-only --packages-dir artifacts/candidate-packages
+      - name: Compile package-referenced e2e harnesses against the candidate
+        run: ./scripts/build-e2e-harnesses.sh ${{ env.OFDRW_CI_PACKAGE_VERSION }} artifacts/candidate-packages
       - uses: ./.github/actions/r22-readers
       - name: Verify R22 original glyphs and independent physical word bounds on Linux
         run: '"$OFDRW_R22_PYTHON" scripts/validation/r22-mixed/check-export-batch.py artifacts/package-e2e/${{ env.OFDRW_CI_PACKAGE_VERSION }}/output/text-prelayout --output artifacts/package-e2e/${{ env.OFDRW_CI_PACKAGE_VERSION }}/output/r22-independent'

@@ -23,7 +23,7 @@ Repository rules every plan inherits (from `AGENTS.md`):
 | [007](007-xml-parse-hardening.md) | Hardened XML parsing everywhere package content is parsed | P2 | S | 005 | DONE (also hardened OfdSignatureVerifier list/signature parses) |
 | [008](008-verify-signatures-exit-codes.md) | `verify-signatures --require-signatures` + documented exit codes | P2 | S | 005 | DONE |
 | [009](009-reader-input-hygiene.md) | Reject non-finite numbers; normalize reader exceptions | P3 | S | 001 | DONE (TextCode X/Y keep non-finite values per the existing R01 render-rejection contract) |
-| [010](010-e2e-harness-build-gate.md) | Compile every e2e harness in CI | P2 | M | — | TODO |
+| [010](010-e2e-harness-build-gate.md) | Compile every e2e harness in CI | P2 | M | — | DONE (AttachmentCleanup.E2E is already built by run-converter-package-e2e.sh; Signatures.Appearance.E2E skips without SesInterop) |
 | [011](011-no-silent-test-returns.md) | Visible skips instead of empty-passing tests | P3 | S | — | TODO |
 | [012](012-writer-no-partial-zip.md) | Fail closed on interrupted OFD writes | P3 | S | — | TODO |
 | [013](013-nuget-vulnerability-gate.md) | CI gate for new NuGet advisories (D10 allowlisted) | P2 | S | — | TODO |
