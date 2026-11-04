@@ -536,12 +536,18 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private IReadOnlyList<FlowLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber, int totalPages, int sectionPages)
     {
         var inlines = new List<FlowInline>();
-        FlowTextStyle Style(BuiltInTextFormat format) => new()
+        FlowTextStyle Style(BuiltInTextFormat format)
         {
-            FontFamily = NormalizeFontFamily(format.FontFamily),
-            FontSizeMillimeters = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
-            Bold = format.Bold, Italic = format.Italic, Source = format
-        };
+            var size = PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints);
+            return new()
+            {
+                FontFamily = NormalizeFontFamily(format.FontFamily),
+                FontSizeMillimeters = size,
+                Bold = format.Bold, Italic = format.Italic, Source = format,
+                // Same geometry as FlowDocument underlines.
+                Underline = format.Underline, UnderlineOffsetMillimeters = size * 0.1d, UnderlineWidthMillimeters = size * 0.06d
+            };
+        }
         var fallbackFormat = paragraph.Inlines.OfType<BuiltInTextModel>().FirstOrDefault()?.Format ?? new BuiltInTextFormat();
         var fallback = Style(fallbackFormat);
         void Add(string value, BuiltInTextFormat format) =>
@@ -621,6 +627,20 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             text.Runs.Add(new OfdTextRun { Text = text.Text, YMillimeters = baseline,
                 DeltaX = group.Count > 1 ? string.Join(" ", group.Take(group.Count - 1).Select(g => g.Width.ToString("0.######", CultureInfo.InvariantCulture))) : null });
             page.Elements.Add(text);
+            // Zero-width separators at automatic wraps are already excluded from groupWidth.
+            if (format.Underline && groupWidth > 0)
+            {
+                var style = line.Glyphs[start].Style;
+                var underlineY = baseline + style.UnderlineOffsetMillimeters;
+                page.Elements.Add(new OfdPathElement
+                {
+                    LayerType = "Body", XMillimeters = x, YMillimeters = top,
+                    WidthMillimeters = groupWidth, HeightMillimeters = line.Height,
+                    Stroke = true, Fill = false, LineWidthMillimeters = style.UnderlineWidthMillimeters,
+                    StrokeColor = ParseColor(format.ColorHex),
+                    AbbreviatedData = FormattableString.Invariant($"M 0 {underlineY:0.######} L {groupWidth:0.######} {underlineY:0.######}")
+                });
+            }
             x += groupWidth;
         }
     }
