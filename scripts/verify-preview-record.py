@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail a tag release without a candidate-bound human Preview acceptance record."""
+"""Fail a tag release without a candidate-bound Preview acceptance record."""
 import hashlib
 import json
 from pathlib import Path
@@ -8,7 +8,9 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-RECORD = ROOT / 'docs' / 'validation' / 'releases' / 'preview10-acceptance.json'
+RECORD_DIRECTORY = Path('docs/validation/releases')
+LEGACY_VERSION = '0.1.0-preview.10'
+PACKAGE_VERSION = re.compile(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?')
 LFS_POINTER = re.compile(rb'version https://git-lfs.github.com/spec/v1\noid sha256:([0-9a-f]{64})\nsize ([0-9]+)\n?')
 
 
@@ -67,7 +69,15 @@ def lfs_content_hash(path, identity):
     return hashlib.sha256(canonical).digest()
 
 
-def source_fingerprint():
+def record_path(package_version):
+    if not PACKAGE_VERSION.fullmatch(package_version or ''):
+        raise ValueError('Pass a valid release package version.')
+    name = 'preview10-acceptance.json' if package_version == LEGACY_VERSION else f'{package_version}-acceptance.json'
+    return RECORD_DIRECTORY / name
+
+
+def source_fingerprint(package_version=LEGACY_VERSION):
+    candidate_record = record_path(package_version).as_posix()
     entries = {}
     for row in git('ls-files', '--stage', '-z').split(b'\0'):
         if not row:
@@ -81,7 +91,7 @@ def source_fingerprint():
     digest = hashlib.sha256()
     for raw in sorted(entries):
         name = raw.decode()
-        if name == 'docs/validation/releases/preview10-acceptance.json':
+        if name == candidate_record:
             continue
         path = ROOT / name
         digest.update(raw + b'\0')
@@ -93,9 +103,9 @@ def source_fingerprint():
 def verify(data, package_version):
     if data.get('status') != 'accepted':
         raise ValueError('Preview status is not accepted.')
-    if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', package_version or '') or data.get('package_version') != package_version:
+    if not PACKAGE_VERSION.fullmatch(package_version or '') or data.get('package_version') != package_version:
         raise ValueError('Preview record does not match the release package version.')
-    if data.get('source_fingerprint') != source_fingerprint():
+    if data.get('source_fingerprint') != source_fingerprint(package_version):
         raise ValueError('Preview record does not match this source tree.')
     sample = ROOT / 'e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx'
     if data.get('sample_sha256') != hashlib.sha256(sample.read_bytes()).hexdigest():
@@ -109,19 +119,20 @@ def verify(data, package_version):
     if data.get('default_conversion_mode') != 'default' or data.get('default_view_chain') != 'DOCX -> default OFD -> PDF -> macOS Preview':
         raise ValueError('Record must describe the default OFD Preview chain.')
     if not data.get('reviewer') or not data.get('reviewed_at'):
-        raise ValueError('Human reviewer and timestamp are required.')
+        raise ValueError('Reviewer and timestamp are required.')
     if data.get('checked_pages') != [1, 2] or data.get('default_checked_pages') != [1, 2] or data.get('open_findings'):
         raise ValueError('Both pages in Native and default modes must be checked with no open findings.')
 
 
 if __name__ == '__main__':
     try:
-        if '--print-fingerprint' in sys.argv:
-            print(source_fingerprint())
+        if len(sys.argv) == 3 and sys.argv[1] == '--print-fingerprint':
+            print(source_fingerprint(sys.argv[2]))
             sys.exit(0)
         if len(sys.argv) != 2:
             raise ValueError('Pass the release package version.')
-        verify(json.loads(RECORD.read_text()), sys.argv[1])
+        record = ROOT / record_path(sys.argv[1])
+        verify(json.loads(record.read_text(encoding='utf-8')), sys.argv[1])
         print('Candidate-bound Native OFD macOS Preview record accepted.')
     except (OSError, ValueError, json.JSONDecodeError, subprocess.CalledProcessError) as error:
         print(f'Preview release gate failed: {error}', file=sys.stderr)

@@ -13,7 +13,7 @@ concurrency:
 # Fetch fixtures explicitly; historical evidence is optional.
 env:
   GIT_LFS_SKIP_SMUDGE: "1"
-  OFDRW_CI_PACKAGE_VERSION: "0.1.0-preview.10"
+  OFDRW_CI_PACKAGE_VERSION: "0.2.0"
   DOTNET_CLI_HOME: ${{ github.workspace }}/artifacts/dotnet-home
   NUGET_PACKAGES: ${{ github.workspace }}/artifacts/nuget-cache
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"

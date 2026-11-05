@@ -107,6 +107,22 @@ class PreviewFingerprintTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'valid Git LFS pointer'):
             self.gate.source_fingerprint()
 
+    def test_candidate_fingerprint_excludes_only_its_own_record(self):
+        candidate = '0.2.0'
+        record = self.gate.record_path(candidate)
+        historical = self.gate.record_path('0.1.0-preview.10')
+        self.assertNotEqual(record, historical)
+        for name in (record, historical):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('initial record')
+            self.git('add', str(name))
+        before = self.gate.source_fingerprint(candidate)
+        (self.root / record).write_text('updated candidate')
+        self.assertEqual(before, self.gate.source_fingerprint(candidate))
+        (self.root / historical).write_text('changed historical record')
+        self.assertNotEqual(before, self.gate.source_fingerprint(candidate))
+
     def test_unstaged_ordinary_source_edit_changes_fingerprint(self):
         before = self.gate.source_fingerprint()
         (self.root / 'README.md').write_text('changed source\n')
