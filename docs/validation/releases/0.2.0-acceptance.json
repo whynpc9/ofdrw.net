@@ -1,4 +1,65 @@
 {
-  "status": "not-reviewed",
-  "package_version": "0.2.0"
+  "status": "accepted",
+  "package_version": "0.2.0",
+  "source_fingerprint": "40996b3ec667a82a79bd27568453b01022d4fb8bb8aa4d35290d2cac99c4dc00",
+  "sample_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+  "native_ofd_sha256": "bead686f194df6e36599f94ffb84be578f3401c903dbd4f5834b19aa6b4fa2fa",
+  "preview_pdf_sha256": "0f91f9e1f18b5e539b6d3cea0bc6305b10e75b1ee5dd20d7df83756e30910a43",
+  "default_ofd_sha256": "255c6755ca70842d5dfa74129a4319d54360f3251d2c2ce7714b8cdd14497da9",
+  "default_preview_pdf_sha256": "016439c6aa9ec098508689dabf45f772f4134d414a663a72454b958c999f6120",
+  "conversion_mode": "native",
+  "view_chain": "DOCX -> native OFD -> PDF -> macOS Preview",
+  "default_conversion_mode": "default",
+  "default_view_chain": "DOCX -> default OFD -> PDF -> macOS Preview",
+  "reviewer": "gpt-6.1-terra (High reasoning, AI visual reviewer; not human sign-off)",
+  "reviewed_at": "2026-11-05T10:15:00+08:00",
+  "checked_pages": [
+    1,
+    2
+  ],
+  "default_checked_pages": [
+    1,
+    2
+  ],
+  "open_findings": [],
+  "release_profile": {
+    "id": "cn-en-physical-cjk-400-700-v1",
+    "scope": "F01 only: fixed sample, explicit Native and default Native, two pages each.",
+    "fonts_sha256": {
+      "NotoSans-Regular.ttf": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "Ofdrw-CI-NotoSansCJKsc-Bold.ttf": "647a6e375c5a0d8958111173d7b7cec5237e0784cc4490663e43834dfff491be",
+      "Ofdrw-CI-NotoSansCJKsc-Regular.ttf": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    "options": {
+      "NativeEmbeddedBoldBehavior": "Throw",
+      "UseInstalledMicrosoftOfficeFonts": false,
+      "FontFallbackFamilies": [
+        "Noto Sans CJK SC",
+        "Noto Sans"
+      ],
+      "FontDirectories": [
+        "fonts/"
+      ]
+    },
+    "visual_environment": "macOS 26.6.2 (25G83); actual Preview plus independent Poppler 26.09.0 PNG review at 144 dpi.",
+    "functional_result": "Both modes preserve 189 non-whitespace source characters in OFD and PDF with no duplicate PDF text. Seven physical Bold text objects and three blue table fills; selected CJK subset outlines match pinned faces."
+  },
+  "known_limitations": [
+    "This strict physical font profile does not retest Regular-only TextStroke. The separate PR108 fix applies to this SDK’s OFD-to-PDF and OFD-to-image output; the historical preview.10 failure remains historical.",
+    "Preview Find compatibility and raw Unicode Copy were not verified in this review.",
+    "This acceptance does not establish arbitrary Word fidelity or cross-renderer compatibility."
+  ],
+  "producer_source_sha": "808881a84577f686b02848265a706e47754ea31c",
+  "evidence_root": "artifacts/release-0.2.0-808881a8/",
+  "evidence_sha256": {
+    "feed/package-manifest.json": "e122fbb1259f2b5684497cafafdf0ccf7c4a5a2927e36cb273e34a5bdb6c37c2",
+    "preview-review.md": "930ab7b61c6641b5fc505fd27eee12a7016c98d90a86dfe5b73f00574094f3e0",
+    "profile-check.json": "81c249d537e1364dea411d181428b6828b3c265db35332ac51c77bf0200d4da9",
+    "consumer-identities.json": "029f2e1d80cfa1ff696df393711cf8c3306f67df3f7cc0c1acd3f2bfc6bce780",
+    "profile-sha256.txt": "71843ac67b92477de6ee75ad86d83426bd1e03df5cbb79fdee3035fbe5400827",
+    "paragraph-sha256.txt": "3a33f09116035a97c1948402591e5549ddf9323e25fe48bcd0e8e035f3ce5a15",
+    "full-tests-summary.json": "1f8dd7d11b1d7b1ff2ac9cbb0d72f287ab6d7a66fa1a03feb0828eb4c90336cd",
+    "package-e2e/package-e2e-run.json": "82dee3040a310073c0e190c6944cfd0d43a9fb2bc861f6347a8b2f346ab576ee"
+  },
+  "publication_status": "Local candidate visual record only; no tag, GitHub Release or public NuGet publication."
 }
