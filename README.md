@@ -1,6 +1,6 @@
 # Ofdrw.Net
 
-Ofdrw.Net 是预览阶段的 .NET OFD SDK 与 CLI，提供文档生成、读取、编辑、转换和可扩展的签名完整性检查。
+Ofdrw.Net 是 .NET OFD SDK 与 CLI，提供文档生成、读取、编辑、转换和可扩展的签名完整性检查。
 
 **[阅读文档](https://whynpc9.github.io/ofdrw.net/)** · [安装与包选择](https://whynpc9.github.io/ofdrw.net/getting-started/installation/) · [快速开始](https://whynpc9.github.io/ofdrw.net/getting-started/quickstart/) · [能力矩阵](https://whynpc9.github.io/ofdrw.net/reference/feature-parity/)
 
@@ -37,4 +37,4 @@ git lfs pull --include="e2e/**,tests/**" --exclude=""
 
 项目采用 MIT，第三方依赖和字体遵循各自许可，见 [THIRD-PARTY-NOTICES](THIRD-PARTY-NOTICES.md)。本项目参考 [ofdrw/ofdrw](https://github.com/ofdrw/ofdrw) 的模块划分及目标，为独立 .NET 实现。
 
-项目处于预览阶段，不构成完整国家/行业标准、厂商互认、签章法律效力或任意复杂 Word 保真的承诺。使用前按实际输入、字体、部署方式和阅读器验证结果。
+完整国家/行业标准符合性、厂商互认、签章法律效力和任意复杂 Word 保真均超出本版承诺范围。使用前按实际输入、字体、部署方式和阅读器验证结果。

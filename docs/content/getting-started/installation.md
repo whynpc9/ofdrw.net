@@ -56,7 +56,7 @@ dotnet tool install --global Ofdrw.Net.Cli --version 0.2.0
 ofdrw --help
 ```
 
-更新到同一预览版本时可使用：
+如已安装 CLI，可用以下命令更新至 0.2.0。
 
 ```sh
 dotnet tool update --global Ofdrw.Net.Cli --version 0.2.0

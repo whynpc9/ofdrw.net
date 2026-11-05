@@ -5,7 +5,7 @@ sidebar:
   order: 0
 ---
 
-Ofdrw.Net 是预览阶段的 .NET OFD SDK 与命令行工具，支持文档生成、读取、编辑、格式转换，以及可扩展的签名完整性检查。
+Ofdrw.Net 是 .NET OFD SDK 与命令行工具，支持文档生成、读取、编辑、格式转换，以及可扩展的签名完整性检查。
 
 - **第一次使用：** 从[安装与包选择](https://whynpc9.github.io/ofdrw.net/getting-started/installation/)开始，再运行[快速开始](https://whynpc9.github.io/ofdrw.net/getting-started/quickstart/)。
 - **不想写代码：** 安装 [.NET CLI 工具](https://whynpc9.github.io/ofdrw.net/reference/cli/)，直接转换、提取文本或重组页面。
@@ -36,6 +36,6 @@ Ofdrw.Net 是预览阶段的 .NET OFD SDK 与命令行工具，支持文档生�
 
 从 preview.10 升级时，可在[已知问题与版本差异](https://whynpc9.github.io/ofdrw.net/troubleshooting/known-issues/)核对已修复的行为及仍有效的限制。
 
-> 预览版不承诺完整国家/行业标准符合性、厂商互认、签章法律效力或任意复杂 Word 文档保真。请使用自己的输入、字体、部署方式和目标阅读器验证实际结果。
+> 完整国家/行业标准符合性、厂商互认、签章法律效力和任意复杂 Word 文档保真均超出本版承诺范围。请使用自己的输入、字体、部署方式和目标阅读器验证实际结果。
 
 面向仓库维护者的[工程文档](https://github.com/whynpc9/ofdrw.net/tree/main/docs/engineering)、[设计决策](https://github.com/whynpc9/ofdrw.net/tree/main/docs/architecture)与[验收报告](https://github.com/whynpc9/ofdrw.net/tree/main/docs/validation)保留在 GitHub 仓库中。
