@@ -46,7 +46,7 @@ await new OfdToPdfConverter().ConvertAsync(input, output, new[] { 2, 0, 2 });
 
 页选择保留列表顺序和重复页。渲染失败不会用丢失正文的空白页冒充成功。
 
-签章外观无法解析或绘制时，默认仍会写出 PDF 并跳过该外观。需要知道是否丢失签章时，使用 `ConvertWithResultAsync`（main，尚未发布）：
+签章外观无法解析或绘制时，默认仍会写出 PDF 并跳过该外观。需要知道是否丢失签章时，使用 `ConvertWithResultAsync`（自 0.2.0 起）：
 
 ```csharp
 var result = await new OfdToPdfConverter().ConvertWithResultAsync(input, output);

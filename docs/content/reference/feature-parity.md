@@ -6,7 +6,7 @@ sidebar:
   label: "功能对照"
 ---
 
-维护基线：公开产品源码 `8f27f92b51b70a9b01082da35ff1cfe989d46123`（`0.1.0-preview.10`）；整理日期 2026-11-02。发布、签名、消费与限定页面结果见[最终发布记录](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/preview10-publication-2026-11-02.md)。DOCX 的页面通过范围仅为[固定物理字体配置](https://whynpc9.github.io/ofdrw.net/reference/release-profile-cn-en/)和 F01 四页；Regular-only 视觉 FAIL、Preview Find 异常与原始 Copy 未验证继续保留。
+维护基线为[公开产品源码 `4970c1c5`](https://github.com/whynpc9/ofdrw.net/tree/v0.2.0)（`0.2.0`）。固定样例的发布验收范围见[0.2.0 发布说明](https://whynpc9.github.io/ofdrw.net/releases/020/)。Preview Find 和原始 Unicode Copy 的限制仍适用。
 
 本表描述有限实现；逐入口/出口、输入语义与失败策略见[能力契约](https://whynpc9.github.io/ofdrw.net/reference/capability-contract-v12/)。功能已实现、实际视觉通过、互操作和公开发布是不同结论；不构成 GB/T 33190 或密码应用规范认证。状态中的“已支持”仅限所列 API/输入，“部分支持”保留明确拒绝和未验证范围，“扩展点”需要调用方提供实现。
 
@@ -20,11 +20,12 @@ sidebar:
 | 裁剪与组合对象 | `ofdrw-core` | typed Path Clip/Area、共享 CompositeGraphicUnit 与 nested DAG placement；读写、独立克隆和 PDF/SVG | **部分支持**；每 Clip 一个填充 Path Area，可包含多子路径，多个 Clip 相交；多 Area 可往返，导出拒绝一般 union；Text clip、group opacity/DrawParam 等保留并拒绝不安全导出。见[路径教程](https://whynpc9.github.io/ofdrw.net/reference/core-model/) |
 | 文档读取 | `ofdrw-reader`，含反序列化及签章读取 | 多图层/模板/资源解析，未知内容无损保留，结构检查 | **部分支持**；默认首个 `DocBody`，可显式[枚举与选择](https://whynpc9.github.io/ofdrw.net/guides/multi-docbody/) |
 | 文档生成 | 布局、Canvas、Graphics2D、多种块元素 | 低层 builder、公开 FlowDocument/Paragraph/Span、Table/Row/Cell/ImageBlock/CanvasBlock 与原生 OfdGraphics API | **部分支持**；中英段落/局部样式/分页、固定列宽/水平合并/整行分页、不可拆图片/Canvas 布局块及页/片段回调已实现；浮动布局与复杂 Word 版式仍未覆盖，见[Flow 契约](https://whynpc9.github.io/ofdrw.net/guides/flow-layout/) |
+| 段落排版 | Java 侧布局接口 | Unicode 17 双向、断行、字素簇分析，HarfBuzz 塑形、分页和簇映射 OFD writer | **部分支持**。独立入口和已验收脚本见[段落排版](https://whynpc9.github.io/ofdrw.net/reference/text-paragraph-layout/) |
 | 字体 | `ofdrw-font`，字体生成与字形处理 | 按全包用字生成静态 TrueType 子集、复合/GSUB/UVS 字形闭包、TTC 选面、内容身份载荷复用，缺字明确失败 | **部分支持**；TTF/glyf 子集已实现；CFF/变量/AAT/RTL 与保留未知 XML 的字体以全量和诊断保护，详见[字体子集契约](https://whynpc9.github.io/ofdrw.net/reference/font-subset-and-reuse/) |
-| OFD → PDF | `ofdrw-converter` 导出能力 | 模板、图层、字体、文本游程、矢量路径、图片、变换、颜色/透明度和裁剪原点 | **部分支持（预览）**；CGTransform 仅接纳[原 GID 有界候选](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/r02-cgtransform-profile.md)，其它明确拒绝；逐出口范围见[契约](https://whynpc9.github.io/ofdrw.net/reference/capability-contract-v12/) |
+| OFD → PDF | `ofdrw-converter` 导出能力 | 模板、图层、字体、文本游程、矢量路径、图片、变换、颜色/透明度和裁剪原点 | **部分支持（预览）**；CGTransform 仅接纳[原 GID 有界候选](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/r02-cgtransform-profile.md)和 0.2.0 段落 writer 产生的受限簇映射，逐出口范围见[契约](https://whynpc9.github.io/ofdrw.net/reference/capability-contract-v12/) |
 | PDF → OFD | `ofdrw-converter` 转换能力 | 默认双层；可选 Pdf.Vector 包经 19/04 输出受限 native PathObject/TextObject，校验原文与嵌入字体字形 | **部分支持**；[矢量模式](https://whynpc9.github.io/ofdrw.net/guides/pdf-vector/) 支持明确页框/路径/TrueType profile；压缩流、clip/图像/effects/复杂字体等明确整页回退或失败；默认 CLI 仍双层，扫描件无 OCR，不承诺任意 PDF 保真/阅读顺序标记 |
 | DOCX → PDF / OFD | 上游不提供 Office 文档渲染 | 默认直接将 DOCX/OpenXML 原文写为原生 OFD `TextObject`，完全跳过 PDF；可选 `DualLayer` 使用 Word/LibreOffice/BuiltIn 页面图像，并继续以 OpenXML 原文作为语义层 | **已支持（预览）**；原文可直接抽取，Native 支持常见段落、表格、内嵌图片与按页页眉页脚；附属正文带标签追加，DualLayer 按实际页定位原文，不承诺复杂 Word 版式和浮动对象保真 |
-| OFD → SVG | 上游推荐/生态具备 SVG 预览方案 | 自包含单页 SVG，支持模板、路径、文本、颜色、变换和内嵌图片 | **部分支持（预览）**；CGTransform 仅接纳[原 GID 有界候选](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/r02-cgtransform-profile.md)，其它明确拒绝；其它语义不从 PDF/HTML 结果推定 |
+| OFD → SVG | 上游推荐/生态具备 SVG 预览方案 | 自包含单页 SVG，支持模板、路径、文本、颜色、变换和内嵌图片 | **部分支持（预览）**；CGTransform 仅接纳[原 GID 有界候选](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/r02-cgtransform-profile.md)和 0.2.0 段落 writer 产生的受限簇映射，其它语义不从 PDF/HTML 结果推定 |
 | OFD ↔ PNG/JPEG | 图片导出与一图一页导入 | `Converter.Pdf` 的 `OfdToImageConverter` / `ImageToOfdConverter` 及 CLI；指定零基页/ppm导出、PNG默认/JPEG、自然或固定页等比居中导入、有界暂存 | **有限实现**；PDF/PDFium 预览保真边界，视觉门状态见 [Issue 02 验证记录](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/issue02/README.md) |
 | 纯文本 → OFD | `TextConverter` | `PlainTextOfdConverter` 与 `text-to-ofd` CLI：严格 UTF-8、有限预算、Flow 分页 | **部分支持**；首版源码及测试入口已存在，复杂 shaping/字体嵌入不由此推定；见[契约](https://whynpc9.github.io/ofdrw.net/guides/plain-text-ofd/) |
 | HTML 导出 | 转换模块覆盖 HTML 方向 | `OfdToHtmlConverter` 与 `ofd-to-html` CLI：有界、自包含静态 SVG 页面、严格预检 | **部分支持**；首版源码及测试入口已存在；外来复杂图元及各出口分别验收，见[教程](https://whynpc9.github.io/ofdrw.net/guides/html-preview/)与[契约](https://whynpc9.github.io/ofdrw.net/reference/capability-contract-v12/) |

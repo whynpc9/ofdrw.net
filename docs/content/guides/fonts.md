@@ -8,7 +8,7 @@ sidebar:
 
 中文转换需要调用方提供许可明确的字体文件。`FontFamily` 名称、实际 face 与 Bold/Italic 载荷是不同信息；Regular 加样式标记不能替代真实 Bold 文件。
 
-## preview.10 的已验收配置
+## 固定物理字体配置
 
 固定配置使用静态 Noto Sans CJK SC 400 / 700 及 Noto Sans Regular。来源、SHA-256、face index 与具体适用范围见[发布字体配置](https://whynpc9.github.io/ofdrw.net/reference/release-profile-cn-en/)。部署时保留字体许可证；字体不加入 NuGet 包。
 
@@ -41,8 +41,8 @@ var converter = new DocxToOfdConverter(options);
 
 省略 `OfdMode` 即检查默认 Native。字体配置成功仍须核对输出页面及实际字体资源。
 
-## main / 尚未发布
+## 0.2.0 的严格粗体选项与渲染修复
 
-当前 main 增加了严格粗体 CLI 参数，并修复 Regular-only TextStroke 在固定汉字样例中的字腔堵塞。此结果不改变 preview.10 包的行为；实际三平台及 Preview 范围见[PR108 验收](https://github.com/whynpc9/ofdrw.net/blob/main/docs/validation/pr108-cross-platform-20261103.md)。
+`0.2.0` CLI 支持 `--native-embedded-bold-behavior throw`。本库的 OFD→PDF 和 OFD→Image 出口已修复固定 Regular-only 样例中“量”的字腔堵塞，详见[PR108 验收](https://github.com/whynpc9/ofdrw.net/blob/main/docs/validation/pr108-cross-platform-20261103.md)。固定样例的发布验收范围见[0.2.0 发布说明](https://whynpc9.github.io/ofdrw.net/releases/020/)。
 
 部署故障先核对实际载荷、字体许可、缺字诊断和样式文件，再核对运行时原生依赖。字体子集和载荷复用见[字体参考](https://whynpc9.github.io/ofdrw.net/reference/font-subset-and-reuse/)。

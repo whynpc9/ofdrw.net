@@ -5,7 +5,7 @@ sidebar:
   order: 20
 ---
 
-下面提供两条路径：**转换现有 DOCX**或**用代码生成 OFD**。示例使用 `0.1.0-preview.10`，C# 代码适用于控制台项目的顶层语句。
+下面提供两条路径：**转换现有 DOCX**或**用代码生成 OFD**。示例使用 `0.2.0`，C# 代码适用于控制台项目的顶层语句。
 
 ## 路径一：DOCX → OFD → PDF
 
@@ -14,7 +14,7 @@ sidebar:
 ```sh
 dotnet new console -n OfdrwQuickstart
 cd OfdrwQuickstart
-dotnet add package Ofdrw.Net.Converter --version 0.1.0-preview.10
+dotnet add package Ofdrw.Net.Converter --version 0.2.0
 ```
 
 将 `input.docx` 放到项目目录，再把 `Program.cs` 替换为：
@@ -68,8 +68,8 @@ dotnet run
 安装排版和写包：
 
 ```sh
-dotnet add package Ofdrw.Net.Layout --version 0.1.0-preview.10
-dotnet add package Ofdrw.Net.Packaging --version 0.1.0-preview.10
+dotnet add package Ofdrw.Net.Layout --version 0.2.0
+dotnet add package Ofdrw.Net.Packaging --version 0.2.0
 ```
 
 使用以下代码生成 `hello.ofd`：

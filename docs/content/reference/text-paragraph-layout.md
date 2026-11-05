@@ -1,13 +1,12 @@
 ---
 title: "Paragraph layout engine (R22)"
-description: "Unicode 17.0.0 双向、断行与字素簇，字体回退、逐行重塑形、对齐/两端对齐、分页，以及直接消费最终排版结果的 OFD writer。main 尚未发布。"
+description: "Unicode 17.0.0 双向、断行与字素簇，字体回退、逐行重塑形、对齐/两端对齐、分页，以及直接消费最终排版结果的 OFD writer。"
 sidebar:
   order: 130
   label: "段落排版引擎"
 ---
 
-> Availability: `main`, not yet in a published package. First release to carry it will be
-> recorded in the release notes.
+> Available since [0.2.0](https://whynpc9.github.io/ofdrw.net/releases/020/).
 
 `Ofdrw.Net.Layout.Text.Paragraphs` lays out styled multi-paragraph text into final lines and
 pages, and `ParagraphLayoutOfdWriter` writes that exact result to OFD. It is a new entry point:
@@ -141,5 +140,4 @@ bidi levels and visual order). L3/L4 are not applied by the bidi API; mirroring 
   Tamil with the listed fonts. Other scripts lay out through the same pipeline but are not claimed.
 - Not in this profile: tabs, ZWJ/ZWNJ/variation selectors, vertical text, kashida justification,
   hyphenation, language tailoring, synthetic styles, stroked text output, non-BMP output.
-- PDF text selection/Copy/Find geometry and macOS Preview acceptance are not yet verified; see the
-  [validation report](https://github.com/whynpc9/ofdrw.net/blob/main/docs/validation/r22-paragraph-layout-validation.md).
+- The 0.2.0 candidate passed macOS Preview checks for the three fixed paragraph output pages. PDF selection geometry, Copy and Find remain unverified. See the [release notes](https://whynpc9.github.io/ofdrw.net/releases/020/).

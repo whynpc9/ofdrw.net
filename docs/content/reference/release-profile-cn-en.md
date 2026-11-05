@@ -1,6 +1,6 @@
 ---
 title: "中英文受限发布配置"
-description: "preview.10 固定输入、真实 Regular/Bold 字体、哈希和四页视觉验收范围。"
+description: "固定输入、真实 Regular/Bold 字体、哈希和按版本记录的四页视觉验收范围。"
 sidebar:
   order: 140
   label: "中英文发布配置"
@@ -8,11 +8,13 @@ sidebar:
 
 `0.1.0-preview.10` 的 DOCX 页面验收配置为 **`cn-en-physical-cjk-400-700-v1`**。发布状态、产品源码/控制器、公开包及签名、独立消费与实际页面哈希见[最终发布记录](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/preview10-publication-2026-11-02.md)。本文保存配置与承诺边界；安装及完整代码见[字体教程](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
 
+0.2.0 沿用同一固定输入和字体配置。该版本的验收范围和发布证据见[0.2.0 发布说明](https://whynpc9.github.io/ofdrw.net/releases/020/)。
+
 ## 固定字体配置
 
 固定输入为未修改的 F01 `e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx`，SHA-256 `17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6`。独立运行显式 `OfdMode=Native` 与不设置 `OfdMode` 的默认 Native，两模式各两页；查看链路为 DOCX → OFD → PDF → macOS Preview。
 
-API 使用显式 `FontDirectories`、`NativeEmbeddedBoldBehavior=Throw`、`UseInstalledMicrosoftOfficeFonts=false`；清空 fallback 后依次指定 `Noto Sans CJK SC`、`Noto Sans`。Office 开关不禁用全部系统字体解析，`Throw` 只约束选中的 Native 嵌入粗体；不能把配置称为全局字体隔离。已发布的 preview.10 CLI 没有同等严格粗体开关；后续源码新增的 `--native-embedded-bold-behavior throw` 及其限定范围见[字体教程](https://whynpc9.github.io/ofdrw.net/guides/fonts/)，不改变本次发布记录。
+API 使用显式 `FontDirectories`、`NativeEmbeddedBoldBehavior=Throw`、`UseInstalledMicrosoftOfficeFonts=false`；清空 fallback 后依次指定 `Noto Sans CJK SC`、`Noto Sans`。Office 开关不禁用全部系统字体解析，`Throw` 只约束选中的 Native 嵌入粗体；不能把配置称为全局字体隔离。已发布的 preview.10 CLI 没有同等严格粗体开关；0.2.0 新增的 `--native-embedded-bold-behavior throw` 及其限定范围见[字体教程](https://whynpc9.github.io/ofdrw.net/guides/fonts/)，不改变本次发布记录。
 
 | 字体 / face index | 源字节 / SHA-256 | 限定用途 |
 | --- | --- | --- |

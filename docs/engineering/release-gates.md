@@ -1,6 +1,10 @@
 # Q-01～Q-05 发布工程闸门
 
-本文件描述可重复执行的检查及其边界。**2026-11-02 发布状态：**`0.1.0-preview.10` 已公开，成功发布、签名与公开消费证据见[最终发布记录](../validation/preview10-publication-2026-11-02.md)。现有 [Q05 accepted 记录](../validation/releases/preview10-acceptance.json)已更新为 preview.10 的 `cn-en-physical-cjk-400-700-v1`，由用户授权的 `gpt-6.1-terra` High AI reviewer 检查，不称人工签收；只覆盖 F01 显式 native/default 各两页。其生产者为 `cb6e71df`，产品标签源码为 `8f27f92`，控制器为 `3568c00`，详见发布记录中的身份区分。
+本文件描述可重复执行的检查及其边界。
+
+**0.2.0 已发布。** [该版本的 Q05 记录](../validation/releases/0.2.0-acceptance.json)绑定固定 DOCX 及两模式各两页的 Preview 验收。公开发布证据见[0.2.0 发布记录](../validation/0.2.0-publication-2026-11-05.md)。
+
+**2026-11-02 发布状态：**`0.1.0-preview.10` 已公开，成功发布、签名与公开消费证据见[最终发布记录](../validation/preview10-publication-2026-11-02.md)。现有 [Q05 accepted 记录](../validation/releases/preview10-acceptance.json)已更新为 preview.10 的 `cn-en-physical-cjk-400-700-v1`，由用户授权的 `gpt-6.1-terra` High AI reviewer 检查，不称人工签收；只覆盖 F01 显式 native/default 各两页。其生产者为 `cb6e71df`，产品标签源码为 `8f27f92`，控制器为 `3568c00`，详见发布记录中的身份区分。
 
 2026-11-01 复核时该 JSON 尚为 preview.9 历史 accepted；[N12 发布工程预检](https://github.com/whynpc9/ofdrw.net/blob/8f27f92b51b70a9b01082da35ff1cfe989d46123/docs/validation/cn-en-release-n12-preflight.md)保留该时间点及其待办，不再表示当前发布状态。旧版本/旧产物或预检不能放行新候选。本次发布后的文档收尾不更新 accepted JSON 或重绑指纹，后续 main 文档树不能声称与已发布标签指纹相同；新产品/新版本仍须按准确源码与实际产物重新完成门禁。
 

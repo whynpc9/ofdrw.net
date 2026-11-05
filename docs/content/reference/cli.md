@@ -9,7 +9,7 @@ sidebar:
 CLI 需要 **.NET 10**。安装并查看所安装版本的完整帮助：
 
 ```sh
-dotnet tool install --global Ofdrw.Net.Cli --version 0.1.0-preview.10
+dotnet tool install --global Ofdrw.Net.Cli --version 0.2.0
 ofdrw --help
 ```
 
@@ -29,14 +29,14 @@ ofdrw --help
 | UTF-8 文本 → OFD | `ofdrw text-to-ofd notice.txt notice.ofd --font-size-mm 4` |
 | 提取文本 | `ofdrw extract-text input.ofd output.txt --include-templates` |
 | 检查签名完整性 | `ofdrw verify-signatures -i input.ofd` |
-| 本地归档预检（main，尚未发布） | `ofdrw preflight input.ofd --json --output report.json` |
+| 本地归档预检（自 0.2.0 起） | `ofdrw preflight input.ofd --json --output report.json` |
 | 重排全部页面 | `ofdrw reorder input.ofd reordered.ofd --pages 3,1,2` |
-| 删除页面（main，尚未发布） | `ofdrw delete-pages input.ofd trimmed.ofd --pages 2,4-5` |
-| 设置页面框（main，尚未发布） | `ofdrw crop input.ofd cropped.ofd --box 10,20,180,250 --pages 1` |
-| 列出附件（main，尚未发布） | `ofdrw attachments list input.ofd --json` |
-| 按 ID 导出附件（main，尚未发布） | `ofdrw attachments extract input.ofd --id 7 --output invoice.xml` |
-| 只读定位关键字（main，尚未发布） | `ofdrw locate input.ofd --find 旧文本 --trusted-font SHA256:BYTECOUNT --json` |
-| 按 ID 移除附件（main，尚未发布） | `ofdrw attachments remove input.ofd output.ofd --id 7 --physical` |
+| 删除页面（自 0.2.0 起） | `ofdrw delete-pages input.ofd trimmed.ofd --pages 2,4-5` |
+| 设置页面框（自 0.2.0 起） | `ofdrw crop input.ofd cropped.ofd --box 10,20,180,250 --pages 1` |
+| 列出附件（自 0.2.0 起） | `ofdrw attachments list input.ofd --json` |
+| 按 ID 导出附件（自 0.2.0 起） | `ofdrw attachments extract input.ofd --id 7 --output invoice.xml` |
+| 只读定位关键字（自 0.2.0 起） | `ofdrw locate input.ofd --find 旧文本 --trusted-font SHA256:BYTECOUNT --json` |
+| 按 ID 移除附件（自 0.2.0 起） | `ofdrw attachments remove input.ofd output.ofd --id 7 --physical` |
 | 拆分选页 | `ofdrw split input.ofd selected.ofd --pages 3,1` |
 | 合并文档 | `ofdrw merge merged.ofd first.ofd second.ofd` |
 | 叠加水印 | `ofdrw watermark input.ofd marked.ofd --pages 1,2 --text DRAFT` |
@@ -46,7 +46,7 @@ ofdrw --help
 
 ## 附件
 
-`attachments list` 每行输出 `ID、名称、媒体类型、字节数、internal|external`（制表符分隔），`--json` 时标准输出只有 `ofdrw-cli-attachments/1` JSON；没有附件时也返回 `0`。`attachments extract` 只按 ID 精确匹配，必须用 `--output` 指定目标路径，**从不**用附件内存储的名称作为路径；外部附件没有内嵌载荷，导出会失败。`attachments remove` 默认逻辑移除：从当前附件列表删除引用，保留历史 ZIP 条目；`--physical` 物理移除：在证明来源独占和引用闭合后才删除内部载荷，否则失败且不写输出。`list` 与 `extract` 可配合 `--document N` 读取多 `DocBody` 文档，`remove` 要求单 `DocBody` 文档。以上命令为 main，尚未发布。
+`attachments list` 每行输出 `ID、名称、媒体类型、字节数、internal|external`（制表符分隔），`--json` 时标准输出只有 `ofdrw-cli-attachments/1` JSON；没有附件时也返回 `0`。`attachments extract` 只按 ID 精确匹配，必须用 `--output` 指定目标路径，**从不**用附件内存储的名称作为路径；外部附件没有内嵌载荷，导出会失败。`attachments remove` 默认逻辑移除：从当前附件列表删除引用，保留历史 ZIP 条目；`--physical` 物理移除：在证明来源独占和引用闭合后才删除内部载荷，否则失败且不写输出。`list` 与 `extract` 可配合 `--document N` 读取多 `DocBody` 文档，`remove` 要求单 `DocBody` 文档。以上命令自 0.2.0 起可用。
 
 ## 页号和文档号
 
@@ -73,7 +73,7 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 - `--docx-ofd-mode`：`native`（默认）或 `dual-layer`。
 - `--docx-engine`：`auto`、`word`（macOS）、`libreoffice` 或 `built-in`；Native 不调用这些视觉渲染引擎。
 - `--font-directory` 可重复，用于提供实际字体文件。字体部署见[字体指南](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
-- 当前 `main` 的 `--native-embedded-bold-behavior throw` **尚未进入 preview.10 CLI**；preview.10 的严格真实粗体配置使用 API。
+- `0.2.0` 提供 `--native-embedded-bold-behavior throw`，用于要求 Native 嵌入粗体选用真实粗体字面。
 
 ## 退出码与输出安全
 
@@ -93,7 +93,7 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 | `4` | 指定 `--require-signatures` 时文档未声明任何签名 |
 | `1` / `130` | 同上表 |
 
-`preflight` 的退出码（main，尚未发布）：
+`preflight` 的退出码（自 0.2.0 起）：
 
 | 退出码 | 含义 |
 | --- | --- |
@@ -104,9 +104,9 @@ ofdrw docx-to-ofd -i input.docx -o output.ofd \
 
 `preflight` 只执行 APF-001..006 本地规则，不是认证。`--json` 时标准输出只有 `ofdrw-cli-preflight/1` JSON（`schema`、`input` 的文件名/字节数/SHA-256、`ruleOutcomes` 和完整 `report`）；`--output` 需配合 `--json` 并原子写入文件。输入超过加载预算时不计算哈希（`sha256` 为 `null`）。`--allow-multiple-documents`、`--allow-encryption` 分别放宽单文档与无加密要求。
 
-`locate` 的退出码（main，尚未发布）：`0` 结果完整且至少一处命中；`2` 结果完整但无命中；`3` 结果不完整；`1` 参数错误或 SDK 无法度量来源（如未信任/未嵌入字体）；`130` 取消。`--json` 时标准输出只有 `ofdrw-cli-locate/1` JSON（`complete`、一基页号的 `hits` 及其 `bounds`/`canReplace`、`diagnostics`）。`locate` 从不写文件，可作为 `replace-text` 的预览。
+`locate` 的退出码（自 0.2.0 起）：`0` 结果完整且至少一处命中；`2` 结果完整但无命中；`3` 结果不完整；`1` 参数错误或 SDK 无法度量来源（如未信任/未嵌入字体）；`130` 取消。`--json` 时标准输出只有 `ofdrw-cli-locate/1` JSON（`complete`、一基页号的 `hits` 及其 `bounds`/`canReplace`、`diagnostics`）。`locate` 从不写文件，可作为 `replace-text` 的预览。
 
-用于自动接收文档时，应加 `--require-signatures` 并只把 `0` 视为通过，否则被移除签名的文档也会返回 `0`。当前 `main` 的 `--require-signatures` 与退出码 `4` **尚未进入 preview.10 CLI**。
+用于自动接收文档时，应加 `--require-signatures` 并只把 `0` 视为通过，否则被移除签名的文档也会返回 `0`。`0.2.0` 起，使用该参数时，无签章文档返回 `4`。
 
 文件型命令先验证参数，再在目标目录写临时文件，成功关闭后提交；提交前失败或取消会保留原输出。格式转换的输入与输出必须是不同路径，页重排支持原位更新。
 

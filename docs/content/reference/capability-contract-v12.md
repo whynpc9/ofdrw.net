@@ -6,9 +6,9 @@ sidebar:
   label: "能力契约"
 ---
 
-**2026-11-02 发布范围说明：** preview.10 已公开；[受限物理字体 profile](https://whynpc9.github.io/ofdrw.net/reference/release-profile-cn-en/)的 F01 native/default 各两页通过 PNG/Preview 检查，公开包/签名/独立消费见[最终发布记录](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/preview10-publication-2026-11-02.md)。Regular-only 合成粗体 FAIL、macOS Preview Find 兼容性及原始 Copy 未验证继续披露。下文通用能力/历史状态不构成已发布版本的全范围承诺；R02/R20/R22 边界继续保留。
+`0.2.0` 发布范围及固定 DOCX 和段落排版样例的验证结果见[0.2.0 发布说明](https://whynpc9.github.io/ofdrw.net/releases/020/)。Preview Find、原始 Copy 和段落 PDF 选择几何仍有独立限制。
 
-维护基线为公开产品源码 `8f27f92b51b70a9b01082da35ff1cfe989d46123`，整理日期 2026-11-02。R00–R22 是原工作单元编号，不是 SDK 版本或待派发清单；本页保留已交付能力的输入/出口契约，候选和未验证范围继续显式标注。新工作从[现行路线图](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/roadmap.md)进入。
+维护基线为[公开产品源码 `4970c1c5`](https://github.com/whynpc9/ofdrw.net/tree/v0.2.0)，版本为 `0.2.0`。R00–R22 是原工作单元编号，不是 SDK 版本或待派发清单；本页保留已交付能力的输入/出口契约，候选和未验证范围继续显式标注。新工作从[现行路线图](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/roadmap.md)进入。
 
 ## 设计与判定
 
@@ -58,7 +58,7 @@ sidebar:
 | R16 标准对象 | [DocInfo/权限/版本/动作编辑](https://whynpc9.github.io/ofdrw.net/guides/standard-object-editing/) | 未知节点保留；声明权限不等于执行策略 |
 | R17/R20 归档 | [有限 Rule/Handler](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/)、[条款覆盖账本](https://whynpc9.github.io/ofdrw.net/reference/archival-standard-coverage/) | Unknown 不升格 Pass；完整 R20 未验收，不宣称认证 |
 | R18 附件清理 | [逻辑移除与显式物理清理](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/r18-attachment-cleanup-design.md) | 只删除来源/独占载荷与引用闭包可证明的对象，不能证明时拒绝 |
-| R21/R22 文字查询与输出 | [固定字体测量](https://whynpc9.github.io/ofdrw.net/reference/text-prelayout/)、[typed 输出](https://whynpc9.github.io/ofdrw.net/reference/text-shaped-output/)、[混排查询](https://whynpc9.github.io/ofdrw.net/reference/text-mixed-paragraph/)、[查询设计](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/architecture/r22-mixed-text-decision.md) | 已有 run/span/字号/定位增量不等于一般 bidi、断行、Flow/writer 闭环；[reader 反例与独立门](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/r22-reader-replacement-candidate.md)继续有效 |
+| R21/R22 文字查询与输出 | [固定字体测量](https://whynpc9.github.io/ofdrw.net/reference/text-prelayout/)、[typed 输出](https://whynpc9.github.io/ofdrw.net/reference/text-shaped-output/)、[混排查询](https://whynpc9.github.io/ofdrw.net/reference/text-mixed-paragraph/)、[查询设计](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/architecture/r22-mixed-text-decision.md) | 0.2.0 新增[独立段落排版与 OFD writer](https://whynpc9.github.io/ofdrw.net/reference/text-paragraph-layout/)，Flow/DOCX 继续使用原入口。[reader 反例与独立门](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/r22-reader-replacement-candidate.md)继续有效 |
 
 ## 证据与门禁
 

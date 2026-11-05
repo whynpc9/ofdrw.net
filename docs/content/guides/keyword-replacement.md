@@ -34,7 +34,7 @@ ofdrw replace-text input.ofd output.ofd \
 
 CLI 不会根据本机同名字体猜测信任身份。调用方应先从来源包和业务字体清单确认实际原字体，再提供哈希与字节数。
 
-### CLI 预览（main，尚未发布）
+### CLI 预览（自 0.2.0 起）
 
 替换前可用只读的 `locate` 查看会匹配哪些位置，参数与上面的 `--find`、`--trusted-font`、`--pages` 含义相同，且从不写文件：
 

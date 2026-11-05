@@ -1,20 +1,21 @@
 ---
 title: "已知问题与版本差异"
-description: "核对 preview.10 与 main 的行为差异，并按版本、模式、字体和实际输出排查转换及阅读器问题。"
+description: "核对 preview.10 与 0.2.0 的行为差异，并按版本、模式、字体和实际输出排查转换及阅读器问题。"
 sidebar:
   order: 10
 ---
 
-当前公开版本为 **0.1.0-preview.10**。下表将已发布包的行为与当前 `main` 分开，避免把源码修复误认为 NuGet 已更新。
+当前公开版本为 **0.2.0**。下表比较它与 preview.10 的公开包行为。
 
 ## 版本差异与现有限制
 
-| 项目 | preview.10 | 当前 main |
+| 项目 | preview.10 | 0.2.0 |
 | --- | --- | --- |
-| 较大 OFD 读取（约 1,000+ 文本对象） | 读取/转换报 "OFD traversal exceeds its reference budget" | 默认工作计数上限已提高，尚未发布 |
-| OFD→PDF 签章外观失败 | 静默跳过 | 通过诊断报告，尚未发布 |
-| Regular-only 汉字合成粗体 | 固定表头“量”存在历史视觉失败；发布验收限定真实 Regular/Bold | D11 / PR108 修复及固定样例验收通过，尚未发布 |
-| CLI 严格嵌入粗体 | 无对应开关，严格配置使用 API | 已增加限定开关，尚未发布 |
+| 较大 OFD 读取（约 1,000+ 文本对象） | 读取/转换报 "OFD traversal exceeds its reference budget" | 默认工作计数上限已提高 |
+| OFD→PDF 签章外观失败 | 静默跳过 | 通过诊断报告 |
+| Regular-only 汉字合成粗体 | 固定表头“量”存在历史视觉失败；发布验收限定真实 Regular/Bold | 本库 OFD→PDF/图片出口修复固定样例的字腔堵塞 |
+| CLI 严格嵌入粗体 | 无对应开关，严格配置使用 API | 支持 `--native-embedded-bold-behavior throw` |
+| 段落排版引擎 | 无独立排版和 writer 入口 | 新增独立 API，Flow/DOCX 继续使用原入口 |
 | macOS Preview Find | 部分完整词 / 日期查找异常，根因未定 | 保留独立限制 |
 | 原始 Unicode 剪贴板 Copy | 未完成字节级验收 | 未完成，不等同已证实缺陷 |
 | ImageSharp 2.1.13 | 已披露依赖告警 | D10 评估未消除告警 |
@@ -24,7 +25,7 @@ sidebar:
 
 ## 转换或显示异常时如何排查
 
-1. **确认版本和入口。** 记录 NuGet/CLI 版本、转换方向、API 或完整命令，以及 Native / DualLayer、实际渲染引擎。不要混用 `main` 文档和 preview.10 包行为。
+1. **确认版本和入口。** 记录 NuGet/CLI 版本、转换方向、API 或完整命令，以及 Native / DualLayer、实际渲染引擎。按安装版本查阅对应发布说明。
 2. **核对实际字体。** 记录 `FontDirectories`、fallback、Regular/Bold/Italic 文件和输出内嵌资源。字体名称相同不代表字体字节相同；先阅读[字体指南](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
 3. **检查诊断。** DOCX 使用 `ConvertWithResultAsync` 查看 `Diagnostics`、`OriginalTextPreserved` 和页级映射状态；其他 API 检查返回结果及异常，而不是只看文件是否生成。
 4. **保留最小复现。** 保存可共享的最小输入、配置、完整错误、退出码和实际输出；不要只保留截图，也不要直接覆盖唯一输入副本。

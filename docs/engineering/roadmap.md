@@ -30,7 +30,7 @@ Flow 段落/表格、命名区域、图片/Canvas/回调、文档工具、多 Do
 
 以下不属于已发布版本的前置，也没有默认排期：
 
-- **通用 R22 / 新文字链路**：Issue #109 的 F01–F05 已在 main 新增独立入口（尚未发布）：Unicode 17.0.0 UAX #9/#14/#29 托管实现（官方一致性测试全量通过）、最终排版结果契约、段落排版引擎（字体回退、逐行重塑形、对齐/两端对齐、分页）及消费最终结果的 OFD writer，见[参考](../content/reference/text-paragraph-layout.md)、[设计](../architecture/r22-paragraph-layout-engine.md)与[验收记录](../validation/r22-paragraph-layout-validation.md)。仍未完成：Flow/DOCX 迁移（需显式决定）、macOS Preview 与 PDF Copy/Find 验收、描边/合成样式/非 BMP 输出、F06 反向导入与 F08 扩展；F07 不在该议题范围内。保留[查询设计](../architecture/r22-mixed-text-decision.md)、[共享定位消费者](../architecture/r22-shared-position-consumer.md)与[剩余范围](../validation/r22-remaining-scope.md)。
+- **通用 R22 / 新文字链路**：Issue #109 的 F01–F05 已随 0.2.0 发布独立入口：Unicode 17.0.0 UAX #9/#14/#29 托管实现（官方一致性测试全量通过）、最终排版结果契约、段落排版引擎（字体回退、逐行重塑形、对齐/两端对齐、分页）及消费最终结果的 OFD writer，见[参考](../content/reference/text-paragraph-layout.md)、[设计](../architecture/r22-paragraph-layout-engine.md)与[验收记录](../validation/r22-paragraph-layout-validation.md)。仍未完成：Flow/DOCX 迁移（需显式决定）、PDF Copy/Find 验收、描边/合成样式/非 BMP 输出、F06 反向导入与 F08 扩展；F07 不在该议题范围内。保留[查询设计](../architecture/r22-mixed-text-decision.md)、[共享定位消费者](../architecture/r22-shared-position-consumer.md)与[剩余范围](../validation/r22-remaining-scope.md)。
 - **RTL、Arabic、Indic 与复杂字体**：只按各有界 profile 验收，默认拒绝范围不放宽。既有 reader 反例、字符映射方法失败及独立几何/语义门继续保留，见[reader 方法验证](../validation/r22-reader-replacement-candidate.md)和[双词检查点](../validation/r22-two-word-export-validation.md)。
 - **完整 R02、R20、扩展字体和部署组合**：非 BMP 索引、真正越段映射、自然外来互操作、全部归档条款、任意 CFF/变量/彩色字体、musl/AOT/trimming 等均不能由局部通过推定。新范围须有明确消费者、固定反例、最小契约和独立验收。
 

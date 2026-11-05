@@ -26,7 +26,7 @@ CLI 对应命令：
 
 ```sh
 ofdrw verify-signatures -i signed.ofd
-# 未声明任何签名时返回 4 而不是 0（main，尚未发布）
+# 未声明任何签名时返回 4 而不是 0（自 0.2.0 起）
 ofdrw verify-signatures -i signed.ofd --require-signatures
 ```
 

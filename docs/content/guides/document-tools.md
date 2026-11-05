@@ -32,10 +32,10 @@ ofdrw watermark input.ofd marked.ofd --image mark.png --layer-type Foreground
 # 显式移除签名声明及可证明无引用的签名载荷
 ofdrw clean-signatures signed.ofd unsigned.ofd
 
-# 删除第 2、4、5 页（至少保留一页；main，尚未发布）
+# 删除第 2、4、5 页（至少保留一页；自 0.2.0 起）
 ofdrw delete-pages input.ofd trimmed.ofd --pages 2,4-5
 
-# 把第 1、3 页的页面框设为 X,Y,宽,高（毫米）；省略 --pages 时作用于全部页面（main，尚未发布）
+# 把第 1、3 页的页面框设为 X,Y,宽,高（毫米）；省略 --pages 时作用于全部页面（自 0.2.0 起）
 ofdrw crop input.ofd cropped.ofd --box 10,20,180,250 --pages 1,3
 ```
 
