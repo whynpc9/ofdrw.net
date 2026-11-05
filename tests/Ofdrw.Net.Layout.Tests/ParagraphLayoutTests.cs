@@ -284,6 +284,18 @@ public sealed class ParagraphLayoutTests
     }
 
     [Fact]
+    public void LegalBreakEstimatedOverByCrossBreakKerningIsRebuiltBeforeRejecting()
+    {
+        var dejavuOnly = new TextStyle(new TextFontFamily("DejaVu Sans", DejaVuFace.Value), 4);
+        // The "-J" kerning pair is charged to "ab-" in the estimate; the rebuilt "ab-" line is narrower.
+        var prefix = Layout("ab-", 100, style: dejavuOnly).Lines.Single().ContentWidthMillimeters;
+        Assert.True(prefix < 6.5, prefix.ToString());
+        var result = Layout("ab-J", 6.5, style: dejavuOnly);
+        Assert.Equal(new[] { "ab-", "J" }, result.Lines.Select(line => string.Concat(line.Runs.Select(run => run.Text))));
+        Assert.All(result.Lines, line => Assert.True(line.ContentWidthMillimeters <= 6.5));
+    }
+
+    [Fact]
     public void EmptyTextHasOneStyledEmptyLine()
     {
         var result = Layout("", 50);

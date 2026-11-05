@@ -55,7 +55,9 @@ await new OfdPackageWriter().WriteAsync(package, output);
 6. **Line breaking.** Greedy first fit over UAX #14 opportunities that are also grapheme
    boundaries. Trailing spaces hang. The chosen line is then rebuilt: runs cut by the line edges or
    by L1 level changes are **reshaped** and the real width is checked; on overflow the previous
-   opportunity is tried (bounded to 32 attempts, then `BudgetExceeded`). A segment without an
+   opportunity is tried (bounded to 32 attempts, then `BudgetExceeded`). Because the estimate charges
+   cross-break kerning to the left side, up to three further legal breaks estimated within half an em
+   over the frame are also rebuilt before the estimate is trusted. A segment without an
    opportunity fails with `LayoutOverflow` (`TextOverflowPolicy.Reject`, default) or is broken at
    grapheme boundaries (`BreakGraphemes`); never inside a cluster. Candidate cuts are rebuilt and
    reshaped. Rebuilt widths are not monotonic (an Arabic lam-alef ligature is narrower than lam alone),

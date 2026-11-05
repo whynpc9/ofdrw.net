@@ -22,6 +22,7 @@ public sealed class ParagraphLayoutEngine
     private const int MaximumItemUtf16 = 4000;
     private const int MaximumFitAttempts = 32;
     private const int MaximumEmergencyMisses = 4;
+    private const int MaximumNearMisses = 3;
     private readonly ITextShaper _shaper;
 
     /// <summary>Creates an engine around a run shaper (for example HarfBuzz).</summary>
@@ -120,6 +121,7 @@ public sealed class ParagraphLayoutEngine
         internal string[] ScriptOf = Array.Empty<string>();
         internal List<Item> Items = new();
         internal double[] Prefix = Array.Empty<double>(); // measured advance prefix, mm
+        internal double MaximumEm;                         // largest style size in the paragraph, mm
         internal int Length => End - Start;
     }
 
@@ -479,6 +481,7 @@ public sealed class ParagraphLayoutEngine
                     advance[index] += glyph.XAdvance * scale;
                 }
             }
+            paragraph.MaximumEm = paragraph.Items.Count == 0 ? 0 : paragraph.Items.Max(item => item.Style.FontSizeMillimeters);
             paragraph.Prefix = new double[count + 1];
             for (var index = 0; index < count; index++) paragraph.Prefix[index + 1] = paragraph.Prefix[index] + advance[index];
         }
@@ -516,16 +519,36 @@ public sealed class ParagraphLayoutEngine
                 // Candidate breaks in order, ending at the first mandatory break.
                 var fitting = new List<int>();
                 var firstOver = -1;
-                for (var c = candidate; c < candidates.Count; c++)
+                var c = candidate;
+                for (; c < candidates.Count; c++)
                 {
                     var position = candidates[c];
                     if (Estimate(paragraph, start, position) <= available + Epsilon) fitting.Add(position);
                     else { firstOver = position; break; }
                     if (paragraph.Breaks[position] == LineBreakKind.Mandatory) break;
                 }
+                // The estimate charges cross-break kerning or contextual forms to the left side, so a
+                // legal break estimated just over the frame can still fit once its line is rebuilt.
+                // Such shaping changes are local to the break: rebuild up to MaximumNearMisses further
+                // legal candidates whose estimate exceeds the frame by at most half the paragraph's
+                // largest em, before trusting the estimate.
+                var nearMisses = new List<int>();
+                for (; firstOver >= 0 && c < candidates.Count && nearMisses.Count < MaximumNearMisses; c++)
+                {
+                    var position = candidates[c];
+                    if (Estimate(paragraph, start, position) > available + paragraph.MaximumEm / 2) break;
+                    nearMisses.Add(position);
+                    if (paragraph.Breaks[position] == LineBreakKind.Mandatory) break;
+                }
                 DraftLine? line = null;
-                // Verify by building (reshaping cut runs); back off on overflow.
-                for (var attempt = fitting.Count - 1; attempt >= 0 && fitting.Count - attempt <= MaximumFitAttempts; attempt--)
+                // Verify by building (reshaping cut runs), largest candidate first; back off on overflow.
+                for (var attempt = nearMisses.Count - 1; attempt >= 0 && line is null; attempt--)
+                {
+                    var draft = BuildLine(paragraph, start, nearMisses[attempt], first, nearMisses[attempt] == count);
+                    if (draft.ContentWidth <= available + 1e-7) line = draft;
+                }
+                for (var attempt = fitting.Count - 1; line is null && attempt >= 0 &&
+                         fitting.Count - attempt <= MaximumFitAttempts; attempt--)
                 {
                     var draft = BuildLine(paragraph, start, fitting[attempt], first, fitting[attempt] == count);
                     if (draft.ContentWidth <= available + 1e-7) { line = draft; break; }
