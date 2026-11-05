@@ -1,59 +1,23 @@
 ---
-title: "R10 restricted image and region profile"
+title: "R10 受限图像与区域文字配置"
 description: "导入 OFD 的受限 JBIG2、ImageMask 和基于原字体几何的区域文字提取。"
 sidebar:
   order: 130
   label: "图像与区域文字"
 ---
 
-This profile is for imported OFD content. The Reader retains the original
-`SourceXml`, resource identifiers and encoded bytes. Exporters create temporary
-PNG pixels for rendering; the package writer does not replace source media.
+此配置用于导入的 OFD 内容。Reader 保留原始 `SourceXml`、资源标识符和编码字节。导出器为渲染创建临时 PNG 像素；包写出器不会替换源媒体。
 
-## Images
+## 图像
 
-- A JBIG2 resource must have a literal `Format="JBIG2"` declaration matching
-  the standalone file signature. The admitted subset is one known-size page,
-  sequential segments `PageInformation`, one immediate arithmetic generic
-  region covering the page, `EndOfPage`, and `EndOfFile`. No dictionaries,
-  globals, references, refinement, MMR, unknown segment lengths or trailing
-  payload are admitted. Input is capped at 1 MiB and decoded area at 1,048,576
-  pixels. The decoder's dimensions and RGB count must match preflight.
-- `ImageMask` is resolved in the same resource scope as the image. Self
-  references, unresolved or mismatched declarations, and nonbinary formats
-  fail. The admitted mask is one-bit grayscale PNG or the same restricted JBIG2
-  profile. Dimensions must equal the source image. White mask pixels retain the
-  source alpha; black pixels clear it. Object alpha is then applied by the
-  exporter. GB/T 33190-2016 specifies a same-size binary mask resource but
-  does not state that polarity in its ImageObject table; independent reader
-  visual acceptance is required before treating this mapping as settled.
-- PDF, SVG and HTML use the same normalized render projection. Unknown image
-  children, attributes and resource references fail before public output.
-  Malformed compressed data can still fail during decoding; the result is not
-  a claim that every JBIG2 variant is supported.
+- JBIG2 资源必须显式声明 `Format="JBIG2"`，并与独立文件签名匹配。准入子集仅包含一个尺寸已知的页面，以及按顺序出现的 `PageInformation`、一个覆盖整页的立即算术编码通用区域、`EndOfPage` 和 `EndOfFile`。不接受字典、全局段、引用、细化、MMR、未知段长度或尾随载荷。输入上限为 1 MiB，解码面积上限为 1,048,576 像素。解码器的尺寸与 RGB 计数必须与预检结果一致。
+- `ImageMask` 在与图像相同的资源作用域中解析。自引用、无法解析或不匹配的声明以及非二值格式均会失败。准入掩码为一位灰度 PNG 或上述受限 JBIG2 配置，且尺寸必须与源图像相同。白色掩码像素保留源 alpha，黑色像素清除 alpha，随后由导出器应用对象 alpha。GB/T 33190-2016 规定了同尺寸二值掩码资源，但其 ImageObject 表未说明这种极性；在将此映射视为确定行为之前，仍需独立阅读器视觉验收。
+- PDF、SVG 和 HTML 使用相同的规范化渲染投影。未知图像子节点、属性和资源引用会在公开输出前导致失败。格式错误的压缩数据仍可能在解码时失败；此结果不代表支持所有 JBIG2 变体。
 
-The managed decoder is `JBig2Decoder.NETStandard` 1.5.2. Its original JPedal
-BSD-3-Clause and C# port MIT notices are both retained in
-`docs/licenses/JBIG2DECODER-NETSTANDARD-LICENSE.txt` and carried by the Reader
-package. The test bitstream is generated from a self-authored pattern with an
-independent `jbig2dec` oracle; see the R10 fixture README. The ITU-derived
-third-party sample used during early diagnosis is not included.
+托管解码器为 `JBig2Decoder.NETStandard` 1.5.2。原 JPedal 的 BSD-3-Clause 声明和 C# 移植版的 MIT 声明均保留在 `docs/licenses/JBIG2DECODER-NETSTANDARD-LICENSE.txt`，并随 Reader 包分发。测试位流由自创图案生成，并使用独立 `jbig2dec` 作为对照；详见 R10 测试样例 README。早期诊断使用的 ITU 衍生第三方样例未包含在仓库中。
 
-## Region text
+## 区域文字
 
-`OfdRegionTextExtractor` accepts a finite, positive-area rectangle in
-millimeters relative to the selected page's PhysicalBox. It returns Unicode
-scalars in background-template, body and foreground-template paint order,
-without inventing spaces or line breaks. A scalar with ink is included only
-when its transformed original-font glyph quadrilateral has positive-area
-intersection with the rectangle; touching an edge alone does not select it.
-For a no-ink scalar, the transformed baseline origin is used with inclusive
-left/top and exclusive right/bottom. `OfdKeywordFragment` values expose the
-source TextCode offsets, font identity, glyph ID, CTM/Delta-derived baseline
-and exact font-box geometry. Templates and their referenced XML are checked
-against source ownership. Annotation appearances are excluded and reported as
-an `ExcludedAnnotationScope` diagnostic. Unsupported source, transform,
-clipping, font geometry or budget exhaustion fails the entire query.
+`OfdRegionTextExtractor` 接受一个相对于所选页面 PhysicalBox、以毫米为单位且具有有限正面积的矩形。它按背景模板、正文和前景模板的绘制顺序返回 Unicode 标量，不自行添加空格或换行。对于有墨迹的标量，只有其经变换的原字体字形四边形与矩形存在正面积交集时才予以纳入；仅接触边界不算选中。对于无墨迹标量，使用变换后的基线原点，左、上边界包含，右、下边界不包含。`OfdKeywordFragment` 值公开源 TextCode 偏移、字体身份、字形 ID、由 CTM/Delta 推导的基线以及精确的字体框几何。模板及其引用的 XML 会接受来源归属检查。批注外观被排除，并通过 `ExcludedAnnotationScope` 诊断报告。不支持的来源、变换或裁剪、字体几何问题以及预算耗尽都会使整个查询失败。
 
-The query requires an explicit `IOfdGlyphGeometryProvider` for the exact
-embedded font. It does not substitute host fonts or claim painted-pixel bounds.
+查询要求为实际嵌入字体显式提供 `IOfdGlyphGeometryProvider`。它不会替换为宿主机字体，也不宣称返回绘制像素的边界。

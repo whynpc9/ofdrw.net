@@ -1,50 +1,17 @@
 ---
-title: "Typed shaped text output (R22, first profile)"
-description: "首个 typed shaped text 输出 profile 的 GID、cluster、字体子集和页面写出限制。"
+title: "类型化塑形文字输出（R22 首个配置）"
+description: "首个类型化塑形文字输出配置的 GID、簇、字体子集和页面写出限制。"
 sidebar:
   order: 110
-  label: "Typed 文字输出"
+  label: "类型化文字输出"
 ---
 
-`TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs` consumes the
-completed R21 prelayout result. It writes one producer-owned OFD `TextCode` per
-nonempty line with unchanged logical source and a complete `CGTransform` mapping
-to the actual original GIDs. Glyph origins use the shaped pen advances and
-offsets, converted once from font units to page millimeters. The public
-`OfdPositionedGlyphRun` keeps the absolute UTF-16 source clusters, original
-face SHA-256, GIDs, origins, and advances separate from the logical text.
+`TextPrelayoutOfdWriter.CreateSinglePageWithPositionedGlyphs` 消费已完成的 R21 预排版结果。它为每个非空行写入一个由生成器控制的 OFD `TextCode`，保持逻辑源文本不变，并提供到实际原始 GID 的完整 `CGTransform` 映射。字形原点使用塑形后的笔位步进和偏移，只从字体单位转换为页面毫米一次。公开的 `OfdPositionedGlyphRun` 将绝对 UTF-16 源簇、原字面 SHA-256、GID、原点和步进与逻辑文本分开保存。
 
-This output profile accepts a regular, static, horizontal Latin run with
-one to eight printable, nonblank ASCII characters per line. Each character must
-have one glyph in source order, or a complete two/three-character ligature must
-have one glyph. It also admits an ASCII Latin letter followed by one nonspacing
-mark in U+0300–U+036F when HarfBuzz returns one complete two-code-unit cluster;
-it preserves the source without normalization. Separate mark glyphs, other
-combining ranges and longer combining sequences remain unsupported. The selected face is embedded and the TrueType subset retains
-the actual shaped GIDs in their original slots. The writer rejects a face hash
-that does not match the selected embedded resource, imported `SourceXml`, and
-unsupported source/cluster/position shapes before writing the output stream.
-One-to-one output requires a one-to-one source-character/GID relationship for
-distinct values: repeated GIDs must denote the same character, and repeated
-characters must retain the same GID. This keeps PDF ToUnicode, font aliases
-and SVG outline semantics unambiguous.
-The older `CreateSinglePage` contract stays strict about nominal one-to-one
-ASCII glyphs and full embedding.
+此输出配置接受常规、静态、水平的拉丁文游程，每行包含 1–8 个可打印的非空白 ASCII 字符。每个字符必须按源顺序对应一个字形，或者一个完整的双字符/三字符连字对应一个字形。它还接受一个 ASCII 拉丁字母后接 U+0300–U+036F 中一个非间距标记的组合，但 HarfBuzz 必须返回一个完整的双代码单元簇；源文本不经规范化而原样保留。独立标记字形、其他组合范围及更长的组合序列仍不受支持。所选字面会被嵌入，TrueType 子集将实际塑形 GID 保留在原始槽位。写出器会在写入输出流之前，拒绝与所选嵌入资源不匹配的字面哈希、导入的 `SourceXml` 以及不受支持的源文本、簇或位置形状。一对一输出要求不同值之间保持源字符与 GID 的一一对应：重复的 GID 必须表示同一字符，重复字符也必须保持相同 GID。这使 PDF ToUnicode、字体别名和 SVG 轮廓语义保持明确。旧版 `CreateSinglePage` 约定仍严格要求标称一对一 ASCII 字形和完整字体嵌入。
 
-The candidate package consumer shapes `AV` with kerning enabled/disabled,
-`ffi` with the `liga` feature enabled/disabled, decomposed `e` + U+0301 and
-decomposed `a` + U+0308.
-It verifies the second `AV`
-origin changes and checks OFD text readback, SVG original-GID paths,
-PDF text extraction and rendered PDF pages separately. These checks cover the
-bounded samples only. Mixed direction, Arabic/Indic shaping, general combining marks,
-multi-`TextCode` composition, supplementary characters, vertical output and
-general paragraph bidi remain outside this producer profile. Imported OFD
-content retains its own source-preservation and R02 acceptance boundaries.
+候选包消费程序分别验证启用和禁用字距调整的 `AV`、启用和禁用 `liga` 特性的 `ffi`、分解形式的 `e` + U+0301，以及分解形式的 `a` + U+0308。它确认第二个 `AV` 的原点发生变化，并分别检查 OFD 文本回读、SVG 原始 GID 路径、PDF 文本提取和渲染后的 PDF 页面。这些检查仅覆盖上述有界样例。混合方向、阿拉伯文/印度文塑形、一般组合标记、多 `TextCode` 组合、增补字符、垂直输出和通用段落双向排版仍不在此生成器配置范围内。导入的 OFD 内容继续遵循其自身的源保留和 R02 验收边界。
 
-Generated PNG or SVG output is not a macOS Preview or independent-reader
-acceptance result. Each visual outlet needs its own evidence before release.
+生成的 PNG 或 SVG 输出不等同于 macOS Preview 或独立阅读器验收结果。发布前，每个视觉出口都需要各自的证据。
 
-The separate mixed writer and its repeated-letter candidate are reconciled in
-[the R22 remaining-scope ledger](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/r22-remaining-scope.md). The Latin
-producer contract above does not imply general paragraph or SVG text semantics.
+独立混排写出器及其重复字母候选已在 [R22 剩余范围账本](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/r22-remaining-scope.md)中核对。上述拉丁文生成器约定不代表通用段落或 SVG 文本语义。

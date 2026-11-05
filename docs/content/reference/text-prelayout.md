@@ -1,21 +1,14 @@
 ---
-title: "Real-font shaping and prelayout query (R21)"
+title: "真实字体塑形与预排版查询（R21）"
 description: "固定真实字体的 HarfBuzz 塑形、预排版查询、断行、预算及原生运行依赖。"
 sidebar:
   order: 100
   label: "真实字体预排版"
 ---
 
-This API provides a separate fixed-font query path. Existing `FlowDocument.Render` and
-`OfdGraphics.DrawString` retain their approximate or caller-positioned behavior.
-The query does not locate text in an imported OFD.
+此 API 提供独立的固定字体查询路径。现有 `FlowDocument.Render` 和 `OfdGraphics.DrawString` 继续保持近似测量或调用方定位的行为。该查询不用于定位导入 OFD 中的文字。
 
-`Ofdrw.Net.Layout.Text` contains immutable face/request/result types and the
-replaceable `ITextShaper` interface. The optional `Ofdrw.Net.Text.HarfBuzz`
-project supplies `HarfBuzzTextShaper` and `HarfBuzzTextPrelayout.Create()`.
-It pins HarfBuzzSharp and macOS, Win32 and Linux native asset packages to
-`14.2.1.301`. Native loading is a runtime requirement; an absent or incompatible
-library produces `TextLayoutError.NativeUnavailable`, never approximate metrics.
+`Ofdrw.Net.Layout.Text` 包含不可变的字面、请求和结果类型，以及可替换的 `ITextShaper` 接口。可选的 `Ofdrw.Net.Text.HarfBuzz` 项目提供 `HarfBuzzTextShaper` 和 `HarfBuzzTextPrelayout.Create()`。它将 HarfBuzzSharp 以及 macOS、Win32 和 Linux 原生资产包固定为 `14.2.1.301`。原生库加载是运行时要求；原生库缺失或不兼容会产生 `TextLayoutError.NativeUnavailable`，绝不退回近似度量。
 
 ```csharp
 var face = new TextFontFace("Noto Sans", File.ReadAllBytes(fontPath));
@@ -27,68 +20,14 @@ foreach (var line in result.Lines)
         $"baseline={line.BaselineMillimeters} advance={line.AdvanceMillimeters}");
 ```
 
-The caller supplies licensed font bytes. `TextFontFace` copies them, selects a
-TTC face when requested, validates a bounded static monochrome TrueType profile,
-and records both source and selected-face SHA-256. No system-font discovery or
-synthetic weight/style change occurs. An explicit face list may choose a
-whole-run fallback; `TEXT_FACE_FALLBACK` records the selected face. If no face
-covers the whole run, the query fails. Mixed-face cluster fallback is outside
-this first profile.
+调用方提供许可明确的字体字节。`TextFontFace` 复制这些字节，按需选择 TTC 字面，验证有界的静态单色 TrueType 配置，并记录源字体和所选字面的 SHA-256。它不会发现系统字体，也不会合成字重或样式。显式字面列表可以为整个游程选择回退；`TEXT_FACE_FALLBACK` 记录所选字面。如果没有字面覆盖整个游程，查询就会失败。按簇混合字面回退不在首个配置范围内。
 
-`TextShapeRequest` accepts one logical Unicode run, absolute .NET UTF-16 source
-offset, face, direction, script, language and feature intervals. The result
-holds actual GIDs, X/Y advances and offsets in font design units, cluster source
-intervals, ink bounds and the engine package version. Clusters can be many-to-one
-and their order can decrease in RTL. They are not character, grapheme or caret
-indexes. The prelayout result reports total advance width/height, final line
-positions and baselines, source intervals, ink rectangles, overflow, diagnostics,
-and the exact shaped run used for each final line. Y is converted to downward
-page millimeters once. Explicit LF/CRLF and bounded Latin/Han line opportunities,
-including supplementary Han ideographs through Unicode 18, are supported;
-other mandatory Unicode line separators are rejected. Final lines are reshaped
-after break selection. Prelayout rejects
-other script tags; direct single-run shaping remains caller-analyzed and has no
-paragraph bidi or word-breaking contract. Format controls, variation selectors,
-and variable/color/CFF fonts fail explicitly.
-The bounded Han break profile permits a break before a Han ideograph after Latin
-text, keeps common closing punctuation with the preceding character, opening
-punctuation with the following character, and no-break spaces attached on both
-sides; it does not claim full Unicode line-breaking behavior.
+`TextShapeRequest` 接受一个逻辑 Unicode 游程、绝对 .NET UTF-16 源偏移、字面、方向、文字体系、语言和特性区间。结果保存实际 GID、以字体设计单位表示的 X/Y 步进和偏移、簇源区间、墨迹边界以及引擎包版本。簇可以是多对一，其顺序在 RTL 中可能递减。它们不是字符、字素或插入符索引。预排版结果报告总步进宽度和高度、最终行位置与基线、源区间、墨迹矩形、溢出、诊断，以及每个最终行实际使用的塑形游程。Y 只转换为向下的页面毫米一次。支持显式 LF/CRLF 和有界的拉丁文/汉字断行机会，包括截至 Unicode 18 的增补汉字；其他 Unicode 强制换行分隔符会被拒绝。选择断点后会重新塑形最终行。预排版拒绝其他文字体系标签；直接单游程塑形仍由调用方完成分析，不提供段落双向或断词约定。格式控制符、变体选择符以及可变、彩色、CFF 字体会明确失败。有界汉字断行配置允许在拉丁文本后的汉字前断行，使常见闭标点与前一字符保持相连、开标点与后一字符保持相连，并使不换行空格与两侧内容保持相连；它不宣称实现完整 Unicode 断行行为。
 
-At a soft wrap, trailing breakable spaces stay in the source-addressed shaped
-run and its reported total advance. Fit and overflow checks use the visible
-prefix before those spaces, so an invisible trailing space cannot turn a
-fitting word into an overflowing line. No-break spaces are never wrap points.
+软换行处，末尾可断行空格仍保留在按源文本寻址的塑形游程及其报告的总步进中。适配和溢出检查使用这些空格之前的可见前缀，因此不可见的尾部空格不会使本应适配的单词变成溢出行。不换行空格从不是换行点。
 
-`TextPrelayoutOfdWriter.CreateSinglePage` consumes a completed result only for
-regular ASCII Latin where each source character maps to one nominal glyph with
-no offset or vertical advance. It preflights the whole page, uses the measured
-Delta and baseline, expands each TextObject boundary to measured ink without
-moving its pen, and embeds the exact selected full face. A ligature,
-combining sequence, unsupported style or overflowing page is rejected before
-creating a package; page preflight checks both final advance and translated ink
-extents, including negative side bearings. The first bounded typed GID/cluster
-producer, glyph-aware subset, and PDF/SVG sample consumer are documented in
-[R22 shaped output](https://whynpc9.github.io/ofdrw.net/reference/text-shaped-output/). Mixed-direction paragraphs and
-broader shaping remain separate R22 stages; a successful R21 query does not
-imply those output profiles work.
-The E2E also renders a fixed Han sample through a sample-only, preflighted
-one-glyph-per-BMP-Han OFD probe to inspect fallback, measured wrapping and baseline
-geometry. That probe does not extend the public writer's ASCII output contract.
+`TextPrelayoutOfdWriter.CreateSinglePage` 仅为常规 ASCII 拉丁文消费已完成的结果，其中每个源字符映射到一个标称字形，且没有偏移或垂直步进。它预检整个页面，使用实测 Delta 和基线，在不移动笔位的情况下将每个 TextObject 边界扩展到实测墨迹，并嵌入实际选择的完整字面。连字、组合序列、不支持的样式或页面溢出都会在创建包之前被拒绝；页面预检同时检查最终步进和平移后的墨迹范围，包括负侧边距。首个有界类型化 GID/簇生成器、字形感知子集以及 PDF/SVG 样例消费程序见 [R22 塑形输出](https://whynpc9.github.io/ofdrw.net/reference/text-shaped-output/)。混合方向段落和更广泛的塑形仍属于独立的 R22 阶段；R21 查询成功不代表这些输出配置可用。E2E 还通过一个仅供样例使用、经过预检的“每个 BMP 汉字一个字形”OFD 探针渲染固定汉字样例，以检查回退、实测换行和基线几何。该探针不扩展公开写出器的 ASCII 输出约定。
 
-The API enforces 32 MiB per font, 4096 UTF-16 units per run/request, 256 lines,
-8192 maximum caller-selected shape calls, 8 million estimated cmap lookup steps
-during whole-run face selection, and 512 MiB of cumulative shaping work. Each
-nonempty candidate is charged for two full face copies plus 64 work units per
-UTF-16 code unit before invoking the shaper; wide Han paragraphs with many
-candidate boundaries can therefore fail explicitly before exhausting the call
-limit. Native glyph expansion is bounded separately.
-Cancellation is checked before and after native shaping and during layout;
-the synchronous native call is not interruptible mid-instruction. Query failure
-returns no partial result. File/stream writing retains the repository's separate
-atomicity contract in [capability-contract-v12.md](https://whynpc9.github.io/ofdrw.net/reference/capability-contract-v12/).
+API 强制实施以下限制：每个字体 32 MiB，每个游程/请求 4096 个 UTF-16 代码单元，256 行，调用方最多选择 8192 次塑形调用，整游程字面选择期间最多估算 800 万次 cmap 查询步骤，以及累计 512 MiB 塑形工作量。每个非空候选在调用塑形器之前，按两份完整字面副本以及每个 UTF-16 代码单元 64 个工作单位计费；因此，包含许多候选边界的宽汉字段落可能在达到调用次数上限前明确失败。原生字形展开另有独立上限。原生塑形前后及排版期间都会检查取消；同步原生调用无法在指令执行中途打断。查询失败不返回部分结果。文件和流写入继续遵循[能力契约](https://whynpc9.github.io/ofdrw.net/reference/capability-contract-v12/)中独立的原子性约定。
 
-The current checked evidence for this branch is recorded with its exact source
-SHA and generated outputs in the R21 PR; this document defines the profile and
-does not by itself establish cross-platform native loading or desktop-reader
-acceptance.
+此分支当前已核对的证据连同精确源码 SHA 和生成输出记录在 R21 PR 中；本文定义该配置，本身不证明跨平台原生加载或桌面阅读器验收已经通过。

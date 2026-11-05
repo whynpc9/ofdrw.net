@@ -1,158 +1,158 @@
 ---
-title: "GB/T 42133-2022 archival coverage ledger"
+title: "GB/T 42133-2022 归档覆盖账本"
 description: "GB/T 42133-2022 条款级覆盖、证据缺口、转换边界与完整符合性所需材料。"
 sidebar:
   order: 150
   label: "归档标准覆盖账本"
 ---
 
-This ledger inventories the treatment and software provisions of **GB/T 42133-2022, 信息技术 OFD档案应用指南**. It is an engineering traceability record, not a conformance certificate. The [public standard copy](https://tsgdag.jhun.edu.cn/_upload/article/files/93/cc/4d8bf26643f49ee8a76ee25d4ef6/82cca584-f57d-47db-9363-a1497f03326a.pdf) is 14 PDF pages, SHA-256 `7d76c086e1384ff200c0df8f5a40bf67660e841340c5e2630e582c81c22f1b82`. Clause labels below were checked against the rendered pages because this PDF's extractable text is garbled. The [national-standard catalog](https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=CF545613ABF25B011116F79DCCD3C45B) lists this edition as current. No PDF copy is committed here.
+本账本盘点 **GB/T 42133-2022《信息技术 OFD 档案应用指南》**的文档处理和软件条款。它是工程追踪记录，不是符合性证书。[公开标准副本](https://tsgdag.jhun.edu.cn/_upload/article/files/93/cc/4d8bf26643f49ee8a76ee25d4ef6/82cca584-f57d-47db-9363-a1497f03326a.pdf)共 14 个 PDF 页面，SHA-256 为 `7d76c086e1384ff200c0df8f5a40bf67660e841340c5e2630e582c81c22f1b82`。由于该 PDF 的可提取文本存在乱码，以下条款标签已对照渲染页面核对。[国家标准目录](https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=CF545613ABF25B011116F79DCCD3C45B)将此版本列为现行。本仓库未提交该 PDF 副本。
 
-**Coverage terms:** `Exact` means a separately verified, executable condition with positive/negative/uncertain fixtures. `Partial` means local preflight or an existing operation supplies only some evidence for the clause. `Open` means no clause-level rule/handler has been verified. `External` means source history, human judgment, a renderer/reader, another standard, PKI or a target archive must supply evidence. These are implementation statuses, not per-file outcomes. On a particular file `Pass`, `Fail`, `Unknown` and `NotApplicable` retain their four-state meanings; an `Open` clause cannot become Pass merely because its object is absent. A rule's NotApplicable requires complete scope and proven absence of applicable objects. R17's `AR-001/002` and R20's `AC-001`–`AC-009`, `AC-011` and `AC-012` have bounded executable mappings. `AC-010`, `AC-013`, `AC-014` and `AC-015` are violation-only subsets; their absent cases remain Unknown. The six `APF-*` rules remain local policy and do **not** become standard clauses by resemblance.
+**覆盖术语：**“精确（`Exact`）”表示经独立验证的可执行条件，具有正向、反向和不确定样例。“部分（`Partial`）”表示本地预检或现有操作只能为条款提供部分证据。“未覆盖（`Open`）”表示尚未验证条款级规则或处理器。“外部证据（`External`）”表示需要来源历史、人工判断、渲染器/阅读器、另一项标准、PKI 或目标档案机构提供证据。这些是实现状态，不是单文件结果。对于具体文件，`Pass`、`Fail`、`Unknown` 和 `NotApplicable` 保留其四态含义；未覆盖条款不能仅因对象不存在就变成 Pass。规则的 NotApplicable 要求作用域完整，且已证明不存在适用对象。R17 的 `AR-001/002` 和 R20 的 `AC-001`–`AC-009`、`AC-011`、`AC-012` 具有有界可执行映射。`AC-010`、`AC-013`、`AC-014` 和 `AC-015` 是仅发现违规的子集；未发现违规时仍为 Unknown。六项 `APF-*` 规则仍是本地策略，**不会**因形式相似就成为标准条款。
 
-Sections 1, 3 and 4 define scope, terms and abbreviations rather than per-package acceptance predicates. Section 2 incorporates the following **undated** normative references; their applicable current editions and amendments have not been pinned or evaluated for this ledger. A referenced-standard condition remains open until its exact text, version and test evidence are recorded. The annex also points to GB/T 20090 (all parts) for AVS; that format family has no interoperability evidence here.
+第 1、3、4 章定义范围、术语和缩略语，而不是逐包验收谓词。第 2 章引用以下**未注明日期**的规范性引用文件；其适用的当前版本和修改单尚未为本账本固定或评估。引用标准中的条件在记录准确文本、版本和测试证据之前仍未覆盖。附录还指向 GB/T 20090（所有部分）作为 AVS 依据；本项目没有该格式系列的互操作证据。
 
-| Section 2 reference | Needed for |
+| 第 2 章引用标准 | 用途 |
 | --- | --- |
-| GB/T 13000; GB 18030 | Character set and mapping, including 6.2.6(d). |
-| GB/T 18894 | Record-unit organization in 5.2(b). |
-| GB/T 33190 | Base OFD structure, font exemption, metadata and format semantics throughout section 6. |
-| GB/T 35275; GB/T 38540 | Signature/seal format and trust boundary in 6.13. |
-| DA/T 46; DA/T 54 | Metadata names in 6.2.1(b). |
-| DA/T 47 | Long-term format qualities in 5.2(a). |
+| GB/T 13000；GB 18030 | 字符集和映射，包括 6.2.6(d)。 |
+| GB/T 18894 | 5.2(b) 的归档单元组织。 |
+| GB/T 33190 | 第 6 章各处的基础 OFD 结构、字体豁免、元数据和格式语义。 |
+| GB/T 35275；GB/T 38540 | 6.13 的签名/印章格式和信任边界。 |
+| DA/T 46；DA/T 54 | 6.2.1(b) 的元数据名称。 |
+| DA/T 47 | 5.2(a) 的长期格式特性。 |
 
-| Clause | Checked condition or treatment boundary | Coverage and required evidence |
+| 条款 | 已检查条件或处理边界 | 覆盖情况与所需证据 |
 | --- | --- | --- |
-| 5.1(a) | Archival text/graphics scenario | External: intended use and archive policy. |
-| 5.1(b) | Selected photographic records | External: collection scope and excluded specialist images. |
-| 5.1(c) | Management statistics/records | External: record classification. |
-| 5.2(a) | Long-term format qualities | External: DA/T 47 and independent portability/display evidence. |
-| 5.2(b) | Record-unit conversion/organization | External: GB/T 18894 and source-record provenance. |
-| 6.1 (first paragraph) | All display/print/interaction data and related resources inside package | Partial: APF-002/003/005 visits known edges; unknown XML, full resource closure and external semantics remain open. |
-| 6.1 (second paragraph) | Optional metadata, signature, tags and attachments | Open: optionality and their own clauses need separate evaluation. |
-| 6.2.1(a) | Root `DocType` identifies OFD-A | **Exact:** `AC-001`, recognized root and unqualified attribute only. |
-| 6.2.1(b) | Custom metadata names and preferred separate storage | External: DA/T 46/54 mapping and GB/T 33190 allowance not yet evaluated. |
-| 6.2.1(c) | No multiple document mechanism; split or merge source if needed | **Exact** for final package cardinality: `AC-002`. Split/merge provenance and appended file list remain Open. |
-| 6.2.1(d) | Retain existing `Versions` | Open: requires before/after provenance, not one final package. |
-| 6.2.1(e) | Remove files unrelated to root and transitively referenced content | Partial: APF visits known references. R18's opt-in physical attachment removal proves ownership and reference closure for a requested payload, not whole-package archival reachability or deletion of every unrelated file. |
-| 6.2.2(a) | Remove document `Permissions` | **Exact:** R17 `AR-001`; opt-in audited copy handler for recognized XML only. |
-| 6.2.2(b) | Remove document `VPreferences` | **Exact:** R17 `AR-002`; same copy boundary. |
-| 6.2.2(c) | Remove document actions other than intra-document Goto | **Exact read-only type check:** `AC-003` on one recognized `Document.xml`. No removal handler; unsupported or opaque forms are Unknown. Bookmark/page-target validity and other action locations remain separately Open. |
-| 6.2.2(d) | Summarize attachments not retained | Open: retention decision, digest and description require source provenance. |
-| 6.2.2(e) | Remove `Extensions`, preserving any visual effect | External: source-aware appearance comparison and page transformation. A node-absence check alone cannot pass this clause. |
-| 6.2.3(a) | Promote most used page area to document default | Open: count page areas, preserve appearance and verify output. |
-| 6.2.3(b) | Prefer omitting redundant page area | Open: optional optimization, requires page/default comparison. |
-| 6.2.3(c) | Remove non-Goto page actions | **Exact read-only type check:** `AC-004` traverses recognized page and template descriptions; unresolved page entries and opaque action forms are Unknown. Goto target validity is separate. No removal handler. |
-| 6.2.3(d) | Distinguish same-named layers | **Exact read-only name check:** `AC-011` detects duplicate unqualified Layer names within each recognized page/template content; unresolved page or foreign layer names are Unknown. No rename handler or source naming provenance. |
-| 6.2.3(e) | Remove PageBlock nesting or bound unavoidable nesting | Open: full page/template traversal and rendering equivalence. |
-| 6.2.4(a) | Prefer original layer order and body/background organization | External: generation intent and visual comparison. |
-| 6.2.4(b) | Place scan image and recognized text in appropriate layers | External: scan/OCR provenance and page inspection. |
-| 6.2.4(c) | Prefer semantic content order | External: semantic reading order and accessibility review. |
-| 6.2.5(a) | Remove non-Goto outline actions | **Exact read-only type check:** `AC-005` visits nested recognized `OutlineElem` actions. Opaque outline/action scope is Unknown. No removal handler. |
-| 6.2.5(b) | Remove outline jumps to absent bookmark/page | **Exact read-only target check:** `AC-006` resolves recognized Goto bookmark names and page IDs against the selected document. Ambiguous inventories are Unknown. No removal handler. |
-| 6.2.6(a) | Place resource types in public/document tables | Open: validate every resource table and reference scope. |
-| 6.2.6(b)(1) | Embed/subset fonts referenced by filled/stroked TextObject | Partial: APF-003 only checks file presence and known font IDs; real font validity, glyph use and GB/T 33190 exemption remain Open. |
-| 6.2.6(b)(2) | Include fonts used in clip text | Open: clip traversal and actual glyph dependency. |
-| 6.2.6(c)(1) | Preserve glyph outline tables when subsetting | Open: inspect actual embedded OpenType tables and outline correctness. |
-| 6.2.6(c)(2) | Preserve required metrics/program/name tables | Open: same font-byte evidence. |
-| 6.2.6(c)(3) | Retain other tables needed for faithful drawing | External: glyph rendering and platform comparison. |
-| 6.2.6(d) | Prefer GB 18030 character set and UCS mapping | External: GB 18030 / GB/T 13000 and text/font mapping tests. |
-| 6.2.6(e) | Restrict raster resource formats or convert before archiving | Open: decode authenticated media payloads, not filename alone. |
-| 6.2.6(f) | No custom expansion data in raster resources | Open: decode each supported image format and extensions. |
-| 6.2.6(g) | Remove audio/video and retain summaries elsewhere | Open: source-aware transformation and summary evidence. |
-| 6.3.1(a) | Default color space may be defined | Open: permission, not a mandatory presence rule; object absence is NotApplicable only after full scope. |
-| 6.3.1(b) | Restrict color-space types | Open: traverse resource scopes and referenced color spaces. |
-| 6.3.1(c) | Prefer a color profile | Open: optional guidance plus color-management evidence. |
-| 6.3.2(a) | Remove clip that fully contains object boundary | Open: actual transformed clip geometry and visual equivalence. |
-| 6.3.2(b) | Remove zero-area clip and hide object | Open: geometry, transforms and visibility comparison. |
-| 6.3.3(a) | Bound visible text with appropriate tight rectangle | External: glyph geometry and appearance check. |
-| 6.3.3(b) | Remove object actions, migrating intra-document links | **Partial:** `AC-010` fails a recognized retained object action in page, template or annotation appearance. Absence is Unknown without source action inventory and link-annotation migration/visual/target evidence. |
-| 6.3.3(c) | Prefer removing stroke attributes when Stroke=false | Open: optional cleanup with style inheritance. |
-| 6.3.3(d) | Prefer removing redundant composite drawing attributes | Open: inherited resource semantics and appearance. |
-| 6.3.3(e) | Prefer removing image/video fill attributes | Open: object-type and rendering semantics. |
-| 6.4(a) | Prefer shared color DrawParam for repeated paths | Open: optional deduplication with source equivalence. |
-| 6.4(b) | Prefer shared stroke DrawParam for repeated paths | Open: same, including dash/cap/join. |
-| 6.5(a) | Prefer resource table suited to image sharing scope | Open: cross-page/page-local use inventory. |
-| 6.5(b) | `ImageObject Interpolate`, when used, is false | **Exact read-only attribute check:** `AC-007` scans recognized page/template and retained annotation appearance objects; true fails, false passes, complete absence of attribute is NotApplicable, opaque graphic scope is Unknown. |
-| 6.6(a) | Prefer one text object per matching-font line | External: source line and font-run semantics. |
-| 6.6(b) | Split text outside built-in font/character exemption | Open: GB/T 33190 exemption plus glyph-run verification. |
-| 6.6(c) | Identify text size with `Size` | **Exact read-only attribute check:** `AC-008` requires a positive unqualified `Size` on recognized text objects in page/template and retained annotation appearance content. Opaque graphic scope is Unknown; actual glyph geometry remains external. |
-| 6.6(d) | Prefer `HScale` for horizontal-only transform | Open: exact transform decomposition and appearance. |
-| 6.6(e) | Prefer shared DrawParam for repeated text colors | Open: optional resource deduplication. |
-| 6.7 | Treat video as image with video action | Open: media/action handling and rendering. |
-| 6.8 | Prefer vector resource table suited to reuse scope | Open: cross-page and page-local composite inventory. |
-| 6.9(a) | No external-resource action on objects/outline/page/document | **Partial:** `AC-013` fails retained, recognized Action/URI declarations with explicit absolute HTTP(S), FTP or file targets, or relative targets resolved against an explicit absolute external `Base`, at document, page/template, outline and recognized graphic-object locations, including retained annotation appearances. Unknown covers URI schemes or resource-backed actions not proved external, opaque locations and full action/resource closure. No removal handler. |
-| 6.9(b) | Prefer keeping removed-action summaries | External: before/after action provenance. |
-| 6.10.1(a)(1) | Freeze appearance-affecting annotation parameters | External: original/final appearance comparison. |
-| 6.10.1(a)(2) | Remove annotation appearance PageBlock nesting | **Exact read-only structure check:** `AC-012` follows retained annotation appearances and fails nested recognized PageBlocks; opaque appearances are Unknown. No flattening handler. |
-| 6.10.1(a)(3) | Set retained annotation ReadOnly/NoZoom/NoRotate | **Exact read-only attribute check:** `AC-009` follows the recognized annotation index and requires all three true on each retained `Annot`; unresolved or foreign scope is Unknown. Other annotation-treatment subclauses remain open. |
-| 6.10.1(b) | Alternative: flatten annotation appearance into page | External: source ownership, visual equivalence and information-loss record. |
-| 6.10.2 | Store post-archive management annotations separately | External: archive lifecycle and separate-file evidence. |
-| 6.11 | Prefer retaining tags and closing their referenced content | Partial: known package edges only; full tag content closure and provenance Open. |
-| 6.12(a) | Remove extension information | **Partial:** `AC-014` fails a recognized `Document/Extensions` declaration with a direct text target; empty, nested or foreign declarations and other extension locations remain Unknown. No removal handler. |
-| 6.12(b) | Freeze extension appearance/print effects | External: source-specific interpretation and visual/print comparison. |
-| 6.13.1(a) | Signature format and qualified CA for non-de-technicalized signature | External: GB/T 35275, CA qualification, chain/revocation and trusted time. APF-006 is inventory only. |
-| 6.13.1(b) | Seal format, registration and qualified certificates | External: GB/T 38540, registration and qualified CA evidence. |
-| 6.13.1(c) | Archive authority accepts lasting certificate status services | External: archive authority decision and service continuity. |
-| 6.13.2(a)(1) | Record signer/time/digest in retained annotation | External: authenticated source signature and new annotation provenance. |
-| 6.13.2(a)(2) | Remove retained annotation's SignRef | Open: only as part of authenticated signature de-technicalization. |
-| 6.13.2(b) | Flatten signature annotation if annotation not retained | External: appearance/ownership comparison. |
-| 6.13.2(c) | Remove signature record and folder after de-technicalization | Open: signed-byte policy and complete reference closure. R17 copy refuses signed input. |
-| 6.13.3(a)(1) | Seal appearance to annotation with signer/certificate/time/digest | External: authenticated seal and appearance evidence. |
-| 6.13.3(a)(2) | Alternative seal appearance to page with Darken | External: visual check and compositing support. |
-| 6.13.3(b) | Remove seal record and folder after de-technicalization | Open: only after authenticated source and closed references. |
-| 6.14 | Retain multi-version information | Open: before/after bytes and references required. |
-| 6.15.1(a) | Prefer retaining text-format attachments | External: retention policy and actual content type. |
-| 6.15.1(b) | Prefer retaining documented formats with archived documentation | External: documentation and archive accession evidence. |
-| 6.15.1(c) | Prefer retaining qualifying signed attachments | External: a/b, signature standard and trust verification. |
-| 6.15.2(a) | Convert eligible removed attachments and append to main document | External: Annex A formats, conversion fidelity, order and page checks. |
-| 6.15.2(b)(1) | Prefer externalizing removed audio/video with summary | External: retained digest, description and external object evidence. |
-| 6.15.2(b)(2) | Prefer externalizing oversized non-viewing images with summary | External: size/use policy, digest and description. |
-| 6.15.2(b)(3) | Prefer externalizing data spreadsheets with summary | External: semantic classification and information loss. |
-| 6.15.2(b)(4) | Prefer externalizing animation/3D-heavy web/slides with summary | External: content inspection and preservation decision. |
-| 6.16 | Long-term OFD unencrypted; decrypt before archiving | **Partial:** `AC-015` fails a retained root `Encryptions.xml` marker regardless of local APF policy or root XML availability when the package loads. Absence remains Unknown without general encryption discovery, source decryption provenance and plaintext proof. APF-004 remains a separate local-policy check. |
-| 7.1(1) | Writer supports relevant generation/conversion and archival processing | External: product capability and conversion E2E, not package-only. |
-| 7.1(2) | Writer follows the prescribed treatment | External: full clause-level end-to-end evidence still missing. |
-| 7.2(1) | Reader fully outputs OFD, checks format and reports untreated items | External: independent reader and GUI/log behavior. |
-| 7.2(2) | Reader disables editing of OFD-A and signals it | External: target reader UI and permissions tests. |
+| 5.1(a) | 归档文本/图形场景 | 外部证据：预期用途和档案策略。 |
+| 5.1(b) | 选定的照片档案 | 外部证据：收集范围及排除的专业图像。 |
+| 5.1(c) | 管理统计/记录 | 外部证据：记录分类。 |
+| 5.2(a) | 长期格式特性 | 外部证据：DA/T 47 以及独立的可移植性/显示证据。 |
+| 5.2(b) | 归档单元转换/组织 | 外部证据：GB/T 18894 和源记录来源。 |
+| 6.1（第一段） | 所有显示/打印/交互数据及相关资源位于包内 | 部分覆盖：APF-002/003/005 检查已知边；未知 XML、完整资源闭包和外部语义仍未覆盖。 |
+| 6.1（第二段） | 可选元数据、签名、标签和附件 | 未覆盖：可选性及其各自条款需要单独评估。 |
+| 6.2.1(a) | 根 `DocType` 标识 OFD-A | **精确：**`AC-001`，仅检查可识别根节点和无限定属性。 |
+| 6.2.1(b) | 自定义元数据名称及优先独立存储 | 外部证据：DA/T 46/54 映射和 GB/T 33190 的许可尚未评估。 |
+| 6.2.1(c) | 不使用多文档机制；必要时拆分或合并来源 | **精确（仅最终包数量）：**`AC-002`。拆分/合并来源和追加文件列表仍未覆盖。 |
+| 6.2.1(d) | 保留现有 `Versions` | 未覆盖：需要转换前后来源证据，不能只检查一个最终包。 |
+| 6.2.1(e) | 移除与根节点及传递引用内容无关的文件 | 部分覆盖：APF 检查已知引用。R18 可选物理附件移除能证明请求载荷的所有权和引用闭包，但不能证明整包归档可达性，也不会删除所有无关文件。 |
+| 6.2.2(a) | 移除文档 `Permissions` | **精确：**R17 `AR-001`；仅对可识别 XML 提供可选的审计副本处理器。 |
+| 6.2.2(b) | 移除文档 `VPreferences` | **精确：**R17 `AR-002`；副本边界相同。 |
+| 6.2.2(c) | 移除文档中除文档内 Goto 外的动作 | **精确的只读类型检查：**`AC-003` 检查一个可识别的 `Document.xml`。没有移除处理器；不支持或不透明的形式为 Unknown。书签/页面目标有效性和其他动作位置仍分别未覆盖。 |
+| 6.2.2(d) | 汇总未保留的附件 | 未覆盖：保留决策、摘要和描述需要来源证据。 |
+| 6.2.2(e) | 移除 `Extensions`，同时保留所有视觉效果 | 外部证据：需要感知来源的外观比较和页面转换。仅检查节点不存在不能使此条款通过。 |
+| 6.2.3(a) | 将最常用的页面区域提升为文档默认值 | 未覆盖：统计页面区域、保持外观并验证输出。 |
+| 6.2.3(b) | 优先省略冗余页面区域 | 未覆盖：可选优化，需要比较页面与默认值。 |
+| 6.2.3(c) | 移除非 Goto 页面动作 | **精确的只读类型检查：**`AC-004` 遍历可识别的页面和模板描述；无法解析的页面条目和不透明动作形式为 Unknown。Goto 目标有效性另行检查。没有移除处理器。 |
+| 6.2.3(d) | 区分同名图层 | **精确的只读名称检查：**`AC-011` 检测每个可识别页面/模板内容内重复的无限定 Layer 名称；无法解析的页面或外来图层名称为 Unknown。没有重命名处理器或来源命名证据。 |
+| 6.2.3(e) | 移除 PageBlock 嵌套，或限制不可避免的嵌套 | 未覆盖：需要完整页面/模板遍历和渲染等价性。 |
+| 6.2.4(a) | 优先保留原图层顺序及正文/背景组织 | 外部证据：生成意图和视觉比较。 |
+| 6.2.4(b) | 将扫描图像和识别文本放入适当图层 | 外部证据：扫描/OCR 来源和页面检查。 |
+| 6.2.4(c) | 优先采用语义内容顺序 | 外部证据：语义阅读顺序和可访问性评审。 |
+| 6.2.5(a) | 移除非 Goto 大纲动作 | **精确的只读类型检查：**`AC-005` 检查嵌套的可识别 `OutlineElem` 动作。不透明的大纲/动作作用域为 Unknown。没有移除处理器。 |
+| 6.2.5(b) | 移除指向不存在书签/页面的大纲跳转 | **精确的只读目标检查：**`AC-006` 根据所选文档解析可识别的 Goto 书签名和页面 ID。有歧义的清单为 Unknown。没有移除处理器。 |
+| 6.2.6(a) | 将资源类型放入公共/文档资源表 | 未覆盖：验证每个资源表和引用作用域。 |
+| 6.2.6(b)(1) | 嵌入或子集化填充/描边 TextObject 引用的字体 | 部分覆盖：APF-003 只检查文件是否存在及已知字体 ID；真实字体有效性、字形使用和 GB/T 33190 豁免仍未覆盖。 |
+| 6.2.6(b)(2) | 包含裁剪文字使用的字体 | 未覆盖：裁剪遍历和实际字形依赖。 |
+| 6.2.6(c)(1) | 子集化时保留字形轮廓表 | 未覆盖：检查实际嵌入的 OpenType 表和轮廓正确性。 |
+| 6.2.6(c)(2) | 保留必需的度量/程序/name 表 | 未覆盖：同样需要字体字节证据。 |
+| 6.2.6(c)(3) | 保留忠实绘制所需的其他表 | 外部证据：字形渲染和平台比较。 |
+| 6.2.6(d) | 优先使用 GB 18030 字符集和 UCS 映射 | 外部证据：GB 18030、GB/T 13000 以及文本/字体映射测试。 |
+| 6.2.6(e) | 限制栅格资源格式，或在归档前转换 | 未覆盖：解码经认证的媒体载荷，不能只看文件名。 |
+| 6.2.6(f) | 栅格资源不含自定义扩展数据 | 未覆盖：解码每种受支持图像格式及其扩展。 |
+| 6.2.6(g) | 移除音频/视频，并在其他位置保留摘要 | 未覆盖：需要感知来源的转换和摘要证据。 |
+| 6.3.1(a) | 可定义默认颜色空间 | 未覆盖：这是许可而非强制存在规则；只有在完整作用域检查后，对象不存在才能记为 NotApplicable。 |
+| 6.3.1(b) | 限制颜色空间类型 | 未覆盖：遍历资源作用域和引用的颜色空间。 |
+| 6.3.1(c) | 优先使用颜色配置文件 | 未覆盖：可选指导和颜色管理证据。 |
+| 6.3.2(a) | 移除完全包含对象边界的裁剪 | 未覆盖：实际变换后的裁剪几何和视觉等价性。 |
+| 6.3.2(b) | 移除零面积裁剪并隐藏对象 | 未覆盖：几何、变换和可见性比较。 |
+| 6.3.3(a) | 用适当紧致矩形限制可见文字 | 外部证据：字形几何和外观检查。 |
+| 6.3.3(b) | 移除对象动作，迁移文档内链接 | **部分：**`AC-010` 会使页面、模板或批注外观中保留的可识别对象动作失败。没有来源动作清单以及链接批注迁移、视觉和目标证据时，未发现动作仍为 Unknown。 |
+| 6.3.3(c) | 优先在 Stroke=false 时移除描边属性 | 未覆盖：需要处理样式继承的可选清理。 |
+| 6.3.3(d) | 优先移除冗余组合绘制属性 | 未覆盖：继承的资源语义和外观。 |
+| 6.3.3(e) | 优先移除图像/视频填充属性 | 未覆盖：对象类型和渲染语义。 |
+| 6.4(a) | 优先为重复路径共享颜色 DrawParam | 未覆盖：需要来源等价性的可选去重。 |
+| 6.4(b) | 优先为重复路径共享描边 DrawParam | 未覆盖：同上，包括虚线、端点和连接样式。 |
+| 6.5(a) | 优先采用适合图像共享范围的资源表 | 未覆盖：跨页/页内使用清单。 |
+| 6.5(b) | 使用 `ImageObject Interpolate` 时，其值为 false | **精确的只读属性检查：**`AC-007` 扫描可识别页面/模板和保留批注外观对象；true 失败，false 通过，完整作用域内属性不存在为 NotApplicable，不透明图形作用域为 Unknown。 |
+| 6.6(a) | 优先让每个匹配字体的行使用一个文本对象 | 外部证据：来源行和字体游程语义。 |
+| 6.6(b) | 拆分内置字体/字符豁免之外的文本 | 未覆盖：GB/T 33190 豁免和字形游程验证。 |
+| 6.6(c) | 用 `Size` 标识文字大小 | **精确的只读属性检查：**`AC-008` 要求可识别页面/模板和保留批注外观内容中的文本对象具有正的无限定 `Size`。不透明图形作用域为 Unknown；实际字形几何仍需外部证据。 |
+| 6.6(d) | 仅水平变换时优先使用 `HScale` | 未覆盖：精确的变换分解和外观。 |
+| 6.6(e) | 优先为重复文本颜色共享 DrawParam | 未覆盖：可选资源去重。 |
+| 6.7 | 将视频视为带视频动作的图像 | 未覆盖：媒体/动作处理和渲染。 |
+| 6.8 | 优先采用适合复用范围的矢量资源表 | 未覆盖：跨页和页内组合对象清单。 |
+| 6.9(a) | 对象/大纲/页面/文档不含外部资源动作 | **部分：**`AC-013` 会使保留且可识别的 Action/URI 声明失败，包括显式绝对 HTTP(S)、FTP 或 file 目标，或相对于显式绝对外部 `Base` 解析的相对目标；覆盖文档、页面/模板、大纲和可识别图形对象位置，包括保留批注外观。无法证明为外部的 URI 方案或资源支持动作、不透明位置以及完整动作/资源闭包均为 Unknown。没有移除处理器。 |
+| 6.9(b) | 优先保留已移除动作的摘要 | 外部证据：转换前后的动作来源。 |
+| 6.10.1(a)(1) | 冻结影响外观的批注参数 | 外部证据：原始/最终外观比较。 |
+| 6.10.1(a)(2) | 移除批注外观 PageBlock 嵌套 | **精确的只读结构检查：**`AC-012` 跟踪保留批注外观，并使嵌套的可识别 PageBlock 失败；不透明外观为 Unknown。没有扁平化处理器。 |
+| 6.10.1(a)(3) | 设置保留批注的 ReadOnly/NoZoom/NoRotate | **精确的只读属性检查：**`AC-009` 跟踪可识别批注索引，要求每个保留 `Annot` 的三个标志均为 true；无法解析或外来作用域为 Unknown。其他批注处理子条款仍未覆盖。 |
+| 6.10.1(b) | 替代方案：将批注外观扁平化到页面 | 外部证据：来源所有权、视觉等价性和信息损失记录。 |
+| 6.10.2 | 单独存储归档后管理批注 | 外部证据：档案生命周期和独立文件证据。 |
+| 6.11 | 优先保留标签并闭合其引用内容 | 部分覆盖：仅已知包边；完整标签内容闭包和来源仍未覆盖。 |
+| 6.12(a) | 移除扩展信息 | **部分：**`AC-014` 会使带直接文本目标的可识别 `Document/Extensions` 声明失败；空、嵌套或外来声明以及其他扩展位置仍为 Unknown。没有移除处理器。 |
+| 6.12(b) | 冻结扩展外观/打印效果 | 外部证据：来源特定解释和视觉/打印比较。 |
+| 6.13.1(a) | 非去技术化签名的格式和合格 CA | 外部证据：GB/T 35275、CA 资质、证书链/吊销和可信时间。APF-006 仅负责清点。 |
+| 6.13.1(b) | 印章格式、注册和合格证书 | 外部证据：GB/T 38540、注册和合格 CA 证据。 |
+| 6.13.1(c) | 档案机构接受长期证书状态服务 | 外部证据：档案机构决策和服务连续性。 |
+| 6.13.2(a)(1) | 在保留批注中记录签署者/时间/摘要 | 外部证据：经认证的来源签名和新批注来源。 |
+| 6.13.2(a)(2) | 移除保留批注的 SignRef | 未覆盖：只能作为经认证签名去技术化的一部分。 |
+| 6.13.2(b) | 不保留批注时，将签名批注扁平化 | 外部证据：外观/所有权比较。 |
+| 6.13.2(c) | 去技术化后移除签名记录和目录 | 未覆盖：已签名字节策略和完整引用闭包。R17 副本拒绝签名输入。 |
+| 6.13.3(a)(1) | 将印章外观转为批注，并记录签署者/证书/时间/摘要 | 外部证据：经认证的印章和外观证据。 |
+| 6.13.3(a)(2) | 替代方案：以 Darken 将印章外观合成到页面 | 外部证据：视觉检查和合成支持。 |
+| 6.13.3(b) | 去技术化后移除印章记录和目录 | 未覆盖：必须先认证来源并闭合引用。 |
+| 6.14 | 保留多版本信息 | 未覆盖：需要转换前后字节和引用。 |
+| 6.15.1(a) | 优先保留文本格式附件 | 外部证据：保留策略和实际内容类型。 |
+| 6.15.1(b) | 优先保留有归档文档记录的格式 | 外部证据：文档和档案接收证据。 |
+| 6.15.1(c) | 优先保留符合条件的已签名附件 | 外部证据：a/b、签名标准和信任验证。 |
+| 6.15.2(a) | 转换符合条件的已移除附件，并追加到主文档 | 外部证据：附录 A 格式、转换保真度、顺序和页面检查。 |
+| 6.15.2(b)(1) | 优先将移除的音频/视频外部化并保留摘要 | 外部证据：保留的摘要、描述和外部对象证据。 |
+| 6.15.2(b)(2) | 优先将超出查看需求的大图像外部化并保留摘要 | 外部证据：大小/用途策略、摘要和描述。 |
+| 6.15.2(b)(3) | 优先将数据电子表格外部化并保留摘要 | 外部证据：语义分类和信息损失。 |
+| 6.15.2(b)(4) | 优先将动画/3D 内容较多的网页/幻灯片外部化并保留摘要 | 外部证据：内容检查和保存决策。 |
+| 6.16 | 长期 OFD 不加密；归档前解密 | **部分：**当包可加载时，`AC-015` 会使保留的根 `Encryptions.xml` 标记失败，不受本地 APF 策略或根 XML 是否可用影响。没有通用加密发现、来源解密证据和明文证明时，未发现标记仍为 Unknown。APF-004 仍是独立的本地策略检查。 |
+| 7.1(1) | 写入端支持相关生成/转换和归档处理 | 外部证据：产品能力和转换 E2E，不能只检查包。 |
+| 7.1(2) | 写入端遵循规定的处理 | 外部证据：仍缺完整的条款级端到端证据。 |
+| 7.2(1) | 阅读端完整输出 OFD、检查格式并报告未处理项 | 外部证据：独立阅读器及 GUI/日志行为。 |
+| 7.2(2) | 阅读端禁止编辑 OFD-A 并给出提示 | 外部证据：目标阅读器 UI 和权限测试。 |
 
-Annex A is normative only when attachment conversion under 6.15.2(a) applies. It is not evidence that the project can convert every listed format. Each row needs a redistributable source fixture, target-format inspection, content/ordering/visual checks and a recorded decision where the table calls for judgment.
+附录 A 仅在适用 6.15.2(a) 的附件转换时具有规范性。它不能证明项目可以转换所列每种格式。每一行都需要可分发的来源 测试样例、目标格式检查、内容/顺序/视觉检查，并在表格要求判断时记录决策。
 
-| Annex A.1 row | Attachment class | Coverage |
+| 附录 A.1 行 | 附件类别 | 覆盖情况 |
 | --- | --- | --- |
-| 1 | Raster image | Open; image-to-page conversion and judgment for starred class. |
-| 2 | Text | Open; encoding and content fidelity. |
-| 3 | Word processing | Open; DOC/DOCX/WPS/RTF/UOF/UOT vary; existing DOCX converter is not complete annex coverage. |
-| 4 | Spreadsheet | Open; sheets, formulas, print area and starred judgment. |
-| 5 | Presentation | Open; notes/animation and starred judgment. |
-| 6 | Fixed-layout document | Open; OFD/PDF/XPS/PS/CEB/SEP/AIP interoperability. |
-| 7 | Web page | Open; resource capture and starred judgment. |
-| 8 | Audio | Open; AVS conversion and content proof. |
-| 9 | Video | Open; AVS conversion and content proof. |
-| 10 | CAD | Open; whether view/output is the main purpose. |
-| 11 | Database | Open; form or image treatment by content. |
-| 12 | Email | Open; web/form treatment and headers/attachments. |
-| 13 | Social media | Open; text/image/spreadsheet treatment by content. |
+| 1 | 栅格图像 | 未覆盖：图像转页面，以及带星号类别的判断。 |
+| 2 | 文本 | 未覆盖：编码和内容保真度。 |
+| 3 | 文字处理 | 未覆盖：DOC/DOCX/WPS/RTF/UOF/UOT 各不相同；现有 DOCX 转换器不代表完整附录覆盖。 |
+| 4 | 电子表格 | 未覆盖：工作表、公式、打印区域和带星号判断。 |
+| 5 | 演示文稿 | 未覆盖：备注/动画和带星号判断。 |
+| 6 | 固定版式文档 | 未覆盖：OFD/PDF/XPS/PS/CEB/SEP/AIP 互操作。 |
+| 7 | 网页 | 未覆盖：资源捕获和带星号判断。 |
+| 8 | 音频 | 未覆盖：AVS 转换和内容证据。 |
+| 9 | 视频 | 未覆盖：AVS 转换和内容证据。 |
+| 10 | CAD | 未覆盖：查看/输出是否为主要用途。 |
+| 11 | 数据库 | 未覆盖：按内容采用表单或图像处理。 |
+| 12 | 电子邮件 | 未覆盖：网页/表单处理以及标头/附件。 |
+| 13 | 社交媒体 | 未覆盖：按内容采用文本/图像/电子表格处理。 |
 
-## Result and transformation boundaries
+## 结果与转换边界
 
-`ArchivalCoverageService.CheckAsync` reads a stable seekable package and returns R17's report plus `AC-001`–`AC-015`. It never writes or changes the default six-rule local preflight. Known mandatory declaration, non-Goto action, missing outline target, interpolation, text-size, annotation-flag, retained object-action, external URI action, extension-declaration or encryption-marker violations are `Fail`; rejected or unsupported scope is `Unknown`. Action type checks do not establish valid targets outside the separately checked outline target scope. `AC-010`, `AC-013`, `AC-014` and `AC-015` remain Unknown without complete source, resource, extension or plaintext evidence when no known violation is found. Its `StandardOutcome` can be `Fail` or `Unknown`, **never Pass**, because the ledger still has open clauses. A missing mandatory `DocType` or document is Fail. This report does not convert, render, decrypt or validate certificates.
+`ArchivalCoverageService.CheckAsync` 读取稳定、可定位的包，并返回 R17 报告以及 `AC-001`–`AC-015`。它从不写入，也不改变默认六项规则的本地预检。已知强制声明、非 Goto 动作、缺失大纲目标、插值、文字大小、批注标志、保留对象动作、外部 URI 动作、扩展声明或加密标记方面的违规为 `Fail`；被拒绝或不支持的作用域为 `Unknown`。动作类型检查不能证明单独检查范围之外的目标有效。`AC-010`、`AC-013`、`AC-014` 和 `AC-015` 在未发现已知违规、又缺少完整来源、资源、扩展或明文证据时仍为 Unknown。其 `StandardOutcome` 只能为 `Fail` 或 `Unknown`，**绝不为 Pass**，因为账本仍有未覆盖条款。缺少强制 `DocType` 或文档为 Fail。此报告不转换、渲染、解密或验证证书。
 
-R17's `ArchivalCopyConverter` independently copies only unsigned, locally clean, supported `Permissions`/`VPreferences` inputs. It records changed/unchanged entry hashes, rejects uncertain fields, rechecks the output and preserves all non-target payloads byte for byte. Those checks prove the limited edit did not change known page/resource/attachment payload bytes; they do not establish full reachability, visual correctness, complete standard coverage or PKI validity. `AC-001/002` can be run on both original and copy without changing that copy contract. Signed inputs remain rejected rather than silently invalidated.
+R17 的 `ArchivalCopyConverter` 只独立复制未签名、本地检查无问题且受支持的 `Permissions`/`VPreferences` 输入。它记录已变更/未变更条目哈希，拒绝不确定字段，重新检查输出，并逐字节保留所有非目标载荷。这些检查证明有限编辑没有改变已知页面/资源/附件载荷字节；但不能证明完整可达性、视觉正确性、完整标准覆盖或 PKI 有效性。`AC-001/002` 可分别运行于原件和副本，不改变该副本约定。签名输入仍被拒绝，而不是被静默失效。
 
-R18's `OfdDocumentPackage.RemoveAttachment(..., Physical)` and writer perform a separate authenticated deletion. The R17 copy does not invoke that operation or inherit deletion authority. After copying, a caller may read the new package and request R18 removal independently; its own ownership and source/final reference checks decide whether deletion is safe. Neither operation establishes an archival retention decision or complete package reachability for 6.2.1(e) and 6.15.
+R18 的 `OfdDocumentPackage.RemoveAttachment(..., Physical)` 和写出器执行独立的认证删除。R17 副本不调用该操作，也不继承删除权限。复制后，调用方可读取新包并独立请求 R18 移除；其自身的所有权及来源/最终引用检查决定删除是否安全。两项操作都不能确定 6.2.1(e) 和 6.15 的归档保留决策或完整包可达性。
 
-**Closure gate:** a future full-standard claim requires each Open/Partial/External item to gain named, versioned evidence or an explicit applicable exception. It also requires independent OFD renderer/reader comparison, attachment conversion corpus, font and image validation, source-to-output provenance, the cited standards, qualified PKI evidence where relevant, and archive-authority decisions. Until then the status is `Incomplete` even when every implemented rule passes.
+**闭包门禁：**未来要声明完整标准符合性，每个未覆盖/部分覆盖/外部证据项都必须获得具名、按版本管理的证据，或明确的适用例外。还需要独立 OFD 渲染器/阅读器比较、附件转换语料、字体和图像验证、来源到输出的追踪、所引用标准、相关场景的合格 PKI 证据，以及档案机构决策。在此之前，即使所有已实现规则通过，状态仍为 `Incomplete`。
 
-## Concrete dependencies for the remaining work
+## 剩余工作的具体依赖
 
-| Clauses | Material or interface still needed | Why the current package cannot settle it |
+| 条款 | 仍需要的材料或接口 | 当前包无法判定的理由 |
 | --- | --- | --- |
-| 5.2, 6.2.1(b), 6.2.6, 6.3.1, 6.6(b), 6.13 | Applicable editions and amendments of the undated section 2 references: GB/T 13000, GB 18030, GB/T 18894, GB/T 33190, GB/T 35275, GB/T 38540, DA/T 46, DA/T 47 and DA/T 54. Pin the exact clauses and a permitted test corpus before adding predicates. | The GB/T 42133 text delegates character ranges, base OFD semantics, metadata names, archive properties and signature formats; matching an XML name alone is insufficient. |
-| 6.2.1(d)-(e), 6.2.2(d)-(e), 6.2.3(a)-(b),(e), 6.3.2, 6.3.3(a)-(b), 6.9(b), 6.10.1(a)(1),(b), 6.12(b), 6.14 | A stable source OFD, chosen output, source-to-output object identity and an auditable transformation manifest. The output-changing handlers also need generated OFD→PDF pages, PNG comparison and macOS Preview review. | A final ZIP cannot prove that Versions were retained, removed content was summarized, links were migrated or appearance was frozen. The present API is read-only and changes no page. |
-| 6.2.6(b)-(g), 6.3.1(b)-(c), 6.5(a), 6.7-6.8 | Authenticated resource ownership and media bytes, font-table/glyph validators, image decoders or signatures for the six permitted raster formats, profile readers and a corpus of page/resource sharing cases. GB/T 20090 applicable editions are needed for Annex A AVS rows. | Filename or XML declaration checks do not establish decoded format, used glyphs, color output, resource sharing or audio/video conversion fidelity. |
-| 6.10.2, 6.11, 6.15 and Annex A | Archive retention policy and accession receipts; source attachments and their content classification; converters and independent output fixtures for each applicable Annex A row, including order, text, visual and information-loss checks. | R18 physical deletion proves only a requested owned payload removal. It neither chooses retention nor preserves removed content by itself. |
-| 6.13 | Authenticated source signature/seal, applicable GB/T 35275 and GB/T 38540 criteria, qualified CA/registration evidence, certificate chain and revocation history, trusted signing time, and archive-authority acceptance of long-term status services. | Local inventory or a copied signature value cannot establish cryptographic validity, legal effect or permissible de-technicalization. |
-| 7.1-7.2 | A named target writer/reader build and independent reader tests for full output, untreated-item reporting and OFD-A edit lock, plus archive-policy sign-off. | Passing this library's unit tests does not observe another reader's UI, rendering or archive behavior. |
+| 5.2、6.2.1(b)、6.2.6、6.3.1、6.6(b)、6.13 | 第 2 章未注明日期引用文件的适用版本和修改单：GB/T 13000、GB 18030、GB/T 18894、GB/T 33190、GB/T 35275、GB/T 38540、DA/T 46、DA/T 47 和 DA/T 54。新增谓词前，固定准确条款和获准使用的测试语料。 | GB/T 42133 文本将字符范围、基础 OFD 语义、元数据名称、归档属性和签名格式委托给这些标准；仅匹配 XML 名称并不足够。 |
+| 6.2.1(d)-(e)、6.2.2(d)-(e)、6.2.3(a)-(b),(e)、6.3.2、6.3.3(a)-(b)、6.9(b)、6.10.1(a)(1),(b)、6.12(b)、6.14 | 稳定的源 OFD、选定输出、来源到输出的对象身份，以及可审计的转换清单。改变输出的处理器还需要生成 OFD→PDF 页面、PNG 比较和 macOS Preview 复查。 | 最终 ZIP 不能证明 Versions 已保留、移除内容已汇总、链接已迁移或外观已冻结。当前 API 为只读，不更改页面。 |
+| 6.2.6(b)-(g)、6.3.1(b)-(c)、6.5(a)、6.7-6.8 | 经认证的资源所有权和媒体字节、字体表/字形验证器、六种允许栅格格式的图像解码器或签名、配置文件读取器，以及页面/资源共享样例语料。附录 A 的 AVS 行还需要 GB/T 20090 的适用版本。 | 文件名或 XML 声明检查不能证明解码格式、已用字形、颜色输出、资源共享或音视频转换保真度。 |
+| 6.10.2、6.11、6.15 和附录 A | 档案保留策略和接收回执；源附件及其内容分类；每个适用附录 A 行的转换器和独立输出 测试样例，包括顺序、文本、视觉和信息损失检查。 | R18 物理删除只证明移除请求的自有载荷。它既不选择保留策略，也不自行保留已移除内容。 |
+| 6.13 | 经认证的来源签名/印章、适用的 GB/T 35275 和 GB/T 38540 准则、合格 CA/注册证据、证书链和吊销历史、可信签署时间，以及档案机构对长期状态服务的接受。 | 本地清点或复制的签名值不能证明密码学有效性、法律效力或允许的去技术化。 |
+| 7.1-7.2 | 具名的目标写入端/阅读端构建，以及独立阅读器对完整输出、未处理项报告和 OFD-A 编辑锁定的测试，另加档案策略签核。 | 通过本库单元测试无法观察其他阅读器的 UI、渲染或归档行为。 |
 
-Each row is an actual missing input or operation boundary. It is not converted to `Pass` by absence of the named XML element, and no publication or archival certification is implied by this ledger.
+每一行都是实际缺失的输入或操作边界。不能因具名 XML 元素不存在就将其转为 `Pass`，此账本也不代表任何发布或归档认证。
