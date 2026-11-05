@@ -40,7 +40,7 @@ URI schemes, UNC and double-slash paths are classified before package resolution
 
 `RuleResults` preserves observations for individual objects, with report-local result and evidence IDs, source entry, selector, stable reason, observed/expected metadata, severity, recommendation and local source. `GetRuleOutcome` aggregates Fail, then Unknown, then Pass; no applicable observations means NotApplicable. `SummaryOutcome` uses the same order and also remains Unknown for an incomplete run. All NotApplicable stays NotApplicable. A definite failure coexists with Unknown observations; a zero-object result never proves success. `RunState=Complete` means inspection finished, even when unsupported semantics yield Unknown. Always retain the complete report alongside any application decision.
 
-Reports use public read-only properties and can be serialized by the caller's serializer (for example System.Text.Json with JsonStringEnumConverter). The library introduces no serialization or network dependency. The CLI command `ofdrw preflight` (main, not yet released) wraps the same API and emits `ofdrw-cli-preflight/1` JSON; it is still local preflight, not certification:
+Reports use public read-only properties and can be serialized by the caller's serializer (for example System.Text.Json with JsonStringEnumConverter). The library introduces no serialization or network dependency. The CLI command `ofdrw preflight` (available since [0.2.0](https://whynpc9.github.io/ofdrw.net/releases/020/)) wraps the same API and emits `ofdrw-cli-preflight/1` JSON; it is still local preflight, not certification:
 
 ```sh
 ofdrw preflight input.ofd                          # human summary; exit 0 pass, 2 fail, 3 unknown/incomplete

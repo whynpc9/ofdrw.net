@@ -1,6 +1,6 @@
 # 后续范围与现行路线图
 
-更新：2026-11-03。`0.1.0-preview.10` 已完成发布及公开源回读，详见[最终发布记录](../validation/preview10-publication-2026-11-02.md)。本页列出保留的问题与候选方向；不自动启动实施、实验或发布。能力使用范围见[功能对照](../content/reference/feature-parity.md)和[分出口契约](../content/reference/capability-contract-v12.md)。
+更新：2026-11-05。`0.2.0` 已完成发布及公开源回读，详见[发布记录](../validation/0.2.0-publication-2026-11-05.md)。本页列出保留的问题与候选方向；不自动启动实施、实验或发布。能力使用范围见[功能对照](../content/reference/feature-parity.md)和[分出口契约](../content/reference/capability-contract-v12.md)。
 
 ## 已有能力
 

@@ -73,7 +73,7 @@ OFD 保留原始字体字节。供 PDFsharp 使用的副本具有内容唯一的
 
 注册表默认上限为 256 MiB 字体载荷和 4096 个族/样式别名，可在启动时通过 `MaximumRegisteredFontBytes`、`MaximumRegisteredFaces` 调整。达到限额会明确失败，不驱逐仍可能被 PDFsharp 使用的字体。此限额约束 SDK 注册表，不能作为整个进程工作集的保证。
 
-长期运行的转换服务（main 指南）：实测每个文档嵌入一个不同子集字体时，单进程约在第 261 个 CJK 文档（每个子集约 1 MB）或第 1,603 个拉丁文档（约 167 KB）达到字节上限，此时托管内存已达 1–2 GiB，因为 PDFsharp 自身也缓存字体且无法清除。建议在 `PdfFontRegistry.RegisteredFontBytes` 超过上限一半或处理数百个含不同嵌入字体的文档后回收工作进程，并按每进程数 GiB 规划内存。测量方法与选项评估见[PDF 字体注册表生命周期](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/pdf-font-registry-lifetime.md)。
+长期运行的转换服务：实测每个文档嵌入一个不同子集字体时，单进程约在第 261 个 CJK 文档（每个子集约 1 MB）或第 1,603 个拉丁文档（约 167 KB）达到字节上限，此时托管内存已达 1–2 GiB，因为 PDFsharp 自身也缓存字体且无法清除。建议在 `PdfFontRegistry.RegisteredFontBytes` 超过上限一半或处理数百个含不同嵌入字体的文档后回收工作进程，并按每进程数 GiB 规划内存。测量方法与选项评估见[PDF 字体注册表生命周期](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/pdf-font-registry-lifetime.md)。
 
 ## 页面编辑与合并
 
