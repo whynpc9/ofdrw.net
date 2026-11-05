@@ -1081,6 +1081,11 @@ public sealed partial class OfdPackageWriter
     {
         if (text.SourceXml is not null || text.Runs.Count != 1 || text.Runs[0].PositionedGlyphs is not { } positioned)
             throw new NotSupportedException("Typed positioned glyph output requires one newly owned TextCode.");
+        if (positioned.Mapping == OfdPositionedGlyphMapping.ClusterMap)
+        {
+            AddClusterMappedGlyphs(textObject, text, positioned, ns, ids);
+            return;
+        }
         var run = text.Runs[0];
         if (text.Text != run.Text || run.Text != positioned.LogicalText ||
             run.Text.Length is < 1 or > 8 || positioned.Glyphs.Count is < 1 or > 8 ||
@@ -1162,6 +1167,51 @@ public sealed partial class OfdPackageWriter
             new XAttribute("GlyphCount", glyphs.Count),
             new XElement(ns + "Glyphs", string.Join(" ", glyphs.Select(glyph =>
                 glyph.GlyphId.ToString(CultureInfo.InvariantCulture))))));
+    }
+
+    // Final paragraph layout output: every source cluster has its own CGTransform in logical
+    // order, so readers never infer a glyph from a cmap. Glyph slots follow that order and each
+    // slot has an explicit origin (complete DeltaX/DeltaY over slots), so RTL runs use negative
+    // deltas instead of reordering logical text.
+    private static void AddClusterMappedGlyphs(XElement textObject, OfdTextElement text,
+        OfdPositionedGlyphRun positioned, XNamespace ns, OfdIdPlan ids)
+    {
+        var run = text.Runs[0];
+        if (text.Text != run.Text || run.Text != positioned.LogicalText || text.Transform is not null ||
+            text.Weight != OfdTextElement.DefaultWeight || text.Italic)
+            throw new NotSupportedException("Cluster-mapped glyph output needs one unstyled, untransformed source TextCode.");
+        var slots = new List<OfdPositionedGlyph>(positioned.Glyphs.Count);
+        var transforms = new List<XElement>();
+        foreach (var cluster in positioned.LogicalClusters())
+        {
+            var glyphs = positioned.Glyphs.Skip(cluster.First).Take(cluster.Count).ToArray();
+            slots.AddRange(glyphs);
+            transforms.Add(new XElement(ns + "CGTransform",
+                new XAttribute("CodePosition", (cluster.Start - positioned.SourceStart).ToString(CultureInfo.InvariantCulture)),
+                new XAttribute("CodeCount", cluster.Length.ToString(CultureInfo.InvariantCulture)),
+                new XAttribute("GlyphCount", glyphs.Length.ToString(CultureInfo.InvariantCulture)),
+                new XElement(ns + "Glyphs", string.Join(" ", glyphs.Select(glyph =>
+                    glyph.GlyphId.ToString(CultureInfo.InvariantCulture))))));
+        }
+        var deltasX = new List<string>(); var deltasY = new List<string>();
+        foreach (var glyph in slots)
+            if (Math.Abs(glyph.OriginXMillimeters) > 1_000_000 || Math.Abs(glyph.OriginYMillimeters) > 1_000_000)
+                throw new NotSupportedException("Cluster-mapped glyph origins exceed the coordinate budget.");
+        for (var index = 1; index < slots.Count; index++)
+        {
+            deltasX.Add(ToInvariant(slots[index].OriginXMillimeters - slots[index - 1].OriginXMillimeters));
+            deltasY.Add(ToInvariant(slots[index].OriginYMillimeters - slots[index - 1].OriginYMillimeters));
+        }
+        var sourceCode = textObject.Elements(ns + "TextCode").Single();
+        sourceCode.SetAttributeValue("X", ToInvariant(slots[0].OriginXMillimeters));
+        sourceCode.SetAttributeValue("Y", ToInvariant(slots[0].OriginYMillimeters));
+        sourceCode.SetAttributeValue("DeltaX", deltasX.Count == 0 ? null : string.Join(" ", deltasX));
+        sourceCode.SetAttributeValue("DeltaY", deltasY.Any(value => value != "0") ? string.Join(" ", deltasY) : null);
+        if (run.Text.Length > 0 && (char.IsWhiteSpace(run.Text[0]) || char.IsWhiteSpace(run.Text[run.Text.Length - 1])))
+            sourceCode.SetAttributeValue(XNamespace.Xml + "space", "preserve");
+        sourceCode.Value = OfdTextRenderProjection.EncodeLiteral(run.Text, ids.Material, ids.Token);
+        foreach (var transform in transforms) sourceCode.AddBeforeSelf(transform);
+        textObject.SetAttributeValue(OfdTextEmphasis.ClusterMapV1, "true");
     }
 
     /// <summary>

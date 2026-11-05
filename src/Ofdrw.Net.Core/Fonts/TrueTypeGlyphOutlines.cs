@@ -13,7 +13,8 @@ namespace Ofdrw.Net.Core.Fonts;
 // the same points for PDF and SVG while retaining TextCode separately.
 internal sealed class TrueTypeGlyphOutlines
 {
-    private const int MaximumFaceBytes = 16 * 1024 * 1024;
+    // Matches the 32 MiB TextFontFace budget so large CJK faces can produce typed GID output.
+    private const int MaximumFaceBytes = 32 * 1024 * 1024;
     private const int MaximumSourceBytes = 64 * 1024 * 1024;
     private const int MaximumPoints = 32768;
     private const int MaximumComponents = 4096;

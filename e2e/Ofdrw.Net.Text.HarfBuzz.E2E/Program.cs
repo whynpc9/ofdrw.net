@@ -482,6 +482,7 @@ Console.WriteLine("R22 selected font-range original context, clipped ownership a
 await PositionedRunProbe.Run(output, dejavu, noto);
 await SizedFontSpanProbe.Run(output, dejavu, noto);
 await PositionedConsumerProbe.Run(output, dejavu, noto);
+await ParagraphLayoutProbe.Run(output, fixture, noto, wenkai, dejavu);
 const string mixedSource = "abc שלום def";
 var mixedEngine = HarfBuzzTextPrelayout.CreateMixedParagraph();
 var mixedWide = mixedEngine.Layout(new TextMixedParagraphRequest(mixedSource, dejavu, 4, 50));

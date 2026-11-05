@@ -116,6 +116,12 @@ jobs:
           test -s artifacts/r21-fixed-font/r21-han.ofd
           test -s artifacts/r21-fixed-font/r21-han.png
           test -s artifacts/r21-fixed-font/han-pdf-page-1.png
+          for name in r22-paragraph-justify r22-paragraph-rtl-center; do
+            test -s "artifacts/r21-fixed-font/$name.ofd"
+            pdftoppm -png -r 144 "artifacts/r21-fixed-font/$name.pdf" "artifacts/r21-fixed-font/$name-page"
+            test -s "artifacts/r21-fixed-font/$name-page-1.png"
+          done
+          test -s artifacts/r21-fixed-font/r22-paragraph-receipt.json
 
       - name: Run mandatory original-font geometry and replacement tests without skips
         run: python3 scripts/run-trusted-font-tests.py --no-build --results-directory artifacts/trusted-font-tests

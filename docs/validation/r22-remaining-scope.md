@@ -1,5 +1,11 @@
 # R22 remaining scope after PR #76
 
+> Status note — 2026-11-05: Issue #109 F01–F05 added a separate paragraph layout entry
+> (Unicode 17.0.0 algorithms, final result contract, paragraph engine and cluster-map OFD writer);
+> see the [design record](../architecture/r22-paragraph-layout-engine.md) and
+> [validation](r22-paragraph-layout-validation.md). It does not rewrite the historical candidates,
+> failures or acceptance scopes below, and it does not migrate Flow.
+
 > Status correction — 2026-11-01: [PR #67](https://github.com/whynpc9/ofdrw.net/pull/67)
 > was merged on 2026-10-28 as `8b0e1ff372458cffc00e97b9cdda5065e0d7cade`.
 > The retained statement “PR #67 stays stopped” below is stale coordination

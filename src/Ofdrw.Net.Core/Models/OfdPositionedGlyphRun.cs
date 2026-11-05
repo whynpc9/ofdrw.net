@@ -39,13 +39,33 @@ public sealed class OfdPositionedGlyph
     private static bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 }
 
+/// <summary>How the OFD writer maps a positioned run's logical text to its glyphs.</summary>
+public enum OfdPositionedGlyphMapping
+{
+    /// <summary>The historical bounded word profiles (one CGTransform for a short Latin/Hebrew TextCode).</summary>
+    BoundedWord = 0,
+    /// <summary>One CGTransform per source cluster, in logical order, covering the complete BMP
+    /// TextCode, with an explicit origin for every glyph slot. Used by final paragraph layout.</summary>
+    ClusterMap = 1,
+}
+
 /// <summary>Typed producer-owned glyph data for one logical TextCode and one immutable font face.</summary>
 public sealed class OfdPositionedGlyphRun
 {
     /// <summary>Freezes glyphs and their logical source interval; output profiles are checked by the writer.</summary>
     public OfdPositionedGlyphRun(string logicalText, int sourceStart, string faceSha256,
         IReadOnlyList<OfdPositionedGlyph> glyphs)
+        : this(logicalText, sourceStart, faceSha256, glyphs, OfdPositionedGlyphMapping.BoundedWord)
     {
+    }
+
+    /// <summary>Freezes glyphs with an explicit writer mapping. <see cref="OfdPositionedGlyphMapping.ClusterMap"/>
+    /// requires BMP text whose glyph clusters partition it, each cluster's glyphs contiguous.</summary>
+    public OfdPositionedGlyphRun(string logicalText, int sourceStart, string faceSha256,
+        IReadOnlyList<OfdPositionedGlyph> glyphs, OfdPositionedGlyphMapping mapping)
+    {
+        if (mapping != OfdPositionedGlyphMapping.BoundedWord && mapping != OfdPositionedGlyphMapping.ClusterMap)
+            throw new ArgumentOutOfRangeException(nameof(mapping));
         if (logicalText is null) throw new ArgumentNullException(nameof(logicalText));
         if (faceSha256 is null) throw new ArgumentNullException(nameof(faceSha256));
         if (glyphs is null) throw new ArgumentNullException(nameof(glyphs));
@@ -72,9 +92,58 @@ public sealed class OfdPositionedGlyphRun
         }
         foreach (var value in covered)
             if (!value) throw new ArgumentException("A logical source interval has no glyph association.", nameof(glyphs));
+        if (mapping == OfdPositionedGlyphMapping.ClusterMap) ValidateClusterMap(logicalText, sourceStart, copy);
         LogicalText = logicalText; SourceStart = sourceStart;
         FaceSha256 = faceSha256.ToLowerInvariant();
         Glyphs = new ReadOnlyCollection<OfdPositionedGlyph>(copy);
+        Mapping = mapping;
+    }
+
+    /// <summary>Writer mapping of this run.</summary>
+    public OfdPositionedGlyphMapping Mapping { get; }
+
+    /// <summary>Glyph groups ordered by logical cluster start: (start, length, first glyph index, glyph count).</summary>
+    internal IReadOnlyList<(int Start, int Length, int First, int Count)> LogicalClusters()
+    {
+        var groups = new List<(int Start, int Length, int First, int Count)>();
+        for (var index = 0; index < Glyphs.Count;)
+        {
+            var end = index + 1;
+            while (end < Glyphs.Count && Glyphs[end].ClusterStart == Glyphs[index].ClusterStart) end++;
+            groups.Add((Glyphs[index].ClusterStart, Glyphs[index].ClusterLength, index, end - index));
+            index = end;
+        }
+        groups.Sort((left, right) => left.Start.CompareTo(right.Start));
+        return groups;
+    }
+
+    private static void ValidateClusterMap(string text, int sourceStart, List<OfdPositionedGlyph> glyphs)
+    {
+        foreach (var value in text)
+            if (char.IsSurrogate(value))
+                throw new ArgumentException("A cluster-mapped run counts BMP characters; surrogates need a separate profile.", nameof(text));
+        var seen = new HashSet<int>();
+        var covered = 0;
+        for (var index = 0; index < glyphs.Count;)
+        {
+            var start = glyphs[index].ClusterStart;
+            var length = glyphs[index].ClusterLength;
+            if (!seen.Add(start))
+                throw new ArgumentException("A cluster's glyphs must be contiguous.", nameof(glyphs));
+            var end = index + 1;
+            while (end < glyphs.Count && glyphs[end].ClusterStart == start)
+            {
+                if (glyphs[end].ClusterLength != length)
+                    throw new ArgumentException("Glyphs of one cluster disagree about its length.", nameof(glyphs));
+                end++;
+            }
+            covered += length;
+            index = end;
+        }
+        // Distinct cluster starts whose lengths sum to the text length, all within it and covering it
+        // (checked by the caller), cannot overlap.
+        if (covered != text.Length)
+            throw new ArgumentException("Cluster-mapped glyph clusters must partition the logical text.", nameof(glyphs));
     }
 
     /// <summary>Unmodified logical Unicode of this TextCode.</summary>

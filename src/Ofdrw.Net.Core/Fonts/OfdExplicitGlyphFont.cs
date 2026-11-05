@@ -41,7 +41,7 @@ internal sealed class OfdExplicitGlyphFont
             var gid = run.GlyphIds[index];
             if (!cache.TryGetValue(gid, out var outline))
                 cache.Add(gid, outline = outlines.Read(gid));
-            if (outline.Contours.Count == 0)
+            if (outline.Contours.Count == 0 && !run.IsWhitespaceSlot(index))
                 throw new NotSupportedException("CGTransform mapped a visible character to an empty original GID.");
             emittedPoints += outline.Contours.Sum(contour => (long)contour.Points.Count);
             if (emittedPoints > 131072)

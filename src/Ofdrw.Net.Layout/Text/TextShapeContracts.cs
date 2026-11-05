@@ -25,6 +25,8 @@ public enum TextLayoutError
     BudgetExceeded,
     /// <summary>The completed query cannot be represented by the limited output model.</summary>
     UnsupportedOutput,
+    /// <summary>A segment without a legal line break, or a line, does not fit its frame or page.</summary>
+    LayoutOverflow,
 }
 
 /// <summary>A structured failure from the new text query path. No partial result is returned.</summary>
