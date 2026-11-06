@@ -156,3 +156,9 @@ R18 的 `OfdDocumentPackage.RemoveAttachment(..., Physical)` 和写出器执行�
 | 7.1-7.2 | 具名的目标写入端/阅读端构建，以及独立阅读器对完整输出、未处理项报告和 OFD-A 编辑锁定的测试，另加档案策略签核。 | 通过本库单元测试无法观察其他阅读器的 UI、渲染或归档行为。 |
 
 每一行都是实际缺失的输入或操作边界。不能因具名 XML 元素不存在就将其转为 `Pass`，此账本也不代表任何发布或归档认证。
+
+## F07 可执行证据索引（main，尚未发布）
+
+`ArchivalClauseCatalog` 固化以上 105 个条款/附录项目，关联现有 AR/AC 规则与已存在的副本处理器。`ArchivalDossierService` 为稳定源/结果快照、正反例、不确定例、资源/附件/转换、阅读器/视觉、政策、PKI 和独立核准材料建立带大小及 SHA-256 的证据索引；同时检查材料声明的源/结果身份。摘要与身份错配会明确失败，外部核准仍为 `NotAuthenticated`。未提供的标准版本及条款基础控制材料显式列出；条款特定缺口仍以上表为准。
+
+这补充了可追溯证据管理，未新增媒体/字体有效性谓词或附件转换处理器，也不改变上述完整符合性门禁。`StandardOutcome` 仍不能 Pass。使用方式见[本地归档预检](https://whynpc9.github.io/ofdrw.net/guides/archival-preflight/)，实现及后续工作见[设计记录](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/f07-archival-dossier.md)。

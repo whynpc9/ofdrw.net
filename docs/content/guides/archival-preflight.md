@@ -85,3 +85,29 @@ var coverage = await new ArchivalCoverageService().CheckAsync(file, new Archival
 ```
 
 `CoverageStatus` 始终为 `Incomplete`，`Certification` 为 `NotAssessed`。确定的违规使 `StandardOutcome=Fail`；否则完整标准结果为 `Unknown`，即使所有已映射条件通过也是如此。输入被拒绝、不支持的根命名空间、无法解析的页面/批注引用和不透明 XML 作用域均为 Unknown。缺失或明确错误的已知强制声明为 Fail，即使存在同名的外来声明也不例外。PDF 来源和 SHA 固定在每个规则定义及账本中；包中不附带标准 PDF 字节。R17 的审计副本可以在此服务中分别检查转换前后，但该副本只移除其文档说明的两种声明类型。新增检查不会重写页面、批注或导航。
+
+## F07 来源与证据档案（main，尚未发布）
+
+`ArchivalDossierService.CheckAsync` 将两个稳定的 OFD 快照及外部证据编入同一份只读档案。`ArchivalClauseCatalog` 的 `ofdrw-archival-ledger/1` 枚举账本第 5–7 章的 92 个项目和附录 A 的 13 行；它关联现有 17 项 AR/AC 条件和两个已有副本处理器。APF 继续是独立本地政策。所有条款都会出现在报告中，包括没有对象、没有实现或没有提供材料的条款。
+
+```csharp
+using var source = File.OpenRead("source.ofd");
+using var result = File.OpenRead("archive-copy.ofd");
+var profile = new ArchivalDossierProfile(
+    "my-archive/1", null, // 尚未指定归档机构 "未签名单文档的有限归档范围",
+    new Dictionary<string, string>()); // 提供经评估的引用标准版本/修改单；缺项会列出
+var dossier = await new ArchivalDossierService().CheckAsync(
+    source, result, profile, Array.Empty<ArchivalEvidenceInput>(),
+    new ArchivalPreflightOptions(), cancellationToken: cancellationToken);
+// 分别保存 SourceCoverage、ResultCoverage、Clauses 和 Evidence，不能仅检查摘要。
+```
+
+`ArchivalEvidenceInput` 指定唯一 ID、账本条款、证据类别、可定位流、预期 SHA-256、来源描述，以及材料所针对的源/结果 SHA-256。类别包括正例、反例、不确定例、资源验证、附件、转换、视觉复查、独立阅读器、政策、PKI、规范引用及独立核准。证据字节、源/结果身份必须同时匹配；旧来源的材料不能填补本次缺项。调用方应分别提供每条款所需材料；`MissingControlEvidence` 只列基础正/反/不确定例和核准文件的登记缺项，条款特定要求还须阅读 `RemainingEvidence`。摘要相符和填写标准版本不证明材料真实、充分、适用或核准有效。`ApprovalStatus=NotAuthenticated` 如实保留这一边界。
+
+报告保存源/结果文件及证据的大小与摘要、全部条款、映射规则、处理器、来源描述及缺失引用标准。可用 System.Text.Json 序列化，只读属性不包含证据正文或流。`EvidenceIntegrity` 仅汇总证据摘要和源/结果身份匹配；无材料为 Unknown，错配为 Fail。它与标准结论独立。源文件的违规保留在 `SourceCoverage`，不会冒充输出文件仍有同一违规。结果中已知违规使 `StandardOutcome=Fail`，否则仍为 Unknown；全部材料登记完也不能自动变为完整符合性 Pass。不存在隐式适用豁免或认证。
+
+默认累计读取预算为 1 GiB，包含源文件、结果及每次证据读取；最多 256 项证据，可设置更低限额（数量硬上限 10,000）。两个 OFD 各自还受 `LoadOptions.MaxInputBytes` 和原检查器预算约束，包快照保存在内存中；证据只流式计算摘要。枚举、读取和检查支持取消；超过预算、I/O 错误或取消抛出异常，不返回部分成功。所有借用流必须可读、可定位、从零开始，读取后恢复零并保持打开，调用方须防止并发修改。
+
+此 API 不执行附件转换、物理删除、归档副本编辑、解密或签章去技术化，也不自动获取 URL。签名输入和 R18 删除所有权继续由原操作处理。完整包消费示例见 `scripts/validation/f07-dossier/`，设计和未完成范围见 [F07 实施记录](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/f07-archival-dossier.md)。
+
+仅持有官方标准、尚未指定归档机构时，`ArchivalAuthority` 可为 null，无需填写占位机构。`MissingReferencedStandards` 列出未登记版本；`MissingExternalEvidence` 列出尚无非空且摘要/身份匹配材料的规范引用、接收政策及独立核准三类基础角色；`ExternalAssessmentGaps` 明确保留机构未指定、引用版本/政策未评估、核准未认证的状态。即使角色文件和版本声明均已登记，`ExternalAssessmentOutcome` 仍为 Unknown，条款专属材料仍按账本逐项核对。PKI 仅在适用签章情形补充，不假定所有未签名包都需要证书材料。

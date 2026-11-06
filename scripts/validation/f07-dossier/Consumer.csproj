@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <ArchivalPackageVersion Condition="'$(ArchivalPackageVersion)' == ''">0.2.0-f07-validation</ArchivalPackageVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Ofdrw.Net.Packaging" Version="$(ArchivalPackageVersion)" />
+  </ItemGroup>
+</Project>
