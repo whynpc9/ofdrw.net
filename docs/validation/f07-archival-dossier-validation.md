@@ -32,3 +32,7 @@
 补充后 Packaging 全套 **1699/1699**、零失败零跳过（新增测试累计 16 个实例）；文档生产构建及页面/链接/搜索检查通过。本轮仅文档正文变化，未重复未变更的站点类型检查；此前 Nimbus partial 边界仍适用。最新测试记录为 `artifacts/f07/f07-external-gates.trx`。
 
 最新 Core/Packaging 候选 `0.2.0-f07-validation.3` 的两个目标框架打包通过；隔离消费者实际执行通过并断言机构未指定、三类外部材料缺失及外部评估 Unknown。产物保存在 `artifacts/f07/consumer-output-external-gates/`；源码、候选包及输出身份另存 `manifest-external-gates.json`，不覆盖前轮记录。
+
+## PR #113 文档示例复核（2026-11-06）
+
+Codex 对初始提交 `5b67218` 审阅完成且无 findings。自查修复使用示例中行尾注释遮住 `scope` 实参的问题，并将隔离消费者的默认候选版本与已验证的 `.3` 对齐。直接提取修复后的文档代码，以本地 `.3` NuGet 编译并将警告视为错误：0 warnings、0 errors；文档生产构建及链接/搜索检查通过。此轮未改变库源码，不重复声称执行新的完整功能回归。

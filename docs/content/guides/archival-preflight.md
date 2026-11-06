@@ -94,7 +94,8 @@ var coverage = await new ArchivalCoverageService().CheckAsync(file, new Archival
 using var source = File.OpenRead("source.ofd");
 using var result = File.OpenRead("archive-copy.ofd");
 var profile = new ArchivalDossierProfile(
-    "my-archive/1", null, // 尚未指定归档机构 "未签名单文档的有限归档范围",
+    "my-archive/1", null, // 尚未指定归档机构
+    "未签名单文档的有限归档范围",
     new Dictionary<string, string>()); // 提供经评估的引用标准版本/修改单；缺项会列出
 var dossier = await new ArchivalDossierService().CheckAsync(
     source, result, profile, Array.Empty<ArchivalEvidenceInput>(),
