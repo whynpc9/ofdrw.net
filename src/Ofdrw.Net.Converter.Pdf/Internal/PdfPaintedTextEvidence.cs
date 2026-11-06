@@ -34,11 +34,15 @@ internal sealed class PdfPaintedTextEvidence
         internal List<PdfRectangle> Clips = new();
         internal bool ComplexClip;
         internal double? FillAlpha = 1, StrokeAlpha = 1;
+        // Soft masks and unresolvable ExtGState entries persist across later gs
+        // operators that only set alpha; Q restores the saved state.
+        internal bool SoftMask, UnresolvedGraphicsState;
         internal bool TextClipMode;
         internal State Copy() => new()
         {
             Ctm = (double[])Ctm.Clone(), Clips = new List<PdfRectangle>(Clips), ComplexClip = ComplexClip,
             FillAlpha = FillAlpha, StrokeAlpha = StrokeAlpha, TextClipMode = TextClipMode,
+            SoftMask = SoftMask, UnresolvedGraphicsState = UnresolvedGraphicsState,
         };
     }
 
@@ -124,6 +128,8 @@ internal sealed class PdfPaintedTextEvidence
         if (index < 0 || index >= _shows.Count) return "a glyph has no matching text operation.";
         var state = _shows[index];
         if (state.ComplexClip) return "a glyph is shown under a non-rectangular clipping path.";
+        if (state.UnresolvedGraphicsState) return "a glyph follows a graphics state the profile cannot resolve.";
+        if (state.SoftMask) return "a glyph is painted under a soft mask the profile does not evaluate.";
         double? alpha = fill && stroke ? Max(state.FillAlpha, state.StrokeAlpha) : fill ? state.FillAlpha : state.StrokeAlpha;
         if (alpha is null) return "a glyph uses graphics-state transparency the profile cannot resolve.";
         if (alpha <= 0) return "a glyph is fully transparent.";
@@ -146,14 +152,13 @@ internal sealed class PdfPaintedTextEvidence
             graphics = Resolve(document, states, name) as DictionaryToken;
         if (graphics is null)
         {
-            state.FillAlpha = state.StrokeAlpha = null;
+            state.UnresolvedGraphicsState = true;
             return;
         }
         if (graphics.ContainsKey(FillAlphaKey)) state.FillAlpha = Number(Resolve(document, graphics, FillAlphaKey));
         if (graphics.ContainsKey(StrokeAlphaKey)) state.StrokeAlpha = Number(Resolve(document, graphics, StrokeAlphaKey));
-        if (graphics.ContainsKey(SoftMaskKey) &&
-            !(Resolve(document, graphics, SoftMaskKey) is NameToken mask && mask.Data == "None"))
-            state.FillAlpha = state.StrokeAlpha = null;
+        if (graphics.ContainsKey(SoftMaskKey))
+            state.SoftMask = !(Resolve(document, graphics, SoftMaskKey) is NameToken mask && mask.Data == "None");
     }
 
     private static double? Number(IToken? token) => token is NumericToken number ? number.Double : null;

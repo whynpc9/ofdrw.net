@@ -236,6 +236,9 @@ public sealed class PdfRtlVisualLineImportTests
     [InlineData("clip-out", "is clipped")]
     [InlineData("clip-path", "non-rectangular clipping path")]
     [InlineData("alpha", "fully transparent")]
+    [InlineData("soft-mask", "soft mask")]
+    [InlineData("soft-mask-then-alpha", "soft mask")]
+    [InlineData("unresolved-then-alpha", "cannot resolve")]
     [InlineData("reversed", "/ReversedChars")]
     [InlineData("optional", "optional content")]
     [InlineData("overlap", "overlapping glyphs")]
@@ -255,6 +258,11 @@ public sealed class PdfRtlVisualLineImportTests
             "clip-out" => Synthetic(line, prefix: "q 0 0 40 200 re W n ", suffix: "Q "),
             "clip-path" => Synthetic(line, prefix: "q 0 0 m 200 0 l 200 200 l h W n ", suffix: "Q "),
             "alpha" => Synthetic("/G0 gs " + line, resources: "/ExtGState << /G0 << /ca 0 >> >>"),
+            // A later gs that only sets alpha does not clear an active soft mask or unknown state.
+            "soft-mask" => Synthetic("/M0 gs " + line, resources: "/ExtGState << /M0 << /SMask << /S /Alpha /G 9 0 R >> >> >>"),
+            "soft-mask-then-alpha" => Synthetic("/M0 gs /G1 gs " + line,
+                resources: "/ExtGState << /M0 << /SMask << /S /Alpha /G 9 0 R >> >> /G1 << /ca 1 >> >>"),
+            "unresolved-then-alpha" => Synthetic("/Missing gs /G1 gs " + line, resources: "/ExtGState << /G1 << /ca 1 >> >>"),
             "reversed" => Synthetic(line, prefix: "/ReversedChars BMC ", suffix: "EMC "),
             "optional" => Synthetic(line, prefix: "/OC /L0 BDC ", suffix: "EMC ",
                 resources: "/Properties << /L0 << /Type /OCG /Name (L0) >> >>"),
@@ -281,6 +289,12 @@ public sealed class PdfRtlVisualLineImportTests
         var line = Line(100, A, B, C, 0, Mem, Vav, Lamed, Shin, 0, D, E, F);
         Assert.Equal("abc שלום def ", Lines(Synthetic(line, prefix: "q 0 0 200 200 re W n ", suffix: "Q ")).Single());
         Assert.Equal("abc שלום def ", Lines(Synthetic("/G0 gs " + line, resources: "/ExtGState << /G0 << /ca 1 >> >>")).Single());
+        // An explicit /SMask /None clears a previous mask.
+        Assert.Equal("abc שלום def ", Lines(Synthetic("/M0 gs /N0 gs " + line,
+            resources: "/ExtGState << /M0 << /SMask << /S /Alpha /G 9 0 R >> >> /N0 << /SMask /None >> >>")).Single());
+        // Q restores the graphics state saved before the mask.
+        Assert.Equal("abc שלום def ", Lines(Synthetic(line, prefix: "q /M0 gs Q ",
+            resources: "/ExtGState << /M0 << /SMask << /S /Alpha /G 9 0 R >> >> >>")).Single());
     }
 
     [Fact]
@@ -351,7 +365,9 @@ public sealed class PdfRtlVisualLineImportTests
             "<< /Type /Font /Subtype /Type0 /BaseFont /Synthetic /Encoding /Identity-H /DescendantFonts [7 0 R] /ToUnicode 5 0 R >>",
             Stream(cmap.ToString()), Stream($"{prefix}BT /F1 10 Tf {text}ET {suffix}\n"),
             "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Synthetic /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 8 0 R /DW 500 /CIDToGIDMap /Identity >>",
-            "<< /Type /FontDescriptor /FontName /Synthetic /Flags 4 /FontBBox [0 -200 500 800] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 >>" };
+            "<< /Type /FontDescriptor /FontName /Synthetic /Flags 4 /FontBBox [0 -200 500 800] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 >>",
+            // Object 9: an empty transparency group, the /G of synthetic soft masks.
+            "<< /Type /XObject /Subtype /Form /BBox [0 0 200 200] /Group << /S /Transparency /CS /DeviceGray >> /Length 0 >>\nstream\nendstream" };
         var pdf = new StringBuilder("%PDF-1.4\n");
         var offsets = new List<int>();
         for (var index = 0; index < objects.Length; index++)

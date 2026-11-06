@@ -37,7 +37,9 @@ unchanged.
    glyph is evidence only when its rendering mode paints (fill/stroke), it is
    not under a non-rectangular clip, it lies inside every rectangular clip, and
    its resolved `ExtGState` alpha is above zero. Text inside form XObjects (the
-   sequence count no longer matches), unresolvable transparency, soft masks,
+   sequence count no longer matches), unresolvable transparency, soft masks (an
+   active mask or unresolved `ExtGState` stays in force across later alpha-only
+   `gs` operators until `/SMask /None` or `Q`),
    text clip modes, optional content, `/ActualText` and `/ReversedChars` reject.
    Invisible layers are a producer's claim about text, not visible glyphs.
 2. **Geometry → visual order.** Glyphs are grouped by baseline (0.05 em). A
