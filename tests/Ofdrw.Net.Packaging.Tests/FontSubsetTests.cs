@@ -9,7 +9,7 @@ public sealed class FontSubsetTests
 {
     private static readonly Lazy<byte[]> Latin = new(() => File.ReadAllBytes(Font("NotoSans-Regular.ttf")));
     private static readonly Lazy<byte[]> Chinese = new(() => File.ReadAllBytes(Font("LXGWWenKai-Regular.ttf")));
-    private static readonly Lazy<byte[]> Mixed = new(() => File.ReadAllBytes(Font("DejaVuSans-R22.ttf")));
+    private static readonly Lazy<byte[]> Mixed = new(() => File.ReadAllBytes(Font("DejaVuSans-TextFixture.ttf")));
     private static string Font(string name)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

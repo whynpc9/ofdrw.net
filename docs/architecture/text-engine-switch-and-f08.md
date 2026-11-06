@@ -1,10 +1,10 @@
-# R22 engine switch and F08 font/text items (Issue #109)
+# Text engine switch and F08 font/text items (Issue #109)
 
 Status: implemented on the Issue #109 engine-switch branch; not released. Builds on the
-[paragraph layout engine](r22-paragraph-layout-engine.md) (F01–F05). User guide:
+[paragraph layout engine](text-paragraph-layout-engine.md) (F01–F05). User guide:
 [final text layout](../content/guides/final-text-layout.md); reference:
 [paragraph layout engine](../content/reference/text-paragraph-layout.md); comparison:
-[r22-engine-switch-comparison](../validation/r22-engine-switch-comparison.md).
+[text engine comparison](../validation/text-engine-switch-comparison.md).
 
 ## Goal and sequencing
 

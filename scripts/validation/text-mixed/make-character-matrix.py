@@ -141,7 +141,7 @@ def main():
         if row['variant'] != 'A':
             continue
         product = Path(row['sourcePath'])
-        product_receipt = json.loads((product.parent / 'r22-mixed-output-receipt.json').read_text())
+        product_receipt = json.loads((product.parent / 'text-mixed-output-receipt.json').read_text())
         item = next(case for case in product_receipt['cases'] if case['name'] == product.stem)
         cases.append((product.stem, product, product.with_suffix('.ofd'), 0, item['lines'], row))
     isolated = PdfReader(args.isolated_pdf)

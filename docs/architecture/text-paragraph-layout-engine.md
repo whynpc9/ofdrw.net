@@ -1,12 +1,12 @@
-# R22 paragraph layout engine (Issue #109, F01–F05)
+# Paragraph layout engine (Issue #109, F01–F05)
 
 Status: released in 0.2.0. The engine switch and the F08 admission changes (tabs, ZWJ/ZWNJ and
 variation selectors, synthetic styles, non-BMP output, CFF faces) are recorded in
-[r22-engine-switch-and-f08](r22-engine-switch-and-f08.md); the admission notes below describe 0.2.0. Reference:
+[text engine switch](text-engine-switch-and-f08.md); the admission notes below describe 0.2.0. Reference:
 [paragraph layout engine](../content/reference/text-paragraph-layout.md). Validation:
-[r22-paragraph-layout-validation](../validation/r22-paragraph-layout-validation.md).
+[paragraph layout validation](../validation/text-paragraph-layout-validation.md).
 
-Issue #109 groups the remaining R22 work into F01–F08. This change implements the text pipeline
+This design implements the paragraph layout pipeline
 `font resolution/fallback → paragraph analysis → run shaping → final lines and pages → OFD → exports`
 as one new entry point. Earlier bounded queries (R21 prelayout, mixed paragraph, span/font/size
 queries) and Flow keep their behavior and admission rules.

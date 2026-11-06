@@ -108,9 +108,9 @@ def main():
     assert pypdf.__version__ == '6.21.2'
     prior = json.loads(args.word_matrix.read_text())
     by_name = {item['name']: item for item in prior['cases']}
-    names = ['r22-mixed-wide', 'r22-mixed-two-word', 'r22-mixed-repeated-word',
-             'r22-mixed-leading-rtl', 'r22-mixed-trailing-rtl',
-             'r22-mixed-between-rtl-wrap', 'r22-mixed-after-rtl-wrap']
+    names = ['text-mixed-wide', 'text-mixed-two-word', 'text-mixed-repeated-word',
+             'text-mixed-leading-rtl', 'text-mixed-trailing-rtl',
+             'text-mixed-between-rtl-wrap', 'text-mixed-after-rtl-wrap']
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     rows = []
@@ -119,7 +119,7 @@ def main():
         product_path = Path(control['sourcePath'])
         product_bytes = product_path.read_bytes()
         assert base.sha(product_bytes) == control['sourceSha256']
-        receipt = json.loads((product_path.parent / 'r22-mixed-output-receipt.json').read_text())
+        receipt = json.loads((product_path.parent / 'text-mixed-output-receipt.json').read_text())
         case = next(item for item in receipt['cases'] if item['name'] == name)
         source = PdfReader(product_path)
         assert len(source.pages) == 1

@@ -1,9 +1,9 @@
-# R22 independent readers and original glyph checks
+# Mixed-text independent readers and original glyph checks
 
 The older `make-*` and `summarize.py` retain the historical diagnostic matrices.
 Their PdfPig default word/order score is **not** the current RTL logical gate.
-See [the reader decision](../../../docs/validation/r22-reader-replacement-candidate.md)
-and [the current export checkpoint](../../../docs/validation/r22-two-word-export-validation.md).
+See the [reader method record](../../../docs/validation/text-reader-method-validation.md)
+and [mixed paragraph validation](../../../docs/validation/text-mixed-paragraph-validation.md).
 
 The bounded replacement uses PDFKit 1451.5.3 whole selection and logical/reversed
 Find, PdfPig 0.1.15 raw letters, Poppler 26.09.0 physical word rectangles,
@@ -32,7 +32,7 @@ admitted; unsupported reference controls are recorded with `--record-controls`.
 Without that option, any failure returns a nonzero exit status. It does not
 use PDFKit logical string indices as character positions.
 
-The second is deliberately restricted to the generated one-font, one-page R22
+The second is deliberately restricted to the generated one-font, one-page mixed-text
 archive layout. It reads the actual OFD XML, embedded subset, original GIDs and
 explicit origins, and constructs independent fontTools cubic contours. Every
 painted PDF path must correspond one-to-one at those actual positions with a

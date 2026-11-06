@@ -6,13 +6,13 @@ namespace Ofdrw.Net.Layout.Tests;
 
 public sealed class TextSizedFontSpanShapingTests
 {
-    private static readonly Lazy<TextFontFace> D = new(() => Load("DejaVuSans-R22.ttf"));
+    private static readonly Lazy<TextFontFace> D = new(() => Load("DejaVuSans-TextFixture.ttf"));
     private static readonly Lazy<TextFontFace> N = new(() => Load("NotoSans-Regular.ttf"));
 
     [Fact]
     public void SameFaceSizeAliasesCoalesceFfiAndRetainOriginalObjects()
     {
-        var alias = Load("DejaVuSans-R22.ttf", "alias");
+        var alias = Load("DejaVuSans-TextFixture.ttf", "alias");
         var spans = new[] { S(20, 1, D.Value, 4, 7), S(21, 2, alias, 4, 7) };
         var request = new TextSizedFontSpanShapingRequest("ffi", 20, spans, maximumShapeCalls: 1);
         var meter = new Meter(); var result = new TextSizedFontSpanShapingEngine(meter).Shape(request);
@@ -113,7 +113,7 @@ public sealed class TextSizedFontSpanShapingTests
     [Fact]
     public void SelectedPartialSpansKeepActualSizeFaceKeyAndUnchangedSpanIdentity()
     {
-        var alias = Load("DejaVuSans-R22.ttf", "alias");
+        var alias = Load("DejaVuSans-TextFixture.ttf", "alias");
         var original = new TextSizedFontSpanShapingRequest("بببAV", 100,
             new[] { S(100, 2, D.Value, 4, 7), S(102, 1, alias, 6, 9), S(103, 2, N.Value, 5, 11) },
             TextDirection.RightToLeft, "Arab", "ar");
@@ -173,7 +173,7 @@ public sealed class TextSizedFontSpanShapingTests
     [Fact]
     public void SameDisplayNameDifferentProgramsKeepOwnFaceAndSize()
     {
-        var a = Load("NotoSans-Regular.ttf", "same"); var b = Load("DejaVuSans-R22.ttf", "same");
+        var a = Load("NotoSans-Regular.ttf", "same"); var b = Load("DejaVuSans-TextFixture.ttf", "same");
         var runs = Engine().Shape(R("AV", 20, S(20, 1, a, 6), S(21, 1, b, 3))).Runs;
         Assert.Equal(2, runs.Count); Assert.Same(a, runs[0].Shaping.ShapedRun.Request.Face);
         Assert.Same(b, runs[1].Shaping.ShapedRun.Request.Face);
@@ -227,7 +227,7 @@ public sealed class TextSizedFontSpanShapingTests
     [Fact]
     public void SelectedShortRangeStillChargesCompleteOriginalContextForEverySizeGroup()
     {
-        var bytes = File.ReadAllBytes(Font("DejaVuSans-R22.ttf")); Array.Resize(ref bytes, 504 * 1024 * 1024 / 64 / 2);
+        var bytes = File.ReadAllBytes(Font("DejaVuSans-TextFixture.ttf")); Array.Resize(ref bytes, 504 * 1024 * 1024 / 64 / 2);
         var face = new TextFontFace("padded existing program", bytes);
         var original = R(new string('A', 4096), 0, Enumerable.Range(0, 64)
             .Select(i => S(i, i == 63 ? 4033 : 1, face, i % 2 == 0 ? 4 : 6)).ToArray());

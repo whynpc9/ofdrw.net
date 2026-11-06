@@ -6,7 +6,7 @@ from fpdf import FPDF
 
 font = Path(sys.argv[1]); out = Path(sys.argv[2])
 font_sha = hashlib.sha256(font.read_bytes()).hexdigest()
-assert font_sha == "d7441d42a24882db09640ea4bb768b17a106cdb31ee9749a52cb34a075b8fbcc"
+assert font_sha == "3362132d725d94e23e6995749627c11fdb197a6a6a95faa068e9b757877a8212"
 cases = [
     # name, source, direction, width (None = single-line cell)
     ("arabic-ltr-cell", "abc مرحبا لا def", "ltr", None),
@@ -20,8 +20,8 @@ for name, source, direction, width in cases:
     pdf = FPDF(unit="mm", format=(100, 40))
     pdf.set_creation_date(__import__("datetime").datetime(2026, 11, 6, tzinfo=__import__("datetime").timezone.utc))
     pdf.add_page()
-    pdf.add_font("R22", fname=str(font))
-    pdf.set_font("R22", size=4 * 72 / 25.4)
+    pdf.add_font("FixtureDejaVu", fname=str(font))
+    pdf.set_font("FixtureDejaVu", size=4 * 72 / 25.4)
     pdf.set_text_shaping(True, direction=direction)
     pdf.c_margin = 0
     pdf.set_xy(10, 8)

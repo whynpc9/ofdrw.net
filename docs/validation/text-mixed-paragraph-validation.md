@@ -1,6 +1,6 @@
-# R22 bounded mixed paragraph validation
+# Bounded mixed paragraph validation
 
-Current implementation progress: [bounded two-word export checkpoint](r22-two-word-export-validation.md).
+Current implementation progress: [bounded two-word export checkpoint](text-mixed-paragraph-validation.md).
 The sections below preserve their dated decision/diagnostic outcomes; the new
 candidate does not rewrite those failures or transfer their acceptance.
 
@@ -11,7 +11,7 @@ record the actual HEAD and dirty patch SHA-256 for every subsequent run.
 
 ## Reader contract update (2026-10-30)
 
-R22 不再要求 PdfPig 0.1.15 默认 `GetWords()` 和 `Page.Text` 充当 RTL 逻辑阅读顺序的必过判据；保留其原始结果作为版本化兼容性记录，保留独立的字符映射及几何检查。
+混排输出不再要求 PdfPig 0.1.15 默认 `GetWords()` 和 `Page.Text` 充当 RTL 逻辑阅读顺序的必过判据；保留其原始结果作为版本化兼容性记录，保留独立的字符映射及几何检查。
 
 双词输出仍须通过原文、字体、原 GID、实际位置、逻辑词搜索、独立几何验证以及真实 Preview 原始复制和 Find 门禁。替代读者及检查方式先验证、后冻结；在产品链路取得新证据之前，writer 不扩大支持范围。
 
@@ -24,7 +24,7 @@ reader and independent geometry method must first pass frozen positive and
 negative controls with raw results, exact versions/APIs, hashes and stop rules.
 This export decision does not change the PDF→OFD production use of PdfPig's
 default `GetWords()` in both the semantic text layer and text fallback. The
-[replacement candidate protocol](r22-reader-replacement-candidate.md) is not
+[replacement candidate protocol](text-reader-method-validation.md) is not
 yet frozen or a product acceptance result.
 
 ## Separate contracts and evidence
@@ -83,7 +83,7 @@ Keep its observed Preview failure as an open supported-path converter issue.
 | C | Visual | Current per-word semantic CID |
 | D | Visual | C plus per-word ActualText |
 
-`scripts/validation/r22-mixed/make-matrix.py` takes the product output directory
+`scripts/validation/text-mixed/make-matrix.py` takes the product output directory
 and a separate diagnostic output directory. It requires pypdf **6.21.2** and
 Poppler. It verifies input hashes, decodes each source group's ToUnicode,
 moves complete balanced graphics groups, and applies only word-scoped
@@ -267,11 +267,11 @@ promise.
 The draft writer now refuses the known failing and unverified output structures
 before constructing a package. Its provisional admitted structure is one line
 with a Latin word, space, one Hebrew word, space and a Latin word, using the
-fixed R22 face at 4 mm. This limits exposure to the observed single-word
+fixed DejaVu Sans face at 4 mm. This limits exposure to the observed single-word
 control while the PDF semantic problem remains open. Focused E2E rejection
 checks cover adjacent distinct/repeated words, separated RTL spans, leading
 and trailing RTL, and wrap boundaries with source positions. This mitigation
-does not establish full R22 writer/PDF acceptance or transfer the old Preview
+does not establish general mixed-text writer/PDF acceptance or transfer the old Preview
 result to a new head.
 
 A focused admitted-profile matrix varied Latin length/case, two- and

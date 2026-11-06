@@ -58,4 +58,4 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 - **Coverage collection, CI flag de-duplication, central package management, scripts README, `.editorconfig`/analyzers, broken relative links in `docs/evidence/*/README.md`.** Low leverage relative to the plans above. Bulk analyzers would be noisy in an 80k-line codebase.
 - **Migrating PdfSharpCore / PdfPig / MigraDocCore / Docnet.** Belongs with the roadmap's deferred backend/TFM decision (D10); high visual re-acceptance cost.
 - **DOCX style resolution re-serializes XML per run; OFD→PDF re-decodes repeated images.** Real performance costs, but unmeasured; plan only after profiling a representative document.
-- **R22 general text pipeline, PDF vector in the CLI.** Roadmap items that the roadmap deliberately leaves unscheduled; maintainer's call.
+- **General text layout, PDF vector in the CLI.** Roadmap items that the roadmap deliberately leaves unscheduled; maintainer's call.

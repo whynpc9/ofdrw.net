@@ -18,7 +18,7 @@ public sealed class ParagraphLayoutF08Tests
 {
     private static readonly Lazy<TextFontFace> Noto = new(() => ParagraphLayoutTests.Face("Noto Sans", "NotoSans-Regular.ttf"));
     private static readonly Lazy<TextFontFace> WenKai = new(() => ParagraphLayoutTests.Face("LXGW WenKai", "LXGWWenKai-Regular.ttf"));
-    private static readonly Lazy<TextFontFace> DejaVu = new(() => ParagraphLayoutTests.Face("R22 DejaVu Sans", "DejaVuSans-R22.ttf"));
+    private static readonly Lazy<TextFontFace> DejaVu = new(() => ParagraphLayoutTests.Face("Ofdrw Test DejaVu Sans", "DejaVuSans-TextFixture.ttf"));
     private static readonly Lazy<TextFontFace> HanCff = new(() => new TextFontFace("Ofdrw CI Han CFF", File.ReadAllBytes(CffPath("OfdrwCIHanCFF-Regular.otf"))));
 
     internal static string CffPath(string file)

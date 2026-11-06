@@ -77,9 +77,9 @@ accompanying `NotoSansThai-OFL.txt`; it is not packed in production NuGet files.
 The shared source-span fixture also uses unmodified Noto Sans Tamil from the
 same pinned upstream revision and OFL license bytes, recorded in that manifest.
 
-The R22 mixed Latin/Hebrew development fixture uses a DejaVu Sans 2.37 derivative from the official release archive.
+The mixed Latin/Hebrew test fixture uses a DejaVu Sans 2.37 derivative from the official release archive.
 The fixture removes the unmodeled FFTM and MATH tables and changes its family
-name to R22 DejaVu Sans; GID order, cmap, metrics and selected outlines match
+name to Ofdrw Test DejaVu Sans; GID order, cmap, metrics and selected outlines match
 the upstream font. Its archive/member hashes,
 source URL and license are recorded in the same manifest. The accompanying
 `DejaVuSans-LICENSE` includes the Bitstream Vera and Arev notices. The font is

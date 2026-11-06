@@ -17,7 +17,7 @@ CI keeps three-platform full-solution coverage, Linux no-Office test filters, pa
 
 ## One candidate, parallel consumers
 
-`ci.yml` declares one `OFDRW_CI_PACKAGE_VERSION` (currently `0.2.0`). Immediately after checkout, `build-test` verifies that it matches the default `VersionPrefix` and `VersionSuffix` in `Directory.Build.props`; a source-version change without a matching CI update fails before the build. The same variable stamps the API-documentation rebuild and drives pack-only, candidate artifact paths, all three platform consumers, optional Skia/vector consumers, and the Linux R22 evidence paths.
+`ci.yml` declares one `OFDRW_CI_PACKAGE_VERSION` (currently `0.2.0`). Immediately after checkout, `build-test` verifies that it matches the default `VersionPrefix` and `VersionSuffix` in `Directory.Build.props`; a source-version change without a matching CI update fails before the build. The same variable stamps the API-documentation rebuild and drives pack-only, candidate artifact paths, all three platform consumers, optional Skia/vector consumers, and the Linux mixed-text reader evidence paths.
 
 `build-test` tests that Release build and invokes `run-converter-package-e2e.sh` with the candidate version and `--pack-only --no-build`. Pack-only requires an empty feed. The twelve default packages are validated and uploaded once, together with their SHA-256 manifest.
 

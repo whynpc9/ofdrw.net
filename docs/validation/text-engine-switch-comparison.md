@@ -1,10 +1,10 @@
-# R22 engine switch and F08: comparison and validation (Issue #109)
+# Text engine switch and F08: comparison and validation (Issue #109)
 
 Source commit `29e8b7cabaec55b3b0d5485d5d6b1482f79b2a7c` (branch `t3/r22-engine-switch-f08`, on
 `main` `ba58b5519b854e6eaf37e43cb39ed2a96dc79b45`). Ubuntu 24.04.4 LTS (WSL2), .NET SDK 10.0.401,
 runtime .NET 10.0.12, poppler `pdftoppm`, ImageMagick `compare`/`montage`. Design:
-[r22-engine-switch-and-f08](../architecture/r22-engine-switch-and-f08.md). Evidence:
-[`docs/evidence/r22-engine-switch/`](../evidence/r22-engine-switch/README.md).
+[text engine switch](../architecture/text-engine-switch-and-f08.md). Evidence:
+[`docs/evidence/text-engine-switch/`](../evidence/text-engine-switch/README.md).
 
 **Scope.** The engine is opt-in; defaults are unchanged. This record compares the existing
 visual-gate inputs under both engines with the same DOCX, fonts and options, and validates the F08

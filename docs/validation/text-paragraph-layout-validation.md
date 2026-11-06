@@ -1,7 +1,7 @@
-# R22 paragraph layout validation (Issue #109, F01–F05)
+# Paragraph layout validation (Issue #109, F01–F05)
 
 Date: 2026-11-05. Source baseline: the Issue #109 branch on top of `main` `b1cef96`; the E2E receipt
-records the exact commit in `sourceSha`. Design: [r22-paragraph-layout-engine](../architecture/r22-paragraph-layout-engine.md).
+records the exact commit in `sourceSha`. Design: [paragraph layout engine](../architecture/text-paragraph-layout-engine.md).
 Reference: [paragraph layout engine](../content/reference/text-paragraph-layout.md).
 
 Environment: Linux 5.15 (WSL2) x86_64, .NET SDK 10.0.401, HarfBuzzSharp 14.2.1.301 (native 14.2.1),

@@ -1,4 +1,4 @@
-# R22 bounded text-reference evidence
+# Mixed text reference evidence
 
 The optional LFS archive [`reference-evidence.tar.zst`](reference-evidence.tar.zst)
 contains the **nine one-page reference PDFs actually inspected in macOS
@@ -18,26 +18,28 @@ tree snapshot.
 | Archive entries | 31, with individual byte sizes and SHA-256 values in `manifest.json` |
 
 Fetch this optional directory with `git lfs pull
---include="docs/evidence/r22-next-phase/**" --exclude=""`, then extract the
-archive under ignored `artifacts/r22-next-phase/reference-20261029/`:
+--include="docs/evidence/text-reader-reference/**" --exclude=""`, then extract the
+archive under ignored `artifacts/text-reader-reference/reference-20261029/`:
 
 ```sh
-mkdir -p artifacts/r22-next-phase/reference-20261029
-zstd -dc docs/evidence/r22-next-phase/reference-evidence.tar.zst |
-  tar -xf - -C artifacts/r22-next-phase/reference-20261029
+mkdir -p artifacts/text-reader-reference/reference-20261029
+zstd -dc docs/evidence/text-reader-reference/reference-evidence.tar.zst |
+  tar -xf - -C artifacts/text-reader-reference/reference-20261029
 ```
 
-The scripts use the repository's existing LFS font fixture. `fonts.conf`
-records the original absolute Fontconfig path, so update it to the current
+The scripts used the historical font fixture at the source baseline above.
+Check out that commit to reproduce the old byte identity. `fonts.conf`
+records the original absolute Fontconfig path, so update it to that
 checkout before reproducing Pango generation. The PDFs and PNGs in the
 archive are the exact previously hashed outputs; extraction does not require
 regeneration. `selected-reader-matrix.json` lists the pinned software
 versions, PDF structure and PdfPig/PDFKit results for the nine references.
 
-The reference comparisons do **not** admit adjacent Hebrew words in the
-product writer. Actual Preview Find failed on the fpdf2 between-word wrap
+At the source baseline, the reference comparisons did **not** admit adjacent
+Hebrew words in the product writer; the current bounded writer has a separate
+two-word acceptance path. Actual Preview Find failed on the fpdf2 between-word wrap
 and the Pango controls; the tool did not expose raw clipboard Unicode.
 The Type 3 diagnostic repaired the pinned PdfPig word tokens but failed
 PDFKit whole-page selection. Its one-character-per-word representation also
 loses individual character geometry. The full architecture and limitation
-record is [`r22-mixed-text-decision.md`](../../architecture/r22-mixed-text-decision.md).
+record is the [mixed paragraph API reference](../../content/reference/text-mixed-paragraph.md).

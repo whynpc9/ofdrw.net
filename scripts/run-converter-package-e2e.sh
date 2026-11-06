@@ -206,7 +206,7 @@ assert receipt['han']['ofdText'] == '中\n文\nA\n中'
 assert 'TEXT_FACE_FALLBACK' in receipt['han']['fallback']
 assert all(output['bytes'] > 0 for output in receipt['outputs'])
 PY_TEXT_CONSUMER
-python3 - "$TEXT_OUTPUT/r22-receipt.json" <<'PY_R22_TEXT_CONSUMER'
+python3 - "$TEXT_OUTPUT/text-receipt.json" <<'PY_TEXT_TEXT_CONSUMER'
 import json, sys
 receipt = json.load(open(sys.argv[1]))
 assert {item['source'] for item in receipt['cases']} == {'AV', 'ffi', 'e\u0301', 'a\u0308'}
@@ -221,8 +221,8 @@ assert diaeresis['source'] == 'a\u0308' and len(diaeresis['shapedGids']) == 1
 assert all(item['readback'] == item['source'] for item in receipt['cases'])
 assert all(item['svgGids'] == item['shapedGids'] for item in receipt['cases'])
 assert all(output['bytes'] > 0 for output in receipt['outputs'])
-PY_R22_TEXT_CONSUMER
-python3 - "$TEXT_OUTPUT/r22-mixed-query-receipt.json" "$TEXT_OUTPUT/r22-mixed-output-receipt.json" <<'PY_R22_MIXED_CONSUMER'
+PY_TEXT_TEXT_CONSUMER
+python3 - "$TEXT_OUTPUT/text-mixed-query-receipt.json" "$TEXT_OUTPUT/text-mixed-output-receipt.json" <<'PY_TEXT_MIXED_CONSUMER'
 import json, sys
 query, output = (json.load(open(path)) for path in sys.argv[1:])
 source = 'abc \u05e9\u05dc\u05d5\u05dd def'
@@ -240,39 +240,39 @@ assert [run['Text'] for run in two['runs']] == ['abc', ' ', '\u05e9\u05dc\u05d5\
     '\u05de\u05e7\u05d5\u05dd', ' ', 'def']
 assert two['runs'][4]['XMillimeters'] < two['runs'][2]['XMillimeters']
 assert {item['name'] for item in output['outputs']} == {
-    f'r22-mixed-{kind}.{extension}'
+    f'text-mixed-{kind}.{extension}'
     for kind in ('wide', 'short-words', 'long-upper', 'unequal-latin', 'upper-leading', 'exact-fit',
      'two-word', 'repeated-word', 'two-word-short', 'two-word-swapped', 'two-word-long', 'two-word-exact-fit', 'repeated-letter', 'repeated-letter-two-word',
      'repeated-letter-repeated-word', 'palindrome', 'repeated-letter-long')
     for extension in ('ofd', 'pdf', 'svg', 'png')}
 assert {item['name'] for item in output['cases']} == {
-    f'r22-mixed-{kind}' for kind in
+    f'text-mixed-{kind}' for kind in
     ('wide', 'short-words', 'long-upper', 'unequal-latin', 'upper-leading', 'exact-fit',
      'two-word', 'repeated-word', 'two-word-short', 'two-word-swapped', 'two-word-long', 'two-word-exact-fit', 'repeated-letter', 'repeated-letter-two-word',
      'repeated-letter-repeated-word', 'palindrome', 'repeated-letter-long')}
 assert all(item['bytes'] > 0 for item in output['outputs'])
-PY_R22_MIXED_CONSUMER
+PY_TEXT_MIXED_CONSUMER
 for sample in av av-kern-off ffi-on ffi-off e-acute a-diaeresis; do
   pdftoppm -f 1 -l 1 -png -singlefile -r 144 \
-    "$TEXT_OUTPUT/r22-$sample.pdf" "$TEXT_OUTPUT/r22-$sample-pdf-page"
-  test -s "$TEXT_OUTPUT/r22-$sample-pdf-page.png"
+    "$TEXT_OUTPUT/text-$sample.pdf" "$TEXT_OUTPUT/text-$sample-pdf-page"
+  test -s "$TEXT_OUTPUT/text-$sample-pdf-page.png"
 done
 for sample in wide short-words long-upper unequal-latin upper-leading exact-fit \
   two-word repeated-word two-word-short two-word-swapped two-word-long two-word-exact-fit repeated-letter repeated-letter-two-word repeated-letter-repeated-word palindrome repeated-letter-long; do
   pdftoppm -f 1 -l 1 -png -singlefile -r 144 \
-    "$TEXT_OUTPUT/r22-mixed-$sample.pdf" "$TEXT_OUTPUT/r22-mixed-$sample-pdf-page"
-  test -s "$TEXT_OUTPUT/r22-mixed-$sample-pdf-page.png"
+    "$TEXT_OUTPUT/text-mixed-$sample.pdf" "$TEXT_OUTPUT/text-mixed-$sample-pdf-page"
+  test -s "$TEXT_OUTPUT/text-mixed-$sample-pdf-page.png"
 done
-python3 - "$TEXT_OUTPUT" <<'PY_R22_PDF_TEXT'
+python3 - "$TEXT_OUTPUT" <<'PY_TEXT_PDF_TEXT'
 import json, pathlib, subprocess, sys
 root = pathlib.Path(sys.argv[1])
-for case in json.loads((root / 'r22-receipt.json').read_text())['cases']:
-    pdf = str(root / ('r22-' + case['name'] + '.pdf'))
+for case in json.loads((root / 'text-receipt.json').read_text())['cases']:
+    pdf = str(root / ('text-' + case['name'] + '.pdf'))
     extracted = subprocess.check_output(['pdftotext', '-enc', 'UTF-8', pdf, '-']).decode().strip()
     assert extracted == case['source'], (case['name'], extracted)
     fonts = subprocess.check_output(['pdffonts', pdf], text=True).splitlines()[2:]
     assert len(fonts) == 1 and 'CID TrueType' in fonts[0] and 'yes yes yes' in fonts[0], case['name']
-PY_R22_PDF_TEXT
+PY_TEXT_PDF_TEXT
 # Exercise public complex-table pagination from the exact candidate packages.
 # The source E2E producer is copied into a fresh PackageReference-only project;
 # package-source mapping and the private cache above prevent project-reference reuse.

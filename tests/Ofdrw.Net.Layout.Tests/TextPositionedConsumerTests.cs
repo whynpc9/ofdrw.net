@@ -12,9 +12,9 @@ namespace Ofdrw.Net.Layout.Tests;
 public sealed class TextPositionedConsumerTests
 {
     [Theory]
-    [InlineData("DejaVuSans-R22.ttf", 2048, 0.0004)]
+    [InlineData("DejaVuSans-TextFixture.ttf", 2048, 0.0004)]
     [InlineData("NotoSans-Regular.ttf", 1000, 0.0004)]
-    [InlineData("DejaVuSans-R22.ttf", 2048, 0.0004999999)]
+    [InlineData("DejaVuSans-TextFixture.ttf", 2048, 0.0004999999)]
     [InlineData("NotoSans-Regular.ttf", 1000, 0.0004999999)]
     public void BothWriterEntrancesRejectUnwritableSizeWhileQueryRemainsAvailable(string font, int upem, double size)
     {
@@ -30,11 +30,11 @@ public sealed class TextPositionedConsumerTests
     }
 
     [Theory]
-    [InlineData("DejaVuSans-R22.ttf", 0.0005, "0.001")]
+    [InlineData("DejaVuSans-TextFixture.ttf", 0.0005, "0.001")]
     [InlineData("NotoSans-Regular.ttf", 0.0005, "0.001")]
-    [InlineData("DejaVuSans-R22.ttf", 0.001, "0.001")]
+    [InlineData("DejaVuSans-TextFixture.ttf", 0.001, "0.001")]
     [InlineData("NotoSans-Regular.ttf", 0.001, "0.001")]
-    [InlineData("DejaVuSans-R22.ttf", 4, "4")]
+    [InlineData("DejaVuSans-TextFixture.ttf", 4, "4")]
     [InlineData("NotoSans-Regular.ttf", 4, "4")]
     public async Task BothWriterEntrancesKeepWritableSizeAndSourceAfterSerialization(string font, double size, string literal)
     {
@@ -61,12 +61,12 @@ public sealed class TextPositionedConsumerTests
     }
 
     [Theory]
-    [InlineData("AV", "DejaVuSans-R22.ttf", 4)]
-    [InlineData("ffi", "DejaVuSans-R22.ttf", 4)]
-    [InlineData("fi", "DejaVuSans-R22.ttf", 6)]
-    [InlineData("a\u0323", "DejaVuSans-R22.ttf", 4)]
-    [InlineData("jAV", "DejaVuSans-R22.ttf", 4)]
-    [InlineData("AV\nfi", "DejaVuSans-R22.ttf", 4)]
+    [InlineData("AV", "DejaVuSans-TextFixture.ttf", 4)]
+    [InlineData("ffi", "DejaVuSans-TextFixture.ttf", 4)]
+    [InlineData("fi", "DejaVuSans-TextFixture.ttf", 6)]
+    [InlineData("a\u0323", "DejaVuSans-TextFixture.ttf", 4)]
+    [InlineData("jAV", "DejaVuSans-TextFixture.ttf", 4)]
+    [InlineData("AV\nfi", "DejaVuSans-TextFixture.ttf", 4)]
     [InlineData("AV", "NotoSans-Regular.ttf", 6)]
     public async Task NativeTypedConsumerPreservesGeometryBitsSourceAndSerializedDeltas(
         string source, string font, double size)
@@ -149,7 +149,7 @@ public sealed class TextPositionedConsumerTests
     {
         // A replacement shaper boundary, not a claim about native font geometry or valid visuals.
         var layout = new TextPrelayoutEngine(new CompensatedShaper()).Layout(
-            new("AVA", new[] { Load("DejaVuSans-R22.ttf") }, 4, 1_000_000));
+            new("AVA", new[] { Load("DejaVuSans-TextFixture.ttf") }, 4, 1_000_000));
         var shape = layout.Lines.Single().ShapedRun;
         Assert.Equal(TextLayoutError.BudgetExceeded, Assert.Throws<TextLayoutException>(() =>
             TextPositionedRun.Create(shape, 4)).Error);
@@ -172,7 +172,7 @@ public sealed class TextPositionedConsumerTests
     [Fact]
     public void StrictVerticalIntMinimumIsNegatedAfterConversionToDouble()
     {
-        var shape = new TextShapedRun(new("AV", 0, Load("DejaVuSans-R22.ttf")), new[]
+        var shape = new TextShapedRun(new("AV", 0, Load("DejaVuSans-TextFixture.ttf")), new[]
         {
             new TextShapedGlyph(36, 0, 1, 0, int.MinValue, 0, 0, null, false),
             new TextShapedGlyph(57, 1, 1, 0, int.MaxValue, 0, 0, null, false),

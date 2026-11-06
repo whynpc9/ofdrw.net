@@ -19,7 +19,7 @@ from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
-FONT = ROOT / "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-R22.ttf"
+FONT = ROOT / "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-TextFixture.ttf"
 FLAGS = [
     "--disable-build-servers",
     "-m:1",
@@ -93,9 +93,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     assert pypdf.__version__ == "6.21.2" and fontTools.__version__ == "4.68.0"
     receipt = json.loads(
-        (pages / "r22-mixed-output-receipt.json").read_text(encoding="utf-8")
+        (pages / "text-mixed-output-receipt.json").read_text(encoding="utf-8")
     )
-    assert {r["name"].removeprefix("r22-mixed-") for r in receipt["cases"]} == REQUIRED
+    assert {r["name"].removeprefix("text-mixed-") for r in receipt["cases"]} == REQUIRED
     for item in receipt["outputs"]:
         assert sha(pages / item["name"]) == item["sha256"], item["name"]
     cases, inputs = [], []
@@ -166,10 +166,10 @@ def main():
         check=True,
     )
     pig = json.loads((out / "pdfpig.json").read_text(encoding="utf-8"))
-    characters = module("r22_characters", HERE / "verify-character-gids.py")
+    characters = module("text_characters", HERE / "verify-character-gids.py")
     characters.original = TTFont(FONT)
     characters.original_cmap = characters.original.getBestCmap()
-    visible = module("r22_visible", HERE / "verify-visible-glyphs.py")
+    visible = module("text_visible", HERE / "verify-visible-glyphs.py")
     char_rows, visible_rows, geometry = [], [], []
     poppler = shutil.which("pdftotext")
     assert poppler, "pdftotext is required"
@@ -240,7 +240,7 @@ def main():
             pdfpigAssemblySha256=pig["assemblySha256"],
         ),
         inputManifestSha256=sha(out / "inputs.json"),
-        sourceOutputReceiptSha256=sha(pages / "r22-mixed-output-receipt.json"),
+        sourceOutputReceiptSha256=sha(pages / "text-mixed-output-receipt.json"),
         candidateManifestSha256=sha(pages.parent / "package-manifest.json")
         if (pages.parent / "package-manifest.json").exists()
         else None,

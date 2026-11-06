@@ -109,11 +109,14 @@ public sealed class PdfRtlVisualLineImportTests
         using var ofd = new MemoryStream();
         await new PdfToOfdConverter(Profile()).ConvertAsync(new MemoryStream(source), ofd);
         ofd.Position = 0;
+        var imported = await new OfdReader().ReadAsync(ofd);
+        var nameOnlyFaces = imported.Fonts.Select(font => font.FontName).Distinct(StringComparer.Ordinal).ToDictionary(name => name, _ =>
+            File.ReadAllBytes(Path.Combine(Root(), "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-TextFixture.ttf")));
+        ofd.Position = 0;
         using var pdf = new MemoryStream();
-        var face = File.ReadAllBytes(Path.Combine(Root(), "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-R22.ttf"));
         await new OfdToPdfConverter(new OfdToPdfOptions
         {
-            NameOnlyFontBindings = new OfdNameOnlyFontBindings(new Dictionary<string, byte[]> { ["R22DejaVuSans"] = face })
+            NameOnlyFontBindings = new OfdNameOnlyFontBindings(nameOnlyFaces)
         }).ConvertAsync(ofd, pdf);
 
         using (var exported = PdfDocument.Open(pdf.ToArray()))
@@ -144,10 +147,10 @@ public sealed class PdfRtlVisualLineImportTests
         // Regression from F06 probing: this PDF paints glyph outlines as paths and
         // carries a clipped semantic layer in logical order at LTR advances.
         // Reading that layer as geometry produced reversed Arabic.
-        var face = new Ofdrw.Net.Layout.Text.TextFontFace("R22 DejaVu Sans",
-            File.ReadAllBytes(Path.Combine(Root(), "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-R22.ttf")));
+        var face = new Ofdrw.Net.Layout.Text.TextFontFace("Ofdrw Test DejaVu Sans",
+            File.ReadAllBytes(Path.Combine(Root(), "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-TextFixture.ttf")));
         var layout = HarfBuzzTextPrelayout.CreateParagraphLayout().Layout(new ParagraphLayoutRequest("مرحبا بالعالم لا",
-            new TextStyle(new[] { new TextFontFamily("R22 DejaVu Sans", face) }, 5),
+            new TextStyle(new[] { new TextFontFamily("Ofdrw Test DejaVu Sans", face) }, 5),
             new ParagraphLayoutOptions(150, null, TextParagraphDirection.RightToLeft)));
         using var ofd = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(ParagraphLayoutOfdWriter.CreateDocument(layout, 170, 40, 10, 10), ofd);

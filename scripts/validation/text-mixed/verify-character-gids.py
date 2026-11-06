@@ -1,4 +1,4 @@
-"""Independent scalar/CID/GID/outline/baseline check for the fixed R22 corpus."""
+"""Independent scalar/CID/GID/outline/baseline check for the fixed Text layout corpus."""
 
 import hashlib
 import json
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     assert (
         sha(args.font.read_bytes())
-        == "d7441d42a24882db09640ea4bb768b17a106cdb31ee9749a52cb34a075b8fbcc"
+        == "3362132d725d94e23e6995749627c11fdb197a6a6a95faa068e9b757877a8212"
     )
     original = TTFont(args.font)
     original_cmap = original.getBestCmap()
