@@ -8,6 +8,8 @@ sidebar:
 
 中文转换需要调用方提供许可明确的字体文件。`FontFamily` 名称、实际 face 与 Bold/Italic 载荷是不同信息；Regular 加样式标记不能替代真实 Bold 文件。
 
+> **可选最终文字排版（main，尚未发布）：** 设置 `FlowDocumentOptions.TextEngine` 或 `DocxConversionOptions.NativeParagraphLayoutEngine` 后，Flow、纯文本或 DOCX Native 的文本改用段落排版引擎，以真实字体塑形并嵌入字体子集（支持制表位、合成粗斜体、CFF/OTF 与增补汉字）。默认行为不变，见[启用最终文字排版引擎](https://whynpc9.github.io/ofdrw.net/guides/final-text-layout/)。
+
 ## 固定物理字体配置
 
 固定配置使用静态 Noto Sans CJK SC 400 / 700 及 Noto Sans Regular。来源、SHA-256、face index 与具体适用范围见[发布字体配置](https://whynpc9.github.io/ofdrw.net/reference/release-profile-cn-en/)。部署时保留字体许可证；字体不加入 NuGet 包。
@@ -18,7 +20,6 @@ sidebar:
 - 清空 fallback 后按所需顺序添加受控家族。
 - `UseInstalledMicrosoftOfficeFonts=false` 仅关闭特定 Office 字体暂存，不表示禁用所有系统字体解析。
 - 缺字、其他字体、物理 Italic 和复杂脚本需单独验证。
-
 
 以下为严格物理字体配置。将 `fonts` 替换为已准备好 Regular/Bold 的目录：
 

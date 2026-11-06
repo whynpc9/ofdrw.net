@@ -522,6 +522,13 @@ public sealed class OfdToSvgConverter
                                 .Append(Invariant(anchor.Y - command.ControlY * scale)).Append(' ')
                                 .Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' ');
                             break;
+                        case TrueTypePathVerb.Cubic:
+                            path.Append("C ").Append(Invariant(anchor.X / paint.HScale + command.ControlX * scale)).Append(' ')
+                                .Append(Invariant(anchor.Y - command.ControlY * scale)).Append(' ')
+                                .Append(Invariant(anchor.X / paint.HScale + command.Control2X * scale)).Append(' ')
+                                .Append(Invariant(anchor.Y - command.Control2Y * scale)).Append(' ')
+                                .Append(Invariant(px)).Append(' ').Append(Invariant(py)).Append(' ');
+                            break;
                         case TrueTypePathVerb.Close: path.Append("Z "); break;
                     }
                 }

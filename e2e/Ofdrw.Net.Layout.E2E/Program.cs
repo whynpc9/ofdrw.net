@@ -22,6 +22,11 @@ if (args.Contains("--cn-en-release-only"))
     await CnEnReleaseSamples.Run(outputDirectory, docxPath, fontOption < 0 ? null : Path.GetFullPath(args[fontOption + 1]));
     return;
 }
+if (args.Contains("--engine-comparison-only"))
+{
+    await EngineComparisonSamples.Run(outputDirectory, docxPath);
+    return;
+}
 if (args.Contains("--complex-tables-only"))
 {
     await ComplexTableSamples.Run(outputDirectory);

@@ -656,7 +656,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         XPoint point, SixLabors.Fonts.Font? outlineFont, bool simulateBold, bool italic, XStringFormat? format = null, OpenTypeCmap? coverage = null,
         OfdTextPaint? paint = null, Func<string, string>? mapPdfText = null,
         DocumentFontContext? fontContext = null, OfdFontResource? fontResource = null, string? fontFamily = null,
-        bool preserveExplicitSourceSpan = false, double? sourceBoldStrokeWidth = null)
+        bool preserveExplicitSourceSpan = false, double? sourceBoldStrokeWidth = null, bool producerHanBold = false)
     {
         // PDFsharp does not compose Latin mark sequences (notably dotted i).
         // Match the supported composite used for measurement when drawing one
@@ -759,6 +759,13 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 // (issue #107). Keep the text paint and add a filled,
                 // horizontal-only emphasis that never enters the gaps between
                 // stacked strokes. The OFD itself keeps its declared stroke.
+                // Final layout output declares synthetic Han bold as a fill-colored 1%-em stroke without
+                // Weight; it gets the same horizontal-only emphasis.
+                if (producerHanBold && !simulateBold && FontEmphasisMetrics.ContainsHan(text))
+                {
+                    Render(new PdfGlyphOutlineRenderer(graphics, solid.Color, HanBoldHalfWidth(font.Size)));
+                    return;
+                }
                 if (ownBoldStroke && IsHanBoldStroke(strokeWidthPoints, font.Size, text, sourceBoldStrokeWidth))
                 {
                     Render(new PdfGlyphOutlineRenderer(graphics, solid.Color, HanBoldHalfWidth(font.Size)));
@@ -782,6 +789,13 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             graphics.Restore(state);
         }
     }
+
+    // A fill-colored stroke of the Han synthetic-bold width (the writer keeps three decimals).
+    private static bool IsProducerHanBold(OfdTextPaint paint, double fontSizeMillimeters) =>
+        paint.Fill && paint.Stroke && paint.FillColor.Red == paint.StrokeColor.Red &&
+        paint.FillColor.Green == paint.StrokeColor.Green && paint.FillColor.Blue == paint.StrokeColor.Blue &&
+        paint.FillColor.Alpha == paint.StrokeColor.Alpha &&
+        Math.Abs(paint.LineWidthMillimeters - FontEmphasisMetrics.HanBoldStrokeWidth(fontSizeMillimeters)) <= 0.0005 + 1e-9;
 
     private static bool IsHanBoldStroke(double strokeWidthPoints, double emPoints, string text, double? sourceBoldStrokeWidth)
     {
@@ -832,6 +846,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
         // source text once instead of once for every glyph.
         double? sourceBoldStrokeWidth = simulateBold && paint.Stroke && paint.Fill && paint.StrokeColor.Alpha > 0
             ? FontEmphasisMetrics.BoldStrokeWidth(font.Size, text.Text) : null;
+        var producerHanBold = OfdTextEmphasis.IsFinalLayout(text) && IsProducerHanBold(paint, text.FontSizeMillimeters);
         DrawTextWithMatrix(graphics, text, pageOriginX, pageOriginY, factor =>
         {
             for (var runIndex = 0; runIndex < text.Runs.Count; runIndex++)
@@ -879,7 +894,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
                         mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
                         fontFamily: fontFamily, preserveExplicitSourceSpan: true,
-                        sourceBoldStrokeWidth: sourceBoldStrokeWidth);
+                        sourceBoldStrokeWidth: sourceBoldStrokeWidth, producerHanBold: producerHanBold);
                     continue;
                 }
                 // CGTransform maps each validated BMP character to one original
@@ -905,14 +920,14 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                                 new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)),
                                 outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint,
                                 mapPdfText: mapPdfText, fontContext: fontContext, fontResource: fontResource,
-                                fontFamily: fontFamily, sourceBoldStrokeWidth: sourceBoldStrokeWidth);
+                                fontFamily: fontFamily, sourceBoldStrokeWidth: sourceBoldStrokeWidth, producerHanBold: producerHanBold);
                         }
                         continue;
                     }
                     DrawStyledString(graphics, run.Text, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,
                         fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily,
-                        sourceBoldStrokeWidth: sourceBoldStrokeWidth);
+                        sourceBoldStrokeWidth: sourceBoldStrokeWidth, producerHanBold: producerHanBold);
                     continue;
                 }
                 var x = run.XMillimeters; var y = run.YMillimeters;
@@ -926,7 +941,7 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                     DrawStyledString(graphics, glyph, font, brush,
                         new XPoint(MillimetersToPoints(anchor.X / paint.HScale), MillimetersToPoints(anchor.Y)), outlineFont, simulateBold, simulateItalic, coverage: coverage, paint: paint, mapPdfText: mapPdfText,
                         fontContext: fontContext, fontResource: fontResource, fontFamily: fontFamily,
-                        sourceBoldStrokeWidth: sourceBoldStrokeWidth);
+                        sourceBoldStrokeWidth: sourceBoldStrokeWidth, producerHanBold: producerHanBold);
                     if (i < deltaX.Count) x += deltaX[i];
                     if (i < deltaY.Count) y += deltaY[i];
                     i++;
@@ -941,6 +956,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
     {
         var font = plannedFont ?? OfdExplicitGlyphFont.Read(resource, text, run, embedFont: false);
         var origins = run.PathGlyphOrigins(token);
+        // A fill-colored stroke of exactly the Han synthetic-bold width (final layout output for Han without
+        // a bold face) gets the same horizontal-only emphasis as ordinary Han bold text (Issue #107),
+        // so dense counters stay open instead of closing under an isotropic stroke.
+        var emPoints = MillimetersToPoints(text.FontSizeMillimeters);
+        var hanBold = IsProducerHanBold(paint, text.FontSizeMillimeters);
         for (var index = 0; index < font.Outlines.Count; index++)
         {
             token.ThrowIfCancellationRequested();
@@ -951,6 +971,18 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
             // deltas in the previously accepted 1:2 profile share one origin.
             var scale = text.FontSizeMillimeters / outline.UnitsPerEm;
             var path = new XGraphicsPath { FillMode = XFillMode.Winding };
+            var contours = hanBold ? new List<IReadOnlyList<(double X, double Y)>>() : null;
+            List<(double X, double Y)>? contour = null;
+            void Flatten(double startX, double startY, double c1x, double c1y, double c2x, double c2y, double endX, double endY)
+            {
+                if (contour is null) return;
+                for (var step = 1; step <= 16; step++)
+                {
+                    var t = step / 16d; var u = 1 - t;
+                    contour.Add((u * u * u * startX + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * endX,
+                        u * u * u * startY + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * endY));
+                }
+            }
             double x = 0, y = 0;
             foreach (var command in outline.ToPathCommands())
             {
@@ -960,9 +992,11 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                 {
                     case TrueTypePathVerb.Move:
                         path.StartFigure(); x = nextX; y = nextY;
+                        if (contours is not null) contours.Add(contour = new List<(double X, double Y)> { (x, y) });
                         break;
                     case TrueTypePathVerb.Line:
                         path.AddLine(x, y, nextX, nextY); x = nextX; y = nextY;
+                        contour?.Add((x, y));
                         break;
                     case TrueTypePathVerb.Quadratic:
                         var controlX = MillimetersToPoints(anchor.X / paint.HScale + command.ControlX * scale);
@@ -972,12 +1006,36 @@ public sealed class OfdToPdfConverter : IOfdToPdfConverter
                         var cubic2X = nextX + (controlX - nextX) * 2d / 3d;
                         var cubic2Y = nextY + (controlY - nextY) * 2d / 3d;
                         path.AddBezier(x, y, cubic1X, cubic1Y, cubic2X, cubic2Y, nextX, nextY);
+                        Flatten(x, y, cubic1X, cubic1Y, cubic2X, cubic2Y, nextX, nextY);
                         x = nextX; y = nextY;
                         break;
+                    case TrueTypePathVerb.Cubic:
+                    {
+                        var c1x = MillimetersToPoints(anchor.X / paint.HScale + command.ControlX * scale);
+                        var c1y = MillimetersToPoints(anchor.Y - command.ControlY * scale);
+                        var c2x = MillimetersToPoints(anchor.X / paint.HScale + command.Control2X * scale);
+                        var c2y = MillimetersToPoints(anchor.Y - command.Control2Y * scale);
+                        path.AddBezier(x, y, c1x, c1y, c2x, c2y, nextX, nextY);
+                        Flatten(x, y, c1x, c1y, c2x, c2y, nextX, nextY);
+                        x = nextX; y = nextY;
+                        break;
+                    }
                     case TrueTypePathVerb.Close:
                         path.CloseFigure();
+                        contour = null;
                         break;
                 }
+            }
+            if (contours is not null && paint.FillColor.Alpha > 0)
+            {
+                var color = XColor.FromArgb(paint.FillColor.Alpha, paint.FillColor.Red, paint.FillColor.Green, paint.FillColor.Blue);
+                graphics.DrawPath(new XSolidBrush(color), path);
+                var quads = HorizontalEmboldenOverlay.Build(contours, HanBoldHalfWidth(emPoints));
+                if (quads.Count == 0) continue;
+                var overlay = new XGraphicsPath { FillMode = XFillMode.Winding };
+                foreach (var quad in quads) overlay.AddPolygon(quad.Select(point => new XPoint(point.X, point.Y)).ToArray());
+                graphics.DrawPath(new XSolidBrush(color), overlay);
+                continue;
             }
             XBrush? fill = paint.Fill && paint.FillColor.Alpha > 0 ?
                 new XSolidBrush(XColor.FromArgb(paint.FillColor.Alpha,

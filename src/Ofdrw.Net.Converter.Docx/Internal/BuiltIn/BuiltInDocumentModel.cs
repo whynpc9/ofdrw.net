@@ -6,6 +6,8 @@ internal sealed class BuiltInDocumentModel
 {
     internal IList<BuiltInSectionModel> Sections { get; } = new List<BuiltInSectionModel>();
     internal IList<BuiltInSupplementalText> SupplementalText { get; } = new List<BuiltInSupplementalText>();
+    /// <summary>settings.xml w:defaultTabStop in points, when declared.</summary>
+    internal double? DefaultTabStopPoints { get; set; }
 }
 
 internal sealed class BuiltInSupplementalText
@@ -136,6 +138,9 @@ internal sealed class BuiltInParagraphFormat
     internal bool PageBreakBefore { get; set; }
     internal bool KeepWithNext { get; set; }
     internal string? ListMarker { get; set; }
+    /// <summary>Effective custom tab stops (w:tabs merged over the style chain, "clear" removed),
+    /// as (position from the paragraph text start in points, alignment) sorted by position.</summary>
+    internal IList<(double Points, string Alignment)> TabStops { get; set; } = new List<(double Points, string Alignment)>();
 }
 
 internal sealed class BuiltInTextFormat
@@ -146,6 +151,10 @@ internal sealed class BuiltInTextFormat
     internal bool Italic { get; set; }
     internal bool Underline { get; set; }
     internal string? ColorHex { get; set; }
+    /// <summary>w:strike or w:dstrike (final text layout draws one strikethrough line).</summary>
+    internal bool Strike { get; set; }
+    /// <summary>w:highlight color or run w:shd fill as RRGGBB, or null.</summary>
+    internal string? HighlightHex { get; set; }
 }
 
 internal enum BuiltInParagraphAlignment

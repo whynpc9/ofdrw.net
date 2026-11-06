@@ -12,9 +12,12 @@ namespace Ofdrw.Net.Layout.Text.Paragraphs;
 /// <para>Each run becomes one TextObject whose TextCode keeps the run's unmodified logical text.
 /// Every source cluster has its own CGTransform (logical order) carrying the original GIDs, and every
 /// glyph slot has an explicit origin, so RTL and many-to-many clusters need no reader inference.</para>
-/// <para>Output profile: BMP text; fill paint in DeviceRGB with alpha; no stroke; faces must permit
-/// embedding (OS/2.fsType). Fonts are embedded as GID-preserving subsets by default. Anything else is
-/// rejected with <see cref="TextLayoutError.UnsupportedOutput"/> before a package is created.</para>
+/// <para>Output profile: Unicode text including supplementary characters (CodePosition/CodeCount count
+/// scalar values); fill and/or stroke paint in DeviceRGB with alpha, which carries synthetic bold;
+/// synthetic oblique as a baseline shear CTM; highlight, underline and strikethrough as filled
+/// PathObjects; TrueType or static CFF faces that permit embedding (OS/2.fsType). Fonts are embedded
+/// as GID-preserving subsets by default. Anything else is rejected with
+/// <see cref="TextLayoutError.UnsupportedOutput"/> before a package is created.</para>
 /// </remarks>
 public static class ParagraphLayoutOfdWriter
 {
@@ -78,33 +81,37 @@ public static class ParagraphLayoutOfdWriter
                 Index = layoutPage.Index, WidthMillimeters = pageWidthMillimeters, HeightMillimeters = pageHeightMillimeters,
             };
             foreach (var line in layoutPage.Lines)
-                foreach (var run in line.Runs)
-                    page.Elements.Add(CreateElement(run, line, leftMillimeters, topMillimeters, resources[run.Face.FaceSha256]));
+                AppendLine(page.Elements, line, leftMillimeters, topMillimeters, face => resources[face.FaceSha256]);
             package.Pages.Add(page);
         }
         return package;
     }
 
-    private static void Preflight(ParagraphLayoutResult result, ParagraphLayoutRun run)
+    /// <summary>Validates one run against the output profile before any package object is created.</summary>
+    internal static void Preflight(ParagraphLayoutResult result, ParagraphLayoutRun run)
     {
-        var paint = run.Style.Paint;
-        if (!paint.Fill || paint.Stroke)
+        PreflightRun(run);
+        if (result.Text.Substring(run.SourceStart, run.SourceLength) != run.Text)
             throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
-                "The OFD text writer profile supports filled text without stroke.",
-                sourceStart: run.SourceStart, sourceLength: run.SourceLength);
-        if (run.Style.Synthetic != TextSyntheticStyle.None || run.Style.RequestedBold != run.Style.FaceBold ||
-            run.Style.RequestedItalic != run.Style.FaceItalic)
-            throw new TextLayoutException(TextLayoutError.UnsupportedOutput, "Synthetic styles are not written.",
-                sourceStart: run.SourceStart, sourceLength: run.SourceLength);
-        if (run.Text.Any(char.IsSurrogate))
-            throw new TextLayoutException(TextLayoutError.UnsupportedOutput,
-                "OFD CodePosition counting for supplementary characters needs a separately verified profile.",
+                "The run lost its source identity.", sourceStart: run.SourceStart, sourceLength: run.SourceLength);
+    }
+
+    /// <summary>Validates one run's style, glyph identity and cluster mapping against the output profile.</summary>
+    internal static void PreflightRun(ParagraphLayoutRun run)
+    {
+        var style = run.Style;
+        // The face satisfies the request directly, or the recorded synthetic styles make up the difference.
+        var bold = style.FaceBold || (style.Synthetic & TextSyntheticStyle.Bold) != 0;
+        var italic = style.FaceItalic || (style.Synthetic & TextSyntheticStyle.Oblique) != 0;
+        if (bold != style.RequestedBold || italic != style.RequestedItalic ||
+            (style.Synthetic & TextSyntheticStyle.Bold) != 0 && !(style.Paint.Stroke && style.Paint.StrokeColor!.Equals(style.Paint.FillColor)) ||
+            (style.Synthetic & TextSyntheticStyle.Oblique) != 0 && style.ObliqueSkew != TextResolvedStyle.SyntheticObliqueSkew)
+            throw new TextLayoutException(TextLayoutError.UnsupportedOutput, "The run's resolved style is inconsistent with its face.",
                 sourceStart: run.SourceStart, sourceLength: run.SourceLength);
         if (run.Text.Length > 4096 || run.Glyphs.Count > 16384)
             throw new TextLayoutException(TextLayoutError.BudgetExceeded, "A run exceeds the OFD TextCode budget.",
                 sourceStart: run.SourceStart, sourceLength: run.SourceLength);
-        if (result.Text.Substring(run.SourceStart, run.SourceLength) != run.Text ||
-            run.ShapedRun.Request.Text != run.Text || run.ShapedRun.Request.SourceStart != run.SourceStart ||
+        if (run.ShapedRun.Request.Text != run.Text || run.ShapedRun.Request.SourceStart != run.SourceStart ||
             run.ShapedRun.Glyphs.Count != run.Glyphs.Count ||
             run.Glyphs.Where((glyph, index) => glyph.GlyphId != run.ShapedRun.Glyphs[index].GlyphId ||
                 glyph.ClusterStart != run.ShapedRun.Glyphs[index].ClusterStart).Any())
@@ -133,6 +140,36 @@ public static class ParagraphLayoutOfdWriter
         }
     }
 
+    /// <summary>Appends one final line: highlights, then one TextObject per run, then underline and
+    /// strikethrough rectangles. All coordinates are offset by (left, top).</summary>
+    internal static void AppendLine(IList<OfdElement> elements, ParagraphLayoutLine line, double left, double top,
+        Func<TextFontFace, string> fontId)
+    {
+        foreach (var run in line.Runs)
+            foreach (var decoration in run.Decorations)
+                if (decoration.Kind == ParagraphLayoutDecorationKind.Highlight) elements.Add(Rectangle(decoration, left, top));
+        foreach (var run in line.Runs) elements.Add(CreateElement(run, line, left, top, fontId(run.Face)));
+        foreach (var run in line.Runs)
+            foreach (var decoration in run.Decorations)
+                if (decoration.Kind != ParagraphLayoutDecorationKind.Highlight) elements.Add(Rectangle(decoration, left, top));
+    }
+
+    private static OfdPathElement Rectangle(ParagraphLayoutDecoration decoration, double left, double top)
+    {
+        var bounds = decoration.BoundsMillimeters;
+        var color = decoration.Color;
+        var width = Math.Max(bounds.Width, 0.001);
+        var height = Math.Max(bounds.Height, 0.001);
+        return new OfdPathElement
+        {
+            LayerType = "Body", XMillimeters = left + bounds.X, YMillimeters = top + bounds.Y,
+            WidthMillimeters = width, HeightMillimeters = height, Fill = true, Stroke = false,
+            FillColor = new OfdColor(color.Red, color.Green, color.Blue, color.Alpha),
+            AbbreviatedData = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "M 0 0 L {0:0.######} 0 L {0:0.######} {1:0.######} L 0 {1:0.######} C", width, height),
+        };
+    }
+
     private static OfdTextElement CreateElement(ParagraphLayoutRun run, ParagraphLayoutLine line,
         double left, double top, string fontId)
     {
@@ -151,14 +188,24 @@ public static class ParagraphLayoutOfdWriter
         var glyphs = run.Glyphs.Select(glyph => new OfdPositionedGlyph(glyph.GlyphId, glyph.ClusterStart,
             glyph.ClusterLength, glyph.XMillimeters - minX, glyph.YMillimeters - minY,
             glyph.AdvanceXMillimeters, glyph.AdvanceYMillimeters)).ToArray();
-        var fill = run.Style.Paint.FillColor!;
+        var paint = run.Style.Paint;
+        var fill = paint.FillColor ?? paint.StrokeColor!;
         var element = new OfdTextElement
         {
             LayerType = "Body", XMillimeters = elementX, YMillimeters = elementY,
             WidthMillimeters = Math.Max(0.1, maxX - minX), HeightMillimeters = Math.Max(0.1, maxY - minY),
             FontName = run.Face.Name, FontResourceId = fontId, FontSizeMillimeters = run.FontSizeMillimeters,
             Text = run.Text, FillColor = new OfdColor(fill.Red, fill.Green, fill.Blue, fill.Alpha),
+            ProducerFill = paint.Fill,
+            ProducerStrokeColor = paint.StrokeColor is { } stroke ? new OfdColor(stroke.Red, stroke.Green, stroke.Blue, stroke.Alpha) : null,
+            ProducerLineWidthMillimeters = paint.StrokeWidthMillimeters,
         };
+        if (run.Style.ObliqueSkew != 0)
+        {
+            // Shear about the run's baseline in TextObject space: x' = x − skew × (y − baseline).
+            var baseline = run.BaselineYMillimeters - minY;
+            element.Transform = new[] { 1, 0, -run.Style.ObliqueSkew, 1, run.Style.ObliqueSkew * baseline, 0 };
+        }
         element.Runs.Add(new OfdTextRun
         {
             Text = run.Text, XMillimeters = glyphs[0].OriginXMillimeters, YMillimeters = glyphs[0].OriginYMillimeters,

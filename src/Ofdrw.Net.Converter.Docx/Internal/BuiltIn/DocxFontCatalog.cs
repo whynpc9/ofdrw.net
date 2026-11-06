@@ -107,6 +107,15 @@ internal sealed class DocxFontCatalog
         return resolved;
     }
 
+    /// <summary>The catalog's physical faces for a family (including CJK aliases), or null.</summary>
+    internal IReadOnlyList<(byte[] Data, FontStyle Style)>? Faces(string family) =>
+        TryGetFaces(family, out var faces) ? faces : null;
+
+    /// <summary>Families tried, in order, after a requested family for final text layout fallback.</summary>
+    internal IEnumerable<string> FallbackOrder(IEnumerable<string> configured) =>
+        configured.Concat(CjkSubstituteOrder).Where(name => !string.IsNullOrWhiteSpace(name) && _fonts.ContainsKey(name.Trim()))
+            .Select(name => name.Trim()).Distinct(StringComparer.OrdinalIgnoreCase);
+
     internal string ResolveFallbackFamily(IEnumerable<string> families)
     {
         string? first = null;

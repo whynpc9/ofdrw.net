@@ -5,7 +5,8 @@ namespace Ofdrw.Net.Layout;
 
 /// <summary>Converts logical plain text to native OFD using a single Flow paragraph.</summary>
 /// <remarks>CRLF/CR/LF are line controls; form feed is a page control. Terminal controls do not add empty tail pages.
-/// Other whitespace is preserved. Font-family names use Flow's portable metrics, without embedding or coverage guarantees.
+/// Other whitespace is preserved. Font-family names use Flow's portable metrics, without embedding or coverage guarantees,
+/// unless <see cref="FlowDocumentOptions.TextEngine"/> opts into final text layout with explicit, embedded fonts.
 /// Each call owns its layout state. The returned package is independent; saving it is the caller's responsibility.</remarks>
 public sealed class PlainTextOfdConverter
 {
@@ -157,5 +158,6 @@ public sealed class PlainTextOfdConverter
         target.MaxPageCount = source.MaxPageCount;
         target.MaxTextElements = source.MaxTextElements;
         target.MaxTableCells = source.MaxTableCells;
+        target.TextEngine = source.TextEngine;
     }
 }

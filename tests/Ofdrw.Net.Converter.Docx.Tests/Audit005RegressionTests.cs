@@ -154,7 +154,7 @@ public sealed class Audit005RegressionTests
                 table.Append(new TableGrid(Enumerable.Range(0, spans.Sum()).Select(_ => new GridColumn { Width = "1000" })));
             table.Append(new TableRow(spans.Select((span, index) => new TableCell(
                 new TableCellProperties(new GridSpan { Val = span }),
-                new Paragraph(new Run(new Text("Cell" + (index + 1))))))));
+                new Paragraph(new Run(new DocumentFormat.OpenXml.Wordprocessing.Text("Cell" + (index + 1))))))));
             part.Document = new Document(new Body(table));
             part.Document.Save();
         }

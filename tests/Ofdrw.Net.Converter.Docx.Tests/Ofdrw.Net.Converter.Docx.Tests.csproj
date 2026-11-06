@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj" />
     <ProjectReference Include="../../src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Text.HarfBuzz/Ofdrw.Net.Text.HarfBuzz.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

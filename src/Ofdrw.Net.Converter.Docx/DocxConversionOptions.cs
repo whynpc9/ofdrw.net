@@ -120,6 +120,18 @@ public sealed class DocxConversionOptions
     /// </summary>
     public DocxEmbeddedBoldBehavior NativeEmbeddedBoldBehavior { get; set; } = DocxEmbeddedBoldBehavior.TextStroke;
 
+    /// <summary>
+    /// Opt-in final paragraph layout for Native OFD text. Null (the default) keeps the compatibility
+    /// layout and its name-only viewer fonts. With an engine (for example
+    /// <c>HarfBuzzTextPrelayout.CreateParagraphLayout()</c> from Ofdrw.Net.Text.HarfBuzz), paragraph, table
+    /// cell, header and footer text is shaped with the actual font files found through
+    /// <see cref="FontDirectories"/> (or the platform CJK directories when none are configured), laid out
+    /// with Unicode bidi, line breaking, tab stops, synthetic bold/oblique and decorations, and written as
+    /// cluster-mapped text with embedded GID-preserving subsets. Paragraphs containing inline images keep
+    /// the compatibility layout and report DOCX_NATIVE_TEXT_ENGINE_FALLBACK.
+    /// </summary>
+    public Ofdrw.Net.Layout.Text.Paragraphs.ParagraphLayoutEngine? NativeParagraphLayoutEngine { get; set; }
+
     /// <summary>Native OFD font payload policy and subset budgets.</summary>
     public Ofdrw.Net.Core.Models.OfdFontEmbeddingOptions FontEmbedding { get; set; } = new();
 

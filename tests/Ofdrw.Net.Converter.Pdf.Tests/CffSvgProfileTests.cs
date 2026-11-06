@@ -41,11 +41,13 @@ public sealed class CffSvgProfileTests
         Assert.Equal(Text, drawn.Value);
         Assert.Equal("ofd-font-" + FontSha256, drawn.Attribute("font-family")?.Value);
 
+        // PDF embeds TrueType programs only; a static CFF1 face is exported through a GID-, cmap- and
+        // metric-preserving glyf rendition (Issue #109 F08), while the OFD keeps the original CFF bytes.
         using var pdf = new MemoryStream();
-        var refusal = await Assert.ThrowsAsync<NotSupportedException>(() =>
-            new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf));
-        Assert.Contains("CFF", refusal.ToString());
-        Assert.Equal(0, pdf.Length);
+        await new OfdToPdfConverter().ConvertAsync(new MemoryStream(ofd), pdf);
+        using (var document = UglyToad.PdfPig.PdfDocument.Open(pdf.ToArray()))
+            Assert.Equal(Text.Replace(" ", ""), document.GetPage(1).Text.Replace(" ", ""));
+        Assert.DoesNotContain("FontFile3", Encoding.Latin1.GetString(pdf.ToArray()));
 
         var artifacts = Environment.GetEnvironmentVariable("OFDRW_R08_CFF_SVG_ARTIFACT_DIR");
         if (!string.IsNullOrWhiteSpace(artifacts))

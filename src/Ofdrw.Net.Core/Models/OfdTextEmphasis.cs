@@ -14,6 +14,14 @@ internal static class OfdTextEmphasis
     // the historical fail-closed profiles.
     internal static readonly XName ClusterMapV1 = XName.Get("ClusterMapV1", "https://ofdrw.net/layout-hints");
 
+    /// <summary>Whether the TextObject carries the writer-owned final layout (ClusterMapV1) marker.</summary>
+    internal static bool IsFinalLayout(OfdTextElement text)
+    {
+        if (string.IsNullOrWhiteSpace(text.SourceXml)) return false;
+        try { return OfdXmlEnvelope.Parse(text.SourceXml!).Attribute(ClusterMapV1)?.Value == "true"; }
+        catch (System.Xml.XmlException) { return false; }
+    }
+
     internal static (double[] Matrix, double[] Factor) ComposeNameOnlyItalic(double[] matrix, double writtenSize)
     {
         if (matrix.Length != 6 || matrix.Any(value => double.IsNaN(value) || double.IsInfinity(value)) ||

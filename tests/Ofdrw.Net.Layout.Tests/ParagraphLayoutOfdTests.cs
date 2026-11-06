@@ -140,13 +140,8 @@ public sealed class ParagraphLayoutOfdTests
     }
 
     [Fact]
-    public void WriterRejectsUnverifiedPaintAndSupplementaryText()
+    public void WriterRejectsFramesLeavingThePage()
     {
-        var stroked = ParagraphLayoutTests.Style(4, new TextPaint(TextColor.Black, TextColor.Black, 0.1));
-        var layout = HarfBuzzTextPrelayout.CreateParagraphLayout().Layout(new ParagraphLayoutRequest("abc", stroked,
-            new ParagraphLayoutOptions(50)));
-        Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
-            ParagraphLayoutOfdWriter.CreateDocument(layout, 100, 100, 10, 10)).Error);
         var tooWide = SampleLayout();
         Assert.Equal(TextLayoutError.UnsupportedOutput, Assert.Throws<TextLayoutException>(() =>
             ParagraphLayoutOfdWriter.CreateDocument(tooWide, 95, 80, 10, 10)).Error);

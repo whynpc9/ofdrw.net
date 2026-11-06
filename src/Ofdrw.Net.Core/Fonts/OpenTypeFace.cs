@@ -67,7 +67,9 @@ internal sealed class OpenTypeFace
         }
     }
 
-    internal byte[] Build()
+    internal byte[] Build() => Build(Version);
+
+    internal byte[] Build(uint version)
     {
         var tables = Tables.Where(pair => pair.Key != "DSIG").OrderBy(pair => pair.Key, StringComparer.Ordinal).ToArray();
         var head = Table("head", 54);
@@ -75,7 +77,7 @@ internal sealed class OpenTypeFace
         var size = checked(12 + tables.Length * 16);
         foreach (var table in tables) size = checked(size + Align(table.Value.Length));
         var output = new byte[size];
-        Put32(output, 0, Version); Put16(output, 4, tables.Length);
+        Put32(output, 0, version); Put16(output, 4, tables.Length);
         var power = 1; var selector = 0;
         while (power * 2 <= tables.Length) { power *= 2; selector++; }
         Put16(output, 6, power * 16); Put16(output, 8, selector);

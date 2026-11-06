@@ -4,11 +4,18 @@ using System.Collections.ObjectModel;
 
 namespace Ofdrw.Net.Layout.Text.Paragraphs;
 
-/// <summary>How a requested bold/italic style was satisfied. This profile never synthesizes.</summary>
+/// <summary>How a requested bold/italic style was satisfied.</summary>
+[Flags]
 public enum TextSyntheticStyle
 {
     /// <summary>The actual face provides the requested style; no synthetic emboldening or slant.</summary>
-    None,
+    None = 0,
+    /// <summary>Weight is simulated with a glyph-outline stroke in the fill color
+    /// (<see cref="TextResolvedStyle.SyntheticBoldStrokeMillimeters"/>).</summary>
+    Bold = 1,
+    /// <summary>Slant is simulated by shearing glyphs about their baseline
+    /// (<see cref="TextResolvedStyle.ObliqueSkew"/>).</summary>
+    Oblique = 2,
 }
 
 /// <summary>Immutable resolved style snapshot carried by every glyph run.</summary>
@@ -16,12 +23,29 @@ public enum TextSyntheticStyle
 /// reselect fonts, or reshape.</remarks>
 public sealed class TextResolvedStyle
 {
-    internal TextResolvedStyle(TextStyle requested, TextFontFamily family, int fallbackIndex, TextFontFace face)
+    /// <summary>Horizontal shear per unit of height above the baseline used for synthetic oblique.</summary>
+    public const double SyntheticObliqueSkew = 0.2;
+
+    internal TextResolvedStyle(TextStyle requested, TextFontFamily family, int fallbackIndex, TextFontFace face,
+        TextSyntheticStyle synthetic = TextSyntheticStyle.None, double boldStroke = 0)
     {
         Requested = requested; FamilyName = family.Name; FallbackIndex = fallbackIndex;
-        Paint = requested.Paint; FontSizeMillimeters = requested.FontSizeMillimeters;
+        FontSizeMillimeters = requested.FontSizeMillimeters;
         RequestedBold = requested.Bold; RequestedItalic = requested.Italic;
         FaceBold = face.Bold; FaceItalic = face.Italic; Language = requested.Language;
+        Synthetic = synthetic;
+        SyntheticBoldStrokeMillimeters = (synthetic & TextSyntheticStyle.Bold) != 0 ? boldStroke : 0;
+        ObliqueSkew = (synthetic & TextSyntheticStyle.Oblique) != 0 ? SyntheticObliqueSkew : 0;
+        var paint = requested.Paint;
+        // Synthetic bold paints the outline with the fill color; it never overrides a requested stroke.
+        Paint = SyntheticBoldStrokeMillimeters > 0
+            ? new TextPaint(paint.FillColor, paint.FillColor, SyntheticBoldStrokeMillimeters)
+            : paint;
+        Decorations = requested.Decorations;
+        DecorationColor = requested.Decorations == TextDecorationLines.None ? null :
+            requested.DecorationColor ?? paint.FillColor ?? paint.StrokeColor;
+        HighlightColor = requested.HighlightColor;
+        LetterSpacingMillimeters = requested.LetterSpacingMillimeters;
     }
     /// <summary>The immutable requested style (a source identity, not a paint authority).</summary>
     public TextStyle Requested { get; }
@@ -29,7 +53,7 @@ public sealed class TextResolvedStyle
     public string FamilyName { get; }
     /// <summary>Zero-based index of that family in the style's fallback chain.</summary>
     public int FallbackIndex { get; }
-    /// <summary>Resolved fill/stroke paint.</summary>
+    /// <summary>Resolved fill/stroke paint, including a synthetic bold stroke.</summary>
     public TextPaint Paint { get; }
     /// <summary>Resolved em size in millimeters.</summary>
     public double FontSizeMillimeters { get; }
@@ -41,10 +65,46 @@ public sealed class TextResolvedStyle
     public bool FaceBold { get; }
     /// <summary>Italic declared by the actual face.</summary>
     public bool FaceItalic { get; }
-    /// <summary>Synthetic styling applied (always none).</summary>
-    public TextSyntheticStyle Synthetic => TextSyntheticStyle.None;
+    /// <summary>Synthetic styling applied to satisfy the request.</summary>
+    public TextSyntheticStyle Synthetic { get; }
+    /// <summary>Width of the synthetic bold outline stroke in millimeters; zero without synthetic bold.</summary>
+    public double SyntheticBoldStrokeMillimeters { get; }
+    /// <summary>Horizontal shear (x += skew × height above the baseline); zero without synthetic oblique.</summary>
+    public double ObliqueSkew { get; }
     /// <summary>Resolved BCP 47 language.</summary>
     public string Language { get; }
+    /// <summary>Decoration lines drawn for this run.</summary>
+    public TextDecorationLines Decorations { get; }
+    /// <summary>Resolved decoration color, or null without decorations.</summary>
+    public TextColor? DecorationColor { get; }
+    /// <summary>Highlight color behind the run, or null.</summary>
+    public TextColor? HighlightColor { get; }
+    /// <summary>Extra advance after each grapheme cluster, in millimeters.</summary>
+    public double LetterSpacingMillimeters { get; }
+}
+
+/// <summary>Kind of a run decoration rectangle.</summary>
+public enum ParagraphLayoutDecorationKind
+{
+    /// <summary>A filled background rectangle drawn before the run's glyphs.</summary>
+    Highlight,
+    /// <summary>A filled underline rectangle drawn after the run's glyphs.</summary>
+    Underline,
+    /// <summary>A filled strikethrough rectangle drawn after the run's glyphs.</summary>
+    Strikethrough,
+}
+
+/// <summary>A final, filled decoration rectangle in page-content coordinates (millimeters, Y down).</summary>
+public sealed class ParagraphLayoutDecoration
+{
+    internal ParagraphLayoutDecoration(ParagraphLayoutDecorationKind kind, TextLayoutBounds bounds, TextColor color)
+    { Kind = kind; BoundsMillimeters = bounds; Color = color; }
+    /// <summary>Highlight, underline or strikethrough.</summary>
+    public ParagraphLayoutDecorationKind Kind { get; }
+    /// <summary>The filled rectangle. Hanging trailing spaces of a line are excluded.</summary>
+    public TextLayoutBounds BoundsMillimeters { get; }
+    /// <summary>Fill color of the rectangle.</summary>
+    public TextColor Color { get; }
 }
 
 /// <summary>One final glyph occurrence in page-content coordinates (millimeters, Y down).</summary>
@@ -73,7 +133,8 @@ public sealed class ParagraphLayoutGlyph
     public double AdvanceYMillimeters { get; }
     /// <summary>Extra advance added by justification (already included in AdvanceX).</summary>
     public double JustificationMillimeters { get; }
-    /// <summary>Ink rectangle, or null for a glyph without outline.</summary>
+    /// <summary>Ink rectangle, or null for a glyph without outline. It includes a synthetic bold
+    /// stroke and the sheared extent of synthetic oblique.</summary>
     public TextLayoutBounds? InkBoundsMillimeters { get; }
 }
 
@@ -82,13 +143,22 @@ public sealed class ParagraphLayoutRun
 {
     internal ParagraphLayoutRun(int sourceStart, string text, TextShapedRun shapedRun, int bidiLevel,
         TextResolvedStyle style, double originX, double baselineY, double advance,
-        IReadOnlyList<ParagraphLayoutGlyph> glyphs, TextLayoutBounds? ink)
+        IReadOnlyList<ParagraphLayoutGlyph> glyphs, TextLayoutBounds? ink,
+        IReadOnlyList<ParagraphLayoutDecoration>? decorations = null, bool isTab = false)
     {
         SourceStart = sourceStart; Text = text; ShapedRun = shapedRun; BidiLevel = bidiLevel; Style = style;
         OriginXMillimeters = originX; BaselineYMillimeters = baselineY; AdvanceMillimeters = advance;
         Glyphs = new ReadOnlyCollection<ParagraphLayoutGlyph>(new List<ParagraphLayoutGlyph>(glyphs));
         InkBoundsMillimeters = ink;
+        Decorations = new ReadOnlyCollection<ParagraphLayoutDecoration>(
+            new List<ParagraphLayoutDecoration>(decorations ?? Array.Empty<ParagraphLayoutDecoration>()));
+        IsTab = isTab;
     }
+    /// <summary>Highlight, underline and strikethrough rectangles of this run, in drawing order.</summary>
+    public IReadOnlyList<ParagraphLayoutDecoration> Decorations { get; }
+    /// <summary>Whether this run is a positioned tab (one blank glyph whose advance reaches the tab stop).
+    /// Its ShapedRun was produced by the layout engine, not by the shaper.</summary>
+    public bool IsTab { get; }
     /// <summary>Absolute UTF-16 start of this run's logical source.</summary>
     public int SourceStart { get; }
     /// <summary>UTF-16 length of the logical source.</summary>

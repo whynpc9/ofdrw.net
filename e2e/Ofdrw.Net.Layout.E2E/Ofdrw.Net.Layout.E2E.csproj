@@ -10,6 +10,7 @@
     <ProjectReference Include="../../src/Ofdrw.Net.Converter.Pdf/Ofdrw.Net.Converter.Pdf.csproj" />
     <ProjectReference Include="../../src/Ofdrw.Net.Converter.Docx/Ofdrw.Net.Converter.Docx.csproj" />
     <ProjectReference Include="../../src/Ofdrw.Net.Reader/Ofdrw.Net.Reader.csproj" />
+    <ProjectReference Include="../../src/Ofdrw.Net.Text.HarfBuzz/Ofdrw.Net.Text.HarfBuzz.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../tests/TestSupport/DocxReleaseFixtures.cs" Link="DocxReleaseFixtures.cs" />

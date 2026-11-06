@@ -20,7 +20,7 @@ internal sealed class DocumentFontContext
     private readonly IFontResolver _fallbackResolver;
     private readonly Dictionary<string, OpenTypeCmap> _fallbackCoverage = new();
     private readonly Dictionary<OfdFontResource, OpenTypeCmap> _coverage = new();
-    private readonly Dictionary<OfdFontResource, HashSet<char>> _uniqueSemanticSourceCharacters = new();
+    private readonly Dictionary<OfdFontResource, HashSet<int>> _uniqueSemanticSourceCharacters = new();
     private readonly Dictionary<OfdFontResource, byte[]> _symbolFonts = new();
     private readonly Dictionary<(OfdFontResource Resource, bool Bold, bool Italic), string> _symbolAliases = new();
     private readonly Dictionary<OfdFontResource, NotSupportedException> _unsupportedCoverage = new();
@@ -61,6 +61,20 @@ internal sealed class DocumentFontContext
             if (font.Data.Length > 0)
             {
                 var data = (byte[])OpenTypeCollection.SelectFace(font.Data, font.CollectionFaceIndex).Clone();
+                // PDF embeds TrueType programs (FontFile2). A static CFF1 face is exported through a
+                // GID-, cmap- and metric-preserving glyf rendition; explicit original-GID outlines are
+                // still drawn from the OFD's CFF bytes.
+                var original = new OpenTypeFace(data);
+                if (original.Version == 0x4F54544F && original.Tables.ContainsKey("CFF ") && !original.Tables.ContainsKey("CFF2"))
+                {
+                    try { data = CffTrueTypeConversion.Convert(data, _cancellationToken); }
+                    catch (Exception exception) when (exception is NotSupportedException or System.IO.InvalidDataException)
+                    {
+                        _unsupportedCoverage[font] = new NotSupportedException(
+                            "PDF export could not build a TrueType rendition of the CFF font program: " + exception.Message, exception);
+                        continue;
+                    }
+                }
                 StorePhysical(font, data);
                 // Structural corruption must still reject the document at
                 // construction. Only a valid glyf face lacking a cmap may
@@ -145,7 +159,7 @@ internal sealed class DocumentFontContext
     internal OfdExplicitGlyphRun? ReadExplicitRun(OfdTextElement text, OfdFontResource? resource) =>
         OfdExplicitGlyphRun.Read(text, resource, _coverage, _parseBudget, _glyphMappingStrategy);
 
-    private readonly Dictionary<OfdFontResource, TrueTypeGlyphOutlines> _rtlOutlineSources = new();
+    private readonly Dictionary<OfdFontResource, IGlyphOutlineSource> _rtlOutlineSources = new();
     private readonly Dictionary<(OfdFontResource Resource, int Gid), (double Left, double Right)?> _rtlInk = new();
 
     private (double Left, double Right)? RtlGlyphInk(OfdFontResource resource, int gid)
@@ -156,7 +170,7 @@ internal sealed class DocumentFontContext
         if (!_rtlOutlineSources.TryGetValue(resource, out var outlines))
         {
             _parseBudget.Spend(resource.Data.LongLength);
-            _rtlOutlineSources.Add(resource, outlines = new TrueTypeGlyphOutlines(
+            _rtlOutlineSources.Add(resource, outlines = GlyphOutlineSources.Open(
                 resource.Data, resource.CollectionFaceIndex));
         }
         var glyph = outlines.Read(gid, _cancellationToken);
@@ -273,16 +287,33 @@ internal sealed class DocumentFontContext
                     !_coverage.TryGetValue(resource, out var semanticCoverage))
                     throw new NotSupportedException("Multi-glyph PDF text needs complete source-character coverage in the embedded font.");
                 if (!_uniqueSemanticSourceCharacters.TryGetValue(resource, out var uniqueSources))
-                    _uniqueSemanticSourceCharacters.Add(resource, uniqueSources = new HashSet<char>());
-                foreach (var character in pathSourceSpan)
+                    _uniqueSemanticSourceCharacters.Add(resource, uniqueSources = new HashSet<int>());
+                var supplementary = false;
+                foreach (var scalar in OpenTypeFace.Scalars(pathSourceSpan))
                 {
-                    var gid = semanticCoverage.Glyph(character);
+                    // Tabs and joiners have no semantic glyph of their own; their cluster's outline is drawn.
+                    if (scalar is '\t' or 0x200c or 0x200d || OpenTypeCmap.IsVariationSelector(scalar)) continue;
+                    supplementary |= scalar > 0xffff;
+                    var gid = semanticCoverage.Glyph(scalar);
                     if (gid <= 0)
                         throw new NotSupportedException("Multi-glyph PDF text needs complete source-character coverage in the embedded font.");
-                    if (!uniqueSources.Contains(character) &&
-                        semanticCoverage.HasDistinctUnicodeScalarForGlyph(gid, character))
+                    if (!uniqueSources.Contains(scalar) &&
+                        semanticCoverage.HasDistinctUnicodeScalarForGlyph(gid, scalar))
                         throw new NotSupportedException("Multi-glyph PDF text cannot distinguish source characters that share a semantic-font GID.");
-                    uniqueSources.Add(character);
+                    uniqueSources.Add(scalar);
+                }
+                if (supplementary)
+                {
+                    // Semantic text with supplementary scalars uses the verified PUA alias binding.
+                    if (!_physicalBytes.TryGetValue(resource, out var semanticBytes))
+                        throw new NotSupportedException("Supplementary PDF text requires a verified embedded Unicode font.");
+                    var binding = PdfSupplementaryFontBinding.Create(semanticBytes, semanticCoverage, text,
+                        resource.Bold, resource.Italic, _parseBudget, _cancellationToken);
+                    if (_supplementary.TryGetValue(binding.Family, out var prior) && !prior.HasSameUnicodeMap(binding))
+                        throw new NotSupportedException("Supplementary PDF text has conflicting Unicode for one registered font identity.");
+                    _supplementary[binding.Family] = binding;
+                    _fallbackCoverage[binding.Family] = semanticCoverage;
+                    return binding.Family;
                 }
                 return semanticFamily;
             }
@@ -303,7 +334,9 @@ internal sealed class DocumentFontContext
             }
             if (selected.Family is null)
             {
-                var alias = new OpenTypeFace(source.FaceBytes);
+                // A CFF source is aliased from its TrueType rendition; PDF embeds FontFile2 programs.
+                var alias = new OpenTypeFace(GlyphOutlineSources.IsCff(source.FaceBytes) &&
+                    _physicalBytes.TryGetValue(resource, out var rendition) ? rendition : source.FaceBytes);
                 alias.Tables["cmap"] = OpenTypeCmap.Build(selected.GlyphByUnicode);
                 var bytes = alias.Build();
                 selected.Identity = BinaryIdentity.Hash(bytes);

@@ -80,7 +80,15 @@ public sealed class TextShapeRequest
     /// <summary>Creates a single-font logical run without selecting a host font or performing bidi analysis.</summary>
     public TextShapeRequest(string text, int sourceStart, TextFontFace face, TextDirection direction = TextDirection.LeftToRight,
         string script = "Latn", string language = "en", IReadOnlyList<TextFeature>? features = null)
+        : this(text, sourceStart, face, direction, script, language, features, paragraphProfile: false) { }
+
+    // The paragraph layout profile additionally admits ZWJ/ZWNJ and variation selectors inside a
+    // grapheme cluster (the shaper resolves them) and tab runs, which the layout engine positions
+    // itself and never sends to a shaper. Every other caller keeps the historical admission.
+    internal TextShapeRequest(string text, int sourceStart, TextFontFace face, TextDirection direction,
+        string script, string language, IReadOnlyList<TextFeature>? features, bool paragraphProfile)
     {
+        ParagraphProfile = paragraphProfile;
         Text = text ?? throw new ArgumentNullException(nameof(text));
         Face = face ?? throw new ArgumentNullException(nameof(face));
         if (direction != TextDirection.LeftToRight && direction != TextDirection.RightToLeft)
@@ -99,7 +107,7 @@ public sealed class TextShapeRequest
                     throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.",
                         sourceStart: sourceStart + i, sourceLength: 1);
                 var codepoint = char.ConvertToUtf32(text, i);
-                if (codepoint is >= 0xe0100 and <= 0xe01ef)
+                if (codepoint is >= 0xe0100 and <= 0xe01ef && !paragraphProfile)
                     throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
                         "Variation selectors need a separately verified text profile.",
                         sourceStart: sourceStart + i, sourceLength: 2);
@@ -108,11 +116,12 @@ public sealed class TextShapeRequest
             else if (char.IsLowSurrogate(text[i]))
                 throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.",
                     sourceStart: sourceStart + i, sourceLength: 1);
-            else if (text[i] == '\r' || text[i] == '\n' || text[i] == '\t' ||
+            else if (text[i] == '\r' || text[i] == '\n' || text[i] == '\t' && !paragraphProfile ||
                 IsUnsupportedLineSeparator(text[i]))
                 throw new TextLayoutException(TextLayoutError.InvalidText,
                     "A shaping run cannot contain line or tab controls.",
                     sourceStart: sourceStart + i, sourceLength: 1);
+            else if (paragraphProfile && scalar is '\u200c' or '\u200d' or >= '\ufe00' and <= '\ufe0f') { }
             else if (char.GetUnicodeCategory(scalar) == System.Globalization.UnicodeCategory.Format ||
                 scalar is >= '\ufe00' and <= '\ufe0f')
                 throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
@@ -136,7 +145,8 @@ public sealed class TextShapeRequest
 
     private TextShapeRequest(TextShapeRequest context, TextSourceSpan item, string text,
         IReadOnlyList<TextFeature> features)
-        : this(text, item.SourceStart, context.Face, context.Direction, context.Script, context.Language, features)
+        : this(text, item.SourceStart, context.Face, context.Direction, context.Script, context.Language, features,
+            context.ParagraphProfile)
         => Context = context;
 
     /// <summary>Creates a query for one nonempty item while retaining the exact complete
@@ -184,6 +194,8 @@ public sealed class TextShapeRequest
     /// <summary>The original complete request for a contextual item, or null for an ordinary
     /// whole run. Only an explicitly opted-in contextual shaper can honor its surrounding text.</summary>
     public TextShapeRequest? Context { get; }
+    // Whether this request was admitted by the paragraph layout profile (see the internal constructor).
+    internal bool ParagraphProfile { get; }
     internal static bool IsUnsupportedLineSeparator(char value) =>
         value is '\u000b' or '\u000c' or '\u0085' or '\u2028' or '\u2029';
     /// <summary>Unmodified logical Unicode source for this run.</summary>

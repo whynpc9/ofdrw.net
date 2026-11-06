@@ -93,6 +93,8 @@ internal sealed class DocxModelReader
         var supplemental = ReadSupplementalDeclarations();
 
         var model = new BuiltInDocumentModel();
+        if (_mainPart.DocumentSettingsPart?.Settings?.GetFirstChild<DefaultTabStop>()?.Val?.Value is short defaultTab && defaultTab > 0)
+            model.DefaultTabStopPoints = defaultTab / 20d;
         var section = new BuiltInSectionModel();
         model.Sections.Add(section);
 
@@ -640,6 +642,19 @@ internal sealed class DocxModelReader
 
             target.PageBreakBefore = MergeOnOff(target.PageBreakBefore, properties.PageBreakBefore);
             target.KeepWithNext = MergeOnOff(target.KeepWithNext, properties.KeepNext);
+            if (properties.Tabs is { } tabs)
+            {
+                var stops = target.TabStops.ToDictionary(stop => stop.Points, stop => stop.Alignment);
+                foreach (var tab in tabs.Elements<TabStop>())
+                {
+                    if (tab.Position?.Value is not int position) continue;
+                    var points = position / 20d;
+                    var value = tab.Val?.InnerText ?? "left";
+                    if (value == "clear") stops.Remove(points);
+                    else stops[points] = value;
+                }
+                target.TabStops = stops.OrderBy(pair => pair.Key).Select(pair => (pair.Key, pair.Value)).ToList();
+            }
         }
     }
 
@@ -676,9 +691,24 @@ internal sealed class DocxModelReader
             {
                 target.ColorHex = color;
             }
+
+            target.Strike = MergeOnOff(MergeOnOff(target.Strike, properties.Strike), properties.DoubleStrike);
+            if (properties.Shading?.Fill?.Value is string fill && fill.Length == 6 && fill != "auto")
+                target.HighlightHex = fill;
+            if (properties.Highlight?.Val?.InnerText is string highlight)
+                target.HighlightHex = HighlightHex(highlight);
         }
 
     }
+
+    // ST_HighlightColor names; "none" removes an inherited highlight.
+    private static string? HighlightHex(string name) => name switch
+    {
+        "black" => "000000", "blue" => "0000FF", "cyan" => "00FFFF", "green" => "00FF00", "magenta" => "FF00FF",
+        "red" => "FF0000", "yellow" => "FFFF00", "white" => "FFFFFF", "darkBlue" => "000080", "darkCyan" => "008080",
+        "darkGreen" => "008000", "darkMagenta" => "800080", "darkRed" => "800000", "darkYellow" => "808000",
+        "darkGray" => "808080", "lightGray" => "C0C0C0", _ => null,
+    };
 
     private IEnumerable<ParagraphProperties> GetParagraphPropertyLayers(ParagraphProperties? direct)
     {

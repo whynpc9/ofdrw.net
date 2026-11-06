@@ -11,7 +11,7 @@ namespace Ofdrw.Net.Core.Fonts;
 // An operation-owned, unhinted design-unit outline. The caller supplies an
 // original GID; no Unicode cmap or shaping decision is made here. R02 can use
 // the same points for PDF and SVG while retaining TextCode separately.
-internal sealed class TrueTypeGlyphOutlines
+internal sealed class TrueTypeGlyphOutlines : IGlyphOutlineSource
 {
     // Matches the 32 MiB TextFontFace budget so large CJK faces can produce typed GID output.
     private const int MaximumFaceBytes = 32 * 1024 * 1024;
@@ -70,10 +70,10 @@ internal sealed class TrueTypeGlyphOutlines
     internal string SourceSha256 { get; }
     internal string SelectedFaceSha256 { get; }
     internal int FaceIndex { get; }
-    internal int GlyphCount { get; }
-    internal int UnitsPerEm { get; }
+    public int GlyphCount { get; }
+    public int UnitsPerEm { get; }
 
-    internal TrueTypeGlyphOutline Read(int glyphId, CancellationToken cancellationToken = default)
+    public TrueTypeGlyphOutline Read(int glyphId, CancellationToken cancellationToken = default)
     {
         if (glyphId <= 0 || glyphId >= GlyphCount)
             throw new NotSupportedException("The requested original GID is outside the admitted font.");
@@ -261,9 +261,12 @@ internal sealed class TrueTypeGlyphOutlines
     }
 }
 
+// Contours hold TrueType quadratic points or, when Cubic, CFF points: every contour starts on-curve
+// and each pair of off-curve points is the two control points of one cubic segment.
 internal sealed class TrueTypeGlyphOutline(string sourceSha256, string selectedFaceSha256, int faceIndex, int glyphId, int unitsPerEm,
-    int advanceWidth, IReadOnlyList<TrueTypeGlyphContour> contours)
+    int advanceWidth, IReadOnlyList<TrueTypeGlyphContour> contours, bool cubic = false)
 {
+    internal bool Cubic { get; } = cubic;
     internal string SourceSha256 { get; } = sourceSha256;
     internal string SelectedFaceSha256 { get; } = selectedFaceSha256;
     internal int FaceIndex { get; } = faceIndex;
@@ -276,6 +279,7 @@ internal sealed class TrueTypeGlyphOutline(string sourceSha256, string selectedF
     // independently in PDF and SVG. Coordinates remain unhinted font units.
     internal IReadOnlyList<TrueTypePathCommand> ToPathCommands()
     {
+        if (Cubic) return CubicCommands();
         var commands = new List<TrueTypePathCommand>();
         foreach (var contour in Contours)
         {
@@ -315,6 +319,36 @@ internal sealed class TrueTypeGlyphOutline(string sourceSha256, string selectedF
         return new ReadOnlyCollection<TrueTypePathCommand>(commands);
     }
 
+    private IReadOnlyList<TrueTypePathCommand> CubicCommands()
+    {
+        var commands = new List<TrueTypePathCommand>();
+        foreach (var contour in Contours)
+        {
+            var points = contour.Points;
+            if (points.Count == 0) continue;
+            if (!points[0].OnCurve) throw new InvalidDataException("A cubic contour must start on-curve.");
+            commands.Add(new TrueTypePathCommand(TrueTypePathVerb.Move, points[0].X, points[0].Y));
+            for (var i = 1; i < points.Count;)
+            {
+                if (points[i].OnCurve)
+                {
+                    commands.Add(new TrueTypePathCommand(TrueTypePathVerb.Line, points[i].X, points[i].Y));
+                    i++;
+                    continue;
+                }
+                if (i + 2 >= points.Count + 1 || points[i + 1].OnCurve)
+                    throw new InvalidDataException("A cubic segment needs two control points.");
+                var end = i + 2 < points.Count ? points[i + 2] : points[0];
+                if (!end.OnCurve) throw new InvalidDataException("A cubic segment must end on-curve.");
+                commands.Add(new TrueTypePathCommand(TrueTypePathVerb.Cubic, end.X, end.Y,
+                    points[i].X, points[i].Y, points[i + 1].X, points[i + 1].Y));
+                i += 3;
+            }
+            commands.Add(new TrueTypePathCommand(TrueTypePathVerb.Close, points[0].X, points[0].Y));
+        }
+        return new ReadOnlyCollection<TrueTypePathCommand>(commands);
+    }
+
     private static TrueTypeOutlinePoint Midpoint(TrueTypeOutlinePoint first, TrueTypeOutlinePoint second) =>
         new((first.X + second.X) / 2, (first.Y + second.Y) / 2, true);
 }
@@ -331,11 +365,14 @@ internal readonly struct TrueTypeOutlinePoint(double x, double y, bool onCurve)
     internal bool OnCurve { get; } = onCurve;
 }
 
-internal enum TrueTypePathVerb { Move, Line, Quadratic, Close }
+internal enum TrueTypePathVerb { Move, Line, Quadratic, Close, Cubic }
 
+// Quadratic uses Control; Cubic uses Control then Control2 (the control point nearer the end).
 internal readonly struct TrueTypePathCommand(TrueTypePathVerb verb, double x, double y,
-    double controlX = 0, double controlY = 0)
+    double controlX = 0, double controlY = 0, double control2X = 0, double control2Y = 0)
 {
+    internal double Control2X { get; } = control2X;
+    internal double Control2Y { get; } = control2Y;
     internal TrueTypePathVerb Verb { get; } = verb;
     internal double X { get; } = x;
     internal double Y { get; } = y;

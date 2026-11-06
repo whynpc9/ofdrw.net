@@ -153,6 +153,9 @@ public sealed class FlowDocumentOptions
     public int MaxTableFragments { get; set; } = 100_000;
     /// <summary>Maximum cumulative encoded image bytes drawn by table cells, including repeated headers.</summary>
     public long MaxTableImageBytes { get; set; } = 64L * 1024 * 1024;
+    /// <summary>Opt-in final text layout. Null (the default) keeps the compatibility metrics and
+    /// name-only fonts; a <see cref="FlowTextEngine"/> lays out text with real font data and embeds it.</summary>
+    public FlowTextEngine? TextEngine { get; set; }
 }
 
 internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
@@ -177,11 +180,17 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
     private double _pendingSpaceAfter;
     private readonly List<double> _pendingLineBreakHeights = new();
     private readonly List<(OfdPage Page, int InsertIndex, FlowElementPlacement Placement, Action<OfdGraphics>? Draw)> _placements = new();
+    private readonly FlowFinalTextLayout? _final;
+    private readonly FlowFinalTextWriter _finalWriter;
 
     internal FlowDocumentRenderer(FlowDocumentOptions options, IList<FlowBlock> blocks,
         Action<OfdGraphics, FlowBoundary>? onPage, Action<OfdGraphics, FlowElementPlacement>? onElement,
         CancellationToken cancellationToken)
-    { _options = options; _blocks = blocks; _onPage = onPage; _onElement = onElement; _cancellationToken = cancellationToken; }
+    {
+        _options = options; _blocks = blocks; _onPage = onPage; _onElement = onElement; _cancellationToken = cancellationToken;
+        _final = FlowFinalTextLayout.Create(options.TextEngine, style => FlowFinalTextLayout.Color((OfdColor)style.Source!));
+        _finalWriter = new FlowFinalTextWriter(_package);
+    }
 
     internal OfdDocumentPackage Render()
     {
@@ -399,7 +408,7 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
             MinimumLineHeightMillimeters = paragraph.MinimumLineHeightMillimeters ?? 0
         };
         var firstLine = true;
-        foreach (var line in FlowParagraphLayout.Layout(inlines, format, width, this, fallback, _cancellationToken))
+        foreach (var line in FlowParagraphLayout.Layout(inlines, format, width, this, fallback, _cancellationToken, final: _final))
         {
             if (line.PageBreak) { _pendingPageBreaks++; continue; }
             if (line.TerminalNewline) { _pendingLineBreakHeights.Add(line.Height); continue; }
@@ -414,7 +423,10 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
             else Place(line.Height);
             DrawLine(line, _options.MarginLeftMillimeters + paragraph.LeftIndentMillimeters, width);
             if (_onElement is not null)
-                RecordPlacement(paragraph, new FlowBoundary(_page!.Index,
+                RecordPlacement(paragraph, line.Final is { } final
+                    ? new FlowBoundary(_page!.Index, _options.MarginLeftMillimeters + paragraph.LeftIndentMillimeters +
+                        final.ContentLeftMillimeters, _y, final.ContentWidthMillimeters, line.Height)
+                    : new FlowBoundary(_page!.Index,
                     FlowParagraphLayout.Align(_options.MarginLeftMillimeters + paragraph.LeftIndentMillimeters + line.Indent,
                         width - line.Indent, line.AlignmentWidth, line.Alignment),
                     _y, line.AlignmentWidth, line.Height));
@@ -456,6 +468,14 @@ internal sealed partial class FlowDocumentRenderer : IFlowFontMetrics
 
     private void DrawLine(FlowLine line, double left, double width, double? top = null)
     {
+        if (line.Final is { } final)
+        {
+            _textElements += final.Runs.Count;
+            if (_textElements > _options.MaxTextElements)
+                throw new InvalidOperationException("Flow text exceeds MaxTextElements.");
+            _finalWriter.Draw(_page!, final, left, top ?? _y, _cancellationToken);
+            return;
+        }
         var x = FlowParagraphLayout.Align(left + line.Indent, width - line.Indent,
             line.AlignmentWidth, line.Alignment);
         for (var i = 0; i < line.Glyphs.Count;)
