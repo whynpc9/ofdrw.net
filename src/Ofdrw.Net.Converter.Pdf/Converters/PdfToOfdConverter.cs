@@ -47,6 +47,9 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                 nameof(options),
                 "PDF conversion limits and external timeout must be greater than zero.");
         }
+        if (_options.RightToLeftTextImport is not (PdfRightToLeftTextImport.Reject or PdfRightToLeftTextImport.VisualLineProfile) ||
+            _options.RightToLeftBaseDirection is not (PdfTextBaseDirection.Auto or PdfTextBaseDirection.LeftToRight or PdfTextBaseDirection.RightToLeft))
+            throw new ArgumentOutOfRangeException(nameof(options), "Right-to-left import options must be defined values.");
     }
 
     /// <inheritdoc />
@@ -147,7 +150,7 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                     WidthMillimeters = page.WidthMillimeters, HeightMillimeters = page.HeightMillimeters,
                     Data = rendered.Image, MediaType = "image/png", FileName = $"pdf_page_{index + 1}.png"
                 });
-                AddSemanticTextLayer(page, pdfPage);
+                AddSemanticTextLayer(document, page, pdfPage, cancellationToken);
             }
             else if (_options.RequireRasterization)
             {
@@ -178,25 +181,46 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
     }
 
     private void AddSemanticTextLayer(
+        PdfDocument document,
         OfdPage page,
-        UglyToad.PdfPig.Content.Page pdfPage)
+        UglyToad.PdfPig.Content.Page pdfPage,
+        CancellationToken cancellationToken)
     {
         if (_options.TextLayerMode == PdfTextLayerMode.None)
         {
             return;
         }
 
-        PdfImportReadingOrder.Validate(pdfPage);
+        PdfRtlVisualLineImport.ImportedPage? rtl = null;
+        if (_options.RightToLeftTextImport == PdfRightToLeftTextImport.Reject || !PdfImportReadingOrder.ContainsRightToLeft(pdfPage))
+            PdfImportReadingOrder.Validate(pdfPage);
+        else
+            rtl = PdfRtlVisualLineImport.Import(document, pdfPage, _options.RightToLeftBaseDirection, _options.MaxTextObjectsPerPage, cancellationToken);
         var words = pdfPage.GetWords()
             .Where(word => !string.IsNullOrWhiteSpace(word.Text))
             .ToList();
-        if (words.Count > _options.MaxTextObjectsPerPage)
+        if (rtl is not null)
+        {
+            // Words on verified right-to-left lines are replaced by their logical
+            // words; a legacy word straddling such a line has no verified order.
+            words = words.Where(word =>
+            {
+                var owned = word.Letters.Count(letter => rtl.Consumed.Contains(letter));
+                if (owned != 0 && owned != word.Letters.Count(letter => !string.IsNullOrWhiteSpace(letter.Value)))
+                    throw PdfImportReadingOrder.ProfileRejection(pdfPage.Number,
+                        "a word joins a right-to-left line with text on another baseline.");
+                return owned == 0;
+            }).ToList();
+        }
+        var total = words.Count + (rtl?.Lines.Sum(line => line.Count) ?? 0);
+        if (total > _options.MaxTextObjectsPerPage)
         {
             throw new InvalidDataException(
-                $"PDF page {pdfPage.Number} contains {words.Count} text objects, " +
+                $"PDF page {pdfPage.Number} contains {total} text objects, " +
                 $"which exceeds the configured limit of {_options.MaxTextObjectsPerPage}.");
         }
 
+        var entries = new List<(double Baseline, OfdTextElement Element)>(total);
         foreach (var word in words)
         {
             var bounds = word.BoundingBox;
@@ -212,7 +236,7 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                 fontSize = height;
             }
 
-            page.Elements.Add(new OfdTextElement
+            entries.Add((word.Letters.Count > 0 ? word.Letters[0].StartBaseLine.Y : bounds.Bottom, new OfdTextElement
             {
                 LayerId = "semantic-text",
                 LayerType = "Foreground",
@@ -224,8 +248,55 @@ public sealed class PdfToOfdConverter : IPdfToOfdConverter
                 FontSizeMillimeters = Math.Max(fontSize, 0.1d),
                 FillColor = new OfdColor(0, 0, 0, 0),
                 Text = word.Text + " "
-            });
+            }));
         }
+
+        if (rtl is not null)
+        {
+            foreach (var line in rtl.Lines)
+                foreach (var word in line)
+                    entries.Add((word.Baseline, CreatePositionedWord(word, pdfPage.Height)));
+            // Pages that reach this branch were rejected before F06; their
+            // objects follow line order, top to bottom, each line in logical order.
+            entries = entries.Select((entry, index) => (entry, index))
+                .OrderByDescending(item => item.entry.Baseline).ThenBy(item => item.index)
+                .Select(item => item.entry).ToList();
+        }
+        foreach (var entry in entries) page.Elements.Add(entry.Element);
+    }
+
+    // Each logical character keeps the origin of the PDF glyph it came from:
+    // OFD DeltaX may be negative, so right-to-left characters retain their
+    // visual positions while TextCode stays in logical order.
+    private static OfdTextElement CreatePositionedWord(PdfRtlVisualLineImport.ImportedWord word, double pageHeight)
+    {
+        static double Round(double value) => Math.Round(value, 3, MidpointRounding.AwayFromZero);
+        var left = PointsToMillimeters(word.Left);
+        var positions = word.Origins.Select(origin => Round(PointsToMillimeters(origin) - left)).ToArray();
+        var deltas = new string[positions.Length - 1];
+        for (var index = 0; index < deltas.Length; index++)
+            deltas[index] = Round(positions[index + 1] - positions[index]).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        var element = new OfdTextElement
+        {
+            LayerId = "semantic-text",
+            LayerType = "Foreground",
+            XMillimeters = left,
+            YMillimeters = PointsToMillimeters(pageHeight - word.Top),
+            WidthMillimeters = Math.Max(PointsToMillimeters(word.Right - word.Left), 0.1d),
+            HeightMillimeters = Math.Max(PointsToMillimeters(word.Top - word.Bottom), 0.1d),
+            FontName = NormalizeFontName(word.FontName),
+            FontSizeMillimeters = Math.Max(PointsToMillimeters(word.PointSize), 0.1d),
+            FillColor = new OfdColor(0, 0, 0, 0),
+            Text = word.Text
+        };
+        element.Runs.Add(new OfdTextRun
+        {
+            Text = word.Text,
+            XMillimeters = positions[0],
+            YMillimeters = Round(PointsToMillimeters(word.Top - word.Baseline)),
+            DeltaX = string.Join(" ", deltas)
+        });
+        return element;
     }
 
     private static string NormalizeFontName(string? fontName)

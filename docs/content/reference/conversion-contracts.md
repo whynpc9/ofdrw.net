@@ -39,6 +39,18 @@ Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域�
 
 调用方可明确选择 `TextLayerMode = PdfTextLayerMode.None` 且 `RequireRasterization = true`，仅保留页面图；这条路径不声明 RTL 原文、字形映射或阅读顺序支持。现有 LTR 抽取也不保证任意多栏/复杂 PDF 的逻辑顺序。
 
+### 可选的受限 RTL 语义导入（F06，main，尚未发布）
+
+默认值不变。设置 `RightToLeftTextImport = PdfRightToLeftTextImport.VisualLineProfile` 后，含 RTL 文字的页面改走受限的“可见行”配置，仅用于页面图上方的透明文字层：
+
+- **几何**：只采用直接绘制的字形（文字渲染模式为填充/描边，未被裁切，非透明，不在可选内容中），按同一水平基线的字形原点排出视觉顺序，与内容流顺序无关。不可见文字层（`Tr 3`、空裁切、`ca 0` 等）只是生成方的声明，不作为证据；包括本库 OFD→PDF 导出的透明语义层在内，一律拒绝。
+- **字符映射**：每个字形须有解码后的 Unicode 值，且仅含 BMP 中 bidi 类别为 L、R、AL 的字母；一个字形可映射多个同向字符（如阿拉伯文 lam-alef 连字）。
+- **逻辑顺序**：由视觉顺序推出候选逻辑文本，只有仓库内经一致性测试的 Unicode 17 UAX #9 正向重排**恰好**还原所观察到的字形排列时才接受。不对 `GetWords()` 的结果重新排序。
+- `RightToLeftBaseDirection` 默认 `Auto`：每行独立按 P2/P3 判定，两种基方向都成立（如以拉丁文开头、希伯来文结尾的换行段落）或都不成立时拒绝；已知段落方向时可显式设为 `LeftToRight` 或 `RightToLeft`。
+- 每个逻辑字符写入 OFD 时保留其来源字形的原点：`TextCode` 为逻辑顺序，RTL 字符使用负 `DeltaX`。
+
+以下情形仍以 `PDF_TEXT_READING_ORDER_UNVERIFIED` 拒绝且不写输出：数字、标点及其他中性/弱类别字符，组合符号（如希伯来文元音点），表现形式（U+FB1D–FDFF、U+FE70–FEFF），非 BMP 字符，`/ActualText`、`/ReversedChars` 或可选内容，旋转/竖排文字或页面旋转，重叠字形，同一行带内的不同基线（上标等），超过 3 em 的行内间隙（无法区分分栏），表单 XObject 中的文字，以及无法解析的透明度。未栅格化的文本后备页仍拒绝 RTL。该配置只证明所接受的行在 UAX #9 意义上自洽且与可见字形一致；未拼成正确外观的输入按其**实际显示**的顺序导入，不还原生成方的原始字符串。真实阅读器中的 Copy/Find 尚未验证。设计与证据见 [F06 设计记录](https://github.com/whynpc9/ofdrw.net/blob/main/docs/architecture/f06-pdf-rtl-import.md)。
+
 ## 字体与宿主程序
 
 可直接操作的固定 Regular/Bold 准备和 Native/default 示例见[中英文 DOCX 字体部署教程](https://whynpc9.github.io/ofdrw.net/guides/fonts/)。
