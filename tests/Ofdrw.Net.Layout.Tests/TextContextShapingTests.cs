@@ -6,7 +6,7 @@ namespace Ofdrw.Net.Layout.Tests;
 public sealed class TextContextShapingTests
 {
     private static readonly Lazy<TextFontFace> Face = new(() =>
-        new TextFontFace("R22 fixed DejaVu", File.ReadAllBytes(Font())));
+        new TextFontFace("Ofdrw Test DejaVu", File.ReadAllBytes(Font())));
 
     [Theory]
     [InlineData("ببب", 5260u)]
@@ -247,9 +247,9 @@ public sealed class TextContextShapingTests
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
-            var path = Path.Combine(directory.FullName, "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-R22.ttf");
+            var path = Path.Combine(directory.FullName, "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-TextFixture.ttf");
             if (File.Exists(path)) return path;
         }
-        throw new FileNotFoundException("Materialize the existing DejaVu R22 fixture.");
+        throw new FileNotFoundException("Materialize the existing DejaVu text fixture.");
     }
 }

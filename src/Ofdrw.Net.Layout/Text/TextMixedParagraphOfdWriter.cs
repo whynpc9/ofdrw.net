@@ -10,6 +10,9 @@ namespace Ofdrw.Net.Layout.Text;
 /// <summary>Writes the bounded mixed paragraph's exact final glyph runs to one OFD page.</summary>
 public static class TextMixedParagraphOfdWriter
 {
+    private const string CurrentVerifiedFaceSha256 = "3362132d725d94e23e6995749627c11fdb197a6a6a95faa068e9b757877a8212";
+    private const string PreviousVerifiedFaceSha256 = "d7441d42a24882db09640ea4bb768b17a106cdb31ee9749a52cb34a075b8fbcc";
+
     /// <summary>Creates one page with logical word/space elements and positioned original GIDs.</summary>
     public static OfdDocumentPackage CreateSinglePage(TextMixedParagraphResult result,
         double pageWidthMillimeters, double pageHeightMillimeters,
@@ -45,7 +48,7 @@ public static class TextMixedParagraphOfdWriter
                 "Mixed output requires one or two adjacent Hebrew words between Latin words.",
                 sourceStart: offending?.SourceStart ?? 0, sourceLength: offending?.Text.Length ?? request.Text.Length);
         }
-        if (face.FaceSha256 != "d7441d42a24882db09640ea4bb768b17a106cdb31ee9749a52cb34a075b8fbcc" ||
+        if ((face.FaceSha256 != CurrentVerifiedFaceSha256 && face.FaceSha256 != PreviousVerifiedFaceSha256) ||
             request.FontSizeMillimeters != 4 || profileRuns.Count != 2 * hebrewRuns.Length + 3 ||
             !Latin(profileRuns[0].Text) || !Latin(profileRuns[profileRuns.Count - 1].Text) ||
             Enumerable.Range(1, profileRuns.Count - 2).Any(index => index % 2 == 1

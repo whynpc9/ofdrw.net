@@ -6,7 +6,7 @@ namespace Ofdrw.Net.Layout.Tests;
 
 public sealed class TextPositionedRunTests
 {
-    private static readonly Lazy<TextFontFace> Face = new(() => Load("DejaVuSans-R22.ttf"));
+    private static readonly Lazy<TextFontFace> Face = new(() => Load("DejaVuSans-TextFixture.ttf"));
 
     [Fact]
     public void TwoDimensionalPenOffsetsAndInkInvertYOnceAndKeepFinalAdvance()

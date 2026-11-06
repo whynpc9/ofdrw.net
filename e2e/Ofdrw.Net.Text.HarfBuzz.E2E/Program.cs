@@ -167,15 +167,15 @@ foreach (var (name, source, features) in new[]
         else if (defaultAvSecondOrigin == second)
             throw new InvalidDataException("The fixed AV sample did not expose a kerning position change.");
     }
-    var ofd = Path.Combine(output, "r22-" + name + ".ofd");
-    var pdf = Path.Combine(output, "r22-" + name + ".pdf");
-    var svg = Path.Combine(output, "r22-" + name + ".svg");
-    var png = Path.Combine(output, "r22-" + name + ".png");
+    var ofd = Path.Combine(output, "text-" + name + ".ofd");
+    var pdf = Path.Combine(output, "text-" + name + ".pdf");
+    var svg = Path.Combine(output, "text-" + name + ".svg");
+    var png = Path.Combine(output, "text-" + name + ".png");
     await using (var target = File.Create(ofd))
     {
         var result = await new OfdPackageWriter().WriteWithResultAsync(package, target);
         if (!result.FontEmbedding.Single().IsSubset)
-            throw new InvalidDataException("R22 output did not preserve a bounded subset.");
+            throw new InvalidDataException("Positioned text output did not preserve a bounded subset.");
     }
     await using (var input = File.OpenRead(ofd)) await using (var target = File.Create(pdf))
         await new OfdToPdfConverter().ConvertAsync(input, target);
@@ -195,7 +195,7 @@ foreach (var (name, source, features) in new[]
     if (readback != source || !svgGids.SequenceEqual(shapedGids) ||
         !svgRoot.Descendants().Any(node => node.Name.LocalName == "g" &&
             (string?)node.Attribute("data-ofd-text") == source))
-        throw new InvalidDataException("R22 original GIDs or logical text changed in OFD/SVG.");
+        throw new InvalidDataException("Original GIDs or logical text changed in OFD/SVG.");
     positionedCases.Add(new { name, source, feature = name.EndsWith("off", StringComparison.Ordinal) ? "off" : "on",
         readback, shapedGids, svgGids,
         origins = package.Pages[0].Elements.OfType<OfdTextElement>().Single().Runs.Single()
@@ -213,13 +213,13 @@ var positionedReceipt = new
         bytes = new FileInfo(path).Length,
         sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant() }).ToArray(),
 };
-await File.WriteAllTextAsync(Path.Combine(output, "r22-receipt.json"),
+await File.WriteAllTextAsync(Path.Combine(output, "text-receipt.json"),
     JsonSerializer.Serialize(positionedReceipt, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-Console.WriteLine("R22 positioned AV, ffi and Latin combining OFD/PDF/SVG/PNG receipt: " + output);
+Console.WriteLine("Positioned AV, ffi and Latin combining OFD/PDF/SVG/PNG receipt: " + output);
 
-// R22 C-stage query probe: one bounded LTR paragraph with a true RTL Hebrew run.
+// Mixed-paragraph query probe: one bounded LTR paragraph with a true RTL Hebrew run.
 // This receipt is query evidence only; it is not an OFD/PDF/SVG acceptance claim.
-var dejavu = new TextFontFace("R22 DejaVu Sans", File.ReadAllBytes(Path.Combine(fixture, "DejaVuSans-R22.ttf")));
+var dejavu = new TextFontFace("Ofdrw Test DejaVu Sans", File.ReadAllBytes(Path.Combine(fixture, "DejaVuSans-TextFixture.ttf")));
 var spanQueryRows = new List<object>();
 foreach (var (role, text, start, lengths, direction, script, language, disableLiga) in new[] {
     ("ffi-cross-span", "ffi", 20, new[] { 1, 2 }, TextDirection.LeftToRight, "Latn", "en", false),
@@ -249,12 +249,12 @@ foreach (var (role, text, start, lengths, direction, script, language, disableLi
             g.XAdvance, g.YAdvance, g.XOffset, g.YOffset, g.UnsafeToBreak }).ToArray(),
         coverage = result.GlyphCoverage });
 }
-await File.WriteAllTextAsync(Path.Combine(output, "r22-source-span-query.json"), JsonSerializer.Serialize(new {
+await File.WriteAllTextAsync(Path.Combine(output, "text-source-span-query.json"), JsonSerializer.Serialize(new {
     sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
     faceSha256 = dejavu.FaceSha256, dejavu.UnitsPerEm, cases = spanQueryRows,
     scope = "Single-face whole-run query and source associations only; no style resolution, bidi analysis, legacy Flow or output-profile expansion."
 }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-Console.WriteLine("R22 source-span whole-run query and fixed original-GID context checks passed from candidate packages.");
+Console.WriteLine("Source-span whole-run query and fixed original-GID context checks passed from candidate packages.");
 // Contextual items remain queries. Full source and item coordinates are both
 // recorded; these glyphs are never passed to an OFD/PDF writer in this probe.
 var contextualRows = new List<object>();
@@ -285,12 +285,12 @@ foreach (var (role, text, sourceStart, offset, length, rtl, featureStart, featur
         itemLength = length, itemFeatures = item.Features, direction = item.Direction.ToString(), item.Script, item.Language,
         shaped.EngineVersion, shaped.XAdvance, shaped.YAdvance, glyphs = shaped.Glyphs });
 }
-await File.WriteAllTextAsync(Path.Combine(output, "r22-contextual-item-query.json"), JsonSerializer.Serialize(new {
+await File.WriteAllTextAsync(Path.Combine(output, "text-contextual-item-query.json"), JsonSerializer.Serialize(new {
     sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
     faceSha256 = dejavu.FaceSha256, dejavu.UnitsPerEm, cases = contextualRows,
     scope = "Single-face contextual item queries only. Not style assignment, whole-run glyph cropping, Flow or writer/reader acceptance."
 }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-Console.WriteLine("R22 contextual-item native joining, UTF-16 and feature-coordinate queries passed from candidate packages.");
+Console.WriteLine("Contextual-item native joining, UTF-16 and feature-coordinate queries passed from candidate packages.");
 var fontSpanRows = new List<object>();
 var dejavuAlias = new TextFontFace("separate caller alias", dejavu.GetFaceBytes());
 void ProbeFontSpans(string role, string text, int start, TextFontSpan[] spans, uint[][] expected,
@@ -361,11 +361,11 @@ ProbeFontSpans("refused-ffi-style-conflict", "ffi", 20,
     new[] { new TextFontSpan(20, 1, dejavu, 7), new TextFontSpan(21, 2, dejavu, 9) }, Array.Empty<uint[]>(), rejectedCalls: 1);
 ProbeFontSpans("refused-late-font-mark-cut", "Xa\u0323", 0,
     new[] { new TextFontSpan(0, 1, noto), new TextFontSpan(1, 1, dejavu), new TextFontSpan(2, 1, noto) }, Array.Empty<uint[]>(), rejectedCalls: 0);
-await File.WriteAllTextAsync(Path.Combine(output, "r22-font-span-query.json"), JsonSerializer.Serialize(new {
+await File.WriteAllTextAsync(Path.Combine(output, "text-font-span-query.json"), JsonSerializer.Serialize(new {
     sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"), cases = fontSpanRows,
     scope = "Explicit preselected font partition and opaque style-key ownership query only; no actual paint/size resolution, font fallback, bidi analysis, Flow or writer/reader admission."
 }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-Console.WriteLine("R22 font partition original identity, shared-style refusal and per-item context queries passed from candidate packages.");
+Console.WriteLine("mixed-text font partition original identity, shared-style refusal and per-item context queries passed from candidate packages.");
 var fontRangeRows = new List<object>();
 object FontSpanIdentity(TextFontSpan span) => new { span.SourceStart, span.SourceLength, span.StyleKey,
     span.Face.Name, span.Face.SourceSha256, span.Face.FaceSha256, span.Face.UnitsPerEm };
@@ -474,11 +474,11 @@ ProbeFontRange("refused-outside-font-mark-cut", rangeBadBoundary, new TextSource
 var rangeMark = new TextFontSpanShapingRequest("Aa\u0323V", 0, new[] { new TextFontSpan(0, 4, dejavu) });
 ProbeFontRange("refused-range-mark-cut", rangeMark, new TextSourceSpan(1, 1),
     Array.Empty<uint[]>(), Array.Empty<int[]>(), rejectedCalls: 0);
-await File.WriteAllTextAsync(Path.Combine(output, "r22-font-span-range-query.json"), JsonSerializer.Serialize(new {
+await File.WriteAllTextAsync(Path.Combine(output, "text-font-span-range-query.json"), JsonSerializer.Serialize(new {
     sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"), cases = fontRangeRows,
     scope = "Caller-selected source range with original font-partition context; not a legal/final line-break decision, size/paint resolver, global visual line, Flow or writer/reader admission."
 }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-Console.WriteLine("R22 selected font-range original context, clipped ownership and feature-coordinate queries passed from candidate packages.");
+Console.WriteLine("Selected font-range original context, clipped ownership and feature-coordinate queries passed from candidate packages.");
 await PositionedRunProbe.Run(output, dejavu, noto);
 await SizedFontSpanProbe.Run(output, dejavu, noto);
 await PositionedConsumerProbe.Run(output, dejavu, noto);
@@ -623,9 +623,9 @@ var mixedReceipt = new
         runs = twoWordRuns.Select(run => new { run.SourceStart, run.Text,
             run.XMillimeters }).ToArray() },
 };
-await File.WriteAllTextAsync(Path.Combine(output, "r22-mixed-query-receipt.json"),
+await File.WriteAllTextAsync(Path.Combine(output, "text-mixed-query-receipt.json"),
     JsonSerializer.Serialize(mixedReceipt, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-Console.WriteLine("R22 bounded mixed Hebrew/Latin paragraph query receipt: " + output);
+Console.WriteLine("Bounded mixed Hebrew/Latin paragraph query receipt: " + output);
 
 try
 {
@@ -717,10 +717,10 @@ foreach (var (name, result, sourceStart) in rejectedMixedCases)
 foreach (var (name, result) in mixedCases)
 {
     var mixedPackage = TextMixedParagraphOfdWriter.CreateSinglePage(result, 100, 75, 10, 10);
-    var ofd = Path.Combine(output, "r22-mixed-" + name + ".ofd");
-    var pdf = Path.Combine(output, "r22-mixed-" + name + ".pdf");
-    var svg = Path.Combine(output, "r22-mixed-" + name + ".svg");
-    var png = Path.Combine(output, "r22-mixed-" + name + ".png");
+    var ofd = Path.Combine(output, "text-mixed-" + name + ".ofd");
+    var pdf = Path.Combine(output, "text-mixed-" + name + ".pdf");
+    var svg = Path.Combine(output, "text-mixed-" + name + ".svg");
+    var png = Path.Combine(output, "text-mixed-" + name + ".png");
     await using (var target = File.Create(ofd))
     {
         var written = await new OfdPackageWriter().WriteWithResultAsync(mixedPackage, target);
@@ -760,13 +760,13 @@ foreach (var (name, result) in mixedCases)
     }
     mixedOutputs.AddRange(new[] { ofd, pdf, svg, png });
 }
-await File.WriteAllTextAsync(Path.Combine(output, "r22-mixed-output-receipt.json"),
+await File.WriteAllTextAsync(Path.Combine(output, "text-mixed-output-receipt.json"),
     JsonSerializer.Serialize(new
     {
         sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
         source = mixedSource,
         face = dejavu.FaceSha256,
-        cases = mixedCases.Select(item => new { name = "r22-mixed-" + item.Name,
+        cases = mixedCases.Select(item => new { name = "text-mixed-" + item.Name,
             source = item.Result.Request.Text,
             codepoints = item.Result.Request.Text.Select(value => $"U+{(int)value:X4}"),
             lines = item.Result.Lines.Select(line => new { line.SourceStart, line.SourceLength,
@@ -777,7 +777,7 @@ await File.WriteAllTextAsync(Path.Combine(output, "r22-mixed-output-receipt.json
             bytes = new FileInfo(path).Length,
             sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant() }).ToArray(),
     }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-Console.WriteLine("R22 mixed Hebrew/Latin OFD/PDF/SVG/PNG candidates: " + output);
+Console.WriteLine("Mixed Hebrew/Latin OFD/PDF/SVG/PNG candidates: " + output);
 
 internal sealed class FontSpanProbeShaper : IContextualTextShaper
 {

@@ -307,17 +307,22 @@ foreach (var (fixtureName, direction, expected) in new[] {
     var output = Path.Combine(outputDir, "f06-" + Path.GetFileNameWithoutExtension(fixtureName) + ".ofd");
     using (var target = File.Create(output)) await new PdfToOfdConverter(profile).ConvertAsync(new MemoryStream(bytes), target);
     string text;
+    string[] importedFontNames;
     using (var input = File.OpenRead(output))
-        text = string.Concat((await new OfdReader().ReadAsync(input)).Pages.SelectMany(page => page.Elements.OfType<OfdTextElement>()).Select(item => item.Text));
+    {
+        var imported = await new OfdReader().ReadAsync(input);
+        text = string.Concat(imported.Pages.SelectMany(page => page.Elements.OfType<OfdTextElement>()).Select(item => item.Text));
+        importedFontNames = imported.Fonts.Select(font => font.FontName).Distinct(StringComparer.Ordinal).ToArray();
+    }
     if (text != expected) throw new InvalidOperationException($"F06 import of {fixtureName} produced '{text}'.");
     var pdf = Path.ChangeExtension(output, ".pdf");
     // Imported text keeps name-only fonts; bind a covering face for the invisible re-export layer.
-    var f06Face = File.ReadAllBytes(Path.Combine(repoRoot, "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-R22.ttf"));
+    var f06Face = File.ReadAllBytes(Path.Combine(repoRoot, "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-TextFixture.ttf"));
     using (var input = File.OpenRead(output))
     using (var target = File.Create(pdf))
         await new OfdToPdfConverter(new Ofdrw.Net.Converter.Pdf.OfdToPdfOptions {
-            NameOnlyFontBindings = new Ofdrw.Net.Core.Fonts.OfdNameOnlyFontBindings(new Dictionary<string, byte[]> {
-                ["R22DejaVuSans"] = f06Face, ["DejaVuSans"] = f06Face }) }).ConvertAsync(input, target);
+            NameOnlyFontBindings = new Ofdrw.Net.Core.Fonts.OfdNameOnlyFontBindings(
+                importedFontNames.ToDictionary(name => name, _ => f06Face, StringComparer.Ordinal)) }).ConvertAsync(input, target);
     f06Rows.Add(new { fixtureName, direction = direction.ToString(), inputSha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(),
         text, ofd = output, ofdSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(output))).ToLowerInvariant(), pdf });
 }

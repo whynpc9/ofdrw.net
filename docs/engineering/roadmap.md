@@ -4,7 +4,7 @@
 
 ## 已有能力
 
-Flow 段落/表格、命名区域、图片/Canvas/回调、文档工具、多 DocBody 显式选择、类型化对象、有限归档规则、签名保护范围、受限标准加密及固定字体查询已有有界交付，不再列为从零实施的待办。R02 的分组策略、R08 的各字体出口和 R22 的多个查询/输出增量各有独立边界；有源码不代表全部标准、脚本、阅读器或页面通过。
+Flow 段落/表格、命名区域、图片/Canvas/回调、文档工具、多 DocBody 显式选择、类型化对象、有限归档规则、签名保护范围、受限标准加密及固定字体查询已有有界交付，不再列为从零实施的待办。R02 的分组策略、R08 的各字体出口和文字查询/输出增量各有独立边界；有源码不代表全部标准、脚本、阅读器或页面通过。
 
 | 使用方向 | 维护入口 |
 | --- | --- |
@@ -30,8 +30,8 @@ Flow 段落/表格、命名区域、图片/Canvas/回调、文档工具、多 Do
 
 以下不属于已发布版本的前置，也没有默认排期：
 
-- **通用 R22 / 新文字链路**：Issue #109 的 F01–F05 已随 0.2.0 发布独立入口：Unicode 17.0.0 UAX #9/#14/#29 托管实现（官方一致性测试全量通过）、最终排版结果契约、段落排版引擎（字体回退、逐行重塑形、对齐/两端对齐、分页）及消费最终结果的 OFD writer，见[参考](../content/reference/text-paragraph-layout.md)、[设计](../architecture/r22-paragraph-layout-engine.md)与[验收记录](../validation/r22-paragraph-layout-validation.md)。仍未完成：Flow/DOCX 迁移（需显式决定）、PDF Copy/Find 验收、描边/合成样式/非 BMP 输出、F06 反向导入与 F08 扩展；F07 不在该议题范围内。保留[查询设计](../architecture/r22-mixed-text-decision.md)、[共享定位消费者](../architecture/r22-shared-position-consumer.md)与[剩余范围](../validation/r22-remaining-scope.md)。
-- **RTL、Arabic、Indic 与复杂字体**：只按各有界 profile 验收，默认拒绝范围不放宽。既有 reader 反例、字符映射方法失败及独立几何/语义门继续保留，见[reader 方法验证](../validation/r22-reader-replacement-candidate.md)和[双词检查点](../validation/r22-two-word-export-validation.md)。
+- **段落排版与导出**：独立段落排版入口已随 0.2.0 发布，见[参考](../content/reference/text-paragraph-layout.md)、[设计](../architecture/text-paragraph-layout-engine.md)与[验收记录](../validation/text-paragraph-layout-validation.md)。Flow/DOCX 的显式引擎开关目前仅在 main；PDF Copy/Find、部分装饰和复杂字体出口仍按各自的验收范围判断。查询和类型化输出的现行约定分别见[混排参考](../content/reference/text-mixed-paragraph.md)与[塑形输出参考](../content/reference/text-shaped-output.md)。
+- **RTL、Arabic、Indic 与复杂字体**：只按各有界 profile 验收，默认拒绝范围不放宽。既有 reader 反例、字符映射方法失败及独立几何/语义门继续保留，见[reader 方法验证](../validation/text-reader-method-validation.md)和[双词检查点](../validation/text-mixed-paragraph-validation.md)。
 - **完整 R02、R20、扩展字体和部署组合**：非 BMP 索引、真正越段映射、自然外来互操作、全部归档条款、任意 CFF/变量/彩色字体、musl/AOT/trimming 等均不能由局部通过推定。新范围须有明确消费者、固定反例、最小契约和独立验收。
 
 生产 SES/SM2 验章、可信证书链、合格 TSA 与法律效力继续由调用方接入合规提供方。核心 `SupportsBuiltInSesSm2Verification=false` 与 `SupportsGmT0099EncryptionEnvelope=false` 不因可选包而提升；`FullyValid` 仍要求显式注册的签名值验证器实际成功。

@@ -9,7 +9,7 @@ public sealed class ParagraphLayoutTests
 {
     private static readonly Lazy<TextFontFace> NotoFace = new(() => Face("Noto Sans", "NotoSans-Regular.ttf"));
     private static readonly Lazy<TextFontFace> WenKaiFace = new(() => Face("LXGW WenKai", "LXGWWenKai-Regular.ttf"));
-    private static readonly Lazy<TextFontFace> DejaVuFace = new(() => Face("R22 DejaVu Sans", "DejaVuSans-R22.ttf"));
+    private static readonly Lazy<TextFontFace> DejaVuFace = new(() => Face("Ofdrw Test DejaVu Sans", "DejaVuSans-TextFixture.ttf"));
     private static readonly Lazy<TextFontFace> TamilFace = new(() => Face("Noto Sans Tamil", "NotoSansTamil-Regular.ttf"));
 
     internal static TextStyle Style(double size = 4, TextPaint? paint = null) => new(new[]

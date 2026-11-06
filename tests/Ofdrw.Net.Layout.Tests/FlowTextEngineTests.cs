@@ -15,7 +15,7 @@ public sealed class FlowTextEngineTests
         {
             new TextFontFamily("Noto Sans", ParagraphLayoutTests.Face("Noto Sans", "NotoSans-Regular.ttf")),
             new TextFontFamily("LXGW WenKai", ParagraphLayoutTests.Face("LXGW WenKai", "LXGWWenKai-Regular.ttf")),
-            new TextFontFamily("DejaVu Sans", ParagraphLayoutTests.Face("R22 DejaVu Sans", "DejaVuSans-R22.ttf")),
+            new TextFontFamily("DejaVu Sans", ParagraphLayoutTests.Face("Ofdrw Test DejaVu Sans", "DejaVuSans-TextFixture.ttf")),
         }));
 
     private static FlowDocument Document(bool engine)

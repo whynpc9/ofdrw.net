@@ -1,4 +1,4 @@
-name: Pinned R22 independent readers
+name: Pinned independent text readers
 description: Isolate reader dependencies from the deterministic CI font generator
 runs:
   using: composite
@@ -8,10 +8,10 @@ runs:
       run: |
         python - <<'PY'
         import os, pathlib, subprocess, venv
-        root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'ofdrw-r22-readers'
+        root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'ofdrw-text-readers'
         venv.EnvBuilder(with_pip=True).create(root)
         executable = root / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
         subprocess.run([str(executable), '-m', 'pip', 'install', 'pypdf==6.21.2', 'fonttools==4.68.0'], check=True)
         with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as stream:
-            stream.write(f'OFDRW_R22_PYTHON={executable}\n')
+            stream.write(f'OFDRW_TEXT_READER_PYTHON={executable}\n')
         PY

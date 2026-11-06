@@ -71,7 +71,7 @@ internal static class PositionedConsumerProbe
                     verticalAdvanceBits = typed.Glyphs.Select(g => BitConverter.DoubleToInt64Bits(g.YAdvanceMillimeters)),
                     run.DeltaX, run.DeltaY });
             }
-            var prefix = Path.Combine(output, "r22-shared-consumer-" + item.Name);
+            var prefix = Path.Combine(output, "text-shared-consumer-" + item.Name);
             var ofd = prefix + ".ofd"; var pdf = prefix + ".pdf";
             var svg = prefix + ".svg"; var png = prefix + ".png";
             await using (var target = New(ofd))
@@ -101,7 +101,7 @@ internal static class PositionedConsumerProbe
                 item.Face.UnitsPerEm, lines = captured });
             files.AddRange(new[] { ofd, pdf, svg, png });
         }
-        await File.WriteAllTextAsync(Path.Combine(output, "r22-shared-position-consumer.json"),
+        await File.WriteAllTextAsync(Path.Combine(output, "text-shared-position-consumer.json"),
             JsonSerializer.Serialize(new
             {
                 sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"), cases = rows,
@@ -109,7 +109,7 @@ internal static class PositionedConsumerProbe
                     sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant() }),
                 scope = "Three real typed OFD/PDF/SVG/PNG pages, seven native lines. Shared arithmetic only; existing admission, strict query guards and legacy writer behavior remain separate. No Flow, new scripts/styles, precision-format repair or overall visual acceptance."
             }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-        Console.WriteLine("R22 real typed consumer shared arithmetic, source/GID and bitwise geometry passed.");
+        Console.WriteLine("Typed consumer shared arithmetic, source/GID and bitwise geometry passed.");
     }
 
     private static FileStream New(string path) => new(path, FileMode.CreateNew, FileAccess.Write);

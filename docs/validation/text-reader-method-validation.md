@@ -1,18 +1,18 @@
-# R22 replacement reader and geometry candidate
+# Mixed text reader and geometry method
 
-Current implementation progress: [bounded two-word export checkpoint](r22-two-word-export-validation.md).
+Current implementation progress: [bounded two-word export checkpoint](text-mixed-paragraph-validation.md).
 The sections below preserve their dated decision/diagnostic outcomes; the new
 candidate does not rewrite those failures or transfer their acceptance.
 
 Status: **candidate validation protocol, not a frozen acceptance contract**.
-The 2026-10-30 [reader decision](r22-mixed-paragraph-validation.md#reader-contract-update-2026-10-30)
+The 2026-10-30 [reader decision](text-mixed-paragraph-validation.md#reader-contract-update-2026-10-30)
 removes pinned PdfPig 0.1.15 default `Page.Text` and `GetWords()` as RTL
 logical-order pass gates. It retains their raw outputs as versioned
 compatibility observations. The writer remains fail-closed for two words.
 
 ## Fixed controls
 
-Use the exact DejaVu Sans R22 fixture, SHA-256
+Use the exact historical DejaVu Sans fixture, SHA-256
 `d7441d42a24882db09640ea4bb768b17a106cdb31ee9749a52cb34a075b8fbcc`.
 Do not regenerate or relabel these reference files:
 
@@ -27,7 +27,7 @@ Do not regenerate or relabel these reference files:
 
 These PDFs and their existing raw reader/Preview receipts are in the ignored
 `artifacts/r22-next-phase/reference-20261029/` working set and the curated
-[evidence archive](../evidence/r22-next-phase/README.md). Reference results
+[evidence archive](../evidence/text-reader-reference/README.md). Reference results
 remain reference results, not output from the public API → OFD → PDF path.
 
 ## Candidate checks to validate before freezing
@@ -86,7 +86,7 @@ The six fixed input hashes and the font hash matched the request. The probe
 ran at source `2f45eaa20990eff29cfbea4d1f4866d231517e50`, macOS 26.6.2,
 .NET SDK 10.0.401, PdfPig 0.1.15, PDFKit bundle 1451.5.3, Poppler 26.09.0,
 pypdf 6.21.2 and fontTools 4.68.0. Before inspecting the new character
-results, the [preregistration](../evidence/r22-reader-method/README.md)
+results, the [preregistration](../evidence/text-reader-method/README.md)
 fixed bottom-left PDF coordinates, Poppler Y conversion, same-scalar
 one-to-one association, 0.5 pt character X-center / 2 pt Y-center ceilings,
 and the word-box overlap/center criteria. Its SHA-256 is
@@ -127,7 +127,7 @@ freeze a new acceptance contract. The product converter draws original GIDs
 as paths and adds a word-level semantic carrier, so a structural checker must
 also account for that representation before product use.
 
-The [curated LFS evidence bundle](../evidence/r22-reader-method/README.md)
+The [curated LFS evidence bundle](../evidence/text-reader-method/README.md)
 contains the preregistration, probes, all raw reader/structure JSON, fixed
 criteria verdict and supplementary structural map with individual hashes.
 No new PDF, native Preview action, product conversion or full regression was

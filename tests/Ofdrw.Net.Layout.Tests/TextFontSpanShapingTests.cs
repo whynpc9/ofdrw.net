@@ -5,7 +5,7 @@ namespace Ofdrw.Net.Layout.Tests;
 
 public sealed class TextFontSpanShapingTests
 {
-    private static readonly Lazy<TextFontFace> DejaVu = new(() => Load("DejaVuSans-R22.ttf"));
+    private static readonly Lazy<TextFontFace> DejaVu = new(() => Load("DejaVuSans-TextFixture.ttf"));
     private static readonly Lazy<TextFontFace> Noto = new(() => Load("NotoSans-Regular.ttf"));
     private static readonly Lazy<TextFontFace> WenKai = new(() => Load("LXGWWenKai-Regular.ttf"));
 
@@ -31,7 +31,7 @@ public sealed class TextFontSpanShapingTests
     [Fact]
     public void EqualProgramAliasesCoalesceWithoutLosingOriginalFaceAssociations()
     {
-        var alias = Load("DejaVuSans-R22.ttf", "different display name");
+        var alias = Load("DejaVuSans-TextFixture.ttf", "different display name");
         Assert.NotSame(DejaVu.Value, alias);
         Assert.Equal(DejaVu.Value.FaceSha256, alias.FaceSha256);
         var result = Engine().Shape(new TextFontSpanShapingRequest("ffi", 0,
@@ -106,7 +106,7 @@ public sealed class TextFontSpanShapingTests
     public void DifferentProgramsWithTheSameDisplayNameKeepOwnGidsUnitsAndLogicalItems()
     {
         var a = Load("NotoSans-Regular.ttf", "same name");
-        var b = Load("DejaVuSans-R22.ttf", "same name");
+        var b = Load("DejaVuSans-TextFixture.ttf", "same name");
         var result = Engine().Shape(new TextFontSpanShapingRequest("AV", 50,
             new[] { Span(50, 1, a, 1), Span(51, 1, b, 2) }));
         Assert.Equal(2, result.Runs.Count);
@@ -329,7 +329,7 @@ public sealed class TextFontSpanShapingTests
     [Fact]
     public void SelectedPartitionClipsFacesAndUsesItemLocalStyleIndicesAcrossFontGroups()
     {
-        var alias = Load("DejaVuSans-R22.ttf", "original alias");
+        var alias = Load("DejaVuSans-TextFixture.ttf", "original alias");
         var original = new TextFontSpanShapingRequest("بببAV", 100,
             new[] { Span(100, 2, DejaVu.Value, 20), Span(102, 1, alias, 30), Span(103, 2, Noto.Value, 40) },
             TextDirection.RightToLeft, "Arab", "ar");
@@ -481,7 +481,7 @@ public sealed class TextFontSpanShapingTests
     {
         // 64 groups cost 504 MiB of modeled face copies. The short standalone
         // input fits; the retained 4096-unit context adds 16 MiB and must refuse.
-        var smallLength = (int)new FileInfo(Font("DejaVuSans-R22.ttf")).Length;
+        var smallLength = (int)new FileInfo(Font("DejaVuSans-TextFixture.ttf")).Length;
         var large = PaddedFace(504 * 1024 * 1024 / 64 - smallLength);
         var spans = Enumerable.Range(0, 64).Select(i => Span(i, i == 63 ? 4033 : 1,
             i % 2 == 0 ? large : DejaVu.Value)).ToArray();

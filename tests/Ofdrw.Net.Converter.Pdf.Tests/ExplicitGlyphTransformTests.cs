@@ -1387,7 +1387,7 @@ public sealed partial class ExplicitGlyphTransformTests
     public void CompleteHebrewVisualWordKeepsLogicalSourceAndRejectsPartialMapping()
     {
         const string source = "שלום";
-        var bytes = Font("DejaVuSans-R22.ttf");
+        var bytes = Font("DejaVuSans-TextFixture.ttf");
         var resource = new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes };
         var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
         var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
@@ -1427,7 +1427,7 @@ public sealed partial class ExplicitGlyphTransformTests
     [InlineData(OfdGlyphMappingStrategy.GroupedLocal)]
     public void HebrewSourceAliasesCannotUseOneOriginalGidForDifferentLetters(OfdGlyphMappingStrategy strategy)
     {
-        var face = new OpenTypeFace(Font("DejaVuSans-R22.ttf"));
+        var face = new OpenTypeFace(Font("DejaVuSans-TextFixture.ttf"));
         var shared = new OpenTypeCmap(face).Glyph('א');
         face.Tables["cmap"] = Format4OnlyCmap(new System.Collections.Generic.Dictionary<int, int>
         {
@@ -1450,7 +1450,7 @@ public sealed partial class ExplicitGlyphTransformTests
         int glyphCount, OfdGlyphMappingStrategy strategy)
     {
         const string source = "שלום";
-        var bytes = Font("DejaVuSans-R22.ttf");
+        var bytes = Font("DejaVuSans-TextFixture.ttf");
         var resource = new OfdFontResource { Id = "10", FontName = "DejaVu Sans", Data = bytes };
         var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
         var validGids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
@@ -1515,7 +1515,7 @@ public sealed partial class ExplicitGlyphTransformTests
     [InlineData("ממממ", OfdGlyphMappingStrategy.GroupedLocal)]
     public async Task HebrewVisualWordPdfKeepsEachScalarAtItsOriginalGlyphOrigin(string source, OfdGlyphMappingStrategy strategy)
     {
-        var bytes = Font("DejaVuSans-R22.ttf");
+        var bytes = Font("DejaVuSans-TextFixture.ttf");
         var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
         var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
         var text = Text(gids[0], gids[1], "5 5 5", source);
@@ -1563,7 +1563,7 @@ public sealed partial class ExplicitGlyphTransformTests
     [Fact]
     public async Task DifferentHebrewWordsSharingOriginalGidsKeepEachCharacterMapping()
     {
-        var bytes = Font("DejaVuSans-R22.ttf");
+        var bytes = Font("DejaVuSans-TextFixture.ttf");
         var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
         OfdTextElement Word(string source)
         {
@@ -1609,7 +1609,7 @@ public sealed partial class ExplicitGlyphTransformTests
     public async Task SameHebrewWordWithDifferentAdvancesKeepsIndependentCharacterPositions()
     {
         const string source = "שלום";
-        var bytes = Font("DejaVuSans-R22.ttf");
+        var bytes = Font("DejaVuSans-TextFixture.ttf");
         var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
         var gids = source.Reverse().Select(value => cmap.Glyph(value)).ToArray();
         OfdTextElement Word(string delta, string id)
@@ -1651,7 +1651,7 @@ public sealed partial class ExplicitGlyphTransformTests
     [InlineData("interleaved-path", false)]
     public void RtlPhrasePaintOrderPreservesLogicalModelAndOtherPaint(string scenario, bool reordered)
     {
-        var bytes = Font("DejaVuSans-R22.ttf");
+        var bytes = Font("DejaVuSans-TextFixture.ttf");
         var cmap = new OpenTypeCmap(new OpenTypeFace(bytes));
         OfdTextElement Word(string source, double x)
         {

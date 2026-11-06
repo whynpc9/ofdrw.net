@@ -89,7 +89,7 @@ def main():
     output = args.output_directory.resolve()
     output.mkdir(parents=True, exist_ok=True)
     assert product != output
-    receipt = json.loads((product / 'r22-mixed-output-receipt.json').read_text())
+    receipt = json.loads((product / 'text-mixed-output-receipt.json').read_text())
     hashes = {item['name']: item['sha256'] for item in receipt['outputs']}
     for name, digest in hashes.items():
         assert sha((product / name).read_bytes()) == digest, 'Product input changed: ' + name

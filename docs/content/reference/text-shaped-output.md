@@ -1,5 +1,5 @@
 ---
-title: "类型化塑形文字输出（R22 首个配置）"
+title: "类型化塑形文字输出"
 description: "首个类型化塑形文字输出配置的 GID、簇、字体子集和页面写出限制。"
 sidebar:
   order: 110
@@ -14,4 +14,4 @@ sidebar:
 
 生成的 PNG 或 SVG 输出不等同于 macOS Preview 或独立阅读器验收结果。发布前，每个视觉出口都需要各自的证据。
 
-独立混排写出器及其重复字母候选已在 [R22 剩余范围账本](https://github.com/whynpc9/ofdrw.net/blob/2489966c47833cb137fe33cdc4c3d2df60daec3a/docs/validation/r22-remaining-scope.md)中核对。上述拉丁文生成器约定不代表通用段落或 SVG 文本语义。
+独立混排写出器的输入和输出限制见[拉丁文/希伯来文混排](https://whynpc9.github.io/ofdrw.net/reference/text-mixed-paragraph/)。上述拉丁文生成器约定不代表通用段落或 SVG 文本语义。

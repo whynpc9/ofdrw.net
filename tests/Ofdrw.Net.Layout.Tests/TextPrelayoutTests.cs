@@ -23,7 +23,7 @@ public sealed class TextPrelayoutTests
     [InlineData("abc אבבא def")]
     public async Task RepeatedHebrewLettersRetainEveryOriginalGlyphOccurrenceInTypedOfd(string source)
     {
-        var face = new TextFontFace("R22 DejaVu Sans", File.ReadAllBytes(Font("DejaVuSans-R22.ttf")));
+        var face = new TextFontFace("Ofdrw Test DejaVu Sans", File.ReadAllBytes(Font("DejaVuSans-TextFixture.ttf")));
         var result = new TextMixedParagraphEngine(new HarfBuzzTextShaper()).Layout(
             new TextMixedParagraphRequest(source, face, 4, 100));
         var expected = result.Lines.Single().Runs.Where(run =>

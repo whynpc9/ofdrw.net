@@ -1,7 +1,7 @@
-"""Verify the bounded one-font R22 fixture's actual OFD XML against PDF painted paths.
+"""Verify the bounded one-font mixed-text fixture's actual OFD XML against PDF painted paths.
 
 Requires pypdf 6.21.2 and fontTools 4.68.0. This is an independent validator
-for generated R22 pages, not an arbitrary OFD/PDF parser or logical reader.
+for generated mixed-text pages, not an arbitrary OFD/PDF parser or logical reader.
 """
 
 import hashlib
@@ -65,7 +65,7 @@ def transform(m, x, y):
 def verify(ofd, pdf, fixture):
     assert (
         hashlib.sha256(Path(fixture).read_bytes()).hexdigest()
-        == "d7441d42a24882db09640ea4bb768b17a106cdb31ee9749a52cb34a075b8fbcc"
+        == "3362132d725d94e23e6995749627c11fdb197a6a6a95faa068e9b757877a8212"
     )
     original = TTFont(fixture)
     expected = []
@@ -74,7 +74,7 @@ def verify(ofd, pdf, fixture):
         res = ET.fromstring(z.read("Doc_0/PublicRes.xml"))
         # Resource identity is resolved from the actual archive, never from rendered SVG metadata.
         fonts = res.findall(".//o:Font", NS)
-        assert len(fonts) == 1, "Expected one bounded R22 font"
+        assert len(fonts) == 1, "Expected one bounded mixed-text font"
         fontnode = fonts[0]
         fontfile = fontnode.find("o:FontFile", NS).text
         base = res.attrib.get("BaseLoc", "Res")
@@ -166,7 +166,7 @@ def verify(ofd, pdf, fixture):
         elif op in (b"f", b"f*", b"B", b"B*", b"b", b"b*", b"S", b"s"):
             if current:
                 assert op == b"f" and alpha == 1 and color == (0.0, 0.0, 0.0), (
-                    "Expected opaque black nonzero fill for the fixed R22 glyphs"
+                    "Expected opaque black nonzero fill for the fixed mixed-text glyphs"
                 )
                 paths.append(current)
                 current = []

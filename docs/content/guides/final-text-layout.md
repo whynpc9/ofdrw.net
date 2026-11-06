@@ -61,7 +61,7 @@ await new DocxToOfdConverter(options).ConvertAsync(input, output);
 
 ## 与兼容排版的差异
 
-同一 DOCX、同一字体下，[比对记录](https://github.com/whynpc9/ofdrw.net/blob/main/docs/validation/r22-engine-switch-comparison.md)中的样例页数和逻辑文本完全一致，差异来自真实字体度量：行高取字面上升部/下降部（兼容排版为 1.3 em），拉丁文按实际字面宽度换行，制表符对齐到制表位。默认切换前请用自己的文档比对两种输出。
+同一 DOCX、同一字体下，[比对记录](https://github.com/whynpc9/ofdrw.net/blob/main/docs/validation/text-engine-switch-comparison.md)中的样例页数和逻辑文本完全一致，差异来自真实字体度量：行高取字面上升部/下降部（兼容排版为 1.3 em），拉丁文按实际字面宽度换行，制表符对齐到制表位。默认切换前请用自己的文档比对两种输出。
 
 ## 限制
 

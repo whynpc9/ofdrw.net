@@ -67,7 +67,7 @@ public sealed partial class ExplicitGlyphTransformTests
     [Fact]
     public void GroupedHebrewTextCodesCannotShareOneWholeWordSemanticCid()
     {
-        var face = Font("DejaVuSans-R22.ttf");
+        var face = Font("DejaVuSans-TextFixture.ttf");
         var cmap = new OpenTypeCmap(new OpenTypeFace(face));
         string Mapping(string source) => MapSpan(0, source.Length,
             source.Reverse().Select(value => cmap.Glyph(value)).ToArray());

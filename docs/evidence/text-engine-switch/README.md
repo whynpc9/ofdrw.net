@@ -1,7 +1,7 @@
-# R22 engine switch comparison evidence (Issue #109)
+# Text engine comparison evidence (Issue #109)
 
 The optional LFS archive [`engine-switch-evidence.tar.zst`](engine-switch-evidence.tar.zst) holds
-the outputs reviewed for the [engine switch comparison](../../validation/r22-engine-switch-comparison.md):
+the outputs reviewed for the [engine switch comparison](../../validation/text-engine-switch-comparison.md):
 
 - `comparison/side/*.png` — twelve 144 dpi page pairs (left: compatibility layout, right: paragraph
   layout engine) for `generated-layout.docx` (2 pages), the CN/EN multi-section header/footer sample
@@ -24,9 +24,9 @@ the outputs reviewed for the [engine switch comparison](../../validation/r22-eng
 Fetch and extract under the ignored `artifacts/` directory:
 
 ```sh
-git lfs pull --include="docs/evidence/r22-engine-switch/**" --exclude=""
+git lfs pull --include="docs/evidence/text-engine-switch/**" --exclude=""
 mkdir -p artifacts/r22-engine-switch
-zstd -dc docs/evidence/r22-engine-switch/engine-switch-evidence.tar.zst | tar -xf - -C artifacts/r22-engine-switch
+zstd -dc docs/evidence/text-engine-switch/engine-switch-evidence.tar.zst | tar -xf - -C artifacts/r22-engine-switch
 ```
 
 Regenerate the comparison with
@@ -36,7 +36,7 @@ then `pdftoppm -r 144 -png` each PDF.
 ## Issue #115 Preview re-check bundle
 
 [`issue115-preview-recheck.tar.zst`](issue115-preview-recheck.tar.zst) holds the outputs regenerated
-after the [Issue #115 fixes](../../validation/r22-engine-switch-comparison.md),
+after the [Issue #115 fixes](../../validation/text-engine-switch-comparison.md),
 for a macOS Preview re-check: `f08-visual-sample.{ofd,pdf}` (single highlight path),
 `plain-text-{engine,legacy}.{ofd,pdf}` (minimum tab gap), their 144 dpi page-1 PNGs, a 400 dpi
 highlight crop and `SHA256SUMS`.
@@ -48,4 +48,4 @@ highlight crop and `SHA256SUMS`.
 | Archive SHA-256 | `a09a44da57dd1144ab9221760b1fc679426b3065f7c7cb95c394335c887c119c` |
 | Archive entries | 11 files under `bundle/`; SHA-256 in `bundle/SHA256SUMS` |
 
-Extract with `zstd -dc docs/evidence/r22-engine-switch/issue115-preview-recheck.tar.zst | tar -xf - -C artifacts/r22-engine-switch`.
+Extract with `zstd -dc docs/evidence/text-engine-switch/issue115-preview-recheck.tar.zst | tar -xf - -C artifacts/r22-engine-switch`.

@@ -92,11 +92,11 @@ internal static class SizedFontSpanProbe
         catch (OperationCanceledException error) when (error.CancellationToken == cancellation.Token && idle.Calls == 0)
         { rows.Add(new { role = "refused-caller-cancellation", outcome = "canceled", nativeCalls = 0 }); }
         if (rows.Count != 17) throw new InvalidDataException("Sized query cancellation/corpus incomplete.");
-        await File.WriteAllTextAsync(Path.Combine(output, "r22-sized-font-span-query.json"), JsonSerializer.Serialize(new {
+        await File.WriteAllTextAsync(Path.Combine(output, "text-sized-font-span-query.json"), JsonSerializer.Serialize(new {
             sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"), cases = rows,
             scope = "Explicit caller-selected face/size query; original context, logical groups and unchanged native glyph order; each exact run projected separately at declared size. No combined visual line, automatic style/paint resolver, Flow or new writer/reader/script output admission."
         }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-        Console.WriteLine("R22 explicit face/size, original-context and positioned-run queries passed from candidate packages.");
+        Console.WriteLine("Explicit face/size, original-context and positioned-run queries passed from candidate packages.");
     }
     private sealed class Meter : IContextualTextShaper
     {

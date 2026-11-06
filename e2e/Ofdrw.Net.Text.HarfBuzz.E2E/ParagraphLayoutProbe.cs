@@ -31,9 +31,9 @@ internal static class ParagraphLayoutProbe
         }, size, paint);
         var cases = new (string Name, ParagraphLayoutOptions Options)[]
         {
-            ("r22-paragraph-justify", new ParagraphLayoutOptions(90, 60, alignment: TextAlignment.Justify,
+            ("text-paragraph-justify", new ParagraphLayoutOptions(90, 60, alignment: TextAlignment.Justify,
                 lineHeight: TextLineHeight.Multiple(1.2), paragraphSpacingMillimeters: 2, firstLineIndentMillimeters: 6)),
-            ("r22-paragraph-rtl-center", new ParagraphLayoutOptions(90, null, TextParagraphDirection.RightToLeft,
+            ("text-paragraph-rtl-center", new ParagraphLayoutOptions(90, null, TextParagraphDirection.RightToLeft,
                 TextAlignment.Center)),
         };
         var receipts = new List<object>();
@@ -83,12 +83,12 @@ internal static class ParagraphLayoutProbe
                     sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant() }),
             });
         }
-        await File.WriteAllTextAsync(Path.Combine(output, "r22-paragraph-receipt.json"), JsonSerializer.Serialize(new
+        await File.WriteAllTextAsync(Path.Combine(output, "text-paragraph-receipt.json"), JsonSerializer.Serialize(new
         {
             sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"),
             source = Sample,
             cases = receipts,
         }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-        Console.WriteLine("R22 paragraph layout OFD/PDF/SVG candidates: " + output);
+        Console.WriteLine("Paragraph layout OFD/PDF/SVG candidates: " + output);
     }
 }

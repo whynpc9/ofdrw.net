@@ -67,10 +67,10 @@ internal static class PositionedRunProbe
         catch (OperationCanceledException error) when (error.CancellationToken == cancellation.Token)
         { rows.Add(new { role = "refused-caller-cancellation", outcome = "canceled" }); }
         if (rows.Count != 13) throw new InvalidDataException("Positioning cancellation did not preserve the caller token.");
-        await File.WriteAllTextAsync(Path.Combine(output, "r22-positioned-run-query.json"), JsonSerializer.Serialize(new {
+        await File.WriteAllTextAsync(Path.Combine(output, "text-positioned-run-query.json"), JsonSerializer.Serialize(new {
             sourceSha = Environment.GetEnvironmentVariable("R21_SOURCE_SHA"), cases = rows,
             scope = "Pure managed projection of exact shaped runs to millimeters; controlled 2D case is not native. No reshaping, style/paint resolution, final-line/bidi composition, pagination, Flow or new writer/reader admission."
         }, new JsonSerializerOptions { WriteIndented = true }) + "\n");
-        Console.WriteLine("R22 exact shaped-run millimeter positioning queries passed from candidate packages.");
+        Console.WriteLine("Exact shaped-run millimeter positioning queries passed from candidate packages.");
     }
 }

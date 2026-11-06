@@ -1,4 +1,4 @@
-# R22 bounded text-reference evidence
+# Mixed text reference evidence
 
 The optional LFS archive [`reference-evidence.tar.zst`](reference-evidence.tar.zst)
 contains the **nine one-page reference PDFs actually inspected in macOS
@@ -18,12 +18,12 @@ tree snapshot.
 | Archive entries | 31, with individual byte sizes and SHA-256 values in `manifest.json` |
 
 Fetch this optional directory with `git lfs pull
---include="docs/evidence/r22-next-phase/**" --exclude=""`, then extract the
+--include="docs/evidence/text-reader-reference/**" --exclude=""`, then extract the
 archive under ignored `artifacts/r22-next-phase/reference-20261029/`:
 
 ```sh
 mkdir -p artifacts/r22-next-phase/reference-20261029
-zstd -dc docs/evidence/r22-next-phase/reference-evidence.tar.zst |
+zstd -dc docs/evidence/text-reader-reference/reference-evidence.tar.zst |
   tar -xf - -C artifacts/r22-next-phase/reference-20261029
 ```
 
@@ -40,4 +40,4 @@ and the Pango controls; the tool did not expose raw clipboard Unicode.
 The Type 3 diagnostic repaired the pinned PdfPig word tokens but failed
 PDFKit whole-page selection. Its one-character-per-word representation also
 loses individual character geometry. The full architecture and limitation
-record is [`r22-mixed-text-decision.md`](../../architecture/r22-mixed-text-decision.md).
+record is the [mixed paragraph API reference](../../content/reference/text-mixed-paragraph.md).

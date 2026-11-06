@@ -17,14 +17,16 @@ source. They are frozen inputs; tests verify every SHA-256 before use.
 | `libreoffice-rtl.pdf` | `3db83d540e7e6d9772a5a01861550541ac69c74669e928d02754b601ad5c2f07` | LibreOffice 24.2.7.2 Writer/Web | `libreoffice-rtl.html`: RTL Hebrew, RTL Arabic and an LTR paragraph |
 
 The four Pango and `fpdf2-between-…` files are byte-identical copies of PDFs in
-the [R22 reference evidence](../../../../docs/evidence/r22-next-phase/README.md)
+the [mixed-text reference evidence](../../../../docs/evidence/text-reader-reference/README.md)
 archive. The fpdf2 files were generated with `make_fpdf2.py` from the repository
-font `e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-R22.ttf`
-(SHA-256 `d7441d42…a075b8fbcc`):
+historical font fixture (SHA-256 `d7441d42…a075b8fbcc`), preserved by the
+source commit that generated the PDFs. The current semantically named fixture
+`e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-TextFixture.ttf`
+has the same outlines and metrics but renamed font metadata (SHA-256 `3362132d…877a8212`):
 
 ```sh
 python -m venv venv && venv/bin/pip install fpdf2==2.8.9 uharfbuzz==0.57.0
-venv/bin/python -I make_fpdf2.py <repo>/e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-R22.ttf <out-dir>
+venv/bin/python -I make_fpdf2.py <repo>/e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-TextFixture.ttf <out-dir>
 ```
 
 `libreoffice-rtl.pdf` was produced with

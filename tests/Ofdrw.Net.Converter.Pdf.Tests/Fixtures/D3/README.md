@@ -1,7 +1,7 @@
 # D3 reverse-import controls
 
-These two one-page PDFs are reused byte-for-byte from the existing R22
-[reference evidence](../../../../docs/evidence/r22-next-phase/README.md).
+These two one-page PDFs are reused byte-for-byte from the existing mixed-text
+[reference evidence](../../../../docs/evidence/text-reader-reference/README.md).
 They contain the same DejaVu subset, mapped characters and declared source
 `abc שלום מקום def`; their positioned visual order differs.
 

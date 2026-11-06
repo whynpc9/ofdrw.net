@@ -1,4 +1,4 @@
-# R22 reader-method validation evidence
+# Mixed text reader method evidence
 
 The optional LFS archive [`reader-method-evidence.tar.zst`](reader-method-evidence.tar.zst)
 retains the preregistered six-PDF headless reader and geometry experiment at
@@ -7,7 +7,7 @@ request, preregistration, diagnostic probe sources, raw PdfPig/PDFKit/Poppler
 and PDF-structure JSON, fixed-criteria verdict, supplementary CID/GID map and
 an entry-by-entry SHA-256 manifest. It contains no duplicated input PDFs,
 fonts, packages, binaries, build output or full logs. The six exact input PDFs
-are already in the [earlier reference archive](../r22-next-phase/README.md).
+are already in the [earlier reference archive](../text-reader-reference/README.md).
 
 | Identity | Value |
 | --- | --- |
@@ -19,13 +19,13 @@ are already in the [earlier reference archive](../r22-next-phase/README.md).
 | Other observations | PDFKit logical text/Find and Poppler physical word rectangles passed the bounded positive controls; all negatives retained their failure classification |
 
 Fetch this optional archive with `git lfs pull
---include="docs/evidence/r22-reader-method/**" --exclude=""`. Extract it
+--include="docs/evidence/text-reader-method/**" --exclude=""`. Extract it
 under ignored `artifacts/r22-reader-contract/method-validation/` before
 running the scripts. The saved request contains absolute paths from the
 original checkout; point them to the six hash-verified PDFs in the earlier
 archive when reproducing elsewhere. The scripts do not generate PDFs.
 
-The [validation record](../../validation/r22-reader-replacement-candidate.md)
+The [validation record](../../validation/text-reader-method-validation.md)
 explains the method failure and why the supplementary structural observation
 does not establish a product or Preview pass. The heavy lease was released
 after the bounded batch. No replacement acceptance method is frozen by this
