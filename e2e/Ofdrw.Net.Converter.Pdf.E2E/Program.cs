@@ -289,6 +289,52 @@ File.WriteAllText(Path.Combine(outputDir, "d3-import-receipt.json"), JsonSeriali
     rows = d3Rows
 }, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine("[E2E] D3 unverified RTL rejection and explicit raster-only import passed from installed packages.");
+
+// F06: the opt-in bounded visual-line profile recovers the declared logical text
+// from independently generated PDFs; out-of-profile input still rejects.
+var f06Rows = new List<object>();
+foreach (var (fixtureName, direction, expected) in new[] {
+    ("D3/fpdf2-two-word-cell.pdf", Ofdrw.Net.Converter.Pdf.PdfTextBaseDirection.Auto, "abc שלום מקום def "),
+    ("F06/fpdf2-arabic-rtl-cell.pdf", Ofdrw.Net.Converter.Pdf.PdfTextBaseDirection.Auto, "مرحبا بالعالم لا "),
+    ("F06/fpdf2-hebrew-rtl-wrap.pdf", Ofdrw.Net.Converter.Pdf.PdfTextBaseDirection.RightToLeft, "שלום עולם abc מקום טוב "),
+    ("F06/libreoffice-rtl.pdf", Ofdrw.Net.Converter.Pdf.PdfTextBaseDirection.Auto,
+        "שלום עולם abc מקום טוב مرحبا بالعالم لا abc שלום מקום def ") })
+{
+    var bytes = File.ReadAllBytes(Path.Combine(repoRoot, "tests/Ofdrw.Net.Converter.Pdf.Tests/Fixtures", fixtureName));
+    var profile = new Ofdrw.Net.Converter.Pdf.PdfToOfdOptions {
+        RightToLeftTextImport = Ofdrw.Net.Converter.Pdf.PdfRightToLeftTextImport.VisualLineProfile,
+        RightToLeftBaseDirection = direction };
+    var output = Path.Combine(outputDir, "f06-" + Path.GetFileNameWithoutExtension(fixtureName) + ".ofd");
+    using (var target = File.Create(output)) await new PdfToOfdConverter(profile).ConvertAsync(new MemoryStream(bytes), target);
+    string text;
+    using (var input = File.OpenRead(output))
+        text = string.Concat((await new OfdReader().ReadAsync(input)).Pages.SelectMany(page => page.Elements.OfType<OfdTextElement>()).Select(item => item.Text));
+    if (text != expected) throw new InvalidOperationException($"F06 import of {fixtureName} produced '{text}'.");
+    var pdf = Path.ChangeExtension(output, ".pdf");
+    // Imported text keeps name-only fonts; bind a covering face for the invisible re-export layer.
+    var f06Face = File.ReadAllBytes(Path.Combine(repoRoot, "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-R22.ttf"));
+    using (var input = File.OpenRead(output))
+    using (var target = File.Create(pdf))
+        await new OfdToPdfConverter(new Ofdrw.Net.Converter.Pdf.OfdToPdfOptions {
+            NameOnlyFontBindings = new Ofdrw.Net.Core.Fonts.OfdNameOnlyFontBindings(new Dictionary<string, byte[]> {
+                ["R22DejaVuSans"] = f06Face, ["DejaVuSans"] = f06Face }) }).ConvertAsync(input, target);
+    f06Rows.Add(new { fixtureName, direction = direction.ToString(), inputSha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(),
+        text, ofd = output, ofdSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(output))).ToLowerInvariant(), pdf });
+}
+try
+{
+    await new PdfToOfdConverter(new Ofdrw.Net.Converter.Pdf.PdfToOfdOptions {
+        RightToLeftTextImport = Ofdrw.Net.Converter.Pdf.PdfRightToLeftTextImport.VisualLineProfile })
+        .ConvertAsync(File.OpenRead(Path.Combine(repoRoot, "tests/Ofdrw.Net.Converter.Pdf.Tests/Fixtures/F06/fpdf2-hebrew-digits-cell.pdf")), new MemoryStream());
+    throw new InvalidOperationException("F06 profile admitted digits outside its scope.");
+}
+catch (NotSupportedException error) when (error.Message.Contains("PDF_TEXT_READING_ORDER_UNVERIFIED")) { }
+File.WriteAllText(Path.Combine(outputDir, "f06-import-receipt.json"), JsonSerializer.Serialize(new {
+    assemblyPath = d3Assembly.Location,
+    assemblySha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(d3Assembly.Location))).ToLowerInvariant(),
+    rows = f06Rows
+}, new JsonSerializerOptions { WriteIndented = true }));
+Console.WriteLine("[E2E] F06 bounded visual-line RTL import passed from installed packages.");
 await using (var pdfInput = File.OpenRead(convertedPdfPath))
 await using (var ofdOutput = File.Create(roundtripOfdPath))
 {

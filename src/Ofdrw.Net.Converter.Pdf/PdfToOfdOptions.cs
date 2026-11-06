@@ -54,6 +54,23 @@ public sealed class PdfToOfdOptions
     public PdfTextLayerMode TextLayerMode { get; set; } = PdfTextLayerMode.Invisible;
 
     /// <summary>
+    /// Gets or sets how semantic extraction treats pages with right-to-left text.
+    /// The default <see cref="PdfRightToLeftTextImport.Reject"/> keeps rejecting
+    /// such pages. <see cref="PdfRightToLeftTextImport.VisualLineProfile"/> opts
+    /// into the bounded, verified visual-line import; input outside that profile
+    /// is still rejected. It applies only to the transparent layer over a rendered
+    /// page; the unrasterized text fallback keeps rejecting right-to-left text.
+    /// </summary>
+    public PdfRightToLeftTextImport RightToLeftTextImport { get; set; } = PdfRightToLeftTextImport.Reject;
+
+    /// <summary>
+    /// Gets or sets the base direction assumed for right-to-left lines by
+    /// <see cref="PdfRightToLeftTextImport.VisualLineProfile"/>. Default
+    /// <see cref="PdfTextBaseDirection.Auto"/> rejects ambiguous lines.
+    /// </summary>
+    public PdfTextBaseDirection RightToLeftBaseDirection { get; set; } = PdfTextBaseDirection.Auto;
+
+    /// <summary>
     /// Gets or sets the maximum number of semantic text objects emitted for one page.
     /// This bounds memory and output growth for untrusted PDFs.
     /// </summary>

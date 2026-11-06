@@ -16,3 +16,9 @@ rejects both. Explicit raster-only conversion remains available.
 
 Font licensing: [DejaVu/Bitstream/Arev notices](../../../../e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/DejaVuSans-LICENSE).
 PDFs use Git LFS. They add no duplicate full font file or source snapshot.
+
+F06 adds an opt-in `RightToLeftTextImport=VisualLineProfile` that reads painted
+glyph geometry and verifies its logical order with UAX #9. Under it the shaped
+reference imports as its declared source; the unshaped negative imports as the
+reversed phrase its page actually shows. The default still rejects both. See
+[`../F06/README.md`](../F06/README.md).

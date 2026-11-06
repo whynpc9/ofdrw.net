@@ -221,6 +221,7 @@ internal static class VectorLimits
         MaxTotalImageBytes = value.MaxTotalImageBytes, ExternalRasterizationTimeout = value.ExternalRasterizationTimeout, Dpi = value.Dpi,
         RequireRasterization = value.RequireRasterization, PreferExternalPdfToPpm = value.PreferExternalPdfToPpm,
         TextLayerMode = value.TextLayerMode, MaxTextObjectsPerPage = value.MaxTextObjectsPerPage, Namespace = value.Namespace,
+        RightToLeftTextImport = value.RightToLeftTextImport, RightToLeftBaseDirection = value.RightToLeftBaseDirection,
         CopyBookmarks = value.CopyBookmarks, CopyAttachments = value.CopyAttachments,
         MaxBookmarkCount = value.MaxBookmarkCount, MaxBookmarkDepth = value.MaxBookmarkDepth,
         MaxAttachmentCount = value.MaxAttachmentCount, MaxAttachmentBytes = value.MaxAttachmentBytes,
