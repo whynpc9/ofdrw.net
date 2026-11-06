@@ -24,7 +24,7 @@ internal sealed class OfdExplicitGlyphFont
             throw new NotSupportedException("CGTransform rendering requires an explicitly embedded font.");
         if (text.Weight >= 600 && !resource.Bold || text.Italic && !resource.Italic)
             throw new NotSupportedException("CGTransform synthetic bold or italic is outside the explicit outline profile.");
-        var outlines = new TrueTypeGlyphOutlines(resource.Data, resource.CollectionFaceIndex);
+        var outlines = GlyphOutlineSources.Open(resource.Data, resource.CollectionFaceIndex);
         var faceBytes = OpenTypeCollection.SelectFace(resource.Data, resource.CollectionFaceIndex);
         if (embedFont)
         {
@@ -41,12 +41,20 @@ internal sealed class OfdExplicitGlyphFont
             var gid = run.GlyphIds[index];
             if (!cache.TryGetValue(gid, out var outline))
                 cache.Add(gid, outline = outlines.Read(gid));
-            if (outline.Contours.Count == 0 && !run.IsWhitespaceSlot(index))
-                throw new NotSupportedException("CGTransform mapped a visible character to an empty original GID.");
             emittedPoints += outline.Contours.Sum(contour => (long)contour.Points.Count);
             if (emittedPoints > 131072)
                 throw new NotSupportedException("CGTransform emitted outline points exceed the bounded render profile.");
             values[index] = outline;
+        }
+        // A visible character needs ink; in a complete cluster map, a cluster's hidden joiner or selector
+        // glyph is blank as long as another glyph of the same cluster has an outline.
+        for (var index = 0; index < values.Length; index++)
+        {
+            if (values[index].Contours.Count != 0 || run.IsWhitespaceSlot(index)) continue;
+            if (run.ClusterOfSlot(index) is { } cluster &&
+                Enumerable.Range(cluster.First, cluster.Count).Any(slot => values[slot].Contours.Count != 0))
+                continue;
+            throw new NotSupportedException("CGTransform mapped a visible character to an empty original GID.");
         }
         return new OfdExplicitGlyphFont(faceBytes, values);
     }

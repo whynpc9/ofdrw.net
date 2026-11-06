@@ -134,7 +134,7 @@ internal sealed partial class FlowDocumentRenderer
             content.Height += paragraph.SpaceBeforeMillimeters;
             foreach (var line in FlowParagraphLayout.Layout(inlines, new FlowParagraphFormat { Alignment = (FlowAlignment)paragraph.Alignment,
                 FirstLineIndentMillimeters = paragraph.FirstLineIndentMillimeters, MinimumLineHeightMillimeters = paragraph.MinimumLineHeightMillimeters ?? 0 },
-                textWidth, this, fallback, _cancellationToken))
+                textWidth, this, fallback, _cancellationToken, final: _final))
             {
                 content.Lines.Add(new FlowCellLine(line, content.Height, paragraph.LeftIndentMillimeters, textWidth));
                 content.Height += line.Height;

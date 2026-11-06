@@ -208,9 +208,9 @@ public sealed class ParagraphLayoutTests
     }
 
     [Theory]
-    [InlineData("tab\there", TextLayoutError.InvalidText, 3)]
+    [InlineData("a\u00adb", TextLayoutError.UnsupportedFontProfile, 1)]
     [InlineData("a‮b", TextLayoutError.UnsupportedFontProfile, 1)]
-    [InlineData("a‍b", TextLayoutError.UnsupportedFontProfile, 1)]
+    [InlineData("a\u2060b", TextLayoutError.UnsupportedFontProfile, 1)]
     [InlineData("a\u0007b", TextLayoutError.InvalidText, 1)]
     public void UnadmittedControlsAreRejectedBeforeShaping(string text, TextLayoutError error, int offset)
     {

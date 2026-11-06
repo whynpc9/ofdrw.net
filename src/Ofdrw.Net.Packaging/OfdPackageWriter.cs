@@ -979,6 +979,7 @@ public sealed partial class OfdPackageWriter
                                 OfdTextRenderProjection.EncodeLiteral(text.Text, idAllocator.Material, idAllocator.Token))
                         });
                 ApplyEmphasis(textObject, text, binding?.Resource, weight, italic, ns);
+                ApplyProducerPaint(textObject, text, ns);
             }
 
             if (text.Runs.Any(run => run.PositionedGlyphs is not null))
@@ -1177,18 +1178,31 @@ public sealed partial class OfdPackageWriter
         OfdPositionedGlyphRun positioned, XNamespace ns, OfdIdPlan ids)
     {
         var run = text.Runs[0];
-        if (text.Text != run.Text || run.Text != positioned.LogicalText || text.Transform is not null ||
+        // Synthetic oblique is the only transform of final layout output: a shear about the baseline.
+        var transformed = text.Transform is { Length: 6 } matrix &&
+            !(matrix[0] == 1 && matrix[1] == 0 && matrix[3] == 1 && matrix[5] == 0 && matrix[2] is >= -1 and <= 1);
+        if (text.Text != run.Text || run.Text != positioned.LogicalText || text.Transform is not null && transformed ||
             text.Weight != OfdTextElement.DefaultWeight || text.Italic)
-            throw new NotSupportedException("Cluster-mapped glyph output needs one unstyled, untransformed source TextCode.");
+            throw new NotSupportedException("Cluster-mapped glyph output needs one unstyled source TextCode without a transform other than an oblique shear.");
+        // CodePosition/CodeCount count Unicode scalar values (XML characters), so a supplementary
+        // character counts once; BMP text is unchanged.
+        var scalarIndex = new int[run.Text.Length + 1];
+        for (int index = 0, scalar = 0; index <= run.Text.Length; index++)
+        {
+            scalarIndex[index] = scalar;
+            if (index < run.Text.Length && !(char.IsLowSurrogate(run.Text[index]) && index > 0 && char.IsHighSurrogate(run.Text[index - 1])))
+                scalar++;
+        }
         var slots = new List<OfdPositionedGlyph>(positioned.Glyphs.Count);
         var transforms = new List<XElement>();
         foreach (var cluster in positioned.LogicalClusters())
         {
             var glyphs = positioned.Glyphs.Skip(cluster.First).Take(cluster.Count).ToArray();
             slots.AddRange(glyphs);
+            var first = cluster.Start - positioned.SourceStart;
             transforms.Add(new XElement(ns + "CGTransform",
-                new XAttribute("CodePosition", (cluster.Start - positioned.SourceStart).ToString(CultureInfo.InvariantCulture)),
-                new XAttribute("CodeCount", cluster.Length.ToString(CultureInfo.InvariantCulture)),
+                new XAttribute("CodePosition", scalarIndex[first].ToString(CultureInfo.InvariantCulture)),
+                new XAttribute("CodeCount", (scalarIndex[first + cluster.Length] - scalarIndex[first]).ToString(CultureInfo.InvariantCulture)),
                 new XAttribute("GlyphCount", glyphs.Length.ToString(CultureInfo.InvariantCulture)),
                 new XElement(ns + "Glyphs", string.Join(" ", glyphs.Select(glyph =>
                     glyph.GlyphId.ToString(CultureInfo.InvariantCulture))))));
@@ -1212,6 +1226,26 @@ public sealed partial class OfdPackageWriter
         sourceCode.Value = OfdTextRenderProjection.EncodeLiteral(run.Text, ids.Material, ids.Token);
         foreach (var transform in transforms) sourceCode.AddBeforeSelf(transform);
         textObject.SetAttributeValue(OfdTextEmphasis.ClusterMapV1, "true");
+    }
+
+    // Final layout output owns an explicit stroke (synthetic bold) and fill switch. It never combines
+    // with the legacy name-only emphasis, which only applies to Weight/Italic requests.
+    private static void ApplyProducerPaint(XElement textObject, OfdTextElement text, XNamespace ns)
+    {
+        if (text.ProducerStrokeColor is null && text.ProducerFill) return;
+        if (textObject.Attribute("Stroke") is not null)
+            throw new NotSupportedException("Producer text paint cannot combine with generated emphasis.");
+        if (!text.ProducerFill) textObject.SetAttributeValue("Fill", "false");
+        if (text.ProducerStrokeColor is not { } color) return;
+        if (!OfdNumericFormat.WriterPositive(text.ProducerLineWidthMillimeters) || text.ProducerLineWidthMillimeters > 100)
+            throw new NotSupportedException("Producer text stroke width must be finite, positive and at most 100 mm.");
+        textObject.SetAttributeValue("Stroke", "true");
+        textObject.SetAttributeValue("LineWidth", ToInvariant(text.ProducerLineWidthMillimeters));
+        var stroke = new XElement(ns + "StrokeColor", new XAttribute("Value", $"{color.Red} {color.Green} {color.Blue}"));
+        if (color.Alpha != 255) stroke.SetAttributeValue("Alpha", color.Alpha.ToString(CultureInfo.InvariantCulture));
+        var fill = textObject.Elements().FirstOrDefault(node => node.Name.LocalName == "FillColor");
+        if (fill is null) textObject.AddFirst(stroke);
+        else fill.AddAfterSelf(stroke);
     }
 
     /// <summary>

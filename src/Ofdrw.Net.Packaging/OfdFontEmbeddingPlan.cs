@@ -59,7 +59,7 @@ internal sealed class OfdFontEmbeddingPlan
         // Resolve every typed binding once, even when it selects no embedded
         // group. Cancellation is checked before every examined element.
         var usage = new Dictionary<string, List<OfdTextElement>>(StringComparer.Ordinal);
-        var typedOutlines = new Dictionary<string, TrueTypeGlyphOutlines>(StringComparer.Ordinal);
+        var typedOutlines = new Dictionary<string, IGlyphOutlineSource>(StringComparer.Ordinal);
         var typedGlyphs = new Dictionary<string, Dictionary<int, TrueTypeGlyphOutline>>(StringComparer.Ordinal);
         foreach (var element in OfdCompositeGraph.Definitions(package)
                 .Concat(package.Pages.SelectMany(page => page.Templates.SelectMany(template => template.Elements)))
@@ -87,27 +87,33 @@ internal sealed class OfdFontEmbeddingPlan
                     if (!parsed.Tables.TryGetValue("OS/2", out var os2) || os2.Length < 10 ||
                         (OpenTypeFace.U16(os2, 8) & (0x0002 | 0x0100 | 0x0200)) != 0)
                         throw new NotSupportedException("Typed GID output needs the verified embedding license profile.");
-                    outlines = new TrueTypeGlyphOutlines(source);
+                    outlines = GlyphOutlineSources.Open(source);
                     typedOutlines.Add(identity, outlines);
                     typedGlyphs.Add(identity, new Dictionary<int, TrueTypeGlyphOutline>());
                 }
                 long points = 0;
                 var positionedRun = text.Runs[0].PositionedGlyphs!;
+                var inkedClusters = new HashSet<int>();
+                var blankClusters = new List<OfdPositionedGlyph>();
                 foreach (var glyph in positionedRun.Glyphs)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var gid = checked((int)glyph.GlyphId);
                     if (!typedGlyphs[identity].TryGetValue(gid, out var outline))
                         typedGlyphs[identity].Add(gid, outline = outlines.Read(gid, cancellationToken));
-                    // A cluster-mapped space has an advance but no outline; visible source never does.
-                    if (outline.Contours.Count == 0 && !(positionedRun.Mapping == OfdPositionedGlyphMapping.ClusterMap &&
-                        positionedRun.LogicalText.Substring(glyph.ClusterStart - positionedRun.SourceStart,
-                            glyph.ClusterLength).All(char.IsWhiteSpace)))
-                        throw new NotSupportedException("Typed GID output mapped visible source to an empty outline.");
+                    if (outline.Contours.Count != 0) inkedClusters.Add(glyph.ClusterStart);
+                    else blankClusters.Add(glyph);
                     points += outline.Contours.Sum(contour => (long)contour.Points.Count);
                     if (points > 131072)
                         throw new NotSupportedException("Typed GID outline points exceed the bounded render profile.");
                 }
+                // A cluster-mapped space, tab, joiner or selector has an advance but no outline, and a
+                // cluster's hidden joiner glyph is blank beside its inked base; visible source never is.
+                foreach (var glyph in blankClusters)
+                    if (!(positionedRun.Mapping == OfdPositionedGlyphMapping.ClusterMap &&
+                          (inkedClusters.Contains(glyph.ClusterStart) || OfdExplicitGlyphRun.IsBlankText(
+                              positionedRun.LogicalText.Substring(glyph.ClusterStart - positionedRun.SourceStart, glyph.ClusterLength)))))
+                        throw new NotSupportedException("Typed GID output mapped visible source to an empty outline.");
             }
             if (options.Mode == OfdFontEmbeddingMode.Full) continue;
             if (!usage.TryGetValue(identity, out var boundTexts)) usage.Add(identity, boundTexts = new());
@@ -145,6 +151,7 @@ internal sealed class OfdFontEmbeddingPlan
                 catch (NotSupportedException exception) { reason = exception.Message + " Full font retained; coverage was not validated."; }
                 var used = new HashSet<int>();
                 var actualGlyphIds = new HashSet<int>();
+                var onlyClusterMapped = true;
                 foreach (var text in usage.TryGetValue(group.Key, out var boundTexts) ? boundTexts : Enumerable.Empty<OfdTextElement>())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -169,7 +176,12 @@ internal sealed class OfdFontEmbeddingPlan
                         text.Runs.All(run => run.PositionedGlyphs is { } glyphs &&
                             (glyphs.Mapping == OfdPositionedGlyphMapping.ClusterMap ||
                              OfdPositionedGlyphProfile.IsHebrewWord(run.Text)));
-                    if (cmap is not null) EmbeddedFontCoverage.Validate(effective, cmap, aliases[0].FontName, cancellationToken);
+                    // Final layout output names every glyph explicitly (complete cluster map), so a selector or
+                    // joiner the cmap does not map is not a coverage gap; other text keeps the cmap guard.
+                    var clusterMapped = text.SourceXml is null && text.Runs.Count > 0 &&
+                        text.Runs.All(run => run.PositionedGlyphs?.Mapping == OfdPositionedGlyphMapping.ClusterMap);
+                    onlyClusterMapped &= clusterMapped;
+                    if (cmap is not null && !clusterMapped) EmbeddedFontCoverage.Validate(effective, cmap, aliases[0].FontName, cancellationToken);
                     var strings = effective.Runs.Count == 0 ? new[] { effective.Text } : effective.Runs.Select(run => run.Text);
                     foreach (var value in strings)
                     {
@@ -188,9 +200,29 @@ internal sealed class OfdFontEmbeddingPlan
                 try
                 {
                     if (reason is not null) throw new NotSupportedException(reason);
-                    if (face is null || !face.Tables.ContainsKey("glyf")) throw new NotSupportedException("CFF/CFF2 outline subsetting is not implemented; full font retained.");
-                    payload = TrueTypeSubset.Create(face, used, cancellationToken, options.MaximumGlyphClosureOperations,
-                        parseBudget, out var retained, out var original, cmap, actualGlyphIds);
+                    if (face is null || !face.Tables.ContainsKey("glyf") &&
+                        !(face.Version == 0x4F54544F && face.Tables.ContainsKey("CFF ") && !face.Tables.ContainsKey("CFF2")))
+                        throw new NotSupportedException("CFF2 outline subsetting is not implemented; full font retained.");
+                    int retained, original;
+                    if (face.Tables.ContainsKey("glyf"))
+                        payload = TrueTypeSubset.Create(face, used, cancellationToken, options.MaximumGlyphClosureOperations,
+                            parseBudget, out retained, out original, cmap, actualGlyphIds);
+                    else
+                    {
+                        // GID-preserving CFF subsetting serves final layout output, whose every glyph is
+                        // explicit; other CFF text keeps the historical full-font preservation.
+                        if (!onlyClusterMapped || actualGlyphIds.Count == 0)
+                            throw new NotSupportedException("CFF outline subsetting applies only to final layout output; full font retained.");
+                        try
+                        {
+                            payload = CffSubset.Create(face, used, cancellationToken, options.MaximumGlyphClosureOperations,
+                                parseBudget, out retained, out original, cmap, actualGlyphIds);
+                        }
+                        catch (InvalidDataException exception)
+                        {
+                            throw new NotSupportedException("CFF subsetting failed (" + exception.Message + "); full font retained.", exception);
+                        }
+                    }
                     payload = OpenTypeFontIdentity.WithUniqueNames(payload, BinaryIdentity.Hash(payload));
                     result.RetainedGlyphs = retained; result.OriginalGlyphs = original; result.IsSubset = retained < original;
                     if (!result.IsSubset) { payload = source; reason = "Glyph closure retains every glyph; full font retained."; }

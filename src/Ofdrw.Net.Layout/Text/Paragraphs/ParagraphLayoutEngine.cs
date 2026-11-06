@@ -12,9 +12,11 @@ namespace Ofdrw.Net.Layout.Text.Paragraphs;
 /// <remarks>
 /// <para>The result is final: writers consume its faces, GIDs, positions and resolved styles without
 /// reshaping or re-measuring. Existing Flow layout is unaffected.</para>
-/// <para>Admission profile: tabs, explicit bidi formatting characters, other format controls
-/// (ZWJ/ZWNJ, soft hyphen, word joiner, BOM), variation selectors and C0/C1 controls other than
-/// line/paragraph separators are rejected before shaping. Synthetic bold/italic is never produced.</para>
+/// <para>Admission profile: explicit bidi formatting characters, format controls other than ZWJ/ZWNJ
+/// (soft hyphen, word joiner, BOM, ...) and C0/C1 controls other than tab and line/paragraph separators
+/// are rejected before shaping. ZWJ, ZWNJ and variation selectors are shaped with their grapheme
+/// cluster. Tabs advance to the options' tab stops. Synthetic bold/oblique is produced only when
+/// <see cref="ParagraphLayoutOptions.SyntheticStyles"/> allows it.</para>
 /// </remarks>
 public sealed class ParagraphLayoutEngine
 {
@@ -49,7 +51,7 @@ public sealed class ParagraphLayoutEngine
                     throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.",
                         sourceStart: index, sourceLength: 1);
                 var scalar = char.ConvertToUtf32(value, text[index + 1]);
-                if (scalar is >= 0xe0100 and <= 0xe01ef || CharUnicodeInfo.GetUnicodeCategory(text, index) == UnicodeCategory.Format)
+                if (scalar is < 0xe0100 or > 0xe01ef && CharUnicodeInfo.GetUnicodeCategory(text, index) == UnicodeCategory.Format)
                     throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
                         "Format controls and variation selectors need a separately verified text profile.",
                         sourceStart: index, sourceLength: 2);
@@ -59,15 +61,12 @@ public sealed class ParagraphLayoutEngine
             if (char.IsLowSurrogate(value))
                 throw new TextLayoutException(TextLayoutError.InvalidText, "Unpaired UTF-16 surrogate.",
                     sourceStart: index, sourceLength: 1);
-            if (value == '\t')
-                throw new TextLayoutException(TextLayoutError.InvalidText,
-                    "Tab stops are outside the paragraph layout profile.", sourceStart: index, sourceLength: 1);
-            if (char.IsControl(value) && !IsHardBreak(value) && !IsParagraphSeparator(value))
+            if (char.IsControl(value) && value != '\t' && !IsHardBreak(value) && !IsParagraphSeparator(value))
                 throw new TextLayoutException(TextLayoutError.InvalidText, "Unsupported control character.",
                     sourceStart: index, sourceLength: 1);
-            if (CharUnicodeInfo.GetUnicodeCategory(value) == UnicodeCategory.Format || value is >= '︀' and <= '️')
+            if (CharUnicodeInfo.GetUnicodeCategory(value) == UnicodeCategory.Format && !IsJoinerOrSelector(value))
                 throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
-                    "Explicit bidi formatting, joiner and other format controls or variation selectors " +
+                    "Explicit bidi formatting and format controls other than ZWJ/ZWNJ " +
                     "need a separately verified text profile.", sourceStart: index, sourceLength: 1);
         }
     }
@@ -76,6 +75,10 @@ public sealed class ParagraphLayoutEngine
     private static bool IsParagraphSeparator(int value) => value is '\n' or '\r' or '\u0085' or 0x2029;
     // Mandatory line breaks inside a paragraph (UAX #14 BK that are not paragraph separators).
     private static bool IsHardBreak(int value) => value is '\u000b' or '\u000c' or 0x2028;
+
+    // ZWNJ, ZWJ and variation selectors: shaped inside their grapheme cluster, never cmap-required.
+    private static bool IsJoinerOrSelector(int value) =>
+        value is 0x200c or 0x200d or >= 0xfe00 and <= 0xfe0f or >= 0xe0100 and <= 0xe01ef;
 
     private static bool IsHangingSpace(int codePoint)
     {
@@ -103,6 +106,7 @@ public sealed class ParagraphLayoutEngine
         internal TextResolvedStyle Resolved = null!;
         internal TextShapedRun? Shaped;
         internal int ContextStart, ContextEnd; // shaping context of Shaped
+        internal bool IsTab;
     }
 
     private sealed class Paragraph
@@ -120,6 +124,7 @@ public sealed class ParagraphLayoutEngine
         internal TextStyle[] StyleOf = Array.Empty<TextStyle>();
         internal string[] ScriptOf = Array.Empty<string>();
         internal List<Item> Items = new();
+        internal List<int> Tabs = new();                   // paragraph code point indexes of tab characters
         internal double[] Prefix = Array.Empty<double>(); // measured advance prefix, mm
         internal double MaximumEm;                         // largest style size in the paragraph, mm
         internal int Length => End - Start;
@@ -133,6 +138,9 @@ public sealed class ParagraphLayoutEngine
         internal TextShapedRun Shaped = null!;
         internal double Scale;
         internal double[] Justification = Array.Empty<double>();
+        internal double[] Extra = Array.Empty<double>(); // tab advance and letter spacing, mm
+        internal bool IsTab => Item.IsTab;
+        internal double Advance(int glyph) => Shaped.Glyphs[glyph].XAdvance * Scale + Extra[glyph] + Justification[glyph];
     }
 
     private sealed class DraftLine
@@ -326,11 +334,29 @@ public sealed class ParagraphLayoutEngine
                     continue;
                 }
                 var style = paragraph.StyleOf[index];
-                var (face, family, fallbackIndex) = SelectFace(paragraph, index, end, style,
+                var (face, family, fallbackIndex, synthetic) = SelectFace(paragraph, index, end, style,
                     ReferenceEquals(previousStyle, style) ? previousFace : null);
                 var level = paragraph.ClusterLevel[index];
                 var script = paragraph.ScriptOf[index];
                 var utf16 = Offset(paragraph, end) - Offset(paragraph, index);
+                var tab = paragraph.CodePoints[index] == '\t';
+                if (tab)
+                {
+                    // A tab is its own item: the engine positions it at a tab stop and never shapes it.
+                    paragraph.Tabs.Add(index);
+                    var tabItem = new Item
+                    {
+                        Start = index, End = end, Level = level, Script = script, Face = face, Style = style, IsTab = true,
+                        Resolved = new TextResolvedStyle(style, family, fallbackIndex, face, synthetic,
+                            BoldStroke(style, script)),
+                    };
+                    paragraph.Items.Add(tabItem);
+                    for (var j = index; j < end; j++) paragraph.ItemOf[j] = paragraph.Items.Count - 1;
+                    current = null;
+                    previousFace = face; previousStyle = style;
+                    index = end;
+                    continue;
+                }
                 if (current is null || current.Level != level || current.Script != script ||
                     !ReferenceEquals(current.Face, face) || !ReferenceEquals(current.Style, style) ||
                     Offset(paragraph, current.End) - Offset(paragraph, current.Start) + utf16 > MaximumItemUtf16 &&
@@ -340,7 +366,8 @@ public sealed class ParagraphLayoutEngine
                     current = new Item
                     {
                         Start = index, End = index, Level = level, Script = script, Face = face, Style = style,
-                        Resolved = new TextResolvedStyle(style, family, fallbackIndex, face),
+                        Resolved = new TextResolvedStyle(style, family, fallbackIndex, face, synthetic,
+                            BoldStroke(style, script)),
                     };
                     paragraph.Items.Add(current);
                 }
@@ -351,38 +378,77 @@ public sealed class ParagraphLayoutEngine
             }
         }
 
-        private (TextFontFace Face, TextFontFamily Family, int FallbackIndex) SelectFace(Paragraph paragraph,
-            int start, int end, TextStyle style, TextFontFace? previous)
+        // Synthetic bold uses the shared emphasis geometry of the existing native OFD output: a thinner
+        // stroke for Han, whose dense counters close under the Latin width.
+        private static double BoldStroke(TextStyle style, string script) =>
+            script == "Hani" ? Ofdrw.Net.Core.Fonts.FontEmphasisMetrics.HanBoldStrokeWidth(style.FontSizeMillimeters)
+                : Ofdrw.Net.Core.Fonts.FontEmphasisMetrics.BoldStrokeWidth(style.FontSizeMillimeters);
+
+        // The declared face for the requested style or, when synthesis is allowed, the closest declared
+        // face plus the synthetic styles that make up the difference. Never "un-bolds" or "un-slants".
+        private (TextFontFace? Face, TextSyntheticStyle Synthetic) Candidate(TextFontFamily family, TextStyle style)
+        {
+            var exact = family.Select(style.Bold, style.Italic);
+            if (exact is not null || _options.SyntheticStyles != TextSyntheticStylePolicy.Synthesize) return (exact, TextSyntheticStyle.None);
+            if (style.Italic && family.Select(style.Bold, false) is { } upright) return (upright, TextSyntheticStyle.Oblique);
+            if (style.Bold && family.Select(false, style.Italic) is { } regular) return (regular, TextSyntheticStyle.Bold);
+            if (style.Bold && style.Italic && family.Select(false, false) is { } plain)
+                return (plain, TextSyntheticStyle.Bold | TextSyntheticStyle.Oblique);
+            return (null, TextSyntheticStyle.None);
+        }
+
+        private (TextFontFace Face, TextFontFamily Family, int FallbackIndex, TextSyntheticStyle Synthetic) SelectFace(
+            Paragraph paragraph, int start, int end, TextStyle style, TextFontFace? previous)
         {
             bool Covers(TextFontFace face)
             {
                 for (var j = start; j < end; j++)
-                    if (!face.Covers(paragraph.CodePoints[j])) return false;
+                {
+                    var value = paragraph.CodePoints[j];
+                    // Tabs are positioned by the engine; joiners and selectors are resolved by the shaper.
+                    if (value == '\t' || IsJoinerOrSelector(value)) continue;
+                    if (!face.Covers(value)) return false;
+                }
                 return true;
+            }
+            var offset = Offset(paragraph, start);
+            var length = Offset(paragraph, end) - offset;
+            (TextFontFace, TextFontFamily, int, TextSyntheticStyle) Accept(TextFontFace face, TextFontFamily family, int index,
+                TextSyntheticStyle synthetic)
+            {
+                if ((synthetic & TextSyntheticStyle.Bold) != 0 && (style.Paint.Stroke || !style.Paint.Fill))
+                    throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
+                        "Synthetic bold paints a fill-colored outline stroke and cannot combine with a requested stroke or an unfilled paint.",
+                        sourceStart: offset, sourceLength: length);
+                return (face, family, index, synthetic);
             }
             // Common/inherited clusters (spaces, punctuation, digits) stay in the previous face when
             // it covers them, so punctuation does not jump to a fallback font mid-word.
-            var common = UnicodeProperties.Script(paragraph.CodePoints[start]) is "Zyyy" or "Zinh";
+            var common = UnicodeProperties.Script(paragraph.CodePoints[start]) is "Zyyy" or "Zinh" ||
+                paragraph.CodePoints[start] == '\t';
             var anyStyledFace = false;
             for (var index = 0; index < style.FontFallback.Count; index++)
             {
                 var family = style.FontFallback[index];
-                var face = family.Select(style.Bold, style.Italic);
+                var (face, synthetic) = Candidate(family, style);
                 if (face is null) continue;
                 anyStyledFace = true;
                 if (common && previous is not null && !ReferenceEquals(previous, face) && Covers(previous))
                 {
                     for (var j = 0; j < style.FontFallback.Count; j++)
-                        if (ReferenceEquals(style.FontFallback[j].Select(style.Bold, style.Italic), previous))
-                            return (previous, style.FontFallback[j], j);
+                    {
+                        var (candidate, candidateSynthetic) = Candidate(style.FontFallback[j], style);
+                        if (ReferenceEquals(candidate, previous))
+                            return Accept(previous, style.FontFallback[j], j, candidateSynthetic);
+                    }
                 }
-                if (Covers(face)) return (face, family, index);
+                if (Covers(face)) return Accept(face, family, index, synthetic);
             }
-            var offset = Offset(paragraph, start);
-            var length = Offset(paragraph, end) - offset;
             if (!anyStyledFace)
                 throw new TextLayoutException(TextLayoutError.UnsupportedFontProfile,
-                    "No family supplies a face declaring the requested bold/italic style; synthetic styles are not produced.",
+                    _options.SyntheticStyles == TextSyntheticStylePolicy.Synthesize
+                        ? "No family supplies a face that can satisfy the requested bold/italic style."
+                        : "No family supplies a face declaring the requested bold/italic style; synthetic styles are not produced.",
                     sourceStart: offset, sourceLength: length);
             throw new TextLayoutException(TextLayoutError.MissingGlyph,
                 "No face in the style's fallback chain covers the grapheme cluster at UTF-16 offset " + offset + ".",
@@ -401,9 +467,10 @@ public sealed class ParagraphLayoutEngine
                 var other = paragraph.ItemOf[index];
                 if (other < 0 || levelAt(index) != level) return false;
                 var candidate = paragraph.Items[other];
+                if (candidate.IsTab) return false;
                 return ReferenceEquals(candidate, item) || ReferenceEquals(candidate.Face, item.Face) &&
                     candidate.Script == item.Script && candidate.Style.Language == item.Style.Language &&
-                    candidate.Style.Features.SequenceEqual(item.Style.Features);
+                    candidate.Style.ShapingFeatures.SequenceEqual(item.Style.ShapingFeatures);
             }
             var contextStart = start;
             var contextEnd = end;
@@ -429,10 +496,10 @@ public sealed class ParagraphLayoutEngine
             {
                 var contextOffset = Offset(paragraph, context.Start);
                 var contextText = _request.Text.Substring(contextOffset, Offset(paragraph, context.End) - contextOffset);
-                var contextFeatures = item.Style.Features.Select(feature =>
+                var contextFeatures = item.Style.ShapingFeatures.Select(feature =>
                     new TextFeature(feature.Tag, feature.Value, 0, contextText.Length)).ToArray();
                 var whole = new TextShapeRequest(contextText, contextOffset, item.Face, direction, item.Script,
-                    item.Style.Language, contextFeatures);
+                    item.Style.Language, contextFeatures, paragraphProfile: true);
                 TextShapeRequest? contextItem = null;
                 // CreateContextualItem checks .NET text-element boundaries; if the runtime disagrees
                 // with a UAX #29 item boundary, shape without context rather than fail.
@@ -445,17 +512,17 @@ public sealed class ParagraphLayoutEngine
                 }
                 else
                 {
-                    var features = item.Style.Features.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
+                    var features = item.Style.ShapingFeatures.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
                     shapeRequest = new TextShapeRequest(text, offset, item.Face, direction,
-                        item.Script, item.Style.Language, features);
+                        item.Script, item.Style.Language, features, paragraphProfile: true);
                     shaped = _engine._shaper.Shape(shapeRequest, _token);
                 }
             }
             else
             {
-                var features = item.Style.Features.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
+                var features = item.Style.ShapingFeatures.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
                 shapeRequest = new TextShapeRequest(text, offset, item.Face, direction,
-                    item.Script, item.Style.Language, features);
+                    item.Script, item.Style.Language, features, paragraphProfile: true);
                 shaped = _engine._shaper.Shape(shapeRequest, _token);
             }
             if (!ReferenceEquals(shaped.Request, shapeRequest))
@@ -464,12 +531,34 @@ public sealed class ParagraphLayoutEngine
             return shaped;
         }
 
+        // A tab is one blank glyph (the face's space) with no advance of its own; the line builder adds
+        // the distance to the tab stop. The logical text keeps U+0009.
+        private TextShapedRun TabRun(Paragraph paragraph, Item item, byte level)
+        {
+            var space = item.Face.Covers(0x20) ? item.Face.NominalGlyph(0x20) : 0;
+            var offset = Offset(paragraph, item.Start);
+            if (space <= 0)
+                throw new TextLayoutException(TextLayoutError.MissingGlyph,
+                    "A tab needs a space glyph in its selected face.", sourceStart: offset, sourceLength: 1);
+            var request = new TextShapeRequest("\t", offset, item.Face,
+                level % 2 == 1 ? TextDirection.RightToLeft : TextDirection.LeftToRight, item.Script, item.Style.Language,
+                null, paragraphProfile: true);
+            return new TextShapedRun(request, new[] { new TextShapedGlyph((uint)space, offset, 1, 0, 0, 0, 0, null, false) },
+                "Ofdrw.Net.Layout/tab");
+        }
+
         private void Measure(Paragraph paragraph)
         {
             var count = paragraph.Length;
             var advance = new double[count];
             foreach (var item in paragraph.Items)
             {
+                if (item.IsTab)
+                {
+                    item.Shaped = TabRun(paragraph, item, item.Level);
+                    (item.ContextStart, item.ContextEnd) = (item.Start, item.End);
+                    continue;
+                }
                 var context = ShapingContext(paragraph, item, item.Start, item.End, item.Level, 0, count,
                     index => paragraph.ClusterLevel[index]);
                 item.Shaped = Shape(paragraph, item, item.Start, item.End, item.Level, context);
@@ -480,6 +569,9 @@ public sealed class ParagraphLayoutEngine
                     var index = _text.IndexOfOffset(glyph.ClusterStart) - paragraph.Start;
                     advance[index] += glyph.XAdvance * scale;
                 }
+                if (item.Style.LetterSpacingMillimeters != 0)
+                    for (var index = item.Start; index < item.End; index = NextCluster(paragraph, index))
+                        if (HasSpacingAfter(paragraph, index, count)) advance[index] += item.Style.LetterSpacingMillimeters;
             }
             paragraph.MaximumEm = paragraph.Items.Count == 0 ? 0 : paragraph.Items.Max(item => item.Style.FontSizeMillimeters);
             paragraph.Prefix = new double[count + 1];
@@ -493,8 +585,68 @@ public sealed class ParagraphLayoutEngine
             return end;
         }
 
-        private double Estimate(Paragraph paragraph, int start, int end) =>
-            paragraph.Prefix[TrimEnd(paragraph, start, end)] - paragraph.Prefix[start];
+        // Letter spacing follows a grapheme cluster when the next cluster, before `limit`, has the same style.
+        private static bool HasSpacingAfter(Paragraph paragraph, int index, int limit)
+        {
+            var next = NextCluster(paragraph, index);
+            return next < limit && paragraph.CodePoints[index] != '\t' && paragraph.CodePoints[next] != '\t' &&
+                ReferenceEquals(paragraph.StyleOf[index], paragraph.StyleOf[next]) &&
+                paragraph.StyleOf[index].LetterSpacingMillimeters != 0;
+        }
+
+        // Advance of a tab at start-relative position `x`, followed by a segment `width` wide whose part
+        // before its first decimal separator is `beforeDecimal` wide. Stops past the frame clamp to it.
+        private double TabAdvance(double x, double width, double beforeDecimal)
+        {
+            double target = double.NaN;
+            foreach (var stop in _options.TabStops)
+            {
+                if (stop.PositionMillimeters <= x + Epsilon) continue;
+                target = stop.Alignment switch
+                {
+                    TextTabAlignment.Center => stop.PositionMillimeters - width / 2,
+                    TextTabAlignment.End => stop.PositionMillimeters - width,
+                    TextTabAlignment.Decimal => stop.PositionMillimeters - beforeDecimal,
+                    _ => stop.PositionMillimeters,
+                };
+                break;
+            }
+            if (double.IsNaN(target))
+            {
+                var interval = _options.DefaultTabIntervalMillimeters;
+                var origin = _options.DefaultTabOriginMillimeters;
+                target = origin + (Math.Floor((x - origin) / interval + Epsilon) + 1) * interval;
+            }
+            var advance = Math.Max(0, target - x);
+            return Math.Max(0, Math.Min(advance, _options.WidthMillimeters - x));
+        }
+
+        private int FirstDecimal(Paragraph paragraph, int start, int end)
+        {
+            for (var index = start; index < end; index++)
+                if (paragraph.CodePoints[index] == '.') return index;
+            return end;
+        }
+
+        // Content width of [start, end) excluding hanging trailing spaces, with tabs advanced to their stops.
+        private double Estimate(Paragraph paragraph, int start, int end, double indent)
+        {
+            var trim = TrimEnd(paragraph, start, end);
+            var tabs = paragraph.Tabs;
+            var tab = tabs.BinarySearch(start);
+            if (tab < 0) tab = ~tab;
+            if (tab >= tabs.Count || tabs[tab] >= trim) return paragraph.Prefix[trim] - paragraph.Prefix[start];
+            var x = indent + paragraph.Prefix[tabs[tab]] - paragraph.Prefix[start];
+            for (; tab < tabs.Count && tabs[tab] < trim; tab++)
+            {
+                var segmentStart = tabs[tab] + 1;
+                var segmentEnd = tab + 1 < tabs.Count && tabs[tab + 1] < trim ? tabs[tab + 1] : trim;
+                var width = paragraph.Prefix[segmentEnd] - paragraph.Prefix[segmentStart];
+                var before = paragraph.Prefix[FirstDecimal(paragraph, segmentStart, segmentEnd)] - paragraph.Prefix[segmentStart];
+                x += TabAdvance(x, width, before) + width;
+            }
+            return x - indent;
+        }
 
         private IEnumerable<DraftLine> BreakLines(Paragraph paragraph)
         {
@@ -523,7 +675,8 @@ public sealed class ParagraphLayoutEngine
                 for (; c < candidates.Count; c++)
                 {
                     var position = candidates[c];
-                    if (Estimate(paragraph, start, position) <= available + Epsilon) fitting.Add(position);
+                    if (Estimate(paragraph, start, position, first ? _options.FirstLineIndentMillimeters : 0) <=
+                        available + Epsilon) fitting.Add(position);
                     else { firstOver = position; break; }
                     if (paragraph.Breaks[position] == LineBreakKind.Mandatory) break;
                 }
@@ -536,7 +689,8 @@ public sealed class ParagraphLayoutEngine
                 for (; firstOver >= 0 && c < candidates.Count && nearMisses.Count < MaximumNearMisses; c++)
                 {
                     var position = candidates[c];
-                    if (Estimate(paragraph, start, position) > available + paragraph.MaximumEm / 2) break;
+                    if (Estimate(paragraph, start, position, first ? _options.FirstLineIndentMillimeters : 0) >
+                        available + paragraph.MaximumEm / 2) break;
                     nearMisses.Add(position);
                     if (paragraph.Breaks[position] == LineBreakKind.Mandatory) break;
                 }
@@ -655,7 +809,8 @@ public sealed class ParagraphLayoutEngine
                 var item = paragraph.Items[itemIndex];
                 var context = ShapingContext(paragraph, item, index, runEnd, level, start, contentEnd,
                     position => levels[position - start]);
-                var shaped = index == item.Start && runEnd == item.End && level == item.Level &&
+                var shaped = item.IsTab ? (level == item.Level ? item.Shaped! : TabRun(paragraph, item, level)) :
+                    index == item.Start && runEnd == item.End && level == item.Level &&
                     context.Start == item.ContextStart && context.End == item.ContextEnd
                     ? item.Shaped! : Shape(paragraph, item, index, runEnd, level, context);
                 logical.Add(new DraftRun
@@ -663,13 +818,98 @@ public sealed class ParagraphLayoutEngine
                     Start = index, End = runEnd, Level = level, Item = item, Shaped = shaped,
                     Scale = item.Style.FontSizeMillimeters / item.Face.UnitsPerEm,
                     Justification = new double[shaped.Glyphs.Count],
+                    Extra = new double[shaped.Glyphs.Count],
                 });
                 index = runEnd;
             }
+            ApplyLetterSpacing(logical, paragraph, line.TrimEnd);
+            ApplyTabs(logical, paragraph, line, firstOfParagraph ? _options.FirstLineIndentMillimeters : 0);
             line.Visual = Reorder(logical);
             Metrics(line, paragraph, start);
             Align(line, paragraph);
             return line;
+        }
+
+        // Letter spacing is charged per grapheme with a same-style successor on the line (as in Measure).
+        // Each shaped cluster receives the gaps of every grapheme it covers, so a ligature or other
+        // many-grapheme cluster keeps the total. In LTR runs a gap follows its grapheme's cluster; in RTL
+        // runs (glyphs in visual order) it is placed on the cluster of the logical successor, which is the
+        // visual left neighbor, so tracking widens the gap between the two graphemes rather than the run edge.
+        private void ApplyLetterSpacing(List<DraftRun> runs, Paragraph paragraph, int trimEnd)
+        {
+            foreach (var run in runs)
+            {
+                var spacing = run.Item.Style.LetterSpacingMillimeters;
+                if (spacing == 0 || run.IsTab) continue;
+                var rtl = run.Level % 2 == 1;
+                // Shaped clusters of the run: paragraph code point interval and last glyph in shaper order.
+                var clusters = new Dictionary<int, (int End, int LastGlyph)>();
+                for (var index = 0; index < run.Shaped.Glyphs.Count; index++)
+                {
+                    var glyph = run.Shaped.Glyphs[index];
+                    var start = _text.IndexOfOffset(glyph.ClusterStart) - paragraph.Start;
+                    var end = _text.IndexOfOffset(glyph.ClusterStart + glyph.ClusterLength) - paragraph.Start;
+                    clusters[start] = (end, index);
+                }
+                int? ClusterOf(int codePoint)
+                {
+                    foreach (var pair in clusters)
+                        if (codePoint >= pair.Key && codePoint < pair.Value.End) return pair.Key;
+                    return null;
+                }
+                foreach (var pair in clusters)
+                {
+                    for (var grapheme = pair.Key; grapheme < pair.Value.End; grapheme = NextCluster(paragraph, grapheme))
+                    {
+                        if (!paragraph.GraphemeStart[grapheme] || !HasSpacingAfter(paragraph, grapheme, trimEnd)) continue;
+                        var target = pair.Value.LastGlyph;
+                        if (rtl && NextCluster(paragraph, grapheme) is var successor && successor >= pair.Value.End &&
+                            ClusterOf(successor) is { } next)
+                            target = clusters[next].LastGlyph;
+                        run.Extra[target] += spacing;
+                    }
+                }
+            }
+        }
+
+        private double LogicalAdvance(DraftRun run, Paragraph paragraph, int limit)
+        {
+            double total = 0;
+            for (var index = 0; index < run.Shaped.Glyphs.Count; index++)
+                if (_text.IndexOfOffset(run.Shaped.Glyphs[index].ClusterStart) - paragraph.Start < limit)
+                    total += run.Shaped.Glyphs[index].XAdvance * run.Scale + run.Extra[index];
+            return total;
+        }
+
+        // Tab advances in logical order from the line's start edge. Tabs resolve to the paragraph level
+        // (UAX #9 L1), so the visual reordering keeps every segment between its tabs.
+        private void ApplyTabs(List<DraftRun> runs, Paragraph paragraph, DraftLine line, double indent)
+        {
+            if (!runs.Any(run => run.IsTab)) return;
+            var x = indent;
+            for (var index = 0; index < runs.Count; index++)
+            {
+                var run = runs[index];
+                if (!run.IsTab) { x += LogicalAdvance(run, paragraph, line.TrimEnd); continue; }
+                double width = 0, before = 0;
+                var decimalSeen = false;
+                for (var next = index + 1; next < runs.Count && !runs[next].IsTab; next++)
+                {
+                    var segment = runs[next];
+                    var advance = LogicalAdvance(segment, paragraph, line.TrimEnd);
+                    width += advance;
+                    if (decimalSeen) continue;
+                    var dot = FirstDecimal(paragraph, segment.Start, segment.End);
+                    if (dot < segment.End)
+                    {
+                        before += LogicalAdvance(segment, paragraph, dot);
+                        decimalSeen = true;
+                    }
+                    else before += advance;
+                }
+                run.Extra[0] = TabAdvance(x, width, before);
+                x += run.Extra[0];
+            }
         }
 
         private static List<DraftRun> Reorder(List<DraftRun> logical)
@@ -730,6 +970,12 @@ public sealed class ParagraphLayoutEngine
                     line.Height = normal * rule.Value;
                     line.BaselineOffset = gapAscent + (line.Height - normal) / 2;
                     break;
+                case "AtLeast":
+                    // Extra space goes below the text, as in the compatibility layout and word processors'
+                    // proportional ("multiple") line spacing, so a taller line never pushes ink downward.
+                    line.Height = Math.Max(normal, rule.Value);
+                    line.BaselineOffset = gapAscent;
+                    break;
                 default:
                     line.Height = normal;
                     line.BaselineOffset = gapAscent;
@@ -743,11 +989,11 @@ public sealed class ParagraphLayoutEngine
             var trimOffset = Offset(paragraph, line.TrimEnd);
             double total = 0, hanging = 0;
             foreach (var run in line.Visual)
-                foreach (var glyph in run.Shaped.Glyphs)
+                for (var index = 0; index < run.Shaped.Glyphs.Count; index++)
                 {
-                    var advance = glyph.XAdvance * run.Scale;
+                    var advance = run.Advance(index);
                     total += advance;
-                    if (glyph.ClusterStart >= trimOffset) hanging += advance;
+                    if (run.Shaped.Glyphs[index].ClusterStart >= trimOffset) hanging += advance;
                 }
             var content = total - hanging;
             var rtl = paragraph.Bidi.ParagraphLevel == 1;
@@ -778,7 +1024,10 @@ public sealed class ParagraphLayoutEngine
             // Opportunities: word spaces, plus gaps between graphemes next to scripts set without
             // word spaces (Han, kana, Hangul, Bopomofo), except before closing punctuation.
             var expandAfter = new HashSet<int>(); // paragraph code point index of a grapheme start
-            for (var index = line.Start; index < line.TrimEnd;)
+            // Text before the line's last tab is aligned by its tab stops, so it is never stretched.
+            var lastTab = paragraph.Tabs.LastOrDefault(tab => tab >= line.Start && tab < line.TrimEnd);
+            var justifyFrom = paragraph.Tabs.Any(tab => tab >= line.Start && tab < line.TrimEnd) ? lastTab + 1 : line.Start;
+            for (var index = justifyFrom; index < line.TrimEnd;)
             {
                 var next = NextCluster(paragraph, index);
                 if (next >= line.TrimEnd) break;
@@ -854,26 +1103,45 @@ public sealed class ParagraphLayoutEngine
             var paragraph = draft.Paragraph;
             var baseline = top + draft.BaselineOffset;
             var pen = draft.LineStartX;
+            var trimOffset = Offset(paragraph, draft.TrimEnd);
             var runs = new List<ParagraphLayoutRun>(draft.Visual.Count);
             Bounds? lineInk = null;
             foreach (var run in draft.Visual)
             {
                 var origin = pen;
                 var glyphs = new List<ParagraphLayoutGlyph>(run.Shaped.Glyphs.Count);
+                var resolved = run.Item.Resolved;
+                var stroke = resolved.SyntheticBoldStrokeMillimeters / 2;
+                var skew = resolved.ObliqueSkew;
                 Bounds? runInk = null;
+                double? contentLeft = null, contentRight = null;
                 double penY = 0;
                 for (var index = 0; index < run.Shaped.Glyphs.Count; index++)
                 {
                     var glyph = run.Shaped.Glyphs[index];
                     var x = Check(pen + glyph.XOffset * run.Scale);
                     var y = Check(baseline - (penY + glyph.YOffset) * run.Scale);
-                    var advance = glyph.XAdvance * run.Scale + run.Justification[index];
+                    var advance = run.Advance(index);
                     TextLayoutBounds? ink = null;
                     if (glyph.Ink is { } value)
                     {
-                        ink = new TextLayoutBounds(Check(x + value.X * run.Scale),
-                            Check(y - (value.Y + value.Height) * run.Scale), value.Width * run.Scale, value.Height * run.Scale);
+                        var left = x + value.X * run.Scale - stroke;
+                        var right = x + (value.X + value.Width) * run.Scale + stroke;
+                        var inkTop = y - (value.Y + value.Height) * run.Scale - stroke;
+                        var inkBottom = y - value.Y * run.Scale + stroke;
+                        if (skew != 0)
+                        {
+                            // Oblique shears about the baseline: x += skew × (baseline − y).
+                            var shifts = new[] { skew * (baseline - inkTop), skew * (baseline - inkBottom) };
+                            left += shifts.Min(); right += shifts.Max();
+                        }
+                        ink = new TextLayoutBounds(Check(left), Check(inkTop), right - left, inkBottom - inkTop);
                         runInk = Bounds.Union(runInk, ink);
+                    }
+                    if (glyph.ClusterStart < trimOffset)
+                    {
+                        contentLeft = Math.Min(contentLeft ?? pen, pen);
+                        contentRight = Math.Max(contentRight ?? pen + advance, pen + advance);
                     }
                     glyphs.Add(new ParagraphLayoutGlyph(glyph.GlyphId, glyph.ClusterStart, glyph.ClusterLength, x, y,
                         Check(advance), -glyph.YAdvance * run.Scale, run.Justification[index], ink));
@@ -884,14 +1152,46 @@ public sealed class ParagraphLayoutEngine
                 var text = _request.Text.Substring(offset, Offset(paragraph, run.End) - offset);
                 var runBounds = runInk?.ToBounds();
                 if (runBounds is not null) lineInk = Bounds.Union(lineInk, runBounds);
-                runs.Add(new ParagraphLayoutRun(offset, text, run.Shaped, run.Level, run.Item.Resolved, origin, baseline,
-                    pen - origin, glyphs, runBounds));
+                var decorations = contentLeft is { } decorationLeft && contentRight is { } decorationRight &&
+                    decorationRight > decorationLeft
+                    ? Decorate(run, resolved, decorationLeft, decorationRight - decorationLeft, baseline)
+                    : null;
+                runs.Add(new ParagraphLayoutRun(offset, text, run.Shaped, run.Level, resolved, origin, baseline,
+                    pen - origin, glyphs, runBounds, decorations, run.IsTab));
             }
             var lineStart = Offset(paragraph, draft.Start);
             var lineEnd = Offset(paragraph, draft.End) + (draft.EndsParagraph ? paragraph.TerminatorLength : 0);
             return new ParagraphLayoutLine(lineStart, lineEnd - lineStart, draft.TerminatorLength, paragraph.Index,
                 pageIndex, paragraph.Bidi.ParagraphLevel, draft.EndsParagraph, draft.HardBreak, top, baseline,
                 draft.Height, draft.Ascent, draft.Descent, draft.ContentLeft, draft.ContentWidth, runs, lineInk?.ToBounds());
+        }
+
+        // Highlight spans the ascent and descent, underline and strikethrough use the position and thickness,
+        // of the style's primary face (its first family), so a decoration stays level across font fallback
+        // inside one style. All are filled rectangles over the run's non-hanging advance.
+        private static List<ParagraphLayoutDecoration>? Decorate(DraftRun run, TextResolvedStyle resolved, double left,
+            double width, double baseline)
+        {
+            if (resolved.HighlightColor is null && resolved.Decorations == TextDecorationLines.None) return null;
+            var style = run.Item.Style;
+            var primary = style.FontFallback[0];
+            var face = primary.Select(style.Bold, style.Italic) ?? primary.Select(false, false) ?? primary.Faces[0];
+            var scale = style.FontSizeMillimeters / face.UnitsPerEm;
+            var result = new List<ParagraphLayoutDecoration>(3);
+            if (resolved.HighlightColor is { } highlight)
+                result.Add(new ParagraphLayoutDecoration(ParagraphLayoutDecorationKind.Highlight,
+                    new TextLayoutBounds(Check(left), Check(baseline - face.Ascender * scale), width,
+                        (face.Ascender - face.Descender) * scale), highlight));
+            var color = resolved.DecorationColor;
+            if (color is not null && (resolved.Decorations & TextDecorationLines.Underline) != 0)
+                result.Add(new ParagraphLayoutDecoration(ParagraphLayoutDecorationKind.Underline,
+                    new TextLayoutBounds(Check(left), Check(baseline - face.UnderlinePosition * scale), width,
+                        face.UnderlineThickness * scale), color));
+            if (color is not null && (resolved.Decorations & TextDecorationLines.Strikethrough) != 0)
+                result.Add(new ParagraphLayoutDecoration(ParagraphLayoutDecorationKind.Strikethrough,
+                    new TextLayoutBounds(Check(left), Check(baseline - face.StrikeoutPosition * scale), width,
+                        face.StrikeoutThickness * scale), color));
+            return result;
         }
 
         private static double Check(double value) =>

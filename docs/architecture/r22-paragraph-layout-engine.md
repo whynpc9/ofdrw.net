@@ -1,6 +1,8 @@
 # R22 paragraph layout engine (Issue #109, F01–F05)
 
-Status: implemented on the Issue #109 branch; not released. Reference:
+Status: released in 0.2.0. The engine switch and the F08 admission changes (tabs, ZWJ/ZWNJ and
+variation selectors, synthetic styles, non-BMP output, CFF faces) are recorded in
+[r22-engine-switch-and-f08](r22-engine-switch-and-f08.md); the admission notes below describe 0.2.0. Reference:
 [paragraph layout engine](../content/reference/text-paragraph-layout.md). Validation:
 [r22-paragraph-layout-validation](../validation/r22-paragraph-layout-validation.md).
 

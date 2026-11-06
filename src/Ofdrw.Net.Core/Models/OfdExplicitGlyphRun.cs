@@ -101,7 +101,27 @@ internal sealed class OfdExplicitGlyphRun
     // empty outline is the expected drawing rather than a lost visible character.
     internal bool IsWhitespaceSlot(int index) => ClusterMapped && Spans.Any(span =>
         index >= span.GlyphPosition && index < span.GlyphPosition + span.GlyphCount &&
-        span.LogicalText.All(char.IsWhiteSpace));
+        IsBlankText(span.LogicalText));
+
+    // Whitespace (including tabs) and default-ignorable joiners/selectors draw no ink of their own.
+    internal static bool IsBlankText(string text)
+    {
+        foreach (var scalar in OpenTypeFace.Scalars(text))
+            if (!(scalar <= 0xffff && char.IsWhiteSpace((char)scalar) || scalar is 0x200c or 0x200d ||
+                  OpenTypeCmap.IsVariationSelector(scalar)))
+                return false;
+        return true;
+    }
+
+    // The glyph slots of the cluster containing slot `index`, for a complete cluster map.
+    internal (int First, int Count)? ClusterOfSlot(int index)
+    {
+        if (!ClusterMapped) return null;
+        foreach (var span in Spans)
+            if (index >= span.GlyphPosition && index < span.GlyphPosition + span.GlyphCount)
+                return (span.GlyphPosition, span.GlyphCount);
+        return null;
+    }
 
     internal static OfdExplicitGlyphRun? Read(OfdTextElement text, OfdFontResource? resource = null,
         IDictionary<OfdFontResource, OpenTypeCmap>? cmapCache = null, FontParseBudget? parseBudget = null,
@@ -144,9 +164,21 @@ internal sealed class OfdExplicitGlyphRun
                 text.Text != run.Text)
                 return null;
             var logical = run.Text;
-            if (logical.Length is < 1 or > 4096 || logical.Any(value => char.IsSurrogate(value) ||
-                    char.IsControl(value) || CharUnicodeInfo.GetUnicodeCategory(value) == UnicodeCategory.Format))
+            // Final layout TextCode may hold tabs, ZWJ/ZWNJ and supplementary characters; every other
+            // control or format character, and any unpaired surrogate, keeps the fail-closed refusal.
+            if (logical.Length is < 1 or > 4096 || logical.Any(value => value != '\t' && char.IsControl(value) ||
+                    value is not ('\u200c' or '\u200d') && CharUnicodeInfo.GetUnicodeCategory(value) == UnicodeCategory.Format))
                 return null;
+            // CodePosition/CodeCount count Unicode scalar values; map them to UTF-16 offsets.
+            var utf16 = new List<int>(logical.Length + 1);
+            for (var index = 0; index < logical.Length; index++)
+            {
+                utf16.Add(index);
+                if (char.IsHighSurrogate(logical[index]) && index + 1 < logical.Length && char.IsLowSurrogate(logical[index + 1])) index++;
+                else if (char.IsSurrogate(logical[index])) return null;
+            }
+            utf16.Add(logical.Length);
+            var scalars = utf16.Count - 1;
             var ids = new List<int>();
             var spans = new List<OfdExplicitGlyphSpan>();
             var position = 0;
@@ -162,12 +194,14 @@ internal sealed class OfdExplicitGlyphRun
                 var codePosition = Number(transform.Attribute("CodePosition"), -1);
                 var codeCount = Number(transform.Attribute("CodeCount"), 1);
                 var glyphCount = Number(transform.Attribute("GlyphCount"), 1);
-                if (codePosition != position || codeCount < 1 || codeCount > logical.Length - position || glyphCount < 1)
+                if (codePosition != position || codeCount < 1 || codeCount > scalars - position || glyphCount < 1)
                     return null;
                 var tokens = glyphs.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
                 if (tokens.Length != glyphCount) return null;
-                spans.Add(new OfdExplicitGlyphSpan(position, codeCount, ids.Count, glyphCount,
-                    logical.Substring(position, codeCount)));
+                var start = utf16[position];
+                var length = utf16[position + codeCount] - start;
+                spans.Add(new OfdExplicitGlyphSpan(start, length, ids.Count, glyphCount,
+                    logical.Substring(start, length)));
                 foreach (var token in tokens)
                 {
                     if (!int.TryParse(token, NumberStyles.None, CultureInfo.InvariantCulture, out var gid) ||
@@ -178,7 +212,7 @@ internal sealed class OfdExplicitGlyphRun
                 if (ids.Count > 16384) return null;
                 position += codeCount;
             }
-            if (position != logical.Length) return null;
+            if (position != scalars) return null;
             if (ids.Count > 1 && string.IsNullOrWhiteSpace(run.DeltaX) ||
                 !string.IsNullOrWhiteSpace(run.DeltaY) && string.IsNullOrWhiteSpace(run.DeltaX))
                 return null;

@@ -23,6 +23,9 @@ internal sealed class FlowTextStyle
     internal bool Underline { get; set; }
     internal double UnderlineOffsetMillimeters { get; set; }
     internal double UnderlineWidthMillimeters { get; set; }
+    // Final text layout only (the compatibility layout draws neither).
+    internal bool Strikethrough { get; set; }
+    internal Ofdrw.Net.Layout.Text.Paragraphs.TextColor? HighlightColor { get; set; }
 }
 
 internal sealed class FlowInline
@@ -39,6 +42,11 @@ internal sealed class FlowParagraphFormat
     internal FlowAlignment Alignment { get; set; }
     internal double FirstLineIndentMillimeters { get; set; }
     internal double MinimumLineHeightMillimeters { get; set; }
+    // Final text layout only: explicit tab stops and the default stop interval (null keeps 12.7 mm).
+    internal IReadOnlyList<Ofdrw.Net.Layout.Text.Paragraphs.TextTabStop> TabStops { get; set; } =
+        Array.Empty<Ofdrw.Net.Layout.Text.Paragraphs.TextTabStop>();
+    internal double? DefaultTabIntervalMillimeters { get; set; }
+    internal double DefaultTabOriginMillimeters { get; set; }
 }
 
 internal interface IFlowFontMetrics
@@ -91,6 +99,8 @@ internal sealed class FlowLine
     internal bool TerminalNewline { get; }
     internal bool AutomaticWrap { get; }
     internal double AlignmentWidth { get; }
+    /// <summary>The final line laid out by the paragraph layout engine, or null for compatibility lines.</summary>
+    internal Ofdrw.Net.Layout.Text.Paragraphs.ParagraphLayoutLine? Final { get; set; }
     internal double BaselineMillimeters => Glyphs.Count == 0 ? 0 : Glyphs.Max(g => g.Style.FontSizeMillimeters);
 }
 
@@ -103,9 +113,10 @@ internal static class FlowParagraphLayout
     internal static IReadOnlyList<FlowLine> Layout(
         IReadOnlyList<FlowInline> inlines, FlowParagraphFormat format, double width,
         IFlowFontMetrics metrics, FlowTextStyle fallback, CancellationToken cancellationToken,
-        bool allowOversizeGlyph = false)
+        bool allowOversizeGlyph = false, FlowFinalTextLayout? final = null)
     {
         if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0) throw new ArgumentOutOfRangeException(nameof(width));
+        if (final?.Layout(inlines, format, width, fallback, cancellationToken) is { } finalLines) return finalLines;
         var glyphs = new List<FlowGlyph>();
         var rawText = new StringBuilder();
         var rawStyles = new List<FlowTextStyle>();

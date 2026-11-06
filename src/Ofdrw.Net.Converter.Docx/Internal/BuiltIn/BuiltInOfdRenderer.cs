@@ -9,6 +9,8 @@ using System.Threading;
 using Ofdrw.Net.Core.Models;
 using Ofdrw.Net.Converter.Pdf;
 using Ofdrw.Net.Layout.Internal.Flow;
+using Ofdrw.Net.Layout.Text;
+using Ofdrw.Net.Layout.Text.Paragraphs;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Fonts;
 
@@ -38,6 +40,15 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
     private int _pendingPageBreaks;
     private double _pendingSpaceAfter;
     private readonly List<double> _pendingLineBreakHeights = new();
+    // Opt-in final paragraph layout (DocxConversionOptions.NativeParagraphLayoutEngine).
+    private FlowFinalTextLayout? _final;
+    private FlowFinalTextWriter? _finalWriter;
+    private double? _defaultTabPoints;
+    private bool _imageFallbackReported;
+    private readonly Dictionary<BuiltInTextFormat, TextStyle> _finalStyles = new();
+    private readonly Dictionary<string, TextFontFamily?> _finalFamilies = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<byte[], TextFontFace?> _finalFaces = new();
+    private IReadOnlyList<TextFontFamily>? _finalFallback;
 
     internal BuiltInOfdRenderer(
         DocxConversionOptions options,
@@ -56,6 +67,11 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         _cancellationToken.ThrowIfCancellationRequested();
 
         RegisterConfiguredFonts();
+        _defaultTabPoints = model.DefaultTabStopPoints;
+        if (_options.NativeParagraphLayoutEngine is { } engine)
+            _final = new FlowFinalTextLayout(engine, style => FinalStyle((BuiltInTextFormat)style.Source!),
+                _options.NativeEmbeddedBoldBehavior == DocxEmbeddedBoldBehavior.Throw
+                    ? TextSyntheticStylePolicy.Reject : TextSyntheticStylePolicy.Synthesize);
         OfdDocumentPackage? result = null;
         FinalizePagination(() =>
         {
@@ -117,6 +133,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 }
             }
         };
+        _finalWriter = _final is null ? null : new FlowFinalTextWriter(package);
+        if (_final is not null) package.CustomTags["docx-native-text-engine"] = "ParagraphLayout";
         package.CustomTags["source-text-origin"] = "DOCX/OpenXML";
         package.CustomTags["source-text-kind"] = "machine-readable";
         package.CustomTags["docx-ofd-mode"] = "Native";
@@ -212,12 +230,14 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         var firstLine = true;
         var preparedFirstLine = false;
         var leadingLines = 0;
-        var lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber, _totalPages, SectionPages(state.Section));
+        var lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber, _totalPages, SectionPages(state.Section), leftIndent);
         if (paragraph.Inlines.OfType<BuiltInPageNumberModel>().Any(field => field.Kind == BuiltInPageFieldKind.Page))
         {
             // Body PAGE uses the paragraph's first body line page context. Resolve that context
             // after deferred pagination, and remeasure when its number gains a digit.
-            while (leadingLines < lines.Count && lines[leadingLines].Glyphs.Count == 0)
+            // Leading control or blank lines; a final-layout line carries its content in Final, not Glyphs.
+            while (leadingLines < lines.Count && lines[leadingLines].Glyphs.Count == 0 &&
+                   (lines[leadingLines].Final is null || lines[leadingLines].Final!.Runs.Count == 0))
             {
                 var control = lines[leadingLines++];
                 if (control.PageBreak) { _pendingPageBreaks++; continue; }
@@ -240,7 +260,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             while (true)
             {
                 _cancellationToken.ThrowIfCancellationRequested();
-                lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber, _totalPages, SectionPages(state.Section));
+                lines = LayoutParagraph(paragraph, width, firstIndent, state.PageNumber, _totalPages, SectionPages(state.Section), leftIndent);
                 var first = lines.Skip(leadingLines).First(line => !line.PageBreak && !line.TerminalNewline);
                 if (first.Height > state.ContentBottom - state.ContentTop)
                     throw new InvalidDataException("DOCX content exceeds the usable page area.");
@@ -353,7 +373,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 var content = new FlowCellContent();
                 // Preserve the existing Native cell paragraph policy while sharing row geometry.
                 foreach (var paragraph in cell.Paragraphs)
-                    foreach (var line in LayoutParagraph(paragraph, width, 0, state.PageNumber, _totalPages, SectionPages(state.Section)).Where(line => !line.PageBreak))
+                    foreach (var line in LayoutParagraph(paragraph, width, 0, state.PageNumber, _totalPages, SectionPages(state.Section), 0).Where(line => !line.PageBreak))
                     {
                         content.Lines.Add(new FlowCellLine(line, content.Height, 0, width));
                         content.Height += line.Height;
@@ -533,7 +553,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         }
     }
 
-    private IReadOnlyList<FlowLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber, int totalPages, int sectionPages)
+    private IReadOnlyList<FlowLine> LayoutParagraph(BuiltInParagraphModel paragraph, double width, double firstIndent, int pageNumber, int totalPages, int sectionPages,
+        double leftIndent)
     {
         var inlines = new List<FlowInline>();
         FlowTextStyle Style(BuiltInTextFormat format)
@@ -545,7 +566,8 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
                 FontSizeMillimeters = size,
                 Bold = format.Bold, Italic = format.Italic, Source = format,
                 // Same geometry as FlowDocument underlines.
-                Underline = format.Underline, UnderlineOffsetMillimeters = size * 0.1d, UnderlineWidthMillimeters = size * 0.06d
+                Underline = format.Underline, UnderlineOffsetMillimeters = size * 0.1d, UnderlineWidthMillimeters = size * 0.06d,
+                Strikethrough = format.Strike
             };
         }
         var fallbackFormat = paragraph.Inlines.OfType<BuiltInTextModel>().FirstOrDefault()?.Format ?? new BuiltInTextFormat();
@@ -580,16 +602,113 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             BuiltInParagraphAlignment.Justify => FlowAlignment.Justify,
             _ => FlowAlignment.Left
         };
-        return FlowParagraphLayout.Layout(inlines, new FlowParagraphFormat
+        if (_final is not null && !_imageFallbackReported && inlines.Any(inline => inline.Image is not null))
+        {
+            _imageFallbackReported = true;
+            _diagnostics.Add(new DocxConversionDiagnostic("DOCX_NATIVE_TEXT_ENGINE_FALLBACK",
+                "Paragraphs with inline images keep the compatibility text layout; other paragraphs use the paragraph layout engine."));
+        }
+        var format = new FlowParagraphFormat
         {
             Alignment = alignment,
             FirstLineIndentMillimeters = firstIndent,
             MinimumLineHeightMillimeters = PointsToMillimeters(paragraph.Format.LineSpacingPoints ?? 0)
-        }, width, this, fallback, _cancellationToken, allowOversizeGlyph: true);
+        };
+        if (_final is not null)
+        {
+            // Word measures custom and default stops from the text column's start; this frame starts at
+            // the left indent. A hanging indent is itself a stop for the first line.
+            var stops = paragraph.Format.TabStops
+                .Select(stop => (Position: PointsToMillimeters(stop.Points) - leftIndent, stop.Alignment))
+                .Where(stop => stop.Position > 0.001 && stop.Position < 1_000_000).ToList();
+            if (firstIndent < 0 && !stops.Any(stop => stop.Position <= 0.001)) stops.Insert(0, (0, "left"));
+            format.TabStops = stops.GroupBy(stop => Math.Round(stop.Position, 4)).Select(group => group.First()).Take(64)
+                .Select(stop => new TextTabStop(Math.Max(0, stop.Position), stop.Alignment switch
+                {
+                    "center" => TextTabAlignment.Center,
+                    "right" or "end" => TextTabAlignment.End,
+                    "decimal" => TextTabAlignment.Decimal,
+                    _ => TextTabAlignment.Start,
+                })).ToArray();
+            var interval = PointsToMillimeters(_defaultTabPoints ?? 36);
+            format.DefaultTabIntervalMillimeters = interval is > 0 and <= 1000 ? interval : 12.7;
+            format.DefaultTabOriginMillimeters = -leftIndent;
+        }
+        try
+        {
+            return FlowParagraphLayout.Layout(inlines, format, width, this, fallback, _cancellationToken, allowOversizeGlyph: true,
+                final: _final);
+        }
+        catch (InvalidOperationException exception) when (_final is not null && exception.InnerException is TextLayoutException)
+        {
+            throw new InvalidDataException("DOCX native paragraph layout failed: " + exception.InnerException.Message, exception);
+        }
+    }
+
+    private TextStyle FinalStyle(BuiltInTextFormat format)
+    {
+        if (_finalStyles.TryGetValue(format, out var style)) return style;
+        var family = NormalizeFontFamily(format.FontFamily);
+        var chain = new List<TextFontFamily>();
+        if (FinalFamily(family) is { } requested) chain.Add(requested);
+        _finalFallback ??= _configuredFonts.FallbackOrder(_options.FontFallbackFamilies)
+            .Select(FinalFamily).Where(value => value is not null).Select(value => value!).ToArray();
+        foreach (var candidate in _finalFallback)
+            if (chain.Count < 16 && !chain.Any(value => value.Faces[0].FaceSha256 == candidate.Faces[0].FaceSha256))
+                chain.Add(candidate);
+        if (chain.Count == 0)
+            throw new InvalidDataException("DOCX native paragraph layout needs at least one usable font file; configure FontDirectories.");
+        var color = ParseColor(format.ColorHex);
+        style = new TextStyle(chain, PointsToMillimeters(format.FontSizePoints ?? DefaultFontSizePoints),
+            new TextPaint(new TextColor(color.Red, color.Green, color.Blue, color.Alpha)), format.Bold, format.Italic);
+        var lines = (format.Underline ? TextDecorationLines.Underline : TextDecorationLines.None) |
+            (format.Strike ? TextDecorationLines.Strikethrough : TextDecorationLines.None);
+        if (lines != TextDecorationLines.None) style = style.WithDecorations(lines);
+        if (format.HighlightHex is { } highlight)
+        {
+            var value = ParseColor(highlight);
+            style = style.WithHighlight(new TextColor(value.Red, value.Green, value.Blue));
+        }
+        _finalStyles.Add(format, style);
+        return style;
+    }
+
+    private TextFontFamily? FinalFamily(string family)
+    {
+        if (_finalFamilies.TryGetValue(family, out var cached)) return cached;
+        TextFontFamily? result = null;
+        if (_configuredFonts.Faces(family) is { } physical)
+        {
+            var faces = new List<TextFontFace>();
+            foreach (var (data, _) in physical)
+            {
+                if (!_finalFaces.TryGetValue(data, out var face))
+                {
+                    try { face = new TextFontFace(family, data); }
+                    catch (TextLayoutException exception)
+                    {
+                        face = null;
+                        _diagnostics.Add(new DocxConversionDiagnostic("DOCX_FONT_TEXT_ENGINE_UNSUPPORTED",
+                            $"A face of '{family}' is outside the paragraph layout font profile: {exception.Message}"));
+                    }
+                    _finalFaces[data] = face;
+                }
+                if (face is not null && faces.Count < 4 && !faces.Any(value => value.Bold == face.Bold && value.Italic == face.Italic))
+                    faces.Add(face);
+            }
+            if (faces.Count > 0) result = new TextFontFamily(family, faces);
+        }
+        _finalFamilies[family] = result;
+        return result;
     }
 
     private void DrawLine(OfdDocumentPackage package, OfdPage page, FlowLine line, double left, double top, double width)
     {
+        if (line.Final is { } final)
+        {
+            _finalWriter!.Draw(page, final, left, top, _cancellationToken);
+            return;
+        }
         var x = FlowParagraphLayout.Align(left + line.Indent, width - line.Indent, line.AlignmentWidth, line.Alignment);
         var baseline = line.BaselineMillimeters;
         var glyphs = line.Alignment == FlowAlignment.Justify && line.AutomaticWrap
@@ -877,7 +996,7 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
             result.Height += PointsToMillimeters(paragraph.Format.SpaceBeforePoints ?? 0);
             var left = PointsToMillimeters(paragraph.Format.LeftIndentPoints ?? 0);
             var lineWidth = Math.Max(1, width - left - PointsToMillimeters(paragraph.Format.RightIndentPoints ?? 0));
-            foreach (var line in LayoutParagraph(paragraph, lineWidth, PointsToMillimeters(paragraph.Format.FirstLineIndentPoints ?? 0), pageNumber, totalPages, sectionPages))
+            foreach (var line in LayoutParagraph(paragraph, lineWidth, PointsToMillimeters(paragraph.Format.FirstLineIndentPoints ?? 0), pageNumber, totalPages, sectionPages, left))
             {
                 if (line.PageBreak) continue;
                 result.Lines.Add((line, left, result.Height, lineWidth));

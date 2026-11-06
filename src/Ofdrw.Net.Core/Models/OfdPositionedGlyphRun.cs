@@ -44,8 +44,9 @@ public enum OfdPositionedGlyphMapping
 {
     /// <summary>The historical bounded word profiles (one CGTransform for a short Latin/Hebrew TextCode).</summary>
     BoundedWord = 0,
-    /// <summary>One CGTransform per source cluster, in logical order, covering the complete BMP
-    /// TextCode, with an explicit origin for every glyph slot. Used by final paragraph layout.</summary>
+    /// <summary>One CGTransform per source cluster, in logical order, covering the complete TextCode,
+    /// with an explicit origin for every glyph slot. CodePosition and CodeCount count Unicode scalar
+    /// values, so supplementary characters count once. Used by final paragraph layout.</summary>
     ClusterMap = 1,
 }
 
@@ -60,7 +61,7 @@ public sealed class OfdPositionedGlyphRun
     }
 
     /// <summary>Freezes glyphs with an explicit writer mapping. <see cref="OfdPositionedGlyphMapping.ClusterMap"/>
-    /// requires BMP text whose glyph clusters partition it, each cluster's glyphs contiguous.</summary>
+    /// requires text whose glyph clusters partition it, each cluster's glyphs contiguous.</summary>
     public OfdPositionedGlyphRun(string logicalText, int sourceStart, string faceSha256,
         IReadOnlyList<OfdPositionedGlyph> glyphs, OfdPositionedGlyphMapping mapping)
     {
@@ -119,9 +120,14 @@ public sealed class OfdPositionedGlyphRun
 
     private static void ValidateClusterMap(string text, int sourceStart, List<OfdPositionedGlyph> glyphs)
     {
-        foreach (var value in text)
-            if (char.IsSurrogate(value))
-                throw new ArgumentException("A cluster-mapped run counts BMP characters; surrogates need a separate profile.", nameof(text));
+        // CodePosition/CodeCount count Unicode scalar values (XML characters); the constructor already
+        // rejects clusters that split a surrogate pair, so only unpaired surrogates remain to refuse.
+        for (var index = 0; index < text.Length; index++)
+        {
+            if (char.IsHighSurrogate(text[index]) && index + 1 < text.Length && char.IsLowSurrogate(text[index + 1])) index++;
+            else if (char.IsSurrogate(text[index]))
+                throw new ArgumentException("A cluster-mapped run cannot contain an unpaired surrogate.", nameof(text));
+        }
         var seen = new HashSet<int>();
         var covered = 0;
         for (var index = 0; index < glyphs.Count;)

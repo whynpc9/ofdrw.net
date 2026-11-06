@@ -8,6 +8,8 @@ sidebar:
 
 `Ofdrw.Net.Layout` 的 `PlainTextOfdConverter` 是 `FlowDocument` 的轻量适配器，适合通知、日志和简单纯文本。它返回新的内存 OFD 包，再交给 `OfdPackageWriter` 保存。
 
+> **可选最终文字排版（main，尚未发布）：** 设置 `PlainTextOfdOptions.Layout.TextEngine` 后，纯文本改用段落排版引擎，以真实字体塑形并嵌入字体子集（支持制表位、合成粗斜体、CFF/OTF 与增补汉字）。默认行为不变，见[启用最终文字排版引擎](https://whynpc9.github.io/ofdrw.net/guides/final-text-layout/)。
+
 ## 从字符串生成
 
 安装 `Ofdrw.Net.Layout` 和 `Ofdrw.Net.Packaging`：

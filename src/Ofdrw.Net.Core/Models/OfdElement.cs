@@ -55,6 +55,11 @@ public sealed class OfdTextElement : OfdElement
     // Reader's PageBlock projection materializes Table 46 inherited starts;
     // ordinary imported typed runs retain their historical default values.
     internal bool SourceInheritedTextCodeAxes { get; set; }
+    // Producer-owned paint of freshly laid out text (final paragraph layout): an explicit outline
+    // stroke, used for synthetic bold, and an optional disabled fill. Imported SourceXml owns its paint.
+    internal OfdColor? ProducerStrokeColor { get; set; }
+    internal double ProducerLineWidthMillimeters { get; set; }
+    internal bool ProducerFill { get; set; } = true;
 
     public OfdTextElement()
     {

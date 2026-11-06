@@ -19,10 +19,11 @@ internal sealed class OfdTextPaint
     {
         var source = text.RenderSourceXml ?? text.SourceXml;
         var root = string.IsNullOrWhiteSpace(source) ? null : OfdXmlEnvelope.Parse(source!);
-        Fill = Boolean(root?.Attribute("Fill")?.Value, true);
-        Stroke = Boolean(root?.Attribute("Stroke")?.Value, false);
+        Fill = Boolean(root?.Attribute("Fill")?.Value, root is null ? text.ProducerFill : true);
+        Stroke = Boolean(root?.Attribute("Stroke")?.Value, root is null && text.ProducerStrokeColor is not null);
         HScale = Number(root?.Attribute("HScale")?.Value, 1);
-        LineWidthMillimeters = Number(root?.Attribute("LineWidth")?.Value, 0.353);
+        LineWidthMillimeters = Number(root?.Attribute("LineWidth")?.Value,
+            root is null && text.ProducerStrokeColor is not null ? text.ProducerLineWidthMillimeters : 0.353);
         if (Stroke && (root?.Attribute("Cap") is not null || root?.Attribute("Join") is not null ||
             root?.Attribute("MiterLimit") is not null || root?.Attribute("DashPattern") is not null ||
             root?.Attribute("DashOffset") is not null))
@@ -30,7 +31,7 @@ internal sealed class OfdTextPaint
         if (HScale <= 0 || HScale > 64 || LineWidthMillimeters < 0 || LineWidthMillimeters > 100)
             throw new NotSupportedException("OFD text scale or stroke width is outside the render profile.");
         FillColor = root is null ? text.FillColor : Color(root.Element(root.Name.Namespace + "FillColor"), text.FillColor);
-        StrokeColor = root is null ? OfdColor.Black :
+        StrokeColor = root is null ? text.ProducerStrokeColor ?? OfdColor.Black :
             Color(root.Element(root.Name.Namespace + "StrokeColor"), OfdColor.Black);
     }
 

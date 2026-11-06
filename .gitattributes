@@ -14,6 +14,7 @@ THIRD-PARTY-NOTICES.md text eol=lf
 tests/fixtures/trusted-fonts/bundle.json text eol=lf
 # The independent CFF command oracle is verified by its exact SHA-256.
 tests/Ofdrw.Net.Graphics.SkiaSharp.Tests/testdata/cff/*.path text eol=lf
+tests/Ofdrw.Net.Layout.Tests/testdata/cff-han/*.path text eol=lf
 
 # Binary fixtures and retained evidence live in LFS, including split archives.
 *.tar filter=lfs diff=lfs merge=lfs -text

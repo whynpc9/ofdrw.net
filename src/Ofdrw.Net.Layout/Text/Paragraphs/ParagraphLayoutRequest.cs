@@ -121,6 +121,18 @@ public sealed class TextFontFeature : IEquatable<TextFontFeature>
     public override int GetHashCode() => Tag.GetHashCode() ^ (int)Value;
 }
 
+/// <summary>Decoration lines drawn with a run.</summary>
+[Flags]
+public enum TextDecorationLines
+{
+    /// <summary>No decoration.</summary>
+    None = 0,
+    /// <summary>A line below the baseline at the face's underline position.</summary>
+    Underline = 1,
+    /// <summary>A line through the glyphs at the face's strikeout position.</summary>
+    Strikethrough = 2,
+}
+
 /// <summary>An immutable requested character style. Layout snapshots it into the result.</summary>
 public sealed class TextStyle
 {
@@ -151,6 +163,35 @@ public sealed class TextStyle
         Bold = bold; Italic = italic; Language = language;
         Features = new ReadOnlyCollection<TextFontFeature>(features?.ToArray() ?? Array.Empty<TextFontFeature>());
     }
+
+    private TextStyle(TextStyle source)
+    {
+        FontFallback = source.FontFallback; FontSizeMillimeters = source.FontSizeMillimeters; Paint = source.Paint;
+        Bold = source.Bold; Italic = source.Italic; Language = source.Language; Features = source.Features;
+        Decorations = source.Decorations; DecorationColor = source.DecorationColor;
+        HighlightColor = source.HighlightColor; LetterSpacingMillimeters = source.LetterSpacingMillimeters;
+    }
+
+    /// <summary>Returns a copy that draws the given decoration lines. A null color uses the fill color.</summary>
+    public TextStyle WithDecorations(TextDecorationLines lines, TextColor? color = null)
+    {
+        if ((lines & ~(TextDecorationLines.Underline | TextDecorationLines.Strikethrough)) != 0)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest, "Unknown text decoration lines.");
+        return new TextStyle(this) { Decorations = lines, DecorationColor = lines == TextDecorationLines.None ? null : color };
+    }
+
+    /// <summary>Returns a copy whose runs are backed by a filled highlight rectangle; null removes it.</summary>
+    public TextStyle WithHighlight(TextColor? color) => new(this) { HighlightColor = color };
+
+    /// <summary>Returns a copy adding a fixed advance, in (-em/2, em] millimeters, after every
+    /// grapheme cluster except the last one on a line.</summary>
+    public TextStyle WithLetterSpacing(double millimeters)
+    {
+        if (double.IsNaN(millimeters) || double.IsInfinity(millimeters) || millimeters <= -FontSizeMillimeters / 2 ||
+            millimeters > FontSizeMillimeters)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest, "Letter spacing must be within (-em/2, em].");
+        return new TextStyle(this) { LetterSpacingMillimeters = millimeters };
+    }
     /// <summary>Convenience constructor for one family.</summary>
     public TextStyle(TextFontFamily family, double fontSizeMillimeters, TextPaint? paint = null,
         bool bold = false, bool italic = false, string language = "und")
@@ -169,6 +210,21 @@ public sealed class TextStyle
     public string Language { get; }
     /// <summary>Feature settings applied to each shaped run of this style.</summary>
     public IReadOnlyList<TextFontFeature> Features { get; }
+    /// <summary>Decoration lines drawn for this style's runs.</summary>
+    public TextDecorationLines Decorations { get; private set; }
+    /// <summary>Decoration color, or null to use the fill color.</summary>
+    public TextColor? DecorationColor { get; private set; }
+    /// <summary>Highlight (background) color behind this style's runs, or null.</summary>
+    public TextColor? HighlightColor { get; private set; }
+    /// <summary>Extra advance after each grapheme cluster, in millimeters.</summary>
+    public double LetterSpacingMillimeters { get; private set; }
+
+    // Features actually sent to the shaper: like CSS letter-spacing, a letter-spaced style turns optional
+    // ligatures off (liga, clig, dlig) unless it sets them explicitly, so spacing stays per grapheme.
+    internal IReadOnlyList<TextFontFeature> ShapingFeatures =>
+        _shapingFeatures ??= LetterSpacingMillimeters == 0 ? Features : Features.Concat(new[] { "liga", "clig", "dlig" }
+            .Where(tag => Features.All(feature => feature.Tag != tag)).Select(tag => new TextFontFeature(tag, 0))).ToArray();
+    private IReadOnlyList<TextFontFeature>? _shapingFeatures;
 
     internal bool ShapesLike(TextStyle other) => ReferenceEquals(this, other) ||
         FontSizeMillimeters == other.FontSizeMillimeters && Language == other.Language &&
@@ -240,14 +296,59 @@ public sealed class TextLineHeight
     public static TextLineHeight Multiple(double factor) =>
         factor is >= 0.5 and <= 10 ? new TextLineHeight("Multiple", factor) :
         throw new TextLayoutException(TextLayoutError.InvalidRequest, "Line height factor must be within [0.5, 10].");
+    /// <summary>The normal line height, but at least the given millimeters, (0, 1000]; extra space is below the text.</summary>
+    public static TextLineHeight AtLeast(double millimeters) =>
+        millimeters > 0 && millimeters <= 1000 ? new TextLineHeight("AtLeast", millimeters) :
+        throw new TextLayoutException(TextLayoutError.InvalidRequest, "Minimum line height must be within (0, 1000] mm.");
     /// <summary>An exact line height in millimeters, (0, 1000].</summary>
     public static TextLineHeight Exact(double millimeters) =>
         millimeters > 0 && millimeters <= 1000 ? new TextLineHeight("Exact", millimeters) :
         throw new TextLayoutException(TextLayoutError.InvalidRequest, "Exact line height must be within (0, 1000] mm.");
-    /// <summary>"Normal", "Multiple" or "Exact".</summary>
+    /// <summary>"Normal", "Multiple", "AtLeast" or "Exact".</summary>
     public string Kind { get; }
-    /// <summary>Factor for Multiple, millimeters for Exact, 1 for Normal.</summary>
+    /// <summary>Factor for Multiple, millimeters for AtLeast and Exact, 1 for Normal.</summary>
     public double Value { get; }
+}
+
+/// <summary>How a requested bold/italic style without a matching face is handled.</summary>
+public enum TextSyntheticStylePolicy
+{
+    /// <summary>Fail with <see cref="TextLayoutError.UnsupportedFontProfile"/>; only declared faces are used.</summary>
+    Reject,
+    /// <summary>Use the closest declared face and synthesize the missing weight with a glyph stroke
+    /// and the missing slant with an oblique shear. The result records both.</summary>
+    Synthesize,
+}
+
+/// <summary>How the text after a tab is aligned to its tab stop.</summary>
+public enum TextTabAlignment
+{
+    /// <summary>The following text starts at the stop (left in LTR, right in RTL paragraphs).</summary>
+    Start,
+    /// <summary>The following text is centered on the stop.</summary>
+    Center,
+    /// <summary>The following text ends at the stop.</summary>
+    End,
+    /// <summary>The first decimal separator ('.') of the following text is placed at the stop;
+    /// text without one ends at the stop.</summary>
+    Decimal,
+}
+
+/// <summary>An explicit tab stop, measured from the frame's start edge.</summary>
+public sealed class TextTabStop
+{
+    /// <summary>Creates a tab stop at a position in [0, 1,000,000] millimeters.</summary>
+    public TextTabStop(double positionMillimeters, TextTabAlignment alignment = TextTabAlignment.Start)
+    {
+        if (double.IsNaN(positionMillimeters) || double.IsInfinity(positionMillimeters) || positionMillimeters < 0 ||
+            positionMillimeters > 1_000_000 || !Enum.IsDefined(typeof(TextTabAlignment), alignment))
+            throw new TextLayoutException(TextLayoutError.InvalidRequest, "Invalid tab stop.");
+        PositionMillimeters = positionMillimeters; Alignment = alignment;
+    }
+    /// <summary>Distance from the frame's start edge.</summary>
+    public double PositionMillimeters { get; }
+    /// <summary>Alignment of the following text.</summary>
+    public TextTabAlignment Alignment { get; }
 }
 
 /// <summary>Frame, paragraph and budget options. All lengths are millimeters.</summary>
@@ -264,7 +365,7 @@ public sealed class ParagraphLayoutOptions
         if (!Finite(widthMillimeters) || widthMillimeters <= 0 || widthMillimeters > 1_000_000 ||
             pageHeightMillimeters is { } height && (!Finite(height) || height <= 0 || height > 1_000_000) ||
             !Finite(paragraphSpacingMillimeters) || paragraphSpacingMillimeters < 0 || paragraphSpacingMillimeters > 1000 ||
-            !Finite(firstLineIndentMillimeters) || firstLineIndentMillimeters < 0 ||
+            !Finite(firstLineIndentMillimeters) || firstLineIndentMillimeters <= -widthMillimeters ||
             firstLineIndentMillimeters >= widthMillimeters)
             throw new TextLayoutException(TextLayoutError.InvalidRequest, "Invalid frame, spacing or indent geometry.");
         if (!Enum.IsDefined(typeof(TextParagraphDirection), direction) || !Enum.IsDefined(typeof(TextAlignment), alignment) ||
@@ -279,6 +380,58 @@ public sealed class ParagraphLayoutOptions
         Overflow = overflow; MaximumLines = maximumLines; MaximumShapeCalls = maximumShapeCalls;
         MaximumTextLength = maximumTextLength;
     }
+    private ParagraphLayoutOptions(ParagraphLayoutOptions source)
+    {
+        WidthMillimeters = source.WidthMillimeters; PageHeightMillimeters = source.PageHeightMillimeters;
+        Direction = source.Direction; Alignment = source.Alignment; LineHeight = source.LineHeight;
+        ParagraphSpacingMillimeters = source.ParagraphSpacingMillimeters;
+        FirstLineIndentMillimeters = source.FirstLineIndentMillimeters; Overflow = source.Overflow;
+        MaximumLines = source.MaximumLines; MaximumShapeCalls = source.MaximumShapeCalls;
+        MaximumTextLength = source.MaximumTextLength; SyntheticStyles = source.SyntheticStyles;
+        TabStops = source.TabStops; DefaultTabIntervalMillimeters = source.DefaultTabIntervalMillimeters;
+        DefaultTabOriginMillimeters = source.DefaultTabOriginMillimeters;
+    }
+
+    /// <summary>Returns a copy with the given synthetic bold/italic policy.</summary>
+    public ParagraphLayoutOptions WithSyntheticStyles(TextSyntheticStylePolicy policy)
+    {
+        if (!Enum.IsDefined(typeof(TextSyntheticStylePolicy), policy))
+            throw new TextLayoutException(TextLayoutError.InvalidRequest, "Unknown synthetic style policy.");
+        return new ParagraphLayoutOptions(this) { SyntheticStyles = policy };
+    }
+
+    /// <summary>Returns a copy with explicit tab stops (at most 64, strictly increasing) and the interval,
+    /// in (0, 1000] millimeters, of the implicit start-aligned stops after the last explicit one. Implicit
+    /// stops lie at <paramref name="defaultOriginMillimeters"/> + k × interval from the frame's start edge,
+    /// so a caller whose frame is indented can keep stops aligned to an outer margin.</summary>
+    public ParagraphLayoutOptions WithTabStops(IReadOnlyList<TextTabStop>? stops, double defaultIntervalMillimeters = 12.7,
+        double defaultOriginMillimeters = 0)
+    {
+        if (double.IsNaN(defaultOriginMillimeters) || double.IsInfinity(defaultOriginMillimeters) ||
+            Math.Abs(defaultOriginMillimeters) > 1_000_000)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest, "Invalid default tab origin.");
+        var copy = stops?.ToArray() ?? Array.Empty<TextTabStop>();
+        if (copy.Length > 64 || copy.Any(stop => stop is null) ||
+            copy.Where((stop, index) => index > 0 && stop.PositionMillimeters <= copy[index - 1].PositionMillimeters).Any() ||
+            double.IsNaN(defaultIntervalMillimeters) || defaultIntervalMillimeters <= 0 || defaultIntervalMillimeters > 1000)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest,
+                "Supply at most 64 increasing tab stops and a default interval within (0, 1000] mm.");
+        return new ParagraphLayoutOptions(this)
+        {
+            TabStops = new ReadOnlyCollection<TextTabStop>(copy), DefaultTabIntervalMillimeters = defaultIntervalMillimeters,
+            DefaultTabOriginMillimeters = defaultOriginMillimeters,
+        };
+    }
+
+    /// <summary>Synthetic bold/italic policy; <see cref="TextSyntheticStylePolicy.Reject"/> by default.</summary>
+    public TextSyntheticStylePolicy SyntheticStyles { get; private set; } = TextSyntheticStylePolicy.Reject;
+    /// <summary>Explicit tab stops measured from the frame's start edge.</summary>
+    public IReadOnlyList<TextTabStop> TabStops { get; private set; } = Array.Empty<TextTabStop>();
+    /// <summary>Interval of implicit start-aligned tab stops (12.7 mm, half an inch, by default).</summary>
+    public double DefaultTabIntervalMillimeters { get; private set; } = 12.7;
+    /// <summary>Position, from the frame's start edge, from which implicit tab stops are counted.</summary>
+    public double DefaultTabOriginMillimeters { get; private set; }
+
     /// <summary>Available line width.</summary>
     public double WidthMillimeters { get; }
     /// <summary>Content height of each page; null places every line on one unbounded page.</summary>
@@ -291,7 +444,8 @@ public sealed class ParagraphLayoutOptions
     public TextLineHeight LineHeight { get; }
     /// <summary>Space after each paragraph except the last; dropped at a page break.</summary>
     public double ParagraphSpacingMillimeters { get; }
-    /// <summary>Indent of each paragraph's first line on its start side.</summary>
+    /// <summary>Indent of each paragraph's first line on its start side; negative values (a hanging
+    /// indent) move the first line outward, within (−width, width).</summary>
     public double FirstLineIndentMillimeters { get; }
     /// <summary>Handling of segments wider than a line.</summary>
     public TextOverflowPolicy Overflow { get; }
