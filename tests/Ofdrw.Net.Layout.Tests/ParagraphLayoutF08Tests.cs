@@ -230,6 +230,34 @@ public sealed class ParagraphLayoutF08Tests
         Assert.Equal(normal.HeightMillimeters, unchanged.HeightMillimeters, 9);
     }
 
+    [Fact]
+    public void LetterSpacingCountsEveryGraphemeOfALigatureAndWidensRtlGaps()
+    {
+        var dejavu = new TextFontFamily("DejaVu Sans", DejaVu.Value);
+        double Width(TextStyle style, string text) => Layout(text, style).Lines.Single().ContentWidthMillimeters;
+        // Optional ligatures are off for letter-spaced text: "ffiX" keeps four glyphs and three gaps.
+        var noLiga = new TextStyle(new[] { dejavu }, 4, features: new[] { new TextFontFeature("liga", 0) });
+        var spaced = new TextStyle(new[] { dejavu }, 4).WithLetterSpacing(0.5);
+        var spacedRun = Layout("ffiX", spaced).Lines.Single().Runs.Single();
+        Assert.Equal(4, spacedRun.Glyphs.Count);
+        Assert.Equal(Width(noLiga, "ffiX") + 1.5, Width(spaced, "ffiX"), 9);
+        // An explicitly requested ligature keeps its glyph and still receives every grapheme's gap.
+        var forced = new TextStyle(new[] { dejavu }, 4, features: new[] { new TextFontFeature("liga", 1) });
+        var forcedSpaced = new TextStyle(new[] { dejavu }, 4, features: new[] { new TextFontFeature("liga", 1) }).WithLetterSpacing(0.5);
+        Assert.True(Layout("ffiX", forced).Lines.Single().Runs.Single().Glyphs.Count < 4);
+        Assert.Equal(Width(forced, "ffiX") + 1.5, Width(forcedSpaced, "ffiX"), 9);
+        // RTL: the visible gap between the two Hebrew letters widens; no tracking at the run's outer edge.
+        var plain = Layout("אב", new TextStyle(new[] { dejavu }, 4)).Lines.Single().Runs.Single();
+        var hebrew = Layout("אב", new TextStyle(new[] { dejavu }, 4).WithLetterSpacing(0.8)).Lines.Single().Runs.Single();
+        Assert.Equal(1, hebrew.BidiLevel % 2);
+        var plainGap = plain.Glyphs[1].XMillimeters - plain.Glyphs[0].XMillimeters;
+        Assert.Equal(plainGap + 0.8, hebrew.Glyphs[1].XMillimeters - hebrew.Glyphs[0].XMillimeters, 9);
+        Assert.Equal(plain.AdvanceMillimeters + 0.8, hebrew.AdvanceMillimeters, 9);
+        Assert.Equal(hebrew.OriginXMillimeters + hebrew.AdvanceMillimeters,
+            hebrew.Glyphs[1].XMillimeters + hebrew.Glyphs[1].AdvanceXMillimeters, 9);
+        Assert.Equal(plain.Glyphs[1].AdvanceXMillimeters, hebrew.Glyphs[1].AdvanceXMillimeters, 9);
+    }
+
     // ---- ZWJ / ZWNJ / variation selectors -----------------------------------------------------
 
     [Fact]

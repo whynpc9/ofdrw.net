@@ -219,6 +219,13 @@ public sealed class TextStyle
     /// <summary>Extra advance after each grapheme cluster, in millimeters.</summary>
     public double LetterSpacingMillimeters { get; private set; }
 
+    // Features actually sent to the shaper: like CSS letter-spacing, a letter-spaced style turns optional
+    // ligatures off (liga, clig, dlig) unless it sets them explicitly, so spacing stays per grapheme.
+    internal IReadOnlyList<TextFontFeature> ShapingFeatures =>
+        _shapingFeatures ??= LetterSpacingMillimeters == 0 ? Features : Features.Concat(new[] { "liga", "clig", "dlig" }
+            .Where(tag => Features.All(feature => feature.Tag != tag)).Select(tag => new TextFontFeature(tag, 0))).ToArray();
+    private IReadOnlyList<TextFontFeature>? _shapingFeatures;
+
     internal bool ShapesLike(TextStyle other) => ReferenceEquals(this, other) ||
         FontSizeMillimeters == other.FontSizeMillimeters && Language == other.Language &&
         Features.SequenceEqual(other.Features);

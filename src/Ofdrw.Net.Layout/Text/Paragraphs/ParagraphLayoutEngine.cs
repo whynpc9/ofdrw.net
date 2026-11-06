@@ -470,7 +470,7 @@ public sealed class ParagraphLayoutEngine
                 if (candidate.IsTab) return false;
                 return ReferenceEquals(candidate, item) || ReferenceEquals(candidate.Face, item.Face) &&
                     candidate.Script == item.Script && candidate.Style.Language == item.Style.Language &&
-                    candidate.Style.Features.SequenceEqual(item.Style.Features);
+                    candidate.Style.ShapingFeatures.SequenceEqual(item.Style.ShapingFeatures);
             }
             var contextStart = start;
             var contextEnd = end;
@@ -496,7 +496,7 @@ public sealed class ParagraphLayoutEngine
             {
                 var contextOffset = Offset(paragraph, context.Start);
                 var contextText = _request.Text.Substring(contextOffset, Offset(paragraph, context.End) - contextOffset);
-                var contextFeatures = item.Style.Features.Select(feature =>
+                var contextFeatures = item.Style.ShapingFeatures.Select(feature =>
                     new TextFeature(feature.Tag, feature.Value, 0, contextText.Length)).ToArray();
                 var whole = new TextShapeRequest(contextText, contextOffset, item.Face, direction, item.Script,
                     item.Style.Language, contextFeatures, paragraphProfile: true);
@@ -512,7 +512,7 @@ public sealed class ParagraphLayoutEngine
                 }
                 else
                 {
-                    var features = item.Style.Features.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
+                    var features = item.Style.ShapingFeatures.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
                     shapeRequest = new TextShapeRequest(text, offset, item.Face, direction,
                         item.Script, item.Style.Language, features, paragraphProfile: true);
                     shaped = _engine._shaper.Shape(shapeRequest, _token);
@@ -520,7 +520,7 @@ public sealed class ParagraphLayoutEngine
             }
             else
             {
-                var features = item.Style.Features.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
+                var features = item.Style.ShapingFeatures.Select(feature => new TextFeature(feature.Tag, feature.Value, 0, text.Length)).ToArray();
                 shapeRequest = new TextShapeRequest(text, offset, item.Face, direction,
                     item.Script, item.Style.Language, features, paragraphProfile: true);
                 shaped = _engine._shaper.Shape(shapeRequest, _token);
@@ -830,25 +830,45 @@ public sealed class ParagraphLayoutEngine
             return line;
         }
 
-        private int GraphemeOf(Paragraph paragraph, int clusterStart)
-        {
-            var index = _text.IndexOfOffset(clusterStart) - paragraph.Start;
-            while (index > 0 && !paragraph.GraphemeStart[index]) index--;
-            return index;
-        }
-
+        // Letter spacing is charged per grapheme with a same-style successor on the line (as in Measure).
+        // Each shaped cluster receives the gaps of every grapheme it covers, so a ligature or other
+        // many-grapheme cluster keeps the total. In LTR runs a gap follows its grapheme's cluster; in RTL
+        // runs (glyphs in visual order) it is placed on the cluster of the logical successor, which is the
+        // visual left neighbor, so tracking widens the gap between the two graphemes rather than the run edge.
         private void ApplyLetterSpacing(List<DraftRun> runs, Paragraph paragraph, int trimEnd)
         {
             foreach (var run in runs)
             {
                 var spacing = run.Item.Style.LetterSpacingMillimeters;
                 if (spacing == 0 || run.IsTab) continue;
-                // The last glyph (in shaper order) of each grapheme followed by same-style content receives it.
-                var last = new Dictionary<int, int>();
+                var rtl = run.Level % 2 == 1;
+                // Shaped clusters of the run: paragraph code point interval and last glyph in shaper order.
+                var clusters = new Dictionary<int, (int End, int LastGlyph)>();
                 for (var index = 0; index < run.Shaped.Glyphs.Count; index++)
-                    last[GraphemeOf(paragraph, run.Shaped.Glyphs[index].ClusterStart)] = index;
-                foreach (var pair in last)
-                    if (HasSpacingAfter(paragraph, pair.Key, trimEnd)) run.Extra[pair.Value] += spacing;
+                {
+                    var glyph = run.Shaped.Glyphs[index];
+                    var start = _text.IndexOfOffset(glyph.ClusterStart) - paragraph.Start;
+                    var end = _text.IndexOfOffset(glyph.ClusterStart + glyph.ClusterLength) - paragraph.Start;
+                    clusters[start] = (end, index);
+                }
+                int? ClusterOf(int codePoint)
+                {
+                    foreach (var pair in clusters)
+                        if (codePoint >= pair.Key && codePoint < pair.Value.End) return pair.Key;
+                    return null;
+                }
+                foreach (var pair in clusters)
+                {
+                    for (var grapheme = pair.Key; grapheme < pair.Value.End; grapheme = NextCluster(paragraph, grapheme))
+                    {
+                        if (!paragraph.GraphemeStart[grapheme] || !HasSpacingAfter(paragraph, grapheme, trimEnd)) continue;
+                        var target = pair.Value.LastGlyph;
+                        if (rtl && NextCluster(paragraph, grapheme) is var successor && successor >= pair.Value.End &&
+                            ClusterOf(successor) is { } next)
+                            target = clusters[next].LastGlyph;
+                        run.Extra[target] += spacing;
+                    }
+                }
             }
         }
 
