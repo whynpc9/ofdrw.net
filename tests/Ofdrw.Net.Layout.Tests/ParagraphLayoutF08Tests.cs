@@ -103,6 +103,10 @@ public sealed class ParagraphLayoutF08Tests
         Assert.Equal(Positions(new ParagraphLayoutOptions(150)), Positions(new ParagraphLayoutOptions(150).WithMinimumTabAdvance(0.5)));
         var end = new ParagraphLayoutOptions(150).WithTabStops(new[] { new TextTabStop(near + 0.1 + Advance(Layout("def").Lines.Single().Runs.Single()), TextTabAlignment.End) });
         Assert.Equal(Positions(end), Positions(end.WithMinimumTabAdvance(0.5)));
+        // A stop exactly the minimum away is kept, implicit or explicit (half an em of 4 mm = 2 mm).
+        double Leading(ParagraphLayoutOptions options) => Layout("\tX", options: options).Lines.Single().Runs[1].OriginXMillimeters;
+        Assert.Equal(2, Leading(new ParagraphLayoutOptions(150).WithTabStops(null, 2).WithMinimumTabAdvance(0.5)), 6);
+        Assert.Equal(2, Leading(new ParagraphLayoutOptions(150).WithTabStops(new[] { new TextTabStop(2) }, 2).WithMinimumTabAdvance(0.5)), 6);
         Assert.Throws<TextLayoutException>(() => new ParagraphLayoutOptions(150).WithMinimumTabAdvance(-1));
         Assert.Throws<TextLayoutException>(() => new ParagraphLayoutOptions(150).WithMinimumTabAdvance(double.NaN));
     }

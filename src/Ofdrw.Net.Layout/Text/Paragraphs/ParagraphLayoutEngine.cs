@@ -618,7 +618,11 @@ public sealed class ParagraphLayoutEngine
             {
                 var interval = _options.DefaultTabIntervalMillimeters;
                 var origin = _options.DefaultTabOriginMillimeters;
-                target = origin + (Math.Floor((x + Math.Max(0, minimum - Epsilon) - origin) / interval + Epsilon) + 1) * interval;
+                // Zero minimum: the first stop strictly past x. Otherwise the first stop at least
+                // `minimum` past x, accepting one exactly at that distance like an explicit stop.
+                target = minimum <= Epsilon
+                    ? origin + (Math.Floor((x - origin) / interval + Epsilon) + 1) * interval
+                    : origin + Math.Ceiling((x + minimum - origin) / interval - Epsilon) * interval;
             }
             var advance = Math.Max(0, target - x);
             return Math.Max(0, Math.Min(advance, _options.WidthMillimeters - x));
