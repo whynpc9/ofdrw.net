@@ -139,15 +139,18 @@ public class ArchivalDossierTests
         { cancellation.Cancel(); return base.ReadAsync(buffer, offset, count, CancellationToken.None); }
     }
 
-    [Fact]
-    public void CatalogMatchesPublishedLedgerIncludingAnnexAndAllMappedRules()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void CatalogMatchesPublishedLedgerIncludingAnnexAndAllMappedRules(string lineEnding)
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
         while (root != null && !File.Exists(Path.Combine(root.FullName, "Ofdrw.Net.sln"))) root = root.Parent;
         Assert.NotNull(root);
         var text = File.ReadAllText(Path.Combine(root.FullName, "docs/content/reference/archival-standard-coverage.md"));
+        text = text.ReplaceLineEndings(lineEnding);
         var rows = text.Split("## 结果与转换边界")[0].Split('\n')
-            .Where(x => x.StartsWith("| ")).Select(x => x.Trim('|').Split('|').Select(v => v.Trim()).ToArray())
+            .Where(x => x.StartsWith("| ")).Select(x => x.Trim().Trim('|').Split('|').Select(v => v.Trim()).ToArray())
             .Where(x => x.Length == 3 && (System.Text.RegularExpressions.Regex.IsMatch(x[0], @"^[567]\.") ||
                 new[] { "6.7", "6.8", "6.11", "6.14", "6.16" }.Contains(x[0]) || int.TryParse(x[0], out _)))
             .Select(x => (Clause: int.TryParse(x[0], out _) ? "A.1/" + x[0] : x[0], Condition: x[1], Gap: x[2])).ToArray();
