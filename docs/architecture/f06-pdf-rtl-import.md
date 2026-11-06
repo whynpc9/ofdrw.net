@@ -36,8 +36,9 @@ unchanged.
    operations and maps every show-text operator to `Letter.TextSequence`. A
    glyph is evidence only when its rendering mode paints (fill/stroke), it is
    not under a non-rectangular clip, it lies inside every rectangular clip, and
-   its resolved `ExtGState` alpha is above zero. Text inside form XObjects (the
-   sequence count no longer matches), unresolvable transparency, soft masks (an
+   its resolved `ExtGState` alpha is above zero. Any form (or unresolvable)
+   XObject invocation on the page — sequence numbers cannot prove which operation
+   drew which letter — and any show-count mismatch, unresolvable transparency, soft masks (an
    active mask or unresolved `ExtGState` stays in force across later alpha-only
    `gs` operators until `/SMask /None` or `Q`),
    text clip modes, optional content, `/ActualText` and `/ReversedChars` reject.

@@ -27,6 +27,7 @@ internal sealed class PdfPaintedTextEvidence
     private static readonly NameToken StrokeAlphaKey = NameToken.Create("CA");
     private static readonly NameToken SoftMaskKey = NameToken.Create("SMask");
     private static readonly NameToken ExtGStateKey = NameToken.Create("ExtGState");
+    private static readonly NameToken XObjectKey = NameToken.Create("XObject");
 
     private sealed class State
     {
@@ -62,7 +63,7 @@ internal sealed class PdfPaintedTextEvidence
         var pathRects = new List<PdfRectangle>();
         var pathComplex = false;
         var pendingClip = false;
-        var hasXObject = false;
+        var formXObject = false;
         // Any glyph shown in a clip mode inside the current text object adds its
         // outline to the clip at ET, even if Tr changes again before ET.
         var textClipShown = false;
@@ -112,16 +113,22 @@ internal sealed class PdfPaintedTextEvidence
                     shows.Add(state.Copy());
                     if (state.TextClipMode) textClipShown = true;
                     break;
+                case "Do" when operation is InvokeNamedXObject xobject:
+                    // Only image XObjects are accounted for. A form (or anything
+                    // unresolvable) may show text under its own painting state, and
+                    // sequence numbers cannot prove which operation drew which letter.
+                    if (!IsImageXObject(document, page, xobject.Name)) formXObject = true;
+                    break;
                 case "Do":
-                    hasXObject = true;
+                    formXObject = true;
                     break;
             }
         }
         var maximum = page.Letters.Count == 0 ? 0 : page.Letters.Max(letter => letter.TextSequence);
-        if (maximum != shows.Count)
-            unverified = hasXObject
-                ? "text is shown inside a form XObject, whose painting state the profile does not verify."
-                : "its text operations could not be matched to the decoded glyphs.";
+        if (formXObject)
+            unverified = "the page invokes a form XObject, whose text and painting state the profile does not verify.";
+        else if (maximum != shows.Count)
+            unverified = "its text operations could not be matched to the decoded glyphs.";
         return new PdfPaintedTextEvidence(shows, unverified);
     }
 
@@ -172,6 +179,15 @@ internal sealed class PdfPaintedTextEvidence
         if (graphics.ContainsKey(StrokeAlphaKey)) state.StrokeAlpha = Number(Resolve(document, graphics, StrokeAlphaKey));
         if (graphics.ContainsKey(SoftMaskKey))
             state.SoftMask = !(Resolve(document, graphics, SoftMaskKey) is NameToken mask && mask.Data == "None");
+    }
+
+    private static bool IsImageXObject(PdfDocument document, Page page, NameToken name)
+    {
+        if (Resolve(document, page.Dictionary, NameToken.Resources) is not DictionaryToken resources ||
+            Resolve(document, resources, XObjectKey) is not DictionaryToken xobjects ||
+            Resolve(document, xobjects, name) is not StreamToken stream)
+            return false;
+        return Resolve(document, stream.StreamDictionary, NameToken.Subtype) is NameToken subtype && subtype.Data == "Image";
     }
 
     private static double? Number(IToken? token) => token is NumericToken number ? number.Double : null;

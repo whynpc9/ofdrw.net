@@ -242,6 +242,7 @@ public sealed class PdfRtlVisualLineImportTests
     [InlineData("text-clip-reset", "non-rectangular clipping path")]
     [InlineData("off-page", "is clipped")]
     [InlineData("outside-crop", "is clipped")]
+    [InlineData("form-then-empty-show", "form XObject")]
     [InlineData("reversed", "/ReversedChars")]
     [InlineData("optional", "optional content")]
     [InlineData("overlap", "overlapping glyphs")]
@@ -272,6 +273,10 @@ public sealed class PdfRtlVisualLineImportTests
             // No clipping operator: the MediaBox / CropBox alone hide the line.
             "off-page" => Synthetic(Line(300, A, B, C, 0, Mem, Vav, Lamed, Shin, 0, D, E, F)),
             "outside-crop" => Synthetic(line, pageExtras: "/CropBox [0 0 200 50]"),
+            // A form showing one text operation, then an empty page-level Tj: the
+            // sequence counts agree but describe different operations.
+            "form-then-empty-show" => Synthetic("() Tj ", prefix: "/Fm0 Do ", resources: "/XObject << /Fm0 9 0 R >>",
+                formContent: $"/G0 gs BT /F1 10 Tf 20 100 Td [<{A:X4}{B:X4}{C:X4}> -600 <{Mem:X4}{Vav:X4}{Lamed:X4}{Shin:X4}> -600 <{D:X4}{E:X4}{F:X4}>] TJ ET\n"),
             "reversed" => Synthetic(line, prefix: "/ReversedChars BMC ", suffix: "EMC "),
             "optional" => Synthetic(line, prefix: "/OC /L0 BDC ", suffix: "EMC ",
                 resources: "/Properties << /L0 << /Type /OCG /Name (L0) >> >>"),
@@ -359,7 +364,8 @@ public sealed class PdfRtlVisualLineImportTests
         return builder.ToString();
     }
 
-    private static byte[] Synthetic(string text, string prefix = "", string suffix = "", string resources = "", string pageExtras = "")
+    private static byte[] Synthetic(string text, string prefix = "", string suffix = "", string resources = "", string pageExtras = "",
+        string formContent = "")
     {
         var cmap = new StringBuilder("/CIDInit /ProcSet findresource begin 12 dict begin begincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /Test def /CMapType 2 def\n1 begincodespacerange <0000> <FFFF> endcodespacerange\n");
         cmap.Append($"{Glyphs.Length - 1} beginbfchar\n");
@@ -375,8 +381,9 @@ public sealed class PdfRtlVisualLineImportTests
             Stream(cmap.ToString()), Stream($"{prefix}BT /F1 10 Tf {text}ET {suffix}\n"),
             "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Synthetic /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 8 0 R /DW 500 /CIDToGIDMap /Identity >>",
             "<< /Type /FontDescriptor /FontName /Synthetic /Flags 4 /FontBBox [0 -200 500 800] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 >>",
-            // Object 9: an empty transparency group, the /G of synthetic soft masks.
-            "<< /Type /XObject /Subtype /Form /BBox [0 0 200 200] /Group << /S /Transparency /CS /DeviceGray >> /Length 0 >>\nstream\nendstream" };
+            // Object 9: a transparency-group form (the /G of synthetic soft masks, or a text-bearing form).
+            $"<< /Type /XObject /Subtype /Form /BBox [0 0 200 200] /Group << /S /Transparency /CS /DeviceGray >> " +
+            $"/Resources << /Font << /F1 4 0 R >> /ExtGState << /G0 << /ca 0 >> >> >> /Length {Encoding.UTF8.GetByteCount(formContent)} >>\nstream\n{formContent}endstream" };
         var pdf = new StringBuilder("%PDF-1.4\n");
         var offsets = new List<int>();
         for (var index = 0; index < objects.Length; index++)
