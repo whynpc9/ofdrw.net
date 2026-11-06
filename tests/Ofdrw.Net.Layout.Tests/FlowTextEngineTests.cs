@@ -104,6 +104,24 @@ public sealed class FlowTextEngineTests
     }
 
     [Fact]
+    public void AStyleChangeInsideAGraphemeClusterOnlyRestylesThatCluster()
+    {
+        var document = new FlowDocument();
+        document.Options.TextEngine = Engine.Value;
+        var paragraph = new Paragraph();
+        paragraph.Spans.Add(new Span("a") { Color = new OfdColor(200, 0, 0) });
+        paragraph.Spans.Add(new Span("\u0301XYZ") { Color = new OfdColor(0, 0, 200) });
+        document.Blocks.Add(paragraph);
+        var texts = document.Render().Pages.Single().Elements.OfType<OfdTextElement>().ToArray();
+        var accented = texts.Single(text => text.Text.Contains("a\u0301", StringComparison.Ordinal));
+        Assert.Equal(200, accented.FillColor.Red);
+        Assert.DoesNotContain("XYZ", accented.Text, StringComparison.Ordinal);
+        var rest = texts.Single(text => text.Text.Contains("XYZ", StringComparison.Ordinal));
+        Assert.Equal(200, rest.FillColor.Blue);
+        Assert.Equal(0, rest.FillColor.Red);
+    }
+
+    [Fact]
     public void EngineFailuresSurfaceAsFlowErrorsAndMissingFamiliesFallBack()
     {
         var document = new FlowDocument();

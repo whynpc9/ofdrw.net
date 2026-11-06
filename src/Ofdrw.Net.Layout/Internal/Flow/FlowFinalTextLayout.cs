@@ -156,19 +156,10 @@ internal sealed class FlowFinalTextLayout
             spans.Add(new TextStyleSpan(index, end - index, Style(style)));
             index = end;
         }
-        ParagraphLayoutResult layout;
-        try
-        {
-            layout = Run(text, spans, Options(format, width, first ? format.FirstLineIndentMillimeters : 0, text.Length), token);
-        }
-        catch (TextLayoutException exception) when (exception.Error == TextLayoutError.InvalidRequest &&
-            exception.Message.Contains("grapheme cluster"))
-        {
-            // A style change inside an extended grapheme cluster: the cluster takes its leading style,
-            // matching the compatibility layout.
-            layout = Run(text, MergeClusterSpans(text, spans), Options(format, width, first ? format.FirstLineIndentMillimeters : 0,
-                text.Length), token);
-        }
+        // A style change inside an extended grapheme cluster: that cluster takes its leading style, as in
+        // the compatibility layout; the following text keeps its own style.
+        var layout = Run(text, ClusterAlignedSpans(text, spans),
+            Options(format, width, first ? format.FirstLineIndentMillimeters : 0, text.Length), token);
         foreach (var line in layout.Lines)
             result.Add(new FlowLine(new List<FlowGlyph>(), line.HeightMillimeters, 0, FlowAlignment.Left) { Final = line });
     }
@@ -177,28 +168,36 @@ internal sealed class FlowFinalTextLayout
         CancellationToken token)
     {
         try { return _engine.Layout(new ParagraphLayoutRequest(text, spans, options), token); }
-        catch (TextLayoutException exception) when (!(exception.Error == TextLayoutError.InvalidRequest &&
-            exception.Message.Contains("grapheme cluster")))
+        catch (TextLayoutException exception)
         {
             throw new InvalidOperationException("Final text layout failed (" + exception.Error + "): " + exception.Message, exception);
         }
     }
 
-    private static List<TextStyleSpan> MergeClusterSpans(string text, IReadOnlyList<TextStyleSpan> spans)
+    // Re-tiles the spans on UAX #29 extended grapheme cluster boundaries (the engine's own breaker): every
+    // cluster takes the style of its first code unit; spans are otherwise unchanged.
+    internal static List<TextStyleSpan> ClusterAlignedSpans(string text, IReadOnlyList<TextStyleSpan> spans)
     {
-        var boundaries = new HashSet<int>(System.Globalization.StringInfo.ParseCombiningCharacters(text)) { text.Length };
-        var merged = new List<TextStyleSpan>();
+        if (spans.Count <= 1) return spans.ToList();
+        var codePoints = new Ofdrw.Net.Layout.Text.Unicode.CodePointText(text);
+        var boundaries = new bool[text.Length + 1];
+        foreach (var boundary in Ofdrw.Net.Layout.Text.Unicode.GraphemeBreaker.Boundaries(codePoints.CodePoints))
+            boundaries[codePoints.Offsets[boundary]] = true;
+        boundaries[0] = boundaries[text.Length] = true;
+        var styles = new TextStyle[text.Length];
         foreach (var span in spans)
+            for (var index = span.Start; index < span.Start + span.Length; index++) styles[index] = span.Style;
+        for (var index = 1; index < text.Length; index++)
+            if (!boundaries[index]) styles[index] = styles[index - 1];
+        var result = new List<TextStyleSpan>();
+        for (var index = 0; index < text.Length;)
         {
-            if (merged.Count > 0 && !boundaries.Contains(span.Start))
-            {
-                var previous = merged[merged.Count - 1];
-                merged[merged.Count - 1] = new TextStyleSpan(previous.Start, previous.Length + span.Length, previous.Style);
-                continue;
-            }
-            merged.Add(span);
+            var end = index + 1;
+            while (end < text.Length && ReferenceEquals(styles[end], styles[index])) end++;
+            result.Add(new TextStyleSpan(index, end - index, styles[index]));
+            index = end;
         }
-        return merged;
+        return result;
     }
 
     private double EmptyHeight(TextStyle style, FlowParagraphFormat format)

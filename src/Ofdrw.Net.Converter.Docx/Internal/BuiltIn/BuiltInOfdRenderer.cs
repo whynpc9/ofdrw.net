@@ -235,7 +235,9 @@ internal sealed class BuiltInOfdRenderer : IFlowFontMetrics
         {
             // Body PAGE uses the paragraph's first body line page context. Resolve that context
             // after deferred pagination, and remeasure when its number gains a digit.
-            while (leadingLines < lines.Count && lines[leadingLines].Glyphs.Count == 0)
+            // Leading control or blank lines; a final-layout line carries its content in Final, not Glyphs.
+            while (leadingLines < lines.Count && lines[leadingLines].Glyphs.Count == 0 &&
+                   (lines[leadingLines].Final is null || lines[leadingLines].Final!.Runs.Count == 0))
             {
                 var control = lines[leadingLines++];
                 if (control.PageBreak) { _pendingPageBreaks++; continue; }

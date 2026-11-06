@@ -89,6 +89,25 @@ public sealed class DocxNativeParagraphLayoutTests
     }
 
     [Fact]
+    public async Task BodyPageFieldParagraphsUseFinalLayout()
+    {
+        const string body = """
+            <w:p><w:r><w:t>Before</w:t></w:r></w:p>
+            <w:p><w:r><w:t xml:space="preserve">Body page </w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>9</w:t></w:r></w:fldSimple>
+              <w:r><w:t xml:space="preserve"> 页</w:t></w:r></w:p>
+            <w:p><w:r><w:br/><w:t xml:space="preserve">After a leading break, page </w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>9</w:t></w:r></w:fldSimple></w:p>
+            """;
+        using var fonts = new PinnedCjkFontDirectory();
+        using var source = DocxReleaseFixtures.CreateMinimalDocx(body);
+        var (package, _) = await Convert(source, Options(fonts, engine: true));
+        var text = Text(package);
+        Assert.Contains("Bodypage1页", text);
+        Assert.Contains("Afteraleadingbreak,page1", text);
+        Assert.All(package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>(),
+            element => Assert.Contains("ClusterMapV1", element.SourceXml!));
+    }
+
+    [Fact]
     public async Task StrictBoldPolicyStillRefusesSynthesisWithTheEngine()
     {
         using var fonts = new PinnedCjkFontDirectory();
