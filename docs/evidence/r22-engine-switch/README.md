@@ -32,3 +32,20 @@ zstd -dc docs/evidence/r22-engine-switch/engine-switch-evidence.tar.zst | tar -x
 Regenerate the comparison with
 `OFDRW_SOURCE_SHA=<commit> dotnet run --project e2e/Ofdrw.Net.Layout.E2E -- <out> e2e/Ofdrw.Net.Converter.Docx.E2E/testdata/generated-layout.docx --engine-comparison-only`,
 then `pdftoppm -r 144 -png` each PDF.
+
+## Issue #115 Preview re-check bundle
+
+[`issue115-preview-recheck.tar.zst`](issue115-preview-recheck.tar.zst) holds the outputs regenerated
+after the [Issue #115 fixes](../../validation/r22-engine-switch-comparison.md),
+for a macOS Preview re-check: `f08-visual-sample.{ofd,pdf}` (single highlight path),
+`plain-text-{engine,legacy}.{ofd,pdf}` (minimum tab gap), their 144 dpi page-1 PNGs, a 400 dpi
+highlight crop and `SHA256SUMS`.
+
+| Identity | Value |
+| --- | --- |
+| Source commit | `133d03c2739c7867124a97b26748ce63983cfae6` (fonts as above) |
+| Archive bytes | `2,882,772` |
+| Archive SHA-256 | `a09a44da57dd1144ab9221760b1fc679426b3065f7c7cb95c394335c887c119c` |
+| Archive entries | 11 files under `bundle/`; SHA-256 in `bundle/SHA256SUMS` |
+
+Extract with `zstd -dc docs/evidence/r22-engine-switch/issue115-preview-recheck.tar.zst | tar -xf - -C artifacts/r22-engine-switch`.

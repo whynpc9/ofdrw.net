@@ -23,9 +23,15 @@ internal sealed class FlowFinalTextLayout
     private readonly Dictionary<FlowTextStyle, TextStyle> _styles = new(ReferenceComparer.Instance);
     private readonly Dictionary<TextStyle, double> _emptyHeights = new(ReferenceComparer<TextStyle>.Instance);
 
+    private readonly double _minimumTabAdvanceEm;
+
+    // DOCX keeps Word's tab rule (minimum 0); Flow and plain text skip a stop that would leave less than
+    // half an em, so columns stay distinguishable (Issue #115, CSS tab-size precedent).
+    internal const double FlowMinimumTabAdvanceEm = 0.5;
+
     internal FlowFinalTextLayout(ParagraphLayoutEngine engine, Func<FlowTextStyle, TextStyle> map,
-        TextSyntheticStylePolicy synthetic)
-    { _engine = engine; _map = map; _synthetic = synthetic; }
+        TextSyntheticStylePolicy synthetic, double minimumTabAdvanceEm = 0)
+    { _engine = engine; _map = map; _synthetic = synthetic; _minimumTabAdvanceEm = minimumTabAdvanceEm; }
 
     internal static FlowFinalTextLayout? Create(FlowTextEngine? engine, Func<FlowTextStyle, TextColor> color)
     {
@@ -40,7 +46,7 @@ internal sealed class FlowFinalTextLayout
             if (style.HighlightColor is { } highlight) text = text.WithHighlight(highlight);
             if (style.LetterSpacingMillimeters != 0) text = text.WithLetterSpacing(style.LetterSpacingMillimeters);
             return text;
-        }, engine.SyntheticStyles);
+        }, engine.SyntheticStyles, FlowMinimumTabAdvanceEm);
     }
 
     internal static TextColor Color(OfdColor color) => new(color.Red, color.Green, color.Blue, color.Alpha);
@@ -138,6 +144,7 @@ internal sealed class FlowFinalTextLayout
             0, indent, TextOverflowPolicy.BreakGraphemes, maximumLines: 1_000_000, maximumShapeCalls: 10_000_000,
             maximumTextLength: Math.Max(1, Math.Min(16_777_216, length)));
         options = options.WithSyntheticStyles(_synthetic);
+        if (_minimumTabAdvanceEm > 0) options = options.WithMinimumTabAdvance(_minimumTabAdvanceEm);
         return format.TabStops.Count > 0 || format.DefaultTabIntervalMillimeters is not null
             ? options.WithTabStops(format.TabStops, format.DefaultTabIntervalMillimeters ?? 12.7, format.DefaultTabOriginMillimeters)
             : options;

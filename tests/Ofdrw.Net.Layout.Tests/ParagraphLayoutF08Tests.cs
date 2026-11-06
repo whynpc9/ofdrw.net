@@ -83,6 +83,35 @@ public sealed class ParagraphLayoutF08Tests
     }
 
     [Fact]
+    public void AMinimumTabAdvanceSkipsAStopTooCloseToTheText()
+    {
+        // Issue #115: text ending 0.5 mm before a stop left a near-zero gap.
+        var width = Advance(Layout("abc").Lines.Single().Runs.Single());
+        var near = width + 0.5;
+        string Positions(ParagraphLayoutOptions options) => string.Join(",",
+            Layout("abc	def", options: options).Lines.Single().Runs.Select(run => run.OriginXMillimeters.ToString("0.###", CultureInfo.InvariantCulture)));
+        double After(ParagraphLayoutOptions options) => Layout("abc	def", options: options).Lines.Single().Runs[2].OriginXMillimeters;
+        var implicitStops = new ParagraphLayoutOptions(150).WithTabStops(null, 10, near);
+        var explicitStop = new ParagraphLayoutOptions(150).WithTabStops(new[] { new TextTabStop(near) }, 10, near);
+        // Word's rule (the default) uses any stop past the text.
+        Assert.Equal(near, After(implicitStops), 6);
+        Assert.Equal(near, After(explicitStop), 6);
+        // Half an em (2 mm at 4 mm) skips both the implicit and the start-aligned explicit stop.
+        Assert.Equal(near + 10, After(implicitStops.WithMinimumTabAdvance(0.5)), 6);
+        Assert.Equal(near + 10, After(explicitStop.WithMinimumTabAdvance(0.5)), 6);
+        // A gap that is already wide enough is unchanged, and so are center/end/decimal stops.
+        Assert.Equal(Positions(new ParagraphLayoutOptions(150)), Positions(new ParagraphLayoutOptions(150).WithMinimumTabAdvance(0.5)));
+        var end = new ParagraphLayoutOptions(150).WithTabStops(new[] { new TextTabStop(near + 0.1 + Advance(Layout("def").Lines.Single().Runs.Single()), TextTabAlignment.End) });
+        Assert.Equal(Positions(end), Positions(end.WithMinimumTabAdvance(0.5)));
+        // A stop exactly the minimum away is kept, implicit or explicit (half an em of 4 mm = 2 mm).
+        double Leading(ParagraphLayoutOptions options) => Layout("\tX", options: options).Lines.Single().Runs[1].OriginXMillimeters;
+        Assert.Equal(2, Leading(new ParagraphLayoutOptions(150).WithTabStops(null, 2).WithMinimumTabAdvance(0.5)), 6);
+        Assert.Equal(2, Leading(new ParagraphLayoutOptions(150).WithTabStops(new[] { new TextTabStop(2) }, 2).WithMinimumTabAdvance(0.5)), 6);
+        Assert.Throws<TextLayoutException>(() => new ParagraphLayoutOptions(150).WithMinimumTabAdvance(-1));
+        Assert.Throws<TextLayoutException>(() => new ParagraphLayoutOptions(150).WithMinimumTabAdvance(double.NaN));
+    }
+
+    [Fact]
     public void TabsDoNotJustifyAndClampToTheFrame()
     {
         var options = new ParagraphLayoutOptions(40, alignment: TextAlignment.Justify);
@@ -213,6 +242,34 @@ public sealed class ParagraphLayoutF08Tests
         Assert.True(firstText > 0);
         Assert.All(order.Take(firstText), name => Assert.Equal("PathObject", name));
         Assert.Equal("PathObject", order.Last());
+        // Issue #115: font fallback splits the line into Latin and Han runs, but each decoration is one
+        // path spanning all of them, so viewers draw no seam where the pieces meet.
+        Assert.True(line.Runs.Count >= 3);
+        Assert.Equal(new[] { "PathObject", "TextObject" }, order.Take(2));
+        Assert.Equal(3, order.Count(name => name == "PathObject"));
+        var read = await new OfdReader().ReadAsync(new MemoryStream(bytes));
+        var highlight = read.Pages.Single().Elements.OfType<OfdPathElement>().First();
+        var pieces = line.Runs.SelectMany(run => run.Decorations).Where(value => value.Kind == ParagraphLayoutDecorationKind.Highlight)
+            .Select(value => value.BoundsMillimeters).ToArray();
+        Assert.Equal(10 + pieces.Min(value => value.X), highlight.XMillimeters, 3);
+        Assert.Equal(pieces.Max(value => value.X + value.Width) - pieces.Min(value => value.X), highlight.WidthMillimeters, 3);
+    }
+
+    [Fact]
+    public void DecorationsOfDifferentColorsOrSizesStaySeparate()
+    {
+        var text = "red blue big";
+        var red = Style(4).WithHighlight(new TextColor(255, 0, 0));
+        var blue = Style(4).WithHighlight(new TextColor(0, 0, 255));
+        var big = Style(6).WithHighlight(new TextColor(0, 0, 255));
+        var layout = HarfBuzzTextPrelayout.CreateParagraphLayout().Layout(new ParagraphLayoutRequest(text, new[]
+        {
+            new TextStyleSpan(0, 4, red), new TextStyleSpan(4, 5, blue), new TextStyleSpan(9, 3, big),
+        }, new ParagraphLayoutOptions(150)));
+        var package = ParagraphLayoutOfdWriter.CreateDocument(layout, 170, 40, 10, 10);
+        var paths = package.Pages.Single().Elements.OfType<OfdPathElement>().ToArray();
+        Assert.Equal(3, paths.Length);
+        Assert.Equal(new[] { 255, 0, 0 }, new[] { paths[0].FillColor.Red, paths[1].FillColor.Red, paths[2].FillColor.Red });
     }
 
     [Fact]

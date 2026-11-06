@@ -37,7 +37,7 @@ await new OfdPackageWriter().WriteAsync(package, output);
 5. **塑形。** 使用 `ITextShaper`（默认 HarfBuzz）对每个项目进行测量塑形。
 6. **断行。** 在同时属于字素簇边界的 UAX #14 断行机会上采用首次适配贪心算法。尾部空格悬挂。随后重建所选行：被行边缘或 L1 级别变化切开的游程会**重新塑形**并检查实际宽度；若溢出，则尝试前一个断行机会（最多 32 次，随后 `BudgetExceeded`）。由于估算将跨断点字距调整计入左侧，在信任估算结果之前，还会重建最多三个“估算超出版心不超过半个 em”的后续合法断点。没有断行机会的片段会以 `LayoutOverflow` 失败（默认 `TextOverflowPolicy.Reject`），或在字素簇边界断开（`BreakGraphemes`）；绝不拆分簇内部。候选切点都会重建并重新塑形。重建后的宽度不具单调性（阿拉伯文 lam-alef 连字可能比单独的 lam 更窄），因此二分查找后还会进行有界向上扫描，并在连续四个切点溢出后停止。所选切点是已找到的最大适配切点，不保证全局最大。
 7. **重排序。** 每行先应用 L1，再对游程应用 L2。游程内部保留塑形器的视觉字形顺序。
-8. **制表位与字距。** 制表符（UAX #9 L1 后位于段落级别）按逻辑顺序从行起始边推进到下一个制表位：显式 `TextTabStop`（`Start`/`Center`/`End`/`Decimal`，最多 64 个，从版心起始边量起），其后为 `DefaultTabOriginMillimeters + k × DefaultTabIntervalMillimeters`（默认 0 与 12.7 mm）的隐式起始对齐制表位；超出版心的制表位截到版心边缘。制表符写为字面空格字形（GID 来自 cmap U+0020），其步进为到制表位的距离；逻辑文本保留 U+0009。`TextStyle.WithLetterSpacing` 在同一样式、同一行内后接内容的每个字素簇之后增加固定步进。
+8. **制表位与字距。** 制表符（UAX #9 L1 后位于段落级别）按逻辑顺序从行起始边推进到下一个制表位：显式 `TextTabStop`（`Start`/`Center`/`End`/`Decimal`，最多 64 个，从版心起始边量起），其后为 `DefaultTabOriginMillimeters + k × DefaultTabIntervalMillimeters`（默认 0 与 12.7 mm）的隐式起始对齐制表位；超出版心的制表位截到版心边缘。`options.WithMinimumTabAdvance(em)`（0–4，默认 0，即 Word 规则）要求起始对齐和隐式制表位与制表符起点至少相距 em × 制表符字号，不足时改用下一个制表位（同 CSS `tab-size` 不足半个字符时跳到下一个制表位的规则）；居中、右对齐和小数制表位不受影响。制表符写为字面空格字形（GID 来自 cmap U+0020），其步进为到制表位的距离；逻辑文本保留 U+0009。`TextStyle.WithLetterSpacing` 在同一样式、同一行内后接内容的每个字素簇之后增加固定步进。
 9. **度量与对齐。** 所有游程共享一条基线。正常行高使用各字面在相应字号下的上升部、下降部和行间距；也可使用 `Multiple`、`AtLeast`（不小于给定值，多余空间位于文字下方）和 `Exact`。`Start`/`End` 随段落方向变化；首行缩进位于起始侧，可为负值（悬挂缩进，范围 (−宽度, 宽度)）。`Justify` 在词间空格以及汉字、假名、谚文或注音符号相邻字素之间拉伸非末行（闭标点前不拉伸，行内最后一个制表符之前不拉伸）；额外步进按字形记录。
 10. **装饰。** `TextStyle.WithDecorations`（下划线、删除线，可指定颜色，默认填充色）和 `WithHighlight` 生成填充矩形：高亮跨上升部到下降部，下划线和删除线使用字面 `post` / `OS/2` 中的位置和粗细（缺失或不合理时使用常规默认值）。几何取自样式回退链第一个字体家族的字面，使同一样式跨字体回退时保持水平。行尾悬挂空格不装饰。
 11. **分页。** 按 `PageHeightMillimeters` 划分页面（或使用一个高度不限的页面）。分页处丢弃段间距；高于页面的行会以 `LayoutOverflow` 失败。
@@ -65,7 +65,7 @@ await new OfdPackageWriter().WriteAsync(package, output);
 - 字形槽位遵循该顺序，每个槽位都有显式原点（完整的 `DeltaX`/`DeltaY`），因此 RTL 游程使用负增量，而不是重排文本；
 - 每个不同字面对应一个字体资源，以保留 GID 的子集嵌入（或通过 `embedFullFonts: true` 完整嵌入）；遵守 OS/2 嵌入限制。TrueType 字面沿用 glyf 子集；静态 CFF1 字面（含 CID-keyed）保留所有 GID 槽位，未使用的 CharString 原位改为 `endchar`、未调用的子程序改为 `return` 并补零，不改动任何 CFF 偏移，由 OFD 的 deflate 压缩去除填充；
 - 写入填充颜色和 alpha；描边（含合成粗体）写为 `Stroke`/`LineWidth`/`StrokeColor`，不写 `Weight`；合成斜体写为以游程基线为轴的剪切 `CTM`，不写 `Italic`；
-- 高亮在该行所有 TextObject 之前、下划线和删除线在其之后，写为填充 PathObject。
+- 高亮在该行所有 TextObject 之前、下划线和删除线在其之后，写为填充 PathObject。同一行内种类、颜色和纵向范围相同且首尾相接的矩形（例如字体回退分成拉丁文和汉字游程的同一高亮）合并为一个路径，避免抗锯齿阅读器在两块之间画出接缝（Issue #115）；结果中的 `Decorations` 仍按游程给出。
 
 以下情况会在创建包之前以 `UnsupportedOutput` 拒绝：解析样式与字面不一致、文本框或墨迹超出页面，以及源文本/GID 身份丢失。
 

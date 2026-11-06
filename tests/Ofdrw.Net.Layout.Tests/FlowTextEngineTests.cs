@@ -104,6 +104,24 @@ public sealed class FlowTextEngineTests
     }
 
     [Fact]
+    public void PlainTextTabsLeaveAtLeastHalfAnEmBeforeTheNextColumn()
+    {
+        // Issue #115: columns such as "数量 12\t说明" ended just before a default stop and touched.
+        var builder = new StringBuilder();
+        for (var row = 1; row <= 60; row++)
+            builder.Append(row.ToString("00", System.Globalization.CultureInfo.InvariantCulture)).Append("\t项目 Item ").Append(row)
+                .Append("\t数量 ").Append(row * 3).Append("\t说明：中英文混排的纯文本行。\n");
+        var options = new PlainTextOfdOptions();
+        options.Layout.DefaultFontFamily = "Noto Sans";
+        options.Layout.TextEngine = Engine.Value;
+        var package = new PlainTextOfdConverter(options).Render(builder.ToString());
+        var size = options.Layout.DefaultFontSizeMillimeters;
+        var tabs = package.Pages.SelectMany(page => page.Elements).OfType<OfdTextElement>().Where(text => text.Text == "\t").ToArray();
+        Assert.Equal(180, tabs.Length);
+        Assert.All(tabs, tab => Assert.True(tab.WidthMillimeters >= size / 2 - 1e-6, $"tab advance {tab.WidthMillimeters}"));
+    }
+
+    [Fact]
     public void AStyleChangeInsideAGraphemeClusterOnlyRestylesThatCluster()
     {
         var document = new FlowDocument();

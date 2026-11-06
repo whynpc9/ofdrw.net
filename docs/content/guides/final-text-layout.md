@@ -40,7 +40,7 @@ var plain = new PlainTextOfdConverter(options).Render(text);
 - `Span.FontFamily`（或 `DefaultFontFamily`）按名称（不区分大小写）匹配到的字体家族排在回退链首位，其余家族按给定顺序作为回退；未匹配时使用全部家族的原顺序。
 - `Bold`/`Italic`/`FontWeight ≥ 600` 优先选择声明了对应样式的字面；缺失时默认合成（`TextSyntheticStylePolicy.Synthesize`），可在构造函数中改为 `Reject`。
 - `Underline` 使用字面的下划线位置和粗细，`UnderlineOffsetMillimeters`/`UnderlineWidthMillimeters` 只影响兼容排版。`LetterSpacingMillimeters` 按字素簇生效。
-- 换行、末尾换行和换页（`\f`）沿用兼容排版的语义；制表符按默认 12.7 mm 制表位推进（兼容排版按四个空格测量）。
+- 换行、末尾换行和换页（`\f`）沿用兼容排版的语义；制表符按默认 12.7 mm 制表位推进（兼容排版按四个空格测量）。为保持列边界可辨，制表符距下一个制表位不足半个 em 时跳到再下一个制表位，因此同一列内容跨过制表位的行会落到不同制表位上（Issue #115）。DOCX Native 不采用此规则，保持 Word 语义。
 - 含内嵌图片的段落仍使用兼容排版。引擎错误以 `InvalidOperationException` 抛出，`InnerException` 为带源区间的 `TextLayoutException`。
 
 ## DOCX Native
@@ -53,7 +53,7 @@ await new DocxToOfdConverter(options).ConvertAsync(input, output);
 ```
 
 - 字体来自 `FontDirectories`（未配置时为平台 CJK 目录）。请求的字体家族在前，`FontFallbackFamilies` 与常见中文字体替代顺序中实际存在的家族随后；所有使用的字面都会嵌入。名称引用的 SimSun/SimHei 等阅读器本地字体不再保持未嵌入，改为嵌入实际用于排版的字面。
-- 读取 `w:tabs`（左/居中/右/小数，`clear` 合并样式链）和 `settings.xml` 的 `w:defaultTabStop`；制表位按 Word 从文本栏起始处量起，悬挂缩进的位置本身也是首行的制表位。
+- 读取 `w:tabs`（左/居中/右/小数，`clear` 合并样式链）和 `settings.xml` 的 `w:defaultTabStop`；制表位按 Word 从文本栏起始处量起，悬挂缩进的位置本身也是首行的制表位。与 Word 一致，紧邻制表位的文本后制表符可以几乎没有步进。
 - 读取 `w:strike`/`w:dstrike`（一条删除线）、`w:highlight` 和字符底纹 `w:shd`（高亮矩形）。
 - `NativeEmbeddedBoldBehavior = Throw` 时不合成粗体（缺少粗体字面即失败）；默认 `TextStroke` 合成，写为填充色描边而不是 `Weight`。
 - 含内嵌图片的段落使用兼容排版，并报告一次 `DOCX_NATIVE_TEXT_ENGINE_FALLBACK`。不受支持的字面报告 `DOCX_FONT_TEXT_ENGINE_UNSUPPORTED` 并被跳过。

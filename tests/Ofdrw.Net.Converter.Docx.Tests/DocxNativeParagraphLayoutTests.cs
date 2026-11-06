@@ -85,7 +85,10 @@ public sealed class DocxNativeParagraphLayoutTests
         var highlightIndex = page.Elements.ToList().FindIndex(element => element is OfdPathElement { Fill: true } path && path.FillColor is { Red: 255, Blue: 0 });
         var markedIndex = page.Elements.ToList().FindIndex(element => element is OfdTextElement text && text.Text.StartsWith("marked", StringComparison.Ordinal));
         Assert.True(highlightIndex >= 0 && highlightIndex < markedIndex);
-        Assert.True(paths.Count(path => path.Fill) >= 3);
+        // "marked 高亮" spans a Latin and a Han face but is one highlight path (Issue #115), and the
+        // strikethrough over "struck 删除" is one more.
+        Assert.Single(paths, path => path.Fill && path.FillColor is { Red: 255, Green: 255, Blue: 0 });
+        Assert.True(paths.Count(path => path.Fill) >= 2);
     }
 
     [Fact]
