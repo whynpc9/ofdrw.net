@@ -60,6 +60,9 @@ internal sealed class PdfPaintedTextEvidence
         var pathComplex = false;
         var pendingClip = false;
         var hasXObject = false;
+        // Any glyph shown in a clip mode inside the current text object adds its
+        // outline to the clip at ET, even if Tr changes again before ET.
+        var textClipShown = false;
         string? unverified = null;
         foreach (var operation in page.Operations)
         {
@@ -95,12 +98,16 @@ internal sealed class PdfPaintedTextEvidence
                 case "Tr" when operation is SetTextRenderingMode tr:
                     state.TextClipMode = tr.Mode >= TextRenderingMode.FillClip;
                     break;
+                case "BT":
+                    textClipShown = false;
+                    break;
                 case "ET":
-                    // Glyph outlines shown in a clip mode join the clipping path at ET.
-                    if (state.TextClipMode) state.ComplexClip = true;
+                    if (textClipShown) state.ComplexClip = true;
+                    textClipShown = false;
                     break;
                 case "Tj": case "TJ": case "'": case "\"":
                     shows.Add(state.Copy());
+                    if (state.TextClipMode) textClipShown = true;
                     break;
                 case "Do":
                     hasXObject = true;

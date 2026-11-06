@@ -239,6 +239,7 @@ public sealed class PdfRtlVisualLineImportTests
     [InlineData("soft-mask", "soft mask")]
     [InlineData("soft-mask-then-alpha", "soft mask")]
     [InlineData("unresolved-then-alpha", "cannot resolve")]
+    [InlineData("text-clip-reset", "non-rectangular clipping path")]
     [InlineData("reversed", "/ReversedChars")]
     [InlineData("optional", "optional content")]
     [InlineData("overlap", "overlapping glyphs")]
@@ -263,6 +264,9 @@ public sealed class PdfRtlVisualLineImportTests
             "soft-mask-then-alpha" => Synthetic("/M0 gs /G1 gs " + line,
                 resources: "/ExtGState << /M0 << /SMask << /S /Alpha /G 9 0 R >> >> /G1 << /ca 1 >> >>"),
             "unresolved-then-alpha" => Synthetic("/Missing gs /G1 gs " + line, resources: "/ExtGState << /G1 << /ca 1 >> >>"),
+            // A clip-mode glyph on another baseline, then Tr reset before ET: the
+            // clip still applies at ET to the later RTL text object.
+            "text-clip-reset" => Synthetic(line, prefix: $"BT /F1 10 Tf 7 Tr 1 0 0 1 20 40 Tm <{A:X4}> Tj 0 Tr ET "),
             "reversed" => Synthetic(line, prefix: "/ReversedChars BMC ", suffix: "EMC "),
             "optional" => Synthetic(line, prefix: "/OC /L0 BDC ", suffix: "EMC ",
                 resources: "/Properties << /L0 << /Type /OCG /Name (L0) >> >>"),
