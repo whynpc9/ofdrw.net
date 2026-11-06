@@ -145,19 +145,39 @@ public static class ParagraphLayoutOfdWriter
     internal static void AppendLine(IList<OfdElement> elements, ParagraphLayoutLine line, double left, double top,
         Func<TextFontFace, string> fontId)
     {
-        foreach (var run in line.Runs)
-            foreach (var decoration in run.Decorations)
-                if (decoration.Kind == ParagraphLayoutDecorationKind.Highlight) elements.Add(Rectangle(decoration, left, top));
+        foreach (var (bounds, color) in Merged(line, highlight: true)) elements.Add(Rectangle(bounds, color, left, top));
         foreach (var run in line.Runs) elements.Add(CreateElement(run, line, left, top, fontId(run.Face)));
-        foreach (var run in line.Runs)
-            foreach (var decoration in run.Decorations)
-                if (decoration.Kind != ParagraphLayoutDecorationKind.Highlight) elements.Add(Rectangle(decoration, left, top));
+        foreach (var (bounds, color) in Merged(line, highlight: false)) elements.Add(Rectangle(bounds, color, left, top));
     }
 
-    private static OfdPathElement Rectangle(ParagraphLayoutDecoration decoration, double left, double top)
+    // Abutting rectangles of one kind, color and vertical extent (for example a highlight that font
+    // fallback splits into a Latin and a Han run) become one path: anti-aliased viewers draw a faint seam
+    // where two separately filled shapes meet (Issue #115). Different colors never merge.
+    private const double DecorationJoinMillimeters = 1e-4;
+
+    private static IEnumerable<(TextLayoutBounds Bounds, TextColor Color)> Merged(ParagraphLayoutLine line, bool highlight)
     {
-        var bounds = decoration.BoundsMillimeters;
-        var color = decoration.Color;
+        var merged = new List<(ParagraphLayoutDecorationKind Kind, TextLayoutBounds Bounds, TextColor Color)>();
+        var pieces = line.Runs.SelectMany(run => run.Decorations)
+            .Where(decoration => (decoration.Kind == ParagraphLayoutDecorationKind.Highlight) == highlight)
+            .OrderBy(decoration => decoration.BoundsMillimeters.X);
+        foreach (var piece in pieces)
+        {
+            var bounds = piece.BoundsMillimeters;
+            var index = merged.FindIndex(other => other.Kind == piece.Kind && other.Color.Equals(piece.Color) &&
+                Math.Abs(other.Bounds.Y - bounds.Y) <= DecorationJoinMillimeters &&
+                Math.Abs(other.Bounds.Height - bounds.Height) <= DecorationJoinMillimeters &&
+                bounds.X <= other.Bounds.X + other.Bounds.Width + DecorationJoinMillimeters);
+            if (index < 0) { merged.Add((piece.Kind, bounds, piece.Color)); continue; }
+            var target = merged[index].Bounds;
+            var right = Math.Max(target.X + target.Width, bounds.X + bounds.Width);
+            merged[index] = (piece.Kind, new TextLayoutBounds(target.X, target.Y, right - target.X, target.Height), piece.Color);
+        }
+        return merged.Select(item => (item.Bounds, item.Color));
+    }
+
+    private static OfdPathElement Rectangle(TextLayoutBounds bounds, TextColor color, double left, double top)
+    {
         var width = Math.Max(bounds.Width, 0.001);
         var height = Math.Max(bounds.Height, 0.001);
         return new OfdPathElement

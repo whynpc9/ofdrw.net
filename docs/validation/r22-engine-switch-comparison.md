@@ -37,7 +37,7 @@ document), and PDF text extraction equals the OFD text on every page.
 | CN/EN headers sample | 5 / 5 | yes | 0.020–0.021 | Same headers, bodies and PAGE/NUMPAGES fields; sub-millimeter baseline shifts. |
 | CN/EN inline JPEG sample | 1 / 1 | yes | 0.025 | The image paragraph keeps the compatibility layout (`DOCX_NATIVE_TEXT_ENGINE_FALLBACK`); the label line is about 0.4 mm shorter. |
 | Flow sample (title, local bold/italic/red, 30 indented paragraphs) | 2 / 2 | no | 0.321, 0.231 | Legacy binds name-only SimSun with Arial-compatible widths; the engine shapes with explicit Noto Sans + Noto Sans CJK SC, so Latin wraps one word earlier and one paragraph moves to page 2. Bold/italic are synthesized. Expected. |
-| Plain text (40 tab-separated rows, form feed) | 2 / 2 | yes | 0.258, 0.028 | Legacy measures a tab as four spaces; the engine aligns tabs to 12.7 mm default stops. Where text ends just before a stop the tab advance is near zero (default-stop semantics). Intended. |
+| Plain text (40 tab-separated rows, form feed) | 2 / 2 | yes | 0.258, 0.028 | Legacy measures a tab as four spaces; the engine aligns tabs to 12.7 mm default stops. Where text ends just before a stop the tab advance was near zero (default-stop semantics); Preview review in Issue #115 found columns touching (`数量 12说明`), so Flow/plain text now skip a stop closer than half an em (see the Issue #115 follow-up below). |
 
 Defects found during the review and fixed before the final run: (1) `AtLeast` line height put the
 extra space above the text, so the last body line touched the following table; it now goes below,
@@ -59,6 +59,22 @@ bold, oblique and bold-oblique (solid at 800 dpi), underline/strikethrough level
 highlight band, letter spacing, Ext-B 𠂇 (U+20087) and 𠀋 (U+2000B), Arabic joining and the CID-keyed
 CFF Han face. No missing glyphs, overlap, clipping or duplicated text was seen; `pdffonts` lists only
 CID TrueType fonts.
+
+## Issue #115 follow-up (Preview review findings)
+
+macOS Preview review of the merged switch (`6cbaaf5`, `OFD → PDF → Preview`) reported two defects;
+both were fixed and re-checked from regenerated artifacts on Linux (OFD → PDF → Poppler PNG).
+
+| Finding | Cause | Change | Re-check |
+| --- | --- | --- | --- |
+| A faint vertical line where `highlight 高亮` crosses from the Latin to the Han face | The highlight was two abutting same-color PathObjects (one per fallback run, serialized edges 0.0005 mm apart); anti-aliasing viewers draw a seam between separately filled shapes | The writer merges abutting decoration rectangles of one kind, color and vertical extent on a line into one path | `f08-visual-sample` page 1 now has 3 PathObjects (one highlight `101.971 30.855 29.156 6.129`, one underline, one strikethrough) instead of 4; 400 dpi crop shows one band |
+| Plain-text rows `数量 12\t说明` with almost no gap | Text ended just before a 12.7 mm default stop; the tab advance was near zero | Flow and plain text skip a start-aligned or implicit stop closer than 0.5 em (`ParagraphLayoutOptions.WithMinimumTabAdvance`, CSS `tab-size` precedent); DOCX Native keeps Word's rule | `plain-text-engine` page 1: rows 04–40 move `说明` to the next stop with a visible gap; rows 01–03 keep the nearer stop, so the fourth column sits on two different stops (inherent to default stops) |
+
+Regression tests: `AMinimumTabAdvanceSkipsAStopTooCloseToTheText`,
+`PlainTextTabsLeaveAtLeastHalfAnEmBeforeTheNextColumn` (fails without the change: 1.77 mm < 1.85 mm),
+`DecorationsUseFaceMetricsAndAreWrittenInPaintOrder` (one path per decoration across fallback; fails
+without the change) and `DecorationsOfDifferentColorsOrSizesStaySeparate`. macOS Preview re-check of
+the regenerated PDFs is still outstanding.
 
 ## Not completed
 

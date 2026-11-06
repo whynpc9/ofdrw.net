@@ -596,12 +596,15 @@ public sealed class ParagraphLayoutEngine
 
         // Advance of a tab at start-relative position `x`, followed by a segment `width` wide whose part
         // before its first decimal separator is `beforeDecimal` wide. Stops past the frame clamp to it.
-        private double TabAdvance(double x, double width, double beforeDecimal)
+        // A start-aligned or implicit stop must leave at least the minimum gap (Issue #115).
+        private double TabAdvance(double x, double width, double beforeDecimal, double fontSize)
         {
             double target = double.NaN;
+            var minimum = _options.MinimumTabAdvanceEm * fontSize;
             foreach (var stop in _options.TabStops)
             {
                 if (stop.PositionMillimeters <= x + Epsilon) continue;
+                if (stop.Alignment == TextTabAlignment.Start && stop.PositionMillimeters < x + minimum - Epsilon) continue;
                 target = stop.Alignment switch
                 {
                     TextTabAlignment.Center => stop.PositionMillimeters - width / 2,
@@ -615,7 +618,7 @@ public sealed class ParagraphLayoutEngine
             {
                 var interval = _options.DefaultTabIntervalMillimeters;
                 var origin = _options.DefaultTabOriginMillimeters;
-                target = origin + (Math.Floor((x - origin) / interval + Epsilon) + 1) * interval;
+                target = origin + (Math.Floor((x + Math.Max(0, minimum - Epsilon) - origin) / interval + Epsilon) + 1) * interval;
             }
             var advance = Math.Max(0, target - x);
             return Math.Max(0, Math.Min(advance, _options.WidthMillimeters - x));
@@ -643,7 +646,7 @@ public sealed class ParagraphLayoutEngine
                 var segmentEnd = tab + 1 < tabs.Count && tabs[tab + 1] < trim ? tabs[tab + 1] : trim;
                 var width = paragraph.Prefix[segmentEnd] - paragraph.Prefix[segmentStart];
                 var before = paragraph.Prefix[FirstDecimal(paragraph, segmentStart, segmentEnd)] - paragraph.Prefix[segmentStart];
-                x += TabAdvance(x, width, before) + width;
+                x += TabAdvance(x, width, before, paragraph.StyleOf[tabs[tab]].FontSizeMillimeters) + width;
             }
             return x - indent;
         }
@@ -907,7 +910,7 @@ public sealed class ParagraphLayoutEngine
                     }
                     else before += advance;
                 }
-                run.Extra[0] = TabAdvance(x, width, before);
+                run.Extra[0] = TabAdvance(x, width, before, run.Item.Style.FontSizeMillimeters);
                 x += run.Extra[0];
             }
         }

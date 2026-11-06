@@ -390,6 +390,7 @@ public sealed class ParagraphLayoutOptions
         MaximumTextLength = source.MaximumTextLength; SyntheticStyles = source.SyntheticStyles;
         TabStops = source.TabStops; DefaultTabIntervalMillimeters = source.DefaultTabIntervalMillimeters;
         DefaultTabOriginMillimeters = source.DefaultTabOriginMillimeters;
+        MinimumTabAdvanceEm = source.MinimumTabAdvanceEm;
     }
 
     /// <summary>Returns a copy with the given synthetic bold/italic policy.</summary>
@@ -423,6 +424,17 @@ public sealed class ParagraphLayoutOptions
         };
     }
 
+    /// <summary>Returns a copy in which a start-aligned or implicit tab stop closer than
+    /// <paramref name="em"/> × the tab's font size to the tab's start is skipped in favor of the following
+    /// stop, as CSS <c>tab-size</c> does for gaps under half a character. Zero (the default) keeps Word's
+    /// rule: any stop past the current position is used, however small the gap. Range: [0, 4].</summary>
+    public ParagraphLayoutOptions WithMinimumTabAdvance(double em)
+    {
+        if (double.IsNaN(em) || em < 0 || em > 4)
+            throw new TextLayoutException(TextLayoutError.InvalidRequest, "The minimum tab advance must be within [0, 4] em.");
+        return new ParagraphLayoutOptions(this) { MinimumTabAdvanceEm = em };
+    }
+
     /// <summary>Synthetic bold/italic policy; <see cref="TextSyntheticStylePolicy.Reject"/> by default.</summary>
     public TextSyntheticStylePolicy SyntheticStyles { get; private set; } = TextSyntheticStylePolicy.Reject;
     /// <summary>Explicit tab stops measured from the frame's start edge.</summary>
@@ -431,6 +443,9 @@ public sealed class ParagraphLayoutOptions
     public double DefaultTabIntervalMillimeters { get; private set; } = 12.7;
     /// <summary>Position, from the frame's start edge, from which implicit tab stops are counted.</summary>
     public double DefaultTabOriginMillimeters { get; private set; }
+    /// <summary>Smallest gap, in em of the tab's font size, that a start-aligned or implicit stop may leave;
+    /// see <see cref="WithMinimumTabAdvance"/>.</summary>
+    public double MinimumTabAdvanceEm { get; private set; }
 
     /// <summary>Available line width.</summary>
     public double WidthMillimeters { get; }
