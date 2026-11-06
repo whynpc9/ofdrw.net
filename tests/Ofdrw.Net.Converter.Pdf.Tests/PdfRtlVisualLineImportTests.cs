@@ -240,6 +240,8 @@ public sealed class PdfRtlVisualLineImportTests
     [InlineData("soft-mask-then-alpha", "soft mask")]
     [InlineData("unresolved-then-alpha", "cannot resolve")]
     [InlineData("text-clip-reset", "non-rectangular clipping path")]
+    [InlineData("off-page", "is clipped")]
+    [InlineData("outside-crop", "is clipped")]
     [InlineData("reversed", "/ReversedChars")]
     [InlineData("optional", "optional content")]
     [InlineData("overlap", "overlapping glyphs")]
@@ -267,6 +269,9 @@ public sealed class PdfRtlVisualLineImportTests
             // A clip-mode glyph on another baseline, then Tr reset before ET: the
             // clip still applies at ET to the later RTL text object.
             "text-clip-reset" => Synthetic(line, prefix: $"BT /F1 10 Tf 7 Tr 1 0 0 1 20 40 Tm <{A:X4}> Tj 0 Tr ET "),
+            // No clipping operator: the MediaBox / CropBox alone hide the line.
+            "off-page" => Synthetic(Line(300, A, B, C, 0, Mem, Vav, Lamed, Shin, 0, D, E, F)),
+            "outside-crop" => Synthetic(line, pageExtras: "/CropBox [0 0 200 50]"),
             "reversed" => Synthetic(line, prefix: "/ReversedChars BMC ", suffix: "EMC "),
             "optional" => Synthetic(line, prefix: "/OC /L0 BDC ", suffix: "EMC ",
                 resources: "/Properties << /L0 << /Type /OCG /Name (L0) >> >>"),

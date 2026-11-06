@@ -56,6 +56,9 @@ internal sealed class PdfPaintedTextEvidence
         var shows = new List<State>();
         var stack = new Stack<State>();
         var state = new State();
+        // Glyphs outside the rendered page paint nothing: the page boxes are the outermost clip.
+        state.Clips.Add(Normalize(page.MediaBox.Bounds));
+        state.Clips.Add(Normalize(page.CropBox.Bounds));
         var pathRects = new List<PdfRectangle>();
         var pathComplex = false;
         var pendingClip = false;
@@ -147,6 +150,9 @@ internal sealed class PdfPaintedTextEvidence
                 return "a glyph is clipped.";
         return null;
     }
+
+    private static PdfRectangle Normalize(PdfRectangle box) => new(
+        Math.Min(box.Left, box.Right), Math.Min(box.Bottom, box.Top), Math.Max(box.Left, box.Right), Math.Max(box.Bottom, box.Top));
 
     private static double? Max(double? left, double? right) =>
         left is null || right is null ? null : Math.Max(left.Value, right.Value);
