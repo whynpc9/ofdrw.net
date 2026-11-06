@@ -25,8 +25,8 @@ Fetch and extract under the ignored `artifacts/` directory:
 
 ```sh
 git lfs pull --include="docs/evidence/text-engine-switch/**" --exclude=""
-mkdir -p artifacts/r22-engine-switch
-zstd -dc docs/evidence/text-engine-switch/engine-switch-evidence.tar.zst | tar -xf - -C artifacts/r22-engine-switch
+mkdir -p artifacts/text-engine-switch
+zstd -dc docs/evidence/text-engine-switch/engine-switch-evidence.tar.zst | tar -xf - -C artifacts/text-engine-switch
 ```
 
 Regenerate the comparison with
@@ -48,4 +48,4 @@ highlight crop and `SHA256SUMS`.
 | Archive SHA-256 | `a09a44da57dd1144ab9221760b1fc679426b3065f7c7cb95c394335c887c119c` |
 | Archive entries | 11 files under `bundle/`; SHA-256 in `bundle/SHA256SUMS` |
 
-Extract with `zstd -dc docs/evidence/text-engine-switch/issue115-preview-recheck.tar.zst | tar -xf - -C artifacts/r22-engine-switch`.
+Extract with `zstd -dc docs/evidence/text-engine-switch/issue115-preview-recheck.tar.zst | tar -xf - -C artifacts/text-engine-switch`.

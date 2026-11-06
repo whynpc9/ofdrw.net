@@ -20,7 +20,7 @@ are already in the [earlier reference archive](../text-reader-reference/README.m
 
 Fetch this optional archive with `git lfs pull
 --include="docs/evidence/text-reader-method/**" --exclude=""`. Extract it
-under ignored `artifacts/r22-reader-contract/method-validation/` before
+under ignored `artifacts/text-reader-method/method-validation/` before
 running the scripts. The saved request contains absolute paths from the
 original checkout; point them to the six hash-verified PDFs in the earlier
 archive when reproducing elsewhere. The scripts do not generate PDFs.

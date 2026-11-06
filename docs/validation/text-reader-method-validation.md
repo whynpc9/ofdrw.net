@@ -8,7 +8,8 @@ Status: **candidate validation protocol, not a frozen acceptance contract**.
 The 2026-10-30 [reader decision](text-mixed-paragraph-validation.md#reader-contract-update-2026-10-30)
 removes pinned PdfPig 0.1.15 default `Page.Text` and `GetWords()` as RTL
 logical-order pass gates. It retains their raw outputs as versioned
-compatibility observations. The writer remains fail-closed for two words.
+compatibility observations. This dated method record predates the bounded
+two-word writer acceptance and does not describe the current font fixture.
 
 ## Fixed controls
 

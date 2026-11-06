@@ -19,23 +19,25 @@ tree snapshot.
 
 Fetch this optional directory with `git lfs pull
 --include="docs/evidence/text-reader-reference/**" --exclude=""`, then extract the
-archive under ignored `artifacts/r22-next-phase/reference-20261029/`:
+archive under ignored `artifacts/text-reader-reference/reference-20261029/`:
 
 ```sh
-mkdir -p artifacts/r22-next-phase/reference-20261029
+mkdir -p artifacts/text-reader-reference/reference-20261029
 zstd -dc docs/evidence/text-reader-reference/reference-evidence.tar.zst |
-  tar -xf - -C artifacts/r22-next-phase/reference-20261029
+  tar -xf - -C artifacts/text-reader-reference/reference-20261029
 ```
 
-The scripts use the repository's existing LFS font fixture. `fonts.conf`
-records the original absolute Fontconfig path, so update it to the current
+The scripts used the historical font fixture at the source baseline above.
+Check out that commit to reproduce the old byte identity. `fonts.conf`
+records the original absolute Fontconfig path, so update it to that
 checkout before reproducing Pango generation. The PDFs and PNGs in the
 archive are the exact previously hashed outputs; extraction does not require
 regeneration. `selected-reader-matrix.json` lists the pinned software
 versions, PDF structure and PdfPig/PDFKit results for the nine references.
 
-The reference comparisons do **not** admit adjacent Hebrew words in the
-product writer. Actual Preview Find failed on the fpdf2 between-word wrap
+At the source baseline, the reference comparisons did **not** admit adjacent
+Hebrew words in the product writer; the current bounded writer has a separate
+two-word acceptance path. Actual Preview Find failed on the fpdf2 between-word wrap
 and the Pango controls; the tool did not expose raw clipboard Unicode.
 The Type 3 diagnostic repaired the pinned PdfPig word tokens but failed
 PDFKit whole-page selection. Its one-character-per-word representation also
