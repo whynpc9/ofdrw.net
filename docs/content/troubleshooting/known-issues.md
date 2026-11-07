@@ -1,13 +1,24 @@
 ---
 title: "已知问题与版本差异"
-description: "核对 preview.10 与 0.2.0 的行为差异，并按版本、模式、字体和实际输出排查转换及阅读器问题。"
+description: "核对 0.3.0、0.2.0 与 preview.10 的行为差异，并按版本、模式、字体和实际输出排查转换及阅读器问题。"
 sidebar:
   order: 10
 ---
 
-当前公开版本为 **0.2.0**。下表比较它与 preview.10 的公开包行为。
+当前公开版本为 **0.3.0**。先核对 0.2.0 到 0.3.0 的增量；旧版差异表保留原版本含义。
 
 ## 版本差异与现有限制
+
+| 项目 | 0.2.0 | 0.3.0 |
+| --- | --- | --- |
+| Flow、纯文本、DOCX Native 的最终文字排版 | 独立段落 writer；现有入口仍用兼容排版 | 可显式启用真实字体塑形与嵌入；默认仍是兼容排版 |
+| 制表位、装饰与复杂字体输出 | 独立 writer 的范围有限 | 显式引擎支持制表位、合成粗斜体、装饰线、高亮、字距、静态 CFF 与增补字符；固定样例通过，任意输入未验 |
+| PDF→OFD 的 RTL 透明文字层 | 默认拒绝未验证的 RTL 语义 | 默认仍拒绝；可显式选有界 `VisualLineProfile`，超出其条件继续拒绝 |
+| 归档来源与证据档案 | 有限只读预检 | 新增证据追踪和外部缺失门禁；完整符合性及认证仍未完成 |
+| Preview Find、原始 Copy、段落 PDF 选择几何 | 未验证为通过 | 仍未验证为通过 |
+| ImageSharp 2.1.13 | 已披露五项依赖告警 | 告警仍在，未修复 |
+
+### preview.10 到 0.2.0 的历史差异
 
 | 项目 | preview.10 | 0.2.0 |
 | --- | --- | --- |
@@ -21,7 +32,7 @@ sidebar:
 | ImageSharp 2.1.13 | 已披露依赖告警 | D10 评估未消除告警 |
 | Skia / Windows Audit025 偶发问题 | 历史根因未定 | 保留诊断，被动观察新自然失败 |
 
-[preview.10 发布说明](https://whynpc9.github.io/ofdrw.net/releases/010-preview10/)只描述原发布。后续结果以[路线图](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/roadmap.md)及各具名验收报告为准。
+[0.3.0 发布说明](/releases/030/)记录本版范围；[preview.10 发布说明](https://whynpc9.github.io/ofdrw.net/releases/010-preview10/)只描述原发布。后续结果以[路线图](https://github.com/whynpc9/ofdrw.net/blob/main/docs/engineering/roadmap.md)及各具名验收报告为准。
 
 ## 转换或显示异常时如何排查
 

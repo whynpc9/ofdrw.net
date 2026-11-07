@@ -19,7 +19,7 @@ Ofdrw.Net 用强类型模型表示页面、图层、文字游程、路径、图�
 安装 `Ofdrw.Net.Reader`：
 
 ```sh
-dotnet add package Ofdrw.Net.Reader --version 0.2.0
+dotnet add package Ofdrw.Net.Reader --version 0.3.0
 ```
 
 读取包并按页提取文字：

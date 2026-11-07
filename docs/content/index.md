@@ -32,9 +32,9 @@ Ofdrw.Net 是 .NET OFD SDK 与命令行工具，支持文档生成、读取、�
 
 ## 当前版本与适用范围
 
-当前公开版本为 **0.2.0**，安装命令和快速开始均以该版本为基线。[发布说明](https://whynpc9.github.io/ofdrw.net/releases/020/)记录该版本的依赖、能力及验收范围。
+当前公开版本为 **0.3.0**，安装命令和快速开始均以该版本为基线。[发布说明](/releases/030/)记录该版本的依赖、能力及验收范围。
 
-从 preview.10 升级时，可在[已知问题与版本差异](https://whynpc9.github.io/ofdrw.net/troubleshooting/known-issues/)核对已修复的行为及仍有效的限制。
+从 0.2.0 或 preview.10 升级时，可在[已知问题与版本差异](https://whynpc9.github.io/ofdrw.net/troubleshooting/known-issues/)核对已修复的行为及仍有效的限制。
 
 > 完整国家/行业标准符合性、厂商互认、签章法律效力和任意复杂 Word 文档保真均超出本版承诺范围。请使用自己的输入、字体、部署方式和目标阅读器验证实际结果。
 

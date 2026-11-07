@@ -1,6 +1,6 @@
 # 后续范围与现行路线图
 
-更新：2026-11-05。`0.2.0` 已完成发布及公开源回读，详见[发布记录](../validation/0.2.0-publication-2026-11-05.md)。本页列出保留的问题与候选方向；不自动启动实施、实验或发布。能力使用范围见[功能对照](../content/reference/feature-parity.md)和[分出口契约](../content/reference/capability-contract-v12.md)。
+更新：2026-11-07。`0.3.0` 的发布范围见[发布说明](../content/releases/0.3.0.md)；`0.2.0` 的公开源回读保留在[原发布记录](../validation/0.2.0-publication-2026-11-05.md)。本页列出保留的问题与候选方向；不自动启动实施、实验或发布。能力使用范围见[功能对照](../content/reference/feature-parity.md)和[分出口契约](../content/reference/capability-contract-v12.md)。
 
 ## 已有能力
 
@@ -30,7 +30,7 @@ Flow 段落/表格、命名区域、图片/Canvas/回调、文档工具、多 Do
 
 以下不属于已发布版本的前置，也没有默认排期：
 
-- **段落排版与导出**：独立段落排版入口已随 0.2.0 发布，见[参考](../content/reference/text-paragraph-layout.md)、[设计](../architecture/text-paragraph-layout-engine.md)与[验收记录](../validation/text-paragraph-layout-validation.md)。Flow/DOCX 的显式引擎开关目前仅在 main；PDF Copy/Find、部分装饰和复杂字体出口仍按各自的验收范围判断。查询和类型化输出的现行约定分别见[混排参考](../content/reference/text-mixed-paragraph.md)与[塑形输出参考](../content/reference/text-shaped-output.md)。
+- **段落排版与导出**：独立段落排版入口已随 0.2.0 发布，见[参考](../content/reference/text-paragraph-layout.md)、[设计](../architecture/text-paragraph-layout-engine.md)与[验收记录](../validation/text-paragraph-layout-validation.md)。Flow、纯文本和 DOCX Native 的显式引擎开关自 0.3.0 起可用，默认仍走兼容排版；PDF Copy/Find、复杂字体出口及任意输入仍按各自验收范围判断。查询和类型化输出的现行约定分别见[混排参考](../content/reference/text-mixed-paragraph.md)与[塑形输出参考](../content/reference/text-shaped-output.md)。
 - **RTL、Arabic、Indic 与复杂字体**：只按各有界 profile 验收，默认拒绝范围不放宽。既有 reader 反例、字符映射方法失败及独立几何/语义门继续保留，见[reader 方法验证](../validation/text-reader-method-validation.md)和[双词检查点](../validation/text-mixed-paragraph-validation.md)。
 - **完整 R02、R20、扩展字体和部署组合**：非 BMP 索引、真正越段映射、自然外来互操作、全部归档条款、任意 CFF/变量/彩色字体、musl/AOT/trimming 等均不能由局部通过推定。新范围须有明确消费者、固定反例、最小契约和独立验收。
 
