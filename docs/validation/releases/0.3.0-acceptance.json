@@ -1,0 +1,80 @@
+{
+  "status": "accepted",
+  "package_version": "0.3.0",
+  "source_fingerprint": "124439c50b7d720aa0b794e08b16f97381c8bf1cb6f24aa7d6e54c94d4dacb28",
+  "sample_sha256": "17bea68d57776b02e5c68c8915de11b42087809d5310f8fafcbb003db08d7bb6",
+  "native_ofd_sha256": "32d84afbf3211ec40998784af78aaebc9075cb8cbe89a6b37006dbd69eb6778c",
+  "preview_pdf_sha256": "72ead8c828227fc1ae2e38cd0edeecee97955f1f6773fed95de7540d8785d581",
+  "default_ofd_sha256": "0203e636f13ba6fb2d7a2ddfb135f4a25d04a9af96ca552e908cfe2ad313ba80",
+  "default_preview_pdf_sha256": "26d3164eb3458180dfddf47f612a7ea8c531d48fda75a17e6d723806fcdefca9",
+  "conversion_mode": "native",
+  "view_chain": "DOCX -> native OFD -> PDF -> macOS Preview",
+  "default_conversion_mode": "default",
+  "default_view_chain": "DOCX -> default OFD -> PDF -> macOS Preview",
+  "reviewer": "gpt-6.1-terra (High reasoning; AI visual reviewer, not human sign-off)",
+  "reviewed_at": "2026-11-07T08:46:50+08:00",
+  "review_timing_note": "This is completion of the full visual review. The exact time of the earlier DOCX-only Preview check was not separately recorded; it occurred on 2026-11-07.",
+  "checked_pages": [
+    1,
+    2
+  ],
+  "default_checked_pages": [
+    1,
+    2
+  ],
+  "open_findings": [],
+  "release_profile": {
+    "id": "cn-en-physical-cjk-400-700-v1",
+    "scope": "Fixed generated-layout.docx only: explicit Native and default Native, pages 1-2 each, physical Regular/Bold.",
+    "fonts_sha256": {
+      "NotoSans-Regular.ttf": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "Ofdrw-CI-NotoSansCJKsc-Bold.ttf": "647a6e375c5a0d8958111173d7b7cec5237e0784cc4490663e43834dfff491be",
+      "Ofdrw-CI-NotoSansCJKsc-Regular.ttf": "3012a9b63f5eca3e3b38f23a1be5ed504675e394abf8e7a4fa981506582c04aa"
+    },
+    "options": {
+      "NativeEmbeddedBoldBehavior": "Throw",
+      "UseInstalledMicrosoftOfficeFonts": false,
+      "FontFallbackFamilies": [
+        "Noto Sans CJK SC",
+        "Noto Sans"
+      ],
+      "FontDirectories": [
+        "artifacts/release-0.3.0-dfc4a3b1/fonts/"
+      ]
+    },
+    "outputs": {
+      "native_ofd": "profile-output/font-native.ofd",
+      "native_pdf": "profile-output/font-native.pdf",
+      "default_ofd": "profile-output/font-default.ofd",
+      "default_pdf": "profile-output/font-default.pdf"
+    },
+    "visual_environment": "macOS 26.6.2 (25G83), Preview 11.0; independent Poppler 144 DPI PNG review.",
+    "functional_result": "Both modes preserve all 189 non-whitespace source characters exactly in OFD and PDF without duplicate PDF text; 7 physical Bold text objects and 3 blue table fills; selected Regular/Bold subset outlines match pinned source faces. Seven loaded Ofdrw.Net DLLs match exact candidate package assets."
+  },
+  "additional_visual_review": {
+    "f08_and_controls": "Five OFD -> PDF -> Preview pages and matching 144 DPI PNGs reviewed; no observed highlight seam or visible clipping/overlap.",
+    "plain_text_tabs": "One 40-row plain-text candidate-package page reviewed in Preview and PNG; gap before 说明 visible after 数量 12 and later rows.",
+    "f06": "Four candidate-package PDF -> OFD -> PDF pages reviewed in Preview against rendered source PDFs; original source PDFs were not themselves opened in Preview."
+  },
+  "known_limitations": [
+    "Q05 is limited to the physical Regular/Bold profile and fixed two-page DOCX in two modes; it does not retest a Regular-only synthetic-bold configuration or arbitrary Word fidelity.",
+    "macOS Preview Find, raw Unicode Copy and paragraph PDF selection geometry were not verified in this review.",
+    "F06 does not establish general RTL semantics or real-reader Copy/Find; F07 does not establish full archival conformance or certification."
+  ],
+  "producer_source_sha": "dfc4a3b1d8ecabc90b2853661f348d7b2eca072e",
+  "evidence_root": "artifacts/release-0.3.0-dfc4a3b1/",
+  "evidence_sha256": {
+    "feed/package-manifest.json": "2fa1095cef8d247524ee68cb4b303129544592ae174450cad5a34362f1f293e8",
+    "manifest.json": "f334c1a2a6a09f6fdf7f77bc1f7c5f33736c5d4d9b10ae382c1378e8b54aaee0",
+    "preview-acceptance.md": "dff8e470c73bdc951e55331f893c32ef0df10a86ebdbd8a4da316ebbf1613a29",
+    "preview-review.md": "91440068d82ec9c8afe91bf3b072292f4efdf4c49571fa4bace21afd7c225808",
+    "visual-f08-review.md": "6547097257b6acdb683a6acc5950571ecd0ef877fd15b721fbe7d0773733395f",
+    "plain-text-visual-review.md": "e2692be7827a4a6e7d1441197f98c1e43ee53102db5769fb7ed7a9d44c6d0241",
+    "profile-check.json": "5baf7ede181c42f49ba920b77cb6f231c5b066863cd8a6261fe0a20c100b0ad7",
+    "consumer-identities.json": "1d131e3be9474329a27367583e3eae8291379009bfd4d7be335ea3316b06f26d",
+    "tests.log": "e8794ed76ebe0748ea644bab9165138cacd87e3288d79ce659d047acc82dfc12",
+    "trusted-tests/trusted-fonts.trx": "289db2be18c756e8858133d0b58f87ea305c25f5dd077dced0c3fc336c98c248",
+    "package-e2e.log": "b832bbe98ef961ae5f039a418d923f6c4587305cba6d471c31ba971981591309"
+  },
+  "publication_status": "Local candidate Preview acceptance only; tag, NuGet publication, public consumption and Pages deployment are separate gates."
+}
