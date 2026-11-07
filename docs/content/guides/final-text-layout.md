@@ -6,7 +6,7 @@ sidebar:
   label: "最终文字排版（可选）"
 ---
 
-> **main，尚未发布。** 这是可选开关（Issue #109）。默认行为不变：`FlowDocument`、`PlainTextOfdConverter` 和 DOCX Native 继续使用兼容排版和名称引用字体。默认值是否切换将在后续版本根据比对结果另行决定。
+> **自 0.3.0 起可用。** 这是可选开关（Issue #109）。默认行为不变：`FlowDocument`、`PlainTextOfdConverter` 和 DOCX Native 继续使用兼容排版和名称引用字体。默认值是否切换将在后续版本根据比对结果另行决定。
 
 [段落排版引擎](https://whynpc9.github.io/ofdrw.net/reference/text-paragraph-layout/)用实际字体文件做 HarfBuzz 塑形，按 Unicode 17.0.0 双向、断行和字素簇排版，并把每个字形的原始 GID 写入 OFD（簇映射 `CGTransform`，字体以保留 GID 的子集嵌入）。开启后，已有的分页、表格、页眉页脚和回调逻辑保持不变，只是文本行由引擎产生。
 

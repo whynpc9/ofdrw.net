@@ -8,7 +8,7 @@ sidebar:
 
 `Ofdrw.Net.Layout` 的 `FlowDocument` 用段落和其他块生成多页 OFD，调用方不需要手动计算每个 `TextObject` 的页面坐标。它支持文本、局部样式、表格、固定尺寸图片和 Canvas 块、折行及分页。
 
-> **可选最终文字排版（main，尚未发布）：** 设置 `FlowDocumentOptions.TextEngine` 后，段落和表格单元格文本改用段落排版引擎，以真实字体塑形并嵌入字体子集（支持制表位、合成粗斜体、CFF/OTF 与增补汉字）。默认行为不变，见[启用最终文字排版引擎](https://whynpc9.github.io/ofdrw.net/guides/final-text-layout/)。
+> **可选最终文字排版（自 0.3.0 起）：** 设置 `FlowDocumentOptions.TextEngine` 后，段落和表格单元格文本改用段落排版引擎，以真实字体塑形并嵌入字体子集（支持制表位、合成粗斜体、CFF/OTF 与增补汉字）。默认行为不变，见[启用最终文字排版引擎](https://whynpc9.github.io/ofdrw.net/guides/final-text-layout/)。
 
 所有页面尺寸、边距、缩进、字间距和字号都以**毫米**表示。需要固定列网格、合并单元格和表格分页时，继续阅读[流式表格](https://whynpc9.github.io/ofdrw.net/guides/public-tables/)；需要显式页面坐标时使用 `OfdDocumentBuilder`。
 

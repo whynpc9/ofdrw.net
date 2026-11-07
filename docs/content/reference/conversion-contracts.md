@@ -6,7 +6,7 @@ sidebar:
   label: "转换与资源约定"
 ---
 
-本页描述 `0.2.0` 的转换、编辑与资源行为。固定样例的发布验收范围见[0.2.0 发布说明](https://whynpc9.github.io/ofdrw.net/releases/020/)。
+本页描述 `0.3.0` 的转换、编辑与资源行为。固定样例的发布验收范围见[0.3.0 发布说明](/releases/030/)；0.2.0 的历史结论仍见[原发布说明](/releases/020/)。
 
 ## 原始 DOCX 文本与分页
 
@@ -39,7 +39,7 @@ Native 支持确定性常见排版，仍不承诺任意浮动对象、复杂域�
 
 调用方可明确选择 `TextLayerMode = PdfTextLayerMode.None` 且 `RequireRasterization = true`，仅保留页面图；这条路径不声明 RTL 原文、字形映射或阅读顺序支持。现有 LTR 抽取也不保证任意多栏/复杂 PDF 的逻辑顺序。
 
-### 可选的受限 RTL 语义导入（F06，main，尚未发布）
+### 可选的受限 RTL 语义导入（F06，自 0.3.0 起）
 
 默认值不变。设置 `RightToLeftTextImport = PdfRightToLeftTextImport.VisualLineProfile` 后，含 RTL 文字的页面改走受限的“可见行”配置，仅用于页面图上方的透明文字层：
 
