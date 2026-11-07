@@ -6,7 +6,7 @@ sidebar:
   label: "段落排版引擎"
 ---
 
-> 自 [0.2.0](https://whynpc9.github.io/ofdrw.net/releases/020/) 起可用。制表位、合成粗体/斜体、增补字符输出、装饰线与高亮、字距、ZWJ/ZWNJ/变体选择符、静态 CFF 字面以及 Flow/纯文本/DOCX 的显式开关属于 **main，尚未发布**（Issue #109 F08 与引擎开关）。
+> 自 [0.2.0](https://whynpc9.github.io/ofdrw.net/releases/020/) 起可用。制表位、合成粗体/斜体、增补字符输出、装饰线与高亮、字距、ZWJ/ZWNJ/变体选择符、静态 CFF 字面以及 Flow/纯文本/DOCX 的显式开关自 [0.3.0](/releases/030/) 起可用（Issue #109 F08 与引擎开关）。
 
 `Ofdrw.Net.Layout.Text.Paragraphs` 将带样式的多段落文本排版为最终行和页面，`ParagraphLayoutOfdWriter` 则将该结果原样写为 OFD。`FlowDocument`、`PlainTextOfdConverter` 和 DOCX Native 默认仍使用既有兼容排版；只有显式设置 [`FlowDocumentOptions.TextEngine` 或 `DocxConversionOptions.NativeParagraphLayoutEngine`](https://whynpc9.github.io/ofdrw.net/guides/final-text-layout/) 时才使用本引擎。既有预排版和混排查询保持各自的准入限制。
 

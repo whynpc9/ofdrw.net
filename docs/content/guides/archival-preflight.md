@@ -86,7 +86,7 @@ var coverage = await new ArchivalCoverageService().CheckAsync(file, new Archival
 
 `CoverageStatus` 始终为 `Incomplete`，`Certification` 为 `NotAssessed`。确定的违规使 `StandardOutcome=Fail`；否则完整标准结果为 `Unknown`，即使所有已映射条件通过也是如此。输入被拒绝、不支持的根命名空间、无法解析的页面/批注引用和不透明 XML 作用域均为 Unknown。缺失或明确错误的已知强制声明为 Fail，即使存在同名的外来声明也不例外。PDF 来源和 SHA 固定在每个规则定义及账本中；包中不附带标准 PDF 字节。R17 的审计副本可以在此服务中分别检查转换前后，但该副本只移除其文档说明的两种声明类型。新增检查不会重写页面、批注或导航。
 
-## F07 来源与证据档案（main，尚未发布）
+## F07 来源与证据档案（自 0.3.0 起）
 
 `ArchivalDossierService.CheckAsync` 将两个稳定的 OFD 快照及外部证据编入同一份只读档案。`ArchivalClauseCatalog` 的 `ofdrw-archival-ledger/1` 枚举账本第 5–7 章的 92 个项目和附录 A 的 13 行；它关联现有 17 项 AR/AC 条件和两个已有副本处理器。APF 继续是独立本地政策。所有条款都会出现在报告中，包括没有对象、没有实现或没有提供材料的条款。
 

@@ -8,7 +8,7 @@ sidebar:
 
 安装 `Ofdrw.Net.Converter.Docx`。`DocxToOfdConverter` 默认使用 **Native**：直接读取 OpenXML 原文并写出 OFD 文字、路径和图片对象，不调用 Office，也不经过 PDF。
 
-> **可选最终文字排版（main，尚未发布）：** 设置 `DocxConversionOptions.NativeParagraphLayoutEngine` 后，DOCX Native 的正文、表格和页眉页脚文本改用段落排版引擎，以真实字体塑形并嵌入字体子集（支持制表位、合成粗斜体、CFF/OTF 与增补汉字）。默认行为不变，见[启用最终文字排版引擎](https://whynpc9.github.io/ofdrw.net/guides/final-text-layout/)。
+> **可选最终文字排版（自 0.3.0 起）：** 设置 `DocxConversionOptions.NativeParagraphLayoutEngine` 后，DOCX Native 的正文、表格和页眉页脚文本改用段落排版引擎，以真实字体塑形并嵌入字体子集（支持制表位、合成粗斜体、CFF/OTF 与增补汉字）。默认行为不变，见[启用最终文字排版引擎](https://whynpc9.github.io/ofdrw.net/guides/final-text-layout/)。
 
 ## 选择转换模式
 

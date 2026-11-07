@@ -8,7 +8,7 @@ sidebar:
 
 中文转换需要调用方提供许可明确的字体文件。`FontFamily` 名称、实际 face 与 Bold/Italic 载荷是不同信息；Regular 加样式标记不能替代真实 Bold 文件。
 
-> **可选最终文字排版（main，尚未发布）：** 设置 `FlowDocumentOptions.TextEngine` 或 `DocxConversionOptions.NativeParagraphLayoutEngine` 后，Flow、纯文本或 DOCX Native 的文本改用段落排版引擎，以真实字体塑形并嵌入字体子集（支持制表位、合成粗斜体、CFF/OTF 与增补汉字）。默认行为不变，见[启用最终文字排版引擎](https://whynpc9.github.io/ofdrw.net/guides/final-text-layout/)。
+> **可选最终文字排版（自 0.3.0 起）：** 设置 `FlowDocumentOptions.TextEngine` 或 `DocxConversionOptions.NativeParagraphLayoutEngine` 后，Flow、纯文本或 DOCX Native 的文本改用段落排版引擎，以真实字体塑形并嵌入字体子集（支持制表位、合成粗斜体、CFF/OTF 与增补汉字）。默认行为不变，见[启用最终文字排版引擎](https://whynpc9.github.io/ofdrw.net/guides/final-text-layout/)。
 
 ## 固定物理字体配置
 
