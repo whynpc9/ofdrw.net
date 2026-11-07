@@ -7,13 +7,13 @@ Ofdrw.Net 是 .NET OFD SDK 与 CLI，提供文档生成、读取、编辑、转�
 ## 安装
 
 ```sh
-dotnet add package Ofdrw.Net.Converter --version 0.2.0
-dotnet tool install --global Ofdrw.Net.Cli --version 0.2.0
+dotnet add package Ofdrw.Net.Converter --version 0.3.0
+dotnet tool install --global Ofdrw.Net.Cli --version 0.3.0
 ```
 
 普通 SDK 为 netstandard2.0 / netstandard2.1；CLI 需要 .NET 10。DOCX 默认 Native，直接保留 OpenXML 原文；PDF 导入默认双层。Skia、PDF vector、SES 和 Password 为独立可选扩展。
 
-当前公开版为 [0.2.0](https://whynpc9.github.io/ofdrw.net/releases/020/)。旧版行为与当前限制见[版本差异](https://whynpc9.github.io/ofdrw.net/troubleshooting/known-issues/)。
+0.3.0 的变更与限制见[发布说明](https://whynpc9.github.io/ofdrw.net/releases/030/)。历史版本见[版本差异](https://whynpc9.github.io/ofdrw.net/troubleshooting/known-issues/)。
 
 ## 开发与证据
 
