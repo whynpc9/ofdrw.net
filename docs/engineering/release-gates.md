@@ -2,6 +2,8 @@
 
 本文件描述可重复执行的检查及其边界。
 
+**0.3.0 已发布。** [该版本的 Q05 记录](../validation/releases/0.3.0-acceptance.json)绑定固定物理 Regular/Bold DOCX、显式 Native 与默认模式各两页的 macOS Preview 验收；[0.3.0 发布记录](../validation/0.3.0-publication-2026-11-07.md)记录标签、公开包和消费回读。标签 `v0.3.0` 指向 `daf8b852d9ad670dccff09f1b910526f53728995`。发布后文档提交改变 main 的当前指纹，历史 Q05 只对该不可变发布标签成立。
+
 **0.2.0 已发布。** [该版本的 Q05 记录](../validation/releases/0.2.0-acceptance.json)绑定固定 DOCX 及两模式各两页的 Preview 验收。公开发布证据见[0.2.0 发布记录](../validation/0.2.0-publication-2026-11-05.md)。
 
 **2026-11-02 发布状态：**`0.1.0-preview.10` 已公开，成功发布、签名与公开消费证据见[最终发布记录](../validation/preview10-publication-2026-11-02.md)。现有 [Q05 accepted 记录](../validation/releases/preview10-acceptance.json)已更新为 preview.10 的 `cn-en-physical-cjk-400-700-v1`，由用户授权的 `gpt-6.1-terra` High AI reviewer 检查，不称人工签收；只覆盖 F01 显式 native/default 各两页。其生产者为 `cb6e71df`，产品标签源码为 `8f27f92`，控制器为 `3568c00`，详见发布记录中的身份区分。
