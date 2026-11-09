@@ -74,7 +74,7 @@ public sealed class Upstream202611StampTests
         }
 
         using var document = PdfPigDocument.Open(output.ToArray());
-        var images = document.GetPage(1).GetImages().OrderBy(image => image.Bounds.Left).ToArray();
+        var images = document.GetPage(1).GetImages().OrderBy(image => image.BoundingBox.Left).ToArray();
         Assert.Equal(2, images.Length);
         Assert.True(images[0].Interpolate); // Normal stamp at x=10 mm.
         Assert.False(images[1].Interpolate); // Full bitmap placed at x=80 mm and clipped to its left half.
