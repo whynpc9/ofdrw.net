@@ -83,3 +83,45 @@ python3 -m unittest discover -s scripts/tests -p test_upstream_202611_test_resul
 | `visual/unadjusted/input.ofd` | 2346 | `9b199ae88c149ca4a4b3212ec7fbb14885875b8cac3a2a43f49745861c33f0cf` |
 | `visual/adjusted/preview-page-001.png` | 66189 | `a8c0824d10165c1829ef3e21d1caffefdfb8b788270aa8f3d6209023abdaf68f` |
 | `visual/archive-template-case/preview-page-001.png` | 66189 | `a8c0824d10165c1829ef3e21d1caffefdfb8b788270aa8f3d6209023abdaf68f` |
+
+## PR B 绘制与文字
+
+相关项目为 `Converter.Pdf`。完整用例身份及所属条目见测试清单的 B 段。设计复核使用 `gpt-6-astra` High。以下结论限定于自生成页面与现行渲染 profile。
+
+| 条目 | 既有证据 | 新增判据与入口 | 处置 |
+|---|---|---|---|
+| M04 Cap、Join、DrawParam LineWidth | `R01PageBlockTests.DrawParamColorsUseDrawingNamespaceAndKeepLocalOverrides`；`Audit015_CapsAndJoins`；`PenCapsAndDash_AffectRenderedInkWithoutChangingDefault` | 读包后分别判定缺失、显式默认、非默认、删除 XML 后重读四种状态。祖先 Square/Bevel/5，最近 Round/Round/4，本地 Butt/Miter/0.353，后续兄弟仍采用最近值。32 项继承可解析；33 项与环经 PDF/SVG/HTML/PNG 拒绝且零输出。 | 继承、覆盖、边界符合当前契约。OFD Border LineWidth 在本仓没有与 Java getter 对应的渲染模型；表格生成器将边线写成 PathObject。 |
+| M04 对象 Alpha、Color Alpha、BitsPerComponent | `Audit015_ObjectAlpha`；`Audit015_FreshDefaults` | GraphicUnit Alpha 按对象验证；Color Alpha 按颜色验证，M05 用实际蓝色像素核对乘积。ColorSpace BitsPerComponent 缺省及显式 8 保留原 RGB，显式 4 经四出口拒绝且零输出；移除 4 后重读恢复缺省。 | Alpha 和 BitsPerComponent 按各自模型处理。 |
+| M04 文字 Stroke | `StrokedScaledTextUsesInheritedPaintAndKeepsLogicalText`；`OutlineOnlyTextWithoutStrokeColorUsesOpaqueBlack`；`SimulatedBold_ShouldThickenAtTheOriginalBaselineWithoutDuplicateText` | 导入 XML 九格为缺省/false/true × 无色/本地蓝色/继承红色；另附 producer 黑色合成粗体对照。模型与 SVG/HTML paint、PDF 轮廓操作及 PDF/PNG 像素一致；源 OFD、PDF、SVG/HTML 文字按输入顺序各保留一次。各行右侧放置相同 H，用独立墨迹计数验证无意描边及黑色描边粗细。 | 缺省和 false 保持仅填充，true 无色使用默认黑色。 |
+| M05 裁剪与 Alpha | `TypedGraphicRenderingTests.SharedNestedVectorPlacementsDrawTwiceWithIntersectingClips`；`Audit015_ObjectAlpha` | 两个 Clip 的交集有红墨，差集白底。嵌套组合内第二个蓝色对象独立于红色 clip，仍受外层约束，后续绿色兄弟独立。Alpha 0/128/255 与颜色 Alpha 128 的乘积经 SVG/HTML 结构、PNG 内部像素及 PDF 页面复查。 | 路径 Alpha 与颜色 Alpha 相乘；白底上的蓝色样点约为 (191,191,255)。维持现有 multi-Area、Text clip 与 group opacity 边界。 |
+| M05 图片、路径 CTM | `ImageTransformAndPenStyles_ReachPdfSvgAndHtml`；`SvgGeometryTests` | 对 32×16 四色图以 `B + A·(u,v) + t` 手算变换角点及象限中心，检查整页 Boundary 内小图、旋转、剪切、反射和平移。绝对路径取 `A=I, t=-B`，图形仍在 (56,52)–(69,66) mm。SVG/HTML 查矩阵及路径，PNG 查色块内外，PDF 逐页复查。 | 单次变换。保持既有边界和坐标契约。 |
+| M06 Delta、旋转和字形替换 | `SvgGeometryTests`；`ExplicitGlyphTransformTests` | 大平移 `t=(100,200)` 下比较实际 PDF 字符基线与手算 `B+A·p+t`，剪切增量为 (8.5,4.75)，旋转增量为 (-3,7)。第二个 TextCode 起点独立；顶层非恒等映射将 AA 绘制为两个 B（GID 37）；PDF 内嵌字体、逻辑原文和基线均有断言，SVG/HTML 检查对应路径，PNG 检查各位置有墨迹。非零 ReadDirection/CharDirection 原 XML 可写回，四出口拒绝且零输出。 | 支持当前水平字形经 CTM 变换。真竖排维持明确拒绝。 |
+
+页面各 1 页。PNG 经 PDFium 使用 PDF 转换链路，HTML 使用 SVG 渲染链路。几何和色彩预期来自独立坐标推导与内部采样，路径和位图平坦区域每通道允许 3 个量化单位。该样例集包含拉丁字体测试、路径、位图和组合图元。
+
+| 页面 | 输入与预期 |
+|---|---|
+| `text-stroke` | 100×110 mm。依次为 absent/false/true 三组各三行，末行为 producer。仅 `true-local` 有蓝边、`true-inherited` 有红边，`true-none` 和 producer 为黑描边；每行均可读，右侧同一 H 作为粗细对照。 |
+| `clip-scope-alpha` | 100×65 mm。红色交集位于 x=18–28/y=16–26 mm；浅蓝受 x≤64/y≤34 mm 限制；独立绿色兄弟完整。全透明区域保持白底。 |
+| `image-path-ctm` | 110×80 mm。上方左至右为常规、90° 旋转、剪切；下方为水平镜像与紫色矩形。各象限色与代码注释所列角点、内部采样相符。 |
+| `text-delta` | 230×250 mm。文字集中在页面下方，左侧剪切 AB/CD，中央旋转 EF，右侧剪切后的两个显式 B 字形保留逻辑 AA；原始 Boundary 留白。 |
+
+产物生成时设置 `OFDRW_TEST_ARTIFACTS=<run>/visual` 并执行：
+
+```sh
+dotnet test tests/Ofdrw.Net.Converter.Pdf.Tests/Ofdrw.Net.Converter.Pdf.Tests.csproj -c Release \
+  --filter 'FullyQualifiedName~Upstream202611' --logger 'trx;LogFileName=new.trx' \
+  --results-directory <run>/Converter.Pdf/new --disable-build-servers -m:1 /nodeReuse:false /p:UseSharedCompilation=false
+pdftoppm -f 1 -l 1 -singlefile -png -r 144 <case>/output.pdf <case>/poppler-001
+```
+
+### PR B 门禁记录
+
+- **基线**　实现基线 `7ddc251fa30b765f7cd0d494393699bfdc7a1a91`，新增用例的测试树 `95c7d90d688e2ce8a88ca50aabdec79d8d980b0b`。可信字体已准备，完整项目 1280/1280，单独筛选新增 8/8，均无跳过。现有实现通过该范围的判据，真竖排和超出 paint profile 的负例按契约拒绝。生产实现未发生变更。
+- **功能**　在 A 合入后，以测试树 `89b2aef47016e2fdf12d4f115b126f1a456abeba` 运行同样的两套测试。完整项目 1280/1280，含 `SvgGeometryTests` 14/14；筛选新增 8/8；两次退出 0，无跳过。A 的 `check-test-results.py --pr B` 对本轮 TRX 逐一核对项目、类、方法及完整显示名，全部匹配。
+- **自动渲染**　四份 PDF 均为一页。每案生成 SDK PNG、SVG、HTML，另从实际 PDF 用 Poppler 26.09.0 以 144 DPI 渲染。macOS 26.6.2 arm64，.NET SDK 10.0.401，PdfPig 0.1.15，Docnet.Core 2.6.0。内嵌 Noto Sans Regular 的 SHA-256 为 `b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5`。
+- **PNG 视觉复查**　Sol High 查看四张 Poppler 第 1 页；Terra High 独立查看同四案的 PDFium 和 Poppler PNG。裁剪区域、四色象限、文字位置和颜色均符合上表。粗体对照在初次视觉复查后改用 0.4 mm 描边，正式复查确认仍可与普通字形区分且文字可读。
+- **macOS Preview**　`gpt-6.1-terra` High 核对本次输入和输出哈希，从绝对路径重新打开四份最终 PDF，沿 OFD → PDF → Preview 11.0 各看第 1 页。红色交集、浅蓝及绿色兄弟、四图仿射、原点位移与文字粗细均符合判据。文字页未见意外裁切、重叠或重影；文字位移页滚动至底部复查 AB/CD、旋转 EF、可见 BB。四个窗口逐个关闭。
+- **存档**　[PR B 页面证据](../evidence/upstream-2026-11/B/drawing-pages.tar.zst) 为 2365356 字节，SHA-256 `9492f6d9c6035ae668b87f1032929239b4d3f1f4f2bb513e02f88a2a1d62cba6`。归档包含四份 OFD、PDF、SVG、HTML、两种 PNG、仅 Preview 窗口截图，以及逐文件大小和 SHA-256、运行命令、环境、TRX 核对及视觉复查记录。证据生成命令与路径对应测试树，验收说明和归档的提交单独记录。
+- **本地复现资料**　正式根目录为 `/Users/wanghongyi/.codex/worktrees/69e8/ofdrw.net/artifacts/upstream-2026-11/B-89b2aef47016-formal.rLjasg`；未修复基线根目录为 `/Users/wanghongyi/.codex/worktrees/69e8/ofdrw.net/artifacts/upstream-2026-11/B-95c7d90d688e-baseline.QomkSZ`。各目录的 `sha256-sizes.txt` 记录该轮输入和输出，包括拒绝类 OFD。拒绝类输入由测试现场生成并留在本地。四个正式 PDF 总计 325150 字节。
+- **文档与范围**　站点构建、类型、48 个 HTML 页面链接、搜索索引生成均通过；Nimbus 跳过 47 个 Markdown 页面的 Authoring lint。B 未修改共享实现，因此全套本地回归与本地包消费门禁由各自触发条件及 C 的集成验收覆盖。
