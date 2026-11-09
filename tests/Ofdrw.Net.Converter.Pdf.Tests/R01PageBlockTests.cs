@@ -26,8 +26,8 @@ public sealed class R01PageBlockTests
         File.WriteAllBytes(Path.Combine(dir, name + ".html"), html);
     }
 
-    private static async Task<byte[]> Source(string body, bool template = false, string? resources = null, bool font = false, bool image = false,
-        string? resourceNamespace = null)
+    internal static async Task<byte[]> Source(string body, bool template = false, string? resources = null, bool font = false, bool image = false,
+        string? resourceNamespace = null, int width = 100, int height = 100, OfdTextElement? producerText = null)
     {
         var package = new OfdDocumentPackage();
         if (font)
@@ -40,10 +40,11 @@ public sealed class R01PageBlockTests
             var path = Path.Combine(dir!.FullName, "e2e/Ofdrw.Net.FontSubset.E2E/testdata/fonts/NotoSans-Regular.ttf");
             package.Fonts.Add(new OfdFontResource { Id = "10", FontName = "Noto Sans", Data = File.ReadAllBytes(path) });
         }
-        var page = new OfdPage { Index = 0, WidthMillimeters = 100, HeightMillimeters = 100 };
+        var page = new OfdPage { Index = 0, WidthMillimeters = width, HeightMillimeters = height };
         package.Pages.Add(page);
         var block = new OfdRawElement { LocalName = "PageBlock", Xml = $"<PageBlock xmlns='{Ns}' ID='500'>{body}</PageBlock>" };
         if (!template) page.Elements.Add(block);
+        if (producerText is not null) page.Elements.Add(producerText);
         using var output = new MemoryStream();
         await new OfdPackageWriter().WriteAsync(package, output);
         if (!template && resources is null) return output.ToArray();
@@ -99,7 +100,7 @@ public sealed class R01PageBlockTests
         return revised.ToArray();
     }
 
-    private static async Task<byte[]> RewriteXml(byte[] seed, string path, Action<XDocument> change)
+    internal static async Task<byte[]> RewriteXml(byte[] seed, string path, Action<XDocument> change)
     {
         using var rewritten = new MemoryStream();
         using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
@@ -121,7 +122,7 @@ public sealed class R01PageBlockTests
         return rewritten.ToArray();
     }
 
-    private static async Task<byte[]> WithEntry(byte[] seed, string path, byte[] bytes)
+    internal static async Task<byte[]> WithEntry(byte[] seed, string path, byte[] bytes)
     {
         using var rewritten = new MemoryStream();
         using (var input = new ZipArchive(new MemoryStream(seed), ZipArchiveMode.Read))
